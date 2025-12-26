@@ -1,4 +1,3 @@
-Retrospend dev shell ready (Prisma engines from /nix/store/3fq3ncqbcawrcx55am12chibqnr0f9ab-prisma-engines-7.2.0)
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
