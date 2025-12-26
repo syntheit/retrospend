@@ -136,7 +136,7 @@ export default function Page() {
 		<>
 			<SiteHeader title="Exchange Rates" />
 			<PageContent>
-				<div className="space-y-6">
+				<div className="mx-auto w-full max-w-4xl space-y-6">
 					<div className="text-muted-foreground text-sm">
 						{lastSync ? (
 							<>
