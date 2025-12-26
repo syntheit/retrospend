@@ -25,6 +25,7 @@ export const adminRouter = createTRPCRouter({
 				_count: {
 					select: {
 						expenses: true,
+						createdInviteCodes: true,
 					},
 				},
 			},
@@ -40,6 +41,7 @@ export const adminRouter = createTRPCRouter({
 			role: user.role,
 			isActive: user.isActive,
 			expenseCount: user._count.expenses,
+			inviteCodesCount: user._count.createdInviteCodes,
 		}));
 	}),
 

@@ -34,6 +34,7 @@ interface User {
 	role: "ADMIN" | "USER";
 	isActive: boolean;
 	expenseCount: number;
+	inviteCodesCount: number;
 }
 
 interface UsersTableProps {
@@ -103,6 +104,7 @@ export function UsersTable({
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
 								<TableHead className="text-right">Expenses</TableHead>
+								<TableHead className="text-right">Invite Codes</TableHead>
 								<TableHead className="w-[50px]"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -129,6 +131,9 @@ export function UsersTable({
 									</TableCell>
 									<TableCell className="text-right font-medium">
 										{user.expenseCount}
+									</TableCell>
+									<TableCell className="text-right font-medium">
+										{user.inviteCodesCount}
 									</TableCell>
 									<TableCell>
 										{user.id !== currentUserId && (

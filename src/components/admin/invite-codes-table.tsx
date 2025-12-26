@@ -170,6 +170,7 @@ export function InviteCodesTable({
 							<TableHead>Created At</TableHead>
 							<TableHead>Used By</TableHead>
 							<TableHead>Used At</TableHead>
+							<TableHead>Actions</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
