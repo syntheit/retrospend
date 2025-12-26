@@ -434,6 +434,60 @@ export const expenseRouter = createTRPCRouter({
 			return expense;
 		}),
 
+	// Get expenses for a specific date
+	getExpensesByDate: protectedProcedure
+		.input(
+			z.object({
+				date: z.date(),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { session, db } = ctx;
+
+			const startOfDay = new Date(input.date);
+			startOfDay.setHours(0, 0, 0, 0);
+
+			const endOfDay = new Date(input.date);
+			endOfDay.setHours(23, 59, 59, 999);
+
+			const expenses = await db.expense.findMany({
+				where: {
+					userId: session.user.id,
+					status: "FINALIZED",
+					date: {
+						gte: startOfDay,
+						lte: endOfDay,
+					},
+				},
+				orderBy: {
+					date: "desc",
+				},
+				select: {
+					id: true,
+					title: true,
+					amount: true,
+					currency: true,
+					exchangeRate: true,
+					amountInUSD: true,
+					date: true,
+					location: true,
+					description: true,
+					categoryId: true,
+					category: {
+						select: {
+							id: true,
+							name: true,
+							color: true,
+						},
+					},
+					createdAt: true,
+					updatedAt: true,
+				},
+			});
+
+			return expenses;
+		}),
+
 	// Delete an expense (draft or finalized)
 	deleteExpense: protectedProcedure
 		.input(

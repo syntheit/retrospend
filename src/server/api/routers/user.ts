@@ -133,13 +133,25 @@ export const userRouter = createTRPCRouter({
 			where: {
 				userId: session.user.id,
 			},
-			orderBy: {
-				name: "asc",
-			},
+			orderBy: [
+				{
+					expenses: {
+						_count: "desc",
+					},
+				},
+				{
+					name: "asc",
+				},
+			],
 			select: {
 				id: true,
 				name: true,
 				color: true,
+				_count: {
+					select: {
+						expenses: true,
+					},
+				},
 			},
 		});
 
