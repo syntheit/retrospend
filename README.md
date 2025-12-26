@@ -44,8 +44,10 @@ AUTH_SECRET=your-secret-key-min-32-chars
 
 # App Config
 EXCHANGE_RATE_SCHEDULER_ENABLED=true
-SHOW_LANDING_PAGE=true
 PUBLIC_URL=https://www.yourdomain.com
+
+# Optional
+SHOW_LANDING_PAGE=true
 ```
 
 ### Running with Docker
@@ -62,7 +64,6 @@ services:
       AUTH_SECRET: ${AUTH_SECRET}
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       EXCHANGE_RATE_SCHEDULER_ENABLED: "true"
-      SHOW_LANDING_PAGE: "true"
     ports:
       - "1997:1997"
 
@@ -100,5 +101,9 @@ docker compose up -d
 **Note:** The first user to sign up will automatically be made an admin. You can limit signups to only those with an invite code in the admin panel if you choose.
 
 ## Community
+
+Visit the official website at [https://retrospend.app](https://retrospend.app).
+
+If you'd like access to the hosted application (free), you can get in contact with me via the Retrospend Matrix chat or any of the contact methods on my website at [https://matv.io](https://matv.io).
 
 Join our Matrix room for discussions, support, and updates: [#retrospend:matrix.org](https://matrix.to/#/#retrospend:matrix.org)
