@@ -95,7 +95,7 @@ export default function Page() {
 	const availableCategories = useMemo(() => {
 		const categoryMap = new Map<
 			string,
-			{ id: string; name: string; color: string }
+			{ id: string; name: string; color: string; usageCount: number }
 		>();
 
 		// Filter expenses based on selected years and months (ignoring category filter)
@@ -109,15 +109,23 @@ export default function Page() {
 			return yearMatch && monthMatch;
 		});
 
-		// Collect categories only from expenses in the selected time period
+		// Collect categories and count usage from expenses in the selected time period
 		timeFilteredExpenses.forEach((expense) => {
 			if (expense.category) {
-				categoryMap.set(expense.category.id, expense.category);
+				const existing = categoryMap.get(expense.category.id);
+				if (existing) {
+					existing.usageCount++;
+				} else {
+					categoryMap.set(expense.category.id, {
+						...expense.category,
+						usageCount: 1,
+					});
+				}
 			}
 		});
 
 		return Array.from(categoryMap.values()).sort((a, b) =>
-			a.name.localeCompare(b.name),
+			b.usageCount - a.usageCount, // Sort by usage count descending (most to least used)
 		);
 	}, [normalizedExpenses, selectedYears, selectedMonths]);
 
