@@ -5,6 +5,7 @@ const SETTINGS_ID = "app_settings_singleton";
 export interface AppSettings {
   id: string;
   inviteOnlyEnabled: boolean;
+  allowAllUsersToGenerateInvites: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +20,7 @@ export async function getAppSettings(): Promise<AppSettings> {
     create: {
       id: SETTINGS_ID,
       inviteOnlyEnabled: false,
+      allowAllUsersToGenerateInvites: false,
     },
   });
 }
@@ -28,6 +30,7 @@ export async function getAppSettings(): Promise<AppSettings> {
  */
 export async function updateAppSettings(updates: {
   inviteOnlyEnabled?: boolean;
+  allowAllUsersToGenerateInvites?: boolean;
 }): Promise<AppSettings> {
   return await db.appSettings.upsert({
     where: { id: SETTINGS_ID },
@@ -37,6 +40,7 @@ export async function updateAppSettings(updates: {
     create: {
       id: SETTINGS_ID,
       inviteOnlyEnabled: updates.inviteOnlyEnabled ?? false,
+      allowAllUsersToGenerateInvites: updates.allowAllUsersToGenerateInvites ?? false,
     },
   });
 }
@@ -47,4 +51,12 @@ export async function updateAppSettings(updates: {
 export async function isInviteOnlyEnabled(): Promise<boolean> {
   const settings = await getAppSettings();
   return settings.inviteOnlyEnabled;
+}
+
+/**
+ * Check if all users are allowed to generate invite codes
+ */
+export async function isAllowAllUsersToGenerateInvitesEnabled(): Promise<boolean> {
+  const settings = await getAppSettings();
+  return settings.allowAllUsersToGenerateInvites;
 }

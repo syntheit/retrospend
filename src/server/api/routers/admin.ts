@@ -127,19 +127,23 @@ export const adminRouter = createTRPCRouter({
 		const settings = await getAppSettings();
 		return {
 			inviteOnlyEnabled: settings.inviteOnlyEnabled,
+			allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
 		};
 	}),
 
 	updateSettings: adminProcedure
 		.input(z.object({
 			inviteOnlyEnabled: z.boolean(),
+			allowAllUsersToGenerateInvites: z.boolean(),
 		}))
 		.mutation(async ({ input }) => {
 			const settings = await updateAppSettings({
 				inviteOnlyEnabled: input.inviteOnlyEnabled,
+				allowAllUsersToGenerateInvites: input.allowAllUsersToGenerateInvites,
 			});
 			return {
 				inviteOnlyEnabled: settings.inviteOnlyEnabled,
+				allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
 			};
 		}),
 });

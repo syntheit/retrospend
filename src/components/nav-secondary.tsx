@@ -1,6 +1,6 @@
 "use client";
 
-import { type Icon, IconSpeakerphone } from "@tabler/icons-react";
+import { type Icon, IconSpeakerphone, IconTicket } from "@tabler/icons-react";
 import type * as React from "react";
 
 import { ThemeToggle } from "~/components/theme-toggle";
@@ -11,6 +11,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "~/components/ui/sidebar";
+import { api } from "~/trpc/react";
 
 export function NavSecondary({
 	items,
@@ -22,6 +23,8 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+	const { data: settings } = api.admin.getSettings.useQuery();
+
 	return (
 		<SidebarGroup {...props}>
 			<SidebarGroupContent>
@@ -41,6 +44,16 @@ export function NavSecondary({
 					<SidebarMenuItem>
 						<ThemeToggle />
 					</SidebarMenuItem>
+					{settings?.allowAllUsersToGenerateInvites && (
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild>
+								<a href="/app/invite-codes">
+									<IconTicket />
+									<span>Invite Codes</span>
+								</a>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					)}
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton asChild>

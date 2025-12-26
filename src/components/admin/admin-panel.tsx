@@ -131,6 +131,8 @@ export function AdminPanel() {
 		try {
 			await updateSettingsMutation.mutateAsync({
 				inviteOnlyEnabled: enabled,
+				allowAllUsersToGenerateInvites:
+					settings?.allowAllUsersToGenerateInvites ?? false,
 			});
 			toast.success(`Invite-only signups ${enabled ? "enabled" : "disabled"}`);
 			refetchSettings();
@@ -232,7 +234,7 @@ export function AdminPanel() {
 								Control how new users can sign up for the application.
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
+						<CardContent className="space-y-6">
 							<div className="flex items-center justify-between">
 								<div className="space-y-0.5">
 									<label
@@ -251,6 +253,43 @@ export function AdminPanel() {
 									checked={settings?.inviteOnlyEnabled ?? false}
 									onCheckedChange={handleToggleInviteOnly}
 									disabled={updateSettingsMutation.isPending}
+								/>
+							</div>
+							<div className={`flex items-center justify-between ${!(settings?.inviteOnlyEnabled ?? false) ? "opacity-50" : ""}`}>
+								<div className="space-y-0.5">
+									<label
+										htmlFor="user-invite-codes-switch"
+										className={`font-medium text-sm ${!(settings?.inviteOnlyEnabled ?? false) ? "text-muted-foreground" : ""}`}
+									>
+										Allow All Users to Generate Invite Codes
+									</label>
+									<p className="text-muted-foreground text-sm">
+										When enabled, all authenticated users can create and manage
+										their own invite codes.
+									</p>
+								</div>
+								<Switch
+									id="user-invite-codes-switch"
+									checked={settings?.allowAllUsersToGenerateInvites ?? false}
+									onCheckedChange={async (enabled: boolean) => {
+										try {
+											await updateSettingsMutation.mutateAsync({
+												inviteOnlyEnabled: settings?.inviteOnlyEnabled ?? false,
+												allowAllUsersToGenerateInvites: enabled,
+											});
+											toast.success(
+												`User invite code generation ${enabled ? "enabled" : "disabled"}`,
+											);
+											refetchSettings();
+										} catch (error) {
+											const message =
+												error instanceof Error
+													? error.message
+													: "Failed to update settings";
+											toast.error(message);
+										}
+									}}
+									disabled={updateSettingsMutation.isPending || !(settings?.inviteOnlyEnabled ?? false)}
 								/>
 							</div>
 						</CardContent>

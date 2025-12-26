@@ -249,10 +249,11 @@ model InviteCode {
 }
 
 model AppSettings {
-  id                String   @id @default("app_settings_singleton")
-  inviteOnlyEnabled Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                              String   @id @default("app_settings_singleton")
+  inviteOnlyEnabled               Boolean  @default(false)
+  allowAllUsersToGenerateInvites  Boolean  @default(false)
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
 
   @@map("app_settings")
 }
