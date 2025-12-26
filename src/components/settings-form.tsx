@@ -158,7 +158,7 @@ export function SettingsForm() {
 					return;
 				}
 				await updateCategoryMutation.mutateAsync({
-					id: editingCategory.id,  // Remove the ! assertion
+					id: editingCategory.id,
 					name: categoryForm.name.trim(),
 					color: categoryForm.color,
 				});
@@ -256,7 +256,7 @@ export function SettingsForm() {
 									value={homeCurrency}
 								/>
 								<p className="text-muted-foreground text-sm">
-									The currency your net worth is calculated in.
+									The currency your expenses will be converted to.
 								</p>
 							</div>
 							<div className="space-y-2">
@@ -315,9 +315,7 @@ export function SettingsForm() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent position="popper">
-									<SelectItem value="sans">
-										Sans Serif (DM Sans)
-									</SelectItem>
+									<SelectItem value="sans">Sans Serif (DM Sans)</SelectItem>
 									<SelectItem value="mono">
 										Monospaced (JetBrains Mono)
 									</SelectItem>
@@ -339,7 +337,10 @@ export function SettingsForm() {
 						)}
 						<div className="border-t border-stone-800 pt-6">
 							<div className="flex justify-end">
-								<Button disabled={updateSettingsMutation.isPending} type="submit">
+								<Button
+									disabled={updateSettingsMutation.isPending}
+									type="submit"
+								>
 									{updateSettingsMutation.isPending
 										? "Saving..."
 										: "Save Settings"}
