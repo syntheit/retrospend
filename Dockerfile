@@ -75,6 +75,9 @@ COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml ./
 COPY --chown=nextjs:nodejs prisma/ ./prisma/
 COPY --chown=nextjs:nodejs prisma.config.ts ./
 
+# Copy scripts directory for runtime operations
+COPY --chown=nextjs:nodejs scripts/ ./scripts/
+
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
