@@ -52,6 +52,8 @@ export function SettingsForm() {
 	const [categoryClickBehavior, setCategoryClickBehavior] = useState<
 		"navigate" | "toggle"
 	>("toggle");
+	// Default to sans font when no user setting is present
+	const [fontPreference, setFontPreference] = useState<"sans" | "mono">("sans");
 
 	// Categories state
 	const [showCategoryList, setShowCategoryList] = useState(false);
@@ -93,6 +95,14 @@ export function SettingsForm() {
 		if (settings?.categoryClickBehavior) {
 			setCategoryClickBehavior(settings.categoryClickBehavior);
 		}
+		if (settings?.fontPreference) {
+			setFontPreference(settings.fontPreference);
+		}
+		// Always apply font when settings load or change
+		const fontToApply = settings?.fontPreference ?? "sans";
+		const root = document.documentElement;
+		root.classList.remove("font-sans", "font-mono");
+		root.classList.add(`font-${fontToApply}`);
 		if (settings) {
 			setDefaultCurrency(
 				settings.defaultCurrency ?? settings.homeCurrency ?? "USD",
@@ -110,6 +120,7 @@ export function SettingsForm() {
 				homeCurrency,
 				defaultCurrency,
 				categoryClickBehavior,
+				fontPreference,
 			});
 			setSuccess("Settings saved successfully!");
 		} catch (err: any) {
@@ -236,25 +247,29 @@ export function SettingsForm() {
 				</CardHeader>
 				<CardContent>
 					<form className="space-y-4" onSubmit={handleSaveSettings}>
-						<div className="space-y-2">
-							<Label htmlFor="homeCurrency">Home Currency</Label>
-							<CurrencyPicker
-								onValueChange={setHomeCurrency}
-								placeholder="Select currency"
-								value={homeCurrency}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="defaultCurrency">Default Currency</Label>
-							<CurrencyPicker
-								onValueChange={setDefaultCurrency}
-								placeholder="Select currency"
-								value={defaultCurrency}
-							/>
-							<p className="text-muted-foreground text-sm">
-								This currency is used by the automatic option when creating
-								a new expense and does not affect your home currency choice.
-							</p>
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div className="space-y-2">
+								<Label htmlFor="homeCurrency">Base Currency</Label>
+								<CurrencyPicker
+									onValueChange={setHomeCurrency}
+									placeholder="Select currency"
+									value={homeCurrency}
+								/>
+								<p className="text-muted-foreground text-sm">
+									The currency your net worth is calculated in.
+								</p>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="defaultCurrency">Default Entry Currency</Label>
+								<CurrencyPicker
+									onValueChange={setDefaultCurrency}
+									placeholder="Select currency"
+									value={defaultCurrency}
+								/>
+								<p className="text-muted-foreground text-sm">
+									The currency selected when you open the 'Add Expense' modal.
+								</p>
+							</div>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="categoryClickBehavior">
@@ -269,7 +284,7 @@ export function SettingsForm() {
 								<SelectTrigger>
 									<SelectValue />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent position="popper">
 									<SelectItem value="navigate">
 										Navigate to Table View
 									</SelectItem>
@@ -283,6 +298,35 @@ export function SettingsForm() {
 								donut chart.
 							</p>
 						</div>
+						<div className="space-y-2">
+							<Label htmlFor="fontPreference">Font Preference</Label>
+							<Select
+								onValueChange={(value) => {
+									const newFont = value as "sans" | "mono";
+									setFontPreference(newFont);
+									// Apply font immediately for preview
+									const root = document.documentElement;
+									root.classList.remove("font-sans", "font-mono");
+									root.classList.add(`font-${newFont}`);
+								}}
+								value={fontPreference}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent position="popper">
+									<SelectItem value="sans">
+										Sans Serif (DM Sans)
+									</SelectItem>
+									<SelectItem value="mono">
+										Monospaced (JetBrains Mono)
+									</SelectItem>
+								</SelectContent>
+							</Select>
+							<p className="text-muted-foreground text-sm">
+								Choose your preferred font style for the application interface.
+							</p>
+						</div>
 						{error && (
 							<div className="text-red-600 text-sm dark:text-red-400">
 								{error}
@@ -293,12 +337,14 @@ export function SettingsForm() {
 								{success}
 							</div>
 						)}
-						<div className="flex gap-4 pt-4">
-							<Button disabled={updateSettingsMutation.isPending} type="submit">
-								{updateSettingsMutation.isPending
-									? "Saving..."
-									: "Save Settings"}
-							</Button>
+						<div className="border-t border-stone-800 pt-6">
+							<div className="flex justify-end">
+								<Button disabled={updateSettingsMutation.isPending} type="submit">
+									{updateSettingsMutation.isPending
+										? "Saving..."
+										: "Save Settings"}
+								</Button>
+							</div>
 						</div>
 					</form>
 				</CardContent>
