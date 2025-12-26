@@ -72,8 +72,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 	const userData = session?.user
 		? {
-				name: session.user.name || "User",  // Add fallback
-				username: (session.user as ExtendedUser).username || "user",  // Add fallback
+				name: session.user.name || "User", // Add fallback
+				username: (session.user as ExtendedUser).username || "user", // Add fallback
 				avatar: session.user.image || "",
 			}
 		: null;
