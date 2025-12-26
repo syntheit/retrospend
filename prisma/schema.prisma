@@ -25,6 +25,7 @@ model User {
   homeCurrency          String                 @default("USD") @db.VarChar(3)
   defaultCurrency       String                 @default("USD") @db.VarChar(3)
   categoryClickBehavior CategoryClickBehavior  @default(toggle)
+  fontPreference        FontPreference         @default(sans)
   role                  UserRole               @default(USER)
   isActive              Boolean                @default(true)
   createdAt             DateTime               @default(now())
@@ -118,6 +119,11 @@ enum CategoryColor {
 enum CategoryClickBehavior {
   navigate
   toggle
+}
+
+enum FontPreference {
+  sans
+  mono
 }
 
 enum UserRole {
