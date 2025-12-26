@@ -1,5 +1,7 @@
 # Retrospend
 
+Visit the official website at [https://retrospend.app](https://retrospend.app).
+
 Retrospend is a personal finance and expense tracker application. It helps you manage your expenses, track your wealth, and handle multi-currency transactions with exchange rate integration.
 
 ## Features
@@ -101,8 +103,6 @@ docker compose up -d
 **Note:** The first user to sign up will automatically be made an admin. You can limit signups to only those with an invite code in the admin panel if you choose.
 
 ## Community
-
-Visit the official website at [https://retrospend.app](https://retrospend.app).
 
 If you'd like access to the hosted application (free), you can get in contact with me via the Retrospend Matrix chat or any of the contact methods on my website at [https://matv.io](https://matv.io).
 
