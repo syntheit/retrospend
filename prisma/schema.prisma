@@ -23,11 +23,13 @@ model User {
   updatedAt             DateTime               @default(now()) @updatedAt
   defaultCurrency       String                 @default("USD") @db.VarChar(3)
   fontPreference        FontPreference         @default(sans)
+  monthlyIncome         Decimal?               @db.Decimal(10, 2)
   accounts              Account[]
   assetAccounts         AssetAccount[]
   categories            Category[]
   favoriteExchangeRates ExchangeRateFavorite[]
   expenses              Expense[]
+  budgets               Budget[]
   createdInviteCodes    InviteCode[]           @relation("CreatedInviteCodes")
   usedInviteCodes       InviteCode[]           @relation("UsedInviteCodes")
   sessions              Session[]
@@ -112,10 +114,29 @@ model Category {
   userId   String
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses Expense[]
+  budgets  Budget[]
 
   @@unique([name, userId])
   @@index([userId])
   @@map("category")
+}
+
+model Budget {
+  id             String   @id @default(cuid())
+  amount         Decimal  @db.Decimal(10, 2)
+  period         DateTime
+  isRollover     Boolean  @default(false)
+  rolloverAmount Decimal  @db.Decimal(10, 2) @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String
+  categoryId     String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, period])
+  @@index([userId, period])
+  @@map("budget")
 }
 
 model ExchangeRate {
