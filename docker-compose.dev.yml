@@ -1,0 +1,46 @@
+services:
+  retrospend:
+    image: synzeit/retrospend:latest
+    container_name: retrospend
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET}
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
+      EXCHANGE_RATE_SCHEDULER_ENABLED: "true"
+      SHOW_LANDING_PAGE: "true"
+    ports:
+      - "1997:1997"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: retrospend-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  pgweb:
+    image: sosedoff/pgweb
+    container_name: retrospend-pgweb
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8080}:8081"
+    environment:
+      # This connects automatically. No login screen.
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local

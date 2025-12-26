@@ -1,0 +1,258 @@
+// Prisma schema for Better Auth
+// learn more: https://better-auth.com/docs/concepts/database
+
+generator client {
+  provider      = "prisma-client"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "linux-nixos"]
+}
+
+// NOTE: When using mysql or sqlserver, uncomment the //@db.Text annotations in model Account below
+// Further reading:
+// https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                    String                 @id @default(cuid())
+  name                  String                 @db.VarChar(191)
+  username              String                 @db.VarChar(64)
+  email                 String                 @db.VarChar(255)
+  emailVerified         Boolean                @default(false)
+  image                 String?                @db.VarChar(2048)
+  homeCurrency          String                 @default("USD") @db.VarChar(3)
+  defaultCurrency       String                 @default("USD") @db.VarChar(3)
+  categoryClickBehavior CategoryClickBehavior  @default(toggle)
+  role                  UserRole               @default(USER)
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @default(now()) @updatedAt
+  sessions              Session[]
+  accounts              Account[]
+  expenses              Expense[]
+  categories            Category[]
+  favoriteExchangeRates ExchangeRateFavorite[]
+  assetAccounts         AssetAccount[]
+  createdInviteCodes    InviteCode[]           @relation("CreatedInviteCodes")
+  usedInviteCodes       InviteCode[]           @relation("UsedInviteCodes")
+
+  @@unique([email])
+  @@unique([username])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.VarChar(255)
+  userAgent String?  @db.VarChar(255)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([expiresAt])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String    @db.VarChar(191)
+  providerId            String    @db.VarChar(64)
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.VarChar(2048)
+  refreshToken          String?   @db.VarChar(2048)
+  idToken               String?   @db.VarChar(2048)
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.VarChar(512)
+  password              String?   @db.VarChar(255)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@unique([providerId, userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String   @db.VarChar(255)
+  value      String   @db.VarChar(255)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+enum CategoryColor {
+  emerald
+  blue
+  sky
+  cyan
+  teal
+  orange
+  amber
+  violet
+  pink
+  fuchsia
+  indigo
+  slate
+  zinc
+  lime
+  neutral
+  gray
+  purple
+  yellow
+  stone
+  rose
+  red
+}
+
+enum CategoryClickBehavior {
+  navigate
+  toggle
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum ExpenseStatus {
+  DRAFT
+  FINALIZED
+}
+
+model Expense {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  amount        Decimal       @db.Decimal(19, 8)
+  currency      String
+  date          DateTime
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amountInUSD   Decimal       @db.Decimal(12, 2)
+  exchangeRate  Decimal       @db.Decimal(10, 4)
+  pricingSource String
+  location      String?       @db.VarChar(191)
+  description   String?       @db.VarChar(1000)
+  status        ExpenseStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId, date])
+  @@map("expense")
+}
+
+model Category {
+  id       String        @id @default(cuid())
+  name     String        @db.VarChar(64)
+  color    CategoryColor
+  userId   String
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@unique([name, userId])
+  @@index([userId])
+  @@map("category")
+}
+
+model ExchangeRate {
+  id        String                 @id @default(cuid())
+  date      DateTime
+  currency  String                 @db.VarChar(3)
+  type      String                 @default("official") @db.VarChar(32)
+  rate      Decimal                @db.Decimal(18, 6)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  favorites ExchangeRateFavorite[]
+
+  @@unique([date, currency, type])
+  @@index([currency, type, date])
+  @@map("exchange_rate")
+}
+
+model ExchangeRateFavorite {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchangeRateId String
+  exchangeRate   ExchangeRate @relation(fields: [exchangeRateId], references: [id], onDelete: Cascade)
+  order          Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, exchangeRateId])
+  @@unique([userId, order])
+  @@map("exchange_rate_favorite")
+}
+
+enum AssetType {
+  CASH
+  INVESTMENT
+  CRYPTO
+  REAL_ESTATE
+}
+
+model AssetAccount {
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  type             AssetType
+  currency         String
+  balance          Decimal         @db.Decimal(19, 8)
+  exchangeRate     Decimal?        @db.Decimal(18, 6)
+  exchangeRateType String?         @db.VarChar(32)
+  isLiquid         Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  snapshots        AssetSnapshot[]
+
+  @@index([userId])
+  @@map("asset_account")
+}
+
+model AssetSnapshot {
+  id           String       @id @default(cuid())
+  accountId    String
+  account      AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  date         DateTime
+  balance      Decimal      @db.Decimal(19, 8)
+  balanceInUSD Decimal      @db.Decimal(12, 2)
+
+  @@unique([accountId, date])
+  @@map("asset_snapshot")
+}
+
+model InviteCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  isActive    Boolean   @default(true)
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  createdById String
+  createdBy   User      @relation("CreatedInviteCodes", fields: [createdById], references: [id], onDelete: Cascade)
+  usedById    String?
+  usedBy      User?     @relation("UsedInviteCodes", fields: [usedById], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@map("invite_code")
+}
+
+model AppSettings {
+  id                String   @id @default("app_settings_singleton")
+  inviteOnlyEnabled Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("app_settings")
+}
