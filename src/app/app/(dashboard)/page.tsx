@@ -776,8 +776,7 @@ export default function Page() {
 																</div>
 																{showOriginal && (
 																	<div className="text-muted-foreground text-xs">
-																		{`${originalSymbol}${formatCurrencyAmount(expense.amount)}`}{" "}
-																		{expense.currency}
+																		{`${originalSymbol}${formatCurrencyAmount(expense.amount)}`}
 																	</div>
 																)}
 															</TableCell>
