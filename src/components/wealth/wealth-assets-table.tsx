@@ -48,6 +48,7 @@ const getTypeColor = (type: AssetType) => {
 };
 
 export function WealthAssetsTable({ assets }: WealthAssetsTableProps) {
+
 	return (
 		<Card>
 			<CardHeader>

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -92,6 +92,7 @@ export function AssetDialog({
 		initialValues.exchangeRateType,
 	);
 	const [isCustomRate, setIsCustomRate] = useState(false);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 	const utils = api.useUtils();
 
 	const form = useForm<FormValues>({
@@ -135,6 +136,17 @@ export function AssetDialog({
 		},
 	});
 
+	const deleteAsset = api.wealth.deleteAsset.useMutation({
+		onSuccess: () => {
+			toast.success("Asset deleted successfully");
+			setOpen(false);
+			void utils.wealth.getDashboard.invalidate();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
 	const onSubmit = (data: FormValues) => {
 		if (mode === "create") {
 			createAsset.mutate({
@@ -161,6 +173,12 @@ export function AssetDialog({
 		}
 	};
 
+	const handleDelete = async () => {
+		if (assetId) {
+			await deleteAsset.mutateAsync({ id: assetId });
+		}
+	};
+
 	const defaultTrigger = (
 		<Button>
 			<Plus className="mr-2 h-4 w-4" />
@@ -169,143 +187,182 @@ export function AssetDialog({
 	);
 
 	return (
-		<Dialog onOpenChange={setOpen} open={open}>
-			<DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
-			<DialogContent className="sm:max-w-[500px]">
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
-				</DialogHeader>
-				<Form {...form}>
-					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-						<FormField
-							control={form.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Name</FormLabel>
-									<FormControl>
-										<Input placeholder="e.g. Main Bank Asset" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="grid grid-cols-2 gap-4">
+		<>
+			<Dialog onOpenChange={setOpen} open={open}>
+				<DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
+				<DialogContent className="sm:max-w-[500px]">
+					<DialogHeader>
+						<DialogTitle>{title}</DialogTitle>
+						<DialogDescription>{description}</DialogDescription>
+					</DialogHeader>
+					<Form {...form}>
+						<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
 							<FormField
 								control={form.control}
-								name="type"
+								name="name"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Type</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select type" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												<SelectItem value={AssetType.CASH}>Cash</SelectItem>
-												<SelectItem value={AssetType.INVESTMENT}>
-													Investment
-												</SelectItem>
-												<SelectItem value={AssetType.CRYPTO}>Crypto</SelectItem>
-												<SelectItem value={AssetType.REAL_ESTATE}>
-													Real Estate
-												</SelectItem>
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="currency"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Currency</FormLabel>
+										<FormLabel>Name</FormLabel>
 										<FormControl>
-											<CurrencyPicker
-												onValueChange={handleCurrencyChange}
-												placeholder="Select currency"
-												value={field.value as CurrencyCode}
-											/>
+											<Input placeholder="e.g. Main Bank Asset" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-						</div>
-						{form.watch("currency") !== "USD" && (
-							<div className="space-y-2">
-								<FormLabel>Exchange Rate</FormLabel>
-								<InlineExchangeRateSelector
-									currency={form.watch("currency")}
-									homeCurrency="USD"
-									isCustomSet={isCustomRate}
-									mode={false}
-									onCustomCleared={() => setIsCustomRate(false)}
-									onCustomSelected={() => setIsCustomRate(true)}
-									onCustomSet={() => setIsCustomRate(true)}
-									onValueChange={(rate, type) => {
-										setExchangeRate(rate);
-										setExchangeRateType(type);
-									}}
-									value={exchangeRate}
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="type"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Type</FormLabel>
+											<Select
+												defaultValue={field.value}
+												onValueChange={field.onChange}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select type" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value={AssetType.CASH}>Cash</SelectItem>
+													<SelectItem value={AssetType.INVESTMENT}>
+														Investment
+													</SelectItem>
+													<SelectItem value={AssetType.CRYPTO}>Crypto</SelectItem>
+													<SelectItem value={AssetType.REAL_ESTATE}>
+														Real Estate
+													</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="currency"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Currency</FormLabel>
+											<FormControl>
+												<CurrencyPicker
+													onValueChange={handleCurrencyChange}
+													placeholder="Select currency"
+													value={field.value as CurrencyCode}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
 								/>
 							</div>
-						)}
-						<FormField
-							control={form.control}
-							name="balance"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Balance</FormLabel>
-									<FormControl>
-										<Input step="0.01" type="number" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
+							{form.watch("currency") !== "USD" && (
+								<div className="space-y-2">
+									<FormLabel>Exchange Rate</FormLabel>
+									<InlineExchangeRateSelector
+										currency={form.watch("currency")}
+										homeCurrency="USD"
+										isCustomSet={isCustomRate}
+										mode={false}
+										onCustomCleared={() => setIsCustomRate(false)}
+										onCustomSelected={() => setIsCustomRate(true)}
+										onCustomSet={() => setIsCustomRate(true)}
+										onValueChange={(rate, type) => {
+											setExchangeRate(rate);
+											setExchangeRateType(type);
+										}}
+										value={exchangeRate}
+									/>
+								</div>
 							)}
-						/>
-						<FormField
-							control={form.control}
-							name="isLiquid"
-							render={({ field }) => (
-								<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-									<FormControl>
-										<Checkbox
-											checked={field.value}
-											onCheckedChange={field.onChange}
-										/>
-									</FormControl>
-									<div className="space-y-1 leading-none">
-										<FormLabel>Liquid Asset</FormLabel>
-										<FormDescription>
-											This asset can be easily converted to cash.
-										</FormDescription>
-									</div>
-								</FormItem>
-							)}
-						/>
-						<DialogFooter>
-							<Button
-								disabled={createAsset.isPending || updateAsset.isPending}
-								type="submit"
-							>
-								{createAsset.isPending || updateAsset.isPending
-									? loadingLabel
-									: submitLabel}
-							</Button>
-						</DialogFooter>
-					</form>
-				</Form>
-			</DialogContent>
-		</Dialog>
+							<FormField
+								control={form.control}
+								name="balance"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Balance</FormLabel>
+										<FormControl>
+											<Input step="0.01" type="number" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="isLiquid"
+								render={({ field }) => (
+									<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+										<FormControl>
+											<Checkbox
+												checked={field.value}
+												onCheckedChange={field.onChange}
+											/>
+										</FormControl>
+										<div className="space-y-1 leading-none">
+											<FormLabel>Liquid Asset</FormLabel>
+											<FormDescription>
+												This asset can be easily converted to cash.
+											</FormDescription>
+										</div>
+									</FormItem>
+								)}
+							/>
+							<DialogFooter>
+								{/* Delete button - only visible in edit mode */}
+								{mode === "edit" && (
+									<Button
+										className="mr-auto h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+										disabled={deleteAsset.isPending}
+										onClick={() => setShowDeleteDialog(true)}
+										size="icon"
+										type="button"
+										variant="ghost"
+									>
+										<Trash2 className="h-4 w-4" />
+										<span className="sr-only">Delete asset</span>
+									</Button>
+								)}
+								<Button
+									disabled={createAsset.isPending || updateAsset.isPending || deleteAsset.isPending}
+									type="submit"
+								>
+									{createAsset.isPending || updateAsset.isPending
+										? loadingLabel
+										: submitLabel}
+								</Button>
+							</DialogFooter>
+						</form>
+					</Form>
+				</DialogContent>
+			</Dialog>
+
+			{/* Delete confirmation dialog */}
+			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
+				<DialogContent className="w-full max-w-full sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Delete Asset</DialogTitle>
+						<DialogDescription>
+							Are you sure you want to delete this asset? This action cannot be undone.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							onClick={() => setShowDeleteDialog(false)}
+							variant="outline"
+						>
+							Cancel
+						</Button>
+						<Button onClick={handleDelete} variant="destructive">
+							Delete
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</>
 	);
 }
 

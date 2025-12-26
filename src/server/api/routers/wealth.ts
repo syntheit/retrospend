@@ -464,6 +464,32 @@ export const wealthRouter = createTRPCRouter({
 		};
 	}),
 
+	deleteAsset: protectedProcedure
+		.input(
+			z.object({
+				id: z.string().cuid(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+
+			const result = await db.assetAccount.deleteMany({
+				where: {
+					id: input.id,
+					userId: session.user.id,
+				},
+			});
+
+			if (result.count === 0) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Asset not found",
+				});
+			}
+
+			return { success: true };
+		}),
+
 	exportCsv: protectedProcedure.mutation(async ({ ctx }) => {
 		const { db, session } = ctx;
 
