@@ -1,3 +1,4 @@
+import { Github } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "~/components/ui/button";
@@ -32,6 +33,15 @@ export default function RootPage() {
 				</div>
 			</div>
 			<footer className="pb-8 text-center">
+				<div className="mb-2">
+					<Link
+						href="https://github.com/syntheit/retrospend"
+						target="_blank"
+						className="inline-block text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors"
+					>
+						<Github className="h-6 w-6" />
+					</Link>
+				</div>
 				<p className="text-sm text-stone-500 dark:text-stone-400">
 					Made by{" "}
 					<Link
