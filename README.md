@@ -102,6 +102,33 @@ docker compose up -d
 
 **Note:** The first user to sign up will automatically be made an admin. You can limit signups to only those with an invite code in the admin panel if you choose.
 
+## Database Management
+
+### Syncing Default Categories
+
+When new default categories are added to the application, existing users won't automatically receive them. To push new default categories to all existing users:
+
+1. **Add new categories** to `src/lib/constants.ts` in the `DEFAULT_CATEGORIES` array.
+
+2. **Run the sync script** in your running container:
+
+   ```bash
+   # Access your running container
+   docker exec -it retrospend sh
+
+   # Run the sync script
+   pnpm ts-node scripts/sync-default-categories.ts
+   ```
+
+3. **Verify the sync** (optional):
+   ```bash
+   pnpm tsx scripts/verify-categories.ts
+   ```
+
+The sync script safely handles duplicates using `skipDuplicates: true` and the unique constraint on `(name, userId)`, so existing categories won't be affected.
+
+**Note:** For future category additions, consider adding the sync logic to the sign-in flow in `src/server/better-auth/config.ts` to automatically sync defaults when users log in.
+
 ## Community
 
 If you'd like access to the hosted application (free), you can get in contact with me via the Retrospend Matrix chat or any of the contact methods on my website at [https://matv.io](https://matv.io).
