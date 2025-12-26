@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { z } from "zod";
 import { CATEGORY_COLORS } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getAppSettings } from "~/server/services/settings";
 
 export const userRouter = createTRPCRouter({
 	updateProfile: protectedProcedure
@@ -294,6 +295,7 @@ export const userRouter = createTRPCRouter({
 				homeCurrency: true,
 				defaultCurrency: true,
 				categoryClickBehavior: true,
+				fontPreference: true,
 			},
 		});
 
@@ -301,10 +303,14 @@ export const userRouter = createTRPCRouter({
 			throw new Error("User not found");
 		}
 
+		const appSettings = await getAppSettings();
+
 		return {
 			homeCurrency: user.homeCurrency,
 			defaultCurrency: user.defaultCurrency,
 			categoryClickBehavior: user.categoryClickBehavior,
+			fontPreference: user.fontPreference,
+			allowAllUsersToGenerateInvites: appSettings.allowAllUsersToGenerateInvites,
 		};
 	}),
 
@@ -350,6 +356,7 @@ export const userRouter = createTRPCRouter({
 					.length(3, "Currency must be 3 characters")
 					.optional(),
 				categoryClickBehavior: z.enum(["navigate", "toggle"]).optional(),
+				fontPreference: z.enum(["sans", "mono"]).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -361,6 +368,9 @@ export const userRouter = createTRPCRouter({
 					homeCurrency: input.homeCurrency,
 					...(input.categoryClickBehavior && {
 						categoryClickBehavior: input.categoryClickBehavior,
+					}),
+					...(input.fontPreference && {
+						fontPreference: input.fontPreference,
 					}),
 					...(input.defaultCurrency && { defaultCurrency: input.defaultCurrency }),
 				},

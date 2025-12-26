@@ -23,14 +23,17 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
-	const { data: settings } = api.admin.getSettings.useQuery();
+	const { data: settings } = api.user.getSettings.useQuery();
 
 	return (
 		<SidebarGroup {...props}>
 			<SidebarGroupContent>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton asChild>
+						<SidebarMenuButton
+							asChild
+							className="h-10 px-4 py-4 text-base [&>svg]:size-5"
+						>
 							<a
 								href="https://forms.gle/LgLS7wSJGWSjQYEs7"
 								target="_blank"
@@ -42,11 +45,14 @@ export function NavSecondary({
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 					<SidebarMenuItem>
-						<ThemeToggle />
+						<ThemeToggle className="h-10 px-4 py-4 text-base [&>svg]:size-5" />
 					</SidebarMenuItem>
 					{settings?.allowAllUsersToGenerateInvites && (
 						<SidebarMenuItem>
-							<SidebarMenuButton asChild>
+							<SidebarMenuButton
+								asChild
+								className="h-10 px-4 py-4 text-base [&>svg]:size-5"
+							>
 								<a href="/app/invite-codes">
 									<IconTicket />
 									<span>Invite Codes</span>
@@ -56,7 +62,10 @@ export function NavSecondary({
 					)}
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton asChild>
+							<SidebarMenuButton
+								asChild
+								className="h-10 px-4 py-4 text-base [&>svg]:size-5"
+							>
 								<a href={item.url}>
 									<item.icon />
 									<span>{item.title}</span>

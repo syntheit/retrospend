@@ -18,6 +18,15 @@ import { ActionDialog } from "./action-dialog";
 import { InviteCodesTable } from "./invite-codes-table";
 import { UsersTable } from "./users-table";
 
+// Extend the session user type to include additional fields
+type ExtendedUser = NonNullable<
+	ReturnType<typeof useSession>["data"]
+>["user"] & {
+	role: string;
+	username: string;
+	isActive: boolean;
+};
+
 type PendingAction =
 	| { type: "resetPassword"; userId: string; username: string }
 	| {
@@ -38,14 +47,27 @@ export function AdminPanel() {
 	} | null>(null);
 
 	const { data: session } = useSession();
-	const { data: users, isLoading, refetch } = api.admin.listUsers.useQuery();
+	const extendedUser = session?.user as ExtendedUser;
+	const isAdmin = extendedUser?.role === "ADMIN";
+
+	const {
+		data: users,
+		isLoading,
+		refetch,
+	} = api.admin.listUsers.useQuery(undefined, {
+		enabled: isAdmin,
+	});
 	const {
 		data: inviteCodes,
 		isLoading: inviteCodesLoading,
 		refetch: refetchInviteCodes,
-	} = api.invite.list.useQuery();
+	} = api.invite.list.useQuery(undefined, {
+		enabled: isAdmin,
+	});
 	const { data: settings, refetch: refetchSettings } =
-		api.admin.getSettings.useQuery();
+		api.admin.getSettings.useQuery(undefined, {
+			enabled: isAdmin,
+		});
 
 	const resetPasswordMutation = api.admin.resetPassword.useMutation();
 	const disableUserMutation = api.admin.disableUser.useMutation();
@@ -191,6 +213,12 @@ export function AdminPanel() {
 		deleteUserMutation.isPending ||
 		deleteInviteCodeMutation.isPending;
 
+	// This component should only be rendered for admin users
+	// The admin page already checks this, but this provides additional safety
+	if (!isAdmin) {
+		return null;
+	}
+
 	return (
 		<>
 			<SiteHeader title="Admin Panel" />
@@ -255,7 +283,9 @@ export function AdminPanel() {
 									disabled={updateSettingsMutation.isPending}
 								/>
 							</div>
-							<div className={`flex items-center justify-between ${!(settings?.inviteOnlyEnabled ?? false) ? "opacity-50" : ""}`}>
+							<div
+								className={`flex items-center justify-between ${!(settings?.inviteOnlyEnabled ?? false) ? "opacity-50" : ""}`}
+							>
 								<div className="space-y-0.5">
 									<label
 										htmlFor="user-invite-codes-switch"
@@ -289,7 +319,10 @@ export function AdminPanel() {
 											toast.error(message);
 										}
 									}}
-									disabled={updateSettingsMutation.isPending || !(settings?.inviteOnlyEnabled ?? false)}
+									disabled={
+										updateSettingsMutation.isPending ||
+										!(settings?.inviteOnlyEnabled ?? false)
+									}
 								/>
 							</div>
 						</CardContent>

@@ -68,7 +68,7 @@ const navSecondary = [
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const { data: session, isLoading } = useSession();
+	const { data: session, isPending } = useSession();
 
 	const userData = session?.user
 		? {
@@ -97,12 +97,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			<SidebarFooter className="pt-1">
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<div className="px-2 text-muted-foreground text-xs">
+						<div className="px-2 text-muted-foreground text-sm">
 							Version {APP_VERSION}
 						</div>
 					</SidebarMenuItem>
 				</SidebarMenu>
-				{isLoading ? (
+				{isPending ? (
 					<div className="p-4 text-muted-foreground text-sm">Loading...</div>
 				) : userData ? (
 					<NavUser user={userData} />
