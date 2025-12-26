@@ -102,6 +102,16 @@ docker compose up -d
 
 **Note:** The first user to sign up will automatically be made an admin. You can limit signups to only those with an invite code in the admin panel if you choose.
 
+### Database Migrations
+
+The application automatically runs Prisma database migrations on startup. This ensures your database schema stays up-to-date with application changes.
+
+- **Automatic execution**: Migrations run every time the container starts
+- **Fail-safe behavior**: If migrations fail, the container will not start (exits with error)
+- **Production ready**: Only applies approved migrations created during development
+
+If you encounter migration errors during deployment, check the container logs for details and ensure your database is accessible.
+
 ## Database Management
 
 ### Syncing Default Categories
