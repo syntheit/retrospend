@@ -41,7 +41,7 @@ import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export function SettingsForm() {
-	const { data: session, isLoading: sessionLoading } = useSession();
+	const { data: session, isPending: sessionLoading } = useSession();
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 

@@ -1,8 +1,8 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
@@ -34,7 +34,7 @@ type ExtendedUser = NonNullable<
 };
 
 export function AccountForm() {
-	const { data: session, isLoading: sessionLoading } = useSession();
+	const { data: session, isPending: sessionLoading } = useSession();
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 	const [error, setError] = useState("");
@@ -284,7 +284,8 @@ export function AccountForm() {
 					<DialogHeader>
 						<DialogTitle>Change Password</DialogTitle>
 						<DialogDescription>
-							Update your password. You'll need to enter your current password for security.
+							Update your password. You'll need to enter your current password
+							for security.
 						</DialogDescription>
 					</DialogHeader>
 					<form className="space-y-4" onSubmit={handleChangePassword}>
@@ -305,15 +306,15 @@ export function AccountForm() {
 							<Input
 								disabled={updateProfileMutation.isPending}
 								id="dialogPassword"
-								onChange={(e) =>
-									handleInputChange("password", e.target.value)
-								}
+								onChange={(e) => handleInputChange("password", e.target.value)}
 								type="password"
 								value={formData.password}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="dialogConfirmPassword">Confirm New Password</Label>
+							<Label htmlFor="dialogConfirmPassword">
+								Confirm New Password
+							</Label>
 							<Input
 								disabled={updateProfileMutation.isPending}
 								id="dialogConfirmPassword"
@@ -348,7 +349,9 @@ export function AccountForm() {
 								Cancel
 							</Button>
 							<Button disabled={updateProfileMutation.isPending} type="submit">
-								{updateProfileMutation.isPending ? "Updating..." : "Update Password"}
+								{updateProfileMutation.isPending
+									? "Updating..."
+									: "Update Password"}
 							</Button>
 						</DialogFooter>
 					</form>
@@ -363,8 +366,8 @@ export function AccountForm() {
 							<p className="font-medium">Export all user data</p>
 							<p className="text-muted-foreground text-sm">
 								Download all your personal data including profile, expenses,
-								wealth, categories, and favorite exchange rates as CSV files in a
-								zip archive.
+								wealth, categories, and favorite exchange rates as CSV files in
+								a zip archive.
 							</p>
 						</div>
 						<Button
@@ -373,7 +376,9 @@ export function AccountForm() {
 							onClick={handleExportAllData}
 							variant="outline"
 						>
-							{exportAllDataMutation.isPending ? "Preparing..." : "Download ZIP"}
+							{exportAllDataMutation.isPending
+								? "Preparing..."
+								: "Download ZIP"}
 							<Download className="ml-2 h-4 w-4" />
 						</Button>
 					</div>
@@ -386,7 +391,9 @@ export function AccountForm() {
 					<CardContent>
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-red-600 dark:text-red-400 font-medium">Delete Account</p>
+								<p className="text-red-600 dark:text-red-400 font-medium">
+									Delete Account
+								</p>
 								<p className="text-muted-foreground text-sm">
 									Permanently remove your account and all data.
 								</p>
@@ -415,7 +422,8 @@ export function AccountForm() {
 								be undone. All your data will be permanently removed.
 							</DialogDescription>
 							<div className="text-sm text-muted-foreground mt-2">
-								You can export your data in settings before deleting your account.
+								You can export your data in settings before deleting your
+								account.
 							</div>
 						</DialogHeader>
 						<DialogFooter>
