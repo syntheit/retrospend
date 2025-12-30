@@ -2,43 +2,57 @@
 
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import type { NormalizedExpense } from "~/lib/utils";
-
-// Define which categories are considered "fixed" vs "flexible"
-const FIXED_CATEGORIES = [
-	"Rent",
-	"Utilities",
-	"Subscriptions",
-	"Fees",
-	"Taxes",
-	"Gas",
-];
+import {
+	convertExpenseAmountForDisplay,
+	type NormalizedExpense,
+} from "~/lib/utils";
+import { useAnalyticsCategoryPreferences } from "~/hooks/use-page-settings";
 
 interface SpendCompositionProps {
 	expenses: NormalizedExpense[];
+	baseCurrency: string;
+	liveRateToBaseCurrency: number | null;
 }
 
-export function SpendComposition({ expenses }: SpendCompositionProps) {
+export function SpendComposition({
+	expenses,
+	baseCurrency,
+	liveRateToBaseCurrency,
+}: SpendCompositionProps) {
+	const { preferenceMap } = useAnalyticsCategoryPreferences();
+
 	const chartData = useMemo(() => {
 		const fixedExpenses = expenses
 			.filter(
 				(expense) =>
-					expense.category?.name &&
-					FIXED_CATEGORIES.includes(expense.category.name),
+					expense.category?.id &&
+					(preferenceMap?.[expense.category.id] === false),
 			)
 			.reduce(
-				(sum, expense) => sum + (expense.amountInUSD ?? expense.amount),
+				(sum, expense) =>
+					sum +
+					convertExpenseAmountForDisplay(
+						expense,
+						baseCurrency,
+						liveRateToBaseCurrency,
+					),
 				0,
 			);
 
 		const flexibleExpenses = expenses
 			.filter(
 				(expense) =>
-					!expense.category?.name ||
-					!FIXED_CATEGORIES.includes(expense.category.name),
+					!expense.category?.id ||
+					(preferenceMap?.[expense.category.id] !== false),
 			)
 			.reduce(
-				(sum, expense) => sum + (expense.amountInUSD ?? expense.amount),
+				(sum, expense) =>
+					sum +
+					convertExpenseAmountForDisplay(
+						expense,
+						baseCurrency,
+						liveRateToBaseCurrency,
+					),
 				0,
 			);
 
@@ -62,7 +76,7 @@ export function SpendComposition({ expenses }: SpendCompositionProps) {
 				color: "#ea580c", // orange-600
 			},
 		];
-	}, [expenses]);
+	}, [expenses, baseCurrency, liveRateToBaseCurrency, preferenceMap]);
 
 	const totalSpending = useMemo(() => {
 		return chartData.reduce((sum, item) => sum + item.value, 0);
@@ -75,10 +89,14 @@ export function SpendComposition({ expenses }: SpendCompositionProps) {
 		// Group expenses by category
 		expenses.forEach((expense) => {
 			const categoryName = expense.category?.name || "Uncategorized";
-			const amount = expense.amountInUSD ?? expense.amount;
+			const amount = convertExpenseAmountForDisplay(
+				expense,
+				baseCurrency,
+				liveRateToBaseCurrency,
+			);
 			const isFixed =
-				expense.category?.name &&
-				FIXED_CATEGORIES.includes(expense.category.name);
+				expense.category?.id &&
+				(preferenceMap?.[expense.category.id] === false);
 
 			if (isFixed) {
 				fixedCategories.set(
@@ -128,7 +146,7 @@ export function SpendComposition({ expenses }: SpendCompositionProps) {
 			fixedTotal: Math.round(fixedTotal * 100) / 100,
 			flexibleTotal: Math.round(flexibleTotal * 100) / 100,
 		};
-	}, [expenses]);
+	}, [expenses, baseCurrency, liveRateToBaseCurrency, preferenceMap]);
 
 	const CustomTooltip = ({
 		active,
@@ -199,19 +217,19 @@ export function SpendComposition({ expenses }: SpendCompositionProps) {
 			</div>
 
 			<div className="h-[300px]">
-				<ResponsiveContainer width="100%" height="100%">
+				<ResponsiveContainer height="100%" width="100%">
 					<PieChart>
 						<Pie
-							data={chartData}
 							cx="50%"
 							cy="50%"
+							data={chartData}
+							dataKey="value"
 							innerRadius={60}
 							outerRadius={100}
 							paddingAngle={2}
-							dataKey="value"
 						>
 							{chartData.map((entry) => (
-								<Cell key={`cell-${entry.name}`} fill={entry.color} />
+								<Cell fill={entry.color} key={`cell-${entry.name}`} />
 							))}
 						</Pie>
 						<Tooltip content={<CustomTooltip />} />

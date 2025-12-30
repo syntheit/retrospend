@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCurrencyAmount } from "~/lib/utils";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { AssetDialog } from "./asset-dialog";
 
 interface WealthHeaderProps {
@@ -8,12 +8,14 @@ interface WealthHeaderProps {
 }
 
 export function WealthHeader({ totalNetWorth }: WealthHeaderProps) {
+	const { formatCurrency } = useCurrencyFormatter();
+
 	return (
 		<div className="flex items-center justify-between space-y-2">
 			<div>
 				<div className="flex items-baseline space-x-2">
 					<span className="font-bold text-4xl">
-						${formatCurrencyAmount(totalNetWorth)}
+						{formatCurrency(totalNetWorth, "USD")}
 					</span>
 					<span className="text-muted-foreground text-sm">Net Worth (USD)</span>
 				</div>

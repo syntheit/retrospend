@@ -18,6 +18,11 @@ interface CategoryPickerProps {
 	onValueChange?: (value: string) => void;
 	placeholder?: string;
 	className?: string;
+	categories?: Array<{
+		id: string;
+		name: string;
+		color: string;
+	}>;
 }
 
 export function CategoryPicker({
@@ -25,11 +30,17 @@ export function CategoryPicker({
 	onValueChange,
 	placeholder = "Select category",
 	className,
+	categories: propCategories,
 }: CategoryPickerProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 
-	const { data: categories, isLoading } = api.user.listCategories.useQuery();
+	const { data: fetchedCategories, isLoading } = api.user.listCategories.useQuery(
+		undefined,
+		{ enabled: !propCategories }
+	);
+
+	const categories = propCategories || fetchedCategories;
 
 	const filteredCategories = useMemo(() => {
 		if (!categories || !search) return categories || [];

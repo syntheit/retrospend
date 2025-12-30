@@ -91,7 +91,7 @@ export default function Page() {
 		async (exchangeRateId: string) => {
 			try {
 				await toggleFavoriteMutation.mutateAsync({ exchangeRateId });
-			} catch (err) {
+			} catch (_err) {
 				// Failed to toggle favorite silently
 			}
 		},

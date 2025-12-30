@@ -10,8 +10,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { cn } from "~/lib/utils";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 type DisplayMode = "default-to-foreign" | "foreign-to-default";

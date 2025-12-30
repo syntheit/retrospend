@@ -5,10 +5,10 @@ import {
 	IconChartBar,
 	IconCurrencyDollar,
 	IconHome,
+	IconPigMoney,
 	IconSettings,
 	IconTable,
 } from "@tabler/icons-react";
-import { NavDrafts } from "~/components/nav-drafts";
 import { NavMain } from "~/components/nav-main";
 import { NavSecondary } from "~/components/nav-secondary";
 import { NavUser } from "~/components/nav-user";
@@ -46,6 +46,11 @@ const navMain = [
 		title: "Analytics",
 		url: "/app/analytics",
 		icon: IconChartBar,
+	},
+	{
+		title: "Budget",
+		url: "/app/budget",
+		icon: IconPigMoney,
 	},
 	{
 		title: "Exchange Rates",
@@ -91,7 +96,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain items={navMain} />
-				<NavDrafts />
 				<NavSecondary className="mt-auto" items={navSecondary} />
 			</SidebarContent>
 			<SidebarFooter className="pt-1">

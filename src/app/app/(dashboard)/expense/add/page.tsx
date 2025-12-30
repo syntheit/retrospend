@@ -18,7 +18,7 @@ export default function AddExpensePage() {
 
 	return (
 		<ExpenseModal
-			description="Fill in the details for your expense. You can save it as a draft to continue later or finalize it now."
+			description="Fill in the details for your expense."
 			expenseId={expenseId}
 			onOpenChange={(open) => {
 				if (!open) {

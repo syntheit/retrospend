@@ -37,6 +37,8 @@ interface DatePickerProps {
 	onSelect?: (date: Date | undefined) => void;
 	placeholder?: string;
 	className?: string;
+	fromYear?: number;
+	toYear?: number;
 }
 
 export function DatePicker({
@@ -44,6 +46,8 @@ export function DatePicker({
 	onSelect,
 	placeholder = "Pick a date",
 	className,
+	fromYear = 1900,
+	toYear,
 }: DatePickerProps) {
 	const [open, setOpen] = React.useState(false);
 	const [value, setValue] = React.useState(formatDate(date));
@@ -94,6 +98,7 @@ export function DatePicker({
 				>
 					<Calendar
 						captionLayout="dropdown"
+						fromYear={fromYear}
 						mode="single"
 						month={month}
 						onMonthChange={setMonth}
@@ -103,6 +108,7 @@ export function DatePicker({
 							setOpen(false);
 						}}
 						selected={date}
+						toYear={toYear}
 					/>
 				</PopoverContent>
 			</Popover>

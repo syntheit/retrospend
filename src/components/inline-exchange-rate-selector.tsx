@@ -9,8 +9,8 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { useSession } from "~/hooks/use-session";
-import { cn } from "~/lib/utils";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 interface InlineExchangeRateSelectorProps {
@@ -120,7 +120,10 @@ export function InlineExchangeRateSelector({
 			const blueRate = rates.find((r) => r.type === "blue");
 			if (blueRate) {
 				setSelectedRateType("blue");
-				onValueChangeRef.current(getEffectiveRate(Number(blueRate.rate)), blueRate.type);
+				onValueChangeRef.current(
+					getEffectiveRate(Number(blueRate.rate)),
+					blueRate.type,
+				);
 			} else {
 				const officialRate = rates.find((r) => r.type === "official");
 				if (officialRate) {
@@ -143,14 +146,7 @@ export function InlineExchangeRateSelector({
 		} else if (isCustomSet) {
 			setSelectedRateType("custom");
 		}
-	}, [
-		rates,
-		value,
-		isCustomSet,
-		getEffectiveRate,
-		favorites,
-		currency,
-	]);
+	}, [rates, value, isCustomSet, getEffectiveRate, favorites, currency]);
 
 	// Handle rate type selection
 	const handleRateTypeChange = (type: string) => {

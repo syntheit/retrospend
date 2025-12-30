@@ -232,3 +232,18 @@ input[type="number"]::-webkit-outer-spin-button {
 	-webkit-appearance: none;
 	margin: 0;
 }
+
+/* Stripes pattern for pegged budget categories */
+.bg-stripes {
+	background-image: repeating-linear-gradient(
+		45deg,
+		transparent,
+		transparent 4px,
+		rgba(255, 255, 255, 0.1) 4px,
+		rgba(255, 255, 255, 0.1) 8px
+	);
+}
+
+.bg-stripes-primary {
+	background-color: hsl(var(--primary) / 0.8);
+}

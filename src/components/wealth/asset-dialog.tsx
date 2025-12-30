@@ -175,6 +175,7 @@ export function AssetDialog({
 
 	const handleDelete = async () => {
 		if (assetId) {
+			setShowDeleteDialog(false);
 			await deleteAsset.mutateAsync({ id: assetId });
 		}
 	};
@@ -231,7 +232,9 @@ export function AssetDialog({
 													<SelectItem value={AssetType.INVESTMENT}>
 														Investment
 													</SelectItem>
-													<SelectItem value={AssetType.CRYPTO}>Crypto</SelectItem>
+													<SelectItem value={AssetType.CRYPTO}>
+														Crypto
+													</SelectItem>
 													<SelectItem value={AssetType.REAL_ESTATE}>
 														Real Estate
 													</SelectItem>
@@ -327,7 +330,11 @@ export function AssetDialog({
 									</Button>
 								)}
 								<Button
-									disabled={createAsset.isPending || updateAsset.isPending || deleteAsset.isPending}
+									disabled={
+										createAsset.isPending ||
+										updateAsset.isPending ||
+										deleteAsset.isPending
+									}
 									type="submit"
 								>
 									{createAsset.isPending || updateAsset.isPending
@@ -346,7 +353,8 @@ export function AssetDialog({
 					<DialogHeader>
 						<DialogTitle>Delete Asset</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this asset? This action cannot be undone.
+							Are you sure you want to delete this asset? This action cannot be
+							undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -356,8 +364,12 @@ export function AssetDialog({
 						>
 							Cancel
 						</Button>
-						<Button onClick={handleDelete} variant="destructive">
-							Delete
+						<Button
+							disabled={deleteAsset.isPending}
+							onClick={handleDelete}
+							variant="destructive"
+						>
+							{deleteAsset.isPending ? "Deleting..." : "Delete"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

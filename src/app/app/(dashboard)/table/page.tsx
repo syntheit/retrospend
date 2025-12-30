@@ -30,12 +30,36 @@ export default function Page() {
 	} = api.expense.listFinalized.useQuery();
 	const { data: settings } = api.user.getSettings.useQuery();
 
+	const homeCurrency = settings?.homeCurrency ?? "USD";
+	const { data: baseCurrencyRate } =
+		api.exchangeRate.getRatesForCurrency.useQuery(
+			{ currency: homeCurrency },
+			{ enabled: homeCurrency !== "USD" },
+		);
+
+	// Get the exchange rate from USD to base currency (prefers "blue" then "official")
+	const liveRateToBaseCurrency = useMemo(() => {
+		if (homeCurrency === "USD") return null;
+		if (!baseCurrencyRate?.length) return null;
+
+		const blueRate = baseCurrencyRate.find((r) => r.type === "blue");
+		if (blueRate) return Number(blueRate.rate);
+
+		const officialRate = baseCurrencyRate.find((r) => r.type === "official");
+		if (officialRate) return Number(officialRate.rate);
+
+		return Number(baseCurrencyRate[0]?.rate) || null;
+	}, [baseCurrencyRate, homeCurrency]);
+
 	const normalizedExpenses = useMemo(
 		() =>
 			normalizeExpenses(
 				(expenses ?? []).map((expense) => ({
 					...expense,
-					amount: typeof expense.amount?.toNumber === "function" ? expense.amount.toNumber() : Number(expense.amount),
+					amount:
+						typeof expense.amount?.toNumber === "function"
+							? expense.amount.toNumber()
+							: Number(expense.amount),
 					exchangeRate:
 						typeof expense.exchangeRate?.toNumber === "function"
 							? expense.exchangeRate.toNumber()
@@ -124,8 +148,8 @@ export default function Page() {
 			}
 		});
 
-		return Array.from(categoryMap.values()).sort((a, b) =>
-			b.usageCount - a.usageCount, // Sort by usage count descending (most to least used)
+		return Array.from(categoryMap.values()).sort(
+			(a, b) => b.usageCount - a.usageCount, // Sort by usage count descending (most to least used)
 		);
 	}, [normalizedExpenses, selectedYears, selectedMonths]);
 
@@ -256,9 +280,9 @@ export default function Page() {
 
 			// Refetch data
 			await refetchExpenses();
-			toast.success("Expenses deleted successfully");  // Add success toast
-		} catch (error) {
-			toast.error("Failed to delete some expenses. Please try again.");  // Add error toast
+			toast.success("Expenses deleted successfully"); // Add success toast
+		} catch (_error) {
+			toast.error("Failed to delete some expenses. Please try again."); // Add error toast
 		}
 	};
 
@@ -395,6 +419,7 @@ export default function Page() {
 							</div>
 						}
 						homeCurrency={settings?.homeCurrency || "USD"}
+						liveRateToBaseCurrency={liveRateToBaseCurrency}
 						onDeleteSelected={handleDeleteSelected}
 						onSelectionChange={setSelectedExpenseIds}
 						selectedRows={selectedExpenseIds}

@@ -17,15 +17,13 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { format } from "date-fns";
-import { Download, Edit, Info, Trash2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { z } from "zod";
 import { useExpenseModal } from "~/components/expense-modal-provider";
+import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
 import {
 	Select,
@@ -43,248 +41,17 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "~/components/ui/tooltip";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
-import { cn, formatCurrencyAmount, getCurrencySymbol } from "~/lib/utils";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { z } from "zod";
+import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { createExpenseColumns, expenseSchema } from "./data-table-columns";
 
-export const expenseSchema = z.object({
-	id: z.string(),
-	title: z.string().nullable(),
-	amount: z.number(),
-	currency: z.string(),
-	exchangeRate: z.number().nullable(),
-	amountInUSD: z.number().nullable(),
-	pricingSource: z.string().optional(),
-	date: z.date(),
-	location: z.string().nullable(),
-	description: z.string().nullable(),
-	categoryId: z.string().nullable(),
-	category: z
-		.object({
-			id: z.string(),
-			name: z.string(),
-			color: z.string(),
-		})
-		.nullable(),
-});
-
-function createExpenseColumns(
-	_homeCurrency: string,
-	hasForeignCurrencyExpenses: boolean,
-	selectedRows: Set<string>,
-	onRowSelect: (id: string, checked: boolean) => void,
-	onSelectAll: (checked: boolean) => void,
-): ColumnDef<z.infer<typeof expenseSchema>>[] {
-	const columns: ColumnDef<z.infer<typeof expenseSchema>>[] = [
-		{
-			id: "select",
-			header: ({ table }) => {
-				const allSelected = table
-					.getRowModel()
-					.rows.every((row) => selectedRows.has(row.original.id));
-				const someSelected = table
-					.getRowModel()
-					.rows.some((row) => selectedRows.has(row.original.id));
-
-				return (
-					<Checkbox
-						aria-label="Select all rows"
-						checked={
-							allSelected ? true : someSelected ? "indeterminate" : false
-						}
-						onCheckedChange={(checked) => onSelectAll(checked === true)}
-					/>
-				);
-			},
-			cell: ({ row }) => (
-				<Checkbox
-					aria-label={`Select row ${row.original.title || "Untitled"}`}
-					checked={selectedRows.has(row.original.id)}
-					onCheckedChange={(checked) =>
-						onRowSelect(row.original.id, checked === true)
-					}
-				/>
-			),
-			enableSorting: false,
-			enableHiding: false,
-			size: 50,
-		},
-		{
-			accessorKey: "title",
-			header: "Title",
-			enableSorting: true,
-			cell: ({ row }) => {
-				const title = row.original.title || "Untitled";
-				const description = row.original.description?.trim();
-
-				return (
-					<div className="flex items-center gap-2">
-						<div className="font-medium">{title}</div>
-						{description ? (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex cursor-help items-center gap-1">
-											<Info className="h-3 w-3 text-muted-foreground" />
-										</div>
-									</TooltipTrigger>
-									<TooltipContent align="start" side="top">
-										<p className="max-w-xs text-sm">{description}</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
-						) : null}
-					</div>
-				);
-			},
-		},
-		{
-			accessorKey: "category",
-			header: "Category",
-			enableSorting: true,
-			cell: ({ row }) => {
-				const category = row.original.category;
-				if (!category) {
-					return (
-						<div className="text-muted-foreground text-sm">No category</div>
-					);
-				}
-
-				return (
-					<div className="flex items-center gap-2">
-						<div
-							className={cn(
-								"h-3 w-3 rounded-full",
-								CATEGORY_COLOR_MAP[
-									category.color as keyof typeof CATEGORY_COLOR_MAP
-								]?.split(" ")[0] || "bg-gray-400",
-							)}
-						/>
-						<span className="text-sm">{category.name}</span>
-					</div>
-				);
-			},
-			sortingFn: (rowA, rowB) => {
-				const a = rowA.original.category?.name || "";
-				const b = rowB.original.category?.name || "";
-				return a.localeCompare(b);
-			},
-		},
-		{
-			accessorKey: "date",
-			header: "Date",
-			enableSorting: true,
-			sortingFn: "datetime",
-			cell: ({ row }) => {
-				const date = row.original.date;
-				return (
-					<div className="text-muted-foreground">
-						{format(date, "MMM dd, yyyy")}
-					</div>
-				);
-			},
-		},
-	];
-
-	// Add local price column only if there are foreign currency expenses
-	if (hasForeignCurrencyExpenses) {
-		columns.push({
-			id: "localPrice",
-			header: () => <div className="text-right">Price (Local)</div>,
-			accessorFn: (row) => {
-				return row.currency === "USD" || !row.exchangeRate ? 0 : row.amount;
-			},
-			enableSorting: true,
-			sortingFn: (rowA, rowB) => {
-				const a =
-					rowA.original.currency === "USD" || !rowA.original.exchangeRate
-						? 0
-						: rowA.original.amount;
-				const b =
-					rowB.original.currency === "USD" || !rowB.original.exchangeRate
-						? 0
-						: rowB.original.amount;
-				return a - b;
-			},
-			cell: ({ row }) => {
-				const { amount, currency, exchangeRate } = row.original;
-
-				// If currency matches USD or no conversion data, show empty
-				if (currency === "USD" || !exchangeRate) {
-					return <div className="text-right"></div>;
-				}
-
-				const currencySymbol = getCurrencySymbol(currency);
-
-				return (
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<div className="flex cursor-help items-center justify-end gap-1 text-right">
-									<div className="font-medium">
-										{currencySymbol}
-										{formatCurrencyAmount(amount)}
-									</div>
-									<Info className="h-3 w-3 text-muted-foreground" />
-								</div>
-							</TooltipTrigger>
-							<TooltipContent align="end" side="top">
-								<p>
-									1 USD = {exchangeRate.toLocaleString()} {currency}
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				);
-			},
-		});
-	}
-
-	// Always add USD price column
-	columns.push({
-		id: "defaultPrice",
-		header: () => <div className="text-right">Price (USD)</div>,
-		accessorFn: (row) => {
-			return row.amountInUSD || (row.currency === "USD" ? row.amount : 0);
-		},
-		enableSorting: true,
-		sortingFn: (rowA, rowB) => {
-			const a =
-				rowA.original.amountInUSD ||
-				(rowA.original.currency === "USD" ? rowA.original.amount : 0);
-			const b =
-				rowB.original.amountInUSD ||
-				(rowB.original.currency === "USD" ? rowB.original.amount : 0);
-			return a - b;
-		},
-		cell: ({ row }) => {
-			const { amountInUSD, amount, currency } = row.original;
-			const defaultCurrencySymbol = "$";
-
-			// Use converted amount if available, otherwise use original amount (if same currency)
-			const displayAmount = amountInUSD || (currency === "USD" ? amount : 0);
-
-			return (
-				<div className="text-right font-medium">
-					{defaultCurrencySymbol}
-					{formatCurrencyAmount(displayAmount)}
-				</div>
-			);
-		},
-	});
-
-	return columns;
-}
 
 export function DataTable({
 	data,
 	homeCurrency = "USD",
+	liveRateToBaseCurrency,
 	selectedRows = new Set<string>(),
 	onSelectionChange,
 	onDeleteSelected,
@@ -292,6 +59,7 @@ export function DataTable({
 }: {
 	data: z.infer<typeof expenseSchema>[];
 	homeCurrency?: string;
+	liveRateToBaseCurrency?: number | null;
 	selectedRows?: Set<string>;
 	onSelectionChange?: (selectedIds: Set<string>) => void;
 	onDeleteSelected?: () => void;
@@ -299,6 +67,7 @@ export function DataTable({
 }) {
 	const _router = useRouter();
 	const { openExpense } = useExpenseModal();
+	const { formatCurrency } = useCurrencyFormatter();
 	const exportMutation = api.expense.exportCsv.useMutation();
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{
@@ -339,7 +108,6 @@ export function DataTable({
 			const expenseIds = Array.from(selectedRows);
 			const { csv } = await exportMutation.mutateAsync({
 				expenseIds,
-				includeDrafts: true, // Include all selected expenses regardless of status
 			});
 			const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 			const url = URL.createObjectURL(blob);
@@ -351,8 +119,12 @@ export function DataTable({
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
 			toast.success("Selected expenses exported");
-		} catch (error: any) {
-			toast.error(error?.message ?? "Failed to export selected expenses");
+		} catch (error: unknown) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to export selected expenses",
+			);
 		}
 	};
 
@@ -385,10 +157,12 @@ export function DataTable({
 
 	const columns = createExpenseColumns(
 		homeCurrency,
+		liveRateToBaseCurrency ?? null,
 		hasForeignCurrencyExpenses,
 		selectedRows,
 		handleRowSelect,
 		handleSelectAll,
+		formatCurrency,
 	);
 
 	const table = useReactTable({
@@ -406,8 +180,9 @@ export function DataTable({
 	});
 
 	// Expose pagination + sorting state for effect dependencies (table ref is stable)
-	const { pageIndex, pageSize } = table.getState().pagination;
-	const sortingState = table.getState().sorting;
+	const { pageIndex: _pageIndex, pageSize: _pageSize } =
+		table.getState().pagination;
+	const _sortingState = table.getState().sorting;
 
 	// Ref to measure header height for precise overlay
 	const headerRef = React.useRef<HTMLTableSectionElement>(null);
@@ -458,72 +233,18 @@ export function DataTable({
 	return (
 		<div className="w-full space-y-4">
 			<div className="relative max-h-[48rem] overflow-auto rounded-lg border">
-				{/* Action Bar Overlay */}
-				<div
-					className={cn(
-						"absolute top-0 left-0 z-10 flex w-full items-center gap-2 border-b bg-muted/95 px-4 backdrop-blur-sm transition-all duration-200",
-						selectedRows.size > 0
-							? "translate-y-0 opacity-100"
-							: "pointer-events-none -translate-y-full opacity-0",
-					)}
-					style={{ height: headerHeight }}
-				>
-					{/* Checkbox to deselect all */}
-					<Checkbox
-						aria-label="Deselect all rows"
-						checked={true}
-						className="mr-2"
-						onCheckedChange={() => handleSelectAll(false)}
-					/>
-					<span className="font-medium text-sm">
-						{selectedRows.size} item{selectedRows.size !== 1 ? "s" : ""}{" "}
-						selected
-					</span>
-					<div className="ml-auto flex items-center gap-2">
-						<Button
-							className="flex h-8 items-center gap-2"
-							disabled={exportMutation.isPending}
-							onClick={handleExportSelected}
-							size="sm"
-							variant="ghost"
-						>
-							<Download className="h-4 w-4" />
-							<span className="sr-only sm:not-sr-only sm:inline-block">
-								Export
-							</span>
-						</Button>
-						{selectedRows.size === 1 && (
-							<Button
-								className="flex h-8 items-center gap-2"
-								onClick={() => {
-									const id = Array.from(selectedRows)[0];
-									if (id) {
-										openExpense(id);
-										onSelectionChange?.(new Set());
-									}
-								}}
-								size="sm"
-								variant="ghost"
-							>
-								<Edit className="h-4 w-4" />
-								<span className="sr-only sm:not-sr-only sm:inline-block">
-									Edit
-								</span>
-							</Button>
-						)}
-						<Button
-							className="flex h-8 items-center gap-2"
-							onClick={onDeleteSelected}
-							size="sm"
-							variant="destructive"
-						>
-							<Trash2 className="h-4 w-4" />
-							<span className="sr-only sm:not-sr-only sm:inline-block">
-								Delete
-							</span>
-						</Button>
-					</div>
-				</div>
+				<DataTableSelectionBar
+					selectedRows={selectedRows}
+					headerHeight={headerHeight}
+					exportMutation={exportMutation}
+					onSelectAll={handleSelectAll}
+					onExportSelected={handleExportSelected}
+					onEditSelected={(id) => {
+						openExpense(id);
+						onSelectionChange?.(new Set());
+					}}
+					onDeleteSelected={onDeleteSelected}
+				/>
 
 				<Table>
 					<TableHeader ref={headerRef}>
@@ -648,7 +369,7 @@ export function DataTable({
 									{totals.localPriceTotal > 0 && (
 										<div className="text-right">
 											<span className="font-medium">
-												{formatCurrencyAmount(totals.localPriceTotal)}
+												{formatCurrency(totals.localPriceTotal)}
 											</span>
 										</div>
 									)}
@@ -656,8 +377,7 @@ export function DataTable({
 							)}
 							<TableCell className="px-4 py-3 text-right font-semibold">
 								<div className="text-right font-medium">
-									{"$"}
-									{formatCurrencyAmount(totals.defaultPriceTotal)}
+									{formatCurrency(totals.defaultPriceTotal, homeCurrency)}
 								</div>
 							</TableCell>
 						</TableRow>

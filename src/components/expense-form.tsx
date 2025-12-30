@@ -28,9 +28,9 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { useDraftExpenses } from "~/hooks/use-draft-expenses";
 import { CURRENCIES } from "~/lib/currencies";
-import { cn, getCurrencySymbol } from "~/lib/utils";
+import { cn } from "~/lib/utils";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { api } from "~/trpc/react";
 
 // Form validation schema
@@ -61,6 +61,12 @@ interface ExpenseFormProps {
 	onClose?: () => void;
 }
 
+// TODO: Implement draft management functionality
+const removeDraft = (expenseId: string) => {
+	// For now, this is a no-op since draft functionality is not implemented
+	console.log(`Draft removal requested for expense ${expenseId}`);
+};
+
 export interface ExpenseFormHandle {
 	hasUnsavedChanges: () => boolean;
 	triggerUnsavedDialog: () => void;
@@ -69,7 +75,6 @@ export interface ExpenseFormHandle {
 export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 	({ expenseId, onTitleChange, isModal = false, onClose }, ref) => {
 		const router = useRouter();
-		const { localDrafts, updateDraft, removeDraft } = useDraftExpenses();
 		const hasUnsavedChangesRef = useRef(false);
 		const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 		const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -92,8 +97,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 		);
 		const [isCustomRateSet, setIsCustomRateSet] = useState(false);
 
-		// Allow server drafts to be fetched even if localStorage was cleared or accessed from a new device
-		const isExistingDraft = localDrafts.some((draft) => draft.id === expenseId);
 
 		const { data: expense, isLoading: isLoadingExpense } =
 			api.expense.getExpense.useQuery(
@@ -103,42 +106,54 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 
 		const utils = api.useUtils();
 		const { data: settings } = api.user.getSettings.useQuery();
-		const createDraftMutation = api.expense.createDraft.useMutation({
-			onSuccess: () => utils.expense.listDrafts.invalidate(),
-		});
-		const finalizeExpenseMutation = api.expense.finalizeExpense.useMutation({
-			onSuccess: () => utils.expense.listDrafts.invalidate(),
+		const { formatCurrency, getCurrencySymbol } = useCurrencyFormatter();
+		const createExpenseMutation = api.expense.createExpense.useMutation({
+			onSuccess: () => {
+				utils.expense.listFinalized.invalidate();
+				utils.dashboard.getOverviewStats.invalidate();
+				utils.budget.getBudgets.invalidate();
+				utils.expense.getCategorySpending.invalidate();
+				utils.expense.getTotalSpending.invalidate();
+			},
 		});
 		const deleteExpenseMutation = api.expense.deleteExpense.useMutation({
 			onSuccess: () => {
-				utils.expense.listDrafts.invalidate();
+				utils.expense.listFinalized.invalidate();
 				utils.expense.getExpense.invalidate({ id: expenseId });
+				utils.dashboard.getOverviewStats.invalidate();
+				utils.budget.getBudgets.invalidate();
+				utils.expense.getCategorySpending.invalidate();
+				utils.expense.getTotalSpending.invalidate();
 			},
 		});
 		const updateExpenseMutation = api.expense.updateExpense.useMutation({
 			onSuccess: () => {
 				utils.expense.listFinalized.invalidate();
 				utils.expense.getExpense.invalidate({ id: expenseId });
+				utils.dashboard.getOverviewStats.invalidate();
+				utils.budget.getBudgets.invalidate();
+				utils.expense.getCategorySpending.invalidate();
+				utils.expense.getTotalSpending.invalidate();
 			},
 		});
 
-	const defaultExpenseCurrency =
-		settings?.defaultCurrency ?? settings?.homeCurrency ?? "USD";
+		const defaultExpenseCurrency =
+			settings?.defaultCurrency ?? settings?.homeCurrency ?? "USD";
 
-	const {
-		register,
-		handleSubmit,
-		watch,
-		setValue,
-		reset,
-		getValues,
-		formState: { errors, isDirty },
-	} = useForm<ExpenseFormData>({
+		const {
+			register,
+			handleSubmit,
+			watch,
+			setValue,
+			reset,
+			getValues,
+			formState: { errors, isDirty },
+		} = useForm<ExpenseFormData>({
 			resolver: zodResolver(expenseSchema),
 			defaultValues: {
 				title: "",
 				amount: 0,
-			currency: defaultExpenseCurrency,
+				currency: defaultExpenseCurrency,
 				exchangeRate: undefined,
 				amountInUSD: undefined,
 				date: new Date(),
@@ -151,6 +166,24 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 		const watchedCurrency = watch("currency");
 		const watchedAmount = watch("amount");
 		const watchedExchangeRate = watch("exchangeRate");
+
+		// Populate form with existing expense data when editing
+		useEffect(() => {
+			if (expense && expenseId) {
+				reset({
+					title: expense.title || "",
+					amount: Number(expense.amount),
+					currency: expense.currency,
+					exchangeRate: expense.exchangeRate ? Number(expense.exchangeRate) : undefined,
+					amountInUSD: expense.amountInUSD ? Number(expense.amountInUSD) : undefined,
+					date: new Date(expense.date),
+					location: expense.location || "",
+					description: expense.description || "",
+					categoryId: expense.categoryId || "",
+					pricingSource: expense.pricingSource || "MANUAL",
+				});
+			}
+		}, [expense, expenseId, reset]);
 
 		// Track unsaved changes
 		useEffect(() => {
@@ -327,53 +360,23 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						router.push("/app");
 					}
 				} else {
-					// Create new draft
-					await createDraftMutation.mutateAsync({
+					// Create new expense (always finalized)
+					await createExpenseMutation.mutateAsync({
 						id: expenseId,
 						...submitData,
 					});
 
-					if (finalize) {
-						await finalizeExpenseMutation.mutateAsync({ id: expenseId });
-						removeDraft(expenseId); // Remove from localStorage when finalized
-						toast.success("Expense saved successfully!");
-						reset(getValues()); // Reset form dirty state
-						hasUnsavedChangesRef.current = false;
-						setHasUnsavedChanges(false);
-						if (isModal) {
-							onClose?.();
-						} else {
-							router.push("/app");
-						}
+					toast.success("Expense saved successfully!");
+					reset(getValues()); // Reset form dirty state
+					hasUnsavedChangesRef.current = false;
+					setHasUnsavedChanges(false);
+					if (isModal) {
+						onClose?.();
 					} else {
-						// Sync to localStorage
-						updateDraft({
-							id: expenseId,
-							title: data.title || null,
-							amount: data.amount.toString(),
-							currency: data.currency,
-							exchangeRate: data.exchangeRate?.toString() || null,
-							amountInUSD: data.amountInUSD?.toString() || null,
-							pricingSource: data.pricingSource || null,
-							date: data.date.toISOString(),
-							location: data.location || null,
-							description: data.description || null,
-							categoryId: data.categoryId || null,
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-						});
-						toast.success("Draft saved!");
-						reset(getValues()); // Reset form dirty state
-						hasUnsavedChangesRef.current = false;
-						setHasUnsavedChanges(false);
-						if (isModal) {
-							onClose?.();
-						} else {
-							router.push("/app");
-						}
+						router.push("/app");
 					}
 				}
-			} catch (error) {
+			} catch (_error) {
 				toast.error("Failed to save expense");
 			}
 		};
@@ -384,7 +387,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 				removeDraft(expenseId); // Remove from localStorage
 				toast.success("Expense deleted successfully!");
 				router.push("/app");
-			} catch (error) {
+			} catch (_error) {
 				toast.error("Failed to delete expense");
 			}
 		};
@@ -413,9 +416,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			}
 		};
 
-		const handleSaveDraft = handleSubmit((data: ExpenseFormData) =>
-			onSubmit(data, false),
-		);
 		const handleSave = handleSubmit((data: ExpenseFormData) =>
 			onSubmit(data, true),
 		);
@@ -435,8 +435,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			}
 		};
 
-		// Only show loading for existing drafts that are being fetched
-		if (isExistingDraft && isLoadingExpense) {
+		if (isLoadingExpense) {
 			return <div className="p-4">Loading...</div>;
 		}
 
@@ -444,7 +443,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			<>
 				<form className="space-y-4 sm:space-y-6">
 					{/* Hero Row: Amount and Currency */}
-					<div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-end">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
 						<div className="flex-1 space-y-2">
 							<Label htmlFor="amount">Amount</Label>
 							<div
@@ -490,7 +489,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 											}
 										},
 									})}
-									className="h-full w-full grow border-0 bg-transparent px-0 py-0 font-bold text-lg sm:text-2xl shadow-none focus-visible:ring-0 dark:bg-transparent"
+									className="h-full w-full grow border-0 bg-transparent px-0 py-0 font-bold text-lg shadow-none focus-visible:ring-0 sm:text-2xl dark:bg-transparent"
 									placeholder="0.00"
 								/>
 							</div>
@@ -499,7 +498,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							)}
 						</div>
 
-						<div className="w-full sm:w-72 space-y-2">
+						<div className="w-full space-y-2 sm:w-72">
 							<Label htmlFor="currency">Currency</Label>
 							<CurrencyPicker
 								onValueChange={(value) => {
@@ -521,7 +520,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 					</div>
 
 					{/* Context Row: Title and Category */}
-					<div className="flex flex-col gap-3 sm:gap-4 sm:flex-row">
+					<div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
 						<div className="flex-1 space-y-2">
 							<Label htmlFor="title">Expense Title</Label>
 							<Input
@@ -539,7 +538,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							)}
 						</div>
 
-						<div className="w-full sm:w-64 space-y-2">
+						<div className="w-full space-y-2 sm:w-64">
 							<Label>Category</Label>
 							<CategoryPicker
 								onValueChange={(value) => setValue("categoryId", value)}
@@ -553,6 +552,26 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							)}
 						</div>
 					</div>
+
+					{/* Hidden exchange rate selector for automatic rate fetching when currencies match */}
+					{watchedCurrency !== "USD" &&
+						watchedCurrency === (settings?.homeCurrency || "USD") && (
+							<div className="hidden">
+								<InlineExchangeRateSelector
+									currency={watchedCurrency}
+									homeCurrency="USD"
+									isCustomSet={isCustomRateSet}
+									mode={true}
+									onCustomCleared={() => setIsCustomRateSet(false)}
+									onCustomSelected={() => setShowCustomRateDialog(true)}
+									onCustomSet={() => setIsCustomRateSet(true)}
+									onValueChange={(value) => {
+										setValue("exchangeRate", value);
+									}}
+									value={watchedExchangeRate}
+								/>
+							</div>
+						)}
 
 					{/* Math Row: Date, Exchange Rate, AmountInUSD */}
 					{watchedCurrency !== (settings?.homeCurrency || "USD") ? (
@@ -680,7 +699,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 					{/* Mobile-first action bar */}
 					<div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
 						{/* LEFT SIDE - Only visible in EDIT mode */}
-						<div className="flex items-center gap-2 order-2 sm:order-1">
+						<div className="order-2 flex items-center gap-2 sm:order-1">
 							{expense ? (
 								<>
 									{/* Delete button - icon only */}
@@ -712,7 +731,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						</div>
 
 						{/* RIGHT SIDE - Different buttons for ADD vs EDIT mode */}
-						<div className="flex flex-col gap-2 order-1 sm:order-2 sm:flex-row sm:items-center sm:gap-3">
+						<div className="order-1 flex flex-col gap-2 sm:order-2 sm:flex-row sm:items-center sm:gap-3">
 							{/* Cancel button - always shown */}
 							<Button
 								className="w-full sm:w-auto"
@@ -738,32 +757,18 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								Cancel
 							</Button>
 
-							{/* ADD MODE: Save Draft + Save Expense */}
+							{/* ADD MODE: Save Expense */}
 							{!expense && (
-								<>
-									<Button
-										className="w-full sm:w-auto"
-										disabled={createDraftMutation.isPending}
-										onClick={handleSaveDraft}
-										type="button"
-										variant="outline"
-									>
-										{createDraftMutation.isPending ? "Saving..." : "Save Draft"}
-									</Button>
-									<Button
-										className="w-full sm:w-auto"
-										disabled={
-											finalizeExpenseMutation.isPending ||
-											createDraftMutation.isPending
-										}
-										onClick={handleSave}
-										type="button"
-									>
-										{finalizeExpenseMutation.isPending
-											? "Saving..."
-											: "Save Expense"}
-									</Button>
-								</>
+								<Button
+									className="w-full sm:w-auto"
+									disabled={createExpenseMutation.isPending}
+									onClick={handleSave}
+									type="button"
+								>
+									{createExpenseMutation.isPending
+										? "Saving..."
+										: "Save Expense"}
+								</Button>
 							)}
 
 							{/* EDIT MODE: Save Changes only */}

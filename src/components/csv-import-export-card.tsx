@@ -15,159 +15,9 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
+import { type ParsedCsvRow, parseCsv } from "~/lib/csv";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
-
-type ParsedCsvRow = {
-	title: string;
-	amount: number;
-	currency: string;
-	date: Date;
-	exchangeRate?: number;
-	amountInUSD?: number;
-	location?: string | null;
-	description?: string | null;
-	categoryName?: string | null;
-	pricingSource?: string | null;
-};
-
-const REQUIRED_COLUMNS = ["title", "amount", "currency", "date"] as const;
-
-const normalizeNumber = (value: string | undefined) => {
-	if (!value) return undefined;
-	const cleaned = value.replace(/,/g, "").trim();
-	if (!cleaned) return undefined;
-	const parsed = Number(cleaned);
-	return Number.isFinite(parsed) ? parsed : undefined;
-};
-
-const splitCsvLine = (line: string) => {
-	const values: string[] = [];
-	let current = "";
-	let inQuotes = false;
-
-	for (let i = 0; i < line.length; i++) {
-		const char = line[i];
-
-		if (char === '"') {
-			// Handle escaped quote
-			if (inQuotes && line[i + 1] === '"') {
-				current += '"';
-				i++;
-			} else {
-				inQuotes = !inQuotes;
-			}
-			continue;
-		}
-
-		if (char === "," && !inQuotes) {
-			values.push(current);
-			current = "";
-			continue;
-		}
-
-		current += char;
-	}
-
-	values.push(current);
-	return values;
-};
-
-const parseCsv = (text: string) => {
-	const lines = text
-		.split(/\r?\n/)
-		.map((line) => line.trimEnd())
-		.filter((line) => line.length > 0);
-
-	if (lines.length === 0) {
-		return { rows: [] as ParsedCsvRow[], errors: ["The CSV file is empty."] };
-	}
-
-	const headerCells = splitCsvLine(lines[0]!).map((cell) =>
-		cell.trim().toLowerCase(),
-	);
-	const headerMap = new Map<string, number>(
-		headerCells.map((cell, index) => [cell.toLowerCase(), index]),
-	);
-
-	const missing = REQUIRED_COLUMNS.filter((col) => !headerMap.has(col));
-	if (missing.length > 0) {
-		return {
-			rows: [] as ParsedCsvRow[],
-			errors: [
-				`Missing required column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}`,
-			],
-		};
-	}
-
-	const rows: ParsedCsvRow[] = [];
-	const errors: string[] = [];
-
-	const readCell = (cells: string[], key: string) => {
-		const idx = headerMap.get(key.toLowerCase());
-		return typeof idx === "number" ? (cells[idx]?.trim() ?? "") : "";
-	};
-
-	for (let i = 1; i < lines.length; i++) {
-		const line = lines[i]!;
-		if (!line.trim()) continue;
-
-		const cells = splitCsvLine(line);
-		const title = readCell(cells, "title");
-		const amount = normalizeNumber(readCell(cells, "amount"));
-		const currency = readCell(cells, "currency").toUpperCase();
-		const dateString = readCell(cells, "date");
-		const exchangeRate = normalizeNumber(readCell(cells, "exchangerate"));
-		const amountInUSD = normalizeNumber(readCell(cells, "amountinusd"));
-		const location = readCell(cells, "location") || null;
-		const description = readCell(cells, "description") || null;
-		const categoryName = readCell(cells, "category") || null;
-		const pricingSource = readCell(cells, "pricingsource") || undefined;
-
-		if (!title) {
-			errors.push(`Row ${i + 1}: title is required.`);
-			continue;
-		}
-
-		if (!amount || amount <= 0) {
-			errors.push(`Row ${i + 1}: amount must be a positive number.`);
-			continue;
-		}
-
-		if (!currency || currency.length !== 3) {
-			errors.push(`Row ${i + 1}: currency must be a 3-letter code.`);
-			continue;
-		}
-
-		const parsedDate = new Date(dateString);
-		if (Number.isNaN(parsedDate.getTime())) {
-			errors.push(`Row ${i + 1}: date is invalid. Use YYYY-MM-DD format.`);
-			continue;
-		}
-
-		if (!exchangeRate && !amountInUSD && currency !== "USD") {
-			errors.push(
-				`Row ${i + 1}: provide exchangeRate or amountInUSD (or use USD currency).`,
-			);
-			continue;
-		}
-
-		rows.push({
-			title,
-			amount,
-			currency,
-			date: parsedDate,
-			exchangeRate,
-			amountInUSD,
-			location,
-			description,
-			categoryName,
-			pricingSource,
-		});
-	}
-
-	return { rows, errors };
-};
 
 export function CsvImportExportCard() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -201,8 +51,8 @@ export function CsvImportExportCard() {
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
 			toast.success("CSV exported");
-		} catch (error: any) {
-			toast.error(error?.message ?? "Failed to export CSV");
+		} catch (error: unknown) {
+			toast.error(error instanceof Error ? error.message : "Failed to export CSV");
 		}
 	};
 
@@ -262,8 +112,8 @@ export function CsvImportExportCard() {
 			toast.success(
 				`Loaded ${result.rows.length} row${result.rows.length === 1 ? "" : "s"} for import`,
 			);
-		} catch (error: any) {
-			setParseError(error?.message ?? "Failed to read CSV file.");
+		} catch (error: unknown) {
+			setParseError(error instanceof Error ? error.message : "Failed to read CSV file.");
 			setPreviewData([]);
 		} finally {
 			// Allow re-uploading the same file
@@ -298,8 +148,8 @@ export function CsvImportExportCard() {
 				`Imported ${rows.length} expense${rows.length === 1 ? "" : "s"}`,
 			);
 			setPreviewData([]);
-		} catch (error: any) {
-			toast.error(error?.message ?? "Failed to import expenses");
+		} catch (error: unknown) {
+			toast.error(error instanceof Error ? error.message : "Failed to import expenses");
 		}
 	};
 

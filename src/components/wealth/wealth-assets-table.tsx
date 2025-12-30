@@ -12,8 +12,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { AssetType } from "~/lib/db-enums";
-import { formatCurrencyAmount, getCurrencySymbol } from "~/lib/utils";
 import { AssetDialog } from "./asset-dialog";
 
 interface Asset {
@@ -48,6 +48,7 @@ const getTypeColor = (type: AssetType) => {
 };
 
 export function WealthAssetsTable({ assets }: WealthAssetsTableProps) {
+	const { formatCurrency } = useCurrencyFormatter();
 
 	return (
 		<Card>
@@ -57,70 +58,71 @@ export function WealthAssetsTable({ assets }: WealthAssetsTableProps) {
 			<CardContent className="overflow-x-auto">
 				<div className="min-w-[600px]">
 					<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Name</TableHead>
-							<TableHead>Type</TableHead>
-							<TableHead className="text-right">Balance</TableHead>
-							<TableHead>Rate</TableHead>
-							<TableHead className="text-right">Value (USD)</TableHead>
-							<TableHead className="w-[50px]"></TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{assets.map((asset) => (
-							<TableRow key={asset.id}>
-								<TableCell className="font-medium">{asset.name}</TableCell>
-								<TableCell>
-									<Badge variant={getTypeColor(asset.type)}>{asset.type}</Badge>
-									{asset.isLiquid && (
-										<Badge className="ml-2" variant="outline">
-											Liquid
-										</Badge>
-									)}
-								</TableCell>
-								<TableCell className="text-right">
-									{getCurrencySymbol(asset.currency)}
-									{formatCurrencyAmount(asset.balance)}
-								</TableCell>
-								<TableCell>
-									{asset.currency !== "USD" && asset.exchangeRateType && (
-										<Badge className="text-xs" variant="outline">
-											{asset.exchangeRateType.charAt(0).toUpperCase() +
-												asset.exchangeRateType.slice(1)}
-										</Badge>
-									)}
-									{asset.currency === "USD" && (
-										<span className="text-muted-foreground">-</span>
-									)}
-								</TableCell>
-								<TableCell className="text-right font-medium">
-									${formatCurrencyAmount(asset.balanceInUSD)}
-								</TableCell>
-								<TableCell>
-									<AssetDialog
-										assetId={asset.id}
-										initialValues={{
-											name: asset.name,
-											type: asset.type,
-											currency: asset.currency,
-											balance: asset.balance,
-											isLiquid: asset.isLiquid,
-											exchangeRate: asset.exchangeRate,
-											exchangeRateType: asset.exchangeRateType,
-										}}
-										mode="edit"
-										trigger={
-											<Button className="h-8 w-8" size="icon" variant="ghost">
-												<Edit className="h-4 w-4" />
-												<span className="sr-only">Edit asset</span>
-											</Button>
-										}
-									/>
-								</TableCell>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Name</TableHead>
+								<TableHead>Type</TableHead>
+								<TableHead className="text-right">Balance</TableHead>
+								<TableHead>Rate</TableHead>
+								<TableHead className="text-right">Value (USD)</TableHead>
+								<TableHead className="w-[50px]"></TableHead>
 							</TableRow>
-						))}
-					</TableBody>
+						</TableHeader>
+						<TableBody>
+							{assets.map((asset) => (
+								<TableRow key={asset.id}>
+									<TableCell className="font-medium">{asset.name}</TableCell>
+									<TableCell>
+										<Badge variant={getTypeColor(asset.type)}>
+											{asset.type}
+										</Badge>
+										{asset.isLiquid && (
+											<Badge className="ml-2" variant="outline">
+												Liquid
+											</Badge>
+										)}
+									</TableCell>
+									<TableCell className="text-right">
+										{formatCurrency(asset.balance, asset.currency)}
+									</TableCell>
+									<TableCell>
+										{asset.currency !== "USD" && asset.exchangeRateType && (
+											<Badge className="text-xs" variant="outline">
+												{asset.exchangeRateType.charAt(0).toUpperCase() +
+													asset.exchangeRateType.slice(1)}
+											</Badge>
+										)}
+										{asset.currency === "USD" && (
+											<span className="text-muted-foreground">-</span>
+										)}
+									</TableCell>
+									<TableCell className="text-right font-medium">
+										{formatCurrency(asset.balanceInUSD, "USD")}
+									</TableCell>
+									<TableCell>
+										<AssetDialog
+											assetId={asset.id}
+											initialValues={{
+												name: asset.name,
+												type: asset.type,
+												currency: asset.currency,
+												balance: asset.balance,
+												isLiquid: asset.isLiquid,
+												exchangeRate: asset.exchangeRate,
+												exchangeRateType: asset.exchangeRateType,
+											}}
+											mode="edit"
+											trigger={
+												<Button className="h-8 w-8" size="icon" variant="ghost">
+													<Edit className="h-4 w-4" />
+													<span className="sr-only">Edit asset</span>
+												</Button>
+											}
+										/>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
 					</Table>
 				</div>
 			</CardContent>

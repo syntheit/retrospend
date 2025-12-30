@@ -2,9 +2,10 @@
 
 import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import { ChevronDown, ChevronUp, Download } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CurrencyPicker } from "~/components/currency-picker";
+import { useThemeContext } from "~/components/theme-provider";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -37,11 +38,12 @@ import {
 	CATEGORY_COLORS,
 	type CategoryColor,
 } from "~/lib/constants";
-import { cn } from "~/lib/utils";
+import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export function SettingsForm() {
 	const { data: session, isPending: sessionLoading } = useSession();
+	const { theme, toggleTheme } = useThemeContext();
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 
@@ -54,6 +56,12 @@ export function SettingsForm() {
 	>("toggle");
 	// Default to sans font when no user setting is present
 	const [fontPreference, setFontPreference] = useState<"sans" | "mono">("sans");
+	const [fontPreferenceLoaded, setFontPreferenceLoaded] = useState(false);
+	// Default to standard symbol style (shows currency code) when no user setting is present
+	const [currencySymbolStyle, setCurrencySymbolStyle] = useState<
+		"native" | "standard"
+	>("standard");
+	const [monthlyIncome, setMonthlyIncome] = useState<string>("");
 
 	// Categories state
 	const [showCategoryList, setShowCategoryList] = useState(false);
@@ -87,6 +95,17 @@ export function SettingsForm() {
 	const deleteCategoryMutation = api.user.deleteCategory.useMutation();
 	const exportWealthMutation = api.wealth.exportCsv.useMutation();
 
+	const applyFontPreference = useCallback((font: "sans" | "mono") => {
+		const root = document.documentElement;
+		root.classList.remove("font-sans", "font-mono");
+		root.classList.add(`font-${font}`);
+		try {
+			localStorage.setItem("fontPreference", font);
+		} catch {
+			// ignore storage failures; class already applied
+		}
+	}, []);
+
 	// Populate settings when loaded
 	useEffect(() => {
 		if (settings?.homeCurrency) {
@@ -95,20 +114,26 @@ export function SettingsForm() {
 		if (settings?.categoryClickBehavior) {
 			setCategoryClickBehavior(settings.categoryClickBehavior);
 		}
-		if (settings?.fontPreference) {
+		// Always set font preference when settings are available
+		if (settings && typeof settings.fontPreference === "string") {
 			setFontPreference(settings.fontPreference);
+			setFontPreferenceLoaded(true);
+		}
+		if (settings?.currencySymbolStyle) {
+			setCurrencySymbolStyle(settings.currencySymbolStyle);
+		}
+		if (settings?.monthlyIncome !== undefined) {
+			setMonthlyIncome(settings.monthlyIncome?.toString() ?? "");
 		}
 		// Always apply font when settings load or change
 		const fontToApply = settings?.fontPreference ?? "sans";
-		const root = document.documentElement;
-		root.classList.remove("font-sans", "font-mono");
-		root.classList.add(`font-${fontToApply}`);
+		applyFontPreference(fontToApply);
 		if (settings) {
 			setDefaultCurrency(
 				settings.defaultCurrency ?? settings.homeCurrency ?? "USD",
 			);
 		}
-	}, [settings]);
+	}, [settings, applyFontPreference]);
 
 	const handleSaveSettings = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -116,11 +141,16 @@ export function SettingsForm() {
 		setSuccess("");
 
 		try {
+			const monthlyIncomeValue = monthlyIncome.trim()
+				? parseFloat(monthlyIncome)
+				: undefined;
 			await updateSettingsMutation.mutateAsync({
 				homeCurrency,
 				defaultCurrency,
 				categoryClickBehavior,
 				fontPreference,
+				currencySymbolStyle,
+				monthlyIncome: monthlyIncomeValue,
 			});
 			setSuccess("Settings saved successfully!");
 		} catch (err: any) {
@@ -305,14 +335,17 @@ export function SettingsForm() {
 									const newFont = value as "sans" | "mono";
 									setFontPreference(newFont);
 									// Apply font immediately for preview
-									const root = document.documentElement;
-									root.classList.remove("font-sans", "font-mono");
-									root.classList.add(`font-${newFont}`);
+									applyFontPreference(newFont);
 								}}
 								value={fontPreference}
+								disabled={!fontPreferenceLoaded}
 							>
 								<SelectTrigger>
-									<SelectValue />
+									<SelectValue
+										placeholder={
+											fontPreferenceLoaded ? undefined : "Loading..."
+										}
+									/>
 								</SelectTrigger>
 								<SelectContent position="popper">
 									<SelectItem value="sans">Sans Serif (DM Sans)</SelectItem>
@@ -325,6 +358,74 @@ export function SettingsForm() {
 								Choose your preferred font style for the application interface.
 							</p>
 						</div>
+						<div className="space-y-2">
+							<Label htmlFor="currencySymbolStyle">Currency Symbol Style</Label>
+							<Select
+								onValueChange={(value) =>
+									setCurrencySymbolStyle(value as "native" | "standard")
+								}
+								value={currencySymbolStyle}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent position="popper">
+									<SelectItem value="standard">
+										Standard (AR$, CA$, €)
+									</SelectItem>
+									<SelectItem value="native">Native ($, $, €)</SelectItem>
+								</SelectContent>
+							</Select>
+							<p className="text-muted-foreground text-sm">
+								Choose how currency symbols are displayed for foreign
+								currencies. Standard shows the currency code, native uses local
+								symbols.
+							</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="themePreference">Theme Preference</Label>
+							<Select
+								onValueChange={(value) => {
+									// If the selected value doesn't match current theme, toggle it
+									if (value !== theme) {
+										toggleTheme();
+									}
+								}}
+								value={theme}
+							>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent position="popper">
+									<SelectItem value="light">Light</SelectItem>
+									<SelectItem value="dark">Dark</SelectItem>
+								</SelectContent>
+							</Select>
+							<p className="text-muted-foreground text-sm">
+								Choose your preferred color scheme for the application
+								interface.
+							</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="monthlyIncome">Monthly Net Income</Label>
+							<div className="relative">
+								<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+									{getCurrencySymbol(homeCurrency)}
+								</span>
+								<Input
+									className="pl-6"
+									id="monthlyIncome"
+									onChange={(e) => setMonthlyIncome(e.target.value)}
+									placeholder="5000"
+									type="number"
+									value={monthlyIncome}
+								/>
+							</div>
+							<p className="text-muted-foreground text-sm">
+								Used to calculate the "Work Equivalent" metric on your
+								dashboard.
+							</p>
+						</div>
 						{error && (
 							<div className="text-red-600 text-sm dark:text-red-400">
 								{error}
@@ -335,7 +436,7 @@ export function SettingsForm() {
 								{success}
 							</div>
 						)}
-						<div className="border-t border-stone-800 pt-6">
+						<div className="border-stone-800 border-t pt-6">
 							<div className="flex justify-end">
 								<Button
 									disabled={updateSettingsMutation.isPending}

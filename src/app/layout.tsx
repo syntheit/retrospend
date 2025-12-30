@@ -2,8 +2,8 @@ import "~/styles/globals.css";
 
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import { FontProvider, FontScript } from "~/components/font-provider";
 import { ThemeProvider, ThemeScript } from "~/components/theme-provider";
-import { FontProvider } from "~/components/font-provider";
 import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
@@ -34,9 +34,10 @@ export default function RootLayout({
 			suppressHydrationWarning
 		>
 			<head>
+				<FontScript />
 				<ThemeScript />
 			</head>
-			<body>
+			<body className="overflow-hidden">
 				<ThemeProvider>
 					<TRPCReactProvider>
 						<FontProvider>{children}</FontProvider>

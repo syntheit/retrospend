@@ -35,9 +35,9 @@ export default function RootPage() {
 			<footer className="pb-8 text-center">
 				<div className="mb-2">
 					<Link
+						className="inline-block text-stone-500 transition-colors hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
 						href="https://github.com/syntheit/retrospend"
 						target="_blank"
-						className="inline-block text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors"
 					>
 						<Github className="h-6 w-6" />
 					</Link>

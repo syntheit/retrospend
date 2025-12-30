@@ -14,7 +14,7 @@ import {
 	ChartTooltip,
 	ChartTooltipContent,
 } from "~/components/ui/chart";
-import { formatCurrencyAmount } from "~/lib/utils";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
 interface WealthHistoryChartProps {
 	data: { date: string; totalUSD: number }[];
@@ -28,6 +28,8 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function WealthHistoryChart({ data }: WealthHistoryChartProps) {
+	const { formatCurrency } = useCurrencyFormatter();
+
 	// Format data for chart (maybe ensure dates are sorted)
 	const chartData = data.sort(
 		(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -83,7 +85,7 @@ export function WealthHistoryChart({ data }: WealthHistoryChartProps) {
 												{name}
 											</span>
 											<span className="font-medium font-mono text-foreground tabular-nums">
-												${formatCurrencyAmount(Number(value))}
+												{formatCurrency(Number(value), "USD")}
 											</span>
 										</div>
 									)}

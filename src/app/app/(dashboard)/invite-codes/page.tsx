@@ -34,8 +34,8 @@ export default function InviteCodesPage() {
 					<UserInviteCodesTable
 						inviteCodes={inviteCodes || []}
 						isLoading={isLoading}
-						onGenerateCode={refetch}
 						onDeleteCode={handleDeleteCode}
+						onGenerateCode={refetch}
 					/>
 				</div>
 			</PageContent>

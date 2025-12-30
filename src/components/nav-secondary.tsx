@@ -3,7 +3,6 @@
 import { type Icon, IconSpeakerphone, IconTicket } from "@tabler/icons-react";
 import type * as React from "react";
 
-import { ThemeToggle } from "~/components/theme-toggle";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -36,16 +35,13 @@ export function NavSecondary({
 						>
 							<a
 								href="https://forms.gle/LgLS7wSJGWSjQYEs7"
-								target="_blank"
 								rel="noopener noreferrer"
+								target="_blank"
 							>
 								<IconSpeakerphone />
 								<span>Feedback</span>
 							</a>
 						</SidebarMenuButton>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						<ThemeToggle className="h-10 px-4 py-4 text-base [&>svg]:size-5" />
 					</SidebarMenuItem>
 					{settings?.allowAllUsersToGenerateInvites && (
 						<SidebarMenuItem>

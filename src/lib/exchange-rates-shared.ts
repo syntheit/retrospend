@@ -13,4 +13,3 @@ export function getRateTypeLabel(type: string): string {
 	};
 	return labels[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
-

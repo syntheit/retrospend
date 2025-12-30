@@ -64,8 +64,10 @@ async function syncExchangeRates(): Promise<number> {
 
 		// Parse and prepare rate entries
 		const rateEntries: ParsedRate[] = [];
-		const today = new Date();
-		today.setUTCHours(0, 0, 0, 0); // Normalize to midnight UTC
+
+		// Use today's date as the effective date for all rates
+		const effectiveDate = new Date();
+		effectiveDate.setUTCHours(0, 0, 0, 0); // Normalize to midnight UTC
 
 		for (const [key, rate] of Object.entries(data.rates)) {
 			if (typeof rate !== "number" || Number.isNaN(rate)) {
@@ -101,29 +103,20 @@ async function syncExchangeRates(): Promise<number> {
 			);
 		}
 
-		// Upsert all rates in a transaction
-		const upsertPromises = rateEntries.map(({ currency, type, rate }) =>
-			db.exchangeRate.upsert({
-				where: {
-					date_currency_type: {
-						date: today,
-						currency,
-						type,
-					},
-				},
-				update: {
-					rate,
-				},
-				create: {
-					date: today,
+		// Truncate + reload to avoid any duplicates or drifted timestamps
+		await db.$transaction([
+			db.exchangeRate.deleteMany(),
+			db.exchangeRate.createMany({
+				data: rateEntries.map(({ currency, type, rate }) => ({
+					date: effectiveDate,
 					currency,
 					type,
 					rate,
-				},
+				})),
+				// Defensive: in case of concurrent runs with the same payload
+				skipDuplicates: true,
 			}),
-		);
-
-		await db.$transaction(upsertPromises);
+		]);
 
 		return rateEntries.length;
 	} catch (error) {

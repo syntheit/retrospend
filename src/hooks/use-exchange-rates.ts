@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { api } from "~/trpc/react";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
+import { api } from "~/trpc/react";
 
 export interface RateOption {
 	type: string;
@@ -49,10 +49,11 @@ export function useExchangeRates({
 	currency,
 	enabled = true,
 }: UseExchangeRatesOptions): UseExchangeRatesResult {
-	const { data: rates, isLoading } = api.exchangeRate.getRatesForCurrency.useQuery(
-		{ currency },
-		{ enabled: enabled && !!currency }
-	);
+	const { data: rates, isLoading } =
+		api.exchangeRate.getRatesForCurrency.useQuery(
+			{ currency },
+			{ enabled: enabled && !!currency },
+		);
 
 	const rateOptions = useMemo<RateOption[]>(() => {
 		if (!rates) return [];

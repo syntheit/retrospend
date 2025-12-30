@@ -25,7 +25,10 @@ import {
 	Tooltip as UITooltip,
 } from "~/components/ui/tooltip";
 import type { CategoryColor } from "~/lib/constants";
-import type { NormalizedExpense } from "~/lib/utils";
+import {
+	convertExpenseAmountForDisplay,
+	type NormalizedExpense,
+} from "~/lib/utils";
 
 // Map category color keys to actual hex color values
 const CATEGORY_COLOR_HEX_MAP: Record<CategoryColor, string> = {
@@ -71,9 +74,15 @@ interface CategoryTrendData {
 
 interface CategoryTrendsTableProps {
 	expenses: NormalizedExpense[];
+	baseCurrency: string;
+	liveRateToBaseCurrency: number | null;
 }
 
-export function CategoryTrendsTable({ expenses }: CategoryTrendsTableProps) {
+export function CategoryTrendsTable({
+	expenses,
+	baseCurrency,
+	liveRateToBaseCurrency,
+}: CategoryTrendsTableProps) {
 	const categoryData = useMemo<CategoryTrendData[]>(() => {
 		const now = new Date();
 		const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -95,7 +104,11 @@ export function CategoryTrendsTable({ expenses }: CategoryTrendsTableProps) {
 			const categoryKey = expense.category.id;
 			const expenseDate = expense.date;
 			const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, "0")}`;
-			const amount = expense.amountInUSD ?? expense.amount;
+			const amount = convertExpenseAmountForDisplay(
+				expense,
+				baseCurrency,
+				liveRateToBaseCurrency,
+			);
 
 			if (!categoryMap.has(categoryKey)) {
 				categoryMap.set(categoryKey, {
@@ -181,7 +194,7 @@ export function CategoryTrendsTable({ expenses }: CategoryTrendsTableProps) {
 			.sort((a, b) => b.currentMonthTotal - a.currentMonthTotal);
 
 		return result;
-	}, [expenses]);
+	}, [expenses, baseCurrency, liveRateToBaseCurrency]);
 
 	if (categoryData.length === 0) {
 		return (
@@ -309,21 +322,21 @@ export function CategoryTrendsTable({ expenses }: CategoryTrendsTableProps) {
 									<div className="flex items-center justify-center gap-3">
 										{/* Sparkline Chart */}
 										<div className="h-8 w-20">
-											<ResponsiveContainer width="100%" height="100%">
+											<ResponsiveContainer height="100%" width="100%">
 												<LineChart
 													data={item.trendData}
 													margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
 												>
-													<XAxis hide dataKey="month" />
-													<YAxis hide domain={["dataMin", "dataMax"]} />
+													<XAxis dataKey="month" hide />
+													<YAxis domain={["dataMin", "dataMax"]} hide />
 													<Tooltip content={<SparklineTooltip />} />
 													<Line
-														type="monotone"
+														activeDot={{ r: 2 }}
 														dataKey="amount"
+														dot={false}
 														stroke={item.isTrendingDown ? "#16a34a" : "#dc2626"}
 														strokeWidth={1.5}
-														dot={false}
-														activeDot={{ r: 2 }}
+														type="monotone"
 													/>
 												</LineChart>
 											</ResponsiveContainer>

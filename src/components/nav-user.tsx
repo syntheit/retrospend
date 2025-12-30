@@ -43,12 +43,14 @@ function getUserInitials(name: string): string {
 	const nameParts = name.trim().split(/\s+/).filter(Boolean);
 	if (nameParts.length === 0) return "U";
 	if (nameParts.length === 1) {
-		return nameParts[0]!.charAt(0).toUpperCase();
+		const firstPart = nameParts[0];
+		return firstPart ? firstPart.charAt(0).toUpperCase() : "U";
 	}
 
 	// Return first letter of first name and first letter of last name
-	const firstName = nameParts[0]!;
-	const lastName = nameParts[nameParts.length - 1]!;
+	const firstName = nameParts[0];
+	const lastName = nameParts[nameParts.length - 1];
+	if (!firstName || !lastName) return "U";
 	return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
 }
 
@@ -72,7 +74,7 @@ export function NavUser({
 		try {
 			await authClient.signOut();
 			router.push("/login");
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to log out. Please try again.");
 		}
 	};

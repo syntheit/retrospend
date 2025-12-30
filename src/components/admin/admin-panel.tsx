@@ -266,8 +266,8 @@ export function AdminPanel() {
 							<div className="flex items-center justify-between">
 								<div className="space-y-0.5">
 									<label
-										htmlFor="invite-codes-switch"
 										className="font-medium text-sm"
+										htmlFor="invite-codes-switch"
 									>
 										Require Invite Codes
 									</label>
@@ -277,10 +277,10 @@ export function AdminPanel() {
 									</p>
 								</div>
 								<Switch
-									id="invite-codes-switch"
 									checked={settings?.inviteOnlyEnabled ?? false}
-									onCheckedChange={handleToggleInviteOnly}
 									disabled={updateSettingsMutation.isPending}
+									id="invite-codes-switch"
+									onCheckedChange={handleToggleInviteOnly}
 								/>
 							</div>
 							<div
@@ -288,8 +288,8 @@ export function AdminPanel() {
 							>
 								<div className="space-y-0.5">
 									<label
-										htmlFor="user-invite-codes-switch"
 										className={`font-medium text-sm ${!(settings?.inviteOnlyEnabled ?? false) ? "text-muted-foreground" : ""}`}
+										htmlFor="user-invite-codes-switch"
 									>
 										Allow All Users to Generate Invite Codes
 									</label>
@@ -299,8 +299,12 @@ export function AdminPanel() {
 									</p>
 								</div>
 								<Switch
-									id="user-invite-codes-switch"
 									checked={settings?.allowAllUsersToGenerateInvites ?? false}
+									disabled={
+										updateSettingsMutation.isPending ||
+										!(settings?.inviteOnlyEnabled ?? false)
+									}
+									id="user-invite-codes-switch"
 									onCheckedChange={async (enabled: boolean) => {
 										try {
 											await updateSettingsMutation.mutateAsync({
@@ -319,10 +323,6 @@ export function AdminPanel() {
 											toast.error(message);
 										}
 									}}
-									disabled={
-										updateSettingsMutation.isPending ||
-										!(settings?.inviteOnlyEnabled ?? false)
-									}
 								/>
 							</div>
 						</CardContent>

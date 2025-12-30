@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect } from "react";
-import { useTheme, getInitialTheme } from "~/hooks/use-theme";
+import { useTheme } from "~/hooks/use-theme";
 
 // Client-side script to apply theme immediately before React hydration
 function ThemeScript() {

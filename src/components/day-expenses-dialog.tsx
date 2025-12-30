@@ -10,18 +10,25 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
-import { cn } from "~/lib/utils";
+import {
+	cn,
+	convertExpenseAmountForDisplay,
+	normalizeExpenses,
+} from "~/lib/utils";
 
 interface Expense {
 	id: string;
 	title: string;
 	amount: number;
 	currency: string;
+	exchangeRate: number | null;
 	amountInUSD: number;
 	date: Date;
 	location?: string | null;
 	description?: string | null;
+	categoryId?: string | null;
 	category?: {
 		id: string;
 		name: string;
@@ -34,6 +41,8 @@ interface DayExpensesDialogProps {
 	onOpenChange: (open: boolean) => void;
 	selectedDate: Date | null;
 	expenses: Expense[];
+	baseCurrency: string;
+	liveRateToBaseCurrency: number | null;
 	isLoading?: boolean;
 }
 
@@ -42,31 +51,38 @@ export function DayExpensesDialog({
 	onOpenChange,
 	selectedDate,
 	expenses,
+	baseCurrency,
+	liveRateToBaseCurrency,
 	isLoading = false,
 }: DayExpensesDialogProps) {
+	const { formatCurrency } = useCurrencyFormatter();
+
 	const formattedDate = selectedDate
 		? format(selectedDate, "EEEE, MMMM d, yyyy")
 		: "";
 
+	const normalizedExpenses = useMemo(
+		() => normalizeExpenses(expenses),
+		[expenses],
+	);
+
 	const totalAmount = useMemo(() => {
-		return expenses.reduce(
-			(sum, expense) => sum + (expense.amountInUSD ?? expense.amount),
+		return normalizedExpenses.reduce(
+			(sum, expense) =>
+				sum +
+				convertExpenseAmountForDisplay(
+					expense,
+					baseCurrency,
+					liveRateToBaseCurrency,
+				),
 			0,
 		);
-	}, [expenses]);
+	}, [normalizedExpenses, baseCurrency, liveRateToBaseCurrency]);
 
-	const formatAmount = (amount: number, currency: string) => {
+	const formatBaseCurrencyAmount = (amount: number) => {
 		return new Intl.NumberFormat("en-US", {
 			style: "currency",
-			currency: currency,
-			maximumFractionDigits: 2,
-		}).format(amount);
-	};
-
-	const formatUSDAmount = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
+			currency: baseCurrency,
 			maximumFractionDigits: 2,
 		}).format(amount);
 	};
@@ -84,7 +100,7 @@ export function DayExpensesDialog({
 								{expenses.length} expense{expenses.length === 1 ? "" : "s"}{" "}
 								totaling{" "}
 								<span className="font-semibold">
-									{formatUSDAmount(totalAmount)}
+									{formatBaseCurrencyAmount(totalAmount)}
 								</span>
 							</>
 						)}
@@ -104,7 +120,7 @@ export function DayExpensesDialog({
 				) : (
 					<div className="max-h-[60vh] overflow-y-auto">
 						<div className="space-y-3">
-							{expenses.map((expense) => (
+							{normalizedExpenses.map((expense) => (
 								<div
 									className="flex items-start justify-between rounded-lg border bg-muted/30 p-4"
 									key={expense.id}
@@ -128,14 +144,16 @@ export function DayExpensesDialog({
 										</div>
 										<div className="flex items-center gap-4 text-muted-foreground text-sm">
 											<span>
-												{formatAmount(expense.amount, expense.currency)}
-												{expense.currency !== "USD" && (
+												{formatBaseCurrencyAmount(
+													convertExpenseAmountForDisplay(
+														expense,
+														baseCurrency,
+														liveRateToBaseCurrency,
+													),
+												)}
+												{expense.currency !== baseCurrency && (
 													<span className="ml-1">
-														(
-														{formatUSDAmount(
-															expense.amountInUSD ?? expense.amount,
-														)}
-														)
+														({formatCurrency(expense.amount, expense.currency)})
 													</span>
 												)}
 											</span>

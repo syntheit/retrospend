@@ -64,7 +64,7 @@ export function ExpenseModalProvider({ children }: { children: ReactNode }) {
 				<ExpenseModal
 					description={
 						state.mode === "create"
-							? "Fill in the details for your expense. You can save it as a draft to continue later or finalize it now."
+							? "Fill in the details for your expense."
 							: "Update the details of your expense."
 					}
 					expenseId={state.expenseId}

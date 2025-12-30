@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { formatCurrencyAmount } from "~/lib/utils";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
 interface WealthCurrencyExposureProps {
 	assets: {
@@ -16,6 +16,8 @@ export function WealthCurrencyExposure({
 	assets,
 	totalNetWorth,
 }: WealthCurrencyExposureProps) {
+	const { formatCurrency } = useCurrencyFormatter();
+
 	const data = useMemo(() => {
 		const exposure = assets.reduce(
 			(acc, curr) => {
@@ -45,8 +47,8 @@ export function WealthCurrencyExposure({
 						<div className="flex items-center justify-between text-sm">
 							<span className="font-medium">{item.currency}</span>
 							<span className="text-muted-foreground">
-								{item.percentage.toFixed(1)}% ($
-								{formatCurrencyAmount(item.value)})
+								{item.percentage.toFixed(1)}% (
+								{formatCurrency(item.value, "USD")})
 							</span>
 						</div>
 						<div className="h-2 w-full overflow-hidden rounded-full bg-secondary">

@@ -151,7 +151,7 @@ function SignupForm() {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center px-4 bg-stone-50 dark:bg-stone-950">
+		<div className="flex min-h-screen items-center justify-center bg-stone-50 px-4 dark:bg-stone-950">
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<CardTitle className="text-center font-bold text-2xl">
@@ -169,7 +169,10 @@ function SignupForm() {
 								<div className="flex items-center justify-between">
 									<Label htmlFor="inviteCode">Invite Code</Label>
 									{inviteState === "success" && (
-										<Badge className="flex items-center gap-1" variant="default">
+										<Badge
+											className="flex items-center gap-1"
+											variant="default"
+										>
 											<CheckCircle className="h-3 w-3" />
 											Accepted
 										</Badge>

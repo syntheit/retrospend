@@ -6,6 +6,7 @@ import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<SidebarProvider
+			className="h-svh overflow-hidden"
 			style={
 				{
 					"--sidebar-width": "calc(var(--spacing) * 72)",
@@ -14,7 +15,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 			}
 		>
 			<AppSidebar variant="inset" />
-			<SidebarInset>{children}</SidebarInset>
+			<SidebarInset className="flex flex-col overflow-hidden">
+				{children}
+			</SidebarInset>
 		</SidebarProvider>
 	);
 }

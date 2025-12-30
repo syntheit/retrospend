@@ -116,8 +116,8 @@ export function AccountForm() {
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
 			toast.success("All user data exported");
-		} catch (error: any) {
-			toast.error(error?.message ?? "Failed to export user data");
+		} catch (error: unknown) {
+			toast.error(error instanceof Error ? error.message : "Failed to export user data");
 		}
 	};
 
@@ -391,7 +391,7 @@ export function AccountForm() {
 					<CardContent>
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-red-600 dark:text-red-400 font-medium">
+								<p className="font-medium text-red-600 dark:text-red-400">
 									Delete Account
 								</p>
 								<p className="text-muted-foreground text-sm">
@@ -421,7 +421,7 @@ export function AccountForm() {
 								Are you sure you want to delete your account? This action cannot
 								be undone. All your data will be permanently removed.
 							</DialogDescription>
-							<div className="text-sm text-muted-foreground mt-2">
+							<div className="mt-2 text-muted-foreground text-sm">
 								You can export your data in settings before deleting your
 								account.
 							</div>
