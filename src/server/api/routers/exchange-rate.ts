@@ -88,22 +88,28 @@ export const exchangeRateRouter = createTRPCRouter({
 
 	// Manually trigger exchange rate sync
 	syncNow: protectedProcedure.mutation(async ({ ctx }) => {
-		const { db } = ctx;
+		const { db, session } = ctx;
 		const MIN_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-		const lastSync = await db.exchangeRate.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { createdAt: true },
-		});
+		// Admins can bypass the rate limit
+		const isAdmin = session.user.role === "ADMIN";
 
-		if (
-			lastSync &&
-			Date.now() - lastSync.createdAt.getTime() < MIN_SYNC_INTERVAL_MS
-		) {
-			throw new TRPCError({
-				code: "TOO_MANY_REQUESTS",
-				message: "Exchange rates were recently synced. Please try again later.",
+		if (!isAdmin) {
+			const lastSync = await db.exchangeRate.findFirst({
+				orderBy: { createdAt: "desc" },
+				select: { createdAt: true },
 			});
+
+			if (
+				lastSync &&
+				Date.now() - lastSync.createdAt.getTime() < MIN_SYNC_INTERVAL_MS
+			) {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message:
+						"Exchange rates were recently synced. Please try again later.",
+				});
+			}
 		}
 
 		try {

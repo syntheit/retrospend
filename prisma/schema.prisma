@@ -17,12 +17,14 @@ model User {
   image                 String?                @db.VarChar(2048)
   homeCurrency          String                 @default("USD") @db.VarChar(3)
   categoryClickBehavior CategoryClickBehavior  @default(toggle)
+  budgetMode            BudgetMode             @default(GLOBAL_LIMIT)
   role                  UserRole               @default(USER)
   isActive              Boolean                @default(true)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @default(now()) @updatedAt
   defaultCurrency       String                 @default("USD") @db.VarChar(3)
   fontPreference        FontPreference         @default(sans)
+  currencySymbolStyle   CurrencySymbolStyle    @default(standard)
   monthlyIncome         Decimal?               @db.Decimal(10, 2)
   accounts              Account[]
   assetAccounts         AssetAccount[]
@@ -33,6 +35,8 @@ model User {
   createdInviteCodes    InviteCode[]           @relation("CreatedInviteCodes")
   usedInviteCodes       InviteCode[]           @relation("UsedInviteCodes")
   sessions              Session[]
+  pageSettings          UserPageSetting[]
+  analyticsPreferences  AnalyticsCategoryPreference[]
 
   @@map("user")
 }
@@ -97,7 +101,7 @@ model Expense {
   pricingSource String
   location      String?       @db.VarChar(191)
   description   String?       @db.VarChar(1000)
-  status        ExpenseStatus @default(DRAFT)
+  status        ExpenseStatus @default(FINALIZED)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   category      Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -112,9 +116,10 @@ model Category {
   name     String        @db.VarChar(64)
   color    CategoryColor
   userId   String
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses Expense[]
-  budgets  Budget[]
+  user                   User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses               Expense[]
+  budgets                Budget[]
+  analyticsPreferences   AnalyticsCategoryPreference[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -127,12 +132,13 @@ model Budget {
   period         DateTime
   isRollover     Boolean  @default(false)
   rolloverAmount Decimal  @db.Decimal(10, 2) @default(0)
+  pegToActual    Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   userId         String
-  categoryId     String
+  categoryId     String?
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category       Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([userId, categoryId, period])
   @@index([userId, period])
@@ -258,6 +264,11 @@ enum FontPreference {
   mono
 }
 
+enum CurrencySymbolStyle {
+  native
+  standard
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -273,4 +284,46 @@ enum AssetType {
   INVESTMENT
   CRYPTO
   REAL_ESTATE
+}
+
+enum BudgetMode {
+  GLOBAL_LIMIT
+  SUM_OF_CATEGORIES
+}
+
+enum Page {
+  DASHBOARD
+  BUDGET
+  ANALYTICS
+  WEALTH
+  EXCHANGE_RATES
+  SETTINGS
+  TABLE
+  ACCOUNT
+  INVITE_CODES
+  ADMIN
+  EXPENSE
+}
+
+model UserPageSetting {
+  id       String @id @default(cuid())
+  userId   String
+  page     Page
+  settings Json
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, page])
+  @@map("user_page_setting")
+}
+
+model AnalyticsCategoryPreference {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  isFlexible Boolean  @default(false)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@map("analytics_category_preference")
 }

@@ -296,6 +296,9 @@ export const userRouter = createTRPCRouter({
 				defaultCurrency: true,
 				categoryClickBehavior: true,
 				fontPreference: true,
+				currencySymbolStyle: true,
+				monthlyIncome: true,
+				budgetMode: true,
 			},
 		});
 
@@ -310,7 +313,11 @@ export const userRouter = createTRPCRouter({
 			defaultCurrency: user.defaultCurrency,
 			categoryClickBehavior: user.categoryClickBehavior,
 			fontPreference: user.fontPreference,
-			allowAllUsersToGenerateInvites: appSettings.allowAllUsersToGenerateInvites,
+			currencySymbolStyle: user.currencySymbolStyle,
+			monthlyIncome: user.monthlyIncome,
+			budgetMode: user.budgetMode,
+			allowAllUsersToGenerateInvites:
+				appSettings.allowAllUsersToGenerateInvites,
 		};
 	}),
 
@@ -357,6 +364,12 @@ export const userRouter = createTRPCRouter({
 					.optional(),
 				categoryClickBehavior: z.enum(["navigate", "toggle"]).optional(),
 				fontPreference: z.enum(["sans", "mono"]).optional(),
+				currencySymbolStyle: z.enum(["native", "standard"]).optional(),
+				budgetMode: z.enum(["GLOBAL_LIMIT", "SUM_OF_CATEGORIES"]).optional(),
+				monthlyIncome: z
+					.number()
+					.min(0, "Monthly income must be non-negative")
+					.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -372,12 +385,25 @@ export const userRouter = createTRPCRouter({
 					...(input.fontPreference && {
 						fontPreference: input.fontPreference,
 					}),
-					...(input.defaultCurrency && { defaultCurrency: input.defaultCurrency }),
+					...(input.currencySymbolStyle && {
+						currencySymbolStyle: input.currencySymbolStyle,
+					}),
+					...(input.budgetMode && {
+						budgetMode: input.budgetMode,
+					}),
+					...(input.defaultCurrency && {
+						defaultCurrency: input.defaultCurrency,
+					}),
+					...(input.monthlyIncome !== undefined && {
+						monthlyIncome: input.monthlyIncome,
+					}),
 				},
 				select: {
 					homeCurrency: true,
-				defaultCurrency: true,
+					defaultCurrency: true,
 					categoryClickBehavior: true,
+					currencySymbolStyle: true,
+					budgetMode: true,
 				},
 			});
 
@@ -571,7 +597,9 @@ export const userRouter = createTRPCRouter({
 				escapeValue(user.createdAt),
 				escapeValue(user.updatedAt),
 			];
-			const userCsv = [userHeader, userRow].map((row) => row.join(",")).join("\n");
+			const userCsv = [userHeader, userRow]
+				.map((row) => row.join(","))
+				.join("\n");
 			zip.file("user_profile.csv", userCsv);
 		}
 
@@ -704,10 +732,7 @@ export const userRouter = createTRPCRouter({
 					},
 				},
 			},
-			orderBy: [
-				{ accountId: "asc" },
-				{ date: "asc" },
-			],
+			orderBy: [{ accountId: "asc" }, { date: "asc" }],
 		});
 
 		if (snapshots.length > 0) {
@@ -800,7 +825,7 @@ export const userRouter = createTRPCRouter({
 		// Generate the zip file
 		const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
 		// Convert Buffer to base64 for tRPC serialization
-		const zipData = zipBuffer.toString('base64');
+		const zipData = zipBuffer.toString("base64");
 
 		return {
 			zipData,

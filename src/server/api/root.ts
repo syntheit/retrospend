@@ -1,4 +1,6 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { budgetRouter } from "~/server/api/routers/budget";
+import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { exchangeRateRouter } from "~/server/api/routers/exchange-rate";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { inviteRouter } from "~/server/api/routers/invite";
@@ -9,6 +11,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 export const appRouter = createTRPCRouter({
 	admin: adminRouter,
+	budget: budgetRouter,
+	dashboard: dashboardRouter,
 	user: userRouter,
 	expense: expenseRouter,
 	exchangeRate: exchangeRateRouter,

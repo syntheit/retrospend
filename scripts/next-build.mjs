@@ -19,7 +19,7 @@ const nextProcess = spawn("next", args, {
 	stdio: "inherit",
 });
 
-nextProcess.on("error", (error) => {
+nextProcess.on("error", (_error) => {
 	process.exit(1);
 });
 

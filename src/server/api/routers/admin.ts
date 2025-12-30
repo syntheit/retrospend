@@ -134,10 +134,12 @@ export const adminRouter = createTRPCRouter({
 	}),
 
 	updateSettings: adminProcedure
-		.input(z.object({
-			inviteOnlyEnabled: z.boolean(),
-			allowAllUsersToGenerateInvites: z.boolean(),
-		}))
+		.input(
+			z.object({
+				inviteOnlyEnabled: z.boolean(),
+				allowAllUsersToGenerateInvites: z.boolean(),
+			}),
+		)
 		.mutation(async ({ input }) => {
 			const settings = await updateAppSettings({
 				inviteOnlyEnabled: input.inviteOnlyEnabled,

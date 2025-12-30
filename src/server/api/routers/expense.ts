@@ -1,191 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { formatDateOnly } from "~/lib/date";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const expenseRouter = createTRPCRouter({
-	// Create a new draft expense
-	createDraft: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(), // UUID for the expense
-				title: z.string(),
-				amount: z.number().positive("Amount must be positive"),
-				currency: z.string().length(3).default("USD"),
-				exchangeRate: z.number().positive().optional(),
-				amountInUSD: z.number().positive().optional(),
-				pricingSource: z.string().optional(),
-				date: z.date(),
-				location: z.string().optional(),
-				description: z.string().optional(),
-				categoryId: z.string().cuid().optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
 
-			if (input.categoryId) {
-				const category = await db.category.findFirst({
-					where: { id: input.categoryId, userId: session.user.id },
-				});
-				if (!category) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message: "Category not found",
-					});
-				}
-			}
 
-			let exchangeRate = input.exchangeRate;
-			let amountInUSD = input.amountInUSD;
-			const pricingSource = input.pricingSource ?? "MANUAL";
-
-			if (!exchangeRate) {
-				if (input.currency === "USD") {
-					exchangeRate = 1;
-				} else {
-					const latestRate = await db.exchangeRate.findFirst({
-						where: {
-							currency: input.currency,
-							date: { lte: input.date },
-						},
-						orderBy: { date: "desc" },
-					});
-
-					if (latestRate) {
-						exchangeRate = latestRate.rate.toNumber();
-					} else {
-						throw new TRPCError({
-							code: "BAD_REQUEST",
-							message: `Exchange rate not found for ${input.currency}.`,
-						});
-					}
-				}
-			}
-
-			if (!amountInUSD) {
-				amountInUSD = input.amount / exchangeRate;
-			}
-
-			const expense = await db.expense.create({
-				data: {
-					id: input.id,
-					userId: session.user.id,
-					title: input.title,
-					amount: input.amount,
-					currency: input.currency,
-					exchangeRate: exchangeRate,
-					amountInUSD: amountInUSD,
-					pricingSource: pricingSource,
-					date: input.date,
-					location: input.location || undefined,
-					description: input.description || undefined,
-					categoryId: input.categoryId || undefined,
-					status: "DRAFT",
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					pricingSource: true,
-					date: true,
-					location: true,
-					description: true,
-					status: true,
-					categoryId: true,
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expense;
-		}),
-
-	// Update an existing draft expense
-	updateDraft: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				title: z.string(),
-				amount: z.number().positive("Amount must be positive"),
-				currency: z.string().length(3).default("USD"),
-				exchangeRate: z.number().positive().optional(),
-				amountInUSD: z.number().positive().optional(),
-				pricingSource: z.string().optional(),
-				date: z.date(),
-				location: z.string().optional(),
-				description: z.string().optional(),
-				categoryId: z.string().cuid().optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const existingDraft = await db.expense.findFirst({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-					status: "DRAFT", // Only allow updating drafts
-				},
-			});
-
-			if (!existingDraft) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
-			}
-
-			if (input.categoryId) {
-				const category = await db.category.findFirst({
-					where: { id: input.categoryId, userId: session.user.id },
-				});
-				if (!category) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message: "Category not found",
-					});
-				}
-			}
-
-			const expense = await db.expense.update({
-				where: {
-					id: existingDraft.id,
-				},
-				data: {
-					title: input.title,
-					amount: input.amount,
-					currency: input.currency,
-					exchangeRate: input.exchangeRate,
-					amountInUSD: input.amountInUSD,
-					pricingSource: input.pricingSource,
-					date: input.date,
-					location: input.location || undefined,
-					description: input.description || undefined,
-					categoryId: input.categoryId || undefined,
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					pricingSource: true,
-					date: true,
-					location: true,
-					description: true,
-					status: true,
-					categoryId: true,
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expense;
-		}),
-
-	// Update any expense (draft or finalized)
+	// Update an expense
 	updateExpense: protectedProcedure
 		.input(
 			z.object({
@@ -266,43 +88,112 @@ export const expenseRouter = createTRPCRouter({
 			return expense;
 		}),
 
-	// List all draft expenses for the current user
-	listDrafts: protectedProcedure.query(async ({ ctx }) => {
-		const { session, db } = ctx;
+	// Create a new finalized expense
+	createExpense: protectedProcedure
+		.input(
+			z.object({
+				id: z.string().uuid(), // UUID for the expense
+				title: z.string(),
+				amount: z.number().positive("Amount must be positive"),
+				currency: z.string().length(3).default("USD"),
+				exchangeRate: z.number().positive().optional(),
+				amountInUSD: z.number().positive().optional(),
+				pricingSource: z.string().optional(),
+				date: z.date(),
+				location: z.string().optional(),
+				description: z.string().optional(),
+				categoryId: z.string().cuid().optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { session, db } = ctx;
 
-		const drafts = await db.expense.findMany({
-			where: {
-				userId: session.user.id,
-				status: "DRAFT",
-			},
-			orderBy: {
-				updatedAt: "desc",
-			},
-			select: {
-				id: true,
-				title: true,
-				amount: true,
-				currency: true,
-				exchangeRate: true,
-				amountInUSD: true,
-				date: true,
-				location: true,
-				description: true,
-				categoryId: true,
-				category: {
-					select: {
-						id: true,
-						name: true,
-						color: true,
-					},
+			if (input.categoryId) {
+				const category = await db.category.findFirst({
+					where: { id: input.categoryId, userId: session.user.id },
+				});
+				if (!category) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "Category not found",
+					});
+				}
+			}
+
+			let exchangeRate = input.exchangeRate;
+			let amountInUSD = input.amountInUSD;
+			const pricingSource = input.pricingSource ?? "MANUAL";
+
+			if (!exchangeRate) {
+				if (input.currency === "USD") {
+					exchangeRate = 1;
+				} else {
+					const latestRate = await db.exchangeRate.findFirst({
+						where: {
+							currency: input.currency,
+							date: { lte: input.date },
+						},
+						orderBy: { date: "desc" },
+					});
+
+					if (latestRate) {
+						exchangeRate = latestRate.rate.toNumber();
+					} else {
+						throw new TRPCError({
+							code: "BAD_REQUEST",
+							message: `Exchange rate not found for ${input.currency}.`,
+						});
+					}
+				}
+			}
+
+			if (!amountInUSD) {
+				amountInUSD = input.amount / exchangeRate;
+			}
+
+			const expense = await db.expense.create({
+				data: {
+					id: input.id,
+					userId: session.user.id,
+					title: input.title,
+					amount: input.amount,
+					currency: input.currency,
+					exchangeRate: exchangeRate,
+					amountInUSD: amountInUSD,
+					pricingSource: pricingSource,
+					date: input.date,
+					location: input.location || undefined,
+					description: input.description || undefined,
+					categoryId: input.categoryId || undefined,
+					status: "FINALIZED",
 				},
-				createdAt: true,
-				updatedAt: true,
-			},
-		});
+				select: {
+					id: true,
+					title: true,
+					amount: true,
+					currency: true,
+					exchangeRate: true,
+					amountInUSD: true,
+					pricingSource: true,
+					date: true,
+					location: true,
+					description: true,
+					status: true,
+					categoryId: true,
+					category: {
+						select: {
+							id: true,
+							name: true,
+							color: true,
+						},
+					},
+					createdAt: true,
+					updatedAt: true,
+				},
+			});
 
-		return drafts;
-	}),
+			return expense;
+		}),
 
 	// List all finalized expenses for the current user
 	listFinalized: protectedProcedure.query(async ({ ctx }) => {
@@ -342,55 +233,6 @@ export const expenseRouter = createTRPCRouter({
 		return expenses;
 	}),
 
-	// Finalize a draft expense (convert to FINALIZED)
-	finalizeExpense: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const draft = await db.expense.findFirst({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-					status: "DRAFT",
-				},
-				select: { id: true },
-			});
-
-			if (!draft) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Draft not found or already finalized",
-				});
-			}
-
-			const expense = await db.expense.update({
-				where: {
-					id: draft.id,
-				},
-				data: {
-					status: "FINALIZED",
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					date: true,
-					location: true,
-					status: true,
-					categoryId: true,
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expense;
-		}),
 
 	// Get a single expense by ID
 	getExpense: protectedProcedure
@@ -414,6 +256,7 @@ export const expenseRouter = createTRPCRouter({
 					currency: true,
 					exchangeRate: true,
 					amountInUSD: true,
+					pricingSource: true,
 					date: true,
 					location: true,
 					description: true,
@@ -488,7 +331,7 @@ export const expenseRouter = createTRPCRouter({
 			return expenses;
 		}),
 
-	// Delete an expense (draft or finalized)
+	// Delete an expense
 	deleteExpense: protectedProcedure
 		.input(
 			z.object({
@@ -520,7 +363,6 @@ export const expenseRouter = createTRPCRouter({
 		.input(
 			z
 				.object({
-					includeDrafts: z.boolean().optional(),
 					expenseIds: z.array(z.string()).optional(),
 				})
 				.optional(),
@@ -531,7 +373,7 @@ export const expenseRouter = createTRPCRouter({
 			const expenses = await db.expense.findMany({
 				where: {
 					userId: session.user.id,
-					...(input?.includeDrafts ? {} : { status: "FINALIZED" }),
+					status: "FINALIZED",
 					...(input?.expenseIds ? { id: { in: input.expenseIds } } : {}),
 				},
 				orderBy: {
@@ -565,7 +407,7 @@ export const expenseRouter = createTRPCRouter({
 				if (raw === null || raw === undefined) return "";
 				const value =
 					raw instanceof Date
-						? (raw.toISOString().split("T")[0] ?? "")
+						? formatDateOnly(raw)
 						: typeof raw === "number" || typeof raw === "bigint"
 							? raw.toString()
 							: String(raw);
@@ -681,5 +523,125 @@ export const expenseRouter = createTRPCRouter({
 			});
 
 			return { count: result.count };
+		}),
+
+	getCategorySpending: protectedProcedure
+		.input(
+			z.object({
+				categoryId: z.string().cuid(),
+				month: z.date(),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { session, db } = ctx;
+
+			// Verify the category belongs to the user
+			const category = await db.category.findFirst({
+				where: {
+					id: input.categoryId,
+					userId: session.user.id,
+				},
+			});
+
+			if (!category) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Category not found",
+				});
+			}
+
+			// Calculate month boundaries
+			const startOfMonth = new Date(
+				input.month.getFullYear(),
+				input.month.getMonth(),
+				1,
+			);
+			const endOfMonth = new Date(
+				input.month.getFullYear(),
+				input.month.getMonth() + 1,
+				0,
+				23,
+				59,
+				59,
+				999,
+			);
+
+			// Get total spending for this category in the month
+			const spending = await db.expense.aggregate({
+				where: {
+					userId: session.user.id,
+					categoryId: input.categoryId,
+					date: {
+						gte: startOfMonth,
+						lte: endOfMonth,
+					},
+					status: "FINALIZED",
+				},
+				_sum: {
+					amountInUSD: true,
+				},
+			});
+
+			const total = spending._sum.amountInUSD ?? 0;
+			const totalAsNumber =
+				typeof total === "object" && total !== null && "toNumber" in total
+					? total.toNumber()
+					: Number(total);
+
+			return {
+				total: totalAsNumber,
+				categoryId: input.categoryId,
+			};
+		}),
+
+	getTotalSpending: protectedProcedure
+		.input(
+			z.object({
+				month: z.date(),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { session, db } = ctx;
+
+			// Calculate month boundaries
+			const startOfMonth = new Date(
+				input.month.getFullYear(),
+				input.month.getMonth(),
+				1,
+			);
+			const endOfMonth = new Date(
+				input.month.getFullYear(),
+				input.month.getMonth() + 1,
+				0,
+				23,
+				59,
+				59,
+				999,
+			);
+
+			// Get total spending for this month across all categories
+			const spending = await db.expense.aggregate({
+				where: {
+					userId: session.user.id,
+					date: {
+						gte: startOfMonth,
+						lte: endOfMonth,
+					},
+					status: "FINALIZED",
+				},
+				_sum: {
+					amountInUSD: true,
+				},
+			});
+
+			const total = spending._sum.amountInUSD ?? 0;
+			const totalAsNumber =
+				typeof total === "object" && total !== null && "toNumber" in total
+					? total.toNumber()
+					: Number(total);
+
+			return {
+				total: totalAsNumber,
+			};
 		}),
 });
