@@ -184,10 +184,14 @@ model AssetAccount {
   exchangeRate     Decimal?        @db.Decimal(18, 6)
   exchangeRateType String?         @db.VarChar(32)
   isLiquid         Boolean         @default(false)
+  interestRate     Float?
+  minimumPayment   Decimal?        @db.Decimal(10, 2)
+  dueDate          Int?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots        AssetSnapshot[]
+  history          AssetHistory[]
 
   @@index([userId])
   @@map("asset_account")
@@ -203,6 +207,17 @@ model AssetSnapshot {
 
   @@unique([accountId, date])
   @@map("asset_snapshot")
+}
+
+model AssetHistory {
+  id          String       @id @default(cuid())
+  assetId     String
+  balance     Decimal      @db.Decimal(19, 8)
+  recordedAt  DateTime     @default(now())
+  asset       AssetAccount @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, recordedAt])
+  @@map("asset_history")
 }
 
 model InviteCode {
@@ -284,6 +299,10 @@ enum AssetType {
   INVESTMENT
   CRYPTO
   REAL_ESTATE
+  VEHICLE
+  LIABILITY_LOAN
+  LIABILITY_CREDIT_CARD
+  LIABILITY_MORTGAGE
 }
 
 enum BudgetMode {
