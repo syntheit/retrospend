@@ -1,5 +1,7 @@
 import "server-only";
 import { db } from "~/server/db";
+// biome-ignore lint/style/useImportType: Prisma namespace import
+import { Prisma } from "~prisma";
 
 const VALID_CURRENCY = /^[A-Z]{3}$/;
 const VALID_TYPE = /^[a-z0-9_-]{1,32}$/;
@@ -103,19 +105,123 @@ async function syncExchangeRates(): Promise<number> {
 			);
 		}
 
-		// Truncate + reload to avoid any duplicates or drifted timestamps
-		await db.$transaction([
-			db.exchangeRate.deleteMany(),
-			db.exchangeRate.createMany({
-				data: rateEntries.map(({ currency, type, rate }) => ({
+		// Fetch all existing rates to intelligently update/cleanup
+		// We need to handle potential duplicates from previous bad syncs
+		const existingRates = await db.exchangeRate.findMany({
+			select: {
+				id: true,
+				currency: true,
+				type: true,
+				_count: {
+					select: { favorites: true },
+				},
+			},
+		});
+
+		// Group by currency+type
+		const existingMap = new Map<
+			string,
+			Array<{
+				id: string;
+				currency: string;
+				type: string;
+				_count: { favorites: number };
+			}>
+		>();
+
+		for (const rate of existingRates) {
+			const key = `${rate.currency}_${rate.type}`;
+			const list = existingMap.get(key) ?? [];
+			list.push(rate);
+			existingMap.set(key, list);
+		}
+
+		// Prepare operations
+		const idsToDelete = new Set<string>();
+		const validIds = new Set<string>();
+		const updates: Prisma.PrismaPromise<unknown>[] = [];
+		const creates: {
+			date: Date;
+			currency: string;
+			type: string;
+			rate: number;
+		}[] = [];
+
+		for (const entry of rateEntries) {
+			const key = `${entry.currency}_${entry.type}`;
+			const existing = existingMap.get(key);
+
+			if (existing && existing.length > 0) {
+				// Sort to find the best candidate to keep:
+				// 1. Has favorites (highest preference)
+				// 2. Already matches our target date (minor optimization)
+				// 3. ID lexical order (deterministic fallback)
+				existing.sort((a, b) => {
+					if (a._count.favorites !== b._count.favorites) {
+						return b._count.favorites - a._count.favorites; // Descending
+					}
+					return a.id.localeCompare(b.id);
+				});
+
+				const keeper = existing[0];
+				if (!keeper) continue; // Should not happen given check above
+
+				// Queue update for the keeper
+				updates.push(
+					db.exchangeRate.update({
+						where: { id: keeper.id },
+						data: {
+							rate: entry.rate,
+							date: effectiveDate,
+						},
+					}),
+				);
+				validIds.add(keeper.id);
+
+				// Mark others for deletion (duplicates)
+				for (let i = 1; i < existing.length; i++) {
+					const duplicate = existing[i];
+					if (duplicate) {
+						idsToDelete.add(duplicate.id);
+					}
+				}
+			} else {
+				// New rate
+				creates.push({
 					date: effectiveDate,
-					currency,
-					type,
-					rate,
-				})),
-				// Defensive: in case of concurrent runs with the same payload
-				skipDuplicates: true,
-			}),
+					currency: entry.currency,
+					type: entry.type,
+					rate: entry.rate,
+				});
+			}
+		}
+
+		// Identify stale rates (in DB but not in new payload)
+		// Any ID in existingRates that is NOT in validIds and NOT in idsToDelete (implicit) needs to be deleted
+		for (const rate of existingRates) {
+			if (!validIds.has(rate.id)) {
+				idsToDelete.add(rate.id);
+			}
+		}
+
+		// Execute all operations
+		await db.$transaction([
+			// 1. Delete duplicates and stale records
+			...(idsToDelete.size > 0
+				? [
+						db.exchangeRate.deleteMany({
+							where: {
+								id: { in: Array.from(idsToDelete) },
+							},
+						}),
+					]
+				: []),
+			// 2. Update existing records (one by one as updates are unique)
+			...updates,
+			// 3. Create new records (batch)
+			...(creates.length > 0
+				? [db.exchangeRate.createMany({ data: creates })]
+				: []),
 		]);
 
 		return rateEntries.length;

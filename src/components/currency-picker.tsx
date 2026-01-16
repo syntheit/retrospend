@@ -118,7 +118,10 @@ export function CurrencyPicker({
 						value={search}
 					/>
 				</div>
-				<div className="max-h-64 overflow-y-auto">
+				<div
+					className="max-h-64 overflow-y-auto"
+					onWheel={(e) => e.stopPropagation()}
+				>
 					{sortedCurrencies.length === 0 ? (
 						<div className="p-4 text-center text-muted-foreground">
 							No currencies found.

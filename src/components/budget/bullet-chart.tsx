@@ -1,5 +1,7 @@
 "use client";
 
+import { COLOR_TO_HEX } from "~/lib/constants";
+
 interface BulletChartProps {
 	actualSpend: number;
 	budgetAmount: number;
@@ -36,51 +38,30 @@ function interpolateColor(
 function getProgressColor(percentage: number, isPegged: boolean): string {
 	if (isPegged) {
 		// For pegged budgets, use neutral gray tones instead of warning colors
-		if (percentage >= 1) return "#6b7280"; // Neutral gray - at/over budget
-		if (percentage >= 0.75) return "#9ca3af"; // Light gray - getting close
-		if (percentage >= 0.5) return "#d1d5db"; // Lighter gray - moderate
-		return "#e5e7eb"; // Very light gray - low spending
+		if (percentage >= 1) return "#6b7280";
+		if (percentage >= 0.75) return "#9ca3af";
+		if (percentage >= 0.5) return "#d1d5db";
+		return "#e5e7eb";
 	}
 
 	// Standard warning colors for fixed budgets
-	if (percentage >= 1) return "#dc2626"; // Red - over budget
+	if (percentage >= 1) return "#dc2626";
 	if (percentage >= 0.9)
-		return interpolateColor("#ea580c", "#dc2626", (percentage - 0.9) / 0.1); // Orange to Red
+		return interpolateColor("#ea580c", "#dc2626", (percentage - 0.9) / 0.1);
 	if (percentage >= 0.75)
-		return interpolateColor("#f59e0b", "#ea580c", (percentage - 0.75) / 0.15); // Yellow to Orange
+		return interpolateColor("#f59e0b", "#ea580c", (percentage - 0.75) / 0.15);
 	if (percentage >= 0.5)
-		return interpolateColor("#10b981", "#f59e0b", (percentage - 0.5) / 0.25); // Green to Yellow
-	return "#10b981"; // Emerald green - safe
+		return interpolateColor("#10b981", "#f59e0b", (percentage - 0.5) / 0.25);
+	return "#10b981";
 }
 
-const _COLOR_TO_HEX: Record<string, string> = {
-	emerald: "#059669",
-	blue: "#2563eb",
-	sky: "#0ea5e9",
-	cyan: "#0891b2",
-	teal: "#0d9488",
-	orange: "#ea580c",
-	amber: "#f59e0b",
-	violet: "#7c3aed",
-	pink: "#ec4899",
-	fuchsia: "#c026d3",
-	indigo: "#4f46e5",
-	slate: "#64748b",
-	zinc: "#71717a",
-	lime: "#65a30d",
-	neutral: "#737373",
-	gray: "#6b7280",
-	purple: "#9333ea",
-	yellow: "#eab308",
-	stone: "#78716c",
-	rose: "#f43f5e",
-	red: "#dc2626",
-};
-
 // Get category color with opacity for striped background
-function getCategoryColorWithOpacity(color: string, opacity: number = 0.8): string {
-	const hexColor = _COLOR_TO_HEX[color as keyof typeof _COLOR_TO_HEX] || "#6b7280";
-	// Convert hex to rgba
+function getCategoryColorWithOpacity(
+	color: string,
+	opacity: number = 0.8,
+): string {
+	const hexColor =
+		COLOR_TO_HEX[color as keyof typeof COLOR_TO_HEX] || "#6b7280";
 	const r = parseInt(hexColor.slice(1, 3), 16);
 	const g = parseInt(hexColor.slice(3, 5), 16);
 	const b = parseInt(hexColor.slice(5, 7), 16);
@@ -94,16 +75,18 @@ export function BulletChart({
 	isOverBudget: propIsOverBudget,
 	isPegged,
 }: BulletChartProps) {
-	// Handle edge cases
 	if (budgetAmount <= 0) {
 		return (
 			<div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
-				{/* Background bar (budget limit) */}
 				<div
 					className={`absolute inset-0 rounded-full ${isPegged ? "bg-stripes" : "bg-stone-300 dark:bg-stone-600"}`}
-					style={isPegged ? {
-						backgroundColor: getCategoryColorWithOpacity(color),
-					} : undefined}
+					style={
+						isPegged
+							? {
+									backgroundColor: getCategoryColorWithOpacity(color),
+								}
+							: undefined
+					}
 				/>
 			</div>
 		);
@@ -111,27 +94,30 @@ export function BulletChart({
 
 	const spendPercentage = actualSpend / budgetAmount;
 	const _effectiveIsOverBudget = propIsOverBudget ?? spendPercentage > 1;
-	const displayPercentage = Math.min(spendPercentage, 1); // Cap display at 100%
+	const displayPercentage = Math.min(spendPercentage, 1);
 
-	// Use progress-based color instead of category color
 	const progressColor = getProgressColor(spendPercentage, isPegged || false);
 
 	return (
 		<div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
-			{/* Background bar (budget limit) */}
 			<div
 				className={`absolute inset-0 rounded-full ${isPegged ? "bg-stripes" : "bg-stone-300 dark:bg-stone-600"}`}
-				style={isPegged ? {
-					backgroundColor: getCategoryColorWithOpacity(color),
-				} : undefined}
+				style={
+					isPegged
+						? {
+								backgroundColor: getCategoryColorWithOpacity(color),
+							}
+						: undefined
+				}
 			/>
 
-			{/* Progress bar (actual spend percentage) */}
 			<div
 				className={`absolute top-0 left-0 h-full rounded-full transition-all duration-300 ${isPegged ? "bg-stripes" : ""}`}
 				style={{
 					width: `${displayPercentage * 100}%`,
-					backgroundColor: isPegged ? getCategoryColorWithOpacity(color) : progressColor,
+					backgroundColor: isPegged
+						? getCategoryColorWithOpacity(color)
+						: progressColor,
 				}}
 			/>
 		</div>

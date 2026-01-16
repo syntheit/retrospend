@@ -1,6 +1,8 @@
 "use client";
 
+import { BarChart3 } from "lucide-react";
 import { useMemo } from "react";
+import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
@@ -36,13 +38,48 @@ export function WealthCurrencyExposure({
 			.sort((a, b) => b.value - a.value);
 	}, [assets, totalNetWorth]);
 
+	// Empty state
+	if (data.length === 0 || totalNetWorth === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Currency Exposure</CardTitle>
+				</CardHeader>
+				<CardContent className="flex flex-col items-center justify-center py-12">
+					<BarChart3 className="h-12 w-12 text-muted-foreground/50" />
+					<h3 className="mt-4 font-medium text-lg">No currency data</h3>
+					<p className="mt-2 text-center text-muted-foreground text-sm">
+						Add assets in different currencies to see exposure breakdown.
+					</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	// Vibrant color ramp for progress bars
+	const getBarColor = (index: number) => {
+		const colors = [
+			"bg-blue-500",
+			"bg-violet-500",
+			"bg-amber-500",
+			"bg-emerald-500",
+			"bg-rose-500",
+			"bg-cyan-500",
+			"bg-orange-500",
+		];
+		return colors[index % colors.length];
+	};
+
 	return (
 		<Card>
-			<CardHeader>
+			<CardHeader className="flex flex-row items-center justify-between">
 				<CardTitle>Currency Exposure</CardTitle>
+				<Badge className="text-xs" variant="outline">
+					Base: USD
+				</Badge>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				{data.map((item) => (
+				{data.map((item, index) => (
 					<div className="space-y-1" key={item.currency}>
 						<div className="flex items-center justify-between text-sm">
 							<span className="font-medium">{item.currency}</span>
@@ -51,9 +88,9 @@ export function WealthCurrencyExposure({
 								{formatCurrency(item.value, "USD")})
 							</span>
 						</div>
-						<div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+						<div className="h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
 							<div
-								className="h-full bg-primary transition-all"
+								className={`h-full ${getBarColor(index)} transition-all`}
 								style={{ width: `${item.percentage}%` }}
 							/>
 						</div>

@@ -372,7 +372,7 @@ export function ExchangeRatesTable({
 					value={searchQuery}
 				/>
 			</div>
-			<div className="max-h-[48rem] overflow-auto rounded-lg border">
+			<div className="max-h-[48rem] overflow-x-auto overflow-y-auto rounded-lg border">
 				<DndContext
 					collisionDetection={closestCenter}
 					onDragEnd={handleDragEnd}

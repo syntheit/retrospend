@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -37,8 +37,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { CurrencyCode } from "~/lib/currencies";
 import { AssetType } from "~/lib/db-enums";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 const formSchema = z.object({
@@ -49,6 +51,7 @@ const formSchema = z.object({
 	exchangeRate: z.coerce.number().optional(),
 	exchangeRateType: z.string().optional(),
 	isLiquid: z.boolean(),
+	interestRate: z.coerce.number().min(0).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,7 +72,7 @@ const createDefaults: FormValues = {
 	type: AssetType.CASH,
 	currency: "USD",
 	balance: 0,
-	isLiquid: false,
+	isLiquid: true,
 };
 
 export function AssetDialog({
@@ -83,8 +86,20 @@ export function AssetDialog({
 		: "Update your asset details.",
 	submitLabel = mode === "create" ? "Create Asset" : "Update Asset",
 	loadingLabel = mode === "create" ? "Creating..." : "Updating...",
-}: AssetDialogProps) {
-	const [open, setOpen] = useState(false);
+	open: controlledOpen,
+	onOpenChange: setControlledOpen,
+}: AssetDialogProps & {
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+}) {
+	const [internalOpen, setInternalOpen] = useState(false);
+
+	const isControlled = controlledOpen !== undefined;
+	const open = isControlled ? controlledOpen : internalOpen;
+	const setOpen = isControlled ? setControlledOpen : setInternalOpen;
+
+	const prevOpenRef = useRef(open);
+
 	const [exchangeRate, setExchangeRate] = useState<number | undefined>(
 		initialValues.exchangeRate,
 	);
@@ -93,6 +108,7 @@ export function AssetDialog({
 	);
 	const [isCustomRate, setIsCustomRate] = useState(false);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const { getCurrencySymbol } = useCurrencyFormatter();
 	const utils = api.useUtils();
 
 	const form = useForm<FormValues>({
@@ -103,6 +119,26 @@ export function AssetDialog({
 				: { ...createDefaults, ...initialValues },
 	});
 
+	// Calculate USD equivalent
+	const balance = form.watch("balance");
+	const currency = form.watch("currency");
+
+	const usdEquivalent = useMemo(() => {
+		const currentBalance = balance || 0;
+		if (currency === "USD") return currentBalance;
+		return currentBalance * (exchangeRate ?? 1);
+	}, [balance, currency, exchangeRate]);
+
+	// Check if asset type is a liability
+	const assetType = form.watch("type");
+	const isLiability = useMemo(() => {
+		return (
+			assetType === AssetType.LIABILITY_LOAN ||
+			assetType === AssetType.LIABILITY_CREDIT_CARD ||
+			assetType === AssetType.LIABILITY_MORTGAGE
+		);
+	}, [assetType]);
+
 	// Reset form when initialValues change (for edit mode)
 	useEffect(() => {
 		if (mode === "edit" && initialValues) {
@@ -111,39 +147,56 @@ export function AssetDialog({
 			setExchangeRateType(initialValues.exchangeRateType);
 			setIsCustomRate(false);
 		}
-	}, [initialValues, mode, form]);
+	}, [initialValues, mode, form.reset]);
+
+	// Auto-check/uncheck isLiquid based on type
+	useEffect(() => {
+		const subscription = form.watch((value, { name }) => {
+			if (name === "type") {
+				if (value.type === AssetType.CASH) {
+					form.setValue("isLiquid", true);
+				} else if (
+					value.type === AssetType.REAL_ESTATE ||
+					value.type === AssetType.LIABILITY_MORTGAGE
+				) {
+					form.setValue("isLiquid", false);
+				}
+			}
+		});
+		return () => subscription.unsubscribe();
+	}, [form]);
 
 	const createAsset = api.wealth.createAsset.useMutation({
 		onSuccess: () => {
 			toast.success("Asset created successfully");
-			setOpen(false);
+			if (setOpen) setOpen(false);
 			form.reset();
 			void utils.wealth.getDashboard.invalidate();
 		},
-		onError: (error) => {
-			toast.error(error.message);
+		onError: () => {
+			// Error handled globally
 		},
 	});
 
 	const updateAsset = api.wealth.updateAsset.useMutation({
 		onSuccess: () => {
 			toast.success("Asset updated successfully");
-			setOpen(false);
+			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
 		},
-		onError: (error) => {
-			toast.error(error.message);
+		onError: () => {
+			// Error handled globally
 		},
 	});
 
 	const deleteAsset = api.wealth.deleteAsset.useMutation({
 		onSuccess: () => {
 			toast.success("Asset deleted successfully");
-			setOpen(false);
+			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
 		},
-		onError: (error) => {
-			toast.error(error.message);
+		onError: () => {
+			// Error handled globally
 		},
 	});
 
@@ -166,12 +219,30 @@ export function AssetDialog({
 
 	const handleCurrencyChange = (newCurrency: string) => {
 		form.setValue("currency", newCurrency);
-		if (newCurrency === "USD") {
-			setExchangeRate(undefined);
-			setExchangeRateType(undefined);
-			setIsCustomRate(false);
-		}
+		// Always reset exchange rate when currency changes to prevent stale rates
+		setExchangeRate(undefined);
+		setExchangeRateType(undefined);
+		setIsCustomRate(false);
 	};
+
+	// Reset state when dialog closes
+	useEffect(() => {
+		const wasOpen = prevOpenRef.current;
+		prevOpenRef.current = open;
+
+		// Only reset when transitioning from open to closed
+		if (wasOpen && !open) {
+			setExchangeRate(initialValues?.exchangeRate);
+			setExchangeRateType(initialValues?.exchangeRateType);
+			setIsCustomRate(false);
+			form.reset();
+		}
+	}, [
+		open,
+		initialValues?.exchangeRate,
+		initialValues?.exchangeRateType,
+		form,
+	]);
 
 	const handleDelete = async () => {
 		if (assetId) {
@@ -211,94 +282,172 @@ export function AssetDialog({
 									</FormItem>
 								)}
 							/>
-							<div className="grid grid-cols-2 gap-4">
-								<FormField
-									control={form.control}
-									name="type"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Type</FormLabel>
-											<Select
-												defaultValue={field.value}
-												onValueChange={field.onChange}
-											>
-												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select type" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													<SelectItem value={AssetType.CASH}>Cash</SelectItem>
-													<SelectItem value={AssetType.INVESTMENT}>
-														Investment
-													</SelectItem>
-													<SelectItem value={AssetType.CRYPTO}>
-														Crypto
-													</SelectItem>
-													<SelectItem value={AssetType.REAL_ESTATE}>
-														Real Estate
-													</SelectItem>
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="currency"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Currency</FormLabel>
-											<FormControl>
-												<CurrencyPicker
-													onValueChange={handleCurrencyChange}
-													placeholder="Select currency"
-													value={field.value as CurrencyCode}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
-							{form.watch("currency") !== "USD" && (
-								<div className="space-y-2">
-									<FormLabel>Exchange Rate</FormLabel>
-									<InlineExchangeRateSelector
-										currency={form.watch("currency")}
-										homeCurrency="USD"
-										isCustomSet={isCustomRate}
-										mode={false}
-										onCustomCleared={() => setIsCustomRate(false)}
-										onCustomSelected={() => setIsCustomRate(true)}
-										onCustomSet={() => setIsCustomRate(true)}
-										onValueChange={(rate, type) => {
-											setExchangeRate(rate);
-											setExchangeRateType(type);
-										}}
-										value={exchangeRate}
-									/>
-								</div>
-							)}
 							<FormField
 								control={form.control}
-								name="balance"
+								name="type"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Balance</FormLabel>
-										<FormControl>
-											<Input step="0.01" type="number" {...field} />
-										</FormControl>
+										<FormLabel>Type</FormLabel>
+										<Select
+											defaultValue={field.value}
+											onValueChange={field.onChange}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select type" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value={AssetType.CASH}>Cash</SelectItem>
+												<SelectItem value={AssetType.INVESTMENT}>
+													Investment
+												</SelectItem>
+												<SelectItem value={AssetType.CRYPTO}>Crypto</SelectItem>
+												<SelectItem value={AssetType.REAL_ESTATE}>
+													Real Estate
+												</SelectItem>
+												<SelectItem value={AssetType.LIABILITY_LOAN}>
+													Loan
+												</SelectItem>
+												<SelectItem value={AssetType.LIABILITY_CREDIT_CARD}>
+													Credit Card
+												</SelectItem>
+												<SelectItem value={AssetType.LIABILITY_MORTGAGE}>
+													Mortgage
+												</SelectItem>
+											</SelectContent>
+										</Select>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
+
+							{/* Currency and Exchange Rate Group */}
+							<div className="space-y-4">
+								<div className="grid grid-cols-2 gap-4">
+									<FormField
+										control={form.control}
+										name="currency"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Currency</FormLabel>
+												<FormControl>
+													<CurrencyPicker
+														onValueChange={handleCurrencyChange}
+														placeholder="Select currency"
+														value={field.value as CurrencyCode}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="balance"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Balance</FormLabel>
+												<FormControl>
+													<div
+														className={cn(
+															"flex h-9 w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
+															"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+														)}
+													>
+														<span className="shrink-0 font-medium text-muted-foreground">
+															{getCurrencySymbol(form.watch("currency"))}
+														</span>
+														<Input
+															className="h-full w-full border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+															step="0.01"
+															type="number"
+															{...field}
+														/>
+													</div>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
+
+								{form.watch("currency") !== "USD" && (
+									<div className="space-y-2">
+										<FormLabel>Exchange Rate</FormLabel>
+										<InlineExchangeRateSelector
+											currency={form.watch("currency")}
+											homeCurrency="USD"
+											isCustomSet={isCustomRate}
+											mode={false}
+											onCustomCleared={() => setIsCustomRate(false)}
+											onCustomSelected={() => setIsCustomRate(true)}
+											onCustomSet={() => setIsCustomRate(true)}
+											onValueChange={(rate, type) => {
+												setExchangeRate(rate);
+												setExchangeRateType(type);
+											}}
+											value={exchangeRate}
+										/>
+									</div>
+								)}
+
+								{/* USD Equivalent Preview */}
+								{form.watch("balance") > 0 && (
+									<div className="rounded-md bg-muted/50 p-3">
+										<div className="flex items-center justify-between text-sm">
+											<span className="text-muted-foreground">
+												USD Equivalent:
+											</span>
+											<span className="font-medium">
+												$
+												{usdEquivalent.toLocaleString("en-US", {
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												})}
+											</span>
+										</div>
+									</div>
+								)}
+							</div>
+							{/* Conditional Interest Rate for Liabilities */}
+							{isLiability && (
+								<FormField
+									control={form.control}
+									name="interestRate"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Interest Rate (APR)</FormLabel>
+											<FormControl>
+												<Input
+													onChange={(e) => {
+														const value =
+															e.target.value === ""
+																? undefined
+																: parseFloat(e.target.value);
+														field.onChange(value);
+													}}
+													placeholder="0.00"
+													step="0.01"
+													type="number"
+													value={field.value ?? ""}
+												/>
+											</FormControl>
+											<FormDescription>
+												Annual percentage rate for this liability.
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
+
+							{/* Liquid Asset Checkbox - simplified */}
 							<FormField
 								control={form.control}
 								name="isLiquid"
 								render={({ field }) => (
-									<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+									<FormItem className="flex flex-row items-start space-x-3 space-y-0">
 										<FormControl>
 											<Checkbox
 												checked={field.value}
@@ -307,8 +456,8 @@ export function AssetDialog({
 										</FormControl>
 										<div className="space-y-1 leading-none">
 											<FormLabel>Liquid Asset</FormLabel>
-											<FormDescription>
-												This asset can be easily converted to cash.
+											<FormDescription className="text-xs">
+												Can be easily converted to cash
 											</FormDescription>
 										</div>
 									</FormItem>
@@ -353,8 +502,9 @@ export function AssetDialog({
 					<DialogHeader>
 						<DialogTitle>Delete Asset</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this asset? This action cannot be
-							undone.
+							This will permanently remove "{form.watch("name") || "this asset"}
+							" from your portfolio. This action cannot be undone and will
+							affect your net worth calculations.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -377,27 +527,3 @@ export function AssetDialog({
 		</>
 	);
 }
-
-/*
-Usage examples:
-
-// Create mode (default)
-<AssetDialog mode="create" />
-
-// Edit mode with initial values
-<AssetDialog
-  mode="edit"
-  assetId="asset-id-here"
-  initialValues={{
-    name: "My Bank Account",
-    type: AssetType.CASH,
-    currency: "USD",
-    balance: 1000,
-    isLiquid: true,
-    exchangeRate: 1.0,
-    exchangeRateType: "manual"
-  }}
-  title="Edit Asset"
-  submitLabel="Update Asset"
-/>
-*/

@@ -24,6 +24,14 @@ import {
 	TooltipTrigger,
 	Tooltip as UITooltip,
 } from "~/components/ui/tooltip";
+import {
+	type BucketSize,
+	formatXAxisTick,
+	generateBucketKeys,
+	getBucketKey,
+	getBucketSize,
+	getBucketStartDate,
+} from "~/lib/chart-granularity";
 import type { CategoryColor } from "~/lib/constants";
 import {
 	convertExpenseAmountForDisplay,
@@ -61,49 +69,59 @@ interface CategoryTrendData {
 		name: string;
 		color: string;
 	};
-	currentMonthTotal: number;
-	sixMonthAverage: number;
+	currentPeriodTotal: number;
+	periodAverage: number;
 	trendData: Array<{
-		month: string;
+		key: string;
+		label: string;
 		amount: number;
 	}>;
 	isTrendingDown: boolean;
 	percentageChange: number;
-	monthOverMonthChange: number;
+	periodOverPeriodChange: number;
 }
 
 interface CategoryTrendsTableProps {
 	expenses: NormalizedExpense[];
 	baseCurrency: string;
 	liveRateToBaseCurrency: number | null;
+	dateRange: { from: Date; to: Date };
 }
 
 export function CategoryTrendsTable({
 	expenses,
 	baseCurrency,
 	liveRateToBaseCurrency,
+	dateRange,
 }: CategoryTrendsTableProps) {
-	const categoryData = useMemo<CategoryTrendData[]>(() => {
-		const now = new Date();
-		const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+	const bucketSize = useMemo(
+		() => getBucketSize(dateRange.from, dateRange.to),
+		[dateRange],
+	);
 
-		// Create a map of categories to their expense data
+	const categoryData = useMemo<CategoryTrendData[]>(() => {
+		// Generate all bucket keys for the date range
+		const bucketKeys = generateBucketKeys(
+			dateRange.from,
+			dateRange.to,
+			bucketSize,
+		);
+
 		const categoryMap = new Map<
 			string,
 			{
 				category: { id: string; name: string; color: string };
-				monthlyTotals: Map<string, number>; // month-year -> total
-				currentMonthTotal: number;
+				bucketTotals: Map<string, number>;
 			}
 		>();
 
 		// Process expenses
 		expenses.forEach((expense) => {
 			if (!expense.category) return;
+			if (expense.date < dateRange.from || expense.date > dateRange.to) return;
 
 			const categoryKey = expense.category.id;
-			const expenseDate = expense.date;
-			const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, "0")}`;
+			const bucketKey = getBucketKey(expense.date, bucketSize);
 			const amount = convertExpenseAmountForDisplay(
 				expense,
 				baseCurrency,
@@ -113,88 +131,95 @@ export function CategoryTrendsTable({
 			if (!categoryMap.has(categoryKey)) {
 				categoryMap.set(categoryKey, {
 					category: expense.category,
-					monthlyTotals: new Map(),
-					currentMonthTotal: 0,
+					bucketTotals: new Map(),
 				});
 			}
 
 			const categoryData = categoryMap.get(categoryKey);
 			if (!categoryData) return;
-			categoryData.monthlyTotals.set(
-				monthKey,
-				(categoryData.monthlyTotals.get(monthKey) || 0) + amount,
+			categoryData.bucketTotals.set(
+				bucketKey,
+				(categoryData.bucketTotals.get(bucketKey) || 0) + amount,
 			);
-
-			// Track current month total
-			if (expenseDate >= currentMonth) {
-				categoryData.currentMonthTotal += amount;
-			}
 		});
 
 		// Convert to array and calculate averages and trends
 		const result: CategoryTrendData[] = Array.from(categoryMap.values())
 			.map((data) => {
-				// Get last 6 months of data
-				const months: string[] = [];
-				for (let i = 5; i >= 0; i--) {
-					const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-					months.push(
-						`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-					);
-				}
+				const trendData = bucketKeys.map((key) => {
+					const bucketDate = getBucketStartDate(key, bucketSize);
+					return {
+						key,
+						label: formatXAxisTick(bucketDate, bucketSize),
+						amount: data.bucketTotals.get(key) || 0,
+					};
+				});
 
-				const trendData = months.map((month) => ({
-					month: month.split("-")[1] ?? "01", // Just show month number
-					amount: data.monthlyTotals.get(month) || 0,
-				}));
-
-				// Calculate 6-month average (only including months with actual expenses)
-				const monthsWithExpenses = trendData.filter((item) => item.amount > 0);
-				const totalOverActiveMonths = monthsWithExpenses.reduce(
+				const periodsWithExpenses = trendData.filter((item) => item.amount > 0);
+				const totalOverActivePeriods = periodsWithExpenses.reduce(
 					(sum, item) => sum + item.amount,
 					0,
 				);
-				const sixMonthAverage =
-					monthsWithExpenses.length > 0
-						? totalOverActiveMonths / monthsWithExpenses.length
+				const periodAverage =
+					periodsWithExpenses.length > 0
+						? totalOverActivePeriods / periodsWithExpenses.length
 						: 0;
 
-				// Calculate percentage change over 6 months
-				const firstMonth = trendData[0]?.amount || 0;
-				const lastMonth = trendData[trendData.length - 1]?.amount || 0;
-				const percentageChange =
-					firstMonth > 0 ? ((lastMonth - firstMonth) / firstMonth) * 100 : 0;
+				// Current period total (last bucket)
+				const currentPeriodTotal = trendData[trendData.length - 1]?.amount || 0;
 
-				// Calculate month-over-month change (current vs previous month)
-				const currentMonth = trendData[trendData.length - 1]?.amount || 0;
-				const previousMonth = trendData[trendData.length - 2]?.amount || 0;
-				const monthOverMonthChange =
-					previousMonth > 0
-						? ((currentMonth - previousMonth) / previousMonth) * 100
+				const firstPeriod = trendData[0]?.amount || 0;
+				const lastPeriod = trendData[trendData.length - 1]?.amount || 0;
+				const percentageChange =
+					firstPeriod > 0
+						? ((lastPeriod - firstPeriod) / firstPeriod) * 100
+						: 0;
+
+				const previousPeriod = trendData[trendData.length - 2]?.amount || 0;
+				const periodOverPeriodChange =
+					previousPeriod > 0
+						? ((currentPeriodTotal - previousPeriod) / previousPeriod) * 100
 						: 0;
 
 				// Determine if trending down (good for spending) - compare first half vs second half
+				const midpoint = Math.floor(trendData.length / 2);
 				const firstHalf =
-					trendData.slice(0, 3).reduce((sum, item) => sum + item.amount, 0) / 3;
+					trendData
+						.slice(0, midpoint)
+						.reduce((sum, item) => sum + item.amount, 0) / (midpoint || 1);
 				const secondHalf =
-					trendData.slice(3, 6).reduce((sum, item) => sum + item.amount, 0) / 3;
+					trendData
+						.slice(midpoint)
+						.reduce((sum, item) => sum + item.amount, 0) /
+					(trendData.length - midpoint || 1);
 				const isTrendingDown = secondHalf < firstHalf;
 
 				return {
 					category: data.category,
-					currentMonthTotal: data.currentMonthTotal,
-					sixMonthAverage: sixMonthAverage,
+					currentPeriodTotal: currentPeriodTotal,
+					periodAverage: periodAverage,
 					trendData,
 					isTrendingDown,
 					percentageChange,
-					monthOverMonthChange,
+					periodOverPeriodChange,
 				};
 			})
-			// Sort by current month total (highest first)
-			.sort((a, b) => b.currentMonthTotal - a.currentMonthTotal);
+			// Sort by current period total (highest first)
+			.sort((a, b) => b.currentPeriodTotal - a.currentPeriodTotal);
 
 		return result;
-	}, [expenses, baseCurrency, liveRateToBaseCurrency]);
+	}, [expenses, dateRange, bucketSize, baseCurrency, liveRateToBaseCurrency]);
+
+	const getPeriodLabel = (bucketSize: BucketSize): string => {
+		switch (bucketSize) {
+			case "day":
+				return "Day";
+			case "week":
+				return "Week";
+			case "month":
+				return "Month";
+		}
+	};
 
 	if (categoryData.length === 0) {
 		return (
@@ -202,7 +227,7 @@ export function CategoryTrendsTable({
 				<div>
 					<h3 className="font-semibold text-lg">Category Trends</h3>
 					<p className="text-muted-foreground text-sm">
-						Monthly spending trends by category
+						Spending trends by category
 					</p>
 				</div>
 				<div className="flex h-[300px] items-center justify-center">
@@ -224,15 +249,14 @@ export function CategoryTrendsTable({
 	const SparklineTooltip = ({
 		active,
 		payload,
-		label,
 	}: TooltipProps<number, string>) => {
 		if (active && payload && payload.length) {
 			const data = payload[0]?.payload;
 			return (
 				<div className="rounded-lg border border-border bg-background p-2 text-xs shadow-md">
-					<div className="font-medium">Month {label}</div>
+					<div className="font-medium">{data?.label}</div>
 					<div className="text-muted-foreground">
-						{formatCurrency(data.amount)}
+						{formatCurrency(data?.amount || 0)}
 					</div>
 				</div>
 			);
@@ -250,142 +274,154 @@ export function CategoryTrendsTable({
 			<div>
 				<h3 className="font-semibold text-lg">Category Trends</h3>
 				<p className="text-muted-foreground text-sm">
-					Monthly spending trends by category
+					{getPeriodLabel(bucketSize)}ly spending trends by category
 				</p>
 			</div>
 
-			<div className="rounded-lg border">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Category</TableHead>
-							<TableHead className="text-right">This Month</TableHead>
-							<TableHead className="text-right">Avg/Month</TableHead>
-							<TooltipProvider>
-								<UITooltip>
-									<TooltipTrigger asChild>
-										<TableHead className="cursor-help text-center">
-											6M Trend
-										</TableHead>
-									</TooltipTrigger>
-									<TooltipContent>
-										<div className="max-w-xs text-sm">
-											<div className="mb-1 font-medium">Trend Analysis</div>
-											<div className="space-y-1 text-xs">
-												<div>
-													<strong>Avg/Month:</strong> Average of months with
-													expenses
-												</div>
-												<div>
-													<strong>Top:</strong> 6-month percentage change
-												</div>
-												<div>
-													<strong>Bottom:</strong> Month-over-month change
-												</div>
-												<div className="text-muted-foreground">
-													Green ↓ = spending decreased (good)
-												</div>
-												<div className="text-muted-foreground">
-													Red ↑ = spending increased
+			<div className="overflow-hidden rounded-lg border">
+				<div className="w-full overflow-x-auto">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead className="min-w-[150px]">Category</TableHead>
+								<TableHead className="text-right">
+									This {getPeriodLabel(bucketSize)}
+								</TableHead>
+								<TableHead className="hidden text-right md:table-cell">
+									Avg/{getPeriodLabel(bucketSize)}
+								</TableHead>
+								<TooltipProvider>
+									<UITooltip>
+										<TooltipTrigger asChild>
+											<TableHead className="cursor-help text-center">
+												Trend
+											</TableHead>
+										</TooltipTrigger>
+										<TooltipContent>
+											<div className="max-w-xs text-sm">
+												<div className="mb-1 font-medium">Trend Analysis</div>
+												<div className="space-y-1 text-xs">
+													<div>
+														<strong>Avg/{getPeriodLabel(bucketSize)}:</strong>{" "}
+														Average of periods with expenses
+													</div>
+													<div>
+														<strong>Top:</strong> Overall percentage change
+													</div>
+													<div>
+														<strong>Bottom:</strong>{" "}
+														{getPeriodLabel(bucketSize)}-over-
+														{getPeriodLabel(bucketSize).toLowerCase()} change
+													</div>
+													<div className="text-muted-foreground">
+														Green ↓ = spending decreased (good)
+													</div>
+													<div className="text-muted-foreground">
+														Red ↑ = spending increased
+													</div>
 												</div>
 											</div>
-										</div>
-									</TooltipContent>
-								</UITooltip>
-							</TooltipProvider>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{categoryData.map((item) => (
-							<TableRow key={item.category.id}>
-								<TableCell>
-									<div className="flex items-center gap-2">
-										<div
-											className="h-3 w-3 flex-shrink-0 rounded-full"
-											style={{
-												backgroundColor:
-													CATEGORY_COLOR_HEX_MAP[
-														item.category.color as CategoryColor
-													] || "#6b7280",
-											}}
-										/>
-										<span className="font-medium">{item.category.name}</span>
-									</div>
-								</TableCell>
-								<TableCell className="text-right font-medium">
-									{formatCurrency(item.currentMonthTotal)}
-								</TableCell>
-								<TableCell className="text-right text-muted-foreground">
-									{formatCurrency(item.sixMonthAverage)}
-								</TableCell>
-								<TableCell className="text-center">
-									<div className="flex items-center justify-center gap-3">
-										{/* Sparkline Chart */}
-										<div className="h-8 w-20">
-											<ResponsiveContainer height="100%" width="100%">
-												<LineChart
-													data={item.trendData}
-													margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
-												>
-													<XAxis dataKey="month" hide />
-													<YAxis domain={["dataMin", "dataMax"]} hide />
-													<Tooltip content={<SparklineTooltip />} />
-													<Line
-														activeDot={{ r: 2 }}
-														dataKey="amount"
-														dot={false}
-														stroke={item.isTrendingDown ? "#16a34a" : "#dc2626"}
-														strokeWidth={1.5}
-														type="monotone"
-													/>
-												</LineChart>
-											</ResponsiveContainer>
-										</div>
-
-										{/* Trend Information */}
-										<div className="flex min-w-0 flex-col items-center gap-1">
-											{/* 6-month trend */}
-											<div
-												className={`font-medium text-xs ${
-													item.percentageChange < 0
-														? "text-green-600"
-														: item.percentageChange > 0
-															? "text-red-600"
-															: "text-muted-foreground"
-												}`}
-											>
-												{item.percentageChange < 0
-													? "↓"
-													: item.percentageChange > 0
-														? "↑"
-														: "→"}
-												{formatPercentage(Math.abs(item.percentageChange))}
-											</div>
-
-											{/* Month-over-month */}
-											<div
-												className={`text-xs ${
-													item.monthOverMonthChange < 0
-														? "text-green-600"
-														: item.monthOverMonthChange > 0
-															? "text-red-600"
-															: "text-muted-foreground"
-												}`}
-											>
-												{item.monthOverMonthChange < 0
-													? "↓"
-													: item.monthOverMonthChange > 0
-														? "↑"
-														: "→"}
-												{formatPercentage(Math.abs(item.monthOverMonthChange))}
-											</div>
-										</div>
-									</div>
-								</TableCell>
+										</TooltipContent>
+									</UITooltip>
+								</TooltipProvider>
 							</TableRow>
-						))}
-					</TableBody>
-				</Table>
+						</TableHeader>
+						<TableBody>
+							{categoryData.map((item) => (
+								<TableRow key={item.category.id}>
+									<TableCell>
+										<div className="flex items-center gap-2">
+											<div
+												className="h-3 w-3 flex-shrink-0 rounded-full"
+												style={{
+													backgroundColor:
+														CATEGORY_COLOR_HEX_MAP[
+															item.category.color as CategoryColor
+														] || "#6b7280",
+												}}
+											/>
+											<span className="font-medium">{item.category.name}</span>
+										</div>
+									</TableCell>
+									<TableCell className="text-right font-medium">
+										{formatCurrency(item.currentPeriodTotal)}
+									</TableCell>
+									<TableCell className="hidden text-right text-muted-foreground md:table-cell">
+										{formatCurrency(item.periodAverage)}
+									</TableCell>
+									<TableCell className="text-center">
+										<div className="flex items-center justify-center gap-3">
+											{/* Sparkline Chart */}
+											<div className="h-8 w-20">
+												<ResponsiveContainer height="100%" width="100%">
+													<LineChart
+														data={item.trendData}
+														margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
+													>
+														<XAxis dataKey="label" hide />
+														<YAxis domain={["dataMin", "dataMax"]} hide />
+														<Tooltip content={<SparklineTooltip />} />
+														<Line
+															activeDot={{ r: 2 }}
+															dataKey="amount"
+															dot={false}
+															stroke={
+																item.isTrendingDown ? "#16a34a" : "#dc2626"
+															}
+															strokeWidth={1.5}
+															type="monotone"
+														/>
+													</LineChart>
+												</ResponsiveContainer>
+											</div>
+
+											{/* Trend Information */}
+											<div className="flex min-w-0 flex-col items-center gap-1">
+												{/* Overall trend */}
+												<div
+													className={`font-medium text-xs ${
+														item.percentageChange < 0
+															? "text-green-600"
+															: item.percentageChange > 0
+																? "text-red-600"
+																: "text-muted-foreground"
+													}`}
+												>
+													{item.percentageChange < 0
+														? "↓"
+														: item.percentageChange > 0
+															? "↑"
+															: "→"}
+													{formatPercentage(Math.abs(item.percentageChange))}
+												</div>
+
+												{/* Period-over-period */}
+												<div
+													className={`text-xs ${
+														item.periodOverPeriodChange < 0
+															? "text-green-600"
+															: item.periodOverPeriodChange > 0
+																? "text-red-600"
+																: "text-muted-foreground"
+													}`}
+												>
+													{item.periodOverPeriodChange < 0
+														? "↓"
+														: item.periodOverPeriodChange > 0
+															? "↑"
+															: "→"}
+													{formatPercentage(
+														Math.abs(item.periodOverPeriodChange),
+													)}
+												</div>
+											</div>
+										</div>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</div>
 			</div>
 		</div>
 	);

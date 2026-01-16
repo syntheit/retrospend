@@ -9,31 +9,31 @@ datasource db {
 }
 
 model User {
-  id                    String                 @id @default(cuid())
-  name                  String                 @db.VarChar(191)
-  username              String                 @unique @db.VarChar(64)
-  email                 String                 @unique @db.VarChar(255)
-  emailVerified         Boolean                @default(false)
-  image                 String?                @db.VarChar(2048)
-  homeCurrency          String                 @default("USD") @db.VarChar(3)
-  categoryClickBehavior CategoryClickBehavior  @default(toggle)
-  budgetMode            BudgetMode             @default(GLOBAL_LIMIT)
-  role                  UserRole               @default(USER)
-  isActive              Boolean                @default(true)
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @default(now()) @updatedAt
-  defaultCurrency       String                 @default("USD") @db.VarChar(3)
-  fontPreference        FontPreference         @default(sans)
-  currencySymbolStyle   CurrencySymbolStyle    @default(standard)
-  monthlyIncome         Decimal?               @db.Decimal(10, 2)
+  id                    String                        @id @default(cuid())
+  name                  String                        @db.VarChar(191)
+  username              String                        @unique @db.VarChar(64)
+  email                 String                        @unique @db.VarChar(255)
+  emailVerified         Boolean                       @default(false)
+  image                 String?                       @db.VarChar(2048)
+  homeCurrency          String                        @default("USD") @db.VarChar(3)
+  categoryClickBehavior CategoryClickBehavior         @default(toggle)
+  budgetMode            BudgetMode                    @default(GLOBAL_LIMIT)
+  role                  UserRole                      @default(USER)
+  isActive              Boolean                       @default(true)
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @default(now()) @updatedAt
+  defaultCurrency       String                        @default("USD") @db.VarChar(3)
+  fontPreference        FontPreference                @default(sans)
+  currencySymbolStyle   CurrencySymbolStyle           @default(standard)
+  monthlyIncome         Decimal?                      @db.Decimal(10, 2)
   accounts              Account[]
   assetAccounts         AssetAccount[]
   categories            Category[]
   favoriteExchangeRates ExchangeRateFavorite[]
   expenses              Expense[]
   budgets               Budget[]
-  createdInviteCodes    InviteCode[]           @relation("CreatedInviteCodes")
-  usedInviteCodes       InviteCode[]           @relation("UsedInviteCodes")
+  createdInviteCodes    InviteCode[]                  @relation("CreatedInviteCodes")
+  usedInviteCodes       InviteCode[]                  @relation("UsedInviteCodes")
   sessions              Session[]
   pageSettings          UserPageSetting[]
   analyticsPreferences  AnalyticsCategoryPreference[]
@@ -112,14 +112,14 @@ model Expense {
 }
 
 model Category {
-  id       String        @id @default(cuid())
-  name     String        @db.VarChar(64)
-  color    CategoryColor
-  userId   String
-  user                   User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses               Expense[]
-  budgets                Budget[]
-  analyticsPreferences   AnalyticsCategoryPreference[]
+  id                   String                        @id @default(cuid())
+  name                 String                        @db.VarChar(64)
+  color                CategoryColor
+  userId               String
+  user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses             Expense[]
+  budgets              Budget[]
+  analyticsPreferences AnalyticsCategoryPreference[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -127,17 +127,18 @@ model Category {
 }
 
 model Budget {
-  id             String   @id @default(cuid())
-  amount         Decimal  @db.Decimal(10, 2)
+  id             String    @id @default(cuid())
+  amount         Decimal   @db.Decimal(10, 2)
+  currency       String    @default("USD") @db.VarChar(3)
   period         DateTime
-  isRollover     Boolean  @default(false)
-  rolloverAmount Decimal  @db.Decimal(10, 2) @default(0)
-  pegToActual    Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isRollover     Boolean   @default(false)
+  rolloverAmount Decimal   @default(0) @db.Decimal(10, 2)
+  pegToActual    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   userId         String
   categoryId     String?
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category       Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([userId, categoryId, period])
@@ -210,11 +211,11 @@ model AssetSnapshot {
 }
 
 model AssetHistory {
-  id          String       @id @default(cuid())
-  assetId     String
-  balance     Decimal      @db.Decimal(19, 8)
-  recordedAt  DateTime     @default(now())
-  asset       AssetAccount @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  id         String       @id @default(cuid())
+  assetId    String
+  balance    Decimal      @db.Decimal(19, 8)
+  recordedAt DateTime     @default(now())
+  asset      AssetAccount @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   @@index([assetId, recordedAt])
   @@map("asset_history")

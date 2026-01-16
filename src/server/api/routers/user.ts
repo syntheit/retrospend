@@ -31,7 +31,6 @@ export const userRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Check if username or email is already taken by another user
 			if (input.username !== session.user.username) {
 				const existingUsername = await db.user.findUnique({
 					where: { username: input.username },
@@ -56,7 +55,6 @@ export const userRouter = createTRPCRouter({
 				}
 			}
 
-			// Update user profile
 			const updatedUser = await db.user.update({
 				where: { id: session.user.id },
 				data: {
@@ -72,7 +70,6 @@ export const userRouter = createTRPCRouter({
 				},
 			});
 
-			// Update password if provided
 			if (input.password?.trim()) {
 				const credentialAccount = await db.account.findFirst({
 					where: {
@@ -119,7 +116,6 @@ export const userRouter = createTRPCRouter({
 	deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
 		const { session, db } = ctx;
 
-		// Delete user account - cascade will handle related records
 		await db.user.delete({
 			where: { id: session.user.id },
 		});
@@ -171,7 +167,6 @@ export const userRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Check if category name already exists for this user
 			const existingCategory = await db.category.findUnique({
 				where: {
 					name_userId: {
@@ -217,7 +212,6 @@ export const userRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Check if another category with this name exists for this user
 			const existingCategory = await db.category.findFirst({
 				where: {
 					name: input.name,
@@ -261,7 +255,6 @@ export const userRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Check if category has expenses
 			const expensesCount = await db.expense.count({
 				where: {
 					categoryId: input.id,
@@ -441,21 +434,55 @@ export const userRouter = createTRPCRouter({
 			const { session, db } = ctx;
 			const { exchangeRateIds } = input;
 
-			await db.$transaction(
-				exchangeRateIds.map((id, index) =>
-					db.exchangeRateFavorite.update({
-						where: {
-							userId_exchangeRateId: {
-								userId: session.user.id,
-								exchangeRateId: id,
+			// To avoid unique constraint violations during reordering,
+			// we first move all existing orders to a temporary negative range,
+			// then set them to their final positions.
+			await db.$transaction(async (tx) => {
+				// 1. Get current favorites to ensure we only update what belongs to the user
+				const favorites = await tx.exchangeRateFavorite.findMany({
+					where: { userId: session.user.id },
+					select: { exchangeRateId: true },
+				});
+
+				const favoriteIds = new Set(favorites.map((f) => f.exchangeRateId));
+				const validIdsToUpdate = exchangeRateIds.filter((id) =>
+					favoriteIds.has(id),
+				);
+
+				// 2. Shift all to temporary negative range to clear the unique "order" slots
+				await Promise.all(
+					validIdsToUpdate.map((id, index) =>
+						tx.exchangeRateFavorite.update({
+							where: {
+								userId_exchangeRateId: {
+									userId: session.user.id,
+									exchangeRateId: id,
+								},
 							},
-						},
-						data: {
-							order: index,
-						},
-					}),
-				),
-			);
+							data: {
+								order: -1 - index,
+							},
+						}),
+					),
+				);
+
+				// 3. Set to final positions
+				await Promise.all(
+					validIdsToUpdate.map((id, index) =>
+						tx.exchangeRateFavorite.update({
+							where: {
+								userId_exchangeRateId: {
+									userId: session.user.id,
+									exchangeRateId: id,
+								},
+							},
+							data: {
+								order: index,
+							},
+						}),
+					),
+				);
+			});
 
 			return { success: true };
 		}),
@@ -696,6 +723,9 @@ export const userRouter = createTRPCRouter({
 				"exchangeRate",
 				"exchangeRateType",
 				"isLiquid",
+				"interestRate",
+				"minimumPayment",
+				"dueDate",
 				"createdAt",
 				"updatedAt",
 			];
@@ -708,6 +738,9 @@ export const userRouter = createTRPCRouter({
 				escapeValue(asset.exchangeRate),
 				escapeValue(asset.exchangeRateType),
 				escapeValue(asset.isLiquid),
+				escapeValue(asset.interestRate),
+				escapeValue(asset.minimumPayment),
+				escapeValue(asset.dueDate),
 				escapeValue(asset.createdAt),
 				escapeValue(asset.updatedAt),
 			]);
@@ -820,6 +853,50 @@ export const userRouter = createTRPCRouter({
 				.map((row) => row.join(","))
 				.join("\n");
 			zip.file("invite_codes.csv", inviteCsv);
+		}
+
+		// 8. Budgets
+		const budgets = await db.budget.findMany({
+			where: { userId: session.user.id },
+			include: {
+				category: {
+					select: {
+						name: true,
+					},
+				},
+			},
+			orderBy: [{ period: "desc" }, { categoryId: "asc" }],
+		});
+
+		if (budgets.length > 0) {
+			const budgetHeader = [
+				"id",
+				"amount",
+				"period",
+				"isRollover",
+				"rolloverAmount",
+				"pegToActual",
+				"categoryId",
+				"categoryName",
+				"createdAt",
+				"updatedAt",
+			];
+			const budgetRows = budgets.map((budget) => [
+				escapeValue(budget.id),
+				escapeValue(budget.amount),
+				escapeValue(budget.period),
+				escapeValue(budget.isRollover),
+				escapeValue(budget.rolloverAmount),
+				escapeValue(budget.pegToActual),
+				escapeValue(budget.categoryId),
+				escapeValue(budget.category?.name),
+				escapeValue(budget.createdAt),
+				escapeValue(budget.updatedAt),
+			]);
+			const budgetCsv = [budgetHeader, ...budgetRows]
+				.map((row) => row.join(","))
+				.join("\n");
+			zip.file("budgets.csv", budgetCsv);
 		}
 
 		// Generate the zip file

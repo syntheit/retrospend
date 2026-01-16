@@ -6,36 +6,28 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import {
+	CATEGORY_COLOR_MAP,
+	COLOR_TO_HEX,
+	VIBRANT_CATEGORY_COLORS,
+} from "~/lib/constants";
+import { cn } from "~/lib/utils";
+import type { BudgetMode } from "~/types/budget-types";
 
 // Helper function to get category color with opacity for striped background
-function getCategoryColorWithOpacity(color: string, opacity: number = 0.8): string {
-	const _COLOR_TO_HEX: Record<string, string> = {
-		emerald: "#059669",
-		blue: "#2563eb",
-		sky: "#0ea5e9",
-		cyan: "#0891b2",
-		teal: "#0d9488",
-		orange: "#ea580c",
-		amber: "#f59e0b",
-		violet: "#7c3aed",
-		pink: "#ec4899",
-		fuchsia: "#c026d3",
-		indigo: "#4f46e5",
-		slate: "#64748b",
-		zinc: "#71717a",
-		lime: "#65a30d",
-		neutral: "#737373",
-		gray: "#6b7280",
-		purple: "#9333ea",
-		yellow: "#eab308",
-		stone: "#78716c",
-		rose: "#f43f5e",
-		red: "#dc2626",
-	};
+function getCategoryColorWithOpacity(
+	color: string,
+	opacity: number = 0.8,
+): string {
+	const colorValue =
+		VIBRANT_CATEGORY_COLORS[color] || COLOR_TO_HEX[color] || "#6b7280";
 
-	const hexColor = _COLOR_TO_HEX[color as keyof typeof _COLOR_TO_HEX] || "#6b7280";
-	// Convert hex to rgba
+	if (colorValue.startsWith("hsl")) {
+		return colorValue.replace("hsl(", "hsla(").replace(")", `, ${opacity})`);
+	}
+
+	// Fallback for hex colors
+	const hexColor = colorValue;
 	const r = parseInt(hexColor.slice(1, 3), 16);
 	const g = parseInt(hexColor.slice(3, 5), 16);
 	const b = parseInt(hexColor.slice(5, 7), 16);
@@ -55,7 +47,7 @@ interface PartitionBarProps {
 	globalLimit: number;
 	categoryBudgets: CategoryBudget[];
 	isMobile: boolean;
-	budgetMode: "GLOBAL_LIMIT" | "SUM_OF_CATEGORIES";
+	budgetMode: BudgetMode;
 }
 
 interface Segment {
@@ -90,7 +82,6 @@ export function PartitionBar({
 				? Math.max(0, globalLimit - totalAllocated)
 				: 0;
 
-		// Create segments for allocated budgets
 		const allocatedSegments: Segment[] = categoryBudgets.map((budget) => ({
 			id: budget.id,
 			name: budget.name,
@@ -101,7 +92,6 @@ export function PartitionBar({
 			isPegged: budget.pegToActual,
 		}));
 
-		// Separate small slices (< 5%) from regular segments
 		const regularSegments: Segment[] = [];
 		const smallSlices: Array<{ name: string; value: number }> = [];
 
@@ -113,13 +103,12 @@ export function PartitionBar({
 			}
 		});
 
-		// Create misc segment if there are small slices
 		if (smallSlices.length > 0) {
 			const miscValue = smallSlices.reduce((sum, item) => sum + item.value, 0);
 			regularSegments.push({
 				id: "misc",
 				name: "Misc/Other",
-				color: "gray", // Use neutral gray for misc
+				color: "gray",
 				percentage: (miscValue / effectiveTotal) * 100,
 				value: miscValue,
 				isMisc: true,
@@ -128,12 +117,11 @@ export function PartitionBar({
 			});
 		}
 
-		// Add unallocated segment
 		if (unallocatedAmount > 0) {
 			regularSegments.push({
 				id: "unallocated",
 				name: "Unallocated",
-				color: "stone", // Dark grey for unallocated space
+				color: "stone",
 				percentage: (unallocatedAmount / effectiveTotal) * 100,
 				value: unallocatedAmount,
 				isMisc: false,
@@ -144,20 +132,22 @@ export function PartitionBar({
 		return regularSegments;
 	}, [globalLimit, categoryBudgets, budgetMode]);
 
-	const getColorClass = (color: string) => {
-		if (color === "stone") return "bg-stone-700";
-		if (color === "gray") return "bg-gray-500";
+	const getColorStyle = (color: string) => {
+		if (color === "stone") return { backgroundColor: "#444" };
+		if (color === "gray") return { backgroundColor: "#6b7280" };
+
+		const colorValue = VIBRANT_CATEGORY_COLORS[color];
+		if (colorValue) return { backgroundColor: colorValue };
+
 		const colorMapping =
 			CATEGORY_COLOR_MAP[color as keyof typeof CATEGORY_COLOR_MAP];
 		if (colorMapping) {
-			// Extract just the background class from the mapping
-			return colorMapping.split(" ")[0];
+			return {};
 		}
-		return "bg-gray-500";
+		return { backgroundColor: "#6b7280" };
 	};
 
 	if (isMobile) {
-		// Mobile: Single capacity bar
 		const _totalAllocated = categoryBudgets.reduce(
 			(sum, budget) => sum + budget.allocatedAmount,
 			0,
@@ -166,8 +156,10 @@ export function PartitionBar({
 			(sum, budget) => sum + budget.actualSpend,
 			0,
 		);
+		const effectiveTotal =
+			budgetMode === "SUM_OF_CATEGORIES" ? _totalAllocated : globalLimit;
 		const capacityPercentage =
-			globalLimit > 0 ? (totalSpent / globalLimit) * 100 : 0;
+			effectiveTotal > 0 ? (totalSpent / effectiveTotal) * 100 : 0;
 
 		return (
 			<div className="w-full">
@@ -195,13 +187,12 @@ export function PartitionBar({
 		);
 	}
 
-	// Desktop: Full partition bar
 	return (
 		<div className="w-full">
 			<div className="relative h-12 w-full overflow-hidden rounded-lg bg-muted">
 				<div className="absolute inset-0 flex">
 					{segments.map((segment, index) => {
-						const colorClass = getColorClass(segment.color);
+						const colorStyle = getColorStyle(segment.color);
 						const isFirst = index === 0;
 						const isLast = index === segments.length - 1;
 
@@ -209,15 +200,17 @@ export function PartitionBar({
 							<Tooltip key={segment.id}>
 								<TooltipTrigger asChild>
 									<div
-										className={`relative h-full transition-all duration-200 hover:opacity-80 cursor-pointer${isFirst ? "rounded-l-lg" : ""}
-											${isLast ? "rounded-r-lg" : ""}
-											${segment.isPegged ? "bg-stripes" : colorClass}
-										`}
+										className={cn(
+											"relative h-full cursor-pointer transition-all duration-200 hover:opacity-80",
+											isFirst && "rounded-l-lg",
+											isLast && "rounded-r-lg",
+										)}
 										style={{
 											width: `${segment.percentage}%`,
+											...(!segment.isPegged ? colorStyle : {}),
 											backgroundColor: segment.isPegged
 												? getCategoryColorWithOpacity(segment.color)
-												: undefined,
+												: colorStyle.backgroundColor,
 											backgroundImage: segment.isPegged
 												? "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.1) 4px, rgba(255,255,255,0.1) 8px)"
 												: undefined,

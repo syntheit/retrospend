@@ -1,5 +1,7 @@
 import {
 	defaultShouldDehydrateQuery,
+	MutationCache,
+	QueryCache,
 	QueryClient,
 } from "@tanstack/react-query";
 import SuperJSON from "superjson";
@@ -22,4 +24,22 @@ export const createQueryClient = () =>
 				deserializeData: SuperJSON.deserialize,
 			},
 		},
+		mutationCache: new MutationCache({
+			onError: (error) => {
+				if (typeof window !== "undefined") {
+					window.dispatchEvent(
+						new CustomEvent("global-error", { detail: error }),
+					);
+				}
+			},
+		}),
+		queryCache: new QueryCache({
+			onError: (error) => {
+				if (typeof window !== "undefined") {
+					window.dispatchEvent(
+						new CustomEvent("global-error", { detail: error }),
+					);
+				}
+			},
+		}),
 	});

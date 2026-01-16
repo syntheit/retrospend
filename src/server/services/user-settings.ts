@@ -1,7 +1,7 @@
 import { z } from "zod";
+import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 import { db } from "~/server/db";
 import type { Page } from "~prisma";
-import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 
 // Zod schemas for settings validation
 export const DashboardSettingsSchema = z.object({
@@ -18,9 +18,12 @@ export const DashboardSettingsSchema = z.object({
 
 export const AnalyticsSettingsSchema = z.object({
 	version: z.literal(1),
-	categoryPreferences: z.record(z.string(), z.object({
-		isFlexible: z.boolean(),
-	})),
+	categoryPreferences: z.record(
+		z.string(),
+		z.object({
+			isFlexible: z.boolean(),
+		}),
+	),
 });
 
 export const BudgetSettingsSchema = z.object({
@@ -88,7 +91,10 @@ export const PageSettingsSchema = z.union([
 ]);
 
 // Default settings for each page
-export const DEFAULT_PAGE_SETTINGS: Record<Page, z.infer<typeof PageSettingsSchema>> = {
+export const DEFAULT_PAGE_SETTINGS: Record<
+	Page,
+	z.infer<typeof PageSettingsSchema>
+> = {
 	DASHBOARD: {
 		version: 1,
 		widgets: {
@@ -163,7 +169,7 @@ export type PageSettings = z.infer<typeof PageSettingsSchema>;
  */
 export async function getPageSettings<T extends Page>(
 	userId: string,
-	page: T
+	page: T,
 ): Promise<PageSettings> {
 	const setting = await db.userPageSetting.findUnique({
 		where: {
@@ -182,7 +188,6 @@ export async function getPageSettings<T extends Page>(
 		const parsed = PageSettingsSchema.parse(setting.settings);
 		return parsed;
 	} catch {
-		// If parsing fails, return defaults
 		return DEFAULT_PAGE_SETTINGS[page];
 	}
 }
@@ -193,9 +198,8 @@ export async function getPageSettings<T extends Page>(
 export async function updatePageSettings<T extends Page>(
 	userId: string,
 	page: T,
-	settings: Partial<PageSettings>
+	settings: Partial<PageSettings>,
 ): Promise<PageSettings> {
-	// Get current settings
 	const currentSettings = await getPageSettings(userId, page);
 
 	// Merge with updates
@@ -249,7 +253,7 @@ export async function getAnalyticsCategoryPreferences(userId: string) {
 export async function updateAnalyticsCategoryPreference(
 	userId: string,
 	categoryId: string,
-	isFlexible: boolean
+	isFlexible: boolean,
 ) {
 	return await db.analyticsCategoryPreference.upsert({
 		where: {
@@ -271,7 +275,7 @@ export async function updateAnalyticsCategoryPreference(
 
 export async function deleteAnalyticsCategoryPreference(
 	userId: string,
-	categoryId: string
+	categoryId: string,
 ) {
 	return await db.analyticsCategoryPreference.deleteMany({
 		where: {
@@ -285,8 +289,8 @@ export async function deleteAnalyticsCategoryPreference(
  * Ensure analytics category preferences exist for a user.
  * If no preferences exist, creates default preferences based on category names.
  */
+
 export async function ensureAnalyticsCategoryPreferences(userId: string) {
-	// Check if preferences already exist
 	const existingPrefs = await getAnalyticsCategoryPreferences(userId);
 	if (existingPrefs.length > 0) {
 		return existingPrefs;
@@ -319,12 +323,11 @@ export async function ensureAnalyticsCategoryPreferences(userId: string) {
 					categoryId,
 					isFlexible,
 				},
-			})
+			}),
 	);
 
 	await Promise.all(upsertPromises);
 
-	// Return the created preferences with category data
 	return await getAnalyticsCategoryPreferences(userId);
 }
 
@@ -332,11 +335,16 @@ export async function ensureAnalyticsCategoryPreferences(userId: string) {
  * Get all category preferences as a map for easy lookup
  * Ensures preferences exist by seeding defaults if needed
  */
-export async function getAnalyticsCategoryPreferenceMap(userId: string): Promise<Record<string, boolean>> {
+export async function getAnalyticsCategoryPreferenceMap(
+	userId: string,
+): Promise<Record<string, boolean>> {
 	await ensureAnalyticsCategoryPreferences(userId);
 	const preferences = await getAnalyticsCategoryPreferences(userId);
-	return preferences.reduce((map, pref) => {
-		map[pref.categoryId] = pref.isFlexible;
-		return map;
-	}, {} as Record<string, boolean>);
+	return preferences.reduce(
+		(map, pref) => {
+			map[pref.categoryId] = pref.isFlexible;
+			return map;
+		},
+		{} as Record<string, boolean>,
+	);
 }

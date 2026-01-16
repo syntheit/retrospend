@@ -3,11 +3,9 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { formatDateOnly } from "~/lib/date";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getBestExchangeRate, sumExpensesForCurrency } from "./shared-currency";
 
 export const expenseRouter = createTRPCRouter({
-
-
-	// Update an expense
 	updateExpense: protectedProcedure
 		.input(
 			z.object({
@@ -88,7 +86,6 @@ export const expenseRouter = createTRPCRouter({
 			return expense;
 		}),
 
-	// Create a new finalized expense
 	createExpense: protectedProcedure
 		.input(
 			z.object({
@@ -128,16 +125,14 @@ export const expenseRouter = createTRPCRouter({
 				if (input.currency === "USD") {
 					exchangeRate = 1;
 				} else {
-					const latestRate = await db.exchangeRate.findFirst({
-						where: {
-							currency: input.currency,
-							date: { lte: input.date },
-						},
-						orderBy: { date: "desc" },
-					});
+					const bestRate = await getBestExchangeRate(
+						db,
+						input.currency,
+						input.date,
+					);
 
-					if (latestRate) {
-						exchangeRate = latestRate.rate.toNumber();
+					if (bestRate) {
+						exchangeRate = bestRate;
 					} else {
 						throw new TRPCError({
 							code: "BAD_REQUEST",
@@ -195,46 +190,60 @@ export const expenseRouter = createTRPCRouter({
 			return expense;
 		}),
 
-	// List all finalized expenses for the current user
-	listFinalized: protectedProcedure.query(async ({ ctx }) => {
-		const { session, db } = ctx;
+	listFinalized: protectedProcedure
+		.input(
+			z
+				.object({
+					from: z.date().optional(),
+					to: z.date().optional(),
+				})
+				.optional(),
+		)
+		.query(async ({ ctx, input }) => {
+			const { session, db } = ctx;
 
-		const expenses = await db.expense.findMany({
-			where: {
-				userId: session.user.id,
-				status: "FINALIZED",
-			},
-			orderBy: {
-				date: "desc",
-			},
-			select: {
-				id: true,
-				title: true,
-				amount: true,
-				currency: true,
-				exchangeRate: true,
-				amountInUSD: true,
-				date: true,
-				location: true,
-				description: true,
-				categoryId: true,
-				category: {
-					select: {
-						id: true,
-						name: true,
-						color: true,
-					},
+			const expenses = await db.expense.findMany({
+				where: {
+					userId: session.user.id,
+					status: "FINALIZED",
+					...(input?.from || input?.to
+						? {
+								date: {
+									...(input?.from ? { gte: input.from } : {}),
+									...(input?.to ? { lte: input.to } : {}),
+								},
+							}
+						: {}),
 				},
-				createdAt: true,
-				updatedAt: true,
-			},
-		});
+				orderBy: {
+					date: "desc",
+				},
+				select: {
+					id: true,
+					title: true,
+					amount: true,
+					currency: true,
+					exchangeRate: true,
+					amountInUSD: true,
+					date: true,
+					location: true,
+					description: true,
+					categoryId: true,
+					category: {
+						select: {
+							id: true,
+							name: true,
+							color: true,
+						},
+					},
+					createdAt: true,
+					updatedAt: true,
+				},
+			});
 
-		return expenses;
-	}),
+			return expenses;
+		}),
 
-
-	// Get a single expense by ID
 	getExpense: protectedProcedure
 		.input(
 			z.object({
@@ -277,7 +286,6 @@ export const expenseRouter = createTRPCRouter({
 			return expense;
 		}),
 
-	// Get expenses for a specific date
 	getExpensesByDate: protectedProcedure
 		.input(
 			z.object({
@@ -331,7 +339,6 @@ export const expenseRouter = createTRPCRouter({
 			return expenses;
 		}),
 
-	// Delete an expense
 	deleteExpense: protectedProcedure
 		.input(
 			z.object({
@@ -358,7 +365,6 @@ export const expenseRouter = createTRPCRouter({
 			return { success: true };
 		}),
 
-	// Export finalized expenses to CSV
 	exportCsv: protectedProcedure
 		.input(
 			z
@@ -435,7 +441,6 @@ export const expenseRouter = createTRPCRouter({
 			return { csv };
 		}),
 
-	// Import expenses from parsed CSV rows
 	importExpenses: protectedProcedure
 		.input(
 			z.object({
@@ -461,7 +466,6 @@ export const expenseRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			// Validate category ownership
 			const categoryIds = Array.from(
 				new Set(
 					input.rows
@@ -530,12 +534,12 @@ export const expenseRouter = createTRPCRouter({
 			z.object({
 				categoryId: z.string().cuid(),
 				month: z.date(),
+				targetCurrency: z.string().length(3).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Verify the category belongs to the user
 			const category = await db.category.findFirst({
 				where: {
 					id: input.categoryId,
@@ -550,7 +554,6 @@ export const expenseRouter = createTRPCRouter({
 				});
 			}
 
-			// Calculate month boundaries
 			const startOfMonth = new Date(
 				input.month.getFullYear(),
 				input.month.getMonth(),
@@ -566,30 +569,21 @@ export const expenseRouter = createTRPCRouter({
 				999,
 			);
 
-			// Get total spending for this category in the month
-			const spending = await db.expense.aggregate({
-				where: {
+			const { total } = await sumExpensesForCurrency(
+				db,
+				{
 					userId: session.user.id,
 					categoryId: input.categoryId,
 					date: {
 						gte: startOfMonth,
 						lte: endOfMonth,
 					},
-					status: "FINALIZED",
 				},
-				_sum: {
-					amountInUSD: true,
-				},
-			});
-
-			const total = spending._sum.amountInUSD ?? 0;
-			const totalAsNumber =
-				typeof total === "object" && total !== null && "toNumber" in total
-					? total.toNumber()
-					: Number(total);
+				input.targetCurrency ?? "USD",
+			);
 
 			return {
-				total: totalAsNumber,
+				total,
 				categoryId: input.categoryId,
 			};
 		}),
@@ -598,12 +592,12 @@ export const expenseRouter = createTRPCRouter({
 		.input(
 			z.object({
 				month: z.date(),
+				targetCurrency: z.string().length(3).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			// Calculate month boundaries
 			const startOfMonth = new Date(
 				input.month.getFullYear(),
 				input.month.getMonth(),
@@ -619,29 +613,20 @@ export const expenseRouter = createTRPCRouter({
 				999,
 			);
 
-			// Get total spending for this month across all categories
-			const spending = await db.expense.aggregate({
-				where: {
+			const { total } = await sumExpensesForCurrency(
+				db,
+				{
 					userId: session.user.id,
 					date: {
 						gte: startOfMonth,
 						lte: endOfMonth,
 					},
-					status: "FINALIZED",
 				},
-				_sum: {
-					amountInUSD: true,
-				},
-			});
-
-			const total = spending._sum.amountInUSD ?? 0;
-			const totalAsNumber =
-				typeof total === "object" && total !== null && "toNumber" in total
-					? total.toNumber()
-					: Number(total);
+				input.targetCurrency ?? "USD",
+			);
 
 			return {
-				total: totalAsNumber,
+				total,
 			};
 		}),
 });

@@ -28,9 +28,9 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { CURRENCIES } from "~/lib/currencies";
 import { cn } from "~/lib/utils";
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { api } from "~/trpc/react";
 
 // Form validation schema
@@ -60,12 +60,6 @@ interface ExpenseFormProps {
 	isModal?: boolean;
 	onClose?: () => void;
 }
-
-// TODO: Implement draft management functionality
-const removeDraft = (expenseId: string) => {
-	// For now, this is a no-op since draft functionality is not implemented
-	console.log(`Draft removal requested for expense ${expenseId}`);
-};
 
 export interface ExpenseFormHandle {
 	hasUnsavedChanges: () => boolean;
@@ -97,7 +91,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 		);
 		const [isCustomRateSet, setIsCustomRateSet] = useState(false);
 
-
 		const { data: expense, isLoading: isLoadingExpense } =
 			api.expense.getExpense.useQuery(
 				{ id: expenseId },
@@ -106,7 +99,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 
 		const utils = api.useUtils();
 		const { data: settings } = api.user.getSettings.useQuery();
-		const { formatCurrency, getCurrencySymbol } = useCurrencyFormatter();
+		const { getCurrencySymbol } = useCurrencyFormatter();
 		const createExpenseMutation = api.expense.createExpense.useMutation({
 			onSuccess: () => {
 				utils.expense.listFinalized.invalidate();
@@ -167,24 +160,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 		const watchedAmount = watch("amount");
 		const watchedExchangeRate = watch("exchangeRate");
 
-		// Populate form with existing expense data when editing
-		useEffect(() => {
-			if (expense && expenseId) {
-				reset({
-					title: expense.title || "",
-					amount: Number(expense.amount),
-					currency: expense.currency,
-					exchangeRate: expense.exchangeRate ? Number(expense.exchangeRate) : undefined,
-					amountInUSD: expense.amountInUSD ? Number(expense.amountInUSD) : undefined,
-					date: new Date(expense.date),
-					location: expense.location || "",
-					description: expense.description || "",
-					categoryId: expense.categoryId || "",
-					pricingSource: expense.pricingSource || "MANUAL",
-				});
-			}
-		}, [expense, expenseId, reset]);
-
 		// Track unsaved changes
 		useEffect(() => {
 			hasUnsavedChangesRef.current = isDirty;
@@ -192,21 +167,22 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 		}, [isDirty]);
 
 		// Recalculate amount when exchange rate changes or amount changes
+		const homeCurrency = settings?.homeCurrency || "USD";
 		useEffect(() => {
-			// Only calculate if currency is NOT USD (Anchor)
-			if (watchedCurrency !== "USD") {
+			// Only calculate if currency is NOT the home currency (Anchor)
+			if (watchedCurrency !== homeCurrency) {
 				if (!watchedAmount) {
-					// When foreign amount is empty or 0, USD amount should also be 0
+					// When foreign amount is empty or 0, home currency amount should also be 0
 					setValue("amountInUSD", 0);
 				} else if (
 					watchedAmount > 0 &&
 					watchedExchangeRate &&
 					watchedExchangeRate > 0
 				) {
-					// amountInUSD = amount / exchangeRate (Foreign/USD)
+					// amountInUSD = amount / exchangeRate (Foreign/Home)
 					const calculatedAmount = watchedAmount / watchedExchangeRate;
 
-					// Round to 2 decimal places for USD
+					// Round to 2 decimal places for home currency
 					const decimalPlaces = 2;
 					const roundedAmount =
 						Math.round(calculatedAmount * 10 ** decimalPlaces) /
@@ -215,11 +191,16 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 					setValue("amountInUSD", roundedAmount);
 				}
 			} else {
-				// If currency is USD, ensure amountInUSD is cleared or same as amount?
-				// Ideally amountInUSD is not needed if currency is USD.
+				// If currency is home currency, ensure amountInUSD is same as amount
 				setValue("amountInUSD", watchedAmount);
 			}
-		}, [watchedAmount, watchedExchangeRate, watchedCurrency, setValue]);
+		}, [
+			watchedAmount,
+			watchedExchangeRate,
+			watchedCurrency,
+			setValue,
+			homeCurrency,
+		]);
 
 		// Load existing expense data
 		useEffect(() => {
@@ -275,7 +256,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			defaultExpenseCurrency,
 		]);
 
-		// Handle navigation warnings (only in page mode)
 		useEffect(() => {
 			if (isModal) return;
 
@@ -333,7 +313,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 
 		const onSubmit = async (
 			data: ExpenseFormData,
-			finalize: boolean = false,
+			_finalize: boolean = false,
 		) => {
 			try {
 				const submitData = {
@@ -351,7 +331,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						...submitData,
 					});
 					toast.success("Changes saved!");
-					reset(getValues()); // Reset form dirty state
+					reset(getValues());
 					hasUnsavedChangesRef.current = false;
 					setHasUnsavedChanges(false);
 					if (isModal) {
@@ -360,14 +340,13 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						router.push("/app");
 					}
 				} else {
-					// Create new expense (always finalized)
 					await createExpenseMutation.mutateAsync({
 						id: expenseId,
 						...submitData,
 					});
 
 					toast.success("Expense saved successfully!");
-					reset(getValues()); // Reset form dirty state
+					reset(getValues());
 					hasUnsavedChangesRef.current = false;
 					setHasUnsavedChanges(false);
 					if (isModal) {
@@ -384,7 +363,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 		const handleDelete = async () => {
 			try {
 				await deleteExpenseMutation.mutateAsync({ id: expenseId });
-				removeDraft(expenseId); // Remove from localStorage
 				toast.success("Expense deleted successfully!");
 				router.push("/app");
 			} catch (_error) {
@@ -470,7 +448,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 
 											// Trigger recalculation of amountInUSD
 											if (
-												watchedCurrency !== "USD" &&
+												watchedCurrency !== (settings?.homeCurrency || "USD") &&
 												watchedExchangeRate &&
 												watchedExchangeRate > 0
 											) {
@@ -483,7 +461,9 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 													10 ** decimalPlaces;
 
 												setValue("amountInUSD", value ? roundedAmount : 0);
-											} else if (watchedCurrency !== "USD") {
+											} else if (
+												watchedCurrency !== (settings?.homeCurrency || "USD")
+											) {
 												// No exchange rate yet, set to 0
 												setValue("amountInUSD", 0);
 											}
@@ -552,26 +532,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							)}
 						</div>
 					</div>
-
-					{/* Hidden exchange rate selector for automatic rate fetching when currencies match */}
-					{watchedCurrency !== "USD" &&
-						watchedCurrency === (settings?.homeCurrency || "USD") && (
-							<div className="hidden">
-								<InlineExchangeRateSelector
-									currency={watchedCurrency}
-									homeCurrency="USD"
-									isCustomSet={isCustomRateSet}
-									mode={true}
-									onCustomCleared={() => setIsCustomRateSet(false)}
-									onCustomSelected={() => setShowCustomRateDialog(true)}
-									onCustomSet={() => setIsCustomRateSet(true)}
-									onValueChange={(value) => {
-										setValue("exchangeRate", value);
-									}}
-									value={watchedExchangeRate}
-								/>
-							</div>
-						)}
 
 					{/* Math Row: Date, Exchange Rate, AmountInUSD */}
 					{watchedCurrency !== (settings?.homeCurrency || "USD") ? (
@@ -844,13 +804,14 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						<DialogHeader>
 							<DialogTitle>Custom Exchange Rate</DialogTitle>
 							<DialogDescription>
-								Enter a custom exchange rate for {watchedCurrency} to USD
+								Enter a custom exchange rate for {watchedCurrency} to{" "}
+								{homeCurrency}
 							</DialogDescription>
 						</DialogHeader>
 						<div className="space-y-3 sm:space-y-4">
 							<div className="space-y-2">
 								<Label htmlFor="custom-rate">
-									Exchange Rate (Foreign per USD)
+									Exchange Rate (Foreign per {homeCurrency})
 								</Label>
 								<Input
 									id="custom-rate"
@@ -885,7 +846,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 									value={watchedExchangeRate || ""}
 								/>
 								<p className="text-muted-foreground text-xs">
-									1 USD ={" "}
+									1 {homeCurrency} ={" "}
 									{watchedExchangeRate
 										? watchedExchangeRate.toLocaleString()
 										: "X"}{" "}
@@ -894,7 +855,9 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="custom-amount-default">Amount in USD</Label>
+								<Label htmlFor="custom-amount-default">
+									Amount in {homeCurrency}
+								</Label>
 								<div
 									className={cn(
 										"flex h-9 w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
@@ -904,7 +867,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 									)}
 								>
 									<span className="shrink-0 font-medium text-muted-foreground">
-										$
+										{getCurrencySymbol(homeCurrency)}
 									</span>
 									<Input
 										id="custom-amount-default"

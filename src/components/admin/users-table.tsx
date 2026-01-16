@@ -65,21 +65,47 @@ export function UsersTable({
 					<CardTitle>Users</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="space-y-4">
-						{Array.from({ length: 5 }).map((_, i) => (
-							<div
-								className="flex items-center space-x-4"
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Username</TableHead>
+								<TableHead>Email</TableHead>
+								<TableHead>Role</TableHead>
+								<TableHead>Status</TableHead>
+								<TableHead className="text-right">Expenses</TableHead>
+								<TableHead className="text-right">Invite Codes</TableHead>
+								<TableHead className="w-[50px]"></TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{Array.from({ length: 5 }).map((_, i) => (
 								// biome-ignore lint/suspicious/noArrayIndexKey: Skeleton items are identical and order won't change
-								key={i}
-							>
-								<Skeleton className="h-10 w-10 rounded-full" />
-								<div className="space-y-2">
-									<Skeleton className="h-4 w-[200px]" />
-									<Skeleton className="h-4 w-[150px]" />
-								</div>
-							</div>
-						))}
-					</div>
+								<TableRow key={i}>
+									<TableCell>
+										<Skeleton className="h-5 w-[100px]" />
+									</TableCell>
+									<TableCell>
+										<Skeleton className="h-5 w-[180px]" />
+									</TableCell>
+									<TableCell>
+										<Skeleton className="h-5 w-[60px]" />
+									</TableCell>
+									<TableCell>
+										<Skeleton className="h-5 w-[60px]" />
+									</TableCell>
+									<TableCell className="text-right">
+										<Skeleton className="ml-auto h-5 w-[30px]" />
+									</TableCell>
+									<TableCell className="text-right">
+										<Skeleton className="ml-auto h-5 w-[30px]" />
+									</TableCell>
+									<TableCell>
+										<Skeleton className="h-8 w-8 rounded-full" />
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
 				</CardContent>
 			</Card>
 		);

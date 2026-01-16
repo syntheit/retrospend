@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -10,9 +10,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
+import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import { cn } from "~/lib/utils";
-import { api } from "~/trpc/react";
 
 type DisplayMode = "default-to-foreign" | "foreign-to-default";
 
@@ -25,12 +24,6 @@ interface ExchangeRateSelectorProps {
 	className?: string;
 }
 
-type RateOption = {
-	type: string;
-	rate: number;
-	label: string;
-};
-
 export function ExchangeRateSelector({
 	currency,
 	homeCurrency,
@@ -42,46 +35,27 @@ export function ExchangeRateSelector({
 	const [selectedRateType, setSelectedRateType] = useState<string>("official");
 	const [customRate, setCustomRate] = useState<string>("");
 
-	const { data: rates, isLoading } =
-		api.exchangeRate.getRatesForCurrency.useQuery(
-			{ currency },
-			{ enabled: !!currency },
-		);
+	// Use ref to avoid stale closure in useEffect
+	const onValueChangeRef = useRef(onValueChange);
+	onValueChangeRef.current = onValueChange;
 
-	// Create rate options with user-friendly labels
-	const rateOptions: RateOption[] = rates
-		? rates.map((rate) => ({
-				type: rate.type,
-				rate: Number(rate.rate),
-				label: getRateTypeLabel(rate.type),
-			}))
-		: [];
+	const { rateOptions, isLoading, getDefaultRate, getRateByType } =
+		useExchangeRates({
+			currency,
+			includeCustomOption: true,
+		});
 
-	// Add custom option
-	rateOptions.push({
-		type: "custom",
-		rate: 0,
-		label: "Custom",
-	});
-
-	// Set default to official if available, otherwise first available
+	// Set default rate on mount
 	useEffect(() => {
-		if (rates && rates.length > 0 && value === undefined) {
-			const officialRate = rates.find((r) => r.type === "official");
-			if (officialRate) {
-				setSelectedRateType("official");
-				onValueChange(Number(officialRate.rate));
-			} else if (rates.length > 0) {
-				const firstRate = rates[0];
-				if (firstRate) {
-					setSelectedRateType(firstRate.type);
-					onValueChange(Number(firstRate.rate));
-				}
+		if (rateOptions.length > 0 && value === undefined) {
+			const defaultRate = getDefaultRate();
+			if (defaultRate) {
+				setSelectedRateType(defaultRate.type);
+				onValueChangeRef.current(defaultRate.rate);
 			}
 		}
-	}, [rates, value, onValueChange]);
+	}, [rateOptions, value, getDefaultRate]);
 
-	// Handle rate type selection
 	const handleRateTypeChange = (type: string) => {
 		setSelectedRateType(type);
 
@@ -93,16 +67,14 @@ export function ExchangeRateSelector({
 			);
 		} else {
 			// Predefined rate
-			const selectedRate = rateOptions.find((option) => option.type === type);
+			const selectedRate = getRateByType(type);
 			if (selectedRate) {
 				onValueChange(selectedRate.rate);
-				// Update custom rate display to match selected rate for reference
 				setCustomRate(selectedRate.rate.toString());
 			}
 		}
 	};
 
-	// Handle custom rate input change
 	const handleCustomRateChange = (inputValue: string) => {
 		setCustomRate(inputValue);
 		const numericValue = inputValue.trim() ? parseFloat(inputValue) : undefined;

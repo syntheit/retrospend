@@ -1,28 +1,28 @@
 "use client";
 
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { Plus } from "lucide-react";
+import { Button } from "~/components/ui/button";
 import { AssetDialog } from "./asset-dialog";
 
-interface WealthHeaderProps {
-	totalNetWorth: number;
-}
-
-export function WealthHeader({ totalNetWorth }: WealthHeaderProps) {
-	const { formatCurrency } = useCurrencyFormatter();
-
+export function WealthHeader({ hideAddButton }: { hideAddButton?: boolean }) {
 	return (
-		<div className="flex items-center justify-between space-y-2">
-			<div>
-				<div className="flex items-baseline space-x-2">
-					<span className="font-bold text-4xl">
-						{formatCurrency(totalNetWorth, "USD")}
-					</span>
-					<span className="text-muted-foreground text-sm">Net Worth (USD)</span>
-				</div>
+		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex items-center gap-4">
+				<h1 className="font-bold text-2xl tracking-tight">Wealth</h1>
 			</div>
-			<div className="flex items-center space-x-2">
-				<AssetDialog mode="create" />
-			</div>
+
+			{/* Primary Action */}
+			{!hideAddButton && (
+				<AssetDialog
+					mode="create"
+					trigger={
+						<Button>
+							<Plus className="mr-2 h-4 w-4" />
+							Add Asset
+						</Button>
+					}
+				/>
+			)}
 		</div>
 	);
 }

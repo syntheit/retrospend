@@ -7,23 +7,26 @@ import {
 	IconChevronsLeft,
 	IconChevronsRight,
 	IconChevronUp,
+	IconSearch,
+	IconX,
 } from "@tabler/icons-react";
 import {
-	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
+	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import type { z } from "zod";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
+import { useExpenseModal } from "~/components/expense-modal-provider";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
 	Select,
@@ -42,11 +45,9 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { z } from "zod";
 import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 import { api } from "~/trpc/react";
-import { createExpenseColumns, expenseSchema } from "./data-table-columns";
-
+import { createExpenseColumns, type expenseSchema } from "./data-table-columns";
 
 export function DataTable({
 	data,
@@ -69,6 +70,9 @@ export function DataTable({
 	const { openExpense } = useExpenseModal();
 	const { formatCurrency } = useCurrencyFormatter();
 	const exportMutation = api.expense.exportCsv.useMutation();
+	const [searchInput, setSearchInput] = React.useState("");
+	const deferredSearch = React.useDeferredValue(searchInput);
+
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{
 			id: "date",
@@ -79,6 +83,15 @@ export function DataTable({
 		pageIndex: 0,
 		pageSize: 15,
 	});
+
+	// Reset pagination to page 1 when search changes
+	React.useEffect(() => {
+		// Use the value to satisfy lint rules while triggering the effect
+		if (deferredSearch !== undefined) {
+			setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+		}
+	}, [deferredSearch]);
+
 	const [hoveredColumn, setHoveredColumn] = React.useState<string | null>(null);
 
 	// Internal Selection Handlers
@@ -171,12 +184,15 @@ export function DataTable({
 		state: {
 			sorting,
 			pagination,
+			globalFilter: deferredSearch,
 		},
 		onSortingChange: setSorting,
 		onPaginationChange: setPagination,
+		onGlobalFilterChange: (value) => setSearchInput(value ?? ""),
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 		getSortedRowModel: getSortedRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
 	});
 
 	// Expose pagination + sorting state for effect dependencies (table ref is stable)
@@ -213,37 +229,72 @@ export function DataTable({
 	const totals = React.useMemo(() => {
 		let localPriceTotal = 0;
 		let defaultPriceTotal = 0;
+		const foreignCurrencies = new Set<string>();
 
 		paginationRows.forEach((row) => {
-			const { amount, currency, exchangeRate, amountInUSD } = row.original;
+			const { amount, currency, exchangeRate } = row.original;
 
 			// Add to local price total if it's a foreign currency expense
 			if (currency !== "USD" && exchangeRate) {
 				localPriceTotal += amount;
+				foreignCurrencies.add(currency);
 			}
 
 			// Add to default price total
-			const displayAmount = amountInUSD || (currency === "USD" ? amount : 0);
+			// We calculate this using the same conversion logic as the column itself
+			// to ensure the total matches the sum of the visible "Amount (Currency)" column
+			const displayAmount = convertExpenseAmountForDisplay(
+				row.original,
+				homeCurrency,
+				liveRateToBaseCurrency ?? null,
+			);
 			defaultPriceTotal += displayAmount;
 		});
 
-		return { localPriceTotal, defaultPriceTotal };
-	}, [paginationRows]);
+		// If we have mixed foreign currencies, the total is meaningless
+		const uniqueForeignCurrency =
+			foreignCurrencies.size === 1 ? Array.from(foreignCurrencies)[0] : null;
+
+		return {
+			localPriceTotal: uniqueForeignCurrency ? localPriceTotal : 0,
+			defaultPriceTotal,
+			localCurrencyCode: uniqueForeignCurrency,
+		};
+	}, [paginationRows, homeCurrency, liveRateToBaseCurrency]);
 
 	return (
 		<div className="w-full space-y-4">
-			<div className="relative max-h-[48rem] overflow-auto rounded-lg border">
+			<div className="relative w-full max-w-sm">
+				<IconSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+				<Input
+					className="pl-9 pr-9"
+					onChange={(e) => setSearchInput(e.target.value)}
+					placeholder="Search expenses..."
+					value={searchInput}
+				/>
+				{searchInput && (
+					<button
+						className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+						onClick={() => setSearchInput("")}
+						type="button"
+					>
+						<IconX className="h-4 w-4" />
+					</button>
+				)}
+			</div>
+
+			<div className="relative max-h-[48rem] overflow-x-auto overflow-y-auto rounded-lg border">
 				<DataTableSelectionBar
-					selectedRows={selectedRows}
-					headerHeight={headerHeight}
 					exportMutation={exportMutation}
-					onSelectAll={handleSelectAll}
-					onExportSelected={handleExportSelected}
+					headerHeight={headerHeight}
+					onDeleteSelected={onDeleteSelected}
 					onEditSelected={(id) => {
 						openExpense(id);
 						onSelectionChange?.(new Set());
 					}}
-					onDeleteSelected={onDeleteSelected}
+					onExportSelected={handleExportSelected}
+					onSelectAll={handleSelectAll}
+					selectedRows={selectedRows}
 				/>
 
 				<Table>
@@ -366,10 +417,13 @@ export function DataTable({
 							</TableCell>
 							{hasForeignCurrencyExpenses && (
 								<TableCell className="px-4 py-3 text-right font-semibold">
-									{totals.localPriceTotal > 0 && (
+									{totals.localPriceTotal > 0 && totals.localCurrencyCode && (
 										<div className="text-right">
 											<span className="font-medium">
-												{formatCurrency(totals.localPriceTotal)}
+												{formatCurrency(
+													totals.localPriceTotal,
+													totals.localCurrencyCode,
+												)}
 											</span>
 										</div>
 									)}

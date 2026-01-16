@@ -1,6 +1,7 @@
 "use client";
 
 import { Github, Globe } from "lucide-react";
+import { BudgetImportExportCard } from "~/components/budget-import-export-card";
 import { CsvImportExportCard } from "~/components/csv-import-export-card";
 import { PageContent } from "~/components/page-content";
 import { RateSyncControl } from "~/components/rate-sync-control";
@@ -17,6 +18,7 @@ export default function Page() {
 				<div className="mx-auto w-full max-w-4xl space-y-6">
 					<SettingsForm />
 					<CsvImportExportCard />
+					<BudgetImportExportCard />
 					<RateSyncControl />
 
 					{/* About Card */}

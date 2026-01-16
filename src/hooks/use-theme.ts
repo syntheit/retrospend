@@ -23,16 +23,12 @@ export function useTheme() {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
-		// After hydration, get the actual theme
-		const actualTheme = getInitialTheme();
-		setTheme(actualTheme);
+		setTheme(getInitialTheme());
 		setMounted(true);
 	}, []);
 
 	useEffect(() => {
 		if (!mounted) return;
-
-		// Only save to localStorage after hydration
 		localStorage.setItem("theme", theme);
 	}, [theme, mounted]);
 

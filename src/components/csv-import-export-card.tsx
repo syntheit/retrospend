@@ -52,7 +52,9 @@ export function CsvImportExportCard() {
 			URL.revokeObjectURL(url);
 			toast.success("CSV exported");
 		} catch (error: unknown) {
-			toast.error(error instanceof Error ? error.message : "Failed to export CSV");
+			toast.error(
+				error instanceof Error ? error.message : "Failed to export CSV",
+			);
 		}
 	};
 
@@ -113,10 +115,11 @@ export function CsvImportExportCard() {
 				`Loaded ${result.rows.length} row${result.rows.length === 1 ? "" : "s"} for import`,
 			);
 		} catch (error: unknown) {
-			setParseError(error instanceof Error ? error.message : "Failed to read CSV file.");
+			setParseError(
+				error instanceof Error ? error.message : "Failed to read CSV file.",
+			);
 			setPreviewData([]);
 		} finally {
-			// Allow re-uploading the same file
 			if (fileInputRef.current) {
 				fileInputRef.current.value = "";
 			}
@@ -132,11 +135,7 @@ export function CsvImportExportCard() {
 				currency: expense.currency,
 				date: expense.date,
 				exchangeRate: expense.exchangeRate ?? undefined,
-				amountInUSD:
-					expense.amountInUSD ??
-					(expense.currency === "USD" && expense.exchangeRate
-						? expense.amount
-						: undefined),
+				amountInUSD: expense.amountInUSD ?? undefined,
 				location: expense.location,
 				description: expense.description,
 				categoryId: expense.categoryId ?? undefined,
@@ -149,7 +148,9 @@ export function CsvImportExportCard() {
 			);
 			setPreviewData([]);
 		} catch (error: unknown) {
-			toast.error(error instanceof Error ? error.message : "Failed to import expenses");
+			toast.error(
+				error instanceof Error ? error.message : "Failed to import expenses",
+			);
 		}
 	};
 

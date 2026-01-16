@@ -7,6 +7,49 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+/**
+ * Safely converts a value to a number, handling Prisma Decimal objects.
+ * Returns undefined if the value is null/undefined or not convertible.
+ */
+export function toNumber(value: unknown): number | undefined {
+	if (value === null || value === undefined) {
+		return undefined;
+	}
+	if (typeof value === "number") {
+		return value;
+	}
+	if (
+		typeof value === "object" &&
+		"toNumber" in value &&
+		typeof (value as { toNumber: () => number }).toNumber === "function"
+	) {
+		return (value as { toNumber: () => number }).toNumber();
+	}
+	const parsed = Number(value);
+	return Number.isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * Safely converts a value to a number with a default of 0.
+ * Useful for required number fields that should never be null/undefined.
+ */
+export function toNumberWithDefault(value: unknown): number {
+	const result = toNumber(value);
+	return result ?? 0;
+}
+
+/**
+ * Safely converts a value to a number, returning null for null/undefined.
+ * Useful for optional number fields that should preserve null values.
+ */
+export function toNumberOrNull(value: unknown): number | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	const result = toNumber(value);
+	return result ?? null;
+}
+
 export function getCurrencySymbol(
 	currency: string,
 	useNativeForDefault = false,
@@ -88,17 +131,6 @@ export function formatCurrency(
 
 	// Combine symbol and number
 	return `${symbol}${formattedNumber}`;
-}
-
-/**
- * @deprecated Use formatCurrency instead. This function manually adds symbols which can cause duplication.
- */
-export function formatCurrencyAmount(amount: number, currency = "USD"): string {
-	const symbol = getCurrencySymbol(currency);
-	return `${symbol}${new Intl.NumberFormat("en-US", {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	}).format(amount)}`;
 }
 
 /**
@@ -225,23 +257,19 @@ export function normalizeExpenses(expenses: RawExpense[]): NormalizedExpense[] {
  * Helper to normalize expenses from API responses that may contain Prisma Decimal types.
  * Safely converts Decimal objects to plain numbers before normalization.
  */
-export function normalizeExpensesFromApi(expenses: any[]): NormalizedExpense[] {
+export function normalizeExpensesFromApi(
+	expenses: unknown[],
+): NormalizedExpense[] {
 	return normalizeExpenses(
-		expenses.map((expense) => ({
-			...expense,
-			amount:
-				typeof expense.amount?.toNumber === "function"
-					? expense.amount.toNumber()
-					: Number(expense.amount),
-			exchangeRate:
-				typeof expense.exchangeRate?.toNumber === "function"
-					? expense.exchangeRate.toNumber()
-					: Number(expense.exchangeRate) || null,
-			amountInUSD:
-				typeof expense.amountInUSD?.toNumber === "function"
-					? expense.amountInUSD.toNumber()
-					: Number(expense.amountInUSD) || null,
-		})),
+		expenses.map((e) => {
+			const expense = e as Record<string, unknown>;
+			return {
+				...expense,
+				amount: toNumberWithDefault(expense.amount),
+				exchangeRate: toNumberOrNull(expense.exchangeRate),
+				amountInUSD: toNumberOrNull(expense.amountInUSD),
+			} as RawExpense;
+		}),
 	);
 }
 
@@ -255,6 +283,7 @@ export interface RawAsset {
 	currency: string;
 	balance: number;
 	balanceInUSD: number;
+	balanceInTargetCurrency?: number;
 	exchangeRate: string | number | null; // Decimal | null from Prisma
 	exchangeRateType: string | null;
 	isLiquid: boolean;
@@ -270,6 +299,7 @@ export interface NormalizedAsset {
 	currency: string;
 	balance: number;
 	balanceInUSD: number;
+	balanceInTargetCurrency: number;
 	exchangeRate?: number;
 	exchangeRateType?: string;
 	isLiquid: boolean;
@@ -285,6 +315,8 @@ export function normalizeAsset(asset: RawAsset): NormalizedAsset {
 		...rest,
 		exchangeRate: asset.exchangeRate ? Number(asset.exchangeRate) : undefined,
 		exchangeRateType: exchangeRateType || undefined,
+		balanceInTargetCurrency:
+			asset.balanceInTargetCurrency ?? asset.balanceInUSD,
 	};
 }
 
@@ -335,6 +367,11 @@ export function convertExpenseAmountForDisplay(
 ): number {
 	if (!expense.amountInUSD) {
 		// Fallback to original amount if no USD amount (shouldn't happen per user)
+		return expense.amount;
+	}
+
+	// Check if target currency matches expense currency first to avoid floating point errors
+	if (targetCurrency === expense.currency) {
 		return expense.amount;
 	}
 

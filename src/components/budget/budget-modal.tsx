@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Lock, LockOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
 	Dialog,
@@ -13,23 +14,17 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import type { Budget, Category } from "~/types/budget-types";
 import { QuickChips } from "./quick-chips";
 
 interface BudgetModalProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode: "add" | "edit";
-	category: {
-		id: string;
-		name: string;
-		color: string;
-	};
-	budget?: {
-		id: string;
-		amount: number;
-		pegToActual: boolean;
-	};
+	category: Category;
+	budget?: Pick<Budget, "id" | "amount" | "currency" | "pegToActual">;
 	selectedMonth: Date;
 	homeCurrency: string;
 }
@@ -49,7 +44,6 @@ export function BudgetModal({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	// Reset form when modal opens
 	useEffect(() => {
 		if (open) {
 			setAmount(budget?.amount?.toString() || "");
@@ -66,9 +60,12 @@ export function BudgetModal({
 		}
 	}, [open, budget]);
 
+	// Use budget's currency when editing, homeCurrency when adding
+	const budgetCurrency = budget?.currency ?? homeCurrency;
+
 	// Get suggestions for quick chips (only when editing existing budgets)
 	const { data: suggestions } = api.budget.getBudgetSuggestions.useQuery(
-		{ categoryId: category.id },
+		{ categoryId: category.id, currency: budgetCurrency },
 		{ enabled: open && mode === "edit" },
 	);
 
@@ -76,13 +73,12 @@ export function BudgetModal({
 		onSuccess: () => {
 			setIsSubmitting(false);
 			onOpenChange(false);
-			// Invalidate the budgets query to refresh the UI
 			queryClient.invalidateQueries({
 				queryKey: [["budget", "getBudgets"]],
 			});
 		},
 		onError: (error) => {
-			console.error("Failed to save budget:", error);
+			toast.error(error.message || "Failed to save budget");
 			setIsSubmitting(false);
 		},
 	});
@@ -100,6 +96,7 @@ export function BudgetModal({
 		upsertBudget.mutate({
 			categoryId: category.id,
 			amount: amountValue,
+			currency: budgetCurrency,
 			period: selectedMonth,
 			pegToActual: isPegged,
 		});
@@ -137,7 +134,7 @@ export function BudgetModal({
 						</Label>
 						<div className="relative">
 							<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
-								$
+								{getCurrencySymbol(budgetCurrency)}
 							</span>
 							<Input
 								className="pl-6"

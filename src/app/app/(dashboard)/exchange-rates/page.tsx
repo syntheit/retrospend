@@ -1,7 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { ExchangeRatesTable } from "~/components/exchange-rates-table";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
@@ -9,7 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
+function PageLayout({ children }: { children: React.ReactNode }) {
+	return (
+		<>
+			<SiteHeader title="Exchange Rates" />
+			<PageContent>{children}</PageContent>
+		</>
+	);
+}
+
 export default function Page() {
+	const utils = api.useUtils();
+
 	const {
 		data: exchangeRates,
 		isLoading,
@@ -22,21 +34,23 @@ export default function Page() {
 		data: favoriteExchangeRates,
 		error: favoriteRatesError,
 		isLoading: favoritesLoading,
-		refetch: refetchFavoriteRates,
 	} = api.user.getFavoriteExchangeRates.useQuery(undefined, {
 		enabled: Boolean(session?.user),
 	});
 
 	const reorderFavoritesMutation = api.user.reorderFavorites.useMutation({
 		onSuccess: () => {
-			void refetchFavoriteRates();
+			void utils.user.getFavoriteExchangeRates.invalidate();
 		},
 	});
 
 	const toggleFavoriteMutation =
 		api.user.toggleFavoriteExchangeRate.useMutation({
 			onSuccess: () => {
-				void refetchFavoriteRates();
+				void utils.user.getFavoriteExchangeRates.invalidate();
+			},
+			onError: () => {
+				toast.error("Failed to update favorite");
 			},
 		});
 
@@ -46,9 +60,7 @@ export default function Page() {
 	);
 
 	const ratesWithFavorites = useMemo(() => {
-		if (!exchangeRates) {
-			return [];
-		}
+		if (!exchangeRates) return [];
 
 		return exchangeRates.map((rate) => ({
 			...rate,
@@ -63,136 +75,105 @@ export default function Page() {
 			...f.rate,
 			rate: Number(f.rate.rate),
 			isFavorite: true,
-			// Preserve order from getFavoriteExchangeRates which is sorted by order
 		}));
 	}, [favoriteExchangeRates]);
 
 	const handleReorder = useCallback(
 		(ids: string[]) => {
-			// Optimistically update or just trigger mutation
-			void reorderFavoritesMutation.mutateAsync({ exchangeRateIds: ids });
+			reorderFavoritesMutation.mutate({ exchangeRateIds: ids });
 		},
 		[reorderFavoritesMutation],
 	);
 
-	const [activeTab, setActiveTab] = useState<"favorites" | "all">("favorites");
-	const [initialTabSet, setInitialTabSet] = useState(false);
-
-	useEffect(() => {
-		if (initialTabSet || favoritesLoading) {
-			return;
-		}
-
-		setActiveTab(favoriteRates.length > 0 ? "favorites" : "all");
-		setInitialTabSet(true);
-	}, [favoriteRates.length, favoritesLoading, initialTabSet]);
+	const [activeTab, setActiveTab] = useState<"favorites" | "all">(
+		!favoritesLoading && favoriteRates.length > 0 ? "favorites" : "all",
+	);
 
 	const handleToggleFavorite = useCallback(
 		async (exchangeRateId: string) => {
-			try {
-				await toggleFavoriteMutation.mutateAsync({ exchangeRateId });
-			} catch (_err) {
-				// Failed to toggle favorite silently
-			}
+			await toggleFavoriteMutation.mutateAsync({ exchangeRateId });
 		},
 		[toggleFavoriteMutation],
 	);
 
 	if (isLoading) {
 		return (
-			<>
-				<SiteHeader title="Exchange Rates" />
-				<PageContent>
-					<div>
-						<div className="flex h-64 items-center justify-center">
-							<div className="text-muted-foreground">
-								Loading exchange rates...
-							</div>
-						</div>
-					</div>
-				</PageContent>
-			</>
+			<PageLayout>
+				<div className="flex h-64 items-center justify-center">
+					<div className="text-muted-foreground">Loading exchange rates...</div>
+				</div>
+			</PageLayout>
 		);
 	}
 
 	if (error) {
 		return (
-			<>
-				<SiteHeader title="Exchange Rates" />
-				<PageContent>
-					<div>
-						<div className="flex h-64 items-center justify-center">
-							<div className="text-destructive">
-								Error loading exchange rates: {error.message}
-							</div>
-						</div>
+			<PageLayout>
+				<div className="flex h-64 items-center justify-center">
+					<div className="text-destructive">
+						Error loading exchange rates: {error.message}
 					</div>
-				</PageContent>
-			</>
+				</div>
+			</PageLayout>
 		);
 	}
 
 	return (
-		<>
-			<SiteHeader title="Exchange Rates" />
-			<PageContent>
-				<div className="mx-auto w-full max-w-4xl space-y-6">
-					<div className="text-muted-foreground text-sm">
-						{lastSync ? (
-							<>
-								Last updated {format(lastSync, "MMMM dd, yyyy 'at' HH:mm")}
-								{" • "}
-								Exchange rates are automatically synced daily. All rates are
-								relative to USD (1 USD = X units of currency).
-							</>
+		<PageLayout>
+			<div className="mx-auto w-full max-w-4xl space-y-6">
+				<div className="text-muted-foreground text-sm">
+					{lastSync ? (
+						<>
+							Last updated {format(lastSync, "MMMM dd, yyyy 'at' HH:mm")}
+							{" • "}
+							Exchange rates are automatically synced daily. All rates are
+							relative to USD (1 USD = X units of currency).
+						</>
+					) : (
+						"Exchange rates are automatically synced daily. All rates are relative to USD (1 USD = X units of currency)."
+					)}
+				</div>
+				<Tabs
+					className="space-y-4"
+					onValueChange={(value) => setActiveTab(value as "favorites" | "all")}
+					value={activeTab}
+				>
+					<TabsList>
+						<TabsTrigger value="favorites">Favorites</TabsTrigger>
+						<TabsTrigger value="all">All Currencies</TabsTrigger>
+					</TabsList>
+					<TabsContent value="favorites">
+						{favoritesLoading ? (
+							<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
+								Loading favorites...
+							</div>
+						) : favoriteRates.length === 0 ? (
+							<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
+								No favorites yet. Tap the heart icon on any currency under All
+								Currencies to pin it here.
+							</div>
 						) : (
-							"Exchange rates are automatically synced daily. All rates are relative to USD (1 USD = X units of currency)."
-						)}
-					</div>
-					<Tabs
-						className="space-y-4"
-						onValueChange={(value) =>
-							setActiveTab(value as "favorites" | "all")
-						}
-						value={activeTab}
-					>
-						<TabsList>
-							<TabsTrigger value="favorites">Favorites</TabsTrigger>
-							<TabsTrigger value="all">All Currencies</TabsTrigger>
-						</TabsList>
-						<TabsContent value="favorites">
-							{favoritesLoading ? (
-								<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
-									Loading favorites...
-								</div>
-							) : favoriteRates.length === 0 ? (
-								<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
-									No favorites yet. Tap the heart icon on any currency under All
-									Currencies to pin it here.
-								</div>
-							) : (
-								<ExchangeRatesTable
-									data={favoriteRates}
-									isReorderable={true}
-									onReorder={handleReorder}
-									onToggleFavorite={handleToggleFavorite}
-								/>
-							)}
-							{favoriteRatesError && (
-								<div className="text-destructive text-sm">
-									Error loading favorites: {favoriteRatesError.message}
-								</div>
-							)}
-						</TabsContent>
-						<TabsContent value="all">
 							<ExchangeRatesTable
-								data={ratesWithFavorites}
+								data={favoriteRates}
+								isReorderable={true}
+								onReorder={handleReorder}
 								onToggleFavorite={handleToggleFavorite}
 							/>
-						</TabsContent>
-					</Tabs>
-				</div>
-			</PageContent>
-		</>
+						)}
+						{favoriteRatesError && (
+							<div className="text-destructive text-sm">
+								Error loading favorites: {favoriteRatesError.message}
+							</div>
+						)}
+					</TabsContent>
+					<TabsContent value="all">
+						<ExchangeRatesTable
+							data={ratesWithFavorites}
+							onToggleFavorite={handleToggleFavorite}
+						/>
+					</TabsContent>
+				</Tabs>
+			</div>
+		</PageLayout>
 	);
 }

@@ -9,7 +9,6 @@ import {
 } from "~/server/api/trpc";
 
 export const exchangeRateRouter = createTRPCRouter({
-	// Get the timestamp of the most recent exchange rate sync
 	getLastSync: publicProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
@@ -25,7 +24,6 @@ export const exchangeRateRouter = createTRPCRouter({
 		return lastSync?.createdAt || null;
 	}),
 
-	// Get available exchange rates for a specific currency
 	getRatesForCurrency: publicProcedure
 		.input(
 			z.object({
@@ -51,7 +49,6 @@ export const exchangeRateRouter = createTRPCRouter({
 			return rates;
 		}),
 
-	// Get all exchange rates (optionally filtered and limited)
 	getAllRates: publicProcedure
 		.input(
 			z
@@ -86,12 +83,10 @@ export const exchangeRateRouter = createTRPCRouter({
 			return rates;
 		}),
 
-	// Manually trigger exchange rate sync
 	syncNow: protectedProcedure.mutation(async ({ ctx }) => {
 		const { db, session } = ctx;
 		const MIN_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
-		// Admins can bypass the rate limit
 		const isAdmin = session.user.role === "ADMIN";
 
 		if (!isAdmin) {

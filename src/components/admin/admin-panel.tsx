@@ -18,7 +18,6 @@ import { ActionDialog } from "./action-dialog";
 import { InviteCodesTable } from "./invite-codes-table";
 import { UsersTable } from "./users-table";
 
-// Extend the session user type to include additional fields
 type ExtendedUser = NonNullable<
 	ReturnType<typeof useSession>["data"]
 >["user"] & {
@@ -46,6 +45,13 @@ export function AdminPanel() {
 		newPassword: string;
 	} | null>(null);
 
+	// Pagination and filtering state for invite codes
+	const [inviteCodesStatus, setInviteCodesStatus] = useState<"active" | "used">(
+		"active",
+	);
+	const [inviteCodesPage, setInviteCodesPage] = useState(1);
+	const inviteCodesPageSize = 10;
+
 	const { data: session } = useSession();
 	const extendedUser = session?.user as ExtendedUser;
 	const isAdmin = extendedUser?.role === "ADMIN";
@@ -57,13 +63,22 @@ export function AdminPanel() {
 	} = api.admin.listUsers.useQuery(undefined, {
 		enabled: isAdmin,
 	});
+
 	const {
-		data: inviteCodes,
+		data: inviteCodesData,
 		isLoading: inviteCodesLoading,
 		refetch: refetchInviteCodes,
-	} = api.invite.list.useQuery(undefined, {
-		enabled: isAdmin,
-	});
+	} = api.invite.list.useQuery(
+		{
+			status: inviteCodesStatus,
+			page: inviteCodesPage,
+			pageSize: inviteCodesPageSize,
+		},
+		{
+			enabled: isAdmin,
+		},
+	);
+
 	const { data: settings, refetch: refetchSettings } =
 		api.admin.getSettings.useQuery(undefined, {
 			enabled: isAdmin,
@@ -165,6 +180,28 @@ export function AdminPanel() {
 		}
 	};
 
+	const handleToggleUserInvites = async (enabled: boolean) => {
+		try {
+			await updateSettingsMutation.mutateAsync({
+				inviteOnlyEnabled: settings?.inviteOnlyEnabled ?? false,
+				allowAllUsersToGenerateInvites: enabled,
+			});
+			toast.success(
+				`User invite code generation ${enabled ? "enabled" : "disabled"}`,
+			);
+			refetchSettings();
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Failed to update settings";
+			toast.error(message);
+		}
+	};
+
+	const handleInviteCodesStatusChange = (newStatus: "active" | "used") => {
+		setInviteCodesStatus(newStatus);
+		setInviteCodesPage(1);
+	};
+
 	const getDialogContent = () => {
 		if (!pendingAction) return null;
 
@@ -213,8 +250,6 @@ export function AdminPanel() {
 		deleteUserMutation.isPending ||
 		deleteInviteCodeMutation.isPending;
 
-	// This component should only be rendered for admin users
-	// The admin page already checks this, but this provides additional safety
 	if (!isAdmin) {
 		return null;
 	}
@@ -305,36 +340,23 @@ export function AdminPanel() {
 										!(settings?.inviteOnlyEnabled ?? false)
 									}
 									id="user-invite-codes-switch"
-									onCheckedChange={async (enabled: boolean) => {
-										try {
-											await updateSettingsMutation.mutateAsync({
-												inviteOnlyEnabled: settings?.inviteOnlyEnabled ?? false,
-												allowAllUsersToGenerateInvites: enabled,
-											});
-											toast.success(
-												`User invite code generation ${enabled ? "enabled" : "disabled"}`,
-											);
-											refetchSettings();
-										} catch (error) {
-											const message =
-												error instanceof Error
-													? error.message
-													: "Failed to update settings";
-											toast.error(message);
-										}
-									}}
+									onCheckedChange={handleToggleUserInvites}
 								/>
 							</div>
 						</CardContent>
 					</Card>
 
 					<InviteCodesTable
-						inviteCodes={inviteCodes || []}
+						inviteCodes={inviteCodesData?.items || []}
 						isLoading={inviteCodesLoading}
 						onDeleteCode={(inviteCodeId, code) =>
 							handleAction({ type: "deleteInviteCode", inviteCodeId, code })
 						}
 						onGenerateCode={refetchInviteCodes}
+						onPageChange={setInviteCodesPage}
+						onStatusChange={handleInviteCodesStatusChange}
+						pagination={inviteCodesData?.pagination}
+						status={inviteCodesStatus}
 					/>
 				</div>
 			</PageContent>

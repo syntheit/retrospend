@@ -50,13 +50,9 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db } = ctx;
 
-			// Generate a random password (8 characters)
 			const newPassword = Math.random().toString(36).substring(2, 10);
-
-			// Hash the password
 			const hashedPassword = await hashPassword(newPassword);
 
-			// Find and update the user's credential account
 			const updatedAccount = await db.account.updateMany({
 				where: {
 					userId: input.userId,
@@ -73,7 +69,7 @@ export const adminRouter = createTRPCRouter({
 
 			return {
 				success: true,
-				newPassword, // Return the plain password for the admin to share
+				newPassword,
 			};
 		}),
 
@@ -82,7 +78,6 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			// Prevent admin from disabling themselves
 			if (session.user.id === input.userId) {
 				throw new Error("Cannot disable your own account");
 			}
@@ -113,7 +108,6 @@ export const adminRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			// Prevent admin from deleting themselves
 			if (session.user.id === input.userId) {
 				throw new Error("Cannot delete your own account");
 			}

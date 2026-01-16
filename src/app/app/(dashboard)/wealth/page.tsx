@@ -1,41 +1,118 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
+import { Button } from "~/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog";
 import { Skeleton } from "~/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
 import { WealthAllocationChart } from "~/components/wealth/wealth-allocation-chart";
-import { WealthAssetsTable } from "~/components/wealth/wealth-assets-table";
 import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-exposure";
+import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthHeader } from "~/components/wealth/wealth-header";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
-import { normalizeAssets } from "~/lib/utils";
+import { AssetType } from "~/lib/db-enums";
+import { normalizeAssets, toNumber } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export default function WealthPage() {
-	const { data: dashboardData, isLoading } = api.wealth.getDashboard.useQuery();
+	const { data: settings } = api.user.getSettings.useQuery();
+	const homeCurrency = settings?.homeCurrency ?? "USD";
+	const utils = api.useUtils();
+
+	const { data: dashboardData, isLoading } = api.wealth.getDashboard.useQuery({
+		currency: homeCurrency,
+	});
+
+	const [timeRange, setTimeRange] = useState<"3M" | "6M" | "12M">("12M");
+	const [typeFilter, setTypeFilter] = useState<AssetType | "all">("all");
+	const [liquidityFilter, setLiquidityFilter] = useState<
+		"all" | "liquid" | "illiquid"
+	>("all");
+	const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
+		new Set(),
+	);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+	const deleteAsset = api.wealth.deleteAsset.useMutation({
+		onSuccess: () => {
+			toast.success("Assets deleted successfully");
+			setSelectedAssetIds(new Set()); // Clear selection on delete
+			void utils.wealth.getDashboard.invalidate();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
 
 	const normalizedAssets = dashboardData
 		? normalizeAssets(
 				dashboardData.assets.map((asset) => ({
 					...asset,
-					exchangeRate:
-						asset.exchangeRate instanceof Object &&
-						"toNumber" in asset.exchangeRate
-							? asset.exchangeRate.toNumber()
-							: asset.exchangeRate,
+					exchangeRate: toNumber(asset.exchangeRate) ?? null,
 				})),
 			)
 		: [];
+
+	const filteredAssets = useMemo(() => {
+		return normalizedAssets.filter((asset) => {
+			if (typeFilter !== "all" && asset.type !== typeFilter) return false;
+			if (liquidityFilter === "liquid" && !asset.isLiquid) return false;
+			if (liquidityFilter === "illiquid" && asset.isLiquid) return false;
+			return true;
+		});
+	}, [normalizedAssets, typeFilter, liquidityFilter]);
+
+	const hasMultipleCurrencies = useMemo(
+		() => new Set(normalizedAssets.map((asset) => asset.currency)).size > 1,
+		[normalizedAssets],
+	);
+
+	const handleDeleteSelected = () => {
+		setShowDeleteDialog(true);
+	};
+
+	const confirmDeleteSelected = async () => {
+		await Promise.all(
+			Array.from(selectedAssetIds).map((id) => deleteAsset.mutateAsync({ id })),
+		);
+		setShowDeleteDialog(false);
+	};
+
+	const isSelectionMode = selectedAssetIds.size > 0;
 
 	if (isLoading) {
 		return (
 			<>
 				<SiteHeader title="Wealth" />
 				<PageContent>
-					<div className="space-y-4 lg:space-y-6">
-						<Skeleton className="h-32 w-full" />
+					<div className="space-y-6">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<Skeleton className="h-8 w-32" />
+							<div className="flex gap-3">
+								<Skeleton className="h-9 w-20" />
+								<Skeleton className="h-9 w-20" />
+								<Skeleton className="h-9 w-24" />
+							</div>
+						</div>
 
-						<div className="grid gap-4 lg:grid-cols-7">
+						<div className="grid gap-4 md:grid-cols-3">
+							<Skeleton className="h-24 w-full" />
+							<Skeleton className="h-24 w-full" />
+							<Skeleton className="h-24 w-full" />
+						</div>
+
+						<div className="grid gap-6 lg:grid-cols-7">
 							<div className="lg:col-span-4">
 								<Skeleton className="h-80 w-full" />
 							</div>
@@ -44,7 +121,7 @@ export default function WealthPage() {
 							</div>
 						</div>
 
-						<div className="grid gap-4 lg:grid-cols-7">
+						<div className="grid gap-6 lg:grid-cols-7">
 							<div className="lg:col-span-5">
 								<Skeleton className="h-96 w-full" />
 							</div>
@@ -75,24 +152,117 @@ export default function WealthPage() {
 		<>
 			<SiteHeader title="Wealth" />
 			<PageContent>
-				<div className="space-y-4 lg:space-y-6">
-					<WealthHeader totalNetWorth={dashboardData.totalNetWorth} />
+				<div className="space-y-6">
+					<WealthHeader hideAddButton={isSelectionMode} />
 
-					<div className="grid gap-4 lg:grid-cols-7">
+					{/* Summary Cards */}
+					<NetWorthSummary
+						homeCurrency={homeCurrency}
+						totalAssets={dashboardData.totalAssets}
+						totalLiabilities={dashboardData.totalLiabilities}
+						totalLiquidAssets={dashboardData.totalLiquidAssets}
+						totalNetWorth={dashboardData.totalNetWorth}
+						weightedAPR={dashboardData.weightedAPR}
+					/>
+
+					<div className="grid gap-6 lg:grid-cols-7">
 						<div className="lg:col-span-4">
-							<WealthHistoryChart data={dashboardData.history} />
+							<WealthHistoryChart
+								baseCurrency={homeCurrency}
+								data={dashboardData.history}
+								onTimeRangeChange={setTimeRange}
+								timeRange={timeRange}
+							/>
 						</div>
 						<div className="lg:col-span-3">
 							<WealthAllocationChart assets={normalizedAssets} />
 						</div>
 					</div>
 
-					<div className="grid gap-4 lg:grid-cols-7">
-						<div className="lg:col-span-5">
-							<WealthAssetsTable assets={normalizedAssets} />
+					<div className="grid gap-6 lg:grid-cols-7">
+						<div className="space-y-4 lg:col-span-5">
+							<div className="flex flex-col gap-3 sm:flex-row">
+								<div className="flex items-center gap-2">
+									<span className="text-muted-foreground text-sm">Type:</span>
+									<ToggleGroup
+										onValueChange={(value) => {
+											if (value) setTypeFilter(value as AssetType | "all");
+										}}
+										size="sm"
+										type="single"
+										value={typeFilter}
+									>
+										<ToggleGroupItem className="cursor-pointer" value="all">
+											All
+										</ToggleGroupItem>
+										<ToggleGroupItem
+											className="cursor-pointer"
+											value={AssetType.CASH}
+										>
+											Cash
+										</ToggleGroupItem>
+										<ToggleGroupItem
+											className="cursor-pointer"
+											value={AssetType.INVESTMENT}
+										>
+											Invest
+										</ToggleGroupItem>
+										<ToggleGroupItem
+											className="cursor-pointer"
+											value={AssetType.CRYPTO}
+										>
+											Crypto
+										</ToggleGroupItem>
+										<ToggleGroupItem
+											className="cursor-pointer"
+											value={AssetType.REAL_ESTATE}
+										>
+											Real Estate
+										</ToggleGroupItem>
+									</ToggleGroup>
+								</div>
+
+								<div className="flex items-center gap-2">
+									<span className="text-muted-foreground text-sm">
+										Liquidity:
+									</span>
+									<ToggleGroup
+										onValueChange={(value) => {
+											if (value)
+												setLiquidityFilter(
+													value as "all" | "liquid" | "illiquid",
+												);
+										}}
+										size="sm"
+										type="single"
+										value={liquidityFilter}
+									>
+										<ToggleGroupItem className="cursor-pointer" value="all">
+											All
+										</ToggleGroupItem>
+										<ToggleGroupItem className="cursor-pointer" value="liquid">
+											Liquid
+										</ToggleGroupItem>
+										<ToggleGroupItem
+											className="cursor-pointer"
+											value="illiquid"
+										>
+											Illiquid
+										</ToggleGroupItem>
+									</ToggleGroup>
+								</div>
+							</div>
+
+							<WealthDataTable
+								data={filteredAssets}
+								homeCurrency={homeCurrency}
+								onDeleteSelected={handleDeleteSelected}
+								onSelectionChange={setSelectedAssetIds}
+								selectedRows={selectedAssetIds}
+							/>
 						</div>
-						{new Set(normalizedAssets.map((asset) => asset.currency)).size >
-							1 && (
+
+						{hasMultipleCurrencies && (
 							<div className="lg:col-span-2">
 								<WealthCurrencyExposure
 									assets={normalizedAssets}
@@ -103,6 +273,36 @@ export default function WealthPage() {
 					</div>
 				</div>
 			</PageContent>
+
+			{/* Delete Confirmation Dialog */}
+			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete Assets</DialogTitle>
+						<DialogDescription>
+							Are you sure you want to delete {selectedAssetIds.size} asset
+							{selectedAssetIds.size !== 1 ? "s" : ""}? This action cannot be
+							undone and will affect your net worth calculations.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							disabled={deleteAsset.isPending}
+							onClick={() => setShowDeleteDialog(false)}
+							variant="outline"
+						>
+							Cancel
+						</Button>
+						<Button
+							disabled={deleteAsset.isPending}
+							onClick={confirmDeleteSelected}
+							variant="destructive"
+						>
+							{deleteAsset.isPending ? "Deleting..." : "Delete"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</>
 	);
 }

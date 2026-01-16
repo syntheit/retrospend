@@ -2,11 +2,11 @@
 
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useAnalyticsCategoryPreferences } from "~/hooks/use-page-settings";
 import {
 	convertExpenseAmountForDisplay,
 	type NormalizedExpense,
 } from "~/lib/utils";
-import { useAnalyticsCategoryPreferences } from "~/hooks/use-page-settings";
 
 interface SpendCompositionProps {
 	expenses: NormalizedExpense[];
@@ -26,7 +26,7 @@ export function SpendComposition({
 			.filter(
 				(expense) =>
 					expense.category?.id &&
-					(preferenceMap?.[expense.category.id] === false),
+					preferenceMap?.[expense.category.id] === false,
 			)
 			.reduce(
 				(sum, expense) =>
@@ -43,7 +43,7 @@ export function SpendComposition({
 			.filter(
 				(expense) =>
 					!expense.category?.id ||
-					(preferenceMap?.[expense.category.id] !== false),
+					preferenceMap?.[expense.category.id] !== false,
 			)
 			.reduce(
 				(sum, expense) =>
@@ -95,8 +95,7 @@ export function SpendComposition({
 				liveRateToBaseCurrency,
 			);
 			const isFixed =
-				expense.category?.id &&
-				(preferenceMap?.[expense.category.id] === false);
+				expense.category?.id && preferenceMap?.[expense.category.id] === false;
 
 			if (isFixed) {
 				fixedCategories.set(
@@ -208,7 +207,7 @@ export function SpendComposition({
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="min-w-0 space-y-4">
 			<div>
 				<h3 className="font-semibold text-lg">Spend Composition</h3>
 				<p className="text-muted-foreground text-sm">
@@ -216,7 +215,7 @@ export function SpendComposition({
 				</p>
 			</div>
 
-			<div className="h-[300px]">
+			<div className="h-[300px] w-full min-w-0">
 				<ResponsiveContainer height="100%" width="100%">
 					<PieChart>
 						<Pie

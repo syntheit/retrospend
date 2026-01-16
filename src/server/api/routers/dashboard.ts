@@ -1,96 +1,115 @@
+import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { sumExpensesForCurrency } from "./shared-currency";
 
 export const dashboardRouter = createTRPCRouter({
-	getOverviewStats: protectedProcedure.query(async ({ ctx }) => {
-		const { session, db } = ctx;
+	getOverviewStats: protectedProcedure
+		.input(
+			z
+				.object({
+					month: z.date().optional(),
+					homeCurrency: z.string().length(3).optional(),
+				})
+				.optional(),
+		)
+		.query(async ({ ctx, input }) => {
+			const { session, db } = ctx;
 
-		// Get current month dates
-		const now = new Date();
-		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-		const endOfMonth = new Date(
-			now.getFullYear(),
-			now.getMonth() + 1,
-			0,
-			23,
-			59,
-			59,
-			999,
-		);
+			const selectedDate = input?.month ?? new Date();
+			const now = new Date();
+			const homeCurrency = input?.homeCurrency ?? "USD";
 
-		// Calculate days remaining in the month
-		const daysInMonth = endOfMonth.getDate();
-		const currentDay = now.getDate();
-		const daysRemaining = Math.max(0, daysInMonth - currentDay + 1);
+			const startOfMonth = new Date(
+				selectedDate.getFullYear(),
+				selectedDate.getMonth(),
+				1,
+			);
+			const endOfMonth = new Date(
+				selectedDate.getFullYear(),
+				selectedDate.getMonth() + 1,
+				0,
+				23,
+				59,
+				59,
+				999,
+			);
 
-		// 1. last24Hours: Sum of expenses in the last 24 hours
-		const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-		const last24HoursSpend = await db.expense.aggregate({
-			where: {
-				userId: session.user.id,
-				date: {
-					gte: last24Hours,
+			const isCurrentMonth =
+				selectedDate.getFullYear() === now.getFullYear() &&
+				selectedDate.getMonth() === now.getMonth();
+
+			const daysInMonth = endOfMonth.getDate();
+			const currentDay = now.getDate();
+			const daysRemaining = isCurrentMonth
+				? Math.max(0, daysInMonth - currentDay + 1)
+				: 0;
+
+			let last24HoursSpend = 0;
+			if (isCurrentMonth) {
+				const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+				const { total } = await sumExpensesForCurrency(
+					db,
+					{
+						userId: session.user.id,
+						date: {
+							gte: last24Hours,
+						},
+					},
+					homeCurrency,
+				);
+				last24HoursSpend = total;
+			}
+
+			const globalBudget = await db.budget.findFirst({
+				where: {
+					userId: session.user.id,
+					categoryId: null,
+					period: {
+						gte: startOfMonth,
+						lte: endOfMonth,
+					},
 				},
-				status: "FINALIZED",
-			},
-			_sum: {
-				amountInUSD: true,
-			},
-		});
-
-		// 2. dailyBudgetPace: Global budget and total spent for current month
-		const globalBudget = await db.budget.findFirst({
-			where: {
-				userId: session.user.id,
-				categoryId: null, // Global budget has no category
-				period: {
-					gte: startOfMonth,
-					lte: endOfMonth,
+				select: {
+					amount: true,
 				},
-			},
-			select: {
-				amount: true,
-			},
-		});
+			});
 
-		const totalBudget = globalBudget ? Number(globalBudget.amount) : 0;
+			const totalBudget = globalBudget ? Number(globalBudget.amount) : 0;
 
-		const monthSpend = await db.expense.aggregate({
-			where: {
-				userId: session.user.id,
-				date: {
-					gte: startOfMonth,
-					lte: endOfMonth,
+			const { total: totalSpent } = await sumExpensesForCurrency(
+				db,
+				{
+					userId: session.user.id,
+					date: {
+						gte: startOfMonth,
+						lte: endOfMonth,
+					},
 				},
-				status: "FINALIZED",
-			},
-			_sum: {
-				amountInUSD: true,
-			},
-		});
+				homeCurrency,
+			);
 
-		const totalSpent = Number(monthSpend._sum.amountInUSD ?? 0);
+			const user = await db.user.findUnique({
+				where: { id: session.user.id },
+				select: {
+					monthlyIncome: true,
+				},
+			});
 
-		// 3. workEquivalent: Total spent and monthly income
-		const user = await db.user.findUnique({
-			where: { id: session.user.id },
-			select: {
-				monthlyIncome: true,
-			},
-		});
+			const monthlyIncome = Number(user?.monthlyIncome ?? 0);
 
-		const monthlyIncome = Number(user?.monthlyIncome ?? 0);
-
-		return {
-			last24Hours: Number(last24HoursSpend._sum.amountInUSD ?? 0),
-			dailyBudgetPace: {
-				totalBudget,
-				totalSpent,
-				daysRemaining,
-			},
-			workEquivalent: {
-				totalSpent,
-				monthlyIncome,
-			},
-		};
-	}),
+			return {
+				last24Hours: last24HoursSpend,
+				isCurrentMonth,
+				monthTotal: totalSpent,
+				dailyBudgetPace: {
+					totalBudget,
+					totalSpent,
+					daysRemaining,
+				},
+				workEquivalent: {
+					totalSpent,
+					monthlyIncome,
+				},
+			};
+		}),
 });

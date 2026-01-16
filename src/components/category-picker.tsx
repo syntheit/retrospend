@@ -35,10 +35,8 @@ export function CategoryPicker({
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 
-	const { data: fetchedCategories, isLoading } = api.user.listCategories.useQuery(
-		undefined,
-		{ enabled: !propCategories }
-	);
+	const { data: fetchedCategories, isLoading } =
+		api.user.listCategories.useQuery(undefined, { enabled: !propCategories });
 
 	const categories = propCategories || fetchedCategories;
 

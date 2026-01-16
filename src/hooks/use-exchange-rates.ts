@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
 import { api } from "~/trpc/react";
 
@@ -13,41 +13,26 @@ export interface RateOption {
 interface UseExchangeRatesOptions {
 	currency: string;
 	enabled?: boolean;
+	/** Include a "Custom" option in rateOptions */
+	includeCustomOption?: boolean;
+	/** If true, prefers favorites > blue > official for default. If false, prefers official > blue > first */
+	preferFavorites?: boolean;
 }
 
 interface UseExchangeRatesResult {
-	/** Array of available rate options for the currency */
 	rateOptions: RateOption[];
-	/** Whether rates are currently loading */
+	rawRateOptions: RateOption[];
 	isLoading: boolean;
-	/** Find the default rate (prefers "blue", then "official", then first available) */
 	getDefaultRate: () => RateOption | null;
-	/** Find a specific rate by type */
 	getRateByType: (type: string) => RateOption | null;
+	getEffectiveRate: (rate: number, invertMode?: boolean) => number;
 }
 
-/**
- * Hook for fetching and managing exchange rate options for a currency.
- * Provides rate options with human-readable labels and helper functions.
- *
- * @example
- * ```tsx
- * const { rateOptions, isLoading, getDefaultRate } = useExchangeRates({
- *   currency: "ARS",
- * });
- *
- * // Get the default rate on mount
- * useEffect(() => {
- *   const defaultRate = getDefaultRate();
- *   if (defaultRate) {
- *     setSelectedRate(defaultRate.rate);
- *   }
- * }, [rateOptions]);
- * ```
- */
 export function useExchangeRates({
 	currency,
 	enabled = true,
+	includeCustomOption = false,
+	preferFavorites = false,
 }: UseExchangeRatesOptions): UseExchangeRatesResult {
 	const { data: rates, isLoading } =
 		api.exchangeRate.getRatesForCurrency.useQuery(
@@ -55,7 +40,14 @@ export function useExchangeRates({
 			{ enabled: enabled && !!currency },
 		);
 
-	const rateOptions = useMemo<RateOption[]>(() => {
+	// Only fetch favorites if we need them for default rate selection
+	const { data: favorites } = api.user.getFavoriteExchangeRates.useQuery(
+		undefined,
+		{ enabled: enabled && preferFavorites },
+	);
+
+	// Raw rate options without custom
+	const rawRateOptions = useMemo<RateOption[]>(() => {
 		if (!rates) return [];
 		return rates.map((rate) => ({
 			type: rate.type,
@@ -64,31 +56,67 @@ export function useExchangeRates({
 		}));
 	}, [rates]);
 
+	// Rate options with optional custom option
+	const rateOptions = useMemo<RateOption[]>(() => {
+		const options = [...rawRateOptions];
+		if (includeCustomOption) {
+			options.push({
+				type: "custom",
+				rate: 0,
+				label: "Custom",
+			});
+		}
+		return options;
+	}, [rawRateOptions, includeCustomOption]);
+
+	const getEffectiveRate = useCallback(
+		(rate: number, invertMode = false): number => {
+			if (invertMode && rate > 0) return 1 / rate;
+			return rate;
+		},
+		[],
+	);
+
 	const getDefaultRate = useMemo(() => {
 		return (): RateOption | null => {
-			if (rateOptions.length === 0) return null;
+			if (rawRateOptions.length === 0) return null;
 
-			// Prefer "blue" rate, then "official", then first available
-			const blueRate = rateOptions.find((r) => r.type === "blue");
+			if (preferFavorites && favorites && favorites.length > 0) {
+				for (const fav of favorites) {
+					if (fav.rate.currency === currency) {
+						const matchingRate = rawRateOptions.find(
+							(r) => r.type === fav.rate.type,
+						);
+						if (matchingRate) {
+							return matchingRate;
+						}
+					}
+				}
+			}
+
+			// Prefer "blue" rate (for Argentina ARS), then "official", then first available
+			const blueRate = rawRateOptions.find((r) => r.type === "blue");
 			if (blueRate) return blueRate;
 
-			const officialRate = rateOptions.find((r) => r.type === "official");
+			const officialRate = rawRateOptions.find((r) => r.type === "official");
 			if (officialRate) return officialRate;
 
-			return rateOptions[0] || null;
+			return rawRateOptions[0] || null;
 		};
-	}, [rateOptions]);
+	}, [rawRateOptions, preferFavorites, favorites, currency]);
 
 	const getRateByType = useMemo(() => {
 		return (type: string): RateOption | null => {
-			return rateOptions.find((r) => r.type === type) || null;
+			return rawRateOptions.find((r) => r.type === type) || null;
 		};
-	}, [rateOptions]);
+	}, [rawRateOptions]);
 
 	return {
 		rateOptions,
+		rawRateOptions,
 		isLoading,
 		getDefaultRate,
 		getRateByType,
+		getEffectiveRate,
 	};
 }

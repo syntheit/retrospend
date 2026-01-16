@@ -18,7 +18,47 @@ import {
 } from "~/components/ui/dialog";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import { normalizeExpenses } from "~/lib/utils";
+import { useCurrency } from "~/hooks/use-currency";
 import { api } from "~/trpc/react";
+
+const MONTH_NAMES = [
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
+] as const;
+
+const getCurrentYearMonth = () => {
+	const date = new Date();
+	return { year: date.getFullYear(), month: date.getMonth() };
+};
+
+const convertDecimalToNumber = (value: unknown): number => {
+	if (typeof value === "object" && value !== null && "toNumber" in value) {
+		return (value as { toNumber: () => number }).toNumber();
+	}
+	return Number(value);
+};
+
+const matchesTimeFilter = (
+	expenseDate: Date,
+	selectedYears: Set<number>,
+	selectedMonths: Set<number>,
+): boolean => {
+	const yearMatch =
+		selectedYears.size === 0 || selectedYears.has(expenseDate.getFullYear());
+	const monthMatch =
+		selectedMonths.size === 0 || selectedMonths.has(expenseDate.getMonth());
+	return yearMatch && monthMatch;
+};
 
 export default function Page() {
 	const { openNewExpense } = useExpenseModal();
@@ -28,58 +68,32 @@ export default function Page() {
 		error,
 		refetch: refetchExpenses,
 	} = api.expense.listFinalized.useQuery();
+	const {
+		homeCurrency,
+		usdToHomeRate: liveRateToBaseCurrency,
+		isLoading: currencyLoading,
+	} = useCurrency();
 	const { data: settings } = api.user.getSettings.useQuery();
-
-	const homeCurrency = settings?.homeCurrency ?? "USD";
-	const { data: baseCurrencyRate } =
-		api.exchangeRate.getRatesForCurrency.useQuery(
-			{ currency: homeCurrency },
-			{ enabled: homeCurrency !== "USD" },
-		);
-
-	// Get the exchange rate from USD to base currency (prefers "blue" then "official")
-	const liveRateToBaseCurrency = useMemo(() => {
-		if (homeCurrency === "USD") return null;
-		if (!baseCurrencyRate?.length) return null;
-
-		const blueRate = baseCurrencyRate.find((r) => r.type === "blue");
-		if (blueRate) return Number(blueRate.rate);
-
-		const officialRate = baseCurrencyRate.find((r) => r.type === "official");
-		if (officialRate) return Number(officialRate.rate);
-
-		return Number(baseCurrencyRate[0]?.rate) || null;
-	}, [baseCurrencyRate, homeCurrency]);
 
 	const normalizedExpenses = useMemo(
 		() =>
 			normalizeExpenses(
 				(expenses ?? []).map((expense) => ({
 					...expense,
-					amount:
-						typeof expense.amount?.toNumber === "function"
-							? expense.amount.toNumber()
-							: Number(expense.amount),
-					exchangeRate:
-						typeof expense.exchangeRate?.toNumber === "function"
-							? expense.exchangeRate.toNumber()
-							: Number(expense.exchangeRate),
-					amountInUSD:
-						typeof expense.amountInUSD?.toNumber === "function"
-							? expense.amountInUSD.toNumber()
-							: Number(expense.amountInUSD),
+					amount: convertDecimalToNumber(expense.amount),
+					exchangeRate: convertDecimalToNumber(expense.exchangeRate),
+					amountInUSD: convertDecimalToNumber(expense.amountInUSD),
 				})),
 			),
 		[expenses],
 	);
 
-	// Extract available years and months from the data
 	const availableYears = useMemo(() => {
 		const years = new Set<number>();
 		normalizedExpenses.forEach((expense) => {
 			years.add(expense.date.getFullYear());
 		});
-		return Array.from(years).sort((a, b) => b - a); // Most recent first
+		return Array.from(years).sort((a, b) => b - a);
 	}, [normalizedExpenses]);
 
 	const availableMonths = useMemo(() => {
@@ -90,30 +104,22 @@ export default function Page() {
 		return Array.from(months).sort((a, b) => a - b);
 	}, [normalizedExpenses]);
 
-	// Filter state - default to current year and month
-	const currentDate = new Date();
-	const currentYear = currentDate.getFullYear();
-	const currentMonth = currentDate.getMonth();
+	const { year: currentYear, month: currentMonth } = getCurrentYearMonth();
 
 	const [selectedYears, setSelectedYears] = useState<Set<number>>(
-		new Set([currentYear]),
+		() => new Set([currentYear]),
 	);
 	const [selectedMonths, setSelectedMonths] = useState<Set<number>>(
-		new Set([currentMonth]),
+		() => new Set([currentMonth]),
 	);
 	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-		new Set(),
+		() => new Set(),
 	);
-
-	// Selection state for table rows
 	const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(
-		new Set(),
+		() => new Set(),
 	);
-
-	// Delete confirmation dialog state
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-	// Delete mutation
 	const deleteExpenseMutation = api.expense.deleteExpense.useMutation();
 
 	const availableCategories = useMemo(() => {
@@ -122,18 +128,10 @@ export default function Page() {
 			{ id: string; name: string; color: string; usageCount: number }
 		>();
 
-		// Filter expenses based on selected years and months (ignoring category filter)
-		const timeFilteredExpenses = normalizedExpenses.filter((expense) => {
-			const yearMatch =
-				selectedYears.size === 0 ||
-				selectedYears.has(expense.date.getFullYear());
-			const monthMatch =
-				selectedMonths.size === 0 ||
-				selectedMonths.has(expense.date.getMonth());
-			return yearMatch && monthMatch;
-		});
+		const timeFilteredExpenses = normalizedExpenses.filter((expense) =>
+			matchesTimeFilter(expense.date, selectedYears, selectedMonths),
+		);
 
-		// Collect categories and count usage from expenses in the selected time period
 		timeFilteredExpenses.forEach((expense) => {
 			if (expense.category) {
 				const existing = categoryMap.get(expense.category.id);
@@ -149,11 +147,10 @@ export default function Page() {
 		});
 
 		return Array.from(categoryMap.values()).sort(
-			(a, b) => b.usageCount - a.usageCount, // Sort by usage count descending (most to least used)
+			(a, b) => b.usageCount - a.usageCount,
 		);
 	}, [normalizedExpenses, selectedYears, selectedMonths]);
 
-	// Filter expenses based on selections
 	const filteredExpenses = useMemo(() => {
 		if (
 			selectedYears.size === 0 &&
@@ -164,16 +161,15 @@ export default function Page() {
 		}
 
 		return normalizedExpenses.filter((expense) => {
-			const yearMatch =
-				selectedYears.size === 0 ||
-				selectedYears.has(expense.date.getFullYear());
-			const monthMatch =
-				selectedMonths.size === 0 ||
-				selectedMonths.has(expense.date.getMonth());
+			const timeMatch = matchesTimeFilter(
+				expense.date,
+				selectedYears,
+				selectedMonths,
+			);
 			const categoryMatch =
 				selectedCategories.size === 0 ||
 				(expense.categoryId && selectedCategories.has(expense.categoryId));
-			return yearMatch && monthMatch && categoryMatch;
+			return timeMatch && categoryMatch;
 		});
 	}, [normalizedExpenses, selectedYears, selectedMonths, selectedCategories]);
 
@@ -203,49 +199,40 @@ export default function Page() {
 		);
 	}
 
-	const monthNames = [
-		"January",
-		"February",
-		"March",
-		"April",
-		"May",
-		"June",
-		"July",
-		"August",
-		"September",
-		"October",
-		"November",
-		"December",
-	];
-
 	const toggleYear = (year: number) => {
-		const newSelected = new Set(selectedYears);
-		if (newSelected.has(year)) {
-			newSelected.delete(year);
-		} else {
-			newSelected.add(year);
-		}
-		setSelectedYears(newSelected);
+		setSelectedYears((prev) => {
+			const newSet = new Set(prev);
+			if (newSet.has(year)) {
+				newSet.delete(year);
+			} else {
+				newSet.add(year);
+			}
+			return newSet;
+		});
 	};
 
 	const toggleMonth = (month: number) => {
-		const newSelected = new Set(selectedMonths);
-		if (newSelected.has(month)) {
-			newSelected.delete(month);
-		} else {
-			newSelected.add(month);
-		}
-		setSelectedMonths(newSelected);
+		setSelectedMonths((prev) => {
+			const newSet = new Set(prev);
+			if (newSet.has(month)) {
+				newSet.delete(month);
+			} else {
+				newSet.add(month);
+			}
+			return newSet;
+		});
 	};
 
 	const toggleCategory = (categoryId: string) => {
-		const newSelected = new Set(selectedCategories);
-		if (newSelected.has(categoryId)) {
-			newSelected.delete(categoryId);
-		} else {
-			newSelected.add(categoryId);
-		}
-		setSelectedCategories(newSelected);
+		setSelectedCategories((prev) => {
+			const newSet = new Set(prev);
+			if (newSet.has(categoryId)) {
+				newSet.delete(categoryId);
+			} else {
+				newSet.add(categoryId);
+			}
+			return newSet;
+		});
 	};
 
 	const clearFilters = () => {
@@ -260,29 +247,24 @@ export default function Page() {
 		openNewExpense();
 	};
 
-	// Delete handlers
 	const handleDeleteSelected = () => {
 		setShowDeleteDialog(true);
 	};
 
 	const confirmDelete = async () => {
 		try {
-			// Delete all selected expenses
 			await Promise.all(
 				Array.from(selectedExpenseIds).map((id) =>
 					deleteExpenseMutation.mutateAsync({ id }),
 				),
 			);
 
-			// Clear selection and close dialog
 			setSelectedExpenseIds(new Set());
 			setShowDeleteDialog(false);
-
-			// Refetch data
 			await refetchExpenses();
-			toast.success("Expenses deleted successfully"); // Add success toast
+			toast.success("Expenses deleted successfully");
 		} catch (_error) {
-			toast.error("Failed to delete some expenses. Please try again."); // Add error toast
+			toast.error("Failed to delete some expenses. Please try again.");
 		}
 	};
 
@@ -290,11 +272,8 @@ export default function Page() {
 		<>
 			<SiteHeader title="Table View" />
 			<PageContent>
-				{/* Main container with consistent padding */}
 				<div className="space-y-6">
-					{/* Date Filters */}
 					<div className="w-full space-y-4">
-						{/* Years */}
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
 								<h3 className="font-medium text-sm">Filter by Year</h3>
@@ -324,7 +303,6 @@ export default function Page() {
 							</div>
 						</div>
 
-						{/* Months */}
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
 								<h3 className="font-medium text-sm">Filter by Month</h3>
@@ -348,13 +326,12 @@ export default function Page() {
 										size="sm"
 										variant={selectedMonths.has(month) ? "default" : "outline"}
 									>
-										{monthNames[month]}
+										{MONTH_NAMES[month]}
 									</Button>
 								))}
 							</div>
 						</div>
 
-						{/* Categories */}
 						{availableCategories.length > 0 && (
 							<div className="space-y-2">
 								<div className="flex items-center justify-between">
@@ -427,7 +404,6 @@ export default function Page() {
 				</div>
 			</PageContent>
 
-			{/* Delete Confirmation Dialog */}
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent>
 					<DialogHeader>

@@ -9,6 +9,8 @@ import {
 	IconSettings,
 	IconTable,
 } from "@tabler/icons-react";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { NavMain } from "~/components/nav-main";
 import { NavSecondary } from "~/components/nav-secondary";
 import { NavUser } from "~/components/nav-user";
@@ -20,6 +22,7 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	useSidebar,
 } from "~/components/ui/sidebar";
 import { useSession } from "~/hooks/use-session";
 import { APP_VERSION } from "~/lib/version";
@@ -74,6 +77,15 @@ const navSecondary = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const { data: session, isPending } = useSession();
+	const _pathname = usePathname();
+	const { isMobile, setOpenMobile } = useSidebar();
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname triggers effect intentionally
+	useEffect(() => {
+		if (isMobile) {
+			setOpenMobile(false);
+		}
+	}, [_pathname, isMobile, setOpenMobile]);
 
 	const userData = session?.user
 		? {

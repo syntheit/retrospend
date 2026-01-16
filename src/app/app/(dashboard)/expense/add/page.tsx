@@ -1,20 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import { ExpenseModal } from "~/components/expense-modal";
 import { generateId } from "~/lib/utils";
 
 export default function AddExpensePage() {
 	const router = useRouter();
-	const [expenseId, setExpenseId] = useState<string | null>(null);
-
-	useEffect(() => {
-		setExpenseId(generateId());
-	}, []);
-
-	if (!expenseId) return null;
+	const expenseId = useMemo(() => generateId(), []);
 
 	return (
 		<ExpenseModal

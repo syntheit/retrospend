@@ -8,11 +8,11 @@ import { cn } from "~/lib/utils";
 interface DataTableSelectionBarProps {
 	selectedRows: Set<string>;
 	headerHeight: string;
-	exportMutation: {
+	exportMutation?: {
 		isPending: boolean;
 	};
 	onSelectAll: (checked: boolean) => void;
-	onExportSelected: () => void;
+	onExportSelected?: () => void;
 	onEditSelected?: (id: string) => void;
 	onDeleteSelected?: () => void;
 }
@@ -44,22 +44,23 @@ export function DataTableSelectionBar({
 				onCheckedChange={() => onSelectAll(false)}
 			/>
 			<span className="font-medium text-sm">
-				{selectedRows.size} item{selectedRows.size !== 1 ? "s" : ""}{" "}
-				selected
+				{selectedRows.size} item{selectedRows.size !== 1 ? "s" : ""} selected
 			</span>
 			<div className="ml-auto flex items-center gap-2">
-				<Button
-					className="flex h-8 items-center gap-2"
-					disabled={exportMutation.isPending}
-					onClick={onExportSelected}
-					size="sm"
-					variant="ghost"
-				>
-					<Download className="h-4 w-4" />
-					<span className="sr-only sm:not-sr-only sm:inline-block">
-						Export
-					</span>
-				</Button>
+				{onExportSelected && exportMutation && (
+					<Button
+						className="flex h-8 items-center gap-2"
+						disabled={exportMutation.isPending}
+						onClick={onExportSelected}
+						size="sm"
+						variant="ghost"
+					>
+						<Download className="h-4 w-4" />
+						<span className="sr-only sm:not-sr-only sm:inline-block">
+							Export
+						</span>
+					</Button>
+				)}
 				{selectedRows.size === 1 && onEditSelected && (
 					<Button
 						className="flex h-8 items-center gap-2"
@@ -73,9 +74,7 @@ export function DataTableSelectionBar({
 						variant="ghost"
 					>
 						<Edit className="h-4 w-4" />
-						<span className="sr-only sm:not-sr-only sm:inline-block">
-							Edit
-						</span>
+						<span className="sr-only sm:not-sr-only sm:inline-block">Edit</span>
 					</Button>
 				)}
 				{onDeleteSelected && (

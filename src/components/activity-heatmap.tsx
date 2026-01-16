@@ -4,9 +4,9 @@ import {
 	eachDayOfInterval,
 	endOfMonth,
 	format,
-	getYear,
 	parseISO,
-	startOfYear,
+	startOfMonth,
+	startOfWeek,
 } from "date-fns";
 import { useMemo } from "react";
 
@@ -16,6 +16,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { formatCurrency } from "~/lib/utils";
 
 interface ActivityData {
 	date: string;
@@ -27,250 +28,258 @@ interface ActivityHeatmapProps {
 	data: ActivityData[];
 	title?: string;
 	onDayClick?: (date: Date, hasActivity: boolean) => void;
+	startDate: Date;
+	endDate: Date;
 }
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DISPLAY_DAYS = ["Mon", "Wed", "Fri"];
 
+/**
+ * Checks if an expense belongs to a category that should be spread across the month.
+ */
+function shouldSpreadExpense(category?: string): boolean {
+	const cat = category?.toLowerCase() ?? "";
+	return (
+		cat.includes("rent") || cat.includes("utilities") || cat.includes("utility")
+	);
+}
+
+/**
+ * Returns the Tailwind CSS class for a given activity intensity.
+ */
+function getIntensityClass(amount: number, maxAmount: number) {
+	if (amount === 0) return "bg-stone-100 border border-stone-200";
+	if (maxAmount === 0) return "bg-orange-200";
+
+	const intensity = amount / maxAmount;
+	if (intensity < 0.25) return "bg-orange-200";
+	if (intensity < 0.5) return "bg-orange-300";
+	if (intensity < 0.75) return "bg-orange-400";
+	return "bg-orange-500";
+}
+
 export function ActivityHeatmap({
 	data,
-	title = "Annual Spending Activity",
+	title = "Spending Activity",
 	onDayClick,
+	startDate,
+	endDate,
 }: ActivityHeatmapProps) {
-	const currentYear = getYear(new Date());
+	const today = useMemo(() => new Date(), []);
 
-	// Process data into a map of date strings to amounts
 	const spendingMap = useMemo(() => {
 		const map = new Map<string, number>();
-		const currentDate = new Date();
 
 		for (const item of data) {
-			const expenseDate = parseISO(item.date);
-			const categoryName = item.category?.toLowerCase() || "";
+			const date = parseISO(item.date);
 
-			// Check if this is a rent or utilities expense that should be spread across the month
-			const isMonthlyExpense =
-				categoryName.includes("rent") ||
-				categoryName.includes("utilities") ||
-				categoryName.includes("utility");
+			if (shouldSpreadExpense(item.category)) {
+				const monthStart = startOfMonth(date);
+				// If current month, spread only up to today
+				const isCurrentMonth =
+					date.getFullYear() === today.getFullYear() &&
+					date.getMonth() === today.getMonth();
 
-			if (isMonthlyExpense) {
-				// Determine the date range for spreading the expense
-				const monthStart = new Date(
-					expenseDate.getFullYear(),
-					expenseDate.getMonth(),
-					1,
-				);
-				let monthEnd: Date;
+				const monthEnd = isCurrentMonth ? today : endOfMonth(date);
 
-				// If this is the current month, only spread up to today
-				if (
-					expenseDate.getFullYear() === currentDate.getFullYear() &&
-					expenseDate.getMonth() === currentDate.getMonth()
-				) {
-					monthEnd = new Date(
-						currentDate.getFullYear(),
-						currentDate.getMonth(),
-						currentDate.getDate(),
-					);
-				} else {
-					// For past months, spread across the entire month
-					monthEnd = endOfMonth(expenseDate);
-				}
-
-				const daysInRange = eachDayOfInterval({
-					start: monthStart,
-					end: monthEnd,
-				});
-
-				// Only spread if we have days in the range
-				if (daysInRange.length > 0) {
-					// Calculate daily amount (divide by number of days in range)
-					const dailyAmount = item.amount / daysInRange.length;
-
-					// Add the daily amount to each day in the range
-					for (const day of daysInRange) {
-						const dateKey = format(day, "yyyy-MM-dd");
-						map.set(dateKey, (map.get(dateKey) ?? 0) + dailyAmount);
+				const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+				if (days.length > 0) {
+					const dailyAmount = item.amount / days.length;
+					for (const day of days) {
+						const key = format(day, "yyyy-MM-dd");
+						map.set(key, (map.get(key) ?? 0) + dailyAmount);
 					}
 				}
 			} else {
-				// For regular expenses, add to the specific date
-				const dateKey = format(expenseDate, "yyyy-MM-dd");
-				map.set(dateKey, (map.get(dateKey) ?? 0) + item.amount);
+				const key = format(date, "yyyy-MM-dd");
+				map.set(key, (map.get(key) ?? 0) + item.amount);
 			}
 		}
-
 		return map;
-	}, [data]);
+	}, [data, today]);
 
-	// Generate all weeks for the year
 	const weeks = useMemo(() => {
-		const yearStart = startOfYear(new Date(currentYear, 0, 1));
 		const weeksArray: Array<
 			Array<{ date: Date; dateKey: string; amount: number }>
 		> = [];
+		const firstDate = startOfWeek(startDate);
+		const lastDate = startOfWeek(endDate);
 
-		// Create 52 weeks + 1 extra for year wraparound
-		for (let weekIndex = 0; weekIndex < 53; weekIndex++) {
+		// Calculate dynamic week count based on date range
+		const weekCount =
+			Math.ceil(
+				(lastDate.getTime() - firstDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+			) + 1;
+
+		for (let i = 0; i < weekCount; i++) {
 			const week: Array<{ date: Date; dateKey: string; amount: number }> = [];
 
-			for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-				const date = new Date(yearStart);
-				date.setDate(yearStart.getDate() + weekIndex * 7 + dayIndex);
+			for (let j = 0; j < 7; j++) {
+				const date = new Date(firstDate);
+				date.setDate(firstDate.getDate() + i * 7 + j);
 
-				// Only include dates from the current year
-				if (getYear(date) === currentYear) {
+				if (date >= startDate && date <= endDate) {
 					const dateKey = format(date, "yyyy-MM-dd");
-					const amount = spendingMap.get(dateKey) ?? 0;
-					week.push({ date, dateKey, amount });
+					week.push({
+						date,
+						dateKey,
+						amount: spendingMap.get(dateKey) ?? 0,
+					});
 				}
 			}
 
-			if (week.length > 0) {
-				weeksArray.push(week);
-			}
+			if (week.length > 0) weeksArray.push(week);
 		}
-
 		return weeksArray;
-	}, [currentYear, spendingMap]);
+	}, [startDate, endDate, spendingMap]);
 
-	// Calculate color intensity levels
-	const maxAmount = useMemo(() => {
-		return Math.max(...Array.from(spendingMap.values()), 0);
-	}, [spendingMap]);
+	const maxAmount = useMemo(
+		() => Math.max(...Array.from(spendingMap.values()), 0),
+		[spendingMap],
+	);
 
-	const getIntensityClass = (amount: number) => {
-		if (amount === 0) return "bg-stone-100 border border-stone-200";
-		if (maxAmount === 0) return "bg-orange-200";
+	const monthLabels = useMemo(() => {
+		const labels: Array<{ month: string; startColumn: number; span: number }> =
+			[];
 
-		const intensity = amount / maxAmount;
-		if (intensity < 0.25) return "bg-orange-200";
-		if (intensity < 0.5) return "bg-orange-300";
-		if (intensity < 0.75) return "bg-orange-400";
-		return "bg-orange-500";
-	};
+		// Find all unique months in the date range
+		const months = new Map<string, { startWeek: number; endWeek: number }>();
 
-	const formatAmount = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			maximumFractionDigits: 0,
-		}).format(amount);
-	};
+		weeks.forEach((week, i) => {
+			week.forEach((day) => {
+				const key = format(day.date, "yyyy-MM");
+				if (!months.has(key)) {
+					months.set(key, { startWeek: i, endWeek: i });
+				} else {
+					const existing = months.get(key);
+					if (existing) {
+						existing.endWeek = i;
+					}
+				}
+			});
+		});
+
+		// Convert to labels with column positions
+		months.forEach((value, key) => {
+			const [year = "0", month = "0"] = key.split("-");
+			const date = new Date(
+				Number.parseInt(year, 10),
+				Number.parseInt(month, 10) - 1,
+				1,
+			);
+			const monthName = format(date, "MMM");
+			const startColumn = value.startWeek + 1; // Grid columns are 1-indexed
+			const span = value.endWeek - value.startWeek + 1;
+
+			labels.push({
+				month: monthName,
+				startColumn,
+				span,
+			});
+		});
+
+		return labels;
+	}, [weeks]);
 
 	return (
 		<div className="space-y-4">
 			<h3 className="font-semibold text-lg">{title}</h3>
 
 			<TooltipProvider>
-				<div className="flex w-fit flex-col gap-2">
-					{/* Month labels */}
-					<div className="flex gap-2">
-						{/* Spacer for day labels column */}
-						<div className="h-5 w-8" />
-						{/* Month labels positioned over the grid */}
-						<div className="relative h-5 flex-1">
-							{Array.from({ length: 12 }, (_, monthIndex) => {
-								const monthDate = new Date(currentYear, monthIndex, 1);
-								const monthName = format(monthDate, "MMM");
-
-								// Find the week that contains the 1st of this month
-								const weekIndex = weeks.findIndex((week) =>
-									week.some(
-										(day) =>
-											day.date.getFullYear() === currentYear &&
-											day.date.getMonth() === monthIndex &&
-											day.date.getDate() === 1,
-									),
-								);
-
-								if (weekIndex === -1) return null;
-
-								// Calculate position as percentage across the grid width
-								const positionPercent =
-									(weekIndex / Math.max(1, weeks.length - 1)) * 100;
-
-								return (
+				<div className="overflow-x-auto pb-4">
+					<div className="inline-flex min-w-full flex-col gap-2">
+						{/* Month labels row */}
+						<div className="flex items-start gap-1">
+							<div className="w-8 shrink-0" />{" "}
+							{/* Spacer for day labels */}
+							<div className="flex flex-1 gap-1">
+								{monthLabels.map(({ month, span }) => (
 									<div
-										className="absolute top-0 text-muted-foreground text-xs"
-										key={monthName}
+										key={month}
+										className="shrink-0 text-muted-foreground text-xs"
 										style={{
-											left: `${positionPercent}%`,
+											width: `calc(${span} * (12px + 4px) - 4px)`, // (w-3 + gap-1) * columns - last gap
 										}}
 									>
-										{monthName}
+										{month}
 									</div>
-								);
-							})}
-						</div>
-					</div>
-
-					{/* Heatmap grid */}
-					<div className="flex gap-2">
-						{/* Day labels */}
-						<div className="flex w-8 flex-col gap-1">
-							{DAYS_OF_WEEK.map((day) => (
-								<div
-									className={`flex h-3 items-center text-muted-foreground text-xs ${
-										DISPLAY_DAYS.includes(day) ? "" : "invisible"
-									}`}
-									key={day}
-								>
-									{day}
-								</div>
-							))}
+								))}
+							</div>
 						</div>
 
-						{/* Weeks grid */}
-						<div className="grid grid-cols-53 gap-1">
-							{weeks.map((week) => (
-								<div className="flex flex-col gap-1" key={week[0]?.dateKey}>
-									{week.map((day) => (
-										<Tooltip key={day.dateKey}>
-											<TooltipTrigger asChild>
-												<button
-													className={`h-3 w-3 cursor-pointer rounded-sm border-none p-0 transition-colors ${getIntensityClass(day.amount)}`}
-													onClick={() => onDayClick?.(day.date, day.amount > 0)}
-													title={`${format(day.date, "MMM d, yyyy")}: ${formatAmount(day.amount)}`}
-													type="button"
-												/>
-											</TooltipTrigger>
-											<TooltipContent className="pointer-events-none">
-												<div className="text-sm">
-													<div className="font-medium">
-														{format(day.date, "MMM d, yyyy")}
-													</div>
-													<div className="text-muted-foreground">
-														{formatAmount(day.amount)}
-													</div>
-												</div>
-											</TooltipContent>
-										</Tooltip>
-									))}
-									{/* Fill empty cells for weeks with fewer than 7 days */}
-									{Array.from({ length: 7 - week.length }, (_, i) => (
-										<div
-											className="h-3 w-3"
-											key={`empty-${week[0]?.dateKey}-${i}`}
-										/>
-									))}
-								</div>
-							))}
-						</div>
-					</div>
-
-					{/* Legend */}
-					<div className="flex items-center gap-2 text-muted-foreground text-xs">
-						<span>Less</span>
+						{/* Heatmap with day labels */}
 						<div className="flex gap-1">
-							<div className="h-3 w-3 rounded-sm border border-stone-200 bg-stone-100" />
-							<div className="h-3 w-3 rounded-sm bg-orange-200" />
-							<div className="h-3 w-3 rounded-sm bg-orange-300" />
-							<div className="h-3 w-3 rounded-sm bg-orange-400" />
-							<div className="h-3 w-3 rounded-sm bg-orange-500" />
+							{/* Day labels column */}
+							<div className="flex w-8 shrink-0 flex-col gap-1">
+								{DAYS_OF_WEEK.map((day) => (
+									<div
+										className={`flex h-3 items-center text-muted-foreground text-xs ${
+											DISPLAY_DAYS.includes(day) ? "" : "invisible"
+										}`}
+										key={day}
+									>
+										{day}
+									</div>
+								))}
+							</div>
+
+							{/* Heatmap grid */}
+							<div className="flex gap-1">
+								{weeks.map((week) => (
+									<div
+										className="flex shrink-0 flex-col gap-1"
+										key={week[0]?.dateKey}
+									>
+										{week.map((day) => (
+											<Tooltip key={day.dateKey}>
+												<TooltipTrigger asChild>
+													<button
+														className={`h-3 w-3 shrink-0 cursor-pointer rounded-sm border-none p-0 transition-colors ${getIntensityClass(day.amount, maxAmount)}`}
+														onClick={() =>
+															onDayClick?.(day.date, day.amount > 0)
+														}
+														type="button"
+													/>
+												</TooltipTrigger>
+												<TooltipContent className="pointer-events-none">
+													<div className="text-sm">
+														<div className="font-medium">
+															{format(day.date, "MMM d, yyyy")}
+														</div>
+														<div className="text-muted-foreground">
+															{formatCurrency(day.amount)}
+														</div>
+													</div>
+												</TooltipContent>
+											</Tooltip>
+										))}
+										{/* Fill gaps for partial weeks */}
+										{Array.from({ length: 7 - week.length }, (_, i) => (
+											<div
+												className="h-3 w-3 shrink-0"
+												key={`empty-${week[0]?.dateKey}-${i}`}
+											/>
+										))}
+									</div>
+								))}
+							</div>
 						</div>
-						<span>More</span>
+
+						{/* Legend */}
+						<div className="flex items-center gap-2 text-muted-foreground text-xs">
+							<span>Less</span>
+							<div className="flex gap-1">
+								<div className="h-3 w-3 rounded-sm border border-stone-200 bg-stone-100" />
+								{[200, 300, 400, 500].map((level) => (
+									<div
+										className={`h-3 w-3 rounded-sm bg-orange-${level}`}
+										key={level}
+									/>
+								))}
+							</div>
+							<span>More</span>
+						</div>
 					</div>
 				</div>
 			</TooltipProvider>

@@ -10,14 +10,17 @@
  * date that displays as the previous day in timezones west of UTC.
  */
 export function parseDateOnly(dateString: string): Date {
-	// Validate format
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
 		throw new Error("Date must be in YYYY-MM-DD format");
 	}
 
-	// Parse as local timezone midnight instead of UTC
 	const [year, month, day] = dateString.split("-").map(Number);
-	return new Date(year!, month! - 1, day); // month is 0-indexed
+
+	if (year === undefined || month === undefined || day === undefined) {
+		throw new Error("Invalid date components");
+	}
+
+	return new Date(year, month - 1, day);
 }
 
 /**

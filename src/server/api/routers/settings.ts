@@ -22,7 +22,6 @@ export const settingsRouter = createTRPCRouter({
 		};
 	}),
 
-	// User page settings
 	getPageSettings: protectedProcedure
 		.input(
 			z.object({
@@ -72,7 +71,6 @@ export const settingsRouter = createTRPCRouter({
 			);
 		}),
 
-	// Analytics category preferences
 	getAnalyticsCategoryPreferences: protectedProcedure.query(async ({ ctx }) => {
 		return await ensureAnalyticsCategoryPreferences(ctx.session.user.id);
 	}),

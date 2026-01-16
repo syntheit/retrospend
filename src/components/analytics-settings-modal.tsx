@@ -23,6 +23,7 @@ import {
 	forwardRef,
 	useEffect,
 	useImperativeHandle,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -81,9 +82,22 @@ function DroppableZone({ id, children, className }: DroppableZoneProps) {
 	});
 
 	return (
-		<div ref={setNodeRef} className={className}>
+		<div className={className} ref={setNodeRef}>
 			{children}
 		</div>
+	);
+}
+
+function CategoryColorDot({ color }: { color: string }) {
+	return (
+		<div
+			className={cn(
+				"h-3 w-3 flex-shrink-0 rounded-full",
+				CATEGORY_COLOR_MAP[color as keyof typeof CATEGORY_COLOR_MAP]?.split(
+					" ",
+				)[0] || "bg-gray-400",
+			)}
+		/>
 	);
 }
 
@@ -108,9 +122,10 @@ function SortableCategoryItem({
 
 	return (
 		<div
-			className={`flex items-center justify-between rounded-md border bg-muted/30 p-3 ${
-				isDragging || isSortableDragging ? "opacity-50" : ""
-			}`}
+			className={cn(
+				"flex items-center justify-between rounded-md border bg-muted/30 p-3",
+				(isDragging || isSortableDragging) && "opacity-50",
+			)}
 			ref={setNodeRef}
 			style={style}
 		>
@@ -122,14 +137,7 @@ function SortableCategoryItem({
 				>
 					<GripVertical className="h-4 w-4 text-muted-foreground" />
 				</div>
-				<div
-					className={cn(
-						"h-3 w-3 flex-shrink-0 rounded-full",
-						CATEGORY_COLOR_MAP[
-							preference.category.color as keyof typeof CATEGORY_COLOR_MAP
-						]?.split(" ")[0] || "bg-gray-400",
-					)}
-				/>
+				<CategoryColorDot color={preference.category.color} />
 				<span className="font-medium text-sm">{preference.category.name}</span>
 			</div>
 			<Button
@@ -173,44 +181,38 @@ export const AnalyticsSettingsModal = forwardRef<
 		[],
 	);
 
-	// Check if state is initialized
 	const initialized =
 		fixedCategories.length > 0 ||
 		flexibleCategories.length > 0 ||
 		Boolean(preferences);
 
-	// Reset state to current preferences when modal opens
 	useEffect(() => {
 		if (open && preferences) {
-			const fixed = preferences.filter((pref) => !pref.isFlexible);
-			const flexible = preferences.filter((pref) => pref.isFlexible);
-			setFixedCategories(fixed);
-			setFlexibleCategories(flexible);
+			setFixedCategories(preferences.filter((pref) => !pref.isFlexible));
+			setFlexibleCategories(preferences.filter((pref) => pref.isFlexible));
 		}
 	}, [open, preferences]);
 
-	// Track unsaved changes
-	useEffect(() => {
-		if (!preferences || !initialized) {
-			hasUnsavedChangesRef.current = false;
-			return;
-		}
+	const hasUnsavedChanges = useMemo(() => {
+		if (!preferences || !initialized) return false;
 
 		const currentCategories = [...fixedCategories, ...flexibleCategories];
 		const originalCategories = preferences;
 
-		// Check if categories have changed
-		const hasChanges =
+		return (
 			currentCategories.length !== originalCategories.length ||
 			currentCategories.some((current) => {
 				const original = originalCategories.find(
 					(pref) => pref.categoryId === current.categoryId,
 				);
 				return !original || original.isFlexible !== current.isFlexible;
-			});
-
-		hasUnsavedChangesRef.current = hasChanges;
+			})
+		);
 	}, [preferences, fixedCategories, flexibleCategories, initialized]);
+
+	useEffect(() => {
+		hasUnsavedChangesRef.current = hasUnsavedChanges;
+	}, [hasUnsavedChanges]);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -224,7 +226,7 @@ export const AnalyticsSettingsModal = forwardRef<
 		setActiveId(event.active.id as string);
 	};
 
-	const handleDragEnd = async (event: DragEndEvent) => {
+	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;
 		setActiveId(null);
 
@@ -233,19 +235,19 @@ export const AnalyticsSettingsModal = forwardRef<
 		const activeId = active.id as string;
 		const overId = over.id as string;
 
-		// Determine source and destination containers
 		const isFromFixed = fixedCategories.some(
 			(cat) => cat.categoryId === activeId,
 		);
+
 		const isToFixed =
 			overId === "fixed-drop-zone" ||
 			fixedCategories.some((cat) => cat.categoryId === overId);
+
 		const isToFlexible =
 			overId === "flexible-drop-zone" ||
 			flexibleCategories.some((cat) => cat.categoryId === overId);
 
 		if (isFromFixed && isToFlexible) {
-			// Moving from fixed to flexible
 			const category = fixedCategories.find(
 				(cat) => cat.categoryId === activeId,
 			);
@@ -259,7 +261,6 @@ export const AnalyticsSettingsModal = forwardRef<
 				]);
 			}
 		} else if (!isFromFixed && isToFixed) {
-			// Moving from flexible to fixed
 			const category = flexibleCategories.find(
 				(cat) => cat.categoryId === activeId,
 			);
@@ -273,7 +274,6 @@ export const AnalyticsSettingsModal = forwardRef<
 				]);
 			}
 		} else if (isFromFixed && isToFixed) {
-			// Reordering within fixed
 			const oldIndex = fixedCategories.findIndex(
 				(cat) => cat.categoryId === activeId,
 			);
@@ -284,7 +284,6 @@ export const AnalyticsSettingsModal = forwardRef<
 				setFixedCategories((prev) => arrayMove(prev, oldIndex, newIndex));
 			}
 		} else if (!isFromFixed && isToFlexible) {
-			// Reordering within flexible
 			const oldIndex = flexibleCategories.findIndex(
 				(cat) => cat.categoryId === activeId,
 			);
@@ -301,20 +300,22 @@ export const AnalyticsSettingsModal = forwardRef<
 		const category = allCategories?.find((cat) => cat.id === categoryId);
 		if (!category) return;
 
-		// Check if category is already added
-		const exists = [...fixedCategories, ...flexibleCategories].some(
-			(pref) => pref.categoryId === categoryId,
-		);
-		if (exists) return;
+		if (
+			[...fixedCategories, ...flexibleCategories].some(
+				(pref) => pref.categoryId === categoryId,
+			)
+		) {
+			return;
+		}
 
-		// Add as flexible by default
-		const newPreference: CategoryPreference = {
-			categoryId,
-			isFlexible: true,
-			category,
-		};
-
-		setFlexibleCategories((prev) => [...prev, newPreference]);
+		setFlexibleCategories((prev) => [
+			...prev,
+			{
+				categoryId,
+				isFlexible: true,
+				category,
+			},
+		]);
 	};
 
 	const handleRemoveCategory = (categoryId: string) => {
@@ -324,8 +325,6 @@ export const AnalyticsSettingsModal = forwardRef<
 		setFlexibleCategories((prev) =>
 			prev.filter((cat) => cat.categoryId !== categoryId),
 		);
-
-		// Category will be deleted from DB when changes are saved
 	};
 
 	const handleSave = async () => {
@@ -334,18 +333,14 @@ export const AnalyticsSettingsModal = forwardRef<
 		const currentCategories = [...fixedCategories, ...flexibleCategories];
 		const originalCategories = preferences;
 
-		// Find categories that have changed isFlexible status
 		const updates: Array<{ categoryId: string; isFlexible: boolean }> = [];
-
-		// Find categories that should be deleted (were in original but not in current)
 		const deletions: string[] = [];
 
-		// Check existing categories for changes
 		for (const current of currentCategories) {
 			const original = originalCategories.find(
 				(pref) => pref.categoryId === current.categoryId,
 			);
-			if (original && original.isFlexible !== current.isFlexible) {
+			if (!original || original.isFlexible !== current.isFlexible) {
 				updates.push({
 					categoryId: current.categoryId,
 					isFlexible: current.isFlexible,
@@ -353,20 +348,6 @@ export const AnalyticsSettingsModal = forwardRef<
 			}
 		}
 
-		// Check for newly added categories
-		for (const current of currentCategories) {
-			const exists = originalCategories.some(
-				(pref) => pref.categoryId === current.categoryId,
-			);
-			if (!exists) {
-				updates.push({
-					categoryId: current.categoryId,
-					isFlexible: current.isFlexible,
-				});
-			}
-		}
-
-		// Check for categories that were removed
 		for (const original of originalCategories) {
 			const stillExists = currentCategories.some(
 				(current) => current.categoryId === original.categoryId,
@@ -376,7 +357,6 @@ export const AnalyticsSettingsModal = forwardRef<
 			}
 		}
 
-		// Apply all updates and deletions
 		await Promise.all([
 			...updates.map(({ categoryId, isFlexible }) =>
 				updatePreference(categoryId, isFlexible),
@@ -384,54 +364,54 @@ export const AnalyticsSettingsModal = forwardRef<
 			...deletions.map((categoryId) => deletePreference(categoryId)),
 		]);
 
-		// Invalidate queries to reload live data
-		await utils.settings.getAnalyticsCategoryPreferences.invalidate();
-		await utils.settings.getAnalyticsCategoryPreferenceMap.invalidate();
+		await Promise.all([
+			utils.settings.getAnalyticsCategoryPreferences.invalidate(),
+			utils.settings.getAnalyticsCategoryPreferenceMap.invalidate(),
+		]);
 
 		setOpen(false);
 	};
 
 	const handleCancel = () => {
-		// Reset to original state
 		if (preferences) {
-			const fixed = preferences.filter((pref) => !pref.isFlexible);
-			const flexible = preferences.filter((pref) => pref.isFlexible);
-			setFixedCategories(fixed);
-			setFlexibleCategories(flexible);
+			setFixedCategories(preferences.filter((pref) => !pref.isFlexible));
+			setFlexibleCategories(preferences.filter((pref) => pref.isFlexible));
 		}
 		setOpen(false);
 	};
 
-	const availableCategories =
-		allCategories?.filter(
-			(category) =>
-				![...fixedCategories, ...flexibleCategories].some(
-					(pref) => pref.categoryId === category.id,
-				),
-		) || [];
+	const availableCategories = useMemo(
+		() =>
+			allCategories?.filter(
+				(category) =>
+					![...fixedCategories, ...flexibleCategories].some(
+						(pref) => pref.categoryId === category.id,
+					),
+			) || [],
+		[allCategories, fixedCategories, flexibleCategories],
+	);
 
-	const activeCategory = activeId
-		? [...fixedCategories, ...flexibleCategories].find(
-				(cat) => cat.categoryId === activeId,
-			)
-		: null;
+	const activeCategory = useMemo(
+		() =>
+			activeId
+				? [...fixedCategories, ...flexibleCategories].find(
+						(cat) => cat.categoryId === activeId,
+					)
+				: null,
+		[activeId, fixedCategories, flexibleCategories],
+	);
 
 	const handleDiscardChanges = () => {
-		// Reset to original state
 		if (preferences) {
-			const fixed = preferences.filter((pref) => !pref.isFlexible);
-			const flexible = preferences.filter((pref) => pref.isFlexible);
-			setFixedCategories(fixed);
-			setFlexibleCategories(flexible);
+			setFixedCategories(preferences.filter((pref) => !pref.isFlexible));
+			setFlexibleCategories(preferences.filter((pref) => pref.isFlexible));
 		}
 		setShowUnsavedDialog(false);
 		hasUnsavedChangesRef.current = false;
 		setOpen(false);
 	};
 
-	const handleStay = () => {
-		setShowUnsavedDialog(false);
-	};
+	const handleStay = () => setShowUnsavedDialog(false);
 
 	const handleOpenChange = (nextOpen: boolean) => {
 		if (!nextOpen && hasUnsavedChangesRef.current) {
@@ -481,8 +461,8 @@ export const AnalyticsSettingsModal = forwardRef<
 										</div>
 
 										<DroppableZone
-											id="fixed-drop-zone"
 											className="flex-1 space-y-2 overflow-y-auto rounded-lg border-2 border-muted border-dashed p-4"
+											id="fixed-drop-zone"
 										>
 											{fixedCategories.length === 0 ? (
 												<div className="flex h-full items-center justify-center">
@@ -510,15 +490,17 @@ export const AnalyticsSettingsModal = forwardRef<
 									{/* Flexible Categories Section */}
 									<div className="flex h-full flex-col space-y-3 overflow-hidden">
 										<div className="flex-none">
-											<h4 className="font-medium text-sm">Flexible Categories</h4>
+											<h4 className="font-medium text-sm">
+												Flexible Categories
+											</h4>
 											<p className="text-muted-foreground text-xs">
 												Variable expenses (dining, entertainment, shopping)
 											</p>
 										</div>
 
 										<DroppableZone
-											id="flexible-drop-zone"
 											className="flex-1 space-y-2 overflow-y-auto rounded-lg border-2 border-muted border-dashed p-4"
+											id="flexible-drop-zone"
 										>
 											{flexibleCategories.length === 0 ? (
 												<div className="flex h-full items-center justify-center">
@@ -528,7 +510,9 @@ export const AnalyticsSettingsModal = forwardRef<
 												</div>
 											) : (
 												<SortableContext
-													items={flexibleCategories.map((cat) => cat.categoryId)}
+													items={flexibleCategories.map(
+														(cat) => cat.categoryId,
+													)}
 													strategy={verticalListSortingStrategy}
 												>
 													{flexibleCategories.map((pref) => (
@@ -580,15 +564,7 @@ export const AnalyticsSettingsModal = forwardRef<
 									{activeCategory && (
 										<div className="flex items-center gap-2 rounded-md border bg-muted/30 p-3 shadow-lg">
 											<GripVertical className="h-4 w-4 text-muted-foreground" />
-											<div
-												className={cn(
-													"h-3 w-3 flex-shrink-0 rounded-full",
-													CATEGORY_COLOR_MAP[
-														activeCategory.category
-															.color as keyof typeof CATEGORY_COLOR_MAP
-													]?.split(" ")[0] || "bg-gray-400",
-												)}
-											/>
+											<CategoryColorDot color={activeCategory.category.color} />
 											<span className="font-medium text-sm">
 												{activeCategory.category.name}
 											</span>

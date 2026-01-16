@@ -34,10 +34,10 @@ export function RateSyncControl() {
 			setSyncResult(result);
 			// Refresh the last sync timestamp
 			refetchLastSync();
-		} catch (error: any) {
+		} catch (error) {
 			setSyncResult({
 				success: false,
-				message: error.message || "Sync failed",
+				message: error instanceof Error ? error.message : "Sync failed",
 			});
 		}
 	};

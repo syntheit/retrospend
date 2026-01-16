@@ -18,23 +18,14 @@ import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import type { Budget } from "~/types/budget-types";
 import { BulletChart } from "./bullet-chart";
 import { QuickChips } from "./quick-chips";
 
 interface BudgetRowProps {
-	budget: {
-		id: string;
-		amount: number;
-		actualSpend: number;
-		effectiveAmount: number;
-		pegToActual: boolean;
-		category: {
-			id: string;
-			name: string;
-			color: string;
-		} | null;
-	};
+	budget: Budget;
 	selectedMonth: Date;
 	isMobile: boolean;
 	homeCurrency: string;
@@ -59,55 +50,47 @@ export function BudgetRow({
 	const queryClient = useQueryClient();
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	// Get suggestions for quick chips - moved before early return to avoid conditional hook calls
 	const { data: suggestions } = api.budget.getBudgetSuggestions.useQuery(
-		{ categoryId: budget.category?.id ?? "" },
+		{ categoryId: budget.category?.id ?? "", currency: budget.currency },
 		{ enabled: isExpanded && !!budget.category },
 	);
 
 	const upsertBudget = api.budget.upsertBudget.useMutation({
 		onSuccess: (data) => {
-			// Show toast only when peg status changes
 			if (data.pegToActual !== previousPegStatus) {
 				toast.success(
 					`Budget moved to ${data.pegToActual ? "Fixed" : "Variable"} section`,
 				);
 			}
-			// Update the previous peg status and local state
 			setPreviousPegStatus(data.pegToActual);
 			setIsPegged(data.pegToActual);
-			// Invalidate the budgets query to refresh the UI
 			queryClient.invalidateQueries({
 				queryKey: [["budget", "getBudgets"]],
 			});
 		},
 		onError: (error) => {
-			console.error("Failed to save budget:", error);
+			toast.error(error.message || "Failed to save budget");
 		},
 	});
 
 	const deleteBudget = api.budget.deleteBudget.useMutation({
 		onSuccess: () => {
 			toast.success("Budget deleted successfully!");
-			// Invalidate the budgets query to refresh the UI
 			queryClient.invalidateQueries({
 				queryKey: [["budget", "getBudgets"]],
 			});
 		},
 		onError: (error) => {
-			console.error("Failed to delete budget:", error);
-			toast.error("Failed to delete budget");
+			toast.error(error.message || "Failed to delete budget");
 		},
 	});
 
-	// Update amount when pegged state changes and pegged is enabled
 	useEffect(() => {
 		if (isPegged) {
 			setAmount(budget.actualSpend.toString());
 		}
 	}, [isPegged, budget.actualSpend]);
 
-	// Focus input when expanded and not pegged
 	useEffect(() => {
 		if (isExpanded && !isPegged) {
 			setTimeout(() => {
@@ -117,7 +100,6 @@ export function BudgetRow({
 		}
 	}, [isExpanded, isPegged]);
 
-	// Guard against null category (shouldn't happen due to filtering in parent)
 	if (!budget.category) {
 		return null;
 	}
@@ -134,7 +116,6 @@ export function BudgetRow({
 		if (!budget.category) return;
 
 		const pegToUse = pegStatus !== undefined ? pegStatus : isPegged;
-		// For pegged budgets, amount is optional and defaults to 0
 		const amountValue = pegToUse ? 0 : parseFloat(amount);
 		if (!pegToUse && (Number.isNaN(amountValue) || amountValue < 0)) {
 			return;
@@ -143,15 +124,14 @@ export function BudgetRow({
 		upsertBudget.mutate({
 			categoryId: budget.category.id,
 			amount: amountValue,
+			currency: budget.currency,
 			period: selectedMonth,
 			pegToActual: pegToUse,
 		});
 	};
 
 	const handleRowClick = () => {
-		if (!isMobile) {
-			setIsExpanded(!isExpanded);
-		}
+		setIsExpanded(!isExpanded);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -159,7 +139,6 @@ export function BudgetRow({
 			handleSave();
 		} else if (e.key === "Escape") {
 			setIsExpanded(false);
-			// Reset form state
 			setAmount(budget.amount.toString());
 			setIsPegged(budget.pegToActual);
 		}
@@ -180,89 +159,63 @@ export function BudgetRow({
 		setShowDeleteDialog(false);
 	};
 
-	if (isMobile) {
-		// Mobile: Read-only view
-		return (
-			<div className="flex items-center gap-3 rounded-lg border bg-card p-3">
-				<div
-					className={`flex h-8 w-8 items-center justify-center rounded-full font-semibold text-white text-xs ${categoryColor}`}
-				>
-					{budget.category.name.substring(0, 2).toUpperCase()}
-				</div>
-				<div className="min-w-0 flex-1">
-					<div className="truncate font-medium">{budget.category.name}</div>
-					<div
-						className={`font-medium text-sm ${isOverBudget ? "text-destructive" : "text-foreground"}`}
-					>
-						{formatCurrency(budget.actualSpend, homeCurrency)} /{" "}
-						{formatCurrency(budget.effectiveAmount, homeCurrency)}
-					</div>
-				</div>
-			</div>
-		);
-	}
-
-	// Desktop: Full interactive row with accordion
 	return (
 		<div className="overflow-hidden rounded-lg border bg-card">
-			{/* Collapsed Header */}
 			<button
-				className="group flex w-full cursor-pointer items-center gap-4 p-4 text-left transition-colors hover:bg-accent/50"
+				className="group flex w-full cursor-pointer items-center gap-3 p-3 text-left transition-colors hover:bg-accent/50 sm:gap-4 sm:p-4"
 				onClick={handleRowClick}
 				type="button"
 			>
-				{/* Category Icon */}
 				<div
-					className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold text-sm text-white ${categoryColor}`}
+					className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-white text-xs sm:h-10 sm:w-10 sm:text-sm ${categoryColor}`}
 				>
 					{budget.category.name.substring(0, 2).toUpperCase()}
 				</div>
 
-				{/* Category Name */}
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate font-medium">{budget.category.name}</h3>
+					<h3 className="truncate font-medium text-sm sm:text-base">
+						{budget.category.name}
+					</h3>
 				</div>
 
-				{/* Bullet Chart */}
-				<div className="max-w-xs flex-1">
-					<BulletChart
-						actualSpend={budget.actualSpend}
-						budgetAmount={budget.effectiveAmount}
-						color={budget.category.color}
-						isOverBudget={isOverBudget}
-						isPegged={budget.pegToActual}
-					/>
-				</div>
+				{!isMobile && (
+					<div className="hidden max-w-xs flex-1 sm:block">
+						<BulletChart
+							actualSpend={budget.actualSpend}
+							budgetAmount={budget.effectiveAmount}
+							color={budget.category.color}
+							isOverBudget={isOverBudget}
+							isPegged={budget.pegToActual}
+						/>
+					</div>
+				)}
 
-				{/* Amount Display */}
-				<div className="flex min-w-32 items-center justify-end gap-1 whitespace-nowrap">
+				<div className="flex items-center justify-end gap-1 whitespace-nowrap text-right">
 					<span
-						className={`font-medium text-lg ${isOverBudget ? "text-destructive" : "text-foreground"}`}
+						className={`font-medium sm:text-lg ${isOverBudget ? "text-destructive" : "text-foreground"}`}
 					>
-						{formatCurrency(budget.actualSpend, homeCurrency)}
+						{formatCurrency(budget.actualSpend, budget.currency)}
 					</span>
-					<span className="text-muted-foreground text-sm">
-						/ {formatCurrency(budget.effectiveAmount, homeCurrency)}
+					<span className="text-muted-foreground text-xs sm:text-sm">
+						/ {formatCurrency(budget.effectiveAmount, budget.currency)}
 					</span>
 				</div>
 			</button>
 
-			{/* Expanded Control Panel */}
 			<div
 				className={`overflow-hidden transition-all duration-300 ease-in-out ${
 					isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
 				}`}
 			>
 				<div className="space-y-4 border-t bg-muted/50 p-4">
-					{/* Zone A: Budget Amount Input */}
 					<div className="space-y-2">
 						<Label htmlFor="budget-amount">Budget Amount</Label>
 						<div className="relative">
 							<span className="absolute top-1/2 left-3 -translate-y-1/2 font-mono text-muted-foreground">
-								$
+								{getCurrencySymbol(budget.currency)}
 							</span>
 							<Input
-								className={`border-none bg-transparent pl-6 font-mono text-3xl text-stone-200 outline-none placeholder:text-stone-400 ${
+								className={`border-none bg-transparent pl-6 font-mono text-2xl text-stone-200 outline-none placeholder:text-stone-400 sm:text-3xl ${
 									isPegged ? "text-stone-600" : ""
 								}`}
 								disabled={isPegged}
@@ -287,7 +240,6 @@ export function BudgetRow({
 						</div>
 					</div>
 
-					{/* Zone B: Quick Suggestions */}
 					{suggestions && (
 						<div className="space-y-2">
 							<Label>Quick Suggestions</Label>
@@ -301,14 +253,12 @@ export function BudgetRow({
 						</div>
 					)}
 
-					{/* Zone C: Peg to Actual Spend Toggle */}
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<Switch
 								checked={isPegged}
 								onCheckedChange={(checked) => {
 									setIsPegged(checked);
-									// Save immediately when toggling peg status and collapse the row
 									handleSave(checked);
 									setIsExpanded(false);
 								}}
@@ -317,7 +267,6 @@ export function BudgetRow({
 						</div>
 					</div>
 
-					{/* Zone D: Delete Budget */}
 					<div className="flex items-center justify-end border-t pt-2">
 						<Button
 							className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -334,7 +283,6 @@ export function BudgetRow({
 				</div>
 			</div>
 
-			{/* Delete Confirmation Dialog */}
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent className="w-full max-w-full sm:max-w-md">
 					<DialogHeader>

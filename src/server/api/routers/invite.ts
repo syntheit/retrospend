@@ -20,52 +20,75 @@ function generateInviteCode(): string {
 }
 
 export const inviteRouter = createTRPCRouter({
-	/**
-	 * List all invite codes (Admin only)
-	 */
-	list: adminProcedure.query(async ({ ctx }) => {
-		const { db } = ctx;
+	list: adminProcedure
+		.input(
+			z.object({
+				status: z.enum(["all", "active", "used"]).default("active"),
+				page: z.number().min(1).default(1),
+				pageSize: z.number().min(1).max(100).default(10),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+			const { status, page, pageSize } = input;
 
-		const inviteCodes = await db.inviteCode.findMany({
-			include: {
-				createdBy: {
-					select: {
-						username: true,
-						name: true,
+			const where: { usedAt?: null | { not: null } } = {};
+			if (status === "active") {
+				where.usedAt = null;
+			} else if (status === "used") {
+				where.usedAt = { not: null };
+			}
+
+			const [totalCount, inviteCodes] = await Promise.all([
+				db.inviteCode.count({ where }),
+				db.inviteCode.findMany({
+					where,
+					include: {
+						createdBy: {
+							select: {
+								username: true,
+								name: true,
+							},
+						},
+						usedBy: {
+							select: {
+								username: true,
+								name: true,
+							},
+						},
 					},
-				},
-				usedBy: {
-					select: {
-						username: true,
-						name: true,
+					orderBy: {
+						createdAt: "desc",
 					},
+					skip: (page - 1) * pageSize,
+					take: pageSize,
+				}),
+			]);
+
+			return {
+				items: inviteCodes.map((code) => ({
+					id: code.id,
+					code: code.code,
+					isActive: code.isActive,
+					usedAt: code.usedAt,
+					expiresAt: code.expiresAt,
+					createdAt: code.createdAt,
+					createdBy: code.createdBy,
+					usedBy: code.usedBy,
+					status: code.usedAt ? "Used" : "Active",
+				})),
+				pagination: {
+					totalCount,
+					page,
+					pageSize,
+					totalPages: Math.ceil(totalCount / pageSize),
 				},
-			},
-			orderBy: {
-				createdAt: "desc",
-			},
-		});
+			};
+		}),
 
-		return inviteCodes.map((code) => ({
-			id: code.id,
-			code: code.code,
-			isActive: code.isActive,
-			usedAt: code.usedAt,
-			expiresAt: code.expiresAt,
-			createdAt: code.createdAt,
-			createdBy: code.createdBy,
-			usedBy: code.usedBy,
-			status: code.usedAt ? "Used" : "Active",
-		}));
-	}),
-
-	/**
-	 * Generate a new invite code (Admin only)
-	 */
 	generate: adminProcedure.mutation(async ({ ctx }) => {
 		const { db, session } = ctx;
 
-		// Generate a unique code
 		let code: string;
 		let attempts = 0;
 		const maxAttempts = 10;
@@ -84,7 +107,6 @@ export const inviteRouter = createTRPCRouter({
 			})
 		);
 
-		// Create the invite code
 		const inviteCode = await db.inviteCode.create({
 			data: {
 				code,
@@ -98,9 +120,6 @@ export const inviteRouter = createTRPCRouter({
 		};
 	}),
 
-	/**
-	 * Validate an invite code (Public)
-	 */
 	validate: publicProcedure
 		.input(z.object({ code: z.string() }))
 		.query(async ({ ctx, input }) => {
@@ -110,7 +129,6 @@ export const inviteRouter = createTRPCRouter({
 				where: { code: input.code },
 			});
 
-			// Check if code exists, is active, and hasn't been used
 			const isValid = inviteCode?.isActive && inviteCode.usedAt === null;
 
 			return {
@@ -118,15 +136,10 @@ export const inviteRouter = createTRPCRouter({
 			};
 		}),
 
-	/**
-	 * Delete an invite code (Admin only)
-	 */
 	delete: adminProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db } = ctx;
-
-			// Check if the invite code exists
 			const inviteCode = await db.inviteCode.findUnique({
 				where: { id: input.id },
 			});
@@ -142,67 +155,88 @@ export const inviteRouter = createTRPCRouter({
 			return { success: true };
 		}),
 
-	/**
-	 * List user's own invite codes (User procedure - requires flag to be enabled)
-	 */
-	listUserCodes: protectedProcedure.query(async ({ ctx }) => {
-		const { db, session } = ctx;
+	listUserCodes: protectedProcedure
+		.input(
+			z.object({
+				status: z.enum(["all", "active", "used"]).default("active"),
+				page: z.number().min(1).default(1),
+				pageSize: z.number().min(1).max(100).default(10),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+			const { status, page, pageSize } = input;
 
-		// Check if the feature is enabled
-		const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
-		if (!isEnabled) {
-			throw new Error("Invite code generation is not enabled for users");
-		}
+			const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
+			if (!isEnabled) {
+				throw new Error("Invite code generation is not enabled for users");
+			}
 
-		const inviteCodes = await db.inviteCode.findMany({
-			where: {
+			const where: { createdById: string; usedAt?: null | { not: null } } = {
 				createdById: session.user.id,
-			},
-			include: {
-				createdBy: {
-					select: {
-						username: true,
-						name: true,
-					},
-				},
-				usedBy: {
-					select: {
-						username: true,
-						name: true,
-					},
-				},
-			},
-			orderBy: {
-				createdAt: "desc",
-			},
-		});
+			};
 
-		return inviteCodes.map((code) => ({
-			id: code.id,
-			code: code.code,
-			isActive: code.isActive,
-			usedAt: code.usedAt,
-			expiresAt: code.expiresAt,
-			createdAt: code.createdAt,
-			createdBy: code.createdBy,
-			usedBy: code.usedBy,
-			status: code.usedAt ? "Used" : "Active",
-		}));
-	}),
+			if (status === "active") {
+				where.usedAt = null;
+			} else if (status === "used") {
+				where.usedAt = { not: null };
+			}
 
-	/**
-	 * Generate a new invite code for the current user (User procedure - requires flag to be enabled)
-	 */
+			const [totalCount, inviteCodes] = await Promise.all([
+				db.inviteCode.count({ where }),
+				db.inviteCode.findMany({
+					where,
+					include: {
+						createdBy: {
+							select: {
+								username: true,
+								name: true,
+							},
+						},
+						usedBy: {
+							select: {
+								username: true,
+								name: true,
+							},
+						},
+					},
+					orderBy: {
+						createdAt: "desc",
+					},
+					skip: (page - 1) * pageSize,
+					take: pageSize,
+				}),
+			]);
+
+			return {
+				items: inviteCodes.map((code) => ({
+					id: code.id,
+					code: code.code,
+					isActive: code.isActive,
+					usedAt: code.usedAt,
+					expiresAt: code.expiresAt,
+					createdAt: code.createdAt,
+					createdBy: code.createdBy,
+					usedBy: code.usedBy,
+					status: code.usedAt ? "Used" : "Active",
+				})),
+				pagination: {
+					totalCount,
+					page,
+					pageSize,
+					totalPages: Math.ceil(totalCount / pageSize),
+				},
+			};
+		}),
+
 	generateUserCode: protectedProcedure.mutation(async ({ ctx }) => {
 		const { db, session } = ctx;
 
-		// Check if the feature is enabled
 		const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
 		if (!isEnabled) {
 			throw new Error("Invite code generation is not enabled for users");
 		}
 
-		// Generate a unique code
 		let code: string;
 		let attempts = 0;
 		const maxAttempts = 10;
@@ -221,7 +255,6 @@ export const inviteRouter = createTRPCRouter({
 			})
 		);
 
-		// Create the invite code
 		const inviteCode = await db.inviteCode.create({
 			data: {
 				code,
@@ -235,21 +268,16 @@ export const inviteRouter = createTRPCRouter({
 		};
 	}),
 
-	/**
-	 * Delete a user's own invite code (User procedure - requires flag to be enabled)
-	 */
 	deleteUserCode: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
-			// Check if the feature is enabled
 			const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
 			if (!isEnabled) {
 				throw new Error("Invite code management is not enabled for users");
 			}
 
-			// Check if the invite code exists and belongs to the user
 			const inviteCode = await db.inviteCode.findFirst({
 				where: {
 					id: input.id,

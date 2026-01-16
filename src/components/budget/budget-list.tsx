@@ -1,146 +1,153 @@
-"use client";
-
 import { useMemo, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import type { Budget, BudgetMode, Category } from "~/types/budget-types";
 import { AddBudgetRow } from "./add-budget-row";
 import { BudgetRow } from "./budget-row";
-
-interface Budget {
-	id: string;
-	amount: number;
-	actualSpend: number;
-	effectiveAmount: number;
-	pegToActual: boolean;
-	category: {
-		id: string;
-		name: string;
-		color: string;
-	} | null;
-}
-
-interface Category {
-	id: string;
-	name: string;
-	color: string;
-}
 
 interface BudgetListProps {
 	budgets: Budget[];
 	categories: Category[];
 	globalLimit: number;
+	globalLimitInUSD: number;
 	selectedMonth: Date;
 	isMobile: boolean;
 	homeCurrency: string;
-	budgetMode: "GLOBAL_LIMIT" | "SUM_OF_CATEGORIES";
-}
-
-interface BudgetSection {
-	title: string;
-	description: string;
-	budgets: Budget[];
-	totalAllocated: number;
-	totalSpent: number;
+	budgetMode: BudgetMode;
+	hasPreviousBudgets: boolean;
+	isCopying: boolean;
+	onCopyFromLastMonth: () => void;
 }
 
 export function BudgetList({
 	budgets,
 	categories,
 	globalLimit,
+	globalLimitInUSD,
 	selectedMonth,
 	isMobile,
 	homeCurrency,
 	budgetMode,
+	hasPreviousBudgets,
+	isCopying,
+	onCopyFromLastMonth,
 }: BudgetListProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 	const [newlyAddedBudgetId, setNewlyAddedBudgetId] = useState<string | null>(
 		null,
 	);
-	const validBudgets = budgets.filter((budget) => budget.category !== null);
+
+	const { validBudgets, variableBudgets, fixedBudgets } = useBudgetCalculations(
+		{
+			budgets,
+			globalLimit,
+			globalLimitInUSD,
+			budgetMode,
+		},
+	);
 
 	const sections = useMemo(() => {
-		// Separate budgets into sections
-		const variableBudgets = validBudgets.filter(
-			(budget) => !budget.pegToActual,
-		);
-		const fixedBudgets = validBudgets.filter((budget) => budget.pegToActual);
-
-		// Sort by actual spend descending (biggest expenses first)
-		const sortBySpendDesc = (a: Budget, b: Budget) =>
-			b.actualSpend - a.actualSpend;
-
-		const sections: BudgetSection[] = [
-			{
+		const result = [];
+		if (variableBudgets.length > 0) {
+			result.push({
 				title: "Variable / Managed",
 				description: "Categories you actively monitor and adjust",
-				budgets: variableBudgets.sort(sortBySpendDesc),
+				budgets: variableBudgets,
 				totalAllocated: variableBudgets.reduce((sum, b) => sum + b.amount, 0),
 				totalSpent: variableBudgets.reduce((sum, b) => sum + b.actualSpend, 0),
-			},
-			{
+			});
+		}
+		if (fixedBudgets.length > 0) {
+			result.push({
 				title: "Fixed / Pegged",
 				description: "Categories that automatically match your actual spending",
-				budgets: fixedBudgets.sort(sortBySpendDesc),
+				budgets: fixedBudgets,
 				totalAllocated: fixedBudgets.reduce(
 					(sum, b) => sum + b.effectiveAmount,
 					0,
-				), // Use effectiveAmount for pegged
+				),
 				totalSpent: fixedBudgets.reduce((sum, b) => sum + b.actualSpend, 0),
-			},
-		];
+			});
+		}
+		return result;
+	}, [variableBudgets, fixedBudgets]);
 
-		// Only show sections that have budgets
-		return sections.filter((section) => section.budgets.length > 0);
-	}, [validBudgets]);
-
-	const totalAllocated = validBudgets.reduce(
-		(sum, budget) =>
-			sum + (budget.pegToActual ? budget.effectiveAmount : budget.amount),
-		0,
-	);
-
-	const _effectiveTotalLimit =
-		budgetMode === "SUM_OF_CATEGORIES" ? totalAllocated : globalLimit;
-	const unallocatedAmount =
-		budgetMode === "GLOBAL_LIMIT"
-			? Math.max(0, globalLimit - totalAllocated)
-			: 0;
+	const monthLabel = selectedMonth.toLocaleDateString(undefined, {
+		month: "long",
+		year: "numeric",
+	});
 
 	// Find categories that don't have budgets
-	const budgetedCategoryIds = new Set(
-		validBudgets.map((budget) => budget.category?.id),
-	);
+	const budgetedCategoryIds = new Set(validBudgets.map((b) => b.category?.id));
 	const unbudgetedCategories = categories.filter(
-		(category) => !budgetedCategoryIds.has(category.id),
+		(c) => !budgetedCategoryIds.has(c.id),
 	);
-	const hasVariableSection = sections.some(
-		(section) => section.title === "Variable / Managed",
-	);
+
+	const hasVariableSection = variableBudgets.length > 0;
 	const shouldShowStandaloneAddRow =
 		unbudgetedCategories.length > 0 && !hasVariableSection;
 
 	const handleBudgetAdded = (budgetId: string) => {
 		setNewlyAddedBudgetId(budgetId);
-		// Clear the newly added state after a short delay
 		setTimeout(() => setNewlyAddedBudgetId(null), 1000);
 	};
 
 	if (validBudgets.length === 0 && unbudgetedCategories.length === 0) {
 		return (
-			<div className="py-12 text-center">
-				<p className="text-muted-foreground">No budgets set for this month.</p>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Set a total monthly limit above and start allocating to categories.
-				</p>
+			<div className="space-y-4 py-12 text-center">
+				<div>
+					<p className="text-muted-foreground">
+						No budgets set for this month.
+					</p>
+					<p className="mt-1 text-muted-foreground text-sm">
+						Set a total monthly limit above and start allocating to categories.
+					</p>
+				</div>
+				{hasPreviousBudgets && (
+					<Button
+						disabled={isCopying}
+						onClick={onCopyFromLastMonth}
+						size="sm"
+						variant="outline"
+					>
+						{isCopying ? "Copying..." : "Copy from last month"}
+					</Button>
+				)}
 			</div>
 		);
 	}
 
 	return (
 		<div className="space-y-8">
-			{/* Budget Sections */}
+			{validBudgets.length === 0 && hasPreviousBudgets && (
+				<div className="rounded-lg border bg-muted/50 p-4">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div className="text-left">
+							<p className="font-medium text-foreground text-sm">
+								Bring forward last month&apos;s plan
+							</p>
+							<p className="text-muted-foreground text-sm">
+								Copy your most recent budgets into {monthLabel} and adjust as
+								needed.
+							</p>
+						</div>
+						<div className="flex gap-2">
+							<Button
+								disabled={isCopying}
+								onClick={onCopyFromLastMonth}
+								size="sm"
+								variant="outline"
+							>
+								{isCopying ? "Copying..." : "Copy last month"}
+							</Button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{sections.map((section) => (
 				<div className="space-y-4" key={section.title}>
-					{/* Section Header */}
 					<div className="flex items-center justify-between">
 						<div>
 							<h3 className="font-semibold text-lg">{section.title}</h3>
@@ -163,7 +170,6 @@ export function BudgetList({
 						)}
 					</div>
 
-					{/* Budget Rows */}
 					<div className="space-y-2">
 						{section.budgets.map((budget) => (
 							<BudgetRow
@@ -175,21 +181,20 @@ export function BudgetList({
 								startExpanded={budget.id === newlyAddedBudgetId}
 							/>
 						))}
-						{/* Add Budget Row - only for Variable / Managed section */}
 						{section.title === "Variable / Managed" &&
 							unbudgetedCategories.length > 0 && (
 								<AddBudgetRow
-									unbudgetedCategories={unbudgetedCategories}
-									selectedMonth={selectedMonth}
+									homeCurrency={homeCurrency}
 									isMobile={isMobile}
 									onBudgetAdded={handleBudgetAdded}
+									selectedMonth={selectedMonth}
+									unbudgetedCategories={unbudgetedCategories}
 								/>
 							)}
 					</div>
 				</div>
 			))}
 
-			{/* First-time state: show add row even when no category budgets exist yet */}
 			{shouldShowStandaloneAddRow && (
 				<div className="space-y-4">
 					<div className="flex items-center justify-between">
@@ -203,10 +208,11 @@ export function BudgetList({
 
 					<div className="space-y-2">
 						<AddBudgetRow
-							unbudgetedCategories={unbudgetedCategories}
-							selectedMonth={selectedMonth}
+							homeCurrency={homeCurrency}
 							isMobile={isMobile}
 							onBudgetAdded={handleBudgetAdded}
+							selectedMonth={selectedMonth}
+							unbudgetedCategories={unbudgetedCategories}
 						/>
 					</div>
 				</div>

@@ -153,8 +153,8 @@ export function SettingsForm() {
 				monthlyIncome: monthlyIncomeValue,
 			});
 			setSuccess("Settings saved successfully!");
-		} catch (err: any) {
-			setError(err.message || "Failed to save settings");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to save settings");
 		}
 	};
 
@@ -201,8 +201,8 @@ export function SettingsForm() {
 			setShowCategoryDialog(false);
 			refetchCategories();
 			setError("");
-		} catch (err: any) {
-			setError(err.message || "Failed to save category");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to save category");
 		}
 	};
 
@@ -217,8 +217,10 @@ export function SettingsForm() {
 			await deleteCategoryMutation.mutateAsync({ id: pendingDeleteCategoryId });
 			refetchCategories();
 			toast.success("Category deleted");
-		} catch (err: any) {
-			setError(err.message || "Failed to delete category");
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Failed to reset categories",
+			);
 		} finally {
 			setShowDeleteDialog(false);
 			setPendingDeleteCategoryId(null);
@@ -238,8 +240,10 @@ export function SettingsForm() {
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
 			toast.success("Wealth data exported");
-		} catch (error: any) {
-			toast.error(error?.message ?? "Failed to export wealth data");
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to export wealth data",
+			);
 		}
 	};
 
@@ -331,6 +335,7 @@ export function SettingsForm() {
 						<div className="space-y-2">
 							<Label htmlFor="fontPreference">Font Preference</Label>
 							<Select
+								disabled={!fontPreferenceLoaded}
 								onValueChange={(value) => {
 									const newFont = value as "sans" | "mono";
 									setFontPreference(newFont);
@@ -338,7 +343,6 @@ export function SettingsForm() {
 									applyFontPreference(newFont);
 								}}
 								value={fontPreference}
-								disabled={!fontPreferenceLoaded}
 							>
 								<SelectTrigger>
 									<SelectValue
@@ -408,12 +412,17 @@ export function SettingsForm() {
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="monthlyIncome">Monthly Net Income</Label>
-							<div className="relative">
-								<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+							<div
+								className={cn(
+									"flex h-9 w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
+									"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+								)}
+							>
+								<span className="shrink-0 font-medium text-muted-foreground">
 									{getCurrencySymbol(homeCurrency)}
 								</span>
 								<Input
-									className="pl-6"
+									className="h-full w-full border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
 									id="monthlyIncome"
 									onChange={(e) => setMonthlyIncome(e.target.value)}
 									placeholder="5000"

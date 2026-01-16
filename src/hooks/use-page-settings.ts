@@ -1,16 +1,14 @@
 "use client";
 
+import type { PageSettings } from "~/server/services/user-settings";
 import { api } from "~/trpc/react";
 import type { Page } from "~prisma";
-import type { PageSettings } from "~/server/services/user-settings";
 
-/**
- * Hook for managing page settings
- */
 export function usePageSettings<T extends Page>(page: T) {
-	const { data: settings, ...queryResult } = api.settings.getPageSettings.useQuery({
-		page,
-	});
+	const { data: settings, ...queryResult } =
+		api.settings.getPageSettings.useQuery({
+			page,
+		});
 
 	const updateMutation = api.settings.updatePageSettings.useMutation();
 
@@ -29,16 +27,17 @@ export function usePageSettings<T extends Page>(page: T) {
 	};
 }
 
-/**
- * Hook for managing analytics category preferences
- */
 export function useAnalyticsCategoryPreferences() {
-	const { data: preferences, ...queryResult } = api.settings.getAnalyticsCategoryPreferences.useQuery();
+	const { data: preferences, ...queryResult } =
+		api.settings.getAnalyticsCategoryPreferences.useQuery();
 
-	const { data: preferenceMap, ...mapQueryResult } = api.settings.getAnalyticsCategoryPreferenceMap.useQuery();
+	const { data: preferenceMap, ...mapQueryResult } =
+		api.settings.getAnalyticsCategoryPreferenceMap.useQuery();
 
-	const updateMutation = api.settings.updateAnalyticsCategoryPreference.useMutation();
-	const deleteMutation = api.settings.deleteAnalyticsCategoryPreference.useMutation();
+	const updateMutation =
+		api.settings.updateAnalyticsCategoryPreference.useMutation();
+	const deleteMutation =
+		api.settings.deleteAnalyticsCategoryPreference.useMutation();
 
 	const updatePreference = async (categoryId: string, isFlexible: boolean) => {
 		return await updateMutation.mutateAsync({
@@ -59,14 +58,14 @@ export function useAnalyticsCategoryPreferences() {
 		updatePreference,
 		deletePreference,
 		isUpdating: updateMutation.isPending || deleteMutation.isPending,
-		...queryResult,
-		...mapQueryResult,
+		isLoading: queryResult.isLoading || mapQueryResult.isLoading,
+		isError: queryResult.isError || mapQueryResult.isError,
+		refetch: async () => {
+			await Promise.all([queryResult.refetch(), mapQueryResult.refetch()]);
+		},
 	};
 }
 
-/**
- * Hook for checking if a category is flexible in analytics
- */
 export function useCategoryIsFlexible(categoryId: string) {
 	const { preferenceMap } = useAnalyticsCategoryPreferences();
 

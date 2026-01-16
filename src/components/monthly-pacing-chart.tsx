@@ -13,6 +13,14 @@ import {
 } from "recharts";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import {
+	type BucketSize,
+	formatXAxisTick,
+	generateBucketKeys,
+	getBucketKey,
+	getBucketSize,
+	getBucketStartDate,
+} from "~/lib/chart-granularity";
+import {
 	convertExpenseAmountForDisplay,
 	type NormalizedExpense,
 } from "~/lib/utils";
@@ -22,6 +30,7 @@ interface MonthlyPacingChartProps {
 	totalBudget?: number;
 	baseCurrency: string;
 	liveRateToBaseCurrency: number | null;
+	dateRange: { from: Date; to: Date };
 }
 
 export function MonthlyPacingChart({
@@ -29,102 +38,111 @@ export function MonthlyPacingChart({
 	totalBudget,
 	baseCurrency,
 	liveRateToBaseCurrency,
+	dateRange,
 }: MonthlyPacingChartProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
+	const bucketSize = useMemo(
+		() => getBucketSize(dateRange.from, dateRange.to),
+		[dateRange],
+	);
+
 	const chartData = useMemo(() => {
-		const now = new Date();
-		const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-		const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-		const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of last month
-
-		// Get expenses for current and last month
-		const currentMonthExpenses = expenses.filter(
-			(expense) => expense.date >= currentMonth && expense.date <= now,
+		// Generate all bucket keys for the range
+		const bucketKeys = generateBucketKeys(
+			dateRange.from,
+			dateRange.to,
+			bucketSize,
 		);
 
-		const lastMonthExpenses = expenses.filter(
-			(expense) => expense.date >= lastMonth && expense.date <= lastMonthEnd,
-		);
+		// Group expenses by bucket
+		const bucketTotals = new Map<string, number>();
 
-		// Calculate cumulative spending by day for each month
-		const daysInMonth = new Date(
-			now.getFullYear(),
-			now.getMonth() + 1,
-			0,
-		).getDate();
-		const data = [];
+		expenses.forEach((expense) => {
+			if (expense.date < dateRange.from || expense.date > dateRange.to) return;
 
-		for (let day = 1; day <= daysInMonth; day++) {
-			const currentMonthDay = new Date(now.getFullYear(), now.getMonth(), day);
-			const lastMonthDay = new Date(now.getFullYear(), now.getMonth() - 1, day);
+			const key = getBucketKey(expense.date, bucketSize);
+			const amount = convertExpenseAmountForDisplay(
+				expense,
+				baseCurrency,
+				liveRateToBaseCurrency,
+			);
+			bucketTotals.set(key, (bucketTotals.get(key) || 0) + amount);
+		});
 
-			// Current month cumulative
-			const currentMonthCumulative = currentMonthExpenses
-				.filter((expense) => expense.date <= currentMonthDay)
-				.reduce(
-					(sum, expense) =>
-						sum +
-						convertExpenseAmountForDisplay(
-							expense,
-							baseCurrency,
-							liveRateToBaseCurrency,
-						),
-					0,
-				);
+		// Build cumulative data
+		let cumulative = 0;
+		const data = bucketKeys.map((key) => {
+			const amount = bucketTotals.get(key) || 0;
+			cumulative += amount;
+			const bucketDate = getBucketStartDate(key, bucketSize);
 
-			// Last month cumulative (only up to the current day if we're past that day in last month)
-			const lastMonthCumulative = lastMonthExpenses
-				.filter((expense) => expense.date <= lastMonthDay)
-				.reduce(
-					(sum, expense) =>
-						sum +
-						convertExpenseAmountForDisplay(
-							expense,
-							baseCurrency,
-							liveRateToBaseCurrency,
-						),
-					0,
-				);
+			return {
+				key,
+				date: bucketDate,
+				label: formatXAxisTick(bucketDate, bucketSize),
+				amount: Math.round(amount * 100) / 100,
+				cumulative: Math.round(cumulative * 100) / 100,
+			};
+		});
 
-			// Budget pace (linear from day 1 $0 to day end $totalBudget)
-			const budgetPace = totalBudget
-				? (totalBudget / daysInMonth) * day
-				: undefined;
-
-			data.push({
-				day,
-				currentMonth: Math.round(currentMonthCumulative * 100) / 100,
-				lastMonth: Math.round(lastMonthCumulative * 100) / 100,
-				budgetPace: budgetPace ? Math.round(budgetPace * 100) / 100 : undefined,
+		// Calculate budget pace line (linear from 0 to totalBudget)
+		if (totalBudget && data.length > 0) {
+			const budgetPerBucket = totalBudget / data.length;
+			let budgetCumulative = 0;
+			data.forEach((d, i) => {
+				budgetCumulative = budgetPerBucket * (i + 1);
+				(d as typeof d & { budgetPace: number }).budgetPace =
+					Math.round(budgetCumulative * 100) / 100;
 			});
 		}
 
 		return data;
-	}, [expenses, baseCurrency, liveRateToBaseCurrency, totalBudget]);
+	}, [
+		expenses,
+		dateRange,
+		bucketSize,
+		baseCurrency,
+		liveRateToBaseCurrency,
+		totalBudget,
+	]);
 
 	const comparison = useMemo(() => {
 		if (chartData.length === 0) return { status: "No data", difference: 0 };
 
-		const currentDay = new Date().getDate();
-		const todayData = chartData.find((d) => d.day === currentDay);
+		const totalSpent = chartData[chartData.length - 1]?.cumulative || 0;
 
-		if (!todayData) return { status: "No data", difference: 0 };
+		if (totalBudget) {
+			const difference = totalSpent - totalBudget;
+			const formattedDifference = formatCurrency(
+				Math.abs(difference),
+				baseCurrency,
+			);
+			const status =
+				difference < 0
+					? `${formattedDifference} under budget`
+					: difference > 0
+						? `${formattedDifference} over budget`
+						: "On budget";
+			return { status, difference };
+		}
 
-		const difference = todayData.currentMonth - todayData.lastMonth;
-		const formattedDifference = formatCurrency(
-			Math.abs(difference),
-			baseCurrency,
-		);
-		const status =
-			difference < 0
-				? `${formattedDifference} under last month's pace`
-				: difference > 0
-					? `${formattedDifference} over last month's pace`
-					: "On track with last month";
+		return {
+			status: `Total: ${formatCurrency(totalSpent, baseCurrency)}`,
+			difference: 0,
+		};
+	}, [chartData, totalBudget, baseCurrency, formatCurrency]);
 
-		return { status, difference };
-	}, [chartData, baseCurrency, formatCurrency]);
+	const getBucketLabel = (bucketSize: BucketSize): string => {
+		switch (bucketSize) {
+			case "day":
+				return "daily";
+			case "week":
+				return "weekly";
+			case "month":
+				return "monthly";
+		}
+	};
 
 	const CustomTooltip = ({
 		active,
@@ -132,22 +150,19 @@ export function MonthlyPacingChart({
 		label,
 	}: TooltipProps<number, string>) => {
 		if (active && payload && payload.length) {
+			const data = payload[0]?.payload;
 			return (
 				<div className="rounded-lg border border-border bg-background p-3 shadow-md">
-					<p className="mb-2 font-medium text-sm">{`Day ${label}`}</p>
+					<p className="mb-2 font-medium text-sm">{data?.label || label}</p>
 					<div className="space-y-1">
 						<p className="text-orange-600 text-sm">
-							<span className="font-medium">This Month:</span>{" "}
+							<span className="font-medium">Cumulative:</span>{" "}
 							{formatCurrency(payload[0]?.value || 0, baseCurrency)}
 						</p>
-						<p className="text-sm text-stone-500">
-							<span className="font-medium">Last Month:</span>{" "}
-							{formatCurrency(payload[1]?.value || 0, baseCurrency)}
-						</p>
-						{payload[2]?.value !== undefined && (
+						{payload[1]?.value !== undefined && (
 							<p className="text-blue-600 text-sm">
 								<span className="font-medium">Budget Pace:</span>{" "}
-								{formatCurrency(payload[2]?.value || 0, baseCurrency)}
+								{formatCurrency(payload[1]?.value || 0, baseCurrency)}
 							</p>
 						)}
 					</div>
@@ -158,16 +173,16 @@ export function MonthlyPacingChart({
 	};
 
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between">
+		<div className="min-w-0 space-y-4">
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h3 className="font-semibold text-lg">Monthly Pacing</h3>
+					<h3 className="font-semibold text-lg">Spending Over Time</h3>
 					<p className="text-muted-foreground text-sm">
-						Cumulative spending vs. last month
-						{totalBudget ? " and budget pace" : ""}
+						Cumulative {getBucketLabel(bucketSize)} spending
+						{totalBudget ? " vs. budget" : ""}
 					</p>
 				</div>
-				<div className="text-right">
+				<div className="sm:text-right">
 					<p
 						className={`font-medium text-sm ${
 							comparison.difference < 0
@@ -182,16 +197,16 @@ export function MonthlyPacingChart({
 				</div>
 			</div>
 
-			<div className="h-[300px]">
+			<div className="h-[300px] w-full min-w-0">
 				<ResponsiveContainer height="100%" width="100%">
 					<LineChart
 						data={chartData}
-						margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+						margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
 					>
 						<CartesianGrid className="stroke-muted" strokeDasharray="3 3" />
 						<XAxis
 							className="fill-muted-foreground text-xs"
-							dataKey="day"
+							dataKey="label"
 							tick={{ fontSize: 12 }}
 						/>
 						<YAxis
@@ -204,28 +219,18 @@ export function MonthlyPacingChart({
 						<Tooltip content={<CustomTooltip />} />
 						<Line
 							activeDot={{ r: 6 }}
-							dataKey="currentMonth"
-							dot={{ fill: "#ea580c", strokeWidth: 2, r: 4 }} // orange-600
-							name="This Month"
+							dataKey="cumulative"
+							dot={{ fill: "#ea580c", strokeWidth: 2, r: 4 }}
+							name="Cumulative"
 							stroke="#ea580c"
 							strokeWidth={3}
-							type="monotone"
-						/>
-						<Line
-							activeDot={{ r: 5 }}
-							dataKey="lastMonth"
-							dot={{ fill: "#78716c", strokeWidth: 2, r: 3 }} // stone-500
-							name="Last Month"
-							stroke="#78716c"
-							strokeDasharray="5 5"
-							strokeWidth={2}
 							type="monotone"
 						/>
 						{totalBudget && (
 							<Line
 								activeDot={{ r: 4 }}
 								dataKey="budgetPace"
-								dot={false} // blue-600
+								dot={false}
 								name="Budget Pace"
 								stroke="#2563eb"
 								strokeDasharray="8 4"
