@@ -4,38 +4,17 @@ import {
 	eachDayOfInterval,
 	endOfMonth,
 	format,
-	formatDistanceToNow,
 	startOfMonth,
 	subMonths,
 } from "date-fns";
-import {
-	ArrowDownRight,
-	ArrowUpRight,
-	Briefcase,
-	Clock,
-	TrendingDown,
-	TrendingUp,
-	Wallet,
-} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-	Area,
-	AreaChart,
-	CartesianGrid,
-	Cell,
-	Pie,
-	PieChart,
-	Sector,
-	XAxis,
-} from "recharts";
-import type { PieSectorDataItem } from "recharts/types/polar/Pie";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { MonthStepper } from "~/components/date/MonthStepper";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -44,31 +23,18 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
-import {
-	type ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "~/components/ui/chart";
-import { Skeleton } from "~/components/ui/skeleton";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "~/components/ui/table";
+import { type ChartConfig } from "~/components/ui/chart";
+import { useCurrency } from "~/hooks/use-currency";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { resolveCategoryColorValue } from "~/lib/category-colors";
 import {
-	cn,
 	convertExpenseAmountForDisplay,
 	type NormalizedExpense,
 	normalizeExpensesFromApi,
 } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { CategoryDonut } from "./_components/category-donut";
+import type { CategorySegment } from "./_components/category-donut-legend";
 import { FavoritesPanel } from "./_components/favorites-panel";
 import { RecentExpenses } from "./_components/recent-expenses";
 import { StatsCards } from "./_components/stats-cards";
@@ -92,46 +58,6 @@ const chartPalette = [
 	"var(--chart-5)",
 ];
 
-const colorClassCache = new Map<string, string>();
-
-const resolveCategoryColorValue = (color?: string) => {
-	if (!color) return null;
-	const colorClasses =
-		CATEGORY_COLOR_MAP[color as keyof typeof CATEGORY_COLOR_MAP];
-	const bgClass = colorClasses?.split(" ").find((cls) => cls.startsWith("bg-"));
-	if (!bgClass) return null;
-
-	if (colorClassCache.has(bgClass)) {
-		return colorClassCache.get(bgClass) ?? null;
-	}
-
-	if (typeof window === "undefined" || typeof document === "undefined") {
-		return null;
-	}
-
-	try {
-		const el = document.createElement("div");
-		el.className = bgClass;
-		el.style.position = "absolute";
-		el.style.left = "-9999px";
-		el.style.width = "1px";
-		el.style.height = "1px";
-		document.body.appendChild(el);
-		const computed = getComputedStyle(el).backgroundColor;
-		document.body.removeChild(el);
-
-		if (computed) {
-			colorClassCache.set(bgClass, computed);
-			return computed;
-		}
-	} catch {
-		// DOM operation failed, return null gracefully
-		return null;
-	}
-
-	return null;
-};
-
 export default function Page() {
 	const {
 		data: expensesData,
@@ -143,33 +69,25 @@ export default function Page() {
 		isLoading: favoritesLoading,
 		isFetched: favoritesFetched,
 	} = api.user.getFavoriteExchangeRates.useQuery();
+	const {
+		homeCurrency,
+		usdToHomeRate: liveRateToBaseCurrency,
+		isLoading: currencyLoading,
+	} = useCurrency();
+	const { formatCurrency } = useCurrencyFormatter();
 	const { data: settings } = api.user.getSettings.useQuery();
-	const { data: overviewStats } = api.dashboard.getOverviewStats.useQuery();
+	const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
+
+	const { data: overviewStats } = api.dashboard.getOverviewStats.useQuery({
+		month: selectedMonth,
+		homeCurrency,
+	});
+	const { data: earliestBudgetMonth } =
+		api.budget.getEarliestBudgetMonth.useQuery();
 	const router = useRouter();
 	const { openNewExpense } = useExpenseModal();
 
-	const homeCurrency = settings?.homeCurrency ?? "USD";
-	const { formatCurrency } = useCurrencyFormatter();
-	const { data: baseCurrencyRate } =
-		api.exchangeRate.getRatesForCurrency.useQuery(
-			{ currency: homeCurrency },
-			{ enabled: homeCurrency !== "USD" },
-		);
 	const categoryClickBehavior = settings?.categoryClickBehavior ?? "toggle";
-
-	// Get the exchange rate from USD to base currency (prefers "blue" then "official")
-	const liveRateToBaseCurrency = useMemo(() => {
-		if (homeCurrency === "USD") return null;
-		if (!baseCurrencyRate?.length) return null;
-
-		const blueRate = baseCurrencyRate.find((r) => r.type === "blue");
-		if (blueRate) return Number(blueRate.rate);
-
-		const officialRate = baseCurrencyRate.find((r) => r.type === "official");
-		if (officialRate) return Number(officialRate.rate);
-
-		return Number(baseCurrencyRate[0]?.rate) || null;
-	}, [baseCurrencyRate, homeCurrency]);
 
 	const expenses: NormalizedExpense[] = useMemo(
 		() => normalizeExpensesFromApi(expensesData ?? []),
@@ -188,13 +106,18 @@ export default function Page() {
 	}, [favoritesData]);
 
 	const now = new Date();
-	const start = startOfMonth(now);
-	const end = endOfMonth(now);
-	const lastMonthStart = startOfMonth(subMonths(now, 1));
-	const lastMonthEnd = endOfMonth(subMonths(now, 1));
+	const start = startOfMonth(selectedMonth);
+	const end = endOfMonth(selectedMonth);
+	const lastMonthStart = startOfMonth(subMonths(selectedMonth, 1));
+	const lastMonthEnd = endOfMonth(subMonths(selectedMonth, 1));
+
+	const isCurrentMonth =
+		selectedMonth.getMonth() === now.getMonth() &&
+		selectedMonth.getFullYear() === now.getFullYear();
 
 	const {
 		currentMonthExpenses,
+		currentMonthExpensesWithAmounts,
 		totalThisMonth,
 		changeVsLastMonth,
 		dailyAverage,
@@ -202,6 +125,7 @@ export default function Page() {
 	} = useMemo(() => {
 		const monthlyTotals = new Map<string, number>();
 		const currentMonth: NormalizedExpense[] = [];
+		const currentMonthWithAmounts = new Map<string, number>();
 		let currentTotal = 0;
 		let previousMonthTotal = 0;
 
@@ -217,6 +141,7 @@ export default function Page() {
 
 			if (date >= start && date <= end) {
 				currentMonth.push(expense);
+				currentMonthWithAmounts.set(expense.id, amount);
 				currentTotal += amount;
 			} else if (date >= lastMonthStart && date <= lastMonthEnd) {
 				previousMonthTotal += amount;
@@ -230,7 +155,7 @@ export default function Page() {
 
 		const lastThreeMonthTotals: number[] = [];
 		for (let i = 1; i <= 3; i++) {
-			const target = subMonths(now, i);
+			const target = subMonths(selectedMonth, i);
 			const key = `${target.getFullYear()}-${target.getMonth()}`;
 			const monthTotal = monthlyTotals.get(key);
 			if (monthTotal !== undefined) {
@@ -244,40 +169,43 @@ export default function Page() {
 					lastThreeMonthTotals.length
 				: currentTotal;
 
-		const averagePerDay = currentTotal / Math.max(1, now.getDate());
+		const daysElapsed = isCurrentMonth
+			? now.getDate()
+			: eachDayOfInterval({ start, end }).length;
+		const averagePerDay = currentTotal / Math.max(1, daysElapsed);
 
 		return {
 			currentMonthExpenses: currentMonth,
+			currentMonthExpensesWithAmounts: currentMonthWithAmounts,
 			totalThisMonth: currentTotal,
 			changeVsLastMonth: change,
 			dailyAverage: averagePerDay,
 			projectedSpend: projected,
 		};
 	}, [
-		end,
 		expenses,
-		lastMonthEnd,
-		lastMonthStart,
-		now,
 		start,
+		end,
+		lastMonthStart,
+		lastMonthEnd,
 		homeCurrency,
 		liveRateToBaseCurrency,
+		selectedMonth,
+		isCurrentMonth,
+		now,
 	]);
 
 	const dailyTrend = useMemo(() => {
 		const byDay = new Map<string, number>();
 		for (const expense of currentMonthExpenses) {
 			const dayKey = format(expense.date, "yyyy-MM-dd");
-			const amount = convertExpenseAmountForDisplay(
-				expense,
-				homeCurrency,
-				liveRateToBaseCurrency,
-			);
+			const amount = currentMonthExpensesWithAmounts.get(expense.id) ?? 0;
 			byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + amount);
 		}
 
+		const endDate = isCurrentMonth ? now : end;
 		let cumulativeTotal = 0;
-		return eachDayOfInterval({ start, end: now }).map((day) => {
+		return eachDayOfInterval({ start, end: endDate }).map((day) => {
 			const key = format(day, "yyyy-MM-dd");
 			const dailyAmount = byDay.get(key) ?? 0;
 			cumulativeTotal += dailyAmount;
@@ -287,16 +215,23 @@ export default function Page() {
 				value: cumulativeTotal,
 			};
 		});
-	}, [currentMonthExpenses, now, start, homeCurrency, liveRateToBaseCurrency]);
+	}, [
+		currentMonthExpenses,
+		currentMonthExpensesWithAmounts,
+		start,
+		end,
+		isCurrentMonth,
+		now,
+	]);
 
 	const areaChartConfig: ChartConfig = {
 		spend: {
 			label: "Cumulative spend",
-			color: "var(--chart-1)",
+			color: "hsl(217, 91%, 60%)",
 		},
 	};
 
-	const categoryBreakdown = useMemo(() => {
+	const categoryBreakdown = useMemo<CategorySegment[]>(() => {
 		const map = new Map<
 			string,
 			{ total: number; color?: string; id?: string }
@@ -304,11 +239,7 @@ export default function Page() {
 
 		for (const expense of currentMonthExpenses) {
 			const key = expense.category?.name ?? "Uncategorized";
-			const amount = convertExpenseAmountForDisplay(
-				expense,
-				homeCurrency,
-				liveRateToBaseCurrency,
-			);
+			const amount = currentMonthExpensesWithAmounts.get(expense.id) ?? 0;
 			const existing = map.get(key);
 			map.set(key, {
 				total: (existing?.total ?? 0) + amount,
@@ -336,40 +267,12 @@ export default function Page() {
 				};
 			})
 			.sort((a, b) => b.value - a.value);
-	}, [currentMonthExpenses, homeCurrency, liveRateToBaseCurrency]);
+	}, [currentMonthExpenses, currentMonthExpensesWithAmounts]);
 
 	const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
 	const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
 		new Set(),
 	);
-	const [pieRadii, setPieRadii] = useState<{ inner: number; outer: number }>({
-		inner: 100,
-		outer: 175,
-	});
-	const pieWrapperRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const target = pieWrapperRef.current;
-		if (
-			!target ||
-			typeof window === "undefined" ||
-			!("ResizeObserver" in window)
-		) {
-			return;
-		}
-
-		const observer = new ResizeObserver(([entry]) => {
-			const width = entry?.contentRect.width ?? 0;
-			if (!width) return;
-
-			const outer = Math.min(175, Math.max(110, width / 2 - 12));
-			const inner = Math.max(72, Math.min(outer * 0.64, outer - 32));
-			setPieRadii({ inner, outer });
-		});
-
-		observer.observe(target);
-		return () => observer.disconnect();
-	}, []);
 
 	const visibleCategoryBreakdown = useMemo(() => {
 		return categoryBreakdown.filter(
@@ -377,11 +280,6 @@ export default function Page() {
 				!segment.categoryId || !hiddenCategories.has(segment.categoryId),
 		);
 	}, [categoryBreakdown, hiddenCategories]);
-
-	const isSingleSlice = visibleCategoryBreakdown.length <= 1;
-	const piePaddingAngle = isSingleSlice ? 0 : 1;
-	const pieStroke = isSingleSlice ? "none" : "var(--card)";
-	const pieStrokeWidth = isSingleSlice ? 0 : 3;
 
 	const visibleTotal = useMemo(() => {
 		return visibleCategoryBreakdown.reduce(
@@ -440,31 +338,6 @@ export default function Page() {
 		return sorted.slice(0, 50);
 	}, [expenses]);
 
-	// create-expense handler removed: overview no longer offers a quick-create action
-
-	const renderChangeBadge = (change: number | null) => {
-		if (change === null) {
-			return <Badge variant="secondary">No prior month</Badge>;
-		}
-
-		const positive = change >= 0;
-		return (
-			<Badge
-				className="flex items-center gap-1"
-				variant={positive ? "secondary" : "outline"}
-			>
-				{positive ? (
-					<ArrowUpRight className="h-3.5 w-3.5" />
-				) : (
-					<ArrowDownRight className="h-3.5 w-3.5" />
-				)}
-				{`${positive ? "+" : ""}${change.toFixed(1)}% vs last month`}
-			</Badge>
-		);
-	};
-
-	const formatMoney = (value: number) => formatCurrency(value, homeCurrency);
-
 	const isUsingMockExpenses =
 		!expensesFetched || (expensesData?.length ?? 0) === 0;
 	const isUsingMockFavorites =
@@ -501,60 +374,70 @@ export default function Page() {
 
 	return (
 		<>
-			<SiteHeader title="Overview" />
+			<SiteHeader
+				actions={
+					<MonthStepper
+						minDate={earliestBudgetMonth ?? undefined}
+						onChange={setSelectedMonth}
+						value={selectedMonth}
+					/>
+				}
+				title="Overview"
+			/>
 			<PageContent>
 				<div className="space-y-4 lg:space-y-6">
 					{isUsingMockExpenses && renderOnboarding()}
 					<StatsCards
-						expensesLoading={expensesLoading}
-						overviewStats={overviewStats}
-						totalThisMonth={totalThisMonth}
+						categoryBreakdown={categoryBreakdown}
 						changeVsLastMonth={changeVsLastMonth}
 						dailyAverage={dailyAverage}
-						projectedSpend={projectedSpend}
-						categoryBreakdown={categoryBreakdown}
+						expensesLoading={expensesLoading}
 						homeCurrency={homeCurrency}
+						overviewStats={overviewStats}
+						projectedSpend={projectedSpend}
+						totalThisMonth={totalThisMonth}
 					/>
 
 					<section className="grid gap-4 lg:grid-cols-2">
 						<CategoryDonut
-							expensesLoading={expensesLoading}
-							categoryBreakdown={categoryBreakdown}
-							visibleCategoryBreakdown={visibleCategoryBreakdown}
-							activeSliceIndex={activeSliceIndex}
 							activeSlice={activeSlice}
-							visibleTotal={visibleTotal}
-							pieChartConfig={pieChartConfig}
-							hiddenCategories={hiddenCategories}
+							activeSliceIndex={activeSliceIndex}
+							categoryBreakdown={categoryBreakdown}
 							categoryClickBehavior={categoryClickBehavior}
-							formatMoney={formatMoney}
-							isUsingMockExpenses={isUsingMockExpenses}
-							resolveCategoryColorValue={resolveCategoryColorValue}
+							expensesLoading={expensesLoading}
+							formatMoney={(value: number) =>
+								formatCurrency(value, homeCurrency)
+							}
 							handleCategoryClick={handleCategoryClick}
 							handleSliceEnter={handleSliceEnter}
 							handleSliceLeave={handleSliceLeave}
+							hiddenCategories={hiddenCategories}
+							isUsingMockExpenses={isUsingMockExpenses}
+							pieChartConfig={pieChartConfig}
+							visibleCategoryBreakdown={visibleCategoryBreakdown}
+							visibleTotal={visibleTotal}
 						/>
 
 						<RecentExpenses
 							expensesLoading={expensesLoading}
-							recentExpenses={recentExpenses}
+							formatCurrency={formatCurrency}
 							homeCurrency={homeCurrency}
 							liveRateToBaseCurrency={liveRateToBaseCurrency}
-							formatCurrency={formatCurrency}
+							recentExpenses={recentExpenses}
 						/>
 					</section>
 
 					<section className="grid gap-4 lg:grid-cols-3">
 						<TrendChart
-							expensesLoading={expensesLoading}
-							dailyTrend={dailyTrend}
 							areaChartConfig={areaChartConfig}
+							dailyTrend={dailyTrend}
+							expensesLoading={expensesLoading}
 							now={now}
 						/>
 
 						<FavoritesPanel
-							favoritesLoading={favoritesLoading}
 							favoriteRates={favoriteRates}
+							favoritesLoading={favoritesLoading}
 							isUsingMockFavorites={isUsingMockFavorites}
 						/>
 					</section>
