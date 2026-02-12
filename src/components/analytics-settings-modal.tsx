@@ -24,6 +24,7 @@ import {
 	useEffect,
 	useImperativeHandle,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from "react";
@@ -63,6 +64,185 @@ interface CategoryPreference {
 		color: string;
 	};
 }
+
+type AnalyticsState = {
+	fixed: CategoryPreference[];
+	flexible: CategoryPreference[];
+	original: CategoryPreference[];
+	hasChanges: boolean;
+	initialized: boolean;
+};
+
+type AnalyticsAction =
+	| { type: "INITIALIZE_DATA"; preferences: CategoryPreference[] }
+	| { type: "MOVE_ITEM"; activeId: string; overId: string }
+	| {
+			type: "ADD_CATEGORY";
+			category: { id: string; name: string; color: string };
+	  }
+	| { type: "REMOVE_CATEGORY"; categoryId: string }
+	| { type: "RESET"; preferences: CategoryPreference[] };
+
+const calculateChanges = (
+	fixed: CategoryPreference[],
+	flexible: CategoryPreference[],
+	original: CategoryPreference[],
+) => {
+	const current = [...fixed, ...flexible];
+	if (current.length !== original.length) return true;
+	return current.some((c) => {
+		const o = original.find((op) => op.categoryId === c.categoryId);
+		return !o || o.isFlexible !== c.isFlexible;
+	});
+};
+
+const analyticsReducer = (
+	state: AnalyticsState,
+	action: AnalyticsAction,
+): AnalyticsState => {
+	switch (action.type) {
+		case "INITIALIZE_DATA": {
+			const fixed = action.preferences.filter((p) => !p.isFlexible);
+			const flexible = action.preferences.filter((p) => p.isFlexible);
+			return {
+				fixed,
+				flexible,
+				original: action.preferences,
+				hasChanges: false,
+				initialized: true,
+			};
+		}
+
+		case "MOVE_ITEM": {
+			const { activeId, overId } = action;
+			const isFromFixed = state.fixed.some(
+				(cat) => cat.categoryId === activeId,
+			);
+
+			let nextState = { ...state };
+
+			const isToFixed =
+				overId === "fixed-drop-zone" ||
+				state.fixed.some((cat) => cat.categoryId === overId);
+
+			const isToFlexible =
+				overId === "flexible-drop-zone" ||
+				state.flexible.some((cat) => cat.categoryId === overId);
+
+			if (isFromFixed && isToFlexible) {
+				const category = state.fixed.find((cat) => cat.categoryId === activeId);
+				if (category) {
+					nextState = {
+						...state,
+						fixed: state.fixed.filter((cat) => cat.categoryId !== activeId),
+						flexible: [...state.flexible, { ...category, isFlexible: true }],
+					};
+				}
+			} else if (!isFromFixed && isToFixed) {
+				const category = state.flexible.find(
+					(cat) => cat.categoryId === activeId,
+				);
+				if (category) {
+					nextState = {
+						...state,
+						flexible: state.flexible.filter(
+							(cat) => cat.categoryId !== activeId,
+						),
+						fixed: [...state.fixed, { ...category, isFlexible: false }],
+					};
+				}
+			} else if (isFromFixed && isToFixed) {
+				const oldIndex = state.fixed.findIndex(
+					(cat) => cat.categoryId === activeId,
+				);
+				const newIndex = state.fixed.findIndex(
+					(cat) => cat.categoryId === overId,
+				);
+				if (oldIndex !== -1 && newIndex !== -1) {
+					nextState = {
+						...state,
+						fixed: arrayMove(state.fixed, oldIndex, newIndex),
+					};
+				}
+			} else if (!isFromFixed && isToFlexible) {
+				const oldIndex = state.flexible.findIndex(
+					(cat) => cat.categoryId === activeId,
+				);
+				const newIndex = state.flexible.findIndex(
+					(cat) => cat.categoryId === overId,
+				);
+				if (oldIndex !== -1 && newIndex !== -1) {
+					nextState = {
+						...state,
+						flexible: arrayMove(state.flexible, oldIndex, newIndex),
+					};
+				}
+			}
+
+			return {
+				...nextState,
+				hasChanges: calculateChanges(
+					nextState.fixed,
+					nextState.flexible,
+					state.original,
+				),
+			};
+		}
+
+		case "ADD_CATEGORY": {
+			if (
+				[...state.fixed, ...state.flexible].some(
+					(pref) => pref.categoryId === action.category.id,
+				)
+			) {
+				return state;
+			}
+			const nextFlexible = [
+				...state.flexible,
+				{
+					categoryId: action.category.id,
+					isFlexible: true,
+					category: action.category,
+				},
+			];
+			return {
+				...state,
+				flexible: nextFlexible,
+				hasChanges: calculateChanges(state.fixed, nextFlexible, state.original),
+			};
+		}
+
+		case "REMOVE_CATEGORY": {
+			const nextFixed = state.fixed.filter(
+				(cat) => cat.categoryId !== action.categoryId,
+			);
+			const nextFlexible = state.flexible.filter(
+				(cat) => cat.categoryId !== action.categoryId,
+			);
+			return {
+				...state,
+				fixed: nextFixed,
+				flexible: nextFlexible,
+				hasChanges: calculateChanges(nextFixed, nextFlexible, state.original),
+			};
+		}
+
+		case "RESET": {
+			const fixed = action.preferences.filter((p) => !p.isFlexible);
+			const flexible = action.preferences.filter((p) => p.isFlexible);
+			return {
+				fixed,
+				flexible,
+				original: action.preferences,
+				hasChanges: false,
+				initialized: true,
+			};
+		}
+
+		default:
+			return state;
+	}
+};
 
 interface SortableCategoryItemProps {
 	preference: CategoryPreference;
@@ -158,18 +338,21 @@ export const AnalyticsSettingsModal = forwardRef<
 >(({ children }, ref) => {
 	const [open, setOpen] = useState(false);
 	const [activeId, setActiveId] = useState<string | null>(null);
-	const [fixedCategories, setFixedCategories] = useState<CategoryPreference[]>(
-		[],
-	);
-	const [flexibleCategories, setFlexibleCategories] = useState<
-		CategoryPreference[]
-	>([]);
+	const [state, dispatch] = useReducer(analyticsReducer, {
+		fixed: [],
+		flexible: [],
+		original: [],
+		hasChanges: false,
+		initialized: false,
+	});
+	const { fixed, flexible, initialized, hasChanges } = state;
+
 	const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 	const hasUnsavedChangesRef = useRef(false);
 
 	const { preferences, updatePreference, deletePreference, isUpdating } =
 		useAnalyticsCategoryPreferences();
-	const { data: allCategories } = api.user.listCategories.useQuery(undefined);
+	const { data: allCategories } = api.categories.getAll.useQuery(undefined);
 	const utils = api.useUtils();
 
 	useImperativeHandle(
@@ -181,38 +364,15 @@ export const AnalyticsSettingsModal = forwardRef<
 		[],
 	);
 
-	const initialized =
-		fixedCategories.length > 0 ||
-		flexibleCategories.length > 0 ||
-		Boolean(preferences);
-
 	useEffect(() => {
 		if (open && preferences) {
-			setFixedCategories(preferences.filter((pref) => !pref.isFlexible));
-			setFlexibleCategories(preferences.filter((pref) => pref.isFlexible));
+			dispatch({ type: "INITIALIZE_DATA", preferences });
 		}
 	}, [open, preferences]);
 
-	const hasUnsavedChanges = useMemo(() => {
-		if (!preferences || !initialized) return false;
-
-		const currentCategories = [...fixedCategories, ...flexibleCategories];
-		const originalCategories = preferences;
-
-		return (
-			currentCategories.length !== originalCategories.length ||
-			currentCategories.some((current) => {
-				const original = originalCategories.find(
-					(pref) => pref.categoryId === current.categoryId,
-				);
-				return !original || original.isFlexible !== current.isFlexible;
-			})
-		);
-	}, [preferences, fixedCategories, flexibleCategories, initialized]);
-
 	useEffect(() => {
-		hasUnsavedChangesRef.current = hasUnsavedChanges;
-	}, [hasUnsavedChanges]);
+		hasUnsavedChangesRef.current = hasChanges;
+	}, [hasChanges]);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
@@ -230,107 +390,29 @@ export const AnalyticsSettingsModal = forwardRef<
 		const { active, over } = event;
 		setActiveId(null);
 
-		if (!over) return;
-
-		const activeId = active.id as string;
-		const overId = over.id as string;
-
-		const isFromFixed = fixedCategories.some(
-			(cat) => cat.categoryId === activeId,
-		);
-
-		const isToFixed =
-			overId === "fixed-drop-zone" ||
-			fixedCategories.some((cat) => cat.categoryId === overId);
-
-		const isToFlexible =
-			overId === "flexible-drop-zone" ||
-			flexibleCategories.some((cat) => cat.categoryId === overId);
-
-		if (isFromFixed && isToFlexible) {
-			const category = fixedCategories.find(
-				(cat) => cat.categoryId === activeId,
-			);
-			if (category) {
-				setFixedCategories((prev) =>
-					prev.filter((cat) => cat.categoryId !== activeId),
-				);
-				setFlexibleCategories((prev) => [
-					...prev,
-					{ ...category, isFlexible: true },
-				]);
-			}
-		} else if (!isFromFixed && isToFixed) {
-			const category = flexibleCategories.find(
-				(cat) => cat.categoryId === activeId,
-			);
-			if (category) {
-				setFlexibleCategories((prev) =>
-					prev.filter((cat) => cat.categoryId !== activeId),
-				);
-				setFixedCategories((prev) => [
-					...prev,
-					{ ...category, isFlexible: false },
-				]);
-			}
-		} else if (isFromFixed && isToFixed) {
-			const oldIndex = fixedCategories.findIndex(
-				(cat) => cat.categoryId === activeId,
-			);
-			const newIndex = fixedCategories.findIndex(
-				(cat) => cat.categoryId === overId,
-			);
-			if (oldIndex !== -1 && newIndex !== -1) {
-				setFixedCategories((prev) => arrayMove(prev, oldIndex, newIndex));
-			}
-		} else if (!isFromFixed && isToFlexible) {
-			const oldIndex = flexibleCategories.findIndex(
-				(cat) => cat.categoryId === activeId,
-			);
-			const newIndex = flexibleCategories.findIndex(
-				(cat) => cat.categoryId === overId,
-			);
-			if (oldIndex !== -1 && newIndex !== -1) {
-				setFlexibleCategories((prev) => arrayMove(prev, oldIndex, newIndex));
-			}
+		if (over) {
+			dispatch({
+				type: "MOVE_ITEM",
+				activeId: active.id as string,
+				overId: over.id as string,
+			});
 		}
 	};
 
 	const handleAddCategory = (categoryId: string) => {
 		const category = allCategories?.find((cat) => cat.id === categoryId);
 		if (!category) return;
-
-		if (
-			[...fixedCategories, ...flexibleCategories].some(
-				(pref) => pref.categoryId === categoryId,
-			)
-		) {
-			return;
-		}
-
-		setFlexibleCategories((prev) => [
-			...prev,
-			{
-				categoryId,
-				isFlexible: true,
-				category,
-			},
-		]);
+		dispatch({ type: "ADD_CATEGORY", category });
 	};
 
 	const handleRemoveCategory = (categoryId: string) => {
-		setFixedCategories((prev) =>
-			prev.filter((cat) => cat.categoryId !== categoryId),
-		);
-		setFlexibleCategories((prev) =>
-			prev.filter((cat) => cat.categoryId !== categoryId),
-		);
+		dispatch({ type: "REMOVE_CATEGORY", categoryId });
 	};
 
 	const handleSave = async () => {
 		if (!preferences) return;
 
-		const currentCategories = [...fixedCategories, ...flexibleCategories];
+		const currentCategories = [...fixed, ...flexible];
 		const originalCategories = preferences;
 
 		const updates: Array<{ categoryId: string; isFlexible: boolean }> = [];
@@ -374,8 +456,7 @@ export const AnalyticsSettingsModal = forwardRef<
 
 	const handleCancel = () => {
 		if (preferences) {
-			setFixedCategories(preferences.filter((pref) => !pref.isFlexible));
-			setFlexibleCategories(preferences.filter((pref) => pref.isFlexible));
+			dispatch({ type: "RESET", preferences });
 		}
 		setOpen(false);
 	};
@@ -384,27 +465,24 @@ export const AnalyticsSettingsModal = forwardRef<
 		() =>
 			allCategories?.filter(
 				(category) =>
-					![...fixedCategories, ...flexibleCategories].some(
+					![...fixed, ...flexible].some(
 						(pref) => pref.categoryId === category.id,
 					),
 			) || [],
-		[allCategories, fixedCategories, flexibleCategories],
+		[allCategories, fixed, flexible],
 	);
 
 	const activeCategory = useMemo(
 		() =>
 			activeId
-				? [...fixedCategories, ...flexibleCategories].find(
-						(cat) => cat.categoryId === activeId,
-					)
+				? [...fixed, ...flexible].find((cat) => cat.categoryId === activeId)
 				: null,
-		[activeId, fixedCategories, flexibleCategories],
+		[activeId, fixed, flexible],
 	);
 
 	const handleDiscardChanges = () => {
 		if (preferences) {
-			setFixedCategories(preferences.filter((pref) => !pref.isFlexible));
-			setFlexibleCategories(preferences.filter((pref) => pref.isFlexible));
+			dispatch({ type: "RESET", preferences });
 		}
 		setShowUnsavedDialog(false);
 		hasUnsavedChangesRef.current = false;
@@ -464,7 +542,7 @@ export const AnalyticsSettingsModal = forwardRef<
 											className="flex-1 space-y-2 overflow-y-auto rounded-lg border-2 border-muted border-dashed p-4"
 											id="fixed-drop-zone"
 										>
-											{fixedCategories.length === 0 ? (
+											{fixed.length === 0 ? (
 												<div className="flex h-full items-center justify-center">
 													<p className="text-muted-foreground text-sm">
 														Drop fixed categories here
@@ -472,10 +550,10 @@ export const AnalyticsSettingsModal = forwardRef<
 												</div>
 											) : (
 												<SortableContext
-													items={fixedCategories.map((cat) => cat.categoryId)}
+													items={fixed.map((cat) => cat.categoryId)}
 													strategy={verticalListSortingStrategy}
 												>
-													{fixedCategories.map((pref) => (
+													{fixed.map((pref) => (
 														<SortableCategoryItem
 															key={pref.categoryId}
 															onRemove={handleRemoveCategory}
@@ -502,7 +580,7 @@ export const AnalyticsSettingsModal = forwardRef<
 											className="flex-1 space-y-2 overflow-y-auto rounded-lg border-2 border-muted border-dashed p-4"
 											id="flexible-drop-zone"
 										>
-											{flexibleCategories.length === 0 ? (
+											{flexible.length === 0 ? (
 												<div className="flex h-full items-center justify-center">
 													<p className="text-muted-foreground text-sm">
 														Drop flexible categories here
@@ -510,12 +588,10 @@ export const AnalyticsSettingsModal = forwardRef<
 												</div>
 											) : (
 												<SortableContext
-													items={flexibleCategories.map(
-														(cat) => cat.categoryId,
-													)}
+													items={flexible.map((cat) => cat.categoryId)}
 													strategy={verticalListSortingStrategy}
 												>
-													{flexibleCategories.map((pref) => (
+													{flexible.map((pref) => (
 														<SortableCategoryItem
 															key={pref.categoryId}
 															onRemove={handleRemoveCategory}

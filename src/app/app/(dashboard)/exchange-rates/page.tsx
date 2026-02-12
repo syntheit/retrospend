@@ -34,20 +34,20 @@ export default function Page() {
 		data: favoriteExchangeRates,
 		error: favoriteRatesError,
 		isLoading: favoritesLoading,
-	} = api.user.getFavoriteExchangeRates.useQuery(undefined, {
+	} = api.settings.getFavoriteExchangeRates.useQuery(undefined, {
 		enabled: Boolean(session?.user),
 	});
 
-	const reorderFavoritesMutation = api.user.reorderFavorites.useMutation({
+	const reorderFavoritesMutation = api.settings.reorderFavorites.useMutation({
 		onSuccess: () => {
-			void utils.user.getFavoriteExchangeRates.invalidate();
+			void utils.settings.getFavoriteExchangeRates.invalidate();
 		},
 	});
 
 	const toggleFavoriteMutation =
-		api.user.toggleFavoriteExchangeRate.useMutation({
+		api.settings.toggleFavoriteExchangeRate.useMutation({
 			onSuccess: () => {
-				void utils.user.getFavoriteExchangeRates.invalidate();
+				void utils.settings.getFavoriteExchangeRates.invalidate();
 			},
 			onError: () => {
 				toast.error("Failed to update favorite");

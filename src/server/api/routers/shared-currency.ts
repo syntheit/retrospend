@@ -1,4 +1,4 @@
-import { type PrismaClient, type Prisma } from "~prisma";
+import type { Prisma, PrismaClient } from "~prisma";
 
 /**
  * Fetches the best available exchange rate for a currency on or before a given date.
@@ -59,4 +59,3 @@ export async function sumExpensesForCurrency(
 
 	return { total, totalInUSD };
 }
-

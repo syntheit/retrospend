@@ -42,7 +42,7 @@ function FontScript() {
 
 export function FontProvider({ children }: { children: React.ReactNode }) {
 	const { data: session } = useSession();
-	const { data: settings } = api.user.getSettings.useQuery(undefined, {
+	const { data: settings } = api.settings.getGeneral.useQuery(undefined, {
 		enabled: !!session?.user,
 	});
 

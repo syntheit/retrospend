@@ -24,6 +24,8 @@ export const CATEGORY_COLORS = [
 
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 
+export const BASE_CURRENCY = "USD";
+
 export const CATEGORY_COLOR_MAP: Record<CategoryColor, string> = {
 	emerald: "bg-emerald-600 text-white",
 	blue: "bg-blue-600 text-white",

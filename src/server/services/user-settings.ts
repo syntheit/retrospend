@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
+import { BASE_CURRENCY } from "~/lib/constants";
 import { db } from "~/server/db";
 import type { Page } from "~prisma";
 
@@ -145,7 +146,7 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 	},
 	EXPENSE: {
 		version: 1,
-		defaultCurrency: "USD",
+		defaultCurrency: BASE_CURRENCY,
 		showExchangeRates: true,
 	},
 };

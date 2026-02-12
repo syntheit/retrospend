@@ -1,13 +1,14 @@
-{ stdenv
-, lib
-, fetchFromGitHub
-, pkgconfig
-, openssl
-, zlib
-, rustPlatform
-, git
-, releaseTag
-, releaseSha
+{
+  stdenv,
+  lib,
+  fetchFromGitHub,
+  pkgconfig,
+  openssl,
+  zlib,
+  rustPlatform,
+  git,
+  releaseTag,
+  releaseSha,
 }:
 
 rustPlatform.buildRustPackage rec {
@@ -21,10 +22,16 @@ rustPlatform.buildRustPackage rec {
     sha256 = releaseSha;
   };
 
-  cargoHash = "sha256-U5d/HkuWnD/XSrAJr5AYh+WPVGDOcK/e4sC0udPZoyU=";
+  cargoHash = "sha256-DkuqGzcHHqW3u6ZVz6xCJjeF+l8Y44pYMNaeFjb7vIc=";
 
-  nativeBuildInputs = [ pkgconfig git ];
-  buildInputs = [ openssl zlib ];
+  nativeBuildInputs = [
+    pkgconfig
+    git
+  ];
+  buildInputs = [
+    openssl
+    zlib
+  ];
 
   doCheck = false;
 
@@ -57,4 +64,3 @@ rustPlatform.buildRustPackage rec {
     copy_artifact prisma-fmt $out/bin
   '';
 }
-

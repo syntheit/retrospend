@@ -1,12 +1,5 @@
 "use client";
 
-import {
-	eachDayOfInterval,
-	endOfMonth,
-	format,
-	startOfMonth,
-	subMonths,
-} from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -23,15 +16,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
-import { type ChartConfig } from "~/components/ui/chart";
+import type { ChartConfig } from "~/components/ui/chart";
 import { useCurrency } from "~/hooks/use-currency";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { resolveCategoryColorValue } from "~/lib/category-colors";
-import {
-	convertExpenseAmountForDisplay,
-	type NormalizedExpense,
-	normalizeExpensesFromApi,
-} from "~/lib/utils";
+import { type NormalizedExpense, normalizeExpensesFromApi } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { CategoryDonut } from "./_components/category-donut";
 import type { CategorySegment } from "./_components/category-donut-legend";
@@ -40,7 +29,8 @@ import { RecentExpenses } from "./_components/recent-expenses";
 import { StatsCards } from "./_components/stats-cards";
 import { TrendChart } from "./_components/trend-chart";
 
-type FavoriteRate = RouterOutputs["user"]["getFavoriteExchangeRates"][number];
+type FavoriteRate =
+	RouterOutputs["settings"]["getFavoriteExchangeRates"][number];
 
 type NormalizedFavorite = {
 	id: string;
@@ -68,14 +58,10 @@ export default function Page() {
 		data: favoritesData,
 		isLoading: favoritesLoading,
 		isFetched: favoritesFetched,
-	} = api.user.getFavoriteExchangeRates.useQuery();
-	const {
-		homeCurrency,
-		usdToHomeRate: liveRateToBaseCurrency,
-		isLoading: currencyLoading,
-	} = useCurrency();
+	} = api.settings.getFavoriteExchangeRates.useQuery();
+	const { homeCurrency, usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
 	const { formatCurrency } = useCurrencyFormatter();
-	const { data: settings } = api.user.getSettings.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
 	const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
 
 	const { data: overviewStats } = api.dashboard.getOverviewStats.useQuery({
@@ -106,123 +92,34 @@ export default function Page() {
 	}, [favoritesData]);
 
 	const now = new Date();
-	const start = startOfMonth(selectedMonth);
-	const end = endOfMonth(selectedMonth);
-	const lastMonthStart = startOfMonth(subMonths(selectedMonth, 1));
-	const lastMonthEnd = endOfMonth(subMonths(selectedMonth, 1));
 
-	const isCurrentMonth =
-		selectedMonth.getMonth() === now.getMonth() &&
-		selectedMonth.getFullYear() === now.getFullYear();
-
-	const {
-		currentMonthExpenses,
-		currentMonthExpensesWithAmounts,
-		totalThisMonth,
-		changeVsLastMonth,
-		dailyAverage,
-		projectedSpend,
-	} = useMemo(() => {
-		const monthlyTotals = new Map<string, number>();
-		const currentMonth: NormalizedExpense[] = [];
-		const currentMonthWithAmounts = new Map<string, number>();
-		let currentTotal = 0;
-		let previousMonthTotal = 0;
-
-		for (const expense of expenses) {
-			const date = new Date(expense.date);
-			const amount = convertExpenseAmountForDisplay(
-				expense,
-				homeCurrency,
-				liveRateToBaseCurrency,
-			);
-			const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-			monthlyTotals.set(monthKey, (monthlyTotals.get(monthKey) ?? 0) + amount);
-
-			if (date >= start && date <= end) {
-				currentMonth.push(expense);
-				currentMonthWithAmounts.set(expense.id, amount);
-				currentTotal += amount;
-			} else if (date >= lastMonthStart && date <= lastMonthEnd) {
-				previousMonthTotal += amount;
-			}
-		}
-
-		const change =
-			previousMonthTotal > 0
-				? ((currentTotal - previousMonthTotal) / previousMonthTotal) * 100
-				: null;
-
-		const lastThreeMonthTotals: number[] = [];
-		for (let i = 1; i <= 3; i++) {
-			const target = subMonths(selectedMonth, i);
-			const key = `${target.getFullYear()}-${target.getMonth()}`;
-			const monthTotal = monthlyTotals.get(key);
-			if (monthTotal !== undefined) {
-				lastThreeMonthTotals.push(monthTotal);
-			}
-		}
-
-		const projected =
-			lastThreeMonthTotals.length > 0
-				? lastThreeMonthTotals.reduce((sum, value) => sum + value, 0) /
-					lastThreeMonthTotals.length
-				: currentTotal;
-
-		const daysElapsed = isCurrentMonth
-			? now.getDate()
-			: eachDayOfInterval({ start, end }).length;
-		const averagePerDay = currentTotal / Math.max(1, daysElapsed);
-
-		return {
-			currentMonthExpenses: currentMonth,
-			currentMonthExpensesWithAmounts: currentMonthWithAmounts,
-			totalThisMonth: currentTotal,
-			changeVsLastMonth: change,
-			dailyAverage: averagePerDay,
-			projectedSpend: projected,
-		};
-	}, [
-		expenses,
-		start,
-		end,
-		lastMonthStart,
-		lastMonthEnd,
-		homeCurrency,
-		liveRateToBaseCurrency,
-		selectedMonth,
-		isCurrentMonth,
-		now,
-	]);
-
-	const dailyTrend = useMemo(() => {
-		const byDay = new Map<string, number>();
-		for (const expense of currentMonthExpenses) {
-			const dayKey = format(expense.date, "yyyy-MM-dd");
-			const amount = currentMonthExpensesWithAmounts.get(expense.id) ?? 0;
-			byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + amount);
-		}
-
-		const endDate = isCurrentMonth ? now : end;
-		let cumulativeTotal = 0;
-		return eachDayOfInterval({ start, end: endDate }).map((day) => {
-			const key = format(day, "yyyy-MM-dd");
-			const dailyAmount = byDay.get(key) ?? 0;
-			cumulativeTotal += dailyAmount;
-			return {
-				day: format(day, "MMM d"),
-				dateLabel: format(day, "PP"),
-				value: cumulativeTotal,
-			};
+	const { data: summaryStats, isLoading: statsLoading } =
+		api.stats.getSummary.useQuery({
+			month: selectedMonth,
+			homeCurrency,
 		});
-	}, [
-		currentMonthExpenses,
-		currentMonthExpensesWithAmounts,
-		start,
-		end,
-		isCurrentMonth,
-		now,
-	]);
+
+	const { data: categoryData, isLoading: categoriesLoading } =
+		api.stats.getCategoryBreakdown.useQuery({
+			month: selectedMonth,
+			homeCurrency,
+		});
+
+	const { data: trendData, isLoading: trendLoading } =
+		api.stats.getDailyTrend.useQuery({
+			month: selectedMonth,
+			homeCurrency,
+		});
+
+	const { totalThisMonth, changeVsLastMonth, dailyAverage, projectedSpend } =
+		summaryStats ?? {
+			totalThisMonth: 0,
+			changeVsLastMonth: null,
+			dailyAverage: 0,
+			projectedSpend: 0,
+		};
+
+	const dailyTrend = trendData ?? [];
 
 	const areaChartConfig: ChartConfig = {
 		spend: {
@@ -232,42 +129,25 @@ export default function Page() {
 	};
 
 	const categoryBreakdown = useMemo<CategorySegment[]>(() => {
-		const map = new Map<
-			string,
-			{ total: number; color?: string; id?: string }
-		>();
-
-		for (const expense of currentMonthExpenses) {
-			const key = expense.category?.name ?? "Uncategorized";
-			const amount = currentMonthExpensesWithAmounts.get(expense.id) ?? 0;
-			const existing = map.get(key);
-			map.set(key, {
-				total: (existing?.total ?? 0) + amount,
-				color: expense.category?.color ?? existing?.color,
-				id: expense.category?.id ?? existing?.id,
-			});
-		}
-
-		return Array.from(map.entries())
-			.map(([name, value], index) => {
-				const resolvedColor =
-					resolveCategoryColorValue(value.color) ??
-					chartPalette[index % chartPalette.length];
-				const key = (value.id ?? name)
-					.toString()
-					.replace(/\s+/g, "-")
-					.toLowerCase();
-				return {
-					key,
-					name,
-					value: value.total,
-					color: resolvedColor,
-					categoryColor: value.color,
-					categoryId: value.id,
-				};
-			})
-			.sort((a, b) => b.value - a.value);
-	}, [currentMonthExpenses, currentMonthExpensesWithAmounts]);
+		if (!categoryData) return [];
+		return categoryData.map((c, index) => {
+			const resolvedColor =
+				resolveCategoryColorValue(c.color) ??
+				chartPalette[index % chartPalette.length];
+			const key = (c.id ?? c.name)
+				.toString()
+				.replace(/\s+/g, "-")
+				.toLowerCase();
+			return {
+				key,
+				name: c.name,
+				value: c.value,
+				color: resolvedColor,
+				categoryColor: c.color,
+				categoryId: c.id,
+			};
+		});
+	}, [categoryData]);
 
 	const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
 	const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
@@ -391,7 +271,7 @@ export default function Page() {
 						categoryBreakdown={categoryBreakdown}
 						changeVsLastMonth={changeVsLastMonth}
 						dailyAverage={dailyAverage}
-						expensesLoading={expensesLoading}
+						expensesLoading={statsLoading}
 						homeCurrency={homeCurrency}
 						overviewStats={overviewStats}
 						projectedSpend={projectedSpend}
@@ -404,7 +284,7 @@ export default function Page() {
 							activeSliceIndex={activeSliceIndex}
 							categoryBreakdown={categoryBreakdown}
 							categoryClickBehavior={categoryClickBehavior}
-							expensesLoading={expensesLoading}
+							expensesLoading={categoriesLoading}
 							formatMoney={(value: number) =>
 								formatCurrency(value, homeCurrency)
 							}
@@ -431,7 +311,7 @@ export default function Page() {
 						<TrendChart
 							areaChartConfig={areaChartConfig}
 							dailyTrend={dailyTrend}
-							expensesLoading={expensesLoading}
+							expensesLoading={trendLoading}
 							now={now}
 						/>
 

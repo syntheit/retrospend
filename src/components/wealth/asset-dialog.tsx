@@ -8,7 +8,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CurrencyPicker } from "~/components/currency-picker";
-import { InlineExchangeRateSelector } from "~/components/inline-exchange-rate-selector";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -30,6 +29,7 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
+import { RateSelector } from "~/components/ui/rate-selector";
 import {
 	Select,
 	SelectContent,
@@ -375,19 +375,23 @@ export function AssetDialog({
 								{form.watch("currency") !== "USD" && (
 									<div className="space-y-2">
 										<FormLabel>Exchange Rate</FormLabel>
-										<InlineExchangeRateSelector
+										<RateSelector
 											currency={form.watch("currency")}
+											displayMode="foreign-to-default"
 											homeCurrency="USD"
 											isCustomSet={isCustomRate}
-											mode={false}
 											onCustomCleared={() => setIsCustomRate(false)}
-											onCustomSelected={() => setIsCustomRate(true)}
+											onCustomClick={() => setIsCustomRate(true)}
 											onCustomSet={() => setIsCustomRate(true)}
-											onValueChange={(rate, type) => {
+											onValueChange={(
+												rate: number | undefined,
+												type?: string,
+											) => {
 												setExchangeRate(rate);
 												setExchangeRateType(type);
 											}}
 											value={exchangeRate}
+											variant="inline"
 										/>
 									</div>
 								)}

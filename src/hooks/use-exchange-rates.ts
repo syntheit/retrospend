@@ -41,7 +41,7 @@ export function useExchangeRates({
 		);
 
 	// Only fetch favorites if we need them for default rate selection
-	const { data: favorites } = api.user.getFavoriteExchangeRates.useQuery(
+	const { data: favorites } = api.settings.getFavoriteExchangeRates.useQuery(
 		undefined,
 		{ enabled: enabled && preferFavorites },
 	);

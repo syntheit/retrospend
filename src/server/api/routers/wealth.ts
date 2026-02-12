@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { BASE_CURRENCY } from "~/lib/constants";
+import { generateCsv } from "~/lib/csv";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { AssetType } from "~prisma";
 import { getBestExchangeRate } from "./shared-currency";
@@ -33,7 +35,7 @@ export const wealthRouter = createTRPCRouter({
 
 			let rate = 1;
 			let rateType = null;
-			if (input.currency !== "USD") {
+			if (input.currency !== BASE_CURRENCY) {
 				if (input.exchangeRate && input.exchangeRateType) {
 					// Use provided exchange rate
 					rate = input.exchangeRate;
@@ -55,6 +57,19 @@ export const wealthRouter = createTRPCRouter({
 			}
 
 			const balanceInUSD = input.balance / rate;
+
+			// Sanity check to prevent "Billion Dollar" bug (multiplying instead of dividing)
+			if (
+				input.currency !== BASE_CURRENCY &&
+				rate > 1 &&
+				balanceInUSD > input.balance
+			) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message:
+						"Exchange rate calculation sanity check failed. Please contact support.",
+				});
+			}
 
 			const result = await db.$transaction(async (tx) => {
 				const account = await tx.assetAccount.create({
@@ -121,7 +136,7 @@ export const wealthRouter = createTRPCRouter({
 
 			let rate = 1;
 			let rateType = asset.exchangeRateType;
-			if (asset.currency !== "USD") {
+			if (asset.currency !== BASE_CURRENCY) {
 				if (input.exchangeRate && input.exchangeRateType) {
 					// Use provided exchange rate
 					rate = input.exchangeRate;
@@ -151,6 +166,19 @@ export const wealthRouter = createTRPCRouter({
 			}
 
 			const balanceInUSD = input.newBalance / rate;
+
+			// Sanity check to prevent "Billion Dollar" bug
+			if (
+				asset.currency !== BASE_CURRENCY &&
+				rate > 1 &&
+				balanceInUSD > input.newBalance
+			) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message:
+						"Exchange rate calculation sanity check failed. Please contact support.",
+				});
+			}
 
 			const result = await db.$transaction(async (tx) => {
 				const updatedAsset = await tx.assetAccount.update({
@@ -227,7 +255,7 @@ export const wealthRouter = createTRPCRouter({
 
 			let rate = 1;
 			let rateType = null;
-			if (input.currency !== "USD") {
+			if (input.currency !== BASE_CURRENCY) {
 				if (input.exchangeRate && input.exchangeRateType) {
 					// Use provided exchange rate
 					rate = input.exchangeRate;
@@ -249,6 +277,19 @@ export const wealthRouter = createTRPCRouter({
 			}
 
 			const balanceInUSD = input.balance / rate;
+
+			// Sanity check to prevent "Billion Dollar" bug
+			if (
+				input.currency !== BASE_CURRENCY &&
+				rate > 1 &&
+				balanceInUSD > input.balance
+			) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message:
+						"Exchange rate calculation sanity check failed. Please contact support.",
+				});
+			}
 
 			const result = await db.$transaction(async (tx) => {
 				const updatedAsset = await tx.assetAccount.update({
@@ -304,7 +345,7 @@ export const wealthRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 			const today = normalizeDate(new Date());
-			const targetCurrency = input?.currency ?? "USD";
+			const targetCurrency = input?.currency ?? BASE_CURRENCY;
 
 			const assets = await db.assetAccount.findMany({
 				where: { userId: session.user.id },
@@ -328,10 +369,10 @@ export const wealthRouter = createTRPCRouter({
 
 			const currencies = [...new Set(assets.map((a) => a.currency))];
 			const rates = new Map<string, number>();
-			rates.set("USD", 1);
+			rates.set(BASE_CURRENCY, 1);
 
 			for (const currency of currencies) {
-				if (currency === "USD") continue;
+				if (currency === BASE_CURRENCY) continue;
 				const rate = await getBestExchangeRate(db, currency, today);
 				if (rate) {
 					rates.set(currency, rate);
@@ -351,7 +392,7 @@ export const wealthRouter = createTRPCRouter({
 				if (!rate) {
 					rate = asset.exchangeRate?.toNumber() ?? null;
 				}
-				if (!rate && asset.currency === "USD") {
+				if (!rate && asset.currency === BASE_CURRENCY) {
 					rate = 1;
 				}
 
@@ -424,19 +465,7 @@ export const wealthRouter = createTRPCRouter({
 			initialSnapshots.forEach((snap, index) => {
 				const asset = assets[index];
 				if (asset && snap) {
-					// Sanity check: If balanceInUSD is exactly balance or balance * rate, it's likely corrupted.
-					// We'll use a conservative check: if balanceInUSD > balance * 1.1 and currency is something like ARS, it's bad.
-					// But the simplest check is to just re-calculate if it's more than 10x today's USD value.
-					const rawBalance = snap.balance.toNumber();
-					let balanceInUSD = snap.balanceInUSD.toNumber();
-
-					// If the stored USD value is more than 10x what it would be today, it's likely the "multiplied instead of divided" bug
-					const currentRate = rates.get(asset.currency) || 1;
-					const estimatedUSD = rawBalance / currentRate;
-					if (balanceInUSD > estimatedUSD * 10 && asset.currency !== "USD") {
-						balanceInUSD = estimatedUSD;
-					}
-
+					const balanceInUSD = snap.balanceInUSD.toNumber();
 					currentBalancesUSD.set(asset.id, balanceInUSD);
 				} else if (asset) {
 					currentBalancesUSD.set(asset.id, 0);
@@ -463,19 +492,7 @@ export const wealthRouter = createTRPCRouter({
 				if (!daysSnapshots) continue;
 
 				daysSnapshots.forEach((snap) => {
-					const rawBalance = snap.balance.toNumber();
-					let balanceInUSD = snap.balanceInUSD.toNumber();
-
-					// Apply the same sanity check to fix historical corruption on the fly
-					const currentRate = rates.get(snap.account.currency) || 1;
-					const estimatedUSD = rawBalance / currentRate;
-					if (
-						balanceInUSD > estimatedUSD * 10 &&
-						snap.account.currency !== "USD"
-					) {
-						balanceInUSD = estimatedUSD;
-					}
-
+					const balanceInUSD = snap.balanceInUSD.toNumber();
 					currentBalancesUSD.set(snap.accountId, balanceInUSD);
 				});
 
@@ -589,39 +606,23 @@ export const wealthRouter = createTRPCRouter({
 			"updatedAt",
 		];
 
-		const escapeValue = (raw: unknown): string => {
-			if (raw === null || raw === undefined) return "";
-			const value =
-				raw instanceof Date
-					? (raw.toISOString().split("T")[0] ?? "")
-					: typeof raw === "number" || typeof raw === "bigint"
-						? raw.toString()
-						: String(raw);
-
-			const needsEscaping = /["\n,]/.test(value);
-			if (!needsEscaping) return value;
-			return `"${value.replace(/"/g, '""')}"`;
-		};
-
 		const rows = assets.map((asset) => {
 			const rate = rateMap.get(asset.currency) || 1;
 			const balanceInUSD = asset.balance.toNumber() / rate;
 			return [
-				escapeValue(asset.name),
-				escapeValue(asset.type),
-				escapeValue(asset.currency),
-				escapeValue(asset.balance),
-				escapeValue(balanceInUSD),
-				escapeValue(asset.exchangeRate),
-				escapeValue(asset.exchangeRateType),
-				escapeValue(asset.isLiquid),
-				escapeValue(asset.createdAt),
-				escapeValue(asset.updatedAt),
+				asset.name,
+				asset.type,
+				asset.currency,
+				asset.balance,
+				balanceInUSD,
+				asset.exchangeRate,
+				asset.exchangeRateType,
+				asset.isLiquid,
+				asset.createdAt,
+				asset.updatedAt,
 			];
 		});
 
-		const csv = [header, ...rows].map((row) => row.join(",")).join("\n");
-
-		return { csv };
+		return { csv: generateCsv(header, rows) };
 	}),
 });

@@ -32,6 +32,7 @@ model User {
   favoriteExchangeRates ExchangeRateFavorite[]
   expenses              Expense[]
   budgets               Budget[]
+  recurringTemplates    RecurringTemplate[]
   createdInviteCodes    InviteCode[]                  @relation("CreatedInviteCodes")
   usedInviteCodes       InviteCode[]                  @relation("UsedInviteCodes")
   sessions              Session[]
@@ -104,10 +105,24 @@ model Expense {
   status        ExpenseStatus @default(FINALIZED)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Amortization fields
+  isAmortizedParent Boolean   @default(false)
+  isAmortizedChild  Boolean   @default(false)
+  parentId          String?
+  parent            Expense?  @relation("AmortizedExpenses", fields: [parentId], references: [id], onDelete: Cascade)
+  children          Expense[] @relation("AmortizedExpenses")
+
+  // Recurring subscription reference
+  recurringTemplateId String?
+  recurringTemplate   RecurringTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
+
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
+  @@index([parentId])
+  @@index([recurringTemplateId])
   @@map("expense")
 }
 
@@ -119,11 +134,36 @@ model Category {
   user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses             Expense[]
   budgets              Budget[]
+  recurringTemplates   RecurringTemplate[]
   analyticsPreferences AnalyticsCategoryPreference[]
 
   @@unique([name, userId])
   @@index([userId])
   @@map("category")
+}
+
+model RecurringTemplate {
+  id          String             @id @default(cuid())
+  userId      String
+  name        String             @db.VarChar(191)
+  amount      Decimal            @db.Decimal(10, 2)
+  currency    String             @default("USD") @db.VarChar(3)
+  categoryId  String?
+  frequency   RecurringFrequency
+  nextDueDate DateTime
+  websiteUrl  String?            @db.VarChar(512)
+  autoPay     Boolean            @default(true)
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  expenses Expense[]
+
+  @@index([userId, nextDueDate])
+  @@index([userId, isActive])
+  @@map("recurring_template")
 }
 
 model Budget {
@@ -295,6 +335,12 @@ enum ExpenseStatus {
   FINALIZED
 }
 
+enum RecurringFrequency {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
 enum AssetType {
   CASH
   INVESTMENT
@@ -346,4 +392,12 @@ model AnalyticsCategoryPreference {
 
   @@unique([userId, categoryId])
   @@map("analytics_category_preference")
+}
+
+model SystemStatus {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("system_status")
 }

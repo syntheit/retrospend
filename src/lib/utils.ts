@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { z } from "zod";
 import { CURRENCIES } from "./currencies";
 import type { AssetType } from "./db-enums";
 
@@ -18,13 +19,17 @@ export function toNumber(value: unknown): number | undefined {
 	if (typeof value === "number") {
 		return value;
 	}
+
+	// Handle Prisma Decimal objects
 	if (
 		typeof value === "object" &&
+		value !== null &&
 		"toNumber" in value &&
-		typeof (value as { toNumber: () => number }).toNumber === "function"
+		typeof (value as { toNumber: unknown }).toNumber === "function"
 	) {
 		return (value as { toNumber: () => number }).toNumber();
 	}
+
 	const parsed = Number(value);
 	return Number.isNaN(parsed) ? undefined : parsed;
 }
@@ -201,24 +206,29 @@ export type NormalizedExpense = {
 	} | null;
 };
 
-export type RawExpense = {
-	id: string;
-	title?: string | null;
-	amount?: number | string;
-	currency?: string;
-	exchangeRate?: number | string | null;
-	amountInUSD?: number | string | null;
-	pricingSource?: string | null;
-	date: string | Date;
-	location?: string | null;
-	description?: string | null;
-	categoryId?: string | null;
-	category?: {
-		id: string;
-		name: string;
-		color: string;
-	} | null;
-};
+export type RawExpense = z.infer<typeof RawExpenseSchema>;
+
+const RawExpenseSchema = z.object({
+	id: z.string(),
+	title: z.string().nullable().optional(),
+	amount: z.unknown().optional(),
+	currency: z.string().optional(),
+	exchangeRate: z.unknown().nullable().optional(),
+	amountInUSD: z.unknown().nullable().optional(),
+	pricingSource: z.string().nullable().optional(),
+	date: z.union([z.string(), z.date()]),
+	location: z.string().nullable().optional(),
+	description: z.string().nullable().optional(),
+	categoryId: z.string().nullable().optional(),
+	category: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			color: z.string(),
+		})
+		.nullable()
+		.optional(),
+});
 
 export function normalizeExpense(expense: RawExpense): NormalizedExpense {
 	return {
@@ -255,20 +265,29 @@ export function normalizeExpenses(expenses: RawExpense[]): NormalizedExpense[] {
 
 /**
  * Helper to normalize expenses from API responses that may contain Prisma Decimal types.
- * Safely converts Decimal objects to plain numbers before normalization.
+ * Safely validates the shape with Zod before normalization.
  */
 export function normalizeExpensesFromApi(
 	expenses: unknown[],
 ): NormalizedExpense[] {
 	return normalizeExpenses(
 		expenses.map((e) => {
-			const expense = e as Record<string, unknown>;
+			const result = RawExpenseSchema.safeParse(e);
+
+			if (!result.success) {
+				console.error("Invalid expense data from API:", result.error.format());
+				throw new Error(
+					`Failed to normalize expense: ${result.error.issues[0]?.message || "Unknown validation error"}`,
+				);
+			}
+
+			const expense = result.data;
 			return {
 				...expense,
 				amount: toNumberWithDefault(expense.amount),
 				exchangeRate: toNumberOrNull(expense.exchangeRate),
 				amountInUSD: toNumberOrNull(expense.amountInUSD),
-			} as RawExpense;
+			};
 		}),
 	);
 }

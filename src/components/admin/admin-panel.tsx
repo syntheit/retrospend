@@ -16,6 +16,7 @@ import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 import { ActionDialog } from "./action-dialog";
 import { InviteCodesTable } from "./invite-codes-table";
+import { SystemStatusCard } from "./system-status-card";
 import { UsersTable } from "./users-table";
 
 type ExtendedUser = NonNullable<
@@ -258,93 +259,95 @@ export function AdminPanel() {
 		<>
 			<SiteHeader title="Admin Panel" />
 			<PageContent>
-				<div className="mx-auto w-full max-w-4xl space-y-6">
-					<div className="flex items-center justify-between">
+				<div className="mx-auto w-full max-w-6xl space-y-8">
+					<div className="grid gap-6 md:grid-cols-3">
+						<SystemStatusCard className="h-full" />
+						<Card className="h-full md:col-span-2">
+							<CardHeader>
+								<CardTitle>Registration Settings</CardTitle>
+								<CardDescription>
+									Control how new users can sign up for the application.
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="grid gap-6 lg:grid-cols-2">
+								<div className="flex items-center justify-between space-x-2">
+									<div className="space-y-0.5">
+										<label
+											className="font-medium text-sm"
+											htmlFor="invite-codes-switch"
+										>
+											Require Invite Codes
+										</label>
+										<p className="text-muted-foreground text-xs">
+											When enabled, new users must provide a valid invite code
+											to sign up.
+										</p>
+									</div>
+									<Switch
+										checked={settings?.inviteOnlyEnabled ?? false}
+										disabled={updateSettingsMutation.isPending}
+										id="invite-codes-switch"
+										onCheckedChange={handleToggleInviteOnly}
+									/>
+								</div>
+								<div
+									className={`flex items-center justify-between space-x-2 ${!(settings?.inviteOnlyEnabled ?? false) ? "opacity-50" : ""}`}
+								>
+									<div className="space-y-0.5">
+										<label
+											className={`font-medium text-sm ${!(settings?.inviteOnlyEnabled ?? false) ? "text-muted-foreground" : ""}`}
+											htmlFor="user-invite-codes-switch"
+										>
+											Allow User Invites
+										</label>
+										<p className="text-muted-foreground text-xs">
+											When enabled, users can manage their own invite codes.
+										</p>
+									</div>
+									<Switch
+										checked={settings?.allowAllUsersToGenerateInvites ?? false}
+										disabled={
+											updateSettingsMutation.isPending ||
+											!(settings?.inviteOnlyEnabled ?? false)
+										}
+										id="user-invite-codes-switch"
+										onCheckedChange={handleToggleUserInvites}
+									/>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
+
+					<div className="space-y-4">
 						<div>
-							<h2 className="font-bold text-2xl tracking-tight">
+							<h2 className="font-semibold text-xl tracking-tight">
 								User Management
 							</h2>
-							<p className="text-muted-foreground">
+							<p className="text-muted-foreground text-sm">
 								Manage users, reset passwords, and control account access.
 							</p>
 						</div>
+
+						<UsersTable
+							currentUserId={session?.user?.id}
+							isLoading={isLoading}
+							onDeleteUser={(userId, username) =>
+								handleAction({ type: "deleteUser", userId, username })
+							}
+							onResetPassword={(userId, username) =>
+								handleAction({ type: "resetPassword", userId, username })
+							}
+							onToggleUserStatus={(userId, username, isActive) =>
+								handleAction({
+									type: "toggleUserStatus",
+									userId,
+									username,
+									isActive,
+								})
+							}
+							users={users || []}
+						/>
 					</div>
-
-					<UsersTable
-						currentUserId={session?.user?.id}
-						isLoading={isLoading}
-						onDeleteUser={(userId, username) =>
-							handleAction({ type: "deleteUser", userId, username })
-						}
-						onResetPassword={(userId, username) =>
-							handleAction({ type: "resetPassword", userId, username })
-						}
-						onToggleUserStatus={(userId, username, isActive) =>
-							handleAction({
-								type: "toggleUserStatus",
-								userId,
-								username,
-								isActive,
-							})
-						}
-						users={users || []}
-					/>
-
-					<Card>
-						<CardHeader>
-							<CardTitle>Registration Settings</CardTitle>
-							<CardDescription>
-								Control how new users can sign up for the application.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							<div className="flex items-center justify-between">
-								<div className="space-y-0.5">
-									<label
-										className="font-medium text-sm"
-										htmlFor="invite-codes-switch"
-									>
-										Require Invite Codes
-									</label>
-									<p className="text-muted-foreground text-sm">
-										When enabled, new users must provide a valid invite code to
-										sign up. When disabled, anyone can create an account.
-									</p>
-								</div>
-								<Switch
-									checked={settings?.inviteOnlyEnabled ?? false}
-									disabled={updateSettingsMutation.isPending}
-									id="invite-codes-switch"
-									onCheckedChange={handleToggleInviteOnly}
-								/>
-							</div>
-							<div
-								className={`flex items-center justify-between ${!(settings?.inviteOnlyEnabled ?? false) ? "opacity-50" : ""}`}
-							>
-								<div className="space-y-0.5">
-									<label
-										className={`font-medium text-sm ${!(settings?.inviteOnlyEnabled ?? false) ? "text-muted-foreground" : ""}`}
-										htmlFor="user-invite-codes-switch"
-									>
-										Allow All Users to Generate Invite Codes
-									</label>
-									<p className="text-muted-foreground text-sm">
-										When enabled, all authenticated users can create and manage
-										their own invite codes.
-									</p>
-								</div>
-								<Switch
-									checked={settings?.allowAllUsersToGenerateInvites ?? false}
-									disabled={
-										updateSettingsMutation.isPending ||
-										!(settings?.inviteOnlyEnabled ?? false)
-									}
-									id="user-invite-codes-switch"
-									onCheckedChange={handleToggleUserInvites}
-								/>
-							</div>
-						</CardContent>
-					</Card>
 
 					<InviteCodesTable
 						inviteCodes={inviteCodesData?.items || []}

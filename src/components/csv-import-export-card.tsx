@@ -1,9 +1,10 @@
 "use client";
 
 import { Download, Upload } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import { createExpenseColumns } from "~/components/data-table-columns";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -15,6 +16,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { type ParsedCsvRow, parseCsv } from "~/lib/csv";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -23,9 +25,10 @@ export function CsvImportExportCard() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [previewData, setPreviewData] = useState<NormalizedExpense[]>([]);
 	const [parseError, setParseError] = useState<string | null>(null);
+	const { formatCurrency } = useCurrencyFormatter();
 
-	const { data: settings } = api.user.getSettings.useQuery();
-	const { data: categories } = api.user.listCategories.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
+	const { data: categories } = api.categories.getAll.useQuery();
 
 	const exportMutation = api.expense.exportCsv.useMutation();
 	const importMutation = api.expense.importExpenses.useMutation();
@@ -154,6 +157,26 @@ export function CsvImportExportCard() {
 		}
 	};
 
+	const homeCurrency = settings?.homeCurrency ?? "USD";
+	const hasForeignCurrencyExpenses = previewData.some(
+		(e) => e.currency !== "USD" && e.exchangeRate && e.amountInUSD,
+	);
+
+	// In preview mode, we don't need selection handlers
+	const columns = useMemo(
+		() =>
+			createExpenseColumns(
+				homeCurrency,
+				null, // Live rate not needed for preview usually
+				hasForeignCurrencyExpenses,
+				new Set(),
+				() => {},
+				() => {},
+				formatCurrency,
+			),
+		[homeCurrency, hasForeignCurrencyExpenses, formatCurrency],
+	);
+
 	return (
 		<Card>
 			<CardHeader>
@@ -258,13 +281,13 @@ export function CsvImportExportCard() {
 								</Button>
 							</div>
 							<DataTable
+								columns={columns}
 								data={previewData}
 								emptyState={
 									<div className="text-muted-foreground">
 										No rows to import.
 									</div>
 								}
-								homeCurrency={settings?.homeCurrency ?? "USD"}
 							/>
 						</div>
 					)}

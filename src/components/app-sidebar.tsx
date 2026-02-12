@@ -2,6 +2,7 @@
 
 import {
 	IconBriefcase,
+	IconCalendarClock,
 	IconChartBar,
 	IconCurrencyDollar,
 	IconHome,
@@ -54,6 +55,11 @@ const navMain = [
 		title: "Budget",
 		url: "/app/budget",
 		icon: IconPigMoney,
+	},
+	{
+		title: "Recurring",
+		url: "/app/recurring",
+		icon: IconCalendarClock,
 	},
 	{
 		title: "Exchange Rates",

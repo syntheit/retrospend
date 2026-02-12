@@ -71,12 +71,8 @@ export default function Page() {
 	});
 	const { data: budgetsData } = api.budget.getBudgets.useQuery({});
 	const { data: globalBudgetData } = api.budget.getGlobalBudget.useQuery({});
-	const {
-		homeCurrency,
-		usdToHomeRate: liveRateToBaseCurrency,
-		isLoading: currencyLoading,
-	} = useCurrency();
-	const { data: settings } = api.user.getSettings.useQuery();
+	const { homeCurrency, usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
+	const { data: settings } = api.settings.getGeneral.useQuery();
 	const budgetMode = settings?.budgetMode ?? "GLOBAL_LIMIT";
 
 	const { data: dayExpensesData, isLoading: isLoadingDayExpenses } =
@@ -91,19 +87,18 @@ export default function Page() {
 	);
 
 	const heatmapData = useMemo(() => {
-		return expenses
-			.map((expense) => {
-				const datePart = expense.date.toISOString().split("T")[0] || "";
-				return {
-					date: datePart,
-					amount: convertExpenseAmountForDisplay(
-						expense,
-						homeCurrency,
-						liveRateToBaseCurrency,
-					),
-					category: expense.category?.name,
-				};
-			});
+		return expenses.map((expense) => {
+			const datePart = expense.date.toISOString().split("T")[0] || "";
+			return {
+				date: datePart,
+				amount: convertExpenseAmountForDisplay(
+					expense,
+					homeCurrency,
+					liveRateToBaseCurrency,
+				),
+				category: expense.category?.name,
+			};
+		});
 	}, [expenses, homeCurrency, liveRateToBaseCurrency]);
 
 	const totalBudget = useMemo(() => {
@@ -323,9 +318,9 @@ export default function Page() {
 										<div>
 											<ActivityHeatmap
 												data={heatmapData}
+												endDate={dateRange.to}
 												onDayClick={handleDayClick}
 												startDate={dateRange.from}
-												endDate={dateRange.to}
 											/>
 										</div>
 										<div className="flex h-[250px] flex-col border-l pl-6">

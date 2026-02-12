@@ -102,7 +102,7 @@ function ProfileSection({ user, onOpenPasswordChange }: ProfileSectionProps) {
 	});
 	const [error, setError] = useState("");
 
-	const updateProfile = api.user.updateProfile.useMutation({
+	const updateProfile = api.settings.updateProfile.useMutation({
 		onSuccess: () => {
 			toast.success("Profile updated");
 			router.push("/app");
@@ -192,7 +192,7 @@ function ProfileSection({ user, onOpenPasswordChange }: ProfileSectionProps) {
 }
 
 function ExportDataSection() {
-	const exportData = api.user.exportAllData.useMutation();
+	const exportData = api.exportData.allData.useMutation();
 
 	const handleExport = async () => {
 		try {
@@ -335,7 +335,7 @@ function PasswordChangeDialog({
 	});
 	const [error, setError] = useState("");
 
-	const updateProfile = api.user.updateProfile.useMutation({
+	const updateProfile = api.settings.updateProfile.useMutation({
 		onSuccess: () => {
 			toast.success("Password updated");
 			onOpenChange(false);

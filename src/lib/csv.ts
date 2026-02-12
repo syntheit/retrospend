@@ -239,3 +239,35 @@ export const parseBudgetCsv = (text: string) => {
 
 	return { rows, errors };
 };
+
+/**
+ * Escapes a value for use in a CSV file.
+ * Handles null/undefined, Dates, numbers, and strings with special characters.
+ */
+export function escapeValue(raw: unknown): string {
+	if (raw === null || raw === undefined) return "";
+
+	const value =
+		raw instanceof Date
+			? (raw.toISOString().split("T")[0] ?? "")
+			: typeof raw === "number" || typeof raw === "bigint"
+				? raw.toString()
+				: String(raw);
+
+	const needsEscaping = /["\n,]/.test(value);
+	if (!needsEscaping) return value;
+
+	// Escape double quotes by doubling them and wrapping the entire value in quotes
+	return `"${value.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Generates a complete CSV string from headers and raw data.
+ */
+export function generateCsv(headers: string[], rows: unknown[][]): string {
+	const csvRows = [
+		headers.join(","),
+		...rows.map((row) => row.map((cell) => escapeValue(cell)).join(",")),
+	];
+	return csvRows.join("\n");
+}

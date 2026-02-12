@@ -30,7 +30,7 @@ export function CurrencyPicker({
 	const { data: session } = useSession();
 
 	const { data: favoriteCurrencyOrder = [] } =
-		api.user.getFavoriteCurrencies.useQuery(undefined, {
+		api.settings.getFavoriteCurrencies.useQuery(undefined, {
 			enabled: Boolean(session?.user),
 		});
 

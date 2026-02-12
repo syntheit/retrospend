@@ -45,7 +45,6 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/retrospend
 AUTH_SECRET=your-secret-key-min-32-chars
 
 # App Config
-EXCHANGE_RATE_SCHEDULER_ENABLED=true
 PUBLIC_URL=https://www.yourdomain.com
 
 # Optional
@@ -65,7 +64,6 @@ services:
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
-      EXCHANGE_RATE_SCHEDULER_ENABLED: "true"
     ports:
       - "1997:1997"
 

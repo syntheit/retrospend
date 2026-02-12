@@ -191,13 +191,12 @@ export function ActivityHeatmap({
 					<div className="inline-flex min-w-full flex-col gap-2">
 						{/* Month labels row */}
 						<div className="flex items-start gap-1">
-							<div className="w-8 shrink-0" />{" "}
-							{/* Spacer for day labels */}
+							<div className="w-8 shrink-0" /> {/* Spacer for day labels */}
 							<div className="flex flex-1 gap-1">
 								{monthLabels.map(({ month, span }) => (
 									<div
-										key={month}
 										className="shrink-0 text-muted-foreground text-xs"
+										key={month}
 										style={{
 											width: `calc(${span} * (12px + 4px) - 4px)`, // (w-3 + gap-1) * columns - last gap
 										}}

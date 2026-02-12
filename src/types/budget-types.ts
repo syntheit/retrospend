@@ -14,7 +14,7 @@ export interface Budget {
 	effectiveAmount: number;
 	effectiveAmountInUSD: number;
 	pegToActual: boolean;
-	category: Category | null;
+	category?: Category | null;
 }
 
 export type BudgetMode = "GLOBAL_LIMIT" | "SUM_OF_CATEGORIES";

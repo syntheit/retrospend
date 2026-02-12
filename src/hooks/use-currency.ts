@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { BASE_CURRENCY } from "~/lib/constants";
+import type { NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { useUserSettings } from "./use-user-settings";
-import { type NormalizedExpense } from "~/lib/utils";
 
 export interface UseCurrencyReturn {
 	homeCurrency: string;
@@ -35,16 +36,16 @@ export function sumExpensesInCurrency(
 
 export function useCurrency(): UseCurrencyReturn {
 	const { settings, isLoading: settingsLoading } = useUserSettings();
-	const homeCurrency = settings?.homeCurrency ?? "USD";
+	const homeCurrency = settings?.homeCurrency ?? BASE_CURRENCY;
 
 	const { data: rates, isLoading: ratesLoading } =
 		api.exchangeRate.getRatesForCurrency.useQuery(
 			{ currency: homeCurrency },
-			{ enabled: homeCurrency !== "USD" },
+			{ enabled: homeCurrency !== BASE_CURRENCY },
 		);
 
 	const usdToHomeRate = useMemo(() => {
-		if (homeCurrency === "USD") return 1;
+		if (homeCurrency === BASE_CURRENCY) return 1;
 		if (!rates || rates.length === 0) return null;
 
 		// Priority: blue > official > first available
@@ -69,4 +70,3 @@ export function useCurrency(): UseCurrencyReturn {
 		sumExpenses,
 	};
 }
-

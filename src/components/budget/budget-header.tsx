@@ -182,7 +182,7 @@ export function BudgetHeader({
 					</div>
 				</div>
 				{isPastMonth && hasData && (
-					<div className="rounded-full bg-stone-100 px-4 py-1.5 font-medium text-stone-600 text-sm dark:bg-stone-800 dark:text-stone-400">
+					<div className="rounded-full bg-stone-100 px-4 py-1.5 font-medium text-sm text-stone-600 dark:bg-stone-800 dark:text-stone-400">
 						Monthly Wrap-up
 					</div>
 				)}
@@ -198,7 +198,7 @@ export function BudgetHeader({
 							<div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
 								<div className="space-y-6">
 									<div className="space-y-2">
-										<p className="font-medium text-indigo-100 text-lg tracking-wide uppercase">
+										<p className="font-medium text-indigo-100 text-lg uppercase tracking-wide">
 											You spent
 										</p>
 										<p className="font-black text-6xl tracking-tighter sm:text-7xl lg:text-8xl">
@@ -211,7 +211,7 @@ export function BudgetHeader({
 											<p className="font-semibold text-lg">
 												{Math.round(percentUsed)}%
 											</p>
-											<p className="text-white/80 text-sm">of your budget</p>
+											<p className="text-sm text-white/80">of your budget</p>
 										</div>
 										<div
 											className={cn(
@@ -233,7 +233,7 @@ export function BudgetHeader({
 
 								<div className="grid grid-cols-2 gap-8 border-white/10 border-t pt-8 lg:border-t-0 lg:pt-0">
 									<div className="space-y-1">
-										<p className="font-medium text-white/60 text-sm uppercase tracking-widest">
+										<p className="font-medium text-sm text-white/60 uppercase tracking-widest">
 											Budgeted
 										</p>
 										<p className="font-bold text-2xl sm:text-3xl">
@@ -244,7 +244,7 @@ export function BudgetHeader({
 										</p>
 									</div>
 									<div className="space-y-1">
-										<p className="font-medium text-white/60 text-sm uppercase tracking-widest">
+										<p className="font-medium text-sm text-white/60 uppercase tracking-widest">
 											{isOverBudget ? "Overspent" : "Surplus"}
 										</p>
 										<p

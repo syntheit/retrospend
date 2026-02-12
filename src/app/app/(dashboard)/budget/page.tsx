@@ -19,7 +19,7 @@ export default function BudgetPage() {
 		month: selectedMonth,
 	});
 
-	const { data: categories } = api.user.listCategories.useQuery();
+	const { data: categories } = api.categories.getAll.useQuery();
 
 	const { data: globalBudget } = api.budget.getGlobalBudget.useQuery({
 		month: selectedMonth,
@@ -31,7 +31,7 @@ export default function BudgetPage() {
 		});
 
 	const { homeCurrency, usdToHomeRate: usdToHomeCurrencyRate } = useCurrency();
-	const { data: settings } = api.user.getSettings.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
 	const budgetMode = settings?.budgetMode ?? "GLOBAL_LIMIT";
 
 	const globalLimit = globalBudget?.amount ?? 0;
@@ -97,11 +97,11 @@ export default function BudgetPage() {
 					<BudgetHeader
 						budgetMode={budgetMode}
 						budgets={budgets ?? []}
+						hasPreviousBudgets={hasPreviousBudgets}
 						homeCurrency={homeCurrency}
 						onNavigateMonth={navigateMonth}
 						selectedMonth={selectedMonth}
 						usdToHomeCurrencyRate={usdToHomeCurrencyRate ?? 1}
-						hasPreviousBudgets={hasPreviousBudgets}
 					/>
 
 					{categoryBudgets.length > 0 && (

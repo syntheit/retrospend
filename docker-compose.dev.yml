@@ -6,7 +6,6 @@ services:
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
-      EXCHANGE_RATE_SCHEDULER_ENABLED: "true"
       SHOW_LANDING_PAGE: "true"
     ports:
       - "1997:1997"
@@ -28,6 +27,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: retrospend-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
+      LOG_LEVEL: "info"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   pgweb:
     image: sosedoff/pgweb
     container_name: retrospend-pgweb

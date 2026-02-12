@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import { createExpenseColumns } from "~/components/data-table-columns";
+import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
@@ -16,9 +18,11 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
-import { normalizeExpenses } from "~/lib/utils";
+import { TableCell, TableRow } from "~/components/ui/table";
 import { useCurrency } from "~/hooks/use-currency";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { convertExpenseAmountForDisplay, normalizeExpenses } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 const MONTH_NAMES = [
@@ -61,19 +65,17 @@ const matchesTimeFilter = (
 };
 
 export default function Page() {
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense, openExpense } = useExpenseModal();
+	const { formatCurrency } = useCurrencyFormatter();
 	const {
 		data: expenses,
 		isLoading,
 		error,
 		refetch: refetchExpenses,
 	} = api.expense.listFinalized.useQuery();
-	const {
-		homeCurrency,
-		usdToHomeRate: liveRateToBaseCurrency,
-		isLoading: currencyLoading,
-	} = useCurrency();
-	const { data: settings } = api.user.getSettings.useQuery();
+	const { usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
+	const { data: settings } = api.settings.getGeneral.useQuery();
+	const exportMutation = api.expense.exportCsv.useMutation();
 
 	const normalizedExpenses = useMemo(
 		() =>
@@ -172,6 +174,100 @@ export default function Page() {
 			return timeMatch && categoryMatch;
 		});
 	}, [normalizedExpenses, selectedYears, selectedMonths, selectedCategories]);
+
+	// Selection Handlers
+	const handleRowSelect = useCallback((id: string, checked: boolean) => {
+		setSelectedExpenseIds((prev) => {
+			const newSet = new Set(prev);
+			if (checked) {
+				newSet.add(id);
+			} else {
+				newSet.delete(id);
+			}
+			return newSet;
+		});
+	}, []);
+
+	const handleSelectAll = useCallback(
+		(checked: boolean) => {
+			if (checked) {
+				setSelectedExpenseIds(new Set(filteredExpenses.map((e) => e.id)));
+			} else {
+				setSelectedExpenseIds(new Set());
+			}
+		},
+		[filteredExpenses],
+	);
+
+	const handleExportSelected = async () => {
+		try {
+			const expenseIds = Array.from(selectedExpenseIds);
+			const { csv } = await exportMutation.mutateAsync({
+				expenseIds,
+			});
+			const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = `expenses-selected-${new Date().toISOString().slice(0, 10)}.csv`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+			toast.success("Selected expenses exported");
+		} catch (error: unknown) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to export selected expenses",
+			);
+		}
+	};
+
+	// Cleanup selection if items are filtered out
+	useEffect(() => {
+		if (selectedExpenseIds.size === 0) return;
+		const visibleIds = new Set(filteredExpenses.map((e) => e.id));
+		const newSelected = new Set<string>();
+		let hasChanges = false;
+		for (const id of selectedExpenseIds) {
+			if (visibleIds.has(id)) {
+				newSelected.add(id);
+			} else {
+				hasChanges = true;
+			}
+		}
+		if (hasChanges) {
+			setSelectedExpenseIds(newSelected);
+		}
+	}, [filteredExpenses, selectedExpenseIds]);
+
+	const homeCurrency = settings?.homeCurrency || "USD";
+	const hasForeignCurrencyExpenses = filteredExpenses.some(
+		(e) => e.currency !== "USD" && e.exchangeRate && e.amountInUSD,
+	);
+
+	const columns = useMemo(
+		() =>
+			createExpenseColumns(
+				homeCurrency,
+				liveRateToBaseCurrency ?? null,
+				hasForeignCurrencyExpenses,
+				selectedExpenseIds,
+				handleRowSelect,
+				handleSelectAll,
+				formatCurrency,
+			),
+		[
+			homeCurrency,
+			liveRateToBaseCurrency,
+			hasForeignCurrencyExpenses,
+			selectedExpenseIds,
+			handleRowSelect,
+			handleSelectAll,
+			formatCurrency,
+		],
+	);
 
 	if (isLoading) {
 		return (
@@ -274,6 +370,7 @@ export default function Page() {
 			<PageContent>
 				<div className="space-y-6">
 					<div className="w-full space-y-4">
+						{/* Filters ... */}
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
 								<h3 className="font-medium text-sm">Filter by Year</h3>
@@ -376,6 +473,7 @@ export default function Page() {
 					</div>
 
 					<DataTable
+						columns={columns}
 						data={filteredExpenses}
 						emptyState={
 							<div className="space-y-3 py-6 text-center">
@@ -395,15 +493,61 @@ export default function Page() {
 								</div>
 							</div>
 						}
-						homeCurrency={settings?.homeCurrency || "USD"}
-						liveRateToBaseCurrency={liveRateToBaseCurrency}
-						onDeleteSelected={handleDeleteSelected}
-						onSelectionChange={setSelectedExpenseIds}
-						selectedRows={selectedExpenseIds}
+						footer={
+							<TableRow className="border-t-2 bg-muted/50 font-semibold">
+								<TableCell
+									className="px-4 py-3 text-left font-semibold"
+									colSpan={4}
+								>
+									Total ({filteredExpenses.length} items)
+								</TableCell>
+								{hasForeignCurrencyExpenses && (
+									<TableCell className="px-4 py-3 text-right font-semibold">
+										{/* This logic would ideally be moved to a util since we calculate it based on currently visible rows */}
+										Total Local...
+									</TableCell>
+								)}
+								<TableCell className="px-4 py-3 text-right font-semibold">
+									<div className="text-right font-medium">
+										{formatCurrency(
+											filteredExpenses.reduce(
+												(acc, curr) =>
+													acc +
+													convertExpenseAmountForDisplay(
+														curr,
+														homeCurrency,
+														liveRateToBaseCurrency ?? null,
+													),
+												0,
+											),
+											homeCurrency,
+										)}
+									</div>
+								</TableCell>
+							</TableRow>
+						}
+						initialSorting={[{ id: "date", desc: true }]}
+						onRowClick={(row) => openExpense(row.id)}
+						renderToolbar={(table, headerHeight) => (
+							<DataTableSelectionBar
+								exportMutation={exportMutation}
+								headerHeight={headerHeight}
+								onDeleteSelected={handleDeleteSelected}
+								onEditSelected={(id) => {
+									openExpense(id);
+									setSelectedExpenseIds(new Set());
+								}}
+								onExportSelected={handleExportSelected}
+								onSelectAll={handleSelectAll}
+								selectedRows={selectedExpenseIds}
+							/>
+						)}
+						searchPlaceholder="Search expenses..."
 					/>
 				</div>
 			</PageContent>
 
+			{/* Deletion Dialog ... */}
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent>
 					<DialogHeader>

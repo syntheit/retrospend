@@ -1,5 +1,6 @@
 "use client";
 
+import { BASE_CURRENCY } from "~/lib/constants";
 import { formatCurrency, getCurrencySymbolWithPreference } from "~/lib/utils";
 import { useUserSettings } from "./use-user-settings";
 
@@ -8,7 +9,7 @@ export function useCurrencyFormatter() {
 
 	const formatCurrencyWithSettings = (
 		amount: number,
-		currency = "USD",
+		currency = BASE_CURRENCY,
 	): string => {
 		return formatCurrency(
 			amount,
@@ -17,7 +18,7 @@ export function useCurrencyFormatter() {
 		);
 	};
 
-	const getCurrencySymbolWithSettings = (currency = "USD"): string => {
+	const getCurrencySymbolWithSettings = (currency = BASE_CURRENCY): string => {
 		return getCurrencySymbolWithPreference(
 			currency,
 			settings?.currencySymbolStyle ?? "standard",

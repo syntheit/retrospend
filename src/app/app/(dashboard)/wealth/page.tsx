@@ -26,7 +26,7 @@ import { normalizeAssets, toNumber } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export default function WealthPage() {
-	const { data: settings } = api.user.getSettings.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
 	const utils = api.useUtils();
 
@@ -180,7 +180,7 @@ export default function WealthPage() {
 					</div>
 
 					<div className="grid gap-6 lg:grid-cols-7">
-						<div className="space-y-4 lg:col-span-5">
+						<div className="min-w-0 space-y-4 lg:col-span-5">
 							<div className="flex flex-col gap-3 sm:flex-row">
 								<div className="flex items-center gap-2">
 									<span className="text-muted-foreground text-sm">Type:</span>

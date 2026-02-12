@@ -22,7 +22,7 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
-	const { data: settings } = api.user.getSettings.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
 
 	return (
 		<SidebarGroup {...props}>

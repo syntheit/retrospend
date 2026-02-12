@@ -33,6 +33,7 @@ export const expenseSchema = z.object({
 			color: z.string(),
 		})
 		.nullable(),
+	isAmortizedParent: z.boolean().optional(),
 });
 
 function createExpenseColumns(
@@ -85,10 +86,16 @@ function createExpenseColumns(
 			cell: ({ row }) => {
 				const title = row.original.title || "Untitled";
 				const description = row.original.description?.trim();
+				const isAmortized = row.original.isAmortizedParent;
 
 				return (
 					<div className="flex items-center gap-2">
 						<div className="font-medium">{title}</div>
+						{isAmortized && (
+							<span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-700/10 ring-inset dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
+								Split
+							</span>
+						)}
 						{description ? (
 							<TooltipProvider>
 								<Tooltip>

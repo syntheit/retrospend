@@ -51,6 +51,7 @@ export const dashboardRouter = createTRPCRouter({
 					db,
 					{
 						userId: session.user.id,
+						isAmortizedParent: false,
 						date: {
 							gte: last24Hours,
 						},
@@ -80,6 +81,7 @@ export const dashboardRouter = createTRPCRouter({
 				db,
 				{
 					userId: session.user.id,
+					isAmortizedParent: false,
 					date: {
 						gte: startOfMonth,
 						lte: endOfMonth,

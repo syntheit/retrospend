@@ -1,193 +1,38 @@
-import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { formatDateOnly } from "~/lib/date";
+import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { getBestExchangeRate, sumExpensesForCurrency } from "./shared-currency";
+import { CsvService } from "~/server/services/csv.service";
+import { ExpenseService } from "~/server/services/expense.service";
+
+const expenseInputSchema = z.object({
+	id: z.string().uuid(),
+	title: z.string(),
+	amount: z.number().positive("Amount must be positive"),
+	currency: z.string().length(3).default(BASE_CURRENCY),
+	exchangeRate: z.number().positive().optional(),
+	amountInUSD: z.number().positive().optional(),
+	pricingSource: z.string().optional(),
+	date: z.date(),
+	location: z.string().optional(),
+	description: z.string().optional(),
+	categoryId: z.string().cuid().optional(),
+	amortizeOver: z.number().int().min(2).max(60).optional(),
+});
 
 export const expenseRouter = createTRPCRouter({
 	updateExpense: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				title: z.string(),
-				amount: z.number().positive("Amount must be positive"),
-				currency: z.string().length(3).default("USD"),
-				exchangeRate: z.number().positive().optional(),
-				amountInUSD: z.number().positive().optional(),
-				pricingSource: z.string().optional(),
-				date: z.date(),
-				location: z.string().optional(),
-				description: z.string().optional(),
-				categoryId: z.string().cuid().optional(),
-			}),
-		)
+		.input(expenseInputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const existingExpense = await db.expense.findFirst({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-				},
-			});
-
-			if (!existingExpense) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Expense not found",
-				});
-			}
-
-			if (input.categoryId) {
-				const category = await db.category.findFirst({
-					where: { id: input.categoryId, userId: session.user.id },
-				});
-				if (!category) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message: "Category not found",
-					});
-				}
-			}
-
-			const expense = await db.expense.update({
-				where: { id: existingExpense.id },
-				data: {
-					title: input.title,
-					amount: input.amount,
-					currency: input.currency,
-					exchangeRate: input.exchangeRate,
-					amountInUSD: input.amountInUSD,
-					pricingSource: input.pricingSource,
-					date: input.date,
-					location: input.location || undefined,
-					description: input.description || undefined,
-					categoryId: input.categoryId || undefined,
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					pricingSource: true,
-					date: true,
-					location: true,
-					description: true,
-					status: true,
-					categoryId: true,
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expense;
+			const service = new ExpenseService(ctx.db);
+			return await service.updateExpense(ctx.session.user.id, input);
 		}),
 
 	createExpense: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(), // UUID for the expense
-				title: z.string(),
-				amount: z.number().positive("Amount must be positive"),
-				currency: z.string().length(3).default("USD"),
-				exchangeRate: z.number().positive().optional(),
-				amountInUSD: z.number().positive().optional(),
-				pricingSource: z.string().optional(),
-				date: z.date(),
-				location: z.string().optional(),
-				description: z.string().optional(),
-				categoryId: z.string().cuid().optional(),
-			}),
-		)
+		.input(expenseInputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			if (input.categoryId) {
-				const category = await db.category.findFirst({
-					where: { id: input.categoryId, userId: session.user.id },
-				});
-				if (!category) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message: "Category not found",
-					});
-				}
-			}
-
-			let exchangeRate = input.exchangeRate;
-			let amountInUSD = input.amountInUSD;
-			const pricingSource = input.pricingSource ?? "MANUAL";
-
-			if (!exchangeRate) {
-				if (input.currency === "USD") {
-					exchangeRate = 1;
-				} else {
-					const bestRate = await getBestExchangeRate(
-						db,
-						input.currency,
-						input.date,
-					);
-
-					if (bestRate) {
-						exchangeRate = bestRate;
-					} else {
-						throw new TRPCError({
-							code: "BAD_REQUEST",
-							message: `Exchange rate not found for ${input.currency}.`,
-						});
-					}
-				}
-			}
-
-			if (!amountInUSD) {
-				amountInUSD = input.amount / exchangeRate;
-			}
-
-			const expense = await db.expense.create({
-				data: {
-					id: input.id,
-					userId: session.user.id,
-					title: input.title,
-					amount: input.amount,
-					currency: input.currency,
-					exchangeRate: exchangeRate,
-					amountInUSD: amountInUSD,
-					pricingSource: pricingSource,
-					date: input.date,
-					location: input.location || undefined,
-					description: input.description || undefined,
-					categoryId: input.categoryId || undefined,
-					status: "FINALIZED",
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					pricingSource: true,
-					date: true,
-					location: true,
-					description: true,
-					status: true,
-					categoryId: true,
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expense;
+			const service = new ExpenseService(ctx.db);
+			return await service.createExpense(ctx.session.user.id, input);
 		}),
 
 	listFinalized: protectedProcedure
@@ -200,244 +45,49 @@ export const expenseRouter = createTRPCRouter({
 				.optional(),
 		)
 		.query(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const expenses = await db.expense.findMany({
-				where: {
-					userId: session.user.id,
-					status: "FINALIZED",
-					...(input?.from || input?.to
-						? {
-								date: {
-									...(input?.from ? { gte: input.from } : {}),
-									...(input?.to ? { lte: input.to } : {}),
-								},
-							}
-						: {}),
-				},
-				orderBy: {
-					date: "desc",
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					date: true,
-					location: true,
-					description: true,
-					categoryId: true,
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expenses;
+			const service = new ExpenseService(ctx.db);
+			return await service.listFinalized(
+				ctx.session.user.id,
+				input?.from,
+				input?.to,
+			);
 		}),
 
 	getExpense: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
+		.input(z.object({ id: z.string().uuid() }))
 		.query(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const expense = await db.expense.findFirst({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					pricingSource: true,
-					date: true,
-					location: true,
-					description: true,
-					status: true,
-					categoryId: true,
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expense;
-		}),
-
-	getExpensesByDate: protectedProcedure
-		.input(
-			z.object({
-				date: z.date(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const startOfDay = new Date(input.date);
-			startOfDay.setHours(0, 0, 0, 0);
-
-			const endOfDay = new Date(input.date);
-			endOfDay.setHours(23, 59, 59, 999);
-
-			const expenses = await db.expense.findMany({
-				where: {
-					userId: session.user.id,
-					status: "FINALIZED",
-					date: {
-						gte: startOfDay,
-						lte: endOfDay,
-					},
-				},
-				orderBy: {
-					date: "desc",
-				},
-				select: {
-					id: true,
-					title: true,
-					amount: true,
-					currency: true,
-					exchangeRate: true,
-					amountInUSD: true,
-					date: true,
-					location: true,
-					description: true,
-					categoryId: true,
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-					createdAt: true,
-					updatedAt: true,
-				},
-			});
-
-			return expenses;
-		}),
-
-	deleteExpense: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const result = await db.expense.deleteMany({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-				},
-			});
-
-			if (result.count === 0) {
+			const service = new ExpenseService(ctx.db);
+			const expense = await service.getExpense(ctx.session.user.id, input.id);
+			if (!expense)
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Expense not found",
 				});
-			}
+			return expense;
+		}),
 
-			return { success: true };
+	getExpensesByDate: protectedProcedure
+		.input(z.object({ date: z.date() }))
+		.query(async ({ ctx, input }) => {
+			const service = new ExpenseService(ctx.db);
+			return await service.getExpensesByDate(ctx.session.user.id, input.date);
+		}),
+
+	deleteExpense: protectedProcedure
+		.input(z.object({ id: z.string().uuid() }))
+		.mutation(async ({ ctx, input }) => {
+			const service = new ExpenseService(ctx.db);
+			return await service.deleteExpense(ctx.session.user.id, input.id);
 		}),
 
 	exportCsv: protectedProcedure
-		.input(
-			z
-				.object({
-					expenseIds: z.array(z.string()).optional(),
-				})
-				.optional(),
-		)
+		.input(z.object({ expenseIds: z.array(z.string()).optional() }).optional())
 		.mutation(async ({ ctx, input }) => {
-			const { db, session } = ctx;
-
-			const expenses = await db.expense.findMany({
-				where: {
-					userId: session.user.id,
-					status: "FINALIZED",
-					...(input?.expenseIds ? { id: { in: input.expenseIds } } : {}),
-				},
-				orderBy: {
-					date: "desc",
-				},
-				include: {
-					category: {
-						select: {
-							id: true,
-							name: true,
-							color: true,
-						},
-					},
-				},
-			});
-
-			const header = [
-				"title",
-				"amount",
-				"currency",
-				"exchangeRate",
-				"amountInUSD",
-				"date",
-				"location",
-				"description",
-				"pricingSource",
-				"category",
-			];
-
-			const escapeValue = (raw: unknown): string => {
-				if (raw === null || raw === undefined) return "";
-				const value =
-					raw instanceof Date
-						? formatDateOnly(raw)
-						: typeof raw === "number" || typeof raw === "bigint"
-							? raw.toString()
-							: String(raw);
-
-				const needsEscaping = /["\n,]/.test(value);
-				if (!needsEscaping) return value;
-				return `"${value.replace(/"/g, '""')}"`;
-			};
-
-			const rows = expenses.map((expense) => [
-				escapeValue(expense.title),
-				escapeValue(expense.amount),
-				escapeValue(expense.currency),
-				escapeValue(expense.exchangeRate),
-				escapeValue(expense.amountInUSD),
-				escapeValue(expense.date),
-				escapeValue(expense.location),
-				escapeValue(expense.description),
-				escapeValue(expense.pricingSource),
-				escapeValue(expense.category?.name),
-			]);
-
-			const csv = [header, ...rows].map((row) => row.join(",")).join("\n");
-
+			const service = new CsvService(ctx.db);
+			const csv = await service.exportExpensesAsCsv(
+				ctx.session.user.id,
+				input?.expenseIds,
+			);
 			return { csv };
 		}),
 
@@ -457,76 +107,30 @@ export const expenseRouter = createTRPCRouter({
 							description: z.string().nullable().optional(),
 							categoryId: z.string().cuid().nullable().optional(),
 							pricingSource: z.string().nullable().optional(),
+							isAmortized: z.boolean().optional().default(false),
+							amortizeDuration: z.number().int().min(2).max(60).optional(),
 						}),
 					)
-					.min(1, "At least one row is required")
-					.max(1000, "Please import 1000 rows or fewer at a time"),
+					.min(1)
+					.max(1000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { db, session } = ctx;
-
-			const categoryIds = Array.from(
-				new Set(
-					input.rows
-						.map((row) => row.categoryId)
-						.filter((id): id is string => Boolean(id)),
-				),
-			);
-
-			let validCategoryIds = new Set<string>();
-			if (categoryIds.length > 0) {
-				const categories = await db.category.findMany({
-					where: {
-						id: { in: categoryIds },
-						userId: session.user.id,
-					},
-					select: { id: true },
+			const service = new CsvService(ctx.db);
+			try {
+				return await service.importExpensesFromRows(
+					ctx.session.user.id,
+					input.rows,
+				);
+			} catch (error) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to import expenses",
 				});
-				validCategoryIds = new Set(categories.map((category) => category.id));
 			}
-
-			const data = input.rows.map((row) => {
-				const exchangeRate =
-					row.exchangeRate ?? (row.currency.toUpperCase() === "USD" ? 1 : null);
-				const amountInUSD =
-					row.amountInUSD ?? (exchangeRate ? row.amount / exchangeRate : null);
-
-				if (!exchangeRate || !amountInUSD) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message:
-							"Each row must include exchangeRate or amountInUSD (or use USD currency).",
-					});
-				}
-
-				const categoryId =
-					row.categoryId && validCategoryIds.has(row.categoryId)
-						? row.categoryId
-						: null;
-
-				return {
-					id: randomUUID(),
-					userId: session.user.id,
-					title: row.title,
-					amount: row.amount,
-					currency: row.currency.toUpperCase(),
-					date: row.date,
-					categoryId: categoryId ?? undefined,
-					amountInUSD: amountInUSD,
-					exchangeRate: exchangeRate,
-					pricingSource: row.pricingSource ?? "IMPORT",
-					location: row.location ?? undefined,
-					description: row.description ?? undefined,
-					status: "FINALIZED" as const,
-				};
-			});
-
-			const result = await db.expense.createMany({
-				data,
-			});
-
-			return { count: result.count };
 		}),
 
 	getCategorySpending: protectedProcedure
@@ -538,54 +142,13 @@ export const expenseRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const category = await db.category.findFirst({
-				where: {
-					id: input.categoryId,
-					userId: session.user.id,
-				},
-			});
-
-			if (!category) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Category not found",
-				});
-			}
-
-			const startOfMonth = new Date(
-				input.month.getFullYear(),
-				input.month.getMonth(),
-				1,
+			const service = new ExpenseService(ctx.db);
+			return await service.getCategorySpending(
+				ctx.session.user.id,
+				input.categoryId,
+				input.month,
+				input.targetCurrency,
 			);
-			const endOfMonth = new Date(
-				input.month.getFullYear(),
-				input.month.getMonth() + 1,
-				0,
-				23,
-				59,
-				59,
-				999,
-			);
-
-			const { total } = await sumExpensesForCurrency(
-				db,
-				{
-					userId: session.user.id,
-					categoryId: input.categoryId,
-					date: {
-						gte: startOfMonth,
-						lte: endOfMonth,
-					},
-				},
-				input.targetCurrency ?? "USD",
-			);
-
-			return {
-				total,
-				categoryId: input.categoryId,
-			};
 		}),
 
 	getTotalSpending: protectedProcedure
@@ -596,37 +159,11 @@ export const expenseRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const startOfMonth = new Date(
-				input.month.getFullYear(),
-				input.month.getMonth(),
-				1,
+			const service = new ExpenseService(ctx.db);
+			return await service.getTotalSpending(
+				ctx.session.user.id,
+				input.month,
+				input.targetCurrency,
 			);
-			const endOfMonth = new Date(
-				input.month.getFullYear(),
-				input.month.getMonth() + 1,
-				0,
-				23,
-				59,
-				59,
-				999,
-			);
-
-			const { total } = await sumExpensesForCurrency(
-				db,
-				{
-					userId: session.user.id,
-					date: {
-						gte: startOfMonth,
-						lte: endOfMonth,
-					},
-				},
-				input.targetCurrency ?? "USD",
-			);
-
-			return {
-				total,
-			};
 		}),
 });
