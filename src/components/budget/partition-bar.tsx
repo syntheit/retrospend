@@ -12,7 +12,7 @@ import {
 	VIBRANT_CATEGORY_COLORS,
 } from "~/lib/constants";
 import { cn } from "~/lib/utils";
-import type { BudgetMode } from "~/types/budget-types";
+
 
 // Helper function to get category color with opacity for striped background
 function getCategoryColorWithOpacity(
@@ -44,10 +44,8 @@ interface CategoryBudget {
 }
 
 interface PartitionBarProps {
-	globalLimit: number;
 	categoryBudgets: CategoryBudget[];
 	isMobile: boolean;
-	budgetMode: BudgetMode;
 }
 
 interface Segment {
@@ -62,25 +60,16 @@ interface Segment {
 }
 
 export function PartitionBar({
-	globalLimit,
 	categoryBudgets,
 	isMobile,
-	budgetMode,
 }: PartitionBarProps) {
 	const segments = useMemo(() => {
 		const totalAllocated = categoryBudgets.reduce(
 			(sum, budget) => sum + budget.allocatedAmount,
 			0,
 		);
-		const effectiveTotal =
-			budgetMode === "SUM_OF_CATEGORIES" ? totalAllocated : globalLimit;
-
+		const effectiveTotal = totalAllocated;
 		if (effectiveTotal === 0) return [];
-
-		const unallocatedAmount =
-			budgetMode === "GLOBAL_LIMIT"
-				? Math.max(0, globalLimit - totalAllocated)
-				: 0;
 
 		const allocatedSegments: Segment[] = categoryBudgets.map((budget) => ({
 			id: budget.id,
@@ -117,20 +106,8 @@ export function PartitionBar({
 			});
 		}
 
-		if (unallocatedAmount > 0) {
-			regularSegments.push({
-				id: "unallocated",
-				name: "Unallocated",
-				color: "stone",
-				percentage: (unallocatedAmount / effectiveTotal) * 100,
-				value: unallocatedAmount,
-				isMisc: false,
-				isPegged: false,
-			});
-		}
-
 		return regularSegments;
-	}, [globalLimit, categoryBudgets, budgetMode]);
+	}, [categoryBudgets]);
 
 	const getColorStyle = (color: string) => {
 		if (color === "stone") return { backgroundColor: "#444" };
@@ -156,8 +133,7 @@ export function PartitionBar({
 			(sum, budget) => sum + budget.actualSpend,
 			0,
 		);
-		const effectiveTotal =
-			budgetMode === "SUM_OF_CATEGORIES" ? _totalAllocated : globalLimit;
+		const effectiveTotal = _totalAllocated;
 		const capacityPercentage =
 			effectiveTotal > 0 ? (totalSpent / effectiveTotal) * 100 : 0;
 

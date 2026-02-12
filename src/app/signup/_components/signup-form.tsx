@@ -20,8 +20,8 @@ import {
 } from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
-import { api } from "~/trpc/react";
 import { handleError } from "~/lib/handle-error";
+import { api } from "~/trpc/react";
 
 type InviteState = "idle" | "validating" | "success" | "error";
 

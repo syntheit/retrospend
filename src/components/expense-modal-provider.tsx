@@ -68,6 +68,7 @@ export function ExpenseModalProvider({ children }: { children: ReactNode }) {
 							: "Update the details of your expense."
 					}
 					expenseId={state.expenseId}
+					mode={state.mode}
 					onOpenChange={handleOpenChange}
 					open={state.open}
 					title={state.mode === "create" ? "New Expense" : "Edit Expense"}

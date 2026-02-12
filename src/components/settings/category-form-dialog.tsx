@@ -27,10 +27,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import {
-	CATEGORY_COLORS,
-	CATEGORY_COLOR_MAP,
-} from "~/lib/constants";
+import { CATEGORY_COLOR_MAP, CATEGORY_COLORS } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 
 const categoryFormSchema = z.object({
@@ -101,7 +98,10 @@ export function CategoryFormDialog({
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+					<form
+						className="space-y-4"
+						onSubmit={form.handleSubmit(handleSubmit)}
+					>
 						<FormField
 							control={form.control}
 							name="name"
@@ -126,8 +126,8 @@ export function CategoryFormDialog({
 								<FormItem>
 									<FormLabel>Color</FormLabel>
 									<Select
-										onValueChange={field.onChange}
 										defaultValue={field.value}
+										onValueChange={field.onChange}
 										value={field.value}
 									>
 										<FormControl>

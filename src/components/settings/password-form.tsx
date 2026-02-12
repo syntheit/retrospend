@@ -21,7 +21,7 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { useSession } from "~/hooks/use-session";
+import type { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
 type ExtendedUser = NonNullable<
@@ -86,7 +86,7 @@ export function PasswordForm({ user }: PasswordFormProps) {
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
 						<FormField
 							control={form.control}
 							name="currentPassword"

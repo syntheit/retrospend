@@ -38,11 +38,13 @@ export default function Page() {
 		enabled: Boolean(session?.user),
 	});
 
-	const reorderFavoritesMutation = api.preferences.reorderFavorites.useMutation({
-		onSuccess: () => {
-			void utils.preferences.getFavoriteExchangeRates.invalidate();
+	const reorderFavoritesMutation = api.preferences.reorderFavorites.useMutation(
+		{
+			onSuccess: () => {
+				void utils.preferences.getFavoriteExchangeRates.invalidate();
+			},
 		},
-	});
+	);
 
 	const toggleFavoriteMutation =
 		api.preferences.toggleFavoriteExchangeRate.useMutation({

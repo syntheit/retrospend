@@ -1,7 +1,10 @@
 import { toast } from "sonner";
 import { ZodError } from "zod";
 
-export function handleError(error: unknown, fallbackMessage = "Something went wrong") {
+export function handleError(
+	error: unknown,
+	fallbackMessage = "Something went wrong",
+) {
 	console.error(error);
 
 	if (error instanceof ZodError) {

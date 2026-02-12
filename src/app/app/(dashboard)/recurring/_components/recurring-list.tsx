@@ -69,7 +69,7 @@ export function RecurringList({
 					Add your fixed costs like Rent, Netflix, Gym, etc.
 				</p>
 				<Button className="mt-4" onClick={onCreate}>
-					Add Expense
+					Add Recurring Expense
 				</Button>
 			</div>
 		);

@@ -1,18 +1,12 @@
 import { useMemo } from "react";
-import type { Budget, BudgetMode } from "~/types/budget-types";
+import type { Budget } from "~/types/budget-types";
 
 interface UseBudgetCalculationsProps {
 	budgets: Budget[];
-	globalLimit: number;
-	globalLimitInUSD: number;
-	budgetMode: BudgetMode;
 }
 
 export function useBudgetCalculations({
 	budgets,
-	globalLimit,
-	globalLimitInUSD,
-	budgetMode,
 }: UseBudgetCalculationsProps) {
 	return useMemo(() => {
 		const validBudgets = budgets.filter((b) => b.category !== null);
@@ -29,10 +23,7 @@ export function useBudgetCalculations({
 			0,
 		);
 
-		const displayAmountInUSD =
-			budgetMode === "SUM_OF_CATEGORIES"
-				? totalAllocatedInUSD
-				: globalLimitInUSD;
+		const displayAmountInUSD = totalAllocatedInUSD;
 		const remainingInUSD = displayAmountInUSD - totalSpentInUSD;
 		const isOverBudget = remainingInUSD < 0;
 		const percentUsed =
@@ -49,8 +40,7 @@ export function useBudgetCalculations({
 			0,
 		);
 
-		const displayAmount =
-			budgetMode === "SUM_OF_CATEGORIES" ? totalAllocated : globalLimit;
+		const displayAmount = totalAllocated;
 		const remaining = displayAmount - totalSpent;
 
 		const variableBudgets = validBudgets
@@ -71,14 +61,8 @@ export function useBudgetCalculations({
 			totalCategories: validBudgets.length,
 			overBudgetCategories,
 			underBudgetCategories: validBudgets.length - overBudgetCategories,
-			unallocatedAmount:
-				budgetMode === "GLOBAL_LIMIT"
-					? Math.max(0, globalLimit - totalAllocated)
-					: 0,
-			unallocatedAmountInUSD:
-				budgetMode === "GLOBAL_LIMIT"
-					? Math.max(0, globalLimitInUSD - totalAllocatedInUSD)
-					: 0,
+			unallocatedAmount: 0,
+			unallocatedAmountInUSD: 0,
 		};
 
 		return {
@@ -97,5 +81,5 @@ export function useBudgetCalculations({
 			fixedBudgets,
 			stats,
 		};
-	}, [budgets, globalLimit, globalLimitInUSD, budgetMode]);
+	}, [budgets]);
 }

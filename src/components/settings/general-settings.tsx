@@ -32,13 +32,15 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { type CurrencyCode, CURRENCIES } from "~/lib/currencies";
+import { CURRENCIES, type CurrencyCode } from "~/lib/currencies";
 import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-const currencyCodeSchema = z.string().refine((val): val is CurrencyCode => val in CURRENCIES, {
-	message: "Invalid currency code",
-});
+const currencyCodeSchema = z
+	.string()
+	.refine((val): val is CurrencyCode => val in CURRENCIES, {
+		message: "Invalid currency code",
+	});
 
 const generalSettingsSchema = z.object({
 	homeCurrency: currencyCodeSchema,
@@ -151,7 +153,7 @@ export function GeneralSettings() {
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<FormField
 								control={form.control}
@@ -162,8 +164,8 @@ export function GeneralSettings() {
 										<FormControl>
 											<CurrencyPicker
 												onValueChange={field.onChange}
-												value={field.value}
 												placeholder="Select currency"
+												value={field.value}
 											/>
 										</FormControl>
 										<FormDescription>
@@ -183,8 +185,8 @@ export function GeneralSettings() {
 										<FormControl>
 											<CurrencyPicker
 												onValueChange={field.onChange}
-												value={field.value}
 												placeholder="Select currency"
+												value={field.value}
 											/>
 										</FormControl>
 										<FormDescription>
@@ -204,8 +206,8 @@ export function GeneralSettings() {
 								<FormItem>
 									<FormLabel>Category Click Behavior</FormLabel>
 									<Select
-										onValueChange={field.onChange}
 										defaultValue={field.value}
+										onValueChange={field.onChange}
 										value={field.value}
 									>
 										<FormControl>
@@ -238,8 +240,8 @@ export function GeneralSettings() {
 								<FormItem>
 									<FormLabel>Font Preference</FormLabel>
 									<Select
-										onValueChange={field.onChange}
 										defaultValue={field.value}
+										onValueChange={field.onChange}
 										value={field.value}
 									>
 										<FormControl>
@@ -270,8 +272,8 @@ export function GeneralSettings() {
 								<FormItem>
 									<FormLabel>Currency Symbol Style</FormLabel>
 									<Select
-										onValueChange={field.onChange}
 										defaultValue={field.value}
+										onValueChange={field.onChange}
 										value={field.value}
 									>
 										<FormControl>
@@ -299,10 +301,10 @@ export function GeneralSettings() {
 						<div className="space-y-2">
 							<FormLabel>Theme Preference</FormLabel>
 							<Select
-								value={theme}
 								onValueChange={(value) => {
 									if (value !== theme) toggleTheme();
 								}}
+								value={theme}
 							>
 								<SelectTrigger>
 									<SelectValue />

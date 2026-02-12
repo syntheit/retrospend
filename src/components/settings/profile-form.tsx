@@ -22,7 +22,7 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { useSession } from "~/hooks/use-session";
+import type { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
 // TODO: Move this type to a shared location if reused frequently
@@ -80,7 +80,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<FormField
 								control={form.control}
@@ -106,7 +106,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
 												<span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
 													@
 												</span>
-												<Input className="pl-6" placeholder="username" {...field} />
+												<Input
+													className="pl-6"
+													placeholder="username"
+													{...field}
+												/>
 											</div>
 										</FormControl>
 										<FormMessage />
@@ -121,7 +125,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
 								<FormItem>
 									<FormLabel>Email</FormLabel>
 									<FormControl>
-										<Input placeholder="m@example.com" type="email" {...field} />
+										<Input
+											placeholder="m@example.com"
+											type="email"
+											{...field}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>

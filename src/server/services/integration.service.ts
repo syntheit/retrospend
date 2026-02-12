@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { env } from "~/env";
 
 export class IntegrationError extends Error {
 	constructor(
@@ -95,7 +96,7 @@ export class IntegrationService {
 		endpoint: string,
 		options: FetchOptions = {},
 	): Promise<Response> {
-		const workerKey = process.env.WORKER_API_KEY;
+		const workerKey = env.WORKER_API_KEY;
 		if (!workerKey) {
 			throw new Error("WORKER_API_KEY is not defined");
 		}

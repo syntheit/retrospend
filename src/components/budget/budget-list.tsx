@@ -2,19 +2,16 @@ import { useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import type { Budget, BudgetMode, Category } from "~/types/budget-types";
+import type { Budget, Category } from "~/types/budget-types";
 import { AddBudgetRow } from "./add-budget-row";
 import { BudgetRow } from "./budget-row";
 
 interface BudgetListProps {
 	budgets: Budget[];
 	categories: Category[];
-	globalLimit: number;
-	globalLimitInUSD: number;
 	selectedMonth: Date;
 	isMobile: boolean;
 	homeCurrency: string;
-	budgetMode: BudgetMode;
 	hasPreviousBudgets: boolean;
 	isCopying: boolean;
 	onCopyFromLastMonth: () => void;
@@ -23,12 +20,9 @@ interface BudgetListProps {
 export function BudgetList({
 	budgets,
 	categories,
-	globalLimit,
-	globalLimitInUSD,
 	selectedMonth,
 	isMobile,
 	homeCurrency,
-	budgetMode,
 	hasPreviousBudgets,
 	isCopying,
 	onCopyFromLastMonth,
@@ -41,9 +35,6 @@ export function BudgetList({
 	const { validBudgets, variableBudgets, fixedBudgets } = useBudgetCalculations(
 		{
 			budgets,
-			globalLimit,
-			globalLimitInUSD,
-			budgetMode,
 		},
 	);
 
@@ -101,7 +92,7 @@ export function BudgetList({
 						No budgets set for this month.
 					</p>
 					<p className="mt-1 text-muted-foreground text-sm">
-						Set a total monthly limit above and start allocating to categories.
+						Start allocating to categories to set your budget.
 					</p>
 				</div>
 				{hasPreviousBudgets && (

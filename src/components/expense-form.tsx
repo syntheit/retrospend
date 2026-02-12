@@ -21,6 +21,7 @@ import { DetailsSection } from "./expense/form-sections/DetailsSection";
 
 interface ExpenseFormProps {
 	expenseId: string;
+	mode?: "create" | "edit";
 	onTitleChange?: (title: string) => void;
 	isModal?: boolean;
 	onClose?: () => void;
@@ -32,7 +33,7 @@ export interface ExpenseFormHandle {
 }
 
 export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
-	({ expenseId, onTitleChange, isModal = false, onClose }, ref) => {
+	({ expenseId, mode = "edit", onTitleChange, isModal = false, onClose }, ref) => {
 		const {
 			form,
 			onSubmit,
@@ -55,7 +56,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			categories,
 			homeCurrency,
 			expense,
-		} = useExpenseForm({ expenseId, isModal, onClose, onTitleChange });
+		} = useExpenseForm({ expenseId, mode, isModal, onClose, onTitleChange });
 
 		const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 		const [showCustomRateDialog, setShowCustomRateDialog] = useState(false);

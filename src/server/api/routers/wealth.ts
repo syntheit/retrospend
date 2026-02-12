@@ -78,7 +78,6 @@ export const wealthRouter = createTRPCRouter({
 			return result;
 		}),
 
-
 	updateAssetBalance: protectedProcedure
 		.input(
 			z.object({
@@ -107,13 +106,19 @@ export const wealthRouter = createTRPCRouter({
 
 			// Resolve exchange rate (prioritize user input, then stored rate, then fetch)
 			let resolvedRate: { rate: number; rateType: string | null };
-			
+
 			if (input.exchangeRate && input.exchangeRateType) {
 				// User provided rate
-				resolvedRate = { rate: input.exchangeRate, rateType: input.exchangeRateType };
+				resolvedRate = {
+					rate: input.exchangeRate,
+					rateType: input.exchangeRateType,
+				};
 			} else if (asset.exchangeRate) {
 				// Use stored rate
-				resolvedRate = { rate: asset.exchangeRate.toNumber(), rateType: asset.exchangeRateType };
+				resolvedRate = {
+					rate: asset.exchangeRate.toNumber(),
+					rateType: asset.exchangeRateType,
+				};
 			} else {
 				// Fetch new rate
 				resolvedRate = await wealthService.resolveExchangeRate(

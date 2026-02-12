@@ -8,8 +8,8 @@ import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
 import { useCurrency } from "~/hooks/use-currency";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { api } from "~/trpc/react";
 import { handleError } from "~/lib/handle-error";
+import { api } from "~/trpc/react";
 
 export default function BudgetPage() {
 	const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -22,21 +22,14 @@ export default function BudgetPage() {
 
 	const { data: categories } = api.categories.getAll.useQuery();
 
-	const { data: globalBudget } = api.budget.getGlobalBudget.useQuery({
-		month: selectedMonth,
-	});
-
 	const { data: hasPreviousBudgets } =
 		api.budget.hasBudgetsBeforeMonth.useQuery({
 			month: selectedMonth,
 		});
 
 	const { homeCurrency, usdToHomeRate: usdToHomeCurrencyRate } = useCurrency();
-	const { data: settings } = api.settings.getGeneral.useQuery();
-	const budgetMode = settings?.budgetMode ?? "GLOBAL_LIMIT";
 
-	const globalLimit = globalBudget?.amount ?? 0;
-	const globalLimitInUSD = globalBudget?.amountInUSD ?? 0;
+
 
 	const copyFromLastMonth = api.budget.copyFromLastMonth.useMutation();
 
@@ -96,7 +89,6 @@ export default function BudgetPage() {
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl space-y-6">
 					<BudgetHeader
-						budgetMode={budgetMode}
 						budgets={budgets ?? []}
 						hasPreviousBudgets={hasPreviousBudgets}
 						homeCurrency={homeCurrency}
@@ -108,9 +100,7 @@ export default function BudgetPage() {
 					{categoryBudgets.length > 0 && (
 						<div className="space-y-4 pt-2">
 							<PartitionBar
-								budgetMode={budgetMode}
 								categoryBudgets={categoryBudgets}
-								globalLimit={globalLimit}
 								isMobile={isMobile}
 							/>
 						</div>
@@ -125,11 +115,8 @@ export default function BudgetPage() {
 								</p>
 							</div>
 							<BudgetList
-								budgetMode={budgetMode}
 								budgets={budgets ?? []}
 								categories={categories ?? []}
-								globalLimit={globalLimit}
-								globalLimitInUSD={globalLimitInUSD}
 								hasPreviousBudgets={hasPreviousBudgets ?? false}
 								homeCurrency={homeCurrency}
 								isCopying={copyFromLastMonth.isPending}

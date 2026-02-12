@@ -1,24 +1,21 @@
-import { useQueryClient } from "@tanstack/react-query";
+
 import {
 	ChevronLeft,
 	ChevronRight,
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
+
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { cn, getCurrencySymbol } from "~/lib/utils";
-import { api } from "~/trpc/react";
-import type { Budget, BudgetMode } from "~/types/budget-types";
+import { cn } from "~/lib/utils";
+import type { Budget } from "~/types/budget-types";
 
 interface BudgetHeaderProps {
 	selectedMonth: Date;
 	onNavigateMonth: (direction: "prev" | "next") => void;
-	budgetMode: BudgetMode;
 	homeCurrency: string;
 	budgets: Budget[];
 	usdToHomeCurrencyRate: number;
@@ -28,22 +25,12 @@ interface BudgetHeaderProps {
 export function BudgetHeader({
 	selectedMonth,
 	onNavigateMonth,
-	budgetMode,
 	homeCurrency,
 	budgets,
 	usdToHomeCurrencyRate,
 	hasPreviousBudgets,
 }: BudgetHeaderProps) {
 	const { formatCurrency } = useCurrencyFormatter();
-	const queryClient = useQueryClient();
-	const [globalLimit, setGlobalLimit] = useState<string>("");
-	const [isUpdating, setIsUpdating] = useState(false);
-	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-	const { data: globalBudget } = api.budget.getGlobalBudget.useQuery({
-		month: selectedMonth,
-	});
-
 	const {
 		displayAmountInUSD,
 		totalSpent,
@@ -53,9 +40,6 @@ export function BudgetHeader({
 		percentUsed,
 	} = useBudgetCalculations({
 		budgets,
-		globalLimit: parseFloat(globalLimit) || (globalBudget?.amount ?? 0),
-		globalLimitInUSD: globalBudget?.amountInUSD ?? 0,
-		budgetMode,
 	});
 
 	// Convert USD values to home currency for display
@@ -64,86 +48,7 @@ export function BudgetHeader({
 	const totalSpentInHomeCurrency = totalSpentInUSD * usdToHomeCurrencyRate;
 	const remainingInHomeCurrency = remainingInUSD * usdToHomeCurrencyRate;
 
-	const upsertGlobalBudget = api.budget.upsertGlobalBudget.useMutation({
-		onSuccess: () => {
-			setIsUpdating(false);
-			setHasUnsavedChanges(false);
-			queryClient.invalidateQueries({
-				queryKey: [["budget", "getGlobalBudget"]],
-			});
-		},
-		onError: () => {
-			setIsUpdating(false);
-		},
-	});
-
-	const deleteGlobalBudget = api.budget.deleteGlobalBudget.useMutation({
-		onSuccess: () => {
-			setIsUpdating(false);
-			setHasUnsavedChanges(false);
-			queryClient.invalidateQueries({
-				queryKey: [["budget", "getGlobalBudget"]],
-			});
-		},
-		onError: () => {
-			setIsUpdating(false);
-		},
-	});
-
-	useEffect(() => {
-		if (!hasUnsavedChanges && !isUpdating) {
-			if (globalBudget) {
-				setGlobalLimit(globalBudget.amount.toString());
-			} else {
-				setGlobalLimit("");
-			}
-		}
-	}, [globalBudget, hasUnsavedChanges, isUpdating]);
-
-	const handleLimitChange = (value: string) => {
-		setGlobalLimit(value);
-		setHasUnsavedChanges(true);
-
-		setIsUpdating(true);
-		const timeoutId = setTimeout(() => {
-			const amount = parseFloat(value);
-			if (!Number.isNaN(amount) && amount > 0) {
-				upsertGlobalBudget.mutate({
-					amount,
-					currency: homeCurrency,
-					period: selectedMonth,
-				});
-			} else if (value === "") {
-				deleteGlobalBudget.mutate({
-					period: selectedMonth,
-				});
-			}
-		}, 500);
-
-		return () => clearTimeout(timeoutId);
-	};
-
-	const handleLimitBlur = () => {
-		if (!isUpdating) {
-			const amount = parseFloat(globalLimit);
-			if (!Number.isNaN(amount) && amount > 0) {
-				setIsUpdating(true);
-				upsertGlobalBudget.mutate({
-					amount,
-					currency: homeCurrency,
-					period: selectedMonth,
-				});
-			} else if (globalLimit === "") {
-				setIsUpdating(true);
-				deleteGlobalBudget.mutate({
-					period: selectedMonth,
-				});
-			}
-		}
-	};
-
-	const isSumMode = budgetMode === "SUM_OF_CATEGORIES";
-	const hasData = budgets.length > 0 || globalBudget !== null || totalSpent > 0;
+	const hasData = budgets.length > 0 || totalSpent > 0;
 
 	const today = new Date();
 	const isPastMonth =
@@ -284,33 +189,12 @@ export function BudgetHeader({
 									<p className="font-medium text-sm text-stone-300">
 										Total Monthly Budget
 									</p>
-									{isSumMode ? (
-										<p className="font-bold text-4xl tracking-tight sm:text-5xl">
-											{formatCurrency(
-												displayAmountInHomeCurrency,
-												homeCurrency,
-											)}
-										</p>
-									) : (
-										<div className="relative flex items-center">
-											<span className="mr-2 font-bold text-3xl text-stone-300">
-												{getCurrencySymbol(homeCurrency)}
-											</span>
-											<Input
-												className="h-auto border-0 bg-transparent p-0 text-left font-bold text-4xl text-white tracking-tight shadow-none focus-visible:ring-0 sm:text-5xl"
-												min="0"
-												onBlur={handleLimitBlur}
-												onChange={(e) => handleLimitChange(e.target.value)}
-												placeholder="0.00"
-												step="0.01"
-												type="number"
-												value={globalLimit}
-											/>
-											{isUpdating && (
-												<div className="ml-4 h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-											)}
-										</div>
-									)}
+									<p className="font-bold text-4xl tracking-tight sm:text-5xl">
+										{formatCurrency(
+											displayAmountInHomeCurrency,
+											homeCurrency,
+										)}
+									</p>
 								</div>
 
 								<div className="flex flex-wrap items-center gap-3">

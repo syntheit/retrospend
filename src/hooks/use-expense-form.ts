@@ -35,6 +35,7 @@ export type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 interface UseExpenseFormOptions {
 	expenseId?: string;
+	mode?: "create" | "edit";
 	isModal?: boolean;
 	onClose?: () => void;
 	onTitleChange?: (title: string) => void;
@@ -42,6 +43,7 @@ interface UseExpenseFormOptions {
 
 export function useExpenseForm({
 	expenseId,
+	mode = "edit",
 	isModal,
 	onClose,
 	onTitleChange,
@@ -58,7 +60,7 @@ export function useExpenseForm({
 	const { data: expense, isLoading: isLoadingExpense } =
 		api.expense.getExpense.useQuery(
 			{ id: expenseId ?? "" },
-			{ enabled: Boolean(expenseId) },
+			{ enabled: mode === "edit" && Boolean(expenseId) },
 		);
 
 	const { data: settings } = api.settings.getGeneral.useQuery();
@@ -296,6 +298,7 @@ export function useExpenseForm({
 
 			// In event-driven world, reset(data) marks as clean with current values
 			reset(data);
+			hasUnsavedChangesRef.current = false;
 
 			if (isModal) {
 				onClose?.();
@@ -312,6 +315,7 @@ export function useExpenseForm({
 		try {
 			await deleteExpenseMutation.mutateAsync({ id: expenseId });
 			toast.success("Expense deleted successfully!");
+			hasUnsavedChangesRef.current = false;
 			router.push("/app");
 		} catch (_error) {
 			toast.error("Failed to delete expense");

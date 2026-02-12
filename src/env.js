@@ -13,7 +13,11 @@ export const env = createEnv({
 				: z.string().optional(),
 		DATABASE_URL: z.string().url(),
 		WORKER_URL: z.string().url().default("http://retrospend-worker:8080"),
-		WORKER_API_KEY: z.string().min(1),
+		WORKER_API_KEY:
+			process.env.NODE_ENV === "production"
+				? z.string().min(1)
+				: z.string().min(1).optional().default("dev-api-key"),
+
 		SHOW_LANDING_PAGE: z.enum(["true", "false"]).default("false"),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])

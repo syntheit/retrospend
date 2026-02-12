@@ -13,6 +13,7 @@ import {
 
 interface ExpenseModalProps {
 	expenseId: string;
+	mode?: "create" | "edit";
 	title?: string;
 	description?: string;
 	open?: boolean;
@@ -21,6 +22,7 @@ interface ExpenseModalProps {
 
 export function ExpenseModal({
 	expenseId,
+	mode = "edit",
 	title = "New Expense",
 	description = "Fill in the details for your expense. You can save it as a draft to continue later or finalize it now.",
 	open: controlledOpen,
@@ -63,6 +65,7 @@ export function ExpenseModal({
 				<ExpenseForm
 					expenseId={expenseId}
 					isModal
+					mode={mode}
 					onClose={handleClose}
 					ref={formRef}
 				/>

@@ -2,22 +2,16 @@ import { AlertCircle, CheckCircle2, LayoutGrid, PieChart } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import type { Budget, BudgetMode } from "~/types/budget-types";
+import type { Budget } from "~/types/budget-types";
 
 interface BudgetStatsProps {
 	budgets: Budget[];
 	homeCurrency: string;
-	budgetMode: BudgetMode;
-	globalLimit: number;
-	globalLimitInUSD: number;
 }
 
 export function BudgetStats({
 	budgets,
 	homeCurrency,
-	budgetMode,
-	globalLimit,
-	globalLimitInUSD,
 }: BudgetStatsProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -27,13 +21,9 @@ export function BudgetStats({
 			totalCategories,
 			overBudgetCategories,
 			underBudgetCategories,
-			unallocatedAmount,
 		},
 	} = useBudgetCalculations({
 		budgets,
-		globalLimit,
-		globalLimitInUSD,
-		budgetMode,
 	});
 
 	return (
@@ -109,34 +99,7 @@ export function BudgetStats({
 				</Card>
 			)}
 
-			{budgetMode === "GLOBAL_LIMIT" && (
-				<Card className="group relative overflow-hidden border-orange-200/50 bg-gradient-to-br from-orange-50 to-white transition-all duration-300 hover:shadow-lg hover:shadow-orange-100 dark:border-orange-900/50 dark:from-orange-950/30 dark:to-card">
-					<div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-orange-500/10 transition-transform duration-300 group-hover:scale-150" />
-					<CardContent className="relative p-5">
-						<div className="flex items-start justify-between">
-							<div className="space-y-1">
-								<p className="font-medium text-orange-700 text-sm dark:text-orange-400">
-									Unallocated
-								</p>
-								<p className="font-bold text-2xl text-orange-900 dark:text-orange-100">
-									{formatCurrency(unallocatedAmount, homeCurrency)}
-								</p>
-							</div>
-							<div className="rounded-lg bg-orange-100 p-2.5 dark:bg-orange-900/50">
-								<PieChart className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-							</div>
-						</div>
-						<div className="mt-3 flex items-center gap-1.5 text-orange-600/80 text-sm dark:text-orange-400/80">
-							<span>
-								{globalLimit > 0
-									? ((unallocatedAmount / globalLimit) * 100).toFixed(1)
-									: 0}
-								% of limit remaining
-							</span>
-						</div>
-					</CardContent>
-				</Card>
-			)}
+
 		</div>
 	);
 }

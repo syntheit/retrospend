@@ -26,7 +26,6 @@ import { useTableFilters } from "~/hooks/use-table-filters";
 import { convertExpenseAmountForDisplay, normalizeExpenses } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { TableFilters } from "./_components/table-filters";
-import { TableToolbar } from "./_components/table-toolbar";
 
 const convertDecimalToNumber = (value: unknown): number => {
 	if (typeof value === "object" && value !== null && "toNumber" in value) {
@@ -155,7 +154,6 @@ export default function Page() {
 	return (
 		<>
 			<SiteHeader
-				actions={<TableToolbar onCreateExpense={handleCreateExpense} />}
 				title="Table View"
 			/>
 			<PageContent>
@@ -208,8 +206,25 @@ export default function Page() {
 								</TableCell>
 								{hasForeignCurrencyExpenses && (
 									<TableCell className="px-4 py-3 text-right font-semibold">
-										{/* This logic would ideally be moved to a util since we calculate it based on currently visible rows */}
-										Total Local...
+										{(() => {
+											const foreignExpenses = filteredExpenses.filter(
+												(e) => e.currency !== "USD",
+											);
+											const uniqueCurrencies = new Set(
+												foreignExpenses.map((e) => e.currency),
+											);
+
+											if (uniqueCurrencies.size === 0) return null;
+											if (uniqueCurrencies.size === 1) {
+												const currency = Array.from(uniqueCurrencies)[0];
+												const total = foreignExpenses.reduce(
+													(sum, e) => sum + e.amount,
+													0,
+												);
+												return formatCurrency(total, currency);
+											}
+											return "Mixed Currencies";
+										})()}
 									</TableCell>
 								)}
 								<TableCell className="px-4 py-3 text-right font-semibold">
@@ -232,8 +247,8 @@ export default function Page() {
 							</TableRow>
 						}
 						initialSorting={[{ id: "date", desc: true }]}
-						onRowClick={(row) => openExpense(row.id)}
-						renderToolbar={(table, headerHeight) => (
+						// onRowClick removed as per user request to only allow edit via checkboxes
+						renderToolbar={(_table, headerHeight) => (
 							<DataTableSelectionBar
 								exportMutation={{ isPending: isExporting }}
 								headerHeight={headerHeight}

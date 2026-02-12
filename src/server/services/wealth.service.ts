@@ -5,7 +5,7 @@ import { getBestExchangeRate } from "../api/routers/shared-currency";
 
 /**
  * WealthService - Encapsulates business logic for wealth/asset management
- * 
+ *
  * Extracted from wealth.ts router to eliminate ~120 lines of duplication
  * across createAsset, updateAssetBalance, and updateAsset mutations.
  */
@@ -14,12 +14,12 @@ export class WealthService {
 
 	/**
 	 * Resolves the exchange rate for a given currency and date.
-	 * 
+	 *
 	 * Priority:
 	 * 1. User-provided rate (if both rate and type are supplied)
 	 * 2. Best available rate from database (getBestExchangeRate)
 	 * 3. Throws error if no rate found for non-base currency
-	 * 
+	 *
 	 * @returns { rate: number, rateType: string | null }
 	 */
 	async resolveExchangeRate(
@@ -57,12 +57,12 @@ export class WealthService {
 
 	/**
 	 * Calculates balance in USD with "Billion Dollar" sanity check.
-	 * 
+	 *
 	 * The sanity check prevents a common bug where developers multiply
 	 * instead of divide when converting to USD. If rate > 1 and the
 	 * USD balance is somehow larger than the original balance, we know
 	 * something went wrong.
-	 * 
+	 *
 	 * @throws TRPCError if sanity check fails
 	 */
 	calculateBalanceInUSD(
@@ -92,7 +92,7 @@ export class WealthService {
 
 	/**
 	 * Records an asset snapshot and history entry within a transaction.
-	 * 
+	 *
 	 * This method must be called within a Prisma transaction context.
 	 * It creates/updates the daily snapshot and appends to the history log.
 	 */

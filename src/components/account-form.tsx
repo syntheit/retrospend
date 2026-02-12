@@ -7,10 +7,7 @@ import { toast } from "sonner";
 import { PasswordForm } from "~/components/settings/password-form";
 import { ProfileForm } from "~/components/settings/profile-form";
 import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-} from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import {
 	Dialog,
 	DialogContent,

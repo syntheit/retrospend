@@ -52,7 +52,7 @@ export default function RecurringPage() {
 				actions={
 					templates && templates.length > 0 ? (
 						<Button onClick={() => setShowCreateModal(true)}>
-							<Plus className="mr-2 h-4 w-4" /> Add Expense
+							<Plus className="mr-2 h-4 w-4" /> Add Recurring Expense
 						</Button>
 					) : null
 				}
