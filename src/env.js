@@ -13,6 +13,7 @@ export const env = createEnv({
 				: z.string().optional(),
 		DATABASE_URL: z.string().url(),
 		WORKER_URL: z.string().url().default("http://retrospend-worker:8080"),
+		WORKER_API_KEY: z.string().min(1),
 		SHOW_LANDING_PAGE: z.enum(["true", "false"]).default("false"),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
@@ -38,6 +39,7 @@ export const env = createEnv({
 			process.env.AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
 		DATABASE_URL: process.env.DATABASE_URL,
 		WORKER_URL: process.env.WORKER_URL,
+		WORKER_API_KEY: process.env.WORKER_API_KEY,
 		SHOW_LANDING_PAGE: process.env.SHOW_LANDING_PAGE,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_APP_URL:

@@ -4,13 +4,12 @@ import { Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PasswordForm } from "~/components/settings/password-form";
+import { ProfileForm } from "~/components/settings/profile-form";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
 	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
 } from "~/components/ui/card";
 import {
 	Dialog,
@@ -20,8 +19,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
@@ -35,7 +32,6 @@ type ExtendedUser = NonNullable<
 export function AccountForm() {
 	const { data: session, isPending } = useSession();
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
-	const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
 	if (isPending) {
 		return (
@@ -64,10 +60,9 @@ export function AccountForm() {
 
 	return (
 		<div className="mx-auto w-full max-w-2xl space-y-6">
-			<ProfileSection
-				onOpenPasswordChange={() => setShowPasswordDialog(true)}
-				user={user}
-			/>
+			<ProfileForm user={user} />
+
+			<PasswordForm user={user} />
 
 			<ExportDataSection />
 
@@ -78,116 +73,7 @@ export function AccountForm() {
 					showModal={showDeleteModal}
 				/>
 			)}
-
-			<PasswordChangeDialog
-				isOpen={showPasswordDialog}
-				onOpenChange={setShowPasswordDialog}
-				user={user}
-			/>
 		</div>
-	);
-}
-
-interface ProfileSectionProps {
-	user: ExtendedUser;
-	onOpenPasswordChange: () => void;
-}
-
-function ProfileSection({ user, onOpenPasswordChange }: ProfileSectionProps) {
-	const router = useRouter();
-	const [formData, setFormData] = useState({
-		name: user.name ?? "",
-		username: user.username ?? "",
-		email: user.email ?? "",
-	});
-	const [error, setError] = useState("");
-
-	const updateProfile = api.settings.updateProfile.useMutation({
-		onSuccess: () => {
-			toast.success("Profile updated");
-			router.push("/app");
-		},
-		onError: (err) => setError(err.message),
-	});
-
-	const handleSave = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setError("");
-		updateProfile.mutate(formData);
-	};
-
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Account Settings</CardTitle>
-				<CardDescription>Update your account information.</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<form className="space-y-4" onSubmit={handleSave}>
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-						<div className="space-y-2">
-							<Label htmlFor="name">Full Name</Label>
-							<Input
-								disabled={updateProfile.isPending}
-								id="name"
-								onChange={(e) =>
-									setFormData((prev) => ({ ...prev, name: e.target.value }))
-								}
-								value={formData.name}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="username">Username</Label>
-							<div className="relative">
-								<span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
-									@
-								</span>
-								<Input
-									className="pl-6"
-									disabled={updateProfile.isPending}
-									id="username"
-									onChange={(e) =>
-										setFormData((prev) => ({
-											...prev,
-											username: e.target.value,
-										}))
-									}
-									value={formData.username}
-								/>
-							</div>
-						</div>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="email">Email</Label>
-						<Input
-							disabled={updateProfile.isPending}
-							id="email"
-							onChange={(e) =>
-								setFormData((prev) => ({ ...prev, email: e.target.value }))
-							}
-							type="email"
-							value={formData.email}
-						/>
-						<Button
-							className="mt-2"
-							onClick={onOpenPasswordChange}
-							type="button"
-							variant="outline"
-						>
-							Change Password
-						</Button>
-					</div>
-					{error && <p className="text-red-500 text-sm">{error}</p>}
-					<Button
-						className="w-full"
-						disabled={updateProfile.isPending}
-						type="submit"
-					>
-						{updateProfile.isPending ? "Saving..." : "Save Changes"}
-					</Button>
-				</form>
-			</CardContent>
-		</Card>
 	);
 }
 
@@ -314,140 +200,5 @@ function DeleteAccountSection({
 				</DialogContent>
 			</Dialog>
 		</>
-	);
-}
-
-interface PasswordChangeDialogProps {
-	isOpen: boolean;
-	onOpenChange: (open: boolean) => void;
-	user: ExtendedUser;
-}
-
-function PasswordChangeDialog({
-	isOpen,
-	onOpenChange,
-	user,
-}: PasswordChangeDialogProps) {
-	const [formData, setFormData] = useState({
-		currentPassword: "",
-		password: "",
-		confirmPassword: "",
-	});
-	const [error, setError] = useState("");
-
-	const updateProfile = api.settings.updateProfile.useMutation({
-		onSuccess: () => {
-			toast.success("Password updated");
-			onOpenChange(false);
-			setFormData({ currentPassword: "", password: "", confirmPassword: "" });
-		},
-		onError: (err) => setError(err.message),
-	});
-
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		setError("");
-
-		if (!formData.currentPassword || !formData.password) {
-			setError("All fields are required");
-			return;
-		}
-
-		if (formData.password !== formData.confirmPassword) {
-			setError("Passwords do not match");
-			return;
-		}
-
-		updateProfile.mutate({
-			name: user.name ?? "",
-			username: user.username,
-			email: user.email ?? "",
-			currentPassword: formData.currentPassword,
-			password: formData.password,
-		});
-	};
-
-	return (
-		<Dialog
-			onOpenChange={(open) => {
-				if (!open) {
-					setError("");
-					setFormData({
-						currentPassword: "",
-						password: "",
-						confirmPassword: "",
-					});
-				}
-				onOpenChange(open);
-			}}
-			open={isOpen}
-		>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Change Password</DialogTitle>
-					<DialogDescription>
-						Update your security credentials.
-					</DialogDescription>
-				</DialogHeader>
-				<form className="space-y-4" onSubmit={handleSubmit}>
-					<div className="space-y-2">
-						<Label htmlFor="currentPassword">Current Password</Label>
-						<Input
-							disabled={updateProfile.isPending}
-							id="currentPassword"
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									currentPassword: e.target.value,
-								}))
-							}
-							type="password"
-							value={formData.currentPassword}
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="newPassword">New Password</Label>
-						<Input
-							disabled={updateProfile.isPending}
-							id="newPassword"
-							onChange={(e) =>
-								setFormData((prev) => ({ ...prev, password: e.target.value }))
-							}
-							type="password"
-							value={formData.password}
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="confirmPassword">Confirm New Password</Label>
-						<Input
-							disabled={updateProfile.isPending}
-							id="confirmPassword"
-							onChange={(e) =>
-								setFormData((prev) => ({
-									...prev,
-									confirmPassword: e.target.value,
-								}))
-							}
-							type="password"
-							value={formData.confirmPassword}
-						/>
-					</div>
-					{error && <p className="text-red-500 text-sm">{error}</p>}
-					<DialogFooter>
-						<Button
-							disabled={updateProfile.isPending}
-							onClick={() => onOpenChange(false)}
-							type="button"
-							variant="outline"
-						>
-							Cancel
-						</Button>
-						<Button disabled={updateProfile.isPending} type="submit">
-							{updateProfile.isPending ? "Updating..." : "Update Password"}
-						</Button>
-					</DialogFooter>
-				</form>
-			</DialogContent>
-		</Dialog>
 	);
 }

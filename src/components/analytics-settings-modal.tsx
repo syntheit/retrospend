@@ -447,8 +447,8 @@ export const AnalyticsSettingsModal = forwardRef<
 		]);
 
 		await Promise.all([
-			utils.settings.getAnalyticsCategoryPreferences.invalidate(),
-			utils.settings.getAnalyticsCategoryPreferenceMap.invalidate(),
+			utils.preferences.getAnalyticsCategoryPreferences.invalidate(),
+			utils.preferences.getAnalyticsCategoryPreferenceMap.invalidate(),
 		]);
 
 		setOpen(false);

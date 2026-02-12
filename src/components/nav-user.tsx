@@ -8,7 +8,6 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -27,6 +26,7 @@ import {
 } from "~/components/ui/sidebar";
 import { useSession } from "~/hooks/use-session";
 import { authClient } from "~/lib/auth-client";
+import { handleError } from "~/lib/handle-error";
 
 // Extend the session user type to include additional fields
 type ExtendedUser = NonNullable<
@@ -74,8 +74,8 @@ export function NavUser({
 		try {
 			await authClient.signOut();
 			router.push("/login");
-		} catch (_error) {
-			toast.error("Failed to log out. Please try again.");
+		} catch (error) {
+			handleError(error, "Failed to log out");
 		}
 	};
 

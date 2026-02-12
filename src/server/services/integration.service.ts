@@ -86,4 +86,26 @@ export class IntegrationService {
 		const response = await IntegrationService.request(url, options);
 		return (await response.json()) as T;
 	}
+
+	/**
+	 * Specialized request method for Worker internal API.
+	 * Injects the WORKER_API_KEY into the Authorization header.
+	 */
+	public static async requestWorker(
+		endpoint: string,
+		options: FetchOptions = {},
+	): Promise<Response> {
+		const workerKey = process.env.WORKER_API_KEY;
+		if (!workerKey) {
+			throw new Error("WORKER_API_KEY is not defined");
+		}
+
+		const headers = new Headers(options.headers);
+		headers.set("Authorization", `Bearer ${workerKey}`);
+
+		return IntegrationService.request(endpoint, {
+			...options,
+			headers,
+		});
+	}
 }

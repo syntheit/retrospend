@@ -53,9 +53,32 @@ func main() {
 		log.Fatalf("Failed to schedule recurring expense processing: %v", err)
 	}
 
+	// Check for API key
+	apiKey := os.Getenv("WORKER_API_KEY")
+	if apiKey == "" {
+		log.Fatal("WORKER_API_KEY environment variable is not set")
+	}
+
+	// Auth middleware
+	authMiddleware := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			expected := "Bearer " + apiKey
+			
+			// Use constant time comparison if possible, or simple string compare for now
+			if authHeader != expected {
+				log.Printf("⚠️ Unauthorized access attempt from %s", r.RemoteAddr)
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			next(w, r)
+		}
+	}
+
 	// Start HTTP server for manual triggers
 	go func() {
-		http.HandleFunc("/sync-rates", func(w http.ResponseWriter, r *http.Request) {
+		// Protected sync endpoint
+		http.HandleFunc("/sync-rates", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodPost {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
@@ -70,7 +93,7 @@ func main() {
 			
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Sync successful"))
-		})
+		}))
 
 		log.Println("✓ HTTP server listening on :8080")
 		if err := http.ListenAndServe(":8080", nil); err != nil {

@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getBestExchangeRate } from "./shared-currency";
 
@@ -351,7 +352,7 @@ export const recurringRouter = createTRPCRouter({
 			let exchangeRate = 1;
 			let amountInUSD = Number(template.amount);
 
-			if (template.currency !== "USD") {
+			if (template.currency !== BASE_CURRENCY) {
 				const rate = await getBestExchangeRate(
 					db,
 					template.currency,
@@ -363,32 +364,38 @@ export const recurringRouter = createTRPCRouter({
 				}
 			}
 
-			// Create the expense
-			const expense = await db.expense.create({
-				data: {
-					userId: session.user.id,
-					title: template.name,
-					amount: template.amount,
-					currency: template.currency,
-					date: template.nextDueDate,
-					categoryId: template.categoryId,
-					amountInUSD,
-					exchangeRate,
-					pricingSource: "RECURRING",
-					recurringTemplateId: template.id,
-					status: "FINALIZED",
-				},
-			});
-
-			// Update next due date
+			// Calculate next due date
 			const nextDueDate = calculateNextDueDate(
 				template.nextDueDate,
 				template.frequency,
 			);
 
-			await db.recurringTemplate.update({
-				where: { id: template.id },
-				data: { nextDueDate },
+			// Create expense and update template in a transaction
+			// This prevents orphaned expenses if the nextDueDate update fails
+			const expense = await db.$transaction(async (tx) => {
+				const createdExpense = await tx.expense.create({
+					data: {
+						userId: session.user.id,
+						title: template.name,
+						amount: template.amount,
+						currency: template.currency,
+						date: template.nextDueDate,
+						categoryId: template.categoryId,
+						amountInUSD,
+						exchangeRate,
+						pricingSource: "RECURRING",
+						recurringTemplateId: template.id,
+						status: "FINALIZED",
+					},
+				});
+
+				// Update next due date
+				await tx.recurringTemplate.update({
+					where: { id: template.id },
+					data: { nextDueDate },
+				});
+
+				return createdExpense;
 			});
 
 			return expense;

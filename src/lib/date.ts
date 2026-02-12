@@ -40,3 +40,13 @@ export function formatDateOnly(date: Date): string {
 export function isValidDateOnlyFormat(dateString: string): boolean {
 	return /^\d{4}-\d{2}-\d{2}$/.test(dateString);
 }
+
+/**
+ * Normalizes a date to Midnight UTC (stripping time components).
+ * This ensures consistent comparison and storage for date-only values.
+ */
+export function normalizeDate(date: Date): Date {
+	const d = new Date(date);
+	d.setUTCHours(0, 0, 0, 0);
+	return d;
+}

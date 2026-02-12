@@ -110,7 +110,7 @@ export const exchangeRateRouter = createTRPCRouter({
 
 		try {
 			// Trigger sync on worker
-			await IntegrationService.request(`${env.WORKER_URL}/sync-rates`, {
+			await IntegrationService.requestWorker(`${env.WORKER_URL}/sync-rates`, {
 				method: "POST",
 			});
 

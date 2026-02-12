@@ -6,11 +6,11 @@ import type { Page } from "~prisma";
 
 export function usePageSettings<T extends Page>(page: T) {
 	const { data: settings, ...queryResult } =
-		api.settings.getPageSettings.useQuery({
+		api.preferences.getPageSettings.useQuery({
 			page,
 		});
 
-	const updateMutation = api.settings.updatePageSettings.useMutation();
+	const updateMutation = api.preferences.updatePageSettings.useMutation();
 
 	const updateSettings = async (updates: Partial<PageSettings>) => {
 		return await updateMutation.mutateAsync({
@@ -29,15 +29,15 @@ export function usePageSettings<T extends Page>(page: T) {
 
 export function useAnalyticsCategoryPreferences() {
 	const { data: preferences, ...queryResult } =
-		api.settings.getAnalyticsCategoryPreferences.useQuery();
+		api.preferences.getAnalyticsCategoryPreferences.useQuery();
 
 	const { data: preferenceMap, ...mapQueryResult } =
-		api.settings.getAnalyticsCategoryPreferenceMap.useQuery();
+		api.preferences.getAnalyticsCategoryPreferenceMap.useQuery();
 
 	const updateMutation =
-		api.settings.updateAnalyticsCategoryPreference.useMutation();
+		api.preferences.updateAnalyticsCategoryPreference.useMutation();
 	const deleteMutation =
-		api.settings.deleteAnalyticsCategoryPreference.useMutation();
+		api.preferences.deleteAnalyticsCategoryPreference.useMutation();
 
 	const updatePreference = async (categoryId: string, isFlexible: boolean) => {
 		return await updateMutation.mutateAsync({

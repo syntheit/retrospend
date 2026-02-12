@@ -2,16 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { generateCsv } from "~/lib/csv";
+import { normalizeDate } from "~/lib/date";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
 import { getBestExchangeRate } from "./shared-currency";
-
-// Helper to normalize date to midnight UTC to match exchange rate and snapshot dates
-const normalizeDate = (date: Date) => {
-	const d = new Date(date);
-	d.setUTCHours(0, 0, 0, 0);
-	return d;
-};
 
 export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
@@ -32,45 +27,25 @@ export const wealthRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 			const today = normalizeDate(new Date());
+			const wealthService = new WealthService(db);
 
-			let rate = 1;
-			let rateType = null;
-			if (input.currency !== BASE_CURRENCY) {
-				if (input.exchangeRate && input.exchangeRateType) {
-					// Use provided exchange rate
-					rate = input.exchangeRate;
-					rateType = input.exchangeRateType;
-				} else {
-					// Fetch exchange rate automatically using prioritized logic
-					const bestRate = await getBestExchangeRate(db, input.currency, today);
+			// Resolve exchange rate using service
+			const { rate, rateType } = await wealthService.resolveExchangeRate(
+				input.currency,
+				today,
+				input.exchangeRate && input.exchangeRateType
+					? { rate: input.exchangeRate, type: input.exchangeRateType }
+					: undefined,
+			);
 
-					if (bestRate) {
-						rate = bestRate;
-						rateType = "official";
-					} else {
-						throw new TRPCError({
-							code: "BAD_REQUEST",
-							message: `No exchange rate found for ${input.currency}. Please sync rates or provide a custom rate.`,
-						});
-					}
-				}
-			}
+			// Calculate balance in USD with sanity check
+			const balanceInUSD = wealthService.calculateBalanceInUSD(
+				input.balance,
+				rate,
+				input.currency,
+			);
 
-			const balanceInUSD = input.balance / rate;
-
-			// Sanity check to prevent "Billion Dollar" bug (multiplying instead of dividing)
-			if (
-				input.currency !== BASE_CURRENCY &&
-				rate > 1 &&
-				balanceInUSD > input.balance
-			) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						"Exchange rate calculation sanity check failed. Please contact support.",
-				});
-			}
-
+			// Create asset and record snapshot in transaction
 			const result = await db.$transaction(async (tx) => {
 				const account = await tx.assetAccount.create({
 					data: {
@@ -88,27 +63,21 @@ export const wealthRouter = createTRPCRouter({
 					},
 				});
 
-				await tx.assetSnapshot.create({
-					data: {
-						accountId: account.id,
-						date: today,
-						balance: input.balance,
-						balanceInUSD: balanceInUSD,
-					},
-				});
-
-				await tx.assetHistory.create({
-					data: {
-						assetId: account.id,
-						balance: input.balance,
-					},
-				});
+				// Record snapshot and history
+				await wealthService.recordAssetSnapshot(
+					tx,
+					account.id,
+					today,
+					input.balance,
+					balanceInUSD,
+				);
 
 				return account;
 			});
 
 			return result;
 		}),
+
 
 	updateAssetBalance: protectedProcedure
 		.input(
@@ -122,7 +91,9 @@ export const wealthRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 			const today = normalizeDate(new Date());
+			const wealthService = new WealthService(db);
 
+			// Verify asset ownership
 			const asset = await db.assetAccount.findFirst({
 				where: {
 					id: input.assetId,
@@ -134,87 +105,49 @@ export const wealthRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 			}
 
-			let rate = 1;
-			let rateType = asset.exchangeRateType;
-			if (asset.currency !== BASE_CURRENCY) {
-				if (input.exchangeRate && input.exchangeRateType) {
-					// Use provided exchange rate
-					rate = input.exchangeRate;
-					rateType = input.exchangeRateType;
-				} else {
-					if (asset.exchangeRate) {
-						rate = asset.exchangeRate.toNumber();
-					} else {
-						// Fetch exchange rate automatically using prioritized logic
-						const bestRate = await getBestExchangeRate(
-							db,
-							asset.currency,
-							today,
-						);
-
-						if (bestRate) {
-							rate = bestRate;
-							rateType = "official";
-						} else {
-							throw new TRPCError({
-								code: "BAD_REQUEST",
-								message: `No exchange rate found for ${asset.currency}. Please sync rates or provide a custom rate.`,
-							});
-						}
-					}
-				}
+			// Resolve exchange rate (prioritize user input, then stored rate, then fetch)
+			let resolvedRate: { rate: number; rateType: string | null };
+			
+			if (input.exchangeRate && input.exchangeRateType) {
+				// User provided rate
+				resolvedRate = { rate: input.exchangeRate, rateType: input.exchangeRateType };
+			} else if (asset.exchangeRate) {
+				// Use stored rate
+				resolvedRate = { rate: asset.exchangeRate.toNumber(), rateType: asset.exchangeRateType };
+			} else {
+				// Fetch new rate
+				resolvedRate = await wealthService.resolveExchangeRate(
+					asset.currency,
+					today,
+				);
 			}
 
-			const balanceInUSD = input.newBalance / rate;
+			// Calculate balance in USD with sanity check
+			const balanceInUSD = wealthService.calculateBalanceInUSD(
+				input.newBalance,
+				resolvedRate.rate,
+				asset.currency,
+			);
 
-			// Sanity check to prevent "Billion Dollar" bug
-			if (
-				asset.currency !== BASE_CURRENCY &&
-				rate > 1 &&
-				balanceInUSD > input.newBalance
-			) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						"Exchange rate calculation sanity check failed. Please contact support.",
-				});
-			}
-
+			// Update asset and record snapshot in transaction
 			const result = await db.$transaction(async (tx) => {
 				const updatedAsset = await tx.assetAccount.update({
 					where: { id: input.assetId },
 					data: {
 						balance: input.newBalance,
-						exchangeRate: rate,
-						exchangeRateType: rateType,
+						exchangeRate: resolvedRate.rate,
+						exchangeRateType: resolvedRate.rateType,
 					},
 				});
 
-				await tx.assetSnapshot.upsert({
-					where: {
-						accountId_date: {
-							accountId: input.assetId,
-							date: today,
-						},
-					},
-					update: {
-						balance: input.newBalance,
-						balanceInUSD: balanceInUSD,
-					},
-					create: {
-						accountId: input.assetId,
-						date: today,
-						balance: input.newBalance,
-						balanceInUSD: balanceInUSD,
-					},
-				});
-
-				await tx.assetHistory.create({
-					data: {
-						assetId: input.assetId,
-						balance: input.newBalance,
-					},
-				});
+				// Record snapshot and history
+				await wealthService.recordAssetSnapshot(
+					tx,
+					input.assetId,
+					today,
+					input.newBalance,
+					balanceInUSD,
+				);
 
 				return updatedAsset;
 			});
@@ -241,7 +174,9 @@ export const wealthRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 			const today = normalizeDate(new Date());
+			const wealthService = new WealthService(db);
 
+			// Verify asset ownership
 			const existingAsset = await db.assetAccount.findFirst({
 				where: {
 					id: input.id,
@@ -253,44 +188,23 @@ export const wealthRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 			}
 
-			let rate = 1;
-			let rateType = null;
-			if (input.currency !== BASE_CURRENCY) {
-				if (input.exchangeRate && input.exchangeRateType) {
-					// Use provided exchange rate
-					rate = input.exchangeRate;
-					rateType = input.exchangeRateType;
-				} else {
-					// Fetch exchange rate automatically using prioritized logic
-					const bestRate = await getBestExchangeRate(db, input.currency, today);
+			// Resolve exchange rate using service
+			const { rate, rateType } = await wealthService.resolveExchangeRate(
+				input.currency,
+				today,
+				input.exchangeRate && input.exchangeRateType
+					? { rate: input.exchangeRate, type: input.exchangeRateType }
+					: undefined,
+			);
 
-					if (bestRate) {
-						rate = bestRate;
-						rateType = "official";
-					} else {
-						throw new TRPCError({
-							code: "BAD_REQUEST",
-							message: `No exchange rate found for ${input.currency}. Please sync rates or provide a custom rate.`,
-						});
-					}
-				}
-			}
+			// Calculate balance in USD with sanity check
+			const balanceInUSD = wealthService.calculateBalanceInUSD(
+				input.balance,
+				rate,
+				input.currency,
+			);
 
-			const balanceInUSD = input.balance / rate;
-
-			// Sanity check to prevent "Billion Dollar" bug
-			if (
-				input.currency !== BASE_CURRENCY &&
-				rate > 1 &&
-				balanceInUSD > input.balance
-			) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						"Exchange rate calculation sanity check failed. Please contact support.",
-				});
-			}
-
+			// Update asset and record snapshot in transaction
 			const result = await db.$transaction(async (tx) => {
 				const updatedAsset = await tx.assetAccount.update({
 					where: { id: input.id },
@@ -308,31 +222,14 @@ export const wealthRouter = createTRPCRouter({
 					},
 				});
 
-				await tx.assetSnapshot.upsert({
-					where: {
-						accountId_date: {
-							accountId: input.id,
-							date: today,
-						},
-					},
-					update: {
-						balance: input.balance,
-						balanceInUSD: balanceInUSD,
-					},
-					create: {
-						accountId: input.id,
-						date: today,
-						balance: input.balance,
-						balanceInUSD: balanceInUSD,
-					},
-				});
-
-				await tx.assetHistory.create({
-					data: {
-						assetId: input.id,
-						balance: input.balance,
-					},
-				});
+				// Record snapshot and history
+				await wealthService.recordAssetSnapshot(
+					tx,
+					input.id,
+					today,
+					input.balance,
+					balanceInUSD,
+				);
 
 				return updatedAsset;
 			});

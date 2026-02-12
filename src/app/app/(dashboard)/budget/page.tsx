@@ -9,6 +9,7 @@ import { SiteHeader } from "~/components/site-header";
 import { useCurrency } from "~/hooks/use-currency";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
+import { handleError } from "~/lib/handle-error";
 
 export default function BudgetPage() {
 	const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -82,7 +83,7 @@ export default function BudgetPage() {
 				}),
 			]);
 		} catch (error) {
-			console.error("Failed to copy budgets:", error);
+			handleError(error, "Failed to copy budgets");
 		}
 	};
 

@@ -30,7 +30,7 @@ import { StatsCards } from "./_components/stats-cards";
 import { TrendChart } from "./_components/trend-chart";
 
 type FavoriteRate =
-	RouterOutputs["settings"]["getFavoriteExchangeRates"][number];
+	RouterOutputs["preferences"]["getFavoriteExchangeRates"][number];
 
 type NormalizedFavorite = {
 	id: string;
@@ -58,7 +58,7 @@ export default function Page() {
 		data: favoritesData,
 		isLoading: favoritesLoading,
 		isFetched: favoritesFetched,
-	} = api.settings.getFavoriteExchangeRates.useQuery();
+	} = api.preferences.getFavoriteExchangeRates.useQuery();
 	const { homeCurrency, usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
 	const { formatCurrency } = useCurrencyFormatter();
 	const { data: settings } = api.settings.getGeneral.useQuery();

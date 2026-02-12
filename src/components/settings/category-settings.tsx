@@ -4,6 +4,10 @@ import { IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+	CategoryFormDialog,
+	type CategoryFormValues,
+} from "~/components/settings/category-form-dialog";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -21,20 +25,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
-import {
-	CATEGORY_COLOR_MAP,
-	CATEGORY_COLORS,
-	type CategoryColor,
-} from "~/lib/constants";
+import { CATEGORY_COLOR_MAP, type CategoryColor } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -51,11 +42,6 @@ export function CategorySettings() {
 	const [pendingDeleteCategoryId, setPendingDeleteCategoryId] = useState<
 		string | null
 	>(null);
-	const [categoryForm, setCategoryForm] = useState({
-		name: "",
-		color: "blue" as CategoryColor,
-	});
-	const [error, setError] = useState("");
 
 	// tRPC hooks
 	const {
@@ -70,7 +56,6 @@ export function CategorySettings() {
 
 	const handleAddCategory = () => {
 		setEditingCategory(null);
-		setCategoryForm({ name: "", color: "blue" });
 		setShowCategoryDialog(true);
 	};
 
@@ -80,42 +65,30 @@ export function CategorySettings() {
 		color: CategoryColor;
 	}) => {
 		setEditingCategory(category);
-		setCategoryForm({ name: category.name, color: category.color });
 		setShowCategoryDialog(true);
 	};
 
-	const handleSaveCategory = async () => {
-		if (!categoryForm.name.trim()) {
-			setError("Category name is required");
-			return;
-		}
-
+	const handleSaveCategory = async (values: CategoryFormValues) => {
 		try {
-			if (editingCategory) {
-				if (!editingCategory.id) {
-					setError("Category ID is missing");
-					return;
-				}
+			if (editingCategory?.id) {
 				await updateCategoryMutation.mutateAsync({
 					id: editingCategory.id,
-					name: categoryForm.name.trim(),
-					color: categoryForm.color,
+					name: values.name.trim(),
+					color: values.color as CategoryColor,
 				});
 				toast.success("Category updated");
 			} else {
 				await createCategoryMutation.mutateAsync({
-					name: categoryForm.name.trim(),
-					color: categoryForm.color,
+					name: values.name.trim(),
+					color: values.color as CategoryColor,
 				});
 				toast.success("Category created");
 			}
 			setShowCategoryDialog(false);
-			refetchCategories();
-			setError("");
+			await refetchCategories();
 		} catch (err) {
 			const errMsg =
 				err instanceof Error ? err.message : "Failed to save category";
-			setError(errMsg);
 			toast.error(errMsg);
 		}
 	};
@@ -134,7 +107,6 @@ export function CategorySettings() {
 		} catch (err) {
 			const errMsg =
 				err instanceof Error ? err.message : "Failed to delete category";
-			setError(errMsg);
 			toast.error(errMsg);
 		} finally {
 			setShowDeleteDialog(false);
@@ -233,97 +205,23 @@ export function CategorySettings() {
 				)}
 			</Card>
 
-			{/* Category Dialog */}
-			<Dialog onOpenChange={setShowCategoryDialog} open={showCategoryDialog}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{editingCategory ? "Edit Category" : "Add Category"}
-						</DialogTitle>
-						<DialogDescription>
-							{editingCategory
-								? "Update the category name and color."
-								: "Create a new category to organize your expenses."}
-						</DialogDescription>
-					</DialogHeader>
-					<div className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="categoryName">Category Name</Label>
-							<Input
-								id="categoryName"
-								onChange={(e) =>
-									setCategoryForm((prev) => ({ ...prev, name: e.target.value }))
-								}
-								placeholder="e.g., Groceries, Transport, Dining"
-								value={categoryForm.name}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="categoryColor">Color</Label>
-							<Select
-								onValueChange={(value) =>
-									setCategoryForm((prev) => ({
-										...prev,
-										color: value as CategoryColor,
-									}))
-								}
-								value={categoryForm.color}
-							>
-								<SelectTrigger>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{CATEGORY_COLORS.map((color) => (
-										<SelectItem key={color} value={color}>
-											<div className="flex items-center gap-2">
-												<div
-													className={cn(
-														"h-3 w-3 rounded-full",
-														CATEGORY_COLOR_MAP[color]?.split(" ")[0] ||
-															"bg-gray-400",
-													)}
-												/>
-												<span className="capitalize">{color}</span>
-											</div>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						{error && (
-							<div className="text-red-600 text-sm dark:text-red-400">
-								{error}
-							</div>
-						)}
-					</div>
-					<DialogFooter>
-						<Button
-							disabled={
-								createCategoryMutation.isPending ||
-								updateCategoryMutation.isPending
+			<CategoryFormDialog
+				defaultValues={
+					editingCategory
+						? {
+								name: editingCategory.name,
+								color: editingCategory.color,
 							}
-							onClick={() => setShowCategoryDialog(false)}
-							variant="outline"
-						>
-							Cancel
-						</Button>
-						<Button
-							disabled={
-								createCategoryMutation.isPending ||
-								updateCategoryMutation.isPending
-							}
-							onClick={handleSaveCategory}
-						>
-							{createCategoryMutation.isPending ||
-							updateCategoryMutation.isPending
-								? "Saving..."
-								: editingCategory
-									? "Update Category"
-									: "Add Category"}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+						: undefined
+				}
+				isSubmitting={
+					createCategoryMutation.isPending || updateCategoryMutation.isPending
+				}
+				mode={editingCategory ? "edit" : "create"}
+				onOpenChange={setShowCategoryDialog}
+				onSubmit={handleSaveCategory}
+				open={showCategoryDialog}
+			/>
 
 			{/* Delete Confirmation Dialog */}
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>

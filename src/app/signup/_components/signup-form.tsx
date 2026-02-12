@@ -21,6 +21,7 @@ import {
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
 import { api } from "~/trpc/react";
+import { handleError } from "~/lib/handle-error";
 
 type InviteState = "idle" | "validating" | "success" | "error";
 
@@ -61,9 +62,9 @@ function SignupFormInner() {
 					setInviteState("error");
 					setInviteError("Invalid or expired invite code");
 				}
-			} catch {
+			} catch (error) {
 				setInviteState("error");
-				setInviteError("Failed to validate invite code");
+				handleError(error, "Failed to validate invite code");
 			}
 		},
 		[utils],
@@ -139,8 +140,8 @@ function SignupFormInner() {
 					window.location.href = "/app";
 				}
 			}
-		} catch {
-			setError("An unexpected error occurred");
+		} catch (error) {
+			handleError(error, "An unexpected error occurred");
 		} finally {
 			setIsLoading(false);
 		}
