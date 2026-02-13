@@ -1,5 +1,3 @@
-"use client";
-
 import {
 	closestCenter,
 	DndContext,
@@ -19,13 +17,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
 	IconChevronDown,
-	IconChevronLeft,
-	IconChevronRight,
-	IconChevronsLeft,
-	IconChevronsRight,
 	IconChevronUp,
 	IconGripVertical,
-	IconSearch,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -36,18 +29,9 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import { Heart } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -57,8 +41,11 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { cn, getCurrencyName } from "~/lib/utils";
+import { TablePagination } from "./table-pagination";
+import { TableSearch } from "./table-search";
 
 export const exchangeRateSchema = z.object({
+// ... (schema remains the same)
 	id: z.string(),
 	date: z.date(),
 	currency: z.string(),
@@ -247,29 +234,14 @@ export function ExchangeRatesTable({
 	const [favoriteLoadingId, setFavoriteLoadingId] = useState<string | null>(
 		null,
 	);
-	// Local state for optimistic updates during drag
-	const [orderedData, setOrderedData] = useState(data);
-
-	// Sync local data when prop data changes, but only if not currently dragging (simplification)
-	// Actually we should just respect props unless we want complex optimistic UI
-	// For simple reordering, we can just use the prop data if we trust the parent to update it rapidly,
-	// or maintain local state. Let's try maintaining local state initialized from props.
-	const [_activeId, setActiveId] = useState<string | null>(null);
-
-	// Update orderedData when data prop changes (e.g. from react-query refetch)
-	// We only want to do this if we are not in the middle of a drag?
-	// dnd-kit handles this via onDragEnd.
-	useEffect(() => {
-		setOrderedData(data);
-	}, [data]);
 
 	const transformedData = useMemo(
 		() =>
-			orderedData.map((rate) => ({
+			data.map((rate) => ({
 				...rate,
 				rate: Number(rate.rate), // Convert Decimal to number
 			})),
-		[orderedData],
+		[data],
 	);
 
 	const filteredData = useMemo(() => {
@@ -343,40 +315,33 @@ export function ExchangeRatesTable({
 
 	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;
-		setActiveId(null);
 
 		if (over && active.id !== over.id) {
-			const oldIndex = orderedData.findIndex((item) => item.id === active.id);
-			const newIndex = orderedData.findIndex((item) => item.id === over.id);
+			const oldIndex = data.findIndex((item) => item.id === active.id);
+			const newIndex = data.findIndex((item) => item.id === over.id);
 
 			if (oldIndex !== -1 && newIndex !== -1) {
-				const newData = arrayMove(orderedData, oldIndex, newIndex);
-				setOrderedData(newData);
-				onReorder?.(newData.map((item) => item.id));
+				const newDataIds = arrayMove(
+					data.map((item) => item.id),
+					oldIndex,
+					newIndex,
+				);
+				onReorder?.(newDataIds);
 			}
 		}
 	};
 
-	const handleDragStart = (event: { active: { id: string | number } }) => {
-		setActiveId(String(event.active.id));
-	};
-
 	return (
 		<div className="w-full space-y-4">
-			<div className="relative">
-				<IconSearch className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-				<Input
-					className="pl-9"
-					onChange={(e) => setSearchQuery(e.target.value)}
-					placeholder="Search currencies..."
-					value={searchQuery}
-				/>
-			</div>
+			<TableSearch
+				onChange={setSearchQuery}
+				placeholder="Search currencies..."
+				value={searchQuery}
+			/>
 			<div className="max-h-[48rem] overflow-x-auto overflow-y-auto rounded-lg border">
 				<DndContext
 					collisionDetection={closestCenter}
 					onDragEnd={handleDragEnd}
-					onDragStart={handleDragStart}
 					sensors={sensors}
 				>
 					<Table>
@@ -401,7 +366,7 @@ export function ExchangeRatesTable({
 													<IconChevronDown className="h-3 w-3" />
 												)
 											) : (
-												<div className="flex flex-col items-center">
+												<div className="flex flex-col items-center text-muted-foreground/30">
 													<IconChevronUp className="h-3 w-3" />
 													<IconChevronDown className="-mt-1 h-3 w-3" />
 												</div>
@@ -410,13 +375,12 @@ export function ExchangeRatesTable({
 
 										return (
 											<TableHead
-												className={`bg-background px-4 py-3 ${
-													header.id === "favorite"
-														? "w-12 pr-0 pl-4 text-center align-middle"
-														: header.id === "drag"
-															? "w-10 px-2"
-															: ""
-												}`}
+												className={cn(
+													"bg-background px-4 py-3",
+													header.id === "favorite" &&
+														"w-12 pr-0 pl-4 text-center align-middle",
+													header.id === "drag" && "w-10 px-2",
+												)}
 												key={header.id}
 												onClick={
 													canSort
@@ -426,9 +390,10 @@ export function ExchangeRatesTable({
 											>
 												{header.isPlaceholder ? null : (
 													<div
-														className={`flex select-none items-center justify-between gap-2 rounded-md transition-colors${
-															canSort ? "cursor-pointer" : ""
-														}`}
+														className={cn(
+															"flex select-none items-center justify-between gap-2 rounded-md transition-colors",
+															canSort && "cursor-pointer",
+														)}
 													>
 														<span className="flex-1 truncate font-medium">
 															{flexRender(
@@ -460,13 +425,13 @@ export function ExchangeRatesTable({
 											<DraggableRow id={row.original.id} key={row.id}>
 												{row.getVisibleCells().map((cell) => (
 													<TableCell
-														className={`px-4 py-3 ${
-															cell.column.id === "favorite"
-																? "w-12 pr-0 pl-4 text-center align-middle"
-																: cell.column.id === "drag"
-																	? "w-10 px-2 text-center"
-																	: ""
-														}`}
+														className={cn(
+															"px-4 py-3",
+															cell.column.id === "favorite" &&
+																"w-12 pr-0 pl-4 text-center align-middle",
+															cell.column.id === "drag" &&
+																"w-10 px-2 text-center",
+														)}
 														key={cell.id}
 													>
 														{flexRender(
@@ -493,11 +458,11 @@ export function ExchangeRatesTable({
 									<TableRow key={row.id}>
 										{row.getVisibleCells().map((cell) => (
 											<TableCell
-												className={`px-4 py-3 ${
-													cell.column.id === "favorite"
-														? "w-12 pr-0 pl-4 text-center align-middle"
-														: ""
-												}`}
+												className={cn(
+													"px-4 py-3",
+													cell.column.id === "favorite" &&
+														"w-12 pr-0 pl-4 text-center align-middle",
+												)}
 												key={cell.id}
 											>
 												{flexRender(
@@ -522,70 +487,8 @@ export function ExchangeRatesTable({
 					</Table>
 				</DndContext>
 			</div>
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-2">
-					<Label className="font-medium text-sm" htmlFor="rows-per-page">
-						Rows per page
-					</Label>
-					<Select
-						onValueChange={(value) => {
-							table.setPageSize(Number(value));
-						}}
-						value={`${table.getState().pagination.pageSize}`}
-					>
-						<SelectTrigger className="w-20" id="rows-per-page" size="sm">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{[10, 20, 30, 40, 50].map((pageSize) => (
-								<SelectItem key={pageSize} value={`${pageSize}`}>
-									{pageSize}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="flex items-center gap-2">
-					<div className="text-muted-foreground text-sm">
-						Page {table.getState().pagination.pageIndex + 1} of{" "}
-						{table.getPageCount()}
-					</div>
-					<div className="flex items-center gap-1">
-						<Button
-							disabled={!table.getCanPreviousPage()}
-							onClick={() => table.setPageIndex(0)}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronsLeft className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanPreviousPage()}
-							onClick={() => table.previousPage()}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronLeft className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanNextPage()}
-							onClick={() => table.nextPage()}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronRight className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanNextPage()}
-							onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronsRight className="size-4" />
-						</Button>
-					</div>
-				</div>
-			</div>
+			<TablePagination table={table} />
 		</div>
 	);
 }
+

@@ -7,6 +7,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { IntegrationService } from "~/server/services/integration.service";
 
 export const exchangeRateRouter = createTRPCRouter({
@@ -56,7 +57,7 @@ export const exchangeRateRouter = createTRPCRouter({
 				.object({
 					currency: z.string().length(3).optional(),
 					type: z.string().min(1).max(32).optional(),
-					limit: z.number().int().min(1).max(1000).default(500),
+					limit: z.number().int().min(1).max(1000).default(DEFAULT_PAGE_SIZE),
 				})
 				.optional(),
 		)

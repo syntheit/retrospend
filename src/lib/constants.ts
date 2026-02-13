@@ -123,3 +123,5 @@ export const DEFAULT_CATEGORIES = [
 	{ name: "Rideshare", color: "zinc" },
 	{ name: "Gym", color: "lime" },
 ] as const;
+
+export const DEFAULT_PAGE_SIZE = 50;

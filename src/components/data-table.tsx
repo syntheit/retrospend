@@ -2,13 +2,7 @@
 
 import {
 	IconChevronDown,
-	IconChevronLeft,
-	IconChevronRight,
-	IconChevronsLeft,
-	IconChevronsRight,
 	IconChevronUp,
-	IconSearch,
-	IconX,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -22,16 +16,6 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import * as React from "react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -42,8 +26,11 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { cn } from "~/lib/utils";
+import { TablePagination } from "./table-pagination";
+import { TableSearch } from "./table-search";
 
 interface DataTableProps<TData> {
+// ... (props remain same)
 	data: TData[];
 	columns: ColumnDef<TData>[];
 	onRowClick?: (row: TData) => void;
@@ -132,24 +119,12 @@ export function DataTable<TData extends { id: string }>({
 
 	return (
 		<div className="w-full space-y-4">
-			<div className="relative w-full max-w-sm">
-				<IconSearch className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-				<Input
-					className="pr-9 pl-9"
-					onChange={(e) => setSearchInput(e.target.value)}
-					placeholder={searchPlaceholder}
-					value={searchInput}
-				/>
-				{searchInput && (
-					<button
-						className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-						onClick={() => setSearchInput("")}
-						type="button"
-					>
-						<IconX className="h-4 w-4" />
-					</button>
-				)}
-			</div>
+			<TableSearch
+				className="max-w-sm"
+				onChange={setSearchInput}
+				placeholder={searchPlaceholder}
+				value={searchInput}
+			/>
 
 			<div className="relative max-h-[48rem] overflow-x-auto overflow-y-auto rounded-lg border">
 				{renderToolbar?.(table, headerHeight)}
@@ -170,7 +145,7 @@ export function DataTable<TData extends { id: string }>({
 												<IconChevronDown className="h-3 w-3" />
 											)
 										) : (
-											<div className="flex flex-col items-center">
+											<div className="flex flex-col items-center text-muted-foreground/30">
 												<IconChevronUp className="h-3 w-3" />
 												<IconChevronDown className="-mt-1 h-3 w-3" />
 											</div>
@@ -253,70 +228,8 @@ export function DataTable<TData extends { id: string }>({
 					{footer && <TableFooter>{footer}</TableFooter>}
 				</Table>
 			</div>
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-2">
-					<Label className="font-medium text-sm" htmlFor="rows-per-page">
-						Rows per page
-					</Label>
-					<Select
-						onValueChange={(value) => {
-							table.setPageSize(Number(value));
-						}}
-						value={`${table.getState().pagination.pageSize}`}
-					>
-						<SelectTrigger className="w-20" id="rows-per-page" size="sm">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{[10, 15, 20, 30, 40, 50].map((pageSize) => (
-								<SelectItem key={pageSize} value={`${pageSize}`}>
-									{pageSize}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="flex items-center gap-2">
-					<div className="text-muted-foreground text-sm">
-						Page {table.getState().pagination.pageIndex + 1} of{" "}
-						{table.getPageCount()}
-					</div>
-					<div className="flex items-center gap-1">
-						<Button
-							disabled={!table.getCanPreviousPage()}
-							onClick={() => table.setPageIndex(0)}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronsLeft className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanPreviousPage()}
-							onClick={() => table.previousPage()}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronLeft className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanNextPage()}
-							onClick={() => table.nextPage()}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronRight className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanNextPage()}
-							onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronsRight className="size-4" />
-						</Button>
-					</div>
-				</div>
-			</div>
+			<TablePagination table={table} />
 		</div>
 	);
 }
+

@@ -1,14 +1,15 @@
 "use client";
 
 import { format } from "date-fns";
-import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { IconRefresh } from "@tabler/icons-react";
 import { ExchangeRatesTable } from "~/components/exchange-rates-table";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
+import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { useSession } from "~/hooks/use-session";
-import { api } from "~/trpc/react";
+import { ErrorBoundary } from "~/components/error-boundary";
+import { useExchangeRatesController } from "~/hooks/use-exchange-rates-controller";
+import { cn } from "~/lib/utils";
 
 function PageLayout({ children }: { children: React.ReactNode }) {
 	return (
@@ -20,83 +21,18 @@ function PageLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default function Page() {
-	const utils = api.useUtils();
-
 	const {
-		data: exchangeRates,
+		rates,
+		favoriteRates,
+		lastSync,
 		isLoading,
+		isFavoritesLoading,
+		isSyncing,
 		error,
-	} = api.exchangeRate.getAllRates.useQuery();
-	const { data: lastSync } = api.exchangeRate.getLastSync.useQuery();
-	const { data: session } = useSession();
-
-	const {
-		data: favoriteExchangeRates,
-		error: favoriteRatesError,
-		isLoading: favoritesLoading,
-	} = api.preferences.getFavoriteExchangeRates.useQuery(undefined, {
-		enabled: Boolean(session?.user),
-	});
-
-	const reorderFavoritesMutation = api.preferences.reorderFavorites.useMutation(
-		{
-			onSuccess: () => {
-				void utils.preferences.getFavoriteExchangeRates.invalidate();
-			},
-		},
-	);
-
-	const toggleFavoriteMutation =
-		api.preferences.toggleFavoriteExchangeRate.useMutation({
-			onSuccess: () => {
-				void utils.preferences.getFavoriteExchangeRates.invalidate();
-			},
-			onError: () => {
-				toast.error("Failed to update favorite");
-			},
-		});
-
-	const favoriteRateIdSet = useMemo(
-		() => new Set(favoriteExchangeRates?.map((f) => f.id) ?? []),
-		[favoriteExchangeRates],
-	);
-
-	const ratesWithFavorites = useMemo(() => {
-		if (!exchangeRates) return [];
-
-		return exchangeRates.map((rate) => ({
-			...rate,
-			rate: Number(rate.rate),
-			isFavorite: favoriteRateIdSet.has(rate.id),
-		}));
-	}, [exchangeRates, favoriteRateIdSet]);
-
-	const favoriteRates = useMemo(() => {
-		if (!favoriteExchangeRates) return [];
-		return favoriteExchangeRates.map((f) => ({
-			...f.rate,
-			rate: Number(f.rate.rate),
-			isFavorite: true,
-		}));
-	}, [favoriteExchangeRates]);
-
-	const handleReorder = useCallback(
-		(ids: string[]) => {
-			reorderFavoritesMutation.mutate({ exchangeRateIds: ids });
-		},
-		[reorderFavoritesMutation],
-	);
-
-	const [activeTab, setActiveTab] = useState<"favorites" | "all">(
-		!favoritesLoading && favoriteRates.length > 0 ? "favorites" : "all",
-	);
-
-	const handleToggleFavorite = useCallback(
-		async (exchangeRateId: string) => {
-			await toggleFavoriteMutation.mutateAsync({ exchangeRateId });
-		},
-		[toggleFavoriteMutation],
-	);
+		favoriteRatesError,
+		viewState,
+		actions,
+	} = useExchangeRatesController();
 
 	if (isLoading) {
 		return (
@@ -123,59 +59,73 @@ export default function Page() {
 	return (
 		<PageLayout>
 			<div className="mx-auto w-full max-w-4xl space-y-6">
-				<div className="text-muted-foreground text-sm">
-					{lastSync ? (
-						<>
-							Last updated {format(lastSync, "MMMM dd, yyyy 'at' HH:mm")}
-							{" • "}
-							Exchange rates are automatically synced daily. All rates are
-							relative to USD (1 USD = X units of currency).
-						</>
-					) : (
-						"Exchange rates are automatically synced daily. All rates are relative to USD (1 USD = X units of currency)."
-					)}
-				</div>
-				<Tabs
-					className="space-y-4"
-					onValueChange={(value) => setActiveTab(value as "favorites" | "all")}
-					value={activeTab}
-				>
-					<TabsList>
-						<TabsTrigger value="favorites">Favorites</TabsTrigger>
-						<TabsTrigger value="all">All Currencies</TabsTrigger>
-					</TabsList>
-					<TabsContent value="favorites">
-						{favoritesLoading ? (
-							<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
-								Loading favorites...
-							</div>
-						) : favoriteRates.length === 0 ? (
-							<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
-								No favorites yet. Tap the heart icon on any currency under All
-								Currencies to pin it here.
-							</div>
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="text-muted-foreground text-sm">
+						{lastSync ? (
+							<>
+								Last updated {format(lastSync, "MMMM dd, yyyy 'at' HH:mm")}
+								{" • "}
+								Rates sync daily.
+							</>
 						) : (
+							"Rates sync daily."
+						)}
+					</div>
+					<Button
+						className="gap-2 self-start sm:self-auto"
+						disabled={isSyncing}
+						onClick={actions.syncNow}
+						size="sm"
+						variant="outline"
+					>
+						<IconRefresh className={cn("size-4", isSyncing && "animate-spin")} />
+						{isSyncing ? "Syncing..." : "Sync Now"}
+					</Button>
+				</div>
+				<ErrorBoundary>
+					<Tabs
+						className="space-y-4"
+						onValueChange={(value) => viewState.setActiveTab(value as "favorites" | "all")}
+						value={viewState.activeTab}
+					>
+						<TabsList>
+							<TabsTrigger value="favorites">Favorites</TabsTrigger>
+							<TabsTrigger value="all">All Currencies</TabsTrigger>
+						</TabsList>
+						<TabsContent value="favorites">
+							{isFavoritesLoading ? (
+								<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
+									Loading favorites...
+								</div>
+							) : favoriteRates.length === 0 ? (
+								<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
+									No favorites yet. Tap the heart icon on any currency under All
+									Currencies to pin it here.
+								</div>
+							) : (
+								<ExchangeRatesTable
+									data={favoriteRates}
+									isReorderable={true}
+									onReorder={actions.reorder}
+									onToggleFavorite={actions.toggleFavorite}
+								/>
+							)}
+							{favoriteRatesError && (
+								<div className="text-destructive text-sm">
+									Error loading favorites: {favoriteRatesError.message}
+								</div>
+							)}
+						</TabsContent>
+						<TabsContent value="all">
 							<ExchangeRatesTable
-								data={favoriteRates}
-								isReorderable={true}
-								onReorder={handleReorder}
-								onToggleFavorite={handleToggleFavorite}
+								data={rates}
+								onToggleFavorite={actions.toggleFavorite}
 							/>
-						)}
-						{favoriteRatesError && (
-							<div className="text-destructive text-sm">
-								Error loading favorites: {favoriteRatesError.message}
-							</div>
-						)}
-					</TabsContent>
-					<TabsContent value="all">
-						<ExchangeRatesTable
-							data={ratesWithFavorites}
-							onToggleFavorite={handleToggleFavorite}
-						/>
-					</TabsContent>
-				</Tabs>
+						</TabsContent>
+					</Tabs>
+				</ErrorBoundary>
 			</div>
 		</PageLayout>
 	);
 }
+
