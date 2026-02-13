@@ -538,4 +538,107 @@ export const wealthRouter = createTRPCRouter({
 
 		return { csv: generateCsv(header, rows) };
 	}),
+
+	importAssets: protectedProcedure
+		.input(
+			z.object({
+				rows: z.array(
+					z.object({
+						name: z.string().min(1),
+						type: z.nativeEnum(AssetType),
+						currency: z.string().length(3),
+						balance: z.number(),
+						isLiquid: z.boolean(),
+						interestRate: z.number().optional().nullable(),
+						minimumPayment: z.number().optional().nullable(),
+						dueDate: z.number().int().min(1).max(31).optional().nullable(),
+					}),
+				),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+			const today = normalizeDate(new Date());
+			const wealthService = new WealthService(db);
+			let successCount = 0;
+			let errorCount = 0;
+
+			for (const row of input.rows) {
+				try {
+					// Find existing by name
+					const existing = await db.assetAccount.findFirst({
+						where: {
+							userId: session.user.id,
+							name: row.name,
+						},
+					});
+
+					// Resolve rate
+					const { rate, rateType } = await wealthService.resolveExchangeRate(
+						row.currency,
+						today,
+					);
+
+					const balanceInUSD = wealthService.calculateBalanceInUSD(
+						row.balance,
+						rate,
+						row.currency,
+					);
+
+					await db.$transaction(async (tx) => {
+						let assetId: string;
+
+						if (existing) {
+							await tx.assetAccount.update({
+								where: { id: existing.id },
+								data: {
+									type: row.type,
+									currency: row.currency,
+									balance: row.balance,
+									exchangeRate: rate,
+									exchangeRateType: rateType,
+									isLiquid: row.isLiquid,
+									interestRate: row.interestRate,
+									minimumPayment: row.minimumPayment,
+									dueDate: row.dueDate,
+								},
+							});
+							assetId = existing.id;
+						} else {
+							const created = await tx.assetAccount.create({
+								data: {
+									userId: session.user.id,
+									name: row.name,
+									type: row.type,
+									currency: row.currency,
+									balance: row.balance,
+									exchangeRate: rate,
+									exchangeRateType: rateType,
+									isLiquid: row.isLiquid,
+									interestRate: row.interestRate,
+									minimumPayment: row.minimumPayment,
+									dueDate: row.dueDate,
+								},
+							});
+							assetId = created.id;
+						}
+
+						await wealthService.recordAssetSnapshot(
+							tx,
+							assetId,
+							today,
+							row.balance,
+							balanceInUSD,
+						);
+					});
+
+					successCount++;
+				} catch (error) {
+					console.error(`Failed to import wealth row ${row.name}:`, error);
+					errorCount++;
+				}
+			}
+
+			return { successCount, errorCount };
+		}),
 });

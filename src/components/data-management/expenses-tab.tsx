@@ -1,18 +1,11 @@
 "use client";
 
 import { Download, Upload } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { createExpenseColumns } from "~/components/data-table-columns";
 import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
@@ -21,7 +14,7 @@ import { type ParsedCsvRow, parseCsv } from "~/lib/csv";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-export function CsvImportExportCard() {
+export function ExpensesTab() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [previewData, setPreviewData] = useState<NormalizedExpense[]>([]);
 	const [parseError, setParseError] = useState<string | null>(null);
@@ -162,12 +155,11 @@ export function CsvImportExportCard() {
 		(e) => e.currency !== "USD" && e.exchangeRate && e.amountInUSD,
 	);
 
-	// In preview mode, we don't need selection handlers
 	const columns = useMemo(
 		() =>
 			createExpenseColumns(
 				homeCurrency,
-				null, // Live rate not needed for preview usually
+				null,
 				hasForeignCurrencyExpenses,
 				new Set(),
 				() => {},
@@ -178,121 +170,111 @@ export function CsvImportExportCard() {
 	);
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>CSV Import & Export</CardTitle>
-				<CardDescription>
-					Export your finalized expenses or preview a CSV before importing to
-					ensure everything maps correctly.
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-6">
+		<div className="space-y-6 pt-4">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<div className="space-y-1">
+					<p className="font-medium">Export expenses</p>
+					<p className="text-muted-foreground text-sm">
+						Downloads all finalized expenses as a CSV file.
+					</p>
+				</div>
+				<Button
+					className="w-full sm:w-auto"
+					disabled={exportMutation.isPending}
+					onClick={handleExport}
+					variant="outline"
+				>
+					{exportMutation.isPending ? "Preparing..." : "Download CSV"}
+					<Download className="ml-2 h-4 w-4" />
+				</Button>
+			</div>
+
+			<Separator />
+
+			<div className="space-y-4">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div className="space-y-1">
-						<p className="font-medium">Export expenses</p>
+						<p className="font-medium">Import expenses</p>
 						<p className="text-muted-foreground text-sm">
-							Downloads all finalized expenses, including categories and pricing
-							details.
+							Upload a CSV to preview and import your expenses.
 						</p>
 					</div>
-					<Button
-						className="w-full sm:w-auto"
-						disabled={exportMutation.isPending}
-						onClick={handleExport}
-						variant="outline"
-					>
-						{exportMutation.isPending ? "Preparing..." : "Download CSV"}
-						<Download className="ml-2 h-4 w-4" />
-					</Button>
+					<div className="flex flex-col gap-2 sm:flex-row">
+						<Button
+							className="w-full sm:w-auto"
+							onClick={() => fileInputRef.current?.click()}
+							variant="secondary"
+						>
+							Select CSV
+							<Upload className="ml-2 h-4 w-4" />
+						</Button>
+						<Button
+							className="w-full sm:w-auto"
+							disabled={previewData.length === 0 || importMutation.isPending}
+							onClick={handleImport}
+						>
+							{importMutation.isPending
+								? "Importing..."
+								: `Import ${previewData.length || ""} ${previewData.length === 1 ? "row" : "rows"}`}
+						</Button>
+					</div>
 				</div>
-
-				<Separator />
-
-				<div className="space-y-4">
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<div className="space-y-1">
-							<p className="font-medium">Import expenses</p>
-							<p className="text-muted-foreground text-sm">
-								We will parse your CSV, match categories by name, and show the
-								exact rows using the table view before importing.
-							</p>
-						</div>
-						<div className="flex flex-col gap-2 sm:flex-row">
-							<Button
-								className="w-full sm:w-auto"
-								onClick={() => fileInputRef.current?.click()}
-								variant="secondary"
-							>
-								Select CSV
-								<Upload className="ml-2 h-4 w-4" />
-							</Button>
-							<Button
-								className="w-full sm:w-auto"
-								disabled={previewData.length === 0 || importMutation.isPending}
-								onClick={handleImport}
-							>
-								{importMutation.isPending
-									? "Importing..."
-									: `Import ${previewData.length || ""} ${previewData.length === 1 ? "row" : "rows"}`}
-							</Button>
-						</div>
+				<div className="space-y-2 rounded-lg border p-4 bg-muted/30">
+					<Label className="font-medium text-sm">CSV format</Label>
+					<p className="text-muted-foreground text-sm leading-relaxed">
+						Required columns: <code className="text-primary">title</code>,{" "}
+						<code className="text-primary">amount</code>,{" "}
+						<code className="text-primary">currency</code>,{" "}
+						<code className="text-primary">date</code>. <br />
+						Optional: <code className="text-muted-foreground">category</code>,{" "}
+						<code className="text-muted-foreground">location</code>,{" "}
+						<code className="text-muted-foreground">description</code>. Dates:{" "}
+						<code className="text-primary">YYYY-MM-DD</code>.
+					</p>
+				</div>
+				{parseError && (
+					<div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm font-mono whitespace-pre-wrap">
+						{parseError}
 					</div>
-					<div className="space-y-2 rounded-lg border p-4">
-						<Label className="font-medium text-sm">CSV format</Label>
-						<p className="text-muted-foreground text-sm">
-							Required columns: title, amount, currency, date. Optional:
-							exchangeRate, amountInUSD, category, location, description,
-							pricingSource. Dates should use YYYY-MM-DD. Currency and category
-							names are matched exactly.
-						</p>
-					</div>
-					{parseError && (
-						<div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm">
-							{parseError}
-						</div>
-					)}
-					<Input
-						accept=".csv,text/csv"
-						className="hidden"
-						onChange={handleFileChange}
-						ref={fileInputRef}
-						type="file"
-					/>
-					{previewData.length > 0 && (
-						<div className="space-y-3">
-							<div className="flex items-center justify-between">
-								<div>
-									<p className="font-medium">
-										Preview ({previewData.length} row
-										{previewData.length === 1 ? "" : "s"})
-									</p>
-									<p className="text-muted-foreground text-sm">
-										This uses the same table view to ensure data will import
-										correctly.
-									</p>
-								</div>
-								<Button
-									disabled={importMutation.isPending}
-									onClick={() => setPreviewData([])}
-									size="sm"
-									variant="ghost"
-								>
-									Clear preview
-								</Button>
+				)}
+				<Input
+					accept=".csv,text/csv"
+					className="hidden"
+					onChange={handleFileChange}
+					ref={fileInputRef}
+					type="file"
+				/>
+				{previewData.length > 0 && (
+					<div className="space-y-3">
+						<div className="flex items-center justify-between">
+							<div>
+								<p className="font-medium">
+									Preview ({previewData.length} row
+									{previewData.length === 1 ? "" : "s"})
+								</p>
+								<p className="text-muted-foreground text-sm">
+									Review entries before final import.
+								</p>
 							</div>
-							<DataTable
-								columns={columns}
-								data={previewData}
-								emptyState={
-									<div className="text-muted-foreground">
-										No rows to import.
-									</div>
-								}
-							/>
+							<Button
+								disabled={importMutation.isPending}
+								onClick={() => setPreviewData([])}
+								size="sm"
+								variant="ghost"
+							>
+								Clear
+							</Button>
 						</div>
-					)}
-				</div>
-			</CardContent>
-		</Card>
+						<DataTable
+							columns={columns}
+							data={previewData}
+							emptyState={
+								<div className="text-muted-foreground">No rows to import.</div>
+							}
+						/>
+					</div>
+				)}
+			</div>
+		</div>
 	);
 }
