@@ -1,6 +1,5 @@
 "use client";
 
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 
 export interface CategorySegment {
@@ -18,6 +17,8 @@ interface CategoryDonutLegendProps {
 	categoryClickBehavior: string;
 	formatMoney: (value: number) => string;
 	onCategoryClick: (segment: CategorySegment) => void;
+	onMouseEnter: (segment: CategorySegment, index: number) => void;
+	onMouseLeave: () => void;
 }
 
 export function CategoryDonutLegend({
@@ -26,25 +27,20 @@ export function CategoryDonutLegend({
 	categoryClickBehavior,
 	formatMoney,
 	onCategoryClick,
+	onMouseEnter,
+	onMouseLeave,
 }: CategoryDonutLegendProps) {
 	return (
-		<div className="mt-4 grid gap-2 sm:grid-cols-2">
+		<div className="mt-4 grid gap-1">
 			{data.map((segment) => {
-				const dotClass = segment.categoryColor
-					? CATEGORY_COLOR_MAP[
-							segment.categoryColor as keyof typeof CATEGORY_COLOR_MAP
-						]?.split(" ")[0]
-					: "bg-muted-foreground";
 				const isHidden =
 					segment.categoryId && hiddenCategories.has(segment.categoryId);
 
 				return (
 					<button
 						className={cn(
-							"group flex w-full cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-left transition-all",
-							isHidden
-								? "bg-muted/20 opacity-60 hover:bg-muted/30"
-								: "bg-muted/30 hover:bg-muted/50",
+							"group flex w-full cursor-pointer items-center justify-between py-1.5 text-left transition-all",
+							isHidden ? "opacity-40" : "opacity-100 hover:opacity-80",
 						)}
 						key={segment.key}
 						{...(categoryClickBehavior === "toggle" && !!segment.categoryId
@@ -59,29 +55,34 @@ export function CategoryDonutLegend({
 								onCategoryClick(segment);
 							}
 						}}
+						onMouseEnter={() => onMouseEnter(segment, data.indexOf(segment))}
+						onMouseLeave={onMouseLeave}
 						type="button"
 					>
 						<div className="flex items-center gap-2">
 							<span
 								className={cn(
-									"h-3 w-3 rounded-full",
-									dotClass,
+									"h-2 w-2 rounded-full",
 									isHidden && "opacity-50",
 								)}
+								style={{
+									backgroundColor: segment.color,
+								}}
 							/>
 							<span
 								className={cn(
-									"text-sm transition-all",
-									isHidden
-										? "line-through opacity-70"
-										: "group-hover:underline",
+									"text-muted-foreground text-xs font-medium transition-all",
+									isHidden ? "line-through" : "group-hover:text-foreground",
 								)}
 							>
 								{segment.name}
 							</span>
 						</div>
 						<span
-							className={cn("font-semibold text-sm", isHidden && "opacity-70")}
+							className={cn(
+								"font-mono text-sm tabular-nums",
+								isHidden ? "opacity-70" : "text-foreground",
+							)}
 						>
 							{formatMoney(segment.value)}
 						</span>

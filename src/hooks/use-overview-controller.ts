@@ -9,7 +9,7 @@ import { resolveCategoryColorValue } from "~/lib/category-colors";
 import { normalizeExpensesFromApi } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import type { CategorySegment } from "../app/app/(dashboard)/_components/category-donut-legend";
-import { CHART_CONFIG_DEFAULTS, getCategoryColor } from "~/lib/chart-theme";
+import { CHART_CONFIG_DEFAULTS, OTHER_COLOR, getCategoryColor } from "~/lib/chart-theme";
 
 export type OverviewStats = RouterOutputs["stats"]["getSummary"] & {
   overviewStats?: RouterOutputs["dashboard"]["getOverviewStats"];
@@ -76,20 +76,66 @@ export function useOverviewController() {
   const now = new Date();
 
   const categoryBreakdown = useMemo<CategorySegment[]>(() => {
-    if (!categoryData) return [];
-    return categoryData.map((c, index) => {
-      const resolvedColor = resolveCategoryColorValue(c.color) ?? getCategoryColor(index);
-      const key = (c.id ?? c.name).toString().replace(/\s+/g, "-").toLowerCase();
-      return {
-        key,
+    if (!categoryData || categoryData.length === 0) return [];
+
+    // 1. Separate based on hiddenCategories
+    const visibleData = categoryData.filter((c) => !hiddenCategories.has(c.id ?? ""));
+    const hiddenData = categoryData.filter((c) => hiddenCategories.has(c.id ?? ""));
+
+    // 2. Identify which visible ones should be "Main" vs "Other"
+    const totalVisible = visibleData.reduce((sum, c) => sum + c.value, 0);
+    const sortedVisible = [...visibleData].sort((a, b) => b.value - a.value);
+
+    const mainSegments: CategorySegment[] = [];
+    const otherVisibleItems: typeof categoryData = [];
+
+    sortedVisible.forEach((c, index) => {
+      const percentageOfVisible = totalVisible > 0 ? (c.value / totalVisible) * 100 : 0;
+      
+      // DYNAMIC PROMOTION: We check based on the CURRENT visible ranking and new total
+      if (index < 6 && percentageOfVisible >= 3) {
+        mainSegments.push({
+          key: (c.id ?? c.name).toString().replace(/\s+/g, "-").toLowerCase(),
+          name: c.name,
+          value: c.value,
+          color: resolveCategoryColorValue(c.color) ?? getCategoryColor(index),
+          categoryColor: c.color,
+          categoryId: c.id,
+        });
+      } else {
+        otherVisibleItems.push(c);
+      }
+    });
+
+    const result: CategorySegment[] = [...mainSegments];
+
+    // 3. Add "Other" segment for remaining visible items
+    if (otherVisibleItems.length > 0) {
+      result.push({
+        key: "other",
+        name: "Other",
+        value: otherVisibleItems.reduce((sum, c) => sum + c.value, 0),
+        color: OTHER_COLOR,
+        categoryColor: "stone-700",
+        categoryId: "other",
+      });
+    }
+
+    // 4. Add Hidden Categories back to legend so they can be toggled
+    const sortedHidden = [...hiddenData].sort((a, b) => b.value - a.value);
+    sortedHidden.forEach((c) => {
+      result.push({
+        key: (c.id ?? c.name).toString().replace(/\s+/g, "-").toLowerCase(),
         name: c.name,
         value: c.value,
-        color: resolvedColor,
+        color: resolveCategoryColorValue(c.color) ?? "hsl(var(--muted-foreground))",
         categoryColor: c.color,
         categoryId: c.id,
-      };
+      });
     });
-  }, [categoryData]);
+
+    return result;
+  }, [categoryData, hiddenCategories]);
 
   const visibleCategoryBreakdown = useMemo(() => {
     return categoryBreakdown.filter(

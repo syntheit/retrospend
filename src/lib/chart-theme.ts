@@ -4,12 +4,15 @@
  */
 
 export const CHART_PALETTE = [
-	"var(--chart-1)",
-	"var(--chart-2)",
-	"var(--chart-3)",
-	"var(--chart-4)",
-	"var(--chart-5)",
+	"#3b82f6", // Blue
+	"#10b981", // Emerald
+	"#f59e0b", // Amber
+	"#8b5cf6", // Violet
+	"#ec4899", // Pink
+	"#6366f1", // Indigo
 ];
+
+export const OTHER_COLOR = "#44403c"; // Stone-700
 
 export const VIBRANT_BLUE = "hsl(217, 91%, 60%)";
 

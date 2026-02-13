@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Pie, PieChart, Sector } from "recharts";
+import { Cell, Label, Pie, PieChart, Sector } from "recharts";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import {
 	Card,
@@ -72,11 +72,6 @@ export function CategoryDonut({
 	handleSliceEnter,
 	handleSliceLeave,
 }: CategoryDonutProps) {
-	const isSingleSlice = visibleCategoryBreakdown.length <= 1;
-	const piePaddingAngle = isSingleSlice ? 0 : 1;
-	const pieStroke = isSingleSlice ? "none" : "var(--card)";
-	const pieStrokeWidth = isSingleSlice ? 0 : 3;
-
 	return (
 		<Card>
 			<CardHeader>
@@ -93,35 +88,24 @@ export function CategoryDonut({
 						No expenses logged this month.
 					</div>
 				) : (
-					<div className="relative mx-auto w-full max-w-xl">
-						<div className="relative">
-							{/* Center Text UI */}
-							<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-								<span className="font-medium text-muted-foreground text-xs sm:text-sm">
-									{activeSlice ? activeSlice.name : "Total"}
-								</span>
-								<span className="font-bold text-2xl tracking-tight sm:text-3xl">
-									{activeSlice
-										? formatMoney(activeSlice.value)
-										: formatMoney(visibleTotal)}
-								</span>
-							</div>
-
+					<div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+						<div className="relative mx-auto w-full max-w-[300px] shrink-0">
 							<ChartContainer
-								className="aspect-square w-full sm:aspect-[4/3]"
+								className="aspect-square w-full"
 								config={pieChartConfig}
 							>
 								<PieChart>
 									<Pie
 										activeIndex={activeSliceIndex ?? undefined}
 										activeShape={(props: PieSectorDataItem) =>
-											renderActiveShape(props, pieStroke, pieStrokeWidth)
+											renderActiveShape(props, "none", 0)
 										}
+										cornerRadius={5}
 										cx="50%"
 										cy="50%"
 										data={visibleCategoryBreakdown}
 										dataKey="value"
-										innerRadius="65%"
+										innerRadius="70%"
 										nameKey="name"
 										onClick={(_, index) => {
 											const segment = visibleCategoryBreakdown[index];
@@ -132,9 +116,8 @@ export function CategoryDonut({
 										onMouseEnter={handleSliceEnter}
 										onMouseLeave={handleSliceLeave}
 										outerRadius="85%"
-										paddingAngle={piePaddingAngle}
-										stroke={pieStroke}
-										strokeWidth={pieStrokeWidth}
+										paddingAngle={4}
+										stroke="none"
 									>
 										{visibleCategoryBreakdown.map((segment, index) => (
 											<Cell
@@ -144,30 +127,77 @@ export function CategoryDonut({
 												opacity={
 													activeSliceIndex === null || activeSliceIndex === index
 														? 1
-														: 0.4
+														: 0.3
 												}
-												stroke={pieStroke}
-												strokeWidth={pieStrokeWidth}
+												stroke="none"
 											/>
 										))}
+										<Label
+											content={({ viewBox }) => {
+												if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+													return (
+														<text
+															dominantBaseline="middle"
+															textAnchor="middle"
+															x={viewBox.cx}
+															y={viewBox.cy}
+														>
+															<tspan
+																className="fill-muted-foreground text-xs font-medium uppercase tracking-widest"
+																x={viewBox.cx}
+																y={(viewBox.cy || 0) - 16}
+															>
+																{activeSlice ? activeSlice.name : "TOTAL SPEND"}
+															</tspan>
+															<tspan
+																className="fill-foreground font-bold text-3xl"
+																x={viewBox.cx}
+																y={(viewBox.cy || 0) + 16}
+															>
+																{activeSlice
+																	? formatMoney(activeSlice.value)
+																	: formatMoney(visibleTotal)}
+															</tspan>
+														</text>
+													);
+												}
+											}}
+											position="center"
+										/>
 									</Pie>
 								</PieChart>
 							</ChartContainer>
 						</div>
 
-						<CategoryDonutLegend
-							categoryClickBehavior={categoryClickBehavior}
-							data={categoryBreakdown}
-							formatMoney={formatMoney}
-							hiddenCategories={hiddenCategories}
-							onCategoryClick={handleCategoryClick}
-						/>
+						<div className="flex flex-1 flex-col justify-center">
+							<CategoryDonutLegend
+								categoryClickBehavior={categoryClickBehavior}
+								data={categoryBreakdown}
+								formatMoney={formatMoney}
+								hiddenCategories={hiddenCategories}
+								onCategoryClick={handleCategoryClick}
+								onMouseEnter={(_, index) => {
+									// The legend uses categoryBreakdown, which might be different from visibleCategoryBreakdown
+									// We need to find the index of this segment in visibleCategoryBreakdown
+									const segment = categoryBreakdown[index];
+									if (segment) {
+										const visibleIndex = visibleCategoryBreakdown.findIndex(
+											(s) => s.key === segment.key,
+										);
+										if (visibleIndex !== -1) {
+											handleSliceEnter({} as PieSectorDataItem, visibleIndex);
+										}
+									}
+								}}
+								onMouseLeave={handleSliceLeave}
+							/>
 
-						{isUsingMockExpenses && (
-							<p className="mt-3 text-muted-foreground text-xs">
-								Using sample data until expenses are added.
-							</p>
-						)}
+							{isUsingMockExpenses && (
+								<p className="mt-4 text-center text-muted-foreground text-xs lg:text-left">
+									Using sample data until expenses are added.
+								</p>
+							)}
+						</div>
 					</div>
 				)}
 			</CardContent>
