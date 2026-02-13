@@ -44,40 +44,26 @@ const getTypeColor = (type: AssetType) => {
 export function createWealthColumns(
 	homeCurrency: string,
 	hasForeignCurrency: boolean,
-	selectedRows: Set<string>,
-	onRowSelect: (id: string, checked: boolean) => void,
-	onSelectAll: (checked: boolean) => void,
 	formatCurrency: (amount: number, currency?: string) => string,
-	_onEdit: (id: string) => void,
 ): ColumnDef<Asset>[] {
 	const columns: ColumnDef<Asset>[] = [
 		{
 			id: "select",
-			header: ({ table }) => {
-				const allSelected = table
-					.getRowModel()
-					.rows.every((row) => selectedRows.has(row.original.id));
-				const someSelected = table
-					.getRowModel()
-					.rows.some((row) => selectedRows.has(row.original.id));
-
-				return (
-					<Checkbox
-						aria-label="Select all rows"
-						checked={
-							allSelected ? true : someSelected ? "indeterminate" : false
-						}
-						onCheckedChange={(checked) => onSelectAll(checked === true)}
-					/>
-				);
-			},
+			header: ({ table }) => (
+				<Checkbox
+					aria-label="Select all rows"
+					checked={
+						table.getIsAllPageRowsSelected() ||
+						(table.getIsSomePageRowsSelected() && "indeterminate")
+					}
+					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+				/>
+			),
 			cell: ({ row }) => (
 				<Checkbox
 					aria-label={`Select row ${row.original.name}`}
-					checked={selectedRows.has(row.original.id)}
-					onCheckedChange={(checked) =>
-						onRowSelect(row.original.id, checked === true)
-					}
+					checked={row.getIsSelected()}
+					onCheckedChange={(value) => row.toggleSelected(!!value)}
 				/>
 			),
 			enableSorting: false,

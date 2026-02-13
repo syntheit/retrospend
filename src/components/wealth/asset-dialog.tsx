@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -57,14 +57,11 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface AssetDialogProps {
-	mode: "create" | "edit";
-	assetId?: string; // Required for edit mode
+	assetId?: string; // Presence implies edit mode
 	initialValues?: Partial<FormValues>;
 	trigger?: ReactNode;
-	title?: string;
-	description?: string;
-	submitLabel?: string;
-	loadingLabel?: string;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 const createDefaults: FormValues = {
@@ -76,35 +73,31 @@ const createDefaults: FormValues = {
 };
 
 export function AssetDialog({
-	mode,
 	assetId,
-	initialValues = {},
+	initialValues,
 	trigger,
-	title = mode === "create" ? "Add Asset" : "Edit Asset",
-	description = mode === "create"
-		? "Create a new asset to track your wealth."
-		: "Update your asset details.",
-	submitLabel = mode === "create" ? "Create Asset" : "Update Asset",
-	loadingLabel = mode === "create" ? "Creating..." : "Updating...",
 	open: controlledOpen,
 	onOpenChange: setControlledOpen,
-}: AssetDialogProps & {
-	open?: boolean;
-	onOpenChange?: (open: boolean) => void;
-}) {
+}: AssetDialogProps) {
+	const isEdit = !!assetId;
+	const title = isEdit ? "Edit Asset" : "Add Asset";
+	const description = isEdit
+		? "Update your asset details."
+		: "Create a new asset to track your wealth.";
+	const submitLabel = isEdit ? "Update Asset" : "Create Asset";
+	const loadingLabel = isEdit ? "Updating..." : "Creating...";
+
 	const [internalOpen, setInternalOpen] = useState(false);
 
 	const isControlled = controlledOpen !== undefined;
 	const open = isControlled ? controlledOpen : internalOpen;
 	const setOpen = isControlled ? setControlledOpen : setInternalOpen;
 
-	const prevOpenRef = useRef(open);
-
 	const [exchangeRate, setExchangeRate] = useState<number | undefined>(
-		initialValues.exchangeRate,
+		initialValues?.exchangeRate,
 	);
 	const [exchangeRateType, setExchangeRateType] = useState<string | undefined>(
-		initialValues.exchangeRateType,
+		initialValues?.exchangeRateType,
 	);
 	const [isCustomRate, setIsCustomRate] = useState(false);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -113,10 +106,9 @@ export function AssetDialog({
 
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
-		defaultValues:
-			mode === "create"
-				? createDefaults
-				: { ...createDefaults, ...initialValues },
+		defaultValues: isEdit
+			? { ...createDefaults, ...initialValues }
+			: createDefaults,
 	});
 
 	// Calculate USD equivalent
@@ -138,16 +130,6 @@ export function AssetDialog({
 			assetType === AssetType.LIABILITY_MORTGAGE
 		);
 	}, [assetType]);
-
-	// Reset form when initialValues change (for edit mode)
-	useEffect(() => {
-		if (mode === "edit" && initialValues) {
-			form.reset({ ...createDefaults, ...initialValues });
-			setExchangeRate(initialValues.exchangeRate);
-			setExchangeRateType(initialValues.exchangeRateType);
-			setIsCustomRate(false);
-		}
-	}, [initialValues, mode, form.reset]);
 
 	// Auto-check/uncheck isLiquid based on type
 	useEffect(() => {
@@ -173,9 +155,6 @@ export function AssetDialog({
 			form.reset();
 			void utils.wealth.getDashboard.invalidate();
 		},
-		onError: () => {
-			// Error handled globally
-		},
 	});
 
 	const updateAsset = api.wealth.updateAsset.useMutation({
@@ -183,9 +162,6 @@ export function AssetDialog({
 			toast.success("Asset updated successfully");
 			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
-		},
-		onError: () => {
-			// Error handled globally
 		},
 	});
 
@@ -195,21 +171,18 @@ export function AssetDialog({
 			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
 		},
-		onError: () => {
-			// Error handled globally
-		},
 	});
 
 	const onSubmit = (data: FormValues) => {
-		if (mode === "create") {
-			createAsset.mutate({
+		if (isEdit && assetId) {
+			updateAsset.mutate({
+				id: assetId,
 				...data,
 				exchangeRate,
 				exchangeRateType,
 			});
-		} else if (mode === "edit" && assetId) {
-			updateAsset.mutate({
-				id: assetId,
+		} else {
+			createAsset.mutate({
 				...data,
 				exchangeRate,
 				exchangeRateType,
@@ -224,25 +197,6 @@ export function AssetDialog({
 		setExchangeRateType(undefined);
 		setIsCustomRate(false);
 	};
-
-	// Reset state when dialog closes
-	useEffect(() => {
-		const wasOpen = prevOpenRef.current;
-		prevOpenRef.current = open;
-
-		// Only reset when transitioning from open to closed
-		if (wasOpen && !open) {
-			setExchangeRate(initialValues?.exchangeRate);
-			setExchangeRateType(initialValues?.exchangeRateType);
-			setIsCustomRate(false);
-			form.reset();
-		}
-	}, [
-		open,
-		initialValues?.exchangeRate,
-		initialValues?.exchangeRateType,
-		form,
-	]);
 
 	const handleDelete = async () => {
 		if (assetId) {
@@ -469,7 +423,7 @@ export function AssetDialog({
 							/>
 							<DialogFooter>
 								{/* Delete button - only visible in edit mode */}
-								{mode === "edit" && (
+								{isEdit && (
 									<Button
 										className="mr-auto h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
 										disabled={deleteAsset.isPending}

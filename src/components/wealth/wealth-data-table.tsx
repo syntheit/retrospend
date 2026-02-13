@@ -9,12 +9,12 @@ import {
 	IconChevronUp,
 } from "@tabler/icons-react";
 import {
+	type Cell,
+	type ColumnDef,
+	type Header,
+	type HeaderGroup,
+	type Row,
 	flexRender,
-	getCoreRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	type SortingState,
-	useReactTable,
 } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
@@ -38,6 +38,7 @@ import {
 } from "~/components/ui/table";
 import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useDataTable } from "~/hooks/use-data-table";
 import { cn, toNumber } from "~/lib/utils";
 import { type Asset, createWealthColumns } from "./wealth-table-columns";
 
@@ -55,55 +56,10 @@ export function WealthDataTable({
 	onDeleteSelected?: (selectedIds: Set<string>) => void;
 }) {
 	const { formatCurrency } = useCurrencyFormatter();
-	const [sorting, setSorting] = React.useState<SortingState>([
-		{
-			id: "balanceInTarget", // Sort by balance in home currency default
-			desc: true,
-		},
-	]);
-	const [pagination, setPagination] = React.useState({
-		pageIndex: 0,
-		pageSize: 15,
-	});
 	const [hoveredColumn, setHoveredColumn] = React.useState<string | null>(null);
-	const [internalSelectedRows, setInternalSelectedRows] = React.useState<
-		Set<string>
-	>(new Set());
 	const [editingAssetId, setEditingAssetId] = React.useState<string | null>(
 		null,
 	);
-
-	const selectedRows = controlledSelectedRows ?? internalSelectedRows;
-	const setSelectedRows = setControlledSelectedRows ?? setInternalSelectedRows;
-
-	// Internal Selection Handlers
-	const handleRowSelect = React.useCallback(
-		(id: string, checked: boolean) => {
-			const newSelected = new Set(selectedRows);
-			if (checked) {
-				newSelected.add(id);
-			} else {
-				newSelected.delete(id);
-			}
-			setSelectedRows(newSelected);
-		},
-		[selectedRows, setSelectedRows],
-	);
-
-	const handleSelectAll = React.useCallback(
-		(checked: boolean) => {
-			if (checked) {
-				setSelectedRows(new Set(data.map((asset) => asset.id)));
-			} else {
-				setSelectedRows(new Set());
-			}
-		},
-		[data, setSelectedRows],
-	);
-
-	const handleEditSelected = React.useCallback((id: string) => {
-		setEditingAssetId(id);
-	}, []);
 
 	// Check if any asset uses foreign currency
 	const hasForeignCurrency = React.useMemo(() => {
@@ -115,36 +71,43 @@ export function WealthDataTable({
 			createWealthColumns(
 				homeCurrency,
 				hasForeignCurrency,
-				selectedRows,
-				handleRowSelect,
-				handleSelectAll,
 				formatCurrency,
-				handleEditSelected,
 			),
-		[
-			homeCurrency,
-			hasForeignCurrency,
-			selectedRows,
-			handleRowSelect,
-			handleSelectAll,
-			formatCurrency,
-			handleEditSelected,
-		],
+		[homeCurrency, hasForeignCurrency, formatCurrency],
 	);
 
-	const table = useReactTable({
+	const controlledRowSelection = React.useMemo(() => {
+		if (!controlledSelectedRows) return undefined;
+		const obj: Record<string, boolean> = {};
+		controlledSelectedRows.forEach((id) => {
+			obj[id] = true;
+		});
+		return obj;
+	}, [controlledSelectedRows]);
+
+	const { table, rowSelection } = useDataTable<Asset>({
 		data,
 		columns,
-		state: {
-			sorting,
-			pagination,
+		initialSorting: [
+			{
+				id: "balanceInTarget",
+				desc: true,
+			},
+		],
+		pageSize: 15,
+		rowSelection: controlledRowSelection,
+		onRowSelectionChange: (updater) => {
+			if (!setControlledSelectedRows) return;
+			const current = controlledRowSelection ?? {};
+			const next = typeof updater === "function" ? updater(current) : updater;
+			const nextSet = new Set(Object.keys(next).filter((k) => next[k]));
+			setControlledSelectedRows(nextSet);
 		},
-		onSortingChange: setSorting,
-		onPaginationChange: setPagination,
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
 	});
+
+	const selectedRows = React.useMemo(() => {
+		return new Set(Object.keys(rowSelection).filter((id) => rowSelection[id]));
+	}, [rowSelection]);
 
 	// Ref to measure header height for precise overlay
 	const headerRef = React.useRef<HTMLTableSectionElement>(null);
@@ -176,7 +139,7 @@ export function WealthDataTable({
 		let balanceTotal = 0;
 		let usdTotal = 0;
 
-		paginationRows.forEach((row) => {
+		paginationRows.forEach((row: Row<Asset>) => {
 			balanceTotal += row.original.balanceInTargetCurrency;
 			usdTotal += row.original.balanceInUSD;
 		});
@@ -204,17 +167,17 @@ export function WealthDataTable({
 					}
 					onEditSelected={(id) => {
 						setEditingAssetId(id);
-						setSelectedRows(new Set());
+						table.resetRowSelection();
 					}}
-					onSelectAll={handleSelectAll}
+					onSelectAll={(checked) => table.toggleAllRowsSelected(checked)}
 					selectedRows={selectedRows}
 				/>
 
 				<Table>
 					<TableHeader ref={headerRef}>
-						{table.getHeaderGroups().map((headerGroup) => (
+						{table.getHeaderGroups().map((headerGroup: HeaderGroup<Asset>) => (
 							<TableRow className="hover:bg-transparent" key={headerGroup.id}>
-								{headerGroup.headers.map((header) => {
+								{headerGroup.headers.map((header: Header<Asset, unknown>) => {
 									const isRightAligned =
 										header.id === "originalBalance" ||
 										header.id === "balanceInTarget" ||
@@ -288,14 +251,14 @@ export function WealthDataTable({
 					</TableHeader>
 					<TableBody>
 						{paginationRows.length ? (
-							paginationRows.map((row) => (
+							paginationRows.map((row: Row<Asset>) => (
 								<TableRow
 									data-state={
 										selectedRows.has(row.original.id) ? "selected" : undefined
 									}
 									key={row.id}
 								>
-									{row.getVisibleCells().map((cell) => {
+									{row.getVisibleCells().map((cell: Cell<Asset, unknown>) => {
 										const cellIsRightAligned =
 											cell.column.id === "originalBalance" ||
 											cell.column.id === "balanceInTarget" ||
@@ -338,7 +301,7 @@ export function WealthDataTable({
 							</TableCell>
 							<TableCell className="px-4 py-3 text-right font-semibold">
 								<div className="text-right font-medium">
-									{formatCurrency(totals.balanceTotal, homeCurrency)}
+								{formatCurrency(totals.balanceTotal, homeCurrency)}
 								</div>
 							</TableCell>
 							{homeCurrency !== "USD" && (
@@ -456,7 +419,6 @@ function ControlledAssetDialog({
 				interestRate: asset.interestRate,
 			}}
 			key={asset.id}
-			mode="edit"
 			onOpenChange={onOpenChange}
 			open={isOpen}
 		/>

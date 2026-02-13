@@ -306,6 +306,9 @@ export interface RawAsset {
 	exchangeRate: string | number | null; // Decimal | null from Prisma
 	exchangeRateType: string | null;
 	isLiquid: boolean;
+	interestRate?: number;
+	createdAt?: Date;
+	updatedAt?: Date;
 }
 
 /**
@@ -322,6 +325,7 @@ export interface NormalizedAsset {
 	exchangeRate?: number;
 	exchangeRateType?: string;
 	isLiquid: boolean;
+	interestRate?: number;
 }
 
 /**

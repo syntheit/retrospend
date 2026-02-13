@@ -13,6 +13,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
@@ -21,8 +22,8 @@ import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-expo
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthHeader } from "~/components/wealth/wealth-header";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
+import { useWealthDashboard } from "~/hooks/use-wealth-dashboard";
 import { AssetType } from "~/lib/db-enums";
-import { normalizeAssets, toNumber } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export default function WealthPage() {
@@ -34,15 +35,24 @@ export default function WealthPage() {
 		currency: homeCurrency,
 	});
 
-	const [timeRange, setTimeRange] = useState<"3M" | "6M" | "12M">("12M");
-	const [typeFilter, setTypeFilter] = useState<AssetType | "all">("all");
-	const [liquidityFilter, setLiquidityFilter] = useState<
-		"all" | "liquid" | "illiquid"
-	>("all");
 	const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
 		new Set(),
 	);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+	const {
+		stats,
+		filteredData,
+		filters,
+		normalizedAssets,
+		historyChartData,
+		allocationChartData,
+	} = useWealthDashboard({
+		rawAssets: dashboardData?.assets,
+		rawHistory: dashboardData?.history,
+		isLoading,
+		homeCurrency,
+	});
 
 	const deleteAsset = api.wealth.deleteAsset.useMutation({
 		onSuccess: () => {
@@ -54,24 +64,6 @@ export default function WealthPage() {
 			toast.error(error.message);
 		},
 	});
-
-	const normalizedAssets = dashboardData
-		? normalizeAssets(
-				dashboardData.assets.map((asset) => ({
-					...asset,
-					exchangeRate: toNumber(asset.exchangeRate) ?? null,
-				})),
-			)
-		: [];
-
-	const filteredAssets = useMemo(() => {
-		return normalizedAssets.filter((asset) => {
-			if (typeFilter !== "all" && asset.type !== typeFilter) return false;
-			if (liquidityFilter === "liquid" && !asset.isLiquid) return false;
-			if (liquidityFilter === "illiquid" && asset.isLiquid) return false;
-			return true;
-		});
-	}, [normalizedAssets, typeFilter, liquidityFilter]);
 
 	const hasMultipleCurrencies = useMemo(
 		() => new Set(normalizedAssets.map((asset) => asset.currency)).size > 1,
@@ -158,39 +150,46 @@ export default function WealthPage() {
 					{/* Summary Cards */}
 					<NetWorthSummary
 						homeCurrency={homeCurrency}
-						totalAssets={dashboardData.totalAssets}
-						totalLiabilities={dashboardData.totalLiabilities}
-						totalLiquidAssets={dashboardData.totalLiquidAssets}
-						totalNetWorth={dashboardData.totalNetWorth}
-						weightedAPR={dashboardData.weightedAPR}
+						totalAssets={stats.assets}
+						totalLiabilities={stats.liabilities}
+						totalLiquidAssets={stats.totalLiquidAssets}
+						totalNetWorth={stats.netWorth}
+						weightedAPR={stats.weightedAPR}
 					/>
 
 					<div className="grid gap-6 lg:grid-cols-7">
 						<div className="lg:col-span-4">
 							<WealthHistoryChart
 								baseCurrency={homeCurrency}
-								data={dashboardData.history}
-								onTimeRangeChange={setTimeRange}
-								timeRange={timeRange}
+								data={historyChartData}
+								onTimeRangeChange={filters.setTimeRange}
+								timeRange={filters.timeRange}
 							/>
 						</div>
 						<div className="lg:col-span-3">
-							<WealthAllocationChart assets={normalizedAssets} />
+							<WealthAllocationChart data={allocationChartData} />
 						</div>
 					</div>
 
 					<div className="grid gap-6 lg:grid-cols-7">
 						<div className="min-w-0 space-y-4 lg:col-span-5">
 							<div className="flex flex-col gap-3 sm:flex-row">
+								<Input
+									className="h-8 w-full sm:w-48 lg:w-64"
+									onChange={(e) => filters.setSearch(e.target.value)}
+									placeholder="Search assets..."
+									value={filters.search}
+								/>
+
 								<div className="flex items-center gap-2">
 									<span className="text-muted-foreground text-sm">Type:</span>
 									<ToggleGroup
 										onValueChange={(value) => {
-											if (value) setTypeFilter(value as AssetType | "all");
+											if (value) filters.setType(value as AssetType | "all");
 										}}
 										size="sm"
 										type="single"
-										value={typeFilter}
+										value={filters.type}
 									>
 										<ToggleGroupItem className="cursor-pointer" value="all">
 											All
@@ -229,13 +228,13 @@ export default function WealthPage() {
 									<ToggleGroup
 										onValueChange={(value) => {
 											if (value)
-												setLiquidityFilter(
+												filters.setLiquidity(
 													value as "all" | "liquid" | "illiquid",
 												);
 										}}
 										size="sm"
 										type="single"
-										value={liquidityFilter}
+										value={filters.liquidity}
 									>
 										<ToggleGroupItem className="cursor-pointer" value="all">
 											All
@@ -254,7 +253,7 @@ export default function WealthPage() {
 							</div>
 
 							<WealthDataTable
-								data={filteredAssets}
+								data={filteredData}
 								homeCurrency={homeCurrency}
 								onDeleteSelected={handleDeleteSelected}
 								onSelectionChange={setSelectedAssetIds}

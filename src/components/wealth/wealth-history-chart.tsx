@@ -19,19 +19,32 @@ import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { CurrencyCode } from "~/lib/currencies";
 import { parseDateOnly } from "~/lib/date";
+import {
+	ASSET_COLORS,
+	TIME_RANGES,
+	type TimeRangeValue,
+} from "~/lib/wealth-constants";
 
 interface WealthHistoryChartProps {
-	data: { date: string; amount: number }[];
+	data: { date: string; amount: number; assets?: number; liabilities?: number }[];
 	baseCurrency?: string;
-	timeRange?: "3M" | "6M" | "12M";
+	timeRange?: TimeRangeValue;
 	onBaseCurrencyChange?: (currency: string) => void;
-	onTimeRangeChange?: (range: "3M" | "6M" | "12M") => void;
+	onTimeRangeChange?: (range: TimeRangeValue) => void;
 }
 
 const chartConfig = {
 	amount: {
 		label: "Net Worth",
 		color: "var(--primary)",
+	},
+	assets: {
+		label: "Assets",
+		color: ASSET_COLORS.CASH, // Using primary asset color for assets line
+	},
+	liabilities: {
+		label: "Liabilities",
+		color: ASSET_COLORS.LIABILITY_LOAN, // Using primary liability color for liabilities line
 	},
 } satisfies ChartConfig;
 
@@ -43,26 +56,6 @@ export function WealthHistoryChart({
 	onTimeRangeChange,
 }: WealthHistoryChartProps) {
 	const { formatCurrency, getCurrencySymbol } = useCurrencyFormatter();
-
-	const filteredData = useMemo(() => {
-		if (!data) return [];
-		const sorted = [...data].sort(
-			(a, b) =>
-				parseDateOnly(a.date).getTime() - parseDateOnly(b.date).getTime(),
-		);
-
-		if (!timeRange) return sorted;
-
-		const now = new Date();
-		const months = timeRange === "3M" ? 3 : timeRange === "6M" ? 6 : 12;
-		const cutoff = new Date(
-			now.getFullYear(),
-			now.getMonth() - months,
-			now.getDate(),
-		);
-
-		return sorted.filter((item) => parseDateOnly(item.date) >= cutoff);
-	}, [data, timeRange]);
 
 	const compactNumberFormatter = useMemo(() => {
 		return new Intl.NumberFormat("en-US", {
@@ -81,7 +74,7 @@ export function WealthHistoryChart({
 			<Card className="h-full">
 				<CardHeader>
 					<CardTitle>Net Worth History</CardTitle>
-					<CardDescription>Trend over the last 12 months</CardDescription>
+					<CardDescription>Trend over time</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center justify-center py-12">
 					<TrendingUp className="h-12 w-12 text-muted-foreground/50" />
@@ -106,33 +99,21 @@ export function WealthHistoryChart({
 						{onTimeRangeChange && (
 							<ToggleGroup
 								onValueChange={(value) => {
-									if (value) onTimeRangeChange(value as "3M" | "6M" | "12M");
+									if (value) onTimeRangeChange(value as TimeRangeValue);
 								}}
 								size="sm"
 								type="single"
 								value={timeRange}
 							>
-								<ToggleGroupItem
-									aria-label="3 months"
-									className="cursor-pointer"
-									value="3M"
-								>
-									3M
-								</ToggleGroupItem>
-								<ToggleGroupItem
-									aria-label="6 months"
-									className="cursor-pointer"
-									value="6M"
-								>
-									6M
-								</ToggleGroupItem>
-								<ToggleGroupItem
-									aria-label="12 months"
-									className="cursor-pointer"
-									value="12M"
-								>
-									12M
-								</ToggleGroupItem>
+								{TIME_RANGES.map((range) => (
+									<ToggleGroupItem
+										className="cursor-pointer"
+										key={range.value}
+										value={range.value}
+									>
+										{range.label}
+									</ToggleGroupItem>
+								))}
 							</ToggleGroup>
 						)}
 						{onBaseCurrencyChange && (
@@ -150,7 +131,7 @@ export function WealthHistoryChart({
 					config={chartConfig}
 				>
 					<AreaChart
-						data={filteredData}
+						data={data}
 						margin={{
 							top: 10,
 							right: 10,
@@ -184,12 +165,19 @@ export function WealthHistoryChart({
 						<ChartTooltip
 							content={
 								<ChartTooltipContent
-									formatter={(value, name) => (
-										<div className="flex w-full items-center justify-between gap-2">
-											<span className="font-bold text-muted-foreground">
-												{name}
-											</span>
-											<span className="font-medium font-mono text-foreground tabular-nums">
+									formatter={(value, name, item) => (
+										<div className="flex w-full items-center justify-between gap-4">
+											<div className="flex items-center gap-2">
+												<div
+													className="h-2 w-2 rounded-full"
+													style={{ backgroundColor: item.color }}
+												/>
+												<span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
+													{chartConfig[name as keyof typeof chartConfig]
+														?.label || name}
+												</span>
+											</div>
+											<span className="font-semibold font-mono text-foreground tabular-nums">
 												{formatCurrency(Number(value), baseCurrency)}
 											</span>
 										</div>
@@ -209,11 +197,33 @@ export function WealthHistoryChart({
 						<Area
 							dataKey="amount"
 							fill="var(--color-amount)"
-							fillOpacity={0.2}
+							fillOpacity={0.1}
 							stroke="var(--color-amount)"
 							strokeWidth={2}
 							type="monotone"
 						/>
+						{data[0]?.assets !== undefined && (
+							<>
+								<Area
+									dataKey="assets"
+									fill="var(--color-assets)"
+									fillOpacity={0.05}
+									stroke="var(--color-assets)"
+									strokeDasharray="4 4"
+									strokeWidth={1}
+									type="monotone"
+								/>
+								<Area
+									dataKey="liabilities"
+									fill="var(--color-liabilities)"
+									fillOpacity={0.05}
+									stroke="var(--color-liabilities)"
+									strokeDasharray="4 4"
+									strokeWidth={1}
+									type="monotone"
+								/>
+							</>
+						)}
 					</AreaChart>
 				</ChartContainer>
 			</CardContent>

@@ -14,7 +14,6 @@ export function WealthHeader({ hideAddButton }: { hideAddButton?: boolean }) {
 			{/* Primary Action */}
 			{!hideAddButton && (
 				<AssetDialog
-					mode="create"
 					trigger={
 						<Button>
 							<Plus className="mr-2 h-4 w-4" />

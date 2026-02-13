@@ -6,7 +6,6 @@ import { normalizeDate } from "~/lib/date";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
-import { getBestExchangeRate } from "./shared-currency";
 
 export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
@@ -266,20 +265,41 @@ export const wealthRouter = createTRPCRouter({
 				},
 			});
 
-			const targetRate =
-				(await getBestExchangeRate(db, targetCurrency, today)) ?? 1;
+			const assetMap = new Map(assets.map((a) => [a.id, a]));
+			const currencies = [...new Set([...assets.map((a) => a.currency), targetCurrency])];
 
-			const currencies = [...new Set(assets.map((a) => a.currency))];
-			const rates = new Map<string, number>();
-			rates.set(BASE_CURRENCY, 1);
+			// BATCH FETCH EXCHANGE RATES (O(1) lookups)
+			const allRates = await db.exchangeRate.findMany({
+				where: {
+					currency: { in: currencies },
+					date: { lte: today },
+				},
+				orderBy: [{ date: "desc" }, { type: "asc" }],
+			});
 
+			const ratesMap = new Map<string, number>();
+			ratesMap.set(BASE_CURRENCY, 1);
+			const finalizedCurrencies = new Set<string>();
+
+			for (const r of allRates) {
+				if (finalizedCurrencies.has(r.currency)) continue;
+				// Sorting combined with early exit ensures best rate (date desc, type asc)
+				ratesMap.set(r.currency, r.rate.toNumber());
+				finalizedCurrencies.add(r.currency);
+			}
+
+			// Validate and log missing rates
 			for (const currency of currencies) {
 				if (currency === BASE_CURRENCY) continue;
-				const rate = await getBestExchangeRate(db, currency, today);
-				if (rate) {
-					rates.set(currency, rate);
+				if (!ratesMap.has(currency)) {
+					console.warn(
+						`[WealthDashboard] Missing exchange rate for ${currency} on or before ${today.toISOString()}. Defaulting to 1.`,
+					);
+					ratesMap.set(currency, 1);
 				}
 			}
+
+			const targetRate = ratesMap.get(targetCurrency) ?? 1;
 
 			let totalNetWorthUSD = 0;
 			let totalAssetsUSD = 0;
@@ -289,30 +309,22 @@ export const wealthRouter = createTRPCRouter({
 			let totalLiabilityBalanceUSD = 0;
 
 			const assetsWithUSD = assets.map((asset) => {
-				// Prioritize live rate, then stored rate, then default 1 only if USD
-				let rate: number | null = rates.get(asset.currency) ?? null;
+				let rate = ratesMap.get(asset.currency) ?? null;
 				if (!rate) {
+					// Fallback to stored rate if live rate missing
 					rate = asset.exchangeRate?.toNumber() ?? null;
 				}
-				if (!rate && asset.currency === BASE_CURRENCY) {
-					rate = 1;
-				}
-
-				// If we still don't have a rate for a non-USD currency,
-				// we must not default to 1 as it would cause massive balance spikes.
 				const effectiveRate = rate || 1;
 				const balanceInUSD = asset.balance.toNumber() / effectiveRate;
 
-				// Check if this is a liability (negative balance)
 				const isLiability = asset.type.startsWith("LIABILITY_");
 				const adjustedBalanceInUSD = isLiability ? -balanceInUSD : balanceInUSD;
 
 				totalNetWorthUSD += adjustedBalanceInUSD;
 
 				if (isLiability) {
-					totalLiabilitiesUSD += balanceInUSD; // Store as positive for liabilities
+					totalLiabilitiesUSD += balanceInUSD;
 					totalLiabilityBalanceUSD += balanceInUSD;
-
 					if (asset.interestRate && balanceInUSD > 0) {
 						weightedAPR += asset.interestRate * balanceInUSD;
 					}
@@ -338,41 +350,31 @@ export const wealthRouter = createTRPCRouter({
 			const oneYearAgo = new Date(today);
 			oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
+			// History reconstruction optimization
 			const snapshots = await db.assetSnapshot.findMany({
 				where: {
 					account: { userId: session.user.id },
 					date: { gte: oneYearAgo },
 				},
 				orderBy: { date: "asc" },
-				include: {
-					account: {
-						select: { id: true, currency: true },
-					},
-				},
 			});
 
-			const currentBalancesUSD = new Map<string, number>();
-			const initialSnapshots = await Promise.all(
-				assets.map((asset) =>
+			// Fetch latest initial point before one year ago for each asset
+			const initialPoints = await Promise.all(
+				assets.map((a) =>
 					db.assetSnapshot.findFirst({
-						where: {
-							accountId: asset.id,
-							date: { lt: oneYearAgo },
-						},
+						where: { accountId: a.id, date: { lt: oneYearAgo } },
 						orderBy: { date: "desc" },
+						select: { accountId: true, balanceInUSD: true },
 					}),
 				),
 			);
 
-			initialSnapshots.forEach((snap, index) => {
-				const asset = assets[index];
-				if (asset && snap) {
-					const balanceInUSD = snap.balanceInUSD.toNumber();
-					currentBalancesUSD.set(asset.id, balanceInUSD);
-				} else if (asset) {
-					currentBalancesUSD.set(asset.id, 0);
-				}
-			});
+			const currentBalancesUSD = new Map<string, number>();
+			for (const asset of assets) {
+				const initial = initialPoints.find((p) => p?.accountId === asset.id);
+				currentBalancesUSD.set(asset.id, initial?.balanceInUSD.toNumber() ?? 0);
+			}
 
 			const snapshotsByDate = new Map<string, typeof snapshots>();
 			snapshots.forEach((s) => {
@@ -386,7 +388,7 @@ export const wealthRouter = createTRPCRouter({
 				}
 			});
 
-			const history: { date: string; amount: number }[] = [];
+			const history: { date: string; amount: number; assets: number; liabilities: number }[] = [];
 			const sortedDates = [...snapshotsByDate.keys()].sort();
 
 			for (const dateStr of sortedDates) {
@@ -394,35 +396,45 @@ export const wealthRouter = createTRPCRouter({
 				if (!daysSnapshots) continue;
 
 				daysSnapshots.forEach((snap) => {
-					const balanceInUSD = snap.balanceInUSD.toNumber();
-					currentBalancesUSD.set(snap.accountId, balanceInUSD);
+					currentBalancesUSD.set(snap.accountId, snap.balanceInUSD.toNumber());
 				});
 
-				let totalInTarget = 0;
+				let assetsInTarget = 0;
+				let liabilitiesInTarget = 0;
 				for (const [assetId, balUSD] of currentBalancesUSD.entries()) {
-					const asset = assets.find((a) => a.id === assetId);
-					// Principle: Same-currency = original amount (if snapshot exists for this day)
-					// This fixes the Billion Dollar bug for users viewing in their home currency.
-					const latestSnap = daysSnapshots?.find(
-						(s) => s.accountId === assetId,
-					);
+					const asset = assetMap.get(assetId);
+					if (!asset) continue;
 
-					if (asset?.currency === targetCurrency && latestSnap) {
-						totalInTarget += latestSnap.balance.toNumber();
+					const isLiability = asset.type.startsWith("LIABILITY_");
+					// Same-currency awareness to prevent Billion Dollar bug
+					const latestSnapToday = daysSnapshots.find((s) => s.accountId === assetId);
+					const value = (asset.currency === targetCurrency && latestSnapToday)
+						? latestSnapToday.balance.toNumber()
+						: balUSD * targetRate;
+
+					if (isLiability) {
+						liabilitiesInTarget += value;
 					} else {
-						totalInTarget += balUSD * targetRate;
+						assetsInTarget += value;
 					}
 				}
 
-				history.push({ date: dateStr, amount: totalInTarget });
+				history.push({
+					date: dateStr,
+					amount: assetsInTarget - liabilitiesInTarget,
+					assets: assetsInTarget,
+					liabilities: liabilitiesInTarget,
+				});
 			}
 
 			const todayStr = today.toISOString().split("T")[0] ?? "";
-			if (
-				history.length === 0 ||
-				history[history.length - 1]?.date !== todayStr
-			) {
-				history.push({ date: todayStr, amount: totalNetWorthUSD * targetRate });
+			if (history.length === 0 || history[history.length - 1]?.date !== todayStr) {
+				history.push({
+					date: todayStr,
+					amount: totalNetWorthUSD * targetRate,
+					assets: totalAssetsUSD * targetRate,
+					liabilities: totalLiabilitiesUSD * targetRate,
+				});
 			}
 
 			return {
@@ -436,7 +448,6 @@ export const wealthRouter = createTRPCRouter({
 				currency: targetCurrency,
 			};
 		}),
-
 	deleteAsset: protectedProcedure
 		.input(
 			z.object({
