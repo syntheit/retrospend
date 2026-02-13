@@ -16,6 +16,7 @@ import {
 	ChartTooltipContent,
 } from "~/components/ui/chart";
 import { Skeleton } from "~/components/ui/skeleton";
+import { VIBRANT_BLUE } from "~/lib/chart-theme";
 
 interface TrendChartProps {
 	expensesLoading: boolean;
@@ -28,7 +29,6 @@ interface TrendChartProps {
 	now: Date;
 }
 
-const vibrantBlue = "hsl(217, 91%, 60%)";
 
 export function TrendChart({
 	expensesLoading,
@@ -60,10 +60,10 @@ export function TrendChart({
 						<AreaChart data={dailyTrend}>
 							<defs>
 								<linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
-									<stop offset="5%" stopColor={vibrantBlue} stopOpacity={0.8} />
+									<stop offset="5%" stopColor={VIBRANT_BLUE} stopOpacity={0.8} />
 									<stop
 										offset="95%"
-										stopColor={vibrantBlue}
+										stopColor={VIBRANT_BLUE}
 										stopOpacity={0.1}
 									/>
 								</linearGradient>
@@ -80,7 +80,7 @@ export function TrendChart({
 							<Area
 								dataKey="value"
 								fill={`url(#${id})`}
-								stroke={vibrantBlue}
+								stroke={VIBRANT_BLUE}
 								strokeWidth={2.5}
 								type="monotone"
 							/>

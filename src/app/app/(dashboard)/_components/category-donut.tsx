@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Cell, Pie, PieChart, Sector } from "recharts";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import {
@@ -73,35 +72,6 @@ export function CategoryDonut({
 	handleSliceEnter,
 	handleSliceLeave,
 }: CategoryDonutProps) {
-	const [pieRadii, setPieRadii] = useState<{ inner: number; outer: number }>({
-		inner: 100,
-		outer: 175,
-	});
-	const pieWrapperRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const target = pieWrapperRef.current;
-		if (
-			!target ||
-			typeof window === "undefined" ||
-			!("ResizeObserver" in window)
-		) {
-			return;
-		}
-
-		const observer = new ResizeObserver(([entry]) => {
-			const width = entry?.contentRect.width ?? 0;
-			if (!width) return;
-
-			const outer = Math.min(175, Math.max(110, width / 2 - 12));
-			const inner = Math.max(72, Math.min(outer * 0.64, outer - 32));
-			setPieRadii({ inner, outer });
-		});
-
-		observer.observe(target);
-		return () => observer.disconnect();
-	}, []);
-
 	const isSingleSlice = visibleCategoryBreakdown.length <= 1;
 	const piePaddingAngle = isSingleSlice ? 0 : 1;
 	const pieStroke = isSingleSlice ? "none" : "var(--card)";
@@ -123,77 +93,67 @@ export function CategoryDonut({
 						No expenses logged this month.
 					</div>
 				) : (
-					<div className="relative mx-auto w-full max-w-xl" ref={pieWrapperRef}>
-						<ChartContainer
-							className="aspect-square w-full sm:aspect-[4/3]"
-							config={pieChartConfig}
-						>
-							<PieChart>
-								<Pie
-									activeIndex={activeSliceIndex ?? undefined}
-									activeShape={(props: PieSectorDataItem) =>
-										renderActiveShape(props, pieStroke, pieStrokeWidth)
-									}
-									data={visibleCategoryBreakdown}
-									dataKey="value"
-									innerRadius={pieRadii.inner}
-									nameKey="name"
-									onClick={(_, index) => {
-										const segment = visibleCategoryBreakdown[index];
-										if (segment) {
-											handleCategoryClick(segment);
+					<div className="relative mx-auto w-full max-w-xl">
+						<div className="relative">
+							{/* Center Text UI */}
+							<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+								<span className="font-medium text-muted-foreground text-xs sm:text-sm">
+									{activeSlice ? activeSlice.name : "Total"}
+								</span>
+								<span className="font-bold text-2xl tracking-tight sm:text-3xl">
+									{activeSlice
+										? formatMoney(activeSlice.value)
+										: formatMoney(visibleTotal)}
+								</span>
+							</div>
+
+							<ChartContainer
+								className="aspect-square w-full sm:aspect-[4/3]"
+								config={pieChartConfig}
+							>
+								<PieChart>
+									<Pie
+										activeIndex={activeSliceIndex ?? undefined}
+										activeShape={(props: PieSectorDataItem) =>
+											renderActiveShape(props, pieStroke, pieStrokeWidth)
 										}
-									}}
-									onMouseEnter={handleSliceEnter}
-									onMouseLeave={handleSliceLeave}
-									outerRadius={pieRadii.outer}
-									paddingAngle={piePaddingAngle}
-									stroke={pieStroke}
-									strokeWidth={pieStrokeWidth}
-								>
-									{visibleCategoryBreakdown.map((segment, index) => (
-										<Cell
-											className="cursor-pointer transition-opacity"
-											fill={`var(--color-${segment.key})`}
-											key={segment.key}
-											opacity={
-												activeSliceIndex === null || activeSliceIndex === index
-													? 1
-													: 0.4
+										cx="50%"
+										cy="50%"
+										data={visibleCategoryBreakdown}
+										dataKey="value"
+										innerRadius="65%"
+										nameKey="name"
+										onClick={(_, index) => {
+											const segment = visibleCategoryBreakdown[index];
+											if (segment) {
+												handleCategoryClick(segment);
 											}
-											stroke={pieStroke}
-											strokeWidth={pieStrokeWidth}
-										/>
-									))}
-								</Pie>
-								<text
-									className="pointer-events-none fill-foreground"
-									dominantBaseline="middle"
-									style={{ fontSize: "14px", fontWeight: "500" }}
-									textAnchor="middle"
-									x="50%"
-									y="48%"
-								>
-									<tspan
-										className="fill-muted-foreground"
-										dy="-0.5em"
-										style={{ fontSize: "12px" }}
-										x="50%"
+										}}
+										onMouseEnter={handleSliceEnter}
+										onMouseLeave={handleSliceLeave}
+										outerRadius="85%"
+										paddingAngle={piePaddingAngle}
+										stroke={pieStroke}
+										strokeWidth={pieStrokeWidth}
 									>
-										{activeSlice ? activeSlice.name : "Total"}
-									</tspan>
-									<tspan
-										dy="1.2em"
-										style={{ fontSize: "24px", fontWeight: "600" }}
-										x="50%"
-									>
-										{activeSlice
-											? formatMoney(activeSlice.value)
-											: formatMoney(visibleTotal)}
-									</tspan>
-								</text>
-							</PieChart>
-						</ChartContainer>
+										{visibleCategoryBreakdown.map((segment, index) => (
+											<Cell
+												className="cursor-pointer transition-opacity"
+												fill={`var(--color-${segment.key})`}
+												key={segment.key}
+												opacity={
+													activeSliceIndex === null || activeSliceIndex === index
+														? 1
+														: 0.4
+												}
+												stroke={pieStroke}
+												strokeWidth={pieStrokeWidth}
+											/>
+										))}
+									</Pie>
+								</PieChart>
+							</ChartContainer>
+						</div>
 
 						<CategoryDonutLegend
 							categoryClickBehavior={categoryClickBehavior}
