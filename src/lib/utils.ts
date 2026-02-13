@@ -9,6 +9,28 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Represents the shape of a Prisma Decimal object.
+ */
+export interface PrismaDecimal {
+	toNumber: () => number;
+	toString: () => string;
+}
+
+/**
+ * Type guard to check if a value is a Prisma Decimal object.
+ */
+export function isPrismaDecimal(value: unknown): value is PrismaDecimal {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"toNumber" in value &&
+		typeof (value as PrismaDecimal).toNumber === "function" &&
+		"toString" in value &&
+		typeof (value as PrismaDecimal).toString === "function"
+	);
+}
+
+/**
  * Safely converts a value to a number, handling Prisma Decimal objects.
  * Returns undefined if the value is null/undefined or not convertible.
  */
@@ -16,18 +38,13 @@ export function toNumber(value: unknown): number | undefined {
 	if (value === null || value === undefined) {
 		return undefined;
 	}
+
 	if (typeof value === "number") {
 		return value;
 	}
 
-	// Handle Prisma Decimal objects
-	if (
-		typeof value === "object" &&
-		value !== null &&
-		"toNumber" in value &&
-		typeof (value as { toNumber: unknown }).toNumber === "function"
-	) {
-		return (value as { toNumber: () => number }).toNumber();
+	if (isPrismaDecimal(value)) {
+		return value.toNumber();
 	}
 
 	const parsed = Number(value);
@@ -39,8 +56,7 @@ export function toNumber(value: unknown): number | undefined {
  * Useful for required number fields that should never be null/undefined.
  */
 export function toNumberWithDefault(value: unknown): number {
-	const result = toNumber(value);
-	return result ?? 0;
+	return toNumber(value) ?? 0;
 }
 
 /**
@@ -48,11 +64,8 @@ export function toNumberWithDefault(value: unknown): number {
  * Useful for optional number fields that should preserve null values.
  */
 export function toNumberOrNull(value: unknown): number | null {
-	if (value === null || value === undefined) {
-		return null;
-	}
 	const result = toNumber(value);
-	return result ?? null;
+	return result === undefined ? null : result;
 }
 
 export function getCurrencySymbol(

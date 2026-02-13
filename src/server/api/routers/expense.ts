@@ -166,4 +166,8 @@ export const expenseRouter = createTRPCRouter({
 				input.targetCurrency,
 			);
 		}),
+	getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
+		const service = new ExpenseService(ctx.db);
+		return await service.getFilterOptions(ctx.session.user.id);
+	}),
 });

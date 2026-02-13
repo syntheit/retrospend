@@ -18,48 +18,28 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
-import { TableCell, TableRow } from "~/components/ui/table";
-import { useCurrency } from "~/hooks/use-currency";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useExpensesController } from "~/hooks/use-expenses-controller";
 import { useTableActions } from "~/hooks/use-table-actions";
-import { useTableFilters } from "~/hooks/use-table-filters";
-import { convertExpenseAmountForDisplay, normalizeExpenses } from "~/lib/utils";
-import { api } from "~/trpc/react";
 import { TableFilters } from "./_components/table-filters";
+import { ExpensesTableFooter } from "./_components/expenses-table-footer";
 
-const convertDecimalToNumber = (value: unknown): number => {
-	if (typeof value === "object" && value !== null && "toNumber" in value) {
-		return (value as { toNumber: () => number }).toNumber();
-	}
-	return Number(value);
-};
 
 export default function Page() {
 	const { openNewExpense, openExpense } = useExpenseModal();
 	const { formatCurrency } = useCurrencyFormatter();
+	
 	const {
-		data: expenses,
+		expenses: filteredExpenses,
+		totals,
+		filters,
+		homeCurrency,
+		liveRateToBaseCurrency,
 		isLoading,
-		error,
-		refetch: refetchExpenses,
-	} = api.expense.listFinalized.useQuery();
-	const { usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
-	const { data: settings } = api.settings.getGeneral.useQuery();
+		isError,
+		refetch,
+	} = useExpensesController();
 
-	const normalizedExpenses = useMemo(
-		() =>
-			normalizeExpenses(
-				(expenses ?? []).map((expense) => ({
-					...expense,
-					amount: convertDecimalToNumber(expense.amount),
-					exchangeRate: convertDecimalToNumber(expense.exchangeRate),
-					amountInUSD: convertDecimalToNumber(expense.amountInUSD),
-				})),
-			),
-		[expenses],
-	);
-
-	// Filter Logic Hook
 	const {
 		selectedYears,
 		selectedMonths,
@@ -67,7 +47,6 @@ export default function Page() {
 		availableYears,
 		availableMonths,
 		availableCategories,
-		filteredExpenses,
 		toggleYear,
 		toggleMonth,
 		toggleCategory,
@@ -75,9 +54,10 @@ export default function Page() {
 		clearYears,
 		clearMonths,
 		clearCategories,
-	} = useTableFilters(normalizedExpenses);
+	} = filters;
 
-	// Action Logic Hook
+	// Action Logic Hook remains as it depends on filteredExpenses and refetch
+	// (Note: we could also move this into the controller for further decoupling)
 	const {
 		selectedIds: selectedExpenseIds,
 		showDeleteDialog,
@@ -90,19 +70,14 @@ export default function Page() {
 		handleExportSelected,
 		handleDeleteSelected,
 		confirmDelete,
-	} = useTableActions(filteredExpenses, refetchExpenses);
-
-	const homeCurrency = settings?.homeCurrency || "USD";
-	const hasForeignCurrencyExpenses = filteredExpenses.some(
-		(e) => e.currency !== "USD" && e.exchangeRate && e.amountInUSD,
-	);
+	} = useTableActions(filteredExpenses, refetch);
 
 	const columns = useMemo(
 		() =>
 			createExpenseColumns(
 				homeCurrency,
 				liveRateToBaseCurrency ?? null,
-				hasForeignCurrencyExpenses,
+				totals.hasForeignCurrencyExpenses,
 				selectedExpenseIds,
 				handleRowSelect,
 				handleSelectAll,
@@ -111,7 +86,7 @@ export default function Page() {
 		[
 			homeCurrency,
 			liveRateToBaseCurrency,
-			hasForeignCurrencyExpenses,
+			totals.hasForeignCurrencyExpenses,
 			selectedExpenseIds,
 			handleRowSelect,
 			handleSelectAll,
@@ -132,7 +107,7 @@ export default function Page() {
 		);
 	}
 
-	if (error) {
+	if (isError) {
 		return (
 			<>
 				<SiteHeader title="Expenses" />
@@ -153,9 +128,7 @@ export default function Page() {
 
 	return (
 		<>
-			<SiteHeader
-				title="Table View"
-			/>
+			<SiteHeader title="Table View" />
 			<PageContent>
 				<div className="space-y-6">
 					<div className="w-full space-y-4">
@@ -181,7 +154,7 @@ export default function Page() {
 						emptyState={
 							<div className="space-y-3 py-6 text-center">
 								<p className="text-muted-foreground">
-									{normalizedExpenses.length === 0
+									{filteredExpenses.length === 0 && !isLoading
 										? "No expenses yet."
 										: "No expenses match your filters."}
 								</p>
@@ -197,57 +170,15 @@ export default function Page() {
 							</div>
 						}
 						footer={
-							<TableRow className="border-t-2 bg-muted/50 font-semibold">
-								<TableCell
-									className="px-4 py-3 text-left font-semibold"
-									colSpan={4}
-								>
-									Total ({filteredExpenses.length} items)
-								</TableCell>
-								{hasForeignCurrencyExpenses && (
-									<TableCell className="px-4 py-3 text-right font-semibold">
-										{(() => {
-											const foreignExpenses = filteredExpenses.filter(
-												(e) => e.currency !== "USD",
-											);
-											const uniqueCurrencies = new Set(
-												foreignExpenses.map((e) => e.currency),
-											);
-
-											if (uniqueCurrencies.size === 0) return null;
-											if (uniqueCurrencies.size === 1) {
-												const currency = Array.from(uniqueCurrencies)[0];
-												const total = foreignExpenses.reduce(
-													(sum, e) => sum + e.amount,
-													0,
-												);
-												return formatCurrency(total, currency);
-											}
-											return "Mixed Currencies";
-										})()}
-									</TableCell>
-								)}
-								<TableCell className="px-4 py-3 text-right font-semibold">
-									<div className="text-right font-medium">
-										{formatCurrency(
-											filteredExpenses.reduce(
-												(acc, curr) =>
-													acc +
-													convertExpenseAmountForDisplay(
-														curr,
-														homeCurrency,
-														liveRateToBaseCurrency ?? null,
-													),
-												0,
-											),
-											homeCurrency,
-										)}
-									</div>
-								</TableCell>
-							</TableRow>
+							<ExpensesTableFooter
+								count={totals.count}
+								currency={homeCurrency}
+								foreignCurrencySummary={totals.foreignCurrencySummary}
+								hasForeignCurrencyExpenses={totals.hasForeignCurrencyExpenses}
+								totalAmount={totals.totalAmount}
+							/>
 						}
 						initialSorting={[{ id: "date", desc: true }]}
-						// onRowClick removed as per user request to only allow edit via checkboxes
 						renderToolbar={(_table, headerHeight) => (
 							<DataTableSelectionBar
 								exportMutation={{ isPending: isExporting }}
@@ -299,3 +230,4 @@ export default function Page() {
 		</>
 	);
 }
+

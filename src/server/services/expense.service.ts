@@ -286,6 +286,30 @@ export class ExpenseService {
 		return { total };
 	}
 
+	async getFilterOptions(userId: string) {
+		const [yearsResult, categories] = await Promise.all([
+			(this.db as PrismaClient).$queryRaw<{ year: number }[]>`
+				SELECT DISTINCT EXTRACT(YEAR FROM date)::INT as year 
+				FROM expense 
+				WHERE "userId" = ${userId} 
+				ORDER BY year DESC
+			`,
+			(this.db as PrismaClient).category.findMany({
+				where: { userId },
+				select: { id: true, name: true, color: true },
+				orderBy: { name: "asc" },
+			}),
+		]);
+
+		return {
+			years: yearsResult.map((r) => r.year),
+			categories: categories.map((c) => ({
+				...c,
+				usageCount: 0, // Usage count calculation remains client-side or simplified
+			})),
+		};
+	}
+
 	private async runInTransaction<T>(
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {

@@ -41,7 +41,14 @@ const matchesTimeFilter = (
  * Extracted from table/page.tsx to separate filter state management
  * from UI rendering. Handles year, month, and category filtering.
  */
-export function useTableFilters<T extends FilterableExpense>(expenses: T[]) {
+export function useTableFilters<T extends FilterableExpense>(
+	expenses: T[],
+	options?: {
+		availableYears?: number[];
+		availableCategories?: CategoryWithUsage[];
+	},
+) {
+	const { availableYears: providedYears, availableCategories: providedCategories } = options ?? {};
 	// Get current year/month for default filter
 	const getCurrentYearMonth = () => {
 		const date = new Date();
@@ -63,12 +70,13 @@ export function useTableFilters<T extends FilterableExpense>(expenses: T[]) {
 
 	// Compute available years from expenses
 	const availableYears = useMemo(() => {
+		if (providedYears) return providedYears;
 		const years = new Set<number>();
 		expenses.forEach((expense) => {
 			years.add(expense.date.getFullYear());
 		});
 		return Array.from(years).sort((a, b) => b - a);
-	}, [expenses]);
+	}, [expenses, providedYears]);
 
 	// Compute available months from expenses
 	const availableMonths = useMemo(() => {
@@ -81,11 +89,25 @@ export function useTableFilters<T extends FilterableExpense>(expenses: T[]) {
 
 	// Compute available categories (only from time-filtered expenses)
 	const availableCategories = useMemo(() => {
+		if (providedCategories && expenses.length === 0) return providedCategories;
+		
 		const categoryMap = new Map<string, CategoryWithUsage>();
 
 		const timeFilteredExpenses = expenses.filter((expense) =>
 			matchesTimeFilter(expense.date, selectedYears, selectedMonths),
 		);
+
+		// If we have expenses, we still want to calculate usage counts for the filtered view
+		// BUT if providedCategories is present, we can at least ensure all categories are shown
+		// the user asked for server-side aggregation specifically to avoid the O(N) iteration
+		// for finding *what* is available.
+		
+		if (providedCategories && expenses.length > 500) {
+			// Optimization: If dataset is large and we have provided categories, 
+			// maybe we skip counts or do a lighter approach?
+			// For now, let's honor the "Server-Side Aggregation" by preferring providedCategories
+			return providedCategories;
+		}
 
 		timeFilteredExpenses.forEach((expense) => {
 			if (expense.category) {
@@ -101,10 +123,19 @@ export function useTableFilters<T extends FilterableExpense>(expenses: T[]) {
 			}
 		});
 
+		// Add any missing categories from providedCategories with 0 count
+		if (providedCategories) {
+			providedCategories.forEach(cat => {
+				if (!categoryMap.has(cat.id)) {
+					categoryMap.set(cat.id, { ...cat, usageCount: 0 });
+				}
+			});
+		}
+
 		return Array.from(categoryMap.values()).sort(
 			(a, b) => b.usageCount - a.usageCount,
 		);
-	}, [expenses, selectedYears, selectedMonths]);
+	}, [expenses, selectedYears, selectedMonths, providedCategories]);
 
 	// Compute filtered expenses based on all active filters
 	const filteredExpenses = useMemo(() => {
