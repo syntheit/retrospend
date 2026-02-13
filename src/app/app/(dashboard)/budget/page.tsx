@@ -11,6 +11,10 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { handleError } from "~/lib/handle-error";
 import { api } from "~/trpc/react";
 
+import Link from "next/link";
+import { FlaskConical } from "lucide-react";
+import { Button } from "~/components/ui/button";
+
 export default function BudgetPage() {
 	const [selectedMonth, setSelectedMonth] = useState(new Date());
 	const isMobile = useIsMobile();
@@ -29,18 +33,16 @@ export default function BudgetPage() {
 
 	const { homeCurrency, usdToHomeRate: usdToHomeCurrencyRate } = useCurrency();
 
-
-
 	const copyFromLastMonth = api.budget.copyFromLastMonth.useMutation();
 
 	const categoryBudgets = useMemo(() => {
 		if (!budgets) return [];
 
 		return budgets
-			.filter((budget) => budget.category)
 			.map((budget) => {
-				// biome-ignore lint/style/noNonNullAssertion: Guaranteed by filter
-				const category = budget.category!;
+				const category = budget.category;
+				if (!category) return null;
+
 				return {
 					id: category.id,
 					name: category.name,
@@ -51,7 +53,8 @@ export default function BudgetPage() {
 					actualSpend: Number(budget.actualSpend),
 					pegToActual: budget.pegToActual ?? false,
 				};
-			});
+			})
+			.filter((b): b is NonNullable<typeof b> => b !== null);
 	}, [budgets]);
 
 	const navigateMonth = (direction: "prev" | "next") => {
@@ -85,7 +88,17 @@ export default function BudgetPage() {
 
 	return (
 		<>
-			<SiteHeader title="Monthly Budget" />
+			<SiteHeader 
+				title="Monthly Budget" 
+				actions={
+					<Link href="/app/budget/playground">
+						<Button size="sm" variant="outline" className="h-8 gap-2 border-dashed border-indigo-400/50 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300">
+							<FlaskConical className="h-3.5 w-3.5" />
+							{!isMobile && "Budget Playground"}
+						</Button>
+					</Link>
+				}
+			/>
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl space-y-6">
 					<BudgetHeader

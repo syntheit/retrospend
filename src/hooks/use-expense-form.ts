@@ -187,8 +187,10 @@ export function useExpenseForm({
 
 	// Manage navigation guard ref manually
 	useEffect(() => {
-		hasUnsavedChangesRef.current = isDirty;
-	}, [isDirty]);
+		const isEffectiveDirty =
+			isDirty && (mode === "edit" || !!watchedTitle || (watchedAmount || 0) > 0);
+		hasUnsavedChangesRef.current = isEffectiveDirty;
+	}, [isDirty, mode, watchedTitle, watchedAmount]);
 
 	// Load existing expense data
 	useEffect(() => {
@@ -324,6 +326,8 @@ export function useExpenseForm({
 
 	const handleDiscardChanges = () => {
 		setShowUnsavedDialog(false);
+		reset();
+		hasUnsavedChangesRef.current = false;
 		if (pendingNavigation) {
 			if (pendingNavigation === "back") router.back();
 			else if (pendingNavigation === "close") onClose?.();
@@ -368,7 +372,9 @@ export function useExpenseForm({
 		isSubmitting:
 			createExpenseMutation.isPending || updateExpenseMutation.isPending,
 		isDeleting: deleteExpenseMutation.isPending,
-		hasUnsavedChanges: isDirty,
+		hasUnsavedChanges:
+			isDirty &&
+			(mode === "edit" || !!watch("title") || (watch("amount") || 0) > 0),
 		hasUnsavedChangesRef,
 		showUnsavedDialog,
 		setShowUnsavedDialog,

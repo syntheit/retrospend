@@ -145,6 +145,7 @@ export const recurringRouter = createTRPCRouter({
 				frequency: z.enum(["WEEKLY", "MONTHLY", "YEARLY"]),
 				nextDueDate: z.date(),
 				websiteUrl: z.string().url().max(512).optional(),
+				paymentSource: z.string().min(1).max(191).optional(),
 				autoPay: z.boolean().default(true),
 			}),
 		)
@@ -174,6 +175,7 @@ export const recurringRouter = createTRPCRouter({
 					frequency: input.frequency,
 					nextDueDate: input.nextDueDate,
 					websiteUrl: input.websiteUrl,
+					paymentSource: input.paymentSource,
 					autoPay: input.autoPay,
 				},
 				include: {
@@ -201,6 +203,7 @@ export const recurringRouter = createTRPCRouter({
 				frequency: z.enum(["WEEKLY", "MONTHLY", "YEARLY"]).optional(),
 				nextDueDate: z.date().optional(),
 				websiteUrl: z.string().url().max(512).nullable().optional(),
+				paymentSource: z.string().min(1).max(191).nullable().optional(),
 				autoPay: z.boolean().optional(),
 				isActive: z.boolean().optional(),
 			}),
@@ -245,6 +248,7 @@ export const recurringRouter = createTRPCRouter({
 					frequency: input.frequency,
 					nextDueDate: input.nextDueDate,
 					websiteUrl: input.websiteUrl,
+					paymentSource: input.paymentSource,
 					autoPay: input.autoPay,
 					isActive: input.isActive,
 				},

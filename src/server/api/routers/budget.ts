@@ -71,6 +71,10 @@ export const budgetRouter = createTRPCRouter({
 				period: z.date(),
 				isRollover: z.boolean().optional().default(false),
 				pegToActual: z.boolean().optional().default(false),
+				type: z
+					.enum(["FIXED", "PEG_TO_ACTUAL", "PEG_TO_LAST_MONTH"])
+					.optional()
+					.default("FIXED"),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -96,6 +100,13 @@ export const budgetRouter = createTRPCRouter({
 				1,
 			);
 
+			// Logic to align pegToActual boolean with type enum if not explicitly provided or if conflicting
+			// If pegToActual is true and type is FIXED, set type to PEG_TO_ACTUAL (legacy support)
+			let budgetType = input.type;
+			if (input.pegToActual && input.type === "FIXED") {
+				budgetType = "PEG_TO_ACTUAL";
+			}
+
 			const budget = await db.budget.upsert({
 				where: {
 					userId_categoryId_period: {
@@ -109,6 +120,7 @@ export const budgetRouter = createTRPCRouter({
 					currency: input.currency,
 					isRollover: input.isRollover,
 					pegToActual: input.pegToActual,
+					type: budgetType,
 				},
 				create: {
 					userId: session.user.id,
@@ -118,6 +130,7 @@ export const budgetRouter = createTRPCRouter({
 					period: normalizedPeriod,
 					isRollover: input.isRollover,
 					pegToActual: input.pegToActual,
+					type: budgetType,
 				},
 				include: {
 					category: {
@@ -139,6 +152,75 @@ export const budgetRouter = createTRPCRouter({
 						? budget.amount.toNumber()
 						: Number(budget.amount),
 			};
+		}),
+
+	batchUpsertBudgets: protectedProcedure
+		.input(
+			z.array(
+				z.object({
+					categoryId: z.string().cuid(),
+					amount: z.number().min(0, "Budget amount must be non-negative"),
+					currency: z.string().length(3, "Currency must be a 3-letter code"),
+					period: z.date(),
+					isRollover: z.boolean().optional().default(false),
+					pegToActual: z.boolean().optional().default(false),
+					type: z
+						.enum(["FIXED", "PEG_TO_ACTUAL", "PEG_TO_LAST_MONTH"])
+						.optional()
+						.default("FIXED"),
+				}),
+			),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { session, db } = ctx;
+
+			const results = await db.$transaction(async (tx) => {
+				const processed = [];
+
+				for (const item of input) {
+					const normalizedPeriod = new Date(
+						item.period.getFullYear(),
+						item.period.getMonth(),
+						1,
+					);
+
+					let budgetType = item.type;
+					if (item.pegToActual && item.type === "FIXED") {
+						budgetType = "PEG_TO_ACTUAL";
+					}
+
+					const budget = await tx.budget.upsert({
+						where: {
+							userId_categoryId_period: {
+								userId: session.user.id,
+								categoryId: item.categoryId,
+								period: normalizedPeriod,
+							},
+						},
+						update: {
+							amount: item.amount,
+							currency: item.currency,
+							isRollover: item.isRollover,
+							pegToActual: item.pegToActual,
+							type: budgetType,
+						},
+						create: {
+							userId: session.user.id,
+							categoryId: item.categoryId,
+							amount: item.amount,
+							currency: item.currency,
+							period: normalizedPeriod,
+							isRollover: item.isRollover,
+							pegToActual: item.pegToActual,
+							type: budgetType,
+						},
+					});
+					processed.push(budget);
+				}
+				return processed;
+			});
+
+			return { count: results.length };
 		}),
 
 	getBudgetSuggestions: protectedProcedure

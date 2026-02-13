@@ -51,6 +51,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			hasUnsavedChangesRef,
 			showUnsavedDialog,
 			setShowUnsavedDialog,
+			setPendingNavigation,
 			isCustomRateSet,
 			setIsCustomRateSet,
 			categories,
@@ -66,10 +67,11 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			() => ({
 				hasUnsavedChanges: () => hasUnsavedChangesRef.current,
 				triggerUnsavedDialog: () => {
+					setPendingNavigation("close");
 					setShowUnsavedDialog(true);
 				},
 			}),
-			[hasUnsavedChangesRef, setShowUnsavedDialog],
+			[hasUnsavedChangesRef, setShowUnsavedDialog, setPendingNavigation],
 		);
 
 		if (isLoading) {
@@ -140,6 +142,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 									className="w-full sm:w-auto"
 									onClick={() => {
 										if (hasUnsavedChanges) {
+											setPendingNavigation("close");
 											setShowUnsavedDialog(true);
 										} else {
 											onClose?.();

@@ -59,56 +59,36 @@ interface Segment {
 	miscItems?: Array<{ name: string; value: number }>;
 }
 
-export function PartitionBar({
-	categoryBudgets,
-	isMobile,
-}: PartitionBarProps) {
-	const segments = useMemo(() => {
-		const totalAllocated = categoryBudgets.reduce(
-			(sum, budget) => sum + budget.allocatedAmount,
-			0,
-		);
-		const effectiveTotal = totalAllocated;
-		if (effectiveTotal === 0) return [];
+const MobilePartitionBar = ({
+	capacityPercentage,
+}: { capacityPercentage: number }) => {
+	return (
+		<div className="w-full">
+			<div className="relative h-12 w-full overflow-hidden rounded-lg bg-muted">
+				<div
+					className="absolute top-0 left-0 h-full bg-primary transition-all duration-300"
+					style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+				/>
+				{capacityPercentage > 100 && (
+					<div
+						className="absolute top-0 left-0 h-full bg-destructive transition-all duration-300"
+						style={{
+							width: `${Math.min(capacityPercentage - 100, 100)}%`,
+							marginLeft: "100%",
+						}}
+					/>
+				)}
+				<div className="absolute inset-0 flex items-center justify-center">
+					<span className="font-medium text-foreground text-sm">
+						{Math.round(capacityPercentage)}% Capacity Used
+					</span>
+				</div>
+			</div>
+		</div>
+	);
+};
 
-		const allocatedSegments: Segment[] = categoryBudgets.map((budget) => ({
-			id: budget.id,
-			name: budget.name,
-			color: budget.color,
-			percentage: (budget.allocatedAmount / effectiveTotal) * 100,
-			value: budget.allocatedAmount,
-			isMisc: false,
-			isPegged: budget.pegToActual,
-		}));
-
-		const regularSegments: Segment[] = [];
-		const smallSlices: Array<{ name: string; value: number }> = [];
-
-		allocatedSegments.forEach((segment) => {
-			if (segment.percentage < 5) {
-				smallSlices.push({ name: segment.name, value: segment.value });
-			} else {
-				regularSegments.push(segment);
-			}
-		});
-
-		if (smallSlices.length > 0) {
-			const miscValue = smallSlices.reduce((sum, item) => sum + item.value, 0);
-			regularSegments.push({
-				id: "misc",
-				name: "Misc/Other",
-				color: "gray",
-				percentage: (miscValue / effectiveTotal) * 100,
-				value: miscValue,
-				isMisc: true,
-				isPegged: false,
-				miscItems: smallSlices,
-			});
-		}
-
-		return regularSegments;
-	}, [categoryBudgets]);
-
+const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 	const getColorStyle = (color: string) => {
 		if (color === "stone") return { backgroundColor: "#444" };
 		if (color === "gray") return { backgroundColor: "#6b7280" };
@@ -123,45 +103,6 @@ export function PartitionBar({
 		}
 		return { backgroundColor: "#6b7280" };
 	};
-
-	if (isMobile) {
-		const _totalAllocated = categoryBudgets.reduce(
-			(sum, budget) => sum + budget.allocatedAmount,
-			0,
-		);
-		const totalSpent = categoryBudgets.reduce(
-			(sum, budget) => sum + budget.actualSpend,
-			0,
-		);
-		const effectiveTotal = _totalAllocated;
-		const capacityPercentage =
-			effectiveTotal > 0 ? (totalSpent / effectiveTotal) * 100 : 0;
-
-		return (
-			<div className="w-full">
-				<div className="relative h-12 w-full overflow-hidden rounded-lg bg-muted">
-					<div
-						className="absolute top-0 left-0 h-full bg-primary transition-all duration-300"
-						style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
-					/>
-					{capacityPercentage > 100 && (
-						<div
-							className="absolute top-0 left-0 h-full bg-destructive transition-all duration-300"
-							style={{
-								width: `${Math.min(capacityPercentage - 100, 100)}%`,
-								marginLeft: "100%",
-							}}
-						/>
-					)}
-					<div className="absolute inset-0 flex items-center justify-center">
-						<span className="font-medium text-foreground text-sm">
-							{Math.round(capacityPercentage)}% Capacity Used
-						</span>
-					</div>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className="w-full">
@@ -219,6 +160,83 @@ export function PartitionBar({
 						);
 					})}
 				</div>
+			</div>
+		</div>
+	);
+};
+
+export function PartitionBar({
+	categoryBudgets,
+}: Omit<PartitionBarProps, "isMobile"> & { isMobile?: boolean }) {
+	const { segments, capacityPercentage } = useMemo(() => {
+		const totalAllocated = categoryBudgets.reduce(
+			(sum, budget) => sum + budget.allocatedAmount,
+			0,
+		);
+		const totalSpent = categoryBudgets.reduce(
+			(sum, budget) => sum + budget.actualSpend,
+			0,
+		);
+
+		const effectiveTotal = totalAllocated;
+
+		// Desktop Segments logic
+		let calculatedSegments: Segment[] = [];
+		if (effectiveTotal > 0) {
+			const allocatedSegments: Segment[] = categoryBudgets.map((budget) => ({
+				id: budget.id,
+				name: budget.name,
+				color: budget.color,
+				percentage: (budget.allocatedAmount / effectiveTotal) * 100,
+				value: budget.allocatedAmount,
+				isMisc: false,
+				isPegged: budget.pegToActual,
+			}));
+
+			const regularSegments: Segment[] = [];
+			const smallSlices: Array<{ name: string; value: number }> = [];
+
+			allocatedSegments.forEach((segment) => {
+				if (segment.percentage < 5) {
+					smallSlices.push({ name: segment.name, value: segment.value });
+				} else {
+					regularSegments.push(segment);
+				}
+			});
+
+			if (smallSlices.length > 0) {
+				const miscValue = smallSlices.reduce((sum, item) => sum + item.value, 0);
+				regularSegments.push({
+					id: "misc",
+					name: "Misc/Other",
+					color: "gray",
+					percentage: (miscValue / effectiveTotal) * 100,
+					value: miscValue,
+					isMisc: true,
+					isPegged: false,
+					miscItems: smallSlices,
+				});
+			}
+			calculatedSegments = regularSegments;
+		}
+
+		// Mobile Capacity logic
+		const calculatedCapacityPercentage =
+			effectiveTotal > 0 ? (totalSpent / effectiveTotal) * 100 : 0;
+
+		return {
+			segments: calculatedSegments,
+			capacityPercentage: calculatedCapacityPercentage,
+		};
+	}, [categoryBudgets]);
+
+	return (
+		<div className="w-full">
+			<div className="md:hidden">
+				<MobilePartitionBar capacityPercentage={capacityPercentage} />
+			</div>
+			<div className="hidden md:block">
+				<DesktopPartitionBar segments={segments} />
 			</div>
 		</div>
 	);

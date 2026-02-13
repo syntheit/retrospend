@@ -41,6 +41,7 @@ const recurringSchema = z.object({
 	frequency: z.enum(["WEEKLY", "MONTHLY", "YEARLY"]),
 	nextDueDate: z.date(),
 	websiteUrl: z.string().url().optional().or(z.literal("")),
+	paymentSource: z.string().optional(),
 	autoPay: z.boolean(),
 });
 
@@ -105,6 +106,7 @@ export function RecurringModal({
 			frequency: "MONTHLY",
 			nextDueDate: new Date(),
 			websiteUrl: "",
+			paymentSource: "",
 			autoPay: true,
 		},
 	});
@@ -133,10 +135,23 @@ export function RecurringModal({
 				frequency: template.frequency,
 				nextDueDate: new Date(template.nextDueDate),
 				websiteUrl: template.websiteUrl ?? "",
+				paymentSource: template.paymentSource ?? "",
 				autoPay: template.autoPay,
 			});
 		}
 	}, [template, reset]);
+
+	const watchedCurrency = watch("currency");
+	const watchedAmount = watch("amount");
+	const homeCurrency = settings?.homeCurrency ?? "USD";
+
+	const { getDefaultRate, isLoading: isRateLoading } = useExchangeRates({
+		currency: watchedCurrency,
+		enabled: watchedCurrency !== homeCurrency && !!watchedAmount,
+		preferFavorites: true,
+	});
+
+	const activeRate = getDefaultRate();
 
 	const onSubmit = async (data: RecurringFormData) => {
 		if (templateId) {
@@ -145,12 +160,15 @@ export function RecurringModal({
 				...data,
 				categoryId: data.categoryId || null,
 				websiteUrl: data.websiteUrl || null,
+				paymentSource: data.paymentSource || null,
 			});
 		} else {
 			await createMutation.mutateAsync({
 				...data,
+				...data,
 				categoryId: data.categoryId || undefined,
 				websiteUrl: data.websiteUrl || undefined,
+				paymentSource: data.paymentSource || undefined,
 			});
 		}
 	};
@@ -208,9 +226,11 @@ export function RecurringModal({
 								/>
 							</div>
 							<CurrencyEstimate
-								amount={watch("amount")}
-								currency={watch("currency")}
-								homeCurrency={settings?.homeCurrency ?? "USD"}
+								amount={watchedAmount}
+								currency={watchedCurrency}
+								homeCurrency={homeCurrency}
+								isLoading={isRateLoading}
+								rate={activeRate?.rate}
 							/>
 							{errors.amount && (
 								<p className="text-destructive text-sm">
@@ -226,6 +246,19 @@ export function RecurringModal({
 								value={watch("currency")}
 							/>
 						</div>
+					</div>
+					
+					{/* Payment Source */}
+					<div className="space-y-2">
+						<Label htmlFor="paymentSource">Payment Source</Label>
+						<Input
+							id="paymentSource"
+							{...register("paymentSource")}
+							placeholder="e.g. Chase Checking"
+						/>
+						{errors.paymentSource && (
+							<p className="text-destructive text-sm">{errors.paymentSource.message}</p>
+						)}
 					</div>
 
 					{/* Category */}
@@ -311,26 +344,24 @@ function CurrencyEstimate({
 	amount,
 	currency,
 	homeCurrency,
+	rate,
+	isLoading,
 }: {
 	amount: number;
 	currency: string;
 	homeCurrency: string;
+	rate?: number;
+	isLoading: boolean;
 }) {
 	const { formatCurrency } = useCurrencyFormatter();
-	const { getDefaultRate, isLoading } = useExchangeRates({
-		currency,
-		enabled: currency !== homeCurrency && !!amount,
-		preferFavorites: true,
-	});
 
 	if (currency === homeCurrency || !amount) return null;
 	if (isLoading)
 		return <p className="text-muted-foreground text-xs">Calculating...</p>;
 
-	const rate = getDefaultRate();
 	if (!rate) return null;
 
-	const estimation = amount / rate.rate;
+	const estimation = amount / rate;
 
 	return (
 		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">

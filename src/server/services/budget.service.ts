@@ -16,6 +16,7 @@ export interface BudgetWithStats {
 	isRollover: boolean;
 	rolloverAmount: number;
 	pegToActual: boolean;
+	type: "FIXED" | "PEG_TO_ACTUAL" | "PEG_TO_LAST_MONTH";
 	actualSpend: number;
 	actualSpendInUSD: number;
 	effectiveAmount: number;
@@ -101,10 +102,56 @@ export async function getBudgets(
 			const budgetAmount = toNumber(budget.amount);
 			const amountInUSD = rate > 0 ? budgetAmount / rate : budgetAmount;
 
-			const effectiveAmount = budget.pegToActual ? actualSpend : budgetAmount;
-			const effectiveAmountInUSD = budget.pegToActual
-				? spendInUSDNumber
-				: amountInUSD;
+			let effectiveAmount = budgetAmount;
+			let effectiveAmountInUSD = amountInUSD;
+
+			if (budget.type === "PEG_TO_ACTUAL" || budget.pegToActual) {
+				effectiveAmount = actualSpend;
+				effectiveAmountInUSD = spendInUSDNumber;
+			} else if (budget.type === "PEG_TO_LAST_MONTH") {
+				// If current month has spend, show last month's actuals as the budget
+				if (actualSpend > 0) {
+					const lastMonth = new Date(month);
+					lastMonth.setMonth(lastMonth.getMonth() - 1);
+					const startOfLastMonth = new Date(
+						lastMonth.getFullYear(),
+						lastMonth.getMonth(),
+						1,
+					);
+					const endOfLastMonth = new Date(
+						lastMonth.getFullYear(),
+						lastMonth.getMonth() + 1,
+						0,
+						23,
+						59,
+						59,
+						999,
+					);
+
+					const { total: lastMonthSpend, totalInUSD: lastMonthSpendInUSD } =
+						await sumExpensesForCurrency(
+							db,
+							{
+								userId,
+								categoryId: budget.categoryId,
+								isAmortizedParent: false,
+								date: {
+									gte: startOfLastMonth,
+									lte: endOfLastMonth,
+								},
+							},
+							budget.currency,
+							lastMonth,
+						);
+
+					effectiveAmount = lastMonthSpend;
+					effectiveAmountInUSD = lastMonthSpendInUSD;
+				} else {
+					// Hide/zero-out if no spend yet
+					effectiveAmount = 0;
+					effectiveAmountInUSD = 0;
+				}
+			}
 
 			return {
 				...budget,
@@ -340,6 +387,7 @@ export async function copyFromLastMonth(
 					period: targetPeriod,
 					isRollover: sourceBudget.isRollover,
 					pegToActual: sourceBudget.pegToActual,
+					type: sourceBudget.type,
 				},
 				include: {
 					category: { select: { id: true, name: true, color: true } },

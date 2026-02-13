@@ -3,7 +3,7 @@ import { Separator } from "~/components/ui/separator";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 
 interface SiteHeaderProps {
-	title: string;
+	title: string | ReactNode;
 	actions?: ReactNode;
 }
 
@@ -16,7 +16,11 @@ export function SiteHeader({ title, actions }: SiteHeaderProps) {
 					className="mx-2 data-[orientation=vertical]:h-4"
 					orientation="vertical"
 				/>
-				<h1 className="font-medium text-base">{title}</h1>
+				{typeof title === "string" ? (
+					<h1 className="font-medium text-base">{title}</h1>
+				) : (
+					title
+				)}
 				<div className="ml-auto flex items-center gap-2">{actions}</div>
 			</div>
 		</header>

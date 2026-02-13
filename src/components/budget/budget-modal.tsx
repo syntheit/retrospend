@@ -1,7 +1,6 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Lock, LockOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -13,18 +12,27 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
-import { getCurrencySymbol } from "~/lib/utils";
+import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import type { Budget, Category } from "~/types/budget-types";
 import { QuickChips } from "./quick-chips";
+
+type BudgetType = "FIXED" | "PEG_TO_ACTUAL" | "PEG_TO_LAST_MONTH";
 
 interface BudgetModalProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode: "add" | "edit";
 	category: Category;
-	budget?: Pick<Budget, "id" | "amount" | "currency" | "pegToActual">;
+	budget?: Pick<Budget, "id" | "amount" | "currency" | "pegToActual" | "type">;
 	selectedMonth: Date;
 	homeCurrency: string;
 }
@@ -40,18 +48,28 @@ export function BudgetModal({
 }: BudgetModalProps) {
 	const queryClient = useQueryClient();
 	const [amount, setAmount] = useState(budget?.amount?.toString() || "");
-	const [isPegged, setIsPegged] = useState(budget?.pegToActual || false);
+	const [budgetType, setBudgetType] = useState<BudgetType>(
+		budget?.type || (budget?.pegToActual ? "PEG_TO_ACTUAL" : "FIXED"),
+	);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+
+	// Determine if input should be disabled based on type
+	const isPegged = budgetType !== "FIXED";
 
 	useEffect(() => {
 		if (open) {
 			setAmount(budget?.amount?.toString() || "");
-			setIsPegged(budget?.pegToActual || false);
+			setBudgetType(
+				budget?.type || (budget?.pegToActual ? "PEG_TO_ACTUAL" : "FIXED"),
+			);
 			setIsSubmitting(false);
 
 			// Focus input after a short delay to ensure modal is rendered (skip if pegged)
-			if (!budget?.pegToActual) {
+			if (
+				!budget?.pegToActual &&
+				(!budget?.type || budget.type === "FIXED")
+			) {
 				setTimeout(() => {
 					inputRef.current?.focus();
 					inputRef.current?.select();
@@ -98,7 +116,8 @@ export function BudgetModal({
 			amount: amountValue,
 			currency: budgetCurrency,
 			period: selectedMonth,
-			pegToActual: isPegged,
+			pegToActual: budgetType === "PEG_TO_ACTUAL", // Maintain legacy field
+			type: budgetType,
 		});
 	};
 
@@ -126,10 +145,48 @@ export function BudgetModal({
 
 				<form className="space-y-4" onSubmit={handleSubmit}>
 					<div className="space-y-2">
+						<Label>Budget Method</Label>
+						<Select
+							onValueChange={(val) => setBudgetType(val as BudgetType)}
+							value={budgetType}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Select budget method" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="FIXED">
+									<div className="flex flex-col">
+										<span className="font-medium">Fixed Amount</span>
+										<span className="text-muted-foreground text-xs">
+											Set a specific limit
+										</span>
+									</div>
+								</SelectItem>
+								<SelectItem value="PEG_TO_ACTUAL">
+									<div className="flex flex-col">
+										<span className="font-medium">Peg to Actual</span>
+										<span className="text-muted-foreground text-xs">
+											Budget always matches spend
+										</span>
+									</div>
+								</SelectItem>
+								<SelectItem value="PEG_TO_LAST_MONTH">
+									<div className="flex flex-col">
+										<span className="font-medium">Peg to Last Month</span>
+										<span className="text-muted-foreground text-xs">
+											Use last month's spend as limit
+										</span>
+									</div>
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className={cn("space-y-2", isPegged && "opacity-50")}>
 						<Label htmlFor="budget-amount">
 							Budget Amount{" "}
 							{isPegged && (
-								<span className="text-muted-foreground">(optional)</span>
+								<span className="text-muted-foreground">(auto-calculated)</span>
 							)}
 						</Label>
 						<div className="relative">
@@ -150,15 +207,9 @@ export function BudgetModal({
 								value={amount}
 							/>
 						</div>
-						{isPegged && (
-							<p className="text-muted-foreground text-sm">
-								Amount will be automatically set to match your actual spending
-								this month.
-							</p>
-						)}
 					</div>
 
-					{mode === "edit" && suggestions && (
+					{mode === "edit" && suggestions && !isPegged && (
 						<div className="space-y-2">
 							<Label>Quick Suggestions</Label>
 							<QuickChips
@@ -169,27 +220,6 @@ export function BudgetModal({
 							/>
 						</div>
 					)}
-
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<Button
-								className={`h-8 w-8 p-0 ${isPegged ? "text-primary" : "text-muted-foreground"}`}
-								onClick={() => setIsPegged(!isPegged)}
-								size="sm"
-								type="button"
-								variant="ghost"
-							>
-								{isPegged ? (
-									<Lock className="h-4 w-4" />
-								) : (
-									<LockOpen className="h-4 w-4" />
-								)}
-							</Button>
-							<span className="text-muted-foreground text-sm">
-								{isPegged ? "Pegged to actual spend" : "Fixed budget amount"}
-							</span>
-						</div>
-					</div>
 
 					<div className="flex justify-end gap-2 pt-4">
 						<Button

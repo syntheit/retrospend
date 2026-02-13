@@ -241,7 +241,7 @@ export const preferencesRouter = createTRPCRouter({
 	toggleFavoriteExchangeRate: protectedProcedure
 		.input(
 			z.object({
-				exchangeRateId: z.string().cuid(),
+				exchangeRateId: z.string(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
