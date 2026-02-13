@@ -23,6 +23,7 @@ export const settingsRouter = createTRPCRouter({
 				currencySymbolStyle: true,
 				monthlyIncome: true,
 				budgetMode: true,
+				smartCurrencyFormatting: true,
 			},
 		});
 
@@ -40,6 +41,7 @@ export const settingsRouter = createTRPCRouter({
 			currencySymbolStyle: user.currencySymbolStyle,
 			monthlyIncome: user.monthlyIncome,
 			budgetMode: user.budgetMode,
+			smartCurrencyFormatting: user.smartCurrencyFormatting,
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};
@@ -61,6 +63,7 @@ export const settingsRouter = createTRPCRouter({
 					.number()
 					.min(0, "Monthly income must be non-negative")
 					.optional(),
+				smartCurrencyFormatting: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -87,6 +90,9 @@ export const settingsRouter = createTRPCRouter({
 					}),
 					...(input.monthlyIncome !== undefined && {
 						monthlyIncome: input.monthlyIncome,
+					}),
+					...(input.smartCurrencyFormatting !== undefined && {
+						smartCurrencyFormatting: input.smartCurrencyFormatting,
 					}),
 				},
 				select: {

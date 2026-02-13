@@ -25,13 +25,8 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Switch } from "~/components/ui/switch";
 import { CURRENCIES, type CurrencyCode } from "~/lib/currencies";
 import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -49,6 +44,7 @@ const generalSettingsSchema = z.object({
 	fontPreference: z.enum(["sans", "mono"]),
 	currencySymbolStyle: z.enum(["native", "standard"]),
 	monthlyIncome: z.string().optional(),
+	smartCurrencyFormatting: z.boolean(),
 });
 
 type GeneralSettingsValues = z.infer<typeof generalSettingsSchema>;
@@ -71,6 +67,7 @@ export function GeneralSettings() {
 			fontPreference: "sans",
 			currencySymbolStyle: "standard",
 			monthlyIncome: "",
+			smartCurrencyFormatting: true,
 		},
 	});
 
@@ -105,6 +102,7 @@ export function GeneralSettings() {
 				monthlyIncome: settings.monthlyIncome
 					? settings.monthlyIncome.toString()
 					: "",
+				smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
 			});
 		}
 	}, [settings, form]);
@@ -122,6 +120,7 @@ export function GeneralSettings() {
 				fontPreference: values.fontPreference,
 				currencySymbolStyle: values.currencySymbolStyle,
 				monthlyIncome: monthlyIncomeValue,
+				smartCurrencyFormatting: values.smartCurrencyFormatting,
 			});
 			// Reset dirty state with new values
 			form.reset(values);
@@ -349,6 +348,30 @@ export function GeneralSettings() {
 										dashboard.
 									</FormDescription>
 									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="smartCurrencyFormatting"
+							render={({ field }) => (
+								<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+									<div className="space-y-0.5">
+										<FormLabel className="text-base">
+											Smart Currency Formatting
+										</FormLabel>
+										<FormDescription>
+											Automatically hide decimals for high-denomination
+											currencies like JPY, ARS, and VND.
+										</FormDescription>
+									</div>
+									<FormControl>
+										<Switch
+											checked={field.value}
+											onCheckedChange={field.onChange}
+										/>
+									</FormControl>
 								</FormItem>
 							)}
 						/>

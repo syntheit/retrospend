@@ -103,6 +103,24 @@ export function getCurrencyName(currency: string): string {
 }
 
 /**
+ * Currencies where decimals are typically redundant due to high denomination.
+ */
+export const SMART_NO_DECIMAL_CURRENCIES = [
+	"ARS", // Argentine Peso
+	"CLP", // Chilean Peso
+	"COP", // Colombian Peso
+	"IDR", // Indonesian Rupiah
+	"ISK", // Icelandic Króna
+	"JPY", // Japanese Yen
+	"KRW", // South Korean Won
+	"PYG", // Paraguayan Guarani
+	"TWD", // New Taiwan Dollar
+	"VND", // Vietnamese Dong
+	"VUV", // Vanuatu Vatu
+	"UGX", // Ugandan Shilling
+];
+
+/**
  * Formats a currency amount using proper Intl.NumberFormat with currency style.
  * Automatically handles symbols, locale, and decimal digits based on currency.
  */
@@ -110,6 +128,7 @@ export function formatCurrency(
 	amount: number,
 	currency = "USD",
 	currencySymbolStyle: "native" | "standard" = "standard",
+	smartFormatting = true,
 ): string {
 	const currencyData =
 		CURRENCIES[currency.toUpperCase() as keyof typeof CURRENCIES];
@@ -131,7 +150,13 @@ export function formatCurrency(
 	};
 
 	const locale = getLocaleForCurrency(currency);
-	const decimalDigits = currencyData?.decimal_digits ?? 2;
+
+	// Determine decimal digits based on currency and smart formatting preference
+	let decimalDigits = currencyData?.decimal_digits ?? 2;
+
+	if (smartFormatting && SMART_NO_DECIMAL_CURRENCIES.includes(currency.toUpperCase())) {
+		decimalDigits = 0;
+	}
 
 	// Choose symbol based on preference
 	const symbol =

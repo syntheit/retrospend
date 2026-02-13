@@ -9,35 +9,36 @@ datasource db {
 }
 
 model User {
-  id                    String                        @id @default(cuid())
-  name                  String                        @db.VarChar(191)
-  username              String                        @unique @db.VarChar(64)
-  email                 String                        @unique @db.VarChar(255)
-  emailVerified         Boolean                       @default(false)
-  image                 String?                       @db.VarChar(2048)
-  homeCurrency          String                        @default("USD") @db.VarChar(3)
-  categoryClickBehavior CategoryClickBehavior         @default(toggle)
-  budgetMode            BudgetMode                    @default(GLOBAL_LIMIT)
-  role                  UserRole                      @default(USER)
-  isActive              Boolean                       @default(true)
-  createdAt             DateTime                      @default(now())
-  updatedAt             DateTime                      @default(now()) @updatedAt
-  defaultCurrency       String                        @default("USD") @db.VarChar(3)
-  fontPreference        FontPreference                @default(sans)
-  currencySymbolStyle   CurrencySymbolStyle           @default(standard)
-  monthlyIncome         Decimal?                      @db.Decimal(10, 2)
-  accounts              Account[]
-  assetAccounts         AssetAccount[]
-  categories            Category[]
-  favoriteExchangeRates ExchangeRateFavorite[]
-  expenses              Expense[]
-  budgets               Budget[]
-  recurringTemplates    RecurringTemplate[]
-  createdInviteCodes    InviteCode[]                  @relation("CreatedInviteCodes")
-  usedInviteCodes       InviteCode[]                  @relation("UsedInviteCodes")
-  sessions              Session[]
-  pageSettings          UserPageSetting[]
-  analyticsPreferences  AnalyticsCategoryPreference[]
+  id                      String                        @id @default(cuid())
+  name                    String                        @db.VarChar(191)
+  username                String                        @unique @db.VarChar(64)
+  email                   String                        @unique @db.VarChar(255)
+  emailVerified           Boolean                       @default(false)
+  image                   String?                       @db.VarChar(2048)
+  homeCurrency            String                        @default("USD") @db.VarChar(3)
+  categoryClickBehavior   CategoryClickBehavior         @default(toggle)
+  budgetMode              BudgetMode                    @default(GLOBAL_LIMIT)
+  role                    UserRole                      @default(USER)
+  isActive                Boolean                       @default(true)
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @default(now()) @updatedAt
+  defaultCurrency         String                        @default("USD") @db.VarChar(3)
+  fontPreference          FontPreference                @default(sans)
+  currencySymbolStyle     CurrencySymbolStyle           @default(standard)
+  monthlyIncome           Decimal?                      @db.Decimal(10, 2)
+  smartCurrencyFormatting Boolean                       @default(true)
+  accounts                Account[]
+  assetAccounts           AssetAccount[]
+  categories              Category[]
+  favoriteExchangeRates   ExchangeRateFavorite[]
+  expenses                Expense[]
+  budgets                 Budget[]
+  recurringTemplates      RecurringTemplate[]
+  createdInviteCodes      InviteCode[]                  @relation("CreatedInviteCodes")
+  usedInviteCodes         InviteCode[]                  @relation("UsedInviteCodes")
+  sessions                Session[]
+  pageSettings            UserPageSetting[]
+  analyticsPreferences    AnalyticsCategoryPreference[]
 
   @@map("user")
 }

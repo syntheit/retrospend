@@ -15,6 +15,7 @@ export function useCurrencyFormatter() {
 			amount,
 			currency,
 			settings?.currencySymbolStyle ?? "standard",
+			settings?.smartCurrencyFormatting ?? true,
 		);
 	};
 
