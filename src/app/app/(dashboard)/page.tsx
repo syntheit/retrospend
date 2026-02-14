@@ -18,8 +18,7 @@ import { CategoryDonut } from "./_components/category-donut";
 import { FavoritesPanel } from "./_components/favorites-panel";
 import { RecentExpenses } from "./_components/recent-expenses";
 import { StatsCards } from "./_components/stats-cards";
-import { TrendChart } from "./_components/trend-chart";
-
+import { BudgetPacingChart } from "./_components/budget-pacing-chart";
 
 export default function Page() {
 	const { state, data, isLoading, actions } = useOverviewController();
@@ -74,49 +73,61 @@ export default function Page() {
 						totalThisMonth={data.summaryStats?.totalThisMonth ?? 0}
 					/>
 
-					<section className="grid gap-4 lg:grid-cols-2">
-						<CategoryDonut
-							activeSlice={state.activeSlice}
-							activeSliceIndex={state.activeSliceIndex}
-							categoryBreakdown={data.categoryBreakdown}
-							categoryClickBehavior={data.categoryClickBehavior}
-							expensesLoading={isLoading.categories}
-							formatMoney={(value: number) =>
-								formatCurrency(value, data.homeCurrency)
-							}
-							handleCategoryClick={actions.handleCategoryClick}
-							handleSliceEnter={(_, index) => actions.setActiveSliceIndex(index)}
-							handleSliceLeave={() => actions.setActiveSliceIndex(null)}
-							hiddenCategories={state.hiddenCategories}
-							isUsingMockExpenses={state.isUsingMockExpenses}
-							pieChartConfig={data.pieChartConfig}
-							visibleCategoryBreakdown={data.visibleCategoryBreakdown}
-							visibleTotal={data.visibleTotal}
-						/>
+					<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+						{/* Main Content Column */}
+						<div className="space-y-6 lg:col-span-7">
+							<div className="h-[350px]">
+								<BudgetPacingChart
+									chartConfig={data.areaChartConfig}
+									dailyTrend={data.dailyTrend}
+									expensesLoading={isLoading.trend}
+									homeCurrency={data.homeCurrency}
+									variableBudget={data.budgetPacing.variableBudget}
+									variableSpent={data.budgetPacing.variableSpent}
+									daysInMonth={data.budgetPacing.daysInMonth}
+									currentDay={data.budgetPacing.currentDay}
+								/>
+							</div>
 
-						<RecentExpenses
-							expensesLoading={isLoading.expenses}
-							formatCurrency={formatCurrency}
-							homeCurrency={data.homeCurrency}
-							liveRateToBaseCurrency={data.liveRateToBaseCurrency}
-							recentExpenses={data.recentExpenses}
-						/>
-					</section>
+							<RecentExpenses
+								expensesLoading={isLoading.expenses}
+								formatCurrency={formatCurrency}
+								homeCurrency={data.homeCurrency}
+								liveRateToBaseCurrency={data.liveRateToBaseCurrency}
+								recentExpenses={data.recentExpenses}
+							/>
+						</div>
 
-					<section className="grid gap-4 lg:grid-cols-3">
-						<TrendChart
-							areaChartConfig={data.areaChartConfig}
-							dailyTrend={data.dailyTrend}
-							expensesLoading={isLoading.trend}
-							now={state.now}
-						/>
+						{/* Sidebar Column */}
+						<div className="space-y-6 lg:col-span-5">
+							<CategoryDonut
+								activeSlice={state.activeSlice}
+								activeSliceIndex={state.activeSliceIndex}
+								categoryBreakdown={data.categoryBreakdown}
+								categoryClickBehavior={data.categoryClickBehavior}
+								expensesLoading={isLoading.categories}
+								formatMoney={(value: number) =>
+									formatCurrency(value, data.homeCurrency)
+								}
+								handleCategoryClick={actions.handleCategoryClick}
+								handleSliceEnter={(_, index) =>
+									actions.setActiveSliceIndex(index)
+								}
+								handleSliceLeave={() => actions.setActiveSliceIndex(null)}
+								hiddenCategories={state.hiddenCategories}
+								isUsingMockExpenses={state.isUsingMockExpenses}
+								pieChartConfig={data.pieChartConfig}
+								visibleCategoryBreakdown={data.visibleCategoryBreakdown}
+								visibleTotal={data.visibleTotal}
+							/>
 
-						<FavoritesPanel
-							favoriteRates={data.favoriteRates}
-							favoritesLoading={isLoading.favorites}
-							isUsingMockFavorites={state.isUsingMockFavorites}
-						/>
-					</section>
+							<FavoritesPanel
+								favoriteRates={data.favoriteRates}
+								favoritesLoading={isLoading.favorites}
+								isUsingMockFavorites={state.isUsingMockFavorites}
+							/>
+						</div>
+					</div>
 				</div>
 			</PageContent>
 		</>

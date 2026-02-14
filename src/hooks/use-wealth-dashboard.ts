@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { Asset } from "~/components/wealth/wealth-table-columns";
 import { parseDateOnly } from "~/lib/date";
-import { AssetType } from "~/lib/db-enums";
+import type { AssetType } from "~/lib/db-enums";
 import { normalizeAssets, toNumber } from "~/lib/utils";
 import {
 	ASSET_COLORS,
@@ -11,7 +12,6 @@ import {
 	TIME_RANGES,
 	type TimeRangeValue,
 } from "~/lib/wealth-constants";
-import type { Asset } from "~/components/wealth/wealth-table-columns";
 
 export type WealthCategory = "all" | "asset" | "liability";
 

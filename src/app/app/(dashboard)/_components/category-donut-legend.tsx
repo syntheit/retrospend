@@ -31,7 +31,7 @@ export function CategoryDonutLegend({
 	onMouseLeave,
 }: CategoryDonutLegendProps) {
 	return (
-		<div className="mt-4 grid gap-1">
+		<div className="mt-4 grid grid-cols-1 gap-1 md:grid-cols-2 lg:grid-cols-1 lg:gap-2">
 			{data.map((segment) => {
 				const isHidden =
 					segment.categoryId && hiddenCategories.has(segment.categoryId);
@@ -61,17 +61,14 @@ export function CategoryDonutLegend({
 					>
 						<div className="flex items-center gap-2">
 							<span
-								className={cn(
-									"h-2 w-2 rounded-full",
-									isHidden && "opacity-50",
-								)}
+								className={cn("h-2 w-2 rounded-full", isHidden && "opacity-50")}
 								style={{
 									backgroundColor: segment.color,
 								}}
 							/>
 							<span
 								className={cn(
-									"text-muted-foreground text-xs font-medium transition-all",
+									"font-medium text-muted-foreground text-xs transition-all",
 									isHidden ? "line-through" : "group-hover:text-foreground",
 								)}
 							>

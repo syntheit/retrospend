@@ -1,9 +1,6 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconChevronUp,
-} from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	flexRender,
@@ -28,9 +25,10 @@ import {
 import { cn } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
 import { TableSearch } from "./table-search";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 
 interface DataTableProps<TData> {
-// ... (props remain same)
+	// ... (props remain same)
 	data: TData[];
 	columns: ColumnDef<TData>[];
 	onRowClick?: (row: TData) => void;
@@ -59,7 +57,7 @@ export function DataTable<TData extends { id: string }>({
 	renderToolbar,
 	footer,
 	initialSorting = [],
-	pageSize = 15,
+	pageSize = DEFAULT_PAGE_SIZE,
 }: DataTableProps<TData>) {
 	const [searchInput, setSearchInput] = React.useState("");
 	const deferredSearch = React.useDeferredValue(searchInput);
@@ -232,4 +230,3 @@ export function DataTable<TData extends { id: string }>({
 		</div>
 	);
 }
-

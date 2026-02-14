@@ -2,7 +2,7 @@
 
 import { addMonths, format, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -47,8 +47,19 @@ export function MonthStepper({
 	const [open, setOpen] = useState(false);
 	const [popoverYear, setPopoverYear] = useState(() => value.getFullYear());
 
-	const now = useMemo(() => new Date(), []);
-	const effectiveMaxDate = maxDate ?? now;
+	const [now, setNow] = useState<Date | null>(null);
+	
+	// Hydrate "now" on client only to avoid hydration mismatch
+	useEffect(() => {
+		setNow(new Date());
+	}, []);
+
+	
+	const effectiveMaxDate = useMemo(() => {
+		// During SSR/Hydration, we can't safely know "now" without hydration error if times differ.
+		// Use "now" state if available (client-side), otherwise fallback to safe default.
+		return maxDate ?? (now || new Date()); 
+	}, [maxDate, now]);
 
 	const canGoForward = useMemo(() => {
 		const nextMonth = addMonths(value, 1);

@@ -1,13 +1,13 @@
 "use client";
 
-import { format } from "date-fns";
 import { IconRefresh } from "@tabler/icons-react";
+import { format } from "date-fns";
+import { ErrorBoundary } from "~/components/error-boundary";
 import { ExchangeRatesTable } from "~/components/exchange-rates-table";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { ErrorBoundary } from "~/components/error-boundary";
 import { useExchangeRatesController } from "~/hooks/use-exchange-rates-controller";
 import { cn } from "~/lib/utils";
 
@@ -78,14 +78,18 @@ export default function Page() {
 						size="sm"
 						variant="outline"
 					>
-						<IconRefresh className={cn("size-4", isSyncing && "animate-spin")} />
+						<IconRefresh
+							className={cn("size-4", isSyncing && "animate-spin")}
+						/>
 						{isSyncing ? "Syncing..." : "Sync Now"}
 					</Button>
 				</div>
 				<ErrorBoundary>
 					<Tabs
 						className="space-y-4"
-						onValueChange={(value) => viewState.setActiveTab(value as "favorites" | "all")}
+						onValueChange={(value) =>
+							viewState.setActiveTab(value as "favorites" | "all")
+						}
 						value={viewState.activeTab}
 					>
 						<TabsList>
@@ -128,4 +132,3 @@ export default function Page() {
 		</PageLayout>
 	);
 }
-

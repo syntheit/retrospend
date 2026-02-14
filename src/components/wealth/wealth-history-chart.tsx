@@ -26,7 +26,12 @@ import {
 } from "~/lib/wealth-constants";
 
 interface WealthHistoryChartProps {
-	data: { date: string; amount: number; assets?: number; liabilities?: number }[];
+	data: {
+		date: string;
+		amount: number;
+		assets?: number;
+		liabilities?: number;
+	}[];
 	baseCurrency?: string;
 	timeRange?: TimeRangeValue;
 	onBaseCurrencyChange?: (currency: string) => void;
@@ -172,12 +177,12 @@ export function WealthHistoryChart({
 													className="h-2 w-2 rounded-full"
 													style={{ backgroundColor: item.color }}
 												/>
-												<span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
+												<span className="font-bold text-[10px] text-muted-foreground uppercase tracking-wider">
 													{chartConfig[name as keyof typeof chartConfig]
 														?.label || name}
 												</span>
 											</div>
-											<span className="font-semibold font-mono text-foreground tabular-nums">
+											<span className="font-mono font-semibold text-foreground tabular-nums">
 												{formatCurrency(Number(value), baseCurrency)}
 											</span>
 										</div>

@@ -66,10 +66,7 @@ export function BudgetModal({
 			setIsSubmitting(false);
 
 			// Focus input after a short delay to ensure modal is rendered (skip if pegged)
-			if (
-				!budget?.pegToActual &&
-				(!budget?.type || budget.type === "FIXED")
-			) {
+			if (!budget?.pegToActual && (!budget?.type || budget.type === "FIXED")) {
 				setTimeout(() => {
 					inputRef.current?.focus();
 					inputRef.current?.select();

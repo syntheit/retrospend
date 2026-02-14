@@ -35,7 +35,10 @@ const SUBSCRIPTION_METADATA: Record<string, SubscriptionMetadata> = {
 	"apple tv": { url: "https://reportaproblem.apple.com/", icon: "apple" },
 	"apple one": { url: "https://reportaproblem.apple.com/", icon: "apple" },
 	tidal: { url: "https://account.tidal.com/subscription", icon: "tidal" },
-	deezer: { url: "https://www.deezer.com/account/subscription", icon: "deezer" },
+	deezer: {
+		url: "https://www.deezer.com/account/subscription",
+		icon: "deezer",
+	},
 	audible: {
 		url: "https://www.amazon.com/hz/audible/account/plan",
 		icon: "audible",
@@ -56,7 +59,10 @@ const SUBSCRIPTION_METADATA: Record<string, SubscriptionMetadata> = {
 		url: "https://webflow.com/dashboard/account/billing",
 		icon: "webflow",
 	},
-	midjourney: { url: "https://www.midjourney.com/account/", icon: "midjourney" },
+	midjourney: {
+		url: "https://www.midjourney.com/account/",
+		icon: "midjourney",
+	},
 	slack: { url: "https://slack.com/account/billing", icon: "slack" },
 	discord: { url: "https://discord.com/billing", icon: "discord" },
 	"discord nitro": { url: "https://discord.com/billing", icon: "discord" },
@@ -171,7 +177,8 @@ const SUBSCRIPTION_METADATA: Record<string, SubscriptionMetadata> = {
 	hubspot: { url: "https://app.hubspot.com/settings/billing", icon: "hubspot" },
 	intercom: {
 		url: "https://app.intercom.com/a/apps/_/settings/billing",
-		icon: "intercom" },
+		icon: "intercom",
+	},
 
 	// Education & Learning
 	duolingo: { url: "https://www.duolingo.com/settings/plus", icon: "duolingo" },
@@ -192,7 +199,10 @@ const SUBSCRIPTION_METADATA: Record<string, SubscriptionMetadata> = {
 
 	// Fitness & Health
 	peloton: { url: "https://www.onepeloton.com/membership", icon: "peloton" },
-	strava: { url: "https://www.strava.com/settings/subscription", icon: "strava" },
+	strava: {
+		url: "https://www.strava.com/settings/subscription",
+		icon: "strava",
+	},
 	headspace: {
 		url: "https://www.headspace.com/settings/subscription",
 		icon: "headspace",
@@ -207,7 +217,10 @@ const SUBSCRIPTION_METADATA: Record<string, SubscriptionMetadata> = {
 
 	// Food & Delivery
 	"uber one": { url: "https://www.ubereats.com/uber-one", icon: "uber" },
-	dashpass: { url: "https://www.doordash.com/consumer/dashpass/", icon: "doordash" },
+	dashpass: {
+		url: "https://www.doordash.com/consumer/dashpass/",
+		icon: "doordash",
+	},
 	"instacart+": {
 		url: "https://www.instacart.com/store/account/instacart-plus",
 		icon: "instacart",
@@ -266,7 +279,10 @@ const SUBSCRIPTION_METADATA: Record<string, SubscriptionMetadata> = {
 		url: "https://account.proton.me/mail/subscription",
 		icon: "proton",
 	},
-	fastmail: { url: "https://www.fastmail.com/settings/billing/", icon: "fastmail" },
+	fastmail: {
+		url: "https://www.fastmail.com/settings/billing/",
+		icon: "fastmail",
+	},
 	hey: { url: "https://app.hey.com/settings/billing", icon: "hey" },
 	zoom: { url: "https://zoom.us/account", icon: "zoom" },
 	linkedin: {

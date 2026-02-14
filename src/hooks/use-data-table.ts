@@ -3,17 +3,18 @@
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
-	type PaginationState,
-	type RowSelectionState,
-	type SortingState,
-	type VisibilityState,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
+	type PaginationState,
+	type RowSelectionState,
+	type SortingState,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table";
 import { useState } from "react";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 
 interface UseDataTableProps<TData> {
 	data: TData[];
@@ -22,7 +23,11 @@ interface UseDataTableProps<TData> {
 	pageSize?: number;
 	// Support controlled selection if needed
 	rowSelection?: RowSelectionState;
-	onRowSelectionChange?: (updaterOrValue: RowSelectionState | ((old: RowSelectionState) => RowSelectionState)) => void;
+	onRowSelectionChange?: (
+		updaterOrValue:
+			| RowSelectionState
+			| ((old: RowSelectionState) => RowSelectionState),
+	) => void;
 }
 
 /**
@@ -33,21 +38,23 @@ export function useDataTable<TData>({
 	data,
 	columns,
 	initialSorting = [],
-	pageSize = 15,
+	pageSize = DEFAULT_PAGE_SIZE,
 	rowSelection: controlledRowSelection,
 	onRowSelectionChange: setControlledRowSelection,
 }: UseDataTableProps<TData>) {
 	const [sorting, setSorting] = useState<SortingState>(initialSorting);
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
+	const [internalRowSelection, setInternalRowSelection] =
+		useState<RowSelectionState>({});
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
 		pageSize,
 	});
 
 	const rowSelection = controlledRowSelection ?? internalRowSelection;
-	const onRowSelectionChange = setControlledRowSelection ?? setInternalRowSelection;
+	const onRowSelectionChange =
+		setControlledRowSelection ?? setInternalRowSelection;
 
 	const table = useReactTable({
 		data,

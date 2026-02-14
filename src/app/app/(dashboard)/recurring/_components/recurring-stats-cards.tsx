@@ -2,9 +2,9 @@
 
 import { differenceInDays } from "date-fns";
 import { Calendar, DollarSign } from "lucide-react";
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { StatCard } from "~/components/ui/stat-card";
-import { type RecurringTemplate } from "~/types/recurring";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import type { RecurringTemplate } from "~/types/recurring";
 
 interface RecurringStatsCardsProps {
 	templates?: RecurringTemplate[];
@@ -52,14 +52,14 @@ export function RecurringStatsCards({
 				description="Total recurring costs per month"
 				icon={DollarSign}
 				loading={loading}
-				variant="blue"
-				title="Monthly Fixed Burn"
-				value={loading ? undefined : formatCurrency(monthlyBurn, homeCurrency)}
 				subValue={
 					loading
 						? undefined
 						: `≈ ${formatCurrency(monthlyBurn * 12, homeCurrency)} / year`
 				}
+				title="Monthly Fixed Burn"
+				value={loading ? undefined : formatCurrency(monthlyBurn, homeCurrency)}
+				variant="blue"
 			/>
 
 			{/* Next Payment */}
@@ -79,9 +79,6 @@ export function RecurringStatsCards({
 				}
 				icon={Calendar}
 				loading={loading}
-				variant={
-					daysUntilNext !== null && daysUntilNext <= 0 ? "amber" : "violet"
-				}
 				title="Next Payment"
 				value={
 					loading
@@ -95,6 +92,9 @@ export function RecurringStatsCards({
 										: `In ${daysUntilNext} days`
 								: "Unknown"
 							: "No payments"
+				}
+				variant={
+					daysUntilNext !== null && daysUntilNext <= 0 ? "amber" : "violet"
 				}
 			/>
 		</div>

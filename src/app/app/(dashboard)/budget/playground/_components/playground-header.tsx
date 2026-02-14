@@ -1,12 +1,12 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, RefreshCcw, Save } from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { usePlayground } from "./playground-context";
-import { useCurrency } from "~/hooks/use-currency";
-import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import { Button } from "~/components/ui/button";
+import { useCurrency } from "~/hooks/use-currency";
 import { handleError } from "~/lib/handle-error";
+import { api } from "~/trpc/react";
+import { usePlayground } from "./playground-context";
 
 export function PlaygroundHeader() {
 	const {
@@ -33,15 +33,17 @@ export function PlaygroundHeader() {
 
 	const handleApply = async () => {
 		try {
-			const payload = Object.entries(simulatedBudgets).map(([categoryId, amount]) => ({
-				categoryId,
-				amount,
-				currency: homeCurrency,
-				period: selectedMonth,
-			}));
+			const payload = Object.entries(simulatedBudgets).map(
+				([categoryId, amount]) => ({
+					categoryId,
+					amount,
+					currency: homeCurrency,
+					period: selectedMonth,
+				}),
+			);
 
 			await batchUpsertBudgets.mutateAsync(payload);
-			
+
 			await utils.budget.getBudgets.invalidate({ month: selectedMonth });
 			toast.success("Applied simulated budgets to live data!");
 		} catch (error) {
@@ -95,10 +97,10 @@ export function PlaygroundHeader() {
 						Reset
 					</Button>
 					<Button
+						className="bg-indigo-600 text-white hover:bg-indigo-700"
 						disabled={!isDirty || batchUpsertBudgets.isPending}
 						onClick={handleApply}
 						size="sm"
-						className="bg-indigo-600 hover:bg-indigo-700 text-white"
 					>
 						{batchUpsertBudgets.isPending ? (
 							<RefreshCcw className="mr-2 h-4 w-4 animate-spin" />

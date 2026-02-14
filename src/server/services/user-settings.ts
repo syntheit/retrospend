@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
-import { BASE_CURRENCY } from "~/lib/constants";
+import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { db } from "~/server/db";
 import type { Page } from "~prisma";
 
@@ -130,7 +130,7 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 	},
 	TABLE: {
 		version: 1,
-		pageSize: 50,
+		pageSize: DEFAULT_PAGE_SIZE,
 		showDescriptions: true,
 	},
 	ACCOUNT: {

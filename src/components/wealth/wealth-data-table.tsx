@@ -11,10 +11,10 @@ import {
 import {
 	type Cell,
 	type ColumnDef,
+	flexRender,
 	type Header,
 	type HeaderGroup,
 	type Row,
-	flexRender,
 } from "@tanstack/react-table";
 import * as React from "react";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
@@ -39,6 +39,7 @@ import {
 import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useDataTable } from "~/hooks/use-data-table";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { cn, toNumber } from "~/lib/utils";
 import { type Asset, createWealthColumns } from "./wealth-table-columns";
 
@@ -67,12 +68,7 @@ export function WealthDataTable({
 	}, [data, homeCurrency]);
 
 	const columns = React.useMemo(
-		() =>
-			createWealthColumns(
-				homeCurrency,
-				hasForeignCurrency,
-				formatCurrency,
-			),
+		() => createWealthColumns(homeCurrency, hasForeignCurrency, formatCurrency),
 		[homeCurrency, hasForeignCurrency, formatCurrency],
 	);
 
@@ -94,7 +90,7 @@ export function WealthDataTable({
 				desc: true,
 			},
 		],
-		pageSize: 15,
+		pageSize: DEFAULT_PAGE_SIZE,
 		rowSelection: controlledRowSelection,
 		onRowSelectionChange: (updater) => {
 			if (!setControlledSelectedRows) return;
@@ -295,13 +291,13 @@ export function WealthDataTable({
 						<TableRow className="border-t-2 bg-muted/50 font-semibold">
 							<TableCell
 								className="px-4 py-3 text-left font-semibold"
-								colSpan={hasForeignCurrency ? 4 : 3}
+								colSpan={hasForeignCurrency ? 5 : 3}
 							>
 								Total ({table.getFilteredRowModel().rows.length} items)
 							</TableCell>
 							<TableCell className="px-4 py-3 text-right font-semibold">
 								<div className="text-right font-medium">
-								{formatCurrency(totals.balanceTotal, homeCurrency)}
+									{formatCurrency(totals.balanceTotal, homeCurrency)}
 								</div>
 							</TableCell>
 							{homeCurrency !== "USD" && (

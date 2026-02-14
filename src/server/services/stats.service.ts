@@ -155,14 +155,15 @@ export class StatsService {
 	}
 
 	/**
-	 * Gets daily trend (cumulative) for a given month.
+	 * Gets daily trend (cumulative) for a given month with fixed/variable split.
 	 */
 	async getDailyTrend(userId: string, month: Date, homeCurrency: string) {
 		const start = startOfMonth(month);
 		const end = endOfMonth(month);
 
+		// Group by both date and category to distinguish fixed/variable
 		const dailyAggs = await this.db.expense.groupBy({
-			by: ["date"],
+			by: ["date", "categoryId"],
 			where: {
 				userId,
 				status: "FINALIZED",
@@ -174,15 +175,46 @@ export class StatsService {
 			},
 		});
 
+		// Get Fixed Categories (Logic: isFixed=true OR names like Rent, Utilities, Mortgage)
+		const categoryIds = [
+			...new Set(
+				dailyAggs.map((a) => a.categoryId).filter((id): id is string => !!id),
+			),
+		];
+		const FIXED_NAMES = ["rent", "utilities", "mortgage", "bills", "insurance"];
+		const categories = await this.db.category.findMany({
+			where: { id: { in: categoryIds } },
+			select: { id: true, isFixed: true, name: true },
+		});
+		const fixedCategoryIds = new Set(
+			categories
+				.filter(
+					(c) =>
+						c.isFixed || FIXED_NAMES.includes(c.name.toLowerCase()),
+				)
+				.map((c) => c.id),
+		);
+
 		const rate = (await getBestExchangeRate(this.db, homeCurrency, month)) ?? 1;
 
-		const byDay = new Map<string, number>();
+		const byDay = new Map<
+			string,
+			{ total: number; fixed: number; variable: number }
+		>();
+
 		for (const agg of dailyAggs) {
 			const dayKey = format(agg.date, "yyyy-MM-dd");
-			byDay.set(
-				dayKey,
-				(byDay.get(dayKey) ?? 0) + Number(agg._sum.amountInUSD ?? 0) * rate,
-			);
+			const amount = Number(agg._sum.amountInUSD ?? 0) * rate;
+			const isFixed = agg.categoryId && fixedCategoryIds.has(agg.categoryId);
+
+			const current = byDay.get(dayKey) ?? { total: 0, fixed: 0, variable: 0 };
+			current.total += amount;
+			if (isFixed) {
+				current.fixed += amount;
+			} else {
+				current.variable += amount;
+			}
+			byDay.set(dayKey, current);
 		}
 
 		const now = new Date();
@@ -192,14 +224,24 @@ export class StatsService {
 		const endDate = isCurrentMonth ? now : end;
 
 		let cumulativeTotal = 0;
+		let cumulativeFixed = 0;
+		let cumulativeVariable = 0;
+
 		const trend = eachDayOfInterval({ start, end: endDate }).map((day) => {
 			const key = format(day, "yyyy-MM-dd");
-			const dailyAmount = byDay.get(key) ?? 0;
-			cumulativeTotal += dailyAmount;
+			const stats = byDay.get(key) ?? { total: 0, fixed: 0, variable: 0 };
+			
+			cumulativeTotal += stats.total;
+			cumulativeFixed += stats.fixed;
+			cumulativeVariable += stats.variable;
+
 			return {
 				day: format(day, "MMM d"),
 				dateLabel: format(day, "PP"),
-				value: cumulativeTotal,
+				value: cumulativeTotal, // Default/Legacy
+				total: cumulativeTotal,
+				fixed: cumulativeFixed,
+				variable: cumulativeVariable,
 			};
 		});
 

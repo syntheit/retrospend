@@ -11,6 +11,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { Skeleton } from "~/components/ui/skeleton";
 
 interface FavoritesPanelProps {
@@ -30,11 +31,20 @@ export function FavoritesPanel({
 	favoriteRates,
 	isUsingMockFavorites,
 }: FavoritesPanelProps) {
+	const latestUpdate =
+		favoriteRates.length > 0
+			? new Date(Math.max(...favoriteRates.map((r) => r.date.getTime())))
+			: null;
+
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle className="font-semibold text-lg">Exchange Rates</CardTitle>
-				<CardDescription>Favorite exchange rates</CardDescription>
+				<CardDescription>
+					{latestUpdate
+						? `Live Rates • Updated ${formatDistanceToNow(latestUpdate, { addSuffix: true })}`
+						: "Favorite exchange rates"}
+				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-1 space-y-3 overflow-y-auto">
 				<FavoritesContent
@@ -117,20 +127,15 @@ function FavoriteItem({
 	rate: FavoritesPanelProps["favoriteRates"][number];
 }) {
 	return (
-		<div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2">
+		<div className="-mx-2 flex items-center justify-between rounded border-white/5 border-b px-2 py-3 transition-colors last:border-0 hover:bg-white/5">
 			<div>
 				<div className="flex items-center gap-2">
+					<CurrencyFlag className="!h-6 !w-6" currencyCode={rate.currency} />
 					<span className="font-mono font-semibold">{rate.currency}</span>
 					<Badge className="capitalize" variant="secondary">
 						{rate.type}
 					</Badge>
 				</div>
-				<p className="text-muted-foreground text-xs">
-					Updated{" "}
-					{formatDistanceToNow(rate.date, {
-						addSuffix: true,
-					})}
-				</p>
 			</div>
 			<div className="text-right font-semibold">
 				{rate.rate.toLocaleString(undefined, {

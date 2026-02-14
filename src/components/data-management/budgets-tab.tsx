@@ -170,18 +170,19 @@ export function BudgetsTab() {
 						</Button>
 					</div>
 				</div>
-				<div className="space-y-2 rounded-lg border p-4 bg-muted/30">
+				<div className="space-y-2 rounded-lg border bg-muted/30 p-4">
 					<Label className="font-medium text-sm">CSV format</Label>
 					<p className="text-muted-foreground text-sm leading-relaxed">
 						Required: <code className="text-primary">amount</code>,{" "}
 						<code className="text-primary">period (YYYY-MM-DD)</code>. <br />
-						Optional: <code className="text-muted-foreground">categoryName</code>,{" "}
+						Optional:{" "}
+						<code className="text-muted-foreground">categoryName</code>,{" "}
 						<code className="text-muted-foreground">isRollover</code>,{" "}
 						<code className="text-muted-foreground">pegToActual</code>.
 					</p>
 				</div>
 				{parseError && (
-					<div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm font-mono whitespace-pre-wrap">
+					<div className="whitespace-pre-wrap rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
 						{parseError}
 					</div>
 				)}

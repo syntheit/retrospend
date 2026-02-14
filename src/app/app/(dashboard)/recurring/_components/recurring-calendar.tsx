@@ -1,6 +1,6 @@
 "use client";
 
-import { format, isSameDay, subMonths, addMonths } from "date-fns";
+import { addMonths, format, isSameDay, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { BrandIcon } from "~/components/ui/BrandIcon";
@@ -14,7 +14,7 @@ import {
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useRecurringCalendar } from "~/hooks/use-recurring-calendar";
 import { cn } from "~/lib/utils";
-import { type RecurringTemplate } from "~/types/recurring";
+import type { RecurringTemplate } from "~/types/recurring";
 
 interface RecurringCalendarProps {
 	templates?: RecurringTemplate[];
@@ -97,8 +97,8 @@ export function RecurringCalendar({
 							<div
 								className={cn(
 									"aspect-square border-r border-b p-2 transition-colors last:border-r-0 hover:bg-accent/50",
-									isToday && "bg-primary/10 ring-1 ring-inset ring-primary/20",
-									!isCurrentMonth && "bg-muted/20 opacity-50"
+									isToday && "bg-primary/10 ring-1 ring-primary/20 ring-inset",
+									!isCurrentMonth && "bg-muted/20 opacity-50",
 								)}
 								key={dateKey}
 							>
@@ -109,7 +109,7 @@ export function RecurringCalendar({
 											"mb-2 flex h-6 w-6 items-center justify-center rounded-full text-sm",
 											isToday
 												? "bg-primary font-semibold text-primary-foreground"
-												: "text-foreground"
+												: "text-foreground",
 										)}
 									>
 										{date.getDate()}
@@ -140,7 +140,7 @@ export function RecurringCalendar({
 														<TooltipContent>
 															<div className="text-center">
 																<p className="font-medium">{template.name}</p>
-																<p className="text-xs text-muted-foreground">
+																<p className="text-muted-foreground text-xs">
 																	{formatCurrency(
 																		Number(template.amount),
 																		template.currency,

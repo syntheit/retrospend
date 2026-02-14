@@ -124,4 +124,4 @@ export const DEFAULT_CATEGORIES = [
 	{ name: "Gym", color: "lime" },
 ] as const;
 
-export const DEFAULT_PAGE_SIZE = 50;
+export const DEFAULT_PAGE_SIZE = 20;

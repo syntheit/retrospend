@@ -96,29 +96,26 @@ export default function RecurringPage() {
 						loading={isLoading}
 						templates={templates}
 					/>
- 
- 					<div className="space-y-4">
- 						<div>
- 							<h2 className="font-semibold text-lg">Your Subscriptions</h2>
- 							<p className="text-muted-foreground text-sm">
- 								Manage your recurring expenses and subscriptions
- 							</p>
- 						</div>
- 
- 						{viewMode === "list" ? (
- 							<RecurringList
- 								loading={isLoading}
- 								onCreate={() => setShowCreateModal(true)}
- 								onDelete={handleDelete}
- 								onEdit={handleEdit}
- 								templates={templates}
- 							/>
- 						) : (
- 							<RecurringCalendar
- 								loading={isLoading}
- 								templates={templates}
- 							/>
- 						)}
+
+					<div className="space-y-4">
+						<div>
+							<h2 className="font-semibold text-lg">Your Subscriptions</h2>
+							<p className="text-muted-foreground text-sm">
+								Manage your recurring expenses and subscriptions
+							</p>
+						</div>
+
+						{viewMode === "list" ? (
+							<RecurringList
+								loading={isLoading}
+								onCreate={() => setShowCreateModal(true)}
+								onDelete={handleDelete}
+								onEdit={handleEdit}
+								templates={templates}
+							/>
+						) : (
+							<RecurringCalendar loading={isLoading} templates={templates} />
+						)}
 					</div>
 				</div>
 			</PageContent>

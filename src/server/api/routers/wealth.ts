@@ -266,7 +266,9 @@ export const wealthRouter = createTRPCRouter({
 			});
 
 			const assetMap = new Map(assets.map((a) => [a.id, a]));
-			const currencies = [...new Set([...assets.map((a) => a.currency), targetCurrency])];
+			const currencies = [
+				...new Set([...assets.map((a) => a.currency), targetCurrency]),
+			];
 
 			// BATCH FETCH EXCHANGE RATES (O(1) lookups)
 			const allRates = await db.exchangeRate.findMany({
@@ -388,7 +390,12 @@ export const wealthRouter = createTRPCRouter({
 				}
 			});
 
-			const history: { date: string; amount: number; assets: number; liabilities: number }[] = [];
+			const history: {
+				date: string;
+				amount: number;
+				assets: number;
+				liabilities: number;
+			}[] = [];
 			const sortedDates = [...snapshotsByDate.keys()].sort();
 
 			for (const dateStr of sortedDates) {
@@ -407,10 +414,13 @@ export const wealthRouter = createTRPCRouter({
 
 					const isLiability = asset.type.startsWith("LIABILITY_");
 					// Same-currency awareness to prevent Billion Dollar bug
-					const latestSnapToday = daysSnapshots.find((s) => s.accountId === assetId);
-					const value = (asset.currency === targetCurrency && latestSnapToday)
-						? latestSnapToday.balance.toNumber()
-						: balUSD * targetRate;
+					const latestSnapToday = daysSnapshots.find(
+						(s) => s.accountId === assetId,
+					);
+					const value =
+						asset.currency === targetCurrency && latestSnapToday
+							? latestSnapToday.balance.toNumber()
+							: balUSD * targetRate;
 
 					if (isLiability) {
 						liabilitiesInTarget += value;
@@ -428,7 +438,10 @@ export const wealthRouter = createTRPCRouter({
 			}
 
 			const todayStr = today.toISOString().split("T")[0] ?? "";
-			if (history.length === 0 || history[history.length - 1]?.date !== todayStr) {
+			if (
+				history.length === 0 ||
+				history[history.length - 1]?.date !== todayStr
+			) {
 				history.push({
 					date: todayStr,
 					amount: totalNetWorthUSD * targetRate,

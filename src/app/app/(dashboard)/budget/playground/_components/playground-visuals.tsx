@@ -1,23 +1,19 @@
 "use client";
 
+import { Landmark, PiggyBank, Receipt, Settings } from "lucide-react";
+import Link from "next/link";
 import { useMemo } from "react";
 import { PartitionBar } from "~/components/budget/partition-bar";
-import { usePlayground } from "./playground-context";
-import { useFinancialProjections } from "~/hooks/use-financial-projections";
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { useCurrency } from "~/hooks/use-currency";
-import { cn } from "~/lib/utils";
-import Link from "next/link";
 import { Button } from "~/components/ui/button";
-import { Landmark, PiggyBank, Receipt, Settings } from "lucide-react";
+import { useCurrency } from "~/hooks/use-currency";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useFinancialProjections } from "~/hooks/use-financial-projections";
+import { cn } from "~/lib/utils";
 import { MetricCard } from "./metric-card";
+import { usePlayground } from "./playground-context";
 
 export function PlaygroundVisuals() {
-	const {
-		simulatedBudgets,
-		categories,
-		monthlyIncome,
-	} = usePlayground();
+	const { simulatedBudgets, categories, monthlyIncome } = usePlayground();
 	const { formatCurrency } = useCurrencyFormatter();
 	const { homeCurrency } = useCurrency();
 
@@ -30,7 +26,7 @@ export function PlaygroundVisuals() {
 		isOverBudget,
 	} = projections;
 
-    const hasIncome = monthlyIncome > 0;
+	const hasIncome = monthlyIncome > 0;
 
 	const categoryBudgets = useMemo(() => {
 		return categories
@@ -48,93 +44,119 @@ export function PlaygroundVisuals() {
 	return (
 		<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 			<MetricCard
-				title="Monthly Burn"
-				value={formatCurrency(totalProjectedSpend, homeCurrency)}
-				icon={<Receipt />}
 				className="border-none bg-stone-900 text-white"
-				titleClassName="text-stone-400"
+				icon={<Receipt />}
 				iconClassName="text-stone-400"
 				subtext={
 					<div className="mt-3 flex items-center gap-2">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-800">
-                            <div 
-                                className={cn(
-                                    "h-full transition-all duration-500",
-                                    isOverBudget ? "bg-rose-500" : "bg-indigo-500"
-                                )}
-                                style={{ width: `${Math.min((totalProjectedSpend / (monthlyIncome || totalProjectedSpend)) * 100, 100)}%` }}
-                            />
-                        </div>
-                        <span className="text-xs font-medium text-stone-400">
-                            {hasIncome ? `${Math.round((totalProjectedSpend / monthlyIncome) * 100)}% of Income` : 'No Income'}
-                        </span>
-                    </div>
+						<div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-800">
+							<div
+								className={cn(
+									"h-full transition-all duration-500",
+									isOverBudget ? "bg-rose-500" : "bg-indigo-500",
+								)}
+								style={{
+									width: `${Math.min((totalProjectedSpend / (monthlyIncome || totalProjectedSpend)) * 100, 100)}%`,
+								}}
+							/>
+						</div>
+						<span className="font-medium text-stone-400 text-xs">
+							{hasIncome
+								? `${Math.round((totalProjectedSpend / monthlyIncome) * 100)}% of Income`
+								: "No Income"}
+						</span>
+					</div>
 				}
+				title="Monthly Burn"
+				titleClassName="text-stone-400"
+				value={formatCurrency(totalProjectedSpend, homeCurrency)}
 			/>
 
 			<MetricCard
-				title="Annual Savings"
-				value={formatCurrency(annualProjectedSavings, homeCurrency)}
+				className="border-none bg-indigo-600 text-white"
+				contentClassName={cn(!hasIncome && "min-h-[100px]")}
+				headerClassName={cn(!hasIncome && "opacity-40")}
 				icon={<PiggyBank />}
-				className="bg-indigo-600 text-white border-none"
-				titleClassName="text-indigo-200"
 				iconClassName="text-indigo-200"
-				headerClassName={cn(!hasIncome && "opacity-40")}
-				contentClassName={cn(!hasIncome && "min-h-[100px]")}
-				subtext={
-					<p className="mt-1 text-xs text-indigo-200 uppercase tracking-wide">
-                        Projected Yearly Surplus
-                    </p>
+				overlay={
+					!hasIncome && (
+						<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-indigo-600/10 p-2 text-center backdrop-blur-[2px]">
+							<p className="mb-1 font-bold text-[10px] text-indigo-200 uppercase tracking-widest">
+								Income Required
+							</p>
+							<Link href="/app/settings">
+								<Button
+									className="h-7 border-0 bg-white/10 px-2 text-[10px] text-white hover:bg-white/20"
+									size="sm"
+									variant="ghost"
+								>
+									Set in Settings
+								</Button>
+							</Link>
+						</div>
+					)
 				}
-				overlay={!hasIncome && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-indigo-600/10 p-2 text-center backdrop-blur-[2px]">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">
-                             Income Required
-                        </p>
-                        <Link href="/app/settings">
-                             <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] bg-white/10 text-white hover:bg-white/20 border-0">
-                                 Set in Settings
-                             </Button>
-                        </Link>
-                    </div>
-                )}
+				subtext={
+					<p className="mt-1 text-indigo-200 text-xs uppercase tracking-wide">
+						Projected Yearly Surplus
+					</p>
+				}
+				title="Annual Savings"
+				titleClassName="text-indigo-200"
+				value={formatCurrency(annualProjectedSavings, homeCurrency)}
 			/>
 
 			<MetricCard
-				title="Savings Rate"
-				value={<span className={cn(projectedSurplus > 0 ? "text-emerald-600" : "text-rose-600")}>{Math.round(savingsRate)}%</span>}
-				icon={<Landmark />}
 				className="border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-950"
-				titleClassName="text-muted-foreground"
-				iconClassName="text-muted-foreground"
-				headerClassName={cn(!hasIncome && "opacity-40")}
 				contentClassName={cn(!hasIncome && "min-h-[100px]")}
-				subtext={
-					<p className="mt-1 text-xs text-muted-foreground uppercase tracking-wide">
-                        {projectedSurplus > 0 ? "Potential for Wealth" : "Over Budget"}
-                    </p>
+				headerClassName={cn(!hasIncome && "opacity-40")}
+				icon={<Landmark />}
+				iconClassName="text-muted-foreground"
+				overlay={
+					!hasIncome && (
+						<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-stone-50/50 p-2 text-center backdrop-blur-[2px] dark:bg-stone-950/50">
+							<p className="mb-1 font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
+								Unavailable
+							</p>
+							<Link href="/app/settings">
+								<Button
+									className="h-7 px-2 text-[10px]"
+									size="sm"
+									variant="outline"
+								>
+									Update Income
+								</Button>
+							</Link>
+						</div>
+					)
 				}
-				overlay={!hasIncome && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-stone-50/50 dark:bg-stone-950/50 p-2 text-center backdrop-blur-[2px]">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                             Unavailable
-                        </p>
-                         <Link href="/app/settings">
-                             <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]">
-                                 Update Income
-                             </Button>
-                        </Link>
-                    </div>
-                )}
+				subtext={
+					<p className="mt-1 text-muted-foreground text-xs uppercase tracking-wide">
+						{projectedSurplus > 0 ? "Potential for Wealth" : "Over Budget"}
+					</p>
+				}
+				title="Savings Rate"
+				titleClassName="text-muted-foreground"
+				value={
+					<span
+						className={cn(
+							projectedSurplus > 0 ? "text-emerald-600" : "text-rose-600",
+						)}
+					>
+						{Math.round(savingsRate)}%
+					</span>
+				}
 			/>
 
-            <div className="md:col-span-2 lg:col-span-3 space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                    <span className="font-semibold">Simulated Allocation</span>
-                    <span className="text-muted-foreground">Distribution by Category</span>
-                </div>
-                <PartitionBar categoryBudgets={categoryBudgets} isMobile={false} />
-            </div>
+			<div className="space-y-3 md:col-span-2 lg:col-span-3">
+				<div className="flex items-center justify-between text-sm">
+					<span className="font-semibold">Simulated Allocation</span>
+					<span className="text-muted-foreground">
+						Distribution by Category
+					</span>
+				</div>
+				<PartitionBar categoryBudgets={categoryBudgets} isMobile={false} />
+			</div>
 		</div>
 	);
 }

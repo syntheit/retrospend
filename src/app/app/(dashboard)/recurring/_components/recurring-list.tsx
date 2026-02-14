@@ -19,7 +19,7 @@ import {
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useRecurringStatus } from "~/hooks/use-recurring-status";
 import { cn } from "~/lib/utils";
-import { type RecurringTemplate } from "~/types/recurring";
+import type { RecurringTemplate } from "~/types/recurring";
 
 interface RecurringListProps {
 	templates?: RecurringTemplate[];
@@ -112,7 +112,7 @@ function RecurringRow({
 				</h4>
 
 				{/* Bottom line: Metadata */}
-				<div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+				<div className="flex flex-wrap items-center gap-x-2 text-muted-foreground text-xs">
 					{template.category && (
 						<div className="flex items-center gap-1.5">
 							<div
@@ -125,13 +125,13 @@ function RecurringRow({
 						</div>
 					)}
 
-					{template.category && <span className="text-muted-foreground/40">•</span>}
+					{template.category && (
+						<span className="text-muted-foreground/40">•</span>
+					)}
 
 					{/* Date Context */}
 					<div className="flex items-center">
-						<span className={cn("font-medium", color)}>
-							{status}
-						</span>
+						<span className={cn("font-medium", color)}>{status}</span>
 					</div>
 
 					{template.paymentSource && (
@@ -146,7 +146,7 @@ function RecurringRow({
 			{/* Right: Actions */}
 			<div className="flex shrink-0 items-center gap-4 self-center">
 				{/* Amount */}
-				<p className="whitespace-nowrap font-mono font-medium text-base tabular-nums">
+				<p className="whitespace-nowrap font-medium font-mono text-base tabular-nums">
 					{formatCurrency(Number(template.amount), template.currency)}
 				</p>
 

@@ -219,7 +219,7 @@ export function ExpensesTab() {
 						</Button>
 					</div>
 				</div>
-				<div className="space-y-2 rounded-lg border p-4 bg-muted/30">
+				<div className="space-y-2 rounded-lg border bg-muted/30 p-4">
 					<Label className="font-medium text-sm">CSV format</Label>
 					<p className="text-muted-foreground text-sm leading-relaxed">
 						Required columns: <code className="text-primary">title</code>,{" "}
@@ -233,7 +233,7 @@ export function ExpensesTab() {
 					</p>
 				</div>
 				{parseError && (
-					<div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm font-mono whitespace-pre-wrap">
+					<div className="whitespace-pre-wrap rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
 						{parseError}
 					</div>
 				)}

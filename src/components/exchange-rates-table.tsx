@@ -32,6 +32,7 @@ import { Heart } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import {
 	Table,
 	TableBody,
@@ -40,12 +41,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { cn, getCurrencyName } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
 import { TableSearch } from "./table-search";
 
 export const exchangeRateSchema = z.object({
-// ... (schema remains the same)
 	id: z.string(),
 	date: z.date(),
 	currency: z.string(),
@@ -131,9 +132,14 @@ function createExchangeRateColumns({
 				const currencyCode = row.original.currency;
 				const currencyName = getCurrencyName(currencyCode);
 				return (
-					<div className="space-y-0.5">
-						<div className="font-medium font-mono">{currencyCode}</div>
-						<div className="text-muted-foreground text-xs">{currencyName}</div>
+					<div className="flex items-center gap-3">
+						<CurrencyFlag className="!h-8 !w-8" currencyCode={currencyCode} />
+						<div className="space-y-0.5">
+							<div className="font-medium font-mono">{currencyCode}</div>
+							<div className="text-muted-foreground text-xs">
+								{currencyName}
+							</div>
+						</div>
 					</div>
 				);
 			},
@@ -301,7 +307,7 @@ export function ExchangeRatesTable({
 						},
 					],
 			pagination: {
-				pageSize: 20,
+				pageSize: DEFAULT_PAGE_SIZE,
 			},
 		},
 	});
@@ -491,4 +497,3 @@ export function ExchangeRatesTable({
 		</div>
 	);
 }
-

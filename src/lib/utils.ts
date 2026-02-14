@@ -154,7 +154,10 @@ export function formatCurrency(
 	// Determine decimal digits based on currency and smart formatting preference
 	let decimalDigits = currencyData?.decimal_digits ?? 2;
 
-	if (smartFormatting && SMART_NO_DECIMAL_CURRENCIES.includes(currency.toUpperCase())) {
+	if (
+		smartFormatting &&
+		SMART_NO_DECIMAL_CURRENCIES.includes(currency.toUpperCase())
+	) {
 		decimalDigits = 0;
 	}
 

@@ -1,29 +1,30 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
-import * as React from "react";
+import { type LucideIcon, TrendingDown, TrendingUp } from "lucide-react";
+import type * as React from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { cn } from "~/lib/utils";
 
 const statCardVariants = cva(
-	"group relative overflow-hidden transition-all duration-300",
+	"group relative h-32 overflow-hidden border transition-all duration-300",
 	{
 		variants: {
 			variant: {
 				neutral:
-					"border-0 bg-gradient-to-br from-stone-800 via-stone-700 to-stone-900 text-white shadow-lg hover:shadow-xl dark:from-stone-900 dark:via-stone-800 dark:to-black",
-				blue: "border-blue-200/50 bg-gradient-to-br from-blue-50 to-white hover:shadow-lg hover:shadow-blue-100 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-card",
-				cyan: "border-cyan-200/50 bg-gradient-to-br from-cyan-50 to-white hover:shadow-lg hover:shadow-cyan-100 dark:border-cyan-900/50 dark:from-cyan-950/30 dark:to-card",
+					"border-white/10 bg-stone-900/40 text-white shadow-inner hover:bg-stone-900/60",
+				blue: "border-blue-500/20 bg-blue-950/20 text-blue-100 shadow-[inset_0_0_20px_rgba(59,130,246,0.05)] hover:border-blue-500/30 hover:bg-blue-900/30",
+				cyan: "border-cyan-500/20 bg-cyan-950/20 text-cyan-100 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)] hover:border-cyan-500/30 hover:bg-cyan-900/30",
 				violet:
-					"border-violet-200/50 bg-gradient-to-br from-violet-50 to-white hover:shadow-lg hover:shadow-violet-100 dark:border-violet-900/50 dark:from-violet-950/30 dark:to-card",
-				amber: "border-amber-200/50 bg-gradient-to-br from-amber-50 to-white hover:shadow-lg hover:shadow-amber-100 dark:border-amber-900/50 dark:from-amber-950/30 dark:to-card",
+					"border-violet-500/20 bg-violet-950/20 text-violet-100 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)] hover:border-violet-500/30 hover:bg-violet-900/30",
+				amber:
+					"border-amber-500/20 bg-amber-950/20 text-amber-100 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)] hover:border-amber-500/30 hover:bg-amber-900/30",
 				indigo:
-					"border-indigo-200/50 bg-gradient-to-br from-indigo-50 to-white hover:shadow-lg hover:shadow-indigo-100 dark:border-indigo-900/50 dark:from-indigo-950/30 dark:to-card",
-				rose: "border-rose-200/50 bg-gradient-to-br from-rose-50 to-white hover:shadow-lg hover:shadow-rose-100 dark:border-rose-900/50 dark:from-rose-950/30 dark:to-card",
+					"border-indigo-500/20 bg-indigo-950/20 text-indigo-100 shadow-[inset_0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/30 hover:bg-indigo-900/30",
+				rose: "border-rose-500/20 bg-rose-950/20 text-rose-100 shadow-[inset_0_0_20px_rgba(244,63,94,0.05)] hover:border-rose-500/30 hover:bg-rose-900/30",
 				emerald:
-					"border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-white hover:shadow-lg hover:shadow-emerald-100 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-card",
+					"border-emerald-500/20 bg-emerald-950/30 text-emerald-100 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/30 hover:bg-emerald-900/30",
 			},
 		},
 		defaultVariants: {
@@ -32,19 +33,19 @@ const statCardVariants = cva(
 	},
 );
 
-const circleVariants = cva(
-	"absolute top-0 right-0 h-20 w-20 translate-x-8 -translate-y-8 rounded-full transition-transform duration-300 group-hover:scale-150",
+const spotlightVariants = cva(
+	"pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full blur-3xl transition-opacity duration-500",
 	{
 		variants: {
 			variant: {
-				neutral: "bg-white/10",
-				blue: "bg-blue-500/10",
-				cyan: "bg-cyan-500/10",
-				violet: "bg-violet-500/10",
-				amber: "bg-amber-500/10",
-				indigo: "bg-indigo-500/10",
-				rose: "bg-rose-500/10",
-				emerald: "bg-emerald-500/10",
+				neutral: "bg-white/5",
+				blue: "bg-blue-500/20",
+				cyan: "bg-cyan-500/20",
+				violet: "bg-violet-500/20",
+				amber: "bg-amber-500/20",
+				indigo: "bg-indigo-500/20",
+				rose: "bg-rose-500/20",
+				emerald: "bg-emerald-500/20",
 			},
 		},
 		defaultVariants: {
@@ -53,89 +54,17 @@ const circleVariants = cva(
 	},
 );
 
-const titleVariants = cva("font-medium text-sm", {
-	variants: {
-		variant: {
-			neutral: "text-stone-300",
-			blue: "text-blue-700 dark:text-blue-400",
-			cyan: "text-cyan-700 dark:text-cyan-400",
-			violet: "text-violet-700 dark:text-violet-400",
-			amber: "text-amber-700 dark:text-amber-400",
-			indigo: "text-indigo-700 dark:text-indigo-400",
-			rose: "text-rose-700 dark:text-rose-400",
-			emerald: "text-emerald-700 dark:text-emerald-400",
-		},
-	},
-	defaultVariants: {
-		variant: "blue",
-	},
-});
-
-const valueVariants = cva("font-bold text-2xl tracking-tight", {
-	variants: {
-		variant: {
-			neutral: "text-white",
-			blue: "text-blue-900 dark:text-blue-100",
-			cyan: "text-cyan-900 dark:text-cyan-100",
-			violet: "text-violet-900 dark:text-violet-100",
-			amber: "text-amber-900 dark:text-amber-100",
-			indigo: "text-indigo-900 dark:text-indigo-100",
-			rose: "text-rose-900 dark:text-rose-100",
-			emerald: "text-emerald-900 dark:text-emerald-100",
-		},
-	},
-	defaultVariants: {
-		variant: "blue",
-	},
-});
-
-const iconContainerVariants = cva("rounded-lg p-2.5", {
-	variants: {
-		variant: {
-			neutral: "bg-white/10",
-			blue: "bg-blue-100 dark:bg-blue-900/50",
-			cyan: "bg-cyan-100 dark:bg-cyan-900/50",
-			violet: "bg-violet-100 dark:bg-violet-900/50",
-			amber: "bg-amber-100 dark:bg-amber-900/50",
-			indigo: "bg-indigo-100 dark:bg-indigo-900/50",
-			rose: "bg-rose-100 dark:bg-rose-900/50",
-			emerald: "bg-emerald-100 dark:bg-emerald-900/50",
-		},
-	},
-	defaultVariants: {
-		variant: "blue",
-	},
-});
-
-const iconVariants = cva("h-5 w-5", {
-	variants: {
-		variant: {
-			neutral: "text-stone-300",
-			blue: "text-blue-600 dark:text-blue-400",
-			cyan: "text-cyan-600 dark:text-cyan-400",
-			violet: "text-violet-600 dark:text-violet-400",
-			amber: "text-amber-600 dark:text-amber-400",
-			indigo: "text-indigo-600 dark:text-indigo-400",
-			rose: "text-rose-600 dark:text-rose-400",
-			emerald: "text-emerald-600 dark:text-emerald-400",
-		},
-	},
-	defaultVariants: {
-		variant: "blue",
-	},
-});
-
-const footerVariants = cva("mt-2 flex flex-col gap-1", {
+const iconColorVariants = cva("", {
 	variants: {
 		variant: {
 			neutral: "text-stone-400",
-			blue: "text-blue-600/80 dark:text-blue-400/80",
-			cyan: "text-cyan-600/80 dark:text-cyan-400/80",
-			violet: "text-violet-600/80 dark:text-violet-400/80",
-			amber: "text-amber-600/80 dark:text-amber-400/80",
-			indigo: "text-indigo-600/80 dark:text-indigo-400/80",
-			rose: "text-rose-600/80 dark:text-rose-400/80",
-			emerald: "text-emerald-600/80 dark:text-emerald-400/80",
+			blue: "text-blue-400",
+			cyan: "text-cyan-400",
+			violet: "text-violet-400",
+			amber: "text-amber-400",
+			indigo: "text-indigo-400",
+			rose: "text-rose-400",
+			emerald: "text-emerald-500",
 		},
 	},
 	defaultVariants: {
@@ -171,59 +100,64 @@ export function StatCard({
 	formatCurrency,
 	className,
 }: StatCardProps) {
-	return (
-		<Card className={cn(statCardVariants({ variant }), className)}>
-			{/* Decorative Circle */}
-			<div className={circleVariants({ variant })} />
+	const iconColor = iconColorVariants({ variant });
 
-			<CardContent className="relative p-4">
-				<div className="flex items-start justify-between">
-					<div className="space-y-1">
-						<p className={titleVariants({ variant })}>{title}</p>
-						{loading ? (
-							<Skeleton
-								className={cn("h-8 w-28", variant === "neutral" && "bg-white/10")}
-							/>
-						) : (
-							<p className={valueVariants({ variant })}>{value}</p>
-						)}
-					</div>
-					<div className={iconContainerVariants({ variant })}>
-						<Icon className={iconVariants({ variant })} />
-					</div>
+	return (
+		<Card className={cn(statCardVariants({ variant }), className, "p-0")}>
+			{/* Spotlight Gradient */}
+			<div className={spotlightVariants({ variant })} />
+
+			<CardContent className="relative z-10 flex h-full flex-col justify-between p-5">
+				{/* Top Row: Title + Icon */}
+				<div className="flex w-full items-start justify-between">
+					<span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-widest">
+						{title}
+					</span>
+					<Icon className={cn("h-4 w-4", iconColor)} />
 				</div>
 
-				{/* Footer Content: Trend or Description */}
-				{!loading && (
-					<div className={footerVariants({ variant })}>
-						{trend && trend.value !== null && trend.value !== undefined && (
-							<div className="flex items-center gap-1.5 text-sm">
+				{/* Bottom Row: Value + Trend/Desc */}
+				<div className="flex w-full items-end justify-between">
+					<div className="font-bold text-3xl text-white tracking-tight">
+						{loading ? <Skeleton className="h-8 w-24 bg-white/10" /> : value}
+					</div>
+
+					{!loading && (description || (trend && trend.value !== null)) && (
+						<div className="flex items-center text-xs">
+							{trend && trend.value !== null && trend.value !== undefined ? (
 								<div
 									className={cn(
-										"flex items-center gap-1 font-medium",
+										"flex items-center gap-1.5 rounded-full px-2 py-1 font-medium",
 										trend.forceNeutral
-											? "text-inherit"
+											? "bg-white/5 text-stone-300"
 											: trend.intent === "negative"
-												? "text-red-300"
-												: "text-emerald-300",
+												? "bg-rose-500/10 text-rose-400"
+												: "bg-emerald-500/10 text-emerald-400",
 									)}
 								>
 									{trend.value > 0 ? (
-										<TrendingUp className="h-3.5 w-3.5" />
+										<TrendingUp className="h-3 w-3" />
 									) : (
-										<TrendingDown className="h-3.5 w-3.5" />
+										<TrendingDown className="h-3 w-3" />
 									)}
-									{trend.value > 0 ? "+" : ""}
-									{trend.isMoney && formatCurrency
-										? formatCurrency(trend.value)
-										: `${trend.value.toFixed(1)}%`}
+									<span>
+										{trend.value > 0 ? "+" : ""}
+										{trend.isMoney && formatCurrency
+											? formatCurrency(trend.value)
+											: `${trend.value.toFixed(1)}%`}
+									</span>
+									<span className="ml-1 hidden opacity-70 xl:inline">
+										{trend.label.replace("vs ", "")}
+									</span>
 								</div>
-								<span>{trend.label}</span>
-							</div>
-						)}
-						{description && <div className="text-sm">{description}</div>}
-					</div>
-				)}
+							) : (
+								<span className="max-w-[100px] truncate text-right text-[10px] leading-tight opacity-50">
+									{description}
+								</span>
+							)}
+						</div>
+					)}
+				</div>
 			</CardContent>
 		</Card>
 	);

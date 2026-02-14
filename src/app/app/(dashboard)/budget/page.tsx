@@ -1,19 +1,18 @@
 "use client";
 
+import { FlaskConical } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BudgetHeader } from "~/components/budget/budget-header";
 import { BudgetList } from "~/components/budget/budget-list";
 import { PartitionBar } from "~/components/budget/partition-bar";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
+import { Button } from "~/components/ui/button";
 import { useCurrency } from "~/hooks/use-currency";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { handleError } from "~/lib/handle-error";
 import { api } from "~/trpc/react";
-
-import Link from "next/link";
-import { FlaskConical } from "lucide-react";
-import { Button } from "~/components/ui/button";
 
 export default function BudgetPage() {
 	const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -88,16 +87,20 @@ export default function BudgetPage() {
 
 	return (
 		<>
-			<SiteHeader 
-				title="Monthly Budget" 
+			<SiteHeader
 				actions={
 					<Link href="/app/budget/playground">
-						<Button size="sm" variant="outline" className="h-8 gap-2 border-dashed border-indigo-400/50 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300">
+						<Button
+							className="h-8 gap-2 border-indigo-400/50 border-dashed bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300"
+							size="sm"
+							variant="outline"
+						>
 							<FlaskConical className="h-3.5 w-3.5" />
 							{!isMobile && "Budget Playground"}
 						</Button>
 					</Link>
 				}
+				title="Monthly Budget"
 			/>
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl space-y-6">

@@ -7,7 +7,8 @@ export function useFinancialProjections(
 		0,
 	);
 	const projectedSurplus = monthlyIncome - totalProjectedSpend;
-	const savingsRate = monthlyIncome > 0 ? (projectedSurplus / monthlyIncome) * 100 : 0;
+	const savingsRate =
+		monthlyIncome > 0 ? (projectedSurplus / monthlyIncome) * 100 : 0;
 	const annualProjectedSavings = projectedSurplus * 12;
 	const isOverBudget = totalProjectedSpend > monthlyIncome;
 

@@ -13,7 +13,6 @@ import {
 } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 
-
 // Helper function to get category color with opacity for striped background
 function getCategoryColorWithOpacity(
 	color: string,
@@ -61,7 +60,9 @@ interface Segment {
 
 const MobilePartitionBar = ({
 	capacityPercentage,
-}: { capacityPercentage: number }) => {
+}: {
+	capacityPercentage: number;
+}) => {
 	return (
 		<div className="w-full">
 			<div className="relative h-12 w-full overflow-hidden rounded-lg bg-muted">
@@ -205,7 +206,10 @@ export function PartitionBar({
 			});
 
 			if (smallSlices.length > 0) {
-				const miscValue = smallSlices.reduce((sum, item) => sum + item.value, 0);
+				const miscValue = smallSlices.reduce(
+					(sum, item) => sum + item.value,
+					0,
+				);
 				regularSegments.push({
 					id: "misc",
 					name: "Misc/Other",

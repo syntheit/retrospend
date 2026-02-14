@@ -18,11 +18,15 @@ export const VIBRANT_BLUE = "hsl(217, 91%, 60%)";
 
 /**
  * Returns a consistent color for a given category name or fallback to a palette color.
- * If a specific category color is provided by the backend (as a key), it should be resolved separately, 
+ * If a specific category color is provided by the backend (as a key), it should be resolved separately,
  * but this serves as the fallback/default logic.
  */
 export function getCategoryColor(index: number): string {
-	return CHART_PALETTE[index % CHART_PALETTE.length] ?? CHART_PALETTE[0] ?? "hsl(var(--muted))";
+	return (
+		CHART_PALETTE[index % CHART_PALETTE.length] ??
+		CHART_PALETTE[0] ??
+		"hsl(var(--muted))"
+	);
 }
 
 /**
@@ -32,5 +36,15 @@ export const CHART_CONFIG_DEFAULTS = {
 	cumulativeSpend: {
 		label: "Cumulative spend",
 		color: VIBRANT_BLUE,
+	},
+	pacingChart: {
+		variable: {
+			label: "Variable Spend",
+			color: "hsl(var(--primary))",
+		},
+		guide: {
+			label: "Target Pace",
+			color: "hsl(var(--muted-foreground))",
+		},
 	},
 };

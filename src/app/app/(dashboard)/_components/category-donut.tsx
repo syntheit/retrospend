@@ -125,7 +125,8 @@ export function CategoryDonut({
 												fill={`var(--color-${segment.key})`}
 												key={segment.key}
 												opacity={
-													activeSliceIndex === null || activeSliceIndex === index
+													activeSliceIndex === null ||
+													activeSliceIndex === index
 														? 1
 														: 0.3
 												}
@@ -143,7 +144,7 @@ export function CategoryDonut({
 															y={viewBox.cy}
 														>
 															<tspan
-																className="fill-muted-foreground text-xs font-medium uppercase tracking-widest"
+																className="fill-muted-foreground font-medium text-xs uppercase tracking-widest"
 																x={viewBox.cx}
 																y={(viewBox.cy || 0) - 16}
 															>

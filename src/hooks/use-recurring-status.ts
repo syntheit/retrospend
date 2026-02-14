@@ -1,6 +1,13 @@
-import { differenceInDays, format, subWeeks, subMonths, subYears, startOfToday } from "date-fns";
+import {
+	differenceInDays,
+	format,
+	startOfToday,
+	subMonths,
+	subWeeks,
+	subYears,
+} from "date-fns";
 import { useMemo } from "react";
-import { type RecurringTemplate } from "~/types/recurring";
+import type { RecurringTemplate } from "~/types/recurring";
 
 export function useRecurringStatus(template: RecurringTemplate) {
 	return useMemo(() => {
@@ -25,9 +32,10 @@ export function useRecurringStatus(template: RecurringTemplate) {
 		const now = new Date();
 		const elapsed = now.getTime() - cycleStart.getTime();
 
-		const progress = totalDuration > 0 
-			? Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100)
-			: 0;
+		const progress =
+			totalDuration > 0
+				? Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100)
+				: 0;
 
 		const daysRemaining = differenceInDays(nextDate, today);
 

@@ -1,14 +1,8 @@
 "use client";
 
-import {
-	Briefcase,
-	Calendar,
-	Clock,
-	Wallet,
-} from "lucide-react";
+import { Briefcase, Calendar, Clock, Wallet } from "lucide-react";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { cn } from "~/lib/utils";
 
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -65,7 +59,6 @@ export function StatsCards({
 				}
 				icon={Wallet}
 				loading={expensesLoading}
-				variant="neutral"
 				title="Total This Month"
 				trend={
 					expensesLoading
@@ -77,6 +70,7 @@ export function StatsCards({
 							}
 				}
 				value={expensesLoading ? undefined : formatMoney(totalThisMonth)}
+				variant="neutral"
 			/>
 
 			{/* Last 24 Hours / Month Total */}
@@ -85,7 +79,6 @@ export function StatsCards({
 					formatCurrency={formatCurrency}
 					icon={Clock}
 					loading={expensesLoading}
-					variant="blue"
 					title="Last 24 Hours"
 					trend={
 						!expensesLoading &&
@@ -109,19 +102,20 @@ export function StatsCards({
 							? undefined
 							: formatMoney(overviewStats?.last24Hours ?? 0)
 					}
+					variant="blue"
 				/>
 			) : (
 				<StatCard
 					description="Final spend for this month"
 					icon={Calendar}
 					loading={expensesLoading}
-					variant="cyan"
 					title="Month Total"
 					value={
 						expensesLoading
 							? undefined
 							: formatMoney(overviewStats?.monthTotal ?? 0)
 					}
+					variant="cyan"
 				/>
 			)}
 
@@ -132,7 +126,6 @@ export function StatsCards({
 					description="Time cost of this month"
 					icon={Briefcase}
 					loading={expensesLoading}
-					variant="violet"
 					title="Work Equivalent"
 					value={
 						expensesLoading
@@ -143,6 +136,7 @@ export function StatsCards({
 										160,
 								)}h`
 					}
+					variant="violet"
 				/>
 			) : (
 				<StatCard
@@ -153,7 +147,6 @@ export function StatsCards({
 					}
 					icon={Briefcase}
 					loading={expensesLoading}
-					variant="violet"
 					title="Top Category"
 					value={
 						expensesLoading
@@ -162,6 +155,7 @@ export function StatsCards({
 								? categoryBreakdown[0]?.name
 								: "No expenses"
 					}
+					variant="violet"
 				/>
 			)}
 
@@ -179,18 +173,18 @@ export function StatsCards({
 					}
 					icon={Wallet}
 					loading={expensesLoading}
-					variant={budgetUsagePct > 80 ? "amber" : "blue"}
 					title="Budget Used"
 					value={expensesLoading ? undefined : `${Math.round(budgetUsagePct)}%`}
+					variant={budgetUsagePct > 80 ? "amber" : "blue"}
 				/>
 			) : (
 				<StatCard
 					description="Last 3 months average"
 					icon={Wallet}
 					loading={expensesLoading}
-					variant="blue"
 					title="Projected Total"
 					value={expensesLoading ? undefined : formatMoney(projectedSpend)}
+					variant="emerald"
 				/>
 			)}
 		</div>

@@ -8,15 +8,15 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { ExpensesTab } from "./expenses-tab";
 import { BudgetsTab } from "./budgets-tab";
+import { ExpensesTab } from "./expenses-tab";
 import { WealthTab } from "./wealth-tab";
 
 export function DataManagementCard() {
 	return (
 		<Card className="border-muted/50 shadow-lg">
 			<CardHeader className="pb-3">
-				<CardTitle className="text-2xl font-bold tracking-tight">
+				<CardTitle className="font-bold text-2xl tracking-tight">
 					Data Management
 				</CardTitle>
 				<CardDescription>
@@ -24,15 +24,15 @@ export function DataManagementCard() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<Tabs defaultValue="expenses" className="w-full">
+				<Tabs className="w-full" defaultValue="expenses">
 					<TabsList className="mb-2 grid w-full grid-cols-3">
-						<TabsTrigger value="expenses" className="text-xs sm:text-sm">
+						<TabsTrigger className="text-xs sm:text-sm" value="expenses">
 							Expenses
 						</TabsTrigger>
-						<TabsTrigger value="budgets" className="text-xs sm:text-sm">
+						<TabsTrigger className="text-xs sm:text-sm" value="budgets">
 							Budgets
 						</TabsTrigger>
-						<TabsTrigger value="wealth" className="text-xs sm:text-sm">
+						<TabsTrigger className="text-xs sm:text-sm" value="wealth">
 							Wealth
 						</TabsTrigger>
 					</TabsList>

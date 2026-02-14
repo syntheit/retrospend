@@ -14,7 +14,7 @@ export function BrandIcon({ name, size = 40, className }: BrandIconProps) {
 	return (
 		<div
 			className={cn(
-				"flex items-center justify-center bg-stone-800 text-stone-200 rounded-md shrink-0",
+				"flex shrink-0 items-center justify-center rounded-md bg-stone-800 text-stone-200",
 				className,
 			)}
 			style={{ width: size, height: size }}

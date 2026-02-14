@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+// import Link from "next/link";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
@@ -21,14 +21,13 @@ import {
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExpensesController } from "~/hooks/use-expenses-controller";
 import { useTableActions } from "~/hooks/use-table-actions";
-import { TableFilters } from "./_components/table-filters";
 import { ExpensesTableFooter } from "./_components/expenses-table-footer";
-
+import { TableFilters } from "./_components/table-filters";
 
 export default function Page() {
 	const { openNewExpense, openExpense } = useExpenseModal();
 	const { formatCurrency } = useCurrencyFormatter();
-	
+
 	const {
 		expenses: filteredExpenses,
 		totals,
@@ -163,9 +162,9 @@ export default function Page() {
 									<Button onClick={clearFilters} variant="outline">
 										Reset filters
 									</Button>
-									<Button asChild variant="ghost">
-										<Link href="/app/analytics">View analytics</Link>
-									</Button>
+{/* <Button asChild variant="ghost">
+	<Link href="/app/analytics">View analytics</Link>
+</Button> */}
 								</div>
 							</div>
 						}
@@ -173,7 +172,6 @@ export default function Page() {
 							<ExpensesTableFooter
 								count={totals.count}
 								currency={homeCurrency}
-								foreignCurrencySummary={totals.foreignCurrencySummary}
 								hasForeignCurrencyExpenses={totals.hasForeignCurrencyExpenses}
 								totalAmount={totals.totalAmount}
 							/>
@@ -230,4 +228,3 @@ export default function Page() {
 		</>
 	);
 }
-

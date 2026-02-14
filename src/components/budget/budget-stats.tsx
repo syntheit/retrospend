@@ -9,19 +9,12 @@ interface BudgetStatsProps {
 	homeCurrency: string;
 }
 
-export function BudgetStats({
-	budgets,
-	homeCurrency,
-}: BudgetStatsProps) {
+export function BudgetStats({ budgets, homeCurrency }: BudgetStatsProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const {
 		totalAllocated,
-		stats: {
-			totalCategories,
-			overBudgetCategories,
-			underBudgetCategories,
-		},
+		stats: { totalCategories, overBudgetCategories, underBudgetCategories },
 	} = useBudgetCalculations({
 		budgets,
 	});
@@ -98,8 +91,6 @@ export function BudgetStats({
 					</CardContent>
 				</Card>
 			)}
-
-
 		</div>
 	);
 }

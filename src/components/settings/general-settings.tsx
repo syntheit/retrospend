@@ -25,7 +25,13 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { CURRENCIES, type CurrencyCode } from "~/lib/currencies";
 import { cn, getCurrencySymbol } from "~/lib/utils";

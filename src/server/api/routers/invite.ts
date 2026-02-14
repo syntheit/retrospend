@@ -5,6 +5,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { isAllowAllUsersToGenerateInvitesEnabled } from "~/server/services/settings";
 
 /**
@@ -25,7 +26,7 @@ export const inviteRouter = createTRPCRouter({
 			z.object({
 				status: z.enum(["all", "active", "used"]).default("active"),
 				page: z.number().min(1).default(1),
-				pageSize: z.number().min(1).max(100).default(10),
+				pageSize: z.number().min(1).max(100).default(DEFAULT_PAGE_SIZE),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -160,7 +161,7 @@ export const inviteRouter = createTRPCRouter({
 			z.object({
 				status: z.enum(["all", "active", "used"]).default("active"),
 				page: z.number().min(1).default(1),
-				pageSize: z.number().min(1).max(100).default(10),
+				pageSize: z.number().min(1).max(100).default(DEFAULT_PAGE_SIZE),
 			}),
 		)
 		.query(async ({ ctx, input }) => {

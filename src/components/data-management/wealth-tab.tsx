@@ -9,7 +9,7 @@ import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import { type ParsedWealthRow, parseWealthCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
-import { AssetType } from "~prisma";
+import type { AssetType } from "~prisma";
 
 export function WealthTab() {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -142,7 +142,7 @@ export function WealthTab() {
 						</Button>
 					</div>
 				</div>
-				<div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+				<div className="space-y-2 rounded-lg border bg-muted/30 p-4">
 					<Label className="font-medium text-sm">CSV format</Label>
 					<p className="text-muted-foreground text-sm leading-relaxed">
 						Required: <code className="text-primary">name</code>,{" "}
@@ -150,7 +150,7 @@ export function WealthTab() {
 						<code className="text-primary">currency</code>,{" "}
 						<code className="text-primary">type</code>. <br />
 						Types:{" "}
-						<code className="text-muted-foreground text-[10px]">
+						<code className="text-[10px] text-muted-foreground">
 							CASH, INVESTMENT, CRYPTO, REAL_ESTATE, VEHICLE, LIABILITY_LOAN,
 							LIABILITY_CREDIT_CARD, LIABILITY_MORTGAGE
 						</code>
@@ -158,7 +158,7 @@ export function WealthTab() {
 					</p>
 				</div>
 				{parseError && (
-					<div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm font-mono whitespace-pre-wrap">
+					<div className="whitespace-pre-wrap rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
 						{parseError}
 					</div>
 				)}

@@ -5,9 +5,7 @@ interface UseBudgetCalculationsProps {
 	budgets: Budget[];
 }
 
-export function useBudgetCalculations({
-	budgets,
-}: UseBudgetCalculationsProps) {
+export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 	return useMemo(() => {
 		const validBudgets = budgets.filter((b) => b.category !== null);
 
@@ -45,9 +43,7 @@ export function useBudgetCalculations({
 
 		const variableBudgets = validBudgets
 			.filter(
-				(b) =>
-					b.type === "FIXED" ||
-					(!b.type && !b.pegToActual), // Fallback for legacy if not migrated (though we did migrate)
+				(b) => b.type === "FIXED" || (!b.type && !b.pegToActual), // Fallback for legacy if not migrated (though we did migrate)
 			)
 			.sort((a, b) => b.actualSpend - a.actualSpend);
 

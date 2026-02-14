@@ -4,7 +4,7 @@ import {
 	IconChevronsLeft,
 	IconChevronsRight,
 } from "@tabler/icons-react";
-import { type Table } from "@tanstack/react-table";
+import type { Table } from "@tanstack/react-table";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import {
@@ -28,7 +28,12 @@ export function TablePagination<TData>({
 	className,
 }: TablePaginationProps<TData>) {
 	return (
-		<div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
+		<div
+			className={cn(
+				"flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+				className,
+			)}
+		>
 			<div className="flex items-center gap-2">
 				<Label className="font-medium text-sm" htmlFor="rows-per-page">
 					Rows per page

@@ -1,7 +1,7 @@
 "use client";
 
 import { BarChart3, Calendar, TrendingUp } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { redirect, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ActivityHeatmap } from "~/components/activity-heatmap";
@@ -43,6 +43,7 @@ function parseDateFromUrl(dateStr: string): Date | null {
 }
 
 export default function Page() {
+	redirect("/app");
 	const searchParams = useSearchParams();
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);

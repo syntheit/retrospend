@@ -188,7 +188,8 @@ export function useExpenseForm({
 	// Manage navigation guard ref manually
 	useEffect(() => {
 		const isEffectiveDirty =
-			isDirty && (mode === "edit" || !!watchedTitle || (watchedAmount || 0) > 0);
+			isDirty &&
+			(mode === "edit" || !!watchedTitle || (watchedAmount || 0) > 0);
 		hasUnsavedChangesRef.current = isEffectiveDirty;
 	}, [isDirty, mode, watchedTitle, watchedAmount]);
 

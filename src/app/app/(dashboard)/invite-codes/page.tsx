@@ -7,11 +7,13 @@ import { SiteHeader } from "~/components/site-header";
 import { UserInviteCodesTable } from "~/components/user-invite-codes-table";
 import { api } from "~/trpc/react";
 
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
+
 export default function InviteCodesPage() {
 	const utils = api.useUtils();
 	const [status, setStatus] = useState<"active" | "used">("active");
 	const [page, setPage] = useState(1);
-	const pageSize = 10;
+	const pageSize = DEFAULT_PAGE_SIZE;
 
 	const { data, isLoading } = api.invite.listUserCodes.useQuery({
 		status,

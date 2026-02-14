@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+import "flag-icons/css/flag-icons.min.css";
 
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";

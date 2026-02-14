@@ -61,21 +61,72 @@ export const dashboardRouter = createTRPCRouter({
 				last24HoursSpend = total;
 			}
 
-			const globalBudget = await db.budget.findFirst({
+			const allBudgets = await db.budget.findMany({
 				where: {
 					userId: session.user.id,
-					categoryId: null,
 					period: {
 						gte: startOfMonth,
 						lte: endOfMonth,
 					},
 				},
-				select: {
-					amount: true,
+				include: {
+					category: {
+						select: {
+							name: true,
+							isFixed: true,
+						},
+					},
 				},
 			});
 
-			const totalBudget = globalBudget ? Number(globalBudget.amount) : 0;
+			const globalBudget = allBudgets.find((b) => b.categoryId === null);
+			const globalBudgetLimit = globalBudget ? Number(globalBudget.amount) : 0;
+
+			const FIXED_NAMES = ["rent", "utilities", "mortgage", "bills", "insurance"];
+			
+			// 1. Calculate Sums
+			const fixedBudgetsSum = allBudgets
+				.filter(
+					(b) =>
+						b.categoryId !== null &&
+						(b.category?.isFixed ||
+							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")),
+				)
+				.reduce((sum, b) => sum + Number(b.amount), 0);
+
+			const explicitVariableBudgetsSum = allBudgets
+				.filter(
+					(b) =>
+						b.categoryId !== null &&
+						!(b.category?.isFixed ||
+							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")),
+				)
+				.reduce((sum, b) => sum + Number(b.amount), 0);
+
+			// 2. Determine "Total Budget" for the month
+			// If no global budget limit is set, we use the sum of all category budgets as the total
+			const totalBudget = globalBudgetLimit > 0 
+				? globalBudgetLimit 
+				: (fixedBudgetsSum + explicitVariableBudgetsSum);
+
+			// 3. Determine "Variable Budget"
+			// Logic: use sum of explicit variable categories if present, 
+			// otherwise residual from the total budget minuse fixed costs.
+			const residualVariableBudget = Math.max(0, totalBudget - fixedBudgetsSum);
+			
+			let variableBudget = explicitVariableBudgetsSum > 0 
+				? explicitVariableBudgetsSum 
+				: residualVariableBudget;
+
+			// Final fallback: if everything is 0 but we have a totalBudget, 
+			// use totalBudget as the variable budget line to prevent flatline.
+			if (variableBudget === 0 && totalBudget > 0) {
+				variableBudget = totalBudget;
+			}
+
+			// If STILL 0, check if there's ANY income to use as a "reasonable default" gauge? 
+			// Or just accept the user has no budgets. 
+			// But the user specifically wants the ~$600 one to show.
 
 			const { total: totalSpent } = await sumExpensesForCurrency(
 				db,
@@ -86,6 +137,42 @@ export const dashboardRouter = createTRPCRouter({
 						gte: startOfMonth,
 						lte: endOfMonth,
 					},
+				},
+				homeCurrency,
+			);
+
+			// Also calculate variable spent for the header stat
+			// We'll need a way to sum expenses for non-fixed categories
+			const fixedCategories = await db.category.findMany({
+				where: {
+					userId: session.user.id,
+					OR: [
+						{ isFixed: true },
+						{
+							name: {
+								in: FIXED_NAMES,
+								mode: "insensitive",
+							},
+						},
+					],
+				},
+				select: { id: true },
+			});
+			const fixedCategoryIds = fixedCategories.map((c) => c.id);
+
+			const { total: variableSpent } = await sumExpensesForCurrency(
+				db,
+				{
+					userId: session.user.id,
+					isAmortizedParent: false,
+					date: {
+						gte: startOfMonth,
+						lte: endOfMonth,
+					},
+					OR: [
+						{ categoryId: { notIn: fixedCategoryIds } },
+						{ categoryId: null }, // Uncategorized is usually variable
+					],
 				},
 				homeCurrency,
 			);
@@ -106,6 +193,8 @@ export const dashboardRouter = createTRPCRouter({
 				dailyBudgetPace: {
 					totalBudget,
 					totalSpent,
+					variableBudget: variableBudget || totalBudget, // Fallback to total if no fixed
+					variableSpent,
 					daysRemaining,
 				},
 				workEquivalent: {

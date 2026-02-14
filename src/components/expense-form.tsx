@@ -33,7 +33,10 @@ export interface ExpenseFormHandle {
 }
 
 export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
-	({ expenseId, mode = "edit", onTitleChange, isModal = false, onClose }, ref) => {
+	(
+		{ expenseId, mode = "edit", onTitleChange, isModal = false, onClose },
+		ref,
+	) => {
 		const {
 			form,
 			onSubmit,

@@ -247,7 +247,7 @@ export function RecurringModal({
 							/>
 						</div>
 					</div>
-					
+
 					{/* Payment Source */}
 					<div className="space-y-2">
 						<Label htmlFor="paymentSource">Payment Source</Label>
@@ -257,7 +257,9 @@ export function RecurringModal({
 							placeholder="e.g. Chase Checking"
 						/>
 						{errors.paymentSource && (
-							<p className="text-destructive text-sm">{errors.paymentSource.message}</p>
+							<p className="text-destructive text-sm">
+								{errors.paymentSource.message}
+							</p>
 						)}
 					</div>
 

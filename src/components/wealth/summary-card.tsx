@@ -29,7 +29,8 @@ export function SummaryCard({
 }: SummaryCardProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
-	const formattedValue = typeof value === "number" ? formatCurrency(value, currency) : value;
+	const formattedValue =
+		typeof value === "number" ? formatCurrency(value, currency) : value;
 
 	if (variant === "default") {
 		return (
@@ -39,7 +40,9 @@ export function SummaryCard({
 					<div className="space-y-4">
 						<div className="space-y-1">
 							<p className="font-medium text-sm text-stone-300">{title}</p>
-							<p className="font-bold text-3xl tracking-tight">{formattedValue}</p>
+							<p className="font-bold text-3xl tracking-tight">
+								{formattedValue}
+							</p>
 						</div>
 						{footer && (
 							<div className="flex w-fit items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
@@ -97,7 +100,9 @@ export function SummaryCard({
 						<div
 							className={cn(
 								"rounded-lg p-2",
-								isSuccess ? "bg-emerald-100 dark:bg-emerald-900/50" : "bg-amber-100 dark:bg-amber-900/50",
+								isSuccess
+									? "bg-emerald-100 dark:bg-emerald-900/50"
+									: "bg-amber-100 dark:bg-amber-900/50",
 							)}
 						>
 							<Icon

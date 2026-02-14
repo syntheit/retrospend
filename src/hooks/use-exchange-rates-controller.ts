@@ -1,8 +1,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { api } from "~/trpc/react";
 import { useSession } from "~/hooks/use-session";
+import { api } from "~/trpc/react";
 
 export interface ExchangeRateRow {
 	id: string;
@@ -38,50 +38,57 @@ export function useExchangeRatesController() {
 		enabled: Boolean(session?.user),
 	});
 
-	const reorderFavoritesMutation = api.preferences.reorderFavorites.useMutation({
-		onMutate: async ({ exchangeRateIds }) => {
-			// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-			await utils.preferences.getFavoriteExchangeRates.cancel();
+	const reorderFavoritesMutation = api.preferences.reorderFavorites.useMutation(
+		{
+			onMutate: async ({ exchangeRateIds }) => {
+				// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+				await utils.preferences.getFavoriteExchangeRates.cancel();
 
-			// Snapshot the previous value
-			const previousFavorites = utils.preferences.getFavoriteExchangeRates.getData();
+				// Snapshot the previous value
+				const previousFavorites =
+					utils.preferences.getFavoriteExchangeRates.getData();
 
-			// Optimistically update to the new value
-			if (previousFavorites) {
-				const idMap = new Map(previousFavorites.map((f) => [f.id, f]));
-				const nextFavorites = exchangeRateIds
-					.map((id) => idMap.get(id))
-					.filter(Boolean) as typeof previousFavorites;
+				// Optimistically update to the new value
+				if (previousFavorites) {
+					const idMap = new Map(previousFavorites.map((f) => [f.id, f]));
+					const nextFavorites = exchangeRateIds
+						.map((id) => idMap.get(id))
+						.filter(Boolean) as typeof previousFavorites;
 
-				utils.preferences.getFavoriteExchangeRates.setData(undefined, nextFavorites);
-			}
+					utils.preferences.getFavoriteExchangeRates.setData(
+						undefined,
+						nextFavorites,
+					);
+				}
 
-			return { previousFavorites };
+				return { previousFavorites };
+			},
+			onError: (_err, _newOrder, context) => {
+				// If the mutation fails, use the context returned from onMutate to roll back
+				if (context?.previousFavorites) {
+					utils.preferences.getFavoriteExchangeRates.setData(
+						undefined,
+						context.previousFavorites,
+					);
+				}
+				toast.error("Failed to reorder favorites");
+			},
+			onSettled: () => {
+				// Always refetch after error or success to make sure we're in sync with the server
+				void utils.preferences.getFavoriteExchangeRates.invalidate();
+			},
 		},
-		onError: (_err, _newOrder, context) => {
-			// If the mutation fails, use the context returned from onMutate to roll back
-			if (context?.previousFavorites) {
-				utils.preferences.getFavoriteExchangeRates.setData(
-					undefined,
-					context.previousFavorites,
-				);
-			}
-			toast.error("Failed to reorder favorites");
-		},
-		onSettled: () => {
-			// Always refetch after error or success to make sure we're in sync with the server
-			void utils.preferences.getFavoriteExchangeRates.invalidate();
-		},
-	});
+	);
 
-	const toggleFavoriteMutation = api.preferences.toggleFavoriteExchangeRate.useMutation({
-		onSuccess: () => {
-			void utils.preferences.getFavoriteExchangeRates.invalidate();
-		},
-		onError: () => {
-			toast.error("Failed to update favorite");
-		},
-	});
+	const toggleFavoriteMutation =
+		api.preferences.toggleFavoriteExchangeRate.useMutation({
+			onSuccess: () => {
+				void utils.preferences.getFavoriteExchangeRates.invalidate();
+			},
+			onError: () => {
+				toast.error("Failed to update favorite");
+			},
+		});
 
 	const syncNowMutation = api.exchangeRate.syncNow.useMutation({
 		onSuccess: () => {
@@ -168,4 +175,3 @@ export function useExchangeRatesController() {
 		},
 	};
 }
-

@@ -12,7 +12,7 @@ interface MetricCardProps {
 	titleClassName?: string;
 	iconClassName?: string;
 	contentClassName?: string;
-    overlay?: ReactNode;
+	overlay?: ReactNode;
 }
 
 export function MetricCard({
@@ -25,20 +25,33 @@ export function MetricCard({
 	titleClassName,
 	iconClassName,
 	contentClassName,
-    overlay,
+	overlay,
 }: MetricCardProps) {
 	return (
-		<Card className={cn("relative flex flex-col justify-between overflow-hidden shadow-xl", className)}>
-			<CardHeader className={cn("flex flex-row items-center justify-between space-y-0 pb-2", headerClassName)}>
-				<CardTitle className={cn("font-medium text-sm tracking-wider uppercase", titleClassName)}>
+		<Card
+			className={cn(
+				"relative flex flex-col justify-between overflow-hidden shadow-xl",
+				className,
+			)}
+		>
+			<CardHeader
+				className={cn(
+					"flex flex-row items-center justify-between space-y-0 pb-2",
+					headerClassName,
+				)}
+			>
+				<CardTitle
+					className={cn(
+						"font-medium text-sm uppercase tracking-wider",
+						titleClassName,
+					)}
+				>
 					{title}
 				</CardTitle>
-				<div className={cn("h-4 w-4", iconClassName)}>
-                    {icon}
-                </div>
+				<div className={cn("h-4 w-4", iconClassName)}>{icon}</div>
 			</CardHeader>
 			<CardContent className={cn("relative pt-2", contentClassName)}>
-                {overlay}
+				{overlay}
 				<div className="font-bold text-3xl tracking-tight">{value}</div>
 				{subtext && <div className="mt-1">{subtext}</div>}
 			</CardContent>

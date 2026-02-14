@@ -1,4 +1,3 @@
-
 import {
 	ChevronLeft,
 	ChevronRight,
@@ -190,10 +189,7 @@ export function BudgetHeader({
 										Total Monthly Budget
 									</p>
 									<p className="font-bold text-4xl tracking-tight sm:text-5xl">
-										{formatCurrency(
-											displayAmountInHomeCurrency,
-											homeCurrency,
-										)}
+										{formatCurrency(displayAmountInHomeCurrency, homeCurrency)}
 									</p>
 								</div>
 

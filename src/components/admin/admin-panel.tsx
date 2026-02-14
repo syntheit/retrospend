@@ -14,6 +14,7 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { ActionDialog } from "./action-dialog";
 import { InviteCodesTable } from "./invite-codes-table";
 import { SystemStatusCard } from "./system-status-card";
@@ -51,7 +52,7 @@ export function AdminPanel() {
 		"active",
 	);
 	const [inviteCodesPage, setInviteCodesPage] = useState(1);
-	const inviteCodesPageSize = 10;
+	const inviteCodesPageSize = DEFAULT_PAGE_SIZE;
 
 	const { data: session } = useSession();
 	const extendedUser = session?.user as ExtendedUser;

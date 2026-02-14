@@ -6,7 +6,6 @@ interface ExpensesTableFooterProps {
 	count: number;
 	currency: string;
 	hasForeignCurrencyExpenses?: boolean;
-	foreignCurrencySummary?: string | null;
 }
 
 /**
@@ -17,22 +16,15 @@ export function ExpensesTableFooter({
 	count,
 	currency,
 	hasForeignCurrencyExpenses,
-	foreignCurrencySummary,
 }: ExpensesTableFooterProps) {
 	return (
 		<TableRow className="border-t-2 bg-muted/50 font-semibold">
 			<TableCell
 				className="px-4 py-3 text-left font-semibold"
-				colSpan={4}
+				colSpan={hasForeignCurrencyExpenses ? 5 : 4}
 			>
 				Total ({count} items)
 			</TableCell>
-			
-			{hasForeignCurrencyExpenses && (
-				<TableCell className="px-4 py-3 text-right font-semibold">
-					{foreignCurrencySummary}
-				</TableCell>
-			)}
 
 			<TableCell className="px-4 py-3 text-right font-semibold">
 				<div className="text-right font-medium">

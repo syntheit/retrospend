@@ -2,12 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { env } from "~/env";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import {
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { IntegrationService } from "~/server/services/integration.service";
 
 export const exchangeRateRouter = createTRPCRouter({
