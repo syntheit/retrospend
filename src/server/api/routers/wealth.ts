@@ -367,15 +367,17 @@ export const wealthRouter = createTRPCRouter({
 					db.assetSnapshot.findFirst({
 						where: { accountId: a.id, date: { lt: oneYearAgo } },
 						orderBy: { date: "desc" },
-						select: { accountId: true, balanceInUSD: true },
+						select: { accountId: true, balanceInUSD: true, balance: true },
 					}),
 				),
 			);
 
 			const currentBalancesUSD = new Map<string, number>();
+			const currentBalancesNative = new Map<string, number>();
 			for (const asset of assets) {
 				const initial = initialPoints.find((p) => p?.accountId === asset.id);
 				currentBalancesUSD.set(asset.id, initial?.balanceInUSD.toNumber() ?? 0);
+				currentBalancesNative.set(asset.id, initial?.balance.toNumber() ?? 0);
 			}
 
 			const snapshotsByDate = new Map<string, typeof snapshots>();
@@ -389,6 +391,57 @@ export const wealthRouter = createTRPCRouter({
 					existing.push(s);
 				}
 			});
+
+			// Organize rates for historical lookup
+			// Map<Currency, Array<{ date: string, type: string, rate: number }>>
+			const historicalRates = new Map<
+				string,
+				{ date: string; type: string; rate: number }[]
+			>();
+			const sortedRatesAsc = [...allRates].sort(
+				(a, b) => a.date.getTime() - b.date.getTime(),
+			);
+
+			for (const r of sortedRatesAsc) {
+				const list = historicalRates.get(r.currency) || [];
+				list.push({
+					date: r.date.toISOString().split("T")[0] || "",
+					type: r.type,
+					rate: r.rate.toNumber(),
+				});
+				historicalRates.set(r.currency, list);
+			}
+
+			const getHistoricalRate = (
+				currency: string,
+				targetType: string | null,
+				dateStr: string,
+			): number | null => {
+				if (currency === BASE_CURRENCY) return 1;
+				const rates = historicalRates.get(currency);
+				if (!rates || rates.length === 0) return null;
+
+				const candidateRates = rates.filter((r) => r.date <= dateStr);
+				if (candidateRates.length === 0) return null;
+
+				// Get the subset of rates for the LATEST available date
+				const lastDate = candidateRates[candidateRates.length - 1]?.date;
+				const ratesOnDate = candidateRates.filter((r) => r.date === lastDate);
+
+				if (targetType) {
+					const match = ratesOnDate.find((r) => r.type === targetType);
+					if (match) return match.rate;
+				}
+
+				// Fallback logic "Blue" > "Official" > Any
+				const blue = ratesOnDate.find((r) => r.type === "blue");
+				if (blue) return blue.rate;
+
+				const official = ratesOnDate.find((r) => r.type === "official");
+				if (official) return official.rate;
+
+				return ratesOnDate[0]?.rate ?? null;
+			};
 
 			const history: {
 				date: string;
@@ -404,23 +457,34 @@ export const wealthRouter = createTRPCRouter({
 
 				daysSnapshots.forEach((snap) => {
 					currentBalancesUSD.set(snap.accountId, snap.balanceInUSD.toNumber());
+					currentBalancesNative.set(snap.accountId, snap.balance.toNumber());
 				});
 
 				let assetsInTarget = 0;
 				let liabilitiesInTarget = 0;
-				for (const [assetId, balUSD] of currentBalancesUSD.entries()) {
+
+				for (const [assetId, balNative] of currentBalancesNative.entries()) {
 					const asset = assetMap.get(assetId);
 					if (!asset) continue;
 
-					const isLiability = asset.type.startsWith("LIABILITY_");
-					// Same-currency awareness to prevent Billion Dollar bug
-					const latestSnapToday = daysSnapshots.find(
-						(s) => s.accountId === assetId,
+					// Try to recalculate USD/Target value using historical rate
+					const histRate = getHistoricalRate(
+						asset.currency,
+						asset.exchangeRateType,
+						dateStr,
 					);
-					const value =
-						asset.currency === targetCurrency && latestSnapToday
-							? latestSnapToday.balance.toNumber()
-							: balUSD * targetRate;
+
+					let balInUSD = 0;
+					if (histRate) {
+						// balanceInUSD = balance / rate (Units per USD)
+						balInUSD = balNative / histRate;
+					} else {
+						// Fallback to snapshot's stored USD value
+						balInUSD = currentBalancesUSD.get(assetId) ?? 0;
+					}
+
+					const isLiability = asset.type.startsWith("LIABILITY_");
+					const value = balInUSD * targetRate;
 
 					if (isLiability) {
 						liabilitiesInTarget += value;

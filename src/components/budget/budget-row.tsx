@@ -17,10 +17,10 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
-import { getCurrencySymbol } from "~/lib/utils";
+import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import type { Budget } from "~/types/budget-types";
+import { CATEGORY_ICON_MAP } from "~/lib/icons";
 import { BulletChart } from "./bullet-chart";
 import { QuickChips } from "./quick-chips";
 
@@ -104,10 +104,7 @@ export function BudgetRow({
 		return null;
 	}
 
-	const categoryColor =
-		CATEGORY_COLOR_MAP[
-			budget.category.color as keyof typeof CATEGORY_COLOR_MAP
-		] || "bg-gray-500";
+	/* categoryColor is handled via MUTED_COLOR_MAP in newer patterns, but we keep it simple here */
 
 	const remaining = budget.effectiveAmount - budget.actualSpend;
 	const isOverBudget = remaining < 0;
@@ -167,13 +164,19 @@ export function BudgetRow({
 				type="button"
 			>
 				<div
-					className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-white text-xs sm:h-10 sm:w-10 sm:text-sm ${categoryColor}`}
+					className={cn(
+						"flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9",
+						"bg-primary/10 text-primary"
+					)}
 				>
-					{budget.category.name.substring(0, 2).toUpperCase()}
+					{(() => {
+						const Icon = (CATEGORY_ICON_MAP[budget.category.name] || CATEGORY_ICON_MAP.Misc) as React.ElementType;
+						return <Icon className="h-4 w-4" />;
+					})()}
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate font-medium text-sm sm:text-base">
+					<h3 className="truncate font-medium text-sm sm:text-base tracking-tight">
 						{budget.category.name}
 					</h3>
 				</div>
@@ -190,9 +193,9 @@ export function BudgetRow({
 					</div>
 				)}
 
-				<div className="flex items-center justify-end gap-1 whitespace-nowrap text-right">
+				<div className="flex items-center justify-end gap-1 whitespace-nowrap text-right tabular-nums">
 					<span
-						className={`font-medium sm:text-lg ${isOverBudget ? "text-destructive" : "text-foreground"}`}
+						className={`font-medium sm:text-lg ${isOverBudget ? "text-amber-500" : "text-foreground"}`}
 					>
 						{formatCurrency(budget.actualSpend, budget.currency)}
 					</span>
@@ -211,12 +214,12 @@ export function BudgetRow({
 					<div className="space-y-2">
 						<Label htmlFor="budget-amount">Budget Amount</Label>
 						<div className="relative">
-							<span className="absolute top-1/2 left-3 -translate-y-1/2 font-mono text-muted-foreground">
+							<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground tabular-nums">
 								{getCurrencySymbol(budget.currency)}
 							</span>
 							<Input
-								className={`border-none bg-transparent pl-6 font-mono text-2xl text-stone-200 outline-none placeholder:text-stone-400 sm:text-3xl ${
-									isPegged ? "text-stone-600" : ""
+								className={`border-none bg-transparent pl-6 text-2xl text-foreground outline-none placeholder:text-muted-foreground tabular-nums sm:text-3xl ${
+									isPegged ? "text-muted-foreground" : ""
 								}`}
 								disabled={isPegged}
 								id="budget-amount"

@@ -90,6 +90,15 @@ export const CURRENCIES: Record<string, Currency> = {
 		code: "AUD",
 		name_plural: "Australian dollars",
 	},
+	AWG: {
+		symbol: "Afl.",
+		name: "Aruban Guilder",
+		symbol_native: "Afl.",
+		decimal_digits: 2,
+		rounding: 0,
+		code: "AWG",
+		name_plural: "Aruban guilders",
+	},
 	AZN: {
 		symbol: "man.",
 		name: "Azerbaijani Manat",
@@ -108,6 +117,15 @@ export const CURRENCIES: Record<string, Currency> = {
 		code: "BAM",
 		name_plural: "Bosnia-Herzegovina convertible marks",
 	},
+	BBD: {
+		symbol: "Bds$",
+		name: "Barbadian Dollar",
+		symbol_native: "$",
+		decimal_digits: 2,
+		rounding: 0,
+		code: "BBD",
+		name_plural: "Barbadian dollars",
+	},
 	BDT: {
 		symbol: "Tk",
 		name: "Bangladeshi Taka",
@@ -116,6 +134,15 @@ export const CURRENCIES: Record<string, Currency> = {
 		rounding: 0,
 		code: "BDT",
 		name_plural: "Bangladeshi takas",
+	},
+	BGN: {
+		symbol: "BGN",
+		name: "Bulgarian Lev",
+		symbol_native: "лв.",
+		decimal_digits: 2,
+		rounding: 0,
+		code: "BGN",
+		name_plural: "Bulgarian leva",
 	},
 	BHD: {
 		symbol: "BD",
@@ -134,6 +161,15 @@ export const CURRENCIES: Record<string, Currency> = {
 		rounding: 0,
 		code: "BIF",
 		name_plural: "Burundian francs",
+	},
+	BMD: {
+		symbol: "BD$",
+		name: "Bermudian Dollar",
+		symbol_native: "$",
+		decimal_digits: 2,
+		rounding: 0,
+		code: "BMD",
+		name_plural: "Bermudian dollars",
 	},
 	BND: {
 		symbol: "BN$",

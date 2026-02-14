@@ -77,9 +77,9 @@ export function BulletChart({
 }: BulletChartProps) {
 	if (budgetAmount <= 0) {
 		return (
-			<div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+			<div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary/30">
 				<div
-					className={`absolute inset-0 rounded-full ${isPegged ? "bg-stripes" : "bg-stone-300 dark:bg-stone-600"}`}
+					className={`absolute inset-0 rounded-full ${isPegged ? "bg-stripes" : "bg-stone-200 dark:bg-stone-800"}`}
 					style={
 						isPegged
 							? {
@@ -99,9 +99,9 @@ export function BulletChart({
 	const progressColor = getProgressColor(spendPercentage, isPegged || false);
 
 	return (
-		<div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+		<div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary/30">
 			<div
-				className={`absolute inset-0 rounded-full ${isPegged ? "bg-stripes" : "bg-stone-300 dark:bg-stone-600"}`}
+				className={`absolute inset-0 rounded-full ${isPegged ? "bg-stripes" : "bg-stone-200 dark:bg-stone-800"}`}
 				style={
 					isPegged
 						? {

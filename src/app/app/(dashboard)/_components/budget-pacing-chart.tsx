@@ -93,10 +93,10 @@ export function BudgetPacingChart({
 	const safeToSpend = remainingVariableBudget / daysLeft;
 
 	return (
-		<Card className="relative flex h-full flex-col">
-			<CardHeader className="flex flex-row items-center justify-between pb-2">
+		<Card className="relative flex h-full flex-col border border-border bg-card shadow-sm">
+			<CardHeader className="flex flex-row items-baseline justify-between px-4 pb-2 sm:px-6">
 				<div>
-					<CardTitle className="text-lg font-semibold">
+					<CardTitle className="font-semibold text-lg tracking-tight">
 						Budget Pacing
 					</CardTitle>
 					<p className="text-sm text-muted-foreground">
@@ -104,11 +104,11 @@ export function BudgetPacingChart({
 					</p>
 				</div>
 				<div className="text-right">
-					<div className="text-2xl font-bold">
+					<div className="font-bold text-2xl tabular-nums tracking-tighter">
 						{formatCurrencyUtil(safeToSpend, homeCurrency, "standard", false)} 
-						<span className="text-base font-normal text-muted-foreground"> / day</span>
+						<span className="font-sans text-base font-normal text-muted-foreground"> / day</span>
 					</div>
-					<p className="text-xs text-muted-foreground">safe to spend</p>
+					<p className="uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">safe to spend</p>
 				</div>
 			</CardHeader>
 			<CardContent className="min-h-0 flex-1 px-2 pb-6 sm:px-6">

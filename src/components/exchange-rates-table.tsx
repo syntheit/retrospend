@@ -135,7 +135,7 @@ function createExchangeRateColumns({
 					<div className="flex items-center gap-3">
 						<CurrencyFlag className="!h-8 !w-8" currencyCode={currencyCode} />
 						<div className="space-y-0.5">
-							<div className="font-medium font-mono">{currencyCode}</div>
+							<div className="font-medium tabular-nums">{currencyCode}</div>
 							<div className="text-muted-foreground text-xs">
 								{currencyName}
 							</div>
@@ -151,7 +151,7 @@ function createExchangeRateColumns({
 			cell: ({ row }) => {
 				const rate = row.original.rate;
 				return (
-					<div className="text-right font-mono">
+					<div className="text-right tabular-nums">
 						{rate.toLocaleString(undefined, {
 							minimumFractionDigits: 4,
 							maximumFractionDigits: 4,

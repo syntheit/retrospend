@@ -162,14 +162,14 @@ export function RateSelector({
 								<div className="flex w-full min-w-0 items-center justify-between gap-4">
 									<span className="truncate">{option.label}</span>
 									{option.type !== "custom" && (
-										<span className="shrink-0 font-mono text-muted-foreground text-sm leading-none">
+										<span className="shrink-0 text-muted-foreground text-sm tabular-nums leading-none">
 											{option.rate.toLocaleString(undefined, {
 												maximumFractionDigits: 6,
 											})}
 										</span>
 									)}
 									{option.type === "custom" && value && (
-										<span className="shrink-0 font-mono text-muted-foreground text-sm leading-none">
+										<span className="shrink-0 text-muted-foreground text-sm tabular-nums leading-none">
 											{(isInverse ? 1 / value : value).toLocaleString(
 												undefined,
 												{
@@ -210,7 +210,7 @@ export function RateSelector({
 								<div className="flex w-full items-center justify-between gap-4">
 									<span>{option.label}</span>
 									{option.type !== "custom" && (
-										<span className="font-mono text-muted-foreground text-sm">
+										<span className="text-muted-foreground text-sm tabular-nums">
 											{option.rate.toLocaleString(undefined, {
 												maximumFractionDigits: 6,
 											})}
@@ -229,7 +229,7 @@ export function RateSelector({
 						Custom Rate
 					</Label>
 					<Input
-						className="h-10 font-mono"
+						className="h-10 tabular-nums"
 						id="custom-rate"
 						onChange={(e) => handleCustomRateChange(e.target.value)}
 						placeholder="Enter custom rate"

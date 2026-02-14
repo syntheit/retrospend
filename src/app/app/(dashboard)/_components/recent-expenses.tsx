@@ -1,36 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
-import {
-	Book,
-	Briefcase,
-	Bus,
-	Car,
-	Clapperboard,
-	Coffee,
-	CreditCard,
-	Dumbbell,
-	Film,
-	Gamepad as GamepadIcon,
-	GraduationCap,
-	Heart,
-	Home,
-	Laptop,
-	Martini,
-	Music,
-	PartyPopper,
-	Plane,
-	Receipt,
-	ShoppingBag,
-	ShoppingCart,
-	Smartphone,
-	Star,
-	Train,
-	Tv,
-	Utensils,
-	Wifi,
-	Zap,
-} from "lucide-react";
+import { CATEGORY_ICON_MAP, BRAND_ICON_MAP } from "~/lib/icons";
+import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { memo } from "react";
 import { Button } from "~/components/ui/button";
@@ -54,7 +26,6 @@ import type { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import type { NormalizedExpense } from "~/lib/utils";
 import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 
-// Explicit map to ensure Tailwind generates these classes
 const MUTED_COLOR_MAP: Record<string, string> = {
 	emerald: "bg-emerald-500/10 text-emerald-500",
 	blue: "bg-blue-500/10 text-blue-500",
@@ -77,87 +48,6 @@ const MUTED_COLOR_MAP: Record<string, string> = {
 	stone: "bg-stone-500/10 text-stone-500",
 	rose: "bg-rose-500/10 text-rose-500",
 	red: "bg-red-500/10 text-red-500",
-};
-
-const CATEGORY_ICON_MAP: Record<string, React.ElementType> = {
-	Groceries: ShoppingCart,
-	"Dining Out": Utensils,
-	Cafe: Coffee,
-	"Food Delivery": ShoppingBag,
-	Drinks: Martini,
-	Rent: Home,
-	Utilities: Zap,
-	Health: Heart,
-	Transport: Bus,
-	Travel: Car,
-	Tech: Laptop,
-	Subscriptions: CreditCard,
-	Education: GraduationCap,
-	Misc: Receipt,
-	Fees: Receipt,
-	Taxes: Receipt,
-	Social: PartyPopper,
-	Date: Heart,
-	Household: Home,
-	Hobby: Star,
-	Gas: Car,
-	Rideshare: Car,
-	Gym: Dumbbell,
-	Work: Briefcase,
-};
-
-// Basic keyword matching for brands
-const BRAND_ICON_MAP: Record<string, React.ElementType> = {
-	uber: Car,
-	lyft: Car,
-	amazon: ShoppingBag,
-	netflix: Tv,
-	spotify: Music,
-	apple: Smartphone,
-	starbucks: Coffee,
-	mcdonalds: Utensils,
-	burger: Utensils,
-	subway: Train, // Or Utensils? Usually food... let's say Utensils for "Subway" sandwiches, but "Subway" transport? Assuming food.
-	airbnb: Home,
-	hotel: Home,
-	flight: Plane,
-	airline: Plane,
-	delta: Plane,
-	united: Plane,
-	american: Plane,
-	shell: Car,
-	exxon: Car,
-	bp: Car,
-	chevron: Car,
-	texaco: Car,
-	target: ShoppingCart,
-	walmart: ShoppingCart,
-	kroger: ShoppingCart,
-	costco: ShoppingCart,
-	whole: ShoppingCart,
-	trader: ShoppingCart,
-	safeway: ShoppingCart,
-	publix: ShoppingCart,
-	aldi: ShoppingCart,
-	lidl: ShoppingCart,
-	heb: ShoppingCart,
-	wegmans: ShoppingCart,
-	cinema: Clapperboard,
-	movie: Clapperboard,
-	theatre: Clapperboard,
-	theater: Clapperboard,
-	kindle: Book,
-	audible: Book,
-	steam: GamepadIcon,
-	nintendo: Laptop,
-	xbox: Laptop,
-	playstation: Laptop,
-	internet: Wifi,
-	wifi: Wifi,
-	comcast: Wifi,
-	verizon: Wifi,
-	att: Wifi,
-	tmobile: Wifi,
 };
 
 function getExpenseIcon(title: string | null, categoryName: string) {
@@ -218,13 +108,13 @@ export function RecentExpenses({
 
 	return (
 		<RecentExpensesCard>
-			<div className="scrollbar-thin scrollbar-thumb-stone-700 scrollbar-track-transparent max-h-[500px] overflow-y-auto rounded-lg border bg-background/40 p-2 sm:border-0 sm:bg-transparent sm:p-0">
+			<div className="scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent max-h-[500px] overflow-y-auto rounded-lg border border-border bg-background/40 p-2 sm:border-0 sm:bg-transparent sm:p-0">
 				<Table className="w-full table-fixed">
 					<TableHeader>
-						<TableRow>
-							<TableHead className="w-1/2">Expense</TableHead>
-							<TableHead className="w-1/4">Date</TableHead>
-							<TableHead className="w-1/4 text-right">Amount</TableHead>
+						<TableRow className="border-none hover:bg-transparent">
+							<TableHead className="w-1/2 uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">Expense</TableHead>
+							<TableHead className="w-1/4 uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">Date</TableHead>
+							<TableHead className="w-1/4 text-right uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">Amount</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -246,10 +136,10 @@ export function RecentExpenses({
 
 function RecentExpensesCard({ children }: { children: React.ReactNode }) {
 	return (
-		<Card>
-			<CardHeader className="flex flex-row items-start justify-between">
+		<Card className="border border-border bg-card shadow-sm">
+			<CardHeader className="flex flex-row items-baseline justify-between px-4 sm:px-6">
 				<div>
-					<CardTitle className="font-semibold text-lg">
+					<CardTitle className="font-semibold text-lg tracking-tight">
 						Recent Activity
 					</CardTitle>
 					<CardDescription>Latest finalized expenses</CardDescription>
@@ -290,12 +180,12 @@ const RecentExpenseRow = memo(function RecentExpenseRow({
 	const Icon = getExpenseIcon(expense.title, categoryName);
 
 	return (
-		<TableRow>
-			<TableCell>
+		<TableRow className="border-none hover:bg-accent/50 transition-colors">
+			<TableCell className="py-3">
 				<div className="flex min-w-0 items-center gap-3">
 					<div
 						className={cn(
-							"flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full",
+							"flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full",
 							MUTED_COLOR_MAP[colorKey] ?? "bg-stone-500/10 text-stone-500",
 						)}
 					>
@@ -312,15 +202,15 @@ const RecentExpenseRow = memo(function RecentExpenseRow({
 					</div>
 				</div>
 			</TableCell>
-			<TableCell className="whitespace-nowrap text-muted-foreground text-sm">
+			<TableCell className="whitespace-nowrap font-medium text-muted-foreground text-xs tabular-nums">
 				{format(expense.date, "MMM d")}
 			</TableCell>
-			<TableCell className="whitespace-nowrap text-right">
-				<div className="font-medium text-foreground text-sm">
+			<TableCell className="whitespace-nowrap text-right py-3">
+				<div className="font-medium text-foreground text-sm tabular-nums">
 					{formatCurrency(amount, homeCurrency)}
 				</div>
 				{showOriginal && (
-					<div className="mt-0.5 text-[10px] text-muted-foreground">
+					<div className="mt-0.5 font-medium text-[10px] text-muted-foreground tabular-nums">
 						{formatCurrency(expense.amount, expense.currency)}
 					</div>
 				)}

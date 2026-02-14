@@ -77,7 +77,7 @@ export function CategoryDonutLegend({
 						</div>
 						<span
 							className={cn(
-								"font-mono text-sm tabular-nums",
+								"font-medium text-sm tabular-nums",
 								isHidden ? "opacity-70" : "text-foreground",
 							)}
 						>

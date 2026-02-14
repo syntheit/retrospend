@@ -73,11 +73,11 @@ export function PlaygroundBudgetRow({
 				/>
 
 				<div className="relative w-full sm:w-32 lg:w-40">
-					<span className="absolute top-1/2 left-3 -translate-y-1/2 font-mono text-muted-foreground text-sm">
+					<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm tabular-nums">
 						{getCurrencySymbol(currency)}
 					</span>
 					<Input
-						className="h-10 border-none bg-stone-100 pl-7 font-mono text-lg transition-colors focus-visible:ring-1 focus-visible:ring-indigo-500 dark:bg-stone-900"
+						className="h-10 border-none bg-accent/30 pl-7 text-lg tabular-nums transition-colors focus-visible:ring-1 focus-visible:ring-indigo-500"
 						onChange={handleInputChange}
 						placeholder="0.00"
 						type="number"

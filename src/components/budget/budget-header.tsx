@@ -105,14 +105,14 @@ export function BudgetHeader({
 										<p className="font-medium text-indigo-100 text-lg uppercase tracking-wide">
 											You spent
 										</p>
-										<p className="font-black text-6xl tracking-tighter sm:text-7xl lg:text-8xl">
+										<p className="font-bold text-6xl tracking-tighter tabular-nums sm:text-7xl lg:text-8xl">
 											{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
 										</p>
 									</div>
 
 									<div className="flex flex-wrap items-center gap-4">
 										<div className="flex items-center gap-2 rounded-2xl bg-white/20 px-4 py-2 backdrop-blur-md">
-											<p className="font-semibold text-lg">
+											<p className="font-semibold text-lg tabular-nums">
 												{Math.round(percentUsed)}%
 											</p>
 											<p className="text-sm text-white/80">of your budget</p>
@@ -135,12 +135,12 @@ export function BudgetHeader({
 									</div>
 								</div>
 
-								<div className="grid grid-cols-2 gap-8 border-white/10 border-t pt-8 lg:border-t-0 lg:pt-0">
+								<div className="grid grid-cols-2 gap-8 border-t border-white/10 pt-8 lg:border-t-0 lg:pt-0">
 									<div className="space-y-1">
 										<p className="font-medium text-sm text-white/60 uppercase tracking-widest">
 											Budgeted
 										</p>
-										<p className="font-bold text-2xl sm:text-3xl">
+										<p className="text-2xl font-bold tabular-nums sm:text-3xl">
 											{formatCurrency(
 												displayAmountInHomeCurrency,
 												homeCurrency,
@@ -153,7 +153,7 @@ export function BudgetHeader({
 										</p>
 										<p
 											className={cn(
-												"font-bold text-2xl sm:text-3xl",
+												"font-bold text-2xl tabular-nums sm:text-3xl",
 												isOverBudget ? "text-rose-200" : "text-emerald-200",
 											)}
 										>
@@ -188,7 +188,7 @@ export function BudgetHeader({
 									<p className="font-medium text-sm text-stone-300">
 										Total Monthly Budget
 									</p>
-									<p className="font-bold text-4xl tracking-tight sm:text-5xl">
+									<p className="text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
 										{formatCurrency(displayAmountInHomeCurrency, homeCurrency)}
 									</p>
 								</div>
@@ -196,10 +196,10 @@ export function BudgetHeader({
 								<div className="flex flex-wrap items-center gap-3">
 									<div
 										className={cn(
-											"flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-sm",
+											"flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium text-xs",
 											isOverBudget
-												? "bg-rose-500/20 text-rose-300"
-												: "bg-emerald-500/20 text-emerald-300",
+												? "border-rose-500/20 bg-rose-500/10 text-rose-500"
+												: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
 										)}
 									>
 										{isOverBudget ? (
@@ -209,7 +209,7 @@ export function BudgetHeader({
 										)}
 										{isOverBudget ? "Overspent" : "Under Limit"}
 									</div>
-									<span className="text-sm text-stone-400">
+									<span className="text-sm text-stone-400 tabular-nums">
 										{Math.round(percentUsed)}% of budget used
 									</span>
 								</div>
@@ -220,7 +220,7 @@ export function BudgetHeader({
 									<p className="font-medium text-stone-400 text-xs uppercase tracking-wider">
 										Spent
 									</p>
-									<p className="font-semibold text-xl">
+									<p className="font-semibold text-xl tabular-nums">
 										{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
 									</p>
 								</div>
@@ -230,14 +230,17 @@ export function BudgetHeader({
 									</p>
 									<p
 										className={cn(
-											"font-semibold text-xl",
+											"font-semibold text-xl tabular-nums",
 											isOverBudget ? "text-rose-400" : "text-emerald-400",
 										)}
 									>
 										{formatCurrency(
 											Math.abs(remainingInHomeCurrency),
 											homeCurrency,
-										)}
+										)}{" "}
+										<span className="text-sm opacity-70">
+											{isOverBudget ? "over" : "left"}
+										</span>
 									</p>
 								</div>
 							</div>

@@ -150,7 +150,7 @@ export function MonthStepper({
 			<Popover onOpenChange={handleOpenChange} open={open}>
 				<PopoverTrigger asChild>
 					<Button
-						className="min-w-[100px] font-mono text-sm uppercase tracking-wide"
+						className="min-w-[100px] text-sm uppercase tracking-wide tabular-nums"
 						variant="ghost"
 					>
 						{format(value, "MMM yyyy")}
@@ -168,7 +168,7 @@ export function MonthStepper({
 						>
 							<ChevronLeft className="h-4 w-4" />
 						</Button>
-						<span className="font-medium font-mono text-sm">{popoverYear}</span>
+						<span className="font-medium text-sm tabular-nums">{popoverYear}</span>
 						<Button
 							aria-label="Next year"
 							disabled={popoverYear >= effectiveMaxDate.getFullYear()}

@@ -37,7 +37,7 @@ export function FavoritesPanel({
 			: null;
 
 	return (
-		<Card>
+		<Card className="border border-border bg-card shadow-sm">
 			<CardHeader>
 				<CardTitle className="font-semibold text-lg">Exchange Rates</CardTitle>
 				<CardDescription>
@@ -127,17 +127,17 @@ function FavoriteItem({
 	rate: FavoritesPanelProps["favoriteRates"][number];
 }) {
 	return (
-		<div className="-mx-2 flex items-center justify-between rounded border-white/5 border-b px-2 py-3 transition-colors last:border-0 hover:bg-white/5">
+		<div className="-mx-2 flex items-center justify-between rounded border-border border-b px-2 py-3 transition-colors last:border-0 hover:bg-accent/50">
 			<div>
 				<div className="flex items-center gap-2">
 					<CurrencyFlag className="!h-6 !w-6" currencyCode={rate.currency} />
-					<span className="font-mono font-semibold">{rate.currency}</span>
+					<span className="font-semibold tabular-nums">{rate.currency}</span>
 					<Badge className="capitalize" variant="secondary">
 						{rate.type}
 					</Badge>
 				</div>
 			</div>
-			<div className="text-right font-semibold">
+			<div className="text-right font-semibold tabular-nums">
 				{rate.rate.toLocaleString(undefined, {
 					maximumFractionDigits: 4,
 				})}

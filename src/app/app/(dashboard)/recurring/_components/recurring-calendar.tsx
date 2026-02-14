@@ -1,18 +1,8 @@
 "use client";
-
-import { addMonths, format, isSameDay, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
-import { BrandIcon } from "~/components/ui/BrandIcon";
-import { Button } from "~/components/ui/button";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "~/components/ui/tooltip";
+import * as React from "react";
+import { addDays, format, isSameDay } from "date-fns";
+import { Calendar } from "~/components/ui/calendar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { useRecurringCalendar } from "~/hooks/use-recurring-calendar";
 import { cn } from "~/lib/utils";
 import type { RecurringTemplate } from "~/types/recurring";
 
@@ -21,142 +11,148 @@ interface RecurringCalendarProps {
 	loading: boolean;
 }
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 export function RecurringCalendar({
 	templates,
 	loading,
 }: RecurringCalendarProps) {
-	const [currentMonth, setCurrentMonth] = useState(new Date());
 	const { formatCurrency } = useCurrencyFormatter();
-	const calendarDays = useRecurringCalendar(templates, currentMonth);
+	const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(
+		undefined,
+	);
 
-	const handlePreviousMonth = () => {
-		setCurrentMonth(subMonths(currentMonth, 1));
-	};
+	const next7Days = React.useMemo(
+		() => Array.from({ length: 7 }, (_, i) => addDays(new Date(), i)),
+		[],
+	);
 
-	const handleNextMonth = () => {
-		setCurrentMonth(addMonths(currentMonth, 1));
-	};
+	const upcomingPayments = React.useMemo(
+		() =>
+			next7Days
+				.flatMap((date) => {
+					return (templates ?? [])
+						.filter((t) => isSameDay(new Date(t.nextDueDate), date))
+						.map((t) => ({ ...t, date }));
+				})
+				.sort((a, b) => a.date.getTime() - b.date.getTime()),
+		[next7Days, templates],
+	);
 
-	const handleToday = () => {
-		setCurrentMonth(new Date());
-	};
+	const paymentsOnSelectedDate = React.useMemo(
+		() =>
+			selectedDate
+				? (templates ?? [])
+						.filter((t) => isSameDay(new Date(t.nextDueDate), selectedDate))
+						.map((t) => ({ ...t, date: selectedDate }))
+				: [],
+		[selectedDate, templates],
+	);
+
+	const displayedPayments = selectedDate
+		? paymentsOnSelectedDate
+		: upcomingPayments;
+
+	const paymentDates = React.useMemo(
+		() => (templates ?? []).map((t) => new Date(t.nextDueDate)),
+		[templates],
+	);
+
 
 	if (loading) {
 		return (
-			<div className="space-y-4">
-				<div className="h-12 animate-pulse rounded-lg bg-muted" />
-				<div className="h-96 animate-pulse rounded-lg bg-muted" />
+			<div className="space-y-6">
+				<div className="h-[300px] animate-pulse rounded-xl bg-muted" />
+				<div className="space-y-2">
+					<div className="h-12 animate-pulse rounded-lg bg-muted" />
+					<div className="h-12 animate-pulse rounded-lg bg-muted" />
+				</div>
 			</div>
 		);
 	}
 
+
 	return (
-		<div className="space-y-4">
-			{/* Calendar Header */}
-			<div className="flex items-center justify-between">
-				<h2 className="font-semibold text-2xl">
-					{format(currentMonth, "MMMM yyyy")}
-				</h2>
-				<div className="flex items-center gap-2">
-					<Button onClick={handleToday} size="sm" variant="outline">
-						Today
-					</Button>
-					<Button onClick={handlePreviousMonth} size="icon" variant="outline">
-						<ChevronLeft className="h-4 w-4" />
-					</Button>
-					<Button onClick={handleNextMonth} size="icon" variant="outline">
-						<ChevronRight className="h-4 w-4" />
-					</Button>
-				</div>
+		<div className="space-y-6">
+			<div className="rounded-xl border border-border bg-card p-2 shadow-sm">
+				<Calendar
+					className="w-full p-0"
+					classNames={{
+						months: "w-full",
+						month: "w-full space-y-4",
+						table: "w-full border-collapse space-y-1",
+						head_row: "flex w-full",
+						head_cell: cn(
+							"w-full rounded-md font-normal text-[0.8rem] text-muted-foreground",
+						),
+						row: cn("mt-2 flex w-full"),
+						cell: cn(
+							"relative w-full p-0 text-center text-sm focus-within:relative focus-within:z-20",
+						),
+						day: cn(
+							"mx-auto h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+						),
+					}}
+					mode="single"
+					selected={selectedDate}
+					onSelect={setSelectedDate}
+					modifiers={{
+						payment: paymentDates,
+					}}
+					modifiersClassNames={{
+						payment: cn(
+							"relative after:absolute after:bottom-1.5 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-blue-500 after:content-['']",
+						),
+					}}
+				/>
 			</div>
 
-			{/* Calendar Grid */}
-			<div className="overflow-hidden rounded-lg border bg-card">
-				{/* Weekday Headers */}
-				<div className="grid grid-cols-7 border-b bg-muted/50">
-					{WEEKDAYS.map((day) => (
-						<div
-							className="border-r p-2 text-center font-medium text-muted-foreground text-sm last:border-r-0"
-							key={day}
+			<div className="space-y-3">
+				<div className="flex items-center justify-between px-1">
+					<h3 className="font-semibold text-sm">
+						{selectedDate
+							? `Payments on ${format(selectedDate, "MMM d")}`
+							: "Next 7 Days"}
+					</h3>
+					{selectedDate && (
+						<button
+							type="button"
+							onClick={() => setSelectedDate(undefined)}
+							className="text-xs text-muted-foreground hover:text-foreground transition-colors"
 						>
-							{day}
-						</div>
-					))}
+							Clear
+						</button>
+					)}
 				</div>
-
-				{/* Calendar Days */}
-				<div className="grid grid-cols-7">
-					{calendarDays.map((dayInfo) => {
-						const { date, isCurrentMonth, templates: dayTemplates } = dayInfo;
-						const dateKey = format(date, "yyyy-MM-dd");
-						const isToday = isSameDay(date, new Date());
-
-						return (
+				<div className="space-y-2">
+					{displayedPayments.length > 0 ? (
+						displayedPayments.map((payment) => (
 							<div
-								className={cn(
-									"aspect-square border-r border-b p-2 transition-colors last:border-r-0 hover:bg-accent/50",
-									isToday && "bg-primary/10 ring-1 ring-primary/20 ring-inset",
-									!isCurrentMonth && "bg-muted/20 opacity-50",
-								)}
-								key={dateKey}
+								className="flex items-center justify-between rounded-xl border bg-card p-3 shadow-sm transition-colors hover:bg-accent/50"
+								key={payment.id}
 							>
-								<div className="flex h-full flex-col">
-									{/* Day number */}
-									<div
-										className={cn(
-											"mb-2 flex h-6 w-6 items-center justify-center rounded-full text-sm",
-											isToday
-												? "bg-primary font-semibold text-primary-foreground"
-												: "text-foreground",
-										)}
-									>
-										{date.getDate()}
-									</div>
-
-									{/* Payment icons */}
-									{dayTemplates.length > 0 && (
-										<TooltipProvider>
-											<div className="flex flex-wrap gap-2">
-												{dayTemplates.map((template) => (
-													<Tooltip key={template.id}>
-														<TooltipTrigger asChild>
-															<div className="group flex cursor-pointer flex-col items-center gap-1">
-																<BrandIcon
-																	className="h-5 w-5 rounded-full shadow-sm transition-transform group-hover:scale-110"
-																	name={template.name}
-																	size={20}
-																	url={template.websiteUrl}
-																/>
-																<span className="hidden font-mono text-[10px] text-muted-foreground leading-none md:block">
-																	{formatCurrency(
-																		Number(template.amount),
-																		template.currency,
-																	)}
-																</span>
-															</div>
-														</TooltipTrigger>
-														<TooltipContent>
-															<div className="text-center">
-																<p className="font-medium">{template.name}</p>
-																<p className="text-muted-foreground text-xs">
-																	{formatCurrency(
-																		Number(template.amount),
-																		template.currency,
-																	)}
-																</p>
-															</div>
-														</TooltipContent>
-													</Tooltip>
-												))}
-											</div>
-										</TooltipProvider>
-									)}
+								<div className="flex flex-col gap-0.5">
+									<span className="font-medium text-sm leading-none">
+										{payment.name}
+									</span>
+									<span className="text-muted-foreground text-xs">
+										{format(payment.date, "MMM d")}
+									</span>
+								</div>
+								<div className="text-right">
+									<span className="font-bold text-sm tabular-nums">
+										{formatCurrency(Number(payment.amount), payment.currency)}
+									</span>
 								</div>
 							</div>
-						);
-					})}
+						))
+					) : (
+						<div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-card/30 px-1 py-8 text-center">
+							<p className="text-muted-foreground text-xs italic">
+								{selectedDate
+									? "No payments on this day"
+									: "No payments in the next 7 days"}
+							</p>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

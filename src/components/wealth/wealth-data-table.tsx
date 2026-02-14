@@ -10,7 +10,6 @@ import {
 } from "@tabler/icons-react";
 import {
 	type Cell,
-	type ColumnDef,
 	flexRender,
 	type Header,
 	type HeaderGroup,
@@ -49,9 +48,11 @@ export function WealthDataTable({
 	selectedRows: controlledSelectedRows,
 	onSelectionChange: setControlledSelectedRows,
 	onDeleteSelected,
+	totalNetWorth = 0,
 }: {
 	data: Asset[];
 	homeCurrency?: string;
+	totalNetWorth?: number;
 	selectedRows?: Set<string>;
 	onSelectionChange?: (selectedIds: Set<string>) => void;
 	onDeleteSelected?: (selectedIds: Set<string>) => void;
@@ -62,14 +63,22 @@ export function WealthDataTable({
 		null,
 	);
 
-	// Check if any asset uses foreign currency
-	const hasForeignCurrency = React.useMemo(() => {
-		return data.some((asset) => asset.currency !== homeCurrency);
-	}, [data, homeCurrency]);
+
 
 	const columns = React.useMemo(
-		() => createWealthColumns(homeCurrency, hasForeignCurrency, formatCurrency),
-		[homeCurrency, hasForeignCurrency, formatCurrency],
+		() =>
+			createWealthColumns(
+				homeCurrency,
+				formatCurrency,
+				Boolean(controlledSelectedRows && controlledSelectedRows.size > 0),
+				totalNetWorth,
+			),
+		[
+			homeCurrency,
+			formatCurrency,
+			controlledSelectedRows,
+			totalNetWorth,
+		],
 	);
 
 	const controlledRowSelection = React.useMemo(() => {
@@ -249,21 +258,25 @@ export function WealthDataTable({
 						{paginationRows.length ? (
 							paginationRows.map((row: Row<Asset>) => (
 								<TableRow
+									className="group cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/50 last:border-0"
 									data-state={
 										selectedRows.has(row.original.id) ? "selected" : undefined
 									}
 									key={row.id}
+									onClick={() => setEditingAssetId(row.original.id)}
 								>
-									{row.getVisibleCells().map((cell: Cell<Asset, unknown>) => {
+									{row.getVisibleCells().map((cell: Cell<Asset, unknown>, index: number) => {
 										const cellIsRightAligned =
-											cell.column.id === "originalBalance" ||
 											cell.column.id === "balanceInTarget" ||
 											cell.column.id === "balanceInUSD";
 										return (
 											<TableCell
 												className={cn(
-													"px-4 py-3",
+													"px-4 py-3 leading-none",
 													cellIsRightAligned ? "text-right" : "text-left",
+													index === 0 && "w-[44%]",
+													index === 1 && "w-[33%]",
+													index === 2 && "w-[23%]",
 												)}
 												key={cell.id}
 											>
@@ -291,7 +304,7 @@ export function WealthDataTable({
 						<TableRow className="border-t-2 bg-muted/50 font-semibold">
 							<TableCell
 								className="px-4 py-3 text-left font-semibold"
-								colSpan={hasForeignCurrency ? 5 : 3}
+								colSpan={3}
 							>
 								Total ({table.getFilteredRowModel().rows.length} items)
 							</TableCell>
@@ -411,8 +424,8 @@ function ControlledAssetDialog({
 				balance: asset.balance,
 				isLiquid: asset.isLiquid,
 				exchangeRate: toNumber(asset.exchangeRate),
-				exchangeRateType: asset.exchangeRateType,
-				interestRate: asset.interestRate,
+				exchangeRateType: asset.exchangeRateType ?? undefined,
+				interestRate: asset.interestRate ?? undefined,
 			}}
 			key={asset.id}
 			onOpenChange={onOpenChange}

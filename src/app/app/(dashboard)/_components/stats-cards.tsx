@@ -51,7 +51,7 @@ export function StatsCards({
 					!expensesLoading && dailyAverage > 0 ? (
 						<>
 							Avg:{" "}
-							<span className="font-medium text-white">
+							<span className="font-medium text-foreground">
 								{formatMoney(dailyAverage)}/day
 							</span>
 						</>

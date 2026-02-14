@@ -17,7 +17,7 @@ export function SiteHeader({ title, actions }: SiteHeaderProps) {
 					orientation="vertical"
 				/>
 				{typeof title === "string" ? (
-					<h1 className="font-medium text-base">{title}</h1>
+					<h1 className="font-semibold text-lg tracking-tight">{title}</h1>
 				) : (
 					title
 				)}

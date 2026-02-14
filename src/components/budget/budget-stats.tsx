@@ -29,7 +29,7 @@ export function BudgetStats({ budgets, homeCurrency }: BudgetStatsProps) {
 							<p className="font-medium text-blue-700 text-sm dark:text-blue-400">
 								Total Allocated
 							</p>
-							<p className="font-bold text-2xl text-blue-900 dark:text-blue-100">
+							<p className="font-bold text-2xl text-blue-900 tabular-nums tracking-tight dark:text-blue-100">
 								{formatCurrency(totalAllocated, homeCurrency)}
 							</p>
 						</div>
@@ -53,7 +53,7 @@ export function BudgetStats({ budgets, homeCurrency }: BudgetStatsProps) {
 								<p className="font-medium text-rose-700 text-sm dark:text-rose-400">
 									Budget Attention
 								</p>
-								<p className="font-bold text-2xl text-rose-900 dark:text-rose-100">
+								<p className="font-bold text-2xl text-rose-900 tabular-nums tracking-tight dark:text-rose-100">
 									{overBudgetCategories} Over
 								</p>
 							</div>

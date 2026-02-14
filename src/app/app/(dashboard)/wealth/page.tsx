@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
@@ -20,7 +21,7 @@ import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
 import { WealthAllocationChart } from "~/components/wealth/wealth-allocation-chart";
 import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-exposure";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
-import { WealthHeader } from "~/components/wealth/wealth-header";
+import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
 import { useWealthDashboard } from "~/hooks/use-wealth-dashboard";
 import { AssetType } from "~/lib/db-enums";
@@ -86,18 +87,16 @@ export default function WealthPage() {
 	if (isLoading) {
 		return (
 			<>
-				<SiteHeader title="Wealth" />
+				<SiteHeader
+					actions={
+						<div className="flex gap-2">
+							<Skeleton className="h-8 w-24" />
+						</div>
+					}
+					title="Wealth"
+				/>
 				<PageContent>
 					<div className="space-y-6">
-						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-							<Skeleton className="h-8 w-32" />
-							<div className="flex gap-3">
-								<Skeleton className="h-9 w-20" />
-								<Skeleton className="h-9 w-20" />
-								<Skeleton className="h-9 w-24" />
-							</div>
-						</div>
-
 						<div className="grid gap-4 md:grid-cols-3">
 							<Skeleton className="h-24 w-full" />
 							<Skeleton className="h-24 w-full" />
@@ -130,7 +129,19 @@ export default function WealthPage() {
 	if (!dashboardData) {
 		return (
 			<>
-				<SiteHeader title="Wealth" />
+				<SiteHeader
+					actions={
+						<AssetDialog
+							trigger={
+								<Button className="h-8" size="sm">
+									<Plus className="mr-2 h-4 w-4" />
+									Add Asset
+								</Button>
+							}
+						/>
+					}
+					title="Wealth"
+				/>
 				<PageContent>
 					<div className="flex h-64 items-center justify-center">
 						<p className="text-muted-foreground">Failed to load wealth data</p>
@@ -142,10 +153,23 @@ export default function WealthPage() {
 
 	return (
 		<>
-			<SiteHeader title="Wealth" />
+			<SiteHeader
+				actions={
+					!isSelectionMode && (
+						<AssetDialog
+							trigger={
+								<Button className="h-8" size="sm">
+									<Plus className="mr-2 h-4 w-4" />
+									Add Asset
+								</Button>
+							}
+						/>
+					)
+				}
+				title="Wealth"
+			/>
 			<PageContent>
 				<div className="space-y-6">
-					<WealthHeader hideAddButton={isSelectionMode} />
 
 					{/* Summary Cards */}
 					<NetWorthSummary
@@ -258,6 +282,7 @@ export default function WealthPage() {
 								onDeleteSelected={handleDeleteSelected}
 								onSelectionChange={setSelectedAssetIds}
 								selectedRows={selectedAssetIds}
+								totalNetWorth={stats.netWorth}
 							/>
 						</div>
 

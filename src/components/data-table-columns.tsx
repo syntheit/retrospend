@@ -195,7 +195,7 @@ function createExpenseColumns(
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<div className="flex cursor-help items-center justify-end gap-1 text-right">
-									<div className="font-medium">
+									<div className="font-medium tabular-nums">
 										{formatCurrency(amount, currency)}
 									</div>
 									<Info className="h-3 w-3 text-muted-foreground" />
@@ -246,7 +246,7 @@ function createExpenseColumns(
 			);
 
 			return (
-				<div className="text-right font-medium">
+				<div className="text-right font-medium tabular-nums">
 					{formatCurrency(displayAmount, _homeCurrency)}
 				</div>
 			);

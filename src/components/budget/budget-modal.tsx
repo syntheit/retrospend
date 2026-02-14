@@ -187,11 +187,11 @@ export function BudgetModal({
 							)}
 						</Label>
 						<div className="relative">
-							<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+							<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground tabular-nums">
 								{getCurrencySymbol(budgetCurrency)}
 							</span>
 							<Input
-								className="pl-6"
+								className="pl-6 tabular-nums"
 								disabled={isPegged}
 								id="budget-amount"
 								min="0"

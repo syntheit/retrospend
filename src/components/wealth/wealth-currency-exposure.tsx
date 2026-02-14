@@ -4,7 +4,9 @@ import { BarChart3 } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { cn } from "~/lib/utils";
 
 interface WealthCurrencyExposureProps {
 	assets: {
@@ -82,15 +84,21 @@ export function WealthCurrencyExposure({
 				{data.map((item, index) => (
 					<div className="space-y-1" key={item.currency}>
 						<div className="flex items-center justify-between text-sm">
-							<span className="font-medium">{item.currency}</span>
-							<span className="text-muted-foreground">
+							<div className="flex items-center gap-2">
+								<CurrencyFlag className="!h-4 !w-4" currencyCode={item.currency} />
+								<span className="font-medium">{item.currency}</span>
+							</div>
+							<span className="text-muted-foreground tabular-nums">
 								{item.percentage.toFixed(1)}% (
 								{formatCurrency(item.value, "USD")})
 							</span>
 						</div>
-						<div className="h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+						<div className="h-2 w-full overflow-hidden rounded-full bg-secondary/30">
 							<div
-								className={`h-full ${getBarColor(index)} transition-all`}
+								className={cn(
+									"h-full rounded-full transition-all",
+									getBarColor(index),
+								)}
 								style={{ width: `${item.percentage}%` }}
 							/>
 						</div>

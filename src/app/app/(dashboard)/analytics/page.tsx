@@ -105,16 +105,15 @@ export default function Page() {
 	const totalBudget = useMemo(() => {
 		if (budgetMode === "SUM_OF_CATEGORIES") {
 			// Sum of all category budgets
-			if (!budgetsData) return undefined;
-			return budgetsData.reduce(
+			// Sum of all category budgets
+			return (budgetsData ?? []).reduce(
 				(total, budget) =>
 					total + Number(budget.effectiveAmount ?? budget.amount),
 				0,
 			);
 		} else {
 			// Global limit mode
-			if (!globalBudgetData) return undefined;
-			return Number(globalBudgetData.amount);
+			return Number(globalBudgetData?.amount ?? 0);
 		}
 	}, [budgetsData, globalBudgetData, budgetMode]);
 
@@ -341,7 +340,7 @@ export default function Page() {
 											) : (
 												<div className="flex h-full flex-col overflow-hidden">
 													<h3 className="mb-4 font-semibold text-lg">
-														{selectedDate.toLocaleDateString("en-US", {
+														{selectedDate?.toLocaleDateString("en-US", {
 															weekday: "long",
 															year: "numeric",
 															month: "long",

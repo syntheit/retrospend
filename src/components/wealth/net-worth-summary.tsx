@@ -1,15 +1,10 @@
 "use client";
 
-import {
-	CreditCard,
-	Droplets,
-	Percent,
-	TrendingUp,
-	Wallet,
-} from "lucide-react";
+import { CreditCard, Landmark, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
 import { Card, CardContent } from "~/components/ui/card";
+import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { SummaryCard } from "./summary-card";
 
 interface NetWorthSummaryProps {
 	totalNetWorth: number;
@@ -30,13 +25,19 @@ export function NetWorthSummary({
 }: NetWorthSummaryProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
-	// Empty state for when there's no wealth data
-	if (totalNetWorth === 0 && totalAssets === 0 && totalLiabilities === 0) {
+	const isZeroState = useMemo(
+		() => totalNetWorth === 0 && totalAssets === 0 && totalLiabilities === 0,
+		[totalNetWorth, totalAssets, totalLiabilities],
+	);
+
+	if (isZeroState) {
 		return (
-			<Card>
+			<Card className="border-dashed">
 				<CardContent className="flex flex-col items-center justify-center py-12">
 					<TrendingUp className="h-12 w-12 text-muted-foreground/50" />
-					<h3 className="mt-4 font-medium text-lg">No wealth data yet</h3>
+					<h3 className="mt-4 font-medium text-lg text-foreground">
+						No wealth data yet
+					</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">
 						Add your first asset or liability to start tracking your net worth.
 					</p>
@@ -47,52 +48,34 @@ export function NetWorthSummary({
 
 	return (
 		<div className="grid gap-4 md:grid-cols-3">
-			<SummaryCard
-				currency={homeCurrency}
-				footer={
-					<>
-						<Wallet className="h-4 w-4 text-stone-300" />
-						<span className="font-medium text-stone-300 text-xs">
-							Liquid: {formatCurrency(totalLiquidAssets, homeCurrency)}
-						</span>
-					</>
-				}
-				title="Total Net Worth"
-				value={totalNetWorth}
-				variant="default"
+			{/* Total Net Worth Card */}
+			<StatCard
+				description={`Liquid: ${formatCurrency(totalLiquidAssets, homeCurrency)}`}
+				icon={Landmark}
+				title="NET WORTH"
+				value={formatCurrency(totalNetWorth, homeCurrency)}
+				variant="emerald"
 			/>
 
-			<SummaryCard
-				currency={homeCurrency}
-				footer={
-					<>
-						<Droplets className="h-3.5 w-3.5" />
-						<span>
-							Liquid: {formatCurrency(totalLiquidAssets, homeCurrency)}
-						</span>
-					</>
-				}
+			{/* Total Assets Card */}
+			<StatCard
 				icon={TrendingUp}
-				title="Total Assets"
-				value={totalAssets}
-				variant="success"
+				title="TOTAL ASSETS"
+				value={formatCurrency(totalAssets, homeCurrency)}
+				variant="blue"
 			/>
 
-			<SummaryCard
-				currency={homeCurrency}
-				footer={
-					<>
-						<Percent className="h-3.5 w-3.5" />
-						<span>
-							Weighted APR:{" "}
-							{weightedAPR > 0 ? `${weightedAPR.toFixed(1)}%` : "N/A"}
-						</span>
-					</>
+			{/* Total Liabilities Card */}
+			<StatCard
+				description={
+					totalLiabilities > 0 && weightedAPR > 0
+						? `Weighted APR: ${weightedAPR.toFixed(1)}%`
+						: undefined
 				}
 				icon={CreditCard}
-				title="Total Liabilities"
-				value={totalLiabilities}
-				variant="danger"
+				title="TOTAL LIABILITIES"
+				value={formatCurrency(totalLiabilities, homeCurrency)}
+				variant={totalLiabilities === 0 ? "neutral" : "amber"}
 			/>
 		</div>
 	);

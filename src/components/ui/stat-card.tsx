@@ -8,23 +8,18 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { cn } from "~/lib/utils";
 
 const statCardVariants = cva(
-	"group relative h-32 overflow-hidden border transition-all duration-300",
+	"group relative h-32 overflow-hidden border border-border bg-card transition-all duration-300 hover:bg-accent/5",
 	{
 		variants: {
 			variant: {
-				neutral:
-					"border-white/10 bg-stone-900/40 text-white shadow-inner hover:bg-stone-900/60",
-				blue: "border-blue-500/20 bg-blue-950/20 text-blue-100 shadow-[inset_0_0_20px_rgba(59,130,246,0.05)] hover:border-blue-500/30 hover:bg-blue-900/30",
-				cyan: "border-cyan-500/20 bg-cyan-950/20 text-cyan-100 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)] hover:border-cyan-500/30 hover:bg-cyan-900/30",
-				violet:
-					"border-violet-500/20 bg-violet-950/20 text-violet-100 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)] hover:border-violet-500/30 hover:bg-violet-900/30",
-				amber:
-					"border-amber-500/20 bg-amber-950/20 text-amber-100 shadow-[inset_0_0_20px_rgba(245,158,11,0.05)] hover:border-amber-500/30 hover:bg-amber-900/30",
-				indigo:
-					"border-indigo-500/20 bg-indigo-950/20 text-indigo-100 shadow-[inset_0_0_20px_rgba(99,102,241,0.05)] hover:border-indigo-500/30 hover:bg-indigo-900/30",
-				rose: "border-rose-500/20 bg-rose-950/20 text-rose-100 shadow-[inset_0_0_20px_rgba(244,63,94,0.05)] hover:border-rose-500/30 hover:bg-rose-900/30",
-				emerald:
-					"border-emerald-500/20 bg-emerald-950/30 text-emerald-100 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)] hover:border-emerald-500/30 hover:bg-emerald-900/30",
+				neutral: "text-foreground shadow-sm",
+				blue: "text-foreground shadow-[inset_0_0_20px_rgba(59,130,246,0.05)]",
+				cyan: "text-foreground shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]",
+				violet: "text-foreground shadow-[inset_0_0_20px_rgba(139,92,246,0.05)]",
+				amber: "text-foreground shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]",
+				indigo: "text-foreground shadow-[inset_0_0_20px_rgba(99,102,241,0.05)]",
+				rose: "text-foreground shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]",
+				emerald: "text-foreground shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]",
 			},
 		},
 		defaultVariants: {
@@ -38,14 +33,14 @@ const spotlightVariants = cva(
 	{
 		variants: {
 			variant: {
-				neutral: "bg-white/5",
-				blue: "bg-blue-500/20",
-				cyan: "bg-cyan-500/20",
-				violet: "bg-violet-500/20",
-				amber: "bg-amber-500/20",
-				indigo: "bg-indigo-500/20",
-				rose: "bg-rose-500/20",
-				emerald: "bg-emerald-500/20",
+				neutral: "bg-muted-foreground/10",
+				blue: "bg-blue-500/20 dark:bg-blue-500/30",
+				cyan: "bg-cyan-500/20 dark:bg-cyan-500/30",
+				violet: "bg-violet-500/20 dark:bg-violet-500/30",
+				amber: "bg-amber-500/20 dark:bg-amber-500/30",
+				indigo: "bg-indigo-500/20 dark:bg-indigo-500/30",
+				rose: "bg-rose-500/20 dark:bg-rose-500/30",
+				emerald: "bg-emerald-500/20 dark:bg-emerald-500/30",
 			},
 		},
 		defaultVariants: {
@@ -57,13 +52,13 @@ const spotlightVariants = cva(
 const iconColorVariants = cva("", {
 	variants: {
 		variant: {
-			neutral: "text-stone-400",
-			blue: "text-blue-400",
-			cyan: "text-cyan-400",
-			violet: "text-violet-400",
-			amber: "text-amber-400",
-			indigo: "text-indigo-400",
-			rose: "text-rose-400",
+			neutral: "text-muted-foreground",
+			blue: "text-blue-600 dark:text-blue-400",
+			cyan: "text-cyan-600 dark:text-cyan-400",
+			violet: "text-violet-600 dark:text-violet-400",
+			amber: "text-amber-600 dark:text-amber-400",
+			indigo: "text-indigo-600 dark:text-indigo-400",
+			rose: "text-rose-600 dark:text-rose-400",
 			emerald: "text-emerald-500",
 		},
 	},
@@ -118,8 +113,8 @@ export function StatCard({
 
 				{/* Bottom Row: Value + Trend/Desc */}
 				<div className="flex w-full items-end justify-between">
-					<div className="font-bold text-3xl text-white tracking-tight">
-						{loading ? <Skeleton className="h-8 w-24 bg-white/10" /> : value}
+					<div className="font-bold text-2xl text-foreground tabular-nums tracking-tight">
+						{loading ? <Skeleton className="h-8 w-24 bg-muted" /> : value}
 					</div>
 
 					{!loading && (description || (trend && trend.value !== null)) && (
@@ -129,10 +124,10 @@ export function StatCard({
 									className={cn(
 										"flex items-center gap-1.5 rounded-full px-2 py-1 font-medium",
 										trend.forceNeutral
-											? "bg-white/5 text-stone-300"
+											? "bg-muted text-muted-foreground"
 											: trend.intent === "negative"
-												? "bg-rose-500/10 text-rose-400"
-												: "bg-emerald-500/10 text-emerald-400",
+												? "bg-destructive/10 text-destructive dark:text-rose-400"
+												: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
 									)}
 								>
 									{trend.value > 0 ? (
@@ -140,7 +135,7 @@ export function StatCard({
 									) : (
 										<TrendingDown className="h-3 w-3" />
 									)}
-									<span>
+									<span className="tabular-nums">
 										{trend.value > 0 ? "+" : ""}
 										{trend.isMoney && formatCurrency
 											? formatCurrency(trend.value)

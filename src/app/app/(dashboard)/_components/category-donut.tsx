@@ -73,9 +73,9 @@ export function CategoryDonut({
 	handleSliceLeave,
 }: CategoryDonutProps) {
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="font-semibold text-lg">
+		<Card className="border border-border bg-card shadow-sm">
+			<CardHeader className="px-4 sm:px-6">
+				<CardTitle className="font-semibold text-lg tracking-tight">
 					Category Distribution
 				</CardTitle>
 				<CardDescription>Where your money went this month</CardDescription>
@@ -151,7 +151,7 @@ export function CategoryDonut({
 																{activeSlice ? activeSlice.name : "TOTAL SPEND"}
 															</tspan>
 															<tspan
-																className="fill-foreground font-bold text-3xl"
+																className="fill-foreground font-bold text-2xl tabular-nums tracking-tight"
 																x={viewBox.cx}
 																y={(viewBox.cy || 0) + 16}
 															>
