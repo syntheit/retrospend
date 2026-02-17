@@ -1,23 +1,18 @@
 "use client";
 
-import { Download, Upload } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { DataTable } from "~/components/data-table";
 import { createExpenseColumns } from "~/components/data-table-columns";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Separator } from "~/components/ui/separator";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { type ParsedCsvRow, parseCsv } from "~/lib/csv";
+import { parseRawCsv } from "~/lib/csv";
+import { ExpenseImportSchema } from "~/lib/schemas/data-import";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { DataImportExport } from "./data-import-export";
 
 export function ExpensesTab() {
-	const fileInputRef = useRef<HTMLInputElement | null>(null);
-	const [previewData, setPreviewData] = useState<NormalizedExpense[]>([]);
-	const [parseError, setParseError] = useState<string | null>(null);
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const { data: settings } = api.settings.getGeneral.useQuery();
@@ -54,10 +49,57 @@ export function ExpensesTab() {
 		}
 	};
 
-	const buildPreview = (rows: ParsedCsvRow[]): NormalizedExpense[] => {
-		return rows.map((row) => {
-			const matchedCategory = row.categoryName
-				? categoryLookup.get(row.categoryName.toLowerCase())
+	// Helper to normalize keys slightly (e.g. "Amount" -> "amount")
+	// This is simple; for more complex header mapping (e.g. "Cost" -> "amount"), we'd need a map.
+	const normalizeKeys = (row: Record<string, string>) => {
+		const newRow: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(row)) {
+			// standard normalization: lowercase, remove spaces?
+			// parseRawCsv already lowercases headers.
+			// Let's manually map to schema keys for the known ones.
+			const k = key.toLowerCase().replace(/\s+/g, "");
+			if (k === "amountinusd") newRow.amountInUSD = value;
+			else if (k === "exchangerate") newRow.exchangeRate = value;
+			else if (k === "category") newRow.category = value;
+			else if (k === "pricingsource") newRow.pricingSource = value;
+			else if (k === "location") newRow.location = value;
+			else if (k === "description") newRow.description = value;
+			else if (k === "title") newRow.title = value;
+			else if (k === "amount") newRow.amount = value;
+			else if (k === "currency") newRow.currency = value;
+			else if (k === "date") newRow.date = value;
+			else newRow[key] = value; // keep extra
+		}
+		return newRow;
+	};
+
+	const handleParseCsv = (
+		text: string,
+	): { rows: NormalizedExpense[]; errors: string[] } => {
+		const { data: rawData, errors: rawErrors } = parseRawCsv(text);
+		if (rawErrors.length > 0) return { rows: [], errors: rawErrors };
+
+		const normalizedData = rawData.map(normalizeKeys);
+		const parseResult = z.array(ExpenseImportSchema).safeParse(normalizedData);
+
+		if (!parseResult.success) {
+			// Format Zod errors
+			const formattedErrors: string[] = parseResult.error.errors.map((err) => {
+				const rowIdx = (err.path[0] as number) + 1;
+				const field = err.path[1];
+				return `Row ${rowIdx}: ${field} - ${err.message}`;
+			});
+			// Deduplicate and slice if too many
+			return {
+				rows: [],
+				errors: Array.from(new Set(formattedErrors)).slice(0, 10),
+			};
+		}
+
+		// Now transform to NormalizedExpense
+		const enrichedRows: NormalizedExpense[] = parseResult.data.map((row) => {
+			const matchedCategory = row.category
+				? categoryLookup.get(row.category.toLowerCase())
 				: undefined;
 
 			const resolvedExchangeRate =
@@ -87,43 +129,11 @@ export function ExpensesTab() {
 				pricingSource: row.pricingSource ?? "IMPORT",
 			};
 		});
+
+		return { rows: enrichedRows, errors: [] };
 	};
 
-	const handleFileChange = async (
-		event: React.ChangeEvent<HTMLInputElement>,
-	) => {
-		const file = event.target.files?.[0];
-		if (!file) return;
-
-		try {
-			const text = await file.text();
-			const result = parseCsv(text);
-
-			if (result.errors.length > 0) {
-				setParseError(result.errors.join("\n"));
-				setPreviewData([]);
-				return;
-			}
-
-			setParseError(null);
-			setPreviewData(buildPreview(result.rows));
-			toast.success(
-				`Loaded ${result.rows.length} row${result.rows.length === 1 ? "" : "s"} for import`,
-			);
-		} catch (error: unknown) {
-			setParseError(
-				error instanceof Error ? error.message : "Failed to read CSV file.",
-			);
-			setPreviewData([]);
-		} finally {
-			if (fileInputRef.current) {
-				fileInputRef.current.value = "";
-			}
-		}
-	};
-
-	const handleImport = async () => {
-		if (previewData.length === 0) return;
+	const handleImport = async (previewData: NormalizedExpense[]) => {
 		try {
 			const rows = previewData.map((expense) => ({
 				title: expense.title ?? "Untitled",
@@ -142,139 +152,76 @@ export function ExpensesTab() {
 			toast.success(
 				`Imported ${rows.length} expense${rows.length === 1 ? "" : "s"}`,
 			);
-			setPreviewData([]);
 		} catch (error: unknown) {
 			toast.error(
 				error instanceof Error ? error.message : "Failed to import expenses",
 			);
+			throw error;
 		}
 	};
 
 	const homeCurrency = settings?.homeCurrency ?? "USD";
-	const hasForeignCurrencyExpenses = previewData.some(
-		(e) => e.currency !== "USD" && e.exchangeRate && e.amountInUSD,
-	);
 
-	const columns = useMemo(
-		() =>
-			createExpenseColumns(
-				homeCurrency,
-				null,
-				hasForeignCurrencyExpenses,
-				new Set(),
-				() => {},
-				() => {},
-				formatCurrency,
-			),
-		[homeCurrency, hasForeignCurrencyExpenses, formatCurrency],
-	);
+	const Preview = useMemo(() => {
+		const ExpensePreview = ({ data }: { data: NormalizedExpense[] }) => {
+			const hasForeignCurrencyExpenses = data.some(
+				(e) => e.currency !== "USD" && e.exchangeRate && e.amountInUSD,
+			);
+
+			const columns = useMemo(
+				() =>
+					createExpenseColumns(
+						homeCurrency,
+						null,
+						hasForeignCurrencyExpenses,
+						new Set(),
+						() => {},
+						() => {},
+						formatCurrency,
+					),
+				[hasForeignCurrencyExpenses],
+			);
+
+			return (
+				<DataTable
+					columns={columns}
+					data={data}
+					emptyState={
+						<div className="text-muted-foreground">No rows to import.</div>
+					}
+				/>
+			);
+		};
+		ExpensePreview.displayName = "ExpensePreview";
+		return ExpensePreview;
+	}, [homeCurrency, formatCurrency]);
 
 	return (
-		<div className="space-y-6 pt-4">
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="space-y-1">
-					<p className="font-medium">Export expenses</p>
-					<p className="text-muted-foreground text-sm">
-						Downloads all finalized expenses as a CSV file.
-					</p>
-				</div>
-				<Button
-					className="w-full sm:w-auto"
-					disabled={exportMutation.isPending}
-					onClick={handleExport}
-					variant="outline"
-				>
-					{exportMutation.isPending ? "Preparing..." : "Download CSV"}
-					<Download className="ml-2 h-4 w-4" />
-				</Button>
-			</div>
-
-			<Separator />
-
-			<div className="space-y-4">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="space-y-1">
-						<p className="font-medium">Import expenses</p>
-						<p className="text-muted-foreground text-sm">
-							Upload a CSV to preview and import your expenses.
-						</p>
-					</div>
-					<div className="flex flex-col gap-2 sm:flex-row">
-						<Button
-							className="w-full sm:w-auto"
-							onClick={() => fileInputRef.current?.click()}
-							variant="secondary"
-						>
-							Select CSV
-							<Upload className="ml-2 h-4 w-4" />
-						</Button>
-						<Button
-							className="w-full sm:w-auto"
-							disabled={previewData.length === 0 || importMutation.isPending}
-							onClick={handleImport}
-						>
-							{importMutation.isPending
-								? "Importing..."
-								: `Import ${previewData.length || ""} ${previewData.length === 1 ? "row" : "rows"}`}
-						</Button>
-					</div>
-				</div>
-				<div className="space-y-2 rounded-lg border bg-muted/30 p-4">
-					<Label className="font-medium text-sm">CSV format</Label>
-					<p className="text-muted-foreground text-sm leading-relaxed">
-						Required columns: <code className="text-primary">title</code>,{" "}
-						<code className="text-primary">amount</code>,{" "}
-						<code className="text-primary">currency</code>,{" "}
-						<code className="text-primary">date</code>. <br />
-						Optional: <code className="text-muted-foreground">category</code>,{" "}
-						<code className="text-muted-foreground">location</code>,{" "}
-						<code className="text-muted-foreground">description</code>. Dates:{" "}
-						<code className="text-primary">YYYY-MM-DD</code>.
-					</p>
-				</div>
-				{parseError && (
-					<div className="whitespace-pre-wrap rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
-						{parseError}
-					</div>
-				)}
-				<Input
-					accept=".csv,text/csv"
-					className="hidden"
-					onChange={handleFileChange}
-					ref={fileInputRef}
-					type="file"
-				/>
-				{previewData.length > 0 && (
-					<div className="space-y-3">
-						<div className="flex items-center justify-between">
-							<div>
-								<p className="font-medium">
-									Preview ({previewData.length} row
-									{previewData.length === 1 ? "" : "s"})
-								</p>
-								<p className="text-muted-foreground text-sm">
-									Review entries before final import.
-								</p>
-							</div>
-							<Button
-								disabled={importMutation.isPending}
-								onClick={() => setPreviewData([])}
-								size="sm"
-								variant="ghost"
-							>
-								Clear
-							</Button>
-						</div>
-						<DataTable
-							columns={columns}
-							data={previewData}
-							emptyState={
-								<div className="text-muted-foreground">No rows to import.</div>
-							}
-						/>
-					</div>
-				)}
-			</div>
-		</div>
+		<DataImportExport
+			description="Downloads all finalized expenses as a CSV file."
+			formatInfo={
+				<p>
+					Required columns: <code className="text-primary">title</code>,{" "}
+					<code className="text-primary">amount</code>,{" "}
+					<code className="text-primary">currency</code>,{" "}
+					<code className="text-primary">date</code>. <br />
+					Optional: <code className="text-muted-foreground">category</code>,{" "}
+					<code className="text-muted-foreground">location</code>,{" "}
+					<code className="text-muted-foreground">description</code>. Dates:{" "}
+					<code className="text-primary">YYYY-MM-DD</code>.
+				</p>
+			}
+			isExporting={exportMutation.isPending}
+			isImporting={importMutation.isPending}
+			onExport={handleExport}
+			onImport={handleImport}
+			parseCsv={handleParseCsv}
+			renderPreview={Preview}
+			sampleData="title,amount,currency,date,category,location,description
+Groceries,50.25,USD,2024-01-01,Food,Market,Weekly shopping
+Transport,15.00,EUR,2024-01-02,Travel,Subway,Commute"
+			sampleFilename="expenses_sample.csv"
+			title="Expenses"
+		/>
 	);
 }

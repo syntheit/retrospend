@@ -138,6 +138,7 @@ export const budgetRouter = createTRPCRouter({
 							id: true,
 							name: true,
 							color: true,
+							icon: true,
 						},
 					},
 				},

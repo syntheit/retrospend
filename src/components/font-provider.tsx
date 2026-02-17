@@ -48,18 +48,39 @@ export function FontProvider({ children }: { children: React.ReactNode }) {
 
 	useEffect(() => {
 		const root = document.documentElement;
-		const storedPreference = getStoredFontPreference();
-		const fontPreference = settings?.fontPreference ?? storedPreference;
+
+		// Priority: API settings > localStorage > default
+		const fontPreference =
+			settings?.fontPreference ?? getStoredFontPreference();
 
 		root.classList.remove("font-sans", "font-mono");
 		root.classList.add(`font-${fontPreference}`);
 
+		// Only store if it's actually different from what's stored
 		try {
-			localStorage.setItem("fontPreference", fontPreference);
+			if (localStorage.getItem("fontPreference") !== fontPreference) {
+				localStorage.setItem("fontPreference", fontPreference);
+			}
 		} catch {
-			// ignore storage issues to keep hydration safe
+			// ignore storage issues
 		}
 	}, [settings?.fontPreference]);
+
+	// Listen for local changes to fontPreference (e.g. from the settings form)
+	useEffect(() => {
+		const handleStorageChange = (e: StorageEvent) => {
+			if (e.key === "fontPreference" && e.newValue) {
+				const root = document.documentElement;
+				root.classList.remove("font-sans", "font-mono");
+				root.classList.add(`font-${e.newValue}`);
+			}
+		};
+		window.addEventListener("storage", handleStorageChange);
+
+		// Also poll or use a custom event for same-tab changes if needed,
+		// but since we want to avoid complex state sync, we'll stick to a simple effect.
+		return () => window.removeEventListener("storage", handleStorageChange);
+	}, []);
 
 	return (
 		<FontContext.Provider

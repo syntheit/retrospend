@@ -2,7 +2,6 @@ import {
 	eachDayOfInterval,
 	endOfMonth,
 	endOfWeek,
-	format,
 	getDay,
 	isSameDay,
 	isSameMonth,

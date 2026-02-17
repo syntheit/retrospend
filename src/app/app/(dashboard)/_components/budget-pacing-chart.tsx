@@ -4,18 +4,13 @@ import { useId } from "react";
 import {
 	Area,
 	CartesianGrid,
+	ComposedChart,
+	Line,
 	XAxis,
 	YAxis,
-	Line,
-	ComposedChart
 } from "recharts";
 
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	type ChartConfig,
 	ChartContainer,
@@ -68,9 +63,9 @@ export function BudgetPacingChart({
 
 	// Calculate "Guide" data points based on VARIABLE budget
 	const chartData = dailyTrend.map((point, index) => {
-		const dayNum = index + 1; 
+		const dayNum = index + 1;
 		const guideValue = (variableBudget / daysInMonth) * dayNum;
-		
+
 		return {
 			...point,
 			guide: guideValue,
@@ -81,7 +76,7 @@ export function BudgetPacingChart({
 	const lastPoint = chartData[chartData.length - 1];
 	const currentVariableReality = lastPoint?.variable ?? 0;
 	const currentVariableGuide = lastPoint?.guide ?? 0;
-	
+
 	const isOverPacing = currentVariableReality > currentVariableGuide;
 
 	const areaColor = isOverPacing ? "#f59e0b" : "#10b981"; // Amber or Emerald
@@ -89,7 +84,10 @@ export function BudgetPacingChart({
 
 	// Context Header Calc: "Daily Safe-to-Spend"
 	const daysLeft = Math.max(1, daysInMonth - currentDay);
-	const remainingVariableBudget = Math.max(0, variableBudget - (variableSpent || currentVariableReality));
+	const remainingVariableBudget = Math.max(
+		0,
+		variableBudget - (variableSpent || currentVariableReality),
+	);
 	const safeToSpend = remainingVariableBudget / daysLeft;
 
 	return (
@@ -99,16 +97,21 @@ export function BudgetPacingChart({
 					<CardTitle className="font-semibold text-lg tracking-tight">
 						Budget Pacing
 					</CardTitle>
-					<p className="text-sm text-muted-foreground">
+					<p className="text-muted-foreground text-sm">
 						Variable spend vs. ideal pace
 					</p>
 				</div>
 				<div className="text-right">
 					<div className="font-bold text-2xl tabular-nums tracking-tighter">
-						{formatCurrencyUtil(safeToSpend, homeCurrency, "standard", false)} 
-						<span className="font-sans text-base font-normal text-muted-foreground"> / day</span>
+						{formatCurrencyUtil(safeToSpend, homeCurrency, "standard", false)}
+						<span className="font-normal font-sans text-base text-muted-foreground">
+							{" "}
+							/ day
+						</span>
 					</div>
-					<p className="uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">safe to spend</p>
+					<p className="font-semibold text-[10px] text-muted-foreground uppercase tracking-widest">
+						safe to spend
+					</p>
 				</div>
 			</CardHeader>
 			<CardContent className="min-h-0 flex-1 px-2 pb-6 sm:px-6">
@@ -119,16 +122,8 @@ export function BudgetPacingChart({
 						<ComposedChart data={chartData}>
 							<defs>
 								<linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-									<stop
-										offset="5%"
-										stopColor={areaColor}
-										stopOpacity={0.8}
-									/>
-									<stop
-										offset="95%"
-										stopColor={areaColor}
-										stopOpacity={0.1}
-									/>
+									<stop offset="5%" stopColor={areaColor} stopOpacity={0.8} />
+									<stop offset="95%" stopColor={areaColor} stopOpacity={0.1} />
 								</linearGradient>
 							</defs>
 							<CartesianGrid
@@ -154,34 +149,38 @@ export function BudgetPacingChart({
 								tickMargin={8}
 								width={40}
 							/>
-							<ChartTooltip content={<ChartTooltipContent 
-                                labelFormatter={(label, payload) => {
-                                    if (payload && payload.length > 0) {
-                                        return payload[0]?.payload.dateLabel;
-                                    }
-                                    return label;
-                                }}
-                            />} />
-							
+							<ChartTooltip
+								content={
+									<ChartTooltipContent
+										labelFormatter={(label, payload) => {
+											if (payload && payload.length > 0) {
+												return payload[0]?.payload.dateLabel;
+											}
+											return label;
+										}}
+									/>
+								}
+							/>
+
 							{/* Series A: The Guide */}
-							<Line 
+							<Line
+								activeDot={false}
 								dataKey="guide"
+								dot={false}
+								name="Ideal Pace"
 								stroke="#525252"
 								strokeDasharray="5 5"
 								strokeWidth={2}
-								dot={false}
-                                activeDot={false}
-                                name="Ideal Pace"
 							/>
 
 							{/* Series B: The Reality (Variable Only) */}
 							<Area
 								dataKey="variable"
 								fill={`url(#${gradientId})`}
+								name="Variable Spend"
 								stroke={areaColor}
 								strokeWidth={2.5}
 								type="monotone"
-                                name="Variable Spend"
 							/>
 						</ComposedChart>
 					</ChartContainer>

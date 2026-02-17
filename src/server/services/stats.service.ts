@@ -188,10 +188,7 @@ export class StatsService {
 		});
 		const fixedCategoryIds = new Set(
 			categories
-				.filter(
-					(c) =>
-						c.isFixed || FIXED_NAMES.includes(c.name.toLowerCase()),
-				)
+				.filter((c) => c.isFixed || FIXED_NAMES.includes(c.name.toLowerCase()))
 				.map((c) => c.id),
 		);
 
@@ -230,7 +227,7 @@ export class StatsService {
 		const trend = eachDayOfInterval({ start, end: endDate }).map((day) => {
 			const key = format(day, "yyyy-MM-dd");
 			const stats = byDay.get(key) ?? { total: 0, fixed: 0, variable: 0 };
-			
+
 			cumulativeTotal += stats.total;
 			cumulativeFixed += stats.fixed;
 			cumulativeVariable += stats.variable;
@@ -246,5 +243,31 @@ export class StatsService {
 		});
 
 		return trend;
+	}
+	/**
+	 * Gets lifetime statistics for a user
+	 */
+	async getLifetimeStats(userId: string, homeCurrency: string) {
+		// Get total spend
+		const totalSpentAgg = await this.db.expense.aggregate({
+			where: {
+				userId,
+				status: "FINALIZED",
+				isAmortizedParent: false,
+			},
+			_sum: {
+				amountInUSD: true,
+			},
+			_count: true,
+		});
+
+		// Get current exchange rate
+		const rate =
+			(await getBestExchangeRate(this.db, homeCurrency, new Date())) ?? 1;
+
+		return {
+			totalSpent: Number(totalSpentAgg._sum.amountInUSD ?? 0) * rate,
+			totalTransactions: totalSpentAgg._count,
+		};
 	}
 }

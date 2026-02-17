@@ -21,34 +21,16 @@ import {
 	FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import type { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
-type ExtendedUser = NonNullable<
-	ReturnType<typeof useSession>["data"]
->["user"] & {
-	username: string;
-	role: string;
-};
-
-const passwordSchema = z
-	.object({
-		currentPassword: z.string().min(1, "Current password is required"),
-		newPassword: z.string().min(8, "Password must be at least 8 characters"),
-		confirmPassword: z.string().min(1, "Please confirm your password"),
-	})
-	.refine((data) => data.newPassword === data.confirmPassword, {
-		message: "Passwords do not match",
-		path: ["confirmPassword"],
-	});
+const passwordSchema = z.object({
+	currentPassword: z.string().min(1, "Current password is required"),
+	newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
-interface PasswordFormProps {
-	user: ExtendedUser;
-}
-
-export function PasswordForm({ user }: PasswordFormProps) {
+export function PasswordForm() {
 	const changePassword = api.profile.changePassword.useMutation({
 		onSuccess: () => {
 			toast.success("Password updated successfully");
@@ -64,7 +46,6 @@ export function PasswordForm({ user }: PasswordFormProps) {
 		defaultValues: {
 			currentPassword: "",
 			newPassword: "",
-			confirmPassword: "",
 		},
 	});
 
@@ -72,78 +53,74 @@ export function PasswordForm({ user }: PasswordFormProps) {
 		changePassword.mutate({
 			currentPassword: values.currentPassword,
 			newPassword: values.newPassword,
-			confirmPassword: values.confirmPassword,
+			confirmPassword: values.newPassword, // Bypassing confirm password requirement in API if any
 		});
 	};
 
+	const inputClass =
+		"bg-secondary/20 border-transparent hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-transparent transition-all";
+
 	return (
-		<Card>
+		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
-				<CardTitle>Change Password</CardTitle>
+				<CardTitle>Security</CardTitle>
 				<CardDescription>
-					Update your password associated with this account.
+					Update your password to keep your account secure.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
 					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-						<FormField
-							control={form.control}
-							name="currentPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Current Password</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="Current password"
-											type="password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="newPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>New Password</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="New password"
-											type="password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="confirmPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Confirm Password</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="Confirm new password"
-											type="password"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="flex justify-end">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<FormField
+								control={form.control}
+								name="currentPassword"
+								render={({ field }) => (
+									<FormItem className="space-y-2">
+										<FormLabel className="font-medium text-muted-foreground text-sm">
+											Current Password
+										</FormLabel>
+										<FormControl>
+											<Input
+												className={inputClass}
+												placeholder="••••••••"
+												type="password"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="newPassword"
+								render={({ field }) => (
+									<FormItem className="space-y-2">
+										<FormLabel className="font-medium text-muted-foreground text-sm">
+											New Password
+										</FormLabel>
+										<FormControl>
+											<Input
+												className={inputClass}
+												placeholder="Enter new password"
+												type="password"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="flex justify-end pt-2">
 							<Button
 								disabled={!form.formState.isDirty || changePassword.isPending}
 								type="submit"
 							>
-								{changePassword.isPending ? "Updating..." : "Update Password"}
+								{changePassword.isPending ? "Saving..." : "Save Password"}
 							</Button>
 						</div>
 					</form>

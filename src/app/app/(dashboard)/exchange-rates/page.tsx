@@ -32,6 +32,7 @@ export default function Page() {
 		favoriteRatesError,
 		viewState,
 		actions,
+		isAdmin,
 	} = useExchangeRatesController();
 
 	if (isLoading) {
@@ -71,18 +72,20 @@ export default function Page() {
 							"Rates sync daily."
 						)}
 					</div>
-					<Button
-						className="gap-2 self-start sm:self-auto"
-						disabled={isSyncing}
-						onClick={actions.syncNow}
-						size="sm"
-						variant="outline"
-					>
-						<IconRefresh
-							className={cn("size-4", isSyncing && "animate-spin")}
-						/>
-						{isSyncing ? "Syncing..." : "Sync Now"}
-					</Button>
+					{isAdmin && (
+						<Button
+							className="gap-2 self-start sm:self-auto"
+							disabled={isSyncing}
+							onClick={actions.syncNow}
+							size="sm"
+							variant="outline"
+						>
+							<IconRefresh
+								className={cn("size-4", isSyncing && "animate-spin")}
+							/>
+							{isSyncing ? "Syncing..." : "Sync Now"}
+						</Button>
+					)}
 				</div>
 				<ErrorBoundary>
 					<Tabs

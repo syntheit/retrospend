@@ -30,7 +30,6 @@ export function RecurringStatsCards({
 						return sum + amount / 12;
 					case "WEEKLY":
 						return sum + amount * 4;
-					case "MONTHLY":
 					default:
 						return sum + amount;
 				}

@@ -162,7 +162,7 @@ export default function Page() {
 									<Button onClick={clearFilters} variant="outline">
 										Reset filters
 									</Button>
-{/* <Button asChild variant="ghost">
+									{/* <Button asChild variant="ghost">
 	<Link href="/app/analytics">View analytics</Link>
 </Button> */}
 								</div>

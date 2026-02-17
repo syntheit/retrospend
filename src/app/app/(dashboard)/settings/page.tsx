@@ -3,7 +3,7 @@
 import { Github, Globe } from "lucide-react";
 import { DataManagementCard } from "~/components/data-management/data-management-card";
 import { PageContent } from "~/components/page-content";
-import { RateSyncControl } from "~/components/rate-sync-control";
+
 import { SettingsForm } from "~/components/settings-form";
 import { SiteHeader } from "~/components/site-header";
 import { Card, CardContent } from "~/components/ui/card";
@@ -17,7 +17,6 @@ export default function Page() {
 				<div className="mx-auto w-full max-w-4xl space-y-6">
 					<SettingsForm />
 					<DataManagementCard />
-					<RateSyncControl />
 
 					{/* About Card */}
 					<Card>

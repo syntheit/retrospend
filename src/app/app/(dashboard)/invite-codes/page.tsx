@@ -5,9 +5,8 @@ import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
 import { UserInviteCodesTable } from "~/components/user-invite-codes-table";
-import { api } from "~/trpc/react";
-
 import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
+import { api } from "~/trpc/react";
 
 export default function InviteCodesPage() {
 	const utils = api.useUtils();

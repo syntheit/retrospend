@@ -25,6 +25,7 @@ export interface BudgetWithStats {
 		id: string;
 		name: string;
 		color: string;
+		icon?: string | null;
 	} | null;
 }
 
@@ -68,6 +69,7 @@ export async function getBudgets(
 					id: true,
 					name: true,
 					color: true,
+					icon: true,
 				},
 			},
 		},
@@ -390,7 +392,9 @@ export async function copyFromLastMonth(
 					type: sourceBudget.type,
 				},
 				include: {
-					category: { select: { id: true, name: true, color: true } },
+					category: {
+						select: { id: true, name: true, color: true, icon: true },
+					},
 				},
 			});
 		}),

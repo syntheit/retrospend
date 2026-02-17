@@ -1,6 +1,6 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { Award, Receipt, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,6 +16,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
+import { StatCard } from "~/components/ui/stat-card";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
@@ -29,6 +31,14 @@ type ExtendedUser = NonNullable<
 export function AccountForm() {
 	const { data: session, isPending } = useSession();
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+	// Fetch lifetime stats
+	const { data: lifetimeStats } = api.stats.getLifetimeStats.useQuery(
+		{ userId: session?.user?.id ?? "" },
+		{ enabled: !!session?.user },
+	);
+
+	const { formatCurrency } = useCurrencyFormatter();
 
 	if (isPending) {
 		return (
@@ -57,11 +67,34 @@ export function AccountForm() {
 
 	return (
 		<div className="mx-auto w-full max-w-2xl space-y-6">
+			{/* Lifetime Stats Row */}
+			<div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+				<StatCard
+					icon={Wallet}
+					title="TOTAL TRACKED VOLUME"
+					value={formatCurrency(lifetimeStats?.totalSpent || 0)}
+					variant="blue"
+				/>
+				<StatCard
+					icon={Receipt}
+					title="TOTAL TRANSACTIONS"
+					value={lifetimeStats?.totalTransactions.toLocaleString() || "0"}
+					variant="violet"
+				/>
+				<StatCard
+					icon={Award}
+					title="MEMBER SINCE"
+					value={new Date(user.createdAt).toLocaleDateString("en-US", {
+						month: "short",
+						year: "numeric",
+					})}
+					variant="amber"
+				/>
+			</div>
+
 			<ProfileForm user={user} />
 
-			<PasswordForm user={user} />
-
-			<ExportDataSection />
+			<PasswordForm />
 
 			{!isAdmin && (
 				<DeleteAccountSection
@@ -71,58 +104,6 @@ export function AccountForm() {
 				/>
 			)}
 		</div>
-	);
-}
-
-function ExportDataSection() {
-	const exportData = api.exportData.allData.useMutation();
-
-	const handleExport = async () => {
-		try {
-			const { zipData, filename } = await exportData.mutateAsync();
-			const binaryString = atob(zipData);
-			const bytes = new Uint8Array(binaryString.length);
-			for (let i = 0; i < binaryString.length; i++) {
-				bytes[i] = binaryString.charCodeAt(i);
-			}
-			const blob = new Blob([bytes], { type: "application/zip" });
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = filename;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
-			toast.success("All user data exported");
-		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : "Failed to export data");
-		}
-	};
-
-	return (
-		<Card>
-			<CardContent className="p-6">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="space-y-1">
-						<p className="font-medium">Export all user data</p>
-						<p className="text-muted-foreground text-sm">
-							Download your data (expenses, wealth, etc.) as CSV files in a ZIP
-							archive.
-						</p>
-					</div>
-					<Button
-						className="w-full sm:w-auto"
-						disabled={exportData.isPending}
-						onClick={handleExport}
-						variant="outline"
-					>
-						{exportData.isPending ? "Preparing..." : "Download ZIP"}
-						<Download className="ml-2 h-4 w-4" />
-					</Button>
-				</div>
-			</CardContent>
-		</Card>
 	);
 }
 

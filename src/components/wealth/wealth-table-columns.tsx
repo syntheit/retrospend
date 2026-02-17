@@ -116,7 +116,7 @@ export function createWealthColumns(
 						<div className="flex items-center gap-2 truncate font-medium text-foreground text-sm">
 							<span className="truncate">{row.original.name}</span>
 							{row.original.isLiquid && (
-								<Badge 
+								<Badge
 									className="bg-emerald-500/10 px-1.5 py-0 font-medium text-[9px] text-emerald-600 uppercase tracking-wide hover:bg-emerald-500/20"
 									variant="secondary"
 								>
@@ -124,7 +124,7 @@ export function createWealthColumns(
 								</Badge>
 							)}
 						</div>
-						<div className="flex items-center gap-1.5 text-[11px] leading-tight text-muted-foreground">
+						<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground leading-tight">
 							<span>{label}</span>
 							{row.original.currency !== homeCurrency && (
 								<>
@@ -153,8 +153,8 @@ export function createWealthColumns(
 			return (
 				<div className="flex items-center gap-3 pr-8">
 					<div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary/30">
-						<div 
-							className="h-full rounded-full bg-primary transition-all duration-500" 
+						<div
+							className="h-full rounded-full bg-primary transition-all duration-500"
 							style={{ width: `${Math.min(100, displayPercentage)}%` }}
 						/>
 					</div>
@@ -178,11 +178,11 @@ export function createWealthColumns(
 
 			return (
 				<div className="flex flex-col items-end gap-0.5">
-					<div className="font-bold text-foreground text-sm tabular-nums tracking-tight leading-tight">
+					<div className="font-bold text-foreground text-sm tabular-nums leading-tight tracking-tight">
 						{formatCurrency(balanceInTargetCurrency, homeCurrency)}
 					</div>
 					{isForeign && (
-						<div className="text-[10px] leading-tight text-muted-foreground tabular-nums">
+						<div className="text-[10px] text-muted-foreground tabular-nums leading-tight">
 							{formatCurrency(balance, currency)}
 						</div>
 					)}

@@ -35,7 +35,7 @@ export function NetWorthSummary({
 			<Card className="border-dashed">
 				<CardContent className="flex flex-col items-center justify-center py-12">
 					<TrendingUp className="h-12 w-12 text-muted-foreground/50" />
-					<h3 className="mt-4 font-medium text-lg text-foreground">
+					<h3 className="mt-4 font-medium text-foreground text-lg">
 						No wealth data yet
 					</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">

@@ -12,12 +12,13 @@ function ThemeScript() {
 				__html: `
           try {
             const stored = localStorage.getItem("theme");
-            const theme = stored === "dark" ? "dark" : "light";
+            const theme = stored === "light" ? "light" : "dark";
             if (theme === "dark") {
               document.documentElement.classList.add("dark");
             }
           } catch (e) {
-            // Fallback to light theme if anything goes wrong
+            // Fallback to dark theme if anything goes wrong
+            document.documentElement.classList.add("dark");
           }
         `,
 			}}

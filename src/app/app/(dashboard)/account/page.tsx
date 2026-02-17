@@ -1,7 +1,7 @@
 "use client";
 
-import { AccountForm } from "~/components/account-form";
 import { PageContent } from "~/components/page-content";
+import { ProfileDashboard } from "~/components/profile-dashboard";
 import { SiteHeader } from "~/components/site-header";
 
 export default function Page() {
@@ -9,9 +9,7 @@ export default function Page() {
 		<>
 			<SiteHeader title="Account" />
 			<PageContent>
-				<div className="mx-auto w-full max-w-4xl space-y-6">
-					<AccountForm />
-				</div>
+				<ProfileDashboard />
 			</PageContent>
 		</>
 	);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
+import { RateSyncControl } from "~/components/rate-sync-control";
 import { SiteHeader } from "~/components/site-header";
 import {
 	Card,
@@ -13,8 +14,8 @@ import {
 } from "~/components/ui/card";
 import { Switch } from "~/components/ui/switch";
 import { useSession } from "~/hooks/use-session";
-import { api } from "~/trpc/react";
 import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
+import { api } from "~/trpc/react";
 import { ActionDialog } from "./action-dialog";
 import { InviteCodesTable } from "./invite-codes-table";
 import { SystemStatusCard } from "./system-status-card";
@@ -317,6 +318,9 @@ export function AdminPanel() {
 								</div>
 							</CardContent>
 						</Card>
+						<div className="md:col-span-1">
+							<RateSyncControl />
+						</div>
 					</div>
 
 					<div className="space-y-4">

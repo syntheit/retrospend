@@ -47,9 +47,7 @@ export function useTableFilters<T extends FilterableExpense>(
 		availableYears?: number[];
 	},
 ) {
-	const {
-		availableYears: providedYears,
-	} = options ?? {};
+	const { availableYears: providedYears } = options ?? {};
 	// Get current year/month for default filter
 	const getCurrentYearMonth = () => {
 		const date = new Date();

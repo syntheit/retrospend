@@ -63,6 +63,54 @@ const splitCsvLine = (line: string): string[] => {
 	return values;
 };
 
+/**
+ * Parses CSV text into an array of objects with string values.
+ * Does not perform any type coercion or validation.
+ */
+export const parseRawCsv = (
+	text: string,
+): { data: Record<string, string>[]; errors: string[] } => {
+	const lines = text
+		.split(/\r?\n/)
+		.map((line) => line.trimEnd())
+		.filter((line) => line.length > 0);
+
+	if (lines.length === 0) {
+		return { data: [], errors: ["The CSV file is empty."] };
+	}
+
+	const headerCells = splitCsvLine(lines[0] ?? "").map((cell) =>
+		cell.trim().toLowerCase(),
+	);
+
+	// Basic check for duplicate headers or empty headers could go here
+	if (headerCells.some((h) => !h)) {
+		// return { data: [], errors: ["CSV contains empty headers."] };
+	}
+
+	const data: Record<string, string>[] = [];
+	const errors: string[] = [];
+
+	for (let i = 1; i < lines.length; i++) {
+		const line = lines[i];
+		if (!line || !line.trim()) continue;
+
+		const cells = splitCsvLine(line);
+		const row: Record<string, string> = {};
+
+		// Map cells to headers
+		headerCells.forEach((header, index) => {
+			row[header] = cells[index]?.trim() ?? "";
+		});
+
+		// If explicit standard columns are missing, we might want to flag it,
+		// but since we are doing Zod validation later, we can just return the raw object.
+		data.push(row);
+	}
+
+	return { data, errors };
+};
+
 const normalizeNumber = (value: string): number | undefined => {
 	if (!value.trim()) return undefined;
 	const num = parseFloat(value.trim());

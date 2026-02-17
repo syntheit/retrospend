@@ -66,7 +66,7 @@ export const BRAND_ICON_MAP: Record<string, ElementType> = {
 	starbucks: Coffee,
 	mcdonalds: Utensils,
 	burger: Utensils,
-	subway: Train, 
+	subway: Train,
 	airbnb: Home,
 	hotel: Home,
 	flight: Plane,

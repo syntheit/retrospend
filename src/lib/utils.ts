@@ -244,6 +244,7 @@ export type NormalizedExpense = {
 		id: string;
 		name: string;
 		color: string;
+		icon?: string | null;
 	} | null;
 };
 
@@ -266,6 +267,7 @@ const RawExpenseSchema = z.object({
 			id: z.string(),
 			name: z.string(),
 			color: z.string(),
+			icon: z.string().nullable().optional(),
 		})
 		.nullable()
 		.optional(),
@@ -295,6 +297,7 @@ export function normalizeExpense(expense: RawExpense): NormalizedExpense {
 					id: expense.category.id,
 					name: expense.category.name,
 					color: expense.category.color,
+					icon: expense.category.icon,
 				}
 			: null,
 	};
@@ -345,9 +348,9 @@ export interface RawAsset {
 	balanceInUSD: number;
 	balanceInTargetCurrency?: number;
 	exchangeRate: string | number | null; // Decimal | null from Prisma
-	exchangeRateType: string | null;
+	exchangeRateType?: string | null;
 	isLiquid: boolean;
-	interestRate?: number;
+	interestRate?: number | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -366,7 +369,7 @@ export interface NormalizedAsset {
 	exchangeRate?: number;
 	exchangeRateType?: string;
 	isLiquid: boolean;
-	interestRate?: number;
+	interestRate?: number | null;
 }
 
 /**

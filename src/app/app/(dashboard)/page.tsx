@@ -14,11 +14,11 @@ import {
 } from "~/components/ui/card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useOverviewController } from "~/hooks/use-overview-controller";
+import { BudgetPacingChart } from "./_components/budget-pacing-chart";
 import { CategoryDonut } from "./_components/category-donut";
 import { FavoritesPanel } from "./_components/favorites-panel";
 import { RecentExpenses } from "./_components/recent-expenses";
 import { StatsCards } from "./_components/stats-cards";
-import { BudgetPacingChart } from "./_components/budget-pacing-chart";
 
 export default function Page() {
 	const { state, data, isLoading, actions } = useOverviewController();
@@ -79,13 +79,13 @@ export default function Page() {
 							<div className="h-[350px]">
 								<BudgetPacingChart
 									chartConfig={data.areaChartConfig}
+									currentDay={data.budgetPacing.currentDay}
 									dailyTrend={data.dailyTrend}
+									daysInMonth={data.budgetPacing.daysInMonth}
 									expensesLoading={isLoading.trend}
 									homeCurrency={data.homeCurrency}
 									variableBudget={data.budgetPacing.variableBudget}
 									variableSpent={data.budgetPacing.variableSpent}
-									daysInMonth={data.budgetPacing.daysInMonth}
-									currentDay={data.budgetPacing.currentDay}
 								/>
 							</div>
 

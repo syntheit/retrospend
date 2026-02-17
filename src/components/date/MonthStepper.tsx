@@ -48,17 +48,16 @@ export function MonthStepper({
 	const [popoverYear, setPopoverYear] = useState(() => value.getFullYear());
 
 	const [now, setNow] = useState<Date | null>(null);
-	
+
 	// Hydrate "now" on client only to avoid hydration mismatch
 	useEffect(() => {
 		setNow(new Date());
 	}, []);
 
-	
 	const effectiveMaxDate = useMemo(() => {
 		// During SSR/Hydration, we can't safely know "now" without hydration error if times differ.
 		// Use "now" state if available (client-side), otherwise fallback to safe default.
-		return maxDate ?? (now || new Date()); 
+		return maxDate ?? (now || new Date());
 	}, [maxDate, now]);
 
 	const canGoForward = useMemo(() => {
@@ -150,7 +149,7 @@ export function MonthStepper({
 			<Popover onOpenChange={handleOpenChange} open={open}>
 				<PopoverTrigger asChild>
 					<Button
-						className="min-w-[100px] text-sm uppercase tracking-wide tabular-nums"
+						className="min-w-[100px] text-sm uppercase tabular-nums tracking-wide"
 						variant="ghost"
 					>
 						{format(value, "MMM yyyy")}
@@ -168,7 +167,9 @@ export function MonthStepper({
 						>
 							<ChevronLeft className="h-4 w-4" />
 						</Button>
-						<span className="font-medium text-sm tabular-nums">{popoverYear}</span>
+						<span className="font-medium text-sm tabular-nums">
+							{popoverYear}
+						</span>
 						<Button
 							aria-label="Next year"
 							disabled={popoverYear >= effectiveMaxDate.getFullYear()}

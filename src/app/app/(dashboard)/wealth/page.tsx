@@ -17,11 +17,11 @@ import {
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
 import { WealthAllocationChart } from "~/components/wealth/wealth-allocation-chart";
 import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-exposure";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
-import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
 import { useWealthDashboard } from "~/hooks/use-wealth-dashboard";
 import { AssetType } from "~/lib/db-enums";
@@ -170,7 +170,6 @@ export default function WealthPage() {
 			/>
 			<PageContent>
 				<div className="space-y-6">
-
 					{/* Summary Cards */}
 					<NetWorthSummary
 						homeCurrency={homeCurrency}

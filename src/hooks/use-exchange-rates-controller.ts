@@ -21,6 +21,7 @@ export function useExchangeRatesController() {
 	const searchParams = useSearchParams();
 	const utils = api.useUtils();
 	const { data: session } = useSession();
+	const user = session?.user as { role?: string } | undefined;
 
 	const {
 		data: exchangeRates,
@@ -162,6 +163,7 @@ export function useExchangeRatesController() {
 		isLoading: isAllRatesLoading,
 		isFavoritesLoading,
 		isSyncing: syncNowMutation.isPending,
+		isAdmin: user?.role === "ADMIN",
 		error: allRatesError || favoriteRatesError,
 		favoriteRatesError,
 		viewState: {

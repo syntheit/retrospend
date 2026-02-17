@@ -16,19 +16,15 @@ interface FetchOptions extends RequestInit {
 	timeout?: number;
 }
 
-export class IntegrationService {
-	private static DEFAULT_TIMEOUT = 5000;
+const DEFAULT_TIMEOUT = 5000;
 
+export const IntegrationService = {
 	/**
 	 * Makes a request and returns the raw Response object after confirming it is OK.
 	 * Includes timeout and standardized error handling.
 	 */
-	public static async request(
-		url: string,
-		options: FetchOptions = {},
-	): Promise<Response> {
-		const { timeout = IntegrationService.DEFAULT_TIMEOUT, ...fetchOptions } =
-			options;
+	async request(url: string, options: FetchOptions = {}): Promise<Response> {
+		const { timeout = DEFAULT_TIMEOUT, ...fetchOptions } = options;
 
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -75,24 +71,21 @@ export class IntegrationService {
 		} finally {
 			clearTimeout(timeoutId);
 		}
-	}
+	},
 
 	/**
 	 * Generic method to fetch JSON data with standardized timeout and error handling.
 	 */
-	public static async fetchJson<T>(
-		url: string,
-		options: FetchOptions = {},
-	): Promise<T> {
-		const response = await IntegrationService.request(url, options);
+	async fetchJson<T>(url: string, options: FetchOptions = {}): Promise<T> {
+		const response = await this.request(url, options);
 		return (await response.json()) as T;
-	}
+	},
 
 	/**
 	 * Specialized request method for Worker internal API.
 	 * Injects the WORKER_API_KEY into the Authorization header.
 	 */
-	public static async requestWorker(
+	async requestWorker(
 		endpoint: string,
 		options: FetchOptions = {},
 	): Promise<Response> {
@@ -104,9 +97,9 @@ export class IntegrationService {
 		const headers = new Headers(options.headers);
 		headers.set("Authorization", `Bearer ${workerKey}`);
 
-		return IntegrationService.request(endpoint, {
+		return this.request(endpoint, {
 			...options,
 			headers,
 		});
-	}
-}
+	},
+};

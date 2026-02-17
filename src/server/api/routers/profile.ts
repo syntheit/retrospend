@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { sumExpensesForCurrency } from "./shared-currency";
 
 export const profileRouter = createTRPCRouter({
 	update: protectedProcedure
@@ -113,4 +114,37 @@ export const profileRouter = createTRPCRouter({
 
 			return { success: true };
 		}),
+	getLifetimeStats: protectedProcedure.query(async ({ ctx }) => {
+		const { session, db } = ctx;
+		const userId = session.user.id;
+
+		const user = await db.user.findUnique({
+			where: { id: userId },
+			select: { createdAt: true, homeCurrency: true },
+		});
+
+		if (!user) {
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "User not found",
+			});
+		}
+
+		const totalEntries = await db.expense.count({
+			where: { userId, status: "FINALIZED" },
+		});
+
+		const { total: lifetimeSpend } = await sumExpensesForCurrency(
+			db,
+			{ userId },
+			user.homeCurrency,
+		);
+
+		return {
+			lifetimeSpend,
+			totalEntries,
+			joinedAt: user.createdAt,
+			homeCurrency: user.homeCurrency,
+		};
+	}),
 });

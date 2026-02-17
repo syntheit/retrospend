@@ -3,7 +3,7 @@
 import {
 	IconBriefcase,
 	IconCalendarClock,
-// 	IconChartBar,
+	// 	IconChartBar,
 	IconCurrencyDollar,
 	IconHome,
 	IconPigMoney,
@@ -46,11 +46,11 @@ const navMain = [
 		url: "/app/table",
 		icon: IconTable,
 	},
-// {
-// 	title: "Analytics",
-// 	url: "/app/analytics",
-// 	icon: IconChartBar,
-// },
+	// {
+	// 	title: "Analytics",
+	// 	url: "/app/analytics",
+	// 	icon: IconChartBar,
+	// },
 	{
 		title: "Budget",
 		url: "/app/budget",

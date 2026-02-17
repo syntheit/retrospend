@@ -59,7 +59,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
 	const form = useForm<ProfileFormValues>({
 		resolver: zodResolver(profileSchema),
-		defaultValues: {
+		values: {
 			name: user.name ?? "",
 			username: user.username ?? "",
 			email: user.email ?? "",
@@ -80,7 +80,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+					<form
+						className="space-y-4"
+						id="profileForm"
+						onSubmit={form.handleSubmit(onSubmit)}
+					>
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<FormField
 								control={form.control}

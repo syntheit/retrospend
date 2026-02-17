@@ -1,5 +1,6 @@
 "use client";
 
+import { getDaysInMonth } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -12,7 +13,6 @@ import {
 	OTHER_COLOR,
 } from "~/lib/chart-theme";
 import { normalizeExpensesFromApi } from "~/lib/utils";
-import { getDaysInMonth } from "date-fns";
 import { api, type RouterOutputs } from "~/trpc/react";
 import type { CategorySegment } from "../app/app/(dashboard)/_components/category-donut-legend";
 
@@ -97,7 +97,7 @@ export function useOverviewController() {
 	useEffect(() => {
 		setNow(new Date());
 	}, []);
-	
+
 	const safeNow = now ?? new Date();
 
 	const categoryBreakdown = useMemo<CategorySegment[]>(() => {

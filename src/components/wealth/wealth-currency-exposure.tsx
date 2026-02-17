@@ -85,7 +85,10 @@ export function WealthCurrencyExposure({
 					<div className="space-y-1" key={item.currency}>
 						<div className="flex items-center justify-between text-sm">
 							<div className="flex items-center gap-2">
-								<CurrencyFlag className="!h-4 !w-4" currencyCode={item.currency} />
+								<CurrencyFlag
+									className="!h-4 !w-4"
+									currencyCode={item.currency}
+								/>
 								<span className="font-medium">{item.currency}</span>
 							</div>
 							<span className="text-muted-foreground tabular-nums">

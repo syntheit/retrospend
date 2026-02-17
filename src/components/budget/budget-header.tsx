@@ -105,7 +105,7 @@ export function BudgetHeader({
 										<p className="font-medium text-indigo-100 text-lg uppercase tracking-wide">
 											You spent
 										</p>
-										<p className="font-bold text-6xl tracking-tighter tabular-nums sm:text-7xl lg:text-8xl">
+										<p className="font-bold text-6xl tabular-nums tracking-tighter sm:text-7xl lg:text-8xl">
 											{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
 										</p>
 									</div>
@@ -135,12 +135,12 @@ export function BudgetHeader({
 									</div>
 								</div>
 
-								<div className="grid grid-cols-2 gap-8 border-t border-white/10 pt-8 lg:border-t-0 lg:pt-0">
+								<div className="grid grid-cols-2 gap-8 border-white/10 border-t pt-8 lg:border-t-0 lg:pt-0">
 									<div className="space-y-1">
 										<p className="font-medium text-sm text-white/60 uppercase tracking-widest">
 											Budgeted
 										</p>
-										<p className="text-2xl font-bold tabular-nums sm:text-3xl">
+										<p className="font-bold text-2xl tabular-nums sm:text-3xl">
 											{formatCurrency(
 												displayAmountInHomeCurrency,
 												homeCurrency,
@@ -188,7 +188,7 @@ export function BudgetHeader({
 									<p className="font-medium text-sm text-stone-300">
 										Total Monthly Budget
 									</p>
-									<p className="text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
+									<p className="font-bold text-4xl tabular-nums tracking-tight sm:text-5xl">
 										{formatCurrency(displayAmountInHomeCurrency, homeCurrency)}
 									</p>
 								</div>

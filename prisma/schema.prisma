@@ -131,6 +131,7 @@ model Category {
   id                   String                        @id @default(cuid())
   name                 String                        @db.VarChar(64)
   color                CategoryColor
+  icon                 String?                       @db.VarChar(32)
   isFixed              Boolean                       @default(false)
   userId               String
   user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)

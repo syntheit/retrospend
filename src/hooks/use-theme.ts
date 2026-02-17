@@ -5,21 +5,21 @@ import { useEffect, useState } from "react";
 export type Theme = "light" | "dark";
 
 export function getInitialTheme(): Theme {
-	if (typeof window === "undefined") return "light";
+	if (typeof window === "undefined") return "dark";
 
 	try {
 		const stored = localStorage.getItem("theme");
-		if (stored === "dark") {
-			return "dark";
+		if (stored === "light" || stored === "dark") {
+			return stored;
 		}
-		return "light";
+		return "dark";
 	} catch (_) {
-		return "light";
+		return "dark";
 	}
 }
 
 export function useTheme() {
-	const [theme, setTheme] = useState<Theme>("light");
+	const [theme, setTheme] = useState<Theme>("dark");
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {

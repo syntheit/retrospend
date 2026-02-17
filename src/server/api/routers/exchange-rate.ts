@@ -86,27 +86,15 @@ export const exchangeRateRouter = createTRPCRouter({
 		}),
 
 	syncNow: protectedProcedure.mutation(async ({ ctx }) => {
-		const { db, session } = ctx;
-		const MIN_SYNC_INTERVAL_MS = 1 * 60 * 1000; // Reduced to 1 minute for manual triggers
+		const { session } = ctx;
 
 		const isAdmin = session.user.role === "ADMIN";
 
 		if (!isAdmin) {
-			const lastSync = await db.exchangeRate.findFirst({
-				orderBy: { createdAt: "desc" },
-				select: { createdAt: true },
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Only administrators can trigger exchange rate sync",
 			});
-
-			if (
-				lastSync &&
-				Date.now() - lastSync.createdAt.getTime() < MIN_SYNC_INTERVAL_MS
-			) {
-				throw new TRPCError({
-					code: "TOO_MANY_REQUESTS",
-					message:
-						"Exchange rates were recently synced. Please try again later.",
-				});
-			}
 		}
 
 		try {

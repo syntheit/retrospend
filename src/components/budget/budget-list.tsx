@@ -141,7 +141,9 @@ export function BudgetList({
 				<div className="space-y-4" key={section.title}>
 					<div className="flex items-center justify-between">
 						<div>
-							<h3 className="font-semibold text-lg tracking-tight">{section.title}</h3>
+							<h3 className="font-semibold text-lg tracking-tight">
+								{section.title}
+							</h3>
 							<p className="text-muted-foreground text-sm">
 								{section.description}
 							</p>
@@ -190,7 +192,9 @@ export function BudgetList({
 				<div className="space-y-4">
 					<div className="flex items-center justify-between">
 						<div>
-							<h3 className="font-semibold text-lg tracking-tight">Variable / Managed</h3>
+							<h3 className="font-semibold text-lg tracking-tight">
+								Variable / Managed
+							</h3>
 							<p className="text-muted-foreground text-sm">
 								Categories you actively monitor and adjust
 							</p>

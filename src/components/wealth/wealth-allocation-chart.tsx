@@ -2,6 +2,7 @@
 
 import { PieChartIcon } from "lucide-react";
 import { useMemo } from "react";
+import { Cell, Label, Pie, PieChart } from "recharts";
 import {
 	Card,
 	CardContent,
@@ -17,7 +18,6 @@ import {
 	ChartTooltip,
 	ChartTooltipContent,
 } from "~/components/ui/chart";
-import { Label, Pie, PieChart, Cell } from "recharts";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
 interface WealthAllocationChartProps {
@@ -55,7 +55,9 @@ export function WealthAllocationChart({ data }: WealthAllocationChartProps) {
 		return (
 			<Card className="flex h-full flex-col border border-border bg-card shadow-sm">
 				<CardHeader className="items-center pb-0">
-					<CardTitle className="font-semibold text-lg tracking-tight">Asset Allocation</CardTitle>
+					<CardTitle className="font-semibold text-lg tracking-tight">
+						Asset Allocation
+					</CardTitle>
 					<CardDescription>Distribution by asset type</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-1 flex-col items-center justify-center py-12">
@@ -72,7 +74,9 @@ export function WealthAllocationChart({ data }: WealthAllocationChartProps) {
 	return (
 		<Card className="flex h-full flex-col border border-border bg-card shadow-sm">
 			<CardHeader className="items-center pb-0">
-				<CardTitle className="font-semibold text-lg tracking-tight">Asset Allocation</CardTitle>
+				<CardTitle className="font-semibold text-lg tracking-tight">
+					Asset Allocation
+				</CardTitle>
 				<CardDescription>Distribution by asset type</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-1 pb-0">
@@ -86,14 +90,14 @@ export function WealthAllocationChart({ data }: WealthAllocationChartProps) {
 							cursor={false}
 						/>
 						<Pie
+							cornerRadius={5}
 							data={data}
 							dataKey="value"
 							innerRadius="70%"
-							outerRadius="85%"
 							nameKey="type"
-							strokeWidth={0}
+							outerRadius="85%"
 							paddingAngle={4}
-							cornerRadius={5}
+							strokeWidth={0}
 						>
 							{data.map((item) => (
 								<Cell fill={item.fill} key={item.type} />

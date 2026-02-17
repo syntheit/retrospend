@@ -1,6 +1,6 @@
 "use client";
 
-import { Landmark, PiggyBank, Receipt, Settings } from "lucide-react";
+import { Landmark, PiggyBank, Receipt } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { PartitionBar } from "~/components/budget/partition-bar";

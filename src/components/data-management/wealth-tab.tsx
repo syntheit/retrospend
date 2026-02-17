@@ -1,21 +1,13 @@
 "use client";
 
-import { Download, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo } from "react";
 import { toast } from "sonner";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Separator } from "~/components/ui/separator";
 import { type ParsedWealthRow, parseWealthCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
 import type { AssetType } from "~prisma";
+import { DataImportExport } from "./data-import-export";
 
 export function WealthTab() {
-	const fileInputRef = useRef<HTMLInputElement | null>(null);
-	const [previewData, setPreviewData] = useState<ParsedWealthRow[]>([]);
-	const [parseError, setParseError] = useState<string | null>(null);
-
 	const exportMutation = api.wealth.exportCsv.useMutation();
 	const importMutation = api.wealth.importAssets.useMutation();
 
@@ -39,41 +31,13 @@ export function WealthTab() {
 		}
 	};
 
-	const handleFileChange = async (
-		event: React.ChangeEvent<HTMLInputElement>,
-	) => {
-		const file = event.target.files?.[0];
-		if (!file) return;
-
-		try {
-			const text = await file.text();
-			const result = parseWealthCsv(text);
-
-			if (result.errors.length > 0) {
-				setParseError(result.errors.join("\n"));
-				setPreviewData([]);
-				return;
-			}
-
-			setParseError(null);
-			setPreviewData(result.rows);
-			toast.success(
-				`Loaded ${result.rows.length} row${result.rows.length === 1 ? "" : "s"} for import`,
-			);
-		} catch (error: unknown) {
-			setParseError(
-				error instanceof Error ? error.message : "Failed to read CSV file.",
-			);
-			setPreviewData([]);
-		} finally {
-			if (fileInputRef.current) {
-				fileInputRef.current.value = "";
-			}
-		}
+	const handleParseCsv = (
+		text: string,
+	): { rows: ParsedWealthRow[]; errors: string[] } => {
+		return parseWealthCsv(text);
 	};
 
-	const handleImport = async () => {
-		if (previewData.length === 0) return;
+	const handleImport = async (previewData: ParsedWealthRow[]) => {
 		try {
 			const result = await importMutation.mutateAsync({
 				rows: previewData.map((r) => ({
@@ -84,145 +48,91 @@ export function WealthTab() {
 			toast.success(
 				`Imported: ${result.successCount} success, ${result.errorCount} failed`,
 			);
-			setPreviewData([]);
 		} catch (error: unknown) {
 			toast.error(
 				error instanceof Error ? error.message : "Failed to import wealth data",
 			);
+			throw error;
 		}
 	};
 
+	const Preview = useMemo(() => {
+		const WealthPreviewTable = ({ data }: { data: ParsedWealthRow[] }) => {
+			return (
+				<div className="max-h-[300px] overflow-auto rounded-md border text-xs">
+					<table className="w-full text-xs">
+						<thead className="sticky top-0 bg-muted/50">
+							<tr className="border-b transition-colors hover:bg-muted/50">
+								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+									Name
+								</th>
+								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+									Balance
+								</th>
+								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+									Currency
+								</th>
+								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+									Type
+								</th>
+								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
+									Liquid
+								</th>
+							</tr>
+						</thead>
+						<tbody className="[&_tr:last-child]:border-0">
+							{data.map((row) => (
+								<tr
+									className="border-b transition-colors hover:bg-muted/50"
+									key={row.name}
+								>
+									<td className="p-2 align-middle">{row.name}</td>
+									<td className="p-2 align-middle">{row.balance}</td>
+									<td className="p-2 align-middle">{row.currency}</td>
+									<td className="p-2 align-middle">{row.type}</td>
+									<td className="p-2 align-middle">
+										{row.isLiquid ? "Yes" : "No"}
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			);
+		};
+		WealthPreviewTable.displayName = "WealthPreviewTable";
+		return WealthPreviewTable;
+	}, []);
+
 	return (
-		<div className="space-y-6 pt-4">
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="space-y-1">
-					<p className="font-medium">Export wealth</p>
-					<p className="text-muted-foreground text-sm">
-						Downloads all assets and liabilities as a CSV file.
-					</p>
-				</div>
-				<Button
-					className="w-full sm:w-auto"
-					disabled={exportMutation.isPending}
-					onClick={handleExport}
-					variant="outline"
-				>
-					{exportMutation.isPending ? "Preparing..." : "Download CSV"}
-					<Download className="ml-2 h-4 w-4" />
-				</Button>
-			</div>
-
-			<Separator />
-
-			<div className="space-y-4">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="space-y-1">
-						<p className="font-medium">Import wealth</p>
-						<p className="text-muted-foreground text-sm">
-							Upload a CSV to update or create wealth items.
-						</p>
-					</div>
-					<div className="flex flex-col gap-2 sm:flex-row">
-						<Button
-							className="w-full sm:w-auto"
-							onClick={() => fileInputRef.current?.click()}
-							variant="secondary"
-						>
-							Select CSV
-							<Upload className="ml-2 h-4 w-4" />
-						</Button>
-						<Button
-							className="w-full sm:w-auto"
-							disabled={previewData.length === 0 || importMutation.isPending}
-							onClick={handleImport}
-						>
-							{importMutation.isPending
-								? "Importing..."
-								: `Import ${previewData.length || ""} ${previewData.length === 1 ? "row" : "rows"}`}
-						</Button>
-					</div>
-				</div>
-				<div className="space-y-2 rounded-lg border bg-muted/30 p-4">
-					<Label className="font-medium text-sm">CSV format</Label>
-					<p className="text-muted-foreground text-sm leading-relaxed">
-						Required: <code className="text-primary">name</code>,{" "}
-						<code className="text-primary">balance</code>,{" "}
-						<code className="text-primary">currency</code>,{" "}
-						<code className="text-primary">type</code>. <br />
-						Types:{" "}
-						<code className="text-[10px] text-muted-foreground">
-							CASH, INVESTMENT, CRYPTO, REAL_ESTATE, VEHICLE, LIABILITY_LOAN,
-							LIABILITY_CREDIT_CARD, LIABILITY_MORTGAGE
-						</code>
-						.
-					</p>
-				</div>
-				{parseError && (
-					<div className="whitespace-pre-wrap rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
-						{parseError}
-					</div>
-				)}
-				<Input
-					accept=".csv,text/csv"
-					className="hidden"
-					onChange={handleFileChange}
-					ref={fileInputRef}
-					type="file"
-				/>
-				{previewData.length > 0 && (
-					<div className="space-y-3">
-						<div className="flex items-center justify-between">
-							<p className="font-medium">Preview ({previewData.length} rows)</p>
-							<Button
-								onClick={() => setPreviewData([])}
-								size="sm"
-								variant="ghost"
-							>
-								Clear
-							</Button>
-						</div>
-						<div className="max-h-[300px] overflow-auto rounded-md border text-xs">
-							<table className="w-full text-xs">
-								<thead className="sticky top-0 bg-muted/50">
-									<tr className="border-b transition-colors hover:bg-muted/50">
-										<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-											Name
-										</th>
-										<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-											Balance
-										</th>
-										<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-											Currency
-										</th>
-										<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-											Type
-										</th>
-										<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-											Liquid
-										</th>
-									</tr>
-								</thead>
-								<tbody className="[&_tr:last-child]:border-0">
-									{previewData.map((row) => (
-										<tr
-											className="border-b transition-colors hover:bg-muted/50"
-											key={row.name}
-										>
-											<td className="p-2 align-middle">{row.name}</td>
-											<td className="p-2 align-middle">{row.balance}</td>
-											<td className="p-2 align-middle">{row.currency}</td>
-											<td className="p-2 align-middle">{row.type}</td>
-											<td className="p-2 align-middle">
-												{row.isLiquid ? "Yes" : "No"}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				)}
-			</div>
-		</div>
+		<DataImportExport
+			description="Downloads all assets and liabilities as a CSV file."
+			formatInfo={
+				<p>
+					Required: <code className="text-primary">name</code>,{" "}
+					<code className="text-primary">balance</code>,{" "}
+					<code className="text-primary">currency</code>,{" "}
+					<code className="text-primary">type</code>. <br />
+					Types:{" "}
+					<code className="text-[10px] text-muted-foreground">
+						CASH, INVESTMENT, CRYPTO, REAL_ESTATE, VEHICLE, LIABILITY_LOAN,
+						LIABILITY_CREDIT_CARD, LIABILITY_MORTGAGE
+					</code>
+					.
+				</p>
+			}
+			isExporting={exportMutation.isPending}
+			isImporting={importMutation.isPending}
+			onExport={handleExport}
+			onImport={handleImport}
+			parseCsv={handleParseCsv}
+			renderPreview={Preview}
+			sampleData="name,balance,currency,type,isLiquid
+Cash in Wallet,100,USD,CASH,true
+Savings Account,5000,EUR,CASH,true
+Tesla Stock,2000,USD,INVESTMENT,false"
+			sampleFilename="wealth_sample.csv"
+			title="Wealth"
+		/>
 	);
 }

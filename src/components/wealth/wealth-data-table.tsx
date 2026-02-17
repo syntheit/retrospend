@@ -63,8 +63,6 @@ export function WealthDataTable({
 		null,
 	);
 
-
-
 	const columns = React.useMemo(
 		() =>
 			createWealthColumns(
@@ -73,12 +71,7 @@ export function WealthDataTable({
 				Boolean(controlledSelectedRows && controlledSelectedRows.size > 0),
 				totalNetWorth,
 			),
-		[
-			homeCurrency,
-			formatCurrency,
-			controlledSelectedRows,
-			totalNetWorth,
-		],
+		[homeCurrency, formatCurrency, controlledSelectedRows, totalNetWorth],
 	);
 
 	const controlledRowSelection = React.useMemo(() => {
@@ -258,25 +251,30 @@ export function WealthDataTable({
 						{paginationRows.length ? (
 							paginationRows.map((row: Row<Asset>) => (
 								<TableRow
-									className="group cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/50 last:border-0"
+									className="group cursor-pointer border-border/40 border-b transition-colors last:border-0 hover:bg-muted/50"
 									data-state={
 										selectedRows.has(row.original.id) ? "selected" : undefined
 									}
 									key={row.id}
 									onClick={() => setEditingAssetId(row.original.id)}
 								>
-									{row.getVisibleCells().map((cell: Cell<Asset, unknown>, index: number) => {
+									{row.getVisibleCells().map((cell: Cell<Asset, unknown>) => {
 										const cellIsRightAligned =
 											cell.column.id === "balanceInTarget" ||
 											cell.column.id === "balanceInUSD";
+										const isSelect = cell.column.id === "select";
+										const isName = cell.column.id === "name";
+										const isAllocation = cell.column.id === "allocation";
+
 										return (
 											<TableCell
 												className={cn(
 													"px-4 py-3 leading-none",
 													cellIsRightAligned ? "text-right" : "text-left",
-													index === 0 && "w-[44%]",
-													index === 1 && "w-[33%]",
-													index === 2 && "w-[23%]",
+													isSelect && "w-[1%]",
+													isName && "w-[40%]",
+													isAllocation && "w-[40%]",
+													cellIsRightAligned && "w-[20%]",
 												)}
 												key={cell.id}
 											>
@@ -304,7 +302,7 @@ export function WealthDataTable({
 						<TableRow className="border-t-2 bg-muted/50 font-semibold">
 							<TableCell
 								className="px-4 py-3 text-left font-semibold"
-								colSpan={3}
+								colSpan={columns.length - (homeCurrency !== "USD" ? 2 : 1)}
 							>
 								Total ({table.getFilteredRowModel().rows.length} items)
 							</TableCell>

@@ -17,10 +17,10 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { getCategoryIcon } from "~/lib/category-icons";
 import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import type { Budget } from "~/types/budget-types";
-import { CATEGORY_ICON_MAP } from "~/lib/icons";
 import { BulletChart } from "./bullet-chart";
 import { QuickChips } from "./quick-chips";
 
@@ -166,17 +166,20 @@ export function BudgetRow({
 				<div
 					className={cn(
 						"flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-9 sm:w-9",
-						"bg-primary/10 text-primary"
+						"bg-primary/10 text-primary",
 					)}
 				>
 					{(() => {
-						const Icon = (CATEGORY_ICON_MAP[budget.category.name] || CATEGORY_ICON_MAP.Misc) as React.ElementType;
+						const Icon = getCategoryIcon(
+							budget.category.name,
+							budget.category.icon,
+						);
 						return <Icon className="h-4 w-4" />;
 					})()}
 				</div>
 
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate font-medium text-sm sm:text-base tracking-tight">
+					<h3 className="truncate font-medium text-sm tracking-tight sm:text-base">
 						{budget.category.name}
 					</h3>
 				</div>
@@ -218,7 +221,7 @@ export function BudgetRow({
 								{getCurrencySymbol(budget.currency)}
 							</span>
 							<Input
-								className={`border-none bg-transparent pl-6 text-2xl text-foreground outline-none placeholder:text-muted-foreground tabular-nums sm:text-3xl ${
+								className={`border-none bg-transparent pl-6 text-2xl text-foreground tabular-nums outline-none placeholder:text-muted-foreground sm:text-3xl ${
 									isPegged ? "text-muted-foreground" : ""
 								}`}
 								disabled={isPegged}

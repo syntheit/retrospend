@@ -19,7 +19,8 @@ const statCardVariants = cva(
 				amber: "text-foreground shadow-[inset_0_0_20px_rgba(245,158,11,0.05)]",
 				indigo: "text-foreground shadow-[inset_0_0_20px_rgba(99,102,241,0.05)]",
 				rose: "text-foreground shadow-[inset_0_0_20px_rgba(244,63,94,0.05)]",
-				emerald: "text-foreground shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]",
+				emerald:
+					"text-foreground shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]",
 			},
 		},
 		defaultVariants: {
@@ -80,6 +81,7 @@ export interface StatCardProps extends VariantProps<typeof statCardVariants> {
 		intent?: "positive" | "negative";
 		forceNeutral?: boolean;
 	};
+	subValue?: React.ReactNode;
 	formatCurrency?: (value: number) => string;
 	className?: string;
 }
@@ -87,6 +89,7 @@ export interface StatCardProps extends VariantProps<typeof statCardVariants> {
 export function StatCard({
 	title,
 	value,
+	subValue,
 	icon: Icon,
 	variant = "blue",
 	description,
@@ -113,8 +116,15 @@ export function StatCard({
 
 				{/* Bottom Row: Value + Trend/Desc */}
 				<div className="flex w-full items-end justify-between">
-					<div className="font-bold text-2xl text-foreground tabular-nums tracking-tight">
-						{loading ? <Skeleton className="h-8 w-24 bg-muted" /> : value}
+					<div className="flex flex-col gap-0.5">
+						<div className="font-bold text-2xl text-foreground tabular-nums tracking-tight">
+							{loading ? <Skeleton className="h-8 w-24 bg-muted" /> : value}
+						</div>
+						{!loading && subValue && (
+							<div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+								{subValue}
+							</div>
+						)}
 					</div>
 
 					{!loading && (description || (trend && trend.value !== null)) && (

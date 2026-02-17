@@ -1,8 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { CATEGORY_ICON_MAP, BRAND_ICON_MAP } from "~/lib/icons";
-import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { memo } from "react";
 import { Button } from "~/components/ui/button";
@@ -22,7 +20,9 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import { getCategoryIcon } from "~/lib/category-icons";
 import type { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { BRAND_ICON_MAP } from "~/lib/icons";
 import type { NormalizedExpense } from "~/lib/utils";
 import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 
@@ -50,7 +50,11 @@ const MUTED_COLOR_MAP: Record<string, string> = {
 	red: "bg-red-500/10 text-red-500",
 };
 
-function getExpenseIcon(title: string | null, categoryName: string) {
+function getExpenseIcon(
+	title: string | null,
+	categoryName: string,
+	categoryIconName?: string | null,
+) {
 	if (title) {
 		const lowerTitle = title.toLowerCase();
 		// Check for exact keywords or partial matches
@@ -60,8 +64,8 @@ function getExpenseIcon(title: string | null, categoryName: string) {
 			}
 		}
 	}
-	// Fallback to category icon
-	return CATEGORY_ICON_MAP[categoryName] ?? CreditCard;
+	// Fallback to category icon using the centralized utility
+	return getCategoryIcon(categoryName, categoryIconName);
 }
 
 interface RecentExpensesProps {
@@ -112,9 +116,15 @@ export function RecentExpenses({
 				<Table className="w-full table-fixed">
 					<TableHeader>
 						<TableRow className="border-none hover:bg-transparent">
-							<TableHead className="w-1/2 uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">Expense</TableHead>
-							<TableHead className="w-1/4 uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">Date</TableHead>
-							<TableHead className="w-1/4 text-right uppercase text-[10px] tracking-widest font-semibold text-muted-foreground">Amount</TableHead>
+							<TableHead className="w-1/2 font-semibold text-[10px] text-muted-foreground uppercase tracking-widest">
+								Expense
+							</TableHead>
+							<TableHead className="w-1/4 font-semibold text-[10px] text-muted-foreground uppercase tracking-widest">
+								Date
+							</TableHead>
+							<TableHead className="w-1/4 text-right font-semibold text-[10px] text-muted-foreground uppercase tracking-widest">
+								Amount
+							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -176,11 +186,12 @@ const RecentExpenseRow = memo(function RecentExpenseRow({
 		expense.currency !== homeCurrency && (expense.amountInUSD ?? null) !== null;
 
 	const categoryName = expense.category?.name ?? "Uncategorized";
+	const categoryIcon = expense.category?.icon;
 	const colorKey = expense.category?.color as keyof typeof CATEGORY_COLOR_MAP;
-	const Icon = getExpenseIcon(expense.title, categoryName);
+	const Icon = getExpenseIcon(expense.title, categoryName, categoryIcon);
 
 	return (
-		<TableRow className="border-none hover:bg-accent/50 transition-colors">
+		<TableRow className="border-none transition-colors hover:bg-accent/50">
 			<TableCell className="py-3">
 				<div className="flex min-w-0 items-center gap-3">
 					<div
@@ -205,7 +216,7 @@ const RecentExpenseRow = memo(function RecentExpenseRow({
 			<TableCell className="whitespace-nowrap font-medium text-muted-foreground text-xs tabular-nums">
 				{format(expense.date, "MMM d")}
 			</TableCell>
-			<TableCell className="whitespace-nowrap text-right py-3">
+			<TableCell className="whitespace-nowrap py-3 text-right">
 				<div className="font-medium text-foreground text-sm tabular-nums">
 					{formatCurrency(amount, homeCurrency)}
 				</div>

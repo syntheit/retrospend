@@ -1,10 +1,10 @@
 "use client";
 
+import { AppPreferencesCard } from "~/components/settings/app-preferences-card";
+import { CategorySettings } from "~/components/settings/category-settings";
+import { InteractionCard } from "~/components/settings/interaction-card";
 import { Card, CardContent } from "~/components/ui/card";
 import { useSession } from "~/hooks/use-session";
-import { CategorySettings } from "./settings/category-settings";
-import { GeneralSettings } from "./settings/general-settings";
-import { WealthExportCard } from "./settings/wealth-export-card";
 
 export function SettingsForm() {
 	const { data: session, isPending: sessionLoading } = useSession();
@@ -32,10 +32,17 @@ export function SettingsForm() {
 	}
 
 	return (
-		<div className="space-y-6">
-			<GeneralSettings />
-			<CategorySettings />
-			<WealthExportCard />
+		<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			{/* Left Column: App Preferences */}
+			<div className="space-y-6">
+				<AppPreferencesCard />
+			</div>
+
+			{/* Right Column: Interaction & Categories */}
+			<div className="space-y-6">
+				<InteractionCard />
+				<CategorySettings />
+			</div>
 		</div>
 	);
 }

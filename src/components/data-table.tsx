@@ -22,10 +22,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
 import { TableSearch } from "./table-search";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 
 interface DataTableProps<TData> {
 	// ... (props remain same)

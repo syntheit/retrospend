@@ -1,11 +1,11 @@
 import { z } from "zod";
+import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { isAllowAllUsersToGenerateInvitesEnabled } from "~/server/services/settings";
 
 /**

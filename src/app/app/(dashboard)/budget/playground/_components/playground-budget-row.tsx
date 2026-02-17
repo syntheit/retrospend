@@ -3,6 +3,7 @@
 import { Input } from "~/components/ui/input";
 import { Slider } from "~/components/ui/slider";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { getCategoryIcon } from "~/lib/category-icons";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import { cn, getCurrencySymbol } from "~/lib/utils";
 import type { Category } from "~/types/budget-types";
@@ -54,7 +55,10 @@ export function PlaygroundBudgetRow({
 						categoryColor,
 					)}
 				>
-					{category.name.substring(0, 1).toUpperCase()}
+					{(() => {
+						const Icon = getCategoryIcon(category.name, category.icon);
+						return <Icon className="h-5 w-5" />;
+					})()}
 				</div>
 				<div className="min-w-0">
 					<h4 className="truncate font-semibold text-sm sm:text-base">

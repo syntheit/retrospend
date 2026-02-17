@@ -25,6 +25,7 @@ export const categoriesRouter = createTRPCRouter({
 				id: true,
 				name: true,
 				color: true,
+				icon: true,
 				_count: {
 					select: {
 						expenses: true,
@@ -41,6 +42,7 @@ export const categoriesRouter = createTRPCRouter({
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
 				}),
+				icon: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -66,12 +68,14 @@ export const categoriesRouter = createTRPCRouter({
 				data: {
 					name: input.name,
 					color: input.color,
+					icon: input.icon,
 					userId: session.user.id,
 				},
 				select: {
 					id: true,
 					name: true,
 					color: true,
+					icon: true,
 				},
 			});
 		}),
@@ -84,6 +88,7 @@ export const categoriesRouter = createTRPCRouter({
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
 				}),
+				icon: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -112,11 +117,13 @@ export const categoriesRouter = createTRPCRouter({
 				data: {
 					name: input.name,
 					color: input.color,
+					icon: input.icon,
 				},
 				select: {
 					id: true,
 					name: true,
 					color: true,
+					icon: true,
 				},
 			});
 		}),

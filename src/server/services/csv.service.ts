@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { generateCsv } from "~/lib/csv";
-import { formatDateOnly } from "~/lib/date";
 import type { Prisma, PrismaClient } from "~prisma";
 import { AmortizationService } from "./amortization.service";
 
