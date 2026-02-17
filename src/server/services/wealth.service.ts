@@ -76,14 +76,38 @@ export class WealthService {
 				message: `Invalid exchange rate: ${rate}. Rate must be positive.`,
 			});
 		}
-		const balanceInUSD = balance / rate;
+
+		let effectiveRate = rate;
+
+		// AUTO-INVERSION DETECTION
+		// For many weak currencies (like ARS, BRL, CLP, PYG), the rate is > 1 (Units per USD).
+		// If we see a rate like 0.000699 for ARS, it's almost certainly inverted (1/1430).
+		// We detect this by seeing if dividing by the rate would make the USD balance
+		// significantly LARGER than the native balance for a non-USD currency.
+		// NOTE: This only applies to currencies we know are weaker than USD.
+		const isStrongCurrency = ["GBP", "EUR", "KWD", "BHD", "OMR", "JOD"].includes(
+			currency,
+		);
+
+		if (currency !== BASE_CURRENCY && !isStrongCurrency && effectiveRate < 0.1) {
+			// If rate is very small for a weak currency, it's likely inverted.
+			// 0.0007 for ARS -> 1428
+			effectiveRate = 1 / effectiveRate;
+		}
+
+		const balanceInUSD = balance / effectiveRate;
 
 		// Sanity check to prevent "Billion Dollar" bug (multiplying instead of dividing)
-		if (currency !== BASE_CURRENCY && rate > 1 && balanceInUSD > balance) {
+		// If the resulting USD balance is more than 50% LARGER than the native balance,
+		// and it's not a strong currency, something is wrong.
+		if (
+			currency !== BASE_CURRENCY &&
+			!isStrongCurrency &&
+			balanceInUSD > balance * 1.5
+		) {
 			throw new TRPCError({
 				code: "INTERNAL_SERVER_ERROR",
-				message:
-					"Exchange rate calculation sanity check failed. Please contact support.",
+				message: `Exchange rate calculation sanity check failed for ${currency}. Resulting USD balance ($${balanceInUSD.toLocaleString()}) is nonsensical relative to native balance (${balance.toLocaleString()}). The rate (${rate}) might be inverted or incorrect.`,
 			});
 		}
 

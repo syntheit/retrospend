@@ -93,9 +93,18 @@ export function AssetDialog({
 	const open = isControlled ? controlledOpen : internalOpen;
 	const setOpen = isControlled ? setControlledOpen : setInternalOpen;
 
-	const [exchangeRate, setExchangeRate] = useState<number | undefined>(
-		initialValues?.exchangeRate,
-	);
+	// Initialize with INVERTED rate for non-USD currencies because we want to display/edit
+	// the "Human" rate (e.g. 0.0007 USD/ARS), but DB stores "System" rate (e.g. 1430 ARS/USD).
+	const [exchangeRate, setExchangeRate] = useState<number | undefined>(() => {
+		if (
+			initialValues?.exchangeRate &&
+			initialValues.currency &&
+			initialValues.currency !== "USD"
+		) {
+			return 1 / initialValues.exchangeRate;
+		}
+		return initialValues?.exchangeRate;
+	});
 	const [exchangeRateType, setExchangeRateType] = useState<string | undefined>(
 		initialValues?.exchangeRateType,
 	);
@@ -118,6 +127,13 @@ export function AssetDialog({
 	const usdEquivalent = useMemo(() => {
 		const currentBalance = balance || 0;
 		if (currency === "USD") return currentBalance;
+		// Exchange rate is in "Human" format (USD per Unit) -> Multiply
+		// Wait, previous logic was multiplying by System Rate (Units per USD)?
+		// No, previously it multiplied by stored rate.
+		// If stored rate was 1430 -> 1.4 Million.
+		// If stored rate was 0.0007 -> 0.7.
+		// NOW we ensure state is 0.0007.
+		// So multiplying is correct for Human Rate.
 		return currentBalance * (exchangeRate ?? 1);
 	}, [balance, currency, exchangeRate]);
 
@@ -174,17 +190,27 @@ export function AssetDialog({
 	});
 
 	const onSubmit = (data: FormValues) => {
+		// Invert rate back to System format (Units per USD) before saving
+		let systemRate = exchangeRate;
+		if (
+			data.currency !== "USD" &&
+			exchangeRate !== undefined &&
+			exchangeRate > 0
+		) {
+			systemRate = 1 / exchangeRate;
+		}
+
 		if (isEdit && assetId) {
 			updateAsset.mutate({
 				id: assetId,
 				...data,
-				exchangeRate,
+				exchangeRate: systemRate,
 				exchangeRateType,
 			});
 		} else {
 			createAsset.mutate({
 				...data,
-				exchangeRate,
+				exchangeRate: systemRate,
 				exchangeRateType,
 			});
 		}

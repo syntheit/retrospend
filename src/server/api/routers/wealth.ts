@@ -247,6 +247,7 @@ export const wealthRouter = createTRPCRouter({
 			const { db, session } = ctx;
 			const today = normalizeDate(new Date());
 			const targetCurrency = input?.currency ?? BASE_CURRENCY;
+			const wealthService = new WealthService(db);
 
 			const assets = await db.assetAccount.findMany({
 				where: { userId: session.user.id },
@@ -317,7 +318,19 @@ export const wealthRouter = createTRPCRouter({
 					rate = asset.exchangeRate?.toNumber() ?? null;
 				}
 				const effectiveRate = rate || 1;
-				const balanceInUSD = asset.balance.toNumber() / effectiveRate;
+
+				let balanceInUSD = 0;
+				try {
+					balanceInUSD = wealthService.calculateBalanceInUSD(
+						asset.balance.toNumber(),
+						effectiveRate,
+						asset.currency,
+					);
+				} catch (e) {
+					console.error(`[WealthDashboard] Error calculating balance for ${asset.name}:`, e);
+					// Last resort fallback to raw division if service fails (though service is better)
+					balanceInUSD = asset.balance.toNumber() / effectiveRate;
+				}
 
 				const isLiability = asset.type.startsWith("LIABILITY_");
 				const adjustedBalanceInUSD = isLiability ? -balanceInUSD : balanceInUSD;
@@ -468,19 +481,55 @@ export const wealthRouter = createTRPCRouter({
 					if (!asset) continue;
 
 					// Try to recalculate USD/Target value using historical rate
-					const histRate = getHistoricalRate(
+					let histRate = getHistoricalRate(
 						asset.currency,
 						asset.exchangeRateType,
 						dateStr,
 					);
 
+					// Fallback to earliest available rate if history is missing for this currency
+					if (!histRate) {
+						const rates = historicalRates.get(asset.currency);
+						if (rates && rates.length > 0) {
+							// rates are sorted by date (earliest first) in the historicalRates map
+							histRate = rates[0]?.rate ?? null;
+						}
+					}
+
 					let balInUSD = 0;
 					if (histRate) {
-						// balanceInUSD = balance / rate (Units per USD)
-						balInUSD = balNative / histRate;
+						try {
+							balInUSD = wealthService.calculateBalanceInUSD(
+								balNative,
+								histRate,
+								asset.currency,
+							);
+						} catch (_e) {
+							// If service throws (sanity check failed), it means the rate is likely garbage
+							// Fallback to snapshot but with extreme suspicion
+							balInUSD = currentBalancesUSD.get(assetId) ?? 0;
+						}
 					} else {
-						// Fallback to snapshot's stored USD value
+						// Fallback to snapshot's stored USD value (last resort)
 						balInUSD = currentBalancesUSD.get(assetId) ?? 0;
+					}
+
+					// FINAL SANITY CHECK for historical data points
+					// If a single day's balance in USD is > $500M and native balance is much smaller,
+					// it's almost certainly a "Billion Dollar bug" snapshot. We skip this asset for this date.
+					const isStrongCurrency = ["GBP", "EUR", "KWD", "BHD", "OMR", "JOD"].includes(
+						asset.currency,
+					);
+					if (
+						!isStrongCurrency &&
+						asset.currency !== BASE_CURRENCY &&
+						balInUSD > 500_000_000 &&
+						balInUSD > balNative * 10
+					) {
+						console.warn(
+							`[WealthDashboard] Ignoring suspicious historical data point for asset ${asset.id} on ${dateStr}: USD $${balInUSD}`,
+						);
+						balInUSD = 0;
 					}
 
 					const isLiability = asset.type.startsWith("LIABILITY_");
