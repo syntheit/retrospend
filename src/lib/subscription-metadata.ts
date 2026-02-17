@@ -318,7 +318,12 @@ export function getSubscriptionMetadata(
 
 	// Then check for partial matches
 	for (const [key, metadata] of Object.entries(SUBSCRIPTION_METADATA)) {
-		if (normalized.includes(key) || key.includes(normalized)) {
+		// Match if the name contains the brand key (e.g., "Netflix Family" matches "netflix")
+		// Or if the brand key starts with the name, but only for 3+ characters (e.g., "net" matches "netflix")
+		if (
+			normalized.includes(key) ||
+			(normalized.length >= 3 && key.startsWith(normalized))
+		) {
 			return metadata;
 		}
 	}
