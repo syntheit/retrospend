@@ -121,7 +121,7 @@ export function StatCard({
 							{loading ? <Skeleton className="h-8 w-24 bg-muted" /> : value}
 						</div>
 						{!loading && subValue && (
-							<div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+							<div className="flex items-center gap-1 font-medium text-[10px] text-muted-foreground">
 								{subValue}
 							</div>
 						)}
