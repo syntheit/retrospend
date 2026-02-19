@@ -26,6 +26,7 @@ export interface BudgetWithStats {
 		name: string;
 		color: string;
 		icon?: string | null;
+		isFixed: boolean;
 	} | null;
 }
 
@@ -42,6 +43,7 @@ export async function getBudgets(
 	db: typeof PrismaClient,
 	userId: string,
 	month: Date,
+	options: { includeGlobal?: boolean } = {},
 ): Promise<BudgetWithStats[]> {
 	const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
 	const endOfMonth = new Date(
@@ -57,7 +59,7 @@ export async function getBudgets(
 	const budgets = await db.budget.findMany({
 		where: {
 			userId,
-			categoryId: { not: null },
+			...(options.includeGlobal ? {} : { categoryId: { not: null } }),
 			period: {
 				gte: startOfMonth,
 				lte: endOfMonth,
@@ -70,6 +72,7 @@ export async function getBudgets(
 					name: true,
 					color: true,
 					icon: true,
+					isFixed: true,
 				},
 			},
 		},
@@ -80,26 +83,107 @@ export async function getBudgets(
 		},
 	});
 
+	// Fetch all finalized expenses for this month to aggregate in memory
+	const expenses = await db.expense.findMany({
+		where: {
+			userId,
+			status: "FINALIZED",
+			isAmortizedParent: false,
+			date: {
+				gte: startOfMonth,
+				lte: endOfMonth,
+			},
+		},
+		select: {
+			amount: true,
+			currency: true,
+			amountInUSD: true,
+			categoryId: true,
+		},
+	});
+
+	// Group expenses by category
+	const categoryExpensesMap = new Map<string | null, typeof expenses>();
+	for (const exp of expenses) {
+		const list = categoryExpensesMap.get(exp.categoryId) ?? [];
+		list.push(exp);
+		categoryExpensesMap.set(exp.categoryId, list);
+	}
+
+	// Fetch all expenses for the previous month only if needed
+	const hasPegToLastMonth = budgets.some((b) => b.type === "PEG_TO_LAST_MONTH");
+	const lastMonthExpensesMap = new Map<string | null, typeof expenses>();
+
+	if (hasPegToLastMonth) {
+		const lastMonth = new Date(month);
+		lastMonth.setMonth(lastMonth.getMonth() - 1);
+		const startOfLastMonth = new Date(
+			lastMonth.getFullYear(),
+			lastMonth.getMonth(),
+			1,
+		);
+		const endOfLastMonth = new Date(
+			lastMonth.getFullYear(),
+			lastMonth.getMonth() + 1,
+			0,
+			23,
+			59,
+			59,
+			999,
+		);
+
+		const lastMonthExpenses = await db.expense.findMany({
+			where: {
+				userId,
+				status: "FINALIZED",
+				isAmortizedParent: false,
+				date: {
+					gte: startOfLastMonth,
+					lte: endOfLastMonth,
+				},
+			},
+			select: {
+				amount: true,
+				currency: true,
+				amountInUSD: true,
+				categoryId: true,
+			},
+		});
+
+		for (const exp of lastMonthExpenses) {
+			const list = lastMonthExpensesMap.get(exp.categoryId) ?? [];
+			list.push(exp);
+			lastMonthExpensesMap.set(exp.categoryId, list);
+		}
+	}
+
+	// Cache for exchange rates to avoid repeated lookups
+	const rateCache = new Map<string, number>();
+	const getCachedRate = async (currency: string, date: Date) => {
+		const cacheKey = `${currency}-${date.toISOString().slice(0, 7)}`;
+		if (rateCache.has(cacheKey)) return rateCache.get(cacheKey) as number;
+		const rate = (await getBestExchangeRate(db, currency, date)) ?? 1;
+		rateCache.set(cacheKey, rate);
+		return rate;
+	};
+
 	return Promise.all(
 		budgets.map(async (budget): Promise<BudgetWithStats> => {
-			const { total: actualSpend, totalInUSD: spendInUSDNumber } =
-				await sumExpensesForCurrency(
-					db,
-					{
-						userId,
-						categoryId: budget.categoryId,
-						isAmortizedParent: false,
-						date: {
-							gte: startOfMonth,
-							lte: endOfMonth,
-						},
-					},
-					budget.currency,
-					month,
-				);
+			const catExpenses =
+				budget.categoryId === null
+					? expenses
+					: categoryExpensesMap.get(budget.categoryId) ?? [];
+			const rate = await getCachedRate(budget.currency, month);
 
-			const rate =
-				(await getBestExchangeRate(db, budget.currency, new Date())) ?? 1;
+			let actualSpend = 0;
+			let actualSpendInUSD = 0;
+
+			for (const exp of catExpenses) {
+				const usd = Number(exp.amountInUSD);
+				actualSpendInUSD += usd;
+				actualSpend +=
+					exp.currency === budget.currency ? Number(exp.amount) : usd * rate;
+			}
 
 			const budgetAmount = toNumber(budget.amount);
 			const amountInUSD = rate > 0 ? budgetAmount / rate : budgetAmount;
@@ -109,42 +193,27 @@ export async function getBudgets(
 
 			if (budget.type === "PEG_TO_ACTUAL" || budget.pegToActual) {
 				effectiveAmount = actualSpend;
-				effectiveAmountInUSD = spendInUSDNumber;
+				effectiveAmountInUSD = actualSpendInUSD;
 			} else if (budget.type === "PEG_TO_LAST_MONTH") {
 				// If current month has spend, show last month's actuals as the budget
 				if (actualSpend > 0) {
+					const lastMonthExpenses =
+						lastMonthExpensesMap.get(budget.categoryId) ?? [];
 					const lastMonth = new Date(month);
 					lastMonth.setMonth(lastMonth.getMonth() - 1);
-					const startOfLastMonth = new Date(
-						lastMonth.getFullYear(),
-						lastMonth.getMonth(),
-						1,
-					);
-					const endOfLastMonth = new Date(
-						lastMonth.getFullYear(),
-						lastMonth.getMonth() + 1,
-						0,
-						23,
-						59,
-						59,
-						999,
-					);
+					const lastMonthRate = await getCachedRate(budget.currency, lastMonth);
 
-					const { total: lastMonthSpend, totalInUSD: lastMonthSpendInUSD } =
-						await sumExpensesForCurrency(
-							db,
-							{
-								userId,
-								categoryId: budget.categoryId,
-								isAmortizedParent: false,
-								date: {
-									gte: startOfLastMonth,
-									lte: endOfLastMonth,
-								},
-							},
-							budget.currency,
-							lastMonth,
-						);
+					let lastMonthSpend = 0;
+					let lastMonthSpendInUSD = 0;
+
+					for (const exp of lastMonthExpenses) {
+						const usd = Number(exp.amountInUSD);
+						lastMonthSpendInUSD += usd;
+						lastMonthSpend +=
+							exp.currency === budget.currency
+								? Number(exp.amount)
+								: usd * lastMonthRate;
+					}
 
 					effectiveAmount = lastMonthSpend;
 					effectiveAmountInUSD = lastMonthSpendInUSD;
@@ -160,10 +229,11 @@ export async function getBudgets(
 				amount: budgetAmount,
 				amountInUSD,
 				actualSpend,
-				actualSpendInUSD: spendInUSDNumber,
+				actualSpendInUSD: actualSpendInUSD,
 				effectiveAmount,
 				effectiveAmountInUSD,
 				rolloverAmount: toNumber(budget.rolloverAmount),
+				type: budget.type as BudgetWithStats["type"],
 			};
 		}),
 	);

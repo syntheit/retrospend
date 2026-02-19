@@ -1,6 +1,7 @@
 import { z } from "zod";
+import * as BudgetService from "~/server/services/budget.service";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { sumExpensesForCurrency } from "./shared-currency";
+import { getBestExchangeRate, sumExpensesForCurrency } from "./shared-currency";
 
 export const dashboardRouter = createTRPCRouter({
 	getOverviewStats: protectedProcedure
@@ -19,11 +20,6 @@ export const dashboardRouter = createTRPCRouter({
 			const now = new Date();
 			const homeCurrency = input?.homeCurrency ?? "USD";
 
-			const startOfMonth = new Date(
-				selectedDate.getFullYear(),
-				selectedDate.getMonth(),
-				1,
-			);
 			const endOfMonth = new Date(
 				selectedDate.getFullYear(),
 				selectedDate.getMonth() + 1,
@@ -61,26 +57,23 @@ export const dashboardRouter = createTRPCRouter({
 				last24HoursSpend = total;
 			}
 
-			const allBudgets = await db.budget.findMany({
-				where: {
-					userId: session.user.id,
-					period: {
-						gte: startOfMonth,
-						lte: endOfMonth,
-					},
-				},
-				include: {
-					category: {
-						select: {
-							name: true,
-							isFixed: true,
-						},
-					},
-				},
-			});
+			const homeCurrencyRate = (await getBestExchangeRate(db, homeCurrency, selectedDate)) ?? 1;
 
-			const globalBudget = allBudgets.find((b) => b.categoryId === null);
-			const globalBudgetLimit = globalBudget ? Number(globalBudget.amount) : 0;
+			const detailedBudgets = await BudgetService.getBudgets(
+				db,
+				session.user.id,
+				selectedDate,
+				{ includeGlobal: true },
+			);
+
+			const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
+			const globalBudgetLimit = globalBudget
+				? globalBudget.effectiveAmountInUSD * homeCurrencyRate
+				: 0;
+
+			const categoryBudgets = detailedBudgets.filter(
+				(b) => b.categoryId !== null,
+			);
 
 			const FIXED_NAMES = [
 				"rent",
@@ -91,31 +84,50 @@ export const dashboardRouter = createTRPCRouter({
 			];
 
 			// 1. Calculate Sums
-			const fixedBudgetsSum = allBudgets
+			const fixedBudgetsSum = categoryBudgets
 				.filter(
-					(b) =>
-						b.categoryId !== null &&
-						(b.category?.isFixed ||
-							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")),
+					(b: BudgetService.BudgetWithStats) =>
+						b.category?.isFixed ||
+						FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? ""),
 				)
-				.reduce((sum, b) => sum + Number(b.amount), 0);
+				.reduce(
+					(sum: number, b: BudgetService.BudgetWithStats) =>
+						sum + b.effectiveAmountInUSD * homeCurrencyRate,
+					0,
+				);
 
-			const explicitVariableBudgetsSum = allBudgets
+			const explicitVariableBudgetsSum = categoryBudgets
 				.filter(
-					(b) =>
-						b.categoryId !== null &&
+					(b: BudgetService.BudgetWithStats) =>
 						!(
 							b.category?.isFixed ||
 							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")
 						),
 				)
-				.reduce((sum, b) => sum + Number(b.amount), 0);
+				.reduce(
+					(sum: number, b: BudgetService.BudgetWithStats) =>
+						sum + b.effectiveAmountInUSD * homeCurrencyRate,
+					0,
+				);
+
+			// Calculate adjustment for pegged budgets to expand the global limit if used
+			// This ensures pegged expenses don't cause an "over budget" state in the global progress card
+			const peggedAdjustment = categoryBudgets
+				.filter(
+					(b: BudgetService.BudgetWithStats) =>
+						b.type === "PEG_TO_ACTUAL" || b.pegToActual,
+				)
+				.reduce(
+					(sum: number, b: BudgetService.BudgetWithStats) =>
+						sum + b.actualSpendInUSD * homeCurrencyRate,
+					0,
+				);
 
 			// 2. Determine "Total Budget" for the month
 			// If no global budget limit is set, we use the sum of all category budgets as the total
 			const totalBudget =
 				globalBudgetLimit > 0
-					? globalBudgetLimit
+					? globalBudgetLimit + peggedAdjustment
 					: fixedBudgetsSum + explicitVariableBudgetsSum;
 
 			// 3. Determine "Variable Budget"
@@ -134,58 +146,28 @@ export const dashboardRouter = createTRPCRouter({
 				variableBudget = totalBudget;
 			}
 
-			// If STILL 0, check if there's ANY income to use as a "reasonable default" gauge?
-			// Or just accept the user has no budgets.
-			// But the user specifically wants the ~$600 one to show.
+			// Get total spent and variable spent from the detailed budgets
+			const totalSpent = globalBudget
+				? globalBudget.actualSpendInUSD * homeCurrencyRate
+				: categoryBudgets.reduce(
+						(sum: number, b: BudgetService.BudgetWithStats) =>
+							sum + b.actualSpendInUSD * homeCurrencyRate,
+						0,
+					);
 
-			const { total: totalSpent } = await sumExpensesForCurrency(
-				db,
-				{
-					userId: session.user.id,
-					isAmortizedParent: false,
-					date: {
-						gte: startOfMonth,
-						lte: endOfMonth,
-					},
-				},
-				homeCurrency,
-			);
-
-			// Also calculate variable spent for the header stat
-			// We'll need a way to sum expenses for non-fixed categories
-			const fixedCategories = await db.category.findMany({
-				where: {
-					userId: session.user.id,
-					OR: [
-						{ isFixed: true },
-						{
-							name: {
-								in: FIXED_NAMES,
-								mode: "insensitive",
-							},
-						},
-					],
-				},
-				select: { id: true },
-			});
-			const fixedCategoryIds = fixedCategories.map((c) => c.id);
-
-			const { total: variableSpent } = await sumExpensesForCurrency(
-				db,
-				{
-					userId: session.user.id,
-					isAmortizedParent: false,
-					date: {
-						gte: startOfMonth,
-						lte: endOfMonth,
-					},
-					OR: [
-						{ categoryId: { notIn: fixedCategoryIds } },
-						{ categoryId: null }, // Uncategorized is usually variable
-					],
-				},
-				homeCurrency,
-			);
+			const variableSpent = categoryBudgets
+				.filter(
+					(b: BudgetService.BudgetWithStats) =>
+						!(
+							b.category?.isFixed ||
+							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")
+						),
+				)
+				.reduce(
+					(sum: number, b: BudgetService.BudgetWithStats) =>
+						sum + b.actualSpendInUSD * homeCurrencyRate,
+					0,
+				);
 
 			const user = await db.user.findUnique({
 				where: { id: session.user.id },

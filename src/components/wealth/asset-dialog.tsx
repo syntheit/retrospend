@@ -38,6 +38,7 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import type { CurrencyCode } from "~/lib/currencies";
 import { AssetType } from "~/lib/db-enums";
 import { cn } from "~/lib/utils";
@@ -119,6 +120,37 @@ export function AssetDialog({
 			? { ...createDefaults, ...initialValues }
 			: createDefaults,
 	});
+
+	// Fetch rates to validate and auto-correct potential inversion bugs
+	const { rateOptions } = useExchangeRates({
+		currency: form.watch("currency"),
+		enabled: open && form.watch("currency") !== "USD",
+	});
+
+	// Auto-correct potential inverse rate bug on load
+	// If the state rate matches the "System" rate (Units/USD), it means it wasn't inverted correctly
+	// or the source data was already inverted. We expect "Human" rate (USD/Unit).
+	useEffect(() => {
+		if (isCustomRate || !exchangeRate || !exchangeRateType) return;
+
+		const matchingOption = rateOptions.find((r) => r.type === exchangeRateType);
+
+		if (matchingOption) {
+			const systemRate = matchingOption.rate;
+			// Avoid division by zero
+			if (systemRate === 0) return;
+
+			const currentRatio = exchangeRate / systemRate;
+
+			// If State ≈ System Rate (within 1% tolerance), it requires inversion
+			if (currentRatio > 0.99 && currentRatio < 1.01) {
+				const correctedRate = 1 / exchangeRate;
+				// Console log for debugging (optional, removing for prod cleanliness if desired)
+				// console.log("Auto-correcting inverted exchange rate", exchangeRate, "->", correctedRate);
+				setExchangeRate(correctedRate);
+			}
+		}
+	}, [rateOptions, exchangeRate, exchangeRateType, isCustomRate]);
 
 	// Calculate USD equivalent
 	const balance = form.watch("balance");
