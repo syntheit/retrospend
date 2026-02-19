@@ -1,7 +1,19 @@
-import { db } from "../server/db";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../generated/prisma/client";
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+	console.error("❌ DATABASE_URL environment variable is required.");
+	process.exit(1);
+}
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const db = new PrismaClient({ adapter });
 
 const STRONG_CURRENCIES = ["GBP", "EUR", "KWD", "BHD", "OMR", "JOD", "USD"];
-const DRY_RUN = false;
+const DRY_RUN = true;
 
 async function main() {
     console.log("🔍 Scanning for corrupt wealth snapshots...");
