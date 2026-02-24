@@ -30,11 +30,7 @@ export interface BudgetWithStats {
 	} | null;
 }
 
-export const toNumber = (value: unknown): number => {
-	return typeof value === "object" && value !== null && "toNumber" in value
-		? (value as { toNumber: () => number }).toNumber()
-		: Number(value);
-};
+import { toNumberWithDefault as toNumber } from "~/lib/utils";
 
 /**
  * Fetches budgets for a given month with calculated spend statistics.
@@ -172,7 +168,7 @@ export async function getBudgets(
 			const catExpenses =
 				budget.categoryId === null
 					? expenses
-					: categoryExpensesMap.get(budget.categoryId) ?? [];
+					: (categoryExpensesMap.get(budget.categoryId) ?? []);
 			const rate = await getCachedRate(budget.currency, month);
 
 			let actualSpend = 0;

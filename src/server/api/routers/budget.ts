@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateCsv } from "~/lib/csv";
+import { toNumber } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import * as BudgetService from "~/server/services/budget.service";
 
@@ -146,12 +147,7 @@ export const budgetRouter = createTRPCRouter({
 
 			return {
 				...budget,
-				amount:
-					typeof budget.amount === "object" &&
-					budget.amount !== null &&
-					"toNumber" in budget.amount
-						? budget.amount.toNumber()
-						: Number(budget.amount),
+				amount: toNumber(budget.amount) ?? 0,
 			};
 		}),
 
@@ -293,12 +289,7 @@ export const budgetRouter = createTRPCRouter({
 
 			return {
 				...budget,
-				amount:
-					typeof budget.amount === "object" &&
-					budget.amount !== null &&
-					"toNumber" in budget.amount
-						? budget.amount.toNumber()
-						: Number(budget.amount),
+				amount: toNumber(budget.amount) ?? 0,
 			};
 		}),
 
@@ -393,10 +384,10 @@ export const budgetRouter = createTRPCRouter({
 
 		const rows = budgets.map((budget) => [
 			budget.category?.name ?? "",
-			BudgetService.toNumber(budget.amount),
+			toNumber(budget.amount),
 			budget.period,
 			budget.isRollover,
-			BudgetService.toNumber(budget.rolloverAmount),
+			toNumber(budget.rolloverAmount),
 			budget.pegToActual,
 		]);
 

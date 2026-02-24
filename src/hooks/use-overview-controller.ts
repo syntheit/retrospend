@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { useCurrency } from "~/hooks/use-currency";
+import { useSettings } from "~/hooks/use-settings";
 import { resolveCategoryColorValue } from "~/lib/category-colors";
 import {
 	CHART_CONFIG_DEFAULTS,
@@ -33,45 +34,31 @@ export function useOverviewController() {
 	);
 
 	// Queries
-	const {
-		data: expensesData,
-		isLoading: expensesLoading,
-		isFetched: expensesFetched,
-	} = api.expense.listFinalized.useQuery();
+	const { data: settings } = useSettings();
 
-	const {
-		data: favoritesData,
-		isLoading: favoritesLoading,
-		isFetched: favoritesFetched,
-	} = api.preferences.getFavoriteExchangeRates.useQuery();
-
-	const { data: settings } = api.settings.getGeneral.useQuery();
-
-	const { data: overviewStats } = api.dashboard.getOverviewStats.useQuery({
-		month: selectedMonth,
-		homeCurrency,
-	});
-
-	const { data: earliestBudgetMonth } =
-		api.budget.getEarliestBudgetMonth.useQuery();
-
-	const { data: summaryStats, isLoading: statsLoading } =
-		api.stats.getSummary.useQuery({
+	const { data: overviewData, isLoading: isOverviewLoading } =
+		api.dashboard.getOverviewData.useQuery({
 			month: selectedMonth,
 			homeCurrency,
 		});
 
-	const { data: categoryData, isLoading: categoriesLoading } =
-		api.stats.getCategoryBreakdown.useQuery({
-			month: selectedMonth,
-			homeCurrency,
-		});
+	// Destructure / Map for compatibility with existing logic
+	const expensesData = overviewData?.expenses;
+	const favoritesData = overviewData?.favorites;
+	const overviewStats = overviewData?.overviewStats;
+	const earliestBudgetMonth = overviewData?.earliestBudgetMonth;
+	const summaryStats = overviewData?.summaryStats;
+	const categoryData = overviewData?.categoryData;
+	const trendData = overviewData?.trendData;
 
-	const { data: trendData, isLoading: trendLoading } =
-		api.stats.getDailyTrend.useQuery({
-			month: selectedMonth,
-			homeCurrency,
-		});
+	const expensesLoading = isOverviewLoading;
+	const favoritesLoading = isOverviewLoading;
+	const statsLoading = isOverviewLoading;
+	const categoriesLoading = isOverviewLoading;
+	const trendLoading = isOverviewLoading;
+
+	const expensesFetched = !!overviewData;
+	const favoritesFetched = !!overviewData;
 
 	// Transformations
 	const categoryClickBehavior = settings?.categoryClickBehavior ?? "toggle";

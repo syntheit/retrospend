@@ -16,6 +16,7 @@ import { SpendComposition } from "~/components/spend-composition";
 import { Card, CardContent } from "~/components/ui/card";
 import { useCurrency } from "~/hooks/use-currency";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { useSettings } from "~/hooks/use-settings";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import {
 	cn,
@@ -73,7 +74,7 @@ export default function Page() {
 	const { data: budgetsData } = api.budget.getBudgets.useQuery({});
 	const { data: globalBudgetData } = api.budget.getGlobalBudget.useQuery({});
 	const { homeCurrency, usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
-	const { data: settings } = api.settings.getGeneral.useQuery();
+	const { data: settings } = useSettings();
 	const budgetMode = settings?.budgetMode ?? "GLOBAL_LIMIT";
 
 	const { data: dayExpensesData, isLoading: isLoadingDayExpenses } =

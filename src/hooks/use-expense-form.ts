@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useSettings } from "~/hooks/use-settings";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CURRENCIES } from "~/lib/currencies";
@@ -63,7 +64,7 @@ export function useExpenseForm({
 			{ enabled: mode === "edit" && Boolean(expenseId) },
 		);
 
-	const { data: settings } = api.settings.getGeneral.useQuery();
+	const { data: settings } = useSettings();
 	const { data: categories } = api.categories.getAll.useQuery();
 
 	const defaultExpenseCurrency =

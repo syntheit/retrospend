@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useSettings } from "~/hooks/use-settings";
 import {
 	convertExpenseAmountForDisplay,
 	type NormalizedExpense,
@@ -20,7 +21,7 @@ export type ExpenseRow = NormalizedExpense;
  * - Aggregates/Totals calculation
  */
 export function useExpensesController() {
-	const { data: settings } = api.settings.getGeneral.useQuery();
+	const { data: settings } = useSettings();
 	const { usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
 	const homeCurrency = settings?.homeCurrency || "USD";
 

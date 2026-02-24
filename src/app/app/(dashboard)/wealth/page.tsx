@@ -23,12 +23,13 @@ import { WealthAllocationChart } from "~/components/wealth/wealth-allocation-cha
 import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-exposure";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
+import { useSettings } from "~/hooks/use-settings";
 import { useWealthDashboard } from "~/hooks/use-wealth-dashboard";
 import { AssetType } from "~/lib/db-enums";
 import { api } from "~/trpc/react";
 
 export default function WealthPage() {
-	const { data: settings } = api.settings.getGeneral.useQuery();
+	const { data: settings } = useSettings();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
 	const utils = api.useUtils();
 

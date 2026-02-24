@@ -50,7 +50,35 @@ export const preferencesRouter = createTRPCRouter({
 					"ADMIN",
 					"EXPENSE",
 				]),
-				settings: z.any(), // Will be validated by the service
+				settings: z
+					.object({
+						version: z.literal(1).optional(),
+						widgets: z
+							.object({
+								spendComposition: z.object({ visible: z.boolean() }).optional(),
+								monthlyPacing: z.object({ visible: z.boolean() }).optional(),
+								activityHeatmap: z.object({ visible: z.boolean() }).optional(),
+								categoryTrends: z.object({ visible: z.boolean() }).optional(),
+								recentExpenses: z.object({ visible: z.boolean() }).optional(),
+								wealthAllocation: z.object({ visible: z.boolean() }).optional(),
+							})
+							.optional(),
+						categoryPreferences: z
+							.record(z.string(), z.object({ isFlexible: z.boolean() }))
+							.optional(),
+						showRolloverAmounts: z.boolean().optional(),
+						showPegToActual: z.boolean().optional(),
+						showCurrencyExposure: z.boolean().optional(),
+						showHistoryChart: z.boolean().optional(),
+						showFavoritesOnly: z.boolean().optional(),
+						pageSize: z.number().min(10).max(100).optional(),
+						showDescriptions: z.boolean().optional(),
+						showUsedCodes: z.boolean().optional(),
+						showInactiveUsers: z.boolean().optional(),
+						defaultCurrency: z.string().length(3).optional(),
+						showExchangeRates: z.boolean().optional(),
+					})
+					.strict(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {

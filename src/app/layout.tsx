@@ -3,7 +3,6 @@ import "flag-icons/css/flag-icons.min.css";
 
 import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
-import { ErrorProvider } from "~/components/error-context";
 import { FontProvider, FontScript } from "~/components/font-provider";
 import { ThemeProvider, ThemeScript } from "~/components/theme-provider";
 import { Toaster } from "~/components/ui/sonner";
@@ -44,7 +43,7 @@ export default function RootLayout({
 				<ThemeProvider>
 					<TRPCReactProvider>
 						<FontProvider>
-							<ErrorProvider>{children}</ErrorProvider>
+							{children}
 							<Toaster />
 						</FontProvider>
 					</TRPCReactProvider>

@@ -1,5 +1,5 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import {
 	adminProcedure,
 	createTRPCRouter,
@@ -26,7 +26,7 @@ export const inviteRouter = createTRPCRouter({
 			z.object({
 				status: z.enum(["all", "active", "used"]).default("active"),
 				page: z.number().min(1).default(1),
-				pageSize: z.number().min(1).max(100).default(DEFAULT_PAGE_SIZE),
+				pageSize: z.number().min(1).max(100).default(10),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -96,9 +96,10 @@ export const inviteRouter = createTRPCRouter({
 
 		do {
 			if (attempts >= maxAttempts) {
-				throw new Error(
-					"Failed to generate unique invite code after multiple attempts",
-				);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to generate unique invite code after multiple attempts",
+				});
 			}
 			code = generateInviteCode();
 			attempts++;
@@ -146,7 +147,10 @@ export const inviteRouter = createTRPCRouter({
 			});
 
 			if (!inviteCode) {
-				throw new Error("Invite code not found");
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Invite code not found",
+				});
 			}
 
 			await db.inviteCode.delete({
@@ -161,7 +165,7 @@ export const inviteRouter = createTRPCRouter({
 			z.object({
 				status: z.enum(["all", "active", "used"]).default("active"),
 				page: z.number().min(1).default(1),
-				pageSize: z.number().min(1).max(100).default(DEFAULT_PAGE_SIZE),
+				pageSize: z.number().min(1).max(100).default(10),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -170,7 +174,10 @@ export const inviteRouter = createTRPCRouter({
 
 			const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
 			if (!isEnabled) {
-				throw new Error("Invite code generation is not enabled for users");
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Invite code generation is not enabled for users",
+				});
 			}
 
 			const where: { createdById: string; usedAt?: null | { not: null } } = {
@@ -235,7 +242,10 @@ export const inviteRouter = createTRPCRouter({
 
 		const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
 		if (!isEnabled) {
-			throw new Error("Invite code generation is not enabled for users");
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Invite code generation is not enabled for users",
+			});
 		}
 
 		let code: string;
@@ -244,9 +254,10 @@ export const inviteRouter = createTRPCRouter({
 
 		do {
 			if (attempts >= maxAttempts) {
-				throw new Error(
-					"Failed to generate unique invite code after multiple attempts",
-				);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to generate unique invite code after multiple attempts",
+				});
 			}
 			code = generateInviteCode();
 			attempts++;
@@ -276,7 +287,10 @@ export const inviteRouter = createTRPCRouter({
 
 			const isEnabled = await isAllowAllUsersToGenerateInvitesEnabled();
 			if (!isEnabled) {
-				throw new Error("Invite code management is not enabled for users");
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Invite code management is not enabled for users",
+				});
 			}
 
 			const inviteCode = await db.inviteCode.findFirst({
@@ -287,7 +301,10 @@ export const inviteRouter = createTRPCRouter({
 			});
 
 			if (!inviteCode) {
-				throw new Error("Invite code not found or access denied");
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Invite code not found or access denied",
+				});
 			}
 
 			await db.inviteCode.delete({

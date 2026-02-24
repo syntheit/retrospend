@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { hashPassword } from "better-auth/crypto";
 import { z } from "zod";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
@@ -64,7 +65,10 @@ export const adminRouter = createTRPCRouter({
 			});
 
 			if (updatedAccount.count === 0) {
-				throw new Error("User does not have a credential account");
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "User does not have a credential account",
+				});
 			}
 
 			return {
@@ -79,7 +83,10 @@ export const adminRouter = createTRPCRouter({
 			const { db, session } = ctx;
 
 			if (session.user.id === input.userId) {
-				throw new Error("Cannot disable your own account");
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Cannot disable your own account",
+				});
 			}
 
 			await db.user.update({
@@ -109,7 +116,10 @@ export const adminRouter = createTRPCRouter({
 			const { db, session } = ctx;
 
 			if (session.user.id === input.userId) {
-				throw new Error("Cannot delete your own account");
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Cannot delete your own account",
+				});
 			}
 
 			await db.user.delete({
