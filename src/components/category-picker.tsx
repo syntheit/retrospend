@@ -9,7 +9,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
-import { ScrollArea } from "~/components/ui/scroll-area";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -41,7 +40,8 @@ export function CategoryPicker({
 		{ enabled: !propCategories },
 	);
 
-	const categories = propCategories || fetchedCategories;
+	const categories: Array<{ id: string; name: string; color: string }> | undefined =
+		propCategories || fetchedCategories;
 
 	const filteredCategories = useMemo(() => {
 		if (!categories || !search) return categories || [];
@@ -101,7 +101,11 @@ export function CategoryPicker({
 						value={search}
 					/>
 				</div>
-				<ScrollArea className="max-h-64">
+				<div
+					className="max-h-64 overflow-y-auto overscroll-contain"
+					onTouchMove={(e) => e.stopPropagation()}
+					onWheel={(e) => e.stopPropagation()}
+				>
 					<div className="flex flex-col p-1">
 						{filteredCategories.length === 0 ? (
 							<div className="p-4 text-center text-muted-foreground">
@@ -143,7 +147,7 @@ export function CategoryPicker({
 							))
 						)}
 					</div>
-				</ScrollArea>
+				</div>
 			</PopoverContent>
 		</Popover>
 	);
