@@ -20,20 +20,22 @@ export function RateSyncControl() {
 	} | null>(null);
 
 	// tRPC hooks
-	const {
-		data: lastSync,
-		isLoading: lastSyncLoading,
-		refetch: refetchLastSync,
-	} = api.exchangeRate.getLastSync.useQuery();
-	const syncNowMutation = api.exchangeRate.syncNow.useMutation();
+	const utils = api.useUtils();
+	const { data: lastSync, isLoading: lastSyncLoading } =
+		api.exchangeRate.getLastSync.useQuery();
+
+	const syncNowMutation = api.exchangeRate.syncNow.useMutation({
+		onSuccess: () => {
+			void utils.exchangeRate.getAllRates.invalidate();
+			void utils.exchangeRate.getLastSync.invalidate();
+		},
+	});
 
 	const handleSyncNow = async () => {
 		setSyncResult(null);
 		try {
 			const result = await syncNowMutation.mutateAsync();
 			setSyncResult(result);
-			// Refresh the last sync timestamp
-			refetchLastSync();
 		} catch (error) {
 			setSyncResult({
 				success: false,

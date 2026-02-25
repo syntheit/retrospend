@@ -1,14 +1,11 @@
 "use client";
 
-import { IconRefresh } from "@tabler/icons-react";
 import { format } from "date-fns";
 import { ExchangeRatesTable } from "~/components/exchange-rates-table";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
-import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useExchangeRatesController } from "~/hooks/use-exchange-rates-controller";
-import { cn } from "~/lib/utils";
 
 function PageLayout({ children }: { children: React.ReactNode }) {
 	return (
@@ -26,12 +23,10 @@ export default function Page() {
 		lastSync,
 		isLoading,
 		isFavoritesLoading,
-		isSyncing,
 		error,
 		favoriteRatesError,
 		viewState,
 		actions,
-		isAdmin,
 	} = useExchangeRatesController();
 
 	if (isLoading) {
@@ -59,31 +54,15 @@ export default function Page() {
 	return (
 		<PageLayout>
 			<div className="mx-auto w-full max-w-4xl space-y-6">
-				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="text-muted-foreground text-sm">
-						{lastSync ? (
-							<>
-								Last updated {format(lastSync, "MMMM dd, yyyy 'at' HH:mm")}
-								{" • "}
-								Rates sync daily.
-							</>
-						) : (
-							"Rates sync daily."
-						)}
-					</div>
-					{isAdmin && (
-						<Button
-							className="gap-2 self-start sm:self-auto"
-							disabled={isSyncing}
-							onClick={actions.syncNow}
-							size="sm"
-							variant="outline"
-						>
-							<IconRefresh
-								className={cn("size-4", isSyncing && "animate-spin")}
-							/>
-							{isSyncing ? "Syncing..." : "Sync Now"}
-						</Button>
+				<div className="text-muted-foreground text-sm">
+					{lastSync ? (
+						<>
+							Last updated {format(lastSync, "MMMM dd, yyyy 'at' HH:mm")}
+							{" • "}
+							Rates sync daily.
+						</>
+					) : (
+						"Rates sync daily."
 					)}
 				</div>
 				<Tabs

@@ -21,7 +21,6 @@ export function useExchangeRatesController() {
 	const searchParams = useSearchParams();
 	const utils = api.useUtils();
 	const { data: session } = useSession();
-	const user = session?.user as { role?: string } | undefined;
 
 	const {
 		data: exchangeRates,
@@ -91,22 +90,6 @@ export function useExchangeRatesController() {
 			},
 		});
 
-	const syncNowMutation = api.exchangeRate.syncNow.useMutation({
-		onSuccess: () => {
-			void utils.exchangeRate.getAllRates.invalidate();
-			void utils.exchangeRate.getLastSync.invalidate();
-		},
-	});
-
-	const handleSyncNow = useCallback(() => {
-		toast.promise(syncNowMutation.mutateAsync(), {
-			loading: "Syncing exchange rates...",
-			success: "Exchange rates updated successfully",
-			error: (err: unknown) =>
-				err instanceof Error ? err.message : "Failed to sync exchange rates",
-		});
-	}, [syncNowMutation]);
-
 	const favoriteRateIdSet = useMemo(
 		() => new Set(favoriteExchangeRates?.map((f) => f.id) ?? []),
 		[favoriteExchangeRates],
@@ -162,8 +145,6 @@ export function useExchangeRatesController() {
 		lastSync,
 		isLoading: isAllRatesLoading,
 		isFavoritesLoading,
-		isSyncing: syncNowMutation.isPending,
-		isAdmin: user?.role === "ADMIN",
 		error: allRatesError || favoriteRatesError,
 		favoriteRatesError,
 		viewState: {
@@ -173,7 +154,6 @@ export function useExchangeRatesController() {
 		actions: {
 			reorder: handleReorder,
 			toggleFavorite: handleToggleFavorite,
-			syncNow: handleSyncNow,
 		},
 	};
 }
