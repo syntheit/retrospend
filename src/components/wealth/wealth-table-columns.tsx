@@ -14,6 +14,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { AssetType } from "~/lib/db-enums";
+import { maskAmount } from "~/lib/masking";
 
 export interface Asset {
 	id: string;
@@ -70,6 +71,7 @@ export function createWealthColumns(
 	formatCurrency: (amount: number, currency?: string) => string,
 	isSelectionActive: boolean,
 	totalNetWorth: number,
+	isPrivacyMode = false,
 ): ColumnDef<Asset>[] {
 	const columns: ColumnDef<Asset>[] = [];
 
@@ -179,11 +181,15 @@ export function createWealthColumns(
 			return (
 				<div className="flex flex-col items-end gap-0.5">
 					<div className="font-bold text-foreground text-sm tabular-nums leading-tight tracking-tight">
-						{formatCurrency(balanceInTargetCurrency, homeCurrency)}
+						{isPrivacyMode
+							? maskAmount(balanceInTargetCurrency)
+							: formatCurrency(balanceInTargetCurrency, homeCurrency)}
 					</div>
 					{isForeign && (
 						<div className="text-[10px] text-muted-foreground tabular-nums leading-tight">
-							{formatCurrency(balance, currency)}
+							{isPrivacyMode
+								? maskAmount(balance)
+								: formatCurrency(balance, currency)}
 						</div>
 					)}
 				</div>
@@ -211,7 +217,9 @@ export function createWealthColumns(
 			enableSorting: true,
 			cell: ({ row }) => (
 				<div className="text-right font-medium text-muted-foreground text-xs tabular-nums">
-					{formatCurrency(row.original.balanceInUSD, "USD")}
+					{isPrivacyMode
+						? maskAmount(row.original.balanceInUSD)
+						: formatCurrency(row.original.balanceInUSD, "USD")}
 				</div>
 			),
 		});

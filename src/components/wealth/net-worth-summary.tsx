@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { maskAmount } from "~/lib/masking";
 
 interface NetWorthSummaryProps {
 	totalNetWorth: number;
@@ -13,6 +14,7 @@ interface NetWorthSummaryProps {
 	totalLiquidAssets: number;
 	weightedAPR: number;
 	homeCurrency: string;
+	isPrivacyMode?: boolean;
 }
 
 export function NetWorthSummary({
@@ -22,6 +24,7 @@ export function NetWorthSummary({
 	totalLiquidAssets,
 	weightedAPR,
 	homeCurrency,
+	isPrivacyMode = false,
 }: NetWorthSummaryProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -50,10 +53,14 @@ export function NetWorthSummary({
 		<div className="grid gap-4 md:grid-cols-3">
 			{/* Total Net Worth Card */}
 			<StatCard
-				description={`Liquid: ${formatCurrency(totalLiquidAssets, homeCurrency)}`}
+				description={`Liquid: ${isPrivacyMode ? maskAmount(totalLiquidAssets) : formatCurrency(totalLiquidAssets, homeCurrency)}`}
 				icon={Landmark}
 				title="NET WORTH"
-				value={formatCurrency(totalNetWorth, homeCurrency)}
+				value={
+					isPrivacyMode
+						? maskAmount(totalNetWorth)
+						: formatCurrency(totalNetWorth, homeCurrency)
+				}
 				variant="emerald"
 			/>
 
@@ -61,7 +68,11 @@ export function NetWorthSummary({
 			<StatCard
 				icon={TrendingUp}
 				title="TOTAL ASSETS"
-				value={formatCurrency(totalAssets, homeCurrency)}
+				value={
+					isPrivacyMode
+						? maskAmount(totalAssets)
+						: formatCurrency(totalAssets, homeCurrency)
+				}
 				variant="blue"
 			/>
 
@@ -74,7 +85,11 @@ export function NetWorthSummary({
 				}
 				icon={CreditCard}
 				title="TOTAL LIABILITIES"
-				value={formatCurrency(totalLiabilities, homeCurrency)}
+				value={
+					isPrivacyMode
+						? maskAmount(totalLiabilities)
+						: formatCurrency(totalLiabilities, homeCurrency)
+				}
 				variant={totalLiabilities === 0 ? "neutral" : "amber"}
 			/>
 		</div>

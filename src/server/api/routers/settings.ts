@@ -24,6 +24,7 @@ export const settingsRouter = createTRPCRouter({
 				monthlyIncome: true,
 				budgetMode: true,
 				smartCurrencyFormatting: true,
+				defaultPrivacyMode: true,
 			},
 		});
 
@@ -42,6 +43,7 @@ export const settingsRouter = createTRPCRouter({
 			monthlyIncome: user.monthlyIncome,
 			budgetMode: user.budgetMode,
 			smartCurrencyFormatting: user.smartCurrencyFormatting,
+			defaultPrivacyMode: user.defaultPrivacyMode,
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};
@@ -64,6 +66,7 @@ export const settingsRouter = createTRPCRouter({
 					.min(0, "Monthly income must be non-negative")
 					.optional(),
 				smartCurrencyFormatting: z.boolean().optional(),
+				defaultPrivacyMode: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -93,6 +96,9 @@ export const settingsRouter = createTRPCRouter({
 					}),
 					...(input.smartCurrencyFormatting !== undefined && {
 						smartCurrencyFormatting: input.smartCurrencyFormatting,
+					}),
+					...(input.defaultPrivacyMode !== undefined && {
+						defaultPrivacyMode: input.defaultPrivacyMode,
 					}),
 				},
 				select: {

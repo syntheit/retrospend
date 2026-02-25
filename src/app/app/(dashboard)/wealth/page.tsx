@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Eye, EyeOff, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
@@ -41,6 +41,13 @@ export default function WealthPage() {
 		new Set(),
 	);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+
+	useEffect(() => {
+		if (settings?.defaultPrivacyMode !== undefined) {
+			setIsPrivacyMode(settings.defaultPrivacyMode);
+		}
+	}, [settings?.defaultPrivacyMode]);
 
 	const {
 		stats,
@@ -156,16 +163,30 @@ export default function WealthPage() {
 		<>
 			<SiteHeader
 				actions={
-					!isSelectionMode && (
-						<AssetDialog
-							trigger={
-								<Button className="h-8" size="sm">
-									<Plus className="mr-2 h-4 w-4" />
-									Add Asset
-								</Button>
-							}
-						/>
-					)
+					<div className="flex items-center gap-2">
+						<Button
+							className="text-muted-foreground"
+							onClick={() => setIsPrivacyMode(!isPrivacyMode)}
+							size="icon"
+							variant="ghost"
+						>
+							{isPrivacyMode ? (
+								<EyeOff className="h-4 w-4" />
+							) : (
+								<Eye className="h-4 w-4" />
+							)}
+						</Button>
+						{!isSelectionMode && (
+							<AssetDialog
+								trigger={
+									<Button className="h-8" size="sm">
+										<Plus className="mr-2 h-4 w-4" />
+										Add Asset
+									</Button>
+								}
+							/>
+						)}
+					</div>
 				}
 				title="Wealth"
 			/>
@@ -174,6 +195,7 @@ export default function WealthPage() {
 					{/* Summary Cards */}
 					<NetWorthSummary
 						homeCurrency={homeCurrency}
+						isPrivacyMode={isPrivacyMode}
 						totalAssets={stats.assets}
 						totalLiabilities={stats.liabilities}
 						totalLiquidAssets={stats.totalLiquidAssets}
@@ -186,12 +208,16 @@ export default function WealthPage() {
 							<WealthHistoryChart
 								baseCurrency={homeCurrency}
 								data={historyChartData}
+								isPrivacyMode={isPrivacyMode}
 								onTimeRangeChange={filters.setTimeRange}
 								timeRange={filters.timeRange}
 							/>
 						</div>
 						<div className="lg:col-span-3">
-							<WealthAllocationChart data={allocationChartData} />
+							<WealthAllocationChart
+								data={allocationChartData}
+								isPrivacyMode={isPrivacyMode}
+							/>
 						</div>
 					</div>
 
@@ -279,6 +305,7 @@ export default function WealthPage() {
 							<WealthDataTable
 								data={filteredData}
 								homeCurrency={homeCurrency}
+								isPrivacyMode={isPrivacyMode}
 								onDeleteSelected={handleDeleteSelected}
 								onSelectionChange={setSelectedAssetIds}
 								selectedRows={selectedAssetIds}
@@ -290,6 +317,7 @@ export default function WealthPage() {
 							<div className="lg:col-span-2">
 								<WealthCurrencyExposure
 									assets={normalizedAssets}
+									isPrivacyMode={isPrivacyMode}
 									totalNetWorth={dashboardData.totalNetWorth}
 								/>
 							</div>

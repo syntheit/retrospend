@@ -6,6 +6,7 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { maskAmount } from "~/lib/masking";
 import { cn } from "~/lib/utils";
 
 interface WealthCurrencyExposureProps {
@@ -14,11 +15,13 @@ interface WealthCurrencyExposureProps {
 		balanceInUSD: number;
 	}[];
 	totalNetWorth: number;
+	isPrivacyMode?: boolean;
 }
 
 export function WealthCurrencyExposure({
 	assets,
 	totalNetWorth,
+	isPrivacyMode = false,
 }: WealthCurrencyExposureProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -93,7 +96,10 @@ export function WealthCurrencyExposure({
 							</div>
 							<span className="text-muted-foreground tabular-nums">
 								{item.percentage.toFixed(1)}% (
-								{formatCurrency(item.value, "USD")})
+								{isPrivacyMode
+									? maskAmount(item.value)
+									: formatCurrency(item.value, "USD")}
+								)
 							</span>
 						</div>
 						<div className="h-2 w-full overflow-hidden rounded-full bg-secondary/30">

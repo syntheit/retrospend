@@ -50,6 +50,7 @@ const appPreferencesSchema = z.object({
 	fontPreference: z.enum(["sans", "mono"]),
 	monthlyIncome: z.string().optional(),
 	smartCurrencyFormatting: z.boolean(),
+	defaultPrivacyMode: z.boolean(),
 });
 
 type AppPreferencesValues = z.infer<typeof appPreferencesSchema>;
@@ -70,6 +71,7 @@ export function AppPreferencesCard() {
 			fontPreference: "sans",
 			monthlyIncome: "",
 			smartCurrencyFormatting: true,
+			defaultPrivacyMode: false,
 		},
 	});
 
@@ -89,6 +91,7 @@ export function AppPreferencesCard() {
 					? settings.monthlyIncome.toString()
 					: "",
 				smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
+				defaultPrivacyMode: settings.defaultPrivacyMode ?? false,
 			});
 		}
 	}, [settings, form]);
@@ -131,6 +134,7 @@ export function AppPreferencesCard() {
 				fontPreference: values.fontPreference,
 				monthlyIncome: monthlyIncomeValue,
 				smartCurrencyFormatting: values.smartCurrencyFormatting,
+				defaultPrivacyMode: values.defaultPrivacyMode,
 				categoryClickBehavior: settings.categoryClickBehavior || "toggle",
 				currencySymbolStyle: settings.currencySymbolStyle || "standard",
 			});
@@ -330,6 +334,34 @@ export function AppPreferencesCard() {
 										</FormLabel>
 										<FormDescription>
 											Hide decimals for high-denomination currencies (e.g. JPY).
+										</FormDescription>
+									</div>
+									<FormControl>
+										<Switch
+											checked={field.value}
+											onCheckedChange={field.onChange}
+										/>
+									</FormControl>
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="defaultPrivacyMode"
+							render={({ field }) => (
+								<FormItem
+									className={cn(
+										"flex flex-row items-center justify-between rounded-lg p-4",
+										inputClass,
+									)}
+								>
+									<div className="space-y-0.5">
+										<FormLabel className="text-base">
+											Default Privacy Mode
+										</FormLabel>
+										<FormDescription>
+											Hide balances by default when opening the Wealth page.
 										</FormDescription>
 									</div>
 									<FormControl>

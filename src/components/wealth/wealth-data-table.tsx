@@ -39,6 +39,7 @@ import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useDataTable } from "~/hooks/use-data-table";
 import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
+import { maskAmount } from "~/lib/masking";
 import { cn, toNumber } from "~/lib/utils";
 import { type Asset, createWealthColumns } from "./wealth-table-columns";
 
@@ -49,10 +50,12 @@ export function WealthDataTable({
 	onSelectionChange: setControlledSelectedRows,
 	onDeleteSelected,
 	totalNetWorth = 0,
+	isPrivacyMode = false,
 }: {
 	data: Asset[];
 	homeCurrency?: string;
 	totalNetWorth?: number;
+	isPrivacyMode?: boolean;
 	selectedRows?: Set<string>;
 	onSelectionChange?: (selectedIds: Set<string>) => void;
 	onDeleteSelected?: (selectedIds: Set<string>) => void;
@@ -70,8 +73,15 @@ export function WealthDataTable({
 				formatCurrency,
 				Boolean(controlledSelectedRows && controlledSelectedRows.size > 0),
 				totalNetWorth,
+				isPrivacyMode,
 			),
-		[homeCurrency, formatCurrency, controlledSelectedRows, totalNetWorth],
+		[
+			homeCurrency,
+			formatCurrency,
+			controlledSelectedRows,
+			totalNetWorth,
+			isPrivacyMode,
+		],
 	);
 
 	const controlledRowSelection = React.useMemo(() => {
@@ -308,13 +318,17 @@ export function WealthDataTable({
 							</TableCell>
 							<TableCell className="px-4 py-3 text-right font-semibold">
 								<div className="text-right font-medium">
-									{formatCurrency(totals.balanceTotal, homeCurrency)}
+									{isPrivacyMode
+										? maskAmount(totals.balanceTotal)
+										: formatCurrency(totals.balanceTotal, homeCurrency)}
 								</div>
 							</TableCell>
 							{homeCurrency !== "USD" && (
 								<TableCell className="px-4 py-3 text-right font-semibold">
 									<div className="text-right font-medium">
-										{formatCurrency(totals.usdTotal, "USD")}
+										{isPrivacyMode
+											? maskAmount(totals.usdTotal)
+											: formatCurrency(totals.usdTotal, "USD")}
 									</div>
 								</TableCell>
 							)}

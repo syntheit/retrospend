@@ -19,6 +19,7 @@ import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { CurrencyCode } from "~/lib/currencies";
 import { parseDateOnly } from "~/lib/date";
+import { maskAmount } from "~/lib/masking";
 import {
 	ASSET_COLORS,
 	TIME_RANGES,
@@ -36,6 +37,7 @@ interface WealthHistoryChartProps {
 	timeRange?: TimeRangeValue;
 	onBaseCurrencyChange?: (currency: string) => void;
 	onTimeRangeChange?: (range: TimeRangeValue) => void;
+	isPrivacyMode?: boolean;
 }
 
 const chartConfig = {
@@ -59,6 +61,7 @@ export function WealthHistoryChart({
 	timeRange = "12M",
 	onBaseCurrencyChange,
 	onTimeRangeChange,
+	isPrivacyMode = false,
 }: WealthHistoryChartProps) {
 	const { formatCurrency, getCurrencySymbol } = useCurrencyFormatter();
 
@@ -167,7 +170,7 @@ export function WealthHistoryChart({
 								const date = parseDateOnly(value);
 								return date.toLocaleDateString("en-US", {
 									month: "short",
-									year: "2-digit",
+									day: "numeric",
 								});
 							}}
 							tickLine={false}
@@ -176,7 +179,9 @@ export function WealthHistoryChart({
 						<YAxis
 							axisLine={false}
 							tickFormatter={(value) =>
-								formatCompactCurrency(value, baseCurrency)
+								isPrivacyMode
+									? maskAmount(value)
+									: formatCompactCurrency(value, baseCurrency)
 							}
 							tickLine={false}
 							width={80}
@@ -197,7 +202,9 @@ export function WealthHistoryChart({
 												</span>
 											</div>
 											<span className="font-semibold text-foreground tabular-nums">
-												{formatCurrency(Number(value), baseCurrency)}
+												{isPrivacyMode
+													? maskAmount(Number(value))
+													: formatCurrency(Number(value), baseCurrency)}
 											</span>
 										</div>
 									)}

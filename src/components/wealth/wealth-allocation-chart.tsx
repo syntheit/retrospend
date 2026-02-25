@@ -19,6 +19,7 @@ import {
 	ChartTooltipContent,
 } from "~/components/ui/chart";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { maskAmount } from "~/lib/masking";
 
 interface WealthAllocationChartProps {
 	data: {
@@ -28,9 +29,13 @@ interface WealthAllocationChartProps {
 		percentage: number;
 		fill: string;
 	}[];
+	isPrivacyMode?: boolean;
 }
 
-export function WealthAllocationChart({ data }: WealthAllocationChartProps) {
+export function WealthAllocationChart({
+	data,
+	isPrivacyMode = false,
+}: WealthAllocationChartProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
 	// Calculate total
@@ -86,7 +91,16 @@ export function WealthAllocationChart({ data }: WealthAllocationChartProps) {
 				>
 					<PieChart>
 						<ChartTooltip
-							content={<ChartTooltipContent hideLabel />}
+							content={
+								<ChartTooltipContent
+									formatter={(value) =>
+										isPrivacyMode
+											? maskAmount(value as number)
+											: formatCurrency(value as number, "USD")
+									}
+									hideLabel
+								/>
+							}
 							cursor={false}
 						/>
 						<Pie
@@ -124,7 +138,9 @@ export function WealthAllocationChart({ data }: WealthAllocationChartProps) {
 													x={viewBox.cx}
 													y={(viewBox.cy || 0) + 16}
 												>
-													{formatCurrency(totalValue, "USD")}
+													{isPrivacyMode
+														? maskAmount(totalValue)
+														: formatCurrency(totalValue, "USD")}
 												</tspan>
 											</text>
 										);

@@ -27,6 +27,7 @@ model User {
   currencySymbolStyle     CurrencySymbolStyle           @default(standard)
   monthlyIncome           Decimal?                      @db.Decimal(10, 2)
   smartCurrencyFormatting Boolean                       @default(true)
+  defaultPrivacyMode      Boolean                       @default(false)
   accounts                Account[]
   assetAccounts           AssetAccount[]
   categories              Category[]
