@@ -22,7 +22,7 @@ export default function RootPage() {
 							Retrospend
 						</h1>
 						<p className="mt-6 text-lg text-stone-600 leading-8 dark:text-stone-400">
-							The Finance Tracker
+							The Financial Multitool
 						</p>
 						<div className="mt-10">
 							<Button asChild size="lg">

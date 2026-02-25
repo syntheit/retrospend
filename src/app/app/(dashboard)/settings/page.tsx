@@ -1,5 +1,6 @@
 "use client";
 
+import { IconBrandMatrix } from "@tabler/icons-react";
 import { Github, Globe } from "lucide-react";
 import { DataManagementCard } from "~/components/data-management/data-management-card";
 import { PageContent } from "~/components/page-content";
@@ -26,7 +27,9 @@ export default function Page() {
 									<h2 className="font-bold text-2xl tracking-tight">
 										Retrospend
 									</h2>
-									<p className="text-muted-foreground">The Finance Tracker</p>
+									<p className="text-muted-foreground">
+										The Financial Multitool
+									</p>
 									<div className="mt-3 flex gap-3">
 										<a
 											className="text-primary transition-colors hover:text-primary/80"
@@ -45,6 +48,15 @@ export default function Page() {
 											title="View on GitHub"
 										>
 											<Github className="h-5 w-5" />
+										</a>
+										<a
+											className="text-primary transition-colors hover:text-primary/80"
+											href="https://matrix.to/#/#retrospend:matrix.org"
+											rel="noopener noreferrer"
+											target="_blank"
+											title="Join the Matrix room"
+										>
+											<IconBrandMatrix className="h-5 w-5" />
 										</a>
 									</div>
 								</div>
