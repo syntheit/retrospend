@@ -114,7 +114,10 @@ export function useExchangeRatesController() {
 		}));
 	}, [favoriteExchangeRates]);
 
-	const activeTab = (searchParams.get("tab") as "favorites" | "all") || "all";
+	const hasFavorites = (favoriteExchangeRates?.length ?? 0) > 0;
+	const activeTab =
+		(searchParams.get("tab") as "favorites" | "all") ||
+		(hasFavorites ? "favorites" : "all");
 
 	const setActiveTab = useCallback(
 		(tab: string) => {
@@ -143,7 +146,7 @@ export function useExchangeRatesController() {
 		rates: ratesWithFavorites,
 		favoriteRates,
 		lastSync,
-		isLoading: isAllRatesLoading,
+		isLoading: isAllRatesLoading || isFavoritesLoading,
 		isFavoritesLoading,
 		error: allRatesError || favoriteRatesError,
 		favoriteRatesError,
