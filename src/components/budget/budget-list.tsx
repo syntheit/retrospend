@@ -148,19 +148,17 @@ export function BudgetList({
 								{section.description}
 							</p>
 						</div>
-						{!isMobile && (
-							<div className="text-right">
-								<div className="font-medium text-lg tabular-nums tracking-tighter">
-									{formatCurrency(section.totalSpent, homeCurrency)} /{" "}
-									{formatCurrency(section.totalAllocated, homeCurrency)}
-								</div>
-								<div className="text-muted-foreground text-sm">
-									{section.totalSpent > section.totalAllocated
-										? "Over budget"
-										: "On track"}
-								</div>
+						<div className="text-right">
+							<div className="font-medium text-base tabular-nums tracking-tighter sm:text-lg">
+								{formatCurrency(section.totalSpent, homeCurrency)} /{" "}
+								{formatCurrency(section.totalAllocated, homeCurrency)}
 							</div>
-						)}
+							<div className="text-muted-foreground text-xs sm:text-sm">
+								{section.totalSpent > section.totalAllocated
+									? "Over budget"
+									: "On track"}
+							</div>
+						</div>
 					</div>
 
 					<div className="space-y-2">
@@ -168,7 +166,6 @@ export function BudgetList({
 							<BudgetRow
 								budget={budget}
 								homeCurrency={homeCurrency}
-								isMobile={isMobile}
 								key={budget.id}
 								selectedMonth={selectedMonth}
 								startExpanded={budget.id === newlyAddedBudgetId}

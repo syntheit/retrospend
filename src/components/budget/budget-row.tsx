@@ -27,7 +27,6 @@ import { QuickChips } from "./quick-chips";
 interface BudgetRowProps {
 	budget: Budget;
 	selectedMonth: Date;
-	isMobile: boolean;
 	homeCurrency: string;
 	startExpanded?: boolean;
 }
@@ -35,7 +34,6 @@ interface BudgetRowProps {
 export function BudgetRow({
 	budget,
 	selectedMonth,
-	isMobile,
 	homeCurrency,
 	startExpanded = false,
 }: BudgetRowProps) {
@@ -184,17 +182,15 @@ export function BudgetRow({
 					</h3>
 				</div>
 
-				{!isMobile && (
-					<div className="hidden max-w-xs flex-1 sm:block">
-						<BulletChart
-							actualSpend={budget.actualSpend}
-							budgetAmount={budget.effectiveAmount}
-							color={budget.category.color}
-							isOverBudget={isOverBudget}
-							isPegged={budget.pegToActual}
-						/>
-					</div>
-				)}
+				<div className="max-w-[40px] flex-1 sm:max-w-xs">
+					<BulletChart
+						actualSpend={budget.actualSpend}
+						budgetAmount={budget.effectiveAmount}
+						color={budget.category.color}
+						isOverBudget={isOverBudget}
+						isPegged={budget.pegToActual}
+					/>
+				</div>
 
 				<div className="flex items-center justify-end gap-1 whitespace-nowrap text-right tabular-nums">
 					<span

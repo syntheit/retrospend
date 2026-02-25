@@ -9,6 +9,7 @@ import { PartitionBar } from "~/components/budget/partition-bar";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
 import { Button } from "~/components/ui/button";
+import { TooltipProvider } from "~/components/ui/tooltip";
 import { useCurrency } from "~/hooks/use-currency";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { handleError } from "~/lib/handle-error";
@@ -86,7 +87,7 @@ export default function BudgetPage() {
 		(budgets && budgets.length > 0) || (categories && categories.length > 0);
 
 	return (
-		<>
+		<TooltipProvider>
 			<SiteHeader
 				actions={
 					<Link href="/app/budget/playground">
@@ -144,6 +145,6 @@ export default function BudgetPage() {
 					)}
 				</div>
 			</PageContent>
-		</>
+		</TooltipProvider>
 	);
 }

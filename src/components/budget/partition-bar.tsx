@@ -42,11 +42,6 @@ interface CategoryBudget {
 	pegToActual: boolean;
 }
 
-interface PartitionBarProps {
-	categoryBudgets: CategoryBudget[];
-	isMobile: boolean;
-}
-
 interface Segment {
 	id: string;
 	name: string;
@@ -57,37 +52,6 @@ interface Segment {
 	isPegged: boolean;
 	miscItems?: Array<{ name: string; value: number }>;
 }
-
-const MobilePartitionBar = ({
-	capacityPercentage,
-}: {
-	capacityPercentage: number;
-}) => {
-	return (
-		<div className="w-full">
-			<div className="relative h-12 w-full overflow-hidden rounded-lg bg-muted">
-				<div
-					className="absolute top-0 left-0 h-full bg-primary transition-all duration-300"
-					style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
-				/>
-				{capacityPercentage > 100 && (
-					<div
-						className="absolute top-0 left-0 h-full bg-destructive transition-all duration-300"
-						style={{
-							width: `${Math.min(capacityPercentage - 100, 100)}%`,
-							marginLeft: "100%",
-						}}
-					/>
-				)}
-				<div className="absolute inset-0 flex items-center justify-center">
-					<span className="font-medium text-foreground text-sm">
-						{Math.round(capacityPercentage)}% Capacity Used
-					</span>
-				</div>
-			</div>
-		</div>
-	);
-};
 
 const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 	const getColorStyle = (color: string) => {
@@ -168,14 +132,13 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 
 export function PartitionBar({
 	categoryBudgets,
-}: Omit<PartitionBarProps, "isMobile"> & { isMobile?: boolean }) {
-	const { segments, capacityPercentage } = useMemo(() => {
+}: {
+	categoryBudgets: CategoryBudget[];
+	isMobile?: boolean;
+}) {
+	const { segments } = useMemo(() => {
 		const totalAllocated = categoryBudgets.reduce(
 			(sum, budget) => sum + budget.allocatedAmount,
-			0,
-		);
-		const totalSpent = categoryBudgets.reduce(
-			(sum, budget) => sum + budget.actualSpend,
 			0,
 		);
 
@@ -224,24 +187,14 @@ export function PartitionBar({
 			calculatedSegments = regularSegments;
 		}
 
-		// Mobile Capacity logic
-		const calculatedCapacityPercentage =
-			effectiveTotal > 0 ? (totalSpent / effectiveTotal) * 100 : 0;
-
 		return {
 			segments: calculatedSegments,
-			capacityPercentage: calculatedCapacityPercentage,
 		};
 	}, [categoryBudgets]);
 
 	return (
 		<div className="w-full">
-			<div className="md:hidden">
-				<MobilePartitionBar capacityPercentage={capacityPercentage} />
-			</div>
-			<div className="hidden md:block">
-				<DesktopPartitionBar segments={segments} />
-			</div>
+			<DesktopPartitionBar segments={segments} />
 		</div>
 	);
 }

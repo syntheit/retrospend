@@ -67,32 +67,34 @@ export function PlaygroundBudgetRow({
 				</div>
 			</div>
 
-			<div className="flex flex-1 items-center gap-6">
-				<Slider
-					className="hidden flex-1 sm:flex"
-					max={sliderMax}
-					onValueChange={handleSliderChange}
-					step={10}
-					value={[amount]}
-				/>
-
-				<div className="relative w-full sm:w-32 lg:w-40">
-					<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm tabular-nums">
-						{getCurrencySymbol(currency)}
-					</span>
-					<Input
-						className="h-10 border-none bg-accent/30 pl-7 text-lg tabular-nums transition-colors focus-visible:ring-1 focus-visible:ring-indigo-500"
-						onChange={handleInputChange}
-						placeholder="0.00"
-						type="number"
-						value={amount || ""}
+			<div className="flex flex-1 flex-col gap-4">
+				<div className="flex items-center gap-4">
+					<Slider
+						className="flex-1"
+						max={sliderMax}
+						onValueChange={handleSliderChange}
+						step={10}
+						value={[amount]}
 					/>
-				</div>
-			</div>
 
-			<div className="flex items-center justify-between text-muted-foreground text-xs lg:hidden">
-				<span>Quick Tune</span>
-				<span>{formatCurrency(amount, currency)}</span>
+					<div className="relative w-32 lg:w-40">
+						<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm tabular-nums">
+							{getCurrencySymbol(currency)}
+						</span>
+						<Input
+							className="h-10 border-none bg-accent/30 pl-7 text-lg tabular-nums transition-colors focus-visible:ring-1 focus-visible:ring-indigo-500"
+							onChange={handleInputChange}
+							placeholder="0.00"
+							type="number"
+							value={amount || ""}
+						/>
+					</div>
+				</div>
+
+				<div className="flex items-center justify-between text-muted-foreground text-xs lg:hidden">
+					<span>Quick Tune</span>
+					<span>{formatCurrency(amount, currency)}</span>
+				</div>
 			</div>
 		</div>
 	);
