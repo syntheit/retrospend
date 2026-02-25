@@ -152,6 +152,31 @@ export function BudgetPacingChart({
 							<ChartTooltip
 								content={
 									<ChartTooltipContent
+										formatter={(value, name, item) => (
+											<>
+												<div
+													className="h-2 w-2 shrink-0 rounded-[2px]"
+													style={{ backgroundColor: item.color }}
+												/>
+												<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+													<span className="text-muted-foreground">
+														{name === "guide"
+															? "Ideal Pace"
+															: name === "variable"
+																? "Variable Spend"
+																: name}
+													</span>
+													<span className="font-semibold text-foreground tabular-nums">
+														{formatCurrencyUtil(
+															value as number,
+															homeCurrency,
+															"standard",
+															false,
+														)}
+													</span>
+												</div>
+											</>
+										)}
 										labelFormatter={(label, payload) => {
 											if (payload && payload.length > 0) {
 												return payload[0]?.payload.dateLabel;

@@ -11,13 +11,19 @@ function ThemeScript() {
 			dangerouslySetInnerHTML={{
 				__html: `
           try {
-            const stored = localStorage.getItem("theme");
-            const theme = stored === "light" ? "light" : "dark";
+            const pref = localStorage.getItem("theme-preference") || localStorage.getItem("theme") || "dark";
+            let theme = pref;
+            if (pref === "auto") {
+              const now = new Date();
+              const time = now.getHours() + now.getMinutes() / 60;
+              theme = (time >= 5 && time < 19.5) ? "light" : "dark";
+            }
             if (theme === "dark") {
               document.documentElement.classList.add("dark");
+            } else {
+              document.documentElement.classList.remove("dark");
             }
           } catch (e) {
-            // Fallback to dark theme if anything goes wrong
             document.documentElement.classList.add("dark");
           }
         `,

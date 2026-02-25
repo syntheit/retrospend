@@ -93,11 +93,25 @@ export function WealthAllocationChart({
 						<ChartTooltip
 							content={
 								<ChartTooltipContent
-									formatter={(value) =>
-										isPrivacyMode
-											? maskAmount(value as number)
-											: formatCurrency(value as number, "USD")
-									}
+									formatter={(value, name, item) => (
+										<>
+											<div
+												className="h-2 w-2 shrink-0 rounded-[2px]"
+												style={{ backgroundColor: item.color }}
+											/>
+											<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+												<span className="text-muted-foreground">
+													{chartConfig[name as keyof typeof chartConfig]
+														?.label || name}
+												</span>
+												<span className="font-semibold text-foreground tabular-nums">
+													{isPrivacyMode
+														? maskAmount(value as number)
+														: formatCurrency(value as number, "USD")}
+												</span>
+											</div>
+										</>
+									)}
 									hideLabel
 								/>
 							}

@@ -6,7 +6,11 @@ import { SidebarMenuButton } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
 
 export function ThemeToggle({ className }: { className?: string }) {
-	const { theme, toggleTheme } = useThemeContext();
+	const { theme, setTheme } = useThemeContext();
+
+	const toggleTheme = () => {
+		setTheme(theme === "light" ? "dark" : "light");
+	};
 
 	return (
 		<SidebarMenuButton

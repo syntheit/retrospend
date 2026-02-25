@@ -104,6 +104,10 @@ ${colorConfig
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
+ChartTooltip.defaultProps = {
+	...ChartTooltip.defaultProps,
+	useTranslate3d: true,
+};
 
 function ChartTooltipContent({
 	active,
@@ -174,7 +178,7 @@ function ChartTooltipContent({
 	return (
 		<div
 			className={cn(
-				"grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs shadow-xl backdrop-blur-md",
+				"grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs antialiased shadow-xl backdrop-blur-md will-change-transform [backface-visibility:hidden] [transform:translateZ(0)]",
 				className,
 			)}
 		>

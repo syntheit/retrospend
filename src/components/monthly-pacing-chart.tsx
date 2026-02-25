@@ -1,16 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
-	CartesianGrid,
-	Line,
-	LineChart,
-	ResponsiveContainer,
-	Tooltip,
-	type TooltipProps,
-	XAxis,
-	YAxis,
-} from "recharts";
+	type ChartConfig,
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "~/components/ui/chart";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import {
 	type BucketSize,
@@ -144,33 +141,16 @@ export function MonthlyPacingChart({
 		}
 	};
 
-	const CustomTooltip = ({
-		active,
-		payload,
-		label,
-	}: TooltipProps<number, string>) => {
-		if (active && payload && payload.length) {
-			const data = payload[0]?.payload;
-			return (
-				<div className="rounded-lg border border-border bg-background p-3 shadow-md">
-					<p className="mb-2 font-medium text-sm">{data?.label || label}</p>
-					<div className="space-y-1">
-						<p className="text-orange-600 text-sm">
-							<span className="font-medium">Cumulative:</span>{" "}
-							{formatCurrency(payload[0]?.value || 0, baseCurrency)}
-						</p>
-						{payload[1]?.value !== undefined && (
-							<p className="text-blue-600 text-sm">
-								<span className="font-medium">Budget Pace:</span>{" "}
-								{formatCurrency(payload[1]?.value || 0, baseCurrency)}
-							</p>
-						)}
-					</div>
-				</div>
-			);
-		}
-		return null;
-	};
+	const chartConfig = {
+		cumulative: {
+			label: "Cumulative",
+			color: "#ea580c",
+		},
+		budgetPace: {
+			label: "Budget Pace",
+			color: "#2563eb",
+		},
+	} satisfies ChartConfig;
 
 	return (
 		<div className="min-w-0 space-y-4">
@@ -198,7 +178,7 @@ export function MonthlyPacingChart({
 			</div>
 
 			<div className="h-[300px] w-full min-w-0">
-				<ResponsiveContainer height="100%" width="100%">
+				<ChartContainer config={chartConfig}>
 					<LineChart
 						data={chartData}
 						margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
@@ -216,13 +196,35 @@ export function MonthlyPacingChart({
 								formatCurrency(Number(value), baseCurrency)
 							}
 						/>
-						<Tooltip content={<CustomTooltip />} />
+						<ChartTooltip
+							content={
+								<ChartTooltipContent
+									formatter={(value, name, item) => (
+										<>
+											<div
+												className="h-2 w-2 shrink-0 rounded-[2px]"
+												style={{ backgroundColor: item.color }}
+											/>
+											<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+												<span className="text-muted-foreground">
+													{chartConfig[name as keyof typeof chartConfig]
+														?.label || name}
+												</span>
+												<span className="font-semibold text-foreground tabular-nums">
+													{formatCurrency(value as number, baseCurrency)}
+												</span>
+											</div>
+										</>
+									)}
+								/>
+							}
+						/>
 						<Line
 							activeDot={{ r: 6 }}
 							dataKey="cumulative"
-							dot={{ fill: "#ea580c", strokeWidth: 2, r: 4 }}
+							dot={{ fill: "var(--color-cumulative)", strokeWidth: 2, r: 4 }}
 							name="Cumulative"
-							stroke="#ea580c"
+							stroke="var(--color-cumulative)"
 							strokeWidth={3}
 							type="monotone"
 						/>
@@ -232,14 +234,14 @@ export function MonthlyPacingChart({
 								dataKey="budgetPace"
 								dot={false}
 								name="Budget Pace"
-								stroke="#2563eb"
+								stroke="var(--color-budgetPace)"
 								strokeDasharray="8 4"
 								strokeWidth={2}
 								type="monotone"
 							/>
 						)}
 					</LineChart>
-				</ResponsiveContainer>
+				</ChartContainer>
 			</div>
 		</div>
 	);

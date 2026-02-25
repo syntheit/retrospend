@@ -219,6 +219,7 @@ export function WealthHistoryChart({
 								/>
 							}
 							cursor={false}
+							useTranslate3d={true}
 						/>
 						<Area
 							dataKey="amount"

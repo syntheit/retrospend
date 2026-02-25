@@ -6,6 +6,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import {
 	CATEGORY_COLOR_MAP,
 	COLOR_TO_HEX,
@@ -54,6 +55,7 @@ interface Segment {
 }
 
 const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
+	const { formatCurrency } = useCurrencyFormatter();
 	const getColorStyle = (color: string) => {
 		if (color === "stone") return { backgroundColor: "#444" };
 		if (color === "gray") return { backgroundColor: "#6b7280" };
@@ -99,27 +101,56 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 										}}
 									/>
 								</TooltipTrigger>
-								<TooltipContent>
-									{segment.isMisc && segment.miscItems ? (
-										<div>
-											<div className="font-medium">{segment.name}</div>
-											<div className="mt-1 text-muted-foreground text-sm">
-												{segment.miscItems.map((item) => (
-													<div key={item.name}>
-														{item.name}: ${Number(item.value).toFixed(2)}
+								<TooltipContent className="grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs antialiased shadow-xl backdrop-blur-md will-change-transform [backface-visibility:hidden] [transform:translateZ(0)]">
+									<div className="grid gap-1.5">
+										<div className="font-medium">{segment.name}</div>
+										<div className="mt-1 grid gap-1.5">
+											{segment.isMisc && segment.miscItems ? (
+												segment.miscItems.map((item) => (
+													<div
+														className="flex w-full items-stretch gap-2"
+														key={item.name}
+													>
+														<div
+															className="my-0.5 w-1 shrink-0 rounded-[2px]"
+															style={{
+																backgroundColor:
+																	colorStyle.backgroundColor ||
+																	getCategoryColorWithOpacity(segment.color, 1),
+															}}
+														/>
+														<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+															<span className="text-muted-foreground">
+																{item.name}
+															</span>
+															<span className="font-semibold text-foreground tabular-nums">
+																{formatCurrency(item.value, "USD")}
+															</span>
+														</div>
 													</div>
-												))}
-											</div>
+												))
+											) : (
+												<div className="flex w-full items-stretch gap-2">
+													<div
+														className="my-0.5 w-1 shrink-0 rounded-[2px]"
+														style={{
+															backgroundColor:
+																colorStyle.backgroundColor ||
+																getCategoryColorWithOpacity(segment.color, 1),
+														}}
+													/>
+													<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+														<span className="text-muted-foreground">
+															{Number(segment.percentage).toFixed(1)}%
+														</span>
+														<span className="font-semibold text-foreground tabular-nums">
+															{formatCurrency(segment.value, "USD")}
+														</span>
+													</div>
+												</div>
+											)}
 										</div>
-									) : (
-										<div>
-											<div className="font-medium">{segment.name}</div>
-											<div className="text-muted-foreground text-sm">
-												${Number(segment.value).toFixed(2)} (
-												{Number(segment.percentage).toFixed(1)}%)
-											</div>
-										</div>
-									)}
+									</div>
 								</TooltipContent>
 							</Tooltip>
 						);

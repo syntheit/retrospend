@@ -56,7 +56,7 @@ const appPreferencesSchema = z.object({
 type AppPreferencesValues = z.infer<typeof appPreferencesSchema>;
 
 export function AppPreferencesCard() {
-	const { theme, toggleTheme } = useThemeContext();
+	const { setTheme, preference: themePreference } = useThemeContext();
 
 	const { data: settings, isLoading: settingsLoading } =
 		api.settings.getGeneral.useQuery();
@@ -266,23 +266,27 @@ export function AppPreferencesCard() {
 								)}
 							/>
 
-							<div className="space-y-2">
+							<FormItem>
 								<FormLabel>Theme Preference</FormLabel>
 								<Select
 									onValueChange={(value) => {
-										if (value !== theme) toggleTheme();
+										setTheme(value as "light" | "dark" | "auto");
 									}}
-									value={theme}
+									value={themePreference}
 								>
-									<SelectTrigger className={inputClass}>
-										<SelectValue />
-									</SelectTrigger>
+									<FormControl>
+										<SelectTrigger className={inputClass}>
+											<SelectValue />
+										</SelectTrigger>
+									</FormControl>
 									<SelectContent position="popper">
 										<SelectItem value="light">Light</SelectItem>
 										<SelectItem value="dark">Dark</SelectItem>
+										<SelectItem value="auto">Auto (Sunrise/Sunset)</SelectItem>
 									</SelectContent>
 								</Select>
-							</div>
+								<FormMessage />
+							</FormItem>
 						</div>
 
 						<FormField

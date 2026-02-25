@@ -135,10 +135,26 @@ export function MonthlyDeltaChart({
 						<ChartTooltip
 							content={
 								<ChartTooltipContent
-									formatter={(value) => [
-										formatTooltipValue(Number(value)),
-										"Change",
-									]}
+									hideLabel
+									formatter={(value, name, item) => (
+										<>
+											<div
+												className="h-2 w-2 shrink-0 rounded-[2px]"
+												style={{
+													backgroundColor: item.color || item.payload.fill,
+												}}
+											/>
+											<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+												<span className="text-muted-foreground">
+													{chartConfig[name as keyof typeof chartConfig]
+														?.label || name}
+												</span>
+												<span className="font-semibold text-foreground tabular-nums">
+													{formatTooltipValue(Number(value))}
+												</span>
+											</div>
+										</>
+									)}
 								/>
 							}
 						/>
