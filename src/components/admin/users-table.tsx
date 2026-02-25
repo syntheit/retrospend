@@ -7,6 +7,8 @@ import {
 	IconRefresh,
 	IconTrash,
 } from "@tabler/icons-react";
+import { format } from "date-fns";
+import { Landmark, PieChart, Repeat } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -26,6 +28,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "~/components/ui/tooltip";
 
 interface User {
 	id: string;
@@ -35,6 +43,11 @@ interface User {
 	isActive: boolean;
 	expenseCount: number;
 	inviteCodesCount: number;
+	createdAt: Date;
+	lastExpenseDate: Date | null;
+	hasBudget: boolean;
+	hasRecurring: boolean;
+	hasWealth: boolean;
 }
 
 interface UsersTableProps {
@@ -72,8 +85,9 @@ export function UsersTable({
 								<TableHead>Email</TableHead>
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
+								<TableHead>Features</TableHead>
 								<TableHead className="text-right">Expenses</TableHead>
-								<TableHead className="text-right">Invite Codes</TableHead>
+								<TableHead className="text-right">Joined</TableHead>
 								<TableHead className="w-[50px]"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -93,11 +107,14 @@ export function UsersTable({
 									<TableCell>
 										<Skeleton className="h-5 w-[60px]" />
 									</TableCell>
+									<TableCell>
+										<Skeleton className="h-5 w-[80px]" />
+									</TableCell>
 									<TableCell className="text-right">
 										<Skeleton className="ml-auto h-5 w-[30px]" />
 									</TableCell>
 									<TableCell className="text-right">
-										<Skeleton className="ml-auto h-5 w-[30px]" />
+										<Skeleton className="ml-auto h-5 w-[80px]" />
 									</TableCell>
 									<TableCell>
 										<Skeleton className="h-8 w-8 rounded-full" />
@@ -129,95 +146,168 @@ export function UsersTable({
 								<TableHead>Email</TableHead>
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
+								<TableHead>Features</TableHead>
 								<TableHead className="text-right">Expenses</TableHead>
-								<TableHead className="text-right">Invite Codes</TableHead>
+								<TableHead className="text-right">Joined</TableHead>
 								<TableHead className="w-[50px]"></TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{users.map((user) => (
-								<TableRow key={user.id}>
-									<TableCell className="font-medium">
-										@{user.username}
-									</TableCell>
-									<TableCell className="text-muted-foreground">
-										{user.email}
-									</TableCell>
-									<TableCell>
-										<Badge
-											variant={user.role === "ADMIN" ? "default" : "secondary"}
-										>
-											{user.role}
-										</Badge>
-									</TableCell>
-									<TableCell>
-										<Badge variant={user.isActive ? "default" : "destructive"}>
-											{user.isActive ? "Active" : "Disabled"}
-										</Badge>
-									</TableCell>
-									<TableCell className="text-right font-medium">
-										{user.expenseCount}
-									</TableCell>
-									<TableCell className="text-right font-medium">
-										{user.inviteCodesCount}
-									</TableCell>
-									<TableCell>
-										{user.id !== currentUserId && (
-											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
-													<Button
-														className="h-8 w-8"
-														size="icon"
-														variant="ghost"
-													>
-														<IconDotsVertical className="h-4 w-4" />
-														<span className="sr-only">Open menu</span>
-													</Button>
-												</DropdownMenuTrigger>
-												<DropdownMenuContent align="end">
-													<DropdownMenuItem
-														onClick={() =>
-															onResetPassword(user.id, user.username)
-														}
-													>
-														<IconRefresh className="mr-2 h-4 w-4" />
-														Reset Password
-													</DropdownMenuItem>
-													<DropdownMenuItem
-														onClick={() =>
-															onToggleUserStatus(
-																user.id,
-																user.username,
-																user.isActive,
-															)
-														}
-													>
-														{user.isActive ? (
-															<>
-																<IconLock className="mr-2 h-4 w-4" />
-																Disable User
-															</>
-														) : (
-															<>
-																<IconLockOpen className="mr-2 h-4 w-4" />
-																Enable User
-															</>
-														)}
-													</DropdownMenuItem>
-													<DropdownMenuSeparator />
-													<DropdownMenuItem
-														onClick={() => onDeleteUser(user.id, user.username)}
-														variant="destructive"
-													>
-														<IconTrash className="mr-2 h-4 w-4" />
-														Delete User
-													</DropdownMenuItem>
-												</DropdownMenuContent>
-											</DropdownMenu>
-										)}
-									</TableCell>
-								</TableRow>
-							))}
+							{users.map((user) => {
+								const daysSinceLastExpense = user.lastExpenseDate
+									? Math.floor(
+											(Date.now() - new Date(user.lastExpenseDate).getTime()) /
+												(1000 * 60 * 60 * 24),
+										)
+									: Number.POSITIVE_INFINITY;
+
+								const isDormant = daysSinceLastExpense > 14;
+
+								return (
+									<TableRow key={user.id}>
+										<TableCell className="font-medium">
+											@{user.username}
+										</TableCell>
+										<TableCell className="text-muted-foreground">
+											{user.email}
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													user.role === "ADMIN" ? "default" : "secondary"
+												}
+											>
+												{user.role}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											{!user.isActive ? (
+												<Badge variant="destructive">Disabled</Badge>
+											) : isDormant ? (
+												<Badge className="bg-yellow-500/10 border-transparent hover:bg-yellow-500/20 shadow-none text-yellow-500">
+													Dormant
+												</Badge>
+											) : (
+												<Badge className="bg-green-500/10 border-transparent hover:bg-green-500/20 shadow-none text-green-500">
+													Active
+												</Badge>
+											)}
+										</TableCell>
+										<TableCell>
+											<TooltipProvider>
+												<div className="flex items-center gap-2">
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<PieChart
+																className={`h-4 w-4 ${
+																	user.hasBudget
+																		? "text-primary"
+																		: "text-muted-foreground/30"
+																}`}
+															/>
+														</TooltipTrigger>
+														<TooltipContent>
+															Budget: {user.hasBudget ? "Active" : "Unused"}
+														</TooltipContent>
+													</Tooltip>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<Repeat
+																className={`h-4 w-4 ${
+																	user.hasRecurring
+																		? "text-primary"
+																		: "text-muted-foreground/30"
+																}`}
+															/>
+														</TooltipTrigger>
+														<TooltipContent>
+															Recurring:{" "}
+															{user.hasRecurring ? "Active" : "Unused"}
+														</TooltipContent>
+													</Tooltip>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<Landmark
+																className={`h-4 w-4 ${
+																	user.hasWealth
+																		? "text-primary"
+																		: "text-muted-foreground/30"
+																}`}
+															/>
+														</TooltipTrigger>
+														<TooltipContent>
+															Wealth: {user.hasWealth ? "Active" : "Unused"}
+														</TooltipContent>
+													</Tooltip>
+												</div>
+											</TooltipProvider>
+										</TableCell>
+										<TableCell className="text-right font-medium">
+											{user.expenseCount}
+										</TableCell>
+										<TableCell className="text-right text-muted-foreground text-sm">
+											{format(new Date(user.createdAt), "MMM d, yyyy")}
+										</TableCell>
+										<TableCell>
+											{user.id !== currentUserId && (
+												<DropdownMenu>
+													<DropdownMenuTrigger asChild>
+														<Button
+															className="h-8 w-8"
+															size="icon"
+															variant="ghost"
+														>
+															<IconDotsVertical className="h-4 w-4" />
+															<span className="sr-only">Open menu</span>
+														</Button>
+													</DropdownMenuTrigger>
+													<DropdownMenuContent align="end">
+														<DropdownMenuItem
+															onClick={() =>
+																onResetPassword(user.id, user.username)
+															}
+														>
+															<IconRefresh className="mr-2 h-4 w-4" />
+															Reset Password
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() =>
+																onToggleUserStatus(
+																	user.id,
+																	user.username,
+																	user.isActive,
+																)
+															}
+														>
+															{user.isActive ? (
+																<>
+																	<IconLock className="mr-2 h-4 w-4" />
+																	Disable User
+																</>
+															) : (
+																<>
+																	<IconLockOpen className="mr-2 h-4 w-4" />
+																	Enable User
+																</>
+															)}
+														</DropdownMenuItem>
+														<DropdownMenuSeparator />
+														<DropdownMenuItem
+															onClick={() =>
+																onDeleteUser(user.id, user.username)
+															}
+															variant="destructive"
+														>
+															<IconTrash className="mr-2 h-4 w-4" />
+															Delete User
+														</DropdownMenuItem>
+													</DropdownMenuContent>
+												</DropdownMenu>
+											)}
+										</TableCell>
+									</TableRow>
+								);
+							})}
 						</TableBody>
 					</Table>
 				)}

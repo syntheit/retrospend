@@ -23,11 +23,24 @@ export const adminRouter = createTRPCRouter({
 				email: true,
 				role: true,
 				isActive: true,
+				createdAt: true,
 				_count: {
 					select: {
 						expenses: true,
 						createdInviteCodes: true,
+						budgets: true,
+						recurringTemplates: true,
+						assetAccounts: true,
 					},
+				},
+				expenses: {
+					select: {
+						date: true,
+					},
+					orderBy: {
+						date: "desc",
+					},
+					take: 1,
 				},
 			},
 			orderBy: {
@@ -41,8 +54,13 @@ export const adminRouter = createTRPCRouter({
 			email: user.email,
 			role: user.role,
 			isActive: user.isActive,
+			createdAt: user.createdAt,
 			expenseCount: user._count.expenses,
 			inviteCodesCount: user._count.createdInviteCodes,
+			lastExpenseDate: user.expenses[0]?.date ?? null,
+			hasBudget: user._count.budgets > 0,
+			hasRecurring: user._count.recurringTemplates > 0,
+			hasWealth: user._count.assetAccounts > 0,
 		}));
 	}),
 
