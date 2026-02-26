@@ -9,7 +9,7 @@ import { z } from "zod";
 import { useSettings } from "~/hooks/use-settings";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
-import { CURRENCIES } from "~/lib/currencies";
+import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
 import { api } from "~/trpc/react";
 
 export const expenseSchema = z.object({
@@ -17,7 +17,10 @@ export const expenseSchema = z.object({
 	amount: z.number().positive("Amount must be positive"),
 	currency: z
 		.string()
-		.refine((val) => val in CURRENCIES, "Please select a valid currency"),
+		.refine(
+			(val) => val in CURRENCIES || val in CRYPTO_CURRENCIES,
+			"Please select a valid currency",
+		),
 	exchangeRate: z
 		.number()
 		.positive("Exchange rate must be positive")
@@ -95,7 +98,6 @@ export function useExpenseForm({
 		formState: { isDirty, dirtyFields },
 	} = form;
 
-	const watchedCurrency = watch("currency");
 	const watchedAmount = watch("amount");
 	const watchedExchangeRate = watch("exchangeRate");
 	const watchedTitle = watch("title");
@@ -131,15 +133,12 @@ export function useExpenseForm({
 	});
 
 	// Helper for currency conversion
-	const calculateAmountInUSD = (
+	const calculateHomeValue = (
 		amount: number | undefined,
-		currency: string,
 		rate: number | undefined,
 	): number => {
-		if (currency === homeCurrency) return amount ?? 0;
 		if (amount && amount > 0 && rate && rate > 0) {
-			const calculatedAmount = amount / rate;
-			return Math.round(calculatedAmount * 100) / 100;
+			return Math.round(amount * rate * 100) / 100;
 		}
 		return 0;
 	};
@@ -161,29 +160,40 @@ export function useExpenseForm({
 	};
 
 	const handleAmountChange = (value: number) => {
-		const usd = calculateAmountInUSD(
-			value,
-			watchedCurrency,
-			watchedExchangeRate,
-		);
-		setValue("amountInUSD", usd, { shouldDirty: true });
+		const homeValue = calculateHomeValue(value, watchedExchangeRate);
+		setValue("amountInUSD", homeValue, { shouldDirty: true });
 	};
 
 	const handleCurrencyChange = (currency: string) => {
 		setValue("currency", currency, { shouldDirty: true });
-		// Reset rate if currency changes away from home
-		const newRate = currency === homeCurrency ? 1 : undefined;
+
 		if (currency === homeCurrency) {
 			setValue("exchangeRate", 1, { shouldDirty: true });
+			setValue("pricingSource", "official", { shouldDirty: true });
+			setValue("amountInUSD", watchedAmount || 0, { shouldDirty: true });
+			setIsCustomRateSet(false);
+			return;
 		}
-		const usd = calculateAmountInUSD(watchedAmount, currency, newRate);
-		setValue("amountInUSD", usd, { shouldDirty: true });
+
+		// Let RateSelector auto-determine the default rate.
+		// By clearing the exchange rate and type, we prompt RateSelector
+		// to fetch rates and auto-select based on history and favorites.
+		setValue("exchangeRate", undefined, { shouldDirty: true });
+		setValue("pricingSource", undefined, { shouldDirty: true });
+		setValue("amountInUSD", undefined, { shouldDirty: true });
+		setIsCustomRateSet(false);
 	};
 
-	const handleExchangeRateChange = (rate: number | undefined) => {
+	const handleExchangeRateChange = (
+		rate: number | undefined,
+		type?: string,
+	) => {
 		setValue("exchangeRate", rate, { shouldDirty: true });
-		const usd = calculateAmountInUSD(watchedAmount, watchedCurrency, rate);
-		setValue("amountInUSD", usd, { shouldDirty: true });
+		if (type) {
+			setValue("pricingSource", type, { shouldDirty: true });
+		}
+		const homeValue = calculateHomeValue(watchedAmount, rate);
+		setValue("amountInUSD", homeValue, { shouldDirty: true });
 	};
 
 	// Manage navigation guard ref manually

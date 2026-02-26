@@ -28,7 +28,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { Heart } from "lucide-react";
+import { Coins, Heart } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
@@ -42,7 +42,7 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
-import { cn, getCurrencyName } from "~/lib/utils";
+import { cn, getCurrencyName, isCrypto } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
 import { TableSearch } from "./table-search";
 
@@ -131,9 +131,16 @@ function createExchangeRateColumns({
 			cell: ({ row }) => {
 				const currencyCode = row.original.currency;
 				const currencyName = getCurrencyName(currencyCode);
+				const isCryptoCurrency = isCrypto(currencyCode);
 				return (
 					<div className="flex items-center gap-3">
-						<CurrencyFlag className="!h-8 !w-8" currencyCode={currencyCode} />
+						{isCryptoCurrency ? (
+							<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+								<Coins className="h-5 w-5" />
+							</div>
+						) : (
+							<CurrencyFlag className="!h-8 !w-8" currencyCode={currencyCode} />
+						)}
 						<div className="space-y-0.5">
 							<div className="font-medium tabular-nums">{currencyCode}</div>
 							<div className="text-muted-foreground text-xs">

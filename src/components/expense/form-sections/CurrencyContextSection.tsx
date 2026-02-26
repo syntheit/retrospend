@@ -8,6 +8,7 @@ import { Label } from "~/components/ui/label";
 import { RateSelector } from "~/components/ui/rate-selector";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { ExpenseFormData } from "~/hooks/use-expense-form";
+import { CRYPTO_CURRENCIES } from "~/lib/currencies";
 import { cn } from "~/lib/utils";
 
 interface CurrencyContextSectionProps {
@@ -15,7 +16,7 @@ interface CurrencyContextSectionProps {
 	isCustomRateSet: boolean;
 	setIsCustomRateSet: (v: boolean) => void;
 	setShowCustomRateDialog: (v: boolean) => void;
-	handleExchangeRateChange: (rate: number | undefined) => void;
+	handleExchangeRateChange: (rate: number | undefined, type?: string) => void;
 }
 
 export function CurrencyContextSection({
@@ -36,8 +37,10 @@ export function CurrencyContextSection({
 	const watchedCurrency = watch("currency");
 	const watchedDate = watch("date");
 	const watchedExchangeRate = watch("exchangeRate");
+	const watchedPricingSource = watch("pricingSource");
 
 	const isForeignCurrency = watchedCurrency !== homeCurrency;
+	const isCrypto = watchedCurrency in CRYPTO_CURRENCIES;
 
 	if (!isForeignCurrency) {
 		return (
@@ -101,9 +104,17 @@ export function CurrencyContextSection({
 			</div>
 
 			<div className="space-y-2">
-				<Label>Exchange Rate</Label>
+				<Label className="flex flex-wrap items-center">
+					<span>Exchange Rate</span>
+					{isCrypto && (
+						<span className="ml-1 font-normal text-muted-foreground">
+							(1 {watchedCurrency} = {homeCurrency})
+						</span>
+					)}
+				</Label>
 				<div className="flex gap-2">
 					<RateSelector
+						activeType={watchedPricingSource}
 						currency={watchedCurrency}
 						displayMode="default-to-foreign"
 						homeCurrency={homeCurrency}

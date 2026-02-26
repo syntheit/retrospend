@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { env } from "~/env";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
+
 import {
 	createTRPCRouter,
 	protectedProcedure,
@@ -29,7 +29,7 @@ export const exchangeRateRouter = createTRPCRouter({
 	getRatesForCurrency: publicProcedure
 		.input(
 			z.object({
-				currency: z.string().length(3),
+				currency: z.string().min(3).max(10),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -55,9 +55,9 @@ export const exchangeRateRouter = createTRPCRouter({
 		.input(
 			z
 				.object({
-					currency: z.string().length(3).optional(),
+					currency: z.string().min(3).max(10).optional(),
 					type: z.string().min(1).max(32).optional(),
-					limit: z.number().int().min(1).max(1000).default(DEFAULT_PAGE_SIZE),
+					limit: z.number().int().min(1).max(1000).default(1000),
 				})
 				.optional(),
 		)
@@ -69,8 +69,9 @@ export const exchangeRateRouter = createTRPCRouter({
 					currency: input?.currency,
 					type: input?.type,
 				},
-				take: input?.limit ?? 500,
-				orderBy: [{ date: "desc" }, { currency: "asc" }, { type: "asc" }],
+				distinct: ["currency", "type"],
+				take: input?.limit ?? 1000,
+				orderBy: [{ currency: "asc" }, { type: "asc" }, { date: "desc" }],
 				select: {
 					id: true,
 					date: true,

@@ -15,14 +15,14 @@ model User {
   email                   String                        @unique @db.VarChar(255)
   emailVerified           Boolean                       @default(false)
   image                   String?                       @db.VarChar(2048)
-  homeCurrency            String                        @default("USD") @db.VarChar(3)
+  homeCurrency            String                        @default("USD")
   categoryClickBehavior   CategoryClickBehavior         @default(toggle)
   budgetMode              BudgetMode                    @default(GLOBAL_LIMIT)
   role                    UserRole                      @default(USER)
   isActive                Boolean                       @default(true)
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @default(now()) @updatedAt
-  defaultCurrency         String                        @default("USD") @db.VarChar(3)
+  defaultCurrency         String                        @default("USD")
   fontPreference          FontPreference                @default(sans)
   currencySymbolStyle     CurrencySymbolStyle           @default(standard)
   monthlyIncome           Decimal?                      @db.Decimal(10, 2)
@@ -151,7 +151,7 @@ model RecurringTemplate {
   userId        String
   name          String             @db.VarChar(191)
   amount        Decimal            @db.Decimal(10, 2)
-  currency      String             @default("USD") @db.VarChar(3)
+  currency      String             @default("USD")
   categoryId    String?
   frequency     RecurringFrequency
   nextDueDate   DateTime
@@ -174,7 +174,7 @@ model RecurringTemplate {
 model Budget {
   id             String     @id @default(cuid())
   amount         Decimal    @db.Decimal(10, 2)
-  currency       String     @default("USD") @db.VarChar(3)
+  currency       String     @default("USD")
   period         DateTime
   isRollover     Boolean    @default(false)
   rolloverAmount Decimal    @default(0) @db.Decimal(10, 2)
@@ -195,7 +195,7 @@ model Budget {
 model ExchangeRate {
   id        String                 @id @default(cuid())
   date      DateTime
-  currency  String                 @db.VarChar(3)
+  currency  String
   type      String                 @default("official") @db.VarChar(32)
   rate      Decimal                @db.Decimal(18, 6)
   createdAt DateTime               @default(now())

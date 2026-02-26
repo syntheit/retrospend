@@ -10,7 +10,11 @@ import {
 	PopoverTrigger,
 } from "~/components/ui/popover";
 import { useSession } from "~/hooks/use-session";
-import { CURRENCIES, type CurrencyCode } from "~/lib/currencies";
+import {
+	CRYPTO_CURRENCIES,
+	CURRENCIES,
+	type CurrencyCode,
+} from "~/lib/currencies";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -35,7 +39,8 @@ export function CurrencyPicker({
 		});
 
 	const currencies = useMemo(() => {
-		return Object.entries(CURRENCIES).map(([code, currency]) => ({
+		const allCurrencies = { ...CURRENCIES, ...CRYPTO_CURRENCIES };
+		return Object.entries(allCurrencies).map(([code, currency]) => ({
 			...currency,
 			code: code as CurrencyCode,
 		}));
@@ -53,7 +58,13 @@ export function CurrencyPicker({
 		);
 	}, [currencies, search]);
 
-	const selectedCurrency = value ? CURRENCIES[value as CurrencyCode] : null;
+	const selectedCurrency = useMemo(() => {
+		if (!value) return null;
+		return (
+			CURRENCIES[value as keyof typeof CURRENCIES] ||
+			CRYPTO_CURRENCIES[value as keyof typeof CRYPTO_CURRENCIES]
+		);
+	}, [value]);
 
 	const favoriteRank = useMemo(() => {
 		const rank = new Map<string, number>();
@@ -86,6 +97,54 @@ export function CurrencyPicker({
 
 		return [...favorites, ...others];
 	}, [favoriteRank, filteredCurrencies]);
+
+	const fiatCurrencies = useMemo(
+		() => sortedCurrencies.filter((c) => c.code in CURRENCIES),
+		[sortedCurrencies],
+	);
+
+	const cryptoCurrencies = useMemo(
+		() => sortedCurrencies.filter((c) => c.code in CRYPTO_CURRENCIES),
+		[sortedCurrencies],
+	);
+
+	const renderCurrencyItem = (currency: (typeof currencies)[0]) => (
+		<div
+			aria-selected={value === currency.code}
+			className={cn(
+				"flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground",
+				value === currency.code && "bg-accent text-accent-foreground",
+			)}
+			key={currency.code}
+			onClick={() => {
+				onValueChange(currency.code);
+				setOpen(false);
+				setSearch("");
+			}}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					onValueChange(currency.code);
+					setOpen(false);
+					setSearch("");
+				}
+			}}
+			role="option"
+			tabIndex={0}
+		>
+			<Check
+				className={cn(
+					"h-4 w-4",
+					value === currency.code ? "opacity-100" : "opacity-0",
+				)}
+			/>
+			<span className="flex min-w-0 flex-1 items-center gap-2">
+				<span className="font-medium">{currency.symbol}</span>
+				<span>{currency.code}</span>
+				<span className="truncate text-muted-foreground">{currency.name}</span>
+			</span>
+		</div>
+	);
 
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
@@ -127,45 +186,19 @@ export function CurrencyPicker({
 							No currencies found.
 						</div>
 					) : (
-						sortedCurrencies.map((currency) => (
-							<div
-								aria-selected={value === currency.code}
-								className={cn(
-									"flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground",
-									value === currency.code && "bg-accent text-accent-foreground",
-								)}
-								key={currency.code}
-								onClick={() => {
-									onValueChange(currency.code);
-									setOpen(false);
-									setSearch("");
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										onValueChange(currency.code);
-										setOpen(false);
-										setSearch("");
-									}
-								}}
-								role="option"
-								tabIndex={0}
-							>
-								<Check
-									className={cn(
-										"h-4 w-4",
-										value === currency.code ? "opacity-100" : "opacity-0",
-									)}
-								/>
-								<span className="flex min-w-0 flex-1 items-center gap-2">
-									<span className="font-medium">{currency.symbol}</span>
-									<span>{currency.code}</span>
-									<span className="truncate text-muted-foreground">
-										{currency.name}
-									</span>
-								</span>
-							</div>
-						))
+						<>
+							{fiatCurrencies.length > 0 && (
+								<>{fiatCurrencies.map(renderCurrencyItem)}</>
+							)}
+							{cryptoCurrencies.length > 0 && (
+								<>
+									<div className="bg-muted/50 px-3 py-1.5 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+										Cryptocurrency
+									</div>
+									{cryptoCurrencies.map(renderCurrencyItem)}
+								</>
+							)}
+						</>
 					)}
 				</div>
 			</PopoverContent>

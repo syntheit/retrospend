@@ -9,7 +9,7 @@ const expenseInputSchema = z.object({
 	id: z.string().uuid(),
 	title: z.string(),
 	amount: z.number().positive("Amount must be positive"),
-	currency: z.string().length(3).default(BASE_CURRENCY),
+	currency: z.string().min(3).max(10).default(BASE_CURRENCY),
 	exchangeRate: z.number().positive().optional(),
 	amountInUSD: z.number().positive().optional(),
 	pricingSource: z.string().optional(),
@@ -99,7 +99,7 @@ export const expenseRouter = createTRPCRouter({
 						z.object({
 							title: z.string().min(1),
 							amount: z.number().positive(),
-							currency: z.string().length(3),
+							currency: z.string().min(3).max(10),
 							date: z.date(),
 							exchangeRate: z.number().positive().optional(),
 							amountInUSD: z.number().positive().optional(),
@@ -138,7 +138,7 @@ export const expenseRouter = createTRPCRouter({
 			z.object({
 				categoryId: z.string().cuid(),
 				month: z.date(),
-				targetCurrency: z.string().length(3).optional(),
+				targetCurrency: z.string().min(3).max(10).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -155,7 +155,7 @@ export const expenseRouter = createTRPCRouter({
 		.input(
 			z.object({
 				month: z.date(),
-				targetCurrency: z.string().length(3).optional(),
+				targetCurrency: z.string().min(3).max(10).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {

@@ -114,10 +114,20 @@ export function useExchangeRatesController() {
 		}));
 	}, [favoriteExchangeRates]);
 
+	const fiatRates = useMemo(
+		() => ratesWithFavorites.filter((r) => r.type !== "crypto"),
+		[ratesWithFavorites],
+	);
+
+	const cryptoRates = useMemo(
+		() => ratesWithFavorites.filter((r) => r.type === "crypto"),
+		[ratesWithFavorites],
+	);
+
 	const hasFavorites = (favoriteExchangeRates?.length ?? 0) > 0;
 	const activeTab =
-		(searchParams.get("tab") as "favorites" | "all") ||
-		(hasFavorites ? "favorites" : "all");
+		(searchParams.get("tab") as "favorites" | "fiat" | "crypto") ||
+		(hasFavorites ? "favorites" : "fiat");
 
 	const setActiveTab = useCallback(
 		(tab: string) => {
@@ -144,6 +154,8 @@ export function useExchangeRatesController() {
 
 	return {
 		rates: ratesWithFavorites,
+		fiatRates,
+		cryptoRates,
 		favoriteRates,
 		lastSync,
 		isLoading: isAllRatesLoading || isFavoritesLoading,

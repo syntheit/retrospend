@@ -18,7 +18,8 @@ function PageLayout({ children }: { children: React.ReactNode }) {
 
 export default function Page() {
 	const {
-		rates,
+		fiatRates,
+		cryptoRates,
 		favoriteRates,
 		lastSync,
 		isLoading,
@@ -68,13 +69,14 @@ export default function Page() {
 				<Tabs
 					className="space-y-4"
 					onValueChange={(value) =>
-						viewState.setActiveTab(value as "favorites" | "all")
+						viewState.setActiveTab(value as "favorites" | "fiat" | "crypto")
 					}
 					value={viewState.activeTab}
 				>
 					<TabsList>
 						<TabsTrigger value="favorites">Favorites</TabsTrigger>
-						<TabsTrigger value="all">All Currencies</TabsTrigger>
+						<TabsTrigger value="fiat">Fiat</TabsTrigger>
+						<TabsTrigger value="crypto">Cryptocurrency</TabsTrigger>
 					</TabsList>
 					<TabsContent value="favorites">
 						{isFavoritesLoading ? (
@@ -83,8 +85,8 @@ export default function Page() {
 							</div>
 						) : favoriteRates.length === 0 ? (
 							<div className="rounded-lg border border-muted border-dashed p-6 text-center text-muted-foreground text-sm">
-								No favorites yet. Tap the heart icon on any currency under All
-								Currencies to pin it here.
+								No favorites yet. Tap the heart icon on any currency to pin it
+								here.
 							</div>
 						) : (
 							<ExchangeRatesTable
@@ -100,9 +102,15 @@ export default function Page() {
 							</div>
 						)}
 					</TabsContent>
-					<TabsContent value="all">
+					<TabsContent value="fiat">
 						<ExchangeRatesTable
-							data={rates}
+							data={fiatRates}
+							onToggleFavorite={actions.toggleFavorite}
+						/>
+					</TabsContent>
+					<TabsContent value="crypto">
+						<ExchangeRatesTable
+							data={cryptoRates}
 							onToggleFavorite={actions.toggleFavorite}
 						/>
 					</TabsContent>

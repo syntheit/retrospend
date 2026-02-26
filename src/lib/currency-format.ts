@@ -56,17 +56,40 @@ export const SMART_NO_DECIMAL_CURRENCIES = [
  * Formats a currency amount using proper Intl.NumberFormat with currency style.
  * Automatically handles symbols, locale, and decimal digits based on currency.
  */
+/**
+ * Detects if a currency code is likely a cryptocurrency.
+ * Currently checks if it's NOT in our list of standard fiat currencies.
+ */
+export function isCrypto(currency: string): boolean {
+	const code = currency.toUpperCase();
+	return !CURRENCIES[code as keyof typeof CURRENCIES];
+}
+
+/**
+ * Formats a currency amount using proper Intl.NumberFormat.
+ * Automatically handles symbols, locale, and decimal digits based on currency.
+ * For cryptocurrencies, it uses 8 decimal places and appends the ticker.
+ */
 export function formatCurrency(
 	amount: number,
 	currency = "USD",
 	currencySymbolStyle: "native" | "standard" = "standard",
 	smartFormatting = true,
 ): string {
-	const currencyData =
-		CURRENCIES[currency.toUpperCase() as keyof typeof CURRENCIES];
+	const upperCurrency = currency.toUpperCase();
+	const currencyData = CURRENCIES[upperCurrency as keyof typeof CURRENCIES];
 
+	// Handle Cryptocurrency formatting
+	if (isCrypto(upperCurrency)) {
+		const formattedValue = new Intl.NumberFormat("en-US", {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 8,
+		}).format(amount);
+		return `${formattedValue} ${upperCurrency}`;
+	}
+
+	// Handle Fiat formatting
 	// Get locale from home currency - for now we use a currency-appropriate locale
-	// USD/CAD/AUD -> en-US, EUR -> de-DE, etc. Fallback to en-US
 	const getLocaleForCurrency = (curr: string): string => {
 		const localeMap: Record<string, string> = {
 			USD: "en-US",
@@ -81,25 +104,20 @@ export function formatCurrency(
 		return localeMap[curr.toUpperCase()] || "en-US";
 	};
 
-	const locale = getLocaleForCurrency(currency);
+	const locale = getLocaleForCurrency(upperCurrency);
 
 	// Determine decimal digits based on currency and smart formatting preference
 	let decimalDigits = currencyData?.decimal_digits ?? 2;
 
-	if (
-		smartFormatting &&
-		SMART_NO_DECIMAL_CURRENCIES.includes(currency.toUpperCase())
-	) {
+	if (smartFormatting && SMART_NO_DECIMAL_CURRENCIES.includes(upperCurrency)) {
 		decimalDigits = 0;
 	}
 
 	// Choose symbol based on preference
 	const symbol =
 		currencySymbolStyle === "native"
-			? currencyData?.symbol_native ||
-				currencyData?.symbol ||
-				currency.toUpperCase()
-			: currencyData?.symbol || currency.toUpperCase();
+			? currencyData?.symbol_native || currencyData?.symbol || upperCurrency
+			: currencyData?.symbol || upperCurrency;
 
 	// Format the number part
 	const formattedNumber = new Intl.NumberFormat(locale, {

@@ -236,6 +236,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						</DialogHeader>
 						<div className="py-4">
 							<RateSelector
+								activeType={form.watch("pricingSource")}
 								currency={form.watch("currency")}
 								displayMode="foreign-to-default"
 								homeCurrency={homeCurrency}
@@ -243,9 +244,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								onCustomCleared={() => setIsCustomRateSet(false)}
 								onCustomClick={() => {}}
 								onCustomSet={() => setIsCustomRateSet(true)}
-								onValueChange={(value: number | undefined) => {
-									form.setValue("exchangeRate", value, { shouldDirty: true });
-								}}
+								onValueChange={handleExchangeRateChange}
 								value={form.watch("exchangeRate")}
 								variant="inline"
 							/>
