@@ -43,15 +43,17 @@ export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 
 		const variableBudgets = validBudgets
 			.filter(
-				(b) => b.type === "FIXED" || (!b.type && !b.pegToActual), // Fallback for legacy if not migrated (though we did migrate)
+				(b) =>
+					!b.pegToActual && (b.type === "FIXED" || (!b.type && !b.pegToActual)),
 			)
 			.sort((a, b) => b.actualSpend - a.actualSpend);
 
 		const fixedBudgets = validBudgets
 			.filter(
 				(b) =>
+					b.pegToActual ||
 					b.type === "PEG_TO_ACTUAL" ||
-					(b.type === "PEG_TO_LAST_MONTH" && b.actualSpend > 0) || // Only show if active
+					(b.type === "PEG_TO_LAST_MONTH" && b.actualSpend > 0) ||
 					(!b.type && b.pegToActual),
 			)
 			.sort((a, b) => b.actualSpend - a.actualSpend);

@@ -104,8 +104,10 @@ export const budgetRouter = createTRPCRouter({
 			// Logic to align pegToActual boolean with type enum if not explicitly provided or if conflicting
 			// If pegToActual is true and type is FIXED, set type to PEG_TO_ACTUAL (legacy support)
 			let budgetType = input.type;
-			if (input.pegToActual && input.type === "FIXED") {
+			if (input.pegToActual && budgetType === "FIXED") {
 				budgetType = "PEG_TO_ACTUAL";
+			} else if (!input.pegToActual && budgetType === "PEG_TO_ACTUAL") {
+				budgetType = "FIXED";
 			}
 
 			const budget = await db.budget.upsert({
@@ -182,8 +184,10 @@ export const budgetRouter = createTRPCRouter({
 					);
 
 					let budgetType = item.type;
-					if (item.pegToActual && item.type === "FIXED") {
+					if (item.pegToActual && budgetType === "FIXED") {
 						budgetType = "PEG_TO_ACTUAL";
+					} else if (!item.pegToActual && budgetType === "PEG_TO_ACTUAL") {
+						budgetType = "FIXED";
 					}
 
 					const budget = await tx.budget.upsert({
@@ -503,6 +507,7 @@ export const budgetRouter = createTRPCRouter({
 							isRollover: row.isRollover,
 							rolloverAmount: row.rolloverAmount,
 							pegToActual: row.pegToActual,
+							type: row.pegToActual ? "PEG_TO_ACTUAL" : "FIXED",
 						},
 						create: {
 							userId: session.user.id,
@@ -512,6 +517,7 @@ export const budgetRouter = createTRPCRouter({
 							isRollover: row.isRollover,
 							rolloverAmount: row.rolloverAmount,
 							pegToActual: row.pegToActual,
+							type: row.pegToActual ? "PEG_TO_ACTUAL" : "FIXED",
 						},
 					});
 				}
