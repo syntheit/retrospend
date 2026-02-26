@@ -11,7 +11,10 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { CRYPTO_CURRENCIES } from "~/lib/currencies";
+import {
+	isCrypto as checkIsCrypto,
+	isMajorCrypto,
+} from "~/lib/currency-format";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -65,12 +68,19 @@ export function RateSelector({
 	const [selectedRateType, setSelectedRateType] = useState<string>(
 		isCustomSet ? "custom" : activeType || "official",
 	);
+
+	// Sync local state with parent prop updates
+	useEffect(() => {
+		if (activeType) {
+			setSelectedRateType(activeType);
+		}
+	}, [activeType]);
 	const [customInputValue, setCustomInputValue] = useState<string>(
 		value?.toString() ?? "",
 	);
 
 	const isInverse = displayMode === "foreign-to-default";
-	const isCrypto = currency in CRYPTO_CURRENCIES;
+	const isCrypto = checkIsCrypto(currency);
 
 	const {
 		rateOptions,
@@ -92,19 +102,32 @@ export function RateSelector({
 	const getHomeRate = useCallback(() => {
 		if (homeCurrency === "USD") return 1;
 		if (!homeRates || homeRates.length === 0) return 1;
-		const blue = homeRates.find((r: any) => r.type === "blue");
+		const blue = homeRates.find((r) => r.type === "blue");
 		if (blue) return Number(blue.rate);
-		const official = homeRates.find((r: any) => r.type === "official");
+		const official = homeRates.find((r) => r.type === "official");
 		if (official) return Number(official.rate);
-		return Number((homeRates[0] as any)?.rate) || 1;
+		return Number(homeRates[0]?.rate) || 1;
 	}, [homeCurrency, homeRates]);
 
 	const getCrossRate = useCallback(
 		(dbRate: number) => {
-			const rateInUSD = dbRate > 0 ? 1 / dbRate : 1;
-			return rateInUSD * getHomeRate();
+			const homeRate = getHomeRate();
+			let rate = dbRate;
+
+			if (isCrypto) {
+				// Safety check: if it's a known big crypto and the rate is tiny, it's likely inverted Units/USD
+				if (isMajorCrypto(currency) && rate > 0 && rate < 1) {
+					rate = 1 / rate;
+				}
+				// Rubric: Crypto rate is USD per Coin.
+				// Home per Coin = (USD per Coin) * (Home per USD)
+				return rate * homeRate;
+			}
+			// Fiat: dbRate is Units per USD
+			// Home per Foreign = (Home per USD) / (Foreign per USD)
+			return dbRate > 0 ? homeRate / dbRate : 0;
 		},
-		[getHomeRate],
+		[getHomeRate, isCrypto, currency],
 	);
 
 	// Ref to prevent stale closures in effects
@@ -117,8 +140,9 @@ export function RateSelector({
 			const defaultRate = getDefaultRate();
 			if (defaultRate) {
 				setSelectedRateType(defaultRate.type);
+				const rate = getCrossRate(defaultRate.rate);
 				onValueChangeRef.current(
-					getEffectiveRate(getCrossRate(defaultRate.rate), isInverse),
+					isCrypto ? rate : getEffectiveRate(rate, isInverse),
 					defaultRate.type,
 				);
 			}
@@ -133,6 +157,7 @@ export function RateSelector({
 		getEffectiveRate,
 		getCrossRate,
 		isInverse,
+		isCrypto,
 	]);
 
 	const handleRateTypeChange = useCallback(
@@ -150,8 +175,9 @@ export function RateSelector({
 				onCustomCleared?.();
 				const selectedRate = getRateByType(type);
 				if (selectedRate) {
+					const rate = getCrossRate(selectedRate.rate);
 					onValueChange(
-						getEffectiveRate(getCrossRate(selectedRate.rate), isInverse),
+						isCrypto ? rate : getEffectiveRate(rate, isInverse),
 						selectedRate.type,
 					);
 				}
@@ -166,6 +192,7 @@ export function RateSelector({
 			getEffectiveRate,
 			getCrossRate,
 			isInverse,
+			isCrypto,
 			onValueChange,
 			value,
 		],
@@ -289,18 +316,17 @@ export function RateSelector({
 					<div className="flex items-center justify-center rounded-lg border bg-muted/30 p-3">
 						<p className="font-medium text-sm">
 							{isCrypto || isInverse
-								? `1 ${currency} = ${(
-										isCrypto
-											? getCrossRate(selectedOption.rate)
-											: 1 / selectedOption.rate
+								? `1 ${currency} = ${getCrossRate(
+										selectedOption.rate,
 									).toLocaleString(undefined, {
 										minimumFractionDigits: isCrypto ? 2 : 0,
 										maximumFractionDigits: isCrypto ? 2 : 6,
 									})} ${homeCurrency}`
-								: `1 ${homeCurrency} = ${selectedOption.rate.toLocaleString(
-										undefined,
-										{ maximumFractionDigits: 6 },
-									)} ${currency}`}
+								: `1 ${homeCurrency} = ${(
+										selectedOption.rate / getHomeRate()
+									).toLocaleString(undefined, {
+										maximumFractionDigits: 6,
+									})} ${currency}`}
 						</p>
 					</div>
 				)}

@@ -12,6 +12,7 @@ import {
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { isCrypto } from "~/lib/currency-format";
 import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 
 export const expenseSchema = z.object({
@@ -203,7 +204,9 @@ function createExpenseColumns(
 							</TooltipTrigger>
 							<TooltipContent align="end" side="top">
 								<p>
-									1 USD = {exchangeRate.toLocaleString()} {currency}
+									{isCrypto(currency)
+										? `1 ${currency} = $${exchangeRate.toLocaleString()}`
+										: `1 USD = ${exchangeRate.toLocaleString()} ${currency}`}
 								</p>
 							</TooltipContent>
 						</Tooltip>

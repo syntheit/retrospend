@@ -5,21 +5,15 @@ export interface RatesData {
 
 /**
  * Universal conversion utility for Fiat and Crypto currencies.
- * Logic uses USD as the base currency.
+ * Logic uses USD as the internal pivot.
  *
- * Math Logic (Base USD):
- * - To USD:
- *   - If from is Fiat: amount / (rates[from] || 1)
- *   - If from is Crypto: amount * (cryptoRates[from] || 0)
- * - From USD:
- *   - If to is Fiat: usdValue * (rates[to] || 1)
- *   - If to is Crypto: usdValue / (cryptoRates[to] || 1)
- *
- * @param amount - The amount to convert
- * @param from - The source currency code
- * @param to - The target currency code
- * @param ratesData - Object containing fiat and crypto rates
- * @returns The converted amount
+ * Math Rubric (CRITICAL):
+ * - Fiat (rates): Stored as Units per 1 USD (e.g., ARS = 1500)
+ *   - Fiat to USD: amount / rates[currency]
+ *   - USD to Fiat: usdValue * rates[currency]
+ * - Crypto (cryptoRates): Stored as USD per 1 Coin (e.g., BTC = 65000)
+ *   - Crypto to USD: amount * cryptoRates[currency]
+ *   - USD to Crypto: usdValue / cryptoRates[currency]
  */
 export function convertCurrency(
 	amount: number,
@@ -29,16 +23,16 @@ export function convertCurrency(
 ): number {
 	if (from === to) return amount;
 
-	// 1. Convert source amount to USD
+	// 1. Convert source amount to USD (Pivot)
 	let usdValue: number;
 
 	if (from === "USD") {
 		usdValue = amount;
 	} else if (ratesData.cryptoRates[from] !== undefined) {
-		// Crypto: rates refer to USD price of 1 unit
+		// Crypto to USD: Amount * cryptoRates[currency]
 		usdValue = amount * (ratesData.cryptoRates[from] || 0);
 	} else {
-		// Fiat: rates refer to units per 1 USD
+		// Fiat to USD: Amount / rates[currency]
 		usdValue = amount / (ratesData.rates[from] || 1);
 	}
 
@@ -48,26 +42,47 @@ export function convertCurrency(
 	}
 
 	if (ratesData.cryptoRates[to] !== undefined) {
-		// Crypto: divide USD value by unit price
-		// Fallback to 1 to prevent division by zero, though a rate of 0 is effectively invalid
+		// USD to Crypto: usdValue / cryptoRates[currency]
 		const rate = ratesData.cryptoRates[to] || 1;
 		return usdValue / rate;
 	}
 
-	// Fiat: multiply USD value by units per USD
+	// USD to Fiat: usdValue * rates[currency]
 	return usdValue * (ratesData.rates[to] || 1);
 }
 
 /**
- * Helper to check if a currency is a cryptocurrency based on the rates data.
+ * Enforcer utility following the specific rubric for base currency calculation.
+ */
+export function calculateBaseValue(
+	amount: number,
+	currency: string,
+	baseCurrency: string,
+	rates: Record<string, number>,
+	cryptoRates: Record<string, number>,
+): number {
+	return convertCurrency(amount, currency, baseCurrency, {
+		rates,
+		cryptoRates,
+	});
+}
+
+/**
+ * Helper to check if a currency is a cryptocurrency based on the rates data or standard list.
  */
 export function isCryptoCurrency(
 	currency: string,
-	ratesData: RatesData,
+	ratesData?: RatesData,
 ): boolean {
-	return (
-		ratesData.cryptoRates !== undefined &&
-		currency in ratesData.cryptoRates &&
-		currency !== "USD"
-	);
+	if (currency === "USD") return false;
+
+	if (ratesData?.cryptoRates && currency in ratesData.cryptoRates) {
+		return true;
+	}
+
+	// Fallback to standard check if no rates data provided
+	// In Retrospend, cryptos are generally everything NOT in the standard fiat list
+	// but we can be more specific if we had a list.
+	// For now, let's keep it consistent with the existing heuristic if ratesData is missing.
+	return false;
 }

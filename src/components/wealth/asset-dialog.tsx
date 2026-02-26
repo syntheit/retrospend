@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -40,6 +40,10 @@ import {
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import type { CurrencyCode } from "~/lib/currencies";
+import {
+	isCrypto as checkIsCrypto,
+	isMajorCrypto,
+} from "~/lib/currency-format";
 import { AssetType } from "~/lib/db-enums";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -94,23 +98,8 @@ export function AssetDialog({
 	const open = isControlled ? controlledOpen : internalOpen;
 	const setOpen = isControlled ? setControlledOpen : setInternalOpen;
 
-	// Initialize with INVERTED rate for non-USD currencies because we want to display/edit
-	// the "Human" rate (e.g. 0.0007 USD/ARS), but DB stores "System" rate (e.g. 1430 ARS/USD).
-	const [exchangeRate, setExchangeRate] = useState<number | undefined>(() => {
-		if (
-			initialValues?.exchangeRate &&
-			initialValues.currency &&
-			initialValues.currency !== "USD"
-		) {
-			return 1 / initialValues.exchangeRate;
-		}
-		return initialValues?.exchangeRate;
-	});
-	const [exchangeRateType, setExchangeRateType] = useState<string | undefined>(
-		initialValues?.exchangeRateType,
-	);
-	const [isCustomRate, setIsCustomRate] = useState(false);
-	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	// Initialize the active rate state.
+	// For crypto we use the Big Number as-is (already USD/Coin in DB).
 	const { getCurrencySymbol } = useCurrencyFormatter();
 	const utils = api.useUtils();
 
@@ -121,53 +110,107 @@ export function AssetDialog({
 			: createDefaults,
 	});
 
-	// Fetch rates to validate and auto-correct potential inversion bugs
-	const { rateOptions } = useExchangeRates({
-		currency: form.watch("currency"),
-		enabled: open && form.watch("currency") !== "USD",
+	// Initial rate fix (one-time logic for corrupt data)
+	const [exchangeRate, setExchangeRate] = useState<number | undefined>(() => {
+		const initRate = initialValues?.exchangeRate;
+		const initCurr = initialValues?.currency;
+
+		if (initRate && initCurr && initCurr !== "USD") {
+			const isActuallyCrypto = checkIsCrypto(initCurr);
+			// Known big cryptos fix: BTC/SOL/etc should be > 1
+			if (isActuallyCrypto) {
+				if (isMajorCrypto(initCurr) && initRate > 0 && initRate < 1) {
+					return 1 / initRate;
+				}
+			}
+			return initRate;
+		}
+		return initRate;
 	});
 
-	// Auto-correct potential inverse rate bug on load
-	// If the state rate matches the "System" rate (Units/USD), it means it wasn't inverted correctly
-	// or the source data was already inverted. We expect "Human" rate (USD/Unit).
+	const [exchangeRateType, setExchangeRateType] = useState<string | undefined>(
+		initialValues?.exchangeRateType,
+	);
+	const [isCustomRate, setIsCustomRate] = useState(false);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+	const handleExchangeRateChange = useCallback(
+		(rate: number | undefined, type?: string) => {
+			setExchangeRate(rate);
+			setExchangeRateType(type);
+		},
+		[],
+	);
+
+	// Get form values for hooks and effects
+	const watchedBalance = form.watch("balance");
+	const watchedCurrency = form.watch("currency");
+
+	// Fetch rates to validate and auto-correct potential inversion bugs
+	const { rateOptions } = useExchangeRates({
+		currency: watchedCurrency,
+		enabled: open && watchedCurrency !== "USD",
+	});
+
+	// Fiat: State and Picker now both use "System" rate (Units per USD) to avoid precision loss.
+	// Crypto: State and Picker both use "Human" rate (USD per Coin).
 	useEffect(() => {
 		if (isCustomRate || !exchangeRate || !exchangeRateType) return;
 
 		const matchingOption = rateOptions.find((r) => r.type === exchangeRateType);
+		if (!matchingOption) return;
 
-		if (matchingOption) {
-			const systemRate = matchingOption.rate;
-			// Avoid division by zero
-			if (systemRate === 0) return;
+		const systemRate = matchingOption.rate;
+		if (systemRate === 0) return;
 
-			const currentRatio = exchangeRate / systemRate;
+		const isActuallyCrypto = checkIsCrypto(watchedCurrency);
 
-			// If State ≈ System Rate (within 1% tolerance), it requires inversion
-			if (currentRatio > 0.99 && currentRatio < 1.01) {
-				const correctedRate = 1 / exchangeRate;
-				// Console log for debugging (optional, removing for prod cleanliness if desired)
-				// console.log("Auto-correcting inverted exchange rate", exchangeRate, "->", correctedRate);
-				setExchangeRate(correctedRate);
+		// 1. "Big Crypto" Rubric Fix: Ensure major coins are shown as USD prices (> 1).
+		if (
+			isActuallyCrypto &&
+			isMajorCrypto(watchedCurrency) &&
+			exchangeRate < 1
+		) {
+			setExchangeRate((prev) => (prev && prev < 1 ? 1 / prev : prev));
+			return;
+		}
+
+		// 2. Inversion Fix: If state is the inverse of DB.
+		const currentRatio = exchangeRate * systemRate;
+		if (currentRatio > 0.99 && currentRatio < 1.01) {
+			// One is the inverse of the other.
+			// We only flip if it would result in the "Corrected" state.
+			if (isActuallyCrypto) {
+				// For crypto, we want the "Big Number" (USD/Unit).
+				if (exchangeRate < 1 && systemRate > 1) {
+					setExchangeRate(systemRate);
+				}
+			} else {
+				// For Fiat, we match the DB's orientation (Units/USD).
+				if (Math.abs(exchangeRate - systemRate) > 0.000001) {
+					setExchangeRate(systemRate);
+				}
 			}
 		}
-	}, [rateOptions, exchangeRate, exchangeRateType, isCustomRate]);
-
-	// Calculate USD equivalent
-	const balance = form.watch("balance");
-	const currency = form.watch("currency");
+	}, [
+		rateOptions,
+		exchangeRate,
+		exchangeRateType,
+		isCustomRate,
+		watchedCurrency,
+	]);
 
 	const usdEquivalent = useMemo(() => {
-		const currentBalance = balance || 0;
-		if (currency === "USD") return currentBalance;
-		// Exchange rate is in "Human" format (USD per Unit) -> Multiply
-		// Wait, previous logic was multiplying by System Rate (Units per USD)?
-		// No, previously it multiplied by stored rate.
-		// If stored rate was 1430 -> 1.4 Million.
-		// If stored rate was 0.0007 -> 0.7.
-		// NOW we ensure state is 0.0007.
-		// So multiplying is correct for Human Rate.
-		return currentBalance * (exchangeRate ?? 1);
-	}, [balance, currency, exchangeRate]);
+		const currentBalance = watchedBalance || 0;
+		if (watchedCurrency === "USD") return currentBalance;
+		if (!exchangeRate || exchangeRate === 0) return 0;
+
+		// RUBRIC: Fiat to USD = balance / rate. Crypto to USD = balance * rate.
+		if (checkIsCrypto(watchedCurrency)) {
+			return currentBalance * exchangeRate;
+		}
+		return currentBalance / exchangeRate;
+	}, [watchedBalance, watchedCurrency, exchangeRate]);
 
 	// Check if asset type is a liability
 	const assetType = form.watch("type");
@@ -222,15 +265,8 @@ export function AssetDialog({
 	});
 
 	const onSubmit = (data: FormValues) => {
-		// Invert rate back to System format (Units per USD) before saving
-		let systemRate = exchangeRate;
-		if (
-			data.currency !== "USD" &&
-			exchangeRate !== undefined &&
-			exchangeRate > 0
-		) {
-			systemRate = 1 / exchangeRate;
-		}
+		// Both are now stored exactly as displayed in state.
+		const systemRate = exchangeRate;
 
 		if (isEdit && assetId) {
 			updateAsset.mutate({
@@ -251,8 +287,7 @@ export function AssetDialog({
 	const handleCurrencyChange = (newCurrency: string) => {
 		form.setValue("currency", newCurrency);
 		// Always reset exchange rate when currency changes to prevent stale rates
-		setExchangeRate(undefined);
-		setExchangeRateType(undefined);
+		handleExchangeRateChange(undefined, undefined);
 		setIsCustomRate(false);
 	};
 
@@ -386,22 +421,23 @@ export function AssetDialog({
 
 								{form.watch("currency") !== "USD" && (
 									<div className="space-y-2">
-										<FormLabel>Exchange Rate</FormLabel>
+										<FormLabel className="flex flex-wrap items-center">
+											<span>Exchange Rate</span>
+											{checkIsCrypto(watchedCurrency) && (
+												<span className="ml-1 font-normal text-muted-foreground">
+													(1 {watchedCurrency} = USD)
+												</span>
+											)}
+										</FormLabel>
 										<RateSelector
-											currency={form.watch("currency")}
+											currency={watchedCurrency}
 											displayMode="foreign-to-default"
 											homeCurrency="USD"
 											isCustomSet={isCustomRate}
 											onCustomCleared={() => setIsCustomRate(false)}
 											onCustomClick={() => setIsCustomRate(true)}
 											onCustomSet={() => setIsCustomRate(true)}
-											onValueChange={(
-												rate: number | undefined,
-												type?: string,
-											) => {
-												setExchangeRate(rate);
-												setExchangeRateType(type);
-											}}
+											onValueChange={handleExchangeRateChange}
 											value={exchangeRate}
 											variant="inline"
 										/>
@@ -409,7 +445,7 @@ export function AssetDialog({
 								)}
 
 								{/* USD Equivalent Preview */}
-								{form.watch("balance") > 0 && (
+								{watchedBalance > 0 && (
 									<div className="rounded-md bg-muted/50 p-3">
 										<div className="flex items-center justify-between text-sm">
 											<span className="text-muted-foreground">

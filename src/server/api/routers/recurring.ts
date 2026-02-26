@@ -70,10 +70,37 @@ export const recurringRouter = createTRPCRouter({
 					let exchangeRate = 1;
 
 					if (t.currency !== homeCurrency) {
-						const rate = await getBestExchangeRate(db, t.currency, new Date());
-						if (rate) {
-							exchangeRate = rate;
-							amountInHomeCurrency = Number(t.amount) / exchangeRate;
+						// 1. Convert to USD first
+						const bestRateFrom = await getBestExchangeRate(
+							db,
+							t.currency,
+							new Date(),
+						);
+
+						let usdValue = Number(t.amount);
+						if (t.currency !== "USD" && bestRateFrom) {
+							exchangeRate = bestRateFrom.rate;
+							usdValue =
+								bestRateFrom.type === "crypto"
+									? Number(t.amount) * bestRateFrom.rate
+									: Number(t.amount) / bestRateFrom.rate;
+						}
+
+						// 2. Convert from USD to homeCurrency
+						if (homeCurrency === "USD") {
+							amountInHomeCurrency = usdValue;
+						} else {
+							const bestRateTo = await getBestExchangeRate(
+								db,
+								homeCurrency,
+								new Date(),
+							);
+							if (bestRateTo) {
+								// Home currency is always fiat in this app's context for "home"
+								amountInHomeCurrency = usdValue * bestRateTo.rate;
+							} else {
+								amountInHomeCurrency = usdValue; // Fallback
+							}
 						}
 					}
 
@@ -357,14 +384,17 @@ export const recurringRouter = createTRPCRouter({
 			let amountInUSD = Number(template.amount);
 
 			if (template.currency !== BASE_CURRENCY) {
-				const rate = await getBestExchangeRate(
+				const bestRate = await getBestExchangeRate(
 					db,
 					template.currency,
 					template.nextDueDate,
 				);
-				if (rate) {
-					exchangeRate = rate;
-					amountInUSD = Number(template.amount) / exchangeRate;
+				if (bestRate) {
+					exchangeRate = bestRate.rate;
+					amountInUSD =
+						bestRate.type === "crypto"
+							? Number(template.amount) * exchangeRate
+							: Number(template.amount) / exchangeRate;
 				}
 			}
 

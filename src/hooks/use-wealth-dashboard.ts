@@ -81,7 +81,16 @@ export function useWealthDashboard({
 			if (category === "liability" && !isLiability) return false;
 
 			// Granular type filter
-			if (type !== "all" && asset.type !== type) return false;
+			if (type !== "all") {
+				if (type === "CRYPTO") {
+					// Inclusion: explicit CRYPTO type OR any asset with a crypto exchange rate
+					if (asset.type !== "CRYPTO" && asset.exchangeRateType !== "crypto") {
+						return false;
+					}
+				} else if (asset.type !== type) {
+					return false;
+				}
+			}
 
 			// Liquidity filter
 			if (liquidity === "liquid" && !asset.isLiquid) return false;

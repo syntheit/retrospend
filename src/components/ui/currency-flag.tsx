@@ -27,26 +27,41 @@ interface CurrencyFlagProps {
 }
 
 export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
-	if (currencyCode === "BTC") {
-		return <Bitcoin className={cn("!h-6 !w-6 text-orange-500", className)} />;
+	// Detect if it's a crypto currency or unknown fiat
+	const isCrypto =
+		!CURRENCY_TO_FLAG[currencyCode] &&
+		(currencyCode.length > 3 || currencyCode.startsWith("X"));
+
+	if (isCrypto || currencyCode === "BTC" || currencyCode === "ETH") {
+		return (
+			<div
+				className={cn(
+					"flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+					currencyCode === "BTC"
+						? "bg-orange-500/10 text-orange-500"
+						: "bg-blue-500/10 text-blue-500",
+					className,
+				)}
+			>
+				{currencyCode === "BTC" ? (
+					<Bitcoin className="h-3.5 w-3.5" />
+				) : (
+					<Coins className="h-3.5 w-3.5" />
+				)}
+			</div>
+		);
 	}
 
-	if (currencyCode === "ETH") {
-		return <Coins className={cn("!h-6 !w-6 text-gray-500", className)} />;
-	}
-
-	// Try explicit mapping first, then fallback to first two letters for standard ISO currencies
-	// We avoid fallback for currencies starting with 'X' (usually international/metal/crypto)
-	const code =
-		CURRENCY_TO_FLAG[currencyCode] ||
-		(!currencyCode.startsWith("X") && currencyCode.length >= 2
-			? currencyCode.slice(0, 2).toLowerCase()
-			: null);
+	// Try explicit mapping first
+	const code = CURRENCY_TO_FLAG[currencyCode];
 
 	if (!code) {
 		return (
 			<span
-				className={cn("!h-6 !w-6 block rounded-full bg-muted", className)}
+				className={cn(
+					"!h-6 !w-6 block rounded-full bg-muted shrink-0",
+					className,
+				)}
 			/>
 		);
 	}

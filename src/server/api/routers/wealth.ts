@@ -250,7 +250,10 @@ export const wealthRouter = createTRPCRouter({
 			const targetCurrency = input?.currency ?? BASE_CURRENCY;
 			const wealthService = new WealthService(db);
 
-			return await wealthService.getDashboardSummary(session.user.id, targetCurrency);
+			return await wealthService.getDashboardSummary(
+				session.user.id,
+				targetCurrency,
+			);
 		}),
 	deleteAsset: protectedProcedure
 		.input(
@@ -302,11 +305,14 @@ export const wealthRouter = createTRPCRouter({
 			},
 		});
 
-		const rateMap = new Map<string, number>();
+		const rateMap = new Map<string, { rate: number; type: string | null }>();
 		for (const currency of currencies) {
 			const currencyRates = rates.filter((rate) => rate.currency === currency);
-			if (currencyRates.length > 0 && currencyRates[0]?.rate) {
-				rateMap.set(currency, toNumberWithDefault(currencyRates[0].rate));
+			if (currencyRates.length > 0 && currencyRates[0]) {
+				rateMap.set(currency, {
+					rate: toNumberWithDefault(currencyRates[0].rate),
+					type: currencyRates[0].type,
+				});
 			}
 		}
 
@@ -324,8 +330,12 @@ export const wealthRouter = createTRPCRouter({
 		];
 
 		const rows = assets.map((asset) => {
-			const rate = rateMap.get(asset.currency) || 1;
-			const balanceInUSD = toNumberWithDefault(asset.balance) / rate;
+			const rateData = rateMap.get(asset.currency) || { rate: 1, type: null };
+			const balance = toNumberWithDefault(asset.balance);
+			const balanceInUSD =
+				rateData.type === "crypto"
+					? balance * rateData.rate
+					: balance / rateData.rate;
 			return [
 				asset.name,
 				asset.type,

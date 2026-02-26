@@ -33,26 +33,27 @@ func calculateNextDueDate(current time.Time, frequency string) time.Time {
 	return next
 }
 
-func getBestExchangeRate(ctx context.Context, database *db.DB, currency string, date time.Time) (float64, error) {
+func getBestExchangeRate(ctx context.Context, database *db.DB, currency string, date time.Time) (float64, string, error) {
 	if currency == "USD" {
-		return 1.0, nil
+		return 1.0, "official", nil
 	}
 
 	var rate float64
+	var rateType string
 	err := database.Pool.QueryRow(ctx, `
-		SELECT rate FROM exchange_rate 
+		SELECT rate, type FROM exchange_rate 
 		WHERE currency = $1 AND date <= $2
 		ORDER BY 
-			CASE WHEN type = 'blue' THEN 0 WHEN type = 'official' THEN 1 ELSE 2 END,
+			CASE WHEN type = 'crypto' THEN 0 WHEN type = 'blue' THEN 1 WHEN type = 'official' THEN 2 ELSE 3 END,
 			date DESC
 		LIMIT 1
-	`, currency, date).Scan(&rate)
+	`, currency, date).Scan(&rate, &rateType)
 
 	if err != nil {
-		return 0, fmt.Errorf("no exchange rate found for %s: %w", currency, err)
+		return 0, "", fmt.Errorf("no exchange rate found for %s: %w", currency, err)
 	}
 
-	return rate, nil
+	return rate, rateType, nil
 }
 
 func ProcessRecurringExpenses(database *db.DB) error {
@@ -97,13 +98,18 @@ func ProcessRecurringExpenses(database *db.DB) error {
 
 	for _, template := range templates {
 		// Get exchange rate
-		exchangeRate, err := getBestExchangeRate(ctx, database, template.Currency, template.NextDueDate)
+		exchangeRate, rateType, err := getBestExchangeRate(ctx, database, template.Currency, template.NextDueDate)
 		if err != nil {
 			log.Printf("[RECURRING] Warning: %v, skipping template %s", err, template.ID)
 			continue
 		}
 
-		amountInUSD := template.Amount / exchangeRate
+		var amountInUSD float64
+		if rateType == "crypto" {
+			amountInUSD = template.Amount * exchangeRate
+		} else {
+			amountInUSD = template.Amount / exchangeRate
+		}
 
 		// Create expense
 		// Note: "userId", "categoryId", "amountInUSD", "exchangeRate", "pricingSource", "recurringTemplateId", etc

@@ -57,6 +57,24 @@ export const SMART_NO_DECIMAL_CURRENCIES = [
  * Automatically handles symbols, locale, and decimal digits based on currency.
  */
 /**
+ * Major cryptocurrencies that require special "Human Price" correction logic.
+ */
+export const MAJOR_CRYPTOS = [
+	"BTC",
+	"ETH",
+	"SOL",
+	"BNB",
+	"LTC",
+	"BCH",
+] as const;
+
+/**
+ * Checks if a currency is one of the major cryptocurrencies.
+ */
+export const isMajorCrypto = (currency: string) =>
+	(MAJOR_CRYPTOS as readonly string[]).includes(currency.toUpperCase());
+
+/**
  * Detects if a currency code is likely a cryptocurrency.
  * Currently checks if it's NOT in our list of standard fiat currencies.
  */

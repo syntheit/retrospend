@@ -65,12 +65,17 @@ export class StatsService {
 			}
 		}
 
-		const rate = (await getBestExchangeRate(this.db, homeCurrency, month)) ?? 1;
+		const bestRate = await getBestExchangeRate(this.db, homeCurrency, month);
+		const rate = bestRate?.rate ?? 1;
+		const isCrypto = bestRate?.type === "crypto";
 
 		const currentTotalUSD = Number(currentMonthAgg._sum.amountInUSD ?? 0);
 		const lastTotalUSD = Number(lastMonthAgg._sum.amountInUSD ?? 0);
 
-		const totalThisMonth = currentTotalUSD * rate;
+		// Convert from USD to homeCurrency
+		const totalThisMonth = isCrypto
+			? currentTotalUSD / rate
+			: currentTotalUSD * rate;
 		const changeVsLastMonth =
 			lastTotalUSD > 0
 				? ((currentTotalUSD - lastTotalUSD) / lastTotalUSD) * 100
@@ -81,7 +86,7 @@ export class StatsService {
 				? historicalTotals.reduce((a, b) => a + b, 0) / historicalTotals.length
 				: currentTotalUSD;
 
-		const projectedSpend = projectedUSD * rate;
+		const projectedSpend = isCrypto ? projectedUSD / rate : projectedUSD * rate;
 
 		// Daily average
 		const now = new Date();
@@ -137,7 +142,9 @@ export class StatsService {
 			},
 		});
 
-		const rate = (await getBestExchangeRate(this.db, homeCurrency, month)) ?? 1;
+		const bestRate = await getBestExchangeRate(this.db, homeCurrency, month);
+		const rate = bestRate?.rate ?? 1;
+		const isCrypto = bestRate?.type === "crypto";
 
 		const breakdown = categories
 			.map((c) => {
@@ -145,7 +152,9 @@ export class StatsService {
 				return {
 					id: c.categoryId ?? "uncategorized",
 					name: detail?.name ?? "Uncategorized",
-					value: Number(c._sum.amountInUSD ?? 0) * rate,
+					value: isCrypto
+						? Number(c._sum.amountInUSD ?? 0) / rate
+						: Number(c._sum.amountInUSD ?? 0) * rate,
 					color: detail?.color ?? undefined,
 				};
 			})
@@ -192,7 +201,9 @@ export class StatsService {
 				.map((c) => c.id),
 		);
 
-		const rate = (await getBestExchangeRate(this.db, homeCurrency, month)) ?? 1;
+		const bestRate = await getBestExchangeRate(this.db, homeCurrency, month);
+		const rate = bestRate?.rate ?? 1;
+		const isCrypto = bestRate?.type === "crypto";
 
 		const byDay = new Map<
 			string,
@@ -201,7 +212,9 @@ export class StatsService {
 
 		for (const agg of dailyAggs) {
 			const dayKey = format(agg.date, "yyyy-MM-dd");
-			const amount = Number(agg._sum.amountInUSD ?? 0) * rate;
+			const amount = isCrypto
+				? Number(agg._sum.amountInUSD ?? 0) / rate
+				: Number(agg._sum.amountInUSD ?? 0) * rate;
 			const isFixed = agg.categoryId && fixedCategoryIds.has(agg.categoryId);
 
 			const current = byDay.get(dayKey) ?? { total: 0, fixed: 0, variable: 0 };
@@ -262,11 +275,18 @@ export class StatsService {
 		});
 
 		// Get current exchange rate
-		const rate =
-			(await getBestExchangeRate(this.db, homeCurrency, new Date())) ?? 1;
+		const bestRate = await getBestExchangeRate(
+			this.db,
+			homeCurrency,
+			new Date(),
+		);
+		const rate = bestRate?.rate ?? 1;
+		const isCrypto = bestRate?.type === "crypto";
 
 		return {
-			totalSpent: Number(totalSpentAgg._sum.amountInUSD ?? 0) * rate,
+			totalSpent: isCrypto
+				? Number(totalSpentAgg._sum.amountInUSD ?? 0) / rate
+				: Number(totalSpentAgg._sum.amountInUSD ?? 0) * rate,
 			totalTransactions: totalSpentAgg._count,
 		};
 	}

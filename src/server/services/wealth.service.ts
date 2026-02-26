@@ -47,7 +47,7 @@ export class WealthService {
 		);
 
 		if (bestRate) {
-			return { rate: bestRate, rateType: "official" };
+			return { rate: bestRate.rate, rateType: bestRate.type };
 		}
 
 		// No rate found - throw error
@@ -71,6 +71,7 @@ export class WealthService {
 		balance: number,
 		rate: number,
 		currency: string,
+		rateType: string | null = null,
 	): number {
 		if (rate <= 0) {
 			throw new TRPCError({
@@ -79,14 +80,17 @@ export class WealthService {
 			});
 		}
 
+		// CRYPTO LOGIC: If it's a crypto rate, we MULTIPLY the balance by the rate (USD per Coin)
+		if (rateType === "crypto") {
+			return balance * rate;
+		}
+
 		let effectiveRate = rate;
 
-		// AUTO-INVERSION DETECTION
+		// FIAT AUTO-INVERSION DETECTION
 		// For many weak currencies (like ARS, BRL, CLP, PYG), the rate is > 1 (Units per USD).
 		// If we see a rate like 0.000699 for ARS, it's almost certainly inverted (1/1430).
-		// We detect this by seeing if dividing by the rate would make the USD balance
-		// significantly LARGER than the native balance for a non-USD currency.
-		// NOTE: This only applies to currencies we know are weaker than USD.
+		// NOTE: This only applies to fiat currencies we know are weaker than USD.
 		const isStrongCurrency = [
 			"GBP",
 			"EUR",
@@ -201,29 +205,44 @@ export class WealthService {
 			orderBy: [{ date: "desc" }, { type: "asc" }],
 		});
 
-		const ratesMap = new Map<string, number>();
-		ratesMap.set(BASE_CURRENCY, 1);
+		const ratesInfoMap = new Map<
+			string,
+			{ rate: number; type: string | null }
+		>();
+		ratesInfoMap.set(BASE_CURRENCY, { rate: 1, type: null });
 		const finalizedCurrencies = new Set<string>();
 
 		for (const r of allRates) {
 			if (finalizedCurrencies.has(r.currency)) continue;
 			// Sorting combined with early exit ensures best rate (date desc, type asc)
-			ratesMap.set(r.currency, toNumberWithDefault(r.rate));
+			ratesInfoMap.set(r.currency, {
+				rate: toNumberWithDefault(r.rate),
+				type: r.type,
+			});
 			finalizedCurrencies.add(r.currency);
 		}
 
 		// Validate and log missing rates
 		for (const currency of currencies) {
 			if (currency === BASE_CURRENCY) continue;
-			if (!ratesMap.has(currency)) {
+			if (!ratesInfoMap.has(currency)) {
 				console.warn(
 					`[WealthDashboard] Missing exchange rate for ${currency} on or before ${today.toISOString()}. Defaulting to 1.`,
 				);
-				ratesMap.set(currency, 1);
+				ratesInfoMap.set(currency, { rate: 1, type: null });
 			}
 		}
 
-		const targetRate = ratesMap.get(targetCurrency) ?? 1;
+		const targetRateData = ratesInfoMap.get(targetCurrency) ?? {
+			rate: 1,
+			type: null,
+		};
+		// Target conversion always assumes targetRate is Units per USD (fiat-style)
+		// unless the target currency itself is crypto, but dashboard usually displays in fiat.
+		const targetRate = targetRateData.rate;
+		const targetIsCrypto = targetRateData.type === "crypto";
+		const convertToTarget = (usdVal: number) =>
+			targetIsCrypto ? usdVal / (targetRate || 1) : usdVal * targetRate;
 
 		let totalNetWorthUSD = 0;
 		let totalAssetsUSD = 0;
@@ -233,27 +252,29 @@ export class WealthService {
 		let totalLiabilityBalanceUSD = 0;
 
 		const assetsWithUSD = assets.map((asset) => {
-			let rate = ratesMap.get(asset.currency) ?? null;
-			if (!rate) {
-				// Fallback to stored rate if live rate missing
-				rate = toNumberOrNull(asset.exchangeRate);
-			}
-			const effectiveRate = rate || 1;
+			const rateData = ratesInfoMap.get(asset.currency) || {
+				rate: toNumberOrNull(asset.exchangeRate) || 1,
+				type: asset.exchangeRateType || null,
+			};
 
 			let balanceInUSD = 0;
 			try {
 				balanceInUSD = this.calculateBalanceInUSD(
 					toNumberWithDefault(asset.balance),
-					effectiveRate,
+					rateData.rate,
 					asset.currency,
+					rateData.type,
 				);
 			} catch (e) {
 				console.error(
 					`[WealthDashboard] Error calculating balance for ${asset.name}:`,
 					e,
 				);
-				// Last resort fallback to raw division if service fails (though service is better)
-				balanceInUSD = toNumberWithDefault(asset.balance) / effectiveRate;
+				// Last resort fallback
+				balanceInUSD =
+					rateData.type === "crypto"
+						? toNumberWithDefault(asset.balance) * rateData.rate
+						: toNumberWithDefault(asset.balance) / rateData.rate;
 			}
 
 			const isLiability = asset.type.startsWith("LIABILITY_");
@@ -278,7 +299,7 @@ export class WealthService {
 				...asset,
 				balance: toNumberWithDefault(asset.balance),
 				balanceInUSD,
-				balanceInTargetCurrency: balanceInUSD * targetRate,
+				balanceInTargetCurrency: convertToTarget(balanceInUSD),
 			};
 		});
 
@@ -359,8 +380,8 @@ export class WealthService {
 			currency: string,
 			targetType: string | null,
 			dateStr: string,
-		): number | null => {
-			if (currency === BASE_CURRENCY) return 1;
+		): { rate: number; type: string | null } | null => {
+			if (currency === BASE_CURRENCY) return { rate: 1, type: null };
 			const rates = historicalRates.get(currency);
 			if (!rates || rates.length === 0) return null;
 
@@ -373,17 +394,21 @@ export class WealthService {
 
 			if (targetType) {
 				const match = ratesOnDate.find((r) => r.type === targetType);
-				if (match) return match.rate;
+				if (match) return { rate: match.rate, type: match.type };
 			}
 
-			// Fallback logic "Blue" > "Official" > Any
+			// Fallback logic "crypto" > "blue" > "official" > Any
+			const crypto = ratesOnDate.find((r) => r.type === "crypto");
+			if (crypto) return { rate: crypto.rate, type: crypto.type };
+
 			const blue = ratesOnDate.find((r) => r.type === "blue");
-			if (blue) return blue.rate;
+			if (blue) return { rate: blue.rate, type: blue.type };
 
 			const official = ratesOnDate.find((r) => r.type === "official");
-			if (official) return official.rate;
+			if (official) return { rate: official.rate, type: official.type };
 
-			return ratesOnDate[0]?.rate ?? null;
+			const first = ratesOnDate[0];
+			return first ? { rate: first.rate, type: first.type } : null;
 		};
 
 		const history: {
@@ -417,28 +442,32 @@ export class WealthService {
 				if (!asset) continue;
 
 				// Try to recalculate USD/Target value using historical rate
-				let histRate = getHistoricalRate(
+				let histRateData = getHistoricalRate(
 					asset.currency,
 					asset.exchangeRateType,
 					dateStr,
 				);
 
 				// Fallback to earliest available rate if history is missing for this currency
-				if (!histRate) {
+				if (!histRateData) {
 					const rates = historicalRates.get(asset.currency);
 					if (rates && rates.length > 0) {
 						// rates are sorted by date (earliest first) in the historicalRates map
-						histRate = rates[0]?.rate ?? null;
+						const first = rates[0];
+						if (first) {
+							histRateData = { rate: first.rate, type: first.type };
+						}
 					}
 				}
 
 				let balInUSD = 0;
-				if (histRate) {
+				if (histRateData) {
 					try {
 						balInUSD = this.calculateBalanceInUSD(
 							balNative,
-							histRate,
+							histRateData.rate,
 							asset.currency,
+							histRateData.type,
 						);
 					} catch (_e) {
 						// If service throws (sanity check failed), it means the rate is likely garbage
@@ -474,7 +503,7 @@ export class WealthService {
 				}
 
 				const isLiability = asset.type.startsWith("LIABILITY_");
-				const value = balInUSD * targetRate;
+				const value = convertToTarget(balInUSD);
 
 				if (isLiability) {
 					liabilitiesInTarget += value;
@@ -498,17 +527,17 @@ export class WealthService {
 		) {
 			history.push({
 				date: todayStr,
-				amount: totalNetWorthUSD * targetRate,
-				assets: totalAssetsUSD * targetRate,
-				liabilities: totalLiabilitiesUSD * targetRate,
+				amount: convertToTarget(totalNetWorthUSD),
+				assets: convertToTarget(totalAssetsUSD),
+				liabilities: convertToTarget(totalLiabilitiesUSD),
 			});
 		}
 
 		return {
-			totalNetWorth: totalNetWorthUSD * targetRate,
-			totalAssets: totalAssetsUSD * targetRate,
-			totalLiabilities: totalLiabilitiesUSD * targetRate,
-			totalLiquidAssets: totalLiquidAssetsUSD * targetRate,
+			totalNetWorth: convertToTarget(totalNetWorthUSD),
+			totalAssets: convertToTarget(totalAssetsUSD),
+			totalLiabilities: convertToTarget(totalLiabilitiesUSD),
+			totalLiquidAssets: convertToTarget(totalLiquidAssetsUSD),
 			weightedAPR,
 			assets: assetsWithUSD,
 			history,

@@ -189,7 +189,13 @@ export function createWealthColumns(
 						<div className="text-[10px] text-muted-foreground tabular-nums leading-tight">
 							{isPrivacyMode
 								? maskAmount(balance)
-								: formatCurrency(balance, currency)}
+								: row.original.exchangeRateType === "crypto"
+									? // High precision for crypto sub-text
+										`${new Intl.NumberFormat("en-US", {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 8,
+										}).format(balance)} ${currency}`
+									: formatCurrency(balance, currency)}
 						</div>
 					)}
 				</div>

@@ -8,8 +8,8 @@ export async function getBestExchangeRate(
 	db: PrismaClient,
 	currency: string,
 	date: Date,
-): Promise<number | null> {
-	if (currency === "USD") return 1;
+): Promise<{ rate: number; type: string } | null> {
+	if (currency === "USD") return { rate: 1, type: "official" };
 
 	const rates = await db.exchangeRate.findMany({
 		where: {
@@ -22,13 +22,19 @@ export async function getBestExchangeRate(
 
 	if (rates.length === 0) return null;
 
+	// Priority: crypto > blue > official
+	const cryptoRate = rates.find((r) => r.type === "crypto");
+	if (cryptoRate) return { rate: cryptoRate.rate.toNumber(), type: "crypto" };
+
 	const blueRate = rates.find((r) => r.type === "blue");
-	if (blueRate) return blueRate.rate.toNumber();
+	if (blueRate) return { rate: blueRate.rate.toNumber(), type: "blue" };
 
 	const officialRate = rates.find((r) => r.type === "official");
-	if (officialRate) return officialRate.rate.toNumber();
+	if (officialRate)
+		return { rate: officialRate.rate.toNumber(), type: "official" };
 
-	return rates[0]?.rate.toNumber() ?? null;
+	const first = rates[0];
+	return first ? { rate: first.rate.toNumber(), type: first.type } : null;
 }
 
 /**
@@ -47,14 +53,23 @@ export async function sumExpensesForCurrency(
 		select: { amount: true, currency: true, amountInUSD: true },
 	});
 
-	const rate = (await getBestExchangeRate(db, targetCurrency, date)) ?? 1;
+	const bestRate = await getBestExchangeRate(db, targetCurrency, date);
+	const rate = bestRate?.rate ?? 1;
+	const isCrypto = bestRate?.type === "crypto";
+
 	let total = 0;
 	let totalInUSD = 0;
 
 	for (const exp of expenses) {
 		const usd = Number(exp.amountInUSD);
 		totalInUSD += usd;
-		total += exp.currency === targetCurrency ? Number(exp.amount) : usd * rate;
+		if (exp.currency === targetCurrency) {
+			total += Number(exp.amount);
+		} else {
+			// If target is crypto, divide USD by rate (USD/Coin).
+			// If target is fiat, multiply USD by rate (Coin/USD).
+			total += isCrypto ? usd / rate : usd * rate;
+		}
 	}
 
 	return { total, totalInUSD };

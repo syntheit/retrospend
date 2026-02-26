@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
+import { isCryptoCurrency } from "~/lib/currency-conversion";
 import type { Prisma, PrismaClient } from "~prisma";
 import {
 	getBestExchangeRate,
@@ -53,7 +54,14 @@ export class ExpenseService {
 					input.date,
 				);
 				if (bestRate) {
-					exchangeRate = bestRate;
+					exchangeRate = bestRate.rate;
+					// If it's a crypto rate, we multiply to get USD. If fiat, we divide.
+					if (!amountInUSD) {
+						amountInUSD =
+							bestRate.type === "crypto"
+								? input.amount * exchangeRate
+								: input.amount / exchangeRate;
+					}
 				} else {
 					throw new TRPCError({
 						code: "BAD_REQUEST",
@@ -64,7 +72,10 @@ export class ExpenseService {
 		}
 
 		if (!amountInUSD) {
-			amountInUSD = input.amount / (exchangeRate ?? 1);
+			const isCrypto = isCryptoCurrency(input.currency);
+			amountInUSD = isCrypto
+				? input.amount * (exchangeRate ?? 1)
+				: input.amount / (exchangeRate ?? 1);
 		}
 
 		return await this.runInTransaction(async (tx) => {

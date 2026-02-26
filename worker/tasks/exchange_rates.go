@@ -128,11 +128,11 @@ func SyncExchangeRates(database *db.DB) error {
 			continue
 		}
 
-		// Convert Crypto = X USD into USD = Y Crypto (Option A)
+		// Store Crypto rates as-is (USD per coin) to avoid precision loss
 		rateEntries = append(rateEntries, ParsedRate{
 			Currency: currency,
 			Type:     "crypto",
-			Rate:     1 / rate,
+			Rate:     rate,
 		})
 	}
 

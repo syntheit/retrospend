@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isCrypto } from "./currency-format";
 import type { AssetType } from "./db-enums";
 import { toNumberOrNull, toNumberWithDefault } from "./decimal";
 
@@ -196,6 +197,10 @@ export function getExpenseDisplayRate(
  * Converts an expense amount to the target currency for display.
  * All expenses have amountInUSD, so we convert from USD to target currency.
  *
+ * Math Rubric (CRITICAL):
+ * - If target is Crypto: usdValue / cryptoRate (where rate is USD per Coin)
+ * - If target is Fiat: usdValue * fiatRate (where rate is Units per USD)
+ *
  * @param expense - The normalized expense
  * @param targetCurrency - The currency we want to display in
  * @param liveRateToTarget - The current exchange rate from USD to target currency
@@ -223,6 +228,9 @@ export function convertExpenseAmountForDisplay(
 		return expense.amountInUSD;
 	}
 
-	// Convert from USD to target currency
-	return expense.amountInUSD * rate;
+	// RUBRIC ENFORCEMENT:
+	// If target is crypto, divide USD by rate. If fiat, multiply.
+	return isCrypto(targetCurrency)
+		? expense.amountInUSD / rate
+		: expense.amountInUSD * rate;
 }

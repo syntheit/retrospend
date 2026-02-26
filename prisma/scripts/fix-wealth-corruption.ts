@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { isCrypto } from "~/lib/currency-format";
 import { getBestExchangeRate } from "~/server/api/routers/shared-currency";
 import { db as prisma } from "~/server/db";
 
@@ -21,9 +22,9 @@ async function main() {
 	const currencies = [...new Set(assets.map((a) => a.currency))];
 	for (const currency of currencies) {
 		if (currency === "USD") continue;
-		const rate = await getBestExchangeRate(prisma, currency, today);
-		if (rate) {
-			rates.set(currency, rate);
+		const rateResult = await getBestExchangeRate(prisma, currency, today);
+		if (rateResult) {
+			rates.set(currency, rateResult.rate);
 		}
 	}
 
@@ -54,7 +55,10 @@ async function main() {
 			continue;
 		}
 
-		const estimatedUSD = rawBalance / currentRate;
+		// RUBRIC: Cryptocurrencies: USD Value = Amount * Rate. Fiat Currencies: USD Value = Amount / Rate.
+		const estimatedUSD = isCrypto(snap.account.currency)
+			? rawBalance * currentRate
+			: rawBalance / currentRate;
 
 		/**
 		 * The "Magic Fix" logic from wealth.ts:

@@ -10,6 +10,8 @@ import { useSettings } from "~/hooks/use-settings";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
+import { isCrypto } from "~/lib/currency-format";
+
 import { api } from "~/trpc/react";
 
 export const expenseSchema = z.object({
@@ -132,13 +134,16 @@ export function useExpenseForm({
 		},
 	});
 
-	// Helper for currency conversion
-	const calculateHomeValue = (
+	// Helper for currency conversion to USD
+	const calculateUSDValue = (
 		amount: number | undefined,
 		rate: number | undefined,
 	): number => {
 		if (amount && amount > 0 && rate && rate > 0) {
-			return Math.round(amount * rate * 100) / 100;
+			const currency = watch("currency");
+			// RUBRIC: Fiat to USD = amount / rate. Crypto to USD = amount * rate.
+			const usdValue = isCrypto(currency) ? amount * rate : amount / rate;
+			return Math.round(usdValue * 100) / 100;
 		}
 		return 0;
 	};
@@ -160,8 +165,8 @@ export function useExpenseForm({
 	};
 
 	const handleAmountChange = (value: number) => {
-		const homeValue = calculateHomeValue(value, watchedExchangeRate);
-		setValue("amountInUSD", homeValue, { shouldDirty: true });
+		const usdValue = calculateUSDValue(value, watchedExchangeRate);
+		setValue("amountInUSD", usdValue, { shouldDirty: true });
 	};
 
 	const handleCurrencyChange = (currency: string) => {
@@ -192,8 +197,8 @@ export function useExpenseForm({
 		if (type) {
 			setValue("pricingSource", type, { shouldDirty: true });
 		}
-		const homeValue = calculateHomeValue(watchedAmount, rate);
-		setValue("amountInUSD", homeValue, { shouldDirty: true });
+		const usdValue = calculateUSDValue(watchedAmount, rate);
+		setValue("amountInUSD", usdValue, { shouldDirty: true });
 	};
 
 	// Manage navigation guard ref manually

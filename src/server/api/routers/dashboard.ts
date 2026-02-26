@@ -59,8 +59,13 @@ export const dashboardRouter = createTRPCRouter({
 				last24HoursSpend = total;
 			}
 
-			const homeCurrencyRate =
-				(await getBestExchangeRate(db, homeCurrency, selectedDate)) ?? 1;
+			const bestHomeRate = await getBestExchangeRate(
+				db,
+				homeCurrency,
+				selectedDate,
+			);
+			const homeCurrencyRate = bestHomeRate?.rate ?? 1;
+			const isHomeCrypto = bestHomeRate?.type === "crypto";
 
 			const detailedBudgets = await BudgetService.getBudgets(
 				db,
@@ -71,7 +76,9 @@ export const dashboardRouter = createTRPCRouter({
 
 			const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
 			const globalBudgetLimit = globalBudget
-				? globalBudget.effectiveAmountInUSD * homeCurrencyRate
+				? isHomeCrypto
+					? globalBudget.effectiveAmountInUSD / homeCurrencyRate
+					: globalBudget.effectiveAmountInUSD * homeCurrencyRate
 				: 0;
 
 			const categoryBudgets = detailedBudgets.filter(
@@ -93,11 +100,12 @@ export const dashboardRouter = createTRPCRouter({
 						b.category?.isFixed ||
 						FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? ""),
 				)
-				.reduce(
-					(sum: number, b: BudgetService.BudgetWithStats) =>
-						sum + b.effectiveAmountInUSD * homeCurrencyRate,
-					0,
-				);
+				.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+					const val = isHomeCrypto
+						? b.effectiveAmountInUSD / homeCurrencyRate
+						: b.effectiveAmountInUSD * homeCurrencyRate;
+					return sum + val;
+				}, 0);
 
 			const explicitVariableBudgetsSum = categoryBudgets
 				.filter(
@@ -107,11 +115,12 @@ export const dashboardRouter = createTRPCRouter({
 							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")
 						),
 				)
-				.reduce(
-					(sum: number, b: BudgetService.BudgetWithStats) =>
-						sum + b.effectiveAmountInUSD * homeCurrencyRate,
-					0,
-				);
+				.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+					const val = isHomeCrypto
+						? b.effectiveAmountInUSD / homeCurrencyRate
+						: b.effectiveAmountInUSD * homeCurrencyRate;
+					return sum + val;
+				}, 0);
 
 			// Calculate adjustment for pegged budgets to expand the global limit if used
 			// This ensures pegged expenses don't cause an "over budget" state in the global progress card
@@ -120,11 +129,12 @@ export const dashboardRouter = createTRPCRouter({
 					(b: BudgetService.BudgetWithStats) =>
 						b.type === "PEG_TO_ACTUAL" || b.pegToActual,
 				)
-				.reduce(
-					(sum: number, b: BudgetService.BudgetWithStats) =>
-						sum + b.actualSpendInUSD * homeCurrencyRate,
-					0,
-				);
+				.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+					const val = isHomeCrypto
+						? b.actualSpendInUSD / homeCurrencyRate
+						: b.actualSpendInUSD * homeCurrencyRate;
+					return sum + val;
+				}, 0);
 
 			// 2. Determine "Total Budget" for the month
 			// If no global budget limit is set, we use the sum of all category budgets as the total
@@ -151,10 +161,16 @@ export const dashboardRouter = createTRPCRouter({
 
 			// Get total spent and variable spent from the detailed budgets
 			const totalSpent = globalBudget
-				? globalBudget.actualSpendInUSD * homeCurrencyRate
+				? isHomeCrypto
+					? globalBudget.actualSpendInUSD / homeCurrencyRate
+					: globalBudget.actualSpendInUSD * homeCurrencyRate
 				: categoryBudgets.reduce(
-						(sum: number, b: BudgetService.BudgetWithStats) =>
-							sum + b.actualSpendInUSD * homeCurrencyRate,
+						(sum: number, b: BudgetService.BudgetWithStats) => {
+							const val = isHomeCrypto
+								? b.actualSpendInUSD / homeCurrencyRate
+								: b.actualSpendInUSD * homeCurrencyRate;
+							return sum + val;
+						},
 						0,
 					);
 
@@ -166,11 +182,12 @@ export const dashboardRouter = createTRPCRouter({
 							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")
 						),
 				)
-				.reduce(
-					(sum: number, b: BudgetService.BudgetWithStats) =>
-						sum + b.actualSpendInUSD * homeCurrencyRate,
-					0,
-				);
+				.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+					const val = isHomeCrypto
+						? b.actualSpendInUSD / homeCurrencyRate
+						: b.actualSpendInUSD * homeCurrencyRate;
+					return sum + val;
+				}, 0);
 
 			const user = await db.user.findUnique({
 				where: { id: session.user.id },
@@ -259,8 +276,13 @@ export const dashboardRouter = createTRPCRouter({
 					last24HoursSpend = total;
 				}
 
-				const homeCurrencyRate =
-					(await getBestExchangeRate(db, homeCurrency, selectedDate)) ?? 1;
+				const bestHomeRate = await getBestExchangeRate(
+					db,
+					homeCurrency,
+					selectedDate,
+				);
+				const homeCurrencyRate = bestHomeRate?.rate ?? 1;
+				const isHomeCrypto = bestHomeRate?.type === "crypto";
 
 				const detailedBudgets = await BudgetService.getBudgets(
 					db,
@@ -271,7 +293,9 @@ export const dashboardRouter = createTRPCRouter({
 
 				const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
 				const globalBudgetLimit = globalBudget
-					? globalBudget.effectiveAmountInUSD * homeCurrencyRate
+					? isHomeCrypto
+						? globalBudget.effectiveAmountInUSD / homeCurrencyRate
+						: globalBudget.effectiveAmountInUSD * homeCurrencyRate
 					: 0;
 
 				const categoryBudgets = detailedBudgets.filter(
@@ -292,11 +316,12 @@ export const dashboardRouter = createTRPCRouter({
 							b.category?.isFixed ||
 							FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? ""),
 					)
-					.reduce(
-						(sum: number, b: BudgetService.BudgetWithStats) =>
-							sum + b.effectiveAmountInUSD * homeCurrencyRate,
-						0,
-					);
+					.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+						const val = isHomeCrypto
+							? b.effectiveAmountInUSD / homeCurrencyRate
+							: b.effectiveAmountInUSD * homeCurrencyRate;
+						return sum + val;
+					}, 0);
 
 				const explicitVariableBudgetsSum = categoryBudgets
 					.filter(
@@ -306,22 +331,24 @@ export const dashboardRouter = createTRPCRouter({
 								FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")
 							),
 					)
-					.reduce(
-						(sum: number, b: BudgetService.BudgetWithStats) =>
-							sum + b.effectiveAmountInUSD * homeCurrencyRate,
-						0,
-					);
+					.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+						const val = isHomeCrypto
+							? b.effectiveAmountInUSD / homeCurrencyRate
+							: b.effectiveAmountInUSD * homeCurrencyRate;
+						return sum + val;
+					}, 0);
 
 				const peggedAdjustment = categoryBudgets
 					.filter(
 						(b: BudgetService.BudgetWithStats) =>
 							b.type === "PEG_TO_ACTUAL" || b.pegToActual,
 					)
-					.reduce(
-						(sum: number, b: BudgetService.BudgetWithStats) =>
-							sum + b.actualSpendInUSD * homeCurrencyRate,
-						0,
-					);
+					.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+						const val = isHomeCrypto
+							? b.actualSpendInUSD / homeCurrencyRate
+							: b.actualSpendInUSD * homeCurrencyRate;
+						return sum + val;
+					}, 0);
 
 				const totalBudget =
 					globalBudgetLimit > 0
@@ -343,10 +370,16 @@ export const dashboardRouter = createTRPCRouter({
 				}
 
 				const totalSpent = globalBudget
-					? globalBudget.actualSpendInUSD * homeCurrencyRate
+					? isHomeCrypto
+						? globalBudget.actualSpendInUSD / homeCurrencyRate
+						: globalBudget.actualSpendInUSD * homeCurrencyRate
 					: categoryBudgets.reduce(
-							(sum: number, b: BudgetService.BudgetWithStats) =>
-								sum + b.actualSpendInUSD * homeCurrencyRate,
+							(sum: number, b: BudgetService.BudgetWithStats) => {
+								const val = isHomeCrypto
+									? b.actualSpendInUSD / homeCurrencyRate
+									: b.actualSpendInUSD * homeCurrencyRate;
+								return sum + val;
+							},
 							0,
 						);
 
@@ -358,11 +391,12 @@ export const dashboardRouter = createTRPCRouter({
 								FIXED_NAMES.includes(b.category?.name.toLowerCase() ?? "")
 							),
 					)
-					.reduce(
-						(sum: number, b: BudgetService.BudgetWithStats) =>
-							sum + b.actualSpendInUSD * homeCurrencyRate,
-						0,
-					);
+					.reduce((sum: number, b: BudgetService.BudgetWithStats) => {
+						const val = isHomeCrypto
+							? b.actualSpendInUSD / homeCurrencyRate
+							: b.actualSpendInUSD * homeCurrencyRate;
+						return sum + val;
+					}, 0);
 
 				const user = await db.user.findUnique({
 					where: { id: userId },

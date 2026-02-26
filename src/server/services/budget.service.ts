@@ -154,13 +154,17 @@ export async function getBudgets(
 	}
 
 	// Cache for exchange rates to avoid repeated lookups
-	const rateCache = new Map<string, number>();
+	const rateCache = new Map<string, { rate: number; type: string | null }>();
 	const getCachedRate = async (currency: string, date: Date) => {
 		const cacheKey = `${currency}-${date.toISOString().slice(0, 7)}`;
-		if (rateCache.has(cacheKey)) return rateCache.get(cacheKey) as number;
-		const rate = (await getBestExchangeRate(db, currency, date)) ?? 1;
-		rateCache.set(cacheKey, rate);
-		return rate;
+		if (rateCache.has(cacheKey))
+			return rateCache.get(cacheKey) as { rate: number; type: string | null };
+		const bestRate = await getBestExchangeRate(db, currency, date);
+		const rateData = bestRate
+			? { rate: bestRate.rate, type: bestRate.type }
+			: { rate: 1, type: null };
+		rateCache.set(cacheKey, rateData);
+		return rateData;
 	};
 
 	return Promise.all(
@@ -169,7 +173,8 @@ export async function getBudgets(
 				budget.categoryId === null
 					? expenses
 					: (categoryExpensesMap.get(budget.categoryId) ?? []);
-			const rate = await getCachedRate(budget.currency, month);
+			const { rate, type } = await getCachedRate(budget.currency, month);
+			const isCrypto = type === "crypto";
 
 			let actualSpend = 0;
 			let actualSpendInUSD = 0;
@@ -177,12 +182,17 @@ export async function getBudgets(
 			for (const exp of catExpenses) {
 				const usd = Number(exp.amountInUSD);
 				actualSpendInUSD += usd;
-				actualSpend +=
-					exp.currency === budget.currency ? Number(exp.amount) : usd * rate;
+				if (exp.currency === budget.currency) {
+					actualSpend += Number(exp.amount);
+				} else {
+					// USD to Native: multiply for fiat, divide for crypto
+					actualSpend += isCrypto ? usd / rate : usd * rate;
+				}
 			}
 
 			const budgetAmount = toNumber(budget.amount);
-			const amountInUSD = rate > 0 ? budgetAmount / rate : budgetAmount;
+			// Native to USD: divide for fiat, multiply for crypto
+			const amountInUSD = isCrypto ? budgetAmount * rate : budgetAmount / rate;
 
 			let effectiveAmount = budgetAmount;
 			let effectiveAmountInUSD = amountInUSD;
@@ -205,10 +215,14 @@ export async function getBudgets(
 					for (const exp of lastMonthExpenses) {
 						const usd = Number(exp.amountInUSD);
 						lastMonthSpendInUSD += usd;
-						lastMonthSpend +=
-							exp.currency === budget.currency
-								? Number(exp.amount)
-								: usd * lastMonthRate;
+						if (exp.currency === budget.currency) {
+							lastMonthSpend += Number(exp.amount);
+						} else {
+							lastMonthSpend +=
+								lastMonthRate.type === "crypto"
+									? usd / lastMonthRate.rate
+									: usd * lastMonthRate.rate;
+						}
 					}
 
 					effectiveAmount = lastMonthSpend;
@@ -280,14 +294,20 @@ export async function getGlobalBudget(
 		globalBudget.currency,
 	);
 
-	const globalBudgetAmount = toNumber(globalBudget.amount);
-	const rate =
-		(await getBestExchangeRate(db, globalBudget.currency, new Date())) ?? 1;
-	const amountInUSD = rate > 0 ? globalBudgetAmount / rate : globalBudgetAmount;
+	const budgetAmount = toNumber(globalBudget.amount);
+	const bestRate = await getBestExchangeRate(
+		db,
+		globalBudget.currency,
+		new Date(),
+	);
+	const rate = bestRate?.rate ?? 1;
+	const isCrypto = bestRate?.type === "crypto";
+
+	const amountInUSD = isCrypto ? budgetAmount * rate : budgetAmount / rate;
 
 	return {
 		...globalBudget,
-		amount: globalBudgetAmount,
+		amount: budgetAmount,
 		amountInUSD,
 		actualSpend: totalSpendAsNumber,
 		rolloverAmount: toNumber(globalBudget.rolloverAmount),
