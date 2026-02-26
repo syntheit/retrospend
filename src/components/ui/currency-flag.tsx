@@ -52,8 +52,13 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 		);
 	}
 
-	// Try explicit mapping first
-	const code = CURRENCY_TO_FLAG[currencyCode];
+	// Try explicit mapping first, then fallback to first two letters for standard ISO currencies
+	// We avoid fallback for currencies starting with 'X' (usually international/metal/crypto)
+	const code =
+		CURRENCY_TO_FLAG[currencyCode] ||
+		(!currencyCode.startsWith("X") && currencyCode.length >= 2
+			? currencyCode.slice(0, 2).toLowerCase()
+			: null);
 
 	if (!code) {
 		return (
