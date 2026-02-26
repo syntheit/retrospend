@@ -14,8 +14,10 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+var Version = "0.1.1"
+
 func main() {
-	log.Println("Retrospend Worker starting...")
+	log.Printf("Retrospend Worker %s starting...", Version)
 
 	// Load configuration
 	cfg, err := config.Load()
