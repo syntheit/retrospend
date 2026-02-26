@@ -2,6 +2,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { useSession } from "~/hooks/use-session";
+import { isCrypto } from "~/lib/currency-format";
 import { api } from "~/trpc/react";
 
 export interface ExchangeRateRow {
@@ -115,12 +116,12 @@ export function useExchangeRatesController() {
 	}, [favoriteExchangeRates]);
 
 	const fiatRates = useMemo(
-		() => ratesWithFavorites.filter((r) => r.type !== "crypto"),
+		() => ratesWithFavorites.filter((r) => !isCrypto(r.currency)),
 		[ratesWithFavorites],
 	);
 
 	const cryptoRates = useMemo(
-		() => ratesWithFavorites.filter((r) => r.type === "crypto"),
+		() => ratesWithFavorites.filter((r) => isCrypto(r.currency)),
 		[ratesWithFavorites],
 	);
 
