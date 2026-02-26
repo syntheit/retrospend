@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	log.Println("🚀 Retrospend Worker starting...")
+	log.Println("Retrospend Worker starting...")
 
 	// Load configuration
 	cfg, err := config.Load()

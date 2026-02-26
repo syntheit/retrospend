@@ -21,14 +21,15 @@ const (
 )
 
 var (
-	validCurrency = regexp.MustCompile(`^[A-Z]{3}$`)
+	validCurrency = regexp.MustCompile(`^[A-Z]{3,10}$`)
 	validType     = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 )
 
 type OracleRatesResponse struct {
 	UpdatedAt string             `json:"updatedAt"`
 	Base      string             `json:"base"`
-	Rates     map[string]float64 `json:"rates"`
+	Rates       map[string]float64 `json:"rates"`
+	CryptoRates map[string]float64 `json:"cryptoRates"`
 }
 
 type ParsedRate struct {
@@ -87,8 +88,8 @@ func SyncExchangeRates(database *db.DB) error {
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
-	if data.Rates == nil {
-		return fmt.Errorf("invalid response: missing rates object")
+	if data.Rates == nil && data.CryptoRates == nil {
+		return fmt.Errorf("invalid response: missing both rates and cryptoRates objects")
 	}
 
 	// Parse and validate rates
@@ -117,6 +118,21 @@ func SyncExchangeRates(database *db.DB) error {
 			Currency: currency,
 			Type:     rateType,
 			Rate:     rate,
+		})
+	}
+
+	for currency, rate := range data.CryptoRates {
+		currency = strings.ToUpper(currency)
+		
+		if !validCurrency.MatchString(currency) || rate <= 0 {
+			continue
+		}
+
+		// Convert Crypto = X USD into USD = Y Crypto (Option A)
+		rateEntries = append(rateEntries, ParsedRate{
+			Currency: currency,
+			Type:     "crypto",
+			Rate:     1 / rate,
 		})
 	}
 
