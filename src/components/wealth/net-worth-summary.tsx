@@ -70,9 +70,23 @@ export function NetWorthSummary({
 		return totalLiquidAssets / averageMonthlySpend;
 	}, [totalLiquidAssets, averageMonthlySpend]);
 
-	const runwayValueMasked = isPrivacyMode
-		? "••••••"
-		: `${runwayMonths > 999 ? ">999" : Math.round(runwayMonths)} months`;
+	const runwayValueMasked = useMemo(() => {
+		if (isPrivacyMode) return "••••••";
+		if (runwayMonths === Infinity || runwayMonths > 1200) return ">100 years";
+
+		const totalMonths = Math.round(runwayMonths);
+		if (totalMonths <= 0) return "0 months";
+
+		const years = Math.floor(totalMonths / 12);
+		const months = totalMonths % 12;
+
+		const parts = [];
+		if (years > 0) parts.push(`${years} ${years === 1 ? "year" : "years"}`);
+		if (months > 0)
+			parts.push(`${months} ${months === 1 ? "month" : "months"}`);
+
+		return parts.join(" and ");
+	}, [runwayMonths, isPrivacyMode]);
 	const runwayTooltipText = isPrivacyMode
 		? "••••••"
 		: `${formatCurrency(averageMonthlySpend ?? 0, homeCurrency)}`;
