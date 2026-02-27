@@ -5,10 +5,13 @@ import {
 	IconCalendarClock,
 	// 	IconChartBar,
 	IconCurrencyDollar,
+	IconFileImport,
+	IconFolder,
 	IconHome,
 	IconPigMoney,
 	IconSettings,
 	IconTable,
+	IconUsersGroup,
 } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -35,41 +38,66 @@ type ExtendedUser = NonNullable<
 	username: string;
 };
 
-const navMain = [
+const navMainCategories = [
 	{
-		title: "Overview",
-		url: "/app",
-		icon: IconHome,
+		label: "Core",
+		items: [
+			{
+				title: "Overview",
+				url: "/app",
+				icon: IconHome,
+			},
+			{
+				title: "Transactions",
+				url: "/app/transactions",
+				icon: IconTable,
+			},
+			{
+				title: "Budget",
+				url: "/app/budget",
+				icon: IconPigMoney,
+			},
+			{
+				title: "Recurring",
+				url: "/app/recurring",
+				icon: IconCalendarClock,
+			},
+		],
 	},
 	{
-		title: "Transactions",
-		url: "/app/transactions",
-		icon: IconTable,
-	},
-	// {
-	// 	title: "Analytics",
-	// 	url: "/app/analytics",
-	// 	icon: IconChartBar,
-	// },
-	{
-		title: "Budget",
-		url: "/app/budget",
-		icon: IconPigMoney,
-	},
-	{
-		title: "Recurring",
-		url: "/app/recurring",
-		icon: IconCalendarClock,
+		label: "Workspaces",
+		items: [
+			{
+				title: "Shared Hub",
+				icon: IconUsersGroup,
+				isPlaceholder: true,
+			},
+			{
+				title: "Projects",
+				icon: IconFolder,
+				isPlaceholder: true,
+			},
+		],
 	},
 	{
-		title: "Exchange Rates",
-		url: "/app/exchange-rates",
-		icon: IconCurrencyDollar,
-	},
-	{
-		title: "Wealth",
-		url: "/app/wealth",
-		icon: IconBriefcase,
+		label: "Tools",
+		items: [
+			{
+				title: "Import",
+				url: "/app/import",
+				icon: IconFileImport,
+			},
+			{
+				title: "Wealth",
+				url: "/app/wealth",
+				icon: IconBriefcase,
+			},
+			{
+				title: "Exchange Rates",
+				url: "/app/exchange-rates",
+				icon: IconCurrencyDollar,
+			},
+		],
 	},
 ];
 
@@ -113,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<NavMain items={navMain} />
+				<NavMain categories={navMainCategories} />
 				<NavSecondary className="mt-auto" items={navSecondary} />
 			</SidebarContent>
 			<SidebarFooter className="pt-1">

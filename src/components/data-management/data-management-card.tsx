@@ -13,9 +13,9 @@ import {
 } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { api } from "~/trpc/react";
-import { BudgetsTab } from "./budgets-tab";
-import { ExpensesTab } from "./expenses-tab";
-import { WealthTab } from "./wealth-tab";
+import { BudgetsExportTab } from "./budgets-export-tab";
+import { ExpensesExportTab } from "./expenses-export-tab";
+import { WealthExportTab } from "./wealth-export-tab";
 
 function AllDataTab() {
 	const exportData = api.exportData.allData.useMutation();
@@ -48,27 +48,23 @@ function AllDataTab() {
 	};
 
 	return (
-		<div className="space-y-4 pt-4">
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="space-y-1">
-					<p className="font-medium">Export all user data</p>
-					<p className="text-muted-foreground text-sm">
-						Download your data (expenses, wealth, etc.) as CSV files in a ZIP
-						archive.
-					</p>
-				</div>
-				<Button
-					className="w-full sm:w-auto"
-					disabled={isExporting || exportData.isPending}
-					onClick={handleExport}
-					variant="outline"
-				>
-					{isExporting || exportData.isPending
-						? "Preparing..."
-						: "Download ZIP"}
-					<Download className="ml-2 h-4 w-4" />
-				</Button>
+		<div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+			<div className="space-y-1">
+				<p className="font-medium">Export all user data</p>
+				<p className="text-muted-foreground text-sm">
+					Download your data (expenses, wealth, etc.) as CSV files in a ZIP
+					archive.
+				</p>
 			</div>
+			<Button
+				className="w-full sm:w-auto"
+				disabled={isExporting || exportData.isPending}
+				onClick={handleExport}
+				variant="outline"
+			>
+				{isExporting || exportData.isPending ? "Preparing..." : "Download ZIP"}
+				<Download className="ml-2 h-4 w-4" />
+			</Button>
 		</div>
 	);
 }
@@ -78,10 +74,10 @@ export function DataManagementCard() {
 		<Card className="border-muted/50 shadow-lg">
 			<CardHeader className="pb-3">
 				<CardTitle className="font-bold text-2xl tracking-tight">
-					Data Management
+					Export Data
 				</CardTitle>
 				<CardDescription>
-					Import and export your financial data across different modules.
+					Download your financial data as CSV files.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -101,13 +97,13 @@ export function DataManagementCard() {
 						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="expenses">
-						<ExpensesTab />
+						<ExpensesExportTab />
 					</TabsContent>
 					<TabsContent value="budgets">
-						<BudgetsTab />
+						<BudgetsExportTab />
 					</TabsContent>
 					<TabsContent value="wealth">
-						<WealthTab />
+						<WealthExportTab />
 					</TabsContent>
 					<TabsContent value="alldata">
 						<AllDataTab />

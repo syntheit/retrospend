@@ -1,11 +1,9 @@
 "use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Button } from "~/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -61,32 +59,39 @@ export function InteractionCard() {
 		}
 	}, [settings, form]);
 
-	const onSubmit = async (values: InteractionValues) => {
-		if (!settings) return;
+	const onSubmit = useCallback(
+		async (values: InteractionValues) => {
+			if (!settings) return;
 
-		try {
-			await updateSettingsMutation.mutateAsync({
-				categoryClickBehavior: values.categoryClickBehavior,
-				currencySymbolStyle: values.currencySymbolStyle,
-				homeCurrency: settings.homeCurrency || "USD",
-				defaultCurrency: settings.defaultCurrency || "USD",
-				fontPreference: settings.fontPreference || "sans",
-				monthlyIncome: settings.monthlyIncome
-					? Number(settings.monthlyIncome)
-					: undefined,
-				smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
-			});
-			form.reset(values);
-			toast.success("Interaction settings saved!");
-		} catch (err) {
-			const errMsg =
-				err instanceof Error ? err.message : "Failed to save settings";
-			toast.error(errMsg);
-		}
-	};
+			try {
+				await updateSettingsMutation.mutateAsync({
+					categoryClickBehavior: values.categoryClickBehavior,
+					currencySymbolStyle: values.currencySymbolStyle,
+					homeCurrency: settings.homeCurrency || "USD",
+					defaultCurrency: settings.defaultCurrency || "USD",
+					monthlyIncome: settings.monthlyIncome
+						? Number(settings.monthlyIncome)
+						: undefined,
+					smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
+				});
+				form.reset(values);
+			} catch (err) {
+				const errMsg =
+					err instanceof Error ? err.message : "Failed to save settings";
+				toast.error(errMsg);
+			}
+		},
+		[settings, updateSettingsMutation, form],
+	);
 
-	const inputClass =
-		"bg-secondary/20 border-transparent hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-transparent transition-all";
+	useEffect(() => {
+		const subscription = form.watch(() => {
+			if (form.formState.isDirty) {
+				void form.handleSubmit(onSubmit)();
+			}
+		});
+		return () => subscription.unsubscribe();
+	}, [form, onSubmit]);
 
 	if (settingsLoading) {
 		return (
@@ -121,7 +126,7 @@ export function InteractionCard() {
 										value={field.value}
 									>
 										<FormControl>
-											<SelectTrigger className={inputClass}>
+											<SelectTrigger>
 												<SelectValue placeholder="Select behavior" />
 											</SelectTrigger>
 										</FormControl>
@@ -154,7 +159,7 @@ export function InteractionCard() {
 										value={field.value}
 									>
 										<FormControl>
-											<SelectTrigger className={inputClass}>
+											<SelectTrigger>
 												<SelectValue placeholder="Select style" />
 											</SelectTrigger>
 										</FormControl>
@@ -172,19 +177,6 @@ export function InteractionCard() {
 								</FormItem>
 							)}
 						/>
-
-						<div className="flex justify-end pt-2">
-							<Button
-								disabled={
-									!form.formState.isDirty || updateSettingsMutation.isPending
-								}
-								type="submit"
-							>
-								{updateSettingsMutation.isPending
-									? "Saving..."
-									: "Save Changes"}
-							</Button>
-						</div>
 					</form>
 				</Form>
 			</CardContent>

@@ -5,31 +5,10 @@ import { toast } from "sonner";
 import { type ParsedWealthRow, parseWealthCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
 import type { AssetType } from "~prisma";
-import { DataImportExport } from "./data-import-export";
+import { DataImport } from "./data-import";
 
-export function WealthTab() {
-	const exportMutation = api.wealth.exportCsv.useMutation();
+export function WealthImportTab() {
 	const importMutation = api.wealth.importAssets.useMutation();
-
-	const handleExport = async () => {
-		try {
-			const { csv } = await exportMutation.mutateAsync();
-			const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `wealth-${new Date().toISOString().slice(0, 10)}.csv`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
-			toast.success("Wealth data exported");
-		} catch (error: unknown) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to export wealth data",
-			);
-		}
-	};
 
 	const handleParseCsv = (
 		text: string,
@@ -105,8 +84,7 @@ export function WealthTab() {
 	}, []);
 
 	return (
-		<DataImportExport
-			description="Downloads all assets and liabilities as a CSV file."
+		<DataImport
 			formatInfo={
 				<p>
 					Required: <code className="text-primary">name</code>,{" "}
@@ -121,9 +99,7 @@ export function WealthTab() {
 					.
 				</p>
 			}
-			isExporting={exportMutation.isPending}
 			isImporting={importMutation.isPending}
-			onExport={handleExport}
 			onImport={handleImport}
 			parseCsv={handleParseCsv}
 			renderPreview={Preview}

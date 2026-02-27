@@ -80,7 +80,7 @@ export function CurrencyContextSection({
 				<Label htmlFor="amountInUSD">Amount in {homeCurrency}</Label>
 				<div
 					className={cn(
-						"flex h-9 w-full items-center gap-2 rounded-md border border-input bg-muted px-3 py-1 shadow-xs",
+						"flex h-9 w-full items-center gap-2 rounded-md border border-input bg-muted px-3 py-1 shadow-xs dark:bg-input/30",
 						errors.amountInUSD && "border-destructive",
 					)}
 				>

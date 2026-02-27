@@ -9,21 +9,21 @@ datasource db {
 }
 
 model User {
-  id                      String                        @id @default(cuid())
-  name                    String                        @db.VarChar(191)
-  username                String                        @unique @db.VarChar(64)
-  email                   String                        @unique @db.VarChar(255)
-  emailVerified           Boolean                       @default(false)
-  image                   String?                       @db.VarChar(2048)
-  homeCurrency            String                        @default("USD")
-  categoryClickBehavior   CategoryClickBehavior         @default(toggle)
-  budgetMode              BudgetMode                    @default(GLOBAL_LIMIT)
-  role                    UserRole                      @default(USER)
-  isActive                Boolean                       @default(true)
-  createdAt               DateTime                      @default(now())
-  updatedAt               DateTime                      @default(now()) @updatedAt
-  defaultCurrency         String                        @default("USD")
-  fontPreference          FontPreference                @default(sans)
+  id                    String                @id @default(cuid())
+  name                  String                @db.VarChar(191)
+  username              String                @unique @db.VarChar(64)
+  email                 String                @unique @db.VarChar(255)
+  emailVerified         Boolean               @default(false)
+  image                 String?               @db.VarChar(2048)
+  homeCurrency          String                @default("USD")
+  categoryClickBehavior CategoryClickBehavior @default(toggle)
+  budgetMode            BudgetMode            @default(GLOBAL_LIMIT)
+  role                  UserRole              @default(USER)
+  isActive              Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @default(now()) @updatedAt
+  defaultCurrency       String                @default("USD")
+
   currencySymbolStyle     CurrencySymbolStyle           @default(standard)
   monthlyIncome           Decimal?                      @db.Decimal(10, 2)
   smartCurrencyFormatting Boolean                       @default(true)
@@ -43,6 +43,7 @@ model User {
 
   twoFactorEnabled Boolean?    @default(false)
   twofactors       TwoFactor[]
+  eventLogs        EventLog[]
 
   @@map("user")
 }
@@ -346,11 +347,6 @@ enum CategoryClickBehavior {
   toggle
 }
 
-enum FontPreference {
-  sans
-  mono
-}
-
 enum CurrencySymbolStyle {
   native
   standard
@@ -408,6 +404,24 @@ enum Page {
   EXPENSE
 }
 
+enum EventType {
+  FAILED_LOGIN
+  SUCCESSFUL_LOGIN
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+  ACCOUNT_CREATED
+  ACCOUNT_DELETED
+  ACCOUNT_ENABLED
+  ACCOUNT_DISABLED
+  INVITE_USED
+  INVITE_CREATED
+  EMAIL_VERIFIED
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  SETTINGS_UPDATED
+  USER_UPDATED
+}
+
 model UserPageSetting {
   id       String @id @default(cuid())
   userId   String
@@ -449,4 +463,20 @@ model TwoFactor {
   @@index([secret])
   @@index([userId])
   @@map("twoFactor")
+}
+
+model EventLog {
+  id        String    @id @default(cuid())
+  timestamp DateTime  @default(now())
+  eventType EventType
+  userId    String?
+  ipAddress String?   @db.VarChar(255)
+  userAgent String?   @db.VarChar(255)
+  metadata  Json?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp])
+  @@index([userId])
+  @@index([eventType])
+  @@map("event_log")
 }

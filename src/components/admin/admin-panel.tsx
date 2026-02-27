@@ -19,6 +19,7 @@ import { useSession } from "~/hooks/use-session";
 import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { api } from "~/trpc/react";
 import { ActionDialog } from "./action-dialog";
+import { AuditLogsTable } from "./audit-logs-table";
 import { InviteCodesTable } from "./invite-codes-table";
 import { SystemStatusCard } from "./system-status-card";
 import { UsersTable } from "./users-table";
@@ -419,6 +420,8 @@ export function AdminPanel() {
             pagination={inviteCodesData?.pagination}
             status={inviteCodesStatus}
           />
+
+          <AuditLogsTable />
         </div>
       </PageContent>
 

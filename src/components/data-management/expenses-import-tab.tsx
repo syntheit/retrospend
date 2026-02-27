@@ -10,15 +10,14 @@ import { parseRawCsv } from "~/lib/csv";
 import { ExpenseImportSchema } from "~/lib/schemas/data-import";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
-import { DataImportExport } from "./data-import-export";
+import { DataImport } from "./data-import";
 
-export function ExpensesTab() {
+export function ExpensesImportTab() {
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const { data: settings } = api.settings.getGeneral.useQuery();
 	const { data: categories } = api.categories.getAll.useQuery();
 
-	const exportMutation = api.expense.exportCsv.useMutation();
 	const importMutation = api.expense.importExpenses.useMutation();
 
 	const categoryLookup = useMemo(() => {
@@ -29,34 +28,9 @@ export function ExpensesTab() {
 		return map;
 	}, [categories]);
 
-	const handleExport = async () => {
-		try {
-			const { csv } = await exportMutation.mutateAsync({});
-			const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
-			toast.success("CSV exported");
-		} catch (error: unknown) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to export CSV",
-			);
-		}
-	};
-
-	// Helper to normalize keys slightly (e.g. "Amount" -> "amount")
-	// This is simple; for more complex header mapping (e.g. "Cost" -> "amount"), we'd need a map.
 	const normalizeKeys = (row: Record<string, string>) => {
 		const newRow: Record<string, unknown> = {};
 		for (const [key, value] of Object.entries(row)) {
-			// standard normalization: lowercase, remove spaces?
-			// parseRawCsv already lowercases headers.
-			// Let's manually map to schema keys for the known ones.
 			const k = key.toLowerCase().replace(/\s+/g, "");
 			if (k === "amountinusd") newRow.amountInUSD = value;
 			else if (k === "exchangerate") newRow.exchangeRate = value;
@@ -68,7 +42,7 @@ export function ExpensesTab() {
 			else if (k === "amount") newRow.amount = value;
 			else if (k === "currency") newRow.currency = value;
 			else if (k === "date") newRow.date = value;
-			else newRow[key] = value; // keep extra
+			else newRow[key] = value;
 		}
 		return newRow;
 	};
@@ -83,20 +57,17 @@ export function ExpensesTab() {
 		const parseResult = z.array(ExpenseImportSchema).safeParse(normalizedData);
 
 		if (!parseResult.success) {
-			// Format Zod errors
 			const formattedErrors: string[] = parseResult.error.errors.map((err) => {
 				const rowIdx = (err.path[0] as number) + 1;
 				const field = err.path[1];
 				return `Row ${rowIdx}: ${field} - ${err.message}`;
 			});
-			// Deduplicate and slice if too many
 			return {
 				rows: [],
 				errors: Array.from(new Set(formattedErrors)).slice(0, 10),
 			};
 		}
 
-		// Now transform to NormalizedExpense
 		const enrichedRows: NormalizedExpense[] = parseResult.data.map((row) => {
 			const matchedCategory = row.category
 				? categoryLookup.get(row.category.toLowerCase())
@@ -197,8 +168,7 @@ export function ExpensesTab() {
 	}, [homeCurrency, formatCurrency]);
 
 	return (
-		<DataImportExport
-			description="Downloads all finalized expenses as a CSV file."
+		<DataImport
 			formatInfo={
 				<p>
 					Required columns: <code className="text-primary">title</code>,{" "}
@@ -211,9 +181,7 @@ export function ExpensesTab() {
 					<code className="text-primary">YYYY-MM-DD</code>.
 				</p>
 			}
-			isExporting={exportMutation.isPending}
 			isImporting={importMutation.isPending}
-			onExport={handleExport}
 			onImport={handleImport}
 			parseCsv={handleParseCsv}
 			renderPreview={Preview}

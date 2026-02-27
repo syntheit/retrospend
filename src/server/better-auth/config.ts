@@ -9,6 +9,7 @@ import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import { db } from "~/server/db";
 import { sendEmail } from "~/server/mailer";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
+import { logEventAsync } from "~/server/services/audit.service";
 
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
@@ -88,10 +89,11 @@ export const auth = betterAuth({
 					// Check if invite-only mode is enabled
 					const inviteOnlyEnabled = await isInviteOnlyEnabled();
 
+					let inviteCode: string | undefined;
 					if (inviteOnlyEnabled) {
 						// Mark invite code as used
 						const headersList = await headers();
-						const inviteCode = headersList
+						inviteCode = headersList
 							.get("cookie")
 							?.split(";")
 							.find((c) => c.trim().startsWith("retro_invite_code="))
@@ -162,6 +164,38 @@ export const auth = betterAuth({
 							`<p>Welcome to Retrospend! Click the link below to verify your email address:</p><a href="${verifyUrl}">Verify Email</a>`,
 						);
 					}
+
+					// Log account creation and invite usage
+					const headersList = await headers();
+					const ipAddress = headersList.get("x-forwarded-for") ?? undefined;
+					const userAgent = headersList.get("user-agent") ?? undefined;
+
+					logEventAsync({
+						eventType: "ACCOUNT_CREATED",
+						userId: user.id,
+						ipAddress,
+						userAgent,
+						metadata: {
+							username: user.username as string,
+							email: user.email,
+							role: user.role as string,
+						},
+					});
+
+					// Log invite usage if invite code was used
+					if (inviteCode) {
+						logEventAsync({
+							eventType: "INVITE_USED",
+							userId: user.id,
+							ipAddress,
+							userAgent,
+							metadata: {
+								inviteCode,
+								username: user.username as string,
+								email: user.email,
+							},
+						});
+					}
 				},
 			},
 		},
@@ -177,6 +211,21 @@ export const auth = betterAuth({
 					if (!user?.isActive) {
 						throw new Error("Account is deactivated");
 					}
+				},
+				after: async (session) => {
+					// Log successful login
+					const headersList = await headers();
+					logEventAsync({
+						eventType: "SUCCESSFUL_LOGIN",
+						userId: session.userId,
+						ipAddress:
+							session.ipAddress ?? headersList.get("x-forwarded-for") ?? undefined,
+						userAgent:
+							session.userAgent ?? headersList.get("user-agent") ?? undefined,
+						metadata: {
+							sessionId: session.id,
+						},
+					});
 				},
 			},
 		},

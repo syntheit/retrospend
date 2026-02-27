@@ -6,6 +6,7 @@ import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { sendEmail } from "~/server/mailer";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
+import { logEventAsync } from "~/server/services/audit.service";
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -15,6 +16,73 @@ export const adminRouter = createTRPCRouter({
 
 		return { userCount };
 	}),
+
+	getAuditLogPrivacyMode: adminProcedure.query(() => {
+		const mode = (process.env.AUDIT_PRIVACY_MODE || "minimal") as
+			| "minimal"
+			| "anonymized"
+			| "full";
+		return { mode };
+	}),
+
+	getEventLogs: adminProcedure
+		.input(
+			z.object({
+				limit: z.number().min(1).max(100).default(50),
+				offset: z.number().min(0).default(0),
+				eventType: z
+					.enum([
+						"FAILED_LOGIN",
+						"SUCCESSFUL_LOGIN",
+						"PASSWORD_RESET",
+						"PASSWORD_CHANGED",
+						"ACCOUNT_CREATED",
+						"ACCOUNT_DELETED",
+						"ACCOUNT_ENABLED",
+						"ACCOUNT_DISABLED",
+						"INVITE_USED",
+						"INVITE_CREATED",
+						"EMAIL_VERIFIED",
+						"TWO_FACTOR_ENABLED",
+						"TWO_FACTOR_DISABLED",
+						"SETTINGS_UPDATED",
+						"USER_UPDATED",
+					])
+					.optional(),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+
+			const where = input.eventType ? { eventType: input.eventType } : {};
+
+			const [logs, total] = await Promise.all([
+				db.eventLog.findMany({
+					where,
+					include: {
+						user: {
+							select: {
+								id: true,
+								username: true,
+								email: true,
+							},
+						},
+					},
+					orderBy: {
+						timestamp: "desc",
+					},
+					take: input.limit,
+					skip: input.offset,
+				}),
+				db.eventLog.count({ where }),
+			]);
+
+			return {
+				logs,
+				total,
+				hasMore: input.offset + input.limit < total,
+			};
+		}),
 
 	listUsers: adminProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
@@ -74,7 +142,12 @@ export const adminRouter = createTRPCRouter({
 	resetPassword: adminProcedure
 		.input(z.object({ userId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			const { db } = ctx;
+			const { db, session } = ctx;
+
+			const targetUser = await db.user.findUnique({
+				where: { id: input.userId },
+				select: { email: true, username: true },
+			});
 
 			const newPassword = Math.random().toString(36).substring(2, 10);
 			const hashedPassword = await hashPassword(newPassword);
@@ -96,6 +169,17 @@ export const adminRouter = createTRPCRouter({
 				});
 			}
 
+			// Log the password reset
+			logEventAsync({
+				eventType: "PASSWORD_RESET",
+				userId: input.userId,
+				metadata: {
+					resetBy: session.user.id,
+					resetByUsername: session.user.username,
+					targetUsername: targetUser?.username,
+				},
+			});
+
 			return {
 				success: true,
 				newPassword,
@@ -114,9 +198,21 @@ export const adminRouter = createTRPCRouter({
 				});
 			}
 
-			await db.user.update({
+			const user = await db.user.update({
 				where: { id: input.userId },
 				data: { isActive: false },
+				select: { username: true },
+			});
+
+			// Log the account disable
+			logEventAsync({
+				eventType: "ACCOUNT_DISABLED",
+				userId: input.userId,
+				metadata: {
+					disabledBy: session.user.id,
+					disabledByUsername: session.user.username,
+					targetUsername: user.username,
+				},
 			});
 
 			return { success: true };
@@ -125,11 +221,23 @@ export const adminRouter = createTRPCRouter({
 	enableUser: adminProcedure
 		.input(z.object({ userId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			const { db } = ctx;
+			const { db, session } = ctx;
 
-			await db.user.update({
+			const user = await db.user.update({
 				where: { id: input.userId },
 				data: { isActive: true },
+				select: { username: true },
+			});
+
+			// Log the account enable
+			logEventAsync({
+				eventType: "ACCOUNT_ENABLED",
+				userId: input.userId,
+				metadata: {
+					enabledBy: session.user.id,
+					enabledByUsername: session.user.username,
+					targetUsername: user.username,
+				},
 			});
 
 			return { success: true };
@@ -151,12 +259,26 @@ export const adminRouter = createTRPCRouter({
 	toggleEmailVerification: adminProcedure
 		.input(z.object({ userId: z.string(), verified: z.boolean() }))
 		.mutation(async ({ ctx, input }) => {
-			const { db } = ctx;
+			const { db, session } = ctx;
 
-			await db.user.update({
+			const user = await db.user.update({
 				where: { id: input.userId },
 				data: { emailVerified: input.verified },
+				select: { username: true },
 			});
+
+			// Log email verification change (only when verified becomes true)
+			if (input.verified) {
+				logEventAsync({
+					eventType: "EMAIL_VERIFIED",
+					userId: input.userId,
+					metadata: {
+						verifiedBy: session.user.id,
+						verifiedByUsername: session.user.username,
+						targetUsername: user.username,
+					},
+				});
+			}
 
 			return { success: true };
 		}),
@@ -173,8 +295,25 @@ export const adminRouter = createTRPCRouter({
 				});
 			}
 
+			const user = await db.user.findUnique({
+				where: { id: input.userId },
+				select: { username: true, email: true },
+			});
+
 			await db.user.delete({
 				where: { id: input.userId },
+			});
+
+			// Log the account deletion
+			logEventAsync({
+				eventType: "ACCOUNT_DELETED",
+				userId: input.userId,
+				metadata: {
+					deletedBy: session.user.id,
+					deletedByUsername: session.user.username,
+					targetUsername: user?.username,
+					targetEmail: user?.email,
+				},
 			});
 
 			return { success: true };

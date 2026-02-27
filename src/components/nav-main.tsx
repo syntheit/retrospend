@@ -7,18 +7,24 @@ import { useExpenseModal } from "~/components/expense-modal-provider";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
+	SidebarGroupLabel,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "~/components/ui/sidebar";
 
 export function NavMain({
-	items,
+	categories,
 }: {
-	items: {
-		title: string;
-		url: string;
-		icon?: Icon;
+	categories: {
+		label: string;
+		subtext?: string;
+		items: {
+			title: string;
+			url?: string;
+			icon?: Icon;
+			isPlaceholder?: boolean;
+		}[];
 	}[];
 }) {
 	const pathname = usePathname();
@@ -44,23 +50,48 @@ export function NavMain({
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
-				<SidebarMenu>
-					{items.map((item) => (
-						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton
-								asChild
-								className={`h-10 px-4 py-4 text-base [&>svg]:size-5 ${pathname === item.url ? "bg-sidebar-accent" : ""}`}
-								size="lg"
-								tooltip={item.title}
-							>
-								<Link href={item.url}>
-									{item.icon && <item.icon />}
-									<span>{item.title}</span>
-								</Link>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					))}
-				</SidebarMenu>
+
+				{categories.map((category) => (
+					<div key={category.label} className="flex flex-col gap-1">
+						<SidebarGroupLabel className="px-2 pt-2 text-muted-foreground text-xs">
+							{category.label}
+							{category.subtext && (
+								<span className="ml-1 font-normal opacity-70">
+									{category.subtext}
+								</span>
+							)}
+						</SidebarGroupLabel>
+						<SidebarMenu>
+							{category.items.map((item) => (
+								<SidebarMenuItem key={item.title}>
+									{item.isPlaceholder ? (
+										<SidebarMenuButton
+											className="h-10 cursor-not-allowed px-4 py-4 text-base opacity-50 [&>svg]:size-5"
+											size="lg"
+											tooltip={`${item.title} (Coming Soon)`}
+											disabled
+										>
+											{item.icon && <item.icon />}
+											<span>{item.title}</span>
+										</SidebarMenuButton>
+									) : (
+										<SidebarMenuButton
+											asChild
+											className={`h-10 px-4 py-4 text-base [&>svg]:size-5 ${pathname === item.url ? "bg-sidebar-accent" : ""}`}
+											size="lg"
+											tooltip={item.title}
+										>
+											<Link href={item.url!}>
+												{item.icon && <item.icon />}
+												<span>{item.title}</span>
+											</Link>
+										</SidebarMenuButton>
+									)}
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</div>
+				))}
 			</SidebarGroupContent>
 		</SidebarGroup>
 	);

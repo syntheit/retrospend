@@ -57,9 +57,6 @@ export function PasswordForm() {
 		});
 	};
 
-	const inputClass =
-		"bg-secondary/20 border-transparent hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-transparent transition-all";
-
 	return (
 		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
@@ -84,12 +81,7 @@ export function PasswordForm() {
 										Current Password
 									</FormLabel>
 									<FormControl>
-										<Input
-											className={inputClass}
-											placeholder="••••••••"
-											type="password"
-											{...field}
-										/>
+										<Input placeholder="••••••••" type="password" {...field} />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -106,7 +98,6 @@ export function PasswordForm() {
 									</FormLabel>
 									<FormControl>
 										<Input
-											className={inputClass}
 											placeholder="Enter new password"
 											type="password"
 											{...field}

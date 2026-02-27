@@ -1,13 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { useThemeContext } from "~/components/theme-provider";
-import { Button } from "~/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -47,7 +46,6 @@ const currencyCodeSchema = z
 const appPreferencesSchema = z.object({
 	homeCurrency: currencyCodeSchema,
 	defaultCurrency: currencyCodeSchema,
-	fontPreference: z.enum(["sans", "mono"]),
 	monthlyIncome: z.string().optional(),
 	smartCurrencyFormatting: z.boolean(),
 	defaultPrivacyMode: z.boolean(),
@@ -68,7 +66,6 @@ export function AppPreferencesCard() {
 		defaultValues: {
 			homeCurrency: "USD",
 			defaultCurrency: "USD",
-			fontPreference: "sans",
 			monthlyIncome: "",
 			smartCurrencyFormatting: true,
 			defaultPrivacyMode: false,
@@ -83,10 +80,6 @@ export function AppPreferencesCard() {
 					(settings.defaultCurrency as CurrencyCode) ||
 					(settings.homeCurrency as CurrencyCode) ||
 					"USD",
-				fontPreference:
-					(settings.fontPreference as "sans" | "mono") ||
-					(localStorage.getItem("fontPreference") as "sans" | "mono") ||
-					"sans",
 				monthlyIncome: settings.monthlyIncome
 					? settings.monthlyIncome.toString()
 					: "",
@@ -96,61 +89,52 @@ export function AppPreferencesCard() {
 		}
 	}, [settings, form]);
 
-	const fontPreference = form.watch("fontPreference");
+	const onSubmit = useCallback(
+		async (values: AppPreferencesValues) => {
+			try {
+				const monthlyIncomeValue = values.monthlyIncome?.trim()
+					? parseFloat(values.monthlyIncome)
+					: undefined;
+
+				if (!settings) return;
+
+				await updateSettingsMutation.mutateAsync({
+					homeCurrency: values.homeCurrency,
+					defaultCurrency: values.defaultCurrency,
+					monthlyIncome: monthlyIncomeValue,
+					smartCurrencyFormatting: values.smartCurrencyFormatting,
+					defaultPrivacyMode: values.defaultPrivacyMode,
+					categoryClickBehavior: settings.categoryClickBehavior || "toggle",
+					currencySymbolStyle: settings.currencySymbolStyle || "standard",
+				});
+
+				form.reset(values);
+			} catch (err) {
+				const errMsg =
+					err instanceof Error ? err.message : "Failed to save settings";
+				toast.error(errMsg);
+			}
+		},
+		[settings, updateSettingsMutation, form],
+	);
+
 	useEffect(() => {
-		const root = document.documentElement;
-		root.classList.remove("font-sans", "font-mono");
-		root.classList.add(`font-${fontPreference}`);
-		try {
-			localStorage.setItem("fontPreference", fontPreference);
-		} catch {
-			// ignore storage failures
-		}
-	}, [fontPreference]);
-
-	const onSubmit = async (values: AppPreferencesValues) => {
-		try {
-			const monthlyIncomeValue = values.monthlyIncome?.trim()
-				? parseFloat(values.monthlyIncome)
-				: undefined;
-
-			// We need to pass all required fields to updateGeneral, reusing existing values for others if needed
-			// However, ideally the backend allows partial updates. Checking backend definition is out of scope/extra step.
-			// Assuming updateGeneral might require other fields or gracefully handle partials if we casts.
-			// Let's safe-guard by using `settings` for missing fields if we have to,
-			// but best practice is the mutation accepts partials.
-			// Checking `generalSettingsSchema` in `general-settings.tsx`, it implied a full object might be needed
-			// if it was the same z.object used for validation.
-			// Re-reading `general-settings.tsx`, `updateSettingsMutation.mutateAsync` calls with explicit fields.
-			// If the backend accepts partials we are good. If not, we need the other values.
-			// To be safe, we should probably fetch the other values or include them as hidden fields if strict.
-			// BUT, `settings` is available here. So we can merge.
-
-			if (!settings) return;
-
-			await updateSettingsMutation.mutateAsync({
-				homeCurrency: values.homeCurrency,
-				defaultCurrency: values.defaultCurrency,
-				fontPreference: values.fontPreference,
-				monthlyIncome: monthlyIncomeValue,
-				smartCurrencyFormatting: values.smartCurrencyFormatting,
-				defaultPrivacyMode: values.defaultPrivacyMode,
-				categoryClickBehavior: settings.categoryClickBehavior || "toggle",
-				currencySymbolStyle: settings.currencySymbolStyle || "standard",
-			});
-
-			form.reset(values);
-			toast.success("App preferences saved!");
-		} catch (err) {
-			const errMsg =
-				err instanceof Error ? err.message : "Failed to save settings";
-			toast.error(errMsg);
-		}
-	};
+		let timeoutId: NodeJS.Timeout;
+		const subscription = form.watch(() => {
+			if (form.formState.isDirty) {
+				if (timeoutId) clearTimeout(timeoutId);
+				timeoutId = setTimeout(() => {
+					void form.handleSubmit(onSubmit)();
+				}, 1000);
+			}
+		});
+		return () => {
+			subscription.unsubscribe();
+			if (timeoutId) clearTimeout(timeoutId);
+		};
+	}, [form, onSubmit]);
 
 	// Styles for inputs
-	const inputClass =
-		"bg-secondary/20 border-transparent hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-transparent transition-all";
 
 	if (settingsLoading) {
 		return (
@@ -183,24 +167,11 @@ export function AppPreferencesCard() {
 									<FormItem>
 										<FormLabel>Base Currency</FormLabel>
 										<FormControl>
-											{/* CurrencyPicker likely uses a Button trigger, we might need to pass className to it if it supports it, 
-                                                or wrap it. Looking at usage in general-settings, it just takes props. 
-                                                I'll assume I can't easily style the trigger without modifying CurrencyPicker.
-                                                However, the user asked to update "Select, Input, and Textarea". CurrencyPicker is a Popover/Command combo typically.
-                                                If it uses a Button trigger, I might need to check if it accepts className.
-                                            */}
-											<div
-												className={cn(
-													"rounded-md transition-all focus-within:ring-2 focus-within:ring-primary/20",
-													inputClass,
-												)}
-											>
-												<CurrencyPicker
-													onValueChange={field.onChange}
-													placeholder="Select currency"
-													value={field.value}
-												/>
-											</div>
+											<CurrencyPicker
+												onValueChange={field.onChange}
+												placeholder="Select currency"
+												value={field.value}
+											/>
 										</FormControl>
 										<FormDescription>Reporting currency.</FormDescription>
 										<FormMessage />
@@ -215,18 +186,11 @@ export function AppPreferencesCard() {
 									<FormItem>
 										<FormLabel>Default Entry Currency</FormLabel>
 										<FormControl>
-											<div
-												className={cn(
-													"rounded-md transition-all focus-within:ring-2 focus-within:ring-primary/20",
-													inputClass,
-												)}
-											>
-												<CurrencyPicker
-													onValueChange={field.onChange}
-													placeholder="Select currency"
-													value={field.value}
-												/>
-											</div>
+											<CurrencyPicker
+												onValueChange={field.onChange}
+												placeholder="Select currency"
+												value={field.value}
+											/>
 										</FormControl>
 										<FormDescription>Default for new expenses.</FormDescription>
 										<FormMessage />
@@ -236,36 +200,6 @@ export function AppPreferencesCard() {
 						</div>
 
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<FormField
-								control={form.control}
-								name="fontPreference"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Font Preference</FormLabel>
-										<Select
-											defaultValue={field.value}
-											onValueChange={field.onChange}
-											value={field.value}
-										>
-											<FormControl>
-												<SelectTrigger className={inputClass}>
-													<SelectValue />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent position="popper">
-												<SelectItem value="sans">
-													Sans Serif (DM Sans)
-												</SelectItem>
-												<SelectItem value="mono">
-													Monospaced (JetBrains Mono)
-												</SelectItem>
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
 							<FormItem>
 								<FormLabel>Theme Preference</FormLabel>
 								<Select
@@ -275,7 +209,7 @@ export function AppPreferencesCard() {
 									value={themePreference}
 								>
 									<FormControl>
-										<SelectTrigger className={inputClass}>
+										<SelectTrigger>
 											<SelectValue />
 										</SelectTrigger>
 									</FormControl>
@@ -297,9 +231,8 @@ export function AppPreferencesCard() {
 									<FormLabel>Monthly Net Income</FormLabel>
 									<div
 										className={cn(
-											"flex h-9 w-full items-center gap-2 rounded-md border border-input px-3 py-1 shadow-xs transition-[color,box-shadow]",
-											inputClass,
-											"border-0", // override default border for the wrapper
+											"flex h-9 w-full items-center gap-2 rounded-md border border-input px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
+											"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
 										)}
 									>
 										<span className="shrink-0 font-medium text-muted-foreground">
@@ -326,12 +259,7 @@ export function AppPreferencesCard() {
 							control={form.control}
 							name="smartCurrencyFormatting"
 							render={({ field }) => (
-								<FormItem
-									className={cn(
-										"flex flex-row items-center justify-between rounded-lg p-4",
-										inputClass,
-									)}
-								>
+								<FormItem className="flex flex-row items-center justify-between space-y-0 py-2">
 									<div className="space-y-0.5">
 										<FormLabel className="text-base">
 											Smart Currency Formatting
@@ -354,12 +282,7 @@ export function AppPreferencesCard() {
 							control={form.control}
 							name="defaultPrivacyMode"
 							render={({ field }) => (
-								<FormItem
-									className={cn(
-										"flex flex-row items-center justify-between rounded-lg p-4",
-										inputClass,
-									)}
-								>
+								<FormItem className="flex flex-row items-center justify-between space-y-0 py-2">
 									<div className="space-y-0.5">
 										<FormLabel className="text-base">
 											Default Privacy Mode
@@ -377,19 +300,6 @@ export function AppPreferencesCard() {
 								</FormItem>
 							)}
 						/>
-
-						<div className="flex justify-end pt-2">
-							<Button
-								disabled={
-									!form.formState.isDirty || updateSettingsMutation.isPending
-								}
-								type="submit"
-							>
-								{updateSettingsMutation.isPending
-									? "Saving..."
-									: "Save Preferences"}
-							</Button>
-						</div>
 					</form>
 				</Form>
 			</CardContent>

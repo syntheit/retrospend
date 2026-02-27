@@ -1,22 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect } from "react";
-import { useSession } from "~/hooks/use-session";
-import { api } from "~/trpc/react";
+import { createContext, useContext } from "react";
 
-const FontContext = createContext<{ fontPreference: "sans" | "mono" } | null>(
-	null,
-);
-
-function getStoredFontPreference(): "sans" | "mono" {
-	if (typeof window === "undefined") return "sans";
-
-	try {
-		return localStorage.getItem("fontPreference") === "mono" ? "mono" : "sans";
-	} catch {
-		return "sans";
-	}
-}
+const FontContext = createContext<{ fontPreference: "sans" | "mono" }>({
+	fontPreference: "sans",
+});
 
 // Client-side script to apply font before React hydration
 function FontScript() {
@@ -26,11 +14,9 @@ function FontScript() {
 			dangerouslySetInnerHTML={{
 				__html: `
           try {
-            const stored = localStorage.getItem("fontPreference");
-            const font = stored === "mono" ? "mono" : "sans";
             const root = document.documentElement;
             root.classList.remove("font-sans", "font-mono");
-            root.classList.add(\`font-\${font}\`);
+            root.classList.add("font-sans");
           } catch (e) {
             // keep default font on error
           }
@@ -41,51 +27,8 @@ function FontScript() {
 }
 
 export function FontProvider({ children }: { children: React.ReactNode }) {
-	const { data: session } = useSession();
-	const { data: settings } = api.settings.getGeneral.useQuery(undefined, {
-		enabled: !!session?.user,
-	});
-
-	useEffect(() => {
-		const root = document.documentElement;
-
-		// Priority: API settings > localStorage > default
-		const fontPreference =
-			settings?.fontPreference ?? getStoredFontPreference();
-
-		root.classList.remove("font-sans", "font-mono");
-		root.classList.add(`font-${fontPreference}`);
-
-		// Only store if it's actually different from what's stored
-		try {
-			if (localStorage.getItem("fontPreference") !== fontPreference) {
-				localStorage.setItem("fontPreference", fontPreference);
-			}
-		} catch {
-			// ignore storage issues
-		}
-	}, [settings?.fontPreference]);
-
-	// Listen for local changes to fontPreference (e.g. from the settings form)
-	useEffect(() => {
-		const handleStorageChange = (e: StorageEvent) => {
-			if (e.key === "fontPreference" && e.newValue) {
-				const root = document.documentElement;
-				root.classList.remove("font-sans", "font-mono");
-				root.classList.add(`font-${e.newValue}`);
-			}
-		};
-		window.addEventListener("storage", handleStorageChange);
-
-		// Also poll or use a custom event for same-tab changes if needed,
-		// but since we want to avoid complex state sync, we'll stick to a simple effect.
-		return () => window.removeEventListener("storage", handleStorageChange);
-	}, []);
-
 	return (
-		<FontContext.Provider
-			value={{ fontPreference: settings?.fontPreference ?? "sans" }}
-		>
+		<FontContext.Provider value={{ fontPreference: "sans" }}>
 			{children}
 		</FontContext.Provider>
 	);

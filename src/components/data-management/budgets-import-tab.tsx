@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { parseBudgetCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
-import { DataImportExport } from "./data-import-export";
+import { DataImport } from "./data-import";
 
 interface BudgetPreview {
 	id: string;
@@ -16,29 +16,8 @@ interface BudgetPreview {
 	pegToActual: boolean;
 }
 
-export function BudgetsTab() {
-	const exportMutation = api.budget.exportCsv.useMutation();
+export function BudgetsImportTab() {
 	const importMutation = api.budget.importBudgets.useMutation();
-
-	const handleExport = async () => {
-		try {
-			const { csv } = await exportMutation.mutateAsync();
-			const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `budgets-${new Date().toISOString().slice(0, 10)}.csv`;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-			URL.revokeObjectURL(url);
-			toast.success("Budgets exported");
-		} catch (error: unknown) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to export budgets",
-			);
-		}
-	};
 
 	const handleParseCsv = (
 		text: string,
@@ -141,8 +120,7 @@ export function BudgetsTab() {
 	}, []);
 
 	return (
-		<DataImportExport
-			description="Downloads all budgets as a CSV file."
+		<DataImport
 			formatInfo={
 				<p>
 					Required: <code className="text-primary">amount</code>,{" "}
@@ -152,9 +130,7 @@ export function BudgetsTab() {
 					<code className="text-muted-foreground">pegToActual</code>.
 				</p>
 			}
-			isExporting={exportMutation.isPending}
 			isImporting={importMutation.isPending}
-			onExport={handleExport}
 			onImport={handleImport}
 			parseCsv={handleParseCsv}
 			renderPreview={Preview}

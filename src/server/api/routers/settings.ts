@@ -19,7 +19,6 @@ export const settingsRouter = createTRPCRouter({
 				homeCurrency: true,
 				defaultCurrency: true,
 				categoryClickBehavior: true,
-				fontPreference: true,
 				currencySymbolStyle: true,
 				monthlyIncome: true,
 				budgetMode: true,
@@ -38,7 +37,6 @@ export const settingsRouter = createTRPCRouter({
 			homeCurrency: user.homeCurrency,
 			defaultCurrency: user.defaultCurrency,
 			categoryClickBehavior: user.categoryClickBehavior,
-			fontPreference: user.fontPreference,
 			currencySymbolStyle: user.currencySymbolStyle,
 			monthlyIncome: user.monthlyIncome,
 			budgetMode: user.budgetMode,
@@ -58,7 +56,7 @@ export const settingsRouter = createTRPCRouter({
 					.length(3, "Currency must be 3 characters")
 					.optional(),
 				categoryClickBehavior: z.enum(["navigate", "toggle"]).optional(),
-				fontPreference: z.enum(["sans", "mono"]).optional(),
+
 				currencySymbolStyle: z.enum(["native", "standard"]).optional(),
 				budgetMode: z.enum(["GLOBAL_LIMIT", "SUM_OF_CATEGORIES"]).optional(),
 				monthlyIncome: z
@@ -79,9 +77,7 @@ export const settingsRouter = createTRPCRouter({
 					...(input.categoryClickBehavior && {
 						categoryClickBehavior: input.categoryClickBehavior,
 					}),
-					...(input.fontPreference && {
-						fontPreference: input.fontPreference,
-					}),
+
 					...(input.currencySymbolStyle && {
 						currencySymbolStyle: input.currencySymbolStyle,
 					}),
