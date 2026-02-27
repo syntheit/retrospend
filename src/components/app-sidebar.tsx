@@ -6,12 +6,12 @@ import {
 	// 	IconChartBar,
 	IconCurrencyDollar,
 	IconFileImport,
-	IconFolder,
+	// 	IconFolder,
 	IconHome,
 	IconPigMoney,
 	IconSettings,
 	IconTable,
-	IconUsersGroup,
+	// 	IconUsersGroup,
 } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -64,6 +64,7 @@ const navMainCategories = [
 			},
 		],
 	},
+	/*
 	{
 		label: "Workspaces",
 		items: [
@@ -79,6 +80,7 @@ const navMainCategories = [
 			},
 		],
 	},
+*/
 	{
 		label: "Tools",
 		items: [
