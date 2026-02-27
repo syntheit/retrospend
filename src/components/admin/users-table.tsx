@@ -13,7 +13,7 @@ import {
 	IconTrash,
 } from "@tabler/icons-react";
 import { format } from "date-fns";
-import { Landmark, PieChart, Repeat } from "lucide-react";
+import { Landmark, PieChart, Repeat, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -56,6 +56,7 @@ interface User {
 	hasBudget: boolean;
 	hasRecurring: boolean;
 	hasWealth: boolean;
+	twoFactorEnabled: boolean;
 }
 
 interface UsersTableProps {
@@ -280,6 +281,21 @@ export function UsersTable({
 														</TooltipTrigger>
 														<TooltipContent>
 															Wealth: {user.hasWealth ? "Active" : "Unused"}
+														</TooltipContent>
+													</Tooltip>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<ShieldCheck
+																className={`h-4 w-4 ${
+																	user.twoFactorEnabled
+																		? "text-primary"
+																		: "text-muted-foreground/30"
+																}`}
+															/>
+														</TooltipTrigger>
+														<TooltipContent>
+															2FA:{" "}
+															{user.twoFactorEnabled ? "Enabled" : "Disabled"}
 														</TooltipContent>
 													</Tooltip>
 												</div>
