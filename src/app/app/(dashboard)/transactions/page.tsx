@@ -127,7 +127,7 @@ export default function Page() {
 
 	return (
 		<>
-			<SiteHeader title="Table View" />
+			<SiteHeader title="Transactions" />
 			<PageContent>
 				<div className="space-y-6">
 					<div className="w-full space-y-4">

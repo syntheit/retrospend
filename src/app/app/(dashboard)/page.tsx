@@ -38,7 +38,7 @@ export default function Page() {
 			<CardContent className="flex flex-wrap items-center gap-2">
 				<Button onClick={actions.handleCreateExpense}>Add expense</Button>
 				<Button asChild variant="outline">
-					<Link href="/app/table">Go to table view</Link>
+					<Link href="/app/transactions">Go to Transactions</Link>
 				</Button>
 				<span className="text-muted-foreground text-xs">
 					Charts will switch from sample data as soon as you add an expense.

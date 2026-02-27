@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { DashboardLayout } from "~/components/dashboard-layout";
 import { ExpenseModalProvider } from "~/components/expense-modal-provider";
 import { auth } from "~/server/better-auth";
+
+export const metadata: Metadata = {
+	title: "Dashboard",
+};
 
 export default async function Layout({
 	children,

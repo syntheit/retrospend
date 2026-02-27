@@ -127,7 +127,7 @@ export function InteractionCard() {
 										</FormControl>
 										<SelectContent>
 											<SelectItem value="navigate">
-												Navigate to Table View
+												Navigate to Transactions
 											</SelectItem>
 											<SelectItem value="toggle">
 												Toggle Category Visibility

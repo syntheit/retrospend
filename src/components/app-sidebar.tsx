@@ -42,8 +42,8 @@ const navMain = [
 		icon: IconHome,
 	},
 	{
-		title: "Table View",
-		url: "/app/table",
+		title: "Transactions",
+		url: "/app/transactions",
 		icon: IconTable,
 	},
 	// {

@@ -207,7 +207,7 @@ export function useOverviewController() {
 		if (categoryClickBehavior === "toggle" && segment.categoryId) {
 			toggleCategoryVisibility(segment.categoryId);
 		} else {
-			router.push("/app/table");
+			router.push("/app/transactions");
 		}
 	};
 

@@ -155,7 +155,7 @@ function RecentExpensesCard({ children }: { children: React.ReactNode }) {
 					<CardDescription>Latest finalized expenses</CardDescription>
 				</div>
 				<Button asChild size="sm" variant="ghost">
-					<Link href="/app/table">View all</Link>
+					<Link href="/app/transactions">View all</Link>
 				</Button>
 			</CardHeader>
 			<CardContent className="px-4 sm:px-6">{children}</CardContent>
