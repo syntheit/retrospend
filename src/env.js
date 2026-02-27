@@ -22,6 +22,11 @@ export const env = createEnv({
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
+		SMTP_HOST: z.string().optional(),
+		SMTP_PORT: z.coerce.number().optional(),
+		SMTP_USER: z.string().optional(),
+		SMTP_PASSWORD: z.string().optional(),
+		EMAIL_FROM: z.string().optional(),
 	},
 
 	/**
@@ -48,6 +53,11 @@ export const env = createEnv({
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_APP_URL:
 			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+		SMTP_HOST: process.env.SMTP_HOST,
+		SMTP_PORT: process.env.SMTP_PORT,
+		SMTP_USER: process.env.SMTP_USER,
+		SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+		EMAIL_FROM: process.env.EMAIL_FROM,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

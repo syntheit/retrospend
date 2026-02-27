@@ -68,56 +68,59 @@ export function PasswordForm() {
 					Update your password to keep your account secure.
 				</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="p-6 pt-0">
 				<Form {...form}>
-					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<FormField
-								control={form.control}
-								name="currentPassword"
-								render={({ field }) => (
-									<FormItem className="space-y-2">
-										<FormLabel className="font-medium text-muted-foreground text-sm">
-											Current Password
-										</FormLabel>
-										<FormControl>
-											<Input
-												className={inputClass}
-												placeholder="••••••••"
-												type="password"
-												{...field}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+					<form
+						id="password-form"
+						className="space-y-4"
+						onSubmit={form.handleSubmit(onSubmit)}
+					>
+						<FormField
+							control={form.control}
+							name="currentPassword"
+							render={({ field }) => (
+								<FormItem className="space-y-2">
+									<FormLabel className="font-medium text-muted-foreground text-sm">
+										Current Password
+									</FormLabel>
+									<FormControl>
+										<Input
+											className={inputClass}
+											placeholder="••••••••"
+											type="password"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 
-							<FormField
-								control={form.control}
-								name="newPassword"
-								render={({ field }) => (
-									<FormItem className="space-y-2">
-										<FormLabel className="font-medium text-muted-foreground text-sm">
-											New Password
-										</FormLabel>
-										<FormControl>
-											<Input
-												className={inputClass}
-												placeholder="Enter new password"
-												type="password"
-												{...field}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
+						<FormField
+							control={form.control}
+							name="newPassword"
+							render={({ field }) => (
+								<FormItem className="space-y-2">
+									<FormLabel className="font-medium text-muted-foreground text-sm">
+										New Password
+									</FormLabel>
+									<FormControl>
+										<Input
+											className={inputClass}
+											placeholder="Enter new password"
+											type="password"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 
-						<div className="flex justify-end pt-2">
+						<div className="flex justify-end mt-6">
 							<Button
 								disabled={!form.formState.isDirty || changePassword.isPending}
+								size="sm"
 								type="submit"
 							>
 								{changePassword.isPending ? "Saving..." : "Save Password"}

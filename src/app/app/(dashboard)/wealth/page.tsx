@@ -199,15 +199,15 @@ export default function WealthPage() {
 				<div className="space-y-6">
 					{/* Summary Cards */}
 					<NetWorthSummary
+						averageMonthlySpend={runwayData?.averageMonthlySpend}
 						homeCurrency={homeCurrency}
 						isPrivacyMode={isPrivacyMode}
+						netWorth30DaysAgo={stats.netWorth30DaysAgo}
 						totalAssets={stats.assets}
 						totalLiabilities={stats.liabilities}
 						totalLiquidAssets={stats.totalLiquidAssets}
 						totalNetWorth={stats.netWorth}
 						weightedAPR={stats.weightedAPR}
-						averageMonthlySpend={runwayData?.averageMonthlySpend}
-						netWorth30DaysAgo={stats.netWorth30DaysAgo}
 					/>
 
 					<div className="grid gap-6 lg:grid-cols-7">

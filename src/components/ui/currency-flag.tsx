@@ -64,7 +64,7 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 		return (
 			<span
 				className={cn(
-					"!h-6 !w-6 block rounded-full bg-muted shrink-0",
+					"!h-6 !w-6 block shrink-0 rounded-full bg-muted",
 					className,
 				)}
 			/>

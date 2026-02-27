@@ -1,14 +1,20 @@
 "use client";
 
 import {
+	IconCircleCheck,
+	IconCircleX,
 	IconDotsVertical,
+	IconLink,
 	IconLock,
 	IconLockOpen,
+	IconMailCheck,
+	IconMailExclamation,
 	IconRefresh,
 	IconTrash,
 } from "@tabler/icons-react";
 import { format } from "date-fns";
 import { Landmark, PieChart, Repeat } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -34,11 +40,13 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { api } from "~/trpc/react";
 
 interface User {
 	id: string;
 	username: string;
 	email: string;
+	emailVerified: boolean;
 	role: "ADMIN" | "USER";
 	isActive: boolean;
 	expenseCount: number;
@@ -60,6 +68,11 @@ interface UsersTableProps {
 		username: string,
 		isActive: boolean,
 	) => void;
+	onMarkEmailVerified: (
+		userId: string,
+		username: string,
+		verified: boolean,
+	) => void;
 	onDeleteUser: (userId: string, username: string) => void;
 }
 
@@ -69,8 +82,20 @@ export function UsersTable({
 	currentUserId,
 	onResetPassword,
 	onToggleUserStatus,
+	onMarkEmailVerified,
 	onDeleteUser,
 }: UsersTableProps) {
+	const generateResetLinkMutation =
+		api.admin.generatePasswordResetLink.useMutation({
+			onSuccess: (data) => {
+				navigator.clipboard.writeText(data.resetUrl);
+				toast.success("Reset link copied to clipboard");
+			},
+			onError: (error) => {
+				toast.error(error.message || "Failed to generate link");
+			},
+		});
+
 	if (isLoading) {
 		return (
 			<Card>
@@ -169,7 +194,25 @@ export function UsersTable({
 											@{user.username}
 										</TableCell>
 										<TableCell className="text-muted-foreground">
-											{user.email}
+											<div className="flex items-center gap-1.5">
+												{user.email}
+												<TooltipProvider>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															{user.emailVerified ? (
+																<IconCircleCheck className="h-3.5 w-3.5 text-green-500" />
+															) : (
+																<IconCircleX className="h-3.5 w-3.5 text-muted-foreground/50" />
+															)}
+														</TooltipTrigger>
+														<TooltipContent>
+															{user.emailVerified
+																? "Email verified"
+																: "Email not verified"}
+														</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
+											</div>
 										</TableCell>
 										<TableCell>
 											<Badge
@@ -184,11 +227,11 @@ export function UsersTable({
 											{!user.isActive ? (
 												<Badge variant="destructive">Disabled</Badge>
 											) : isDormant ? (
-												<Badge className="bg-yellow-500/10 border-transparent hover:bg-yellow-500/20 shadow-none text-yellow-500">
+												<Badge className="border-transparent bg-yellow-500/10 text-yellow-500 shadow-none hover:bg-yellow-500/20">
 													Dormant
 												</Badge>
 											) : (
-												<Badge className="bg-green-500/10 border-transparent hover:bg-green-500/20 shadow-none text-green-500">
+												<Badge className="border-transparent bg-green-500/10 text-green-500 shadow-none hover:bg-green-500/20">
 													Active
 												</Badge>
 											)}
@@ -249,61 +292,104 @@ export function UsersTable({
 											{format(new Date(user.createdAt), "MMM d, yyyy")}
 										</TableCell>
 										<TableCell>
-											{user.id !== currentUserId && (
-												<DropdownMenu>
-													<DropdownMenuTrigger asChild>
-														<Button
-															className="h-8 w-8"
-															size="icon"
-															variant="ghost"
-														>
-															<IconDotsVertical className="h-4 w-4" />
-															<span className="sr-only">Open menu</span>
-														</Button>
-													</DropdownMenuTrigger>
-													<DropdownMenuContent align="end">
+											<DropdownMenu>
+												<DropdownMenuTrigger asChild>
+													<Button
+														className="h-8 w-8"
+														size="icon"
+														variant="ghost"
+													>
+														<IconDotsVertical className="h-4 w-4" />
+														<span className="sr-only">Open menu</span>
+													</Button>
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end">
+													{user.id !== currentUserId && (
+														<>
+															<DropdownMenuItem
+																onClick={() =>
+																	onResetPassword(user.id, user.username)
+																}
+															>
+																<IconRefresh className="mr-2 h-4 w-4" />
+																Reset Password
+															</DropdownMenuItem>
+															<DropdownMenuItem
+																onClick={() =>
+																	generateResetLinkMutation.mutate({
+																		userId: user.id,
+																	})
+																}
+															>
+																<IconLink className="mr-2 h-4 w-4" />
+																Copy Reset Link
+															</DropdownMenuItem>
+															<DropdownMenuItem
+																onClick={() =>
+																	onToggleUserStatus(
+																		user.id,
+																		user.username,
+																		user.isActive,
+																	)
+																}
+															>
+																{user.isActive ? (
+																	<>
+																		<IconLock className="mr-2 h-4 w-4" />
+																		Disable User
+																	</>
+																) : (
+																	<>
+																		<IconLockOpen className="mr-2 h-4 w-4" />
+																		Enable User
+																	</>
+																)}
+															</DropdownMenuItem>
+														</>
+													)}
+													{user.emailVerified ? (
 														<DropdownMenuItem
 															onClick={() =>
-																onResetPassword(user.id, user.username)
-															}
-														>
-															<IconRefresh className="mr-2 h-4 w-4" />
-															Reset Password
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() =>
-																onToggleUserStatus(
+																onMarkEmailVerified(
 																	user.id,
 																	user.username,
-																	user.isActive,
+																	false,
 																)
 															}
 														>
-															{user.isActive ? (
-																<>
-																	<IconLock className="mr-2 h-4 w-4" />
-																	Disable User
-																</>
-															) : (
-																<>
-																	<IconLockOpen className="mr-2 h-4 w-4" />
-																	Enable User
-																</>
-															)}
+															<IconMailExclamation className="mr-2 h-4 w-4" />
+															Mark Email Unverified
 														</DropdownMenuItem>
-														<DropdownMenuSeparator />
+													) : (
 														<DropdownMenuItem
 															onClick={() =>
-																onDeleteUser(user.id, user.username)
+																onMarkEmailVerified(
+																	user.id,
+																	user.username,
+																	true,
+																)
 															}
-															variant="destructive"
 														>
-															<IconTrash className="mr-2 h-4 w-4" />
-															Delete User
+															<IconMailCheck className="mr-2 h-4 w-4" />
+															Mark Email Verified
 														</DropdownMenuItem>
-													</DropdownMenuContent>
-												</DropdownMenu>
-											)}
+													)}
+													{user.id !== currentUserId && (
+														<>
+															<DropdownMenuSeparator />
+															<DropdownMenuItem
+																onClick={() =>
+																	onDeleteUser(user.id, user.username)
+																}
+																variant="destructive"
+															>
+																<IconTrash className="mr-2 h-4 w-4" />
+																Delete User
+															</DropdownMenuItem>
+														</>
+													)}
+												</DropdownMenuContent>
+											</DropdownMenu>
 										</TableCell>
 									</TableRow>
 								);

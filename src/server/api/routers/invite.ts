@@ -98,7 +98,8 @@ export const inviteRouter = createTRPCRouter({
 			if (attempts >= maxAttempts) {
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to generate unique invite code after multiple attempts",
+					message:
+						"Failed to generate unique invite code after multiple attempts",
 				});
 			}
 			code = generateInviteCode();
@@ -256,7 +257,8 @@ export const inviteRouter = createTRPCRouter({
 			if (attempts >= maxAttempts) {
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to generate unique invite code after multiple attempts",
+					message:
+						"Failed to generate unique invite code after multiple attempts",
 				});
 			}
 			code = generateInviteCode();

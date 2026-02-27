@@ -1,4 +1,5 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { authRouter } from "~/server/api/routers/auth";
 import { budgetRouter } from "~/server/api/routers/budget";
 import { categoriesRouter } from "~/server/api/routers/categories";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
@@ -18,6 +19,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 export const appRouter = createTRPCRouter({
 	admin: adminRouter,
+	auth: authRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,
 	dashboard: dashboardRouter,

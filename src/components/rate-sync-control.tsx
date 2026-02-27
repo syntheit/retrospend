@@ -50,7 +50,7 @@ export function RateSyncControl() {
 	};
 
 	return (
-		<Card>
+		<Card className="flex h-full flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<IconRefresh className="h-5 w-5" />
@@ -61,7 +61,7 @@ export function RateSyncControl() {
 					daily at 09:05 UTC.
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-4">
+			<CardContent className="flex flex-grow flex-col space-y-4">
 				{/* Last Sync Status */}
 				<div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
 					<div className="flex items-center gap-2">
@@ -72,6 +72,8 @@ export function RateSyncControl() {
 						{lastSyncLoading ? "Loading..." : formatLastSync(lastSync)}
 					</span>
 				</div>
+
+				<div className="flex-grow" />
 
 				{/* Manual Sync Button */}
 				<div className="flex items-center gap-3">

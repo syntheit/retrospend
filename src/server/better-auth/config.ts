@@ -1,9 +1,13 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { APIError } from "better-auth/api";
+import { twoFactor } from "better-auth/plugins";
+import crypto from "crypto";
 import { headers } from "next/headers";
 import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import { db } from "~/server/db";
+import { sendEmail } from "~/server/mailer";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
 
 export const auth = betterAuth({
@@ -36,7 +40,19 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				before: async (_user) => {
+				before: async (user) => {
+					// Check if username is already taken
+					if (user.username) {
+						const existingUsername = await db.user.findUnique({
+							where: { username: user.username as string },
+						});
+						if (existingUsername) {
+							throw new APIError("BAD_REQUEST", {
+								message: "Username is already taken",
+							});
+						}
+					}
+
 					// Check if invite-only mode is enabled
 					const inviteOnlyEnabled = await isInviteOnlyEnabled();
 
@@ -110,6 +126,42 @@ export const auth = betterAuth({
 							userId: user.id,
 						})),
 					});
+
+					// Email Verification Logic
+					if (!env.SMTP_HOST) {
+						// Bypass verification if SMTP is not configured
+						await db.user.update({
+							where: { id: user.id },
+							data: { emailVerified: true },
+						});
+					} else {
+						// Ensure emailVerified is null
+						await db.user.update({
+							where: { id: user.id },
+							data: { emailVerified: false },
+						});
+
+						// Generate verification token
+						const token = crypto.randomBytes(32).toString("hex");
+						const expires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
+
+						// Insert into VerificationToken table
+						await db.verificationToken.create({
+							data: {
+								identifier: user.email,
+								token,
+								expires,
+							},
+						});
+
+						// Dispatch email
+						const verifyUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
+						await sendEmail(
+							user.email,
+							"Verify your Retrospend Account",
+							`<p>Welcome to Retrospend! Click the link below to verify your email address:</p><a href="${verifyUrl}">Verify Email</a>`,
+						);
+					}
 				},
 			},
 		},
@@ -129,6 +181,11 @@ export const auth = betterAuth({
 			},
 		},
 	},
+	plugins: [
+		twoFactor({
+			issuer: "Retrospend",
+		}),
+	],
 	baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:1997",
 });
 

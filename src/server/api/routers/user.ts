@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
+import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { sendEmail } from "~/server/mailer";
 
 export const userRouter = createTRPCRouter({
 	updateProfile: protectedProcedure
@@ -105,6 +107,16 @@ export const userRouter = createTRPCRouter({
 						password: hashedPassword,
 					},
 				});
+
+				if (env.SMTP_HOST) {
+					sendEmail(
+						session.user.email,
+						"Security Alert: Your Retrospend Password was Changed",
+						"<p>Your password was recently changed. If you did this, you can ignore this email. If you did not make this change, please contact your administrator immediately.</p>",
+					).catch((error) =>
+						console.error("Failed to send security alert:", error),
+					);
+				}
 			}
 
 			return updatedUser;

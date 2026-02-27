@@ -135,7 +135,6 @@ export function MonthlyDeltaChart({
 						<ChartTooltip
 							content={
 								<ChartTooltipContent
-									hideLabel
 									formatter={(value, name, item) => (
 										<>
 											<div
@@ -155,6 +154,7 @@ export function MonthlyDeltaChart({
 											</div>
 										</>
 									)}
+									hideLabel
 								/>
 							}
 						/>

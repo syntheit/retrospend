@@ -40,8 +40,9 @@ export function CategoryPicker({
 		{ enabled: !propCategories },
 	);
 
-	const categories: Array<{ id: string; name: string; color: string }> | undefined =
-		propCategories || fetchedCategories;
+	const categories:
+		| Array<{ id: string; name: string; color: string }>
+		| undefined = propCategories || fetchedCategories;
 
 	const filteredCategories = useMemo(() => {
 		if (!categories || !search) return categories || [];
@@ -92,7 +93,10 @@ export function CategoryPicker({
 					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+			<PopoverContent
+				align="start"
+				className="w-[var(--radix-popover-trigger-width)] p-0"
+			>
 				<div className="p-2">
 					<Input
 						className="mb-2"
