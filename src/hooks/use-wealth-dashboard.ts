@@ -35,6 +35,7 @@ interface UseWealthDashboardProps {
 	rawHistory: HistoryPoint[] | undefined;
 	isLoading: boolean;
 	homeCurrency: string;
+	netWorth30DaysAgo?: number;
 }
 
 /**
@@ -46,6 +47,7 @@ export function useWealthDashboard({
 	rawHistory,
 	isLoading,
 	homeCurrency = DEFAULT_CURRENCY,
+	netWorth30DaysAgo = 0,
 }: UseWealthDashboardProps) {
 	// Filter State
 	const [search, setSearch] = useState("");
@@ -139,8 +141,9 @@ export function useWealthDashboard({
 			netWorth: totalAssets - totalLiabilities,
 			totalLiquidAssets,
 			weightedAPR,
+			netWorth30DaysAgo,
 		};
-	}, [filteredData]);
+	}, [filteredData, netWorth30DaysAgo]);
 
 	// 4. Selectors for Charts
 	const historyChartData = useMemo(() => {

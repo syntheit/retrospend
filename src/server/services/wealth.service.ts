@@ -533,6 +533,16 @@ export class WealthService {
 			});
 		}
 
+		const thirtyDaysAgo = new Date(today);
+		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+		const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0] ?? "";
+
+		const entry30DaysAgo = history
+			.filter((h) => h.date <= thirtyDaysAgoStr)
+			.slice(-1)[0];
+
+		const netWorth30DaysAgo = entry30DaysAgo?.amount ?? 0;
+
 		return {
 			totalNetWorth: convertToTarget(totalNetWorthUSD),
 			totalAssets: convertToTarget(totalAssetsUSD),
@@ -542,6 +552,7 @@ export class WealthService {
 			assets: assetsWithUSD,
 			history,
 			currency: targetCurrency,
+			netWorth30DaysAgo,
 		};
 	}
 }

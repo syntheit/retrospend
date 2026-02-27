@@ -3,7 +3,7 @@ import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { generateCsv } from "~/lib/csv";
 import { normalizeDate } from "~/lib/date";
-import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
+import { toNumberWithDefault } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
@@ -246,7 +246,6 @@ export const wealthRouter = createTRPCRouter({
 		.input(z.object({ currency: z.string().length(3).optional() }).optional())
 		.query(async ({ ctx, input }) => {
 			const { db, session } = ctx;
-			const today = normalizeDate(new Date());
 			const targetCurrency = input?.currency ?? BASE_CURRENCY;
 			const wealthService = new WealthService(db);
 
@@ -254,6 +253,69 @@ export const wealthRouter = createTRPCRouter({
 				session.user.id,
 				targetCurrency,
 			);
+		}),
+
+	getRunwayStats: protectedProcedure
+		.input(z.object({ currency: z.string().length(3).optional() }).optional())
+		.query(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+			const targetCurrency = input?.currency ?? BASE_CURRENCY;
+			const today = new Date();
+
+			const sixMonthsAgo = new Date();
+			sixMonthsAgo.setMonth(today.getMonth() - 6);
+
+			const oldestExpenseOverall = await db.expense.findFirst({
+				where: { userId: session.user.id, status: "FINALIZED" },
+				orderBy: { date: "asc" },
+			});
+
+			let monthsActive = 6;
+			if (oldestExpenseOverall) {
+				const msDiff = today.getTime() - oldestExpenseOverall.date.getTime();
+				const monthsDiff = msDiff / (1000 * 60 * 60 * 24 * 30.436875);
+				monthsActive = Math.min(6, Math.max(1, monthsDiff));
+			} else {
+				monthsActive = 1;
+			}
+
+			const expenses = await db.expense.findMany({
+				where: {
+					userId: session.user.id,
+					date: {
+						gte: sixMonthsAgo,
+						lte: today,
+					},
+					status: "FINALIZED",
+				},
+			});
+
+			// We need the current exchange rate for the target currency
+			const wealthService = new WealthService(db);
+			const targetRateData = await wealthService.resolveExchangeRate(
+				targetCurrency,
+				normalizeDate(today),
+			);
+			const targetRate = targetRateData.rate;
+			const targetIsCrypto = targetRateData.rateType === "crypto";
+
+			const convertToTarget = (usdVal: number) =>
+				targetIsCrypto ? usdVal / (targetRate || 1) : usdVal * targetRate;
+
+			let totalSpendUSD = 0;
+			for (const expense of expenses) {
+				// We can sum the amountInUSD which was calculated when the expense was logged
+				// Or calculate current value if needed. Usually, spending is fixed in the past USD value.
+				totalSpendUSD += toNumberWithDefault(expense.amountInUSD);
+			}
+
+			const averageMonthlySpendUSD = totalSpendUSD / monthsActive;
+			const averageMonthlySpend = convertToTarget(averageMonthlySpendUSD);
+
+			return {
+				averageMonthlySpend,
+				monthsActive: Math.round(monthsActive),
+			};
 		}),
 	deleteAsset: protectedProcedure
 		.input(

@@ -43,7 +43,7 @@ interface WealthHistoryChartProps {
 const chartConfig = {
 	amount: {
 		label: "Net Worth",
-		color: "var(--primary)",
+		color: "hsl(217, 91%, 60%)",
 	},
 	assets: {
 		label: "Assets",

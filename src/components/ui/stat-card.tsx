@@ -69,7 +69,7 @@ const iconColorVariants = cva("", {
 });
 
 export interface StatCardProps extends VariantProps<typeof statCardVariants> {
-	title: string;
+	title: React.ReactNode;
 	value?: React.ReactNode;
 	icon: LucideIcon;
 	description?: React.ReactNode;
@@ -121,9 +121,7 @@ export function StatCard({
 							{loading ? <Skeleton className="h-8 w-24 bg-muted" /> : value}
 						</div>
 						{!loading && subValue && (
-							<div className="flex items-center gap-1 font-medium text-[10px] text-muted-foreground">
-								{subValue}
-							</div>
+							<div className="flex items-center">{subValue}</div>
 						)}
 					</div>
 
@@ -156,7 +154,7 @@ export function StatCard({
 									</span>
 								</div>
 							) : (
-								<span className="max-w-[100px] truncate text-right text-[10px] leading-tight opacity-50">
+								<span className="max-w-[160px] truncate text-right text-[11px] leading-tight opacity-70">
 									{description}
 								</span>
 							)}

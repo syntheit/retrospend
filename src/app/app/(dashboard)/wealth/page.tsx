@@ -37,6 +37,10 @@ export default function WealthPage() {
 		currency: homeCurrency,
 	});
 
+	const { data: runwayData } = api.wealth.getRunwayStats.useQuery({
+		currency: homeCurrency,
+	});
+
 	const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
 		new Set(),
 	);
@@ -61,6 +65,7 @@ export default function WealthPage() {
 		rawHistory: dashboardData?.history,
 		isLoading,
 		homeCurrency,
+		netWorth30DaysAgo: dashboardData?.netWorth30DaysAgo,
 	});
 
 	const deleteAsset = api.wealth.deleteAsset.useMutation({
@@ -201,6 +206,8 @@ export default function WealthPage() {
 						totalLiquidAssets={stats.totalLiquidAssets}
 						totalNetWorth={stats.netWorth}
 						weightedAPR={stats.weightedAPR}
+						averageMonthlySpend={runwayData?.averageMonthlySpend}
+						netWorth30DaysAgo={stats.netWorth30DaysAgo}
 					/>
 
 					<div className="grid gap-6 lg:grid-cols-7">
