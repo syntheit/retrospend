@@ -4,6 +4,8 @@ import path from "node:path";
 const cryptoIconsDir = path.join(process.cwd(), "node_modules/cryptocurrency-icons/svg/color");
 const outputFile = path.join(process.cwd(), "src/lib/supported-crypto-icons.ts");
 
+// Ensure the target directory exists
+fs.mkdirSync(path.dirname(outputFile), { recursive: true });
 try {
 	const files = fs.readdirSync(cryptoIconsDir);
 	const symbols = files

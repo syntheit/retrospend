@@ -12,6 +12,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma/ ./prisma/
 # Copy prisma.config.ts
 COPY prisma.config.ts ./
+COPY scripts/ ./scripts/
 
 # Install dependencies
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
