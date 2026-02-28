@@ -101,7 +101,7 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 										}}
 									/>
 								</TooltipTrigger>
-								<TooltipContent className="grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs antialiased shadow-xl backdrop-blur-md will-change-transform [backface-visibility:hidden] [transform:translateZ(0)]">
+								<TooltipContent className="grid min-w-[8rem] items-start gap-1.5 rounded-lg border bg-popover px-2.5 py-1.5 text-popover-foreground text-xs antialiased shadow-md backdrop-blur-md will-change-transform [backface-visibility:hidden] [transform:translateZ(0)]">
 									<div className="grid gap-1.5">
 										<div className="font-medium">{segment.name}</div>
 										<div className="mt-1 grid gap-1.5">
