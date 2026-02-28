@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { type ParsedWealthRow, parseWealthCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
 import type { AssetType } from "~prisma";
-import { DataImportExport } from "./data-import-export";
+import { DataImporterExport } from "./data-importer-export";
 
 export function WealthTab() {
 	const exportMutation = api.wealth.exportCsv.useMutation();
@@ -105,7 +105,7 @@ export function WealthTab() {
 	}, []);
 
 	return (
-		<DataImportExport
+		<DataImporterExport
 			description="Downloads all assets and liabilities as a CSV file."
 			formatInfo={
 				<p>

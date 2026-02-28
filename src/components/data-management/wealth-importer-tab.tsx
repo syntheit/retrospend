@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { type ParsedWealthRow, parseWealthCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
 import type { AssetType } from "~prisma";
-import { DataImport } from "./data-import";
+import { DataImporter } from "./data-importer";
 
-export function WealthImportTab({ isActive = true }: { isActive?: boolean }) {
+export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
 	const importMutation = api.wealth.importAssets.useMutation();
 
 	const handleParseCsv = (
@@ -84,7 +84,7 @@ export function WealthImportTab({ isActive = true }: { isActive?: boolean }) {
 	}, []);
 
 	return (
-		<DataImport
+		<DataImporter
 			formatInfo={
 				<p>
 					Required: <code className="text-primary">name</code>,{" "}

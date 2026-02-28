@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { parseBudgetCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
-import { DataImportExport } from "./data-import-export";
+import { DataImporterExport } from "./data-importer-export";
 
 interface BudgetPreview {
 	id: string;
@@ -141,7 +141,7 @@ export function BudgetsTab() {
 	}, []);
 
 	return (
-		<DataImportExport
+		<DataImporterExport
 			description="Downloads all budgets as a CSV file."
 			formatInfo={
 				<p>

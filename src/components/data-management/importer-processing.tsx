@@ -3,17 +3,17 @@
 import { FileSearch, Loader2 } from "lucide-react";
 import { Progress } from "~/components/ui/progress";
 
-interface ImportProcessingProps {
+interface ImporterProcessingProps {
 	fileName?: string;
 	progress?: number;
 	statusMessage?: string;
 }
 
-export function ImportProcessing({
+export function ImporterProcessing({
 	fileName,
 	progress,
 	statusMessage,
-}: ImportProcessingProps) {
+}: ImporterProcessingProps) {
 	return (
 		<div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 py-12 px-6">
 			<div className="relative">

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { parseBudgetCsv } from "~/lib/csv";
 import { api } from "~/trpc/react";
-import { DataImport } from "./data-import";
+import { DataImporter } from "./data-importer";
 
 interface BudgetPreview {
 	id: string;
@@ -16,7 +16,7 @@ interface BudgetPreview {
 	pegToActual: boolean;
 }
 
-export function BudgetsImportTab({ isActive = true }: { isActive?: boolean }) {
+export function BudgetsImporterTab({ isActive = true }: { isActive?: boolean }) {
 	const importMutation = api.budget.importBudgets.useMutation();
 
 	const handleParseCsv = (
@@ -119,7 +119,7 @@ export function BudgetsImportTab({ isActive = true }: { isActive?: boolean }) {
 	}, []);
 
 	return (
-		<DataImport
+		<DataImporter
 			formatInfo={
 				<p>
 					Required: <code className="text-primary">amount</code>,{" "}

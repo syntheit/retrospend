@@ -73,17 +73,17 @@ export interface ImportTransaction {
 	isDuplicate?: boolean;
 }
 
-interface ImportReviewManagerProps {
+interface ImporterReviewManagerProps {
 	importerData: ImporterTransaction[];
 	onDone: () => void;
 	onCancel: () => void;
 }
 
-export function ImportReviewManager({
+export function ImporterReviewManager({
 	importerData,
 	onDone,
 	onCancel,
-}: ImportReviewManagerProps) {
+}: ImporterReviewManagerProps) {
 	const { data: categories } = api.categories.getAll.useQuery();
 	const { data: settings } = api.settings.getGeneral.useQuery();
 	const importMutation = api.expense.importExpenses.useMutation();

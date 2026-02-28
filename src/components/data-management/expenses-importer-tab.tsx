@@ -24,14 +24,14 @@ import {
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
 import { useNavigationGuard } from "~/hooks/use-navigation-guard";
 import { parseRawCsv } from "~/lib/csv";
-import { ExpenseImportSchema } from "~/lib/schemas/data-import";
+import { ExpenseImportSchema } from "~/lib/schemas/data-importer";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
-import { ImportProcessing } from "./import-processing";
+import { ImporterProcessing } from "./importer-processing";
 import {
+	ImporterReviewManager,
 	type ImporterTransaction,
-	ImportReviewManager,
-} from "./import-review-manager";
+} from "./importer-review-manager";
 
 type ImportMode = "csv" | "bank";
 
@@ -55,8 +55,12 @@ type BankState =
 	| { step: "review"; data: ImporterTransaction[] }
 	| { step: "error"; message: string };
 
-export function ExpensesImportTab({ isActive = true }: { isActive?: boolean }) {
-	const [mode, setMode] = useState<ImportMode>("csv");
+export function ExpensesImporterTab({
+	isActive = true,
+}: {
+	isActive?: boolean;
+}) {
+	const [mode, setMode] = useState<ImportMode>("bank");
 	const [csvState, setCsvState] = useState<CsvState>({ step: "upload" });
 	const [bankState, setBankState] = useState<BankState>({ step: "upload" });
 
@@ -102,13 +106,13 @@ export function ExpensesImportTab({ isActive = true }: { isActive?: boolean }) {
 				value={mode}
 				variant="outline"
 			>
-				<ToggleGroupItem className="flex-1 gap-2" value="csv">
-					<FileSpreadsheet className="h-4 w-4" />
-					Retrospend CSV
-				</ToggleGroupItem>
 				<ToggleGroupItem className="flex-1 gap-2" value="bank">
 					<Landmark className="h-4 w-4" />
 					Bank Statement
+				</ToggleGroupItem>
+				<ToggleGroupItem className="flex-1 gap-2" value="csv">
+					<FileSpreadsheet className="h-4 w-4" />
+					Retrospend CSV
 				</ToggleGroupItem>
 			</ToggleGroup>
 
@@ -275,7 +279,7 @@ function RetrospendCsvImport({
 	if (state.step === "review") {
 		return (
 			<div className="pt-4">
-				<ImportReviewManager
+				<ImporterReviewManager
 					importerData={state.data}
 					onCancel={resetState}
 					onDone={resetState}
@@ -351,7 +355,7 @@ function RetrospendCsvImport({
 					<AlertDescription>
 						<ul className="mt-2 list-disc space-y-1 pl-4">
 							{state.errors.map((err, i) => (
-								<li key={i} className="font-mono text-xs">
+								<li key={`${i}-${err}`} className="font-mono text-xs">
 									{err}
 								</li>
 							))}
@@ -557,7 +561,7 @@ function BankStatementImport({
 	if (state.step === "review") {
 		return (
 			<div className="pt-4">
-				<ImportReviewManager
+				<ImporterReviewManager
 					importerData={state.data}
 					onCancel={resetState}
 					onDone={resetState}
@@ -569,7 +573,7 @@ function BankStatementImport({
 	if (state.step === "processing") {
 		return (
 			<div className="pt-4">
-				<ImportProcessing
+				<ImporterProcessing
 					fileName={state.fileName}
 					progress={state.progress}
 					statusMessage={state.statusMessage}

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { BudgetsImportTab } from "~/components/data-management/budgets-import-tab";
-import { ExpensesImportTab } from "~/components/data-management/expenses-import-tab";
-import { WealthImportTab } from "~/components/data-management/wealth-import-tab";
+import { BudgetsImporterTab } from "~/components/data-management/budgets-importer-tab";
+import { ExpensesImporterTab } from "~/components/data-management/expenses-importer-tab";
+import { WealthImporterTab } from "~/components/data-management/wealth-importer-tab";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
 import {
@@ -54,21 +54,21 @@ export default function Page() {
 									forceMount
 									value="expenses"
 								>
-									<ExpensesImportTab isActive={activeTab === "expenses"} />
+									<ExpensesImporterTab isActive={activeTab === "expenses"} />
 								</TabsContent>
 								<TabsContent
 									className="data-[state=inactive]:hidden"
 									forceMount
 									value="budgets"
 								>
-									<BudgetsImportTab isActive={activeTab === "budgets"} />
+									<BudgetsImporterTab isActive={activeTab === "budgets"} />
 								</TabsContent>
 								<TabsContent
 									className="data-[state=inactive]:hidden"
 									forceMount
 									value="wealth"
 								>
-									<WealthImportTab isActive={activeTab === "wealth"} />
+									<WealthImporterTab isActive={activeTab === "wealth"} />
 								</TabsContent>
 							</Tabs>
 						</CardContent>

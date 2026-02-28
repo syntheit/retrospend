@@ -15,7 +15,7 @@ import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
 import { useNavigationGuard } from "~/hooks/use-navigation-guard";
 import { cn } from "~/lib/utils";
 
-interface DataImportProps<T> {
+interface DataImporterProps<T> {
 	title: string;
 	onImport: (data: T[]) => Promise<void>;
 	isImporting: boolean;
@@ -28,7 +28,7 @@ interface DataImportProps<T> {
 	renderPreview: React.ComponentType<{ data: T[] }>;
 }
 
-export function DataImport<T>({
+export function DataImporter<T>({
 	title,
 	onImport,
 	isImporting,
@@ -39,7 +39,7 @@ export function DataImport<T>({
 	validateRow,
 	renderPreview: Preview,
 	isActive = true,
-}: DataImportProps<T>) {
+}: DataImporterProps<T>) {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [previewData, setPreviewData] = useState<T[]>([]);
 	const [parseError, setParseError] = useState<string | null>(null);

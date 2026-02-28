@@ -14,7 +14,7 @@ import {
 } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
-interface DataImportExportProps<T> {
+interface DataImporterExportProps<T> {
 	title: string;
 	description: string;
 	onExport: () => Promise<void>;
@@ -29,7 +29,7 @@ interface DataImportExportProps<T> {
 	renderPreview: React.ComponentType<{ data: T[] }>;
 }
 
-export function DataImportExport<T>({
+export function DataImporterExport<T>({
 	title,
 	description,
 	onExport,
@@ -42,7 +42,7 @@ export function DataImportExport<T>({
 	parseCsv,
 	validateRow,
 	renderPreview: Preview,
-}: DataImportExportProps<T>) {
+}: DataImporterExportProps<T>) {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [previewData, setPreviewData] = useState<T[]>([]);
 	const [parseError, setParseError] = useState<string | null>(null);

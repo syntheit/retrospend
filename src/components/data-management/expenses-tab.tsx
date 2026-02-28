@@ -7,10 +7,10 @@ import { DataTable } from "~/components/data-table";
 import { createExpenseColumns } from "~/components/data-table-columns";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { parseRawCsv } from "~/lib/csv";
-import { ExpenseImportSchema } from "~/lib/schemas/data-import";
+import { ExpenseImportSchema } from "~/lib/schemas/data-importer";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
-import { DataImportExport } from "./data-import-export";
+import { DataImporterExport } from "./data-importer-export";
 
 export function ExpensesTab() {
 	const { formatCurrency } = useCurrencyFormatter();
@@ -197,7 +197,7 @@ export function ExpensesTab() {
 	}, [homeCurrency, formatCurrency]);
 
 	return (
-		<DataImportExport
+		<DataImporterExport
 			description="Downloads all finalized expenses as a CSV file."
 			formatInfo={
 				<p>
