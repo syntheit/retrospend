@@ -8,20 +8,21 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
-
+      IMPORTER_URL: "http://importer:8080"
     ports:
       - "1997:1997"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
     container_name: retrospend-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB_NAME}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -31,35 +32,44 @@ services:
       retries: 5
 
   worker:
-    build:
-      context: ./worker
-      dockerfile: Dockerfile
+    image: synzeit/retrospend-worker:latest
     container_name: retrospend-worker
     restart: unless-stopped
-    ports:
-      - "8080:8080"
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
-      LOG_LEVEL: "info"
       WORKER_API_KEY: ${WORKER_API_KEY}
-
+      LOG_LEVEL: "info"
     depends_on:
       postgres:
         condition: service_healthy
 
-  pgweb:
-    image: sosedoff/pgweb
-    container_name: retrospend-pgweb
+  importer:
+    image: synzeit/retrospend-importer:latest
+    container_name: retrospend-importer
     restart: unless-stopped
-    ports:
-      - "${ADMINER_PORT:-8081}:8081"
     environment:
-      # This connects automatically. No login screen.
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}?sslmode=disable
+      - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
+      - WORKER_API_KEY=${WORKER_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-qwen2.5:7b}
+      - LOG_LEVEL=info
     depends_on:
-      postgres:
-        condition: service_healthy
+      - ollama
+    volumes:
+      - importer_data:/app/data
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: local-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    devices:
+      - nvidia.com/gpu=all
 
 volumes:
   postgres_data:
-    driver: local
+  ollama_data:
+  importer_data:

@@ -1,6 +1,8 @@
 services:
   retrospend:
-    image: synzeit/retrospend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: retrospend
     restart: unless-stopped
     environment:
@@ -11,13 +13,16 @@ services:
       IMPORTER_URL: "http://importer:8080"
     ports:
       - "1997:1997"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
     container_name: retrospend-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB_NAME}
     ports:
@@ -31,24 +36,25 @@ services:
       retries: 5
 
   worker:
-    build: ./worker
-    image: synzeit/retrospend-worker:latest
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
     container_name: retrospend-worker
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
-      LOG_LEVEL: "info"
       WORKER_API_KEY: ${WORKER_API_KEY}
-
+      LOG_LEVEL: "info"
     depends_on:
       postgres:
         condition: service_healthy
 
   importer:
-    build: ./import
-    image: synzeit/retrospend-importer:latest
+    build:
+      context: ./importer
+      dockerfile: Dockerfile
     container_name: retrospend-importer
     restart: unless-stopped
     ports:
@@ -72,15 +78,24 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - 1.1.1.1
+      - 1.0.0.1
     devices:
       - nvidia.com/gpu=all
 
+  pgweb:
+    image: sosedoff/pgweb
+    container_name: retrospend-pgweb
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8081}:8081"
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
-    driver: local
   ollama_data:
-    driver: local
   importer_data:
-    driver: local
