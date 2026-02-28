@@ -22,11 +22,15 @@ import {
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
+import { useCurrency } from "~/hooks/use-currency";
 import { useNavigationGuard } from "~/hooks/use-navigation-guard";
 import { parseRawCsv } from "~/lib/csv";
 import { ExpenseImportSchema } from "~/lib/schemas/data-importer";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { Separator } from "../ui/separator";
+import { ImportJobReviewModal } from "./import-job-review-modal";
+import { ImportQueuePanel } from "./import-queue-panel";
 import { ImporterProcessing } from "./importer-processing";
 import {
 	ImporterReviewManager,
@@ -60,9 +64,11 @@ export function ExpensesImporterTab({
 }: {
 	isActive?: boolean;
 }) {
+	const { homeCurrency } = useCurrency();
 	const [mode, setMode] = useState<ImportMode>("bank");
 	const [csvState, setCsvState] = useState<CsvState>({ step: "upload" });
 	const [bankState, setBankState] = useState<BankState>({ step: "upload" });
+	const [reviewJobId, setReviewJobId] = useState<string | null>(null);
 
 	const isDirty =
 		csvState.step === "review" ||
@@ -98,29 +104,53 @@ export function ExpensesImporterTab({
 	};
 
 	return (
-		<div className="space-y-4 pt-4">
-			<ToggleGroup
-				className="w-full"
-				onValueChange={handleModeChange}
-				type="single"
-				value={mode}
-				variant="outline"
-			>
-				<ToggleGroupItem className="flex-1 gap-2" value="bank">
-					<Landmark className="h-4 w-4" />
-					Bank Statement
-				</ToggleGroupItem>
-				<ToggleGroupItem className="flex-1 gap-2" value="csv">
-					<FileSpreadsheet className="h-4 w-4" />
-					Retrospend CSV
-				</ToggleGroupItem>
-			</ToggleGroup>
+		<div className="space-y-6 pt-4">
+			{/* Import Queue Panel */}
+			<ImportQueuePanel onReviewJob={setReviewJobId} />
 
-			{mode === "csv" ? (
-				<RetrospendCsvImport setState={setCsvState} state={csvState} />
-			) : (
-				<BankStatementImport setState={setBankState} state={bankState} />
-			)}
+			{/* Import Job Review Modal */}
+			<ImportJobReviewModal
+				jobId={reviewJobId}
+				onClose={() => setReviewJobId(null)}
+			/>
+
+			<Separator />
+
+			{/* Start New Import Section */}
+			<div className="space-y-4">
+				<h3 className="font-semibold text-lg">Start New Import</h3>
+
+				<ToggleGroup
+					className="w-full"
+					onValueChange={handleModeChange}
+					type="single"
+					value={mode}
+					variant="outline"
+				>
+					<ToggleGroupItem className="flex-1 gap-2" value="bank">
+						<Landmark className="h-4 w-4" />
+						Bank Statement
+					</ToggleGroupItem>
+					<ToggleGroupItem className="flex-1 gap-2" value="csv">
+						<FileSpreadsheet className="h-4 w-4" />
+						Retrospend CSV/Excel
+					</ToggleGroupItem>
+				</ToggleGroup>
+
+				{mode === "csv" ? (
+					<RetrospendCsvImport
+						mainCurrency={homeCurrency}
+						setState={setCsvState}
+						state={csvState}
+					/>
+				) : (
+					<BankStatementImport
+						mainCurrency={homeCurrency}
+						setState={setBankState}
+						state={bankState}
+					/>
+				)}
+			</div>
 
 			<UnsavedChangesDialog
 				onDiscard={() => {
@@ -144,12 +174,26 @@ export function ExpensesImporterTab({
 function RetrospendCsvImport({
 	state,
 	setState,
+	mainCurrency,
 }: {
 	state: CsvState;
 	setState: React.Dispatch<React.SetStateAction<CsvState>>;
+	mainCurrency: string;
 }) {
 	const { data: categories } = api.categories.getAll.useQuery();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+	const createJobMutation = api.importQueue.createJob.useMutation({
+		onSuccess: () => {
+			toast.success("Import job queued");
+			if (fileInputRef.current) {
+				fileInputRef.current.value = "";
+			}
+		},
+		onError: (error) => {
+			toast.error(`Failed to queue import: ${error.message}`);
+		},
+	});
 
 	const categoryLookup = useMemo(() => {
 		const map = new Map<string, NonNullable<typeof categories>[number]>();
@@ -208,8 +252,9 @@ function RetrospendCsvImport({
 						? categoryLookup.get(row.category.toLowerCase())
 						: undefined;
 
+					const resolvedCurrency = row.currency || mainCurrency;
 					const resolvedExchangeRate =
-						row.exchangeRate ?? (row.currency === "USD" ? 1 : 1);
+						row.exchangeRate ?? (resolvedCurrency === "USD" ? 1 : 1);
 					const resolvedAmountInUSD =
 						row.amountInUSD ??
 						(resolvedExchangeRate
@@ -219,7 +264,7 @@ function RetrospendCsvImport({
 					return {
 						title: row.title,
 						amount: row.amount,
-						currency: row.currency,
+						currency: resolvedCurrency,
 						exchangeRate: resolvedExchangeRate,
 						amountInUSD: resolvedAmountInUSD,
 						date: row.date.toISOString().split("T")[0] ?? "",
@@ -233,7 +278,7 @@ function RetrospendCsvImport({
 
 			return { data: transactions, errors: [] };
 		},
-		[categoryLookup, normalizeKeys],
+		[categoryLookup, normalizeKeys, mainCurrency],
 	);
 
 	const handleFileChange = useCallback(
@@ -241,35 +286,44 @@ function RetrospendCsvImport({
 			const file = e.target.files?.[0];
 			if (!file) return;
 
+			const name = file.name.toLowerCase();
+			const isXlsx = name.endsWith(".xlsx");
+
 			const reader = new FileReader();
-			reader.onload = (evt) => {
-				const text = evt.target?.result as string;
-				const { data, errors } = handleParseCsv(text);
+			reader.onload = async (evt) => {
+				let base64: string;
 
-				if (errors.length > 0) {
-					setState({ step: "error", errors });
-					toast.error("Failed to parse CSV file");
-					return;
+				if (isXlsx) {
+					// For XLSX, read as ArrayBuffer and convert to base64
+					const arrayBuffer = evt.target?.result as ArrayBuffer;
+					const uint8Array = new Uint8Array(arrayBuffer);
+					let binary = "";
+					for (let i = 0; i < uint8Array.byteLength; i++) {
+						binary += String.fromCharCode(uint8Array[i]!);
+					}
+					base64 = btoa(binary);
+				} else {
+					// For CSV, read as text and convert to base64
+					const text = evt.target?.result as string;
+					base64 = btoa(text);
 				}
 
-				if (data.length === 0) {
-					setState({
-						step: "error",
-						errors: ["No valid transactions found in the file"],
-					});
-					toast.error("No transactions found");
-					return;
-				}
-
-				setState({ step: "review", data });
-				toast.success(
-					`Loaded ${data.length} transaction${data.length === 1 ? "" : "s"}`,
-				);
+				await createJobMutation.mutateAsync({
+					fileName: file.name,
+					fileSize: file.size,
+					fileType: "csv",
+					type: "CSV",
+					fileData: base64,
+				});
 			};
-			reader.readAsText(file);
-			e.target.value = "";
+
+			if (isXlsx) {
+				reader.readAsArrayBuffer(file);
+			} else {
+				reader.readAsText(file);
+			}
 		},
-		[handleParseCsv, setState],
+		[createJobMutation],
 	);
 
 	const resetState = useCallback(() => {
@@ -293,7 +347,7 @@ function RetrospendCsvImport({
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
 					<div className="flex items-center gap-2">
-						<p className="font-medium">Import Retrospend CSV</p>
+						<p className="font-medium">Import Retrospend CSV/Excel</p>
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -343,7 +397,7 @@ function RetrospendCsvImport({
 						</TooltipProvider>
 					</div>
 					<p className="text-muted-foreground text-sm">
-						Upload a CSV exported from Retrospend or in the correct format.
+						Upload a CSV or Excel file exported from Retrospend or in the correct format.
 					</p>
 				</div>
 			</div>
@@ -371,15 +425,15 @@ function RetrospendCsvImport({
 			>
 				<Upload className="h-8 w-8 text-muted-foreground" />
 				<div className="text-center">
-					<p className="font-medium text-sm">Click to Browse CSV File</p>
+					<p className="font-medium text-sm">Click to Browse CSV or Excel File</p>
 					<p className="mt-1 text-muted-foreground text-xs">
-						Retrospend expense format
+						Retrospend expense format (.csv or .xlsx)
 					</p>
 				</div>
 			</button>
 
 			<Input
-				accept=".csv,text/csv"
+				accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 				className="hidden"
 				onChange={handleFileChange}
 				ref={fileInputRef}
@@ -394,9 +448,11 @@ function RetrospendCsvImport({
 function BankStatementImport({
 	state,
 	setState,
+	mainCurrency,
 }: {
 	state: BankState;
 	setState: React.Dispatch<React.SetStateAction<BankState>>;
+	mainCurrency: string;
 }) {
 	const { data: importerStatus, isLoading: statusLoading } =
 		api.system.checkImporterStatus.useQuery();
@@ -404,110 +460,59 @@ function BankStatementImport({
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 
+	const createJobMutation = api.importQueue.createJob.useMutation({
+		onSuccess: () => {
+			toast.success("Import job queued");
+			if (fileInputRef.current) {
+				fileInputRef.current.value = "";
+			}
+		},
+		onError: (error) => {
+			toast.error(`Failed to queue import: ${error.message}`);
+		},
+	});
+
 	const handleFile = useCallback(
 		async (file: File) => {
 			const name = file.name.toLowerCase();
-			if (!name.endsWith(".csv") && !name.endsWith(".pdf")) {
-				toast.error("Please upload a CSV or PDF file");
+			if (!name.endsWith(".csv") && !name.endsWith(".pdf") && !name.endsWith(".xlsx")) {
+				toast.error("Please upload a CSV, Excel, or PDF file");
 				return;
 			}
 
-			setState({
-				step: "processing",
-				fileName: file.name,
-				progress: 0,
-				statusMessage: "Uploading file...",
-			});
+			// Convert file to base64
+			const reader = new FileReader();
+			reader.onload = async (evt) => {
+				const arrayBuffer = evt.target?.result as ArrayBuffer;
+				const uint8Array = new Uint8Array(arrayBuffer);
+				let binary = "";
+				for (let i = 0; i < uint8Array.byteLength; i++) {
+					binary += String.fromCharCode(uint8Array[i]!);
+				}
+				const base64 = btoa(binary);
 
-			const formData = new FormData();
-			formData.append("file", file);
+				// Determine file type
+				let fileType: "csv" | "xlsx" | "pdf";
+				if (name.endsWith(".pdf")) {
+					fileType = "pdf";
+				} else if (name.endsWith(".xlsx")) {
+					fileType = "xlsx";
+				} else {
+					fileType = "csv";
+				}
 
-			try {
-				const response = await fetch("/api/import/process", {
-					method: "POST",
-					body: formData,
+				// Create job with file data (queue will auto-process)
+				await createJobMutation.mutateAsync({
+					fileName: file.name,
+					fileSize: file.size,
+					fileType,
+					type: "BANK_STATEMENT",
+					fileData: base64,
 				});
-
-				if (!response.ok) {
-					const body = (await response.json().catch(() => ({}))) as {
-						error?: string;
-					};
-					throw new Error(body.error ?? `Import failed (${response.status})`);
-				}
-
-				if (!response.body) {
-					throw new Error("No response body");
-				}
-
-				const reader = response.body.getReader();
-				const decoder = new TextDecoder();
-				let transactions: ImporterTransaction[] = [];
-				let warnings: string[] = [];
-				let buffer = "";
-
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
-
-					buffer += decoder.decode(value, { stream: true });
-					const lines = buffer.split("\n");
-					buffer = lines.pop() || "";
-
-					for (const line of lines) {
-						if (!line.trim()) continue;
-						try {
-							const msg = JSON.parse(line) as {
-								type: string;
-								percent?: number;
-								message?: string;
-								data?: ImporterTransaction[];
-							};
-
-							if (msg.type === "progress") {
-								setState((prev) =>
-									prev.step === "processing"
-										? {
-												...prev,
-												progress: msg.percent,
-												statusMessage: msg.message,
-											}
-										: prev,
-								);
-							} else if (msg.type === "warning") {
-								if (msg.message) {
-									warnings.push(msg.message);
-								}
-							} else if (msg.type === "result") {
-								transactions = msg.data ?? [];
-							} else if (msg.type === "error") {
-								throw new Error(msg.message || "Failed to process file");
-							}
-						} catch (e) {
-							console.error("Failed to parse progress message:", e);
-						}
-					}
-				}
-
-				if (transactions.length === 0) {
-					throw new Error(
-						"No transactions found in the file. Please check the format.",
-					);
-				}
-
-				setState({ step: "review", data: transactions, warnings });
-				toast.success(
-					`Found ${transactions.length} transaction${
-						transactions.length === 1 ? "" : "s"
-					}${warnings.length > 0 ? ` (${warnings.length} warning${warnings.length === 1 ? "" : "s"})` : ""}`,
-				);
-			} catch (error: unknown) {
-				const message =
-					error instanceof Error ? error.message : "Failed to process file";
-				setState({ step: "error", message });
-				toast.error(message);
-			}
+			};
+			reader.readAsArrayBuffer(file);
 		},
-		[setState],
+		[createJobMutation],
 	);
 
 	const handleFileChange = useCallback(
@@ -593,7 +598,7 @@ function BankStatementImport({
 			<div className="space-y-1">
 				<p className="font-medium">Import bank statement</p>
 				<p className="text-muted-foreground text-sm">
-					Upload a CSV or PDF bank statement. Supports Chase, Capital One, Bank
+					Upload a CSV, Excel, or PDF bank statement. Supports Chase, Capital One, Bank
 					of America, Fidelity, and more.
 				</p>
 			</div>
@@ -632,7 +637,7 @@ function BankStatementImport({
 					)}
 				/>
 				<div className="text-center">
-					<p className="font-medium text-sm">Drop CSV/PDF or Click to Browse</p>
+					<p className="font-medium text-sm">Drop CSV/Excel/PDF or Click to Browse</p>
 					<p className="mt-1 text-muted-foreground text-xs">
 						Bank statements are processed securely
 					</p>
@@ -640,7 +645,7 @@ function BankStatementImport({
 			</button>
 
 			<Input
-				accept=".csv,.pdf,text/csv,application/pdf"
+				accept=".csv,.xlsx,.pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"
 				className="hidden"
 				onChange={handleFileChange}
 				ref={fileInputRef}

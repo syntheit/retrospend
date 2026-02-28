@@ -86,20 +86,28 @@ func ValidateTransactions(transactions []models.NormalizedTransaction, metadata 
 // ApplyExchangeRates calculates and applies exchange rates for transactions that were
 // originally in a foreign currency. It updates the transaction's main amount and currency
 // with the foreign data while preserving the USD value.
-func ApplyExchangeRates(transactions []models.NormalizedTransaction) {
+func ApplyExchangeRates(transactions []models.NormalizedTransaction, defaultCurrency string) {
+	if defaultCurrency == "" {
+		defaultCurrency = "USD"
+	}
+
 	for i := range transactions {
 		transactions[i].PricingSource = "IMPORTED"
 
 		if transactions[i].OriginalAmount > 0 && transactions[i].OriginalCurrency != "" {
 			// Calculate rate based on USD amount (Amount) vs Foreign amount (OriginalAmount)
-			transactions[i].ExchangeRate = transactions[i].OriginalAmount / transactions[i].Amount
+			if transactions[i].Amount > 0 {
+				transactions[i].ExchangeRate = transactions[i].OriginalAmount / transactions[i].Amount
+			} else {
+				transactions[i].ExchangeRate = 1.0
+			}
 			transactions[i].AmountInUSD = transactions[i].Amount
 			transactions[i].Amount = transactions[i].OriginalAmount
 			transactions[i].Currency = transactions[i].OriginalCurrency
 		} else {
 			transactions[i].ExchangeRate = 1.0
 			transactions[i].AmountInUSD = transactions[i].Amount
-			transactions[i].Currency = "USD"
+			transactions[i].Currency = defaultCurrency
 		}
 	}
 }

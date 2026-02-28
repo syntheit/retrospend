@@ -230,14 +230,16 @@ func main() {
 			return
 		}
 
+		defaultCurrency := r.FormValue("currency")
+
 		if ext == ".csv" {
 			if _, err := tempFile.Seek(0, 0); err != nil {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			transactions, metadata, err = handleCSV(tempFile, cfg, validCategories, sendProgress)
+			transactions, metadata, err = handleCSV(tempFile, cfg, validCategories, defaultCurrency, sendProgress)
 		} else if ext == ".pdf" {
-			transactions, metadata, err = handlePDF(tempFile.Name(), cfg, validCategories, sendProgress)
+			transactions, metadata, err = handlePDF(tempFile.Name(), cfg, validCategories, defaultCurrency, sendProgress)
 		} else {
 			http.Error(w, "Unsupported file format", http.StatusBadRequest)
 			return
@@ -329,7 +331,7 @@ func main() {
 	log.Println("✓ Worker stopped")
 }
 
-func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func handleCSV(file *os.File, cfg *config.Config, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
@@ -375,7 +377,7 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgres
 		parsedTransactions[i].OriginalCurrency = processor.NormalizeCurrency(parsedTransactions[i].OriginalCurrency)
 	}
 
-	processor.ApplyExchangeRates(parsedTransactions)
+	processor.ApplyExchangeRates(parsedTransactions, defaultCurrency)
 	processor.NormalizeDate(parsedTransactions)
 	parsedTransactions = processor.FilterPayments(parsedTransactions)
 
@@ -413,7 +415,7 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgres
 	return validatedTx, metadata, nil
 }
 
-func handlePDF(filePath string, cfg *config.Config, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func handlePDF(filePath string, cfg *config.Config, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
@@ -446,7 +448,7 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, onProgr
 	metadata.FailedChunks = parseMetadata.FailedChunks
 	metadata.Warnings = append(metadata.Warnings, parseMetadata.Warnings...)
 
-	processor.ApplyExchangeRates(parsedTx)
+	processor.ApplyExchangeRates(parsedTx, defaultCurrency)
 	processor.NormalizeDate(parsedTx)
 	parsedTx = processor.FilterPayments(parsedTx)
 

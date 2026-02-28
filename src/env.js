@@ -23,6 +23,7 @@ export const env = createEnv({
 			.enum(["development", "test", "production"])
 			.default("development"),
 		IMPORTER_URL: z.string().url().optional(),
+		MAX_CONCURRENT_IMPORT_JOBS: z.coerce.number().positive().default(3),
 		SMTP_HOST: z.string().optional(),
 		SMTP_PORT: z.coerce.number().optional(),
 		SMTP_USER: z.string().optional(),
@@ -55,6 +56,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_APP_URL:
 			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
 		IMPORTER_URL: process.env.IMPORTER_URL,
+		MAX_CONCURRENT_IMPORT_JOBS: process.env.MAX_CONCURRENT_IMPORT_JOBS,
 		SMTP_HOST: process.env.SMTP_HOST,
 		SMTP_PORT: process.env.SMTP_PORT,
 		SMTP_USER: process.env.SMTP_USER,

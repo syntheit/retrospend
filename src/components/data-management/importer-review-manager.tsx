@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { DataTable } from "~/components/data-table";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -23,9 +23,12 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useCurrency } from "~/hooks/use-currency";
+import type { CurrencyCode } from "~/lib/currencies";
 import { parseDateOnly } from "~/lib/date";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
+import { CurrencyPicker } from "../currency-picker";
 import { EditableCell } from "./editable-cell";
 
 /** Shape returned by the Go importer */
@@ -79,6 +82,9 @@ interface ImporterReviewManagerProps {
 	onDone: () => void;
 	onCancel: () => void;
 	warnings?: string[];
+	onImportConfirm?: (
+		selectedTransactions: ImporterTransaction[],
+	) => Promise<void>;
 }
 
 export function ImporterReviewManager({
@@ -86,12 +92,11 @@ export function ImporterReviewManager({
 	onDone,
 	onCancel,
 	warnings,
+	onImportConfirm,
 }: ImporterReviewManagerProps) {
+	const { homeCurrency, usdToHomeRate } = useCurrency();
 	const { data: categories } = api.categories.getAll.useQuery();
-	const { data: settings } = api.settings.getGeneral.useQuery();
 	const importMutation = api.expense.importExpenses.useMutation();
-
-	const homeCurrency = settings?.homeCurrency ?? "USD";
 
 	// Calculate date range for duplicate detection
 	const queryDateRange = useMemo(() => {
@@ -187,6 +192,31 @@ export function ImporterReviewManager({
 	}, [importerData, existingFingerprints, categoryLookup]);
 
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [mainCurrency, setMainCurrency] = useState<CurrencyCode>(
+		(homeCurrency as CurrencyCode) || "USD",
+	);
+
+	const handleApplyCurrencyToAll = useCallback(() => {
+		setTransactions((prev) =>
+			prev.map((tx) => {
+				const updated = { ...tx, currency: mainCurrency };
+				// Recalculate amountInUSD if it's a foreign currency and we have an exchange rate
+				// Or if it was foreign and now it's home, or vice versa
+				// Actually, since we don't have a reliable exchange rate for the *new* currency yet
+				// (unless it was already provided by the worker), we might need to be careful.
+				// However, if the user is setting it to home currency, exchangeRate should be 1.
+				if (mainCurrency === homeCurrency) {
+					updated.exchangeRate = 1;
+					updated.amountInUSD = updated.amount;
+				}
+				// If it's still foreign, we keep the previous USD value but change the local amount/currency?
+				// Usually, "Apply all currency" means "I wanted to import these AS BRL".
+				// So we should probably keep the local amount as is.
+				return updated;
+			}),
+		);
+		toast.success(`Applied ${mainCurrency} to all transactions`);
+	}, [mainCurrency, homeCurrency]);
 
 	const updateTransaction = useCallback(
 		(id: string, field: keyof ImportTransaction, value: unknown) => {
@@ -261,10 +291,13 @@ export function ImporterReviewManager({
 		[transactions, selectedIds],
 	);
 
-	const totalAmount = useMemo(
-		() => selectedTransactions.reduce((sum, t) => sum + t.amount, 0),
-		[selectedTransactions],
-	);
+	const totalAmount = useMemo(() => {
+		const totalInUSD = selectedTransactions.reduce(
+			(sum, t) => sum + (t.amountInUSD ?? 0),
+			0,
+		);
+		return totalInUSD * (usdToHomeRate ?? 1);
+	}, [selectedTransactions, usdToHomeRate]);
 
 	const dateRange = useMemo(() => {
 		if (selectedTransactions.length === 0) return null;
@@ -287,6 +320,25 @@ export function ImporterReviewManager({
 		}
 
 		try {
+			// If custom import handler provided, use it (for queue imports)
+			if (onImportConfirm) {
+				const importerTransactions = selectedTransactions.map((tx) => ({
+					title: tx.title || "Untitled",
+					amount: tx.amount,
+					currency: tx.currency,
+					exchangeRate: tx.exchangeRate ?? 1,
+					amountInUSD: tx.amountInUSD ?? tx.amount,
+					date: tx.date.toISOString().split("T")[0]!,
+					location: tx.location ?? "",
+					description: tx.description ?? "",
+					pricingSource: tx.pricingSource || "IMPORTED",
+					category: tx.category ?? "",
+				}));
+				await onImportConfirm(importerTransactions);
+				return;
+			}
+
+			// Otherwise use the default expense.importExpenses mutation
 			const rows = selectedTransactions.map((tx) => ({
 				title: tx.title || "Untitled",
 				amount: tx.amount,
@@ -373,7 +425,7 @@ export function ImporterReviewManager({
 							{isDuplicate && (
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 text-[10px] dark:text-amber-500">
+										<div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-[10px] text-amber-600 dark:text-amber-500">
 											<Copy className="h-3 w-3" />
 											Duplicate
 										</div>
@@ -410,7 +462,7 @@ export function ImporterReviewManager({
 								value={row.original.amount}
 							/>
 							{isForeign && row.original.amountInUSD && (
-								<span className="px-1 opacity-80 text-muted-foreground text-[10px]">
+								<span className="px-1 text-[10px] text-muted-foreground opacity-80">
 									≈ {homeCurrency} {row.original.amountInUSD.toFixed(2)}
 								</span>
 							)}
@@ -589,7 +641,7 @@ export function ImporterReviewManager({
 						<AlertTriangle className="h-4 w-4" />
 						<AlertTitle>Import Warnings ({warnings.length})</AlertTitle>
 						<AlertDescription>
-							<ul className="mt-2 list-disc pl-4 space-y-1 text-sm">
+							<ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
 								{warnings.map((warning, idx) => (
 									<li key={idx}>{warning}</li>
 								))}
@@ -599,80 +651,104 @@ export function ImporterReviewManager({
 				)}
 
 				{/* Summary Bar */}
-				<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-					<div className="flex flex-wrap items-center gap-3">
-						<span className="font-medium">
+				<div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+					<div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[auto_1fr_auto]">
+						<div className="whitespace-nowrap font-medium">
 							{selectedIds.size} of {transactions.length} selected
-						</span>
-						<span className="text-muted-foreground">|</span>
-						<span className="tabular-nums">
-							${totalAmount.toFixed(2)} total
-						</span>
-						{dateRange && (
-							<>
-								<span className="text-muted-foreground">|</span>
-								<span className="text-muted-foreground">{dateRange}</span>
-							</>
-						)}
-					</div>
-					{duplicateCount > 0 && (
-						<Button
-							onClick={() => setShowDuplicates(!showDuplicates)}
-							size="sm"
-							variant="ghost"
-						>
-							{showDuplicates ? (
-								<>
-									<EyeOff className="mr-1.5 h-4 w-4" />
-									Hide {duplicateCount} duplicate
-									{duplicateCount === 1 ? "" : "s"}
-								</>
-							) : (
-								<>
-									<Eye className="mr-1.5 h-4 w-4" />
-									Show {duplicateCount} duplicate
-									{duplicateCount === 1 ? "" : "s"}
-								</>
+						</div>
+
+						<div className="flex items-center gap-4">
+							<div className="w-64">
+								<CurrencyPicker
+									onValueChange={setMainCurrency}
+									value={mainCurrency}
+								/>
+							</div>
+
+							<Button
+								className="shrink-0 whitespace-nowrap"
+								onClick={handleApplyCurrencyToAll}
+								size="sm"
+								variant="outline"
+							>
+								Apply to all
+							</Button>
+
+							<div className="whitespace-nowrap tabular-nums">
+								{homeCurrency} {totalAmount.toFixed(2)} total
+							</div>
+
+							{dateRange && (
+								<div className="whitespace-nowrap text-muted-foreground">
+									{dateRange}
+								</div>
 							)}
-						</Button>
+						</div>
+					</div>
+
+					{duplicateCount > 0 && (
+						<div className="flex items-center justify-start lg:justify-end">
+							<Button
+								onClick={() => setShowDuplicates(!showDuplicates)}
+								size="sm"
+								variant="ghost"
+							>
+								{showDuplicates ? (
+									<>
+										<EyeOff className="mr-1.5 h-4 w-4" />
+										Hide {duplicateCount} duplicate
+										{duplicateCount === 1 ? "" : "s"}
+									</>
+								) : (
+									<>
+										<Eye className="mr-1.5 h-4 w-4" />
+										Show {duplicateCount} duplicate
+										{duplicateCount === 1 ? "" : "s"}
+									</>
+								)}
+							</Button>
+						</div>
 					)}
 				</div>
 
 				{/* Review Table */}
-				<DataTable
-					columns={columns}
-					data={visibleTransactions}
-					emptyState={
-						<div className="text-muted-foreground">
-							No transactions to review.
-						</div>
-					}
-					pageSize={25}
-					searchPlaceholder="Search transactions..."
-				/>
+				<div className="overflow-x-auto scroll-smooth">
+					<div className="min-w-[1200px]">
+						<DataTable
+							columns={columns}
+							data={visibleTransactions}
+							emptyState={
+								<div className="text-muted-foreground">
+									No transactions to review.
+								</div>
+							}
+							pageSize={20}
+							searchPlaceholder="Search transactions..."
+						/>
+					</div>
+				</div>
 
 				{/* Action Bar */}
-				<div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
+				<div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-4">
 					<p className="text-muted-foreground text-sm">
 						{selectedIds.size} transaction
 						{selectedIds.size === 1 ? "" : "s"} will be imported
 					</p>
-					<div className="flex gap-2">
+					<div className="flex gap-3">
 						<Button
 							disabled={importMutation.isPending}
 							onClick={onCancel}
-							size="sm"
-							variant="ghost"
+							variant="outline"
 						>
-							<X className="mr-1 h-4 w-4" />
+							<X className="mr-2 h-4 w-4" />
 							Cancel
 						</Button>
 						<Button
 							disabled={selectedIds.size === 0 || importMutation.isPending}
 							onClick={handleImport}
-							size="sm"
+							size="default"
 						>
-							<Check className="mr-1 h-4 w-4" />
+							<Check className="mr-2 h-4 w-4" />
 							{importMutation.isPending
 								? "Importing..."
 								: `Import ${selectedIds.size} Selected`}

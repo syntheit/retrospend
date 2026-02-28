@@ -6,6 +6,7 @@ import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { exchangeRateRouter } from "~/server/api/routers/exchange-rate";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
+import { importQueueRouter } from "~/server/api/routers/import-queue";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { preferencesRouter } from "~/server/api/routers/preferences";
 import { profileRouter } from "~/server/api/routers/profile";
@@ -27,6 +28,7 @@ export const appRouter = createTRPCRouter({
 	expense: expenseRouter,
 	exchangeRate: exchangeRateRouter,
 	exportData: exportRouter,
+	importQueue: importQueueRouter,
 	invite: inviteRouter,
 	recurring: recurringRouter,
 	settings: settingsRouter,

@@ -49,7 +49,13 @@ export function SystemStatusCard({ className }: { className?: string }) {
 			refetchInterval: 30000, // Refresh every 30 seconds
 		});
 
-	const isLoading = statusLoading || statsLoading || importerLoading;
+	const { data: importQueueStats, isLoading: queueLoading } =
+		api.importQueue.getGlobalStats.useQuery(undefined, {
+			refetchInterval: 5000, // Refresh every 5 seconds
+		});
+
+	const isLoading =
+		statusLoading || statsLoading || importerLoading || queueLoading;
 
 	if (isLoading) {
 		return (
@@ -126,6 +132,28 @@ export function SystemStatusCard({ className }: { className?: string }) {
 							{importerStatus?.available
 								? formatUptime(importerStatus.uptime ?? 0)
 								: "N/A"}
+						</span>
+					</div>
+
+					<div className="my-1 border-t border-border/50" />
+
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">
+							Import Queue Limit
+						</span>
+						<span className="tabular-nums text-sm font-medium">
+							{importQueueStats?.currentProcessing ?? 0} /{" "}
+							{importQueueStats?.maxConcurrent ?? 3} processing
+						</span>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">
+							Queued Jobs
+						</span>
+						<span className="tabular-nums text-sm font-medium">
+							{importQueueStats?.totalQueued ?? 0} waiting
+							{(importQueueStats?.totalReadyForReview ?? 0) > 0 &&
+								`, ${importQueueStats?.totalReadyForReview} ready`}
 						</span>
 					</div>
 

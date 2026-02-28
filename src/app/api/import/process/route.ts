@@ -67,6 +67,11 @@ export async function POST(request: NextRequest) {
 	const importerFormData = new FormData();
 	importerFormData.append("file", file);
 
+	const currency = formData.get("currency");
+	if (currency && typeof currency === "string") {
+		importerFormData.append("currency", currency);
+	}
+
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
 

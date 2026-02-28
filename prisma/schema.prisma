@@ -44,6 +44,7 @@ model User {
   twoFactorEnabled Boolean?    @default(false)
   twofactors       TwoFactor[]
   eventLogs        EventLog[]
+  importJobs       ImportJob[]
 
   @@map("user")
 }
@@ -424,6 +425,21 @@ enum EventType {
   EXPENSE_IMPORT
 }
 
+enum ImportJobStatus {
+  QUEUED
+  PROCESSING
+  READY_FOR_REVIEW
+  REVIEWING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ImportJobType {
+  CSV
+  BANK_STATEMENT
+}
+
 model UserPageSetting {
   id       String @id @default(cuid())
   userId   String
@@ -481,4 +497,45 @@ model EventLog {
   @@index([userId])
   @@index([eventType])
   @@map("event_log")
+}
+
+model ImportJob {
+  id     String          @id @default(cuid())
+  userId String
+  status ImportJobStatus @default(QUEUED)
+  type   ImportJobType
+
+  // File metadata
+  fileName String
+  fileSize Int
+  fileType String  // "csv" | "pdf"
+  fileData String? @db.Text // Base64 encoded file data (cleared after processing)
+
+  // Processing results
+  transactions Json?   // ImporterTransaction[] when processed
+  warnings     Json?   // string[] from importer
+  errorMessage String? @db.VarChar(1000)
+
+  // Result metadata
+  totalTransactions Int  @default(0)
+  importedCount     Int? // After final import
+  skippedDuplicates Int? // After final import
+
+  // Timestamps for each stage
+  createdAt        DateTime  @default(now())
+  processingAt     DateTime?
+  readyForReviewAt DateTime?
+  reviewingAt      DateTime?
+  completedAt      DateTime?
+  failedAt         DateTime?
+
+  // Progress tracking (for bank statements)
+  progressPercent Float?
+  statusMessage   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@map("import_job")
 }

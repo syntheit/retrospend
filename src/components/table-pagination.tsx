@@ -45,7 +45,7 @@ export function TablePagination<TData>({
 					value={`${table.getState().pagination.pageSize}`}
 				>
 					<SelectTrigger className="w-20" id="rows-per-page" size="sm">
-						<SelectValue />
+						<SelectValue placeholder="Select" />
 					</SelectTrigger>
 					<SelectContent>
 						{pageSizeOptions.map((pageSize) => (
