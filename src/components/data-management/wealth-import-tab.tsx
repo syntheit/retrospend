@@ -7,7 +7,7 @@ import { api } from "~/trpc/react";
 import type { AssetType } from "~prisma";
 import { DataImport } from "./data-import";
 
-export function WealthImportTab() {
+export function WealthImportTab({ isActive = true }: { isActive?: boolean }) {
 	const importMutation = api.wealth.importAssets.useMutation();
 
 	const handleParseCsv = (
@@ -99,6 +99,7 @@ export function WealthImportTab() {
 					.
 				</p>
 			}
+			isActive={isActive}
 			isImporting={importMutation.isPending}
 			onImport={handleImport}
 			parseCsv={handleParseCsv}

@@ -150,6 +150,7 @@ model Expense {
   @@index([userId, date])
   @@index([parentId])
   @@index([recurringTemplateId])
+  @@index([userId, date, title, amount, currency])
   @@map("expense")
 }
 

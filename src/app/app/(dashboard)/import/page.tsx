@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { BudgetsImportTab } from "~/components/data-management/budgets-import-tab";
 import { ExpensesImportTab } from "~/components/data-management/expenses-import-tab";
 import { WealthImportTab } from "~/components/data-management/wealth-import-tab";
@@ -15,11 +16,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 export default function Page() {
+	const [activeTab, setActiveTab] = useState("expenses");
+
 	return (
 		<>
 			<SiteHeader title="Import" />
 			<PageContent>
-				<div className="mx-auto w-full max-w-4xl">
+				<div className="mx-auto w-full max-w-7xl">
 					<Card className="border-muted/50 shadow-lg">
 						<CardHeader className="pb-3">
 							<CardTitle className="font-bold text-2xl tracking-tight">
@@ -30,7 +33,11 @@ export default function Page() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<Tabs className="w-full" defaultValue="expenses">
+							<Tabs
+								className="w-full"
+								onValueChange={setActiveTab}
+								value={activeTab}
+							>
 								<TabsList className="mb-2 grid w-full grid-cols-3">
 									<TabsTrigger className="text-xs sm:text-sm" value="expenses">
 										Expenses
@@ -42,14 +49,26 @@ export default function Page() {
 										Wealth
 									</TabsTrigger>
 								</TabsList>
-								<TabsContent value="expenses">
-									<ExpensesImportTab />
+								<TabsContent
+									className="data-[state=inactive]:hidden"
+									forceMount
+									value="expenses"
+								>
+									<ExpensesImportTab isActive={activeTab === "expenses"} />
 								</TabsContent>
-								<TabsContent value="budgets">
-									<BudgetsImportTab />
+								<TabsContent
+									className="data-[state=inactive]:hidden"
+									forceMount
+									value="budgets"
+								>
+									<BudgetsImportTab isActive={activeTab === "budgets"} />
 								</TabsContent>
-								<TabsContent value="wealth">
-									<WealthImportTab />
+								<TabsContent
+									className="data-[state=inactive]:hidden"
+									forceMount
+									value="wealth"
+								>
+									<WealthImportTab isActive={activeTab === "wealth"} />
 								</TabsContent>
 							</Tabs>
 						</CardContent>

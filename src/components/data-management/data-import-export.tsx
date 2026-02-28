@@ -202,7 +202,7 @@ export function DataImportExport<T>({
 											<div className="text-xs opacity-90">{formatInfo}</div>
 											{sampleData && (
 												<Button
-													className="h-auto p-0 text-primary-foreground text-xs underline"
+													className="h-auto p-0 text-primary hover:text-primary/80 text-xs underline"
 													onClick={downloadSample}
 													variant="link"
 												>

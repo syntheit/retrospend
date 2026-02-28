@@ -108,6 +108,7 @@ export class CsvService {
 	 * Processes and imports expenses from raw rows.
 	 */
 	async importExpensesFromRows(userId: string, rows: ImportExpenseRow[]) {
+		// Validate categories
 		const categoryIds = Array.from(
 			new Set(
 				rows
@@ -130,9 +131,38 @@ export class CsvService {
 			);
 		}
 
+		// Fetch existing expenses in the date range to detect duplicates
+		const dates = Array.from(new Set(rows.map((row) => row.date)));
+		const existingExpenses = await this.db.expense.findMany({
+			where: {
+				userId: userId,
+				date: { in: dates },
+				status: "FINALIZED",
+			},
+			select: { date: true, title: true, amount: true, currency: true },
+		});
+
+		// Build fingerprint set for duplicate detection
+		const existingFingerprints = new Set(
+			existingExpenses.map((e) => {
+				const dateStr = e.date.toISOString().split("T")[0];
+				return `${dateStr}|${e.title.trim()}|${Math.abs(Number(e.amount))}|${e.currency.toUpperCase()}`;
+			}),
+		);
+
 		let totalCreated = 0;
+		let skippedDuplicates = 0;
 
 		for (const row of rows) {
+			// Check for duplicates using fingerprint
+			const dateStr = row.date.toISOString().split("T")[0];
+			const fingerprint = `${dateStr}|${row.title.trim()}|${Math.abs(row.amount)}|${row.currency.toUpperCase()}`;
+
+			if (existingFingerprints.has(fingerprint)) {
+				skippedDuplicates++;
+				continue; // Skip this duplicate transaction
+			}
+
 			const exchangeRate =
 				row.exchangeRate ??
 				(row.currency.toUpperCase() === BASE_CURRENCY ? 1 : null);
@@ -191,9 +221,12 @@ export class CsvService {
 
 				totalCreated += 1;
 			}
+
+			// Add this transaction's fingerprint to prevent duplicates within the same import
+			existingFingerprints.add(fingerprint);
 		}
 
-		return { count: totalCreated };
+		return { count: totalCreated, skippedDuplicates };
 	}
 
 	private async runInTransaction<T>(

@@ -1,3 +1,4 @@
+import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const systemRouter = createTRPCRouter({
@@ -16,5 +17,9 @@ export const systemRouter = createTRPCRouter({
 			success: boolean;
 			task: string;
 		};
+	}),
+
+	checkImporterStatus: protectedProcedure.query(() => {
+		return { available: !!env.IMPORTER_URL };
 	}),
 });

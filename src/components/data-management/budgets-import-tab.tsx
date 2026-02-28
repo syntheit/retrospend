@@ -16,7 +16,7 @@ interface BudgetPreview {
 	pegToActual: boolean;
 }
 
-export function BudgetsImportTab() {
+export function BudgetsImportTab({ isActive = true }: { isActive?: boolean }) {
 	const importMutation = api.budget.importBudgets.useMutation();
 
 	const handleParseCsv = (
@@ -26,12 +26,11 @@ export function BudgetsImportTab() {
 		if (result.errors.length > 0) return { rows: [], errors: result.errors };
 
 		const rows: BudgetPreview[] = result.rows.map((row, index) => {
-			const date = new Date(row.period);
 			return {
 				id: `preview-${index}`,
 				categoryName: row.categoryName ?? undefined,
 				amount: Number(row.amount) || 0,
-				period: Number.isNaN(date.getTime()) ? new Date() : date,
+				period: row.period,
 				isRollover: row.isRollover,
 				rolloverAmount: Number(row.rolloverAmount) || 0,
 				pegToActual: row.pegToActual,
@@ -130,6 +129,7 @@ export function BudgetsImportTab() {
 					<code className="text-muted-foreground">pegToActual</code>.
 				</p>
 			}
+			isActive={isActive}
 			isImporting={importMutation.isPending}
 			onImport={handleImport}
 			parseCsv={handleParseCsv}

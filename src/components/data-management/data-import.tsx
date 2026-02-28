@@ -11,12 +11,15 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
+import { useNavigationGuard } from "~/hooks/use-navigation-guard";
 import { cn } from "~/lib/utils";
 
 interface DataImportProps<T> {
 	title: string;
 	onImport: (data: T[]) => Promise<void>;
 	isImporting: boolean;
+	isActive?: boolean;
 	sampleData?: string;
 	sampleFilename?: string;
 	formatInfo: React.ReactNode;
@@ -35,12 +38,19 @@ export function DataImport<T>({
 	parseCsv,
 	validateRow,
 	renderPreview: Preview,
+	isActive = true,
 }: DataImportProps<T>) {
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [previewData, setPreviewData] = useState<T[]>([]);
 	const [parseError, setParseError] = useState<string | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [fileName, setFileName] = useState<string | null>(null);
+
+	const { showDialog, setShowDialog, handleDiscard, handleStay } =
+		useNavigationGuard({
+			enabled: previewData.length > 0 && isActive,
+			onDiscard: () => handleClear(),
+		});
 
 	const processFile = useCallback(
 		async (file: File) => {
@@ -174,7 +184,7 @@ export function DataImport<T>({
 										<div className="text-xs opacity-90">{formatInfo}</div>
 										{sampleData && (
 											<Button
-												className="h-auto p-0 text-primary-foreground text-xs underline"
+												className="h-auto p-0 text-primary text-xs underline hover:text-primary/80"
 												onClick={downloadSample}
 												variant="link"
 											>
@@ -228,7 +238,9 @@ export function DataImport<T>({
 						{fileName ? fileName : "Drop CSV or Click to Browse"}
 					</p>
 					{fileName && (
-						<p className="mt-1 text-muted-foreground text-xs">Click to replace</p>
+						<p className="mt-1 text-muted-foreground text-xs">
+							Click to replace
+						</p>
 					)}
 				</div>
 			</button>
@@ -291,6 +303,13 @@ export function DataImport<T>({
 					</div>
 				</div>
 			)}
+
+			<UnsavedChangesDialog
+				onDiscard={handleDiscard}
+				onOpenChange={setShowDialog}
+				onStay={handleStay}
+				open={showDialog}
+			/>
 		</div>
 	);
 }
