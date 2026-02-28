@@ -26,7 +26,7 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 		return (
 			<div
 				className={cn(
-					"h-6 w-6 shrink-0 rounded-full bg-muted border border-border/50",
+					"h-6 w-6 shrink-0 rounded-full border border-border/50 bg-muted",
 					className,
 				)}
 			/>

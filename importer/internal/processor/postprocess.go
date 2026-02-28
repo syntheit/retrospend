@@ -7,6 +7,82 @@ import (
 	"time"
 )
 
+// ValidationError represents a validation failure for a transaction
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e ValidationError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Field, e.Message)
+}
+
+// ValidateTransaction validates a single transaction and returns an error if invalid.
+// Performs sanity checks on LLM-generated data to prevent silent corruption.
+func ValidateTransaction(tx models.NormalizedTransaction) error {
+	// Validate title
+	if strings.TrimSpace(tx.Title) == "" {
+		return ValidationError{Field: "title", Message: "title cannot be empty"}
+	}
+
+	// Validate amount (must be positive and reasonable)
+	if tx.Amount <= 0 {
+		return ValidationError{Field: "amount", Message: fmt.Sprintf("amount must be positive, got %.2f", tx.Amount)}
+	}
+	if tx.Amount > 1000000 {
+		return ValidationError{Field: "amount", Message: fmt.Sprintf("amount exceeds maximum (1,000,000), got %.2f", tx.Amount)}
+	}
+
+	// Validate currency (must be 3 uppercase letters)
+	if len(tx.Currency) != 3 {
+		return ValidationError{Field: "currency", Message: fmt.Sprintf("currency must be 3 letters, got '%s'", tx.Currency)}
+	}
+	if strings.ToUpper(tx.Currency) != tx.Currency {
+		return ValidationError{Field: "currency", Message: fmt.Sprintf("currency must be uppercase, got '%s'", tx.Currency)}
+	}
+
+	// Validate date format and range
+	dateVal, err := time.Parse("2006-01-02", tx.Date)
+	if err != nil {
+		// Try parsing with single-digit month/day
+		dateVal, err = time.Parse("2006-1-2", tx.Date)
+		if err != nil {
+			return ValidationError{Field: "date", Message: fmt.Sprintf("invalid date format '%s', expected YYYY-MM-DD", tx.Date)}
+		}
+	}
+
+	// Date must be after 1970 and not in the future
+	minDate := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	maxDate := time.Now().AddDate(0, 0, 7) // Allow up to 7 days in future for timezone issues
+	if dateVal.Before(minDate) {
+		return ValidationError{Field: "date", Message: fmt.Sprintf("date %s is before 1970", tx.Date)}
+	}
+	if dateVal.After(maxDate) {
+		return ValidationError{Field: "date", Message: fmt.Sprintf("date %s is in the future", tx.Date)}
+	}
+
+	return nil
+}
+
+// ValidateTransactions validates all transactions and returns valid ones + warnings for invalid ones.
+// Invalid transactions are skipped and a warning is added to metadata.
+func ValidateTransactions(transactions []models.NormalizedTransaction, metadata *models.ImportMetadata) []models.NormalizedTransaction {
+	valid := make([]models.NormalizedTransaction, 0, len(transactions))
+
+	for i, tx := range transactions {
+		if err := ValidateTransaction(tx); err != nil {
+			warning := fmt.Sprintf("Skipped transaction #%d: %v (title: '%s', amount: %.2f, date: '%s')",
+				i+1, err, tx.Title, tx.Amount, tx.Date)
+			metadata.Warnings = append(metadata.Warnings, warning)
+			metadata.SkippedTransactions++
+			continue
+		}
+		valid = append(valid, tx)
+	}
+
+	return valid
+}
+
 // ApplyExchangeRates calculates and applies exchange rates for transactions that were
 // originally in a foreign currency. It updates the transaction's main amount and currency
 // with the foreign data while preserving the USD value.

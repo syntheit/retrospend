@@ -65,7 +65,11 @@ func deduplicateTransactions(transactions []models.NormalizedTransaction) []mode
 
 // ParsePDFTransactions extracts transaction data from raw PDF text using an LLM.
 // It automatically chunks large PDFs by page boundaries to avoid context limit issues.
-func ParsePDFTransactions(endpoint string, model string, rawText string, onProgress func(float64, string)) ([]models.NormalizedTransaction, error) {
+// Returns transactions and metadata about the parsing process.
+func ParsePDFTransactions(endpoint string, model string, rawText string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+	metadata := &models.ImportMetadata{
+		Warnings: []string{},
+	}
 	// Check if we need to chunk the input
 	estimatedTokens := estimateTokenCount(rawText)
 	const maxContextTokens = 8192 // Conservative limit for most models
@@ -76,7 +80,14 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 		if onProgress != nil {
 			onProgress(0.1, "Parsing bank statement...")
 		}
-		return parsePDFChunk(endpoint, model, rawText)
+		transactions, err := parsePDFChunk(endpoint, model, rawText)
+		if err != nil {
+			return nil, metadata, err
+		}
+		metadata.TotalChunks = 1
+		metadata.SuccessfulChunks = 1
+		metadata.TotalTransactions = len(transactions)
+		return transactions, metadata, nil
 	}
 
 	// Split by page boundaries (form-feed character)
@@ -84,7 +95,15 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 	if len(pages) <= 1 {
 		// No form-feed characters, but text is large - split by estimated token count
 		log.Printf("WARNING: Large PDF (%d estimated tokens) without page boundaries, processing as single chunk", estimatedTokens)
-		return parsePDFChunk(endpoint, model, rawText)
+		metadata.Warnings = append(metadata.Warnings, "Large PDF processed as single chunk - some transactions may be missed")
+		transactions, err := parsePDFChunk(endpoint, model, rawText)
+		if err != nil {
+			return nil, metadata, err
+		}
+		metadata.TotalChunks = 1
+		metadata.SuccessfulChunks = 1
+		metadata.TotalTransactions = len(transactions)
+		return transactions, metadata, nil
 	}
 
 	log.Printf("PDF has %d pages, processing in chunks to avoid context limits", len(pages))
@@ -93,6 +112,8 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 	var allTransactions []models.NormalizedTransaction
 	chunkSize := 2
 	overlap := 1
+	totalChunks := 0
+	failedChunks := 0
 
 	for i := 0; i < len(pages); i += chunkSize - overlap {
 		end := i + chunkSize
@@ -100,6 +121,7 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 			end = len(pages)
 		}
 
+		totalChunks++
 		chunkText := strings.Join(pages[i:end], "\f")
 		chunkTokens := estimateTokenCount(chunkText)
 
@@ -112,7 +134,10 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 
 		transactions, err := parsePDFChunk(endpoint, model, chunkText)
 		if err != nil {
-			log.Printf("WARNING: Failed to parse pages %d-%d: %v", i+1, end, err)
+			failedChunks++
+			warningMsg := fmt.Sprintf("Failed to parse pages %d-%d: %v", i+1, end, err)
+			log.Printf("WARNING: %s", warningMsg)
+			metadata.Warnings = append(metadata.Warnings, warningMsg)
 			continue
 		}
 
@@ -124,12 +149,36 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 		}
 	}
 
+	metadata.TotalChunks = totalChunks
+	metadata.SuccessfulChunks = totalChunks - failedChunks
+	metadata.FailedChunks = failedChunks
+
+	// CRITICAL: Fail loudly if >20% of chunks failed
+	failureRate := float64(failedChunks) / float64(totalChunks)
+	if failureRate > 0.20 {
+		return nil, metadata, fmt.Errorf("CRITICAL: %.0f%% of PDF chunks failed to parse (%d/%d failed). This indicates significant data loss. Please check the PDF format or try a different file",
+			failureRate*100, failedChunks, totalChunks)
+	}
+
 	// Deduplicate transactions that may have appeared in overlapping chunks
+	beforeDedup := len(allTransactions)
 	allTransactions = deduplicateTransactions(allTransactions)
+	afterDedup := len(allTransactions)
 
-	log.Printf("Extracted %d unique transactions from %d pages", len(allTransactions), len(pages))
+	if beforeDedup > afterDedup {
+		metadata.Warnings = append(metadata.Warnings, fmt.Sprintf("Removed %d duplicate transactions from overlapping chunks", beforeDedup-afterDedup))
+	}
 
-	return allTransactions, nil
+	metadata.TotalTransactions = len(allTransactions)
+
+	// Fail loudly if no transactions were extracted
+	if len(allTransactions) == 0 {
+		return nil, metadata, fmt.Errorf("CRITICAL: No transactions extracted from PDF. The file may be empty, corrupted, or in an unsupported format")
+	}
+
+	log.Printf("Extracted %d unique transactions from %d pages (%d chunks, %d failed)", len(allTransactions), len(pages), totalChunks, failedChunks)
+
+	return allTransactions, metadata, nil
 }
 
 // parsePDFChunk processes a single chunk of PDF text

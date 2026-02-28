@@ -46,9 +46,13 @@ var enrichSchema = map[string]interface{}{
 }
 
 // EnrichTransactions enhances transaction data with better titles and categories using an LLM.
-func EnrichTransactions(endpoint string, model string, transactions []models.NormalizedTransaction, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, error) {
+// Returns enriched transactions and metadata about the enrichment process.
+func EnrichTransactions(endpoint string, model string, transactions []models.NormalizedTransaction, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+	metadata := &models.ImportMetadata{
+		Warnings: []string{},
+	}
 	if len(transactions) == 0 {
-		return transactions, nil
+		return transactions, metadata, nil
 	}
 
 	// 1. Group transactions by unique raw text
@@ -62,7 +66,7 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 	}
 
 	if len(uniqueRawToIndices) == 0 {
-		return transactions, nil
+		return transactions, metadata, nil
 	}
 
 	// 2. Prepare unique inputs (just raw texts, we'll index them locally per batch)
@@ -129,6 +133,7 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 
 	totalBatches := len(jobs)
 	var completedBatches int
+	var failedBatches int
 	var progressMu sync.Mutex
 
 	for _, job := range jobs {
@@ -157,7 +162,16 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 
 			response, err := CallOllama(endpoint, reqBody)
 			if err != nil {
-				log.Printf("WARNING: chunk enrichment failed (batch %d-%d): %v", j.startIdx, j.endIdx-1, err)
+				errMsg := fmt.Sprintf("Enrichment failed for batch %d-%d: %v", j.startIdx, j.endIdx-1, err)
+				log.Printf("WARNING: %s", errMsg)
+
+				progressMu.Lock()
+				failedBatches++
+				progressMu.Unlock()
+
+				mu.Lock()
+				metadata.Warnings = append(metadata.Warnings, errMsg)
+				mu.Unlock()
 				return
 			}
 
@@ -175,7 +189,9 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 						rawText := uniqueRawTexts[globalIdx]
 						rawToResult[rawText] = out
 					} else {
-						log.Printf("WARNING: LLM returned out-of-bounds index %d for chunk starting at %d", out.Index, j.startIdx)
+						warnMsg := fmt.Sprintf("LLM returned out-of-bounds index %d for batch starting at %d", out.Index, j.startIdx)
+						log.Printf("WARNING: %s", warnMsg)
+						metadata.Warnings = append(metadata.Warnings, warnMsg)
 					}
 				}
 				mu.Unlock()
@@ -187,22 +203,54 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 					progressMu.Unlock()
 				}
 			} else {
-				log.Printf("WARNING: failed to parse enrichment response for batch %d-%d: %s", j.startIdx, j.endIdx-1, response)
+				errMsg := fmt.Sprintf("Failed to parse enrichment response for batch %d-%d", j.startIdx, j.endIdx-1)
+				log.Printf("WARNING: %s: %s", errMsg, response)
+
+				progressMu.Lock()
+				failedBatches++
+				progressMu.Unlock()
+
+				mu.Lock()
+				metadata.Warnings = append(metadata.Warnings, errMsg)
+				mu.Unlock()
 			}
 		}(job)
 	}
 
 	wg.Wait() // Wait for all batches to complete
 
+	// Populate metadata
+	metadata.TotalChunks = totalBatches
+	metadata.SuccessfulChunks = totalBatches - failedBatches
+	metadata.FailedChunks = failedBatches
+
+	// CRITICAL: Fail loudly if >20% of batches failed
+	if totalBatches > 0 {
+		failureRate := float64(failedBatches) / float64(totalBatches)
+		if failureRate > 0.20 {
+			return nil, metadata, fmt.Errorf("CRITICAL: %.0f%% of enrichment batches failed (%d/%d failed). This indicates significant data quality issues. Raw transaction data is unreliable",
+				failureRate*100, failedBatches, totalBatches)
+		}
+	}
+
 	// 3. Apply results back to all transactions
+	enrichedCount := 0
 	for raw, result := range rawToResult {
 		indices := uniqueRawToIndices[raw]
 		for _, txIdx := range indices {
 			transactions[txIdx].Title = result.Title
 			transactions[txIdx].Location = result.Location
 			transactions[txIdx].Category = result.Category
+			enrichedCount++
 		}
 	}
 
-	return transactions, nil
+	unenrichedCount := len(transactions) - enrichedCount
+	if unenrichedCount > 0 {
+		metadata.Warnings = append(metadata.Warnings, fmt.Sprintf("%d transactions could not be enriched and will use raw data", unenrichedCount))
+	}
+
+	metadata.TotalTransactions = len(transactions)
+
+	return transactions, metadata, nil
 }

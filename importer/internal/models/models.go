@@ -25,3 +25,19 @@ type CSVSchema struct {
 	DateFormat     string `json:"date_format"`
 	InvertAmounts  bool   `json:"invert_amounts"`
 }
+
+// ImportMetadata tracks success/failure statistics for import operations
+type ImportMetadata struct {
+	TotalChunks         int      `json:"totalChunks"`         // Total PDF chunks or enrichment batches
+	SuccessfulChunks    int      `json:"successfulChunks"`    // Successfully processed chunks
+	FailedChunks        int      `json:"failedChunks"`        // Failed chunks
+	TotalTransactions   int      `json:"totalTransactions"`   // Total transactions returned
+	SkippedTransactions int      `json:"skippedTransactions"` // Transactions skipped due to validation
+	Warnings            []string `json:"warnings"`            // User-facing warning messages
+}
+
+// ImportResult wraps transactions with metadata about the import process
+type ImportResult struct {
+	Transactions []NormalizedTransaction `json:"transactions"`
+	Metadata     ImportMetadata          `json:"metadata"`
+}

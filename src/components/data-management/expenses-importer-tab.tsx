@@ -52,7 +52,7 @@ type BankState =
 			progress?: number;
 			statusMessage?: string;
 	  }
-	| { step: "review"; data: ImporterTransaction[] }
+	| { step: "review"; data: ImporterTransaction[]; warnings?: string[] }
 	| { step: "error"; message: string };
 
 export function ExpensesImporterTab({
@@ -442,6 +442,7 @@ function BankStatementImport({
 				const reader = response.body.getReader();
 				const decoder = new TextDecoder();
 				let transactions: ImporterTransaction[] = [];
+				let warnings: string[] = [];
 				let buffer = "";
 
 				while (true) {
@@ -472,6 +473,10 @@ function BankStatementImport({
 											}
 										: prev,
 								);
+							} else if (msg.type === "warning") {
+								if (msg.message) {
+									warnings.push(msg.message);
+								}
 							} else if (msg.type === "result") {
 								transactions = msg.data ?? [];
 							} else if (msg.type === "error") {
@@ -489,11 +494,11 @@ function BankStatementImport({
 					);
 				}
 
-				setState({ step: "review", data: transactions });
+				setState({ step: "review", data: transactions, warnings });
 				toast.success(
 					`Found ${transactions.length} transaction${
 						transactions.length === 1 ? "" : "s"
-					}`,
+					}${warnings.length > 0 ? ` (${warnings.length} warning${warnings.length === 1 ? "" : "s"})` : ""}`,
 				);
 			} catch (error: unknown) {
 				const message =
@@ -565,6 +570,7 @@ function BankStatementImport({
 					importerData={state.data}
 					onCancel={resetState}
 					onDone={resetState}
+					warnings={state.warnings}
 				/>
 			</div>
 		);

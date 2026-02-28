@@ -148,10 +148,11 @@ func main() {
 
 	// Message types for NDJSON streaming
 	type StreamMessage struct {
-		Type    string      `json:"type"`
-		Percent float64     `json:"percent,omitempty"`
-		Message string      `json:"message,omitempty"`
-		Data    interface{} `json:"data,omitempty"`
+		Type     string                 `json:"type"`
+		Percent  float64                `json:"percent,omitempty"`
+		Message  string                 `json:"message,omitempty"`
+		Data     interface{}            `json:"data,omitempty"`
+		Metadata *models.ImportMetadata `json:"metadata,omitempty"`
 	}
 
 	// Process endpoint
@@ -199,6 +200,7 @@ func main() {
 		log.Printf("[HTTP] Processing file: %s (%s)", header.Filename, ext)
 
 		var transactions []models.NormalizedTransaction
+		var metadata *models.ImportMetadata
 
 		// Create a temp file to store the upload since some parsers might need seek or filesystem access
 		tempFile, err := os.CreateTemp("", "import-*"+ext)
@@ -233,9 +235,9 @@ func main() {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			transactions, err = handleCSV(tempFile, cfg, validCategories, sendProgress)
+			transactions, metadata, err = handleCSV(tempFile, cfg, validCategories, sendProgress)
 		} else if ext == ".pdf" {
-			transactions, err = handlePDF(tempFile.Name(), cfg, validCategories, sendProgress)
+			transactions, metadata, err = handlePDF(tempFile.Name(), cfg, validCategories, sendProgress)
 		} else {
 			http.Error(w, "Unsupported file format", http.StatusBadRequest)
 			return
@@ -244,8 +246,9 @@ func main() {
 		if err != nil {
 			log.Printf("Processing failed: %v", err)
 			errMsg := StreamMessage{
-				Type:    "error",
-				Message: fmt.Sprintf("Processing failed: %v", err),
+				Type:     "error",
+				Message:  fmt.Sprintf("Processing failed: %v", err),
+				Metadata: metadata,
 			}
 			json.NewEncoder(w).Encode(errMsg)
 			return
@@ -255,10 +258,25 @@ func main() {
 		checksumTracker.Mark(checksum)
 		log.Printf("[HTTP] File processed successfully (checksum: %s, transactions: %d)", checksum[:16], len(transactions))
 
+		// Send warnings if any
+		if metadata != nil && len(metadata.Warnings) > 0 {
+			for _, warning := range metadata.Warnings {
+				warningMsg := StreamMessage{
+					Type:    "warning",
+					Message: warning,
+				}
+				json.NewEncoder(w).Encode(warningMsg)
+				if flusher != nil {
+					flusher.Flush()
+				}
+			}
+		}
+
 		// Send final result
 		resultMsg := StreamMessage{
-			Type: "result",
-			Data: transactions,
+			Type:     "result",
+			Data:     transactions,
+			Metadata: metadata,
 		}
 		json.NewEncoder(w).Encode(resultMsg)
 	}))
@@ -311,14 +329,18 @@ func main() {
 	log.Println("✓ Worker stopped")
 }
 
-func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, error) {
+func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+	metadata := &models.ImportMetadata{
+		Warnings: []string{},
+	}
+
 	if onProgress != nil {
 		onProgress(0.1, "Detecting CSV format...")
 	}
 	reader := csv.NewReader(file)
 	headers, err := reader.Read()
 	if err != nil {
-		return nil, fmt.Errorf("could not read headers: %w", err)
+		return nil, metadata, fmt.Errorf("could not read headers: %w", err)
 	}
 
 	var sampleRows []string
@@ -332,7 +354,7 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgres
 
 	adapter, err := adapters.DetectAdapter(cfg.OllamaEndpoint, cfg.LLMModel, headers, sampleRows)
 	if err != nil {
-		return nil, err
+		return nil, metadata, err
 	}
 
 	if onProgress != nil {
@@ -340,12 +362,12 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgres
 	}
 
 	if _, err = file.Seek(0, 0); err != nil {
-		return nil, fmt.Errorf("failed to seek: %w", err)
+		return nil, metadata, fmt.Errorf("failed to seek: %w", err)
 	}
 
 	parsedTransactions, err := adapter.Parse(file)
 	if err != nil {
-		return nil, fmt.Errorf("parse error: %w", err)
+		return nil, metadata, fmt.Errorf("parse error: %w", err)
 	}
 
 	for i := range parsedTransactions {
@@ -361,7 +383,7 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgres
 		onProgress(0.3, "Enriching transactions...")
 	}
 
-	enrichedTx, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTransactions, categories, func(p float64, m string) {
+	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTransactions, categories, func(p float64, m string) {
 		if onProgress != nil {
 			// Enrichment is from 0.3 to 1.0
 			onProgress(0.3+(p*0.7), m)
@@ -369,33 +391,60 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, onProgres
 	})
 	if err != nil {
 		log.Printf("WARNING: enrichment error: %v (using raw data)", err)
-		return parsedTransactions, nil
+		metadata.Warnings = append(metadata.Warnings, fmt.Sprintf("Enrichment failed: %v", err))
+
+		// Validate raw data before returning
+		validatedTx := processor.ValidateTransactions(parsedTransactions, metadata)
+		metadata.TotalTransactions = len(validatedTx)
+		return validatedTx, metadata, nil
 	}
-	return enrichedTx, nil
+
+	// Merge enrichment metadata into main metadata
+	metadata.TotalChunks = enrichMetadata.TotalChunks
+	metadata.SuccessfulChunks = enrichMetadata.SuccessfulChunks
+	metadata.FailedChunks = enrichMetadata.FailedChunks
+	metadata.TotalTransactions = enrichMetadata.TotalTransactions
+	metadata.Warnings = append(metadata.Warnings, enrichMetadata.Warnings...)
+
+	// Validate all transactions - remove invalid ones and add warnings
+	validatedTx := processor.ValidateTransactions(enrichedTx, metadata)
+	metadata.TotalTransactions = len(validatedTx)
+
+	return validatedTx, metadata, nil
 }
 
-func handlePDF(filePath string, cfg *config.Config, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, error) {
+func handlePDF(filePath string, cfg *config.Config, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+	metadata := &models.ImportMetadata{
+		Warnings: []string{},
+	}
+
 	if onProgress != nil {
 		onProgress(0.05, "Extracting text from PDF...")
 	}
 	rawText, err := pdf.ExtractTextFromPDF(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("PDF extraction failed: %w", err)
+		return nil, metadata, fmt.Errorf("PDF extraction failed: %w", err)
 	}
 
 	if onProgress != nil {
 		onProgress(0.1, "Parsing bank statement...")
 	}
 
-	parsedTx, err := pdf.ParsePDFTransactions(cfg.OllamaEndpoint, cfg.LLMModel, rawText, func(p float64, m string) {
+	parsedTx, parseMetadata, err := pdf.ParsePDFTransactions(cfg.OllamaEndpoint, cfg.LLMModel, rawText, func(p float64, m string) {
 		if onProgress != nil {
 			// PDF parsing is from 0.1 to 0.5
 			onProgress(0.1+(p*0.4), m)
 		}
 	})
 	if err != nil {
-		return nil, fmt.Errorf("PDF parsing failed: %w", err)
+		return nil, parseMetadata, fmt.Errorf("PDF parsing failed: %w", err)
 	}
+
+	// Merge parse metadata
+	metadata.TotalChunks = parseMetadata.TotalChunks
+	metadata.SuccessfulChunks = parseMetadata.SuccessfulChunks
+	metadata.FailedChunks = parseMetadata.FailedChunks
+	metadata.Warnings = append(metadata.Warnings, parseMetadata.Warnings...)
 
 	processor.ApplyExchangeRates(parsedTx)
 	processor.NormalizeDate(parsedTx)
@@ -405,7 +454,7 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, onProgr
 		onProgress(0.5, "Enriching transactions...")
 	}
 
-	enrichedTx, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTx, categories, func(p float64, m string) {
+	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTx, categories, func(p float64, m string) {
 		if onProgress != nil {
 			// Enrichment is from 0.5 to 1.0
 			onProgress(0.5+(p*0.5), m)
@@ -413,8 +462,24 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, onProgr
 	})
 	if err != nil {
 		log.Printf("WARNING: enrichment error: %v (using raw data)", err)
-		return parsedTx, nil // graceful fallback to raw data
+		metadata.Warnings = append(metadata.Warnings, fmt.Sprintf("Enrichment failed: %v", err))
+
+		// Validate raw data before returning
+		validatedTx := processor.ValidateTransactions(parsedTx, metadata)
+		metadata.TotalTransactions = len(validatedTx)
+		return validatedTx, metadata, nil // graceful fallback to raw data
 	}
 
-	return enrichedTx, nil
+	// Merge enrichment metadata (add to existing chunk counts from parsing)
+	metadata.TotalChunks += enrichMetadata.TotalChunks
+	metadata.SuccessfulChunks += enrichMetadata.SuccessfulChunks
+	metadata.FailedChunks += enrichMetadata.FailedChunks
+	metadata.TotalTransactions = enrichMetadata.TotalTransactions
+	metadata.Warnings = append(metadata.Warnings, enrichMetadata.Warnings...)
+
+	// Validate all transactions - remove invalid ones and add warnings
+	validatedTx := processor.ValidateTransactions(enrichedTx, metadata)
+	metadata.TotalTransactions = len(validatedTx)
+
+	return validatedTx, metadata, nil
 }

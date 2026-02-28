@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { DataTable } from "~/components/data-table";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -77,12 +78,14 @@ interface ImporterReviewManagerProps {
 	importerData: ImporterTransaction[];
 	onDone: () => void;
 	onCancel: () => void;
+	warnings?: string[];
 }
 
 export function ImporterReviewManager({
 	importerData,
 	onDone,
 	onCancel,
+	warnings,
 }: ImporterReviewManagerProps) {
 	const { data: categories } = api.categories.getAll.useQuery();
 	const { data: settings } = api.settings.getGeneral.useQuery();
@@ -580,6 +583,21 @@ export function ImporterReviewManager({
 	return (
 		<TooltipProvider>
 			<div className="space-y-4">
+				{/* Warnings */}
+				{warnings && warnings.length > 0 && (
+					<Alert variant="warning">
+						<AlertTriangle className="h-4 w-4" />
+						<AlertTitle>Import Warnings ({warnings.length})</AlertTitle>
+						<AlertDescription>
+							<ul className="mt-2 list-disc pl-4 space-y-1 text-sm">
+								{warnings.map((warning, idx) => (
+									<li key={idx}>{warning}</li>
+								))}
+							</ul>
+						</AlertDescription>
+					</Alert>
+				)}
+
 				{/* Summary Bar */}
 				<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3 text-sm">
 					<div className="flex flex-wrap items-center gap-3">
