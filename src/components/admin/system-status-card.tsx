@@ -11,13 +11,40 @@ import {
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return "0 B";
+	const k = 1024;
+	const sizes = ["B", "KB", "MB", "GB", "TB"];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+function formatUptime(seconds: number): string {
+	const days = Math.floor(seconds / 86400);
+	const hours = Math.floor((seconds % 86400) / 3600);
+	const minutes = Math.floor((seconds % 3600) / 60);
+
+	if (days > 0) {
+		return `${days}d ${hours}h ${minutes}m`;
+	}
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	}
+	return `${minutes}m`;
+}
+
 export function SystemStatusCard({ className }: { className?: string }) {
-	const { data: status, isLoading } = api.system.getWorkerStatus.useQuery(
-		undefined,
-		{
+	const { data: status, isLoading: statusLoading } =
+		api.system.getWorkerStatus.useQuery(undefined, {
 			refetchInterval: 30000, // Refresh every 30 seconds
-		},
-	);
+		});
+
+	const { data: serverStats, isLoading: statsLoading } =
+		api.admin.getServerStats.useQuery(undefined, {
+			refetchInterval: 30000, // Refresh every 30 seconds
+		});
+
+	const isLoading = statusLoading || statsLoading;
 
 	if (isLoading) {
 		return (
@@ -40,15 +67,15 @@ export function SystemStatusCard({ className }: { className?: string }) {
 	return (
 		<Card className={cn("flex flex-col", className)}>
 			<CardHeader>
-				<CardTitle>Background Worker</CardTitle>
+				<CardTitle>System Status</CardTitle>
 				<CardDescription>
-					Monitor the background worker daemon health.
+					Monitor server health and resource usage.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-grow">
 				<div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4">
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">Status</span>
+						<span className="text-muted-foreground text-sm">Worker Status</span>
 						<div className="flex items-center gap-2">
 							<div
 								className={`h-2 w-2 rounded-full ${isHealthy ? "bg-green-500" : "bg-red-500"}`}
@@ -68,6 +95,18 @@ export function SystemStatusCard({ className }: { className?: string }) {
 							) : (
 								"No activity detected"
 							)}
+						</span>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">Database Size</span>
+						<span className="tabular-nums text-sm font-medium">
+							{formatBytes(serverStats?.databaseSize ?? 0)}
+						</span>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">App Uptime</span>
+						<span className="tabular-nums text-sm font-medium">
+							{formatUptime(serverStats?.uptime ?? 0)}
 						</span>
 					</div>
 				</div>

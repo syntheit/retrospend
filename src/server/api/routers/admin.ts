@@ -17,6 +17,24 @@ export const adminRouter = createTRPCRouter({
 		return { userCount };
 	}),
 
+	getServerStats: adminProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		// Get database size in bytes
+		const dbSizeResult = await db.$queryRaw<Array<{ size: bigint }>>`
+			SELECT pg_database_size(current_database()) as size
+		`;
+		const dbSizeBytes = Number(dbSizeResult[0]?.size ?? 0);
+
+		// Get app uptime in seconds
+		const uptimeSeconds = process.uptime();
+
+		return {
+			databaseSize: dbSizeBytes,
+			uptime: uptimeSeconds,
+		};
+	}),
+
 	getAuditLogPrivacyMode: adminProcedure.query(() => {
 		const mode = (process.env.AUDIT_PRIVACY_MODE || "minimal") as
 			| "minimal"
