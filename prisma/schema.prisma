@@ -421,6 +421,7 @@ enum EventType {
   TWO_FACTOR_DISABLED
   SETTINGS_UPDATED
   USER_UPDATED
+  EXPENSE_IMPORT
 }
 
 model UserPageSetting {
