@@ -22,6 +22,7 @@ export const env = createEnv({
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
+		IMPORTER_URL: z.string().url().optional(),
 		SMTP_HOST: z.string().optional(),
 		SMTP_PORT: z.coerce.number().optional(),
 		SMTP_USER: z.string().optional(),
@@ -53,6 +54,7 @@ export const env = createEnv({
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_APP_URL:
 			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+		IMPORTER_URL: process.env.IMPORTER_URL,
 		SMTP_HOST: process.env.SMTP_HOST,
 		SMTP_PORT: process.env.SMTP_PORT,
 		SMTP_USER: process.env.SMTP_USER,

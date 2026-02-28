@@ -8,6 +8,7 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
+      IMPORTER_URL: "http://importer:8080"
 
     ports:
       - "1997:1997"
@@ -31,6 +32,7 @@ services:
       retries: 5
 
   worker:
+    build: ./worker
     image: synzeit/retrospend-worker:latest
     container_name: retrospend-worker
     restart: unless-stopped
@@ -45,6 +47,37 @@ services:
       postgres:
         condition: service_healthy
 
+  importer:
+    build: ./import
+    image: synzeit/retrospend-importer:latest
+    container_name: retrospend-importer
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    environment:
+      - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
+      - WORKER_API_KEY=${WORKER_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-qwen2.5:7b}
+      - LOG_LEVEL=info
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: local-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    devices:
+      - nvidia.com/gpu=all
+
 volumes:
   postgres_data:
+    driver: local
+  ollama_data:
     driver: local
