@@ -1,10 +1,10 @@
 "use client";
 
 import {
+	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	useReactTable,
-	type ColumnDef,
 } from "@tanstack/react-table";
 import { ChevronDown, Eye, Info } from "lucide-react";
 import { useState } from "react";
@@ -78,6 +78,7 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
 	TWO_FACTOR_DISABLED: "2FA Disabled",
 	SETTINGS_UPDATED: "Settings Updated",
 	USER_UPDATED: "User Updated",
+	EXPENSE_IMPORT: "Expense Import",
 };
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
@@ -96,6 +97,7 @@ const EVENT_TYPE_COLORS: Record<EventType, string> = {
 	TWO_FACTOR_DISABLED: "text-orange-600",
 	SETTINGS_UPDATED: "text-blue-600",
 	USER_UPDATED: "text-blue-600",
+	EXPENSE_IMPORT: "text-purple-600",
 };
 
 type PrivacyMode = "minimal" | "anonymized" | "full";
@@ -139,9 +141,7 @@ function MetadataDialog({
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>Event Details</DialogTitle>
-					<DialogDescription>
-						Metadata for {eventType} event
-					</DialogDescription>
+					<DialogDescription>Metadata for {eventType} event</DialogDescription>
 				</DialogHeader>
 				<div className="max-h-[60vh] overflow-auto">
 					<pre className="rounded-md bg-muted p-4 text-xs">
@@ -210,7 +210,9 @@ export function AuditLogsTable() {
 				if (!user) {
 					return (
 						<span className="text-muted-foreground text-sm">
-							{row.original.userId ? `ID: ${row.original.userId.slice(0, 8)}...` : "N/A"}
+							{row.original.userId
+								? `ID: ${row.original.userId.slice(0, 8)}...`
+								: "N/A"}
 						</span>
 					);
 				}
@@ -281,9 +283,7 @@ export function AuditLogsTable() {
 			<div className="space-y-4">
 				<div className="flex items-center justify-between">
 					<div>
-						<h2 className="font-semibold text-xl tracking-tight">
-							Audit Logs
-						</h2>
+						<h2 className="font-semibold text-xl tracking-tight">Audit Logs</h2>
 						<div className="flex items-center gap-3">
 							<p className="text-muted-foreground text-sm">
 								Track security events and administrative actions.

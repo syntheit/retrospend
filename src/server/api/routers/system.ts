@@ -19,7 +19,39 @@ export const systemRouter = createTRPCRouter({
 		};
 	}),
 
-	checkImporterStatus: protectedProcedure.query(() => {
-		return { available: !!env.IMPORTER_URL };
+	checkImporterStatus: protectedProcedure.query(async () => {
+		if (!env.IMPORTER_URL) {
+			return { available: false };
+		}
+
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+
+			const response = await fetch(`${env.IMPORTER_URL}/health`, {
+				signal: controller.signal,
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				return { available: false };
+			}
+
+			const data = (await response.json()) as {
+				status: string;
+				uptime_seconds: number;
+				version: string;
+			};
+
+			return {
+				available: data.status === "ok",
+				uptime: data.uptime_seconds,
+				version: data.version,
+			};
+		} catch (error) {
+			console.error("Importer health check failed:", error);
+			return { available: false };
+		}
 	}),
 });

@@ -44,7 +44,12 @@ export function SystemStatusCard({ className }: { className?: string }) {
 			refetchInterval: 30000, // Refresh every 30 seconds
 		});
 
-	const isLoading = statusLoading || statsLoading;
+	const { data: importerStatus, isLoading: importerLoading } =
+		api.system.checkImporterStatus.useQuery(undefined, {
+			refetchInterval: 30000, // Refresh every 30 seconds
+		});
+
+	const isLoading = statusLoading || statsLoading || importerLoading;
 
 	if (isLoading) {
 		return (
@@ -97,6 +102,35 @@ export function SystemStatusCard({ className }: { className?: string }) {
 							)}
 						</span>
 					</div>
+
+					<div className="my-1 border-t border-border/50" />
+
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">
+							Importer Status
+						</span>
+						<div className="flex items-center gap-2">
+							<div
+								className={`h-2 w-2 rounded-full ${importerStatus?.available ? "bg-green-500" : "bg-red-500"}`}
+							/>
+							<span className="text-sm font-medium">
+								{importerStatus?.available ? "Operational" : "Offline"}
+							</span>
+						</div>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">
+							Importer Uptime
+						</span>
+						<span className="tabular-nums text-sm font-medium">
+							{importerStatus?.available
+								? formatUptime(importerStatus.uptime ?? 0)
+								: "N/A"}
+						</span>
+					</div>
+
+					<div className="my-1 border-t border-border/50" />
+
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">Database Size</span>
 						<span className="tabular-nums text-sm font-medium">

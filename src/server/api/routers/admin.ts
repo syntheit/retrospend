@@ -5,8 +5,8 @@ import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { sendEmail } from "~/server/mailer";
-import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { logEventAsync } from "~/server/services/audit.service";
+import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -65,6 +65,7 @@ export const adminRouter = createTRPCRouter({
 						"TWO_FACTOR_DISABLED",
 						"SETTINGS_UPDATED",
 						"USER_UPDATED",
+						"EXPENSE_IMPORT",
 					])
 					.optional(),
 			}),
