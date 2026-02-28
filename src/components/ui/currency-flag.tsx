@@ -1,42 +1,30 @@
 import { Bitcoin, Coins } from "lucide-react";
+import Image from "next/image";
+import { getCountryCodeFromCurrency } from "~/lib/currency-to-country";
 import { cn } from "~/lib/utils";
-
-const CURRENCY_TO_FLAG: Record<string, string> = {
-	USD: "us",
-	EUR: "eu",
-	GBP: "gb",
-	ARS: "ar",
-	BRL: "br",
-	UYU: "uy",
-	PYG: "py",
-	CLP: "cl",
-	CAD: "ca",
-	AUD: "au",
-	JPY: "jp",
-	CNY: "cn",
-	INR: "in",
-	CHF: "ch",
-	NZD: "nz",
-	HKD: "hk",
-	SGD: "sg",
-};
 
 interface CurrencyFlagProps {
 	currencyCode: string;
-	className?: string; // Allow passing className for additional styling if needed
+	className?: string;
 }
 
+/**
+ * CurrencyFlag component that displays a circular flag for a given currency code.
+ * Uses the circle-flags library via CDN for clean, flat, circular flags.
+ */
 export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
-	// Detect if it's a crypto currency or unknown fiat
+	// Detect if it's a crypto currency
 	const isCrypto =
-		!CURRENCY_TO_FLAG[currencyCode] &&
-		(currencyCode.length > 3 || currencyCode.startsWith("X"));
+		currencyCode === "BTC" ||
+		currencyCode === "ETH" ||
+		currencyCode.startsWith("X") ||
+		currencyCode.length > 3;
 
-	if (isCrypto || currencyCode === "BTC" || currencyCode === "ETH") {
+	if (isCrypto) {
 		return (
 			<div
 				className={cn(
-					"flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+					"flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted/30",
 					currencyCode === "BTC"
 						? "bg-orange-500/10 text-orange-500"
 						: "bg-blue-500/10 text-blue-500",
@@ -44,27 +32,21 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 				)}
 			>
 				{currencyCode === "BTC" ? (
-					<Bitcoin className="h-3.5 w-3.5" />
+					<Bitcoin className="h-4 w-4" />
 				) : (
-					<Coins className="h-3.5 w-3.5" />
+					<Coins className="h-4 w-4" />
 				)}
 			</div>
 		);
 	}
 
-	// Try explicit mapping first, then fallback to first two letters for standard ISO currencies
-	// We avoid fallback for currencies starting with 'X' (usually international/metal/crypto)
-	const code =
-		CURRENCY_TO_FLAG[currencyCode] ||
-		(!currencyCode.startsWith("X") && currencyCode.length >= 2
-			? currencyCode.slice(0, 2).toLowerCase()
-			: null);
+	const countryCode = getCountryCodeFromCurrency(currencyCode);
 
-	if (!code) {
+	if (!countryCode) {
 		return (
-			<span
+			<div
 				className={cn(
-					"!h-6 !w-6 block shrink-0 rounded-full bg-muted",
+					"h-6 w-6 shrink-0 rounded-full bg-muted border border-border/50",
 					className,
 				)}
 			/>
@@ -72,13 +54,20 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 	}
 
 	return (
-		<span
+		<div
 			className={cn(
-				`fi fi-${code} fis`, // Added fis for 1x1 aspect ratio
-				"!h-6 !w-6 rounded-full shadow-sm", // Force dimensions to override library styles
+				"relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-border/50 bg-muted/20",
 				className,
 			)}
 			title={currencyCode}
-		/>
+		>
+			<Image
+				alt={`${currencyCode} flag`}
+				className="object-cover"
+				fill
+				sizes="24px"
+				src={`/images/flags/${countryCode}.svg`}
+			/>
+		</div>
 	);
 }
