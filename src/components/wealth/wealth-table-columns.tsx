@@ -3,7 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	Banknote,
-	Bitcoin,
+	Coins,
 	CreditCard,
 	Home,
 	Info,
@@ -13,6 +13,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { AssetType } from "~/lib/db-enums";
 import { maskAmount } from "~/lib/masking";
 
@@ -44,7 +45,7 @@ const getAssetConfig = (type: AssetType) => {
 			};
 		case AssetType.CRYPTO:
 			return {
-				icon: Bitcoin,
+				icon: Coins,
 				label: "Crypto",
 			};
 		case AssetType.REAL_ESTATE:
@@ -111,8 +112,15 @@ export function createWealthColumns(
 			const { icon: Icon, label } = getAssetConfig(row.original.type);
 			return (
 				<div className="flex items-center gap-3">
-					<div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-						<Icon className="h-4 w-4" />
+					<div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+						{row.original.type === AssetType.CRYPTO ? (
+							<CurrencyFlag
+								className="h-full w-full"
+								currencyCode={row.original.currency}
+							/>
+						) : (
+							<Icon className="h-4 w-4" />
+						)}
 					</div>
 					<div className="flex min-w-0 flex-col leading-tight">
 						<div className="flex items-center gap-2 truncate font-medium text-foreground text-sm">

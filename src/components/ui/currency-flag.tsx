@@ -1,7 +1,7 @@
-import { Bitcoin, Coins } from "lucide-react";
 import Image from "next/image";
 import { getCountryCodeFromCurrency } from "~/lib/currency-to-country";
-import { cn } from "~/lib/utils";
+import { cn, isCrypto } from "~/lib/utils";
+import { CryptoIcon } from "./crypto-icon";
 
 interface CurrencyFlagProps {
 	currencyCode: string;
@@ -10,34 +10,14 @@ interface CurrencyFlagProps {
 
 /**
  * CurrencyFlag component that displays a circular flag for a given currency code.
- * Uses the circle-flags library via CDN for clean, flat, circular flags.
+ * Replaced the previous implementation with local circular flags and added crypto support.
  */
 export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 	// Detect if it's a crypto currency
-	const isCrypto =
-		currencyCode === "BTC" ||
-		currencyCode === "ETH" ||
-		currencyCode.startsWith("X") ||
-		currencyCode.length > 3;
+	const isCryptoCurrency = isCrypto(currencyCode);
 
-	if (isCrypto) {
-		return (
-			<div
-				className={cn(
-					"flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted/30",
-					currencyCode === "BTC"
-						? "bg-orange-500/10 text-orange-500"
-						: "bg-blue-500/10 text-blue-500",
-					className,
-				)}
-			>
-				{currencyCode === "BTC" ? (
-					<Bitcoin className="h-4 w-4" />
-				) : (
-					<Coins className="h-4 w-4" />
-				)}
-			</div>
-		);
+	if (isCryptoCurrency) {
+		return <CryptoIcon className={className} currencyCode={currencyCode} />;
 	}
 
 	const countryCode = getCountryCodeFromCurrency(currencyCode);

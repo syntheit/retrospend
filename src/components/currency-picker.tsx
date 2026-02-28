@@ -17,6 +17,7 @@ import {
 } from "~/lib/currencies";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+import { CurrencyFlag } from "./ui/currency-flag";
 
 interface CurrencyPickerProps {
 	value?: CurrencyCode;
@@ -139,7 +140,7 @@ export function CurrencyPicker({
 				)}
 			/>
 			<span className="flex min-w-0 flex-1 items-center gap-2">
-				<span className="font-medium">{currency.symbol}</span>
+				<CurrencyFlag className="h-5 w-5" currencyCode={currency.code} />
 				<span>{currency.code}</span>
 				<span className="truncate text-muted-foreground">{currency.name}</span>
 			</span>
@@ -157,7 +158,10 @@ export function CurrencyPicker({
 				>
 					{selectedCurrency ? (
 						<span className="flex min-w-0 flex-1 items-center gap-2">
-							<span className="font-medium">{selectedCurrency.symbol}</span>
+							<CurrencyFlag
+								className="h-5 w-5"
+								currencyCode={selectedCurrency.code}
+							/>
 							<span className="truncate text-muted-foreground">
 								{selectedCurrency.code} - {selectedCurrency.name}
 							</span>
