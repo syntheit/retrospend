@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-var Version = "0.1.0"
+var Version = "0.1.1"
 
 // FileChecksumTracker tracks processed files to prevent duplicate imports
 type FileChecksumTracker struct {
@@ -262,6 +262,17 @@ func main() {
 		}
 		json.NewEncoder(w).Encode(resultMsg)
 	}))
+
+	startTime := time.Now()
+	// Health endpoint (public)
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":         "ok",
+			"uptime_seconds": int64(time.Since(startTime).Seconds()),
+			"version":        Version,
+		})
+	})
 
 	// Create HTTP server with graceful shutdown support
 	server := &http.Server{
