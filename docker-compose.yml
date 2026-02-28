@@ -9,7 +9,6 @@ services:
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
       IMPORTER_URL: "http://importer:8080"
-
     ports:
       - "1997:1997"
 
@@ -61,6 +60,8 @@ services:
       - LOG_LEVEL=info
     depends_on:
       - ollama
+    volumes:
+      - importer_data:/app/data
 
   ollama:
     image: ollama/ollama:latest
@@ -80,4 +81,6 @@ volumes:
   postgres_data:
     driver: local
   ollama_data:
+    driver: local
+  importer_data:
     driver: local
