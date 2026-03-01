@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"os"
@@ -67,8 +68,7 @@ func main() {
 			authHeader := r.Header.Get("Authorization")
 			expected := "Bearer " + apiKey
 			
-			// Use constant time comparison if possible, or simple string compare for now
-			if authHeader != expected {
+			if subtle.ConstantTimeCompare([]byte(authHeader), []byte(expected)) != 1 {
 				log.Printf("⚠️ Unauthorized access attempt from %s", r.RemoteAddr)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return

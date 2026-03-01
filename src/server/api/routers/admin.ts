@@ -168,7 +168,7 @@ export const adminRouter = createTRPCRouter({
 				select: { email: true, username: true },
 			});
 
-			const newPassword = Math.random().toString(36).substring(2, 10);
+			const newPassword = crypto.randomBytes(12).toString("base64url");
 			const hashedPassword = await hashPassword(newPassword);
 
 			const updatedAccount = await db.account.updateMany({
@@ -187,6 +187,11 @@ export const adminRouter = createTRPCRouter({
 					message: "User does not have a credential account",
 				});
 			}
+
+			// Invalidate all sessions for the target user
+			await db.session.deleteMany({
+				where: { userId: input.userId },
+			});
 
 			// Log the password reset
 			logEventAsync({

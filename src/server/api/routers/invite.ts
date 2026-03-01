@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import crypto from "crypto";
 import { z } from "zod";
 import {
 	adminProcedure,
@@ -13,9 +14,10 @@ import { isAllowAllUsersToGenerateInvitesEnabled } from "~/server/services/setti
  */
 function generateInviteCode(): string {
 	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	const bytes = crypto.randomBytes(8);
 	let result = "";
 	for (let i = 0; i < 8; i++) {
-		result += chars.charAt(Math.floor(Math.random() * chars.length));
+		result += chars.charAt(bytes[i]! % chars.length);
 	}
 	return result;
 }
@@ -124,9 +126,14 @@ export const inviteRouter = createTRPCRouter({
 	}),
 
 	validate: publicProcedure
-		.input(z.object({ code: z.string() }))
+		.input(z.object({ code: z.string().min(1).max(20) }))
 		.query(async ({ ctx, input }) => {
 			const { db } = ctx;
+
+			// Add artificial delay to slow down brute-force attempts
+			await new Promise((resolve) =>
+				setTimeout(resolve, 200 + Math.random() * 300),
+			);
 
 			const inviteCode = await db.inviteCode.findUnique({
 				where: { code: input.code },

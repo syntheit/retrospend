@@ -17,16 +17,16 @@ const createJobSchema = z.object({
 });
 
 const importerTransactionSchema = z.object({
-	title: z.string(),
+	title: z.string().min(1).max(500),
 	amount: z.number(),
-	currency: z.string(),
+	currency: z.string().min(1).max(10),
 	exchangeRate: z.number(),
 	amountInUSD: z.number(),
-	date: z.string(), // YYYY-MM-DD
-	location: z.string(),
-	description: z.string(),
-	pricingSource: z.string(),
-	category: z.string(),
+	date: z.string().max(10), // YYYY-MM-DD
+	location: z.string().max(500),
+	description: z.string().max(2000),
+	pricingSource: z.string().max(200),
+	category: z.string().max(200),
 });
 
 const finalizeImportSchema = z.object({

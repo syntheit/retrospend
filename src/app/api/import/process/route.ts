@@ -50,6 +50,15 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
+	// Validate file size (10MB limit)
+	const MAX_FILE_SIZE = 10 * 1024 * 1024;
+	if (file.size > MAX_FILE_SIZE) {
+		return NextResponse.json(
+			{ error: "File too large. Maximum size is 10MB." },
+			{ status: 413 },
+		);
+	}
+
 	// Validate file type
 	const name = file.name.toLowerCase();
 	const ext = name.slice(name.lastIndexOf("."));
@@ -69,6 +78,12 @@ export async function POST(request: NextRequest) {
 
 	const currency = formData.get("currency");
 	if (currency && typeof currency === "string") {
+		if (!/^[A-Za-z]{3}$/.test(currency)) {
+			return NextResponse.json(
+				{ error: "Invalid currency code. Must be a 3-letter code." },
+				{ status: 400 },
+			);
+		}
 		importerFormData.append("currency", currency);
 	}
 

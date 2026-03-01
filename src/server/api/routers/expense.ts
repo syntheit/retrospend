@@ -7,15 +7,15 @@ import { ExpenseService } from "~/server/services/expense.service";
 
 const expenseInputSchema = z.object({
 	id: z.string().uuid(),
-	title: z.string(),
+	title: z.string().min(1).max(500),
 	amount: z.number().positive("Amount must be positive"),
 	currency: z.string().min(3).max(10).default(BASE_CURRENCY),
 	exchangeRate: z.number().positive().optional(),
 	amountInUSD: z.number().positive().optional(),
-	pricingSource: z.string().optional(),
+	pricingSource: z.string().max(200).optional(),
 	date: z.date(),
-	location: z.string().optional(),
-	description: z.string().optional(),
+	location: z.string().max(500).optional(),
+	description: z.string().max(2000).optional(),
 	categoryId: z.string().cuid().optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 });

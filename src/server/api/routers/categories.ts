@@ -42,7 +42,7 @@ export const categoriesRouter = createTRPCRouter({
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
 				}),
-				icon: z.string().optional(),
+				icon: z.string().max(50).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -88,7 +88,7 @@ export const categoriesRouter = createTRPCRouter({
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
 				}),
-				icon: z.string().optional(),
+				icon: z.string().max(50).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

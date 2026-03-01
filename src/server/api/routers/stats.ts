@@ -54,17 +54,13 @@ export const statsRouter = createTRPCRouter({
 	getLifetimeStats: protectedProcedure
 		.input(
 			z.object({
-				userId: z.string().optional(),
 				homeCurrency: z.string().length(3).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
 			const service = new StatsService(ctx.db);
-			const userId = input.userId ?? ctx.session.user.id;
+			const userId = ctx.session.user.id;
 
-			// If homeCurrency not provided, we might need to fetch it or use a default
-			// For now, let's try to get it from context if possible, but ctx.session only has basic info
-			// Let's just use USD as default if not provided, or better, fetch it.
 			let homeCurrency = input.homeCurrency;
 			if (!homeCurrency) {
 				const user = await ctx.db.user.findUnique({

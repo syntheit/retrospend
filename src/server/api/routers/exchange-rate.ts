@@ -3,15 +3,11 @@ import { z } from "zod";
 
 import { env } from "~/env";
 
-import {
-	createTRPCRouter,
-	protectedProcedure,
-	publicProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { IntegrationService } from "~/server/services/integration.service";
 
 export const exchangeRateRouter = createTRPCRouter({
-	getLastSync: publicProcedure.query(async ({ ctx }) => {
+	getLastSync: protectedProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
 		const lastSync = await db.exchangeRate.findFirst({
@@ -26,7 +22,7 @@ export const exchangeRateRouter = createTRPCRouter({
 		return lastSync?.date || null;
 	}),
 
-	getRatesForCurrency: publicProcedure
+	getRatesForCurrency: protectedProcedure
 		.input(
 			z.object({
 				currency: z.string().min(3).max(10),
@@ -51,7 +47,7 @@ export const exchangeRateRouter = createTRPCRouter({
 			return rates;
 		}),
 
-	getAllRates: publicProcedure
+	getAllRates: protectedProcedure
 		.input(
 			z
 				.object({

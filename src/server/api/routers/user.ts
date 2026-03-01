@@ -16,6 +16,11 @@ export const userRouter = createTRPCRouter({
 					password: z
 						.string()
 						.min(8, "Password must be at least 8 characters")
+						.max(255)
+						.regex(
+							/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+							"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+						)
 						.optional(),
 					currentPassword: z
 						.string()
@@ -105,6 +110,14 @@ export const userRouter = createTRPCRouter({
 					},
 					data: {
 						password: hashedPassword,
+					},
+				});
+
+				// Invalidate all other sessions to force re-login
+				await db.session.deleteMany({
+					where: {
+						userId: session.user.id,
+						id: { not: session.session.id },
 					},
 				});
 

@@ -24,14 +24,19 @@ WORKDIR /app
 # Install runtime dependencies (pdftotext for PDF parsing)
 RUN apk add --no-cache poppler-utils ca-certificates
 
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 # Copy the compiled binary from the build stage
 COPY --from=builder /bin/worker /bin/worker
 
 # Copy currency.json file into the container (if it's still needed)
 COPY currency.json .
 
-# Create directory for schema cache
-RUN mkdir -p /app/data
+# Create directory for schema cache with proper ownership
+RUN mkdir -p /app/data && chown -R appuser:appgroup /app/data
+
+USER appuser
 
 EXPOSE 8080
 

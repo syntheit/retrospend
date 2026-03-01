@@ -154,10 +154,25 @@ export const authRouter = createTRPCRouter({
 		.input(
 			z.object({
 				token: z.string().min(1).max(255),
-				newPassword: z.string().min(8).max(255),
+				newPassword: z
+					.string()
+					.min(8)
+					.max(255)
+					.regex(
+						/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+						"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+					),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			const clientIp = ctx.headers.get("x-forwarded-for") ?? "unknown";
+			if (!checkRateLimit(`resetPassword_${clientIp}`, 5, 60000)) {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: "Rate limit exceeded",
+				});
+			}
+
 			const { db } = ctx;
 
 			const resetToken = await db.passwordResetToken.findFirst({
@@ -192,6 +207,11 @@ export const authRouter = createTRPCRouter({
 				data: {
 					password: hashedPassword,
 				},
+			});
+
+			// Invalidate all existing sessions — password was compromised or reset
+			await db.session.deleteMany({
+				where: { userId: user.id },
 			});
 
 			await db.passwordResetToken.delete({

@@ -21,10 +21,15 @@ FROM alpine:3.19
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /home/appuser
 
 # Copy the binary from builder
 COPY --from=builder /app/worker .
+
+USER appuser
 
 # Run the worker
 CMD ["./worker"]

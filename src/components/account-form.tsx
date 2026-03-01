@@ -34,7 +34,7 @@ export function AccountForm() {
 
 	// Fetch lifetime stats
 	const { data: lifetimeStats } = api.stats.getLifetimeStats.useQuery(
-		{ userId: session?.user?.id ?? "" },
+		{},
 		{ enabled: !!session?.user },
 	);
 

@@ -20,6 +20,27 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 	},
+	onAPIError: {
+		onError: (error) => {
+			// Log failed authentication attempts
+			if (
+				error &&
+				typeof error === "object" &&
+				"status" in error &&
+				error.status === "UNAUTHORIZED"
+			) {
+				logEventAsync({
+					eventType: "FAILED_LOGIN",
+					metadata: {
+						reason:
+							"message" in error && typeof error.message === "string"
+								? error.message
+								: "Unknown error",
+					},
+				});
+			}
+		},
+	},
 	user: {
 		additionalFields: {
 			username: {

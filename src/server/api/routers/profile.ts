@@ -8,9 +8,9 @@ export const profileRouter = createTRPCRouter({
 	update: protectedProcedure
 		.input(
 			z.object({
-				name: z.string().min(1, "Name is required"),
-				username: z.string().min(1, "Username is required"),
-				email: z.string().email("Invalid email address"),
+				name: z.string().min(1, "Name is required").max(100),
+				username: z.string().min(1, "Username is required").max(50),
+				email: z.string().email("Invalid email address").max(255),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -63,7 +63,12 @@ export const profileRouter = createTRPCRouter({
 					currentPassword: z.string().min(1, "Current password is required"),
 					newPassword: z
 						.string()
-						.min(8, "Password must be at least 8 characters"),
+						.min(8, "Password must be at least 8 characters")
+						.max(255)
+						.regex(
+							/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+							"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+						),
 					confirmPassword: z.string().min(1, "Please confirm your password"),
 				})
 				.refine((data) => data.newPassword === data.confirmPassword, {
@@ -109,6 +114,14 @@ export const profileRouter = createTRPCRouter({
 				},
 				data: {
 					password: hashedPassword,
+				},
+			});
+
+			// Invalidate all other sessions to force re-login
+			await db.session.deleteMany({
+				where: {
+					userId: session.user.id,
+					id: { not: session.session.id },
 				},
 			});
 
