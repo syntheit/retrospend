@@ -19,6 +19,7 @@ interface BudgetHeaderProps {
 	budgets: Budget[];
 	usdToHomeCurrencyRate: number;
 	hasPreviousBudgets?: boolean;
+	serverTime?: Date;
 }
 
 export function BudgetHeader({
@@ -28,6 +29,7 @@ export function BudgetHeader({
 	budgets,
 	usdToHomeCurrencyRate,
 	hasPreviousBudgets,
+	serverTime,
 }: BudgetHeaderProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 	const {
@@ -49,7 +51,8 @@ export function BudgetHeader({
 
 	const hasData = budgets.length > 0 || totalSpent > 0;
 
-	const today = new Date();
+	// Use server time for consistent timezone handling
+	const today = serverTime ? new Date(serverTime) : new Date();
 	const isPastMonth =
 		selectedMonth.getFullYear() < today.getFullYear() ||
 		(selectedMonth.getFullYear() === today.getFullYear() &&

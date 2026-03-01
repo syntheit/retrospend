@@ -27,6 +27,8 @@ export function useOverviewController() {
 	const { homeCurrency, usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
 
 	// State
+	// Initialize with a neutral date to avoid hydration mismatch
+	// Will be updated to server time once data loads
 	const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
 	const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
 	const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
@@ -50,6 +52,7 @@ export function useOverviewController() {
 	const summaryStats = overviewData?.summaryStats;
 	const categoryData = overviewData?.categoryData;
 	const trendData = overviewData?.trendData;
+	const serverTime = overviewData?.serverTime;
 
 	const expensesLoading = isOverviewLoading;
 	const favoritesLoading = isOverviewLoading;
@@ -79,11 +82,19 @@ export function useOverviewController() {
 		}));
 	}, [favoritesData]);
 
+	// Use server time as the authoritative "now" to avoid timezone mismatches
+	// Server is in NY timezone, so this ensures consistent date handling
 	const [now, setNow] = useState<Date | null>(null);
 
 	useEffect(() => {
-		setNow(new Date());
-	}, []);
+		if (serverTime) {
+			// Use server time as the reference
+			setNow(new Date(serverTime));
+		} else {
+			// Fallback to client time during initial load
+			setNow(new Date());
+		}
+	}, [serverTime]);
 
 	const safeNow = now ?? new Date();
 
@@ -224,6 +235,7 @@ export function useOverviewController() {
 			activeSlice,
 			hiddenCategories,
 			now,
+			serverTime: serverTime ? new Date(serverTime) : undefined,
 			isUsingMockExpenses:
 				!expensesFetched || (expensesData?.length ?? 0) === 0,
 			isUsingMockFavorites:

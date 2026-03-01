@@ -20,6 +20,9 @@ export default function BudgetPage() {
 	const isMobile = useIsMobile();
 	const utils = api.useUtils();
 
+	// Fetch server time for consistent timezone handling
+	const { data: serverTimeData } = api.system.getServerTime.useQuery();
+
 	const { data: budgets } = api.budget.getBudgets.useQuery({
 		month: selectedMonth,
 	});
@@ -111,6 +114,7 @@ export default function BudgetPage() {
 						homeCurrency={homeCurrency}
 						onNavigateMonth={navigateMonth}
 						selectedMonth={selectedMonth}
+						serverTime={serverTimeData?.serverTime}
 						usdToHomeCurrencyRate={usdToHomeCurrencyRate ?? 1}
 					/>
 

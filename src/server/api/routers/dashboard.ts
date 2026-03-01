@@ -467,6 +467,7 @@ export const dashboardRouter = createTRPCRouter({
 				summaryStats,
 				categoryData,
 				trendData,
+				serverTime: new Date(), // Return server's current time for consistent timezone handling
 			};
 		}),
 });

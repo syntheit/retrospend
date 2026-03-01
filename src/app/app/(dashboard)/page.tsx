@@ -52,6 +52,7 @@ export default function Page() {
 			<SiteHeader
 				actions={
 					<MonthStepper
+						maxDate={state.serverTime}
 						minDate={data.earliestBudgetMonth ?? undefined}
 						onChange={actions.setSelectedMonth}
 						value={state.selectedMonth}

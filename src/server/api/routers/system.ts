@@ -2,6 +2,11 @@ import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 export const systemRouter = createTRPCRouter({
+	getServerTime: protectedProcedure.query(async () => {
+		// Return server's current time for consistent timezone handling across client and server
+		return { serverTime: new Date() };
+	}),
+
 	getWorkerStatus: protectedProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
