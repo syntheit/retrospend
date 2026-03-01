@@ -37,6 +37,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import type { CurrencyCode } from "~/lib/currencies";
@@ -101,6 +102,7 @@ export function AssetDialog({
 	// Initialize the active rate state.
 	// For crypto we use the Big Number as-is (already USD/Coin in DB).
 	const { getCurrencySymbol } = useCurrencyFormatter();
+	const { toUSD } = useCurrencyConversion();
 	const utils = api.useUtils();
 
 	const form = useForm<FormValues>({
@@ -202,15 +204,8 @@ export function AssetDialog({
 
 	const usdEquivalent = useMemo(() => {
 		const currentBalance = watchedBalance || 0;
-		if (watchedCurrency === "USD") return currentBalance;
-		if (!exchangeRate || exchangeRate === 0) return 0;
-
-		// RUBRIC: Fiat to USD = balance / rate. Crypto to USD = balance * rate.
-		if (checkIsCrypto(watchedCurrency)) {
-			return currentBalance * exchangeRate;
-		}
-		return currentBalance / exchangeRate;
-	}, [watchedBalance, watchedCurrency, exchangeRate]);
+		return toUSD(currentBalance, watchedCurrency, exchangeRate);
+	}, [watchedBalance, watchedCurrency, exchangeRate, toUSD]);
 
 	// Check if asset type is a liability
 	const assetType = form.watch("type");

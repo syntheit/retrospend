@@ -6,11 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useSettings } from "~/hooks/use-settings";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
-import { isCrypto } from "~/lib/currency-format";
 
 import { api } from "~/trpc/react";
 
@@ -103,6 +103,10 @@ export function useExpenseForm({
 	const watchedAmount = watch("amount");
 	const watchedExchangeRate = watch("exchangeRate");
 	const watchedTitle = watch("title");
+	const watchedCurrency = watch("currency");
+
+	// Currency conversion hook
+	const { toUSD } = useCurrencyConversion();
 
 	// Mutations
 	const createExpenseMutation = api.expense.createExpense.useMutation({
@@ -134,20 +138,6 @@ export function useExpenseForm({
 		},
 	});
 
-	// Helper for currency conversion to USD
-	const calculateUSDValue = (
-		amount: number | undefined,
-		rate: number | undefined,
-	): number => {
-		if (amount && amount > 0 && rate && rate > 0) {
-			const currency = watch("currency");
-			// RUBRIC: Fiat to USD = amount / rate. Crypto to USD = amount * rate.
-			const usdValue = isCrypto(currency) ? amount * rate : amount / rate;
-			return Math.round(usdValue * 100) / 100;
-		}
-		return 0;
-	};
-
 	// Event Handlers
 	const handleTitleBlur = () => {
 		if (dirtyFields.categoryId || !categories || !watchedTitle) return;
@@ -165,7 +155,7 @@ export function useExpenseForm({
 	};
 
 	const handleAmountChange = (value: number) => {
-		const usdValue = calculateUSDValue(value, watchedExchangeRate);
+		const usdValue = toUSD(value, watchedCurrency, watchedExchangeRate);
 		setValue("amountInUSD", usdValue, { shouldDirty: true });
 	};
 
@@ -197,7 +187,7 @@ export function useExpenseForm({
 		if (type) {
 			setValue("pricingSource", type, { shouldDirty: true });
 		}
-		const usdValue = calculateUSDValue(watchedAmount, rate);
+		const usdValue = toUSD(watchedAmount, watchedCurrency, rate);
 		setValue("amountInUSD", usdValue, { shouldDirty: true });
 	};
 

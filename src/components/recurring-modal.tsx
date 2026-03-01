@@ -28,9 +28,9 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { useCurrency } from "~/hooks/use-currency";
+import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { isCrypto } from "~/lib/currency-format";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -359,6 +359,7 @@ function CurrencyEstimate({
 }) {
 	const { formatCurrency } = useCurrencyFormatter();
 	const { usdToHomeRate } = useCurrency();
+	const { toUSD, fromUSD } = useCurrencyConversion();
 
 	if (currency === homeCurrency || !amount) return null;
 	if (isLoading)
@@ -367,10 +368,10 @@ function CurrencyEstimate({
 	if (!rate) return null;
 
 	// 1. Convert to USD first
-	const usdValue = isCrypto(currency) ? amount * rate : amount / rate;
+	const usdValue = toUSD(amount, currency, rate);
 
 	// 2. Convert to home currency
-	const estimation = usdValue * (usdToHomeRate ?? 1);
+	const estimation = fromUSD(usdValue, homeCurrency, usdToHomeRate ?? 1);
 
 	return (
 		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">

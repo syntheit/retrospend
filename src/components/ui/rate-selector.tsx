@@ -140,7 +140,10 @@ export function RateSelector({
 			const defaultRate = getDefaultRate();
 			if (defaultRate) {
 				setSelectedRateType(defaultRate.type);
-				const rate = getCrossRate(defaultRate.rate);
+				// Only use getCrossRate if homeCurrency is not USD
+				// When homeCurrency is USD, use DB rate directly
+				const rate =
+					homeCurrency === "USD" ? defaultRate.rate : getCrossRate(defaultRate.rate);
 				onValueChangeRef.current(
 					isCrypto ? rate : getEffectiveRate(rate, isInverse),
 					defaultRate.type,
@@ -158,6 +161,7 @@ export function RateSelector({
 		getCrossRate,
 		isInverse,
 		isCrypto,
+		homeCurrency,
 	]);
 
 	const handleRateTypeChange = useCallback(
@@ -175,7 +179,12 @@ export function RateSelector({
 				onCustomCleared?.();
 				const selectedRate = getRateByType(type);
 				if (selectedRate) {
-					const rate = getCrossRate(selectedRate.rate);
+					// Only use getCrossRate if homeCurrency is not USD
+					// When homeCurrency is USD, use DB rate directly
+					const rate =
+						homeCurrency === "USD"
+							? selectedRate.rate
+							: getCrossRate(selectedRate.rate);
 					onValueChange(
 						isCrypto ? rate : getEffectiveRate(rate, isInverse),
 						selectedRate.type,
@@ -195,6 +204,7 @@ export function RateSelector({
 			isCrypto,
 			onValueChange,
 			value,
+			homeCurrency,
 		],
 	);
 
@@ -221,9 +231,9 @@ export function RateSelector({
 									<span className="truncate">{option.label}</span>
 									{option.type !== "custom" && (
 										<span className="shrink-0 text-muted-foreground text-sm tabular-nums leading-none">
-											{(isCrypto
-												? getCrossRate(option.rate)
-												: option.rate
+											{(isCrypto || homeCurrency === "USD"
+												? option.rate
+												: getCrossRate(option.rate)
 											).toLocaleString(undefined, {
 												minimumFractionDigits: isCrypto ? 2 : 0,
 												maximumFractionDigits: isCrypto ? 2 : 6,
@@ -276,9 +286,9 @@ export function RateSelector({
 									<span>{option.label}</span>
 									{option.type !== "custom" && (
 										<span className="text-muted-foreground text-sm tabular-nums">
-											{(isCrypto
-												? getCrossRate(option.rate)
-												: option.rate
+											{(isCrypto || homeCurrency === "USD"
+												? option.rate
+												: getCrossRate(option.rate)
 											).toLocaleString(undefined, {
 												minimumFractionDigits: isCrypto ? 2 : 0,
 												maximumFractionDigits: isCrypto ? 2 : 6,
@@ -315,18 +325,33 @@ export function RateSelector({
 				selectedRateType !== "custom" && (
 					<div className="flex items-center justify-center rounded-lg border bg-muted/30 p-3">
 						<p className="font-medium text-sm">
-							{isCrypto || isInverse
-								? `1 ${currency} = ${getCrossRate(
-										selectedOption.rate,
-									).toLocaleString(undefined, {
-										minimumFractionDigits: isCrypto ? 2 : 0,
-										maximumFractionDigits: isCrypto ? 2 : 6,
-									})} ${homeCurrency}`
-								: `1 ${homeCurrency} = ${(
-										selectedOption.rate / getHomeRate()
-									).toLocaleString(undefined, {
-										maximumFractionDigits: 6,
-									})} ${currency}`}
+							{homeCurrency === "USD"
+								? isCrypto || isInverse
+									? `1 ${currency} = ${selectedOption.rate.toLocaleString(
+											undefined,
+											{
+												minimumFractionDigits: isCrypto ? 2 : 0,
+												maximumFractionDigits: isCrypto ? 2 : 6,
+											},
+										)} ${homeCurrency}`
+									: `1 ${homeCurrency} = ${(1 / selectedOption.rate).toLocaleString(
+											undefined,
+											{
+												maximumFractionDigits: 6,
+											},
+										)} ${currency}`
+								: isCrypto || isInverse
+									? `1 ${currency} = ${getCrossRate(
+											selectedOption.rate,
+										).toLocaleString(undefined, {
+											minimumFractionDigits: isCrypto ? 2 : 0,
+											maximumFractionDigits: isCrypto ? 2 : 6,
+										})} ${homeCurrency}`
+									: `1 ${homeCurrency} = ${(
+											selectedOption.rate / getHomeRate()
+										).toLocaleString(undefined, {
+											maximumFractionDigits: 6,
+										})} ${currency}`}
 						</p>
 					</div>
 				)}
