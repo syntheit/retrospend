@@ -135,7 +135,7 @@ export function JobCard({
 			<CardContent className={compact ? "px-4 py-2" : "p-4"}>
 				<div className="flex items-start justify-between gap-3">
 					{/* Left: Icon + Content */}
-					<div className="flex items-start gap-3 flex-1 min-w-0">
+					<div className="flex min-w-0 flex-1 items-start gap-3">
 						{/* Icon */}
 						{getStatusIcon(job.status) && (
 							<div className="mt-0.5 flex-shrink-0">
@@ -144,33 +144,29 @@ export function JobCard({
 						)}
 
 						{/* Content */}
-						<div className="flex-1 min-w-0 space-y-1">
+						<div className="min-w-0 flex-1 space-y-1">
 							{/* File name */}
 							<div className="flex items-center gap-2">
-								<FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-								<p className="text-sm font-medium truncate">
-									{job.fileName}
-								</p>
+								<FileText className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+								<p className="truncate font-medium text-sm">{job.fileName}</p>
 							</div>
 
 							{/* Metadata row */}
-							<div className="flex items-center gap-2 flex-wrap">
-								<Badge variant={getStatusColor(job.status)} className="text-xs">
+							<div className="flex flex-wrap items-center gap-2">
+								<Badge className="text-xs" variant={getStatusColor(job.status)}>
 									{getStatusLabel(job.status)}
 								</Badge>
 
 								{position !== undefined && (
-									<Badge variant="outline" className="text-xs">
+									<Badge className="text-xs" variant="outline">
 										#{position}
 									</Badge>
 								)}
 
-								<span className="text-xs text-muted-foreground">
-									{timeAgo}
-								</span>
+								<span className="text-muted-foreground text-xs">{timeAgo}</span>
 
 								{job.totalTransactions > 0 && (
-									<span className="text-xs text-muted-foreground">
+									<span className="text-muted-foreground text-xs">
 										{job.totalTransactions} transaction
 										{job.totalTransactions !== 1 ? "s" : ""}
 									</span>
@@ -178,48 +174,44 @@ export function JobCard({
 							</div>
 
 							{/* Progress bar (only for PROCESSING) */}
-							{job.status === "PROCESSING" &&
-								job.progressPercent !== null && (
-									<div className="space-y-1">
-										<Progress
-											value={job.progressPercent * 100}
-											className="h-1.5"
-										/>
-										{job.statusMessage && (
-											<p className="text-xs text-muted-foreground">
-												{job.statusMessage}
-											</p>
-										)}
-									</div>
-								)}
+							{job.status === "PROCESSING" && job.progressPercent !== null && (
+								<div className="space-y-1">
+									<Progress
+										className="h-1.5"
+										value={job.progressPercent * 100}
+									/>
+									{job.statusMessage && (
+										<p className="text-muted-foreground text-xs">
+											{job.statusMessage}
+										</p>
+									)}
+								</div>
+							)}
 
 							{/* Error message */}
 							{job.status === "FAILED" && job.errorMessage && (
-								<p className="text-xs text-destructive">
-									{job.errorMessage}
-								</p>
+								<p className="text-destructive text-xs">{job.errorMessage}</p>
 							)}
 
 							{/* Completed stats */}
-							{job.status === "COMPLETED" &&
-								job.importedCount !== null && (
-									<p className="text-xs text-muted-foreground">
-										Imported {job.importedCount} expense
-										{job.importedCount !== 1 ? "s" : ""}
-										{job.skippedDuplicates !== null &&
-											job.skippedDuplicates > 0 &&
-											` (${job.skippedDuplicates} duplicate${job.skippedDuplicates !== 1 ? "s" : ""} skipped)`}
-									</p>
-								)}
+							{job.status === "COMPLETED" && job.importedCount !== null && (
+								<p className="text-muted-foreground text-xs">
+									Imported {job.importedCount} expense
+									{job.importedCount !== 1 ? "s" : ""}
+									{job.skippedDuplicates !== null &&
+										job.skippedDuplicates > 0 &&
+										` (${job.skippedDuplicates} duplicate${job.skippedDuplicates !== 1 ? "s" : ""} skipped)`}
+								</p>
+							)}
 						</div>
 					</div>
 
 					{/* Right: Actions */}
-					<div className="flex items-center gap-2 flex-shrink-0">
+					<div className="flex flex-shrink-0 items-center gap-2">
 						{(job.status === "READY_FOR_REVIEW" ||
 							job.status === "REVIEWING") &&
 							onReview && (
-								<Button size="sm" onClick={onReview}>
+								<Button onClick={onReview} size="sm">
 									Review
 								</Button>
 							)}
@@ -228,10 +220,10 @@ export function JobCard({
 							job.status === "REVIEWING") &&
 							onDelete && (
 								<Button
+									className="h-8 w-8 p-0"
+									onClick={onDelete}
 									size="sm"
 									variant="ghost"
-									onClick={onDelete}
-									className="h-8 w-8 p-0"
 								>
 									<Trash2 className="h-4 w-4" />
 								</Button>
@@ -239,10 +231,10 @@ export function JobCard({
 
 						{job.status === "QUEUED" && onCancel && (
 							<Button
+								className="h-8 w-8 p-0"
+								onClick={onCancel}
 								size="sm"
 								variant="ghost"
-								onClick={onCancel}
-								className="h-8 w-8 p-0"
 							>
 								<XCircle className="h-4 w-4" />
 							</Button>
@@ -253,10 +245,10 @@ export function JobCard({
 							job.status === "CANCELLED") &&
 							onDelete && (
 								<Button
+									className="h-8 w-8 p-0"
+									onClick={onDelete}
 									size="sm"
 									variant="ghost"
-									onClick={onDelete}
-									className="h-8 w-8 p-0"
 								>
 									<Trash2 className="h-4 w-4" />
 								</Button>

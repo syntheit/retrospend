@@ -5,6 +5,7 @@ import {
 	startOfMonth,
 	subMonths,
 } from "date-fns";
+import { getFiscalMonthRange } from "~/lib/fiscal-month";
 import type { PrismaClient } from "~prisma";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
 
@@ -14,11 +15,14 @@ export class StatsService {
 	/**
 	 * Gets summary statistics for a given month.
 	 */
-	async getSummaryStats(userId: string, month: Date, homeCurrency: string) {
-		const start = startOfMonth(month);
-		const end = endOfMonth(month);
-		const lastMonthStart = startOfMonth(subMonths(month, 1));
-		const lastMonthEnd = endOfMonth(subMonths(month, 1));
+	async getSummaryStats(userId: string, month: Date, homeCurrency: string, fiscalMonthStartDay = 1) {
+		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
+		const start = fiscal.start;
+		const end = fiscal.end;
+		const lastMonth = subMonths(month, 1);
+		const lastFiscal = getFiscalMonthRange(lastMonth, fiscalMonthStartDay);
+		const lastMonthStart = lastFiscal.start;
+		const lastMonthEnd = lastFiscal.end;
 
 		// Get total for current month
 		const currentMonthAgg = await this.db.expense.aggregate({
@@ -49,8 +53,9 @@ export class StatsService {
 		// Get last 3 months for projection
 		const historicalTotals: number[] = [];
 		for (let i = 1; i <= 3; i++) {
-			const mStart = startOfMonth(subMonths(month, i));
-			const mEnd = endOfMonth(subMonths(month, i));
+			const histFiscal = getFiscalMonthRange(subMonths(month, i), fiscalMonthStartDay);
+			const mStart = histFiscal.start;
+			const mEnd = histFiscal.end;
 			const agg = await this.db.expense.aggregate({
 				where: {
 					userId,
@@ -90,12 +95,10 @@ export class StatsService {
 
 		// Daily average
 		const now = new Date();
-		const isCurrentMonth =
-			month.getMonth() === now.getMonth() &&
-			month.getFullYear() === now.getFullYear();
+		const isCurrentMonth = now >= start && now <= end;
 
 		const daysElapsed = isCurrentMonth
-			? now.getDate()
+			? Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
 			: eachDayOfInterval({ start, end }).length;
 
 		const dailyAverage = totalThisMonth / Math.max(1, daysElapsed);
@@ -115,9 +118,11 @@ export class StatsService {
 		userId: string,
 		month: Date,
 		homeCurrency: string,
+		fiscalMonthStartDay = 1,
 	) {
-		const start = startOfMonth(month);
-		const end = endOfMonth(month);
+		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
+		const start = fiscal.start;
+		const end = fiscal.end;
 
 		const categories = await this.db.expense.groupBy({
 			by: ["categoryId"],
@@ -166,9 +171,10 @@ export class StatsService {
 	/**
 	 * Gets daily trend (cumulative) for a given month with fixed/variable split.
 	 */
-	async getDailyTrend(userId: string, month: Date, homeCurrency: string) {
-		const start = startOfMonth(month);
-		const end = endOfMonth(month);
+	async getDailyTrend(userId: string, month: Date, homeCurrency: string, fiscalMonthStartDay = 1) {
+		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
+		const start = fiscal.start;
+		const end = fiscal.end;
 
 		// Group by both date and category to distinguish fixed/variable
 		const dailyAggs = await this.db.expense.groupBy({
@@ -228,9 +234,7 @@ export class StatsService {
 		}
 
 		const now = new Date();
-		const isCurrentMonth =
-			month.getMonth() === now.getMonth() &&
-			month.getFullYear() === now.getFullYear();
+		const isCurrentMonth = now >= start && now <= end;
 		const endDate = isCurrentMonth ? now : end;
 
 		let cumulativeTotal = 0;

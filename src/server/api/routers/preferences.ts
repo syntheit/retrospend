@@ -31,7 +31,7 @@ export const preferencesRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ input, ctx }) => {
-			return await getPageSettings(ctx.session.user.id, input.page);
+			return await getPageSettings(ctx.db, ctx.session.user.id, input.page);
 		}),
 
 	updatePageSettings: protectedProcedure
@@ -57,7 +57,6 @@ export const preferencesRouter = createTRPCRouter({
 							.object({
 								spendComposition: z.object({ visible: z.boolean() }).optional(),
 								monthlyPacing: z.object({ visible: z.boolean() }).optional(),
-								activityHeatmap: z.object({ visible: z.boolean() }).optional(),
 								categoryTrends: z.object({ visible: z.boolean() }).optional(),
 								recentExpenses: z.object({ visible: z.boolean() }).optional(),
 								wealthAllocation: z.object({ visible: z.boolean() }).optional(),
@@ -83,6 +82,7 @@ export const preferencesRouter = createTRPCRouter({
 		)
 		.mutation(async ({ input, ctx }) => {
 			return await updatePageSettings(
+				ctx.db,
 				ctx.session.user.id,
 				input.page,
 				input.settings,
@@ -90,19 +90,34 @@ export const preferencesRouter = createTRPCRouter({
 		}),
 
 	getAnalyticsCategoryPreferences: protectedProcedure.query(async ({ ctx }) => {
-		return await ensureAnalyticsCategoryPreferences(ctx.session.user.id);
+		return await ensureAnalyticsCategoryPreferences(
+			ctx.db,
+			ctx.session.user.id,
+		);
 	}),
 
 	updateAnalyticsCategoryPreference: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.string(),
+				categoryId: z.string().cuid(),
 				isFlexible: z.boolean(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
+			const { session, db } = ctx;
+			const category = await db.category.findFirst({
+				where: { id: input.categoryId, userId: session.user.id },
+				select: { id: true },
+			});
+			if (!category) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Category not found",
+				});
+			}
 			return await updateAnalyticsCategoryPreference(
-				ctx.session.user.id,
+				db,
+				session.user.id,
 				input.categoryId,
 				input.isFlexible,
 			);
@@ -111,11 +126,12 @@ export const preferencesRouter = createTRPCRouter({
 	deleteAnalyticsCategoryPreference: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.string(),
+				categoryId: z.string().cuid(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
 			return await deleteAnalyticsCategoryPreference(
+				ctx.db,
 				ctx.session.user.id,
 				input.categoryId,
 			);
@@ -123,7 +139,10 @@ export const preferencesRouter = createTRPCRouter({
 
 	getAnalyticsCategoryPreferenceMap: protectedProcedure.query(
 		async ({ ctx }) => {
-			return await getAnalyticsCategoryPreferenceMap(ctx.session.user.id);
+			return await getAnalyticsCategoryPreferenceMap(
+				ctx.db,
+				ctx.session.user.id,
+			);
 		},
 	),
 
@@ -197,7 +216,7 @@ export const preferencesRouter = createTRPCRouter({
 	reorderFavorites: protectedProcedure
 		.input(
 			z.object({
-				exchangeRateIds: z.array(z.string()),
+				exchangeRateIds: z.array(z.string().cuid()).max(100),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -205,6 +224,8 @@ export const preferencesRouter = createTRPCRouter({
 			const { exchangeRateIds } = input;
 
 			await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                            set_config('role', 'retrospend_app', true)`;
 				const favorites = await tx.exchangeRateFavorite.findMany({
 					where: { userId: session.user.id },
 					select: { exchangeRateId: true },
@@ -269,7 +290,7 @@ export const preferencesRouter = createTRPCRouter({
 	toggleFavoriteExchangeRate: protectedProcedure
 		.input(
 			z.object({
-				exchangeRateId: z.string(),
+				exchangeRateId: z.string().cuid(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

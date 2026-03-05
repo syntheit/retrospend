@@ -7,9 +7,74 @@ import { headers } from "next/headers";
 import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import { db } from "~/server/db";
+import { getVerificationEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
-import { isInviteOnlyEnabled } from "~/server/services/settings";
 import { logEventAsync } from "~/server/services/audit.service";
+import { isInviteOnlyEnabled } from "~/server/services/settings";
+
+// ── Rate limiting for auth endpoints ──────────────────────────────────
+const authRateLimitMap = new Map<
+	string,
+	{ count: number; lastReset: number }
+>();
+let authRateLimitCleanupCounter = 0;
+
+function checkAuthRateLimit(
+	key: string,
+	limit: number,
+	windowMs: number,
+): boolean {
+	authRateLimitCleanupCounter++;
+	if (authRateLimitCleanupCounter % 100 === 0) {
+		const now = Date.now();
+		for (const [k, v] of authRateLimitMap) {
+			if (now - v.lastReset > windowMs) authRateLimitMap.delete(k);
+		}
+		if (authRateLimitMap.size > 10_000) {
+			const entries = [...authRateLimitMap.entries()].sort(
+				(a, b) => a[1].lastReset - b[1].lastReset,
+			);
+			for (let i = 0; i < authRateLimitMap.size - 10_000; i++) {
+				authRateLimitMap.delete(entries[i]![0]);
+			}
+		}
+	}
+
+	const now = Date.now();
+	const record = authRateLimitMap.get(key);
+	if (!record) {
+		authRateLimitMap.set(key, { count: 1, lastReset: now });
+		return true;
+	}
+	if (now - record.lastReset > windowMs) {
+		record.count = 1;
+		record.lastReset = now;
+		return true;
+	}
+	if (record.count >= limit) return false;
+	record.count++;
+	return true;
+}
+
+function getClientIp(headersList: Headers): string {
+	const forwarded = headersList.get("x-forwarded-for");
+	if (forwarded) {
+		const ips = forwarded.split(",").map((ip) => ip.trim());
+		return ips[ips.length - 1] ?? "unknown";
+	}
+	return headersList.get("x-real-ip") ?? "unknown";
+}
+
+// Paths that should be rate-limited (login, signup, 2FA)
+const RATE_LIMITED_AUTH_PATHS = [
+	"/sign-in",
+	"/sign-up",
+	"/two-factor",
+	"/forgot-password",
+	"/reset-password",
+];
+const AUTH_RATE_LIMIT = 10; // requests per window
+const AUTH_RATE_WINDOW_MS = 60_000; // 1 minute
 
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
@@ -17,8 +82,35 @@ export const auth = betterAuth({
 		provider: "postgresql", // or "sqlite" or "mysql"
 	}),
 	trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
+	session: {
+		expiresIn: 60 * 60 * 24 * 7, // 7 days
+		updateAge: 60 * 60 * 24, // Refresh daily
+	},
 	emailAndPassword: {
 		enabled: true,
+	},
+	hooks: {
+		before: async (context) => {
+			if (!context.request) return;
+			const path = new URL(context.request.url).pathname.replace(
+				/^\/api\/auth/,
+				"",
+			);
+			if (RATE_LIMITED_AUTH_PATHS.some((p) => path.startsWith(p))) {
+				const ip = getClientIp(context.request.headers);
+				if (
+					!checkAuthRateLimit(
+						`auth_${path}_${ip}`,
+						AUTH_RATE_LIMIT,
+						AUTH_RATE_WINDOW_MS,
+					)
+				) {
+					throw new APIError("TOO_MANY_REQUESTS", {
+						message: "Rate limit exceeded. Please try again later.",
+					});
+				}
+			}
+		},
 	},
 	onAPIError: {
 		onError: (error) => {
@@ -63,6 +155,11 @@ export const auth = betterAuth({
 		user: {
 			create: {
 				before: async (user) => {
+					// Normalize username to lowercase
+					if (user.username) {
+						user.username = (user.username as string).toLowerCase();
+					}
+
 					// Check if username is already taken
 					if (user.username) {
 						const existingUsername = await db.user.findUnique({
@@ -121,14 +218,17 @@ export const auth = betterAuth({
 							?.split("=")[1];
 
 						if (inviteCode) {
-							await db.inviteCode.updateMany({
-								where: { code: inviteCode },
-								data: {
-									usedAt: new Date(),
-									isActive: false,
-									usedById: user.id,
-								},
-							});
+							// Atomic conditional update to prevent TOCTOU race conditions
+							const result = await db.$executeRaw`
+								UPDATE "invite_code"
+								SET "usedById" = ${user.id}, "usedAt" = NOW(), "isActive" = false
+								WHERE "code" = ${inviteCode} AND "usedById" IS NULL AND "isActive" = true
+							`;
+							if (result === 0) {
+								console.warn(
+									`Invite code ${inviteCode} was already consumed (race condition) for user ${user.id}`,
+								);
+							}
 						}
 					}
 
@@ -179,10 +279,12 @@ export const auth = betterAuth({
 
 						// Dispatch email
 						const verifyUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
+						const htmlContent = getVerificationEmailTemplate(verifyUrl);
+
 						await sendEmail(
 							user.email,
 							"Verify your Retrospend Account",
-							`<p>Welcome to Retrospend! Click the link below to verify your email address:</p><a href="${verifyUrl}">Verify Email</a>`,
+							htmlContent,
 						);
 					}
 
@@ -240,7 +342,9 @@ export const auth = betterAuth({
 						eventType: "SUCCESSFUL_LOGIN",
 						userId: session.userId,
 						ipAddress:
-							session.ipAddress ?? headersList.get("x-forwarded-for") ?? undefined,
+							session.ipAddress ??
+							headersList.get("x-forwarded-for") ??
+							undefined,
 						userAgent:
 							session.userAgent ?? headersList.get("user-agent") ?? undefined,
 						metadata: {
@@ -259,4 +363,12 @@ export const auth = betterAuth({
 	baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:1997",
 });
 
-export type Session = typeof auth.$Infer.Session;
+type InferredSession = typeof auth.$Infer.Session;
+export type Session = {
+	session: InferredSession["session"];
+	user: InferredSession["user"] & {
+		username: string;
+		role: string;
+		isActive: boolean;
+	};
+};

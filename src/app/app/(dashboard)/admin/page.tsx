@@ -12,7 +12,7 @@ export default async function AdminPage() {
 		redirect("/login");
 	}
 
-	if (session.user.role !== "ADMIN") {
+	if ((session.user as { role?: string }).role !== "ADMIN") {
 		redirect("/app");
 	}
 

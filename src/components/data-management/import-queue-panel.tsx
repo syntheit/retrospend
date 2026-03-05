@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { JobCard, type JobCardData } from "./job-card";
-import { api } from "~/trpc/react";
-import { Separator } from "~/components/ui/separator";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,6 +12,9 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { Separator } from "~/components/ui/separator";
+import { api } from "~/trpc/react";
+import { JobCard, type JobCardData } from "./job-card";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -109,8 +109,8 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 			{/* Processing Jobs */}
 			{queueStatus?.processing.map((job) => (
 				<JobCard
-					key={job.id}
 					job={job as JobCardData}
+					key={job.id}
 					onDelete={() => deleteJobMutation.mutate({ jobId: job.id })}
 				/>
 			))}
@@ -119,19 +119,17 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 			{queueStatus && queueStatus.queued.length > 0 && (
 				<div className="space-y-3">
 					<div className="flex items-center gap-2">
-						<h3 className="text-sm font-medium text-muted-foreground">
+						<h3 className="font-medium text-muted-foreground text-sm">
 							Queued ({queueStatus.queued.length})
 						</h3>
 					</div>
 					<div className="space-y-2">
 						{queueStatus.queued.map((job, idx) => (
 							<JobCard
-								key={job.id}
 								job={job as JobCardData}
+								key={job.id}
+								onCancel={() => cancelJobMutation.mutate({ jobId: job.id })}
 								position={idx + 1}
-								onCancel={() =>
-									cancelJobMutation.mutate({ jobId: job.id })
-								}
 							/>
 						))}
 					</div>
@@ -141,22 +139,22 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 			{/* Ready for Review */}
 			{queueStatus?.readyForReview.map((job) => (
 				<JobCard
-					key={job.id}
-					job={job as JobCardData}
-					onReview={() => onReviewJob(job.id)}
-					onDelete={() => handleDeleteClick(job.id)}
 					compact
+					job={job as JobCardData}
+					key={job.id}
+					onDelete={() => handleDeleteClick(job.id)}
+					onReview={() => onReviewJob(job.id)}
 				/>
 			))}
 
 			{/* Currently Reviewing */}
 			{queueStatus?.reviewing.map((job) => (
 				<JobCard
-					key={job.id}
-					job={job as JobCardData}
-					onReview={() => onReviewJob(job.id)}
-					onDelete={() => handleDeleteClick(job.id)}
 					compact
+					job={job as JobCardData}
+					key={job.id}
+					onDelete={() => handleDeleteClick(job.id)}
+					onReview={() => onReviewJob(job.id)}
 				/>
 			))}
 
@@ -165,16 +163,16 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 				<>
 					<Separator />
 					<div className="space-y-3">
-						<h3 className="text-sm font-medium text-destructive">
+						<h3 className="font-medium text-destructive text-sm">
 							Failed Imports
 						</h3>
 						<div className="space-y-2">
 							{failedJobs.slice(0, 3).map((job) => (
 								<JobCard
-									key={job.id}
-									job={job as JobCardData}
-									onDelete={() => handleDeleteClick(job.id)}
 									compact
+									job={job as JobCardData}
+									key={job.id}
+									onDelete={() => handleDeleteClick(job.id)}
 								/>
 							))}
 						</div>
@@ -187,16 +185,16 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 				<>
 					<Separator />
 					<div className="space-y-3">
-						<h3 className="text-sm font-medium text-muted-foreground">
+						<h3 className="font-medium text-muted-foreground text-sm">
 							Recently Completed
 						</h3>
 						<div className="space-y-2">
 							{successfulJobs.slice(0, 5).map((job) => (
 								<JobCard
-									key={job.id}
-									job={job as JobCardData}
-									onDelete={() => handleDeleteClick(job.id)}
 									compact
+									job={job as JobCardData}
+									key={job.id}
+									onDelete={() => handleDeleteClick(job.id)}
 								/>
 							))}
 						</div>
@@ -205,17 +203,24 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 			)}
 
 			{/* Delete Confirmation Dialog */}
-			<AlertDialog open={!!jobToDelete} onOpenChange={(open) => !open && setJobToDelete(null)}>
+			<AlertDialog
+				onOpenChange={(open) => !open && setJobToDelete(null)}
+				open={!!jobToDelete}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Import Job</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete this import job? This action cannot be undone.
+							Are you sure you want to delete this import job? This action
+							cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={handleConfirmDelete}
+						>
 							Delete
 						</AlertDialogAction>
 					</AlertDialogFooter>

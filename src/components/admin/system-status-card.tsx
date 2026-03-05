@@ -8,30 +8,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
+import { formatBytes, formatUptime } from "~/lib/format";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
-
-function formatBytes(bytes: number): string {
-	if (bytes === 0) return "0 B";
-	const k = 1024;
-	const sizes = ["B", "KB", "MB", "GB", "TB"];
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-}
-
-function formatUptime(seconds: number): string {
-	const days = Math.floor(seconds / 86400);
-	const hours = Math.floor((seconds % 86400) / 3600);
-	const minutes = Math.floor((seconds % 3600) / 60);
-
-	if (days > 0) {
-		return `${days}d ${hours}h ${minutes}m`;
-	}
-	if (hours > 0) {
-		return `${hours}h ${minutes}m`;
-	}
-	return `${minutes}m`;
-}
 
 export function SystemStatusCard({ className }: { className?: string }) {
 	const { data: status, isLoading: statusLoading } =
@@ -54,10 +33,10 @@ export function SystemStatusCard({ className }: { className?: string }) {
 			refetchInterval: 5000, // Refresh every 5 seconds
 		});
 
-	const isLoading =
-		statusLoading || statsLoading || importerLoading || queueLoading;
+	const hasNoData =
+		!status && !serverStats && !importerStatus && !importQueueStats;
 
-	if (isLoading) {
+	if (hasNoData) {
 		return (
 			<Card className={cn("flex flex-col", className)}>
 				<CardHeader className="pb-2">
@@ -91,7 +70,7 @@ export function SystemStatusCard({ className }: { className?: string }) {
 							<div
 								className={`h-2 w-2 rounded-full ${isHealthy ? "bg-green-500" : "bg-red-500"}`}
 							/>
-							<span className="text-sm font-medium">
+							<span className="font-medium text-sm">
 								{isHealthy ? "Operational" : "Offline"}
 							</span>
 						</div>
@@ -100,7 +79,7 @@ export function SystemStatusCard({ className }: { className?: string }) {
 						<span className="text-muted-foreground text-sm">
 							Last Heartbeat
 						</span>
-						<span className="tabular-nums text-sm font-medium">
+						<span className="font-medium text-sm tabular-nums">
 							{lastRun ? (
 								<>{formatDistanceToNow(lastRun)} ago</>
 							) : (
@@ -109,7 +88,7 @@ export function SystemStatusCard({ className }: { className?: string }) {
 						</span>
 					</div>
 
-					<div className="my-1 border-t border-border/50" />
+					<div className="my-1 border-border/50 border-t" />
 
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">
@@ -119,7 +98,7 @@ export function SystemStatusCard({ className }: { className?: string }) {
 							<div
 								className={`h-2 w-2 rounded-full ${importerStatus?.available ? "bg-green-500" : "bg-red-500"}`}
 							/>
-							<span className="text-sm font-medium">
+							<span className="font-medium text-sm">
 								{importerStatus?.available ? "Operational" : "Offline"}
 							</span>
 						</div>
@@ -128,46 +107,44 @@ export function SystemStatusCard({ className }: { className?: string }) {
 						<span className="text-muted-foreground text-sm">
 							Importer Uptime
 						</span>
-						<span className="tabular-nums text-sm font-medium">
+						<span className="font-medium text-sm tabular-nums">
 							{importerStatus?.available
 								? formatUptime(importerStatus.uptime ?? 0)
 								: "N/A"}
 						</span>
 					</div>
 
-					<div className="my-1 border-t border-border/50" />
+					<div className="my-1 border-border/50 border-t" />
 
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">
 							Import Queue Limit
 						</span>
-						<span className="tabular-nums text-sm font-medium">
+						<span className="font-medium text-sm tabular-nums">
 							{importQueueStats?.currentProcessing ?? 0} /{" "}
 							{importQueueStats?.maxConcurrent ?? 3} processing
 						</span>
 					</div>
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">
-							Queued Jobs
-						</span>
-						<span className="tabular-nums text-sm font-medium">
+						<span className="text-muted-foreground text-sm">Queued Jobs</span>
+						<span className="font-medium text-sm tabular-nums">
 							{importQueueStats?.totalQueued ?? 0} waiting
 							{(importQueueStats?.totalReadyForReview ?? 0) > 0 &&
 								`, ${importQueueStats?.totalReadyForReview} ready`}
 						</span>
 					</div>
 
-					<div className="my-1 border-t border-border/50" />
+					<div className="my-1 border-border/50 border-t" />
 
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">Database Size</span>
-						<span className="tabular-nums text-sm font-medium">
+						<span className="font-medium text-sm tabular-nums">
 							{formatBytes(serverStats?.databaseSize ?? 0)}
 						</span>
 					</div>
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">App Uptime</span>
-						<span className="tabular-nums text-sm font-medium">
+						<span className="font-medium text-sm tabular-nums">
 							{formatUptime(serverStats?.uptime ?? 0)}
 						</span>
 					</div>

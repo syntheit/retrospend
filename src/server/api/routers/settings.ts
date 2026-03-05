@@ -21,9 +21,11 @@ export const settingsRouter = createTRPCRouter({
 				categoryClickBehavior: true,
 				currencySymbolStyle: true,
 				monthlyIncome: true,
-				budgetMode: true,
+				monthlyIncomeCurrency: true,
 				smartCurrencyFormatting: true,
 				defaultPrivacyMode: true,
+				fiscalMonthStartDay: true,
+				defaultExpenseDateBehavior: true,
 			},
 		});
 
@@ -39,9 +41,11 @@ export const settingsRouter = createTRPCRouter({
 			categoryClickBehavior: user.categoryClickBehavior,
 			currencySymbolStyle: user.currencySymbolStyle,
 			monthlyIncome: user.monthlyIncome,
-			budgetMode: user.budgetMode,
+			monthlyIncomeCurrency: user.monthlyIncomeCurrency,
 			smartCurrencyFormatting: user.smartCurrencyFormatting,
 			defaultPrivacyMode: user.defaultPrivacyMode,
+			fiscalMonthStartDay: user.fiscalMonthStartDay,
+			defaultExpenseDateBehavior: user.defaultExpenseDateBehavior,
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};
@@ -58,13 +62,15 @@ export const settingsRouter = createTRPCRouter({
 				categoryClickBehavior: z.enum(["navigate", "toggle"]).optional(),
 
 				currencySymbolStyle: z.enum(["native", "standard"]).optional(),
-				budgetMode: z.enum(["GLOBAL_LIMIT", "SUM_OF_CATEGORIES"]).optional(),
 				monthlyIncome: z
 					.number()
 					.min(0, "Monthly income must be non-negative")
 					.optional(),
+				monthlyIncomeCurrency: z.string().length(3).optional(),
 				smartCurrencyFormatting: z.boolean().optional(),
 				defaultPrivacyMode: z.boolean().optional(),
+				fiscalMonthStartDay: z.number().int().min(1).max(28).optional(),
+				defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -81,14 +87,14 @@ export const settingsRouter = createTRPCRouter({
 					...(input.currencySymbolStyle && {
 						currencySymbolStyle: input.currencySymbolStyle,
 					}),
-					...(input.budgetMode && {
-						budgetMode: input.budgetMode,
-					}),
 					...(input.defaultCurrency && {
 						defaultCurrency: input.defaultCurrency,
 					}),
 					...(input.monthlyIncome !== undefined && {
 						monthlyIncome: input.monthlyIncome,
+					}),
+					...(input.monthlyIncomeCurrency !== undefined && {
+						monthlyIncomeCurrency: input.monthlyIncomeCurrency,
 					}),
 					...(input.smartCurrencyFormatting !== undefined && {
 						smartCurrencyFormatting: input.smartCurrencyFormatting,
@@ -96,13 +102,18 @@ export const settingsRouter = createTRPCRouter({
 					...(input.defaultPrivacyMode !== undefined && {
 						defaultPrivacyMode: input.defaultPrivacyMode,
 					}),
+					...(input.fiscalMonthStartDay !== undefined && {
+						fiscalMonthStartDay: input.fiscalMonthStartDay,
+					}),
+					...(input.defaultExpenseDateBehavior !== undefined && {
+						defaultExpenseDateBehavior: input.defaultExpenseDateBehavior,
+					}),
 				},
 				select: {
 					homeCurrency: true,
 					defaultCurrency: true,
 					categoryClickBehavior: true,
 					currencySymbolStyle: true,
-					budgetMode: true,
 				},
 			});
 		}),

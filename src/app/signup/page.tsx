@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { SignupForm } from "./_components/signup-form";
 
@@ -12,5 +13,9 @@ export default async function SignupPage() {
 		redirect("/app");
 	}
 
-	return <SignupForm />;
+	return (
+		<SignupForm
+			enableLegalPages={env.NEXT_PUBLIC_ENABLE_LEGAL_PAGES === "true"}
+		/>
+	);
 }

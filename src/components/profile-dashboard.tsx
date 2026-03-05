@@ -117,7 +117,7 @@ export function ProfileDashboard() {
 
 	return (
 		<div className="mx-auto w-full max-w-5xl">
-			<div className="grid grid-cols-1 gap-6 items-start xl:grid-cols-2 pb-20">
+			<div className="grid grid-cols-1 items-start gap-6 pb-20 xl:grid-cols-2">
 				{/* Left Column */}
 				<div className="space-y-6">
 					{/* Profile Header Card */}
@@ -125,7 +125,7 @@ export function ProfileDashboard() {
 						<CardContent className="flex items-center gap-4 p-6">
 							{/* Avatar */}
 							<div className="group relative">
-								<div className="relative flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full border bg-secondary font-bold text-muted-foreground text-lg shadow-sm">
+								<div className="relative flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full border bg-secondary font-bold text-lg text-muted-foreground shadow-sm">
 									{user.image ? (
 										<Image
 											alt={user.name || ""}
@@ -148,7 +148,7 @@ export function ProfileDashboard() {
 
 							{/* Info */}
 							<div className="flex-1 space-y-0.5">
-								<h2 className="font-bold text-xl text-foreground tracking-tight">
+								<h2 className="font-bold text-foreground text-xl tracking-tight">
 									{user.name || "User Name"}
 								</h2>
 								<p className="text-muted-foreground text-sm">
@@ -169,8 +169,8 @@ export function ProfileDashboard() {
 						<CardContent className="p-6 pt-0">
 							<Form {...form}>
 								<form
-									id="profile-form"
 									className="space-y-4"
+									id="profile-form"
 									onSubmit={form.handleSubmit(onSubmit)}
 								>
 									<div className="grid grid-cols-2 gap-4">
@@ -241,8 +241,8 @@ export function ProfileDashboard() {
 													{appFeatures?.isEmailEnabled &&
 														!user.emailVerified && (
 															<Badge
-																variant="outline"
 																className="h-5 gap-1 border-warning/20 bg-warning/5 px-2 text-[10px] text-warning uppercase tracking-wider transition-colors hover:bg-warning/10"
+																variant="outline"
 															>
 																<IconAlertTriangle className="size-3" />
 																Unverified
@@ -262,7 +262,7 @@ export function ProfileDashboard() {
 										)}
 									/>
 
-									<div className="flex justify-end mt-6">
+									<div className="mt-6 flex justify-end">
 										<Button
 											disabled={
 												!form.formState.isDirty || updateProfile.isPending

@@ -7,6 +7,10 @@ import "./src/env.js";
 /** @type {import("next").NextConfig} */
 const config = {
 	output: "standalone",
+	env: {
+		NEXT_PUBLIC_SHOW_LANDING_PAGE: process.env.SHOW_LANDING_PAGE ?? "false",
+		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.ENABLE_LEGAL_PAGES ?? "false",
+	},
 	experimental: {
 		externalDir: true,
 	},

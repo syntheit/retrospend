@@ -47,7 +47,7 @@ var enrichSchema = map[string]interface{}{
 
 // EnrichTransactions enhances transaction data with better titles and categories using an LLM.
 // Returns enriched transactions and metadata about the enrichment process.
-func EnrichTransactions(endpoint string, model string, transactions []models.NormalizedTransaction, categories []string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func EnrichTransactions(endpoint string, model string, transactions []models.NormalizedTransaction, categories []string, batchSize int, maxConcurrency int, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
@@ -55,13 +55,15 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 		return transactions, metadata, nil
 	}
 
-	// 1. Group transactions by unique raw text
+	// 1. Group transactions by unique raw text (cleaned for better deduplication)
 	uniqueRawToIndices := make(map[string][]int)
 	for i, t := range transactions {
 		rawText := strings.TrimSpace(t.Title + " " + t.Location)
 		if rawText == "" {
 			continue
 		}
+		// Clean noise from merchant text before deduplication
+		rawText = CleanMerchantText(rawText)
 		uniqueRawToIndices[rawText] = append(uniqueRawToIndices[rawText], i)
 	}
 
@@ -69,14 +71,39 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 		return transactions, metadata, nil
 	}
 
-	// 2. Prepare unique inputs (just raw texts, we'll index them locally per batch)
-	var uniqueRawTexts []string
+	// 2. Check enrichment cache for already-known merchants
+	rawToResult := make(map[string]EnrichOutput)
+	var uncachedRawTexts []string
+	cacheHits := 0
+
 	for raw := range uniqueRawToIndices {
-		uniqueRawTexts = append(uniqueRawTexts, raw)
+		if cached, ok := GetCachedEnrichment(raw); ok {
+			rawToResult[raw] = EnrichOutput{
+				Title:    cached.Title,
+				Location: cached.Location,
+				Category: cached.Category,
+			}
+			cacheHits++
+		} else {
+			uncachedRawTexts = append(uncachedRawTexts, raw)
+		}
+	}
+
+	if cacheHits > 0 {
+		log.Printf("Enrichment cache hit: %d/%d unique merchants cached, %d need LLM", cacheHits, len(uniqueRawToIndices), len(uncachedRawTexts))
+	}
+
+	// Use uncached texts for batching (may be empty if everything is cached)
+	uniqueRawTexts := uncachedRawTexts
+
+	if batchSize <= 0 {
+		batchSize = 20
+	}
+	if maxConcurrency <= 0 {
+		maxConcurrency = 3
 	}
 
 	categoriesJSON, _ := json.Marshal(categories)
-	batchSize := 10 // Can be larger since we have fewer unique items
 
 	systemPrompt := "You are a data enrichment assistant for a financial app. You will receive an array of objects with an 'index' and 'raw_text', plus a list of valid categories. Return a JSON array of objects containing 'index', 'title', 'location', and 'category'. You MUST include the exact same 'index' in your response.\n\n" +
 		"CRITICAL RULES:\n" +
@@ -96,7 +123,6 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 		"- Raw: 'ETHAN GIROUARD Funds Tran ETHAN GIROUARD' -> Title: 'Transfer', Location: '', Category: 'Transfer'\n" +
 		"- Raw: 'DEMOULAS SUPER M PRENOTES 0673373MUTQ' -> Title: 'Demoulas Super Market', Location: '', Category: 'Groceries'"
 
-	rawToResult := make(map[string]EnrichOutput)
 	var mu sync.Mutex // Protects rawToResult map
 
 	// Create batches
@@ -127,7 +153,6 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 	}
 
 	// Process batches concurrently with bounded parallelism
-	maxConcurrency := 3 // Configurable concurrency limit
 	sem := make(chan struct{}, maxConcurrency)
 	var wg sync.WaitGroup
 
@@ -218,6 +243,19 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 	}
 
 	wg.Wait() // Wait for all batches to complete
+
+	// Save new LLM results to enrichment cache
+	newCacheEntries := make(map[string]EnrichCacheEntry)
+	for _, rawText := range uniqueRawTexts {
+		if result, ok := rawToResult[rawText]; ok {
+			newCacheEntries[rawText] = EnrichCacheEntry{
+				Title:    result.Title,
+				Location: result.Location,
+				Category: result.Category,
+			}
+		}
+	}
+	SaveBatchToEnrichmentCache(newCacheEntries)
 
 	// Populate metadata
 	metadata.TotalChunks = totalBatches

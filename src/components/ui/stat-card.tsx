@@ -115,9 +115,9 @@ export function StatCard({
 				</div>
 
 				{/* Bottom Row: Value + Trend/Desc */}
-				<div className="flex w-full items-end justify-between">
-					<div className="flex flex-col gap-0.5">
-						<div className="font-bold text-2xl text-foreground tabular-nums tracking-tight">
+				<div className="flex w-full flex-wrap items-end justify-between gap-x-2 gap-y-1">
+					<div className="flex min-w-0 flex-col gap-0.5">
+						<div className="truncate whitespace-nowrap font-bold text-2xl text-foreground tabular-nums tracking-tight">
 							{loading ? <Skeleton className="h-8 w-24 bg-muted" /> : value}
 						</div>
 						{!loading && subValue && (
@@ -130,7 +130,7 @@ export function StatCard({
 							{trend && trend.value !== null && trend.value !== undefined ? (
 								<div
 									className={cn(
-										"flex items-center gap-1.5 rounded-full px-2 py-1 font-medium",
+										"flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 font-medium",
 										trend.forceNeutral
 											? "bg-muted text-muted-foreground"
 											: trend.intent === "negative"

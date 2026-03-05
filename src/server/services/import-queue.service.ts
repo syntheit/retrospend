@@ -20,6 +20,7 @@ export interface ImporterTransaction {
 	description: string;
 	pricingSource: string;
 	category: string;
+	categoryId?: string;
 }
 
 export interface CreateJobInput {
@@ -88,10 +89,7 @@ export class ImportQueueService {
 		// Trigger queue processing asynchronously (don't await)
 		// This allows the mutation to return immediately
 		void this.processQueue(userId).catch((error) => {
-			console.error(
-				`Queue processing error for user ${userId}:`,
-				error,
-			);
+			console.error(`Queue processing error for user ${userId}:`, error);
 		});
 
 		return job;
@@ -222,7 +220,7 @@ export class ImportQueueService {
 				// Check for multiple sheets and warn
 				if (workbook.SheetNames.length > 1) {
 					additionalWarnings.push(
-						`Excel file contains ${workbook.SheetNames.length} sheets. Only the first sheet "${workbook.SheetNames[0]}" will be imported.`
+						`Excel file contains ${workbook.SheetNames.length} sheets. Only the first sheet "${workbook.SheetNames[0]}" will be imported.`,
 					);
 				}
 
@@ -245,7 +243,7 @@ export class ImportQueueService {
 				}
 			} catch (error) {
 				throw new Error(
-					`Failed to process Excel file: ${error instanceof Error ? error.message : "Unknown error"}`
+					`Failed to process Excel file: ${error instanceof Error ? error.message : "Unknown error"}`,
 				);
 			}
 		} else {
@@ -312,9 +310,7 @@ export class ImportQueueService {
 				try {
 					date = parseDateOnly(dateStr);
 				} catch {
-					warnings.push(
-						`Row ${i + 1}: Invalid date "${dateStr}", skipping`,
-					);
+					warnings.push(`Row ${i + 1}: Invalid date "${dateStr}", skipping`);
 					continue;
 				}
 
@@ -444,7 +440,7 @@ export class ImportQueueService {
 				// Check for multiple sheets and warn
 				if (workbook.SheetNames.length > 1) {
 					additionalWarnings.push(
-						`Excel file contains ${workbook.SheetNames.length} sheets. Only the first sheet "${workbook.SheetNames[0]}" will be processed.`
+						`Excel file contains ${workbook.SheetNames.length} sheets. Only the first sheet "${workbook.SheetNames[0]}" will be processed.`,
 					);
 				}
 
@@ -472,7 +468,7 @@ export class ImportQueueService {
 				fileType = "csv";
 			} catch (error) {
 				throw new Error(
-					`Failed to process Excel file: ${error instanceof Error ? error.message : "Unknown error"}`
+					`Failed to process Excel file: ${error instanceof Error ? error.message : "Unknown error"}`,
 				);
 			}
 		}
@@ -480,10 +476,7 @@ export class ImportQueueService {
 		// Create form data for Go importer
 		const formData = new FormData();
 		const blob = new Blob([fileBuffer], {
-			type:
-				fileType === "pdf"
-					? "application/pdf"
-					: "text/csv",
+			type: fileType === "pdf" ? "application/pdf" : "text/csv",
 		});
 		formData.append("file", blob, fileName);
 
@@ -502,9 +495,7 @@ export class ImportQueueService {
 			});
 
 			if (!response.ok) {
-				const errorText = await response
-					.text()
-					.catch(() => "Unknown error");
+				const errorText = await response.text().catch(() => "Unknown error");
 				throw new Error(
 					`Importer service error [${response.status}]: ${errorText}`,
 				);
@@ -572,10 +563,7 @@ export class ImportQueueService {
 						throw new Error(data.message);
 					}
 				} catch (error) {
-					console.error(
-						`Failed to parse final buffer: ${buffer}`,
-						error,
-					);
+					console.error(`Failed to parse final buffer: ${buffer}`, error);
 				}
 			}
 
@@ -588,8 +576,7 @@ export class ImportQueueService {
 				where: { id: job.id },
 				data: {
 					status: "READY_FOR_REVIEW",
-					transactions:
-						transactions as unknown as Prisma.InputJsonValue,
+					transactions: transactions as unknown as Prisma.InputJsonValue,
 					warnings:
 						warnings.length > 0
 							? (warnings as unknown as Prisma.InputJsonValue)
@@ -694,7 +681,7 @@ export class ImportQueueService {
 			amountInUSD: t.amountInUSD,
 			location: t.location || null,
 			description: t.description || null,
-			categoryId: null, // Categories are mapped client-side
+			categoryId: t.categoryId ?? null, // Categories are mapped client-side
 			pricingSource: t.pricingSource || "IMPORT",
 		}));
 
@@ -780,12 +767,7 @@ export class ImportQueueService {
 			where: {
 				userId,
 				status: {
-					in: [
-						"QUEUED",
-						"PROCESSING",
-						"READY_FOR_REVIEW",
-						"REVIEWING",
-					],
+					in: ["QUEUED", "PROCESSING", "READY_FOR_REVIEW", "REVIEWING"],
 				},
 			},
 			orderBy: { createdAt: "asc" },
@@ -793,9 +775,7 @@ export class ImportQueueService {
 
 		const processing = jobs.filter((j) => j.status === "PROCESSING");
 		const queued = jobs.filter((j) => j.status === "QUEUED");
-		const readyForReview = jobs.filter(
-			(j) => j.status === "READY_FOR_REVIEW",
-		);
+		const readyForReview = jobs.filter((j) => j.status === "READY_FOR_REVIEW");
 		const reviewing = jobs.filter((j) => j.status === "REVIEWING");
 
 		return {
@@ -811,23 +791,18 @@ export class ImportQueueService {
 	 * Gets global queue statistics (admin only).
 	 */
 	async getGlobalStats() {
-		const [
-			totalProcessing,
-			totalQueued,
-			totalReadyForReview,
-			totalReviewing,
-		] = await Promise.all([
-			this.db.importJob.count({ where: { status: "PROCESSING" } }),
-			this.db.importJob.count({ where: { status: "QUEUED" } }),
-			this.db.importJob.count({ where: { status: "READY_FOR_REVIEW" } }),
-			this.db.importJob.count({ where: { status: "REVIEWING" } }),
-		]);
+		const [totalProcessing, totalQueued, totalReadyForReview, totalReviewing] =
+			await Promise.all([
+				this.db.importJob.count({ where: { status: "PROCESSING" } }),
+				this.db.importJob.count({ where: { status: "QUEUED" } }),
+				this.db.importJob.count({ where: { status: "READY_FOR_REVIEW" } }),
+				this.db.importJob.count({ where: { status: "REVIEWING" } }),
+			]);
 
 		return {
 			maxConcurrent: env.MAX_CONCURRENT_IMPORT_JOBS,
 			currentProcessing: totalProcessing,
-			availableSlots:
-				env.MAX_CONCURRENT_IMPORT_JOBS - totalProcessing,
+			availableSlots: env.MAX_CONCURRENT_IMPORT_JOBS - totalProcessing,
 			totalQueued,
 			totalReadyForReview,
 			totalReviewing,

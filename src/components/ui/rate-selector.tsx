@@ -143,7 +143,9 @@ export function RateSelector({
 				// Only use getCrossRate if homeCurrency is not USD
 				// When homeCurrency is USD, use DB rate directly
 				const rate =
-					homeCurrency === "USD" ? defaultRate.rate : getCrossRate(defaultRate.rate);
+					homeCurrency === "USD"
+						? defaultRate.rate
+						: getCrossRate(defaultRate.rate);
 				onValueChangeRef.current(
 					isCrypto ? rate : getEffectiveRate(rate, isInverse),
 					defaultRate.type,
@@ -334,12 +336,11 @@ export function RateSelector({
 												maximumFractionDigits: isCrypto ? 2 : 6,
 											},
 										)} ${homeCurrency}`
-									: `1 ${homeCurrency} = ${(1 / selectedOption.rate).toLocaleString(
-											undefined,
-											{
-												maximumFractionDigits: 6,
-											},
-										)} ${currency}`
+									: `1 ${homeCurrency} = ${(
+											1 / selectedOption.rate
+										).toLocaleString(undefined, {
+											maximumFractionDigits: 6,
+										})} ${currency}`
 								: isCrypto || isInverse
 									? `1 ${currency} = ${getCrossRate(
 											selectedOption.rate,

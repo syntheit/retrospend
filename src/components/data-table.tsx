@@ -3,6 +3,7 @@
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import {
 	type ColumnDef,
+	type VisibilityState,
 	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
@@ -41,6 +42,8 @@ interface DataTableProps<TData> {
 	footer?: React.ReactNode;
 	initialSorting?: SortingState;
 	pageSize?: number;
+	/** Columns to hide — keys must match column id/accessorKey */
+	columnVisibility?: VisibilityState;
 }
 
 /**
@@ -58,6 +61,7 @@ export function DataTable<TData extends { id: string }>({
 	footer,
 	initialSorting = [],
 	pageSize = DEFAULT_PAGE_SIZE,
+	columnVisibility = {} as VisibilityState,
 }: DataTableProps<TData>) {
 	const [searchInput, setSearchInput] = React.useState("");
 	const deferredSearch = React.useDeferredValue(searchInput);
@@ -84,6 +88,7 @@ export function DataTable<TData extends { id: string }>({
 			sorting,
 			pagination,
 			globalFilter: deferredSearch,
+			columnVisibility,
 		},
 		onSortingChange: setSorting,
 		onPaginationChange: setPagination,

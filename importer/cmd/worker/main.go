@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
@@ -81,7 +82,7 @@ func (t *FileChecksumTracker) save() {
 		return
 	}
 
-	if err := os.WriteFile(t.filePath, data, 0644); err != nil {
+	if err := os.WriteFile(t.filePath, data, 0600); err != nil {
 		log.Printf("Warning: failed to write checksum tracker: %v", err)
 	}
 }
@@ -137,7 +138,7 @@ func main() {
 			authHeader := r.Header.Get("Authorization")
 			expected := "Bearer " + cfg.WorkerAPIKey
 
-			if authHeader != expected {
+			if subtle.ConstantTimeCompare([]byte(authHeader), []byte(expected)) != 1 {
 				log.Printf("⚠️ Unauthorized access attempt from %s", r.RemoteAddr)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
@@ -385,7 +386,7 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, defaultCu
 		onProgress(0.3, "Enriching transactions...")
 	}
 
-	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTransactions, categories, func(p float64, m string) {
+	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTransactions, categories, cfg.EnrichBatchSize, cfg.EnrichConcurrency, func(p float64, m string) {
 		if onProgress != nil {
 			// Enrichment is from 0.3 to 1.0
 			onProgress(0.3+(p*0.7), m)
@@ -432,7 +433,7 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, default
 		onProgress(0.1, "Parsing bank statement...")
 	}
 
-	parsedTx, parseMetadata, err := pdf.ParsePDFTransactions(cfg.OllamaEndpoint, cfg.LLMModel, rawText, func(p float64, m string) {
+	parsedTx, parseMetadata, err := pdf.ParsePDFTransactions(cfg.OllamaEndpoint, cfg.LLMModel, rawText, cfg.PDFConcurrency, func(p float64, m string) {
 		if onProgress != nil {
 			// PDF parsing is from 0.1 to 0.5
 			onProgress(0.1+(p*0.4), m)
@@ -456,7 +457,7 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, default
 		onProgress(0.5, "Enriching transactions...")
 	}
 
-	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTx, categories, func(p float64, m string) {
+	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTx, categories, cfg.EnrichBatchSize, cfg.EnrichConcurrency, func(p float64, m string) {
 		if onProgress != nil {
 			// Enrichment is from 0.5 to 1.0
 			onProgress(0.5+(p*0.5), m)

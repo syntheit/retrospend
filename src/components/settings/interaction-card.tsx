@@ -1,6 +1,6 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -32,6 +32,7 @@ import { api } from "~/trpc/react";
 const interactionSchema = z.object({
 	categoryClickBehavior: z.enum(["navigate", "toggle"]),
 	currencySymbolStyle: z.enum(["native", "standard"]),
+	defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]),
 });
 
 type InteractionValues = z.infer<typeof interactionSchema>;
@@ -47,6 +48,7 @@ export function InteractionCard() {
 		defaultValues: {
 			categoryClickBehavior: "toggle",
 			currencySymbolStyle: "standard",
+			defaultExpenseDateBehavior: "TODAY",
 		},
 	});
 
@@ -55,9 +57,12 @@ export function InteractionCard() {
 			form.reset({
 				categoryClickBehavior: settings.categoryClickBehavior || "toggle",
 				currencySymbolStyle: settings.currencySymbolStyle || "standard",
+				defaultExpenseDateBehavior: settings.defaultExpenseDateBehavior || "TODAY",
 			});
 		}
 	}, [settings, form]);
+
+	const utils = api.useUtils();
 
 	const onSubmit = useCallback(
 		async (values: InteractionValues) => {
@@ -67,6 +72,7 @@ export function InteractionCard() {
 				await updateSettingsMutation.mutateAsync({
 					categoryClickBehavior: values.categoryClickBehavior,
 					currencySymbolStyle: values.currencySymbolStyle,
+					defaultExpenseDateBehavior: values.defaultExpenseDateBehavior,
 					homeCurrency: settings.homeCurrency || "USD",
 					defaultCurrency: settings.defaultCurrency || "USD",
 					monthlyIncome: settings.monthlyIncome
@@ -74,24 +80,24 @@ export function InteractionCard() {
 						: undefined,
 					smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
 				});
+				await utils.settings.getGeneral.invalidate();
 				form.reset(values);
+				toast.success("Interaction settings updated");
 			} catch (err) {
 				const errMsg =
 					err instanceof Error ? err.message : "Failed to save settings";
 				toast.error(errMsg);
 			}
 		},
-		[settings, updateSettingsMutation, form],
+		[settings, updateSettingsMutation, form, utils],
 	);
 
-	useEffect(() => {
-		const subscription = form.watch(() => {
-			if (form.formState.isDirty) {
-				void form.handleSubmit(onSubmit)();
-			}
-		});
-		return () => subscription.unsubscribe();
-	}, [form, onSubmit]);
+	const onSubmitRef = useRef(onSubmit);
+	onSubmitRef.current = onSubmit;
+
+	const save = useCallback(() => {
+		void form.handleSubmit(onSubmitRef.current)();
+	}, [form]); // form is stable; onSubmit accessed via ref
 
 	if (settingsLoading) {
 		return (
@@ -122,7 +128,10 @@ export function InteractionCard() {
 									<FormLabel>Category Click Behavior</FormLabel>
 									<Select
 										defaultValue={field.value}
-										onValueChange={field.onChange}
+										onValueChange={(value) => {
+											field.onChange(value);
+											save();
+										}}
 										value={field.value}
 									>
 										<FormControl>
@@ -155,7 +164,10 @@ export function InteractionCard() {
 									<FormLabel>Currency Symbol Style</FormLabel>
 									<Select
 										defaultValue={field.value}
-										onValueChange={field.onChange}
+										onValueChange={(value) => {
+											field.onChange(value);
+											save();
+										}}
 										value={field.value}
 									>
 										<FormControl>
@@ -172,6 +184,40 @@ export function InteractionCard() {
 									</Select>
 									<FormDescription>
 										Display format for foreign currencies.
+									</FormDescription>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="defaultExpenseDateBehavior"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Default Expense Date</FormLabel>
+									<Select
+										defaultValue={field.value}
+										onValueChange={(value) => {
+											field.onChange(value);
+											save();
+										}}
+										value={field.value}
+									>
+										<FormControl>
+											<SelectTrigger>
+												<SelectValue placeholder="Select behavior" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="TODAY">Today</SelectItem>
+											<SelectItem value="LAST_USED">
+												Last Used Date
+											</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormDescription>
+										Date pre-filled when creating a new expense.
 									</FormDescription>
 									<FormMessage />
 								</FormItem>

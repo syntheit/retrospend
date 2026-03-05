@@ -3,14 +3,18 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type Config struct {
-	OllamaEndpoint string
-	LogLevel       string
-	Port           string
-	WorkerAPIKey   string
-	LLMModel       string
+	OllamaEndpoint   string
+	LogLevel         string
+	Port             string
+	WorkerAPIKey     string
+	LLMModel         string
+	EnrichBatchSize  int
+	EnrichConcurrency int
+	PDFConcurrency   int
 }
 
 func Load() (*Config, error) {
@@ -39,11 +43,30 @@ func Load() (*Config, error) {
 		logLevel = "info"
 	}
 
+	enrichBatchSize := getEnvInt("ENRICH_BATCH_SIZE", 20)
+	enrichConcurrency := getEnvInt("ENRICH_CONCURRENCY", 3)
+	pdfConcurrency := getEnvInt("PDF_CONCURRENCY", 3)
+
 	return &Config{
-		OllamaEndpoint: ollama,
-		LogLevel:       logLevel,
-		Port:           port,
-		WorkerAPIKey:   apiKey,
-		LLMModel:       model,
+		OllamaEndpoint:   ollama,
+		LogLevel:         logLevel,
+		Port:             port,
+		WorkerAPIKey:     apiKey,
+		LLMModel:         model,
+		EnrichBatchSize:  enrichBatchSize,
+		EnrichConcurrency: enrichConcurrency,
+		PDFConcurrency:   pdfConcurrency,
 	}, nil
+}
+
+func getEnvInt(key string, defaultVal int) int {
+	s := os.Getenv(key)
+	if s == "" {
+		return defaultVal
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil || v <= 0 {
+		return defaultVal
+	}
+	return v
 }

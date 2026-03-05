@@ -3,10 +3,26 @@ import { z } from "zod";
 
 import { env } from "~/env";
 
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	protectedProcedure,
+	publicProcedure,
+} from "~/server/api/trpc";
 import { IntegrationService } from "~/server/services/integration.service";
 
 export const exchangeRateRouter = createTRPCRouter({
+	getRate: publicProcedure
+		.input(z.object({ currency: z.string().min(3).max(10) }))
+		.query(async ({ ctx, input }) => {
+			const rate = await ctx.db.exchangeRate.findFirst({
+				where: { currency: input.currency.toUpperCase() },
+				orderBy: [{ date: "desc" }, { type: "asc" }],
+				select: { rate: true, type: true, currency: true },
+			});
+			return rate ?? null;
+		}),
+
 	getLastSync: protectedProcedure.query(async ({ ctx }) => {
 		const { db } = ctx;
 
@@ -82,18 +98,7 @@ export const exchangeRateRouter = createTRPCRouter({
 			return rates;
 		}),
 
-	syncNow: protectedProcedure.mutation(async ({ ctx }) => {
-		const { session } = ctx;
-
-		const isAdmin = session.user.role === "ADMIN";
-
-		if (!isAdmin) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Only administrators can trigger exchange rate sync",
-			});
-		}
-
+	syncNow: adminProcedure.mutation(async ({ ctx }) => {
 		try {
 			// Trigger sync on worker
 			await IntegrationService.requestWorker(`${env.WORKER_URL}/sync-rates`, {

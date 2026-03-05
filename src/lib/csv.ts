@@ -405,12 +405,34 @@ export const parseWealthCsv = (text: string) => {
 export function escapeValue(raw: unknown): string {
 	if (raw === null || raw === undefined) return "";
 
-	const value =
+	// Track whether the raw value is numeric/date — formula injection prefix
+	// must not be applied to these, as "-100" is a valid negative number and
+	// prefixing it with "'" would turn it into text in spreadsheet apps.
+	const isNumericOrDate =
+		raw instanceof Date || typeof raw === "number" || typeof raw === "bigint";
+
+	let value =
 		raw instanceof Date
 			? (raw.toISOString().split("T")[0] ?? "")
 			: typeof raw === "number" || typeof raw === "bigint"
 				? raw.toString()
 				: String(raw);
+
+	// Neutralize CSV formula injection for string values only.
+	// Numbers and dates from server-side are never user-supplied formulas.
+	if (!isNumericOrDate) {
+		const firstChar = value.charAt(0);
+		if (
+			firstChar === "=" ||
+			firstChar === "+" ||
+			firstChar === "-" ||
+			firstChar === "@" ||
+			firstChar === "\t" ||
+			firstChar === "\r"
+		) {
+			value = `'${value}`;
+		}
+	}
 
 	const needsEscaping = /["\n,]/.test(value);
 	if (!needsEscaping) return value;

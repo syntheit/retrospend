@@ -9,7 +9,9 @@ import (
 
 // DiscoverCSVSchema uses an LLM to identify the mapping of columns in a CSV file.
 func DiscoverCSVSchema(endpoint string, model string, header string, sampleRows []string) (models.CSVSchema, error) {
-	payload := header + "\n" + strings.Join(sampleRows, "\n")
+	// Mask non-essential columns in sample rows to reduce noise
+	maskedRows := MaskCSVSampleRows(header, sampleRows)
+	payload := header + "\n" + strings.Join(maskedRows, "\n")
 
 	systemPrompt := `You are a CSV schema analyzer for a financial application. You will receive a CSV header and 3 sample rows. Identify the column indices (0-indexed) for the Date, Amount, and Merchant/Payee. 
   

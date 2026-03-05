@@ -51,6 +51,8 @@ export function WealthDataTable({
 	onDeleteSelected,
 	totalNetWorth = 0,
 	isPrivacyMode = false,
+	hidePagination = false,
+	readOnly = false,
 }: {
 	data: Asset[];
 	homeCurrency?: string;
@@ -59,6 +61,8 @@ export function WealthDataTable({
 	selectedRows?: Set<string>;
 	onSelectionChange?: (selectedIds: Set<string>) => void;
 	onDeleteSelected?: (selectedIds: Set<string>) => void;
+	hidePagination?: boolean;
+	readOnly?: boolean;
 }) {
 	const { formatCurrency } = useCurrencyFormatter();
 	const [hoveredColumn, setHoveredColumn] = React.useState<string | null>(null);
@@ -261,12 +265,12 @@ export function WealthDataTable({
 						{paginationRows.length ? (
 							paginationRows.map((row: Row<Asset>) => (
 								<TableRow
-									className="group cursor-pointer border-border/40 border-b transition-colors last:border-0 hover:bg-muted/50"
+									className={`group border-border/40 border-b transition-colors last:border-0 hover:bg-muted/50 ${readOnly ? "" : "cursor-pointer"}`}
 									data-state={
 										selectedRows.has(row.original.id) ? "selected" : undefined
 									}
 									key={row.id}
-									onClick={() => setEditingAssetId(row.original.id)}
+									onClick={readOnly ? undefined : () => setEditingAssetId(row.original.id)}
 								>
 									{row.getVisibleCells().map((cell: Cell<Asset, unknown>) => {
 										const cellIsRightAligned =
@@ -338,77 +342,81 @@ export function WealthDataTable({
 			</div>
 
 			{/* Pagination Controls */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-2">
-					<Label className="font-medium text-sm" htmlFor="rows-per-page">
-						Rows per page
-					</Label>
-					<Select
-						onValueChange={(value) => {
-							table.setPageSize(Number(value));
-						}}
-						value={`${table.getState().pagination.pageSize}`}
-					>
-						<SelectTrigger className="w-20" id="rows-per-page" size="sm">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{[10, 15, 20, 30, 40, 50].map((pageSize) => (
-								<SelectItem key={pageSize} value={`${pageSize}`}>
-									{pageSize}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="flex items-center gap-2">
-					<div className="text-muted-foreground text-sm">
-						Page {table.getState().pagination.pageIndex + 1} of{" "}
-						{table.getPageCount()}
+			{!hidePagination && (
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex items-center gap-2">
+						<Label className="font-medium text-sm" htmlFor="rows-per-page">
+							Rows per page
+						</Label>
+						<Select
+							onValueChange={(value) => {
+								table.setPageSize(Number(value));
+							}}
+							value={`${table.getState().pagination.pageSize}`}
+						>
+							<SelectTrigger className="w-20" id="rows-per-page" size="sm">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{[10, 15, 20, 30, 40, 50].map((pageSize) => (
+									<SelectItem key={pageSize} value={`${pageSize}`}>
+										{pageSize}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</div>
-					<div className="flex items-center gap-1">
-						<Button
-							disabled={!table.getCanPreviousPage()}
-							onClick={() => table.setPageIndex(0)}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronsLeft className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanPreviousPage()}
-							onClick={() => table.previousPage()}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronLeft className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanNextPage()}
-							onClick={() => table.nextPage()}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronRight className="size-4" />
-						</Button>
-						<Button
-							disabled={!table.getCanNextPage()}
-							onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-							size="sm"
-							variant="outline"
-						>
-							<IconChevronsRight className="size-4" />
-						</Button>
+					<div className="flex items-center gap-2">
+						<div className="text-muted-foreground text-sm">
+							Page {table.getState().pagination.pageIndex + 1} of{" "}
+							{table.getPageCount()}
+						</div>
+						<div className="flex items-center gap-1">
+							<Button
+								disabled={!table.getCanPreviousPage()}
+								onClick={() => table.setPageIndex(0)}
+								size="sm"
+								variant="outline"
+							>
+								<IconChevronsLeft className="size-4" />
+							</Button>
+							<Button
+								disabled={!table.getCanPreviousPage()}
+								onClick={() => table.previousPage()}
+								size="sm"
+								variant="outline"
+							>
+								<IconChevronLeft className="size-4" />
+							</Button>
+							<Button
+								disabled={!table.getCanNextPage()}
+								onClick={() => table.nextPage()}
+								size="sm"
+								variant="outline"
+							>
+								<IconChevronRight className="size-4" />
+							</Button>
+							<Button
+								disabled={!table.getCanNextPage()}
+								onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+								size="sm"
+								variant="outline"
+							>
+								<IconChevronsRight className="size-4" />
+							</Button>
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 
 			{/* Asset Dialog Wrapper for Controlled Edit */}
-			<ControlledAssetDialog
-				asset={editingAsset}
-				isOpen={!!editingAssetId}
-				onOpenChange={(open) => !open && setEditingAssetId(null)}
-			/>
+			{!readOnly && (
+				<ControlledAssetDialog
+					asset={editingAsset}
+					isOpen={!!editingAssetId}
+					onOpenChange={(open) => !open && setEditingAssetId(null)}
+				/>
+			)}
 		</div>
 	);
 }

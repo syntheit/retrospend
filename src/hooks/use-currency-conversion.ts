@@ -168,7 +168,9 @@ export function useCurrencyConversion() {
 				// Fiat rates are stored as Units per USD
 				// - "usd-to-foreign": 1 USD = X FOREIGN (raw rate)
 				// - "foreign-to-usd": 1 FOREIGN = X USD (inverted)
-				return displayMode === "foreign-to-usd" ? 1 / exchangeRate : exchangeRate;
+				return displayMode === "foreign-to-usd"
+					? 1 / exchangeRate
+					: exchangeRate;
 			},
 		}),
 		[],

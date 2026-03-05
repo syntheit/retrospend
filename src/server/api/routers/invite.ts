@@ -147,7 +147,7 @@ export const inviteRouter = createTRPCRouter({
 		}),
 
 	delete: adminProcedure
-		.input(z.object({ id: z.string() }))
+		.input(z.object({ id: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db } = ctx;
 			const inviteCode = await db.inviteCode.findUnique({
@@ -290,7 +290,7 @@ export const inviteRouter = createTRPCRouter({
 	}),
 
 	deleteUserCode: protectedProcedure
-		.input(z.object({ id: z.string() }))
+		.input(z.object({ id: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 

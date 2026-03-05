@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -32,26 +32,44 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
-import { CURRENCIES, type CurrencyCode } from "~/lib/currencies";
-import { cn, getCurrencySymbol } from "~/lib/utils";
+import {
+	CRYPTO_CURRENCIES,
+	CURRENCIES,
+	type CurrencyCode,
+} from "~/lib/currencies";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 const currencyCodeSchema = z
 	.string()
-	.refine((val): val is CurrencyCode => val in CURRENCIES, {
-		message: "Invalid currency code",
-	});
+	.refine(
+		(val): val is CurrencyCode => val in CURRENCIES || val in CRYPTO_CURRENCIES,
+		{ message: "Invalid currency code" },
+	);
 
 // Subset of general settings for this card
 const appPreferencesSchema = z.object({
 	homeCurrency: currencyCodeSchema,
 	defaultCurrency: currencyCodeSchema,
-	monthlyIncome: z.string().optional(),
+	monthlyIncome: z
+		.string()
+		.optional()
+		.refine(
+			(val) => !val?.trim() || !isNaN(parseFloat(val)),
+			"Must be a valid number",
+		)
+		.refine(
+			(val) => !val?.trim() || parseFloat(val) >= 0,
+			"Must be a non-negative number",
+		),
+	monthlyIncomeCurrency: currencyCodeSchema,
 	smartCurrencyFormatting: z.boolean(),
 	defaultPrivacyMode: z.boolean(),
+	fiscalMonthStartDay: z.number().int().min(1).max(28),
 });
 
 type AppPreferencesValues = z.infer<typeof appPreferencesSchema>;
+
 
 export function AppPreferencesCard() {
 	const { setTheme, preference: themePreference } = useThemeContext();
@@ -67,8 +85,10 @@ export function AppPreferencesCard() {
 			homeCurrency: "USD",
 			defaultCurrency: "USD",
 			monthlyIncome: "",
+			monthlyIncomeCurrency: "USD" as CurrencyCode,
 			smartCurrencyFormatting: true,
 			defaultPrivacyMode: false,
+			fiscalMonthStartDay: 1,
 		},
 	});
 
@@ -83,11 +103,15 @@ export function AppPreferencesCard() {
 				monthlyIncome: settings.monthlyIncome
 					? settings.monthlyIncome.toString()
 					: "",
+				monthlyIncomeCurrency: (settings.monthlyIncomeCurrency as CurrencyCode) || (settings.homeCurrency as CurrencyCode) || "USD",
 				smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
 				defaultPrivacyMode: settings.defaultPrivacyMode ?? false,
+				fiscalMonthStartDay: settings.fiscalMonthStartDay ?? 1,
 			});
 		}
 	}, [settings, form]);
+
+	const utils = api.useUtils();
 
 	const onSubmit = useCallback(
 		async (values: AppPreferencesValues) => {
@@ -102,37 +126,32 @@ export function AppPreferencesCard() {
 					homeCurrency: values.homeCurrency,
 					defaultCurrency: values.defaultCurrency,
 					monthlyIncome: monthlyIncomeValue,
+					monthlyIncomeCurrency: values.monthlyIncomeCurrency,
 					smartCurrencyFormatting: values.smartCurrencyFormatting,
 					defaultPrivacyMode: values.defaultPrivacyMode,
+					fiscalMonthStartDay: values.fiscalMonthStartDay,
 					categoryClickBehavior: settings.categoryClickBehavior || "toggle",
 					currencySymbolStyle: settings.currencySymbolStyle || "standard",
 				});
 
+				await utils.settings.getGeneral.invalidate();
 				form.reset(values);
+				toast.success("Preferences updated");
 			} catch (err) {
 				const errMsg =
 					err instanceof Error ? err.message : "Failed to save settings";
 				toast.error(errMsg);
 			}
 		},
-		[settings, updateSettingsMutation, form],
+		[settings, updateSettingsMutation, form, utils],
 	);
 
-	useEffect(() => {
-		let timeoutId: NodeJS.Timeout;
-		const subscription = form.watch(() => {
-			if (form.formState.isDirty) {
-				if (timeoutId) clearTimeout(timeoutId);
-				timeoutId = setTimeout(() => {
-					void form.handleSubmit(onSubmit)();
-				}, 1000);
-			}
-		});
-		return () => {
-			subscription.unsubscribe();
-			if (timeoutId) clearTimeout(timeoutId);
-		};
-	}, [form, onSubmit]);
+	const onSubmitRef = useRef(onSubmit);
+	onSubmitRef.current = onSubmit;
+
+	const save = useCallback(() => {
+		void form.handleSubmit(onSubmitRef.current)();
+	}, [form]); // form is stable; onSubmit accessed via ref
 
 	// Styles for inputs
 
@@ -168,7 +187,10 @@ export function AppPreferencesCard() {
 										<FormLabel>Base Currency</FormLabel>
 										<FormControl>
 											<CurrencyPicker
-												onValueChange={field.onChange}
+												onValueChange={(value) => {
+													field.onChange(value);
+													save();
+												}}
 												placeholder="Select currency"
 												value={field.value}
 											/>
@@ -187,7 +209,10 @@ export function AppPreferencesCard() {
 										<FormLabel>Default Entry Currency</FormLabel>
 										<FormControl>
 											<CurrencyPicker
-												onValueChange={field.onChange}
+												onValueChange={(value) => {
+													field.onChange(value);
+													save();
+												}}
 												placeholder="Select currency"
 												value={field.value}
 											/>
@@ -229,26 +254,63 @@ export function AppPreferencesCard() {
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Monthly Net Income</FormLabel>
-									<div
-										className={cn(
-											"flex h-9 w-full items-center gap-2 rounded-md border border-input px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
-											"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-										)}
-									>
-										<span className="shrink-0 font-medium text-muted-foreground">
-											{getCurrencySymbol(form.watch("homeCurrency"))}
-										</span>
+									<div className={cn(
+										"flex h-9 w-full overflow-hidden rounded-md border border-input shadow-xs",
+										"transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+										"dark:bg-input/30",
+									)}>
+										<CurrencyPicker
+											value={form.watch("monthlyIncomeCurrency")}
+											onValueChange={(value) => {
+												form.setValue("monthlyIncomeCurrency", value);
+												save();
+											}}
+											triggerDisplay="flag+code"
+											triggerVariant="ghost"
+											triggerClassName="h-full rounded-none border-r border-input px-2 shrink-0 focus-visible:ring-0"
+										/>
 										<FormControl>
 											<Input
-												className="h-full w-full border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+												className="h-full flex-1 border-0 bg-transparent px-2 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
 												placeholder="5000"
 												type="number"
 												{...field}
+												onBlur={() => { field.onBlur(); if (form.formState.isDirty) save(); }}
+												onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
 											/>
 										</FormControl>
 									</div>
+									<FormDescription>For “Work Equivalent” calculations.</FormDescription>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="fiscalMonthStartDay"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Budget Cycle Start Day</FormLabel>
+									<FormControl>
+										<Input
+											className="w-24"
+											max={28}
+											min={1}
+											type="number"
+											value={field.value}
+											onChange={(e) => {
+												const val = parseInt(e.target.value, 10);
+												if (!isNaN(val) && val >= 1 && val <= 28) {
+													field.onChange(val);
+												}
+											}}
+											onBlur={() => { field.onBlur(); save(); }}
+											onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
+										/>
+									</FormControl>
 									<FormDescription>
-										For "Work Equivalent" calculations.
+										Day of the month your budget period begins (1-28).
 									</FormDescription>
 									<FormMessage />
 								</FormItem>
@@ -271,7 +333,10 @@ export function AppPreferencesCard() {
 									<FormControl>
 										<Switch
 											checked={field.value}
-											onCheckedChange={field.onChange}
+											onCheckedChange={(checked) => {
+												field.onChange(checked);
+												save();
+											}}
 										/>
 									</FormControl>
 								</FormItem>
@@ -294,7 +359,10 @@ export function AppPreferencesCard() {
 									<FormControl>
 										<Switch
 											checked={field.value}
-											onCheckedChange={field.onChange}
+											onCheckedChange={(checked) => {
+												field.onChange(checked);
+												save();
+											}}
 										/>
 									</FormControl>
 								</FormItem>

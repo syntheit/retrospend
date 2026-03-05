@@ -5,9 +5,11 @@ const PUBLIC_PATHS = [
 	"/signup",
 	"/auth",
 	"/api/", // All API routes handle their own auth and return JSON errors
+	"/privacy",
+	"/terms",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	// Allow public paths
@@ -55,6 +57,14 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 	response.headers.set(
 		"Strict-Transport-Security",
 		"max-age=31536000; includeSubDomains",
+	);
+	const scriptSrc =
+		process.env.NODE_ENV === "development"
+			? "'self' 'unsafe-inline' 'unsafe-eval'"
+			: "'self' 'unsafe-inline'";
+	response.headers.set(
+		"Content-Security-Policy",
+		`default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';`,
 	);
 	return response;
 }

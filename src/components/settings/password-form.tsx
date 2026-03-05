@@ -23,10 +23,23 @@ import {
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 
-const passwordSchema = z.object({
-	currentPassword: z.string().min(1, "Current password is required"),
-	newPassword: z.string().min(8, "Password must be at least 8 characters"),
-});
+const passwordSchema = z
+	.object({
+		currentPassword: z.string().min(1, "Current password is required"),
+		newPassword: z
+			.string()
+			.min(8, "Password must be at least 8 characters")
+			.max(255)
+			.regex(
+				/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+				"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+			),
+		confirmPassword: z.string().min(1, "Please confirm your password"),
+	})
+	.refine((data) => data.newPassword === data.confirmPassword, {
+		message: "Passwords do not match",
+		path: ["confirmPassword"],
+	});
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
@@ -46,6 +59,7 @@ export function PasswordForm() {
 		defaultValues: {
 			currentPassword: "",
 			newPassword: "",
+			confirmPassword: "",
 		},
 	});
 
@@ -53,7 +67,7 @@ export function PasswordForm() {
 		changePassword.mutate({
 			currentPassword: values.currentPassword,
 			newPassword: values.newPassword,
-			confirmPassword: values.newPassword, // Bypassing confirm password requirement in API if any
+			confirmPassword: values.confirmPassword,
 		});
 	};
 
@@ -68,8 +82,8 @@ export function PasswordForm() {
 			<CardContent className="p-6 pt-0">
 				<Form {...form}>
 					<form
-						id="password-form"
 						className="space-y-4"
+						id="password-form"
 						onSubmit={form.handleSubmit(onSubmit)}
 					>
 						<FormField
@@ -108,7 +122,27 @@ export function PasswordForm() {
 							)}
 						/>
 
-						<div className="flex justify-end mt-6">
+						<FormField
+							control={form.control}
+							name="confirmPassword"
+							render={({ field }) => (
+								<FormItem className="space-y-2">
+									<FormLabel className="font-medium text-muted-foreground text-sm">
+										Confirm New Password
+									</FormLabel>
+									<FormControl>
+										<Input
+											placeholder="Confirm new password"
+											type="password"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<div className="mt-6 flex justify-end">
 							<Button
 								disabled={!form.formState.isDirty || changePassword.isPending}
 								size="sm"

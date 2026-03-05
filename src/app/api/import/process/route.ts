@@ -13,6 +13,16 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
+	// Check if user is still active (mirrors protectedProcedure isActive check)
+	const activeUser = await db.user.findUnique({
+		where: { id: session.user.id },
+		select: { isActive: true },
+	});
+
+	if (!activeUser?.isActive) {
+		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+	}
+
 	// Check importer is configured
 	const importerUrl = env.IMPORTER_URL;
 	if (!importerUrl) {

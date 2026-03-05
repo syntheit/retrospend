@@ -12,7 +12,7 @@ export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
 		.input(
 			z.object({
-				name: z.string().min(1),
+				name: z.string().min(1).max(191),
 				type: z.nativeEnum(AssetType),
 				currency: z.string().length(3),
 				balance: z.number(),
@@ -47,6 +47,8 @@ export const wealthRouter = createTRPCRouter({
 
 			// Create asset and record snapshot in transaction
 			const result = await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                             set_config('role', 'retrospend_app', true)`;
 				const account = await tx.assetAccount.create({
 					data: {
 						userId: session.user.id,
@@ -70,6 +72,7 @@ export const wealthRouter = createTRPCRouter({
 					today,
 					input.balance,
 					balanceInUSD,
+					session.user.id,
 				);
 
 				return account;
@@ -136,6 +139,8 @@ export const wealthRouter = createTRPCRouter({
 
 			// Update asset and record snapshot in transaction
 			const result = await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                             set_config('role', 'retrospend_app', true)`;
 				const updatedAsset = await tx.assetAccount.update({
 					where: { id: input.assetId },
 					data: {
@@ -152,6 +157,7 @@ export const wealthRouter = createTRPCRouter({
 					today,
 					input.newBalance,
 					balanceInUSD,
+					session.user.id,
 				);
 
 				return updatedAsset;
@@ -164,7 +170,7 @@ export const wealthRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().cuid(),
-				name: z.string().min(1),
+				name: z.string().min(1).max(191),
 				type: z.nativeEnum(AssetType),
 				currency: z.string().length(3),
 				balance: z.number(),
@@ -211,6 +217,8 @@ export const wealthRouter = createTRPCRouter({
 
 			// Update asset and record snapshot in transaction
 			const result = await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                             set_config('role', 'retrospend_app', true)`;
 				const updatedAsset = await tx.assetAccount.update({
 					where: { id: input.id },
 					data: {
@@ -234,6 +242,7 @@ export const wealthRouter = createTRPCRouter({
 					today,
 					input.balance,
 					balanceInUSD,
+					session.user.id,
 				);
 
 				return updatedAsset;
@@ -418,18 +427,20 @@ export const wealthRouter = createTRPCRouter({
 	importAssets: protectedProcedure
 		.input(
 			z.object({
-				rows: z.array(
-					z.object({
-						name: z.string().min(1),
-						type: z.nativeEnum(AssetType),
-						currency: z.string().length(3),
-						balance: z.number(),
-						isLiquid: z.boolean(),
-						interestRate: z.number().optional().nullable(),
-						minimumPayment: z.number().optional().nullable(),
-						dueDate: z.number().int().min(1).max(31).optional().nullable(),
-					}),
-				),
+				rows: z
+					.array(
+						z.object({
+							name: z.string().min(1).max(191),
+							type: z.nativeEnum(AssetType),
+							currency: z.string().length(3),
+							balance: z.number(),
+							isLiquid: z.boolean(),
+							interestRate: z.number().optional().nullable(),
+							minimumPayment: z.number().optional().nullable(),
+							dueDate: z.number().int().min(1).max(31).optional().nullable(),
+						}),
+					)
+					.max(1000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -462,6 +473,8 @@ export const wealthRouter = createTRPCRouter({
 					);
 
 					await db.$transaction(async (tx) => {
+						await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+						                             set_config('role', 'retrospend_app', true)`;
 						let assetId: string;
 
 						if (existing) {
@@ -505,6 +518,7 @@ export const wealthRouter = createTRPCRouter({
 							today,
 							row.balance,
 							balanceInUSD,
+							session.user.id,
 						);
 					});
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -23,12 +23,18 @@ interface CurrencyPickerProps {
 	value?: CurrencyCode;
 	onValueChange: (value: CurrencyCode) => void;
 	placeholder?: string;
+	triggerDisplay?: "full" | "flag+code" | "code" | "flag";
+	triggerVariant?: "outline" | "ghost" | "default";
+	triggerClassName?: string;
 }
 
 export function CurrencyPicker({
 	value,
 	onValueChange,
 	placeholder = "Select currency...",
+	triggerDisplay = "full",
+	triggerVariant = "outline",
+	triggerClassName,
 }: CurrencyPickerProps) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -109,6 +115,37 @@ export function CurrencyPicker({
 		[sortedCurrencies],
 	);
 
+	const renderTriggerContent = () => {
+		if (!selectedCurrency) {
+			return triggerDisplay === "full" ? placeholder : value ?? "—";
+		}
+		switch (triggerDisplay) {
+			case "flag+code":
+				return (
+					<>
+						<CurrencyFlag className="h-4 w-4" currencyCode={selectedCurrency.code} />
+						<span className="font-medium text-sm">{selectedCurrency.code}</span>
+					</>
+				);
+			case "code":
+				return <span>{selectedCurrency.code}</span>;
+			case "flag":
+				return <CurrencyFlag className="h-5 w-5" currencyCode={selectedCurrency.code} />;
+			default:
+				return (
+					<span className="flex min-w-0 flex-1 items-center gap-2">
+						<CurrencyFlag
+							className="h-5 w-5"
+							currencyCode={selectedCurrency.code}
+						/>
+						<span className="truncate text-muted-foreground">
+							{selectedCurrency.code} - {selectedCurrency.name}
+						</span>
+					</span>
+				);
+		}
+	};
+
 	const renderCurrencyItem = (currency: (typeof currencies)[0]) => (
 		<div
 			aria-selected={value === currency.code}
@@ -152,27 +189,22 @@ export function CurrencyPicker({
 			<PopoverTrigger asChild>
 				<Button
 					aria-expanded={open}
-					className="w-full justify-between"
-					role="combobox"
-					variant="outline"
-				>
-					{selectedCurrency ? (
-						<span className="flex min-w-0 flex-1 items-center gap-2">
-							<CurrencyFlag
-								className="h-5 w-5"
-								currencyCode={selectedCurrency.code}
-							/>
-							<span className="truncate text-muted-foreground">
-								{selectedCurrency.code} - {selectedCurrency.name}
-							</span>
-						</span>
-					) : (
-						placeholder
+					className={cn(
+						triggerDisplay === "full" ? "w-full justify-between" : "justify-center gap-1.5",
+						triggerClassName,
 					)}
-					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+					role="combobox"
+					variant={triggerVariant}
+				>
+					{renderTriggerContent()}
+					{triggerDisplay !== "flag" && (
+						triggerDisplay === "full"
+							? <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+							: <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+					)}
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent align="start" className="w-full p-0">
+			<PopoverContent align="start" className="w-72 p-0">
 				<div className="p-2">
 					<Input
 						className="mb-2"

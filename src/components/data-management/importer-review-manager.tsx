@@ -43,6 +43,7 @@ export interface ImporterTransaction {
 	description: string;
 	pricingSource: string;
 	category: string;
+	categoryId?: string;
 }
 
 /**
@@ -333,6 +334,7 @@ export function ImporterReviewManager({
 					description: tx.description ?? "",
 					pricingSource: tx.pricingSource || "IMPORTED",
 					category: tx.category ?? "",
+					categoryId: tx.categoryId ?? undefined,
 				}));
 				await onImportConfirm(importerTransactions);
 				return;
@@ -416,6 +418,7 @@ export function ImporterReviewManager({
 						<div className="flex items-center gap-2">
 							<EditableCell
 								className={isDuplicate ? "text-muted-foreground" : ""}
+								maxLength={500}
 								onSave={(val) =>
 									updateTransaction(row.original.id, "title", val)
 								}
@@ -480,6 +483,7 @@ export function ImporterReviewManager({
 					return (
 						<EditableCell
 							className={isDuplicate ? "text-muted-foreground" : ""}
+							maxLength={10}
 							onSave={(val) =>
 								updateTransaction(
 									row.original.id,

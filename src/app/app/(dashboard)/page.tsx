@@ -77,7 +77,7 @@ export default function Page() {
 					<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
 						{/* Main Content Column */}
 						<div className="space-y-6 lg:col-span-7">
-							<div className="h-[350px]">
+						<div className="h-[250px] sm:h-[350px]">
 								<BudgetPacingChart
 									chartConfig={data.areaChartConfig}
 									currentDay={data.budgetPacing.currentDay}
@@ -108,8 +108,8 @@ export default function Page() {
 								categoryClickBehavior={data.categoryClickBehavior}
 								expensesLoading={isLoading.categories}
 								formatMoney={(value: number) =>
-									formatCurrency(value, data.homeCurrency)
-								}
+ 									formatCurrency(value, data.homeCurrency)
+ 								}
 								handleCategoryClick={actions.handleCategoryClick}
 								handleSliceEnter={(_, index) =>
 									actions.setActiveSliceIndex(index)

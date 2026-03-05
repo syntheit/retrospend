@@ -1,0 +1,8 @@
+{
+	"901df7bce05cf715c97c86b97ed915fd6bb39982893e272d41f587df68a05efa": {
+		"date_col_idx": 0,
+		"merchant_col_idx": 0,
+		"date_format": "",
+		"invert_amounts": false
+	}
+}

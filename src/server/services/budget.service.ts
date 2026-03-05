@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { getFiscalMonthRange } from "~/lib/fiscal-month";
 import type { db as PrismaClient } from "~/server/db";
 import {
 	getBestExchangeRate,
@@ -39,8 +40,10 @@ export async function getBudgets(
 	db: typeof PrismaClient,
 	userId: string,
 	month: Date,
-	options: { includeGlobal?: boolean } = {},
+	options: { includeGlobal?: boolean; fiscalMonthStartDay?: number } = {},
 ): Promise<BudgetWithStats[]> {
+	const fiscalStartDay = options.fiscalMonthStartDay ?? 1;
+	// Budget period lookup: always calendar month
 	const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
 	const endOfMonth = new Date(
 		month.getFullYear(),
@@ -51,6 +54,8 @@ export async function getBudgets(
 		59,
 		999,
 	);
+	// Expense date boundaries: fiscal month
+	const fiscal = getFiscalMonthRange(month, fiscalStartDay);
 
 	const budgets = await db.budget.findMany({
 		where: {
@@ -79,15 +84,15 @@ export async function getBudgets(
 		},
 	});
 
-	// Fetch all finalized expenses for this month to aggregate in memory
+	// Fetch all finalized expenses for this fiscal month to aggregate in memory
 	const expenses = await db.expense.findMany({
 		where: {
 			userId,
 			status: "FINALIZED",
 			isAmortizedParent: false,
 			date: {
-				gte: startOfMonth,
-				lte: endOfMonth,
+				gte: fiscal.start,
+				lte: fiscal.end,
 			},
 		},
 		select: {
@@ -113,20 +118,7 @@ export async function getBudgets(
 	if (hasPegToLastMonth) {
 		const lastMonth = new Date(month);
 		lastMonth.setMonth(lastMonth.getMonth() - 1);
-		const startOfLastMonth = new Date(
-			lastMonth.getFullYear(),
-			lastMonth.getMonth(),
-			1,
-		);
-		const endOfLastMonth = new Date(
-			lastMonth.getFullYear(),
-			lastMonth.getMonth() + 1,
-			0,
-			23,
-			59,
-			59,
-			999,
-		);
+		const lastFiscal = getFiscalMonthRange(lastMonth, fiscalStartDay);
 
 		const lastMonthExpenses = await db.expense.findMany({
 			where: {
@@ -134,8 +126,8 @@ export async function getBudgets(
 				status: "FINALIZED",
 				isAmortizedParent: false,
 				date: {
-					gte: startOfLastMonth,
-					lte: endOfLastMonth,
+					gte: lastFiscal.start,
+					lte: lastFiscal.end,
 				},
 			},
 			select: {
@@ -256,7 +248,10 @@ export async function getGlobalBudget(
 	db: typeof PrismaClient,
 	userId: string,
 	month: Date,
+	options: { fiscalMonthStartDay?: number } = {},
 ) {
+	const fiscalStartDay = options.fiscalMonthStartDay ?? 1;
+	// Budget period lookup: calendar month
 	const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
 	const endOfMonth = new Date(
 		month.getFullYear(),
@@ -267,6 +262,8 @@ export async function getGlobalBudget(
 		59,
 		999,
 	);
+	// Expense boundaries: fiscal month
+	const fiscal = getFiscalMonthRange(month, fiscalStartDay);
 
 	const globalBudget = await db.budget.findFirst({
 		where: {
@@ -287,8 +284,8 @@ export async function getGlobalBudget(
 			userId,
 			isAmortizedParent: false,
 			date: {
-				gte: startOfMonth,
-				lte: endOfMonth,
+				gte: fiscal.start,
+				lte: fiscal.end,
 			},
 		},
 		globalBudget.currency,
@@ -322,6 +319,7 @@ export async function getSuggestions(
 	userId: string,
 	categoryId: string,
 	currency = "USD",
+	fiscalMonthStartDay = 1,
 ) {
 	const category = await db.category.findFirst({
 		where: { id: categoryId, userId },
@@ -340,20 +338,12 @@ export async function getSuggestions(
 	const monthlySpends: number[] = [];
 
 	for (let i = 0; i < 3; i++) {
-		const monthStart = new Date(
+		const monthLabel = new Date(
 			threeMonthsAgo.getFullYear(),
 			threeMonthsAgo.getMonth() + i,
 			1,
 		);
-		const monthEnd = new Date(
-			threeMonthsAgo.getFullYear(),
-			threeMonthsAgo.getMonth() + i + 1,
-			0,
-			23,
-			59,
-			59,
-			999,
-		);
+		const fiscal = getFiscalMonthRange(monthLabel, fiscalMonthStartDay);
 
 		const { total: amount } = await sumExpensesForCurrency(
 			db,
@@ -362,8 +352,8 @@ export async function getSuggestions(
 				categoryId,
 				isAmortizedParent: false,
 				date: {
-					gte: monthStart,
-					lte: monthEnd,
+					gte: fiscal.start,
+					lte: fiscal.end,
 				},
 			},
 			currency,

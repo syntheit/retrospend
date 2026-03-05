@@ -38,7 +38,7 @@ export const categoriesRouter = createTRPCRouter({
 	create: protectedProcedure
 		.input(
 			z.object({
-				name: z.string().min(1, "Category name is required"),
+				name: z.string().min(1, "Category name is required").max(64),
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
 				}),
@@ -84,7 +84,7 @@ export const categoriesRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().cuid(),
-				name: z.string().min(1, "Category name is required"),
+				name: z.string().min(1, "Category name is required").max(64),
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
 				}),
@@ -132,6 +132,8 @@ export const categoriesRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().cuid(),
+				replacementCategoryId: z.string().cuid().optional(),
+				reassignToUncategorized: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -144,19 +146,87 @@ export const categoriesRouter = createTRPCRouter({
 				},
 			});
 
-			if (expensesCount > 0) {
+			if (
+				expensesCount > 0 &&
+				!input.replacementCategoryId &&
+				!input.reassignToUncategorized
+			) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Cannot delete category that has expenses",
+					message: `This category has ${expensesCount} expense(s). Please choose a replacement category or select "Uncategorized".`,
 				});
 			}
 
-			await db.category.delete({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-				},
-			});
+			if (expensesCount > 0) {
+				if (input.replacementCategoryId) {
+					// Validate replacement belongs to user
+					const replacement = await db.category.findFirst({
+						where: {
+							id: input.replacementCategoryId,
+							userId: session.user.id,
+						},
+					});
+
+					if (!replacement) {
+						throw new TRPCError({
+							code: "BAD_REQUEST",
+							message: "Replacement category not found",
+						});
+					}
+				}
+
+				const newCategoryId = input.replacementCategoryId ?? null;
+
+				// Reassign in a transaction
+				await db.$transaction(async (tx) => {
+					await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+					                            set_config('role', 'retrospend_app', true)`;
+					await tx.expense.updateMany({
+						where: { categoryId: input.id, userId: session.user.id },
+						data: { categoryId: newCategoryId },
+					});
+
+					// Budgets have a unique(userId, categoryId, period) constraint.
+					// If the replacement category already has a budget for the same period,
+					// we must delete the conflicting old budget rather than move it.
+					if (newCategoryId) {
+						const conflictingBudgets = await tx.budget.findMany({
+							where: { categoryId: newCategoryId, userId: session.user.id },
+							select: { period: true },
+						});
+						const conflictPeriods = conflictingBudgets.map((b) => b.period);
+						if (conflictPeriods.length > 0) {
+							await tx.budget.deleteMany({
+								where: {
+									categoryId: input.id,
+									userId: session.user.id,
+									period: { in: conflictPeriods },
+								},
+							});
+						}
+					}
+					await tx.budget.updateMany({
+						where: { categoryId: input.id, userId: session.user.id },
+						data: { categoryId: newCategoryId },
+					});
+
+					await tx.recurringTemplate.updateMany({
+						where: { categoryId: input.id, userId: session.user.id },
+						data: { categoryId: newCategoryId },
+					});
+					await tx.category.delete({
+						where: { id: input.id, userId: session.user.id },
+					});
+				});
+			} else {
+				// No expenses — delete directly
+				await db.category.delete({
+					where: {
+						id: input.id,
+						userId: session.user.id,
+					},
+				});
+			}
 
 			return { success: true };
 		}),

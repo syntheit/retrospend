@@ -16,7 +16,11 @@ interface BudgetPreview {
 	pegToActual: boolean;
 }
 
-export function BudgetsImporterTab({ isActive = true }: { isActive?: boolean }) {
+export function BudgetsImporterTab({
+	isActive = true,
+}: {
+	isActive?: boolean;
+}) {
 	const importMutation = api.budget.importBudgets.useMutation();
 
 	const handleParseCsv = (

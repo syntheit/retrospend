@@ -148,7 +148,7 @@ export function TwoFactorSettings() {
 								}}
 							>
 								<Input
-									className="bg-secondary/20 border-transparent hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+									className="border-transparent bg-secondary/20 transition-all hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="Password"
 									type="password"
@@ -181,7 +181,7 @@ export function TwoFactorSettings() {
 										Verify Password to Enable
 									</Label>
 									<Input
-										className="bg-secondary/20 border-transparent hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
+										className="border-transparent bg-secondary/20 transition-all hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
 										id="password-2fa"
 										onChange={(e) => setPassword(e.target.value)}
 										placeholder="Your current password"
@@ -194,7 +194,7 @@ export function TwoFactorSettings() {
 										Initiating setup...
 									</p>
 								)}
-								<div className="flex justify-end mt-4">
+								<div className="mt-4 flex justify-end">
 									<Button
 										disabled={!password || status === "generating"}
 										onClick={handleEnableInit}
@@ -209,8 +209,8 @@ export function TwoFactorSettings() {
 
 						{status === "setup" && (
 							<form
-								id="2fa-verify-form"
 								className="space-y-8"
+								id="2fa-verify-form"
 								onSubmit={(e) => {
 									e.preventDefault();
 									handleVerifySetup();
@@ -249,7 +249,7 @@ export function TwoFactorSettings() {
 									</div>
 								)}
 
-								<div className="flex justify-end gap-3 mt-6">
+								<div className="mt-6 flex justify-end gap-3">
 									<Button
 										onClick={() => setStatus("idle")}
 										size="sm"

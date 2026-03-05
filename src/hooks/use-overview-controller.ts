@@ -1,13 +1,13 @@
 "use client";
 
-import { getDaysInMonth } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { useCurrency } from "~/hooks/use-currency";
 import { useSettings } from "~/hooks/use-settings";
 import { resolveCategoryColorValue } from "~/lib/category-colors";
+import { getCurrentFiscalMonth, getFiscalMonthProgress } from "~/lib/fiscal-month";
 import {
 	CHART_CONFIG_DEFAULTS,
 	getCategoryColor,
@@ -25,24 +25,34 @@ export function useOverviewController() {
 	const router = useRouter();
 	const { openNewExpense } = useExpenseModal();
 	const { homeCurrency, usdToHomeRate: liveRateToBaseCurrency } = useCurrency();
+	const { data: settings } = useSettings();
 
 	// State
-	// Initialize with a neutral date to avoid hydration mismatch
-	// Will be updated to server time once data loads
-	const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
+	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
+	const settingsReady = !!settings;
+	const [selectedMonth, setSelectedMonth] = useState<Date>(() => getCurrentFiscalMonth(new Date(), fiscalStartDay));
 	const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
 	const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
 		new Set(),
 	);
 
-	// Queries
-	const { data: settings } = useSettings();
+	// Correct selectedMonth once settings load with the actual fiscal start day.
+	// The useState initializer runs before settings are available, so it defaults
+	// to fiscalStartDay=1. This effect syncs it once we know the real value.
+	const hasSyncedFiscalMonth = useRef(false);
+	useEffect(() => {
+		if (settings && !hasSyncedFiscalMonth.current) {
+			hasSyncedFiscalMonth.current = true;
+			const correctMonth = getCurrentFiscalMonth(new Date(), settings.fiscalMonthStartDay ?? 1);
+			setSelectedMonth(correctMonth);
+		}
+	}, [settings]);
 
 	const { data: overviewData, isLoading: isOverviewLoading } =
-		api.dashboard.getOverviewData.useQuery({
-			month: selectedMonth,
-			homeCurrency,
-		});
+		api.dashboard.getOverviewData.useQuery(
+			{ month: selectedMonth, homeCurrency },
+			{ enabled: settingsReady },
+		);
 
 	// Destructure / Map for compatibility with existing logic
 	const expensesData = overviewData?.expenses;
@@ -54,11 +64,12 @@ export function useOverviewController() {
 	const trendData = overviewData?.trendData;
 	const serverTime = overviewData?.serverTime;
 
-	const expensesLoading = isOverviewLoading;
-	const favoritesLoading = isOverviewLoading;
-	const statsLoading = isOverviewLoading;
-	const categoriesLoading = isOverviewLoading;
-	const trendLoading = isOverviewLoading;
+	const dataLoading = isOverviewLoading || !settingsReady;
+	const expensesLoading = dataLoading;
+	const favoritesLoading = dataLoading;
+	const statsLoading = dataLoading;
+	const categoriesLoading = dataLoading;
+	const trendLoading = dataLoading;
 
 	const expensesFetched = !!overviewData;
 	const favoritesFetched = !!overviewData;
@@ -256,19 +267,17 @@ export function useOverviewController() {
 			categoryClickBehavior,
 			homeCurrency,
 			liveRateToBaseCurrency,
-			budgetPacing: {
-				totalBudget: overviewStats?.dailyBudgetPace.totalBudget ?? 0,
-				totalSpent: overviewStats?.dailyBudgetPace.totalSpent ?? 0,
-				variableBudget: overviewStats?.dailyBudgetPace.variableBudget ?? 0,
-				variableSpent: overviewStats?.dailyBudgetPace.variableSpent ?? 0,
-				daysInMonth: getDaysInMonth(selectedMonth),
-				currentDay:
-					safeNow &&
-					selectedMonth.getMonth() === safeNow.getMonth() &&
-					selectedMonth.getFullYear() === safeNow.getFullYear()
-						? safeNow.getDate()
-						: getDaysInMonth(selectedMonth),
-			},
+			budgetPacing: (() => {
+				const progress = getFiscalMonthProgress(safeNow, selectedMonth, fiscalStartDay);
+				return {
+					totalBudget: overviewStats?.dailyBudgetPace.totalBudget ?? 0,
+					totalSpent: overviewStats?.dailyBudgetPace.totalSpent ?? 0,
+					variableBudget: overviewStats?.dailyBudgetPace.variableBudget ?? 0,
+					variableSpent: overviewStats?.dailyBudgetPace.variableSpent ?? 0,
+					daysInMonth: progress.daysInPeriod,
+					currentDay: progress.isCurrentPeriod ? progress.currentDay : progress.daysInPeriod,
+				};
+			})(),
 		},
 		isLoading: {
 			expenses: expensesLoading,

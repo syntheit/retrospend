@@ -8,16 +8,60 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import {
+	getPasswordChangedAlertTemplate,
+	getPasswordResetEmailTemplate,
+	getVerificationEmailTemplate,
+} from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 
 import { getAppSettings } from "~/server/services/settings";
 
+const MAX_RATE_LIMIT_ENTRIES = 10_000;
+let rateLimitCleanupCounter = 0;
+
 const rateLimitMap = new Map<string, { count: number; lastReset: number }>();
-function checkRateLimit(ip: string, limit: number, windowMs: number) {
+
+function cleanupRateLimitMap(windowMs: number) {
 	const now = Date.now();
-	const record = rateLimitMap.get(ip);
+	for (const [key, record] of rateLimitMap) {
+		if (now - record.lastReset > windowMs) {
+			rateLimitMap.delete(key);
+		}
+	}
+	// If still over capacity after TTL eviction, evict oldest entries
+	if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+		const entries = [...rateLimitMap.entries()].sort(
+			(a, b) => a[1].lastReset - b[1].lastReset,
+		);
+		const toRemove = rateLimitMap.size - MAX_RATE_LIMIT_ENTRIES;
+		for (let i = 0; i < toRemove; i++) {
+			rateLimitMap.delete(entries[i]![0]);
+		}
+	}
+}
+
+function getClientIp(headers: Headers): string {
+	const forwarded = headers.get("x-forwarded-for");
+	if (forwarded) {
+		// Use the last IP in the chain (closest to the reverse proxy)
+		const ips = forwarded.split(",").map((ip) => ip.trim());
+		return ips[ips.length - 1] ?? "unknown";
+	}
+	return headers.get("x-real-ip") ?? "unknown";
+}
+
+function checkRateLimit(key: string, limit: number, windowMs: number) {
+	// Periodic cleanup every 100 calls
+	rateLimitCleanupCounter++;
+	if (rateLimitCleanupCounter % 100 === 0) {
+		cleanupRateLimitMap(windowMs);
+	}
+
+	const now = Date.now();
+	const record = rateLimitMap.get(key);
 	if (!record) {
-		rateLimitMap.set(ip, { count: 1, lastReset: now });
+		rateLimitMap.set(key, { count: 1, lastReset: now });
 		return true;
 	}
 	if (now - record.lastReset > windowMs) {
@@ -49,7 +93,7 @@ export const authRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const clientIp = ctx.headers.get("x-forwarded-for") ?? "unknown";
+			const clientIp = getClientIp(ctx.headers);
 			if (!checkRateLimit(`verifyEmail_${clientIp}`, 10, 60000)) {
 				throw new TRPCError({
 					code: "TOO_MANY_REQUESTS",
@@ -101,7 +145,7 @@ export const authRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const clientIp = ctx.headers.get("x-forwarded-for") ?? "unknown";
+			const clientIp = getClientIp(ctx.headers);
 			if (!checkRateLimit(`requestReset_${clientIp}`, 5, 60000)) {
 				throw new TRPCError({
 					code: "TOO_MANY_REQUESTS",
@@ -132,6 +176,11 @@ export const authRouter = createTRPCRouter({
 			const token = crypto.randomBytes(32).toString("hex");
 			const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
+			// Invalidate any existing reset tokens for this user
+			await db.passwordResetToken.deleteMany({
+				where: { identifier: user.email },
+			});
+
 			await db.passwordResetToken.create({
 				data: {
 					identifier: user.email,
@@ -141,10 +190,12 @@ export const authRouter = createTRPCRouter({
 			});
 
 			const resetUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
+			const htmlContent = getPasswordResetEmailTemplate(resetUrl);
+
 			await sendEmail(
 				user.email,
 				"Reset your Retrospend Password",
-				`<p>You requested a password reset. Click the link below to set a new password:</p><a href="${resetUrl}">Reset Password</a><p>This link will expire in 1 hour.</p>`,
+				htmlContent,
 			);
 
 			return { success: true };
@@ -165,7 +216,7 @@ export const authRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const clientIp = ctx.headers.get("x-forwarded-for") ?? "unknown";
+			const clientIp = getClientIp(ctx.headers);
 			if (!checkRateLimit(`resetPassword_${clientIp}`, 5, 60000)) {
 				throw new TRPCError({
 					code: "TOO_MANY_REQUESTS",
@@ -220,10 +271,12 @@ export const authRouter = createTRPCRouter({
 
 			const settings = await getAppSettings();
 			if (env.SMTP_HOST && settings.enableEmail) {
+				const htmlContent = getPasswordChangedAlertTemplate();
+
 				sendEmail(
 					user.email,
 					"Security Alert: Your Retrospend Password was Changed",
-					"<p>Your password was recently changed. If you did this, you can ignore this email. If you did not make this change, please contact your administrator immediately.</p>",
+					htmlContent,
 				).catch((error) =>
 					console.error("Failed to send security alert:", error),
 				);
@@ -234,6 +287,14 @@ export const authRouter = createTRPCRouter({
 
 	resendVerificationEmail: protectedProcedure.mutation(async ({ ctx }) => {
 		const { db, session } = ctx;
+
+		const clientIp = getClientIp(ctx.headers);
+		if (!checkRateLimit(`resendVerify_${clientIp}`, 3, 60_000)) {
+			throw new TRPCError({
+				code: "TOO_MANY_REQUESTS",
+				message: "Rate limit exceeded. Please try again later.",
+			});
+		}
 
 		const user = await db.user.findUnique({
 			where: { id: session.user.id },
@@ -269,11 +330,9 @@ export const authRouter = createTRPCRouter({
 
 		// Dispatch email
 		const verifyUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
-		await sendEmail(
-			user.email,
-			"Verify your Retrospend Account",
-			`<p>Welcome to Retrospend! Click the link below to verify your email address:</p><a href="${verifyUrl}">Verify Email</a>`,
-		);
+		const htmlContent = getVerificationEmailTemplate(verifyUrl);
+
+		await sendEmail(user.email, "Verify your Retrospend Account", htmlContent);
 
 		return { success: true };
 	}),

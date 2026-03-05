@@ -76,6 +76,21 @@ export function useExpenseForm({
 		settings?.defaultCurrency ?? settings?.homeCurrency ?? BASE_CURRENCY;
 	const homeCurrency = settings?.homeCurrency || BASE_CURRENCY;
 
+	const getDefaultDate = () => {
+		if (settings?.defaultExpenseDateBehavior === "LAST_USED") {
+			try {
+				const stored = localStorage.getItem("retrospend:lastExpenseDate");
+				if (stored) {
+					const parsed = new Date(stored);
+					if (!isNaN(parsed.getTime())) return parsed;
+				}
+			} catch {
+				// localStorage unavailable
+			}
+		}
+		return new Date();
+	};
+
 	const form = useForm<ExpenseFormData>({
 		resolver: zodResolver(expenseSchema),
 		defaultValues: {
@@ -84,7 +99,7 @@ export function useExpenseForm({
 			currency: defaultExpenseCurrency,
 			exchangeRate: undefined,
 			amountInUSD: undefined,
-			date: new Date(),
+			date: getDefaultDate(),
 			location: "",
 			description: "",
 			categoryId: "",
@@ -303,6 +318,13 @@ export function useExpenseForm({
 						? `Expense split over ${data.amortizeOver} months`
 						: "Expense saved successfully!",
 				);
+			}
+
+			// Persist date for "last used" behavior
+			try {
+				localStorage.setItem("retrospend:lastExpenseDate", data.date.toISOString());
+			} catch {
+				// localStorage unavailable
 			}
 
 			// In event-driven world, reset(data) marks as clean with current values

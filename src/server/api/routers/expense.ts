@@ -81,7 +81,11 @@ export const expenseRouter = createTRPCRouter({
 		}),
 
 	exportCsv: protectedProcedure
-		.input(z.object({ expenseIds: z.array(z.string()).optional() }).optional())
+		.input(
+			z
+				.object({ expenseIds: z.array(z.string().uuid()).optional() })
+				.optional(),
+		)
 		.mutation(async ({ ctx, input }) => {
 			const service = new CsvService(ctx.db);
 			const csv = await service.exportExpensesAsCsv(

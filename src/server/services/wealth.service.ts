@@ -141,6 +141,7 @@ export class WealthService {
 		date: Date,
 		balance: number,
 		balanceInUSD: number,
+		userId: string,
 	): Promise<void> {
 		// Upsert snapshot (one per asset per day)
 		await tx.assetSnapshot.upsert({
@@ -156,6 +157,7 @@ export class WealthService {
 			},
 			create: {
 				accountId: assetId,
+				userId,
 				date,
 				balance,
 				balanceInUSD,
@@ -166,6 +168,7 @@ export class WealthService {
 		await tx.assetHistory.create({
 			data: {
 				assetId,
+				userId,
 				balance,
 			},
 		});

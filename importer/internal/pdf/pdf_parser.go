@@ -8,6 +8,8 @@ import (
 	"importer/internal/processor"
 	"log"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // transactionSchema is a JSON Schema that constrains Ollama's structured output.
@@ -66,10 +68,13 @@ func deduplicateTransactions(transactions []models.NormalizedTransaction) []mode
 // ParsePDFTransactions extracts transaction data from raw PDF text using an LLM.
 // It automatically chunks large PDFs by page boundaries to avoid context limit issues.
 // Returns transactions and metadata about the parsing process.
-func ParsePDFTransactions(endpoint string, model string, rawText string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func ParsePDFTransactions(endpoint string, model string, rawText string, maxConcurrency int, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
+	// Sanitize text before token estimation (may reduce chunk count)
+	rawText = SanitizePDFText(rawText)
+
 	// Check if we need to chunk the input
 	estimatedTokens := estimateTokenCount(rawText)
 	const maxContextTokens = 8192 // Conservative limit for most models
@@ -106,48 +111,102 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, onProgr
 		return transactions, metadata, nil
 	}
 
+	if maxConcurrency <= 0 {
+		maxConcurrency = 3
+	}
+
 	log.Printf("PDF has %d pages, processing in chunks to avoid context limits", len(pages))
 
 	// Process pages in overlapping chunks (2 pages at a time, 1 page overlap)
-	var allTransactions []models.NormalizedTransaction
 	chunkSize := 2
 	overlap := 1
-	totalChunks := 0
-	failedChunks := 0
 
+	// Build chunk jobs
+	type pdfChunkJob struct {
+		index     int
+		startPage int
+		endPage   int
+		text      string
+	}
+
+	type pdfChunkResult struct {
+		transactions []models.NormalizedTransaction
+		warning      string
+	}
+
+	var jobs []pdfChunkJob
 	for i := 0; i < len(pages); i += chunkSize - overlap {
 		end := i + chunkSize
 		if end > len(pages) {
 			end = len(pages)
 		}
-
-		totalChunks++
 		chunkText := strings.Join(pages[i:end], "\f")
-		chunkTokens := estimateTokenCount(chunkText)
-
-		progress := float64(i) / float64(len(pages))
-		if onProgress != nil {
-			onProgress(progress, fmt.Sprintf("Parsing bank statement (pages %d-%d)...", i+1, end))
-		}
-
-		log.Printf("Processing pages %d-%d (%d estimated tokens)", i+1, end, chunkTokens)
-
-		transactions, err := parsePDFChunk(endpoint, model, chunkText)
-		if err != nil {
-			failedChunks++
-			warningMsg := fmt.Sprintf("Failed to parse pages %d-%d: %v", i+1, end, err)
-			log.Printf("WARNING: %s", warningMsg)
-			metadata.Warnings = append(metadata.Warnings, warningMsg)
-			continue
-		}
-
-		allTransactions = append(allTransactions, transactions...)
-
-		if onProgress != nil {
-			newProgress := float64(end) / float64(len(pages))
-			onProgress(newProgress, fmt.Sprintf("Parsing bank statement (pages %d-%d)...", i+1, end))
-		}
+		jobs = append(jobs, pdfChunkJob{
+			index:     len(jobs),
+			startPage: i,
+			endPage:   end,
+			text:      chunkText,
+		})
 	}
+
+	totalChunks := len(jobs)
+	results := make([]pdfChunkResult, totalChunks)
+	var atomicFailedChunks int32
+
+	// Process chunks concurrently with bounded parallelism
+	sem := make(chan struct{}, maxConcurrency)
+	var wg sync.WaitGroup
+	var completedChunks int32
+	var progressMu sync.Mutex // Protects onProgress calls (writes to HTTP response)
+
+	for _, job := range jobs {
+		wg.Add(1)
+		go func(j pdfChunkJob) {
+			defer wg.Done()
+			sem <- struct{}{}        // Acquire semaphore
+			defer func() { <-sem }() // Release semaphore
+
+			chunkTokens := estimateTokenCount(j.text)
+			log.Printf("Processing pages %d-%d (%d estimated tokens)", j.startPage+1, j.endPage, chunkTokens)
+
+			if onProgress != nil {
+				progressMu.Lock()
+				completed := atomic.LoadInt32(&completedChunks)
+				onProgress(float64(completed)/float64(totalChunks), fmt.Sprintf("Parsing bank statement (pages %d-%d)...", j.startPage+1, j.endPage))
+				progressMu.Unlock()
+			}
+
+			transactions, err := parsePDFChunk(endpoint, model, j.text)
+			if err != nil {
+				atomic.AddInt32(&atomicFailedChunks, 1)
+				warningMsg := fmt.Sprintf("Failed to parse pages %d-%d: %v", j.startPage+1, j.endPage, err)
+				log.Printf("WARNING: %s", warningMsg)
+				results[j.index] = pdfChunkResult{warning: warningMsg}
+			} else {
+				results[j.index] = pdfChunkResult{transactions: transactions}
+			}
+
+			completed := atomic.AddInt32(&completedChunks, 1)
+			if onProgress != nil {
+				progressMu.Lock()
+				onProgress(float64(completed)/float64(totalChunks), fmt.Sprintf("Parsing bank statement (%d/%d chunks)...", completed, totalChunks))
+				progressMu.Unlock()
+			}
+		}(job)
+	}
+
+	wg.Wait()
+
+	// Collect results in order
+	var allTransactions []models.NormalizedTransaction
+	for _, r := range results {
+		if r.warning != "" {
+			metadata.Warnings = append(metadata.Warnings, r.warning)
+		}
+		allTransactions = append(allTransactions, r.transactions...)
+	}
+
+	failedChunks := int(atomicFailedChunks)
 
 	metadata.TotalChunks = totalChunks
 	metadata.SuccessfulChunks = totalChunks - failedChunks

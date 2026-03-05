@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { isCryptoCurrency } from "~/lib/currency-conversion";
+import { getFiscalMonthRange } from "~/lib/fiscal-month";
 import type { Prisma, PrismaClient } from "~prisma";
 import {
 	getBestExchangeRate,
@@ -107,7 +108,7 @@ export class ExpenseService {
 			}
 
 			return expense;
-		});
+		}, userId);
 	}
 
 	async updateExpense(
@@ -157,7 +158,7 @@ export class ExpenseService {
 			await amortization.syncAmortization(expense, input.amortizeOver ?? 0);
 
 			return expense;
-		});
+		}, userId);
 	}
 
 	async deleteExpense(userId: string, id: string) {
@@ -177,7 +178,7 @@ export class ExpenseService {
 				});
 			}
 			await tx.expense.delete({ where: { id } });
-		});
+		}, userId);
 
 		return { success: true };
 	}
@@ -240,17 +241,9 @@ export class ExpenseService {
 		categoryId: string,
 		month: Date,
 		targetCurrency = BASE_CURRENCY,
+		fiscalMonthStartDay = 1,
 	) {
-		const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-		const endOfMonth = new Date(
-			month.getFullYear(),
-			month.getMonth() + 1,
-			0,
-			23,
-			59,
-			59,
-			999,
-		);
+		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
 
 		const { total } = await sumExpensesForCurrency(
 			this.db as PrismaClient,
@@ -258,7 +251,7 @@ export class ExpenseService {
 				userId,
 				categoryId,
 				isAmortizedParent: false,
-				date: { gte: startOfMonth, lte: endOfMonth },
+				date: { gte: fiscal.start, lte: fiscal.end },
 			},
 			targetCurrency,
 			month,
@@ -271,24 +264,16 @@ export class ExpenseService {
 		userId: string,
 		month: Date,
 		targetCurrency = BASE_CURRENCY,
+		fiscalMonthStartDay = 1,
 	) {
-		const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-		const endOfMonth = new Date(
-			month.getFullYear(),
-			month.getMonth() + 1,
-			0,
-			23,
-			59,
-			59,
-			999,
-		);
+		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
 
 		const { total } = await sumExpensesForCurrency(
 			this.db as PrismaClient,
 			{
 				userId,
 				isAmortizedParent: false,
-				date: { gte: startOfMonth, lte: endOfMonth },
+				date: { gte: fiscal.start, lte: fiscal.end },
 			},
 			targetCurrency,
 			month,
@@ -323,8 +308,16 @@ export class ExpenseService {
 
 	private async runInTransaction<T>(
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
+		userId?: string,
 	): Promise<T> {
 		if ("$transaction" in this.db) {
+			if (userId) {
+				return await this.db.$transaction(async (tx) => {
+					await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
+					                            set_config('role', 'retrospend_app', true)`;
+					return await callback(tx);
+				});
+			}
 			return await this.db.$transaction(callback);
 		}
 		return await callback(this.db as Prisma.TransactionClient);

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -34,9 +35,17 @@ type ExtendedUser = NonNullable<
 };
 
 const profileSchema = z.object({
-	name: z.string().min(2, "Name must be at least 2 characters"),
-	username: z.string().min(3, "Username must be at least 3 characters"),
-	email: z.string().email("Invalid email address"),
+	name: z.string().min(1, "Name is required").max(100),
+	username: z
+		.string()
+		.min(1, "Username is required")
+		.max(50)
+		.regex(
+			/^[a-z0-9_-]+$/,
+			"Username can only contain lowercase letters, numbers, underscores, and hyphens",
+		),
+	email: z.string().email("Invalid email address").max(254),
+	currentPassword: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -57,14 +66,27 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		},
 	});
 
+	const [showPasswordField, setShowPasswordField] = useState(false);
+
 	const form = useForm<ProfileFormValues>({
 		resolver: zodResolver(profileSchema),
 		values: {
 			name: user.name ?? "",
 			username: user.username ?? "",
 			email: user.email ?? "",
+			currentPassword: "",
 		},
 	});
+
+	const watchedEmail = form.watch("email");
+	const emailChanged = watchedEmail !== (user.email ?? "");
+
+	useEffect(() => {
+		setShowPasswordField(emailChanged);
+		if (!emailChanged) {
+			form.setValue("currentPassword", "");
+		}
+	}, [emailChanged, form]);
 
 	const onSubmit = (values: ProfileFormValues) => {
 		updateProfile.mutate(values);
@@ -139,6 +161,25 @@ export function ProfileForm({ user }: ProfileFormProps) {
 								</FormItem>
 							)}
 						/>
+						{showPasswordField && (
+							<FormField
+								control={form.control}
+								name="currentPassword"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Current Password</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="Required to change email"
+												type="password"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						)}
 						<div className="flex justify-end">
 							<Button
 								disabled={!form.formState.isDirty || updateProfile.isPending}

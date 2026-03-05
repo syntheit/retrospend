@@ -25,6 +25,7 @@ interface EditableCellProps {
 	className?: string;
 	placeholder?: string;
 	formatDisplay?: (value: string | number | Date | null) => string;
+	maxLength?: number;
 }
 
 export function EditableCell({
@@ -36,6 +37,7 @@ export function EditableCell({
 	className,
 	placeholder = "—",
 	formatDisplay,
+	maxLength,
 }: EditableCellProps) {
 	const [editing, setEditing] = useState(false);
 	const [editValue, setEditValue] = useState("");
@@ -157,6 +159,7 @@ export function EditableCell({
 		return (
 			<Input
 				className="h-8 text-xs"
+				maxLength={maxLength}
 				onBlur={handleSave}
 				onChange={(e) => setEditValue(e.target.value)}
 				onKeyDown={handleKeyDown}

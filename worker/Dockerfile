@@ -18,11 +18,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o worker .
 # Final stage
 FROM alpine:3.19
 
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS requests and postgresql-client for pg_dump
+RUN apk --no-cache add ca-certificates postgresql16-client
 
 # Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Create backup directory
+RUN mkdir -p /backups && chown appuser:appgroup /backups
 
 WORKDIR /home/appuser
 

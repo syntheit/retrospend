@@ -12,7 +12,8 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { auth } from "~/server/better-auth";
-import { db } from "~/server/db";
+import type { Session } from "~/server/better-auth/config";
+import { createUserScopedDb, db } from "~/server/db";
 
 /**
  * 1. CONTEXT
@@ -133,10 +134,13 @@ export const protectedProcedure = t.procedure
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 
+		const userDb = createUserScopedDb(ctx.session.user.id);
+
 		return next({
 			ctx: {
-				// infers the `session` as non-nullable
-				session: { ...ctx.session, user: ctx.session.user },
+				// infers the `session` as non-nullable with additional user fields
+				session: ctx.session as Session,
+				db: userDb,
 			},
 		});
 	});
@@ -151,5 +155,7 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 	if (ctx.session.user.role !== "ADMIN") {
 		throw new TRPCError({ code: "UNAUTHORIZED" });
 	}
-	return next();
+	// Restore global db so admin queries run as superuser, bypassing RLS
+	// for legitimate cross-user data access.
+	return next({ ctx: { db } });
 });

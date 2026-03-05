@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Badge } from "~/components/ui/badge";
@@ -12,6 +13,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import {
 	InputOTP,
@@ -25,12 +27,13 @@ import { api } from "~/trpc/react";
 
 type InviteState = "idle" | "validating" | "success" | "error";
 
-function SignupFormInner() {
+function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 	const [email, setEmail] = useState("");
 	const [fullName, setFullName] = useState("");
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
+	const [termsAccepted, setTermsAccepted] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
 	const router = useRouter();
@@ -57,7 +60,7 @@ function SignupFormInner() {
 				if (result.valid) {
 					setInviteState("success");
 					// biome-ignore lint/suspicious/noDocumentCookie: Cookie must be set client-side for better-auth server-side validation
-					document.cookie = `retro_invite_code=${code}; path=/; max-age=86400`;
+					document.cookie = `retro_invite_code=${code}; path=/; max-age=86400; Secure; SameSite=Strict`;
 				} else {
 					setInviteState("error");
 					setInviteError("Invalid or expired invite code");
@@ -102,8 +105,8 @@ function SignupFormInner() {
 			return;
 		}
 
-		if (password !== confirmPassword) {
-			setError("Passwords don't match");
+		if (enableLegalPages && !termsAccepted) {
+			setError("You must agree to the Terms & Conditions and Privacy Policy");
 			setIsLoading(false);
 			return;
 		}
@@ -114,20 +117,48 @@ function SignupFormInner() {
 			return;
 		}
 
+		if (!/^[a-z0-9_-]+$/.test(username.trim())) {
+			setError(
+				"Username can only contain lowercase letters, numbers, underscores, and hyphens",
+			);
+			setIsLoading(false);
+			return;
+		}
+
+		if (password.length < 8) {
+			setError("Password must be at least 8 characters");
+			setIsLoading(false);
+			return;
+		}
+
+		if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+			setError(
+				"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+			);
+			setIsLoading(false);
+			return;
+		}
+
+		if (password !== confirmPassword) {
+			setError("Passwords don't match");
+			setIsLoading(false);
+			return;
+		}
+
 		try {
 			const result = await authClient.signUp.email({
-				email: email.trim(),
+				email: email.trim().toLowerCase(),
 				password,
 				name: fullName.trim(),
 				// @ts-expect-error - username is a custom field configured in better-auth
-				username: username.trim(),
+				username: username.trim().toLowerCase(),
 			});
 
 			if (result.error) {
 				setError(result.error.message || "Sign up failed");
 			} else {
 				const signInResult = await authClient.signIn.email({
-					email,
+					email: email.trim().toLowerCase(),
 					password,
 				});
 
@@ -288,6 +319,38 @@ function SignupFormInner() {
 								value={confirmPassword}
 							/>
 						</div>
+						{enableLegalPages && (
+							<div className="flex items-center space-x-2 pt-2 pb-2">
+								<Checkbox
+									checked={termsAccepted}
+									id="terms"
+									onCheckedChange={(checked) =>
+										setTermsAccepted(checked as boolean)
+									}
+								/>
+								<Label
+									className="font-normal text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+									htmlFor="terms"
+								>
+									I agree to the{" "}
+									<Link
+										className="text-primary hover:underline"
+										href="/terms"
+										target="_blank"
+									>
+										Terms & Conditions
+									</Link>{" "}
+									and{" "}
+									<Link
+										className="text-primary hover:underline"
+										href="/privacy"
+										target="_blank"
+									>
+										Privacy Policy
+									</Link>
+								</Label>
+							</div>
+						)}
 						{error && (
 							<div className="text-red-600 text-sm dark:text-red-400">
 								{error}
@@ -315,7 +378,11 @@ function SignupFormInner() {
 	);
 }
 
-export function SignupForm() {
+export function SignupForm({
+	enableLegalPages,
+}: {
+	enableLegalPages: boolean;
+}) {
 	return (
 		<Suspense
 			fallback={
@@ -328,7 +395,7 @@ export function SignupForm() {
 				</div>
 			}
 		>
-			<SignupFormInner />
+			<SignupFormInner enableLegalPages={enableLegalPages} />
 		</Suspense>
 	);
 }

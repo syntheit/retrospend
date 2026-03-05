@@ -286,6 +286,13 @@ function RetrospendCsvImport({
 			const file = e.target.files?.[0];
 			if (!file) return;
 
+			// ~10MB raw file ≈ ~14MB base64 — enforce before reading
+			if (file.size > 10 * 1024 * 1024) {
+				toast.error("File too large. Maximum size is 10 MB.");
+				e.target.value = "";
+				return;
+			}
+
 			const name = file.name.toLowerCase();
 			const isXlsx = name.endsWith(".xlsx");
 
@@ -397,7 +404,8 @@ function RetrospendCsvImport({
 						</TooltipProvider>
 					</div>
 					<p className="text-muted-foreground text-sm">
-						Upload a CSV or Excel file exported from Retrospend or in the correct format.
+						Upload a CSV or Excel file exported from Retrospend or in the
+						correct format.
 					</p>
 				</div>
 			</div>
@@ -409,7 +417,7 @@ function RetrospendCsvImport({
 					<AlertDescription>
 						<ul className="mt-2 list-disc space-y-1 pl-4">
 							{state.errors.map((err, i) => (
-								<li key={`${i}-${err}`} className="font-mono text-xs">
+								<li className="font-mono text-xs" key={`${i}-${err}`}>
 									{err}
 								</li>
 							))}
@@ -419,13 +427,15 @@ function RetrospendCsvImport({
 			)}
 
 			<button
-				className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/30 transition-colors hover:border-muted-foreground/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+				className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-muted-foreground/25 border-dashed bg-muted/30 transition-colors hover:border-muted-foreground/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
 				onClick={() => fileInputRef.current?.click()}
 				type="button"
 			>
 				<Upload className="h-8 w-8 text-muted-foreground" />
 				<div className="text-center">
-					<p className="font-medium text-sm">Click to Browse CSV or Excel File</p>
+					<p className="font-medium text-sm">
+						Click to Browse CSV or Excel File
+					</p>
 					<p className="mt-1 text-muted-foreground text-xs">
 						Retrospend expense format (.csv or .xlsx)
 					</p>
@@ -475,8 +485,18 @@ function BankStatementImport({
 	const handleFile = useCallback(
 		async (file: File) => {
 			const name = file.name.toLowerCase();
-			if (!name.endsWith(".csv") && !name.endsWith(".pdf") && !name.endsWith(".xlsx")) {
+			if (
+				!name.endsWith(".csv") &&
+				!name.endsWith(".pdf") &&
+				!name.endsWith(".xlsx")
+			) {
 				toast.error("Please upload a CSV, Excel, or PDF file");
+				return;
+			}
+
+			// ~10MB raw file ≈ ~14MB base64 — enforce before reading
+			if (file.size > 10 * 1024 * 1024) {
+				toast.error("File too large. Maximum size is 10 MB.");
 				return;
 			}
 
@@ -598,8 +618,8 @@ function BankStatementImport({
 			<div className="space-y-1">
 				<p className="font-medium">Import bank statement</p>
 				<p className="text-muted-foreground text-sm">
-					Upload a CSV, Excel, or PDF bank statement. Supports Chase, Capital One, Bank
-					of America, Fidelity, and more.
+					Upload a CSV, Excel, or PDF bank statement. Supports Chase, Capital
+					One, Bank of America, Fidelity, and more.
 				</p>
 			</div>
 
@@ -637,7 +657,9 @@ function BankStatementImport({
 					)}
 				/>
 				<div className="text-center">
-					<p className="font-medium text-sm">Drop CSV/Excel/PDF or Click to Browse</p>
+					<p className="font-medium text-sm">
+						Drop CSV/Excel/PDF or Click to Browse
+					</p>
 					<p className="mt-1 text-muted-foreground text-xs">
 						Bank statements are processed securely
 					</p>

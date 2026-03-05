@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -56,6 +57,16 @@ func main() {
 		log.Fatalf("Failed to schedule recurring expense processing: %v", err)
 	}
 
+	// Schedule database backup
+	_, err = c.AddFunc(cfg.BackupCron, func() {
+		if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays); err != nil {
+			log.Printf("❌ Database backup failed: %v", err)
+		}
+	})
+	if err != nil {
+		log.Fatalf("Failed to schedule database backup: %v", err)
+	}
+
 	// Check for API key
 	apiKey := os.Getenv("WORKER_API_KEY")
 	if apiKey == "" {
@@ -67,7 +78,7 @@ func main() {
 		return func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			expected := "Bearer " + apiKey
-			
+
 			if subtle.ConstantTimeCompare([]byte(authHeader), []byte(expected)) != 1 {
 				log.Printf("⚠️ Unauthorized access attempt from %s", r.RemoteAddr)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -85,16 +96,56 @@ func main() {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
-			
+
 			log.Println("[HTTP] Manual sync triggered")
 			if err := tasks.SyncExchangeRates(database); err != nil {
 				log.Printf("[HTTP] Sync failed: %v", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Sync successful"))
+		}))
+
+		// Backup status endpoint
+		http.HandleFunc("/backups", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+
+			status := tasks.GetBackupStatus(cfg.BackupDir, cfg.BackupRetentionDays, c)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(status)
+		}))
+
+		// Manual backup trigger endpoint
+		http.HandleFunc("/backups/run", authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+
+			if tasks.IsBackupRunning() {
+				http.Error(w, "Backup already in progress", http.StatusConflict)
+				return
+			}
+
+			log.Println("[HTTP] Manual backup triggered")
+
+			go func() {
+				if err := tasks.RunBackup(database, cfg.DatabaseURL, cfg.BackupDir, cfg.BackupRetentionDays); err != nil {
+					log.Printf("[HTTP] Backup failed: %v", err)
+				}
+			}()
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "accepted",
+				"message": "Backup started",
+			})
 		}))
 
 		log.Println("✓ HTTP server listening on :8080")
@@ -108,6 +159,7 @@ func main() {
 	log.Println("✓ Scheduler started")
 	log.Println("  - Exchange rates: daily at 09:05 UTC")
 	log.Println("  - Recurring expenses: every 15 minutes")
+	log.Printf("  - Database backup: %s (retention: %d days)", cfg.BackupCron, cfg.BackupRetentionDays)
 	log.Println("  - HTTP Server: :8080")
 
 	// Wait for interrupt signal

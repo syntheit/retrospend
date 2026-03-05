@@ -21,8 +21,8 @@ if ! pnpm prisma migrate deploy > /tmp/migrate.log 2>&1; then
   if grep -q "P3005" /tmp/migrate.log; then
     echo "Database schema is not empty (Error P3005). Attempting to baseline..."
     
-    # Get the first migration name dynamically
-    FIRST_MIGRATION=$(ls prisma/migrations | sort | head -n 1)
+    # Get the first migration directory name (exclude files like migration_lock.toml)
+    FIRST_MIGRATION=$(ls -d prisma/migrations/*/  2>/dev/null | head -n 1 | xargs basename 2>/dev/null)
     
     if [ -n "$FIRST_MIGRATION" ]; then
       echo "Marking baseline migration as applied: $FIRST_MIGRATION"

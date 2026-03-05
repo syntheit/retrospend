@@ -3,6 +3,7 @@ import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 
 export const userRouter = createTRPCRouter({
@@ -10,9 +11,21 @@ export const userRouter = createTRPCRouter({
 		.input(
 			z
 				.object({
-					name: z.string().min(1, "Name is required"),
-					username: z.string().min(1, "Username is required"),
-					email: z.string().email("Invalid email address"),
+					name: z.string().min(1, "Name is required").max(100),
+					username: z
+						.string()
+						.min(1, "Username is required")
+						.max(50)
+						.regex(
+							/^[a-z0-9_-]+$/,
+							"Username can only contain lowercase letters, numbers, underscores, and hyphens",
+						)
+						.transform((v) => v.toLowerCase()),
+					email: z
+						.string()
+						.email("Invalid email address")
+						.max(254)
+						.transform((v) => v.toLowerCase().trim()),
 					password: z
 						.string()
 						.min(8, "Password must be at least 8 characters")
@@ -122,10 +135,12 @@ export const userRouter = createTRPCRouter({
 				});
 
 				if (env.SMTP_HOST) {
+					const htmlContent = getPasswordChangedAlertTemplate();
+
 					sendEmail(
 						session.user.email,
 						"Security Alert: Your Retrospend Password was Changed",
-						"<p>Your password was recently changed. If you did this, you can ignore this email. If you did not make this change, please contact your administrator immediately.</p>",
+						htmlContent,
 					).catch((error) =>
 						console.error("Failed to send security alert:", error),
 					);
@@ -135,13 +150,45 @@ export const userRouter = createTRPCRouter({
 			return updatedUser;
 		}),
 
-	deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
-		const { session, db } = ctx;
+	deleteAccount: protectedProcedure
+		.input(
+			z.object({
+				password: z.string().min(1, "Password is required"),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { session, db } = ctx;
 
-		await db.user.delete({
-			where: { id: session.user.id },
-		});
+			const credentialAccount = await db.account.findFirst({
+				where: {
+					userId: session.user.id,
+					providerId: "credential",
+				},
+			});
 
-		return { success: true };
-	}),
+			if (!credentialAccount?.password) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Cannot verify identity for this account type",
+				});
+			}
+
+			const isValid = await verifyPassword({
+				password: input.password,
+				hash: credentialAccount.password,
+			});
+
+			if (!isValid) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Incorrect password",
+				});
+			}
+
+			await db.user.delete({
+				where: { id: session.user.id },
+			});
+
+			return { success: true };
+		}),
 });

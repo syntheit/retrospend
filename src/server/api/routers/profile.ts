@@ -1,7 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
+import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getAppSettings } from "~/server/services/settings";
 import { sumExpensesForCurrency } from "./shared-currency";
 
 export const profileRouter = createTRPCRouter({
@@ -9,8 +11,21 @@ export const profileRouter = createTRPCRouter({
 		.input(
 			z.object({
 				name: z.string().min(1, "Name is required").max(100),
-				username: z.string().min(1, "Username is required").max(50),
-				email: z.string().email("Invalid email address").max(255),
+				username: z
+					.string()
+					.min(1, "Username is required")
+					.max(50)
+					.regex(
+						/^[a-z0-9_-]+$/,
+						"Username can only contain lowercase letters, numbers, underscores, and hyphens",
+					)
+					.transform((v) => v.toLowerCase()),
+				email: z
+					.string()
+					.email("Invalid email address")
+					.max(254)
+					.transform((v) => v.toLowerCase().trim()),
+				currentPassword: z.string().min(1).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -28,7 +43,38 @@ export const profileRouter = createTRPCRouter({
 				}
 			}
 
-			if (input.email !== session.user.email) {
+			const isEmailChange = input.email !== session.user.email;
+
+			if (isEmailChange) {
+				// Require password verification for email changes
+				if (!input.currentPassword) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Current password is required to change email",
+					});
+				}
+
+				const credentialAccount = await db.account.findFirst({
+					where: { userId: session.user.id, providerId: "credential" },
+				});
+				if (!credentialAccount?.password) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Password verification is not available for this account",
+					});
+				}
+
+				const isValid = await verifyPassword({
+					password: input.currentPassword,
+					hash: credentialAccount.password,
+				});
+				if (!isValid) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Current password is incorrect",
+					});
+				}
+
 				const existingEmail = await db.user.findUnique({
 					where: { email: input.email },
 				});
@@ -40,12 +86,18 @@ export const profileRouter = createTRPCRouter({
 				}
 			}
 
+			// Determine if email should be marked unverified
+			const settings = await getAppSettings();
+			const shouldUnverify =
+				isEmailChange && !!env.SMTP_HOST && settings.enableEmail;
+
 			return await db.user.update({
 				where: { id: session.user.id },
 				data: {
 					name: input.name,
 					username: input.username,
 					email: input.email,
+					...(shouldUnverify ? { emailVerified: false } : {}),
 				},
 				select: {
 					id: true,

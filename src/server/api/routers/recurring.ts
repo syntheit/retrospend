@@ -407,6 +407,8 @@ export const recurringRouter = createTRPCRouter({
 			// Create expense and update template in a transaction
 			// This prevents orphaned expenses if the nextDueDate update fails
 			const expense = await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                            set_config('role', 'retrospend_app', true)`;
 				const createdExpense = await tx.expense.create({
 					data: {
 						userId: session.user.id,

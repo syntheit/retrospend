@@ -67,13 +67,20 @@ function ResetPasswordInner() {
 		e.preventDefault();
 		if (!password || !confirmPassword) return;
 
-		if (password !== confirmPassword) {
-			setError("Passwords do not match");
+		if (password.length < 8) {
+			setError("Password must be at least 8 characters");
 			return;
 		}
 
-		if (password.length < 8) {
-			setError("Password must be at least 8 characters");
+		if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+			setError(
+				"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+			);
+			return;
+		}
+
+		if (password !== confirmPassword) {
+			setError("Passwords do not match");
 			return;
 		}
 

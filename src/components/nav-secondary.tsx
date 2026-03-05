@@ -59,14 +59,14 @@ export function NavSecondary({
 										Please verify your email address to secure your account.
 									</span>
 									<Button
-										variant="outline"
-										size="sm"
 										className="h-8 w-full border-warning/20 bg-warning/10 text-warning hover:bg-warning/20"
+										disabled={resendEmail.isPending}
 										onClick={(e) => {
 											e.preventDefault();
 											resendEmail.mutate();
 										}}
-										disabled={resendEmail.isPending}
+										size="sm"
+										variant="outline"
 									>
 										{resendEmail.isPending ? "Sending..." : "Resend Email"}
 									</Button>

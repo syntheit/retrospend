@@ -1,7 +1,8 @@
 "use client";
 
 // import Link from "next/link";
-import { useMemo } from "react";
+import { SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { createExpenseColumns } from "~/components/data-table-columns";
@@ -18,8 +19,15 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerTitle,
+} from "~/components/ui/drawer";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExpensesController } from "~/hooks/use-expenses-controller";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { useTableActions } from "~/hooks/use-table-actions";
 import { ExpensesTableFooter } from "./_components/expenses-table-footer";
 import { TableFilters } from "./_components/table-filters";
@@ -27,6 +35,8 @@ import { TableFilters } from "./_components/table-filters";
 export default function Page() {
 	const { openNewExpense, openExpense } = useExpenseModal();
 	const { formatCurrency } = useCurrencyFormatter();
+	const isMobile = useIsMobile();
+	const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
 	const {
 		expenses: filteredExpenses,
@@ -93,6 +103,14 @@ export default function Page() {
 		],
 	);
 
+	// On mobile, hide less important columns to reduce horizontal scroll
+	const columnVisibility: import("@tanstack/react-table").VisibilityState =
+		isMobile ? { select: false, category: false, localPrice: false } : {};
+
+	// Count active filters for the mobile badge
+	const activeFilterCount =
+		selectedYears.size + selectedMonths.size + selectedCategories.size;
+
 	if (isLoading) {
 		return (
 			<>
@@ -130,7 +148,56 @@ export default function Page() {
 			<SiteHeader title="Transactions" />
 			<PageContent>
 				<div className="space-y-6">
-					<div className="w-full space-y-4">
+					{/* Mobile: Filter button that opens a Sheet */}
+					<div className="sm:hidden">
+						<Button
+							className="relative"
+							onClick={() => setFilterSheetOpen(true)}
+							size="sm"
+							variant="outline"
+						>
+							<SlidersHorizontal className="mr-2 h-4 w-4" />
+							Filters
+							{activeFilterCount > 0 && (
+								<span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
+									{activeFilterCount}
+								</span>
+							)}
+						</Button>
+						<Drawer
+							direction="bottom"
+							onOpenChange={setFilterSheetOpen}
+							open={filterSheetOpen}
+						>
+							<DrawerContent className="px-6 pb-6">
+								<DrawerTitle className="mb-4 text-left font-semibold text-lg">
+									Filters
+								</DrawerTitle>
+								<DrawerDescription className="sr-only">
+									Filter transactions by year, month, and category
+								</DrawerDescription>
+								<div className="overflow-y-auto">
+									<TableFilters
+										availableCategories={availableCategories}
+										availableMonths={availableMonths}
+										availableYears={availableYears}
+										clearCategories={clearCategories}
+										clearMonths={clearMonths}
+										clearYears={clearYears}
+										selectedCategories={selectedCategories}
+										selectedMonths={selectedMonths}
+										selectedYears={selectedYears}
+										toggleCategory={toggleCategory}
+										toggleMonth={toggleMonth}
+										toggleYear={toggleYear}
+									/>
+								</div>
+							</DrawerContent>
+						</Drawer>
+					</div>
+
+					{/* Desktop: Inline filters */}
+					<div className="hidden w-full space-y-4 sm:block">
 						<TableFilters
 							availableCategories={availableCategories}
 							availableMonths={availableMonths}
@@ -149,6 +216,7 @@ export default function Page() {
 
 					<DataTable
 						columns={columns}
+						columnVisibility={columnVisibility}
 						data={filteredExpenses}
 						emptyState={
 							<div className="space-y-3 py-6 text-center">
@@ -162,9 +230,6 @@ export default function Page() {
 									<Button onClick={clearFilters} variant="outline">
 										Reset filters
 									</Button>
-									{/* <Button asChild variant="ghost">
-	<Link href="/app/analytics">View analytics</Link>
-</Button> */}
 								</div>
 							</div>
 						}
@@ -195,7 +260,6 @@ export default function Page() {
 					/>
 				</div>
 			</PageContent>
-
 			{/* Deletion Dialog */}
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent>

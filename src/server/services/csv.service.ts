@@ -197,18 +197,21 @@ export class CsvService {
 
 			const duration = row.amortizeDuration;
 			if (row.isAmortized && duration && duration > 1) {
-				await this.runInTransaction(async (tx: Prisma.TransactionClient) => {
-					const expense = await tx.expense.create({
-						data: {
-							...baseExpenseData,
-							id: randomUUID(),
-							isAmortizedParent: true,
-						},
-					});
+				await this.runInTransaction(
+					userId,
+					async (tx: Prisma.TransactionClient) => {
+						const expense = await tx.expense.create({
+							data: {
+								...baseExpenseData,
+								id: randomUUID(),
+								isAmortizedParent: true,
+							},
+						});
 
-					const amortizationService = new AmortizationService(tx);
-					await amortizationService.syncAmortization(expense, duration);
-				});
+						const amortizationService = new AmortizationService(tx);
+						await amortizationService.syncAmortization(expense, duration);
+					},
+				);
 
 				totalCreated += 1 + duration;
 			} else {
@@ -230,10 +233,15 @@ export class CsvService {
 	}
 
 	private async runInTransaction<T>(
+		userId: string,
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {
 		if ("$transaction" in this.db) {
-			return await this.db.$transaction(callback);
+			return await this.db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
+				                            set_config('role', 'retrospend_app', true)`;
+				return await callback(tx);
+			});
 		}
 		return await callback(this.db as Prisma.TransactionClient);
 	}

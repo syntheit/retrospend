@@ -16,6 +16,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useSession } from "~/hooks/use-session";
@@ -119,12 +121,21 @@ function DeleteAccountSection({
 	onCloseModal,
 }: DeleteAccountSectionProps) {
 	const router = useRouter();
+	const [password, setPassword] = useState("");
 	const deleteAccount = api.user.deleteAccount.useMutation({
 		onSuccess: () => {
 			toast.success("Account deleted");
 			router.push("/login");
 		},
+		onError: (err) => {
+			toast.error(err.message);
+		},
 	});
+
+	const handleClose = () => {
+		setPassword("");
+		onCloseModal();
+	};
 
 	return (
 		<>
@@ -150,26 +161,37 @@ function DeleteAccountSection({
 				</CardContent>
 			</Card>
 
-			<Dialog onOpenChange={onCloseModal} open={showModal}>
+			<Dialog onOpenChange={handleClose} open={showModal}>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Delete Account</DialogTitle>
 						<DialogDescription>
 							Are you sure? This action cannot be undone. All your data will be
-							permanently removed.
+							permanently removed. Enter your password to confirm.
 						</DialogDescription>
 					</DialogHeader>
+					<div className="py-2">
+						<Label htmlFor="delete-password">Password</Label>
+						<Input
+							className="mt-2"
+							id="delete-password"
+							onChange={(e) => setPassword(e.target.value)}
+							placeholder="Enter your password"
+							type="password"
+							value={password}
+						/>
+					</div>
 					<DialogFooter>
 						<Button
 							disabled={deleteAccount.isPending}
-							onClick={onCloseModal}
+							onClick={handleClose}
 							variant="outline"
 						>
 							Cancel
 						</Button>
 						<Button
-							disabled={deleteAccount.isPending}
-							onClick={() => deleteAccount.mutate()}
+							disabled={deleteAccount.isPending || !password}
+							onClick={() => deleteAccount.mutate({ password })}
 							variant="destructive"
 						>
 							{deleteAccount.isPending ? "Deleting..." : "Delete Account"}

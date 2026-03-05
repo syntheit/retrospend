@@ -47,6 +47,11 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       WORKER_API_KEY: ${WORKER_API_KEY}
       LOG_LEVEL: "info"
+      BACKUP_DIR: "/backups"
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-30}"
+      BACKUP_CRON: "${BACKUP_CRON:-0 3 * * *}"
+    volumes:
+      - backup_data:/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,6 +68,9 @@ services:
       - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
       - WORKER_API_KEY=${WORKER_API_KEY}
       - LLM_MODEL=${LLM_MODEL:-qwen2.5:7b}
+      - ENRICH_BATCH_SIZE=${ENRICH_BATCH_SIZE:-20}
+      - ENRICH_CONCURRENCY=${ENRICH_CONCURRENCY:-3}
+      - PDF_CONCURRENCY=${PDF_CONCURRENCY:-3}
       - LOG_LEVEL=info
     depends_on:
       - ollama
@@ -99,3 +107,4 @@ volumes:
   postgres_data:
   ollama_data:
   importer_data:
+  backup_data:

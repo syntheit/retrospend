@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";
-import { db } from "~/server/db";
+import type { db as globalDb } from "~/server/db";
 import type { Page } from "~prisma";
+
+type AppDb = typeof globalDb;
 
 // Zod schemas for settings validation
 export const DashboardSettingsSchema = z.object({
@@ -10,7 +12,6 @@ export const DashboardSettingsSchema = z.object({
 	widgets: z.object({
 		spendComposition: z.object({ visible: z.boolean() }),
 		monthlyPacing: z.object({ visible: z.boolean() }),
-		activityHeatmap: z.object({ visible: z.boolean() }),
 		categoryTrends: z.object({ visible: z.boolean() }),
 		recentExpenses: z.object({ visible: z.boolean() }),
 		wealthAllocation: z.object({ visible: z.boolean() }),
@@ -101,7 +102,6 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 		widgets: {
 			spendComposition: { visible: true },
 			monthlyPacing: { visible: true },
-			activityHeatmap: { visible: true },
 			categoryTrends: { visible: true },
 			recentExpenses: { visible: true },
 			wealthAllocation: { visible: true },
@@ -169,6 +169,7 @@ export type PageSettings = z.infer<typeof PageSettingsSchema>;
  * Get page settings for a user, merging with defaults if no settings exist
  */
 export async function getPageSettings<T extends Page>(
+	db: AppDb,
 	userId: string,
 	page: T,
 ): Promise<PageSettings> {
@@ -197,11 +198,12 @@ export async function getPageSettings<T extends Page>(
  * Update page settings for a user
  */
 export async function updatePageSettings<T extends Page>(
+	db: AppDb,
 	userId: string,
 	page: T,
 	settings: Partial<PageSettings>,
 ): Promise<PageSettings> {
-	const currentSettings = await getPageSettings(userId, page);
+	const currentSettings = await getPageSettings(db, userId, page);
 
 	// Merge with updates
 	const updatedSettings = { ...currentSettings, ...settings };
@@ -233,7 +235,10 @@ export async function updatePageSettings<T extends Page>(
 /**
  * Get analytics category preferences for a user
  */
-export async function getAnalyticsCategoryPreferences(userId: string) {
+export async function getAnalyticsCategoryPreferences(
+	db: AppDb,
+	userId: string,
+) {
 	return await db.analyticsCategoryPreference.findMany({
 		where: { userId },
 		include: {
@@ -252,6 +257,7 @@ export async function getAnalyticsCategoryPreferences(userId: string) {
  * Update analytics category preference for a user
  */
 export async function updateAnalyticsCategoryPreference(
+	db: AppDb,
 	userId: string,
 	categoryId: string,
 	isFlexible: boolean,
@@ -275,6 +281,7 @@ export async function updateAnalyticsCategoryPreference(
 }
 
 export async function deleteAnalyticsCategoryPreference(
+	db: AppDb,
 	userId: string,
 	categoryId: string,
 ) {
@@ -291,8 +298,11 @@ export async function deleteAnalyticsCategoryPreference(
  * If no preferences exist, creates default preferences based on category names.
  */
 
-export async function ensureAnalyticsCategoryPreferences(userId: string) {
-	const existingPrefs = await getAnalyticsCategoryPreferences(userId);
+export async function ensureAnalyticsCategoryPreferences(
+	db: AppDb,
+	userId: string,
+) {
+	const existingPrefs = await getAnalyticsCategoryPreferences(db, userId);
 	if (existingPrefs.length > 0) {
 		return existingPrefs;
 	}
@@ -329,7 +339,7 @@ export async function ensureAnalyticsCategoryPreferences(userId: string) {
 
 	await Promise.all(upsertPromises);
 
-	return await getAnalyticsCategoryPreferences(userId);
+	return await getAnalyticsCategoryPreferences(db, userId);
 }
 
 /**
@@ -337,10 +347,11 @@ export async function ensureAnalyticsCategoryPreferences(userId: string) {
  * Ensures preferences exist by seeding defaults if needed
  */
 export async function getAnalyticsCategoryPreferenceMap(
+	db: AppDb,
 	userId: string,
 ): Promise<Record<string, boolean>> {
-	await ensureAnalyticsCategoryPreferences(userId);
-	const preferences = await getAnalyticsCategoryPreferences(userId);
+	await ensureAnalyticsCategoryPreferences(db, userId);
+	const preferences = await getAnalyticsCategoryPreferences(db, userId);
 	return preferences.reduce(
 		(map, pref) => {
 			map[pref.categoryId] = pref.isFlexible;

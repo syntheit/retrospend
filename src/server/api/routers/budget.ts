@@ -60,7 +60,13 @@ export const budgetRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const month = input.month ?? new Date();
-			return BudgetService.getBudgets(ctx.db, ctx.session.user.id, month);
+			const user = await ctx.db.user.findUnique({
+				where: { id: ctx.session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
+			return BudgetService.getBudgets(ctx.db, ctx.session.user.id, month, {
+				fiscalMonthStartDay: user?.fiscalMonthStartDay ?? 1,
+			});
 		}),
 
 	upsertBudget: protectedProcedure
@@ -155,25 +161,44 @@ export const budgetRouter = createTRPCRouter({
 
 	batchUpsertBudgets: protectedProcedure
 		.input(
-			z.array(
-				z.object({
-					categoryId: z.string().cuid(),
-					amount: z.number().min(0, "Budget amount must be non-negative"),
-					currency: z.string().length(3, "Currency must be a 3-letter code"),
-					period: z.date(),
-					isRollover: z.boolean().optional().default(false),
-					pegToActual: z.boolean().optional().default(false),
-					type: z
-						.enum(["FIXED", "PEG_TO_ACTUAL", "PEG_TO_LAST_MONTH"])
-						.optional()
-						.default("FIXED"),
-				}),
-			),
+			z
+				.array(
+					z.object({
+						categoryId: z.string().cuid(),
+						amount: z.number().min(0, "Budget amount must be non-negative"),
+						currency: z.string().length(3, "Currency must be a 3-letter code"),
+						period: z.date(),
+						isRollover: z.boolean().optional().default(false),
+						pegToActual: z.boolean().optional().default(false),
+						type: z
+							.enum(["FIXED", "PEG_TO_ACTUAL", "PEG_TO_LAST_MONTH"])
+							.optional()
+							.default("FIXED"),
+					}),
+				)
+				.max(500),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
+			// Validate all categoryIds belong to user
+			const inputCategoryIds = [...new Set(input.map((i) => i.categoryId))];
+			const userCategories = await db.category.findMany({
+				where: { userId: session.user.id, id: { in: inputCategoryIds } },
+				select: { id: true },
+			});
+			const validIds = new Set(userCategories.map((c) => c.id));
+			const invalidIds = inputCategoryIds.filter((id) => !validIds.has(id));
+			if (invalidIds.length > 0) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "One or more categories do not belong to your account",
+				});
+			}
+
 			const results = await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                            set_config('role', 'retrospend_app', true)`;
 				const processed = [];
 
 				for (const item of input) {
@@ -232,11 +257,16 @@ export const budgetRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
+			const user = await ctx.db.user.findUnique({
+				where: { id: ctx.session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
 			return BudgetService.getSuggestions(
 				ctx.db,
 				ctx.session.user.id,
 				input.categoryId,
 				input.currency,
+				user?.fiscalMonthStartDay ?? 1,
 			);
 		}),
 
@@ -248,7 +278,13 @@ export const budgetRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const month = input.month ?? new Date();
-			return BudgetService.getGlobalBudget(ctx.db, ctx.session.user.id, month);
+			const user = await ctx.db.user.findUnique({
+				where: { id: ctx.session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
+			return BudgetService.getGlobalBudget(ctx.db, ctx.session.user.id, month, {
+				fiscalMonthStartDay: user?.fiscalMonthStartDay ?? 1,
+			});
 		}),
 
 	upsertGlobalBudget: protectedProcedure
@@ -413,7 +449,8 @@ export const budgetRouter = createTRPCRouter({
 							pegToActual: z.boolean().optional().default(false),
 						}),
 					)
-					.min(1, "At least one row is required"),
+					.min(1, "At least one row is required")
+					.max(1000),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

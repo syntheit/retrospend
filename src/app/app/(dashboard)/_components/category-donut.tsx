@@ -11,6 +11,7 @@ import {
 } from "~/components/ui/card";
 import { type ChartConfig, ChartContainer } from "~/components/ui/chart";
 import { Skeleton } from "~/components/ui/skeleton";
+import { cn } from "~/lib/utils";
 import {
 	CategoryDonutLegend,
 	type CategorySegment,
@@ -31,6 +32,7 @@ interface CategoryDonutProps {
 	handleCategoryClick: (segment: CategorySegment) => void;
 	handleSliceEnter: (data: PieSectorDataItem, index: number) => void;
 	handleSliceLeave: () => void;
+	layout?: "horizontal" | "vertical";
 }
 
 function renderActiveShape(
@@ -71,6 +73,7 @@ export function CategoryDonut({
 	handleCategoryClick,
 	handleSliceEnter,
 	handleSliceLeave,
+	layout = "horizontal",
 }: CategoryDonutProps) {
 	return (
 		<Card className="border border-border bg-card shadow-sm">
@@ -88,8 +91,21 @@ export function CategoryDonut({
 						No expenses logged this month.
 					</div>
 				) : (
-					<div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-						<div className="relative mx-auto w-full max-w-[300px] shrink-0">
+					<div
+						className={cn(
+							"flex flex-col gap-8",
+							layout === "horizontal" &&
+								"xl:flex-row xl:items-center xl:justify-between",
+						)}
+					>
+						<div
+							className={cn(
+								"relative mx-auto w-full shrink-0",
+								layout === "horizontal"
+									? "max-w-[250px] 2xl:max-w-[300px]"
+									: "max-w-[300px]",
+							)}
+						>
 							<ChartContainer
 								className="aspect-square w-full"
 								config={pieChartConfig}
@@ -144,14 +160,14 @@ export function CategoryDonut({
 															y={viewBox.cy}
 														>
 															<tspan
-																className="fill-muted-foreground font-medium text-xs uppercase tracking-widest"
+																className="fill-muted-foreground font-medium text-[10px] uppercase tracking-widest sm:text-xs"
 																x={viewBox.cx}
 																y={(viewBox.cy || 0) - 16}
 															>
 																{activeSlice ? activeSlice.name : "TOTAL SPEND"}
 															</tspan>
 															<tspan
-																className="fill-foreground font-bold text-2xl tabular-nums tracking-tight"
+																className="fill-foreground font-bold text-xl tabular-nums tracking-tight sm:text-2xl"
 																x={viewBox.cx}
 																y={(viewBox.cy || 0) + 16}
 															>
@@ -170,7 +186,7 @@ export function CategoryDonut({
 							</ChartContainer>
 						</div>
 
-						<div className="flex flex-1 flex-col justify-center">
+						<div className="flex flex-1 flex-col justify-center min-w-0">
 							<CategoryDonutLegend
 								categoryClickBehavior={categoryClickBehavior}
 								data={categoryBreakdown}
@@ -194,7 +210,12 @@ export function CategoryDonut({
 							/>
 
 							{isUsingMockExpenses && (
-								<p className="mt-4 text-center text-muted-foreground text-xs lg:text-left">
+								<p
+									className={cn(
+										"mt-4 text-center text-muted-foreground text-xs",
+										layout === "horizontal" && "xl:text-left",
+									)}
+								>
 									Using sample data until expenses are added.
 								</p>
 							)}

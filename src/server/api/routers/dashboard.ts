@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getFiscalMonthProgress, getFiscalMonthRange } from "~/lib/fiscal-month";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import * as BudgetService from "~/server/services/budget.service";
 import { ExpenseService } from "~/server/services/expense.service";
@@ -22,25 +23,16 @@ export const dashboardRouter = createTRPCRouter({
 			const now = new Date();
 			const homeCurrency = input?.homeCurrency ?? "USD";
 
-			const endOfMonth = new Date(
-				selectedDate.getFullYear(),
-				selectedDate.getMonth() + 1,
-				0,
-				23,
-				59,
-				59,
-				999,
-			);
+			const userSettings = await db.user.findUnique({
+				where: { id: session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
+			const fiscalStartDay = userSettings?.fiscalMonthStartDay ?? 1;
+			const fiscal = getFiscalMonthRange(selectedDate, fiscalStartDay);
+			const fiscalProgress = getFiscalMonthProgress(now, selectedDate, fiscalStartDay);
 
-			const isCurrentMonth =
-				selectedDate.getFullYear() === now.getFullYear() &&
-				selectedDate.getMonth() === now.getMonth();
-
-			const daysInMonth = endOfMonth.getDate();
-			const currentDay = now.getDate();
-			const daysRemaining = isCurrentMonth
-				? Math.max(0, daysInMonth - currentDay + 1)
-				: 0;
+			const isCurrentMonth = fiscalProgress.isCurrentPeriod;
+			const daysRemaining = fiscalProgress.daysRemaining;
 
 			let last24HoursSpend = 0;
 			if (isCurrentMonth) {
@@ -71,7 +63,7 @@ export const dashboardRouter = createTRPCRouter({
 				db,
 				session.user.id,
 				selectedDate,
-				{ includeGlobal: true },
+				{ includeGlobal: true, fiscalMonthStartDay: fiscalStartDay },
 			);
 
 			const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
@@ -191,12 +183,27 @@ export const dashboardRouter = createTRPCRouter({
 
 			const user = await db.user.findUnique({
 				where: { id: session.user.id },
-				select: {
-					monthlyIncome: true,
-				},
+				select: { monthlyIncome: true, monthlyIncomeCurrency: true },
 			});
 
-			const monthlyIncome = Number(user?.monthlyIncome ?? 0);
+			const rawIncome = Number(user?.monthlyIncome ?? 0);
+			const incomeCurrency = user?.monthlyIncomeCurrency ?? "USD";
+
+			let monthlyIncome = rawIncome;
+			if (rawIncome > 0 && incomeCurrency !== homeCurrency) {
+				let incomeInUSD: number;
+				if (incomeCurrency === "USD") {
+					incomeInUSD = rawIncome;
+				} else {
+					const incomeRate = await getBestExchangeRate(db, incomeCurrency, selectedDate);
+					const incomeRateVal = Number(incomeRate?.rate ?? 1);
+					const isIncomeCrypto = incomeRate?.type === "crypto";
+					incomeInUSD = isIncomeCrypto ? rawIncome * incomeRateVal : rawIncome / incomeRateVal;
+				}
+				monthlyIncome = isHomeCrypto
+					? incomeInUSD / homeCurrencyRate
+					: incomeInUSD * homeCurrencyRate;
+			}
 
 			return {
 				last24Hours: last24HoursSpend,
@@ -227,37 +234,22 @@ export const dashboardRouter = createTRPCRouter({
 			const { month, homeCurrency } = input;
 			const userId = session.user.id;
 
+			const userSettings = await db.user.findUnique({
+				where: { id: userId },
+				select: { fiscalMonthStartDay: true },
+			});
+			const fiscalStartDay = userSettings?.fiscalMonthStartDay ?? 1;
+
 			const expenseService = new ExpenseService(db);
 			const statsService = new StatsService(db);
 
-			// We call our own route logic for overviewStats to avoid duplication
-			// This is a bit non-idiomatic in tRPC to call other procedures directly,
-			// so we would normally extract the logic. But for simplicity and to follow the strategy
-			// of shifting burden to server, we can just execute the logic.
-
-			// Helper to get overview stats logic (copied from above for conciseness in Promise.all)
 			const fetchOverviewStats = async () => {
 				const selectedDate = month;
 				const now = new Date();
-				const endOfMonth = new Date(
-					selectedDate.getFullYear(),
-					selectedDate.getMonth() + 1,
-					0,
-					23,
-					59,
-					59,
-					999,
-				);
+				const fiscalProgress = getFiscalMonthProgress(now, selectedDate, fiscalStartDay);
 
-				const isCurrentMonth =
-					selectedDate.getFullYear() === now.getFullYear() &&
-					selectedDate.getMonth() === now.getMonth();
-
-				const daysInMonth = endOfMonth.getDate();
-				const currentDay = now.getDate();
-				const daysRemaining = isCurrentMonth
-					? Math.max(0, daysInMonth - currentDay + 1)
-					: 0;
+				const isCurrentMonth = fiscalProgress.isCurrentPeriod;
+				const daysRemaining = fiscalProgress.daysRemaining;
 
 				let last24HoursSpend = 0;
 				if (isCurrentMonth) {
@@ -288,7 +280,7 @@ export const dashboardRouter = createTRPCRouter({
 					db,
 					session.user.id,
 					selectedDate,
-					{ includeGlobal: true },
+					{ includeGlobal: true, fiscalMonthStartDay: fiscalStartDay },
 				);
 
 				const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
@@ -398,12 +390,29 @@ export const dashboardRouter = createTRPCRouter({
 						return sum + val;
 					}, 0);
 
-				const user = await db.user.findUnique({
+				const incomeUser = await db.user.findUnique({
 					where: { id: userId },
-					select: { monthlyIncome: true },
+					select: { monthlyIncome: true, monthlyIncomeCurrency: true },
 				});
 
-				const monthlyIncome = Number(user?.monthlyIncome ?? 0);
+				const rawIncome = Number(incomeUser?.monthlyIncome ?? 0);
+				const incomeCurrency = incomeUser?.monthlyIncomeCurrency ?? "USD";
+
+				let monthlyIncome = rawIncome;
+				if (rawIncome > 0 && incomeCurrency !== homeCurrency) {
+					let incomeInUSD: number;
+					if (incomeCurrency === "USD") {
+						incomeInUSD = rawIncome;
+					} else {
+						const incomeRate = await getBestExchangeRate(db, incomeCurrency, selectedDate);
+						const incomeRateVal = Number(incomeRate?.rate ?? 1);
+						const isIncomeCrypto = incomeRate?.type === "crypto";
+						incomeInUSD = isIncomeCrypto ? rawIncome * incomeRateVal : rawIncome / incomeRateVal;
+					}
+					monthlyIncome = isHomeCrypto
+						? incomeInUSD / homeCurrencyRate
+						: incomeInUSD * homeCurrencyRate;
+				}
 
 				return {
 					last24Hours: last24HoursSpend,
@@ -454,9 +463,9 @@ export const dashboardRouter = createTRPCRouter({
 						select: { period: true },
 					})
 					.then((b) => b?.period ?? null),
-				statsService.getSummaryStats(userId, month, homeCurrency),
-				statsService.getCategoryBreakdown(userId, month, homeCurrency),
-				statsService.getDailyTrend(userId, month, homeCurrency),
+				statsService.getSummaryStats(userId, month, homeCurrency, fiscalStartDay),
+				statsService.getCategoryBreakdown(userId, month, homeCurrency, fiscalStartDay),
+				statsService.getDailyTrend(userId, month, homeCurrency, fiscalStartDay),
 			]);
 
 			return {

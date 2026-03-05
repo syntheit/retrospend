@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+umask 077
 
 # Database backup script for Retrospend
 # Schedule via cron: 0 3 * * * /path/to/backup-db.sh >> /var/log/retrospend-backup.log 2>&1

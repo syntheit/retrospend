@@ -16,20 +16,24 @@ model User {
   emailVerified         Boolean               @default(false)
   image                 String?               @db.VarChar(2048)
   homeCurrency          String                @default("USD")
-  categoryClickBehavior CategoryClickBehavior @default(toggle)
-  budgetMode            BudgetMode            @default(GLOBAL_LIMIT)
-  role                  UserRole              @default(USER)
+  categoryClickBehavior        CategoryClickBehavior        @default(toggle)
+  role                         UserRole                     @default(USER)
   isActive              Boolean               @default(true)
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @default(now()) @updatedAt
   defaultCurrency       String                @default("USD")
 
-  currencySymbolStyle     CurrencySymbolStyle           @default(standard)
-  monthlyIncome           Decimal?                      @db.Decimal(10, 2)
-  smartCurrencyFormatting Boolean                       @default(true)
-  defaultPrivacyMode      Boolean                       @default(false)
+  currencySymbolStyle         CurrencySymbolStyle           @default(standard)
+  monthlyIncome               Decimal?                      @db.Decimal(10, 2)
+  monthlyIncomeCurrency       String                        @default("USD")
+  smartCurrencyFormatting     Boolean                       @default(true)
+  defaultPrivacyMode          Boolean                       @default(false)
+  fiscalMonthStartDay         Int                           @default(1)
+  defaultExpenseDateBehavior  DefaultExpenseDateBehavior    @default(TODAY)
   accounts                Account[]
   assetAccounts           AssetAccount[]
+  assetSnapshots          AssetSnapshot[]
+  assetHistories          AssetHistory[]
   categories              Category[]
   favoriteExchangeRates   ExchangeRateFavorite[]
   expenses                Expense[]
@@ -145,7 +149,7 @@ model Expense {
   recurringTemplateId String?
   recurringTemplate   RecurringTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
 
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
@@ -212,7 +216,7 @@ model Budget {
   userId         String
   categoryId     String?
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@unique([userId, categoryId, period])
   @@index([userId, period])
@@ -274,23 +278,29 @@ model AssetAccount {
 model AssetSnapshot {
   id           String       @id @default(cuid())
   accountId    String
+  userId       String
   date         DateTime
   balance      Decimal      @db.Decimal(19, 8)
   balanceInUSD Decimal      @db.Decimal(12, 2)
   account      AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([accountId, date])
+  @@index([userId])
   @@map("asset_snapshot")
 }
 
 model AssetHistory {
   id         String       @id @default(cuid())
   assetId    String
+  userId     String
   balance    Decimal      @db.Decimal(19, 8)
   recordedAt DateTime     @default(now())
   asset      AssetAccount @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([assetId, recordedAt])
+  @@index([userId])
   @@map("asset_history")
 }
 
@@ -387,9 +397,9 @@ enum BudgetType {
   PEG_TO_LAST_MONTH
 }
 
-enum BudgetMode {
-  GLOBAL_LIMIT
-  SUM_OF_CATEGORIES
+enum DefaultExpenseDateBehavior {
+  TODAY
+  LAST_USED
 }
 
 enum Page {

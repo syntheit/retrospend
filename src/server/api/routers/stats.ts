@@ -12,10 +12,15 @@ export const statsRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const service = new StatsService(ctx.db);
+			const user = await ctx.db.user.findUnique({
+				where: { id: ctx.session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
 			return await service.getSummaryStats(
 				ctx.session.user.id,
 				input.month,
 				input.homeCurrency,
+				user?.fiscalMonthStartDay ?? 1,
 			);
 		}),
 
@@ -28,10 +33,15 @@ export const statsRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const service = new StatsService(ctx.db);
+			const user = await ctx.db.user.findUnique({
+				where: { id: ctx.session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
 			return await service.getCategoryBreakdown(
 				ctx.session.user.id,
 				input.month,
 				input.homeCurrency,
+				user?.fiscalMonthStartDay ?? 1,
 			);
 		}),
 
@@ -44,10 +54,15 @@ export const statsRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const service = new StatsService(ctx.db);
+			const user = await ctx.db.user.findUnique({
+				where: { id: ctx.session.user.id },
+				select: { fiscalMonthStartDay: true },
+			});
 			return await service.getDailyTrend(
 				ctx.session.user.id,
 				input.month,
 				input.homeCurrency,
+				user?.fiscalMonthStartDay ?? 1,
 			);
 		}),
 

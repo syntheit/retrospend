@@ -18,5 +18,3 @@ export interface Budget {
 	type: "FIXED" | "PEG_TO_ACTUAL" | "PEG_TO_LAST_MONTH";
 	category?: Category | null;
 }
-
-export type BudgetMode = "GLOBAL_LIMIT" | "SUM_OF_CATEGORIES";

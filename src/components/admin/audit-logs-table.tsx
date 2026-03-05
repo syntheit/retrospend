@@ -137,7 +137,7 @@ function MetadataDialog({
 	eventType,
 }: MetadataDialogProps) {
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog onOpenChange={onOpenChange} open={open}>
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>Event Details</DialogTitle>
@@ -304,11 +304,11 @@ export function AuditLogsTable() {
 						</div>
 					</div>
 					<Select
-						value={eventTypeFilter ?? "all"}
 						onValueChange={(value) => {
 							setEventTypeFilter(value as EventType | "all");
 							setPage(1);
 						}}
+						value={eventTypeFilter ?? "all"}
 					>
 						<SelectTrigger className="w-[200px]">
 							<SelectValue placeholder="Filter by event type" />
@@ -355,8 +355,8 @@ export function AuditLogsTable() {
 									{isLoading ? (
 										<TableRow>
 											<TableCell
-												colSpan={columns.length}
 												className="h-24 text-center"
+												colSpan={columns.length}
 											>
 												Loading...
 											</TableCell>
@@ -377,8 +377,8 @@ export function AuditLogsTable() {
 									) : (
 										<TableRow>
 											<TableCell
-												colSpan={columns.length}
 												className="h-24 text-center"
+												colSpan={columns.length}
 											>
 												No events found.
 											</TableCell>

@@ -7,18 +7,11 @@ export const env = createEnv({
 	 * isn't built with invalid env vars.
 	 */
 	server: {
-		BETTER_AUTH_SECRET:
-			process.env.NODE_ENV === "production"
-				? z.string()
-				: z.string().optional(),
+		BETTER_AUTH_SECRET: z.string().min(1),
 		DATABASE_URL: z.string().url(),
 		WORKER_URL: z.string().url().default("http://retrospend-worker:8080"),
-		WORKER_API_KEY:
-			process.env.NODE_ENV === "production"
-				? z.string().min(1)
-				: z.string().min(1).optional().default("dev-api-key"),
+		WORKER_API_KEY: z.string().min(1).optional(),
 
-		SHOW_LANDING_PAGE: z.enum(["true", "false"]).default("false"),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
@@ -38,7 +31,8 @@ export const env = createEnv({
 	 */
 	client: {
 		NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:1997"),
-		// NEXT_PUBLIC_CLIENTVAR: z.string(),
+		NEXT_PUBLIC_SHOW_LANDING_PAGE: z.enum(["true", "false"]).default("false"),
+		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: z.enum(["true", "false"]).default("false"),
 	},
 
 	/**
@@ -51,7 +45,8 @@ export const env = createEnv({
 		DATABASE_URL: process.env.DATABASE_URL,
 		WORKER_URL: process.env.WORKER_URL,
 		WORKER_API_KEY: process.env.WORKER_API_KEY,
-		SHOW_LANDING_PAGE: process.env.SHOW_LANDING_PAGE,
+		NEXT_PUBLIC_SHOW_LANDING_PAGE: process.env.NEXT_PUBLIC_SHOW_LANDING_PAGE,
+		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.NEXT_PUBLIC_ENABLE_LEGAL_PAGES,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_APP_URL:
 			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,

@@ -2,7 +2,7 @@
 
 import { FlaskConical } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BudgetHeader } from "~/components/budget/budget-header";
 import { BudgetList } from "~/components/budget/budget-list";
 import { PartitionBar } from "~/components/budget/partition-bar";
@@ -12,12 +12,26 @@ import { Button } from "~/components/ui/button";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { useCurrency } from "~/hooks/use-currency";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { useSettings } from "~/hooks/use-settings";
+import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
 import { handleError } from "~/lib/handle-error";
 import { api } from "~/trpc/react";
 
 export default function BudgetPage() {
-	const [selectedMonth, setSelectedMonth] = useState(new Date());
+	const { data: settings } = useSettings();
+	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
+	const [selectedMonth, setSelectedMonth] = useState(() => getCurrentFiscalMonth(new Date(), fiscalStartDay));
 	const isMobile = useIsMobile();
+
+	// Correct selectedMonth once settings load with actual fiscal start day
+	const hasSyncedFiscalMonth = useRef(false);
+	useEffect(() => {
+		if (settings && !hasSyncedFiscalMonth.current) {
+			hasSyncedFiscalMonth.current = true;
+			const correctMonth = getCurrentFiscalMonth(new Date(), settings.fiscalMonthStartDay ?? 1);
+			setSelectedMonth(correctMonth);
+		}
+	}, [settings]);
 	const utils = api.useUtils();
 
 	// Fetch server time for consistent timezone handling

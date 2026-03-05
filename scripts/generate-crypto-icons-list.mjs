@@ -1,8 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const cryptoIconsDir = path.join(process.cwd(), "node_modules/cryptocurrency-icons/svg/color");
-const outputFile = path.join(process.cwd(), "src/lib/supported-crypto-icons.ts");
+const cryptoIconsDir = path.join(
+	process.cwd(),
+	"node_modules/cryptocurrency-icons/svg/color",
+);
+const outputFile = path.join(
+	process.cwd(),
+	"src/lib/supported-crypto-icons.ts",
+);
 
 // Ensure the target directory exists
 fs.mkdirSync(path.dirname(outputFile), { recursive: true });
@@ -20,9 +26,14 @@ export const SUPPORTED_CRYPTO_ICONS = new Set(${JSON.stringify(symbols)});
 `;
 
 	fs.writeFileSync(outputFile, content);
-	console.log(`Generated supported crypto icons list with ${symbols.length} symbols.`);
+	console.log(
+		`Generated supported crypto icons list with ${symbols.length} symbols.`,
+	);
 } catch (error) {
 	console.error("Failed to generate supported crypto icons list:", error);
 	// Create an empty set as fallback
-	fs.writeFileSync(outputFile, "export const SUPPORTED_CRYPTO_ICONS = new Set<string>();\n");
+	fs.writeFileSync(
+		outputFile,
+		"export const SUPPORTED_CRYPTO_ICONS = new Set<string>();\n",
+	);
 }

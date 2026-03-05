@@ -38,7 +38,7 @@ export function LoginForm() {
 
 		try {
 			const result = await authClient.signIn.email({
-				email,
+				email: email.trim().toLowerCase(),
 				password,
 			});
 
@@ -189,6 +189,7 @@ export function LoginForm() {
 									<Link
 										className="font-medium text-primary text-sm hover:underline"
 										href="/auth/forgot-password"
+										tabIndex={-1}
 									>
 										Forgot your password?
 									</Link>

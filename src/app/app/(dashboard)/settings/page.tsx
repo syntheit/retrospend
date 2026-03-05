@@ -2,11 +2,13 @@
 
 import { IconBrandMatrix } from "@tabler/icons-react";
 import { Github, Globe } from "lucide-react";
+import Link from "next/link";
 import { DataManagementCard } from "~/components/data-management/data-management-card";
 import { PageContent } from "~/components/page-content";
 import { SettingsForm } from "~/components/settings-form";
 import { SiteHeader } from "~/components/site-header";
 import { Card, CardContent } from "~/components/ui/card";
+import { env } from "~/env";
 import { APP_VERSION } from "~/lib/version";
 
 export default function Page() {
@@ -82,6 +84,23 @@ export default function Page() {
 											Daniel Miller
 										</a>
 									</p>
+									{env.NEXT_PUBLIC_ENABLE_LEGAL_PAGES === "true" && (
+										<p className="pt-2 text-muted-foreground text-sm">
+											<Link
+												className="text-primary hover:underline"
+												href="/app/settings/terms"
+											>
+												Terms
+											</Link>
+											{" • "}
+											<Link
+												className="text-primary hover:underline"
+												href="/app/settings/privacy"
+											>
+												Privacy
+											</Link>
+										</p>
+									)}
 								</div>
 							</div>
 						</CardContent>

@@ -56,8 +56,9 @@ export default function RecurringPage() {
 			<SiteHeader
 				actions={
 					<Button onClick={() => setShowCreateModal(true)}>
-						<Plus className="mr-2 h-4 w-4" /> Add Recurring Expense
-					</Button>
+					<Plus className="h-4 w-4 sm:mr-2" />
+					<span className="hidden sm:inline">Add Recurring Expense</span>
+				</Button>
 				}
 				title="Recurring & Subscriptions"
 			/>

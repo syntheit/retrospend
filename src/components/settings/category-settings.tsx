@@ -3,7 +3,6 @@
 import { ChevronRight, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-// import { AddCategoryCard } from "~/components/settings/category-card";
 import {
 	CategoryFormDialog,
 	type CategoryFormValues,
@@ -18,6 +17,22 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog";
+import { Label } from "~/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
 import { getCategoryIcon, getCategoryIconName } from "~/lib/category-icons";
 import type { CategoryColor } from "~/lib/constants";
 import { cn } from "~/lib/utils";
@@ -38,6 +53,10 @@ export function CategorySettings() {
 
 	// Delete state
 	const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+	const [showReassignDialog, setShowReassignDialog] = useState(false);
+	const [reassignExpenseCount, setReassignExpenseCount] = useState(0);
+	const [replacementCategoryId, setReplacementCategoryId] =
+		useState<string>("uncategorized");
 
 	// tRPC hooks
 	const {
@@ -95,11 +114,48 @@ export function CategorySettings() {
 
 	const confirmDeleteCategory = async () => {
 		if (!categoryToDelete) return;
+		let needsReassign = false;
 		try {
 			await deleteCategoryMutation.mutateAsync({ id: categoryToDelete });
 			await refetchCategories();
 			toast.success("Category deleted");
-			setIsFormOpen(false); // Close edit dialog
+			setIsFormOpen(false);
+		} catch (err) {
+			const errMsg =
+				err instanceof Error ? err.message : "Failed to delete category";
+			// Check if the error indicates expenses exist (reassignment needed)
+			const match = errMsg.match(/has (\d+) expense/);
+			if (match?.[1]) {
+				needsReassign = true;
+				setReassignExpenseCount(Number(match[1]));
+				setReplacementCategoryId("uncategorized");
+				setShowReassignDialog(true);
+				return;
+			}
+			toast.error(errMsg);
+		} finally {
+			// Only clear the categoryToDelete if we're NOT about to show the reassign dialog
+			if (!needsReassign) {
+				setCategoryToDelete(null);
+			}
+		}
+	};
+
+	const handleReassignAndDelete = async () => {
+		if (!categoryToDelete) return;
+		try {
+			const isUncategorized = replacementCategoryId === "uncategorized";
+			await deleteCategoryMutation.mutateAsync({
+				id: categoryToDelete,
+				replacementCategoryId: isUncategorized
+					? undefined
+					: replacementCategoryId,
+				reassignToUncategorized: isUncategorized,
+			});
+			await refetchCategories();
+			toast.success("Category deleted and expenses reassigned");
+			setIsFormOpen(false);
+			setShowReassignDialog(false);
 		} catch (err) {
 			const errMsg =
 				err instanceof Error ? err.message : "Failed to delete category";
@@ -225,16 +281,78 @@ export function CategorySettings() {
 
 			<ConfirmDialog
 				confirmText="Delete"
-				description="This cannot be undone. Expenses using this category will be left uncategorized."
+				description="This cannot be undone."
 				isLoading={deleteCategoryMutation.isPending}
 				onConfirm={confirmDeleteCategory}
 				onOpenChange={(open) => {
 					if (!open) setCategoryToDelete(null);
 				}}
-				open={!!categoryToDelete}
+				open={!!categoryToDelete && !showReassignDialog}
 				title="Delete category"
 				variant="destructive"
 			/>
+
+			{/* Reassignment Dialog */}
+			<Dialog
+				onOpenChange={(open) => {
+					if (!open) {
+						setShowReassignDialog(false);
+						setCategoryToDelete(null);
+					}
+				}}
+				open={showReassignDialog}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Reassign Expenses</DialogTitle>
+						<DialogDescription>
+							{reassignExpenseCount} expense(s) use this category. Choose a
+							category to reassign them to before deleting.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="py-4">
+						<Label htmlFor="replacement-category">Reassign to</Label>
+						<Select
+							onValueChange={setReplacementCategoryId}
+							value={replacementCategoryId}
+						>
+							<SelectTrigger className="mt-2" id="replacement-category">
+								<SelectValue placeholder="Select a category" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="uncategorized">Uncategorized</SelectItem>
+								{categories
+									?.filter((c) => c.id !== categoryToDelete)
+									.map((c) => (
+										<SelectItem key={c.id} value={c.id}>
+											{c.name}
+										</SelectItem>
+									))}
+							</SelectContent>
+						</Select>
+					</div>
+					<DialogFooter>
+						<Button
+							onClick={() => {
+								setShowReassignDialog(false);
+								setCategoryToDelete(null);
+							}}
+							variant="outline"
+						>
+							Cancel
+						</Button>
+						<Button
+							disabled={deleteCategoryMutation.isPending}
+							onClick={handleReassignAndDelete}
+							variant="destructive"
+						>
+							{deleteCategoryMutation.isPending
+								? "Deleting..."
+								: "Reassign & Delete"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</>
 	);
 }

@@ -52,7 +52,7 @@ export function NavMain({
 				</SidebarMenu>
 
 				{categories.map((category) => (
-					<div key={category.label} className="flex flex-col gap-1">
+					<div className="flex flex-col gap-1" key={category.label}>
 						<SidebarGroupLabel className="px-2 pt-2 text-muted-foreground text-xs">
 							{category.label}
 							{category.subtext && (
@@ -67,9 +67,9 @@ export function NavMain({
 									{item.isPlaceholder ? (
 										<SidebarMenuButton
 											className="h-10 cursor-not-allowed px-4 py-4 text-base opacity-50 [&>svg]:size-5"
+											disabled
 											size="lg"
 											tooltip={`${item.title} (Coming Soon)`}
-											disabled
 										>
 											{item.icon && <item.icon />}
 											<span>{item.title}</span>

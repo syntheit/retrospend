@@ -4,8 +4,15 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import {
+	getPasswordChangedAlertTemplate,
+	getPasswordResetEmailTemplate,
+	getTestEmailTemplate,
+	getVerificationEmailTemplate,
+} from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
+import { IntegrationService } from "~/server/services/integration.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 
 export const adminRouter = createTRPCRouter({
@@ -159,7 +166,7 @@ export const adminRouter = createTRPCRouter({
 	}),
 
 	resetPassword: adminProcedure
-		.input(z.object({ userId: z.string() }))
+		.input(z.object({ userId: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -211,7 +218,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	disableUser: adminProcedure
-		.input(z.object({ userId: z.string() }))
+		.input(z.object({ userId: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -243,7 +250,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	enableUser: adminProcedure
-		.input(z.object({ userId: z.string() }))
+		.input(z.object({ userId: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -268,7 +275,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	markEmailVerified: adminProcedure
-		.input(z.object({ userId: z.string() }))
+		.input(z.object({ userId: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db } = ctx;
 
@@ -281,7 +288,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	toggleEmailVerification: adminProcedure
-		.input(z.object({ userId: z.string(), verified: z.boolean() }))
+		.input(z.object({ userId: z.string().cuid(), verified: z.boolean() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -308,7 +315,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	deleteUser: adminProcedure
-		.input(z.object({ userId: z.string() }))
+		.input(z.object({ userId: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -374,13 +381,47 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	sendTestEmail: adminProcedure
-		.input(z.object({ email: z.string().email() }))
+		.input(
+			z.object({
+				email: z.string().email(),
+				type: z
+					.enum([
+						"basic",
+						"password-reset",
+						"credential-change",
+						"email-verification",
+					])
+					.default("basic"),
+			}),
+		)
 		.mutation(async ({ input }) => {
 			try {
+				let subject = "Retrospend SMTP Test";
+				let html = getTestEmailTemplate();
+
+				switch (input.type) {
+					case "password-reset":
+						subject = "Reset your Retrospend Password";
+						html = getPasswordResetEmailTemplate(
+							"http://localhost:1997/auth/reset-password?token=sample-token",
+						);
+						break;
+					case "credential-change":
+						subject = "Security Alert: Your Retrospend Password was Changed";
+						html = getPasswordChangedAlertTemplate();
+						break;
+					case "email-verification":
+						subject = "Verify your Retrospend Account";
+						html = getVerificationEmailTemplate(
+							"http://localhost:1997/auth/verify?token=sample-token",
+						);
+						break;
+				}
+
 				await sendEmail(
 					input.email,
-					"Retrospend SMTP Test",
-					"<h1>Success!</h1><p>Your SMTP configuration for Retrospend is working perfectly.</p>",
+					subject,
+					html,
 					true, // bypassEnabledCheck
 				);
 				return { success: true, message: "Test email sent successfully" };
@@ -396,7 +437,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	generatePasswordResetLink: adminProcedure
-		.input(z.object({ userId: z.string() }))
+		.input(z.object({ userId: z.string().cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db } = ctx;
 
@@ -422,4 +463,31 @@ export const adminRouter = createTRPCRouter({
 			const resetUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
 			return { resetUrl };
 		}),
+
+	getBackupStatus: adminProcedure.query(async () => {
+		try {
+			const response = await IntegrationService.requestWorker(
+				`${env.WORKER_URL}/backups`,
+				{ timeout: 10000 },
+			);
+			return await response.json();
+		} catch {
+			return { available: false };
+		}
+	}),
+
+	triggerBackup: adminProcedure.mutation(async () => {
+		try {
+			const response = await IntegrationService.requestWorker(
+				`${env.WORKER_URL}/backups/run`,
+				{ method: "POST", timeout: 300000 },
+			);
+			return await response.json();
+		} catch (error) {
+			throw new TRPCError({
+				code: "INTERNAL_SERVER_ERROR",
+				message: `Backup trigger failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+			});
+		}
+	}),
 });
