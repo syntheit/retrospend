@@ -9,8 +9,8 @@ import { TRPCReactProvider } from "~/trpc/react";
 
 export const metadata: Metadata = {
 	metadataBase: new URL(
-		process.env.PUBLIC_URL ??
-			process.env.NEXT_PUBLIC_APP_URL ??
+		process.env.PUBLIC_URL ||
+			process.env.NEXT_PUBLIC_APP_URL ||
 			"http://localhost:1997",
 	),
 	title: {
