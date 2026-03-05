@@ -16,7 +16,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-var Version = "0.1.1"
+var Version = "0.1.2"
 
 func main() {
 	log.Printf("Retrospend Worker %s starting...", Version)

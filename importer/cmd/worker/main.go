@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-var Version = "0.1.1"
+var Version = "0.1.2"
 
 // FileChecksumTracker tracks processed files to prevent duplicate imports
 type FileChecksumTracker struct {
