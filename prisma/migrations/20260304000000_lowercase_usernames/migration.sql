@@ -16,13 +16,10 @@ BEGIN
        )
   LOOP
     IF rec.rn = 1 THEN
-      -- First (oldest) user gets the clean lowercase name
       UPDATE "user" SET username = rec.lower_name WHERE id = rec.id;
     ELSE
-      -- Subsequent duplicates get a numeric suffix
       suffix := rec.rn - 1;
       candidate := rec.lower_name || suffix::TEXT;
-      -- Keep incrementing suffix if the candidate already exists
       WHILE EXISTS (SELECT 1 FROM "user" WHERE username = candidate) LOOP
         suffix := suffix + 1;
         candidate := rec.lower_name || suffix::TEXT;
@@ -36,4 +33,8 @@ END $$;
 UPDATE "user" SET username = LOWER(username) WHERE username != LOWER(username);
 
 -- Prevent future mixed-case usernames at the database level
-ALTER TABLE "user" ADD CONSTRAINT user_username_lowercase CHECK (username = LOWER(username));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_username_lowercase') THEN
+    ALTER TABLE "user" ADD CONSTRAINT user_username_lowercase CHECK (username = LOWER(username));
+  END IF;
+END $$;
