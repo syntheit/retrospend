@@ -3,12 +3,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PUBLIC_URL: ${PUBLIC_URL:-http://localhost:1997}
+        SHOW_LANDING_PAGE: ${SHOW_LANDING_PAGE:-false}
+        ENABLE_LEGAL_PAGES: ${ENABLE_LEGAL_PAGES:-false}
     container_name: retrospend
     restart: unless-stopped
     environment:
       AUTH_SECRET: ${AUTH_SECRET}
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
-      SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
       IMPORTER_URL: "http://importer:8080"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}

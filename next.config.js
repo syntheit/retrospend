@@ -8,6 +8,7 @@ import "./src/env.js";
 const config = {
 	output: "standalone",
 	env: {
+		NEXT_PUBLIC_APP_URL: process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
 		NEXT_PUBLIC_SHOW_LANDING_PAGE: process.env.SHOW_LANDING_PAGE ?? "false",
 		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.ENABLE_LEGAL_PAGES ?? "false",
 	},
