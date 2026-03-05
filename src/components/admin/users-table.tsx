@@ -1,6 +1,8 @@
 "use client";
 
 import {
+	IconRobot,
+	IconRobotOff,
 	IconCircleCheck,
 	IconCircleX,
 	IconDotsVertical,
@@ -40,6 +42,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 
 interface User {
@@ -57,6 +60,7 @@ interface User {
 	hasRecurring: boolean;
 	hasWealth: boolean;
 	twoFactorEnabled: boolean;
+	externalAiAllowed: boolean | null;
 }
 
 interface UsersTableProps {
@@ -75,6 +79,7 @@ interface UsersTableProps {
 		verified: boolean,
 	) => void;
 	onDeleteUser: (userId: string, username: string) => void;
+	onSetAiAccess?: (userId: string, allowed: boolean | null) => void;
 }
 
 export function UsersTable({
@@ -85,7 +90,10 @@ export function UsersTable({
 	onToggleUserStatus,
 	onMarkEmailVerified,
 	onDeleteUser,
+	onSetAiAccess,
 }: UsersTableProps) {
+	const isMobile = useIsMobile();
+
 	const generateResetLinkMutation =
 		api.admin.generatePasswordResetLink.useMutation({
 			onSuccess: (data) => {
@@ -111,9 +119,9 @@ export function UsersTable({
 								<TableHead>Email</TableHead>
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
-								<TableHead>Features</TableHead>
-								<TableHead className="text-right">Expenses</TableHead>
-								<TableHead className="text-right">Joined</TableHead>
+								{!isMobile && <TableHead>Features</TableHead>}
+								{!isMobile && <TableHead className="text-right">Expenses</TableHead>}
+								{!isMobile && <TableHead className="text-right">Joined</TableHead>}
 								<TableHead className="w-[50px]"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -133,15 +141,21 @@ export function UsersTable({
 									<TableCell>
 										<Skeleton className="h-5 w-[60px]" />
 									</TableCell>
-									<TableCell>
-										<Skeleton className="h-5 w-[80px]" />
-									</TableCell>
-									<TableCell className="text-right">
-										<Skeleton className="ml-auto h-5 w-[30px]" />
-									</TableCell>
-									<TableCell className="text-right">
-										<Skeleton className="ml-auto h-5 w-[80px]" />
-									</TableCell>
+									{!isMobile && (
+										<TableCell>
+											<Skeleton className="h-5 w-[80px]" />
+										</TableCell>
+									)}
+									{!isMobile && (
+										<TableCell className="text-right">
+											<Skeleton className="ml-auto h-5 w-[30px]" />
+										</TableCell>
+									)}
+									{!isMobile && (
+										<TableCell className="text-right">
+											<Skeleton className="ml-auto h-5 w-[80px]" />
+										</TableCell>
+									)}
 									<TableCell>
 										<Skeleton className="h-8 w-8 rounded-full" />
 									</TableCell>
@@ -172,9 +186,9 @@ export function UsersTable({
 								<TableHead>Email</TableHead>
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
-								<TableHead>Features</TableHead>
-								<TableHead className="text-right">Expenses</TableHead>
-								<TableHead className="text-right">Joined</TableHead>
+								{!isMobile && <TableHead>Features</TableHead>}
+								{!isMobile && <TableHead className="text-right">Expenses</TableHead>}
+								{!isMobile && <TableHead className="text-right">Joined</TableHead>}
 								<TableHead className="w-[50px]"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -237,76 +251,82 @@ export function UsersTable({
 												</Badge>
 											)}
 										</TableCell>
-										<TableCell>
-											<TooltipProvider>
-												<div className="flex items-center gap-2">
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<PieChart
-																className={`h-4 w-4 ${
-																	user.hasBudget
-																		? "text-primary"
-																		: "text-muted-foreground/30"
-																}`}
-															/>
-														</TooltipTrigger>
-														<TooltipContent>
-															Budget: {user.hasBudget ? "Active" : "Unused"}
-														</TooltipContent>
-													</Tooltip>
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<Repeat
-																className={`h-4 w-4 ${
-																	user.hasRecurring
-																		? "text-primary"
-																		: "text-muted-foreground/30"
-																}`}
-															/>
-														</TooltipTrigger>
-														<TooltipContent>
-															Recurring:{" "}
-															{user.hasRecurring ? "Active" : "Unused"}
-														</TooltipContent>
-													</Tooltip>
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<Landmark
-																className={`h-4 w-4 ${
-																	user.hasWealth
-																		? "text-primary"
-																		: "text-muted-foreground/30"
-																}`}
-															/>
-														</TooltipTrigger>
-														<TooltipContent>
-															Wealth: {user.hasWealth ? "Active" : "Unused"}
-														</TooltipContent>
-													</Tooltip>
-													<Tooltip>
-														<TooltipTrigger asChild>
-															<ShieldCheck
-																className={`h-4 w-4 ${
-																	user.twoFactorEnabled
-																		? "text-primary"
-																		: "text-muted-foreground/30"
-																}`}
-															/>
-														</TooltipTrigger>
-														<TooltipContent>
-															2FA:{" "}
-															{user.twoFactorEnabled ? "Enabled" : "Disabled"}
-														</TooltipContent>
-													</Tooltip>
-												</div>
-											</TooltipProvider>
-										</TableCell>
-										<TableCell className="text-right font-medium">
-											{user.expenseCount}
-										</TableCell>
-										<TableCell className="text-right text-muted-foreground text-sm">
-											{format(new Date(user.createdAt), "MMM d, yyyy")}
-										</TableCell>
+										{!isMobile && (
+											<TableCell>
+												<TooltipProvider>
+													<div className="flex items-center gap-2">
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<PieChart
+																	className={`h-4 w-4 ${
+																		user.hasBudget
+																			? "text-primary"
+																			: "text-muted-foreground/30"
+																	}`}
+																/>
+															</TooltipTrigger>
+															<TooltipContent>
+																Budget: {user.hasBudget ? "Active" : "Unused"}
+															</TooltipContent>
+														</Tooltip>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<Repeat
+																	className={`h-4 w-4 ${
+																		user.hasRecurring
+																			? "text-primary"
+																			: "text-muted-foreground/30"
+																	}`}
+																/>
+															</TooltipTrigger>
+															<TooltipContent>
+																Recurring:{" "}
+																{user.hasRecurring ? "Active" : "Unused"}
+															</TooltipContent>
+														</Tooltip>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<Landmark
+																	className={`h-4 w-4 ${
+																		user.hasWealth
+																			? "text-primary"
+																			: "text-muted-foreground/30"
+																	}`}
+																/>
+															</TooltipTrigger>
+															<TooltipContent>
+																Wealth: {user.hasWealth ? "Active" : "Unused"}
+															</TooltipContent>
+														</Tooltip>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<ShieldCheck
+																	className={`h-4 w-4 ${
+																		user.twoFactorEnabled
+																			? "text-primary"
+																			: "text-muted-foreground/30"
+																	}`}
+																/>
+															</TooltipTrigger>
+															<TooltipContent>
+																2FA:{" "}
+																{user.twoFactorEnabled ? "Enabled" : "Disabled"}
+															</TooltipContent>
+														</Tooltip>
+													</div>
+												</TooltipProvider>
+											</TableCell>
+										)}
+										{!isMobile && (
+											<TableCell className="text-right font-medium">
+												{user.expenseCount}
+											</TableCell>
+										)}
+										{!isMobile && (
+											<TableCell className="text-right text-muted-foreground text-sm">
+												{format(new Date(user.createdAt), "MMM d, yyyy")}
+											</TableCell>
+										)}
 										<TableCell>
 											<DropdownMenu>
 												<DropdownMenuTrigger asChild>
@@ -389,6 +409,30 @@ export function UsersTable({
 															<IconMailCheck className="mr-2 h-4 w-4" />
 															Mark Email Verified
 														</DropdownMenuItem>
+													)}
+													{onSetAiAccess && user.id !== currentUserId && (
+														<>
+															<DropdownMenuSeparator />
+															{user.externalAiAllowed === true ? (
+																<DropdownMenuItem
+																	onClick={() =>
+																		onSetAiAccess(user.id, null)
+																	}
+																>
+																	<IconRobotOff className="mr-2 h-4 w-4" />
+																	Revoke External AI Access
+																</DropdownMenuItem>
+															) : (
+																<DropdownMenuItem
+																	onClick={() =>
+																		onSetAiAccess(user.id, true)
+																	}
+																>
+																	<IconRobot className="mr-2 h-4 w-4" />
+																	Allow External AI Access
+																</DropdownMenuItem>
+															)}
+														</>
 													)}
 													{user.id !== currentUserId && (
 														<>

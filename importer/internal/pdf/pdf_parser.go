@@ -44,11 +44,6 @@ var transactionSchema = map[string]interface{}{
 	"required": []string{"transactions"},
 }
 
-// estimateTokenCount provides a rough estimate of token count (4 chars per token)
-func estimateTokenCount(text string) int {
-	return len(text) / 4
-}
-
 // deduplicateTransactions removes duplicate transactions based on date, title, and amount
 func deduplicateTransactions(transactions []models.NormalizedTransaction) []models.NormalizedTransaction {
 	seen := make(map[string]bool)
@@ -68,15 +63,16 @@ func deduplicateTransactions(transactions []models.NormalizedTransaction) []mode
 // ParsePDFTransactions extracts transaction data from raw PDF text using an LLM.
 // It automatically chunks large PDFs by page boundaries to avoid context limit issues.
 // Returns transactions and metadata about the parsing process.
-func ParsePDFTransactions(endpoint string, model string, rawText string, maxConcurrency int, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func ParsePDFTransactions(provider llm.Provider, model string, rawText string, maxConcurrency int, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, int, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
+	totalTokens := 0
 	// Sanitize text before token estimation (may reduce chunk count)
 	rawText = SanitizePDFText(rawText)
 
 	// Check if we need to chunk the input
-	estimatedTokens := estimateTokenCount(rawText)
+	estimatedTokens := llm.EstimateTokenCount(rawText)
 	const maxContextTokens = 8192 // Conservative limit for most models
 	const systemPromptTokens = 500 // Approximate system prompt size
 
@@ -85,14 +81,15 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 		if onProgress != nil {
 			onProgress(0.1, "Parsing bank statement...")
 		}
-		transactions, err := parsePDFChunk(endpoint, model, rawText)
+		transactions, tokens, err := parsePDFChunk(provider, model, rawText)
 		if err != nil {
-			return nil, metadata, err
+			return nil, metadata, totalTokens, err
 		}
+		totalTokens += tokens
 		metadata.TotalChunks = 1
 		metadata.SuccessfulChunks = 1
 		metadata.TotalTransactions = len(transactions)
-		return transactions, metadata, nil
+		return transactions, metadata, totalTokens, nil
 	}
 
 	// Split by page boundaries (form-feed character)
@@ -101,14 +98,15 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 		// No form-feed characters, but text is large - split by estimated token count
 		log.Printf("WARNING: Large PDF (%d estimated tokens) without page boundaries, processing as single chunk", estimatedTokens)
 		metadata.Warnings = append(metadata.Warnings, "Large PDF processed as single chunk - some transactions may be missed")
-		transactions, err := parsePDFChunk(endpoint, model, rawText)
+		transactions, tokens, err := parsePDFChunk(provider, model, rawText)
 		if err != nil {
-			return nil, metadata, err
+			return nil, metadata, totalTokens, err
 		}
+		totalTokens += tokens
 		metadata.TotalChunks = 1
 		metadata.SuccessfulChunks = 1
 		metadata.TotalTransactions = len(transactions)
-		return transactions, metadata, nil
+		return transactions, metadata, totalTokens, nil
 	}
 
 	if maxConcurrency <= 0 {
@@ -131,6 +129,7 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 
 	type pdfChunkResult struct {
 		transactions []models.NormalizedTransaction
+		tokens       int
 		warning      string
 	}
 
@@ -166,7 +165,7 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 			sem <- struct{}{}        // Acquire semaphore
 			defer func() { <-sem }() // Release semaphore
 
-			chunkTokens := estimateTokenCount(j.text)
+			chunkTokens := llm.EstimateTokenCount(j.text)
 			log.Printf("Processing pages %d-%d (%d estimated tokens)", j.startPage+1, j.endPage, chunkTokens)
 
 			if onProgress != nil {
@@ -176,14 +175,14 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 				progressMu.Unlock()
 			}
 
-			transactions, err := parsePDFChunk(endpoint, model, j.text)
+			transactions, tokens, err := parsePDFChunk(provider, model, j.text)
 			if err != nil {
 				atomic.AddInt32(&atomicFailedChunks, 1)
 				warningMsg := fmt.Sprintf("Failed to parse pages %d-%d: %v", j.startPage+1, j.endPage, err)
 				log.Printf("WARNING: %s", warningMsg)
 				results[j.index] = pdfChunkResult{warning: warningMsg}
 			} else {
-				results[j.index] = pdfChunkResult{transactions: transactions}
+				results[j.index] = pdfChunkResult{transactions: transactions, tokens: tokens}
 			}
 
 			completed := atomic.AddInt32(&completedChunks, 1)
@@ -204,6 +203,7 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 			metadata.Warnings = append(metadata.Warnings, r.warning)
 		}
 		allTransactions = append(allTransactions, r.transactions...)
+		totalTokens += r.tokens
 	}
 
 	failedChunks := int(atomicFailedChunks)
@@ -215,7 +215,7 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 	// CRITICAL: Fail loudly if >20% of chunks failed
 	failureRate := float64(failedChunks) / float64(totalChunks)
 	if failureRate > 0.20 {
-		return nil, metadata, fmt.Errorf("CRITICAL: %.0f%% of PDF chunks failed to parse (%d/%d failed). This indicates significant data loss. Please check the PDF format or try a different file",
+		return nil, metadata, totalTokens, fmt.Errorf("CRITICAL: %.0f%% of PDF chunks failed to parse (%d/%d failed). This indicates significant data loss. Please check the PDF format or try a different file",
 			failureRate*100, failedChunks, totalChunks)
 	}
 
@@ -232,16 +232,16 @@ func ParsePDFTransactions(endpoint string, model string, rawText string, maxConc
 
 	// Fail loudly if no transactions were extracted
 	if len(allTransactions) == 0 {
-		return nil, metadata, fmt.Errorf("CRITICAL: No transactions extracted from PDF. The file may be empty, corrupted, or in an unsupported format")
+		return nil, metadata, totalTokens, fmt.Errorf("CRITICAL: No transactions extracted from PDF. The file may be empty, corrupted, or in an unsupported format")
 	}
 
 	log.Printf("Extracted %d unique transactions from %d pages (%d chunks, %d failed)", len(allTransactions), len(pages), totalChunks, failedChunks)
 
-	return allTransactions, metadata, nil
+	return allTransactions, metadata, totalTokens, nil
 }
 
 // parsePDFChunk processes a single chunk of PDF text
-func parsePDFChunk(endpoint string, model string, rawText string) ([]models.NormalizedTransaction, error) {
+func parsePDFChunk(provider llm.Provider, model string, rawText string) ([]models.NormalizedTransaction, int, error) {
 	systemPrompt := `You are a highly precise financial data extraction tool. Extract individual debit transactions from bank statement text and output them as a JSON object with a "transactions" key.
 
 CRITICAL RULES:
@@ -277,24 +277,23 @@ Output:
 
 	prompt := "EXTRACT ALL EXPENSE TRANSACTIONS FROM THE FOLLOWING BANK STATEMENT TEXT:\n\n" + rawText
 
-	reqBody := llm.OllamaRequest{
-		Model:  model,
-		Prompt: prompt,
-		System: systemPrompt,
-		Stream: false,
-		Format: transactionSchema,
+	genReq := llm.GenerateRequest{
+		SystemPrompt: systemPrompt,
+		UserPrompt:   prompt,
+		Model:        model,
+		Format:       transactionSchema,
 		Options: map[string]interface{}{
 			"temperature": 0,
-			"num_ctx":     16384, // Set explicit context window size
+			"num_ctx":     16384,
 		},
 	}
 
-	response, err := llm.CallOllama(endpoint, reqBody)
+	resp, err := provider.Generate(genReq)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	cleanJSON := llm.CleanJSONResponse(response)
+	cleanJSON := llm.CleanJSONResponse(resp.Content)
 
 	var transactions []models.NormalizedTransaction
 	// Primary parse: expect {"transactions": [...]}
@@ -306,17 +305,17 @@ Output:
 	} else {
 		// Fallback: try parsing as a bare array
 		if err2 := json.Unmarshal([]byte(cleanJSON), &transactions); err2 != nil {
-			return nil, fmt.Errorf("LLM did not output a JSON object with a 'transactions' key containing an array of expense transaction objects. Fallback to bare array also failed: %w (raw response: %s)", err2, response)
+			return nil, resp.TotalTokens, fmt.Errorf("LLM did not output a JSON object with a 'transactions' key containing an array of expense transaction objects. Fallback to bare array also failed: %w (raw response: %s)", err2, resp.Content)
 		}
 	}
 
 	if len(transactions) == 0 {
-		return transactions, nil
+		return transactions, resp.TotalTokens, nil
 	}
 
 	for i := range transactions {
 		transactions[i].OriginalCurrency = processor.NormalizeCurrency(transactions[i].OriginalCurrency)
 	}
 
-	return transactions, nil
+	return transactions, resp.TotalTokens, nil
 }

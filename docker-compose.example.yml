@@ -9,6 +9,7 @@ services:
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
       IMPORTER_URL: "http://importer:8080"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
     ports:
       - "1997:1997"
     depends_on:
@@ -51,6 +52,8 @@ services:
       - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
       - WORKER_API_KEY=${WORKER_API_KEY}
       - LLM_MODEL=${LLM_MODEL:-qwen2.5:7b}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-qwen/qwen-2.5-7b-instruct}
       - LOG_LEVEL=info
     depends_on:
       - ollama

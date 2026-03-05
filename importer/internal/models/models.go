@@ -33,6 +33,7 @@ type ImportMetadata struct {
 	FailedChunks        int      `json:"failedChunks"`        // Failed chunks
 	TotalTransactions   int      `json:"totalTransactions"`   // Total transactions returned
 	SkippedTransactions int      `json:"skippedTransactions"` // Transactions skipped due to validation
+	TotalTokensUsed     int      `json:"totalTokensUsed"`     // Total LLM tokens consumed
 	Warnings            []string `json:"warnings"`            // User-facing warning messages
 }
 

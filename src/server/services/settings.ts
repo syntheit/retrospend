@@ -7,6 +7,9 @@ export interface AppSettings {
 	inviteOnlyEnabled: boolean;
 	allowAllUsersToGenerateInvites: boolean;
 	enableEmail: boolean;
+	defaultAiMode: "LOCAL" | "EXTERNAL";
+	externalAiAccessMode: "WHITELIST" | "BLACKLIST";
+	monthlyAiTokenQuota: number;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -34,6 +37,9 @@ export async function updateAppSettings(updates: {
 	inviteOnlyEnabled?: boolean;
 	allowAllUsersToGenerateInvites?: boolean;
 	enableEmail?: boolean;
+	defaultAiMode?: "LOCAL" | "EXTERNAL";
+	externalAiAccessMode?: "WHITELIST" | "BLACKLIST";
+	monthlyAiTokenQuota?: number;
 }): Promise<AppSettings> {
 	return await db.appSettings.upsert({
 		where: { id: SETTINGS_ID },

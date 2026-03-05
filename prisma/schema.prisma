@@ -50,6 +50,10 @@ model User {
   eventLogs        EventLog[]
   importJobs       ImportJob[]
 
+  aiMode            AiMode    @default(LOCAL)
+  externalAiAllowed Boolean?
+  aiUsages          AiUsage[]
+
   @@map("user")
 }
 
@@ -327,6 +331,10 @@ model AppSettings {
   allowAllUsersToGenerateInvites Boolean  @default(false)
   enableEmail                    Boolean  @default(true)
 
+  defaultAiMode          AiMode               @default(LOCAL)
+  externalAiAccessMode   ExternalAiAccessMode @default(WHITELIST)
+  monthlyAiTokenQuota    Int                  @default(2000000)
+
   @@map("app_settings")
 }
 
@@ -450,6 +458,16 @@ enum ImportJobType {
   BANK_STATEMENT
 }
 
+enum AiMode {
+  LOCAL
+  EXTERNAL
+}
+
+enum ExternalAiAccessMode {
+  WHITELIST
+  BLACKLIST
+}
+
 model UserPageSetting {
   id       String @id @default(cuid())
   userId   String
@@ -548,4 +566,18 @@ model ImportJob {
   @@index([userId, status])
   @@index([userId, createdAt])
   @@map("import_job")
+}
+
+model AiUsage {
+  id         String   @id @default(cuid())
+  userId     String
+  yearMonth  String   @db.VarChar(7)
+  tokensUsed Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, yearMonth])
+  @@index([userId])
+  @@map("ai_usage")
 }

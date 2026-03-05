@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
 import { RateSyncControl } from "~/components/rate-sync-control";
@@ -29,6 +29,7 @@ import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { api } from "~/trpc/react";
 import { ActionDialog } from "./action-dialog";
 import { AdminOverviewStats } from "./admin-overview-stats";
+import { AiUsageTable } from "./ai-usage-table";
 import { AuditLogsTable } from "./audit-logs-table";
 import { BackupStatusCard } from "./backup-status-card";
 import { InviteCodesTable } from "./invite-codes-table";
@@ -107,6 +108,11 @@ export function AdminPanel() {
 			enabled: isAdmin,
 		});
 
+	const { data: aiSettings, refetch: refetchAiSettings } =
+		api.admin.getAiSettings.useQuery(undefined, {
+			enabled: isAdmin,
+		});
+
 	const resetPasswordMutation = api.admin.resetPassword.useMutation();
 	const disableUserMutation = api.admin.disableUser.useMutation();
 	const enableUserMutation = api.admin.enableUser.useMutation();
@@ -115,6 +121,8 @@ export function AdminPanel() {
 		api.admin.toggleEmailVerification.useMutation();
 	const deleteInviteCodeMutation = api.invite.delete.useMutation();
 	const updateSettingsMutation = api.admin.updateSettings.useMutation();
+	const updateAiSettingsMutation = api.admin.updateAiSettings.useMutation();
+	const setUserAiAccessMutation = api.admin.setUserAiAccess.useMutation();
 
 	const handleAction = (action: PendingAction) => {
 		setPendingAction(action);
@@ -326,7 +334,7 @@ export function AdminPanel() {
 								Registration and email configuration.
 							</p>
 						</div>
-						<div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+						<div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 							<Card className="flex h-full flex-col">
 								<CardHeader>
 									<CardTitle>Registration Settings</CardTitle>
@@ -389,6 +397,24 @@ export function AdminPanel() {
 								onSettingsChange={refetchSettings}
 								settings={settings}
 							/>
+
+							<AiSettingsCard
+								aiSettings={aiSettings}
+								isUpdating={updateAiSettingsMutation.isPending}
+								onUpdate={async (updates) => {
+									try {
+										await updateAiSettingsMutation.mutateAsync(updates);
+										toast.success("AI settings updated");
+										refetchAiSettings();
+									} catch (error) {
+										toast.error(
+											error instanceof Error
+												? error.message
+												: "Failed to update AI settings",
+										);
+									}
+								}}
+							/>
 						</div>
 					</div>
 
@@ -424,6 +450,7 @@ export function AdminPanel() {
 						<TabsList>
 							<TabsTrigger value="users">Users</TabsTrigger>
 							<TabsTrigger value="invite-codes">Invite Codes</TabsTrigger>
+							<TabsTrigger value="ai-usage">AI Usage</TabsTrigger>
 							<TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
 						</TabsList>
 
@@ -453,6 +480,22 @@ export function AdminPanel() {
 										isActive,
 									})
 								}
+								onSetAiAccess={async (userId, allowed) => {
+									try {
+										await setUserAiAccessMutation.mutateAsync({
+											userId,
+											externalAiAllowed: allowed,
+										});
+										toast.success("AI access updated");
+										await refetch();
+									} catch (error) {
+										toast.error(
+											error instanceof Error
+												? error.message
+												: "Failed to update AI access",
+										);
+									}
+								}}
 								users={users || []}
 							/>
 						</TabsContent>
@@ -470,6 +513,10 @@ export function AdminPanel() {
 								pagination={inviteCodesData?.pagination}
 								status={inviteCodesStatus}
 							/>
+						</TabsContent>
+
+						<TabsContent value="ai-usage">
+							<AiUsageTable />
 						</TabsContent>
 
 						<TabsContent value="audit-logs">
@@ -666,6 +713,139 @@ function EmailServerCard({
 						</p>
 					</form>
 				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function AiSettingsCard({
+	aiSettings,
+	isUpdating,
+	onUpdate,
+}: {
+	aiSettings?: {
+		defaultAiMode: string;
+		externalAiAccessMode: string;
+		monthlyAiTokenQuota: number;
+		openRouterConfigured: boolean;
+	} | null;
+	isUpdating: boolean;
+	onUpdate: (updates: {
+		defaultAiMode?: "LOCAL" | "EXTERNAL";
+		externalAiAccessMode?: "WHITELIST" | "BLACKLIST";
+		monthlyAiTokenQuota?: number;
+	}) => Promise<void>;
+}) {
+	const [quotaInput, setQuotaInput] = useState("");
+
+	useEffect(() => {
+		if (aiSettings?.monthlyAiTokenQuota != null) {
+			setQuotaInput(String(aiSettings.monthlyAiTokenQuota));
+		}
+	}, [aiSettings?.monthlyAiTokenQuota]);
+
+	const saveQuota = () => {
+		const val = parseInt(quotaInput, 10);
+		if (!isNaN(val) && val >= 0 && val !== aiSettings?.monthlyAiTokenQuota) {
+			void onUpdate({ monthlyAiTokenQuota: val });
+		}
+	};
+
+	return (
+		<Card className="flex h-full flex-col">
+			<CardHeader>
+				<CardTitle>AI Processing</CardTitle>
+				<CardDescription>
+					Configure external AI provider for bank statement imports.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="flex flex-grow flex-col space-y-4">
+				<div className="flex items-center gap-2">
+					<div
+						className={`h-2.5 w-2.5 rounded-full ${
+							aiSettings?.openRouterConfigured ? "bg-green-500" : "bg-destructive"
+						}`}
+					/>
+					<span className="font-medium text-sm">
+						OpenRouter:{" "}
+						{aiSettings?.openRouterConfigured
+							? "API Key Configured"
+							: "Not Configured"}
+					</span>
+				</div>
+
+				<div className="space-y-2">
+					<label className="font-medium text-sm" htmlFor="default-ai-mode">
+						Default AI Mode
+					</label>
+					<Select
+						disabled={isUpdating}
+						onValueChange={(value) =>
+							onUpdate({ defaultAiMode: value as "LOCAL" | "EXTERNAL" })
+						}
+						value={aiSettings?.defaultAiMode ?? "LOCAL"}
+					>
+						<SelectTrigger id="default-ai-mode">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="LOCAL">Local (Ollama)</SelectItem>
+							<SelectItem value="EXTERNAL">External (OpenRouter)</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+
+				<div className="space-y-2">
+					<label className="font-medium text-sm" htmlFor="ai-access-mode">
+						Access Control Mode
+					</label>
+					<Select
+						disabled={isUpdating}
+						onValueChange={(value) =>
+							onUpdate({
+								externalAiAccessMode: value as "WHITELIST" | "BLACKLIST",
+							})
+						}
+						value={aiSettings?.externalAiAccessMode ?? "WHITELIST"}
+					>
+						<SelectTrigger id="ai-access-mode">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="WHITELIST">
+								Whitelist (deny by default)
+							</SelectItem>
+							<SelectItem value="BLACKLIST">
+								Blacklist (allow by default)
+							</SelectItem>
+						</SelectContent>
+					</Select>
+					<p className="text-[10px] text-muted-foreground">
+						{aiSettings?.externalAiAccessMode === "WHITELIST"
+							? "Users must be explicitly allowed to use external AI."
+							: "All users can use external AI unless explicitly denied."}
+					</p>
+				</div>
+
+				<div className="space-y-2">
+					<label className="font-medium text-sm" htmlFor="ai-token-quota">
+						Monthly Token Quota per User
+					</label>
+					<Input
+						disabled={isUpdating}
+						id="ai-token-quota"
+						min={0}
+						onChange={(e) => setQuotaInput(e.target.value)}
+						onBlur={saveQuota}
+						onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveQuota(); } }}
+						type="number"
+						value={quotaInput}
+					/>
+					<p className="text-[10px] text-muted-foreground">
+						{(aiSettings?.monthlyAiTokenQuota ?? 2000000).toLocaleString()}{" "}
+						tokens
+					</p>
+				</div>
 			</CardContent>
 		</Card>
 	);

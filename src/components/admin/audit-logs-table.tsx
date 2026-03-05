@@ -44,6 +44,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 import type { EventType } from "~prisma";
 
@@ -154,6 +155,7 @@ function MetadataDialog({
 }
 
 export function AuditLogsTable() {
+	const isMobile = useIsMobile();
 	const [eventTypeFilter, setEventTypeFilter] = useState<EventType | "all">(
 		"all",
 	);
@@ -261,9 +263,14 @@ export function AuditLogsTable() {
 		},
 	];
 
+	const columnVisibility: Record<string, boolean> = isMobile
+		? { ipAddress: false, actions: false }
+		: {};
+
 	const table = useReactTable({
 		data: data?.logs ?? [],
 		columns,
+		state: { columnVisibility },
 		getCoreRowModel: getCoreRowModel(),
 	});
 

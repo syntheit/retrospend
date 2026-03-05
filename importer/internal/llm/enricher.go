@@ -47,12 +47,13 @@ var enrichSchema = map[string]interface{}{
 
 // EnrichTransactions enhances transaction data with better titles and categories using an LLM.
 // Returns enriched transactions and metadata about the enrichment process.
-func EnrichTransactions(endpoint string, model string, transactions []models.NormalizedTransaction, categories []string, batchSize int, maxConcurrency int, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func EnrichTransactions(provider Provider, model string, transactions []models.NormalizedTransaction, categories []string, batchSize int, maxConcurrency int, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, int, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
+	totalTokens := 0
 	if len(transactions) == 0 {
-		return transactions, metadata, nil
+		return transactions, metadata, totalTokens, nil
 	}
 
 	// 1. Group transactions by unique raw text (cleaned for better deduplication)
@@ -68,7 +69,7 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 	}
 
 	if len(uniqueRawToIndices) == 0 {
-		return transactions, metadata, nil
+		return transactions, metadata, totalTokens, nil
 	}
 
 	// 2. Check enrichment cache for already-known merchants
@@ -105,7 +106,7 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 
 	categoriesJSON, _ := json.Marshal(categories)
 
-	systemPrompt := "You are a data enrichment assistant for a financial app. You will receive an array of objects with an 'index' and 'raw_text', plus a list of valid categories. Return a JSON array of objects containing 'index', 'title', 'location', and 'category'. You MUST include the exact same 'index' in your response.\n\n" +
+	systemPrompt := "You are a data enrichment assistant for a financial app. You will receive an array of objects with an 'index' and 'raw_text', plus a list of valid categories. Return a JSON object with an 'enriched' key containing an array of objects with 'index', 'title', 'location', and 'category'. Example format: {\"enriched\": [{\"index\": 0, \"title\": \"...\", \"location\": \"...\", \"category\": \"...\"}]}. You MUST include the exact same 'index' in your response.\n\n" +
 		"CRITICAL RULES:\n" +
 		"1. 'title': Extract the clean business or transaction name.\n" +
 		"   - If it is a transfer (e.g., 'Funds Tran', 'XFER', 'Money Transfer'), use 'Transfer'.\n" +
@@ -123,7 +124,7 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 		"- Raw: 'ETHAN GIROUARD Funds Tran ETHAN GIROUARD' -> Title: 'Transfer', Location: '', Category: 'Transfer'\n" +
 		"- Raw: 'DEMOULAS SUPER M PRENOTES 0673373MUTQ' -> Title: 'Demoulas Super Market', Location: '', Category: 'Groceries'"
 
-	var mu sync.Mutex // Protects rawToResult map
+	var mu sync.Mutex // Protects rawToResult map and totalTokens
 
 	// Create batches
 	type batchJob struct {
@@ -177,15 +178,14 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 			chunkJSON, _ := json.Marshal(j.chunk)
 			userPrompt := fmt.Sprintf("Valid Categories: %s\n\nTransactions: %s", string(categoriesJSON), string(chunkJSON))
 
-			reqBody := OllamaRequest{
-				Model:  model,
-				System: systemPrompt,
-				Prompt: userPrompt,
-				Stream: false,
-				Format: enrichSchema,
+			genReq := GenerateRequest{
+				SystemPrompt: systemPrompt,
+				UserPrompt:   userPrompt,
+				Model:        model,
+				Format:       enrichSchema,
 			}
 
-			response, err := CallOllama(endpoint, reqBody)
+			resp, err := provider.Generate(genReq)
 			if err != nil {
 				errMsg := fmt.Sprintf("Enrichment failed for batch %d-%d: %v", j.startIdx, j.endIdx-1, err)
 				log.Printf("WARNING: %s", errMsg)
@@ -200,36 +200,24 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 				return
 			}
 
-			cleanJSON := CleanJSONResponse(response)
+			mu.Lock()
+			totalTokens += resp.TotalTokens
+			mu.Unlock()
+
+			cleanJSON := CleanJSONResponse(resp.Content)
+
+			// Try parsing as wrapped format {"enriched": [...]} first,
+			// then fall back to plain array [...] for models that ignore the schema.
+			var enrichedItems []EnrichOutput
 			var wrapper struct {
 				Enriched []EnrichOutput `json:"enriched"`
 			}
 
-			if err := json.Unmarshal([]byte(cleanJSON), &wrapper); err == nil {
-				mu.Lock()
-				for _, out := range wrapper.Enriched {
-					// Map local index back to global position
-					globalIdx := j.startIdx + out.Index
-					if globalIdx >= 0 && globalIdx < len(uniqueRawTexts) {
-						rawText := uniqueRawTexts[globalIdx]
-						rawToResult[rawText] = out
-					} else {
-						warnMsg := fmt.Sprintf("LLM returned out-of-bounds index %d for batch starting at %d", out.Index, j.startIdx)
-						log.Printf("WARNING: %s", warnMsg)
-						metadata.Warnings = append(metadata.Warnings, warnMsg)
-					}
-				}
-				mu.Unlock()
-
-				if onProgress != nil {
-					progressMu.Lock()
-					completedBatches++
-					onProgress(float64(completedBatches)/float64(totalBatches), fmt.Sprintf("Enriching transactions (batch %d/%d)...", completedBatches, totalBatches))
-					progressMu.Unlock()
-				}
-			} else {
+			if err := json.Unmarshal([]byte(cleanJSON), &wrapper); err == nil && len(wrapper.Enriched) > 0 {
+				enrichedItems = wrapper.Enriched
+			} else if err := json.Unmarshal([]byte(cleanJSON), &enrichedItems); err != nil {
 				errMsg := fmt.Sprintf("Failed to parse enrichment response for batch %d-%d", j.startIdx, j.endIdx-1)
-				log.Printf("WARNING: %s: %s", errMsg, response)
+				log.Printf("WARNING: %s: %s", errMsg, resp.Content)
 
 				progressMu.Lock()
 				failedBatches++
@@ -238,6 +226,29 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 				mu.Lock()
 				metadata.Warnings = append(metadata.Warnings, errMsg)
 				mu.Unlock()
+				return
+			}
+
+			mu.Lock()
+			for _, out := range enrichedItems {
+				// Map local index back to global position
+				globalIdx := j.startIdx + out.Index
+				if globalIdx >= 0 && globalIdx < len(uniqueRawTexts) {
+					rawText := uniqueRawTexts[globalIdx]
+					rawToResult[rawText] = out
+				} else {
+					warnMsg := fmt.Sprintf("LLM returned out-of-bounds index %d for batch starting at %d", out.Index, j.startIdx)
+					log.Printf("WARNING: %s", warnMsg)
+					metadata.Warnings = append(metadata.Warnings, warnMsg)
+				}
+			}
+			mu.Unlock()
+
+			if onProgress != nil {
+				progressMu.Lock()
+				completedBatches++
+				onProgress(float64(completedBatches)/float64(totalBatches), fmt.Sprintf("Enriching transactions (batch %d/%d)...", completedBatches, totalBatches))
+				progressMu.Unlock()
 			}
 		}(job)
 	}
@@ -266,7 +277,7 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 	if totalBatches > 0 {
 		failureRate := float64(failedBatches) / float64(totalBatches)
 		if failureRate > 0.20 {
-			return nil, metadata, fmt.Errorf("CRITICAL: %.0f%% of enrichment batches failed (%d/%d failed). This indicates significant data quality issues. Raw transaction data is unreliable",
+			return nil, metadata, totalTokens, fmt.Errorf("CRITICAL: %.0f%% of enrichment batches failed (%d/%d failed). This indicates significant data quality issues. Raw transaction data is unreliable",
 				failureRate*100, failedBatches, totalBatches)
 		}
 	}
@@ -290,5 +301,5 @@ func EnrichTransactions(endpoint string, model string, transactions []models.Nor
 
 	metadata.TotalTransactions = len(transactions)
 
-	return transactions, metadata, nil
+	return transactions, metadata, totalTokens, nil
 }

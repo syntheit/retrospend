@@ -466,6 +466,7 @@ function BankStatementImport({
 }) {
 	const { data: importerStatus, isLoading: statusLoading } =
 		api.system.checkImporterStatus.useQuery();
+	const { data: aiStatus } = api.settings.getAiStatus.useQuery();
 
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
@@ -616,7 +617,12 @@ function BankStatementImport({
 	return (
 		<div className="space-y-4 pt-4">
 			<div className="space-y-1">
-				<p className="font-medium">Import bank statement</p>
+				<div className="flex items-center justify-between">
+					<p className="font-medium">Import bank statement</p>
+					{aiStatus && (
+						<AiModeIndicator aiStatus={aiStatus} />
+					)}
+				</div>
 				<p className="text-muted-foreground text-sm">
 					Upload a CSV, Excel, or PDF bank statement. Supports Chase, Capital
 					One, Bank of America, Fidelity, and more.
@@ -674,5 +680,42 @@ function BankStatementImport({
 				type="file"
 			/>
 		</div>
+	);
+}
+
+function AiModeIndicator({
+	aiStatus,
+}: {
+	aiStatus: {
+		currentMode: string;
+		externalAvailable: boolean;
+		externalDeniedReason: string | null;
+		quotaRemaining: number | null;
+	};
+}) {
+	const label =
+		aiStatus.currentMode === "EXTERNAL" ? "External AI" : "Local AI";
+	const dotClass =
+		aiStatus.currentMode === "EXTERNAL" ? "bg-blue-500" : "bg-muted-foreground/50";
+
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+						<div className={`h-2 w-2 rounded-full ${dotClass}`} />
+						{label}
+					</div>
+				</TooltipTrigger>
+				<TooltipContent>
+					{aiStatus.currentMode === "EXTERNAL"
+						? `Using OpenRouter${aiStatus.quotaRemaining !== null ? ` (${aiStatus.quotaRemaining.toLocaleString()} tokens remaining)` : ""}`
+						: "Using local Ollama instance"}
+					{aiStatus.externalDeniedReason
+						? ` - ${aiStatus.externalDeniedReason}`
+						: ""}
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
 	);
 }

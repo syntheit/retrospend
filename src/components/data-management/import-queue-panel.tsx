@@ -83,13 +83,19 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 	};
 
 	// Filter recent jobs to show only completed, failed, cancelled
+	// Auto-expire successfully completed jobs after 4 hours (failed jobs persist)
+	const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
 	const completedJobs =
 		recentJobs?.filter((j) =>
 			["COMPLETED", "FAILED", "CANCELLED"].includes(j.status),
 		) ?? [];
 
 	const failedJobs = completedJobs.filter((j) => j.status === "FAILED");
-	const successfulJobs = completedJobs.filter((j) => j.status === "COMPLETED");
+	const successfulJobs = completedJobs.filter(
+		(j) =>
+			j.status === "COMPLETED" &&
+			new Date(j.completedAt ?? j.createdAt) > fourHoursAgo,
+	);
 
 	// Show panel only if there are active or recent jobs
 	const hasActiveJobs =
@@ -98,7 +104,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 		(queueStatus?.readyForReview.length ?? 0) > 0 ||
 		(queueStatus?.reviewing.length ?? 0) > 0;
 
-	const hasRecentJobs = completedJobs.length > 0;
+	const hasRecentJobs = failedJobs.length > 0 || successfulJobs.length > 0;
 
 	if (!hasActiveJobs && !hasRecentJobs) {
 		return null;
@@ -189,7 +195,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 							Recently Completed
 						</h3>
 						<div className="space-y-2">
-							{successfulJobs.slice(0, 5).map((job) => (
+							{successfulJobs.slice(0, 3).map((job) => (
 								<JobCard
 									compact
 									job={job as JobCardData}

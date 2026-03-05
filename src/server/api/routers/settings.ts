@@ -8,6 +8,7 @@ import {
 	getAppSettings,
 	isInviteOnlyEnabled,
 } from "~/server/services/settings";
+import { resolveAiAccess } from "~/server/services/ai-access.service";
 
 export const settingsRouter = createTRPCRouter({
 	getGeneral: protectedProcedure.query(async ({ ctx }) => {
@@ -26,6 +27,7 @@ export const settingsRouter = createTRPCRouter({
 				defaultPrivacyMode: true,
 				fiscalMonthStartDay: true,
 				defaultExpenseDateBehavior: true,
+				aiMode: true,
 			},
 		});
 
@@ -46,6 +48,7 @@ export const settingsRouter = createTRPCRouter({
 			defaultPrivacyMode: user.defaultPrivacyMode,
 			fiscalMonthStartDay: user.fiscalMonthStartDay,
 			defaultExpenseDateBehavior: user.defaultExpenseDateBehavior,
+			aiMode: user.aiMode,
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};
@@ -71,6 +74,7 @@ export const settingsRouter = createTRPCRouter({
 				defaultPrivacyMode: z.boolean().optional(),
 				fiscalMonthStartDay: z.number().int().min(1).max(28).optional(),
 				defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]).optional(),
+				aiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -108,6 +112,9 @@ export const settingsRouter = createTRPCRouter({
 					...(input.defaultExpenseDateBehavior !== undefined && {
 						defaultExpenseDateBehavior: input.defaultExpenseDateBehavior,
 					}),
+					...(input.aiMode !== undefined && {
+						aiMode: input.aiMode,
+					}),
 				},
 				select: {
 					homeCurrency: true,
@@ -117,6 +124,23 @@ export const settingsRouter = createTRPCRouter({
 				},
 			});
 		}),
+
+	getAiStatus: protectedProcedure.query(async ({ ctx }) => {
+		const { session, db } = ctx;
+		const user = await db.user.findUnique({
+			where: { id: session.user.id },
+			select: { aiMode: true },
+		});
+		const currentMode = user?.aiMode ?? "LOCAL";
+		const access = await resolveAiAccess(db, session.user.id, "EXTERNAL");
+
+		return {
+			currentMode,
+			externalAvailable: access.allowed,
+			externalDeniedReason: access.reason ?? null,
+			quotaRemaining: access.quotaRemaining,
+		};
+	}),
 
 	getInviteOnlyEnabled: publicProcedure.query(async () => {
 		const inviteOnlyEnabled = await isInviteOnlyEnabled();

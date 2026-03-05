@@ -146,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				<NavMain categories={navMainCategories} />
 				<NavSecondary className="mt-auto" items={navSecondary} />
 			</SidebarContent>
-			<SidebarFooter className="pt-1">
+			<SidebarFooter className="pt-1 pb-[env(safe-area-inset-bottom)]">
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<div className="px-2 text-muted-foreground text-sm">

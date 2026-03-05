@@ -33,7 +33,7 @@ export default function Page() {
 									</p>
 									<div className="mt-3 flex gap-3">
 										<a
-											className="text-primary transition-colors hover:text-primary/80"
+											className="p-2 -m-2 text-primary transition-colors hover:text-primary/80"
 											href="https://retrospend.app"
 											rel="noopener noreferrer"
 											target="_blank"
@@ -42,7 +42,7 @@ export default function Page() {
 											<Globe className="h-5 w-5" />
 										</a>
 										<a
-											className="text-primary transition-colors hover:text-primary/80"
+											className="p-2 -m-2 text-primary transition-colors hover:text-primary/80"
 											href="https://github.com/syntheit/retrospend"
 											rel="noopener noreferrer"
 											target="_blank"
@@ -51,7 +51,7 @@ export default function Page() {
 											<Github className="h-5 w-5" />
 										</a>
 										<a
-											className="text-primary transition-colors hover:text-primary/80"
+											className="p-2 -m-2 text-primary transition-colors hover:text-primary/80"
 											href="https://matrix.to/#/#retrospend:matrix.org"
 											rel="noopener noreferrer"
 											target="_blank"

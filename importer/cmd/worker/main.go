@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/csv"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"importer/internal/adapters"
@@ -21,103 +19,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
 
 var Version = "0.1.2"
-
-// FileChecksumTracker tracks processed files to prevent duplicate imports
-type FileChecksumTracker struct {
-	mu         sync.RWMutex
-	checksums  map[string]time.Time // checksum -> timestamp
-	filePath   string
-	maxAge     time.Duration
-}
-
-func NewFileChecksumTracker(filePath string, maxAge time.Duration) *FileChecksumTracker {
-	tracker := &FileChecksumTracker{
-		checksums: make(map[string]time.Time),
-		filePath:  filePath,
-		maxAge:    maxAge,
-	}
-	tracker.load()
-	return tracker
-}
-
-func (t *FileChecksumTracker) load() {
-	data, err := os.ReadFile(t.filePath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("Warning: failed to read checksum tracker: %v", err)
-		}
-		return
-	}
-
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if err := json.Unmarshal(data, &t.checksums); err != nil {
-		log.Printf("Warning: failed to parse checksum tracker: %v", err)
-		t.checksums = make(map[string]time.Time)
-	}
-
-	// Clean up old entries
-	now := time.Now()
-	for checksum, timestamp := range t.checksums {
-		if now.Sub(timestamp) > t.maxAge {
-			delete(t.checksums, checksum)
-		}
-	}
-}
-
-func (t *FileChecksumTracker) save() {
-	t.mu.RLock()
-	data, err := json.MarshalIndent(t.checksums, "", "  ")
-	t.mu.RUnlock()
-
-	if err != nil {
-		log.Printf("Warning: failed to marshal checksum tracker: %v", err)
-		return
-	}
-
-	if err := os.WriteFile(t.filePath, data, 0600); err != nil {
-		log.Printf("Warning: failed to write checksum tracker: %v", err)
-	}
-}
-
-func (t *FileChecksumTracker) HasSeen(checksum string) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-
-	timestamp, exists := t.checksums[checksum]
-	if !exists {
-		return false
-	}
-
-	// Check if expired
-	if time.Now().Sub(timestamp) > t.maxAge {
-		return false
-	}
-
-	return true
-}
-
-func (t *FileChecksumTracker) Mark(checksum string) {
-	t.mu.Lock()
-	t.checksums[checksum] = time.Now()
-	t.mu.Unlock()
-	t.save()
-}
-
-func computeFileChecksum(reader io.Reader) (string, error) {
-	hash := sha256.New()
-	if _, err := io.Copy(hash, reader); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
-}
 
 func main() {
 	log.Printf("Retrospend Importer Worker %s starting...", Version)
@@ -128,9 +34,6 @@ func main() {
 	}
 
 	validCategories := []string{"Groceries", "Dining Out", "Cafe", "Food Delivery", "Health", "Transport", "Travel", "Misc", "Social", "Education", "Transfer"}
-
-	// Initialize checksum tracker (keep checksums for 90 days)
-	checksumTracker := NewFileChecksumTracker("data/processed_files.json", 90*24*time.Hour)
 
 	// Auth middleware
 	authMiddleware := func(next http.HandlerFunc) http.HandlerFunc {
@@ -213,34 +116,42 @@ func main() {
 		defer os.Remove(tempFile.Name())
 		defer tempFile.Close()
 
-		// Copy file and compute checksum simultaneously
-		hash := sha256.New()
-		multiWriter := io.MultiWriter(tempFile, hash)
-
-		if _, err := io.Copy(multiWriter, file); err != nil {
+		if _, err := io.Copy(tempFile, file); err != nil {
 			http.Error(w, "Failed to save file", http.StatusInternalServerError)
 			return
 		}
 
-		checksum := hex.EncodeToString(hash.Sum(nil))
-
-		// Check if we've already processed this file
-		if checksumTracker.HasSeen(checksum) {
-			log.Printf("[HTTP] File already processed (checksum: %s), returning cached result", checksum[:16])
-			http.Error(w, "File already processed. Please upload a different statement.", http.StatusConflict)
-			return
-		}
-
 		defaultCurrency := r.FormValue("currency")
+
+		// Determine LLM provider based on request
+		providerName := r.FormValue("provider")
+		var provider llm.Provider
+		activeModel := cfg.LLMModel
+		enrichConcurrency := cfg.EnrichConcurrency
+		pdfConcurrency := cfg.PDFConcurrency
+
+		if providerName == "openrouter" && cfg.OpenRouterAPIKey != "" {
+			provider = llm.NewOpenRouterProvider(cfg.OpenRouterAPIKey)
+			activeModel = cfg.OpenRouterModel
+			enrichConcurrency = 20  // OpenRouter handles higher concurrency
+			pdfConcurrency = 10
+			log.Printf("[HTTP] Using OpenRouter provider (model: %s)", activeModel)
+		} else {
+			if providerName == "openrouter" {
+				log.Printf("[HTTP] WARNING: OpenRouter requested but API key not configured, falling back to Ollama")
+			}
+			provider = llm.NewOllamaProvider(cfg.OllamaEndpoint)
+			log.Printf("[HTTP] Using Ollama provider (model: %s)", activeModel)
+		}
 
 		if ext == ".csv" {
 			if _, err := tempFile.Seek(0, 0); err != nil {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			transactions, metadata, err = handleCSV(tempFile, cfg, validCategories, defaultCurrency, sendProgress)
+			transactions, metadata, err = handleCSV(tempFile, provider, activeModel, cfg.EnrichBatchSize, enrichConcurrency, validCategories, defaultCurrency, sendProgress)
 		} else if ext == ".pdf" {
-			transactions, metadata, err = handlePDF(tempFile.Name(), cfg, validCategories, defaultCurrency, sendProgress)
+			transactions, metadata, err = handlePDF(tempFile.Name(), provider, activeModel, cfg.EnrichBatchSize, enrichConcurrency, pdfConcurrency, validCategories, defaultCurrency, sendProgress)
 		} else {
 			http.Error(w, "Unsupported file format", http.StatusBadRequest)
 			return
@@ -257,9 +168,7 @@ func main() {
 			return
 		}
 
-		// Mark file as processed
-		checksumTracker.Mark(checksum)
-		log.Printf("[HTTP] File processed successfully (checksum: %s, transactions: %d)", checksum[:16], len(transactions))
+		log.Printf("[HTTP] File processed successfully (transactions: %d)", len(transactions))
 
 		// Send warnings if any
 		if metadata != nil && len(metadata.Warnings) > 0 {
@@ -332,10 +241,11 @@ func main() {
 	log.Println("✓ Worker stopped")
 }
 
-func handleCSV(file *os.File, cfg *config.Config, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func handleCSV(file *os.File, provider llm.Provider, model string, batchSize int, enrichConcurrency int, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
+	totalTokens := 0
 
 	if onProgress != nil {
 		onProgress(0.1, "Detecting CSV format...")
@@ -355,7 +265,8 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, defaultCu
 		sampleRows = append(sampleRows, strings.Join(row, ","))
 	}
 
-	adapter, err := adapters.DetectAdapter(cfg.OllamaEndpoint, cfg.LLMModel, headers, sampleRows)
+	adapter, schemaTokens, err := adapters.DetectAdapter(provider, model, headers, sampleRows)
+	totalTokens += schemaTokens
 	if err != nil {
 		return nil, metadata, err
 	}
@@ -386,40 +297,40 @@ func handleCSV(file *os.File, cfg *config.Config, categories []string, defaultCu
 		onProgress(0.3, "Enriching transactions...")
 	}
 
-	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTransactions, categories, cfg.EnrichBatchSize, cfg.EnrichConcurrency, func(p float64, m string) {
+	enrichedTx, enrichMetadata, enrichTokens, err := llm.EnrichTransactions(provider, model, parsedTransactions, categories, batchSize, enrichConcurrency, func(p float64, m string) {
 		if onProgress != nil {
-			// Enrichment is from 0.3 to 1.0
 			onProgress(0.3+(p*0.7), m)
 		}
 	})
+	totalTokens += enrichTokens
 	if err != nil {
 		log.Printf("WARNING: enrichment error: %v (using raw data)", err)
 		metadata.Warnings = append(metadata.Warnings, fmt.Sprintf("Enrichment failed: %v", err))
 
-		// Validate raw data before returning
 		validatedTx := processor.ValidateTransactions(parsedTransactions, metadata)
 		metadata.TotalTransactions = len(validatedTx)
+		metadata.TotalTokensUsed = totalTokens
 		return validatedTx, metadata, nil
 	}
 
-	// Merge enrichment metadata into main metadata
 	metadata.TotalChunks = enrichMetadata.TotalChunks
 	metadata.SuccessfulChunks = enrichMetadata.SuccessfulChunks
 	metadata.FailedChunks = enrichMetadata.FailedChunks
 	metadata.TotalTransactions = enrichMetadata.TotalTransactions
 	metadata.Warnings = append(metadata.Warnings, enrichMetadata.Warnings...)
 
-	// Validate all transactions - remove invalid ones and add warnings
 	validatedTx := processor.ValidateTransactions(enrichedTx, metadata)
 	metadata.TotalTransactions = len(validatedTx)
+	metadata.TotalTokensUsed = totalTokens
 
 	return validatedTx, metadata, nil
 }
 
-func handlePDF(filePath string, cfg *config.Config, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
+func handlePDF(filePath string, provider llm.Provider, model string, batchSize int, enrichConcurrency int, pdfConcurrency int, categories []string, defaultCurrency string, onProgress func(float64, string)) ([]models.NormalizedTransaction, *models.ImportMetadata, error) {
 	metadata := &models.ImportMetadata{
 		Warnings: []string{},
 	}
+	totalTokens := 0
 
 	if onProgress != nil {
 		onProgress(0.05, "Extracting text from PDF...")
@@ -433,17 +344,19 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, default
 		onProgress(0.1, "Parsing bank statement...")
 	}
 
-	parsedTx, parseMetadata, err := pdf.ParsePDFTransactions(cfg.OllamaEndpoint, cfg.LLMModel, rawText, cfg.PDFConcurrency, func(p float64, m string) {
+	parsedTx, parseMetadata, parseTokens, err := pdf.ParsePDFTransactions(provider, model, rawText, pdfConcurrency, func(p float64, m string) {
 		if onProgress != nil {
-			// PDF parsing is from 0.1 to 0.5
 			onProgress(0.1+(p*0.4), m)
 		}
 	})
+	totalTokens += parseTokens
 	if err != nil {
+		if parseMetadata != nil {
+			parseMetadata.TotalTokensUsed = totalTokens
+		}
 		return nil, parseMetadata, fmt.Errorf("PDF parsing failed: %w", err)
 	}
 
-	// Merge parse metadata
 	metadata.TotalChunks = parseMetadata.TotalChunks
 	metadata.SuccessfulChunks = parseMetadata.SuccessfulChunks
 	metadata.FailedChunks = parseMetadata.FailedChunks
@@ -457,32 +370,31 @@ func handlePDF(filePath string, cfg *config.Config, categories []string, default
 		onProgress(0.5, "Enriching transactions...")
 	}
 
-	enrichedTx, enrichMetadata, err := llm.EnrichTransactions(cfg.OllamaEndpoint, cfg.LLMModel, parsedTx, categories, cfg.EnrichBatchSize, cfg.EnrichConcurrency, func(p float64, m string) {
+	enrichedTx, enrichMetadata, enrichTokens, err := llm.EnrichTransactions(provider, model, parsedTx, categories, batchSize, enrichConcurrency, func(p float64, m string) {
 		if onProgress != nil {
-			// Enrichment is from 0.5 to 1.0
 			onProgress(0.5+(p*0.5), m)
 		}
 	})
+	totalTokens += enrichTokens
 	if err != nil {
 		log.Printf("WARNING: enrichment error: %v (using raw data)", err)
 		metadata.Warnings = append(metadata.Warnings, fmt.Sprintf("Enrichment failed: %v", err))
 
-		// Validate raw data before returning
 		validatedTx := processor.ValidateTransactions(parsedTx, metadata)
 		metadata.TotalTransactions = len(validatedTx)
-		return validatedTx, metadata, nil // graceful fallback to raw data
+		metadata.TotalTokensUsed = totalTokens
+		return validatedTx, metadata, nil
 	}
 
-	// Merge enrichment metadata (add to existing chunk counts from parsing)
 	metadata.TotalChunks += enrichMetadata.TotalChunks
 	metadata.SuccessfulChunks += enrichMetadata.SuccessfulChunks
 	metadata.FailedChunks += enrichMetadata.FailedChunks
 	metadata.TotalTransactions = enrichMetadata.TotalTransactions
 	metadata.Warnings = append(metadata.Warnings, enrichMetadata.Warnings...)
 
-	// Validate all transactions - remove invalid ones and add warnings
 	validatedTx := processor.ValidateTransactions(enrichedTx, metadata)
 	metadata.TotalTransactions = len(validatedTx)
+	metadata.TotalTokensUsed = totalTokens
 
 	return validatedTx, metadata, nil
 }

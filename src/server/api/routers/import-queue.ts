@@ -27,7 +27,7 @@ const importerTransactionSchema = z.object({
 	description: z.string().max(2000),
 	pricingSource: z.string().max(200),
 	category: z.string().max(200),
-	categoryId: z.string().cuid().optional(),
+	categoryId: z.string().optional(),
 });
 
 const listJobsSchema = z
@@ -64,7 +64,7 @@ export const importQueueRouter = createTRPCRouter({
 	 * Gets a single job by ID.
 	 */
 	getJob: protectedProcedure
-		.input(z.object({ jobId: z.string().cuid() }))
+		.input(z.object({ jobId: z.string() }))
 		.query(async ({ ctx, input }) => {
 			const service = new ImportQueueService(ctx.db);
 			return await service.getJob(ctx.session.user.id, input.jobId);
@@ -82,7 +82,7 @@ export const importQueueRouter = createTRPCRouter({
 	 * Marks a job as reviewing (when modal opens).
 	 */
 	startReview: protectedProcedure
-		.input(z.object({ jobId: z.string().cuid() }))
+		.input(z.object({ jobId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			const service = new ImportQueueService(ctx.db);
 			return await service.startReview(ctx.session.user.id, input.jobId);
@@ -94,7 +94,7 @@ export const importQueueRouter = createTRPCRouter({
 	finalizeImport: protectedProcedure
 		.input(
 			z.object({
-				jobId: z.string().cuid(),
+				jobId: z.string(),
 				selectedTransactions: z.array(importerTransactionSchema).max(5000),
 			}),
 		)
@@ -109,7 +109,7 @@ export const importQueueRouter = createTRPCRouter({
 	 * Cancels a queued job.
 	 */
 	cancelJob: protectedProcedure
-		.input(z.object({ jobId: z.string().cuid() }))
+		.input(z.object({ jobId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			const service = new ImportQueueService(ctx.db);
 			return await service.cancelJob(ctx.session.user.id, input.jobId);
@@ -119,7 +119,7 @@ export const importQueueRouter = createTRPCRouter({
 	 * Deletes a completed or failed job.
 	 */
 	deleteJob: protectedProcedure
-		.input(z.object({ jobId: z.string().cuid() }))
+		.input(z.object({ jobId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			const service = new ImportQueueService(ctx.db);
 			return await service.deleteJob(ctx.session.user.id, input.jobId);

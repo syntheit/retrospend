@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func DetectAdapter(endpoint string, model string, headerRow []string, sampleRows []string) (BankAdapter, error) {
+func DetectAdapter(provider llm.Provider, model string, headerRow []string, sampleRows []string) (BankAdapter, int, error) {
 	headerStr := strings.Join(headerRow, ",")
 
 	// Check if common header-based banks (e.g. Lighthouse, BNH)
@@ -34,7 +34,7 @@ func DetectAdapter(endpoint string, model string, headerRow []string, sampleRows
 		}
 		// If both date and merchant were found, we can use this schema
 		if schema.DateColIdx != -1 && schema.MerchantColIdx != -1 && (schema.AmountColIdx != nil || schema.DebitColIdx != nil) {
-			return NewDynamicAdapter(schema), nil
+			return NewDynamicAdapter(schema), 0, nil
 		}
 	}
 
@@ -55,7 +55,7 @@ func DetectAdapter(endpoint string, model string, headerRow []string, sampleRows
 				schema.CreditColIdx = &idx
 			}
 		}
-		return NewDynamicAdapter(schema), nil
+		return NewDynamicAdapter(schema), 0, nil
 	}
 
 	// Check if Chase
@@ -80,7 +80,7 @@ func DetectAdapter(endpoint string, model string, headerRow []string, sampleRows
 			idx := 3
 			schema.AmountColIdx = &idx
 		}
-		return NewDynamicAdapter(schema), nil
+		return NewDynamicAdapter(schema), 0, nil
 	}
 
 	// Check if BoA
@@ -97,7 +97,7 @@ func DetectAdapter(endpoint string, model string, headerRow []string, sampleRows
 				schema.AmountColIdx = &idx
 			}
 		}
-		return NewDynamicAdapter(schema), nil
+		return NewDynamicAdapter(schema), 0, nil
 	}
 
 	// Check if Fidelity
@@ -118,26 +118,26 @@ func DetectAdapter(endpoint string, model string, headerRow []string, sampleRows
 		if schema.MerchantColIdx == -1 {
 			schema.MerchantColIdx = 1
 		}
-		return NewDynamicAdapter(schema), nil
+		return NewDynamicAdapter(schema), 0, nil
 	}
 
 	// Fallback: Use LLM to discover schema
 	// Check cache first
 	if cachedSchema, exists := llm.GetCachedSchema(headerStr); exists {
 		log.Println("Known schema found in cache")
-		return NewDynamicAdapter(cachedSchema), nil
+		return NewDynamicAdapter(cachedSchema), 0, nil
 	}
 
 	log.Print("Unknown CSV format. Identifying schema via LLM...")
-	schema, err := llm.DiscoverCSVSchema(endpoint, model, headerStr, sampleRows)
+	schema, tokens, err := llm.DiscoverCSVSchema(provider, model, headerStr, sampleRows)
 	if err != nil {
 		log.Println("Schema discovery FAILED")
-		return nil, fmt.Errorf("unsupported CSV format and LLM discovery failed: %w", err)
+		return nil, tokens, fmt.Errorf("unsupported CSV format and LLM discovery failed: %w", err)
 	}
 	log.Println("Schema discovery complete")
 
 	// Save to cache for future use
 	llm.SaveSchemaToCache(headerStr, schema)
 
-	return NewDynamicAdapter(schema), nil
+	return NewDynamicAdapter(schema), tokens, nil
 }

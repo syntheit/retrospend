@@ -370,7 +370,75 @@ export function AppPreferencesCard() {
 						/>
 					</form>
 				</Form>
+
+				<AiProcessingSection />
 			</CardContent>
 		</Card>
+	);
+}
+
+function AiProcessingSection() {
+	const { data: aiStatus } = api.settings.getAiStatus.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
+	const updateSettingsMutation = api.settings.updateGeneral.useMutation();
+	const utils = api.useUtils();
+
+	if (!settings) return null;
+
+	const handleAiModeChange = async (value: string) => {
+		try {
+			await updateSettingsMutation.mutateAsync({
+				homeCurrency: settings.homeCurrency,
+				aiMode: value as "LOCAL" | "EXTERNAL",
+			});
+			await utils.settings.getGeneral.invalidate();
+			await utils.settings.getAiStatus.invalidate();
+			toast.success("AI mode updated");
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : "Failed to update AI mode",
+			);
+		}
+	};
+
+	return (
+		<div className="space-y-3 border-t pt-4">
+			<div>
+				<h3 className="font-medium text-sm">AI Processing</h3>
+				<p className="text-muted-foreground text-xs">
+					Choose which AI provider processes your bank statement imports.
+				</p>
+			</div>
+
+			<Select
+				disabled={updateSettingsMutation.isPending}
+				onValueChange={handleAiModeChange}
+				value={settings.aiMode ?? "LOCAL"}
+			>
+				<SelectTrigger>
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="LOCAL">Local AI (Ollama)</SelectItem>
+					<SelectItem
+						disabled={!aiStatus?.externalAvailable}
+						value="EXTERNAL"
+					>
+						External AI (OpenRouter)
+						{aiStatus && !aiStatus.externalAvailable && aiStatus.externalDeniedReason
+							? ` - ${aiStatus.externalDeniedReason}`
+							: ""}
+					</SelectItem>
+				</SelectContent>
+			</Select>
+
+			{aiStatus?.currentMode === "EXTERNAL" &&
+				aiStatus.quotaRemaining !== null && (
+					<p className="text-muted-foreground text-xs">
+						{aiStatus.quotaRemaining.toLocaleString()} tokens remaining this
+						month
+					</p>
+				)}
+		</div>
 	);
 }

@@ -23,12 +23,14 @@ import { WealthAllocationChart } from "~/components/wealth/wealth-allocation-cha
 import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-exposure";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { useSettings } from "~/hooks/use-settings";
 import { useWealthDashboard } from "~/hooks/use-wealth-dashboard";
 import { AssetType } from "~/lib/db-enums";
 import { api } from "~/trpc/react";
 
 export default function WealthPage() {
+	const isMobile = useIsMobile();
 	const { data: settings } = useSettings();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
 	const utils = api.useUtils();
@@ -94,6 +96,9 @@ export default function WealthPage() {
 		);
 		setShowDeleteDialog(false);
 	};
+
+	const columnVisibility: import("@tanstack/react-table").VisibilityState =
+		isMobile ? { select: false, allocation: false, balanceInUSD: false } : {};
 
 	const isSelectionMode = selectedAssetIds.size > 0;
 
@@ -310,6 +315,7 @@ export default function WealthPage() {
 							</div>
 
 							<WealthDataTable
+								columnVisibility={columnVisibility}
 								data={filteredData}
 								homeCurrency={homeCurrency}
 								isPrivacyMode={isPrivacyMode}

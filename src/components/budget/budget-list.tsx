@@ -139,7 +139,7 @@ export function BudgetList({
 
 			{sections.map((section) => (
 				<div className="space-y-4" key={section.title}>
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h3 className="font-semibold text-lg tracking-tight">
 								{section.title}
@@ -148,7 +148,7 @@ export function BudgetList({
 								{section.description}
 							</p>
 						</div>
-						<div className="text-right">
+						<div className="sm:text-right">
 							<div className="font-medium text-base tabular-nums tracking-tighter sm:text-lg">
 								{formatCurrency(section.totalSpent, homeCurrency)} /{" "}
 								{formatCurrency(section.totalAllocated, homeCurrency)}
@@ -187,7 +187,7 @@ export function BudgetList({
 
 			{shouldShowStandaloneAddRow && (
 				<div className="space-y-4">
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h3 className="font-semibold text-lg tracking-tight">
 								Variable / Managed

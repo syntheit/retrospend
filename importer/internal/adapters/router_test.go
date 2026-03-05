@@ -2,17 +2,20 @@ package adapters
 
 import (
 	"testing"
+
+	"importer/internal/llm"
 )
 
 func TestDetectAdapter(t *testing.T) {
 	endpoint := "http://localhost:11434/api/generate"
 	model := "qwen2.5:7b"
+	provider := llm.NewOllamaProvider(endpoint)
 	chaseHeaders := []string{"Details", "Posting Date", "Description", "Amount", "Type", "Balance", "Check or Slip #"}
 	fidelityHeaders := []string{"Transaction Date", "Name", "Memo", "Amount"}
 	junkHeaders := []string{"foo", "bar", "baz"}
 
 	// Test Chase
-	adapter, err := DetectAdapter(endpoint, model, chaseHeaders, nil)
+	adapter, _, err := DetectAdapter(provider, model, chaseHeaders, nil)
 	if err != nil {
 		t.Fatalf("Expected nil error for Chase headers, got: %v", err)
 	}
@@ -21,7 +24,7 @@ func TestDetectAdapter(t *testing.T) {
 	}
 
 	// Test Fidelity
-	adapter, err = DetectAdapter(endpoint, model, fidelityHeaders, nil)
+	adapter, _, err = DetectAdapter(provider, model, fidelityHeaders, nil)
 	if err != nil {
 		t.Fatalf("Expected nil error for Fidelity headers, got: %v", err)
 	}
@@ -31,7 +34,7 @@ func TestDetectAdapter(t *testing.T) {
 
 	// Test BoA
 	boaHeaders := []string{"Posted Date", "Reference Number", "Payee", "Address", "Amount"}
-	adapter, err = DetectAdapter(endpoint, model, boaHeaders, nil)
+	adapter, _, err = DetectAdapter(provider, model, boaHeaders, nil)
 	if err != nil {
 		t.Fatalf("Expected nil error for BoA headers, got: %v", err)
 	}
@@ -41,7 +44,7 @@ func TestDetectAdapter(t *testing.T) {
 
 	// Test Capital One
 	capOneHeaders := []string{"Transaction Date", "Posted Date", "Card No.", "Description", "Category", "Debit", "Credit"}
-	adapter, err = DetectAdapter(endpoint, model, capOneHeaders, nil)
+	adapter, _, err = DetectAdapter(provider, model, capOneHeaders, nil)
 	if err != nil {
 		t.Fatalf("Expected nil error for Capital One headers, got: %v", err)
 	}
@@ -52,7 +55,7 @@ func TestDetectAdapter(t *testing.T) {
 	// Test Junk (will attempt LLM discovery)
 	// Note: If Ollama is running, this may succeed with a discovered schema
 	// If Ollama is not running, this will fail with a connection error
-	_, err = DetectAdapter(endpoint, model, junkHeaders, nil)
+	_, _, err = DetectAdapter(provider, model, junkHeaders, nil)
 	// We don't assert on the error since it depends on whether Ollama is available
 	// The important thing is that the fallback mechanism works
 	_ = err

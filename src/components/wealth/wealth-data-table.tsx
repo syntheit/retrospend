@@ -53,6 +53,7 @@ export function WealthDataTable({
 	isPrivacyMode = false,
 	hidePagination = false,
 	readOnly = false,
+	columnVisibility: initialColumnVisibility = {},
 }: {
 	data: Asset[];
 	homeCurrency?: string;
@@ -63,6 +64,7 @@ export function WealthDataTable({
 	onDeleteSelected?: (selectedIds: Set<string>) => void;
 	hidePagination?: boolean;
 	readOnly?: boolean;
+	columnVisibility?: import("@tanstack/react-table").VisibilityState;
 }) {
 	const { formatCurrency } = useCurrencyFormatter();
 	const [hoveredColumn, setHoveredColumn] = React.useState<string | null>(null);
@@ -107,6 +109,7 @@ export function WealthDataTable({
 			},
 		],
 		pageSize: DEFAULT_PAGE_SIZE,
+		initialColumnVisibility,
 		rowSelection: controlledRowSelection,
 		onRowSelectionChange: (updater) => {
 			if (!setControlledSelectedRows) return;

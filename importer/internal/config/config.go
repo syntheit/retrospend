@@ -7,14 +7,16 @@ import (
 )
 
 type Config struct {
-	OllamaEndpoint   string
-	LogLevel         string
-	Port             string
-	WorkerAPIKey     string
-	LLMModel         string
-	EnrichBatchSize  int
+	OllamaEndpoint    string
+	LogLevel          string
+	Port              string
+	WorkerAPIKey      string
+	LLMModel          string
+	EnrichBatchSize   int
 	EnrichConcurrency int
-	PDFConcurrency   int
+	PDFConcurrency    int
+	OpenRouterAPIKey  string
+	OpenRouterModel   string
 }
 
 func Load() (*Config, error) {
@@ -47,15 +49,23 @@ func Load() (*Config, error) {
 	enrichConcurrency := getEnvInt("ENRICH_CONCURRENCY", 3)
 	pdfConcurrency := getEnvInt("PDF_CONCURRENCY", 3)
 
+	openRouterAPIKey := os.Getenv("OPENROUTER_API_KEY")
+	openRouterModel := os.Getenv("OPENROUTER_MODEL")
+	if openRouterModel == "" {
+		openRouterModel = "qwen/qwen-2.5-7b-instruct"
+	}
+
 	return &Config{
-		OllamaEndpoint:   ollama,
-		LogLevel:         logLevel,
-		Port:             port,
-		WorkerAPIKey:     apiKey,
-		LLMModel:         model,
-		EnrichBatchSize:  enrichBatchSize,
+		OllamaEndpoint:    ollama,
+		LogLevel:          logLevel,
+		Port:              port,
+		WorkerAPIKey:      apiKey,
+		LLMModel:          model,
+		EnrichBatchSize:   enrichBatchSize,
 		EnrichConcurrency: enrichConcurrency,
-		PDFConcurrency:   pdfConcurrency,
+		PDFConcurrency:    pdfConcurrency,
+		OpenRouterAPIKey:  openRouterAPIKey,
+		OpenRouterModel:   openRouterModel,
 	}, nil
 }
 

@@ -21,6 +21,7 @@ interface UseDataTableProps<TData> {
 	columns: ColumnDef<TData>[];
 	initialSorting?: SortingState;
 	pageSize?: number;
+	initialColumnVisibility?: VisibilityState;
 	// Support controlled selection if needed
 	rowSelection?: RowSelectionState;
 	onRowSelectionChange?: (
@@ -39,11 +40,13 @@ export function useDataTable<TData>({
 	columns,
 	initialSorting = [],
 	pageSize = DEFAULT_PAGE_SIZE,
+	initialColumnVisibility = {},
 	rowSelection: controlledRowSelection,
 	onRowSelectionChange: setControlledRowSelection,
 }: UseDataTableProps<TData>) {
 	const [sorting, setSorting] = useState<SortingState>(initialSorting);
-	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+	const [columnVisibility, setColumnVisibility] =
+		useState<VisibilityState>(initialColumnVisibility);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 	const [internalRowSelection, setInternalRowSelection] =
 		useState<RowSelectionState>({});

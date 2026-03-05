@@ -6,6 +6,7 @@ import { parseDateOnly } from "~/lib/date";
 import { generateId } from "~/lib/id";
 import type { Prisma, PrismaClient } from "~prisma";
 import { CsvService } from "./csv.service";
+import { recordTokenUsage, resolveAiAccess } from "./ai-access.service";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -473,12 +474,27 @@ export class ImportQueueService {
 			}
 		}
 
+		// Resolve AI provider for this user
+		const user = await this.db.user.findUnique({
+			where: { id: job.userId },
+			select: { aiMode: true },
+		});
+		const requestedMode = user?.aiMode ?? "LOCAL";
+		const aiAccess = await resolveAiAccess(
+			this.db,
+			job.userId,
+			requestedMode,
+		);
+		const provider =
+			aiAccess.effectiveMode === "EXTERNAL" ? "openrouter" : "local";
+
 		// Create form data for Go importer
 		const formData = new FormData();
 		const blob = new Blob([fileBuffer], {
 			type: fileType === "pdf" ? "application/pdf" : "text/csv",
 		});
 		formData.append("file", blob, fileName);
+		formData.append("provider", provider);
 
 		// Call Go importer service
 		const controller = new AbortController();
@@ -511,6 +527,7 @@ export class ImportQueueService {
 			let transactions: ImporterTransaction[] = [];
 			const warnings: string[] = [...additionalWarnings];
 			let buffer = "";
+			let totalTokensUsed = 0;
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -541,6 +558,9 @@ export class ImportQueueService {
 							warnings.push(data.message);
 						} else if (data.type === "result") {
 							transactions = data.data;
+							if (data.metadata?.totalTokensUsed) {
+								totalTokensUsed = data.metadata.totalTokensUsed;
+							}
 						} else if (data.type === "error") {
 							throw new Error(data.message);
 						}
@@ -559,6 +579,9 @@ export class ImportQueueService {
 					const data = JSON.parse(buffer);
 					if (data.type === "result") {
 						transactions = data.data;
+						if (data.metadata?.totalTokensUsed) {
+							totalTokensUsed = data.metadata.totalTokensUsed;
+						}
 					} else if (data.type === "error") {
 						throw new Error(data.message);
 					}
@@ -588,6 +611,11 @@ export class ImportQueueService {
 					statusMessage: "Complete",
 				},
 			});
+
+			// Record token usage if external provider was used
+			if (provider === "openrouter" && totalTokensUsed > 0) {
+				await recordTokenUsage(this.db, job.userId, totalTokensUsed);
+			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
 				throw new Error(
@@ -876,10 +904,18 @@ export class ImportQueueService {
 			});
 		}
 
-		if (!["COMPLETED", "FAILED", "CANCELLED"].includes(job.status)) {
+		if (
+			![
+				"COMPLETED",
+				"FAILED",
+				"CANCELLED",
+				"READY_FOR_REVIEW",
+				"REVIEWING",
+			].includes(job.status)
+		) {
 			throw new TRPCError({
 				code: "BAD_REQUEST",
-				message: "Only completed, failed, or cancelled jobs can be deleted",
+				message: "Cannot delete jobs that are queued or processing",
 			});
 		}
 

@@ -177,7 +177,14 @@ export function RecurringModal({
 
 	return (
 		<Dialog onOpenChange={onClose} open={open}>
-			<DialogContent className="max-w-md">
+			<DialogContent
+				className="top-4 left-1/2 h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-none sm:w-full sm:max-w-md sm:-translate-y-1/2"
+				onOpenAutoFocus={(e) => {
+					if (window.innerWidth < 640) {
+						e.preventDefault();
+					}
+				}}
+			>
 				<DialogHeader>
 					<DialogTitle>
 						{templateId ? "Edit Subscription" : "New Subscription"}

@@ -14,6 +14,7 @@ import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
 import { IntegrationService } from "~/server/services/integration.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
+import { getAiUsageSummary } from "~/server/services/ai-access.service";
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -123,6 +124,7 @@ export const adminRouter = createTRPCRouter({
 				role: true,
 				isActive: true,
 				createdAt: true,
+				externalAiAllowed: true,
 				_count: {
 					select: {
 						expenses: true,
@@ -162,6 +164,7 @@ export const adminRouter = createTRPCRouter({
 			hasBudget: user._count.budgets > 0,
 			hasRecurring: user._count.recurringTemplates > 0,
 			hasWealth: user._count.assetAccounts > 0,
+			externalAiAllowed: user.externalAiAllowed,
 		}));
 	}),
 
@@ -377,6 +380,66 @@ export const adminRouter = createTRPCRouter({
 				inviteOnlyEnabled: settings.inviteOnlyEnabled,
 				allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
 				enableEmail: settings.enableEmail,
+			};
+		}),
+
+	getAiSettings: adminProcedure.query(async () => {
+		const settings = await getAppSettings();
+		return {
+			defaultAiMode: settings.defaultAiMode,
+			externalAiAccessMode: settings.externalAiAccessMode,
+			monthlyAiTokenQuota: settings.monthlyAiTokenQuota,
+			openRouterConfigured: !!env.OPENROUTER_API_KEY,
+		};
+	}),
+
+	updateAiSettings: adminProcedure
+		.input(
+			z.object({
+				defaultAiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
+				externalAiAccessMode: z.enum(["WHITELIST", "BLACKLIST"]).optional(),
+				monthlyAiTokenQuota: z.number().int().min(0).optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			const settings = await updateAppSettings(input);
+			return {
+				defaultAiMode: settings.defaultAiMode,
+				externalAiAccessMode: settings.externalAiAccessMode,
+				monthlyAiTokenQuota: settings.monthlyAiTokenQuota,
+			};
+		}),
+
+	setUserAiAccess: adminProcedure
+		.input(
+			z.object({
+				userId: z.string().cuid(),
+				externalAiAllowed: z.boolean().nullable(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { db } = ctx;
+			await db.user.update({
+				where: { id: input.userId },
+				data: { externalAiAllowed: input.externalAiAllowed },
+			});
+			return { success: true };
+		}),
+
+	getAiUsageStats: adminProcedure
+		.input(z.object({ yearMonth: z.string().regex(/^\d{4}-\d{2}$/).optional() }).optional())
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+			const settings = await getAppSettings();
+			const usages = await getAiUsageSummary(db, input?.yearMonth);
+			return {
+				quota: settings.monthlyAiTokenQuota,
+				usages: usages.map((u) => ({
+					userId: u.userId,
+					username: u.user.username,
+					tokensUsed: u.tokensUsed,
+					yearMonth: u.yearMonth,
+				})),
 			};
 		}),
 

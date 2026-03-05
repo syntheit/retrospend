@@ -1,19 +1,29 @@
+import { IconBrandMatrix } from "@tabler/icons-react";
 import { Github } from "lucide-react";
 import Link from "next/link";
 
-export function LandingFooter({
-	showLegalLinks,
-}: { showLegalLinks: boolean }) {
+export function LandingFooter({ showLegalLinks }: { showLegalLinks: boolean }) {
 	return (
-		<footer className="border-t border-border bg-background py-12">
+		<footer className="border-border border-t bg-background py-12">
 			<div className="mx-auto max-w-6xl px-4 text-center">
-				<div className="mb-3">
+				<div className="mb-3 flex items-center justify-center gap-4">
 					<Link
+						aria-label="View on GitHub"
 						className="inline-block text-muted-foreground transition-colors hover:text-foreground"
 						href="https://github.com/syntheit/retrospend"
 						target="_blank"
+						title="View on GitHub"
 					>
 						<Github className="h-6 w-6" />
+					</Link>
+					<Link
+						aria-label="Join the Matrix room"
+						className="inline-block text-muted-foreground transition-colors hover:text-foreground"
+						href="https://matrix.to/#/#retrospend:matrix.org"
+						target="_blank"
+						title="Join the Matrix room"
+					>
+						<IconBrandMatrix className="h-6 w-6" />
 					</Link>
 				</div>
 				<p className="text-muted-foreground text-sm">
