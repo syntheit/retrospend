@@ -133,15 +133,17 @@ export function ParticipantsPanel({
 
 				{/* Actions */}
 				<div className="space-y-1 border-border border-t px-4 py-2">
-					<Button
-						className="h-7 w-full gap-1.5 text-muted-foreground text-xs"
-						onClick={() => setShareOpen(true)}
-						size="sm"
-						variant="ghost"
-					>
-						<UserPlus className="h-3 w-3" />
-						Manage access
-					</Button>
+					{isEditor && (
+						<Button
+							className="h-7 w-full gap-1.5 text-muted-foreground text-xs"
+							onClick={() => setShareOpen(true)}
+							size="sm"
+							variant="ghost"
+						>
+							<UserPlus className="h-3 w-3" />
+							Manage access
+						</Button>
+					)}
 					<Button
 						className="h-7 w-full gap-1 text-muted-foreground text-xs"
 						disabled={exportMutation.isPending}
