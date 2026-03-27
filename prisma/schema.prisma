@@ -898,8 +898,6 @@ model Project {
   primaryCurrency          String                 @default("USD")
   createdById              String
   visibility               ProjectVisibility      @default(PRIVATE)
-  startDate                DateTime?
-  endDate                  DateTime?
   status                   ProjectStatus          @default(ACTIVE)
   billingCycleLength       BillingCycleLength?
   billingCycleDays         Int?

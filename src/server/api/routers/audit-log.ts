@@ -230,7 +230,6 @@ function buildActivitySummary(
 				const visChange = c?.visibility as
 					| { old: string; new: string }
 					| undefined;
-				const hasDateChange = !!(c?.startDate ?? c?.endDate);
 				const descChange2 = c?.description as
 					| { old: unknown; new: unknown }
 					| undefined;
@@ -265,7 +264,6 @@ function buildActivitySummary(
 					const vis = String(visChange.new).toLowerCase().replace(/_/g, " ");
 					labels.push(`changed project visibility to ${vis}`);
 				}
-				if (hasDateChange) labels.push("updated the project dates");
 				if (descChange2 && !nameChange)
 					labels.push("updated the project description");
 				if (hasBillingChange && labels.length === 0)

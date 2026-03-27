@@ -49,8 +49,6 @@ export interface ProjectPdfData {
 	projectName: string;
 	projectType: string;
 	status: string;
-	startDate: string | null;
-	endDate: string | null;
 	primaryCurrency: string;
 	description: string | null;
 	periodLabel: string | null;
@@ -238,13 +236,6 @@ export async function generateProjectPdf(
 		const metaParts: string[] = [];
 		if (data.projectType) metaParts.push(data.projectType);
 		if (data.status !== "ACTIVE") metaParts.push(data.status);
-		if (data.startDate && data.endDate) {
-			metaParts.push(`${data.startDate} to ${data.endDate}`);
-		} else if (data.startDate) {
-			metaParts.push(`From ${data.startDate}`);
-		} else if (data.endDate) {
-			metaParts.push(`Until ${data.endDate}`);
-		}
 		metaParts.push(data.primaryCurrency);
 		if (data.periodLabel) metaParts.push(`Period: ${data.periodLabel}`);
 

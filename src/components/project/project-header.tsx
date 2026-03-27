@@ -1,6 +1,5 @@
 "use client";
 
-import { format } from "date-fns";
 import {
 	Activity,
 	BarChart3,
@@ -189,7 +188,7 @@ interface ProjectHeaderProps {
 	isEditor: boolean;
 	isSolo: boolean;
 	onSettingsOpen: () => void;
-	onAddExpense: () => void;
+	onAddExpense?: () => void;
 	onExportExpenses?: () => void;
 	onExportSettlement?: () => void;
 	onExportPeriodSummary?: () => void;
@@ -201,8 +200,6 @@ interface ProjectHeaderProps {
 	unseenCount?: number;
 	participants?: Participant[];
 	showPeriodSummaryExport?: boolean;
-	startDate?: Date | null;
-	endDate?: Date | null;
 	primaryCurrency?: string;
 	expenseCount?: number;
 	currentUserId?: string;
@@ -229,8 +226,6 @@ export function ProjectHeader({
 	unseenCount,
 	participants,
 	showPeriodSummaryExport,
-	startDate,
-	endDate,
 	primaryCurrency,
 	expenseCount,
 	currentUserId,
@@ -243,19 +238,10 @@ export function ProjectHeader({
 	const utils = api.useUtils();
 	const { settings } = useUserSettings();
 
-	const dateRange = (() => {
-		if (!startDate && !endDate) return null;
-		const fmt = (d: Date) => format(d, "MMM d");
-		if (startDate && endDate) return `${fmt(startDate)}–${fmt(endDate)}`;
-		if (startDate) return `From ${fmt(startDate)}`;
-		return `Until ${fmt(endDate!)}`;
-	})();
-
 	const metaParts: string[] = [];
 	if (!isSolo && participants && participants.length > 0) {
 		metaParts.push(`${participants.length} participant${participants.length !== 1 ? "s" : ""}`);
 	}
-	if (dateRange) metaParts.push(dateRange);
 	if (primaryCurrency && primaryCurrency !== settings?.defaultCurrency) metaParts.push(primaryCurrency);
 	if (expenseCount !== undefined) {
 		metaParts.push(`${expenseCount} expense${expenseCount !== 1 ? "s" : ""}`);
@@ -362,10 +348,12 @@ export function ProjectHeader({
 
 				{/* Action buttons */}
 				<div className="flex flex-wrap items-center gap-1.5">
-					<Button onClick={onAddExpense} size="sm">
-						<Plus className="mr-1 h-4 w-4" />
-						Add Expense
-					</Button>
+					{onAddExpense && (
+						<Button onClick={onAddExpense} size="sm">
+							<Plus className="mr-1 h-4 w-4" />
+							Add Expense
+						</Button>
+					)}
 					<div className="flex items-center gap-0.5">
 						{!isSolo && (
 							<Button

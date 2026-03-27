@@ -16,7 +16,6 @@ import {
 	ResponsiveDialogTitle,
 } from "~/components/ui/responsive-dialog";
 import { Input } from "~/components/ui/input";
-import { DatePicker } from "~/components/ui/date-picker";
 import { Label } from "~/components/ui/label";
 import {
 	Select,
@@ -43,8 +42,6 @@ interface ProjectSettingsDialogProps {
 		budgetAmount: number | null;
 		budgetCurrency: string | null;
 		primaryCurrency: string;
-		startDate: Date | null;
-		endDate: Date | null;
 		status: string;
 		billingCycleLength: string | null;
 		billingCycleDays: number | null;
@@ -74,12 +71,6 @@ export function ProjectSettingsDialog({
 	);
 	const [budgetCurrency, setBudgetCurrency] = useState(
 		project.budgetCurrency ?? project.primaryCurrency,
-	);
-	const [startDate, setStartDate] = useState<Date | undefined>(
-		project.startDate ? new Date(project.startDate) : undefined,
-	);
-	const [endDate, setEndDate] = useState<Date | undefined>(
-		project.endDate ? new Date(project.endDate) : undefined,
 	);
 	const [billingCycleLength, setBillingCycleLength] = useState(
 		project.billingCycleLength ?? "MONTHLY",
@@ -211,8 +202,6 @@ export function ProjectSettingsDialog({
 			primaryCurrency,
 			budgetAmount: budget,
 			budgetCurrency: budget ? budgetCurrency : null,
-			startDate: startDate ?? null,
-			endDate: endDate ?? null,
 			...(project.type === "ONGOING"
 				? {
 						billingCycleLength: billingCycleLength as
@@ -332,24 +321,6 @@ export function ProjectSettingsDialog({
 								placeholder="Amount"
 								type="number"
 								value={budgetAmount}
-							/>
-						</div>
-					</div>
-
-					<div className="space-y-1.5">
-						<Label>Dates</Label>
-						<div className="flex gap-2">
-							<DatePicker
-								className="flex-1"
-								date={startDate}
-								onSelect={setStartDate}
-								placeholder="Start date"
-							/>
-							<DatePicker
-								className="flex-1"
-								date={endDate}
-								onSelect={setEndDate}
-								placeholder="End date"
 							/>
 						</div>
 					</div>

@@ -20,7 +20,6 @@ import {
 	ResponsiveDialogTitle,
 } from "~/components/ui/responsive-dialog";
 import { Input } from "~/components/ui/input";
-import { DatePicker } from "~/components/ui/date-picker";
 import { Label } from "~/components/ui/label";
 import {
 	Select,
@@ -54,8 +53,6 @@ export function NewProjectDialog({
 	const [description, setDescription] = useState("");
 	const [budgetAmount, setBudgetAmount] = useState("");
 	const [budgetCurrency, setBudgetCurrency] = useState(homeCurrency);
-	const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-	const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 	const [billingCycleLength, setBillingCycleLength] = useState("MONTHLY");
 	const [billingAutoClose, setBillingAutoClose] = useState(false);
 	const [billingClosePermission, setBillingClosePermission] =
@@ -113,8 +110,6 @@ export function NewProjectDialog({
 		setDescription("");
 		setBudgetAmount("");
 		setBudgetCurrency(homeCurrency);
-		setStartDate(undefined);
-		setEndDate(undefined);
 		setBillingCycleLength("MONTHLY");
 		setBillingAutoClose(false);
 		setBillingClosePermission("ORGANIZER_ONLY");
@@ -171,8 +166,6 @@ export function NewProjectDialog({
 			budgetAmount: budget,
 			budgetCurrency: budget ? budgetCurrency : undefined,
 			primaryCurrency: homeCurrency,
-			startDate: startDate ?? undefined,
-			endDate: endDate ?? undefined,
 			billingCycleLength:
 				type === "ONGOING"
 					? (billingCycleLength as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM")
@@ -201,8 +194,6 @@ export function NewProjectDialog({
 
 	const isSolo = type === "SOLO";
 	const isOngoing = type === "ONGOING";
-	const isTrip = type === "TRIP";
-
 	return (
 		<>
 		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
@@ -322,25 +313,6 @@ export function NewProjectDialog({
 								placeholder="Amount"
 								type="number"
 								value={budgetAmount}
-							/>
-						</div>
-					</div>
-
-					{/* Dates */}
-					<div className={`space-y-1.5 ${isTrip ? "" : ""}`}>
-						<Label>Dates {isTrip ? "" : "(optional)"}</Label>
-						<div className="flex gap-2">
-							<DatePicker
-								className="flex-1"
-								date={startDate}
-								onSelect={setStartDate}
-								placeholder="Start date"
-							/>
-							<DatePicker
-								className="flex-1"
-								date={endDate}
-								onSelect={setEndDate}
-								placeholder="End date"
 							/>
 						</div>
 					</div>

@@ -81,8 +81,6 @@ export interface ProjectRecord {
 	billingCloseReminderDays: number;
 	billingClosePermission: string;
 	visibility: string;
-	startDate: Date | null;
-	endDate: Date | null;
 	budgetAmount: number | null;
 	budgetCurrency: string | null;
 	updatedAt: Date;
@@ -925,8 +923,6 @@ export function createStatefulDb() {
 					billingClosePermission:
 						args.data.billingClosePermission ?? "ORGANIZER_ONLY",
 					visibility: args.data.visibility ?? "PRIVATE",
-					startDate: args.data.startDate ?? null,
-					endDate: args.data.endDate ?? null,
 					budgetAmount: args.data.budgetAmount ?? null,
 					budgetCurrency: args.data.budgetCurrency ?? null,
 					updatedAt: new Date(),
@@ -1335,8 +1331,6 @@ export function addProject(
 		billingClosePermission:
 			overrides.billingClosePermission ?? "ORGANIZER_ONLY",
 		visibility: overrides.visibility ?? "PRIVATE",
-		startDate: overrides.startDate ?? null,
-		endDate: overrides.endDate ?? null,
 		budgetAmount: overrides.budgetAmount ?? null,
 		budgetCurrency: overrides.budgetCurrency ?? null,
 		updatedAt: new Date(),

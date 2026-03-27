@@ -1,9 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
 import {
 	Archive,
-	CalendarDays,
 	CheckCircle2,
 	CircleDollarSign,
 	Copy,
@@ -590,28 +588,6 @@ function ProjectCard({
 									</div>
 								)}
 
-								{/* Date range (Trip) */}
-								{project.type === "TRIP" &&
-									(project.startDate ?? project.endDate) && (
-										<div className="flex items-center gap-1 text-white/60 text-xs">
-											<CalendarDays className="h-3 w-3 shrink-0" />
-											<span>
-												{project.startDate
-													? format(
-															new Date(project.startDate),
-															"MMM d",
-														)
-													: "?"}
-												{" – "}
-												{project.endDate
-													? format(
-															new Date(project.endDate),
-															"MMM d",
-														)
-													: "ongoing"}
-											</span>
-										</div>
-									)}
 
 								{/* Billing period (Ongoing) */}
 								{project.type === "ONGOING" &&

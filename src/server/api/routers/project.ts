@@ -167,8 +167,6 @@ const createProjectSchema = z.object({
 	budgetAmount: z.number().positive().optional(),
 	budgetCurrency: z.string().min(1).max(10).optional(),
 	primaryCurrency: z.string().min(1).max(10).default("USD"),
-	startDate: z.date().optional(),
-	endDate: z.date().optional(),
 	visibility: z
 		.enum(["PRIVATE", "PUBLIC"])
 		.default("PRIVATE"),
@@ -205,8 +203,6 @@ export const projectRouter = createTRPCRouter({
 							primaryCurrency: input.primaryCurrency,
 							createdById: userId,
 							visibility: input.visibility,
-							startDate: input.startDate ?? null,
-							endDate: input.endDate ?? null,
 							billingCycleLength: input.billingCycleLength ?? null,
 							billingCycleDays: input.billingCycleDays ?? null,
 							billingAutoClose: input.billingAutoClose,
@@ -228,7 +224,7 @@ export const projectRouter = createTRPCRouter({
 
 					// Auto-create first billing period for ONGOING projects with a cycle
 					if (input.type === "ONGOING" && input.billingCycleLength) {
-						const periodStart = input.startDate ?? new Date();
+						const periodStart = new Date();
 						const periodEnd = computeBillingPeriodEnd(
 							periodStart,
 							input.billingCycleLength,
@@ -540,8 +536,6 @@ export const projectRouter = createTRPCRouter({
 				budgetAmount: z.number().positive().nullish(),
 				budgetCurrency: z.string().min(1).max(10).nullish(),
 				primaryCurrency: z.string().min(1).max(10).optional(),
-				startDate: z.date().nullish(),
-				endDate: z.date().nullish(),
 				status: z.enum(["ACTIVE", "SETTLED", "ARCHIVED"]).optional(),
 				visibility: z.enum(["PRIVATE", "PUBLIC"]).optional(),
 				billingCycleLength: z
@@ -582,8 +576,6 @@ export const projectRouter = createTRPCRouter({
 			trackField("budgetAmount", fields.budgetAmount);
 			trackField("budgetCurrency", fields.budgetCurrency);
 			trackField("primaryCurrency", fields.primaryCurrency);
-			trackField("startDate", fields.startDate);
-			trackField("endDate", fields.endDate);
 			trackField("status", fields.status);
 			trackField("visibility", fields.visibility);
 			trackField("billingCycleLength", fields.billingCycleLength);
@@ -1392,8 +1384,6 @@ export const projectRouter = createTRPCRouter({
 				budgetAmount: project.budgetAmount,
 				budgetCurrency: project.budgetCurrency,
 				primaryCurrency: project.primaryCurrency,
-				startDate: project.startDate,
-				endDate: project.endDate,
 				visibility: project.visibility,
 				createdAt: project.createdAt,
 				participants,

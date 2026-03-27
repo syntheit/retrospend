@@ -18,8 +18,6 @@ interface ProjectStatsStripProps {
 	budgetAmount: number | null;
 	budgetCurrency: string;
 	totalSpent: number;
-	startDate: Date | null;
-	endDate: Date | null;
 	currentBillingPeriod?: {
 		startDate: Date;
 		endDate: Date;
@@ -46,8 +44,6 @@ export function ProjectStatsStrip({
 	budgetAmount,
 	budgetCurrency,
 	totalSpent,
-	startDate,
-	endDate,
 	currentBillingPeriod,
 	categories,
 	currency,
@@ -68,17 +64,13 @@ export function ProjectStatsStrip({
 			? "#f59e0b"
 			: "#10b981";
 
-	// Time context - prefer billing period dates, fall back to project dates
+	// Time context from billing period dates
 	const timeStart = currentBillingPeriod?.startDate
 		? new Date(currentBillingPeriod.startDate)
-		: startDate
-			? new Date(startDate)
-			: null;
+		: null;
 	const timeEnd = currentBillingPeriod?.endDate
 		? new Date(currentBillingPeriod.endDate)
-		: endDate
-			? new Date(endDate)
-			: null;
+		: null;
 
 	let timeContext: {
 		elapsedDays: number;

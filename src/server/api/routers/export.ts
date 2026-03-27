@@ -1164,8 +1164,6 @@ export const exportRouter = createTRPCRouter({
 					type: true,
 					status: true,
 					primaryCurrency: true,
-					startDate: true,
-					endDate: true,
 					budgetAmount: true,
 					budgetCurrency: true,
 				},
@@ -1346,12 +1344,6 @@ export const exportRouter = createTRPCRouter({
 				projectName: project.name,
 				projectType: project.type,
 				status: project.status,
-				startDate: project.startDate
-					? project.startDate.toISOString().slice(0, 10)
-					: null,
-				endDate: project.endDate
-					? project.endDate.toISOString().slice(0, 10)
-					: null,
 				primaryCurrency: project.primaryCurrency,
 				description: project.description,
 				periodLabel,

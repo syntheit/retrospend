@@ -25,8 +25,6 @@ interface BudgetPacingProps {
 	budgetAmount: number;
 	budgetCurrency: string;
 	totalSpent: number;
-	startDate: Date | null;
-	endDate: Date | null;
 	currentBillingPeriod?: {
 		startDate: Date;
 		endDate: Date;
@@ -54,8 +52,6 @@ export function BudgetPacing({
 	budgetAmount,
 	budgetCurrency,
 	totalSpent,
-	startDate,
-	endDate,
 	currentBillingPeriod,
 	dailySpend,
 }: BudgetPacingProps) {
@@ -68,11 +64,11 @@ export function BudgetPacing({
 	const isNearBudget = utilizationPct > 80;
 
 	// Build chart data
-	const start = startDate ? new Date(startDate) : null;
-	const end = endDate ? new Date(endDate) : new Date();
+	const bpStart = currentBillingPeriod?.startDate ? new Date(currentBillingPeriod.startDate) : null;
+	const bpEnd = currentBillingPeriod?.endDate ? new Date(currentBillingPeriod.endDate) : null;
 	const totalDays =
-		start && end
-			? Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000))
+		bpStart && bpEnd
+			? Math.max(1, Math.ceil((bpEnd.getTime() - bpStart.getTime()) / 86400000))
 			: 30;
 
 	const chartData =
@@ -99,17 +95,12 @@ export function BudgetPacing({
 	};
 
 	// ── Time context ──────────────────────────────────────────────────────────
-	// Use billing period dates (ONGOING) or project dates (TRIP), whichever is available
 	const timeStart = currentBillingPeriod?.startDate
 		? new Date(currentBillingPeriod.startDate)
-		: startDate
-			? new Date(startDate)
-			: null;
+		: null;
 	const timeEnd = currentBillingPeriod?.endDate
 		? new Date(currentBillingPeriod.endDate)
-		: endDate
-			? new Date(endDate)
-			: null;
+		: null;
 
 	let timeContext: {
 		elapsedDays: number;

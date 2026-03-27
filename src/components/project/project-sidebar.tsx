@@ -1,6 +1,6 @@
 "use client";
 
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
@@ -25,8 +25,6 @@ const ROLE_COLORS: Record<string, string> = {
 
 interface ProjectDetailsSidebarProps {
 	project: {
-		startDate: Date | null;
-		endDate: Date | null;
 		createdAt: Date;
 		primaryCurrency: string;
 	};
@@ -37,16 +35,6 @@ export function ProjectDetailsSidebar({
 	project,
 	totalExpenseCount,
 }: ProjectDetailsSidebarProps) {
-	const dateRange = useMemo(() => {
-		if (!project.startDate && !project.endDate) return null;
-		const fmt = (d: Date) => format(d, "MMM d");
-		if (project.startDate && project.endDate) {
-			return `${fmt(project.startDate)} – ${fmt(project.endDate)}`;
-		}
-		if (project.startDate) return `From ${fmt(project.startDate)}`;
-		return `Until ${fmt(project.endDate!)}`;
-	}, [project.startDate, project.endDate]);
-
 	const createdAgo = formatDistanceToNow(project.createdAt, { addSuffix: true });
 
 	return (
@@ -58,16 +46,6 @@ export function ProjectDetailsSidebar({
 			</CardHeader>
 			<CardContent className="px-4 pb-4">
 				<dl className="space-y-1.5">
-					<div className="flex items-baseline justify-between gap-2">
-						<dt className="shrink-0 text-xs text-muted-foreground">Dates</dt>
-						<dd
-							className={`truncate text-right text-xs ${
-								!dateRange ? "italic text-muted-foreground" : "font-medium"
-							}`}
-						>
-							{dateRange ?? "No dates set"}
-						</dd>
-					</div>
 					<div className="flex items-baseline justify-between gap-2">
 						<dt className="shrink-0 text-xs text-muted-foreground">Expenses</dt>
 						<dd className="truncate text-right text-xs font-medium">
@@ -231,8 +209,6 @@ interface ProjectSidebarProps {
 	projectName: string;
 	createdById: string;
 	project: {
-		startDate: Date | null;
-		endDate: Date | null;
 		createdAt: Date;
 		primaryCurrency: string;
 	};
