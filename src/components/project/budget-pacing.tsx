@@ -63,37 +63,6 @@ export function BudgetPacing({
 	const isOverBudget = utilizationPct > 100;
 	const isNearBudget = utilizationPct > 80;
 
-	// Build chart data
-	const bpStart = currentBillingPeriod?.startDate ? new Date(currentBillingPeriod.startDate) : null;
-	const bpEnd = currentBillingPeriod?.endDate ? new Date(currentBillingPeriod.endDate) : null;
-	const totalDays =
-		bpStart && bpEnd
-			? Math.max(1, Math.ceil((bpEnd.getTime() - bpStart.getTime()) / 86400000))
-			: 30;
-
-	const chartData =
-		dailySpend?.map((point, index) => ({
-			...point,
-			ideal: (budgetAmount / totalDays) * (index + 1),
-		})) ?? [];
-
-	const areaColor = isOverBudget
-		? "#ef4444"
-		: isNearBudget
-			? "#f59e0b"
-			: "#10b981";
-	const gradientId = `fillGradient-${id}`;
-
-	const formatYAxis = (value: number) => {
-		if (value >= 1000) {
-			return `${formatCurrencyUtil(value / 1000, budgetCurrency, "native", false).replace(/\.00$/, "")}k`;
-		}
-		return formatCurrencyUtil(value, budgetCurrency, "native", false).replace(
-			/\.00$/,
-			"",
-		);
-	};
-
 	// ── Time context ──────────────────────────────────────────────────────────
 	const timeStart = currentBillingPeriod?.startDate
 		? new Date(currentBillingPeriod.startDate)
@@ -128,6 +97,32 @@ export function BudgetPacing({
 			label: `Day ${elapsedDays} of ${tDays}${periodLabel}`,
 		};
 	}
+
+	// Build chart data
+	const chartTotalDays = timeContext?.totalDays ?? 30;
+
+	const chartData =
+		dailySpend?.map((point, index) => ({
+			...point,
+			ideal: (budgetAmount / chartTotalDays) * (index + 1),
+		})) ?? [];
+
+	const areaColor = isOverBudget
+		? "#ef4444"
+		: isNearBudget
+			? "#f59e0b"
+			: "#10b981";
+	const gradientId = `fillGradient-${id}`;
+
+	const formatYAxis = (value: number) => {
+		if (value >= 1000) {
+			return `${formatCurrencyUtil(value / 1000, budgetCurrency, "native", false).replace(/\.00$/, "")}k`;
+		}
+		return formatCurrencyUtil(value, budgetCurrency, "native", false).replace(
+			/\.00$/,
+			"",
+		);
+	};
 
 	// Daily avg and projected total (only when ≥2 days elapsed)
 	const dailyAvg =

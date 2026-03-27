@@ -588,7 +588,6 @@ function ProjectCard({
 									</div>
 								)}
 
-
 								{/* Billing period (Ongoing) */}
 								{project.type === "ONGOING" &&
 									project.currentBillingPeriod && (

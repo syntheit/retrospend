@@ -8,9 +8,8 @@
  * never the full transaction amount.
  */
 import type { Prisma, PrismaClient } from "~prisma";
-import { fromUSD, toUSD } from "../currency";
+import { toUSD } from "../currency";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
-import { computeBalance, computeBalanceBatch } from "./shared-expenses/balance";
 import type { RateCache } from "./rate-cache";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
@@ -344,113 +343,4 @@ export async function listSharedParticipationsForUser(
 			},
 		};
 	});
-}
-
-/**
- * Computes aggregate shared receivables and payables in USD.
- * Receivables = money owed TO the user (positive balances).
- * Payables = money the user OWES (negative balances).
- *
- * Used by: wealth dashboard
- */
-export async function getSharedBalanceSummary(
-	db: AppDb,
-	userId: string,
-): Promise<{ receivablesUSD: number; payablesUSD: number }> {
-	const prisma = db as PrismaClient;
-
-	// Find all unique contacts (participants the user has transacted with)
-	const transactions = await prisma.sharedTransaction.findMany({
-		where: {
-			splitParticipants: {
-				some: { participantType: "user", participantId: userId },
-			},
-		},
-		select: {
-			splitParticipants: {
-				select: {
-					participantType: true,
-					participantId: true,
-				},
-			},
-		},
-	});
-
-	if (transactions.length === 0) {
-		return { receivablesUSD: 0, payablesUSD: 0 };
-	}
-
-	// Collect unique contacts
-	const contactKeys = new Set<string>();
-	for (const tx of transactions) {
-		for (const sp of tx.splitParticipants) {
-			if (sp.participantType === "user" && sp.participantId === userId)
-				continue;
-			contactKeys.add(`${sp.participantType}:${sp.participantId}`);
-		}
-	}
-
-	if (contactKeys.size === 0) {
-		return { receivablesUSD: 0, payablesUSD: 0 };
-	}
-
-	const userRef = { participantType: "user" as const, participantId: userId };
-
-	// Parse contact keys into ParticipantRef[]
-	const counterparts = [...contactKeys].map((key) => {
-		const [type, ...idParts] = key.split(":");
-		return {
-			participantType: type as "user" | "guest" | "shadow",
-			participantId: idParts.join(":"),
-		};
-	});
-
-	// Batch compute all balances in 4 queries total (instead of 4N)
-	const balances = await computeBalanceBatch(prisma, userRef, counterparts);
-
-	// Collect all currencies needed for rate conversion
-	const allCurrencies = new Set<string>();
-	for (const balance of balances) {
-		for (const currency of Object.keys(balance.byCurrency)) {
-			allCurrencies.add(currency);
-		}
-	}
-
-	// Batch fetch exchange rates
-	const localRateCache = new Map<string, { rate: number; type: string | null }>();
-	localRateCache.set("USD", { rate: 1, type: null });
-	const uncachedCurrencies = [...allCurrencies].filter((c) => c !== "USD");
-	if (uncachedCurrencies.length > 0) {
-		const rates = await Promise.all(
-			uncachedCurrencies.map((c) => getBestExchangeRate(prisma, c, new Date())),
-		);
-		for (let i = 0; i < uncachedCurrencies.length; i++) {
-			localRateCache.set(
-				uncachedCurrencies[i]!,
-				rates[i] ?? { rate: 1, type: null },
-			);
-		}
-	}
-
-	let totalReceivablesUSD = 0;
-	let totalPayablesUSD = 0;
-
-	for (const balance of balances) {
-		for (const [currency, amount] of Object.entries(balance.byCurrency)) {
-			const rateData = localRateCache.get(currency) ?? { rate: 1, type: null };
-			const absAmount = Math.abs(amount);
-			const amountInUSD = toUSD(absAmount, currency, rateData.rate);
-
-			if (amount > 0) {
-				totalReceivablesUSD += amountInUSD;
-			} else if (amount < 0) {
-				totalPayablesUSD += amountInUSD;
-			}
-		}
-	}
-
-	return {
-		receivablesUSD: totalReceivablesUSD,
-		payablesUSD: totalPayablesUSD,
-	};
 }
