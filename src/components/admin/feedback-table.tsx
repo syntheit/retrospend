@@ -38,7 +38,7 @@ type FeedbackItem =
 type StatusFilter = "all" | "unread" | "read" | "archived";
 
 export function FeedbackTable() {
-	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>("unread");
 	const [deleteTarget, setDeleteTarget] = useState<FeedbackItem | null>(null);
 	const utils = api.useUtils();
 
