@@ -8,10 +8,22 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       SHOW_LANDING_PAGE: "true"
       WORKER_API_KEY: ${WORKER_API_KEY}
-      IMPORTER_URL: "http://importer:8080"
+      SIDECAR_URL: "http://sidecar:8080"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      UPLOAD_DIR: /data/uploads
+      # Optional: restrict accepted origins (e.g. if behind a tunnel with a different hostname)
+      # TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
+      # SMTP settings (required for email notifications and password reset)
+      # SMTP_HOST: ${SMTP_HOST:-}
+      # SMTP_PORT: ${SMTP_PORT:-587}
+      # SMTP_USER: ${SMTP_USER:-}
+      # SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      # EMAIL_FROM: ${EMAIL_FROM:-}
+      # UNSUBSCRIBE_SECRET: ${UNSUBSCRIBE_SECRET:-}
     ports:
       - "1997:1997"
+    volumes:
+      - uploads:/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,33 +44,30 @@ services:
       timeout: 5s
       retries: 5
 
-  worker:
-    image: synzeit/retrospend-worker:latest
-    container_name: retrospend-worker
+  sidecar:
+    image: synzeit/retrospend-sidecar:latest
+    container_name: retrospend-sidecar
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
       WORKER_API_KEY: ${WORKER_API_KEY}
       LOG_LEVEL: "info"
+      BACKUP_DIR: "/backups"
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-30}"
+      BACKUP_CRON: "${BACKUP_CRON:-0 3 * * *}"
+      OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://ollama:11434/api/generate}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+      ENRICH_BATCH_SIZE: "${ENRICH_BATCH_SIZE:-20}"
+      ENRICH_CONCURRENCY: "${ENRICH_CONCURRENCY:-3}"
+      PDF_CONCURRENCY: "${PDF_CONCURRENCY:-3}"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-qwen/qwen-2.5-7b-instruct}
+    volumes:
+      - backup_data:/backups
+      - sidecar_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
-
-  importer:
-    image: synzeit/retrospend-importer:latest
-    container_name: retrospend-importer
-    restart: unless-stopped
-    environment:
-      - OLLAMA_ENDPOINT=http://ollama:11434/api/generate
-      - WORKER_API_KEY=${WORKER_API_KEY}
-      - LLM_MODEL=${LLM_MODEL:-qwen2.5:7b}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-qwen/qwen-2.5-7b-instruct}
-      - LOG_LEVEL=info
-    depends_on:
-      - ollama
-    volumes:
-      - importer_data:/app/data
 
   ollama:
     image: ollama/ollama:latest
@@ -75,4 +84,6 @@ services:
 volumes:
   postgres_data:
   ollama_data:
-  importer_data:
+  sidecar_data:
+  backup_data:
+  uploads:

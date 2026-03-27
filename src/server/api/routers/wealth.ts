@@ -5,6 +5,8 @@ import { generateCsv } from "~/lib/csv";
 import { normalizeDate } from "~/lib/date";
 import { toNumberWithDefault } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { fromUSD, toUSD } from "~/server/currency";
+import { getSharedBalanceSummary } from "~/server/services/shared-expense-integration";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
 
@@ -306,10 +308,10 @@ export const wealthRouter = createTRPCRouter({
 				normalizeDate(today),
 			);
 			const targetRate = targetRateData.rate;
-			const targetIsCrypto = targetRateData.rateType === "crypto";
-
+			// BUG FIX: was `rateType === "crypto"` - NEVER use DB rateType to determine
+			// conversion direction; always use isCrypto(currency). fromUSD handles this correctly.
 			const convertToTarget = (usdVal: number) =>
-				targetIsCrypto ? usdVal / (targetRate || 1) : usdVal * targetRate;
+				fromUSD(usdVal, targetCurrency, targetRate);
 
 			let totalSpendUSD = 0;
 			for (const expense of expenses) {
@@ -326,6 +328,39 @@ export const wealthRouter = createTRPCRouter({
 				monthsActive: Math.round(monthsActive),
 			};
 		}),
+	/**
+	 * Returns aggregate shared receivables and payables in the target currency.
+	 * Receivables = money owed TO the user (appears as an asset).
+	 * Payables = money the user OWES (appears as a liability).
+	 */
+	getSharedBalances: protectedProcedure
+		.input(z.object({ currency: z.string().length(3).optional() }).optional())
+		.query(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+			const targetCurrency = input?.currency ?? BASE_CURRENCY;
+
+			const { receivablesUSD, payablesUSD } = await getSharedBalanceSummary(
+				db,
+				session.user.id,
+			);
+
+			// Convert USD to target currency
+			const wealthService = new WealthService(db);
+			const { rate, rateType } = await wealthService.resolveExchangeRate(
+				targetCurrency,
+				normalizeDate(new Date()),
+			);
+			const convertToTarget = (usdVal: number) =>
+				fromUSD(usdVal, targetCurrency, rate);
+
+			return {
+				receivables: convertToTarget(receivablesUSD),
+				payables: convertToTarget(payablesUSD),
+				receivablesUSD,
+				payablesUSD,
+			};
+		}),
+
 	deleteAsset: protectedProcedure
 		.input(
 			z.object({
@@ -403,10 +438,7 @@ export const wealthRouter = createTRPCRouter({
 		const rows = assets.map((asset) => {
 			const rateData = rateMap.get(asset.currency) || { rate: 1, type: null };
 			const balance = toNumberWithDefault(asset.balance);
-			const balanceInUSD =
-				rateData.type === "crypto"
-					? balance * rateData.rate
-					: balance / rateData.rate;
+			const balanceInUSD = toUSD(balance, asset.currency, rateData.rate);
 			return [
 				asset.name,
 				asset.type,

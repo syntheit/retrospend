@@ -1,6 +1,7 @@
 "use client";
 
-import { type Icon, IconCirclePlusFilled } from "@tabler/icons-react";
+import { type Icon } from "@tabler/icons-react";
+import { CirclePlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useExpenseModal } from "~/components/expense-modal-provider";
@@ -40,12 +41,12 @@ export function NavMain({
 				<SidebarMenu>
 					<SidebarMenuItem className="flex items-center gap-2">
 						<SidebarMenuButton
-							className="h-10 cursor-pointer border border-primary px-4 py-4 text-base text-primary duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground [&>svg]:size-5"
+							className="group/add h-10 cursor-pointer border border-primary px-4 py-4 text-base text-primary transition-all duration-200 ease-out hover:-translate-y-[1px] hover:bg-primary/90 hover:text-primary-foreground hover:shadow-md hover:shadow-primary/20 active:translate-y-0 active:scale-[0.97] active:bg-primary/90 active:text-primary-foreground active:shadow-none [&>svg]:size-5"
 							onClick={handleCreateExpense}
 							size="lg"
 							tooltip="Add Expense"
 						>
-							<IconCirclePlusFilled />
+							<CirclePlus className="transition-transform duration-200 ease-out group-hover/add:scale-110" />
 							<span>Add Expense</span>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
@@ -62,7 +63,9 @@ export function NavMain({
 							)}
 						</SidebarGroupLabel>
 						<SidebarMenu>
-							{category.items.map((item) => (
+							{category.items.map((item) => {
+								const isActive = !item.isPlaceholder && (pathname === item.url || (item.url !== "/dashboard" && pathname.startsWith(item.url + "/")));
+								return (
 								<SidebarMenuItem key={item.title}>
 									{item.isPlaceholder ? (
 										<SidebarMenuButton
@@ -77,18 +80,19 @@ export function NavMain({
 									) : (
 										<SidebarMenuButton
 											asChild
-											className={`h-10 px-4 py-4 text-base [&>svg]:size-5 ${pathname === item.url ? "bg-sidebar-accent" : ""}`}
+											className={`h-10 px-4 py-4 text-base [&>svg]:size-5 ${isActive ? "bg-sidebar-accent" : ""}`}
 											size="lg"
 											tooltip={item.title}
 										>
-											<Link href={item.url!}>
+											<Link href={item.url!} aria-current={isActive ? "page" : undefined}>
 												{item.icon && <item.icon />}
 												<span>{item.title}</span>
 											</Link>
 										</SidebarMenuButton>
 									)}
 								</SidebarMenuItem>
-							))}
+								);
+							})}
 						</SidebarMenu>
 					</div>
 				))}

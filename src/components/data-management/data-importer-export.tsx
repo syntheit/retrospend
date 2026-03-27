@@ -231,9 +231,9 @@ export function DataImporterExport<T>({
 					)}
 				</div>
 
-				<button
+				<Button
 					className={cn(
-						"flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+						"flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors",
 						isDragging
 							? "border-primary bg-primary/5"
 							: "border-border/50 hover:border-border hover:bg-secondary/20",
@@ -244,6 +244,7 @@ export function DataImporterExport<T>({
 					onDragOver={handleDragOver}
 					onDrop={handleDrop}
 					type="button"
+					variant="ghost"
 				>
 					<Upload
 						className={cn(
@@ -261,7 +262,7 @@ export function DataImporterExport<T>({
 							</p>
 						)}
 					</div>
-				</button>
+				</Button>
 
 				{parseError && (
 					<div className="relative rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">

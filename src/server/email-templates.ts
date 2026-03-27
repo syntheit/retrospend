@@ -38,6 +38,7 @@ function baseEmailTemplate(
 	content: string,
 	preheader: string = "",
 ) {
+	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL;
 	return `
 <!DOCTYPE html>
 <html lang="en">
@@ -93,8 +94,8 @@ function baseEmailTemplate(
                 Sent by <span style="color: ${colors.primary}; font-weight: 600;">Retrospend</span> &mdash; the financial multitool
               </p>
               ${
-								env.NEXT_PUBLIC_APP_URL
-									? `<p style="margin: 8px 0 0 0; font-size: 13px; text-align: center;"><a href="${env.NEXT_PUBLIC_APP_URL}" style="color: ${colors.primary}; text-decoration: none;">${env.NEXT_PUBLIC_APP_URL}</a></p>`
+								appUrl
+									? `<p style="margin: 8px 0 0 0; font-size: 13px; text-align: center;"><a href="${appUrl}" style="color: ${colors.primary}; text-decoration: none;">${appUrl}</a></p>`
 									: ""
 							}
               <p style="margin: 12px 0 0 0; font-size: 11px; line-height: 1.5; color: #c4c4cc; text-align: center;">
@@ -207,6 +208,188 @@ export function getPasswordChangedAlertTemplate() {
 		"Security Alert: Your Retrospend Password was Changed",
 		content,
 		"Your Retrospend password was recently changed.",
+	);
+}
+
+/**
+ * Generates a notification email for in-app notification types.
+ * Optionally includes a one-click unsubscribe link in the footer.
+ */
+export function notificationEmail({
+	title,
+	body,
+	unsubscribeUrl,
+	ctaUrl,
+	ctaLabel,
+}: {
+	title: string;
+	body: string;
+	unsubscribeUrl?: string;
+	ctaUrl?: string;
+	ctaLabel?: string;
+}) {
+	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
+	const settingsUrl = appUrl ? `${appUrl}/settings` : null;
+	const buttonUrl = ctaUrl ?? (appUrl ? appUrl + "/dashboard" : null);
+	const buttonLabel = ctaLabel ?? "View in Retrospend";
+
+	const content = `
+    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">${escapeHtml(title)}</p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">${escapeHtml(body)}</p>
+    ${
+			buttonUrl
+				? `<table width="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 8px 0 32px 0;">
+          <a href="${escapeHtml(buttonUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">${escapeHtml(buttonLabel)}</a>
+        </td>
+      </tr>
+    </table>`
+				: ""
+		}
+    <p style="margin: 0; font-size: 12px; color: ${colors.textMuted}; text-align: center;">
+      ${settingsUrl ? `<a href="${escapeHtml(settingsUrl)}" style="color: ${colors.textMuted};">Manage notification preferences</a>` : ""}
+      ${settingsUrl && unsubscribeUrl ? " &middot; " : ""}
+      ${unsubscribeUrl ? `<a href="${escapeHtml(unsubscribeUrl)}" style="color: ${colors.textMuted};">Unsubscribe</a>` : ""}
+    </p>
+  `;
+
+	return baseEmailTemplate(`Retrospend: ${title}`, content, body);
+}
+
+/**
+ * Generates an email sent to the NEW email address to confirm the change.
+ */
+export function getEmailChangeVerificationTemplate(
+	verifyUrl: string,
+	newEmail: string,
+) {
+	const content = `
+    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Confirm Your New Email</p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
+      You requested to change your Retrospend email to <strong>${escapeHtml(newEmail)}</strong>. Click below to confirm this change.
+    </p>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 8px 0 32px 0;">
+          <a href="${escapeHtml(verifyUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Confirm Email Change</a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted};">
+      If the button doesn't work, copy and paste this link into your browser:
+    </p>
+    <p style="margin: 0 0 16px 0; font-size: 13px; word-break: break-all;">
+      <a href="${escapeHtml(verifyUrl)}" style="color: ${colors.primary}; text-decoration: underline;">${escapeHtml(verifyUrl)}</a>
+    </p>
+    <p style="margin: 0; font-size: 13px; color: ${colors.textMuted};">This link will expire in 24 hours. If you didn't request this change, you can safely ignore this email.</p>
+  `;
+
+	return baseEmailTemplate(
+		"Confirm Your New Email Address",
+		content,
+		"Please confirm your new email address for your Retrospend account.",
+	);
+}
+
+/**
+ * Generates a security alert email sent to the OLD email address when an email change is requested.
+ */
+export function getEmailChangeAlertTemplate(
+	revertUrl: string,
+	newEmail: string,
+) {
+	const content = `
+    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">Security Alert</p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
+      A request was made to change your Retrospend account email to <strong>${escapeHtml(newEmail)}</strong>.
+    </p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
+      If this was you, no action is needed. The change will take effect once the new email is verified.
+    </p>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 16px 20px; background-color: ${colors.warningBg}; border: 1px solid ${colors.warningBorder}; border-radius: 8px;">
+          <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: ${colors.warningText};">Didn't request this change?</p>
+          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: ${colors.warningText};">
+            If you didn't request this, click the button below immediately to cancel the change and secure your account. We recommend resetting your password afterwards.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 8px 0 32px 0;">
+          <a href="${escapeHtml(revertUrl)}" style="display: inline-block; padding: 14px 32px; background-color: #dc2626; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Cancel Email Change</a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted};">
+      If the button doesn't work, copy and paste this link into your browser:
+    </p>
+    <p style="margin: 0; font-size: 13px; word-break: break-all;">
+      <a href="${escapeHtml(revertUrl)}" style="color: ${colors.primary}; text-decoration: underline;">${escapeHtml(revertUrl)}</a>
+    </p>
+  `;
+
+	return baseEmailTemplate(
+		"Security Alert: Email Change Requested",
+		content,
+		"Someone requested to change your Retrospend account email. If this wasn't you, take action immediately.",
+	);
+}
+
+/**
+ * Generates a feedback notification email for admins.
+ */
+export function getFeedbackNotificationTemplate(
+	userName: string,
+	message: string,
+	pageUrl: string,
+	timestamp: string,
+) {
+	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
+	const adminUrl = appUrl ? `${appUrl}/admin` : null;
+
+	const content = `
+    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">New Feedback Received</p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
+      <strong>${escapeHtml(userName)}</strong> submitted feedback:
+    </p>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 16px 20px; background-color: #f4f4f5; border: 1px solid ${colors.border}; border-radius: 8px;">
+          <p style="margin: 0; font-size: 14px; line-height: 1.6; color: ${colors.textBase}; white-space: pre-wrap;">${escapeHtml(message)}</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 4px 0; font-size: 13px; color: ${colors.textMuted};">Page: ${escapeHtml(pageUrl)}</p>
+    <p style="margin: 0 0 24px 0; font-size: 13px; color: ${colors.textMuted};">Time: ${escapeHtml(timestamp)}</p>
+
+    ${
+			adminUrl
+				? `<table width="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 8px 0 16px 0;">
+          <a href="${escapeHtml(adminUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">View in Admin Panel</a>
+        </td>
+      </tr>
+    </table>`
+				: ""
+		}
+  `;
+
+	return baseEmailTemplate(
+		`New feedback from ${userName}`,
+		content,
+		`${userName} submitted feedback: ${message.slice(0, 100)}`,
 	);
 }
 

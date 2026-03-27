@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { FeedbackButton } from "~/components/feedback-button";
+import { NotificationBell } from "~/components/notification-bell";
 import { Separator } from "~/components/ui/separator";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 
@@ -21,7 +23,11 @@ export function SiteHeader({ title, actions }: SiteHeaderProps) {
 				) : (
 					title
 				)}
-				<div className="ml-auto flex items-center gap-2">{actions}</div>
+				<div className="ml-auto flex items-center gap-2">
+					{actions}
+					<FeedbackButton />
+					<NotificationBell />
+				</div>
 			</div>
 		</header>
 	);

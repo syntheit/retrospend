@@ -85,7 +85,7 @@ export function WealthHistoryChart({
 					<CardDescription>Trend over time</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center justify-center py-12">
-					<TrendingUp className="h-12 w-12 text-muted-foreground/50" />
+					<TrendingUp aria-hidden="true" className="h-12 w-12 text-muted-foreground/50" />
 					<h3 className="mt-4 font-medium text-lg">No history data yet</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">
 						Start tracking your net worth over time to see historical trends.
@@ -135,8 +135,10 @@ export function WealthHistoryChart({
 			</CardHeader>
 			<CardContent>
 				<ChartContainer
-					className="aspect-auto h-[300px] w-full"
+					aria-label={`Net worth history chart showing trend over time with ${data.length} data points`}
+					className="aspect-auto h-[220px] sm:h-[300px] w-full"
 					config={chartConfig}
+					role="img"
 				>
 					<AreaChart
 						data={data}
@@ -196,7 +198,7 @@ export function WealthHistoryChart({
 													className="h-2 w-2 rounded-full"
 													style={{ backgroundColor: item.color }}
 												/>
-												<span className="font-bold text-[10px] text-muted-foreground uppercase tracking-wider">
+												<span className="font-bold text-[10px] text-muted-foreground tracking-wide">
 													{chartConfig[name as keyof typeof chartConfig]
 														?.label || name}
 												</span>

@@ -2,13 +2,12 @@ import {
 	eachDayOfInterval,
 	endOfMonth,
 	endOfWeek,
-	getDay,
-	isSameDay,
 	isSameMonth,
 	startOfMonth,
 	startOfWeek,
 } from "date-fns";
 import { useMemo } from "react";
+import { isProjectedOnDate } from "~/lib/recurring";
 import type { RecurringTemplate } from "~/types/recurring";
 
 export interface CalendarDay {
@@ -34,30 +33,9 @@ export function useRecurringCalendar(
 
 		return days.map((date): CalendarDay => {
 			const dayTemplates =
-				templates?.filter((template) => {
-					const dueDate = new Date(template.nextDueDate);
-
-					// Precise check: is it actually due on this literal date?
-					if (isSameDay(dueDate, date)) return true;
-
-					// Projection logic (matching current component behavior)
-					// This allows the calendar to show recurring events in future/past months
-					const frequency = template.frequency;
-					if (frequency === "MONTHLY") {
-						return dueDate.getDate() === date.getDate();
-					}
-					if (frequency === "WEEKLY") {
-						return getDay(dueDate) === getDay(date);
-					}
-					if (frequency === "YEARLY") {
-						return (
-							dueDate.getDate() === date.getDate() &&
-							dueDate.getMonth() === date.getMonth()
-						);
-					}
-
-					return false;
-				}) ?? [];
+				templates?.filter((template) =>
+					isProjectedOnDate(template.frequency, template.nextDueDate, date),
+				) ?? [];
 
 			return {
 				date,

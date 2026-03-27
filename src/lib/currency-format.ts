@@ -1,4 +1,46 @@
-import { CURRENCIES } from "./currencies";
+import { CURRENCIES, CRYPTO_CURRENCIES } from "./currencies";
+
+/** Stablecoin tickers that should use 2 decimals instead of 8. */
+const STABLECOINS = ["USDC", "USDT", "DAI", "BUSD"] as const;
+
+/**
+ * Returns the appropriate decimal precision for a currency.
+ * Crypto: 8 (stablecoins: 2). Smart no-decimal fiat (JPY, KRW): 0. Default fiat: 2.
+ */
+export function getDecimalDigits(currency: string, smart = true): number {
+	const code = currency.toUpperCase();
+	if (isCrypto(code)) {
+		return (STABLECOINS as readonly string[]).includes(code) ? 2 : 8;
+	}
+	if (smart && SMART_NO_DECIMAL_CURRENCIES.includes(code)) return 0;
+	return CURRENCIES[code as keyof typeof CURRENCIES]?.decimal_digits ?? 2;
+}
+
+/**
+ * Formats a number with thousands separators and fixed decimals.
+ * Symbol-free — use for input formatting and display-only numbers.
+ */
+export function formatNumber(value: number, decimals = 2): string {
+	return new Intl.NumberFormat("en-US", {
+		minimumFractionDigits: decimals,
+		maximumFractionDigits: decimals,
+	}).format(value);
+}
+
+/**
+ * Formats a number as a percentage string, e.g. "12.3%".
+ */
+export function formatPercent(value: number, decimals = 1): string {
+	return `${formatNumber(value, decimals)}%`;
+}
+
+/**
+ * Strips commas from a formatted number string and parses to float.
+ * Returns NaN for empty/invalid strings (caller should check with isNaN).
+ */
+export function parseFormattedNumber(formatted: string): number {
+	return parseFloat(formatted.replace(/,/g, ""));
+}
 
 export function getCurrencySymbol(
 	currency: string,
@@ -29,9 +71,12 @@ export function getCurrencySymbolWithPreference(
 }
 
 export function getCurrencyName(currency: string): string {
-	const currencyData =
-		CURRENCIES[currency.toUpperCase() as keyof typeof CURRENCIES];
-	return currencyData?.name || currency.toUpperCase();
+	const code = currency.toUpperCase();
+	const fiatData = CURRENCIES[code as keyof typeof CURRENCIES];
+	if (fiatData) return fiatData.name;
+	const cryptoData = CRYPTO_CURRENCIES[code as keyof typeof CRYPTO_CURRENCIES];
+	if (cryptoData) return cryptoData.name;
+	return code;
 }
 
 /**
@@ -53,10 +98,6 @@ export const SMART_NO_DECIMAL_CURRENCIES = [
 ];
 
 /**
- * Formats a currency amount using proper Intl.NumberFormat with currency style.
- * Automatically handles symbols, locale, and decimal digits based on currency.
- */
-/**
  * Major cryptocurrencies that require special "Human Price" correction logic.
  */
 export const MAJOR_CRYPTOS = [
@@ -75,12 +116,11 @@ export const isMajorCrypto = (currency: string) =>
 	(MAJOR_CRYPTOS as readonly string[]).includes(currency.toUpperCase());
 
 /**
- * Detects if a currency code is likely a cryptocurrency.
- * Currently checks if it's NOT in our list of standard fiat currencies.
+ * Detects if a currency code is a known cryptocurrency.
  */
 export function isCrypto(currency: string): boolean {
 	const code = currency.toUpperCase();
-	return !CURRENCIES[code as keyof typeof CURRENCIES];
+	return code in CRYPTO_CURRENCIES;
 }
 
 /**

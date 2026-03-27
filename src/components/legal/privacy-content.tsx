@@ -13,7 +13,7 @@ export function PrivacyContent() {
 				<CardTitle className="font-bold text-3xl">Privacy Policy</CardTitle>
 				<CardDescription>Effective Date: March 4, 2026</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-6 text-stone-700 dark:text-stone-300">
+			<CardContent className="space-y-6 text-muted-foreground">
 				<p>
 					This policy explains how Daniel Miller (&ldquo;we,&rdquo;
 					&ldquo;us&rdquo;) collects, uses, and protects your information when
@@ -21,14 +21,13 @@ export function PrivacyContent() {
 				</p>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						1. What We Collect
 					</h2>
 					<ul className="list-disc space-y-1 pl-6">
 						<li>
-							<strong>Account information:</strong> Your email address and
-							basic profile information, used for login and service
-							notifications.
+							<strong>Account information:</strong> Your email address and basic
+							profile information, used for login and service notifications.
 						</li>
 						<li>
 							<strong>Financial data:</strong> Transactions, budgets, and
@@ -39,18 +38,18 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						2. No Tracking
 					</h2>
 					<p>
-						We do not track you. No third-party analytics, no tracking
-						cookies, no ad pixels. The only cookies we use are session tokens
-						required to keep you logged in.
+						We do not track you. No third-party analytics, no tracking cookies,
+						no ad pixels. The only cookies we use are session tokens required to
+						keep you logged in.
 					</p>
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						3. How We Use and Store Your Data
 					</h2>
 					<p className="mb-2">
@@ -65,7 +64,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						4. Third-Party Providers
 					</h2>
 					<p className="mb-2">
@@ -82,17 +81,17 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						5. Open Source
 					</h2>
 					<p>
 						Retrospend is open-source software. You can review exactly how your
 						data is handled by inspecting the{" "}
 						<a
-							className="text-stone-900 underline underline-offset-4 dark:text-stone-50"
+							className="text-foreground underline underline-offset-4"
 							href="https://github.com/syntheit/retrospend"
-							target="_blank"
 							rel="noopener noreferrer"
+							target="_blank"
 						>
 							source code
 						</a>
@@ -101,14 +100,14 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						6. Your Rights
 					</h2>
 					<p className="mb-2">You can, at any time:</p>
 					<ul className="list-disc space-y-1 pl-6">
 						<li>
-							<strong>Access</strong> all data Retrospend holds about you
-							within the app.
+							<strong>Access</strong> all data Retrospend holds about you within
+							the app.
 						</li>
 						<li>
 							<strong>Export</strong> your financial data in CSV format using
@@ -126,18 +125,18 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						7. Security
 					</h2>
 					<p>
-						We use industry-standard measures to protect your data. No
-						internet service is 100% secure, and we cannot guarantee absolute
-						security. You are responsible for keeping your password safe.
+						We use industry-standard measures to protect your data. No internet
+						service is 100% secure, and we cannot guarantee absolute security.
+						You are responsible for keeping your password safe.
 					</p>
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						8. Children
 					</h2>
 					<p>
@@ -147,7 +146,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						9. Changes
 					</h2>
 					<p>
@@ -157,13 +156,13 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						10. Contact
 					</h2>
 					<p>
 						Questions about your privacy? Reach us at{" "}
 						<a
-							className="text-stone-900 underline underline-offset-4 dark:text-stone-50"
+							className="text-foreground underline underline-offset-4"
 							href="mailto:support@retrospend.app"
 						>
 							support@retrospend.app

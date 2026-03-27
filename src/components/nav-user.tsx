@@ -1,14 +1,22 @@
 "use client";
 
 import {
+	IconBook,
 	IconDotsVertical,
 	IconLogout,
+	IconMessageReport,
+	IconSparkles,
 	IconSettings,
-	IconUserCircle,
+	IconSpeakerphone,
+	IconTerminal2,
+	IconTicket,
+	IconUser,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { useState } from "react";
+import { FeedbackModal } from "~/components/feedback-modal";
+import { UserAvatar } from "~/components/ui/user-avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -27,6 +35,7 @@ import {
 import { useSession } from "~/hooks/use-session";
 import { authClient } from "~/lib/auth-client";
 import { handleError } from "~/lib/handle-error";
+import { api } from "~/trpc/react";
 
 // Extend the session user type to include additional fields
 type ExtendedUser = NonNullable<
@@ -36,23 +45,6 @@ type ExtendedUser = NonNullable<
 	username: string;
 	isActive: boolean;
 };
-
-function getUserInitials(name: string): string {
-	if (!name || name.trim() === "") return "U";
-
-	const nameParts = name.trim().split(/\s+/).filter(Boolean);
-	if (nameParts.length === 0) return "U";
-	if (nameParts.length === 1) {
-		const firstPart = nameParts[0];
-		return firstPart ? firstPart.charAt(0).toUpperCase() : "U";
-	}
-
-	// Return first letter of first name and first letter of last name
-	const firstName = nameParts[0];
-	const lastName = nameParts[nameParts.length - 1];
-	if (!firstName || !lastName) return "U";
-	return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-}
 
 export function NavUser({
 	user,
@@ -66,9 +58,23 @@ export function NavUser({
 	const { isMobile } = useSidebar();
 	const { data: session } = useSession();
 	const router = useRouter();
-	const userInitials = getUserInitials(user.name);
+	const [feedbackOpen, setFeedbackOpen] = useState(false);
+	const { data: avatarData } = api.profile.getMyAvatar.useQuery();
+	const { data: settings } = api.settings.getGeneral.useQuery();
+	const { data: flags } = api.system.getFeatureFlags.useQuery();
+	const avatarUrl = avatarData?.avatarUrl ?? user.avatar ?? null;
 	const extendedUser = session?.user as ExtendedUser;
 	const isAdmin = extendedUser?.role === "ADMIN";
+	const feedbackEnabled = flags?.feedbackEnabled ?? false;
+
+	const [dropdownOpen, setDropdownOpen] = useState(false);
+
+	const { data: feedbackCountData } =
+		api.feedback.unreadCount.useQuery(undefined, {
+			enabled: isAdmin && feedbackEnabled,
+			refetchInterval: 60_000,
+		});
+	const unreadFeedback = feedbackCountData?.count ?? 0;
 
 	const handleLogout = async () => {
 		try {
@@ -82,18 +88,24 @@ export function NavUser({
 	return (
 		<SidebarMenu>
 			<SidebarMenuItem>
-				<DropdownMenu>
+				<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
 					<DropdownMenuTrigger asChild>
 						<SidebarMenuButton
-							className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+							aria-label="User menu"
+							className="cursor-pointer focus-visible:ring-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 							size="lg"
+							onContextMenu={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								setDropdownOpen((prev) => !prev);
+							}}
 						>
-							<Avatar className="h-8 w-8 rounded-lg grayscale">
-								<AvatarImage alt={user.name} src={user.avatar} />
-								<AvatarFallback className="rounded-lg">
-									{userInitials}
-								</AvatarFallback>
-							</Avatar>
+							<UserAvatar
+								avatarUrl={avatarUrl}
+								className="rounded-lg"
+								name={user.name}
+								size="sm"
+							/>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">{user.name}</span>
 								<span className="truncate text-muted-foreground text-xs">
@@ -111,12 +123,12 @@ export function NavUser({
 					>
 						<DropdownMenuLabel className="p-0 font-normal">
 							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-								<Avatar className="h-8 w-8 rounded-lg">
-									<AvatarImage alt={user.name} src={user.avatar} />
-									<AvatarFallback className="rounded-lg">
-										{userInitials}
-									</AvatarFallback>
-								</Avatar>
+								<UserAvatar
+									avatarUrl={avatarUrl}
+									className="rounded-lg"
+									name={user.name}
+									size="sm"
+								/>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.name}</span>
 									<span className="truncate text-muted-foreground text-xs">
@@ -128,28 +140,85 @@ export function NavUser({
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild>
-								<a className="cursor-pointer" href="/app/account">
-									<IconUserCircle />
-									Account
-								</a>
+								<Link
+									className="cursor-pointer"
+									href={`/u/${user.username}`}
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									<IconUser />
+									Your profile
+								</Link>
 							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link className="cursor-pointer" href="/settings">
+									<IconSettings />
+									Settings
+								</Link>
+							</DropdownMenuItem>
+							{settings?.allowAllUsersToGenerateInvites && (
+								<DropdownMenuItem asChild>
+									<Link className="cursor-pointer" href="/invite-codes">
+										<IconTicket />
+										Invite Codes
+									</Link>
+								</DropdownMenuItem>
+							)}
 							{isAdmin && (
 								<DropdownMenuItem asChild>
-									<Link className="cursor-pointer" href="/app/admin">
-										<IconSettings />
+									<Link className="cursor-pointer" href="/admin">
+										<IconTerminal2 />
 										Admin Panel
+									</Link>
+								</DropdownMenuItem>
+							)}
+							{isAdmin && feedbackEnabled && (
+								<DropdownMenuItem asChild>
+									<Link className="cursor-pointer" href="/feedback">
+										<IconMessageReport />
+										View Feedback
+										{unreadFeedback > 0 && (
+											<span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 font-semibold tabular-nums text-[10px] text-white leading-none">
+												{unreadFeedback > 99 ? "99+" : unreadFeedback}
+											</span>
+										)}
 									</Link>
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+						{feedbackEnabled && (
+							<DropdownMenuItem
+								className="cursor-pointer"
+								onClick={() => setFeedbackOpen(true)}
+							>
+								<IconSpeakerphone />
+								Feedback
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem asChild>
+							<Link className="cursor-pointer" href="/releases?from=app" target="_blank">
+								<IconSparkles />
+								Release Notes
+							</Link>
+						</DropdownMenuItem>
+						<DropdownMenuItem asChild>
+							<Link className="cursor-pointer" href="/docs?from=app" target="_blank">
+								<IconBook />
+								Documentation
+							</Link>
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem className="cursor-pointer" variant="destructive" onClick={handleLogout}>
 							<IconLogout />
 							Log out
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
+			{feedbackEnabled && (
+				<FeedbackModal onOpenChange={setFeedbackOpen} open={feedbackOpen} />
+			)}
 		</SidebarMenu>
 	);
 }

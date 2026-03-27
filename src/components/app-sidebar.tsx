@@ -1,17 +1,15 @@
 "use client";
 
 import {
-	IconBriefcase,
-	IconCalendarClock,
-	// 	IconChartBar,
-	IconCurrencyDollar,
+	IconWallet,
+	IconRepeat,
+	IconCoins,
 	IconFileImport,
-	// 	IconFolder,
-	IconHome,
+	IconFolder,
+	IconLayoutDashboard,
 	IconPigMoney,
-	IconSettings,
-	IconTable,
-	// 	IconUsersGroup,
+	IconReceipt,
+	IconUsersGroup,
 } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -43,71 +41,61 @@ const navMainCategories = [
 		label: "Core",
 		items: [
 			{
-				title: "Overview",
-				url: "/app",
-				icon: IconHome,
+				title: "Dashboard",
+				url: "/dashboard",
+				icon: IconLayoutDashboard,
 			},
 			{
 				title: "Transactions",
-				url: "/app/transactions",
-				icon: IconTable,
+				url: "/transactions",
+				icon: IconReceipt,
 			},
 			{
 				title: "Budget",
-				url: "/app/budget",
+				url: "/budget",
 				icon: IconPigMoney,
 			},
 			{
 				title: "Recurring",
-				url: "/app/recurring",
-				icon: IconCalendarClock,
+				url: "/recurring",
+				icon: IconRepeat,
 			},
 		],
 	},
-	/*
 	{
-		label: "Workspaces",
+		label: "Shared",
 		items: [
 			{
-				title: "Shared Hub",
+				title: "People",
+				url: "/people",
 				icon: IconUsersGroup,
-				isPlaceholder: true,
 			},
 			{
 				title: "Projects",
+				url: "/projects",
 				icon: IconFolder,
-				isPlaceholder: true,
 			},
 		],
 	},
-*/
 	{
 		label: "Tools",
 		items: [
 			{
 				title: "Import",
-				url: "/app/import",
+				url: "/import",
 				icon: IconFileImport,
 			},
 			{
 				title: "Wealth",
-				url: "/app/wealth",
-				icon: IconBriefcase,
+				url: "/wealth",
+				icon: IconWallet,
 			},
 			{
-				title: "Exchange Rates",
-				url: "/app/exchange-rates",
-				icon: IconCurrencyDollar,
+				title: "Currencies",
+				url: "/currencies",
+				icon: IconCoins,
 			},
 		],
-	},
-];
-
-const navSecondary = [
-	{
-		title: "Settings",
-		url: "/app/settings",
-		icon: IconSettings,
 	},
 ];
 
@@ -144,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain categories={navMainCategories} />
-				<NavSecondary className="mt-auto" items={navSecondary} />
+				<NavSecondary className="mt-auto" items={[]} />
 			</SidebarContent>
 			<SidebarFooter className="pt-1 pb-[env(safe-area-inset-bottom)]">
 				<SidebarMenu>

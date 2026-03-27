@@ -166,7 +166,7 @@ export function MonthlyPacingChart({
 					<p
 						className={`font-medium text-sm ${
 							comparison.difference < 0
-								? "text-green-600"
+								? "text-emerald-600"
 								: comparison.difference > 0
 									? "text-red-600"
 									: "text-muted-foreground"
@@ -177,7 +177,7 @@ export function MonthlyPacingChart({
 				</div>
 			</div>
 
-			<div className="h-[300px] w-full min-w-0">
+			<div className="h-[220px] sm:h-[300px] w-full min-w-0" role="img" aria-label={`Spending over time chart. ${comparison.status}`}>
 				<ChartContainer config={chartConfig}>
 					<LineChart
 						data={chartData}

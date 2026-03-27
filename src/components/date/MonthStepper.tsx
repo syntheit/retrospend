@@ -149,7 +149,7 @@ export function MonthStepper({
 			<Popover onOpenChange={handleOpenChange} open={open}>
 				<PopoverTrigger asChild>
 					<Button
-						className="min-w-[100px] text-sm uppercase tabular-nums tracking-wide"
+						className="min-w-[100px] text-sm tabular-nums tracking-wide"
 						variant="ghost"
 					>
 						{format(value, "MMM yyyy")}

@@ -117,20 +117,28 @@ export function CurrencyPicker({
 
 	const renderTriggerContent = () => {
 		if (!selectedCurrency) {
-			return triggerDisplay === "full" ? placeholder : value ?? "—";
+			return triggerDisplay === "full" ? placeholder : (value ?? "-");
 		}
 		switch (triggerDisplay) {
 			case "flag+code":
 				return (
 					<>
-						<CurrencyFlag className="h-4 w-4" currencyCode={selectedCurrency.code} />
+						<CurrencyFlag
+							className="h-4 w-4"
+							currencyCode={selectedCurrency.code}
+						/>
 						<span className="font-medium text-sm">{selectedCurrency.code}</span>
 					</>
 				);
 			case "code":
 				return <span>{selectedCurrency.code}</span>;
 			case "flag":
-				return <CurrencyFlag className="h-5 w-5" currencyCode={selectedCurrency.code} />;
+				return (
+					<CurrencyFlag
+						className="h-5 w-5"
+						currencyCode={selectedCurrency.code}
+					/>
+				);
 			default:
 				return (
 					<span className="flex min-w-0 flex-1 items-center gap-2">
@@ -189,22 +197,26 @@ export function CurrencyPicker({
 			<PopoverTrigger asChild>
 				<Button
 					aria-expanded={open}
+					aria-label="Select currency"
 					className={cn(
-						triggerDisplay === "full" ? "w-full justify-between" : "justify-center gap-1.5",
+						triggerDisplay === "full"
+							? "w-full justify-between"
+							: "justify-center gap-1.5",
 						triggerClassName,
 					)}
 					role="combobox"
 					variant={triggerVariant}
 				>
 					{renderTriggerContent()}
-					{triggerDisplay !== "flag" && (
-						triggerDisplay === "full"
-							? <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-							: <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
-					)}
+					{triggerDisplay !== "flag" &&
+						(triggerDisplay === "full" ? (
+							<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+						) : (
+							<ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+						))}
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent align="start" className="w-72 p-0">
+			<PopoverContent align="start" className="w-[min(18rem,calc(100vw-3rem))] p-0">
 				<div className="p-2">
 					<Input
 						className="mb-2"
@@ -228,7 +240,7 @@ export function CurrencyPicker({
 							)}
 							{cryptoCurrencies.length > 0 && (
 								<>
-									<div className="bg-muted/50 px-3 py-1.5 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+									<div className="bg-muted/50 px-3 py-1.5 font-semibold text-muted-foreground text-xs tracking-wide">
 										Cryptocurrency
 									</div>
 									{cryptoCurrencies.map(renderCurrencyItem)}

@@ -2,12 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { fromUSD, toUSD } from "~/server/currency";
+import { RateCache } from "~/server/services/rate-cache";
 import { getBestExchangeRate } from "./shared-currency";
 
 // Helper to calculate next due date based on frequency
 function calculateNextDueDate(
 	currentDate: Date,
-	frequency: "WEEKLY" | "MONTHLY" | "YEARLY",
+	frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY",
 ): Date {
 	const next = new Date(currentDate);
 
@@ -15,8 +17,14 @@ function calculateNextDueDate(
 		case "WEEKLY":
 			next.setDate(next.getDate() + 7);
 			break;
+		case "BIWEEKLY":
+			next.setDate(next.getDate() + 14);
+			break;
 		case "MONTHLY":
 			next.setMonth(next.getMonth() + 1);
+			break;
+		case "QUARTERLY":
+			next.setMonth(next.getMonth() + 3);
 			break;
 		case "YEARLY":
 			next.setFullYear(next.getFullYear() + 1);
@@ -63,54 +71,49 @@ export const recurringRouter = createTRPCRouter({
 			});
 			const homeCurrency = user?.homeCurrency ?? "USD";
 
-			// Enrich templates with amount in home currency
-			const enrichedTemplates = await Promise.all(
-				templates.map(async (t) => {
-					let amountInHomeCurrency = Number(t.amount);
-					let exchangeRate = 1;
+			// Batch-fetch all needed exchange rates in one pass
+			const currenciesNeeded = new Set<string>();
+			for (const t of templates) {
+				if (t.currency !== homeCurrency) {
+					currenciesNeeded.add(t.currency);
+					if (homeCurrency !== "USD") currenciesNeeded.add(homeCurrency);
+				}
+			}
 
-					if (t.currency !== homeCurrency) {
-						// 1. Convert to USD first
-						const bestRateFrom = await getBestExchangeRate(
-							db,
-							t.currency,
-							new Date(),
-						);
+			const rateCache = new RateCache(db);
+			const rateMap = await rateCache.getMany([...currenciesNeeded], new Date());
 
-						let usdValue = Number(t.amount);
-						if (t.currency !== "USD" && bestRateFrom) {
-							exchangeRate = bestRateFrom.rate;
-							usdValue =
-								bestRateFrom.type === "crypto"
-									? Number(t.amount) * bestRateFrom.rate
-									: Number(t.amount) / bestRateFrom.rate;
-						}
+			const enrichedTemplates = templates.map((t) => {
+				let amountInHomeCurrency = Number(t.amount);
+				let exchangeRate = 1;
 
-						// 2. Convert from USD to homeCurrency
-						if (homeCurrency === "USD") {
-							amountInHomeCurrency = usdValue;
-						} else {
-							const bestRateTo = await getBestExchangeRate(
-								db,
-								homeCurrency,
-								new Date(),
-							);
-							if (bestRateTo) {
-								// Home currency is always fiat in this app's context for "home"
-								amountInHomeCurrency = usdValue * bestRateTo.rate;
-							} else {
-								amountInHomeCurrency = usdValue; // Fallback
-							}
-						}
+				if (t.currency !== homeCurrency) {
+					const bestRateFrom = rateMap.get(t.currency);
+
+					let usdValue = Number(t.amount);
+					if (t.currency !== "USD" && bestRateFrom) {
+						exchangeRate = bestRateFrom.rate;
+						usdValue = toUSD(Number(t.amount), t.currency, bestRateFrom.rate);
 					}
 
-					return {
-						...t,
-						amountInHomeCurrency,
-						exchangeRate,
-					};
-				}),
-			);
+					if (homeCurrency === "USD") {
+						amountInHomeCurrency = usdValue;
+					} else {
+						const bestRateTo = rateMap.get(homeCurrency);
+						if (bestRateTo) {
+							amountInHomeCurrency = fromUSD(usdValue, homeCurrency, bestRateTo.rate);
+						} else {
+							amountInHomeCurrency = usdValue;
+						}
+					}
+				}
+
+				return {
+					...t,
+					amountInHomeCurrency,
+					exchangeRate,
+				};
+			});
 
 			return enrichedTemplates;
 		}),
@@ -169,7 +172,7 @@ export const recurringRouter = createTRPCRouter({
 				amount: z.number().positive(),
 				currency: z.string().length(3).default("USD"),
 				categoryId: z.string().cuid().optional(),
-				frequency: z.enum(["WEEKLY", "MONTHLY", "YEARLY"]),
+				frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]),
 				nextDueDate: z.date(),
 				websiteUrl: z.string().url().max(512).optional(),
 				paymentSource: z.string().min(1).max(191).optional(),
@@ -227,7 +230,7 @@ export const recurringRouter = createTRPCRouter({
 				amount: z.number().positive().optional(),
 				currency: z.string().length(3).optional(),
 				categoryId: z.string().cuid().nullable().optional(),
-				frequency: z.enum(["WEEKLY", "MONTHLY", "YEARLY"]).optional(),
+				frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]).optional(),
 				nextDueDate: z.date().optional(),
 				websiteUrl: z.string().url().max(512).nullable().optional(),
 				paymentSource: z.string().min(1).max(191).nullable().optional(),
@@ -391,10 +394,7 @@ export const recurringRouter = createTRPCRouter({
 				);
 				if (bestRate) {
 					exchangeRate = bestRate.rate;
-					amountInUSD =
-						bestRate.type === "crypto"
-							? Number(template.amount) * exchangeRate
-							: Number(template.amount) / exchangeRate;
+					amountInUSD = toUSD(Number(template.amount), template.currency, exchangeRate);
 				}
 			}
 

@@ -4,9 +4,10 @@ import { env } from "~/env";
 import { parseRawCsv } from "~/lib/csv";
 import { parseDateOnly } from "~/lib/date";
 import { generateId } from "~/lib/id";
-import type { Prisma, PrismaClient } from "~prisma";
-import { CsvService } from "./csv.service";
+import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
 import { recordTokenUsage, resolveAiAccess } from "./ai-access.service";
+import { CsvService } from "./csv.service";
+import { getAppSettings } from "./settings";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -40,6 +41,8 @@ export interface FinalizeImportInput {
 
 const MAX_PENDING_JOBS = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_COMPLETED_JOBS = 10; // Max completed/cancelled/failed jobs to keep per user
+const COMPLETED_JOB_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── Service ───────────────────────────────────────────────────────────
 
@@ -93,6 +96,11 @@ export class ImportQueueService {
 			console.error(`Queue processing error for user ${userId}:`, error);
 		});
 
+		// Clean up old completed/failed/cancelled jobs in the background
+		void this.cleanupOldCompletedJobs(userId).catch((error) => {
+			console.error(`Cleanup error for user ${userId}:`, error);
+		});
+
 		return job;
 	}
 
@@ -100,11 +108,12 @@ export class ImportQueueService {
 	 * Checks if we can start processing a new job (respects global concurrency limit).
 	 */
 	private async canStartProcessing(): Promise<boolean> {
-		const globalProcessingCount = await this.db.importJob.count({
-			where: { status: "PROCESSING" },
-		});
+		const [globalProcessingCount, settings] = await Promise.all([
+			this.db.importJob.count({ where: { status: "PROCESSING" } }),
+			getAppSettings(),
+		]);
 
-		return globalProcessingCount < env.MAX_CONCURRENT_IMPORT_JOBS;
+		return globalProcessingCount < settings.maxConcurrentImportJobs;
 	}
 
 	/**
@@ -414,13 +423,8 @@ export class ImportQueueService {
 			throw new Error("No file data found for bank statement job");
 		}
 
-		// Check importer is configured
-		const importerUrl = env.IMPORTER_URL;
-		if (!importerUrl) {
-			throw new Error(
-				"Bank statement import is not configured on this instance",
-			);
-		}
+		const importerUrl = env.SIDECAR_URL;
+		if (!importerUrl) throw new Error("Import service URL (SIDECAR_URL) is not configured");
 
 		const apiKey = env.WORKER_API_KEY;
 		if (!apiKey) {
@@ -480,11 +484,12 @@ export class ImportQueueService {
 			select: { aiMode: true },
 		});
 		const requestedMode = user?.aiMode ?? "LOCAL";
-		const aiAccess = await resolveAiAccess(
-			this.db,
-			job.userId,
-			requestedMode,
-		);
+		const aiAccess = await resolveAiAccess(this.db, job.userId, requestedMode);
+
+		if (!aiAccess.allowed) {
+			throw new Error(aiAccess.reason ?? "AI token quota exceeded");
+		}
+
 		const provider =
 			aiAccess.effectiveMode === "EXTERNAL" ? "openrouter" : "local";
 
@@ -612,9 +617,16 @@ export class ImportQueueService {
 				},
 			});
 
-			// Record token usage if external provider was used
-			if (provider === "openrouter" && totalTokensUsed > 0) {
-				await recordTokenUsage(this.db, job.userId, totalTokensUsed);
+			// Record token usage for both local and external providers
+			if (totalTokensUsed > 0) {
+				const providerType =
+					provider === "openrouter" ? "external" : "local";
+				await recordTokenUsage(
+					this.db,
+					job.userId,
+					totalTokensUsed,
+					providerType,
+				);
 			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
@@ -764,6 +776,38 @@ export class ImportQueueService {
 	/**
 	 * Lists jobs for a user with optional filtering.
 	 */
+	/**
+	 * Deletes old completed/failed/cancelled jobs for a user.
+	 * Keeps at most MAX_COMPLETED_JOBS and removes any older than COMPLETED_JOB_TTL_MS.
+	 */
+	private async cleanupOldCompletedJobs(userId: string) {
+		const terminalStatuses: ImportJobStatus[] = ["COMPLETED", "FAILED", "CANCELLED"];
+		const cutoff = new Date(Date.now() - COMPLETED_JOB_TTL_MS);
+
+		// Delete jobs older than the TTL
+		await this.db.importJob.deleteMany({
+			where: {
+				userId,
+				status: { in: terminalStatuses },
+				createdAt: { lt: cutoff },
+			},
+		});
+
+		// If still over the cap, delete the oldest ones beyond MAX_COMPLETED_JOBS
+		const remaining = await this.db.importJob.findMany({
+			where: { userId, status: { in: terminalStatuses } },
+			orderBy: { createdAt: "desc" },
+			select: { id: true },
+		});
+
+		if (remaining.length > MAX_COMPLETED_JOBS) {
+			const toDelete = remaining.slice(MAX_COMPLETED_JOBS).map((j) => j.id);
+			await this.db.importJob.deleteMany({
+				where: { id: { in: toDelete } },
+			});
+		}
+	}
+
 	async listJobs(
 		userId: string,
 		options?: {
@@ -773,11 +817,21 @@ export class ImportQueueService {
 	) {
 		const { limit = 50, includeCompleted = true } = options ?? {};
 
+		const cutoff = new Date(Date.now() - COMPLETED_JOB_TTL_MS);
+
 		const jobs = await this.db.importJob.findMany({
 			where: {
 				userId,
 				...(includeCompleted
-					? {}
+					? {
+							// Exclude terminal jobs older than the TTL
+							NOT: {
+								AND: [
+									{ status: { in: ["COMPLETED", "FAILED", "CANCELLED"] } },
+									{ createdAt: { lt: cutoff } },
+								],
+							},
+						}
 					: { status: { notIn: ["COMPLETED", "CANCELLED"] } }),
 			},
 			orderBy: { createdAt: "desc" },
@@ -827,10 +881,11 @@ export class ImportQueueService {
 				this.db.importJob.count({ where: { status: "REVIEWING" } }),
 			]);
 
+		const settings = await getAppSettings();
 		return {
-			maxConcurrent: env.MAX_CONCURRENT_IMPORT_JOBS,
+			maxConcurrent: settings.maxConcurrentImportJobs,
 			currentProcessing: totalProcessing,
-			availableSlots: env.MAX_CONCURRENT_IMPORT_JOBS - totalProcessing,
+			availableSlots: settings.maxConcurrentImportJobs - totalProcessing,
 			totalQueued,
 			totalReadyForReview,
 			totalReviewing,

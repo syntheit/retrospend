@@ -7,15 +7,17 @@ import { useExpenseModal } from "~/components/expense-modal-provider";
 import { useCurrency } from "~/hooks/use-currency";
 import { useSettings } from "~/hooks/use-settings";
 import { resolveCategoryColorValue } from "~/lib/category-colors";
-import { getCurrentFiscalMonth, getFiscalMonthProgress } from "~/lib/fiscal-month";
 import {
 	CHART_CONFIG_DEFAULTS,
 	getCategoryColor,
 	OTHER_COLOR,
 } from "~/lib/chart-theme";
-import { normalizeExpensesFromApi } from "~/lib/utils";
+import {
+	getCurrentFiscalMonth,
+	getFiscalMonthProgress,
+} from "~/lib/fiscal-month";
 import { api, type RouterOutputs } from "~/trpc/react";
-import type { CategorySegment } from "../app/app/(dashboard)/_components/category-donut-legend";
+import type { CategorySegment } from "../app/(dashboard)/_components/category-donut-legend";
 
 export type OverviewStats = RouterOutputs["stats"]["getSummary"] & {
 	overviewStats?: RouterOutputs["dashboard"]["getOverviewStats"];
@@ -30,7 +32,9 @@ export function useOverviewController() {
 	// State
 	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
 	const settingsReady = !!settings;
-	const [selectedMonth, setSelectedMonth] = useState<Date>(() => getCurrentFiscalMonth(new Date(), fiscalStartDay));
+	const [selectedMonth, setSelectedMonth] = useState<Date>(() =>
+		getCurrentFiscalMonth(new Date(), fiscalStartDay),
+	);
 	const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
 	const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
 		new Set(),
@@ -43,7 +47,10 @@ export function useOverviewController() {
 	useEffect(() => {
 		if (settings && !hasSyncedFiscalMonth.current) {
 			hasSyncedFiscalMonth.current = true;
-			const correctMonth = getCurrentFiscalMonth(new Date(), settings.fiscalMonthStartDay ?? 1);
+			const correctMonth = getCurrentFiscalMonth(
+				new Date(),
+				settings.fiscalMonthStartDay ?? 1,
+			);
 			setSelectedMonth(correctMonth);
 		}
 	}, [settings]);
@@ -54,8 +61,20 @@ export function useOverviewController() {
 			{ enabled: settingsReady },
 		);
 
+	const { data: recentActivity, isLoading: isActivityLoading } =
+		api.dashboard.getRecentActivity.useQuery(
+			{ homeCurrency },
+			{ enabled: settingsReady },
+		);
+
+	const { data: dailySpending, isLoading: isHeatmapLoading } =
+		api.dashboard.getDailySpending.useQuery(
+			{ homeCurrency, days: 90 },
+			{ enabled: settingsReady },
+		);
+
 	// Destructure / Map for compatibility with existing logic
-	const expensesData = overviewData?.expenses;
+	const hasExpenses = overviewData?.hasExpenses ?? false;
 	const favoritesData = overviewData?.favorites;
 	const overviewStats = overviewData?.overviewStats;
 	const earliestBudgetMonth = overviewData?.earliestBudgetMonth;
@@ -65,22 +84,13 @@ export function useOverviewController() {
 	const serverTime = overviewData?.serverTime;
 
 	const dataLoading = isOverviewLoading || !settingsReady;
-	const expensesLoading = dataLoading;
-	const favoritesLoading = dataLoading;
-	const statsLoading = dataLoading;
-	const categoriesLoading = dataLoading;
-	const trendLoading = dataLoading;
+	const activityLoading = isActivityLoading || !settingsReady;
+	const heatmapLoading = isHeatmapLoading || !settingsReady;
 
-	const expensesFetched = !!overviewData;
 	const favoritesFetched = !!overviewData;
 
 	// Transformations
 	const categoryClickBehavior = settings?.categoryClickBehavior ?? "toggle";
-
-	const expenses = useMemo(
-		() => normalizeExpensesFromApi(expensesData ?? []),
-		[expensesData],
-	);
 
 	const favoriteRates = useMemo(() => {
 		if (!favoritesData) return [];
@@ -95,74 +105,68 @@ export function useOverviewController() {
 
 	// Use server time as the authoritative "now" to avoid timezone mismatches
 	// Server is in NY timezone, so this ensures consistent date handling
-	const [now, setNow] = useState<Date | null>(null);
-
-	useEffect(() => {
-		if (serverTime) {
-			// Use server time as the reference
-			setNow(new Date(serverTime));
-		} else {
-			// Fallback to client time during initial load
-			setNow(new Date());
-		}
-	}, [serverTime]);
-
-	const safeNow = now ?? new Date();
+	const now = useMemo(
+		() => (serverTime ? new Date(serverTime) : new Date()),
+		[serverTime],
+	);
 
 	const categoryBreakdown = useMemo<CategorySegment[]>(() => {
 		if (!categoryData || categoryData.length === 0) return [];
 
-		// 1. Separate based on hiddenCategories
-		const visibleData = categoryData.filter(
-			(c) => !hiddenCategories.has(c.id ?? ""),
-		);
-		const hiddenData = categoryData.filter((c) =>
-			hiddenCategories.has(c.id ?? ""),
-		);
+		// Single pass: partition into visible and hidden
+		const visibleData: typeof categoryData = [];
+		const hiddenData: typeof categoryData = [];
+		let totalVisible = 0;
 
-		// 2. Identify which visible ones should be "Main" vs "Other"
-		const totalVisible = visibleData.reduce((sum, c) => sum + c.value, 0);
-		const sortedVisible = [...visibleData].sort((a, b) => b.value - a.value);
+		for (const c of categoryData) {
+			if (hiddenCategories.has(c.id ?? "")) {
+				hiddenData.push(c);
+			} else {
+				visibleData.push(c);
+				totalVisible += c.value;
+			}
+		}
 
-		const mainSegments: CategorySegment[] = [];
-		const otherVisibleItems: typeof categoryData = [];
+		// Sort only the visible set (needed for top-6 promotion)
+		visibleData.sort((a, b) => b.value - a.value);
 
-		sortedVisible.forEach((c, index) => {
+		const result: CategorySegment[] = [];
+		let otherValue = 0;
+
+		for (let index = 0; index < visibleData.length; index++) {
+			const c = visibleData[index]!;
 			const percentageOfVisible =
 				totalVisible > 0 ? (c.value / totalVisible) * 100 : 0;
 
-			// DYNAMIC PROMOTION: We check based on the CURRENT visible ranking and new total
 			if (index < 6 && percentageOfVisible >= 3) {
-				mainSegments.push({
+				result.push({
 					key: (c.id ?? c.name).toString().replace(/\s+/g, "-").toLowerCase(),
 					name: c.name,
 					value: c.value,
 					color: resolveCategoryColorValue(c.color) ?? getCategoryColor(index),
 					categoryColor: c.color,
 					categoryId: c.id,
+					icon: c.icon,
 				});
 			} else {
-				otherVisibleItems.push(c);
+				otherValue += c.value;
 			}
-		});
+		}
 
-		const result: CategorySegment[] = [...mainSegments];
-
-		// 3. Add "Other" segment for remaining visible items
-		if (otherVisibleItems.length > 0) {
+		if (otherValue > 0) {
 			result.push({
 				key: "other",
 				name: "Other",
-				value: otherVisibleItems.reduce((sum, c) => sum + c.value, 0),
+				value: otherValue,
 				color: OTHER_COLOR,
 				categoryColor: "stone-700",
 				categoryId: "other",
 			});
 		}
 
-		// 4. Add Hidden Categories back to legend so they can be toggled
-		const sortedHidden = [...hiddenData].sort((a, b) => b.value - a.value);
-		sortedHidden.forEach((c) => {
+		// Add hidden categories back to legend (sorted by value)
+		hiddenData.sort((a, b) => b.value - a.value);
+		for (const c of hiddenData) {
 			result.push({
 				key: (c.id ?? c.name).toString().replace(/\s+/g, "-").toLowerCase(),
 				name: c.name,
@@ -172,7 +176,7 @@ export function useOverviewController() {
 				categoryColor: c.color,
 				categoryId: c.id,
 			});
-		});
+		}
 
 		return result;
 	}, [categoryData, hiddenCategories]);
@@ -208,13 +212,6 @@ export function useOverviewController() {
 		}, {});
 	}, [visibleCategoryBreakdown]);
 
-	const recentExpenses = useMemo(() => {
-		const sorted = [...expenses].sort(
-			(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-		);
-		return sorted.slice(0, 50);
-	}, [expenses]);
-
 	// Actions
 	const toggleCategoryVisibility = (categoryId: string) => {
 		setHiddenCategories((prev) => {
@@ -229,7 +226,7 @@ export function useOverviewController() {
 		if (categoryClickBehavior === "toggle" && segment.categoryId) {
 			toggleCategoryVisibility(segment.categoryId);
 		} else {
-			router.push("/app/transactions");
+			router.push("/transactions");
 		}
 	};
 
@@ -239,6 +236,20 @@ export function useOverviewController() {
 		openNewExpense();
 	};
 
+	const budgetPacing = useMemo(() => {
+		const progress = getFiscalMonthProgress(now, selectedMonth, fiscalStartDay);
+		return {
+			totalBudget: overviewStats?.dailyBudgetPace.totalBudget ?? 0,
+			totalSpent: overviewStats?.dailyBudgetPace.totalSpent ?? 0,
+			variableBudget: overviewStats?.dailyBudgetPace.variableBudget ?? 0,
+			variableSpent: overviewStats?.dailyBudgetPace.variableSpent ?? 0,
+			daysInMonth: progress.daysInPeriod,
+			currentDay: progress.isCurrentPeriod
+				? progress.currentDay
+				: progress.daysInPeriod,
+		};
+	}, [now, selectedMonth, fiscalStartDay, overviewStats]);
+
 	return {
 		state: {
 			selectedMonth,
@@ -246,9 +257,8 @@ export function useOverviewController() {
 			activeSlice,
 			hiddenCategories,
 			now,
-			serverTime: serverTime ? new Date(serverTime) : undefined,
-			isUsingMockExpenses:
-				!expensesFetched || (expensesData?.length ?? 0) === 0,
+			serverTime: serverTime ? now : undefined,
+			isUsingMockExpenses: !overviewData || !hasExpenses,
 			isUsingMockFavorites:
 				!favoritesFetched || (favoritesData?.length ?? 0) === 0,
 		},
@@ -258,33 +268,26 @@ export function useOverviewController() {
 			categoryBreakdown,
 			visibleCategoryBreakdown,
 			visibleTotal,
-			recentExpenses,
+			recentActivity: recentActivity ?? [],
 			favoriteRates,
 			dailyTrend: trendData ?? [],
+			dailySpending: dailySpending ?? [],
 			earliestBudgetMonth,
 			pieChartConfig,
 			areaChartConfig: CHART_CONFIG_DEFAULTS.pacingChart,
 			categoryClickBehavior,
 			homeCurrency,
 			liveRateToBaseCurrency,
-			budgetPacing: (() => {
-				const progress = getFiscalMonthProgress(safeNow, selectedMonth, fiscalStartDay);
-				return {
-					totalBudget: overviewStats?.dailyBudgetPace.totalBudget ?? 0,
-					totalSpent: overviewStats?.dailyBudgetPace.totalSpent ?? 0,
-					variableBudget: overviewStats?.dailyBudgetPace.variableBudget ?? 0,
-					variableSpent: overviewStats?.dailyBudgetPace.variableSpent ?? 0,
-					daysInMonth: progress.daysInPeriod,
-					currentDay: progress.isCurrentPeriod ? progress.currentDay : progress.daysInPeriod,
-				};
-			})(),
+			budgetPacing,
 		},
 		isLoading: {
-			expenses: expensesLoading,
-			favorites: favoritesLoading,
-			stats: statsLoading,
-			categories: categoriesLoading,
-			trend: trendLoading,
+			expenses: dataLoading,
+			favorites: dataLoading,
+			stats: dataLoading,
+			categories: dataLoading,
+			trend: dataLoading,
+			activity: activityLoading,
+			heatmap: heatmapLoading,
 		},
 		actions: {
 			setSelectedMonth,

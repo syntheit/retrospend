@@ -7,6 +7,7 @@
  * need to use are documented accordingly near the end.
  */
 
+import { createHash } from "node:crypto";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -14,6 +15,66 @@ import { ZodError } from "zod";
 import { auth } from "~/server/better-auth";
 import type { Session } from "~/server/better-auth/config";
 import { createUserScopedDb, db } from "~/server/db";
+import type { ParticipantType } from "~prisma";
+
+export type GuestParticipant = {
+	participantType: Extract<ParticipantType, "guest">;
+	participantId: string;
+	projectScope: string;
+};
+
+export type UserParticipant = {
+	participantType: Extract<ParticipantType, "user">;
+	participantId: string;
+};
+
+/**
+ * Anonymous viewer: authenticated solely by a valid VIEWER-role magic link.
+ * No GuestSession is created; the link ID is validated on every request.
+ */
+export type ViewerLinkParticipant = {
+	participantType: "viewerLink";
+	participantId: string; // the MagicLink.id
+	projectScope: string; // MagicLink.projectId
+};
+
+export type Participant = UserParticipant | GuestParticipant | ViewerLinkParticipant;
+
+/** Participants that can perform write operations (CONTRIBUTOR+). */
+export type WritableParticipant = UserParticipant | GuestParticipant;
+
+/**
+ * Narrows participant to a writable type, throwing FORBIDDEN for viewer-link
+ * participants who only have read access.
+ */
+export function assertWritableParticipant(
+	participant: Participant,
+): WritableParticipant {
+	if (participant.participantType === "viewerLink") {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "Viewers cannot modify data",
+		});
+	}
+	return participant;
+}
+
+/**
+ * Assert that a guest's project scope matches the requested projectId.
+ * No-op for user participants.
+ */
+export function assertGuestProjectScope(
+	participant: Participant,
+	projectId: string,
+): void {
+	if (
+		(participant.participantType === "guest" ||
+			participant.participantType === "viewerLink") &&
+		participant.projectScope !== projectId
+	) {
+		throw new TRPCError({ code: "FORBIDDEN" });
+	}
+}
 
 /**
  * 1. CONTEXT
@@ -124,13 +185,10 @@ export const protectedProcedure = t.procedure
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 
-		// Check if user is still active (immediate logout for disabled users)
-		const user = await ctx.db.user.findUnique({
-			where: { id: ctx.session.user.id },
-			select: { isActive: true },
-		});
-
-		if (!user?.isActive) {
+		// isActive is already present in the session from better-auth.
+		// Session refreshes based on updateAge (24h). For immediate deactivation,
+		// the admin endpoint should also delete the user's active sessions.
+		if (!ctx.session.user.isActive) {
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 
@@ -159,3 +217,121 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 	// for legitimate cross-user data access.
 	return next({ ctx: { db } });
 });
+
+/**
+ * Guest-or-protected procedure
+ *
+ * Accepts either a regular user session (same as protectedProcedure) or a
+ * guest session token via the `x-guest-token` request header.
+ *
+ * Provides `ctx.participant` (discriminated union of user/guest) in addition
+ * to `ctx.db`.
+ *
+ * - User callers: user-scoped db (RLS enforced), participant.participantType = "user"
+ * - Guest callers: global db (RLS bypassed, app-level auth via assertGuestProjectScope),
+ *   participant.participantType = "guest", participant.projectScope = the guest's project
+ *
+ * Procedures using this must call assertGuestProjectScope(ctx.participant, projectId)
+ * before accessing any project data.
+ */
+export const guestOrProtectedProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(async ({ ctx, next }) => {
+		// Try regular user session first
+		if (ctx.session?.user && ctx.session.user.isActive) {
+			const userDb = createUserScopedDb(ctx.session.user.id);
+			return next({
+				ctx: {
+					session: ctx.session as Session,
+					db: userDb,
+					participant: {
+						participantType: "user" as const,
+						participantId: ctx.session.user.id,
+					} as Participant,
+				},
+			});
+		}
+
+		// No valid user session; check for guest token
+		const guestToken = ctx.headers.get("x-guest-token");
+		if (guestToken) {
+			const hashedToken = createHash("sha256")
+				.update(guestToken)
+				.digest("hex");
+
+			const guestSession = await ctx.db.guestSession.findUnique({
+				where: { sessionToken: hashedToken },
+			});
+
+			if (guestSession) {
+				// Enforce 90-day inactivity expiry.
+				const GUEST_MAX_INACTIVE_MS = 90 * 24 * 60 * 60 * 1000;
+				if (
+					Date.now() - guestSession.lastActiveAt.getTime() <=
+					GUEST_MAX_INACTIVE_MS
+				) {
+					// Update lastActiveAt (best-effort)
+					await ctx.db.guestSession
+						.update({
+							where: { id: guestSession.id },
+							data: { lastActiveAt: new Date() },
+						})
+						.catch(() => undefined);
+
+					return next({
+						ctx: {
+							// Global db for guests: RLS bypassed; app-level auth
+							// enforced by assertGuestProjectScope and requireProjectRole.
+							db: ctx.db,
+							session: undefined,
+							participant: {
+								participantType: "guest" as const,
+								participantId: guestSession.id,
+								projectScope: guestSession.projectId,
+							} as Participant,
+						},
+					});
+				}
+			}
+		}
+
+		// No valid guest token; check for anonymous viewer link (VIEWER role only,
+		// no registration required).
+		const viewerLinkId = ctx.headers.get("x-viewer-link-id");
+		if (viewerLinkId) {
+			const link = await ctx.db.magicLink.findUnique({
+				where: { id: viewerLinkId },
+				select: {
+					projectId: true,
+					roleGranted: true,
+					isActive: true,
+					expiresAt: true,
+					maxUses: true,
+					useCount: true,
+				},
+			});
+
+			if (link && link.isActive && link.roleGranted === "VIEWER") {
+				const notExpired =
+					!link.expiresAt || link.expiresAt.getTime() > Date.now();
+				const notOverUsed =
+					link.maxUses === null || link.useCount < link.maxUses;
+
+				if (notExpired && notOverUsed) {
+					return next({
+						ctx: {
+							db: ctx.db,
+							session: undefined,
+							participant: {
+								participantType: "viewerLink" as const,
+								participantId: viewerLinkId,
+								projectScope: link.projectId,
+							} as Participant,
+						},
+					});
+				}
+			}
+		}
+
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	});

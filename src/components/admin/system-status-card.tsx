@@ -13,28 +13,28 @@ import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export function SystemStatusCard({ className }: { className?: string }) {
-	const { data: status, isLoading: statusLoading } =
+	const { data: workerStatus } =
 		api.system.getWorkerStatus.useQuery(undefined, {
-			refetchInterval: 30000, // Refresh every 30 seconds
+			refetchInterval: 30000,
 		});
 
-	const { data: serverStats, isLoading: statsLoading } =
+	const { data: serverStats } =
 		api.admin.getServerStats.useQuery(undefined, {
-			refetchInterval: 30000, // Refresh every 30 seconds
+			refetchInterval: 30000,
 		});
 
-	const { data: importerStatus, isLoading: importerLoading } =
-		api.system.checkImporterStatus.useQuery(undefined, {
-			refetchInterval: 30000, // Refresh every 30 seconds
+	const { data: sidecarStatus } =
+		api.system.checkSidecarStatus.useQuery(undefined, {
+			refetchInterval: 30000,
 		});
 
-	const { data: importQueueStats, isLoading: queueLoading } =
+	const { data: importQueueStats } =
 		api.importQueue.getGlobalStats.useQuery(undefined, {
-			refetchInterval: 5000, // Refresh every 5 seconds
+			refetchInterval: 30000,
 		});
 
 	const hasNoData =
-		!status && !serverStats && !importerStatus && !importQueueStats;
+		!workerStatus && !serverStats && !sidecarStatus && !importQueueStats;
 
 	if (hasNoData) {
 		return (
@@ -51,8 +51,7 @@ export function SystemStatusCard({ className }: { className?: string }) {
 		);
 	}
 
-	const lastRun = status?.lastRun ? new Date(status.lastRun) : null;
-	const isHealthy = lastRun && Date.now() - lastRun.getTime() < 20 * 60 * 1000; // < 20 mins
+	const lastRun = workerStatus?.lastRun ? new Date(workerStatus.lastRun) : null;
 
 	return (
 		<Card className={cn("flex flex-col", className)}>
@@ -65,13 +64,13 @@ export function SystemStatusCard({ className }: { className?: string }) {
 			<CardContent className="flex-grow">
 				<div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4">
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">Worker Status</span>
+						<span className="text-muted-foreground text-sm">Sidecar Status</span>
 						<div className="flex items-center gap-2">
 							<div
-								className={`h-2 w-2 rounded-full ${isHealthy ? "bg-green-500" : "bg-red-500"}`}
+								className={`h-2 w-2 rounded-full ${sidecarStatus?.online ? "bg-emerald-500" : "bg-red-500"}`}
 							/>
 							<span className="font-medium text-sm">
-								{isHealthy ? "Operational" : "Offline"}
+								{sidecarStatus?.online ? "Online" : "Offline"}
 							</span>
 						</div>
 					</div>
@@ -87,31 +86,24 @@ export function SystemStatusCard({ className }: { className?: string }) {
 							)}
 						</span>
 					</div>
-
-					<div className="my-1 border-border/50 border-t" />
-
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">
-							Importer Status
-						</span>
-						<div className="flex items-center gap-2">
-							<div
-								className={`h-2 w-2 rounded-full ${importerStatus?.available ? "bg-green-500" : "bg-red-500"}`}
-							/>
-							<span className="font-medium text-sm">
-								{importerStatus?.available ? "Operational" : "Offline"}
-							</span>
-						</div>
-					</div>
-					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">
-							Importer Uptime
-						</span>
+						<span className="text-muted-foreground text-sm">Sidecar Uptime</span>
 						<span className="font-medium text-sm tabular-nums">
-							{importerStatus?.available
-								? formatUptime(importerStatus.uptime ?? 0)
+							{sidecarStatus?.online
+								? formatUptime(sidecarStatus.uptime ?? 0)
 								: "N/A"}
 						</span>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">AI Import</span>
+						<div className="flex items-center gap-2">
+							<div
+								className={`h-2 w-2 rounded-full ${sidecarStatus?.importerAvailable ? "bg-emerald-500" : "bg-amber-400"}`}
+							/>
+							<span className="font-medium text-sm">
+								{sidecarStatus?.importerAvailable ? "Enabled" : "Not configured"}
+							</span>
+						</div>
 					</div>
 
 					<div className="my-1 border-border/50 border-t" />
@@ -140,6 +132,12 @@ export function SystemStatusCard({ className }: { className?: string }) {
 						<span className="text-muted-foreground text-sm">Database Size</span>
 						<span className="font-medium text-sm tabular-nums">
 							{formatBytes(serverStats?.databaseSize ?? 0)}
+						</span>
+					</div>
+					<div className="flex items-center justify-between">
+						<span className="text-muted-foreground text-sm">Media Storage</span>
+						<span className="font-medium text-sm tabular-nums">
+							{formatBytes(serverStats?.storageSize ?? 0)}
 						</span>
 					</div>
 					<div className="flex items-center justify-between">

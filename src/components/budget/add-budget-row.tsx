@@ -1,11 +1,11 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CategoryPicker } from "~/components/category-picker";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 import type { Category } from "~/types/budget-types";
@@ -26,13 +26,11 @@ export function AddBudgetRow({
 	onBudgetAdded,
 }: AddBudgetRowProps) {
 	const [isActive, setIsActive] = useState(false);
-	const queryClient = useQueryClient();
+	const utils = api.useUtils();
 
 	const upsertBudget = api.budget.upsertBudget.useMutation({
 		onSuccess: (data) => {
-			queryClient.invalidateQueries({
-				queryKey: [["budget", "getBudgets"]],
-			});
+			void utils.budget.getBudgets.invalidate();
 			if (data && onBudgetAdded) {
 				onBudgetAdded(data.id);
 			}
@@ -57,11 +55,11 @@ export function AddBudgetRow({
 
 	return (
 		<div
-			className={
+			className={cn(
 				isMobile
 					? "w-full"
-					: "overflow-hidden rounded-lg border border-border border-dashed bg-card"
-			}
+					: "overflow-hidden rounded-lg border border-border border-dashed bg-card",
+			)}
 		>
 			{!isActive ? (
 				isMobile ? (
@@ -74,14 +72,15 @@ export function AddBudgetRow({
 						Add Category Budget
 					</Button>
 				) : (
-					<button
-						className="group flex w-full cursor-pointer items-center justify-center gap-3 p-4 text-left transition-colors hover:bg-accent/50"
+					<Button
+						className="flex h-auto w-full items-center justify-center gap-3 rounded-none p-4 text-left hover:bg-accent/50"
 						onClick={() => setIsActive(true)}
 						type="button"
+						variant="ghost"
 					>
 						<Plus className="h-5 w-5 text-muted-foreground" />
 						<span className="text-muted-foreground">Add Category Budget</span>
-					</button>
+					</Button>
 				)
 			) : (
 				<div className={isMobile ? "rounded-lg border bg-card p-3" : "p-4"}>

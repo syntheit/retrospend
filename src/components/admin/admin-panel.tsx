@@ -25,7 +25,6 @@ import { Separator } from "~/components/ui/separator";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useSession } from "~/hooks/use-session";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import { api } from "~/trpc/react";
 import { ActionDialog } from "./action-dialog";
 import { AdminOverviewStats } from "./admin-overview-stats";
@@ -63,18 +62,17 @@ type PendingAction =
 
 export function AdminPanel() {
 	const tabsRef = useRef<HTMLDivElement>(null);
+	const defaultTab = "users";
 	const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [resetResult, setResetResult] = useState<{
 		newPassword: string;
 	} | null>(null);
 
-	// Pagination and filtering state for invite codes
+	// Filtering state for invite codes
 	const [inviteCodesStatus, setInviteCodesStatus] = useState<"active" | "used">(
 		"active",
 	);
-	const [inviteCodesPage, setInviteCodesPage] = useState(1);
-	const inviteCodesPageSize = DEFAULT_PAGE_SIZE;
 
 	const { data: session } = useSession();
 	const extendedUser = session?.user as ExtendedUser;
@@ -95,8 +93,7 @@ export function AdminPanel() {
 	} = api.invite.list.useQuery(
 		{
 			status: inviteCodesStatus,
-			page: inviteCodesPage,
-			pageSize: inviteCodesPageSize,
+			pageSize: 100,
 		},
 		{
 			enabled: isAdmin,
@@ -211,12 +208,7 @@ export function AdminPanel() {
 
 	const handleToggleInviteOnly = async (enabled: boolean) => {
 		try {
-			await updateSettingsMutation.mutateAsync({
-				inviteOnlyEnabled: enabled,
-				allowAllUsersToGenerateInvites:
-					settings?.allowAllUsersToGenerateInvites ?? false,
-				enableEmail: settings?.enableEmail ?? true,
-			});
+			await updateSettingsMutation.mutateAsync({ inviteOnlyEnabled: enabled });
 			toast.success(`Invite-only signups ${enabled ? "enabled" : "disabled"}`);
 			refetchSettings();
 		} catch (error) {
@@ -229,9 +221,7 @@ export function AdminPanel() {
 	const handleToggleUserInvites = async (enabled: boolean) => {
 		try {
 			await updateSettingsMutation.mutateAsync({
-				inviteOnlyEnabled: settings?.inviteOnlyEnabled ?? false,
 				allowAllUsersToGenerateInvites: enabled,
-				enableEmail: settings?.enableEmail ?? true,
 			});
 			toast.success(
 				`User invite code generation ${enabled ? "enabled" : "disabled"}`,
@@ -246,7 +236,6 @@ export function AdminPanel() {
 
 	const handleInviteCodesStatusChange = (newStatus: "active" | "used") => {
 		setInviteCodesStatus(newStatus);
-		setInviteCodesPage(1);
 	};
 
 	const getDialogContent = () => {
@@ -389,6 +378,39 @@ export function AdminPanel() {
 											onCheckedChange={handleToggleUserInvites}
 										/>
 									</div>
+									<div className="flex items-center justify-between space-x-2">
+										<div className="space-y-0.5">
+											<label
+												className="font-medium text-sm"
+												htmlFor="enable-feedback-switch"
+											>
+												Enable Feedback
+											</label>
+											<p className="text-muted-foreground text-xs">
+												When enabled, users can submit feedback from within the app.
+											</p>
+										</div>
+										<Switch
+											checked={settings?.enableFeedback ?? false}
+											disabled={updateSettingsMutation.isPending}
+											id="enable-feedback-switch"
+											onCheckedChange={async (enabled) => {
+												try {
+													await updateSettingsMutation.mutateAsync({
+														enableFeedback: enabled,
+													});
+													toast.success(`Feedback ${enabled ? "enabled" : "disabled"}`);
+													refetchSettings();
+												} catch (error) {
+													toast.error(
+														error instanceof Error
+															? error.message
+															: "Failed to update settings",
+													);
+												}
+											}}
+										/>
+									</div>
 								</CardContent>
 							</Card>
 
@@ -415,6 +437,24 @@ export function AdminPanel() {
 									}
 								}}
 							/>
+
+						<SystemSettingsCard
+							isUpdating={updateSettingsMutation.isPending}
+							settings={settings}
+							onUpdate={async (updates) => {
+								try {
+									await updateSettingsMutation.mutateAsync(updates);
+									toast.success("Settings updated");
+									refetchSettings();
+								} catch (error) {
+									toast.error(
+										error instanceof Error
+											? error.message
+											: "Failed to update settings",
+									);
+								}
+							}}
+						/>
 						</div>
 					</div>
 
@@ -436,7 +476,7 @@ export function AdminPanel() {
 
 					{/* Data Management Tabs */}
 					<Tabs
-						defaultValue="users"
+						defaultValue={defaultTab}
 						onValueChange={() => {
 							requestAnimationFrame(() => {
 								tabsRef.current?.scrollIntoView({
@@ -457,7 +497,6 @@ export function AdminPanel() {
 						<TabsContent value="users">
 							<UsersTable
 								currentUserId={session?.user?.id}
-								isLoading={isLoading}
 								onDeleteUser={(userId, username) =>
 									handleAction({ type: "deleteUser", userId, username })
 								}
@@ -471,14 +510,6 @@ export function AdminPanel() {
 								}
 								onResetPassword={(userId, username) =>
 									handleAction({ type: "resetPassword", userId, username })
-								}
-								onToggleUserStatus={(userId, username, isActive) =>
-									handleAction({
-										type: "toggleUserStatus",
-										userId,
-										username,
-										isActive,
-									})
 								}
 								onSetAiAccess={async (userId, allowed) => {
 									try {
@@ -496,6 +527,14 @@ export function AdminPanel() {
 										);
 									}
 								}}
+								onToggleUserStatus={(userId, username, isActive) =>
+									handleAction({
+										type: "toggleUserStatus",
+										userId,
+										username,
+										isActive,
+									})
+								}
 								users={users || []}
 							/>
 						</TabsContent>
@@ -508,9 +547,7 @@ export function AdminPanel() {
 									handleAction({ type: "deleteInviteCode", inviteCodeId, code })
 								}
 								onGenerateCode={refetchInviteCodes}
-								onPageChange={setInviteCodesPage}
 								onStatusChange={handleInviteCodesStatusChange}
-								pagination={inviteCodesData?.pagination}
 								status={inviteCodesStatus}
 							/>
 						</TabsContent>
@@ -522,6 +559,7 @@ export function AdminPanel() {
 						<TabsContent value="audit-logs">
 							<AuditLogsTable />
 						</TabsContent>
+
 					</Tabs>
 				</div>
 			</PageContent>
@@ -597,7 +635,7 @@ function EmailServerCard({
 							isLoading
 								? "bg-muted"
 								: appFeatures?.isSmtpConfigured
-									? "bg-green-500"
+									? "bg-emerald-500"
 									: "bg-destructive"
 						}`}
 					/>
@@ -635,9 +673,6 @@ function EmailServerCard({
 						onCheckedChange={async (enabled) => {
 							try {
 								await updateSettingsMutation.mutateAsync({
-									inviteOnlyEnabled: settings?.inviteOnlyEnabled ?? false,
-									allowAllUsersToGenerateInvites:
-										settings?.allowAllUsersToGenerateInvites ?? false,
 									enableEmail: enabled,
 								});
 								toast.success(
@@ -727,27 +762,52 @@ function AiSettingsCard({
 		defaultAiMode: string;
 		externalAiAccessMode: string;
 		monthlyAiTokenQuota: number;
+		monthlyLocalAiTokenQuota: number;
+		monthlyExternalAiTokenQuota: number;
 		openRouterConfigured: boolean;
 	} | null;
 	isUpdating: boolean;
 	onUpdate: (updates: {
 		defaultAiMode?: "LOCAL" | "EXTERNAL";
 		externalAiAccessMode?: "WHITELIST" | "BLACKLIST";
-		monthlyAiTokenQuota?: number;
+		monthlyLocalAiTokenQuota?: number;
+		monthlyExternalAiTokenQuota?: number;
 	}) => Promise<void>;
 }) {
-	const [quotaInput, setQuotaInput] = useState("");
+	const [localQuotaInput, setLocalQuotaInput] = useState("");
+	const [externalQuotaInput, setExternalQuotaInput] = useState("");
 
 	useEffect(() => {
-		if (aiSettings?.monthlyAiTokenQuota != null) {
-			setQuotaInput(String(aiSettings.monthlyAiTokenQuota));
+		if (aiSettings?.monthlyLocalAiTokenQuota != null) {
+			setLocalQuotaInput(String(aiSettings.monthlyLocalAiTokenQuota));
 		}
-	}, [aiSettings?.monthlyAiTokenQuota]);
+	}, [aiSettings?.monthlyLocalAiTokenQuota]);
 
-	const saveQuota = () => {
-		const val = parseInt(quotaInput, 10);
-		if (!isNaN(val) && val >= 0 && val !== aiSettings?.monthlyAiTokenQuota) {
-			void onUpdate({ monthlyAiTokenQuota: val });
+	useEffect(() => {
+		if (aiSettings?.monthlyExternalAiTokenQuota != null) {
+			setExternalQuotaInput(String(aiSettings.monthlyExternalAiTokenQuota));
+		}
+	}, [aiSettings?.monthlyExternalAiTokenQuota]);
+
+	const saveLocalQuota = () => {
+		const val = parseInt(localQuotaInput, 10);
+		if (
+			!isNaN(val) &&
+			val >= 0 &&
+			val !== aiSettings?.monthlyLocalAiTokenQuota
+		) {
+			void onUpdate({ monthlyLocalAiTokenQuota: val });
+		}
+	};
+
+	const saveExternalQuota = () => {
+		const val = parseInt(externalQuotaInput, 10);
+		if (
+			!isNaN(val) &&
+			val >= 0 &&
+			val !== aiSettings?.monthlyExternalAiTokenQuota
+		) {
+			void onUpdate({ monthlyExternalAiTokenQuota: val });
 		}
 	};
 
@@ -756,14 +816,16 @@ function AiSettingsCard({
 			<CardHeader>
 				<CardTitle>AI Processing</CardTitle>
 				<CardDescription>
-					Configure external AI provider for bank statement imports.
+					Configure AI providers for bank statement imports.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
 				<div className="flex items-center gap-2">
 					<div
 						className={`h-2.5 w-2.5 rounded-full ${
-							aiSettings?.openRouterConfigured ? "bg-green-500" : "bg-destructive"
+							aiSettings?.openRouterConfigured
+								? "bg-emerald-500"
+								: "bg-destructive"
 						}`}
 					/>
 					<span className="font-medium text-sm">
@@ -828,22 +890,175 @@ function AiSettingsCard({
 				</div>
 
 				<div className="space-y-2">
-					<label className="font-medium text-sm" htmlFor="ai-token-quota">
-						Monthly Token Quota per User
+					<label
+						className="font-medium text-sm"
+						htmlFor="ai-local-token-quota"
+					>
+						Monthly Local Token Quota per User
 					</label>
 					<Input
 						disabled={isUpdating}
-						id="ai-token-quota"
+						id="ai-local-token-quota"
 						min={0}
-						onChange={(e) => setQuotaInput(e.target.value)}
-						onBlur={saveQuota}
-						onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveQuota(); } }}
+						onBlur={saveLocalQuota}
+						onChange={(e) => setLocalQuotaInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								saveLocalQuota();
+							}
+						}}
 						type="number"
-						value={quotaInput}
+						value={localQuotaInput}
 					/>
 					<p className="text-[10px] text-muted-foreground">
-						{(aiSettings?.monthlyAiTokenQuota ?? 2000000).toLocaleString()}{" "}
-						tokens
+						{(
+							aiSettings?.monthlyLocalAiTokenQuota ?? 10000000
+						).toLocaleString()}{" "}
+						tokens (Ollama)
+					</p>
+				</div>
+
+				<div className="space-y-2">
+					<label
+						className="font-medium text-sm"
+						htmlFor="ai-external-token-quota"
+					>
+						Monthly External Token Quota per User
+					</label>
+					<Input
+						disabled={isUpdating}
+						id="ai-external-token-quota"
+						min={0}
+						onBlur={saveExternalQuota}
+						onChange={(e) => setExternalQuotaInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								saveExternalQuota();
+							}
+						}}
+						type="number"
+						value={externalQuotaInput}
+					/>
+					<p className="text-[10px] text-muted-foreground">
+						{(
+							aiSettings?.monthlyExternalAiTokenQuota ?? 2000000
+						).toLocaleString()}{" "}
+						tokens (OpenRouter)
+					</p>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function SystemSettingsCard({
+	settings,
+	isUpdating,
+	onUpdate,
+}: {
+	settings?: {
+		auditPrivacyMode: "MINIMAL" | "ANONYMIZED" | "FULL";
+		maxConcurrentImportJobs: number;
+	} | null;
+	isUpdating: boolean;
+	onUpdate: (updates: {
+		auditPrivacyMode?: "MINIMAL" | "ANONYMIZED" | "FULL";
+		maxConcurrentImportJobs?: number;
+	}) => Promise<void>;
+}) {
+	const [jobsInput, setJobsInput] = useState("");
+
+	useEffect(() => {
+		if (settings?.maxConcurrentImportJobs != null) {
+			setJobsInput(String(settings.maxConcurrentImportJobs));
+		}
+	}, [settings?.maxConcurrentImportJobs]);
+
+	const saveJobs = () => {
+		const val = parseInt(jobsInput, 10);
+		if (
+			!isNaN(val) &&
+			val >= 1 &&
+			val <= 50 &&
+			val !== settings?.maxConcurrentImportJobs
+		) {
+			void onUpdate({ maxConcurrentImportJobs: val });
+		}
+	};
+
+	return (
+		<Card className="flex h-full flex-col">
+			<CardHeader>
+				<CardTitle>System</CardTitle>
+				<CardDescription>
+					Import concurrency and audit log privacy controls.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="flex flex-grow flex-col space-y-4">
+				<div className="space-y-2">
+					<label className="font-medium text-sm" htmlFor="audit-privacy-mode">
+						Audit Log Privacy Mode
+					</label>
+					<Select
+						disabled={isUpdating}
+						onValueChange={(value) =>
+							onUpdate({
+								auditPrivacyMode: value as "MINIMAL" | "ANONYMIZED" | "FULL",
+							})
+						}
+						value={settings?.auditPrivacyMode ?? "MINIMAL"}
+					>
+						<SelectTrigger id="audit-privacy-mode">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="MINIMAL">
+								Minimal (no IPs stored)
+							</SelectItem>
+							<SelectItem value="ANONYMIZED">
+								Anonymized (last octet removed)
+							</SelectItem>
+							<SelectItem value="FULL">
+								Full (complete IPs, requires compliance)
+							</SelectItem>
+						</SelectContent>
+					</Select>
+					<p className="text-[10px] text-muted-foreground">
+						{settings?.auditPrivacyMode === "MINIMAL"
+							? "IP addresses and user agents are never stored. Privacy-first default."
+							: settings?.auditPrivacyMode === "ANONYMIZED"
+								? "Last octet of IP is removed before storage (e.g. 192.168.1.0)."
+								: "Full IP and user agent stored. Requires GDPR/privacy compliance."}
+					</p>
+				</div>
+
+				<div className="space-y-2">
+					<label
+						className="font-medium text-sm"
+						htmlFor="max-concurrent-import-jobs"
+					>
+						Max Concurrent Import Jobs
+					</label>
+					<Input
+						disabled={isUpdating}
+						id="max-concurrent-import-jobs"
+						min={1}
+						max={50}
+						onBlur={saveJobs}
+						onChange={(e) => setJobsInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								saveJobs();
+							}
+						}}
+						type="number"
+						value={jobsInput}
+					/>
+					<p className="text-[10px] text-muted-foreground">
+						Max parallel AI import jobs across all users (1–50). Default: 3.
 					</p>
 				</div>
 			</CardContent>

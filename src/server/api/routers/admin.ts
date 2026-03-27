@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
 import {
 	getPasswordChangedAlertTemplate,
 	getPasswordResetEmailTemplate,
@@ -11,10 +12,11 @@ import {
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import { getAiUsageSummary } from "~/server/services/ai-access.service";
+import { deleteFile, getStorageSize } from "~/server/storage";
 import { logEventAsync } from "~/server/services/audit.service";
 import { IntegrationService } from "~/server/services/integration.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
-import { getAiUsageSummary } from "~/server/services/ai-access.service";
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -34,21 +36,32 @@ export const adminRouter = createTRPCRouter({
 		`;
 		const dbSizeBytes = Number(dbSizeResult[0]?.size ?? 0);
 
+		// Get upload storage size in bytes
+		let storageSizeBytes = 0;
+		try {
+			storageSizeBytes = await getStorageSize();
+		} catch {
+			// Storage may not be configured; return 0
+		}
+
 		// Get app uptime in seconds
 		const uptimeSeconds = process.uptime();
 
 		return {
 			databaseSize: dbSizeBytes,
+			storageSize: storageSizeBytes,
 			uptime: uptimeSeconds,
 		};
 	}),
 
-	getAuditLogPrivacyMode: adminProcedure.query(() => {
-		const mode = (process.env.AUDIT_PRIVACY_MODE || "minimal") as
-			| "minimal"
-			| "anonymized"
-			| "full";
-		return { mode };
+	getAuditLogPrivacyMode: adminProcedure.query(async () => {
+		const settings = await getAppSettings();
+		return {
+			mode: settings.auditPrivacyMode.toLowerCase() as
+				| "minimal"
+				| "anonymized"
+				| "full",
+		};
 	}),
 
 	getEventLogs: adminProcedure
@@ -73,7 +86,14 @@ export const adminRouter = createTRPCRouter({
 						"TWO_FACTOR_DISABLED",
 						"SETTINGS_UPDATED",
 						"USER_UPDATED",
+						"USERNAME_CHANGED",
 						"EXPENSE_IMPORT",
+						"ADMIN_RESET_LINK_GENERATED",
+						"ADMIN_AI_ACCESS_CHANGED",
+						"EMAIL_CHANGE_REQUESTED",
+						"EMAIL_CHANGE_CONFIRMED",
+						"EMAIL_CHANGE_REVERTED",
+						"GUEST_UPGRADED",
 					])
 					.optional(),
 			}),
@@ -109,6 +129,70 @@ export const adminRouter = createTRPCRouter({
 				total,
 				hasMore: input.offset + input.limit < total,
 			};
+		}),
+
+	getEventLogsCursor: adminProcedure
+		.input(
+			z.object({
+				limit: z.number().min(1).max(100).default(50),
+				cursor: z.string().optional(),
+				eventType: z
+					.enum([
+						"FAILED_LOGIN",
+						"SUCCESSFUL_LOGIN",
+						"PASSWORD_RESET",
+						"PASSWORD_CHANGED",
+						"ACCOUNT_CREATED",
+						"ACCOUNT_DELETED",
+						"ACCOUNT_ENABLED",
+						"ACCOUNT_DISABLED",
+						"INVITE_USED",
+						"INVITE_CREATED",
+						"EMAIL_VERIFIED",
+						"TWO_FACTOR_ENABLED",
+						"TWO_FACTOR_DISABLED",
+						"SETTINGS_UPDATED",
+						"USER_UPDATED",
+						"USERNAME_CHANGED",
+						"EXPENSE_IMPORT",
+						"ADMIN_RESET_LINK_GENERATED",
+						"ADMIN_AI_ACCESS_CHANGED",
+						"EMAIL_CHANGE_REQUESTED",
+						"EMAIL_CHANGE_CONFIRMED",
+						"EMAIL_CHANGE_REVERTED",
+						"GUEST_UPGRADED",
+					])
+					.optional(),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const { db } = ctx;
+
+			const where = {
+				...(input.eventType ? { eventType: input.eventType } : {}),
+				...(input.cursor
+					? { timestamp: { lt: new Date(input.cursor) } }
+					: {}),
+			};
+
+			const logs = await db.eventLog.findMany({
+				where,
+				include: {
+					user: {
+						select: { id: true, username: true, email: true },
+					},
+				},
+				orderBy: { timestamp: "desc" },
+				take: input.limit + 1,
+			});
+
+			let nextCursor: string | undefined;
+			if (logs.length > input.limit) {
+				const lastItem = logs.pop()!;
+				nextCursor = lastItem.timestamp.toISOString();
+			}
+
+			return { logs, nextCursor };
 		}),
 
 	listUsers: adminProcedure.query(async ({ ctx }) => {
@@ -169,7 +253,7 @@ export const adminRouter = createTRPCRouter({
 	}),
 
 	resetPassword: adminProcedure
-		.input(z.object({ userId: z.string().cuid() }))
+		.input(z.object({ userId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -221,7 +305,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	disableUser: adminProcedure
-		.input(z.object({ userId: z.string().cuid() }))
+		.input(z.object({ userId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -253,7 +337,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	enableUser: adminProcedure
-		.input(z.object({ userId: z.string().cuid() }))
+		.input(z.object({ userId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -278,7 +362,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	markEmailVerified: adminProcedure
-		.input(z.object({ userId: z.string().cuid() }))
+		.input(z.object({ userId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
 			const { db } = ctx;
 
@@ -291,7 +375,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	toggleEmailVerification: adminProcedure
-		.input(z.object({ userId: z.string().cuid(), verified: z.boolean() }))
+		.input(z.object({ userId: z.string().min(1), verified: z.boolean() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -318,7 +402,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	deleteUser: adminProcedure
-		.input(z.object({ userId: z.string().cuid() }))
+		.input(z.object({ userId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
@@ -331,12 +415,15 @@ export const adminRouter = createTRPCRouter({
 
 			const user = await db.user.findUnique({
 				where: { id: input.userId },
-				select: { username: true, email: true },
+				select: { username: true, email: true, avatarPath: true },
 			});
 
-			await db.user.delete({
-				where: { id: input.userId },
-			});
+			await anonymizeAndDeleteUser(
+				db,
+				input.userId,
+				user?.email ?? "",
+				user?.avatarPath ?? null,
+			);
 
 			// Log the account deletion
 			logEventAsync({
@@ -359,27 +446,34 @@ export const adminRouter = createTRPCRouter({
 			inviteOnlyEnabled: settings.inviteOnlyEnabled,
 			allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
 			enableEmail: settings.enableEmail,
+			auditPrivacyMode: settings.auditPrivacyMode,
+			maxConcurrentImportJobs: settings.maxConcurrentImportJobs,
+			enableFeedback: settings.enableFeedback,
 		};
 	}),
 
 	updateSettings: adminProcedure
 		.input(
 			z.object({
-				inviteOnlyEnabled: z.boolean(),
-				allowAllUsersToGenerateInvites: z.boolean(),
-				enableEmail: z.boolean(),
+				inviteOnlyEnabled: z.boolean().optional(),
+				allowAllUsersToGenerateInvites: z.boolean().optional(),
+				enableEmail: z.boolean().optional(),
+				auditPrivacyMode: z
+					.enum(["MINIMAL", "ANONYMIZED", "FULL"])
+					.optional(),
+				maxConcurrentImportJobs: z.number().int().min(1).max(50).optional(),
+				enableFeedback: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
-			const settings = await updateAppSettings({
-				inviteOnlyEnabled: input.inviteOnlyEnabled,
-				allowAllUsersToGenerateInvites: input.allowAllUsersToGenerateInvites,
-				enableEmail: input.enableEmail,
-			});
+			const settings = await updateAppSettings(input);
 			return {
 				inviteOnlyEnabled: settings.inviteOnlyEnabled,
 				allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
 				enableEmail: settings.enableEmail,
+				auditPrivacyMode: settings.auditPrivacyMode,
+				maxConcurrentImportJobs: settings.maxConcurrentImportJobs,
+				enableFeedback: settings.enableFeedback,
 			};
 		}),
 
@@ -389,6 +483,8 @@ export const adminRouter = createTRPCRouter({
 			defaultAiMode: settings.defaultAiMode,
 			externalAiAccessMode: settings.externalAiAccessMode,
 			monthlyAiTokenQuota: settings.monthlyAiTokenQuota,
+			monthlyLocalAiTokenQuota: settings.monthlyLocalAiTokenQuota,
+			monthlyExternalAiTokenQuota: settings.monthlyExternalAiTokenQuota,
 			openRouterConfigured: !!env.OPENROUTER_API_KEY,
 		};
 	}),
@@ -399,6 +495,8 @@ export const adminRouter = createTRPCRouter({
 				defaultAiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
 				externalAiAccessMode: z.enum(["WHITELIST", "BLACKLIST"]).optional(),
 				monthlyAiTokenQuota: z.number().int().min(0).optional(),
+				monthlyLocalAiTokenQuota: z.number().int().min(0).optional(),
+				monthlyExternalAiTokenQuota: z.number().int().min(0).optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
@@ -407,37 +505,71 @@ export const adminRouter = createTRPCRouter({
 				defaultAiMode: settings.defaultAiMode,
 				externalAiAccessMode: settings.externalAiAccessMode,
 				monthlyAiTokenQuota: settings.monthlyAiTokenQuota,
+				monthlyLocalAiTokenQuota: settings.monthlyLocalAiTokenQuota,
+				monthlyExternalAiTokenQuota: settings.monthlyExternalAiTokenQuota,
 			};
 		}),
 
 	setUserAiAccess: adminProcedure
 		.input(
 			z.object({
-				userId: z.string().cuid(),
+				userId: z.string().min(1),
 				externalAiAllowed: z.boolean().nullable(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { db } = ctx;
+			const { db, session } = ctx;
+
+			const user = await db.user.findUnique({
+				where: { id: input.userId },
+				select: { username: true, externalAiAllowed: true },
+			});
+
 			await db.user.update({
 				where: { id: input.userId },
 				data: { externalAiAllowed: input.externalAiAllowed },
 			});
+
+			logEventAsync({
+				eventType: "ADMIN_AI_ACCESS_CHANGED",
+				userId: input.userId,
+				metadata: {
+					changedBy: session.user.id,
+					changedByUsername: session.user.username,
+					targetUsername: user?.username,
+					oldValue: user?.externalAiAllowed ?? null,
+					newValue: input.externalAiAllowed,
+				},
+			});
+
 			return { success: true };
 		}),
 
 	getAiUsageStats: adminProcedure
-		.input(z.object({ yearMonth: z.string().regex(/^\d{4}-\d{2}$/).optional() }).optional())
+		.input(
+			z
+				.object({
+					yearMonth: z
+						.string()
+						.regex(/^\d{4}-\d{2}$/)
+						.optional(),
+				})
+				.optional(),
+		)
 		.query(async ({ ctx, input }) => {
 			const { db } = ctx;
 			const settings = await getAppSettings();
 			const usages = await getAiUsageSummary(db, input?.yearMonth);
 			return {
 				quota: settings.monthlyAiTokenQuota,
+				localQuota: settings.monthlyLocalAiTokenQuota,
+				externalQuota: settings.monthlyExternalAiTokenQuota,
 				usages: usages.map((u) => ({
 					userId: u.userId,
 					username: u.user.username,
 					tokensUsed: u.tokensUsed,
+					localTokensUsed: u.localTokensUsed,
+					externalTokensUsed: u.externalTokensUsed,
 					yearMonth: u.yearMonth,
 				})),
 			};
@@ -466,7 +598,7 @@ export const adminRouter = createTRPCRouter({
 					case "password-reset":
 						subject = "Reset your Retrospend Password";
 						html = getPasswordResetEmailTemplate(
-							"http://localhost:1997/auth/reset-password?token=sample-token",
+							`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=sample-token`,
 						);
 						break;
 					case "credential-change":
@@ -476,7 +608,7 @@ export const adminRouter = createTRPCRouter({
 					case "email-verification":
 						subject = "Verify your Retrospend Account";
 						html = getVerificationEmailTemplate(
-							"http://localhost:1997/auth/verify?token=sample-token",
+							`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=sample-token`,
 						);
 						break;
 				}
@@ -500,9 +632,9 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	generatePasswordResetLink: adminProcedure
-		.input(z.object({ userId: z.string().cuid() }))
+		.input(z.object({ userId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
-			const { db } = ctx;
+			const { db, session } = ctx;
 
 			const user = await db.user.findUnique({
 				where: { id: input.userId },
@@ -523,14 +655,67 @@ export const adminRouter = createTRPCRouter({
 				},
 			});
 
-			const resetUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
+			// Security-critical: log every admin-generated reset link
+			logEventAsync({
+				eventType: "ADMIN_RESET_LINK_GENERATED",
+				userId: input.userId,
+				metadata: {
+					generatedBy: session.user.id,
+					generatedByUsername: session.user.username,
+					targetUsername: user.username,
+					targetEmail: user.email,
+				},
+			});
+
+			const resetUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/reset-password?token=${token}`;
 			return { resetUrl };
+		}),
+
+	removeUserAvatar: adminProcedure
+		.input(z.object({ userId: z.string().min(1) }))
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+
+			const user = await db.user.findUnique({
+				where: { id: input.userId },
+				select: { username: true, avatarPath: true },
+			});
+
+			if (!user) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+			}
+
+			if (!user.avatarPath) {
+				return { success: true }; // nothing to remove
+			}
+
+			// Delete from storage first (idempotent on failure)
+			await deleteFile(user.avatarPath).catch(() => {});
+
+			await db.user.update({
+				where: { id: input.userId },
+				data: { avatarPath: null },
+			});
+
+			logEventAsync({
+				eventType: "USER_UPDATED",
+				userId: input.userId,
+				metadata: {
+					updatedBy: session.user.id,
+					updatedByUsername: session.user.username,
+					targetUsername: user.username,
+					field: "avatarPath",
+					action: "removed",
+				},
+			});
+
+			return { success: true };
 		}),
 
 	getBackupStatus: adminProcedure.query(async () => {
 		try {
 			const response = await IntegrationService.requestWorker(
-				`${env.WORKER_URL}/backups`,
+				`${env.SIDECAR_URL}/backups`,
 				{ timeout: 10000 },
 			);
 			return await response.json();
@@ -542,7 +727,7 @@ export const adminRouter = createTRPCRouter({
 	triggerBackup: adminProcedure.mutation(async () => {
 		try {
 			const response = await IntegrationService.requestWorker(
-				`${env.WORKER_URL}/backups/run`,
+				`${env.SIDECAR_URL}/backups/run`,
 				{ method: "POST", timeout: 300000 },
 			);
 			return await response.json();

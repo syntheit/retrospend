@@ -15,22 +15,21 @@ export const metadata: Metadata = {
 	),
 	title: {
 		default: "Retrospend",
-		template: "%s | Retrospend",
+		template: "%s - Retrospend",
 	},
 	description: "Expenses, budgets, and wealth tracking. Without the bloat.",
 	openGraph: {
 		type: "website",
 		siteName: "Retrospend",
-		title: "Retrospend — The Financial Multitool",
+		title: "Retrospend: The Financial Multitool",
 		description: "Expenses, budgets, and wealth tracking. Without the bloat.",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Retrospend — The Financial Multitool",
+		title: "Retrospend: The Financial Multitool",
 		description: "Expenses, budgets, and wealth tracking. Without the bloat.",
 	},
 	icons: [
-		{ rel: "icon", url: "/favicon.ico" },
 		{
 			rel: "icon",
 			url: "/favicon-16x16.png",
@@ -65,6 +64,7 @@ const jetbrainsMono = JetBrains_Mono({
 	display: "swap",
 });
 
+
 export default function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -75,6 +75,7 @@ export default function RootLayout({
 			suppressHydrationWarning
 		>
 			<head>
+				<meta name="color-scheme" content="light dark" />
 				<FontScript />
 				<ThemeScript />
 			</head>

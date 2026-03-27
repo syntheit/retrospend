@@ -83,8 +83,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 	};
 
 	// Filter recent jobs to show only completed, failed, cancelled
-	// Auto-expire successfully completed jobs after 4 hours (failed jobs persist)
-	const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+	// Server already filters out terminal jobs older than 24 hours
 	const completedJobs =
 		recentJobs?.filter((j) =>
 			["COMPLETED", "FAILED", "CANCELLED"].includes(j.status),
@@ -92,9 +91,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 
 	const failedJobs = completedJobs.filter((j) => j.status === "FAILED");
 	const successfulJobs = completedJobs.filter(
-		(j) =>
-			j.status === "COMPLETED" &&
-			new Date(j.completedAt ?? j.createdAt) > fourHoursAgo,
+		(j) => j.status === "COMPLETED",
 	);
 
 	// Show panel only if there are active or recent jobs
@@ -125,7 +122,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 			{queueStatus && queueStatus.queued.length > 0 && (
 				<div className="space-y-3">
 					<div className="flex items-center gap-2">
-						<h3 className="font-medium text-muted-foreground text-sm">
+						<h3 className="font-medium tabular-nums text-muted-foreground text-sm">
 							Queued ({queueStatus.queued.length})
 						</h3>
 					</div>
@@ -191,7 +188,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 				<>
 					<Separator />
 					<div className="space-y-3">
-						<h3 className="font-medium text-muted-foreground text-sm">
+						<h3 className="font-medium tabular-nums text-muted-foreground text-sm">
 							Recently Completed
 						</h3>
 						<div className="space-y-2">

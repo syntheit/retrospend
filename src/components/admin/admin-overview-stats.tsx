@@ -16,7 +16,7 @@ export function AdminOverviewStats() {
 		refetchInterval: 30000,
 	});
 
-	const { data: importerStatus } = api.system.checkImporterStatus.useQuery(
+	const { data: sidecarStatus } = api.system.checkSidecarStatus.useQuery(
 		undefined,
 		{ refetchInterval: 30000 },
 	);
@@ -24,7 +24,7 @@ export function AdminOverviewStats() {
 	const { data: importQueueStats } = api.importQueue.getGlobalStats.useQuery(
 		undefined,
 		{
-			refetchInterval: 5000,
+			refetchInterval: 30000,
 		},
 	);
 
@@ -67,7 +67,7 @@ export function AdminOverviewStats() {
 						{lastRun ? `${formatDistanceToNow(lastRun)} ago` : "No heartbeat"}
 					</span>
 				}
-				title="Worker"
+				title="Sidecar"
 				value={workerHealthy ? "Online" : "Offline"}
 				variant={workerHealthy ? "emerald" : "rose"}
 			/>
@@ -77,14 +77,14 @@ export function AdminOverviewStats() {
 				icon={Upload}
 				subValue={
 					<span className="text-muted-foreground text-xs">
-						{importerStatus?.available
-							? formatUptime(importerStatus.uptime ?? 0)
-							: "N/A"}
+						{sidecarStatus?.online
+							? formatUptime(sidecarStatus.uptime ?? 0)
+							: "Not configured"}
 					</span>
 				}
-				title="Importer"
-				value={importerStatus?.available ? "Online" : "Offline"}
-				variant={importerStatus?.available ? "emerald" : "rose"}
+				title="AI Import"
+				value={sidecarStatus?.importerAvailable ? "Enabled" : "Disabled"}
+				variant={sidecarStatus?.importerAvailable ? "emerald" : "amber"}
 			/>
 
 			<StatCard
@@ -105,7 +105,7 @@ export function AdminOverviewStats() {
 				icon={Database}
 				subValue={
 					<span className="text-muted-foreground text-xs">
-						{formatUptime(serverStats?.uptime ?? 0)} uptime
+						{formatBytes(serverStats?.storageSize ?? 0)} media
 					</span>
 				}
 				title="Database"

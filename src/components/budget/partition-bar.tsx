@@ -54,7 +54,13 @@ interface Segment {
 	miscItems?: Array<{ name: string; value: number }>;
 }
 
-const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
+function DesktopPartitionBar({
+	segments,
+	currency,
+}: {
+	segments: Segment[];
+	currency: string;
+}) {
 	const { formatCurrency } = useCurrencyFormatter();
 	const getColorStyle = (color: string) => {
 		if (color === "stone") return { backgroundColor: "#444" };
@@ -84,6 +90,7 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 							<Tooltip key={segment.id}>
 								<TooltipTrigger asChild>
 									<div
+										aria-label={`${segment.name}: ${Number(segment.percentage).toFixed(1)}%, ${formatCurrency(segment.value, currency)}`}
 										className={cn(
 											"relative h-full cursor-pointer transition-all duration-200 hover:opacity-80",
 											isFirst && "rounded-l-lg",
@@ -124,7 +131,7 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 																{item.name}
 															</span>
 															<span className="font-semibold text-foreground tabular-nums">
-																{formatCurrency(item.value, "USD")}
+																{formatCurrency(item.value, currency)}
 															</span>
 														</div>
 													</div>
@@ -144,7 +151,7 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 															{Number(segment.percentage).toFixed(1)}%
 														</span>
 														<span className="font-semibold text-foreground tabular-nums">
-															{formatCurrency(segment.value, "USD")}
+															{formatCurrency(segment.value, currency)}
 														</span>
 													</div>
 												</div>
@@ -163,9 +170,10 @@ const DesktopPartitionBar = ({ segments }: { segments: Segment[] }) => {
 
 export function PartitionBar({
 	categoryBudgets,
+	homeCurrency,
 }: {
 	categoryBudgets: CategoryBudget[];
-	isMobile?: boolean;
+	homeCurrency: string;
 }) {
 	const { segments } = useMemo(() => {
 		const totalAllocated = categoryBudgets.reduce(
@@ -225,7 +233,7 @@ export function PartitionBar({
 
 	return (
 		<div className="w-full">
-			<DesktopPartitionBar segments={segments} />
+			<DesktopPartitionBar currency={homeCurrency} segments={segments} />
 		</div>
 	);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 
@@ -18,6 +18,11 @@ export function useTableActions<T extends { id: string }>(
 	// Selection State
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+
+	// Ref so handleSelectAll never needs to be recreated when filteredData changes
+	const filteredDataRef = useRef(filteredData);
+	filteredDataRef.current = filteredData;
 
 	// Mutations
 	const deleteExpenseMutation = api.expense.deleteExpense.useMutation();
@@ -34,18 +39,29 @@ export function useTableActions<T extends { id: string }>(
 			}
 			return newSet;
 		});
+		if (checked) setLastSelectedId(id);
 	}, []);
 
-	const handleSelectAll = useCallback(
-		(checked: boolean) => {
-			if (checked) {
-				setSelectedIds(new Set(filteredData.map((e) => e.id)));
-			} else {
-				setSelectedIds(new Set());
+	const handleRangeSelect = useCallback((ids: string[]) => {
+		setSelectedIds((prev) => {
+			const newSet = new Set(prev);
+			for (const id of ids) {
+				newSet.add(id);
 			}
-		},
-		[filteredData],
-	);
+			return newSet;
+		});
+		if (ids.length > 0) setLastSelectedId(ids[ids.length - 1]!);
+	}, []);
+
+	// Stable reference: reads filteredDataRef.current so the function identity
+	// never changes when filters change, preventing columns from being recreated.
+	const handleSelectAll = useCallback((checked: boolean) => {
+		if (checked) {
+			setSelectedIds(new Set(filteredDataRef.current.map((e) => e.id)));
+		} else {
+			setSelectedIds(new Set());
+		}
+	}, []);
 
 	// Cleanup selection if items are filtered out/deleted
 	useEffect(() => {
@@ -123,10 +139,12 @@ export function useTableActions<T extends { id: string }>(
 		// State Setters (if needed directly)
 		setShowDeleteDialog,
 		setSelectedIds,
+		lastSelectedId,
 
 		// Handlers
 		handleRowSelect,
 		handleSelectAll,
+		handleRangeSelect,
 		handleExportSelected,
 		handleDeleteSelected,
 		confirmDelete,

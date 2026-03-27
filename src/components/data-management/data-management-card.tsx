@@ -71,11 +71,9 @@ function AllDataTab() {
 
 export function DataManagementCard() {
 	return (
-		<Card className="border-muted/50 shadow-lg">
-			<CardHeader className="pb-3">
-				<CardTitle className="font-bold text-2xl tracking-tight">
-					Export Data
-				</CardTitle>
+		<Card className="border-border/50 shadow-sm">
+			<CardHeader>
+				<CardTitle>Export Data</CardTitle>
 				<CardDescription>
 					Download your financial data as CSV files.
 				</CardDescription>

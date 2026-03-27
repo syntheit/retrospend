@@ -57,6 +57,18 @@ function TRPCProviderInner(props: { children: React.ReactNode }) {
 					headers: () => {
 						const headers = new Headers();
 						headers.set("x-trpc-source", "nextjs-react");
+						// Include guest session token if present (set by the /join page after registration)
+						if (typeof window !== "undefined") {
+							const guestToken = localStorage.getItem("guest_session_token");
+							if (guestToken) {
+								headers.set("x-guest-token", guestToken);
+							}
+							// Include viewer link ID for anonymous VIEWER access (no registration)
+							const viewerLinkId = localStorage.getItem("viewer_link_id");
+							if (viewerLinkId) {
+								headers.set("x-viewer-link-id", viewerLinkId);
+							}
+						}
 						return headers;
 					},
 				}),

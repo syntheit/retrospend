@@ -3,6 +3,8 @@ import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
 import type { Prisma, PrismaClient } from "~prisma";
+import { isCrypto as isCryptoCheck } from "~/lib/currency-format";
+import { fromUSD, toUSD } from "../currency";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
 
 /**
@@ -71,7 +73,7 @@ export class WealthService {
 		balance: number,
 		rate: number,
 		currency: string,
-		rateType: string | null = null,
+		_rateType: string | null = null,
 	): number {
 		if (rate <= 0) {
 			throw new TRPCError({
@@ -80,8 +82,7 @@ export class WealthService {
 			});
 		}
 
-		// CRYPTO LOGIC: If it's a crypto rate, we MULTIPLY the balance by the rate (USD per Coin)
-		if (rateType === "crypto") {
+		if (isCryptoCheck(currency)) {
 			return balance * rate;
 		}
 
@@ -243,9 +244,8 @@ export class WealthService {
 		// Target conversion always assumes targetRate is Units per USD (fiat-style)
 		// unless the target currency itself is crypto, but dashboard usually displays in fiat.
 		const targetRate = targetRateData.rate;
-		const targetIsCrypto = targetRateData.type === "crypto";
 		const convertToTarget = (usdVal: number) =>
-			targetIsCrypto ? usdVal / (targetRate || 1) : usdVal * targetRate;
+			fromUSD(usdVal, targetCurrency, targetRate);
 
 		let totalNetWorthUSD = 0;
 		let totalAssetsUSD = 0;
@@ -274,10 +274,7 @@ export class WealthService {
 					e,
 				);
 				// Last resort fallback
-				balanceInUSD =
-					rateData.type === "crypto"
-						? toNumberWithDefault(asset.balance) * rateData.rate
-						: toNumberWithDefault(asset.balance) / rateData.rate;
+				balanceInUSD = toUSD(toNumberWithDefault(asset.balance), asset.currency, rateData.rate);
 			}
 
 			const isLiability = asset.type.startsWith("LIABILITY_");
@@ -400,15 +397,15 @@ export class WealthService {
 				if (match) return { rate: match.rate, type: match.type };
 			}
 
-			// Fallback logic "crypto" > "blue" > "official" > Any
-			const crypto = ratesOnDate.find((r) => r.type === "crypto");
-			if (crypto) return { rate: crypto.rate, type: crypto.type };
-
+			// Fallback logic "blue" > "official" > "crypto" > Any
 			const blue = ratesOnDate.find((r) => r.type === "blue");
 			if (blue) return { rate: blue.rate, type: blue.type };
 
 			const official = ratesOnDate.find((r) => r.type === "official");
 			if (official) return { rate: official.rate, type: official.type };
+
+			const crypto = ratesOnDate.find((r) => r.type === "crypto");
+			if (crypto) return { rate: crypto.rate, type: crypto.type };
 
 			const first = ratesOnDate[0];
 			return first ? { rate: first.rate, type: first.type } : null;

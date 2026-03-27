@@ -24,6 +24,8 @@ export class ExportService {
 				isActive: true,
 				createdAt: true,
 				updatedAt: true,
+				consentedAt: true,
+				consentVersion: true,
 			},
 		});
 
@@ -40,6 +42,8 @@ export class ExportService {
 				"isActive",
 				"createdAt",
 				"updatedAt",
+				"consentedAt",
+				"consentVersion",
 			];
 			const userRow = [
 				user.id,
@@ -53,6 +57,8 @@ export class ExportService {
 				user.isActive,
 				user.createdAt,
 				user.updatedAt,
+				user.consentedAt ?? "",
+				user.consentVersion ?? "",
 			];
 			zip.file("user_profile.csv", generateCsv(userHeader, [userRow]));
 		}
@@ -73,58 +79,75 @@ export class ExportService {
 			zip.file("categories.csv", generateCsv(categoryHeader, categoryRows));
 		}
 
-		// 3. Expenses
-		const expenses = await db.expense.findMany({
-			where: { userId },
-			orderBy: { date: "desc" },
-			include: {
-				category: {
-					select: {
-						id: true,
-						name: true,
-						color: true,
+		// 3. Expenses (cursor-based pagination to limit memory usage)
+		const expenseHeader = [
+			"id",
+			"title",
+			"amount",
+			"currency",
+			"exchangeRate",
+			"amountInUSD",
+			"date",
+			"location",
+			"description",
+			"pricingSource",
+			"status",
+			"categoryId",
+			"categoryName",
+			"categoryColor",
+			"excludeFromAnalytics",
+			"createdAt",
+			"updatedAt",
+		];
+		const EXPENSE_BATCH_SIZE = 2000;
+		const expenseRows: unknown[][] = [];
+		let expenseCursor: string | undefined;
+		let hasMoreExpenses = true;
+
+		while (hasMoreExpenses) {
+			const batch = await db.expense.findMany({
+				where: { userId },
+				orderBy: [{ date: "desc" }, { id: "asc" }],
+				include: {
+					category: {
+						select: { id: true, name: true, color: true },
 					},
 				},
-			},
-		});
+				take: EXPENSE_BATCH_SIZE,
+				...(expenseCursor
+					? { skip: 1, cursor: { id: expenseCursor } }
+					: {}),
+			});
 
-		if (expenses.length > 0) {
-			const expenseHeader = [
-				"id",
-				"title",
-				"amount",
-				"currency",
-				"exchangeRate",
-				"amountInUSD",
-				"date",
-				"location",
-				"description",
-				"pricingSource",
-				"status",
-				"categoryId",
-				"categoryName",
-				"categoryColor",
-				"createdAt",
-				"updatedAt",
-			];
-			const expenseRows = expenses.map((expense) => [
-				expense.id,
-				expense.title,
-				expense.amount,
-				expense.currency,
-				expense.exchangeRate,
-				expense.amountInUSD,
-				expense.date,
-				expense.location,
-				expense.description,
-				expense.pricingSource,
-				expense.status,
-				expense.categoryId,
-				expense.category?.name,
-				expense.category?.color,
-				expense.createdAt,
-				expense.updatedAt,
-			]);
+			for (const expense of batch) {
+				expenseRows.push([
+					expense.id,
+					expense.title,
+					expense.amount,
+					expense.currency,
+					expense.exchangeRate,
+					expense.amountInUSD,
+					expense.date,
+					expense.location,
+					expense.description,
+					expense.pricingSource,
+					expense.status,
+					expense.categoryId,
+					expense.category?.name,
+					expense.category?.color,
+					expense.excludeFromAnalytics,
+					expense.createdAt,
+					expense.updatedAt,
+				]);
+			}
+
+			hasMoreExpenses = batch.length === EXPENSE_BATCH_SIZE;
+			if (batch.length > 0) {
+				expenseCursor = batch[batch.length - 1]!.id;
+			}
+		}
+
+		if (expenseRows.length > 0) {
 			zip.file("expenses.csv", generateCsv(expenseHeader, expenseRows));
 		}
 
@@ -309,6 +332,73 @@ export class ExportService {
 				budget.updatedAt,
 			]);
 			zip.file("budgets.csv", generateCsv(budgetHeader, budgetRows));
+		}
+
+		// 9. Recurring Templates
+		const recurringTemplates = await db.recurringTemplate.findMany({
+			where: { userId },
+			include: { category: { select: { name: true } } },
+			orderBy: { createdAt: "asc" },
+		});
+
+		if (recurringTemplates.length > 0) {
+			const recurringHeader = [
+				"id",
+				"name",
+				"amount",
+				"currency",
+				"frequency",
+				"nextDueDate",
+				"websiteUrl",
+				"paymentSource",
+				"autoPay",
+				"isActive",
+				"categoryId",
+				"categoryName",
+				"createdAt",
+				"updatedAt",
+			];
+			const recurringRows = recurringTemplates.map((t) => [
+				t.id,
+				t.name,
+				t.amount,
+				t.currency,
+				t.frequency,
+				t.nextDueDate,
+				t.websiteUrl ?? "",
+				t.paymentSource ?? "",
+				t.autoPay,
+				t.isActive,
+				t.categoryId ?? "",
+				t.category?.name ?? "",
+				t.createdAt,
+				t.updatedAt,
+			]);
+			zip.file(
+				"recurring_templates.csv",
+				generateCsv(recurringHeader, recurringRows),
+			);
+		}
+
+		// 10. Notification Preferences
+		const notificationPrefs = await db.notificationPreference.findMany({
+			where: { userId },
+			orderBy: { type: "asc" },
+		});
+
+		if (notificationPrefs.length > 0) {
+			const prefHeader = ["id", "type", "inApp", "email", "digestMode"];
+			const prefRows = notificationPrefs.map((p) => [
+				p.id,
+				p.type,
+				p.inApp,
+				p.email,
+				p.digestMode,
+			]);
+			zip.file(
+				"notification_preferences.csv",
+				generateCsv(prefHeader, prefRows),
+			);
 		}
 
 		const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });

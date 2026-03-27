@@ -65,7 +65,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 -- Part C: Enable RLS and create per-user isolation policies
 -- ============================================================
 
--- Enable RLS on all user-owned tables (idempotent — safe to re-run)
+-- Enable RLS on all user-owned tables (idempotent: safe to re-run)
 ALTER TABLE "expense"                       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "category"                      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "recurring_template"            ENABLE ROW LEVEL SECURITY;

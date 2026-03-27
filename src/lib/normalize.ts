@@ -21,6 +21,23 @@ export type NormalizedExpense = {
 		color: string;
 		icon?: string | null;
 	} | null;
+	isAmortizedParent?: boolean;
+	excludeFromAnalytics?: boolean;
+	/** "personal" for regular expenses, "shared" for shared expense participations */
+	source?: "personal" | "shared";
+	/** Present only when source === "shared" */
+	sharedContext?: {
+		totalAmount: number;
+		participantCount: number;
+		paidByName: string;
+		paidByAvatarUrl?: string | null;
+		iPayedThis: boolean;
+		transactionId: string;
+		projectId?: string;
+		projectName?: string;
+		canEdit?: boolean;
+		canDelete?: boolean;
+	};
 };
 
 export type RawExpense = z.infer<typeof RawExpenseSchema>;
@@ -37,6 +54,7 @@ const RawExpenseSchema = z.object({
 	location: z.string().nullable().optional(),
 	description: z.string().nullable().optional(),
 	categoryId: z.string().nullable().optional(),
+	excludeFromAnalytics: z.boolean().optional(),
 	category: z
 		.object({
 			id: z.string(),
@@ -67,6 +85,7 @@ export function normalizeExpense(expense: RawExpense): NormalizedExpense {
 		location: expense.location ?? null,
 		description: expense.description ?? null,
 		categoryId: expense.categoryId ?? expense.category?.id ?? null,
+		excludeFromAnalytics: expense.excludeFromAnalytics ?? false,
 		category: expense.category
 			? {
 					id: expense.category.id,

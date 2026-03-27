@@ -1,21 +1,11 @@
 "use client";
 
-import {
-	type ColumnDef,
-	flexRender,
-	getCoreRowModel,
-	useReactTable,
-} from "@tanstack/react-table";
-import { ChevronDown, Eye, Info } from "lucide-react";
-import { useState } from "react";
-import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
+import type { ColumnDef } from "@tanstack/react-table";
+import { format } from "date-fns";
+import { ClipboardCopy, Eye, Info, MoreHorizontal, ScrollText, User } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { ContextMenuItem } from "~/components/ui/context-menu";
 import {
 	Dialog,
 	DialogContent,
@@ -31,14 +21,6 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "~/components/ui/table";
-import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
@@ -47,6 +29,15 @@ import {
 import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 import type { EventType } from "~prisma";
+import { Button } from "~/components/ui/button";
+import { DataTable } from "~/components/data-table";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { EmptyState } from "~/components/ui/empty-state";
 
 interface EventLog {
 	id: string;
@@ -79,26 +70,40 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
 	TWO_FACTOR_DISABLED: "2FA Disabled",
 	SETTINGS_UPDATED: "Settings Updated",
 	USER_UPDATED: "User Updated",
+	USERNAME_CHANGED: "Username Changed",
 	EXPENSE_IMPORT: "Expense Import",
+	ADMIN_RESET_LINK_GENERATED: "Admin Reset Link",
+	ADMIN_AI_ACCESS_CHANGED: "AI Access Changed",
+	EMAIL_CHANGE_REQUESTED: "Email Change Requested",
+	EMAIL_CHANGE_CONFIRMED: "Email Change Confirmed",
+	EMAIL_CHANGE_REVERTED: "Email Change Reverted",
+	GUEST_UPGRADED: "Guest Upgraded",
 };
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
-	FAILED_LOGIN: "text-red-600",
-	SUCCESSFUL_LOGIN: "text-green-600",
-	PASSWORD_RESET: "text-orange-600",
-	PASSWORD_CHANGED: "text-blue-600",
-	ACCOUNT_CREATED: "text-green-600",
-	ACCOUNT_DELETED: "text-red-600",
-	ACCOUNT_ENABLED: "text-green-600",
-	ACCOUNT_DISABLED: "text-orange-600",
-	INVITE_USED: "text-blue-600",
-	INVITE_CREATED: "text-blue-600",
-	EMAIL_VERIFIED: "text-green-600",
-	TWO_FACTOR_ENABLED: "text-blue-600",
-	TWO_FACTOR_DISABLED: "text-orange-600",
-	SETTINGS_UPDATED: "text-blue-600",
-	USER_UPDATED: "text-blue-600",
-	EXPENSE_IMPORT: "text-purple-600",
+	FAILED_LOGIN: "text-destructive",
+	SUCCESSFUL_LOGIN: "text-emerald-500",
+	PASSWORD_RESET: "text-warning",
+	PASSWORD_CHANGED: "text-blue-500",
+	ACCOUNT_CREATED: "text-emerald-500",
+	ACCOUNT_DELETED: "text-destructive",
+	ACCOUNT_ENABLED: "text-emerald-500",
+	ACCOUNT_DISABLED: "text-warning",
+	INVITE_USED: "text-blue-500",
+	INVITE_CREATED: "text-blue-500",
+	EMAIL_VERIFIED: "text-emerald-500",
+	TWO_FACTOR_ENABLED: "text-blue-500",
+	TWO_FACTOR_DISABLED: "text-warning",
+	SETTINGS_UPDATED: "text-blue-500",
+	USER_UPDATED: "text-blue-500",
+	USERNAME_CHANGED: "text-blue-500",
+	EXPENSE_IMPORT: "text-purple-500",
+	ADMIN_RESET_LINK_GENERATED: "text-warning",
+	ADMIN_AI_ACCESS_CHANGED: "text-blue-500",
+	EMAIL_CHANGE_REQUESTED: "text-warning",
+	EMAIL_CHANGE_CONFIRMED: "text-emerald-500",
+	EMAIL_CHANGE_REVERTED: "text-destructive",
+	GUEST_UPGRADED: "text-emerald-500",
 };
 
 type PrivacyMode = "minimal" | "anonymized" | "full";
@@ -163,30 +168,39 @@ export function AuditLogsTable() {
 		data: unknown;
 		eventType: string;
 	} | null>(null);
-	const [page, setPage] = useState(1);
-	const pageSize = 50;
 
-	const { data, isLoading } = api.admin.getEventLogs.useQuery({
-		limit: pageSize,
-		offset: (page - 1) * pageSize,
-		eventType: eventTypeFilter === "all" ? undefined : eventTypeFilter,
-	});
+	const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+		api.admin.getEventLogsCursor.useInfiniteQuery(
+			{
+				limit: 50,
+				eventType: eventTypeFilter === "all" ? undefined : eventTypeFilter,
+			},
+			{
+				getNextPageParam: (lastPage) => lastPage.nextCursor,
+			},
+		);
 
 	const { data: privacyModeData } = api.admin.getAuditLogPrivacyMode.useQuery();
 
-	const columns: ColumnDef<EventLog>[] = [
+	const allLogs = useMemo(
+		() => data?.pages.flatMap((p) => p.logs) ?? [],
+		[data],
+	);
+
+	const columns = useMemo<ColumnDef<EventLog>[]>(() => [
 		{
 			accessorKey: "timestamp",
 			header: "Date & Time",
+			enableSorting: true,
 			cell: ({ row }) => {
 				const date = new Date(row.original.timestamp);
 				return (
 					<div className="space-y-0.5">
 						<div className="font-medium text-sm">
-							{date.toLocaleDateString()}
+							{format(date, "MMM d, yyyy")}
 						</div>
 						<div className="text-muted-foreground text-xs">
-							{date.toLocaleTimeString()}
+							{format(date, "h:mm a")}
 						</div>
 					</div>
 				);
@@ -195,6 +209,7 @@ export function AuditLogsTable() {
 		{
 			accessorKey: "eventType",
 			header: "Event Type",
+			enableSorting: true,
 			cell: ({ row }) => {
 				const eventType = row.original.eventType;
 				return (
@@ -207,6 +222,12 @@ export function AuditLogsTable() {
 		{
 			accessorKey: "user",
 			header: "User",
+			enableSorting: true,
+			sortingFn: (rowA, rowB) => {
+				const a = rowA.original.user?.username ?? "";
+				const b = rowB.original.user?.username ?? "";
+				return a.localeCompare(b);
+			},
 			cell: ({ row }) => {
 				const user = row.original.user;
 				if (!user) {
@@ -229,6 +250,7 @@ export function AuditLogsTable() {
 		{
 			accessorKey: "ipAddress",
 			header: "IP Address",
+			enableSorting: false,
 			cell: ({ row }) => {
 				const ip = row.original.ipAddress;
 				return (
@@ -240,39 +262,74 @@ export function AuditLogsTable() {
 		},
 		{
 			id: "actions",
-			header: "Details",
+			header: () => null,
+			enableSorting: false,
+			enableHiding: false,
+			size: 48,
 			cell: ({ row }) => {
 				const hasMetadata = row.original.metadata !== null;
+				const hasIp = !!row.original.ipAddress;
+				const hasUser = !!row.original.user;
+				if (!hasMetadata && !hasIp && !hasUser) return null;
 				return (
-					<Button
-						disabled={!hasMetadata}
-						onClick={() =>
-							setSelectedMetadata({
-								data: row.original.metadata,
-								eventType: EVENT_TYPE_LABELS[row.original.eventType],
-							})
-						}
-						size="sm"
-						variant="ghost"
-					>
-						<Eye className="mr-2 h-4 w-4" />
-						View
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+								size="icon"
+								variant="ghost"
+							>
+								<MoreHorizontal className="h-4 w-4" />
+								<span className="sr-only">Actions</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-44">
+							{hasMetadata && (
+								<DropdownMenuItem
+									onClick={() =>
+										setSelectedMetadata({
+											data: row.original.metadata,
+											eventType: EVENT_TYPE_LABELS[row.original.eventType],
+										})
+									}
+								>
+									<Eye className="mr-2 h-4 w-4" />
+									View Details
+								</DropdownMenuItem>
+							)}
+							{hasIp && (
+								<DropdownMenuItem
+									onClick={() => {
+										void navigator.clipboard.writeText(row.original.ipAddress!);
+										toast.success("IP address copied");
+									}}
+								>
+									<ClipboardCopy className="mr-2 h-4 w-4" />
+									Copy IP
+								</DropdownMenuItem>
+							)}
+							{hasUser && (
+								<DropdownMenuItem
+									onClick={() => {
+										void navigator.clipboard.writeText(row.original.user!.id);
+										toast.success("User ID copied");
+									}}
+								>
+									<User className="mr-2 h-4 w-4" />
+									Copy User ID
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				);
 			},
 		},
-	];
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	], []);
 
 	const columnVisibility: Record<string, boolean> = isMobile
 		? { ipAddress: false, actions: false }
 		: {};
-
-	const table = useReactTable({
-		data: data?.logs ?? [],
-		columns,
-		state: { columnVisibility },
-		getCoreRowModel: getCoreRowModel(),
-	});
 
 	const eventTypes: Array<{ value: EventType | "all"; label: string }> = [
 		{ value: "all", label: "All Events" },
@@ -313,7 +370,6 @@ export function AuditLogsTable() {
 					<Select
 						onValueChange={(value) => {
 							setEventTypeFilter(value as EventType | "all");
-							setPage(1);
 						}}
 						value={eventTypeFilter ?? "all"}
 					>
@@ -330,99 +386,74 @@ export function AuditLogsTable() {
 					</Select>
 				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle>Event Log</CardTitle>
-						<CardDescription>
-							{data?.total ?? 0} total events
-							{eventTypeFilter !== "all" &&
-								` (filtered by ${EVENT_TYPE_LABELS[eventTypeFilter]})`}
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="rounded-md border">
-							<Table>
-								<TableHeader>
-									{table.getHeaderGroups().map((headerGroup) => (
-										<TableRow key={headerGroup.id}>
-											{headerGroup.headers.map((header) => (
-												<TableHead key={header.id}>
-													{header.isPlaceholder
-														? null
-														: flexRender(
-																header.column.columnDef.header,
-																header.getContext(),
-															)}
-												</TableHead>
-											))}
-										</TableRow>
-									))}
-								</TableHeader>
-								<TableBody>
-									{isLoading ? (
-										<TableRow>
-											<TableCell
-												className="h-24 text-center"
-												colSpan={columns.length}
-											>
-												Loading...
-											</TableCell>
-										</TableRow>
-									) : table.getRowModel().rows?.length ? (
-										table.getRowModel().rows.map((row) => (
-											<TableRow key={row.id}>
-												{row.getVisibleCells().map((cell) => (
-													<TableCell key={cell.id}>
-														{flexRender(
-															cell.column.columnDef.cell,
-															cell.getContext(),
-														)}
-													</TableCell>
-												))}
-											</TableRow>
-										))
-									) : (
-										<TableRow>
-											<TableCell
-												className="h-24 text-center"
-												colSpan={columns.length}
-											>
-												No events found.
-											</TableCell>
-										</TableRow>
-									)}
-								</TableBody>
-							</Table>
-						</div>
-
-						{data && data.total > pageSize && (
-							<div className="flex items-center justify-between pt-4">
-								<div className="text-muted-foreground text-sm">
-									Showing {(page - 1) * pageSize + 1} to{" "}
-									{Math.min(page * pageSize, data.total)} of {data.total} events
-								</div>
-								<div className="flex gap-2">
-									<Button
-										disabled={page === 1}
-										onClick={() => setPage(page - 1)}
-										size="sm"
-										variant="outline"
+				{isLoading ? (
+					<div className="flex items-center justify-center rounded-xl border py-16 text-muted-foreground text-sm">
+						Loading...
+					</div>
+				) : (
+					<DataTable
+						data={allLogs}
+						columns={columns}
+						progressive
+						onReachEnd={() => {
+							if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+						}}
+						searchable={false}
+						columnVisibility={columnVisibility}
+						countNoun="events"
+						emptyState={
+							<EmptyState
+								icon={ScrollText}
+								title="No events found"
+								description={
+									eventTypeFilter !== "all"
+										? `No ${EVENT_TYPE_LABELS[eventTypeFilter]} events recorded.`
+										: "No audit events have been recorded yet."
+								}
+							/>
+						}
+						renderContextMenu={(row) => (
+							<>
+								<ContextMenuItem
+									onClick={() => {
+										if (row.metadata !== null) {
+											setSelectedMetadata({
+												data: row.metadata,
+												eventType: EVENT_TYPE_LABELS[row.eventType],
+											});
+										}
+									}}
+									disabled={row.metadata === null}
+								>
+									<Eye className="mr-2 h-4 w-4" />
+									View Details
+								</ContextMenuItem>
+								{row.ipAddress && (
+									<ContextMenuItem
+										onClick={() => {
+											void navigator.clipboard.writeText(row.ipAddress!);
+											toast.success("IP address copied");
+										}}
 									>
-										Previous
-									</Button>
-									<Button
-										disabled={!data.hasMore}
-										onClick={() => setPage(page + 1)}
-										size="sm"
-										variant="outline"
+										<ClipboardCopy className="mr-2 h-4 w-4" />
+										Copy IP
+									</ContextMenuItem>
+								)}
+								{row.user && (
+									<ContextMenuItem
+										onClick={() => {
+											void navigator.clipboard.writeText(row.user!.id);
+											toast.success("User ID copied");
+										}}
 									>
-										Next
-									</Button>
-								</div>
-							</div>
+										<User className="mr-2 h-4 w-4" />
+										Copy User ID
+									</ContextMenuItem>
+								)}
+							</>
 						)}
-					</CardContent>
-				</Card>
+					/>
+				)}
 			</div>
 
 			{selectedMetadata && (

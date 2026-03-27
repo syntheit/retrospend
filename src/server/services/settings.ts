@@ -1,6 +1,7 @@
 import { db } from "~/server/db";
 
 const SETTINGS_ID = "app_settings_singleton";
+const CACHE_TTL_MS = 60_000; // 60 seconds
 
 export interface AppSettings {
 	id: string;
@@ -10,15 +11,27 @@ export interface AppSettings {
 	defaultAiMode: "LOCAL" | "EXTERNAL";
 	externalAiAccessMode: "WHITELIST" | "BLACKLIST";
 	monthlyAiTokenQuota: number;
+	monthlyLocalAiTokenQuota: number;
+	monthlyExternalAiTokenQuota: number;
+	auditPrivacyMode: "MINIMAL" | "ANONYMIZED" | "FULL";
+	maxConcurrentImportJobs: number;
+	enableFeedback: boolean;
 	createdAt: Date;
 	updatedAt: Date;
 }
 
+let cachedSettings: { data: AppSettings; expiry: number } | null = null;
+
 /**
- * Get the current app settings, creating default settings if none exist
+ * Get the current app settings, creating default settings if none exist.
+ * Results are cached in-memory for 60 seconds.
  */
 export async function getAppSettings(): Promise<AppSettings> {
-	return await db.appSettings.upsert({
+	if (cachedSettings && Date.now() < cachedSettings.expiry) {
+		return cachedSettings.data;
+	}
+
+	const settings = await db.appSettings.upsert({
 		where: { id: SETTINGS_ID },
 		update: {},
 		create: {
@@ -28,10 +41,13 @@ export async function getAppSettings(): Promise<AppSettings> {
 			enableEmail: true,
 		},
 	});
+
+	cachedSettings = { data: settings, expiry: Date.now() + CACHE_TTL_MS };
+	return settings;
 }
 
 /**
- * Update app settings
+ * Update app settings. Invalidates the cache immediately.
  */
 export async function updateAppSettings(updates: {
 	inviteOnlyEnabled?: boolean;
@@ -40,8 +56,13 @@ export async function updateAppSettings(updates: {
 	defaultAiMode?: "LOCAL" | "EXTERNAL";
 	externalAiAccessMode?: "WHITELIST" | "BLACKLIST";
 	monthlyAiTokenQuota?: number;
+	monthlyLocalAiTokenQuota?: number;
+	monthlyExternalAiTokenQuota?: number;
+	auditPrivacyMode?: "MINIMAL" | "ANONYMIZED" | "FULL";
+	maxConcurrentImportJobs?: number;
+	enableFeedback?: boolean;
 }): Promise<AppSettings> {
-	return await db.appSettings.upsert({
+	const settings = await db.appSettings.upsert({
 		where: { id: SETTINGS_ID },
 		update: {
 			...updates,
@@ -54,6 +75,9 @@ export async function updateAppSettings(updates: {
 			enableEmail: updates.enableEmail ?? true,
 		},
 	});
+
+	cachedSettings = { data: settings, expiry: Date.now() + CACHE_TTL_MS };
+	return settings;
 }
 
 /**

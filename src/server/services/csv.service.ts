@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { generateCsv } from "~/lib/csv";
 import type { Prisma, PrismaClient } from "~prisma";
+import { toUSD } from "~/server/currency";
 import { AmortizationService } from "./amortization.service";
 
 type ExportExpensePayload = Prisma.ExpenseGetPayload<{
@@ -82,6 +83,7 @@ export class CsvService {
 			"category",
 			"isAmortized",
 			"amortizeDuration",
+			"excludeFromAnalytics",
 		];
 
 		const rows = expenses.map((expense: ExportExpensePayload) => [
@@ -99,6 +101,7 @@ export class CsvService {
 			expense.isAmortizedParent && expense.children
 				? expense.children.length
 				: "",
+			expense.excludeFromAnalytics ? "true" : "false",
 		]);
 
 		return generateCsv(header, rows);
@@ -153,21 +156,42 @@ export class CsvService {
 		let totalCreated = 0;
 		let skippedDuplicates = 0;
 
+		type PreparedRow = { data: ImportExpenseRow; exchangeRate: number; amountInUSD: number; categoryId: string | null };
+
+		const buildExpenseData = (r: PreparedRow) => ({
+			id: randomUUID(),
+			userId: userId,
+			title: r.data.title,
+			amount: r.data.amount,
+			currency: r.data.currency.toUpperCase(),
+			date: r.data.date,
+			categoryId: r.categoryId ?? undefined,
+			amountInUSD: r.amountInUSD,
+			exchangeRate: r.exchangeRate,
+			pricingSource: r.data.pricingSource ?? "IMPORT",
+			location: r.data.location ?? undefined,
+			description: r.data.description ?? undefined,
+			status: "FINALIZED" as const,
+		});
+
+		// Separate rows into batch-eligible (non-amortized) and sequential (amortized)
+		const batchRows: PreparedRow[] = [];
+		const amortizedRows: PreparedRow[] = [];
+
 		for (const row of rows) {
-			// Check for duplicates using fingerprint
 			const dateStr = row.date.toISOString().split("T")[0];
 			const fingerprint = `${dateStr}|${row.title.trim()}|${Math.abs(row.amount)}|${row.currency.toUpperCase()}`;
 
 			if (existingFingerprints.has(fingerprint)) {
 				skippedDuplicates++;
-				continue; // Skip this duplicate transaction
+				continue;
 			}
 
 			const exchangeRate =
 				row.exchangeRate ??
 				(row.currency.toUpperCase() === BASE_CURRENCY ? 1 : null);
 			const amountInUSD =
-				row.amountInUSD ?? (exchangeRate ? row.amount / exchangeRate : null);
+				row.amountInUSD ?? (exchangeRate ? toUSD(row.amount, row.currency, exchangeRate) : null);
 
 			if (!exchangeRate || !amountInUSD) {
 				throw new Error(
@@ -180,53 +204,47 @@ export class CsvService {
 					? row.categoryId
 					: null;
 
-			const baseExpenseData = {
-				userId: userId,
-				title: row.title,
-				amount: row.amount,
-				currency: row.currency.toUpperCase(),
-				date: row.date,
-				categoryId: categoryId ?? undefined,
-				amountInUSD: amountInUSD,
-				exchangeRate: exchangeRate,
-				pricingSource: row.pricingSource ?? "IMPORT",
-				location: row.location ?? undefined,
-				description: row.description ?? undefined,
-				status: "FINALIZED" as const,
-			};
-
+			const prepared = { data: row, exchangeRate, amountInUSD, categoryId };
 			const duration = row.amortizeDuration;
+
 			if (row.isAmortized && duration && duration > 1) {
-				await this.runInTransaction(
-					userId,
-					async (tx: Prisma.TransactionClient) => {
-						const expense = await tx.expense.create({
-							data: {
-								...baseExpenseData,
-								id: randomUUID(),
-								isAmortizedParent: true,
-							},
-						});
-
-						const amortizationService = new AmortizationService(tx);
-						await amortizationService.syncAmortization(expense, duration);
-					},
-				);
-
-				totalCreated += 1 + duration;
+				amortizedRows.push(prepared);
 			} else {
-				await this.db.expense.create({
-					data: {
-						...baseExpenseData,
-						id: randomUUID(),
-					},
-				});
-
-				totalCreated += 1;
+				batchRows.push(prepared);
 			}
 
-			// Add this transaction's fingerprint to prevent duplicates within the same import
 			existingFingerprints.add(fingerprint);
+		}
+
+		// Batch create all non-amortized rows in one call
+		if (batchRows.length > 0) {
+			await this.runInTransaction(userId, async (tx: Prisma.TransactionClient) => {
+				await tx.expense.createMany({
+					data: batchRows.map((r) => buildExpenseData(r)),
+				});
+			});
+			totalCreated += batchRows.length;
+		}
+
+		// Process amortized rows in a single transaction (each is independent)
+		if (amortizedRows.length > 0) {
+			await this.runInTransaction(userId, async (tx: Prisma.TransactionClient) => {
+				const amortizationService = new AmortizationService(tx);
+				for (const r of amortizedRows) {
+					const duration = r.data.amortizeDuration!;
+					const expense = await tx.expense.create({
+						data: {
+							...buildExpenseData(r),
+							isAmortizedParent: true,
+						},
+					});
+					await amortizationService.syncAmortization(expense, duration);
+				}
+			});
+			totalCreated += amortizedRows.reduce(
+				(sum, r) => sum + 1 + r.data.amortizeDuration!,
+				0,
+			);
 		}
 
 		return { count: totalCreated, skippedDuplicates };

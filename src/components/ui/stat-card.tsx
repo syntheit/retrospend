@@ -5,6 +5,7 @@ import { type LucideIcon, TrendingDown, TrendingUp } from "lucide-react";
 import type * as React from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
+import { formatPercent } from "~/lib/currency-format";
 import { cn } from "~/lib/utils";
 
 const statCardVariants = cva(
@@ -108,10 +109,10 @@ export function StatCard({
 			<CardContent className="relative z-10 flex h-full flex-col justify-between p-5">
 				{/* Top Row: Title + Icon */}
 				<div className="flex w-full items-start justify-between">
-					<span className="font-semibold text-[10px] text-muted-foreground uppercase tracking-widest">
+					<span className="text-muted-foreground text-sm">
 						{title}
 					</span>
-					<Icon className={cn("h-4 w-4", iconColor)} />
+					<Icon aria-hidden="true" className={cn("h-4 w-4", iconColor)} />
 				</div>
 
 				{/* Bottom Row: Value + Trend/Desc */}
@@ -139,15 +140,15 @@ export function StatCard({
 									)}
 								>
 									{trend.value > 0 ? (
-										<TrendingUp className="h-3 w-3" />
+										<TrendingUp aria-hidden="true" className="h-3 w-3" />
 									) : (
-										<TrendingDown className="h-3 w-3" />
+										<TrendingDown aria-hidden="true" className="h-3 w-3" />
 									)}
 									<span className="tabular-nums">
 										{trend.value > 0 ? "+" : ""}
 										{trend.isMoney && formatCurrency
 											? formatCurrency(trend.value)
-											: `${trend.value.toFixed(1)}%`}
+											: formatPercent(trend.value)}
 									</span>
 									<span className="ml-1 hidden opacity-70 xl:inline">
 										{trend.label.replace("vs ", "")}

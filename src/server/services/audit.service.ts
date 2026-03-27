@@ -1,4 +1,5 @@
 import { db } from "~/server/db";
+import { getAppSettings } from "~/server/services/settings";
 import type { EventType, Prisma } from "~prisma";
 
 export interface LogEventParams {
@@ -16,10 +17,6 @@ export interface LogEventParams {
  * - full: Store complete IP and user agent (best for security, requires compliance)
  */
 type PrivacyMode = "minimal" | "anonymized" | "full";
-
-// Configure via environment variable (default: minimal - privacy-first)
-const AUDIT_PRIVACY_MODE =
-	(process.env.AUDIT_PRIVACY_MODE as PrivacyMode) || "minimal";
 
 /**
  * Anonymize IP address by removing last octet
@@ -48,11 +45,14 @@ function anonymizeIP(ip: string | null | undefined): string | null {
 /**
  * Apply privacy mode to audit log data
  */
-function applyPrivacyMode(params: LogEventParams): {
+function applyPrivacyMode(
+	params: LogEventParams,
+	mode: PrivacyMode,
+): {
 	ipAddress: string | null | undefined;
 	userAgent: string | null | undefined;
 } {
-	switch (AUDIT_PRIVACY_MODE) {
+	switch (mode) {
 		case "minimal":
 			return { ipAddress: null, userAgent: null };
 
@@ -75,14 +75,16 @@ function applyPrivacyMode(params: LogEventParams): {
  * Asynchronously log an event to the audit log.
  * This function does not block and errors are caught silently to avoid disrupting the main flow.
  *
- * Privacy mode can be configured via AUDIT_PRIVACY_MODE environment variable:
+ * Privacy mode is configured in the admin panel (Settings → Audit Privacy Mode):
  * - "minimal" (default): Don't store IP/user agent - privacy-first
  * - "anonymized" (recommended): Store anonymized IP (last octet removed) - good balance
  * - "full": Store complete IP and user agent - maximum security, requires compliance
  */
 export async function logEvent(params: LogEventParams): Promise<void> {
 	try {
-		const { ipAddress, userAgent } = applyPrivacyMode(params);
+		const settings = await getAppSettings();
+		const mode = settings.auditPrivacyMode.toLowerCase() as PrivacyMode;
+		const { ipAddress, userAgent } = applyPrivacyMode(params, mode);
 
 		await db.eventLog.create({
 			data: {

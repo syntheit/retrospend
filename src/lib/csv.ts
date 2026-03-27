@@ -405,7 +405,7 @@ export const parseWealthCsv = (text: string) => {
 export function escapeValue(raw: unknown): string {
 	if (raw === null || raw === undefined) return "";
 
-	// Track whether the raw value is numeric/date — formula injection prefix
+	// Track whether the raw value is numeric/date; formula injection prefix
 	// must not be applied to these, as "-100" is a valid negative number and
 	// prefixing it with "'" would turn it into text in spreadsheet apps.
 	const isNumericOrDate =
