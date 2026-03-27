@@ -84,9 +84,13 @@ COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml ./
 COPY --chown=nextjs:nodejs prisma/ ./prisma/
 COPY --chown=nextjs:nodejs prisma.config.ts ./
+COPY --chown=nextjs:nodejs tsconfig.json tsconfig.scripts.json ./
 
 # Copy scripts directory for runtime operations
 COPY --chown=nextjs:nodejs scripts/ ./scripts/
+
+# Copy src for runtime scripts (e.g. tsx scripts/*.ts)
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
