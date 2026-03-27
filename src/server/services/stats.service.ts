@@ -6,16 +6,36 @@ import {
 	subMonths,
 } from "date-fns";
 import { getFiscalMonthRange } from "~/lib/fiscal-month";
-import type { PrismaClient } from "~prisma";
+import { Prisma, type PrismaClient } from "~prisma";
+import { fromUSD, toUSD } from "../currency";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
+import {
+	getSharedExpenseShares,
+	getSharedExpenseTotalInUSD,
+} from "./shared-expense-integration";
+import type { RateCache } from "./rate-cache";
 
 export class StatsService {
-	constructor(private db: PrismaClient) {}
+	constructor(
+		private db: PrismaClient,
+		private rateCache?: RateCache,
+		private excludedProjectIds?: string[],
+	) {}
+
+	private async getRate(currency: string, date: Date) {
+		if (this.rateCache) return this.rateCache.get(currency, date);
+		return getBestExchangeRate(this.db, currency, date);
+	}
 
 	/**
 	 * Gets summary statistics for a given month.
 	 */
-	async getSummaryStats(userId: string, month: Date, homeCurrency: string, fiscalMonthStartDay = 1) {
+	async getSummaryStats(
+		userId: string,
+		month: Date,
+		homeCurrency: string,
+		fiscalMonthStartDay = 1,
+	) {
 		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
 		const start = fiscal.start;
 		const end = fiscal.end;
@@ -24,63 +44,103 @@ export class StatsService {
 		const lastMonthStart = lastFiscal.start;
 		const lastMonthEnd = lastFiscal.end;
 
-		// Get total for current month
-		const currentMonthAgg = await this.db.expense.aggregate({
-			where: {
-				userId,
-				status: "FINALIZED",
-				isAmortizedParent: false,
-				date: { gte: start, lte: end },
-			},
-			_sum: {
-				amountInUSD: true,
-			},
-		});
-
-		// Get total for last month
-		const lastMonthAgg = await this.db.expense.aggregate({
-			where: {
-				userId,
-				status: "FINALIZED",
-				isAmortizedParent: false,
-				date: { gte: lastMonthStart, lte: lastMonthEnd },
-			},
-			_sum: {
-				amountInUSD: true,
-			},
-		});
-
-		// Get last 3 months for projection
-		const historicalTotals: number[] = [];
-		for (let i = 1; i <= 3; i++) {
-			const histFiscal = getFiscalMonthRange(subMonths(month, i), fiscalMonthStartDay);
-			const mStart = histFiscal.start;
-			const mEnd = histFiscal.end;
-			const agg = await this.db.expense.aggregate({
+		// Get total for current month (personal + shared)
+		const [currentMonthAgg, currentSharedUSD] = await Promise.all([
+			this.db.expense.aggregate({
 				where: {
 					userId,
 					status: "FINALIZED",
 					isAmortizedParent: false,
-					date: { gte: mStart, lte: mEnd },
+					excludeFromAnalytics: false,
+					date: { gte: start, lte: end },
+				},
+				_sum: {
+					amountInUSD: true,
+				},
+			}),
+			getSharedExpenseTotalInUSD(this.db, userId, {
+				gte: start,
+				lte: end,
+			}, this.rateCache, this.excludedProjectIds),
+		]);
+
+		// Get total for last month (personal + shared)
+		const [lastMonthAgg, lastSharedUSD] = await Promise.all([
+			this.db.expense.aggregate({
+				where: {
+					userId,
+					status: "FINALIZED",
+					isAmortizedParent: false,
+					excludeFromAnalytics: false,
+					date: { gte: lastMonthStart, lte: lastMonthEnd },
+				},
+				_sum: {
+					amountInUSD: true,
+				},
+			}),
+			getSharedExpenseTotalInUSD(this.db, userId, {
+				gte: lastMonthStart,
+				lte: lastMonthEnd,
+			}, this.rateCache, this.excludedProjectIds),
+		]);
+
+		// Get last 3 months for projection — batched into 2 queries instead of 6
+		const histMonths = [1, 2, 3].map((i) => {
+			const f = getFiscalMonthRange(subMonths(month, i), fiscalMonthStartDay);
+			return { start: f.start, end: f.end };
+		});
+		const histEarliest = histMonths[2]!.start;
+		const histLatest = histMonths[0]!.end;
+
+		const [histPersonalAggs, histSharedTotals] = await Promise.all([
+			this.db.expense.groupBy({
+				by: ["date"],
+				where: {
+					userId,
+					status: "FINALIZED",
+					isAmortizedParent: false,
+					excludeFromAnalytics: false,
+					date: { gte: histEarliest, lte: histLatest },
 				},
 				_sum: { amountInUSD: true },
-			});
-			if (agg._sum.amountInUSD !== null) {
-				historicalTotals.push(Number(agg._sum.amountInUSD));
+			}),
+			getSharedExpenseShares(this.db, userId, {
+				gte: histEarliest,
+				lte: histLatest,
+			}, this.rateCache, this.excludedProjectIds),
+		]);
+
+		// Bucket results into each historical month
+		const historicalTotals: number[] = [];
+		for (const hm of histMonths) {
+			let personalUSD = 0;
+			for (const agg of histPersonalAggs) {
+				if (agg.date >= hm.start && agg.date <= hm.end) {
+					personalUSD += Number(agg._sum.amountInUSD ?? 0);
+				}
+			}
+			let sharedUSD = 0;
+			for (const s of histSharedTotals) {
+				if (s.date >= hm.start && s.date <= hm.end) {
+					sharedUSD += s.amountInUSD;
+				}
+			}
+			const total = personalUSD + sharedUSD;
+			if (total > 0) {
+				historicalTotals.push(total);
 			}
 		}
 
-		const bestRate = await getBestExchangeRate(this.db, homeCurrency, month);
+		const bestRate = await this.getRate(homeCurrency, month);
 		const rate = bestRate?.rate ?? 1;
-		const isCrypto = bestRate?.type === "crypto";
 
-		const currentTotalUSD = Number(currentMonthAgg._sum.amountInUSD ?? 0);
-		const lastTotalUSD = Number(lastMonthAgg._sum.amountInUSD ?? 0);
+		const currentTotalUSD =
+			Number(currentMonthAgg._sum.amountInUSD ?? 0) + currentSharedUSD;
+		const lastTotalUSD =
+			Number(lastMonthAgg._sum.amountInUSD ?? 0) + lastSharedUSD;
 
 		// Convert from USD to homeCurrency
-		const totalThisMonth = isCrypto
-			? currentTotalUSD / rate
-			: currentTotalUSD * rate;
+		const totalThisMonth = fromUSD(currentTotalUSD, homeCurrency, rate);
 		const changeVsLastMonth =
 			lastTotalUSD > 0
 				? ((currentTotalUSD - lastTotalUSD) / lastTotalUSD) * 100
@@ -91,14 +151,15 @@ export class StatsService {
 				? historicalTotals.reduce((a, b) => a + b, 0) / historicalTotals.length
 				: currentTotalUSD;
 
-		const projectedSpend = isCrypto ? projectedUSD / rate : projectedUSD * rate;
+		const projectedSpend = fromUSD(projectedUSD, homeCurrency, rate);
 
 		// Daily average
 		const now = new Date();
 		const isCurrentMonth = now >= start && now <= end;
 
 		const daysElapsed = isCurrentMonth
-			? Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+			? Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) +
+				1
 			: eachDayOfInterval({ start, end }).length;
 
 		const dailyAverage = totalThisMonth / Math.max(1, daysElapsed);
@@ -124,43 +185,60 @@ export class StatsService {
 		const start = fiscal.start;
 		const end = fiscal.end;
 
-		const categories = await this.db.expense.groupBy({
-			by: ["categoryId"],
-			where: {
-				userId,
-				status: "FINALIZED",
-				isAmortizedParent: false,
-				date: { gte: start, lte: end },
-			},
-			_sum: {
-				amountInUSD: true,
-			},
-		});
+		const [personalCategories, sharedShares] = await Promise.all([
+			this.db.expense.groupBy({
+				by: ["categoryId"],
+				where: {
+					userId,
+					status: "FINALIZED",
+					isAmortizedParent: false,
+					excludeFromAnalytics: false,
+					date: { gte: start, lte: end },
+				},
+				_sum: {
+					amountInUSD: true,
+				},
+			}),
+			getSharedExpenseShares(this.db, userId, {
+				gte: start,
+				lte: end,
+			}, this.rateCache, this.excludedProjectIds),
+		]);
+
+		// Merge shared expenses into category totals
+		const categoryTotalsUSD = new Map<string | null, number>();
+		for (const c of personalCategories) {
+			categoryTotalsUSD.set(c.categoryId, Number(c._sum.amountInUSD ?? 0));
+		}
+		for (const s of sharedShares) {
+			const existing = categoryTotalsUSD.get(s.categoryId) ?? 0;
+			categoryTotalsUSD.set(s.categoryId, existing + s.amountInUSD);
+		}
+
+		const allCategoryIds = [
+			...new Set(
+				[...categoryTotalsUSD.keys()].filter((id): id is string => !!id),
+			),
+		];
 
 		const categoryDetails = await this.db.category.findMany({
 			where: {
-				id: {
-					in: categories
-						.map((c) => c.categoryId)
-						.filter((id): id is string => !!id),
-				},
+				id: { in: allCategoryIds },
 			},
 		});
 
-		const bestRate = await getBestExchangeRate(this.db, homeCurrency, month);
+		const bestRate = await this.getRate(homeCurrency, month);
 		const rate = bestRate?.rate ?? 1;
-		const isCrypto = bestRate?.type === "crypto";
 
-		const breakdown = categories
-			.map((c) => {
-				const detail = categoryDetails.find((d) => d.id === c.categoryId);
+		const breakdown = [...categoryTotalsUSD.entries()]
+			.map(([categoryId, totalUSD]) => {
+				const detail = categoryDetails.find((d) => d.id === categoryId);
 				return {
-					id: c.categoryId ?? "uncategorized",
+					id: categoryId ?? "uncategorized",
 					name: detail?.name ?? "Uncategorized",
-					value: isCrypto
-						? Number(c._sum.amountInUSD ?? 0) / rate
-						: Number(c._sum.amountInUSD ?? 0) * rate,
+					value: fromUSD(totalUSD, homeCurrency, rate),
 					color: detail?.color ?? undefined,
+				icon: detail?.icon ?? null,
 				};
 			})
 			.sort((a, b) => b.value - a.value);
@@ -171,24 +249,48 @@ export class StatsService {
 	/**
 	 * Gets daily trend (cumulative) for a given month with fixed/variable split.
 	 */
-	async getDailyTrend(userId: string, month: Date, homeCurrency: string, fiscalMonthStartDay = 1) {
+	async getDailyTrend(
+		userId: string,
+		month: Date,
+		homeCurrency: string,
+		fiscalMonthStartDay = 1,
+	) {
 		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
 		const start = fiscal.start;
 		const end = fiscal.end;
 
 		// Group by both date and category to distinguish fixed/variable
-		const dailyAggs = await this.db.expense.groupBy({
-			by: ["date", "categoryId"],
-			where: {
-				userId,
-				status: "FINALIZED",
-				isAmortizedParent: false,
-				date: { gte: start, lte: end },
-			},
-			_sum: {
-				amountInUSD: true,
-			},
-		});
+		const [personalDailyAggs, sharedShares] = await Promise.all([
+			this.db.expense.groupBy({
+				by: ["date", "categoryId"],
+				where: {
+					userId,
+					status: "FINALIZED",
+					isAmortizedParent: false,
+					excludeFromAnalytics: false,
+					date: { gte: start, lte: end },
+				},
+				_sum: {
+					amountInUSD: true,
+				},
+			}),
+			getSharedExpenseShares(this.db, userId, {
+				gte: start,
+				lte: end,
+			}, this.rateCache, this.excludedProjectIds),
+		]);
+
+		// Merge shared expenses into daily aggregates
+		const dailyAggs = [
+			...personalDailyAggs,
+			...sharedShares.map((s) => ({
+				date: s.date,
+				categoryId: s.categoryId,
+				_sum: {
+					amountInUSD: new Prisma.Decimal(s.amountInUSD),
+				},
+			})),
+		];
 
 		// Get Fixed Categories (Logic: isFixed=true OR names like Rent, Utilities, Mortgage)
 		const categoryIds = [
@@ -207,9 +309,8 @@ export class StatsService {
 				.map((c) => c.id),
 		);
 
-		const bestRate = await getBestExchangeRate(this.db, homeCurrency, month);
+		const bestRate = await this.getRate(homeCurrency, month);
 		const rate = bestRate?.rate ?? 1;
-		const isCrypto = bestRate?.type === "crypto";
 
 		const byDay = new Map<
 			string,
@@ -218,9 +319,7 @@ export class StatsService {
 
 		for (const agg of dailyAggs) {
 			const dayKey = format(agg.date, "yyyy-MM-dd");
-			const amount = isCrypto
-				? Number(agg._sum.amountInUSD ?? 0) / rate
-				: Number(agg._sum.amountInUSD ?? 0) * rate;
+			const amount = fromUSD(Number(agg._sum.amountInUSD ?? 0), homeCurrency, rate);
 			const isFixed = agg.categoryId && fixedCategoryIds.has(agg.categoryId);
 
 			const current = byDay.get(dayKey) ?? { total: 0, fixed: 0, variable: 0 };
@@ -271,6 +370,7 @@ export class StatsService {
 				userId,
 				status: "FINALIZED",
 				isAmortizedParent: false,
+				excludeFromAnalytics: false,
 			},
 			_sum: {
 				amountInUSD: true,
@@ -279,18 +379,11 @@ export class StatsService {
 		});
 
 		// Get current exchange rate
-		const bestRate = await getBestExchangeRate(
-			this.db,
-			homeCurrency,
-			new Date(),
-		);
+		const bestRate = await this.getRate(homeCurrency, new Date());
 		const rate = bestRate?.rate ?? 1;
-		const isCrypto = bestRate?.type === "crypto";
 
 		return {
-			totalSpent: isCrypto
-				? Number(totalSpentAgg._sum.amountInUSD ?? 0) / rate
-				: Number(totalSpentAgg._sum.amountInUSD ?? 0) * rate,
+			totalSpent: fromUSD(Number(totalSpentAgg._sum.amountInUSD ?? 0), homeCurrency, rate),
 			totalTransactions: totalSpentAgg._count,
 		};
 	}

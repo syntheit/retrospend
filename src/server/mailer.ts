@@ -20,6 +20,7 @@ export async function sendEmail(
 	subject: string,
 	html: string,
 	bypassEnabledCheck = false,
+	extraHeaders?: Record<string, string>,
 ) {
 	if (!transporter) {
 		console.log(
@@ -44,6 +45,7 @@ export async function sendEmail(
 			to,
 			subject,
 			html,
+			...(extraHeaders ? { headers: extraHeaders } : {}),
 		});
 	} catch (error) {
 		console.error("[Email Error]: Failed to send email.", error);

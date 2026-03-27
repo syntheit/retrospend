@@ -17,8 +17,16 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "~/components/ui/dialog";
+import {
+	ResponsiveDialog,
+	ResponsiveDialogContent,
+	ResponsiveDialogDescription,
+	ResponsiveDialogFooter,
+	ResponsiveDialogHeader,
+	ResponsiveDialogTitle,
+	ResponsiveDialogTrigger,
+} from "~/components/ui/responsive-dialog";
 import {
 	Form,
 	FormControl,
@@ -38,13 +46,14 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import type { CurrencyCode } from "~/lib/currencies";
 import {
+	formatNumber,
 	isCrypto as checkIsCrypto,
 	isMajorCrypto,
 } from "~/lib/currency-format";
+import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { AssetType } from "~/lib/db-enums";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -99,9 +108,6 @@ export function AssetDialog({
 	const open = isControlled ? controlledOpen : internalOpen;
 	const setOpen = isControlled ? setControlledOpen : setInternalOpen;
 
-	// Initialize the active rate state.
-	// For crypto we use the Big Number as-is (already USD/Coin in DB).
-	const { getCurrencySymbol } = useCurrencyFormatter();
 	const { toUSD } = useCurrencyConversion();
 	const utils = api.useUtils();
 
@@ -136,6 +142,22 @@ export function AssetDialog({
 	const [isCustomRate, setIsCustomRate] = useState(false);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+	// Get form values for hooks and effects
+	const watchedBalance = form.watch("balance");
+	const watchedCurrency = form.watch("currency");
+
+	const balanceInput = useCurrencyInput({
+		value: watchedBalance,
+		onChange: (n) => form.setValue("balance", n, { shouldDirty: true }),
+		currency: watchedCurrency,
+	});
+
+	const interestRateInput = useCurrencyInput({
+		value: form.watch("interestRate") ?? 0,
+		onChange: (n) => form.setValue("interestRate", n || undefined, { shouldDirty: true }),
+		decimals: 2,
+	});
+
 	const handleExchangeRateChange = useCallback(
 		(rate: number | undefined, type?: string) => {
 			setExchangeRate(rate);
@@ -143,10 +165,6 @@ export function AssetDialog({
 		},
 		[],
 	);
-
-	// Get form values for hooks and effects
-	const watchedBalance = form.watch("balance");
-	const watchedCurrency = form.watch("currency");
 
 	// Fetch rates to validate and auto-correct potential inversion bugs
 	const { rateOptions } = useExchangeRates({
@@ -234,6 +252,8 @@ export function AssetDialog({
 		return () => subscription.unsubscribe();
 	}, [form]);
 
+	// Form reset is handled by react-hook-form; useCurrencyInput syncs from form.watch()
+
 	const createAsset = api.wealth.createAsset.useMutation({
 		onSuccess: () => {
 			toast.success("Asset created successfully");
@@ -302,13 +322,15 @@ export function AssetDialog({
 
 	return (
 		<>
-			<Dialog onOpenChange={setOpen} open={open}>
-				<DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
-				<DialogContent className="sm:max-w-[500px]">
-					<DialogHeader>
-						<DialogTitle>{title}</DialogTitle>
-						<DialogDescription>{description}</DialogDescription>
-					</DialogHeader>
+			<ResponsiveDialog onOpenChange={setOpen} open={open}>
+				{!isControlled && (
+					<ResponsiveDialogTrigger asChild>{trigger || defaultTrigger}</ResponsiveDialogTrigger>
+				)}
+				<ResponsiveDialogContent className="sm:max-w-lg">
+					<ResponsiveDialogHeader>
+						<ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+						<ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>
+					</ResponsiveDialogHeader>
 					<Form {...form}>
 						<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
 							<FormField
@@ -364,54 +386,47 @@ export function AssetDialog({
 								)}
 							/>
 
-							{/* Currency and Exchange Rate Group */}
+							{/* Balance with Integrated Currency Picker */}
 							<div className="space-y-4">
-								<div className="grid grid-cols-2 gap-4">
-									<FormField
-										control={form.control}
-										name="currency"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Currency</FormLabel>
-												<FormControl>
-													<CurrencyPicker
-														onValueChange={handleCurrencyChange}
-														placeholder="Select currency"
-														value={field.value as CurrencyCode}
-													/>
-												</FormControl>
-												<FormMessage />
-											</FormItem>
+								<div className="space-y-2">
+									<FormLabel>Balance</FormLabel>
+									<div
+										className={cn(
+											"flex h-9 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
+											form.formState.errors.balance && "border-destructive",
 										)}
-									/>
-									<FormField
-										control={form.control}
-										name="balance"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Balance</FormLabel>
-												<FormControl>
-													<div
-														className={cn(
-															"flex h-9 w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
-															"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-														)}
-													>
-														<span className="shrink-0 font-medium text-muted-foreground">
-															{getCurrencySymbol(form.watch("currency"))}
-														</span>
-														<Input
-															className="h-full w-full border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-															step="0.01"
-															type="number"
-															{...field}
-														/>
-													</div>
-												</FormControl>
-												<FormMessage />
-											</FormItem>
-										)}
-									/>
+									>
+										<FormField
+											control={form.control}
+											name="currency"
+											render={({ field }) => (
+												<CurrencyPicker
+													onValueChange={handleCurrencyChange}
+													triggerClassName="h-full rounded-none border-r border-input px-3 shrink-0 focus-visible:ring-0"
+													triggerDisplay="flag+code"
+													triggerVariant="ghost"
+													value={field.value as CurrencyCode}
+												/>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="balance"
+											render={({ field }) => (
+												<Input
+													className="h-full w-full border-0 bg-transparent px-3 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+													placeholder="0.00"
+													ref={field.ref}
+													{...balanceInput.inputProps}
+													onBlur={() => {
+														balanceInput.handleBlur();
+														field.onBlur();
+													}}
+												/>
+											)}
+										/>
+									</div>
+									<FormMessage />
 								</div>
 
 								{form.watch("currency") !== "USD" && (
@@ -447,16 +462,13 @@ export function AssetDialog({
 												USD Equivalent:
 											</span>
 											<span className="font-medium">
-												$
-												{usdEquivalent.toLocaleString("en-US", {
-													minimumFractionDigits: 2,
-													maximumFractionDigits: 2,
-												})}
+												${formatNumber(usdEquivalent, 2)}
 											</span>
 										</div>
 									</div>
 								)}
 							</div>
+
 							{/* Conditional Interest Rate for Liabilities */}
 							{isLiability && (
 								<FormField
@@ -467,17 +479,13 @@ export function AssetDialog({
 											<FormLabel>Interest Rate (APR)</FormLabel>
 											<FormControl>
 												<Input
-													onChange={(e) => {
-														const value =
-															e.target.value === ""
-																? undefined
-																: parseFloat(e.target.value);
-														field.onChange(value);
-													}}
 													placeholder="0.00"
-													step="0.01"
-													type="number"
-													value={field.value ?? ""}
+													ref={field.ref}
+													{...interestRateInput.inputProps}
+													onBlur={() => {
+														interestRateInput.handleBlur();
+														field.onBlur();
+													}}
 												/>
 											</FormControl>
 											<FormDescription>
@@ -510,7 +518,7 @@ export function AssetDialog({
 									</FormItem>
 								)}
 							/>
-							<DialogFooter>
+							<ResponsiveDialogFooter>
 								{/* Delete button - only visible in edit mode */}
 								{isEdit && (
 									<Button
@@ -537,11 +545,11 @@ export function AssetDialog({
 										? loadingLabel
 										: submitLabel}
 								</Button>
-							</DialogFooter>
+							</ResponsiveDialogFooter>
 						</form>
 					</Form>
-				</DialogContent>
-			</Dialog>
+				</ResponsiveDialogContent>
+			</ResponsiveDialog>
 
 			{/* Delete confirmation dialog */}
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
@@ -566,7 +574,7 @@ export function AssetDialog({
 							onClick={handleDelete}
 							variant="destructive"
 						>
-							{deleteAsset.isPending ? "Deleting..." : "Delete"}
+							{deleteAsset.isPending ? "Deleting..." : "Delete Asset"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

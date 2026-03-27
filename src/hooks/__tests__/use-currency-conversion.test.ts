@@ -1,88 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isCrypto } from "~/lib/currency-format";
-
-// Import the conversion logic directly to test
-const toUSD = (
-	amount: number,
-	currency: string,
-	exchangeRate: number | undefined,
-): number => {
-	if (!amount || amount === 0) return 0;
-	if (currency === "USD") return amount;
-	if (!exchangeRate || exchangeRate === 0) return 0;
-
-	const usdValue = isCrypto(currency)
-		? amount * exchangeRate
-		: amount / exchangeRate;
-
-	return Math.round(usdValue * 100) / 100;
-};
-
-const fromUSD = (
-	usdAmount: number,
-	targetCurrency: string,
-	exchangeRate: number | undefined,
-): number => {
-	if (!usdAmount || usdAmount === 0) return 0;
-	if (targetCurrency === "USD") return usdAmount;
-	if (!exchangeRate || exchangeRate === 0) return 0;
-
-	const targetValue = isCrypto(targetCurrency)
-		? usdAmount / exchangeRate
-		: usdAmount * exchangeRate;
-
-	return Math.round(targetValue * 100) / 100;
-};
-
-const convert = (
-	amount: number,
-	sourceCurrency: string,
-	sourceRate: number | undefined,
-	targetCurrency: string,
-	targetRate: number | undefined,
-): number => {
-	if (!amount || amount === 0) return 0;
-	if (sourceCurrency === targetCurrency) return amount;
-
-	// Convert to USD first
-	let usdAmount: number;
-	if (sourceCurrency === "USD") {
-		usdAmount = amount;
-	} else if (!sourceRate || sourceRate === 0) {
-		return 0;
-	} else {
-		usdAmount = isCrypto(sourceCurrency)
-			? amount * sourceRate
-			: amount / sourceRate;
-	}
-
-	// Convert from USD to target
-	if (targetCurrency === "USD") {
-		return Math.round(usdAmount * 100) / 100;
-	} else if (!targetRate || targetRate === 0) {
-		return 0;
-	} else {
-		const targetValue = isCrypto(targetCurrency)
-			? usdAmount / targetRate
-			: usdAmount * targetRate;
-		return Math.round(targetValue * 100) / 100;
-	}
-};
-
-const getDisplayRate = (
-	exchangeRate: number | undefined,
-	currency: string,
-	displayMode: "foreign-to-usd" | "usd-to-foreign" = "usd-to-foreign",
-): number => {
-	if (!exchangeRate || exchangeRate === 0) return 0;
-	if (currency === "USD") return 1;
-
-	if (isCrypto(currency)) {
-		return exchangeRate;
-	}
-
-	return displayMode === "foreign-to-usd" ? 1 / exchangeRate : exchangeRate;
-};
+import {
+	convert,
+	fromUSD,
+	getDisplayRate,
+	toUSD,
+} from "~/lib/currency-math";
 
 describe("Currency conversion logic", () => {
 	describe("toUSD - Converting foreign currencies to USD", () => {

@@ -4,12 +4,12 @@ import { format } from "date-fns";
 import { useMemo } from "react";
 import { Badge } from "~/components/ui/badge";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog";
+	ResponsiveDialog,
+	ResponsiveDialogContent,
+	ResponsiveDialogDescription,
+	ResponsiveDialogHeader,
+	ResponsiveDialogTitle,
+} from "~/components/ui/responsive-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import {
@@ -88,11 +88,11 @@ export function DayExpensesDialog({
 	};
 
 	return (
-		<Dialog onOpenChange={onOpenChange} open={open}>
-			<DialogContent className="max-h-[80vh] max-w-2xl">
-				<DialogHeader>
-					<DialogTitle>{formattedDate}</DialogTitle>
-					<DialogDescription>
+		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
+			<ResponsiveDialogContent className="max-h-[80vh] max-w-2xl">
+				<ResponsiveDialogHeader>
+					<ResponsiveDialogTitle>{formattedDate}</ResponsiveDialogTitle>
+					<ResponsiveDialogDescription>
 						{expenses.length === 0 ? (
 							"No expenses recorded for this day"
 						) : (
@@ -104,8 +104,8 @@ export function DayExpensesDialog({
 								</span>
 							</>
 						)}
-					</DialogDescription>
-				</DialogHeader>
+					</ResponsiveDialogDescription>
+				</ResponsiveDialogHeader>
 
 				{isLoading ? (
 					<div className="flex items-center justify-center py-8">
@@ -173,7 +173,7 @@ export function DayExpensesDialog({
 						</div>
 					</div>
 				)}
-			</DialogContent>
-		</Dialog>
+			</ResponsiveDialogContent>
+		</ResponsiveDialog>
 	);
 }

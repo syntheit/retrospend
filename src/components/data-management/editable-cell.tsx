@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { Pencil } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
 import { CategoryPicker } from "~/components/category-picker";
 import { CategoryBadge } from "~/components/ui/category-badge";
 import { DatePicker } from "~/components/ui/date-picker";
@@ -14,6 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { parseFormattedNumber } from "~/lib/currency-format";
 import { cn } from "~/lib/utils";
 
 interface EditableCellProps {
@@ -35,18 +37,25 @@ export function EditableCell({
 	categories,
 	onSave,
 	className,
-	placeholder = "—",
+	placeholder = "-",
 	formatDisplay,
 	maxLength,
 }: EditableCellProps) {
 	const [editing, setEditing] = useState(false);
 	const [editValue, setEditValue] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
+	const [invalidCharWarn, setInvalidCharWarn] = useState(false);
+	const invalidCharTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const flashInvalidChar = () => {
+		setInvalidCharWarn(true);
+		clearTimeout(invalidCharTimer.current);
+		invalidCharTimer.current = setTimeout(() => setInvalidCharWarn(false), 1500);
+	};
 
 	const displayValue = formatDisplay
 		? formatDisplay(value)
 		: value instanceof Date
-			? format(value, "MMM dd, yyyy")
+			? format(value, "MMM d, yyyy")
 			: type === "select" && options
 				? (options.find((o) => o.value === value)?.label ??
 					(value ? String(value) : ""))
@@ -81,7 +90,7 @@ export function EditableCell({
 		if (trimmed === String(value)) return;
 
 		if (type === "number") {
-			const num = Number(trimmed);
+			const num = parseFormattedNumber(trimmed);
 			if (!Number.isNaN(num)) onSave(num);
 		} else {
 			onSave(trimmed);
@@ -96,9 +105,17 @@ export function EditableCell({
 			} else if (e.key === "Escape") {
 				e.preventDefault();
 				setEditing(false);
+			} else if (
+				type === "number" &&
+				e.key.length === 1 &&
+				!/[\d.]/.test(e.key) &&
+				!e.metaKey &&
+				!e.ctrlKey
+			) {
+				flashInvalidChar();
 			}
 		},
-		[handleSave],
+		[handleSave, type],
 	);
 
 	if (editing) {
@@ -157,16 +174,22 @@ export function EditableCell({
 		}
 
 		return (
-			<Input
-				className="h-8 text-xs"
-				maxLength={maxLength}
-				onBlur={handleSave}
-				onChange={(e) => setEditValue(e.target.value)}
-				onKeyDown={handleKeyDown}
-				ref={inputRef}
-				type={type === "number" ? "number" : "text"}
-				value={editValue}
-			/>
+			<div className="space-y-0.5">
+				<Input
+					className="h-8 text-xs"
+					maxLength={maxLength}
+					onBlur={handleSave}
+					onChange={(e) => setEditValue(e.target.value)}
+					onKeyDown={handleKeyDown}
+					ref={inputRef}
+					inputMode={type === "number" ? "decimal" : undefined}
+					type="text"
+					value={editValue}
+				/>
+				{invalidCharWarn && (
+					<p className="text-amber-500 text-xs">Only numbers allowed</p>
+				)}
+			</div>
 		);
 	}
 
@@ -176,13 +199,14 @@ export function EditableCell({
 			: null;
 
 	return (
-		<button
+		<Button
 			className={cn(
-				"group/edit flex w-full cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-left transition-colors hover:bg-muted/50",
+				"group/edit flex h-auto w-full items-center justify-start gap-1 rounded px-1 py-0.5 text-left hover:bg-muted/50",
 				className,
 			)}
 			onClick={startEditing}
 			type="button"
+			variant="ghost"
 		>
 			{type === "category" && matchedCategory ? (
 				<CategoryBadge
@@ -197,7 +221,7 @@ export function EditableCell({
 					{displayValue || placeholder}
 				</span>
 			)}
-			<Pencil className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
-		</button>
+			<Pencil className="h-3 w-3 shrink-0 text-muted-foreground md:opacity-0 transition-opacity md:group-hover/edit:opacity-100" />
+		</Button>
 	);
 }

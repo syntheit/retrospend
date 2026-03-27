@@ -5,6 +5,9 @@ import { PrismaClient } from "~prisma";
 
 const pool = new Pool({
 	connectionString: env.DATABASE_URL,
+	max: 20,
+	idleTimeoutMillis: 30000,
+	connectionTimeoutMillis: 5000,
 });
 
 const adapter = new PrismaPg(pool);
@@ -32,7 +35,7 @@ if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
  *
  * NOTE: This interceptor only wraps individual model queries. Interactive
  * transactions (`$transaction(callback)`) must manually call set_config at
- * the start of their callback — the `tx` client is not intercepted.
+ * the start of their callback: the `tx` client is not intercepted.
  */
 export function createUserScopedDb(userId: string): typeof db {
 	const extended = db.$extends({

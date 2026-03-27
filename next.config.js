@@ -3,21 +3,29 @@
  * for Docker builds.
  */
 import "./src/env.js";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+	enabled: process.env.ANALYZE === "true",
+});
 
 /** @type {import("next").NextConfig} */
 const config = {
 	output: "standalone",
 	env: {
-		NEXT_PUBLIC_APP_URL: process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+		NEXT_PUBLIC_APP_URL:
+			process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
 		NEXT_PUBLIC_SHOW_LANDING_PAGE: process.env.SHOW_LANDING_PAGE ?? "false",
-		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.ENABLE_LEGAL_PAGES ?? "false",
+		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.ENABLE_LEGAL_PAGES ?? "true",
 	},
+	serverExternalPackages: ["pdfkit"],
 	experimental: {
 		externalDir: true,
+		optimizePackageImports: ["recharts", "@tabler/icons-react", "lucide-react", "date-fns"],
 	},
 	devIndicators: {
 		position: "bottom-right",
 	},
 };
 
-export default config;
+export default withBundleAnalyzer(config);

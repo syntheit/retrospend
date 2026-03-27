@@ -8,62 +8,15 @@ import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import { db } from "~/server/db";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
+import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
+import { migrateGuestSessionsToUser } from "~/server/services/guest-migration.service";
+import { USERNAME_RESERVATION_DAYS } from "~/server/services/username.service";
 
 // ── Rate limiting for auth endpoints ──────────────────────────────────
-const authRateLimitMap = new Map<
-	string,
-	{ count: number; lastReset: number }
->();
-let authRateLimitCleanupCounter = 0;
-
-function checkAuthRateLimit(
-	key: string,
-	limit: number,
-	windowMs: number,
-): boolean {
-	authRateLimitCleanupCounter++;
-	if (authRateLimitCleanupCounter % 100 === 0) {
-		const now = Date.now();
-		for (const [k, v] of authRateLimitMap) {
-			if (now - v.lastReset > windowMs) authRateLimitMap.delete(k);
-		}
-		if (authRateLimitMap.size > 10_000) {
-			const entries = [...authRateLimitMap.entries()].sort(
-				(a, b) => a[1].lastReset - b[1].lastReset,
-			);
-			for (let i = 0; i < authRateLimitMap.size - 10_000; i++) {
-				authRateLimitMap.delete(entries[i]![0]);
-			}
-		}
-	}
-
-	const now = Date.now();
-	const record = authRateLimitMap.get(key);
-	if (!record) {
-		authRateLimitMap.set(key, { count: 1, lastReset: now });
-		return true;
-	}
-	if (now - record.lastReset > windowMs) {
-		record.count = 1;
-		record.lastReset = now;
-		return true;
-	}
-	if (record.count >= limit) return false;
-	record.count++;
-	return true;
-}
-
-function getClientIp(headersList: Headers): string {
-	const forwarded = headersList.get("x-forwarded-for");
-	if (forwarded) {
-		const ips = forwarded.split(",").map((ip) => ip.trim());
-		return ips[ips.length - 1] ?? "unknown";
-	}
-	return headersList.get("x-real-ip") ?? "unknown";
-}
+const authRateLimiter = new InMemoryRateLimiter();
 
 // Paths that should be rate-limited (login, signup, 2FA)
 const RATE_LIMITED_AUTH_PATHS = [
@@ -81,7 +34,12 @@ export const auth = betterAuth({
 	database: prismaAdapter(db, {
 		provider: "postgresql", // or "sqlite" or "mysql"
 	}),
-	trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
+	trustedOrigins: [
+		env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL,
+		...(env.TRUSTED_ORIGINS
+			? env.TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+			: []),
+	],
 	session: {
 		expiresIn: 60 * 60 * 24 * 7, // 7 days
 		updateAge: 60 * 60 * 24, // Refresh daily
@@ -99,7 +57,7 @@ export const auth = betterAuth({
 			if (RATE_LIMITED_AUTH_PATHS.some((p) => path.startsWith(p))) {
 				const ip = getClientIp(context.request.headers);
 				if (
-					!checkAuthRateLimit(
+					!authRateLimiter.check(
 						`auth_${path}_${ip}`,
 						AUTH_RATE_LIMIT,
 						AUTH_RATE_WINDOW_MS,
@@ -168,6 +126,21 @@ export const auth = betterAuth({
 						if (existingUsername) {
 							throw new APIError("BAD_REQUEST", {
 								message: "Username is already taken",
+							});
+						}
+
+						// Check if username is reserved by another user (within reservation period)
+						const reservationCutoff = new Date();
+						reservationCutoff.setDate(
+							reservationCutoff.getDate() - USERNAME_RESERVATION_DAYS,
+						);
+						const reserved = await db.usernameHistory.findUnique({
+							where: { previousUsername: user.username as string },
+							select: { changedAt: true },
+						});
+						if (reserved && reserved.changedAt > reservationCutoff) {
+							throw new APIError("BAD_REQUEST", {
+								message: "Username is not available",
 							});
 						}
 					}
@@ -278,7 +251,7 @@ export const auth = betterAuth({
 						});
 
 						// Dispatch email
-						const verifyUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
+						const verifyUrl = `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/auth/verify?token=${token}`;
 						const htmlContent = getVerificationEmailTemplate(verifyUrl);
 
 						await sendEmail(
@@ -318,6 +291,34 @@ export const auth = betterAuth({
 								email: user.email,
 							},
 						});
+					}
+
+					// Migrate guest sessions to the new user account
+					try {
+						const migrationResult = await migrateGuestSessionsToUser(
+							db,
+							user.id,
+							user.email,
+						);
+						if (
+							migrationResult.migratedSessionCount > 0 ||
+							migrationResult.claimedShadowCount > 0
+						) {
+							logEventAsync({
+								eventType: "GUEST_UPGRADED",
+								userId: user.id,
+								ipAddress,
+								userAgent,
+								metadata: {
+									migratedSessions: migrationResult.migratedSessionCount,
+									claimedShadowProfiles: migrationResult.claimedShadowCount,
+									projectIds: migrationResult.projectIds,
+								},
+							});
+						}
+					} catch (err) {
+						console.error("[Guest Migration Error]", err);
+						// Non-fatal: account creation should still succeed
 					}
 				},
 			},
@@ -360,7 +361,7 @@ export const auth = betterAuth({
 			issuer: "Retrospend",
 		}),
 	],
-	baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:1997",
+	baseURL: env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997",
 });
 
 type InferredSession = typeof auth.$Infer.Session;

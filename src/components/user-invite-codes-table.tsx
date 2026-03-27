@@ -1,23 +1,29 @@
+import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight, Copy, Link, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Copy, Link, MoreHorizontal, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { DataTable } from "~/components/data-table";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "~/components/ui/table";
+	ContextMenuItem,
+	ContextMenuSeparator,
+} from "~/components/ui/context-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 
 interface InviteCode {
@@ -38,20 +44,11 @@ interface InviteCode {
 	status: string;
 }
 
-interface PaginationData {
-	totalCount: number;
-	page: number;
-	pageSize: number;
-	totalPages: number;
-}
-
 interface UserInviteCodesTableProps {
 	inviteCodes: InviteCode[];
 	isLoading: boolean;
-	pagination?: PaginationData;
 	status: "active" | "used";
 	onStatusChange: (status: "active" | "used") => void;
-	onPageChange: (page: number) => void;
 	onGenerateCode: () => void;
 	onDeleteCode: (inviteCodeId: string, code: string) => void;
 }
@@ -59,18 +56,14 @@ interface UserInviteCodesTableProps {
 export function UserInviteCodesTable({
 	inviteCodes,
 	isLoading,
-	pagination,
 	status,
 	onStatusChange,
-	onPageChange,
 	onGenerateCode,
 	onDeleteCode,
 }: UserInviteCodesTableProps) {
 	const [isGenerating, setIsGenerating] = useState(false);
-	const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
-	const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
-	const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
 	const generateMutation = api.invite.generateUserCode.useMutation();
+	const isMobile = useIsMobile();
 
 	const handleGenerateCode = async () => {
 		setIsGenerating(true);
@@ -89,38 +82,186 @@ export function UserInviteCodesTable({
 		}
 	};
 
-	const handleCopyCode = async (code: string, codeId: string) => {
-		try {
-			await navigator.clipboard.writeText(code);
-			setCopiedCodeId(codeId);
-			setTooltipOpen(codeId);
-			toast.success("Invite code copied to clipboard!");
-			// Reset both states after 2 seconds
-			setTimeout(() => {
-				setCopiedCodeId(null);
-				setTooltipOpen(null);
-			}, 2000);
-		} catch (_error) {
-			toast.error("Failed to copy invite code");
-		}
-	};
+	const columns = useMemo<ColumnDef<InviteCode>[]>(
+		() => [
+			{
+				accessorKey: "code",
+				header: "Code",
+				cell: ({ row }) => (
+					<div className="flex items-center gap-2">
+						<span className="font-medium font-mono">
+							{row.original.code}
+						</span>
+						<CopyButton
+							label="Copy Code"
+							successLabel="Code Copied!"
+							value={row.original.code}
+						/>
+						<CopyButton
+							icon={Link}
+							label="Copy Signup Link"
+							successLabel="Link Copied!"
+							value={`${window.location.origin}/signup?code=${row.original.code}`}
+						/>
+					</div>
+				),
+			},
+			{
+				accessorKey: "status",
+				header: "Status",
+				cell: ({ row }) => (
+					<Badge
+						variant={
+							row.original.status === "Active" ? "default" : "secondary"
+						}
+					>
+						{row.original.status}
+					</Badge>
+				),
+			},
+			{
+				accessorKey: "createdAt",
+				header: "Created At",
+				cell: ({ row }) =>
+					format(new Date(row.original.createdAt), "MMM d, yyyy HH:mm"),
+			},
+			{
+				id: "usedBy",
+				header: "Used By",
+				cell: ({ row }) =>
+					row.original.usedBy ? (
+						<div className="flex flex-col">
+							<span className="font-medium">
+								@{row.original.usedBy.username}
+							</span>
+							<span className="text-muted-foreground text-sm">
+								{row.original.usedBy.name}
+							</span>
+						</div>
+					) : (
+						<span className="text-muted-foreground">-</span>
+					),
+			},
+			{
+				id: "usedAt",
+				header: "Used At",
+				cell: ({ row }) =>
+					row.original.usedAt ? (
+						format(new Date(row.original.usedAt), "MMM d, yyyy HH:mm")
+					) : (
+						<span className="text-muted-foreground">-</span>
+					),
+			},
+			{
+				id: "actions",
+				header: () => null,
+				enableSorting: false,
+				enableHiding: false,
+				size: 48,
+				cell: ({ row }) => (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+								size="icon"
+								variant="ghost"
+							>
+								<MoreHorizontal className="h-4 w-4" />
+								<span className="sr-only">Actions</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-44">
+							<DropdownMenuItem
+								onClick={() => {
+									void navigator.clipboard.writeText(row.original.code);
+									toast.success("Code copied to clipboard");
+								}}
+							>
+								<Copy className="mr-2 h-4 w-4" />
+								Copy Code
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => {
+									void navigator.clipboard.writeText(
+										`${window.location.origin}/signup?code=${row.original.code}`,
+									);
+									toast.success("Signup link copied");
+								}}
+							>
+								<Link className="mr-2 h-4 w-4" />
+								Copy Signup Link
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onClick={() => onDeleteCode(row.original.id, row.original.code)}
+								variant="destructive"
+							>
+								<Trash2 className="mr-2 h-4 w-4" />
+								Delete
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				),
+			},
+		],
+		[onDeleteCode],
+	);
 
-	const handleCopyLink = async (code: string, codeId: string) => {
-		try {
-			const inviteUrl = `${window.location.origin}/signup?code=${code}`;
-			await navigator.clipboard.writeText(inviteUrl);
-			setCopiedLinkId(codeId);
-			setTooltipOpen(codeId);
-			toast.success("Invite link copied to clipboard!");
-			// Reset states after 2 seconds
-			setTimeout(() => {
-				setCopiedLinkId(null);
-				setTooltipOpen(null);
-			}, 2000);
-		} catch (_error) {
-			toast.error("Failed to copy invite link");
-		}
-	};
+	const columnVisibility: VisibilityState = isMobile
+		? { usedBy: false, usedAt: false }
+		: {};
+
+	const renderContextMenu = useMemo(() => {
+		return (row: InviteCode) => (
+			<>
+				<ContextMenuItem
+					className="cursor-pointer"
+					onClick={async () => {
+						try {
+							await navigator.clipboard.writeText(row.code);
+							toast.success("Invite code copied to clipboard!");
+						} catch {
+							toast.error("Failed to copy invite code");
+						}
+					}}
+				>
+					<Copy className="mr-2 h-4 w-4" />
+					Copy Code
+				</ContextMenuItem>
+				<ContextMenuItem
+					className="cursor-pointer"
+					onClick={async () => {
+						try {
+							const inviteUrl = `${window.location.origin}/signup?code=${row.code}`;
+							await navigator.clipboard.writeText(inviteUrl);
+							toast.success("Invite link copied to clipboard!");
+						} catch {
+							toast.error("Failed to copy invite link");
+						}
+					}}
+				>
+					<Link className="mr-2 h-4 w-4" />
+					Copy Signup Link
+				</ContextMenuItem>
+				<ContextMenuSeparator />
+				<ContextMenuItem
+					className="cursor-pointer text-destructive focus:text-destructive"
+					onClick={() => onDeleteCode(row.id, row.code)}
+				>
+					<Trash2 className="mr-2 h-4 w-4" />
+					Delete
+				</ContextMenuItem>
+			</>
+		);
+	}, [onDeleteCode]);
+
+	const emptyState = (
+		<div className="py-8 text-muted-foreground text-sm">
+			{status === "active"
+				? "No active invite codes found. Generate your first code to get started."
+				: "No used invite codes found."}
+		</div>
+	);
 
 	return (
 		<div className="space-y-4">
@@ -150,215 +291,70 @@ export function UserInviteCodesTable({
 					<TabsTrigger value="used">Used</TabsTrigger>
 				</TabsList>
 
-				<div className="max-h-[48rem] overflow-x-auto overflow-y-auto rounded-md border">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Code</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead>Created At</TableHead>
-								<TableHead>Used By</TableHead>
-								<TableHead>Used At</TableHead>
-								<TableHead>Actions</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{isLoading ? (
-								<TableRow>
-									<TableCell className="text-center" colSpan={6}>
-										Loading...
-									</TableCell>
-								</TableRow>
-							) : inviteCodes.length === 0 ? (
-								<TableRow>
-									<TableCell
-										className="text-center text-muted-foreground"
-										colSpan={6}
-									>
-										{status === "active"
-											? "No active invite codes found. Generate your first code to get started."
-											: "No used invite codes found."}
-									</TableCell>
-								</TableRow>
-							) : (
-								inviteCodes.map((inviteCode) => (
-									<TableRow key={inviteCode.id}>
-										<TableCell className="font-medium font-mono">
-											<div className="flex items-center gap-2">
-												<span>{inviteCode.code}</span>
-												<Tooltip
-													onOpenChange={(open) => {
-														if (!open && tooltipOpen !== inviteCode.id) {
-															setTooltipOpen(null);
-														}
-													}}
-													open={tooltipOpen === inviteCode.id}
-												>
-													<TooltipTrigger asChild>
-														<Button
-															className="h-6 w-6 p-0"
-															onClick={() =>
-																handleCopyCode(inviteCode.code, inviteCode.id)
-															}
-															onMouseEnter={() => {
-																if (!tooltipOpen) setTooltipOpen(inviteCode.id);
-															}}
-															onMouseLeave={() => {
-																if (!copiedCodeId && !copiedLinkId)
-																	setTooltipOpen(null);
-															}}
-															size="sm"
-															variant="ghost"
-														>
-															<Copy className="h-3 w-3" />
-														</Button>
-													</TooltipTrigger>
-													<TooltipContent>
-														{copiedCodeId === inviteCode.id
-															? "Code Copied 🎉"
-															: "Copy Code"}
-													</TooltipContent>
-												</Tooltip>
-												<Tooltip
-													onOpenChange={(open) => {
-														if (
-															!open &&
-															tooltipOpen !== `${inviteCode.id}-link`
-														) {
-															setTooltipOpen(null);
-														}
-													}}
-													open={tooltipOpen === `${inviteCode.id}-link`}
-												>
-													<TooltipTrigger asChild>
-														<Button
-															className="h-6 w-6 p-0"
-															onClick={() =>
-																handleCopyLink(
-																	inviteCode.code,
-																	`${inviteCode.id}-link`,
-																)
-															}
-															onMouseEnter={() => {
-																if (!tooltipOpen)
-																	setTooltipOpen(`${inviteCode.id}-link`);
-															}}
-															onMouseLeave={() => {
-																if (!copiedLinkId) setTooltipOpen(null);
-															}}
-															size="sm"
-															variant="ghost"
-														>
-															<Link className="h-3 w-3" />
-														</Button>
-													</TooltipTrigger>
-													<TooltipContent>
-														{copiedLinkId === `${inviteCode.id}-link`
-															? "Link Copied 🎉"
-															: "Copy Link"}
-													</TooltipContent>
-												</Tooltip>
-											</div>
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													inviteCode.status === "Active"
-														? "default"
-														: "secondary"
-												}
-											>
-												{inviteCode.status}
-											</Badge>
-										</TableCell>
-										<TableCell>
-											{format(
-												new Date(inviteCode.createdAt),
-												"MMM dd, yyyy HH:mm",
-											)}
-										</TableCell>
-										<TableCell>
-											{inviteCode.usedBy ? (
-												<div className="flex flex-col">
-													<span className="font-medium">
-														@{inviteCode.usedBy.username}
-													</span>
-													<span className="text-muted-foreground text-sm">
-														{inviteCode.usedBy.name}
-													</span>
-												</div>
-											) : (
-												<span className="text-muted-foreground">-</span>
-											)}
-										</TableCell>
-										<TableCell>
-											{inviteCode.usedAt ? (
-												format(
-													new Date(inviteCode.usedAt),
-													"MMM dd, yyyy HH:mm",
-												)
-											) : (
-												<span className="text-muted-foreground">-</span>
-											)}
-										</TableCell>
-										<TableCell>
-											<Button
-												className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-												onClick={() =>
-													onDeleteCode(inviteCode.id, inviteCode.code)
-												}
-												size="sm"
-												title="Delete invite code"
-												variant="ghost"
-											>
-												<Trash2 className="h-3 w-3" />
-											</Button>
-										</TableCell>
-									</TableRow>
-								))
-							)}
-						</TableBody>
-					</Table>
-				</div>
+				<DataTable
+					columns={columns}
+					columnVisibility={columnVisibility}
+					countNoun="codes"
+					data={inviteCodes}
+					emptyState={emptyState}
+					progressive
+					renderContextMenu={renderContextMenu}
+					searchable
+					searchPlaceholder="Search invite codes..."
+				/>
 			</Tabs>
-
-			{pagination && pagination.totalPages > 1 && (
-				<div className="flex items-center justify-between">
-					<p className="text-muted-foreground text-sm">
-						Showing {(pagination.page - 1) * pagination.pageSize + 1} to{" "}
-						{Math.min(
-							pagination.page * pagination.pageSize,
-							pagination.totalCount,
-						)}{" "}
-						of {pagination.totalCount} codes
-					</p>
-					<div className="flex items-center gap-2">
-						<Button
-							disabled={pagination.page <= 1}
-							onClick={() => onPageChange(pagination.page - 1)}
-							size="sm"
-							variant="outline"
-						>
-							<ChevronLeft className="mr-2 h-4 w-4" />
-							Previous
-						</Button>
-						<div className="flex items-center gap-1">
-							<span className="text-sm">
-								Page {pagination.page} of {pagination.totalPages}
-							</span>
-						</div>
-						<Button
-							disabled={pagination.page >= pagination.totalPages}
-							onClick={() => onPageChange(pagination.page + 1)}
-							size="sm"
-							variant="outline"
-						>
-							Next
-							<ChevronRight className="ml-2 h-4 w-4" />
-						</Button>
-					</div>
-				</div>
-			)}
 		</div>
+	);
+}
+
+function CopyButton({
+	value,
+	label,
+	successLabel,
+	icon: Icon = Copy,
+}: {
+	value: string;
+	label: string;
+	successLabel: string;
+	icon?: React.ElementType;
+}) {
+	const [isOpen, setIsOpen] = useState(false);
+	const [hasCopied, setHasCopied] = useState(false);
+
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(value);
+			setHasCopied(true);
+			setIsOpen(true);
+			toast.success(successLabel);
+			setTimeout(() => {
+				setHasCopied(false);
+				setIsOpen(false);
+			}, 2000);
+		} catch {
+			toast.error("Failed to copy to clipboard");
+		}
+	};
+
+	return (
+		<Tooltip onOpenChange={setIsOpen} open={isOpen}>
+			<TooltipTrigger asChild>
+				<Button
+					className="h-6 w-6 p-0"
+					onClick={handleCopy}
+					onMouseEnter={() => {
+						if (!hasCopied) setIsOpen(true);
+					}}
+					onMouseLeave={() => {
+						if (!hasCopied) setIsOpen(false);
+					}}
+					size="sm"
+					variant="ghost"
+				>
+					<Icon className="h-3 w-3" />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>{hasCopied ? successLabel : label}</TooltipContent>
+		</Tooltip>
 	);
 }

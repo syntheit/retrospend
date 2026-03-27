@@ -34,25 +34,13 @@ export interface Asset {
 const getAssetConfig = (type: AssetType) => {
 	switch (type) {
 		case AssetType.CASH:
-			return {
-				icon: Wallet,
-				label: "Cash",
-			};
+			return { icon: Wallet, label: "Cash" };
 		case AssetType.INVESTMENT:
-			return {
-				icon: TrendingUp,
-				label: "Investment",
-			};
+			return { icon: TrendingUp, label: "Investment" };
 		case AssetType.CRYPTO:
-			return {
-				icon: Coins,
-				label: "Crypto",
-			};
+			return { icon: Coins, label: "Crypto" };
 		case AssetType.REAL_ESTATE:
-			return {
-				icon: Home,
-				label: "Real Estate",
-			};
+			return { icon: Home, label: "Real Estate" };
 		default:
 			if (type.startsWith("LIABILITY_")) {
 				return {
@@ -60,41 +48,53 @@ const getAssetConfig = (type: AssetType) => {
 					label: type.replace("LIABILITY_", "").replace("_", " "),
 				};
 			}
-			return {
-				icon: Banknote,
-				label: type,
-			};
+			return { icon: Banknote, label: type };
 	}
 };
+
+interface SelectionHandlers {
+	selectedRows: Set<string>;
+	onToggle: (id: string) => void;
+	onToggleAll: (ids: string[], checked: boolean) => void;
+}
 
 export function createWealthColumns(
 	homeCurrency: string,
 	formatCurrency: (amount: number, currency?: string) => string,
-	isSelectionActive: boolean,
 	totalNetWorth: number,
-	isPrivacyMode = false,
+	isPrivacyMode: boolean,
+	selection?: SelectionHandlers,
 ): ColumnDef<Asset>[] {
 	const columns: ColumnDef<Asset>[] = [];
 
-	// Only show checkbox column if selection is active
-	if (isSelectionActive) {
+	if (selection) {
 		columns.push({
 			id: "select",
-			header: ({ table }) => (
-				<Checkbox
-					aria-label="Select all rows"
-					checked={
-						table.getIsAllPageRowsSelected() ||
-						(table.getIsSomePageRowsSelected() && "indeterminate")
-					}
-					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-				/>
-			),
+			header: ({ table }) => {
+				const pageRows = table.getRowModel().rows;
+				const allIds = pageRows.map((r) => r.original.id);
+				const allSelected =
+					allIds.length > 0 &&
+					allIds.every((id) => selection.selectedRows.has(id));
+				const someSelected = allIds.some((id) =>
+					selection.selectedRows.has(id),
+				);
+
+				return (
+					<Checkbox
+						aria-label="Select all rows"
+						checked={allSelected || (someSelected && "indeterminate")}
+						onCheckedChange={(value) =>
+							selection.onToggleAll(allIds, !!value)
+						}
+					/>
+				);
+			},
 			cell: ({ row }) => (
 				<Checkbox
 					aria-label={`Select row ${row.original.name}`}
-					checked={row.getIsSelected()}
-					onCheckedChange={(value) => row.toggleSelected(!!value)}
+					checked={selection.selectedRows.has(row.original.id)}
+					onCheckedChange={() => selection.onToggle(row.original.id)}
 				/>
 			),
 			enableSorting: false,
@@ -103,11 +103,12 @@ export function createWealthColumns(
 		});
 	}
 
-	// Column 1: Identity (Icon + Name + Liquid Badge)
+	// Asset identity column (icon + name + liquid badge)
 	columns.push({
 		accessorKey: "name",
 		header: "Asset",
 		enableSorting: true,
+		meta: { flex: true },
 		cell: ({ row }) => {
 			const { icon: Icon, label } = getAssetConfig(row.original.type);
 			return (
@@ -127,7 +128,7 @@ export function createWealthColumns(
 							<span className="truncate">{row.original.name}</span>
 							{row.original.isLiquid && (
 								<Badge
-									className="bg-emerald-500/10 px-1.5 py-0 font-medium text-[9px] text-emerald-600 uppercase tracking-wide hover:bg-emerald-500/20"
+									className="bg-emerald-500/10 px-1.5 py-0 font-medium text-[9px] text-emerald-600 tracking-wide hover:bg-emerald-500/20"
 									variant="secondary"
 								>
 									Liquid
@@ -149,13 +150,12 @@ export function createWealthColumns(
 		},
 	});
 
-	// Column 2: Allocation Visualization
+	// Allocation visualization
 	columns.push({
 		id: "allocation",
 		header: "Allocation",
+		enableSorting: false,
 		cell: ({ row }) => {
-			// Calculate allocation percentage (relative to net worth)
-			// Avoid negative/divide-by-zero issues
 			const value = row.original.balanceInTargetCurrency;
 			const percentage = totalNetWorth > 0 ? (value / totalNetWorth) * 100 : 0;
 			const displayPercentage = Math.max(0, percentage);
@@ -176,7 +176,7 @@ export function createWealthColumns(
 		},
 	});
 
-	// Column 3: Balance (Rich style)
+	// Balance column
 	columns.push({
 		id: "balanceInTarget",
 		header: () => <div className="text-right">Balance</div>,
@@ -188,7 +188,7 @@ export function createWealthColumns(
 
 			return (
 				<div className="flex flex-col items-end gap-0.5">
-					<div className="font-bold text-foreground text-sm tabular-nums leading-tight tracking-tight">
+					<div className="text-right font-medium text-sm tabular-nums leading-tight tracking-tight">
 						{isPrivacyMode
 							? maskAmount(balanceInTargetCurrency)
 							: formatCurrency(balanceInTargetCurrency, homeCurrency)}
@@ -198,8 +198,7 @@ export function createWealthColumns(
 							{isPrivacyMode
 								? maskAmount(balance)
 								: row.original.exchangeRateType === "crypto"
-									? // High precision for crypto sub-text
-										`${new Intl.NumberFormat("en-US", {
+									? `${new Intl.NumberFormat("en-US", {
 											minimumFractionDigits: 2,
 											maximumFractionDigits: 8,
 										}).format(balance)} ${currency}`
@@ -211,7 +210,7 @@ export function createWealthColumns(
 		},
 	});
 
-	// Optional USD Column if home is not USD
+	// USD column (only when home currency is not USD)
 	if (homeCurrency !== "USD") {
 		columns.push({
 			id: "balanceInUSD",

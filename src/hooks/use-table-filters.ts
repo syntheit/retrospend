@@ -7,7 +7,7 @@ type FilterableExpense = {
 	id: string;
 	date: Date;
 	categoryId: string | null;
-	category?: { id: string; name: string; color: string } | null;
+	category?: { id: string; name: string; color: string; icon?: string | null } | null;
 };
 
 /**
@@ -17,7 +17,19 @@ type CategoryWithUsage = {
 	id: string;
 	name: string;
 	color: string;
+	icon?: string | null;
 	usageCount: number;
+};
+
+export type DateRangeState = {
+	from: Date;
+	to: Date;
+	preset?: string;
+} | null;
+
+export type AmountRange = {
+	min?: number;
+	max?: number;
 };
 
 /**
@@ -39,15 +51,28 @@ const matchesTimeFilter = (
  * useTableFilters - Headless hook for managing expense table filters
  *
  * Extracted from table/page.tsx to separate filter state management
- * from UI rendering. Handles year, month, and category filtering.
+ * from UI rendering. Handles year, month, category, date range, and amount range filtering.
  */
 export function useTableFilters<T extends FilterableExpense>(
 	expenses: T[],
 	options?: {
 		availableYears?: number[];
+		initialYears?: number[];
+		initialMonths?: number[];
+		initialCategories?: string[];
+		initialDateRange?: { from: Date; to: Date; preset?: string };
+		initialAmountRange?: AmountRange;
 	},
 ) {
-	const { availableYears: providedYears } = options ?? {};
+	const {
+		availableYears: providedYears,
+		initialYears,
+		initialMonths,
+		initialCategories,
+		initialDateRange,
+		initialAmountRange,
+	} = options ?? {};
+
 	// Get current year/month for default filter
 	const getCurrentYearMonth = () => {
 		const date = new Date();
@@ -56,15 +81,42 @@ export function useTableFilters<T extends FilterableExpense>(
 
 	const { year: currentYear, month: currentMonth } = getCurrentYearMonth();
 
-	// Filter state
+	// Filter state — initialize from provided values or defaults
 	const [selectedYears, setSelectedYears] = useState<Set<number>>(
-		() => new Set([currentYear]),
+		() =>
+			initialYears?.length
+				? new Set(initialYears)
+				: new Set([currentYear]),
 	);
 	const [selectedMonths, setSelectedMonths] = useState<Set<number>>(
-		() => new Set([currentMonth]),
+		() =>
+			initialMonths?.length
+				? new Set(initialMonths)
+				: new Set([currentMonth]),
 	);
 	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-		() => new Set(),
+		() =>
+			initialCategories?.length
+				? new Set(initialCategories)
+				: new Set(),
+	);
+
+	// Date range filter (mutually exclusive with year/month)
+	const [dateRange, setDateRange] = useState<DateRangeState>(() => {
+		if (
+			initialDateRange &&
+			!isNaN(initialDateRange.from.getTime()) &&
+			!isNaN(initialDateRange.to.getTime())
+		) {
+			return initialDateRange;
+		}
+		return null;
+	});
+
+	// Amount range filter (state only — actual filtering done in controller
+	// because it needs currency conversion)
+	const [amountRange, setAmountRange] = useState<AmountRange>(
+		() => initialAmountRange ?? {},
 	);
 
 	// Compute available years from expenses
@@ -90,9 +142,12 @@ export function useTableFilters<T extends FilterableExpense>(
 	const availableCategories = useMemo(() => {
 		const categoryMap = new Map<string, CategoryWithUsage>();
 
-		const timeFilteredExpenses = expenses.filter((expense) =>
-			matchesTimeFilter(expense.date, selectedYears, selectedMonths),
-		);
+		const timeFilteredExpenses = expenses.filter((expense) => {
+			if (dateRange) {
+				return expense.date >= dateRange.from && expense.date <= dateRange.to;
+			}
+			return matchesTimeFilter(expense.date, selectedYears, selectedMonths);
+		});
 
 		timeFilteredExpenses.forEach((expense) => {
 			if (expense.category) {
@@ -111,33 +166,35 @@ export function useTableFilters<T extends FilterableExpense>(
 		return Array.from(categoryMap.values()).sort(
 			(a, b) => b.usageCount - a.usageCount,
 		);
-	}, [expenses, selectedYears, selectedMonths]);
+	}, [expenses, selectedYears, selectedMonths, dateRange]);
 
 	// Compute filtered expenses based on all active filters
 	const filteredExpenses = useMemo(() => {
-		if (
-			selectedYears.size === 0 &&
-			selectedMonths.size === 0 &&
-			selectedCategories.size === 0
-		) {
-			return expenses;
-		}
-
 		return expenses.filter((expense) => {
-			const timeMatch = matchesTimeFilter(
-				expense.date,
-				selectedYears,
-				selectedMonths,
-			);
+			// Time filtering: date range takes precedence over year/month
+			let timeMatch: boolean;
+			if (dateRange) {
+				timeMatch =
+					expense.date >= dateRange.from && expense.date <= dateRange.to;
+			} else {
+				timeMatch = matchesTimeFilter(
+					expense.date,
+					selectedYears,
+					selectedMonths,
+				);
+			}
+
 			const categoryMatch =
 				selectedCategories.size === 0 ||
 				(expense.categoryId && selectedCategories.has(expense.categoryId));
+
 			return timeMatch && categoryMatch;
 		});
-	}, [expenses, selectedYears, selectedMonths, selectedCategories]);
+	}, [expenses, selectedYears, selectedMonths, selectedCategories, dateRange]);
 
-	// Toggle handlers
+	// Toggle handlers — clear dateRange when switching to year/month
 	const toggleYear = (year: number) => {
+		if (dateRange) setDateRange(null);
 		setSelectedYears((prev) => {
 			const newSet = new Set(prev);
 			if (newSet.has(year)) {
@@ -150,6 +207,7 @@ export function useTableFilters<T extends FilterableExpense>(
 	};
 
 	const toggleMonth = (month: number) => {
+		if (dateRange) setDateRange(null);
 		setSelectedMonths((prev) => {
 			const newSet = new Set(prev);
 			if (newSet.has(month)) {
@@ -178,18 +236,24 @@ export function useTableFilters<T extends FilterableExpense>(
 		setSelectedYears(new Set());
 		setSelectedMonths(new Set());
 		setSelectedCategories(new Set());
+		setDateRange(null);
+		setAmountRange({});
 	};
 
 	// Individual clear handlers
 	const clearYears = () => setSelectedYears(new Set());
 	const clearMonths = () => setSelectedMonths(new Set());
 	const clearCategories = () => setSelectedCategories(new Set());
+	const clearDateRange = () => setDateRange(null);
+	const clearAmountRange = () => setAmountRange({});
 
 	return {
 		// Filter state
 		selectedYears,
 		selectedMonths,
 		selectedCategories,
+		dateRange,
+		amountRange,
 
 		// Available options
 		availableYears,
@@ -204,10 +268,16 @@ export function useTableFilters<T extends FilterableExpense>(
 		toggleMonth,
 		toggleCategory,
 
+		// Setters
+		setDateRange,
+		setAmountRange,
+
 		// Clear handlers
 		clearFilters,
 		clearYears,
 		clearMonths,
 		clearCategories,
+		clearDateRange,
+		clearAmountRange,
 	};
 }

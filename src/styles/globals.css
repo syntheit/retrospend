@@ -10,7 +10,46 @@
 		var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+@keyframes settle-pop-in {
+	from {
+		transform: scale(0.5);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+.settle-success-icon {
+	animation: settle-pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes collapsible-down {
+	from {
+		height: 0;
+		opacity: 0;
+	}
+	to {
+		height: var(--radix-collapsible-content-height);
+		opacity: 1;
+	}
+}
+
+@keyframes collapsible-up {
+	from {
+		height: var(--radix-collapsible-content-height);
+		opacity: 1;
+	}
+	to {
+		height: 0;
+		opacity: 0;
+	}
+}
+
 @theme inline {
+	--animate-collapsible-down: collapsible-down 200ms ease-out;
+	--animate-collapsible-up: collapsible-up 200ms ease-out;
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
@@ -206,6 +245,18 @@
 	--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }
 
+/*
+ * Semantic Status Colors (use these Tailwind classes consistently):
+ *
+ * Success/Positive:  text-emerald-600 dark:text-emerald-400  |  bg-emerald-500/10
+ * Warning/Caution:   text-warning                            |  bg-warning/10
+ * Error/Danger:      text-destructive                        |  bg-destructive/10
+ * Info/Neutral:      text-blue-600 dark:text-blue-400        |  bg-blue-500/10
+ *
+ * For form validation errors, always use text-destructive (never text-red-500).
+ * For positive trends/amounts, use emerald (never green-500/600).
+ */
+
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
@@ -252,4 +303,28 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .bg-stripes-primary {
 	background-color: hsl(var(--primary) / 0.8);
+}
+
+/* Shiki dual-theme syntax highlighting (class-based dark mode) */
+.docs-code-block .shiki span {
+	color: var(--shiki-light);
+	font-style: var(--shiki-light-font-style);
+	font-weight: var(--shiki-light-font-weight);
+	text-decoration: var(--shiki-light-text-decoration);
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+.dark .docs-code-block .shiki span {
+	color: var(--shiki-dark);
+	font-style: var(--shiki-dark-font-style);
+	font-weight: var(--shiki-dark-font-weight);
+	text-decoration: var(--shiki-dark-text-decoration);
 }

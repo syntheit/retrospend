@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, ChevronsUpDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronsUpDown } from "lucide-react";
+import { createElement, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -9,7 +9,8 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { getCategoryIcon } from "~/lib/category-icons";
+import { getCategoryColorClasses } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -22,6 +23,7 @@ interface CategoryPickerProps {
 		id: string;
 		name: string;
 		color: string;
+		icon?: string | null;
 	}>;
 }
 
@@ -41,17 +43,22 @@ export function CategoryPicker({
 	);
 
 	const categories:
-		| Array<{ id: string; name: string; color: string }>
+		| Array<{ id: string; name: string; color: string; icon?: string | null }>
 		| undefined = propCategories || fetchedCategories;
 
 	const filteredCategories = useMemo(() => {
-		if (!categories || !search) return categories || [];
-
+		const list = categories ?? [];
 		const searchLower = search.toLowerCase();
-		return categories.filter((category) =>
-			category.name.toLowerCase().includes(searchLower),
+		const filtered = search
+			? list.filter((category) =>
+					category.name.toLowerCase().includes(searchLower),
+				)
+			: list;
+		if (!value) return filtered;
+		return [...filtered].sort((a, b) =>
+			a.id === value ? -1 : b.id === value ? 1 : 0,
 		);
-	}, [categories, search]);
+	}, [categories, search, value]);
 
 	const selectedCategory = value && categories?.find((cat) => cat.id === value);
 
@@ -67,24 +74,28 @@ export function CategoryPicker({
 	}
 
 	return (
-		<Popover onOpenChange={setOpen} open={open}>
+		<Popover onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) setSearch(""); }} open={open}>
 			<PopoverTrigger asChild>
 				<Button
 					aria-expanded={open}
+					aria-label="Select category"
 					className={cn("w-full justify-between sm:w-64", className)}
 					role="combobox"
 					variant="outline"
 				>
 					{selectedCategory ? (
 						<span className="flex min-w-0 flex-1 items-center gap-2">
-							<div
+							<span
 								className={cn(
-									"h-3 w-3 rounded-full",
-									CATEGORY_COLOR_MAP[
-										selectedCategory.color as keyof typeof CATEGORY_COLOR_MAP
-									]?.split(" ")[0] || "bg-gray-400",
+									"flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+									getCategoryColorClasses(selectedCategory.color, "light"),
 								)}
-							/>
+							>
+								{createElement(
+									getCategoryIcon(selectedCategory.name, selectedCategory.icon),
+									{ className: "h-3 w-3" },
+								)}
+							</span>
 							<span className="truncate">{selectedCategory.name}</span>
 						</span>
 					) : (
@@ -101,6 +112,13 @@ export function CategoryPicker({
 					<Input
 						className="mb-2"
 						onChange={(e) => setSearch(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && filteredCategories.length === 1) {
+								onValueChange?.(filteredCategories[0]!.id);
+								setOpen(false);
+								setSearch("");
+							}
+						}}
 						placeholder="Search categories..."
 						value={search}
 					/>
@@ -130,23 +148,18 @@ export function CategoryPicker({
 									}}
 									variant="ghost"
 								>
-									<Check
+									<span
 										className={cn(
-											"h-4 w-4",
-											value === category.id ? "opacity-100" : "opacity-0",
+											"flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+											getCategoryColorClasses(category.color, "light"),
 										)}
-									/>
-									<div className="flex items-center gap-2">
-										<div
-											className={cn(
-												"h-3 w-3 rounded-full",
-												CATEGORY_COLOR_MAP[
-													category.color as keyof typeof CATEGORY_COLOR_MAP
-												]?.split(" ")[0] || "bg-gray-400",
-											)}
-										/>
-										<span className="truncate">{category.name}</span>
-									</div>
+									>
+										{createElement(
+											getCategoryIcon(category.name, category.icon),
+											{ className: "h-3.5 w-3.5" },
+										)}
+									</span>
+									<span className="truncate">{category.name}</span>
 								</Button>
 							))
 						)}

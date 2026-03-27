@@ -1,144 +1,123 @@
 # Retrospend
 
-Visit the official website at [https://retrospend.app](https://retrospend.app).
+A self-hostable personal finance app with built-in bill splitting. Track expenses, manage wealth, set budgets, and split costs with friends, all in one place.
 
-Retrospend is a personal finance and expense tracker application. It helps you manage your expenses, track your wealth, and handle multi-currency transactions with exchange rate integration.
+Unlike most expense splitters, Retrospend is **person-centric**: debts roll up to a single per-person balance regardless of which trip or project they came from. No groups required for a quick split, no mental math across multiple projects. You just see "you owe Sarah $35" and settle up.
+
+[Website](https://retrospend.app) · [Matrix Chat](https://matrix.to/#/#retrospend:matrix.org) · [Contact](https://matv.io)
 
 ## Features
 
-- Expense tracking with categorization
-- Wealth management and asset tracking
-- Multi-currency support with exchange rates (data from [syntheit/exchange-rates](https://github.com/syntheit/exchange-rates))
-- Analytics and charts
-- Admin panel for user management
-- Secure authentication
+**Core finance**
+- Expense tracking with categories, tags, and filters
+- Wealth dashboard: assets, liabilities, net worth over time
+- Budgets with monthly spending limits per category
+- Recurring expense templates for subscriptions and bills
+- Multi-currency with daily exchange rates from [syntheit/exchange-rates](https://github.com/syntheit/exchange-rates)
+- Analytics and spending trends
+
+**Shared expenses**
+- Split costs with anyone, no account required for participants
+- Person-centric balances: all debts with someone roll into one number
+- Projects for trips, roommates, or group purchases (optional; you can split without one)
+- Guest sessions via magic links, name and email gets you in within seconds
+- Verification system so nobody gets quietly overcharged
+- Settlement flow: record payment, payee confirms receipt, full audit trail
+- Payment method matching with deep links (Venmo, PayPal, Cash App, etc.)
+- Payment requests and reminders for outstanding balances
+- Revision history on every shared transaction
+
+**Import & admin**
+- AI-powered bank statement importer (PDF and CSV) via Ollama or OpenRouter
+- Admin panel with user management, invite controls, and system status
+- Automatic database backups
 
 ## Tech Stack
 
-- Next.js (App Router)
-- React
-- Tailwind CSS
-- Prisma
-- PostgreSQL
-- Better Auth
-- tRPC
-
-## Prerequisites
-
-- Docker and Docker Compose
-- pnpm (for local development)
+| Layer | Technology |
+|---|---|
+| Frontend / API | Next.js (App Router), React, Tailwind CSS, tRPC |
+| Auth | Better Auth |
+| Database | PostgreSQL + Prisma |
+| Go sidecar | Background jobs (exchange rates, recurring expenses, backups, notifications) and AI bank import |
+| File storage | Local filesystem (Docker volume) |
+| Local LLM | Ollama (optional) |
 
 ## Getting Started
 
-### Environment Setup
+### Prerequisites
 
-Create a `.env` file in the root directory. You can use the following example:
+- Docker and Docker Compose
 
-```env
-# Database
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_DB_NAME=retrospend
-DATABASE_URL=postgresql://postgres:password@localhost:5432/retrospend
+### 1. Get the config files
 
-# Generate a secret using openssl rand -base64 32
-AUTH_SECRET=your-secret-key-min-32-chars
-
-# App Config
-PUBLIC_URL=https://www.yourdomain.com
-
-# Optional
-SHOW_LANDING_PAGE=true
+```bash
+cp docker-compose.example.yml docker-compose.yml
+cp .env.example .env
 ```
 
-### Running with Docker
+### 2. Configure environment variables
 
-1. Create the `docker-compose.yml` file in your project root:
+Edit `.env` and set the required variables. See the full reference below.
 
-```yaml
-services:
-  retrospend:
-    image: synzeit/retrospend:latest
-    container_name: retrospend
-    restart: unless-stopped
-    environment:
-      AUTH_SECRET: ${AUTH_SECRET}
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB_NAME}"
-    ports:
-      - "1997:1997"
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `AUTH_SECRET` | **Yes** | | 32+ char secret: `openssl rand -base64 32` |
+| `PUBLIC_URL` | **Yes** | | Your public URL (e.g. `https://app.yourdomain.com`) |
+| `POSTGRES_USER` | **Yes** | `postgres` | Database username |
+| `POSTGRES_PASSWORD` | **Yes** | | Database password |
+| `POSTGRES_DB_NAME` | **Yes** | `retrospend` | Database name |
+| `DATABASE_URL` | **Yes** | | Full PostgreSQL connection string |
+| `WORKER_API_KEY` | **Yes** | | Shared secret between app, worker, and importer: `openssl rand -base64 32` |
+| `NEXT_PUBLIC_SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
+| `NEXT_PUBLIC_ENABLE_LEGAL_PAGES` | No | `false` | Show `/privacy` and `/terms` |
+| `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
+| `SMTP_HOST` | No | | SMTP server hostname |
+| `SMTP_PORT` | No | | SMTP port (e.g. `587`) |
+| `SMTP_USER` | No | | SMTP username |
+| `SMTP_PASSWORD` | No | | SMTP password |
+| `EMAIL_FROM` | No | | Sender address (e.g. `Retrospend <noreply@example.com>`) |
+| `OPENROUTER_API_KEY` | No | | Cloud LLM for bank statement import (alternative to Ollama) |
+| `OPENROUTER_MODEL` | No | `qwen/qwen-2.5-7b-instruct` | OpenRouter model |
+| `LLM_MODEL` | No | `qwen2.5:7b` | Ollama model |
+| `BACKUP_CRON` | No | `0 3 * * *` | Backup schedule (cron syntax) |
+| `BACKUP_RETENTION_DAYS` | No | `30` | Days to keep backup files |
+| `TRUSTED_ORIGINS` | No | | Extra allowed CORS/auth origins (comma-separated) |
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: retrospend-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB_NAME}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
-    driver: local
-```
-
-2. Start the services:
+### 3. Start the services
 
 ```bash
 docker compose up -d
 ```
 
-3. The application is now ready.
+The app is available on port `1997`. Migrations run automatically on startup.
 
-**Note:** The first user to sign up will automatically be made an admin. You can limit signups to only those with an invite code in the admin panel if you choose.
+**First-run notes:**
 
-### Database Migrations
+- The first user to sign up becomes admin. You can restrict further signups to invite-only in the admin panel.
+- If using Ollama for AI import, pull the model after first start:
+  ```bash
+  docker exec local-ollama ollama pull qwen2.5:7b
+  ```
+- The `sidecar` and `ollama` services are optional. Remove them from `docker-compose.yml` if you don't need bank statement import.
 
-The application automatically runs Prisma database migrations on startup. This ensures your database schema stays up-to-date with application changes.
+## Production & Security
 
-- **Automatic execution**: Migrations run every time the container starts
-- **Fail-safe behavior**: If migrations fail, the container will not start (exits with error)
-- **Production ready**: Only applies approved migrations created during development
+See [`docs/cloudflare-security.md`](docs/cloudflare-security.md) for Cloudflare Tunnel + WAF setup.
 
-If you encounter migration errors during deployment, check the container logs for details and ensure your database is accessible.
+- Uploaded files (avatars, project images) are stored in the `uploads` Docker volume. Back it up alongside your database.
+- Use strong, unique values for `AUTH_SECRET` and `WORKER_API_KEY`.
 
-## Database Management
+## Backups
 
-### Syncing Default Categories
+The sidecar service handles scheduled database backups on the schedule set by `BACKUP_CRON` (default: daily at 3 AM UTC). Retention is controlled by `BACKUP_RETENTION_DAYS` (default: 30).
 
-When new default categories are added to the application, existing users won't automatically receive them. To push new default categories to all existing users:
+Backup files are written inside the sidecar container. To persist them on the host, mount a volume to `/app/backups`.
 
-1. **Add new categories** to `src/lib/constants.ts` in the `DEFAULT_CATEGORIES` array.
+## Development
 
-2. **Run the sync script** in your running container:
+See [`docs/development.md`](docs/development.md) for running Retrospend locally from source.
 
-   ```bash
-   # Access your running container
-   docker exec -it retrospend sh
+## License
 
-   # Run the sync script
-   pnpm ts-node scripts/sync-default-categories.ts
-   ```
-
-3. **Verify the sync** (optional):
-   ```bash
-   pnpm tsx scripts/verify-categories.ts
-   ```
-
-The sync script safely handles duplicates using `skipDuplicates: true` and the unique constraint on `(name, userId)`, so existing categories won't be affected.
-
-**Note:** For future category additions, consider adding the sync logic to the sign-in flow in `src/server/better-auth/config.ts` to automatically sync defaults when users log in.
-
-## Community
-
-If you'd like access to the hosted application (free), you can get in contact with me via the Retrospend Matrix chat or any of the contact methods on my website at [https://matv.io](https://matv.io).
-
-Join our Matrix room for discussions, support, and updates: [#retrospend:matrix.org](https://matrix.to/#/#retrospend:matrix.org)
+[GPL-3.0](LICENSE)

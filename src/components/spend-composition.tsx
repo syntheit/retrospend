@@ -3,10 +3,36 @@
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useAnalyticsCategoryPreferences } from "~/hooks/use-page-settings";
+import { formatCurrency } from "~/lib/currency-format";
 import {
 	convertExpenseAmountForDisplay,
 	type NormalizedExpense,
 } from "~/lib/utils";
+
+function CustomTooltip({
+	active,
+	payload,
+	baseCurrency,
+}: {
+	active?: boolean;
+	baseCurrency: string;
+	payload?: Array<{
+		payload: { name: string; value: number; percentage: number };
+	}>;
+}) {
+	if (active && payload && payload.length > 0 && payload[0]) {
+		const data = payload[0].payload;
+		return (
+			<div className="rounded-lg border border-border bg-background p-3 shadow-md">
+				<p className="font-medium text-sm">{data.name}</p>
+				<p className="text-muted-foreground text-sm">
+					{formatCurrency(data.value, baseCurrency)} ({data.percentage}%)
+				</p>
+			</div>
+		);
+	}
+	return null;
+}
 
 interface SpendCompositionProps {
 	expenses: NormalizedExpense[];
@@ -21,40 +47,32 @@ export function SpendComposition({
 }: SpendCompositionProps) {
 	const { preferenceMap } = useAnalyticsCategoryPreferences();
 
-	const chartData = useMemo(() => {
-		const fixedExpenses = expenses
-			.filter(
-				(expense) =>
-					expense.category?.id &&
-					preferenceMap?.[expense.category.id] === false,
-			)
-			.reduce(
-				(sum, expense) =>
-					sum +
-					convertExpenseAmountForDisplay(
-						expense,
-						baseCurrency,
-						liveRateToBaseCurrency,
-					),
-				0,
-			);
+	// Pre-compute converted amounts once — both chartData and categoryBreakdown read from this
+	const convertedExpenses = useMemo(() => {
+		return expenses.map((expense) => ({
+			expense,
+			convertedAmount: convertExpenseAmountForDisplay(
+				expense,
+				baseCurrency,
+				liveRateToBaseCurrency,
+			),
+		}));
+	}, [expenses, baseCurrency, liveRateToBaseCurrency]);
 
-		const flexibleExpenses = expenses
-			.filter(
-				(expense) =>
-					!expense.category?.id ||
-					preferenceMap?.[expense.category.id] !== false,
-			)
-			.reduce(
-				(sum, expense) =>
-					sum +
-					convertExpenseAmountForDisplay(
-						expense,
-						baseCurrency,
-						liveRateToBaseCurrency,
-					),
-				0,
-			);
+	const chartData = useMemo(() => {
+		let fixedExpenses = 0;
+		let flexibleExpenses = 0;
+
+		for (const { expense, convertedAmount } of convertedExpenses) {
+			const isFixed =
+				expense.category?.id &&
+				preferenceMap?.[expense.category.id] === false;
+			if (isFixed) {
+				fixedExpenses += convertedAmount;
+			} else {
+				flexibleExpenses += convertedAmount;
+			}
+		}
 
 		const total = fixedExpenses + flexibleExpenses;
 		const fixedPercentage =
@@ -76,7 +94,7 @@ export function SpendComposition({
 				color: "#ea580c", // orange-600
 			},
 		];
-	}, [expenses, baseCurrency, liveRateToBaseCurrency, preferenceMap]);
+	}, [convertedExpenses, preferenceMap]);
 
 	const totalSpending = useMemo(() => {
 		return chartData.reduce((sum, item) => sum + item.value, 0);
@@ -86,31 +104,24 @@ export function SpendComposition({
 		const fixedCategories = new Map<string, number>();
 		const flexibleCategories = new Map<string, number>();
 
-		// Group expenses by category
-		expenses.forEach((expense) => {
+		for (const { expense, convertedAmount } of convertedExpenses) {
 			const categoryName = expense.category?.name || "Uncategorized";
-			const amount = convertExpenseAmountForDisplay(
-				expense,
-				baseCurrency,
-				liveRateToBaseCurrency,
-			);
 			const isFixed =
 				expense.category?.id && preferenceMap?.[expense.category.id] === false;
 
 			if (isFixed) {
 				fixedCategories.set(
 					categoryName,
-					(fixedCategories.get(categoryName) || 0) + amount,
+					(fixedCategories.get(categoryName) || 0) + convertedAmount,
 				);
 			} else {
 				flexibleCategories.set(
 					categoryName,
-					(flexibleCategories.get(categoryName) || 0) + amount,
+					(flexibleCategories.get(categoryName) || 0) + convertedAmount,
 				);
 			}
-		});
+		}
 
-		// Calculate totals for each type
 		const fixedTotal = Array.from(fixedCategories.values()).reduce(
 			(sum, amount) => sum + amount,
 			0,
@@ -120,7 +131,6 @@ export function SpendComposition({
 			0,
 		);
 
-		// Convert to array with percentages
 		const fixedBreakdown = Array.from(fixedCategories.entries())
 			.map(([name, amount]) => ({
 				name,
@@ -128,7 +138,7 @@ export function SpendComposition({
 				percentage:
 					fixedTotal > 0 ? Math.round((amount / fixedTotal) * 100) : 0,
 			}))
-			.sort((a, b) => b.amount - a.amount); // Sort by amount descending
+			.sort((a, b) => b.amount - a.amount);
 
 		const flexibleBreakdown = Array.from(flexibleCategories.entries())
 			.map(([name, amount]) => ({
@@ -137,7 +147,7 @@ export function SpendComposition({
 				percentage:
 					flexibleTotal > 0 ? Math.round((amount / flexibleTotal) * 100) : 0,
 			}))
-			.sort((a, b) => b.amount - a.amount); // Sort by amount descending
+			.sort((a, b) => b.amount - a.amount);
 
 		return {
 			fixed: fixedBreakdown,
@@ -145,30 +155,7 @@ export function SpendComposition({
 			fixedTotal: Math.round(fixedTotal * 100) / 100,
 			flexibleTotal: Math.round(flexibleTotal * 100) / 100,
 		};
-	}, [expenses, baseCurrency, liveRateToBaseCurrency, preferenceMap]);
-
-	const CustomTooltip = ({
-		active,
-		payload,
-	}: {
-		active?: boolean;
-		payload?: Array<{
-			payload: { name: string; value: number; percentage: number };
-		}>;
-	}) => {
-		if (active && payload && payload.length > 0 && payload[0]) {
-			const data = payload[0].payload;
-			return (
-				<div className="rounded-lg border border-border bg-background p-3 shadow-md">
-					<p className="font-medium text-sm">{data.name}</p>
-					<p className="text-muted-foreground text-sm">
-						${data.value.toFixed(2)} ({data.percentage}%)
-					</p>
-				</div>
-			);
-		}
-		return null;
-	};
+	}, [convertedExpenses, preferenceMap]);
 
 	if (expenses.length === 0) {
 		return (
@@ -179,7 +166,7 @@ export function SpendComposition({
 						Fixed vs. flexible spending
 					</p>
 				</div>
-				<div className="flex h-[300px] items-center justify-center">
+				<div className="flex h-[220px] sm:h-[300px] items-center justify-center">
 					<p className="text-muted-foreground">
 						No expenses in selected time range
 					</p>
@@ -197,7 +184,7 @@ export function SpendComposition({
 						Fixed vs. flexible spending
 					</p>
 				</div>
-				<div className="flex h-[300px] items-center justify-center">
+				<div className="flex h-[220px] sm:h-[300px] items-center justify-center">
 					<p className="text-muted-foreground">
 						All expenses have zero amounts
 					</p>
@@ -215,7 +202,7 @@ export function SpendComposition({
 				</p>
 			</div>
 
-			<div className="h-[300px] w-full min-w-0">
+			<div className="h-[220px] sm:h-[300px] w-full min-w-0" role="img" aria-label={`Spend composition: Fixed ${chartData[0]?.percentage ?? 0}%, Flexible ${chartData[1]?.percentage ?? 0}%`}>
 				<ResponsiveContainer height="100%" width="100%">
 					<PieChart>
 						<Pie
@@ -231,7 +218,7 @@ export function SpendComposition({
 								<Cell fill={entry.color} key={`cell-${entry.name}`} />
 							))}
 						</Pie>
-						<Tooltip content={<CustomTooltip />} />
+						<Tooltip content={<CustomTooltip baseCurrency={baseCurrency} />} />
 					</PieChart>
 				</ResponsiveContainer>
 			</div>
@@ -269,7 +256,7 @@ export function SpendComposition({
 										{category.name}
 									</span>
 									<span className="text-muted-foreground">
-										${category.amount.toFixed(2)} ({category.percentage}%)
+										{formatCurrency(category.amount, baseCurrency)} ({category.percentage}%)
 									</span>
 								</div>
 							))
@@ -295,7 +282,7 @@ export function SpendComposition({
 										{category.name}
 									</span>
 									<span className="text-muted-foreground">
-										${category.amount.toFixed(2)} ({category.percentage}%)
+										{formatCurrency(category.amount, baseCurrency)} ({category.percentage}%)
 									</span>
 								</div>
 							))

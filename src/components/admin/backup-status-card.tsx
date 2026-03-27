@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	IconCircleCheck,
-	IconCircleX,
-	IconDatabase,
-	IconDownload,
-} from "@tabler/icons-react";
+import { CheckCircle, CircleX, Database, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -85,11 +80,11 @@ export function BackupStatusCard() {
 			<Card className="flex flex-col">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
-						<IconDatabase className="h-5 w-5" />
+						<Database className="h-5 w-5" />
 						Database Backups
 					</CardTitle>
 					<CardDescription>
-						Backup service is not available. Check worker connection.
+						Backup service is not available. Check sidecar connection.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -113,7 +108,7 @@ export function BackupStatusCard() {
 		<Card className="flex h-full flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					<IconDatabase className="h-5 w-5" />
+					<Database className="h-5 w-5" />
 					Database Backups
 				</CardTitle>
 				<CardDescription>
@@ -131,7 +126,7 @@ export function BackupStatusCard() {
 									status.running
 										? "animate-pulse bg-yellow-500"
 										: isLastBackupOk
-											? "bg-green-500"
+											? "bg-emerald-500"
 											: "bg-red-500"
 								}`}
 							/>
@@ -196,7 +191,7 @@ export function BackupStatusCard() {
 				{/* History */}
 				{status.history && status.history.length > 0 && (
 					<div className="space-y-2">
-						<span className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+						<span className="font-medium text-muted-foreground text-xs tracking-wide">
 							Recent History
 						</span>
 						<div className="space-y-1">
@@ -207,9 +202,9 @@ export function BackupStatusCard() {
 								>
 									<div className="flex items-center gap-2">
 										{entry.success ? (
-											<IconCircleCheck className="h-3.5 w-3.5 text-green-500" />
+											<CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
 										) : (
-											<IconCircleX className="h-3.5 w-3.5 text-red-500" />
+											<CircleX className="h-3.5 w-3.5 text-red-500" />
 										)}
 										<span className="text-muted-foreground">
 											{formatDistanceToNow(new Date(entry.timestamp), {
@@ -248,19 +243,19 @@ export function BackupStatusCard() {
 					>
 						{triggerMutation.isPending || status.running ? (
 							<>
-								<IconDownload className="mr-2 h-4 w-4 animate-spin" />
+								<Download className="mr-2 h-4 w-4 animate-spin" />
 								Backing up...
 							</>
 						) : (
 							<>
-								<IconDownload className="mr-2 h-4 w-4" />
+								<Download className="mr-2 h-4 w-4" />
 								Backup Now
 							</>
 						)}
 					</Button>
 
 					{triggerResult && (
-						<span className="text-green-600 text-sm dark:text-green-400">
+						<span className="text-emerald-600 text-sm dark:text-emerald-400">
 							{triggerResult}
 						</span>
 					)}

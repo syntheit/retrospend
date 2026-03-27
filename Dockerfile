@@ -63,6 +63,9 @@ RUN apk add --no-cache netcat-openbsd && \
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Create uploads directory owned by nextjs user
+RUN mkdir -p /data/uploads && chown nextjs:nodejs /data/uploads
+
 # Copy the public folder
 COPY --from=builder /app/public ./public
 

@@ -15,12 +15,12 @@ export function TermsContent() {
 				</CardTitle>
 				<CardDescription>Effective Date: March 4, 2026</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-6 text-stone-700 dark:text-stone-300">
+			<CardContent className="space-y-6 text-muted-foreground">
 				<p>
 					By using Retrospend, you agree to these terms. Our data practices are
 					described in our{" "}
 					<a
-						className="text-stone-900 underline underline-offset-4 dark:text-stone-50"
+						className="text-foreground underline underline-offset-4"
 						href="/privacy"
 					>
 						Privacy Policy
@@ -29,43 +29,42 @@ export function TermsContent() {
 				</p>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						1. The Service
 					</h2>
 					<p>
 						Retrospend is an open-source personal financial tracking tool
 						licensed under the{" "}
 						<a
-							className="text-stone-900 underline underline-offset-4 dark:text-stone-50"
+							className="text-foreground underline underline-offset-4"
 							href="https://www.gnu.org/licenses/gpl-3.0.html"
-							target="_blank"
 							rel="noopener noreferrer"
+							target="_blank"
 						>
 							GNU GPLv3
 						</a>
 						, maintained by Daniel Miller (&ldquo;we,&rdquo; &ldquo;us&rdquo;).
-						These terms govern your use of the hosted service at
-						retrospend.app. If you self-host Retrospend, your use is governed
-						by the license, not these terms.
+						These terms govern your use of the hosted service at retrospend.app.
+						If you self-host Retrospend, your use is governed by the license,
+						not these terms.
 					</p>
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						2. Not Financial Advice
 					</h2>
 					<p>
 						Retrospend is a tracking tool, not a financial advisor. Nothing
 						provided through this service constitutes financial, tax, or legal
-						advice. We make no
-						warranties about the accuracy or completeness of any data or
-						calculations. Consult a qualified professional before making
-						financial decisions.
+						advice. We make no warranties about the accuracy or completeness of
+						any data or calculations. Consult a qualified professional before
+						making financial decisions.
 					</p>
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						3. Your Account
 					</h2>
 					<p>
@@ -75,7 +74,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						4. Acceptable Use
 					</h2>
 					<p className="mb-2">You agree not to:</p>
@@ -86,14 +85,13 @@ export function TermsContent() {
 							infrastructure.
 						</li>
 						<li>
-							Use automated systems to scrape or extract data from the
-							service.
+							Use automated systems to scrape or extract data from the service.
 						</li>
 					</ul>
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						5. Limitation of Liability
 					</h2>
 					<p>
@@ -106,7 +104,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						6. Termination
 					</h2>
 					<p>
@@ -117,7 +115,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						7. Governing Law
 					</h2>
 					<p>
@@ -128,7 +126,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						8. Changes
 					</h2>
 					<p>
@@ -139,13 +137,13 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-stone-900 text-xl dark:text-stone-50">
+					<h2 className="mb-2 font-semibold text-foreground text-xl">
 						9. Contact
 					</h2>
 					<p>
 						Questions? Reach us at{" "}
 						<a
-							className="text-stone-900 underline underline-offset-4 dark:text-stone-50"
+							className="text-foreground underline underline-offset-4"
 							href="mailto:support@retrospend.app"
 						>
 							support@retrospend.app

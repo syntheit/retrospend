@@ -286,7 +286,7 @@ function RetrospendCsvImport({
 			const file = e.target.files?.[0];
 			if (!file) return;
 
-			// ~10MB raw file ≈ ~14MB base64 — enforce before reading
+			// ~10MB raw file ≈ ~14MB base64; enforce before reading
 			if (file.size > 10 * 1024 * 1024) {
 				toast.error("File too large. Maximum size is 10 MB.");
 				e.target.value = "";
@@ -298,37 +298,24 @@ function RetrospendCsvImport({
 
 			const reader = new FileReader();
 			reader.onload = async (evt) => {
-				let base64: string;
-
-				if (isXlsx) {
-					// For XLSX, read as ArrayBuffer and convert to base64
-					const arrayBuffer = evt.target?.result as ArrayBuffer;
-					const uint8Array = new Uint8Array(arrayBuffer);
-					let binary = "";
-					for (let i = 0; i < uint8Array.byteLength; i++) {
-						binary += String.fromCharCode(uint8Array[i]!);
-					}
-					base64 = btoa(binary);
-				} else {
-					// For CSV, read as text and convert to base64
-					const text = evt.target?.result as string;
-					base64 = btoa(text);
+				const arrayBuffer = evt.target?.result as ArrayBuffer;
+				const uint8Array = new Uint8Array(arrayBuffer);
+				let binary = "";
+				for (let i = 0; i < uint8Array.byteLength; i++) {
+					binary += String.fromCharCode(uint8Array[i]!);
 				}
+				const base64 = btoa(binary);
 
 				await createJobMutation.mutateAsync({
 					fileName: file.name,
 					fileSize: file.size,
-					fileType: "csv",
+					fileType: isXlsx ? "xlsx" : "csv",
 					type: "CSV",
 					fileData: base64,
 				});
 			};
 
-			if (isXlsx) {
-				reader.readAsArrayBuffer(file);
-			} else {
-				reader.readAsText(file);
-			}
+			reader.readAsArrayBuffer(file);
 		},
 		[createJobMutation],
 	);
@@ -426,10 +413,11 @@ function RetrospendCsvImport({
 				</Alert>
 			)}
 
-			<button
-				className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-muted-foreground/25 border-dashed bg-muted/30 transition-colors hover:border-muted-foreground/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+			<Button
+				className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-muted-foreground/25 border-dashed bg-muted/30 hover:border-muted-foreground/50 hover:bg-muted/50"
 				onClick={() => fileInputRef.current?.click()}
 				type="button"
+				variant="ghost"
 			>
 				<Upload className="h-8 w-8 text-muted-foreground" />
 				<div className="text-center">
@@ -440,7 +428,7 @@ function RetrospendCsvImport({
 						Retrospend expense format (.csv or .xlsx)
 					</p>
 				</div>
-			</button>
+			</Button>
 
 			<Input
 				accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -495,7 +483,7 @@ function BankStatementImport({
 				return;
 			}
 
-			// ~10MB raw file ≈ ~14MB base64 — enforce before reading
+			// ~10MB raw file ≈ ~14MB base64; enforce before reading
 			if (file.size > 10 * 1024 * 1024) {
 				toast.error("File too large. Maximum size is 10 MB.");
 				return;
@@ -619,9 +607,7 @@ function BankStatementImport({
 			<div className="space-y-1">
 				<div className="flex items-center justify-between">
 					<p className="font-medium">Import bank statement</p>
-					{aiStatus && (
-						<AiModeIndicator aiStatus={aiStatus} />
-					)}
+					{aiStatus && <AiModeIndicator aiStatus={aiStatus} />}
 				</div>
 				<p className="text-muted-foreground text-sm">
 					Upload a CSV, Excel, or PDF bank statement. Supports Chase, Capital
@@ -633,6 +619,7 @@ function BankStatementImport({
 				<div className="relative rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
 					<div className="whitespace-pre-wrap">{state.message}</div>
 					<Button
+						aria-label="Dismiss error"
 						className="absolute top-2 right-2 h-6 w-6 hover:bg-destructive/20"
 						onClick={resetState}
 						size="icon"
@@ -643,9 +630,9 @@ function BankStatementImport({
 				</div>
 			)}
 
-			<button
+			<Button
 				className={cn(
-					"flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+					"flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed",
 					isDragging
 						? "border-primary bg-primary/5"
 						: "border-muted-foreground/25 bg-muted/30 hover:border-muted-foreground/50 hover:bg-muted/50",
@@ -655,6 +642,7 @@ function BankStatementImport({
 				onDragOver={handleDragOver}
 				onDrop={handleDrop}
 				type="button"
+				variant="ghost"
 			>
 				<Upload
 					className={cn(
@@ -670,7 +658,7 @@ function BankStatementImport({
 						Bank statements are processed securely
 					</p>
 				</div>
-			</button>
+			</Button>
 
 			<Input
 				accept=".csv,.xlsx,.pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"
@@ -696,7 +684,9 @@ function AiModeIndicator({
 	const label =
 		aiStatus.currentMode === "EXTERNAL" ? "External AI" : "Local AI";
 	const dotClass =
-		aiStatus.currentMode === "EXTERNAL" ? "bg-blue-500" : "bg-muted-foreground/50";
+		aiStatus.currentMode === "EXTERNAL"
+			? "bg-blue-500"
+			: "bg-muted-foreground/50";
 
 	return (
 		<TooltipProvider>

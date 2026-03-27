@@ -21,7 +21,7 @@ export function getFiscalMonthRange(
 	startDay: number,
 ): { start: Date; end: Date } {
 	if (startDay === 1) {
-		// Fast path — standard calendar month
+		// Fast path: standard calendar month
 		const start = new Date(month.getFullYear(), month.getMonth(), 1);
 		const end = new Date(
 			month.getFullYear(),
@@ -87,7 +87,12 @@ export function getFiscalMonthProgress(
 	const isCurrentPeriod = now >= start && now <= end;
 
 	if (!isCurrentPeriod) {
-		return { daysInPeriod, currentDay: daysInPeriod, daysRemaining: 0, isCurrentPeriod };
+		return {
+			daysInPeriod,
+			currentDay: daysInPeriod,
+			daysRemaining: 0,
+			isCurrentPeriod,
+		};
 	}
 
 	const currentDay =

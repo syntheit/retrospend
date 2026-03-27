@@ -20,8 +20,14 @@ export function useRecurringStatus(template: RecurringTemplate) {
 			case "WEEKLY":
 				cycleStart = subWeeks(cycleStart, 1);
 				break;
+			case "BIWEEKLY":
+				cycleStart = subWeeks(cycleStart, 2);
+				break;
 			case "MONTHLY":
 				cycleStart = subMonths(cycleStart, 1);
+				break;
+			case "QUARTERLY":
+				cycleStart = subMonths(cycleStart, 3);
 				break;
 			case "YEARLY":
 				cycleStart = subYears(cycleStart, 1);

@@ -16,35 +16,52 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-	IconChevronDown,
-	IconChevronUp,
-	IconGripVertical,
-} from "@tabler/icons-react";
+	ChevronDown,
+	ChevronRight,
+	GripVertical,
+} from "lucide-react";
 import {
 	type ColumnDef,
 	flexRender,
-	getCoreRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
+	type Row,
 } from "@tanstack/react-table";
-import { Heart } from "lucide-react";
+import {
+	Calculator,
+	ChartLine,
+	Copy,
+	Heart,
+	HeartOff,
+	HeartPlus,
+	MoreHorizontal,
+} from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "~/components/ui/context-menu";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "~/components/ui/table";
-import { DEFAULT_PAGE_SIZE } from "~/lib/constants";
-import { cn, getCurrencyName, isCrypto } from "~/lib/utils";
-import { TablePagination } from "./table-pagination";
-import { TableSearch } from "./table-search";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { TableCell, TableRow } from "~/components/ui/table";
+import {
+	getRateTypeLabel,
+	groupRatesByCurrency,
+} from "~/lib/exchange-rates-shared";
+import { isCrypto } from "~/lib/currency-format";
+import { cn, getCurrencyName } from "~/lib/utils";
+import { DataTable } from "./data-table";
+import { ExpandableSearch } from "./table-search";
 
 export const exchangeRateSchema = z.object({
 	id: z.string(),
@@ -58,18 +75,97 @@ export const exchangeRateSchema = z.object({
 
 type ExchangeRate = z.infer<typeof exchangeRateSchema> & {
 	isFavorite?: boolean;
+	subRows?: ExchangeRate[];
 };
+
+// ---- Column definitions ----
+
+// ---- Shared menu items ----
+
+interface MenuItemsProps {
+	row: Row<ExchangeRate>;
+	onRowClick?: (currency: string) => void;
+	onToggleFavorite: (id: string) => Promise<void>;
+	Item: React.ComponentType<React.ComponentProps<typeof ContextMenuItem>>;
+	Separator: React.ComponentType<React.ComponentProps<typeof ContextMenuSeparator>>;
+}
+
+function renderMenuItems({
+	row,
+	onRowClick,
+	onToggleFavorite,
+	Item,
+	Separator,
+}: MenuItemsProps) {
+	const isSubRow = row.depth > 0;
+	const { id, currency, rate, isFavorite } = row.original;
+
+	const handleCopyRate = () => {
+		void navigator.clipboard.writeText(
+			rate.toLocaleString(undefined, {
+				minimumFractionDigits: 4,
+				maximumFractionDigits: 4,
+			}),
+		);
+		toast.success(`Copied ${currency} rate to clipboard`);
+	};
+
+	return (
+		<>
+			<Item onClick={handleCopyRate}>
+				<Copy />
+				Copy rate
+			</Item>
+			{!isCrypto(currency) && (
+				<Item
+					onClick={() =>
+						window.open(
+							`https://www.xe.com/currencycharts/?from=USD&to=${currency}&view=2Y`,
+							"_blank",
+							"noopener,noreferrer",
+						)
+					}
+				>
+					<ChartLine />
+					View rate history
+				</Item>
+			)}
+			{!isSubRow && onRowClick && (
+				<Item onClick={() => onRowClick(currency)}>
+					<Calculator />
+					Open in calculator
+				</Item>
+			)}
+			{!isSubRow && (
+				<>
+					<Separator />
+					<Item
+						variant={isFavorite ? "destructive" : "default"}
+						onClick={() => void onToggleFavorite(id)}
+					>
+						{isFavorite ? <HeartOff /> : <HeartPlus />}
+						{isFavorite ? "Unfavorite" : "Add to favorites"}
+					</Item>
+				</>
+			)}
+		</>
+	);
+}
 
 interface ExchangeRateColumnOptions {
 	onToggleFavorite: (id: string) => Promise<void>;
+	onRowClick?: (currency: string) => void;
 	favoriteLoadingId: string | null;
 	isDraggable: boolean;
+	grouped: boolean;
 }
 
 function createExchangeRateColumns({
 	onToggleFavorite,
+	onRowClick,
 	favoriteLoadingId,
 	isDraggable,
+	grouped,
 }: ExchangeRateColumnOptions): ColumnDef<ExchangeRate>[] {
 	return [
 		...(isDraggable
@@ -77,24 +173,58 @@ function createExchangeRateColumns({
 					{
 						id: "drag",
 						header: () => <span className="sr-only">Move</span>,
+						size: 40,
 						cell: () => (
 							<Button
 								className="h-auto cursor-move p-0 hover:bg-transparent"
 								size="sm"
 								variant="ghost"
 							>
-								<IconGripVertical className="h-4 w-4 text-muted-foreground" />
+								<GripVertical className="h-4 w-4 text-muted-foreground" />
 							</Button>
 						),
 						enableSorting: false,
 					} as ColumnDef<ExchangeRate>,
 				]
 			: []),
+		...(grouped
+			? [
+					{
+						id: "expand",
+						header: () => null,
+						size: 40,
+						enableSorting: false,
+						cell: ({ row }: { row: Row<ExchangeRate> }) => {
+							if (!row.getCanExpand()) return null;
+							return (
+								<Button
+									className="h-auto p-0 hover:bg-transparent"
+									onClick={(e) => {
+										e.stopPropagation();
+										row.toggleExpanded();
+									}}
+									size="sm"
+									variant="ghost"
+								>
+									{row.getIsExpanded() ? (
+										<ChevronDown className="h-4 w-4 text-muted-foreground" />
+									) : (
+										<ChevronRight className="h-4 w-4 text-muted-foreground" />
+									)}
+								</Button>
+							);
+						},
+					} as ColumnDef<ExchangeRate>,
+				]
+			: []),
 		{
 			id: "favorite",
 			header: () => <span className="sr-only">Favorite</span>,
+			size: 48,
 			enableSorting: false,
 			cell: ({ row }) => {
+				if (row.depth > 0) return null;
+
 				const { currency, id, isFavorite } = row.original;
 				const isLoading = favoriteLoadingId === id;
 
@@ -107,7 +237,10 @@ function createExchangeRateColumns({
 						}
 						className="p-0"
 						disabled={isLoading}
-						onClick={() => void onToggleFavorite(id)}
+						onClick={(e) => {
+							e.stopPropagation();
+							void onToggleFavorite(id);
+						}}
 						size="sm"
 						variant="ghost"
 					>
@@ -127,15 +260,33 @@ function createExchangeRateColumns({
 		{
 			accessorKey: "currency",
 			header: "Currency",
+			meta: { flex: true },
 			enableSorting: true,
 			cell: ({ row }) => {
+				if (row.depth > 0) {
+					return (
+						<div className="pl-8 text-muted-foreground text-sm">
+							{getRateTypeLabel(row.original.type)}
+						</div>
+					);
+				}
+
 				const currencyCode = row.original.currency;
 				const currencyName = getCurrencyName(currencyCode);
 				return (
 					<div className="flex items-center gap-3">
 						<CurrencyFlag className="!h-8 !w-8" currencyCode={currencyCode} />
 						<div className="space-y-0.5">
-							<div className="font-medium tabular-nums">{currencyCode}</div>
+							<div className="flex items-center gap-2">
+								<span className="font-medium tabular-nums">
+									{currencyCode}
+								</span>
+								{grouped && row.original.subRows && (
+									<span className="rounded-full bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">
+										{getRateTypeLabel(row.original.type)}
+									</span>
+								)}
+							</div>
 							<div className="text-muted-foreground text-xs">
 								{currencyName}
 							</div>
@@ -147,11 +298,17 @@ function createExchangeRateColumns({
 		{
 			accessorKey: "rate",
 			header: "Rate (USD)",
+			size: 140,
 			enableSorting: true,
 			cell: ({ row }) => {
 				const rate = row.original.rate;
 				return (
-					<div className="text-right tabular-nums">
+					<div
+						className={cn(
+							"font-medium text-right tabular-nums",
+							row.depth > 0 && "text-muted-foreground",
+						)}
+					>
 						{rate.toLocaleString(undefined, {
 							minimumFractionDigits: 4,
 							maximumFractionDigits: 4,
@@ -163,29 +320,66 @@ function createExchangeRateColumns({
 		{
 			accessorKey: "type",
 			header: "Type",
+			size: 120,
 			enableSorting: true,
+			meta: { className: "hidden md:table-cell" },
 			cell: ({ row }) => {
+				if (grouped && row.depth === 0 && row.original.subRows) return null;
+
 				const type = row.original.type;
 				return (
-					<div className="text-sm">
+					<div
+						className={cn(row.depth > 0 && "text-muted-foreground")}
+					>
 						<span className="capitalize">{type}</span>
 					</div>
 				);
 			},
 		},
+		{
+			id: "actions",
+			header: () => null,
+			size: 48,
+			enableSorting: false,
+			enableHiding: false,
+			cell: ({ row }) => (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100 data-[state=open]:opacity-100"
+							size="icon"
+							variant="ghost"
+							onClick={(e) => e.stopPropagation()}
+						>
+							<MoreHorizontal className="h-4 w-4" />
+							<span className="sr-only">Actions</span>
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-48">
+						{renderMenuItems({
+							row,
+							onRowClick,
+							onToggleFavorite,
+							Item: DropdownMenuItem,
+							Separator: DropdownMenuSeparator,
+						})}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			),
+		},
 	];
 }
+
+// ---- Draggable row ----
 
 interface DraggableRowProps extends React.ComponentProps<typeof TableRow> {
 	id: string;
 }
 
-function DraggableRow({
-	id,
-	className,
-	children,
-	...props
-}: DraggableRowProps) {
+const DraggableRow = React.forwardRef<
+	HTMLTableRowElement,
+	DraggableRowProps
+>(function DraggableRow({ id, className, children, ...props }, forwardedRef) {
 	const {
 		attributes,
 		listeners,
@@ -205,11 +399,14 @@ function DraggableRow({
 	return (
 		<TableRow
 			className={cn(className, isDragging && "bg-muted/50 shadow-sm")}
-			ref={setNodeRef}
+			ref={(node) => {
+				setNodeRef(node);
+				if (typeof forwardedRef === "function") forwardedRef(node);
+				else if (forwardedRef) forwardedRef.current = node;
+			}}
 			style={style}
 			{...props}
 		>
-			{/* Apply drag listeners only to the drag handle cell (first child) */}
 			{React.Children.map(children, (child, index) => {
 				if (index === 0 && React.isValidElement(child)) {
 					return React.cloneElement(child, {
@@ -221,13 +418,44 @@ function DraggableRow({
 			})}
 		</TableRow>
 	);
+});
+
+// ---- Shared row rendering helpers ----
+
+function renderCells(row: Row<ExchangeRate>) {
+	return row.getVisibleCells().map((cell) => {
+		const meta = cell.column.columnDef.meta as Record<string, unknown> | undefined;
+		const hasFixedSize =
+			cell.column.columnDef.size != null && !meta?.flex;
+
+		return (
+			<TableCell
+				className={cn("px-4 py-3", meta?.className as string)}
+				key={cell.id}
+				style={
+					hasFixedSize
+						? {
+								width: cell.column.getSize(),
+								minWidth: cell.column.getSize(),
+							}
+						: undefined
+				}
+			>
+				{flexRender(cell.column.columnDef.cell, cell.getContext())}
+			</TableCell>
+		);
+	});
 }
+
+// ---- Main component ----
 
 interface ExchangeRatesTableProps {
 	data: ExchangeRate[];
 	onToggleFavorite: (id: string) => Promise<void>;
 	onReorder?: (ids: string[]) => void;
 	isReorderable?: boolean;
+	grouped?: boolean;
+	onRowClick?: (currency: string) => void;
 }
 
 export function ExchangeRatesTable({
@@ -235,6 +463,8 @@ export function ExchangeRatesTable({
 	onToggleFavorite,
 	onReorder,
 	isReorderable = false,
+	grouped = false,
+	onRowClick,
 }: ExchangeRatesTableProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [favoriteLoadingId, setFavoriteLoadingId] = useState<string | null>(
@@ -245,22 +475,20 @@ export function ExchangeRatesTable({
 		() =>
 			data.map((rate) => ({
 				...rate,
-				rate: Number(rate.rate), // Convert Decimal to number
+				rate: Number(rate.rate),
 			})),
 		[data],
 	);
 
+	// Filter externally - DataTable's globalFilter doesn't search sub-rows
 	const filteredData = useMemo(() => {
-		if (!searchQuery.trim()) {
-			return transformedData;
-		}
+		if (!searchQuery.trim()) return transformedData;
 
 		const query = searchQuery.toLowerCase();
 		return transformedData.filter((rate) => {
 			const currencyCode = rate.currency.toLowerCase();
 			const currencyName = getCurrencyName(rate.currency).toLowerCase();
 			const currencyType = rate.type.toLowerCase();
-
 			return (
 				currencyCode.includes(query) ||
 				currencyName.includes(query) ||
@@ -268,6 +496,11 @@ export function ExchangeRatesTable({
 			);
 		});
 	}, [transformedData, searchQuery]);
+
+	const tableData = useMemo(() => {
+		if (!grouped) return filteredData;
+		return groupRatesByCurrency(filteredData);
+	}, [filteredData, grouped]);
 
 	const handleToggleFavorite = useCallback(
 		async (id: string) => {
@@ -281,36 +514,21 @@ export function ExchangeRatesTable({
 		[onToggleFavorite],
 	);
 
+	const isDraggable = isReorderable && !searchQuery;
+
 	const columns = useMemo(
 		() =>
 			createExchangeRateColumns({
 				onToggleFavorite: handleToggleFavorite,
+				onRowClick,
 				favoriteLoadingId,
-				isDraggable: isReorderable && !searchQuery, // Only draggable if not searching
+				isDraggable,
+				grouped,
 			}),
-		[favoriteLoadingId, handleToggleFavorite, isReorderable, searchQuery],
+		[favoriteLoadingId, handleToggleFavorite, onRowClick, isDraggable, grouped],
 	);
 
-	const table = useReactTable({
-		data: filteredData,
-		columns,
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		initialState: {
-			sorting: isReorderable
-				? [] // No sorting when reorderable to respect drag order
-				: [
-						{
-							id: "currency",
-							desc: false,
-						},
-					],
-			pagination: {
-				pageSize: DEFAULT_PAGE_SIZE,
-			},
-		},
-	});
+	// ---- Drag-and-drop ----
 
 	const sensors = useSensors(
 		useSensor(PointerSensor),
@@ -319,181 +537,164 @@ export function ExchangeRatesTable({
 		}),
 	);
 
-	const handleDragEnd = (event: DragEndEvent) => {
-		const { active, over } = event;
-
-		if (over && active.id !== over.id) {
-			const oldIndex = data.findIndex((item) => item.id === active.id);
-			const newIndex = data.findIndex((item) => item.id === over.id);
-
-			if (oldIndex !== -1 && newIndex !== -1) {
-				const newDataIds = arrayMove(
-					data.map((item) => item.id),
-					oldIndex,
-					newIndex,
-				);
-				onReorder?.(newDataIds);
+	const handleDragEnd = useCallback(
+		(event: DragEndEvent) => {
+			const { active, over } = event;
+			if (over && active.id !== over.id) {
+				const oldIndex = data.findIndex((item) => item.id === active.id);
+				const newIndex = data.findIndex((item) => item.id === over.id);
+				if (oldIndex !== -1 && newIndex !== -1) {
+					const newDataIds = arrayMove(
+						data.map((item) => item.id),
+						oldIndex,
+						newIndex,
+					);
+					onReorder?.(newDataIds);
+				}
 			}
-		}
-	};
+		},
+		[data, onReorder],
+	);
+
+	// ---- Context menu ----
+
+	const renderContextMenuContent = useCallback(
+		(row: Row<ExchangeRate>) => (
+			<ContextMenuContent>
+				{renderMenuItems({
+					row,
+					onRowClick,
+					onToggleFavorite: handleToggleFavorite,
+					Item: ContextMenuItem,
+					Separator: ContextMenuSeparator,
+				})}
+			</ContextMenuContent>
+		),
+		[onRowClick, handleToggleFavorite],
+	);
+
+	// ---- Row renderers ----
+
+	const renderDraggableRow = useCallback(
+		(row: Row<ExchangeRate>) => (
+			<ContextMenu key={row.id}>
+				<ContextMenuTrigger asChild>
+					<DraggableRow
+						id={row.original.id}
+						className={cn("group", onRowClick && "cursor-pointer")}
+						onClick={() => onRowClick?.(row.original.currency)}
+					>
+						{renderCells(row)}
+					</DraggableRow>
+				</ContextMenuTrigger>
+				{renderContextMenuContent(row)}
+			</ContextMenu>
+		),
+		[onRowClick, renderContextMenuContent],
+	);
+
+	const renderGroupedRow = useCallback(
+		(row: Row<ExchangeRate>) => {
+			const isSubRow = row.depth > 0;
+			return (
+				<ContextMenu key={row.id}>
+					<ContextMenuTrigger asChild>
+						<TableRow
+							className={cn(
+								"group",
+								onRowClick && !isSubRow && "cursor-pointer transition-colors",
+								isSubRow && "bg-muted/30",
+							)}
+							onClick={() => {
+								if (!isSubRow && onRowClick) {
+									onRowClick(row.original.currency);
+								}
+							}}
+						>
+							{renderCells(row)}
+						</TableRow>
+					</ContextMenuTrigger>
+					{renderContextMenuContent(row)}
+				</ContextMenu>
+			);
+		},
+		[onRowClick, renderContextMenuContent],
+	);
+
+	// ---- Wrap table body content for SortableContext ----
+
+	const renderTableBodyContent = useCallback(
+		(children: React.ReactNode) => (
+			<SortableContext
+				items={filteredData.map((d) => d.id)}
+				strategy={verticalListSortingStrategy}
+			>
+				{children}
+			</SortableContext>
+		),
+		[filteredData],
+	);
+
+	const initialSorting = useMemo(
+		() =>
+			isReorderable ? [] : [{ id: "currency" as const, desc: false }],
+		[isReorderable],
+	);
+
+	// ---- Render ----
+
+	const table = (
+		<DataTable<ExchangeRate>
+			data={tableData}
+			columns={columns}
+			searchable={false}
+			hideCount
+			progressive
+			fillHeight
+			initialSorting={initialSorting}
+			emptyState={
+				<div className="py-8 text-muted-foreground text-sm">
+					No exchange rates found.
+				</div>
+			}
+			renderRow={isDraggable ? renderDraggableRow : renderGroupedRow}
+			{...(isDraggable
+				? { renderTableBodyContent }
+				: {})}
+			{...(grouped
+				? { getSubRows: (row: ExchangeRate) => row.subRows }
+				: {})}
+		/>
+	);
+
+	const rateCountLabel = filteredData.length === 1
+		? "1 currency"
+		: `${filteredData.length} currencies`;
 
 	return (
-		<div className="w-full space-y-4">
-			<TableSearch
-				onChange={setSearchQuery}
-				placeholder="Search currencies..."
-				value={searchQuery}
-			/>
-			<div className="max-h-[48rem] overflow-x-auto overflow-y-auto rounded-lg border">
+		<div className="flex flex-col flex-1 min-h-0 gap-4">
+			<div className="flex items-center gap-2">
+				<span className="shrink-0 tabular-nums text-muted-foreground text-sm">
+					{rateCountLabel}
+				</span>
+				<ExpandableSearch
+					onChange={setSearchQuery}
+					placeholder="Search currencies..."
+					value={searchQuery}
+					captureTyping
+				/>
+			</div>
+			{isDraggable ? (
 				<DndContext
 					collisionDetection={closestCenter}
 					onDragEnd={handleDragEnd}
 					sensors={sensors}
 				>
-					<Table>
-						<TableHeader className="sticky top-0 z-10 bg-background">
-							{table.getHeaderGroups().map((headerGroup) => (
-								<TableRow
-									className="border-b hover:bg-transparent"
-									key={headerGroup.id}
-								>
-									{headerGroup.headers.map((header) => {
-										const canSort = header.column.getCanSort();
-										const sortDirection = header.column.getIsSorted() as
-											| "asc"
-											| "desc"
-											| false;
-
-										const sortIcon = canSort ? (
-											sortDirection ? (
-												sortDirection === "asc" ? (
-													<IconChevronUp className="h-3 w-3" />
-												) : (
-													<IconChevronDown className="h-3 w-3" />
-												)
-											) : (
-												<div className="flex flex-col items-center text-muted-foreground/30">
-													<IconChevronUp className="h-3 w-3" />
-													<IconChevronDown className="-mt-1 h-3 w-3" />
-												</div>
-											)
-										) : null;
-
-										return (
-											<TableHead
-												className={cn(
-													"bg-background px-4 py-3",
-													header.id === "favorite" &&
-														"w-12 pr-0 pl-4 text-center align-middle",
-													header.id === "drag" && "w-10 px-2",
-												)}
-												key={header.id}
-												onClick={
-													canSort
-														? header.column.getToggleSortingHandler()
-														: undefined
-												}
-											>
-												{header.isPlaceholder ? null : (
-													<div
-														className={cn(
-															"flex select-none items-center justify-between gap-2 rounded-md transition-colors",
-															canSort && "cursor-pointer",
-														)}
-													>
-														<span className="flex-1 truncate font-medium">
-															{flexRender(
-																header.column.columnDef.header,
-																header.getContext(),
-															)}
-														</span>
-														{sortIcon && (
-															<span className="flex flex-shrink-0 items-center text-muted-foreground/50">
-																{sortIcon}
-															</span>
-														)}
-													</div>
-												)}
-											</TableHead>
-										);
-									})}
-								</TableRow>
-							))}
-						</TableHeader>
-						<TableBody>
-							{isReorderable && !searchQuery ? (
-								<SortableContext
-									items={filteredData.map((d) => d.id)}
-									strategy={verticalListSortingStrategy}
-								>
-									{table.getRowModel().rows?.length ? (
-										table.getRowModel().rows.map((row) => (
-											<DraggableRow id={row.original.id} key={row.id}>
-												{row.getVisibleCells().map((cell) => (
-													<TableCell
-														className={cn(
-															"px-4 py-3",
-															cell.column.id === "favorite" &&
-																"w-12 pr-0 pl-4 text-center align-middle",
-															cell.column.id === "drag" &&
-																"w-10 px-2 text-center",
-														)}
-														key={cell.id}
-													>
-														{flexRender(
-															cell.column.columnDef.cell,
-															cell.getContext(),
-														)}
-													</TableCell>
-												))}
-											</DraggableRow>
-										))
-									) : (
-										<TableRow>
-											<TableCell
-												className="h-24 text-center"
-												colSpan={columns.length}
-											>
-												No exchange rates found.
-											</TableCell>
-										</TableRow>
-									)}
-								</SortableContext>
-							) : table.getRowModel().rows?.length ? (
-								table.getRowModel().rows.map((row) => (
-									<TableRow key={row.id}>
-										{row.getVisibleCells().map((cell) => (
-											<TableCell
-												className={cn(
-													"px-4 py-3",
-													cell.column.id === "favorite" &&
-														"w-12 pr-0 pl-4 text-center align-middle",
-												)}
-												key={cell.id}
-											>
-												{flexRender(
-													cell.column.columnDef.cell,
-													cell.getContext(),
-												)}
-											</TableCell>
-										))}
-									</TableRow>
-								))
-							) : (
-								<TableRow>
-									<TableCell
-										className="h-24 text-center"
-										colSpan={columns.length}
-									>
-										No exchange rates found.
-									</TableCell>
-								</TableRow>
-							)}
-						</TableBody>
-					</Table>
+					{table}
 				</DndContext>
-			</div>
-			<TablePagination table={table} />
+			) : (
+				table
+			)}
 		</div>
 	);
 }

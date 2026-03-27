@@ -4,11 +4,11 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { resolveAiAccess } from "~/server/services/ai-access.service";
 import {
 	getAppSettings,
 	isInviteOnlyEnabled,
 } from "~/server/services/settings";
-import { resolveAiAccess } from "~/server/services/ai-access.service";
 
 export const settingsRouter = createTRPCRouter({
 	getGeneral: protectedProcedure.query(async ({ ctx }) => {
@@ -42,7 +42,7 @@ export const settingsRouter = createTRPCRouter({
 			defaultCurrency: user.defaultCurrency,
 			categoryClickBehavior: user.categoryClickBehavior,
 			currencySymbolStyle: user.currencySymbolStyle,
-			monthlyIncome: user.monthlyIncome,
+			monthlyIncome: Number(user.monthlyIncome),
 			monthlyIncomeCurrency: user.monthlyIncomeCurrency,
 			smartCurrencyFormatting: user.smartCurrencyFormatting,
 			defaultPrivacyMode: user.defaultPrivacyMode,

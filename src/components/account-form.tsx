@@ -185,7 +185,7 @@ function DeleteAccountSection({
 						<Button
 							disabled={deleteAccount.isPending}
 							onClick={handleClose}
-							variant="outline"
+							variant="ghost"
 						>
 							Cancel
 						</Button>

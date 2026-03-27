@@ -34,18 +34,18 @@ export function SummaryCard({
 
 	if (variant === "default") {
 		return (
-			<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-stone-800 via-stone-700 to-stone-900 text-white shadow-xl dark:from-stone-900 dark:via-stone-800 dark:to-black">
-				<div className="absolute top-0 right-0 h-32 w-32 translate-x-10 -translate-y-10 rounded-full bg-white/5" />
+			<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-stone-800 via-stone-700 to-stone-900 shadow-xl dark:from-stone-900 dark:via-stone-800 dark:to-black">
+				<div className="absolute top-0 right-0 h-32 w-32 translate-x-10 -translate-y-10 rounded-full bg-foreground/5" />
 				<CardContent className="relative p-5">
 					<div className="space-y-4">
 						<div className="space-y-1">
-							<p className="font-medium text-sm text-stone-300">{title}</p>
+							<p className="font-medium text-sm text-muted-foreground">{title}</p>
 							<p className="font-bold text-3xl tracking-tight">
 								{formattedValue}
 							</p>
 						</div>
 						{footer && (
-							<div className="flex w-fit items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
+							<div className="flex w-fit items-center gap-2 rounded-lg bg-foreground/10 px-3 py-1.5 backdrop-blur-sm">
 								{footer}
 							</div>
 						)}

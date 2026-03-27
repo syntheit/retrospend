@@ -29,6 +29,7 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { useCurrency } from "~/hooks/use-currency";
 import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
+import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
@@ -40,7 +41,7 @@ const recurringSchema = z.object({
 	amount: z.number().positive("Amount must be positive"),
 	currency: z.string().length(3),
 	categoryId: z.string().min(1, "Please select a category"),
-	frequency: z.enum(["WEEKLY", "MONTHLY", "YEARLY"]),
+	frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]),
 	nextDueDate: z.date(),
 	websiteUrl: z.string().url().optional().or(z.literal("")),
 	paymentSource: z.string().optional(),
@@ -62,7 +63,6 @@ export function RecurringModal({
 }: RecurringModalProps) {
 	const utils = api.useUtils();
 	const { data: settings } = api.settings.getGeneral.useQuery();
-	const { getCurrencySymbol } = useCurrencyFormatter();
 
 	const { data: template } = api.recurring.get.useQuery(
 		{ id: templateId ?? "" },
@@ -147,6 +147,12 @@ export function RecurringModal({
 	const watchedAmount = watch("amount");
 	const homeCurrency = settings?.homeCurrency ?? "USD";
 
+	const amountInput = useCurrencyInput({
+		value: watchedAmount,
+		onChange: (n) => setValue("amount", n, { shouldDirty: true }),
+		currency: watchedCurrency,
+	});
+
 	const { getDefaultRate, isLoading: isRateLoading } = useExchangeRates({
 		currency: watchedCurrency,
 		enabled: watchedCurrency !== homeCurrency && !!watchedAmount,
@@ -166,7 +172,6 @@ export function RecurringModal({
 			});
 		} else {
 			await createMutation.mutateAsync({
-				...data,
 				...data,
 				categoryId: data.categoryId || undefined,
 				websiteUrl: data.websiteUrl || undefined,
@@ -211,50 +216,43 @@ export function RecurringModal({
 					</div>
 
 					{/* Amount and Currency */}
-					<div className="grid grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="amount">Amount</Label>
-							<div
-								className={cn(
-									"flex h-auto min-h-[2.25rem] w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] dark:bg-input/30",
-									"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-									errors.amount &&
-										"border-destructive focus-within:ring-destructive/20 dark:focus-within:ring-destructive/40",
-								)}
-							>
-								<span className="shrink-0 font-medium text-muted-foreground">
-									{getCurrencySymbol(watch("currency"))}
-								</span>
-								<Input
-									className="h-full w-full grow border-0 bg-transparent px-0 py-0 font-bold text-lg shadow-none focus-visible:ring-0 sm:text-2xl dark:bg-transparent"
-									id="amount"
-									placeholder="0.00"
-									step="0.01"
-									type="number"
-									{...register("amount", { valueAsNumber: true })}
-								/>
-							</div>
-							<CurrencyEstimate
-								amount={watchedAmount}
-								currency={watchedCurrency}
-								homeCurrency={homeCurrency}
-								isLoading={isRateLoading}
-								rate={activeRate?.rate}
-							/>
-							{errors.amount && (
-								<p className="text-destructive text-sm">
-									{errors.amount.message}
-								</p>
+					<div className="space-y-2">
+						<Label htmlFor="amount">Amount</Label>
+						<div
+							className={cn(
+								"flex h-9 w-full overflow-hidden rounded-lg border border-input bg-transparent shadow-xs dark:bg-input/30",
+								"transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+								errors.amount && "border-destructive",
 							)}
-						</div>
-
-						<div className="space-y-2">
-							<Label>Currency</Label>
+						>
 							<CurrencyPicker
 								onValueChange={(value) => setValue("currency", value)}
+								triggerClassName="h-full rounded-none border-r border-input px-3 shrink-0 focus-visible:ring-0"
+								triggerDisplay="flag+code"
+								triggerVariant="ghost"
 								value={watch("currency")}
 							/>
+							<div className="flex flex-1 items-center">
+								<Input
+									className="h-full w-full border-0 bg-transparent px-4 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+									id="amount"
+									placeholder="0.00"
+									{...amountInput.inputProps}
+								/>
+							</div>
 						</div>
+						<CurrencyEstimate
+							amount={watchedAmount}
+							currency={watchedCurrency}
+							homeCurrency={homeCurrency}
+							isLoading={isRateLoading}
+							rate={activeRate?.rate}
+						/>
+						{errors.amount && (
+							<p className="text-destructive text-sm">
+								{errors.amount.message}
+							</p>
+						)}
 					</div>
 
 					{/* Payment Source */}
@@ -268,6 +266,22 @@ export function RecurringModal({
 						{errors.paymentSource && (
 							<p className="text-destructive text-sm">
 								{errors.paymentSource.message}
+							</p>
+						)}
+					</div>
+
+					{/* Website URL */}
+					<div className="space-y-2">
+						<Label htmlFor="websiteUrl">Website URL</Label>
+						<Input
+							id="websiteUrl"
+							type="url"
+							{...register("websiteUrl")}
+							placeholder="https://..."
+						/>
+						{errors.websiteUrl && (
+							<p className="text-destructive text-sm">
+								{errors.websiteUrl.message}
 							</p>
 						)}
 					</div>
@@ -289,19 +303,21 @@ export function RecurringModal({
 
 					{/* Frequency */}
 					<div className="space-y-2">
-						<Label>Frequency</Label>
+						<Label htmlFor="recurring-frequency">Frequency</Label>
 						<Select
 							onValueChange={(value) =>
-								setValue("frequency", value as "WEEKLY" | "MONTHLY" | "YEARLY")
+								setValue("frequency", value as RecurringFormData["frequency"])
 							}
 							value={watch("frequency")}
 						>
-							<SelectTrigger>
+							<SelectTrigger id="recurring-frequency">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="WEEKLY">Weekly</SelectItem>
+								<SelectItem value="BIWEEKLY">Biweekly</SelectItem>
 								<SelectItem value="MONTHLY">Monthly</SelectItem>
+								<SelectItem value="QUARTERLY">Quarterly</SelectItem>
 								<SelectItem value="YEARLY">Yearly</SelectItem>
 							</SelectContent>
 						</Select>
@@ -341,8 +357,8 @@ export function RecurringModal({
 							{createMutation.isPending || updateMutation.isPending
 								? "Saving..."
 								: templateId
-									? "Update"
-									: "Create"}
+									? "Update Subscription"
+									: "Create Subscription"}
 						</Button>
 					</DialogFooter>
 				</form>

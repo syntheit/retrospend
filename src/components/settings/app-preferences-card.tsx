@@ -14,15 +14,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
-import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "~/components/ui/form";
+import { Form, FormControl, FormField } from "~/components/ui/form";
+import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Input } from "~/components/ui/input";
 import {
 	Select,
@@ -47,8 +40,7 @@ const currencyCodeSchema = z
 		{ message: "Invalid currency code" },
 	);
 
-// Subset of general settings for this card
-const appPreferencesSchema = z.object({
+const allPreferencesSchema = z.object({
 	homeCurrency: currencyCodeSchema,
 	defaultCurrency: currencyCodeSchema,
 	monthlyIncome: z
@@ -66,12 +58,62 @@ const appPreferencesSchema = z.object({
 	smartCurrencyFormatting: z.boolean(),
 	defaultPrivacyMode: z.boolean(),
 	fiscalMonthStartDay: z.number().int().min(1).max(28),
+	categoryClickBehavior: z.enum(["navigate", "toggle"]),
+	currencySymbolStyle: z.enum(["native", "standard"]),
+	defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]),
 });
 
-type AppPreferencesValues = z.infer<typeof appPreferencesSchema>;
+type AllPreferencesValues = z.infer<typeof allPreferencesSchema>;
 
+function SectionHeader({ children }: { children: React.ReactNode }) {
+	return (
+		<p className="pb-2 pt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
+			{children}
+		</p>
+	);
+}
 
-export function AppPreferencesCard() {
+function SettingRow({
+	label,
+	description,
+	children,
+}: {
+	label: string;
+	description?: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="flex items-center justify-between py-3">
+			<div className="min-w-0 flex-1 pr-4">
+				<div className="text-sm font-medium">{label}</div>
+				{description && (
+					<div className="text-xs text-muted-foreground">{description}</div>
+				)}
+			</div>
+			<div className="flex-shrink-0">{children}</div>
+		</div>
+	);
+}
+
+function ThemeToggle({
+	value,
+	onChange,
+}: {
+	value: string;
+	onChange: (v: "light" | "dark" | "auto") => void;
+}) {
+	return (
+		<Tabs value={value} onValueChange={(v) => onChange(v as "light" | "dark" | "auto")}>
+			<TabsList>
+				<TabsTrigger value="light">Light</TabsTrigger>
+				<TabsTrigger value="dark">Dark</TabsTrigger>
+				<TabsTrigger value="auto">System</TabsTrigger>
+			</TabsList>
+		</Tabs>
+	);
+}
+
+export function AppPreferencesContent() {
 	const { setTheme, preference: themePreference } = useThemeContext();
 
 	const { data: settings, isLoading: settingsLoading } =
@@ -79,8 +121,8 @@ export function AppPreferencesCard() {
 
 	const updateSettingsMutation = api.settings.updateGeneral.useMutation();
 
-	const form = useForm<AppPreferencesValues>({
-		resolver: zodResolver(appPreferencesSchema),
+	const form = useForm<AllPreferencesValues>({
+		resolver: zodResolver(allPreferencesSchema),
 		defaultValues: {
 			homeCurrency: "USD",
 			defaultCurrency: "USD",
@@ -89,6 +131,9 @@ export function AppPreferencesCard() {
 			smartCurrencyFormatting: true,
 			defaultPrivacyMode: false,
 			fiscalMonthStartDay: 1,
+			categoryClickBehavior: "toggle",
+			currencySymbolStyle: "standard",
+			defaultExpenseDateBehavior: "TODAY",
 		},
 	});
 
@@ -103,10 +148,17 @@ export function AppPreferencesCard() {
 				monthlyIncome: settings.monthlyIncome
 					? settings.monthlyIncome.toString()
 					: "",
-				monthlyIncomeCurrency: (settings.monthlyIncomeCurrency as CurrencyCode) || (settings.homeCurrency as CurrencyCode) || "USD",
+				monthlyIncomeCurrency:
+					(settings.monthlyIncomeCurrency as CurrencyCode) ||
+					(settings.homeCurrency as CurrencyCode) ||
+					"USD",
 				smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
 				defaultPrivacyMode: settings.defaultPrivacyMode ?? false,
 				fiscalMonthStartDay: settings.fiscalMonthStartDay ?? 1,
+				categoryClickBehavior: settings.categoryClickBehavior || "toggle",
+				currencySymbolStyle: settings.currencySymbolStyle || "standard",
+				defaultExpenseDateBehavior:
+					settings.defaultExpenseDateBehavior || "TODAY",
 			});
 		}
 	}, [settings, form]);
@@ -114,7 +166,7 @@ export function AppPreferencesCard() {
 	const utils = api.useUtils();
 
 	const onSubmit = useCallback(
-		async (values: AppPreferencesValues) => {
+		async (values: AllPreferencesValues) => {
 			try {
 				const monthlyIncomeValue = values.monthlyIncome?.trim()
 					? parseFloat(values.monthlyIncome)
@@ -130,8 +182,9 @@ export function AppPreferencesCard() {
 					smartCurrencyFormatting: values.smartCurrencyFormatting,
 					defaultPrivacyMode: values.defaultPrivacyMode,
 					fiscalMonthStartDay: values.fiscalMonthStartDay,
-					categoryClickBehavior: settings.categoryClickBehavior || "toggle",
-					currencySymbolStyle: settings.currencySymbolStyle || "standard",
+					categoryClickBehavior: values.categoryClickBehavior,
+					currencySymbolStyle: values.currencySymbolStyle,
+					defaultExpenseDateBehavior: values.defaultExpenseDateBehavior,
 				});
 
 				await utils.settings.getGeneral.invalidate();
@@ -151,233 +204,315 @@ export function AppPreferencesCard() {
 
 	const save = useCallback(() => {
 		void form.handleSubmit(onSubmitRef.current)();
-	}, [form]); // form is stable; onSubmit accessed via ref
-
-	// Styles for inputs
+	}, [form]);
 
 	if (settingsLoading) {
 		return (
-			<Card className="w-full">
-				<CardContent className="p-6">
-					<div className="text-center text-muted-foreground">
-						Loading preferences...
-					</div>
-				</CardContent>
-			</Card>
+			<div className="py-4 text-center text-muted-foreground">
+				Loading preferences...
+			</div>
 		);
 	}
 
 	return (
-		<Card className="border-border/50 shadow-sm">
-			<CardHeader>
-				<CardTitle>App Preferences</CardTitle>
-				<CardDescription>
-					Customize your visual and regional experience.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Form {...form}>
-					<form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<FormField
-								control={form.control}
-								name="homeCurrency"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Base Currency</FormLabel>
-										<FormControl>
-											<CurrencyPicker
-												onValueChange={(value) => {
-													field.onChange(value);
-													save();
-												}}
-												placeholder="Select currency"
-												value={field.value}
-											/>
-										</FormControl>
-										<FormDescription>Reporting currency.</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmit)}>
+				{/* Regional */}
+				<SectionHeader>Regional</SectionHeader>
+				<div className="divide-y divide-border/40">
+					<FormField
+						control={form.control}
+						name="homeCurrency"
+						render={({ field }) => (
+							<SettingRow
+								label="Base Currency"
+								description="Reporting currency"
+							>
+								<FormControl>
+									<CurrencyPicker
+										onValueChange={(value) => {
+											field.onChange(value);
+											save();
+										}}
+										placeholder="Select currency"
+										triggerClassName="min-w-[180px]"
+										value={field.value}
+									/>
+								</FormControl>
+							</SettingRow>
+						)}
+					/>
 
-							<FormField
-								control={form.control}
-								name="defaultCurrency"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Default Entry Currency</FormLabel>
-										<FormControl>
-											<CurrencyPicker
-												onValueChange={(value) => {
-													field.onChange(value);
-													save();
-												}}
-												placeholder="Select currency"
-												value={field.value}
-											/>
-										</FormControl>
-										<FormDescription>Default for new expenses.</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
+					<FormField
+						control={form.control}
+						name="defaultCurrency"
+						render={({ field }) => (
+							<SettingRow
+								label="Default Entry Currency"
+								description="Default for new expenses"
+							>
+								<FormControl>
+									<CurrencyPicker
+										onValueChange={(value) => {
+											field.onChange(value);
+											save();
+										}}
+										placeholder="Select currency"
+										triggerClassName="min-w-[180px]"
+										value={field.value}
+									/>
+								</FormControl>
+							</SettingRow>
+						)}
+					/>
 
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<FormItem>
-								<FormLabel>Theme Preference</FormLabel>
+					<FormField
+						control={form.control}
+						name="currencySymbolStyle"
+						render={({ field }) => (
+							<SettingRow
+								label="Currency Symbol Style"
+								description="Display format for foreign currencies"
+							>
 								<Select
 									onValueChange={(value) => {
-										setTheme(value as "light" | "dark" | "auto");
+										field.onChange(value);
+										save();
 									}}
-									value={themePreference}
+									value={field.value}
 								>
 									<FormControl>
-										<SelectTrigger>
+										<SelectTrigger className="min-w-[180px]">
 											<SelectValue />
 										</SelectTrigger>
 									</FormControl>
-									<SelectContent position="popper">
-										<SelectItem value="light">Light</SelectItem>
-										<SelectItem value="dark">Dark</SelectItem>
-										<SelectItem value="auto">Auto (Sunrise/Sunset)</SelectItem>
+									<SelectContent>
+										<SelectItem value="standard">
+											Standard (AR$, CA$, €)
+										</SelectItem>
+										<SelectItem value="native">Native ($, $, €)</SelectItem>
 									</SelectContent>
 								</Select>
-								<FormMessage />
-							</FormItem>
-						</div>
+							</SettingRow>
+						)}
+					/>
 
-						<FormField
-							control={form.control}
-							name="monthlyIncome"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Monthly Net Income</FormLabel>
-									<div className={cn(
-										"flex h-9 w-full overflow-hidden rounded-md border border-input shadow-xs",
+					<FormField
+						control={form.control}
+						name="smartCurrencyFormatting"
+						render={({ field }) => (
+							<SettingRow
+								label="Smart Currency Formatting"
+								description="Hide decimals for high-denomination currencies"
+							>
+								<FormControl>
+									<Switch
+										checked={field.value}
+										onCheckedChange={(checked) => {
+											field.onChange(checked);
+											save();
+										}}
+									/>
+								</FormControl>
+							</SettingRow>
+						)}
+					/>
+				</div>
+
+				{/* Budget & income */}
+				<SectionHeader>Budget & income</SectionHeader>
+				<div className="divide-y divide-border/40">
+					<FormField
+						control={form.control}
+						name="monthlyIncome"
+						render={({ field }) => (
+							<SettingRow
+								label="Monthly Net Income"
+								description="For Work Equivalent calculations"
+							>
+								<div
+									className={cn(
+										"flex h-9 overflow-hidden rounded-md border border-input shadow-xs",
 										"transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
 										"dark:bg-input/30",
-									)}>
-										<CurrencyPicker
-											value={form.watch("monthlyIncomeCurrency")}
-											onValueChange={(value) => {
-												form.setValue("monthlyIncomeCurrency", value);
-												save();
-											}}
-											triggerDisplay="flag+code"
-											triggerVariant="ghost"
-											triggerClassName="h-full rounded-none border-r border-input px-2 shrink-0 focus-visible:ring-0"
-										/>
-										<FormControl>
-											<Input
-												className="h-full flex-1 border-0 bg-transparent px-2 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-												placeholder="5000"
-												type="number"
-												{...field}
-												onBlur={() => { field.onBlur(); if (form.formState.isDirty) save(); }}
-												onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
-											/>
-										</FormControl>
-									</div>
-									<FormDescription>For “Work Equivalent” calculations.</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="fiscalMonthStartDay"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Budget Cycle Start Day</FormLabel>
+									)}
+								>
+									<CurrencyPicker
+										onValueChange={(value) => {
+											form.setValue("monthlyIncomeCurrency", value);
+											save();
+										}}
+										triggerClassName="h-full rounded-none border-r border-input px-2 shrink-0 focus-visible:ring-0"
+										triggerDisplay="flag+code"
+										triggerVariant="ghost"
+										value={form.watch("monthlyIncomeCurrency")}
+									/>
 									<FormControl>
 										<Input
-											className="w-24"
-											max={28}
-											min={1}
+											className="h-full w-28 border-0 bg-transparent px-2 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+											placeholder="5000"
 											type="number"
-											value={field.value}
-											onChange={(e) => {
-												const val = parseInt(e.target.value, 10);
-												if (!isNaN(val) && val >= 1 && val <= 28) {
-													field.onChange(val);
+											{...field}
+											onBlur={() => {
+												field.onBlur();
+												if (form.formState.isDirty) save();
+											}}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													e.preventDefault();
+													save();
 												}
 											}}
-											onBlur={() => { field.onBlur(); save(); }}
-											onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
 										/>
 									</FormControl>
-									<FormDescription>
-										Day of the month your budget period begins (1-28).
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+								</div>
+							</SettingRow>
+						)}
+					/>
 
-						<FormField
-							control={form.control}
-							name="smartCurrencyFormatting"
-							render={({ field }) => (
-								<FormItem className="flex flex-row items-center justify-between space-y-0 py-2">
-									<div className="space-y-0.5">
-										<FormLabel className="text-base">
-											Smart Currency Formatting
-										</FormLabel>
-										<FormDescription>
-											Hide decimals for high-denomination currencies (e.g. JPY).
-										</FormDescription>
-									</div>
-									<FormControl>
-										<Switch
-											checked={field.value}
-											onCheckedChange={(checked) => {
-												field.onChange(checked);
+					<FormField
+						control={form.control}
+						name="fiscalMonthStartDay"
+						render={({ field }) => (
+							<SettingRow
+								label="Budget Cycle Start Day"
+								description="Day of month your budget period begins"
+							>
+								<FormControl>
+									<Input
+										className="w-14 text-center"
+										max={28}
+										min={1}
+										type="number"
+										value={field.value}
+										onBlur={() => {
+											field.onBlur();
+											save();
+										}}
+										onChange={(e) => {
+											const val = parseInt(e.target.value, 10);
+											if (!isNaN(val) && val >= 1 && val <= 28) {
+												field.onChange(val);
+											}
+										}}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												e.preventDefault();
 												save();
-											}}
-										/>
-									</FormControl>
-								</FormItem>
-							)}
-						/>
+											}
+										}}
+									/>
+								</FormControl>
+							</SettingRow>
+						)}
+					/>
+				</div>
 
-						<FormField
-							control={form.control}
-							name="defaultPrivacyMode"
-							render={({ field }) => (
-								<FormItem className="flex flex-row items-center justify-between space-y-0 py-2">
-									<div className="space-y-0.5">
-										<FormLabel className="text-base">
-											Default Privacy Mode
-										</FormLabel>
-										<FormDescription>
-											Hide balances by default when opening the Wealth page.
-										</FormDescription>
-									</div>
+				{/* Display */}
+				<SectionHeader>Display</SectionHeader>
+				<div className="divide-y divide-border/40">
+					<SettingRow label="Theme" description="App color scheme">
+						<ThemeToggle
+							onChange={(v) => setTheme(v)}
+							value={themePreference}
+						/>
+					</SettingRow>
+
+					<FormField
+						control={form.control}
+						name="defaultPrivacyMode"
+						render={({ field }) => (
+							<SettingRow
+								label="Default Privacy Mode"
+								description="Hide balances when opening the Wealth page"
+							>
+								<FormControl>
+									<Switch
+										checked={field.value}
+										onCheckedChange={(checked) => {
+											field.onChange(checked);
+											save();
+										}}
+									/>
+								</FormControl>
+							</SettingRow>
+						)}
+					/>
+				</div>
+
+				{/* Behavior */}
+				<SectionHeader>Behavior</SectionHeader>
+				<div className="divide-y divide-border/40">
+					<FormField
+						control={form.control}
+						name="defaultExpenseDateBehavior"
+						render={({ field }) => (
+							<SettingRow
+								label="Default Expense Date"
+								description="Pre-filled when creating a new expense"
+							>
+								<Select
+									onValueChange={(value) => {
+										field.onChange(value);
+										save();
+									}}
+									value={field.value}
+								>
 									<FormControl>
-										<Switch
-											checked={field.value}
-											onCheckedChange={(checked) => {
-												field.onChange(checked);
-												save();
-											}}
-										/>
+										<SelectTrigger className="min-w-[180px]">
+											<SelectValue />
+										</SelectTrigger>
 									</FormControl>
-								</FormItem>
-							)}
-						/>
-					</form>
-				</Form>
+									<SelectContent>
+										<SelectItem value="TODAY">Today</SelectItem>
+										<SelectItem value="LAST_USED">Last Used Date</SelectItem>
+									</SelectContent>
+								</Select>
+							</SettingRow>
+						)}
+					/>
 
-				<AiProcessingSection />
-			</CardContent>
-		</Card>
+					<FormField
+						control={form.control}
+						name="categoryClickBehavior"
+						render={({ field }) => (
+							<SettingRow
+								label="Category Click Behavior"
+								description="Action when clicking a category on charts"
+							>
+								<Select
+									onValueChange={(value) => {
+										field.onChange(value);
+										save();
+									}}
+									value={field.value}
+								>
+									<FormControl>
+										<SelectTrigger className="min-w-[180px]">
+											<SelectValue />
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										<SelectItem value="navigate">
+											Navigate to Transactions
+										</SelectItem>
+										<SelectItem value="toggle">
+											Toggle Category Visibility
+										</SelectItem>
+									</SelectContent>
+								</Select>
+							</SettingRow>
+						)}
+					/>
+
+					<AiProcessingRow />
+				</div>
+			</form>
+		</Form>
 	);
 }
 
-function AiProcessingSection() {
+function AiProcessingRow() {
 	const { data: aiStatus } = api.settings.getAiStatus.useQuery();
 	const { data: settings } = api.settings.getGeneral.useQuery();
 	const updateSettingsMutation = api.settings.updateGeneral.useMutation();
@@ -402,43 +537,58 @@ function AiProcessingSection() {
 	};
 
 	return (
-		<div className="space-y-3 border-t pt-4">
-			<div>
-				<h3 className="font-medium text-sm">AI Processing</h3>
-				<p className="text-muted-foreground text-xs">
-					Choose which AI provider processes your bank statement imports.
-				</p>
+		<SettingRow
+			label="AI Processing"
+			description="Provider for bank statement imports"
+		>
+			<div className="flex flex-col items-end gap-1">
+				<Select
+					disabled={updateSettingsMutation.isPending}
+					onValueChange={handleAiModeChange}
+					value={settings.aiMode ?? "LOCAL"}
+				>
+					<SelectTrigger className="min-w-[180px]">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="LOCAL">Local AI (Ollama)</SelectItem>
+						<SelectItem
+							disabled={!aiStatus?.externalAvailable}
+							value="EXTERNAL"
+						>
+							External AI (OpenRouter)
+							{aiStatus &&
+							!aiStatus.externalAvailable &&
+							aiStatus.externalDeniedReason
+								? ` - ${aiStatus.externalDeniedReason}`
+								: ""}
+						</SelectItem>
+					</SelectContent>
+				</Select>
+				{aiStatus?.currentMode === "EXTERNAL" &&
+					aiStatus.quotaRemaining !== null && (
+						<p className="text-xs text-muted-foreground">
+							{aiStatus.quotaRemaining.toLocaleString()} tokens remaining this
+							month
+						</p>
+					)}
 			</div>
+		</SettingRow>
+	);
+}
 
-			<Select
-				disabled={updateSettingsMutation.isPending}
-				onValueChange={handleAiModeChange}
-				value={settings.aiMode ?? "LOCAL"}
-			>
-				<SelectTrigger>
-					<SelectValue />
-				</SelectTrigger>
-				<SelectContent>
-					<SelectItem value="LOCAL">Local AI (Ollama)</SelectItem>
-					<SelectItem
-						disabled={!aiStatus?.externalAvailable}
-						value="EXTERNAL"
-					>
-						External AI (OpenRouter)
-						{aiStatus && !aiStatus.externalAvailable && aiStatus.externalDeniedReason
-							? ` - ${aiStatus.externalDeniedReason}`
-							: ""}
-					</SelectItem>
-				</SelectContent>
-			</Select>
-
-			{aiStatus?.currentMode === "EXTERNAL" &&
-				aiStatus.quotaRemaining !== null && (
-					<p className="text-muted-foreground text-xs">
-						{aiStatus.quotaRemaining.toLocaleString()} tokens remaining this
-						month
-					</p>
-				)}
-		</div>
+export function AppPreferencesCard() {
+	return (
+		<Card className="border-border/50 shadow-sm">
+			<CardHeader>
+				<CardTitle>App Preferences</CardTitle>
+				<CardDescription>
+					Customize your visual and regional experience.
+				</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<AppPreferencesContent />
+			</CardContent>
+		</Card>
 	);
 }

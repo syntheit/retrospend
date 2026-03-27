@@ -6,6 +6,7 @@ import { Slider } from "~/components/ui/slider";
 import { Switch } from "~/components/ui/switch";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { ExpenseFormData } from "~/hooks/use-expense-form";
+import { formatNumber } from "~/lib/currency-format";
 import { cn } from "~/lib/utils";
 
 export function AmortizationSection() {
@@ -63,7 +64,7 @@ export function AmortizationSection() {
 							<span className="font-medium text-foreground">
 								{watchedAmount && watchAmortizeOver
 									? getCurrencySymbol(watchedCurrency) +
-										(watchedAmount / watchAmortizeOver).toFixed(2)
+										formatNumber(watchedAmount / watchAmortizeOver, 2)
 									: "$0.00"}{" "}
 								/ mo
 							</span>

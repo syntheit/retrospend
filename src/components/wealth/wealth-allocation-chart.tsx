@@ -66,7 +66,7 @@ export function WealthAllocationChart({
 					<CardDescription>Distribution by asset type</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-1 flex-col items-center justify-center py-12">
-					<PieChartIcon className="h-12 w-12 text-muted-foreground/50" />
+					<PieChartIcon aria-hidden="true" className="h-12 w-12 text-muted-foreground/50" />
 					<h3 className="mt-4 font-medium text-lg">No assets to display</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">
 						Add assets to see your allocation breakdown.
@@ -86,8 +86,10 @@ export function WealthAllocationChart({
 			</CardHeader>
 			<CardContent className="flex-1 pb-0">
 				<ChartContainer
-					className="mx-auto aspect-square max-h-[300px]"
+					aria-label={`Asset allocation chart showing distribution across ${data.length} asset types`}
+					className="mx-auto aspect-square max-h-[220px] sm:max-h-[300px]"
 					config={chartConfig}
+					role="img"
 				>
 					<PieChart>
 						<ChartTooltip
@@ -141,7 +143,7 @@ export function WealthAllocationChart({
 												y={viewBox.cy}
 											>
 												<tspan
-													className="fill-muted-foreground font-medium text-[10px] uppercase tracking-widest"
+													className="fill-muted-foreground font-medium text-[10px] tracking-wide"
 													x={viewBox.cx}
 													y={(viewBox.cy || 0) - 16}
 												>

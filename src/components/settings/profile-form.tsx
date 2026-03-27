@@ -41,8 +41,8 @@ const profileSchema = z.object({
 		.min(1, "Username is required")
 		.max(50)
 		.regex(
-			/^[a-z0-9_-]+$/,
-			"Username can only contain lowercase letters, numbers, underscores, and hyphens",
+			/^[a-zA-Z0-9]+$/,
+			"Username can only contain letters and numbers",
 		),
 	email: z.string().email("Invalid email address").max(254),
 	currentPassword: z.string().optional(),
@@ -56,9 +56,29 @@ interface ProfileFormProps {
 
 export function ProfileForm({ user }: ProfileFormProps) {
 	const router = useRouter();
-	const updateProfile = api.profile.update.useMutation({
+	const utils = api.useUtils();
+
+	const pendingEmailQuery = api.profile.getPendingEmail.useQuery();
+	const cancelPendingEmail = api.profile.cancelPendingEmailChange.useMutation({
 		onSuccess: () => {
-			toast.success("Profile updated");
+			toast.success("Pending email change cancelled");
+			void utils.profile.getPendingEmail.invalidate();
+		},
+		onError: (err) => {
+			toast.error(err.message);
+		},
+	});
+
+	const updateProfile = api.profile.update.useMutation({
+		onSuccess: (data) => {
+			if ("emailChangePending" in data && data.emailChangePending) {
+				toast.success(
+					"Verification email sent to your new address. Check your inbox to confirm.",
+				);
+				void utils.profile.getPendingEmail.invalidate();
+			} else {
+				toast.success("Profile updated");
+			}
 			router.refresh();
 		},
 		onError: (err) => {
@@ -77,6 +97,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
 			currentPassword: "",
 		},
 	});
+
+	const watchedUsername = form.watch("username");
+	const usernameChanged =
+		watchedUsername.toLowerCase() !== (user.username ?? "").toLowerCase();
 
 	const watchedEmail = form.watch("email");
 	const emailChanged = watchedEmail !== (user.email ?? "");
@@ -133,13 +157,23 @@ export function ProfileForm({ user }: ProfileFormProps) {
 													@
 												</span>
 												<Input
+													autoComplete="one-time-code"
 													className="pl-6"
+													data-1p-ignore
+													data-bwignore
+													data-lpignore="true"
 													placeholder="username"
 													{...field}
 												/>
 											</div>
 										</FormControl>
 										<FormMessage />
+										{usernameChanged && (
+											<p className="text-muted-foreground text-xs">
+												Your old username will redirect to your new profile for
+												90 days. You can change your username once every 30 days.
+											</p>
+										)}
 									</FormItem>
 								)}
 							/>
@@ -152,12 +186,39 @@ export function ProfileForm({ user }: ProfileFormProps) {
 									<FormLabel>Email</FormLabel>
 									<FormControl>
 										<Input
+											autoComplete="one-time-code"
+											data-1p-ignore
+											data-bwignore
+											data-lpignore="true"
+											disabled={!!pendingEmailQuery.data?.pendingEmail}
 											placeholder="m@example.com"
 											type="email"
 											{...field}
 										/>
 									</FormControl>
 									<FormMessage />
+									{pendingEmailQuery.data?.pendingEmail && (
+										<div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+											<p className="text-amber-800 text-sm dark:text-amber-200">
+												A verification email was sent to{" "}
+												<strong>
+													{pendingEmailQuery.data.pendingEmail}
+												</strong>
+												. Check your inbox to confirm the change.
+											</p>
+											<Button
+												className="mt-1 h-auto p-0 font-medium text-amber-700 text-sm underline hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+												disabled={cancelPendingEmail.isPending}
+												onClick={() => cancelPendingEmail.mutate()}
+												type="button"
+												variant="link"
+											>
+												{cancelPendingEmail.isPending
+													? "Cancelling..."
+													: "Cancel email change"}
+											</Button>
+										</div>
+									)}
 								</FormItem>
 							)}
 						/>

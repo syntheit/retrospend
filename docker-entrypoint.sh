@@ -17,7 +17,7 @@ echo "Applying database migrations..."
 if ! pnpm prisma migrate deploy > /tmp/migrate.log 2>&1; then
   cat /tmp/migrate.log
   
-  # Check for P3009 (failed migrations) — roll back the failed one and retry
+  # Check for P3009 (failed migrations): roll back the failed one and retry
   if grep -q "P3009" /tmp/migrate.log; then
     FAILED_MIGRATION=$(grep "The \`" /tmp/migrate.log | sed "s/.*The \`\(.*\)\` migration.*/\1/" | head -n 1)
     if [ -n "$FAILED_MIGRATION" ]; then

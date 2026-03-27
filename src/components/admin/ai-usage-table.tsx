@@ -1,126 +1,190 @@
 "use client";
 
-import { useState } from "react";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "~/components/ui/table";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
+import { type ColumnDef, type VisibilityState } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
+import { Badge } from "~/components/ui/badge";
+import { DataTable } from "~/components/data-table";
+import { MonthStepper } from "~/components/date/MonthStepper";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 
-function getMonthOptions() {
-	const options: { value: string; label: string }[] = [];
-	const now = new Date();
-	for (let i = 0; i < 6; i++) {
-		const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-		const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-		const label = d.toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "long",
-		});
-		options.push({ value, label });
-	}
-	return options;
+interface AiUsageRow {
+	id: string;
+	username: string;
+	localTokensUsed: number;
+	externalTokensUsed: number;
+	tokensUsed: number;
+	localPct: number;
+	extPct: number;
 }
 
+function dateToYearMonth(date: Date) {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+const columns: ColumnDef<AiUsageRow>[] = [
+	{
+		accessorKey: "username",
+		header: "Username",
+		cell: ({ row }) => (
+			<span className="font-medium">@{row.original.username}</span>
+		),
+	},
+	{
+		accessorKey: "localTokensUsed",
+		header: "Local",
+		cell: ({ row }) => {
+			const { localTokensUsed, localPct } = row.original;
+			return (
+				<div className="text-right">
+					{localTokensUsed > 0 ? (
+						<span className="inline-flex items-center gap-1.5">
+							{localTokensUsed.toLocaleString()}
+							<Badge className="tabular-nums text-[10px]" variant="outline">
+								{localPct}%
+							</Badge>
+						</span>
+					) : (
+						<span className="text-muted-foreground">-</span>
+					)}
+				</div>
+			);
+		},
+	},
+	{
+		accessorKey: "externalTokensUsed",
+		header: "External",
+		cell: ({ row }) => {
+			const { externalTokensUsed, extPct } = row.original;
+			return (
+				<div className="text-right">
+					{externalTokensUsed > 0 ? (
+						<span className="inline-flex items-center gap-1.5">
+							{externalTokensUsed.toLocaleString()}
+							<Badge
+								className={`tabular-nums text-[10px] ${extPct >= 100 ? "border-destructive text-destructive" : ""}`}
+								variant="outline"
+							>
+								{extPct}%
+							</Badge>
+						</span>
+					) : (
+						<span className="text-muted-foreground">-</span>
+					)}
+				</div>
+			);
+		},
+	},
+	{
+		accessorKey: "tokensUsed",
+		header: "Total",
+		cell: ({ row }) => (
+			<div className="text-right">
+				{row.original.tokensUsed.toLocaleString()}
+			</div>
+		),
+	},
+	{
+		id: "quota",
+		header: "Quota",
+		enableSorting: false,
+		cell: ({ row }) => {
+			const { extPct, externalTokensUsed, localPct, localTokensUsed } =
+				row.original;
+			return (
+				<div className="text-right">
+					{externalTokensUsed > 0 && extPct >= 100 ? (
+						<span className="font-medium text-destructive text-xs">
+							External limit reached
+						</span>
+					) : localTokensUsed > 0 && localPct >= 100 ? (
+						<span className="font-medium text-xs text-yellow-600 dark:text-yellow-500">
+							Local limit reached
+						</span>
+					) : null}
+				</div>
+			);
+		},
+	},
+];
+
 export function AiUsageTable() {
-	const monthOptions = getMonthOptions();
-	const [selectedMonth, setSelectedMonth] = useState(
-		monthOptions[0]?.value ?? "",
-	);
+	const [month, setMonth] = useState(() => new Date());
+	const selectedMonth = dateToYearMonth(month);
+	const isMobile = useIsMobile();
+
+	const handleMonthChange = useCallback((date: Date) => {
+		setMonth(date);
+	}, []);
 
 	const { data, isLoading } = api.admin.getAiUsageStats.useQuery(
 		{ yearMonth: selectedMonth },
 		{ enabled: !!selectedMonth },
 	);
 
-	const totalTokens =
-		data?.usages.reduce((sum, u) => sum + u.tokensUsed, 0) ?? 0;
+	const totalLocal =
+		data?.usages.reduce((sum, u) => sum + u.localTokensUsed, 0) ?? 0;
+	const totalExternal =
+		data?.usages.reduce((sum, u) => sum + u.externalTokensUsed, 0) ?? 0;
+
+	const rows: AiUsageRow[] = useMemo(() => {
+		if (!data?.usages) return [];
+		return data.usages.map((u) => ({
+			id: u.userId,
+			username: u.username,
+			localTokensUsed: u.localTokensUsed,
+			externalTokensUsed: u.externalTokensUsed,
+			tokensUsed: u.tokensUsed,
+			localPct: data.localQuota
+				? Math.round((u.localTokensUsed / data.localQuota) * 100)
+				: 0,
+			extPct: data.externalQuota
+				? Math.round((u.externalTokensUsed / data.externalQuota) * 100)
+				: 0,
+		}));
+	}, [data]);
+
+	const columnVisibility: VisibilityState = isMobile
+		? { localTokensUsed: false, externalTokensUsed: false }
+		: {};
+
+	const emptyState = isLoading ? (
+		<div className="py-8 text-muted-foreground text-sm">Loading...</div>
+	) : (
+		<div className="py-8 text-muted-foreground text-sm">
+			No AI usage this month
+		</div>
+	);
 
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
-				<div>
+				<div className="space-y-1">
 					<p className="text-muted-foreground text-sm">
-						Total: {totalTokens.toLocaleString()} tokens
-						{data?.quota
-							? ` (quota: ${data.quota.toLocaleString()} per user)`
+						<span className="text-muted-foreground/70">Local:</span>{" "}
+						{totalLocal.toLocaleString()}
+						{data?.localQuota
+							? ` / ${data.localQuota.toLocaleString()} per user`
+							: ""}
+						{" · "}
+						<span className="text-muted-foreground/70">External:</span>{" "}
+						{totalExternal.toLocaleString()}
+						{data?.externalQuota
+							? ` / ${data.externalQuota.toLocaleString()} per user`
 							: ""}
 					</p>
 				</div>
-				<Select onValueChange={setSelectedMonth} value={selectedMonth}>
-					<SelectTrigger className="w-48">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						{monthOptions.map((opt) => (
-							<SelectItem key={opt.value} value={opt.value}>
-								{opt.label}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
+				<MonthStepper onChange={handleMonthChange} value={month} />
 			</div>
 
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Username</TableHead>
-							<TableHead className="text-right">Tokens Used</TableHead>
-							<TableHead className="text-right">Quota %</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{isLoading ? (
-							<TableRow>
-								<TableCell className="text-muted-foreground text-center" colSpan={3}>
-									Loading...
-								</TableCell>
-							</TableRow>
-						) : !data?.usages.length ? (
-							<TableRow>
-								<TableCell className="text-muted-foreground text-center" colSpan={3}>
-									No AI usage this month
-								</TableCell>
-							</TableRow>
-						) : (
-							data.usages.map((u) => {
-								const pct = data.quota
-									? Math.round((u.tokensUsed / data.quota) * 100)
-									: 0;
-								return (
-									<TableRow key={u.userId}>
-										<TableCell className="font-medium">
-											@{u.username}
-										</TableCell>
-										<TableCell className="text-right">
-											{u.tokensUsed.toLocaleString()}
-										</TableCell>
-										<TableCell className="text-right">
-											<span
-												className={pct >= 100 ? "text-destructive font-medium" : ""}
-											>
-												{pct}%
-											</span>
-										</TableCell>
-									</TableRow>
-								);
-							})
-						)}
-					</TableBody>
-				</Table>
-			</div>
+			<DataTable<AiUsageRow>
+				columns={columns}
+				columnVisibility={columnVisibility}
+				countNoun="users"
+				data={rows}
+				emptyState={emptyState}
+				searchable={false}
+			/>
 		</div>
 	);
 }

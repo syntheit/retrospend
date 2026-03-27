@@ -3,8 +3,6 @@
 import {
 	type Icon,
 	IconMailExclamation,
-	IconSpeakerphone,
-	IconTicket,
 } from "@tabler/icons-react";
 import type * as React from "react";
 import { toast } from "sonner";
@@ -29,7 +27,6 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
-	const { data: settings } = api.settings.getGeneral.useQuery();
 	const { data: session } = useSession();
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
@@ -73,35 +70,7 @@ export function NavSecondary({
 								</div>
 							</SidebarMenuItem>
 						)}
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							asChild
-							className="h-10 px-4 py-4 text-base [&>svg]:size-5"
-						>
-							<a
-								href="https://forms.gle/LgLS7wSJGWSjQYEs7"
-								rel="noopener noreferrer"
-								target="_blank"
-							>
-								<IconSpeakerphone />
-								<span>Feedback</span>
-							</a>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-					{settings?.allowAllUsersToGenerateInvites && (
-						<SidebarMenuItem>
-							<SidebarMenuButton
-								asChild
-								className="h-10 px-4 py-4 text-base [&>svg]:size-5"
-							>
-								<a href="/app/invite-codes">
-									<IconTicket />
-									<span>Invite Codes</span>
-								</a>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					)}
-					{items.map((item) => (
+	{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton
 								asChild

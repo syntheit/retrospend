@@ -25,6 +25,7 @@ import {
 } from "~/components/ui/tooltip";
 import { useCurrency } from "~/hooks/use-currency";
 import type { CurrencyCode } from "~/lib/currencies";
+import { formatNumber } from "~/lib/currency-format";
 import { parseDateOnly } from "~/lib/date";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
@@ -455,7 +456,7 @@ export function ImporterReviewManager({
 								className={`justify-end font-medium ${isDuplicate ? "text-muted-foreground" : ""}`}
 								formatDisplay={(v) =>
 									v != null
-										? `${row.original.currency} ${Number(v).toFixed(2)}`
+										? `${row.original.currency} ${formatNumber(Number(v), 2)}`
 										: ""
 								}
 								onSave={(val) =>
@@ -466,7 +467,7 @@ export function ImporterReviewManager({
 							/>
 							{isForeign && row.original.amountInUSD && (
 								<span className="px-1 text-[10px] text-muted-foreground opacity-80">
-									≈ {homeCurrency} {row.original.amountInUSD.toFixed(2)}
+									≈ {homeCurrency} {formatNumber(row.original.amountInUSD, 2)}
 								</span>
 							)}
 						</div>
@@ -581,7 +582,7 @@ export function ImporterReviewManager({
 						onSave={(val) =>
 							updateTransaction(row.original.id, "location", val || null)
 						}
-						placeholder="—"
+						placeholder="-"
 						type="text"
 						value={row.original.location}
 					/>
@@ -596,7 +597,7 @@ export function ImporterReviewManager({
 						onSave={(val) =>
 							updateTransaction(row.original.id, "description", val || null)
 						}
-						placeholder="—"
+						placeholder="-"
 						type="text"
 						value={row.original.description}
 					/>
@@ -606,6 +607,7 @@ export function ImporterReviewManager({
 				id: "actions",
 				cell: ({ row }) => (
 					<Button
+						aria-label="Remove row"
 						className="h-8 w-8 text-muted-foreground hover:text-destructive"
 						onClick={() => {
 							setTransactions((prev) =>
@@ -646,8 +648,8 @@ export function ImporterReviewManager({
 						<AlertTitle>Import Warnings ({warnings.length})</AlertTitle>
 						<AlertDescription>
 							<ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
-								{warnings.map((warning, idx) => (
-									<li key={idx}>{warning}</li>
+								{warnings.map((warning) => (
+									<li key={warning}>{warning}</li>
 								))}
 							</ul>
 						</AlertDescription>
@@ -679,7 +681,7 @@ export function ImporterReviewManager({
 							</Button>
 
 							<div className="whitespace-nowrap tabular-nums">
-								{homeCurrency} {totalAmount.toFixed(2)} total
+								{homeCurrency} {formatNumber(totalAmount, 2)} total
 							</div>
 
 							{dateRange && (

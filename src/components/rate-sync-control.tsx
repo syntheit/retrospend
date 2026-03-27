@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCircleCheck, IconClock, IconRefresh } from "@tabler/icons-react";
+import { CheckCircle, Clock, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -53,7 +53,7 @@ export function RateSyncControl() {
 		<Card className="flex h-full flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					<IconRefresh className="h-5 w-5" />
+					<RefreshCw className="h-5 w-5" />
 					Exchange Rate Sync
 				</CardTitle>
 				<CardDescription>
@@ -65,7 +65,7 @@ export function RateSyncControl() {
 				{/* Last Sync Status */}
 				<div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
 					<div className="flex items-center gap-2">
-						<IconClock className="h-4 w-4 text-muted-foreground" />
+						<Clock className="h-4 w-4 text-muted-foreground" />
 						<span className="font-medium text-sm">Last Synced:</span>
 					</div>
 					<span className="text-muted-foreground text-sm">
@@ -85,12 +85,12 @@ export function RateSyncControl() {
 					>
 						{syncNowMutation.isPending ? (
 							<>
-								<IconRefresh className="mr-2 h-4 w-4 animate-spin" />
+								<RefreshCw className="mr-2 h-4 w-4 animate-spin" />
 								Syncing...
 							</>
 						) : (
 							<>
-								<IconRefresh className="mr-2 h-4 w-4" />
+								<RefreshCw className="mr-2 h-4 w-4" />
 								Sync Now
 							</>
 						)}
@@ -101,14 +101,14 @@ export function RateSyncControl() {
 						<div
 							className={`flex items-center gap-2 text-sm ${
 								syncResult.success
-									? "text-green-600 dark:text-green-400"
+									? "text-emerald-600 dark:text-emerald-400"
 									: "text-red-600 dark:text-red-400"
 							}`}
 						>
 							{syncResult.success ? (
-								<IconCircleCheck className="h-4 w-4" />
+								<CheckCircle className="h-4 w-4" />
 							) : (
-								<IconRefresh className="h-4 w-4" />
+								<RefreshCw className="h-4 w-4" />
 							)}
 							{syncResult.message}
 						</div>

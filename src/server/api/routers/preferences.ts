@@ -27,6 +27,7 @@ export const preferencesRouter = createTRPCRouter({
 					"INVITE_CODES",
 					"ADMIN",
 					"EXPENSE",
+					"PROFILE",
 				]),
 			}),
 		)
@@ -49,6 +50,7 @@ export const preferencesRouter = createTRPCRouter({
 					"INVITE_CODES",
 					"ADMIN",
 					"EXPENSE",
+					"PROFILE",
 				]),
 				settings: z
 					.object({

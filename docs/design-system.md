@@ -1,11 +1,11 @@
 # Retrospend Design System
 
-> **Premium Financial UX Guidelines**  
+> **Financial UX Guidelines**  
 > Establishing consistent, vibrant, and semantic design patterns across the entire app.
 
 ---
 
-## 🎨 Core Design Philosophy
+## Core Design Philosophy
 
 Our design system emphasizes:
 - **Visual Hierarchy**: Important metrics stand out through size, color, and placement
@@ -15,7 +15,7 @@ Our design system emphasizes:
 
 ---
 
-## 🌈 Color Palette & Semantic Meanings
+## Color Palette & Semantic Meanings
 
 ### Financial Status Colors
 
@@ -38,7 +38,7 @@ For expense/budget categories, use vibrant, distinct colors:
 
 ---
 
-## 🎯 Hero Card Pattern
+## Hero Card Pattern
 
 **When to use:** For the single most important metric on a page.
 
@@ -75,7 +75,7 @@ For expense/budget categories, use vibrant, distinct colors:
 
 ---
 
-## 💳 Semantic Summary Cards
+## Semantic Summary Cards
 
 **When to use:** For secondary metrics that need color-coding.
 
@@ -115,7 +115,7 @@ For expense/budget categories, use vibrant, distinct colors:
 
 ---
 
-## 📊 Chart Color Standards
+## Chart Color Standards
 
 ### Pie/Donut Charts
 Use vibrant, semantically meaningful colors:
@@ -156,7 +156,7 @@ const chartColors = [
 
 ---
 
-## 🎭 Interactive States
+## Interactive States
 
 ### Hover Effects
 All cards should have smooth hover transitions:
@@ -175,7 +175,7 @@ Skeleton loaders should match card backgrounds (emerald-50, amber-50, etc.)
 
 ---
 
-## 📐 Layout Patterns
+## Layout Patterns
 
 ### Hero + Secondary Grid
 ```tsx
@@ -201,37 +201,9 @@ Skeleton loaders should match card backgrounds (emerald-50, amber-50, etc.)
 
 ---
 
-## 🚀 Implementation Roadmap
+## Usage Guidelines
 
-### Phase 1: Dashboard (Home Page)
-- [ ] Create hero card for "Total Spending This Month"
-- [ ] Convert stats to semantic summary cards (Income=green, Spending=blue/amber)
-- [ ] Update category donut chart colors to use vibrant palette
-- [ ] Add decorative circles to main cards
-
-### Phase 2: Budget Page
-- [ ] Create hero card for "Budget Status" (remaining or overage)
-- [ ] Convert partition bar to use vibrant category colors
-- [ ] Add semantic cards for total allocated vs spent
-- [ ] Update budget list items with colored accent borders
-
-### Phase 3: Analytics Page
-- [ ] Create hero card for selected period total
-- [ ] Add semantic cards for top categories
-- [ ] Update heatmap color scale
-- [ ] Enhance trend charts with gradients
-
-### Phase 4: Global Enhancements
-- [ ] Update all empty states with brand colors
-- [ ] Add subtle animations to number changes
-- [ ] Implement consistent loading skeletons
-- [ ] Add hover effects to all interactive cards
-
----
-
-## 💡 Usage Guidelines
-
-### DO ✅
+### DO
 - Use semantic colors to convey financial meaning
 - Apply hero cards to the single most important metric per page
 - Group related metrics in semantic summary cards
@@ -239,7 +211,7 @@ Skeleton loaders should match card backgrounds (emerald-50, amber-50, etc.)
 - Maintain hover effects on all interactive elements
 - Use vibrant colors for charts and visualizations
 
-### DON'T ❌
+### DON'T
 - Use flat monotone colors (gray/stone) for primary data
 - Create multiple hero cards on the same page
 - Mix inconsistent color schemes for the same data type
@@ -249,7 +221,7 @@ Skeleton loaders should match card backgrounds (emerald-50, amber-50, etc.)
 
 ---
 
-## 🎨 Quick Reference: Color Assignments
+## Quick Reference: Color Assignments
 
 | Page | Hero Card | Positive Card | Warning Card | Danger Card |
 |------|-----------|---------------|--------------|-------------|
@@ -260,7 +232,7 @@ Skeleton loaders should match card backgrounds (emerald-50, amber-50, etc.)
 
 ---
 
-## 📝 Code Snippets
+## Code Snippets
 
 ### Import Icons
 ```tsx
@@ -282,5 +254,5 @@ const getSemanticColor = (type: 'positive' | 'warning' | 'danger') => ({
 
 ---
 
-**Last Updated**: 2026-01-05  
+**Last Updated**: 2026-03-09  
 **Version**: 1.0.0

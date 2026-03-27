@@ -101,7 +101,7 @@ export const exchangeRateRouter = createTRPCRouter({
 	syncNow: adminProcedure.mutation(async ({ ctx }) => {
 		try {
 			// Trigger sync on worker
-			await IntegrationService.requestWorker(`${env.WORKER_URL}/sync-rates`, {
+			await IntegrationService.requestWorker(`${env.SIDECAR_URL}/sync-rates`, {
 				method: "POST",
 			});
 

@@ -54,6 +54,28 @@ model User {
   externalAiAllowed Boolean?
   aiUsages          AiUsage[]
 
+  avatarPath              String?                  @db.VarChar(500)
+  lastUsernameChangeAt    DateTime?
+
+  // Pending email change (two-phase verification)
+  pendingEmail            String?                  @db.VarChar(255)
+  pendingEmailToken       String?                  @unique @db.VarChar(255)
+  pendingEmailExpiresAt   DateTime?
+
+  // Consent recording (GDPR / legal pages)
+  consentedAt             DateTime?
+  consentVersion          String?                  @db.VarChar(20)
+  consentIp               String?                  @db.VarChar(45)
+
+  feedback                Feedback[]
+  usernameHistory         UsernameHistory[]
+  createdShadowProfiles   ShadowProfile[]          @relation("CreatedShadowProfiles")
+  claimedShadowProfiles   ShadowProfile[]          @relation("ClaimedShadowProfiles")
+  createdProjects         Project[]
+  paymentMethods          PaymentMethod[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+
   @@map("user")
 }
 
@@ -153,6 +175,9 @@ model Expense {
   recurringTemplateId String?
   recurringTemplate   RecurringTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
 
+  // Analytics exclusion
+  excludeFromAnalytics Boolean @default(false)
+
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -160,6 +185,9 @@ model Expense {
   @@index([parentId])
   @@index([recurringTemplateId])
   @@index([userId, date, title, amount, currency])
+  @@index([userId, status, date])
+  @@index([userId, excludeFromAnalytics, date])
+  @@index([userId, isAmortizedParent, date])
   @@map("expense")
 }
 
@@ -169,12 +197,14 @@ model Category {
   color                CategoryColor
   icon                 String?                       @db.VarChar(32)
   isFixed              Boolean                       @default(false)
+  excludeByDefault     Boolean                       @default(false)
   userId               String
   user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses             Expense[]
   budgets              Budget[]
   recurringTemplates   RecurringTemplate[]
   analyticsPreferences AnalyticsCategoryPreference[]
+  sharedTransactions   SharedTransaction[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -291,6 +321,7 @@ model AssetSnapshot {
 
   @@unique([accountId, date])
   @@index([userId])
+  @@index([userId, date])
   @@map("asset_snapshot")
 }
 
@@ -331,11 +362,23 @@ model AppSettings {
   allowAllUsersToGenerateInvites Boolean  @default(false)
   enableEmail                    Boolean  @default(true)
 
-  defaultAiMode          AiMode               @default(LOCAL)
-  externalAiAccessMode   ExternalAiAccessMode @default(WHITELIST)
-  monthlyAiTokenQuota    Int                  @default(2000000)
+  defaultAiMode               AiMode               @default(LOCAL)
+  externalAiAccessMode        ExternalAiAccessMode @default(WHITELIST)
+  monthlyAiTokenQuota         Int                  @default(2000000)
+  monthlyLocalAiTokenQuota    Int                  @default(10000000)
+  monthlyExternalAiTokenQuota Int                  @default(2000000)
+
+  auditPrivacyMode       AuditPrivacyMode     @default(MINIMAL)
+  maxConcurrentImportJobs Int                 @default(3)
+  enableFeedback         Boolean              @default(false)
 
   @@map("app_settings")
+}
+
+enum AuditPrivacyMode {
+  MINIMAL
+  ANONYMIZED
+  FULL
 }
 
 enum CategoryColor {
@@ -384,7 +427,9 @@ enum ExpenseStatus {
 
 enum RecurringFrequency {
   WEEKLY
+  BIWEEKLY
   MONTHLY
+  QUARTERLY
   YEARLY
 }
 
@@ -422,6 +467,7 @@ enum Page {
   INVITE_CODES
   ADMIN
   EXPENSE
+  PROFILE
 }
 
 enum EventType {
@@ -440,7 +486,14 @@ enum EventType {
   TWO_FACTOR_DISABLED
   SETTINGS_UPDATED
   USER_UPDATED
+  USERNAME_CHANGED
   EXPENSE_IMPORT
+  ADMIN_RESET_LINK_GENERATED
+  ADMIN_AI_ACCESS_CHANGED
+  EMAIL_CHANGE_REQUESTED
+  EMAIL_CHANGE_CONFIRMED
+  EMAIL_CHANGE_REVERTED
+  GUEST_UPGRADED
 }
 
 enum ImportJobStatus {
@@ -524,6 +577,7 @@ model EventLog {
   @@index([timestamp])
   @@index([userId])
   @@index([eventType])
+  @@index([eventType, timestamp])
   @@map("event_log")
 }
 
@@ -569,15 +623,470 @@ model ImportJob {
 }
 
 model AiUsage {
-  id         String   @id @default(cuid())
-  userId     String
-  yearMonth  String   @db.VarChar(7)
-  tokensUsed Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  userId             String
+  yearMonth          String   @db.VarChar(7)
+  tokensUsed         Int      @default(0)
+  localTokensUsed    Int      @default(0)
+  externalTokensUsed Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, yearMonth])
   @@index([userId])
   @@map("ai_usage")
+}
+
+// ============================================================
+// Shared Expenses Models
+// ============================================================
+
+model ShadowProfile {
+  id          String    @id @default(cuid())
+  createdById String
+  name        String    @db.VarChar(191)
+  email       String?   @db.VarChar(255)
+  phone       String?   @db.VarChar(64)
+  claimedById String?
+  claimedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  createdBy User  @relation("CreatedShadowProfiles", fields: [createdById], references: [id], onDelete: Cascade)
+  claimedBy User? @relation("ClaimedShadowProfiles", fields: [claimedById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@index([email])
+  @@map("shadow_profile")
+}
+
+model GuestSession {
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(191)
+  email        String   @db.VarChar(255)
+  magicLinkId  String
+  projectId    String
+  sessionToken String   @unique @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  @@index([email])
+  @@index([projectId])
+  @@map("guest_session")
+}
+
+model SharedTransaction {
+  id              String    @id @default(cuid())
+  description     String    @db.VarChar(500)
+  amount          Decimal   @db.Decimal(19, 8)
+  currency        String
+  date            DateTime
+  categoryId      String?
+  splitMode       SplitMode @default(EQUAL)
+  notes           String?   @db.Text
+  receiptUrl      String?   @db.VarChar(2048)
+  isLocked        Boolean   @default(false)
+
+  paidByType      ParticipantType
+  paidById        String
+
+  createdByType   ParticipantType
+  createdById     String
+
+  projectId       String?
+  billingPeriodId String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  category        Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  project         Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  billingPeriod   BillingPeriod?     @relation(fields: [billingPeriodId], references: [id], onDelete: SetNull)
+  splitParticipants SplitParticipant[]
+
+  @@index([paidByType, paidById])
+  @@index([createdByType, createdById])
+  @@index([projectId])
+  @@index([billingPeriodId])
+  @@index([billingPeriodId, date])
+  @@index([projectId, date])
+  @@index([categoryId])
+  @@map("shared_transaction")
+}
+
+model SplitParticipant {
+  id                 String             @id @default(cuid())
+  transactionId      String
+  participantType    ParticipantType
+  participantId      String
+  shareAmount        Decimal            @db.Decimal(19, 8)
+  sharePercentage    Decimal?           @db.Decimal(5, 2)
+  shareUnits         Int?
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  rejectionReason    String?            @db.VarChar(500)
+  hasUnseenChanges   Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @default(now()) @updatedAt
+
+  transaction SharedTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, participantType, participantId])
+  @@index([transactionId])
+  @@index([participantType, participantId])
+  @@index([verificationStatus])
+  @@index([participantType, participantId, transactionId])
+  @@map("split_participant")
+}
+
+model Settlement {
+  id                   String           @id @default(cuid())
+  fromParticipantType  ParticipantType
+  fromParticipantId    String
+  toParticipantType    ParticipantType
+  toParticipantId      String
+  amount               Decimal          @db.Decimal(19, 8)
+  currency             String
+  convertedAmount      Decimal?         @db.Decimal(19, 8)
+  convertedCurrency    String?
+  exchangeRateUsed     Decimal?         @db.Decimal(18, 6)
+  paymentMethod        String?          @db.VarChar(191)
+  billingPeriodId      String?
+  status               SettlementStatus @default(PROPOSED)
+  confirmedByPayer     Boolean          @default(false)
+  confirmedByPayee     Boolean          @default(false)
+  note                 String?          @db.VarChar(500)
+  initiatedAt          DateTime         @default(now())
+  settledAt            DateTime?
+  rejectedAt           DateTime?
+  rejectedReason       String?          @db.VarChar(500)
+  reminderSentAt       DateTime?
+  reminderCount        Int              @default(0)
+  autoConfirmedReason  String?          @db.VarChar(200)
+
+  @@index([fromParticipantType, fromParticipantId])
+  @@index([toParticipantType, toParticipantId])
+  @@index([billingPeriodId])
+  @@index([status])
+  @@index([status, fromParticipantType, fromParticipantId])
+  @@index([status, toParticipantType, toParticipantId])
+  @@map("settlement")
+}
+
+model AuditLogEntry {
+  id         String          @id @default(cuid())
+  timestamp  DateTime        @default(now())
+  actorType  ParticipantType
+  actorId    String
+  action     AuditAction
+  targetType AuditTargetType
+  targetId   String
+  changes    Json?
+  context    Json?
+  projectId  String?
+
+  @@index([targetType, targetId])
+  @@index([actorType, actorId])
+  @@index([projectId])
+  @@index([timestamp])
+  @@index([action])
+  @@map("audit_log_entry")
+}
+
+enum ParticipantType {
+  user
+  guest
+  shadow
+}
+
+enum SplitMode {
+  EQUAL
+  EXACT
+  PERCENTAGE
+  SHARES
+}
+
+enum VerificationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  AUTO_ACCEPTED
+}
+
+enum SettlementStatus {
+  PROPOSED
+  CONFIRMED
+  FINALIZED
+  REJECTED
+}
+
+enum AuditAction {
+  CREATED
+  EDITED
+  DELETED
+  VERIFIED
+  REJECTED
+  AUTO_VERIFIED
+  SETTLED
+  PERIOD_CLOSED
+  PARTICIPANT_ADDED
+  PARTICIPANT_REMOVED
+  ROLE_CHANGED
+}
+
+enum AuditTargetType {
+  SHARED_TRANSACTION
+  SETTLEMENT
+  PROJECT
+  BILLING_PERIOD
+  SPLIT_PARTICIPANT
+}
+
+enum ProjectType {
+  TRIP
+  ONGOING
+  SOLO
+  ONE_TIME
+  GENERAL
+}
+
+enum ProjectStatus {
+  ACTIVE
+  SETTLED
+  ARCHIVED
+}
+
+enum ProjectVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum ProjectRole {
+  ORGANIZER
+  EDITOR
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum BillingCycleLength {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum BillingPeriodStatus {
+  OPEN
+  CLOSING
+  SETTLED
+  ARCHIVED
+}
+
+enum BillingClosePermission {
+  ORGANIZER_ONLY
+  ANY_PARTICIPANT
+}
+
+model Project {
+  id                       String                 @id @default(cuid())
+  name                     String                 @db.VarChar(191)
+  description              String?                @db.VarChar(500)
+  type                     ProjectType
+  budgetAmount             Decimal?               @db.Decimal(19, 8)
+  budgetCurrency           String?
+  primaryCurrency          String                 @default("USD")
+  createdById              String
+  visibility               ProjectVisibility      @default(PRIVATE)
+  startDate                DateTime?
+  endDate                  DateTime?
+  status                   ProjectStatus          @default(ACTIVE)
+  billingCycleLength       BillingCycleLength?
+  billingCycleDays         Int?
+  billingAutoClose         Boolean                @default(false)
+  billingCloseReminderDays Int                    @default(3)
+  billingClosePermission   BillingClosePermission @default(ORGANIZER_ONLY)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @default(now()) @updatedAt
+
+  imagePath          String?             @db.VarChar(500)
+
+  createdBy          User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  participants       ProjectParticipant[]
+  billingPeriods     BillingPeriod[]
+  magicLinks         MagicLink[]
+  sharedTransactions SharedTransaction[]
+
+  @@index([createdById])
+  @@index([status])
+  @@map("project")
+}
+
+model ProjectParticipant {
+  id                    String          @id @default(cuid())
+  projectId             String
+  participantType       ParticipantType
+  participantId         String
+  role                  ProjectRole     @default(CONTRIBUTOR)
+  joinedAt              DateTime        @default(now())
+  excludeFromAnalytics  Boolean         @default(false)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, participantType, participantId])
+  @@index([projectId])
+  @@index([participantType, participantId])
+  @@map("project_participant")
+}
+
+model BillingPeriod {
+  id         String              @id @default(cuid())
+  projectId  String
+  label      String              @db.VarChar(100)
+  startDate  DateTime
+  endDate    DateTime
+  status     BillingPeriodStatus @default(OPEN)
+  closedById String?
+  closedAt   DateTime?
+  settledAt  DateTime?
+  createdAt  DateTime            @default(now())
+
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sharedTransactions SharedTransaction[]
+
+  @@index([projectId])
+  @@index([status])
+  @@map("billing_period")
+}
+
+// ============================================================
+// Payment Methods
+// ============================================================
+
+enum PaymentMethodVisibility {
+  PUBLIC
+  FRIENDS_ONLY
+  PAYMENT_ONLY
+}
+
+model PaymentMethod {
+  id         String                  @id @default(cuid())
+  userId     String
+  type       String                  @db.VarChar(50)
+  label      String?                 @db.VarChar(100)
+  identifier String?                 @db.VarChar(500)
+  rank       Int
+  visibility PaymentMethodVisibility @default(PAYMENT_ONLY)
+  minAmount  Decimal?                @db.Decimal(19, 8)
+  currency   String?                 @db.VarChar(10)
+  network    String?                 @db.VarChar(50)
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("payment_method")
+}
+
+model MagicLink {
+  id          String      @id @default(uuid())
+  projectId   String
+  roleGranted ProjectRole @default(CONTRIBUTOR)
+  createdById String
+  expiresAt   DateTime?
+  maxUses     Int?
+  useCount    Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("magic_link")
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
+enum NotificationType {
+  EXPENSE_SPLIT
+  VERIFICATION_REQUEST
+  EXPENSE_EDITED
+  EXPENSE_DELETED
+  SETTLEMENT_RECEIVED
+  SETTLEMENT_CONFIRMED
+  SETTLEMENT_REJECTED
+  PERIOD_CLOSED
+  PARTICIPANT_ADDED
+  PAYMENT_REMINDER
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String           @db.VarChar(200)
+  body      String           @db.VarChar(500)
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notification")
+}
+
+model NotificationPreference {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType
+  inApp      Boolean          @default(true)
+  email      Boolean          @default(false)
+  digestMode Boolean          @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@map("notification_preference")
+}
+
+model UsernameHistory {
+  id               String   @id @default(cuid())
+  userId           String
+  previousUsername  String   @unique @db.VarChar(64)
+  changedAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([changedAt])
+  @@map("username_history")
+}
+
+model Feedback {
+  id            String   @id @default(cuid())
+  userId        String
+  message       String   @db.Text
+
+  // Silent context (collected automatically)
+  pageUrl       String
+  userAgent     String?
+  viewportSize  String?
+  appVersion    String?
+
+  // Admin management
+  status        String   @default("unread")  // unread, read, archived
+  adminNote     String?  @db.Text
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("feedback")
 }

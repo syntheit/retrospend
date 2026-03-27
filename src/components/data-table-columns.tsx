@@ -1,19 +1,27 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { format } from "date-fns";
-import { Info } from "lucide-react";
+import { Copy, Edit2, EyeOff, Info, MoreHorizontal, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { z } from "zod";
-import { Checkbox } from "~/components/ui/checkbox";
+import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
+import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import {
 	Tooltip,
 	TooltipContent,
-	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { CATEGORY_COLOR_MAP } from "~/lib/constants";
+import { UserAvatar } from "~/components/ui/user-avatar";
 import { isCrypto } from "~/lib/currency-format";
-import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
+import { formatExpenseDate } from "~/lib/format";
+import { convertExpenseAmountForDisplay } from "~/lib/utils";
 
 export const expenseSchema = z.object({
 	id: z.string(),
@@ -32,62 +40,57 @@ export const expenseSchema = z.object({
 			id: z.string(),
 			name: z.string(),
 			color: z.string(),
+			icon: z.string().nullable().optional(),
 		})
 		.nullable(),
 	isAmortizedParent: z.boolean().optional(),
+	excludeFromAnalytics: z.boolean().optional(),
+	source: z.enum(["personal", "shared"]).optional(),
+	sharedContext: z
+		.object({
+			totalAmount: z.number(),
+			participantCount: z.number(),
+			paidByName: z.string(),
+			paidByAvatarUrl: z.string().nullable().optional(),
+			iPayedThis: z.boolean(),
+			transactionId: z.string(),
+			projectId: z.string().optional(),
+			projectName: z.string().optional(),
+			canEdit: z.boolean().optional(),
+			canDelete: z.boolean().optional(),
+		})
+		.optional(),
 });
 
 function createExpenseColumns(
 	_homeCurrency: string,
 	_liveRateToBaseCurrency: number | null,
 	hasForeignCurrencyExpenses: boolean,
-	selectedRows: Set<string>,
-	onRowSelect: (id: string, checked: boolean) => void,
-	onSelectAll: (checked: boolean) => void,
 	formatCurrency: (amount: number, currency?: string) => string,
+	onRowEdit?: (id: string) => void,
+	onRowDelete?: (id: string) => void,
+	typeFilter?: "all" | "personal" | "shared",
+	onSharedRowEdit?: (sharedTransactionId: string) => void,
+	onSharedRowDelete?: (sharedTransactionId: string) => void,
+	onRowDuplicate?: (id: string) => void,
 ): ColumnDef<z.infer<typeof expenseSchema>>[] {
 	const columns: ColumnDef<z.infer<typeof expenseSchema>>[] = [
-		{
-			id: "select",
-			header: ({ table }) => {
-				const allSelected = table
-					.getRowModel()
-					.rows.every((row) => selectedRows.has(row.original.id));
-				const someSelected = table
-					.getRowModel()
-					.rows.some((row) => selectedRows.has(row.original.id));
-
-				return (
-					<Checkbox
-						aria-label="Select all rows"
-						checked={
-							allSelected ? true : someSelected ? "indeterminate" : false
-						}
-						onCheckedChange={(checked) => onSelectAll(checked === true)}
-					/>
-				);
-			},
-			cell: ({ row }) => (
-				<Checkbox
-					aria-label={`Select row ${row.original.title || "Untitled"}`}
-					checked={selectedRows.has(row.original.id)}
-					onCheckedChange={(checked) =>
-						onRowSelect(row.original.id, checked === true)
-					}
-				/>
-			),
-			enableSorting: false,
-			enableHiding: false,
-			size: 50,
-		},
 		{
 			accessorKey: "title",
 			header: "Title",
 			enableSorting: true,
+			meta: { flex: true },
 			cell: ({ row }) => {
 				const title = row.original.title || "Untitled";
 				const description = row.original.description?.trim();
 				const isAmortized = row.original.isAmortizedParent;
+				const isExcluded = row.original.excludeFromAnalytics;
+				const isShared = row.original.source === "shared";
+				const sharedCtx = row.original.sharedContext;
+
+				const sharedTooltip = sharedCtx
+					? `${sharedCtx.iPayedThis ? "You paid" : `Paid by ${sharedCtx.paidByName}`} · Split ${sharedCtx.participantCount} ways${sharedCtx.projectName ? ` · ${sharedCtx.projectName}` : ""}`
+					: undefined;
 
 				return (
 					<div className="flex items-center gap-2">
@@ -97,19 +100,48 @@ function createExpenseColumns(
 								Split
 							</span>
 						)}
-						{description ? (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className="flex cursor-help items-center gap-1">
-											<Info className="h-3 w-3 text-muted-foreground" />
-										</div>
-									</TooltipTrigger>
-									<TooltipContent align="start" side="top">
-										<p className="max-w-xs text-sm">{description}</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
+						{isExcluded && !isShared && (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+								</TooltipTrigger>
+								<TooltipContent align="start" side="top">
+									<p>Excluded from spending analytics</p>
+								</TooltipContent>
+							</Tooltip>
+						)}
+						{isShared && sharedTooltip ? (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									{sharedCtx?.projectId ? (
+										<Link
+											className="inline-flex cursor-pointer items-center rounded-md bg-purple-50 px-2 py-0.5 font-medium text-purple-700 text-xs ring-1 ring-purple-700/10 ring-inset hover:bg-purple-100 dark:bg-purple-400/10 dark:text-purple-400 dark:ring-purple-400/30 dark:hover:bg-purple-400/20"
+											href={`/projects/${sharedCtx.projectId}`}
+											onClick={(e) => e.stopPropagation()}
+										>
+											{sharedCtx.projectName ?? "Shared"}
+										</Link>
+									) : (
+										<span className="inline-flex cursor-help items-center rounded-md bg-purple-50 px-2 py-0.5 font-medium text-purple-700 text-xs ring-1 ring-purple-700/10 ring-inset dark:bg-purple-400/10 dark:text-purple-400 dark:ring-purple-400/30">
+											{sharedCtx?.projectName ?? "Shared"}
+										</span>
+									)}
+								</TooltipTrigger>
+								<TooltipContent align="start" side="top">
+									<p className="max-w-xs text-sm">{sharedTooltip}</p>
+								</TooltipContent>
+							</Tooltip>
+						) : description ? (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<div className="flex cursor-help items-center gap-1">
+										<Info className="h-3 w-3 text-muted-foreground" />
+									</div>
+								</TooltipTrigger>
+								<TooltipContent align="start" side="top">
+									<p className="max-w-xs text-sm">{description}</p>
+								</TooltipContent>
+							</Tooltip>
 						) : null}
 					</div>
 				);
@@ -119,26 +151,16 @@ function createExpenseColumns(
 			accessorKey: "category",
 			header: "Category",
 			enableSorting: true,
+			size: 150,
 			cell: ({ row }) => {
 				const category = row.original.category;
-				if (!category) {
-					return (
-						<div className="text-muted-foreground text-sm">No category</div>
-					);
-				}
-
+				if (!category) return <NoCategoryLabel />;
 				return (
-					<div className="flex items-center gap-2">
-						<div
-							className={cn(
-								"h-3 w-3 rounded-full",
-								CATEGORY_COLOR_MAP[
-									category.color as keyof typeof CATEGORY_COLOR_MAP
-								]?.split(" ")[0] || "bg-gray-400",
-							)}
-						/>
-						<span className="text-sm">{category.name}</span>
-					</div>
+					<CategoryChip
+						color={category.color}
+						icon={category.icon}
+						name={category.name}
+					/>
 				);
 			},
 			sortingFn: (rowA, rowB) => {
@@ -151,23 +173,68 @@ function createExpenseColumns(
 			accessorKey: "date",
 			header: "Date",
 			enableSorting: true,
+			size: 130,
 			sortingFn: "datetime",
 			cell: ({ row }) => {
 				const date = row.original.date;
 				return (
 					<div className="text-muted-foreground">
-						{format(date, "MMM dd, yyyy")}
+						{formatExpenseDate(date)}
 					</div>
 				);
 			},
 		},
 	];
 
+	// Add "Paid By" column when showing shared or all expenses (before date, after category)
+	if (typeFilter === "shared" || typeFilter === "all") {
+		const dateIndex = columns.findIndex((c) => "accessorKey" in c && c.accessorKey === "date");
+		columns.splice(dateIndex, 0, {
+			id: "paidBy",
+			header: "Paid By",
+			accessorFn: (row) =>
+				row.sharedContext?.iPayedThis
+					? "You"
+					: (row.sharedContext?.paidByName ?? ""),
+			sortingFn: (a, b) => {
+				const aVal =
+					a.original.sharedContext?.iPayedThis
+						? "You"
+						: (a.original.sharedContext?.paidByName ?? "");
+				const bVal =
+					b.original.sharedContext?.iPayedThis
+						? "You"
+						: (b.original.sharedContext?.paidByName ?? "");
+				return aVal.localeCompare(bVal);
+			},
+			size: 120,
+			cell: ({ row }) => {
+				const ctx = row.original.sharedContext;
+				if (!ctx) {
+					return <div className="text-muted-foreground text-sm">-</div>;
+				}
+				const name = ctx.iPayedThis ? "You" : ctx.paidByName;
+				return (
+					<div className="flex items-center gap-1.5">
+						<UserAvatar
+							avatarUrl={ctx.paidByAvatarUrl}
+							className="h-5 w-5 text-[9px]"
+							name={ctx.paidByName}
+							size="xs"
+						/>
+						<span className="text-xs">{name.split(" ")[0]}</span>
+					</div>
+				);
+			},
+		});
+	}
+
 	// Add local price column only if there are foreign currency expenses
 	if (hasForeignCurrencyExpenses) {
 		columns.push({
 			id: "localPrice",
 			header: () => <div className="text-right">Price (Local)</div>,
+			size: 150,
 			accessorFn: (row) => {
 				return row.currency === "USD" || !row.exchangeRate ? 0 : row.amount;
 			},
@@ -192,25 +259,23 @@ function createExpenseColumns(
 				}
 
 				return (
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<div className="flex cursor-help items-center justify-end gap-1 text-right">
-									<div className="font-medium tabular-nums">
-										{formatCurrency(amount, currency)}
-									</div>
-									<Info className="h-3 w-3 text-muted-foreground" />
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<div className="flex cursor-help items-center justify-end gap-1 text-right">
+								<div className="font-medium tabular-nums">
+									{formatCurrency(amount, currency)}
 								</div>
-							</TooltipTrigger>
-							<TooltipContent align="end" side="top">
-								<p>
-									{isCrypto(currency)
-										? `1 ${currency} = $${exchangeRate.toLocaleString()}`
-										: `1 USD = ${exchangeRate.toLocaleString()} ${currency}`}
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
+								<Info className="h-3 w-3 text-muted-foreground" />
+							</div>
+						</TooltipTrigger>
+						<TooltipContent align="end" side="top">
+							<p>
+								{isCrypto(currency)
+									? `1 ${currency} = $${exchangeRate.toLocaleString()}`
+									: `1 USD = ${exchangeRate.toLocaleString()} ${currency}`}
+							</p>
+						</TooltipContent>
+					</Tooltip>
 				);
 			},
 		});
@@ -220,6 +285,7 @@ function createExpenseColumns(
 	columns.push({
 		id: "basePrice",
 		header: () => <div className="text-right">Amount ({_homeCurrency})</div>,
+		size: 160,
 		accessorFn: (row) => {
 			return convertExpenseAmountForDisplay(
 				row,
@@ -255,6 +321,101 @@ function createExpenseColumns(
 			);
 		},
 	});
+
+	// Add per-row actions column if handlers are provided
+	if (onRowEdit ?? onRowDelete ?? onRowDuplicate) {
+		columns.push({
+			id: "actions",
+			header: () => null,
+			cell: ({ row }) => {
+				const isShared = row.original.source === "shared";
+				const sharedCtx = row.original.sharedContext;
+
+				if (isShared) {
+					const sharedTxId = sharedCtx?.transactionId;
+					if (!sharedTxId) return <div className="h-7 w-7" />;
+					const canEdit = sharedCtx?.canEdit && onSharedRowEdit;
+					const canDelete = sharedCtx?.canDelete && onSharedRowDelete;
+					if (!canEdit && !canDelete) return <div className="h-7 w-7" />;
+
+					return (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+									size="icon"
+									variant="ghost"
+								>
+									<MoreHorizontal className="h-4 w-4" />
+									<span className="sr-only">Actions</span>
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-44">
+								{canEdit && (
+									<DropdownMenuItem onClick={() => onSharedRowEdit!(sharedTxId)}>
+										<Edit2 className="mr-2 h-4 w-4" />
+										Edit
+									</DropdownMenuItem>
+								)}
+								{canDelete && canEdit && <DropdownMenuSeparator />}
+								{canDelete && (
+									<DropdownMenuItem
+										onClick={() => onSharedRowDelete!(sharedTxId)}
+										variant="destructive"
+									>
+										<Trash2 className="mr-2 h-4 w-4" />
+										Delete
+									</DropdownMenuItem>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					);
+				}
+
+				return (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+								size="icon"
+								variant="ghost"
+							>
+								<MoreHorizontal className="h-4 w-4" />
+								<span className="sr-only">Actions</span>
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-44">
+							{onRowEdit && (
+								<DropdownMenuItem onClick={() => onRowEdit(row.original.id)}>
+									<Edit2 className="mr-2 h-4 w-4" />
+									Edit
+								</DropdownMenuItem>
+							)}
+							{onRowDuplicate && (
+								<DropdownMenuItem onClick={() => onRowDuplicate(row.original.id)}>
+									<Copy className="mr-2 h-4 w-4" />
+									Duplicate
+								</DropdownMenuItem>
+							)}
+							{onRowDelete && (onRowEdit || onRowDuplicate) && <DropdownMenuSeparator />}
+							{onRowDelete && (
+								<DropdownMenuItem
+									onClick={() => onRowDelete(row.original.id)}
+									variant="destructive"
+								>
+									<Trash2 className="mr-2 h-4 w-4" />
+									Delete
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				);
+			},
+			enableSorting: false,
+			enableHiding: false,
+			size: 48,
+		});
+	}
 
 	return columns;
 }

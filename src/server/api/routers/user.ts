@@ -5,6 +5,11 @@ import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import {
+	anonymizeAndDeleteUser,
+	previewAccountDeletion,
+} from "~/server/services/user-deletion.service";
+import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 
 export const userRouter = createTRPCRouter({
 	updateProfile: protectedProcedure
@@ -17,8 +22,8 @@ export const userRouter = createTRPCRouter({
 						.min(1, "Username is required")
 						.max(50)
 						.regex(
-							/^[a-z0-9_-]+$/,
-							"Username can only contain lowercase letters, numbers, underscores, and hyphens",
+							/^[a-zA-Z0-9]+$/,
+							"Username can only contain letters and numbers",
 						)
 						.transform((v) => v.toLowerCase()),
 					email: z
@@ -49,15 +54,12 @@ export const userRouter = createTRPCRouter({
 			const { session, db } = ctx;
 
 			if (input.username !== session.user.username) {
-				const existingUsername = await db.user.findUnique({
-					where: { username: input.username },
-				});
-				if (existingUsername) {
-					throw new TRPCError({
-						code: "CONFLICT",
-						message: "Username is already taken",
-					});
-				}
+				await validateAndProcessUsernameChange(
+					db,
+					session.user.id,
+					session.user.username,
+					input.username,
+				);
 			}
 
 			if (input.email !== session.user.email) {
@@ -150,6 +152,11 @@ export const userRouter = createTRPCRouter({
 			return updatedUser;
 		}),
 
+	previewAccountDeletion: protectedProcedure.query(async ({ ctx }) => {
+		const { session, db } = ctx;
+		return previewAccountDeletion(db, session.user.id);
+	}),
+
 	deleteAccount: protectedProcedure
 		.input(
 			z.object({
@@ -185,9 +192,17 @@ export const userRouter = createTRPCRouter({
 				});
 			}
 
-			await db.user.delete({
+			const user = await db.user.findUnique({
 				where: { id: session.user.id },
+				select: { email: true, avatarPath: true },
 			});
+
+			await anonymizeAndDeleteUser(
+				db,
+				session.user.id,
+				user?.email ?? session.user.email,
+				user?.avatarPath ?? null,
+			);
 
 			return { success: true };
 		}),

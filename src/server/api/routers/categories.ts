@@ -26,6 +26,7 @@ export const categoriesRouter = createTRPCRouter({
 				name: true,
 				color: true,
 				icon: true,
+				excludeByDefault: true,
 				_count: {
 					select: {
 						expenses: true,
@@ -43,6 +44,7 @@ export const categoriesRouter = createTRPCRouter({
 					message: "Category color is invalid",
 				}),
 				icon: z.string().max(50).optional(),
+				excludeByDefault: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -69,6 +71,7 @@ export const categoriesRouter = createTRPCRouter({
 					name: input.name,
 					color: input.color,
 					icon: input.icon,
+					excludeByDefault: input.excludeByDefault ?? false,
 					userId: session.user.id,
 				},
 				select: {
@@ -76,6 +79,7 @@ export const categoriesRouter = createTRPCRouter({
 					name: true,
 					color: true,
 					icon: true,
+					excludeByDefault: true,
 				},
 			});
 		}),
@@ -89,6 +93,7 @@ export const categoriesRouter = createTRPCRouter({
 					message: "Category color is invalid",
 				}),
 				icon: z.string().max(50).optional(),
+				excludeByDefault: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -118,12 +123,16 @@ export const categoriesRouter = createTRPCRouter({
 					name: input.name,
 					color: input.color,
 					icon: input.icon,
+					...(input.excludeByDefault !== undefined && {
+						excludeByDefault: input.excludeByDefault,
+					}),
 				},
 				select: {
 					id: true,
 					name: true,
 					color: true,
 					icon: true,
+					excludeByDefault: true,
 				},
 			});
 		}),
@@ -219,7 +228,7 @@ export const categoriesRouter = createTRPCRouter({
 					});
 				});
 			} else {
-				// No expenses — delete directly
+				// No expenses: delete directly
 				await db.category.delete({
 					where: {
 						id: input.id,

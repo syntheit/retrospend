@@ -7,6 +7,13 @@ const PUBLIC_PATHS = [
 	"/api/", // All API routes handle their own auth and return JSON errors
 	"/privacy",
 	"/terms",
+	"/join", // Magic link join pages for guest access
+	"/guest", // Guest project views (authenticated via x-guest-token header)
+	"/projects/", // Individual project pages (public/guest access handled client-side)
+	"/u/", // Public user profiles / pay pages
+	"/pay", // Payment pages
+	"/docs", // Public documentation
+	"/fonts/", // Public fonts (used by landing page, docs, etc.)
 ];
 
 export function proxy(request: NextRequest) {
@@ -21,7 +28,7 @@ export function proxy(request: NextRequest) {
 	if (
 		pathname.startsWith("/_next") ||
 		pathname.startsWith("/images") ||
-		pathname === "/favicon.ico"
+		pathname.startsWith("/favicon")
 	) {
 		return addSecurityHeaders(NextResponse.next());
 	}

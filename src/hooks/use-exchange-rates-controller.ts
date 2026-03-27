@@ -16,6 +16,14 @@ export interface ExchangeRateRow {
 	updatedAt: Date;
 }
 
+export interface FavoriteCurrencyCardData {
+	currency: string;
+	rateTypes: { id: string; type: string; rate: number }[];
+	/** The exchange rate ID of the primary (favorited) rate */
+	primaryRateId: string;
+	order: number;
+}
+
 export function useExchangeRatesController() {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -27,9 +35,9 @@ export function useExchangeRatesController() {
 		data: exchangeRates,
 		isLoading: isAllRatesLoading,
 		error: allRatesError,
-	} = api.exchangeRate.getAllRates.useQuery();
+	} = api.exchangeRate.getAllRates.useQuery(undefined, { enabled: Boolean(session?.user), staleTime: 60 * 60 * 1000 });
 
-	const { data: lastSync } = api.exchangeRate.getLastSync.useQuery();
+	const { data: lastSync } = api.exchangeRate.getLastSync.useQuery(undefined, { enabled: Boolean(session?.user) });
 
 	const {
 		data: favoriteExchangeRates,
@@ -125,10 +133,38 @@ export function useExchangeRatesController() {
 		[ratesWithFavorites],
 	);
 
-	const hasFavorites = (favoriteExchangeRates?.length ?? 0) > 0;
+	// Build card data for favorites: group by currency, supplement with all rate types
+	const favoriteCurrencyCards = useMemo((): FavoriteCurrencyCardData[] => {
+		if (!favoriteExchangeRates || !exchangeRates) return [];
+
+		const seen = new Map<string, FavoriteCurrencyCardData>();
+
+		for (const fav of favoriteExchangeRates) {
+			const currency = fav.rate.currency;
+			if (!seen.has(currency)) {
+				// Find all rate types for this currency from the full rates list
+				const allTypesForCurrency = exchangeRates
+					.filter((r) => r.currency === currency)
+					.map((r) => ({
+						id: r.id,
+						type: r.type,
+						rate: Number(r.rate),
+					}));
+
+				seen.set(currency, {
+					currency,
+					rateTypes: allTypesForCurrency,
+					primaryRateId: fav.id,
+					order: fav.order,
+				});
+			}
+		}
+
+		return Array.from(seen.values());
+	}, [favoriteExchangeRates, exchangeRates]);
+
 	const activeTab =
-		(searchParams.get("tab") as "favorites" | "fiat" | "crypto") ||
-		(hasFavorites ? "favorites" : "fiat");
+		(searchParams.get("tab") as "fiat" | "crypto") || "fiat";
 
 	const setActiveTab = useCallback(
 		(tab: string) => {
@@ -153,11 +189,27 @@ export function useExchangeRatesController() {
 		[toggleFavoriteMutation],
 	);
 
+	const handleUnfavoriteCurrency = useCallback(
+		async (currency: string) => {
+			if (!favoriteExchangeRates) return;
+			const idsToRemove = favoriteExchangeRates
+				.filter((f) => f.rate.currency === currency)
+				.map((f) => f.id);
+
+			for (const id of idsToRemove) {
+				await toggleFavoriteMutation.mutateAsync({ exchangeRateId: id });
+			}
+		},
+		[favoriteExchangeRates, toggleFavoriteMutation],
+	);
+
 	return {
 		rates: ratesWithFavorites,
 		fiatRates,
 		cryptoRates,
 		favoriteRates,
+		favoriteCurrencyCards,
+		favoriteRateIdSet,
 		lastSync,
 		isLoading: isAllRatesLoading || isFavoritesLoading,
 		isFavoritesLoading,
@@ -170,6 +222,7 @@ export function useExchangeRatesController() {
 		actions: {
 			reorder: handleReorder,
 			toggleFavorite: handleToggleFavorite,
+			unfavoriteCurrency: handleUnfavoriteCurrency,
 		},
 	};
 }

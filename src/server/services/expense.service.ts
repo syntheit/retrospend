@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
-import { isCryptoCurrency } from "~/lib/currency-conversion";
 import { getFiscalMonthRange } from "~/lib/fiscal-month";
 import type { Prisma, PrismaClient } from "~prisma";
+import { toUSD } from "../currency";
 import {
 	getBestExchangeRate,
 	sumExpensesForCurrency,
@@ -27,8 +27,11 @@ export class ExpenseService {
 			description?: string;
 			categoryId?: string;
 			amortizeOver?: number;
+			excludeFromAnalytics?: boolean;
+			projectId?: string;
 		},
 	) {
+		let categoryExcludeByDefault = false;
 		if (input.categoryId) {
 			const category = await (this.db as PrismaClient).category.findFirst({
 				where: { id: input.categoryId, userId },
@@ -39,6 +42,7 @@ export class ExpenseService {
 					message: "Category not found",
 				});
 			}
+			categoryExcludeByDefault = category.excludeByDefault;
 		}
 
 		let exchangeRate = input.exchangeRate;
@@ -56,12 +60,8 @@ export class ExpenseService {
 				);
 				if (bestRate) {
 					exchangeRate = bestRate.rate;
-					// If it's a crypto rate, we multiply to get USD. If fiat, we divide.
 					if (!amountInUSD) {
-						amountInUSD =
-							bestRate.type === "crypto"
-								? input.amount * exchangeRate
-								: input.amount / exchangeRate;
+						amountInUSD = toUSD(input.amount, input.currency, exchangeRate);
 					}
 				} else {
 					throw new TRPCError({
@@ -73,11 +73,14 @@ export class ExpenseService {
 		}
 
 		if (!amountInUSD) {
-			const isCrypto = isCryptoCurrency(input.currency);
-			amountInUSD = isCrypto
-				? input.amount * (exchangeRate ?? 1)
-				: input.amount / (exchangeRate ?? 1);
+			amountInUSD = toUSD(input.amount, input.currency, exchangeRate ?? 1);
 		}
+
+		// Determine excludeFromAnalytics: explicit input > category default > false
+		// Project expenses always have excludeFromAnalytics: false
+		const excludeFromAnalytics = input.projectId
+			? false
+			: (input.excludeFromAnalytics ?? categoryExcludeByDefault);
 
 		return await this.runInTransaction(async (tx) => {
 			const expense = await tx.expense.create({
@@ -96,6 +99,7 @@ export class ExpenseService {
 					categoryId: input.categoryId,
 					status: "FINALIZED",
 					isAmortizedParent: (input.amortizeOver ?? 0) > 1,
+					excludeFromAnalytics,
 				},
 				include: {
 					category: true,
@@ -126,6 +130,7 @@ export class ExpenseService {
 			description?: string;
 			categoryId?: string;
 			amortizeOver?: number;
+			excludeFromAnalytics?: boolean;
 		},
 	) {
 		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
@@ -134,6 +139,24 @@ export class ExpenseService {
 
 		if (!existingExpense) {
 			throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
+		}
+
+		// Determine excludeFromAnalytics for the update
+		let excludeFromAnalytics: boolean | undefined = input.excludeFromAnalytics;
+
+		// If category changed and user didn't explicitly set the flag, apply new category's default
+		if (
+			excludeFromAnalytics === undefined &&
+			input.categoryId &&
+			input.categoryId !== existingExpense.categoryId
+		) {
+			const newCategory = await (this.db as PrismaClient).category.findFirst({
+				where: { id: input.categoryId, userId },
+				select: { excludeByDefault: true },
+			});
+			if (newCategory?.excludeByDefault) {
+				excludeFromAnalytics = true;
+			}
 		}
 
 		return await this.runInTransaction(async (tx) => {
@@ -151,6 +174,7 @@ export class ExpenseService {
 					description: input.description || null,
 					categoryId: input.categoryId || null,
 					isAmortizedParent: (input.amortizeOver ?? 0) > 1,
+					...(excludeFromAnalytics !== undefined && { excludeFromAnalytics }),
 				},
 			});
 
@@ -183,7 +207,7 @@ export class ExpenseService {
 		return { success: true };
 	}
 
-	async listFinalized(userId: string, from?: Date, to?: Date) {
+	async listFinalized(userId: string, from?: Date, to?: Date, limit?: number) {
 		return await (this.db as PrismaClient).expense.findMany({
 			where: {
 				userId,
@@ -200,6 +224,7 @@ export class ExpenseService {
 			},
 			orderBy: { date: "desc" },
 			include: { category: true },
+			...(limit ? { take: limit } : {}),
 		});
 	}
 
@@ -280,6 +305,31 @@ export class ExpenseService {
 		);
 
 		return { total };
+	}
+
+	async bulkUpdateCategory(
+		userId: string,
+		expenseIds: string[],
+		categoryId: string,
+	) {
+		const category = await (this.db as PrismaClient).category.findFirst({
+			where: { id: categoryId, userId },
+			select: { id: true, name: true },
+		});
+		if (!category) {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Category not found",
+			});
+		}
+
+		return await this.runInTransaction(async (tx) => {
+			const result = await tx.expense.updateMany({
+				where: { id: { in: expenseIds }, userId },
+				data: { categoryId },
+			});
+			return { count: result.count, categoryName: category.name };
+		}, userId);
 	}
 
 	async getFilterOptions(userId: string) {

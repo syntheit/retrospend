@@ -3,13 +3,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog";
+	ResponsiveDialog,
+	ResponsiveDialogContent,
+	ResponsiveDialogDescription,
+	ResponsiveDialogFooter,
+	ResponsiveDialogHeader,
+	ResponsiveDialogTitle,
+} from "~/components/ui/responsive-dialog";
 import { Input } from "~/components/ui/input";
 
 interface ActionDialogProps {
@@ -40,16 +40,16 @@ export function ActionDialog({
 	resetResult,
 }: ActionDialogProps) {
 	return (
-		<Dialog onOpenChange={onOpenChange} open={open}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
-				</DialogHeader>
+		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
+			<ResponsiveDialogContent>
+				<ResponsiveDialogHeader>
+					<ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+					<ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>
+				</ResponsiveDialogHeader>
 
 				{resetResult && <PasswordReveal password={resetResult.newPassword} />}
 
-				<DialogFooter>
+				<ResponsiveDialogFooter>
 					{resetResult ? (
 						<Button onClick={onCancel}>Close</Button>
 					) : (
@@ -66,9 +66,9 @@ export function ActionDialog({
 							</Button>
 						</>
 					)}
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</ResponsiveDialogFooter>
+			</ResponsiveDialogContent>
+		</ResponsiveDialog>
 	);
 }
 

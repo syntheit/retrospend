@@ -74,12 +74,12 @@ export function PasswordForm() {
 	return (
 		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
-				<CardTitle>Security</CardTitle>
+				<CardTitle>Change Password</CardTitle>
 				<CardDescription>
 					Update your password to keep your account secure.
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="p-6 pt-0">
+			<CardContent>
 				<Form {...form}>
 					<form
 						className="space-y-4"

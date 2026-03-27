@@ -149,6 +149,9 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 		defaultCurrency: BASE_CURRENCY,
 		showExchangeRates: true,
 	},
+	PROFILE: {
+		version: 1,
+	},
 };
 
 // Type helpers

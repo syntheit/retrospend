@@ -23,13 +23,9 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 	}
 
-	// Check importer is configured
-	const importerUrl = env.IMPORTER_URL;
+	const importerUrl = env.SIDECAR_URL;
 	if (!importerUrl) {
-		return NextResponse.json(
-			{ error: "Bank statement import is not configured on this instance" },
-			{ status: 503 },
-		);
+		return NextResponse.json({ error: "Import service is not configured" }, { status: 503 });
 	}
 
 	// Check API key is available

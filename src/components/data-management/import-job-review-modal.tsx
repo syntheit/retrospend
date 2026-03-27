@@ -4,12 +4,12 @@ import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog";
+	ResponsiveDialog,
+	ResponsiveDialogContent,
+	ResponsiveDialogDescription,
+	ResponsiveDialogHeader,
+	ResponsiveDialogTitle,
+} from "~/components/ui/responsive-dialog";
 import { api } from "~/trpc/react";
 import {
 	ImporterReviewManager,
@@ -83,12 +83,12 @@ export function ImportJobReviewModal({
 	if (!jobId) return null;
 
 	return (
-		<Dialog onOpenChange={onClose} open={!!jobId}>
-			<DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden pt-12 sm:max-w-[1400px]">
-				<DialogTitle className="sr-only">Import Job Review</DialogTitle>
-				<DialogDescription className="sr-only">
+		<ResponsiveDialog onOpenChange={onClose} open={!!jobId}>
+			<ResponsiveDialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden pt-12 sm:max-w-[1400px]">
+				<ResponsiveDialogTitle className="sr-only">Import Job Review</ResponsiveDialogTitle>
+				<ResponsiveDialogDescription className="sr-only">
 					Review and apply changes to your imported transactions.
-				</DialogDescription>
+				</ResponsiveDialogDescription>
 				{isLoading ? (
 					<div className="flex items-center justify-center py-12">
 						<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -108,7 +108,7 @@ export function ImportJobReviewModal({
 						<p>No transaction data found for this job.</p>
 					</div>
 				)}
-			</DialogContent>
-		</Dialog>
+			</ResponsiveDialogContent>
+		</ResponsiveDialog>
 	);
 }

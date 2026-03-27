@@ -1,15 +1,16 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog";
+	ResponsiveDialog,
+	ResponsiveDialogContent,
+	ResponsiveDialogDescription,
+	ResponsiveDialogFooter,
+	ResponsiveDialogHeader,
+	ResponsiveDialogTitle,
+} from "~/components/ui/responsive-dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -46,12 +47,11 @@ export function BudgetModal({
 	selectedMonth,
 	homeCurrency,
 }: BudgetModalProps) {
-	const queryClient = useQueryClient();
+	const utils = api.useUtils();
 	const [amount, setAmount] = useState(budget?.amount?.toString() || "");
 	const [budgetType, setBudgetType] = useState<BudgetType>(
 		budget?.type || (budget?.pegToActual ? "PEG_TO_ACTUAL" : "FIXED"),
 	);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	// Determine if input should be disabled based on type
@@ -63,7 +63,6 @@ export function BudgetModal({
 			setBudgetType(
 				budget?.type || (budget?.pegToActual ? "PEG_TO_ACTUAL" : "FIXED"),
 			);
-			setIsSubmitting(false);
 
 			// Focus input after a short delay to ensure modal is rendered (skip if pegged)
 			if (!budget?.pegToActual && (!budget?.type || budget.type === "FIXED")) {
@@ -86,15 +85,11 @@ export function BudgetModal({
 
 	const upsertBudget = api.budget.upsertBudget.useMutation({
 		onSuccess: () => {
-			setIsSubmitting(false);
 			onOpenChange(false);
-			queryClient.invalidateQueries({
-				queryKey: [["budget", "getBudgets"]],
-			});
+			void utils.budget.getBudgets.invalidate();
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to save budget");
-			setIsSubmitting(false);
 		},
 	});
 
@@ -107,7 +102,6 @@ export function BudgetModal({
 			return;
 		}
 
-		setIsSubmitting(true);
 		upsertBudget.mutate({
 			categoryId: category.id,
 			amount: amountValue,
@@ -127,27 +121,31 @@ export function BudgetModal({
 		"bg-gray-500";
 
 	return (
-		<Dialog onOpenChange={onOpenChange} open={open}>
-			<DialogContent className="sm:max-w-md">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-3">
+		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
+			<ResponsiveDialogContent className="sm:max-w-md">
+				<ResponsiveDialogHeader>
+					<ResponsiveDialogTitle className="flex items-center gap-3">
 						<div
-							className={`flex h-8 w-8 items-center justify-center rounded-full font-semibold text-sm text-white ${categoryColor}`}
+							className={cn(
+								"flex h-8 w-8 items-center justify-center rounded-full font-semibold text-sm text-white",
+								categoryColor,
+							)}
 						>
 							{category.name.substring(0, 2).toUpperCase()}
 						</div>
 						{mode === "add" ? "Add Budget" : "Edit Budget"} - {category.name}
-					</DialogTitle>
-				</DialogHeader>
+					</ResponsiveDialogTitle>
+					<ResponsiveDialogDescription className="sr-only">Set a monthly budget for a category</ResponsiveDialogDescription>
+				</ResponsiveDialogHeader>
 
 				<form className="space-y-4" onSubmit={handleSubmit}>
 					<div className="space-y-2">
-						<Label>Budget Method</Label>
+						<Label htmlFor="budget-method">Budget Method</Label>
 						<Select
 							onValueChange={(val) => setBudgetType(val as BudgetType)}
 							value={budgetType}
 						>
-							<SelectTrigger>
+							<SelectTrigger id="budget-method">
 								<SelectValue placeholder="Select budget method" />
 							</SelectTrigger>
 							<SelectContent>
@@ -218,25 +216,25 @@ export function BudgetModal({
 						</div>
 					)}
 
-					<div className="flex justify-end gap-2 pt-4">
+					<ResponsiveDialogFooter>
 						<Button
-							disabled={isSubmitting}
+							disabled={upsertBudget.isPending}
 							onClick={() => onOpenChange(false)}
 							type="button"
 							variant="outline"
 						>
 							Cancel
 						</Button>
-						<Button disabled={isSubmitting} type="submit">
-							{isSubmitting
+						<Button disabled={upsertBudget.isPending} type="submit">
+							{upsertBudget.isPending
 								? "Saving..."
 								: mode === "add"
 									? "Add Budget"
 									: "Save Changes"}
 						</Button>
-					</div>
+					</ResponsiveDialogFooter>
 				</form>
-			</DialogContent>
-		</Dialog>
+			</ResponsiveDialogContent>
+		</ResponsiveDialog>
 	);
 }

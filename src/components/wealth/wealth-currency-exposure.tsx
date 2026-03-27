@@ -76,33 +76,38 @@ export function WealthCurrencyExposure({
 	};
 
 	return (
-		<Card>
-			<CardHeader className="flex flex-row items-center justify-between">
-				<CardTitle>Currency Exposure</CardTitle>
-				<Badge className="text-xs" variant="outline">
-					Base: USD
-				</Badge>
+		<Card className="flex flex-col">
+			<CardHeader className="pb-3">
+				<div className="flex items-center justify-between gap-2">
+					<CardTitle>Currency Exposure</CardTitle>
+					<Badge className="text-xs" variant="outline">
+						Base: USD
+					</Badge>
+				</div>
 			</CardHeader>
-			<CardContent className="space-y-4">
+			<CardContent className="space-y-3">
 				{data.map((item, index) => (
-					<div className="space-y-1" key={item.currency}>
-						<div className="flex items-center justify-between text-sm">
+					<div className="space-y-1.5" key={item.currency}>
+						<div className="flex items-center justify-between gap-3 text-sm">
 							<div className="flex items-center gap-2">
 								<CurrencyFlag
-									className="!h-4 !w-4"
+									className="!h-4 !w-4 shrink-0"
 									currencyCode={item.currency}
 								/>
 								<span className="font-medium">{item.currency}</span>
 							</div>
-							<span className="text-muted-foreground tabular-nums">
-								{item.percentage.toFixed(1)}% (
-								{isPrivacyMode
-									? maskAmount(item.value)
-									: formatCurrency(item.value, "USD")}
-								)
-							</span>
+							<div className="text-right leading-tight">
+								<div className="font-medium tabular-nums">
+									{item.percentage.toFixed(1)}%
+								</div>
+								<div className="text-muted-foreground tabular-nums text-xs">
+									{isPrivacyMode
+										? maskAmount(item.value)
+										: formatCurrency(item.value, "USD")}
+								</div>
+							</div>
 						</div>
-						<div className="h-2 w-full overflow-hidden rounded-full bg-secondary/30">
+						<div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary/30">
 							<div
 								className={cn(
 									"h-full rounded-full transition-all",

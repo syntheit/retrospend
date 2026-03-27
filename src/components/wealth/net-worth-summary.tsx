@@ -3,8 +3,10 @@
 import { CreditCard, Landmark, PlaneTakeoff, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { Card, CardContent } from "~/components/ui/card";
+import { EmptyState } from "~/components/ui/empty-state";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { formatPercent } from "~/lib/currency-format";
 import { maskAmount } from "~/lib/masking";
 
 interface NetWorthSummaryProps {
@@ -57,7 +59,7 @@ export function NetWorthSummary({
 				<span className={trendColor}>
 					{trendSign}
 					{formatCurrency(Math.abs(absoluteChange), homeCurrency)} ({trendSign}
-					{percentChange.toFixed(2)}%)
+					{formatPercent(percentChange)})
 				</span>
 			)}
 			<span className="font-normal text-muted-foreground">past 30 days</span>
@@ -94,14 +96,12 @@ export function NetWorthSummary({
 	if (isZeroState) {
 		return (
 			<Card className="border-dashed">
-				<CardContent className="flex flex-col items-center justify-center py-12">
-					<TrendingUp className="h-12 w-12 text-muted-foreground/50" />
-					<h3 className="mt-4 font-medium text-foreground text-lg">
-						No wealth data yet
-					</h3>
-					<p className="mt-2 text-center text-muted-foreground text-sm">
-						Add your first asset or liability to start tracking your net worth.
-					</p>
+				<CardContent className="p-0">
+					<EmptyState
+						description="Add your first asset or liability to start tracking your net worth."
+						icon={TrendingUp}
+						title="No Wealth Data Yet"
+					/>
 				</CardContent>
 			</Card>
 		);
@@ -114,7 +114,7 @@ export function NetWorthSummary({
 				description={`Liquid: ${isPrivacyMode ? maskAmount(totalLiquidAssets) : formatCurrency(totalLiquidAssets, homeCurrency)}`}
 				icon={Landmark}
 				subValue={netWorthTrend}
-				title="NET WORTH"
+				title="Net Worth"
 				value={
 					isPrivacyMode
 						? maskAmount(totalNetWorth)
@@ -126,7 +126,7 @@ export function NetWorthSummary({
 			{/* Total Assets Card */}
 			<StatCard
 				icon={TrendingUp}
-				title="TOTAL ASSETS"
+				title="Total Assets"
 				value={
 					isPrivacyMode
 						? maskAmount(totalAssets)
@@ -139,11 +139,11 @@ export function NetWorthSummary({
 			<StatCard
 				description={
 					totalLiabilities > 0 && weightedAPR > 0
-						? `Weighted APR: ${weightedAPR.toFixed(1)}%`
+						? `Weighted APR: ${formatPercent(weightedAPR)}`
 						: undefined
 				}
 				icon={CreditCard}
-				title="TOTAL LIABILITIES"
+				title="Total Liabilities"
 				value={
 					isPrivacyMode
 						? maskAmount(totalLiabilities)
@@ -156,7 +156,7 @@ export function NetWorthSummary({
 			<StatCard
 				description={`Avg Spend: ${runwayTooltipText}/mo`}
 				icon={PlaneTakeoff}
-				title="FINANCIAL RUNWAY"
+				title="Financial Runway"
 				value={runwayValueMasked}
 				variant="violet"
 			/>

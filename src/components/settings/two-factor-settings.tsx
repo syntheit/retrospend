@@ -31,6 +31,7 @@ export function TwoFactorSettings() {
 	const [code, setCode] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
+	const [isVerifying, setIsVerifying] = useState(false);
 
 	const is2FAEnabled = session?.user.twoFactorEnabled;
 
@@ -55,8 +56,12 @@ export function TwoFactorSettings() {
 		}
 	};
 
-	const handleVerifySetup = async () => {
-		if (code.length !== 6) return;
+	const handleVerifySetup = async (codeToVerify?: string) => {
+		if (isVerifying) return;
+		const currentCode = codeToVerify || code;
+		if (currentCode.length !== 6) return;
+		
+		setIsVerifying(true);
 		try {
 			// First verify TOTP
 			// Wait, the new better-auth does enable with password, then we need to just confirm?
@@ -70,7 +75,7 @@ export function TwoFactorSettings() {
 			// Actually instruction says: "call auth.twoFactor.enable({ code, password }) to finalize it" and "auth.twoFactor.generate()". Wait.
 			// Let's just blindly use authClient.twoFactor.enable({ password }) which returns TOTP URI in many implementations, wait no, standard better-auth uses `authClient.twoFactor.enable({ password, totpCode })` ?
 			const { error } = await authClient.twoFactor.verifyTotp({
-				code,
+				code: currentCode,
 			});
 			if (error) {
 				setError(error.message || "Failed to verify");
@@ -88,6 +93,8 @@ export function TwoFactorSettings() {
 			setStatus("idle");
 		} catch {
 			setError("Failed to verify code.");
+		} finally {
+			setIsVerifying(false);
 		}
 	};
 
@@ -115,7 +122,7 @@ export function TwoFactorSettings() {
 	};
 
 	return (
-		<Card className="mt-8 border-border/50 shadow-sm">
+		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<Shield className="h-5 w-5 text-primary" />
@@ -125,10 +132,10 @@ export function TwoFactorSettings() {
 					Add an extra layer of security to your Retrospend account.
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="p-6 pt-0">
+			<CardContent>
 				{is2FAEnabled ? (
 					<div className="space-y-6">
-						<div className="flex items-center gap-2 text-green-600 dark:text-green-500">
+						<div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
 							<CheckCircle className="h-5 w-5" />
 							<span className="font-medium">2FA is currently enabled</span>
 						</div>
@@ -230,7 +237,13 @@ export function TwoFactorSettings() {
 									<Label className="font-medium text-sm">
 										Enter the 6-digit verification code
 									</Label>
-									<InputOTP maxLength={6} onChange={setCode} value={code}>
+									<InputOTP 
+										maxLength={6} 
+										onChange={setCode} 
+										value={code}
+										onComplete={(c) => handleVerifySetup(c)}
+										disabled={isVerifying}
+									>
 										<InputOTPGroup>
 											<InputOTPSlot index={0} />
 											<InputOTPSlot index={1} />
@@ -258,8 +271,8 @@ export function TwoFactorSettings() {
 									>
 										Cancel
 									</Button>
-									<Button disabled={code.length !== 6} size="sm" type="submit">
-										Verify and Enable
+									<Button disabled={code.length !== 6 || isVerifying} size="sm" type="submit">
+										{isVerifying ? "Verifying..." : "Verify and Enable"}
 									</Button>
 								</div>
 							</form>

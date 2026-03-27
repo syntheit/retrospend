@@ -1,6 +1,5 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -45,7 +44,7 @@ export function BudgetRow({
 	const [previousPegStatus, setPreviousPegStatus] = useState(
 		budget.pegToActual,
 	);
-	const queryClient = useQueryClient();
+	const utils = api.useUtils();
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const { data: suggestions } = api.budget.getBudgetSuggestions.useQuery(
@@ -57,14 +56,12 @@ export function BudgetRow({
 		onSuccess: (data) => {
 			if (data.pegToActual !== previousPegStatus) {
 				toast.success(
-					`Budget moved to ${data.pegToActual ? "Fixed" : "Variable"} section`,
+					`Budget moved to ${data.pegToActual ? "Fixed / Pegged" : "Variable / Managed"} section`,
 				);
 			}
 			setPreviousPegStatus(data.pegToActual);
 			setIsPegged(data.pegToActual);
-			queryClient.invalidateQueries({
-				queryKey: [["budget", "getBudgets"]],
-			});
+			void utils.budget.getBudgets.invalidate();
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to save budget");
@@ -74,9 +71,7 @@ export function BudgetRow({
 	const deleteBudget = api.budget.deleteBudget.useMutation({
 		onSuccess: () => {
 			toast.success("Budget deleted successfully!");
-			queryClient.invalidateQueries({
-				queryKey: [["budget", "getBudgets"]],
-			});
+			void utils.budget.getBudgets.invalidate();
 		},
 		onError: (error) => {
 			toast.error(error.message || "Failed to delete budget");
@@ -156,10 +151,12 @@ export function BudgetRow({
 
 	return (
 		<div className="overflow-hidden rounded-lg border bg-card">
-			<button
-				className="group flex w-full cursor-pointer items-center gap-3 p-3 text-left transition-colors hover:bg-accent/50 sm:gap-4 sm:p-4"
+			<Button
+				aria-expanded={isExpanded}
+				className="group flex h-auto w-full items-center gap-3 rounded-none p-3 text-left hover:bg-accent/50 sm:gap-4 sm:p-4"
 				onClick={handleRowClick}
 				type="button"
+				variant="ghost"
 			>
 				<div
 					className={cn(
@@ -194,7 +191,10 @@ export function BudgetRow({
 
 				<div className="flex items-center justify-end gap-1 whitespace-nowrap text-right tabular-nums">
 					<span
-						className={`font-medium sm:text-lg ${isOverBudget ? "text-amber-500" : "text-foreground"}`}
+						className={cn(
+							"font-medium sm:text-lg",
+							isOverBudget ? "text-amber-500" : "text-foreground",
+						)}
 					>
 						{formatCurrency(budget.actualSpend, budget.currency)}
 					</span>
@@ -202,26 +202,29 @@ export function BudgetRow({
 						/ {formatCurrency(budget.effectiveAmount, budget.currency)}
 					</span>
 				</div>
-			</button>
+			</Button>
 
 			<div
-				className={`overflow-hidden transition-all duration-300 ease-in-out ${
-					isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-				}`}
+				className={cn(
+					"grid transition-all duration-300 ease-in-out",
+					isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+				)}
 			>
+				<div className="overflow-hidden">
 				<div className="space-y-4 border-t bg-muted/50 p-4">
 					<div className="space-y-2">
-						<Label htmlFor="budget-amount">Budget Amount</Label>
+						<Label htmlFor={`budget-amount-${budget.id}`}>Budget Amount</Label>
 						<div className="relative">
 							<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground tabular-nums">
 								{getCurrencySymbol(budget.currency)}
 							</span>
 							<Input
-								className={`border-none bg-transparent pl-6 text-2xl text-foreground tabular-nums outline-none placeholder:text-muted-foreground sm:text-3xl ${
-									isPegged ? "text-muted-foreground" : ""
-								}`}
+								className={cn(
+									"border-none bg-transparent pl-6 text-2xl text-foreground tabular-nums outline-none placeholder:text-muted-foreground sm:text-3xl",
+									isPegged && "text-muted-foreground",
+								)}
 								disabled={isPegged}
-								id="budget-amount"
+								id={`budget-amount-${budget.id}`}
 								min="0"
 								onBlur={() => handleSave()}
 								onChange={(e) => setAmount(e.target.value)}
@@ -283,6 +286,7 @@ export function BudgetRow({
 						</Button>
 					</div>
 				</div>
+				</div>
 			</div>
 
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
@@ -301,8 +305,12 @@ export function BudgetRow({
 						>
 							Cancel
 						</Button>
-						<Button onClick={handleConfirmDelete} variant="destructive">
-							Delete
+						<Button
+							disabled={deleteBudget.isPending}
+							onClick={handleConfirmDelete}
+							variant="destructive"
+						>
+							{deleteBudget.isPending ? "Deleting..." : "Delete"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

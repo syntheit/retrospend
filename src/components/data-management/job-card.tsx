@@ -55,18 +55,18 @@ interface JobCardProps {
 function getStatusIcon(status: JobCardData["status"]) {
 	switch (status) {
 		case "QUEUED":
-			return <Clock className="h-4 w-4 text-muted-foreground" />;
+			return <Clock aria-hidden="true" className="h-4 w-4 text-muted-foreground" />;
 		case "PROCESSING":
-			return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+			return <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin text-blue-500" />;
 		case "READY_FOR_REVIEW":
 		case "REVIEWING":
 			return null; // No icon for review status
 		case "COMPLETED":
-			return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+			return <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-500" />;
 		case "FAILED":
-			return <XCircle className="h-4 w-4 text-destructive" />;
+			return <XCircle aria-hidden="true" className="h-4 w-4 text-destructive" />;
 		case "CANCELLED":
-			return <XCircle className="h-4 w-4 text-muted-foreground" />;
+			return <XCircle aria-hidden="true" className="h-4 w-4 text-muted-foreground" />;
 	}
 }
 
@@ -220,6 +220,7 @@ export function JobCard({
 							job.status === "REVIEWING") &&
 							onDelete && (
 								<Button
+									aria-label="Delete import job"
 									className="h-8 w-8 p-0"
 									onClick={onDelete}
 									size="sm"
@@ -231,6 +232,7 @@ export function JobCard({
 
 						{job.status === "QUEUED" && onCancel && (
 							<Button
+								aria-label="Cancel import job"
 								className="h-8 w-8 p-0"
 								onClick={onCancel}
 								size="sm"
@@ -245,6 +247,7 @@ export function JobCard({
 							job.status === "CANCELLED") &&
 							onDelete && (
 								<Button
+									aria-label="Delete import job"
 									className="h-8 w-8 p-0"
 									onClick={onDelete}
 									size="sm"

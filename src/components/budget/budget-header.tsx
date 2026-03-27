@@ -1,40 +1,31 @@
-import {
-	ChevronLeft,
-	ChevronRight,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
-import { Button } from "~/components/ui/button";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "~/components/ui/card";
 
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
+import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { cn } from "~/lib/utils";
 import type { Budget } from "~/types/budget-types";
 
 interface BudgetHeaderProps {
 	selectedMonth: Date;
-	onNavigateMonth: (direction: "prev" | "next") => void;
 	homeCurrency: string;
 	budgets: Budget[];
 	usdToHomeCurrencyRate: number;
-	hasPreviousBudgets?: boolean;
 	serverTime?: Date;
 }
 
 export function BudgetHeader({
 	selectedMonth,
-	onNavigateMonth,
 	homeCurrency,
 	budgets,
 	usdToHomeCurrencyRate,
-	hasPreviousBudgets,
 	serverTime,
 }: BudgetHeaderProps) {
 	const { formatCurrency } = useCurrencyFormatter();
+	const { fromUSD } = useCurrencyConversion();
 	const {
 		displayAmountInUSD,
-		totalSpent,
 		totalSpentInUSD,
 		remainingInUSD,
 		isOverBudget,
@@ -43,16 +34,27 @@ export function BudgetHeader({
 		budgets,
 	});
 
-	// Convert USD values to home currency for display
-	const displayAmountInHomeCurrency =
-		displayAmountInUSD * usdToHomeCurrencyRate;
-	const totalSpentInHomeCurrency = totalSpentInUSD * usdToHomeCurrencyRate;
-	const remainingInHomeCurrency = remainingInUSD * usdToHomeCurrencyRate;
+	// Convert USD values to home currency using the centralized conversion function
+	const displayAmountInHomeCurrency = fromUSD(
+		displayAmountInUSD,
+		homeCurrency,
+		usdToHomeCurrencyRate,
+	);
+	const totalSpentInHomeCurrency = fromUSD(
+		totalSpentInUSD,
+		homeCurrency,
+		usdToHomeCurrencyRate,
+	);
+	const remainingInHomeCurrency = fromUSD(
+		Math.abs(remainingInUSD),
+		homeCurrency,
+		usdToHomeCurrencyRate,
+	);
 
-	const hasData = budgets.length > 0 || totalSpent > 0;
+	const hasData = budgets.length > 0 || totalSpentInUSD > 0;
 
 	// Use server time for consistent timezone handling
-	const today = serverTime ? new Date(serverTime) : new Date();
+	const today = serverTime ?? new Date();
 	const isPastMonth =
 		selectedMonth.getFullYear() < today.getFullYear() ||
 		(selectedMonth.getFullYear() === today.getFullYear() &&
@@ -60,44 +62,17 @@ export function BudgetHeader({
 
 	return (
 		<div className="space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-4">
-					<h1 className="font-bold text-2xl tracking-tight">
-						{selectedMonth.toLocaleDateString("en-US", {
-							month: "long",
-							year: "numeric",
-						})}
-					</h1>
-					<div className="flex items-center gap-1">
-						<Button
-							className="h-8 w-8"
-							disabled={!hasPreviousBudgets}
-							onClick={() => onNavigateMonth("prev")}
-							size="icon"
-							variant="ghost"
-						>
-							<ChevronLeft className="h-4 w-4" />
-						</Button>
-						<Button
-							className="h-8 w-8"
-							onClick={() => onNavigateMonth("next")}
-							size="icon"
-							variant="ghost"
-						>
-							<ChevronRight className="h-4 w-4" />
-						</Button>
-					</div>
-				</div>
-				{isPastMonth && hasData && (
+			{isPastMonth && hasData && (
+				<div className="flex justify-end">
 					<div className="rounded-full bg-stone-100 px-4 py-1.5 font-medium text-sm text-stone-600 dark:bg-stone-800 dark:text-stone-400">
 						Monthly Wrap-up
 					</div>
-				)}
-			</div>
+				</div>
+			)}
 
 			{isPastMonth ? (
 				hasData ? (
-					<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white shadow-2xl dark:from-indigo-900 dark:via-purple-900 dark:to-pink-900">
+					<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 shadow-2xl dark:from-indigo-900 dark:via-purple-900 dark:to-pink-900">
 						<div className="absolute top-0 right-0 h-96 w-96 translate-x-20 -translate-y-20 rounded-full bg-white/10 blur-3xl" />
 						<div className="absolute bottom-0 left-0 h-64 w-64 -translate-x-16 translate-y-16 rounded-full bg-white/10 blur-2xl" />
 
@@ -105,17 +80,17 @@ export function BudgetHeader({
 							<div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
 								<div className="space-y-6">
 									<div className="space-y-2">
-										<p className="font-medium text-indigo-100 text-lg uppercase tracking-wide">
+										<p className="font-medium text-indigo-100 text-lg tracking-wide">
 											You spent
 										</p>
-										<p className="font-bold text-6xl tabular-nums tracking-tighter sm:text-7xl lg:text-8xl">
+										<p className="font-bold text-4xl tabular-nums tracking-tighter text-white sm:text-6xl lg:text-8xl">
 											{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
 										</p>
 									</div>
 
 									<div className="flex flex-wrap items-center gap-4">
 										<div className="flex items-center gap-2 rounded-2xl bg-white/20 px-4 py-2 backdrop-blur-md">
-											<p className="font-semibold text-lg tabular-nums">
+											<p className="font-semibold text-lg tabular-nums text-white">
 												{Math.round(percentUsed)}%
 											</p>
 											<p className="text-sm text-white/80">of your budget</p>
@@ -131,19 +106,19 @@ export function BudgetHeader({
 											) : (
 												<TrendingUp className="h-5 w-5 text-emerald-200" />
 											)}
-											<span className="font-semibold text-lg">
+											<span className="font-semibold text-lg text-white">
 												{isOverBudget ? "Over Budget" : "Under Control"}
 											</span>
 										</div>
 									</div>
 								</div>
 
-								<div className="grid grid-cols-2 gap-8 border-white/10 border-t pt-8 lg:border-t-0 lg:pt-0">
+								<div className="grid grid-cols-2 gap-8 border-white/20 border-t pt-8 lg:border-t-0 lg:pt-0">
 									<div className="space-y-1">
-										<p className="font-medium text-sm text-white/60 uppercase tracking-widest">
+										<p className="font-medium text-sm text-white/60 tracking-wide">
 											Budgeted
 										</p>
-										<p className="font-bold text-2xl tabular-nums sm:text-3xl">
+										<p className="font-bold text-2xl tabular-nums text-white sm:text-3xl">
 											{formatCurrency(
 												displayAmountInHomeCurrency,
 												homeCurrency,
@@ -151,7 +126,7 @@ export function BudgetHeader({
 										</p>
 									</div>
 									<div className="space-y-1">
-										<p className="font-medium text-sm text-white/60 uppercase tracking-widest">
+										<p className="font-medium text-sm text-white/60 tracking-wide">
 											{isOverBudget ? "Overspent" : "Surplus"}
 										</p>
 										<p
@@ -160,10 +135,7 @@ export function BudgetHeader({
 												isOverBudget ? "text-rose-200" : "text-emerald-200",
 											)}
 										>
-											{formatCurrency(
-												Math.abs(remainingInHomeCurrency),
-												homeCurrency,
-											)}
+											{formatCurrency(remainingInHomeCurrency, homeCurrency)}
 										</p>
 									</div>
 								</div>
@@ -180,7 +152,7 @@ export function BudgetHeader({
 					</Card>
 				)
 			) : (
-				<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-stone-800 via-stone-700 to-stone-900 text-white shadow-xl dark:from-stone-900 dark:via-stone-800 dark:to-black">
+				<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-stone-800 via-stone-700 to-stone-900 shadow-xl dark:from-stone-900 dark:via-stone-800 dark:to-black">
 					<div className="absolute top-0 right-0 h-64 w-64 translate-x-20 -translate-y-20 rounded-full bg-white/5" />
 					<div className="absolute bottom-0 left-0 h-48 w-48 -translate-x-16 translate-y-16 rounded-full bg-white/5" />
 
@@ -188,10 +160,10 @@ export function BudgetHeader({
 						<div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
 							<div className="space-y-4">
 								<div className="space-y-1">
-									<p className="font-medium text-sm text-stone-300">
+									<p className="font-medium text-sm text-white/60">
 										Total Monthly Budget
 									</p>
-									<p className="font-bold text-4xl tabular-nums tracking-tight sm:text-5xl">
+									<p className="font-bold text-4xl tabular-nums tracking-tight text-white sm:text-5xl">
 										{formatCurrency(displayAmountInHomeCurrency, homeCurrency)}
 									</p>
 								</div>
@@ -201,8 +173,8 @@ export function BudgetHeader({
 										className={cn(
 											"flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium text-xs",
 											isOverBudget
-												? "border-rose-500/20 bg-rose-500/10 text-rose-500"
-												: "border-emerald-500/20 bg-emerald-500/10 text-emerald-500",
+												? "border-rose-500/20 bg-rose-500/10 text-rose-400"
+												: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
 										)}
 									>
 										{isOverBudget ? (
@@ -212,7 +184,7 @@ export function BudgetHeader({
 										)}
 										{isOverBudget ? "Overspent" : "Under Limit"}
 									</div>
-									<span className="text-sm text-stone-400 tabular-nums">
+									<span className="text-sm text-white/50 tabular-nums">
 										{Math.round(percentUsed)}% of budget used
 									</span>
 								</div>
@@ -220,15 +192,15 @@ export function BudgetHeader({
 
 							<div className="grid grid-cols-2 gap-4 lg:flex lg:gap-8">
 								<div className="space-y-1">
-									<p className="font-medium text-stone-400 text-xs uppercase tracking-wider">
+									<p className="font-medium text-white/60 text-xs tracking-wide">
 										Spent
 									</p>
-									<p className="font-semibold text-xl tabular-nums">
+									<p className="font-semibold text-xl tabular-nums text-white">
 										{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
 									</p>
 								</div>
 								<div className="space-y-1">
-									<p className="font-medium text-stone-400 text-xs uppercase tracking-wider">
+									<p className="font-medium text-white/60 text-xs tracking-wide">
 										{isOverBudget ? "Overage" : "Remaining"}
 									</p>
 									<p
@@ -237,10 +209,7 @@ export function BudgetHeader({
 											isOverBudget ? "text-rose-400" : "text-emerald-400",
 										)}
 									>
-										{formatCurrency(
-											Math.abs(remainingInHomeCurrency),
-											homeCurrency,
-										)}{" "}
+										{formatCurrency(remainingInHomeCurrency, homeCurrency)}{" "}
 										<span className="text-sm opacity-70">
 											{isOverBudget ? "over" : "left"}
 										</span>

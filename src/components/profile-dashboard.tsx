@@ -1,8 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { IconAlertTriangle } from "@tabler/icons-react";
-import { Camera } from "lucide-react";
+import { AlertTriangle, Camera } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +12,7 @@ import { PasswordForm } from "~/components/settings/password-form";
 import { TwoFactorSettings } from "~/components/settings/two-factor-settings";
 
 import { Badge } from "~/components/ui/badge";
+import { UserAvatar } from "~/components/ui/user-avatar";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -73,6 +73,8 @@ export function ProfileDashboard() {
 		},
 	});
 
+	const { data: avatarData } = api.profile.getMyAvatar.useQuery();
+
 	if (isPending) {
 		return (
 			<Card>
@@ -98,6 +100,7 @@ export function ProfileDashboard() {
 	}
 
 	const user = session.user as ExtendedUser;
+	const avatarUrl = avatarData?.avatarUrl ?? user.image ?? null;
 	const isAdmin = user.role === "ADMIN";
 
 	const onSubmit = (values: ProfileFormValues) => {
@@ -125,22 +128,14 @@ export function ProfileDashboard() {
 						<CardContent className="flex items-center gap-4 p-6">
 							{/* Avatar */}
 							<div className="group relative">
-								<div className="relative flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full border bg-secondary font-bold text-lg text-muted-foreground shadow-sm">
-									{user.image ? (
-										<Image
-											alt={user.name || ""}
-											className="h-full w-full object-cover transition-transform group-hover:scale-110"
-											height={64}
-											src={user.image}
-											width={64}
-										/>
-									) : (
-										<span className="transition-transform group-hover:scale-110">
-											{initials}
-										</span>
-									)}
+								<div className="relative cursor-pointer overflow-hidden rounded-full">
+									<UserAvatar
+										avatarUrl={avatarUrl}
+										name={user.name || "User"}
+										size="lg"
+									/>
 									{/* Hover Overlay */}
-									<div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+									<div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 md:opacity-0 transition-opacity md:group-hover:opacity-100">
 										<Camera className="h-5 w-5 text-white" />
 									</div>
 								</div>
@@ -241,10 +236,10 @@ export function ProfileDashboard() {
 													{appFeatures?.isEmailEnabled &&
 														!user.emailVerified && (
 															<Badge
-																className="h-5 gap-1 border-warning/20 bg-warning/5 px-2 text-[10px] text-warning uppercase tracking-wider transition-colors hover:bg-warning/10"
+																className="h-5 gap-1 border-warning/20 bg-warning/5 px-2 text-[10px] text-warning tracking-wide transition-colors hover:bg-warning/10"
 																variant="outline"
 															>
-																<IconAlertTriangle className="size-3" />
+																<AlertTriangle className="size-3" />
 																Unverified
 															</Badge>
 														)}

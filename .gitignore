@@ -7,6 +7,9 @@
 
 # testing
 /coverage
+/playwright/.auth/
+/playwright-report/
+/test-results/
 
 # database
 /prisma/db.sqlite
@@ -76,6 +79,9 @@ docker-compose.override.yml
 .cursor/
 *.sublime-project
 *.sublime-workspace
+
+# uploads (local dev)
+/uploads
 
 # nix
 .direnv/
