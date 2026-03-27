@@ -36,9 +36,6 @@ interface UseWealthDashboardProps {
 	isLoading: boolean;
 	homeCurrency: string;
 	netWorth30DaysAgo?: number;
-	sharedReceivables?: number;
-	sharedPayables?: number;
-	includeSharedInNetWorth?: boolean;
 }
 
 /**
@@ -51,9 +48,6 @@ export function useWealthDashboard({
 	isLoading,
 	homeCurrency = DEFAULT_CURRENCY,
 	netWorth30DaysAgo = 0,
-	sharedReceivables = 0,
-	sharedPayables = 0,
-	includeSharedInNetWorth = true,
 }: UseWealthDashboardProps) {
 	// Filter State
 	const [search, setSearch] = useState("");
@@ -141,32 +135,15 @@ export function useWealthDashboard({
 				? weightedAPRSum / totalLiabilityBalanceForAPR
 				: 0;
 
-		const effectiveReceivables = includeSharedInNetWorth
-			? sharedReceivables
-			: 0;
-		const effectivePayables = includeSharedInNetWorth ? sharedPayables : 0;
-
 		return {
-			assets: totalAssets + effectiveReceivables,
-			liabilities: totalLiabilities + effectivePayables,
-			netWorth:
-				totalAssets +
-				effectiveReceivables -
-				totalLiabilities -
-				effectivePayables,
+			assets: totalAssets,
+			liabilities: totalLiabilities,
+			netWorth: totalAssets - totalLiabilities,
 			totalLiquidAssets,
 			weightedAPR,
 			netWorth30DaysAgo,
-			sharedReceivables,
-			sharedPayables,
 		};
-	}, [
-		filteredData,
-		netWorth30DaysAgo,
-		sharedReceivables,
-		sharedPayables,
-		includeSharedInNetWorth,
-	]);
+	}, [filteredData, netWorth30DaysAgo]);
 
 	// 4. Selectors for Charts
 	const historyChartData = useMemo(() => {

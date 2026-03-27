@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AlertTriangle, Eye, EyeOff, Plus, Users } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
@@ -52,10 +52,6 @@ export default function WealthPage() {
 		currency: homeCurrency,
 	});
 
-	const { data: sharedBalances } = api.wealth.getSharedBalances.useQuery({
-		currency: homeCurrency,
-	});
-
 	const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
 		new Set(),
 	);
@@ -64,11 +60,6 @@ export default function WealthPage() {
 		null,
 	);
 	const [isPrivacyMode, setIsPrivacyMode] = useState(false);
-	const [includeSharedInNetWorth, setIncludeSharedInNetWorth] = useState(() => {
-		if (typeof window === "undefined") return true;
-		const stored = localStorage.getItem("wealth:includeShared");
-		return stored !== null ? stored === "true" : true;
-	});
 
 	useEffect(() => {
 		if (settings?.defaultPrivacyMode !== undefined) {
@@ -89,9 +80,6 @@ export default function WealthPage() {
 		isLoading,
 		homeCurrency,
 		netWorth30DaysAgo: dashboardData?.netWorth30DaysAgo,
-		sharedReceivables: sharedBalances?.receivables ?? 0,
-		sharedPayables: sharedBalances?.payables ?? 0,
-		includeSharedInNetWorth,
 	});
 
 	const deleteAsset = api.wealth.deleteAsset.useMutation({
@@ -203,22 +191,6 @@ export default function WealthPage() {
 			<SiteHeader
 				actions={
 					<div className="flex items-center gap-2">
-						{(sharedBalances?.receivables ?? 0) > 0 ||
-						(sharedBalances?.payables ?? 0) > 0 ? (
-							<Button
-								className="gap-1.5 text-xs"
-								onClick={() => {
-									const next = !includeSharedInNetWorth;
-									setIncludeSharedInNetWorth(next);
-									localStorage.setItem("wealth:includeShared", String(next));
-								}}
-								size="sm"
-								variant={includeSharedInNetWorth ? "outline" : "ghost"}
-							>
-								<Users className="h-3.5 w-3.5" />
-								Shared
-							</Button>
-						) : null}
 						<Button
 							aria-label={isPrivacyMode ? "Disable privacy mode" : "Enable privacy mode"}
 							className="text-muted-foreground"
@@ -368,7 +340,7 @@ export default function WealthPage() {
 								onDeleteSelected={handleDeleteSelected}
 								onSelectionChange={setSelectedAssetIds}
 								selectedRows={selectedAssetIds}
-								totalNetWorth={stats.netWorth}
+								totalNetWorth={stats.assets}
 							/>
 
 							{hasMultipleCurrencies && (
@@ -376,7 +348,6 @@ export default function WealthPage() {
 									<WealthCurrencyExposure
 										assets={normalizedAssets}
 										isPrivacyMode={isPrivacyMode}
-										totalNetWorth={dashboardData.totalNetWorth}
 									/>
 								</div>
 							)}

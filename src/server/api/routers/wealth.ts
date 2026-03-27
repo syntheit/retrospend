@@ -6,7 +6,6 @@ import { normalizeDate } from "~/lib/date";
 import { toNumberWithDefault } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { fromUSD, toUSD } from "~/server/currency";
-import { getSharedBalanceSummary } from "~/server/services/shared-expense-integration";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
 
@@ -328,39 +327,6 @@ export const wealthRouter = createTRPCRouter({
 				monthsActive: Math.round(monthsActive),
 			};
 		}),
-	/**
-	 * Returns aggregate shared receivables and payables in the target currency.
-	 * Receivables = money owed TO the user (appears as an asset).
-	 * Payables = money the user OWES (appears as a liability).
-	 */
-	getSharedBalances: protectedProcedure
-		.input(z.object({ currency: z.string().length(3).optional() }).optional())
-		.query(async ({ ctx, input }) => {
-			const { db, session } = ctx;
-			const targetCurrency = input?.currency ?? BASE_CURRENCY;
-
-			const { receivablesUSD, payablesUSD } = await getSharedBalanceSummary(
-				db,
-				session.user.id,
-			);
-
-			// Convert USD to target currency
-			const wealthService = new WealthService(db);
-			const { rate, rateType } = await wealthService.resolveExchangeRate(
-				targetCurrency,
-				normalizeDate(new Date()),
-			);
-			const convertToTarget = (usdVal: number) =>
-				fromUSD(usdVal, targetCurrency, rate);
-
-			return {
-				receivables: convertToTarget(receivablesUSD),
-				payables: convertToTarget(payablesUSD),
-				receivablesUSD,
-				payablesUSD,
-			};
-		}),
-
 	deleteAsset: protectedProcedure
 		.input(
 			z.object({

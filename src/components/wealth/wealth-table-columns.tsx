@@ -179,15 +179,16 @@ export function createWealthColumns(
 	// Balance column
 	columns.push({
 		id: "balanceInTarget",
-		header: () => <div className="text-right">Balance</div>,
+		header: "Balance",
 		accessorKey: "balanceInTargetCurrency",
 		enableSorting: true,
+		meta: { align: "right" },
 		cell: ({ row }) => {
 			const { balanceInTargetCurrency, currency, balance } = row.original;
 			const isForeign = currency !== homeCurrency;
 
 			return (
-				<div className="flex flex-col items-end gap-0.5">
+				<div className="flex w-full flex-col items-end gap-0.5">
 					<div className="text-right font-medium text-sm tabular-nums leading-tight tracking-tight">
 						{isPrivacyMode
 							? maskAmount(balanceInTargetCurrency)

@@ -13,38 +13,42 @@ interface WealthCurrencyExposureProps {
 	assets: {
 		currency: string;
 		balanceInUSD: number;
+		type: string;
 	}[];
-	totalNetWorth: number;
 	isPrivacyMode?: boolean;
 }
 
 export function WealthCurrencyExposure({
 	assets,
-	totalNetWorth,
 	isPrivacyMode = false,
 }: WealthCurrencyExposureProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const data = useMemo(() => {
+		// Liabilities reduce their currency's exposure rather than inflating it
 		const exposure = assets.reduce(
 			(acc, curr) => {
-				acc[curr.currency] = (acc[curr.currency] || 0) + curr.balanceInUSD;
+				const isLiability = curr.type.startsWith("LIABILITY_");
+				const value = isLiability ? -curr.balanceInUSD : curr.balanceInUSD;
+				acc[curr.currency] = (acc[curr.currency] || 0) + value;
 				return acc;
 			},
 			{} as Record<string, number>,
 		);
 
+		const total = Object.values(exposure).reduce((sum, v) => sum + v, 0);
+
 		return Object.entries(exposure)
 			.map(([currency, value]) => ({
 				currency,
 				value,
-				percentage: totalNetWorth > 0 ? (value / totalNetWorth) * 100 : 0,
+				percentage: total > 0 ? (value / total) * 100 : 0,
 			}))
 			.sort((a, b) => b.value - a.value);
-	}, [assets, totalNetWorth]);
+	}, [assets]);
 
 	// Empty state
-	if (data.length === 0 || totalNetWorth === 0) {
+	if (data.length === 0 || assets.length === 0) {
 		return (
 			<Card>
 				<CardHeader>
@@ -113,7 +117,7 @@ export function WealthCurrencyExposure({
 									"h-full rounded-full transition-all",
 									getBarColor(index),
 								)}
-								style={{ width: `${item.percentage}%` }}
+								style={{ width: `${Math.max(0, Math.min(100, item.percentage))}%` }}
 							/>
 						</div>
 					</div>

@@ -701,6 +701,8 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 	const isOrganizer = myParticipant?.role === "ORGANIZER";
 	const isEditor =
 		myParticipant?.role === "EDITOR" || myParticipant?.role === "ORGANIZER";
+	const isViewer = myParticipant?.role === "VIEWER";
+	const canContribute = !!myParticipant && !isViewer;
 
 	const canClosePeriod =
 		isOrganizer || project?.billingClosePermission === "ANY_PARTICIPANT";
@@ -719,6 +721,14 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 		exportSettlementMutation.isPending ||
 		exportPeriodMutation.isPending ||
 		exportPdfMutation.isPending;
+
+	const handleAddExpense = canContribute ? () =>
+		openNewExpense({
+			projectId: id,
+			projectName: project?.name,
+			isSolo,
+			projectDefaultCurrency: project?.primaryCurrency,
+		}) : undefined;
 
 	return (
 		<>
@@ -758,14 +768,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								isOrganizer={isOrganizer}
 								isSolo={isSolo}
 								onActivityOpen={() => setActivityOpen(true)}
-								onAddExpense={() =>
-									openNewExpense({
-										projectId: id,
-										projectName: project?.name,
-										isSolo,
-										projectDefaultCurrency: project?.primaryCurrency,
-									})
-								}
+								onAddExpense={handleAddExpense}
 								onExportExpenses={handleExportExpenses}
 								onExportSettlement={
 									!isSolo ? handleExportSettlement : undefined
@@ -791,8 +794,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								}}
 								showPeriodSummaryExport={isOngoing && !!selectedPeriodId}
 								unseenCount={project.unseenChangesCount}
-								startDate={project.startDate}
-								endDate={project.endDate}
 								primaryCurrency={project.primaryCurrency}
 								expenseCount={project.categoryStats.reduce((sum, s) => sum + s.count, 0)}
 								currentUserId={userId}
@@ -812,9 +813,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 									budgetCurrency={
 										project.budgetCurrency ?? project.primaryCurrency
 									}
-									endDate={project.endDate}
 									spent={project.totalSpent}
-									startDate={project.startDate}
 								/>
 							)}
 
@@ -838,14 +837,8 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								currentParticipant={{ type: project.myParticipantType, id: project.myParticipantId }}
 								pendingFilterTrigger={pendingFilterKey}
 								isSolo={isSolo}
-								onAddExpense={() =>
-									openNewExpense({
-										projectId: id,
-										projectName: project?.name,
-										isSolo,
-										projectDefaultCurrency: project?.primaryCurrency,
-									})
-								}
+								isReadOnly={isViewer}
+								onAddExpense={handleAddExpense}
 								projectId={id}
 							/>
 					</div>
@@ -875,8 +868,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 							: null,
 						budgetCurrency: project.budgetCurrency,
 						primaryCurrency: project.primaryCurrency,
-						startDate: project.startDate,
-						endDate: project.endDate,
 						status: project.status,
 						billingCycleLength: project.billingCycleLength,
 						billingCycleDays: project.billingCycleDays,
@@ -964,16 +955,6 @@ function GuestProjectView({ id }: { id: string }) {
 	const guestMetaParts: string[] = [];
 	if (!isSolo && project.participants.length > 0) {
 		guestMetaParts.push(`${project.participants.length} participant${project.participants.length !== 1 ? "s" : ""}`);
-	}
-	if (project.startDate ?? project.endDate) {
-		const fmt = (d: Date) => format(d, "MMM d");
-		if (project.startDate && project.endDate) {
-			guestMetaParts.push(`${fmt(project.startDate)}\u2013${fmt(project.endDate)}`);
-		} else if (project.startDate) {
-			guestMetaParts.push(`From ${fmt(project.startDate)}`);
-		} else {
-			guestMetaParts.push(`Until ${fmt(project.endDate!)}`);
-		}
 	}
 	guestMetaParts.push(project.primaryCurrency);
 	guestMetaParts.push(`${guestExpenseCount} expense${guestExpenseCount !== 1 ? "s" : ""}`);
@@ -1076,16 +1057,6 @@ function ViewerProjectView({ id }: { id: string }) {
 	if (!isSolo && project.participants.length > 0) {
 		viewerMetaParts.push(`${project.participants.length} participant${project.participants.length !== 1 ? "s" : ""}`);
 	}
-	if (project.startDate ?? project.endDate) {
-		const fmt = (d: Date) => format(d, "MMM d");
-		if (project.startDate && project.endDate) {
-			viewerMetaParts.push(`${fmt(project.startDate)}\u2013${fmt(project.endDate)}`);
-		} else if (project.startDate) {
-			viewerMetaParts.push(`From ${fmt(project.startDate)}`);
-		} else {
-			viewerMetaParts.push(`Until ${fmt(project.endDate!)}`);
-		}
-	}
 	viewerMetaParts.push(project.primaryCurrency);
 	viewerMetaParts.push(`${viewerExpenseCount} expense${viewerExpenseCount !== 1 ? "s" : ""}`);
 	const viewerMetaSubtitle = viewerMetaParts.join(" · ");
@@ -1161,16 +1132,6 @@ function PublicProjectView({ id }: { id: string }) {
 	if (!isSolo && project.participants.length > 0) {
 		publicMetaParts.push(`${project.participants.length} participant${project.participants.length !== 1 ? "s" : ""}`);
 	}
-	if (project.startDate ?? project.endDate) {
-		const fmt = (d: Date) => format(d, "MMM d");
-		if (project.startDate && project.endDate) {
-			publicMetaParts.push(`${fmt(project.startDate)}\u2013${fmt(project.endDate)}`);
-		} else if (project.startDate) {
-			publicMetaParts.push(`From ${fmt(project.startDate)}`);
-		} else {
-			publicMetaParts.push(`Until ${fmt(project.endDate!)}`);
-		}
-	}
 	publicMetaParts.push(project.primaryCurrency);
 	publicMetaParts.push(`${publicExpenseCount} expense${publicExpenseCount !== 1 ? "s" : ""}`);
 	const publicMetaSubtitle = publicMetaParts.join(" · ");
@@ -1201,9 +1162,7 @@ function PublicProjectView({ id }: { id: string }) {
 							budgetCurrency={
 								project.budgetCurrency ?? project.primaryCurrency
 							}
-							endDate={project.endDate}
 							spent={project.totalSpent}
-							startDate={project.startDate}
 						/>
 					)}
 

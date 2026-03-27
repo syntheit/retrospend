@@ -13,7 +13,6 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { TableCell, TableRow } from "~/components/ui/table";
 import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { maskAmount } from "~/lib/masking";
 import { toNumber } from "~/lib/utils";
 import { type Asset, createWealthColumns } from "./wealth-table-columns";
 
@@ -162,40 +161,20 @@ export function WealthDataTable({
 
 	const footer = React.useCallback(
 		(filteredRows: Asset[]) => {
-			let balanceTotal = 0;
-			let usdTotal = 0;
-
-			for (const row of filteredRows) {
-				balanceTotal += row.balanceInTargetCurrency;
-				usdTotal += row.balanceInUSD;
-			}
-
 			const colCount = columns.length;
 
 			return (
 				<TableRow>
 					<TableCell
 						className="text-left font-medium"
-						colSpan={colCount - (homeCurrency !== "USD" ? 2 : 1)}
+						colSpan={colCount}
 					>
 						Total ({filteredRows.length} items)
 					</TableCell>
-					<TableCell className="text-right font-medium tabular-nums">
-						{isPrivacyMode
-							? maskAmount(balanceTotal)
-							: formatCurrency(balanceTotal, homeCurrency)}
-					</TableCell>
-					{homeCurrency !== "USD" && (
-						<TableCell className="text-right font-medium tabular-nums">
-							{isPrivacyMode
-								? maskAmount(usdTotal)
-								: formatCurrency(usdTotal, "USD")}
-						</TableCell>
-					)}
 				</TableRow>
 			);
 		},
-		[columns.length, homeCurrency, isPrivacyMode, formatCurrency],
+		[columns.length],
 	);
 
 	return (

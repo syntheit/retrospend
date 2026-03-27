@@ -15,7 +15,6 @@ export default async function Layout({
 
 	void api.wealth.getDashboard.prefetch({ currency: homeCurrency });
 	void api.wealth.getRunwayStats.prefetch({ currency: homeCurrency });
-	void api.wealth.getSharedBalances.prefetch({ currency: homeCurrency });
 
 	return children;
 }

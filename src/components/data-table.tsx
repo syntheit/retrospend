@@ -44,6 +44,8 @@ interface DataRowProps<TData extends { id: string }> {
 	row: Row<TData>;
 	/** Number of visible columns - busts memo when column visibility changes */
 	cellCount: number;
+	/** Increments when column definitions change - busts memo when cell renderers change */
+	columnsVersion: number;
 	isSelected: boolean;
 	isSelectable: boolean;
 	isInPreview: boolean;
@@ -152,6 +154,7 @@ const MemoizedDataRow = React.memo(
 	(prev, next) =>
 		prev.row.original === next.row.original &&
 		prev.cellCount === next.cellCount &&
+		prev.columnsVersion === next.columnsVersion &&
 		prev.isSelected === next.isSelected &&
 		prev.isInPreview === next.isInPreview &&
 		prev.isSelectable === next.isSelectable &&
@@ -611,6 +614,16 @@ export function DataTable<TData extends { id: string }>({
 	// Number of visible columns - tells MemoizedDataRow when column layout changes
 	const cellCount = table.getVisibleLeafColumns().length;
 
+	// Track columns version so MemoizedDataRow re-renders when cell renderers change
+	// (e.g. when a privacy mode flag is toggled and columns are recreated)
+	const columnsVersionRef = React.useRef(0);
+	const prevColumnsRef = React.useRef(columns);
+	if (prevColumnsRef.current !== columns) {
+		columnsVersionRef.current += 1;
+		prevColumnsRef.current = columns;
+	}
+	const columnsVersion = columnsVersionRef.current;
+
 	// Ref to measure header height for precise overlay (used by toolbars/selection bars)
 	const headerRef = React.useRef<HTMLTableSectionElement>(null);
 	const [headerHeight, setHeaderHeight] = React.useState("0px");
@@ -762,17 +775,23 @@ export function DataTable<TData extends { id: string }>({
 												{header.isPlaceholder ? null : (
 													<div
 														className={cn(
-															"flex select-none items-center justify-between gap-2 rounded-md transition-colors",
+															"flex select-none items-center gap-2 rounded-md transition-colors",
+															thMeta?.align === "right" ? "justify-end" : "justify-between",
 															canSort && "cursor-pointer",
 														)}
 													>
-														<span className="flex-1 truncate text-left font-medium">
+														{thMeta?.align === "right" && sortIcon && (
+															<span className="flex flex-shrink-0 items-center text-muted-foreground/50">
+																{sortIcon}
+															</span>
+														)}
+														<span className={cn("truncate font-medium", thMeta?.align === "right" ? "text-right" : "flex-1 text-left")}>
 															{flexRender(
 																header.column.columnDef.header,
 																header.getContext(),
 															)}
 														</span>
-														{sortIcon && (
+														{thMeta?.align !== "right" && sortIcon && (
 															<span className="flex flex-shrink-0 items-center text-muted-foreground/50">
 																{sortIcon}
 															</span>
@@ -806,6 +825,7 @@ export function DataTable<TData extends { id: string }>({
 										return (
 											<MemoizedDataRow
 												cellCount={cellCount}
+												columnsVersion={columnsVersion}
 												hasClickHandler={!!onRowClick}
 												hasSelectionMode={hasSelectionMode}
 												isInPreview={isInPreview}
