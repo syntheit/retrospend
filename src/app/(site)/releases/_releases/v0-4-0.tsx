@@ -1,14 +1,7 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Badge } from "~/components/ui/badge"
-import { DemoContainer } from "~/app/(site)/docs/_components/demo-container"
-
-const LazySplitCalculator = dynamic(
-	() => import("~/app/(site)/docs/_components/demo-split-calculator").then((m) => m.DemoSplitCalculator),
-	{ ssr: false },
-)
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
 	return (
@@ -135,9 +128,6 @@ export default function ReleaseV040() {
 					"Shared transactions appear in the main table with participant count and total",
 				]} />
 				<Screenshot src="add-expense-pizza-split-evenly.png" alt="Splitting a pizza expense evenly" />
-				<DemoContainer title="Split Calculator">
-					<LazySplitCalculator />
-				</DemoContainer>
 			</Section>
 
 			{/* ── Projects ── */}
