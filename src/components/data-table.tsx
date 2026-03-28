@@ -627,6 +627,7 @@ export function DataTable<TData extends { id: string }>({
 	// Ref to measure header height for precise overlay (used by toolbars/selection bars)
 	const headerRef = React.useRef<HTMLTableSectionElement>(null);
 	const [headerHeight, setHeaderHeight] = React.useState("0px");
+	const [colWidths, setColWidths] = React.useState<number[]>([]);
 
 	React.useLayoutEffect(() => {
 		const headerElement = headerRef.current;
@@ -634,6 +635,14 @@ export function DataTable<TData extends { id: string }>({
 
 		const updateHeight = () => {
 			setHeaderHeight(`${headerElement.offsetHeight}px`);
+			const firstRow = headerElement.querySelector("tr");
+			if (firstRow) {
+				setColWidths(
+					Array.from(firstRow.children).map(
+						(th) => (th as HTMLElement).getBoundingClientRect().width,
+					),
+				);
+			}
 		};
 
 		updateHeight();
@@ -804,7 +813,7 @@ export function DataTable<TData extends { id: string }>({
 								</TableRow>
 							))}
 						</TableHeader>
-						<TableBody>
+						<TableBody className={cn(footerContent && "[&_tr:last-child]:border-b")}>
 							{(() => {
 								const rowElements = visibleRows.length ? (
 									visibleRows.map((row, rowIndex) => {
@@ -860,14 +869,27 @@ export function DataTable<TData extends { id: string }>({
 									: rowElements;
 							})()}
 						</TableBody>
-						{footerContent && <TableFooter>{footerContent}</TableFooter>}
-					</Table>
+						</Table>
 
 					{/* Sentinel for progressive rendering / infinite scroll */}
 					{(hasMoreRows || (progressive && onReachEnd)) && (
 						<div className="h-px" ref={sentinelRef} />
 					)}
 				</div>
+
+				{/* Footer - pinned below scroll area so it's always at the bottom */}
+				{footerContent && (
+					<table className="w-full border-collapse text-sm">
+						{colWidths.length > 0 && (
+							<colgroup>
+								{colWidths.map((w, i) => (
+									<col key={i} style={{ width: w }} />
+								))}
+							</colgroup>
+						)}
+						<TableFooter>{footerContent}</TableFooter>
+					</table>
+				)}
 			</div>
 
 			{/* Pagination controls - rendered outside the border/scroll container */}

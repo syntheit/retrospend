@@ -158,7 +158,7 @@ export function DatePicker({
 				aria-expanded={open}
 				aria-label="Date Picker Input"
 				className={cn(
-					"flex h-9 w-full min-w-0 items-center rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] md:text-sm dark:bg-input/30",
+					"flex h-9 w-full min-w-0 cursor-pointer items-center rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] md:text-sm dark:bg-input/30",
 					"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
 					!date && "text-muted-foreground",
 					inputClassName,

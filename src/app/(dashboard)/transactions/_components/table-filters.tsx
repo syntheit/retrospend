@@ -1,15 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { DatePicker } from "~/components/ui/date-picker";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
+import { MonthStepper } from "~/components/date/MonthStepper";
 import { getCategoryIcon } from "~/lib/category-icons";
 import type { DateRangeState, AmountRange } from "~/hooks/use-table-filters";
 
@@ -197,14 +191,6 @@ export function TableFilters({
 	const datePresets = getDatePresets();
 	const isDateRangeActive = dateRange !== null;
 
-	// Local state for the "By month" year selector
-	const currentYear = new Date().getFullYear();
-	const defaultYear =
-		selectedYears.size > 0
-			? Math.max(...selectedYears)
-			: availableYears[0] ?? currentYear;
-	const [byMonthYear, setByMonthYear] = useState(defaultYear);
-
 	// Show expanded categories
 	const [showAllCategories, setShowAllCategories] = useState(false);
 	const CATEGORY_LIMIT = 10;
@@ -213,18 +199,38 @@ export function TableFilters({
 		: availableCategories.slice(0, CATEGORY_LIMIT);
 	const hasMoreCategories = availableCategories.length > CATEGORY_LIMIT;
 
-	// Handle month chip click in "By month" — sets the year and toggles the month
-	const handleByMonthClick = (month: number) => {
+	// Derive MonthStepper value from selected year+month
+	const monthStepperValue = useMemo(() => {
+		if (selectedYears.size !== 1 || selectedMonths.size !== 1) return null;
+		const year = [...selectedYears][0]!;
+		const month = [...selectedMonths][0]!;
+		return new Date(year, month, 1);
+	}, [selectedYears, selectedMonths]);
+
+	const monthStepperMin = useMemo(() => {
+		if (availableYears.length === 0) return undefined;
+		const minYear = Math.min(...availableYears);
+		return new Date(minYear, 0, 1);
+	}, [availableYears]);
+
+	const monthStepperMax = useMemo(() => {
+		if (availableYears.length === 0) return undefined;
+		const maxYear = Math.max(...availableYears);
+		return new Date(maxYear, 11, 31);
+	}, [availableYears]);
+
+	const handleMonthStepperChange = (date: Date) => {
 		if (dateRange) clearDateRange();
-		// Ensure the selected year matches byMonthYear
-		if (!selectedYears.has(byMonthYear)) {
-			// Clear other years and set this one by toggling
-			for (const y of selectedYears) {
-				toggleYear(y);
-			}
-			toggleYear(byMonthYear);
-		}
-		toggleMonth(month);
+		// Clear existing selections and set exactly one year+month
+		clearYears();
+		clearMonths();
+		toggleYear(date.getFullYear());
+		toggleMonth(date.getMonth());
+	};
+
+	const handleMonthStepperClear = () => {
+		clearYears();
+		clearMonths();
 	};
 
 	return (
@@ -292,44 +298,15 @@ export function TableFilters({
 					)}
 				>
 					<span className="text-muted-foreground text-[11px]">By month</span>
-					<div className="flex flex-wrap items-center gap-2">
-						<Select
-							onValueChange={(v) => setByMonthYear(Number(v))}
-							value={String(byMonthYear)}
-						>
-							<SelectTrigger className="h-7 w-[90px] text-xs" size="sm">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent position="popper">
-								{availableYears.map((y) => (
-									<SelectItem key={y} value={String(y)}>
-										{y}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<div className="flex flex-wrap gap-1">
-							{Array.from({ length: 12 }, (_, i) => i).map((month) => {
-								const isSelected =
-									selectedYears.has(byMonthYear) &&
-									selectedMonths.has(month);
-								const isAvailable = availableMonths.includes(month);
-								return (
-									<Button
-										aria-pressed={isSelected}
-										className="h-7 w-10 px-0 text-xs"
-										disabled={!isAvailable}
-										key={month}
-										onClick={() => handleByMonthClick(month)}
-										size="sm"
-										variant={isSelected ? "default" : "outline"}
-									>
-										{SHORT_MONTH_NAMES[month]}
-									</Button>
-								);
-							})}
-						</div>
-					</div>
+					<MonthStepper
+						compact
+						maxDate={monthStepperMax}
+						minDate={monthStepperMin}
+						onChange={handleMonthStepperChange}
+						onClear={handleMonthStepperClear}
+						placeholder="Select month"
+						value={monthStepperValue}
+					/>
 				</div>
 
 				{/* Custom date range */}
@@ -413,7 +390,7 @@ export function TableFilters({
 						>
 							{showAllCategories
 								? "Show less"
-								: `Show all (${availableCategories.length})`}
+								: `+${availableCategories.length - CATEGORY_LIMIT} more`}
 						</Button>
 					)}
 				</section>
