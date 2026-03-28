@@ -32,6 +32,7 @@ interface DatePickerProps {
 	onSelect?: (date: Date | undefined) => void;
 	placeholder?: string;
 	className?: string;
+	inputClassName?: string;
 	fromYear?: number;
 	toYear?: number;
 }
@@ -41,6 +42,7 @@ export function DatePicker({
 	onSelect,
 	placeholder = "Pick a date",
 	className,
+	inputClassName,
 	fromYear = 1900,
 	toYear = 2100,
 }: DatePickerProps) {
@@ -159,6 +161,7 @@ export function DatePicker({
 					"flex h-9 w-full min-w-0 items-center rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] md:text-sm dark:bg-input/30",
 					"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
 					!date && "text-muted-foreground",
+					inputClassName,
 				)}
 				onBlur={(e) => {
 					if (!focusableRef.current?.contains(e.relatedTarget as Node)) {

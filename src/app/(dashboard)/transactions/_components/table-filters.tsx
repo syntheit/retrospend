@@ -339,6 +339,7 @@ export function TableFilters({
 						<DatePicker
 							className="w-44"
 							date={dateRange && !dateRange.preset ? dateRange.from : undefined}
+							inputClassName="h-7 text-xs"
 							onSelect={(from) => {
 								if (!from) return;
 								from.setHours(0, 0, 0, 0);
@@ -354,6 +355,7 @@ export function TableFilters({
 						<DatePicker
 							className="w-44"
 							date={dateRange && !dateRange.preset ? dateRange.to : undefined}
+							inputClassName="h-7 text-xs"
 							onSelect={(to) => {
 								if (!to) return;
 								to.setHours(23, 59, 59, 999);
