@@ -118,6 +118,13 @@ export const auth = betterAuth({
 						user.username = (user.username as string).toLowerCase();
 					}
 
+					// Validate username format (alphanumeric only)
+					if (user.username && !/^[a-z0-9]+$/.test(user.username as string)) {
+						throw new APIError("BAD_REQUEST", {
+							message: "Username can only contain letters and numbers",
+						});
+					}
+
 					// Check if username is already taken
 					if (user.username) {
 						const existingUsername = await db.user.findUnique({
