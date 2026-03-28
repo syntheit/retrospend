@@ -7,11 +7,12 @@ import {
 	getMethodType,
 	resolveMethodTypeId,
 } from "~/lib/payment-method-registry";
+import { CurrencyFlag } from "./currency-flag";
 
 const SIZE_MAP = {
-	sm: { circle: 28, icon: 16, text: "text-[10px]" },
-	md: { circle: 36, icon: 20, text: "text-xs" },
-	lg: { circle: 44, icon: 24, text: "text-sm" },
+	sm: { circle: 28, icon: 16, text: "text-[10px]", flagClass: "h-7 w-7" },
+	md: { circle: 36, icon: 20, text: "text-xs", flagClass: "h-9 w-9" },
+	lg: { circle: 44, icon: 24, text: "text-sm", flagClass: "h-11 w-11" },
 } as const;
 
 interface PaymentMethodIconProps {
@@ -28,8 +29,14 @@ export function PaymentMethodIcon({
 	className,
 }: PaymentMethodIconProps) {
 	const resolvedId = resolveMethodTypeId(typeId, currency);
+	const methodDef = getMethodType(resolvedId);
 	const icon = getMethodIcon(resolvedId);
-	const { circle, icon: iconSize, text } = SIZE_MAP[size];
+	const { circle, icon: iconSize, text, flagClass } = SIZE_MAP[size];
+
+	// For cash methods with a known currency, show the currency flag instead of "C"
+	if (methodDef?.category === "cash" && currency) {
+		return <CurrencyFlag className={cn(flagClass, className)} currencyCode={currency} />;
+	}
 
 	if (icon.src) {
 		const isCryptoIcon = icon.src.startsWith("/images/crypto/");
@@ -109,6 +116,9 @@ export function getPaymentMethodName(
 	if (label) return label;
 	const resolved = resolveMethodTypeId(typeId, currency);
 	const def = getMethodType(resolved);
-	if (def) return def.name;
+	if (def) {
+		if (def.category === "cash" && currency) return `Cash · ${currency}`;
+		return def.name;
+	}
 	return typeId.charAt(0).toUpperCase() + typeId.slice(1);
 }
