@@ -80,8 +80,8 @@ export function WealthCurrencyExposure({
 	};
 
 	return (
-		<Card className="flex flex-col">
-			<CardHeader className="pb-3">
+		<Card className="flex h-[220px] flex-col">
+			<CardHeader className="shrink-0 pb-3">
 				<div className="flex items-center justify-between gap-2">
 					<CardTitle>Currency Exposure</CardTitle>
 					<Badge className="text-xs" variant="outline">
@@ -89,7 +89,7 @@ export function WealthCurrencyExposure({
 					</Badge>
 				</div>
 			</CardHeader>
-			<CardContent className="space-y-3">
+			<CardContent className="min-h-0 space-y-3 overflow-y-auto">
 				{data.map((item, index) => (
 					<div className="space-y-1.5" key={item.currency}>
 						<div className="flex items-center justify-between gap-3 text-sm">

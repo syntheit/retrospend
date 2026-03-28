@@ -21,13 +21,8 @@ import { ExpandableSearch } from "~/components/table-search";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { AssetDialog } from "~/components/wealth/asset-dialog";
 import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
-import { WealthCurrencyExposure } from "~/components/wealth/wealth-currency-exposure";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
-
-const WealthAllocationChart = dynamic(
-	() => import("~/components/wealth/wealth-allocation-chart").then((m) => m.WealthAllocationChart),
-	{ ssr: false, loading: () => <Skeleton className="h-[300px] w-full rounded-xl" /> },
-);
+import { WealthPortfolioBreakdown } from "~/components/wealth/wealth-portfolio-breakdown";
 const WealthHistoryChart = dynamic(
 	() => import("~/components/wealth/wealth-history-chart").then((m) => m.WealthHistoryChart),
 	{ ssr: false, loading: () => <Skeleton className="h-[300px] w-full rounded-xl" /> },
@@ -136,23 +131,11 @@ export default function WealthPage() {
 							<Skeleton className="h-24 w-full" />
 						</div>
 
-						<div className="grid gap-6 lg:grid-cols-7">
-							<div className="lg:col-span-4">
-								<Skeleton className="h-80 w-full" />
-							</div>
-							<div className="lg:col-span-3">
-								<Skeleton className="h-80 w-full" />
-							</div>
-						</div>
+						<Skeleton className="h-80 w-full" />
 
-						<div className="grid gap-6 lg:grid-cols-7">
-							<div className="lg:col-span-5">
-								<Skeleton className="h-96 w-full" />
-							</div>
-							<div className="lg:col-span-2">
-								<Skeleton className="h-96 w-full" />
-							</div>
-						</div>
+						<Skeleton className="h-24 w-full rounded-xl" />
+
+						<Skeleton className="h-96 w-full" />
 					</div>
 				</PageContent>
 			</>
@@ -218,8 +201,8 @@ export default function WealthPage() {
 				}
 				title="Wealth"
 			/>
-			<PageContent fill>
-				<div className="flex min-h-0 flex-1 flex-col gap-6">
+			<PageContent>
+				<div className="flex flex-col gap-6">
 					{/* Summary Cards */}
 					<NetWorthSummary
 						averageMonthlySpend={runwayData?.averageMonthlySpend}
@@ -233,25 +216,24 @@ export default function WealthPage() {
 						weightedAPR={stats.weightedAPR}
 					/>
 
-					<div className="grid gap-6 lg:grid-cols-7">
-						<div className="lg:col-span-4">
-							<WealthHistoryChart
-								baseCurrency={homeCurrency}
-								data={historyChartData}
-								isPrivacyMode={isPrivacyMode}
-								onTimeRangeChange={filters.setTimeRange}
-								timeRange={filters.timeRange}
-							/>
-						</div>
-						<div className="lg:col-span-3">
-							<WealthAllocationChart
-								data={allocationChartData}
-								isPrivacyMode={isPrivacyMode}
-							/>
-						</div>
-					</div>
+					{/* Net Worth History — full width */}
+					<WealthHistoryChart
+						baseCurrency={homeCurrency}
+						data={historyChartData}
+						isPrivacyMode={isPrivacyMode}
+						onTimeRangeChange={filters.setTimeRange}
+						timeRange={filters.timeRange}
+					/>
 
-					<div className="flex min-h-0 flex-1 flex-col gap-3">
+					{/* Portfolio Breakdown — compact stacked bars */}
+					<WealthPortfolioBreakdown
+						allocationData={allocationChartData}
+						assets={normalizedAssets}
+						hasMultipleCurrencies={hasMultipleCurrencies}
+						isPrivacyMode={isPrivacyMode}
+					/>
+
+					<div className="flex flex-col gap-3">
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 								<div className="flex items-center gap-2">
 									<span className="text-muted-foreground text-sm">Type:</span>
@@ -330,28 +312,17 @@ export default function WealthPage() {
 								/>
 							</div>
 
-						<div className="flex min-h-0 flex-1 gap-6">
-							<WealthDataTable
-								columnVisibility={columnVisibility}
-								fillHeight
-								data={filteredData}
-								homeCurrency={homeCurrency}
-								isPrivacyMode={isPrivacyMode}
-								onDeleteSelected={handleDeleteSelected}
-								onSelectionChange={setSelectedAssetIds}
-								selectedRows={selectedAssetIds}
-								totalNetWorth={stats.assets}
-							/>
-
-							{hasMultipleCurrencies && (
-								<div className="w-72 shrink-0">
-									<WealthCurrencyExposure
-										assets={normalizedAssets}
-										isPrivacyMode={isPrivacyMode}
-									/>
-								</div>
-							)}
-						</div>
+						{/* Assets table — full width */}
+						<WealthDataTable
+							columnVisibility={columnVisibility}
+							data={filteredData}
+							homeCurrency={homeCurrency}
+							isPrivacyMode={isPrivacyMode}
+							onDeleteSelected={handleDeleteSelected}
+							onSelectionChange={setSelectedAssetIds}
+							selectedRows={selectedAssetIds}
+							totalNetWorth={stats.assets}
+						/>
 					</div>
 				</div>
 			</PageContent>

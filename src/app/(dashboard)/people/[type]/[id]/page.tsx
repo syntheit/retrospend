@@ -30,6 +30,7 @@ import { PageContent } from "~/components/page-content";
 import {
 	PeopleTimelineTable,
 	type AvailableCategory,
+	type AvailablePayer,
 } from "~/components/people/people-timeline-table";
 import { useRevisionHistory } from "~/components/revision-history-provider";
 import { SettleUpDialog } from "~/components/settle-up-dialog";
@@ -142,14 +143,26 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	const [expenseCount, setExpenseCount] = useState<number | null>(null);
 	const [searchValue, setSearchValue] = useState("");
 	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+	const [paidByFilter, setPaidByFilter] = useState<"all" | "me" | "them">("all");
 	const [availableCategories, setAvailableCategories] = useState<AvailableCategory[]>([]);
+	const [availablePayers, setAvailablePayers] = useState<AvailablePayer[]>([]);
 	const [filterOpen, setFilterOpen] = useState(false);
 
 	const onAvailableCategoriesChange = useCallback((cats: AvailableCategory[]) => {
-		setAvailableCategories(cats);
+		setAvailableCategories((prev) => {
+			if (prev.length === cats.length && prev.every((c, i) => c.id === cats[i]?.id)) return prev;
+			return cats;
+		});
 	}, []);
 
-	const activeFilterCount = selectedCategories.size;
+	const onAvailablePayersChange = useCallback((payers: AvailablePayer[]) => {
+		setAvailablePayers((prev) => {
+			if (prev.length === payers.length && prev.every((p, i) => p.isMe === payers[i]?.isMe)) return prev;
+			return payers;
+		});
+	}, []);
+
+	const activeFilterCount = selectedCategories.size + (paidByFilter !== "all" ? 1 : 0);
 
 	function toggleCategory(catId: string) {
 		setSelectedCategories((prev) => {
@@ -162,6 +175,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 
 	function clearFilters() {
 		setSelectedCategories(new Set());
+		setPaidByFilter("all");
 	}
 	const [editingTransactionId, setEditingTransactionId] = useState<
 		string | null
@@ -398,6 +412,83 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 		if (isSettled || !identity) return "";
 		return formatSettleLabel(netDirection, homeCurrencyTotal, homeCurrency, balances, formatCurrency);
 	}, [isSettled, identity, homeCurrencyTotal, homeCurrency, formatCurrency, balances, netDirection]);
+
+	const filterPanel = (
+		<div className="space-y-3">
+			{availableCategories.length > 0 && (
+				<div className="space-y-1.5">
+					<p className="font-medium text-muted-foreground text-xs tracking-wide">
+						Category
+					</p>
+					<div className="flex flex-wrap gap-1.5">
+						{availableCategories.map((cat) => {
+							const Icon = getCategoryIcon(cat.name, cat.icon);
+							return (
+								<Button
+									aria-pressed={selectedCategories.has(cat.id)}
+									className="h-7 gap-1.5 px-2.5 text-xs"
+									key={cat.id}
+									onClick={() => toggleCategory(cat.id)}
+									size="sm"
+									variant={selectedCategories.has(cat.id) ? "default" : "outline"}
+								>
+									<Icon
+										className={cn(
+											"h-3 w-3 shrink-0",
+											!selectedCategories.has(cat.id) &&
+												`text-${cat.color}-500`,
+										)}
+									/>
+									{cat.name}
+								</Button>
+							);
+						})}
+					</div>
+				</div>
+			)}
+			{availablePayers.length > 0 && (
+				<div className="space-y-1.5">
+					<p className="font-medium text-muted-foreground text-xs tracking-wide">
+						Paid By
+					</p>
+					<div className="flex flex-wrap gap-1.5">
+						{availablePayers.map((payer) => {
+							const key = payer.isMe ? "me" : "them";
+							const isSelected = paidByFilter === key;
+							return (
+								<Button
+									aria-pressed={isSelected}
+									className="h-7 gap-1.5 px-2.5 text-xs"
+									key={key}
+									onClick={() => setPaidByFilter(isSelected ? "all" : key)}
+									size="sm"
+									variant={isSelected ? "default" : "outline"}
+								>
+									<UserAvatar
+										avatarUrl={payer.avatarUrl}
+										className="h-4 w-4 text-[8px]"
+										name={payer.name}
+										size="xs"
+									/>
+									{payer.isMe ? "You" : payer.name.split(" ")[0]}
+								</Button>
+							);
+						})}
+					</div>
+				</div>
+			)}
+			{activeFilterCount > 0 && (
+				<Button
+					className="h-7 px-2.5 text-xs"
+					onClick={clearFilters}
+					size="sm"
+					variant="ghost"
+				>
+					Clear filters
+				</Button>
+			)}
+		</div>
+	);
 
 	if (isError) {
 		return (
@@ -733,12 +824,43 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 													</button>
 												))}
 											</div>
-											{availableCategories.length > 0 && (
-												isMobile ? (
-													<>
+											{isMobile ? (
+												<>
+													<Button
+														className="relative h-7 px-2 text-xs"
+														onClick={() => setFilterOpen(true)}
+														size="sm"
+														variant={activeFilterCount > 0 ? "secondary" : "ghost"}
+													>
+														<SlidersHorizontal className="h-3.5 w-3.5" />
+														Filters
+														{activeFilterCount > 0 && (
+															<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
+																{activeFilterCount}
+															</span>
+														)}
+													</Button>
+													<Drawer
+														direction="bottom"
+														onOpenChange={setFilterOpen}
+														open={filterOpen}
+													>
+														<DrawerContent className="px-6 pb-8">
+															<DrawerTitle className="mb-2 text-left font-semibold text-lg">
+																Filters
+															</DrawerTitle>
+															<DrawerDescription className="sr-only">
+																Filter expenses by category and payer
+															</DrawerDescription>
+															<div className="overflow-y-auto">{filterPanel}</div>
+														</DrawerContent>
+													</Drawer>
+												</>
+											) : (
+												<Popover onOpenChange={setFilterOpen} open={filterOpen}>
+													<PopoverTrigger asChild>
 														<Button
 															className="relative h-7 px-2 text-xs"
-															onClick={() => setFilterOpen(true)}
 															size="sm"
 															variant={activeFilterCount > 0 ? "secondary" : "ghost"}
 														>
@@ -750,130 +872,15 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																</span>
 															)}
 														</Button>
-														<Drawer
-															direction="bottom"
-															onOpenChange={setFilterOpen}
-															open={filterOpen}
-														>
-															<DrawerContent className="px-6 pb-8">
-																<DrawerTitle className="mb-2 text-left font-semibold text-lg">
-																	Filters
-																</DrawerTitle>
-																<DrawerDescription className="sr-only">
-																	Filter expenses by category
-																</DrawerDescription>
-																<div className="overflow-y-auto">
-																	<div className="space-y-3">
-																		<div className="space-y-1.5">
-																			<p className="font-medium text-muted-foreground text-xs tracking-wide">
-																				Category
-																			</p>
-																			<div className="flex flex-wrap gap-1.5">
-																				{availableCategories.map((cat) => {
-																					const Icon = getCategoryIcon(cat.name, cat.icon);
-																					return (
-																						<Button
-																							aria-pressed={selectedCategories.has(cat.id)}
-																							className="h-7 gap-1.5 px-2.5 text-xs"
-																							key={cat.id}
-																							onClick={() => toggleCategory(cat.id)}
-																							size="sm"
-																							variant={selectedCategories.has(cat.id) ? "default" : "outline"}
-																						>
-																							<Icon
-																								className={cn(
-																									"h-3 w-3 shrink-0",
-																									!selectedCategories.has(cat.id) &&
-																										`text-${cat.color}-500`,
-																								)}
-																							/>
-																							{cat.name}
-																						</Button>
-																					);
-																				})}
-																			</div>
-																		</div>
-																		{activeFilterCount > 0 && (
-																			<Button
-																				className="h-7 px-2.5 text-xs"
-																				onClick={clearFilters}
-																				size="sm"
-																				variant="ghost"
-																			>
-																				Clear filters
-																			</Button>
-																		)}
-																	</div>
-																</div>
-															</DrawerContent>
-														</Drawer>
-													</>
-												) : (
-													<Popover onOpenChange={setFilterOpen} open={filterOpen}>
-														<PopoverTrigger asChild>
-															<Button
-																className="relative h-7 px-2 text-xs"
-																size="sm"
-																variant={activeFilterCount > 0 ? "secondary" : "ghost"}
-															>
-																<SlidersHorizontal className="h-3.5 w-3.5" />
-																Filters
-																{activeFilterCount > 0 && (
-																	<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
-																		{activeFilterCount}
-																	</span>
-																)}
-															</Button>
-														</PopoverTrigger>
-														<PopoverContent
-															align="start"
-															className="w-[400px] p-4"
-															sideOffset={8}
-														>
-															<div className="space-y-3">
-																<div className="space-y-1.5">
-																	<p className="font-medium text-muted-foreground text-xs tracking-wide">
-																		Category
-																	</p>
-																	<div className="flex flex-wrap gap-1.5">
-																		{availableCategories.map((cat) => {
-																			const Icon = getCategoryIcon(cat.name, cat.icon);
-																			return (
-																				<Button
-																					aria-pressed={selectedCategories.has(cat.id)}
-																					className="h-7 gap-1.5 px-2.5 text-xs"
-																					key={cat.id}
-																					onClick={() => toggleCategory(cat.id)}
-																					size="sm"
-																					variant={selectedCategories.has(cat.id) ? "default" : "outline"}
-																				>
-																					<Icon
-																						className={cn(
-																							"h-3 w-3 shrink-0",
-																							!selectedCategories.has(cat.id) &&
-																								`text-${cat.color}-500`,
-																						)}
-																					/>
-																					{cat.name}
-																				</Button>
-																			);
-																		})}
-																	</div>
-																</div>
-																{activeFilterCount > 0 && (
-																	<Button
-																		className="h-7 px-2.5 text-xs"
-																		onClick={clearFilters}
-																		size="sm"
-																		variant="ghost"
-																	>
-																		Clear filters
-																	</Button>
-																)}
-															</div>
-														</PopoverContent>
-													</Popover>
-												)
+													</PopoverTrigger>
+													<PopoverContent
+														align="start"
+														className="w-[400px] p-4"
+														sideOffset={8}
+													>
+														{filterPanel}
+													</PopoverContent>
+												</Popover>
 											)}
 											<ExpandableSearch
 												onChange={setSearchValue}
@@ -1070,12 +1077,14 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 						externalToolbar
 						identityName={identity?.name ?? "They"}
 						onAvailableCategoriesChange={onAvailableCategoriesChange}
+						onAvailablePayersChange={onAvailablePayersChange}
 						onCountChange={setExpenseCount}
 						onDelete={(txn) => setDeletingTransaction(txn)}
 						onEdit={(txnId) => setEditingTransactionId(txnId)}
 						onSearchChange={setSearchValue}
 						onStatusFilterChange={setStatusFilter}
 						onViewHistory={(txnId) => openHistory(txnId)}
+						paidByFilter={paidByFilter}
 						participantId={id}
 						participantType={participantType}
 						searchValue={searchValue}

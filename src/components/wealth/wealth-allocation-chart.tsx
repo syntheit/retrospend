@@ -77,17 +77,17 @@ export function WealthAllocationChart({
 	}
 
 	return (
-		<Card className="flex h-full flex-col border border-border bg-card shadow-sm">
+		<Card className="flex h-[220px] flex-col border border-border bg-card shadow-sm">
 			<CardHeader className="items-center pb-0">
 				<CardTitle className="font-semibold text-lg tracking-tight">
 					Asset Allocation
 				</CardTitle>
 				<CardDescription>Distribution by asset type</CardDescription>
 			</CardHeader>
-			<CardContent className="flex-1 pb-0">
+			<CardContent className="min-h-0 flex-1 pb-0">
 				<ChartContainer
 					aria-label={`Asset allocation chart showing distribution across ${data.length} asset types`}
-					className="mx-auto aspect-square max-h-[220px] sm:max-h-[300px]"
+					className="mx-auto aspect-square max-h-[140px]"
 					config={chartConfig}
 					role="img"
 				>
@@ -143,16 +143,16 @@ export function WealthAllocationChart({
 												y={viewBox.cy}
 											>
 												<tspan
-													className="fill-muted-foreground font-medium text-[10px] tracking-wide"
+													className="fill-muted-foreground font-medium text-[8px] tracking-wide"
 													x={viewBox.cx}
-													y={(viewBox.cy || 0) - 16}
+													y={(viewBox.cy || 0) - 10}
 												>
 													Total Assets
 												</tspan>
 												<tspan
-													className="fill-foreground font-bold text-2xl tabular-nums tracking-tight"
+													className="fill-foreground font-bold text-base tabular-nums tracking-tight"
 													x={viewBox.cx}
-													y={(viewBox.cy || 0) + 16}
+													y={(viewBox.cy || 0) + 10}
 												>
 													{isPrivacyMode
 														? maskAmount(totalValue)

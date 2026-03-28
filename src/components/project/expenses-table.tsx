@@ -258,12 +258,15 @@ export function ExpensesTable({
 	const availablePayers = useMemo(() => {
 		const map = new Map<
 			string,
-			{ id: string; name: string; avatarUrl: string | null }
+			{ id: string; name: string; avatarUrl: string | null; isMe: boolean }
 		>();
 		for (const t of allTransactions) {
 			map.set(t.paidBy.id, t.paidBy);
 		}
-		return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+		// "You" first, then alphabetical
+		return [...map.values()].sort((a, b) =>
+			a.isMe !== b.isMe ? (a.isMe ? -1 : 1) : a.name.localeCompare(b.name),
+		);
 	}, [allTransactions]);
 
 	// Apply external filters (category, paidBy, status) - text search handled by DataTable
@@ -466,7 +469,7 @@ export function ExpensesTable({
 									name={payer.name}
 									size="xs"
 								/>
-								{payer.name.split(" ")[0]}
+								{payer.isMe ? "You" : payer.name.split(" ")[0]}
 							</Button>
 						))}
 					</div>
@@ -593,12 +596,11 @@ export function ExpensesTable({
 						<span className="text-foreground">
 							· Paid by{" "}
 							{[...selectedPaidByIds]
-								.map(
-									(id) =>
-										availablePayers
-											.find((p) => p.id === id)
-											?.name.split(" ")[0] ?? id,
-								)
+								.map((id) => {
+									const p = availablePayers.find((p) => p.id === id);
+									if (!p) return id;
+									return p.isMe ? "You" : p.name.split(" ")[0];
+								})
 								.join(", ")}
 						</span>
 					)}

@@ -136,7 +136,7 @@ export function WealthHistoryChart({
 			<CardContent>
 				<ChartContainer
 					aria-label={`Net worth history chart showing trend over time with ${data.length} data points`}
-					className="aspect-auto h-[220px] sm:h-[300px] w-full"
+					className="aspect-auto h-[180px] w-full"
 					config={chartConfig}
 					role="img"
 				>
