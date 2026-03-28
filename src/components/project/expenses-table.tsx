@@ -80,12 +80,12 @@ export function ExpensesTable({
 	const { openHistory } = useRevisionHistory();
 	const isMobile = useIsMobile();
 
-	// External filter state (category, paidBy, status)
+	// External filter state (category, split participant, status)
 	const [filterOpen, setFilterOpen] = useState(false);
 	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
 		new Set(),
 	);
-	const [selectedPaidByIds, setSelectedPaidByIds] = useState<Set<string>>(
+	const [selectedSplitIds, setSelectedPaidByIds] = useState<Set<string>>(
 		new Set(),
 	);
 	const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(
@@ -255,21 +255,23 @@ export function ExpensesTable({
 		return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 	}, [allTransactions]);
 
-	const availablePayers = useMemo(() => {
+	const availableParticipants = useMemo(() => {
 		const map = new Map<
 			string,
-			{ id: string; name: string; avatarUrl: string | null; isMe: boolean }
+			{ compositeId: string; name: string; avatarUrl: string | null }
 		>();
 		for (const t of allTransactions) {
-			map.set(t.paidBy.id, t.paidBy);
+			for (const sp of t.splitParticipants ?? []) {
+				const key = `${sp.participantType}:${sp.participantId}`;
+				if (!map.has(key)) {
+					map.set(key, { compositeId: key, name: sp.name, avatarUrl: sp.avatarUrl });
+				}
+			}
 		}
-		// "You" first, then alphabetical
-		return [...map.values()].sort((a, b) =>
-			a.isMe !== b.isMe ? (a.isMe ? -1 : 1) : a.name.localeCompare(b.name),
-		);
+		return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 	}, [allTransactions]);
 
-	// Apply external filters (category, paidBy, status) - text search handled by DataTable
+	// Apply external filters (category, split participant, status) - text search handled by DataTable
 	const filteredTransactions = useMemo<ProjectExpense[]>(() => {
 		let result = allTransactions as ProjectExpense[];
 
@@ -279,8 +281,12 @@ export function ExpensesTable({
 			);
 		}
 
-		if (selectedPaidByIds.size > 0) {
-			result = result.filter((t) => selectedPaidByIds.has(t.paidBy.id));
+		if (selectedSplitIds.size > 0) {
+			result = result.filter((t) =>
+				(t.splitParticipants ?? []).some((sp) =>
+					selectedSplitIds.has(`${sp.participantType}:${sp.participantId}`),
+				),
+			);
 		}
 
 		if (selectedStatuses.size > 0) {
@@ -291,7 +297,7 @@ export function ExpensesTable({
 	}, [
 		allTransactions,
 		selectedCategories,
-		selectedPaidByIds,
+		selectedSplitIds,
 		selectedStatuses,
 	]);
 	filteredTransactionsRef.current = filteredTransactions;
@@ -311,11 +317,11 @@ export function ExpensesTable({
 	const totalFiltered = filteredTransactions.length;
 	const hasExternalFilters =
 		selectedCategories.size > 0 ||
-		selectedPaidByIds.size > 0 ||
+		selectedSplitIds.size > 0 ||
 		selectedStatuses.size > 0;
 
 	const activeFilterCount =
-		selectedCategories.size + selectedPaidByIds.size + selectedStatuses.size;
+		selectedCategories.size + selectedSplitIds.size + selectedStatuses.size;
 
 	const barCountLabel = (() => {
 		const total = totalFiltered;
@@ -342,7 +348,7 @@ export function ExpensesTable({
 		});
 	}
 
-	function togglePaidBy(id: string) {
+	function toggleSplitParticipant(id: string) {
 		setSelectedPaidByIds((prev) => {
 			const next = new Set(prev);
 			if (next.has(id)) next.delete(id);
@@ -445,31 +451,31 @@ export function ExpensesTable({
 				</div>
 			)}
 
-			{/* Paid By (only in group projects) */}
-			{!isSolo && availablePayers.length > 0 && (
+			{/* Split With (only in group projects) */}
+			{!isSolo && availableParticipants.length > 0 && (
 				<div className="space-y-1.5">
 					<p className="font-medium text-muted-foreground text-xs tracking-wide">
-						Paid By
+						Split With
 					</p>
 					<div className="flex flex-wrap gap-1.5">
-						{availablePayers.map((payer) => (
+						{availableParticipants.map((participant) => (
 							<Button
-								aria-pressed={selectedPaidByIds.has(payer.id)}
+								aria-pressed={selectedSplitIds.has(participant.compositeId)}
 								className="h-7 gap-1.5 px-2.5 text-xs"
-								key={payer.id}
-								onClick={() => togglePaidBy(payer.id)}
+								key={participant.compositeId}
+								onClick={() => toggleSplitParticipant(participant.compositeId)}
 								size="sm"
 								variant={
-									selectedPaidByIds.has(payer.id) ? "default" : "outline"
+									selectedSplitIds.has(participant.compositeId) ? "default" : "outline"
 								}
 							>
 								<UserAvatar
-									avatarUrl={payer.avatarUrl}
+									avatarUrl={participant.avatarUrl}
 									className="h-4 w-4 text-[8px]"
-									name={payer.name}
+									name={participant.name}
 									size="xs"
 								/>
-								{payer.isMe ? "You" : payer.name.split(" ")[0]}
+								{participant.name.split(" ")[0]}
 							</Button>
 						))}
 					</div>
@@ -525,7 +531,7 @@ export function ExpensesTable({
 									Filters
 								</DrawerTitle>
 								<DrawerDescription className="sr-only">
-									Filter expenses by status, category, and payer
+									Filter expenses by status, category, and participants
 								</DrawerDescription>
 								<div className="overflow-y-auto">{filterPanel}</div>
 							</DrawerContent>
@@ -592,14 +598,13 @@ export function ExpensesTable({
 								.join(", ")}
 						</span>
 					)}
-					{selectedPaidByIds.size > 0 && (
+					{selectedSplitIds.size > 0 && (
 						<span className="text-foreground">
-							· Paid by{" "}
-							{[...selectedPaidByIds]
+							· Split with{" "}
+							{[...selectedSplitIds]
 								.map((id) => {
-									const p = availablePayers.find((p) => p.id === id);
-									if (!p) return id;
-									return p.isMe ? "You" : p.name.split(" ")[0];
+									const p = availableParticipants.find((p) => p.compositeId === id);
+									return p?.name.split(" ")[0] ?? id;
 								})
 								.join(", ")}
 						</span>

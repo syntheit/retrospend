@@ -8,7 +8,7 @@ import { SharedTransactionActionsMenu } from "~/components/shared-transaction-ac
 import { formatExpenseDate } from "~/lib/format";
 import { TransactionEditedIndicator } from "~/components/transaction-edited-indicator";
 import { TransactionStatusBadge } from "~/components/ui/transaction-status-badge";
-import { UserAvatar } from "~/components/ui/user-avatar";
+import { AvatarStack } from "~/components/ui/avatar-stack";
 import type { RouterOutputs } from "~/trpc/react";
 
 export type ProjectExpense =
@@ -103,28 +103,21 @@ export function createProjectExpenseColumns({
 		},
 	];
 
-	// Paid By column (group projects only)
+	// Split column (group projects only)
 	if (!isSolo) {
 		columns.push({
-			id: "paidBy",
-			header: "Paid By",
-			enableSorting: true,
+			id: "split",
+			header: "Split",
+			enableSorting: false,
 			size: 130,
-			sortingFn: (rowA, rowB) =>
-				rowA.original.paidBy.name.localeCompare(rowB.original.paidBy.name),
 			cell: ({ row }) => {
-				const paidBy = row.original.paidBy;
-				const displayName = paidBy.isMe ? "You" : paidBy.name.split(" ")[0];
+				const txn = row.original;
 				return (
-					<div className="flex items-center gap-1.5">
-						<UserAvatar
-							avatarUrl={paidBy.avatarUrl}
-							className="h-5 w-5 text-[9px]"
-							name={paidBy.name}
-							size="xs"
-						/>
-						<span className="text-xs">{displayName}</span>
-					</div>
+					<AvatarStack
+						currency={txn.currency}
+						formatCurrency={formatCurrency}
+						participants={txn.splitParticipants ?? []}
+					/>
 				);
 			},
 		});
