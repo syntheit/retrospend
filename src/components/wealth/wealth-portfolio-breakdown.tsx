@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Card, CardContent } from "~/components/ui/card";
+import { cn } from "~/lib/utils";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import {
 	Tooltip,
@@ -29,9 +30,11 @@ interface WealthPortfolioBreakdownProps {
 		currency: string;
 		balanceInUSD: number;
 		type: string;
+		isLiquid: boolean;
 	}[];
 	hasMultipleCurrencies: boolean;
 	isPrivacyMode?: boolean;
+	className?: string;
 }
 
 interface CurrencySegment {
@@ -53,7 +56,7 @@ function BreakdownBar<T extends { percentage: number; color?: string }>({
 	getColor: (segment: T) => string;
 }) {
 	return (
-		<div className="flex h-3 w-full overflow-hidden rounded-full bg-muted/50">
+		<div className="flex h-4 w-full overflow-hidden rounded-full bg-muted/50">
 			{segments.map((segment, index) => (
 				<Tooltip key={index}>
 					<TooltipTrigger asChild>
@@ -87,6 +90,7 @@ export function WealthPortfolioBreakdown({
 	assets,
 	hasMultipleCurrencies,
 	isPrivacyMode = false,
+	className,
 }: WealthPortfolioBreakdownProps) {
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -142,21 +146,64 @@ export function WealthPortfolioBreakdown({
 		return main;
 	}, [assets]);
 
+	const liquidityData = useMemo(() => {
+		let liquid = 0;
+		let illiquid = 0;
+		for (const asset of assets) {
+			if (asset.type.startsWith("LIABILITY_")) continue;
+			if (asset.isLiquid) {
+				liquid += asset.balanceInUSD;
+			} else {
+				illiquid += asset.balanceInUSD;
+			}
+		}
+		const total = liquid + illiquid;
+		if (total <= 0) return [];
+		return [
+			{ label: "Liquid", value: liquid, percentage: (liquid / total) * 100, color: CURRENCY_COLORS[0]! },
+			{ label: "Illiquid", value: illiquid, percentage: (illiquid / total) * 100, color: CURRENCY_COLORS[1]! },
+		].filter((s) => s.value > 0);
+	}, [assets]);
+
 	if (allocationData.length === 0) return null;
 
 	const formatValue = (value: number) =>
 		isPrivacyMode ? maskAmount(value) : formatCurrency(value, "USD");
 
 	return (
-		<Card className="border border-border bg-card shadow-sm">
-			<CardContent className="px-4 py-4 sm:px-6">
+		<Card className={cn("border border-border bg-card shadow-sm", className)}>
+			<CardContent className="px-5 py-4">
+				<p className="mb-3 text-sm font-medium">Portfolio composition</p>
 				<div className="flex flex-col gap-4">
 					{/* By type */}
 					<div className="flex flex-col gap-2">
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-							<span className="text-xs font-medium text-muted-foreground">
-								By type
-							</span>
+						<span className="text-xs font-medium text-muted-foreground">
+							By type
+						</span>
+						<div className="flex w-full flex-col gap-2">
+							<BreakdownBar
+								getColor={(s: AllocationSegment) => s.fill}
+								renderTooltip={(segment: AllocationSegment) => (
+									<div className="grid gap-1">
+										<div className="font-medium">{segment.label}</div>
+										<div className="flex items-stretch gap-2">
+											<div
+												className="my-0.5 w-1 shrink-0 rounded-[2px]"
+												style={{ backgroundColor: segment.fill }}
+											/>
+											<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+												<span className="text-muted-foreground">
+													{segment.percentage.toFixed(1)}%
+												</span>
+												<span className="font-semibold text-foreground tabular-nums">
+													{formatValue(segment.value)}
+												</span>
+											</div>
+										</div>
+									</div>
+								)}
+								segments={allocationData}
+							/>
 							<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 								{allocationData.map((item) => (
 									<div
@@ -174,95 +221,108 @@ export function WealthPortfolioBreakdown({
 								))}
 							</div>
 						</div>
-						<BreakdownBar
-							getColor={(s: AllocationSegment) => s.fill}
-							renderTooltip={(segment: AllocationSegment) => (
-								<div className="grid gap-1">
-									<div className="font-medium">{segment.label}</div>
-									<div className="flex items-stretch gap-2">
-										<div
-											className="my-0.5 w-1 shrink-0 rounded-[2px]"
-											style={{ backgroundColor: segment.fill }}
-										/>
-										<div className="flex flex-1 items-center justify-between gap-4 leading-none">
-											<span className="text-muted-foreground">
-												{segment.percentage.toFixed(1)}%
-											</span>
-											<span className="font-semibold text-foreground tabular-nums">
-												{formatValue(segment.value)}
-											</span>
-										</div>
-									</div>
-								</div>
-							)}
-							segments={allocationData}
-						/>
 					</div>
 
 					{/* By currency */}
 					{hasMultipleCurrencies && currencyData.length > 0 && (
 						<div className="flex flex-col gap-2">
-							<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-								<span className="text-xs font-medium text-muted-foreground">
-									By currency
-								</span>
-								<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-									{currencyData.map((item) => (
-										<div
-											className="flex items-center gap-1.5 text-xs text-muted-foreground"
-											key={item.currency}
-										>
-											{item.isOther ? (
-												<div className="h-2 w-2 shrink-0 rounded-full bg-gray-400" />
+							<span className="text-xs font-medium text-muted-foreground">
+								By currency
+							</span>
+							<div className="flex w-full flex-col gap-2">
+								<BreakdownBar
+									getColor={(s: CurrencySegment) => s.color}
+									renderTooltip={(segment: CurrencySegment) => (
+										<div className="grid gap-1">
+											<div className="flex items-center gap-1.5 font-medium">
+												{!segment.isOther && (
+													<CurrencyFlag
+														className="!h-3.5 !w-3.5"
+														currencyCode={segment.currency}
+													/>
+												)}
+												{segment.currency}
+											</div>
+											{segment.isOther && segment.otherItems ? (
+												<div className="mt-1 grid gap-1.5">
+													{segment.otherItems.map((item) => (
+														<div
+															className="flex items-stretch gap-2"
+															key={item.currency}
+														>
+															<div
+																className="my-0.5 w-1 shrink-0 rounded-[2px]"
+																style={{ backgroundColor: segment.color }}
+															/>
+															<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+																<span className="text-muted-foreground">
+																	{item.currency}
+																</span>
+																<span className="font-semibold text-foreground tabular-nums">
+																	{formatValue(item.value)}
+																</span>
+															</div>
+														</div>
+													))}
+												</div>
 											) : (
-												<CurrencyFlag
-													className="!h-3.5 !w-3.5"
-													currencyCode={item.currency}
-												/>
+												<div className="flex items-stretch gap-2">
+													<div
+														className="my-0.5 w-1 shrink-0 rounded-[2px]"
+														style={{ backgroundColor: segment.color }}
+													/>
+													<div className="flex flex-1 items-center justify-between gap-4 leading-none">
+														<span className="text-muted-foreground">
+															{segment.percentage.toFixed(1)}%
+														</span>
+														<span className="font-semibold text-foreground tabular-nums">
+															{formatValue(segment.value)}
+														</span>
+													</div>
+												</div>
 											)}
-											<span>
-												{item.currency} {item.percentage.toFixed(1)}%
-											</span>
 										</div>
-									))}
+									)}
+									segments={currencyData}
+								/>
+								<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+									{currencyData
+										.filter((item) => item.percentage >= 0.05)
+										.map((item) => (
+											<div
+												className="flex items-center gap-1.5 text-xs text-muted-foreground"
+												key={item.currency}
+											>
+												{item.isOther ? (
+													<div className="h-2 w-2 shrink-0 rounded-full bg-gray-400" />
+												) : (
+													<CurrencyFlag
+														className="!h-3.5 !w-3.5"
+														currencyCode={item.currency}
+													/>
+												)}
+												<span>
+													{item.currency} {item.percentage.toFixed(1)}%
+												</span>
+											</div>
+										))}
 								</div>
 							</div>
-							<BreakdownBar
-								getColor={(s: CurrencySegment) => s.color}
-								renderTooltip={(segment: CurrencySegment) => (
-									<div className="grid gap-1">
-										<div className="flex items-center gap-1.5 font-medium">
-											{!segment.isOther && (
-												<CurrencyFlag
-													className="!h-3.5 !w-3.5"
-													currencyCode={segment.currency}
-												/>
-											)}
-											{segment.currency}
-										</div>
-										{segment.isOther && segment.otherItems ? (
-											<div className="mt-1 grid gap-1.5">
-												{segment.otherItems.map((item) => (
-													<div
-														className="flex items-stretch gap-2"
-														key={item.currency}
-													>
-														<div
-															className="my-0.5 w-1 shrink-0 rounded-[2px]"
-															style={{ backgroundColor: segment.color }}
-														/>
-														<div className="flex flex-1 items-center justify-between gap-4 leading-none">
-															<span className="text-muted-foreground">
-																{item.currency}
-															</span>
-															<span className="font-semibold text-foreground tabular-nums">
-																{formatValue(item.value)}
-															</span>
-														</div>
-													</div>
-												))}
-											</div>
-										) : (
+						</div>
+					)}
+
+					{/* By liquidity */}
+					{liquidityData.length > 0 && (
+						<div className="flex flex-col gap-2">
+							<span className="text-xs font-medium text-muted-foreground">
+								By liquidity
+							</span>
+							<div className="flex w-full flex-col gap-2">
+								<BreakdownBar
+									getColor={(s: { color: string }) => s.color}
+									renderTooltip={(segment: { label: string; value: number; percentage: number; color: string }) => (
+										<div className="grid gap-1">
+											<div className="font-medium">{segment.label}</div>
 											<div className="flex items-stretch gap-2">
 												<div
 													className="my-0.5 w-1 shrink-0 rounded-[2px]"
@@ -277,11 +337,27 @@ export function WealthPortfolioBreakdown({
 													</span>
 												</div>
 											</div>
-										)}
-									</div>
-								)}
-								segments={currencyData}
-							/>
+										</div>
+									)}
+									segments={liquidityData}
+								/>
+								<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+									{liquidityData.map((item) => (
+										<div
+											className="flex items-center gap-1.5 text-xs text-muted-foreground"
+											key={item.label}
+										>
+											<div
+												className="h-2 w-2 shrink-0 rounded-full"
+												style={{ backgroundColor: item.color }}
+											/>
+											<span>
+												{item.label} {item.percentage.toFixed(0)}%
+											</span>
+										</div>
+									))}
+								</div>
+							</div>
 						</div>
 					)}
 				</div>

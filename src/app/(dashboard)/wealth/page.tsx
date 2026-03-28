@@ -131,9 +131,10 @@ export default function WealthPage() {
 							<Skeleton className="h-24 w-full" />
 						</div>
 
-						<Skeleton className="h-80 w-full" />
-
-						<Skeleton className="h-24 w-full rounded-xl" />
+						<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+							<Skeleton className="h-80 w-full lg:col-span-7" />
+							<Skeleton className="h-80 w-full lg:col-span-5 rounded-xl" />
+						</div>
 
 						<Skeleton className="h-96 w-full" />
 					</div>
@@ -201,8 +202,8 @@ export default function WealthPage() {
 				}
 				title="Wealth"
 			/>
-			<PageContent>
-				<div className="flex flex-col gap-6">
+			<PageContent fill>
+				<div className="flex flex-1 flex-col gap-6 min-h-0">
 					{/* Summary Cards */}
 					<NetWorthSummary
 						averageMonthlySpend={runwayData?.averageMonthlySpend}
@@ -216,24 +217,29 @@ export default function WealthPage() {
 						weightedAPR={stats.weightedAPR}
 					/>
 
-					{/* Net Worth History — full width */}
-					<WealthHistoryChart
-						baseCurrency={homeCurrency}
-						data={historyChartData}
-						isPrivacyMode={isPrivacyMode}
-						onTimeRangeChange={filters.setTimeRange}
-						timeRange={filters.timeRange}
-					/>
+					{/* Chart + Portfolio side by side */}
+					<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+						<div className="lg:col-span-7">
+							<WealthHistoryChart
+								baseCurrency={homeCurrency}
+								data={historyChartData}
+								isPrivacyMode={isPrivacyMode}
+								onTimeRangeChange={filters.setTimeRange}
+								timeRange={filters.timeRange}
+							/>
+						</div>
+						<div className="flex flex-col gap-4 lg:col-span-5">
+							<WealthPortfolioBreakdown
+								allocationData={allocationChartData}
+								assets={normalizedAssets}
+								className="h-full"
+								hasMultipleCurrencies={hasMultipleCurrencies}
+								isPrivacyMode={isPrivacyMode}
+							/>
+						</div>
+					</div>
 
-					{/* Portfolio Breakdown — compact stacked bars */}
-					<WealthPortfolioBreakdown
-						allocationData={allocationChartData}
-						assets={normalizedAssets}
-						hasMultipleCurrencies={hasMultipleCurrencies}
-						isPrivacyMode={isPrivacyMode}
-					/>
-
-					<div className="flex flex-col gap-3">
+					<div className="flex min-h-[300px] flex-1 flex-col gap-3">
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 								<div className="flex items-center gap-2">
 									<span className="text-muted-foreground text-sm">Type:</span>
@@ -316,6 +322,7 @@ export default function WealthPage() {
 						<WealthDataTable
 							columnVisibility={columnVisibility}
 							data={filteredData}
+							fillHeight
 							homeCurrency={homeCurrency}
 							isPrivacyMode={isPrivacyMode}
 							onDeleteSelected={handleDeleteSelected}
