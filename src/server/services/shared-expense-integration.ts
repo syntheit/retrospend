@@ -187,6 +187,7 @@ export async function listSharedParticipationsForUser(
 						select: {
 							participantType: true,
 							participantId: true,
+							shareAmount: true,
 						},
 					},
 				},
@@ -196,32 +197,50 @@ export async function listSharedParticipationsForUser(
 
 	if (participations.length === 0) return [];
 
-	// Resolve payer names in batch
-	const payerUserIds = [
-		...new Set(
-			participations
-				.filter((p) => p.transaction.paidByType === "user")
-				.map((p) => p.transaction.paidById),
-		),
-	];
-	const payerShadowIds = [
-		...new Set(
-			participations
-				.filter((p) => p.transaction.paidByType === "shadow")
-				.map((p) => p.transaction.paidById),
-		),
-	];
+	// Batch-resolve all participant identities (payers + split participants)
+	const allParticipantKeys = new Set<string>();
+	const userIds = new Set<string>();
+	const shadowIds = new Set<string>();
+	const guestIds = new Set<string>();
 
-	const [payerUsers, payerShadows] = await Promise.all([
-		payerUserIds.length > 0
+	for (const p of participations) {
+		const tx = p.transaction;
+		// Payer
+		const payerKey = `${tx.paidByType}:${tx.paidById}`;
+		if (!allParticipantKeys.has(payerKey)) {
+			allParticipantKeys.add(payerKey);
+			if (tx.paidByType === "user") userIds.add(tx.paidById);
+			else if (tx.paidByType === "shadow") shadowIds.add(tx.paidById);
+			else if (tx.paidByType === "guest") guestIds.add(tx.paidById);
+		}
+		// Split participants
+		for (const sp of tx.splitParticipants) {
+			const spKey = `${sp.participantType}:${sp.participantId}`;
+			if (!allParticipantKeys.has(spKey)) {
+				allParticipantKeys.add(spKey);
+				if (sp.participantType === "user") userIds.add(sp.participantId);
+				else if (sp.participantType === "shadow") shadowIds.add(sp.participantId);
+				else if (sp.participantType === "guest") guestIds.add(sp.participantId);
+			}
+		}
+	}
+
+	const [resolvedUsers, resolvedShadows, resolvedGuests] = await Promise.all([
+		userIds.size > 0
 			? (db as PrismaClient).user.findMany({
-					where: { id: { in: payerUserIds } },
-					select: { id: true, name: true, avatarPath: true },
+					where: { id: { in: [...userIds] } },
+					select: { id: true, name: true, image: true, avatarPath: true },
 				})
 			: [],
-		payerShadowIds.length > 0
+		shadowIds.size > 0
 			? (db as PrismaClient).shadowProfile.findMany({
-					where: { id: { in: payerShadowIds } },
+					where: { id: { in: [...shadowIds] } },
+					select: { id: true, name: true },
+				})
+			: [],
+		guestIds.size > 0
+			? (db as PrismaClient).guestSession.findMany({
+					where: { id: { in: [...guestIds] } },
 					select: { id: true, name: true },
 				})
 			: [],
@@ -229,11 +248,12 @@ export async function listSharedParticipationsForUser(
 
 	const nameMap = new Map<string, string>();
 	const avatarMap = new Map<string, string | null>();
-	for (const u of payerUsers) {
+	for (const u of resolvedUsers) {
 		nameMap.set(`user:${u.id}`, u.name ?? "Unknown");
 		avatarMap.set(`user:${u.id}`, u.avatarPath ? `/api/images/${u.avatarPath}` : null);
 	}
-	for (const s of payerShadows) nameMap.set(`shadow:${s.id}`, s.name);
+	for (const s of resolvedShadows) nameMap.set(`shadow:${s.id}`, s.name);
+	for (const g of resolvedGuests) nameMap.set(`guest:${g.id}`, g.name);
 
 	// Compute amountInUSD for each share — batch fetch rates in parallel
 	const currencies = [
@@ -340,6 +360,16 @@ export async function listSharedParticipationsForUser(
 					: undefined,
 				canEdit,
 				canDelete,
+				splitParticipants: tx.splitParticipants.map((sp) => {
+					const spKey = `${sp.participantType}:${sp.participantId}`;
+					return {
+						participantType: sp.participantType,
+						participantId: sp.participantId,
+						shareAmount: Number(sp.shareAmount),
+						name: nameMap.get(spKey) ?? "Unknown",
+						avatarUrl: avatarMap.get(spKey) ?? null,
+					};
+				}),
 			},
 		};
 	});

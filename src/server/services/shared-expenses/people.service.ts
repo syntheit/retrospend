@@ -60,6 +60,13 @@ export interface TransactionHistoryItem {
 	canEdit: boolean;
 	canDelete: boolean;
 	hasUnseenChanges: boolean;
+	splitParticipants: Array<{
+		participantType: string;
+		participantId: string;
+		shareAmount: number;
+		name: string;
+		avatarUrl: string | null;
+	}>;
 }
 
 export interface RelationshipStats {
@@ -484,12 +491,23 @@ export class PeopleService {
 			}),
 		]);
 
-		// Resolve paidBy names and avatars with deduplication.
-		const paidByRefs: ParticipantRef[] = rawTransactions.map((tx) => ({
-			participantType: tx.paidByType as ParticipantType,
-			participantId: tx.paidById,
-		}));
-		const paidByData = await this.resolveNamesBatch(paidByRefs);
+		// Resolve paidBy + split participant names and avatars with deduplication.
+		const allRefs: ParticipantRef[] = [];
+		for (const tx of rawTransactions) {
+			allRefs.push({ participantType: tx.paidByType as ParticipantType, participantId: tx.paidById });
+			for (const sp of tx.splitParticipants) {
+				allRefs.push({ participantType: sp.participantType as ParticipantType, participantId: sp.participantId });
+			}
+		}
+		const allResolvedData = await this.resolveNamesBatch(allRefs);
+		// Build a map for O(1) lookup
+		const identityMap = new Map<string, { name: string; avatarUrl: string | null }>();
+		for (let i = 0; i < allRefs.length; i++) {
+			const key = `${allRefs[i]!.participantType}:${allRefs[i]!.participantId}`;
+			if (!identityMap.has(key)) {
+				identityMap.set(key, allResolvedData[i]!);
+			}
+		}
 
 		// Batch-fetch the caller's project roles for permission computation.
 		const projectIds = [
@@ -515,7 +533,7 @@ export class PeopleService {
 		}
 
 		const transactions: TransactionHistoryItem[] = rawTransactions.map(
-			(tx, i) => {
+			(tx) => {
 				const myPart = tx.splitParticipants.find(
 					(sp) =>
 						sp.participantType === this.currentUserRef.participantType &&
@@ -560,6 +578,8 @@ export class PeopleService {
 					}
 				}
 
+				const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
+
 				return {
 					id: tx.id,
 					description: tx.description,
@@ -570,8 +590,8 @@ export class PeopleService {
 					paidBy: {
 						participantType: tx.paidByType as ParticipantType,
 						participantId: tx.paidById,
-						name: paidByData[i]?.name ?? "Unknown",
-						avatarUrl: paidByData[i]?.avatarUrl ?? null,
+						name: payerIdentity?.name ?? "Unknown",
+						avatarUrl: payerIdentity?.avatarUrl ?? null,
 						isMe: tx.paidByType === this.currentUserRef.participantType && tx.paidById === this.currentUserRef.participantId,
 					},
 					myShare: myPart ? Number(myPart.shareAmount) : 0,
@@ -583,6 +603,16 @@ export class PeopleService {
 					canEdit,
 					canDelete,
 					hasUnseenChanges: myPart?.hasUnseenChanges ?? false,
+					splitParticipants: tx.splitParticipants.map((sp) => {
+						const identity = identityMap.get(`${sp.participantType}:${sp.participantId}`);
+						return {
+							participantType: sp.participantType,
+							participantId: sp.participantId,
+							shareAmount: Number(sp.shareAmount),
+							name: identity?.name ?? "Unknown",
+							avatarUrl: identity?.avatarUrl ?? null,
+						};
+					}),
 				};
 			},
 		);
@@ -981,11 +1011,22 @@ export class PeopleService {
 		}>,
 		ref: ParticipantRef,
 	): Promise<TransactionHistoryItem[]> {
-		const paidByRefs: ParticipantRef[] = rawTransactions.map((tx) => ({
-			participantType: tx.paidByType as ParticipantType,
-			participantId: tx.paidById,
-		}));
-		const paidByData = await this.resolveNamesBatch(paidByRefs);
+		// Resolve paidBy + split participant names and avatars with deduplication.
+		const allRefs: ParticipantRef[] = [];
+		for (const tx of rawTransactions) {
+			allRefs.push({ participantType: tx.paidByType as ParticipantType, participantId: tx.paidById });
+			for (const sp of tx.splitParticipants) {
+				allRefs.push({ participantType: sp.participantType as ParticipantType, participantId: sp.participantId });
+			}
+		}
+		const allResolvedData = await this.resolveNamesBatch(allRefs);
+		const identityMap = new Map<string, { name: string; avatarUrl: string | null }>();
+		for (let i = 0; i < allRefs.length; i++) {
+			const key = `${allRefs[i]!.participantType}:${allRefs[i]!.participantId}`;
+			if (!identityMap.has(key)) {
+				identityMap.set(key, allResolvedData[i]!);
+			}
+		}
 
 		const projectIds = [
 			...new Set(
@@ -1009,7 +1050,7 @@ export class PeopleService {
 			}
 		}
 
-		return rawTransactions.map((tx, i) => {
+		return rawTransactions.map((tx) => {
 			const myPart = tx.splitParticipants.find(
 				(sp) =>
 					sp.participantType === this.currentUserRef.participantType &&
@@ -1056,6 +1097,8 @@ export class PeopleService {
 				}
 			}
 
+			const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
+
 			return {
 				id: tx.id,
 				description: tx.description,
@@ -1066,8 +1109,8 @@ export class PeopleService {
 				paidBy: {
 					participantType: tx.paidByType as ParticipantType,
 					participantId: tx.paidById,
-					name: paidByData[i]?.name ?? "Unknown",
-					avatarUrl: paidByData[i]?.avatarUrl ?? null,
+					name: payerIdentity?.name ?? "Unknown",
+					avatarUrl: payerIdentity?.avatarUrl ?? null,
 					isMe: tx.paidByType === this.currentUserRef.participantType && tx.paidById === this.currentUserRef.participantId,
 				},
 				myShare: myPart ? Number(myPart.shareAmount) : 0,
@@ -1080,6 +1123,16 @@ export class PeopleService {
 				canEdit,
 				canDelete,
 				hasUnseenChanges: myPart?.hasUnseenChanges ?? false,
+				splitParticipants: tx.splitParticipants.map((sp) => {
+					const identity = identityMap.get(`${sp.participantType}:${sp.participantId}`);
+					return {
+						participantType: sp.participantType,
+						participantId: sp.participantId,
+						shareAmount: Number(sp.shareAmount),
+						name: identity?.name ?? "Unknown",
+						avatarUrl: identity?.avatarUrl ?? null,
+					};
+				}),
 			};
 		});
 	}

@@ -107,7 +107,7 @@ export function createProjectExpenseColumns({
 	if (!isSolo) {
 		columns.push({
 			id: "split",
-			header: "Split",
+			header: "Who",
 			enableSorting: false,
 			size: 130,
 			cell: ({ row }) => {

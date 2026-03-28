@@ -287,6 +287,7 @@ export function PeopleTimelineTable({
 			currency: t.currency,
 			amount: t.amount,
 			paidBy: t.paidBy,
+			splitParticipants: t.splitParticipants,
 			status: t.status,
 			canEdit: t.canEdit,
 			canDelete: t.canDelete,
@@ -361,7 +362,7 @@ export function PeopleTimelineTable({
 	const columnVisibility = useMemo<VisibilityState>(
 		() => ({
 			category: !isMobile,
-			paidBy: !isMobile,
+			split: !isMobile,
 			status: !isMobile,
 		}),
 		[isMobile],

@@ -32,8 +32,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { AvatarStack } from "~/components/ui/avatar-stack";
 import { TransactionStatusBadge } from "~/components/ui/transaction-status-badge";
-import { UserAvatar } from "~/components/ui/user-avatar";
 import { formatExpenseDate } from "~/lib/format";
 import { cn } from "~/lib/utils";
 
@@ -48,6 +48,13 @@ export type TimelineRow = {
 	currency: string;
 	amount?: number;
 	paidBy?: { name: string; avatarUrl: string | null; isMe?: boolean };
+	splitParticipants?: Array<{
+		participantType: string;
+		participantId: string;
+		shareAmount: number;
+		name: string;
+		avatarUrl: string | null;
+	}>;
 	status: string;
 	canEdit?: boolean;
 	canDelete?: boolean;
@@ -198,30 +205,23 @@ export function createTimelineColumns(
 			},
 		},
 		{
-			id: "paidBy",
-			header: "Paid By",
-			enableSorting: true,
-			size: 120,
-			sortingFn: (rowA, rowB) => {
-				const a = rowA.original.paidBy?.name ?? "";
-				const b = rowB.original.paidBy?.name ?? "";
-				return a.localeCompare(b);
-			},
+			id: "split",
+			header: "Who",
+			enableSorting: false,
+			size: 130,
 			cell: ({ row }) => {
 				const item = row.original;
 				if (item.type === "settlement") return null;
-				if (!item.paidBy) return null;
-				const displayName = item.paidBy.isMe ? "You" : item.paidBy.name.split(" ")[0];
+				const participants = item.splitParticipants;
+				if (!participants || participants.length === 0) {
+					return <span className="text-muted-foreground">—</span>;
+				}
 				return (
-					<div className="flex items-center gap-1.5">
-						<UserAvatar
-							avatarUrl={item.paidBy.avatarUrl}
-							className="h-5 w-5 text-[9px]"
-							name={item.paidBy.name}
-							size="xs"
-						/>
-						<span className="text-xs">{displayName}</span>
-					</div>
+					<AvatarStack
+						currency={item.currency}
+						formatCurrency={formatCurrency}
+						participants={participants}
+					/>
 				);
 			},
 		},

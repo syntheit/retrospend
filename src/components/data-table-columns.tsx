@@ -18,7 +18,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { UserAvatar } from "~/components/ui/user-avatar";
+import { AvatarStack } from "~/components/ui/avatar-stack";
 import { isCrypto } from "~/lib/currency-format";
 import { formatExpenseDate } from "~/lib/format";
 import { convertExpenseAmountForDisplay } from "~/lib/utils";
@@ -58,6 +58,13 @@ export const expenseSchema = z.object({
 			projectName: z.string().optional(),
 			canEdit: z.boolean().optional(),
 			canDelete: z.boolean().optional(),
+			splitParticipants: z.array(z.object({
+				participantType: z.string(),
+				participantId: z.string(),
+				shareAmount: z.number(),
+				name: z.string(),
+				avatarUrl: z.string().nullable(),
+			})).optional(),
 		})
 		.optional(),
 });
@@ -186,44 +193,25 @@ function createExpenseColumns(
 		},
 	];
 
-	// Add "Paid By" column when showing shared or all expenses (before date, after category)
+	// Add "Split" column when showing shared or all expenses (before date, after category)
 	if (typeFilter === "shared" || typeFilter === "all") {
 		const dateIndex = columns.findIndex((c) => "accessorKey" in c && c.accessorKey === "date");
 		columns.splice(dateIndex, 0, {
-			id: "paidBy",
-			header: "Paid By",
-			accessorFn: (row) =>
-				row.sharedContext?.iPayedThis
-					? "You"
-					: (row.sharedContext?.paidByName ?? ""),
-			sortingFn: (a, b) => {
-				const aVal =
-					a.original.sharedContext?.iPayedThis
-						? "You"
-						: (a.original.sharedContext?.paidByName ?? "");
-				const bVal =
-					b.original.sharedContext?.iPayedThis
-						? "You"
-						: (b.original.sharedContext?.paidByName ?? "");
-				return aVal.localeCompare(bVal);
-			},
-			size: 120,
+			id: "split",
+			header: "Who",
+			enableSorting: false,
+			size: 130,
 			cell: ({ row }) => {
-				const ctx = row.original.sharedContext;
-				if (!ctx) {
-					return <div className="text-muted-foreground text-sm">-</div>;
+				const participants = row.original.sharedContext?.splitParticipants;
+				if (!participants || participants.length === 0) {
+					return <span className="text-muted-foreground">—</span>;
 				}
-				const name = ctx.iPayedThis ? "You" : ctx.paidByName;
 				return (
-					<div className="flex items-center gap-1.5">
-						<UserAvatar
-							avatarUrl={ctx.paidByAvatarUrl}
-							className="h-5 w-5 text-[9px]"
-							name={ctx.paidByName}
-							size="xs"
-						/>
-						<span className="text-xs">{name.split(" ")[0]}</span>
-					</div>
+					<AvatarStack
+						currency={row.original.currency}
+						formatCurrency={formatCurrency}
+						participants={participants}
+					/>
 				);
 			},
 		});
