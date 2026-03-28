@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
+import { DELETED_GUEST_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
 import { computeBalance, computeBalanceBatch } from "./balance";
 import type { ParticipantRef } from "./types";
 
@@ -313,7 +314,29 @@ export class PeopleService {
 	): Promise<PersonDetail> {
 		const { page = 1, limit = 20, status, projectId } = options;
 
-		await this.assertContactAccessible(ref);
+		// Validate participant exists; return empty data if no shared history
+		const [, hasHistory] = await Promise.all([
+			this.validateParticipantExists(ref),
+			this.hasSharedHistory(ref),
+		]);
+		if (!hasHistory) {
+			const identity = await this.resolveIdentity(ref);
+			return {
+				identity,
+				balances: [],
+				transactions: [],
+				total: 0,
+				page,
+				limit,
+				relationshipStats: {
+					firstTransactionDate: null,
+					transactionCount: 0,
+					projectCount: 0,
+					settlementCount: 0,
+				},
+				projectBreakdown: [],
+			};
+		}
 
 		// Base where clause: all transactions between the two people
 		const baseAndClauses: Prisma.SharedTransactionWhereInput[] = [
@@ -694,7 +717,30 @@ export class PeopleService {
 		const { limit = 30, cursor, projectId } = options;
 		const isFirstPage = !cursor;
 
-		await this.assertContactAccessible(ref);
+		// Validate participant exists; return empty data if no shared history
+		const [, hasHistory] = await Promise.all([
+			this.validateParticipantExists(ref),
+			this.hasSharedHistory(ref),
+		]);
+		if (!hasHistory) {
+			if (isFirstPage) {
+				const identity = await this.resolveIdentity(ref);
+				return {
+					identity,
+					balances: [],
+					transactions: [],
+					nextCursor: undefined,
+					relationshipStats: {
+						firstTransactionDate: null,
+						transactionCount: 0,
+						projectCount: 0,
+						settlementCount: 0,
+					},
+					projectBreakdown: [],
+				};
+			}
+			return { transactions: [], nextCursor: undefined };
+		}
 
 		// Base where clause: all transactions between the two people
 		const baseAndClauses: Prisma.SharedTransactionWhereInput[] = [
@@ -893,7 +939,11 @@ export class PeopleService {
 	 * Multiple currencies are returned as separate entries: no cross-currency netting.
 	 */
 	async getBalance(ref: ParticipantRef): Promise<BalanceCurrency[]> {
-		await this.assertContactAccessible(ref);
+		const [, hasHistory] = await Promise.all([
+			this.validateParticipantExists(ref),
+			this.hasSharedHistory(ref),
+		]);
+		if (!hasHistory) return [];
 		const result = await computeBalance(this.db, this.currentUserRef, ref);
 		return Object.entries(result.byCurrency).map(([currency, balance]) => ({
 			balance: Math.abs(balance),
@@ -1152,12 +1202,30 @@ export class PeopleService {
 	}
 
 	/**
-	 * Asserts the current user has a shared financial relationship with the given
-	 * participant, and that the participant is visible to the user.
-	 * Throws NOT_FOUND if not accessible.
+	 * Validates that the participant exists and is accessible to the current user.
+	 * Throws NOT_FOUND if the participant doesn't exist.
+	 * Unlike the former assertContactAccessible, does NOT require a shared
+	 * transaction relationship — callers handle the no-history case themselves.
 	 */
-	private async assertContactAccessible(ref: ParticipantRef): Promise<void> {
-		if (ref.participantType === "shadow") {
+	private async validateParticipantExists(ref: ParticipantRef): Promise<void> {
+		if (ref.participantType === "user") {
+			if (ref.participantId === DELETED_USER_SENTINEL) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Person not found",
+				});
+			}
+			const user = await this.db.user.findUnique({
+				where: { id: ref.participantId },
+				select: { id: true },
+			});
+			if (!user) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Person not found",
+				});
+			}
+		} else if (ref.participantType === "shadow") {
 			// RLS on shadow_profile filters by createdById=userId, so findUnique
 			// returns null if this shadow belongs to a different user.
 			const profile = await this.db.shadowProfile.findUnique({
@@ -1170,9 +1238,32 @@ export class PeopleService {
 					message: "Person not found",
 				});
 			}
+		} else if (ref.participantType === "guest") {
+			if (ref.participantId === DELETED_GUEST_SENTINEL) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Person not found",
+				});
+			}
+			const guest = await this.db.guestSession.findUnique({
+				where: { id: ref.participantId },
+				select: { id: true },
+			});
+			if (!guest) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Person not found",
+				});
+			}
 		}
+	}
 
-		const hasRelationship = await this.db.sharedTransaction.count({
+	/**
+	 * Returns true if there is at least one shared transaction between the
+	 * current user and the given participant.
+	 */
+	private async hasSharedHistory(ref: ParticipantRef): Promise<boolean> {
+		const row = await this.db.sharedTransaction.findFirst({
 			where: {
 				AND: [
 					{
@@ -1193,14 +1284,9 @@ export class PeopleService {
 					},
 				],
 			},
+			select: { id: true },
 		});
-
-		if (!hasRelationship) {
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "No shared transactions found with this person",
-			});
-		}
+		return row !== null;
 	}
 
 	/**

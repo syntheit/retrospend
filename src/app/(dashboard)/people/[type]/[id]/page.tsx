@@ -338,6 +338,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	usePageTitle(identity?.name);
 	const relationshipStats = data?.relationshipStats;
 	const projectBreakdown = data?.projectBreakdown ?? [];
+	const hasHistory = (relationshipStats?.transactionCount ?? 0) > 0;
 
 	const isSettled =
 		balances.length === 0 || balances.every((b) => b.balance === 0);
@@ -547,7 +548,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 							</div>
 						</div>
 					) : (
-						<div className="flex flex-col gap-4 sm:grid sm:grid-cols-[1fr_auto] sm:gap-x-6 sm:gap-y-0">
+						<div className={cn("flex flex-col gap-4", hasHistory && "sm:grid sm:grid-cols-[1fr_auto] sm:gap-x-6 sm:gap-y-0")}>
 							{/* Left: avatar + name/stats + pills */}
 							<div className="flex flex-col gap-4">
 								<div className="flex items-center gap-4">
@@ -594,7 +595,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 								</div>
 							</div>
 																						{/* Per-project filter pills + table controls */}
-								{!isLoading && (
+								{!isLoading && hasHistory && (
 									<div className="-mx-4 flex flex-col gap-4 px-4 sm:mx-0 sm:px-0">
 										{projectBreakdown.length > 0 && (
 											<div className="flex gap-2 overflow-x-auto pb-1">
@@ -893,7 +894,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 							</div>
 
 							{/* Right: Actions + Balance */}
-							<div className="flex flex-col items-start gap-3 sm:items-end">
+							{hasHistory && <div className="flex flex-col items-start gap-3 sm:items-end">
 								{/* Action buttons */}
 								<div className="flex flex-wrap items-center gap-1.5">
 									{!isSettled && (
@@ -1029,7 +1030,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 										</>
 									)}
 								</div>
-							</div>
+							</div>}
 						</div>
 					)}
 
@@ -1073,25 +1074,43 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 						</div>
 					)}
 
-					<PeopleTimelineTable
-						externalToolbar
-						identityName={identity?.name ?? "They"}
-						onAvailableCategoriesChange={onAvailableCategoriesChange}
-						onAvailablePayersChange={onAvailablePayersChange}
-						onCountChange={setExpenseCount}
-						onDelete={(txn) => setDeletingTransaction(txn)}
-						onEdit={(txnId) => setEditingTransactionId(txnId)}
-						onSearchChange={setSearchValue}
-						onStatusFilterChange={setStatusFilter}
-						onViewHistory={(txnId) => openHistory(txnId)}
-						paidByFilter={paidByFilter}
-						participantId={id}
-						participantType={participantType}
-						searchValue={searchValue}
-						selectedCategories={selectedCategories}
-						selectedProjectId={selectedProjectId}
-						statusFilter={statusFilter}
-					/>
+					{isLoading || hasHistory ? (
+						<PeopleTimelineTable
+							externalToolbar
+							identityName={identity?.name ?? "They"}
+							onAvailableCategoriesChange={onAvailableCategoriesChange}
+							onAvailablePayersChange={onAvailablePayersChange}
+							onCountChange={setExpenseCount}
+							onDelete={(txn) => setDeletingTransaction(txn)}
+							onEdit={(txnId) => setEditingTransactionId(txnId)}
+							onSearchChange={setSearchValue}
+							onStatusFilterChange={setStatusFilter}
+							onViewHistory={(txnId) => openHistory(txnId)}
+							paidByFilter={paidByFilter}
+							participantId={id}
+							participantType={participantType}
+							searchValue={searchValue}
+							selectedCategories={selectedCategories}
+							selectedProjectId={selectedProjectId}
+							statusFilter={statusFilter}
+						/>
+					) : (
+						<div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
+							<ReceiptText className="mb-3 h-10 w-10 text-muted-foreground/40" />
+							<h3 className="font-medium">No shared expenses</h3>
+							<p className="mt-1 max-w-sm text-muted-foreground text-sm">
+								You don&apos;t have any shared expenses with {identity?.name ?? "this person"} yet.
+							</p>
+							{identity?.isVerifiedUser && identity?.username && (
+								<Button asChild className="mt-4" size="sm" variant="outline">
+									<Link href={`/u/${identity.username}`}>
+										<ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+										View Public Profile
+									</Link>
+								</Button>
+							)}
+						</div>
+					)}
 				</div>
 			</PageContent>
 

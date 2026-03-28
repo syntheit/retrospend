@@ -592,7 +592,12 @@ function TransactionsContent() {
 								onDeleteSelected={handleDeleteSelected}
 								onDuplicateSelected={handleDuplicate}
 								onEditSelected={(id) => {
-									openExpense(id);
+									if (id.startsWith("shared:")) {
+										const txId = id.slice("shared:".length);
+										openSharedExpense(txId);
+									} else {
+										openExpense(id);
+									}
 									setSelectedExpenseIds(new Set());
 								}}
 								onExportSelected={handleExportSelected}

@@ -134,6 +134,70 @@ async function resolveParticipantNames(
 	});
 }
 
+/**
+ * Batch-resolve names + avatars for a set of (participantType, participantId) pairs.
+ * Returns a Map keyed by "type:id" → { name, avatarUrl }.
+ */
+async function batchResolveIdentities(
+	db: PrismaClient,
+	entries: Array<{ participantType: string; participantId: string }>,
+): Promise<Map<string, { name: string; avatarUrl: string | null }>> {
+	const userIds = new Set<string>();
+	const shadowIds = new Set<string>();
+	const guestIds = new Set<string>();
+
+	for (const e of entries) {
+		if (e.participantType === "user" && e.participantId !== "DELETED_USER") {
+			userIds.add(e.participantId);
+		} else if (e.participantType === "shadow") {
+			shadowIds.add(e.participantId);
+		} else if (e.participantType === "guest") {
+			guestIds.add(e.participantId);
+		}
+	}
+
+	const [users, shadows, guests] = await Promise.all([
+		userIds.size > 0
+			? db.user.findMany({
+					where: { id: { in: [...userIds] } },
+					select: { id: true, name: true, image: true, avatarPath: true },
+				})
+			: [],
+		shadowIds.size > 0
+			? db.shadowProfile.findMany({
+					where: { id: { in: [...shadowIds] } },
+					select: { id: true, name: true },
+				})
+			: [],
+		guestIds.size > 0
+			? db.guestSession.findMany({
+					where: { id: { in: [...guestIds] } },
+					select: { id: true, name: true },
+				})
+			: [],
+	]);
+
+	const result = new Map<string, { name: string; avatarUrl: string | null }>();
+
+	for (const u of users) {
+		result.set(`user:${u.id}`, {
+			name: u.name ?? "Unknown",
+			avatarUrl: getImageUrl(u.avatarPath ?? null) ?? u.image ?? null,
+		});
+	}
+	for (const s of shadows) {
+		result.set(`shadow:${s.id}`, { name: s.name ?? "Unknown", avatarUrl: null });
+	}
+	for (const g of guests) {
+		result.set(`guest:${g.id}`, { name: g.name ?? "Unknown", avatarUrl: null });
+	}
+
+	// Handle deleted users
+	result.set("user:DELETED_USER", { name: "Deleted User", avatarUrl: null });
+
+	return result;
+}
+
 async function runInProjectTransaction<T>(
 	db: PrismaClient,
 	userId: string,
@@ -819,7 +883,7 @@ export const projectRouter = createTRPCRouter({
 			if (callerParticipant.role !== "ORGANIZER" && target.role === "ORGANIZER") {
 				throw new TRPCError({
 					code: "FORBIDDEN",
-					message: "Only an Organizer can change another Organizer's role",
+					message: "Only an Owner can change another Owner's role",
 				});
 			}
 
@@ -835,7 +899,7 @@ export const projectRouter = createTRPCRouter({
 			) {
 				throw new TRPCError({
 					code: "FORBIDDEN",
-					message: "The project creator cannot be demoted below Organizer",
+					message: "The project creator cannot be demoted below Owner",
 				});
 			}
 
@@ -862,6 +926,126 @@ export const projectRouter = createTRPCRouter({
 				});
 
 				return updated;
+			});
+		}),
+
+	transferOwnership: protectedProcedure
+		.input(
+			z.object({
+				projectId: z.string().min(1),
+				newOwnerParticipantId: z.string().min(1),
+				confirmProjectName: z.string().min(1),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+
+			// Only the current owner (ORGANIZER) can transfer
+			await requireProjectRole(
+				ctx.db,
+				input.projectId,
+				"user",
+				userId,
+				"ORGANIZER",
+			);
+
+			const project = await ctx.db.project.findUniqueOrThrow({
+				where: { id: input.projectId },
+				select: { name: true, createdById: true },
+			});
+
+			// Must be the project creator (owner) to transfer
+			if (project.createdById !== userId) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the project owner can transfer ownership",
+				});
+			}
+
+			// Confirm project name to prevent accidental transfers
+			if (input.confirmProjectName !== project.name) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Project name does not match",
+				});
+			}
+
+			// Target must be an existing user participant (not guest/shadow)
+			const target = await ctx.db.projectParticipant.findUnique({
+				where: {
+					projectId_participantType_participantId: {
+						projectId: input.projectId,
+						participantType: "user",
+						participantId: input.newOwnerParticipantId,
+					},
+				},
+			});
+
+			if (!target) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Target user is not a participant in this project",
+				});
+			}
+
+			if (target.participantId === userId) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "You are already the owner",
+				});
+			}
+
+			return runInProjectTransaction(ctx.db, userId, async (tx) => {
+				// Promote new owner to ORGANIZER
+				await tx.projectParticipant.update({
+					where: { id: target.id },
+					data: { role: "ORGANIZER" },
+				});
+
+				// Demote old owner to EDITOR
+				await tx.projectParticipant.updateMany({
+					where: {
+						projectId: input.projectId,
+						participantType: "user",
+						participantId: userId,
+					},
+					data: { role: "EDITOR" },
+				});
+
+				// Transfer createdById to the new owner
+				await tx.project.update({
+					where: { id: input.projectId },
+					data: { createdById: input.newOwnerParticipantId },
+				});
+
+				await logAudit(tx, {
+					actor: { participantType: "user", participantId: userId },
+					action: "ROLE_CHANGED",
+					targetType: "PROJECT",
+					targetId: input.projectId,
+					changes: {
+						message: "Ownership transferred",
+						previousOwner: userId,
+						newOwner: input.newOwnerParticipantId,
+					},
+					projectId: input.projectId,
+				});
+
+				return { success: true };
+			}).then(async (result) => {
+				// Notify the new owner (fire-and-forget, outside transaction)
+				const callerName = await resolveParticipantName(
+					"user",
+					userId,
+				);
+				void createNotification({
+					userId: input.newOwnerParticipantId,
+					type: "PARTICIPANT_ADDED",
+					title: "Ownership transferred",
+					body: `${callerName} transferred ownership of "${project.name}" to you.`,
+					data: { projectId: input.projectId },
+				});
+				return result;
 			});
 		}),
 
@@ -921,7 +1105,7 @@ export const projectRouter = createTRPCRouter({
 			if (callerParticipant.role !== "ORGANIZER" && target.role === "ORGANIZER") {
 				throw new TRPCError({
 					code: "FORBIDDEN",
-					message: "Only an Organizer can remove another Organizer",
+					message: "Only an Owner can remove another Owner",
 				});
 			}
 
@@ -995,75 +1179,66 @@ export const projectRouter = createTRPCRouter({
 				ctx.db.sharedTransaction.count({ where }),
 			]);
 
-			// Resolve payer names
-			const enriched = await Promise.all(
-				transactions.map(async (tx) => {
-					let paidByName = "Unknown";
-					let paidByAvatar: string | null = null;
-					if (tx.paidByType === "user") {
-						const u = await ctx.db.user.findUnique({
-							where: { id: tx.paidById },
-							select: { name: true, image: true, avatarPath: true },
-						});
-						paidByName = u?.name ?? "Unknown";
-						paidByAvatar = getImageUrl(u?.avatarPath ?? null) ?? u?.image ?? null;
-					} else if (tx.paidByType === "shadow") {
-						const s = await ctx.db.shadowProfile.findUnique({
-							where: { id: tx.paidById },
-							select: { name: true },
-						});
-						paidByName = s?.name ?? "Unknown";
-					} else {
-						const g = await ctx.db.guestSession.findUnique({
-							where: { id: tx.paidById },
-							select: { name: true },
-						});
-						paidByName = g?.name ?? "Unknown";
-					}
+			// Batch-resolve all participant identities (payers + split participants)
+			const allParticipantEntries: Array<{ participantType: string; participantId: string }> = [];
+			for (const tx of transactions) {
+				allParticipantEntries.push({ participantType: tx.paidByType, participantId: tx.paidById });
+				for (const sp of tx.splitParticipants) {
+					allParticipantEntries.push({ participantType: sp.participantType, participantId: sp.participantId });
+				}
+			}
+			const identityMap = await batchResolveIdentities(ctx.db, allParticipantEntries);
 
-					// Determine status based on verification
-					const status = tx.isLocked
-						? "settled"
-						: computeTransactionStatus(tx.splitParticipants);
+			const enriched = transactions.map((tx) => {
+				const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
 
-					const isCreator =
-						tx.createdByType === participantType &&
-						tx.createdById === participantId;
-					const canModifyTx =
-						!tx.isLocked &&
-						(callerRole === "ORGANIZER" ||
-							callerRole === "EDITOR" ||
-							(callerRole === "CONTRIBUTOR" && isCreator));
+				// Determine status based on verification
+				const status = tx.isLocked
+					? "settled"
+					: computeTransactionStatus(tx.splitParticipants);
 
-					return {
-						id: tx.id,
-						description: tx.description,
-						amount: Number(tx.amount),
-						currency: tx.currency,
-						date: tx.date,
-						category: tx.category,
-						splitMode: tx.splitMode,
-						isLocked: tx.isLocked,
-						paidBy: {
-							type: tx.paidByType,
-							id: tx.paidById,
-							name: paidByName,
-							avatarUrl: paidByAvatar,
-							isMe: tx.paidByType === participantType && tx.paidById === participantId,
-						},
-						status,
-						canEdit: canModifyTx,
-						canDelete: canModifyTx,
-						hasUnseenChanges: tx.splitParticipants.find(
-							(sp) => sp.participantType === participantType && sp.participantId === participantId,
-						)?.hasUnseenChanges ?? false,
-						splitParticipants: tx.splitParticipants.map((sp) => ({
+				const isCreator =
+					tx.createdByType === participantType &&
+					tx.createdById === participantId;
+				const canModifyTx =
+					!tx.isLocked &&
+					(callerRole === "ORGANIZER" ||
+						callerRole === "EDITOR" ||
+						(callerRole === "CONTRIBUTOR" && isCreator));
+
+				return {
+					id: tx.id,
+					description: tx.description,
+					amount: Number(tx.amount),
+					currency: tx.currency,
+					date: tx.date,
+					category: tx.category,
+					splitMode: tx.splitMode,
+					isLocked: tx.isLocked,
+					paidBy: {
+						type: tx.paidByType,
+						id: tx.paidById,
+						name: payerIdentity?.name ?? "Unknown",
+						avatarUrl: payerIdentity?.avatarUrl ?? null,
+						isMe: tx.paidByType === participantType && tx.paidById === participantId,
+					},
+					status,
+					canEdit: canModifyTx,
+					canDelete: canModifyTx,
+					hasUnseenChanges: tx.splitParticipants.find(
+						(sp) => sp.participantType === participantType && sp.participantId === participantId,
+					)?.hasUnseenChanges ?? false,
+					splitParticipants: tx.splitParticipants.map((sp) => {
+						const identity = identityMap.get(`${sp.participantType}:${sp.participantId}`);
+						return {
 							...sp,
 							shareAmount: Number(sp.shareAmount),
-						})),
-					};
-				}),
-			);
+							name: identity?.name ?? "Unknown",
+							avatarUrl: identity?.avatarUrl ?? null,
+						};
+					}),
+				};
+			});
 
 			return {
 				transactions: enriched,
@@ -1121,7 +1296,7 @@ export const projectRouter = createTRPCRouter({
 			if (input.roleGranted === "ORGANIZER") {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Magic links cannot grant the Organizer role",
+					message: "Magic links cannot grant the Owner role",
 				});
 			}
 
@@ -1254,7 +1429,7 @@ export const projectRouter = createTRPCRouter({
 			if (input.role === "ORGANIZER") {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Magic links cannot grant the Organizer role",
+					message: "Magic links cannot grant the Owner role",
 				});
 			}
 
@@ -1440,59 +1615,50 @@ export const projectRouter = createTRPCRouter({
 				ctx.db.sharedTransaction.count({ where }),
 			]);
 
-			const enriched = await Promise.all(
-				transactions.map(async (tx) => {
-					let paidByName = "Unknown";
-					let paidByAvatar: string | null = null;
-					if (tx.paidByType === "user") {
-						const u = await ctx.db.user.findUnique({
-							where: { id: tx.paidById },
-							select: { name: true, image: true, avatarPath: true },
-						});
-						paidByName = u?.name ?? "Unknown";
-						paidByAvatar =
-							getImageUrl(u?.avatarPath ?? null) ?? u?.image ?? null;
-					} else if (tx.paidByType === "shadow") {
-						const s = await ctx.db.shadowProfile.findUnique({
-							where: { id: tx.paidById },
-							select: { name: true },
-						});
-						paidByName = s?.name ?? "Unknown";
-					} else {
-						const g = await ctx.db.guestSession.findUnique({
-							where: { id: tx.paidById },
-							select: { name: true },
-						});
-						paidByName = g?.name ?? "Unknown";
-					}
+			// Batch-resolve all participant identities
+			const allEntries: Array<{ participantType: string; participantId: string }> = [];
+			for (const tx of transactions) {
+				allEntries.push({ participantType: tx.paidByType, participantId: tx.paidById });
+				for (const sp of tx.splitParticipants) {
+					allEntries.push({ participantType: sp.participantType, participantId: sp.participantId });
+				}
+			}
+			const identityMap = await batchResolveIdentities(ctx.db, allEntries);
 
-					return {
-						id: tx.id,
-						description: tx.description,
-						amount: Number(tx.amount),
-						currency: tx.currency,
-						date: tx.date,
-						category: tx.category,
-						splitMode: tx.splitMode,
-						isLocked: tx.isLocked,
-						paidBy: {
-							type: tx.paidByType,
-							id: tx.paidById,
-							name: paidByName,
-							avatarUrl: paidByAvatar,
-							isMe: false,
-						},
-						status: "active" as const,
-						canEdit: false,
-						canDelete: false,
-						hasUnseenChanges: false,
-						splitParticipants: tx.splitParticipants.map((sp) => ({
+			const enriched = transactions.map((tx) => {
+				const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
+
+				return {
+					id: tx.id,
+					description: tx.description,
+					amount: Number(tx.amount),
+					currency: tx.currency,
+					date: tx.date,
+					category: tx.category,
+					splitMode: tx.splitMode,
+					isLocked: tx.isLocked,
+					paidBy: {
+						type: tx.paidByType,
+						id: tx.paidById,
+						name: payerIdentity?.name ?? "Unknown",
+						avatarUrl: payerIdentity?.avatarUrl ?? null,
+						isMe: false,
+					},
+					status: "active" as const,
+					canEdit: false,
+					canDelete: false,
+					hasUnseenChanges: false,
+					splitParticipants: tx.splitParticipants.map((sp) => {
+						const identity = identityMap.get(`${sp.participantType}:${sp.participantId}`);
+						return {
 							...sp,
 							shareAmount: Number(sp.shareAmount),
-						})),
-					};
-				}),
-			);
+							name: identity?.name ?? "Unknown",
+							avatarUrl: identity?.avatarUrl ?? null,
+						};
+					}),
+				};
+			});
 
 			return {
 				transactions: enriched,
