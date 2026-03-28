@@ -67,7 +67,7 @@ export default function ProjectsPage() {
 				Each participant has a role that controls what they can do:
 			</p>
 			<ul className="mb-4 list-disc space-y-1.5 pl-6 text-muted-foreground text-sm leading-relaxed">
-				<li><strong>Organizer</strong>: Full control. Can edit the project, manage participants, close billing periods, and delete the project.</li>
+				<li><strong>Owner</strong>: Full control. Can edit the project, manage participants, close billing periods, and delete the project.</li>
 				<li><strong>Editor</strong>: Can add and edit expenses, but cannot manage participants or project settings.</li>
 				<li><strong>Contributor</strong>: Can add expenses but cannot edit others&apos; expenses.</li>
 				<li><strong>Viewer</strong>: Read-only access. Can see expenses and balances but cannot add or change anything.</li>

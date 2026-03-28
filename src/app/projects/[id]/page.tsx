@@ -266,7 +266,7 @@ function InviteErrorView({ message }: { message?: string }) {
 					</div>
 					<h1 className="font-bold text-xl">Invalid Invite Link</h1>
 					<p className="text-muted-foreground text-sm">
-						{message ?? "This invite link is invalid or has expired. Ask the project organizer for a new invite link."}
+						{message ?? "This invite link is invalid or has expired. Ask the project owner for a new invite link."}
 					</p>
 					<Button asChild variant="outline">
 						<Link href="/login">
@@ -1274,7 +1274,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-	ORGANIZER: "Organizer",
+	ORGANIZER: "Owner",
 	EDITOR: "Editor",
 	CONTRIBUTOR: "Contributor",
 	VIEWER: "Viewer",

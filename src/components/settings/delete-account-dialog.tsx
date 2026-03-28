@@ -174,7 +174,7 @@ export function DeleteAccountDialog({
 											</span>
 											<span>
 												<span className="font-medium">{p.name}</span>
-												{"; organizer role will transfer to "}
+												{"; owner role will transfer to "}
 												<span className="font-medium">{p.newOrganizerName}</span>
 											</span>
 										</li>

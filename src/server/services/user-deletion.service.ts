@@ -124,7 +124,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 					projectId: pp.projectId,
 					changes: {
 						message:
-							"System promoted participant to Organizer because the previous organizer deleted their account.",
+							"System promoted participant to Owner because the previous owner deleted their account.",
 						promotedParticipantId: promotee.participantId,
 						promotedParticipantType: promotee.participantType,
 						newRole: "ORGANIZER",

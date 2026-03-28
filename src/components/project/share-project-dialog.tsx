@@ -102,7 +102,7 @@ const ROLE_ORDER: Record<string, number> = {
 };
 
 const ROLE_LABELS: Record<string, string> = {
-	ORGANIZER: "Organizer",
+	ORGANIZER: "Owner",
 	EDITOR: "Editor",
 	CONTRIBUTOR: "Contributor",
 	VIEWER: "Viewer",
@@ -164,6 +164,7 @@ export function ShareProjectDialog({
 						isOrganizer={isOrganizer}
 						isEditor={isEditor}
 						projectId={projectId}
+						projectName={projectName}
 						userId={userId}
 					/>
 				</div>
@@ -500,12 +501,14 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 
 function ParticipantList({
 	projectId,
+	projectName,
 	createdById,
 	isOrganizer,
 	isEditor,
 	userId,
 }: {
 	projectId: string;
+	projectName: string;
 	createdById: string;
 	isOrganizer: boolean;
 	isEditor: boolean;
@@ -516,6 +519,9 @@ function ParticipantList({
 	const utils = api.useUtils();
 
 	const [removeTarget, setRemoveTarget] = useState<Participant | null>(null);
+	const [transferTarget, setTransferTarget] = useState<Participant | null>(null);
+
+	const isOwner = userId === createdById;
 
 	const updateRoleMutation = api.project.updateParticipantRole.useMutation({
 		onSuccess: () => {
@@ -534,6 +540,15 @@ function ParticipantList({
 		onError: (e) => toast.error(e.message),
 	});
 
+	const transferMutation = api.project.transferOwnership.useMutation({
+		onSuccess: () => {
+			toast.success("Ownership transferred");
+			void utils.project.detail.invalidate({ id: projectId });
+			setTransferTarget(null);
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
 	const isCreator = useCallback(
 		(p: Participant) =>
 			p.participantType === "user" && p.participantId === createdById,
@@ -547,7 +562,11 @@ function ParticipantList({
 
 	const sorted = useMemo(() => {
 		return [...participants].sort((a, b) => {
-			// Current user first
+			// Owner (creator) first
+			const aOwner = isCreator(a) ? -1 : 0;
+			const bOwner = isCreator(b) ? -1 : 0;
+			if (aOwner !== bOwner) return aOwner - bOwner;
+			// Current user second
 			const aMe = isCurrentUser(a) ? -1 : 0;
 			const bMe = isCurrentUser(b) ? -1 : 0;
 			if (aMe !== bMe) return aMe - bMe;
@@ -558,7 +577,7 @@ function ParticipantList({
 			// Then alphabetical
 			return a.name.localeCompare(b.name);
 		});
-	}, [participants, isCurrentUser]);
+	}, [participants, isCurrentUser, isCreator]);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
@@ -595,7 +614,7 @@ function ParticipantList({
 							{/* Role control */}
 							{isCreator(p) ? (
 								<span className="shrink-0 px-2 py-1 text-muted-foreground text-xs">
-									Organizer
+									Owner
 								</span>
 							) : isOrganizer ? (
 								<DropdownMenu>
@@ -638,6 +657,13 @@ function ParticipantList({
 											</DropdownMenuRadioItem>
 										</DropdownMenuRadioGroup>
 										<DropdownMenuSeparator />
+										{isOwner && p.participantType === "user" && (
+											<DropdownMenuItem
+												onClick={() => setTransferTarget(p)}
+											>
+												Transfer ownership
+											</DropdownMenuItem>
+										)}
 										<DropdownMenuItem
 											onClick={() => setRemoveTarget(p)}
 											variant="destructive"
@@ -677,6 +703,23 @@ function ParticipantList({
 					participantName={removeTarget.name}
 				/>
 			)}
+
+			{/* Transfer Ownership Confirmation */}
+			<TransferOwnershipDialog
+				open={!!transferTarget}
+				onOpenChange={(open) => { if (!open) setTransferTarget(null); }}
+				isPending={transferMutation.isPending}
+				onConfirm={() => {
+					if (!transferTarget) return;
+					transferMutation.mutate({
+						projectId,
+						newOwnerParticipantId: transferTarget.participantId,
+						confirmProjectName: projectName,
+					});
+				}}
+				participantName={transferTarget?.name ?? ""}
+				projectName={projectName}
+			/>
 		</div>
 	);
 }
@@ -757,6 +800,65 @@ function RemoveConfirmation({
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+function TransferOwnershipDialog({
+	open,
+	onOpenChange,
+	isPending,
+	onConfirm,
+	participantName,
+	projectName,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	isPending: boolean;
+	onConfirm: () => void;
+	participantName: string;
+	projectName: string;
+}) {
+	const [confirmText, setConfirmText] = useState("");
+	const matches = confirmText === projectName;
+
+	return (
+		<AlertDialog open={open} onOpenChange={(v) => { if (!v) setConfirmText(""); onOpenChange(v); }}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Transfer ownership</AlertDialogTitle>
+					<AlertDialogDescription asChild>
+						<div className="space-y-3">
+							<p>
+								You are about to transfer ownership of this project to{" "}
+								<span className="font-semibold text-foreground">{participantName}</span>.
+							</p>
+							<p>
+								They will become the new owner with full control. Your role will be changed to Editor. This action cannot be undone by you.
+							</p>
+							<p>
+								Type <span className="font-semibold text-foreground">{projectName}</span> to confirm:
+							</p>
+							<Input
+								value={confirmText}
+								onChange={(e) => setConfirmText(e.target.value)}
+								placeholder={projectName}
+								autoComplete="off"
+							/>
+						</div>
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+					<AlertDialogAction
+						disabled={!matches || isPending}
+						onClick={(e) => { e.preventDefault(); onConfirm(); }}
+						className="bg-destructive text-white hover:bg-destructive/90"
+					>
+						{isPending ? "Transferring..." : "Transfer ownership"}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }
 

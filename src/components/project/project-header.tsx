@@ -34,7 +34,7 @@ import {
 } from "~/components/ui/tooltip";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { ShareProjectDialog } from "~/components/project/share-project-dialog";
-import { cn } from "~/lib/utils";
+
 import { api } from "~/trpc/react";
 import { useUserSettings } from "~/hooks/use-user-settings";
 
@@ -95,13 +95,17 @@ export function ParticipantRow({
 }) {
 	if (participants.length === 0) return null;
 
-	const visible = participants.slice(0, MAX_VISIBLE_PARTICIPANTS);
+	const sorted = [...participants].sort((a, b) => {
+		if (a.role === "ORGANIZER" && b.role !== "ORGANIZER") return -1;
+		if (a.role !== "ORGANIZER" && b.role === "ORGANIZER") return 1;
+		return 0;
+	});
+	const visible = sorted.slice(0, MAX_VISIBLE_PARTICIPANTS);
 	const extra = participants.length - MAX_VISIBLE_PARTICIPANTS;
 
 	return (
 		<div className="flex flex-wrap items-center gap-3">
 			{visible.map((p) => {
-				const isOrganizer = p.role === "ORGANIZER";
 				const isSelf =
 					currentUserId &&
 					p.participantType === "user" &&
@@ -117,19 +121,9 @@ export function ParticipantRow({
 				const inner = (
 					<>
 						<UserAvatar name={p.name} avatarUrl={p.avatarUrl} size="xs" />
-						<span
-							className={cn(
-								"text-sm text-muted-foreground",
-								isOrganizer && "font-medium text-foreground",
-							)}
-						>
+						<span className="text-sm text-muted-foreground">
 							{p.name}
 						</span>
-						{isOrganizer && (
-							<span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400">
-								Organizer
-							</span>
-						)}
 					</>
 				);
 
@@ -242,7 +236,7 @@ export function ProjectHeader({
 	if (!isSolo && participants && participants.length > 0) {
 		metaParts.push(`${participants.length} participant${participants.length !== 1 ? "s" : ""}`);
 	}
-	if (primaryCurrency && primaryCurrency !== settings?.defaultCurrency) metaParts.push(primaryCurrency);
+	if (primaryCurrency && primaryCurrency !== settings?.homeCurrency) metaParts.push(primaryCurrency);
 	if (expenseCount !== undefined) {
 		metaParts.push(`${expenseCount} expense${expenseCount !== 1 ? "s" : ""}`);
 	}
