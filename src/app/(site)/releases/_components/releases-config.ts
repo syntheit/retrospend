@@ -12,7 +12,7 @@ export type ReleaseEntry = {
 export const RELEASES: ReleaseEntry[] = [
 	{
 		version: "0.4.0",
-		date: "2026-03-25",
+		date: "2026-03-28",
 		title: "Shared Expenses, Projects & Guest Access",
 		component: ReleaseV040,
 	},
