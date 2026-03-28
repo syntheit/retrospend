@@ -24,6 +24,9 @@ import { api } from "~/trpc/react";
 
 type ParticipantType = "user" | "guest" | "shadow";
 
+export type AvailableCategory = { id: string; name: string; color: string; icon: string | null };
+export type AvailablePayer = { name: string; avatarUrl: string | null; isMe: boolean };
+
 interface PeopleTimelineTableProps {
 	participantType: ParticipantType;
 	participantId: string;
@@ -32,6 +35,12 @@ interface PeopleTimelineTableProps {
 	statusFilter: "all" | "active";
 	onStatusFilterChange: (filter: "all" | "active") => void;
 	onCountChange?: (count: number) => void;
+	onAvailableCategoriesChange?: (categories: AvailableCategory[]) => void;
+	onAvailablePayersChange?: (payers: AvailablePayer[]) => void;
+	searchValue: string;
+	onSearchChange: (value: string) => void;
+	selectedCategories: Set<string>;
+	paidByFilter: "all" | "me" | "them";
 	externalToolbar?: boolean;
 	onEdit: (txnId: string) => void;
 	onDelete: (txn: {
@@ -52,6 +61,12 @@ export function PeopleTimelineTable({
 	statusFilter,
 	onStatusFilterChange,
 	onCountChange,
+	onAvailableCategoriesChange,
+	onAvailablePayersChange,
+	searchValue,
+	onSearchChange,
+	selectedCategories,
+	paidByFilter,
 	externalToolbar = false,
 	onEdit,
 	onDelete,
@@ -205,9 +220,46 @@ export function PeopleTimelineTable({
 			{ enabled: txnIds.length > 0 },
 		);
 
+	// Derive available categories from all transactions (before filtering)
+	const availableCategories = useMemo(() => {
+		const map = new Map<string, AvailableCategory>();
+		for (const t of allTransactions) {
+			if (t.category) map.set(t.category.id, t.category);
+		}
+		return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+	}, [allTransactions]);
+
+	// Derive available payers (me + them) from all transactions
+	const availablePayers = useMemo(() => {
+		const payers: AvailablePayer[] = [];
+		let hasMe = false;
+		let hasThem = false;
+		for (const t of allTransactions) {
+			if (t.paidBy.isMe && !hasMe) {
+				payers.push({ name: t.paidBy.name, avatarUrl: t.paidBy.avatarUrl, isMe: true });
+				hasMe = true;
+			} else if (!t.paidBy.isMe && !hasThem) {
+				payers.push({ name: t.paidBy.name, avatarUrl: t.paidBy.avatarUrl, isMe: false });
+				hasThem = true;
+			}
+			if (hasMe && hasThem) break;
+		}
+		// "Me" first
+		return payers.sort((a, b) => (a.isMe === b.isMe ? 0 : a.isMe ? -1 : 1));
+	}, [allTransactions]);
+
+	// Notify parent of available categories and payers
+	useEffect(() => {
+		onAvailableCategoriesChange?.(availableCategories);
+	}, [availableCategories, onAvailableCategoriesChange]);
+
+	useEffect(() => {
+		onAvailablePayersChange?.(availablePayers);
+	}, [availablePayers, onAvailablePayersChange]);
+
 	// Normalize transactions + settlements into TimelineRow[]
 	const timelineRows = useMemo<TimelineRow[]>(() => {
-		// Apply client-side filters: hide settled + project filter
+		// Apply client-side filters: hide settled + project filter + category filter
 		const filtered = allTransactions.filter((t) => {
 			if (hideSettled && t.status === "settled") return false;
 			if (selectedProjectId !== undefined) {
@@ -217,6 +269,11 @@ export function PeopleTimelineTable({
 					if (t.project?.id !== selectedProjectId) return false;
 				}
 			}
+			if (selectedCategories.size > 0) {
+				if (!t.category || !selectedCategories.has(t.category.id)) return false;
+			}
+			if (paidByFilter === "me" && !t.paidBy.isMe) return false;
+			if (paidByFilter === "them" && t.paidBy.isMe) return false;
 			return true;
 		});
 
@@ -261,7 +318,7 @@ export function PeopleTimelineTable({
 		const rows = [...txnRows, ...settlementRows];
 		timelineRowsRef.current = rows;
 		return rows;
-	}, [allTransactions, settlementData, hideSettled, selectedProjectId]);
+	}, [allTransactions, settlementData, hideSettled, selectedProjectId, selectedCategories, paidByFilter]);
 
 	const txnCount = useMemo(
 		() => timelineRows.filter((r) => r.type === "transaction").length,
@@ -371,7 +428,9 @@ export function PeopleTimelineTable({
 		);
 	}
 
-	if (timelineRows.length === 0) {
+	const hasActiveFilters = selectedCategories.size > 0 || paidByFilter !== "all" || searchValue.length > 0;
+
+	if (timelineRows.length === 0 && !hasActiveFilters) {
 		return (
 			<div className="rounded-xl border border-border border-dashed">
 				<EmptyState
@@ -431,7 +490,7 @@ export function PeopleTimelineTable({
 				hideCount={true}
 				emptyState={
 					<div className="py-8 text-muted-foreground text-sm">
-						No transactions found.
+						No matching expenses.
 					</div>
 				}
 				initialSorting={[{ id: "date", desc: true }]}
@@ -457,6 +516,8 @@ export function PeopleTimelineTable({
 					/>
 				)}
 				rowClassName={rowClassName}
+				searchValue={searchValue}
+				onSearchChange={onSearchChange}
 				searchable={false}
 				selectedRows={selectedIds}
 			/>

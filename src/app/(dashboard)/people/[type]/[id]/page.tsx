@@ -16,20 +16,25 @@ import {
 	Link2,
 	Receipt,
 	ReceiptText,
+	SlidersHorizontal,
 	UserX,
 	XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useMemo, useState } from "react";
+import { use, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ExpenseModal } from "~/components/expense-modal";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
-import { PeopleTimelineTable } from "~/components/people/people-timeline-table";
+import {
+	PeopleTimelineTable,
+	type AvailableCategory,
+} from "~/components/people/people-timeline-table";
 import { useRevisionHistory } from "~/components/revision-history-provider";
 import { SettleUpDialog } from "~/components/settle-up-dialog";
 import { SiteHeader } from "~/components/site-header";
+import { ExpandableSearch } from "~/components/table-search";
 import { Badge } from "~/components/ui/badge";
 import {
 	Breadcrumb,
@@ -53,12 +58,25 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "~/components/ui/context-menu";
+import {
+	Drawer,
+	DrawerContent,
+	DrawerDescription,
+	DrawerTitle,
+} from "~/components/ui/drawer";
 import { ConfirmDialog } from "~/components/ui/confirmation-dialog";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "~/components/ui/popover";
 import { Skeleton } from "~/components/ui/skeleton";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { buildRateMap, computeHomeCurrencyTotal, formatSettleLabel } from "~/lib/balance-utils";
+import { getCategoryIcon } from "~/lib/category-icons";
 import { getImageUrl } from "~/lib/image-url";
 import { usePageTitle } from "~/hooks/use-page-title";
 import { cn, downloadCsv, downloadPdf } from "~/lib/utils";
@@ -114,12 +132,37 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	const { openHistory } = useRevisionHistory();
 	const { openNewExpense } = useExpenseModal();
 
+	const isMobile = useIsMobile();
+
 	const [settleUpOpen, setSettleUpOpen] = useState(false);
 	const [selectedProjectId, setSelectedProjectId] = useState<
 		string | null | undefined
 	>(undefined);
 	const [statusFilter, setStatusFilter] = useState<"all" | "active">("active");
 	const [expenseCount, setExpenseCount] = useState<number | null>(null);
+	const [searchValue, setSearchValue] = useState("");
+	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+	const [availableCategories, setAvailableCategories] = useState<AvailableCategory[]>([]);
+	const [filterOpen, setFilterOpen] = useState(false);
+
+	const onAvailableCategoriesChange = useCallback((cats: AvailableCategory[]) => {
+		setAvailableCategories(cats);
+	}, []);
+
+	const activeFilterCount = selectedCategories.size;
+
+	function toggleCategory(catId: string) {
+		setSelectedCategories((prev) => {
+			const next = new Set(prev);
+			if (next.has(catId)) next.delete(catId);
+			else next.add(catId);
+			return next;
+		});
+	}
+
+	function clearFilters() {
+		setSelectedCategories(new Set());
+	}
 	const [editingTransactionId, setEditingTransactionId] = useState<
 		string | null
 	>(null);
@@ -690,6 +733,153 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 													</button>
 												))}
 											</div>
+											{availableCategories.length > 0 && (
+												isMobile ? (
+													<>
+														<Button
+															className="relative h-7 px-2 text-xs"
+															onClick={() => setFilterOpen(true)}
+															size="sm"
+															variant={activeFilterCount > 0 ? "secondary" : "ghost"}
+														>
+															<SlidersHorizontal className="h-3.5 w-3.5" />
+															Filters
+															{activeFilterCount > 0 && (
+																<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
+																	{activeFilterCount}
+																</span>
+															)}
+														</Button>
+														<Drawer
+															direction="bottom"
+															onOpenChange={setFilterOpen}
+															open={filterOpen}
+														>
+															<DrawerContent className="px-6 pb-8">
+																<DrawerTitle className="mb-2 text-left font-semibold text-lg">
+																	Filters
+																</DrawerTitle>
+																<DrawerDescription className="sr-only">
+																	Filter expenses by category
+																</DrawerDescription>
+																<div className="overflow-y-auto">
+																	<div className="space-y-3">
+																		<div className="space-y-1.5">
+																			<p className="font-medium text-muted-foreground text-xs tracking-wide">
+																				Category
+																			</p>
+																			<div className="flex flex-wrap gap-1.5">
+																				{availableCategories.map((cat) => {
+																					const Icon = getCategoryIcon(cat.name, cat.icon);
+																					return (
+																						<Button
+																							aria-pressed={selectedCategories.has(cat.id)}
+																							className="h-7 gap-1.5 px-2.5 text-xs"
+																							key={cat.id}
+																							onClick={() => toggleCategory(cat.id)}
+																							size="sm"
+																							variant={selectedCategories.has(cat.id) ? "default" : "outline"}
+																						>
+																							<Icon
+																								className={cn(
+																									"h-3 w-3 shrink-0",
+																									!selectedCategories.has(cat.id) &&
+																										`text-${cat.color}-500`,
+																								)}
+																							/>
+																							{cat.name}
+																						</Button>
+																					);
+																				})}
+																			</div>
+																		</div>
+																		{activeFilterCount > 0 && (
+																			<Button
+																				className="h-7 px-2.5 text-xs"
+																				onClick={clearFilters}
+																				size="sm"
+																				variant="ghost"
+																			>
+																				Clear filters
+																			</Button>
+																		)}
+																	</div>
+																</div>
+															</DrawerContent>
+														</Drawer>
+													</>
+												) : (
+													<Popover onOpenChange={setFilterOpen} open={filterOpen}>
+														<PopoverTrigger asChild>
+															<Button
+																className="relative h-7 px-2 text-xs"
+																size="sm"
+																variant={activeFilterCount > 0 ? "secondary" : "ghost"}
+															>
+																<SlidersHorizontal className="h-3.5 w-3.5" />
+																Filters
+																{activeFilterCount > 0 && (
+																	<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
+																		{activeFilterCount}
+																	</span>
+																)}
+															</Button>
+														</PopoverTrigger>
+														<PopoverContent
+															align="start"
+															className="w-[400px] p-4"
+															sideOffset={8}
+														>
+															<div className="space-y-3">
+																<div className="space-y-1.5">
+																	<p className="font-medium text-muted-foreground text-xs tracking-wide">
+																		Category
+																	</p>
+																	<div className="flex flex-wrap gap-1.5">
+																		{availableCategories.map((cat) => {
+																			const Icon = getCategoryIcon(cat.name, cat.icon);
+																			return (
+																				<Button
+																					aria-pressed={selectedCategories.has(cat.id)}
+																					className="h-7 gap-1.5 px-2.5 text-xs"
+																					key={cat.id}
+																					onClick={() => toggleCategory(cat.id)}
+																					size="sm"
+																					variant={selectedCategories.has(cat.id) ? "default" : "outline"}
+																				>
+																					<Icon
+																						className={cn(
+																							"h-3 w-3 shrink-0",
+																							!selectedCategories.has(cat.id) &&
+																								`text-${cat.color}-500`,
+																						)}
+																					/>
+																					{cat.name}
+																				</Button>
+																			);
+																		})}
+																	</div>
+																</div>
+																{activeFilterCount > 0 && (
+																	<Button
+																		className="h-7 px-2.5 text-xs"
+																		onClick={clearFilters}
+																		size="sm"
+																		variant="ghost"
+																	>
+																		Clear filters
+																	</Button>
+																)}
+															</div>
+														</PopoverContent>
+													</Popover>
+												)
+											)}
+											<ExpandableSearch
+												onChange={setSearchValue}
+												placeholder="Search expenses..."
+												value={searchValue}
+											/>
 										</div>
 									</div>
 								)}
@@ -879,13 +1069,17 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					<PeopleTimelineTable
 						externalToolbar
 						identityName={identity?.name ?? "They"}
+						onAvailableCategoriesChange={onAvailableCategoriesChange}
 						onCountChange={setExpenseCount}
 						onDelete={(txn) => setDeletingTransaction(txn)}
 						onEdit={(txnId) => setEditingTransactionId(txnId)}
+						onSearchChange={setSearchValue}
 						onStatusFilterChange={setStatusFilter}
 						onViewHistory={(txnId) => openHistory(txnId)}
 						participantId={id}
 						participantType={participantType}
+						searchValue={searchValue}
+						selectedCategories={selectedCategories}
 						selectedProjectId={selectedProjectId}
 						statusFilter={statusFilter}
 					/>
