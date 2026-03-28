@@ -580,6 +580,7 @@ export function useExpenseForm({
 					participantId: sp.participantId,
 					name: sp.name,
 					email: null,
+					avatarUrl: sp.avatarUrl ?? null,
 				});
 			}
 		}
@@ -725,26 +726,10 @@ export function useExpenseForm({
 		}
 	}, [isSharedTransactionEdit, sharedTx?.projectId]);
 
-	// Auto-populate participants from project detail when a project is selected
+	// Clear autoPopulateProjectId once project detail loads (don't auto-select participants)
 	useEffect(() => {
 		if (!autoPopulateProjectId || !selectedProjectDetail || selectedProjectDetail.id !== autoPopulateProjectId || !currentUser.id) return;
 		setAutoPopulateProjectId(null);
-
-		const otherParticipants: SplitParticipant[] = selectedProjectDetail.participants
-			.filter((p) =>
-				(p.participantType === "user" || p.participantType === "shadow") &&
-				!(p.participantType === "user" && p.participantId === currentUser.id)
-			)
-			.map((p) => ({
-				participantType: p.participantType as "user" | "shadow",
-				participantId: p.participantId,
-				name: p.name,
-				email: p.email ?? null,
-				username: p.username ?? null,
-				avatarUrl: p.avatarUrl ?? null,
-			}));
-
-		setSplitWith(otherParticipants);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [autoPopulateProjectId, selectedProjectDetail, currentUser.id]);
 

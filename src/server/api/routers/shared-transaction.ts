@@ -272,6 +272,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 					participantType: sp.participantType,
 					participantId: sp.participantId,
 					name: resolveName(sp.participantType, sp.participantId),
+					avatarUrl: resolveAvatarUrl(sp.participantType, sp.participantId),
 					shareAmount: Number(sp.shareAmount),
 					sharePercentage: sp.sharePercentage ? Number(sp.sharePercentage) : null,
 					shareUnits: sp.shareUnits,
