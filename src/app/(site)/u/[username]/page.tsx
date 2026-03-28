@@ -170,7 +170,7 @@ function PaymentMethodDetail({
 
 	return (
 		<div
-			className="mt-2 rounded-lg border border-l-[3px] px-3 py-2.5"
+			className="method-detail-enter mt-2 rounded-lg border border-l-[3px] px-3 py-2.5"
 			style={{ borderLeftColor: def?.iconFallbackColor ?? "#6B7280" }}
 		>
 			<div className="flex items-center justify-between gap-3">
@@ -348,7 +348,7 @@ export default function PublicProfilePage({
 										<Collapsible open={!!selected}>
 											<CollapsibleContent>
 												{display && (
-													<PaymentMethodDetail isFirst={display.isFirst} method={display.method} />
+													<PaymentMethodDetail isFirst={display.isFirst} key={display.method.id} method={display.method} />
 												)}
 											</CollapsibleContent>
 										</Collapsible>

@@ -361,7 +361,7 @@ export function NewProjectDialog({
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="ORGANIZER_ONLY">
-											Organizer Only
+											Owner Only
 										</SelectItem>
 										<SelectItem value="ANY_PARTICIPANT">
 											Any Participant
