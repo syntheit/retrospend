@@ -91,7 +91,7 @@ function baseEmailTemplate(
           <tr>
             <td style="padding: 24px 40px; background-color: #fafafa; border-top: 1px solid ${colors.border};">
               <p style="margin: 0 0 4px 0; font-size: 13px; line-height: 1.5; color: ${colors.textMuted}; text-align: center;">
-                Sent by <span style="color: ${colors.primary}; font-weight: 600;">Retrospend</span> &mdash; the financial multitool
+                Sent by <span style="color: ${colors.primary}; font-weight: 600;">Retrospend</span> - the financial multitool
               </p>
               ${
 								appUrl
