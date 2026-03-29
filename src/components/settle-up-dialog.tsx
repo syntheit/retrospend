@@ -8,8 +8,9 @@ import {
 	Info,
 	Plus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { buildRateMap, computeHomeCurrencyTotal } from "~/lib/balance-utils";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useSession } from "~/hooks/use-session";
+import { useSettings } from "~/hooks/use-settings";
 import {
 	PaymentMethodIcon,
 	getPaymentMethodName,
@@ -88,9 +90,38 @@ export function SettleUpDialog({
 			{ enabled: open && participantType === "user" },
 		);
 
+	const { data: settings } = useSettings();
+	const homeCurrency = settings?.homeCurrency ?? "USD";
+
+	const { data: allRates } = api.exchangeRate.getAllRates.useQuery(undefined, {
+		staleTime: 1000 * 60 * 60,
+		enabled: open,
+	});
+
 	const activePlans = plan?.filter((p) => p.direction !== "settled") ?? [];
+	// selectedCurrencyIdx: -1 = "All" mode, 0+ = per-currency
 	const [selectedCurrencyIdx, setSelectedCurrencyIdx] = useState(0);
-	const firstActivePlan = activePlans[selectedCurrencyIdx];
+	const isAllMode = selectedCurrencyIdx === -1;
+	const firstActivePlan = isAllMode ? activePlans[0] : activePlans[selectedCurrencyIdx];
+
+	// Compute "All" mode data: total in home currency
+	const rateMap = useMemo(() => buildRateMap(allRates), [allRates]);
+	const homeCurrencyTotal = useMemo(
+		() => computeHomeCurrencyTotal(activePlans, homeCurrency, rateMap),
+		[activePlans, homeCurrency, rateMap],
+	);
+
+	// "All" chip is available when:
+	// - 2+ active currencies
+	// - all have the same direction
+	// - we can convert to home currency
+	const allSameDirection =
+		activePlans.length >= 2 &&
+		activePlans.every((p) => p.direction === activePlans[0]!.direction);
+	const canShowAll =
+		allSameDirection &&
+		homeCurrencyTotal !== null &&
+		homeCurrencyTotal.canConvert;
 
 	const [amount, setAmount] = useState("");
 	const [note, setNote] = useState("");
@@ -116,16 +147,20 @@ export function SettleUpDialog({
 
 	// Pre-fill amount when currency tab changes (Issue 6 fix)
 	useEffect(() => {
-		if (firstActivePlan) {
+		if (isAllMode && homeCurrencyTotal?.canConvert) {
+			setAmount(String(Math.abs(homeCurrencyTotal.amount).toFixed(2)));
+		} else if (firstActivePlan) {
 			setAmount(String(firstActivePlan.suggestedAmount));
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [selectedCurrencyIdx, firstActivePlan?.currency]);
+	}, [selectedCurrencyIdx, firstActivePlan?.currency, isAllMode, homeCurrencyTotal?.amount]);
 
-	const defaultAmount = firstActivePlan
-		? String(firstActivePlan.suggestedAmount)
-		: "";
-	const currency = firstActivePlan?.currency ?? "USD";
+	const defaultAmount = isAllMode && homeCurrencyTotal?.canConvert
+		? String(Math.abs(homeCurrencyTotal.amount).toFixed(2))
+		: firstActivePlan
+			? String(firstActivePlan.suggestedAmount)
+			: "";
+	const currency = isAllMode ? homeCurrency : (firstActivePlan?.currency ?? "USD");
 
 	const parsedAmount = parseFloat(amount);
 	const parsedDefault = parseFloat(defaultAmount);
@@ -141,16 +176,20 @@ export function SettleUpDialog({
 
 	const compatible = methodMatch?.compatible ?? [];
 
+	const invalidateAfterSettle = () => {
+		void utils.people.detail.invalidate();
+		void utils.people.detailCursor.invalidate();
+		void utils.settlement.plan.invalidate();
+		void utils.settlement.history.invalidate();
+		void utils.people.list.invalidate();
+	};
+
 	const createSettlement = api.settlement.create.useMutation({
 		onSuccess: (result, variables) => {
 			if (result.warning) {
 				toast.warning(result.warning);
 			}
-			void utils.people.detail.invalidate();
-			void utils.people.detailCursor.invalidate();
-			void utils.settlement.plan.invalidate();
-			void utils.settlement.history.invalidate();
-			void utils.people.list.invalidate();
+			invalidateAfterSettle();
 
 			// Compute remaining balance for success view
 			const settledAmount = variables.amount;
@@ -172,7 +211,35 @@ export function SettleUpDialog({
 		onError: (e) => toast.error(e.message),
 	});
 
+	const settleAllMutation = api.settlement.settleAll.useMutation({
+		onSuccess: (result) => {
+			invalidateAfterSettle();
+
+			setSuccessSummary({
+				amount: result.totalInPaymentCurrency,
+				currency: result.paymentCurrency,
+				remainingBalance: null, // All currencies settled
+				direction: (activePlans[0]?.direction ?? "you_owe_them") as "you_owe_them" | "they_owe_you",
+				requiresPayeeConfirmation: result.requiresPayeeConfirmation,
+			});
+			setPaymentStep("success");
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
+	const isMutating = createSettlement.isPending || settleAllMutation.isPending;
+
 	const handleConfirm = () => {
+		if (isAllMode) {
+			settleAllMutation.mutate({
+				toParticipant: { participantType, participantId },
+				paymentCurrency: homeCurrency,
+				note: note.trim() || null,
+				paymentMethod: selectedMethod?.type ?? null,
+			});
+			return;
+		}
+
 		const parsed = parseFloat(amount);
 		if (Number.isNaN(parsed) || parsed <= 0) {
 			toast.error("Enter a valid amount");
@@ -214,8 +281,9 @@ export function SettleUpDialog({
 		};
 		setSelectedMethod(sel);
 
-		if (link.canDeepLink && link.url) {
-			window.open(link.url, "_blank");
+		if (link.canDeepLink) {
+			const url = link.webUrl ?? link.url;
+			if (url) window.open(url, "_blank");
 		}
 		setPaymentStep("confirm");
 	};
@@ -369,11 +437,11 @@ export function SettleUpDialog({
 
 					<div className="flex flex-col gap-2">
 						<Button
-							disabled={createSettlement.isPending}
+							disabled={isMutating}
 							onClick={handleConfirm}
 						>
 							<CheckCircle2 className="h-4 w-4" />
-							{createSettlement.isPending ? "Saving..." : "Yes, Record Payment"}
+							{isMutating ? "Saving..." : "Yes, Record Payment"}
 						</Button>
 						<Button onClick={() => setPaymentStep("idle")} variant="ghost">
 							Back
@@ -404,7 +472,16 @@ export function SettleUpDialog({
 					<div className="space-y-5 py-1">
 						{/* Visual direction indicator */}
 						{(() => {
-							const isReceiving = firstActivePlan.direction === "they_owe_you";
+							const displayDirection = isAllMode
+								? (homeCurrencyTotal && homeCurrencyTotal.amount > 0
+									? "they_owe_you"
+									: "you_owe_them")
+								: firstActivePlan.direction;
+							const displayAmount = isAllMode && homeCurrencyTotal
+								? Math.abs(homeCurrencyTotal.amount)
+								: firstActivePlan.balance;
+							const displayCurrency = isAllMode ? homeCurrency : currency;
+							const isReceiving = displayDirection === "they_owe_you";
 							const [leftName, leftImg, rightName, rightImg] = isReceiving
 								? [personName, personAvatarUrl, myName, myImage]
 								: [myName, myImage, personName, personAvatarUrl];
@@ -434,7 +511,7 @@ export function SettleUpDialog({
 														: "text-rose-600 dark:text-rose-400",
 												)}
 											>
-												{formatCurrency(firstActivePlan.balance, currency)}
+												{formatCurrency(displayAmount, displayCurrency)}
 											</span>
 											<div className="flex w-full items-center gap-1">
 												<div className="h-px flex-1 bg-border" />
@@ -465,15 +542,29 @@ export function SettleUpDialog({
 
 						{/* Amount */}
 						<div className="space-y-2">
-							{activePlans.length > 1 && (
-								<div className="flex gap-1.5">
+							{(activePlans.length > 1 || canShowAll) && (
+								<div className="flex flex-wrap gap-1.5">
+									{canShowAll && (
+										<button
+											type="button"
+											className={cn(
+												"cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+												isAllMode
+													? "border-primary bg-primary/10 text-primary"
+													: "border-border text-muted-foreground hover:bg-muted/50",
+											)}
+											onClick={() => setSelectedCurrencyIdx(-1)}
+										>
+											All {formatCurrency(Math.abs(homeCurrencyTotal!.amount), homeCurrency)}
+										</button>
+									)}
 									{activePlans.map((p, idx) => (
 										<button
 											key={p.currency}
 											type="button"
 											className={cn(
-												"rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-												idx === selectedCurrencyIdx
+												"cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+												!isAllMode && idx === selectedCurrencyIdx
 													? "border-primary bg-primary/10 text-primary"
 													: "border-border text-muted-foreground hover:bg-muted/50",
 											)}
@@ -486,41 +577,61 @@ export function SettleUpDialog({
 									))}
 								</div>
 							)}
-							<div className="flex items-center justify-between">
-								<Label htmlFor="settle-amount">Amount ({currency})</Label>
-								{isPartial && (
-									<Badge className="h-5 px-1.5 text-[10px]" variant="secondary">
-										Partial settlement
-									</Badge>
-								)}
-							</div>
-							<Input
-								aria-describedby={isOverpayment ? "overpayment-warning" : undefined}
-								id="settle-amount"
-								inputMode="decimal"
-								onChange={(e) => setAmount(e.target.value)}
-								type="number"
-								value={amount}
-							/>
-							{/* Issue 5: Inline overpayment warning */}
-							{isOverpayment && (
-								<p className="text-amber-600 text-xs dark:text-amber-400" id="overpayment-warning">
-									Exceeds the current balance by{" "}
-									{formatCurrency(parsedAmount - parsedDefault, currency)}.
-									The excess will be recorded as an overpayment.
-								</p>
-							)}
-							{defaultAmount && (
-								<button
-									className={cn(
-										"rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs transition-colors hover:bg-muted",
-										amount === defaultAmount && "border-primary/40 bg-primary/5 text-primary",
+							{isAllMode ? (
+								<>
+									<Label>Total ({homeCurrency})</Label>
+									<div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+										<span className="font-semibold text-sm">
+											{formatCurrency(Math.abs(homeCurrencyTotal!.amount), homeCurrency)}
+										</span>
+										<div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+											{activePlans.map((p) => (
+												<span key={p.currency} className="text-muted-foreground text-xs">
+													{formatCurrency(p.balance, p.currency)}
+												</span>
+											))}
+										</div>
+									</div>
+								</>
+							) : (
+								<>
+									<div className="flex items-center justify-between">
+										<Label htmlFor="settle-amount">Amount ({currency})</Label>
+										{isPartial && (
+											<Badge className="h-5 px-1.5 text-[10px]" variant="secondary">
+												Partial settlement
+											</Badge>
+										)}
+									</div>
+									<Input
+										aria-describedby={isOverpayment ? "overpayment-warning" : undefined}
+										id="settle-amount"
+										inputMode="decimal"
+										onChange={(e) => setAmount(e.target.value)}
+										type="number"
+										value={amount}
+									/>
+									{/* Issue 5: Inline overpayment warning */}
+									{isOverpayment && (
+										<p className="text-amber-600 text-xs dark:text-amber-400" id="overpayment-warning">
+											Exceeds the current balance by{" "}
+											{formatCurrency(parsedAmount - parsedDefault, currency)}.
+											The excess will be recorded as an overpayment.
+										</p>
 									)}
-									onClick={() => setAmount(defaultAmount)}
-									type="button"
-								>
-									Full amount — {formatCurrency(parseFloat(defaultAmount), currency)}
-								</button>
+									{defaultAmount && (
+										<button
+											className={cn(
+												"cursor-pointer rounded-md border border-border bg-muted/50 px-2.5 py-1 text-xs transition-colors hover:bg-muted",
+												amount === defaultAmount && "border-primary/40 bg-primary/5 text-primary",
+											)}
+											onClick={() => setAmount(defaultAmount)}
+											type="button"
+										>
+											Full amount — {formatCurrency(parseFloat(defaultAmount), currency)}
+										</button>
+									)}
+								</>
 							)}
 						</div>
 
@@ -623,7 +734,7 @@ export function SettleUpDialog({
 							</div>
 						) : (
 							<button
-								className="flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
+								className="flex cursor-pointer items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
 								onClick={() => setShowNote(true)}
 								type="button"
 							>
@@ -643,12 +754,12 @@ export function SettleUpDialog({
 					<Button
 						className="w-full gap-2"
 						disabled={
-							planLoading || !firstActivePlan || createSettlement.isPending
+							planLoading || !firstActivePlan || isMutating
 						}
 						onClick={handleConfirm}
 					>
 						<CheckCircle2 className="h-4 w-4" />
-						{createSettlement.isPending ? "Saving..." : "Record Payment"}
+						{isMutating ? "Saving..." : "Record Payment"}
 					</Button>
 					{participantType === "user" && firstActivePlan && (
 						<p className="text-center text-muted-foreground text-xs">
