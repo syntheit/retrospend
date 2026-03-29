@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { env } from "~/env";
 import {
 	assertGuestProjectScope,
 	assertWritableParticipant,
@@ -6,6 +7,9 @@ import {
 	guestOrProtectedProcedure,
 	protectedProcedure,
 } from "~/server/api/trpc";
+import { db as globalDb } from "~/server/db";
+import { getShadowInviteEmailTemplate } from "~/server/email-templates";
+import { sendEmail } from "~/server/mailer";
 import { getImageUrl } from "~/server/storage";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 

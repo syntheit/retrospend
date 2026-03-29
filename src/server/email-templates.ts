@@ -394,6 +394,80 @@ export function getFeedbackNotificationTemplate(
 }
 
 /**
+ * Generates an invitation email for someone added as a shadow profile.
+ * Sent when a user creates a shadow with an email address (splitting expenses).
+ */
+export function getShadowInviteEmailTemplate(
+	creatorName: string,
+	signupUrl: string,
+) {
+	const content = `
+    <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: ${colors.textBase};">You've been invited to Retrospend</p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: ${colors.textSecondary};">
+      ${escapeHtml(creatorName)} wants to share expenses with you on Retrospend. Create a free account to view your balance, settle up, and take control of your finances.
+    </p>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding: 8px 0 32px 0;">
+          <a href="${escapeHtml(signupUrl)}" style="display: inline-block; padding: 14px 32px; background-color: ${colors.primary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Join Retrospend</a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: ${colors.textBase};">Your free account includes:</p>
+
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; View shared expenses and settle up with friends
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; Track personal spending with smart categorization
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; Set budgets and get real-time spending insights
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; Track your net worth and wealth over time
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; Multi-currency support with live exchange rates
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; Import bank statements and scan receipts
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-size: 14px; line-height: 1.6; color: ${colors.textSecondary};">
+          &#8226;&nbsp; Access from any device, anywhere
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: ${colors.textMuted};">
+      Your shared expense data will be automatically linked when you sign up with this email address.
+    </p>
+  `;
+
+	return baseEmailTemplate(
+		"You've been invited to Retrospend",
+		content,
+		`${creatorName} wants to share expenses with you on Retrospend. Join to view your balance and settle up.`,
+	);
+}
+
+/**
  * Generates an SMTP test email template.
  */
 export function getTestEmailTemplate() {
