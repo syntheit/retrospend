@@ -79,8 +79,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 				<ResponsiveDialogHeader>
 					<ResponsiveDialogTitle>Send Feedback</ResponsiveDialogTitle>
 					<ResponsiveDialogDescription>
-						Tell us what&apos;s on your mind: bug reports, feature
-						requests, or anything else.
+						Share a bug report, feature request, or suggestion.
 					</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 				<div className="relative">
