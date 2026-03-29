@@ -457,36 +457,24 @@ function ProjectCard({
 						<div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30" />
 
 						{/* Card body */}
-						<div className="relative flex flex-col gap-3 p-4">
-							{/* Top: type badge + project icon */}
-							<div className="flex items-start justify-between gap-2">
-								<div className="flex flex-col gap-1">
-									<Badge className="w-fit border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
+						<div className="relative flex items-start gap-3 p-4">
+							<div className="min-w-0 flex-1 space-y-1.5">
+								<div className="flex flex-wrap items-center gap-1">
+									<Badge className="border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
 										{PROJECT_TYPE_LABELS[project.type] ?? project.type}
 									</Badge>
 									{project.isSettled && (
-										<Badge className="w-fit border-emerald-400/30 bg-emerald-500/20 text-[10px] text-emerald-300 backdrop-blur-sm">
+										<Badge className="border-emerald-400/30 bg-emerald-500/20 text-[10px] text-emerald-300 backdrop-blur-sm">
 											Settled
 										</Badge>
 									)}
 									{filter === "ALL" && project.status !== "ACTIVE" && (
-										<Badge className="w-fit border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
+										<Badge className="border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
 											{PROJECT_STATUS_LABELS[project.status] ??
 												project.status}
 										</Badge>
 									)}
 								</div>
-								<ProjectVisual
-									className="shrink-0 ring-2 ring-white/20 shadow-lg !h-14 !w-14 !rounded-[10px]"
-									imagePath={project.imagePath ?? null}
-									projectName={project.name}
-									projectType={project.type}
-									size="lg"
-								/>
-							</div>
-
-							{/* Bottom: project info */}
-							<div className="space-y-2">
 								<h3 className="font-bold text-base text-white leading-tight">
 									{project.name}
 								</h3>
@@ -580,6 +568,13 @@ function ProjectCard({
 									/>
 								</div>
 							</div>
+							<ProjectVisual
+								className="shrink-0 ring-2 ring-white/20 shadow-lg !h-[84px] !w-[84px] !rounded-[12px]"
+								imagePath={project.imagePath ?? null}
+								projectName={project.name}
+								projectType={project.type}
+								size="lg"
+							/>
 						</div>
 
 						{/* Action footer */}
