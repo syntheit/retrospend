@@ -386,12 +386,16 @@ export function ProjectSettingsDialog({
 							Danger Zone
 						</h4>
 
-						{project.status === "ACTIVE" && (
-							<div className="flex items-center justify-between rounded-lg border border-destructive/30 p-3">
+						<div className="rounded-lg border border-destructive/30 divide-y divide-destructive/30">
+							<div className="flex items-center justify-between p-3">
 								<div>
-									<p className="font-medium text-sm">Archive Project</p>
+									<p className="font-medium text-sm">
+										{project.status === "ACTIVE" ? "Archive Project" : "Restore Project"}
+									</p>
 									<p className="text-muted-foreground text-xs">
-										Mark as archived. Can be restored later.
+										{project.status === "ACTIVE"
+											? "Mark as archived. Can be restored later."
+											: "Set project back to active."}
 									</p>
 								</div>
 								<Button
@@ -399,95 +403,75 @@ export function ProjectSettingsDialog({
 									onClick={() =>
 										archiveMutation.mutate({
 											id: project.id,
-											status: "ARCHIVED",
+											status: project.status === "ACTIVE" ? "ARCHIVED" : "ACTIVE",
 										})
 									}
 									size="sm"
 									variant="outline"
 								>
-									Archive
+									{project.status === "ACTIVE" ? "Archive" : "Restore"}
 								</Button>
 							</div>
-						)}
 
-						{project.status === "ARCHIVED" && (
-							<div className="flex items-center justify-between rounded-lg border border-destructive/30 p-3">
-								<div>
-									<p className="font-medium text-sm">Restore Project</p>
-									<p className="text-muted-foreground text-xs">
-										Set project back to active.
-									</p>
-								</div>
-								<Button
-									disabled={archiveMutation.isPending}
-									onClick={() =>
-										archiveMutation.mutate({
-											id: project.id,
-											status: "ACTIVE",
-										})
-									}
-									size="sm"
-									variant="outline"
-								>
-									Restore
-								</Button>
-							</div>
-						)}
-
-					{isOrganizer && (
-						<div className="rounded-lg border border-destructive/30 p-3">
-							<p className="font-medium text-sm">Delete Project</p>
-							<p className="text-muted-foreground text-xs">
-								Permanently delete this project and all its data.
-							</p>
-							{!showDeleteConfirm ? (
-								<Button
-									className="mt-2"
-									onClick={() => setShowDeleteConfirm(true)}
-									size="sm"
-									variant="destructive"
-								>
-									Delete Project
-								</Button>
-							) : (
-								<div className="mt-2 space-y-2">
-									<p className="text-muted-foreground text-xs">
-										Type &quot;{project.name}&quot; to confirm:
-									</p>
-									<Input
-										onChange={(e) => setDeleteConfirm(e.target.value)}
-										placeholder={project.name}
-										value={deleteConfirm}
-									/>
-									<div className="flex gap-2">
-										<Button
-											onClick={() => {
-												setShowDeleteConfirm(false);
-												setDeleteConfirm("");
-											}}
-											size="sm"
-											variant="ghost"
-										>
-											Cancel
-										</Button>
-										<Button
-											disabled={
-												deleteConfirm !== project.name ||
-												deleteMutation.isPending
-											}
-											onClick={() => deleteMutation.mutate({ id: project.id })}
-											size="sm"
-											variant="destructive"
-										>
-											{deleteMutation.isPending
-												? "Deleting..."
-												: "Confirm Delete"}
-										</Button>
+							{isOrganizer && (
+								<div className="p-3">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="font-medium text-sm">Delete Project</p>
+											<p className="text-muted-foreground text-xs">
+												Permanently delete this project and all its data.
+											</p>
+										</div>
+										{!showDeleteConfirm && (
+											<Button
+												onClick={() => setShowDeleteConfirm(true)}
+												size="sm"
+												variant="destructive"
+											>
+												Delete
+											</Button>
+										)}
 									</div>
+									{showDeleteConfirm && (
+										<div className="mt-2 space-y-2">
+											<p className="text-muted-foreground text-xs">
+												Type &quot;{project.name}&quot; to confirm:
+											</p>
+											<Input
+												onChange={(e) => setDeleteConfirm(e.target.value)}
+												placeholder={project.name}
+												value={deleteConfirm}
+											/>
+											<div className="flex gap-2">
+												<Button
+													onClick={() => {
+														setShowDeleteConfirm(false);
+														setDeleteConfirm("");
+													}}
+													size="sm"
+													variant="ghost"
+												>
+													Cancel
+												</Button>
+												<Button
+													disabled={
+														deleteConfirm !== project.name ||
+														deleteMutation.isPending
+													}
+													onClick={() => deleteMutation.mutate({ id: project.id })}
+													size="sm"
+													variant="destructive"
+												>
+													{deleteMutation.isPending
+														? "Deleting..."
+														: "Confirm Delete"}
+												</Button>
+											</div>
+										</div>
+									)}
 								</div>
 							)}
 						</div>
-					)}
 					</div>
 				</div>
 
