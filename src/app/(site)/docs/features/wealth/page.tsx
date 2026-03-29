@@ -35,7 +35,7 @@ export default function WealthPage() {
 					{ title: "Assets", desc: "Bank accounts, investments, crypto wallets, property, and anything else with positive value. Each entry has a name, balance, currency, and type." },
 					{ title: "Liabilities", desc: "Loans, credit card balances, mortgages. Tracked separately and subtracted from assets to calculate net worth." },
 					{ title: "Net Worth History", desc: "A 365-day chart showing how your net worth evolves. Automatic daily snapshots capture every change." },
-					{ title: "Allocation Chart", desc: "A donut breakdown of asset allocation across types: stocks, savings, crypto, property, and more." },
+					{ title: "Portfolio Composition", desc: "Horizontal breakdown bars showing allocation by asset type, currency exposure, and liquidity split." },
 				].map((card) => (
 					<Card key={card.title} className="border-border bg-card">
 						<CardContent className="p-4">
@@ -88,7 +88,7 @@ export default function WealthPage() {
 			</Callout>
 			<Callout variant="info" title="Multi-currency assets">
 				Assets in foreign currencies update their USD equivalent whenever you edit them or
-				when exchange rates change. The allocation chart always shows percentages in your
+				when exchange rates change. The portfolio breakdown always shows percentages in your
 				home currency.
 			</Callout>
 
