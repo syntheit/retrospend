@@ -82,9 +82,14 @@ export function ExpenseModal({
 			<DialogContent
 				className="top-4 left-1/2 flex h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] translate-x-[-50%] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[90dvh] sm:w-full sm:max-w-xl sm:-translate-y-1/2"
 				onOpenAutoFocus={(e) => {
-					// Prevent autofocus on mobile to avoid keyboard popup covering the form
-					if (window.innerWidth < 640) {
-						e.preventDefault();
+					e.preventDefault();
+					// On desktop, focus and select the amount input
+					if (window.innerWidth >= 640) {
+						const amountInput = document.getElementById("amount");
+						if (amountInput) {
+							(amountInput as HTMLInputElement).focus();
+							(amountInput as HTMLInputElement).select();
+						}
 					}
 				}}
 			>
