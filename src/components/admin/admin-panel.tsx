@@ -32,6 +32,7 @@ import { AiUsageTable } from "./ai-usage-table";
 import { AuditLogsTable } from "./audit-logs-table";
 import { BackupStatusCard } from "./backup-status-card";
 import { InviteCodesTable } from "./invite-codes-table";
+import { ParticipantsTable } from "./participants-table";
 import { UsersTable } from "./users-table";
 
 type ExtendedUser = NonNullable<
@@ -489,6 +490,7 @@ export function AdminPanel() {
 					>
 						<TabsList>
 							<TabsTrigger value="users">Users</TabsTrigger>
+							<TabsTrigger value="participants">Participants</TabsTrigger>
 							<TabsTrigger value="invite-codes">Invite Codes</TabsTrigger>
 							<TabsTrigger value="ai-usage">AI Usage</TabsTrigger>
 							<TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
@@ -537,6 +539,10 @@ export function AdminPanel() {
 								}
 								users={users || []}
 							/>
+						</TabsContent>
+
+						<TabsContent value="participants">
+							<ParticipantsTable />
 						</TabsContent>
 
 						<TabsContent value="invite-codes">

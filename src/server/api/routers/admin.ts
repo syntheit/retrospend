@@ -4,7 +4,11 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
-import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
+import {
+	anonymizeAndDeleteUser,
+	DELETED_GUEST_SENTINEL,
+	DELETED_SHADOW_SENTINEL,
+} from "~/server/services/user-deletion.service";
 import {
 	getPasswordChangedAlertTemplate,
 	getPasswordResetEmailTemplate,
@@ -94,6 +98,8 @@ export const adminRouter = createTRPCRouter({
 						"EMAIL_CHANGE_CONFIRMED",
 						"EMAIL_CHANGE_REVERTED",
 						"GUEST_UPGRADED",
+						"ADMIN_DELETE_SHADOW_PROFILE",
+						"ADMIN_DELETE_GUEST_SESSION",
 					])
 					.optional(),
 			}),
@@ -161,6 +167,8 @@ export const adminRouter = createTRPCRouter({
 						"EMAIL_CHANGE_CONFIRMED",
 						"EMAIL_CHANGE_REVERTED",
 						"GUEST_UPGRADED",
+						"ADMIN_DELETE_SHADOW_PROFILE",
+						"ADMIN_DELETE_GUEST_SESSION",
 					])
 					.optional(),
 			}),
@@ -723,6 +731,270 @@ export const adminRouter = createTRPCRouter({
 			return { available: false };
 		}
 	}),
+
+	listShadowProfiles: adminProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		const profiles = await db.shadowProfile.findMany({
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				phone: true,
+				claimedById: true,
+				claimedAt: true,
+				createdAt: true,
+				createdBy: {
+					select: { username: true },
+				},
+				claimedBy: {
+					select: { username: true },
+				},
+			},
+			orderBy: { createdAt: "desc" },
+		});
+
+		// Count how many project participations each shadow profile has
+		const participantCounts = await db.projectParticipant.groupBy({
+			by: ["participantId"],
+			where: {
+				participantType: "shadow",
+				participantId: { in: profiles.map((p) => p.id) },
+			},
+			_count: true,
+		});
+		const countMap = new Map(
+			participantCounts.map((p) => [p.participantId, p._count]),
+		);
+
+		return profiles.map((p) => ({
+			id: p.id,
+			name: p.name,
+			email: p.email,
+			phone: p.phone,
+			createdByUsername: p.createdBy.username,
+			claimedByUsername: p.claimedBy?.username ?? null,
+			claimedAt: p.claimedAt,
+			createdAt: p.createdAt,
+			projectCount: countMap.get(p.id) ?? 0,
+		}));
+	}),
+
+	listGuestSessions: adminProcedure.query(async ({ ctx }) => {
+		const { db } = ctx;
+
+		const sessions = await db.guestSession.findMany({
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				projectId: true,
+				createdAt: true,
+				lastActiveAt: true,
+			},
+			orderBy: { lastActiveAt: "desc" },
+		});
+
+		// Fetch project names
+		const projectIds = [...new Set(sessions.map((s) => s.projectId))];
+		const projects = await db.project.findMany({
+			where: { id: { in: projectIds } },
+			select: { id: true, name: true },
+		});
+		const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+
+		return sessions.map((s) => ({
+			id: s.id,
+			name: s.name,
+			email: s.email,
+			projectName: projectMap.get(s.projectId) ?? "Unknown",
+			createdAt: s.createdAt,
+			lastActiveAt: s.lastActiveAt,
+		}));
+	}),
+
+	deleteShadowProfile: adminProcedure
+		.input(z.object({ id: z.string().min(1) }))
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+
+			const profile = await db.shadowProfile.findUnique({
+				where: { id: input.id },
+				select: { id: true, name: true },
+			});
+			if (!profile) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Shadow profile not found" });
+			}
+
+			await db.$transaction(async (tx) => {
+				const shadowId = profile.id;
+
+				// Anonymize SplitParticipant records (same merge pattern as guest deletion)
+				await tx.$executeRaw`
+					UPDATE split_participant AS target
+					SET    "shareAmount" = target."shareAmount" + source."shareAmount"
+					FROM   split_participant AS source
+					WHERE  source."participantType" = 'shadow'
+					  AND  source."participantId"   = ${shadowId}
+					  AND  target."transactionId"   = source."transactionId"
+					  AND  target."participantType" = 'shadow'
+					  AND  target."participantId"   = ${DELETED_SHADOW_SENTINEL}
+				`;
+				await tx.$executeRaw`
+					DELETE FROM split_participant
+					WHERE  "participantType" = 'shadow'
+					  AND  "participantId"   = ${shadowId}
+					  AND  "transactionId" IN (
+						SELECT "transactionId"
+						FROM   split_participant
+						WHERE  "participantType" = 'shadow'
+						  AND  "participantId"   = ${DELETED_SHADOW_SENTINEL}
+					  )
+				`;
+				await tx.splitParticipant.updateMany({
+					where: { participantType: "shadow", participantId: shadowId },
+					data: { participantId: DELETED_SHADOW_SENTINEL },
+				});
+
+				// Anonymize SharedTransaction paidBy/createdBy
+				await tx.sharedTransaction.updateMany({
+					where: { paidByType: "shadow", paidById: shadowId },
+					data: { paidById: DELETED_SHADOW_SENTINEL },
+				});
+				await tx.sharedTransaction.updateMany({
+					where: { createdByType: "shadow", createdById: shadowId },
+					data: { createdById: DELETED_SHADOW_SENTINEL },
+				});
+
+				// Anonymize Settlement from/to
+				await tx.settlement.updateMany({
+					where: { fromParticipantType: "shadow", fromParticipantId: shadowId },
+					data: { fromParticipantId: DELETED_SHADOW_SENTINEL },
+				});
+				await tx.settlement.updateMany({
+					where: { toParticipantType: "shadow", toParticipantId: shadowId },
+					data: { toParticipantId: DELETED_SHADOW_SENTINEL },
+				});
+
+				// Anonymize AuditLogEntry actor
+				await tx.auditLogEntry.updateMany({
+					where: { actorType: "shadow", actorId: shadowId },
+					data: { actorId: DELETED_SHADOW_SENTINEL },
+				});
+
+				// Remove ProjectParticipant records
+				await tx.projectParticipant.deleteMany({
+					where: { participantType: "shadow", participantId: shadowId },
+				});
+
+				// Delete the ShadowProfile itself
+				await tx.shadowProfile.delete({ where: { id: shadowId } });
+			});
+
+			logEventAsync({
+				eventType: "ADMIN_DELETE_SHADOW_PROFILE",
+				userId: session.user.id,
+				metadata: {
+					adminId: session.user.id,
+					adminUsername: (session.user as { username: string }).username,
+					shadowProfileName: profile.name,
+				},
+			});
+
+			return { success: true };
+		}),
+
+	deleteGuestSession: adminProcedure
+		.input(z.object({ id: z.string().min(1) }))
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+
+			const guest = await db.guestSession.findUnique({
+				where: { id: input.id },
+				select: { id: true, name: true, email: true },
+			});
+			if (!guest) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Guest session not found" });
+			}
+
+			await db.$transaction(async (tx) => {
+				const guestId = guest.id;
+
+				// Anonymize SplitParticipant records
+				await tx.$executeRaw`
+					UPDATE split_participant AS target
+					SET    "shareAmount" = target."shareAmount" + source."shareAmount"
+					FROM   split_participant AS source
+					WHERE  source."participantType" = 'guest'
+					  AND  source."participantId"   = ${guestId}
+					  AND  target."transactionId"   = source."transactionId"
+					  AND  target."participantType" = 'guest'
+					  AND  target."participantId"   = ${DELETED_GUEST_SENTINEL}
+				`;
+				await tx.$executeRaw`
+					DELETE FROM split_participant
+					WHERE  "participantType" = 'guest'
+					  AND  "participantId"   = ${guestId}
+					  AND  "transactionId" IN (
+						SELECT "transactionId"
+						FROM   split_participant
+						WHERE  "participantType" = 'guest'
+						  AND  "participantId"   = ${DELETED_GUEST_SENTINEL}
+					  )
+				`;
+				await tx.splitParticipant.updateMany({
+					where: { participantType: "guest", participantId: guestId },
+					data: { participantId: DELETED_GUEST_SENTINEL },
+				});
+
+				// Anonymize SharedTransaction paidBy/createdBy
+				await tx.sharedTransaction.updateMany({
+					where: { paidByType: "guest", paidById: guestId },
+					data: { paidById: DELETED_GUEST_SENTINEL },
+				});
+				await tx.sharedTransaction.updateMany({
+					where: { createdByType: "guest", createdById: guestId },
+					data: { createdById: DELETED_GUEST_SENTINEL },
+				});
+
+				// Anonymize Settlement from/to
+				await tx.settlement.updateMany({
+					where: { fromParticipantType: "guest", fromParticipantId: guestId },
+					data: { fromParticipantId: DELETED_GUEST_SENTINEL },
+				});
+				await tx.settlement.updateMany({
+					where: { toParticipantType: "guest", toParticipantId: guestId },
+					data: { toParticipantId: DELETED_GUEST_SENTINEL },
+				});
+
+				// Anonymize AuditLogEntry actor
+				await tx.auditLogEntry.updateMany({
+					where: { actorType: "guest", actorId: guestId },
+					data: { actorId: DELETED_GUEST_SENTINEL },
+				});
+
+				// Remove ProjectParticipant records
+				await tx.projectParticipant.deleteMany({
+					where: { participantType: "guest", participantId: guestId },
+				});
+
+				// Delete the GuestSession itself
+				await tx.guestSession.delete({ where: { id: guestId } });
+			});
+
+			logEventAsync({
+				eventType: "ADMIN_DELETE_GUEST_SESSION",
+				userId: session.user.id,
+				metadata: {
+					adminId: session.user.id,
+					adminUsername: (session.user as { username: string }).username,
+					guestName: guest.name,
+					guestEmail: guest.email,
+				},
+			});
+
+			return { success: true };
+		}),
 
 	triggerBackup: adminProcedure.mutation(async () => {
 		try {

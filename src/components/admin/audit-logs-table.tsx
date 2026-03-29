@@ -78,6 +78,8 @@ const EVENT_TYPE_LABELS: Record<EventType, string> = {
 	EMAIL_CHANGE_CONFIRMED: "Email Change Confirmed",
 	EMAIL_CHANGE_REVERTED: "Email Change Reverted",
 	GUEST_UPGRADED: "Guest Upgraded",
+	ADMIN_DELETE_SHADOW_PROFILE: "Shadow Profile Deleted",
+	ADMIN_DELETE_GUEST_SESSION: "Guest Session Deleted",
 };
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
@@ -104,6 +106,8 @@ const EVENT_TYPE_COLORS: Record<EventType, string> = {
 	EMAIL_CHANGE_CONFIRMED: "text-emerald-500",
 	EMAIL_CHANGE_REVERTED: "text-destructive",
 	GUEST_UPGRADED: "text-emerald-500",
+	ADMIN_DELETE_SHADOW_PROFILE: "text-destructive",
+	ADMIN_DELETE_GUEST_SESSION: "text-destructive",
 };
 
 type PrivacyMode = "minimal" | "anonymized" | "full";

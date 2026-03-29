@@ -116,6 +116,7 @@ const SYSTEM_SENTINEL = "__system__";
 // Sentinel IDs used for deleted participants (see user-deletion.service.ts)
 const DELETED_USER_SENTINEL = "DELETED_USER";
 const DELETED_GUEST_SENTINEL = "DELETED_GUEST";
+const DELETED_SHADOW_SENTINEL = "DELETED_SHADOW";
 
 export async function resolveActorName(
 	db: PrismaClient,
@@ -126,6 +127,7 @@ export async function resolveActorName(
 	if (actorId === SYSTEM_SENTINEL) return "System";
 	if (actorId === DELETED_USER_SENTINEL) return "Deleted User";
 	if (actorId === DELETED_GUEST_SENTINEL) return "Deleted Guest";
+	if (actorId === DELETED_SHADOW_SENTINEL) return "Deleted Participant";
 
 	const key = `${actorType}:${actorId}`;
 	const hit = cache.get(key);

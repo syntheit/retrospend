@@ -1,0 +1,3 @@
+-- Add new event types for admin participant deletion
+ALTER TYPE "EventType" ADD VALUE IF NOT EXISTS 'ADMIN_DELETE_SHADOW_PROFILE';
+ALTER TYPE "EventType" ADD VALUE IF NOT EXISTS 'ADMIN_DELETE_GUEST_SESSION';

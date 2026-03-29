@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
-import { DELETED_GUEST_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
+import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
 import { computeBalance, computeBalanceBatch } from "./balance";
 import type { ParticipantRef } from "./types";
 
@@ -1279,6 +1279,12 @@ export class PeopleService {
 				});
 			}
 		} else if (ref.participantType === "shadow") {
+			if (ref.participantId === DELETED_SHADOW_SENTINEL) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Person not found",
+				});
+			}
 			// RLS on shadow_profile filters by createdById=userId, so findUnique
 			// returns null if this shadow belongs to a different user.
 			const profile = await this.db.shadowProfile.findUnique({

@@ -7,6 +7,9 @@ export const DELETED_USER_NAME = "Deleted User";
 export const DELETED_GUEST_SENTINEL = "DELETED_GUEST";
 export const DELETED_GUEST_NAME = "Deleted Guest";
 
+export const DELETED_SHADOW_SENTINEL = "DELETED_SHADOW";
+export const DELETED_SHADOW_NAME = "Deleted Participant";
+
 // Transaction client type - same capabilities as PrismaClient minus lifecycle methods
 type PrismaTx = Omit<
 	PrismaClient,
