@@ -377,6 +377,16 @@ function TransactionsContent() {
 						searchValue={searchQuery}
 						onSearchChange={setSearchQuery}
 						onFilteredCountChange={setDisplayedCount}
+						onDeleteSelected={handleDeleteSelected}
+						onEditRow={(id) => {
+							const expense = filteredExpenses.find((e) => e.id === id);
+							if (expense?.source === "shared" && expense.sharedContext?.transactionId) {
+								openSharedExpense(expense.sharedContext.transactionId);
+							} else {
+								openExpense(id);
+							}
+							setSelectedExpenseIds(new Set());
+						}}
 						emptyState={
 							<EmptyState
 								action={

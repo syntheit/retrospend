@@ -305,6 +305,7 @@ export function FilterBar(props: FilterBarProps) {
 					placeholder={props.searchPlaceholder ?? "Search expenses..."}
 					value={props.searchQuery}
 					captureTyping
+					slashFocus
 				/>
 			</div>
 

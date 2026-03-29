@@ -582,6 +582,7 @@ export default function PeoplePage() {
 										onChange={setSearchQuery}
 										placeholder="Search people..."
 										value={searchQuery}
+										slashFocus
 									/>
 									<SegmentedToggle
 										options={[

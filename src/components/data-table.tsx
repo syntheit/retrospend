@@ -266,6 +266,10 @@ interface DataTableProps<TData> {
 	 * server-paginated infinite-scroll tables.
 	 */
 	onReachEnd?: () => void;
+	/** Called when Delete/Backspace is pressed with selected rows */
+	onDeleteSelected?: () => void;
+	/** Called when E/Enter is pressed with exactly one selected row */
+	onEditRow?: (id: string) => void;
 }
 
 /**
@@ -306,6 +310,8 @@ export function DataTable<TData extends { id: string }>({
 	onFilteredCountChange,
 	onReachEnd,
 	countExtra,
+	onDeleteSelected,
+	onEditRow,
 }: DataTableProps<TData>) {
 	const isControlledSearch = searchValue !== undefined;
 	const [searchInput, setSearchInput] = React.useState("");
@@ -455,6 +461,10 @@ export function DataTable<TData extends { id: string }>({
 	renderContextMenuRef.current = renderContextMenu;
 	const rowClassNameRef = React.useRef(rowClassName);
 	rowClassNameRef.current = rowClassName;
+	const onDeleteSelectedRef = React.useRef(onDeleteSelected);
+	onDeleteSelectedRef.current = onDeleteSelected;
+	const onEditRowRef = React.useRef(onEditRow);
+	onEditRowRef.current = onEditRow;
 	// Track shift state in a ref so stable callbacks can read it without deps
 	const isShiftHeldRef = React.useRef(false);
 
@@ -467,27 +477,61 @@ export function DataTable<TData extends { id: string }>({
 
 	React.useEffect(() => {
 		if (!hasSelectionMode) return;
+
+		const isEditable = (el: HTMLElement) => {
+			const tag = el.tagName;
+			return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+		};
+		const hasDialog = () => !!document.querySelector('[role="dialog"], [role="alertdialog"]');
+
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Shift") {
 				isShiftHeldRef.current = true;
 				setIsShiftHeld(true);
 			}
-			if (
-				e.key === "Escape" &&
-				selectedRows &&
-				selectedRows.size > 0 &&
-				onClearSelection
-			) {
+
+			// Escape — clear selection (skip if dialog open or input focused)
+			if (e.key === "Escape" && selectedRows && selectedRows.size > 0 && onClearSelection) {
+				if (hasDialog()) return;
+				if (isEditable(e.target as HTMLElement)) return;
 				onClearSelection();
 			}
+
+			// Cmd/Ctrl+A — select all
 			if (e.key === "a" && (e.ctrlKey || e.metaKey) && onRangeSelect) {
-				const target = e.target as HTMLElement;
-				if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+				if (isEditable(e.target as HTMLElement)) return;
 				e.preventDefault();
 				const selectableIds = visibleRowsRef.current
 					.filter((r) => (isRowSelectable ? isRowSelectable(r.original) : true))
 					.map((r) => r.original.id);
 				if (selectableIds.length > 0) onRangeSelect(selectableIds);
+			}
+
+			// E or Enter — edit single selected row
+			if (
+				(e.key === "e" || e.key === "E" || e.key === "Enter") &&
+				!e.ctrlKey && !e.metaKey && !e.altKey &&
+				selectedRows?.size === 1 &&
+				onEditRowRef.current
+			) {
+				if (hasDialog()) return;
+				const el = e.target as HTMLElement;
+				if (isEditable(el) || el.closest("button, a, [role=\"button\"]")) return;
+				e.preventDefault();
+				const id = Array.from(selectedRows)[0]!;
+				onEditRowRef.current(id);
+			}
+
+			// Delete / Backspace — delete selected rows
+			if (
+				(e.key === "Delete" || e.key === "Backspace") &&
+				selectedRows && selectedRows.size > 0 &&
+				onDeleteSelectedRef.current
+			) {
+				if (hasDialog()) return;
+				if (isEditable(e.target as HTMLElement)) return;
+				e.preventDefault();
+				onDeleteSelectedRef.current();
 			}
 		};
 		const onKeyUp = (e: KeyboardEvent) => {
@@ -695,6 +739,7 @@ export function DataTable<TData extends { id: string }>({
 						onChange={setSearchInput}
 						placeholder={searchPlaceholder}
 						value={searchInput}
+						slashFocus
 					/>
 				</div>
 			)}

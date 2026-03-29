@@ -568,6 +568,7 @@ export function ExpensesTable({
 					onChange={setSearchValue}
 					placeholder="Search expenses..."
 					value={searchValue}
+					slashFocus
 				/>
 			</div>
 

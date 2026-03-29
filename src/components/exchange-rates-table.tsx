@@ -682,6 +682,7 @@ export function ExchangeRatesTable({
 					placeholder="Search currencies..."
 					value={searchQuery}
 					captureTyping
+					slashFocus
 				/>
 			</div>
 			{isDraggable ? (

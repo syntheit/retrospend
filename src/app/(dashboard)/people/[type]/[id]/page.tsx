@@ -887,6 +887,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 												onChange={setSearchValue}
 												placeholder="Search expenses..."
 												value={searchValue}
+												slashFocus
 											/>
 										</div>
 									</div>

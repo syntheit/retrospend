@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { useRecurringModal } from "~/components/recurring-modal-provider";
 import { FeedbackModal } from "~/components/feedback-modal";
+import { ProjectVisual } from "~/components/project/project-visual";
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -96,21 +97,23 @@ export function CommandPalette() {
 		{ enabled: open },
 	);
 
-	// Global Cmd+K / Ctrl+K listener
+	// Fetch projects when palette is open
+	const { data: projects } = api.project.list.useQuery(
+		{},
+		{ enabled: open },
+	);
+
+	// Global keyboard shortcuts
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
+			// Cmd+K — toggle command palette
 			if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
 				e.preventDefault();
 				setOpen((prev) => !prev);
 			}
 
-			// ? key for keyboard shortcuts (only when no input focused)
-			if (
-				e.key === "?" &&
-				!e.metaKey &&
-				!e.ctrlKey &&
-				!e.altKey
-			) {
+			// Single-key shortcuts (only when no input focused)
+			if (!e.metaKey && !e.ctrlKey && !e.altKey) {
 				const active = document.activeElement;
 				const tag = active?.tagName.toLowerCase();
 				if (
@@ -121,14 +124,24 @@ export function CommandPalette() {
 				) {
 					return;
 				}
-				e.preventDefault();
-				setShortcutsOpen((prev) => !prev);
+
+				// N — new expense
+				if (e.key === "n" || e.key === "N") {
+					e.preventDefault();
+					openNewExpense();
+				}
+
+				// ? — keyboard shortcuts
+				if (e.key === "?") {
+					e.preventDefault();
+					setShortcutsOpen((prev) => !prev);
+				}
 			}
 		}
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, []);
+	}, [openNewExpense]);
 
 	const close = useCallback(() => {
 		setOpen(false);
@@ -358,6 +371,28 @@ export function CommandPalette() {
 							))}
 						</CommandGroup>
 					)}
+					{projects && projects.length > 0 && (
+						<CommandGroup heading="Projects">
+							{projects.map((project) => (
+								<CommandItem
+									key={project.id}
+									value={`project ${project.name}`}
+									onSelect={() => navigate(`/projects/${project.id}`)}
+								>
+									<ProjectVisual
+										imagePath={project.imagePath ?? null}
+										projectName={project.name}
+										projectType={project.type}
+										size="xs"
+									/>
+									<span className="truncate">{project.name}</span>
+									<span className="ml-auto text-muted-foreground text-xs capitalize">
+										{project.type.toLowerCase().replace("_", " ")}
+									</span>
+								</CommandItem>
+							))}
+						</CommandGroup>
+					)}
 					<CommandGroup heading="Pages">
 						{pages.map((item) => (
 							<CommandItem
@@ -441,6 +476,8 @@ function KeyboardShortcutsDialog({
 			title: "Global",
 			shortcuts: [
 				{ keys: [`${mod}+K`], description: "Open command palette" },
+				{ keys: ["N"], description: "New expense" },
+				{ keys: ["/"], description: "Focus search" },
 				{ keys: ["?"], description: "Show keyboard shortcuts" },
 				{ keys: [`${mod}+B`], description: "Toggle sidebar" },
 			],
@@ -450,13 +487,14 @@ function KeyboardShortcutsDialog({
 			shortcuts: [
 				{ keys: [`${mod}+A`], description: "Select all rows" },
 				{ keys: ["Shift+Click"], description: "Range select rows" },
+				{ keys: ["E", "Enter"], description: "Edit selected row" },
+				{ keys: ["Delete"], description: "Delete selected rows" },
 				{ keys: ["Esc"], description: "Clear selection" },
 			],
 		},
 		{
 			title: "Forms",
 			shortcuts: [
-				{ keys: [`${mod}+Enter`], description: "Submit form" },
 				{ keys: ["Esc"], description: "Close modal" },
 			],
 		},

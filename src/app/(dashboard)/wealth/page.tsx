@@ -315,6 +315,7 @@ export default function WealthPage() {
 									onChange={filters.setSearch}
 									placeholder="Search assets..."
 									value={filters.search}
+									slashFocus
 								/>
 							</div>
 

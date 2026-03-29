@@ -4,11 +4,18 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 
+function isEditableElement(el: HTMLElement): boolean {
+	const tag = el.tagName;
+	return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
+
 interface TableSearchProps {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder?: string;
 	className?: string;
+	/** When true, pressing `/` (outside inputs) focuses this search */
+	slashFocus?: boolean;
 }
 
 export function TableSearch({
@@ -16,11 +23,31 @@ export function TableSearch({
 	onChange,
 	placeholder = "Search...",
 	className,
+	slashFocus = false,
 }: TableSearchProps) {
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (!slashFocus) return;
+		function handleKeyDown(e: KeyboardEvent) {
+			if (e.key !== "/") return;
+			if (e.ctrlKey || e.metaKey || e.altKey) return;
+			const el = e.target as HTMLElement;
+			if (isEditableElement(el)) return;
+			if (document.activeElement === inputRef.current) return;
+			e.preventDefault();
+			// Defer focus so the browser doesn't insert `/` into the newly focused input
+			setTimeout(() => inputRef.current?.focus(), 0);
+		}
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [slashFocus]);
+
 	return (
 		<div className={cn("relative w-full", className)}>
 			<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 			<Input
+				ref={inputRef}
 				className="pr-9 pl-9"
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
@@ -47,6 +74,8 @@ interface ExpandableSearchProps {
 	placeholder?: string;
 	className?: string;
 	captureTyping?: boolean;
+	/** When true, pressing `/` (outside inputs) expands and focuses this search */
+	slashFocus?: boolean;
 }
 
 export function ExpandableSearch({
@@ -55,6 +84,7 @@ export function ExpandableSearch({
 	placeholder = "Search...",
 	className,
 	captureTyping = false,
+	slashFocus = false,
 }: ExpandableSearchProps) {
 	const [expanded, setExpanded] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -78,16 +108,38 @@ export function ExpandableSearch({
 		}
 	}, [isOpen]);
 
-	// Close on Escape (only if empty)
+	// Escape: clear value first, then collapse
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
-			if (e.key === "Escape" && isOpen && !value) {
-				setExpanded(false);
+			if (e.key === "Escape" && isOpen) {
+				if (value) {
+					onChange("");
+				} else {
+					setExpanded(false);
+				}
 			}
 		}
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [isOpen, value]);
+	}, [isOpen, value, onChange]);
+
+	// Slash focus: pressing `/` outside inputs expands and focuses
+	useEffect(() => {
+		if (!slashFocus) return;
+		function handleKeyDown(e: KeyboardEvent) {
+			if (e.key !== "/") return;
+			if (e.ctrlKey || e.metaKey || e.altKey) return;
+			const el = e.target as HTMLElement;
+			if (isEditableElement(el)) return;
+			if (document.activeElement === inputRef.current) return;
+			e.preventDefault();
+			setExpanded(true);
+			// Defer focus so the browser doesn't insert `/` into the newly focused input
+			setTimeout(() => inputRef.current?.focus(), 0);
+		}
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [slashFocus]);
 
 	// Auto-open and capture typing when user starts typing anywhere on the page
 	useEffect(() => {
@@ -96,15 +148,11 @@ export function ExpandableSearch({
 		function handleKeyDown(e: KeyboardEvent) {
 			if (e.ctrlKey || e.metaKey || e.altKey) return;
 			if (e.key.length !== 1) return;
+			// Skip `/` when slashFocus handles it (prevents typing `/` into search)
+			if (slashFocus && e.key === "/") return;
 
 			const target = e.target as HTMLElement;
-			if (
-				target.tagName === "INPUT" ||
-				target.tagName === "TEXTAREA" ||
-				target.tagName === "SELECT" ||
-				target.isContentEditable
-			)
-				return;
+			if (isEditableElement(target)) return;
 
 			if (document.activeElement === inputRef.current) return;
 
@@ -115,7 +163,7 @@ export function ExpandableSearch({
 
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [captureTyping]);
+	}, [captureTyping, slashFocus]);
 
 	// Close on click outside (only if empty)
 	useEffect(() => {
