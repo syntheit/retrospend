@@ -15,7 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { TableSearch } from "~/components/table-search";
+import { ExpandableSearch } from "~/components/table-search";
 import { useCurrency } from "~/hooks/use-currency";
 import { api } from "~/trpc/react";
 import { RecurringCalendar } from "./_components/recurring-calendar";
@@ -151,18 +151,7 @@ export default function RecurringPage() {
 
 	return (
 		<>
-			<SiteHeader
-				actions={
-					<Button
-						aria-label="Add Recurring Expense"
-						onClick={openNewRecurring}
-					>
-						<Plus className="h-4 w-4 sm:mr-2" />
-						<span className="hidden sm:inline">Add Recurring Expense</span>
-					</Button>
-				}
-				title="Recurring"
-			/>
+			<SiteHeader title="Recurring" />
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl">
 					<div className="flex items-start gap-6">
@@ -198,36 +187,45 @@ export default function RecurringPage() {
 											Manage your recurring expenses and subscriptions
 										</p>
 									</div>
-									{hasTemplates && (
-										<div className="flex items-center gap-2">
-											<TableSearch
-												className="w-full sm:w-48"
-												onChange={setSearchQuery}
-												placeholder="Search subscriptions..."
-												value={searchQuery}
-											/>
-											<Select
-												onValueChange={(v) => setSortBy(v as SortKey)}
-												value={sortBy}
-											>
-												<SelectTrigger className="w-[160px] shrink-0">
-													<SelectValue />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="nextPayment">
-														Next payment
-													</SelectItem>
-													<SelectItem value="amountDesc">
-														Amount (high → low)
-													</SelectItem>
-													<SelectItem value="amountAsc">
-														Amount (low → high)
-													</SelectItem>
-													<SelectItem value="nameAz">Name A-Z</SelectItem>
-												</SelectContent>
-											</Select>
-										</div>
-									)}
+									<div className="flex items-center gap-2">
+										{hasTemplates && (
+											<>
+												<ExpandableSearch
+													onChange={setSearchQuery}
+													placeholder="Search subscriptions..."
+													value={searchQuery}
+													slashFocus
+												/>
+												<Select
+													onValueChange={(v) => setSortBy(v as SortKey)}
+													value={sortBy}
+												>
+													<SelectTrigger className="w-[160px] shrink-0">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="nextPayment">
+															Next payment
+														</SelectItem>
+														<SelectItem value="amountDesc">
+															Amount (high → low)
+														</SelectItem>
+														<SelectItem value="amountAsc">
+															Amount (low → high)
+														</SelectItem>
+														<SelectItem value="nameAz">Name A-Z</SelectItem>
+													</SelectContent>
+												</Select>
+											</>
+										)}
+										<Button
+											aria-label="Add Recurring Expense"
+											onClick={openNewRecurring}
+										>
+											<Plus className="h-4 w-4 sm:mr-2" />
+											<span className="hidden sm:inline">Add Recurring Expense</span>
+										</Button>
+									</div>
 								</div>
 
 								<RecurringList
