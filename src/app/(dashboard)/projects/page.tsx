@@ -2,13 +2,10 @@
 
 import {
 	Archive,
-	CheckCircle2,
-	CircleDollarSign,
 	Copy,
 	FolderOpen,
 	Link,
 	MoreHorizontal,
-	PlayCircle,
 	Plus,
 	ReceiptText,
 	RotateCcw,
@@ -21,6 +18,7 @@ import { toast } from "sonner";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
 import { NewProjectDialog } from "~/components/project/new-project-dialog";
+import { ExpandableSearch } from "~/components/table-search";
 import { PROJECT_TYPE_LABELS } from "~/components/project/project-header";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { ShareProjectDialog } from "~/components/project/share-project-dialog";
@@ -54,7 +52,6 @@ import { api, type RouterOutputs } from "~/trpc/react";
 
 const PROJECT_STATUS_LABELS: Record<string, string> = {
 	ACTIVE: "Active",
-	SETTLED: "Settled",
 	ARCHIVED: "Archived",
 };
 
@@ -96,11 +93,10 @@ function LastActivityLabel({ projectId, fallbackDate }: { projectId: string; fal
 	);
 }
 
-type StatusFilter = "ACTIVE" | "SETTLED" | "ARCHIVED" | "ALL";
+type StatusFilter = "ACTIVE" | "ARCHIVED" | "ALL";
 
 const FILTER_TABS: { label: string; value: StatusFilter }[] = [
 	{ label: "Active", value: "ACTIVE" },
-	{ label: "Settled", value: "SETTLED" },
 	{ label: "Archived", value: "ARCHIVED" },
 	{ label: "All", value: "ALL" },
 ];
@@ -300,11 +296,7 @@ function ProjectCard({
 	const statusMutation = api.project.update.useMutation({
 		onSuccess: (_data, variables) => {
 			const label =
-				variables.status === "ARCHIVED"
-					? "archived"
-					: variables.status === "SETTLED"
-						? "settled"
-						: "reactivated";
+				variables.status === "ARCHIVED" ? "archived" : "restored";
 			toast.success(`Project ${label}`);
 			void utils.project.list.invalidate();
 		},
@@ -378,20 +370,6 @@ function ProjectCard({
 				void handleCopyLink();
 			},
 		},
-		...(isOrganizer && project.status === "ACTIVE" && project._count.participants > 1
-			? [
-					{
-						id: "settle",
-						label: "Settle",
-						icon: CircleDollarSign,
-						disabled: statusMutation.isPending,
-						onClick: (e: ReactMouseEvent) => {
-							e.stopPropagation();
-							statusMutation.mutate({ id: project.id, status: "SETTLED" });
-						},
-					},
-				]
-			: []),
 	];
 
 	// All menu actions (candidates + archive/restore/reactivate/delete)
@@ -407,20 +385,6 @@ function ProjectCard({
 						onClick: (e: ReactMouseEvent) => {
 							e.stopPropagation();
 							statusMutation.mutate({ id: project.id, status: "ARCHIVED" });
-						},
-					},
-				]
-			: []),
-		...(isOrganizer && project.status === "SETTLED"
-			? [
-					{
-						id: "reactivate",
-						label: "Reactivate",
-						icon: PlayCircle,
-						disabled: statusMutation.isPending,
-						onClick: (e: ReactMouseEvent) => {
-							e.stopPropagation();
-							statusMutation.mutate({ id: project.id, status: "ACTIVE" });
 						},
 					},
 				]
@@ -493,13 +457,18 @@ function ProjectCard({
 						<div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30" />
 
 						{/* Card body */}
-						<div className="relative flex min-h-[190px] flex-col justify-between p-4">
+						<div className="relative flex flex-1 flex-col justify-between p-4">
 							{/* Top: type badge + project icon */}
 							<div className="flex items-start justify-between gap-2">
 								<div className="flex flex-col gap-1">
 									<Badge className="w-fit border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
 										{PROJECT_TYPE_LABELS[project.type] ?? project.type}
 									</Badge>
+									{project.isSettled && (
+										<Badge className="w-fit border-emerald-400/30 bg-emerald-500/20 text-[10px] text-emerald-300 backdrop-blur-sm">
+											Settled
+										</Badge>
+									)}
 									{filter === "ALL" && project.status !== "ACTIVE" && (
 										<Badge className="w-fit border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
 											{PROJECT_STATUS_LABELS[project.status] ??
@@ -508,7 +477,7 @@ function ProjectCard({
 									)}
 								</div>
 								<ProjectVisual
-									className="shrink-0 ring-2 ring-white/20 shadow-lg !h-12 !w-12 !rounded-[10px]"
+									className="shrink-0 ring-2 ring-white/20 shadow-lg !h-14 !w-14 !rounded-[10px]"
 									imagePath={project.imagePath ?? null}
 									projectName={project.name}
 									projectType={project.type}
@@ -660,36 +629,6 @@ function ProjectCard({
 									onClick={() =>
 										statusMutation.mutate({
 											id: project.id,
-											status: "SETTLED",
-										})
-									}
-								>
-									<CheckCircle2 />
-									Settle
-								</ContextMenuItem>
-							)}
-
-							{project.status === "SETTLED" && (
-								<ContextMenuItem
-									disabled={statusMutation.isPending}
-									onClick={() =>
-										statusMutation.mutate({
-											id: project.id,
-											status: "ACTIVE",
-										})
-									}
-								>
-									<PlayCircle />
-									Reactivate
-								</ContextMenuItem>
-							)}
-
-							{project.status === "ACTIVE" && (
-								<ContextMenuItem
-									disabled={statusMutation.isPending}
-									onClick={() =>
-										statusMutation.mutate({
-											id: project.id,
 											status: "ARCHIVED",
 										})
 									}
@@ -758,6 +697,7 @@ function ProjectCard({
 export default function ProjectsPage() {
 	const { formatCurrency } = useCurrencyFormatter();
 	const [filter, setFilter] = useState<StatusFilter>("ACTIVE");
+	const [search, setSearch] = useState("");
 	const [newProjectOpen, setNewProjectOpen] = useState(false);
 
 	const {
@@ -766,36 +706,46 @@ export default function ProjectsPage() {
 		isError,
 	} = api.project.list.useQuery(filter === "ALL" ? {} : { status: filter });
 
+	const filteredProjects = projects?.filter((p) =>
+		!search || p.name.toLowerCase().includes(search.toLowerCase()),
+	);
+
 	return (
 		<>
-			<SiteHeader
-				actions={
-					<Button onClick={() => setNewProjectOpen(true)} size="sm">
-						<Plus className="mr-1 h-4 w-4" />
-						New Project
-					</Button>
-				}
-				title="Projects"
-			/>
+			<SiteHeader title="Projects" />
 			<PageContent>
 				<div className="space-y-4">
-					{/* Filter Tabs */}
-					<div className="flex gap-1 rounded-lg border border-border bg-muted/30 p-1">
-						{FILTER_TABS.map((tab) => (
-							<button
-								className={cn(
-									"cursor-pointer rounded-md px-3 py-1.5 font-medium text-sm transition-colors",
-									filter === tab.value
-										? "bg-background shadow-sm"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-								key={tab.value}
-								onClick={() => setFilter(tab.value)}
-								type="button"
-							>
-								{tab.label}
-							</button>
-						))}
+					{/* Search + Filter Tabs + New Project */}
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex items-center gap-2">
+							<div className="flex gap-1 rounded-lg border border-border bg-muted/30 p-1">
+								{FILTER_TABS.map((tab) => (
+									<button
+										className={cn(
+											"cursor-pointer rounded-md px-3 py-1.5 font-medium text-sm transition-colors",
+											filter === tab.value
+												? "bg-background shadow-sm"
+												: "text-muted-foreground hover:text-foreground",
+										)}
+										key={tab.value}
+										onClick={() => setFilter(tab.value)}
+										type="button"
+									>
+										{tab.label}
+									</button>
+								))}
+							</div>
+							<ExpandableSearch
+								value={search}
+								onChange={setSearch}
+								placeholder="Search projects..."
+								slashFocus
+							/>
+						</div>
+						<Button onClick={() => setNewProjectOpen(true)} size="sm">
+							<Plus className="mr-1 h-4 w-4" />
+							New Project
+						</Button>
 					</div>
 
 					{/* Projects Grid */}
@@ -812,9 +762,9 @@ export default function ProjectsPage() {
 								<Skeleton className="h-[220px] rounded-xl" key={i} />
 							))}
 						</div>
-					) : projects && projects.length > 0 ? (
+					) : filteredProjects && filteredProjects.length > 0 ? (
 						<div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 400px), 1fr))" }}>
-							{projects.map((project) => (
+							{filteredProjects.map((project) => (
 								<ProjectCard
 									filter={filter}
 									formatCurrency={formatCurrency}
@@ -823,6 +773,12 @@ export default function ProjectsPage() {
 								/>
 							))}
 						</div>
+					) : search ? (
+						<EmptyState
+							description={`No projects matching "${search}"`}
+							icon={FolderOpen}
+							title="No Results"
+						/>
 					) : (
 						<EmptyState
 							action={{ label: "New Project", onClick: () => setNewProjectOpen(true) }}
