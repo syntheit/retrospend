@@ -169,9 +169,13 @@ function PaymentMethodCard({
 	);
 
 	const handleOpenLink = () => {
-		const url = link.url ?? link.webUrl;
+		const url = link.webUrl ?? link.url;
 		if (url) {
-			window.open(url, "_blank");
+			const a = document.createElement("a");
+			a.href = url;
+			a.target = "_blank";
+			a.rel = "noopener noreferrer";
+			a.click();
 			setLinkState("opening");
 			setTimeout(() => setLinkState("idle"), 3000);
 		}

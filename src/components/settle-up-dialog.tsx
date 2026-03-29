@@ -283,7 +283,13 @@ export function SettleUpDialog({
 
 		if (link.canDeepLink) {
 			const url = link.webUrl ?? link.url;
-			if (url) window.open(url, "_blank");
+			if (url) {
+				const a = document.createElement("a");
+				a.href = url;
+				a.target = "_blank";
+				a.rel = "noopener noreferrer";
+				a.click();
+			}
 		}
 		setPaymentStep("confirm");
 	};

@@ -36,9 +36,9 @@ export function generatePaymentLink(
 			const raw = handle.slice(1);
 			return {
 				url: `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle)}&amount=${amtStr}&note=${encodedNote}`,
-				webUrl: `https://venmo.com/${raw}`,
+				webUrl: `https://venmo.com/${raw}?txn=pay&amount=${amtStr}&note=${encodedNote}`,
 				canDeepLink: true,
-				instructions: `Amount won't pre-fill on web. Open the Venmo app for the best experience.`,
+				instructions: null,
 			};
 		}
 
@@ -153,11 +153,12 @@ export function buildPaymentLink(
 				const handle = identifier.startsWith("@")
 					? identifier
 					: `@${identifier}`;
+				const encodedNote = encodeURIComponent(note);
 				return {
-					url: `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle)}&note=${encodeURIComponent(note)}`,
-					webUrl: `https://venmo.com/${handle.slice(1)}`,
+					url: `venmo://paycharge?txn=pay&recipients=${encodeURIComponent(handle)}&note=${encodedNote}`,
+					webUrl: `https://venmo.com/${handle.slice(1)}?txn=pay&note=${encodedNote}`,
 					canDeepLink: true,
-					instructions: `Amount won't pre-fill on web. Open the Venmo app for the best experience.`,
+					instructions: null,
 				};
 			}
 			case "paypal": {
