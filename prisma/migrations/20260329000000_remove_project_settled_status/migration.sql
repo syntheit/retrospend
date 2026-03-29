@@ -6,7 +6,7 @@
 -- 4. Drop the old type and rename the new one
 
 -- Step 1: Convert existing SETTLED projects to ACTIVE
-UPDATE "Project" SET status = 'ACTIVE' WHERE status = 'SETTLED';
+UPDATE "project" SET status = 'ACTIVE' WHERE status = 'SETTLED';
 
 -- Step 2: Only perform the enum swap if SETTLED still exists in the type
 DO $$ BEGIN
@@ -19,7 +19,7 @@ DO $$ BEGIN
     CREATE TYPE "ProjectStatus_new" AS ENUM ('ACTIVE', 'ARCHIVED');
 
     -- Alter column to use new enum
-    ALTER TABLE "Project"
+    ALTER TABLE "project"
       ALTER COLUMN "status" DROP DEFAULT,
       ALTER COLUMN "status" TYPE "ProjectStatus_new" USING (status::text::"ProjectStatus_new"),
       ALTER COLUMN "status" SET DEFAULT 'ACTIVE';
