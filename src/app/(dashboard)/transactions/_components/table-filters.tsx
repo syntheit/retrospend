@@ -109,6 +109,9 @@ export interface TableFiltersProps {
 	typeFilter: TypeFilter;
 	setTypeFilter: (type: TypeFilter) => void;
 
+	// Whether the user has any shared expenses at all
+	hasSharedExpenses?: boolean;
+
 	// Exclusion filter
 	excludeFilter: ExcludeFilter;
 	setExcludeFilter: (filter: ExcludeFilter) => void;
@@ -166,6 +169,7 @@ const EXCLUDE_OPTIONS: { value: ExcludeFilter; label: string }[] = [
 export function TableFilters({
 	typeFilter,
 	setTypeFilter,
+	hasSharedExpenses,
 	excludeFilter,
 	setExcludeFilter,
 	selectedYears,
@@ -235,26 +239,28 @@ export function TableFilters({
 
 	return (
 		<div className="space-y-5">
-			{/* Type */}
-			<section className="space-y-2">
-				<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-					Type
-				</h3>
-				<div className="flex flex-wrap gap-1.5">
-					{TYPE_OPTIONS.map(({ value, label }) => (
-						<Button
-							aria-pressed={typeFilter === value}
-							className="h-7 px-3 text-xs"
-							key={value}
-							onClick={() => setTypeFilter(value)}
-							size="sm"
-							variant={typeFilter === value ? "default" : "outline"}
-						>
-							{label}
-						</Button>
-					))}
-				</div>
-			</section>
+			{/* Type - only show when user has shared expenses */}
+			{hasSharedExpenses && (
+				<section className="space-y-2">
+					<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
+						Type
+					</h3>
+					<div className="flex flex-wrap gap-1.5">
+						{TYPE_OPTIONS.map(({ value, label }) => (
+							<Button
+								aria-pressed={typeFilter === value}
+								className="h-7 px-3 text-xs"
+								key={value}
+								onClick={() => setTypeFilter(value)}
+								size="sm"
+								variant={typeFilter === value ? "default" : "outline"}
+							>
+								{label}
+							</Button>
+						))}
+					</div>
+				</section>
+			)}
 
 			{/* Period */}
 			<section className="space-y-3">

@@ -80,6 +80,7 @@ function createExpenseColumns(
 	onSharedRowEdit?: (sharedTransactionId: string) => void,
 	onSharedRowDelete?: (sharedTransactionId: string) => void,
 	onRowDuplicate?: (id: string) => void,
+	hasSharedExpenses?: boolean,
 ): ColumnDef<z.infer<typeof expenseSchema>>[] {
 	const columns: ColumnDef<z.infer<typeof expenseSchema>>[] = [
 		{
@@ -193,8 +194,8 @@ function createExpenseColumns(
 		},
 	];
 
-	// Add "Split" column when showing shared or all expenses (before date, after category)
-	if (typeFilter === "shared" || typeFilter === "all") {
+	// Add "Who" column when user has shared expenses and filter includes them
+	if (hasSharedExpenses && typeFilter !== "personal") {
 		const dateIndex = columns.findIndex((c) => "accessorKey" in c && c.accessorKey === "date");
 		columns.splice(dateIndex, 0, {
 			id: "split",

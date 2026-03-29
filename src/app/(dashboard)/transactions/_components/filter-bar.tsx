@@ -39,8 +39,8 @@ type ActivePill = {
 function useActivePills(props: FilterBarProps): ActivePill[] {
 	const pills: ActivePill[] = [];
 
-	// Type filter
-	if (props.typeFilter !== "all") {
+	// Type filter (only relevant when user has shared expenses)
+	if (props.hasSharedExpenses && props.typeFilter !== "all") {
 		pills.push({
 			key: "type",
 			label: props.typeFilter === "personal" ? "Personal" : "Shared",
@@ -159,7 +159,7 @@ function useActivePills(props: FilterBarProps): ActivePill[] {
 
 function countActiveFilters(props: FilterBarProps): number {
 	let count = 0;
-	if (props.typeFilter !== "all") count++;
+	if (props.hasSharedExpenses && props.typeFilter !== "all") count++;
 	if (props.excludeFilter !== "all") count++;
 	// Period: date range OR year/month selection counts as a single filter
 	if (

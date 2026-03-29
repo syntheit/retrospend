@@ -156,6 +156,8 @@ export function useExpensesController(options?: {
 		};
 	}, [amountFilteredExpenses, convertedAmounts]);
 
+	const hasSharedExpenses = (sharedParticipations ?? []).length > 0;
+
 	return {
 		expenses: amountFilteredExpenses,
 		allExpenses: expenses ?? [],
@@ -171,5 +173,6 @@ export function useExpensesController(options?: {
 		setTypeFilter,
 		excludeFilter,
 		setExcludeFilter,
+		hasSharedExpenses,
 	};
 }

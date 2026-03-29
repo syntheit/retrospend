@@ -118,6 +118,7 @@ function TransactionsContent() {
 		setTypeFilter,
 		excludeFilter,
 		setExcludeFilter,
+		hasSharedExpenses,
 	} = useExpensesController(initialFilterState);
 
 	const {
@@ -279,6 +280,7 @@ function TransactionsContent() {
 					setPendingSharedDelete(sharedTxId);
 				},
 				handleDuplicate,
+				hasSharedExpenses,
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[
@@ -291,6 +293,7 @@ function TransactionsContent() {
 			setSelectedExpenseIds,
 			setShowDeleteDialog,
 			typeFilter,
+			hasSharedExpenses,
 			filteredExpenses,
 		],
 	);
@@ -299,6 +302,7 @@ function TransactionsContent() {
 		typeFilter,
 		setTypeFilter,
 		excludeFilter,
+		hasSharedExpenses,
 		setExcludeFilter,
 		selectedYears,
 		selectedMonths,
@@ -435,7 +439,7 @@ function TransactionsContent() {
 									hasForeignCurrencyExpenses={rows.some(
 										(r) => r.currency !== "USD",
 									)}
-									hasPaidByColumn={typeFilter !== "personal"}
+									hasPaidByColumn={hasSharedExpenses && typeFilter !== "personal"}
 									totalAmount={displayTotal}
 								/>
 							);
