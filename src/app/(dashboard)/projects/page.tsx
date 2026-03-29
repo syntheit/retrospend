@@ -618,18 +618,20 @@ function ProjectCard({
 				</ContextMenuTrigger>
 
 				<ContextMenuContent>
-					<ContextMenuItem
-						onClick={() =>
-							openNewExpense({
-								projectId: project.id,
-								projectName: project.name,
-								projectDefaultCurrency: project.primaryCurrency,
-							})
-						}
-					>
-						<ReceiptText />
-						Add Expense
-					</ContextMenuItem>
+					{!isViewer && project.status !== "ARCHIVED" && (
+						<ContextMenuItem
+							onClick={() =>
+								openNewExpense({
+									projectId: project.id,
+									projectName: project.name,
+									projectDefaultCurrency: project.primaryCurrency,
+								})
+							}
+						>
+							<ReceiptText />
+							Add Expense
+						</ContextMenuItem>
+					)}
 
 					<ContextMenuItem onClick={() => setShareOpen(true)}>
 						<Share2 />
