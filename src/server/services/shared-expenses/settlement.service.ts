@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
+import { toUSD, fromUSD } from "~/server/currency";
 import { db as globalDb } from "~/server/db";
 import {
 	createNotification,
 	resolveParticipantName,
 } from "~/server/services/notifications";
+import { getBestExchangeRate } from "~/server/api/routers/shared-currency";
 import type { PrismaClient } from "~prisma";
 import { logAudit } from "./audit-log";
 import { computeBalance } from "./balance";
@@ -622,6 +624,223 @@ export class SettlementService {
 				canRemind,
 			};
 		});
+	}
+
+	/**
+	 * Settles ALL outstanding balances with a person at once.
+	 * Creates one settlement per currency, atomically in a single transaction.
+	 * Each settlement records the converted amount in the payment currency.
+	 *
+	 * Only settles currencies where the current user owes the other person
+	 * (negative balance = you_owe_them).
+	 */
+	async settleAll(input: {
+		toParticipant: ParticipantRef;
+		paymentCurrency: string;
+		paymentMethod?: string | null;
+		note?: string | null;
+	}) {
+		if (sameParticipant(this.currentUserRef, input.toParticipant)) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Cannot create a settlement with yourself",
+			});
+		}
+
+		await this.assertRelationship(input.toParticipant);
+
+		const isNonUserRecipient = input.toParticipant.participantType !== "user";
+
+		// Compute all per-currency balances
+		const balanceResult = await computeBalance(
+			this.db,
+			this.currentUserRef,
+			input.toParticipant,
+		);
+
+		// Filter to currencies where we owe them (negative balance)
+		const entries = Object.entries(balanceResult.byCurrency)
+			.filter(([, balance]) => balance < -0.00000001)
+			.map(([currency, balance]) => ({ currency, amount: Math.abs(balance) }));
+
+		if (entries.length === 0) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "No outstanding balance to settle",
+			});
+		}
+
+		// Fetch exchange rates for currencies that differ from payment currency
+		const currenciesToConvert = entries
+			.map((e) => e.currency)
+			.filter((c) => c !== input.paymentCurrency);
+
+		const rateMap = new Map<string, number>();
+		const now = new Date();
+
+		for (const currency of currenciesToConvert) {
+			const result = await getBestExchangeRate(
+				this.db as PrismaClient,
+				currency,
+				now,
+			);
+			if (result) rateMap.set(currency, result.rate);
+		}
+
+		// Also get rate for payment currency (needed for cross-currency conversion)
+		if (input.paymentCurrency !== "USD" && !rateMap.has(input.paymentCurrency)) {
+			const result = await getBestExchangeRate(
+				this.db as PrismaClient,
+				input.paymentCurrency,
+				now,
+			);
+			if (result) rateMap.set(input.paymentCurrency, result.rate);
+		}
+
+		// Create all settlements in a single transaction
+		const { settlements, totalInPaymentCurrency } =
+			await this.db.$transaction(async (tx) => {
+				const settlements: Array<{
+					id: string;
+					amount: number;
+					currency: string;
+					convertedAmount: number | null;
+					convertedCurrency: string | null;
+				}> = [];
+				let totalInPaymentCurrency = 0;
+
+				for (const entry of entries) {
+					let convertedAmount: number | null = null;
+					let convertedCurrency: string | null = null;
+					let exchangeRateUsed: number | null = null;
+
+					if (entry.currency !== input.paymentCurrency) {
+						// Convert via USD: source → USD → paymentCurrency
+						const sourceRate = rateMap.get(entry.currency);
+						const targetRate =
+							input.paymentCurrency === "USD"
+								? 1
+								: rateMap.get(input.paymentCurrency);
+
+						if (sourceRate && targetRate) {
+							const usdAmount = toUSD(
+								entry.amount,
+								entry.currency,
+								sourceRate,
+							);
+							const converted =
+								input.paymentCurrency === "USD"
+									? usdAmount
+									: fromUSD(usdAmount, input.paymentCurrency, targetRate);
+
+							convertedAmount =
+								Math.round(converted * 100) / 100;
+							convertedCurrency = input.paymentCurrency;
+							exchangeRateUsed = sourceRate;
+							totalInPaymentCurrency += convertedAmount;
+						} else {
+							// Fallback: cannot convert, record without conversion
+							totalInPaymentCurrency += entry.amount;
+						}
+					} else {
+						totalInPaymentCurrency += entry.amount;
+					}
+
+					const settlement = await tx.settlement.create({
+						data: {
+							fromParticipantType:
+								this.currentUserRef.participantType,
+							fromParticipantId:
+								this.currentUserRef.participantId,
+							toParticipantType:
+								input.toParticipant.participantType,
+							toParticipantId:
+								input.toParticipant.participantId,
+							amount: entry.amount,
+							currency: entry.currency,
+							convertedAmount,
+							convertedCurrency,
+							exchangeRateUsed,
+							paymentMethod: input.paymentMethod ?? null,
+							note: input.note ?? null,
+							confirmedByPayer: true,
+							confirmedByPayee: isNonUserRecipient,
+							status: isNonUserRecipient
+								? "FINALIZED"
+								: "PROPOSED",
+							initiatedAt: now,
+							settledAt: isNonUserRecipient ? now : null,
+							autoConfirmedReason: isNonUserRecipient
+								? `Recipient is a ${input.toParticipant.participantType} and cannot confirm`
+								: null,
+						},
+					});
+
+					await logAudit(tx, {
+						actor: this.currentUserRef,
+						action: "CREATED",
+						targetType: "SETTLEMENT",
+						targetId: settlement.id,
+						changes: {
+							amount: entry.amount,
+							currency: entry.currency,
+							toParticipantType:
+								input.toParticipant.participantType,
+							toParticipantId:
+								input.toParticipant.participantId,
+							batchSettlement: true,
+						},
+						context: {
+							action: isNonUserRecipient
+								? "settlement_auto_confirmed"
+								: "settlement_initiated",
+							batch: true,
+						},
+					});
+
+					settlements.push({
+						id: settlement.id,
+						amount: Number(settlement.amount),
+						currency: settlement.currency,
+						convertedAmount: settlement.convertedAmount
+							? Number(settlement.convertedAmount)
+							: null,
+						convertedCurrency: settlement.convertedCurrency,
+					});
+				}
+
+				return { settlements, totalInPaymentCurrency };
+			});
+
+		// Send a single notification for the batch
+		if (input.toParticipant.participantType === "user") {
+			const payerName = await resolveParticipantName("user", this.userId);
+			const formattedTotal = totalInPaymentCurrency.toFixed(2);
+			createNotification({
+				userId: input.toParticipant.participantId,
+				type: "SETTLEMENT_RECEIVED",
+				title: "Settlement received",
+				body:
+					settlements.length > 1
+						? `${payerName} sent you a settlement of ${input.paymentCurrency} ${formattedTotal} across ${settlements.length} currencies`
+						: `${payerName} sent you a settlement of ${input.paymentCurrency} ${formattedTotal}`,
+				data: {
+					settlementIds: settlements.map((s) => s.id),
+					fromParticipantType: "user",
+					fromParticipantId: this.userId,
+				},
+			}).catch((err) =>
+				console.error("[Notification Error] SETTLEMENT_RECEIVED:", err),
+			);
+		}
+
+		return {
+			settlements,
+			totalInPaymentCurrency:
+				Math.round(totalInPaymentCurrency * 100) / 100,
+			paymentCurrency: input.paymentCurrency,
+			requiresPayeeConfirmation: !isNonUserRecipient,
+		};
 	}
 
 	/**

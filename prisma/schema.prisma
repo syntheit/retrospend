@@ -853,7 +853,6 @@ enum ProjectType {
 
 enum ProjectStatus {
   ACTIVE
-  SETTLED
   ARCHIVED
 }
 

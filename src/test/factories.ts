@@ -178,7 +178,7 @@ export type TestProject = {
 	name: string;
 	type: "TRIP" | "ONGOING" | "SOLO" | "ONE_TIME" | "GENERAL";
 	description: string | null;
-	status: "ACTIVE" | "SETTLED" | "ARCHIVED";
+	status: "ACTIVE" | "ARCHIVED";
 	createdById: string;
 	primaryCurrency: string;
 	visibility: "PRIVATE" | "PUBLIC";

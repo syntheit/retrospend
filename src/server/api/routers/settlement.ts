@@ -39,6 +39,27 @@ export const settlementRouter = createTRPCRouter({
 		}),
 
 	/**
+	 * POST /api/settlements/settle-all
+	 *
+	 * Settles ALL outstanding balances with a person in one batch.
+	 * Creates one settlement per currency (atomically), zeroing out all balances.
+	 * Each settlement records the converted amount in the payment currency.
+	 */
+	settleAll: protectedProcedure
+		.input(
+			z.object({
+				toParticipant: participantRefSchema,
+				paymentCurrency: z.string().min(1).max(10),
+				paymentMethod: z.string().max(191).nullish(),
+				note: z.string().max(500).nullish(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const service = new SettlementService(ctx.db, ctx.session.user.id);
+			return service.settleAll(input);
+		}),
+
+	/**
 	 * POST /api/settlements/:id/confirm
 	 *
 	 * Confirms receipt of a settlement. Only the payee (to_participant) can call this.

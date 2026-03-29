@@ -18,7 +18,7 @@ import { sendEmail } from "~/server/mailer";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
-import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
+import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 
@@ -329,7 +329,7 @@ export const projectRouter = createTRPCRouter({
 	list: protectedProcedure
 		.input(
 			z.object({
-				status: z.enum(["ACTIVE", "SETTLED", "ARCHIVED"]).optional(),
+				status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -393,6 +393,94 @@ export const projectRouter = createTRPCRouter({
 				spentGroupBy.map((g) => [g.projectId, Number(g._sum.amount ?? 0)]),
 			);
 
+			// Compute isSettled for multi-participant projects with transactions
+			// Batched: 2 queries total instead of 2 per project
+			const multiParticipantWithTxIds = projects
+				.filter((p) => p._count.participants > 1 && p._count.sharedTransactions > 0)
+				.map((p) => p.id);
+
+			const settlementResults = new Map<string, boolean>();
+			if (multiParticipantWithTxIds.length > 0) {
+				// 1. Batch fetch all transactions for qualifying projects
+				const allTxns = await ctx.db.sharedTransaction.findMany({
+					where: { projectId: { in: multiParticipantWithTxIds } },
+					select: {
+						projectId: true,
+						currency: true,
+						amount: true,
+						paidByType: true,
+						paidById: true,
+						splitParticipants: {
+							select: { participantType: true, participantId: true, shareAmount: true },
+						},
+					},
+				});
+
+				// Group transactions by project (projectId is non-null since we filtered by it)
+				const txsByProject = new Map<string, typeof allTxns>();
+				for (const tx of allTxns) {
+					const pid = tx.projectId!;
+					let list = txsByProject.get(pid);
+					if (!list) { list = []; txsByProject.set(pid, list); }
+					list.push(tx);
+				}
+
+				// 2. Collect all unique participant pairs across all transactions
+				type PPair = { participantType: ParticipantType; participantId: string };
+				const participantMap = new Map<string, PPair>();
+				for (const tx of allTxns) {
+					const pk = `${tx.paidByType}:${tx.paidById}`;
+					if (!participantMap.has(pk)) participantMap.set(pk, { participantType: tx.paidByType, participantId: tx.paidById });
+					for (const sp of tx.splitParticipants) {
+						const spk = `${sp.participantType}:${sp.participantId}`;
+						if (!participantMap.has(spk)) participantMap.set(spk, { participantType: sp.participantType, participantId: sp.participantId });
+					}
+				}
+
+				// 3. Batch fetch all relevant FINALIZED settlements
+				const participantPairs = [...participantMap.values()];
+				const allSettlements = participantPairs.length >= 2
+					? await ctx.db.settlement.findMany({
+						where: {
+							status: "FINALIZED",
+							AND: [
+								{ OR: participantPairs.map((p) => ({ fromParticipantType: p.participantType, fromParticipantId: p.participantId })) },
+								{ OR: participantPairs.map((p) => ({ toParticipantType: p.participantType, toParticipantId: p.participantId })) },
+							],
+						},
+						select: {
+							fromParticipantType: true, fromParticipantId: true,
+							toParticipantType: true, toParticipantId: true,
+							amount: true, currency: true,
+						},
+					})
+					: [];
+
+				// 4. Compute settlement plan per project using in-memory partitioning
+				for (const pid of multiParticipantWithTxIds) {
+					const projectTxns = txsByProject.get(pid) ?? [];
+					if (projectTxns.length === 0) continue;
+
+					// Collect this project's participant keys for filtering settlements
+					const projectKeys = new Set<string>();
+					for (const tx of projectTxns) {
+						projectKeys.add(`${tx.paidByType}:${tx.paidById}`);
+						for (const sp of tx.splitParticipants) {
+							projectKeys.add(`${sp.participantType}:${sp.participantId}`);
+						}
+					}
+
+					const projectSettlements = projectKeys.size >= 2
+						? allSettlements.filter((s) =>
+							projectKeys.has(`${s.fromParticipantType}:${s.fromParticipantId}`)
+							&& projectKeys.has(`${s.toParticipantType}:${s.toParticipantId}`))
+						: [];
+
+					const plan = computeSettlementPlan(projectTxns, projectSettlements);
+					settlementResults.set(pid, isFullySettled(plan));
+				}
+			}
+
 			const enriched = projects.map((p) => {
 				const participantDetails = participantsByProject.get(p.id) ?? [];
 				const myParticipant = participantDetails.find(
@@ -413,6 +501,7 @@ export const projectRouter = createTRPCRouter({
 					excludeFromAnalytics: rawMyParticipant?.excludeFromAnalytics ?? false,
 					totalSpent: spentMap.get(p.id) ?? 0,
 					currentBillingPeriod: p.billingPeriods[0] ?? null,
+					isSettled: settlementResults.get(p.id) ?? false,
 				};
 			});
 
@@ -600,7 +689,7 @@ export const projectRouter = createTRPCRouter({
 				budgetAmount: z.number().positive().nullish(),
 				budgetCurrency: z.string().min(1).max(10).nullish(),
 				primaryCurrency: z.string().min(1).max(10).optional(),
-				status: z.enum(["ACTIVE", "SETTLED", "ARCHIVED"]).optional(),
+				status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
 				visibility: z.enum(["PRIVATE", "PUBLIC"]).optional(),
 				billingCycleLength: z
 					.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"])

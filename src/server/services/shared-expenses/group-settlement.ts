@@ -226,3 +226,8 @@ export function computeSettlementPlan(
 
 	return { byCurrency, participantCount: allParticipantKeys.size };
 }
+
+/** Returns true when there are no outstanding payments in any currency. */
+export function isFullySettled(plan: SettlementPlanResult): boolean {
+	return Object.values(plan.byCurrency).every((c) => c.plan.length === 0);
+}
