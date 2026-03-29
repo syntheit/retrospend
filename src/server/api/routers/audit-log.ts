@@ -176,6 +176,9 @@ function buildActivitySummary(
 					const to = otherActorName ? ` with ${otherActorName}` : "";
 					return `${actorName} initiated a ${amt} settlement${to}`;
 				}
+				if (c?.linkId) {
+					return `${actorName} created an invite link`;
+				}
 				return `${actorName} created the project`;
 			}
 
