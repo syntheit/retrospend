@@ -424,7 +424,7 @@ function ProjectCard({
 			<ContextMenu>
 				<ContextMenuTrigger asChild>
 					<Card
-						className="group relative cursor-pointer overflow-hidden p-0 transition-all duration-200 ease-out hover:-translate-y-1 hover:brightness-[1.15] hover:shadow-xl active:translate-y-0 active:scale-[0.98] active:brightness-100 active:shadow-none"
+						className="group relative cursor-pointer overflow-hidden gap-0 p-0 transition-all duration-200 ease-out hover:-translate-y-1 hover:brightness-[1.15] hover:shadow-xl active:translate-y-0 active:scale-[0.98] active:brightness-100 active:shadow-none"
 						onPointerDown={() => { pressStartedHere.current = true; }}
 						onClick={(e) => {
 							if (!pressStartedHere.current) return;
@@ -457,7 +457,7 @@ function ProjectCard({
 						<div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30" />
 
 						{/* Card body */}
-						<div className="relative flex flex-1 flex-col justify-between p-4">
+						<div className="relative flex flex-col gap-3 p-4">
 							{/* Top: type badge + project icon */}
 							<div className="flex items-start justify-between gap-2">
 								<div className="flex flex-col gap-1">
@@ -513,6 +513,14 @@ function ProjectCard({
 										{project._count.participants} participant
 										{project._count.participants !== 1 ? "s" : ""}
 									</span>
+									{project.type === "ONGOING" && project.currentBillingPeriod && (
+										<>
+											<span className="text-white/40 text-xs">·</span>
+											<span className="text-white/60 text-xs">
+												{project.currentBillingPeriod.label} · <span className="capitalize">{project.currentBillingPeriod.status.toLowerCase()}</span>
+											</span>
+										</>
+									)}
 								</div>
 
 								{/* Budget progress */}
@@ -563,17 +571,6 @@ function ProjectCard({
 										</div>
 									</div>
 								)}
-
-								{/* Billing period (Ongoing) */}
-								{project.type === "ONGOING" &&
-									project.currentBillingPeriod && (
-										<div className="text-white/60 text-xs">
-											{project.currentBillingPeriod.label} ·{" "}
-											<span className="capitalize">
-												{project.currentBillingPeriod.status.toLowerCase()}
-											</span>
-										</div>
-									)}
 
 								{/* Last activity */}
 								<div className="text-white/40 text-xs">
@@ -763,7 +760,7 @@ export default function ProjectsPage() {
 							))}
 						</div>
 					) : filteredProjects && filteredProjects.length > 0 ? (
-						<div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 400px), 1fr))" }}>
+						<div className="grid items-start gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 400px), 1fr))" }}>
 							{filteredProjects.map((project) => (
 								<ProjectCard
 									filter={filter}
