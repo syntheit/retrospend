@@ -6,6 +6,7 @@ import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import {
 	anonymizeAndDeleteUser,
+	anonymizeParticipantReferences,
 	DELETED_GUEST_SENTINEL,
 	DELETED_SHADOW_SENTINEL,
 } from "~/server/services/user-deletion.service";
@@ -740,7 +741,6 @@ export const adminRouter = createTRPCRouter({
 				id: true,
 				name: true,
 				email: true,
-				phone: true,
 				claimedById: true,
 				claimedAt: true,
 				createdAt: true,
@@ -771,7 +771,6 @@ export const adminRouter = createTRPCRouter({
 			id: p.id,
 			name: p.name,
 			email: p.email,
-			phone: p.phone,
 			createdByUsername: p.createdBy.username,
 			claimedByUsername: p.claimedBy?.username ?? null,
 			claimedAt: p.claimedAt,
@@ -827,68 +826,8 @@ export const adminRouter = createTRPCRouter({
 			}
 
 			await db.$transaction(async (tx) => {
-				const shadowId = profile.id;
-
-				// Anonymize SplitParticipant records (same merge pattern as guest deletion)
-				await tx.$executeRaw`
-					UPDATE split_participant AS target
-					SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-					FROM   split_participant AS source
-					WHERE  source."participantType" = 'shadow'
-					  AND  source."participantId"   = ${shadowId}
-					  AND  target."transactionId"   = source."transactionId"
-					  AND  target."participantType" = 'shadow'
-					  AND  target."participantId"   = ${DELETED_SHADOW_SENTINEL}
-				`;
-				await tx.$executeRaw`
-					DELETE FROM split_participant
-					WHERE  "participantType" = 'shadow'
-					  AND  "participantId"   = ${shadowId}
-					  AND  "transactionId" IN (
-						SELECT "transactionId"
-						FROM   split_participant
-						WHERE  "participantType" = 'shadow'
-						  AND  "participantId"   = ${DELETED_SHADOW_SENTINEL}
-					  )
-				`;
-				await tx.splitParticipant.updateMany({
-					where: { participantType: "shadow", participantId: shadowId },
-					data: { participantId: DELETED_SHADOW_SENTINEL },
-				});
-
-				// Anonymize SharedTransaction paidBy/createdBy
-				await tx.sharedTransaction.updateMany({
-					where: { paidByType: "shadow", paidById: shadowId },
-					data: { paidById: DELETED_SHADOW_SENTINEL },
-				});
-				await tx.sharedTransaction.updateMany({
-					where: { createdByType: "shadow", createdById: shadowId },
-					data: { createdById: DELETED_SHADOW_SENTINEL },
-				});
-
-				// Anonymize Settlement from/to
-				await tx.settlement.updateMany({
-					where: { fromParticipantType: "shadow", fromParticipantId: shadowId },
-					data: { fromParticipantId: DELETED_SHADOW_SENTINEL },
-				});
-				await tx.settlement.updateMany({
-					where: { toParticipantType: "shadow", toParticipantId: shadowId },
-					data: { toParticipantId: DELETED_SHADOW_SENTINEL },
-				});
-
-				// Anonymize AuditLogEntry actor
-				await tx.auditLogEntry.updateMany({
-					where: { actorType: "shadow", actorId: shadowId },
-					data: { actorId: DELETED_SHADOW_SENTINEL },
-				});
-
-				// Remove ProjectParticipant records
-				await tx.projectParticipant.deleteMany({
-					where: { participantType: "shadow", participantId: shadowId },
-				});
-
-				// Delete the ShadowProfile itself
-				await tx.shadowProfile.delete({ where: { id: shadowId } });
+				await anonymizeParticipantReferences(tx, "shadow", profile.id, DELETED_SHADOW_SENTINEL);
+				await tx.shadowProfile.delete({ where: { id: profile.id } });
 			});
 
 			logEventAsync({
@@ -918,68 +857,8 @@ export const adminRouter = createTRPCRouter({
 			}
 
 			await db.$transaction(async (tx) => {
-				const guestId = guest.id;
-
-				// Anonymize SplitParticipant records
-				await tx.$executeRaw`
-					UPDATE split_participant AS target
-					SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-					FROM   split_participant AS source
-					WHERE  source."participantType" = 'guest'
-					  AND  source."participantId"   = ${guestId}
-					  AND  target."transactionId"   = source."transactionId"
-					  AND  target."participantType" = 'guest'
-					  AND  target."participantId"   = ${DELETED_GUEST_SENTINEL}
-				`;
-				await tx.$executeRaw`
-					DELETE FROM split_participant
-					WHERE  "participantType" = 'guest'
-					  AND  "participantId"   = ${guestId}
-					  AND  "transactionId" IN (
-						SELECT "transactionId"
-						FROM   split_participant
-						WHERE  "participantType" = 'guest'
-						  AND  "participantId"   = ${DELETED_GUEST_SENTINEL}
-					  )
-				`;
-				await tx.splitParticipant.updateMany({
-					where: { participantType: "guest", participantId: guestId },
-					data: { participantId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize SharedTransaction paidBy/createdBy
-				await tx.sharedTransaction.updateMany({
-					where: { paidByType: "guest", paidById: guestId },
-					data: { paidById: DELETED_GUEST_SENTINEL },
-				});
-				await tx.sharedTransaction.updateMany({
-					where: { createdByType: "guest", createdById: guestId },
-					data: { createdById: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize Settlement from/to
-				await tx.settlement.updateMany({
-					where: { fromParticipantType: "guest", fromParticipantId: guestId },
-					data: { fromParticipantId: DELETED_GUEST_SENTINEL },
-				});
-				await tx.settlement.updateMany({
-					where: { toParticipantType: "guest", toParticipantId: guestId },
-					data: { toParticipantId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize AuditLogEntry actor
-				await tx.auditLogEntry.updateMany({
-					where: { actorType: "guest", actorId: guestId },
-					data: { actorId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Remove ProjectParticipant records
-				await tx.projectParticipant.deleteMany({
-					where: { participantType: "guest", participantId: guestId },
-				});
-
-				// Delete the GuestSession itself
-				await tx.guestSession.delete({ where: { id: guestId } });
+				await anonymizeParticipantReferences(tx, "guest", guest.id, DELETED_GUEST_SENTINEL);
+				await tx.guestSession.delete({ where: { id: guest.id } });
 			});
 
 			logEventAsync({

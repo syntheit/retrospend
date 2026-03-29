@@ -8,6 +8,7 @@ import {
 } from "~/server/api/trpc";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import {
+	anonymizeParticipantReferences,
 	DELETED_GUEST_SENTINEL,
 } from "~/server/services/user-deletion.service";
 
@@ -299,74 +300,7 @@ export const guestRouter = createTRPCRouter({
 			const guestId = ctx.participant.participantId;
 
 			await ctx.db.$transaction(async (tx) => {
-				// Anonymize SplitParticipant records
-				//
-				// Guard against @@unique([transactionId, participantType, participantId]):
-				// if DELETED_GUEST already exists in a transaction (prior guest deletion),
-				// merge shareAmount into that row, delete the conflicting row, then update
-				// remaining rows normally.
-				await tx.$executeRaw`
-					UPDATE split_participant AS target
-					SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-					FROM   split_participant AS source
-					WHERE  source."participantType" = 'guest'
-					  AND  source."participantId"   = ${guestId}
-					  AND  target."transactionId"   = source."transactionId"
-					  AND  target."participantType" = 'guest'
-					  AND  target."participantId"   = ${DELETED_GUEST_SENTINEL}
-				`;
-				await tx.$executeRaw`
-					DELETE FROM split_participant
-					WHERE  "participantType" = 'guest'
-					  AND  "participantId"   = ${guestId}
-					  AND  "transactionId" IN (
-						SELECT "transactionId"
-						FROM   split_participant
-						WHERE  "participantType" = 'guest'
-						  AND  "participantId"   = ${DELETED_GUEST_SENTINEL}
-					  )
-				`;
-				await tx.splitParticipant.updateMany({
-					where: { participantType: 'guest', participantId: guestId },
-					data: { participantId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize SharedTransaction paidBy
-				await tx.sharedTransaction.updateMany({
-					where: { paidByType: 'guest', paidById: guestId },
-					data: { paidById: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize SharedTransaction createdBy
-				await tx.sharedTransaction.updateMany({
-					where: { createdByType: 'guest', createdById: guestId },
-					data: { createdById: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize Settlement fromParticipant
-				await tx.settlement.updateMany({
-					where: { fromParticipantType: 'guest', fromParticipantId: guestId },
-					data: { fromParticipantId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize Settlement toParticipant
-				await tx.settlement.updateMany({
-					where: { toParticipantType: 'guest', toParticipantId: guestId },
-					data: { toParticipantId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Anonymize AuditLogEntry actor
-				await tx.auditLogEntry.updateMany({
-					where: { actorType: 'guest', actorId: guestId },
-					data: { actorId: DELETED_GUEST_SENTINEL },
-				});
-
-				// Remove ProjectParticipant record
-				await tx.projectParticipant.deleteMany({
-					where: { participantType: 'guest', participantId: guestId },
-				});
-
-				// Delete the GuestSession itself
+				await anonymizeParticipantReferences(tx, "guest", guestId, DELETED_GUEST_SENTINEL);
 				await tx.guestSession.delete({ where: { id: guestId } });
 			});
 

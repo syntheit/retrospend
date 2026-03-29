@@ -33,7 +33,6 @@ interface ShadowProfile {
 	id: string;
 	name: string;
 	email: string | null;
-	phone: string | null;
 	createdByUsername: string;
 	claimedByUsername: string | null;
 	claimedAt: Date | null;
@@ -273,20 +272,22 @@ type PendingDelete =
 export function ParticipantsTable() {
 	const [view, setView] = useState<"shadow" | "guest">("shadow");
 	const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
-	const [dialogOpen, setDialogOpen] = useState(false);
 	const isMobile = useIsMobile();
 
 	const { data: shadowProfiles, refetch: refetchShadow } =
-		api.admin.listShadowProfiles.useQuery();
+		api.admin.listShadowProfiles.useQuery(undefined, {
+			enabled: view === "shadow",
+		});
 	const { data: guestSessions, refetch: refetchGuest } =
-		api.admin.listGuestSessions.useQuery();
+		api.admin.listGuestSessions.useQuery(undefined, {
+			enabled: view === "guest",
+		});
 
 	const deleteShadowMutation = api.admin.deleteShadowProfile.useMutation();
 	const deleteGuestMutation = api.admin.deleteGuestSession.useMutation();
 
 	const handleDelete = (pending: PendingDelete) => {
 		setPendingDelete(pending);
-		setDialogOpen(true);
 	};
 
 	const handleConfirm = async () => {
@@ -302,7 +303,6 @@ export function ParticipantsTable() {
 				toast.success(`Guest session "${pendingDelete.name}" has been deleted`);
 				await refetchGuest();
 			}
-			setDialogOpen(false);
 			setPendingDelete(null);
 		} catch (error) {
 			const message =
@@ -312,12 +312,10 @@ export function ParticipantsTable() {
 	};
 
 	const handleCancel = () => {
-		setDialogOpen(false);
 		setPendingDelete(null);
 	};
 
 	const handleDialogOpenChange = (open: boolean) => {
-		setDialogOpen(open);
 		if (!open) {
 			setPendingDelete(null);
 		}
@@ -466,7 +464,7 @@ export function ParticipantsTable() {
 					onCancel={handleCancel}
 					onConfirm={handleConfirm}
 					onOpenChange={handleDialogOpenChange}
-					open={dialogOpen}
+					open={pendingDelete !== null}
 					title={dialogContent.title}
 					variant={dialogContent.variant}
 				/>

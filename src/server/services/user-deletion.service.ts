@@ -16,6 +16,80 @@ type PrismaTx = Omit<
 	"$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
 >;
 
+/**
+ * Anonymizes all shared-expense references for a participant, replacing their ID
+ * with a sentinel value. Handles the split_participant unique constraint by merging
+ * share amounts when a sentinel row already exists for the same transaction.
+ *
+ * Must be called within a transaction. Does NOT delete the participant entity itself.
+ */
+export async function anonymizeParticipantReferences(
+	tx: PrismaTx,
+	participantType: "guest" | "shadow",
+	participantId: string,
+	sentinelId: string,
+): Promise<void> {
+	// Merge split_participant shares where sentinel already exists (unique constraint)
+	await tx.$executeRaw`
+		UPDATE split_participant AS target
+		SET    "shareAmount" = target."shareAmount" + source."shareAmount"
+		FROM   split_participant AS source
+		WHERE  source."participantType" = ${participantType}::"ParticipantType"
+		  AND  source."participantId"   = ${participantId}
+		  AND  target."transactionId"   = source."transactionId"
+		  AND  target."participantType" = ${participantType}::"ParticipantType"
+		  AND  target."participantId"   = ${sentinelId}
+	`;
+	// Delete merged rows (now duplicates)
+	await tx.$executeRaw`
+		DELETE FROM split_participant
+		WHERE  "participantType" = ${participantType}::"ParticipantType"
+		  AND  "participantId"   = ${participantId}
+		  AND  "transactionId" IN (
+			SELECT "transactionId"
+			FROM   split_participant
+			WHERE  "participantType" = ${participantType}::"ParticipantType"
+			  AND  "participantId"   = ${sentinelId}
+		  )
+	`;
+	// Update remaining split_participant rows
+	await tx.splitParticipant.updateMany({
+		where: { participantType, participantId },
+		data: { participantId: sentinelId },
+	});
+
+	// Anonymize SharedTransaction paidBy/createdBy
+	await tx.sharedTransaction.updateMany({
+		where: { paidByType: participantType, paidById: participantId },
+		data: { paidById: sentinelId },
+	});
+	await tx.sharedTransaction.updateMany({
+		where: { createdByType: participantType, createdById: participantId },
+		data: { createdById: sentinelId },
+	});
+
+	// Anonymize Settlement from/to
+	await tx.settlement.updateMany({
+		where: { fromParticipantType: participantType, fromParticipantId: participantId },
+		data: { fromParticipantId: sentinelId },
+	});
+	await tx.settlement.updateMany({
+		where: { toParticipantType: participantType, toParticipantId: participantId },
+		data: { toParticipantId: sentinelId },
+	});
+
+	// Anonymize AuditLogEntry actor
+	await tx.auditLogEntry.updateMany({
+		where: { actorType: participantType, actorId: participantId },
+		data: { actorId: sentinelId },
+	});
+
+	// Remove ProjectParticipant records
+	await tx.projectParticipant.deleteMany({
+		where: { participantType, participantId },
+	});
+}
+
 // ── Preview types ─────────────────────────────────────────────────────────────
 
 export interface DeletionPreview {

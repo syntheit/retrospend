@@ -1,5 +1,13 @@
 import { formatCurrency } from "~/lib/currency-format";
 import type { PrismaClient } from "~prisma";
+import {
+	DELETED_GUEST_NAME,
+	DELETED_GUEST_SENTINEL,
+	DELETED_SHADOW_NAME,
+	DELETED_SHADOW_SENTINEL,
+	DELETED_USER_NAME,
+	DELETED_USER_SENTINEL,
+} from "~/server/services/user-deletion.service";
 
 // ── Output Types ──────────────────────────────────────────────────────────────
 
@@ -113,11 +121,6 @@ function safeFormatCurrency(amount: unknown, currency: unknown): string {
 
 // Sentinel ID used by the system actor (see verification.service.ts)
 const SYSTEM_SENTINEL = "__system__";
-// Sentinel IDs used for deleted participants (see user-deletion.service.ts)
-const DELETED_USER_SENTINEL = "DELETED_USER";
-const DELETED_GUEST_SENTINEL = "DELETED_GUEST";
-const DELETED_SHADOW_SENTINEL = "DELETED_SHADOW";
-
 export async function resolveActorName(
 	db: PrismaClient,
 	actorType: string,
@@ -125,9 +128,9 @@ export async function resolveActorName(
 	cache: Map<string, string>,
 ): Promise<string> {
 	if (actorId === SYSTEM_SENTINEL) return "System";
-	if (actorId === DELETED_USER_SENTINEL) return "Deleted User";
-	if (actorId === DELETED_GUEST_SENTINEL) return "Deleted Guest";
-	if (actorId === DELETED_SHADOW_SENTINEL) return "Deleted Participant";
+	if (actorId === DELETED_USER_SENTINEL) return DELETED_USER_NAME;
+	if (actorId === DELETED_GUEST_SENTINEL) return DELETED_GUEST_NAME;
+	if (actorId === DELETED_SHADOW_SENTINEL) return DELETED_SHADOW_NAME;
 
 	const key = `${actorType}:${actorId}`;
 	const hit = cache.get(key);
