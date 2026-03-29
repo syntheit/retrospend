@@ -180,6 +180,7 @@ export function UsersTable({
 		<DataTable
 			columns={columns}
 			columnVisibility={columnVisibility}
+			countNoun="users"
 			data={users}
 			progressive
 			renderContextMenu={renderContextMenu}
