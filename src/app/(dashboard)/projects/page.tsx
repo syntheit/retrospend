@@ -175,6 +175,11 @@ function ProjectCardFooter({
 
 	const { visibleCount } = useOverflowActions(candidateActions, containerRef, buttonRefs);
 
+	// Only show overflow menu when candidate buttons don't all fit
+	const hasOverflow = visibleCount < candidateActions.length;
+	const visibleIds = new Set(candidateActions.slice(0, visibleCount).map((a) => a.id));
+	const overflowMenuActions = menuActions.filter((a) => !visibleIds.has(a.id));
+
 	return (
 		<div
 			className="relative z-10 flex items-center justify-between border-t border-white/10 bg-black/60 px-2 py-2 backdrop-blur-sm"
@@ -212,57 +217,59 @@ function ProjectCardFooter({
 				})}
 			</div>
 
-			{/* Three-dot menu - always visible, contains ALL actions */}
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<button
-						className="ml-1 flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
-						onClick={(e) => e.stopPropagation()}
-						title="More actions"
-						type="button"
-					>
-						<MoreHorizontal className="h-4 w-4" />
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-					{menuActions
-						.filter((a) => !a.destructive)
-						.map((action) => {
-							const Icon = action.icon;
-							return (
-								<DropdownMenuItem
-									key={action.id}
-									disabled={action.disabled}
-									onClick={action.onClick}
-								>
-									<Icon className="h-4 w-4" />
-									{action.label}
-								</DropdownMenuItem>
-							);
-						})}
-					{menuActions.some((a) => a.destructive) && (
-						<>
-							<DropdownMenuSeparator />
-							{menuActions
-								.filter((a) => a.destructive)
-								.map((action) => {
-									const Icon = action.icon;
-									return (
-										<DropdownMenuItem
-											key={action.id}
-											disabled={action.disabled}
-											onClick={action.onClick}
-											variant="destructive"
-										>
-											<Icon className="h-4 w-4" />
-											{action.label}
-										</DropdownMenuItem>
-									);
-								})}
-						</>
-					)}
-				</DropdownMenuContent>
-			</DropdownMenu>
+			{/* Three-dot menu - only shown when buttons overflow */}
+			{hasOverflow && (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button
+							className="ml-1 flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+							onClick={(e) => e.stopPropagation()}
+							title="More actions"
+							type="button"
+						>
+							<MoreHorizontal className="h-4 w-4" />
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+						{overflowMenuActions
+							.filter((a) => !a.destructive)
+							.map((action) => {
+								const Icon = action.icon;
+								return (
+									<DropdownMenuItem
+										key={action.id}
+										disabled={action.disabled}
+										onClick={action.onClick}
+									>
+										<Icon className="h-4 w-4" />
+										{action.label}
+									</DropdownMenuItem>
+								);
+							})}
+						{overflowMenuActions.some((a) => a.destructive) && (
+							<>
+								<DropdownMenuSeparator />
+								{overflowMenuActions
+									.filter((a) => a.destructive)
+									.map((action) => {
+										const Icon = action.icon;
+										return (
+											<DropdownMenuItem
+												key={action.id}
+												disabled={action.disabled}
+												onClick={action.onClick}
+												variant="destructive"
+											>
+												<Icon className="h-4 w-4" />
+												{action.label}
+											</DropdownMenuItem>
+										);
+									})}
+							</>
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
 		</div>
 	);
 }
