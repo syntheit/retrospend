@@ -641,7 +641,11 @@ export function ExpensesTable({
 								? { label: "Add Expense", onClick: onAddExpense }
 								: undefined
 						}
-						description="Add your first expense to get started."
+						description={
+							onAddExpense
+								? "Add your first expense to get started."
+								: "No expenses have been added yet."
+						}
 						icon={Receipt}
 						title="No Expenses Yet"
 					/>
