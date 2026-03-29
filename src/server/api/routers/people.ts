@@ -156,6 +156,21 @@ export const peopleRouter = createTRPCRouter({
 				select: { id: true, name: true, email: true },
 			});
 
+			// Send invitation email to the shadow profile (fire-and-forget)
+			if (input.email) {
+				const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
+				if (appUrl) {
+					const signupUrl = `${appUrl}/signup?email=${encodeURIComponent(input.email)}&name=${encodeURIComponent(input.name)}&invited=true`;
+					const creatorName = ctx.session.user.name ?? "Someone";
+					const html = getShadowInviteEmailTemplate(creatorName, signupUrl);
+					void sendEmail(
+						input.email,
+						`${creatorName} invited you to Retrospend`,
+						html,
+					);
+				}
+			}
+
 			return {
 				participantType: "shadow" as const,
 				participantId: profile.id,
@@ -163,6 +178,18 @@ export const peopleRouter = createTRPCRouter({
 				email: profile.email,
 			};
 		}),
+
+	/**
+	 * Returns the number of shadow profiles claimed by the current user.
+	 * Used on the dashboard to show a tailored welcome banner for users
+	 * who had shared expenses linked on signup.
+	 * Uses global db since RLS on shadow_profile only allows access by createdById.
+	 */
+	claimedShadowCount: protectedProcedure.query(async ({ ctx }) => {
+		return globalDb.shadowProfile.count({
+			where: { claimedById: ctx.session.user.id },
+		});
+	}),
 
 	/**
 	 * Returns all people the current user has a shared financial relationship with.

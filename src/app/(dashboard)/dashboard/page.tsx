@@ -1,5 +1,13 @@
 "use client";
 
+import {
+	BarChart3,
+	Globe,
+	Receipt,
+	Smartphone,
+	Target,
+	TrendingUp,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -59,6 +67,11 @@ export default function Page() {
 		},
 	});
 
+	const { data: claimedShadowCount = 0 } = api.people.claimedShadowCount.useQuery(
+		undefined,
+		{ enabled: state.isUsingMockExpenses },
+	);
+
 	const handleActivityClick = useCallback(
 		(item: ActivityItem) => {
 			if (item.type === "personal") {
@@ -99,6 +112,54 @@ export default function Page() {
 		</Card>
 	);
 
+	const renderUpgradeWelcome = () => (
+		<Card className="border-dashed">
+			<CardHeader>
+				<CardTitle className="font-semibold text-lg">
+					Welcome to Retrospend
+				</CardTitle>
+				<CardDescription>
+					Your shared expenses have been linked to your account. You can now access them from any device, and your data is safe with your own secure account.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<p className="text-muted-foreground text-sm">Now that you have a full account, explore everything Retrospend has to offer:</p>
+				<ul className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-muted-foreground text-sm sm:grid-cols-2">
+					<li className="flex items-center gap-2">
+						<Smartphone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+						Access from any device
+					</li>
+					<li className="flex items-center gap-2">
+						<BarChart3 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+						Personal spending tracking
+					</li>
+					<li className="flex items-center gap-2">
+						<Target className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+						Budgets with real-time pacing
+					</li>
+					<li className="flex items-center gap-2">
+						<TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+						Net worth and wealth tracking
+					</li>
+					<li className="flex items-center gap-2">
+						<Globe className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+						Multi-currency with live rates
+					</li>
+					<li className="flex items-center gap-2">
+						<Receipt className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+						Bank imports and receipt scanning
+					</li>
+				</ul>
+				<div className="flex flex-wrap items-center gap-2 pt-1">
+					<Button onClick={actions.handleCreateExpense}>Add your first expense</Button>
+					<Button asChild variant="outline">
+						<Link href="/transactions">Go to Transactions</Link>
+					</Button>
+				</div>
+			</CardContent>
+		</Card>
+	);
+
 	return (
 		<>
 			<SiteHeader
@@ -115,7 +176,9 @@ export default function Page() {
 			<PageContent fill>
 				<div className="flex flex-col gap-4 lg:gap-6 lg:flex-1 lg:min-h-0">
 					{state.isUsingMockExpenses && (
-						<div className="flex-shrink-0">{renderOnboarding()}</div>
+						<div className="flex-shrink-0">
+							{claimedShadowCount > 0 ? renderUpgradeWelcome() : renderOnboarding()}
+						</div>
 					)}
 					<div className="flex-shrink-0">
 						<StatsCards

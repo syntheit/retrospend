@@ -1,6 +1,16 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Info } from "lucide-react";
+import {
+	AlertCircle,
+	BarChart3,
+	CheckCircle,
+	Globe,
+	Info,
+	Receipt,
+	ShieldCheck,
+	Smartphone,
+	TrendingUp,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -41,6 +51,8 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 	const searchParams = useSearchParams();
 
 	const isUpgrade = searchParams.get("upgrade") === "true";
+	const isInvited = searchParams.get("invited") === "true";
+	const showFeatures = isUpgrade || isInvited;
 
 	const [inviteCode, setInviteCode] = useState("");
 	const [inviteState, setInviteState] = useState<InviteState>("idle");
@@ -211,19 +223,48 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 						Create Account
 					</CardTitle>
 					<CardDescription className="text-center">
-						{isUpgrade
-							? "Create your account to keep your project data and unlock full features"
+						{showFeatures
+							? "Sign up to access your shared expenses and unlock your full financial toolkit"
 							: "Sign up for Retrospend to get started"}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form className="space-y-4" onSubmit={handleSubmit}>
-						{isUpgrade && (
-							<div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
-								<Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-								<p className="text-primary text-sm">
-									Your existing project data will be automatically linked to your new account.
-								</p>
+						{showFeatures && (
+							<div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+								<div className="flex items-start gap-2">
+									<Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+									<p className="font-medium text-primary text-sm">
+										Your shared expenses will be automatically linked when you sign up with this email.
+									</p>
+								</div>
+								<p className="text-muted-foreground text-sm">With your own account you can also:</p>
+								<ul className="grid gap-1.5 text-muted-foreground text-sm">
+									<li className="flex items-center gap-2">
+										<Smartphone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+										Access from any device — your data follows you
+									</li>
+									<li className="flex items-center gap-2">
+										<ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+										Secure account with password protection — never lose your data
+									</li>
+									<li className="flex items-center gap-2">
+										<BarChart3 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+										Personal spending tracking with budgets and analytics
+									</li>
+									<li className="flex items-center gap-2">
+										<TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+										Track your net worth and wealth over time
+									</li>
+									<li className="flex items-center gap-2">
+										<Globe className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+										Multi-currency support with live exchange rates
+									</li>
+									<li className="flex items-center gap-2">
+										<Receipt className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+										Import bank statements and scan receipts
+									</li>
+								</ul>
 							</div>
 						)}
 						{inviteOnlyEnabled && (
