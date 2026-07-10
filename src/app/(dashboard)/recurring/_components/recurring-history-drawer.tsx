@@ -1,6 +1,7 @@
 "use client";
 
 import { Receipt } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { CategoryChip } from "~/components/category-chip";
@@ -27,6 +28,7 @@ export function RecurringHistoryDrawer({
 	onClose,
 }: RecurringHistoryDrawerProps) {
 	const isOpen = templateId !== null;
+	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const { data, isLoading, isError, refetch } = api.recurring.get.useQuery(
@@ -48,11 +50,11 @@ export function RecurringHistoryDrawer({
 				side="right"
 			>
 				<SheetHeader className="border-b px-6 py-4 pr-12">
-					<SheetTitle>Payment History</SheetTitle>
+					<SheetTitle>{t("paymentHistory")}</SheetTitle>
 					<SheetDescription className="sr-only">
 						{data
-							? `Payment history for ${data.name}`
-							: "Loading payment history"}
+							? t("paymentHistoryFor", { name: data.name })
+							: t("loadingPaymentHistory")}
 					</SheetDescription>
 					{data && (
 						<div className="space-y-1.5">
@@ -93,14 +95,14 @@ export function RecurringHistoryDrawer({
 					{isError && (
 						<div className="flex flex-col items-center justify-center gap-3 py-12">
 							<p className="text-muted-foreground text-sm">
-								Couldn&apos;t load payment history
+								{t("couldNotLoadHistory")}
 							</p>
 							<Button
 								onClick={() => void refetch()}
 								size="sm"
 								variant="outline"
 							>
-								Try again
+								{t("tryAgain")}
 							</Button>
 						</div>
 					)}
@@ -109,10 +111,10 @@ export function RecurringHistoryDrawer({
 						<div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
 							<Receipt className="h-8 w-8 text-muted-foreground/40" />
 							<p className="text-muted-foreground text-sm">
-								No payment history yet
+								{t("noPaymentHistoryYet")}
 							</p>
 							<p className="text-muted-foreground/60 text-xs">
-								Payments will appear here as they are created.
+								{t("paymentsWillAppear")}
 							</p>
 						</div>
 					)}
@@ -126,14 +128,14 @@ export function RecurringHistoryDrawer({
 										{formatCurrency(totalSpent, data.currency)}
 									</p>
 									<p className="text-muted-foreground text-[10px]">
-										Total Spent
+										{t("totalSpent")}
 									</p>
 								</div>
 								<div className="text-center">
 									<p className="font-semibold text-sm tabular-nums">
 										{expenses.length}
 									</p>
-									<p className="text-muted-foreground text-[10px]">Payments</p>
+									<p className="text-muted-foreground text-[10px]">{t("payments")}</p>
 								</div>
 								<div className="text-center">
 									<p className="font-semibold text-sm tabular-nums">
@@ -142,7 +144,7 @@ export function RecurringHistoryDrawer({
 											data.currency,
 										)}
 									</p>
-									<p className="text-muted-foreground text-[10px]">Average</p>
+									<p className="text-muted-foreground text-[10px]">{t("average")}</p>
 								</div>
 							</div>
 

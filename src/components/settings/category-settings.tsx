@@ -2,6 +2,7 @@
 
 import { ChevronRight, Settings2 } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { CategoryManagerDialog } from "~/components/settings/category-manager-dialog";
 import { Button } from "~/components/ui/button";
 import {
@@ -11,12 +12,15 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getCategoryColorClasses } from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 export function CategorySettings() {
+	const t = useTranslations("settingsPage");
+	const { displayName } = useCategoryName();
 	const [isManagerOpen, setIsManagerOpen] = useState(false);
 
 	const { data: categories, isLoading: categoriesLoading } =
@@ -35,10 +39,10 @@ export function CategorySettings() {
 					<div className="flex flex-col gap-1">
 						<CardTitle className="flex items-center gap-2 font-semibold text-lg">
 							<Settings2 className="h-4 w-4 text-muted-foreground" />
-							Categories
+							{t("categories")}
 						</CardTitle>
 						<CardDescription className="text-sm">
-							Manage your expense labels and icons.
+							{t("categoriesDescription")}
 						</CardDescription>
 					</div>
 					<Button
@@ -47,7 +51,7 @@ export function CategorySettings() {
 						size="sm"
 						variant="secondary"
 					>
-						Manage
+						{t("manage")}
 						<ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
 					</Button>
 				</CardHeader>
@@ -76,7 +80,7 @@ export function CategorySettings() {
 												getCategoryColorClasses(category.color, "light"),
 											)}
 											key={category.id}
-											title={category.name}
+											title={displayName(category.name)}
 										>
 											<Icon className="h-4 w-4" />
 										</div>

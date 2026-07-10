@@ -11,6 +11,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -42,16 +43,17 @@ function truncateCrypto(address: string): string {
 }
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
+	const t = useTranslations("publicProfile");
 	const [copied, setCopied] = useState(false);
 
 	return (
 		<Button
-			aria-label={label ?? "Copy"}
+			aria-label={label ?? t("copy")}
 			className="h-8 w-8 shrink-0 p-0"
 			onClick={() => {
 				void navigator.clipboard.writeText(text);
 				setCopied(true);
-				toast.success("Copied!");
+				toast.success(t("copied"));
 				setTimeout(() => setCopied(false), 2000);
 			}}
 			size="sm"
@@ -113,6 +115,7 @@ function PaymentMethodChip({
 	isSelected: boolean;
 	onSelect: () => void;
 }) {
+	const t = useTranslations("publicProfile");
 	const resolvedType = resolveMethodTypeId(method.type, method.currency);
 	const def = getMethodType(resolvedType);
 	const displayName = getPaymentMethodName(method.type, method.label, method.currency);
@@ -125,7 +128,7 @@ function PaymentMethodChip({
 		>
 			<PaymentMethodIcon currency={method.currency} size="sm" typeId={method.type} />
 			<span className="font-medium text-sm">{displayName}</span>
-			{isFirst && <span className="text-amber-500 text-xs" title="Preferred">★</span>}
+			{isFirst && <span className="text-amber-500 text-xs" title={t("preferred")}>★</span>}
 		</button>
 	);
 }
@@ -137,6 +140,7 @@ function PaymentMethodDetail({
 	method: PaymentMethod;
 	isFirst: boolean;
 }) {
+	const t = useTranslations("publicProfile");
 	const [linkState, setLinkState] = useState<"idle" | "opening">("idle");
 
 	const resolvedType = resolveMethodTypeId(method.type, method.currency);
@@ -181,7 +185,7 @@ function PaymentMethodDetail({
 				<div className="min-w-0">
 					<div className="flex items-center gap-1.5">
 						<span className="font-medium text-sm">{displayName}</span>
-						{isFirst && <Badge className="text-[10px]" variant="secondary">Preferred</Badge>}
+						{isFirst && <Badge className="text-[10px]" variant="secondary">{t("preferred")}</Badge>}
 					</div>
 					{networkDef && (
 						<p className="text-muted-foreground text-xs">{networkDef.shortName}</p>
@@ -201,12 +205,12 @@ function PaymentMethodDetail({
 							{linkState === "opening" ? (
 								<Loader2 className="h-3 w-3 animate-spin" />
 							) : (
-								<>Open<ExternalLink className="h-3 w-3" /></>
+								<>{t("open")}<ExternalLink className="h-3 w-3" /></>
 							)}
 						</Button>
 					)}
 					{method.identifier && !isCash && (
-						<CopyButton label={`Copy ${displayName} identifier`} text={method.identifier} />
+						<CopyButton label={t("copyLabel", { label: displayName })} text={method.identifier} />
 					)}
 				</div>
 			</div>
@@ -219,6 +223,7 @@ export default function PublicProfilePage({
 }: {
 	params: PageParams;
 }) {
+	const t = useTranslations("publicProfile");
 	const { username } = use(params);
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -248,23 +253,23 @@ export default function PublicProfilePage({
 				<Card className="w-full max-w-[500px]">
 					<CardContent className="space-y-4 p-5 text-center sm:p-6">
 						<h1 className="font-bold text-xl">
-							{isNotFound ? "This profile doesn't exist" : "Something went wrong"}
+							{isNotFound ? t("profileNotFound") : t("somethingWentWrong")}
 						</h1>
 						<p className="text-muted-foreground text-sm">
 							{isNotFound
-								? "Check the username and try again, or search for them on Retrospend."
-								: "We couldn't load this profile. Please try again."}
+								? t("profileNotFoundDesc")
+								: t("couldntLoadProfile")}
 						</p>
 						<div className="flex justify-center gap-3">
 							{!isNotFound && (
 								<Button onClick={() => void refetch()} variant="outline">
 									<RefreshCw className="mr-1.5 h-4 w-4" />
-									Try again
+									{t("tryAgain")}
 								</Button>
 							)}
 							<Button asChild variant={isNotFound ? "default" : "outline"}>
 								<Link href="/">
-									Go to Retrospend
+									{t("goToRetrospend")}
 									<ExternalLink className="ml-1.5 h-4 w-4" />
 								</Link>
 							</Button>
@@ -302,18 +307,19 @@ export default function PublicProfilePage({
 							/>
 							<h1 className="mt-2 font-bold text-2xl">{data.displayName}</h1>
 							<p className="text-muted-foreground text-sm">
-								@{data.username} · Member since{" "}
-								{new Date(data.memberSince).toLocaleDateString(undefined, {
+								@{data.username} · {t("memberSince", {
+								date: new Date(data.memberSince).toLocaleDateString(undefined, {
 									month: "short",
 									year: "numeric",
-								})}
+								}),
+							})}
 							</p>
 						</div>
 
 						{/* Pay / Donate CTA */}
 						<Button asChild className="mt-5 w-full" size="lg">
 							<Link href={`/pay/${data.username}${isDonate ? "?donate" : ""}`}>
-								{isDonate ? `Donate to ${firstName}` : `Pay ${firstName}`}
+								{isDonate ? t("donateTo", { name: firstName }) : t("payTo", { name: firstName })}
 							</Link>
 						</Button>
 
@@ -324,7 +330,7 @@ export default function PublicProfilePage({
 						{data.publicMethods.length > 0 ? (
 							<div>
 								<h2 className="mb-2 font-semibold text-muted-foreground text-sm">
-									{isDonate ? "Accepts donations via" : "Accepts payments via"}
+									{isDonate ? t("acceptsDonationsVia") : t("acceptsPaymentsVia")}
 								</h2>
 								<div className="flex flex-wrap gap-2">
 									{data.publicMethods.map((method, i) => (
@@ -361,7 +367,7 @@ export default function PublicProfilePage({
 							</div>
 						) : (
 							<p className="py-4 text-center text-muted-foreground text-sm">
-								{firstName} hasn&apos;t added any public payment methods yet.
+								{t("noPaymentMethods", { name: firstName })}
 							</p>
 						)}
 
@@ -377,7 +383,7 @@ export default function PublicProfilePage({
 								/>
 							</div>
 							<p className="text-muted-foreground text-xs">
-								{isDonate ? "Scan to donate" : "Scan to pay"}
+								{isDonate ? t("scanToDonate") : t("scanToPay")}
 							</p>
 						</div>
 					</CardContent>
@@ -399,11 +405,11 @@ export default function PublicProfilePage({
 							</span>
 						</div>
 						<p className="text-muted-foreground text-xs">
-							Split and track expenses with anyone
+							{t("footerTagline")}
 						</p>
 						<Button asChild className="mt-1 gap-1" size="sm">
 							<Link href="/signup">
-								Get started free
+								{t("getStartedFree")}
 								<ChevronRight className="h-3.5 w-3.5" />
 							</Link>
 						</Button>

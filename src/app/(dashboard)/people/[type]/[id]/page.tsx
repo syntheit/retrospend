@@ -20,6 +20,7 @@ import {
 	UserX,
 	XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useMemo, useState } from "react";
@@ -74,6 +75,7 @@ import {
 import { Skeleton } from "~/components/ui/skeleton";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { UserAvatar } from "~/components/ui/user-avatar";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { buildRateMap, computeHomeCurrencyTotal, formatSettleLabel } from "~/lib/balance-utils";
@@ -85,13 +87,7 @@ import { api } from "~/trpc/react";
 
 type ParticipantType = "user" | "guest" | "shadow";
 
-const TYPE_DOT_COLORS: Record<string, string> = {
-	TRIP: "bg-amber-500",
-	ONGOING: "bg-blue-500",
-	SOLO: "bg-slate-500",
-	GENERAL: "bg-indigo-500",
-	ONE_TIME: "bg-emerald-500",
-};
+const DEFAULT_DOT_COLOR = "bg-indigo-500";
 
 function IdentityBadge({
 	participantType,
@@ -100,6 +96,7 @@ function IdentityBadge({
 	participantType: ParticipantType;
 	isVerifiedUser: boolean;
 }) {
+	const t = useTranslations("personDetail");
 	if (isVerifiedUser) {
 		return null;
 	}
@@ -107,14 +104,14 @@ function IdentityBadge({
 		return (
 			<Badge className="gap-1" variant="outline">
 				<Ghost className="h-3 w-3" />
-				Guest
+				{t("guest")}
 			</Badge>
 		);
 	}
 	return (
 		<Badge className="gap-1 text-muted-foreground" variant="outline">
 			<UserX className="h-3 w-3" />
-			Not on Retrospend
+			{t("notOnRetrospend")}
 		</Badge>
 	);
 }
@@ -126,10 +123,12 @@ function IdentityBadge({
 type PageParams = Promise<{ type: string; id: string }>;
 
 export default function PersonDetailPage({ params }: { params: PageParams }) {
+	const t = useTranslations("personDetail");
 	const { type, id } = use(params);
 	const participantType = type as ParticipantType;
 	const router = useRouter();
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 	const { openHistory } = useRevisionHistory();
 	const { openNewExpense } = useExpenseModal();
 
@@ -191,7 +190,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	const utils = api.useUtils();
 	const deleteMutation = api.sharedTransaction.delete.useMutation({
 		onSuccess: () => {
-			toast.success("Expense deleted");
+			toast.success(t("expenseDeleted"));
 			void utils.people.detail.invalidate({
 				participantType,
 				participantId: id,
@@ -223,10 +222,10 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 				format: "csv",
 			});
 			downloadCsv(csv, filename);
-			toast.success("CSV exported");
+			toast.success(t("csvExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export CSV",
+				error instanceof Error ? error.message : t("failedToExportCsv"),
 			);
 		}
 	};
@@ -239,10 +238,10 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 				format: "csv",
 			});
 			downloadCsv(csv, filename);
-			toast.success("Settlement plan exported");
+			toast.success(t("settlementPlanExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export settlement plan",
+				error instanceof Error ? error.message : t("failedToExportSettlement"),
 			);
 		}
 	};
@@ -254,10 +253,10 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 				participantId: id,
 			});
 			downloadPdf(pdf, filename);
-			toast.success("PDF exported");
+			toast.success(t("pdfExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export PDF",
+				error instanceof Error ? error.message : t("failedToExportPdf"),
 			);
 		}
 	};
@@ -300,7 +299,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 
 	const confirmSettlement = api.settlement.confirm.useMutation({
 		onSuccess: () => {
-			toast.success("Settlement confirmed");
+			toast.success(t("settlementConfirmed"));
 			void utils.people.detail.invalidate();
 			void utils.people.detailCursor.invalidate();
 			void utils.people.list.invalidate();
@@ -312,7 +311,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 
 	const rejectSettlement = api.settlement.reject.useMutation({
 		onSuccess: () => {
-			toast.success("Settlement rejected");
+			toast.success(t("settlementRejected"));
 			void utils.people.detail.invalidate();
 			void utils.people.detailCursor.invalidate();
 			void utils.people.list.invalidate();
@@ -325,7 +324,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	const [reminderSent, setReminderSent] = useState(false);
 	const remindPayment = api.settlement.requestPayment.useMutation({
 		onSuccess: () => {
-			toast.success("Reminder sent");
+			toast.success(t("reminderSentToast"));
 			setReminderSent(true);
 			setTimeout(() => setReminderSent(false), 5000);
 		},
@@ -348,7 +347,6 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 		const map = new Map<
 			string,
 			{
-				type: string;
 				imagePath: string | null;
 				myRole: string | null;
 				status: string;
@@ -359,7 +357,6 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 		if (projectList) {
 			for (const p of projectList) {
 				map.set(p.id, {
-					type: p.type,
 					imagePath: p.imagePath ?? null,
 					myRole: p.myRole,
 					status: p.status,
@@ -411,15 +408,18 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	// Compute action-specific settle button label
 	const settleButtonLabel = useMemo(() => {
 		if (isSettled || !identity) return "";
-		return formatSettleLabel(netDirection, homeCurrencyTotal, homeCurrency, balances, formatCurrency);
-	}, [isSettled, identity, homeCurrencyTotal, homeCurrency, formatCurrency, balances, netDirection]);
+		return formatSettleLabel(netDirection, homeCurrencyTotal, homeCurrency, balances, formatCurrency, {
+			pay: (amount) => t("payAmount", { amount }),
+			request: (amount) => t("requestAmount", { amount }),
+		});
+	}, [isSettled, identity, homeCurrencyTotal, homeCurrency, formatCurrency, balances, netDirection, t]);
 
 	const filterPanel = (
 		<div className="space-y-3">
 			{availableCategories.length > 0 && (
 				<div className="space-y-1.5">
 					<p className="font-medium text-muted-foreground text-xs tracking-wide">
-						Category
+						{t("category")}
 					</p>
 					<div className="flex flex-wrap gap-1.5">
 						{availableCategories.map((cat) => {
@@ -440,7 +440,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 												`text-${cat.color}-500`,
 										)}
 									/>
-									{cat.name}
+									{displayName(cat.name)}
 								</Button>
 							);
 						})}
@@ -450,7 +450,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 			{availablePayers.length > 0 && (
 				<div className="space-y-1.5">
 					<p className="font-medium text-muted-foreground text-xs tracking-wide">
-						Paid By
+						{t("paidBy")}
 					</p>
 					<div className="flex flex-wrap gap-1.5">
 						{availablePayers.map((payer) => {
@@ -471,7 +471,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 										name={payer.name}
 										size="xs"
 									/>
-									{payer.isMe ? "You" : payer.name.split(" ")[0]}
+									{payer.isMe ? t("you") : payer.name.split(" ")[0]}
 								</Button>
 							);
 						})}
@@ -485,7 +485,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					size="sm"
 					variant="ghost"
 				>
-					Clear filters
+					{t("clearFilters")}
 				</Button>
 			)}
 		</div>
@@ -494,16 +494,16 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	if (isError) {
 		return (
 			<>
-				<SiteHeader title="Person not found" />
+				<SiteHeader title={t("personNotFound")} />
 				<PageContent>
 					<div className="flex h-64 flex-col items-center justify-center gap-3">
 						<p className="text-muted-foreground">
-							This person could not be found.
+							{t("personCouldNotBeFound")}
 						</p>
 						<Button asChild variant="outline">
 							<Link href="/people">
 								<ArrowLeft className="mr-2 h-4 w-4" />
-								Back to People
+								{t("backToPeople")}
 							</Link>
 						</Button>
 					</div>
@@ -519,7 +519,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					<Breadcrumb>
 						<BreadcrumbList>
 							<BreadcrumbItem>
-								<BreadcrumbLink href="/people">People</BreadcrumbLink>
+								<BreadcrumbLink href="/people">{t("people")}</BreadcrumbLink>
 							</BreadcrumbItem>
 							<BreadcrumbSeparator />
 							<BreadcrumbItem>
@@ -527,7 +527,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 									{isLoading ? (
 										<Skeleton className="h-4 w-36" />
 									) : (
-										(identity?.name ?? "Person")
+										(identity?.name ?? t("person"))
 									)}
 								</BreadcrumbPage>
 							</BreadcrumbItem>
@@ -582,13 +582,12 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 										relationshipStats.transactionCount > 0 && (
 											<p className="text-muted-foreground text-sm tabular-nums">
 												{relationshipStats.firstTransactionDate
-													? `Sharing since ${new Date(relationshipStats.firstTransactionDate).toLocaleDateString(undefined, { month: "short", year: "numeric" })}`
+													? t("sharingSince", { date: new Date(relationshipStats.firstTransactionDate).toLocaleDateString(undefined, { month: "short", year: "numeric" }) })
 													: ""}
 												{relationshipStats.firstTransactionDate ? " · " : ""}
-												{relationshipStats.transactionCount} expense
-												{relationshipStats.transactionCount !== 1 ? "s" : ""}
+												{t("expenseCount", { count: relationshipStats.transactionCount })}
 												{relationshipStats.projectCount > 0
-													? ` · ${relationshipStats.projectCount} project${relationshipStats.projectCount !== 1 ? "s" : ""}`
+													? ` · ${t("projectCount", { count: relationshipStats.projectCount })}`
 													: ""}
 											</p>
 										)}
@@ -612,7 +611,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 															onClick={() => setSelectedProjectId(undefined)}
 															type="button"
 														>
-															<span>All</span>
+															<span>{t("all")}</span>
 															{isSettled ? (
 																<CheckCircle2
 																	className={cn(
@@ -646,7 +645,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 														<ContextMenuContent>
 															<ContextMenuItem onClick={() => setSettleUpOpen(true)}>
 																<CheckCircle2 className="h-4 w-4" />
-																Settle Up
+																{t("settleUp")}
 															</ContextMenuItem>
 														</ContextMenuContent>
 													)}
@@ -658,7 +657,6 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 													const meta = proj.projectId
 														? projectMetaMap.get(proj.projectId)
 														: undefined;
-													const projectType = meta?.type ?? "GENERAL";
 													const imageUrl = getImageUrl(meta?.imagePath ?? null);
 													const projTotal = projectHomeTotals.get(proj.projectId);
 													const projIsEven = !projTotal || projTotal.amount === 0;
@@ -711,13 +709,12 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																		<span
 																			className={cn(
 																				"h-4 w-4 shrink-0 rounded-full",
-																				TYPE_DOT_COLORS[projectType] ??
-																					TYPE_DOT_COLORS.GENERAL,
+																				DEFAULT_DOT_COLOR,
 																			)}
 																		/>
 																	)}
 																	<span className="max-w-[150px] truncate">
-																		{proj.projectName ?? "Standalone"}
+																		{proj.projectName ?? t("standalone")}
 																	</span>
 																	{projIsEven ? (
 																		<CheckCircle2
@@ -755,7 +752,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																		}
 																	>
 																		<ExternalLink className="h-4 w-4" />
-																		Open Project
+																		{t("openProject")}
 																	</ContextMenuItem>
 																)}
 																{canAddExpense && (
@@ -769,7 +766,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																		}
 																	>
 																		<ReceiptText className="h-4 w-4" />
-																		Add Expense
+																		{t("addExpense")}
 																	</ContextMenuItem>
 																)}
 																{hasProject && (
@@ -777,11 +774,11 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																		onClick={() => {
 																			const url = `${window.location.origin}/projects/${proj.projectId}`;
 																			void navigator.clipboard.writeText(url);
-																			toast.success("Link copied");
+																			toast.success(t("linkCopied"));
 																		}}
 																	>
 																		<Link2 className="h-4 w-4" />
-																		Copy Link
+																		{t("copyLink")}
 																	</ContextMenuItem>
 																)}
 																{!projIsEven && (
@@ -791,7 +788,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																			onClick={() => setSettleUpOpen(true)}
 																		>
 																			<CheckCircle2 className="h-4 w-4" />
-																			Settle Up
+																			{t("settleUp")}
 																		</ContextMenuItem>
 																	</>
 																)}
@@ -804,8 +801,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 										<div className="flex items-center gap-2">
 											{expenseCount !== null && (
 												<span className="shrink-0 text-muted-foreground text-sm tabular-nums">
-													{expenseCount}{" "}
-													{expenseCount === 1 ? "expense" : "expenses"}
+													{t("expenseCount", { count: expenseCount })}
 												</span>
 											)}
 											<div className="flex rounded-lg border border-border p-0.5">
@@ -821,7 +817,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 														onClick={() => setStatusFilter(filter)}
 														type="button"
 													>
-														{filter === "all" ? "All" : "Outstanding"}
+														{filter === "all" ? t("all") : t("outstanding")}
 													</button>
 												))}
 											</div>
@@ -834,7 +830,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 														variant={activeFilterCount > 0 ? "secondary" : "ghost"}
 													>
 														<SlidersHorizontal className="h-3.5 w-3.5" />
-														Filters
+														{t("filters")}
 														{activeFilterCount > 0 && (
 															<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
 																{activeFilterCount}
@@ -848,10 +844,10 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 													>
 														<DrawerContent className="px-6 pb-8">
 															<DrawerTitle className="mb-2 text-left font-semibold text-lg">
-																Filters
+																{t("filters")}
 															</DrawerTitle>
 															<DrawerDescription className="sr-only">
-																Filter expenses by category and payer
+																{t("filterExpensesDescription")}
 															</DrawerDescription>
 															<div className="overflow-y-auto">{filterPanel}</div>
 														</DrawerContent>
@@ -866,7 +862,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 															variant={activeFilterCount > 0 ? "secondary" : "ghost"}
 														>
 															<SlidersHorizontal className="h-3.5 w-3.5" />
-															Filters
+															{t("filters")}
 															{activeFilterCount > 0 && (
 																<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
 																	{activeFilterCount}
@@ -885,7 +881,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											)}
 											<ExpandableSearch
 												onChange={setSearchValue}
-												placeholder="Search expenses..."
+												placeholder={t("searchExpenses")}
 												value={searchValue}
 												slashFocus
 											/>
@@ -913,12 +909,12 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											{reminderSent ? (
 												<>
 													<CheckCircle2 className="h-4 w-4" />
-													Sent
+													{t("sent")}
 												</>
 											) : (
 												<>
 													<Bell className="h-4 w-4" />
-													{remindPayment.isPending ? "Sending..." : "Remind"}
+													{remindPayment.isPending ? t("sending") : t("remind")}
 												</>
 											)}
 										</Button>
@@ -932,24 +928,24 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 												className="focus-visible:ring-0 focus-visible:ring-offset-0"
 											>
 												<Download className="h-4 w-4" />
-												{isExporting ? "Exporting..." : "Export"}
+												{isExporting ? t("exporting") : t("export")}
 												<ChevronDown className="h-3 w-3 opacity-60" />
 											</Button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="end">
 											<DropdownMenuItem onClick={handleExportHistory}>
 												<FileSpreadsheet className="mr-2 h-4 w-4" />
-												Export History (CSV)
+												{t("exportHistoryCsv")}
 											</DropdownMenuItem>
 											{!isSettled && (
 												<DropdownMenuItem onClick={handleExportSettlement}>
 													<Receipt className="mr-2 h-4 w-4" />
-													Export Settlement Plan
+													{t("exportSettlementPlan")}
 												</DropdownMenuItem>
 											)}
 											<DropdownMenuItem onClick={handleExportPdf}>
 												<FileText className="mr-2 h-4 w-4" />
-												Download PDF Summary
+												{t("downloadPdfSummary")}
 											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
@@ -959,7 +955,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 									{isSettled ? (
 										<div className="flex items-center gap-2 font-semibold text-xl text-emerald-600 dark:text-emerald-400">
 											<CheckCircle2 className="h-5 w-5" />
-											All settled up
+											{t("allSettledUp")}
 										</div>
 									) : (
 										<>
@@ -968,8 +964,8 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 												<>
 													<p className="text-muted-foreground text-sm">
 														{netDirection === "they_owe_you"
-															? "They owe you"
-															: "You owe them"}
+															? t("theyOweYou")
+															: t("youOweThem")}
 													</p>
 													<span
 														className={cn(
@@ -1004,9 +1000,9 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 												<>
 													<p className="text-muted-foreground text-sm">
 														{netDirection === "they_owe_you"
-															? "They owe you"
+															? t("theyOweYou")
 															: netDirection === "you_owe_them"
-																? "You owe them"
+																? t("youOweThem")
 																: ""}
 													</p>
 													<div className="mt-1 flex flex-wrap justify-end gap-2">
@@ -1047,8 +1043,10 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 									<div className="flex items-center gap-2 text-sm">
 										<HandCoins className="h-4 w-4 text-amber-600 dark:text-amber-400" />
 										<span>
-											<strong>{identity?.name ?? "They"}</strong> sent you a settlement of{" "}
-											<strong>{formatCurrency(s.amount, s.currency)}</strong>
+											{t("settlementBanner", {
+												name: identity?.name ?? t("they"),
+												amount: formatCurrency(s.amount, s.currency),
+											})}
 										</span>
 									</div>
 									<div className="flex items-center gap-1.5">
@@ -1058,7 +1056,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											size="sm"
 										>
 											<CheckCircle2 className="h-3.5 w-3.5" />
-											Confirm
+											{t("confirm")}
 										</Button>
 										<Button
 											disabled={rejectSettlement.isPending}
@@ -1067,7 +1065,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											variant="outline"
 										>
 											<XCircle className="h-3.5 w-3.5" />
-											Reject
+											{t("reject")}
 										</Button>
 									</div>
 								</div>
@@ -1078,7 +1076,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					{isLoading || hasHistory ? (
 						<PeopleTimelineTable
 							externalToolbar
-							identityName={identity?.name ?? "They"}
+							identityName={identity?.name ?? t("they")}
 							onAvailableCategoriesChange={onAvailableCategoriesChange}
 							onAvailablePayersChange={onAvailablePayersChange}
 							onCountChange={setExpenseCount}
@@ -1098,15 +1096,15 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					) : (
 						<div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
 							<ReceiptText className="mb-3 h-10 w-10 text-muted-foreground/40" />
-							<h3 className="font-medium">No shared expenses</h3>
+							<h3 className="font-medium">{t("noSharedExpenses")}</h3>
 							<p className="mt-1 max-w-sm text-muted-foreground text-sm">
-								You don&apos;t have any shared expenses with {identity?.name ?? "this person"} yet.
+								{t("noSharedExpensesDescription", { name: identity?.name ?? t("thisPerson") })}
 							</p>
 							{identity?.isVerifiedUser && identity?.username && (
 								<Button asChild className="mt-4" size="sm" variant="outline">
 									<Link href={`/u/${identity.username}`}>
 										<ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-										View Public Profile
+										{t("viewPublicProfile")}
 									</Link>
 								</Button>
 							)}
@@ -1134,12 +1132,12 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					}}
 					open={!!editingTransactionId}
 					sharedTransactionId={editingTransactionId}
-					title="Edit Expense"
+					title={t("editExpense")}
 				/>
 			)}
 
 			<ConfirmDialog
-				confirmText="Delete"
+				confirmText={t("deleteButton")}
 				description={
 					deletingTransaction ? (
 						<span>
@@ -1152,7 +1150,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 							· {format(new Date(deletingTransaction.date), "MMM d, yyyy")}
 							<br />
 							<span className="text-destructive text-xs">
-								This action cannot be undone. All participants will be notified.
+								{t("deleteExpenseWarning")}
 							</span>
 						</span>
 					) : undefined
@@ -1167,7 +1165,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					if (!open) setDeletingTransaction(null);
 				}}
 				open={!!deletingTransaction}
-				title="Delete this expense?"
+				title={t("deleteExpenseTitle")}
 				variant="destructive"
 			/>
 		</>

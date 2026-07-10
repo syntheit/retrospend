@@ -8,6 +8,7 @@ import {
 	Info,
 	Plus,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { buildRateMap, computeHomeCurrencyTotal } from "~/lib/balance-utils";
@@ -73,6 +74,7 @@ export function SettleUpDialog({
 	personName,
 	personAvatarUrl,
 }: SettleUpDialogProps) {
+	const t = useTranslations("settleUp");
 	const { formatCurrency } = useCurrencyFormatter();
 	const utils = api.useUtils();
 	const session = useSession();
@@ -242,7 +244,7 @@ export function SettleUpDialog({
 
 		const parsed = parseFloat(amount);
 		if (Number.isNaN(parsed) || parsed <= 0) {
-			toast.error("Enter a valid amount");
+			toast.error(t("enterValidAmount"));
 			return;
 		}
 		createSettlement.mutate({
@@ -257,7 +259,7 @@ export function SettleUpDialog({
 	const handleMethodAction = (method: (typeof compatible)[number]) => {
 		const parsed = parseFloat(amount);
 		if (Number.isNaN(parsed) || parsed <= 0) {
-			toast.error("Enter a valid amount first");
+			toast.error(t("enterAmountFirst"));
 			return;
 		}
 		const noteToUse = note.trim() || autoPaymentNote(parsed, currency);
@@ -310,19 +312,19 @@ export function SettleUpDialog({
 
 						<div className="space-y-1">
 							<h2 className="font-semibold text-xl">
-								Settlement recorded
+								{t("settlementRecorded")}
 							</h2>
 							<p className="text-muted-foreground text-sm">
 								{wasReceiving
-									? `You recorded a ${formatCurrency(successSummary.amount, successSummary.currency)} payment from ${personName}`
-									: `You recorded a ${formatCurrency(successSummary.amount, successSummary.currency)} payment to ${personName}`}
+									? t("paymentFrom", { amount: formatCurrency(successSummary.amount, successSummary.currency), name: personName })
+									: t("paymentTo", { amount: formatCurrency(successSummary.amount, successSummary.currency), name: personName })}
 							</p>
 						</div>
 
 						{needsConfirmation && (
 							<div className="w-full rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
 								<p className="text-muted-foreground">
-									{personName} can confirm or reject this settlement. It will auto-confirm in 7 days.
+									{t("confirmNote", { name: personName })}
 								</p>
 							</div>
 						)}
@@ -330,11 +332,11 @@ export function SettleUpDialog({
 						<div className="w-full rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
 							{isFullySettled ? (
 								<p className="font-medium text-emerald-600 dark:text-emerald-400">
-									You&apos;re all settled up with {personName}!
+									{t("allSettled", { name: personName })}
 								</p>
 							) : (
 								<div className="flex justify-between">
-									<span className="text-muted-foreground">Remaining balance</span>
+									<span className="text-muted-foreground">{t("remainingBalance")}</span>
 									<span className="font-semibold">
 										{formatCurrency(successSummary.remainingBalance!, successSummary.currency)}
 									</span>
@@ -343,7 +345,7 @@ export function SettleUpDialog({
 						</div>
 
 						<Button className="w-full" onClick={onClose}>
-							Done
+							{t("done")}
 						</Button>
 					</div>
 				</ResponsiveDialogContent>
@@ -363,8 +365,8 @@ export function SettleUpDialog({
 			<ResponsiveDialog onOpenChange={(o) => !o && onClose()} open={open}>
 				<ResponsiveDialogContent className="sm:max-w-md">
 					<ResponsiveDialogHeader>
-						<ResponsiveDialogTitle>Settle Up with {personName}</ResponsiveDialogTitle>
-						<ResponsiveDialogDescription>Did you send the payment?</ResponsiveDialogDescription>
+						<ResponsiveDialogTitle>{t("titleWith", { name: personName })}</ResponsiveDialogTitle>
+						<ResponsiveDialogDescription>{t("didYouSend")}</ResponsiveDialogDescription>
 					</ResponsiveDialogHeader>
 
 					<div className="space-y-4 py-2">
@@ -372,8 +374,8 @@ export function SettleUpDialog({
 							<div className="flex items-center gap-2 font-medium text-sm">
 								<PaymentMethodIcon size="sm" typeId={selectedMethod.type} />
 								{link.canDeepLink
-									? `Payment link opened via ${displayName}`
-									: `Pay via ${displayName}`}
+									? t("paymentLinkOpened", { method: displayName })
+									: t("payVia", { method: displayName })}
 							</div>
 
 							{link.instructions && (
@@ -390,13 +392,13 @@ export function SettleUpDialog({
 											void navigator.clipboard.writeText(
 												selectedMethod.theirIdentifier!,
 											);
-											toast.success("Copied to clipboard");
+											toast.success(t("copiedToClipboard"));
 										}}
 										size="sm"
 										variant="outline"
 									>
 										<Copy className="h-3 w-3" />
-										Copy identifier
+										{t("copyIdentifier")}
 									</Button>
 								)}
 								{link.webUrl && link.url !== link.webUrl && (
@@ -412,7 +414,7 @@ export function SettleUpDialog({
 											target="_blank"
 										>
 											<ExternalLink className="h-3 w-3" />
-											Open in browser
+											{t("openInBrowser")}
 										</a>
 									</Button>
 								)}
@@ -429,7 +431,7 @@ export function SettleUpDialog({
 											target="_blank"
 										>
 											<ExternalLink className="h-3 w-3" />
-											Open {displayName}
+											{t("openMethod", { name: displayName })}
 										</a>
 									</Button>
 								)}
@@ -437,7 +439,7 @@ export function SettleUpDialog({
 						</div>
 
 						<p className="text-center font-medium text-sm">
-							Did you complete the payment?
+							{t("didYouComplete")}
 						</p>
 					</div>
 
@@ -447,10 +449,10 @@ export function SettleUpDialog({
 							onClick={handleConfirm}
 						>
 							<CheckCircle2 className="h-4 w-4" />
-							{isMutating ? "Saving..." : "Yes, Record Payment"}
+							{isMutating ? t("saving") : t("yesRecord")}
 						</Button>
 						<Button onClick={() => setPaymentStep("idle")} variant="ghost">
-							Back
+							{t("back")}
 						</Button>
 					</div>
 				</ResponsiveDialogContent>
@@ -463,9 +465,9 @@ export function SettleUpDialog({
 		<ResponsiveDialog onOpenChange={(o) => !o && onClose()} open={open}>
 			<ResponsiveDialogContent className="sm:max-w-md">
 				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>Settle Up</ResponsiveDialogTitle>
+					<ResponsiveDialogTitle>{t("title")}</ResponsiveDialogTitle>
 					<ResponsiveDialogDescription>
-						Record a payment to zero out your balance.
+						{t("description")}
 					</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 
@@ -503,7 +505,7 @@ export function SettleUpDialog({
 												size="sm"
 											/>
 											<span className="max-w-[72px] truncate text-center text-muted-foreground text-xs">
-												{isReceiving ? personName : "You"}
+												{isReceiving ? personName : t("you")}
 											</span>
 										</div>
 
@@ -525,7 +527,7 @@ export function SettleUpDialog({
 												<div className="h-px flex-1 bg-border" />
 											</div>
 											<span className="text-muted-foreground text-xs">
-												{isReceiving ? "they owe you" : "you owe them"}
+												{isReceiving ? t("theyOweYou") : t("youOweThem")}
 											</span>
 										</div>
 
@@ -537,7 +539,7 @@ export function SettleUpDialog({
 												size="sm"
 											/>
 											<span className="max-w-[72px] truncate text-center text-muted-foreground text-xs">
-												{isReceiving ? "You" : personName}
+												{isReceiving ? t("you") : personName}
 											</span>
 										</div>
 									</div>
@@ -561,7 +563,7 @@ export function SettleUpDialog({
 											)}
 											onClick={() => setSelectedCurrencyIdx(-1)}
 										>
-											All {formatCurrency(Math.abs(homeCurrencyTotal!.amount), homeCurrency)}
+											{t("allAmount", { amount: formatCurrency(Math.abs(homeCurrencyTotal!.amount), homeCurrency) })}
 										</button>
 									)}
 									{activePlans.map((p, idx) => (
@@ -585,7 +587,7 @@ export function SettleUpDialog({
 							)}
 							{isAllMode ? (
 								<>
-									<Label>Total ({homeCurrency})</Label>
+									<Label>{t("totalCurrency", { currency: homeCurrency })}</Label>
 									<div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
 										<span className="font-semibold text-sm">
 											{formatCurrency(Math.abs(homeCurrencyTotal!.amount), homeCurrency)}
@@ -602,10 +604,10 @@ export function SettleUpDialog({
 							) : (
 								<>
 									<div className="flex items-center justify-between">
-										<Label htmlFor="settle-amount">Amount ({currency})</Label>
+										<Label htmlFor="settle-amount">{t("amountCurrency", { currency })}</Label>
 										{isPartial && (
 											<Badge className="h-5 px-1.5 text-[10px]" variant="secondary">
-												Partial settlement
+												{t("partialSettlement")}
 											</Badge>
 										)}
 									</div>
@@ -620,9 +622,7 @@ export function SettleUpDialog({
 									{/* Issue 5: Inline overpayment warning */}
 									{isOverpayment && (
 										<p className="text-amber-600 text-xs dark:text-amber-400" id="overpayment-warning">
-											Exceeds the current balance by{" "}
-											{formatCurrency(parsedAmount - parsedDefault, currency)}.
-											The excess will be recorded as an overpayment.
+											{t("overpaymentWarning", { amount: formatCurrency(parsedAmount - parsedDefault, currency) })}
 										</p>
 									)}
 									{defaultAmount && (
@@ -634,7 +634,7 @@ export function SettleUpDialog({
 											onClick={() => setAmount(defaultAmount)}
 											type="button"
 										>
-											Full amount — {formatCurrency(parseFloat(defaultAmount), currency)}
+											{t("fullAmount", { amount: formatCurrency(parseFloat(defaultAmount), currency) })}
 										</button>
 									)}
 								</>
@@ -644,7 +644,7 @@ export function SettleUpDialog({
 						{/* Payment methods */}
 						{participantType === "user" && (
 							<div className="space-y-2">
-								<Label>Pay via (optional)</Label>
+								<Label>{t("payViaOptional")}</Label>
 								{matchLoading ? (
 									<Skeleton className="h-12 w-full" />
 								) : compatible.length > 0 ? (
@@ -680,7 +680,7 @@ export function SettleUpDialog({
 																		className="h-4 px-1 py-0 text-[10px]"
 																		variant="secondary"
 																	>
-																		Best Match
+																		{t("bestMatch")}
 																	</Badge>
 																)}
 															</div>
@@ -700,12 +700,12 @@ export function SettleUpDialog({
 														{isDeepLink ? (
 															<>
 																<ExternalLink className="h-3 w-3" />
-																Open {name}
+																{t("openMethod", { name })}
 															</>
 														) : (
 															<>
 																<Copy className="h-3 w-3" />
-																Copy info
+																{t("copyInfo")}
 															</>
 														)}
 													</Button>
@@ -716,7 +716,7 @@ export function SettleUpDialog({
 								) : (
 									<div className="flex items-center gap-2 text-muted-foreground text-xs">
 										<Info className="h-3.5 w-3.5" />
-										No shared payment methods
+										{t("noSharedMethods")}
 									</div>
 								)}
 							</div>
@@ -725,7 +725,7 @@ export function SettleUpDialog({
 						{/* Note — collapsible */}
 						{showNote ? (
 							<div className="space-y-1.5">
-								<Label htmlFor="settle-note">Note</Label>
+								<Label htmlFor="settle-note">{t("note")}</Label>
 								<Textarea
 									className="resize-none"
 									id="settle-note"
@@ -745,13 +745,13 @@ export function SettleUpDialog({
 								type="button"
 							>
 								<Plus className="h-3 w-3" />
-								Add note
+								{t("addNote")}
 							</button>
 						)}
 					</div>
 				) : (
 					<div className="py-4 text-center text-muted-foreground text-sm">
-						No outstanding balance with {personName}.
+						{t("noBalance", { name: personName })}
 					</div>
 				)}
 
@@ -765,15 +765,15 @@ export function SettleUpDialog({
 						onClick={handleConfirm}
 					>
 						<CheckCircle2 className="h-4 w-4" />
-						{isMutating ? "Saving..." : "Record Payment"}
+						{isMutating ? t("saving") : t("recordPayment")}
 					</Button>
 					{participantType === "user" && firstActivePlan && (
 						<p className="text-center text-muted-foreground text-xs">
-							Your balance will update immediately. {personName} has 7 days to confirm.
+							{t("balanceUpdateNote", { name: personName })}
 						</p>
 					)}
 					<Button className="w-full" onClick={onClose} variant="ghost">
-						Cancel
+						{t("cancel")}
 					</Button>
 				</div>
 			</ResponsiveDialogContent>

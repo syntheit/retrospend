@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -24,18 +25,19 @@ interface FeedbackModalProps {
 }
 
 export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
+	const t = useTranslations("feedback");
 	const [message, setMessage] = useState("");
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const pathname = usePathname();
 
 	const submitMutation = api.feedback.submit.useMutation({
 		onSuccess: () => {
-			toast.success("Thanks for your feedback!");
+			toast.success(t("success"));
 			setMessage("");
 			onOpenChange(false);
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to submit feedback");
+			toast.error(error.message || t("error"));
 		},
 	});
 
@@ -77,9 +79,9 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
 			<ResponsiveDialogContent className="sm:max-w-md">
 				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>Send Feedback</ResponsiveDialogTitle>
+					<ResponsiveDialogTitle>{t("title")}</ResponsiveDialogTitle>
 					<ResponsiveDialogDescription>
-						Share a bug report, feature request, or suggestion.
+						{t("description")}
 					</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 				<div className="relative">
@@ -89,7 +91,7 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 						maxLength={MAX_LENGTH}
 						onChange={(e) => setMessage(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="What's on your mind?"
+						placeholder={t("placeholder")}
 						ref={textareaRef}
 						value={message}
 					/>
@@ -105,15 +107,15 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 						onClick={() => onOpenChange(false)}
 						variant="ghost"
 					>
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button
 						disabled={!message.trim() || submitMutation.isPending}
 						onClick={handleSubmit}
 					>
 						{submitMutation.isPending
-							? "Submitting..."
-							: "Submit Feedback"}
+							? t("submitting")
+							: t("submit")}
 					</Button>
 				</ResponsiveDialogFooter>
 			</ResponsiveDialogContent>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { type ParsedWealthRow, parseWealthCsv } from "~/lib/csv";
@@ -8,6 +9,7 @@ import type { AssetType } from "~prisma";
 import { DataImporter } from "./data-importer";
 
 export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
+	const t = useTranslations("dataManagement");
 	const importMutation = api.wealth.importAssets.useMutation();
 
 	const handleParseCsv = (
@@ -25,11 +27,11 @@ export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
 				})),
 			});
 			toast.success(
-				`Imported: ${result.successCount} success, ${result.errorCount} failed`,
+				t("importedSuccessFailed", { success: result.successCount, failed: result.errorCount }),
 			);
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to import wealth data",
+				error instanceof Error ? error.message : t("failedToImportWealthData"),
 			);
 			throw error;
 		}
@@ -43,19 +45,19 @@ export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
 						<thead className="sticky top-0 bg-muted/50">
 							<tr className="border-b transition-colors hover:bg-muted/50">
 								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-									Name
+									{t("name")}
 								</th>
 								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-									Balance
+									{t("balance")}
 								</th>
 								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-									Currency
+									{t("currency")}
 								</th>
 								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-									Type
+									{t("type")}
 								</th>
 								<th className="h-8 px-2 text-left align-middle font-medium text-muted-foreground">
-									Liquid
+									{t("liquid")}
 								</th>
 							</tr>
 						</thead>
@@ -70,7 +72,7 @@ export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
 									<td className="p-2 align-middle">{row.currency}</td>
 									<td className="p-2 align-middle">{row.type}</td>
 									<td className="p-2 align-middle">
-										{row.isLiquid ? "Yes" : "No"}
+										{row.isLiquid ? t("yes") : t("no")}
 									</td>
 								</tr>
 							))}
@@ -81,7 +83,7 @@ export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
 		};
 		WealthPreviewTable.displayName = "WealthPreviewTable";
 		return WealthPreviewTable;
-	}, []);
+	}, [t]);
 
 	return (
 		<DataImporter
@@ -111,7 +113,7 @@ export function WealthImporterTab({ isActive = true }: { isActive?: boolean }) {
 				"Tesla Stock,2000,USD,INVESTMENT,false",
 			].join("\n")}
 			sampleFilename="wealth_sample.csv"
-			title="Wealth"
+			title={t("wealth")}
 		/>
 	);
 }

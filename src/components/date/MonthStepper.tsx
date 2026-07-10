@@ -1,7 +1,8 @@
 "use client";
 
-import { addMonths, format, subMonths } from "date-fns";
+import { addMonths, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -27,21 +28,6 @@ interface MonthStepperProps {
 	className?: string;
 }
 
-const MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-];
-
 export function MonthStepper({
 	value,
 	onChange,
@@ -52,6 +38,13 @@ export function MonthStepper({
 	placeholder = "Pick a month",
 	className,
 }: MonthStepperProps) {
+	const t = useTranslations("ui");
+	const MONTHS = useMemo(() => [
+		t("janShort"), t("febShort"), t("marShort"), t("aprShort"),
+		t("mayShort"), t("junShort"), t("julShort"), t("augShort"),
+		t("sepShort"), t("octShort"), t("novShort"), t("decShort"),
+	], [t]);
+
 	const [open, setOpen] = useState(false);
 	const [popoverYear, setPopoverYear] = useState(
 		() => value?.getFullYear() ?? new Date().getFullYear(),
@@ -222,7 +215,7 @@ export function MonthStepper({
 						)}
 						type="button"
 					>
-						{value ? format(value, "MMM yyyy") : placeholder}
+						{value ? `${MONTHS[value.getMonth()]} ${value.getFullYear()}` : placeholder}
 					</button>
 				</PopoverTrigger>
 				{popoverContent}
@@ -248,7 +241,7 @@ export function MonthStepper({
 						className="min-w-[100px] text-sm tabular-nums tracking-wide"
 						variant="ghost"
 					>
-						{value ? format(value, "MMM yyyy") : placeholder}
+						{value ? `${MONTHS[value.getMonth()]} ${value.getFullYear()}` : placeholder}
 					</Button>
 				</PopoverTrigger>
 				{popoverContent}

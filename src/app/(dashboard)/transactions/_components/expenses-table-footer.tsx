@@ -1,6 +1,8 @@
 import { TableCell, TableRow } from "~/components/ui/table";
 import { formatCurrency } from "~/lib/utils";
 
+type TranslationFunction = (key: string, values?: Record<string, string | number | Date>) => string;
+
 interface ExpensesTableFooterProps {
 	totalAmount: number;
 	/** Amount from excluded-only rows; used to compute the "excl. hidden" figure */
@@ -10,6 +12,7 @@ interface ExpensesTableFooterProps {
 	hasForeignCurrencyExpenses?: boolean;
 	/** True when the "Paid By" column is visible (typeFilter is "all" or "shared") */
 	hasPaidByColumn?: boolean;
+	t: TranslationFunction;
 }
 
 /**
@@ -26,6 +29,7 @@ export function ExpensesTableFooter({
 	currency,
 	hasForeignCurrencyExpenses,
 	hasPaidByColumn,
+	t,
 }: ExpensesTableFooterProps) {
 	const hasExcluded = excludedAmount !== undefined && excludedAmount > 0;
 	const includedTotal = hasExcluded ? totalAmount - excludedAmount : totalAmount;
@@ -33,7 +37,7 @@ export function ExpensesTableFooter({
 	return (
 		<TableRow className="border-t-2 bg-muted/50 font-semibold">
 			{/* title column */}
-			<TableCell className="text-left font-semibold">Total</TableCell>
+			<TableCell className="text-left font-semibold">{t("total")}</TableCell>
 			{/* category column */}
 			<TableCell />
 			{/* date column */}
@@ -48,7 +52,7 @@ export function ExpensesTableFooter({
 					<div className="flex flex-col items-end gap-0.5">
 						<span>{formatCurrency(totalAmount, currency)}</span>
 						<span className="font-normal text-muted-foreground text-xs">
-							{formatCurrency(includedTotal, currency)} excl. hidden
+							{formatCurrency(includedTotal, currency)} {t("exclHidden")}
 						</span>
 					</div>
 				) : (

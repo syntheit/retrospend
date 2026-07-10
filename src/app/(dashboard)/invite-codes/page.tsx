@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
@@ -8,6 +9,7 @@ import { UserInviteCodesTable } from "~/components/user-invite-codes-table";
 import { api } from "~/trpc/react";
 
 export default function InviteCodesPage() {
+	const t = useTranslations("inviteCodes");
 	const utils = api.useUtils();
 	const [status, setStatus] = useState<"active" | "used">("active");
 
@@ -32,10 +34,10 @@ export default function InviteCodesPage() {
 			{ id: inviteCodeId },
 			{
 				onSuccess: () => {
-					toast.success(`Invite code ${code} has been deleted`);
+					toast.success(t("deleted", { code }));
 				},
 				onError: (error) => {
-					toast.error(error.message || "Failed to delete invite code");
+					toast.error(error.message || t("deleteFailed"));
 				},
 			},
 		);
@@ -43,7 +45,7 @@ export default function InviteCodesPage() {
 
 	return (
 		<>
-			<SiteHeader title="Invite Codes" />
+			<SiteHeader title={t("title")} />
 			<PageContent>
 				<div className="mx-auto w-full max-w-4xl space-y-6">
 					<UserInviteCodesTable

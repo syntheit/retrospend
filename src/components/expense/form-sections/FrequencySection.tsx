@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useFormContext } from "react-hook-form";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -26,6 +27,7 @@ function deriveSelection(amortizeOver: number | undefined, spreadOverTime: boole
 }
 
 export function FrequencySection({ rightSlot }: { rightSlot?: React.ReactNode }) {
+	const t = useTranslations("expenseForm");
 	const { watch, setValue } = useFormContext<ExpenseFormData>();
 	const { getCurrencySymbol } = useCurrencyFormatter();
 
@@ -97,7 +99,7 @@ export function FrequencySection({ rightSlot }: { rightSlot?: React.ReactNode })
 
 	return (
 		<div className="flex items-center gap-3">
-			<Label className="w-20 shrink-0 text-sm" htmlFor="frequency-select">Frequency</Label>
+			<Label className="w-20 shrink-0 text-sm" htmlFor="frequency-select">{t("frequency")}</Label>
 			<div className="flex flex-1 items-center gap-3 overflow-hidden">
 				<Select
 					onValueChange={(v) => handleFrequencyChange(v as FrequencySelection)}
@@ -107,13 +109,13 @@ export function FrequencySection({ rightSlot }: { rightSlot?: React.ReactNode })
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="one-time">One-time</SelectItem>
-						<SelectItem value="2">2 months</SelectItem>
-						<SelectItem value="3">3 months</SelectItem>
-						<SelectItem value="6">6 months</SelectItem>
-						<SelectItem value="12">12 months</SelectItem>
-						<SelectItem value="24">24 months</SelectItem>
-						<SelectItem value="custom">Custom...</SelectItem>
+						<SelectItem value="one-time">{t("oneTime")}</SelectItem>
+						<SelectItem value="2">{t("nMonths", { count: 2 })}</SelectItem>
+						<SelectItem value="3">{t("nMonths", { count: 3 })}</SelectItem>
+						<SelectItem value="6">{t("nMonths", { count: 6 })}</SelectItem>
+						<SelectItem value="12">{t("nMonths", { count: 12 })}</SelectItem>
+						<SelectItem value="24">{t("nMonths", { count: 24 })}</SelectItem>
+						<SelectItem value="custom">{t("customEllipsis")}</SelectItem>
 					</SelectContent>
 				</Select>
 
@@ -129,7 +131,7 @@ export function FrequencySection({ rightSlot }: { rightSlot?: React.ReactNode })
 							type="number"
 							value={customMonths}
 						/>
-						<span className="text-muted-foreground text-sm">months</span>
+						<span className="text-muted-foreground text-sm">{t("months")}</span>
 					</div>
 				)}
 

@@ -2,6 +2,7 @@
 
 import type { Row, VisibilityState } from "@tanstack/react-table";
 import { Edit2, Landmark, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { DataTable } from "~/components/data-table";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
@@ -42,6 +43,7 @@ export function WealthDataTable({
 	readOnly?: boolean;
 	columnVisibility?: VisibilityState;
 }) {
+	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
 	const [editingAssetId, setEditingAssetId] = React.useState<string | null>(
 		null,
@@ -88,6 +90,7 @@ export function WealthDataTable({
 				totalNetWorth,
 				isPrivacyMode,
 				selectionHandlers,
+				t,
 			),
 		[
 			homeCurrency,
@@ -95,6 +98,7 @@ export function WealthDataTable({
 			totalNetWorth,
 			isPrivacyMode,
 			selectionHandlers,
+			t,
 		],
 	);
 
@@ -113,7 +117,7 @@ export function WealthDataTable({
 					onClick={readOnly ? undefined : () => setEditingAssetId(row.id)}
 				>
 					<Edit2 className="mr-2 h-4 w-4" />
-					Edit asset
+					{t("editAssetAction")}
 				</ContextMenuItem>
 				{(onDeleteSelected || readOnly) && (
 					<>
@@ -128,13 +132,13 @@ export function WealthDataTable({
 							variant="destructive"
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
-							Delete asset
+							{t("deleteAssetAction")}
 						</ContextMenuItem>
 					</>
 				)}
 			</>
 		);
-	}, [readOnly, onDeleteSelected]);
+	}, [readOnly, onDeleteSelected, t]);
 
 	const renderToolbar = React.useCallback(
 		(_table: unknown, headerHeight: string) => {
@@ -169,12 +173,12 @@ export function WealthDataTable({
 						className="text-left font-medium"
 						colSpan={colCount}
 					>
-						Total ({filteredRows.length} items)
+						{t("totalItems", { count: filteredRows.length })}
 					</TableCell>
 				</TableRow>
 			);
 		},
-		[columns.length],
+		[columns.length, t],
 	);
 
 	return (
@@ -182,14 +186,14 @@ export function WealthDataTable({
 			<DataTable
 				columns={columns}
 				columnVisibility={initialColumnVisibility}
-				countNoun="assets"
+				countNoun={t("assetsNoun")}
 				data={data}
 				emptyState={
 					<EmptyState
 						className="py-8"
-						description="Add your first asset or liability to start tracking your net worth."
+						description={t("noAssetsDescription")}
 						icon={Landmark}
-						title="No Assets Found"
+						title={t("noAssetsTitle")}
 					/>
 				}
 				fillHeight={fillHeight}

@@ -242,23 +242,17 @@ export class SharedTransactionService {
 					}
 				}
 
-				// For ONGOING projects, auto-link to the current OPEN billing period.
+				// Auto-link to the current OPEN billing period (if any).
 				// Always assigns to the OPEN period regardless of the transaction's date:
 				// if the date predates the period start, surface a warning to the caller.
-				const project = await tx.project.findUnique({
-					where: { id: input.projectId },
-					select: { type: true },
+				const openPeriod = await tx.billingPeriod.findFirst({
+					where: { projectId: input.projectId, status: "OPEN" },
+					orderBy: { startDate: "desc" },
 				});
-				if (project?.type === "ONGOING") {
-					const openPeriod = await tx.billingPeriod.findFirst({
-						where: { projectId: input.projectId, status: "OPEN" },
-						orderBy: { startDate: "desc" },
-					});
-					if (openPeriod) {
-						billingPeriodId = openPeriod.id;
-						if (input.date < openPeriod.startDate) {
-							backdatedWarning = { periodLabel: openPeriod.label };
-						}
+				if (openPeriod) {
+					billingPeriodId = openPeriod.id;
+					if (input.date < openPeriod.startDate) {
+						backdatedWarning = { periodLabel: openPeriod.label };
 					}
 				}
 			}

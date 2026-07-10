@@ -2,6 +2,7 @@
 
 import { TrendingUp } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Bar, BarChart, Cell, ReferenceLine, XAxis, YAxis } from "recharts";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -28,12 +29,6 @@ interface MonthlyDeltaChartProps {
 	onTimeRangeChange?: (range: "3M" | "6M" | "12M") => void;
 }
 
-const chartConfig: ChartConfig = {
-	delta: {
-		label: "Net Worth Change",
-	},
-};
-
 export function MonthlyDeltaChart({
 	data,
 	baseCurrency = "USD",
@@ -41,7 +36,14 @@ export function MonthlyDeltaChart({
 	onBaseCurrencyChange,
 	onTimeRangeChange,
 }: MonthlyDeltaChartProps) {
+	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
+
+	const chartConfig: ChartConfig = {
+		delta: {
+			label: t("netWorthChange"),
+		},
+	};
 
 	const chartData = useMemo(() => {
 		if (!data) return [];
@@ -56,13 +58,13 @@ export function MonthlyDeltaChart({
 		return (
 			<Card className="h-full">
 				<CardHeader>
-					<CardTitle>Monthly Net Worth Changes</CardTitle>
+					<CardTitle>{t("monthlyNetWorthChanges")}</CardTitle>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center justify-center py-12">
 					<TrendingUp className="h-12 w-12 text-muted-foreground/50" />
-					<h3 className="mt-4 font-medium text-lg">No change data yet</h3>
+					<h3 className="mt-4 font-medium text-lg">{t("noChangeDataYet")}</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">
-						Add assets and track changes over time to see monthly trends.
+						{t("addAssetsToSeeTrends")}
 					</p>
 				</CardContent>
 			</Card>
@@ -77,7 +79,7 @@ export function MonthlyDeltaChart({
 	return (
 		<Card className="h-full">
 			<CardHeader className="flex flex-row items-center justify-between">
-				<CardTitle>Monthly Net Worth Changes</CardTitle>
+				<CardTitle>{t("monthlyNetWorthChanges")}</CardTitle>
 				{(onBaseCurrencyChange || onTimeRangeChange) && (
 					<div className="flex items-center gap-3">
 						{onTimeRangeChange && (
@@ -89,13 +91,13 @@ export function MonthlyDeltaChart({
 								type="single"
 								value={timeRange}
 							>
-								<ToggleGroupItem aria-label="3 months" value="3M">
+								<ToggleGroupItem aria-label={t("threeMonths")} value="3M">
 									3M
 								</ToggleGroupItem>
-								<ToggleGroupItem aria-label="6 months" value="6M">
+								<ToggleGroupItem aria-label={t("sixMonths")} value="6M">
 									6M
 								</ToggleGroupItem>
-								<ToggleGroupItem aria-label="12 months" value="12M">
+								<ToggleGroupItem aria-label={t("twelveMonths")} value="12M">
 									12M
 								</ToggleGroupItem>
 							</ToggleGroup>

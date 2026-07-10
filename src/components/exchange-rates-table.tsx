@@ -34,6 +34,7 @@ import {
 	HeartPlus,
 	MoreHorizontal,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import React, { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -88,6 +89,7 @@ interface MenuItemsProps {
 	onToggleFavorite: (id: string) => Promise<void>;
 	Item: React.ComponentType<React.ComponentProps<typeof ContextMenuItem>>;
 	Separator: React.ComponentType<React.ComponentProps<typeof ContextMenuSeparator>>;
+	t: (key: string, values?: Record<string, string | number | Date>) => string;
 }
 
 function renderMenuItems({
@@ -96,6 +98,7 @@ function renderMenuItems({
 	onToggleFavorite,
 	Item,
 	Separator,
+	t,
 }: MenuItemsProps) {
 	const isSubRow = row.depth > 0;
 	const { id, currency, rate, isFavorite } = row.original;
@@ -107,14 +110,14 @@ function renderMenuItems({
 				maximumFractionDigits: 4,
 			}),
 		);
-		toast.success(`Copied ${currency} rate to clipboard`);
+		toast.success(t("copiedRateToClipboard", { currency }));
 	};
 
 	return (
 		<>
 			<Item onClick={handleCopyRate}>
 				<Copy />
-				Copy rate
+				{t("copyRate")}
 			</Item>
 			{!isCrypto(currency) && (
 				<Item
@@ -127,13 +130,13 @@ function renderMenuItems({
 					}
 				>
 					<ChartLine />
-					View rate history
+					{t("viewRateHistory")}
 				</Item>
 			)}
 			{!isSubRow && onRowClick && (
 				<Item onClick={() => onRowClick(currency)}>
 					<Calculator />
-					Open in calculator
+					{t("openInCalculator")}
 				</Item>
 			)}
 			{!isSubRow && (
@@ -144,7 +147,7 @@ function renderMenuItems({
 						onClick={() => void onToggleFavorite(id)}
 					>
 						{isFavorite ? <HeartOff /> : <HeartPlus />}
-						{isFavorite ? "Unfavorite" : "Add to favorites"}
+						{isFavorite ? t("unfavorite") : t("addToFavorites")}
 					</Item>
 				</>
 			)}
@@ -158,6 +161,7 @@ interface ExchangeRateColumnOptions {
 	favoriteLoadingId: string | null;
 	isDraggable: boolean;
 	grouped: boolean;
+	t: (key: string, values?: Record<string, string | number | Date>) => string;
 }
 
 function createExchangeRateColumns({
@@ -166,6 +170,7 @@ function createExchangeRateColumns({
 	favoriteLoadingId,
 	isDraggable,
 	grouped,
+	t,
 }: ExchangeRateColumnOptions): ColumnDef<ExchangeRate>[] {
 	return [
 		...(isDraggable
@@ -232,8 +237,8 @@ function createExchangeRateColumns({
 					<Button
 						aria-label={
 							isFavorite
-								? `Remove ${currency} from favorites`
-								: `Add ${currency} to favorites`
+								? t("removeFavorite", { currency })
+								: t("addFavorite", { currency })
 						}
 						className="p-0"
 						disabled={isLoading}
@@ -259,7 +264,7 @@ function createExchangeRateColumns({
 		},
 		{
 			accessorKey: "currency",
-			header: "Currency",
+			header: t("columnCurrency"),
 			meta: { flex: true },
 			enableSorting: true,
 			cell: ({ row }) => {
@@ -297,7 +302,7 @@ function createExchangeRateColumns({
 		},
 		{
 			accessorKey: "rate",
-			header: "Rate (USD)",
+			header: t("columnRateUSD"),
 			size: 140,
 			enableSorting: true,
 			cell: ({ row }) => {
@@ -319,7 +324,7 @@ function createExchangeRateColumns({
 		},
 		{
 			accessorKey: "type",
-			header: "Type",
+			header: t("columnType"),
 			size: 120,
 			enableSorting: true,
 			meta: { className: "hidden md:table-cell" },
@@ -352,7 +357,7 @@ function createExchangeRateColumns({
 							onClick={(e) => e.stopPropagation()}
 						>
 							<MoreHorizontal className="h-4 w-4" />
-							<span className="sr-only">Actions</span>
+							<span className="sr-only">{t("actions")}</span>
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-48">
@@ -362,6 +367,7 @@ function createExchangeRateColumns({
 							onToggleFavorite,
 							Item: DropdownMenuItem,
 							Separator: DropdownMenuSeparator,
+							t,
 						})}
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -466,6 +472,7 @@ export function ExchangeRatesTable({
 	grouped = false,
 	onRowClick,
 }: ExchangeRatesTableProps) {
+	const t = useTranslations("currencies");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [favoriteLoadingId, setFavoriteLoadingId] = useState<string | null>(
 		null,
@@ -524,8 +531,9 @@ export function ExchangeRatesTable({
 				favoriteLoadingId,
 				isDraggable,
 				grouped,
+				t,
 			}),
-		[favoriteLoadingId, handleToggleFavorite, onRowClick, isDraggable, grouped],
+		[favoriteLoadingId, handleToggleFavorite, onRowClick, isDraggable, grouped, t],
 	);
 
 	// ---- Drag-and-drop ----
@@ -567,10 +575,11 @@ export function ExchangeRatesTable({
 					onToggleFavorite: handleToggleFavorite,
 					Item: ContextMenuItem,
 					Separator: ContextMenuSeparator,
+					t,
 				})}
 			</ContextMenuContent>
 		),
-		[onRowClick, handleToggleFavorite],
+		[onRowClick, handleToggleFavorite, t],
 	);
 
 	// ---- Row renderers ----
@@ -654,7 +663,7 @@ export function ExchangeRatesTable({
 			initialSorting={initialSorting}
 			emptyState={
 				<div className="py-8 text-muted-foreground text-sm">
-					No exchange rates found.
+					{t("noExchangeRatesFound")}
 				</div>
 			}
 			renderRow={isDraggable ? renderDraggableRow : renderGroupedRow}
@@ -667,9 +676,7 @@ export function ExchangeRatesTable({
 		/>
 	);
 
-	const rateCountLabel = filteredData.length === 1
-		? "1 currency"
-		: `${filteredData.length} currencies`;
+	const rateCountLabel = t("currencyCount", { count: filteredData.length });
 
 	return (
 		<div className="flex flex-col flex-1 min-h-0 gap-4">
@@ -679,7 +686,7 @@ export function ExchangeRatesTable({
 				</span>
 				<ExpandableSearch
 					onChange={setSearchQuery}
-					placeholder="Search currencies..."
+					placeholder={t("searchCurrencies")}
 					value={searchQuery}
 					captureTyping
 					slashFocus

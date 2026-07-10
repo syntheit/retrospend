@@ -10,6 +10,7 @@ import {
 	Play,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { CategoryChip } from "~/components/category-chip";
 import { BrandIcon } from "~/components/ui/BrandIcon";
@@ -55,6 +56,7 @@ export function RecurringList({
 	onTogglePause,
 	onViewHistory,
 }: RecurringListProps) {
+	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	if (loading) {
@@ -71,10 +73,10 @@ export function RecurringList({
 		return (
 			<div className="rounded-xl border border-dashed">
 				<EmptyState
-					action={{ label: "Add Recurring Expense", onClick: onCreate }}
-					description="Add your fixed costs like Rent, Netflix, Gym, etc."
+					action={{ label: t("addRecurring"), onClick: onCreate }}
+					description={t("emptyDescription")}
 					icon={CalendarClock}
-					title="No Recurring Expenses"
+					title={t("emptyTitle")}
 				/>
 			</div>
 		);
@@ -120,24 +122,25 @@ function useRowMenuActions(
 	template: RecurringTemplate,
 	handlers: Pick<RecurringRowProps, "onEdit" | "onDelete" | "onTogglePause" | "onViewHistory">,
 ): MenuAction[] {
+	const t = useTranslations("recurring");
 	const isPaused = !template.isActive;
 
 	const actions: MenuAction[] = [
 		{
 			id: "edit",
-			label: "Edit",
+			label: t("edit"),
 			icon: Pencil,
 			onClick: () => handlers.onEdit(template),
 		},
 		{
 			id: "toggle-pause",
-			label: isPaused ? "Resume" : "Pause",
+			label: isPaused ? t("resume") : t("pause"),
 			icon: isPaused ? Play : Pause,
 			onClick: () => handlers.onTogglePause(template.id, !template.isActive),
 		},
 		{
 			id: "history",
-			label: "View History",
+			label: t("viewHistory"),
 			icon: History,
 			onClick: () => handlers.onViewHistory(template.id),
 		},
@@ -146,7 +149,7 @@ function useRowMenuActions(
 	if (template.websiteUrl) {
 		actions.push({
 			id: "website",
-			label: "Visit Website",
+			label: t("visitWebsite"),
 			icon: ExternalLink,
 			onClick: () => {},
 			href: template.websiteUrl,
@@ -155,7 +158,7 @@ function useRowMenuActions(
 
 	actions.push({
 		id: "delete",
-		label: "Delete",
+		label: t("delete"),
 		icon: Trash2,
 		onClick: () => handlers.onDelete(template.id),
 		variant: "destructive",
@@ -173,6 +176,7 @@ function RecurringRow({
 	onTogglePause,
 	onViewHistory,
 }: RecurringRowProps) {
+	const t = useTranslations("recurring");
 	const { status, color } = useRecurringStatus(template);
 	const frequencyLabel =
 		FREQUENCY_LABELS[template.frequency] ?? template.frequency;
@@ -212,7 +216,7 @@ function RecurringRow({
 							</span>
 							{isPaused && (
 								<Badge variant="secondary" className="text-[10px]">
-									Paused
+									{t("pausedBadge")}
 								</Badge>
 							)}
 							{template.category && (
@@ -244,7 +248,7 @@ function RecurringRow({
 									variant="ghost"
 								>
 									<MoreVertical className="h-4 w-4" />
-									<span className="sr-only">Actions</span>
+									<span className="sr-only">{t("actions")}</span>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">

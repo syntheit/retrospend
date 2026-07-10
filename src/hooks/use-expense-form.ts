@@ -262,11 +262,10 @@ export function useExpenseForm({
 
 	const isSelectedSoloProject = useMemo(() => {
 		if (!selectedProjectId) return false;
-		if (_isSolo !== undefined && selectedProjectId === projectId) return _isSolo;
 		const project = userProjects?.find((p) => p.id === selectedProjectId);
 		if (project) return project._count.participants <= 1;
 		return false;
-	}, [selectedProjectId, projectId, _isSolo, userProjects]);
+	}, [selectedProjectId, userProjects]);
 
 	const getDefaultDate = () => {
 		if (settings?.defaultExpenseDateBehavior === "LAST_USED") {
@@ -307,6 +306,14 @@ export function useExpenseForm({
 		setValue,
 		formState: { isDirty, dirtyFields },
 	} = form;
+
+	// Clear amortization when assigning to a project (not supported for shared/project expenses)
+	useEffect(() => {
+		if (selectedProjectId) {
+			setValue("spreadOverTime", false);
+			setValue("amortizeOver", undefined);
+		}
+	}, [selectedProjectId, setValue]);
 
 	const watchedAmount = watch("amount");
 	const watchedExchangeRate = watch("exchangeRate");

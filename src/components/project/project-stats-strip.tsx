@@ -1,8 +1,10 @@
 "use client";
 
 import { differenceInDays } from "date-fns";
+import { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent } from "~/components/ui/card";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { COLOR_TO_HEX } from "~/lib/constants";
 
@@ -48,7 +50,9 @@ export function ProjectStatsStrip({
 	categories,
 	currency,
 }: ProjectStatsStripProps) {
+	const t = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 
 	const hasBudget = budgetAmount !== null && budgetAmount > 0;
 
@@ -130,7 +134,7 @@ export function ProjectStatsStrip({
 						<div className="flex flex-col gap-3 p-4 sm:p-5 md:min-w-[280px]">
 							<div className="flex items-center justify-between">
 								<span className="text-xs font-medium tracking-wide text-muted-foreground">
-									Budget
+									{t("budget")}
 								</span>
 								<Badge
 									className={
@@ -143,8 +147,8 @@ export function ProjectStatsStrip({
 									variant="outline"
 								>
 									{isOverBudget
-										? `${(utilizationPct - 100).toFixed(0)}% over`
-										: `${(100 - utilizationPct).toFixed(0)}% under`}
+										? t("pctOver", { pct: (utilizationPct - 100).toFixed(0) })
+										: t("pctUnder", { pct: (100 - utilizationPct).toFixed(0) })}
 								</Badge>
 							</div>
 
@@ -157,8 +161,8 @@ export function ProjectStatsStrip({
 								</p>
 								<p className="text-xs text-muted-foreground">
 									{remaining >= 0
-										? `${formatCurrency(remaining, budgetCurrency)} remaining`
-										: `${formatCurrency(Math.abs(remaining), budgetCurrency)} over budget`}
+										? `${formatCurrency(remaining, budgetCurrency)} ${t("simpleRemaining")}`
+										: `${formatCurrency(Math.abs(remaining), budgetCurrency)} ${t("simpleOverBudget")}`}
 								</p>
 							</div>
 
@@ -178,12 +182,12 @@ export function ProjectStatsStrip({
 								<div className="space-y-1">
 									<div className="flex items-center justify-between">
 										<span className="text-xs text-muted-foreground">
-											Day {timeContext.elapsedDays} of {timeContext.totalDays}
+											{t("dayOfTotal", { elapsed: String(timeContext.elapsedDays), total: String(timeContext.totalDays) })}
 										</span>
 										<span className="text-xs text-muted-foreground">
 											{timeContext.daysRemaining === 0
-												? "last day"
-												: `${timeContext.daysRemaining}d remaining`}
+												? t("lastDay")
+												: t("daysRemaining", { days: timeContext.daysRemaining })}
 										</span>
 									</div>
 									<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -203,20 +207,20 @@ export function ProjectStatsStrip({
 					{showInsights && (
 						<div className="flex flex-col gap-3 p-4 sm:p-5">
 							<span className="text-xs font-medium tracking-wide text-muted-foreground">
-								Insights
+								{t("insights")}
 							</span>
 							<div className="flex gap-8">
 								<div>
-									<p className="text-xs text-muted-foreground">Daily avg</p>
+									<p className="text-xs text-muted-foreground">{t("dailyAvg")}</p>
 									<p className="text-lg font-semibold tabular-nums">
 										{dailyAvg !== null
 											? formatCurrency(dailyAvg, budgetCurrency)
 											: "-"}
 									</p>
-									<p className="text-xs text-muted-foreground">per day</p>
+									<p className="text-xs text-muted-foreground">{t("perDay")}</p>
 								</div>
 								<div>
-									<p className="text-xs text-muted-foreground">Projected</p>
+									<p className="text-xs text-muted-foreground">{t("projected")}</p>
 									<p
 										className={`text-lg font-semibold tabular-nums ${
 											projected !== null
@@ -233,9 +237,9 @@ export function ProjectStatsStrip({
 									<p className="text-xs text-muted-foreground">
 										{projected !== null
 											? projectedIsOver
-												? "over budget"
-												: "under budget"
-											: "not enough data"}
+												? t("simpleOverBudget")
+												: t("simpleUnderBudget")
+											: t("notEnoughData")}
 									</p>
 								</div>
 							</div>
@@ -247,7 +251,7 @@ export function ProjectStatsStrip({
 						<div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
 							<div className="flex items-center justify-between">
 								<span className="text-xs font-medium tracking-wide text-muted-foreground">
-									Categories
+									{t("categoriesLabel")}
 								</span>
 								{categories.length > 0 && (
 									<span className="text-xs tabular-nums text-muted-foreground">
@@ -258,7 +262,7 @@ export function ProjectStatsStrip({
 
 							{categories.length === 0 ? (
 								<p className="text-xs text-muted-foreground">
-									No expenses logged yet.
+									{t("noExpensesLoggedDot")}
 								</p>
 							) : (
 								<>
@@ -294,7 +298,7 @@ export function ProjectStatsStrip({
 													{formatCurrency(cat.total, currency)}
 												</span>
 												<span className="text-xs text-muted-foreground">
-													{cat.name}
+													{displayName(cat.name)}
 												</span>
 											</div>
 										))}

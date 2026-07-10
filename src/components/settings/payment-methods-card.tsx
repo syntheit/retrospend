@@ -33,6 +33,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CurrencyPicker } from "~/components/currency-picker";
@@ -155,6 +156,12 @@ function SortableMethodRow({
 	onDelete: () => void;
 	onVisibilityChange: (v: Visibility) => void;
 }) {
+	const t = useTranslations("settingsPage");
+	const visibilityLabels: Record<Visibility, string> = {
+		PUBLIC: t("visibilityPublicShort"),
+		FRIENDS_ONLY: t("visibilityContactsShort"),
+		PAYMENT_ONLY: t("visibilitySettlementShort"),
+	};
 	const {
 		attributes,
 		listeners,
@@ -253,7 +260,7 @@ function SortableMethodRow({
 							)}
 						>
 							<span className="h-1.5 w-1.5 rounded-full bg-current" />
-							<span>{visConfig.label}</span>
+							<span>{visibilityLabels[visConfig.value]}</span>
 						</div>
 					)}
 
@@ -272,11 +279,11 @@ function SortableMethodRow({
 						<DropdownMenuContent align="end" className="w-44">
 							<DropdownMenuItem onClick={onEdit}>
 								<Pencil className="mr-2 h-3.5 w-3.5" />
-								Edit
+								{t("edit")}
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuLabel className="py-1 font-normal text-muted-foreground text-xs">
-								Visibility
+								{t("visibility")}
 							</DropdownMenuLabel>
 							{VISIBILITY_CONFIG.map((opt) => (
 								<DropdownMenuItem
@@ -292,7 +299,7 @@ function SortableMethodRow({
 											opt.activeClass,
 										)}
 									/>
-									{opt.label}
+									{visibilityLabels[opt.value]}
 									{method.visibility === opt.value && (
 										<Check className="ml-auto h-3.5 w-3.5" />
 									)}
@@ -301,7 +308,7 @@ function SortableMethodRow({
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onClick={onDelete} variant="destructive">
 								<Trash2 className="mr-2 h-3.5 w-3.5" />
-								Remove
+								{t("remove")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
@@ -310,11 +317,11 @@ function SortableMethodRow({
 			<ContextMenuContent>
 				<ContextMenuItem onClick={onEdit}>
 					<Pencil className="mr-2 h-3.5 w-3.5" />
-					Edit
+					{t("edit")}
 				</ContextMenuItem>
 				<ContextMenuSeparator />
 				<ContextMenuLabel className="py-1 font-normal text-muted-foreground text-xs">
-					Visibility
+					{t("visibility")}
 				</ContextMenuLabel>
 				{VISIBILITY_CONFIG.map((opt) => (
 					<ContextMenuItem
@@ -328,7 +335,7 @@ function SortableMethodRow({
 								opt.activeClass,
 							)}
 						/>
-						{opt.label}
+						{visibilityLabels[opt.value]}
 						{method.visibility === opt.value && (
 							<Check className="ml-auto h-3.5 w-3.5" />
 						)}
@@ -337,7 +344,7 @@ function SortableMethodRow({
 				<ContextMenuSeparator />
 				<ContextMenuItem onClick={onDelete} variant="destructive">
 					<Trash2 className="mr-2 h-3.5 w-3.5" />
-					Remove
+					{t("remove")}
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>
@@ -361,6 +368,12 @@ function MethodModal({
 	editing,
 	userCurrency,
 }: MethodModalProps) {
+	const t = useTranslations("settingsPage");
+	const feeLevelLabels: Record<string, string> = {
+		low: t("feeLow"),
+		medium: t("feeMedium"),
+		high: t("feeHigh"),
+	};
 	const [step, setStep] = useState<"pick" | "form">(editing ? "form" : "pick");
 	const [search, setSearch] = useState("");
 	const [showAllRegions, setShowAllRegions] = useState(false);
@@ -450,7 +463,7 @@ function MethodModal({
 		if (!def) return;
 
 		if (def.identifierType !== "none" && !identifier.trim()) {
-			toast.error(`${def.identifierLabel} is required`);
+			toast.error(t("identifierRequired", { label: def.identifierLabel }));
 			return;
 		}
 
@@ -481,9 +494,9 @@ function MethodModal({
 				{step === "pick" ? (
 					<>
 						<ResponsiveDialogHeader>
-							<ResponsiveDialogTitle>Add Payment Method</ResponsiveDialogTitle>
+							<ResponsiveDialogTitle>{t("addPaymentMethod")}</ResponsiveDialogTitle>
 							<ResponsiveDialogDescription>
-								Choose a platform to get started.
+								{t("choosePlatform")}
 							</ResponsiveDialogDescription>
 						</ResponsiveDialogHeader>
 
@@ -493,7 +506,7 @@ function MethodModal({
 							<Input
 								className="pl-9"
 								onChange={(e) => setSearch(e.target.value)}
-								placeholder="Search platforms..."
+								placeholder={t("searchPlatforms")}
 								ref={searchInputRef}
 								value={search}
 							/>
@@ -504,7 +517,7 @@ function MethodModal({
 							<div className="space-y-2">
 								{filteredTypes.length === 0 ? (
 									<p className="py-4 text-center text-muted-foreground text-sm">
-										No matching platforms
+										{t("noMatchingPlatforms")}
 									</p>
 								) : (
 									<TypeGrid onSelect={selectType} types={filteredTypes} />
@@ -514,13 +527,13 @@ function MethodModal({
 							<div className="space-y-4">
 								{groups.regional.length > 0 && (
 									<TypeSection
-										label="Your region"
+										label={t("yourRegion")}
 										onSelect={selectType}
 										types={groups.regional}
 									/>
 								)}
 								<TypeSection
-									label="Global"
+									label={t("global")}
 									onSelect={selectType}
 									types={groups.global}
 								/>
@@ -532,18 +545,18 @@ function MethodModal({
 										variant="link"
 										size="sm"
 									>
-										Show more regions
+										{t("showMoreRegions")}
 									</Button>
 								)}
 								{showAllRegions && groups.other.length > 0 && (
 									<TypeSection
-										label="Other regions"
+										label={t("otherRegions")}
 										onSelect={selectType}
 										types={groups.other}
 									/>
 								)}
 								<TypeSection
-									label="Crypto"
+									label={t("crypto")}
 									onSelect={selectType}
 									types={groups.crypto}
 								/>
@@ -554,7 +567,7 @@ function MethodModal({
 					<>
 						<ResponsiveDialogHeader>
 							<ResponsiveDialogTitle>
-								{editing ? "Edit Payment Method" : "Add Payment Method"}
+								{editing ? t("editPaymentMethod") : t("addPaymentMethod")}
 							</ResponsiveDialogTitle>
 							{!editing && (
 								<ResponsiveDialogDescription>
@@ -565,7 +578,7 @@ function MethodModal({
 										variant="link"
 									>
 										<ArrowLeft className="h-3 w-3" />
-										Back to platforms
+										{t("backToPlatforms")}
 									</Button>
 								</ResponsiveDialogDescription>
 							)}
@@ -617,7 +630,7 @@ function MethodModal({
 								{/* Network selector (crypto) */}
 								{networks.length > 1 && (
 									<div className="space-y-1.5">
-										<Label>Network</Label>
+										<Label>{t("network")}</Label>
 										<div className="flex flex-wrap gap-1.5">
 											{networks.map((net) => {
 												const isActive = network === net.id;
@@ -641,7 +654,7 @@ function MethodModal({
 																FEE_LEVEL_COLORS[net.feeLevel],
 															)}
 														>
-															{FEE_LEVEL_LABELS[net.feeLevel]}
+															{feeLevelLabels[net.feeLevel]}
 														</span>
 													</Button>
 												);
@@ -653,7 +666,7 @@ function MethodModal({
 								{/* Currency (multi-currency types) */}
 								{isMultiCurrency && (
 									<div className="space-y-1.5">
-										<Label>Currency</Label>
+										<Label>{t("currency")}</Label>
 										<div className="w-32">
 											<CurrencyPicker
 												onValueChange={(v) => setCurrency(v)}
@@ -669,7 +682,7 @@ function MethodModal({
 								{/* Display name */}
 								{showLabel ? (
 									<div className="space-y-1.5">
-										<Label>Display name</Label>
+										<Label>{t("displayName")}</Label>
 										<Input
 											maxLength={100}
 											onChange={(e) => setLabel(e.target.value)}
@@ -685,13 +698,13 @@ function MethodModal({
 										variant="link"
 										size="sm"
 									>
-										Add custom label
+										{t("addCustomLabel")}
 									</Button>
 								)}
 
 								{/* Min amount */}
 								<div className="space-y-1.5">
-									<Label>Minimum amount (optional)</Label>
+									<Label>{t("minimumAmountOptional")}</Label>
 									<div className="flex items-center gap-2">
 										<Input
 											className="w-32"
@@ -709,30 +722,30 @@ function MethodModal({
 										)}
 									</div>
 									<p className="text-muted-foreground text-xs">
-										Only suggest this method for amounts above this value
+										{t("minimumAmountHint")}
 									</p>
 								</div>
 
 								{/* Visibility */}
 								<div className="space-y-2">
-									<Label>Visibility</Label>
+									<Label>{t("visibility")}</Label>
 									<div className="space-y-1.5">
 										{(
 											[
 												{
 													value: "PUBLIC" as Visibility,
-													label: "Public",
-													desc: "Visible on your profile page to anyone",
+													label: t("visibilityPublic"),
+													desc: t("visibilityPublicDesc"),
 												},
 												{
 													value: "FRIENDS_ONLY" as Visibility,
-													label: "Contacts",
-													desc: "Visible to people you've split expenses with",
+													label: t("visibilityContacts"),
+													desc: t("visibilityContactsDesc"),
 												},
 												{
 													value: "PAYMENT_ONLY" as Visibility,
-													label: "Settlement only",
-													desc: "Only shown when someone is settling up with you",
+													label: t("visibilitySettlement"),
+													desc: t("visibilitySettlementDesc"),
 												},
 											] as const
 										).map((opt) => (
@@ -769,10 +782,10 @@ function MethodModal({
 
 						<ResponsiveDialogFooter>
 							<Button onClick={onClose} variant="ghost">
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button onClick={handleSave}>
-								{editing ? "Save Payment Method" : "Add Payment Method"}
+								{editing ? t("savePaymentMethod") : t("addPaymentMethod")}
 							</Button>
 						</ResponsiveDialogFooter>
 					</>
@@ -833,6 +846,7 @@ type ExtendedUser = NonNullable<
 >["user"] & { username: string; image?: string | null };
 
 function PayLinkSection() {
+	const t = useTranslations("settingsPage");
 	const { data: session } = useSession();
 	const { data: avatarData } = api.profile.getMyAvatar.useQuery();
 	const [copied, setCopied] = useState<"pay" | "profile" | "donation" | null>(
@@ -858,7 +872,7 @@ function PayLinkSection() {
 	const handleCopy = (url: string, type: "pay" | "profile" | "donation") => {
 		void navigator.clipboard.writeText(url);
 		setCopied(type);
-		toast.success("Copied!");
+		toast.success(t("copied"));
 		setTimeout(() => setCopied(null), 2000);
 	};
 
@@ -884,12 +898,12 @@ function PayLinkSection() {
 						{copied === "pay" ? (
 							<>
 								<Check className="mr-1.5 h-3.5 w-3.5" />
-								Copied!
+								{t("copied")}
 							</>
 						) : (
 							<>
 								<Copy className="mr-1.5 h-3.5 w-3.5" />
-								Copy Link
+								{t("copyLink")}
 							</>
 						)}
 					</Button>
@@ -901,7 +915,7 @@ function PayLinkSection() {
 				<Button asChild size="sm" variant="ghost">
 					<Link href={`/u/${username}`} target="_blank">
 						<ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-						View Profile
+						{t("viewProfile")}
 					</Link>
 				</Button>
 				<Button
@@ -912,12 +926,12 @@ function PayLinkSection() {
 					{copied === "profile" ? (
 						<>
 							<Check className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
-							Copied!
+							{t("copied")}
 						</>
 					) : (
 						<>
 							<Link2 className="mr-1.5 h-3.5 w-3.5" />
-							Copy Profile Link
+							{t("copyProfileLink")}
 						</>
 					)}
 				</Button>
@@ -929,12 +943,12 @@ function PayLinkSection() {
 					{copied === "donation" ? (
 						<>
 							<Check className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
-							Copied!
+							{t("copied")}
 						</>
 					) : (
 						<>
 							<Gift className="mr-1.5 h-3.5 w-3.5" />
-							Copy Donation Link
+							{t("copyDonationLink")}
 						</>
 					)}
 				</Button>
@@ -946,10 +960,11 @@ function PayLinkSection() {
 // ─── Main card ────────────────────────────────────────────────────────────────
 
 export function PaymentMethodsCard() {
+	const t = useTranslations("settingsPage");
 	const { data: serverMethods, isLoading } = api.paymentMethod.list.useQuery();
 	const upsertMutation = api.paymentMethod.upsert.useMutation({
-		onSuccess: () => toast.success("Payment methods saved"),
-		onError: () => toast.error("Failed to save payment methods"),
+		onSuccess: () => toast.success(t("paymentMethodsSaved")),
+		onError: () => toast.error(t("failedToSavePaymentMethods")),
 	});
 	const { settings } = useUserSettings();
 	const utils = api.useUtils();
@@ -1060,31 +1075,30 @@ export function PaymentMethodsCard() {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Payment Methods</CardTitle>
+				<CardTitle>{t("paymentMethods")}</CardTitle>
 				<CardDescription>
-					Configure how you prefer to receive payments when settling up. Drag to
-					set your preferred order.
+					{t("paymentMethodsDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<PayLinkSection />
 
-				{isLoading && <p className="text-muted-foreground text-sm">Loading...</p>}
+				{isLoading && <p className="text-muted-foreground text-sm">{t("loading")}</p>}
 
 				{/* Delete confirmation */}
 				{showDeleteConfirm && (
 					<div className="flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-						<p className="text-sm">Remove this payment method?</p>
+						<p className="text-sm">{t("removePaymentMethodConfirm")}</p>
 						<div className="flex gap-2">
 							<Button
 								onClick={() => setShowDeleteConfirm(null)}
 								size="sm"
 								variant="ghost"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button onClick={confirmDelete} size="sm" variant="destructive">
-								Remove
+								{t("remove")}
 							</Button>
 						</div>
 					</div>
@@ -1095,9 +1109,9 @@ export function PaymentMethodsCard() {
 					<div className="flex flex-col items-center gap-3 py-8 text-center">
 						<Wallet className="h-10 w-10 text-muted-foreground/40" />
 						<div>
-							<p className="font-medium text-sm">No payment methods yet</p>
+							<p className="font-medium text-sm">{t("noPaymentMethodsYet")}</p>
 							<p className="mt-1 text-muted-foreground text-xs">
-								Add your payment methods so people know how to pay you
+								{t("noPaymentMethodsDescription")}
 							</p>
 						</div>
 						<Button
@@ -1108,7 +1122,7 @@ export function PaymentMethodsCard() {
 							size="sm"
 						>
 							<Plus className="mr-1 h-3.5 w-3.5" />
-							Add payment method
+							{t("addPaymentMethodLower")}
 						</Button>
 					</div>
 				)}
@@ -1153,7 +1167,7 @@ export function PaymentMethodsCard() {
 						variant="outline"
 					>
 						<Plus className="mr-1 h-4 w-4" />
-						Add payment method
+						{t("addPaymentMethodLower")}
 					</Button>
 				)}
 

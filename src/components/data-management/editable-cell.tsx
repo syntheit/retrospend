@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { CategoryPicker } from "~/components/category-picker";
@@ -41,6 +42,7 @@ export function EditableCell({
 	formatDisplay,
 	maxLength,
 }: EditableCellProps) {
+	const t = useTranslations("dataManagement");
 	const [editing, setEditing] = useState(false);
 	const [editValue, setEditValue] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -143,11 +145,11 @@ export function EditableCell({
 					value={value != null ? String(value) : undefined}
 				>
 					<SelectTrigger className="h-8 w-full text-xs" size="sm">
-						<SelectValue placeholder="Select..." />
+						<SelectValue placeholder={t("selectPlaceholder")} />
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value="__none__">
-							<span className="text-muted-foreground">None</span>
+							<span className="text-muted-foreground">{t("none")}</span>
 						</SelectItem>
 						{options.map((opt) => (
 							<SelectItem key={opt.value} value={opt.value}>
@@ -187,7 +189,7 @@ export function EditableCell({
 					value={editValue}
 				/>
 				{invalidCharWarn && (
-					<p className="text-amber-500 text-xs">Only numbers allowed</p>
+					<p className="text-amber-500 text-xs">{t("onlyNumbersAllowed")}</p>
 				)}
 			</div>
 		);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import { api } from "~/trpc/react";
 import { DataImporterExport } from "./data-importer-export";
 
 export function ExpensesTab() {
+	const t = useTranslations("dataManagement");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const { data: settings } = api.settings.getGeneral.useQuery();
@@ -41,10 +43,10 @@ export function ExpensesTab() {
 			link.click();
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
-			toast.success("CSV exported");
+			toast.success(t("csvExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export CSV",
+				error instanceof Error ? error.message : t("failedToExportCsv"),
 			);
 		}
 	};
@@ -150,11 +152,11 @@ export function ExpensesTab() {
 
 			await importMutation.mutateAsync({ rows });
 			toast.success(
-				`Imported ${rows.length} expense${rows.length === 1 ? "" : "s"}`,
+				t("importedExpenses", { count: rows.length }),
 			);
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to import expenses",
+				error instanceof Error ? error.message : t("failedToImportExpenses"),
 			);
 			throw error;
 		}
@@ -184,7 +186,7 @@ export function ExpensesTab() {
 					columns={columns}
 					data={data}
 					emptyState={
-						<div className="text-muted-foreground">No rows to import.</div>
+						<div className="text-muted-foreground">{t("noRowsToImport")}</div>
 					}
 				/>
 			);
@@ -195,7 +197,7 @@ export function ExpensesTab() {
 
 	return (
 		<DataImporterExport
-			description="Downloads all finalized expenses as a CSV file."
+			description={t("expensesExportDescription")}
 			formatInfo={
 				<p>
 					Required columns: <code className="text-primary">title</code>,{" "}
@@ -220,7 +222,7 @@ export function ExpensesTab() {
 				"Transport,15.00,EUR,2024-01-02,Travel,Subway,Commute",
 			].join("\n")}
 			sampleFilename="expenses_sample.csv"
-			title="Expenses"
+			title={t("expenses")}
 		/>
 	);
 }

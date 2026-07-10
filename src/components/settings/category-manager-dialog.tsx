@@ -8,6 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
@@ -36,6 +37,7 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { CATEGORY_ICON_REGISTRY, getCategoryIcon, getCategoryIconName } from "~/lib/category-icons";
 import { getCategoryColorClasses, COLOR_TO_HEX, type CategoryColor } from "~/lib/constants";
 import { cn } from "~/lib/utils";
@@ -75,6 +77,8 @@ export function CategoryManagerDialog({
 	open,
 	onOpenChange,
 }: CategoryManagerDialogProps) {
+	const t = useTranslations("settingsPage");
+	const { displayName, toDbName } = useCategoryName();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
@@ -124,11 +128,11 @@ export function CategoryManagerDialog({
 
 	// Populate editor fields from a category object
 	const syncEditor = useCallback((cat: CategoryData) => {
-		setEditName(cat.name);
+		setEditName(displayName(cat.name));
 		setEditIcon(cat.icon || getCategoryIconName(cat.name));
 		setEditColor(cat.color as CategoryColor);
 		setEditExclude(cat.excludeByDefault);
-	}, []);
+	}, [displayName]);
 
 	const flashSaved = useCallback(() => {
 		setSaveStatus("saved");
@@ -149,10 +153,16 @@ export function CategoryManagerDialog({
 		) => {
 			if (!values.name.trim()) return;
 			setSaveStatus("saving");
+			// Reverse-map: if the category is a default and the name matches
+			// its translation, preserve the original English key in the DB
+			const currentCategory = categories?.find((c) => c.id === id);
+			const nameToSave = currentCategory
+				? toDbName(currentCategory.name, values.name.trim())
+				: values.name.trim();
 			try {
 				await updateMutation.mutateAsync({
 					id,
-					name: values.name.trim(),
+					name: nameToSave,
 					color: values.color,
 					icon: values.icon,
 					excludeByDefault: values.excludeByDefault,
@@ -162,11 +172,11 @@ export function CategoryManagerDialog({
 			} catch (err) {
 				setSaveStatus("idle");
 				toast.error(
-					err instanceof Error ? err.message : "Failed to save",
+					err instanceof Error ? err.message : t("failedToSave"),
 				);
 			}
 		},
-		[updateMutation, refetchCategories, flashSaved],
+		[updateMutation, refetchCategories, flashSaved, categories, toDbName],
 	);
 
 	const saveFnRef = useRef(saveCategory);
@@ -317,10 +327,10 @@ export function CategoryManagerDialog({
 		const usedNames = new Set(
 			categories?.map((c) => c.name.toLowerCase()) ?? [],
 		);
-		let name = "New Category";
+		let name = t("newCategory");
 		let counter = 2;
 		while (usedNames.has(name.toLowerCase())) {
-			name = `New Category ${counter}`;
+			name = t("newCategoryN", { n: counter });
 			counter++;
 		}
 		const usedColors = new Set(categories?.map((c) => c.color) ?? []);
@@ -348,7 +358,7 @@ export function CategoryManagerDialog({
 			toast.error(
 				err instanceof Error
 					? err.message
-					: "Failed to create category",
+					: t("failedToCreateCategory"),
 			);
 		}
 	}, [
@@ -373,10 +383,10 @@ export function CategoryManagerDialog({
 			setSelectedId(next?.id ?? null);
 			if (next) syncEditor(next);
 			setMobileView("list");
-			toast.success("Category deleted");
+			toast.success(t("categoryDeleted"));
 		} catch (err) {
 			const errMsg =
-				err instanceof Error ? err.message : "Failed to delete";
+				err instanceof Error ? err.message : t("failedToDelete");
 			const match = errMsg.match(/has (\d+) expense/);
 			if (match?.[1]) {
 				setShowDeleteConfirm(false);
@@ -409,10 +419,10 @@ export function CategoryManagerDialog({
 			setSelectedId(next?.id ?? null);
 			if (next) syncEditor(next);
 			setMobileView("list");
-			toast.success("Category deleted and expenses reassigned");
+			toast.success(t("categoryDeletedReassigned"));
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to delete",
+				err instanceof Error ? err.message : t("failedToDelete"),
 			);
 		}
 	}, [
@@ -438,22 +448,22 @@ export function CategoryManagerDialog({
 					{/* Header */}
 					<ResponsiveDialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
 						<div>
-							<ResponsiveDialogTitle>Category Manager</ResponsiveDialogTitle>
+							<ResponsiveDialogTitle>{t("categoryManager")}</ResponsiveDialogTitle>
 							<ResponsiveDialogDescription className="sr-only">
-								Manage your expense categories
+								{t("categoryManagerDescription")}
 							</ResponsiveDialogDescription>
 						</div>
 						<div className="flex items-center gap-3">
 							<div className="flex h-5 items-center">
 								{saveStatus === "saving" && (
 									<span className="animate-pulse text-xs text-muted-foreground">
-										Saving...
+										{t("saving")}
 									</span>
 								)}
 								{saveStatus === "saved" && (
 									<span className="flex animate-in fade-in items-center gap-1 text-xs text-emerald-500 duration-200">
 										<Check className="h-3 w-3" />
-										Saved
+										{t("saved")}
 									</span>
 								)}
 							</div>
@@ -466,9 +476,9 @@ export function CategoryManagerDialog({
 							>
 								<Plus className="h-4 w-4" />
 								<span className="hidden sm:inline">
-									Add Category
+									{t("addCategory")}
 								</span>
-								<span className="sm:hidden">Add</span>
+								<span className="sm:hidden">{t("addShort")}</span>
 							</Button>
 							<Button
 								onClick={() => handleOpenChange(false)}
@@ -477,7 +487,7 @@ export function CategoryManagerDialog({
 								className="h-7 w-7 opacity-70 hover:opacity-100"
 							>
 								<X className="h-4 w-4" />
-								<span className="sr-only">Close</span>
+								<span className="sr-only">{t("closeButton")}</span>
 							</Button>
 						</div>
 					</ResponsiveDialogHeader>
@@ -527,7 +537,7 @@ export function CategoryManagerDialog({
 													})}
 												</div>
 												<span className="truncate text-sm font-medium">
-													{category.name}
+													{displayName(category.name)}
 												</span>
 											</Button>
 										);
@@ -555,13 +565,13 @@ export function CategoryManagerDialog({
 											className="gap-1 text-muted-foreground hover:text-foreground md:hidden"
 										>
 											<ArrowLeft className="h-4 w-4" />
-											Back
+											{t("back")}
 										</Button>
 
 										{/* Name */}
 										<div className="space-y-2">
 											<Label htmlFor="category-name">
-												Name
+												{t("nameLabel")}
 											</Label>
 											<Input
 												id="category-name"
@@ -572,14 +582,14 @@ export function CategoryManagerDialog({
 														e.target.value,
 													)
 												}
-												placeholder="Category name"
+												placeholder={t("categoryNamePlaceholder")}
 												maxLength={64}
 											/>
 										</div>
 
 										{/* Icon picker */}
 										<div className="space-y-2">
-											<Label>Icon</Label>
+											<Label>{t("iconLabel")}</Label>
 											<div className="flex flex-wrap items-center gap-2">
 												{ICON_OPTIONS.map(
 													(iconName) => {
@@ -632,7 +642,7 @@ export function CategoryManagerDialog({
 
 										{/* Color picker */}
 										<div className="space-y-2">
-											<Label>Color</Label>
+											<Label>{t("colorLabel")}</Label>
 											<div className="flex flex-wrap items-center gap-2">
 												{displayColors.map((color) => {
 													const isSelected =
@@ -676,13 +686,10 @@ export function CategoryManagerDialog({
 										<div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/30 px-4 py-3">
 											<div className="flex flex-col gap-0.5">
 												<Label className="font-normal">
-													Exclude new expenses by
-													default
+													{t("excludeByDefault")}
 												</Label>
 												<p className="text-xs text-muted-foreground">
-													New expenses in this
-													category won&apos;t count
-													toward budgets or trends.
+													{t("excludeByDefaultDescription")}
 												</p>
 											</div>
 											<Switch
@@ -710,20 +717,12 @@ export function CategoryManagerDialog({
 															className="gap-1.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
 														>
 															<Trash2 className="h-4 w-4" />
-															Delete Category
+															{t("deleteCategory")}
 														</Button>
 													) : (
 														<div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/20">
 															<p className="mb-3 text-sm">
-																Delete &ldquo;
-																{
-																	selectedCategory.name
-																}
-																&rdquo;?
-																Expenses in this
-																category will be
-																reassigned to
-																Uncategorized.
+																{t("deleteCategoryConfirm", { name: displayName(selectedCategory.name) })}
 															</p>
 															<div className="flex gap-2">
 																<Button
@@ -735,7 +734,7 @@ export function CategoryManagerDialog({
 																		)
 																	}
 																>
-																	Cancel
+																	{t("cancel")}
 																</Button>
 																<Button
 																	size="sm"
@@ -748,8 +747,8 @@ export function CategoryManagerDialog({
 																	}
 																>
 																	{deleteMutation.isPending
-																		? "Deleting..."
-																		: "Delete"}
+																		? t("deleting")
+																		: t("deleteButton")}
 																</Button>
 															</div>
 														</div>
@@ -761,8 +760,7 @@ export function CategoryManagerDialog({
 							) : (
 								<div className="flex h-full items-center justify-center p-6">
 									<p className="text-sm text-muted-foreground">
-										Select a category to edit, or create a
-										new one.
+										{t("selectCategoryPrompt")}
 									</p>
 								</div>
 							)}
@@ -780,16 +778,14 @@ export function CategoryManagerDialog({
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Reassign Expenses</DialogTitle>
+						<DialogTitle>{t("reassignExpenses")}</DialogTitle>
 						<DialogDescription>
-							{reassignExpenseCount} expense(s) use this category.
-							Choose a category to reassign them to before
-							deleting.
+							{t("reassignDescription", { count: reassignExpenseCount })}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="py-4">
 						<Label htmlFor="replacement-category">
-							Reassign to
+							{t("reassignTo")}
 						</Label>
 						<Select
 							onValueChange={setReplacementCategoryId}
@@ -799,17 +795,17 @@ export function CategoryManagerDialog({
 								className="mt-2"
 								id="replacement-category"
 							>
-								<SelectValue placeholder="Select a category" />
+								<SelectValue placeholder={t("selectCategoryPlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="uncategorized">
-									Uncategorized
+									{t("uncategorized")}
 								</SelectItem>
 								{categories
 									?.filter((c) => c.id !== selectedId)
 									.map((c) => (
 										<SelectItem key={c.id} value={c.id}>
-											{c.name}
+											{displayName(c.name)}
 										</SelectItem>
 									))}
 							</SelectContent>
@@ -820,7 +816,7 @@ export function CategoryManagerDialog({
 							onClick={() => setShowReassignDialog(false)}
 							variant="outline"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={deleteMutation.isPending}
@@ -828,8 +824,8 @@ export function CategoryManagerDialog({
 							variant="destructive"
 						>
 							{deleteMutation.isPending
-								? "Deleting..."
-								: "Reassign & Delete"}
+								? t("deleting")
+								: t("reassignAndDelete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

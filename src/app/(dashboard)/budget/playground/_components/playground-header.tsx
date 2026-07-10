@@ -2,6 +2,7 @@
 
 import { addMonths } from "date-fns";
 import { RefreshCcw, Save } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { MonthStepper } from "~/components/date/MonthStepper";
@@ -12,6 +13,7 @@ import { api } from "~/trpc/react";
 import { usePlayground } from "./playground-context";
 
 export function PlaygroundHeaderActions() {
+	const t = useTranslations("playground");
 	const {
 		selectedMonth,
 		setSelectedMonth,
@@ -43,9 +45,9 @@ export function PlaygroundHeaderActions() {
 
 			await batchUpsertBudgets.mutateAsync(payload);
 			await utils.budget.getBudgets.invalidate({ month: selectedMonth });
-			toast.success("Applied simulated budgets to live data!");
+			toast.success(t("appliedSimulatedBudgets"));
 		} catch (error) {
-			handleError(error, "Failed to apply budgets");
+			handleError(error, t("failedToApplyBudgets"));
 		}
 	};
 
@@ -63,7 +65,7 @@ export function PlaygroundHeaderActions() {
 				variant="outline"
 			>
 				<RefreshCcw className="h-3.5 w-3.5" />
-				<span className="hidden sm:inline">Reset</span>
+				<span className="hidden sm:inline">{t("reset")}</span>
 			</Button>
 			<Button
 				disabled={!isDirty || batchUpsertBudgets.isPending}
@@ -77,7 +79,7 @@ export function PlaygroundHeaderActions() {
 					<Save className="h-3.5 w-3.5" />
 				)}
 				<span>
-					{batchUpsertBudgets.isPending ? "Saving..." : "Apply Changes"}
+					{batchUpsertBudgets.isPending ? t("saving") : t("applyChanges")}
 				</span>
 			</Button>
 		</>

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CurrencyCalculator } from "~/components/currency-calculator";
@@ -13,15 +14,17 @@ import { useExchangeRatesController } from "~/hooks/use-exchange-rates-controlle
 import { useUserSettings } from "~/hooks/use-user-settings";
 
 function PageLayout({ children }: { children: React.ReactNode }) {
+	const t = useTranslations("currencies");
 	return (
 		<>
-			<SiteHeader title="Currencies" />
+			<SiteHeader title={t("title")} />
 			<PageContent fill>{children}</PageContent>
 		</>
 	);
 }
 
 export default function Page() {
+	const t = useTranslations("currencies");
 	const { settings } = useUserSettings();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
 	const defaultCurrency = settings?.defaultCurrency ?? "ARS";
@@ -70,7 +73,7 @@ export default function Page() {
 		return (
 			<PageLayout>
 				<div className="flex h-64 items-center justify-center">
-					<div className="text-muted-foreground">Loading exchange rates...</div>
+					<div className="text-muted-foreground">{t("loadingRates")}</div>
 				</div>
 			</PageLayout>
 		);
@@ -81,7 +84,7 @@ export default function Page() {
 			<PageLayout>
 				<div className="flex h-64 items-center justify-center">
 					<div className="text-destructive">
-						Error loading exchange rates: {error.message}
+						{t("errorLoadingRates", { error: error.message })}
 					</div>
 				</div>
 			</PageLayout>
@@ -102,13 +105,13 @@ export default function Page() {
 					>
 						<div className="flex items-center justify-between gap-4 mb-4">
 							<TabsList>
-								<TabsTrigger value="fiat">Fiat</TabsTrigger>
-								<TabsTrigger value="crypto">Cryptocurrency</TabsTrigger>
+								<TabsTrigger value="fiat">{t("fiat")}</TabsTrigger>
+								<TabsTrigger value="crypto">{t("crypto")}</TabsTrigger>
 							</TabsList>
 							<div className="text-muted-foreground text-sm shrink-0">
 								{lastSync
-									? `Updated ${format(lastSync, "MMM d, yyyy 'at' HH:mm")}`
-									: "Rates sync daily."}
+									? t("updatedAt", { date: format(lastSync, "MMM d, yyyy 'at' HH:mm") })
+									: t("syncDaily")}
 							</div>
 						</div>
 						<TabsContent className="flex flex-col min-h-0 flex-1 mt-0" value="fiat">
@@ -140,17 +143,17 @@ export default function Page() {
 
 					<div className="flex flex-col min-h-0 flex-1">
 						<div className="flex items-baseline justify-between mb-2">
-							<h3 className="text-sm font-medium">Favorites</h3>
+							<h3 className="text-sm font-medium">{t("favorites")}</h3>
 							{favoriteCurrencyCards.length > 0 && (
 								<span className="text-muted-foreground text-xs">
-									Drag to reorder
+									{t("dragToReorder")}
 								</span>
 							)}
 						</div>
 						<div className="overflow-y-auto flex-1 min-h-0">
 							{isFavoritesLoading ? (
 								<div className="rounded-lg border border-dashed border-muted p-4 text-center text-muted-foreground text-sm">
-									Loading favorites...
+									{t("loadingFavorites")}
 								</div>
 							) : (
 								<FavoriteCurrencyCards
@@ -163,7 +166,7 @@ export default function Page() {
 							)}
 							{favoriteRatesError && (
 								<div className="text-destructive text-sm mt-2">
-									Error loading favorites: {favoriteRatesError.message}
+									{t("errorLoadingFavorites", { error: favoriteRatesError.message })}
 								</div>
 							)}
 						</div>

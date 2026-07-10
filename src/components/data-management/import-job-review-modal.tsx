@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import {
@@ -29,6 +30,7 @@ export function ImportJobReviewModal({
 	jobId,
 	onClose,
 }: ImportJobReviewModalProps) {
+	const t = useTranslations("dataManagement");
 	const utils = api.useUtils();
 
 	// Fetch job data
@@ -57,14 +59,14 @@ export function ImportJobReviewModal({
 
 			const message =
 				result.skippedDuplicates > 0
-					? `Imported ${result.count} expense${result.count !== 1 ? "s" : ""} (${result.skippedDuplicates} duplicate${result.skippedDuplicates !== 1 ? "s" : ""} skipped)`
-					: `Successfully imported ${result.count} expense${result.count !== 1 ? "s" : ""}`;
+					? t("importedWithDuplicates", { count: result.count, duplicates: result.skippedDuplicates })
+					: t("successfullyImported", { count: result.count });
 
 			toast.success(message);
 			onClose();
 		},
 		onError: (error) => {
-			toast.error(`Failed to import: ${error.message}`);
+			toast.error(t("failedToImport", { message: error.message }));
 		},
 	});
 
@@ -85,9 +87,9 @@ export function ImportJobReviewModal({
 	return (
 		<ResponsiveDialog onOpenChange={onClose} open={!!jobId}>
 			<ResponsiveDialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1400px] flex-col overflow-hidden pt-12 sm:max-w-[1400px]">
-				<ResponsiveDialogTitle className="sr-only">Import Job Review</ResponsiveDialogTitle>
+				<ResponsiveDialogTitle className="sr-only">{t("importJobReview")}</ResponsiveDialogTitle>
 				<ResponsiveDialogDescription className="sr-only">
-					Review and apply changes to your imported transactions.
+					{t("importJobReviewDescription")}
 				</ResponsiveDialogDescription>
 				{isLoading ? (
 					<div className="flex items-center justify-center py-12">
@@ -105,7 +107,7 @@ export function ImportJobReviewModal({
 					/>
 				) : (
 					<div className="py-12 text-center text-muted-foreground">
-						<p>No transaction data found for this job.</p>
+						<p>{t("noTransactionDataFound")}</p>
 					</div>
 				)}
 			</ResponsiveDialogContent>

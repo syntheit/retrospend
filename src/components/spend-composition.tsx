@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useAnalyticsCategoryPreferences } from "~/hooks/use-page-settings";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { formatCurrency } from "~/lib/currency-format";
 import {
 	convertExpenseAmountForDisplay,
@@ -45,7 +47,9 @@ export function SpendComposition({
 	baseCurrency,
 	liveRateToBaseCurrency,
 }: SpendCompositionProps) {
+	const t = useTranslations("analytics");
 	const { preferenceMap } = useAnalyticsCategoryPreferences();
+	const { displayName } = useCategoryName();
 
 	// Pre-compute converted amounts once — both chartData and categoryBreakdown read from this
 	const convertedExpenses = useMemo(() => {
@@ -82,19 +86,19 @@ export function SpendComposition({
 
 		return [
 			{
-				name: "Fixed",
+				name: t("fixed"),
 				value: Math.round(fixedExpenses * 100) / 100,
 				percentage: fixedPercentage,
 				color: "#78716c", // stone-500
 			},
 			{
-				name: "Flexible",
+				name: t("flexible"),
 				value: Math.round(flexibleExpenses * 100) / 100,
 				percentage: flexiblePercentage,
 				color: "#ea580c", // orange-600
 			},
 		];
-	}, [convertedExpenses, preferenceMap]);
+	}, [convertedExpenses, preferenceMap, t]);
 
 	const totalSpending = useMemo(() => {
 		return chartData.reduce((sum, item) => sum + item.value, 0);
@@ -161,14 +165,14 @@ export function SpendComposition({
 		return (
 			<div className="space-y-4">
 				<div>
-					<h3 className="font-semibold text-lg">Spend Composition</h3>
+					<h3 className="font-semibold text-lg">{t("spendComposition")}</h3>
 					<p className="text-muted-foreground text-sm">
-						Fixed vs. flexible spending
+						{t("fixedVsFlexible")}
 					</p>
 				</div>
 				<div className="flex h-[220px] sm:h-[300px] items-center justify-center">
 					<p className="text-muted-foreground">
-						No expenses in selected time range
+						{t("noExpensesInRange")}
 					</p>
 				</div>
 			</div>
@@ -179,14 +183,14 @@ export function SpendComposition({
 		return (
 			<div className="space-y-4">
 				<div>
-					<h3 className="font-semibold text-lg">Spend Composition</h3>
+					<h3 className="font-semibold text-lg">{t("spendComposition")}</h3>
 					<p className="text-muted-foreground text-sm">
-						Fixed vs. flexible spending
+						{t("fixedVsFlexible")}
 					</p>
 				</div>
 				<div className="flex h-[220px] sm:h-[300px] items-center justify-center">
 					<p className="text-muted-foreground">
-						All expenses have zero amounts
+						{t("allExpensesZero")}
 					</p>
 				</div>
 			</div>
@@ -196,9 +200,9 @@ export function SpendComposition({
 	return (
 		<div className="min-w-0 space-y-4">
 			<div>
-				<h3 className="font-semibold text-lg">Spend Composition</h3>
+				<h3 className="font-semibold text-lg">{t("spendComposition")}</h3>
 				<p className="text-muted-foreground text-sm">
-					Fixed vs. flexible spending
+					{t("fixedVsFlexible")}
 				</p>
 			</div>
 
@@ -243,7 +247,7 @@ export function SpendComposition({
 				{/* Fixed Categories */}
 				<div className="space-y-2">
 					<h4 className="font-medium text-sm text-stone-600">
-						Fixed Categories
+						{t("fixedCategories")}
 					</h4>
 					<div className="space-y-1">
 						{categoryBreakdown.fixed.length > 0 ? (
@@ -253,7 +257,7 @@ export function SpendComposition({
 									key={category.name}
 								>
 									<span className="truncate pr-2 text-muted-foreground">
-										{category.name}
+										{displayName(category.name)}
 									</span>
 									<span className="text-muted-foreground">
 										{formatCurrency(category.amount, baseCurrency)} ({category.percentage}%)
@@ -261,7 +265,7 @@ export function SpendComposition({
 								</div>
 							))
 						) : (
-							<p className="text-muted-foreground text-xs">No fixed expenses</p>
+							<p className="text-muted-foreground text-xs">{t("noFixedExpenses")}</p>
 						)}
 					</div>
 				</div>
@@ -269,7 +273,7 @@ export function SpendComposition({
 				{/* Flexible Categories */}
 				<div className="space-y-2">
 					<h4 className="font-medium text-orange-600 text-sm">
-						Flexible Categories
+						{t("flexibleCategories")}
 					</h4>
 					<div className="space-y-1">
 						{categoryBreakdown.flexible.length > 0 ? (
@@ -279,7 +283,7 @@ export function SpendComposition({
 									key={category.name}
 								>
 									<span className="truncate pr-2 text-muted-foreground">
-										{category.name}
+										{displayName(category.name)}
 									</span>
 									<span className="text-muted-foreground">
 										{formatCurrency(category.amount, baseCurrency)} ({category.percentage}%)
@@ -288,7 +292,7 @@ export function SpendComposition({
 							))
 						) : (
 							<p className="text-muted-foreground text-xs">
-								No flexible expenses
+								{t("noFlexibleExpenses")}
 							</p>
 						)}
 					</div>

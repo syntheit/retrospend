@@ -70,7 +70,6 @@ export interface SettlementRecord {
 export interface ProjectRecord {
 	id: string;
 	name: string;
-	type: string;
 	status: string;
 	description: string | null;
 	primaryCurrency: string;
@@ -911,7 +910,6 @@ export function createStatefulDb() {
 				const record: ProjectRecord = {
 					id,
 					name: args.data.name ?? "Test Project",
-					type: args.data.type ?? "GENERAL",
 					status: "ACTIVE",
 					description: args.data.description ?? null,
 					primaryCurrency: args.data.primaryCurrency ?? "USD",
@@ -1320,7 +1318,6 @@ export function addProject(
 	const id = `project-${db._stores.projects.size + 1}`;
 	const record: ProjectRecord = {
 		name: overrides.name ?? "Test Project",
-		type: overrides.type ?? "GENERAL",
 		status: "ACTIVE",
 		description: overrides.description ?? null,
 		primaryCurrency: overrides.primaryCurrency ?? "USD",

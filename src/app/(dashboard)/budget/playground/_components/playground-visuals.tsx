@@ -1,6 +1,7 @@
 "use client";
 
 import { Landmark, PiggyBank, Receipt } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
 import { PartitionBar } from "~/components/budget/partition-bar";
@@ -13,6 +14,7 @@ import { MetricCard } from "./metric-card";
 import { usePlayground } from "./playground-context";
 
 export function PlaygroundVisuals() {
+	const t = useTranslations("playground");
 	const { simulatedBudgets, categories, monthlyIncome } = usePlayground();
 	const { formatCurrency } = useCurrencyFormatter();
 	const { homeCurrency } = useCurrency();
@@ -62,12 +64,12 @@ export function PlaygroundVisuals() {
 						</div>
 						<span className="font-medium text-muted-foreground text-xs">
 							{hasIncome
-								? `${Math.round((totalProjectedSpend / monthlyIncome) * 100)}% of Income`
-								: "No Income"}
+								? `${Math.round((totalProjectedSpend / monthlyIncome) * 100)}${t("percentOfIncome")}`
+								: t("noIncome")}
 						</span>
 					</div>
 				}
-				title="Monthly Burn"
+				title={t("monthlyBurn")}
 				titleClassName="text-muted-foreground"
 				value={formatCurrency(totalProjectedSpend, homeCurrency)}
 			/>
@@ -82,7 +84,7 @@ export function PlaygroundVisuals() {
 					!hasIncome && (
 						<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-indigo-600/10 p-2 text-center backdrop-blur-[2px]">
 							<p className="mb-2 font-semibold text-xs text-indigo-200 tracking-wide">
-								Income Required
+								{t("incomeRequired")}
 							</p>
 							<Link href="/settings">
 								<Button
@@ -90,7 +92,7 @@ export function PlaygroundVisuals() {
 									size="sm"
 									variant="ghost"
 								>
-									Set in Settings
+									{t("setInSettings")}
 								</Button>
 							</Link>
 						</div>
@@ -98,10 +100,10 @@ export function PlaygroundVisuals() {
 				}
 				subtext={
 					<p className="mt-1 text-indigo-200 text-xs tracking-wide">
-						Projected Yearly Surplus
+						{t("projectedYearlySurplus")}
 					</p>
 				}
-				title="Annual Savings"
+				title={t("annualSavings")}
 				titleClassName="text-indigo-200"
 				value={formatCurrency(annualProjectedSavings, homeCurrency)}
 			/>
@@ -116,7 +118,7 @@ export function PlaygroundVisuals() {
 					!hasIncome && (
 						<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-stone-50/50 p-2 text-center backdrop-blur-[2px] dark:bg-stone-950/50">
 							<p className="mb-2 font-semibold text-xs text-muted-foreground tracking-wide">
-								Unavailable
+								{t("unavailable")}
 							</p>
 							<Link href="/settings">
 								<Button
@@ -124,7 +126,7 @@ export function PlaygroundVisuals() {
 									size="sm"
 									variant="outline"
 								>
-									Update Income
+									{t("updateIncome")}
 								</Button>
 							</Link>
 						</div>
@@ -132,10 +134,10 @@ export function PlaygroundVisuals() {
 				}
 				subtext={
 					<p className="mt-1 text-muted-foreground text-xs tracking-wide">
-						{projectedSurplus > 0 ? "Potential for Wealth" : "Over Budget"}
+						{projectedSurplus > 0 ? t("potentialForWealth") : t("overBudget")}
 					</p>
 				}
-				title="Savings Rate"
+				title={t("savingsRate")}
 				titleClassName="text-muted-foreground"
 				value={
 					<span
@@ -150,9 +152,9 @@ export function PlaygroundVisuals() {
 
 			<div className="space-y-3 md:col-span-2 lg:col-span-3">
 				<div className="flex items-center justify-between text-sm">
-					<span className="font-semibold">Simulated Allocation</span>
+					<span className="font-semibold">{t("simulatedAllocation")}</span>
 					<span className="text-muted-foreground">
-						Distribution by Category
+						{t("distributionByCategory")}
 					</span>
 				</div>
 				<PartitionBar categoryBudgets={categoryBudgets} homeCurrency={homeCurrency} />

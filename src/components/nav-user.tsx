@@ -12,6 +12,7 @@ import {
 	IconTicket,
 	IconUser,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -58,6 +59,7 @@ export function NavUser({
 	const { isMobile } = useSidebar();
 	const { data: session } = useSession();
 	const router = useRouter();
+	const t = useTranslations("nav");
 	const [feedbackOpen, setFeedbackOpen] = useState(false);
 	const { data: avatarData } = api.profile.getMyAvatar.useQuery();
 	const { data: settings } = api.settings.getGeneral.useQuery();
@@ -147,20 +149,20 @@ export function NavUser({
 									target="_blank"
 								>
 									<IconUser />
-									Your profile
+									{t("yourProfile")}
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link className="cursor-pointer" href="/settings">
 									<IconSettings />
-									Settings
+									{t("settings")}
 								</Link>
 							</DropdownMenuItem>
 							{settings?.allowAllUsersToGenerateInvites && (
 								<DropdownMenuItem asChild>
 									<Link className="cursor-pointer" href="/invite-codes">
 										<IconTicket />
-										Invite Codes
+										{t("inviteCodes")}
 									</Link>
 								</DropdownMenuItem>
 							)}
@@ -168,7 +170,7 @@ export function NavUser({
 								<DropdownMenuItem asChild>
 									<Link className="cursor-pointer" href="/admin">
 										<IconTerminal2 />
-										Admin Panel
+										{t("adminPanel")}
 									</Link>
 								</DropdownMenuItem>
 							)}
@@ -176,7 +178,7 @@ export function NavUser({
 								<DropdownMenuItem asChild>
 									<Link className="cursor-pointer" href="/feedback">
 										<IconMessageReport />
-										View Feedback
+										{t("viewFeedback")}
 										{unreadFeedback > 0 && (
 											<span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 font-semibold tabular-nums text-[10px] text-white leading-none">
 												{unreadFeedback > 99 ? "99+" : unreadFeedback}
@@ -193,25 +195,25 @@ export function NavUser({
 								onClick={() => setFeedbackOpen(true)}
 							>
 								<IconSpeakerphone />
-								Feedback
+								{t("feedback")}
 							</DropdownMenuItem>
 						)}
 						<DropdownMenuItem asChild>
 							<Link className="cursor-pointer" href="/releases?from=app" target="_blank">
 								<IconSparkles />
-								Release Notes
+								{t("releaseNotes")}
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem asChild>
 							<Link className="cursor-pointer" href="/docs?from=app" target="_blank">
 								<IconBook />
-								Documentation
+								{t("documentation")}
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem className="cursor-pointer" variant="destructive" onClick={handleLogout}>
 							<IconLogout />
-							Log out
+							{t("logOut")}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>

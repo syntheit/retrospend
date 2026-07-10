@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
@@ -62,6 +63,7 @@ type PendingAction =
 	| null;
 
 export function AdminPanel() {
+	const t = useTranslations("admin");
 	const tabsRef = useRef<HTMLDivElement>(null);
 	const defaultTab = "users";
 	const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -146,12 +148,12 @@ export function AdminPanel() {
 						await disableUserMutation.mutateAsync({
 							userId: pendingAction.userId,
 						});
-						toast.success(`User @${pendingAction.username} has been disabled`);
+						toast.success(t("userDisabled", { username: pendingAction.username }));
 					} else {
 						await enableUserMutation.mutateAsync({
 							userId: pendingAction.userId,
 						});
-						toast.success(`User @${pendingAction.username} has been enabled`);
+						toast.success(t("userEnabled", { username: pendingAction.username }));
 					}
 					break;
 
@@ -159,14 +161,14 @@ export function AdminPanel() {
 					await deleteUserMutation.mutateAsync({
 						userId: pendingAction.userId,
 					});
-					toast.success(`User @${pendingAction.username} has been deleted`);
+					toast.success(t("userDeleted", { username: pendingAction.username }));
 					break;
 
 				case "deleteInviteCode":
 					await deleteInviteCodeMutation.mutateAsync({
 						id: pendingAction.inviteCodeId,
 					});
-					toast.success(`Invite code ${pendingAction.code} has been deleted`);
+					toast.success(t("inviteCodeDeleted", { code: pendingAction.code }));
 					await refetchInviteCodes();
 					break;
 
@@ -176,9 +178,9 @@ export function AdminPanel() {
 						verified: pendingAction.verified,
 					});
 					toast.success(
-						`Email for @${pendingAction.username} marked as ${
-							pendingAction.verified ? "verified" : "unverified"
-						}`,
+						pendingAction.verified
+							? t("emailMarkedVerified", { username: pendingAction.username })
+							: t("emailMarkedUnverified", { username: pendingAction.username }),
 					);
 					break;
 			}
@@ -188,7 +190,7 @@ export function AdminPanel() {
 			setPendingAction(null);
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "An error occurred";
+				error instanceof Error ? error.message : t("anErrorOccurred");
 			toast.error(message);
 		}
 	};
@@ -210,11 +212,11 @@ export function AdminPanel() {
 	const handleToggleInviteOnly = async (enabled: boolean) => {
 		try {
 			await updateSettingsMutation.mutateAsync({ inviteOnlyEnabled: enabled });
-			toast.success(`Invite-only signups ${enabled ? "enabled" : "disabled"}`);
+			toast.success(enabled ? t("inviteOnlyEnabled") : t("inviteOnlyDisabled"));
 			refetchSettings();
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Failed to update settings";
+				error instanceof Error ? error.message : t("failedToUpdateSettings");
 			toast.error(message);
 		}
 	};
@@ -225,12 +227,12 @@ export function AdminPanel() {
 				allowAllUsersToGenerateInvites: enabled,
 			});
 			toast.success(
-				`User invite code generation ${enabled ? "enabled" : "disabled"}`,
+				enabled ? t("userInvitesEnabled") : t("userInvitesDisabled"),
 			);
 			refetchSettings();
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Failed to update settings";
+				error instanceof Error ? error.message : t("failedToUpdateSettings");
 			toast.error(message);
 		}
 	};
@@ -245,49 +247,49 @@ export function AdminPanel() {
 		switch (pendingAction.type) {
 			case "resetPassword":
 				return {
-					title: "Reset Password",
-					description: `Are you sure you want to reset the password for @${pendingAction.username}? A new random password will be generated.`,
-					confirmLabel: "Reset Password",
+					title: t("resetPassword"),
+					description: t("resetPasswordConfirm", { username: pendingAction.username }),
+					confirmLabel: t("resetPassword"),
 					variant: "default" as const,
 				};
 
 			case "toggleUserStatus":
 				return {
-					title: pendingAction.isActive ? "Disable User" : "Enable User",
+					title: pendingAction.isActive ? t("disableUser") : t("enableUser"),
 					description: pendingAction.isActive
-						? `Are you sure you want to disable @${pendingAction.username}? They will no longer be able to sign in.`
-						: `Are you sure you want to enable @${pendingAction.username}? They will be able to sign in again.`,
-					confirmLabel: pendingAction.isActive ? "Disable User" : "Enable User",
+						? t("disableUserConfirm", { username: pendingAction.username })
+						: t("enableUserConfirm", { username: pendingAction.username }),
+					confirmLabel: pendingAction.isActive ? t("disableUser") : t("enableUser"),
 					variant: "default" as const,
 				};
 
 			case "deleteUser":
 				return {
-					title: "Delete User",
-					description: `Are you sure you want to delete @${pendingAction.username}? This action cannot be undone and will permanently remove all their data.`,
-					confirmLabel: "Delete User",
+					title: t("deleteUser"),
+					description: t("deleteUserConfirm", { username: pendingAction.username }),
+					confirmLabel: t("deleteUser"),
 					variant: "destructive" as const,
 				};
 
 			case "deleteInviteCode":
 				return {
-					title: "Delete Invite Code",
-					description: `Are you sure you want to delete the invite code "${pendingAction.code}"? This action cannot be undone.`,
-					confirmLabel: "Delete Code",
+					title: t("deleteInviteCode"),
+					description: t("deleteInviteCodeConfirm", { code: pendingAction.code }),
+					confirmLabel: t("deleteCode"),
 					variant: "destructive" as const,
 				};
 
 			case "toggleEmailVerification":
 				return {
 					title: pendingAction.verified
-						? "Mark Email as Verified"
-						: "Mark Email as Unverified",
+						? t("markEmailVerified")
+						: t("markEmailUnverified"),
 					description: pendingAction.verified
-						? `Are you sure you want to manually mark the email for @${pendingAction.username} as verified?`
-						: `Are you sure you want to mark the email for @${pendingAction.username} as unverified? They will need to verify it again.`,
+						? t("markEmailVerifiedConfirm", { username: pendingAction.username })
+						: t("markEmailUnverifiedConfirm", { username: pendingAction.username }),
 					confirmLabel: pendingAction.verified
-						? "Mark as Verified"
-						: "Mark as Unverified",
+						? t("markAsVerified")
+						: t("markAsUnverified"),
 					variant: "default" as const,
 				};
 		}
@@ -308,7 +310,7 @@ export function AdminPanel() {
 
 	return (
 		<>
-			<SiteHeader title="Admin Panel" />
+			<SiteHeader title={t("adminPanel")} />
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl space-y-8">
 					{/* Health Overview */}
@@ -319,17 +321,17 @@ export function AdminPanel() {
 					{/* Settings Section */}
 					<div className="space-y-4">
 						<div>
-							<h2 className="font-semibold text-lg tracking-tight">Settings</h2>
+							<h2 className="font-semibold text-lg tracking-tight">{t("settings")}</h2>
 							<p className="text-muted-foreground text-sm">
-								Registration and email configuration.
+								{t("settingsDescription")}
 							</p>
 						</div>
 						<div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 							<Card className="flex h-full flex-col">
 								<CardHeader>
-									<CardTitle>Registration Settings</CardTitle>
+									<CardTitle>{t("registrationSettings")}</CardTitle>
 									<CardDescription>
-										Control how new users can sign up for the application.
+										{t("registrationSettingsDescription")}
 									</CardDescription>
 								</CardHeader>
 								<CardContent className="flex flex-grow flex-col gap-6">
@@ -339,11 +341,10 @@ export function AdminPanel() {
 												className="font-medium text-sm"
 												htmlFor="invite-codes-switch"
 											>
-												Require Invite Codes
+												{t("requireInviteCodes")}
 											</label>
 											<p className="text-muted-foreground text-xs">
-												When enabled, new users must provide a valid invite code
-												to sign up.
+												{t("requireInviteCodesDescription")}
 											</p>
 										</div>
 										<Switch
@@ -361,10 +362,10 @@ export function AdminPanel() {
 												className={`font-medium text-sm ${!(settings?.inviteOnlyEnabled ?? false) ? "text-muted-foreground" : ""}`}
 												htmlFor="user-invite-codes-switch"
 											>
-												Allow User Invites
+												{t("allowUserInvites")}
 											</label>
 											<p className="text-muted-foreground text-xs">
-												When enabled, users can manage their own invite codes.
+												{t("allowUserInvitesDescription")}
 											</p>
 										</div>
 										<Switch
@@ -385,10 +386,10 @@ export function AdminPanel() {
 												className="font-medium text-sm"
 												htmlFor="enable-feedback-switch"
 											>
-												Enable Feedback
+												{t("enableFeedback")}
 											</label>
 											<p className="text-muted-foreground text-xs">
-												When enabled, users can submit feedback from within the app.
+												{t("enableFeedbackDescription")}
 											</p>
 										</div>
 										<Switch
@@ -400,13 +401,13 @@ export function AdminPanel() {
 													await updateSettingsMutation.mutateAsync({
 														enableFeedback: enabled,
 													});
-													toast.success(`Feedback ${enabled ? "enabled" : "disabled"}`);
+													toast.success(enabled ? t("feedbackEnabledToast") : t("feedbackDisabledToast"));
 													refetchSettings();
 												} catch (error) {
 													toast.error(
 														error instanceof Error
 															? error.message
-															: "Failed to update settings",
+															: t("failedToUpdateSettings"),
 													);
 												}
 											}}
@@ -427,13 +428,13 @@ export function AdminPanel() {
 								onUpdate={async (updates) => {
 									try {
 										await updateAiSettingsMutation.mutateAsync(updates);
-										toast.success("AI settings updated");
+										toast.success(t("aiSettingsUpdated"));
 										refetchAiSettings();
 									} catch (error) {
 										toast.error(
 											error instanceof Error
 												? error.message
-												: "Failed to update AI settings",
+												: t("failedToUpdateAiSettings"),
 										);
 									}
 								}}
@@ -445,13 +446,13 @@ export function AdminPanel() {
 							onUpdate={async (updates) => {
 								try {
 									await updateSettingsMutation.mutateAsync(updates);
-									toast.success("Settings updated");
+									toast.success(t("settingsUpdated"));
 									refetchSettings();
 								} catch (error) {
 									toast.error(
 										error instanceof Error
 											? error.message
-											: "Failed to update settings",
+											: t("failedToUpdateSettings"),
 									);
 								}
 							}}
@@ -462,9 +463,9 @@ export function AdminPanel() {
 					{/* Services Section */}
 					<div className="space-y-4">
 						<div>
-							<h2 className="font-semibold text-lg tracking-tight">Services</h2>
+							<h2 className="font-semibold text-lg tracking-tight">{t("services")}</h2>
 							<p className="text-muted-foreground text-sm">
-								Exchange rates and database backup management.
+								{t("servicesDescription")}
 							</p>
 						</div>
 						<div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -489,11 +490,11 @@ export function AdminPanel() {
 						ref={tabsRef}
 					>
 						<TabsList>
-							<TabsTrigger value="users">Users</TabsTrigger>
-							<TabsTrigger value="participants">Participants</TabsTrigger>
-							<TabsTrigger value="invite-codes">Invite Codes</TabsTrigger>
-							<TabsTrigger value="ai-usage">AI Usage</TabsTrigger>
-							<TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
+							<TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
+							<TabsTrigger value="participants">{t("tabParticipants")}</TabsTrigger>
+							<TabsTrigger value="invite-codes">{t("tabInviteCodes")}</TabsTrigger>
+							<TabsTrigger value="ai-usage">{t("tabAiUsage")}</TabsTrigger>
+							<TabsTrigger value="audit-logs">{t("tabAuditLogs")}</TabsTrigger>
 						</TabsList>
 
 						<TabsContent value="users">
@@ -519,13 +520,13 @@ export function AdminPanel() {
 											userId,
 											externalAiAllowed: allowed,
 										});
-										toast.success("AI access updated");
+										toast.success(t("aiAccessUpdated"));
 										await refetch();
 									} catch (error) {
 										toast.error(
 											error instanceof Error
 												? error.message
-												: "Failed to update AI access",
+												: t("failedToUpdateAiAccess"),
 										);
 									}
 								}}
@@ -601,6 +602,7 @@ function EmailServerCard({
 	} | null;
 	onSettingsChange: () => void;
 }) {
+	const t = useTranslations("admin");
 	const [testEmail, setTestEmail] = useState(adminEmail ?? "");
 	const [testEmailType, setTestEmailType] = useState<
 		"basic" | "password-reset" | "credential-change" | "email-verification"
@@ -620,7 +622,7 @@ function EmailServerCard({
 	const handleSendTestEmail = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!testEmail) {
-			toast.error("Please enter an email address");
+			toast.error(t("pleaseEnterEmail"));
 			return;
 		}
 		sendTestEmailMutation.mutate({ email: testEmail, type: testEmailType });
@@ -629,9 +631,9 @@ function EmailServerCard({
 	return (
 		<Card className="flex h-full flex-col">
 			<CardHeader>
-				<CardTitle>Email Server (SMTP)</CardTitle>
+				<CardTitle>{t("emailServer")}</CardTitle>
 				<CardDescription>
-					Network configuration for sending system emails.
+					{t("emailServerDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
@@ -646,12 +648,12 @@ function EmailServerCard({
 						}`}
 					/>
 					<span className="font-medium text-sm">
-						Status:{" "}
+						{t("emailStatus")}:{" "}
 						{isLoading
-							? "Checking..."
+							? t("checking")
 							: appFeatures?.isSmtpConfigured
-								? "Configured in Environment"
-								: "Not Configured (Check .env)"}
+								? t("configuredInEnvironment")
+								: t("notConfiguredCheckEnv")}
 					</span>
 				</div>
 
@@ -663,11 +665,10 @@ function EmailServerCard({
 							className={`font-medium text-sm ${!appFeatures?.isSmtpConfigured ? "text-muted-foreground" : ""}`}
 							htmlFor="enable-email-switch"
 						>
-							Enable Email Functionality
+							{t("enableEmailFunctionality")}
 						</label>
 						<p className="text-muted-foreground text-xs">
-							When enabled, the system will send emails for verification,
-							password resets, and notifications.
+							{t("enableEmailFunctionalityDescription")}
 						</p>
 					</div>
 					<Switch
@@ -682,7 +683,7 @@ function EmailServerCard({
 									enableEmail: enabled,
 								});
 								toast.success(
-									`Email functionality ${enabled ? "enabled" : "disabled"}`,
+									enabled ? t("emailFunctionalityEnabled") : t("emailFunctionalityDisabled"),
 								);
 								onSettingsChange();
 								void utils.auth.getAppFeatures.invalidate();
@@ -690,7 +691,7 @@ function EmailServerCard({
 								toast.error(
 									error instanceof Error
 										? error.message
-										: "Failed to update settings",
+										: t("failedToUpdateSettings"),
 								);
 							}
 						}}
@@ -707,7 +708,7 @@ function EmailServerCard({
 									className="flex-1"
 									disabled={sendTestEmailMutation.isPending}
 									onChange={(e) => setTestEmail(e.target.value)}
-									placeholder="Admin Email"
+									placeholder={t("adminEmail")}
 									type="email"
 									value={testEmail}
 								/>
@@ -715,7 +716,7 @@ function EmailServerCard({
 									disabled={sendTestEmailMutation.isPending}
 									type="submit"
 								>
-									{sendTestEmailMutation.isPending ? "Sending..." : "Test"}
+									{sendTestEmailMutation.isPending ? t("sending") : t("test")}
 								</Button>
 							</div>
 							<Select
@@ -732,25 +733,24 @@ function EmailServerCard({
 								value={testEmailType}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select email type to test" />
+									<SelectValue placeholder={t("selectEmailType")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="basic">Basic Test Email</SelectItem>
+									<SelectItem value="basic">{t("basicTestEmail")}</SelectItem>
 									<SelectItem value="password-reset">
-										Password Reset Sample
+										{t("passwordResetSample")}
 									</SelectItem>
 									<SelectItem value="credential-change">
-										Credential Change Sample
+										{t("credentialChangeSample")}
 									</SelectItem>
 									<SelectItem value="email-verification">
-										Verification Sample
+										{t("verificationSample")}
 									</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
 						<p className="text-[10px] text-muted-foreground">
-							Send a test email to verify SMTP configuration and preview
-							templates.
+							{t("testEmailDescription")}
 						</p>
 					</form>
 				)}
@@ -780,6 +780,7 @@ function AiSettingsCard({
 		monthlyExternalAiTokenQuota?: number;
 	}) => Promise<void>;
 }) {
+	const t = useTranslations("admin");
 	const [localQuotaInput, setLocalQuotaInput] = useState("");
 	const [externalQuotaInput, setExternalQuotaInput] = useState("");
 
@@ -820,9 +821,9 @@ function AiSettingsCard({
 	return (
 		<Card className="flex h-full flex-col">
 			<CardHeader>
-				<CardTitle>AI Processing</CardTitle>
+				<CardTitle>{t("aiProcessing")}</CardTitle>
 				<CardDescription>
-					Configure AI providers for bank statement imports.
+					{t("aiProcessingDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
@@ -835,16 +836,16 @@ function AiSettingsCard({
 						}`}
 					/>
 					<span className="font-medium text-sm">
-						OpenRouter:{" "}
+						{t("openRouter")}:{" "}
 						{aiSettings?.openRouterConfigured
-							? "API Key Configured"
-							: "Not Configured"}
+							? t("apiKeyConfigured")
+							: t("notConfigured")}
 					</span>
 				</div>
 
 				<div className="space-y-2">
 					<label className="font-medium text-sm" htmlFor="default-ai-mode">
-						Default AI Mode
+						{t("defaultAiMode")}
 					</label>
 					<Select
 						disabled={isUpdating}
@@ -857,15 +858,15 @@ function AiSettingsCard({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="LOCAL">Local (Ollama)</SelectItem>
-							<SelectItem value="EXTERNAL">External (OpenRouter)</SelectItem>
+							<SelectItem value="LOCAL">{t("localOllama")}</SelectItem>
+							<SelectItem value="EXTERNAL">{t("externalOpenRouter")}</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
 
 				<div className="space-y-2">
 					<label className="font-medium text-sm" htmlFor="ai-access-mode">
-						Access Control Mode
+						{t("accessControlMode")}
 					</label>
 					<Select
 						disabled={isUpdating}
@@ -881,17 +882,17 @@ function AiSettingsCard({
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="WHITELIST">
-								Whitelist (deny by default)
+								{t("whitelistDenyByDefault")}
 							</SelectItem>
 							<SelectItem value="BLACKLIST">
-								Blacklist (allow by default)
+								{t("blacklistAllowByDefault")}
 							</SelectItem>
 						</SelectContent>
 					</Select>
 					<p className="text-[10px] text-muted-foreground">
 						{aiSettings?.externalAiAccessMode === "WHITELIST"
-							? "Users must be explicitly allowed to use external AI."
-							: "All users can use external AI unless explicitly denied."}
+							? t("whitelistDescription")
+							: t("blacklistDescription")}
 					</p>
 				</div>
 
@@ -900,7 +901,7 @@ function AiSettingsCard({
 						className="font-medium text-sm"
 						htmlFor="ai-local-token-quota"
 					>
-						Monthly Local Token Quota per User
+						{t("monthlyLocalTokenQuota")}
 					</label>
 					<Input
 						disabled={isUpdating}
@@ -930,7 +931,7 @@ function AiSettingsCard({
 						className="font-medium text-sm"
 						htmlFor="ai-external-token-quota"
 					>
-						Monthly External Token Quota per User
+						{t("monthlyExternalTokenQuota")}
 					</label>
 					<Input
 						disabled={isUpdating}
@@ -974,6 +975,7 @@ function SystemSettingsCard({
 		maxConcurrentImportJobs?: number;
 	}) => Promise<void>;
 }) {
+	const t = useTranslations("admin");
 	const [jobsInput, setJobsInput] = useState("");
 
 	useEffect(() => {
@@ -997,15 +999,15 @@ function SystemSettingsCard({
 	return (
 		<Card className="flex h-full flex-col">
 			<CardHeader>
-				<CardTitle>System</CardTitle>
+				<CardTitle>{t("system")}</CardTitle>
 				<CardDescription>
-					Import concurrency and audit log privacy controls.
+					{t("systemDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
 				<div className="space-y-2">
 					<label className="font-medium text-sm" htmlFor="audit-privacy-mode">
-						Audit Log Privacy Mode
+						{t("auditLogPrivacyMode")}
 					</label>
 					<Select
 						disabled={isUpdating}
@@ -1021,22 +1023,22 @@ function SystemSettingsCard({
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="MINIMAL">
-								Minimal (no IPs stored)
+								{t("auditMinimal")}
 							</SelectItem>
 							<SelectItem value="ANONYMIZED">
-								Anonymized (last octet removed)
+								{t("auditAnonymized")}
 							</SelectItem>
 							<SelectItem value="FULL">
-								Full (complete IPs, requires compliance)
+								{t("auditFull")}
 							</SelectItem>
 						</SelectContent>
 					</Select>
 					<p className="text-[10px] text-muted-foreground">
 						{settings?.auditPrivacyMode === "MINIMAL"
-							? "IP addresses and user agents are never stored. Privacy-first default."
+							? t("auditMinimalDescription")
 							: settings?.auditPrivacyMode === "ANONYMIZED"
-								? "Last octet of IP is removed before storage (e.g. 192.168.1.0)."
-								: "Full IP and user agent stored. Requires GDPR/privacy compliance."}
+								? t("auditAnonymizedDescription")
+								: t("auditFullDescription")}
 					</p>
 				</div>
 
@@ -1045,7 +1047,7 @@ function SystemSettingsCard({
 						className="font-medium text-sm"
 						htmlFor="max-concurrent-import-jobs"
 					>
-						Max Concurrent Import Jobs
+						{t("maxConcurrentImportJobs")}
 					</label>
 					<Input
 						disabled={isUpdating}
@@ -1064,7 +1066,7 @@ function SystemSettingsCard({
 						value={jobsInput}
 					/>
 					<p className="text-[10px] text-muted-foreground">
-						Max parallel AI import jobs across all users (1–50). Default: 3.
+						{t("maxConcurrentImportJobsDescription")}
 					</p>
 				</div>
 			</CardContent>

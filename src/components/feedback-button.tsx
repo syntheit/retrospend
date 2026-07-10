@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageSquarePlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FeedbackModal } from "~/components/feedback-modal";
 import { Button } from "~/components/ui/button";
@@ -13,6 +14,7 @@ import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
 export function FeedbackButton() {
+	const t = useTranslations("feedback");
 	const [open, setOpen] = useState(false);
 	const { data: session } = useSession();
 	const { data: flags } = api.system.getFeatureFlags.useQuery();
@@ -25,7 +27,7 @@ export function FeedbackButton() {
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Button
-						aria-label="Send Feedback"
+						aria-label={t("sendFeedbackAria")}
 						className="relative h-8 w-8"
 						onClick={() => setOpen(true)}
 						size="icon"
@@ -34,7 +36,7 @@ export function FeedbackButton() {
 						<MessageSquarePlus className="h-4 w-4" />
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent>Send Feedback</TooltipContent>
+				<TooltipContent>{t("title")}</TooltipContent>
 			</Tooltip>
 			<FeedbackModal onOpenChange={setOpen} open={open} />
 		</>

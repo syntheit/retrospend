@@ -1,10 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { DataExport } from "./data-export";
 
 export function ExpensesExportTab() {
+	const t = useTranslations("dataManagement");
 	const exportMutation = api.expense.exportCsv.useMutation();
 
 	const handleExport = async () => {
@@ -19,20 +21,20 @@ export function ExpensesExportTab() {
 			link.click();
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
-			toast.success("CSV exported");
+			toast.success(t("csvExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export CSV",
+				error instanceof Error ? error.message : t("failedToExportCsv"),
 			);
 		}
 	};
 
 	return (
 		<DataExport
-			description="Downloads all finalized expenses as a CSV file."
+			description={t("expensesExportDescription")}
 			isExporting={exportMutation.isPending}
 			onExport={handleExport}
-			title="Expenses"
+			title={t("expenses")}
 		/>
 	);
 }

@@ -1,3 +1,6 @@
+"use client";
+
+import { useCategoryName } from "~/hooks/use-category-name";
 import { Badge, type BadgeProps } from "~/components/ui/badge";
 import { CATEGORY_COLOR_MAP, type CategoryColor } from "~/lib/constants";
 import { cn } from "~/lib/utils";
@@ -13,6 +16,7 @@ export function CategoryBadge({
 	className,
 	...props
 }: CategoryBadgeProps) {
+	const { displayName } = useCategoryName();
 	const colorClasses =
 		CATEGORY_COLOR_MAP[color as CategoryColor] ||
 		"bg-secondary text-secondary-foreground";
@@ -27,7 +31,7 @@ export function CategoryBadge({
 			variant="outline"
 			{...props}
 		>
-			{name}
+			{displayName(name)}
 		</Badge>
 	);
 }

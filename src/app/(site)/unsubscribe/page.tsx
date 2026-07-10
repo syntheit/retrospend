@@ -4,6 +4,7 @@ import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -14,22 +15,10 @@ import {
 } from "~/components/ui/card";
 import { api } from "~/trpc/react";
 
-const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
-	EXPENSE_SPLIT: "New expense splits",
-	VERIFICATION_REQUEST: "Verification requests",
-	EXPENSE_EDITED: "Expense edits",
-	EXPENSE_DELETED: "Expense deletions",
-	SETTLEMENT_RECEIVED: "Settlement received",
-	SETTLEMENT_CONFIRMED: "Settlement confirmed",
-	SETTLEMENT_REJECTED: "Settlement rejected",
-	PERIOD_CLOSED: "Billing period closed",
-	PARTICIPANT_ADDED: "Added to a project",
-	PAYMENT_REMINDER: "Payment reminders",
-};
-
 type State = "idle" | "loading" | "success" | "error" | "invalid";
 
 function UnsubscribeInner() {
+	const t = useTranslations("unsubscribe");
 	const searchParams = useSearchParams();
 	const token = searchParams.get("token") ?? "";
 	const userId = searchParams.get("userId") ?? "";
@@ -40,6 +29,19 @@ function UnsubscribeInner() {
 
 	const unsubscribe = api.notification.unsubscribe.useMutation();
 
+	const NOTIFICATION_TYPE_LABELS: Record<string, string> = {
+		EXPENSE_SPLIT: t("notifExpenseSplit"),
+		VERIFICATION_REQUEST: t("notifVerificationRequest"),
+		EXPENSE_EDITED: t("notifExpenseEdited"),
+		EXPENSE_DELETED: t("notifExpenseDeleted"),
+		SETTLEMENT_RECEIVED: t("notifSettlementReceived"),
+		SETTLEMENT_CONFIRMED: t("notifSettlementConfirmed"),
+		SETTLEMENT_REJECTED: t("notifSettlementRejected"),
+		PERIOD_CLOSED: t("notifPeriodClosed"),
+		PARTICIPANT_ADDED: t("notifParticipantAdded"),
+		PAYMENT_REMINDER: t("notifPaymentReminder"),
+	};
+
 	const typeLabel = NOTIFICATION_TYPE_LABELS[type] ?? type;
 
 	if (!token || !userId || !type) {
@@ -47,9 +49,9 @@ function UnsubscribeInner() {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<AlertCircle className="mx-auto h-10 w-10 text-destructive" />
-					<CardTitle className="text-center">Invalid Link</CardTitle>
+					<CardTitle className="text-center">{t("invalidLink")}</CardTitle>
 					<CardDescription className="text-center">
-						This unsubscribe link is missing required parameters.
+						{t("invalidLinkDescription")}
 					</CardDescription>
 				</CardHeader>
 			</Card>
@@ -61,15 +63,15 @@ function UnsubscribeInner() {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<CheckCircle className="mx-auto h-10 w-10 text-emerald-500" />
-					<CardTitle className="text-center">Unsubscribed</CardTitle>
+					<CardTitle className="text-center">{t("unsubscribed")}</CardTitle>
 					<CardDescription className="text-center">
-						You&apos;ve been unsubscribed from <strong>{typeLabel}</strong>{" "}
-						emails. You can manage all notification preferences in{" "}
+						{t("unsubscribedFrom", { type: typeLabel })}{" "}
+						{t("manageInSettings")}{" "}
 						<Link
 							className="text-primary hover:underline"
 							href="/settings"
 						>
-							Settings
+							{t("settings")}
 						</Link>
 						.
 					</CardDescription>
@@ -83,9 +85,9 @@ function UnsubscribeInner() {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<AlertCircle className="mx-auto h-10 w-10 text-destructive" />
-					<CardTitle className="text-center">Invalid Link</CardTitle>
+					<CardTitle className="text-center">{t("invalidLink")}</CardTitle>
 					<CardDescription className="text-center">
-						{errorMessage || "This unsubscribe link is invalid or has been tampered with."}
+						{errorMessage || t("errorDescription")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="text-center">
@@ -93,7 +95,7 @@ function UnsubscribeInner() {
 						className="text-sm text-primary hover:underline"
 						href="/settings"
 					>
-						Manage preferences in Settings
+						{t("managePreferencesLink")}
 					</Link>
 				</CardContent>
 			</Card>
@@ -108,7 +110,7 @@ function UnsubscribeInner() {
 		} catch (err) {
 			setState("error");
 			setErrorMessage(
-				err instanceof Error ? err.message : "Failed to unsubscribe. The link may be invalid.",
+				err instanceof Error ? err.message : t("errorDescription"),
 			);
 		}
 	};
@@ -120,9 +122,9 @@ function UnsubscribeInner() {
 	return (
 		<Card className="w-full max-w-md">
 			<CardHeader className="space-y-1">
-				<CardTitle className="text-center">Unsubscribe</CardTitle>
+				<CardTitle className="text-center">{t("pageTitle")}</CardTitle>
 				<CardDescription className="text-center">
-					Unsubscribe from <strong>{typeLabel}</strong> emails?
+					{t("description", { type: typeLabel })}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
@@ -134,10 +136,10 @@ function UnsubscribeInner() {
 					{state === "loading" ? (
 						<>
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							Unsubscribing...
+							{t("unsubscribing")}
 						</>
 					) : (
-						`Unsubscribe from ${typeLabel}`
+						t("unsubscribeFromType", { type: typeLabel })
 					)}
 				</Button>
 				<Button
@@ -146,12 +148,12 @@ function UnsubscribeInner() {
 					onClick={handleUnsubscribeAll}
 					variant="outline"
 				>
-					Unsubscribe from all notification emails
+					{t("unsubscribeFromAll")}
 				</Button>
 				<p className="text-center text-muted-foreground text-xs">
-					You can manage all notification preferences in{" "}
+					{t("manageInSettings")}{" "}
 					<Link className="text-primary hover:underline" href="/settings">
-						Settings
+						{t("settings")}
 					</Link>
 					.
 				</p>

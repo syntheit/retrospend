@@ -1,10 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { DataExport } from "./data-export";
 
 export function WealthExportTab() {
+	const t = useTranslations("dataManagement");
 	const exportMutation = api.wealth.exportCsv.useMutation();
 
 	const handleExport = async () => {
@@ -19,20 +21,20 @@ export function WealthExportTab() {
 			link.click();
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
-			toast.success("Wealth data exported");
+			toast.success(t("wealthDataExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export wealth data",
+				error instanceof Error ? error.message : t("failedToExportWealthData"),
 			);
 		}
 	};
 
 	return (
 		<DataExport
-			description="Downloads all assets and liabilities as a CSV file."
+			description={t("wealthExportDescription")}
 			isExporting={exportMutation.isPending}
 			onExport={handleExport}
-			title="Wealth"
+			title={t("wealth")}
 		/>
 	);
 }

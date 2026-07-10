@@ -28,11 +28,12 @@ export type ActivityTableRow = {
 
 export function createActivityColumns(
 	formatCurrency: (amount: number, currency: string) => string,
+	t?: (key: string, values?: Record<string, string | number | Date>) => string,
 ): ColumnDef<ActivityTableRow>[] {
 	return [
 		{
 			id: "description",
-			header: "Title",
+			header: t?.("columnTitle") ?? "Title",
 			enableSorting: true,
 			meta: { flex: true },
 			sortingFn: (rowA, rowB) => {
@@ -69,7 +70,7 @@ export function createActivityColumns(
 									)}
 								</TooltipTrigger>
 								<TooltipContent align="start" side="top">
-									<p>Open project: {item.projectName}</p>
+									<p>{t?.("openProject", { name: item.projectName }) ?? `Open project: ${item.projectName}`}</p>
 								</TooltipContent>
 							</Tooltip>
 						)}
@@ -79,7 +80,7 @@ export function createActivityColumns(
 		},
 		{
 			accessorKey: "date",
-			header: "Date",
+			header: t?.("columnDate") ?? "Date",
 			enableSorting: true,
 			size: 130,
 			sortingFn: (rowA, rowB) =>
@@ -93,7 +94,7 @@ export function createActivityColumns(
 		},
 		{
 			id: "amount",
-			header: () => <div className="text-right">Amount</div>,
+			header: () => <div className="text-right">{t?.("columnAmount") ?? "Amount"}</div>,
 			enableSorting: true,
 			size: 120,
 			accessorFn: (row) => row.amount,
@@ -108,17 +109,17 @@ export function createActivityColumns(
 		},
 		{
 			id: "directionLabel",
-			header: "Type",
+			header: t?.("columnType") ?? "Type",
 			enableSorting: false,
 			size: 100,
 			cell: ({ row }) => {
 				const d = row.original.direction;
 				const label =
 					d === "they_owe_you"
-						? "they owe you"
+						? (t?.("theyOweYouLower") ?? "they owe you")
 						: d === "you_owe_them"
-							? "you owe them"
-							: "settlement";
+							? (t?.("youOweThemLower") ?? "you owe them")
+							: (t?.("settlement") ?? "settlement");
 				return (
 					<span className="text-muted-foreground text-xs">
 						{label}

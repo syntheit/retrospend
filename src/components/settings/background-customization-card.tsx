@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Chip } from "~/components/ui/chip";
 import { CurrencyBackground } from "~/components/currency-background";
@@ -25,39 +26,21 @@ type Animation = BackgroundSettings["animation"];
 type Opacity = BackgroundSettings["opacity"];
 
 // ---------------------------------------------------------------------------
-// Config
+// Config (static parts — labels added inside component via useMemo)
 // ---------------------------------------------------------------------------
-const SYMBOL_SET_OPTIONS: { value: SymbolSet; label: string; examples: string }[] = [
-	{ value: "currency", label: "Currency", examples: "$ € £ ¥" },
-	{ value: "math", label: "Math", examples: "+ − × ÷ %" },
-	{ value: "finance", label: "Finance", examples: "# @ & ¢" },
+const SYMBOL_SET_VALUES: { value: SymbolSet; examples: string }[] = [
+	{ value: "currency", examples: "$ € £ ¥" },
+	{ value: "math", examples: "+ − × ÷ %" },
+	{ value: "finance", examples: "# @ & ¢" },
 ];
 
-const COLOR_OPTIONS: { value: Color; label: string; bg: string }[] = [
-	{ value: "gray", label: "Gray", bg: "bg-neutral-400 dark:bg-neutral-500" },
-	{ value: "green", label: "Green", bg: "bg-emerald-500" },
-	{ value: "blue", label: "Blue", bg: "bg-blue-500" },
-	{ value: "purple", label: "Purple", bg: "bg-purple-500" },
-	{ value: "orange", label: "Orange", bg: "bg-orange-500" },
-	{ value: "gold", label: "Gold", bg: "bg-yellow-500" },
-];
-
-const DENSITY_OPTIONS: { value: Density; label: string }[] = [
-	{ value: "sparse", label: "Sparse" },
-	{ value: "medium", label: "Medium" },
-	{ value: "dense", label: "Dense" },
-];
-
-const ANIMATION_OPTIONS: { value: Animation; label: string }[] = [
-	{ value: "pulse", label: "Pulse" },
-	{ value: "float", label: "Float" },
-	{ value: "static", label: "Static" },
-];
-
-const OPACITY_OPTIONS: { value: Opacity; label: string }[] = [
-	{ value: "subtle", label: "Subtle" },
-	{ value: "medium", label: "Medium" },
-	{ value: "bold", label: "Bold" },
+const COLOR_VALUES: { value: Color; bg: string }[] = [
+	{ value: "gray", bg: "bg-neutral-400 dark:bg-neutral-500" },
+	{ value: "green", bg: "bg-emerald-500" },
+	{ value: "blue", bg: "bg-blue-500" },
+	{ value: "purple", bg: "bg-purple-500" },
+	{ value: "orange", bg: "bg-orange-500" },
+	{ value: "gold", bg: "bg-yellow-500" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -92,18 +75,52 @@ function ToggleChip({
 // Main component
 // ---------------------------------------------------------------------------
 export function BackgroundCustomizationCard() {
+	const t = useTranslations("settingsPage");
 	const { data: session } = useSession();
 	const username = (session?.user as { username?: string } | undefined)?.username ?? "preview";
 
 	const { data: savedSettings } = api.profile.getBackgroundSettings.useQuery();
 	const saveMutation = api.profile.saveBackgroundSettings.useMutation({
-		onError: () => toast.error("Failed to save background settings"),
+		onError: () => toast.error(t("failedToSaveBackground")),
 	});
 
 	const [settings, setSettings] = useState<BackgroundSettings>(defaultBackgroundSettings);
 	const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const initializedRef = useRef(false);
+
+	// Translated option arrays
+	const SYMBOL_SET_OPTIONS = useMemo(() =>
+		SYMBOL_SET_VALUES.map((s) => ({
+			...s,
+			label: t(s.value === "currency" ? "symbolCurrency" : s.value === "math" ? "symbolMath" : "symbolFinance"),
+		})),
+	[t]);
+
+	const COLOR_OPTIONS = useMemo(() =>
+		COLOR_VALUES.map((c) => ({
+			...c,
+			label: t(`color${c.value.charAt(0).toUpperCase()}${c.value.slice(1)}` as "colorGray"),
+		})),
+	[t]);
+
+	const DENSITY_OPTIONS = useMemo<{ value: Density; label: string }[]>(() => [
+		{ value: "sparse", label: t("densitySparse") },
+		{ value: "medium", label: t("densityMedium") },
+		{ value: "dense", label: t("densityDense") },
+	], [t]);
+
+	const ANIMATION_OPTIONS = useMemo<{ value: Animation; label: string }[]>(() => [
+		{ value: "pulse", label: t("animPulse") },
+		{ value: "float", label: t("animFloat") },
+		{ value: "static", label: t("animStatic") },
+	], [t]);
+
+	const OPACITY_OPTIONS = useMemo<{ value: Opacity; label: string }[]>(() => [
+		{ value: "subtle", label: t("opacitySubtle") },
+		{ value: "medium", label: t("opacityMedium") },
+		{ value: "bold", label: t("opacityBold") },
+	], [t]);
 
 	// Hydrate from server once loaded
 	useEffect(() => {
@@ -166,16 +183,16 @@ export function BackgroundCustomizationCard() {
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<div>
-						<CardTitle>Profile Background</CardTitle>
+						<CardTitle>{t("profileBackground")}</CardTitle>
 						<CardDescription>
-							Customize the animated background on your public profile.
+							{t("profileBackgroundDescription")}
 						</CardDescription>
 					</div>
 					{saveState === "saving" && (
-						<span className="text-muted-foreground text-xs">Saving...</span>
+						<span className="text-muted-foreground text-xs">{t("saving")}</span>
 					)}
 					{saveState === "saved" && (
-						<span className="text-emerald-600 text-xs dark:text-emerald-400">Saved</span>
+						<span className="text-emerald-600 text-xs dark:text-emerald-400">{t("saved")}</span>
 					)}
 				</div>
 			</CardHeader>
@@ -193,13 +210,13 @@ export function BackgroundCustomizationCard() {
 					/>
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center">
 						<span className="rounded-full border bg-card/80 px-3 py-1 font-medium text-muted-foreground text-xs backdrop-blur-sm">
-							Preview
+							{t("preview")}
 						</span>
 					</div>
 				</div>
 
 				{/* Symbol sets */}
-				<OptionRow label="Symbols">
+				<OptionRow label={t("rowSymbols")}>
 					{SYMBOL_SET_OPTIONS.map(({ value, label, examples }) => (
 						<ToggleChip
 							active={settings.symbolSets.includes(value)}
@@ -214,7 +231,7 @@ export function BackgroundCustomizationCard() {
 
 				{/* Color swatches */}
 				<div className="flex flex-wrap items-center gap-3">
-					<span className="w-20 shrink-0 text-muted-foreground text-xs">Color</span>
+					<span className="w-20 shrink-0 text-muted-foreground text-xs">{t("rowColor")}</span>
 					<div className="flex flex-wrap gap-2">
 						{COLOR_OPTIONS.map(({ value, label, bg }) => (
 							<button
@@ -234,7 +251,7 @@ export function BackgroundCustomizationCard() {
 				</div>
 
 				{/* Density */}
-				<OptionRow label="Density">
+				<OptionRow label={t("rowDensity")}>
 					{DENSITY_OPTIONS.map(({ value, label }) => (
 						<ToggleChip
 							active={settings.density === value}
@@ -247,7 +264,7 @@ export function BackgroundCustomizationCard() {
 				</OptionRow>
 
 				{/* Animation */}
-				<OptionRow label="Animation">
+				<OptionRow label={t("rowAnimation")}>
 					{ANIMATION_OPTIONS.map(({ value, label }) => (
 						<ToggleChip
 							active={settings.animation === value}
@@ -260,7 +277,7 @@ export function BackgroundCustomizationCard() {
 				</OptionRow>
 
 				{/* Opacity */}
-				<OptionRow label="Opacity">
+				<OptionRow label={t("rowOpacity")}>
 					{OPACITY_OPTIONS.map(({ value, label }) => (
 						<ToggleChip
 							active={settings.opacity === value}

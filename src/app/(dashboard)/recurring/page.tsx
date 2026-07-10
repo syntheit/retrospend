@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageContent } from "~/components/page-content";
@@ -28,6 +29,7 @@ import { RecurringStatsCards } from "./_components/recurring-stats-cards";
 type SortKey = "nextPayment" | "amountDesc" | "amountAsc" | "nameAz";
 
 export default function RecurringPage() {
+	const t = useTranslations("recurring");
 	const { openNewRecurring, openRecurring } = useRecurringModal();
 	const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 	const [historyTemplateId, setHistoryTemplateId] = useState<string | null>(
@@ -61,10 +63,10 @@ export default function RecurringPage() {
 	const confirmAndCreate = api.recurring.confirmAndCreate.useMutation({
 		onSuccess: () => {
 			void utils.recurring.list.invalidate();
-			toast.success("Payment confirmed and expense created");
+			toast.success(t("paymentConfirmed"));
 		},
 		onError: () => {
-			toast.error("Failed to confirm payment");
+			toast.error(t("paymentConfirmFailed"));
 		},
 	});
 
@@ -72,10 +74,10 @@ export default function RecurringPage() {
 		onSuccess: () => {
 			void utils.recurring.list.invalidate();
 			setDeleteTarget(null);
-			toast.success("Subscription deleted");
+			toast.success(t("deleted"));
 		},
 		onError: () => {
-			toast.error("Failed to delete subscription");
+			toast.error(t("deleteFailed"));
 		},
 	});
 
@@ -84,11 +86,11 @@ export default function RecurringPage() {
 		onSuccess: (_data, variables) => {
 			void utils.recurring.list.invalidate();
 			toast.success(
-				variables.isActive ? "Subscription resumed" : "Subscription paused",
+				variables.isActive ? t("resumed") : t("paused"),
 			);
 		},
 		onError: () => {
-			toast.error("Failed to update subscription");
+			toast.error(t("updateFailed"));
 		},
 	});
 
@@ -151,7 +153,7 @@ export default function RecurringPage() {
 
 	return (
 		<>
-			<SiteHeader title="Recurring" />
+			<SiteHeader title={t("title")} />
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl">
 					<div className="flex items-start gap-6">
@@ -181,10 +183,10 @@ export default function RecurringPage() {
 								<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 									<div>
 										<h2 className="font-semibold text-lg">
-											Your Subscriptions
+											{t("yourSubscriptions")}
 										</h2>
 										<p className="text-muted-foreground text-sm">
-											Manage your recurring expenses and subscriptions
+											{t("subscriptionsDescription")}
 										</p>
 									</div>
 									<div className="flex items-center gap-2">
@@ -192,7 +194,7 @@ export default function RecurringPage() {
 											<>
 												<ExpandableSearch
 													onChange={setSearchQuery}
-													placeholder="Search subscriptions..."
+													placeholder={t("searchPlaceholder")}
 													value={searchQuery}
 													slashFocus
 												/>
@@ -205,25 +207,25 @@ export default function RecurringPage() {
 													</SelectTrigger>
 													<SelectContent>
 														<SelectItem value="nextPayment">
-															Next payment
+															{t("sortNextPayment")}
 														</SelectItem>
 														<SelectItem value="amountDesc">
-															Amount (high → low)
+															{t("sortAmountHighLow")}
 														</SelectItem>
 														<SelectItem value="amountAsc">
-															Amount (low → high)
+															{t("sortAmountLowHigh")}
 														</SelectItem>
-														<SelectItem value="nameAz">Name A-Z</SelectItem>
+														<SelectItem value="nameAz">{t("sortNameAz")}</SelectItem>
 													</SelectContent>
 												</Select>
 											</>
 										)}
 										<Button
-											aria-label="Add Recurring Expense"
+											aria-label={t("addRecurring")}
 											onClick={openNewRecurring}
 										>
 											<Plus className="h-4 w-4 sm:mr-2" />
-											<span className="hidden sm:inline">Add Recurring Expense</span>
+											<span className="hidden sm:inline">{t("addRecurring")}</span>
 										</Button>
 									</div>
 								</div>
@@ -265,13 +267,13 @@ export default function RecurringPage() {
 			/>
 
 			<ConfirmationDialog
-				confirmLabel="Delete"
-				description="This will permanently remove the recurring expense. This action cannot be undone."
+				confirmLabel={t("deleteConfirm")}
+				description={t("deleteDescription")}
 				isLoading={deleteTemplate.isPending}
 				onConfirm={() => deleteTarget && deleteTemplate.mutate({ id: deleteTarget })}
 				onOpenChange={(open) => !open && setDeleteTarget(null)}
 				open={deleteTarget !== null}
-				title="Delete subscription?"
+				title={t("deleteTitle")}
 				variant="destructive"
 			/>
 		</>

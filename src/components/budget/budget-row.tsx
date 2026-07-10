@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -15,6 +16,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { cn, getCurrencySymbol } from "~/lib/utils";
@@ -36,6 +38,8 @@ export function BudgetRow({
 	homeCurrency,
 	startExpanded = false,
 }: BudgetRowProps) {
+	const t = useTranslations("budget");
+	const { displayName } = useCategoryName();
 	const { formatCurrency } = useCurrencyFormatter();
 	const [isExpanded, setIsExpanded] = useState(startExpanded);
 	const [amount, setAmount] = useState(budget.amount.toString());
@@ -56,7 +60,7 @@ export function BudgetRow({
 		onSuccess: (data) => {
 			if (data.pegToActual !== previousPegStatus) {
 				toast.success(
-					`Budget moved to ${data.pegToActual ? "Fixed / Pegged" : "Variable / Managed"} section`,
+					t("budgetMovedTo", { section: data.pegToActual ? t("fixedPegged") : t("variableManaged") }),
 				);
 			}
 			setPreviousPegStatus(data.pegToActual);
@@ -64,17 +68,17 @@ export function BudgetRow({
 			void utils.budget.getBudgets.invalidate();
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to save budget");
+			toast.error(error.message || t("failedToSaveBudget"));
 		},
 	});
 
 	const deleteBudget = api.budget.deleteBudget.useMutation({
 		onSuccess: () => {
-			toast.success("Budget deleted successfully!");
+			toast.success(t("budgetDeleted"));
 			void utils.budget.getBudgets.invalidate();
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to delete budget");
+			toast.error(error.message || t("failedToDeleteBudget"));
 		},
 	});
 
@@ -175,7 +179,7 @@ export function BudgetRow({
 
 				<div className="min-w-0 flex-1">
 					<h3 className="truncate font-medium text-sm tracking-tight sm:text-base">
-						{budget.category.name}
+						{displayName(budget.category.name)}
 					</h3>
 				</div>
 
@@ -213,7 +217,7 @@ export function BudgetRow({
 				<div className="overflow-hidden">
 				<div className="space-y-4 border-t bg-muted/50 p-4">
 					<div className="space-y-2">
-						<Label htmlFor={`budget-amount-${budget.id}`}>Budget Amount</Label>
+						<Label htmlFor={`budget-amount-${budget.id}`}>{t("budgetAmount")}</Label>
 						<div className="relative">
 							<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground tabular-nums">
 								{getCurrencySymbol(budget.currency)}
@@ -247,7 +251,7 @@ export function BudgetRow({
 
 					{suggestions && (
 						<div className="space-y-2">
-							<Label>Quick Suggestions</Label>
+							<Label>{t("quickSuggestions")}</Label>
 							<QuickChips
 								averageSpend={suggestions.averageSpend}
 								disabled={isPegged}
@@ -268,7 +272,7 @@ export function BudgetRow({
 									setIsExpanded(false);
 								}}
 							/>
-							<Label className="font-medium text-sm">Peg to Actual Spend</Label>
+							<Label className="font-medium text-sm">{t("pegToActualSpend")}</Label>
 						</div>
 					</div>
 
@@ -282,7 +286,7 @@ export function BudgetRow({
 							variant="ghost"
 						>
 							<Trash2 className="h-4 w-4" />
-							<span className="sr-only">Delete budget</span>
+							<span className="sr-only">{t("deleteBudget")}</span>
 						</Button>
 					</div>
 				</div>
@@ -292,10 +296,9 @@ export function BudgetRow({
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent className="w-full max-w-full sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>Delete Budget</DialogTitle>
+						<DialogTitle>{t("deleteBudget")}</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this budget? This action cannot be
-							undone.
+							{t("deleteBudgetConfirmation")}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -303,14 +306,14 @@ export function BudgetRow({
 							onClick={() => setShowDeleteDialog(false)}
 							variant="outline"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={deleteBudget.isPending}
 							onClick={handleConfirmDelete}
 							variant="destructive"
 						>
-							{deleteBudget.isPending ? "Deleting..." : "Delete"}
+							{deleteBudget.isPending ? t("deleting") : t("delete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

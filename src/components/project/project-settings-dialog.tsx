@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import { ImageCropDialog } from "~/components/ui/image-crop-dialog";
 import { toast } from "sonner";
 import { ProjectVisual } from "~/components/project/project-visual";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
 	ResponsiveDialog,
@@ -27,6 +26,7 @@ import {
 import { Separator } from "~/components/ui/separator";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { Switch } from "~/components/ui/switch";
+import { useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -37,7 +37,6 @@ interface ProjectSettingsDialogProps {
 	project: {
 		id: string;
 		name: string;
-		type: string;
 		description: string | null;
 		budgetAmount: number | null;
 		budgetCurrency: string | null;
@@ -58,6 +57,7 @@ export function ProjectSettingsDialog({
 	project,
 	isOrganizer,
 }: ProjectSettingsDialogProps) {
+	const t = useTranslations("projects");
 	const router = useRouter();
 	const utils = api.useUtils();
 
@@ -96,7 +96,7 @@ export function ProjectSettingsDialog({
 
 	const updateMutation = api.project.update.useMutation({
 		onSuccess: () => {
-			toast.success("Project updated");
+			toast.success(t("projectUpdated"));
 			void utils.project.detail.invalidate({ id: project.id });
 			void utils.project.list.invalidate();
 			onOpenChange(false);
@@ -106,7 +106,7 @@ export function ProjectSettingsDialog({
 
 	const archiveMutation = api.project.update.useMutation({
 		onSuccess: () => {
-			toast.success("Project archived");
+			toast.success(t("projectArchived"));
 			void utils.project.list.invalidate();
 			onOpenChange(false);
 			router.push("/projects");
@@ -116,7 +116,7 @@ export function ProjectSettingsDialog({
 
 	const deleteMutation = api.project.delete.useMutation({
 		onSuccess: () => {
-			toast.success("Project deleted");
+			toast.success(t("projectDeleted"));
 			void utils.project.list.invalidate();
 			onOpenChange(false);
 			router.push("/projects");
@@ -135,21 +135,21 @@ export function ProjectSettingsDialog({
 				body: formData,
 			});
 			if (!res.ok) {
-				let message = "Upload failed";
+				let message = t("uploadFailed");
 				try {
 					const data = (await res.json()) as { error?: string };
 					message = data.error ?? message;
 				} catch {
-					if (res.status === 413) message = "File too large. Maximum size is 5MB.";
+					if (res.status === 413) message = t("fileTooLarge");
 				}
 				throw new Error(message);
 			}
 			void utils.project.detail.invalidate({ id: project.id });
 			void utils.project.list.invalidate();
-			toast.success("Project icon updated");
+			toast.success(t("projectIconUpdated"));
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to upload icon",
+				err instanceof Error ? err.message : t("failedToUploadIcon"),
 			);
 		} finally {
 			setImageUploading(false);
@@ -165,14 +165,14 @@ export function ProjectSettingsDialog({
 			);
 			if (!res.ok) {
 				const data = (await res.json()) as { error?: string };
-				throw new Error(data.error ?? "Delete failed");
+				throw new Error(data.error ?? t("deleteFailed"));
 			}
 			void utils.project.detail.invalidate({ id: project.id });
 			void utils.project.list.invalidate();
-			toast.success("Project icon removed");
+			toast.success(t("projectIconRemoved"));
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to remove icon",
+				err instanceof Error ? err.message : t("failedToRemoveIcon"),
 			);
 		} finally {
 			setImageUploading(false);
@@ -184,7 +184,7 @@ export function ProjectSettingsDialog({
 		e.target.value = "";
 		if (!file) return;
 		if (file.size > 5 * 1024 * 1024) {
-			toast.error("File too large. Maximum size is 5MB.");
+			toast.error(t("fileTooLarge"));
 			return;
 		}
 		if (cropSrc) URL.revokeObjectURL(cropSrc);
@@ -202,44 +202,39 @@ export function ProjectSettingsDialog({
 			primaryCurrency,
 			budgetAmount: budget,
 			budgetCurrency: budget ? budgetCurrency : null,
-			...(project.type === "ONGOING"
-				? {
-						billingCycleLength: billingCycleLength as
-							| "WEEKLY"
-							| "BIWEEKLY"
-							| "MONTHLY"
-							| "CUSTOM",
-						billingAutoClose,
-						billingClosePermission: billingClosePermission as
-							| "ORGANIZER_ONLY"
-							| "ANY_PARTICIPANT",
-					}
-				: {}),
+			billingCycleLength: billingCycleLength as
+					| "WEEKLY"
+					| "BIWEEKLY"
+					| "MONTHLY"
+					| "CUSTOM",
+			billingAutoClose,
+			billingClosePermission: billingClosePermission as
+					| "ORGANIZER_ONLY"
+					| "ANY_PARTICIPANT",
 		});
 	};
 
-	const isOngoing = project.type === "ONGOING";
+	const hasBilling = project.billingCycleLength != null;
 
 	return (
 		<>
 		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
 			<ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
 				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>Project Settings</ResponsiveDialogTitle>
-					<ResponsiveDialogDescription>Update project configuration.</ResponsiveDialogDescription>
+					<ResponsiveDialogTitle>{t("projectSettings")}</ResponsiveDialogTitle>
+					<ResponsiveDialogDescription>{t("updateProjectConfiguration")}</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 
 				<div className="space-y-4 py-2">
 					{/* Project Icon */}
 					<div className="space-y-2">
-						<Label>Project Icon</Label>
+						<Label>{t("projectIcon")}</Label>
 						<div className="flex items-center gap-4">
 							<ProjectVisual
 								editable={!imageUploading}
 								imagePath={project.imagePath ?? null}
 								onUpload={handleImageUpload}
 								projectName={project.name}
-								projectType={project.type}
 								size="xl"
 							/>
 							<div className="flex flex-col gap-2">
@@ -250,7 +245,7 @@ export function ProjectSettingsDialog({
 									type="button"
 									variant="outline"
 								>
-									{imageUploading ? "Uploading..." : "Change icon"}
+									{imageUploading ? t("uploading") : t("changeIcon")}
 								</Button>
 								{project.imagePath && (
 									<Button
@@ -260,7 +255,7 @@ export function ProjectSettingsDialog({
 										type="button"
 										variant="ghost"
 									>
-										Remove icon
+										{t("removeIcon")}
 									</Button>
 								)}
 							</div>
@@ -275,12 +270,12 @@ export function ProjectSettingsDialog({
 					</div>
 
 					<div className="space-y-1.5">
-						<Label>Name</Label>
+						<Label>{t("name")}</Label>
 						<Input onChange={(e) => setName(e.target.value)} value={name} />
 					</div>
 
 					<div className="space-y-1.5">
-						<Label>Description</Label>
+						<Label>{t("description")}</Label>
 						<textarea
 							className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
 							onChange={(e) => setDescription(e.target.value)}
@@ -290,19 +285,19 @@ export function ProjectSettingsDialog({
 					</div>
 
 					<div className="space-y-1.5">
-						<Label>Default Currency</Label>
+						<Label>{t("defaultCurrency")}</Label>
 						<CurrencyPicker
 							onValueChange={setPrimaryCurrency}
 							triggerDisplay="flag+code"
 							value={primaryCurrency}
 						/>
 						<p className="text-muted-foreground text-xs">
-							Pre-selected when adding expenses to this project.
+							{t("defaultCurrencyHint")}
 						</p>
 					</div>
 
 					<div className="space-y-1.5">
-						<Label>Budget</Label>
+						<Label>{t("budget")}</Label>
 						<div
 							className={cn(
 								"flex h-9 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
@@ -318,21 +313,27 @@ export function ProjectSettingsDialog({
 							<Input
 								className="h-full w-full border-0 bg-transparent px-3 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
 								onChange={(e) => setBudgetAmount(e.target.value)}
-								placeholder="Amount"
+								placeholder={t("amount")}
 								type="number"
 								value={budgetAmount}
 							/>
 						</div>
 					</div>
 
-					{/* Billing config for Ongoing */}
-					{isOngoing && (
-						<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-							<Badge className="text-xs" variant="secondary">
-								Billing Config
-							</Badge>
+					{/* Billing periods */}
+					<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+						<div className="flex items-center justify-between">
+							<Label className="cursor-pointer font-normal text-sm">
+								{t("enableBillingPeriods")}
+							</Label>
+							<Switch
+								checked={hasBilling}
+								disabled
+							/>
+						</div>
+						{hasBilling && (<>
 							<div className="space-y-1.5">
-								<Label>Cycle Length</Label>
+								<Label>{t("cycleLength")}</Label>
 								<Select
 									onValueChange={setBillingCycleLength}
 									value={billingCycleLength}
@@ -341,15 +342,15 @@ export function ProjectSettingsDialog({
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="WEEKLY">Weekly</SelectItem>
-										<SelectItem value="BIWEEKLY">Biweekly</SelectItem>
-										<SelectItem value="MONTHLY">Monthly</SelectItem>
+										<SelectItem value="WEEKLY">{t("cycleWeekly")}</SelectItem>
+										<SelectItem value="BIWEEKLY">{t("cycleBiweekly")}</SelectItem>
+										<SelectItem value="MONTHLY">{t("cycleMonthly")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 							<div className="flex items-center justify-between">
 								<Label className="cursor-pointer font-normal text-sm">
-									Auto-Close Periods
+									{t("autoClosePeriods")}
 								</Label>
 								<Switch
 									checked={billingAutoClose}
@@ -357,7 +358,7 @@ export function ProjectSettingsDialog({
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label>Close Permission</Label>
+								<Label>{t("closePermission")}</Label>
 								<Select
 									onValueChange={setBillingClosePermission}
 									value={billingClosePermission}
@@ -367,35 +368,35 @@ export function ProjectSettingsDialog({
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="ORGANIZER_ONLY">
-											Owner Only
+											{t("ownerOnly")}
 										</SelectItem>
 										<SelectItem value="ANY_PARTICIPANT">
-											Any Participant
+											{t("anyParticipant")}
 										</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
-						</div>
-					)}
+						</>)}
+					</div>
 
 					<Separator />
 
 					{/* Danger Zone */}
 					<div className="space-y-3">
 						<h4 className="font-semibold text-destructive text-sm">
-							Danger Zone
+							{t("dangerZone")}
 						</h4>
 
 						<div className="rounded-lg border border-destructive/30 divide-y divide-destructive/30">
 							<div className="flex items-center justify-between p-3">
 								<div>
 									<p className="font-medium text-sm">
-										{project.status === "ACTIVE" ? "Archive Project" : "Restore Project"}
+										{project.status === "ACTIVE" ? t("archiveProject") : t("restoreProject")}
 									</p>
 									<p className="text-muted-foreground text-xs">
 										{project.status === "ACTIVE"
-											? "Mark as archived. Can be restored later."
-											: "Set project back to active."}
+											? t("archiveDescription")
+											: t("restoreDescription")}
 									</p>
 								</div>
 								<Button
@@ -409,7 +410,7 @@ export function ProjectSettingsDialog({
 									size="sm"
 									variant="outline"
 								>
-									{project.status === "ACTIVE" ? "Archive" : "Restore"}
+									{project.status === "ACTIVE" ? t("archive") : t("restore")}
 								</Button>
 							</div>
 
@@ -417,9 +418,9 @@ export function ProjectSettingsDialog({
 								<div className="p-3">
 									<div className="flex items-center justify-between">
 										<div>
-											<p className="font-medium text-sm">Delete Project</p>
+											<p className="font-medium text-sm">{t("deleteProject")}</p>
 											<p className="text-muted-foreground text-xs">
-												Permanently delete this project and all its data.
+												{t("permanentlyDeleteProject")}
 											</p>
 										</div>
 										{!showDeleteConfirm && (
@@ -428,14 +429,14 @@ export function ProjectSettingsDialog({
 												size="sm"
 												variant="destructive"
 											>
-												Delete
+												{t("delete")}
 											</Button>
 										)}
 									</div>
 									{showDeleteConfirm && (
 										<div className="mt-2 space-y-2">
 											<p className="text-muted-foreground text-xs">
-												Type &quot;{project.name}&quot; to confirm:
+												{t("typeToConfirm", { name: project.name })}
 											</p>
 											<Input
 												onChange={(e) => setDeleteConfirm(e.target.value)}
@@ -451,7 +452,7 @@ export function ProjectSettingsDialog({
 													size="sm"
 													variant="ghost"
 												>
-													Cancel
+													{t("cancel")}
 												</Button>
 												<Button
 													disabled={
@@ -463,8 +464,8 @@ export function ProjectSettingsDialog({
 													variant="destructive"
 												>
 													{deleteMutation.isPending
-														? "Deleting..."
-														: "Confirm Delete"}
+														? t("deleting")
+														: t("confirmDelete")}
 												</Button>
 											</div>
 										</div>
@@ -477,13 +478,13 @@ export function ProjectSettingsDialog({
 
 				<ResponsiveDialogFooter>
 					<Button onClick={() => onOpenChange(false)} variant="ghost">
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button
 						disabled={updateMutation.isPending || !name.trim()}
 						onClick={handleSave}
 					>
-						{updateMutation.isPending ? "Saving..." : "Save Changes"}
+						{updateMutation.isPending ? t("saving") : t("saveChanges")}
 					</Button>
 				</ResponsiveDialogFooter>
 			</ResponsiveDialogContent>
@@ -494,7 +495,7 @@ export function ProjectSettingsDialog({
 			onOpenChange={setCropOpen}
 			imageSrc={cropSrc}
 			onCrop={(file) => void handleImageUpload(file)}
-			title="Crop Project Icon"
+			title={t("cropProjectIcon")}
 		/>
 		</>
 	);

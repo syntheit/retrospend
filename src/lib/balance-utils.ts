@@ -67,12 +67,16 @@ export function formatSettleLabel(
 	homeCurrency: string,
 	balances: BalanceEntry[],
 	formatCurrency: (amount: number, currency: string) => string,
+	labels?: { pay: (amount: string) => string; request: (amount: string) => string },
 ): string {
 	const amount = homeCurrencyTotal?.canConvert
 		? formatCurrency(Math.abs(homeCurrencyTotal.amount), homeCurrency)
 		: balances[0]
 			? formatCurrency(balances[0].balance, balances[0].currency)
 			: "";
+	if (labels) {
+		return direction === "you_owe_them" ? labels.pay(amount) : labels.request(amount);
+	}
 	return direction === "you_owe_them" ? `Pay ${amount}` : `Request ${amount}`;
 }
 

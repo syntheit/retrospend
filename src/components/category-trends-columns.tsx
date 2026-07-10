@@ -89,17 +89,22 @@ function formatPercentage(percentage: number) {
 	return `${sign}${percentage.toFixed(1)}%`;
 }
 
+type TFunction = (key: string, params?: Record<string, string>) => string;
+
 export function createCategoryTrendColumns(
 	formatCurrency: (amount: number) => string,
 	bucketSize: BucketSize,
 	getPeriodLabel: (bucketSize: BucketSize) => string,
+	displayName?: (name: string) => string,
+	t?: TFunction,
 ): ColumnDef<CategoryTrendRow>[] {
 	const periodLabel = getPeriodLabel(bucketSize);
+	const tr = t ?? ((key: string) => key);
 
 	return [
 		{
 			accessorKey: "category",
-			header: "Category",
+			header: tr("categoryColumn"),
 			enableSorting: true,
 			meta: { flex: true },
 			sortingFn: (rowA, rowB) => {
@@ -118,13 +123,13 @@ export function createCategoryTrendColumns(
 								] || "#6b7280",
 						}}
 					/>
-					<span className="font-medium">{row.original.category.name}</span>
+					<span className="font-medium">{displayName ? displayName(row.original.category.name) : row.original.category.name}</span>
 				</div>
 			),
 		},
 		{
 			accessorKey: "currentPeriodTotal",
-			header: () => <div className="text-right">This {periodLabel}</div>,
+			header: () => <div className="text-right">{tr("thisPeriod", { period: periodLabel })}</div>,
 			enableSorting: true,
 			cell: ({ row }) => (
 				<div className="text-right font-medium">
@@ -135,7 +140,7 @@ export function createCategoryTrendColumns(
 		{
 			id: "periodAverage",
 			accessorKey: "periodAverage",
-			header: () => <div className="text-right">Avg/{periodLabel}</div>,
+			header: () => <div className="text-right">{tr("avgPerPeriod", { period: periodLabel })}</div>,
 			enableSorting: true,
 			cell: ({ row }) => (
 				<div className="text-right text-muted-foreground">
@@ -150,28 +155,31 @@ export function createCategoryTrendColumns(
 				<TooltipProvider>
 					<UITooltip>
 						<TooltipTrigger asChild>
-							<span className="cursor-help">Trend</span>
+							<span className="cursor-help">{tr("trend")}</span>
 						</TooltipTrigger>
 						<TooltipContent>
 							<div className="max-w-xs text-sm">
-								<div className="mb-1 font-medium">Trend Analysis</div>
+								<div className="mb-1 font-medium">{tr("trendAnalysis")}</div>
 								<div className="space-y-1 text-xs">
 									<div>
-										<strong>Avg/{periodLabel}:</strong> Average of periods with
-										expenses
+										<strong>{tr("avgPerPeriod", { period: periodLabel })}:</strong>{" "}
+										{tr("avgPeriodExplanation")}
 									</div>
 									<div>
-										<strong>Top:</strong> Overall percentage change
+										<strong>{tr("topLabel")}</strong> Overall percentage change
 									</div>
 									<div>
-										<strong>Bottom:</strong> {periodLabel}-over-
-										{periodLabel.toLowerCase()} change
+										<strong>{tr("bottomLabel")}</strong>{" "}
+										{tr("periodOverPeriod", {
+											period: periodLabel,
+											periodLower: periodLabel.toLowerCase(),
+										})}
 									</div>
 									<div className="text-muted-foreground">
-										Green ↓ = spending decreased (good)
+										{tr("spendingDecreasedNote")}
 									</div>
 									<div className="text-muted-foreground">
-										Red ↑ = spending increased
+										{tr("spendingIncreasedNote")}
 									</div>
 								</div>
 							</div>

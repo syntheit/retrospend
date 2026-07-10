@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CurrencyPicker } from "~/components/currency-picker";
@@ -94,13 +95,14 @@ export function AssetDialog({
 	open: controlledOpen,
 	onOpenChange: setControlledOpen,
 }: AssetDialogProps) {
+	const t = useTranslations("wealth");
 	const isEdit = !!assetId;
-	const title = isEdit ? "Edit Asset" : "Add Asset";
+	const title = isEdit ? t("editAsset") : t("addAsset");
 	const description = isEdit
-		? "Update your asset details."
-		: "Create a new asset to track your wealth.";
-	const submitLabel = isEdit ? "Update Asset" : "Create Asset";
-	const loadingLabel = isEdit ? "Updating..." : "Creating...";
+		? t("editAssetDescription")
+		: t("addAssetDescription");
+	const submitLabel = isEdit ? t("updateAsset") : t("createAsset");
+	const loadingLabel = isEdit ? t("updating") : t("creating");
 
 	const [internalOpen, setInternalOpen] = useState(false);
 
@@ -256,7 +258,7 @@ export function AssetDialog({
 
 	const createAsset = api.wealth.createAsset.useMutation({
 		onSuccess: () => {
-			toast.success("Asset created successfully");
+			toast.success(t("assetCreated"));
 			if (setOpen) setOpen(false);
 			form.reset();
 			void utils.wealth.getDashboard.invalidate();
@@ -265,7 +267,7 @@ export function AssetDialog({
 
 	const updateAsset = api.wealth.updateAsset.useMutation({
 		onSuccess: () => {
-			toast.success("Asset updated successfully");
+			toast.success(t("assetUpdated"));
 			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
 		},
@@ -273,7 +275,7 @@ export function AssetDialog({
 
 	const deleteAsset = api.wealth.deleteAsset.useMutation({
 		onSuccess: () => {
-			toast.success("Asset deleted successfully");
+			toast.success(t("assetDeletedSingle"));
 			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
 		},
@@ -316,7 +318,7 @@ export function AssetDialog({
 	const defaultTrigger = (
 		<Button>
 			<Plus className="mr-2 h-4 w-4" />
-			Add Asset
+			{t("addAsset")}
 		</Button>
 	);
 
@@ -338,9 +340,9 @@ export function AssetDialog({
 								name="name"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Name</FormLabel>
+										<FormLabel>{t("nameLabel")}</FormLabel>
 										<FormControl>
-											<Input placeholder="e.g. Main Bank Asset" {...field} />
+											<Input placeholder={t("namePlaceholder")} {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -351,33 +353,33 @@ export function AssetDialog({
 								name="type"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Type</FormLabel>
+										<FormLabel>{t("typeLabel")}</FormLabel>
 										<Select
 											defaultValue={field.value}
 											onValueChange={field.onChange}
 										>
 											<FormControl>
 												<SelectTrigger>
-													<SelectValue placeholder="Select type" />
+													<SelectValue placeholder={t("selectType")} />
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
-												<SelectItem value={AssetType.CASH}>Cash</SelectItem>
+												<SelectItem value={AssetType.CASH}>{t("cash")}</SelectItem>
 												<SelectItem value={AssetType.INVESTMENT}>
-													Investment
+													{t("investment")}
 												</SelectItem>
-												<SelectItem value={AssetType.CRYPTO}>Crypto</SelectItem>
+												<SelectItem value={AssetType.CRYPTO}>{t("crypto")}</SelectItem>
 												<SelectItem value={AssetType.REAL_ESTATE}>
-													Real Estate
+													{t("realEstate")}
 												</SelectItem>
 												<SelectItem value={AssetType.LIABILITY_LOAN}>
-													Loan
+													{t("loan")}
 												</SelectItem>
 												<SelectItem value={AssetType.LIABILITY_CREDIT_CARD}>
-													Credit Card
+													{t("creditCard")}
 												</SelectItem>
 												<SelectItem value={AssetType.LIABILITY_MORTGAGE}>
-													Mortgage
+													{t("mortgage")}
 												</SelectItem>
 											</SelectContent>
 										</Select>
@@ -389,7 +391,7 @@ export function AssetDialog({
 							{/* Balance with Integrated Currency Picker */}
 							<div className="space-y-4">
 								<div className="space-y-2">
-									<FormLabel>Balance</FormLabel>
+									<FormLabel>{t("balanceLabel")}</FormLabel>
 									<div
 										className={cn(
 											"flex h-9 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
@@ -432,7 +434,7 @@ export function AssetDialog({
 								{form.watch("currency") !== "USD" && (
 									<div className="space-y-2">
 										<FormLabel className="flex flex-wrap items-center">
-											<span>Exchange Rate</span>
+											<span>{t("exchangeRateLabel")}</span>
 											{checkIsCrypto(watchedCurrency) && (
 												<span className="ml-1 font-normal text-muted-foreground">
 													(1 {watchedCurrency} = USD)
@@ -459,7 +461,7 @@ export function AssetDialog({
 									<div className="rounded-md bg-muted/50 p-3">
 										<div className="flex items-center justify-between text-sm">
 											<span className="text-muted-foreground">
-												USD Equivalent:
+												{t("usdEquivalent")}
 											</span>
 											<span className="font-medium">
 												${formatNumber(usdEquivalent, 2)}
@@ -476,7 +478,7 @@ export function AssetDialog({
 									name="interestRate"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Interest Rate (APR)</FormLabel>
+											<FormLabel>{t("interestRateLabel")}</FormLabel>
 											<FormControl>
 												<Input
 													placeholder="0.00"
@@ -489,7 +491,7 @@ export function AssetDialog({
 												/>
 											</FormControl>
 											<FormDescription>
-												Annual percentage rate for this liability.
+												{t("interestRateDescription")}
 											</FormDescription>
 											<FormMessage />
 										</FormItem>
@@ -510,9 +512,9 @@ export function AssetDialog({
 											/>
 										</FormControl>
 										<div className="space-y-1 leading-none">
-											<FormLabel>Liquid Asset</FormLabel>
+											<FormLabel>{t("liquidAsset")}</FormLabel>
 											<FormDescription className="text-xs">
-												Can be easily converted to cash
+												{t("liquidAssetDescription")}
 											</FormDescription>
 										</div>
 									</FormItem>
@@ -530,7 +532,7 @@ export function AssetDialog({
 										variant="ghost"
 									>
 										<Trash2 className="h-4 w-4" />
-										<span className="sr-only">Delete asset</span>
+										<span className="sr-only">{t("deleteAssetSr")}</span>
 									</Button>
 								)}
 								<Button
@@ -555,11 +557,9 @@ export function AssetDialog({
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent className="w-full max-w-full sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>Delete Asset</DialogTitle>
+						<DialogTitle>{t("deleteAssetTitle")}</DialogTitle>
 						<DialogDescription>
-							This will permanently remove "{form.watch("name") || "this asset"}
-							" from your portfolio. This action cannot be undone and will
-							affect your net worth calculations.
+							{t("deleteAssetConfirmDescription", { name: form.watch("name") || t("thisAsset") })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -567,14 +567,14 @@ export function AssetDialog({
 							onClick={() => setShowDeleteDialog(false)}
 							variant="outline"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={deleteAsset.isPending}
 							onClick={handleDelete}
 							variant="destructive"
 						>
-							{deleteAsset.isPending ? "Deleting..." : "Delete Asset"}
+							{deleteAsset.isPending ? t("deleting") : t("deleteAssetTitle")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

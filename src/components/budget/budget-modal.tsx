@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -20,6 +21,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import { cn, getCurrencySymbol } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -47,6 +49,8 @@ export function BudgetModal({
 	selectedMonth,
 	homeCurrency,
 }: BudgetModalProps) {
+	const t = useTranslations("budget");
+	const { displayName } = useCategoryName();
 	const utils = api.useUtils();
 	const [amount, setAmount] = useState(budget?.amount?.toString() || "");
 	const [budgetType, setBudgetType] = useState<BudgetType>(
@@ -89,7 +93,7 @@ export function BudgetModal({
 			void utils.budget.getBudgets.invalidate();
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to save budget");
+			toast.error(error.message || t("failedToSaveBudget"));
 		},
 	});
 
@@ -131,45 +135,45 @@ export function BudgetModal({
 								categoryColor,
 							)}
 						>
-							{category.name.substring(0, 2).toUpperCase()}
+							{displayName(category.name).substring(0, 2).toUpperCase()}
 						</div>
-						{mode === "add" ? "Add Budget" : "Edit Budget"} - {category.name}
+						{mode === "add" ? t("addBudget") : t("editBudget")} - {displayName(category.name)}
 					</ResponsiveDialogTitle>
-					<ResponsiveDialogDescription className="sr-only">Set a monthly budget for a category</ResponsiveDialogDescription>
+					<ResponsiveDialogDescription className="sr-only">{t("setMonthlyBudgetDescription")}</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 
 				<form className="space-y-4" onSubmit={handleSubmit}>
 					<div className="space-y-2">
-						<Label htmlFor="budget-method">Budget Method</Label>
+						<Label htmlFor="budget-method">{t("budgetMethod")}</Label>
 						<Select
 							onValueChange={(val) => setBudgetType(val as BudgetType)}
 							value={budgetType}
 						>
 							<SelectTrigger id="budget-method">
-								<SelectValue placeholder="Select budget method" />
+								<SelectValue placeholder={t("selectBudgetMethod")} />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="FIXED">
 									<div className="flex flex-col">
-										<span className="font-medium">Fixed Amount</span>
+										<span className="font-medium">{t("fixedAmount")}</span>
 										<span className="text-muted-foreground text-xs">
-											Set a specific limit
+											{t("fixedAmountDescription")}
 										</span>
 									</div>
 								</SelectItem>
 								<SelectItem value="PEG_TO_ACTUAL">
 									<div className="flex flex-col">
-										<span className="font-medium">Peg to Actual</span>
+										<span className="font-medium">{t("pegToActual")}</span>
 										<span className="text-muted-foreground text-xs">
-											Budget always matches spend
+											{t("pegToActualDescription")}
 										</span>
 									</div>
 								</SelectItem>
 								<SelectItem value="PEG_TO_LAST_MONTH">
 									<div className="flex flex-col">
-										<span className="font-medium">Peg to Last Month</span>
+										<span className="font-medium">{t("pegToLastMonth")}</span>
 										<span className="text-muted-foreground text-xs">
-											Use last month's spend as limit
+											{t("pegToLastMonthDescription")}
 										</span>
 									</div>
 								</SelectItem>
@@ -179,9 +183,9 @@ export function BudgetModal({
 
 					<div className={cn("space-y-2", isPegged && "opacity-50")}>
 						<Label htmlFor="budget-amount">
-							Budget Amount{" "}
+							{t("budgetAmount")}{" "}
 							{isPegged && (
-								<span className="text-muted-foreground">(auto-calculated)</span>
+								<span className="text-muted-foreground">({t("autoCalculated")})</span>
 							)}
 						</Label>
 						<div className="relative">
@@ -194,7 +198,7 @@ export function BudgetModal({
 								id="budget-amount"
 								min="0"
 								onChange={(e) => setAmount(e.target.value)}
-								placeholder={isPegged ? "Auto-calculated" : "0.00"}
+								placeholder={isPegged ? t("autoCalculated") : "0.00"}
 								ref={inputRef}
 								required={!isPegged}
 								step="0.01"
@@ -206,7 +210,7 @@ export function BudgetModal({
 
 					{mode === "edit" && suggestions && !isPegged && (
 						<div className="space-y-2">
-							<Label>Quick Suggestions</Label>
+							<Label>{t("quickSuggestions")}</Label>
 							<QuickChips
 								averageSpend={suggestions.averageSpend}
 								homeCurrency={homeCurrency}
@@ -223,14 +227,14 @@ export function BudgetModal({
 							type="button"
 							variant="outline"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button disabled={upsertBudget.isPending} type="submit">
 							{upsertBudget.isPending
-								? "Saving..."
+								? t("saving")
 								: mode === "add"
-									? "Add Budget"
-									: "Save Changes"}
+									? t("addBudget")
+									: t("saveChanges")}
 						</Button>
 					</ResponsiveDialogFooter>
 				</form>

@@ -2,6 +2,8 @@ import "~/styles/globals.css";
 
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { FontProvider, FontScript } from "~/components/font-provider";
 import { ThemeProvider, ThemeScript } from "~/components/theme-provider";
 import { Toaster } from "~/components/ui/sonner";
@@ -65,13 +67,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
+	const locale = await getLocale();
+	const messages = await getMessages();
+
 	return (
 		<html
 			className={`${dmSans.variable} ${jetbrainsMono.variable}`}
-			lang="en"
+			lang={locale}
 			suppressHydrationWarning
 		>
 			<head>
@@ -80,14 +85,16 @@ export default function RootLayout({
 				<ThemeScript />
 			</head>
 			<body className="overflow-hidden">
-				<ThemeProvider>
-					<TRPCReactProvider>
-						<FontProvider>
-							{children}
-							<Toaster />
-						</FontProvider>
-					</TRPCReactProvider>
-				</ThemeProvider>
+				<NextIntlClientProvider locale={locale} messages={messages}>
+					<ThemeProvider>
+						<TRPCReactProvider>
+							<FontProvider>
+								{children}
+								<Toaster />
+							</FontProvider>
+						</TRPCReactProvider>
+					</ThemeProvider>
+				</NextIntlClientProvider>
 			</body>
 		</html>
 	);

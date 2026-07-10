@@ -1,46 +1,36 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { DatePicker } from "~/components/ui/date-picker";
 import { MonthStepper } from "~/components/date/MonthStepper";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import type { DateRangeState, AmountRange } from "~/hooks/use-table-filters";
 
-const MONTH_NAMES = [
-	"January",
-	"February",
-	"March",
-	"April",
-	"May",
-	"June",
-	"July",
-	"August",
-	"September",
-	"October",
-	"November",
-	"December",
-] as const;
+function getMonthNames(t: ReturnType<typeof useTranslations<"ui">>): string[] {
+	return [
+		t("january"), t("february"), t("march"), t("april"),
+		t("may"), t("june"), t("july"), t("august"),
+		t("september"), t("october"), t("november"), t("december"),
+	];
+}
 
-const SHORT_MONTH_NAMES = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-] as const;
+function getShortMonthNames(t: ReturnType<typeof useTranslations<"ui">>): string[] {
+	return [
+		t("janShort"), t("febShort"), t("marShort"), t("aprShort"),
+		t("mayShort"), t("junShort"), t("julShort"), t("augShort"),
+		t("sepShort"), t("octShort"), t("novShort"), t("decShort"),
+	];
+}
 
 type TypeFilter = "all" | "personal" | "shared";
 type ExcludeFilter = "all" | "included" | "excluded";
 
-function getDatePresets(): {
+function getDatePresets(t: ReturnType<typeof useTranslations<"tableFilters">>): {
 	label: string;
 	key: string;
 	getRange: () => { from: Date; to: Date };
@@ -50,7 +40,7 @@ function getDatePresets(): {
 
 	return [
 		{
-			label: "This month",
+			label: t("thisMonth"),
 			key: "month",
 			getRange: () => {
 				const from = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -58,7 +48,7 @@ function getDatePresets(): {
 			},
 		},
 		{
-			label: "Last 7 days",
+			label: t("last7Days"),
 			key: "7d",
 			getRange: () => {
 				const from = new Date(today);
@@ -68,7 +58,7 @@ function getDatePresets(): {
 			},
 		},
 		{
-			label: "Last 30 days",
+			label: t("last30Days"),
 			key: "30d",
 			getRange: () => {
 				const from = new Date(today);
@@ -78,7 +68,7 @@ function getDatePresets(): {
 			},
 		},
 		{
-			label: "This quarter",
+			label: t("thisQuarter"),
 			key: "quarter",
 			getRange: () => {
 				const quarterMonth = Math.floor(today.getMonth() / 3) * 3;
@@ -87,7 +77,7 @@ function getDatePresets(): {
 			},
 		},
 		{
-			label: "Year to date",
+			label: t("yearToDate"),
 			key: "ytd",
 			getRange: () => {
 				const from = new Date(today.getFullYear(), 0, 1);
@@ -154,17 +144,21 @@ export interface TableFiltersProps {
 	homeCurrency?: string;
 }
 
-const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
-	{ value: "all", label: "All" },
-	{ value: "personal", label: "Personal" },
-	{ value: "shared", label: "Shared" },
-];
+function getTypeOptions(t: ReturnType<typeof useTranslations<"tableFilters">>): { value: TypeFilter; label: string }[] {
+	return [
+		{ value: "all", label: t("all") },
+		{ value: "personal", label: t("personal") },
+		{ value: "shared", label: t("shared") },
+	];
+}
 
-const EXCLUDE_OPTIONS: { value: ExcludeFilter; label: string }[] = [
-	{ value: "all", label: "All" },
-	{ value: "included", label: "Included" },
-	{ value: "excluded", label: "Excluded only" },
-];
+function getExcludeOptions(t: ReturnType<typeof useTranslations<"tableFilters">>): { value: ExcludeFilter; label: string }[] {
+	return [
+		{ value: "all", label: t("all") },
+		{ value: "included", label: t("included") },
+		{ value: "excluded", label: t("excludedOnly") },
+	];
+}
 
 export function TableFilters({
 	typeFilter,
@@ -192,8 +186,13 @@ export function TableFilters({
 	clearAmountRange,
 	homeCurrency,
 }: TableFiltersProps) {
-	const datePresets = getDatePresets();
+	const t = useTranslations("tableFilters");
+	const tUi = useTranslations("ui");
+	const { displayName } = useCategoryName();
+	const datePresets = getDatePresets(t);
 	const isDateRangeActive = dateRange !== null;
+	const TYPE_OPTIONS = useMemo(() => getTypeOptions(t), [t]);
+	const EXCLUDE_OPTIONS = useMemo(() => getExcludeOptions(t), [t]);
 
 	// Show expanded categories
 	const [showAllCategories, setShowAllCategories] = useState(false);
@@ -243,7 +242,7 @@ export function TableFilters({
 			{hasSharedExpenses && (
 				<section className="space-y-2">
 					<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-						Type
+						{t("type")}
 					</h3>
 					<div className="flex flex-wrap gap-1.5">
 						{TYPE_OPTIONS.map(({ value, label }) => (
@@ -265,12 +264,12 @@ export function TableFilters({
 			{/* Period */}
 			<section className="space-y-3">
 				<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-					Period
+					{t("period")}
 				</h3>
 
 				{/* Quick presets */}
 				<div className="space-y-1.5">
-					<span className="text-muted-foreground text-[11px]">Quick</span>
+					<span className="text-muted-foreground text-[11px]">{t("quick")}</span>
 					<div className="flex flex-wrap gap-1.5">
 						{datePresets.map((preset) => (
 							<Button
@@ -303,21 +302,21 @@ export function TableFilters({
 						isDateRangeActive && "opacity-40 pointer-events-none",
 					)}
 				>
-					<span className="text-muted-foreground text-[11px]">By month</span>
+					<span className="text-muted-foreground text-[11px]">{t("byMonth")}</span>
 					<MonthStepper
 						compact
 						maxDate={monthStepperMax}
 						minDate={monthStepperMin}
 						onChange={handleMonthStepperChange}
 						onClear={handleMonthStepperClear}
-						placeholder="Select month"
+						placeholder={t("selectMonth")}
 						value={monthStepperValue}
 					/>
 				</div>
 
 				{/* Custom date range */}
 				<div className="space-y-1.5">
-					<span className="text-muted-foreground text-[11px]">Custom range</span>
+					<span className="text-muted-foreground text-[11px]">{t("customRange")}</span>
 					<div className="flex items-center gap-2">
 						<DatePicker
 							className="w-44"
@@ -332,9 +331,9 @@ export function TableFilters({
 								to.setHours(23, 59, 59, 999);
 								setDateRange({ from, to });
 							}}
-							placeholder="From date"
+							placeholder={t("fromDate")}
 						/>
-						<span className="text-muted-foreground text-xs">to</span>
+						<span className="text-muted-foreground text-xs">{t("to")}</span>
 						<DatePicker
 							className="w-44"
 							date={dateRange && !dateRange.preset ? dateRange.to : undefined}
@@ -347,7 +346,7 @@ export function TableFilters({
 								const from = dateRange?.from ?? to;
 								setDateRange({ from, to });
 							}}
-							placeholder="To date"
+							placeholder={t("toDate")}
 						/>
 					</div>
 				</div>
@@ -357,7 +356,7 @@ export function TableFilters({
 			{availableCategories.length > 0 && (
 				<section className="space-y-2">
 					<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-						Category
+						{t("category")}
 					</h3>
 					<div className="flex flex-wrap gap-1.5">
 						{visibleCategories.map((category) => {
@@ -382,7 +381,7 @@ export function TableFilters({
 												`text-${category.color}-500`,
 										)}
 									/>
-									{category.name}
+									{displayName(category.name)}
 								</Button>
 							);
 						})}
@@ -395,8 +394,8 @@ export function TableFilters({
 							variant="ghost"
 						>
 							{showAllCategories
-								? "Show less"
-								: `+${availableCategories.length - CATEGORY_LIMIT} more`}
+								? t("showLess")
+								: t("showMore", { count: availableCategories.length - CATEGORY_LIMIT })}
 						</Button>
 					)}
 				</section>
@@ -405,7 +404,7 @@ export function TableFilters({
 			{/* Amount Range */}
 			<section className="space-y-2">
 				<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-					Amount ({homeCurrency ?? "USD"})
+					{t("amount")} ({homeCurrency ?? "USD"})
 				</h3>
 				<div className="flex items-center gap-2">
 					<Input
@@ -417,7 +416,7 @@ export function TableFilters({
 								min: e.target.value ? Number(e.target.value) : undefined,
 							})
 						}
-						placeholder="Min"
+						placeholder={t("min")}
 						step="any"
 						type="number"
 						value={amountRange.min ?? ""}
@@ -432,7 +431,7 @@ export function TableFilters({
 								max: e.target.value ? Number(e.target.value) : undefined,
 							})
 						}
-						placeholder="Max"
+						placeholder={t("max")}
 						step="any"
 						type="number"
 						value={amountRange.max ?? ""}
@@ -443,7 +442,7 @@ export function TableFilters({
 			{/* Analytics Status */}
 			<section className="space-y-2">
 				<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-					Analytics Status
+					{t("analyticsStatus")}
 				</h3>
 				<div className="flex flex-wrap gap-1.5">
 					{EXCLUDE_OPTIONS.map(({ value, label }) => (
@@ -465,5 +464,5 @@ export function TableFilters({
 }
 
 // Re-export types and helpers for use by filter-bar
-export { MONTH_NAMES, SHORT_MONTH_NAMES, getDatePresets, formatDateForInput };
+export { getMonthNames, getShortMonthNames, getDatePresets, formatDateForInput };
 export type { TypeFilter, ExcludeFilter };

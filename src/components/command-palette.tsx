@@ -15,6 +15,7 @@ import {
 	Users,
 	Wallet,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useExpenseModal } from "~/components/expense-modal-provider";
@@ -47,6 +48,9 @@ type CommandAction = {
 };
 
 export function CommandPalette() {
+	const t = useTranslations("commands");
+	const ts = useTranslations("sidebar");
+	const tn = useTranslations("nav");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -172,61 +176,61 @@ export function CommandPalette() {
 	const pages: CommandAction[] = [
 		{
 			id: "dashboard",
-			label: "Dashboard",
+			label: ts("dashboard"),
 			icon: LayoutDashboard,
 			onSelect: () => navigate("/dashboard"),
 		},
 		{
 			id: "transactions",
-			label: "Transactions",
+			label: ts("transactions"),
 			icon: Receipt,
 			onSelect: () => navigate("/transactions"),
 		},
 		{
 			id: "budget",
-			label: "Budget",
+			label: ts("budget"),
 			icon: PiggyBank,
 			onSelect: () => navigate("/budget"),
 		},
 		{
 			id: "recurring",
-			label: "Recurring",
+			label: ts("recurring"),
 			icon: Repeat,
 			onSelect: () => navigate("/recurring"),
 		},
 		{
 			id: "people",
-			label: "People",
+			label: ts("people"),
 			icon: Users,
 			onSelect: () => navigate("/people"),
 		},
 		{
 			id: "projects",
-			label: "Projects",
+			label: ts("projects"),
 			icon: Folder,
 			onSelect: () => navigate("/projects"),
 		},
 		{
 			id: "import",
-			label: "Import",
+			label: ts("import"),
 			icon: FileInput,
 			onSelect: () => navigate("/import"),
 		},
 		{
 			id: "wealth",
-			label: "Wealth",
+			label: ts("wealth"),
 			icon: Wallet,
 			onSelect: () => navigate("/wealth"),
 		},
 		{
 			id: "currencies",
-			label: "Currencies",
+			label: ts("currencies"),
 			icon: Coins,
 			onSelect: () => navigate("/currencies"),
 		},
 		{
 			id: "settings",
-			label: "Settings",
+			label: tn("settings"),
 			icon: Settings,
 			onSelect: () => navigate("/settings"),
 		},
@@ -235,7 +239,7 @@ export function CommandPalette() {
 	const actions: CommandAction[] = [
 		{
 			id: "add-expense",
-			label: "Add Expense",
+			label: t("addExpense"),
 			icon: CirclePlus,
 			onSelect: () => {
 				close();
@@ -244,7 +248,7 @@ export function CommandPalette() {
 		},
 		{
 			id: "add-recurring",
-			label: "Add Recurring Expense",
+			label: t("addRecurring"),
 			icon: Repeat,
 			onSelect: () => {
 				close();
@@ -253,7 +257,7 @@ export function CommandPalette() {
 		},
 		{
 			id: "send-feedback",
-			label: "Send Feedback",
+			label: t("sendFeedback"),
 			icon: MessageCircle,
 			onSelect: () => {
 				close();
@@ -262,7 +266,7 @@ export function CommandPalette() {
 		},
 		{
 			id: "keyboard-shortcuts",
-			label: "Keyboard Shortcuts",
+			label: t("keyboardShortcuts"),
 			icon: Keyboard,
 			shortcut: "?",
 			onSelect: () => {
@@ -280,20 +284,20 @@ export function CommandPalette() {
 					setOpen(next);
 					if (!next) setSearch("");
 				}}
-				title="Command Palette"
-				description="Search for pages and actions"
+				title={t("title")}
+				description={t("description")}
 				showCloseButton={false}
 				filter={commandFilter}
 				loop
 			>
 				<CommandInput
-					placeholder="Type a command or search..."
+					placeholder={t("placeholder")}
 					onValueChange={setSearch}
 				/>
 				<CommandList>
-					<CommandEmpty>No results found.</CommandEmpty>
+					<CommandEmpty>{t("noResults")}</CommandEmpty>
 					{matchedCurrency && (
-						<CommandGroup heading="Currency">
+						<CommandGroup heading={t("currency")}>
 							<CommandItem
 								value={`${matchedCurrency.code} ${matchedCurrency.name} currency`}
 								onSelect={() => {
@@ -322,7 +326,7 @@ export function CommandPalette() {
 										</div>
 										<div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
 											<span>
-												Symbol: {matchedCurrency.symbol_native}
+												{t("symbol")} {matchedCurrency.symbol_native}
 											</span>
 											{currencyRates && currencyRates.length > 0 ? (
 												currencyRates.map((r) => (
@@ -342,20 +346,20 @@ export function CommandPalette() {
 												))
 											) : (
 												<span className="italic">
-													No rate data
+													{t("noRateData")}
 												</span>
 											)}
 										</div>
 									</div>
 									<span className="text-muted-foreground text-xs shrink-0">
-										View rates
+										{t("viewRates")}
 									</span>
 								</div>
 							</CommandItem>
 						</CommandGroup>
 					)}
 					{recent.length > 0 && (
-						<CommandGroup heading="Recent Expenses">
+						<CommandGroup heading={t("recentExpenses")}>
 							{recent.map((item) => (
 								<CommandItem
 									key={item.id}
@@ -372,7 +376,7 @@ export function CommandPalette() {
 						</CommandGroup>
 					)}
 					{projects && projects.length > 0 && (
-						<CommandGroup heading="Projects">
+						<CommandGroup heading={t("projects")}>
 							{projects.map((project) => (
 								<CommandItem
 									key={project.id}
@@ -382,18 +386,14 @@ export function CommandPalette() {
 									<ProjectVisual
 										imagePath={project.imagePath ?? null}
 										projectName={project.name}
-										projectType={project.type}
 										size="xs"
 									/>
 									<span className="truncate">{project.name}</span>
-									<span className="ml-auto text-muted-foreground text-xs capitalize">
-										{project.type.toLowerCase().replace("_", " ")}
-									</span>
 								</CommandItem>
 							))}
 						</CommandGroup>
 					)}
-					<CommandGroup heading="Pages">
+					<CommandGroup heading={t("pages")}>
 						{pages.map((item) => (
 							<CommandItem
 								key={item.id}
@@ -408,7 +408,7 @@ export function CommandPalette() {
 							</CommandItem>
 						))}
 					</CommandGroup>
-					<CommandGroup heading="Actions">
+					<CommandGroup heading={t("actions")}>
 						{actions.map((item) => (
 							<CommandItem
 								key={item.id}
@@ -470,32 +470,33 @@ function KeyboardShortcutsDialog({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const mod = useModifierKey();
+	const t = useTranslations("commands");
 
 	const groups: ShortcutGroup[] = [
 		{
-			title: "Global",
+			title: t("global"),
 			shortcuts: [
-				{ keys: [`${mod}+K`], description: "Open command palette" },
-				{ keys: ["N"], description: "New expense" },
-				{ keys: ["/"], description: "Focus search" },
-				{ keys: ["?"], description: "Show keyboard shortcuts" },
-				{ keys: [`${mod}+B`], description: "Toggle sidebar" },
+				{ keys: [`${mod}+K`], description: t("openPalette") },
+				{ keys: ["N"], description: t("newExpense") },
+				{ keys: ["/"], description: t("focusSearch") },
+				{ keys: ["?"], description: t("showShortcuts") },
+				{ keys: [`${mod}+B`], description: t("toggleSidebar") },
 			],
 		},
 		{
-			title: "Table",
+			title: t("table"),
 			shortcuts: [
-				{ keys: [`${mod}+A`], description: "Select all rows" },
-				{ keys: ["Shift+Click"], description: "Range select rows" },
-				{ keys: ["E", "Enter"], description: "Edit selected row" },
-				{ keys: ["Delete"], description: "Delete selected rows" },
-				{ keys: ["Esc"], description: "Clear selection" },
+				{ keys: [`${mod}+A`], description: t("selectAllRows") },
+				{ keys: ["Shift+Click"], description: t("rangeSelect") },
+				{ keys: ["E", "Enter"], description: t("editSelected") },
+				{ keys: ["Delete"], description: t("deleteSelected") },
+				{ keys: ["Esc"], description: t("clearSelection") },
 			],
 		},
 		{
-			title: "Forms",
+			title: t("forms"),
 			shortcuts: [
-				{ keys: ["Esc"], description: "Close modal" },
+				{ keys: ["Esc"], description: t("closeModal") },
 			],
 		},
 	];
@@ -504,9 +505,9 @@ function KeyboardShortcutsDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>Keyboard Shortcuts</DialogTitle>
+					<DialogTitle>{t("shortcutsTitle")}</DialogTitle>
 					<DialogDescription>
-						Available keyboard shortcuts throughout the app.
+						{t("shortcutsDescription")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4">

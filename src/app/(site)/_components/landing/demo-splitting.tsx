@@ -7,6 +7,8 @@ import {
 	Plane,
 	Users,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
@@ -61,37 +63,38 @@ const RECENT_SPLITS = [
 	},
 ];
 
-const DIFFERENTIATORS = [
-	{
-		icon: Users,
-		title: "One Balance Per Person",
-		description:
-			"All debts with someone collapse into a single number. Split across trips, share a one-off dinner, settle when you want. No per-group accounting.",
-	},
-	{
-		icon: Link2,
-		title: "No Account Needed",
-		description:
-			"Send a magic link. They join with a name and email. No download, no password. If they sign up later, their history carries over.",
-	},
-	{
-		icon: FolderKanban,
-		title: "Projects for Everything",
-		description:
-			"Trips, roommates, group gifts, recurring costs. Five types with budgets, billing periods, and activity feeds. Or skip the project and split directly.",
-	},
-	{
-		icon: CreditCard,
-		title: "60+ Payment Methods",
-		description:
-			"Venmo, PayPal, Zelle, PIX, MercadoPago, crypto wallets, bank transfers. Shows methods you both use and generates deep links with the amount pre-filled.",
-	},
-];
-
 const NET_BALANCE = BALANCES.reduce((sum, p) => sum + p.amount, 0);
 const TOTAL_SPENT = RECENT_SPLITS.reduce((sum, s) => sum + s.total, 0);
 
 export function DemoSplitting() {
+	const t = useTranslations("landing");
+
+	const differentiators = useMemo(
+		() => [
+			{
+				icon: Users,
+				title: t("diffOneBalanceTitle"),
+				description: t("diffOneBalanceDesc"),
+			},
+			{
+				icon: Link2,
+				title: t("diffNoAccountTitle"),
+				description: t("diffNoAccountDesc"),
+			},
+			{
+				icon: FolderKanban,
+				title: t("diffProjectsTitle"),
+				description: t("diffProjectsDesc"),
+			},
+			{
+				icon: CreditCard,
+				title: t("diffPaymentMethodsTitle"),
+				description: t("diffPaymentMethodsDesc"),
+			},
+		],
+		[t],
+	);
+
 	return (
 		<div className="space-y-8">
 			{/* Project context */}
@@ -103,18 +106,17 @@ export function DemoSplitting() {
 					<div>
 						<div className="flex items-center gap-2">
 							<p className="font-semibold text-sm">
-								Beach House Weekend
+								{t("demoProjectName")}
 							</p>
 							<Badge
 								className="px-1.5 py-0 text-[10px]"
 								variant="secondary"
 							>
-								Trip
+								{t("demoTripBadge")}
 							</Badge>
 						</div>
 						<p className="text-muted-foreground text-xs">
-							Mar 14-17 &middot; 4 people &middot; $
-							{TOTAL_SPENT.toFixed(0)} spent
+							Mar 14-17 &middot; {t("demoPeopleCount", { count: 4 })} &middot; {t("demoSpent", { amount: `$${TOTAL_SPENT.toFixed(0)}` })}
 						</p>
 					</div>
 				</div>
@@ -135,7 +137,7 @@ export function DemoSplitting() {
 				<Card className="border bg-card lg:col-span-2">
 					<CardContent className="p-5">
 						<h3 className="mb-4 font-semibold text-sm tracking-tight">
-							Your Balances
+							{t("demoYourBalances")}
 						</h3>
 						<div className="space-y-3">
 							{BALANCES.map((person) => {
@@ -154,8 +156,8 @@ export function DemoSplitting() {
 											</p>
 											<p className="text-muted-foreground text-xs">
 												{owesYou
-													? "owes you"
-													: "you owe"}
+													? t("demoOwesYou")
+													: t("demoYouOwe")}
 											</p>
 										</div>
 										<span
@@ -175,7 +177,7 @@ export function DemoSplitting() {
 						</div>
 						<div className="mt-4 flex items-center justify-between border-t pt-3">
 							<span className="text-muted-foreground text-xs">
-								Net balance
+								{t("demoNetBalance")}
 							</span>
 							<span className="font-mono font-semibold text-emerald-500 text-sm">
 								+${NET_BALANCE.toFixed(2)}
@@ -187,7 +189,7 @@ export function DemoSplitting() {
 				<Card className="border bg-card lg:col-span-3">
 					<CardContent className="p-5">
 						<h3 className="mb-4 font-semibold text-sm tracking-tight">
-							Recent Splits
+							{t("demoRecentSplits")}
 						</h3>
 						<div className="space-y-3">
 							{RECENT_SPLITS.map((split) => (
@@ -218,15 +220,14 @@ export function DemoSplitting() {
 												variant="outline"
 											>
 												{split.status === "verified"
-													? "Verified"
-													: "Pending"}
+													? t("demoVerified")
+													: t("demoPending")}
 											</Badge>
 										</div>
 										<p className="text-muted-foreground text-xs">
 											${split.total.toFixed(2)}{" "}
 											&middot; {split.mode} &middot;{" "}
-											{split.people} people &middot; paid
-											by {split.paidBy}
+											{t("demoPeopleCount", { count: split.people })} &middot; {t("demoPaidBy", { name: split.paidBy })}
 										</p>
 									</div>
 									<div className="shrink-0 text-right">
@@ -234,7 +235,7 @@ export function DemoSplitting() {
 											${split.yourShare.toFixed(2)}
 										</p>
 										<p className="text-muted-foreground text-[10px]">
-											your share
+											{t("demoYourShare")}
 										</p>
 									</div>
 								</div>
@@ -246,7 +247,7 @@ export function DemoSplitting() {
 
 			{/* Differentiator cards */}
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{DIFFERENTIATORS.map((d) => (
+				{differentiators.map((d) => (
 					<Card
 						className="border border-border bg-card"
 						key={d.title}

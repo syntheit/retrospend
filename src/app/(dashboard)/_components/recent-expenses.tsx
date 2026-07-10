@@ -2,7 +2,9 @@
 
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
-import { Edit2, ExternalLink, Trash2, Users } from "lucide-react";
+import { ClipboardCopy, Edit2, ExternalLink, Trash2, Users } from "lucide-react";
+import { toast } from "sonner";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { memo, useMemo, useState } from "react";
 import { CategoryChip } from "~/components/category-chip";
@@ -27,6 +29,7 @@ import { getCategoryIcon } from "~/lib/category-icons";
 import type { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import { isCrypto } from "~/lib/currency-format";
 import { BRAND_ICON_MAP } from "~/lib/icons";
+import { formatExpenseAsText } from "~/lib/format";
 import { cn } from "~/lib/utils";
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -93,6 +96,7 @@ export function RecentExpenses({
 	onItemClick,
 	onDeleteItem,
 }: RecentExpensesProps) {
+	const t = useTranslations("recentActivity");
 	const [filter, setFilter] = useState<ActivityFilter>("all");
 
 	const filteredActivity = useMemo(() => {
@@ -131,13 +135,13 @@ export function RecentExpenses({
 			>
 				<div className="flex items-center justify-between rounded-lg border bg-muted/40 p-4">
 					<div>
-						<div className="font-medium">No recent activity</div>
+						<div className="font-medium">{t("noRecentActivity")}</div>
 						<p className="text-muted-foreground text-sm">
 							{filter === "personal"
-								? "No personal expenses yet."
+								? t("noPersonalExpenses")
 								: filter === "shared"
-									? "No shared expenses or settlements yet."
-									: "Create your first expense to see it here."}
+									? t("noSharedExpenses")
+									: t("createFirstExpense")}
 						</p>
 					</div>
 				</div>
@@ -170,12 +174,6 @@ export function RecentExpenses({
 	);
 }
 
-const FILTER_OPTIONS: { value: ActivityFilter; label: string }[] = [
-	{ value: "all", label: "All" },
-	{ value: "personal", label: "Personal" },
-	{ value: "shared", label: "Shared" },
-];
-
 function RecentActivityCard({
 	children,
 	filter,
@@ -187,24 +185,32 @@ function RecentActivityCard({
 	onFilterChange: (f: ActivityFilter) => void;
 	viewAllHref: string;
 }) {
+	const t = useTranslations("recentActivity");
+
+	const filterOptions: { value: ActivityFilter; label: string }[] = [
+		{ value: "all", label: t("filterAll") },
+		{ value: "personal", label: t("filterPersonal") },
+		{ value: "shared", label: t("filterShared") },
+	];
+
 	return (
 		<Card className="border border-border bg-card shadow-sm lg:flex lg:h-full lg:flex-col">
 			<CardHeader className="px-4 sm:px-6">
 				<div className="flex items-baseline justify-between">
 					<div>
 						<CardTitle className="font-semibold text-lg tracking-tight">
-							Recent Activity
+							{t("title")}
 						</CardTitle>
 						<CardDescription>
-							Your latest expenses and shared activity
+							{t("description")}
 						</CardDescription>
 					</div>
 					<Button asChild size="sm" variant="ghost">
-						<Link href={viewAllHref}>View all</Link>
+						<Link href={viewAllHref}>{t("viewAll")}</Link>
 					</Button>
 				</div>
 				<div className="flex gap-1 pt-1">
-					{FILTER_OPTIONS.map((opt) => (
+					{filterOptions.map((opt) => (
 						<button
 							className={cn(
 								"cursor-pointer rounded-full px-3 py-1 font-medium text-xs transition-colors",
@@ -245,6 +251,9 @@ const ActivityRow = memo(function ActivityRow({
 	onClick,
 	onDelete,
 }: ActivityRowProps) {
+	const t = useTranslations("recentActivity");
+	const locale = useLocale();
+
 	if (item.type === "settlement") {
 		return (
 			<SettlementRow
@@ -304,7 +313,7 @@ const ActivityRow = memo(function ActivityRow({
 
 			<div className="min-w-0 flex-1 space-y-0.5">
 				<div className="truncate font-medium text-sm">
-					{item.title || "Untitled expense"}
+					{item.title || t("untitledExpense")}
 				</div>
 				<div className="flex min-w-0 items-center gap-1.5">
 					{item.category ? (
@@ -315,7 +324,7 @@ const ActivityRow = memo(function ActivityRow({
 							name={item.category.name}
 						/>
 					) : (
-						<span className="text-muted-foreground text-xs">No category</span>
+						<span className="text-muted-foreground text-xs">{t("noCategory")}</span>
 					)}
 					{item.type === "shared" && item.sharedContext?.projectName && (
 						<Badge className="max-w-[100px] truncate" variant="outline">
@@ -326,8 +335,8 @@ const ActivityRow = memo(function ActivityRow({
 				{item.type === "shared" && item.sharedContext && (
 					<div className="text-muted-foreground text-xs">
 						{item.sharedContext.iPayedThis
-							? `You paid · split ${item.sharedContext.participantCount} ways`
-							: `Paid by ${item.sharedContext.paidByName}`}
+							? `${t("youPaid")} · ${t("splitWays", { count: item.sharedContext.participantCount })}`
+							: t("paidBy", { name: item.sharedContext.paidByName })}
 					</div>
 				)}
 			</div>
@@ -337,7 +346,7 @@ const ActivityRow = memo(function ActivityRow({
 					{format(new Date(item.date), "MMM d, yyyy")}
 				</div>
 				<div className="whitespace-nowrap font-medium text-foreground text-sm tabular-nums">
-					{item.type === "shared" ? "Your share: " : ""}
+					{item.type === "shared" ? t("yourShare") : ""}
 					{formatCurrency(displayAmount, homeCurrency)}
 				</div>
 				{showOriginal && (
@@ -353,11 +362,28 @@ const ActivityRow = memo(function ActivityRow({
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
 			<ContextMenuContent>
+				<ContextMenuItem
+					onClick={() => {
+						const text = formatExpenseAsText(
+							item.title,
+							item.amount,
+							item.currency,
+							new Date(item.date),
+							formatCurrency,
+							locale,
+						);
+						void navigator.clipboard.writeText(text);
+						toast.success(t("copiedToClipboard"));
+					}}
+				>
+					<ClipboardCopy className="mr-2 h-4 w-4" />
+					{t("copyAsText")}
+				</ContextMenuItem>
 				{item.type === "personal" && (
 					<>
 						<ContextMenuItem onClick={() => onClick?.(item)}>
 							<Edit2 className="mr-2 h-4 w-4" />
-							Edit expense
+							{t("editExpense")}
 						</ContextMenuItem>
 						<ContextMenuSeparator />
 						<ContextMenuItem
@@ -365,14 +391,14 @@ const ActivityRow = memo(function ActivityRow({
 							variant="destructive"
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
-							Delete expense
+							{t("deleteExpense")}
 						</ContextMenuItem>
 					</>
 				)}
 				{item.type === "shared" && (
 					<ContextMenuItem onClick={() => onClick?.(item)}>
 						<ExternalLink className="mr-2 h-4 w-4" />
-						View project
+						{t("viewProject")}
 					</ContextMenuItem>
 				)}
 			</ContextMenuContent>
@@ -389,6 +415,7 @@ function SettlementRow({
 	formatCurrency: (amount: number, currency?: string) => string;
 	onClick?: () => void;
 }) {
+	const t = useTranslations("recentActivity");
 	const isIncoming = item.settlementContext?.direction === "incoming";
 	const DirectionIcon = isIncoming ? ArrowDownLeft : ArrowUpRight;
 
@@ -431,8 +458,8 @@ function SettlementRow({
 						}
 					>
 						{item.settlementContext?.status === "FINALIZED"
-							? "Settled"
-							: "Pending"}
+							? t("settled")
+							: t("pending")}
 					</Badge>
 				</div>
 			</div>
@@ -462,7 +489,7 @@ function SettlementRow({
 			<ContextMenuContent>
 				<ContextMenuItem onClick={onClick}>
 					<Users className="mr-2 h-4 w-4" />
-					View in People
+					{t("viewInPeople")}
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>

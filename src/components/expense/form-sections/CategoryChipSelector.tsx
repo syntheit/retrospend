@@ -1,8 +1,10 @@
 "use client";
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, EyeOff, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { CATEGORY_COLORS, getCategoryColorClasses } from "~/lib/constants";
 import { getCategoryIcon } from "~/lib/category-icons";
 import {
@@ -34,6 +36,8 @@ export function CategoryChipSelector({
 	onValueChange,
 	autoSuggested,
 }: CategoryChipSelectorProps) {
+	const t = useTranslations("expenseForm");
+	const { displayName } = useCategoryName();
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const scrollTarget = useRef(0);
 	const scrollRaf = useRef<number>(0);
@@ -143,12 +147,12 @@ export function CategoryChipSelector({
 	if (categories.length === 0) {
 		return (
 			<p className="text-sm text-muted-foreground">
-				No categories yet.{" "}
+				{t("noCategoriesYet")}{" "}
 				<a
 					className="text-primary underline underline-offset-4"
 					href="/settings"
 				>
-					Add them in Settings
+					{t("addInSettings")}
 				</a>
 				.
 			</p>
@@ -189,7 +193,7 @@ export function CategoryChipSelector({
 							<button
 								key={category.id}
 								type="button"
-								title={category.excludeByDefault ? `${category.name} (excluded from analytics by default)` : category.name}
+								title={category.excludeByDefault ? `${displayName(category.name)} (excluded from analytics by default)` : displayName(category.name)}
 								onClick={() =>
 									onValueChange(isSelected ? "" : category.id)
 								}
@@ -213,7 +217,7 @@ export function CategoryChipSelector({
 									)}
 								</span>
 								<span className="max-w-[5rem] truncate">
-									{category.name}
+									{displayName(category.name)}
 								</span>
 								{category.excludeByDefault && (
 									<EyeOff className="h-2.5 w-2.5 shrink-0 opacity-40" />
@@ -262,7 +266,7 @@ export function CategoryChipSelector({
 						<input
 							ref={searchInputRef}
 							className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-							placeholder="Search categories..."
+							placeholder={t("searchCategories")}
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 						/>
@@ -276,7 +280,7 @@ export function CategoryChipSelector({
 					>
 						{filtered.length === 0 && (
 							<p className="px-3 py-3 text-center text-muted-foreground text-xs">
-								No categories found
+								{t("noCategoriesFound")}
 							</p>
 						)}
 						{filtered.map((category) => {
@@ -304,7 +308,7 @@ export function CategoryChipSelector({
 										)}
 									</span>
 									<span className="flex-1 truncate text-left">
-										{category.name}
+										{displayName(category.name)}
 									</span>
 									{category.excludeByDefault && (
 										<EyeOff className="h-3 w-3 shrink-0 text-muted-foreground/40" />
@@ -326,14 +330,14 @@ export function CategoryChipSelector({
 								className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 							>
 								<Plus className="h-3.5 w-3.5" />
-								Create new category
+								{t("createNewCategory")}
 							</button>
 						) : (
 							<div className="p-2">
 								<input
 									ref={newCategoryInputRef}
 									className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
-									placeholder="Category name..."
+									placeholder={t("categoryName")}
 									value={newCategoryName}
 									onChange={(e) => setNewCategoryName(e.target.value)}
 									onKeyDown={(e) => {
@@ -355,7 +359,7 @@ export function CategoryChipSelector({
 										}}
 										className="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
 									>
-										Cancel
+										{t("cancel")}
 									</button>
 									<button
 										type="button"
@@ -366,7 +370,7 @@ export function CategoryChipSelector({
 										}
 										className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50"
 									>
-										{createMutation.isPending ? "Creating..." : "Create"}
+										{createMutation.isPending ? t("creating") : t("create")}
 									</button>
 								</div>
 							</div>

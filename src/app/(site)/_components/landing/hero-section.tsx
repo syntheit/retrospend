@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { useSession } from "~/hooks/use-session";
@@ -7,6 +8,7 @@ import { useSession } from "~/hooks/use-session";
 export function HeroSection() {
 	const { data: session, isPending } = useSession();
 	const isLoggedIn = !isPending && !!session?.user;
+	const t = useTranslations("landing");
 
 	return (
 		<section className="py-24 lg:py-32">
@@ -23,24 +25,24 @@ export function HeroSection() {
 					Retrospend
 				</h1>
 				<p className="mt-4 text-lg text-muted-foreground sm:text-xl">
-					The Financial Multitool
+					{t("heroTagline")}
 				</p>
 				<p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground/70 leading-7">
-					Expenses, budgets, wealth tracking, and bill splitting. Without the bloat.
+					{t("heroDescription")}
 				</p>
 				{!isPending && (
 					<div className="mt-10 flex items-center justify-center gap-4">
 						{isLoggedIn ? (
 							<Button asChild size="lg">
-								<Link href="/dashboard">Go to Dashboard</Link>
+								<Link href="/dashboard">{t("goToDashboard")}</Link>
 							</Button>
 						) : (
 							<>
 								<Button asChild size="lg">
-									<Link href="/signup">Get Started</Link>
+									<Link href="/signup">{t("getStarted")}</Link>
 								</Button>
 								<Button asChild size="lg" variant="outline">
-									<Link href="/login">Login</Link>
+									<Link href="/login">{t("login")}</Link>
 								</Button>
 							</>
 						)}

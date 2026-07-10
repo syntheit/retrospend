@@ -10,6 +10,7 @@ import {
 	YAxis,
 } from "recharts";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	type ChartConfig,
@@ -49,6 +50,7 @@ export function BudgetPacingChart({
 	homeCurrency,
 }: BudgetPacingChartProps) {
 	const id = useId();
+	const t = useTranslations("dashboard");
 
 	// Custom Y-axis formatter
 	const formatYAxis = (value: number) => {
@@ -95,10 +97,10 @@ export function BudgetPacingChart({
 			<CardHeader className="flex flex-row items-baseline justify-between px-4 pb-2 sm:px-6">
 				<div>
 					<CardTitle className="font-semibold text-lg tracking-tight">
-						Budget Pacing
+						{t("budgetPacing")}
 					</CardTitle>
 					<p className="text-muted-foreground text-sm">
-						Variable spend vs. ideal pace
+						{t("budgetPacingDescription")}
 					</p>
 				</div>
 				<div className="text-right">
@@ -106,11 +108,11 @@ export function BudgetPacingChart({
 						{formatCurrencyUtil(safeToSpend, homeCurrency, "standard", false)}
 						<span className="font-normal font-sans text-base text-muted-foreground">
 							{" "}
-							/ day
+							{t("perDay")}
 						</span>
 					</div>
 					<p className="font-semibold text-[10px] text-muted-foreground tracking-wide">
-						Safe to Spend
+						{t("safeToSpend")}
 					</p>
 				</div>
 			</CardHeader>
@@ -161,9 +163,9 @@ export function BudgetPacingChart({
 												<div className="flex flex-1 items-center justify-between gap-4 leading-none">
 													<span className="text-muted-foreground">
 														{name === "guide"
-															? "Ideal Pace"
+															? t("idealPace")
 															: name === "variable"
-																? "Variable Spend"
+																? t("variableSpend")
 																: name}
 													</span>
 													<span className="font-semibold text-foreground tabular-nums">
@@ -192,7 +194,7 @@ export function BudgetPacingChart({
 								activeDot={false}
 								dataKey="guide"
 								dot={false}
-								name="Ideal Pace"
+								name={t("idealPace")}
 								stroke="#525252"
 								strokeDasharray="5 5"
 								strokeWidth={2}
@@ -202,7 +204,7 @@ export function BudgetPacingChart({
 							<Area
 								dataKey="variable"
 								fill={`url(#${gradientId})`}
-								name="Variable Spend"
+								name={t("variableSpend")}
 								stroke={areaColor}
 								strokeWidth={2.5}
 								type="monotone"

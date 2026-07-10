@@ -220,7 +220,12 @@ export const adminRouter = createTRPCRouter({
 				externalAiAllowed: true,
 				_count: {
 					select: {
-						expenses: true,
+						expenses: {
+							where: {
+								isAmortizedChild: false,
+								status: "FINALIZED",
+							},
+						},
 						createdInviteCodes: true,
 						budgets: true,
 						recurringTemplates: true,

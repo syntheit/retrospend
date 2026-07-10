@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { ShareProjectDialog } from "~/components/project/share-project-dialog";
 import { downloadCsv } from "~/lib/utils";
+import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
@@ -53,6 +54,7 @@ export function ParticipantsPanel({
 	primaryCurrency,
 	pendingVerificationCount,
 }: ParticipantsPanelProps) {
+	const t = useTranslations("projects");
 	const [shareOpen, setShareOpen] = useState(false);
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -70,9 +72,9 @@ export function ParticipantsPanel({
 				format: "csv",
 			});
 			downloadCsv(csv, filename);
-			toast.success("Settlement plan exported");
+			toast.success(t("settlementPlanExported"));
 		} catch (error: unknown) {
-			toast.error(error instanceof Error ? error.message : "Failed to export");
+			toast.error(error instanceof Error ? error.message : t("failedToExport"));
 		}
 	};
 
@@ -81,11 +83,11 @@ export function ParticipantsPanel({
 		type === "user" && id === currentUserId;
 
 	const getParticipantName = (type: string, id: string): string => {
-		if (isCurrentUser(type, id)) return "you";
+		if (isCurrentUser(type, id)) return t("you");
 		const p = participants.find(
 			(x) => x.participantType === type && x.participantId === id,
 		);
-		return p?.name ?? "Unknown";
+		return p?.name ?? t("unknown");
 	};
 
 	// Flatten all settlement steps across currencies
@@ -103,7 +105,7 @@ export function ParticipantsPanel({
 				<CardHeader className="pb-3">
 					<div className="flex items-center justify-between">
 						<CardTitle className="tabular-nums text-base tracking-tight">
-							Participants ({participants.length})
+							{t("participantsCount", { count: participants.length })}
 						</CardTitle>
 					</div>
 				</CardHeader>
@@ -141,7 +143,7 @@ export function ParticipantsPanel({
 							variant="ghost"
 						>
 							<UserPlus className="h-3 w-3" />
-							Manage access
+							{t("manageAccess")}
 						</Button>
 					)}
 					<Button
@@ -152,7 +154,7 @@ export function ParticipantsPanel({
 						variant="ghost"
 					>
 						<Download className="h-3 w-3" />
-						{exportMutation.isPending ? "Exporting\u2026" : "Export Settlement Plan"}
+						{exportMutation.isPending ? t("exporting") : t("exportSettlementPlan")}
 					</Button>
 				</div>
 
@@ -160,12 +162,12 @@ export function ParticipantsPanel({
 				{participants.length > 1 && settlementPlan !== undefined && (
 					<div className="border-border border-t px-4 py-3">
 						<p className="mb-2 font-medium text-xs text-foreground">
-							Settlement
+							{t("settlement")}
 						</p>
 						{allSettled ? (
 							<div className="flex items-center gap-1.5 text-emerald-600 text-xs dark:text-emerald-400">
 								<CheckCircle2 className="h-3.5 w-3.5" />
-								All settled up
+								{t("allSettledUp")}
 							</div>
 						) : (
 							<div className="space-y-1.5">
@@ -214,15 +216,15 @@ export function ParticipantsPanel({
 
 				{/* Status summary */}
 				<div className="border-border border-t px-4 py-3">
-					<p className="mb-2 font-medium text-xs text-foreground">Status</p>
+					<p className="mb-2 font-medium text-xs text-foreground">{t("status")}</p>
 					{pendingVerificationCount > 0 ? (
 						<p className="text-amber-600 text-xs dark:text-amber-400">
-							{pendingVerificationCount} pending verification
+							{t("pendingVerification", { count: pendingVerificationCount })}
 						</p>
 					) : (
 						<div className="flex items-center gap-1.5 text-emerald-600 text-xs dark:text-emerald-400">
 							<CheckCircle2 className="h-3.5 w-3.5" />
-							All expenses verified
+							{t("allExpensesVerified")}
 						</div>
 					)}
 				</div>

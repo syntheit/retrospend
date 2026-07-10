@@ -1,8 +1,7 @@
 import {
 	AVATAR_COLORS,
 	OG,
-	PROJECT_TYPE_EMOJI,
-	PROJECT_TYPE_GRADIENTS,
+	PROJECT_DEFAULT_GRADIENT,
 } from "./brand";
 
 function getAvatarColor(name: string): string {
@@ -114,12 +113,10 @@ export function AvatarCircle({
 }
 
 export function ProjectBadge({
-	type,
 	name,
 	imageUrl,
 	size,
 }: {
-	type: string;
 	name: string;
 	imageUrl?: string | null;
 	size: number;
@@ -135,11 +132,10 @@ export function ProjectBadge({
 			/>
 		);
 	}
-	const [from, to] = PROJECT_TYPE_GRADIENTS[type] ??
-		PROJECT_TYPE_GRADIENTS.GENERAL ?? ["#6366f1", "#9333ea"];
-	const emoji = PROJECT_TYPE_EMOJI[type] ?? "GP";
+	const [from, to] = PROJECT_DEFAULT_GRADIENT;
+	const initials = name.slice(0, 2).toUpperCase();
 	const hue = nameToHueRotate(name);
-	const emojiSize = Math.round(size * 0.4);
+	const initialsSize = Math.round(size * 0.4);
 	return (
 		<div
 			style={{
@@ -153,7 +149,7 @@ export function ProjectBadge({
 				filter: `hue-rotate(${hue}deg)`,
 			}}
 		>
-			<span style={{ fontSize: emojiSize, lineHeight: 1 }}>{emoji}</span>
+			<span style={{ fontSize: initialsSize, lineHeight: 1, color: "rgba(255,255,255,0.7)" }}>{initials}</span>
 		</div>
 	);
 }

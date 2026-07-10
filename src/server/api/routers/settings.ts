@@ -28,6 +28,7 @@ export const settingsRouter = createTRPCRouter({
 				fiscalMonthStartDay: true,
 				defaultExpenseDateBehavior: true,
 				aiMode: true,
+				language: true,
 			},
 		});
 
@@ -49,6 +50,7 @@ export const settingsRouter = createTRPCRouter({
 			fiscalMonthStartDay: user.fiscalMonthStartDay,
 			defaultExpenseDateBehavior: user.defaultExpenseDateBehavior,
 			aiMode: user.aiMode,
+			language: user.language,
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};
@@ -75,6 +77,7 @@ export const settingsRouter = createTRPCRouter({
 				fiscalMonthStartDay: z.number().int().min(1).max(28).optional(),
 				defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]).optional(),
 				aiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
+				language: z.enum(["en", "es"]).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -114,6 +117,9 @@ export const settingsRouter = createTRPCRouter({
 					}),
 					...(input.aiMode !== undefined && {
 						aiMode: input.aiMode,
+					}),
+					...(input.language !== undefined && {
+						language: input.language,
 					}),
 				},
 				select: {

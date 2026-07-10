@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Check, Copy, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 
@@ -11,6 +12,7 @@ export default function DashboardError({
 	error: Error & { digest?: string };
 	reset: () => void;
 }) {
+	const t = useTranslations("errors");
 	const [showDebug, setShowDebug] = useState(false);
 	const [copied, setCopied] = useState(false);
 
@@ -33,11 +35,10 @@ export default function DashboardError({
 
 			<div className="space-y-2 px-4">
 				<h2 className="font-bold text-2xl text-foreground tracking-tight">
-					Something went wrong
+					{t("somethingWentWrong")}
 				</h2>
 				<p className="mx-auto max-w-md text-muted-foreground">
-					The dashboard encountered an unexpected rendering error. Your data
-					hasn't been affected. Try refreshing the specific section below.
+					{t("dashboardError")}
 				</p>
 			</div>
 
@@ -48,11 +49,11 @@ export default function DashboardError({
 					variant="default"
 				>
 					<RotateCcw className="h-4 w-4" />
-					Try again
+					{t("tryAgain")}
 				</Button>
 
 				<Button onClick={() => window.location.reload()} variant="outline">
-					Full Reload
+					{t("fullReload")}
 				</Button>
 			</div>
 
@@ -64,14 +65,14 @@ export default function DashboardError({
 						onClick={() => setShowDebug(!showDebug)}
 						className="mb-4 text-muted-foreground"
 					>
-						{showDebug ? "Hide Debug Information" : "Show Debug Information"}
+						{showDebug ? t("hideDebug") : t("showDebug")}
 					</Button>
 					
 					{showDebug && (
 						<div className="relative max-h-[50vh] w-full overflow-y-auto rounded-lg border border-border bg-muted p-4 text-left">
 							<div className="mb-2 flex items-center justify-between">
 								<p className="font-bold font-mono text-destructive text-xs tracking-wide">
-									Debug Information:
+									{t("debugInfo")}
 								</p>
 								<Button
 									variant="ghost"

@@ -54,7 +54,19 @@ export const preferencesRouter = createTRPCRouter({
 				]),
 				settings: z
 					.object({
-						version: z.literal(1).optional(),
+						version: z.number().optional(),
+						// Dashboard v2 layout
+						layout: z
+							.array(
+								z.object({
+									id: z.string(),
+									visible: z.boolean(),
+									size: z.enum(["xs", "sm", "md", "lg"]),
+									order: z.number(),
+								}),
+							)
+							.optional(),
+						// Dashboard v1 (legacy)
 						widgets: z
 							.object({
 								spendComposition: z.object({ visible: z.boolean() }).optional(),
@@ -87,7 +99,7 @@ export const preferencesRouter = createTRPCRouter({
 				ctx.db,
 				ctx.session.user.id,
 				input.page,
-				input.settings,
+				input.settings as Parameters<typeof updatePageSettings>[3],
 			);
 		}),
 

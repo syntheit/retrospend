@@ -41,6 +41,8 @@ type ActivityEntry = {
 		color: string;
 	};
 	summary: string;
+	summaryKey: string | null;
+	summaryParams: Record<string, string> | null;
 	target: {
 		type: string;
 		id: string;
@@ -152,6 +154,8 @@ function getActivityActionMeta(
 	return { label: action, icon: "activity", color: "gray" };
 }
 
+type SummaryResult = { text: string; key: string | null; params: Record<string, string> | null };
+
 function buildActivitySummary(
 	action: string,
 	targetType: string,
@@ -161,25 +165,32 @@ function buildActivitySummary(
 	changes: unknown,
 	otherActorName: string | null,
 	billingPeriodLabel: string | null,
-): string {
+): SummaryResult {
 	const c = changes as Record<string, unknown> | null;
+	const r = (text: string, key: string, params: Record<string, string>): SummaryResult =>
+		({ text, key, params });
+
 	try {
 		switch (action) {
 			case "CREATED": {
 				if (targetType === "SHARED_TRANSACTION") {
 					const desc = txnDescription ? `'${txnDescription}'` : "an expense";
 					const amt = c ? ` (${safeFormatAmount(c.amount, c.currency)})` : "";
-					return `${actorName} added ${desc}${amt}`;
+					const text = `${actorName} added ${desc}${amt}`;
+					if (c) {
+						return r(text, "activityCreatedExpenseWithAmount", { actor: actorName, description: desc, amount: safeFormatAmount(c.amount, c.currency) });
+					}
+					return r(text, "activityCreatedExpense", { actor: actorName, description: desc });
 				}
 				if (targetType === "SETTLEMENT") {
 					const amt = safeFormatAmount(c?.amount, c?.currency);
 					const to = otherActorName ? ` with ${otherActorName}` : "";
-					return `${actorName} initiated a ${amt} settlement${to}`;
+					return r(`${actorName} initiated a ${amt} settlement${to}`, "activityCreatedSettlement", { actor: actorName, amount: amt, ...(otherActorName ? { name: otherActorName } : {}) });
 				}
 				if (c?.linkId) {
-					return `${actorName} created an invite link`;
+					return r(`${actorName} created an invite link`, "activityCreatedInviteLink", { actor: actorName });
 				}
-				return `${actorName} created the project`;
+				return r(`${actorName} created the project`, "activityCreatedProject", { actor: actorName });
 			}
 
 			case "EDITED": {
@@ -203,9 +214,17 @@ function buildActivitySummary(
 						const from = safeFormatAmount(amtChange.old, currency);
 						const to = safeFormatAmount(amtChange.new, currency);
 						if (splitChange) {
-							return `${actorName} changed ${desc} from ${from} to ${to} and updated the split`;
+							return r(
+								`${actorName} changed ${desc} from ${from} to ${to} and updated the split`,
+								"activityEditedAmountAndSplit",
+								{ actor: actorName, description: desc, from, to },
+							);
 						}
-						return `${actorName} changed ${desc} from ${from} to ${to}`;
+						return r(
+							`${actorName} changed ${desc} from ${from} to ${to}`,
+							"activityEditedAmount",
+							{ actor: actorName, description: desc, from, to },
+						);
 					}
 					if (descChange) {
 						const oldLabel = descChange.old
@@ -214,12 +233,24 @@ function buildActivitySummary(
 						const newLabel = descChange.new
 							? `'${truncateSummaryText(descChange.new, 40)}'`
 							: "an expense";
-						return `${actorName} renamed ${oldLabel} to ${newLabel}`;
+						return r(
+							`${actorName} renamed ${oldLabel} to ${newLabel}`,
+							"activityRenamedExpense",
+							{ actor: actorName, oldName: oldLabel, newName: newLabel },
+						);
 					}
 					if (splitChange) {
-						return `${actorName} updated the split on ${desc}`;
+						return r(
+							`${actorName} updated the split on ${desc}`,
+							"activityUpdatedSplit",
+							{ actor: actorName, description: desc },
+						);
 					}
-					return `${actorName} edited ${desc}`;
+					return r(
+						`${actorName} edited ${desc}`,
+						"activityEditedExpense",
+						{ actor: actorName, description: desc },
+					);
 				}
 
 				// PROJECT EDITED - parse field-level diff for specific summaries
@@ -245,39 +276,78 @@ function buildActivitySummary(
 				);
 
 				const labels: string[] = [];
+				const labelKeys: string[] = [];
+				const labelParams: Record<string, string>[] = [];
 
 				if (nameChange) {
 					const from = truncateSummaryText(String(nameChange.old), 35);
 					const to = truncateSummaryText(String(nameChange.new), 35);
 					labels.push(`renamed the project from '${from}' to '${to}'`);
+					labelKeys.push("activityRenamedProject");
+					labelParams.push({ actor: actorName, oldName: from, newName: to });
 				}
 				if (imageChange) {
-					if (!imageChange.old && imageChange.new)
+					if (!imageChange.old && imageChange.new) {
 						labels.push("added a project icon");
-					else if (imageChange.old && !imageChange.new)
+						labelKeys.push("activityAddedProjectIcon");
+						labelParams.push({ actor: actorName });
+					} else if (imageChange.old && !imageChange.new) {
 						labels.push("removed the project icon");
-					else labels.push("changed the project icon");
+						labelKeys.push("activityRemovedProjectIcon");
+						labelParams.push({ actor: actorName });
+					} else {
+						labels.push("changed the project icon");
+						labelKeys.push("activityChangedProjectIcon");
+						labelParams.push({ actor: actorName });
+					}
 				}
 				if (budgetChange) {
-					if (budgetChange.new == null) labels.push("removed the project budget");
-					else if (budgetChange.old == null) labels.push("set a project budget");
-					else labels.push("changed the project budget");
+					if (budgetChange.new == null) {
+						labels.push("removed the project budget");
+						labelKeys.push("activityRemovedBudget");
+						labelParams.push({ actor: actorName });
+					} else if (budgetChange.old == null) {
+						labels.push("set a project budget");
+						labelKeys.push("activitySetBudget");
+						labelParams.push({ actor: actorName });
+					} else {
+						labels.push("changed the project budget");
+						labelKeys.push("activityChangedBudget");
+						labelParams.push({ actor: actorName });
+					}
 				}
 				if (visChange) {
 					const vis = String(visChange.new).toLowerCase().replace(/_/g, " ");
 					labels.push(`changed project visibility to ${vis}`);
+					labelKeys.push("activityChangedVisibility");
+					labelParams.push({ actor: actorName, visibility: vis });
 				}
-				if (descChange2 && !nameChange)
+				if (descChange2 && !nameChange) {
 					labels.push("updated the project description");
-				if (hasBillingChange && labels.length === 0)
+					labelKeys.push("activityUpdatedDescription");
+					labelParams.push({ actor: actorName });
+				}
+				if (hasBillingChange && labels.length === 0) {
 					labels.push("updated billing period settings");
+					labelKeys.push("activityUpdatedBilling");
+					labelParams.push({ actor: actorName });
+				}
 
-				if (labels.length === 0) return `${actorName} updated the project`;
-				if (labels.length === 1) return `${actorName} ${labels[0]}`;
-				if (labels.length === 2)
-					return `${actorName} ${labels[0]} and ${labels[1]}`;
+				if (labels.length === 0) return r(`${actorName} updated the project`, "activityUpdatedProject", { actor: actorName });
+				if (labels.length === 1) return r(`${actorName} ${labels[0]}`, labelKeys[0]!, labelParams[0]!);
+				if (labels.length === 2) {
+					return r(
+						`${actorName} ${labels[0]} and ${labels[1]}`,
+						"activityProjectMultipleChanges",
+						{ actor: actorName, count: "2" },
+					);
+				}
 				const extra = labels.length - 2;
-				return `${actorName} ${labels[0]} and ${labels[1]} (and ${extra} more ${extra === 1 ? "change" : "changes"})`;
+				return r(
+					`${actorName} ${labels[0]} and ${labels[1]} (and ${extra} more ${extra === 1 ? "change" : "changes"})`,
+					"activityProjectMultipleChanges",
+					{ actor: actorName, count: String(labels.length) },
+				);
 			}
 
 			case "DELETED": {
@@ -286,15 +356,19 @@ function buildActivitySummary(
 					const amt = c?.amount
 						? ` (${safeFormatAmount(c.amount, c.currency)})`
 						: "";
-					return `${actorName} deleted ${desc}${amt}`;
+					const text = `${actorName} deleted ${desc}${amt}`;
+					if (c?.amount) {
+						return r(text, "activityDeletedExpenseWithAmount", { actor: actorName, description: desc, amount: safeFormatAmount(c.amount, c.currency) });
+					}
+					return r(text, "activityDeletedExpense", { actor: actorName, description: desc });
 				}
-				return `${actorName} deleted`;
+				return r(`${actorName} deleted`, "activityMadeChange", { actor: actorName });
 			}
 
 			case "VERIFIED":
 				return txnDescription
-					? `${actorName} verified '${txnDescription}'`
-					: `${actorName} verified an expense`;
+					? r(`${actorName} verified '${txnDescription}'`, "activityVerified", { actor: actorName, description: `'${txnDescription}'` })
+					: r(`${actorName} verified an expense`, "activityVerified", { actor: actorName, description: "an expense" });
 
 			case "REJECTED": {
 				const reason = typeof c?.reason === "string" ? c.reason : null;
@@ -302,9 +376,13 @@ function buildActivitySummary(
 				if (reason) {
 					const truncated =
 						reason.length > 80 ? reason.slice(0, 77) + "…" : reason;
-					return `${actorName} disputed ${desc}: '${truncated}'`;
+					return r(
+						`${actorName} disputed ${desc}: '${truncated}'`,
+						"activityRejectedWithReason",
+						{ actor: actorName, description: desc, reason: truncated },
+					);
 				}
-				return `${actorName} disputed ${desc}`;
+				return r(`${actorName} disputed ${desc}`, "activityRejected", { actor: actorName, description: desc });
 			}
 
 			case "AUTO_VERIFIED": {
@@ -313,53 +391,69 @@ function buildActivitySummary(
 						? c.autoAcceptedAfterDays
 						: 7;
 				const desc = txnDescription ? `'${txnDescription}'` : "An expense";
-				return `${desc} auto-verified after ${days} days`;
+				return r(`${desc} auto-verified after ${days} days`, "activityAutoVerified", { description: desc, days: String(days) });
 			}
 
 			case "SETTLED": {
 				if (targetType === "SETTLEMENT") {
 					const amt = safeFormatAmount(c?.amount, c?.currency);
 					const from = otherActorName ? ` from ${otherActorName}` : "";
-					return `${actorName} confirmed a ${amt} settlement${from}`;
+					return r(
+						`${actorName} confirmed a ${amt} settlement${from}`,
+						"activityConfirmedSettlement",
+						{ actor: actorName, amount: amt, ...(otherActorName ? { name: otherActorName } : {}) },
+					);
 				}
 				if (targetType === "BILLING_PERIOD") {
 					return billingPeriodLabel
-						? `${actorName} settled the '${billingPeriodLabel}' period`
-						: `${actorName} settled a billing period`;
+						? r(`${actorName} settled the '${billingPeriodLabel}' period`, "activitySettledPeriod", { actor: actorName, period: billingPeriodLabel })
+						: r(`${actorName} settled a billing period`, "activitySettledPeriod", { actor: actorName, period: "" });
 				}
-				return `${actorName} settled`;
+				return r(`${actorName} settled`, "activityMadeChange", { actor: actorName });
 			}
 
 			case "PERIOD_CLOSED":
 				return billingPeriodLabel
-					? `${actorName} closed the '${billingPeriodLabel}' billing period`
-					: `${actorName} closed a billing period`;
+					? r(`${actorName} closed the '${billingPeriodLabel}' billing period`, "activityClosedPeriod", { actor: actorName, period: billingPeriodLabel })
+					: r(`${actorName} closed a billing period`, "activityClosedPeriod", { actor: actorName, period: "" });
 
 			case "PARTICIPANT_ADDED":
 				return otherActorName
-					? `${actorName} added ${otherActorName} to the project`
-					: `${actorName} added a participant`;
+					? r(`${actorName} added ${otherActorName} to the project`, "activityAddedParticipant", { actor: actorName, name: otherActorName })
+					: r(`${actorName} added a participant`, "activityAddedParticipant", { actor: actorName, name: "" });
 
 			case "PARTICIPANT_REMOVED":
 				return otherActorName
-					? `${actorName} removed ${otherActorName} from the project`
-					: `${actorName} removed a participant`;
+					? r(`${actorName} removed ${otherActorName} from the project`, "activityRemovedParticipant", { actor: actorName, name: otherActorName })
+					: r(`${actorName} removed a participant`, "activityRemovedParticipant", { actor: actorName, name: "" });
 
 			case "ROLE_CHANGED": {
 				const oldRole = typeof c?.oldRole === "string" ? c.oldRole : null;
 				const newRole = typeof c?.newRole === "string" ? c.newRole : null;
 				const roleStr =
 					oldRole && newRole ? ` from ${oldRole} to ${newRole}` : "";
-				return otherActorName
-					? `${actorName} changed ${otherActorName}'s role${roleStr}`
-					: `${actorName} changed a participant's role`;
+				if (otherActorName) {
+					if (oldRole && newRole) {
+						return r(
+							`${actorName} changed ${otherActorName}'s role${roleStr}`,
+							"activityChangedRoleWithRoles",
+							{ actor: actorName, name: otherActorName, oldRole, newRole },
+						);
+					}
+					return r(
+						`${actorName} changed ${otherActorName}'s role`,
+						"activityChangedRole",
+						{ actor: actorName, name: otherActorName },
+					);
+				}
+				return r(`${actorName} changed a participant's role`, "activityChangedRole", { actor: actorName, name: "" });
 			}
 
 			default:
-				return `${actorName} made a change`;
+				return r(`${actorName} made a change`, "activityMadeChange", { actor: actorName });
 		}
 	} catch {
-		return `${actorName} made a change`;
+		return r(`${actorName} made a change`, "activityMadeChange", { actor: actorName });
 	}
 }
 
@@ -527,7 +621,7 @@ async function formatActivityEntry(
 					: "unknown";
 
 	const actionMeta = getActivityActionMeta(entry.action, entry.targetType);
-	const summary = buildActivitySummary(
+	const { text: summary, key: summaryKey, params: summaryParams } = buildActivitySummary(
 		entry.action,
 		entry.targetType,
 		actorName,
@@ -553,6 +647,8 @@ async function formatActivityEntry(
 			...actionMeta,
 		},
 		summary,
+		summaryKey,
+		summaryParams,
 		target,
 		detail,
 	};
