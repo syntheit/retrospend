@@ -2,14 +2,8 @@
 
 import {
 	Camera,
-	Compass,
 	Folder,
-	Plane,
-	Receipt,
-	RefreshCw,
-	User,
 } from "lucide-react";
-import { type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { getImageUrl } from "~/lib/image-url";
@@ -28,21 +22,7 @@ function nameToHueRotate(name: string): number {
 	return (h % 31) - 15; // -15 to +15
 }
 
-const TYPE_GRADIENTS: Record<string, string> = {
-	TRIP: "from-amber-500 to-orange-600",
-	ONGOING: "from-blue-500 to-teal-500",
-	SOLO: "from-slate-500 to-gray-600",
-	GENERAL: "from-indigo-500 to-purple-600",
-	ONE_TIME: "from-emerald-500 to-green-600",
-};
-
-const TYPE_ICONS: Record<string, LucideIcon> = {
-	TRIP: Plane,
-	ONGOING: RefreshCw,
-	SOLO: User,
-	GENERAL: Folder,
-	ONE_TIME: Receipt,
-};
+const DEFAULT_GRADIENT = "from-indigo-500 to-purple-600";
 
 const SIZE_CLASSES: Record<string, string> = {
 	xs: "h-6 w-6",
@@ -62,7 +42,6 @@ const ICON_SIZES: Record<string, number> = {
 
 interface ProjectVisualProps {
 	imagePath: string | null;
-	projectType: string;
 	projectName: string;
 	size?: "xs" | "sm" | "md" | "lg" | "xl";
 	className?: string;
@@ -72,7 +51,6 @@ interface ProjectVisualProps {
 
 export function ProjectVisual({
 	imagePath,
-	projectType,
 	projectName,
 	size = "md",
 	className,
@@ -85,8 +63,8 @@ export function ProjectVisual({
 	const imageUrl = getImageUrl(imagePath);
 	const showImage = imageUrl && !imgError;
 
-	const gradient = TYPE_GRADIENTS[projectType] ?? TYPE_GRADIENTS.GENERAL;
-	const IconComponent = TYPE_ICONS[projectType] ?? Compass;
+	const gradient = DEFAULT_GRADIENT;
+	const IconComponent = Folder;
 	const iconSize = ICON_SIZES[size]!;
 	const hueRotate = nameToHueRotate(projectName);
 

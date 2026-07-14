@@ -1,4 +1,5 @@
 import { Check, Copy } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -39,6 +40,8 @@ export function ActionDialog({
 	onCancel,
 	resetResult,
 }: ActionDialogProps) {
+	const t = useTranslations("admin");
+
 	return (
 		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
 			<ResponsiveDialogContent>
@@ -51,18 +54,18 @@ export function ActionDialog({
 
 				<ResponsiveDialogFooter>
 					{resetResult ? (
-						<Button onClick={onCancel}>Close</Button>
+						<Button onClick={onCancel}>{t("close")}</Button>
 					) : (
 						<>
 							<Button disabled={isLoading} onClick={onCancel} variant="outline">
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								disabled={isLoading}
 								onClick={onConfirm}
 								variant={variant}
 							>
-								{isLoading ? "Processing..." : confirmLabel}
+								{isLoading ? t("processing") : confirmLabel}
 							</Button>
 						</>
 					)}
@@ -73,16 +76,17 @@ export function ActionDialog({
 }
 
 function PasswordReveal({ password }: { password: string }) {
+	const t = useTranslations("admin");
 	const [copied, setCopied] = useState(false);
 
 	const handleCopyPassword = async () => {
 		try {
 			await navigator.clipboard.writeText(password);
 			setCopied(true);
-			toast.success("Password copied to clipboard");
+			toast.success(t("passwordCopied"));
 			setTimeout(() => setCopied(false), 2000);
 		} catch (_error) {
-			toast.error("Failed to copy password");
+			toast.error(t("passwordCopyFailed"));
 		}
 	};
 
@@ -90,7 +94,7 @@ function PasswordReveal({ password }: { password: string }) {
 		<div className="space-y-4">
 			<div>
 				<label className="font-medium text-sm" htmlFor="new-password">
-					New Password
+					{t("newPassword")}
 				</label>
 				<div className="mt-1 flex gap-2">
 					<Input
@@ -113,8 +117,7 @@ function PasswordReveal({ password }: { password: string }) {
 					</Button>
 				</div>
 				<p className="mt-2 text-muted-foreground text-sm">
-					The user can now sign in with this password. Make sure to share it
-					securely.
+					{t("passwordShareNote")}
 				</p>
 			</div>
 		</div>

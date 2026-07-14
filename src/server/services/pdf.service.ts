@@ -47,7 +47,6 @@ export interface PersonPdfData {
 
 export interface ProjectPdfData {
 	projectName: string;
-	projectType: string;
 	status: string;
 	primaryCurrency: string;
 	description: string | null;
@@ -234,7 +233,6 @@ export async function generateProjectPdf(
 		y += FONT_SIZE_TITLE + 6;
 
 		const metaParts: string[] = [];
-		if (data.projectType) metaParts.push(data.projectType);
 		if (data.status !== "ACTIVE") metaParts.push(data.status);
 		metaParts.push(data.primaryCurrency);
 		if (data.periodLabel) metaParts.push(`Period: ${data.periodLabel}`);

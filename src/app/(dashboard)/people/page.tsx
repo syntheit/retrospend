@@ -13,6 +13,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -86,6 +87,7 @@ type SortOption = "balance" | "name" | "recent";
 type ActivityFilter = "all" | "splits" | "settlements";
 
 export default function PeoplePage() {
+	const t = useTranslations("people");
 	const router = useRouter();
 	const { data: settings } = useSettings();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
@@ -126,7 +128,7 @@ export default function PeoplePage() {
 			setExitingIds((prev) => new Set(prev).add(txnId));
 		},
 		onSuccess: (_data, { txnId }) => {
-			toast.success("Verified");
+			toast.success(t("verified"));
 			setTimeout(() => {
 				setExitingIds((prev) => {
 					const next = new Set(prev);
@@ -154,7 +156,7 @@ export default function PeoplePage() {
 			setExitingIds((prev) => new Set(prev).add(txnId));
 		},
 		onSuccess: (_data, { txnId }) => {
-			toast.success("Rejected");
+			toast.success(t("rejected"));
 			setTimeout(() => {
 				setExitingIds((prev) => {
 					const next = new Set(prev);
@@ -280,8 +282,8 @@ export default function PeoplePage() {
 
 	// Activity columns for DataTable
 	const activityColumns = useMemo(
-		() => createActivityColumns(formatCurrency),
-		[formatCurrency],
+		() => createActivityColumns(formatCurrency, t),
+		[formatCurrency, t],
 	);
 
 	// Transform activity items into DataTable rows
@@ -296,8 +298,8 @@ export default function PeoplePage() {
 						avatarMap.get(item.sharedContext.paidByName.toLowerCase()) ??
 						null);
 				const description = isMine
-					? `You split '${item.title}'`
-					: `${item.sharedContext.paidByName} split '${item.title}' with you`;
+					? t("youSplit", { title: item.title })
+					: t("personSplit", { name: item.sharedContext.paidByName, title: item.title });
 				const personHref = isMine
 					? undefined
 					: personHrefMap.get(item.sharedContext.paidByName.toLowerCase());
@@ -328,8 +330,8 @@ export default function PeoplePage() {
 			const personHref = personHrefMap.get(personName.toLowerCase());
 			const description =
 				ctx.direction === "incoming"
-					? `${personName} settled up with you`
-					: `You settled up with ${personName}`;
+					? t("settledUpWith", { name: personName })
+					: t("youSettledUp", { name: personName });
 
 			return {
 				id: item.id,
@@ -346,7 +348,7 @@ export default function PeoplePage() {
 				personHref,
 			};
 		});
-	}, [timelineItems, avatarMap, personHrefMap]);
+	}, [timelineItems, avatarMap, personHrefMap, t]);
 
 	// Verification banner data
 	const visibleQueue = useMemo(
@@ -376,23 +378,23 @@ export default function PeoplePage() {
 		];
 
 		let fromText: string;
-		if (names.length === 1) fromText = `From ${names[0]}`;
+		if (names.length === 1) fromText = t("fromPerson", { name: names[0]! });
 		else if (names.length === 2)
-			fromText = `From ${names[0]} and ${names[1]}`;
-		else fromText = `From ${names[0]} and ${names.length - 1} others`;
+			fromText = t("fromTwoPeople", { name1: names[0]!, name2: names[1]! });
+		else fromText = t("fromMultiple", { name: names[0]!, count: names.length - 1 });
 
 		if (projectIds.length === 1) {
 			const projectItem = visibleQueue.find(
 				(item) => item.transaction.projectId === projectIds[0],
 			);
 			const projectName = projectItem?.transaction.projectName;
-			if (projectName) fromText += ` in ${projectName}`;
+			if (projectName) fromText += ` ${t("inProject", { project: projectName })}`;
 		} else if (projectIds.length > 1) {
-			fromText += ` across ${projectIds.length} projects`;
+			fromText += ` ${t("acrossProjects", { count: projectIds.length })}`;
 		}
 
 		return fromText;
-	}, [visibleQueue]);
+	}, [visibleQueue, t]);
 
 	const displayedItems = bannerExpanded ? visibleQueue.slice(0, BANNER_MAX_ITEMS) : [];
 	const remainingCount = visibleQueue.length - displayedItems.length;
@@ -408,41 +410,41 @@ export default function PeoplePage() {
 					.filter(Boolean),
 			),
 		];
-		return projectNames.length === 1 ? ` in ${projectNames[0]}` : "";
-	}, [visibleQueue, remainingCount]);
+		return projectNames.length === 1 ? ` ${t("inProject", { project: projectNames[0]! })}` : "";
+	}, [visibleQueue, remainingCount, t]);
 
 	const isLoading = peopleLoading || queueLoading;
 
 	return (
 		<>
-			<SiteHeader title="People" />
+			<SiteHeader title={t("title")} />
 			<PageContent>
 				<div className="space-y-6">
 					{/* ── Stat Cards ── */}
 					{!isLoading && (people?.length ?? 0) > 0 && (
 						<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 							<StatCard
-								description={`${stats.activeCount} ${stats.activeCount === 1 ? "person" : "people"}`}
+								description={`${stats.activeCount} ${stats.activeCount === 1 ? t("person") : t("personPlural")}`}
 								icon={Scale}
-								title="Net Balance"
+								title={t("netBalance")}
 								value={formatCurrency(Math.abs(stats.net), homeCurrency)}
 								variant={stats.net > 0 ? "emerald" : stats.net < 0 ? "rose" : "neutral"}
 							/>
 							<StatCard
 								icon={ArrowDownLeft}
-								title="Receivable"
+								title={t("receivable")}
 								value={formatCurrency(stats.receivable, homeCurrency)}
 								variant="emerald"
 							/>
 							<StatCard
 								icon={ArrowUpRight}
-								title="Payable"
+								title={t("payable")}
 								value={formatCurrency(stats.payable, homeCurrency)}
 								variant="rose"
 							/>
 							<StatCard
 								icon={Users}
-								title="People"
+								title={t("peopleCount")}
 								value={stats.activeCount}
 								variant="neutral"
 							/>
@@ -460,7 +462,7 @@ export default function PeoplePage() {
 									</div>
 									<div>
 										<p className="text-sm font-medium">
-											{visibleQueueCount} expense{visibleQueueCount !== 1 ? "s" : ""} need{visibleQueueCount === 1 ? "s" : ""} your review
+											{t("expensesNeedReview", { count: visibleQueueCount })}
 										</p>
 										{bannerSummary && (
 											<p className="text-xs text-muted-foreground">{bannerSummary}</p>
@@ -474,12 +476,12 @@ export default function PeoplePage() {
 								>
 									{bannerExpanded ? (
 										<>
-											Collapse
+											{t("collapse")}
 											<ChevronUp className="ml-1 h-3 w-3" />
 										</>
 									) : (
 										<>
-											Review now
+											{t("reviewNow")}
 											<ArrowRight className="ml-1 h-3 w-3" />
 										</>
 									)}
@@ -533,7 +535,7 @@ export default function PeoplePage() {
 														variant="outline"
 													>
 														<Check className="mr-1 h-3 w-3" />
-														Accept
+														{t("accept")}
 													</Button>
 													<Button
 														className="h-7 text-xs text-muted-foreground"
@@ -543,7 +545,7 @@ export default function PeoplePage() {
 														variant="ghost"
 													>
 														<X className="mr-1 h-3 w-3" />
-														Reject
+														{t("reject")}
 													</Button>
 												</div>
 											</div>
@@ -561,7 +563,7 @@ export default function PeoplePage() {
 												}}
 												type="button"
 											>
-												View {remainingCount} more{overflowProjectLabel} {"\u2192"}
+												{t("viewMore", { count: remainingCount, project: overflowProjectLabel })}
 											</button>
 										</div>
 									)}
@@ -574,21 +576,21 @@ export default function PeoplePage() {
 					<div className="space-y-3">
 						{/* Section header with search + sort */}
 						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-							<h2 className="font-semibold text-lg tracking-tight">People</h2>
+							<h2 className="font-semibold text-lg tracking-tight">{t("title")}</h2>
 							{(people?.length ?? 0) >= 2 && (
 								<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 									<TableSearch
 										className="sm:w-48"
 										onChange={setSearchQuery}
-										placeholder="Search people..."
+										placeholder={t("searchPlaceholder")}
 										value={searchQuery}
 										slashFocus
 									/>
 									<SegmentedToggle
 										options={[
-											{ value: "balance" as const, label: "Balance" },
-											{ value: "name" as const, label: "Name" },
-											{ value: "recent" as const, label: "Recent" },
+											{ value: "balance" as const, label: t("sortBalance") },
+											{ value: "name" as const, label: t("sortName") },
+											{ value: "recent" as const, label: t("sortRecent") },
 										]}
 										value={sortBy}
 										onChange={setSortBy}
@@ -623,7 +625,7 @@ export default function PeoplePage() {
 						) : people && people.length > 0 ? (
 							sortedPeople.length === 0 ? (
 								<p className="py-8 text-center text-muted-foreground text-sm">
-									No people matching &ldquo;{searchQuery}&rdquo;
+									{t("noMatching", { query: searchQuery })}
 								</p>
 							) : (
 								<div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -676,10 +678,10 @@ export default function PeoplePage() {
 													<div>
 														<div className="text-xs text-muted-foreground">
 															{isSettled
-																? "Settled"
+																? t("settled")
 																: direction === "they_owe_you"
-																	? "They owe you"
-																	: "You owe them"}
+																	? t("theyOweYou")
+																	: t("youOweThem")}
 														</div>
 														{isSettled ? (
 															<span className="text-lg font-semibold tabular-nums text-muted-foreground">
@@ -727,7 +729,10 @@ export default function PeoplePage() {
 															variant="ghost"
 														>
 															<Handshake className="h-3.5 w-3.5" />
-															{formatSettleLabel(direction as "they_owe_you" | "you_owe_them", hct, homeCurrency, person.balances, formatCurrency)}
+															{formatSettleLabel(direction as "they_owe_you" | "you_owe_them", hct, homeCurrency, person.balances, formatCurrency, {
+																pay: (amount) => t("payAmount", { amount }),
+																request: (amount) => t("requestAmount", { amount }),
+															})}
 														</Button>
 													)}
 												</div>
@@ -738,10 +743,10 @@ export default function PeoplePage() {
 														<div className="truncate text-xs text-muted-foreground">
 															{person.mostRecentTransactionDescription
 																? person.mostRecentTransactionProject
-																	? `Split '${person.mostRecentTransactionDescription}' in ${person.mostRecentTransactionProject} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
-																	: `Split '${person.mostRecentTransactionDescription}' · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
+																	? `${t("youSplit", { title: person.mostRecentTransactionDescription })} ${t("inProject", { project: person.mostRecentTransactionProject })} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
+																	: `${t("youSplit", { title: person.mostRecentTransactionDescription })} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
 																: person.mostRecentTransactionDate
-																	? `Last active ${formatDistanceToNow(new Date(person.mostRecentTransactionDate), { addSuffix: true })}`
+																	? t("lastActive", { time: formatDistanceToNow(new Date(person.mostRecentTransactionDate), { addSuffix: true }) })
 																	: null}
 														</div>
 													</div>
@@ -754,9 +759,9 @@ export default function PeoplePage() {
 						) : (
 							<div className="rounded-xl border border-border border-dashed">
 								<EmptyState
-									description="Start splitting expenses with someone to see them here."
+									description={t("noSharedDescription")}
 									icon={Users}
-									title="No Shared Expenses Yet"
+									title={t("noSharedExpenses")}
 								/>
 							</div>
 						)}
@@ -767,12 +772,12 @@ export default function PeoplePage() {
 						<Card className="border border-border bg-card shadow-sm">
 							<CardHeader className="px-4 sm:px-6">
 								<div className="flex items-center justify-between">
-									<CardTitle className="font-semibold text-lg tracking-tight">Recent activity</CardTitle>
+									<CardTitle className="font-semibold text-lg tracking-tight">{t("recentActivity")}</CardTitle>
 									<SegmentedToggle
 										options={[
-											{ value: "all" as const, label: "All" },
-											{ value: "splits" as const, label: "Splits" },
-											{ value: "settlements" as const, label: "Settlements" },
+											{ value: "all" as const, label: t("filterAll") },
+											{ value: "splits" as const, label: t("filterSplits") },
+											{ value: "settlements" as const, label: t("filterSettlements") },
 										]}
 										value={activityFilter}
 										onChange={setActivityFilter}
@@ -801,7 +806,7 @@ export default function PeoplePage() {
 										data={activityTableRows}
 										emptyState={
 											<div className="py-8 text-center text-muted-foreground text-sm">
-												No recent activity
+												{t("noRecentActivity")}
 											</div>
 										}
 										initialSorting={[{ id: "date", desc: true }]}

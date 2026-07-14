@@ -2,11 +2,13 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { Activity, Archive, Database, Layers, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StatCard } from "~/components/ui/stat-card";
 import { formatBytes, formatUptime } from "~/lib/format";
 import { api } from "~/trpc/react";
 
 export function AdminOverviewStats() {
+	const t = useTranslations("admin");
 	const { data: workerStatus } = api.system.getWorkerStatus.useQuery(
 		undefined,
 		{ refetchInterval: 30000 },
@@ -64,11 +66,11 @@ export function AdminOverviewStats() {
 				icon={Activity}
 				subValue={
 					<span className="text-muted-foreground text-xs">
-						{lastRun ? `${formatDistanceToNow(lastRun)} ago` : "No heartbeat"}
+						{lastRun ? `${formatDistanceToNow(lastRun)} ago` : t("noHeartbeat")}
 					</span>
 				}
-				title="Sidecar"
-				value={workerHealthy ? "Online" : "Offline"}
+				title={t("sidecar")}
+				value={workerHealthy ? t("online") : t("offline")}
 				variant={workerHealthy ? "emerald" : "rose"}
 			/>
 
@@ -79,11 +81,11 @@ export function AdminOverviewStats() {
 					<span className="text-muted-foreground text-xs">
 						{sidecarStatus?.online
 							? formatUptime(sidecarStatus.uptime ?? 0)
-							: "Not configured"}
+							: t("notConfigured")}
 					</span>
 				}
-				title="AI Import"
-				value={sidecarStatus?.importerAvailable ? "Enabled" : "Disabled"}
+				title={t("aiImport")}
+				value={sidecarStatus?.importerAvailable ? t("enabled") : t("disabled")}
 				variant={sidecarStatus?.importerAvailable ? "emerald" : "amber"}
 			/>
 
@@ -92,10 +94,10 @@ export function AdminOverviewStats() {
 				icon={Layers}
 				subValue={
 					<span className="text-muted-foreground text-xs">
-						{importQueueStats?.totalQueued ?? 0} waiting
+						{t("waiting", { count: importQueueStats?.totalQueued ?? 0 })}
 					</span>
 				}
-				title="Import Queue"
+				title={t("importQueue")}
 				value={`${importQueueStats?.currentProcessing ?? 0} / ${importQueueStats?.maxConcurrent ?? 3}`}
 				variant="blue"
 			/>
@@ -105,10 +107,10 @@ export function AdminOverviewStats() {
 				icon={Database}
 				subValue={
 					<span className="text-muted-foreground text-xs">
-						{formatBytes(serverStats?.storageSize ?? 0)} media
+						{formatBytes(serverStats?.storageSize ?? 0)} {t("media")}
 					</span>
 				}
-				title="Database"
+				title={t("database")}
 				value={formatBytes(serverStats?.databaseSize ?? 0)}
 				variant="violet"
 			/>
@@ -120,18 +122,18 @@ export function AdminOverviewStats() {
 					<span className="text-muted-foreground text-xs">
 						{lastBackupDate
 							? `${formatDistanceToNow(lastBackupDate)} ago`
-							: "Never"}
+							: t("never")}
 					</span>
 				}
-				title="Backups"
+				title={t("backups")}
 				value={
 					backup?.running
-						? "Running"
+						? t("running")
 						: backupHealthy
-							? "Healthy"
+							? t("healthy")
 							: backup?.available
-								? "Failed"
-								: "N/A"
+								? t("failed")
+								: t("notAvailable")
 				}
 				variant={backupHealthy ? "emerald" : "rose"}
 			/>

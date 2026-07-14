@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	ClipboardCopy,
 	Copy,
 	Download,
 	Edit2,
@@ -9,6 +10,7 @@ import {
 	Tags,
 	Trash2,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createElement, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -35,21 +37,27 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog";
 import { EmptyState } from "~/components/ui/empty-state";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExpensesController } from "~/hooks/use-expenses-controller";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useTableActions } from "~/hooks/use-table-actions";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getCategoryColorClasses } from "~/lib/constants";
+import { formatExpenseAsText } from "~/lib/format";
 import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { ExpensesTableFooter } from "./_components/expenses-table-footer";
 import { FilterBar } from "./_components/filter-bar";
 
 function TransactionsContent() {
+	const t = useTranslations("transactions");
+	const tc = useTranslations("common");
+	const locale = useLocale();
 	const { openNewExpense, openExpense, openSharedExpense, openDuplicateExpense } =
 		useExpenseModal();
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 	const isMobile = useIsMobile();
 
 	// On mobile, hide less important columns to reduce horizontal scroll
@@ -205,7 +213,7 @@ function TransactionsContent() {
 	const [pendingSharedDelete, setPendingSharedDelete] = useState<string | null>(null);
 	const deleteSharedTxMutation = api.sharedTransaction.delete.useMutation({
 		onSuccess: () => {
-			toast.success("Shared expense deleted");
+			toast.success(t("sharedDeleted"));
 			setPendingSharedDelete(null);
 			void utils.expense.listSharedParticipations.invalidate();
 			void utils.dashboard.getOverviewStats.invalidate();
@@ -214,7 +222,7 @@ function TransactionsContent() {
 			void utils.budget.getBudgets.invalidate();
 		},
 		onError: () => {
-			toast.error("Failed to delete shared expense");
+			toast.error(t("sharedDeleteFailed"));
 		},
 	});
 
@@ -232,10 +240,10 @@ function TransactionsContent() {
 				utils.expense.getFilterOptions.invalidate(),
 			]);
 			toast.success(
-				`Updated ${result.count} expense${result.count !== 1 ? "s" : ""} to ${result.categoryName}`,
+				t("updatedCategory", { count: result.count, category: result.categoryName }),
 			);
 		} catch {
-			toast.error("Failed to update categories");
+			toast.error(t("recategorizeFailed"));
 		}
 	};
 
@@ -281,6 +289,8 @@ function TransactionsContent() {
 				},
 				handleDuplicate,
 				hasSharedExpenses,
+				t,
+				locale,
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[
@@ -326,17 +336,17 @@ function TransactionsContent() {
 		homeCurrency,
 		searchQuery,
 		onSearchChange: setSearchQuery,
-		searchPlaceholder: "Search expenses...",
+		searchPlaceholder: t("searchExpenses"),
 		displayedCount,
 	};
 
 	if (isLoading) {
 		return (
 			<>
-				<SiteHeader title="Transactions" />
+				<SiteHeader title={t("title")} />
 				<PageContent>
 					<div className="flex h-64 items-center justify-center">
-						<div className="text-muted-foreground">Loading expenses...</div>
+						<div className="text-muted-foreground">{t("loading")}</div>
 					</div>
 				</PageContent>
 			</>
@@ -346,10 +356,10 @@ function TransactionsContent() {
 	if (isError) {
 		return (
 			<>
-				<SiteHeader title="Transactions" />
+				<SiteHeader title={t("title")} />
 				<PageContent>
 					<div className="flex h-64 items-center justify-center">
-						<div className="text-destructive">Error loading expenses</div>
+						<div className="text-destructive">{t("error")}</div>
 					</div>
 				</PageContent>
 			</>
@@ -358,13 +368,13 @@ function TransactionsContent() {
 
 	const handleCreateExpense = () => {
 		toast.dismiss();
-		toast.info("Starting a new expense draft");
+		toast.info(t("newExpenseDraft"));
 		openNewExpense();
 	};
 
 	return (
 		<>
-			<SiteHeader title="Transactions" />
+			<SiteHeader title={t("title")} />
 			<PageContent fill>
 				<div className="flex min-h-0 flex-1 flex-col gap-4">
 					<FilterBar {...filterBarProps} />
@@ -391,28 +401,28 @@ function TransactionsContent() {
 							<EmptyState
 								action={
 									typeFilter !== "shared"
-										? { label: "Add Expense", onClick: handleCreateExpense }
+										? { label: t("addExpense"), onClick: handleCreateExpense }
 										: undefined
 								}
 								description={
 									typeFilter === "shared"
-										? "No shared expenses yet. Share an expense from a project to see it here."
+										? t("noShared")
 										: filteredExpenses.length === 0 && !isLoading
-											? "Add your first expense to start tracking your spending."
-											: "No expenses match your current filters."
+											? t("noExpensesYet")
+											: t("noFiltersMatch")
 								}
 								icon={Receipt}
 								secondaryAction={{
-									label: "Reset Filters",
+									label: t("resetFilters"),
 									onClick: clearFilters,
 									variant: "outline",
 								}}
 								title={
 									typeFilter === "shared"
-										? "No Shared Expenses"
+										? t("noSharedTitle")
 										: filteredExpenses.length === 0 && !isLoading
-											? "No Expenses Yet"
-											: "No Results"
+											? t("noExpensesTitle")
+											: t("noResults")
 								}
 							/>
 						}
@@ -450,6 +460,7 @@ function TransactionsContent() {
 										(r) => r.currency !== "USD",
 									)}
 									hasPaidByColumn={hasSharedExpenses && typeFilter !== "personal"}
+									t={t}
 									totalAmount={displayTotal}
 								/>
 							);
@@ -478,18 +489,35 @@ function TransactionsContent() {
 												}}
 											>
 												<Edit2 className="mr-2 h-4 w-4" />
-												Edit expense
+												{t("editExpense")}
 											</ContextMenuItem>
 										)}
+										<ContextMenuItem
+											onClick={() => {
+												const text = formatExpenseAsText(
+													row.title,
+													row.amount,
+													row.currency,
+													new Date(row.date),
+													formatCurrency,
+													locale,
+												);
+												void navigator.clipboard.writeText(text);
+												toast.success(t("copiedToClipboard"));
+											}}
+										>
+											<ClipboardCopy className="mr-2 h-4 w-4" />
+											{t("copyAsText")}
+										</ContextMenuItem>
 										{canDelete && (
 											<>
-												{canEdit && <ContextMenuSeparator />}
+												<ContextMenuSeparator />
 												<ContextMenuItem
 													onClick={() => setPendingSharedDelete(sharedTxId)}
 													variant="destructive"
 												>
 													<Trash2 className="mr-2 h-4 w-4" />
-													Delete expense
+													{t("deleteExpense")}
 												</ContextMenuItem>
 											</>
 										)}
@@ -508,20 +536,20 @@ function TransactionsContent() {
 											onClick={() => void handleExportSelected()}
 										>
 											<Download className="mr-2 h-4 w-4" />
-											Export {selectionCount} selected
+											{t("exportSelected", { count: selectionCount })}
 										</ContextMenuItem>
 										{allCategories && allCategories.length > 0 && (
 											<ContextMenuSub onOpenChange={(open) => { if (!open) setCategorySearch(""); }}>
 												<ContextMenuSubTrigger className="gap-2">
 													<Tags className="size-4" />
-													Recategorize {selectionCount} selected
+													{t("recategorizeSelected", { count: selectionCount })}
 												</ContextMenuSubTrigger>
 												<ContextMenuSubContent className="w-56 p-0">
 													<div className="flex items-center gap-2 border-b px-3 py-2">
 														<Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 														<input
 															className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-															placeholder="Search categories..."
+															placeholder={t("searchCategories")}
 															value={categorySearch}
 															onChange={(e) => setCategorySearch(e.target.value)}
 														/>
@@ -550,7 +578,7 @@ function TransactionsContent() {
 																			{ className: "h-3 w-3" },
 																		)}
 																	</span>
-																	<span className="flex-1 truncate text-left">{category.name}</span>
+																	<span className="flex-1 truncate text-left">{displayName(category.name)}</span>
 																</Button>
 															))}
 													</div>
@@ -563,7 +591,7 @@ function TransactionsContent() {
 											variant="destructive"
 										>
 											<Trash2 className="mr-2 h-4 w-4" />
-											Delete {selectionCount} selected
+											{t("deleteSelected", { count: selectionCount })}
 										</ContextMenuItem>
 									</>
 								);
@@ -578,11 +606,27 @@ function TransactionsContent() {
 										}}
 									>
 										<Edit2 className="mr-2 h-4 w-4" />
-										Edit expense
+										{t("editExpense")}
 									</ContextMenuItem>
 									<ContextMenuItem onClick={() => handleDuplicate(row.id)}>
 										<Copy className="mr-2 h-4 w-4" />
-										Duplicate expense
+										{t("duplicateExpense")}
+									</ContextMenuItem>
+									<ContextMenuItem
+										onClick={() => {
+											const text = formatExpenseAsText(
+												row.title,
+												row.amount,
+												row.currency,
+												new Date(row.date),
+												formatCurrency,
+											);
+											void navigator.clipboard.writeText(text);
+											toast.success(t("copiedToClipboard"));
+										}}
+									>
+										<ClipboardCopy className="mr-2 h-4 w-4" />
+										{t("copyAsText")}
 									</ContextMenuItem>
 									<ContextMenuSeparator />
 									<ContextMenuItem
@@ -593,7 +637,7 @@ function TransactionsContent() {
 										variant="destructive"
 									>
 										<Trash2 className="mr-2 h-4 w-4" />
-										Delete expense
+										{t("deleteExpense")}
 									</ContextMenuItem>
 								</>
 							);
@@ -632,11 +676,9 @@ function TransactionsContent() {
 			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Delete Expenses</DialogTitle>
+						<DialogTitle>{t("deleteExpensesTitle")}</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete {selectedExpenseIds.size} expense
-							{selectedExpenseIds.size !== 1 ? "s" : ""}? This action cannot be
-							undone.
+							{t("deleteExpensesDescription", { count: selectedExpenseIds.size })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -645,14 +687,14 @@ function TransactionsContent() {
 							onClick={() => setShowDeleteDialog(false)}
 							variant="ghost"
 						>
-							Cancel
+							{tc("cancel")}
 						</Button>
 						<Button
 							disabled={isDeleting}
 							onClick={confirmDelete}
 							variant="destructive"
 						>
-							{isDeleting ? "Deleting..." : "Delete Expenses"}
+							{isDeleting ? tc("deleting") : t("deleteExpensesTitle")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -661,9 +703,9 @@ function TransactionsContent() {
 			<Dialog onOpenChange={(open) => { if (!open) setPendingSharedDelete(null); }} open={pendingSharedDelete !== null}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Delete Shared Expense</DialogTitle>
+						<DialogTitle>{t("deleteSharedTitle")}</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this shared expense? All participants will be notified. This action cannot be undone.
+							{t("deleteSharedDescription")}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -672,7 +714,7 @@ function TransactionsContent() {
 							onClick={() => setPendingSharedDelete(null)}
 							variant="ghost"
 						>
-							Cancel
+							{tc("cancel")}
 						</Button>
 						<Button
 							disabled={deleteSharedTxMutation.isPending}
@@ -683,7 +725,7 @@ function TransactionsContent() {
 							}}
 							variant="destructive"
 						>
-							{deleteSharedTxMutation.isPending ? "Deleting..." : "Delete"}
+							{deleteSharedTxMutation.isPending ? tc("deleting") : tc("delete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -693,14 +735,15 @@ function TransactionsContent() {
 }
 
 export default function Page() {
+	const t = useTranslations("transactions");
 	return (
 		<Suspense
 			fallback={
 				<>
-					<SiteHeader title="Transactions" />
+					<SiteHeader title={t("title")} />
 					<PageContent>
 						<div className="flex h-64 items-center justify-center">
-							<div className="text-muted-foreground">Loading...</div>
+							<div className="text-muted-foreground">{t("suspenseLoading")}</div>
 						</div>
 					</PageContent>
 				</>

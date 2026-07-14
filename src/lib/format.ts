@@ -59,6 +59,27 @@ export function formatUptime(seconds: number): string {
 }
 
 /**
+ * Builds a plain-text summary of an expense for clipboard copy.
+ * Example: "Groceries — $45.20 — Mar 28, 2026"
+ */
+export function formatExpenseAsText(
+	title: string | null | undefined,
+	amount: number,
+	currency: string,
+	date: Date,
+	formatCurrency: (amount: number, currency: string) => string,
+	locale?: string,
+): string {
+	const name = title?.trim() || "Untitled";
+	const formattedDate = date.toLocaleDateString(locale ?? "en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+	return `${name} — ${formatCurrency(amount, currency)} — ${formattedDate}`;
+}
+
+/**
  * Formats an expense date as "Today", "Yesterday", "Tomorrow", or "MMM d, yyyy".
  * Compares calendar dates only (ignores time).
  */

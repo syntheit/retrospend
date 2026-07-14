@@ -3,6 +3,7 @@
 import { CheckCircle, CircleX, Database, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
@@ -36,6 +37,7 @@ interface BackupStatusData {
 }
 
 export function BackupStatusCard() {
+	const t = useTranslations("admin");
 	const [triggerResult, setTriggerResult] = useState<string | null>(null);
 
 	const { data, isLoading } = api.admin.getBackupStatus.useQuery(undefined, {
@@ -45,8 +47,8 @@ export function BackupStatusCard() {
 	const utils = api.useUtils();
 	const triggerMutation = api.admin.triggerBackup.useMutation({
 		onSuccess: () => {
-			setTriggerResult("Backup started");
-			toast.success("Backup started successfully");
+			setTriggerResult(t("backupStarted"));
+			toast.success(t("backupStartedSuccess"));
 			// Refetch status after a short delay to show the running state
 			setTimeout(() => {
 				void utils.admin.getBackupStatus.invalidate();
@@ -65,7 +67,7 @@ export function BackupStatusCard() {
 			<Card className="flex flex-col">
 				<CardHeader className="pb-2">
 					<CardTitle className="font-medium text-muted-foreground text-sm">
-						Database Backups
+						{t("databaseBackups")}
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="flex flex-grow items-center">
@@ -81,16 +83,16 @@ export function BackupStatusCard() {
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<Database className="h-5 w-5" />
-						Database Backups
+						{t("databaseBackups")}
 					</CardTitle>
 					<CardDescription>
-						Backup service is not available. Check sidecar connection.
+						{t("backupServiceUnavailable")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="flex items-center gap-2">
 						<div className="h-2.5 w-2.5 rounded-full bg-red-500" />
-						<span className="font-medium text-sm">Unavailable</span>
+						<span className="font-medium text-sm">{t("unavailable")}</span>
 					</div>
 				</CardContent>
 			</Card>
@@ -109,17 +111,17 @@ export function BackupStatusCard() {
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<Database className="h-5 w-5" />
-					Database Backups
+					{t("databaseBackups")}
 				</CardTitle>
 				<CardDescription>
-					Automatic backups with {status.retentionDays}-day retention.
+					{t("autoBackupRetention", { days: status.retentionDays ?? 0 })}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
 				<div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4">
 					{/* Status */}
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">Backup Status</span>
+						<span className="text-muted-foreground text-sm">{t("backupStatus")}</span>
 						<div className="flex items-center gap-2">
 							<div
 								className={`h-2 w-2 rounded-full ${
@@ -132,31 +134,31 @@ export function BackupStatusCard() {
 							/>
 							<span className="font-medium text-sm">
 								{status.running
-									? "Running"
+									? t("running")
 									: isLastBackupOk
-										? "Healthy"
+										? t("healthy")
 										: lastBackup
-											? "Failed"
-											: "Never run"}
+											? t("failed")
+											: t("neverRun")}
 							</span>
 						</div>
 					</div>
 
 					{/* Last backup */}
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">Last Backup</span>
+						<span className="text-muted-foreground text-sm">{t("lastBackup")}</span>
 						<span className="font-medium text-sm tabular-nums">
 							{lastBackupDate
 								? formatDistanceToNow(lastBackupDate, {
 										addSuffix: true,
 									})
-								: "Never"}
+								: t("never")}
 						</span>
 					</div>
 
 					{lastBackup?.success && (
 						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground text-sm">Backup Size</span>
+							<span className="text-muted-foreground text-sm">{t("backupSize")}</span>
 							<span className="font-medium text-sm tabular-nums">
 								{formatBytes(lastBackup.sizeBytes)}
 							</span>
@@ -168,20 +170,20 @@ export function BackupStatusCard() {
 					{/* Next scheduled */}
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">
-							Next Scheduled
+							{t("nextScheduled")}
 						</span>
 						<span className="font-medium text-sm tabular-nums">
 							{nextScheduled
 								? formatDistanceToNow(nextScheduled, {
 										addSuffix: true,
 									})
-								: "N/A"}
+								: t("notAvailable")}
 						</span>
 					</div>
 
 					{/* Total */}
 					<div className="flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">Total Backups</span>
+						<span className="text-muted-foreground text-sm">{t("totalBackupsLabel")}</span>
 						<span className="font-medium text-sm tabular-nums">
 							{status.totalBackups ?? 0} ({formatBytes(status.totalSize ?? 0)})
 						</span>
@@ -192,7 +194,7 @@ export function BackupStatusCard() {
 				{status.history && status.history.length > 0 && (
 					<div className="space-y-2">
 						<span className="font-medium text-muted-foreground text-xs tracking-wide">
-							Recent History
+							{t("recentHistory")}
 						</span>
 						<div className="space-y-1">
 							{status.history.slice(0, 5).map((entry) => (
@@ -244,12 +246,12 @@ export function BackupStatusCard() {
 						{triggerMutation.isPending || status.running ? (
 							<>
 								<Download className="mr-2 h-4 w-4 animate-spin" />
-								Backing up...
+								{t("backingUp")}
 							</>
 						) : (
 							<>
 								<Download className="mr-2 h-4 w-4" />
-								Backup Now
+								{t("backupNow")}
 							</>
 						)}
 					</Button>

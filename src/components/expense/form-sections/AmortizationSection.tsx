@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
+import { useTranslations } from "next-intl";
 import { Label } from "~/components/ui/label";
 import { Slider } from "~/components/ui/slider";
 import { Switch } from "~/components/ui/switch";
@@ -10,6 +11,7 @@ import { formatNumber } from "~/lib/currency-format";
 import { cn } from "~/lib/utils";
 
 export function AmortizationSection() {
+	const t = useTranslations("expenseForm");
 	const { watch, setValue } = useFormContext<ExpenseFormData>();
 	const { getCurrencySymbol } = useCurrencyFormatter();
 
@@ -27,9 +29,9 @@ export function AmortizationSection() {
 				)}
 			>
 				<div className="space-y-0.5">
-					<Label className="text-base">Spread cost over time</Label>
+					<Label className="text-base">{t("spreadCostOverTime")}</Label>
 					<p className="font-normal text-muted-foreground text-xs">
-						Split this expense into monthly entries
+						{t("splitIntoMonthly")}
 					</p>
 				</div>
 				<Switch
@@ -44,9 +46,9 @@ export function AmortizationSection() {
 				<div className="fade-in slide-in-from-top-2 mt-4 animate-in space-y-6 px-1">
 					<div className="space-y-3">
 						<div className="flex items-center justify-between">
-							<Label>Duration</Label>
+							<Label>{t("durationLabel")}</Label>
 							<span className="font-medium text-muted-foreground text-sm">
-								{watchAmortizeOver} months
+								{watchAmortizeOver} {t("months")}
 							</span>
 						</div>
 						<Slider
@@ -60,13 +62,13 @@ export function AmortizationSection() {
 							value={[watchAmortizeOver ?? 3]}
 						/>
 						<div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-sm">
-							<span className="text-muted-foreground">Monthly payment</span>
+							<span className="text-muted-foreground">{t("monthlyPayment")}</span>
 							<span className="font-medium text-foreground">
 								{watchedAmount && watchAmortizeOver
 									? getCurrencySymbol(watchedCurrency) +
 										formatNumber(watchedAmount / watchAmortizeOver, 2)
 									: "$0.00"}{" "}
-								/ mo
+								{t("perMonthAbbrev")}
 							</span>
 						</div>
 					</div>

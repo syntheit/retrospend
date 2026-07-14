@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import {
 	Dialog,
@@ -24,22 +25,23 @@ export function UnsavedChangesDialog({
 	onOpenChange,
 	onDiscard,
 	onStay,
-	title = "Unsaved Changes",
-	description = "You have unsaved changes. Are you sure you want to leave? All changes will be lost.",
+	title,
+	description,
 }: UnsavedChangesDialogProps) {
+	const t = useTranslations("ui");
 	return (
 		<Dialog onOpenChange={onOpenChange} open={open}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
-					<DialogDescription>{description}</DialogDescription>
+					<DialogTitle>{title ?? t("unsavedChanges")}</DialogTitle>
+					<DialogDescription>{description ?? t("unsavedChangesDescription")}</DialogDescription>
 				</DialogHeader>
 				<DialogFooter className="flex-col gap-2 sm:flex-row">
 					<Button onClick={onStay} variant="ghost">
-						Stay on Page
+						{t("stayOnPage")}
 					</Button>
 					<Button onClick={onDiscard} variant="destructive">
-						Discard Changes
+						{t("discardChanges")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

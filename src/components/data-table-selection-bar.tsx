@@ -1,6 +1,7 @@
 "use client";
 
 import { createElement, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Copy, Download, Edit, Tags, Trash2, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -8,6 +9,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getCategoryColorClasses } from "~/lib/constants";
 import { cn } from "~/lib/utils";
@@ -44,6 +46,8 @@ export function DataTableSelectionBar({
 	onRecategorize,
 	categories,
 }: DataTableSelectionBarProps) {
+	const t = useTranslations("transactions");
+	const { displayName } = useCategoryName();
 	const [recategorizeOpen, setRecategorizeOpen] = useState(false);
 
 	return (
@@ -66,7 +70,7 @@ export function DataTableSelectionBar({
 				<X className="h-3.5 w-3.5" />
 			</Button>
 			<span aria-atomic="true" aria-live="polite" className="tabular-nums font-medium text-sm">
-				{selectedRows.size} item{selectedRows.size !== 1 ? "s" : ""} selected
+				{t("itemsSelected", { count: selectedRows.size })}
 			</span>
 			<div className="ml-auto flex items-center gap-2">
 				{onRecategorize && categories && categories.length > 0 && (
@@ -82,7 +86,7 @@ export function DataTableSelectionBar({
 							>
 								<Tags className="h-4 w-4" />
 								<span className="sr-only sm:not-sr-only sm:inline-block">
-									Recategorize
+									{t("recategorize")}
 								</span>
 							</Button>
 						</PopoverTrigger>
@@ -114,7 +118,7 @@ export function DataTableSelectionBar({
 											)}
 										</span>
 										<span className="truncate">
-											{category.name}
+											{displayName(category.name)}
 										</span>
 									</Button>
 								))}
@@ -132,7 +136,7 @@ export function DataTableSelectionBar({
 					>
 						<Download className="h-4 w-4" />
 						<span className="sr-only sm:not-sr-only sm:inline-block">
-							Export
+							{t("export")}
 						</span>
 					</Button>
 				)}
@@ -149,7 +153,7 @@ export function DataTableSelectionBar({
 						variant="ghost"
 					>
 						<Edit className="h-4 w-4" />
-						<span className="sr-only sm:not-sr-only sm:inline-block">Edit</span>
+						<span className="sr-only sm:not-sr-only sm:inline-block">{t("edit")}</span>
 					</Button>
 				)}
 				{selectedRows.size === 1 && onDuplicateSelected && (
@@ -165,7 +169,7 @@ export function DataTableSelectionBar({
 						variant="ghost"
 					>
 						<Copy className="h-4 w-4" />
-						<span className="sr-only sm:not-sr-only sm:inline-block">Duplicate</span>
+						<span className="sr-only sm:not-sr-only sm:inline-block">{t("duplicate")}</span>
 					</Button>
 				)}
 				{onDeleteSelected && (
@@ -177,7 +181,7 @@ export function DataTableSelectionBar({
 					>
 						<Trash2 className="h-4 w-4" />
 						<span className="sr-only sm:not-sr-only sm:inline-block">
-							Delete
+							{t("delete")}
 						</span>
 					</Button>
 				)}

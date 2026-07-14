@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -10,6 +11,7 @@ import {
 	ResponsiveDialogHeader,
 	ResponsiveDialogTitle,
 } from "~/components/ui/responsive-dialog";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
 import {
@@ -55,6 +57,8 @@ export function DayExpensesDialog({
 	liveRateToBaseCurrency,
 	isLoading = false,
 }: DayExpensesDialogProps) {
+	const t = useTranslations("dayExpenses");
+	const { displayName } = useCategoryName();
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const formattedDate = selectedDate
@@ -94,11 +98,11 @@ export function DayExpensesDialog({
 					<ResponsiveDialogTitle>{formattedDate}</ResponsiveDialogTitle>
 					<ResponsiveDialogDescription>
 						{expenses.length === 0 ? (
-							"No expenses recorded for this day"
+							t("noExpensesRecorded")
 						) : (
 							<>
-								{expenses.length} expense{expenses.length === 1 ? "" : "s"}{" "}
-								totaling{" "}
+								{t("expenseCount", { count: expenses.length })}{" "}
+								{t("totaling")}{" "}
 								<span className="font-semibold">
 									{formatBaseCurrencyAmount(totalAmount)}
 								</span>
@@ -109,12 +113,12 @@ export function DayExpensesDialog({
 
 				{isLoading ? (
 					<div className="flex items-center justify-center py-8">
-						<div className="text-muted-foreground">Loading expenses...</div>
+						<div className="text-muted-foreground">{t("loadingExpenses")}</div>
 					</div>
 				) : expenses.length === 0 ? (
 					<div className="flex items-center justify-center py-8">
 						<div className="text-muted-foreground">
-							No expenses found for this day.
+							{t("noExpensesFound")}
 						</div>
 					</div>
 				) : (
@@ -138,7 +142,7 @@ export function DayExpensesDialog({
 														] || "bg-gray-100 text-gray-800",
 													)}
 												>
-													{expense.category.name}
+													{displayName(expense.category.name)}
 												</Badge>
 											)}
 										</div>

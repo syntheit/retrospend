@@ -2,7 +2,9 @@
 
 import type { VisibilityState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { DataTable } from "~/components/data-table";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import {
 	type BucketSize,
@@ -22,14 +24,14 @@ import {
 } from "./category-trends-columns";
 import { useIsMobile } from "~/hooks/use-mobile";
 
-function getPeriodLabel(bs: BucketSize): string {
+function getPeriodLabel(bs: BucketSize, t: (key: string) => string): string {
 	switch (bs) {
 		case "day":
-			return "Day";
+			return t("periodDay");
 		case "week":
-			return "Week";
+			return t("periodWeek");
 		case "month":
-			return "Month";
+			return t("periodMonth");
 	}
 }
 
@@ -46,6 +48,7 @@ export function CategoryTrendsTable({
 	liveRateToBaseCurrency,
 	dateRange,
 }: CategoryTrendsTableProps) {
+	const t = useTranslations("analytics");
 	const isMobile = useIsMobile();
 
 	const bucketSize = useMemo(
@@ -170,6 +173,7 @@ export function CategoryTrendsTable({
 	}, [expenses, dateRange, bucketSize, baseCurrency, liveRateToBaseCurrency]);
 
 	const { formatCurrency: formatWithSettings } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 
 	const formatAmount = useCallback(
 		(amount: number) => formatWithSettings(amount, baseCurrency),
@@ -177,25 +181,32 @@ export function CategoryTrendsTable({
 	);
 
 	const columns = useMemo(
-		() => createCategoryTrendColumns(formatAmount, bucketSize, getPeriodLabel),
-		[formatAmount, bucketSize],
+		() => createCategoryTrendColumns(formatAmount, bucketSize, (bs) => getPeriodLabel(bs, t), displayName, t),
+		[formatAmount, bucketSize, displayName, t],
 	);
 
 	const columnVisibility: VisibilityState = isMobile
 		? { periodAverage: false }
 		: {};
 
+	const subtitleKey =
+		bucketSize === "day"
+			? "dailyTrendsByCategory"
+			: bucketSize === "week"
+				? "weeklyTrendsByCategory"
+				: "monthlyTrendsByCategory";
+
 	if (categoryData.length === 0) {
 		return (
 			<div className="space-y-4">
 				<div>
-					<h3 className="font-semibold text-lg">Category Trends</h3>
+					<h3 className="font-semibold text-lg">{t("categoryTrends")}</h3>
 					<p className="text-muted-foreground text-sm">
-						Spending trends by category
+						{t("spendingTrendsByCategory")}
 					</p>
 				</div>
 				<div className="flex h-[300px] items-center justify-center">
-					<p className="text-muted-foreground">No categorized expenses found</p>
+					<p className="text-muted-foreground">{t("noCategorizedExpenses")}</p>
 				</div>
 			</div>
 		);
@@ -204,9 +215,9 @@ export function CategoryTrendsTable({
 	return (
 		<div className="space-y-4">
 			<div>
-				<h3 className="font-semibold text-lg">Category Trends</h3>
+				<h3 className="font-semibold text-lg">{t("categoryTrends")}</h3>
 				<p className="text-muted-foreground text-sm">
-					{getPeriodLabel(bucketSize)}ly spending trends by category
+					{t(subtitleKey)}
 				</p>
 			</div>
 

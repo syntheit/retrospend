@@ -1,6 +1,7 @@
 "use client";
 
 import { FileSearch, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Progress } from "~/components/ui/progress";
 
 interface ImporterProcessingProps {
@@ -14,6 +15,8 @@ export function ImporterProcessing({
 	progress,
 	statusMessage,
 }: ImporterProcessingProps) {
+	const t = useTranslations("dataManagement");
+
 	return (
 		<div className="flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-muted-foreground/25 border-dashed bg-muted/30 px-6 py-12">
 			<div className="relative">
@@ -22,7 +25,7 @@ export function ImporterProcessing({
 			</div>
 			<div aria-live="polite" className="w-full max-w-sm space-y-2 text-center">
 				<p className="font-medium">
-					{statusMessage || "Processing your file..."}
+					{statusMessage || t("processingYourFile")}
 				</p>
 				{fileName && (
 					<p className="text-muted-foreground text-sm">{fileName}</p>
@@ -32,14 +35,14 @@ export function ImporterProcessing({
 					<div className="space-y-1.5 pt-2">
 						<Progress value={progress * 100} />
 						<p className="font-bold text-[10px] text-muted-foreground tracking-wide">
-							{Math.round(progress * 100)}% Complete
+							{t("percentComplete", { percent: Math.round(progress * 100) })}
 						</p>
 					</div>
 				)}
 
 				{!progress && (
 					<p className="mt-2 text-muted-foreground text-xs">
-						Analyzing bank statement format. This may take a moment for PDFs.
+						{t("analyzingBankStatement")}
 					</p>
 				)}
 			</div>

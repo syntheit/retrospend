@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
@@ -35,31 +36,32 @@ export function ProjectDetailsSidebar({
 	project,
 	totalExpenseCount,
 }: ProjectDetailsSidebarProps) {
+	const t = useTranslations("projects");
 	const createdAgo = formatDistanceToNow(project.createdAt, { addSuffix: true });
 
 	return (
 		<Card>
 			<CardHeader className="px-4 pb-2 pt-4">
 				<span className="text-[11px] font-semibold tracking-wide text-muted-foreground">
-					Project Details
+					{t("projectDetails")}
 				</span>
 			</CardHeader>
 			<CardContent className="px-4 pb-4">
 				<dl className="space-y-1.5">
 					<div className="flex items-baseline justify-between gap-2">
-						<dt className="shrink-0 text-xs text-muted-foreground">Expenses</dt>
+						<dt className="shrink-0 text-xs text-muted-foreground">{t("expensesLabel")}</dt>
 						<dd className="truncate text-right text-xs font-medium">
-							{totalExpenseCount} expense{totalExpenseCount !== 1 ? "s" : ""}
+							{t("expenseCount", { count: totalExpenseCount })}
 						</dd>
 					</div>
 					<div className="flex items-baseline justify-between gap-2">
-						<dt className="shrink-0 text-xs text-muted-foreground">Currency</dt>
+						<dt className="shrink-0 text-xs text-muted-foreground">{t("currencyLabel")}</dt>
 						<dd className="truncate text-right text-xs font-medium">
 							{project.primaryCurrency}
 						</dd>
 					</div>
 					<div className="flex items-baseline justify-between gap-2">
-						<dt className="shrink-0 text-xs text-muted-foreground">Created</dt>
+						<dt className="shrink-0 text-xs text-muted-foreground">{t("createdLabel")}</dt>
 						<dd className="truncate text-right text-xs font-medium">
 							{createdAgo}
 						</dd>
@@ -102,6 +104,7 @@ export function ParticipantsSidebar({
 	isOrganizer,
 	isEditor,
 }: ParticipantsSidebarProps) {
+	const t = useTranslations("projects");
 	const [shareOpen, setShareOpen] = useState(false);
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -166,7 +169,7 @@ export function ParticipantsSidebar({
 											<Skeleton className="mt-0.5 h-3 w-16" />
 										) : (
 											<p className="mt-0.5 text-[11px] text-muted-foreground">
-												{formatCurrency(paid, primaryCurrency)} paid
+												{formatCurrency(paid, primaryCurrency)} {t("paidLabel")}
 											</p>
 										)}
 									</div>
@@ -182,7 +185,7 @@ export function ParticipantsSidebar({
 								type="button"
 								variant="link"
 							>
-								+{overflowCount} more
+								+{overflowCount} {t("andMore")}
 							</Button>
 						</div>
 					)}

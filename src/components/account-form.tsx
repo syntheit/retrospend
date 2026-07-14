@@ -1,6 +1,7 @@
 "use client";
 
 import { Award, Receipt, Wallet } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ type ExtendedUser = NonNullable<
 };
 
 export function AccountForm() {
+	const t = useTranslations("account");
 	const { data: session, isPending } = useSession();
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -46,7 +48,7 @@ export function AccountForm() {
 		return (
 			<Card>
 				<CardContent className="p-6">
-					<div className="text-center">Loading...</div>
+					<div className="text-center">{t("loading")}</div>
 				</CardContent>
 			</Card>
 		);
@@ -57,7 +59,7 @@ export function AccountForm() {
 			<Card>
 				<CardContent className="p-6">
 					<div className="text-center">
-						Please sign in to access your account
+						{t("pleaseSignIn")}
 					</div>
 				</CardContent>
 			</Card>
@@ -73,19 +75,19 @@ export function AccountForm() {
 			<div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
 				<StatCard
 					icon={Wallet}
-					title="TOTAL TRACKED VOLUME"
+					title={t("totalTrackedVolume")}
 					value={formatCurrency(lifetimeStats?.totalSpent || 0)}
 					variant="blue"
 				/>
 				<StatCard
 					icon={Receipt}
-					title="TOTAL TRANSACTIONS"
+					title={t("totalTransactions")}
 					value={lifetimeStats?.totalTransactions.toLocaleString() || "0"}
 					variant="violet"
 				/>
 				<StatCard
 					icon={Award}
-					title="MEMBER SINCE"
+					title={t("memberSince")}
 					value={new Date(user.createdAt).toLocaleDateString("en-US", {
 						month: "short",
 						year: "numeric",
@@ -120,11 +122,12 @@ function DeleteAccountSection({
 	showModal,
 	onCloseModal,
 }: DeleteAccountSectionProps) {
+	const t = useTranslations("account");
 	const router = useRouter();
 	const [password, setPassword] = useState("");
 	const deleteAccount = api.user.deleteAccount.useMutation({
 		onSuccess: () => {
-			toast.success("Account deleted");
+			toast.success(t("accountDeleted"));
 			router.push("/login");
 		},
 		onError: (err) => {
@@ -144,10 +147,10 @@ function DeleteAccountSection({
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="font-medium text-red-600 dark:text-red-400">
-								Delete Account
+								{t("deleteAccount")}
 							</p>
 							<p className="text-muted-foreground text-sm">
-								Permanently remove your account and all data.
+								{t("permanentlyRemove")}
 							</p>
 						</div>
 						<Button
@@ -155,7 +158,7 @@ function DeleteAccountSection({
 							onClick={onOpenDelete}
 							variant="outline"
 						>
-							Delete
+							{t("delete")}
 						</Button>
 					</div>
 				</CardContent>
@@ -164,19 +167,18 @@ function DeleteAccountSection({
 			<Dialog onOpenChange={handleClose} open={showModal}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Delete Account</DialogTitle>
+						<DialogTitle>{t("deleteAccount")}</DialogTitle>
 						<DialogDescription>
-							Are you sure? This action cannot be undone. All your data will be
-							permanently removed. Enter your password to confirm.
+							{t("areYouSure")}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="py-2">
-						<Label htmlFor="delete-password">Password</Label>
+						<Label htmlFor="delete-password">{t("password")}</Label>
 						<Input
 							className="mt-2"
 							id="delete-password"
 							onChange={(e) => setPassword(e.target.value)}
-							placeholder="Enter your password"
+							placeholder={t("enterYourPassword")}
 							type="password"
 							value={password}
 						/>
@@ -187,14 +189,14 @@ function DeleteAccountSection({
 							onClick={handleClose}
 							variant="ghost"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={deleteAccount.isPending || !password}
 							onClick={() => deleteAccount.mutate({ password })}
 							variant="destructive"
 						>
-							{deleteAccount.isPending ? "Deleting..." : "Delete Account"}
+							{deleteAccount.isPending ? t("deleting") : t("deleteAccount")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

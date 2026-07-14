@@ -19,6 +19,7 @@ import {
 	ShieldCheck,
 	Trash2,
 } from "lucide-react";
+import type { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -71,11 +72,12 @@ export function createUserColumns(
 		onSetAiAccess?: (userId: string, allowed: boolean | null) => void;
 		onCopyResetLink: (userId: string) => void;
 	},
+	t: ReturnType<typeof useTranslations<"admin">>,
 ): ColumnDef<User>[] {
 	return [
 		{
 			accessorKey: "username",
-			header: "Username",
+			header: t("username"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => (
@@ -84,7 +86,7 @@ export function createUserColumns(
 		},
 		{
 			accessorKey: "email",
-			header: "Email",
+			header: t("email"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => (
@@ -102,8 +104,8 @@ export function createUserColumns(
 								</TooltipTrigger>
 								<TooltipContent>
 									{row.original.emailVerified
-										? "Email verified"
-										: "Email not verified"}
+										? t("emailVerifiedTooltip")
+										: t("emailNotVerifiedTooltip")}
 								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
@@ -113,7 +115,7 @@ export function createUserColumns(
 		},
 		{
 			accessorKey: "role",
-			header: "Role",
+			header: t("role"),
 			enableSorting: true,
 			size: 100,
 			cell: ({ row }) => (
@@ -126,18 +128,18 @@ export function createUserColumns(
 		},
 		{
 			id: "status",
-			header: "Status",
+			header: t("columnStatus"),
 			enableSorting: true,
 			size: 100,
 			accessorFn: (row) => {
-				if (!row.isActive) return "Disabled";
+				if (!row.isActive) return t("statusDisabled");
 				const daysSinceLastExpense = row.lastExpenseDate
 					? Math.floor(
 							(Date.now() - new Date(row.lastExpenseDate).getTime()) /
 								(1000 * 60 * 60 * 24),
 						)
 					: Number.POSITIVE_INFINITY;
-				return daysSinceLastExpense > 14 ? "Dormant" : "Active";
+				return daysSinceLastExpense > 14 ? t("statusDormant") : t("statusActive");
 			},
 			cell: ({ row }) => {
 				const daysSinceLastExpense = row.original.lastExpenseDate
@@ -150,25 +152,25 @@ export function createUserColumns(
 				const isDormant = daysSinceLastExpense > 14;
 
 				if (!row.original.isActive) {
-					return <Badge variant="destructive">Disabled</Badge>;
+					return <Badge variant="destructive">{t("statusDisabled")}</Badge>;
 				}
 				if (isDormant) {
 					return (
 						<Badge className="border-transparent bg-yellow-500/10 text-yellow-500 shadow-none hover:bg-yellow-500/20">
-							Dormant
+							{t("statusDormant")}
 						</Badge>
 					);
 				}
 				return (
 					<Badge className="border-transparent bg-emerald-500/10 text-emerald-500 shadow-none hover:bg-emerald-500/20">
-						Active
+						{t("statusActive")}
 					</Badge>
 				);
 			},
 		},
 		{
 			id: "features",
-			header: "Features",
+			header: t("features"),
 			enableSorting: false,
 			size: 140,
 			cell: ({ row }) => (
@@ -185,7 +187,7 @@ export function createUserColumns(
 								/>
 							</TooltipTrigger>
 							<TooltipContent>
-								Budget: {row.original.hasBudget ? "Active" : "Unused"}
+								{t("budgetFeature", { status: row.original.hasBudget ? t("featureActive") : t("featureUnused") })}
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
@@ -199,7 +201,7 @@ export function createUserColumns(
 								/>
 							</TooltipTrigger>
 							<TooltipContent>
-								Recurring: {row.original.hasRecurring ? "Active" : "Unused"}
+								{t("recurringFeature", { status: row.original.hasRecurring ? t("featureActive") : t("featureUnused") })}
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
@@ -213,7 +215,7 @@ export function createUserColumns(
 								/>
 							</TooltipTrigger>
 							<TooltipContent>
-								Wealth: {row.original.hasWealth ? "Active" : "Unused"}
+								{t("wealthFeature", { status: row.original.hasWealth ? t("featureActive") : t("featureUnused") })}
 							</TooltipContent>
 						</Tooltip>
 						<Tooltip>
@@ -227,7 +229,7 @@ export function createUserColumns(
 								/>
 							</TooltipTrigger>
 							<TooltipContent>
-								2FA: {row.original.twoFactorEnabled ? "Enabled" : "Disabled"}
+								{t("twoFAFeature", { status: row.original.twoFactorEnabled ? t("featureEnabled") : t("featureDisabled") })}
 							</TooltipContent>
 						</Tooltip>
 					</div>
@@ -236,7 +238,7 @@ export function createUserColumns(
 		},
 		{
 			accessorKey: "expenseCount",
-			header: () => <div className="text-right">Expenses</div>,
+			header: () => <div className="text-right">{t("expenses")}</div>,
 			enableSorting: true,
 			size: 100,
 			cell: ({ row }) => (
@@ -247,7 +249,7 @@ export function createUserColumns(
 		},
 		{
 			accessorKey: "createdAt",
-			header: () => <div className="text-right">Joined</div>,
+			header: () => <div className="text-right">{t("joined")}</div>,
 			enableSorting: true,
 			size: 130,
 			sortingFn: "datetime",
@@ -286,13 +288,13 @@ export function createUserColumns(
 										}
 									>
 										<RefreshCw className="mr-2 h-4 w-4" />
-										Reset Password
+										{t("resetPassword")}
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={() => callbacks.onCopyResetLink(user.id)}
 									>
 										<Link className="mr-2 h-4 w-4" />
-										Copy Reset Link
+										{t("copyResetLink")}
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										onClick={() =>
@@ -306,12 +308,12 @@ export function createUserColumns(
 										{user.isActive ? (
 											<>
 												<Lock className="mr-2 h-4 w-4" />
-												Disable User
+												{t("disableUser")}
 											</>
 										) : (
 											<>
 												<LockOpen className="mr-2 h-4 w-4" />
-												Enable User
+												{t("enableUser")}
 											</>
 										)}
 									</DropdownMenuItem>
@@ -328,7 +330,7 @@ export function createUserColumns(
 									}
 								>
 									<MailWarning className="mr-2 h-4 w-4" />
-									Mark Email Unverified
+									{t("markEmailUnverifiedAction")}
 								</DropdownMenuItem>
 							) : (
 								<DropdownMenuItem
@@ -341,7 +343,7 @@ export function createUserColumns(
 									}
 								>
 									<MailCheck className="mr-2 h-4 w-4" />
-									Mark Email Verified
+									{t("markEmailVerifiedAction")}
 								</DropdownMenuItem>
 							)}
 							{callbacks.onSetAiAccess && user.id !== currentUserId && (
@@ -354,7 +356,7 @@ export function createUserColumns(
 											}
 										>
 											<Bot className="mr-2 h-4 w-4 opacity-50" />
-											Revoke External AI Access
+											{t("revokeExternalAiAccess")}
 										</DropdownMenuItem>
 									) : (
 										<DropdownMenuItem
@@ -363,7 +365,7 @@ export function createUserColumns(
 											}
 										>
 											<Bot className="mr-2 h-4 w-4" />
-											Allow External AI Access
+											{t("allowExternalAiAccess")}
 										</DropdownMenuItem>
 									)}
 								</>
@@ -378,7 +380,7 @@ export function createUserColumns(
 										variant="destructive"
 									>
 										<Trash2 className="mr-2 h-4 w-4" />
-										Delete User
+										{t("deleteUser")}
 									</DropdownMenuItem>
 								</>
 							)}

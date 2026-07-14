@@ -2,6 +2,7 @@
 
 import type { Row, VisibilityState } from "@tanstack/react-table";
 import { Edit2, History, Trash2, Users } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
 import { toast } from "sonner";
@@ -72,6 +73,8 @@ export function PeopleTimelineTable({
 	onDelete,
 	onViewHistory,
 }: PeopleTimelineTableProps) {
+	const t = useTranslations("people");
+	const locale = useLocale();
 	const hideSettled = statusFilter === "active";
 	const { formatCurrency } = useCurrencyFormatter();
 	const isMobile = useIsMobile();
@@ -128,7 +131,7 @@ export function PeopleTimelineTable({
 	// Settlement action mutations
 	const confirmSettlementMutation = api.settlement.confirm.useMutation({
 		onSuccess: () => {
-			toast.success("Settlement confirmed");
+			toast.success(t("settlementConfirmed"));
 			invalidateAll();
 			setConfirmingSettlementId(null);
 		},
@@ -137,7 +140,7 @@ export function PeopleTimelineTable({
 
 	const rejectSettlementMutation = api.settlement.reject.useMutation({
 		onSuccess: () => {
-			toast.success("Settlement rejected");
+			toast.success(t("settlementRejected"));
 			invalidateAll();
 			setRejectingSettlementId(null);
 		},
@@ -146,7 +149,7 @@ export function PeopleTimelineTable({
 
 	const deleteSettlementMutation = api.settlement.deletePending.useMutation({
 		onSuccess: () => {
-			toast.success("Settlement cancelled");
+			toast.success(t("settlementCancelled"));
 			invalidateAll();
 			setDeletingSettlementId(null);
 		},
@@ -154,7 +157,7 @@ export function PeopleTimelineTable({
 	});
 
 	const remindSettlementMutation = api.settlement.sendReminder.useMutation({
-		onSuccess: () => toast.success("Reminder sent"),
+		onSuccess: () => toast.success(t("reminderSent")),
 		onError: (e) => toast.error(e.message),
 	});
 
@@ -177,9 +180,9 @@ export function PeopleTimelineTable({
 			setSelectedIds(new Set());
 			setShowBulkDeleteDialog(false);
 			invalidateAll();
-			toast.success("Expenses deleted");
+			toast.success(t("expensesDeleted"));
 		} catch {
-			toast.error("Failed to delete some expenses");
+			toast.error(t("failedToDeleteExpenses"));
 		} finally {
 			setIsBulkDeleting(false);
 		}
@@ -335,6 +338,7 @@ export function PeopleTimelineTable({
 			createTimelineColumns(
 				formatCurrency,
 				identityName,
+				t,
 				{
 					onEdit,
 					onDelete,
@@ -347,10 +351,12 @@ export function PeopleTimelineTable({
 					},
 				},
 				revisionSummaries ?? undefined,
+				locale,
 			),
 		[
 			formatCurrency,
 			identityName,
+			t,
 			onEdit,
 			onDelete,
 			onViewHistory,
@@ -386,7 +392,7 @@ export function PeopleTimelineTable({
 				<>
 					<ContextMenuItem onClick={() => onViewHistory(row.id)}>
 						<History className="mr-2 h-4 w-4" />
-						View history
+						{t("viewHistory")}
 					</ContextMenuItem>
 					<ContextMenuSeparator />
 					<ContextMenuItem
@@ -394,7 +400,7 @@ export function PeopleTimelineTable({
 						onClick={() => onEdit(row.id)}
 					>
 						<Edit2 className="mr-2 h-4 w-4" />
-						Edit
+						{t("edit")}
 					</ContextMenuItem>
 					<ContextMenuItem
 						disabled={!row.canDelete || row.status === "settled"}
@@ -410,7 +416,7 @@ export function PeopleTimelineTable({
 						variant="destructive"
 					>
 						<Trash2 className="mr-2 h-4 w-4" />
-						Delete
+						{t("delete")}
 					</ContextMenuItem>
 				</>
 			);
@@ -437,14 +443,14 @@ export function PeopleTimelineTable({
 				<EmptyState
 					description={
 						hideSettled
-							? 'Switch to "All" to see settled transactions.'
-							: "Shared expenses with this person will appear here."
+							? t("switchToAllDescription")
+							: t("sharedExpensesWillAppear")
 					}
 					icon={Users}
 					title={
 						hideSettled
-							? "No Active Transactions"
-							: "No Shared Transactions Yet"
+							? t("noActiveTransactions")
+							: t("noSharedTransactionsYet")
 					}
 				/>
 			</div>
@@ -465,7 +471,7 @@ export function PeopleTimelineTable({
 					onClick={() => onStatusFilterChange(filter)}
 					type="button"
 				>
-					{filter === "all" ? "All" : "Outstanding"}
+					{filter === "all" ? t("all") : t("outstanding")}
 				</button>
 			))}
 		</div>
@@ -481,7 +487,7 @@ export function PeopleTimelineTable({
 						<div className="flex items-center gap-2">
 							<span className="shrink-0 text-muted-foreground text-sm">
 								{txnCount}{" "}
-								{txnCount === 1 ? "expense" : "expenses"}
+								{txnCount === 1 ? t("expense") : t("expenses")}
 							</span>
 							{statusToggle}
 						</div>
@@ -491,7 +497,7 @@ export function PeopleTimelineTable({
 				hideCount={true}
 				emptyState={
 					<div className="py-8 text-muted-foreground text-sm">
-						No matching expenses.
+						{t("noMatchingExpenses")}
 					</div>
 				}
 				initialSorting={[{ id: "date", desc: true }]}
@@ -525,22 +531,22 @@ export function PeopleTimelineTable({
 
 			{/* Bulk delete dialog */}
 			<ConfirmDialog
-				confirmText="Delete"
-				description={`Delete ${selectedIds.size} expense${selectedIds.size !== 1 ? "s" : ""}? This cannot be undone.`}
+				confirmText={t("delete")}
+				description={t("bulkDeleteDescription", { count: selectedIds.size })}
 				isLoading={isBulkDeleting}
 				onConfirm={handleBulkDelete}
 				onOpenChange={(open) => {
 					if (!open) setShowBulkDeleteDialog(false);
 				}}
 				open={showBulkDeleteDialog}
-				title="Delete selected expenses?"
+				title={t("deleteSelectedExpenses")}
 				variant="destructive"
 			/>
 
 			{/* Confirm settlement dialog */}
 			<ConfirmDialog
-				confirmText="Confirm"
-				description="Confirm that you received this payment? This cannot be undone."
+				confirmText={t("confirm")}
+				description={t("confirmSettlementDescription")}
 				isLoading={confirmSettlementMutation.isPending}
 				onConfirm={() => {
 					if (confirmingSettlementId) {
@@ -551,13 +557,13 @@ export function PeopleTimelineTable({
 					if (!open) setConfirmingSettlementId(null);
 				}}
 				open={!!confirmingSettlementId}
-				title="Confirm settlement?"
+				title={t("confirmSettlementTitle")}
 			/>
 
 			{/* Reject settlement dialog */}
 			<ConfirmDialog
-				confirmText="Reject"
-				description="Reject this settlement? The payer will be notified."
+				confirmText={t("reject")}
+				description={t("rejectSettlementDescription")}
 				isLoading={rejectSettlementMutation.isPending}
 				onConfirm={() => {
 					if (rejectingSettlementId) {
@@ -568,14 +574,14 @@ export function PeopleTimelineTable({
 					if (!open) setRejectingSettlementId(null);
 				}}
 				open={!!rejectingSettlementId}
-				title="Reject settlement?"
+				title={t("rejectSettlementTitle")}
 				variant="destructive"
 			/>
 
 			{/* Cancel settlement dialog */}
 			<ConfirmDialog
-				confirmText="Cancel Settlement"
-				description="Cancel this pending settlement? This will remove it entirely."
+				confirmText={t("cancelSettlement")}
+				description={t("cancelSettlementDescription")}
 				isLoading={deleteSettlementMutation.isPending}
 				onConfirm={() => {
 					if (deletingSettlementId) {
@@ -586,7 +592,7 @@ export function PeopleTimelineTable({
 					if (!open) setDeletingSettlementId(null);
 				}}
 				open={!!deletingSettlementId}
-				title="Cancel settlement?"
+				title={t("cancelSettlementTitle")}
 				variant="destructive"
 			/>
 		</>

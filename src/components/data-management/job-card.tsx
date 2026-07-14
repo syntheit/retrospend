@@ -1,4 +1,7 @@
+"use client";
+
 import { formatDistanceToNow } from "date-fns";
+import { useTranslations } from "next-intl";
 import {
 	CheckCircle2,
 	Clock,
@@ -70,24 +73,15 @@ function getStatusIcon(status: JobCardData["status"]) {
 	}
 }
 
-function getStatusLabel(status: JobCardData["status"]): string {
-	switch (status) {
-		case "QUEUED":
-			return "Queued";
-		case "PROCESSING":
-			return "Processing";
-		case "READY_FOR_REVIEW":
-			return "Ready for Review";
-		case "REVIEWING":
-			return "Reviewing";
-		case "COMPLETED":
-			return "Completed";
-		case "FAILED":
-			return "Failed";
-		case "CANCELLED":
-			return "Cancelled";
-	}
-}
+const STATUS_LABEL_KEYS: Record<JobCardData["status"], string> = {
+	QUEUED: "statusQueued",
+	PROCESSING: "statusProcessing",
+	READY_FOR_REVIEW: "statusReadyForReview",
+	REVIEWING: "statusReviewing",
+	COMPLETED: "statusCompleted",
+	FAILED: "statusFailed",
+	CANCELLED: "statusCancelled",
+};
 
 function getStatusColor(
 	status: JobCardData["status"],
@@ -119,6 +113,7 @@ export function JobCard({
 	onCancel,
 	compact = false,
 }: JobCardProps) {
+	const t = useTranslations("dataManagement");
 	const timestamp =
 		job.completedAt ??
 		job.failedAt ??
@@ -154,7 +149,7 @@ export function JobCard({
 							{/* Metadata row */}
 							<div className="flex flex-wrap items-center gap-2">
 								<Badge className="text-xs" variant={getStatusColor(job.status)}>
-									{getStatusLabel(job.status)}
+									{t(STATUS_LABEL_KEYS[job.status])}
 								</Badge>
 
 								{position !== undefined && (
@@ -167,8 +162,7 @@ export function JobCard({
 
 								{job.totalTransactions > 0 && (
 									<span className="text-muted-foreground text-xs">
-										{job.totalTransactions} transaction
-										{job.totalTransactions !== 1 ? "s" : ""}
+										{t("transactionCount", { count: job.totalTransactions })}
 									</span>
 								)}
 							</div>
@@ -196,11 +190,10 @@ export function JobCard({
 							{/* Completed stats */}
 							{job.status === "COMPLETED" && job.importedCount !== null && (
 								<p className="text-muted-foreground text-xs">
-									Imported {job.importedCount} expense
-									{job.importedCount !== 1 ? "s" : ""}
+									{t("importedExpenseCount", { count: job.importedCount })}
 									{job.skippedDuplicates !== null &&
 										job.skippedDuplicates > 0 &&
-										` (${job.skippedDuplicates} duplicate${job.skippedDuplicates !== 1 ? "s" : ""} skipped)`}
+										` (${t("duplicatesSkipped", { count: job.skippedDuplicates })})`}
 								</p>
 							)}
 						</div>
@@ -212,7 +205,7 @@ export function JobCard({
 							job.status === "REVIEWING") &&
 							onReview && (
 								<Button onClick={onReview} size="sm">
-									Review
+									{t("review")}
 								</Button>
 							)}
 
@@ -220,7 +213,7 @@ export function JobCard({
 							job.status === "REVIEWING") &&
 							onDelete && (
 								<Button
-									aria-label="Delete import job"
+									aria-label={t("deleteImportJob")}
 									className="h-8 w-8 p-0"
 									onClick={onDelete}
 									size="sm"
@@ -232,7 +225,7 @@ export function JobCard({
 
 						{job.status === "QUEUED" && onCancel && (
 							<Button
-								aria-label="Cancel import job"
+								aria-label={t("cancelImportJob")}
 								className="h-8 w-8 p-0"
 								onClick={onCancel}
 								size="sm"
@@ -247,7 +240,7 @@ export function JobCard({
 							job.status === "CANCELLED") &&
 							onDelete && (
 								<Button
-									aria-label="Delete import job"
+									aria-label={t("deleteImportJob")}
 									className="h-8 w-8 p-0"
 									onClick={onDelete}
 									size="sm"

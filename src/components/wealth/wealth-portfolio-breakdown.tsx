@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
@@ -92,6 +93,7 @@ export function WealthPortfolioBreakdown({
 	isPrivacyMode = false,
 	className,
 }: WealthPortfolioBreakdownProps) {
+	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const currencyData = useMemo(() => {
@@ -134,7 +136,7 @@ export function WealthPortfolioBreakdown({
 		if (otherItems.length > 0) {
 			const otherValue = otherItems.reduce((sum, i) => sum + i.value, 0);
 			main.push({
-				currency: "Other",
+				currency: t("other"),
 				value: otherValue,
 				percentage: (otherValue / total) * 100,
 				color: "hsl(0, 0%, 55%)",
@@ -144,7 +146,7 @@ export function WealthPortfolioBreakdown({
 		}
 
 		return main;
-	}, [assets]);
+	}, [assets, t]);
 
 	const liquidityData = useMemo(() => {
 		let liquid = 0;
@@ -160,10 +162,10 @@ export function WealthPortfolioBreakdown({
 		const total = liquid + illiquid;
 		if (total <= 0) return [];
 		return [
-			{ label: "Liquid", value: liquid, percentage: (liquid / total) * 100, color: CURRENCY_COLORS[0]! },
-			{ label: "Illiquid", value: illiquid, percentage: (illiquid / total) * 100, color: CURRENCY_COLORS[1]! },
+			{ label: t("liquid"), value: liquid, percentage: (liquid / total) * 100, color: CURRENCY_COLORS[0]! },
+			{ label: t("illiquid"), value: illiquid, percentage: (illiquid / total) * 100, color: CURRENCY_COLORS[1]! },
 		].filter((s) => s.value > 0);
-	}, [assets]);
+	}, [assets, t]);
 
 	if (allocationData.length === 0) return null;
 
@@ -173,12 +175,12 @@ export function WealthPortfolioBreakdown({
 	return (
 		<Card className={cn("border border-border bg-card shadow-sm", className)}>
 			<CardContent className="px-5 py-4">
-				<p className="mb-3 text-sm font-medium">Portfolio composition</p>
+				<p className="mb-3 text-sm font-medium">{t("portfolioComposition")}</p>
 				<div className="flex flex-col gap-4">
 					{/* By type */}
 					<div className="flex flex-col gap-2">
 						<span className="text-xs font-medium text-muted-foreground">
-							By type
+							{t("byType")}
 						</span>
 						<div className="flex w-full flex-col gap-2">
 							<BreakdownBar
@@ -227,7 +229,7 @@ export function WealthPortfolioBreakdown({
 					{hasMultipleCurrencies && currencyData.length > 0 && (
 						<div className="flex flex-col gap-2">
 							<span className="text-xs font-medium text-muted-foreground">
-								By currency
+								{t("byCurrency")}
 							</span>
 							<div className="flex w-full flex-col gap-2">
 								<BreakdownBar
@@ -315,7 +317,7 @@ export function WealthPortfolioBreakdown({
 					{liquidityData.length > 0 && (
 						<div className="flex flex-col gap-2">
 							<span className="text-xs font-medium text-muted-foreground">
-								By liquidity
+								{t("byLiquidity")}
 							</span>
 							<div className="flex w-full flex-col gap-2">
 								<BreakdownBar

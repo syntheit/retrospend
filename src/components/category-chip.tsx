@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getCategoryColorClasses } from "~/lib/constants";
 import { cn } from "~/lib/utils";
@@ -10,6 +14,7 @@ interface CategoryChipProps {
 }
 
 export function CategoryChip({ name, color, icon, className }: CategoryChipProps) {
+	const { displayName } = useCategoryName();
 	const Icon = getCategoryIcon(name, icon);
 	return (
 		<span
@@ -20,11 +25,12 @@ export function CategoryChip({ name, color, icon, className }: CategoryChipProps
 			)}
 		>
 			<Icon className="h-3 w-3 shrink-0" />
-			{name}
+			{displayName(name)}
 		</span>
 	);
 }
 
 export function NoCategoryLabel() {
-	return <div className="text-muted-foreground text-sm">No category</div>;
+	const t = useTranslations("ui");
+	return <div className="text-muted-foreground text-sm">{t("noCategory")}</div>;
 }

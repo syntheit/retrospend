@@ -2,6 +2,7 @@
 
 import { differenceInDays } from "date-fns";
 import { Calendar, DollarSign } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { toMonthlyEquivalent } from "~/lib/recurring";
@@ -20,6 +21,7 @@ export function RecurringStatsCards({
 	homeCurrency,
 	serverTime,
 }: RecurringStatsCardsProps) {
+	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 	const now = serverTime ?? new Date();
 
@@ -50,15 +52,15 @@ export function RecurringStatsCards({
 		<div className="grid gap-4 sm:grid-cols-2">
 			{/* Monthly Fixed Burn */}
 			<StatCard
-				description="Total recurring costs per month"
+				description={t("monthlyBurnDescription")}
 				icon={DollarSign}
 				loading={loading}
 				subValue={
 					loading
 						? undefined
-						: `≈ ${formatCurrency(monthlyBurn * 12, homeCurrency)} / year`
+						: t("yearlyEstimate", { amount: formatCurrency(monthlyBurn * 12, homeCurrency) })
 				}
-				title="Monthly Fixed Burn"
+				title={t("monthlyFixedBurn")}
 				value={loading ? undefined : formatCurrency(monthlyBurn, homeCurrency)}
 				variant="blue"
 			/>
@@ -80,19 +82,19 @@ export function RecurringStatsCards({
 				}
 				icon={Calendar}
 				loading={loading}
-				title="Next Payment"
+				title={t("nextPayment")}
 				value={
 					loading
 						? undefined
 						: nextPayment
 							? daysUntilNext !== null
 								? daysUntilNext === 0
-									? "Today"
+									? t("today")
 									: daysUntilNext < 0
-										? `${Math.abs(daysUntilNext)} days overdue`
-										: `In ${daysUntilNext} days`
-								: "Unknown"
-							: "No payments"
+										? t("daysOverdue", { count: Math.abs(daysUntilNext) })
+										: t("inDays", { count: daysUntilNext })
+								: t("unknown")
+							: t("noPayments")
 				}
 				variant={
 					daysUntilNext !== null && daysUntilNext <= 0 ? "amber" : "violet"

@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Edit2, History, MoreHorizontal, Trash2, X } from "lucide-react";
+import { Check, ClipboardCopy, Edit2, History, MoreHorizontal, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
@@ -22,6 +23,8 @@ interface SharedTransactionActionsMenuProps {
 	onEdit?: () => void;
 	onDelete?: () => void;
 	onViewHistory?: () => void;
+	/** Pre-formatted text for clipboard copy */
+	copyText?: string;
 	triggerClassName?: string;
 }
 
@@ -35,6 +38,7 @@ export function SharedTransactionActionsMenu({
 	onEdit,
 	onDelete,
 	onViewHistory,
+	copyText,
 	triggerClassName,
 }: SharedTransactionActionsMenuProps) {
 	// Don't show the menu if the user has no permissions and the tx is not locked
@@ -71,6 +75,20 @@ export function SharedTransactionActionsMenu({
 						<DropdownMenuItem onClick={onReject}>
 							<X className="mr-2 h-4 w-4 text-rose-500" />
 							Reject
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+					</>
+				)}
+				{copyText && (
+					<>
+						<DropdownMenuItem
+							onClick={() => {
+								void navigator.clipboard.writeText(copyText);
+								toast.success("Copied to clipboard");
+							}}
+						>
+							<ClipboardCopy className="mr-2 h-4 w-4" />
+							Copy as text
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 					</>

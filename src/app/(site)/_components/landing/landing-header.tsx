@@ -11,6 +11,7 @@ import {
 	Ticket,
 	User,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -39,10 +40,10 @@ import { handleError } from "~/lib/handle-error";
 import { api } from "~/trpc/react";
 
 const NAV_LINKS = [
-	{ label: "Overview", href: "#overview" },
-	{ label: "Budgets", href: "#budgets" },
-	{ label: "Splitting", href: "#splitting" },
-	{ label: "Wealth", href: "#wealth" },
+	{ labelKey: "navOverview" as const, href: "#overview" },
+	{ labelKey: "navBudgets" as const, href: "#budgets" },
+	{ labelKey: "navSplitting" as const, href: "#splitting" },
+	{ labelKey: "navWealth" as const, href: "#wealth" },
 ];
 
 type ExtendedUser = {
@@ -59,6 +60,7 @@ export function LandingHeader({
 }) {
 	const { data: session, isPending } = useSession();
 	const router = useRouter();
+	const t = useTranslations("landing");
 	const [mobileOpen, setMobileOpen] = useState(false);
 	const [feedbackOpen, setFeedbackOpen] = useState(false);
 	const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -119,14 +121,14 @@ export function LandingHeader({
 							key={link.href}
 							onClick={(e) => handleAnchorClick(e, link.href)}
 						>
-							{link.label}
+							{t(link.labelKey)}
 						</a>
 					))}
 					<Link
 						className="text-muted-foreground text-sm transition-colors hover:text-foreground"
 						href="/docs"
 					>
-						Docs
+						{t("navDocs")}
 					</Link>
 				</nav>
 
@@ -136,7 +138,7 @@ export function LandingHeader({
 					) : isLoggedIn && user ? (
 						<>
 							<Button asChild className="hidden select-none sm:inline-flex" size="sm">
-								<Link href="/dashboard">Go to Dashboard</Link>
+								<Link href="/dashboard">{t("goToDashboard")}</Link>
 							</Button>
 							<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
 								<DropdownMenuTrigger asChild>
@@ -265,10 +267,10 @@ export function LandingHeader({
 								size="sm"
 								variant="ghost"
 							>
-								<Link href="/login">Login</Link>
+								<Link href="/login">{t("login")}</Link>
 							</Button>
 							<Button asChild className="hidden sm:inline-flex" size="sm">
-								<Link href="/signup">Get Started</Link>
+								<Link href="/signup">{t("getStarted")}</Link>
 							</Button>
 						</>
 					)}
@@ -294,7 +296,7 @@ export function LandingHeader({
 										key={link.href}
 										onClick={(e) => handleAnchorClick(e, link.href)}
 									>
-										{link.label}
+										{t(link.labelKey)}
 									</a>
 								))}
 								<Link
@@ -302,7 +304,7 @@ export function LandingHeader({
 									href="/docs"
 									onClick={() => setMobileOpen(false)}
 								>
-									Docs
+									{t("navDocs")}
 								</Link>
 							</nav>
 							<div className="flex flex-col gap-2 border-t px-4 pt-4">
@@ -312,7 +314,7 @@ export function LandingHeader({
 										onClick={() => setMobileOpen(false)}
 										size="sm"
 									>
-										<Link href="/dashboard">Go to Dashboard</Link>
+										<Link href="/dashboard">{t("goToDashboard")}</Link>
 									</Button>
 								) : (
 									<>
@@ -322,14 +324,14 @@ export function LandingHeader({
 											size="sm"
 											variant="ghost"
 										>
-											<Link href="/login">Login</Link>
+											<Link href="/login">{t("login")}</Link>
 										</Button>
 										<Button
 											asChild
 											onClick={() => setMobileOpen(false)}
 											size="sm"
 										>
-											<Link href="/signup">Get Started</Link>
+											<Link href="/signup">{t("getStarted")}</Link>
 										</Button>
 									</>
 								)}

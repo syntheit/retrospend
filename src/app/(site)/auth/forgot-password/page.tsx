@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import { Label } from "~/components/ui/label";
 import { api } from "~/trpc/react";
 
 export default function ForgotPasswordPage() {
+	const t = useTranslations("auth");
 	const [email, setEmail] = useState("");
 	const [status, setStatus] = useState<
 		"idle" | "loading" | "success" | "error"
@@ -43,10 +45,10 @@ export default function ForgotPasswordPage() {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<CardTitle className="text-center font-bold text-2xl">
-						Reset Password
+						{t("resetPassword")}
 					</CardTitle>
 					<CardDescription className="text-center">
-						Enter your email to receive a password reset link
+						{t("resetPasswordDescription")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -56,20 +58,19 @@ export default function ForgotPasswordPage() {
 								<CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-500" />
 							</div>
 							<div className="space-y-2 text-center">
-								<h3 className="font-semibold">Reset Link Sent</h3>
+								<h3 className="font-semibold">{t("resetLinkSent")}</h3>
 								<p className="text-muted-foreground text-sm">
-									If an account exists with that email, a reset link has been
-									sent. Please check your inbox.
+									{t("resetLinkSentDescription")}
 								</p>
 							</div>
 							<Button asChild className="mt-4 w-full" variant="outline">
-								<Link href="/login">Return to Login</Link>
+								<Link href="/login">{t("returnToLogin")}</Link>
 							</Button>
 						</div>
 					) : (
 						<form className="space-y-4" onSubmit={handleSubmit}>
 							<div className="space-y-2">
-								<Label htmlFor="email">Email</Label>
+								<Label htmlFor="email">{t("email")}</Label>
 								<Input
 									disabled={status === "loading"}
 									id="email"
@@ -84,7 +85,7 @@ export default function ForgotPasswordPage() {
 							{status === "error" && (
 								<div className="flex items-center gap-2 text-destructive text-sm">
 									<AlertCircle className="h-4 w-4" />
-									<span>Failed to request reset. Please try again.</span>
+									<span>{t("failedToRequestReset")}</span>
 								</div>
 							)}
 
@@ -96,10 +97,10 @@ export default function ForgotPasswordPage() {
 								{status === "loading" ? (
 									<>
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										Sending Link...
+										{t("sendingLink")}
 									</>
 								) : (
-									"Send Reset Link"
+									t("sendResetLink")
 								)}
 							</Button>
 
@@ -108,7 +109,7 @@ export default function ForgotPasswordPage() {
 									className="text-muted-foreground text-sm hover:underline"
 									href="/login"
 								>
-									Back to login
+									{t("backToLogin")}
 								</Link>
 							</div>
 						</form>

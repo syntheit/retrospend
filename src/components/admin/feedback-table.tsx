@@ -7,6 +7,7 @@ import {
 	EyeOff,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
@@ -38,6 +39,7 @@ type FeedbackItem =
 type StatusFilter = "all" | "unread" | "read" | "archived";
 
 export function FeedbackTable() {
+	const t = useTranslations("admin");
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("unread");
 	const [deleteTarget, setDeleteTarget] = useState<FeedbackItem | null>(null);
 	const utils = api.useUtils();
@@ -63,7 +65,7 @@ export function FeedbackTable() {
 
 	const deleteMutation = api.feedback.delete.useMutation({
 		onSuccess: () => {
-			toast.success("Feedback deleted");
+			toast.success(t("feedbackDeleted"));
 			setDeleteTarget(null);
 			void utils.feedback.list.invalidate();
 			void utils.feedback.unreadCount.invalidate();
@@ -80,10 +82,10 @@ export function FeedbackTable() {
 	};
 
 	const filters: { key: StatusFilter; label: string; count: number }[] = [
-		{ key: "all", label: "All", count: counts.total },
-		{ key: "unread", label: "Unread", count: counts.unread },
-		{ key: "read", label: "Read", count: counts.read },
-		{ key: "archived", label: "Archived", count: counts.archived },
+		{ key: "all", label: t("feedbackAll"), count: counts.total },
+		{ key: "unread", label: t("feedbackUnread"), count: counts.unread },
+		{ key: "read", label: t("feedbackRead"), count: counts.read },
+		{ key: "archived", label: t("feedbackArchived"), count: counts.archived },
 	];
 
 	return (
@@ -110,7 +112,7 @@ export function FeedbackTable() {
 				</div>
 			) : items.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-					<p className="text-sm">No feedback entries found.</p>
+					<p className="text-sm">{t("noFeedbackEntries")}</p>
 				</div>
 			) : (
 				<div className="space-y-3">
@@ -134,14 +136,14 @@ export function FeedbackTable() {
 						onClick={() => fetchNextPage()}
 						variant="outline"
 					>
-						{isFetchingNextPage ? "Loading..." : "Load More"}
+						{isFetchingNextPage ? t("loading") : t("loadMore")}
 					</Button>
 				</div>
 			)}
 
 			<ConfirmationDialog
-				confirmLabel="Delete"
-				description="This will permanently delete this feedback entry. This action cannot be undone."
+				confirmLabel={t("delete")}
+				description={t("deleteFeedbackConfirm")}
 				isLoading={deleteMutation.isPending}
 				onCancel={() => setDeleteTarget(null)}
 				onConfirm={() => {
@@ -153,7 +155,7 @@ export function FeedbackTable() {
 					if (!open) setDeleteTarget(null);
 				}}
 				open={!!deleteTarget}
-				title="Delete Feedback"
+				title={t("deleteFeedback")}
 				variant="destructive"
 			/>
 		</div>
@@ -169,14 +171,15 @@ function FeedbackCard({
 	onStatusChange: (status: "unread" | "read" | "archived") => void;
 	onDelete: () => void;
 }) {
+	const t = useTranslations("admin");
 	const avatarUrl = item.user.avatarPath
 		? getImageUrl(item.user.avatarPath)
 		: item.user.image;
 
 	const statusBadge = {
-		unread: <Badge className="bg-blue-500 text-white">Unread</Badge>,
-		read: <Badge variant="secondary">Read</Badge>,
-		archived: <Badge variant="outline">Archived</Badge>,
+		unread: <Badge className="bg-blue-500 text-white">{t("feedbackUnread")}</Badge>,
+		read: <Badge variant="secondary">{t("feedbackRead")}</Badge>,
+		archived: <Badge variant="outline">{t("feedbackArchived")}</Badge>,
 	}[item.status] ?? <Badge variant="outline">{item.status}</Badge>;
 
 	return (
@@ -214,29 +217,29 @@ function FeedbackCard({
 				<Collapsible>
 					<CollapsibleTrigger className="flex cursor-pointer items-center gap-1 text-muted-foreground text-xs hover:text-foreground">
 						<ChevronDown className="h-3.5 w-3.5" />
-						Details
+						{t("feedbackDetails")}
 					</CollapsibleTrigger>
 					<CollapsibleContent>
 						<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg bg-muted/50 p-3 text-xs">
 							<div>
-								<span className="text-muted-foreground">Page: </span>
+								<span className="text-muted-foreground">{t("feedbackPage")}: </span>
 								<span className="font-mono">{item.pageUrl}</span>
 							</div>
 							{item.appVersion && (
 								<div>
-									<span className="text-muted-foreground">Version: </span>
+									<span className="text-muted-foreground">{t("feedbackVersion")}: </span>
 									<span className="font-mono">{item.appVersion}</span>
 								</div>
 							)}
 							{item.viewportSize && (
 								<div>
-									<span className="text-muted-foreground">Viewport: </span>
+									<span className="text-muted-foreground">{t("feedbackViewport")}: </span>
 									<span className="font-mono">{item.viewportSize}</span>
 								</div>
 							)}
 							{item.userAgent && (
 								<div className="col-span-2">
-									<span className="text-muted-foreground">User Agent: </span>
+									<span className="text-muted-foreground">{t("feedbackUserAgent")}: </span>
 									<span className="break-all font-mono">{item.userAgent}</span>
 								</div>
 							)}
@@ -253,7 +256,7 @@ function FeedbackCard({
 							variant="ghost"
 						>
 							<Eye />
-							Mark Read
+							{t("markRead")}
 						</Button>
 					) : (
 						item.status !== "archived" && (
@@ -263,7 +266,7 @@ function FeedbackCard({
 								variant="ghost"
 							>
 								<EyeOff />
-								Mark Unread
+								{t("markUnread")}
 							</Button>
 						)
 					)}
@@ -274,7 +277,7 @@ function FeedbackCard({
 							variant="ghost"
 						>
 							<Archive />
-							Archive
+							{t("archive")}
 						</Button>
 					)}
 					{item.status === "archived" && (
@@ -284,7 +287,7 @@ function FeedbackCard({
 							variant="ghost"
 						>
 							<Archive />
-							Unarchive
+							{t("unarchive")}
 						</Button>
 					)}
 					<div className="flex-1" />
@@ -295,7 +298,7 @@ function FeedbackCard({
 						variant="ghost"
 					>
 						<Trash2 />
-						Delete
+						{t("delete")}
 					</Button>
 				</div>
 			</CardContent>

@@ -6,6 +6,7 @@ import { Cell, Label, Pie, PieChart } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { type ChartConfig, ChartContainer } from "~/components/ui/chart";
 import { COLOR_TO_HEX } from "~/lib/constants";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
 interface CategoryStat {
@@ -41,6 +42,7 @@ export function CategoryBreakdown({
 	currency,
 }: CategoryBreakdownProps) {
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 	const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
 	if (categories.length === 0) {
@@ -61,7 +63,7 @@ export function CategoryBreakdown({
 	}
 
 	const data = categories.map((cat, i) => ({
-		name: cat.name,
+		name: displayName(cat.name),
 		value: cat.total,
 		key: cat.categoryId ?? `cat-${i}`,
 		fill:

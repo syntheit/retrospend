@@ -18,6 +18,7 @@ import {
 	ChartTooltip,
 	ChartTooltipContent,
 } from "~/components/ui/chart";
+import { useTranslations } from "next-intl";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { formatCurrency as formatCurrencyUtil } from "~/lib/utils";
 
@@ -37,6 +38,7 @@ interface BudgetPacingProps {
 	}>;
 }
 
+// Chart config labels are overridden in the tooltip formatter
 const chartConfig: ChartConfig = {
 	actual: {
 		label: "Actual Spend",
@@ -55,6 +57,7 @@ export function BudgetPacing({
 	currentBillingPeriod,
 	dailySpend,
 }: BudgetPacingProps) {
+	const t = useTranslations("projects");
 	const id = useId();
 	const { formatCurrency } = useCurrencyFormatter();
 
@@ -139,7 +142,7 @@ export function BudgetPacing({
 			<CardHeader className="flex flex-row items-baseline justify-between px-4 pb-2 sm:px-6">
 				<div>
 					<CardTitle className="font-semibold text-lg tracking-tight">
-						Budget Pacing
+						{t("budgetPacing")}
 					</CardTitle>
 					<p className="text-muted-foreground text-sm">
 						{formatCurrency(totalSpent, budgetCurrency)} of{" "}
@@ -157,8 +160,8 @@ export function BudgetPacing({
 					variant="outline"
 				>
 					{isOverBudget
-						? `${(utilizationPct - 100).toFixed(0)}% over budget`
-						: `${(100 - utilizationPct).toFixed(0)}% under budget`}
+						? t("overBudget", { pct: (utilizationPct - 100).toFixed(0) })
+						: t("underBudget", { pct: (100 - utilizationPct).toFixed(0) })}
 				</Badge>
 			</CardHeader>
 			<CardContent className="px-2 pb-6 sm:px-6">
@@ -184,8 +187,8 @@ export function BudgetPacing({
 							</span>
 							<span className="text-muted-foreground text-xs">
 								{timeContext.daysRemaining === 0
-									? "last day"
-									: `${timeContext.daysRemaining}d remaining`}
+									? t("lastDay")
+									: t("daysRemaining", { days: timeContext.daysRemaining })}
 							</span>
 						</div>
 						<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -197,10 +200,7 @@ export function BudgetPacing({
 						{/* Daily avg + projected */}
 						{projected !== null && dailyAvg !== null && (
 							<p className="mt-1.5 text-muted-foreground text-xs">
-								Daily avg:{" "}
-								{formatCurrency(dailyAvg, budgetCurrency)} · Projected:{" "}
-								{formatCurrency(projected, budgetCurrency)} of{" "}
-								{formatCurrency(budgetAmount, budgetCurrency)}
+								{t("dailyAvg")}: {formatCurrency(dailyAvg, budgetCurrency)} · {t("projected")}: {formatCurrency(projected, budgetCurrency)} {t("of")} {formatCurrency(budgetAmount, budgetCurrency)}
 							</p>
 						)}
 					</div>
@@ -246,7 +246,7 @@ export function BudgetPacing({
 											<>
 												<div className="flex flex-1 items-center justify-between gap-4 leading-none">
 													<span className="text-muted-foreground">
-														{name === "ideal" ? "Ideal Pace" : "Actual Spend"}
+														{name === "ideal" ? t("idealPace") : t("actualSpend")}
 													</span>
 													<span className="font-semibold text-foreground tabular-nums">
 														{formatCurrency(value as number, budgetCurrency)}

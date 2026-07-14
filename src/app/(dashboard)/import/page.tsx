@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { BudgetsImporterTab } from "~/components/data-management/budgets-importer-tab";
 import { ExpensesImporterTab } from "~/components/data-management/expenses-importer-tab";
@@ -16,20 +17,21 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 export default function Page() {
+	const t = useTranslations("import");
 	const [activeTab, setActiveTab] = useState("expenses");
 
 	return (
 		<>
-			<SiteHeader title="Import" />
+			<SiteHeader title={t("title")} />
 			<PageContent>
 				<div className="mx-auto w-full max-w-7xl">
 					<Card className="border-muted/50 shadow-lg">
 						<CardHeader className="pb-3">
 							<CardTitle className="font-bold text-2xl tracking-tight">
-								Import Data
+								{t("importData")}
 							</CardTitle>
 							<CardDescription>
-								Upload CSV files to import your financial data.
+								{t("importDescription")}
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -40,13 +42,13 @@ export default function Page() {
 							>
 								<TabsList className="mb-2 grid w-full grid-cols-3">
 									<TabsTrigger className="text-xs sm:text-sm" value="expenses">
-										Expenses
+										{t("expenses")}
 									</TabsTrigger>
 									<TabsTrigger className="text-xs sm:text-sm" value="budgets">
-										Budgets
+										{t("budgets")}
 									</TabsTrigger>
 									<TabsTrigger className="text-xs sm:text-sm" value="wealth">
-										Wealth
+										{t("wealth")}
 									</TabsTrigger>
 								</TabsList>
 								<TabsContent

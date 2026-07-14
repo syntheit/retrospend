@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, FileText, Info, Upload, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -43,6 +44,7 @@ export function DataImporterExport<T>({
 	validateRow,
 	renderPreview: Preview,
 }: DataImporterExportProps<T>) {
+	const t = useTranslations("dataManagement");
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [previewData, setPreviewData] = useState<T[]>([]);
 	const [parseError, setParseError] = useState<string | null>(null);
@@ -77,11 +79,11 @@ export function DataImporterExport<T>({
 				setParseError(null);
 				setPreviewData(rows);
 				toast.success(
-					`Loaded ${rows.length} row${rows.length === 1 ? "" : "s"} for import`,
+					t("loadedRowsForImport", { count: rows.length }),
 				);
 			} catch (error: unknown) {
 				setParseError(
-					error instanceof Error ? error.message : "Failed to read CSV file.",
+					error instanceof Error ? error.message : t("failedToReadCsvFile"),
 				);
 				setPreviewData([]);
 			}
@@ -120,7 +122,7 @@ export function DataImporterExport<T>({
 			if ((file && file.type === "text/csv") || file?.name.endsWith(".csv")) {
 				processFile(file);
 			} else {
-				toast.error("Please drop a CSV file");
+				toast.error(t("pleaseDropCsvFile"));
 			}
 		},
 		[processFile],
@@ -161,7 +163,7 @@ export function DataImporterExport<T>({
 			{/* Export Section */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-1">
-					<p className="font-medium">Export {title.toLowerCase()}</p>
+					<p className="font-medium">{t("exportTitle", { title: title.toLowerCase() })}</p>
 					<p className="text-muted-foreground text-sm">{description}</p>
 				</div>
 				<Button
@@ -170,7 +172,7 @@ export function DataImporterExport<T>({
 					onClick={onExport}
 					variant="outline"
 				>
-					{isExporting ? "Preparing..." : "Download CSV"}
+					{isExporting ? t("preparing") : t("downloadCsv")}
 					<Download className="ml-2 h-4 w-4" />
 				</Button>
 			</div>
@@ -182,7 +184,7 @@ export function DataImporterExport<T>({
 				<div className="flex items-center justify-between">
 					<div className="space-y-1">
 						<div className="flex items-center gap-2">
-							<p className="font-medium">Import {title.toLowerCase()}</p>
+							<p className="font-medium">{t("importTitle", { title: title.toLowerCase() })}</p>
 							<TooltipProvider>
 								<Tooltip>
 									<TooltipTrigger asChild>
@@ -197,7 +199,7 @@ export function DataImporterExport<T>({
 									<TooltipContent className="max-w-xs">
 										<div className="space-y-2">
 											<p className="font-semibold text-xs">
-												CSV Format Requirements
+												{t("csvFormatRequirements")}
 											</p>
 											<div className="text-xs opacity-90">{formatInfo}</div>
 											{sampleData && (
@@ -206,7 +208,7 @@ export function DataImporterExport<T>({
 													onClick={downloadSample}
 													variant="link"
 												>
-													Download sample CSV
+													{t("downloadSampleCsv")}
 												</Button>
 											)}
 										</div>
@@ -215,7 +217,7 @@ export function DataImporterExport<T>({
 							</TooltipProvider>
 						</div>
 						<p className="text-muted-foreground text-sm">
-							Drag and drop your CSV file here.
+							{t("dragAndDropCsv")}
 						</p>
 					</div>
 					{sampleData && (
@@ -226,7 +228,7 @@ export function DataImporterExport<T>({
 							variant="outline"
 						>
 							<FileText className="mr-2 h-3.5 w-3.5" />
-							Sample CSV
+							{t("sampleCsv")}
 						</Button>
 					)}
 				</div>
@@ -254,11 +256,11 @@ export function DataImporterExport<T>({
 					/>
 					<div className="text-center">
 						<p className="font-medium text-sm">
-							{fileName ? fileName : "Drop CSV or Click to Browse"}
+							{fileName ? fileName : t("dropCsvOrClickToBrowse")}
 						</p>
 						{fileName && (
 							<p className="mt-1 text-muted-foreground text-xs">
-								Click to replace
+								{t("clickToReplace")}
 							</p>
 						)}
 					</div>
@@ -292,11 +294,10 @@ export function DataImporterExport<T>({
 						<div className="flex items-center justify-between">
 							<div>
 								<p className="font-medium">
-									Preview ({previewData.length} row
-									{previewData.length === 1 ? "" : "s"})
+									{t("previewRows", { count: previewData.length })}
 								</p>
 								<p className="text-muted-foreground text-sm">
-									Review entries before final import.
+									{t("reviewEntriesBeforeImport")}
 								</p>
 							</div>
 							<div className="flex gap-2">
@@ -306,14 +307,14 @@ export function DataImporterExport<T>({
 									size="sm"
 									variant="ghost"
 								>
-									Cancel
+									{t("cancel")}
 								</Button>
 								<Button
 									disabled={isImporting}
 									onClick={handleImportClick}
 									size="sm"
 								>
-									{isImporting ? "Importing..." : "Confirm Import"}
+									{isImporting ? t("importing") : t("confirmImport")}
 								</Button>
 							</div>
 						</div>

@@ -1,6 +1,7 @@
 import { type ColumnDef, type VisibilityState } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { Copy, Link, MoreHorizontal, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
@@ -55,24 +56,25 @@ interface InviteCodesTableProps {
 
 function createColumns(
 	onDeleteCode: (inviteCodeId: string, code: string) => void,
+	t: ReturnType<typeof useTranslations<"admin">>,
 ): ColumnDef<InviteCode>[] {
 	return [
 	{
 		accessorKey: "code",
-		header: "Code",
+		header: t("inviteCode"),
 		enableSorting: true,
 		cell: ({ row }) => (
 			<div className="flex items-center gap-2 font-medium font-mono">
 				<span>{row.original.code}</span>
 				<CopyButton
-					label="Copy Code"
-					successLabel="Code Copied"
+					label={t("copyCode")}
+					successLabel={t("codeCopied")}
 					value={row.original.code}
 				/>
 				<CopyButton
 					icon={Link}
-					label="Copy Link"
-					successLabel="Link Copied"
+					label={t("copyLink")}
+					successLabel={t("linkCopied")}
 					value={`${window.location.origin}/signup?code=${row.original.code}`}
 				/>
 			</div>
@@ -80,7 +82,7 @@ function createColumns(
 	},
 	{
 		accessorKey: "status",
-		header: "Status",
+		header: t("columnStatus"),
 		enableSorting: true,
 		cell: ({ row }) => (
 			<Badge
@@ -92,7 +94,7 @@ function createColumns(
 	},
 	{
 		id: "createdBy",
-		header: "Created By",
+		header: t("columnCreatedBy"),
 		enableSorting: true,
 		sortingFn: (rowA, rowB) => {
 			const a = rowA.original.createdBy.username;
@@ -112,14 +114,14 @@ function createColumns(
 	},
 	{
 		accessorKey: "createdAt",
-		header: "Created At",
+		header: t("columnCreatedAt"),
 		enableSorting: true,
 		cell: ({ row }) =>
 			format(new Date(row.original.createdAt), "MMM d, yyyy HH:mm"),
 	},
 	{
 		id: "usedBy",
-		header: "Used By",
+		header: t("columnUsedBy"),
 		enableSorting: true,
 		sortingFn: (rowA, rowB) => {
 			const a = rowA.original.usedBy?.username ?? "";
@@ -142,7 +144,7 @@ function createColumns(
 	},
 	{
 		accessorKey: "usedAt",
-		header: "Used At",
+		header: t("columnUsedAt"),
 		enableSorting: true,
 		cell: ({ row }) =>
 			row.original.usedAt ? (
@@ -166,29 +168,29 @@ function createColumns(
 						variant="ghost"
 					>
 						<MoreHorizontal className="h-4 w-4" />
-						<span className="sr-only">Actions</span>
+						<span className="sr-only">{t("actions")}</span>
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-44">
 					<DropdownMenuItem
 						onClick={() => {
 							void navigator.clipboard.writeText(row.original.code);
-							toast.success("Code copied to clipboard");
+							toast.success(t("codeCopiedToClipboard"));
 						}}
 					>
 						<Copy className="mr-2 h-4 w-4" />
-						Copy Code
+						{t("copyCode")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => {
 							void navigator.clipboard.writeText(
 								`${window.location.origin}/signup?code=${row.original.code}`,
 							);
-							toast.success("Signup link copied");
+							toast.success(t("signupLinkCopied"));
 						}}
 					>
 						<Link className="mr-2 h-4 w-4" />
-						Copy Signup Link
+						{t("copySignupLink")}
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
@@ -196,7 +198,7 @@ function createColumns(
 						variant="destructive"
 					>
 						<Trash2 className="mr-2 h-4 w-4" />
-						Delete
+						{t("delete")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -213,26 +215,27 @@ export function InviteCodesTable({
 	onGenerateCode,
 	onDeleteCode,
 }: InviteCodesTableProps) {
+	const t = useTranslations("admin");
 	const generateMutation = api.invite.generate.useMutation();
 	const isMobile = useIsMobile();
 
 	const handleGenerateCode = async () => {
 		try {
 			const result = await generateMutation.mutateAsync();
-			toast.success(`New invite code generated: ${result.code}`);
+			toast.success(t("newCodeGenerated", { code: result.code }));
 			onGenerateCode();
 		} catch (error) {
 			const message =
 				error instanceof Error
 					? error.message
-					: "Failed to generate invite code";
+					: t("generateFailed");
 			toast.error(message);
 		}
 	};
 
 	const columns = useMemo(
-		() => createColumns(onDeleteCode),
-		[onDeleteCode],
+		() => createColumns(onDeleteCode, t),
+		[onDeleteCode, t],
 	);
 
 	const columnVisibility: VisibilityState = isMobile
@@ -244,22 +247,22 @@ export function InviteCodesTable({
 			<ContextMenuItem
 				onClick={() => {
 					void navigator.clipboard.writeText(inviteCode.code);
-					toast.success("Code copied to clipboard");
+					toast.success(t("codeCopiedToClipboard"));
 				}}
 			>
 				<Copy className="mr-2 h-4 w-4" />
-				Copy Code
+				{t("copyCode")}
 			</ContextMenuItem>
 			<ContextMenuItem
 				onClick={() => {
 					void navigator.clipboard.writeText(
 						`${window.location.origin}/signup?code=${inviteCode.code}`,
 					);
-					toast.success("Signup link copied to clipboard");
+					toast.success(t("signupLinkCopied"));
 				}}
 			>
 				<Link className="mr-2 h-4 w-4" />
-				Copy Signup Link
+				{t("copySignupLink")}
 			</ContextMenuItem>
 			<ContextMenuSeparator />
 			<ContextMenuItem
@@ -267,18 +270,18 @@ export function InviteCodesTable({
 				variant="destructive"
 			>
 				<Trash2 className="mr-2 h-4 w-4" />
-				Delete
+				{t("delete")}
 			</ContextMenuItem>
 		</>
-	), [onDeleteCode]);
+	), [onDeleteCode, t]);
 
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<h3 className="font-medium text-lg">Invite Codes</h3>
+					<h3 className="font-medium text-lg">{t("inviteCodes")}</h3>
 					<p className="text-muted-foreground text-sm">
-						Manage invite codes for new user registrations.
+						{t("inviteCodesDescription")}
 					</p>
 				</div>
 				{status === "active" && (
@@ -286,7 +289,7 @@ export function InviteCodesTable({
 						disabled={generateMutation.isPending || isLoading}
 						onClick={handleGenerateCode}
 					>
-						{generateMutation.isPending ? "Generating..." : "Generate New Code"}
+						{generateMutation.isPending ? t("generating") : t("generateNewCode")}
 					</Button>
 				)}
 			</div>
@@ -296,8 +299,8 @@ export function InviteCodesTable({
 				value={status}
 			>
 				<TabsList className="mb-4">
-					<TabsTrigger value="active">Active</TabsTrigger>
-					<TabsTrigger value="used">Used</TabsTrigger>
+					<TabsTrigger value="active">{t("inviteActive")}</TabsTrigger>
+					<TabsTrigger value="used">{t("inviteUsed")}</TabsTrigger>
 				</TabsList>
 
 				<DataTable
@@ -307,14 +310,14 @@ export function InviteCodesTable({
 					emptyState={
 						<div className="py-8 text-muted-foreground text-sm">
 							{status === "active"
-								? "No active invite codes found. Generate your first code to get started."
-								: "No used invite codes found."}
+								? t("noActiveInviteCodes")
+								: t("noUsedInviteCodes")}
 						</div>
 					}
 					progressive
 					renderContextMenu={renderContextMenu}
 					searchable
-					searchPlaceholder="Search invite codes..."
+					searchPlaceholder={t("searchInviteCodes")}
 				/>
 			</Tabs>
 		</div>
@@ -332,6 +335,7 @@ function CopyButton({
 	successLabel: string;
 	icon?: React.ElementType;
 }) {
+	const t = useTranslations("admin");
 	const [isOpen, setIsOpen] = useState(false);
 	const [hasCopied, setHasCopied] = useState(false);
 
@@ -346,7 +350,7 @@ function CopyButton({
 				setIsOpen(false);
 			}, 2000);
 		} catch {
-			toast.error("Failed to copy to clipboard");
+			toast.error(t("copyFailed"));
 		}
 	};
 

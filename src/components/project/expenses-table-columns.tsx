@@ -5,7 +5,7 @@ import { Check, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
 import { SharedTransactionActionsMenu } from "~/components/shared-transaction-actions-menu";
-import { formatExpenseDate } from "~/lib/format";
+import { formatExpenseAsText, formatExpenseDate } from "~/lib/format";
 import { TransactionEditedIndicator } from "~/components/transaction-edited-indicator";
 import { TransactionStatusBadge } from "~/components/ui/transaction-status-badge";
 import { AvatarStack } from "~/components/ui/avatar-stack";
@@ -18,6 +18,7 @@ interface ColumnOptions {
 	isSolo?: boolean;
 	isReadOnly?: boolean;
 	formatCurrency: (amount: number, currency: string) => string;
+	t?: (key: string) => string;
 	revisionSummaries?: Record<
 		string,
 		{
@@ -38,12 +39,14 @@ interface ColumnOptions {
 	onViewHistory?: (id: string) => void;
 	onAccept?: (txnId: string) => void;
 	onReject?: (txnId: string) => void;
+	locale?: string;
 }
 
 export function createProjectExpenseColumns({
 	isSolo,
 	isReadOnly,
 	formatCurrency,
+	t,
 	revisionSummaries,
 	currentParticipant,
 	onEdit,
@@ -51,11 +54,13 @@ export function createProjectExpenseColumns({
 	onViewHistory,
 	onAccept,
 	onReject,
+	locale,
 }: ColumnOptions): ColumnDef<ProjectExpense>[] {
+	const label = (key: string) => t?.(key) ?? key;
 	const columns: ColumnDef<ProjectExpense>[] = [
 		{
 			accessorKey: "description",
-			header: "Title",
+			header: label("columnTitle"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => {
@@ -81,7 +86,7 @@ export function createProjectExpenseColumns({
 		},
 		{
 			accessorKey: "category",
-			header: "Category",
+			header: label("columnCategory"),
 			enableSorting: true,
 			size: 150,
 			cell: ({ row }) => {
@@ -107,7 +112,7 @@ export function createProjectExpenseColumns({
 	if (!isSolo) {
 		columns.push({
 			id: "split",
-			header: "Who",
+			header: label("columnWho"),
 			enableSorting: false,
 			size: 130,
 			cell: ({ row }) => {
@@ -126,7 +131,7 @@ export function createProjectExpenseColumns({
 	columns.push(
 		{
 			accessorKey: "date",
-			header: "Date",
+			header: label("columnDate"),
 			enableSorting: true,
 			size: 130,
 			sortingFn: (rowA, rowB) =>
@@ -140,7 +145,7 @@ export function createProjectExpenseColumns({
 		},
 		{
 			id: "amount",
-			header: () => <div className="text-right">Amount</div>,
+			header: () => <div className="text-right">{label("columnAmount")}</div>,
 			enableSorting: true,
 			size: 140,
 			accessorFn: (row) => row.amount,
@@ -156,7 +161,7 @@ export function createProjectExpenseColumns({
 	if (!isSolo) {
 		columns.push({
 			id: "status",
-			header: "Status",
+			header: label("columnStatus"),
 			enableSorting: false,
 			size: 100,
 			cell: ({ row }) => {
@@ -246,6 +251,14 @@ export function createProjectExpenseColumns({
 						}
 						onEdit={() => onEdit?.(txn.id)}
 						onViewHistory={() => onViewHistory?.(txn.id)}
+						copyText={formatExpenseAsText(
+							txn.description,
+							txn.amount,
+							txn.currency,
+							new Date(txn.date),
+							formatCurrency,
+							locale,
+						)}
 						triggerClassName="md:opacity-0 transition-opacity md:group-hover:opacity-100 focus-within:opacity-100"
 					/>
 				);

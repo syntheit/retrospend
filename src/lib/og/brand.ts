@@ -27,20 +27,5 @@ export const AVATAR_COLORS = [
 	"#7e22ce",
 ];
 
-// Project type labels (used when no project image; short ASCII so no emoji font needed)
-export const PROJECT_TYPE_EMOJI: Record<string, string> = {
-	TRIP: "TR",
-	ONGOING: "ON",
-	SOLO: "ME",
-	GENERAL: "GP",
-	ONE_TIME: "1x",
-};
-
-// Gradient start/end colors (Tailwind equivalents)
-export const PROJECT_TYPE_GRADIENTS: Record<string, [string, string]> = {
-	TRIP: ["#f59e0b", "#ea580c"],
-	ONGOING: ["#3b82f6", "#14b8a6"],
-	SOLO: ["#64748b", "#4b5563"],
-	GENERAL: ["#6366f1", "#9333ea"],
-	ONE_TIME: ["#10b981", "#16a34a"],
-};
+// Default gradient for project badges (Tailwind equivalents)
+export const PROJECT_DEFAULT_GRADIENT: [string, string] = ["#6366f1", "#9333ea"];

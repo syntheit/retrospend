@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { api } from "~/trpc/server";
 
-export const metadata: Metadata = {
-	title: "Wealth",
-};
+export async function generateMetadata() {
+	const t = await getTranslations("sidebar");
+	return { title: t("wealth") };
+}
 
 export default async function Layout({
 	children,

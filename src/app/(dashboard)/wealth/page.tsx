@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, Eye, EyeOff, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ import { AssetType } from "~/lib/db-enums";
 import { api } from "~/trpc/react";
 
 export default function WealthPage() {
+	const t = useTranslations("wealth");
 	const isMobile = useIsMobile();
 	const { data: settings } = useSettings();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
@@ -79,7 +81,7 @@ export default function WealthPage() {
 
 	const deleteAsset = api.wealth.deleteAsset.useMutation({
 		onSuccess: () => {
-			toast.success("Assets deleted successfully");
+			toast.success(t("assetsDeleted"));
 			setSelectedAssetIds(new Set()); // Clear selection on delete
 			void utils.wealth.getDashboard.invalidate();
 		},
@@ -121,7 +123,7 @@ export default function WealthPage() {
 							<Skeleton className="h-8 w-24" />
 						</div>
 					}
-					title="Wealth"
+					title={t("title")}
 				/>
 				<PageContent>
 					<div className="space-y-6">
@@ -152,18 +154,18 @@ export default function WealthPage() {
 							trigger={
 								<Button className="h-8" size="sm">
 									<Plus className="mr-2 h-4 w-4" />
-									Add Asset
+									{t("addAsset")}
 								</Button>
 							}
 						/>
 					}
-					title="Wealth"
+					title={t("title")}
 				/>
 				<PageContent>
 					<EmptyState
-						description="Something went wrong loading your wealth data. Please try refreshing the page."
+						description={t("failedDescription")}
 						icon={AlertTriangle}
-						title="Failed to Load"
+						title={t("failedToLoad")}
 					/>
 				</PageContent>
 			</>
@@ -176,7 +178,7 @@ export default function WealthPage() {
 				actions={
 					<div className="flex items-center gap-2">
 						<Button
-							aria-label={isPrivacyMode ? "Disable privacy mode" : "Enable privacy mode"}
+							aria-label={isPrivacyMode ? t("disablePrivacy") : t("enablePrivacy")}
 							className="text-muted-foreground"
 							onClick={() => setIsPrivacyMode(!isPrivacyMode)}
 							size="icon"
@@ -193,14 +195,14 @@ export default function WealthPage() {
 								trigger={
 									<Button className="h-8" size="sm">
 										<Plus className="mr-2 h-4 w-4" />
-										Add Asset
+										{t("addAsset")}
 									</Button>
 								}
 							/>
 						)}
 					</div>
 				}
-				title="Wealth"
+				title={t("title")}
 			/>
 			<PageContent fill>
 				<div className="flex flex-1 flex-col gap-6 min-h-0">
@@ -242,7 +244,7 @@ export default function WealthPage() {
 					<div className="flex min-h-[300px] flex-1 flex-col gap-3">
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 								<div className="flex items-center gap-2">
-									<span className="text-muted-foreground text-sm">Type:</span>
+									<span className="text-muted-foreground text-sm">{t("typeFilter")}</span>
 									<ToggleGroup
 										onValueChange={(value) => {
 											if (value) filters.setType(value as AssetType | "all");
@@ -252,38 +254,38 @@ export default function WealthPage() {
 										value={filters.type}
 									>
 										<ToggleGroupItem className="cursor-pointer" value="all">
-											All
+											{t("all")}
 										</ToggleGroupItem>
 										<ToggleGroupItem
 											className="cursor-pointer"
 											value={AssetType.CASH}
 										>
-											Cash
+											{t("cash")}
 										</ToggleGroupItem>
 										<ToggleGroupItem
 											className="cursor-pointer"
 											value={AssetType.INVESTMENT}
 										>
-											Invest
+											{t("invest")}
 										</ToggleGroupItem>
 										<ToggleGroupItem
 											className="cursor-pointer"
 											value={AssetType.CRYPTO}
 										>
-											Crypto
+											{t("crypto")}
 										</ToggleGroupItem>
 										<ToggleGroupItem
 											className="cursor-pointer"
 											value={AssetType.REAL_ESTATE}
 										>
-											Real Estate
+											{t("realEstate")}
 										</ToggleGroupItem>
 									</ToggleGroup>
 								</div>
 
 								<div className="flex items-center gap-2">
 									<span className="text-muted-foreground text-sm">
-										Liquidity:
+										{t("liquidityFilter")}
 									</span>
 									<ToggleGroup
 										onValueChange={(value) => {
@@ -297,23 +299,23 @@ export default function WealthPage() {
 										value={filters.liquidity}
 									>
 										<ToggleGroupItem className="cursor-pointer" value="all">
-											All
+											{t("all")}
 										</ToggleGroupItem>
 										<ToggleGroupItem className="cursor-pointer" value="liquid">
-											Liquid
+											{t("liquid")}
 										</ToggleGroupItem>
 										<ToggleGroupItem
 											className="cursor-pointer"
 											value="illiquid"
 										>
-											Illiquid
+											{t("illiquid")}
 										</ToggleGroupItem>
 									</ToggleGroup>
 								</div>
 
 								<ExpandableSearch
 									onChange={filters.setSearch}
-									placeholder="Search assets..."
+									placeholder={t("searchPlaceholder")}
 									value={filters.search}
 									slashFocus
 								/>
@@ -342,11 +344,9 @@ export default function WealthPage() {
 				}} open={showDeleteDialog}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Delete Asset{(pendingDeleteIds ?? selectedAssetIds).size !== 1 ? "s" : ""}</DialogTitle>
+						<DialogTitle>{(pendingDeleteIds ?? selectedAssetIds).size !== 1 ? t("deleteAssetsTitle") : t("deleteAssetTitle")}</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete {(pendingDeleteIds ?? selectedAssetIds).size} asset
-							{(pendingDeleteIds ?? selectedAssetIds).size !== 1 ? "s" : ""}? This action cannot be
-							undone and will affect your net worth calculations.
+							{t("deleteAssetDescription", { count: (pendingDeleteIds ?? selectedAssetIds).size })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -358,14 +358,14 @@ export default function WealthPage() {
 							}}
 							variant="ghost"
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={deleteAsset.isPending}
 							onClick={confirmDeleteSelected}
 							variant="destructive"
 						>
-							{deleteAsset.isPending ? "Deleting..." : "Delete Assets"}
+							{deleteAsset.isPending ? t("deleting") : t("deleteAssets")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

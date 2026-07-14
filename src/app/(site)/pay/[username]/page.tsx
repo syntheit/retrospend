@@ -11,6 +11,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CurrencyPicker } from "~/components/currency-picker";
@@ -55,12 +56,13 @@ function CopyButton({
 	label?: string;
 	variant?: "icon" | "button";
 }) {
+	const t = useTranslations("publicProfile");
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = () => {
 		void navigator.clipboard.writeText(text);
 		setCopied(true);
-		toast.success("Copied!");
+		toast.success(t("copied"));
 		setTimeout(() => setCopied(false), 2000);
 	};
 
@@ -72,14 +74,14 @@ function CopyButton({
 				) : (
 					<Copy className="h-3.5 w-3.5" />
 				)}
-				{copied ? "Copied!" : (label ?? "Copy")}
+				{copied ? t("copiedButton") : (label ?? t("copy"))}
 			</Button>
 		);
 	}
 
 	return (
 		<Button
-			aria-label={label ?? "Copy"}
+			aria-label={label ?? t("copy")}
 			className="h-8 w-8 shrink-0 p-0"
 			onClick={handleCopy}
 			size="sm"
@@ -139,6 +141,7 @@ function PaymentMethodCard({
 	recipientName: string;
 	isFirst: boolean;
 }) {
+	const t = useTranslations("publicProfile");
 	const [linkState, setLinkState] = useState<"idle" | "opening">("idle");
 
 	const resolvedType = resolveMethodTypeId(method.type, method.currency);
@@ -157,7 +160,7 @@ function PaymentMethodCard({
 		high: "text-rose-600 dark:text-rose-400",
 	};
 
-	const note = `Payment to ${recipientName} via Retrospend`;
+	const note = t("paymentNote", { name: recipientName });
 	const link = useMemo(
 		() =>
 			buildPaymentLink(method.type, method.identifier, amount, note, {
@@ -197,7 +200,7 @@ function PaymentMethodCard({
 							</span>
 							{isFirst && (
 								<Badge className="text-[10px]" variant="secondary">
-									Preferred
+									{t("preferred")}
 								</Badge>
 							)}
 						</div>
@@ -212,10 +215,10 @@ function PaymentMethodCard({
 									<span>·</span>
 									<span className={feeLevelColor[networkDef.feeLevel] ?? ""}>
 										{networkDef.feeLevel === "low"
-											? "Low fee"
+											? t("lowFee")
 											: networkDef.feeLevel === "medium"
-												? "Med fee"
-												: "High fee"}
+												? t("medFee")
+												: t("highFee")}
 									</span>
 								</>
 							)}
@@ -233,13 +236,13 @@ function PaymentMethodCard({
 
 				{isCrypto && method.network && !networkDef && (
 					<p className="text-muted-foreground text-xs">
-						Make sure you&apos;re sending on {method.network}
+						{t("makeSureSendingOn", { network: method.network })}
 					</p>
 				)}
 
 				{isCash && (
 					<p className="text-muted-foreground text-sm">
-						Accepts cash{method.currency ? ` in ${method.currency}` : ""}
+						{method.currency ? t("acceptsCashIn", { currency: method.currency }) : t("acceptsCash")}
 					</p>
 				)}
 
@@ -249,12 +252,12 @@ function PaymentMethodCard({
 							{linkState === "opening" ? (
 								<>
 									<Loader2 className="h-3.5 w-3.5 animate-spin" />
-									Opening {displayName}...
+									{t("openingName", { name: displayName })}
 								</>
 							) : (
 								<>
 									<ExternalLink className="h-3.5 w-3.5" />
-									Open {displayName}
+									{t("openName", { name: displayName })}
 								</>
 							)}
 						</Button>
@@ -270,10 +273,10 @@ function PaymentMethodCard({
 						<CopyButton
 							label={
 								isCrypto
-									? "Copy address"
+									? t("copyAddress")
 									: method.type === "zelle"
-										? "Copy email"
-										: `Copy ${displayName}`
+										? t("copyEmail")
+										: t("copyLabel", { label: displayName })
 							}
 							text={method.identifier}
 							variant="button"
@@ -290,6 +293,7 @@ function PaymentMethodCard({
 // ---------------------------------------------------------------------------
 
 export default function PayPage({ params }: { params: PageParams }) {
+	const t = useTranslations("publicProfile");
 	const { username } = use(params);
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -332,22 +336,22 @@ export default function PayPage({ params }: { params: PageParams }) {
 				<Card className="w-full max-w-[500px]">
 					<CardContent className="space-y-4 p-5 text-center sm:p-6">
 						<h1 className="font-bold text-xl">
-							{isNotFound ? "This profile doesn't exist" : "Something went wrong"}
+							{isNotFound ? t("profileNotFound") : t("somethingWentWrong")}
 						</h1>
 						<p className="text-muted-foreground text-sm">
 							{isNotFound
-								? "Check the username and try again."
-								: "We couldn't load this profile. Please try again."}
+								? t("checkUsernameAndTryAgain")
+								: t("couldntLoadProfile")}
 						</p>
 						<div className="flex justify-center gap-3">
 							{!isNotFound && (
 								<Button onClick={() => void refetch()} variant="outline">
 									<RefreshCw className="mr-1.5 h-4 w-4" />
-									Try again
+									{t("tryAgain")}
 								</Button>
 							)}
 							<Button asChild variant={isNotFound ? "default" : "outline"}>
-								<Link href="/">Go to Retrospend</Link>
+								<Link href="/">{t("goToRetrospend")}</Link>
 							</Button>
 						</div>
 					</CardContent>
@@ -372,12 +376,12 @@ export default function PayPage({ params }: { params: PageParams }) {
 								size="md"
 							/>
 							<div className="min-w-0">
-								<h1 className="font-bold text-xl">{isDonate ? `Donate to ${data.displayName}` : `Pay ${data.displayName}`}</h1>
+								<h1 className="font-bold text-xl">{isDonate ? t("donateTo", { name: data.displayName }) : t("payTo", { name: data.displayName })}</h1>
 								<Link
 									className="text-muted-foreground text-sm hover:text-primary hover:underline"
 									href={`/u/${data.username}`}
 								>
-									@{data.username} · View profile
+									@{data.username} · {t("viewProfile")}
 								</Link>
 							</div>
 						</div>
@@ -387,7 +391,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 
 						{/* Amount field */}
 						<div className="space-y-2">
-							<Label>Amount (optional)</Label>
+							<Label>{t("amountOptional")}</Label>
 							<div
 								className={cn(
 									"flex h-9 w-full overflow-hidden rounded-md border border-input shadow-xs",
@@ -418,7 +422,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 							</div>
 							{isLockedByUrl && (
 								<p className="text-muted-foreground text-xs">
-									Amount set by sender
+									{t("amountSetBySender")}
 								</p>
 							)}
 						</div>
@@ -430,7 +434,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 						{data.publicMethods.length > 0 ? (
 							<div className="space-y-3">
 								<h2 className="font-semibold text-muted-foreground text-sm">
-									{isDonate ? "Choose a donation method" : "Choose a payment method"}
+									{isDonate ? t("chooseDonationMethod") : t("choosePaymentMethod")}
 								</h2>
 								{data.publicMethods.map((method, i) => (
 									<PaymentMethodCard
@@ -445,10 +449,10 @@ export default function PayPage({ params }: { params: PageParams }) {
 						) : (
 							<div className="space-y-1 py-4 text-center">
 								<p className="text-muted-foreground text-sm">
-									{firstName} hasn&apos;t added any public payment methods yet.
+									{t("noPaymentMethods", { name: firstName })}
 								</p>
 								<p className="text-muted-foreground text-xs">
-									Contact them directly to arrange payment.
+									{t("contactDirectly")}
 								</p>
 							</div>
 						)}
@@ -471,11 +475,11 @@ export default function PayPage({ params }: { params: PageParams }) {
 							</span>
 						</div>
 						<p className="text-muted-foreground text-xs">
-							Split and track expenses with anyone
+							{t("footerTagline")}
 						</p>
 						<Button asChild className="mt-1 gap-1" size="sm">
 							<Link href="/signup">
-								Get started free
+								{t("getStartedFree")}
 								<ChevronRight className="h-3.5 w-3.5" />
 							</Link>
 						</Button>

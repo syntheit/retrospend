@@ -1,6 +1,7 @@
 "use client";
 
 import { Github, Globe, Hash, Heart } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 import { AppPreferencesContent } from "~/components/settings/app-preferences-card";
@@ -26,15 +27,18 @@ import { useSession } from "~/hooks/use-session";
 import { env } from "~/env";
 import { APP_VERSION } from "~/lib/version";
 
-const SECTIONS = [
-	{ id: "profile", label: "Profile" },
-	{ id: "preferences", label: "Preferences" },
-	{ id: "categories", label: "Categories" },
-	{ id: "payment", label: "Payment" },
-	{ id: "notifications", label: "Notifications" },
-	{ id: "security", label: "Security" },
-	{ id: "data", label: "Data" },
-];
+function useSections() {
+	const t = useTranslations("settings");
+	return [
+		{ id: "profile", label: t("profile") },
+		{ id: "preferences", label: t("preferences") },
+		{ id: "categories", label: t("categories") },
+		{ id: "payment", label: t("payment") },
+		{ id: "notifications", label: t("notifications") },
+		{ id: "security", label: t("security") },
+		{ id: "data", label: t("data") },
+	];
+}
 
 type ExtendedUser = NonNullable<
 	ReturnType<typeof useSession>["data"]
@@ -43,6 +47,10 @@ type ExtendedUser = NonNullable<
 };
 
 export function SettingsForm() {
+	const t = useTranslations("settings");
+	const tc = useTranslations("common");
+	const tSettings = useTranslations("settingsPage");
+	const sections = useSections();
 	const { data: session, isPending: sessionLoading } = useSession();
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -50,7 +58,7 @@ export function SettingsForm() {
 		return (
 			<Card className="mx-auto w-full max-w-4xl">
 				<CardContent className="p-6">
-					<div className="text-center">Loading...</div>
+					<div className="text-center">{tc("loading")}</div>
 				</CardContent>
 			</Card>
 		);
@@ -61,7 +69,7 @@ export function SettingsForm() {
 			<Card className="mx-auto w-full max-w-4xl">
 				<CardContent className="p-6">
 					<div className="text-center">
-						Please sign in to access your settings
+						{tc("signInSettings")}
 					</div>
 				</CardContent>
 			</Card>
@@ -73,7 +81,7 @@ export function SettingsForm() {
 
 	return (
 		<div className="space-y-6">
-			<SectionNav sections={SECTIONS} />
+			<SectionNav sections={sections} />
 
 			{/* Profile */}
 			<section id="profile" className="scroll-mt-16">
@@ -84,9 +92,9 @@ export function SettingsForm() {
 			<section id="preferences" className="scroll-mt-16">
 				<Card className="border-border/50 shadow-sm">
 					<CardHeader>
-						<CardTitle>Preferences</CardTitle>
+						<CardTitle>{t("preferencesTitle")}</CardTitle>
 						<CardDescription>
-							Customize your visual and regional experience.
+							{t("preferencesDescription")}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -129,13 +137,13 @@ export function SettingsForm() {
 			{/* Danger Zone */}
 			{!isAdmin && (
 				<div className="flex flex-col items-center justify-between gap-4 border-border/20 border-t pt-8 md:flex-row">
-					<p className="text-muted-foreground text-sm">Want to leave?</p>
+					<p className="text-muted-foreground text-sm">{t("wantToLeave")}</p>
 					<Button
 						className="h-9 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
 						onClick={() => setShowDeleteDialog(true)}
 						variant="ghost"
 					>
-						Delete Account
+						{t("deleteAccount")}
 					</Button>
 				</div>
 			)}
@@ -154,7 +162,7 @@ export function SettingsForm() {
 								Retrospend
 							</h2>
 							<p className="text-muted-foreground">
-								The Financial Multitool
+								{tSettings("aboutTagline")}
 							</p>
 							<div className="mt-3 flex gap-3">
 								<a
@@ -162,7 +170,7 @@ export function SettingsForm() {
 									href="https://retrospend.app"
 									rel="noopener noreferrer"
 									target="_blank"
-									title="Visit Retrospend website"
+									title={tSettings("visitWebsite")}
 								>
 									<Globe className="h-5 w-5" />
 								</a>
@@ -171,7 +179,7 @@ export function SettingsForm() {
 									href="https://github.com/syntheit/retrospend"
 									rel="noopener noreferrer"
 									target="_blank"
-									title="View on GitHub"
+									title={tSettings("viewOnGitHub")}
 								>
 									<Github className="h-5 w-5" />
 								</a>
@@ -180,7 +188,7 @@ export function SettingsForm() {
 									href="https://matrix.to/#/#retrospend:matrix.org"
 									rel="noopener noreferrer"
 									target="_blank"
-									title="Join the Matrix room"
+									title={tSettings("joinMatrix")}
 								>
 									<Hash className="h-5 w-5" />
 								</a>
@@ -189,7 +197,7 @@ export function SettingsForm() {
 									href="https://retrospend.app/u/daniel?donate"
 									rel="noopener noreferrer"
 									target="_blank"
-									title="Support Retrospend"
+									title={tSettings("supportRetrospend")}
 								>
 									<Heart className="h-5 w-5" />
 								</a>
@@ -197,7 +205,7 @@ export function SettingsForm() {
 						</div>
 						<div className="space-y-1 sm:text-right">
 							<p className="text-muted-foreground text-sm">
-								Version {APP_VERSION} •{" "}
+								{tSettings("versionInfo", { version: APP_VERSION })}{" "}
 								<a
 									className="text-primary hover:underline"
 									href="https://www.gnu.org/licenses/gpl-3.0.en.html"
@@ -208,7 +216,7 @@ export function SettingsForm() {
 								</a>
 							</p>
 							<p className="text-muted-foreground text-sm">
-								Made by{" "}
+								{tSettings("madeBy")}{" "}
 								<a
 									className="text-primary hover:underline"
 									href="https://matv.io"
@@ -224,14 +232,14 @@ export function SettingsForm() {
 										className="text-primary hover:underline"
 										href="/settings/terms"
 									>
-										Terms
+										{tSettings("terms")}
 									</Link>
 									{" • "}
 									<Link
 										className="text-primary hover:underline"
 										href="/settings/privacy"
 									>
-										Privacy
+										{tSettings("privacy")}
 									</Link>
 								</p>
 							)}

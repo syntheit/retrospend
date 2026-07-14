@@ -1,6 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "~/components/ui/card";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { COLOR_TO_HEX } from "~/lib/constants";
 
@@ -36,7 +38,9 @@ export function CategoriesCard({
 	total,
 	currency,
 }: CategoriesCardProps) {
+	const t = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 
 	const categoryData = categories.map((cat, i) => ({
 		...cat,
@@ -52,7 +56,7 @@ export function CategoriesCard({
 				{/* Header */}
 				<div className="mb-3 flex items-center justify-between">
 					<span className="text-xs font-medium tracking-wide text-muted-foreground">
-						Spending by Category
+						{t("spendingByCategory")}
 					</span>
 					<span className="text-lg font-bold tabular-nums">
 						{formatCurrency(total, currency)}
@@ -61,7 +65,7 @@ export function CategoriesCard({
 
 				{categories.length === 0 ? (
 					<div className="flex h-16 items-center justify-center">
-						<p className="text-sm text-muted-foreground">No expenses yet</p>
+						<p className="text-sm text-muted-foreground">{t("noExpensesLoggedYet")}</p>
 					</div>
 				) : (
 					<>
@@ -97,7 +101,7 @@ export function CategoriesCard({
 												className="h-2 w-2 shrink-0 rounded-full"
 												style={{ backgroundColor: cat.fill }}
 											/>
-											<span className="text-sm">{cat.name}</span>
+											<span className="text-sm">{displayName(cat.name)}</span>
 										</div>
 										<div className="flex items-center gap-3">
 											<span className="text-xs text-muted-foreground tabular-nums">

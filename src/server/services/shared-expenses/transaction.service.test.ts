@@ -1377,9 +1377,8 @@ describe("SharedTransactionService", () => {
 			return { db, txClient };
 		}
 
-		it("ONGOING project with open period: assigns billingPeriodId", async () => {
+		it("project with open period: assigns billingPeriodId", async () => {
 			const { db, txClient } = createMockDbWithProject();
-			txClient.project.findUnique.mockResolvedValue({ type: "ONGOING" });
 			txClient.billingPeriod.findFirst.mockResolvedValue({
 				id: "period-1",
 				label: "March 2026",
@@ -1416,9 +1415,8 @@ describe("SharedTransactionService", () => {
 			expect(result.backdatedWarning).toBeNull();
 		});
 
-		it("ONGOING project with backdated date: returns backdatedWarning", async () => {
+		it("project with backdated date: returns backdatedWarning", async () => {
 			const { db, txClient } = createMockDbWithProject();
-			txClient.project.findUnique.mockResolvedValue({ type: "ONGOING" });
 			txClient.billingPeriod.findFirst.mockResolvedValue({
 				id: "period-1",
 				label: "March 2026",
@@ -1458,43 +1456,8 @@ describe("SharedTransactionService", () => {
 			expect(result.backdatedWarning).toEqual({ periodLabel: "March 2026" });
 		});
 
-		it("non-ONGOING project (ONEOFF): no billingPeriodId assigned", async () => {
+		it("project with no open period: billingPeriodId remains null", async () => {
 			const { db, txClient } = createMockDbWithProject();
-			txClient.project.findUnique.mockResolvedValue({ type: "ONEOFF" });
-			txClient.sharedTransaction.create.mockResolvedValue({
-				id: "txn-1",
-				splitParticipants: [],
-			});
-
-			const service = new SharedTransactionService(db as never, {
-				participantType: "user",
-				participantId: "alice",
-			});
-			await service.create({
-				amount: 50,
-				currency: "USD",
-				description: "Trip expense",
-				date: new Date("2026-03-15"),
-				paidBy: { participantType: "user", participantId: "alice" },
-				splitWith: [
-					{ participantType: "user", participantId: "alice" },
-					{ participantType: "user", participantId: "bob" },
-				],
-				splitMode: "EQUAL",
-				projectId: "proj-1",
-			});
-
-			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
-			if (!firstCall) throw new Error("Expected create to be called");
-			const createCall = firstCall[0];
-			// ONEOFF project skips billing period lookup entirely
-			expect(createCall.data.billingPeriodId).toBeNull();
-			expect(txClient.billingPeriod.findFirst).not.toHaveBeenCalled();
-		});
-
-		it("ONGOING project with no open period: billingPeriodId remains null", async () => {
-			const { db, txClient } = createMockDbWithProject();
-			txClient.project.findUnique.mockResolvedValue({ type: "ONGOING" });
 			txClient.billingPeriod.findFirst.mockResolvedValue(null); // no open period
 			txClient.sharedTransaction.create.mockResolvedValue({
 				id: "txn-1",

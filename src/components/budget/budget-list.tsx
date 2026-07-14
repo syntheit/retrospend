@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
@@ -27,6 +28,7 @@ export function BudgetList({
 	isCopying,
 	onCopyFromLastMonth,
 }: BudgetListProps) {
+	const t = useTranslations("budget");
 	const { formatCurrency } = useCurrencyFormatter();
 	const [newlyAddedBudgetId, setNewlyAddedBudgetId] = useState<string | null>(
 		null,
@@ -42,8 +44,8 @@ export function BudgetList({
 		const result = [];
 		if (variableBudgets.length > 0) {
 			result.push({
-				title: "Variable / Managed",
-				description: "Categories you actively monitor and adjust",
+				title: t("variableManaged"),
+				description: t("variableManagedDescription"),
 				budgets: variableBudgets,
 				totalAllocated: variableBudgets.reduce((sum, b) => sum + b.amount, 0),
 				totalSpent: variableBudgets.reduce((sum, b) => sum + b.actualSpend, 0),
@@ -51,8 +53,8 @@ export function BudgetList({
 		}
 		if (fixedBudgets.length > 0) {
 			result.push({
-				title: "Fixed / Pegged",
-				description: "Categories that automatically match your actual spending",
+				title: t("fixedPegged"),
+				description: t("fixedPeggedDescription"),
 				budgets: fixedBudgets,
 				totalAllocated: fixedBudgets.reduce(
 					(sum, b) => sum + b.effectiveAmount,
@@ -62,7 +64,7 @@ export function BudgetList({
 			});
 		}
 		return result;
-	}, [variableBudgets, fixedBudgets]);
+	}, [variableBudgets, fixedBudgets, t]);
 
 	const monthLabel = selectedMonth.toLocaleDateString(undefined, {
 		month: "long",
@@ -89,10 +91,10 @@ export function BudgetList({
 			<div className="space-y-4 py-12 text-center">
 				<div>
 					<p className="text-muted-foreground">
-						No budgets set for this month.
+						{t("noBudgetsSet")}
 					</p>
 					<p className="mt-1 text-muted-foreground text-sm">
-						Start allocating to categories to set your budget.
+						{t("startAllocating")}
 					</p>
 				</div>
 				{hasPreviousBudgets && (
@@ -102,7 +104,7 @@ export function BudgetList({
 						size="sm"
 						variant="outline"
 					>
-						{isCopying ? "Copying..." : "Copy from last month"}
+						{isCopying ? t("copying") : t("copyFromLastMonth")}
 					</Button>
 				)}
 			</div>
@@ -116,11 +118,10 @@ export function BudgetList({
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<div className="text-left">
 							<p className="font-medium text-foreground text-sm">
-								Bring forward last month&apos;s plan
+								{t("bringForwardPlan")}
 							</p>
 							<p className="text-muted-foreground text-sm">
-								Copy your most recent budgets into {monthLabel} and adjust as
-								needed.
+								{t("copyIntoMonth", { month: monthLabel })}
 							</p>
 						</div>
 						<div className="flex gap-2">
@@ -130,7 +131,7 @@ export function BudgetList({
 								size="sm"
 								variant="outline"
 							>
-								{isCopying ? "Copying..." : "Copy last month"}
+								{isCopying ? t("copying") : t("copyLastMonth")}
 							</Button>
 						</div>
 					</div>
@@ -155,8 +156,8 @@ export function BudgetList({
 							</div>
 							<div className="text-muted-foreground text-xs sm:text-sm">
 								{section.totalSpent > section.totalAllocated
-									? "Over budget"
-									: "On track"}
+									? t("overBudget")
+									: t("onTrack")}
 							</div>
 						</div>
 					</div>
@@ -171,7 +172,7 @@ export function BudgetList({
 								startExpanded={budget.id === newlyAddedBudgetId}
 							/>
 						))}
-						{section.title === "Variable / Managed" &&
+						{section.title === t("variableManaged") &&
 							unbudgetedCategories.length > 0 && (
 								<AddBudgetRow
 									homeCurrency={homeCurrency}
@@ -190,10 +191,10 @@ export function BudgetList({
 					<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h3 className="font-semibold text-lg tracking-tight">
-								Variable / Managed
+								{t("variableManaged")}
 							</h3>
 							<p className="text-muted-foreground text-sm">
-								Categories you actively monitor and adjust
+								{t("variableManagedDescription")}
 							</p>
 						</div>
 					</div>

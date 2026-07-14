@@ -3,6 +3,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { ClipboardCopy, Eye, Info, MoreHorizontal, ScrollText, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ContextMenuItem } from "~/components/ui/context-menu";
@@ -54,33 +55,35 @@ interface EventLog {
 	} | null;
 }
 
-const EVENT_TYPE_LABELS: Record<EventType, string> = {
-	FAILED_LOGIN: "Failed Login",
-	SUCCESSFUL_LOGIN: "Successful Login",
-	PASSWORD_RESET: "Password Reset",
-	PASSWORD_CHANGED: "Password Changed",
-	ACCOUNT_CREATED: "Account Created",
-	ACCOUNT_DELETED: "Account Deleted",
-	ACCOUNT_ENABLED: "Account Enabled",
-	ACCOUNT_DISABLED: "Account Disabled",
-	INVITE_USED: "Invite Used",
-	INVITE_CREATED: "Invite Created",
-	EMAIL_VERIFIED: "Email Verified",
-	TWO_FACTOR_ENABLED: "2FA Enabled",
-	TWO_FACTOR_DISABLED: "2FA Disabled",
-	SETTINGS_UPDATED: "Settings Updated",
-	USER_UPDATED: "User Updated",
-	USERNAME_CHANGED: "Username Changed",
-	EXPENSE_IMPORT: "Expense Import",
-	ADMIN_RESET_LINK_GENERATED: "Admin Reset Link",
-	ADMIN_AI_ACCESS_CHANGED: "AI Access Changed",
-	EMAIL_CHANGE_REQUESTED: "Email Change Requested",
-	EMAIL_CHANGE_CONFIRMED: "Email Change Confirmed",
-	EMAIL_CHANGE_REVERTED: "Email Change Reverted",
-	GUEST_UPGRADED: "Guest Upgraded",
-	ADMIN_DELETE_SHADOW_PROFILE: "Shadow Profile Deleted",
-	ADMIN_DELETE_GUEST_SESSION: "Guest Session Deleted",
-};
+function getEventTypeLabels(t: ReturnType<typeof useTranslations<"auditLog">>): Record<EventType, string> {
+	return {
+		FAILED_LOGIN: t("eventFailedLogin"),
+		SUCCESSFUL_LOGIN: t("eventSuccessfulLogin"),
+		PASSWORD_RESET: t("eventPasswordReset"),
+		PASSWORD_CHANGED: t("eventPasswordChanged"),
+		ACCOUNT_CREATED: t("eventAccountCreated"),
+		ACCOUNT_DELETED: t("eventAccountDeleted"),
+		ACCOUNT_ENABLED: t("eventAccountEnabled"),
+		ACCOUNT_DISABLED: t("eventAccountDisabled"),
+		INVITE_USED: t("eventInviteUsed"),
+		INVITE_CREATED: t("eventInviteCreated"),
+		EMAIL_VERIFIED: t("eventEmailVerified"),
+		TWO_FACTOR_ENABLED: t("event2FAEnabled"),
+		TWO_FACTOR_DISABLED: t("event2FADisabled"),
+		SETTINGS_UPDATED: t("eventSettingsUpdated"),
+		USER_UPDATED: t("eventUserUpdated"),
+		USERNAME_CHANGED: t("eventUsernameChanged"),
+		EXPENSE_IMPORT: t("eventExpenseImport"),
+		ADMIN_RESET_LINK_GENERATED: t("eventAdminResetLink"),
+		ADMIN_AI_ACCESS_CHANGED: t("eventAiAccessChanged"),
+		EMAIL_CHANGE_REQUESTED: t("eventEmailChangeRequested"),
+		EMAIL_CHANGE_CONFIRMED: t("eventEmailChangeConfirmed"),
+		EMAIL_CHANGE_REVERTED: t("eventEmailChangeReverted"),
+		GUEST_UPGRADED: t("eventGuestUpgraded"),
+		ADMIN_DELETE_SHADOW_PROFILE: t("eventShadowProfileDeleted"),
+		ADMIN_DELETE_GUEST_SESSION: t("eventGuestSessionDeleted"),
+	};
+}
 
 const EVENT_TYPE_COLORS: Record<EventType, string> = {
 	FAILED_LOGIN: "text-destructive",
@@ -112,26 +115,13 @@ const EVENT_TYPE_COLORS: Record<EventType, string> = {
 
 type PrivacyMode = "minimal" | "anonymized" | "full";
 
-const PRIVACY_MODE_CONFIG: Record<
-	PrivacyMode,
-	{
-		label: string;
-		description: string;
-	}
-> = {
-	minimal: {
-		label: "Minimal",
-		description: "No IP addresses or user agents are stored",
-	},
-	anonymized: {
-		label: "Anonymized",
-		description: "IP addresses are anonymized (last octet removed)",
-	},
-	full: {
-		label: "Full",
-		description: "Complete IP addresses and user agents are stored",
-	},
-};
+function getPrivacyModeConfig(t: ReturnType<typeof useTranslations<"auditLog">>): Record<PrivacyMode, { label: string; description: string }> {
+	return {
+		minimal: { label: t("privacyMinimal"), description: t("privacyMinimalDesc") },
+		anonymized: { label: t("privacyAnonymized"), description: t("privacyAnonymizedDesc") },
+		full: { label: t("privacyFull"), description: t("privacyFullDesc") },
+	};
+}
 
 interface MetadataDialogProps {
 	open: boolean;
@@ -146,12 +136,13 @@ function MetadataDialog({
 	metadata,
 	eventType,
 }: MetadataDialogProps) {
+	const t = useTranslations("auditLog");
 	return (
 		<Dialog onOpenChange={onOpenChange} open={open}>
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
-					<DialogTitle>Event Details</DialogTitle>
-					<DialogDescription>Metadata for {eventType} event</DialogDescription>
+					<DialogTitle>{t("eventDetails")}</DialogTitle>
+					<DialogDescription>{t("metadataFor", { eventType })}</DialogDescription>
 				</DialogHeader>
 				<div className="max-h-[60vh] overflow-auto">
 					<pre className="rounded-md bg-muted p-4 text-xs">
@@ -164,6 +155,9 @@ function MetadataDialog({
 }
 
 export function AuditLogsTable() {
+	const t = useTranslations("auditLog");
+	const EVENT_TYPE_LABELS = useMemo(() => getEventTypeLabels(t), [t]);
+	const PRIVACY_MODE_CONFIG = useMemo(() => getPrivacyModeConfig(t), [t]);
 	const isMobile = useIsMobile();
 	const [eventTypeFilter, setEventTypeFilter] = useState<EventType | "all">(
 		"all",
@@ -194,7 +188,7 @@ export function AuditLogsTable() {
 	const columns = useMemo<ColumnDef<EventLog>[]>(() => [
 		{
 			accessorKey: "timestamp",
-			header: "Date & Time",
+			header: t("columnDateTime"),
 			enableSorting: true,
 			cell: ({ row }) => {
 				const date = new Date(row.original.timestamp);
@@ -212,7 +206,7 @@ export function AuditLogsTable() {
 		},
 		{
 			accessorKey: "eventType",
-			header: "Event Type",
+			header: t("columnEventType"),
 			enableSorting: true,
 			cell: ({ row }) => {
 				const eventType = row.original.eventType;
@@ -225,7 +219,7 @@ export function AuditLogsTable() {
 		},
 		{
 			accessorKey: "user",
-			header: "User",
+			header: t("columnUser"),
 			enableSorting: true,
 			sortingFn: (rowA, rowB) => {
 				const a = rowA.original.user?.username ?? "";
@@ -239,7 +233,7 @@ export function AuditLogsTable() {
 						<span className="text-muted-foreground text-sm">
 							{row.original.userId
 								? `ID: ${row.original.userId.slice(0, 8)}...`
-								: "N/A"}
+								: t("na")}
 						</span>
 					);
 				}
@@ -253,13 +247,13 @@ export function AuditLogsTable() {
 		},
 		{
 			accessorKey: "ipAddress",
-			header: "IP Address",
+			header: t("columnIpAddress"),
 			enableSorting: false,
 			cell: ({ row }) => {
 				const ip = row.original.ipAddress;
 				return (
 					<span className="font-mono text-sm">
-						{ip || <span className="text-muted-foreground">N/A</span>}
+						{ip || <span className="text-muted-foreground">{t("na")}</span>}
 					</span>
 				);
 			},
@@ -284,7 +278,7 @@ export function AuditLogsTable() {
 								variant="ghost"
 							>
 								<MoreHorizontal className="h-4 w-4" />
-								<span className="sr-only">Actions</span>
+								<span className="sr-only">{t("actions")}</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-44">
@@ -298,29 +292,29 @@ export function AuditLogsTable() {
 									}
 								>
 									<Eye className="mr-2 h-4 w-4" />
-									View Details
+									{t("viewDetails")}
 								</DropdownMenuItem>
 							)}
 							{hasIp && (
 								<DropdownMenuItem
 									onClick={() => {
 										void navigator.clipboard.writeText(row.original.ipAddress!);
-										toast.success("IP address copied");
+										toast.success(t("ipCopied"));
 									}}
 								>
 									<ClipboardCopy className="mr-2 h-4 w-4" />
-									Copy IP
+									{t("copyIp")}
 								</DropdownMenuItem>
 							)}
 							{hasUser && (
 								<DropdownMenuItem
 									onClick={() => {
 										void navigator.clipboard.writeText(row.original.user!.id);
-										toast.success("User ID copied");
+										toast.success(t("userIdCopied"));
 									}}
 								>
 									<User className="mr-2 h-4 w-4" />
-									Copy User ID
+									{t("copyUserId")}
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuContent>
@@ -329,14 +323,14 @@ export function AuditLogsTable() {
 			},
 		},
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	], []);
+	], [t, EVENT_TYPE_LABELS]);
 
 	const columnVisibility: Record<string, boolean> = isMobile
 		? { ipAddress: false, actions: false }
 		: {};
 
 	const eventTypes: Array<{ value: EventType | "all"; label: string }> = [
-		{ value: "all", label: "All Events" },
+		{ value: "all", label: t("allEvents") },
 		...Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({
 			value: value as EventType,
 			label,
@@ -351,13 +345,13 @@ export function AuditLogsTable() {
 			<div className="space-y-4">
 				<div className="flex items-center justify-between">
 					<div>
-						<h2 className="font-semibold text-xl tracking-tight">Audit Logs</h2>
+						<h2 className="font-semibold text-xl tracking-tight">{t("title")}</h2>
 						<div className="flex items-center gap-3">
 							<p className="text-muted-foreground text-sm">
-								Track security events and administrative actions.
+								{t("description")}
 							</p>
 							<div className="flex items-center gap-1.5 text-muted-foreground text-sm">
-								<span>Log Level: {privacyConfig.label}</span>
+								<span>{t("logLevel", { level: privacyConfig.label })}</span>
 								<TooltipProvider>
 									<Tooltip>
 										<TooltipTrigger asChild>
@@ -378,7 +372,7 @@ export function AuditLogsTable() {
 						value={eventTypeFilter ?? "all"}
 					>
 						<SelectTrigger className="w-[200px]">
-							<SelectValue placeholder="Filter by event type" />
+							<SelectValue placeholder={t("filterByEventType")} />
 						</SelectTrigger>
 						<SelectContent>
 							{eventTypes.map((type) => (
@@ -392,7 +386,7 @@ export function AuditLogsTable() {
 
 				{isLoading ? (
 					<div className="flex items-center justify-center rounded-xl border py-16 text-muted-foreground text-sm">
-						Loading...
+						{t("loading")}
 					</div>
 				) : (
 					<DataTable
@@ -404,15 +398,15 @@ export function AuditLogsTable() {
 						}}
 						searchable={false}
 						columnVisibility={columnVisibility}
-						countNoun="events"
+						countNoun={t("events")}
 						emptyState={
 							<EmptyState
 								icon={ScrollText}
-								title="No events found"
+								title={t("noEventsFound")}
 								description={
 									eventTypeFilter !== "all"
-										? `No ${EVENT_TYPE_LABELS[eventTypeFilter]} events recorded.`
-										: "No audit events have been recorded yet."
+										? t("noEventsOfType", { type: EVENT_TYPE_LABELS[eventTypeFilter] })
+										: t("noAuditEventsYet")
 								}
 							/>
 						}
@@ -430,28 +424,28 @@ export function AuditLogsTable() {
 									disabled={row.metadata === null}
 								>
 									<Eye className="mr-2 h-4 w-4" />
-									View Details
+									{t("viewDetails")}
 								</ContextMenuItem>
 								{row.ipAddress && (
 									<ContextMenuItem
 										onClick={() => {
 											void navigator.clipboard.writeText(row.ipAddress!);
-											toast.success("IP address copied");
+											toast.success(t("ipCopied"));
 										}}
 									>
 										<ClipboardCopy className="mr-2 h-4 w-4" />
-										Copy IP
+										{t("copyIp")}
 									</ContextMenuItem>
 								)}
 								{row.user && (
 									<ContextMenuItem
 										onClick={() => {
 											void navigator.clipboard.writeText(row.user!.id);
-											toast.success("User ID copied");
+											toast.success(t("userIdCopied"));
 										}}
 									>
 										<User className="mr-2 h-4 w-4" />
-										Copy User ID
+										{t("copyUserId")}
 									</ContextMenuItem>
 								)}
 							</>

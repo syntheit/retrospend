@@ -13,6 +13,7 @@ import {
 	XCircle,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -121,6 +122,7 @@ function TimelineSkeleton() {
 // ── Field Change Components ────────────────────────────────────────────────
 
 function FieldChangeRow({ change }: { change: FieldChange }) {
+	const t = useTranslations("revisionHistory");
 	if (change.field === "participant_added") {
 		return (
 			<div className="px-3 py-2">
@@ -148,7 +150,7 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
 				</div>
 				{change.oldValue && (
 					<div className="mt-0.5 text-muted-foreground text-xs">
-						Was: {change.oldValue}
+						{t("wasValue", { value: change.oldValue })}
 					</div>
 				)}
 			</div>
@@ -317,6 +319,7 @@ function TimelineEntryView({
 // ── Timeline ───────────────────────────────────────────────────────────────
 
 function RevisionTimeline({ entries }: { entries: Entry[] }) {
+	const t = useTranslations("revisionHistory");
 	const isOnlyCreation = entries.length === 1;
 
 	return (
@@ -333,10 +336,10 @@ function RevisionTimeline({ entries }: { entries: Entry[] }) {
 					<ShieldCheck className="h-6 w-6 text-muted-foreground/40" />
 					<div>
 						<p className="text-muted-foreground text-sm">
-							No changes have been made to this expense.
+							{t("noChanges")}
 						</p>
 						<p className="mt-1 text-muted-foreground/60 text-xs">
-							Any edits will appear here with a full history of what changed.
+							{t("editsWillAppear")}
 						</p>
 					</div>
 				</div>
@@ -348,6 +351,7 @@ function RevisionTimeline({ entries }: { entries: Entry[] }) {
 // ── Header ─────────────────────────────────────────────────────────────────
 
 function RevisionHistoryHeader({ data }: { data: TransactionHistory }) {
+	const t = useTranslations("revisionHistory");
 	const { transaction, entries } = data;
 	const editEntries = entries.filter((e) => e.action.type === "edited");
 	const editCount = editEntries.length;
@@ -365,7 +369,7 @@ function RevisionHistoryHeader({ data }: { data: TransactionHistory }) {
 						className="bg-rose-500/10 text-[10px] text-rose-600 dark:text-rose-400"
 						variant="outline"
 					>
-						Deleted
+						{t("deleted")}
 					</Badge>
 				)}
 				{transaction.isLocked && !transaction.isDeleted && (
@@ -373,14 +377,13 @@ function RevisionHistoryHeader({ data }: { data: TransactionHistory }) {
 						className="text-[10px] text-muted-foreground"
 						variant="outline"
 					>
-						Settled
+						{t("settled")}
 					</Badge>
 				)}
 			</div>
 			{editCount > 0 && lastEdit && (
 				<p className="text-muted-foreground text-xs">
-					{editCount} edit{editCount !== 1 ? "s" : ""} &middot; Last edited by{" "}
-					{lastEdit.actor.name}, {lastEdit.relativeTime}
+					{t("editCount", { count: editCount, name: lastEdit.actor.name, time: lastEdit.relativeTime })}
 				</p>
 			)}
 		</div>
@@ -407,6 +410,7 @@ export function RevisionHistoryDrawer({
 	transactionId,
 	onClose,
 }: RevisionHistoryDrawerProps) {
+	const t = useTranslations("revisionHistory");
 	const isOpen = transactionId !== null;
 	const { data, isLoading, isError, refetch } =
 		useTransactionHistory(transactionId);
@@ -414,16 +418,16 @@ export function RevisionHistoryDrawer({
 	return (
 		<Sheet onOpenChange={(open) => !open && onClose()} open={isOpen}>
 			<SheetContent
-				aria-label="Revision history"
+				aria-label={t("ariaLabel")}
 				className="w-full gap-0 sm:max-w-full md:max-w-[420px] lg:max-w-[480px]"
 				side="right"
 			>
 				<SheetHeader className="border-b px-6 py-4 pr-12">
-					<SheetTitle>Revision History</SheetTitle>
+					<SheetTitle>{t("title")}</SheetTitle>
 					<SheetDescription className="sr-only">
 						{data
-							? `Timeline of changes for ${data.transaction.description}`
-							: "Loading revision history"}
+							? t("timelineChangesFor", { description: data.transaction.description })
+							: t("loadingHistory")}
 					</SheetDescription>
 					{data && <RevisionHistoryHeader data={data} />}
 				</SheetHeader>
@@ -443,21 +447,21 @@ export function RevisionHistoryDrawer({
 					{isError && (
 						<div className="flex flex-col items-center justify-center gap-3 py-12">
 							<p className="text-muted-foreground text-sm">
-								Couldn&apos;t load revision history
+								{t("couldntLoad")}
 							</p>
 							<Button
 								onClick={() => void refetch()}
 								size="sm"
 								variant="outline"
 							>
-								Try again
+								{t("tryAgain")}
 							</Button>
 						</div>
 					)}
 					{data && data.entries.length === 0 && (
 						<div className="flex flex-col items-center justify-center gap-2 py-12">
 							<p className="text-muted-foreground text-sm">
-								No history available for this expense
+								{t("noHistory")}
 							</p>
 						</div>
 					)}

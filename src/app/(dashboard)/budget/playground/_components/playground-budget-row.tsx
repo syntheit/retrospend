@@ -2,6 +2,7 @@
 
 import { Input } from "~/components/ui/input";
 import { Slider } from "~/components/ui/slider";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { CATEGORY_COLOR_MAP } from "~/lib/constants";
@@ -20,6 +21,7 @@ export function PlaygroundBudgetRow({
 }: PlaygroundBudgetRowProps) {
 	const { simulatedBudgets, updateBudget } = usePlayground();
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 
 	const amount = simulatedBudgets[category.id] ?? 0;
 	const categoryColor =
@@ -62,7 +64,7 @@ export function PlaygroundBudgetRow({
 				</div>
 				<div className="min-w-0">
 					<h4 className="truncate font-semibold text-sm sm:text-base">
-						{category.name}
+						{displayName(category.name)}
 					</h4>
 				</div>
 			</div>

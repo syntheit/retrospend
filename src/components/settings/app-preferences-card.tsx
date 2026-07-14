@@ -1,12 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useRef } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { useThemeContext } from "~/components/theme-provider";
+import { setLocaleCookie } from "~/i18n/actions";
+import { Button } from "~/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -15,6 +19,11 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { Form, FormControl, FormField } from "~/components/ui/form";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "~/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Input } from "~/components/ui/input";
 import {
@@ -32,6 +41,11 @@ import {
 } from "~/lib/currencies";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
+
+const LANGUAGE_OPTIONS = [
+	{ value: "en", label: "English", flag: "EN" },
+	{ value: "es", label: "Español", flag: "ES" },
+] as const;
 
 const currencyCodeSchema = z
 	.string()
@@ -98,22 +112,25 @@ function SettingRow({
 function ThemeToggle({
 	value,
 	onChange,
+	labels,
 }: {
 	value: string;
 	onChange: (v: "light" | "dark" | "auto") => void;
+	labels: { light: string; dark: string; system: string };
 }) {
 	return (
 		<Tabs value={value} onValueChange={(v) => onChange(v as "light" | "dark" | "auto")}>
 			<TabsList>
-				<TabsTrigger value="light">Light</TabsTrigger>
-				<TabsTrigger value="dark">Dark</TabsTrigger>
-				<TabsTrigger value="auto">System</TabsTrigger>
+				<TabsTrigger value="light">{labels.light}</TabsTrigger>
+				<TabsTrigger value="dark">{labels.dark}</TabsTrigger>
+				<TabsTrigger value="auto">{labels.system}</TabsTrigger>
 			</TabsList>
 		</Tabs>
 	);
 }
 
 export function AppPreferencesContent() {
+	const t = useTranslations("settings");
 	const { setTheme, preference: themePreference } = useThemeContext();
 
 	const { data: settings, isLoading: settingsLoading } =
@@ -189,14 +206,14 @@ export function AppPreferencesContent() {
 
 				await utils.settings.getGeneral.invalidate();
 				form.reset(values);
-				toast.success("Preferences updated");
+				toast.success(t("preferencesUpdated"));
 			} catch (err) {
 				const errMsg =
 					err instanceof Error ? err.message : "Failed to save settings";
 				toast.error(errMsg);
 			}
 		},
-		[settings, updateSettingsMutation, form, utils],
+		[settings, updateSettingsMutation, form, utils, t],
 	);
 
 	const onSubmitRef = useRef(onSubmit);
@@ -206,27 +223,46 @@ export function AppPreferencesContent() {
 		void form.handleSubmit(onSubmitRef.current)();
 	}, [form]);
 
+	const handleLanguageChange = async (value: string) => {
+		if (!settings) return;
+		try {
+			await updateSettingsMutation.mutateAsync({
+				homeCurrency: settings.homeCurrency,
+				language: value as "en" | "es",
+			});
+			// Set the locale cookie via server action and reload so next-intl picks up the new locale
+			await setLocaleCookie(value);
+			window.location.reload();
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : "Failed to update language",
+			);
+		}
+	};
+
 	if (settingsLoading) {
 		return (
 			<div className="py-4 text-center text-muted-foreground">
-				Loading preferences...
+				{t("loadingPreferences")}
 			</div>
 		);
 	}
+
+	const currentLanguage = settings?.language ?? "en";
 
 	return (
 		<Form {...form}>
 			<form onSubmit={form.handleSubmit(onSubmit)}>
 				{/* Regional */}
-				<SectionHeader>Regional</SectionHeader>
+				<SectionHeader>{t("regional")}</SectionHeader>
 				<div className="divide-y divide-border/40">
 					<FormField
 						control={form.control}
 						name="homeCurrency"
 						render={({ field }) => (
 							<SettingRow
-								label="Base Currency"
-								description="Reporting currency"
+								label={t("baseCurrency")}
+								description={t("baseCurrencyDescription")}
 							>
 								<FormControl>
 									<CurrencyPicker
@@ -248,8 +284,8 @@ export function AppPreferencesContent() {
 						name="defaultCurrency"
 						render={({ field }) => (
 							<SettingRow
-								label="Default Entry Currency"
-								description="Default for new expenses"
+								label={t("defaultEntryCurrency")}
+								description={t("defaultEntryCurrencyDescription")}
 							>
 								<FormControl>
 									<CurrencyPicker
@@ -271,8 +307,8 @@ export function AppPreferencesContent() {
 						name="currencySymbolStyle"
 						render={({ field }) => (
 							<SettingRow
-								label="Currency Symbol Style"
-								description="Display format for foreign currencies"
+								label={t("currencySymbolStyle")}
+								description={t("currencySymbolStyleDescription")}
 							>
 								<Select
 									onValueChange={(value) => {
@@ -288,9 +324,9 @@ export function AppPreferencesContent() {
 									</FormControl>
 									<SelectContent>
 										<SelectItem value="standard">
-											Standard (AR$, CA$, €)
+											{t("currencySymbolStandard")}
 										</SelectItem>
-										<SelectItem value="native">Native ($, $, €)</SelectItem>
+										<SelectItem value="native">{t("currencySymbolNative")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</SettingRow>
@@ -302,8 +338,8 @@ export function AppPreferencesContent() {
 						name="smartCurrencyFormatting"
 						render={({ field }) => (
 							<SettingRow
-								label="Smart Currency Formatting"
-								description="Hide decimals for high-denomination currencies"
+								label={t("smartCurrencyFormatting")}
+								description={t("smartCurrencyFormattingDescription")}
 							>
 								<FormControl>
 									<Switch
@@ -320,15 +356,15 @@ export function AppPreferencesContent() {
 				</div>
 
 				{/* Budget & income */}
-				<SectionHeader>Budget & income</SectionHeader>
+				<SectionHeader>{t("budgetAndIncome")}</SectionHeader>
 				<div className="divide-y divide-border/40">
 					<FormField
 						control={form.control}
 						name="monthlyIncome"
 						render={({ field }) => (
 							<SettingRow
-								label="Monthly Net Income"
-								description="For Work Equivalent calculations"
+								label={t("monthlyNetIncome")}
+								description={t("monthlyNetIncomeDescription")}
 							>
 								<div
 									className={cn(
@@ -375,8 +411,8 @@ export function AppPreferencesContent() {
 						name="fiscalMonthStartDay"
 						render={({ field }) => (
 							<SettingRow
-								label="Budget Cycle Start Day"
-								description="Day of month your budget period begins"
+								label={t("budgetCycleStartDay")}
+								description={t("budgetCycleStartDayDescription")}
 							>
 								<FormControl>
 									<Input
@@ -409,12 +445,24 @@ export function AppPreferencesContent() {
 				</div>
 
 				{/* Display */}
-				<SectionHeader>Display</SectionHeader>
+				<SectionHeader>{t("display")}</SectionHeader>
 				<div className="divide-y divide-border/40">
-					<SettingRow label="Theme" description="App color scheme">
+					<SettingRow label={t("theme")} description={t("themeDescription")}>
 						<ThemeToggle
 							onChange={(v) => setTheme(v)}
 							value={themePreference}
+							labels={{
+								light: t("themeLight"),
+								dark: t("themeDark"),
+								system: t("themeSystem"),
+							}}
+						/>
+					</SettingRow>
+
+					<SettingRow label={t("language")} description={t("languageDescription")}>
+						<LanguagePicker
+							value={currentLanguage}
+							onValueChange={handleLanguageChange}
 						/>
 					</SettingRow>
 
@@ -423,8 +471,8 @@ export function AppPreferencesContent() {
 						name="defaultPrivacyMode"
 						render={({ field }) => (
 							<SettingRow
-								label="Default Privacy Mode"
-								description="Hide balances when opening the Wealth page"
+								label={t("defaultPrivacyMode")}
+								description={t("defaultPrivacyModeDescription")}
 							>
 								<FormControl>
 									<Switch
@@ -441,15 +489,15 @@ export function AppPreferencesContent() {
 				</div>
 
 				{/* Behavior */}
-				<SectionHeader>Behavior</SectionHeader>
+				<SectionHeader>{t("behavior")}</SectionHeader>
 				<div className="divide-y divide-border/40">
 					<FormField
 						control={form.control}
 						name="defaultExpenseDateBehavior"
 						render={({ field }) => (
 							<SettingRow
-								label="Default Expense Date"
-								description="Pre-filled when creating a new expense"
+								label={t("defaultExpenseDate")}
+								description={t("defaultExpenseDateDescription")}
 							>
 								<Select
 									onValueChange={(value) => {
@@ -464,8 +512,8 @@ export function AppPreferencesContent() {
 										</SelectTrigger>
 									</FormControl>
 									<SelectContent>
-										<SelectItem value="TODAY">Today</SelectItem>
-										<SelectItem value="LAST_USED">Last Used Date</SelectItem>
+										<SelectItem value="TODAY">{t("expenseDateToday")}</SelectItem>
+										<SelectItem value="LAST_USED">{t("expenseDateLastUsed")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</SettingRow>
@@ -477,8 +525,8 @@ export function AppPreferencesContent() {
 						name="categoryClickBehavior"
 						render={({ field }) => (
 							<SettingRow
-								label="Category Click Behavior"
-								description="Action when clicking a category on charts"
+								label={t("categoryClickBehavior")}
+								description={t("categoryClickBehaviorDescription")}
 							>
 								<Select
 									onValueChange={(value) => {
@@ -494,10 +542,10 @@ export function AppPreferencesContent() {
 									</FormControl>
 									<SelectContent>
 										<SelectItem value="navigate">
-											Navigate to Transactions
+											{t("categoryClickNavigate")}
 										</SelectItem>
 										<SelectItem value="toggle">
-											Toggle Category Visibility
+											{t("categoryClickToggle")}
 										</SelectItem>
 									</SelectContent>
 								</Select>
@@ -512,7 +560,116 @@ export function AppPreferencesContent() {
 	);
 }
 
+function LanguagePicker({
+	value,
+	onValueChange,
+}: {
+	value: string;
+	onValueChange: (value: string) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
+
+	const selectedOption = useMemo(
+		() => LANGUAGE_OPTIONS.find((opt) => opt.value === value),
+		[value],
+	);
+
+	const filteredOptions = useMemo(() => {
+		if (!search) return LANGUAGE_OPTIONS;
+		const searchLower = search.toLowerCase();
+		return LANGUAGE_OPTIONS.filter(
+			(opt) =>
+				opt.label.toLowerCase().includes(searchLower) ||
+				opt.value.toLowerCase().includes(searchLower),
+		);
+	}, [search]);
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="outline"
+					role="combobox"
+					aria-expanded={open}
+					className="min-w-[180px] justify-between"
+				>
+					{selectedOption ? (
+						<span className="inline-flex items-center gap-2">
+							<span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold leading-none">
+								{selectedOption.flag}
+							</span>
+							{selectedOption.label}
+						</span>
+					) : (
+						"Select language..."
+					)}
+					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-[min(18rem,calc(100vw-3rem))] p-0">
+				<div className="p-2">
+					<Input
+						placeholder="Search languages..."
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						className="mb-2"
+					/>
+				</div>
+				<div
+					className="max-h-64 overflow-y-auto"
+					onWheel={(e) => e.stopPropagation()}
+				>
+					{filteredOptions.length === 0 ? (
+						<div className="p-4 text-center text-muted-foreground">
+							No languages found.
+						</div>
+					) : (
+						filteredOptions.map((opt) => (
+							<div
+								key={opt.value}
+								role="option"
+								aria-selected={value === opt.value}
+								tabIndex={0}
+								className={cn(
+									"flex cursor-pointer items-center gap-2 px-3 py-2 hover:bg-accent hover:text-accent-foreground",
+									value === opt.value && "bg-accent text-accent-foreground",
+								)}
+								onClick={() => {
+									onValueChange(opt.value);
+									setOpen(false);
+									setSearch("");
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										onValueChange(opt.value);
+										setOpen(false);
+										setSearch("");
+									}
+								}}
+							>
+								<Check
+									className={cn(
+										"h-4 w-4",
+										value === opt.value ? "opacity-100" : "opacity-0",
+									)}
+								/>
+								<span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold leading-none">
+									{opt.flag}
+								</span>
+								{opt.label}
+							</div>
+						))
+					)}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 function AiProcessingRow() {
+	const t = useTranslations("settings");
 	const { data: aiStatus } = api.settings.getAiStatus.useQuery();
 	const { data: settings } = api.settings.getGeneral.useQuery();
 	const updateSettingsMutation = api.settings.updateGeneral.useMutation();
@@ -528,18 +685,18 @@ function AiProcessingRow() {
 			});
 			await utils.settings.getGeneral.invalidate();
 			await utils.settings.getAiStatus.invalidate();
-			toast.success("AI mode updated");
+			toast.success(t("aiModeUpdated"));
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to update AI mode",
+				err instanceof Error ? err.message : t("aiModeUpdateFailed"),
 			);
 		}
 	};
 
 	return (
 		<SettingRow
-			label="AI Processing"
-			description="Provider for bank statement imports"
+			label={t("aiProcessing")}
+			description={t("aiProcessingDescription")}
 		>
 			<div className="flex flex-col items-end gap-1">
 				<Select
@@ -551,12 +708,12 @@ function AiProcessingRow() {
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="LOCAL">Local AI (Ollama)</SelectItem>
+						<SelectItem value="LOCAL">{t("aiLocal")}</SelectItem>
 						<SelectItem
 							disabled={!aiStatus?.externalAvailable}
 							value="EXTERNAL"
 						>
-							External AI (OpenRouter)
+							{t("aiExternal")}
 							{aiStatus &&
 							!aiStatus.externalAvailable &&
 							aiStatus.externalDeniedReason
@@ -568,8 +725,7 @@ function AiProcessingRow() {
 				{aiStatus?.currentMode === "EXTERNAL" &&
 					aiStatus.quotaRemaining !== null && (
 						<p className="text-xs text-muted-foreground">
-							{aiStatus.quotaRemaining.toLocaleString()} tokens remaining this
-							month
+							{t("tokensRemaining", { count: aiStatus.quotaRemaining.toLocaleString() })}
 						</p>
 					)}
 			</div>
@@ -578,12 +734,13 @@ function AiProcessingRow() {
 }
 
 export function AppPreferencesCard() {
+	const t = useTranslations("settings");
 	return (
 		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
-				<CardTitle>App Preferences</CardTitle>
+				<CardTitle>{t("preferencesTitle")}</CardTitle>
 				<CardDescription>
-					Customize your visual and regional experience.
+					{t("preferencesDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>

@@ -5,12 +5,15 @@ import {
 	Banknote,
 	Bell,
 	CheckCircle2,
+	ClipboardCopy,
 	Edit2,
 	History,
 	MoreHorizontal,
 	Trash2,
 	XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
+import { formatExpenseAsText } from "~/lib/format";
 import Link from "next/link";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
 import {
@@ -74,6 +77,7 @@ export type TimelineRow = {
 export function createTimelineColumns(
 	formatCurrency: (amount: number, currency: string) => string,
 	identityName: string,
+	t: (key: string, values?: Record<string, string | number | Date>) => string,
 	callbacks: {
 		onEdit: (txnId: string) => void;
 		onDelete: (txn: {
@@ -97,11 +101,12 @@ export function createTimelineColumns(
 			lastEditedBy: string | null;
 		}
 	>,
+	locale?: string,
 ): ColumnDef<TimelineRow>[] {
 	return [
 		{
 			id: "description",
-			header: "Title",
+			header: t("columnTitle"),
 			enableSorting: true,
 			meta: { flex: true },
 			sortingFn: (rowA, rowB) => {
@@ -114,8 +119,8 @@ export function createTimelineColumns(
 				if (item.type === "settlement") {
 					const isIncoming = item.direction === "incoming";
 					const directionLabel = isIncoming
-						? `${identityName} paid you`
-						: `You paid ${identityName}`;
+						? t("personPaidYou", { name: identityName })
+						: t("youPaidPerson", { name: identityName });
 					const methodName = item.paymentMethod
 						? getPaymentMethodName(item.paymentMethod, null, item.currency)
 						: null;
@@ -132,10 +137,10 @@ export function createTimelineColumns(
 								<Banknote className="h-3.5 w-3.5 shrink-0 text-blue-500" />
 							)}
 							<span className="font-medium text-sm">
-								Settlement
+								{t("settlement")}
 								{methodName && (
 									<span className="text-muted-foreground font-normal">
-										{" "}via {methodName}
+										{" "}{t("via")} {methodName}
 									</span>
 								)}
 							</span>
@@ -164,7 +169,7 @@ export function createTimelineColumns(
 									</Link>
 								</TooltipTrigger>
 								<TooltipContent align="start" side="top">
-									<p>Open project: {item.project.name}</p>
+									<p>{t("openProject", { name: item.project.name })}</p>
 								</TooltipContent>
 							</Tooltip>
 						)}
@@ -183,7 +188,7 @@ export function createTimelineColumns(
 		},
 		{
 			id: "category",
-			header: "Category",
+			header: t("columnCategory"),
 			enableSorting: true,
 			size: 130,
 			sortingFn: (rowA, rowB) => {
@@ -206,7 +211,7 @@ export function createTimelineColumns(
 		},
 		{
 			id: "split",
-			header: "Who",
+			header: t("columnWho"),
 			enableSorting: false,
 			size: 130,
 			cell: ({ row }) => {
@@ -227,7 +232,7 @@ export function createTimelineColumns(
 		},
 		{
 			accessorKey: "date",
-			header: "Date",
+			header: t("columnDate"),
 			enableSorting: true,
 			size: 110,
 			sortingFn: (rowA, rowB) =>
@@ -241,7 +246,7 @@ export function createTimelineColumns(
 		},
 		{
 			id: "theirShare",
-			header: () => <div className="text-right">Amount</div>,
+			header: () => <div className="text-right">{t("columnAmount")}</div>,
 			enableSorting: true,
 			size: 120,
 			accessorFn: (row) => {
@@ -279,7 +284,7 @@ export function createTimelineColumns(
 		},
 		{
 			id: "status",
-			header: "Status",
+			header: t("columnStatus"),
 			enableSorting: true,
 			size: 100,
 			sortingFn: (rowA, rowB) => {
@@ -303,10 +308,10 @@ export function createTimelineColumns(
 							variant="outline"
 						>
 							{item.status === "confirmed"
-								? "Confirmed"
+								? t("confirmed")
 								: item.status === "rejected"
-									? "Rejected"
-									: "Pending"}
+									? t("rejected")
+									: t("pending")}
 						</Badge>
 					);
 				}
@@ -339,7 +344,7 @@ export function createTimelineColumns(
 									variant="ghost"
 								>
 									<MoreHorizontal className="h-4 w-4" />
-									<span className="sr-only">Actions</span>
+									<span className="sr-only">{t("actions")}</span>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-48">
@@ -348,7 +353,7 @@ export function createTimelineColumns(
 										onClick={() => callbacks.onConfirmSettlement?.(item.settlementId!)}
 									>
 										<CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
-										Confirm Receipt
+										{t("confirmReceipt")}
 									</DropdownMenuItem>
 								)}
 								{item.canRejectSettlement && item.settlementId && (
@@ -356,7 +361,7 @@ export function createTimelineColumns(
 										onClick={() => callbacks.onRejectSettlement?.(item.settlementId!)}
 									>
 										<XCircle className="mr-2 h-4 w-4 text-rose-500" />
-										Reject
+										{t("reject")}
 									</DropdownMenuItem>
 								)}
 								{item.canRemindSettlement && item.settlementId && (
@@ -364,7 +369,7 @@ export function createTimelineColumns(
 										onClick={() => callbacks.onRemindSettlement?.(item.settlementId!)}
 									>
 										<Bell className="mr-2 h-4 w-4" />
-										Send Reminder
+										{t("sendReminder")}
 									</DropdownMenuItem>
 								)}
 								{(item.canConfirmSettlement || item.canRejectSettlement || item.canRemindSettlement) &&
@@ -375,7 +380,7 @@ export function createTimelineColumns(
 										variant="destructive"
 									>
 										<Trash2 className="mr-2 h-4 w-4" />
-										Cancel Settlement
+										{t("cancelSettlement")}
 									</DropdownMenuItem>
 								)}
 							</DropdownMenuContent>
@@ -395,7 +400,7 @@ export function createTimelineColumns(
 								variant="ghost"
 							>
 								<MoreHorizontal className="h-4 w-4" />
-								<span className="sr-only">Actions</span>
+								<span className="sr-only">{t("actions")}</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-44">
@@ -403,7 +408,24 @@ export function createTimelineColumns(
 								onClick={() => callbacks.onViewHistory(item.id)}
 							>
 								<History className="mr-2 h-4 w-4" />
-								View history
+								{t("viewHistory")}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => {
+									const text = formatExpenseAsText(
+										item.description,
+										item.amount ?? 0,
+										item.currency,
+										new Date(item.date),
+										formatCurrency,
+										locale,
+									);
+									void navigator.clipboard.writeText(text);
+									toast.success(t("copiedToClipboard"));
+								}}
+							>
+								<ClipboardCopy className="mr-2 h-4 w-4" />
+								{t("copyAsText")}
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
@@ -411,7 +433,7 @@ export function createTimelineColumns(
 								onClick={canEdit ? () => callbacks.onEdit(item.id) : undefined}
 							>
 								<Edit2 className="mr-2 h-4 w-4" />
-								Edit
+								{t("edit")}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								disabled={!canDelete}
@@ -430,7 +452,7 @@ export function createTimelineColumns(
 								variant={canDelete ? "destructive" : undefined}
 							>
 								<Trash2 className="mr-2 h-4 w-4" />
-								Delete
+								{t("delete")}
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>

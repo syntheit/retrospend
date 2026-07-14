@@ -42,6 +42,7 @@ import {
 	DropdownMenuContent,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import type { RouterInputs, RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
@@ -64,6 +65,54 @@ type Snapshot = Extract<
 	{ type: "creation_snapshot" }
 >["snapshot"];
 
+// ── Client-side Relative Time ────────────────────────────────────────────────
+
+function translateRelativeTime(
+	timestamp: string,
+	t: ReturnType<typeof useTranslations<"projects">>,
+): string {
+	const date = new Date(timestamp);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMs / 3600000);
+	const diffDays = Math.floor(diffMs / 86400000);
+
+	if (diffMins < 1) return t("relativeJustNow");
+	if (diffMins < 60) return t("relativeMinutesAgo", { count: diffMins });
+	if (diffHours < 24) return t("relativeHoursAgo", { count: diffHours });
+	if (diffDays === 1) return t("relativeYesterday");
+	if (diffDays < 30) return t("relativeDaysAgo", { count: diffDays });
+	if (diffDays < 365) {
+		const months = Math.floor(diffDays / 30);
+		return t("relativeMonthsAgo", { count: months });
+	}
+	const years = Math.floor(diffDays / 365);
+	return t("relativeYearsAgo", { count: years });
+}
+
+// ── Client-side Activity Summary Translation ────────────────────────────────
+
+/**
+ * Generates a translated one-line summary for an activity entry using
+ * the structured data the server returns. Falls back to the pre-generated
+ * English `entry.summary` when structured data is insufficient.
+ */
+function translateActivitySummary(
+	entry: ActivityEntry,
+	t: ReturnType<typeof useTranslations<"projects">>,
+): string {
+	// Use server-provided summaryKey + summaryParams when available
+	if (entry.summaryKey && entry.summaryParams) {
+		try {
+			return t(entry.summaryKey as Parameters<typeof t>[0], entry.summaryParams);
+		} catch {
+			// Fall through to English summary
+		}
+	}
+	return entry.summary;
+}
+
 // ── Filter Group Definitions ────────────────────────────────────────────────
 
 type FilterGroup = {
@@ -71,18 +120,28 @@ type FilterGroup = {
 	actions: string[];
 };
 
-const FILTER_GROUPS: FilterGroup[] = [
-	{ label: "Added", actions: ["CREATED"] },
-	{ label: "Edited", actions: ["EDITED"] },
-	{ label: "Deleted", actions: ["DELETED"] },
-	{ label: "Verified", actions: ["VERIFIED", "AUTO_VERIFIED", "REJECTED"] },
-	{ label: "Settled", actions: ["SETTLED"] },
-	{ label: "Period", actions: ["PERIOD_CLOSED"] },
-	{
-		label: "Members",
-		actions: ["PARTICIPANT_ADDED", "PARTICIPANT_REMOVED", "ROLE_CHANGED"],
-	},
-];
+const FILTER_GROUP_DEFS = [
+	{ key: "added", actions: ["CREATED"] },
+	{ key: "edited", actions: ["EDITED"] },
+	{ key: "deleted", actions: ["DELETED"] },
+	{ key: "verified", actions: ["VERIFIED", "AUTO_VERIFIED", "REJECTED"] },
+	{ key: "settled", actions: ["SETTLED"] },
+	{ key: "period", actions: ["PERIOD_CLOSED"] },
+	{ key: "members", actions: ["PARTICIPANT_ADDED", "PARTICIPANT_REMOVED", "ROLE_CHANGED"] },
+] as const;
+
+function getFilterGroups(t: ReturnType<typeof useTranslations<"projects">>): FilterGroup[] {
+	const labels: Record<string, string> = {
+		added: t("filterAdded"),
+		edited: t("filterEdited"),
+		deleted: t("filterDeleted"),
+		verified: t("filterVerified"),
+		settled: t("filterSettled"),
+		period: t("filterPeriod"),
+		members: t("filterMembers"),
+	};
+	return FILTER_GROUP_DEFS.map((d) => ({ label: labels[d.key]!, actions: [...d.actions] }));
+}
 
 function getFilterGroupCount(
 	group: FilterGroup,
@@ -172,7 +231,8 @@ function FeedSkeleton() {
 
 // ── Field Change Components (reused from revision-history-drawer) ───────────
 
-function FieldChangeRow({ change }: { change: FieldChange }) {
+function FieldChangeRow({ change }: { change: FieldChange; }) {
+	const t = useTranslations("projects");
 	if (change.field === "participant_added") {
 		return (
 			<div className="px-3 py-2">
@@ -200,7 +260,7 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
 				</div>
 				{change.oldValue && (
 					<div className="mt-0.5 text-muted-foreground text-xs">
-						Was: {change.oldValue}
+						{t("snapshotWas", { value: change.oldValue })}
 					</div>
 				)}
 			</div>
@@ -243,6 +303,7 @@ function SnapshotView({
 	snapshot: Snapshot;
 	isDeleted?: boolean;
 }) {
+	const t = useTranslations("projects");
 	const participants = snapshot.participants
 		.map((p) => `${p.name} (${p.share})`)
 		.join(", ");
@@ -256,11 +317,11 @@ function SnapshotView({
 		>
 			<div>
 				{snapshot.amount} {snapshot.currency} &middot; {snapshot.splitMode}{" "}
-				split
+				{t("snapshotSplit")}
 			</div>
-			<div>Paid by {snapshot.paidBy}</div>
+			<div>{t("snapshotPaidBy", { name: snapshot.paidBy })}</div>
 			{participants && <div>{participants}</div>}
-			{isDeleted && <div className="mt-1 italic">This expense was deleted</div>}
+			{isDeleted && <div className="mt-1 italic">{t("snapshotExpenseDeleted")}</div>}
 		</div>
 	);
 }
@@ -292,7 +353,7 @@ function EntryDetail({ detail }: { detail: NonNullable<ActivityEntry["detail"]> 
 
 // ── Date Separator ──────────────────────────────────────────────────────────
 
-function getDateLabel(dateStr: string): string {
+function getDateLabel(dateStr: string, t: ReturnType<typeof useTranslations<"projects">>, locale: string): string {
 	const date = new Date(dateStr);
 	const now = new Date();
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -305,9 +366,9 @@ function getDateLabel(dateStr: string): string {
 		(today.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24),
 	);
 
-	if (diffDays === 0) return "Today";
-	if (diffDays === 1) return "Yesterday";
-	return date.toLocaleDateString("en-US", {
+	if (diffDays === 0) return t("dateToday");
+	if (diffDays === 1) return t("dateYesterday");
+	return date.toLocaleDateString(locale, {
 		month: "long",
 		day: "numeric",
 		year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
@@ -335,6 +396,7 @@ function ActivityEntryView({
 	entry: ActivityEntry;
 	onViewFullHistory?: (transactionId: string) => void;
 }) {
+	const t = useTranslations("projects");
 	const [expanded, setExpanded] = useState(false);
 	const c = colorStyles[entry.action.color] ?? defaultColor;
 	const Icon = iconMap[entry.action.icon] ?? Circle;
@@ -342,17 +404,22 @@ function ActivityEntryView({
 	const isTransactionEntry =
 		entry.target.type === "transaction" && entry.target.id;
 
-	// Parse the summary to bold the actor name
+	// Generate translated summary and parse to bold the actor name
+	const translatedSummary = useMemo(
+		() => translateActivitySummary(entry, t),
+		[entry, t],
+	);
+
 	const summaryParts = useMemo(() => {
 		const actorName = entry.actor.name;
-		const idx = entry.summary.indexOf(actorName);
-		if (idx === -1) return { before: "", actor: "", after: entry.summary };
+		const idx = translatedSummary.indexOf(actorName);
+		if (idx === -1) return { before: "", actor: "", after: translatedSummary };
 		return {
-			before: entry.summary.slice(0, idx),
+			before: translatedSummary.slice(0, idx),
 			actor: actorName,
-			after: entry.summary.slice(idx + actorName.length),
+			after: translatedSummary.slice(idx + actorName.length),
 		};
-	}, [entry.summary, entry.actor.name]);
+	}, [translatedSummary, entry.actor.name]);
 
 	// For edits, show first field change as inline preview
 	const inlinePreview = useMemo(() => {
@@ -423,8 +490,7 @@ function ActivityEntryView({
 						{inlinePreview.moreCount > 0 && (
 							<span className="text-muted-foreground/70">
 								{" "}
-								and {inlinePreview.moreCount} more{" "}
-								{inlinePreview.moreCount === 1 ? "change" : "changes"}
+								{t("andMoreChanges", { count: inlinePreview.moreCount })}
 							</span>
 						)}
 					</p>
@@ -440,7 +506,7 @@ function ActivityEntryView({
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<span className="cursor-default text-muted-foreground text-xs">
-								{entry.relativeTime}
+								{translateRelativeTime(entry.timestamp, t)}
 							</span>
 						</TooltipTrigger>
 						<TooltipContent>
@@ -464,7 +530,7 @@ function ActivityEntryView({
 							type="button"
 							variant="link"
 						>
-							View full history
+							{t("viewFullHistory")}
 						</Button>
 					)}
 				</div>
@@ -482,6 +548,7 @@ function ActivityGroupView({
 	group: EntryGroup;
 	onViewFullHistory?: (transactionId: string) => void;
 }) {
+	const t = useTranslations("projects");
 	const [groupExpanded, setGroupExpanded] = useState(false);
 	const additionalCount = group.entries.length - 1;
 
@@ -501,8 +568,8 @@ function ActivityGroupView({
 						size="sm"
 					>
 						{groupExpanded
-							? "Hide repeated events"
-							: `+${additionalCount} repeated ${additionalCount === 1 ? "event" : "events"}`}
+							? t("hideRepeatedEvents")
+							: t("repeatedEvents", { count: additionalCount })}
 					</Button>
 					{groupExpanded &&
 						group.entries.slice(1).map((entry) => (
@@ -524,11 +591,14 @@ function ActionFilterChips({
 	selectedGroups,
 	onToggleGroup,
 	actionTypes,
+	filterGroups,
 }: {
 	selectedGroups: Set<string>;
 	onToggleGroup: (label: string) => void;
 	actionTypes: ActivityFiltersOutput["actionTypes"];
+	filterGroups: FilterGroup[];
 }) {
+	const t = useTranslations("projects");
 	const isAll = selectedGroups.size === 0;
 
 	return (
@@ -540,9 +610,9 @@ function ActionFilterChips({
 				size="sm"
 				variant={isAll ? "default" : "outline"}
 			>
-				All
+				{t("filterAll")}
 			</Button>
-			{FILTER_GROUPS.map((group) => {
+			{filterGroups.map((group) => {
 				const count = getFilterGroupCount(group, actionTypes);
 				if (count === 0) return null;
 				const isSelected = selectedGroups.has(group.label);
@@ -575,22 +645,23 @@ function PersonFilter({
 	selectedActorIds: Set<string>;
 	onToggleActor: (actorId: string) => void;
 }) {
+	const t = useTranslations("projects");
 	if (actors.length <= 1) return null;
 
 	const selectedCount = selectedActorIds.size;
 	const label =
 		selectedCount === 0
-			? "All people"
+			? t("allPeople")
 			: selectedCount === 1
-				? actors.find((a) => selectedActorIds.has(a.id))?.name ?? "1 person"
-				: `${selectedCount} people`;
+				? actors.find((a) => selectedActorIds.has(a.id))?.name ?? t("onePerson")
+				: t("countPeople", { count: selectedCount });
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button className="h-7 text-xs gap-1.5" size="sm" variant="outline">
 					<ListFilter className="h-3.5 w-3.5" />
-					People: {label}
+					{t("peopleLabel")}: {label}
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-56">
@@ -628,8 +699,11 @@ export function ActivityFeedPanel({
 	projectName,
 	onClose,
 }: ActivityFeedPanelProps) {
+	const t = useTranslations("projects");
 	const isOpen = projectId !== null;
 	const { openHistory } = useRevisionHistory();
+	const filterGroups = useMemo(() => getFilterGroups(t), [t]);
+	const locale = useLocale();
 
 	// Filter state
 	const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
@@ -641,13 +715,13 @@ export function ActivityFeedPanel({
 	const activeActions = useMemo(() => {
 		if (selectedGroups.size === 0) return undefined;
 		const actions: string[] = [];
-		for (const group of FILTER_GROUPS) {
+		for (const group of filterGroups) {
 			if (selectedGroups.has(group.label)) {
 				actions.push(...group.actions);
 			}
 		}
 		return actions.length > 0 ? actions : undefined;
-	}, [selectedGroups]);
+	}, [selectedGroups, filterGroups]);
 
 	// Pick first selected actor for the query (backend supports single actor filter)
 	const selectedActorArr = useMemo(
@@ -767,7 +841,7 @@ export function ActivityFeedPanel({
 
 		let lastDateLabel = "";
 		for (const group of groups) {
-			const dateLabel = getDateLabel(group.entries[0]!.timestamp);
+			const dateLabel = getDateLabel(group.entries[0]!.timestamp, t, locale);
 			if (dateLabel !== lastDateLabel) {
 				lastDateLabel = dateLabel;
 				result.push({
@@ -789,7 +863,7 @@ export function ActivityFeedPanel({
 				side="right"
 			>
 				<SheetHeader className="border-b px-6 py-4 pr-12">
-					<SheetTitle>Activity</SheetTitle>
+					<SheetTitle>{t("activity")}</SheetTitle>
 					<SheetDescription className="text-muted-foreground text-sm">
 						{projectName}
 						{totalCount > 0 && (
@@ -797,8 +871,8 @@ export function ActivityFeedPanel({
 								{" "}
 								&middot;{" "}
 								<span className="tabular-nums">{totalCount}</span>{" "}
-								{totalCount === 1 ? "event" : "events"}
-								{hasActiveFilters && " (filtered)"}
+								{t("eventCount", { count: totalCount })}
+								{hasActiveFilters && ` (${t("filtered")})`}
 							</>
 						)}
 					</SheetDescription>
@@ -808,6 +882,7 @@ export function ActivityFeedPanel({
 						<div className="space-y-2 pt-2">
 							<ActionFilterChips
 								actionTypes={filtersData.actionTypes}
+								filterGroups={filterGroups}
 								onToggleGroup={toggleGroup}
 								selectedGroups={selectedGroups}
 							/>
@@ -824,7 +899,7 @@ export function ActivityFeedPanel({
 										size="sm"
 										variant="ghost"
 									>
-										Clear filters
+										{t("clearFilters")}
 									</Button>
 								)}
 							</div>
@@ -848,14 +923,14 @@ export function ActivityFeedPanel({
 					{isError && (
 						<div className="flex flex-col items-center justify-center gap-3 py-12">
 							<p className="text-muted-foreground text-sm">
-								Couldn&apos;t load activity feed
+								{t("couldntLoadActivityFeed")}
 							</p>
 							<Button
 								onClick={() => void refetch()}
 								size="sm"
 								variant="outline"
 							>
-								Try again
+								{t("tryAgain")}
 							</Button>
 						</div>
 					)}
@@ -865,20 +940,19 @@ export function ActivityFeedPanel({
 							{hasActiveFilters ? (
 								<>
 									<p className="text-muted-foreground text-sm">
-										No events match your filters.
+										{t("noEventsMatchFilters")}
 									</p>
 									<Button
 										onClick={clearFilters}
 										size="sm"
 										variant="outline"
 									>
-										Clear filters
+										{t("clearFilters")}
 									</Button>
 								</>
 							) : (
 								<p className="text-center text-muted-foreground text-sm">
-									No activity yet. Events will appear here when expenses
-									are added, edited, or verified.
+									{t("noActivityYet")}
 								</p>
 							)}
 						</div>
@@ -910,10 +984,10 @@ export function ActivityFeedPanel({
 										{isFetchingNextPage ? (
 											<>
 												<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-												Loading...
+												{t("loading")}
 											</>
 										) : (
-											"Load more"
+											t("loadMore")
 										)}
 									</Button>
 								</div>

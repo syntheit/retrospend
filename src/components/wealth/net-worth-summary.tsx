@@ -1,6 +1,7 @@
 "use client";
 
 import { CreditCard, Landmark, PlaneTakeoff, TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -32,6 +33,7 @@ export function NetWorthSummary({
 	averageMonthlySpend,
 	netWorth30DaysAgo = 0,
 }: NetWorthSummaryProps) {
+	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const isZeroState = useMemo(
@@ -62,7 +64,7 @@ export function NetWorthSummary({
 					{formatPercent(percentChange)})
 				</span>
 			)}
-			<span className="font-normal text-muted-foreground">past 30 days</span>
+			<span className="font-normal text-muted-foreground">{t("past30Days")}</span>
 		</div>
 	);
 
@@ -74,20 +76,20 @@ export function NetWorthSummary({
 
 	const runwayValueMasked = useMemo(() => {
 		if (isPrivacyMode) return "••••••";
-		if (runwayMonths === Infinity || runwayMonths > 1200) return ">100 years";
+		if (runwayMonths === Infinity || runwayMonths > 1200) return t("moreThan100Years");
 
 		const totalMonths = Math.round(runwayMonths);
-		if (totalMonths <= 0) return "0 months";
+		if (totalMonths <= 0) return t("zeroMonths");
 
 		const years = Math.floor(totalMonths / 12);
 		const months = totalMonths % 12;
 
 		const parts = [];
-		if (years > 0) parts.push(`${years} ${years === 1 ? "year" : "years"}`);
+		if (years > 0) parts.push(t("yearsCount", { count: years }));
 		if (months > 0)
-			parts.push(`${months} ${months === 1 ? "month" : "months"}`);
+			parts.push(t("monthsCount", { count: months }));
 
-		return parts.join(" and ");
+		return parts.join(` ${t("and")} `);
 	}, [runwayMonths, isPrivacyMode]);
 	const runwayTooltipText = isPrivacyMode
 		? "••••••"
@@ -98,9 +100,9 @@ export function NetWorthSummary({
 			<Card className="border-dashed">
 				<CardContent className="p-0">
 					<EmptyState
-						description="Add your first asset or liability to start tracking your net worth."
+						description={t("noWealthDataDescription")}
 						icon={TrendingUp}
-						title="No Wealth Data Yet"
+						title={t("noWealthDataTitle")}
 					/>
 				</CardContent>
 			</Card>
@@ -111,10 +113,10 @@ export function NetWorthSummary({
 		<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 			{/* Total Net Worth Card */}
 			<StatCard
-				description={`Liquid: ${isPrivacyMode ? maskAmount(totalLiquidAssets) : formatCurrency(totalLiquidAssets, homeCurrency)}`}
+				description={`${t("liquidLabel")}: ${isPrivacyMode ? maskAmount(totalLiquidAssets) : formatCurrency(totalLiquidAssets, homeCurrency)}`}
 				icon={Landmark}
 				subValue={netWorthTrend}
-				title="Net Worth"
+				title={t("netWorth")}
 				value={
 					isPrivacyMode
 						? maskAmount(totalNetWorth)
@@ -126,7 +128,7 @@ export function NetWorthSummary({
 			{/* Total Assets Card */}
 			<StatCard
 				icon={TrendingUp}
-				title="Total Assets"
+				title={t("totalAssets")}
 				value={
 					isPrivacyMode
 						? maskAmount(totalAssets)
@@ -139,11 +141,11 @@ export function NetWorthSummary({
 			<StatCard
 				description={
 					totalLiabilities > 0 && weightedAPR > 0
-						? `Weighted APR: ${formatPercent(weightedAPR)}`
+						? `${t("weightedAPR")}: ${formatPercent(weightedAPR)}`
 						: undefined
 				}
 				icon={CreditCard}
-				title="Total Liabilities"
+				title={t("totalLiabilities")}
 				value={
 					isPrivacyMode
 						? maskAmount(totalLiabilities)
@@ -154,9 +156,9 @@ export function NetWorthSummary({
 
 			{/* Financial Runway Card */}
 			<StatCard
-				description={`Avg Spend: ${runwayTooltipText}/mo`}
+				description={`${t("avgSpend")}: ${runwayTooltipText}/${t("moAbbrev")}`}
 				icon={PlaneTakeoff}
-				title="Financial Runway"
+				title={t("financialRunway")}
 				value={runwayValueMasked}
 				variant="violet"
 			/>

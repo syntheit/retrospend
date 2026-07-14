@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CategoryPicker } from "~/components/category-picker";
@@ -61,6 +62,7 @@ export function RecurringModal({
 	open,
 	onClose,
 }: RecurringModalProps) {
+	const t = useTranslations("recurring");
 	const utils = api.useUtils();
 	const { data: settings } = api.settings.getGeneral.useQuery();
 
@@ -72,22 +74,22 @@ export function RecurringModal({
 	const createMutation = api.recurring.create.useMutation({
 		onSuccess: () => {
 			utils.recurring.list.invalidate();
-			toast.success("Subscription created");
+			toast.success(t("subscriptionCreated"));
 			onClose();
 		},
 		onError: () => {
-			toast.error("Failed to create subscription");
+			toast.error(t("subscriptionCreateFailed"));
 		},
 	});
 
 	const updateMutation = api.recurring.update.useMutation({
 		onSuccess: () => {
 			utils.recurring.list.invalidate();
-			toast.success("Subscription updated");
+			toast.success(t("subscriptionUpdated"));
 			onClose();
 		},
 		onError: () => {
-			toast.error("Failed to update subscription");
+			toast.error(t("subscriptionUpdateFailed"));
 		},
 	});
 
@@ -192,23 +194,23 @@ export function RecurringModal({
 			>
 				<DialogHeader>
 					<DialogTitle>
-						{templateId ? "Edit Subscription" : "New Subscription"}
+						{templateId ? t("editSubscription") : t("newSubscription")}
 					</DialogTitle>
 					<DialogDescription>
 						{templateId
-							? "Update your recurring expense details"
-							: "Add a new recurring expense or subscription"}
+							? t("editSubscriptionDescription")
+							: t("newSubscriptionDescription")}
 					</DialogDescription>
 				</DialogHeader>
 
 				<form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
 					{/* Name */}
 					<div className="space-y-2">
-						<Label htmlFor="name">Name</Label>
+						<Label htmlFor="name">{t("fieldName")}</Label>
 						<Input
 							id="name"
 							{...register("name")}
-							placeholder="e.g., Netflix, Rent, Gym"
+							placeholder={t("fieldNamePlaceholder")}
 						/>
 						{errors.name && (
 							<p className="text-destructive text-sm">{errors.name.message}</p>
@@ -217,7 +219,7 @@ export function RecurringModal({
 
 					{/* Amount and Currency */}
 					<div className="space-y-2">
-						<Label htmlFor="amount">Amount</Label>
+						<Label htmlFor="amount">{t("fieldAmount")}</Label>
 						<div
 							className={cn(
 								"flex h-9 w-full overflow-hidden rounded-lg border border-input bg-transparent shadow-xs dark:bg-input/30",
@@ -257,11 +259,11 @@ export function RecurringModal({
 
 					{/* Payment Source */}
 					<div className="space-y-2">
-						<Label htmlFor="paymentSource">Payment Source</Label>
+						<Label htmlFor="paymentSource">{t("fieldPaymentSource")}</Label>
 						<Input
 							id="paymentSource"
 							{...register("paymentSource")}
-							placeholder="e.g. Chase Checking"
+							placeholder={t("fieldPaymentSourcePlaceholder")}
 						/>
 						{errors.paymentSource && (
 							<p className="text-destructive text-sm">
@@ -272,7 +274,7 @@ export function RecurringModal({
 
 					{/* Website URL */}
 					<div className="space-y-2">
-						<Label htmlFor="websiteUrl">Website URL</Label>
+						<Label htmlFor="websiteUrl">{t("fieldWebsiteUrl")}</Label>
 						<Input
 							id="websiteUrl"
 							type="url"
@@ -288,10 +290,10 @@ export function RecurringModal({
 
 					{/* Category */}
 					<div className="space-y-2">
-						<Label>Category</Label>
+						<Label>{t("fieldCategory")}</Label>
 						<CategoryPicker
 							onValueChange={(value) => setValue("categoryId", value)}
-							placeholder="Select category"
+							placeholder={t("fieldCategoryPlaceholder")}
 							value={watch("categoryId")}
 						/>
 						{errors.categoryId && (
@@ -303,7 +305,7 @@ export function RecurringModal({
 
 					{/* Frequency */}
 					<div className="space-y-2">
-						<Label htmlFor="recurring-frequency">Frequency</Label>
+						<Label htmlFor="recurring-frequency">{t("fieldFrequency")}</Label>
 						<Select
 							onValueChange={(value) =>
 								setValue("frequency", value as RecurringFormData["frequency"])
@@ -314,18 +316,18 @@ export function RecurringModal({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="WEEKLY">Weekly</SelectItem>
-								<SelectItem value="BIWEEKLY">Biweekly</SelectItem>
-								<SelectItem value="MONTHLY">Monthly</SelectItem>
-								<SelectItem value="QUARTERLY">Quarterly</SelectItem>
-								<SelectItem value="YEARLY">Yearly</SelectItem>
+								<SelectItem value="WEEKLY">{t("frequencyWeekly")}</SelectItem>
+								<SelectItem value="BIWEEKLY">{t("frequencyBiweekly")}</SelectItem>
+								<SelectItem value="MONTHLY">{t("frequencyMonthly")}</SelectItem>
+								<SelectItem value="QUARTERLY">{t("frequencyQuarterly")}</SelectItem>
+								<SelectItem value="YEARLY">{t("frequencyYearly")}</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
 
 					{/* Next Due Date */}
 					<div className="space-y-2">
-						<Label>Next Due Date</Label>
+						<Label>{t("fieldNextDueDate")}</Label>
 						<DatePicker
 							date={watch("nextDueDate")}
 							onSelect={(date) => date && setValue("nextDueDate", date)}
@@ -335,9 +337,9 @@ export function RecurringModal({
 					{/* Auto Pay */}
 					<div className="flex items-center justify-between rounded-lg border p-4">
 						<div className="space-y-0.5">
-							<Label>Auto Pay</Label>
+							<Label>{t("fieldAutoPay")}</Label>
 							<p className="text-muted-foreground text-sm">
-								Automatically create expenses when due
+								{t("fieldAutoPayDescription")}
 							</p>
 						</div>
 						<Switch
@@ -348,17 +350,17 @@ export function RecurringModal({
 
 					<DialogFooter>
 						<Button onClick={onClose} type="button" variant="ghost">
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={createMutation.isPending || updateMutation.isPending}
 							type="submit"
 						>
 							{createMutation.isPending || updateMutation.isPending
-								? "Saving..."
+								? t("saving")
 								: templateId
-									? "Update Subscription"
-									: "Create Subscription"}
+									? t("updateSubscription")
+									: t("createSubscription")}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -380,13 +382,14 @@ function CurrencyEstimate({
 	rate?: number;
 	isLoading: boolean;
 }) {
+	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 	const { usdToHomeRate } = useCurrency();
 	const { toUSD, fromUSD } = useCurrencyConversion();
 
 	if (currency === homeCurrency || !amount) return null;
 	if (isLoading)
-		return <p className="text-muted-foreground text-xs">Calculating...</p>;
+		return <p className="text-muted-foreground text-xs">{t("calculating")}</p>;
 
 	if (!rate) return null;
 
@@ -398,7 +401,7 @@ function CurrencyEstimate({
 
 	return (
 		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">
-			Estimated ~ {formatCurrency(estimation, homeCurrency)}
+			{t("estimated", { amount: formatCurrency(estimation, homeCurrency) })}
 		</p>
 	);
 }

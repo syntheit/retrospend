@@ -1,6 +1,7 @@
 import { type ColumnDef, type VisibilityState } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MoreHorizontal, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
@@ -42,11 +43,12 @@ interface ShadowProfile {
 
 function createShadowColumns(
 	onDelete: (id: string, name: string) => void,
+	t: ReturnType<typeof useTranslations<"admin">>,
 ): ColumnDef<ShadowProfile>[] {
 	return [
 		{
 			accessorKey: "name",
-			header: "Name",
+			header: t("columnName"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => (
@@ -55,7 +57,7 @@ function createShadowColumns(
 		},
 		{
 			accessorKey: "email",
-			header: "Email",
+			header: t("columnEmail"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => (
@@ -66,33 +68,36 @@ function createShadowColumns(
 		},
 		{
 			id: "status",
-			header: "Status",
+			header: t("columnStatus"),
 			enableSorting: true,
 			size: 100,
-			accessorFn: (row) => (row.claimedByUsername ? "Claimed" : "Unclaimed"),
+			accessorFn: (row) => (row.claimedByUsername ? t("claimed") : t("unclaimed")),
 			cell: ({ row }) =>
 				row.original.claimedByUsername ? (
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Badge className="border-transparent bg-emerald-500/10 text-emerald-500 shadow-none hover:bg-emerald-500/20">
-									Claimed
+									{t("claimed")}
 								</Badge>
 							</TooltipTrigger>
 							<TooltipContent>
-								Claimed by @{row.original.claimedByUsername}
-								{row.original.claimedAt &&
-									` on ${format(new Date(row.original.claimedAt), "MMM d, yyyy")}`}
+								{row.original.claimedAt
+									? t("claimedByOn", {
+											username: row.original.claimedByUsername,
+											date: format(new Date(row.original.claimedAt), "MMM d, yyyy"),
+										})
+									: t("claimedBy", { username: row.original.claimedByUsername })}
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
 				) : (
-					<Badge variant="secondary">Unclaimed</Badge>
+					<Badge variant="secondary">{t("unclaimed")}</Badge>
 				),
 		},
 		{
 			accessorKey: "createdByUsername",
-			header: "Created By",
+			header: t("columnCreatedBy"),
 			enableSorting: true,
 			size: 140,
 			cell: ({ row }) => (
@@ -103,7 +108,7 @@ function createShadowColumns(
 		},
 		{
 			accessorKey: "projectCount",
-			header: () => <div className="text-right">Projects</div>,
+			header: () => <div className="text-right">{t("columnProjects")}</div>,
 			enableSorting: true,
 			size: 90,
 			cell: ({ row }) => (
@@ -114,7 +119,7 @@ function createShadowColumns(
 		},
 		{
 			accessorKey: "createdAt",
-			header: () => <div className="text-right">Created</div>,
+			header: () => <div className="text-right">{t("columnCreated")}</div>,
 			enableSorting: true,
 			size: 130,
 			sortingFn: "datetime",
@@ -139,7 +144,7 @@ function createShadowColumns(
 							variant="ghost"
 						>
 							<MoreHorizontal className="h-4 w-4" />
-							<span className="sr-only">Actions</span>
+							<span className="sr-only">{t("actions")}</span>
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-52">
@@ -150,7 +155,7 @@ function createShadowColumns(
 							variant="destructive"
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
-							Delete Shadow Profile
+							{t("deleteShadowProfile")}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -172,11 +177,12 @@ interface GuestSession {
 
 function createGuestColumns(
 	onDelete: (id: string, name: string) => void,
+	t: ReturnType<typeof useTranslations<"admin">>,
 ): ColumnDef<GuestSession>[] {
 	return [
 		{
 			accessorKey: "name",
-			header: "Name",
+			header: t("columnName"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => (
@@ -185,7 +191,7 @@ function createGuestColumns(
 		},
 		{
 			accessorKey: "email",
-			header: "Email",
+			header: t("columnEmail"),
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => (
@@ -194,7 +200,7 @@ function createGuestColumns(
 		},
 		{
 			accessorKey: "projectName",
-			header: "Project",
+			header: t("columnProject"),
 			enableSorting: true,
 			size: 160,
 			cell: ({ row }) => (
@@ -205,7 +211,7 @@ function createGuestColumns(
 		},
 		{
 			accessorKey: "lastActiveAt",
-			header: () => <div className="text-right">Last Active</div>,
+			header: () => <div className="text-right">{t("columnLastActive")}</div>,
 			enableSorting: true,
 			size: 130,
 			sortingFn: "datetime",
@@ -217,7 +223,7 @@ function createGuestColumns(
 		},
 		{
 			accessorKey: "createdAt",
-			header: () => <div className="text-right">Created</div>,
+			header: () => <div className="text-right">{t("columnCreated")}</div>,
 			enableSorting: true,
 			size: 130,
 			sortingFn: "datetime",
@@ -242,7 +248,7 @@ function createGuestColumns(
 							variant="ghost"
 						>
 							<MoreHorizontal className="h-4 w-4" />
-							<span className="sr-only">Actions</span>
+							<span className="sr-only">{t("actions")}</span>
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-52">
@@ -253,7 +259,7 @@ function createGuestColumns(
 							variant="destructive"
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
-							Delete Guest Session
+							{t("deleteGuestSession")}
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -270,6 +276,7 @@ type PendingDelete =
 	| null;
 
 export function ParticipantsTable() {
+	const t = useTranslations("admin");
 	const [view, setView] = useState<"shadow" | "guest">("shadow");
 	const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
 	const isMobile = useIsMobile();
@@ -296,11 +303,11 @@ export function ParticipantsTable() {
 		try {
 			if (pendingDelete.type === "shadow") {
 				await deleteShadowMutation.mutateAsync({ id: pendingDelete.id });
-				toast.success(`Shadow profile "${pendingDelete.name}" has been deleted`);
+				toast.success(t("shadowProfileDeleted", { name: pendingDelete.name }));
 				await refetchShadow();
 			} else {
 				await deleteGuestMutation.mutateAsync({ id: pendingDelete.id });
-				toast.success(`Guest session "${pendingDelete.name}" has been deleted`);
+				toast.success(t("guestSessionDeleted", { name: pendingDelete.name }));
 				await refetchGuest();
 			}
 			setPendingDelete(null);
@@ -323,20 +330,22 @@ export function ParticipantsTable() {
 
 	const shadowColumns = useMemo(
 		() =>
-			createShadowColumns((id, name) =>
-				handleDelete({ type: "shadow", id, name }),
+			createShadowColumns(
+				(id, name) => handleDelete({ type: "shadow", id, name }),
+				t,
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[],
+		[t],
 	);
 
 	const guestColumns = useMemo(
 		() =>
-			createGuestColumns((id, name) =>
-				handleDelete({ type: "guest", id, name }),
+			createGuestColumns(
+				(id, name) => handleDelete({ type: "guest", id, name }),
+				t,
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[],
+		[t],
 	);
 
 	const renderShadowContextMenu = useMemo(() => {
@@ -350,12 +359,12 @@ export function ParticipantsTable() {
 					variant="destructive"
 				>
 					<Trash2 className="mr-2 h-4 w-4" />
-					Delete Shadow Profile
+					{t("deleteShadowProfile")}
 				</ContextMenuItem>
 			</>
 		);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [t]);
 
 	const renderGuestContextMenu = useMemo(() => {
 		return (guest: GuestSession) => (
@@ -368,12 +377,12 @@ export function ParticipantsTable() {
 					variant="destructive"
 				>
 					<Trash2 className="mr-2 h-4 w-4" />
-					Delete Guest Session
+					{t("deleteGuestSession")}
 				</ContextMenuItem>
 			</>
 		);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [t]);
 
 	const shadowVisibility: VisibilityState = isMobile
 		? { projectCount: false, createdAt: false }
@@ -390,16 +399,16 @@ export function ParticipantsTable() {
 		? {
 				title:
 					pendingDelete.type === "shadow"
-						? "Delete Shadow Profile"
-						: "Delete Guest Session",
+						? t("deleteShadowProfile")
+						: t("deleteGuestSession"),
 				description:
 					pendingDelete.type === "shadow"
-						? `Are you sure you want to delete the shadow profile "${pendingDelete.name}"? Their participation records will be anonymized. This action cannot be undone.`
-						: `Are you sure you want to delete the guest session "${pendingDelete.name}"? Their participation records will be anonymized. This action cannot be undone.`,
+						? t("deleteShadowProfileConfirm", { name: pendingDelete.name })
+						: t("deleteGuestSessionConfirm", { name: pendingDelete.name }),
 				confirmLabel:
 					pendingDelete.type === "shadow"
-						? "Delete Shadow Profile"
-						: "Delete Guest Session",
+						? t("deleteShadowProfile")
+						: t("deleteGuestSession"),
 				variant: "destructive" as const,
 			}
 		: null;
@@ -413,7 +422,7 @@ export function ParticipantsTable() {
 				>
 					<TabsList>
 						<TabsTrigger value="shadow">
-							Shadow Profiles
+							{t("shadowProfiles")}
 							{shadowProfiles && (
 								<span className="ml-1.5 text-muted-foreground">
 									({shadowProfiles.length})
@@ -421,7 +430,7 @@ export function ParticipantsTable() {
 							)}
 						</TabsTrigger>
 						<TabsTrigger value="guest">
-							Guest Sessions
+							{t("guestSessions")}
 							{guestSessions && (
 								<span className="ml-1.5 text-muted-foreground">
 									({guestSessions.length})
@@ -435,23 +444,23 @@ export function ParticipantsTable() {
 					<DataTable
 						columns={shadowColumns}
 						columnVisibility={shadowVisibility}
-						countNoun="shadow profiles"
+						countNoun={t("shadowProfilesNoun")}
 						data={shadowProfiles ?? []}
 						progressive
 						renderContextMenu={renderShadowContextMenu}
 						searchable
-						searchPlaceholder="Search shadow profiles..."
+						searchPlaceholder={t("searchShadowProfiles")}
 					/>
 				) : (
 					<DataTable
 						columns={guestColumns}
 						columnVisibility={guestVisibility}
-						countNoun="guest sessions"
+						countNoun={t("guestSessionsNoun")}
 						data={guestSessions ?? []}
 						progressive
 						renderContextMenu={renderGuestContextMenu}
 						searchable
-						searchPlaceholder="Search guest sessions..."
+						searchPlaceholder={t("searchGuestSessions")}
 					/>
 				)}
 			</div>

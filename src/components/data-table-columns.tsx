@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Copy, Edit2, EyeOff, Info, MoreHorizontal, Trash2 } from "lucide-react";
+import { ClipboardCopy, Copy, Edit2, EyeOff, Info, MoreHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { z } from "zod";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
@@ -20,7 +20,8 @@ import {
 } from "~/components/ui/tooltip";
 import { AvatarStack } from "~/components/ui/avatar-stack";
 import { isCrypto } from "~/lib/currency-format";
-import { formatExpenseDate } from "~/lib/format";
+import { formatExpenseAsText, formatExpenseDate } from "~/lib/format";
+import { toast } from "sonner";
 import { convertExpenseAmountForDisplay } from "~/lib/utils";
 
 export const expenseSchema = z.object({
@@ -81,15 +82,17 @@ function createExpenseColumns(
 	onSharedRowDelete?: (sharedTransactionId: string) => void,
 	onRowDuplicate?: (id: string) => void,
 	hasSharedExpenses?: boolean,
+	t?: (key: string, values?: Record<string, string | number | Date>) => string,
+	locale?: string,
 ): ColumnDef<z.infer<typeof expenseSchema>>[] {
 	const columns: ColumnDef<z.infer<typeof expenseSchema>>[] = [
 		{
 			accessorKey: "title",
-			header: "Title",
+			header: t?.("columnTitle") ?? "Title",
 			enableSorting: true,
 			meta: { flex: true },
 			cell: ({ row }) => {
-				const title = row.original.title || "Untitled";
+				const title = row.original.title || (t?.("untitled") ?? "Untitled");
 				const description = row.original.description?.trim();
 				const isAmortized = row.original.isAmortizedParent;
 				const isExcluded = row.original.excludeFromAnalytics;
@@ -97,7 +100,7 @@ function createExpenseColumns(
 				const sharedCtx = row.original.sharedContext;
 
 				const sharedTooltip = sharedCtx
-					? `${sharedCtx.iPayedThis ? "You paid" : `Paid by ${sharedCtx.paidByName}`} · Split ${sharedCtx.participantCount} ways${sharedCtx.projectName ? ` · ${sharedCtx.projectName}` : ""}`
+					? `${sharedCtx.iPayedThis ? (t?.("youPaid") ?? "You paid") : (t?.("paidBy", { name: sharedCtx.paidByName }) ?? `Paid by ${sharedCtx.paidByName}`)} · ${t?.("splitWays", { count: sharedCtx.participantCount }) ?? `Split ${sharedCtx.participantCount} ways`}${sharedCtx.projectName ? ` · ${sharedCtx.projectName}` : ""}`
 					: undefined;
 
 				return (
@@ -105,7 +108,7 @@ function createExpenseColumns(
 						<div className="font-medium">{title}</div>
 						{isAmortized && (
 							<span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-700/10 ring-inset dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
-								Split
+								{t?.("split") ?? "Split"}
 							</span>
 						)}
 						{isExcluded && !isShared && (
@@ -114,7 +117,7 @@ function createExpenseColumns(
 									<EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 								</TooltipTrigger>
 								<TooltipContent align="start" side="top">
-									<p>Excluded from spending analytics</p>
+									<p>{t?.("excludedFromAnalytics") ?? "Excluded from spending analytics"}</p>
 								</TooltipContent>
 							</Tooltip>
 						)}
@@ -127,11 +130,11 @@ function createExpenseColumns(
 											href={`/projects/${sharedCtx.projectId}`}
 											onClick={(e) => e.stopPropagation()}
 										>
-											{sharedCtx.projectName ?? "Shared"}
+											{sharedCtx.projectName ?? (t?.("shared") ?? "Shared")}
 										</Link>
 									) : (
 										<span className="inline-flex cursor-help items-center rounded-md bg-purple-50 px-2 py-0.5 font-medium text-purple-700 text-xs ring-1 ring-purple-700/10 ring-inset dark:bg-purple-400/10 dark:text-purple-400 dark:ring-purple-400/30">
-											{sharedCtx?.projectName ?? "Shared"}
+											{sharedCtx?.projectName ?? (t?.("shared") ?? "Shared")}
 										</span>
 									)}
 								</TooltipTrigger>
@@ -157,7 +160,7 @@ function createExpenseColumns(
 		},
 		{
 			accessorKey: "category",
-			header: "Category",
+			header: t?.("columnCategory") ?? "Category",
 			enableSorting: true,
 			size: 150,
 			cell: ({ row }) => {
@@ -179,7 +182,7 @@ function createExpenseColumns(
 		},
 		{
 			accessorKey: "date",
-			header: "Date",
+			header: t?.("columnDate") ?? "Date",
 			enableSorting: true,
 			size: 130,
 			sortingFn: "datetime",
@@ -199,7 +202,7 @@ function createExpenseColumns(
 		const dateIndex = columns.findIndex((c) => "accessorKey" in c && c.accessorKey === "date");
 		columns.splice(dateIndex, 0, {
 			id: "split",
-			header: "Who",
+			header: t?.("columnWho") ?? "Who",
 			enableSorting: false,
 			size: 130,
 			cell: ({ row }) => {
@@ -222,7 +225,7 @@ function createExpenseColumns(
 	if (hasForeignCurrencyExpenses) {
 		columns.push({
 			id: "localPrice",
-			header: () => <div className="text-right">Price (Local)</div>,
+			header: () => <div className="text-right">{t?.("columnLocalPrice") ?? "Price (Local)"}</div>,
 			size: 150,
 			accessorFn: (row) => {
 				return row.currency === "USD" || !row.exchangeRate ? 0 : row.amount;
@@ -273,7 +276,7 @@ function createExpenseColumns(
 	// Always add base currency price column
 	columns.push({
 		id: "basePrice",
-		header: () => <div className="text-right">Amount ({_homeCurrency})</div>,
+		header: () => <div className="text-right">{t?.("columnAmount", { currency: _homeCurrency }) ?? `Amount (${_homeCurrency})`}</div>,
 		size: 160,
 		accessorFn: (row) => {
 			return convertExpenseAmountForDisplay(
@@ -336,24 +339,41 @@ function createExpenseColumns(
 									variant="ghost"
 								>
 									<MoreHorizontal className="h-4 w-4" />
-									<span className="sr-only">Actions</span>
+									<span className="sr-only">{t?.("actions") ?? "Actions"}</span>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-44">
 								{canEdit && (
 									<DropdownMenuItem onClick={() => onSharedRowEdit!(sharedTxId)}>
 										<Edit2 className="mr-2 h-4 w-4" />
-										Edit
+										{t?.("edit") ?? "Edit"}
 									</DropdownMenuItem>
 								)}
-								{canDelete && canEdit && <DropdownMenuSeparator />}
+								<DropdownMenuItem
+									onClick={() => {
+										const text = formatExpenseAsText(
+											row.original.title,
+											row.original.amount,
+											row.original.currency,
+											new Date(row.original.date),
+											formatCurrency,
+											locale,
+										);
+										void navigator.clipboard.writeText(text);
+										toast.success(t?.("copiedToClipboard") ?? "Copied to clipboard");
+									}}
+								>
+									<ClipboardCopy className="mr-2 h-4 w-4" />
+									{t?.("copyAsText") ?? "Copy as text"}
+								</DropdownMenuItem>
+								{canDelete && <DropdownMenuSeparator />}
 								{canDelete && (
 									<DropdownMenuItem
 										onClick={() => onSharedRowDelete!(sharedTxId)}
 										variant="destructive"
 									>
 										<Trash2 className="mr-2 h-4 w-4" />
-										Delete
+										{t?.("delete") ?? "Delete"}
 									</DropdownMenuItem>
 								)}
 							</DropdownMenuContent>
@@ -370,30 +390,46 @@ function createExpenseColumns(
 								variant="ghost"
 							>
 								<MoreHorizontal className="h-4 w-4" />
-								<span className="sr-only">Actions</span>
+								<span className="sr-only">{t?.("actions") ?? "Actions"}</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-44">
 							{onRowEdit && (
 								<DropdownMenuItem onClick={() => onRowEdit(row.original.id)}>
 									<Edit2 className="mr-2 h-4 w-4" />
-									Edit
+									{t?.("edit") ?? "Edit"}
 								</DropdownMenuItem>
 							)}
 							{onRowDuplicate && (
 								<DropdownMenuItem onClick={() => onRowDuplicate(row.original.id)}>
 									<Copy className="mr-2 h-4 w-4" />
-									Duplicate
+									{t?.("duplicate") ?? "Duplicate"}
 								</DropdownMenuItem>
 							)}
-							{onRowDelete && (onRowEdit || onRowDuplicate) && <DropdownMenuSeparator />}
+							<DropdownMenuItem
+								onClick={() => {
+									const text = formatExpenseAsText(
+										row.original.title,
+										row.original.amount,
+										row.original.currency,
+										new Date(row.original.date),
+										formatCurrency,
+									);
+									void navigator.clipboard.writeText(text);
+									toast.success(t?.("copiedToClipboard") ?? "Copied to clipboard");
+								}}
+							>
+								<ClipboardCopy className="mr-2 h-4 w-4" />
+								{t?.("copyAsText") ?? "Copy as text"}
+							</DropdownMenuItem>
+							{onRowDelete && <DropdownMenuSeparator />}
 							{onRowDelete && (
 								<DropdownMenuItem
 									onClick={() => onRowDelete(row.original.id)}
 									variant="destructive"
 								>
 									<Trash2 className="mr-2 h-4 w-4" />
-									Delete
+									{t?.("delete") ?? "Delete"}
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuContent>

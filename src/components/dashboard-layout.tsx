@@ -1,6 +1,7 @@
 "use client";
 
 import { AppSidebar } from "~/components/app-sidebar";
+import { PageTransition } from "~/components/page-transition";
 import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +22,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 			</a>
 			<AppSidebar variant="inset" />
 			<SidebarInset className="flex flex-col overflow-hidden">
-				{children}
+				<PageTransition>{children}</PageTransition>
 			</SidebarInset>
 		</SidebarProvider>
 	);

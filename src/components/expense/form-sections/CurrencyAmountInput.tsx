@@ -1,6 +1,7 @@
 "use client";
 
 import { Pencil } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { CurrencyPicker } from "~/components/currency-picker";
@@ -72,6 +73,7 @@ export function CurrencyAmountInput({
 	setIsCustomRateSet,
 	amountHint,
 }: CurrencyAmountInputProps) {
+	const t = useTranslations("expenseForm");
 	const {
 		watch,
 		setValue: setFormValue,
@@ -462,7 +464,7 @@ export function CurrencyAmountInput({
 	// --- Render ---
 	return (
 		<div className="space-y-2">
-			<Label htmlFor="amount">Amount</Label>
+			<Label htmlFor="amount">{t("amount")}</Label>
 
 			{mode === 1 ? (
 				/* === MODE 1: Same currency === */
@@ -506,7 +508,7 @@ export function CurrencyAmountInput({
 							{expressionPreview}
 						</div>
 						<span className="hidden pr-3 text-muted-foreground text-sm sm:block">
-							You spent
+							{t("youSpent")}
 						</span>
 					</div>
 
@@ -564,10 +566,10 @@ export function CurrencyAmountInput({
 					{showCustomInput && mode === 3 && (
 						<div className="flex items-center gap-2 border-t border-input bg-muted/10 px-3 py-1.5">
 							<span className="shrink-0 text-muted-foreground text-sm">
-								Custom rate:
+								{t("customRate")}:
 							</span>
 							<Input
-								aria-label="Custom exchange rate"
+								aria-label={t("customExchangeRate")}
 								autoFocus
 								className="h-7 w-28 border-input bg-transparent px-2 py-0 text-sm tabular-nums shadow-none focus-visible:ring-1 dark:bg-transparent"
 								onChange={(e) =>
@@ -582,14 +584,14 @@ export function CurrencyAmountInput({
 									)
 										flashInvalidRate();
 								}}
-								placeholder="Enter rate"
+								placeholder={t("enterRate")}
 								step="0.00000001"
 								type="number"
 								value={customInputValue}
 							/>
 							{invalidRateWarn && (
 								<span className="text-amber-500 text-xs">
-									Numbers only
+									{t("numbersOnly")}
 								</span>
 							)}
 						</div>
@@ -622,7 +624,7 @@ export function CurrencyAmountInput({
 							</span>
 						</div>
 						<span className="hidden pr-3 text-muted-foreground text-sm sm:block">
-							In budget as
+							{t("inBudgetAs")}
 						</span>
 					</div>
 				</div>
@@ -630,7 +632,7 @@ export function CurrencyAmountInput({
 
 			{invalidCharWarn && (
 				<p className="text-amber-500 text-xs">
-					Only digits and operators (+ − * /) are allowed
+					{t("onlyDigitsAndOperators")}
 				</p>
 			)}
 			{errors.amount && (
@@ -643,7 +645,7 @@ export function CurrencyAmountInput({
 			)}
 			{amountHint && !watchedAmount && (
 				<p className="animate-in fade-in text-muted-foreground text-xs duration-150">
-					Last time: {getCurrencySymbol(amountHint.currency)}{formatNumber(amountHint.amount, getDecimalDigits(amountHint.currency))}
+					{t("lastTime")}: {getCurrencySymbol(amountHint.currency)}{formatNumber(amountHint.amount, getDecimalDigits(amountHint.currency))}
 				</p>
 			)}
 		</div>
@@ -679,6 +681,7 @@ function RateSegmentStrip({
 	showCustomInput,
 	getCurrencySymbol,
 }: RateSegmentStripProps) {
+	const t = useTranslations("expenseForm");
 	return (
 		<div className="flex overflow-x-auto">
 			{rateOptions.map((option, i) => {
@@ -727,11 +730,11 @@ function RateSegmentStrip({
 				type="button"
 			>
 				<span className="text-xs font-medium leading-tight">
-					Custom
+					{t("custom")}
 				</span>
 				<span className="flex items-center gap-0.5 text-sm tabular-nums leading-tight">
 					<Pencil className="h-3 w-3" />
-					{showCustomInput ? "..." : "Set"}
+					{showCustomInput ? "..." : t("set")}
 				</span>
 			</button>
 		</div>
@@ -753,6 +756,7 @@ function NoRateAvailable({
 	setSelectedRateType,
 	setShowCustomInput,
 }: NoRateAvailableProps) {
+	const t = useTranslations("expenseForm");
 	const [showInput, setShowInput] = useState(false);
 	const [invalidWarn, setInvalidWarn] = useState(false);
 	const invalidWarnTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -774,7 +778,7 @@ function NoRateAvailable({
 				}}
 				type="button"
 			>
-				No rate available. Enter custom rate.
+				{t("noRateAvailable")}
 			</button>
 		);
 	}
@@ -782,7 +786,7 @@ function NoRateAvailable({
 	return (
 		<div className="flex items-center gap-2">
 			<span className="shrink-0 text-muted-foreground text-sm">
-				Rate:
+				{t("rateLabel")}:
 			</span>
 			<Input
 				autoFocus
@@ -797,13 +801,13 @@ function NoRateAvailable({
 					)
 						flashWarn();
 				}}
-				placeholder="Enter rate"
+				placeholder={t("enterRate")}
 				step="0.00000001"
 				type="number"
 				value={customInputValue}
 			/>
 			{invalidWarn && (
-				<span className="text-amber-500 text-xs">Numbers only</span>
+				<span className="text-amber-500 text-xs">{t("numbersOnly")}</span>
 			)}
 		</div>
 	);

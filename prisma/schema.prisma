@@ -50,6 +50,7 @@ model User {
   eventLogs        EventLog[]
   importJobs       ImportJob[]
 
+  language          String    @default("en")
   aiMode            AiMode    @default(LOCAL)
   externalAiAllowed Boolean?
   aiUsages          AiUsage[]
@@ -845,14 +846,6 @@ enum AuditTargetType {
   SPLIT_PARTICIPANT
 }
 
-enum ProjectType {
-  TRIP
-  ONGOING
-  SOLO
-  ONE_TIME
-  GENERAL
-}
-
 enum ProjectStatus {
   ACTIVE
   ARCHIVED
@@ -893,7 +886,6 @@ model Project {
   id                       String                 @id @default(cuid())
   name                     String                 @db.VarChar(191)
   description              String?                @db.VarChar(500)
-  type                     ProjectType
   budgetAmount             Decimal?               @db.Decimal(19, 8)
   budgetCurrency           String?
   primaryCurrency          String                 @default("USD")

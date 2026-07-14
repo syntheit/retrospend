@@ -2,6 +2,7 @@
 
 import { Cell, Label, Pie, PieChart, Sector } from "recharts";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
+import { useTranslations } from "next-intl";
 import {
 	Card,
 	CardContent,
@@ -76,20 +77,22 @@ export function CategoryDonut({
 	handleSliceLeave,
 	layout = "horizontal",
 }: CategoryDonutProps) {
+	const t = useTranslations("dashboard");
+
 	return (
 		<Card className="border border-border bg-card shadow-sm">
 			<CardHeader className="px-4 sm:px-6">
 				<CardTitle className="font-semibold text-lg tracking-tight">
-					Category Distribution
+					{t("categoryDistribution")}
 				</CardTitle>
-				<CardDescription>Where your money went this month</CardDescription>
+				<CardDescription>{t("categoryDistributionDescription")}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{expensesLoading ? (
 					<Skeleton className="h-[280px] w-full rounded-xl" />
 				) : categoryBreakdown.length === 0 ? (
 					<div className="rounded-lg border bg-muted/40 p-4 text-sm">
-						No expenses logged this month.
+						{t("noExpensesThisMonth")}
 					</div>
 				) : (
 					<div
@@ -165,7 +168,7 @@ export function CategoryDonut({
 																x={viewBox.cx}
 																y={(viewBox.cy || 0) - 16}
 															>
-																{activeSlice ? activeSlice.name : "Total Spend"}
+																{activeSlice ? activeSlice.name : t("totalSpend")}
 															</tspan>
 															<tspan
 																className="fill-foreground font-bold text-xl tabular-nums tracking-tight sm:text-2xl"
@@ -217,7 +220,7 @@ export function CategoryDonut({
 										layout === "horizontal" && "xl:text-left",
 									)}
 								>
-									Using sample data until expenses are added.
+									{t("usingSampleData")}
 								</p>
 							)}
 						</div>

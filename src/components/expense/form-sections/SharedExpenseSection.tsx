@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, Minus, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { SplitParticipant } from "~/components/split-with-picker";
@@ -65,6 +66,7 @@ export function SharedExpenseSection({
 	theyOweFullAmount,
 	onTheyOweFullAmountChange,
 }: SharedExpenseSectionProps) {
+	const t = useTranslations("expenseForm");
 	const { watch } = useFormContext<ExpenseFormData>();
 	const { getCurrencySymbol } = useCurrencyFormatter();
 
@@ -79,7 +81,7 @@ export function SharedExpenseSection({
 				participantType: "user" as const,
 				participantId: currentUser.id,
 				name: currentUser.name,
-				label: `${currentUser.name} (you)`,
+				label: `${currentUser.name} (${t("you")})`,
 				avatarUrl: currentUser.avatarUrl ?? null,
 			},
 			...splitWith.map((p) => ({
@@ -277,18 +279,18 @@ export function SharedExpenseSection({
 
 		if (splitChoice === "even") {
 			if (allParticipants.length === 2) {
-				return `Each person pays ${currencySymbol}${formatNumber(amount / 2, 2)}`;
+				return t("eachPersonPays", { amount: `${currencySymbol}${formatNumber(amount / 2, 2)}` });
 			}
 			const perPerson = Math.floor(Math.round(amount * 100) / allParticipants.length) / 100;
-			return `Each person pays ${currencySymbol}${formatNumber(perPerson, 2)}`;
+			return t("eachPersonPays", { amount: `${currencySymbol}${formatNumber(perPerson, 2)}` });
 		}
 
 		if (splitChoice === "full" && isSinglePerson) {
 			const otherName = splitWith[0]!.name;
 			if (youPaid) {
-				return `${otherName} owes you ${currencySymbol}${formatNumber(amount, 2)}`;
+				return t("personOwesYou", { name: otherName, amount: `${currencySymbol}${formatNumber(amount, 2)}` });
 			}
-			return `You owe ${otherName} ${currencySymbol}${formatNumber(amount, 2)}`;
+			return t("youOwePerson", { name: otherName, amount: `${currencySymbol}${formatNumber(amount, 2)}` });
 		}
 
 		if (splitChoice === "custom") {
@@ -300,7 +302,7 @@ export function SharedExpenseSection({
 					(s) => s.participantId !== currentUser.id,
 				);
 				if (myComputed && otherComputed) {
-					return `You pay ${currencySymbol}${formatNumber(myComputed.amount, 2)} · ${otherComputed.name} pays ${currencySymbol}${formatNumber(otherComputed.amount, 2)}`;
+					return t("youPayOtherPays", { yourAmount: `${currencySymbol}${formatNumber(myComputed.amount, 2)}`, otherName: otherComputed.name, otherAmount: `${currencySymbol}${formatNumber(otherComputed.amount, 2)}` });
 				}
 			}
 			return null; // Too complex for a single line with 3+
@@ -319,7 +321,7 @@ export function SharedExpenseSection({
 		<div className="fade-in slide-in-from-top-2 animate-in space-y-3">
 			{/* Who paid? */}
 			<div className="space-y-1.5">
-				<Label className="font-semibold text-sm">Who paid?</Label>
+				<Label className="font-semibold text-sm">{t("whoPaid")}</Label>
 				{usePaidByPills ? (
 					<div className="flex gap-2">
 						{allParticipants.map((p) => {
@@ -352,7 +354,7 @@ export function SharedExpenseSection({
 										size="xs"
 									/>
 									<span className="truncate">
-										{isYou ? "You paid" : `${p.name} paid`}
+										{isYou ? t("youPaidLabel") : t("personPaidLabel", { name: p.name })}
 									</span>
 								</button>
 							);
@@ -380,7 +382,7 @@ export function SharedExpenseSection({
 										? youPaid
 											? "You paid"
 											: `${paidByPerson.name} paid`
-										: "Select who paid"}
+										: t("selectWhoPaid")}
 								</span>
 								<ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 							</Button>
@@ -429,7 +431,7 @@ export function SharedExpenseSection({
 
 			{/* How to split? */}
 			<div className="space-y-2">
-				<Label className="font-semibold text-sm">How to split?</Label>
+				<Label className="font-semibold text-sm">{t("howToSplit")}</Label>
 				<div className="flex gap-2">
 					{/* Split evenly */}
 					<button
@@ -442,9 +444,9 @@ export function SharedExpenseSection({
 						onClick={() => handleSplitChoiceChange("even")}
 						type="button"
 					>
-						<span className="font-medium text-sm">Split evenly</span>
+						<span className="font-medium text-sm">{t("splitEvenly")}</span>
 						<span className="text-[11px] text-muted-foreground">
-							{allParticipants.length === 2 ? "50/50" : "Equal shares"}
+							{allParticipants.length === 2 ? "50/50" : t("equalShares")}
 						</span>
 					</button>
 
@@ -461,10 +463,10 @@ export function SharedExpenseSection({
 							type="button"
 						>
 							<span className="font-medium text-sm">
-								{youPaid ? "They owe all" : "You owe all"}
+								{youPaid ? t("theyOweAll") : t("youOweAll")}
 							</span>
 							<span className="text-[11px] text-muted-foreground">
-								Full amount
+								{t("fullAmount")}
 							</span>
 						</button>
 					)}
@@ -482,9 +484,9 @@ export function SharedExpenseSection({
 						onClick={() => handleSplitChoiceChange("custom")}
 						type="button"
 					>
-						<span className="font-medium text-sm">Custom</span>
+						<span className="font-medium text-sm">{t("custom")}</span>
 						<span className="text-[11px] text-muted-foreground">
-							Set exact amounts
+							{t("setExactAmounts")}
 						</span>
 					</button>
 				</div>
@@ -494,9 +496,9 @@ export function SharedExpenseSection({
 					<div className="ml-1 flex items-center gap-1">
 						{(
 							[
-								{ key: "amount", label: "By amount" },
-								{ key: "percentage", label: "By %" },
-								{ key: "shares", label: "By shares" },
+								{ key: "amount", label: t("byAmount") },
+								{ key: "percentage", label: t("byPercentage") },
+								{ key: "shares", label: t("byShares") },
 							] as const
 						).map(({ key, label }) => (
 							<button
@@ -544,11 +546,11 @@ export function SharedExpenseSection({
 								/>
 								<div className="min-w-0">
 									<span className="block truncate text-sm font-medium">
-										{isYou ? "You" : p.name}
+										{isYou ? t("you") : p.name}
 									</span>
 									{amount > 0 && splitChoice !== "custom" && (
 										<span className="block text-[11px] text-muted-foreground">
-											{pctOfTotal}% of total
+											{t("percentOfTotal", { percent: pctOfTotal })}
 										</span>
 									)}
 								</div>
@@ -668,7 +670,7 @@ export function SharedExpenseSection({
 					<span>
 						{currencySymbol}
 						{formatNumber(Math.abs(exactDiff), 2)}{" "}
-						{exactDiff > 0 ? "remaining" : "over"}
+						{exactDiff > 0 ? t("remaining") : t("over")}
 					</span>
 				</div>
 			)}
@@ -678,16 +680,15 @@ export function SharedExpenseSection({
 					<span>Total: {formatNumber(percentageTotal, 1)}%</span>
 					<span>
 						{formatNumber(Math.abs(percentageDiff), 1)}%{" "}
-						{percentageDiff > 0 ? "remaining" : "over"}
+						{percentageDiff > 0 ? t("remaining") : t("over")}
 					</span>
 				</div>
 			)}
 
 			{splitMode === "SHARES" && splitChoice === "custom" && (
 				<div className="rounded-md bg-muted/60 px-3 py-2 text-muted-foreground text-sm">
-					{totalShareUnits} total share
-					{totalShareUnits !== 1 ? "s" : ""} · {currencySymbol}
-					{formatNumber(perShareAmount, 2)} per share
+					{t("totalShares", { count: totalShareUnits })} · {currencySymbol}
+					{formatNumber(perShareAmount, 2)} {t("perShare")}
 				</div>
 			)}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { useTranslations } from "next-intl";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -47,13 +48,16 @@ export function ConfirmationDialog({
 	onOpenChange,
 	title,
 	description,
-	confirmLabel = "Confirm",
-	cancelLabel = "Cancel",
+	confirmLabel,
+	cancelLabel,
 	onConfirm,
 	onCancel,
 	isLoading = false,
 	variant = "default",
 }: ConfirmationDialogProps) {
+	const t = useTranslations("ui");
+	const resolvedConfirmLabel = confirmLabel ?? t("confirm");
+	const resolvedCancelLabel = cancelLabel ?? t("cancel");
 	const handleCancel = () => {
 		onCancel?.();
 		onOpenChange(false);
@@ -72,7 +76,7 @@ export function ConfirmationDialog({
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={isLoading} onClick={handleCancel}>
-						{cancelLabel}
+						{resolvedCancelLabel}
 					</AlertDialogCancel>
 					<AlertDialogAction
 						className={
@@ -86,7 +90,7 @@ export function ConfirmationDialog({
 							onConfirm();
 						}}
 					>
-						{isLoading ? "Processing..." : confirmLabel}
+						{isLoading ? t("processing") : resolvedConfirmLabel}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
@@ -99,8 +103,8 @@ export function ConfirmationDialog({
  * Uses `confirmText`/`cancelText` instead of `confirmLabel`/`cancelLabel`.
  */
 export function ConfirmDialog({
-	confirmText = "Confirm",
-	cancelText = "Cancel",
+	confirmText,
+	cancelText,
 	...rest
 }: Omit<ConfirmationDialogProps, "confirmLabel" | "cancelLabel"> & {
 	confirmText?: string;

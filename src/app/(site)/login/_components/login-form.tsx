@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import { authClient } from "~/lib/auth-client";
 import { api } from "~/trpc/react";
 
 export function LoginForm() {
+	const t = useTranslations("auth");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -52,7 +54,7 @@ export function LoginForm() {
 					setShow2FA(true);
 					setError("");
 				} else {
-					setError(result.error.message || "Login failed");
+					setError(result.error.message || t("loginFailed"));
 				}
 			} else {
 				// Some versions of better-auth return it in data
@@ -66,7 +68,7 @@ export function LoginForm() {
 				}
 			}
 		} catch (_) {
-			setError("An unexpected error occurred");
+			setError(t("unexpectedError"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -88,12 +90,12 @@ export function LoginForm() {
 			});
 
 			if (result.error) {
-				setError(result.error.message || "Invalid authenticator code");
+				setError(result.error.message || t("invalidAuthenticatorCode"));
 			} else {
 				window.location.href = "/dashboard";
 			}
 		} catch (_) {
-			setError("An unexpected error occurred during verification");
+			setError(t("unexpectedErrorVerification"));
 		} finally {
 			setIsLoading(false);
 		}
@@ -105,10 +107,10 @@ export function LoginForm() {
 				<Card className="w-full max-w-md">
 					<CardHeader className="space-y-1">
 						<CardTitle className="text-center font-bold text-2xl">
-							Two-Factor Authentication
+							{t("twoFactorAuth")}
 						</CardTitle>
 						<CardDescription className="text-center">
-							Enter the 6-digit code from your authenticator app
+							{t("twoFactorDescription")}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -145,7 +147,7 @@ export function LoginForm() {
 								disabled={isLoading || totpCode.length !== 6}
 								type="submit"
 							>
-								{isLoading ? "Verifying..." : "Verify Code"}
+								{isLoading ? t("verifying") : t("verifyCode")}
 							</Button>
 
 							<div className="mt-4 text-center text-sm">
@@ -158,7 +160,7 @@ export function LoginForm() {
 									type="button"
 									variant="link"
 								>
-									Back to login
+									{t("backToLogin")}
 								</Button>
 							</div>
 						</form>
@@ -173,21 +175,21 @@ export function LoginForm() {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<CardTitle className="text-center font-bold text-2xl">
-						Welcome to Retrospend
+						{t("welcomeToRetrospend")}
 					</CardTitle>
 					<CardDescription className="text-center">
-						Sign in to your account to continue
+						{t("signInDescription")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form className="space-y-4" onSubmit={handleSubmit}>
 						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
+							<Label htmlFor="email">{t("email")}</Label>
 							<Input
 								disabled={isLoading}
 								id="email"
 								onChange={(e) => setEmail(e.target.value)}
-								placeholder="Enter your email"
+								placeholder={t("enterYourEmail")}
 								required
 								type="email"
 								value={email}
@@ -195,14 +197,14 @@ export function LoginForm() {
 						</div>
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
-								<Label htmlFor="password">Password</Label>
+								<Label htmlFor="password">{t("password")}</Label>
 								{appFeatures?.isEmailEnabled && (
 									<Link
 										className="font-medium text-primary text-sm hover:underline"
 										href="/auth/forgot-password"
 										tabIndex={-1}
 									>
-										Forgot your password?
+										{t("forgotYourPassword")}
 									</Link>
 								)}
 							</div>
@@ -210,7 +212,7 @@ export function LoginForm() {
 								disabled={isLoading}
 								id="password"
 								onChange={(e) => setPassword(e.target.value)}
-								placeholder="Enter your password"
+								placeholder={t("enterYourPassword")}
 								required
 								type="password"
 								value={password}
@@ -222,17 +224,17 @@ export function LoginForm() {
 							</div>
 						)}
 						<Button className="w-full" disabled={isLoading} type="submit">
-							{isLoading ? "Signing in..." : "Sign In"}
+							{isLoading ? t("signingIn") : t("signIn")}
 						</Button>
 					</form>
 					<div className="mt-4 text-center">
 						<p className="text-muted-foreground text-sm">
-							Don't have an account?{" "}
+							{t("dontHaveAccount")}{" "}
 							<Link
 								className="font-medium text-primary hover:underline"
 								href="/signup"
 							>
-								Sign up
+								{t("signUp")}
 							</Link>
 						</p>
 					</div>

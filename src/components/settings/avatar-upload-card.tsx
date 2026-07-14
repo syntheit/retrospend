@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { Button } from "~/components/ui/button";
@@ -16,6 +17,7 @@ import { Loader2 } from "lucide-react";
 import { api } from "~/trpc/react";
 
 export function AvatarUploadCard() {
+	const t = useTranslations("settingsPage");
 	const utils = api.useUtils();
 	const { data: avatarData, isLoading } = api.profile.getMyAvatar.useQuery();
 
@@ -36,7 +38,7 @@ export function AvatarUploadCard() {
 		if (!file) return;
 		e.target.value = "";
 		if (file.size > 5 * 1024 * 1024) {
-			toast.error("File too large. Maximum size is 5MB.");
+			toast.error(t("fileTooLarge"));
 			return;
 		}
 		// Open crop dialog instead of uploading directly
@@ -61,12 +63,12 @@ export function AvatarUploadCard() {
 			});
 
 			if (!res.ok) {
-				let message = "Upload failed";
+				let message = t("uploadFailed");
 				try {
 					const json = (await res.json()) as { error?: string };
 					message = json.error ?? message;
 				} catch {
-					if (res.status === 413) message = "File too large. Maximum size is 5MB.";
+					if (res.status === 413) message = t("fileTooLarge");
 				}
 				throw new Error(message);
 			}
@@ -74,11 +76,11 @@ export function AvatarUploadCard() {
 			URL.revokeObjectURL(previewUrl);
 			setLocalPreview(null);
 			void utils.profile.getMyAvatar.invalidate();
-			toast.success("Profile picture updated");
+			toast.success(t("profilePictureUpdated"));
 		} catch (err) {
 			URL.revokeObjectURL(previewUrl);
 			setLocalPreview(null);
-			toast.error(err instanceof Error ? err.message : "Upload failed");
+			toast.error(err instanceof Error ? err.message : t("uploadFailed"));
 		} finally {
 			setIsUploading(false);
 			if (cropSrc) {
@@ -94,12 +96,12 @@ export function AvatarUploadCard() {
 			const res = await fetch("/api/upload/avatar", { method: "DELETE" });
 			if (!res.ok) {
 				const json = (await res.json()) as { error?: string };
-				throw new Error(json.error ?? "Remove failed");
+				throw new Error(json.error ?? t("removeFailed"));
 			}
 			void utils.profile.getMyAvatar.invalidate();
-			toast.success("Profile picture removed");
+			toast.success(t("profilePictureRemoved"));
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "Remove failed");
+			toast.error(err instanceof Error ? err.message : t("removeFailed"));
 		} finally {
 			setIsRemoving(false);
 			setConfirmRemove(false);
@@ -110,9 +112,9 @@ export function AvatarUploadCard() {
 		<>
 			<Card className="border-border/50 shadow-sm">
 				<CardHeader>
-					<CardTitle>Profile Picture</CardTitle>
+					<CardTitle>{t("profilePicture")}</CardTitle>
 					<CardDescription>
-						Upload a photo to personalize your account.
+						{t("profilePictureDescription")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -144,7 +146,7 @@ export function AvatarUploadCard() {
 									size="sm"
 									variant="outline"
 								>
-									Upload photo
+									{t("uploadPhoto")}
 								</Button>
 								{currentAvatarUrl && !confirmRemove && (
 									<Button
@@ -154,14 +156,14 @@ export function AvatarUploadCard() {
 										variant="ghost"
 										className="text-destructive hover:text-destructive"
 									>
-										Remove
+										{t("removeButton")}
 									</Button>
 								)}
 							</div>
 
 							{confirmRemove && (
 								<div className="flex items-center gap-2 text-sm">
-									<span className="text-muted-foreground">Remove your profile picture?</span>
+									<span className="text-muted-foreground">{t("removeProfilePictureConfirm")}</span>
 									<Button
 										disabled={isRemoving}
 										onClick={handleRemove}
@@ -172,7 +174,7 @@ export function AvatarUploadCard() {
 										{isRemoving ? (
 											<Loader2 className="h-3 w-3 animate-spin" />
 										) : (
-											"Yes, remove"
+											t("yesRemove")
 										)}
 									</Button>
 									<Button
@@ -182,13 +184,13 @@ export function AvatarUploadCard() {
 										variant="ghost"
 										className="h-7 px-2 text-xs"
 									>
-										Cancel
+										{t("cancel")}
 									</Button>
 								</div>
 							)}
 
 							<p className="text-muted-foreground text-xs">
-								Max 5MB · JPEG, PNG, WebP, GIF
+								{t("avatarFileHint")}
 							</p>
 						</div>
 					</div>
@@ -208,7 +210,7 @@ export function AvatarUploadCard() {
 				onOpenChange={setCropOpen}
 				imageSrc={cropSrc}
 				onCrop={handleCroppedFile}
-				title="Crop Profile Picture"
+				title={t("cropProfilePicture")}
 			/>
 		</>
 	);

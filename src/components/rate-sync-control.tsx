@@ -3,6 +3,7 @@
 import { CheckCircle, Clock, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -14,6 +15,7 @@ import {
 import { api } from "~/trpc/react";
 
 export function RateSyncControl() {
+	const t = useTranslations("currencies");
 	const [syncResult, setSyncResult] = useState<{
 		success: boolean;
 		message: string;
@@ -45,7 +47,7 @@ export function RateSyncControl() {
 	};
 
 	const formatLastSync = (date: Date | null | undefined) => {
-		if (!date) return "Never";
+		if (!date) return t("never");
 		return formatDistanceToNow(date, { addSuffix: true });
 	};
 
@@ -54,11 +56,10 @@ export function RateSyncControl() {
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<RefreshCw className="h-5 w-5" />
-					Exchange Rate Sync
+					{t("exchangeRateSync")}
 				</CardTitle>
 				<CardDescription>
-					Manage automatic synchronization of exchange rates. Rates are updated
-					daily at 09:05 UTC.
+					{t("exchangeRateSyncDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
@@ -66,10 +67,10 @@ export function RateSyncControl() {
 				<div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
 					<div className="flex items-center gap-2">
 						<Clock className="h-4 w-4 text-muted-foreground" />
-						<span className="font-medium text-sm">Last Synced:</span>
+						<span className="font-medium text-sm">{t("lastSynced")}</span>
 					</div>
 					<span className="text-muted-foreground text-sm">
-						{lastSyncLoading ? "Loading..." : formatLastSync(lastSync)}
+						{lastSyncLoading ? t("loadingRates") : formatLastSync(lastSync)}
 					</span>
 				</div>
 
@@ -86,12 +87,12 @@ export function RateSyncControl() {
 						{syncNowMutation.isPending ? (
 							<>
 								<RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-								Syncing...
+								{t("syncing")}
 							</>
 						) : (
 							<>
 								<RefreshCw className="mr-2 h-4 w-4" />
-								Sync Now
+								{t("syncNow")}
 							</>
 						)}
 					</Button>

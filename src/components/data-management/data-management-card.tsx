@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -18,6 +19,7 @@ import { ExpensesExportTab } from "./expenses-export-tab";
 import { WealthExportTab } from "./wealth-export-tab";
 
 function AllDataTab() {
+	const t = useTranslations("dataManagement");
 	const exportData = api.exportData.allData.useMutation();
 	const [isExporting, setIsExporting] = useState(false);
 
@@ -39,9 +41,9 @@ function AllDataTab() {
 			link.click();
 			document.body.removeChild(link);
 			URL.revokeObjectURL(url);
-			toast.success("All user data exported");
+			toast.success(t("allUserDataExported"));
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : "Failed to export data");
+			toast.error(err instanceof Error ? err.message : t("failedToExportData"));
 		} finally {
 			setIsExporting(false);
 		}
@@ -50,10 +52,9 @@ function AllDataTab() {
 	return (
 		<div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
 			<div className="space-y-1">
-				<p className="font-medium">Export all user data</p>
+				<p className="font-medium">{t("exportAllUserData")}</p>
 				<p className="text-muted-foreground text-sm">
-					Download your data (expenses, wealth, etc.) as CSV files in a ZIP
-					archive.
+					{t("exportAllUserDataDescription")}
 				</p>
 			</div>
 			<Button
@@ -62,7 +63,7 @@ function AllDataTab() {
 				onClick={handleExport}
 				variant="outline"
 			>
-				{isExporting || exportData.isPending ? "Preparing..." : "Download ZIP"}
+				{isExporting || exportData.isPending ? t("preparing") : t("downloadZip")}
 				<Download className="ml-2 h-4 w-4" />
 			</Button>
 		</div>
@@ -70,28 +71,30 @@ function AllDataTab() {
 }
 
 export function DataManagementCard() {
+	const t = useTranslations("dataManagement");
+
 	return (
 		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
-				<CardTitle>Export Data</CardTitle>
+				<CardTitle>{t("exportDataTitle")}</CardTitle>
 				<CardDescription>
-					Download your financial data as CSV files.
+					{t("exportDataDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<Tabs className="w-full" defaultValue="expenses">
 					<TabsList className="mb-2 grid w-full grid-cols-4">
 						<TabsTrigger className="text-xs sm:text-sm" value="expenses">
-							Expenses
+							{t("expenses")}
 						</TabsTrigger>
 						<TabsTrigger className="text-xs sm:text-sm" value="budgets">
-							Budgets
+							{t("budgets")}
 						</TabsTrigger>
 						<TabsTrigger className="text-xs sm:text-sm" value="wealth">
-							Wealth
+							{t("wealth")}
 						</TabsTrigger>
 						<TabsTrigger className="text-xs sm:text-sm" value="alldata">
-							All Data
+							{t("allData")}
 						</TabsTrigger>
 					</TabsList>
 					<TabsContent value="expenses">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useFormContext } from "react-hook-form";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -23,6 +24,7 @@ export function DetailsSection({
 	handleCategoryChange,
 	categoryAutoSuggested,
 }: DetailsSectionProps) {
+	const t = useTranslations("expenseForm");
 	const {
 		register,
 		watch,
@@ -36,7 +38,7 @@ export function DetailsSection({
 		<div className="space-y-3">
 			{/* Title - full width */}
 			<div className="space-y-2">
-				<Label htmlFor="title">Expense Title</Label>
+				<Label htmlFor="title">{t("expenseTitle")}</Label>
 				<Input
 					id="title"
 					{...register("title", {
@@ -46,7 +48,7 @@ export function DetailsSection({
 							handleTitleChange(value);
 						},
 					})}
-					placeholder="Enter expense title"
+					placeholder={t("enterExpenseTitle")}
 					autoComplete="off"
 					data-1p-ignore
 					data-lpignore="true"
@@ -58,7 +60,7 @@ export function DetailsSection({
 
 			{/* Category - full width chip row */}
 			<div className="space-y-2">
-				<Label>Category</Label>
+				<Label>{t("category")}</Label>
 				<CategoryChipSelector
 					categories={categories}
 					value={watchedCategoryId}
@@ -72,7 +74,7 @@ export function DetailsSection({
 
 			{/* Date - full width with quick-select chips */}
 			<div className="space-y-2">
-				<Label>Date</Label>
+				<Label>{t("date")}</Label>
 				<DateQuickSelect
 					date={watch("date")}
 					onSelect={(date) =>

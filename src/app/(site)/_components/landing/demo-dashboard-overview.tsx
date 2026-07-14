@@ -6,6 +6,7 @@ import {
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import { BudgetPacingChart } from "~/app/(dashboard)/_components/budget-pacing-chart";
@@ -28,6 +29,7 @@ function DemoFormatCurrency(amount: number, currency = "USD") {
 }
 
 export function DemoDashboardOverview() {
+	const t = useTranslations("landing");
 	const [activeSliceIndex, setActiveSliceIndex] = useState<number | null>(null);
 	const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
 		new Set(),
@@ -60,10 +62,10 @@ export function DemoDashboardOverview() {
 			<div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
 				<StatCard
 					icon={DollarSign}
-					title="Total This Month"
+					title={t("demoTotalThisMonth")}
 					trend={{
 						value: DEMO_STAT_CARDS.changeVsLastMonth,
-						label: "vs last month",
+						label: t("demoVsLastMonth"),
 						intent: "positive",
 					}}
 					value={formatCurrency(DEMO_STAT_CARDS.totalThisMonth)}
@@ -71,21 +73,21 @@ export function DemoDashboardOverview() {
 				/>
 				<StatCard
 					icon={CalendarDays}
-					title="Daily Average"
+					title={t("demoDailyAverage")}
 					value={formatCurrency(DEMO_STAT_CARDS.dailyAverage)}
 					variant="cyan"
 				/>
 				<StatCard
 					icon={TrendingUp}
-					title="Projected Spend"
+					title={t("demoProjectedSpend")}
 					value={formatCurrency(DEMO_STAT_CARDS.projectedSpend)}
 					variant="violet"
 				/>
 				<StatCard
-					description="4 categories under budget"
+					description={t("demoCategoriesUnderBudget")}
 					icon={TrendingDown}
-					title="Budget Status"
-					value="On Track"
+					title={t("demoBudgetStatus")}
+					value={t("demoOnTrack")}
 					variant="emerald"
 				/>
 			</div>

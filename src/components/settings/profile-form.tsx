@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -34,34 +35,35 @@ type ExtendedUser = NonNullable<
 	role: string;
 };
 
-const profileSchema = z.object({
-	name: z.string().min(1, "Name is required").max(100),
-	username: z
-		.string()
-		.min(1, "Username is required")
-		.max(50)
-		.regex(
-			/^[a-zA-Z0-9]+$/,
-			"Username can only contain letters and numbers",
-		),
-	email: z.string().email("Invalid email address").max(254),
-	currentPassword: z.string().optional(),
-});
-
-type ProfileFormValues = z.infer<typeof profileSchema>;
-
 interface ProfileFormProps {
 	user: ExtendedUser;
 }
 
 export function ProfileForm({ user }: ProfileFormProps) {
+	const t = useTranslations("settingsPage");
 	const router = useRouter();
 	const utils = api.useUtils();
+
+	const profileSchema = z.object({
+		name: z.string().min(1, t("nameRequired")).max(100),
+		username: z
+			.string()
+			.min(1, t("usernameRequired"))
+			.max(50)
+			.regex(
+				/^[a-zA-Z0-9]+$/,
+				t("usernameAlphanumeric"),
+			),
+		email: z.string().email(t("invalidEmail")).max(254),
+		currentPassword: z.string().optional(),
+	});
+
+	type ProfileFormValues = z.infer<typeof profileSchema>;
 
 	const pendingEmailQuery = api.profile.getPendingEmail.useQuery();
 	const cancelPendingEmail = api.profile.cancelPendingEmailChange.useMutation({
 		onSuccess: () => {
-			toast.success("Pending email change cancelled");
+			toast.success(t("pendingEmailCancelled"));
 			void utils.profile.getPendingEmail.invalidate();
 		},
 		onError: (err) => {
@@ -73,11 +75,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		onSuccess: (data) => {
 			if ("emailChangePending" in data && data.emailChangePending) {
 				toast.success(
-					"Verification email sent to your new address. Check your inbox to confirm.",
+					t("verificationEmailSent"),
 				);
 				void utils.profile.getPendingEmail.invalidate();
 			} else {
-				toast.success("Profile updated");
+				toast.success(t("profileUpdated"));
 			}
 			router.refresh();
 		},
@@ -119,9 +121,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Profile Information</CardTitle>
+				<CardTitle>{t("profileInformation")}</CardTitle>
 				<CardDescription>
-					Update your account's profile information and email address.
+					{t("profileInformationDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -137,9 +139,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
 								name="name"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Full Name</FormLabel>
+										<FormLabel>{t("fullName")}</FormLabel>
 										<FormControl>
-											<Input placeholder="Your name" {...field} />
+											<Input placeholder={t("yourName")} {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -150,7 +152,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 								name="username"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Username</FormLabel>
+										<FormLabel>{t("username")}</FormLabel>
 										<FormControl>
 											<div className="relative">
 												<span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
@@ -162,7 +164,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 													data-1p-ignore
 													data-bwignore
 													data-lpignore="true"
-													placeholder="username"
+													placeholder={t("usernamePlaceholder")}
 													{...field}
 												/>
 											</div>
@@ -170,8 +172,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 										<FormMessage />
 										{usernameChanged && (
 											<p className="text-muted-foreground text-xs">
-												Your old username will redirect to your new profile for
-												90 days. You can change your username once every 30 days.
+												{t("usernameChangeNotice")}
 											</p>
 										)}
 									</FormItem>
@@ -183,7 +184,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 							name="email"
 							render={({ field }) => (
 								<FormItem>
-									<FormLabel>Email</FormLabel>
+									<FormLabel>{t("email")}</FormLabel>
 									<FormControl>
 										<Input
 											autoComplete="one-time-code"
@@ -200,11 +201,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 									{pendingEmailQuery.data?.pendingEmail && (
 										<div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
 											<p className="text-amber-800 text-sm dark:text-amber-200">
-												A verification email was sent to{" "}
-												<strong>
-													{pendingEmailQuery.data.pendingEmail}
-												</strong>
-												. Check your inbox to confirm the change.
+												{t("pendingVerificationEmail", { email: pendingEmailQuery.data.pendingEmail })}
 											</p>
 											<Button
 												className="mt-1 h-auto p-0 font-medium text-amber-700 text-sm underline hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
@@ -214,8 +211,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
 												variant="link"
 											>
 												{cancelPendingEmail.isPending
-													? "Cancelling..."
-													: "Cancel email change"}
+													? t("cancelling")
+													: t("cancelEmailChange")}
 											</Button>
 										</div>
 									)}
@@ -228,10 +225,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
 								name="currentPassword"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Current Password</FormLabel>
+										<FormLabel>{t("currentPassword")}</FormLabel>
 										<FormControl>
 											<Input
-												placeholder="Required to change email"
+												placeholder={t("requiredToChangeEmail")}
 												type="password"
 												{...field}
 											/>
@@ -246,7 +243,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 								disabled={!form.formState.isDirty || updateProfile.isPending}
 								type="submit"
 							>
-								{updateProfile.isPending ? "Saving..." : "Save Profile"}
+								{updateProfile.isPending ? t("saving") : t("saveProfile")}
 							</Button>
 						</div>
 					</form>

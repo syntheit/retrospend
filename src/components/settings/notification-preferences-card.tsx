@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
 	Card,
@@ -17,25 +18,27 @@ import { api } from "~/trpc/react";
 type Preference = RouterOutputs["notification"]["getPreferences"][number];
 type NotificationType = Preference["type"];
 
-const TYPE_LABELS: Record<NotificationType, string> = {
-	EXPENSE_SPLIT: "New shared expense",
-	VERIFICATION_REQUEST: "Verification requests",
-	EXPENSE_EDITED: "Expense edited",
-	EXPENSE_DELETED: "Expense deleted",
-	SETTLEMENT_RECEIVED: "Settlement received",
-	SETTLEMENT_CONFIRMED: "Settlement confirmed",
-	SETTLEMENT_REJECTED: "Settlement rejected",
-	PERIOD_CLOSED: "Billing period closed",
-	PARTICIPANT_ADDED: "Added to project",
-	PAYMENT_REMINDER: "Payment reminders",
-};
-
 type PrefMap = Record<
 	NotificationType,
 	{ inApp: boolean; email: boolean; digestMode: boolean }
 >;
 
 export function NotificationPreferencesCard() {
+	const t = useTranslations("settingsPage");
+
+	const TYPE_LABELS = useMemo<Record<NotificationType, string>>(() => ({
+		EXPENSE_SPLIT: t("notifExpenseSplit"),
+		VERIFICATION_REQUEST: t("notifVerificationRequest"),
+		EXPENSE_EDITED: t("notifExpenseEdited"),
+		EXPENSE_DELETED: t("notifExpenseDeleted"),
+		SETTLEMENT_RECEIVED: t("notifSettlementReceived"),
+		SETTLEMENT_CONFIRMED: t("notifSettlementConfirmed"),
+		SETTLEMENT_REJECTED: t("notifSettlementRejected"),
+		PERIOD_CLOSED: t("notifPeriodClosed"),
+		PARTICIPANT_ADDED: t("notifParticipantAdded"),
+		PAYMENT_REMINDER: t("notifPaymentReminder"),
+	}), [t]);
+
 	const { data: prefs, isLoading } = api.notification.getPreferences.useQuery();
 	const utils = api.useUtils();
 	const updatePreferences = api.notification.updatePreferences.useMutation({
@@ -43,7 +46,7 @@ export function NotificationPreferencesCard() {
 			void utils.notification.getPreferences.invalidate();
 		},
 		onError: () => {
-			toast.error("Failed to save notification preferences");
+			toast.error(t("failedToSaveNotifications"));
 		},
 	});
 
@@ -115,9 +118,9 @@ export function NotificationPreferencesCard() {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Notifications</CardTitle>
+				<CardTitle>{t("notifications")}</CardTitle>
 				<CardDescription>
-					Choose how you want to be notified about activity in Retrospend.
+					{t("notificationsDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -133,16 +136,16 @@ export function NotificationPreferencesCard() {
 							<thead>
 								<tr className="border-b">
 									<th className="pb-2 text-left font-medium text-muted-foreground">
-										Type
+										{t("notifColumnType")}
 									</th>
 									<th className="w-20 pb-2 text-center font-medium text-muted-foreground">
-										In-App
+										{t("notifColumnInApp")}
 									</th>
 									<th className="w-20 pb-2 text-center font-medium text-muted-foreground">
-										Email
+										{t("notifColumnEmail")}
 									</th>
 									<th className="w-20 pb-2 text-center font-medium text-muted-foreground">
-										Digest
+										{t("notifColumnDigest")}
 									</th>
 								</tr>
 							</thead>
@@ -185,9 +188,7 @@ export function NotificationPreferencesCard() {
 							</tbody>
 						</table>
 						<p className="mt-3 text-muted-foreground text-xs">
-							<strong>Digest</strong> batches email notifications into a single
-							daily summary instead of sending them individually. Only available
-							when Email is enabled.
+							{t("notifDigestDescription")}
 						</p>
 					</div>
 				)}

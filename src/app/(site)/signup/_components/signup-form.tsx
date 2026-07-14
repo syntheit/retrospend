@@ -12,6 +12,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Badge } from "~/components/ui/badge";
@@ -39,6 +40,7 @@ import { api } from "~/trpc/react";
 type InviteState = "idle" | "validating" | "success" | "error";
 
 function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
+	const t = useTranslations("auth");
 	const [email, setEmail] = useState("");
 	const [fullName, setFullName] = useState("");
 	const [username, setUsername] = useState("");
@@ -88,14 +90,14 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 					document.cookie = `retro_invite_code=${code}; path=/; max-age=86400; Secure; SameSite=Strict`;
 				} else {
 					setInviteState("error");
-					setInviteError("Invalid or expired invite code");
+					setInviteError(t("invalidOrExpiredInviteCode"));
 				}
 			} catch (error) {
 				setInviteState("error");
 				handleError(error, "Failed to validate invite code");
 			}
 		},
-		[utils],
+		[utils, t],
 	);
 
 	useEffect(() => {
@@ -125,47 +127,47 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 		setError("");
 
 		if (inviteOnlyEnabled && inviteState !== "success") {
-			setError("Please enter a valid invite code first");
+			setError(t("pleaseEnterValidInviteCode"));
 			setIsLoading(false);
 			return;
 		}
 
 		if (enableLegalPages && !termsAccepted) {
-			setError("You must agree to the Terms & Conditions and Privacy Policy");
+			setError(t("mustAgreeToTerms"));
 			setIsLoading(false);
 			return;
 		}
 
 		if (!username.trim()) {
-			setError("Username is required");
+			setError(t("usernameRequired"));
 			setIsLoading(false);
 			return;
 		}
 
 		if (!/^[a-zA-Z0-9]+$/.test(username.trim())) {
 			setError(
-				"Username can only contain letters and numbers",
+				t("usernameAlphanumericOnly"),
 			);
 			setIsLoading(false);
 			return;
 		}
 
 		if (password.length < 8) {
-			setError("Password must be at least 8 characters");
+			setError(t("passwordMinLength"));
 			setIsLoading(false);
 			return;
 		}
 
 		if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
 			setError(
-				"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+				t("passwordComplexity"),
 			);
 			setIsLoading(false);
 			return;
 		}
 
 		if (password !== confirmPassword) {
-			setError("Passwords don't match");
+			setError(t("passwordsDontMatch"));
 			setIsLoading(false);
 			return;
 		}
@@ -180,7 +182,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 			});
 
 			if (result.error) {
-				setError(result.error.message || "Sign up failed");
+				setError(result.error.message || t("signUpFailed"));
 			} else {
 				const signInResult = await authClient.signIn.email({
 					email: email.trim().toLowerCase(),
@@ -190,7 +192,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 				if (signInResult.error) {
 					setError(
 						signInResult.error.message ||
-							"Account created but sign in failed. Please try signing in manually.",
+							t("accountCreatedSignInFailed"),
 					);
 				} else {
 					// Record consent after successful signup + signin
@@ -220,12 +222,12 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<CardTitle className="text-center font-bold text-2xl">
-						Create Account
+						{t("createAccount")}
 					</CardTitle>
 					<CardDescription className="text-center">
 						{showFeatures
-							? "Sign up to access your shared expenses and unlock your full financial toolkit"
-							: "Sign up for Retrospend to get started"}
+							? t("signUpSharedDescription")
+							: t("signUpDescription")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -235,34 +237,34 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 								<div className="flex items-start gap-2">
 									<Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
 									<p className="font-medium text-primary text-sm">
-										Your shared expenses will be automatically linked when you sign up with this email.
+										{t("sharedExpensesAutoLinked")}
 									</p>
 								</div>
-								<p className="text-muted-foreground text-sm">With your own account you can also:</p>
+								<p className="text-muted-foreground text-sm">{t("withYourOwnAccount")}</p>
 								<ul className="grid gap-1.5 text-muted-foreground text-sm">
 									<li className="flex items-center gap-2">
 										<Smartphone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-										Access from any device — your data follows you
+										{t("featureAccessAnyDevice")}
 									</li>
 									<li className="flex items-center gap-2">
 										<ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-										Secure account with password protection — never lose your data
+										{t("featureSecureAccount")}
 									</li>
 									<li className="flex items-center gap-2">
 										<BarChart3 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-										Personal spending tracking with budgets and analytics
+										{t("featureSpendingTracking")}
 									</li>
 									<li className="flex items-center gap-2">
 										<TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-										Track your net worth and wealth over time
+										{t("featureNetWorth")}
 									</li>
 									<li className="flex items-center gap-2">
 										<Globe className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-										Multi-currency support with live exchange rates
+										{t("featureMultiCurrency")}
 									</li>
 									<li className="flex items-center gap-2">
 										<Receipt className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-										Import bank statements and scan receipts
+										{t("featureImportStatements")}
 									</li>
 								</ul>
 							</div>
@@ -270,14 +272,14 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 						{inviteOnlyEnabled && (
 							<div className="space-y-3">
 								<div className="flex items-center justify-between">
-									<Label htmlFor="inviteCode">Invite Code</Label>
+									<Label htmlFor="inviteCode">{t("inviteCode")}</Label>
 									{inviteState === "success" && (
 										<Badge
 											className="flex items-center gap-1"
 											variant="default"
 										>
 											<CheckCircle className="h-3 w-3" />
-											Accepted
+											{t("accepted")}
 										</Badge>
 									)}
 								</div>
@@ -301,7 +303,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 											</InputOTPGroup>
 										</InputOTP>
 										<p className="text-muted-foreground text-xs">
-											Enter your 8-character invite code
+											{t("enterInviteCode")}
 										</p>
 									</div>
 								)}
@@ -309,7 +311,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 								{inviteState === "validating" && (
 									<div className="flex items-center gap-2 rounded-md bg-muted p-3">
 										<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-										<span className="text-sm">Validating invite code...</span>
+										<span className="text-sm">{t("validatingInviteCode")}</span>
 									</div>
 								)}
 
@@ -317,7 +319,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 									<div className="flex items-center gap-2 rounded-md bg-emerald-50 p-3 dark:bg-emerald-950">
 										<CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
 										<span className="text-emerald-700 text-sm dark:text-emerald-300">
-											Invite accepted. You may now sign up.
+											{t("inviteAccepted")}
 										</span>
 									</div>
 								)}
@@ -334,31 +336,31 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 						)}
 
 						<div className="space-y-2">
-							<Label htmlFor="fullName">Full Name</Label>
+							<Label htmlFor="fullName">{t("fullName")}</Label>
 							<Input
 								disabled={isLoading}
 								id="fullName"
 								onChange={(e) => setFullName(e.target.value)}
-								placeholder="Enter your full name"
+								placeholder={t("enterYourFullName")}
 								required
 								type="text"
 								value={fullName}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
+							<Label htmlFor="email">{t("email")}</Label>
 							<Input
 								disabled={isLoading}
 								id="email"
 								onChange={(e) => setEmail(e.target.value)}
-								placeholder="Enter your email"
+								placeholder={t("enterYourEmail")}
 								required
 								type="email"
 								value={email}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="username">Username</Label>
+							<Label htmlFor="username">{t("username")}</Label>
 							<div className="relative">
 								<span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-sm">
 									@
@@ -368,7 +370,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 									disabled={isLoading}
 									id="username"
 									onChange={(e) => setUsername(e.target.value)}
-									placeholder="Enter your username"
+									placeholder={t("enterYourUsername")}
 									required
 									type="text"
 									value={username}
@@ -376,24 +378,24 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							</div>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="password">Password</Label>
+							<Label htmlFor="password">{t("password")}</Label>
 							<Input
 								disabled={isLoading}
 								id="password"
 								onChange={(e) => setPassword(e.target.value)}
-								placeholder="Enter your password"
+								placeholder={t("enterYourPassword")}
 								required
 								type="password"
 								value={password}
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="confirmPassword">Confirm Password</Label>
+							<Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
 							<Input
 								disabled={isLoading}
 								id="confirmPassword"
 								onChange={(e) => setConfirmPassword(e.target.value)}
-								placeholder="Confirm your password"
+								placeholder={t("confirmYourPassword")}
 								required
 								type="password"
 								value={confirmPassword}
@@ -412,21 +414,21 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 									className="font-normal text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 									htmlFor="terms"
 								>
-									I agree to the{" "}
+									{t("iAgreeTo")}{" "}
 									<Link
 										className="text-primary hover:underline"
 										href="/terms"
 										target="_blank"
 									>
-										Terms & Conditions
+										{t("termsAndConditions")}
 									</Link>{" "}
-									and{" "}
+									{t("and")}{" "}
 									<Link
 										className="text-primary hover:underline"
 										href="/privacy"
 										target="_blank"
 									>
-										Privacy Policy
+										{t("privacyPolicy")}
 									</Link>
 								</Label>
 							</div>
@@ -437,19 +439,19 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							</div>
 						)}
 						<Button className="w-full" disabled={isLoading} type="submit">
-							{isLoading ? "Creating account..." : "Create Account"}
+							{isLoading ? t("creatingAccount") : t("createAccount")}
 						</Button>
 					</form>
 					<div className="mt-4 text-center">
 						<p className="text-muted-foreground text-sm">
-							Already have an account?{" "}
+							{t("alreadyHaveAccount")}{" "}
 							<Button
 								className="h-auto p-0 font-medium text-primary hover:underline"
 								onClick={() => router.push("/login")}
 								type="button"
 								variant="link"
 							>
-								Sign in
+								{t("signIn")}
 							</Button>
 						</p>
 					</div>

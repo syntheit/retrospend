@@ -69,7 +69,6 @@ export const guestRouter = createTRPCRouter({
 						select: {
 							name: true,
 							description: true,
-							type: true,
 							imagePath: true,
 							_count: { select: { participants: true } },
 						},
@@ -90,7 +89,6 @@ export const guestRouter = createTRPCRouter({
 				projectId: link.projectId,
 				projectName: link.project.name,
 				projectDescription: link.project.description,
-				projectType: link.project.type,
 				projectImagePath: link.project.imagePath,
 				participantCount: link.project._count.participants,
 				roleGranted: link.roleGranted,

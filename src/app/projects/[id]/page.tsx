@@ -293,7 +293,6 @@ function InviteJoinView({
 		projectId: string;
 		projectName: string;
 		projectDescription: string | null;
-		projectType: string;
 		projectImagePath: string | null;
 		participantCount: number;
 		roleGranted: string;
@@ -402,7 +401,6 @@ function InviteJoinView({
 						<ProjectVisual
 							imagePath={linkInfo.projectImagePath}
 							projectName={linkInfo.projectName}
-							projectType={linkInfo.projectType}
 							size="xl"
 						/>
 						<div>
@@ -538,8 +536,8 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 
 	usePageTitle(project?.name);
 
-	const isOngoing = project?.type === "ONGOING";
-	const isSolo = project?.type === "SOLO";
+	const isOngoing = project?.billingCycleLength != null;
+	const isSolo = (project?.participants?.length ?? 0) <= 1;
 
 	const exportExpensesMutation =
 		api.exportData.exportProjectExpenses.useMutation();
@@ -765,7 +763,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								isExporting={isAnyExporting}
 								isEditor={isEditor}
 								isOrganizer={isOrganizer}
-								isSolo={isSolo}
 								onActivityOpen={() => setActivityOpen(true)}
 								onAddExpense={handleAddExpense}
 								onExportExpenses={handleExportExpenses}
@@ -785,7 +782,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								project={{
 									id: project.id,
 									name: project.name,
-									type: project.type,
 									status: project.status,
 									description: project.description,
 									createdById: project.createdById,
@@ -860,7 +856,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 					project={{
 						id: project.id,
 						name: project.name,
-						type: project.type,
 						description: project.description,
 						budgetAmount: project.budgetAmount
 							? Number(project.budgetAmount)
@@ -927,7 +922,7 @@ function GuestProjectView({ id }: { id: string }) {
 	const myRole = project?.myRole;
 	const canContribute =
 		!!myRole && ["CONTRIBUTOR", "EDITOR", "ORGANIZER"].includes(myRole);
-	const isSolo = project?.type === "SOLO";
+	const isSolo = (project?.participants?.length ?? 0) <= 1;
 
 	const currentParticipant =
 		project?.myParticipantType && project?.myParticipantId
@@ -961,7 +956,7 @@ function GuestProjectView({ id }: { id: string }) {
 
 	return (
 		<div className="min-h-screen bg-background">
-			<MinimalHeader projectName={project.name} projectType={project.type} role={myRole} />
+			<MinimalHeader projectName={project.name} role={myRole} />
 
 			<main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
 				<div className="space-y-1">
@@ -1038,7 +1033,7 @@ function ViewerProjectView({ id }: { id: string }) {
 		);
 
 	const transactions = (expensesData?.transactions ?? []) as ProjectExpense[];
-	const isSolo = project?.type === "SOLO";
+	const isSolo = (project?.participants?.length ?? 0) <= 1;
 
 	usePageTitle(project?.name);
 
@@ -1062,7 +1057,7 @@ function ViewerProjectView({ id }: { id: string }) {
 
 	return (
 		<div className="min-h-screen bg-background">
-			<MinimalHeader projectName={project.name} projectType={project.type} role="VIEWER" />
+			<MinimalHeader projectName={project.name} role="VIEWER" />
 
 			<main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
 				<div className="space-y-1">
@@ -1114,7 +1109,7 @@ function PublicProjectView({ id }: { id: string }) {
 		);
 
 	const transactions = (expensesData?.transactions ?? []) as ProjectExpense[];
-	const isSolo = project?.type === "SOLO";
+	const isSolo = (project?.participants?.length ?? 0) <= 1;
 
 	usePageTitle(project?.name);
 
@@ -1137,7 +1132,7 @@ function PublicProjectView({ id }: { id: string }) {
 
 	return (
 		<div className="min-h-screen bg-background">
-			<MinimalHeader projectName={project.name} projectType={project.type} />
+			<MinimalHeader projectName={project.name} />
 
 			<main className="mx-auto max-w-5xl space-y-6 px-4 py-6">
 				<div className="space-y-1">
@@ -1250,22 +1245,6 @@ function SessionExpiredView() {
 
 // ── Shared Components ────────────────────────────────────────────────────────
 
-const PROJECT_TYPE_LABELS: Record<string, string> = {
-	TRIP: "Trip",
-	ONGOING: "Ongoing",
-	SOLO: "Solo",
-	ONE_TIME: "One-Time",
-	GENERAL: "General",
-};
-
-const PROJECT_TYPE_COLORS: Record<string, string> = {
-	TRIP: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-	ONGOING: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-	SOLO: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-	ONE_TIME: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-	GENERAL: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-};
-
 const ROLE_COLORS: Record<string, string> = {
 	ORGANIZER: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
 	EDITOR: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
@@ -1282,23 +1261,15 @@ const ROLE_LABELS: Record<string, string> = {
 
 function MinimalHeader({
 	projectName,
-	projectType,
 	role,
 }: {
 	projectName: string;
-	projectType: string;
 	role?: string | null;
 }) {
 	return (
 		<header className="sticky top-0 z-50 border-border border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 			<div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
 				<h1 className="truncate font-semibold text-sm">{projectName}</h1>
-				<Badge
-					className={`shrink-0 text-[10px] ${PROJECT_TYPE_COLORS[projectType] ?? ""}`}
-					variant="outline"
-				>
-					{PROJECT_TYPE_LABELS[projectType] ?? projectType}
-				</Badge>
 				<div className="flex-1" />
 				{role && (
 					<Badge

@@ -41,10 +41,9 @@ describe("Suite 2A: Project with billing period: expense auto-linking", () => {
 	beforeEach(() => {
 		db = createStatefulDb();
 
-		// Set up an ONGOING project with alice as ORGANIZER
+		// Set up a project with billing cycles and alice as ORGANIZER
 		const project = addProject(db, {
 			createdById: ALICE,
-			type: "ONGOING",
 			billingCycleLength: "MONTHLY",
 		});
 		projectId = project.id;
@@ -201,7 +200,6 @@ describe("Suite 2B: Billing period lifecycle: close and settle", () => {
 
 		const project = addProject(db, {
 			createdById: ALICE,
-			type: "ONGOING",
 			billingCycleLength: "MONTHLY",
 		});
 		projectId = project.id;

@@ -15,6 +15,7 @@ import {
 	X,
 	XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRevisionHistory } from "~/components/revision-history-provider";
@@ -100,15 +101,13 @@ type FilterCategory = "all" | "expenses" | "settlements" | "projects";
 
 const FILTER_CONFIG: Record<
 	FilterCategory,
-	{ label: string; types: NotificationType[] | null }
+	{ types: NotificationType[] | null }
 > = {
-	all: { label: "All", types: null },
+	all: { types: null },
 	expenses: {
-		label: "Expenses",
 		types: ["EXPENSE_SPLIT", "EXPENSE_EDITED", "EXPENSE_DELETED"],
 	},
 	settlements: {
-		label: "Settlements",
 		types: [
 			"SETTLEMENT_RECEIVED",
 			"SETTLEMENT_CONFIRMED",
@@ -117,7 +116,6 @@ const FILTER_CONFIG: Record<
 		],
 	},
 	projects: {
-		label: "Projects",
 		types: ["PERIOD_CLOSED", "PARTICIPANT_ADDED", "VERIFICATION_REQUEST"],
 	},
 };
@@ -254,6 +252,7 @@ function NotificationItem({
 }
 
 export function NotificationBell() {
+	const t = useTranslations("notifications");
 	const [open, setOpen] = useState(false);
 	const router = useRouter();
 	const { openHistory } = useRevisionHistory();
@@ -375,7 +374,7 @@ export function NotificationBell() {
 		<Popover onOpenChange={handleOpen} open={open}>
 			<PopoverTrigger asChild>
 				<Button
-					aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+					aria-label={unreadCount > 0 ? t("unreadCount", { count: unreadCount }) : t("title")}
 					className="relative h-8 w-8 after:absolute after:-inset-1.5 after:content-[''] md:after:hidden"
 					size="icon"
 					variant="ghost"
@@ -391,10 +390,10 @@ export function NotificationBell() {
 			<PopoverContent align="end" className="w-[min(380px,calc(100vw-2rem))] p-0" sideOffset={8}>
 				{/* Header */}
 				<div className="flex items-center justify-between border-b px-4 py-3">
-					<h3 className="font-semibold text-sm">Notifications</h3>
+					<h3 className="font-semibold text-sm">{t("title")}</h3>
 					<div className="flex items-center gap-1">
 						<Button
-							aria-label="Close notifications"
+							aria-label={t("close")}
 							className="relative h-6 w-6 after:absolute after:-inset-2.5 after:content-['']"
 							onClick={() => setOpen(false)}
 							size="icon"
@@ -419,7 +418,7 @@ export function NotificationBell() {
 							onClick={() => handleFilterChange(f)}
 							type="button"
 						>
-							{FILTER_CONFIG[f].label}
+							{f === "all" ? t("filterAll") : f === "expenses" ? t("filterExpenses") : f === "settlements" ? t("filterSettlements") : t("filterProjects")}
 						</button>
 					))}
 				</div>
@@ -441,16 +440,16 @@ export function NotificationBell() {
 					) : notifications.length === 0 ? (
 						<EmptyState
 							className="py-8"
-							description="No notifications yet"
+							description={t("noNotifications")}
 							icon={BellOff}
-							title="You're All Caught Up"
+							title={t("allCaughtUp")}
 						/>
 					) : groups.length === 0 ? (
 						<EmptyState
 							className="py-8"
-							description="No notifications match this filter"
+							description={t("noFilterMatch")}
 							icon={BellOff}
-							title="No Results"
+							title={t("noResults")}
 						/>
 					) : (
 						<div className="divide-y">
@@ -507,14 +506,12 @@ export function NotificationBell() {
 											{isExpanded ? (
 												<>
 													<ChevronDown className="h-3 w-3" />
-													Show less
+													{t("showLess")}
 												</>
 											) : (
 												<>
 													<ChevronRight className="h-3 w-3" />
-													and{" "}
-													{group.items.length - 1}{" "}
-													more
+													{t("andMore", { count: group.items.length - 1 })}
 												</>
 											)}
 										</button>

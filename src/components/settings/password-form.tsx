@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -23,30 +24,32 @@ import {
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 
-const passwordSchema = z
-	.object({
-		currentPassword: z.string().min(1, "Current password is required"),
-		newPassword: z
-			.string()
-			.min(8, "Password must be at least 8 characters")
-			.max(255)
-			.regex(
-				/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-				"Password must contain at least one uppercase letter, one lowercase letter, and one number",
-			),
-		confirmPassword: z.string().min(1, "Please confirm your password"),
-	})
-	.refine((data) => data.newPassword === data.confirmPassword, {
-		message: "Passwords do not match",
-		path: ["confirmPassword"],
-	});
-
-type PasswordFormValues = z.infer<typeof passwordSchema>;
-
 export function PasswordForm() {
+	const t = useTranslations("settingsPage");
+
+	const passwordSchema = z
+		.object({
+			currentPassword: z.string().min(1, t("currentPasswordRequired")),
+			newPassword: z
+				.string()
+				.min(8, t("passwordMinLength"))
+				.max(255)
+				.regex(
+					/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+					t("passwordComplexity"),
+				),
+			confirmPassword: z.string().min(1, t("pleaseConfirmPassword")),
+		})
+		.refine((data) => data.newPassword === data.confirmPassword, {
+			message: t("passwordsDoNotMatch"),
+			path: ["confirmPassword"],
+		});
+
+	type PasswordFormValues = z.infer<typeof passwordSchema>;
+
 	const changePassword = api.profile.changePassword.useMutation({
 		onSuccess: () => {
-			toast.success("Password updated successfully");
+			toast.success(t("passwordUpdated"));
 			form.reset();
 		},
 		onError: (err) => {
@@ -74,9 +77,9 @@ export function PasswordForm() {
 	return (
 		<Card className="border-border/50 shadow-sm">
 			<CardHeader>
-				<CardTitle>Change Password</CardTitle>
+				<CardTitle>{t("changePassword")}</CardTitle>
 				<CardDescription>
-					Update your password to keep your account secure.
+					{t("changePasswordDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -92,7 +95,7 @@ export function PasswordForm() {
 							render={({ field }) => (
 								<FormItem className="space-y-2">
 									<FormLabel className="font-medium text-muted-foreground text-sm">
-										Current Password
+										{t("currentPassword")}
 									</FormLabel>
 									<FormControl>
 										<Input placeholder="••••••••" type="password" {...field} />
@@ -108,11 +111,11 @@ export function PasswordForm() {
 							render={({ field }) => (
 								<FormItem className="space-y-2">
 									<FormLabel className="font-medium text-muted-foreground text-sm">
-										New Password
+										{t("newPassword")}
 									</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="Enter new password"
+											placeholder={t("enterNewPassword")}
 											type="password"
 											{...field}
 										/>
@@ -128,11 +131,11 @@ export function PasswordForm() {
 							render={({ field }) => (
 								<FormItem className="space-y-2">
 									<FormLabel className="font-medium text-muted-foreground text-sm">
-										Confirm New Password
+										{t("confirmNewPassword")}
 									</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="Confirm new password"
+											placeholder={t("confirmNewPasswordPlaceholder")}
 											type="password"
 											{...field}
 										/>
@@ -148,7 +151,7 @@ export function PasswordForm() {
 								size="sm"
 								type="submit"
 							>
-								{changePassword.isPending ? "Saving..." : "Save Password"}
+								{changePassword.isPending ? t("saving") : t("savePassword")}
 							</Button>
 						</div>
 					</form>

@@ -165,4 +165,14 @@ export function getCategoryColorClasses(color: string, variant: CategoryColorVar
 	return CATEGORY_COLOR_VARIANTS[color as CategoryColor]?.[variant] ?? CATEGORY_COLOR_FALLBACK[variant];
 }
 
+/** Set of English default category names used as translation keys */
+export const DEFAULT_CATEGORY_KEYS: Set<string> = new Set(
+	DEFAULT_CATEGORIES.map((c) => c.name),
+);
+
+/** Check if a category name is a translatable default */
+export function isDefaultCategoryKey(name: string): boolean {
+	return DEFAULT_CATEGORY_KEYS.has(name);
+}
+
 export const DEFAULT_PAGE_SIZE = 20;
