@@ -15,6 +15,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { ScrollArea, ScrollBar } from "~/components/ui/scroll-area";
+import { useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -57,13 +58,14 @@ export function BillingPeriodTabs({
 	isSolo,
 	onFilterPending,
 }: BillingPeriodTabsProps) {
+	const t = useTranslations("projects");
 	const utils = api.useUtils();
 	const [renamePeriod, setRenamePeriod] = useState<BillingPeriod | null>(null);
 	const [newLabel, setNewLabel] = useState("");
 
 	const updateLabelMutation = api.billingPeriod.updateLabel.useMutation({
 		onSuccess: () => {
-			toast.success("Billing period renamed");
+			toast.success(t("billingPeriodRenamed"));
 			void utils.billingPeriod.list.invalidate({ projectId });
 			void utils.project.detail.invalidate({ id: projectId });
 			setRenamePeriod(null);
@@ -83,7 +85,7 @@ export function BillingPeriodTabs({
 
 	const settleMutation = api.billingPeriod.settlePeriod.useMutation({
 		onSuccess: () => {
-			toast.success("Period finalized — all transactions are now locked");
+			toast.success(t("periodFinalized"));
 			void utils.billingPeriod.list.invalidate({ projectId });
 			void utils.project.detail.invalidate({ id: projectId });
 		},
@@ -96,7 +98,7 @@ export function BillingPeriodTabs({
 		<>
 			<div className="space-y-3">
 				<h3 className="font-semibold text-muted-foreground text-sm tracking-wide">
-					Billing Periods
+					{t("billingPeriods")}
 				</h3>
 
 				{/* Period tabs */}
@@ -152,8 +154,7 @@ export function BillingPeriodTabs({
 										</Badge>
 									</div>
 									<span className="text-muted-foreground text-xs">
-										{period.transactionCount} expense
-										{period.transactionCount !== 1 ? "s" : ""}
+										{t("expenseCount", { count: period.transactionCount })}
 									</span>
 								</div>
 							);
@@ -175,7 +176,7 @@ export function BillingPeriodTabs({
 						return (
 							<div className="flex items-center gap-2">
 								<div
-									aria-label={allVerified ? "All expenses verified" : `Verification in progress: ${verified} of ${total} verified`}
+									aria-label={allVerified ? t("allExpensesVerified") : t("verificationInProgressAria", { verified, total })}
 									role={!allVerified && onFilterPending ? "button" : undefined}
 									tabIndex={!allVerified && onFilterPending ? 0 : undefined}
 									className={cn(
@@ -199,11 +200,11 @@ export function BillingPeriodTabs({
 										<AlertCircle aria-hidden="true" className="h-4 w-4 text-amber-500" />
 									)}
 									<span className="font-medium">
-										{allVerified ? "All expenses verified" : "Verification in progress"}
+										{allVerified ? t("allExpensesVerified") : t("verificationInProgress")}
 									</span>
 									<span className="text-muted-foreground text-xs">{verified}/{total}</span>
 									{!allVerified && onFilterPending && (
-										<span className="text-muted-foreground text-xs">· click to filter</span>
+										<span className="text-muted-foreground text-xs">· {t("clickToFilter")}</span>
 									)}
 								</div>
 								{allVerified && canClosePeriod && (
@@ -218,7 +219,7 @@ export function BillingPeriodTabs({
 										}
 										size="sm"
 									>
-										{settleMutation.isPending ? "Finalizing..." : "Finalize Period"}
+										{settleMutation.isPending ? t("finalizing") : t("finalizePeriod")}
 									</Button>
 								)}
 							</div>
@@ -230,7 +231,7 @@ export function BillingPeriodTabs({
 					<div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/30 px-4 py-3 text-sm dark:border-emerald-800/60 dark:bg-emerald-900/10">
 						<Check aria-hidden="true" className="h-4 w-4 text-emerald-500" />
 						<span className="text-muted-foreground">
-							This period has been finalized. All transactions are locked.
+							{t("periodFinalizedLocked")}
 						</span>
 					</div>
 				)}
@@ -241,16 +242,16 @@ export function BillingPeriodTabs({
 				<DialogContent className="sm:max-w-md">
 					<form onSubmit={handleRenameSubmit}>
 						<DialogHeader>
-							<DialogTitle>Rename Period</DialogTitle>
+							<DialogTitle>{t("renamePeriod")}</DialogTitle>
 						</DialogHeader>
 						<div className="grid gap-4 py-4">
 							<div className="grid gap-2">
-								<Label htmlFor="period-label">Period Name</Label>
+								<Label htmlFor="period-label">{t("periodName")}</Label>
 								<Input
 									id="period-label"
 									value={newLabel}
 									onChange={(e) => setNewLabel(e.target.value)}
-									placeholder="e.g. March 2026 Trip"
+									placeholder={t("periodNamePlaceholder")}
 									autoFocus
 									maxLength={100}
 								/>
@@ -262,13 +263,13 @@ export function BillingPeriodTabs({
 								variant="ghost"
 								onClick={() => setRenamePeriod(null)}
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								type="submit"
 								disabled={updateLabelMutation.isPending || !newLabel.trim() || newLabel.trim() === renamePeriod?.label}
 							>
-								{updateLabelMutation.isPending ? "Saving..." : "Save Changes"}
+								{updateLabelMutation.isPending ? t("saving") : t("saveChanges")}
 							</Button>
 						</DialogFooter>
 					</form>

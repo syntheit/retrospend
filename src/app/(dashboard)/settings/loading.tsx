@@ -2,7 +2,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 
 export default function Loading() {
 	return (
-		<div className="flex flex-1 flex-col gap-6 p-6">
+		<div className="flex flex-1 flex-col gap-6 p-6" style={{ animation: "skeleton-delayed-in 150ms ease-out 200ms both" }}>
 			{/* Header bar */}
 			<div className="flex items-center justify-between">
 				<Skeleton className="h-8 w-48" />

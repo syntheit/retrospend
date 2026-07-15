@@ -9,58 +9,40 @@ import {
 	Server,
 	TrendingUp,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 
-const FEATURES = [
-	{
-		icon: ArrowLeftRight,
-		title: "Multi-Currency, Done Right",
-		description:
-			"Log expenses in any currency, crypto included. Parallel market rates like Argentina's blue dollar or Bolivia's parallel rate are supported. You pick the rate that applies.",
-	},
-	{
-		icon: FileText,
-		title: "Bank Import",
-		description:
-			"Drop in a CSV, PDF, or XLSX from your bank. AI handles the parsing and categorization.",
-	},
-	{
-		icon: Lock,
-		title: "Privacy Mode",
-		description:
-			"One toggle hides all amounts. Good for reviewing finances without flashing numbers in public.",
-	},
-	{
-		icon: Gauge,
-		title: "Budget Pacing",
-		description: "Know your daily safe-to-spend the moment you open the app.",
-	},
-	{
-		icon: Repeat,
-		title: "Recurring Expenses",
-		description:
-			"Set up templates for subscriptions and bills. Retrospend generates them on schedule so you never forget to log one.",
-	},
-	{
-		icon: TrendingUp,
-		title: "Wealth Tracking",
-		description:
-			"Track assets, liabilities, and net worth over time. See your financial runway at a glance.",
-	},
+type FeatureKey =
+	| "multiCurrency"
+	| "bankImport"
+	| "privacyMode"
+	| "budgetPacing"
+	| "recurringExpenses"
+	| "wealthTracking";
+
+const FEATURES: { icon: typeof ArrowLeftRight; key: FeatureKey }[] = [
+	{ icon: ArrowLeftRight, key: "multiCurrency" },
+	{ icon: FileText, key: "bankImport" },
+	{ icon: Lock, key: "privacyMode" },
+	{ icon: Gauge, key: "budgetPacing" },
+	{ icon: Repeat, key: "recurringExpenses" },
+	{ icon: TrendingUp, key: "wealthTracking" },
 ];
 
 export function FeatureHighlights() {
+	const t = useTranslations("landing");
+
 	return (
 		<section className="py-16 lg:py-24">
 			<div className="mx-auto max-w-6xl px-4">
 				<div className="mb-10 text-center">
 					<h2 className="font-bold text-3xl tracking-tight">
-						And There&apos;s More
+						{t("moreTitle")}
 					</h2>
 					<p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-						Built for people who want full control over their financial data.
+						{t("moreSubtitle")}
 					</p>
 				</div>
 
@@ -74,19 +56,18 @@ export function FeatureHighlights() {
 									<Globe className="h-5 w-5 text-primary" />
 								</div>
 								<span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary text-xs">
-									No setup required
+									{t("noSetupRequired")}
 								</span>
 							</div>
 							<h3 className="mt-4 font-bold text-xl tracking-tight">
-								Try it for Free
+								{t("tryForFreeTitle")}
 							</h3>
 							<p className="mt-2 flex-1 text-muted-foreground text-sm leading-relaxed">
-								A free hosted instance is available. Sign up and start tracking
-								in minutes, no credit card needed.
+								{t("tryForFreeDescription")}
 							</p>
 							<div className="mt-6">
 								<Button asChild size="sm">
-									<Link href="/signup">Get Started Free</Link>
+									<Link href="/signup">{t("getStartedFree")}</Link>
 								</Button>
 							</div>
 						</CardContent>
@@ -100,15 +81,14 @@ export function FeatureHighlights() {
 									<Github className="h-5 w-5 text-foreground" />
 								</div>
 								<span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-medium text-emerald-600 text-xs dark:text-emerald-400">
-									100% Open Source
+									{t("openSourceBadge")}
 								</span>
 							</div>
 							<h3 className="mt-4 font-bold text-xl tracking-tight">
-								Free &amp; Open Source
+								{t("openSourceTitle")}
 							</h3>
 							<p className="mt-2 flex-1 text-muted-foreground text-sm leading-relaxed">
-								Retrospend is fully open source. Self-host it and your financial
-								data never leaves your server. No vendor lock-in, no tracking.
+								{t("openSourceDescription")}
 							</p>
 							<div className="mt-6 flex flex-wrap gap-2">
 								<Button asChild size="sm" variant="outline">
@@ -117,13 +97,13 @@ export function FeatureHighlights() {
 										target="_blank"
 									>
 										<Github className="mr-2 h-4 w-4" />
-										View on GitHub
+										{t("viewOnGitHub")}
 									</Link>
 								</Button>
 								<Button asChild size="sm" variant="ghost">
 									<Link href="/docs/self-hosting?from=site">
 										<Server className="mr-2 h-4 w-4" />
-										Self-Host
+										{t("selfHost")}
 									</Link>
 								</Button>
 							</div>
@@ -136,15 +116,15 @@ export function FeatureHighlights() {
 					{FEATURES.map((feature) => (
 						<Card
 							className="border border-border bg-card shadow-sm"
-							key={feature.title}
+							key={feature.key}
 						>
 							<CardContent className="p-6">
 								<div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
 									<feature.icon className="h-4 w-4 text-muted-foreground" />
 								</div>
-								<h3 className="font-semibold text-base">{feature.title}</h3>
+								<h3 className="font-semibold text-base">{t(`feature.${feature.key}.title`)}</h3>
 								<p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">
-									{feature.description}
+									{t(`feature.${feature.key}.description`)}
 								</p>
 							</CardContent>
 						</Card>

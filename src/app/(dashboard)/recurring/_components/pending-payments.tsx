@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { BrandIcon } from "~/components/ui/BrandIcon";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -19,6 +20,7 @@ export function PendingPayments({
 	onConfirm,
 	confirmingId,
 }: PendingPaymentsProps) {
+	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	return (
@@ -26,9 +28,7 @@ export function PendingPayments({
 			<div className="flex items-center gap-2 border-amber-500/20 border-b px-4 py-3">
 				<AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
 				<h3 className="font-semibold text-amber-900 text-sm dark:text-amber-200">
-					{pendingTemplates.length} payment
-					{pendingTemplates.length !== 1 ? "s" : ""} need
-					{pendingTemplates.length === 1 ? "s" : ""} confirmation
+					{t("paymentsNeedConfirmation", { count: pendingTemplates.length })}
 				</h3>
 			</div>
 			<div className="divide-y divide-amber-500/10">
@@ -54,11 +54,11 @@ export function PendingPayments({
 									className="border-amber-500/30 bg-amber-100 text-[10px] text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
 									variant="outline"
 								>
-									Pending
+									{t("pendingBadge")}
 								</Badge>
 							</div>
 							<p className="text-muted-foreground text-xs">
-								Due {formatExpenseDate(new Date(template.nextDueDate))}
+								{t("dueDate", { date: formatExpenseDate(new Date(template.nextDueDate)) })}
 							</p>
 						</div>
 						<span className="shrink-0 font-semibold text-sm tabular-nums">
@@ -71,11 +71,11 @@ export function PendingPayments({
 							variant="outline"
 						>
 							{confirmingId === template.id ? (
-								"Confirming..."
+								t("confirming")
 							) : (
 								<>
 									<Check className="mr-1 h-3.5 w-3.5" />
-									Confirm
+									{t("confirm")}
 								</>
 							)}
 						</Button>

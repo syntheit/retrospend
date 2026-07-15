@@ -35,24 +35,10 @@ import {
 import { ProjectVisual } from "~/components/project/project-visual";
 import { ShareProjectDialog } from "~/components/project/share-project-dialog";
 
+import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
 import { useUserSettings } from "~/hooks/use-user-settings";
 
-export const PROJECT_TYPE_COLORS: Record<string, string> = {
-	TRIP: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-	ONGOING: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-	SOLO: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-	ONE_TIME: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-	GENERAL: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-};
-
-export const PROJECT_TYPE_LABELS: Record<string, string> = {
-	TRIP: "Trip",
-	ONGOING: "Ongoing",
-	SOLO: "Solo",
-	ONE_TIME: "One-Time",
-	GENERAL: "General",
-};
 
 
 interface Participant {
@@ -172,7 +158,6 @@ interface ProjectHeaderProps {
 	project: {
 		id: string;
 		name: string;
-		type: string;
 		status: string;
 		description: string | null;
 		createdById: string;
@@ -180,7 +165,6 @@ interface ProjectHeaderProps {
 	};
 	isOrganizer: boolean;
 	isEditor: boolean;
-	isSolo: boolean;
 	onSettingsOpen: () => void;
 	onAddExpense?: () => void;
 	onExportExpenses?: () => void;
@@ -206,7 +190,6 @@ export function ProjectHeader({
 	project,
 	isOrganizer,
 	isEditor,
-	isSolo,
 	onSettingsOpen,
 	onAddExpense,
 	onExportExpenses,
@@ -227,18 +210,20 @@ export function ProjectHeader({
 	onToggleAnalyticsExclusion,
 	isAnalyticsTogglePending,
 }: ProjectHeaderProps) {
+	const t = useTranslations("projects");
 	const [shareOpen, setShareOpen] = useState(false);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 	const utils = api.useUtils();
 	const { settings } = useUserSettings();
+	const isSolo = !participants || participants.length <= 1;
 
 	const metaParts: string[] = [];
 	if (!isSolo && participants && participants.length > 0) {
-		metaParts.push(`${participants.length} participant${participants.length !== 1 ? "s" : ""}`);
+		metaParts.push(t("participantCount", { count: participants.length }));
 	}
 	if (primaryCurrency && primaryCurrency !== settings?.homeCurrency) metaParts.push(primaryCurrency);
 	if (expenseCount !== undefined) {
-		metaParts.push(`${expenseCount} expense${expenseCount !== 1 ? "s" : ""}`);
+		metaParts.push(t("expenseCount", { count: expenseCount }));
 	}
 	const metaSubtitle = metaParts.length > 0 ? metaParts.join(" · ") : null;
 
@@ -265,10 +250,10 @@ export function ProjectHeader({
 
 			void utils.project.detail.invalidate({ id: project.id });
 			void utils.project.list.invalidate();
-			toast.success("Project icon updated");
+			toast.success(t("projectIconUpdated"));
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to upload icon",
+				err instanceof Error ? err.message : t("failedToUploadIcon"),
 			);
 		} finally {
 			URL.revokeObjectURL(localPreview);
@@ -298,19 +283,12 @@ export function ProjectHeader({
 							imagePath={project.imagePath ?? null}
 							onUpload={handleUpload}
 							projectName={project.name}
-							projectType={project.type}
 							size="xl"
 						/>
 					)}
 					<div className="space-y-2">
 						<div className="flex flex-wrap items-center gap-2">
 							<h2 className="font-bold text-2xl">{project.name}</h2>
-							<Badge
-								className={PROJECT_TYPE_COLORS[project.type] ?? ""}
-								variant="outline"
-							>
-								{PROJECT_TYPE_LABELS[project.type] ?? project.type}
-							</Badge>
 							{project.status !== "ACTIVE" && (
 								<div className="flex items-center">
 									<span className="text-muted-foreground text-xs capitalize">
@@ -345,7 +323,7 @@ export function ProjectHeader({
 					{onAddExpense && (
 						<Button onClick={onAddExpense} size="sm">
 							<Plus className="mr-1 h-4 w-4" />
-							Add Expense
+							{t("addExpense")}
 						</Button>
 					)}
 					<div className="flex items-center gap-0.5">
@@ -354,10 +332,10 @@ export function ProjectHeader({
 								onClick={() => setShareOpen(true)}
 								size="sm"
 								variant="ghost"
-								title="Share"
+								title={t("share")}
 							>
 								<Share2 className="h-4 w-4" />
-								Share
+								{t("share")}
 							</Button>
 						)}
 						{!isSolo && onActivityOpen && (
@@ -366,10 +344,10 @@ export function ProjectHeader({
 								size="sm"
 								variant="ghost"
 								className="relative"
-								title="Activity"
+								title={t("activity")}
 							>
 								<Activity className="h-4 w-4" />
-								Activity
+								{t("activity")}
 								{!!unseenCount && unseenCount > 0 && (
 									<span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
 										{unseenCount > 99 ? "99+" : unseenCount}
@@ -384,11 +362,11 @@ export function ProjectHeader({
 										disabled={isExporting}
 										size="sm"
 										variant="ghost"
-										title="Export"
+										title={t("export")}
 										className="focus-visible:ring-0 focus-visible:ring-offset-0"
 									>
 										<Download className="h-4 w-4" />
-										Export
+										{t("export")}
 										<ChevronDown className="h-3 w-3 opacity-60" />
 									</Button>
 								</DropdownMenuTrigger>
@@ -396,25 +374,25 @@ export function ProjectHeader({
 									{onExportExpenses && (
 										<DropdownMenuItem onClick={onExportExpenses}>
 											<FileSpreadsheet className="mr-2 h-4 w-4" />
-											Export Expenses (CSV)
+											{t("exportExpensesCsv")}
 										</DropdownMenuItem>
 									)}
 									{onExportSettlement && !isSolo && (
 										<DropdownMenuItem onClick={onExportSettlement}>
 											<Receipt className="mr-2 h-4 w-4" />
-											Export Settlement Plan
+											{t("exportSettlementPlan")}
 										</DropdownMenuItem>
 									)}
 									{showPeriodSummaryExport && onExportPeriodSummary && (
 										<DropdownMenuItem onClick={onExportPeriodSummary}>
 											<FileSpreadsheet className="mr-2 h-4 w-4" />
-											Export Period Summary
+											{t("exportPeriodSummary")}
 										</DropdownMenuItem>
 									)}
 									{onExportPdf && (
 										<DropdownMenuItem onClick={onExportPdf}>
 											<FileText className="mr-2 h-4 w-4" />
-											Download PDF Summary
+											{t("downloadPdfSummary")}
 										</DropdownMenuItem>
 									)}
 								</DropdownMenuContent>
@@ -425,10 +403,10 @@ export function ProjectHeader({
 						onClick={onClosePeriod}
 						size="sm"
 						variant="ghost"
-						title="Close Period"
+						title={t("closePeriod")}
 					>
 						<Lock className="h-4 w-4" />
-						Close Period
+						{t("closePeriod")}
 					</Button>
 				)}
 				{canEdit && (
@@ -438,13 +416,13 @@ export function ProjectHeader({
 										onClick={onSettingsOpen}
 										size="icon-sm"
 										variant="ghost"
-										title="Settings"
+										title={t("settings")}
 									>
 										<Settings className="h-4 w-4" />
-										<span className="sr-only">Settings</span>
+										<span className="sr-only">{t("settings")}</span>
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Settings</TooltipContent>
+								<TooltipContent>{t("settings")}</TooltipContent>
 							</Tooltip>
 						)}
 						{onToggleAnalyticsExclusion && (
@@ -453,11 +431,11 @@ export function ProjectHeader({
 									<Button
 										size="icon-sm"
 										variant="ghost"
-										title="More options"
+										title={t("moreOptions")}
 										className="focus-visible:ring-0 focus-visible:ring-offset-0"
 									>
 										<EllipsisVertical className="h-4 w-4" />
-										<span className="sr-only">More options</span>
+										<span className="sr-only">{t("moreOptions")}</span>
 									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
@@ -470,7 +448,7 @@ export function ProjectHeader({
 										}
 									>
 										<BarChart3 className="mr-2 h-4 w-4" />
-										Include in analytics
+										{t("includeInAnalytics")}
 									</DropdownMenuCheckboxItem>
 								</DropdownMenuContent>
 							</DropdownMenu>

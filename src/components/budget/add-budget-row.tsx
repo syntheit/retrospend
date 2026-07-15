@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CategoryPicker } from "~/components/category-picker";
@@ -25,6 +26,7 @@ export function AddBudgetRow({
 	isMobile,
 	onBudgetAdded,
 }: AddBudgetRowProps) {
+	const t = useTranslations("budget");
 	const [isActive, setIsActive] = useState(false);
 	const utils = api.useUtils();
 
@@ -37,7 +39,7 @@ export function AddBudgetRow({
 			setIsActive(false);
 		},
 		onError: (error) => {
-			toast.error(error.message || "Failed to add budget");
+			toast.error(error.message || t("failedToAddBudget"));
 		},
 	});
 
@@ -69,7 +71,7 @@ export function AddBudgetRow({
 						variant="outline"
 					>
 						<Plus className="mr-2 h-4 w-4" />
-						Add Category Budget
+						{t("addCategoryBudget")}
 					</Button>
 				) : (
 					<Button
@@ -79,7 +81,7 @@ export function AddBudgetRow({
 						variant="ghost"
 					>
 						<Plus className="h-5 w-5 text-muted-foreground" />
-						<span className="text-muted-foreground">Add Category Budget</span>
+						<span className="text-muted-foreground">{t("addCategoryBudget")}</span>
 					</Button>
 				)
 			) : (
@@ -87,7 +89,7 @@ export function AddBudgetRow({
 					<CategoryPicker
 						categories={unbudgetedCategories}
 						onValueChange={handleCategorySelect}
-						placeholder="Select a category..."
+						placeholder={t("selectCategory")}
 					/>
 				</div>
 			)}

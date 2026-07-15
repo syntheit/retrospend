@@ -2,6 +2,7 @@
 
 import { BarChart3 } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
@@ -22,6 +23,7 @@ export function WealthCurrencyExposure({
 	assets,
 	isPrivacyMode = false,
 }: WealthCurrencyExposureProps) {
+	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const data = useMemo(() => {
@@ -52,13 +54,13 @@ export function WealthCurrencyExposure({
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Currency Exposure</CardTitle>
+					<CardTitle>{t("currencyExposure")}</CardTitle>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center justify-center py-12">
 					<BarChart3 className="h-12 w-12 text-muted-foreground/50" />
-					<h3 className="mt-4 font-medium text-lg">No currency data</h3>
+					<h3 className="mt-4 font-medium text-lg">{t("noCurrencyData")}</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">
-						Add assets in different currencies to see exposure breakdown.
+						{t("addAssetsInCurrencies")}
 					</p>
 				</CardContent>
 			</Card>
@@ -83,9 +85,9 @@ export function WealthCurrencyExposure({
 		<Card className="flex h-[220px] flex-col">
 			<CardHeader className="shrink-0 pb-3">
 				<div className="flex items-center justify-between gap-2">
-					<CardTitle>Currency Exposure</CardTitle>
+					<CardTitle>{t("currencyExposure")}</CardTitle>
 					<Badge className="text-xs" variant="outline">
-						Base: USD
+						{t("baseUsd")}
 					</Badge>
 				</div>
 			</CardHeader>

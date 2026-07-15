@@ -226,7 +226,6 @@ const projectRoleSchema = z.enum([
 
 const createProjectSchema = z.object({
 	name: z.string().min(1).max(191),
-	type: z.enum(["TRIP", "ONGOING", "SOLO", "ONE_TIME", "GENERAL"]),
 	description: z.string().max(500).optional(),
 	budgetAmount: z.number().positive().optional(),
 	budgetCurrency: z.string().min(1).max(10).optional(),
@@ -260,7 +259,6 @@ export const projectRouter = createTRPCRouter({
 					const created = await tx.project.create({
 						data: {
 							name: input.name,
-							type: input.type,
 							description: input.description ?? null,
 							budgetAmount: input.budgetAmount ?? null,
 							budgetCurrency: input.budgetCurrency ?? null,
@@ -286,8 +284,8 @@ export const projectRouter = createTRPCRouter({
 						},
 					});
 
-					// Auto-create first billing period for ONGOING projects with a cycle
-					if (input.type === "ONGOING" && input.billingCycleLength) {
+					// Auto-create first billing period for projects with a cycle
+					if (input.billingCycleLength) {
 						const periodStart = new Date();
 						const periodEnd = computeBillingPeriodEnd(
 							periodStart,
@@ -311,7 +309,7 @@ export const projectRouter = createTRPCRouter({
 						action: "CREATED",
 						targetType: "PROJECT",
 						targetId: created.id,
-						changes: { name: input.name, type: input.type },
+						changes: { name: input.name },
 						projectId: created.id,
 					});
 
@@ -603,7 +601,7 @@ export const projectRouter = createTRPCRouter({
 			});
 
 			const currentBillingPeriod =
-				project.type === "ONGOING"
+				project.billingCycleLength
 					? (project.billingPeriods.find((p) => p.status === "OPEN") ?? null)
 					: null;
 
@@ -1634,7 +1632,7 @@ export const projectRouter = createTRPCRouter({
 			});
 
 			const currentBillingPeriod =
-				project.type === "ONGOING"
+				project.billingCycleLength
 					? (project.billingPeriods[0] ?? null)
 					: null;
 
@@ -1642,7 +1640,6 @@ export const projectRouter = createTRPCRouter({
 				id: project.id,
 				name: project.name,
 				description: project.description,
-				type: project.type,
 				status: project.status,
 				imagePath: project.imagePath,
 				budgetAmount: project.budgetAmount,

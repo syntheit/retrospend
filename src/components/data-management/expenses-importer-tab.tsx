@@ -8,6 +8,7 @@ import {
 	Upload,
 	X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -64,6 +65,7 @@ export function ExpensesImporterTab({
 }: {
 	isActive?: boolean;
 }) {
+	const t = useTranslations("dataManagement");
 	const { homeCurrency } = useCurrency();
 	const [mode, setMode] = useState<ImportMode>("bank");
 	const [csvState, setCsvState] = useState<CsvState>({ step: "upload" });
@@ -118,7 +120,7 @@ export function ExpensesImporterTab({
 
 			{/* Start New Import Section */}
 			<div className="space-y-4">
-				<h3 className="font-semibold text-lg">Start New Import</h3>
+				<h3 className="font-semibold text-lg">{t("startNewImport")}</h3>
 
 				<ToggleGroup
 					className="w-full"
@@ -129,11 +131,11 @@ export function ExpensesImporterTab({
 				>
 					<ToggleGroupItem className="flex-1 gap-2" value="bank">
 						<Landmark className="h-4 w-4" />
-						Bank Statement
+						{t("bankStatement")}
 					</ToggleGroupItem>
 					<ToggleGroupItem className="flex-1 gap-2" value="csv">
 						<FileSpreadsheet className="h-4 w-4" />
-						Retrospend CSV/Excel
+						{t("retrospendCsvExcel")}
 					</ToggleGroupItem>
 				</ToggleGroup>
 
@@ -180,18 +182,19 @@ function RetrospendCsvImport({
 	setState: React.Dispatch<React.SetStateAction<CsvState>>;
 	mainCurrency: string;
 }) {
+	const t = useTranslations("dataManagement");
 	const { data: categories } = api.categories.getAll.useQuery();
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 
 	const createJobMutation = api.importQueue.createJob.useMutation({
 		onSuccess: () => {
-			toast.success("Import job queued");
+			toast.success(t("importJobQueued"));
 			if (fileInputRef.current) {
 				fileInputRef.current.value = "";
 			}
 		},
 		onError: (error) => {
-			toast.error(`Failed to queue import: ${error.message}`);
+			toast.error(t("failedToQueueImport", { message: error.message }));
 		},
 	});
 
@@ -288,7 +291,7 @@ function RetrospendCsvImport({
 
 			// ~10MB raw file ≈ ~14MB base64; enforce before reading
 			if (file.size > 10 * 1024 * 1024) {
-				toast.error("File too large. Maximum size is 10 MB.");
+				toast.error(t("fileTooLarge"));
 				e.target.value = "";
 				return;
 			}
@@ -341,7 +344,7 @@ function RetrospendCsvImport({
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
 					<div className="flex items-center gap-2">
-						<p className="font-medium">Import Retrospend CSV/Excel</p>
+						<p className="font-medium">{t("importRetrospendCsvExcel")}</p>
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -356,7 +359,7 @@ function RetrospendCsvImport({
 								<TooltipContent className="max-w-xs">
 									<div className="space-y-2">
 										<p className="font-semibold text-xs">
-											CSV Format Requirements
+											{t("csvFormatRequirements")}
 										</p>
 										<div className="text-xs opacity-90">
 											<p>
@@ -391,8 +394,7 @@ function RetrospendCsvImport({
 						</TooltipProvider>
 					</div>
 					<p className="text-muted-foreground text-sm">
-						Upload a CSV or Excel file exported from Retrospend or in the
-						correct format.
+						{t("uploadCsvOrExcelDescription")}
 					</p>
 				</div>
 			</div>
@@ -400,7 +402,7 @@ function RetrospendCsvImport({
 			{state.step === "error" && (
 				<Alert variant="destructive">
 					<AlertCircle className="h-4 w-4" />
-					<AlertTitle>CSV Parse Errors</AlertTitle>
+					<AlertTitle>{t("csvParseErrors")}</AlertTitle>
 					<AlertDescription>
 						<ul className="mt-2 list-disc space-y-1 pl-4">
 							{state.errors.map((err, i) => (
@@ -422,10 +424,10 @@ function RetrospendCsvImport({
 				<Upload className="h-8 w-8 text-muted-foreground" />
 				<div className="text-center">
 					<p className="font-medium text-sm">
-						Click to Browse CSV or Excel File
+						{t("clickToBrowseCsvExcel")}
 					</p>
 					<p className="mt-1 text-muted-foreground text-xs">
-						Retrospend expense format (.csv or .xlsx)
+						{t("retrospendExpenseFormat")}
 					</p>
 				</div>
 			</Button>
@@ -452,6 +454,7 @@ function BankStatementImport({
 	setState: React.Dispatch<React.SetStateAction<BankState>>;
 	mainCurrency: string;
 }) {
+	const t = useTranslations("dataManagement");
 	const { data: importerStatus, isLoading: statusLoading } =
 		api.system.checkImporterStatus.useQuery();
 	const { data: aiStatus } = api.settings.getAiStatus.useQuery();
@@ -461,13 +464,13 @@ function BankStatementImport({
 
 	const createJobMutation = api.importQueue.createJob.useMutation({
 		onSuccess: () => {
-			toast.success("Import job queued");
+			toast.success(t("importJobQueued"));
 			if (fileInputRef.current) {
 				fileInputRef.current.value = "";
 			}
 		},
 		onError: (error) => {
-			toast.error(`Failed to queue import: ${error.message}`);
+			toast.error(t("failedToQueueImport", { message: error.message }));
 		},
 	});
 
@@ -479,13 +482,13 @@ function BankStatementImport({
 				!name.endsWith(".pdf") &&
 				!name.endsWith(".xlsx")
 			) {
-				toast.error("Please upload a CSV, Excel, or PDF file");
+				toast.error(t("pleaseUploadCsvExcelPdf"));
 				return;
 			}
 
 			// ~10MB raw file ≈ ~14MB base64; enforce before reading
 			if (file.size > 10 * 1024 * 1024) {
-				toast.error("File too large. Maximum size is 10 MB.");
+				toast.error(t("fileTooLarge"));
 				return;
 			}
 
@@ -566,11 +569,9 @@ function BankStatementImport({
 			<div className="pt-4">
 				<Alert variant="warning">
 					<AlertCircle className="h-4 w-4" />
-					<AlertTitle>Bank statement import unavailable</AlertTitle>
+					<AlertTitle>{t("bankStatementImportUnavailable")}</AlertTitle>
 					<AlertDescription>
-						The bank statement import service is not configured on this
-						instance. Use the Retrospend CSV format to import your data, or
-						contact your administrator.
+						{t("bankStatementImportUnavailableDescription")}
 					</AlertDescription>
 				</Alert>
 			</div>
@@ -606,12 +607,11 @@ function BankStatementImport({
 		<div className="space-y-4 pt-4">
 			<div className="space-y-1">
 				<div className="flex items-center justify-between">
-					<p className="font-medium">Import bank statement</p>
+					<p className="font-medium">{t("importBankStatement")}</p>
 					{aiStatus && <AiModeIndicator aiStatus={aiStatus} />}
 				</div>
 				<p className="text-muted-foreground text-sm">
-					Upload a CSV, Excel, or PDF bank statement. Supports Chase, Capital
-					One, Bank of America, Fidelity, and more.
+					{t("uploadBankStatementDescription")}
 				</p>
 			</div>
 
@@ -619,7 +619,7 @@ function BankStatementImport({
 				<div className="relative rounded-md border border-destructive/50 bg-destructive/10 p-3 font-mono text-destructive text-sm">
 					<div className="whitespace-pre-wrap">{state.message}</div>
 					<Button
-						aria-label="Dismiss error"
+						aria-label={t("dismissError")}
 						className="absolute top-2 right-2 h-6 w-6 hover:bg-destructive/20"
 						onClick={resetState}
 						size="icon"
@@ -652,10 +652,10 @@ function BankStatementImport({
 				/>
 				<div className="text-center">
 					<p className="font-medium text-sm">
-						Drop CSV/Excel/PDF or Click to Browse
+						{t("dropOrClickBankStatement")}
 					</p>
 					<p className="mt-1 text-muted-foreground text-xs">
-						Bank statements are processed securely
+						{t("bankStatementsProcessedSecurely")}
 					</p>
 				</div>
 			</Button>
@@ -681,8 +681,9 @@ function AiModeIndicator({
 		quotaRemaining: number | null;
 	};
 }) {
+	const t = useTranslations("dataManagement");
 	const label =
-		aiStatus.currentMode === "EXTERNAL" ? "External AI" : "Local AI";
+		aiStatus.currentMode === "EXTERNAL" ? t("externalAi") : t("localAi");
 	const dotClass =
 		aiStatus.currentMode === "EXTERNAL"
 			? "bg-blue-500"
@@ -699,8 +700,10 @@ function AiModeIndicator({
 				</TooltipTrigger>
 				<TooltipContent>
 					{aiStatus.currentMode === "EXTERNAL"
-						? `Using OpenRouter${aiStatus.quotaRemaining !== null ? ` (${aiStatus.quotaRemaining.toLocaleString()} tokens remaining)` : ""}`
-						: "Using local Ollama instance"}
+						? (aiStatus.quotaRemaining !== null
+							? t("usingOpenRouterWithQuota", { tokens: aiStatus.quotaRemaining.toLocaleString() })
+							: t("usingOpenRouter"))
+						: t("usingLocalOllama")}
 					{aiStatus.externalDeniedReason
 						? ` - ${aiStatus.externalDeniedReason}`
 						: ""}

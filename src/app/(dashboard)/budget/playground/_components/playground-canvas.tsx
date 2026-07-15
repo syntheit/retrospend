@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGrid, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
@@ -10,6 +11,7 @@ import { PlaygroundBudgetRow } from "./playground-budget-row";
 import { usePlayground } from "./playground-context";
 
 export function PlaygroundCanvas() {
+	const t = useTranslations("playground");
 	const { categories, simulatedBudgets, isLoading } = usePlayground();
 	const { homeCurrency } = useCurrency();
 	const [searchQuery, setSearchQuery] = useState("");
@@ -51,10 +53,10 @@ export function PlaygroundCanvas() {
 	if (categories.length === 0) {
 		return (
 			<EmptyState
-				action={{ label: "Go to Settings", href: "/settings" }}
-				description="Create spending categories first, then come back to simulate budget allocations."
+				action={{ label: t("goToSettings"), href: "/settings" }}
+				description={t("createCategoriesFirst")}
 				icon={LayoutGrid}
-				title="No Categories Yet"
+				title={t("noCategoriesYet")}
 			/>
 		);
 	}
@@ -66,7 +68,7 @@ export function PlaygroundCanvas() {
 				<Input
 					className="pl-9"
 					onChange={(e) => setSearchQuery(e.target.value)}
-					placeholder="Filter categories..."
+					placeholder={t("filterCategories")}
 					value={searchQuery}
 				/>
 			</div>
@@ -76,10 +78,10 @@ export function PlaygroundCanvas() {
 					<div className="space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="font-bold text-lg tracking-tight">
-								Active Simulations
+								{t("activeSimulations")}
 							</h3>
 							<span className="font-medium text-muted-foreground text-xs tracking-wide">
-								{activeCategories.length} categories
+								{activeCategories.length} {t("categories")}
 							</span>
 						</div>
 						<div className="grid gap-4">
@@ -98,10 +100,10 @@ export function PlaygroundCanvas() {
 					<div className="space-y-4">
 						<div className="flex items-center justify-between">
 							<h3 className="font-bold text-lg text-muted-foreground tracking-tight">
-								Untouched Categories
+								{t("untouchedCategories")}
 							</h3>
 							<span className="font-medium text-muted-foreground text-xs tracking-wide">
-								{otherCategories.length} available
+								{otherCategories.length} {t("available")}
 							</span>
 						</div>
 						<div className="grid gap-4 opacity-70 transition-opacity hover:opacity-100">

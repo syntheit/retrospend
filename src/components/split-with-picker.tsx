@@ -2,6 +2,7 @@
 
 import { Check, Search, UserPlus, X } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { Button } from "~/components/ui/button";
 import { ConfirmDialog } from "~/components/ui/confirmation-dialog";
@@ -36,6 +37,7 @@ export function SplitWithPicker({
 	projectId,
 	currentUserId,
 }: SplitWithPickerProps) {
+	const t = useTranslations("projects");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 	const [expanded, setExpanded] = useState(false);
@@ -393,7 +395,7 @@ export function SplitWithPicker({
 												) : null}
 											</div>
 											{!isMember && (
-												<span className="ml-auto text-muted-foreground text-xs">Not in project</span>
+												<span className="ml-auto text-muted-foreground text-xs">{t("notInProject")}</span>
 											)}
 										</Button>
 									);

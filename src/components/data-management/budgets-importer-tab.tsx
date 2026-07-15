@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { parseBudgetCsv } from "~/lib/csv";
@@ -21,6 +22,7 @@ export function BudgetsImporterTab({
 }: {
 	isActive?: boolean;
 }) {
+	const t = useTranslations("dataManagement");
 	const importMutation = api.budget.importBudgets.useMutation();
 
 	const handleParseCsv = (
@@ -57,11 +59,11 @@ export function BudgetsImporterTab({
 
 			const result = await importMutation.mutateAsync({ rows });
 			toast.success(
-				`Imported: ${result.successCount} success, ${result.skippedCount} skipped`,
+				t("importedSuccessSkipped", { success: result.successCount, skipped: result.skippedCount }),
 			);
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to import budgets",
+				error instanceof Error ? error.message : t("failedToImportBudgets"),
 			);
 			throw error;
 		}
@@ -75,16 +77,16 @@ export function BudgetsImporterTab({
 						<thead className="sticky top-0 bg-muted/50">
 							<tr className="border-b transition-colors hover:bg-muted/50">
 								<th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">
-									Category
+									{t("category")}
 								</th>
 								<th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">
-									Amount
+									{t("amount")}
 								</th>
 								<th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">
-									Period
+									{t("period")}
 								</th>
 								<th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">
-									Options
+									{t("options")}
 								</th>
 							</tr>
 						</thead>
@@ -97,7 +99,7 @@ export function BudgetsImporterTab({
 									<td className="p-4 align-middle">
 										{row.categoryName || (
 											<span className="text-muted-foreground italic">
-												Global
+												{t("global")}
 											</span>
 										)}
 									</td>
@@ -106,9 +108,9 @@ export function BudgetsImporterTab({
 										{row.period.toISOString().slice(0, 7)}
 									</td>
 									<td className="p-4 align-middle text-muted-foreground text-xs">
-										{row.isRollover && "Rollover"}
+										{row.isRollover && t("rollover")}
 										{row.isRollover && row.pegToActual && ", "}
-										{row.pegToActual && "Pegged"}
+										{row.pegToActual && t("pegged")}
 										{!row.isRollover && !row.pegToActual && "-"}
 									</td>
 								</tr>
@@ -120,7 +122,7 @@ export function BudgetsImporterTab({
 		};
 		BudgetPreviewTable.displayName = "BudgetPreviewTable";
 		return BudgetPreviewTable;
-	}, []);
+	}, [t]);
 
 	return (
 		<DataImporter
@@ -144,7 +146,7 @@ export function BudgetsImporterTab({
 				"100,2024-01-01,Dining,false,true",
 			].join("\n")}
 			sampleFilename="budgets_sample.csv"
-			title="Budgets"
+			title={t("budgets")}
 		/>
 	);
 }

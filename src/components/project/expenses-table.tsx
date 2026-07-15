@@ -1,9 +1,10 @@
 "use client";
 
 import type { Row } from "@tanstack/react-table";
-import { formatExpenseDate } from "~/lib/format";
+import { formatExpenseAsText, formatExpenseDate } from "~/lib/format";
 import {
 	Check,
+	ClipboardCopy,
 	Edit2,
 	History,
 	Receipt,
@@ -43,17 +44,19 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { UserAvatar } from "~/components/ui/user-avatar";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { getCategoryIcon } from "~/lib/category-icons";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-const STATUS_OPTIONS = [
-	{ value: "pending", label: "Needs Review" },
-	{ value: "active", label: "Confirmed" },
-	{ value: "settled", label: "Settled" },
-	{ value: "disputed", label: "Disputed" },
+const STATUS_OPTION_KEYS = [
+	{ value: "pending", key: "statusNeedsReview" },
+	{ value: "active", key: "statusConfirmed" },
+	{ value: "settled", key: "statusSettled" },
+	{ value: "disputed", key: "statusDisputed" },
 ] as const;
 
 interface ExpensesTableProps {
@@ -76,7 +79,10 @@ export function ExpensesTable({
 	pendingFilterTrigger,
 	currentParticipant,
 }: ExpensesTableProps) {
+	const t = useTranslations("projects");
+	const locale = useLocale();
 	const { formatCurrency } = useCurrencyFormatter();
+	const { displayName } = useCategoryName();
 	const { openHistory } = useRevisionHistory();
 	const isMobile = useIsMobile();
 
@@ -152,7 +158,7 @@ export function ExpensesTable({
 	const utils = api.useUtils();
 	const deleteMutation = api.sharedTransaction.delete.useMutation({
 		onSuccess: () => {
-			toast.success("Expense deleted");
+			toast.success(t("expenseDeleted"));
 			void utils.project.listExpenses.invalidate({ projectId });
 			void utils.project.detail.invalidate({ id: projectId });
 			void utils.people.list.invalidate();
@@ -175,9 +181,9 @@ export function ExpensesTable({
 			void utils.project.listExpenses.invalidate({ projectId });
 			void utils.project.detail.invalidate({ id: projectId });
 			void utils.people.list.invalidate();
-			toast.success("Expenses deleted");
+			toast.success(t("expensesDeleted"));
 		} catch {
-			toast.error("Failed to delete some expenses");
+			toast.error(t("failedToDeleteExpenses"));
 		} finally {
 			setIsBulkDeleting(false);
 		}
@@ -196,7 +202,7 @@ export function ExpensesTable({
 
 	const acceptMutation = api.verification.accept.useMutation({
 		onSuccess: () => {
-			toast.success("Expense accepted");
+			toast.success(t("expenseAccepted"));
 			invalidateVerification();
 		},
 		onError: (e) => toast.error(e.message),
@@ -204,7 +210,7 @@ export function ExpensesTable({
 
 	const rejectMutation = api.verification.reject.useMutation({
 		onSuccess: () => {
-			toast.success("Expense rejected");
+			toast.success(t("expenseRejected"));
 			invalidateVerification();
 			setRejectingTxnId(null);
 			setRejectReason("");
@@ -326,11 +332,10 @@ export function ExpensesTable({
 	const barCountLabel = (() => {
 		const total = totalFiltered;
 		const displayed = searchValue ? searchFilteredCount : total;
-		const noun = displayed === 1 ? "expense" : "expenses";
 		if (searchValue && displayed < total) {
-			return `${displayed} of ${total} ${noun}`;
+			return t("expenseCountOfTotal", { displayed, total });
 		}
-		return `${total} ${noun}`;
+		return t("expenseCount", { count: total });
 	})();
 
 	function clearFilters() {
@@ -373,6 +378,7 @@ export function ExpensesTable({
 				isSolo,
 				isReadOnly,
 				formatCurrency,
+				t,
 				revisionSummaries: revisionSummaries ?? undefined,
 				currentParticipant,
 				onEdit: (id) => setEditingTransactionId(id),
@@ -380,8 +386,9 @@ export function ExpensesTable({
 				onViewHistory: (id) => openHistory(id),
 				onAccept: handleAccept,
 				onReject: handleReject,
+				locale,
 			}),
-		[isSolo, isReadOnly, formatCurrency, revisionSummaries, openHistory, currentParticipant, handleAccept, handleReject],
+		[isSolo, isReadOnly, formatCurrency, t, revisionSummaries, openHistory, currentParticipant, handleAccept, handleReject],
 	);
 
 	// Row class for settled rows
@@ -399,10 +406,10 @@ export function ExpensesTable({
 			{!isSolo && (
 				<div className="space-y-1.5">
 					<p className="font-medium text-muted-foreground text-xs tracking-wide">
-						Status
+						{t("status")}
 					</p>
 					<div className="flex flex-wrap gap-1.5">
-						{STATUS_OPTIONS.map(({ value, label }) => (
+						{STATUS_OPTION_KEYS.map(({ value, key }) => (
 							<Button
 								aria-pressed={selectedStatuses.has(value)}
 								className="h-7 px-2.5 text-xs"
@@ -411,7 +418,7 @@ export function ExpensesTable({
 								size="sm"
 								variant={selectedStatuses.has(value) ? "default" : "outline"}
 							>
-								{label}
+								{t(key)}
 							</Button>
 						))}
 					</div>
@@ -422,7 +429,7 @@ export function ExpensesTable({
 			{availableCategories.length > 0 && (
 				<div className="space-y-1.5">
 					<p className="font-medium text-muted-foreground text-xs tracking-wide">
-						Category
+						{t("category")}
 					</p>
 					<div className="flex flex-wrap gap-1.5">
 						{availableCategories.map((cat) => {
@@ -443,7 +450,7 @@ export function ExpensesTable({
 												`text-${cat.color}-500`,
 										)}
 									/>
-									{cat.name}
+									{displayName(cat.name)}
 								</Button>
 							);
 						})}
@@ -455,7 +462,7 @@ export function ExpensesTable({
 			{!isSolo && availableParticipants.length > 0 && (
 				<div className="space-y-1.5">
 					<p className="font-medium text-muted-foreground text-xs tracking-wide">
-						Split With
+						{t("splitWith")}
 					</p>
 					<div className="flex flex-wrap gap-1.5">
 						{availableParticipants.map((participant) => (
@@ -490,7 +497,7 @@ export function ExpensesTable({
 					size="sm"
 					variant="ghost"
 				>
-					Clear filters
+					{t("clearFilters")}
 				</Button>
 			)}
 		</div>
@@ -514,7 +521,7 @@ export function ExpensesTable({
 							variant={activeFilterCount > 0 ? "secondary" : "ghost"}
 						>
 							<SlidersHorizontal className="h-3.5 w-3.5" />
-							Filters
+							{t("filters")}
 							{activeFilterCount > 0 && (
 								<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
 									{activeFilterCount}
@@ -528,10 +535,10 @@ export function ExpensesTable({
 						>
 							<DrawerContent className="px-6 pb-8">
 								<DrawerTitle className="mb-2 text-left font-semibold text-lg">
-									Filters
+									{t("filters")}
 								</DrawerTitle>
 								<DrawerDescription className="sr-only">
-									Filter expenses by status, category, and participants
+									{t("filterExpensesDescription")}
 								</DrawerDescription>
 								<div className="overflow-y-auto">{filterPanel}</div>
 							</DrawerContent>
@@ -546,7 +553,7 @@ export function ExpensesTable({
 								variant={activeFilterCount > 0 ? "secondary" : "ghost"}
 							>
 								<SlidersHorizontal className="h-3.5 w-3.5" />
-								Filters
+								{t("filters")}
 								{activeFilterCount > 0 && (
 									<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground">
 										{activeFilterCount}
@@ -566,7 +573,7 @@ export function ExpensesTable({
 
 				<ExpandableSearch
 					onChange={setSearchValue}
-					placeholder="Search expenses..."
+					placeholder={t("searchExpenses")}
 					value={searchValue}
 					slashFocus
 				/>
@@ -576,14 +583,17 @@ export function ExpensesTable({
 			{hasExternalFilters && (
 				<div className="mb-3 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
 					<span>
-						Showing {totalFiltered} of {totalAll} expenses
+						{t("showingOfExpenses", { filtered: totalFiltered, total: totalAll })}
 					</span>
 					{selectedStatuses.size > 0 && (
 						<span className="text-foreground">
 							·{" "}
 							{[...selectedStatuses]
 								.map(
-									(s) => STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s,
+									(s) => {
+										const opt = STATUS_OPTION_KEYS.find((o) => o.value === s);
+										return opt ? t(opt.key) : s;
+									},
 								)
 								.join(", ")}
 						</span>
@@ -601,7 +611,7 @@ export function ExpensesTable({
 					)}
 					{selectedSplitIds.size > 0 && (
 						<span className="text-foreground">
-							· Split with{" "}
+							· {t("splitWith")}{" "}
 							{[...selectedSplitIds]
 								.map((id) => {
 									const p = availableParticipants.find((p) => p.compositeId === id);
@@ -616,7 +626,7 @@ export function ExpensesTable({
 						type="button"
 						variant="link"
 					>
-						Clear all
+						{t("clearAll")}
 					</Button>
 				</div>
 			)}
@@ -624,7 +634,7 @@ export function ExpensesTable({
 			{/* Table */}
 			{isError ? (
 				<div className="rounded-xl border border-border border-dashed py-12 text-center text-muted-foreground text-sm">
-					Failed to load expenses.
+					{t("failedToLoadExpenses")}
 				</div>
 			) : isLoading ? (
 				<div className="space-y-2">
@@ -638,42 +648,42 @@ export function ExpensesTable({
 					<EmptyState
 						action={
 							onAddExpense
-								? { label: "Add Expense", onClick: onAddExpense }
+								? { label: t("addExpense"), onClick: onAddExpense }
 								: undefined
 						}
 						description={
 							onAddExpense
-								? "Add your first expense to get started."
-								: "No expenses have been added yet."
+								? t("addFirstExpense")
+								: t("noExpensesAdded")
 						}
 						icon={Receipt}
-						title="No Expenses Yet"
+						title={t("noExpensesYet")}
 					/>
 				</div>
 			) : filteredTransactions.length === 0 ? (
 				<div className="rounded-xl border border-border border-dashed">
 					<EmptyState
 						action={{
-							label: "Clear Filters",
+							label: t("clearFilters"),
 							onClick: clearFilters,
 							variant: "outline",
 						}}
-						description="Try adjusting or clearing your filters."
+						description={t("tryAdjustingFilters")}
 						icon={SlidersHorizontal}
-						title="No Results"
+						title={t("noResults")}
 					/>
 				</div>
 			) : (
 				<DataTable
 					columns={columns}
-					countNoun="expenses"
+					countNoun={t("expensesNoun")}
 					data={filteredTransactions}
 					searchValue={searchValue}
 					onSearchChange={setSearchValue}
 					onFilteredCountChange={setSearchFilteredCount}
 					emptyState={
 						<div className="py-8 text-muted-foreground text-sm">
-							No matching expenses.
+							{t("noMatchingExpenses")}
 						</div>
 					}
 					initialSorting={[{ id: "date", desc: true }]}
@@ -701,18 +711,35 @@ export function ExpensesTable({
 										<>
 											<ContextMenuItem onClick={() => openHistory(txn.id)}>
 												<History className="mr-2 h-4 w-4" />
-												View history
+												{t("viewHistory")}
+											</ContextMenuItem>
+											<ContextMenuItem
+												onClick={() => {
+													const text = formatExpenseAsText(
+														txn.description,
+														txn.amount,
+														txn.currency,
+														new Date(txn.date),
+														formatCurrency,
+														locale,
+													);
+													void navigator.clipboard.writeText(text);
+													toast.success(t("copiedToClipboard"));
+												}}
+											>
+												<ClipboardCopy className="mr-2 h-4 w-4" />
+												{t("copyAsText")}
 											</ContextMenuItem>
 											{isPending && (
 												<>
 													<ContextMenuSeparator />
 													<ContextMenuItem onClick={() => handleAccept(txn.id)}>
 														<Check className="mr-2 h-4 w-4 text-emerald-500" />
-														Accept
+														{t("accept")}
 													</ContextMenuItem>
 													<ContextMenuItem onClick={() => handleReject(txn.id)}>
 														<X className="mr-2 h-4 w-4 text-rose-500" />
-														Reject
+														{t("reject")}
 													</ContextMenuItem>
 												</>
 											)}
@@ -722,7 +749,7 @@ export function ExpensesTable({
 												onClick={() => setEditingTransactionId(txn.id)}
 											>
 												<Edit2 className="mr-2 h-4 w-4" />
-												Edit
+												{t("edit")}
 											</ContextMenuItem>
 											<ContextMenuItem
 												disabled={!txn.canDelete || txn.isLocked}
@@ -738,7 +765,7 @@ export function ExpensesTable({
 												variant="destructive"
 											>
 												<Trash2 className="mr-2 h-4 w-4" />
-												Delete
+												{t("delete")}
 											</ContextMenuItem>
 										</>
 									);
@@ -775,12 +802,12 @@ export function ExpensesTable({
 					}}
 					open={!!editingTransactionId}
 					sharedTransactionId={editingTransactionId}
-					title="Edit Expense"
+					title={t("editExpense")}
 				/>
 			)}
 
 			<ConfirmDialog
-				confirmText="Delete"
+				confirmText={t("delete")}
 				description={
 					deletingTransaction ? (
 						<span>
@@ -793,7 +820,7 @@ export function ExpensesTable({
 							· {formatExpenseDate(deletingTransaction.date)}
 							<br />
 							<span className="text-destructive text-xs">
-								This action cannot be undone. All participants will be notified.
+								{t("deleteExpenseWarning")}
 							</span>
 						</span>
 					) : undefined
@@ -808,19 +835,18 @@ export function ExpensesTable({
 					if (!open) setDeletingTransaction(null);
 				}}
 				open={!!deletingTransaction}
-				title="Delete this expense?"
+				title={t("deleteThisExpense")}
 				variant="destructive"
 			/>
 
 			<ConfirmDialog
-				confirmText="Delete"
+				confirmText={t("delete")}
 				description={
 					<span>
-						Delete <strong>{selectedIds.size}</strong> expense
-						{selectedIds.size !== 1 ? "s" : ""}?
+						{t("bulkDeleteDescription", { count: selectedIds.size })}
 						<br />
 						<span className="text-destructive text-xs">
-							This action cannot be undone. All participants will be notified.
+							{t("deleteExpenseWarning")}
 						</span>
 					</span>
 				}
@@ -830,21 +856,21 @@ export function ExpensesTable({
 					if (!open) setShowBulkDeleteDialog(false);
 				}}
 				open={showBulkDeleteDialog}
-				title={`Delete ${selectedIds.size} expense${selectedIds.size !== 1 ? "s" : ""}?`}
+				title={t("bulkDeleteTitle", { count: selectedIds.size })}
 				variant="destructive"
 			/>
 
 			{/* Reject reason popover */}
 			<ConfirmDialog
-				confirmText="Reject"
+				confirmText={t("reject")}
 				description={
 					<div className="space-y-2">
-						<p className="text-sm">Optionally provide a reason for rejecting this expense.</p>
+						<p className="text-sm">{t("rejectReasonPrompt")}</p>
 						<Input
 							autoFocus
 							maxLength={500}
 							onChange={(e) => setRejectReason(e.target.value)}
-							placeholder="Reason (optional)"
+							placeholder={t("reasonOptional")}
 							value={rejectReason}
 						/>
 					</div>
@@ -858,7 +884,7 @@ export function ExpensesTable({
 					}
 				}}
 				open={!!rejectingTxnId}
-				title="Reject this expense?"
+				title={t("rejectThisExpense")}
 				variant="destructive"
 			/>
 		</div>

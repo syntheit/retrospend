@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -29,6 +30,7 @@ export function DeleteAccountDialog({
 	open,
 	onOpenChange,
 }: DeleteAccountDialogProps) {
+	const t = useTranslations("settingsPage");
 	const router = useRouter();
 	const [step, setStep] = useState<Step>("password");
 	const [password, setPassword] = useState("");
@@ -41,7 +43,7 @@ export function DeleteAccountDialog({
 
 	const deleteAccount = api.user.deleteAccount.useMutation({
 		onSuccess: () => {
-			toast.success("Account deleted");
+			toast.success(t("deleteAccountSuccess"));
 			router.push("/login");
 		},
 		onError: (err) => {
@@ -63,7 +65,7 @@ export function DeleteAccountDialog({
 
 	function handleContinue() {
 		if (!password.trim()) {
-			setPasswordError("Password is required");
+			setPasswordError(t("passwordRequired"));
 			return;
 		}
 		setPasswordError(null);
@@ -94,18 +96,17 @@ export function DeleteAccountDialog({
 								<div className="flex size-8 items-center justify-center rounded-full bg-destructive/10">
 									<AlertTriangle className="size-4 text-destructive" />
 								</div>
-								<ResponsiveDialogTitle>Delete Account</ResponsiveDialogTitle>
+								<ResponsiveDialogTitle>{t("deleteAccountTitle")}</ResponsiveDialogTitle>
 							</div>
 							<ResponsiveDialogDescription>
-								This will permanently delete your account and all your personal
-								data. This action cannot be undone.
+								{t("deleteAccountDescription")}
 							</ResponsiveDialogDescription>
 						</ResponsiveDialogHeader>
 
 						<div className="space-y-3">
 							<div className="space-y-1.5">
 								<Label htmlFor="delete-password">
-									Enter your password to continue
+									{t("enterPasswordToContinue")}
 								</Label>
 								<Input
 									autoComplete="current-password"
@@ -118,7 +119,7 @@ export function DeleteAccountDialog({
 									onKeyDown={(e) => {
 										if (e.key === "Enter") handleContinue();
 									}}
-									placeholder="Your password"
+									placeholder={t("yourPassword")}
 									type="password"
 									value={password}
 								/>
@@ -133,14 +134,14 @@ export function DeleteAccountDialog({
 								onClick={() => handleClose(false)}
 								variant="ghost"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								disabled={!password.trim()}
 								onClick={handleContinue}
 								variant="destructive"
 							>
-								Continue
+								{t("continue")}
 							</Button>
 						</ResponsiveDialogFooter>
 					</>
@@ -151,19 +152,19 @@ export function DeleteAccountDialog({
 								<div className="flex size-8 items-center justify-center rounded-full bg-destructive/10">
 									<AlertTriangle className="size-4 text-destructive" />
 								</div>
-								<ResponsiveDialogTitle>Before your account is deleted</ResponsiveDialogTitle>
+								<ResponsiveDialogTitle>{t("beforeAccountDeleted")}</ResponsiveDialogTitle>
 							</div>
 							<ResponsiveDialogDescription>
-								Review what will happen to your shared data.
+								{t("reviewSharedData")}
 							</ResponsiveDialogDescription>
 						</ResponsiveDialogHeader>
 
 						<div className="space-y-3 text-sm">
 							{preview.isPending ? (
-								<p className="text-muted-foreground">Loading summary...</p>
+								<p className="text-muted-foreground">{t("loadingSummary")}</p>
 							) : preview.isError ? (
 								<p className="text-destructive text-sm">
-									Could not load deletion summary. You can still proceed.
+									{t("couldNotLoadSummary")}
 								</p>
 							) : hasSharedActivity ? (
 								<ul className="space-y-2">
@@ -173,9 +174,12 @@ export function DeleteAccountDialog({
 												•
 											</span>
 											<span>
-												<span className="font-medium">{p.name}</span>
-												{"; owner role will transfer to "}
-												<span className="font-medium">{p.newOrganizerName}</span>
+												{t.rich("projectTransferOwner", {
+													projectName: p.name,
+													newOwner: p.newOrganizerName,
+													projectBold: (chunks) => <span className="font-medium">{chunks}</span>,
+													ownerBold: (chunks) => <span className="font-medium">{chunks}</span>,
+												})}
 											</span>
 										</li>
 									))}
@@ -185,8 +189,10 @@ export function DeleteAccountDialog({
 												•
 											</span>
 											<span>
-												<span className="font-medium">{p.name}</span>
-												{" (solo project) will be deleted"}
+												{t.rich("projectSoloDelete", {
+													projectName: p.name,
+													bold: (chunks) => <span className="font-medium">{chunks}</span>,
+												})}
 											</span>
 										</li>
 									))}
@@ -196,11 +202,7 @@ export function DeleteAccountDialog({
 												•
 											</span>
 											<span>
-												{data.settlementsToAutoConfirm}{" "}
-												{data.settlementsToAutoConfirm === 1
-													? "pending settlement"
-													: "pending settlements"}{" "}
-												will be auto-confirmed
+												{t("settlementsAutoConfirm", { count: data.settlementsToAutoConfirm })}
 											</span>
 										</li>
 									)}
@@ -210,11 +212,7 @@ export function DeleteAccountDialog({
 												•
 											</span>
 											<span>
-												{data.settlementsToCancel}{" "}
-												{data.settlementsToCancel === 1
-													? "unconfirmed settlement"
-													: "unconfirmed settlements"}{" "}
-												will be cancelled
+												{t("settlementsCancel", { count: data.settlementsToCancel })}
 											</span>
 										</li>
 									)}
@@ -224,11 +222,7 @@ export function DeleteAccountDialog({
 												•
 											</span>
 											<span>
-												{data.verificationsToAutoAccept}{" "}
-												{data.verificationsToAutoAccept === 1
-													? "pending verification"
-													: "pending verifications"}{" "}
-												will be auto-accepted
+												{t("verificationsAutoAccept", { count: data.verificationsToAutoAccept })}
 											</span>
 										</li>
 									)}
@@ -238,31 +232,26 @@ export function DeleteAccountDialog({
 												•
 											</span>
 											<span>
-												Your name will appear as{" "}
-												<span className="font-medium">Deleted User</span> in{" "}
-												{data.sharedTransactionsToAnonymize} shared{" "}
-												{data.sharedTransactionsToAnonymize === 1
-													? "transaction"
-													: "transactions"}
+												{t.rich("transactionsAnonymize", {
+													count: data.sharedTransactionsToAnonymize,
+													bold: (chunks) => <span className="font-medium">{chunks}</span>,
+												})}
 											</span>
 										</li>
 									)}
 								</ul>
 							) : (
 								<p className="text-muted-foreground">
-									You have no shared expense activity. Only your personal data
-									will be deleted.
+									{t("noSharedActivity")}
 								</p>
 							)}
 
 							<Separator />
 
 							<p className="text-muted-foreground">
-								Your personal data (expenses, budgets, assets, settings) will
-								be permanently deleted.{" "}
-								<span className="font-medium text-foreground">
-									This cannot be undone.
-								</span>
+								{t.rich("personalDataDeleted", {
+									bold: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+								})}
 							</p>
 						</div>
 
@@ -271,7 +260,7 @@ export function DeleteAccountDialog({
 								onClick={() => handleClose(false)}
 								variant="ghost"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								disabled={deleteAccount.isPending}
@@ -279,8 +268,8 @@ export function DeleteAccountDialog({
 								variant="destructive"
 							>
 								{deleteAccount.isPending
-									? "Deleting..."
-									: "Delete My Account"}
+									? t("deleting")
+									: t("deleteMyAccount")}
 							</Button>
 						</ResponsiveDialogFooter>
 					</>

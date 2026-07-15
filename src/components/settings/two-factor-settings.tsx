@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle, Shield } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import { useSession } from "~/hooks/use-session";
 import { authClient } from "~/lib/auth-client";
 
 export function TwoFactorSettings() {
+	const t = useTranslations("settingsPage");
 	const { data: session, refetch } = useSession();
 	const [status, setStatus] = useState<
 		"idle" | "generating" | "setup" | "backupCodes" | "disabling"
@@ -43,7 +45,7 @@ export function TwoFactorSettings() {
 				password: password,
 			});
 			if (error) {
-				toast.error(error.message || "Error");
+				toast.error(error.message || t("error"));
 				setStatus("idle");
 				return;
 			}
@@ -52,7 +54,7 @@ export function TwoFactorSettings() {
 			setPassword("");
 		} catch {
 			setStatus("idle");
-			toast.error("An error occurred");
+			toast.error(t("anErrorOccurred"));
 		}
 	};
 
@@ -78,11 +80,11 @@ export function TwoFactorSettings() {
 				code: currentCode,
 			});
 			if (error) {
-				setError(error.message || "Failed to verify");
+				setError(error.message || t("failedToVerify"));
 				return;
 			}
 
-			toast.success("Two-Factor Authentication enabled!");
+			toast.success(t("twoFactorEnabled"));
 			setPassword("");
 			setCode("");
 			refetch();
@@ -92,7 +94,7 @@ export function TwoFactorSettings() {
 			// I'll call generateBackupCodes if they exist, or just show success.
 			setStatus("idle");
 		} catch {
-			setError("Failed to verify code.");
+			setError(t("failedToVerifyCode"));
 		} finally {
 			setIsVerifying(false);
 		}
@@ -100,7 +102,7 @@ export function TwoFactorSettings() {
 
 	const handleDisable = async () => {
 		if (!password) {
-			setError("Password is required to disable 2FA");
+			setError(t("passwordRequiredToDisable2FA"));
 			return;
 		}
 
@@ -108,14 +110,14 @@ export function TwoFactorSettings() {
 		try {
 			const { error } = await authClient.twoFactor.disable({ password });
 			if (error) {
-				setError(error.message || "Failed to disable 2FA");
+				setError(error.message || t("failedToDisable2FA"));
 			} else {
-				toast.success("Two-Factor Authentication disabled!");
+				toast.success(t("twoFactorDisabled"));
 				setPassword("");
 				refetch();
 			}
 		} catch {
-			setError("Failed to disable 2FA");
+			setError(t("failedToDisable2FA"));
 		} finally {
 			setStatus("idle");
 		}
@@ -126,10 +128,10 @@ export function TwoFactorSettings() {
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<Shield className="h-5 w-5 text-primary" />
-					Two-Factor Authentication
+					{t("twoFactorAuth")}
 				</CardTitle>
 				<CardDescription>
-					Add an extra layer of security to your Retrospend account.
+					{t("twoFactorAuthDescription")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -137,14 +139,14 @@ export function TwoFactorSettings() {
 					<div className="space-y-6">
 						<div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
 							<CheckCircle className="h-5 w-5" />
-							<span className="font-medium">2FA is currently enabled</span>
+							<span className="font-medium">{t("twoFactorCurrentlyEnabled")}</span>
 						</div>
 
 						<div className="space-y-4 border-t pt-6">
 							<div className="space-y-1">
-								<h4 className="font-medium text-sm">Disable 2FA</h4>
+								<h4 className="font-medium text-sm">{t("disable2FA")}</h4>
 								<p className="text-muted-foreground text-sm">
-									Enter your password to disable two-factor authentication.
+									{t("disable2FADescription")}
 								</p>
 							</div>
 							<form
@@ -157,7 +159,7 @@ export function TwoFactorSettings() {
 								<Input
 									className="border-transparent bg-secondary/20 transition-all hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
 									onChange={(e) => setPassword(e.target.value)}
-									placeholder="Password"
+									placeholder={t("password")}
 									type="password"
 									value={password}
 								/>
@@ -166,7 +168,7 @@ export function TwoFactorSettings() {
 									type="submit"
 									variant="destructive"
 								>
-									{status === "disabling" ? "Disabling..." : "Disable 2FA"}
+									{status === "disabling" ? t("disabling") : t("disable2FA")}
 								</Button>
 							</form>
 							{error && <p className="text-destructive text-sm">{error}</p>}
@@ -177,28 +179,27 @@ export function TwoFactorSettings() {
 						{(status === "idle" || status === "generating") && (
 							<div className="space-y-4">
 								<p className="text-muted-foreground text-sm">
-									When 2FA is enabled, you'll be prompted for a 6-digit code
-									from your authenticator app every time you sign in.
+									{t("twoFactorExplanation")}
 								</p>
 								<div className="max-w-md space-y-2">
 									<Label
 										className="font-medium text-muted-foreground text-sm"
 										htmlFor="password-2fa"
 									>
-										Verify Password to Enable
+										{t("verifyPasswordToEnable")}
 									</Label>
 									<Input
 										className="border-transparent bg-secondary/20 transition-all hover:bg-secondary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
 										id="password-2fa"
 										onChange={(e) => setPassword(e.target.value)}
-										placeholder="Your current password"
+										placeholder={t("yourCurrentPassword")}
 										type="password"
 										value={password}
 									/>
 								</div>
 								{status === "generating" && (
 									<p className="animate-pulse text-primary text-sm">
-										Initiating setup...
+										{t("initiatingSetup")}
 									</p>
 								)}
 								<div className="mt-4 flex justify-end">
@@ -208,7 +209,7 @@ export function TwoFactorSettings() {
 										size="sm"
 										type="button"
 									>
-										Enable Two-Factor Authentication
+										{t("enableTwoFactorAuth")}
 									</Button>
 								</div>
 							</div>
@@ -228,14 +229,13 @@ export function TwoFactorSettings() {
 										<QRCodeSVG size={180} value={totpUri} />
 									</div>
 									<p className="max-w-sm text-muted-foreground text-sm">
-										Scan this QR code with your authenticator app (like Google
-										Authenticator or Authy).
+										{t("scanQRCode")}
 									</p>
 								</div>
 
 								<div className="space-y-4">
 									<Label className="font-medium text-sm">
-										Enter the 6-digit verification code
+										{t("enterVerificationCode")}
 									</Label>
 									<InputOTP 
 										maxLength={6} 
@@ -269,10 +269,10 @@ export function TwoFactorSettings() {
 										type="button"
 										variant="ghost"
 									>
-										Cancel
+										{t("cancel")}
 									</Button>
 									<Button disabled={code.length !== 6 || isVerifying} size="sm" type="submit">
-										{isVerifying ? "Verifying..." : "Verify and Enable"}
+										{isVerifying ? t("verifying") : t("verifyAndEnable")}
 									</Button>
 								</div>
 							</form>

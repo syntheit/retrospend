@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
 	type ChartConfig,
@@ -37,6 +38,7 @@ export function MonthlyPacingChart({
 	liveRateToBaseCurrency,
 	dateRange,
 }: MonthlyPacingChartProps) {
+	const t = useTranslations("analytics");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const bucketSize = useMemo(
@@ -105,7 +107,7 @@ export function MonthlyPacingChart({
 	]);
 
 	const comparison = useMemo(() => {
-		if (chartData.length === 0) return { status: "No data", difference: 0 };
+		if (chartData.length === 0) return { status: "", difference: 0 };
 
 		const totalSpent = chartData[chartData.length - 1]?.cumulative || 0;
 
@@ -117,29 +119,25 @@ export function MonthlyPacingChart({
 			);
 			const status =
 				difference < 0
-					? `${formattedDifference} under budget`
+					? t("underBudgetAmount", { amount: formattedDifference })
 					: difference > 0
-						? `${formattedDifference} over budget`
-						: "On budget";
+						? t("overBudgetAmount", { amount: formattedDifference })
+						: t("onBudget");
 			return { status, difference };
 		}
 
 		return {
-			status: `Total: ${formatCurrency(totalSpent, baseCurrency)}`,
+			status: t("totalSpent", { amount: formatCurrency(totalSpent, baseCurrency) }),
 			difference: 0,
 		};
-	}, [chartData, totalBudget, baseCurrency, formatCurrency]);
+	}, [chartData, totalBudget, baseCurrency, formatCurrency, t]);
 
-	const getBucketLabel = (bucketSize: BucketSize): string => {
-		switch (bucketSize) {
-			case "day":
-				return "daily";
-			case "week":
-				return "weekly";
-			case "month":
-				return "monthly";
-		}
-	};
+	const subtitleKey =
+		bucketSize === "day"
+			? "cumulativeDailySpending"
+			: bucketSize === "week"
+				? "cumulativeWeeklySpending"
+				: "cumulativeMonthlySpending";
 
 	const chartConfig = {
 		cumulative: {
@@ -156,10 +154,9 @@ export function MonthlyPacingChart({
 		<div className="min-w-0 space-y-4">
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h3 className="font-semibold text-lg">Spending Over Time</h3>
+					<h3 className="font-semibold text-lg">{t("spendingOverTime")}</h3>
 					<p className="text-muted-foreground text-sm">
-						Cumulative {getBucketLabel(bucketSize)} spending
-						{totalBudget ? " vs. budget" : ""}
+						{t(subtitleKey)}{totalBudget ? ` ${t("cumulativeVsBudget")}` : ""}
 					</p>
 				</div>
 				<div className="sm:text-right">

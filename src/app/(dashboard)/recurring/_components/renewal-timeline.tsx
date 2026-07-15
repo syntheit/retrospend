@@ -2,9 +2,11 @@
 
 import { addDays, format, isSameDay, isToday, startOfToday } from "date-fns";
 import { CalendarClock } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useRef } from "react";
 import { BrandIcon } from "~/components/ui/BrandIcon";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { getDateFnsLocale } from "~/lib/date-locale";
 import { cn } from "~/lib/utils";
 import type { RecurringTemplate } from "~/types/recurring";
 
@@ -26,6 +28,9 @@ export function RenewalTimeline({
 	loading,
 	onEdit,
 }: RenewalTimelineProps) {
+	const t = useTranslations("recurring");
+	const locale = useLocale();
+	const dateFnsLocale = getDateFnsLocale(locale);
 	const { formatCurrency } = useCurrencyFormatter();
 	const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -74,8 +79,8 @@ export function RenewalTimeline({
 		<div className="space-y-3">
 			<div className="flex items-center gap-2">
 				<CalendarClock className="h-4 w-4 text-muted-foreground" />
-				<h3 className="font-semibold text-sm">Renewal Timeline</h3>
-				<span className="text-muted-foreground text-xs">Next 30 days</span>
+				<h3 className="font-semibold text-sm">{t("renewalTimeline")}</h3>
+				<span className="text-muted-foreground text-xs">{t("next30Days")}</span>
 			</div>
 
 			<div
@@ -98,7 +103,7 @@ export function RenewalTimeline({
 										: "bg-muted/50 text-muted-foreground",
 								)}
 							>
-								{day.isToday ? "Today" : format(day.date, "MMM d")}
+								{day.isToday ? t("today") : format(day.date, "MMM d", { locale: dateFnsLocale })}
 							</div>
 
 							{/* Timeline dot */}
@@ -141,7 +146,7 @@ export function RenewalTimeline({
 								))}
 								{day.isToday && day.templates.length === 0 && (
 									<p className="text-center text-[10px] text-muted-foreground">
-										No renewals
+										{t("noRenewals")}
 									</p>
 								)}
 							</div>

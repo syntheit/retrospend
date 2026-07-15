@@ -1161,7 +1161,6 @@ export const exportRouter = createTRPCRouter({
 				select: {
 					name: true,
 					description: true,
-					type: true,
 					status: true,
 					primaryCurrency: true,
 					budgetAmount: true,
@@ -1256,9 +1255,9 @@ export const exportRouter = createTRPCRouter({
 				0,
 			);
 
-			const isSolo = project.type === "SOLO";
+			const isSolo = rawParticipants.length <= 1;
 
-			// Compute balances and settlement plan (non-SOLO only)
+			// Compute balances and settlement plan (non-solo only)
 			let balances: Array<{
 				name: string;
 				paid: number;
@@ -1342,7 +1341,6 @@ export const exportRouter = createTRPCRouter({
 
 			const pdfBuffer = await generateProjectPdf({
 				projectName: project.name,
-				projectType: project.type,
 				status: project.status,
 				primaryCurrency: project.primaryCurrency,
 				description: project.description,

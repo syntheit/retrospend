@@ -15,11 +15,13 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
+import { useTranslations } from "next-intl";
 import { ExpandableSearch } from "~/components/table-search";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
-import { TableFilters, type TableFiltersProps, MONTH_NAMES, SHORT_MONTH_NAMES, getDatePresets, formatDateForInput } from "./table-filters";
+import { TableFilters, type TableFiltersProps, getMonthNames, getShortMonthNames, getDatePresets, formatDateForInput } from "./table-filters";
 
 interface FilterBarProps extends TableFiltersProps {
 	clearFilters: () => void;
@@ -36,14 +38,14 @@ type ActivePill = {
 	onDismiss: () => void;
 };
 
-function useActivePills(props: FilterBarProps): ActivePill[] {
+function useActivePills(props: FilterBarProps, t: (key: string, values?: Record<string, string | number | Date>) => string, tFilters: ReturnType<typeof useTranslations<"tableFilters">>, MONTH_NAMES: string[], SHORT_MONTH_NAMES: string[], displayName: (name: string) => string): ActivePill[] {
 	const pills: ActivePill[] = [];
 
 	// Type filter (only relevant when user has shared expenses)
 	if (props.hasSharedExpenses && props.typeFilter !== "all") {
 		pills.push({
 			key: "type",
-			label: props.typeFilter === "personal" ? "Personal" : "Shared",
+			label: props.typeFilter === "personal" ? t("personal") : t("shared"),
 			onDismiss: () => props.setTypeFilter("all"),
 		});
 	}
@@ -53,18 +55,18 @@ function useActivePills(props: FilterBarProps): ActivePill[] {
 		pills.push({
 			key: "exclude",
 			label:
-				props.excludeFilter === "included" ? "Included only" : "Excluded only",
+				props.excludeFilter === "included" ? t("includedOnly") : t("excludedOnly"),
 			onDismiss: () => props.setExcludeFilter("all"),
 		});
 	}
 
 	// Date range
 	if (props.dateRange) {
-		const presets = getDatePresets();
+		const presets = getDatePresets(tFilters);
 		let label: string;
 		if (props.dateRange.preset) {
 			const preset = presets.find((p) => p.key === props.dateRange!.preset);
-			label = preset?.label ?? "Custom range";
+			label = preset?.label ?? t("customRange");
 		} else {
 			const from = formatDateForInput(props.dateRange.from);
 			const to = formatDateForInput(props.dateRange.to);
@@ -121,7 +123,7 @@ function useActivePills(props: FilterBarProps): ActivePill[] {
 					const Icon = getCategoryIcon(cat.name, cat.icon);
 					pills.push({
 						key: `cat-${catId}`,
-						label: cat.name,
+						label: displayName(cat.name),
 						icon: Icon,
 						onDismiss: () => props.toggleCategory(catId),
 					});
@@ -130,7 +132,7 @@ function useActivePills(props: FilterBarProps): ActivePill[] {
 		} else {
 			pills.push({
 				key: "categories",
-				label: `${props.selectedCategories.size} categories`,
+				label: t("categoriesCount", { count: props.selectedCategories.size }),
 				onDismiss: props.clearCategories,
 			});
 		}
@@ -143,9 +145,9 @@ function useActivePills(props: FilterBarProps): ActivePill[] {
 		if (props.amountRange.min != null && props.amountRange.max != null) {
 			label = `${currency} ${props.amountRange.min} – ${props.amountRange.max}`;
 		} else if (props.amountRange.min != null) {
-			label = `Min ${currency} ${props.amountRange.min}`;
+			label = t("minAmount", { currency, amount: props.amountRange.min });
 		} else {
-			label = `Max ${currency} ${props.amountRange.max}`;
+			label = t("maxAmount", { currency, amount: props.amountRange.max! });
 		}
 		pills.push({
 			key: "amount",
@@ -203,14 +205,19 @@ function FilterPill({
 }
 
 export function FilterBar(props: FilterBarProps) {
+	const t = useTranslations("transactions");
+	const tUi = useTranslations("ui");
+	const tFilters = useTranslations("tableFilters");
+	const { displayName } = useCategoryName();
+	const MONTH_NAMES = getMonthNames(tUi);
+	const SHORT_MONTH_NAMES = getShortMonthNames(tUi);
 	const [open, setOpen] = useState(false);
 	const isMobile = useIsMobile();
-	const pills = useActivePills(props);
+	const pills = useActivePills(props, t, tFilters, MONTH_NAMES, SHORT_MONTH_NAMES, displayName);
 	const activeCount = countActiveFilters(props);
 	const hasActiveFilters = pills.length > 0;
 
-	const countLabel =
-		props.displayedCount === 1 ? "1 expense" : `${props.displayedCount} expenses`;
+	const countLabel = t("expenseCount", { count: props.displayedCount });
 
 	const filterButton = (
 		<Button
@@ -220,7 +227,7 @@ export function FilterBar(props: FilterBarProps) {
 			variant={activeCount > 0 ? "secondary" : "ghost"}
 		>
 			<SlidersHorizontal className="h-3.5 w-3.5" />
-			Filters
+			{t("filters")}
 			{activeCount > 0 && (
 				<span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold tabular-nums text-[10px] text-primary-foreground">
 					{activeCount}
@@ -259,10 +266,10 @@ export function FilterBar(props: FilterBarProps) {
 						>
 							<DrawerContent className="px-6 pb-6">
 								<DrawerTitle className="mb-4 text-left font-semibold text-lg">
-									Filters
+									{t("filters")}
 								</DrawerTitle>
 								<DrawerDescription className="sr-only">
-									Filter transactions by date, category, and amount
+									{t("filterDescription")}
 								</DrawerDescription>
 								{panelContent}
 								<Button
@@ -271,7 +278,7 @@ export function FilterBar(props: FilterBarProps) {
 									size="sm"
 									variant="outline"
 								>
-									Done
+									{t("done")}
 								</Button>
 							</DrawerContent>
 						</Drawer>
@@ -296,13 +303,13 @@ export function FilterBar(props: FilterBarProps) {
 						size="sm"
 						variant="ghost"
 					>
-						Clear all
+						{t("clearAll")}
 					</Button>
 				)}
 
 				<ExpandableSearch
 					onChange={props.onSearchChange}
-					placeholder={props.searchPlaceholder ?? "Search expenses..."}
+					placeholder={props.searchPlaceholder ?? t("searchExpenses")}
 					value={props.searchQuery}
 					captureTyping
 					slashFocus

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { useRef } from "react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { CtaSection } from "./cta-section";
@@ -52,6 +53,7 @@ const DemoWealth = dynamic(
 
 export function LandingPage({ showLegalLinks }: { showLegalLinks: boolean }) {
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const t = useTranslations("landing");
 
 	return (
 		<div className="dark h-svh overflow-y-auto" ref={scrollRef}>
@@ -68,34 +70,34 @@ export function LandingPage({ showLegalLinks }: { showLegalLinks: boolean }) {
 
 				<FeatureSection
 					className="bg-accent/20"
-					description="Real-time spending stats, budget pacing, category breakdowns, and recent activity. All on one screen."
+					description={t("overviewDescription")}
 					id="overview"
-					title="Dashboard Overview"
+					title={t("overviewTitle")}
 				>
 					<DemoDashboardOverview />
 				</FeatureSection>
 
 				<FeatureSection
-					description="Allocate budgets across categories and track spending progress in real time."
+					description={t("budgetDescription")}
 					id="budgets"
-					title="Budget Management"
+					title={t("budgetTitle")}
 				>
 					<DemoBudget />
 				</FeatureSection>
 
 				<FeatureSection
 					className="bg-accent/20"
-					description="Split with anyone, no account required. One balance per person across all your shared expenses."
+					description={t("splittingDescription")}
 					id="splitting"
-					title="Bill Splitting"
+					title={t("splittingTitle")}
 				>
 					<DemoSplitting />
 				</FeatureSection>
 
 				<FeatureSection
-					description="Track your net worth, assets, liabilities, and financial runway over time."
+					description={t("wealthDescription")}
 					id="wealth"
-					title="Wealth Tracking"
+					title={t("wealthTitle")}
 				>
 					<DemoWealth />
 				</FeatureSection>

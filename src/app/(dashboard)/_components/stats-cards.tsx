@@ -1,6 +1,7 @@
 "use client";
 
 import { Briefcase, Calendar, Clock, Wallet } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
@@ -37,6 +38,7 @@ export function StatsCards({
 	homeCurrency,
 	budgetPacing,
 }: StatsCardsProps) {
+	const t = useTranslations("stats");
 	const { formatCurrency } = useCurrencyFormatter();
 	const formatMoney = (value: number) => formatCurrency(value, homeCurrency);
 	const isPositiveChange = changeVsLastMonth !== null && changeVsLastMonth >= 0;
@@ -82,22 +84,19 @@ export function StatsCards({
 				description={
 					!expensesLoading && dailyAverage > 0 ? (
 						<>
-							Avg:{" "}
-							<span className="font-medium text-foreground">
-								{formatMoney(dailyAverage)}/day
-							</span>
+							{t("avgPerDay", { amount: formatMoney(dailyAverage) })}
 						</>
 					) : null
 				}
 				icon={Wallet}
 				loading={expensesLoading}
-				title="Total This Month"
+				title={t("totalThisMonth")}
 				trend={
 					expensesLoading
 						? undefined
 						: {
 								value: changeVsLastMonth,
-								label: "vs last month",
+								label: t("vsLastMonth"),
 								intent: isPositiveChange ? "negative" : "positive",
 							}
 				}
@@ -111,7 +110,7 @@ export function StatsCards({
 					formatCurrency={formatCurrency}
 					icon={Clock}
 					loading={expensesLoading}
-					title="Last 24 Hours"
+					title={t("last24Hours")}
 					trend={
 						!expensesLoading &&
 						overviewStats &&
@@ -119,7 +118,7 @@ export function StatsCards({
 						overviewStats.last24Hours !== dailyAverage
 							? {
 									value: overviewStats.last24Hours - dailyAverage,
-									label: "vs daily avg",
+									label: t("vsDailyAvg"),
 									isMoney: true,
 									intent:
 										overviewStats.last24Hours > dailyAverage
@@ -138,10 +137,10 @@ export function StatsCards({
 				/>
 			) : (
 				<StatCard
-					description="Final spend for this month"
+					description={t("finalSpend")}
 					icon={Calendar}
 					loading={expensesLoading}
-					title="Month Total"
+					title={t("monthTotal")}
 					value={
 						expensesLoading
 							? undefined
@@ -155,10 +154,10 @@ export function StatsCards({
 			{overviewStats?.workEquivalent.monthlyIncome &&
 			overviewStats.workEquivalent.monthlyIncome > 0 ? (
 				<StatCard
-					description="Time cost of this month"
+					description={t("timeCost")}
 					icon={Briefcase}
 					loading={expensesLoading}
-					title="Work Equivalent"
+					title={t("workEquivalent")}
 					value={
 						expensesLoading
 							? undefined
@@ -179,13 +178,13 @@ export function StatsCards({
 					}
 					icon={Briefcase}
 					loading={expensesLoading}
-					title="Top Category"
+					title={t("topCategory")}
 					value={
 						expensesLoading
 							? undefined
 							: categoryBreakdown.length > 0
 								? categoryBreakdown[0]?.name
-								: "No expenses"
+								: t("noExpenses")
 					}
 					variant="violet"
 				/>
@@ -198,20 +197,22 @@ export function StatsCards({
 					description={
 						!expensesLoading && (
 							<>
-								{formatMoney(overviewStats.dailyBudgetPace.totalSpent)} of{" "}
-								{formatMoney(overviewStats.dailyBudgetPace.totalBudget)}
+								{t("ofBudget", {
+									spent: formatMoney(overviewStats.dailyBudgetPace.totalSpent),
+									total: formatMoney(overviewStats.dailyBudgetPace.totalBudget),
+								})}
 							</>
 						)
 					}
 					formatCurrency={formatMoney}
 					icon={Wallet}
 					loading={expensesLoading}
-					title="Budget Used"
+					title={t("budgetUsed")}
 					trend={
 						!expensesLoading && paceVsBudget !== null
 							? {
 									value: paceVsBudget,
-									label: paceVsBudget > 0 ? "over budget" : "under budget",
+									label: paceVsBudget > 0 ? t("overBudget") : t("underBudget"),
 									isMoney: true,
 									intent: paceVsBudget > 0 ? "negative" : "positive",
 								}
@@ -222,10 +223,10 @@ export function StatsCards({
 				/>
 			) : (
 				<StatCard
-					description="Last 3 months average"
+					description={t("last3MonthsAvg")}
 					icon={Wallet}
 					loading={expensesLoading}
-					title="Projected Total"
+					title={t("projectedTotal")}
 					value={expensesLoading ? undefined : formatMoney(projectedSpend)}
 					variant="emerald"
 				/>

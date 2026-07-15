@@ -1,4 +1,5 @@
 import { TrendingUp } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { CurrencyPicker } from "~/components/currency-picker";
@@ -40,21 +41,6 @@ interface WealthHistoryChartProps {
 	isPrivacyMode?: boolean;
 }
 
-const chartConfig = {
-	amount: {
-		label: "Net Worth",
-		color: "hsl(217, 91%, 60%)",
-	},
-	assets: {
-		label: "Assets",
-		color: ASSET_COLORS.CASH, // Using primary asset color for assets line
-	},
-	liabilities: {
-		label: "Liabilities",
-		color: ASSET_COLORS.LIABILITY_LOAN, // Using primary liability color for liabilities line
-	},
-} satisfies ChartConfig;
-
 export function WealthHistoryChart({
 	data,
 	baseCurrency = "USD",
@@ -63,14 +49,31 @@ export function WealthHistoryChart({
 	onTimeRangeChange,
 	isPrivacyMode = false,
 }: WealthHistoryChartProps) {
+	const t = useTranslations("wealth");
+	const locale = useLocale();
 	const { formatCurrency, getCurrencySymbol } = useCurrencyFormatter();
 
+	const chartConfig = {
+		amount: {
+			label: t("netWorth"),
+			color: "hsl(217, 91%, 60%)",
+		},
+		assets: {
+			label: t("totalAssets"),
+			color: ASSET_COLORS.CASH,
+		},
+		liabilities: {
+			label: t("totalLiabilities"),
+			color: ASSET_COLORS.LIABILITY_LOAN,
+		},
+	} satisfies ChartConfig;
+
 	const compactNumberFormatter = useMemo(() => {
-		return new Intl.NumberFormat("en-US", {
+		return new Intl.NumberFormat(locale, {
 			notation: "compact",
 			maximumFractionDigits: 1,
 		});
-	}, []);
+	}, [locale]);
 
 	const formatCompactCurrency = (value: number, currency: string): string => {
 		const symbol = getCurrencySymbol(currency);
@@ -81,14 +84,14 @@ export function WealthHistoryChart({
 		return (
 			<Card className="h-full">
 				<CardHeader>
-					<CardTitle>Net Worth History</CardTitle>
-					<CardDescription>Trend over time</CardDescription>
+					<CardTitle>{t("netWorthHistory")}</CardTitle>
+					<CardDescription>{t("trendOverTime")}</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col items-center justify-center py-12">
 					<TrendingUp aria-hidden="true" className="h-12 w-12 text-muted-foreground/50" />
-					<h3 className="mt-4 font-medium text-lg">No history data yet</h3>
+					<h3 className="mt-4 font-medium text-lg">{t("noHistoryDataYet")}</h3>
 					<p className="mt-2 text-center text-muted-foreground text-sm">
-						Start tracking your net worth over time to see historical trends.
+						{t("noHistoryDataDescription")}
 					</p>
 				</CardContent>
 			</Card>
@@ -99,8 +102,8 @@ export function WealthHistoryChart({
 		<Card className="h-full">
 			<CardHeader className="flex flex-row items-center justify-between">
 				<div>
-					<CardTitle>Net Worth History</CardTitle>
-					<CardDescription>Trend over time</CardDescription>
+					<CardTitle>{t("netWorthHistory")}</CardTitle>
+					<CardDescription>{t("trendOverTime")}</CardDescription>
 				</div>
 				{(onBaseCurrencyChange || onTimeRangeChange) && (
 					<div className="flex items-center gap-3">
@@ -170,7 +173,7 @@ export function WealthHistoryChart({
 							minTickGap={32}
 							tickFormatter={(value) => {
 								const date = parseDateOnly(value);
-								return date.toLocaleDateString("en-US", {
+								return date.toLocaleDateString(locale, {
 									month: "short",
 									day: "numeric",
 								});
@@ -212,7 +215,7 @@ export function WealthHistoryChart({
 									)}
 									indicator="dot"
 									labelFormatter={(value) => {
-										return parseDateOnly(value).toLocaleDateString("en-US", {
+										return parseDateOnly(value).toLocaleDateString(locale, {
 											month: "long",
 											day: "numeric",
 											year: "numeric",

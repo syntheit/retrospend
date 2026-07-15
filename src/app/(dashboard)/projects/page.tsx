@@ -13,13 +13,13 @@ import {
 	Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ElementType, type MouseEvent as ReactMouseEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
 import { NewProjectDialog } from "~/components/project/new-project-dialog";
 import { ExpandableSearch } from "~/components/table-search";
-import { PROJECT_TYPE_LABELS } from "~/components/project/project-header";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { ShareProjectDialog } from "~/components/project/share-project-dialog";
 import { SiteHeader } from "~/components/site-header";
@@ -50,20 +50,8 @@ import { getImageUrl } from "~/lib/image-url";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
-const PROJECT_STATUS_LABELS: Record<string, string> = {
-	ACTIVE: "Active",
-	ARCHIVED: "Archived",
-};
-
-const TYPE_BG_GRADIENTS: Record<string, string> = {
-	TRIP: "from-amber-600 to-orange-700",
-	ONGOING: "from-blue-600 to-teal-600",
-	SOLO: "from-slate-600 to-gray-700",
-	GENERAL: "from-indigo-600 to-purple-700",
-	ONE_TIME: "from-emerald-600 to-green-700",
-};
-
 function LastActivityLabel({ projectId, fallbackDate }: { projectId: string; fallbackDate: Date | string }) {
+	const t = useTranslations("projects");
 	const { data, isLoading } = api.auditLog.projectLastActivity.useQuery(
 		{ projectId },
 		{ staleTime: 60_000 },
@@ -72,7 +60,7 @@ function LastActivityLabel({ projectId, fallbackDate }: { projectId: string; fal
 	if (isLoading || !data) {
 		return (
 			<span>
-				Updated{" "}
+				{t("updated")}{" "}
 				{new Date(fallbackDate).toLocaleDateString(undefined, {
 					month: "short",
 					day: "numeric",
@@ -95,11 +83,7 @@ function LastActivityLabel({ projectId, fallbackDate }: { projectId: string; fal
 
 type StatusFilter = "ACTIVE" | "ARCHIVED" | "ALL";
 
-const FILTER_TABS: { label: string; value: StatusFilter }[] = [
-	{ label: "Active", value: "ACTIVE" },
-	{ label: "Archived", value: "ARCHIVED" },
-	{ label: "All", value: "ALL" },
-];
+const FILTER_VALUES = ["ACTIVE", "ARCHIVED", "ALL"] as const;
 
 type ProjectItem = RouterOutputs["project"]["list"][number];
 
@@ -166,6 +150,7 @@ function ProjectCardFooter({
 	candidateActions: CardAction[];
 	menuActions: CardAction[];
 }) {
+	const t = useTranslations("projects");
 	const containerRef = useRef<HTMLDivElement>(null);
 	const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -220,7 +205,7 @@ function ProjectCardFooter({
 						<button
 							className="ml-1 flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
 							onClick={(e) => e.stopPropagation()}
-							title="More actions"
+							title={t("moreActions")}
 							type="button"
 						>
 							<MoreHorizontal className="h-4 w-4" />
@@ -279,6 +264,7 @@ function ProjectCard({
 	filter: StatusFilter;
 	formatCurrency: (amount: number, currency: string) => string;
 }) {
+	const t = useTranslations("projects");
 	const router = useRouter();
 	const utils = api.useUtils();
 	const { data: session } = useSession();
@@ -295,9 +281,7 @@ function ProjectCard({
 
 	const statusMutation = api.project.update.useMutation({
 		onSuccess: (_data, variables) => {
-			const label =
-				variables.status === "ARCHIVED" ? "archived" : "restored";
-			toast.success(`Project ${label}`);
+			toast.success(variables.status === "ARCHIVED" ? t("projectArchived") : t("projectRestored"));
 			void utils.project.list.invalidate();
 		},
 		onError: (e) => toast.error(e.message),
@@ -305,7 +289,7 @@ function ProjectCard({
 
 	const deleteMutation = api.project.delete.useMutation({
 		onSuccess: () => {
-			toast.success("Project deleted");
+			toast.success(t("projectDeleted"));
 			void utils.project.list.invalidate();
 			setDeleteOpen(false);
 		},
@@ -315,7 +299,7 @@ function ProjectCard({
 	const handleCopyLink = async () => {
 		const url = `${window.location.origin}/projects/${project.id}`;
 		await navigator.clipboard.writeText(url);
-		toast.success("Link copied to clipboard");
+		toast.success(t("linkCopied"));
 	};
 
 	const budgetAmount = project.budgetAmount
@@ -327,8 +311,7 @@ function ProjectCard({
 			? (project.totalSpent / budgetAmount) * 100
 			: null;
 	const imageUrl = getImageUrl(project.imagePath ?? null);
-	const bgGradient =
-		TYPE_BG_GRADIENTS[project.type] ?? TYPE_BG_GRADIENTS.GENERAL;
+	const bgGradient = "from-indigo-600 to-purple-700";
 
 	// --- Action definitions ---
 
@@ -338,7 +321,7 @@ function ProjectCard({
 			? [
 					{
 						id: "add-expense",
-						label: "Add Expense",
+						label: t("addExpense"),
 						icon: ReceiptText,
 						primary: true,
 						onClick: (e: ReactMouseEvent) => {
@@ -354,7 +337,7 @@ function ProjectCard({
 			: []),
 		{
 			id: "share",
-			label: "Share",
+			label: t("share"),
 			icon: Share2,
 			onClick: (e: ReactMouseEvent) => {
 				e.stopPropagation();
@@ -363,7 +346,7 @@ function ProjectCard({
 		},
 		{
 			id: "copy-link",
-			label: "Copy Link",
+			label: t("copyLink"),
 			icon: Link,
 			onClick: (e: ReactMouseEvent) => {
 				e.stopPropagation();
@@ -379,7 +362,7 @@ function ProjectCard({
 			? [
 					{
 						id: "archive",
-						label: "Archive",
+						label: t("archive"),
 						icon: Archive,
 						disabled: statusMutation.isPending,
 						onClick: (e: ReactMouseEvent) => {
@@ -393,7 +376,7 @@ function ProjectCard({
 			? [
 					{
 						id: "restore",
-						label: "Restore",
+						label: t("restore"),
 						icon: RotateCcw,
 						disabled: statusMutation.isPending,
 						onClick: (e: ReactMouseEvent) => {
@@ -407,7 +390,7 @@ function ProjectCard({
 			? [
 					{
 						id: "delete",
-						label: "Delete",
+						label: t("delete"),
 						icon: Trash2,
 						destructive: true,
 						onClick: (e: ReactMouseEvent) => {
@@ -460,18 +443,14 @@ function ProjectCard({
 						<div className="relative flex items-start gap-3 p-4">
 							<div className="min-w-0 flex-1 space-y-1.5">
 								<div className="flex flex-wrap items-center gap-1">
-									<Badge className="border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
-										{PROJECT_TYPE_LABELS[project.type] ?? project.type}
-									</Badge>
 									{project.isSettled && (
 										<Badge className="border-emerald-400/30 bg-emerald-500/20 text-[10px] text-emerald-300 backdrop-blur-sm">
-											Settled
+											{t("settledBadge")}
 										</Badge>
 									)}
 									{filter === "ALL" && project.status !== "ACTIVE" && (
 										<Badge className="border-white/20 bg-white/15 text-[10px] text-white backdrop-blur-sm">
-											{PROJECT_STATUS_LABELS[project.status] ??
-												project.status}
+											{project.status === "ARCHIVED" ? t("archived") : project.status}
 										</Badge>
 									)}
 								</div>
@@ -498,10 +477,9 @@ function ProjectCard({
 										</span>
 									)}
 									<span className="text-white/60 text-xs">
-										{project._count.participants} participant
-										{project._count.participants !== 1 ? "s" : ""}
+										{project._count.participants} {project._count.participants !== 1 ? t("participantsPlural") : t("participants")}
 									</span>
-									{project.type === "ONGOING" && project.currentBillingPeriod && (
+									{project.currentBillingPeriod != null && (
 										<>
 											<span className="text-white/40 text-xs">·</span>
 											<span className="text-white/60 text-xs">
@@ -572,7 +550,6 @@ function ProjectCard({
 								className="shrink-0 ring-2 ring-white/20 shadow-lg !h-[84px] !w-[84px] !rounded-[12px]"
 								imagePath={project.imagePath ?? null}
 								projectName={project.name}
-								projectType={project.type}
 								size="lg"
 							/>
 						</div>
@@ -597,18 +574,18 @@ function ProjectCard({
 							}
 						>
 							<ReceiptText />
-							Add Expense
+							{t("addExpense")}
 						</ContextMenuItem>
 					)}
 
 					<ContextMenuItem onClick={() => setShareOpen(true)}>
 						<Share2 />
-						Share
+						{t("share")}
 					</ContextMenuItem>
 
 					<ContextMenuItem onClick={handleCopyLink}>
 						<Copy />
-						Copy Link
+						{t("copyLink")}
 					</ContextMenuItem>
 
 					{isOrganizer && (
@@ -626,7 +603,7 @@ function ProjectCard({
 									}
 								>
 									<Archive />
-									Archive
+									{t("archive")}
 								</ContextMenuItem>
 							)}
 
@@ -641,7 +618,7 @@ function ProjectCard({
 									}
 								>
 									<RotateCcw />
-									Restore
+									{t("restore")}
 								</ContextMenuItem>
 							)}
 						</>
@@ -655,7 +632,7 @@ function ProjectCard({
 								variant="destructive"
 							>
 								<Trash2 />
-								Delete
+								{t("delete")}
 							</ContextMenuItem>
 						</>
 					)}
@@ -673,13 +650,13 @@ function ProjectCard({
 			/>
 
 			<ConfirmationDialog
-				confirmLabel="Delete"
-				description={`This will permanently delete "${project.name}" and all its data. This action cannot be undone.`}
+				confirmLabel={t("delete")}
+				description={t("deleteDescription", { name: project.name })}
 				isLoading={deleteMutation.isPending}
 				onConfirm={() => deleteMutation.mutate({ id: project.id })}
 				onOpenChange={setDeleteOpen}
 				open={deleteOpen}
-				title="Delete Project"
+				title={t("deleteProject")}
 				variant="destructive"
 			/>
 		</>
@@ -687,6 +664,7 @@ function ProjectCard({
 }
 
 export default function ProjectsPage() {
+	const t = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
 	const [filter, setFilter] = useState<StatusFilter>("ACTIVE");
 	const [search, setSearch] = useState("");
@@ -704,39 +682,39 @@ export default function ProjectsPage() {
 
 	return (
 		<>
-			<SiteHeader title="Projects" />
+			<SiteHeader title={t("title")} />
 			<PageContent>
 				<div className="space-y-4">
 					{/* Search + Filter Tabs + New Project */}
 					<div className="flex items-center justify-between gap-2">
 						<div className="flex items-center gap-2">
 							<div className="flex gap-1 rounded-lg border border-border bg-muted/30 p-1">
-								{FILTER_TABS.map((tab) => (
+								{FILTER_VALUES.map((value) => (
 									<button
 										className={cn(
 											"cursor-pointer rounded-md px-3 py-1.5 font-medium text-sm transition-colors",
-											filter === tab.value
+											filter === value
 												? "bg-background shadow-sm"
 												: "text-muted-foreground hover:text-foreground",
 										)}
-										key={tab.value}
-										onClick={() => setFilter(tab.value)}
+										key={value}
+										onClick={() => setFilter(value)}
 										type="button"
 									>
-										{tab.label}
+										{value === "ACTIVE" ? t("active") : value === "ARCHIVED" ? t("archived") : t("all")}
 									</button>
 								))}
 							</div>
 							<ExpandableSearch
 								value={search}
 								onChange={setSearch}
-								placeholder="Search projects..."
+								placeholder={t("searchPlaceholder")}
 								slashFocus
 							/>
 						</div>
 						<Button onClick={() => setNewProjectOpen(true)} size="sm">
 							<Plus className="mr-1 h-4 w-4" />
-							New Project
+							{t("newProject")}
 						</Button>
 					</div>
 
@@ -744,7 +722,7 @@ export default function ProjectsPage() {
 					{isError ? (
 						<div className="flex flex-col items-center justify-center py-24 text-center">
 							<p className="text-muted-foreground text-sm">
-								Failed to load projects. Please try again.
+								{t("loadError")}
 							</p>
 						</div>
 					) : isLoading ? (
@@ -767,16 +745,16 @@ export default function ProjectsPage() {
 						</div>
 					) : search ? (
 						<EmptyState
-							description={`No projects matching "${search}"`}
+							description={t("noSearchResults", { query: search })}
 							icon={FolderOpen}
-							title="No Results"
+							title={t("noResults")}
 						/>
 					) : (
 						<EmptyState
-							action={{ label: "New Project", onClick: () => setNewProjectOpen(true) }}
-							description="Create a project to group shared expenses by trip, household, or any shared context."
+							action={{ label: t("newProject"), onClick: () => setNewProjectOpen(true) }}
+							description={t("createDescription")}
 							icon={FolderOpen}
-							title={filter === "ALL" ? "No Projects Yet" : `No ${filter.charAt(0)}${filter.slice(1).toLowerCase()} Projects`}
+							title={filter === "ALL" ? t("noProjectsYet") : t("noStatusProjects", { status: filter === "ACTIVE" ? t("active") : t("archived") })}
 						/>
 					)}
 				</div>

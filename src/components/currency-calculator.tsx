@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { Button } from "~/components/ui/button";
@@ -24,6 +25,7 @@ export const CurrencyCalculator = forwardRef<
 	{ homeCurrency, defaultCurrency, externalCurrency },
 	ref,
 ) {
+	const t = useTranslations("currencies");
 	const calc = useCurrencyCalculator({
 		homeCurrency,
 		defaultCurrency,
@@ -79,7 +81,7 @@ export const CurrencyCalculator = forwardRef<
 						)}
 					</div>
 					<Button
-						aria-label="Swap currencies"
+						aria-label={t("swapCurrencies")}
 						className="absolute right-0 h-8 w-8 rounded-full"
 						onClick={calc.swap}
 						size="icon"

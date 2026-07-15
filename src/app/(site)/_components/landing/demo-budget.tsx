@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { BulletChart } from "~/components/budget/bullet-chart";
 import { PartitionBar } from "~/components/budget/partition-bar";
 import { getCategoryIcon } from "~/lib/category-icons";
@@ -61,6 +62,8 @@ function DemoBudgetRow({
 }
 
 export function DemoBudget() {
+	const t = useTranslations("landing");
+
 	return (
 		<div className="space-y-8">
 			<div className="space-y-4 pt-2">
@@ -74,10 +77,10 @@ export function DemoBudget() {
 				<div className="flex items-center justify-between">
 					<div>
 						<h3 className="font-semibold text-lg tracking-tight">
-							Variable / Managed
+							{t("demoBudgetVariable")}
 						</h3>
 						<p className="text-muted-foreground text-sm">
-							Categories you actively monitor and adjust
+							{t("demoBudgetVariableDesc")}
 						</p>
 					</div>
 				</div>
@@ -91,10 +94,10 @@ export function DemoBudget() {
 				<div className="flex items-center justify-between pt-4">
 					<div>
 						<h3 className="font-semibold text-lg tracking-tight">
-							Fixed / Pegged
+							{t("demoBudgetFixed")}
 						</h3>
 						<p className="text-muted-foreground text-sm">
-							Categories that automatically match your actual spending
+							{t("demoBudgetFixedDesc")}
 						</p>
 					</div>
 				</div>

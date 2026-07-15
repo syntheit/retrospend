@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronsUpDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createElement, useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -9,6 +10,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getCategoryColorClasses } from "~/lib/constants";
 import { cn } from "~/lib/utils";
@@ -30,10 +32,13 @@ interface CategoryPickerProps {
 export function CategoryPicker({
 	value,
 	onValueChange,
-	placeholder = "Select category",
+	placeholder,
 	className,
 	categories: propCategories,
 }: CategoryPickerProps) {
+	const t = useTranslations("ui");
+	const { displayName } = useCategoryName();
+	const resolvedPlaceholder = placeholder ?? t("selectCategory");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 
@@ -51,14 +56,14 @@ export function CategoryPicker({
 		const searchLower = search.toLowerCase();
 		const filtered = search
 			? list.filter((category) =>
-					category.name.toLowerCase().includes(searchLower),
+					displayName(category.name).toLowerCase().includes(searchLower),
 				)
 			: list;
 		if (!value) return filtered;
 		return [...filtered].sort((a, b) =>
 			a.id === value ? -1 : b.id === value ? 1 : 0,
 		);
-	}, [categories, search, value]);
+	}, [categories, search, value, displayName]);
 
 	const selectedCategory = value && categories?.find((cat) => cat.id === value);
 
@@ -96,10 +101,10 @@ export function CategoryPicker({
 									{ className: "h-3 w-3" },
 								)}
 							</span>
-							<span className="truncate">{selectedCategory.name}</span>
+							<span className="truncate">{displayName(selectedCategory.name)}</span>
 						</span>
 					) : (
-						placeholder
+						resolvedPlaceholder
 					)}
 					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 				</Button>
@@ -119,7 +124,7 @@ export function CategoryPicker({
 								setSearch("");
 							}
 						}}
-						placeholder="Search categories..."
+						placeholder={t("searchCategories")}
 						value={search}
 					/>
 				</div>
@@ -131,7 +136,7 @@ export function CategoryPicker({
 					<div className="flex flex-col p-1">
 						{filteredCategories.length === 0 ? (
 							<div className="p-4 text-center text-muted-foreground">
-								No categories found.
+								{t("noCategoriesFound")}
 							</div>
 						) : (
 							filteredCategories.map((category) => (
@@ -159,7 +164,7 @@ export function CategoryPicker({
 											{ className: "h-3.5 w-3.5" },
 										)}
 									</span>
-									<span className="truncate">{category.name}</span>
+									<span className="truncate">{displayName(category.name)}</span>
 								</Button>
 							))
 						)}

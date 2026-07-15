@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Info, ListPlus, Trash2, Undo2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { SplitWithPicker } from "~/components/split-with-picker";
 import { Button } from "~/components/ui/button";
@@ -37,20 +38,12 @@ import { DetailsSection } from "./expense/form-sections/DetailsSection";
 import { FrequencySection } from "./expense/form-sections/FrequencySection";
 import { SharedExpenseSection } from "./expense/form-sections/SharedExpenseSection";
 
-const PROJECT_TYPE_COLORS: Record<string, string> = {
-	TRIP: "bg-amber-500",
-	ONGOING: "bg-blue-500",
-	SOLO: "bg-slate-500",
-	GENERAL: "bg-indigo-500",
-	ONE_TIME: "bg-emerald-500",
-};
-
-function ProjectDot({ imagePath, type }: { imagePath?: string | null; type: string }) {
+function ProjectDot({ imagePath }: { imagePath?: string | null }) {
 	const imageUrl = getImageUrl(imagePath ?? null);
 	if (imageUrl) {
 		return <img alt="" className="h-3.5 w-3.5 shrink-0 rounded-full object-cover" src={imageUrl} />;
 	}
-	return <span className={cn("h-3 w-3 shrink-0 rounded-full", PROJECT_TYPE_COLORS[type] ?? PROJECT_TYPE_COLORS.GENERAL)} />;
+	return <span className="h-3 w-3 shrink-0 rounded-full bg-indigo-500" />;
 }
 
 interface ExpenseFormProps {
@@ -172,6 +165,8 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			currentParticipant,
 		});
 
+		const t = useTranslations("expenseForm");
+
 		const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 		const [projectChangeWarning, setProjectChangeWarning] = useState<{
 			show: boolean;
@@ -236,7 +231,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 				{duplicateWarning && (
 					<div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-sm dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
 						<AlertTriangle className="h-4 w-4 shrink-0" />
-						<span>A similar expense already exists on this date. Save anyway?</span>
+						<span>{t("duplicateWarning")}</span>
 					</div>
 				)}
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -252,7 +247,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								variant="ghost"
 							>
 								<Trash2 className="h-4 w-4" />
-								<span className="sr-only">Delete expense</span>
+								<span className="sr-only">{t("deleteExpenseSr")}</span>
 							</Button>
 							<Button
 								className="gap-1.5"
@@ -263,7 +258,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								variant="ghost"
 							>
 								<Undo2 className="h-4 w-4" />
-								Undo Changes
+								{t("undoChanges")}
 							</Button>
 						</>
 					)}
@@ -283,7 +278,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						type="button"
 						variant="ghost"
 					>
-						Cancel
+						{t("cancel")}
 					</Button>
 					{mode === "create" && onSaveAndNew && (
 						<Button
@@ -297,8 +292,8 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							variant="outline"
 						>
 							<ListPlus className="h-4 w-4" />
-							<span className="hidden sm:inline">Save & Add Another</span>
-							<span className="sm:hidden">Save & New</span>
+							<span className="hidden sm:inline">{t("saveAndAddAnother")}</span>
+							<span className="sm:hidden">{t("saveAndNew")}</span>
 						</Button>
 					)}
 					<Button
@@ -307,14 +302,14 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 						type="submit"
 					>
 						{isSubmitting
-							? "Saving..."
+							? t("saving")
 							: isSharedTransactionEdit
-								? "Save Changes"
+								? t("saveChanges")
 								: expense
-									? "Save Changes"
+									? t("saveChanges")
 									: isSharedExpense
-										? "Create Shared Expense"
-										: "Create Expense"}
+										? t("createSharedExpense")
+										: t("createExpense")}
 					</Button>
 				</div>
 			</div>
@@ -328,9 +323,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 					<div className="mx-4 mt-2 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 sm:mx-6">
 						<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
 						<p>
-							This expense has been verified by participants. Saving changes
-							will reset their verification status and they'll need to
-							re-verify.
+							{t("verificationWarning")}
 						</p>
 					</div>
 				)}
@@ -365,19 +358,19 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							{/* Description + Location */}
 							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
 								<div className="space-y-2">
-									<Label htmlFor="description" className="font-normal text-muted-foreground">Description</Label>
+									<Label htmlFor="description" className="font-normal text-muted-foreground">{t("description")}</Label>
 									<Input
 										id="description"
 										{...form.register("description")}
-										placeholder="Additional details..."
+										placeholder={t("descriptionPlaceholder")}
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="location" className="font-normal text-muted-foreground">Location</Label>
+									<Label htmlFor="location" className="font-normal text-muted-foreground">{t("location")}</Label>
 									<Input
 										id="location"
 										{...form.register("location")}
-										placeholder="Where was the expense made?"
+										placeholder={t("locationPlaceholder")}
 									/>
 								</div>
 							</div>
@@ -385,13 +378,13 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							{/* Project selector */}
 							{showProjectSelector && (
 								<div className="space-y-2">
-									<Label className="font-normal text-muted-foreground">Project</Label>
+									<Label className="font-normal text-muted-foreground">{t("project")}</Label>
 									<div className="flex flex-wrap items-center gap-1.5">
 										<Chip
 											active={!selectedProjectId}
 											onClick={() => handleProjectClick(null)}
 										>
-											None
+											{t("none")}
 										</Chip>
 										{selectableProjects.slice(0, visiblePillCount).map((project) => (
 											<Chip
@@ -400,14 +393,14 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 												onClick={() => handleProjectClick(project.id)}
 												className="gap-1.5"
 											>
-												<ProjectDot imagePath={project.imagePath} type={project.type} />
+												<ProjectDot imagePath={project.imagePath} />
 												<span className="max-w-[120px] truncate">{project.name}</span>
 											</Chip>
 										))}
 										{selectableProjects.length > visiblePillCount && (
 											<Popover>
 												<PopoverTrigger asChild>
-													<Chip>+{selectableProjects.length - visiblePillCount} more</Chip>
+													<Chip>{t("more", { count: selectableProjects.length - visiblePillCount })}</Chip>
 												</PopoverTrigger>
 												<PopoverContent align="start" className="w-56 p-1">
 													<div className="flex flex-col">
@@ -423,7 +416,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 																onClick={() => handleProjectClick(project.id)}
 																type="button"
 															>
-																<ProjectDot imagePath={project.imagePath} type={project.type} />
+																<ProjectDot imagePath={project.imagePath} />
 																{project.name}
 															</Button>
 														))}
@@ -438,7 +431,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							{/* Share With (hidden for solo projects) */}
 							{(mode === "create" || isSharedTransactionEdit) && !isSelectedSoloProject && (
 								<div className="space-y-2">
-									<Label>Share With</Label>
+									<Label>{t("shareWith")}</Label>
 									<SplitWithPicker
 										onChange={setSplitWith}
 										value={splitWith}
@@ -475,14 +468,14 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 										rightSlot={
 											!isSharedExpense && !isSharedTransactionEdit ? (
 												<div className="ml-auto flex shrink-0 items-center gap-1.5">
-													<span className="text-muted-foreground text-sm">Exclude from spending</span>
+													<span className="text-muted-foreground text-sm">{t("excludeFromSpending")}</span>
 													<TooltipProvider>
 														<Tooltip>
 															<TooltipTrigger asChild>
 																<Info className="h-3.5 w-3.5 cursor-default text-muted-foreground/50" />
 															</TooltipTrigger>
 															<TooltipContent className="max-w-xs">
-																This expense will still appear in your transaction history but won't be counted in budgets, category breakdowns, or spending trends.
+																{t("excludeTooltip")}
 															</TooltipContent>
 														</Tooltip>
 													</TooltipProvider>
@@ -495,7 +488,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 										}
 									/>
 									{!isSharedExpense && !isSharedTransactionEdit && excludeAutoNote && (
-										<span className="pl-[calc(5rem+0.75rem)] text-muted-foreground/60 text-xs">Auto-excluded based on category settings</span>
+										<span className="pl-[calc(5rem+0.75rem)] text-muted-foreground/60 text-xs">{t("autoExcluded")}</span>
 									)}
 								</div>
 							)}
@@ -512,10 +505,9 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 				<Dialog onOpenChange={setShowUnsavedDialog} open={showUnsavedDialog}>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Unsaved Changes</DialogTitle>
+							<DialogTitle>{t("unsavedChanges")}</DialogTitle>
 							<DialogDescription>
-								You have unsaved changes. Are you sure you want to leave? All
-								changes will be lost.
+								{t("unsavedDescription")}
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -523,10 +515,10 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								onClick={() => setShowUnsavedDialog(false)}
 								variant="ghost"
 							>
-								Stay on Page
+								{t("stayOnPage")}
 							</Button>
 							<Button onClick={handleDiscardChanges} variant="destructive">
-								Discard Changes
+								{t("discardChanges")}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -535,10 +527,9 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 				<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Delete Expense</DialogTitle>
+							<DialogTitle>{t("deleteExpense")}</DialogTitle>
 							<DialogDescription>
-								Are you sure you want to delete this expense? This action cannot
-								be undone.
+								{t("deleteDescription")}
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -546,14 +537,14 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								onClick={() => setShowDeleteDialog(false)}
 								variant="ghost"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button
 								disabled={isDeleting}
 								onClick={handleDelete}
 								variant="destructive"
 							>
-								{isDeleting ? "Deleting..." : "Delete Expense"}
+								{isDeleting ? t("deleting") : t("deleteExpense")}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -567,9 +558,9 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 				>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Change Project?</DialogTitle>
+							<DialogTitle>{t("changeProject")}</DialogTitle>
 							<DialogDescription>
-								Changing the project will reset your split configuration.
+								{t("changeProjectDescription")}
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -577,10 +568,10 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								onClick={() => setProjectChangeWarning({ show: false, targetId: null })}
 								variant="ghost"
 							>
-								Cancel
+								{t("cancel")}
 							</Button>
 							<Button onClick={confirmProjectChangeAndApply}>
-								Change Project
+								{t("changeProjectConfirm")}
 							</Button>
 						</DialogFooter>
 					</DialogContent>

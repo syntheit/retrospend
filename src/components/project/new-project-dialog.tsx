@@ -9,7 +9,6 @@ import {
 	type SplitParticipant,
 	SplitWithPicker,
 } from "~/components/split-with-picker";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
 	ResponsiveDialog,
@@ -30,6 +29,7 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { CurrencyPicker } from "~/components/currency-picker";
+import { useTranslations } from "next-intl";
 import { useSettings } from "~/hooks/use-settings";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -43,16 +43,17 @@ export function NewProjectDialog({
 	open,
 	onOpenChange,
 }: NewProjectDialogProps) {
+	const t = useTranslations("projects");
 	const router = useRouter();
 	const utils = api.useUtils();
 	const { data: settings } = useSettings();
 	const homeCurrency = settings?.homeCurrency ?? "USD";
 
 	const [name, setName] = useState("");
-	const [type, setType] = useState<string>("GENERAL");
 	const [description, setDescription] = useState("");
 	const [budgetAmount, setBudgetAmount] = useState("");
 	const [budgetCurrency, setBudgetCurrency] = useState(homeCurrency);
+	const [billingEnabled, setBillingEnabled] = useState(false);
 	const [billingCycleLength, setBillingCycleLength] = useState("MONTHLY");
 	const [billingAutoClose, setBillingAutoClose] = useState(false);
 	const [billingClosePermission, setBillingClosePermission] =
@@ -68,7 +69,7 @@ export function NewProjectDialog({
 
 	const createMutation = api.project.create.useMutation({
 		onSuccess: async (result) => {
-			toast.success("Project created");
+			toast.success(t("projectCreated"));
 			void utils.project.list.invalidate();
 			onOpenChange(false);
 
@@ -84,12 +85,12 @@ export function NewProjectDialog({
 					});
 					if (!res.ok) {
 						toast.error(
-							"Project created! Icon upload failed. You can add one later.",
+							t("projectCreatedIconFailed"),
 						);
 					}
 				} catch {
 					toast.error(
-						"Project created! Icon upload failed. You can add one later.",
+						t("projectCreatedIconFailed"),
 					);
 				}
 			}
@@ -101,15 +102,15 @@ export function NewProjectDialog({
 	});
 
 	const addParticipantMutation = api.project.addParticipant.useMutation({
-		onError: (e) => toast.error(`Failed to add participant: ${e.message}`),
+		onError: (e) => toast.error(t("failedToAddParticipant", { error: e.message })),
 	});
 
 	const resetForm = () => {
 		setName("");
-		setType("GENERAL");
 		setDescription("");
 		setBudgetAmount("");
 		setBudgetCurrency(homeCurrency);
+		setBillingEnabled(false);
 		setBillingCycleLength("MONTHLY");
 		setBillingAutoClose(false);
 		setBillingClosePermission("ORGANIZER_ONLY");
@@ -146,7 +147,7 @@ export function NewProjectDialog({
 
 	const handleSubmit = async () => {
 		if (!name.trim()) {
-			toast.error("Project name is required");
+			toast.error(t("projectNameRequired"));
 			return;
 		}
 
@@ -155,26 +156,23 @@ export function NewProjectDialog({
 			budgetAmount &&
 			(Number.isNaN(budget) || (budget !== undefined && budget <= 0))
 		) {
-			toast.error("Enter a valid budget amount");
+			toast.error(t("enterValidBudgetAmount"));
 			return;
 		}
 
 		const result = await createMutation.mutateAsync({
 			name: name.trim(),
-			type: type as "TRIP" | "ONGOING" | "SOLO" | "ONE_TIME" | "GENERAL",
 			description: description.trim() || undefined,
 			budgetAmount: budget,
 			budgetCurrency: budget ? budgetCurrency : undefined,
 			primaryCurrency: homeCurrency,
-			billingCycleLength:
-				type === "ONGOING"
-					? (billingCycleLength as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM")
-					: undefined,
-			billingAutoClose: type === "ONGOING" ? billingAutoClose : false,
-			billingClosePermission:
-				type === "ONGOING"
-					? (billingClosePermission as "ORGANIZER_ONLY" | "ANY_PARTICIPANT")
-					: "ORGANIZER_ONLY",
+			billingCycleLength: billingEnabled
+				? (billingCycleLength as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM")
+				: undefined,
+			billingAutoClose: billingEnabled ? billingAutoClose : false,
+			billingClosePermission: billingEnabled
+				? (billingClosePermission as "ORGANIZER_ONLY" | "ANY_PARTICIPANT")
+				: "ORGANIZER_ONLY",
 		});
 
 		// Add participants after project creation
@@ -192,16 +190,14 @@ export function NewProjectDialog({
 		}
 	};
 
-	const isSolo = type === "SOLO";
-	const isOngoing = type === "ONGOING";
 	return (
 		<>
 		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
 			<ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
 				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>New Project</ResponsiveDialogTitle>
+					<ResponsiveDialogTitle>{t("newProject")}</ResponsiveDialogTitle>
 					<ResponsiveDialogDescription>
-						Create a project to group related expenses.
+						{t("createProjectDescription")}
 					</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 
@@ -239,7 +235,7 @@ export function NewProjectDialog({
 							</Button>
 						)}
 						<span className="text-muted-foreground text-xs">
-							Add icon (optional)
+							{t("addIconOptional")}
 						</span>
 						<input
 							ref={fileInputRef}
@@ -252,40 +248,24 @@ export function NewProjectDialog({
 
 					{/* Name */}
 					<div className="space-y-1.5">
-						<Label htmlFor="project-name">Name</Label>
+						<Label htmlFor="project-name">{t("name")}</Label>
 						<Input
 							autoFocus
 							id="project-name"
 							onChange={(e) => setName(e.target.value)}
-							placeholder="e.g. Misiones Roadtrip"
+							placeholder={t("namePlaceholder")}
 							value={name}
 						/>
 					</div>
 
-					{/* Type */}
-					<div className="space-y-1.5">
-						<Label>Type</Label>
-						<Select onValueChange={setType} value={type}>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="TRIP">Trip</SelectItem>
-								<SelectItem value="ONGOING">Ongoing</SelectItem>
-								<SelectItem value="SOLO">Solo</SelectItem>
-								<SelectItem value="GENERAL">General</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-
 					{/* Description */}
 					<div className="space-y-1.5">
-						<Label htmlFor="project-desc">Description (optional)</Label>
+						<Label htmlFor="project-desc">{t("descriptionOptional")}</Label>
 						<textarea
 							className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
 							id="project-desc"
 							onChange={(e) => setDescription(e.target.value)}
-							placeholder="Brief description..."
+							placeholder={t("descriptionPlaceholder")}
 							rows={2}
 							value={description}
 						/>
@@ -293,7 +273,7 @@ export function NewProjectDialog({
 
 					{/* Budget */}
 					<div className="space-y-1.5">
-						<Label>Budget (optional)</Label>
+						<Label>{t("budgetOptional")}</Label>
 						<div
 							className={cn(
 								"flex h-9 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
@@ -310,23 +290,27 @@ export function NewProjectDialog({
 								className="h-full w-full border-0 bg-transparent px-3 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
 								inputMode="decimal"
 								onChange={(e) => setBudgetAmount(e.target.value)}
-								placeholder="Amount"
+								placeholder={t("amount")}
 								type="number"
 								value={budgetAmount}
 							/>
 						</div>
 					</div>
 
-					{/* Billing config for Ongoing */}
-					{isOngoing && (
-						<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-							<div className="flex items-center gap-2">
-								<Badge className="text-xs" variant="secondary">
-									Billing Config
-								</Badge>
-							</div>
+					{/* Billing periods */}
+					<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+						<div className="flex items-center justify-between">
+							<Label className="cursor-pointer font-normal text-sm">
+								{t("enableBillingPeriods")}
+							</Label>
+							<Switch
+								checked={billingEnabled}
+								onCheckedChange={setBillingEnabled}
+							/>
+						</div>
+						{billingEnabled && (<>
 							<div className="space-y-1.5">
-								<Label>Cycle Length</Label>
+								<Label>{t("cycleLength")}</Label>
 								<Select
 									onValueChange={setBillingCycleLength}
 									value={billingCycleLength}
@@ -335,15 +319,15 @@ export function NewProjectDialog({
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="WEEKLY">Weekly</SelectItem>
-										<SelectItem value="BIWEEKLY">Biweekly</SelectItem>
-										<SelectItem value="MONTHLY">Monthly</SelectItem>
+										<SelectItem value="WEEKLY">{t("cycleWeekly")}</SelectItem>
+										<SelectItem value="BIWEEKLY">{t("cycleBiweekly")}</SelectItem>
+										<SelectItem value="MONTHLY">{t("cycleMonthly")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 							<div className="flex items-center justify-between">
 								<Label className="cursor-pointer font-normal text-sm">
-									Auto-Close Periods
+									{t("autoClosePeriods")}
 								</Label>
 								<Switch
 									checked={billingAutoClose}
@@ -351,7 +335,7 @@ export function NewProjectDialog({
 								/>
 							</div>
 							<div className="space-y-1.5">
-								<Label>Close Permission</Label>
+								<Label>{t("closePermission")}</Label>
 								<Select
 									onValueChange={setBillingClosePermission}
 									value={billingClosePermission}
@@ -361,38 +345,36 @@ export function NewProjectDialog({
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="ORGANIZER_ONLY">
-											Owner Only
+											{t("ownerOnly")}
 										</SelectItem>
 										<SelectItem value="ANY_PARTICIPANT">
-											Any Participant
+											{t("anyParticipant")}
 										</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
-						</div>
-					)}
+						</>)}
+					</div>
 
 					{/* Participants */}
-					{!isSolo && (
-						<div className="space-y-1.5">
-							<Label>Participants</Label>
-							<SplitWithPicker
-								onChange={setParticipants}
-								value={participants}
-							/>
-						</div>
-					)}
+					<div className="space-y-1.5">
+						<Label>{t("participantsLabel")}</Label>
+						<SplitWithPicker
+							onChange={setParticipants}
+							value={participants}
+						/>
+					</div>
 				</div>
 
 				<ResponsiveDialogFooter>
 					<Button onClick={() => onOpenChange(false)} variant="ghost">
-						Cancel
+						{t("cancel")}
 					</Button>
 					<Button
 						disabled={createMutation.isPending || !name.trim()}
 						onClick={handleSubmit}
 					>
-						{createMutation.isPending ? "Creating..." : "Create Project"}
+						{createMutation.isPending ? t("creating") : t("createProject")}
 					</Button>
 				</ResponsiveDialogFooter>
 			</ResponsiveDialogContent>
@@ -403,7 +385,7 @@ export function NewProjectDialog({
 			onOpenChange={setCropOpen}
 			imageSrc={cropSrc}
 			onCrop={handleCroppedCover}
-			title="Crop Project Icon"
+			title={t("cropProjectIcon")}
 		/>
 		</>
 	);

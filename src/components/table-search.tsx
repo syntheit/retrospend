@@ -1,4 +1,5 @@
 import { Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -21,10 +22,12 @@ interface TableSearchProps {
 export function TableSearch({
 	value,
 	onChange,
-	placeholder = "Search...",
+	placeholder,
 	className,
 	slashFocus = false,
 }: TableSearchProps) {
+	const t = useTranslations("ui");
+	const resolvedPlaceholder = placeholder ?? t("search");
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -50,7 +53,7 @@ export function TableSearch({
 				ref={inputRef}
 				className="pr-9 pl-9"
 				onChange={(e) => onChange(e.target.value)}
-				placeholder={placeholder}
+				placeholder={resolvedPlaceholder}
 				value={value}
 			/>
 			{value && (
@@ -81,11 +84,13 @@ interface ExpandableSearchProps {
 export function ExpandableSearch({
 	value,
 	onChange,
-	placeholder = "Search...",
+	placeholder,
 	className,
 	captureTyping = false,
 	slashFocus = false,
 }: ExpandableSearchProps) {
+	const t = useTranslations("ui");
+	const resolvedPlaceholder = placeholder ?? t("search");
 	const [expanded, setExpanded] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -217,7 +222,7 @@ export function ExpandableSearch({
 						isOpen ? "opacity-100" : "pointer-events-none opacity-0",
 					)}
 					onChange={(e) => onChange(e.target.value)}
-					placeholder={placeholder}
+					placeholder={resolvedPlaceholder}
 					type="text"
 					value={value}
 				/>

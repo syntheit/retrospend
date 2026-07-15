@@ -11,6 +11,7 @@ import {
 	RefreshCw,
 	Trash2,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import {
@@ -50,16 +51,17 @@ export function UsersTable({
 	onDeleteUser,
 	onSetAiAccess,
 }: UsersTableProps) {
+	const t = useTranslations("admin");
 	const isMobile = useIsMobile();
 
 	const generateResetLinkMutation =
 		api.admin.generatePasswordResetLink.useMutation({
 			onSuccess: (data) => {
 				navigator.clipboard.writeText(data.resetUrl);
-				toast.success("Reset link copied to clipboard");
+				toast.success(t("resetLinkCopied"));
 			},
 			onError: (error) => {
-				toast.error(error.message || "Failed to generate link");
+				toast.error(error.message || t("failedToGenerateLink"));
 			},
 		});
 
@@ -73,7 +75,7 @@ export function UsersTable({
 				onSetAiAccess,
 				onCopyResetLink: (userId: string) =>
 					generateResetLinkMutation.mutate({ userId }),
-			}),
+			}, t),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[currentUserId, onResetPassword, onToggleUserStatus, onMarkEmailVerified, onDeleteUser, onSetAiAccess],
 	);
@@ -91,7 +93,7 @@ export function UsersTable({
 							onClick={() => onResetPassword(user.id, user.username)}
 						>
 							<RefreshCw className="mr-2 h-4 w-4" />
-							Reset Password
+							{t("resetPassword")}
 						</ContextMenuItem>
 						<ContextMenuItem
 							onClick={() =>
@@ -99,7 +101,7 @@ export function UsersTable({
 							}
 						>
 							<Link className="mr-2 h-4 w-4" />
-							Copy Reset Link
+							{t("copyResetLink")}
 						</ContextMenuItem>
 						<ContextMenuItem
 							onClick={() =>
@@ -109,12 +111,12 @@ export function UsersTable({
 							{user.isActive ? (
 								<>
 									<Lock className="mr-2 h-4 w-4" />
-									Disable User
+									{t("disableUser")}
 								</>
 							) : (
 								<>
 									<LockOpen className="mr-2 h-4 w-4" />
-									Enable User
+									{t("enableUser")}
 								</>
 							)}
 						</ContextMenuItem>
@@ -127,7 +129,7 @@ export function UsersTable({
 						}
 					>
 						<MailWarning className="mr-2 h-4 w-4" />
-						Mark Email Unverified
+						{t("markEmailUnverifiedAction")}
 					</ContextMenuItem>
 				) : (
 					<ContextMenuItem
@@ -136,7 +138,7 @@ export function UsersTable({
 						}
 					>
 						<MailCheck className="mr-2 h-4 w-4" />
-						Mark Email Verified
+						{t("markEmailVerifiedAction")}
 					</ContextMenuItem>
 				)}
 				{onSetAiAccess && user.id !== currentUserId && (
@@ -147,14 +149,14 @@ export function UsersTable({
 								onClick={() => onSetAiAccess(user.id, null)}
 							>
 								<BotOff className="mr-2 h-4 w-4" />
-								Revoke External AI Access
+								{t("revokeExternalAiAccess")}
 							</ContextMenuItem>
 						) : (
 							<ContextMenuItem
 								onClick={() => onSetAiAccess(user.id, true)}
 							>
 								<Bot className="mr-2 h-4 w-4" />
-								Allow External AI Access
+								{t("allowExternalAiAccess")}
 							</ContextMenuItem>
 						)}
 					</>
@@ -167,7 +169,7 @@ export function UsersTable({
 							variant="destructive"
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
-							Delete User
+							{t("deleteUser")}
 						</ContextMenuItem>
 					</>
 				)}
@@ -180,12 +182,12 @@ export function UsersTable({
 		<DataTable
 			columns={columns}
 			columnVisibility={columnVisibility}
-			countNoun="users"
+			countNoun={t("usersNoun")}
 			data={users}
 			progressive
 			renderContextMenu={renderContextMenu}
 			searchable
-			searchPlaceholder="Search users..."
+			searchPlaceholder={t("searchUsers")}
 		/>
 	);
 }

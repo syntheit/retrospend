@@ -1,6 +1,7 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -23,6 +24,7 @@ export function RecurringProjections({
 	loading,
 }: RecurringProjectionsProps) {
 	const [period, setPeriod] = useState<ProjectionPeriod>("monthly");
+	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const activeTemplates = useMemo(
@@ -60,9 +62,9 @@ export function RecurringProjections({
 	const projectedTotal = totalMonthly * multiplier;
 
 	const periodLabels: Record<ProjectionPeriod, string> = {
-		monthly: "/ month",
-		quarterly: "/ quarter",
-		annual: "/ year",
+		monthly: t("perMonth"),
+		quarterly: t("perQuarter"),
+		annual: t("perYear"),
 	};
 
 	if (loading) {
@@ -84,7 +86,7 @@ export function RecurringProjections({
 				<div className="mb-3 space-y-2">
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<TrendingUp className="h-4 w-4" />
-						<span>Projected Spending</span>
+						<span>{t("projectedSpending")}</span>
 					</div>
 					<div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
 						{(["monthly", "quarterly", "annual"] as const).map((p) => (
@@ -101,7 +103,7 @@ export function RecurringProjections({
 								variant="ghost"
 								size="sm"
 							>
-								{p.charAt(0).toUpperCase() + p.slice(1)}
+								{t(`period_${p}`)}
 							</Button>
 						))}
 					</div>
@@ -118,9 +120,10 @@ export function RecurringProjections({
 				{/* Most expensive */}
 				{mostExpensive && (
 					<p className="mt-1 text-muted-foreground text-xs">
-						Most expensive: {mostExpensive.template.name} at{" "}
-						{formatCurrency(mostExpensive.monthlyAmount, homeCurrency)}
-						/mo
+						{t("mostExpensive", {
+							name: mostExpensive.template.name,
+							amount: formatCurrency(mostExpensive.monthlyAmount, homeCurrency),
+						})}
 					</p>
 				)}
 			</CardContent>

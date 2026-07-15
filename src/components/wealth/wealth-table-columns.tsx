@@ -31,21 +31,34 @@ export interface Asset {
 	interestRate?: number | null;
 }
 
-const getAssetConfig = (type: AssetType) => {
+type TranslationFn = (key: string, values?: Record<string, string | number | Date>) => string;
+
+const ASSET_TYPE_LABEL_KEYS: Record<string, string> = {
+	[AssetType.CASH]: "cash",
+	[AssetType.INVESTMENT]: "investment",
+	[AssetType.CRYPTO]: "crypto",
+	[AssetType.REAL_ESTATE]: "realEstate",
+	LIABILITY_LOAN: "loan",
+	LIABILITY_CREDIT_CARD: "creditCard",
+	LIABILITY_MORTGAGE: "mortgage",
+};
+
+const getAssetConfig = (type: AssetType, t: TranslationFn) => {
 	switch (type) {
 		case AssetType.CASH:
-			return { icon: Wallet, label: "Cash" };
+			return { icon: Wallet, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
 		case AssetType.INVESTMENT:
-			return { icon: TrendingUp, label: "Investment" };
+			return { icon: TrendingUp, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
 		case AssetType.CRYPTO:
-			return { icon: Coins, label: "Crypto" };
+			return { icon: Coins, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
 		case AssetType.REAL_ESTATE:
-			return { icon: Home, label: "Real Estate" };
+			return { icon: Home, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
 		default:
 			if (type.startsWith("LIABILITY_")) {
+				const key = ASSET_TYPE_LABEL_KEYS[type];
 				return {
 					icon: CreditCard,
-					label: type.replace("LIABILITY_", "").replace("_", " "),
+					label: key ? t(key) : type.replace("LIABILITY_", "").replace("_", " "),
 				};
 			}
 			return { icon: Banknote, label: type };
@@ -64,7 +77,9 @@ export function createWealthColumns(
 	totalNetWorth: number,
 	isPrivacyMode: boolean,
 	selection?: SelectionHandlers,
+	t?: TranslationFn,
 ): ColumnDef<Asset>[] {
+	const label = (key: string, fallback: string) => (t ? t(key) : fallback);
 	const columns: ColumnDef<Asset>[] = [];
 
 	if (selection) {
@@ -106,11 +121,11 @@ export function createWealthColumns(
 	// Asset identity column (icon + name + liquid badge)
 	columns.push({
 		accessorKey: "name",
-		header: "Asset",
+		header: label("assetColumn", "Asset"),
 		enableSorting: true,
 		meta: { flex: true },
 		cell: ({ row }) => {
-			const { icon: Icon, label } = getAssetConfig(row.original.type);
+			const { icon: Icon, label: typeLabel } = getAssetConfig(row.original.type, t ?? ((k: string) => k));
 			return (
 				<div className="flex items-center gap-3">
 					<div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
@@ -131,12 +146,12 @@ export function createWealthColumns(
 									className="bg-emerald-500/10 px-1.5 py-0 font-medium text-[9px] text-emerald-600 tracking-wide hover:bg-emerald-500/20"
 									variant="secondary"
 								>
-									Liquid
+									{label("liquid", "Liquid")}
 								</Badge>
 							)}
 						</div>
 						<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground leading-tight">
-							<span>{label}</span>
+							<span>{typeLabel}</span>
 							{row.original.currency !== homeCurrency && (
 								<>
 									<span className="text-[10px] opacity-40">•</span>
@@ -153,7 +168,7 @@ export function createWealthColumns(
 	// Allocation visualization
 	columns.push({
 		id: "allocation",
-		header: "Allocation",
+		header: label("allocationColumn", "Allocation"),
 		enableSorting: false,
 		cell: ({ row }) => {
 			const value = row.original.balanceInTargetCurrency;
@@ -179,7 +194,7 @@ export function createWealthColumns(
 	// Balance column
 	columns.push({
 		id: "balanceInTarget",
-		header: "Balance",
+		header: label("balanceColumn", "Balance"),
 		accessorKey: "balanceInTargetCurrency",
 		enableSorting: true,
 		meta: { align: "right" },
@@ -222,7 +237,7 @@ export function createWealthColumns(
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 						variant="ghost"
 					>
-						Value (USD)
+						{label("valueUSD", "Value (USD)")}
 						<Info className="ml-2 h-4 w-4" />
 					</Button>
 				</div>

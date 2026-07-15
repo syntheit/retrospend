@@ -1,6 +1,7 @@
 "use client";
 
 import { FlaskConical } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { BudgetHeader } from "~/components/budget/budget-header";
 import { BudgetList } from "~/components/budget/budget-list";
@@ -13,6 +14,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { useBudgetController } from "~/hooks/use-budget-controller";
 
 export default function BudgetPage() {
+	const t = useTranslations("budget");
 	const {
 		selectedMonth,
 		setSelectedMonth,
@@ -46,12 +48,12 @@ export default function BudgetPage() {
 							<Link href="/budget/playground">
 								<Button size="sm" variant="outline">
 									<FlaskConical className="h-3.5 w-3.5" />
-									<span className="hidden sm:inline">Budget Playground</span>
+									<span className="hidden sm:inline">{t("playground")}</span>
 								</Button>
 							</Link>
 						</>
 					}
-					title="Budget"
+					title={t("title")}
 				/>
 				<PageContent>
 					<div className="mx-auto w-full max-w-6xl space-y-6">
@@ -85,12 +87,12 @@ export default function BudgetPage() {
 						<Link href="/budget/playground">
 							<Button size="sm" variant="outline">
 								<FlaskConical className="h-3.5 w-3.5" />
-								<span className="hidden sm:inline">Budget Playground</span>
+								<span className="hidden sm:inline">{t("playground")}</span>
 							</Button>
 						</Link>
 					</>
 				}
-				title="Budget"
+				title={t("title")}
 			/>
 			<PageContent>
 				<div className="mx-auto w-full max-w-6xl space-y-6">
@@ -114,9 +116,9 @@ export default function BudgetPage() {
 					{hasContent && (
 						<div className="space-y-4">
 							<div>
-								<h2 className="font-semibold text-lg">Category Budgets</h2>
+								<h2 className="font-semibold text-lg">{t("categoryBudgets")}</h2>
 								<p className="text-muted-foreground text-sm">
-									Manage your spending limits by category
+									{t("categoryBudgetsDescription")}
 								</p>
 							</div>
 							<BudgetList

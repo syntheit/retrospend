@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
 import { api } from "~/trpc/server";
 
-export const metadata: Metadata = {
-	title: "Budget",
-};
+export async function generateMetadata() {
+	const t = await getTranslations("sidebar");
+	return { title: t("budget") };
+}
 
 export default async function Layout({
 	children,

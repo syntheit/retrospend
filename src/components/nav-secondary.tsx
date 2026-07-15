@@ -4,6 +4,7 @@ import {
 	type Icon,
 	IconMailExclamation,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import type * as React from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -27,12 +28,13 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+	const t = useTranslations("nav");
 	const { data: session } = useSession();
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
 	const resendEmail = api.auth.resendVerificationEmail.useMutation({
 		onSuccess: () => {
-			toast.success("Verification email sent!");
+			toast.success(t("verificationEmailSent"));
 		},
 		onError: (err) => {
 			toast.error(err.message);
@@ -50,10 +52,10 @@ export function NavSecondary({
 								<div className="mx-2 mb-2 flex flex-col gap-2 rounded-md border border-warning/20 bg-warning/10 p-3 text-warning shadow-sm">
 									<div className="flex items-center gap-2">
 										<IconMailExclamation className="size-5" />
-										<span className="font-semibold text-sm">Verify Email</span>
+										<span className="font-semibold text-sm">{t("verifyEmail")}</span>
 									</div>
 									<span className="text-xs">
-										Please verify your email address to secure your account.
+										{t("pleaseVerifyEmail")}
 									</span>
 									<Button
 										className="h-8 w-full border-warning/20 bg-warning/10 text-warning hover:bg-warning/20"
@@ -65,7 +67,7 @@ export function NavSecondary({
 										size="sm"
 										variant="outline"
 									>
-										{resendEmail.isPending ? "Sending..." : "Resend Email"}
+										{resendEmail.isPending ? t("sending") : t("resendEmail")}
 									</Button>
 								</div>
 							</SidebarMenuItem>

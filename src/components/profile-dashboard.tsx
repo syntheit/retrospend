@@ -2,8 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Camera } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -33,13 +34,11 @@ import { useSession } from "~/hooks/use-session";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
-const profileSchema = z.object({
-	name: z.string().min(1, "Name is required"),
-	username: z.string().min(1, "Username is required"),
-	email: z.string().email("Invalid email address"),
-});
-
-type ProfileFormValues = z.infer<typeof profileSchema>;
+type ProfileFormValues = {
+	name: string;
+	username: string;
+	email: string;
+};
 
 type ExtendedUser = NonNullable<
 	ReturnType<typeof useSession>["data"]
@@ -49,14 +48,25 @@ type ExtendedUser = NonNullable<
 };
 
 export function ProfileDashboard() {
+	const t = useTranslations("account");
 	const { data: session, isPending, refetch: updateSession } = useSession();
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
 	const [, setShowDeleteModal] = useState(false);
 
+	const profileSchema = useMemo(
+		() =>
+			z.object({
+				name: z.string().min(1, t("nameRequired")),
+				username: z.string().min(1, t("usernameRequired")),
+				email: z.string().email(t("invalidEmail")),
+			}),
+		[t],
+	);
+
 	const updateProfile = api.profile.update.useMutation({
 		onSuccess: async () => {
-			toast.success("Profile updated successfully");
+			toast.success(t("profileUpdated"));
 			await updateSession();
 		},
 		onError: (err) => {
@@ -80,7 +90,7 @@ export function ProfileDashboard() {
 			<Card>
 				<CardContent className="p-6">
 					<div className="animate-pulse text-center text-muted-foreground">
-						Loading profile...
+						{t("loadingProfile")}
 					</div>
 				</CardContent>
 			</Card>
@@ -92,7 +102,7 @@ export function ProfileDashboard() {
 			<Card>
 				<CardContent className="p-6">
 					<div className="text-center">
-						Please sign in to access your account
+						{t("pleaseSignIn")}
 					</div>
 				</CardContent>
 			</Card>
@@ -156,9 +166,9 @@ export function ProfileDashboard() {
 					{/* Personal Information Card */}
 					<Card className="border-border/50 shadow-sm">
 						<CardHeader>
-							<CardTitle>Personal Information</CardTitle>
+							<CardTitle>{t("personalInformation")}</CardTitle>
 							<CardDescription>
-								Update your public profile and contact email.
+								{t("updateYourProfile")}
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="p-6 pt-0">
@@ -178,12 +188,12 @@ export function ProfileDashboard() {
 														className="font-medium text-muted-foreground text-sm"
 														htmlFor="name"
 													>
-														Display Name
+														{t("displayName")}
 													</Label>
 													<FormControl>
 														<Input
 															className={inputClass}
-															placeholder="Your name"
+															placeholder={t("yourName")}
 															{...field}
 														/>
 													</FormControl>
@@ -201,7 +211,7 @@ export function ProfileDashboard() {
 														className="font-medium text-muted-foreground text-sm"
 														htmlFor="username"
 													>
-														Username
+														{t("username")}
 													</Label>
 													<FormControl>
 														<div className="relative">
@@ -231,7 +241,7 @@ export function ProfileDashboard() {
 														className="font-medium text-muted-foreground text-sm"
 														htmlFor="email"
 													>
-														Email Address
+														{t("emailAddress")}
 													</Label>
 													{appFeatures?.isEmailEnabled &&
 														!user.emailVerified && (
@@ -240,7 +250,7 @@ export function ProfileDashboard() {
 																variant="outline"
 															>
 																<AlertTriangle className="size-3" />
-																Unverified
+																{t("unverified")}
 															</Badge>
 														)}
 												</div>
@@ -265,7 +275,7 @@ export function ProfileDashboard() {
 											size="sm"
 											type="submit"
 										>
-											{updateProfile.isPending ? "Saving..." : "Save Changes"}
+											{updateProfile.isPending ? t("saving") : t("saveChanges")}
 										</Button>
 									</div>
 								</form>
@@ -276,13 +286,13 @@ export function ProfileDashboard() {
 					{/* Danger Zone Section */}
 					{!isAdmin && (
 						<div className="flex flex-col items-center justify-between gap-4 border-border/20 border-t pt-8 md:flex-row">
-							<p className="text-muted-foreground text-sm">Want to leave?</p>
+							<p className="text-muted-foreground text-sm">{t("wantToLeave")}</p>
 							<Button
 								className="h-9 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive"
 								onClick={() => setShowDeleteModal(true)}
 								variant="ghost"
 							>
-								Delete Account
+								{t("deleteAccount")}
 							</Button>
 						</div>
 					)}

@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import {
 	AlertTriangle,
 	Check,
@@ -23,6 +24,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrency } from "~/hooks/use-currency";
 import type { CurrencyCode } from "~/lib/currencies";
 import { formatNumber } from "~/lib/currency-format";
@@ -96,6 +98,8 @@ export function ImporterReviewManager({
 	warnings,
 	onImportConfirm,
 }: ImporterReviewManagerProps) {
+	const t = useTranslations("dataManagement");
+	const { displayName } = useCategoryName();
 	const { homeCurrency, usdToHomeRate } = useCurrency();
 	const { data: categories } = api.categories.getAll.useQuery();
 	const importMutation = api.expense.importExpenses.useMutation();
@@ -217,7 +221,7 @@ export function ImporterReviewManager({
 				return updated;
 			}),
 		);
-		toast.success(`Applied ${mainCurrency} to all transactions`);
+		toast.success(t("appliedCurrencyToAll", { currency: mainCurrency }));
 	}, [mainCurrency, homeCurrency]);
 
 	const updateTransaction = useCallback(
@@ -317,7 +321,7 @@ export function ImporterReviewManager({
 
 	const handleImport = async () => {
 		if (selectedTransactions.length === 0) {
-			toast.error("No transactions selected");
+			toast.error(t("noTransactionsSelected"));
 			return;
 		}
 
@@ -360,17 +364,17 @@ export function ImporterReviewManager({
 			// Show success message with duplicate info if any were skipped
 			if (result.skippedDuplicates > 0) {
 				toast.success(
-					`Imported ${result.count} expense${result.count === 1 ? "" : "s"}. Skipped ${result.skippedDuplicates} duplicate${result.skippedDuplicates === 1 ? "" : "s"}.`,
+					t("importedWithSkippedDuplicates", { count: result.count, duplicates: result.skippedDuplicates }),
 				);
 			} else {
 				toast.success(
-					`Imported ${result.count} expense${result.count === 1 ? "" : "s"}`,
+					t("importedExpenses", { count: result.count }),
 				);
 			}
 			onDone();
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to import expenses",
+				error instanceof Error ? error.message : t("failedToImportExpenses"),
 			);
 		}
 	};
@@ -389,7 +393,7 @@ export function ImporterReviewManager({
 
 					return (
 						<Checkbox
-							aria-label="Select all rows"
+							aria-label={t("selectAllRows")}
 							checked={
 								allSelected ? true : someSelected ? "indeterminate" : false
 							}
@@ -399,7 +403,7 @@ export function ImporterReviewManager({
 				},
 				cell: ({ row }) => (
 					<Checkbox
-						aria-label={`Select row ${row.original.title}`}
+						aria-label={t("selectRow", { title: row.original.title })}
 						checked={selectedIds.has(row.original.id)}
 						onCheckedChange={(checked) =>
 							handleRowSelect(row.original.id, checked === true)
@@ -411,7 +415,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "title",
-				header: "Title",
+				header: t("title"),
 				enableSorting: true,
 				cell: ({ row }) => {
 					const isDuplicate = row.original.isDuplicate;
@@ -431,11 +435,11 @@ export function ImporterReviewManager({
 									<TooltipTrigger asChild>
 										<div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-[10px] text-amber-600 dark:text-amber-500">
 											<Copy className="h-3 w-3" />
-											Duplicate
+											{t("duplicate")}
 										</div>
 									</TooltipTrigger>
 									<TooltipContent>
-										This transaction already exists in your expenses
+										{t("duplicateTooltip")}
 									</TooltipContent>
 								</Tooltip>
 							)}
@@ -445,7 +449,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "amount",
-				header: () => <div className="text-right">Amount</div>,
+				header: () => <div className="text-right">{t("amount")}</div>,
 				enableSorting: true,
 				cell: ({ row }) => {
 					const isForeign = row.original.currency !== homeCurrency;
@@ -476,7 +480,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "currency",
-				header: "Currency",
+				header: t("currency"),
 				enableSorting: true,
 				size: 80,
 				cell: ({ row }) => {
@@ -500,7 +504,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "date",
-				header: "Date",
+				header: t("date"),
 				enableSorting: true,
 				sortingFn: "datetime",
 				cell: ({ row }) => {
@@ -517,7 +521,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "category",
-				header: "Category",
+				header: t("category"),
 				enableSorting: true,
 				cell: ({ row }) => {
 					const cat = row.original.categoryId
@@ -528,7 +532,7 @@ export function ImporterReviewManager({
 						return (
 							<EditableCell
 								categories={categories ?? []}
-								formatDisplay={() => cat.name}
+								formatDisplay={() => displayName(cat.name)}
 								onSave={(val) =>
 									updateTransaction(row.original.id, "categoryId", val)
 								}
@@ -551,7 +555,7 @@ export function ImporterReviewManager({
 								onSave={(val) =>
 									updateTransaction(row.original.id, "categoryId", val)
 								}
-								placeholder="Assign category"
+								placeholder={t("assignCategory")}
 								type="category"
 								value={row.original.categoryId}
 							/>
@@ -560,8 +564,7 @@ export function ImporterReviewManager({
 									<AlertTriangle className="h-3.5 w-3.5 shrink-0 animate-pulse text-amber-500" />
 								</TooltipTrigger>
 								<TooltipContent>
-									Category not matched to any existing category. Please select
-									one.
+									{t("categoryNotMatched")}
 								</TooltipContent>
 							</Tooltip>
 						</div>
@@ -575,7 +578,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "location",
-				header: "Location",
+				header: t("location"),
 				enableSorting: true,
 				cell: ({ row }) => (
 					<EditableCell
@@ -590,7 +593,7 @@ export function ImporterReviewManager({
 			},
 			{
 				accessorKey: "description",
-				header: "Description",
+				header: t("description"),
 				enableSorting: false,
 				cell: ({ row }) => (
 					<EditableCell
@@ -607,7 +610,7 @@ export function ImporterReviewManager({
 				id: "actions",
 				cell: ({ row }) => (
 					<Button
-						aria-label="Remove row"
+						aria-label={t("removeRow")}
 						className="h-8 w-8 text-muted-foreground hover:text-destructive"
 						onClick={() => {
 							setTransactions((prev) =>
@@ -645,7 +648,7 @@ export function ImporterReviewManager({
 				{warnings && warnings.length > 0 && (
 					<Alert variant="warning">
 						<AlertTriangle className="h-4 w-4" />
-						<AlertTitle>Import Warnings ({warnings.length})</AlertTitle>
+						<AlertTitle>{t("importWarnings", { count: warnings.length })}</AlertTitle>
 						<AlertDescription>
 							<ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
 								{warnings.map((warning) => (
@@ -660,7 +663,7 @@ export function ImporterReviewManager({
 				<div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm">
 					<div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[auto_1fr_auto]">
 						<div className="whitespace-nowrap font-medium">
-							{selectedIds.size} of {transactions.length} selected
+							{t("selectedOfTotal", { selected: selectedIds.size, total: transactions.length })}
 						</div>
 
 						<div className="flex items-center gap-4">
@@ -677,11 +680,11 @@ export function ImporterReviewManager({
 								size="sm"
 								variant="outline"
 							>
-								Apply to all
+								{t("applyToAll")}
 							</Button>
 
 							<div className="whitespace-nowrap tabular-nums">
-								{homeCurrency} {formatNumber(totalAmount, 2)} total
+								{homeCurrency} {formatNumber(totalAmount, 2)} {t("total")}
 							</div>
 
 							{dateRange && (
@@ -702,14 +705,12 @@ export function ImporterReviewManager({
 								{showDuplicates ? (
 									<>
 										<EyeOff className="mr-1.5 h-4 w-4" />
-										Hide {duplicateCount} duplicate
-										{duplicateCount === 1 ? "" : "s"}
+										{t("hideDuplicates", { count: duplicateCount })}
 									</>
 								) : (
 									<>
 										<Eye className="mr-1.5 h-4 w-4" />
-										Show {duplicateCount} duplicate
-										{duplicateCount === 1 ? "" : "s"}
+										{t("showDuplicates", { count: duplicateCount })}
 									</>
 								)}
 							</Button>
@@ -725,11 +726,11 @@ export function ImporterReviewManager({
 							data={visibleTransactions}
 							emptyState={
 								<div className="text-muted-foreground">
-									No transactions to review.
+									{t("noTransactionsToReview")}
 								</div>
 							}
 							pageSize={20}
-							searchPlaceholder="Search transactions..."
+							searchPlaceholder={t("searchTransactions")}
 						/>
 					</div>
 				</div>
@@ -737,8 +738,7 @@ export function ImporterReviewManager({
 				{/* Action Bar */}
 				<div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-4">
 					<p className="text-muted-foreground text-sm">
-						{selectedIds.size} transaction
-						{selectedIds.size === 1 ? "" : "s"} will be imported
+						{t("transactionsWillBeImported", { count: selectedIds.size })}
 					</p>
 					<div className="flex gap-3">
 						<Button
@@ -747,7 +747,7 @@ export function ImporterReviewManager({
 							variant="outline"
 						>
 							<X className="mr-2 h-4 w-4" />
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							disabled={selectedIds.size === 0 || importMutation.isPending}
@@ -756,8 +756,8 @@ export function ImporterReviewManager({
 						>
 							<Check className="mr-2 h-4 w-4" />
 							{importMutation.isPending
-								? "Importing..."
-								: `Import ${selectedIds.size} Selected`}
+								? t("importing")
+								: t("importSelected", { count: selectedIds.size })}
 						</Button>
 					</div>
 				</div>

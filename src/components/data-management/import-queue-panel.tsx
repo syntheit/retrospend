@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -25,6 +26,7 @@ interface ImportQueuePanelProps {
 // ── Component ─────────────────────────────────────────────────────────
 
 export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
+	const t = useTranslations("dataManagement");
 	const utils = api.useUtils();
 	const [jobToDelete, setJobToDelete] = useState<string | null>(null);
 
@@ -52,10 +54,10 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 		onSuccess: () => {
 			void utils.importQueue.getQueueStatus.invalidate();
 			void utils.importQueue.listJobs.invalidate();
-			toast.success("Job cancelled");
+			toast.success(t("jobCancelled"));
 		},
 		onError: (error) => {
-			toast.error(`Failed to cancel job: ${error.message}`);
+			toast.error(t("failedToCancelJob", { message: error.message }));
 		},
 	});
 
@@ -63,11 +65,11 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 		onSuccess: () => {
 			void utils.importQueue.getQueueStatus.invalidate();
 			void utils.importQueue.listJobs.invalidate();
-			toast.success("Job deleted");
+			toast.success(t("jobDeleted"));
 			setJobToDelete(null);
 		},
 		onError: (error) => {
-			toast.error(`Failed to delete job: ${error.message}`);
+			toast.error(t("failedToDeleteJob", { message: error.message }));
 			setJobToDelete(null);
 		},
 	});
@@ -123,7 +125,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 				<div className="space-y-3">
 					<div className="flex items-center gap-2">
 						<h3 className="font-medium tabular-nums text-muted-foreground text-sm">
-							Queued ({queueStatus.queued.length})
+							{t("queuedCount", { count: queueStatus.queued.length })}
 						</h3>
 					</div>
 					<div className="space-y-2">
@@ -167,7 +169,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 					<Separator />
 					<div className="space-y-3">
 						<h3 className="font-medium text-destructive text-sm">
-							Failed Imports
+							{t("failedImports")}
 						</h3>
 						<div className="space-y-2">
 							{failedJobs.slice(0, 3).map((job) => (
@@ -189,7 +191,7 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 					<Separator />
 					<div className="space-y-3">
 						<h3 className="font-medium tabular-nums text-muted-foreground text-sm">
-							Recently Completed
+							{t("recentlyCompleted")}
 						</h3>
 						<div className="space-y-2">
 							{successfulJobs.slice(0, 3).map((job) => (
@@ -212,19 +214,18 @@ export function ImportQueuePanel({ onReviewJob }: ImportQueuePanelProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete Import Job</AlertDialogTitle>
+						<AlertDialogTitle>{t("deleteImportJobTitle")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete this import job? This action
-							cannot be undone.
+							{t("deleteImportJobDescription")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={handleConfirmDelete}
 						>
-							Delete
+							{t("delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

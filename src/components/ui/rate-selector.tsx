@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -65,6 +66,7 @@ export function RateSelector({
 	onCustomCleared,
 	className,
 }: RateSelectorProps) {
+	const t = useTranslations("ui");
 	const [selectedRateType, setSelectedRateType] = useState<string>(
 		isCustomSet ? "custom" : activeType || "official",
 	);
@@ -224,7 +226,7 @@ export function RateSelector({
 			<div className={cn("w-full", className)}>
 				<Select onValueChange={handleRateTypeChange} value={selectedRateType}>
 					<SelectTrigger className="h-9">
-						<SelectValue placeholder="Select rate" />
+						<SelectValue placeholder={t("selectRate")} />
 					</SelectTrigger>
 					<SelectContent>
 						{rateOptions.map((option) => (
@@ -270,7 +272,7 @@ export function RateSelector({
 	return (
 		<div className={cn("space-y-4", className)}>
 			<div className="space-y-2">
-				<Label className="font-medium text-sm">Rate Type</Label>
+				<Label className="font-medium text-sm">{t("rateType")}</Label>
 				<Select
 					disabled={isLoading}
 					onValueChange={handleRateTypeChange}
@@ -278,7 +280,7 @@ export function RateSelector({
 				>
 					<SelectTrigger className="h-10">
 						<SelectValue
-							placeholder={isLoading ? "Loading rates..." : "Select rate type"}
+							placeholder={isLoading ? t("loadingRates") : t("selectRateType")}
 						/>
 					</SelectTrigger>
 					<SelectContent>
@@ -307,13 +309,13 @@ export function RateSelector({
 			{selectedRateType === "custom" && (
 				<div className="space-y-2">
 					<Label className="font-medium text-sm" htmlFor="custom-rate">
-						Custom Rate
+						{t("customRate")}
 					</Label>
 					<Input
 						className="h-10 tabular-nums"
 						id="custom-rate"
 						onChange={(e) => handleCustomRateChange(e.target.value)}
-						placeholder="Enter custom rate"
+						placeholder={t("enterCustomRate")}
 						step="0.00000001"
 						type="number"
 						value={customInputValue}

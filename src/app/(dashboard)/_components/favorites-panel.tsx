@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { Copy, ExternalLink, HeartOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
@@ -41,6 +42,7 @@ export function FavoritesPanel({
 	favoriteRates,
 	isUsingMockFavorites,
 }: FavoritesPanelProps) {
+	const t = useTranslations("favorites");
 	const utils = api.useUtils();
 
 	const toggleFavoriteMutation = api.preferences.toggleFavoriteExchangeRate.useMutation({
@@ -61,11 +63,11 @@ export function FavoritesPanel({
 	return (
 		<Card className="border border-border bg-card shadow-sm lg:flex lg:flex-col lg:h-full">
 			<CardHeader>
-				<CardTitle className="font-semibold text-lg">Currencies</CardTitle>
+				<CardTitle className="font-semibold text-lg">{t("title")}</CardTitle>
 				<CardDescription>
 					{latestUpdate
-						? `Live Rates • Updated ${formatDistanceToNow(latestUpdate, { addSuffix: true })}`
-						: "Favorite exchange rates"}
+						? `${t("liveRates")} · ${t("updated", { time: formatDistanceToNow(latestUpdate, { addSuffix: true }) })}`
+						: t("favoriteRates")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-3 overflow-y-auto lg:flex-1 lg:min-h-0">
@@ -113,13 +115,14 @@ function FavoritesLoading() {
 }
 
 function FavoritesEmpty() {
+	const t = useTranslations("favorites");
 	return (
 		<div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-4 text-sm">
 			<div className="font-medium">
-				Star currencies in Settings to track them here.
+				{t("emptyTitle")}
 			</div>
 			<Button asChild size="sm" variant="outline">
-				<Link href="/settings">Open settings</Link>
+				<Link href="/settings">{t("openSettings")}</Link>
 			</Button>
 		</div>
 	);
@@ -134,6 +137,7 @@ function FavoritesList({
 	isMock: boolean;
 	onUnfavorite: (id: string) => void;
 }) {
+	const t = useTranslations("favorites");
 	return (
 		<div className="space-y-2">
 			{rates.map((rate) => (
@@ -141,7 +145,7 @@ function FavoritesList({
 			))}
 			{isMock && (
 				<p className="text-muted-foreground text-xs">
-					Using sample data until favorites are added.
+					{t("sampleDataHint")}
 				</p>
 			)}
 		</div>
@@ -155,6 +159,7 @@ function FavoriteItem({
 	rate: FavoritesPanelProps["favoriteRates"][number];
 	onUnfavorite: (id: string) => void;
 }) {
+	const t = useTranslations("recentActivity");
 	const handleCopyRate = () => {
 		void navigator.clipboard.writeText(
 			rate.rate.toLocaleString(undefined, { maximumFractionDigits: 4 }),
@@ -185,18 +190,18 @@ function FavoriteItem({
 			<ContextMenuContent>
 				<ContextMenuItem onClick={handleCopyRate}>
 					<Copy />
-					Copy rate
+					{t("copyRate")}
 				</ContextMenuItem>
 				<ContextMenuItem asChild>
 					<Link href="/currencies">
 						<ExternalLink />
-						Go to currencies
+						{t("goToCurrencies")}
 					</Link>
 				</ContextMenuItem>
 				<ContextMenuSeparator />
 				<ContextMenuItem variant="destructive" onClick={() => onUnfavorite(rate.id)}>
 					<HeartOff />
-					Unfavorite
+					{t("unfavorite")}
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>

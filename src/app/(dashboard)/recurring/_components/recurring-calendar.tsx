@@ -2,12 +2,14 @@
 
 import { addDays, format } from "date-fns";
 import { CalendarCheck } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import * as React from "react";
 import { BrandIcon } from "~/components/ui/BrandIcon";
 import { Button } from "~/components/ui/button";
 import { Calendar } from "~/components/ui/calendar";
 import { EmptyState } from "~/components/ui/empty-state";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { getDateFnsLocale } from "~/lib/date-locale";
 import { isProjectedOnDate } from "~/lib/recurring";
 import { cn } from "~/lib/utils";
 import type { RecurringTemplate } from "~/types/recurring";
@@ -23,6 +25,9 @@ export function RecurringCalendar({
 	loading,
 	serverTime,
 }: RecurringCalendarProps) {
+	const t = useTranslations("recurring");
+	const locale = useLocale();
+	const dateFnsLocale = getDateFnsLocale(locale);
 	const { formatCurrency } = useCurrencyFormatter();
 	const now = serverTime ?? new Date();
 	const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(
@@ -107,6 +112,7 @@ export function RecurringCalendar({
 			<div className="flex justify-center p-4 pb-2">
 				<Calendar
 					className="pointer-events-auto p-0"
+					locale={dateFnsLocale}
 					classNames={{
 						months: "relative w-full",
 						month: "w-full space-y-1",
@@ -148,8 +154,8 @@ export function RecurringCalendar({
 				<div className="mb-3 flex items-center justify-between">
 					<h3 className="font-semibold text-[10px] text-muted-foreground tracking-wide">
 						{selectedDate
-							? `Payments on ${format(selectedDate, "MMM d")}`
-							: "Upcoming Payments"}
+							? t("paymentsOnDate", { date: format(selectedDate, "MMM d", { locale: dateFnsLocale }) })
+							: t("upcomingPayments")}
 					</h3>
 					{selectedDate && (
 						<Button
@@ -158,7 +164,7 @@ export function RecurringCalendar({
 							type="button"
 							variant="ghost"
 						>
-							Clear
+							{t("clear")}
 						</Button>
 					)}
 				</div>
@@ -192,9 +198,9 @@ export function RecurringCalendar({
 					) : (
 						<EmptyState
 							className="py-6"
-							description="No upcoming payments scheduled."
+							description={t("noUpcomingPaymentsDescription")}
 							icon={CalendarCheck}
-							title="No Payments Due"
+							title={t("noPaymentsDue")}
 						/>
 					)}
 				</div>

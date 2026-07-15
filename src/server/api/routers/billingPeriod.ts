@@ -397,7 +397,6 @@ export const billingPeriodRouter = createTRPCRouter({
 				where: { id: input.projectId },
 				select: {
 					id: true,
-					type: true,
 					billingCycleLength: true,
 					billingCycleDays: true,
 					billingClosePermission: true,
@@ -408,13 +407,6 @@ export const billingPeriodRouter = createTRPCRouter({
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Project not found",
-				});
-			}
-
-			if (project.type !== "ONGOING") {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Only ongoing projects have billing periods",
 				});
 			}
 

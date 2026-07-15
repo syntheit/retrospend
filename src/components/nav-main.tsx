@@ -2,6 +2,7 @@
 
 import { type Icon } from "@tabler/icons-react";
 import { CirclePlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useExpenseModal } from "~/components/expense-modal-provider";
@@ -30,6 +31,7 @@ export function NavMain({
 }) {
 	const pathname = usePathname();
 	const { openNewExpense } = useExpenseModal();
+	const t = useTranslations("sidebar");
 
 	const handleCreateExpense = () => {
 		openNewExpense();
@@ -44,10 +46,10 @@ export function NavMain({
 							className="group/add h-10 cursor-pointer border border-primary px-4 py-4 text-base text-primary transition-all duration-200 ease-out hover:-translate-y-[1px] hover:bg-primary/90 hover:text-primary-foreground hover:shadow-md hover:shadow-primary/20 active:translate-y-0 active:scale-[0.97] active:bg-primary/90 active:text-primary-foreground active:shadow-none [&>svg]:size-5"
 							onClick={handleCreateExpense}
 							size="lg"
-							tooltip="Add Expense"
+							tooltip={t("addExpense")}
 						>
 							<CirclePlus className="transition-transform duration-200 ease-out group-hover/add:scale-110" />
-							<span>Add Expense</span>
+							<span>{t("addExpense")}</span>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>

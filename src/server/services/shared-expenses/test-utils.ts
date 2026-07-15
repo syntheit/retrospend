@@ -70,7 +70,6 @@ export interface SettlementRecord {
 export interface ProjectRecord {
 	id: string;
 	name: string;
-	type: string;
 	status: string;
 	description: string | null;
 	primaryCurrency: string;
@@ -165,6 +164,66 @@ export function createStatefulDb() {
 
 	let seq = 0;
 	const nextId = () => `mock-id-${++seq}`;
+
+	// Helper: check if a split matches a filter condition
+	const matchesSplitCond = (
+		sp: SplitRecord,
+		cond: Record<string, unknown>,
+	) =>
+		(cond.participantType === undefined ||
+			sp.participantType === cond.participantType) &&
+		(cond.participantId === undefined ||
+			sp.participantId === cond.participantId) &&
+		(cond.verificationStatus === undefined ||
+			sp.verificationStatus === cond.verificationStatus);
+
+	// Helper: check if a transaction matches a where clause. Supports the subset
+	// of Prisma filters the services use: AND, OR, splitParticipants.some/none,
+	// paidByType/paidById, isLocked and projectId.
+	const matchesTx = (
+		tx: TxRecord,
+		where: Record<string, unknown>,
+	): boolean => {
+		if (where.splitParticipants) {
+			const spFilter = where.splitParticipants as {
+				some?: Record<string, unknown>;
+				none?: Record<string, unknown>;
+			};
+			const txSplits = [...splits.values()].filter(
+				(sp) => sp.transactionId === tx.id,
+			);
+			if (
+				spFilter.some &&
+				!txSplits.some((sp) => matchesSplitCond(sp, spFilter.some!))
+			)
+				return false;
+			if (
+				spFilter.none &&
+				txSplits.some((sp) => matchesSplitCond(sp, spFilter.none!))
+			)
+				return false;
+		}
+		if (where.AND) {
+			const andClauses = where.AND as Array<Record<string, unknown>>;
+			if (!andClauses.every((clause) => matchesTx(tx, clause))) return false;
+		}
+		if (where.OR) {
+			const orClauses = where.OR as Array<Record<string, unknown>>;
+			if (!orClauses.some((clause) => matchesTx(tx, clause))) return false;
+		}
+		if (
+			where.paidByType !== undefined &&
+			tx.paidByType !== where.paidByType
+		)
+			return false;
+		if (where.paidById !== undefined && tx.paidById !== where.paidById)
+			return false;
+		if (where.isLocked !== undefined && tx.isLocked !== where.isLocked)
+			return false;
+		if (where.projectId !== undefined && tx.projectId !== where.projectId)
+			return false;
+		return true;
+	};
 
 	// ── sharedTransaction model ──────────────────────────────────────────────
 
@@ -305,38 +364,22 @@ export function createStatefulDb() {
 			return tx;
 		}),
 
+		findFirst: vi.fn(
+			(args: { where?: Record<string, unknown> } = {}) => {
+				for (const tx of transactions.values()) {
+					if (!args.where || matchesTx(tx, args.where)) return tx;
+				}
+				return null;
+			},
+		),
+
 		count: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
 			if (!args.where) return transactions.size;
-
-			// Handle AND with nested splitParticipants.some (used by SettlementService)
-			if (Array.isArray(args.where.AND)) {
-				let count = 0;
-				for (const tx of transactions.values()) {
-					const txSplits = [...splits.values()].filter(
-						(sp) => sp.transactionId === tx.id,
-					);
-					const allMatch = (
-						args.where.AND as Array<Record<string, unknown>>
-					).every((clause) => {
-						const spSome = (
-							clause.splitParticipants as
-								| { some?: Record<string, unknown> }
-								| undefined
-						)?.some;
-						if (spSome) {
-							return txSplits.some(
-								(sp) =>
-									sp.participantType === spSome.participantType &&
-									sp.participantId === spSome.participantId,
-							);
-						}
-						return true;
-					});
-					if (allMatch) count++;
-				}
-				return count;
+			let count = 0;
+			for (const tx of transactions.values()) {
+				if (matchesTx(tx, args.where)) count++;
 			}
-			return transactions.size;
+			return count;
 		}),
 
 		aggregate: vi.fn(() => ({ _sum: { amount: 0 } })),
@@ -351,54 +394,6 @@ export function createStatefulDb() {
 					take?: number;
 				} = {},
 			) => {
-				// Helper: check if a split matches a filter condition
-				const matchesSplitCond = (
-					sp: SplitRecord,
-					cond: Record<string, unknown>,
-				) =>
-					(cond.participantType === undefined ||
-						sp.participantType === cond.participantType) &&
-					(cond.participantId === undefined ||
-						sp.participantId === cond.participantId) &&
-					(cond.verificationStatus === undefined ||
-						sp.verificationStatus === cond.verificationStatus);
-
-				// Helper: check if a transaction matches a where clause (recursive for AND)
-				const matchesTx = (
-					tx: TxRecord,
-					where: Record<string, unknown>,
-				): boolean => {
-					if (where.splitParticipants) {
-						const spFilter = where.splitParticipants as {
-							some?: Record<string, unknown>;
-							none?: Record<string, unknown>;
-						};
-						const txSplits = [...splits.values()].filter(
-							(sp) => sp.transactionId === tx.id,
-						);
-						if (
-							spFilter.some &&
-							!txSplits.some((sp) => matchesSplitCond(sp, spFilter.some!))
-						)
-							return false;
-						if (
-							spFilter.none &&
-							txSplits.some((sp) => matchesSplitCond(sp, spFilter.none!))
-						)
-							return false;
-					}
-					if (where.AND) {
-						const andClauses = where.AND as Array<Record<string, unknown>>;
-						if (!andClauses.every((clause) => matchesTx(tx, clause)))
-							return false;
-					}
-					if (where.isLocked !== undefined && tx.isLocked !== where.isLocked)
-						return false;
-					if (where.projectId !== undefined && tx.projectId !== where.projectId)
-						return false;
-					return true;
-				};
-
 				let results = [...transactions.values()];
 				if (args.where) {
 					results = results.filter((tx) => matchesTx(tx, args.where!));
@@ -819,6 +814,35 @@ export function createStatefulDb() {
 			settlements.delete(args.where.id);
 			return s;
 		}),
+
+		count: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
+			const matchesClause = (
+				s: SettlementRecord,
+				clause: Record<string, unknown>,
+			) =>
+				(clause.fromParticipantType === undefined ||
+					s.fromParticipantType === clause.fromParticipantType) &&
+				(clause.fromParticipantId === undefined ||
+					s.fromParticipantId === clause.fromParticipantId) &&
+				(clause.toParticipantType === undefined ||
+					s.toParticipantType === clause.toParticipantType) &&
+				(clause.toParticipantId === undefined ||
+					s.toParticipantId === clause.toParticipantId);
+
+			let count = 0;
+			for (const s of settlements.values()) {
+				const w = args.where;
+				let matches = true;
+				if (w?.OR) {
+					const orClauses = w.OR as Array<Record<string, unknown>>;
+					matches = orClauses.some((clause) => matchesClause(s, clause));
+				} else if (w) {
+					matches = matchesClause(s, w);
+				}
+				if (matches) count++;
+			}
+			return count;
+		}),
 	};
 
 	// ── auditLogEntry model ──────────────────────────────────────────────────
@@ -911,7 +935,6 @@ export function createStatefulDb() {
 				const record: ProjectRecord = {
 					id,
 					name: args.data.name ?? "Test Project",
-					type: args.data.type ?? "GENERAL",
 					status: "ACTIVE",
 					description: args.data.description ?? null,
 					primaryCurrency: args.data.primaryCurrency ?? "USD",
@@ -1320,7 +1343,6 @@ export function addProject(
 	const id = `project-${db._stores.projects.size + 1}`;
 	const record: ProjectRecord = {
 		name: overrides.name ?? "Test Project",
-		type: overrides.type ?? "GENERAL",
 		status: "ACTIVE",
 		description: overrides.description ?? null,
 		primaryCurrency: overrides.primaryCurrency ?? "USD",

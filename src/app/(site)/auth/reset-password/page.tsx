@@ -2,6 +2,7 @@
 
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import { Label } from "~/components/ui/label";
 import { api } from "~/trpc/react";
 
 function ResetPasswordInner() {
+	const t = useTranslations("auth");
 	const searchParams = useSearchParams();
 	const token = searchParams.get("token");
 	const router = useRouter();
@@ -28,12 +30,12 @@ function ResetPasswordInner() {
 
 	const resetMutation = api.auth.resetPassword.useMutation({
 		onSuccess: () => {
-			toast.success("Password updated successfully!");
+			toast.success(t("passwordUpdatedSuccessfully"));
 			router.push("/login");
 		},
 		onError: (err) => {
 			setError(
-				err.message || "Failed to reset password. The link may have expired.",
+				err.message || t("failedToResetPassword"),
 			);
 		},
 	});
@@ -48,14 +50,14 @@ function ResetPasswordInner() {
 						</div>
 						<div className="space-y-2 text-center">
 							<h3 className="font-semibold text-lg text-destructive">
-								Invalid Link
+								{t("invalidLink")}
 							</h3>
 							<p className="text-muted-foreground text-sm">
-								No reset token provided. Please request a new link.
+								{t("noResetTokenProvided")}
 							</p>
 						</div>
 						<Button asChild className="w-full">
-							<Link href="/login">Return to Login</Link>
+							<Link href="/login">{t("returnToLogin")}</Link>
 						</Button>
 					</CardContent>
 				</Card>
@@ -68,19 +70,19 @@ function ResetPasswordInner() {
 		if (!password || !confirmPassword) return;
 
 		if (password.length < 8) {
-			setError("Password must be at least 8 characters");
+			setError(t("passwordMinLength"));
 			return;
 		}
 
 		if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
 			setError(
-				"Password must contain at least one uppercase letter, one lowercase letter, and one number",
+				t("passwordComplexity"),
 			);
 			return;
 		}
 
 		if (password !== confirmPassword) {
-			setError("Passwords do not match");
+			setError(t("passwordsDoNotMatch"));
 			return;
 		}
 
@@ -93,21 +95,21 @@ function ResetPasswordInner() {
 			<Card className="w-full max-w-md">
 				<CardHeader className="space-y-1">
 					<CardTitle className="text-center font-bold text-2xl">
-						Set New Password
+						{t("setNewPassword")}
 					</CardTitle>
 					<CardDescription className="text-center">
-						Please choose a new password for your account
+						{t("setNewPasswordDescription")}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form className="space-y-4" onSubmit={handleSubmit}>
 						<div className="space-y-2">
-							<Label htmlFor="password">New Password</Label>
+							<Label htmlFor="password">{t("newPassword")}</Label>
 							<Input
 								disabled={resetMutation.isPending}
 								id="password"
 								onChange={(e) => setPassword(e.target.value)}
-								placeholder="Enter new password"
+								placeholder={t("enterNewPassword")}
 								required
 								type="password"
 								value={password}
@@ -115,12 +117,12 @@ function ResetPasswordInner() {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="confirmPassword">Confirm Password</Label>
+							<Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
 							<Input
 								disabled={resetMutation.isPending}
 								id="confirmPassword"
 								onChange={(e) => setConfirmPassword(e.target.value)}
-								placeholder="Confirm new password"
+								placeholder={t("confirmNewPassword")}
 								required
 								type="password"
 								value={confirmPassword}
@@ -142,10 +144,10 @@ function ResetPasswordInner() {
 							{resetMutation.isPending ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Resetting Password...
+									{t("resettingPassword")}
 								</>
 							) : (
-								"Confirm and Save"
+								t("confirmAndSave")
 							)}
 						</Button>
 					</form>

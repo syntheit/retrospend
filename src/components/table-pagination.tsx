@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import type { Table } from "@tanstack/react-table";
+import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import {
@@ -22,6 +23,7 @@ export function TablePagination<TData>({
 	pageSizeOptions = [10, 20, 30, 40, 50],
 	className,
 }: TablePaginationProps<TData>) {
+	const t = useTranslations("ui");
 	return (
 		<div
 			className={cn(
@@ -31,7 +33,7 @@ export function TablePagination<TData>({
 		>
 			<div className="flex items-center gap-2">
 				<Label className="font-medium text-sm" htmlFor="rows-per-page">
-					Rows per page
+					{t("rowsPerPage")}
 				</Label>
 				<Select
 					onValueChange={(value) => {
@@ -53,8 +55,7 @@ export function TablePagination<TData>({
 			</div>
 			<div className="flex items-center gap-2">
 				<div className="text-muted-foreground text-sm">
-					Page {table.getState().pagination.pageIndex + 1} of{" "}
-					{table.getPageCount()}
+					{t("pageOfTotal", { page: table.getState().pagination.pageIndex + 1, total: table.getPageCount() })}
 				</div>
 				<div className="flex items-center gap-1">
 					<Button

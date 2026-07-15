@@ -1,4 +1,5 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "~/components/ui/card";
 
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
@@ -22,6 +23,7 @@ export function BudgetHeader({
 	usdToHomeCurrencyRate,
 	serverTime,
 }: BudgetHeaderProps) {
+	const t = useTranslations("budget");
 	const { formatCurrency } = useCurrencyFormatter();
 	const { fromUSD } = useCurrencyConversion();
 	const {
@@ -65,7 +67,7 @@ export function BudgetHeader({
 			{isPastMonth && hasData && (
 				<div className="flex justify-end">
 					<div className="rounded-full bg-stone-100 px-4 py-1.5 font-medium text-sm text-stone-600 dark:bg-stone-800 dark:text-stone-400">
-						Monthly Wrap-up
+						{t("monthlyWrapUp")}
 					</div>
 				</div>
 			)}
@@ -81,7 +83,7 @@ export function BudgetHeader({
 								<div className="space-y-6">
 									<div className="space-y-2">
 										<p className="font-medium text-indigo-100 text-lg tracking-wide">
-											You spent
+											{t("youSpent")}
 										</p>
 										<p className="font-bold text-4xl tabular-nums tracking-tighter text-white sm:text-6xl lg:text-8xl">
 											{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
@@ -93,7 +95,7 @@ export function BudgetHeader({
 											<p className="font-semibold text-lg tabular-nums text-white">
 												{Math.round(percentUsed)}%
 											</p>
-											<p className="text-sm text-white/80">of your budget</p>
+											<p className="text-sm text-white/80">{t("ofYourBudget")}</p>
 										</div>
 										<div
 											className={cn(
@@ -107,7 +109,7 @@ export function BudgetHeader({
 												<TrendingUp className="h-5 w-5 text-emerald-200" />
 											)}
 											<span className="font-semibold text-lg text-white">
-												{isOverBudget ? "Over Budget" : "Under Control"}
+												{isOverBudget ? t("overBudget") : t("underControl")}
 											</span>
 										</div>
 									</div>
@@ -116,7 +118,7 @@ export function BudgetHeader({
 								<div className="grid grid-cols-2 gap-8 border-white/20 border-t pt-8 lg:border-t-0 lg:pt-0">
 									<div className="space-y-1">
 										<p className="font-medium text-sm text-white/60 tracking-wide">
-											Budgeted
+											{t("budgeted")}
 										</p>
 										<p className="font-bold text-2xl tabular-nums text-white sm:text-3xl">
 											{formatCurrency(
@@ -127,7 +129,7 @@ export function BudgetHeader({
 									</div>
 									<div className="space-y-1">
 										<p className="font-medium text-sm text-white/60 tracking-wide">
-											{isOverBudget ? "Overspent" : "Surplus"}
+											{isOverBudget ? t("overspent") : t("surplus")}
 										</p>
 										<p
 											className={cn(
@@ -146,7 +148,7 @@ export function BudgetHeader({
 					<Card className="border-dashed bg-muted/30">
 						<CardContent className="flex h-32 items-center justify-center p-6 text-center">
 							<p className="text-muted-foreground">
-								No budget or activity recorded for this month
+								{t("noActivityRecorded")}
 							</p>
 						</CardContent>
 					</Card>
@@ -161,7 +163,7 @@ export function BudgetHeader({
 							<div className="space-y-4">
 								<div className="space-y-1">
 									<p className="font-medium text-sm text-white/60">
-										Total Monthly Budget
+										{t("totalMonthlyBudget")}
 									</p>
 									<p className="font-bold text-4xl tabular-nums tracking-tight text-white sm:text-5xl">
 										{formatCurrency(displayAmountInHomeCurrency, homeCurrency)}
@@ -182,10 +184,10 @@ export function BudgetHeader({
 										) : (
 											<TrendingUp className="h-3.5 w-3.5" />
 										)}
-										{isOverBudget ? "Overspent" : "Under Limit"}
+										{isOverBudget ? t("overspent") : t("underLimit")}
 									</div>
 									<span className="text-sm text-white/50 tabular-nums">
-										{Math.round(percentUsed)}% of budget used
+										{t("percentBudgetUsed", { percent: Math.round(percentUsed) })}
 									</span>
 								</div>
 							</div>
@@ -193,7 +195,7 @@ export function BudgetHeader({
 							<div className="grid grid-cols-2 gap-4 lg:flex lg:gap-8">
 								<div className="space-y-1">
 									<p className="font-medium text-white/60 text-xs tracking-wide">
-										Spent
+										{t("spent")}
 									</p>
 									<p className="font-semibold text-xl tabular-nums text-white">
 										{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
@@ -201,7 +203,7 @@ export function BudgetHeader({
 								</div>
 								<div className="space-y-1">
 									<p className="font-medium text-white/60 text-xs tracking-wide">
-										{isOverBudget ? "Overage" : "Remaining"}
+										{isOverBudget ? t("overage") : t("remaining")}
 									</p>
 									<p
 										className={cn(
@@ -211,7 +213,7 @@ export function BudgetHeader({
 									>
 										{formatCurrency(remainingInHomeCurrency, homeCurrency)}{" "}
 										<span className="text-sm opacity-70">
-											{isOverBudget ? "over" : "left"}
+											{isOverBudget ? t("over") : t("left")}
 										</span>
 									</p>
 								</div>

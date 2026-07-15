@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import {
 	Tooltip,
@@ -175,6 +176,7 @@ export function PartitionBar({
 	categoryBudgets: CategoryBudget[];
 	homeCurrency: string;
 }) {
+	const t = useTranslations("budget");
 	const { segments } = useMemo(() => {
 		const totalAllocated = categoryBudgets.reduce(
 			(sum, budget) => sum + budget.allocatedAmount,
@@ -214,7 +216,7 @@ export function PartitionBar({
 				);
 				regularSegments.push({
 					id: "misc",
-					name: "Misc/Other",
+					name: t("miscOther"),
 					color: "gray",
 					percentage: (miscValue / effectiveTotal) * 100,
 					value: miscValue,
@@ -229,7 +231,7 @@ export function PartitionBar({
 		return {
 			segments: calculatedSegments,
 		};
-	}, [categoryBudgets]);
+	}, [categoryBudgets, t]);
 
 	return (
 		<div className="w-full">

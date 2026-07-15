@@ -66,6 +66,7 @@ import {
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { useSession } from "~/hooks/use-session";
+import { useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { env } from "~/env";
@@ -101,11 +102,11 @@ const ROLE_ORDER: Record<string, number> = {
 	VIEWER: 3,
 };
 
-const ROLE_LABELS: Record<string, string> = {
-	ORGANIZER: "Owner",
-	EDITOR: "Editor",
-	CONTRIBUTOR: "Contributor",
-	VIEWER: "Viewer",
+const ROLE_LABEL_KEYS: Record<string, string> = {
+	ORGANIZER: "roleOwner",
+	EDITOR: "roleEditor",
+	CONTRIBUTOR: "roleContributor",
+	VIEWER: "roleViewer",
 };
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -119,6 +120,7 @@ export function ShareProjectDialog({
 	open,
 	onOpenChange,
 }: ShareProjectDialogProps) {
+	const t = useTranslations("projects");
 	const { data: session } = useSession();
 	const userId = session?.user?.id;
 
@@ -129,9 +131,9 @@ export function ShareProjectDialog({
 				onOpenAutoFocus={(e) => e.preventDefault()}
 			>
 				<ResponsiveDialogHeader className="px-6 pt-6 pb-4">
-					<ResponsiveDialogTitle>Share &ldquo;{projectName}&rdquo;</ResponsiveDialogTitle>
+					<ResponsiveDialogTitle>{t("shareProject", { name: projectName })}</ResponsiveDialogTitle>
 					<ResponsiveDialogDescription>
-						Manage who has access to this project.
+						{t("manageWhoHasAccess")}
 					</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 
@@ -176,6 +178,7 @@ export function ShareProjectDialog({
 // ── Add People Search ────────────────────────────────────────────────────────
 
 function AddPeopleSearch({ projectId }: { projectId: string }) {
+	const t = useTranslations("projects");
 	const [search, setSearch] = useState("");
 	const [popoverOpen, setPopoverOpen] = useState(false);
 	const [showNewContact, setShowNewContact] = useState(false);
@@ -228,14 +231,14 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 
 	const addMutation = api.project.addParticipant.useMutation({
 		onSuccess: () => {
-			toast.success("Participant added");
+			toast.success(t("participantAdded"));
 			void utils.project.detail.invalidate({ id: projectId });
 			setSearch("");
 			setPopoverOpen(false);
 		},
 		onError: (e) => {
 			if (e.message.includes("already in the project")) {
-				toast.info("Already in project");
+				toast.info(t("alreadyInProject"));
 			} else {
 				toast.error(e.message);
 			}
@@ -251,7 +254,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 					`${participant.participantType}:${participant.participantId}`,
 				)
 			) {
-				toast.info("Already in project");
+				toast.info(t("alreadyInProject"));
 				return;
 			}
 			addMutation.mutate({
@@ -284,7 +287,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 			setNewEmail("");
 			setShowNewContact(false);
 		} catch {
-			toast.error("Failed to create contact");
+			toast.error(t("failedToCreateContact"));
 		}
 	}, [newName, newEmail, createShadowMutation, addMutation, projectId]);
 
@@ -315,7 +318,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 						onFocus={() => {
 							if (search.length > 0) setPopoverOpen(true);
 						}}
-						placeholder="Add people by name or email..."
+						placeholder={t("addPeoplePlaceholder")}
 						ref={inputRef}
 						value={search}
 					/>
@@ -370,8 +373,8 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 										variant="outline"
 									>
 										{r.participantType === "user"
-											? "User"
-											: "Contact"}
+											? t("user")
+											: t("contact")}
 									</Badge>
 								</Button>
 							))}
@@ -382,8 +385,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 					{alreadyInProject.length > 0 &&
 						filteredResults.length === 0 && (
 							<div className="p-3 text-center text-muted-foreground text-sm">
-								{alreadyInProject[0]?.name} is already in this
-								project
+								{t("personAlreadyInProject", { name: alreadyInProject[0]?.name ?? "" })}
 							</div>
 						)}
 
@@ -391,7 +393,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 					{noExactMatch && isEmailLike && !showNewContact && (
 						<div className="space-y-1 p-3">
 							<p className="text-muted-foreground text-sm">
-								No account found for{" "}
+								{t("noAccountFoundFor")}{" "}
 								<span className="font-medium text-foreground">
 									{search}
 								</span>
@@ -408,7 +410,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 								variant="ghost"
 							>
 								<UserPlus className="h-4 w-4" />
-								Add as shadow profile
+								{t("addAsShadowProfile")}
 							</Button>
 						</div>
 					)}
@@ -427,7 +429,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 								variant="ghost"
 							>
 								<UserPlus className="h-4 w-4" />
-								Add &ldquo;{search}&rdquo; as new contact
+								{t("addAsNewContact", { name: search })}
 							</Button>
 						</div>
 					)}
@@ -435,16 +437,16 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 					{/* Inline new contact form */}
 					{showNewContact && (
 						<div className="space-y-2 p-3">
-							<p className="font-medium text-sm">New contact</p>
+							<p className="font-medium text-sm">{t("newContact")}</p>
 							<Input
 								autoFocus
 								onChange={(e) => setNewName(e.target.value)}
-								placeholder="Name"
+								placeholder={t("name")}
 								value={newName}
 							/>
 							<Input
 								onChange={(e) => setNewEmail(e.target.value)}
-								placeholder="Email (optional)"
+								placeholder={t("emailOptional")}
 								type="email"
 								value={newEmail}
 							/>
@@ -459,7 +461,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 									type="button"
 									variant="ghost"
 								>
-									Cancel
+									{t("cancel")}
 								</Button>
 								<Button
 									disabled={
@@ -471,8 +473,8 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 									type="button"
 								>
 									{createShadowMutation.isPending
-										? "Adding..."
-										: "Add"}
+										? t("adding")
+										: t("add")}
 								</Button>
 							</div>
 						</div>
@@ -481,14 +483,14 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 					{/* Loading */}
 					{isFetching && filteredResults.length === 0 && (
 						<div className="p-4 text-center text-muted-foreground text-sm">
-							Searching...
+							{t("searching")}
 						</div>
 					)}
 
 					{/* Empty search */}
 					{search.length === 0 && (
 						<div className="p-4 text-center text-muted-foreground text-sm">
-							Type a name or email to search
+							{t("typeNameOrEmail")}
 						</div>
 					)}
 				</div>
@@ -514,6 +516,7 @@ function ParticipantList({
 	isEditor: boolean;
 	userId: string | undefined;
 }) {
+	const t = useTranslations("projects");
 	const { data: project } = api.project.detail.useQuery({ id: projectId });
 	const participants = project?.participants ?? [];
 	const utils = api.useUtils();
@@ -525,7 +528,7 @@ function ParticipantList({
 
 	const updateRoleMutation = api.project.updateParticipantRole.useMutation({
 		onSuccess: () => {
-			toast.success("Role updated");
+			toast.success(t("roleUpdated"));
 			void utils.project.detail.invalidate({ id: projectId });
 		},
 		onError: (e) => toast.error(e.message),
@@ -533,7 +536,7 @@ function ParticipantList({
 
 	const removeMutation = api.project.removeParticipant.useMutation({
 		onSuccess: () => {
-			toast.success("Participant removed");
+			toast.success(t("participantRemoved"));
 			void utils.project.detail.invalidate({ id: projectId });
 			setRemoveTarget(null);
 		},
@@ -542,7 +545,7 @@ function ParticipantList({
 
 	const transferMutation = api.project.transferOwnership.useMutation({
 		onSuccess: () => {
-			toast.success("Ownership transferred");
+			toast.success(t("ownershipTransferred"));
 			void utils.project.detail.invalidate({ id: projectId });
 			setTransferTarget(null);
 		},
@@ -583,7 +586,7 @@ function ParticipantList({
 		<div className="flex min-h-0 flex-1 flex-col">
 			<div className="px-6 pt-3 pb-2">
 				<p className="font-medium tabular-nums text-muted-foreground text-xs">
-					{participants.length} {participants.length === 1 ? "person" : "people"} with access
+					{t("peopleWithAccess", { count: participants.length })}
 				</p>
 			</div>
 			<div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -604,7 +607,7 @@ function ParticipantList({
 									</span>
 									{isCurrentUser(p) && (
 										<span className="text-muted-foreground text-xs">
-											(you)
+											({t("you")})
 										</span>
 									)}
 								</div>
@@ -614,7 +617,7 @@ function ParticipantList({
 							{/* Role control */}
 							{isCreator(p) ? (
 								<span className="shrink-0 px-2 py-1 text-muted-foreground text-xs">
-									Owner
+									{t("roleOwner")}
 								</span>
 							) : isOrganizer ? (
 								<DropdownMenu>
@@ -624,7 +627,7 @@ function ParticipantList({
 											variant="ghost"
 											size="sm"
 										>
-											{ROLE_LABELS[p.role] ?? p.role}
+											{t(ROLE_LABEL_KEYS[p.role] ?? "roleContributor")}
 											<ChevronDown className="h-3 w-3 opacity-50" />
 										</Button>
 									</DropdownMenuTrigger>
@@ -647,13 +650,13 @@ function ParticipantList({
 											value={p.role}
 										>
 											<DropdownMenuRadioItem value="EDITOR">
-												Editor
+												{t("roleEditor")}
 											</DropdownMenuRadioItem>
 											<DropdownMenuRadioItem value="CONTRIBUTOR">
-												Contributor
+												{t("roleContributor")}
 											</DropdownMenuRadioItem>
 											<DropdownMenuRadioItem value="VIEWER">
-												Viewer
+												{t("roleViewer")}
 											</DropdownMenuRadioItem>
 										</DropdownMenuRadioGroup>
 										<DropdownMenuSeparator />
@@ -661,14 +664,14 @@ function ParticipantList({
 											<DropdownMenuItem
 												onClick={() => setTransferTarget(p)}
 											>
-												Transfer ownership
+												{t("transferOwnership")}
 											</DropdownMenuItem>
 										)}
 										<DropdownMenuItem
 											onClick={() => setRemoveTarget(p)}
 											variant="destructive"
 										>
-											Remove access
+											{t("removeAccess")}
 										</DropdownMenuItem>
 									</DropdownMenuContent>
 								</DropdownMenu>
@@ -677,7 +680,7 @@ function ParticipantList({
 									className="text-[10px]"
 									variant="outline"
 								>
-									{ROLE_LABELS[p.role] ?? p.role}
+									{t(ROLE_LABEL_KEYS[p.role] ?? "roleContributor")}
 								</Badge>
 							)}
 						</div>
@@ -744,18 +747,19 @@ function ParticipantAvatar({ participant }: { participant: Participant }) {
 }
 
 function ParticipantStatusLine({ participant }: { participant: Participant }) {
+	const t = useTranslations("projects");
 	const p = participant;
 	if (p.participantType === "shadow") {
 		return (
 			<p className="truncate text-muted-foreground text-xs">
-				{p.email ?? "Shadow profile \u00b7 No account yet"}
+				{p.email ?? t("shadowProfileNoAccount")}
 			</p>
 		);
 	}
 	if (p.participantType === "guest") {
 		return (
 			<p className="truncate text-muted-foreground text-xs">
-				{p.email ? `${p.email} \u00b7 ` : ""}Guest (via invite link)
+				{p.email ? `${p.email} \u00b7 ` : ""}{t("guestViaInviteLink")}
 			</p>
 		);
 	}
@@ -778,17 +782,18 @@ function RemoveConfirmation({
 	onConfirm: () => void;
 	onCancel: () => void;
 }) {
+	const t = useTranslations("projects");
 	return (
 		<div className="border-border border-t bg-destructive/5 px-6 py-3">
 			<p className="font-medium text-sm">
-				Remove {participantName} from this project?
+				{t("removeFromProject", { name: participantName })}
 			</p>
 			<p className="mt-0.5 text-muted-foreground text-xs">
-				Their existing expenses will remain in the project.
+				{t("existingExpensesRemain")}
 			</p>
 			<div className="mt-2 flex justify-end gap-2">
 				<Button onClick={onCancel} size="sm" variant="ghost">
-					Cancel
+					{t("cancel")}
 				</Button>
 				<Button
 					disabled={isPending}
@@ -796,7 +801,7 @@ function RemoveConfirmation({
 					size="sm"
 					variant="destructive"
 				>
-					{isPending ? "Removing..." : "Remove"}
+					{isPending ? t("removing") : t("remove")}
 				</Button>
 			</div>
 		</div>
@@ -818,6 +823,7 @@ function TransferOwnershipDialog({
 	participantName: string;
 	projectName: string;
 }) {
+	const t = useTranslations("projects");
 	const [confirmText, setConfirmText] = useState("");
 	const matches = confirmText === projectName;
 
@@ -825,18 +831,17 @@ function TransferOwnershipDialog({
 		<AlertDialog open={open} onOpenChange={(v) => { if (!v) setConfirmText(""); onOpenChange(v); }}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Transfer ownership</AlertDialogTitle>
+					<AlertDialogTitle>{t("transferOwnership")}</AlertDialogTitle>
 					<AlertDialogDescription asChild>
 						<div className="space-y-3">
 							<p>
-								You are about to transfer ownership of this project to{" "}
-								<span className="font-semibold text-foreground">{participantName}</span>.
+								{t("transferOwnershipIntro", { name: participantName })}
 							</p>
 							<p>
-								They will become the new owner with full control. Your role will be changed to Editor. This action cannot be undone by you.
+								{t("transferOwnershipWarning")}
 							</p>
 							<p>
-								Type <span className="font-semibold text-foreground">{projectName}</span> to confirm:
+								{t("typeToConfirm", { name: projectName })}
 							</p>
 							<Input
 								value={confirmText}
@@ -848,13 +853,13 @@ function TransferOwnershipDialog({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+					<AlertDialogCancel disabled={isPending}>{t("cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						disabled={!matches || isPending}
 						onClick={(e) => { e.preventDefault(); onConfirm(); }}
 						className="bg-destructive text-white hover:bg-destructive/90"
 					>
-						{isPending ? "Transferring..." : "Transfer ownership"}
+						{isPending ? t("transferring") : t("transferOwnership")}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
@@ -864,9 +869,10 @@ function TransferOwnershipDialog({
 
 // ── Link Access ──────────────────────────────────────────────────────────────
 
-const VISIBILITY_DESCRIPTIONS: Record<string, string> = {
-	PRIVATE: "Only participants can access",
-	PUBLIC: "Anyone with the link can view",
+// Visibility descriptions moved to translation keys
+const VISIBILITY_KEYS: Record<string, string> = {
+	PRIVATE: "visibilityPrivateDesc",
+	PUBLIC: "visibilityPublicDesc",
 };
 
 function LinkAccessSection({
@@ -876,13 +882,14 @@ function LinkAccessSection({
 	projectId: string;
 	isOrganizer: boolean;
 }) {
+	const t = useTranslations("projects");
 	const utils = api.useUtils();
 	const { data: project } = api.project.detail.useQuery({ id: projectId });
 	const [copied, setCopied] = useState(false);
 
 	const updateMutation = api.project.update.useMutation({
 		onSuccess: () => {
-			toast.success("Visibility updated");
+			toast.success(t("visibilityUpdated"));
 			void utils.project.detail.invalidate({ id: projectId });
 			void utils.project.list.invalidate();
 		},
@@ -915,10 +922,10 @@ function LinkAccessSection({
 				</div>
 				<div className="min-w-0 flex-1">
 					<p className="font-medium text-sm">
-						{isPublic ? "Public" : "Private"}
+						{isPublic ? t("public") : t("private")}
 					</p>
 					<p className="text-muted-foreground text-xs">
-						{VISIBILITY_DESCRIPTIONS[visibility]}
+						{t(VISIBILITY_KEYS[visibility] ?? "visibilityPrivateDesc")}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -938,7 +945,7 @@ function LinkAccessSection({
 							</Button>
 						</TooltipTrigger>
 						<TooltipContent>
-							{copied ? "Copied!" : "Copy link"}
+							{copied ? t("copied") : t("copyLink")}
 						</TooltipContent>
 					</Tooltip>
 					{isOrganizer && (
@@ -976,6 +983,7 @@ function LinkSharingSection({
 }: {
 	projectId: string;
 }) {
+	const t = useTranslations("projects");
 	const [open, setOpen] = useState(false);
 	const { data: magicLinks, isLoading } = api.project.listMagicLinks.useQuery(
 		{ projectId },
@@ -1019,11 +1027,11 @@ function LinkSharingSection({
 						<Link2 className="h-4 w-4" />
 					</div>
 					<div className="min-w-0 flex-1">
-						<p className="font-medium text-sm">Invite links</p>
+						<p className="font-medium text-sm">{t("inviteLinks")}</p>
 						<p className="text-muted-foreground text-xs">
 							{activeCount > 0
-								? `${activeCount} active ${activeCount === 1 ? "link" : "links"}`
-								: "Create links to share with others"
+								? t("activeLinks", { count: activeCount })
+								: t("createLinksToShare")
 							}
 						</p>
 					</div>
@@ -1064,6 +1072,7 @@ function MagicLinkRow({
 	} | undefined;
 	projectId: string;
 }) {
+	const t = useTranslations("projects");
 	const utils = api.useUtils();
 	const [copied, setCopied] = useState(false);
 	const [confirmReset, setConfirmReset] = useState(false);
@@ -1111,8 +1120,8 @@ function MagicLinkRow({
 			{!link ? (
 				<div className="flex items-center gap-3">
 					<div className="min-w-0 flex-1 space-y-0.5">
-						<p className="font-medium text-sm">{ROLE_LABELS[role]}</p>
-						<p className="text-muted-foreground text-xs">Not created</p>
+						<p className="font-medium text-sm">{t(ROLE_LABEL_KEYS[role] ?? "roleContributor")}</p>
+						<p className="text-muted-foreground text-xs">{t("notCreated")}</p>
 					</div>
 					<Button
 						disabled={createMutation.isPending}
@@ -1125,7 +1134,7 @@ function MagicLinkRow({
 						size="sm"
 						variant="outline"
 					>
-						{createMutation.isPending ? "Creating..." : "Create"}
+						{createMutation.isPending ? t("creating") : t("create")}
 					</Button>
 				</div>
 			) : (
@@ -1134,15 +1143,14 @@ function MagicLinkRow({
 					{/* Left: role info */}
 					<div className="min-w-0 flex-1 space-y-0.5">
 						<div className="flex items-center gap-2">
-							<span className="font-medium text-sm">{ROLE_LABELS[role]}</span>
+							<span className="font-medium text-sm">{t(ROLE_LABEL_KEYS[role] ?? "roleContributor")}</span>
 							<Badge className="border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-600 dark:text-emerald-400">
-								Active
+								{t("active")}
 							</Badge>
 						</div>
 						{/* Meta + show link toggle */}
 						<p className="text-muted-foreground text-xs">
-							{link.useCount}{" "}
-							{link.useCount === 1 ? "join" : "joins"} · Created{" "}
+							{t("linkJoins", { count: link.useCount })} · {t("created")}{" "}
 							{formatLinkDate(link.createdAt)} ·{" "}
 							<Button
 								className="h-auto p-0 text-xs text-muted-foreground underline-offset-2 hover:underline"
@@ -1150,7 +1158,7 @@ function MagicLinkRow({
 								type="button"
 								variant="link"
 							>
-								{showLink ? "Hide link" : "Show link"}
+								{showLink ? t("hideLink") : t("showLink")}
 							</Button>
 						</p>
 						<Collapsible open={showLink}>
@@ -1179,7 +1187,7 @@ function MagicLinkRow({
 									</Button>
 								</TooltipTrigger>
 								<TooltipContent>
-									{copied ? "Copied!" : "Copy invite link"}
+									{copied ? t("copied") : t("copyInviteLink")}
 								</TooltipContent>
 							</Tooltip>
 							<Popover>
@@ -1195,7 +1203,7 @@ function MagicLinkRow({
 											</Button>
 										</PopoverTrigger>
 									</TooltipTrigger>
-									<TooltipContent>QR code</TooltipContent>
+									<TooltipContent>{t("qrCode")}</TooltipContent>
 								</Tooltip>
 								<PopoverContent align="end" className="w-auto p-4">
 									<div className="flex flex-col items-center gap-3">
@@ -1207,7 +1215,7 @@ function MagicLinkRow({
 											/>
 										</div>
 										<p className="text-center text-muted-foreground text-xs">
-											Scan to join as {ROLE_LABELS[role]}
+											{t("scanToJoinAs", { role: t(ROLE_LABEL_KEYS[role] ?? "roleContributor") })}
 										</p>
 									</div>
 								</PopoverContent>
@@ -1223,7 +1231,7 @@ function MagicLinkRow({
 										<RefreshCw className="h-3.5 w-3.5" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Generate new link</TooltipContent>
+								<TooltipContent>{t("generateNewLink")}</TooltipContent>
 							</Tooltip>
 							<Button
 								className="h-7 px-2 text-xs text-destructive hover:text-destructive"
@@ -1231,7 +1239,7 @@ function MagicLinkRow({
 								size="sm"
 								variant="ghost"
 							>
-								Revoke
+								{t("revoke")}
 							</Button>
 						</div>
 					</div>
@@ -1239,13 +1247,13 @@ function MagicLinkRow({
 				<AlertDialog onOpenChange={setConfirmReset} open={confirmReset}>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>Generate new {ROLE_LABELS[role]} link?</AlertDialogTitle>
+							<AlertDialogTitle>{t("generateNewRoleLink", { role: t(ROLE_LABEL_KEYS[role] ?? "roleContributor") })}</AlertDialogTitle>
 							<AlertDialogDescription>
-								The current link will stop working. Anyone who has it won&apos;t be able to join.
+								{t("currentLinkStopWorking")}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
-							<AlertDialogCancel>Cancel</AlertDialogCancel>
+							<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 							<AlertDialogAction
 								className={buttonVariants({ variant: "destructive" })}
 								disabled={resetMutation.isPending}
@@ -1254,7 +1262,7 @@ function MagicLinkRow({
 									resetMutation.mutate({ projectId, role });
 								}}
 							>
-								{resetMutation.isPending ? "Generating..." : "Generate new link"}
+								{resetMutation.isPending ? t("generating") : t("generateNewLink")}
 							</AlertDialogAction>
 						</AlertDialogFooter>
 					</AlertDialogContent>
@@ -1263,13 +1271,13 @@ function MagicLinkRow({
 				<AlertDialog onOpenChange={setConfirmRevoke} open={confirmRevoke}>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>Revoke {ROLE_LABELS[role]} link?</AlertDialogTitle>
+							<AlertDialogTitle>{t("revokeRoleLink", { role: t(ROLE_LABEL_KEYS[role] ?? "roleContributor") })}</AlertDialogTitle>
 							<AlertDialogDescription>
-								Anyone who has this link won&apos;t be able to join as {ROLE_LABELS[role]}.
+								{t("revokeLinkDescription", { role: t(ROLE_LABEL_KEYS[role] ?? "roleContributor") })}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
-							<AlertDialogCancel>Cancel</AlertDialogCancel>
+							<AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
 							<AlertDialogAction
 								className={buttonVariants({ variant: "destructive" })}
 								disabled={revokeMutation.isPending}
@@ -1281,7 +1289,7 @@ function MagicLinkRow({
 									});
 								}}
 							>
-								{revokeMutation.isPending ? "Revoking..." : "Revoke"}
+								{revokeMutation.isPending ? t("revoking") : t("revoke")}
 							</AlertDialogAction>
 						</AlertDialogFooter>
 					</AlertDialogContent>

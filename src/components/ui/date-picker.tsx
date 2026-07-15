@@ -1,6 +1,7 @@
 "use client";
 
 import { Calendar as CalendarIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { Button } from "~/components/ui/button";
@@ -11,21 +12,6 @@ import {
 	PopoverTrigger,
 } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
-
-const MONTHS = [
-	"January",
-	"February",
-	"March",
-	"April",
-	"May",
-	"June",
-	"July",
-	"August",
-	"September",
-	"October",
-	"November",
-	"December",
-];
 
 interface DatePickerProps {
 	date?: Date;
@@ -40,12 +26,28 @@ interface DatePickerProps {
 export function DatePicker({
 	date,
 	onSelect,
-	placeholder = "Pick a date",
+	placeholder,
 	className,
 	inputClassName,
 	fromYear = 1900,
 	toYear = 2100,
 }: DatePickerProps) {
+	const t = useTranslations("ui");
+	const resolvedPlaceholder = placeholder ?? t("pickADate");
+	const MONTHS = [
+		t("january"),
+		t("february"),
+		t("march"),
+		t("april"),
+		t("may"),
+		t("june"),
+		t("july"),
+		t("august"),
+		t("september"),
+		t("october"),
+		t("november"),
+		t("december"),
+	];
 	const [open, setOpen] = React.useState(false);
 	const [monthView, setMonthView] = React.useState<Date | undefined>(date);
 	const [activeSegment, setActiveSegment] = React.useState<
@@ -185,7 +187,7 @@ export function DatePicker({
 						<Segment type="year">{date.getFullYear()}</Segment>
 					</div>
 				) : (
-					<span className="select-none">{placeholder}</span>
+					<span className="select-none">{resolvedPlaceholder}</span>
 				)}
 			</div>
 

@@ -11,8 +11,9 @@ import {
 	IconReceipt,
 	IconUsersGroup,
 } from "@tabler/icons-react";
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { NavMain } from "~/components/nav-main";
 import { NavSecondary } from "~/components/nav-secondary";
 import { NavUser } from "~/components/nav-user";
@@ -36,73 +37,39 @@ type ExtendedUser = NonNullable<
 	username: string;
 };
 
-const navMainCategories = [
-	{
-		label: "Core",
-		items: [
-			{
-				title: "Dashboard",
-				url: "/dashboard",
-				icon: IconLayoutDashboard,
-			},
-			{
-				title: "Transactions",
-				url: "/transactions",
-				icon: IconReceipt,
-			},
-			{
-				title: "Budget",
-				url: "/budget",
-				icon: IconPigMoney,
-			},
-			{
-				title: "Recurring",
-				url: "/recurring",
-				icon: IconRepeat,
-			},
-		],
-	},
-	{
-		label: "Shared",
-		items: [
-			{
-				title: "People",
-				url: "/people",
-				icon: IconUsersGroup,
-			},
-			{
-				title: "Projects",
-				url: "/projects",
-				icon: IconFolder,
-			},
-		],
-	},
-	{
-		label: "Tools",
-		items: [
-			{
-				title: "Import",
-				url: "/import",
-				icon: IconFileImport,
-			},
-			{
-				title: "Wealth",
-				url: "/wealth",
-				icon: IconWallet,
-			},
-			{
-				title: "Currencies",
-				url: "/currencies",
-				icon: IconCoins,
-			},
-		],
-	},
-];
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+	const t = useTranslations("sidebar");
+	const tCommon = useTranslations("common");
 	const { data: session, isPending } = useSession();
 	const _pathname = usePathname();
 	const { isMobile, setOpenMobile } = useSidebar();
+
+	const navMainCategories = useMemo(() => [
+		{
+			label: t("core"),
+			items: [
+				{ title: t("dashboard"), url: "/dashboard", icon: IconLayoutDashboard },
+				{ title: t("transactions"), url: "/transactions", icon: IconReceipt },
+				{ title: t("budget"), url: "/budget", icon: IconPigMoney },
+				{ title: t("recurring"), url: "/recurring", icon: IconRepeat },
+			],
+		},
+		{
+			label: t("shared"),
+			items: [
+				{ title: t("people"), url: "/people", icon: IconUsersGroup },
+				{ title: t("projects"), url: "/projects", icon: IconFolder },
+			],
+		},
+		{
+			label: t("tools"),
+			items: [
+				{ title: t("import"), url: "/import", icon: IconFileImport },
+				{ title: t("wealth"), url: "/wealth", icon: IconWallet },
+				{ title: t("currencies"), url: "/currencies", icon: IconCoins },
+			],
+		},
+	], [t]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: pathname triggers effect intentionally
 	useEffect(() => {
@@ -138,7 +105,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<div className="px-2 text-muted-foreground text-sm">
-							Version {APP_VERSION}
+							{tCommon("version", { version: APP_VERSION })}
 						</div>
 					</SidebarMenuItem>
 				</SidebarMenu>

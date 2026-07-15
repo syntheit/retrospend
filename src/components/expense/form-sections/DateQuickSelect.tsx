@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { DatePicker } from "~/components/ui/date-picker";
 import { cn } from "~/lib/utils";
@@ -18,6 +19,7 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 export function DateQuickSelect({ date, onSelect }: DateQuickSelectProps) {
+	const t = useTranslations("expenseForm");
 	const today = useMemo(() => new Date(), []);
 	const yesterday = useMemo(() => {
 		const d = new Date();
@@ -26,8 +28,8 @@ export function DateQuickSelect({ date, onSelect }: DateQuickSelectProps) {
 	}, []);
 
 	const chips: { label: string; date: Date }[] = [
-		{ label: "Today", date: today },
-		{ label: "Yesterday", date: yesterday },
+		{ label: t("today"), date: today },
+		{ label: t("yesterday"), date: yesterday },
 	];
 
 	return (
@@ -55,7 +57,7 @@ export function DateQuickSelect({ date, onSelect }: DateQuickSelectProps) {
 			<DatePicker
 				date={date}
 				onSelect={(d) => d && onSelect(d)}
-				placeholder="Select date"
+				placeholder={t("selectDate")}
 			/>
 		</div>
 	);
