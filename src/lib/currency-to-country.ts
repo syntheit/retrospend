@@ -5,7 +5,7 @@
 export const CURRENCY_TO_COUNTRY: Record<string, string> = {
 	// Common Currencies
 	USD: "us",
-	EUR: "european_union",
+	EUR: "eu",
 	GBP: "gb",
 	JPY: "jp",
 	CHF: "ch",
