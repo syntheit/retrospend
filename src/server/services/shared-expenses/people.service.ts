@@ -345,24 +345,11 @@ export class PeopleService {
 			};
 		}
 
-		// Base where clause: all transactions between the two people
+		// Base where clause: all transactions where both people are involved
+		// (each is either the payer or a split participant).
 		const baseAndClauses: Prisma.SharedTransactionWhereInput[] = [
-			{
-				splitParticipants: {
-					some: {
-						participantType: this.currentUserRef.participantType,
-						participantId: this.currentUserRef.participantId,
-					},
-				},
-			},
-			{
-				splitParticipants: {
-					some: {
-						participantType: ref.participantType,
-						participantId: ref.participantId,
-					},
-				},
-			},
+			this.involvementClause(this.currentUserRef),
+			this.involvementClause(ref),
 		];
 
 		// Filtered where clause: applies status/projectId filters for the paginated list
@@ -772,24 +759,11 @@ export class PeopleService {
 			return { transactions: [], nextCursor: undefined };
 		}
 
-		// Base where clause: all transactions between the two people
+		// Base where clause: all transactions where both people are involved
+		// (each is either the payer or a split participant).
 		const baseAndClauses: Prisma.SharedTransactionWhereInput[] = [
-			{
-				splitParticipants: {
-					some: {
-						participantType: this.currentUserRef.participantType,
-						participantId: this.currentUserRef.participantId,
-					},
-				},
-			},
-			{
-				splitParticipants: {
-					some: {
-						participantType: ref.participantType,
-						participantId: ref.participantId,
-					},
-				},
-			},
+			this.involvementClause(this.currentUserRef),
+			this.involvementClause(ref),
 		];
 
 		const andClauses = [...baseAndClauses];
@@ -1318,6 +1292,34 @@ export class PeopleService {
 	}
 
 	/**
+	 * Builds a where clause matching transactions where the given participant is
+	 * *involved* — meaning they either paid for the transaction OR appear as a
+	 * split participant. Using payer-OR-split (rather than split-only) ensures a
+	 * transaction is visible in the person view even when one party paid the full
+	 * amount for the other and took no share themselves (so has no split row).
+	 */
+	private involvementClause(
+		ref: ParticipantRef,
+	): Prisma.SharedTransactionWhereInput {
+		return {
+			OR: [
+				{
+					paidByType: ref.participantType,
+					paidById: ref.participantId,
+				},
+				{
+					splitParticipants: {
+						some: {
+							participantType: ref.participantType,
+							participantId: ref.participantId,
+						},
+					},
+				},
+			],
+		};
+	}
+
+	/**
 	 * Returns true if there is at least one shared transaction between the
 	 * current user and the given participant.
 	 */
@@ -1325,22 +1327,8 @@ export class PeopleService {
 		const row = await this.db.sharedTransaction.findFirst({
 			where: {
 				AND: [
-					{
-						splitParticipants: {
-							some: {
-								participantType: this.currentUserRef.participantType,
-								participantId: this.currentUserRef.participantId,
-							},
-						},
-					},
-					{
-						splitParticipants: {
-							some: {
-								participantType: ref.participantType,
-								participantId: ref.participantId,
-							},
-						},
-					},
+					this.involvementClause(this.currentUserRef),
+					this.involvementClause(ref),
 				],
 			},
 			select: { id: true },
