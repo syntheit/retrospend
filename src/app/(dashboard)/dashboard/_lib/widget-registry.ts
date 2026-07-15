@@ -5,6 +5,7 @@ import {
 	CalendarDays,
 	CircleDollarSign,
 	Globe,
+	Grid3x3,
 	Landmark,
 	PieChart,
 	Receipt,
@@ -174,6 +175,17 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
 		tier: 2,
 		component: () => import("../_widgets/monthly-comparison-widget"),
 	},
+	"spending-heatmap": {
+		id: "spending-heatmap",
+		name: "widgets.spendingHeatmap.name",
+		description: "widgets.spendingHeatmap.description",
+		icon: Grid3x3,
+		defaultSize: "md",
+		minSize: "sm",
+		category: "overview",
+		tier: 2,
+		component: () => import("../_widgets/spending-heatmap-widget"),
+	},
 } as const;
 
 export const DEFAULT_LAYOUT: LayoutItem[] = [
@@ -189,6 +201,7 @@ export const DEFAULT_LAYOUT: LayoutItem[] = [
 	{ id: "currency-watchlist", visible: false, size: "xs", order: 9 },
 	{ id: "savings-rate", visible: false, size: "xs", order: 10 },
 	{ id: "monthly-comparison", visible: false, size: "md", order: 11 },
+	{ id: "spending-heatmap", visible: false, size: "md", order: 12 },
 ];
 
 export function getWidgetDefinition(id: string): WidgetDefinition | undefined {
