@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Retrospend Roadmap</title>
+<style>
+	:root {
+		--bg: #0c0a09;
+		--card: #1c1917;
+		--card-2: #292524;
+		--border: #292524;
+		--border-soft: rgba(255,255,255,0.06);
+		--fg: #fafaf9;
+		--muted: #a8a29e;
+		--muted-2: #78716c;
+		--emerald: hsl(160, 84%, 45%);
+		--amber: hsl(38, 92%, 55%);
+		--blue: hsl(217, 91%, 65%);
+		--violet: hsl(263, 70%, 62%);
+		--rose: hsl(0, 84%, 65%);
+		--cyan: hsl(190, 84%, 55%);
+		--orange: hsl(25, 95%, 58%);
+	}
+	* { margin: 0; padding: 0; box-sizing: border-box; }
+	body {
+		background: var(--bg);
+		color: var(--fg);
+		font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Inter", sans-serif;
+		line-height: 1.6;
+		-webkit-font-smoothing: antialiased;
+	}
+	.wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px 96px; }
+
+	/* ---------- Hero ---------- */
+	.hero {
+		position: relative; overflow: hidden;
+		background: linear-gradient(135deg, #1c1917 0%, #171412 55%, #000 100%);
+		border-bottom: 1px solid var(--border);
+		padding: 72px 24px 64px;
+	}
+	.hero-inner { max-width: 1040px; margin: 0 auto; position: relative; }
+	.hero .circle-a, .hero .circle-b {
+		position: absolute; border-radius: 9999px; background: rgba(255,255,255,0.04);
+	}
+	.hero .circle-a { width: 420px; height: 420px; top: -220px; right: -120px; }
+	.hero .circle-b { width: 280px; height: 280px; bottom: -180px; left: -80px; }
+	.kicker {
+		display: inline-flex; align-items: center; gap: 8px;
+		font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+		color: var(--emerald); margin-bottom: 16px;
+	}
+	.kicker::before { content: ""; width: 24px; height: 2px; background: var(--emerald); display: inline-block; }
+	h1 { font-size: clamp(34px, 5vw, 52px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+	h1 .accent { background: linear-gradient(90deg, var(--emerald), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+	.hero p.sub { margin-top: 18px; font-size: 18px; color: var(--muted); max-width: 680px; }
+	.hero .meta { margin-top: 28px; font-size: 13px; color: var(--muted-2); }
+
+	/* ---------- Pillars ---------- */
+	.pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 40px 0 0; }
+	.pillar {
+		background: var(--card); border: 1px solid var(--border-soft); border-radius: 14px;
+		padding: 16px 18px; font-size: 14px;
+	}
+	.pillar b { display: block; font-size: 14px; margin-bottom: 2px; }
+	.pillar span { color: var(--muted); font-size: 13px; }
+	.pillar.p1 b { color: var(--emerald); } .pillar.p2 b { color: var(--blue); }
+	.pillar.p3 b { color: var(--violet); } .pillar.p4 b { color: var(--amber); }
+	.pillar.p5 b { color: var(--cyan); }
+
+	/* ---------- North star ---------- */
+	.northstar {
+		margin-top: 56px; position: relative; overflow: hidden;
+		border: 1px solid rgba(16,185,129,0.25); border-radius: 18px;
+		background: linear-gradient(135deg, rgba(16,185,129,0.10), rgba(6,182,212,0.05) 60%, transparent);
+		padding: 28px 30px;
+	}
+	.northstar .circle { position: absolute; width: 220px; height: 220px; border-radius: 9999px; background: rgba(16,185,129,0.07); top: -110px; right: -60px; }
+	.northstar h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--emerald); margin-bottom: 10px; }
+	.northstar p.big { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; max-width: 760px; }
+	.northstar p.small { margin-top: 10px; color: var(--muted); font-size: 14.5px; max-width: 760px; }
+
+	/* ---------- Section headers ---------- */
+	.section-h { margin: 72px 0 8px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+	.section-h h2 { font-size: 26px; font-weight: 750; letter-spacing: -0.02em; }
+	.section-h .hint { color: var(--muted-2); font-size: 14px; }
+
+	/* ---------- Timeline ---------- */
+	.timeline { position: relative; margin-top: 28px; }
+	.timeline::before {
+		content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px;
+		background: linear-gradient(180deg, var(--emerald), var(--blue) 30%, var(--violet) 70%, var(--card-2));
+		opacity: 0.5;
+	}
+	.release { position: relative; padding: 0 0 48px 44px; }
+	.release:last-child { padding-bottom: 0; }
+	.release .dot {
+		position: absolute; left: 0; top: 6px; width: 16px; height: 16px; border-radius: 9999px;
+		border: 3px solid var(--bg);
+	}
+	.release-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+	.release-head h3 { font-size: 21px; font-weight: 720; letter-spacing: -0.01em; }
+	.release-head .ver {
+		font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 13px;
+		background: var(--card-2); border: 1px solid var(--border-soft);
+		padding: 2px 10px; border-radius: 8px; color: var(--muted);
+	}
+	.release p.theme { color: var(--muted); font-size: 15px; max-width: 740px; margin-bottom: 18px; }
+
+	.badge {
+		display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+		padding: 3px 11px; border-radius: 9999px; letter-spacing: 0.02em;
+	}
+	.badge::before { content: ""; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; }
+	.b-shipped  { color: var(--emerald); background: rgba(16,185,129,0.12); }
+	.b-progress { color: var(--blue);    background: rgba(59,130,246,0.12); }
+	.b-next     { color: var(--amber);   background: rgba(245,158,11,0.12); }
+	.b-planned  { color: var(--muted);   background: rgba(168,162,158,0.10); }
+	.b-vision   { color: var(--violet);  background: rgba(139,92,246,0.12); }
+
+	.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+	.fcard {
+		background: var(--card); border: 1px solid var(--border-soft); border-radius: 14px;
+		padding: 16px 18px; transition: border-color .2s ease, transform .2s ease;
+	}
+	.fcard:hover { border-color: rgba(255,255,255,0.14); transform: translateY(-1px); }
+	.fcard .t { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+	.fcard .t b { font-size: 15px; font-weight: 650; }
+	.fcard p { color: var(--muted); font-size: 13.5px; }
+	.fcard .file { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--muted-2); margin-top: 8px; display: block; }
+	.tag {
+		flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+	}
+	.tag-fix    { color: var(--rose);   background: rgba(244,63,94,0.12); }
+	.tag-feat   { color: var(--blue);   background: rgba(59,130,246,0.12); }
+	.tag-flag   { color: var(--emerald);background: rgba(16,185,129,0.12); }
+	.tag-infra  { color: var(--cyan);   background: rgba(6,182,212,0.12); }
+	.tag-done   { color: var(--emerald);background: rgba(16,185,129,0.12); }
+
+	/* ---------- Playbook ---------- */
+	.playbook { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 24px; }
+	.pb {
+		background: var(--card); border: 1px solid var(--border-soft); border-radius: 14px; padding: 18px;
+	}
+	.pb b { display: block; font-size: 14.5px; margin-bottom: 4px; }
+	.pb p { color: var(--muted); font-size: 13.5px; }
+	.pb .n { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted-2); display: block; margin-bottom: 8px; }
+
+	/* ---------- Footer ---------- */
+	footer { margin-top: 88px; border-top: 1px solid var(--border); padding-top: 24px; color: var(--muted-2); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+	@media (max-width: 640px) {
+		.hero { padding: 48px 20px 44px; }
+		.release { padding-left: 34px; }
+	}
+</style>
+</head>
+<body>
+
+<div class="hero">
+	<div class="circle-a"></div><div class="circle-b"></div>
+	<div class="hero-inner">
+		<div class="kicker">Product Roadmap</div>
+		<h1>Retrospend<br /><span class="accent">The Immich of finance</span></h1>
+		<p class="sub">One well-integrated financial superapp — budgeting, shared expenses, and wealth tracking — that respects your privacy, costs nothing, and runs on your own hardware. Hosted at retrospend.app, or self-host it.</p>
+		<div class="meta">Drafted July 2026 · living document · versions beyond 0.5 are directional, not promises</div>
+	</div>
+</div>
+
+<div class="wrap">
+
+	<div class="pillars">
+		<div class="pillar p1"><b>Private</b><span>Your data, your server. No ads, no data sales, ever.</span></div>
+		<div class="pillar p2"><b>Free</b><span>No paywalls, no feature gates, no expense limits.</span></div>
+		<div class="pillar p3"><b>Integrated</b><span>Budgets, splits &amp; wealth talk to each other.</span></div>
+		<div class="pillar p4"><b>Simple</b><span>Powerful without homework. Depth on demand.</span></div>
+		<div class="pillar p5"><b>Open</b><span>Self-hostable, API-first, community-extendable.</span></div>
+	</div>
+
+	<div class="northstar">
+		<div class="circle"></div>
+		<h3>The wedge nobody else has</h3>
+		<p class="big">When you split an expense, only <em>your share</em> hits your budget. When a friend owes you, the receivable is visible next to your envelopes. When you settle up, everything reconciles itself.</p>
+		<p class="small">People today run YNAB <em>and</em> Splitwise side-by-side and manually reconcile between them. Actual Budget has no splitting. Splitwise has no budgeting. SplitPro and Sure each own half the picture. Budget ⇄ split integration is Retrospend's flagship differentiator — every release below feeds it.</p>
+	</div>
+
+	<!-- ================= NOW ================= -->
+	<div class="section-h"><h2>Now</h2><span class="hint">wrap up &amp; ship fast</span></div>
+	<div class="timeline">
+
+		<div class="release">
+			<div class="dot" style="background: var(--emerald);"></div>
+			<div class="release-head">
+				<h3>Polish &amp; Fixes</h3><span class="ver">v0.4.4</span><span class="badge b-progress">In progress</span>
+			</div>
+			<p class="theme">Ship what's already merged plus the small high-annoyance fixes. Get the release train moving again.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>i18n system (EN + ES)</b><span class="tag tag-done">Merged</span></div><p>next-intl wired through the app, ~2,530 keys per locale, per-user language setting.</p></div>
+				<div class="fcard"><div class="t"><b>Widget dashboard</b><span class="tag tag-done">Merged</span></div><p>Drag-and-drop grid with 14 widgets: safe-to-spend, heatmap, net worth, savings rate, people balances…</p></div>
+				<div class="fcard"><div class="t"><b>Project types removed</b><span class="tag tag-done">Merged</span></div><p>All features available in every project, no confusing mode switch.</p></div>
+				<div class="fcard"><div class="t"><b>Stop the 2-week logouts</b><span class="tag tag-fix">Fix</span></div><p>Session hard-expires after 7 idle days. Raise to 60 days with daily sliding refresh.</p><span class="file">src/server/better-auth/config.ts:43</span></div>
+				<div class="fcard"><div class="t"><b>Opaque sticky table headers</b><span class="tag tag-fix">Fix</span></div><p>bg-muted/50 lets row text ghost through the sticky header. One-line change.</p><span class="file">src/components/ui/table.tsx:26</span></div>
+				<div class="fcard"><div class="t"><b>Person view: purchases for you</b><span class="tag tag-fix">Fix</span></div><p>Expenses someone paid on your behalf without taking a share are invisible today. Widen the participant filter.</p><span class="file">people.service.ts</span></div>
+				<div class="fcard"><div class="t"><b>Dependency bumps</b><span class="tag tag-infra">Chore</span></div><p>Next 16.2, Prisma 7.8, tRPC 11.17, better-auth 1.6 — currently stashed, land them.</p></div>
+			</div>
+		</div>
+
+	<!-- ================= NEXT ================= -->
+		<div class="release">
+			<div class="dot" style="background: var(--blue);"></div>
+			<div class="release-head">
+				<h3>The Web Experience</h3><span class="ver">v0.5.0</span><span class="badge b-next">Next</span>
+			</div>
+			<p class="theme">Polish and perfect what exists. The web app is the reference implementation every future client gets measured against — make it feel premium everywhere, on every screen size.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>Mobile &amp; small-screen pass</b><span class="tag tag-feat">Feature</span></div><p>Tables collapse to cards below md, dialogs become drawers, dense pages get mobile layouts. Groundwork for the native apps' UX.</p></div>
+				<div class="fcard"><div class="t"><b>Person page v2</b><span class="tag tag-feat">Feature</span></div><p>Full relationship ledger: everything between you and them (paid-for-you included), running balance timeline, quicker settle-up.</p></div>
+				<div class="fcard"><div class="t"><b>Faster shared-expense flow</b><span class="tag tag-feat">Feature</span></div><p>Fewer steps to split: smart defaults (last-used split &amp; participants), inline participant creation, save-and-new.</p></div>
+				<div class="fcard"><div class="t"><b>Context menus everywhere</b><span class="tag tag-feat">Feature</span></div><p>Right-click on any row, card, widget, or pill does what you expect. Audit the gaps, standardize the pattern.</p></div>
+				<div class="fcard"><div class="t"><b>Page transitions</b><span class="tag tag-feat">Feature</span></div><p>Slide/fade via the View Transitions API instead of skeleton flashes — skeletons only after a real delay.</p></div>
+				<div class="fcard"><div class="t"><b>OpenGraph previews v2</b><span class="tag tag-feat">Feature</span></div><p>Rich, branded previews for profiles, payment links, and shared pages.</p></div>
+			</div>
+		</div>
+
+	<!-- ================= BUDGET ================= -->
+		<div class="release">
+			<div class="dot" style="background: var(--emerald);"></div>
+			<div class="release-head">
+				<h3>Envelope Budgeting</h3><span class="ver">v0.6.0</span><span class="badge b-planned">Planned</span>
+			</div>
+			<p class="theme">The flagship release. YNAB's philosophy — assign money you actually have, every dollar gets a job — rebuilt natively around Retrospend's splitting and multi-currency, and without YNAB's traps. It cannot be messy: simple by default, powerful on demand.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>Income → “Ready to Assign”</b><span class="tag tag-flag">Flagship</span></div><p>Record income, then decide its jobs right there: what's saved, what's spent on what. Assign only money that exists.</p></div>
+				<div class="fcard"><div class="t"><b>Envelopes with real rollover</b><span class="tag tag-flag">Flagship</span></div><p>Unspent balances carry forward automatically. Overspending pulls from next month's Ready to Assign — visible, never shameful.</p></div>
+				<div class="fcard"><div class="t"><b>Split-aware budgets</b><span class="tag tag-flag">Flagship</span></div><p>Only your share of a shared expense hits your envelope. Receivables and settlements reconcile automatically. The YNAB+Splitwise killer.</p></div>
+				<div class="fcard"><div class="t"><b>Targets &amp; sinking funds</b><span class="tag tag-feat">Feature</span></div><p>Monthly targets, save-by-date goals, true-expenses smoothing for irregular bills.</p></div>
+				<div class="fcard"><div class="t"><b>Move money freely</b><span class="tag tag-feat">Feature</span></div><p>Roll with the punches: cover overspending from another envelope in two clicks.</p></div>
+				<div class="fcard"><div class="t"><b>Graceful migration</b><span class="tag tag-infra">Infra</span></div><p>Current limit-style budgets convert cleanly; the playground survives as what-if simulation on top of envelopes.</p></div>
+			</div>
+		</div>
+
+	<!-- ================= INPUTS ================= -->
+		<div class="release">
+			<div class="dot" style="background: var(--amber);"></div>
+			<div class="release-head">
+				<h3>Receipts, Import &amp; Documents</h3><span class="ver">v0.7.0</span><span class="badge b-planned">Planned</span>
+			</div>
+			<p class="theme">Getting data in and documents out. Every path into Retrospend gets easier; projects learn to produce paper.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>Receipt uploads</b><span class="tag tag-feat">Feature</span></div><p>Attach photos to any expense — personal or shared. Schema field and storage layer already exist; build the UI and viewer.</p></div>
+				<div class="fcard"><div class="t"><b>Import v2</b><span class="tag tag-feat">Feature</span></div><p>Rethought pipeline: better column mapping memory, dedupe, category learning, more formats (OFX/QIF), review UX.</p></div>
+				<div class="fcard"><div class="t"><b>Invoice generation</b><span class="tag tag-feat">Feature</span></div><p>Generate a polished PDF invoice/statement from a project or billing period — pdfkit infrastructure already in place.</p></div>
+				<div class="fcard"><div class="t"><b>Receipt OCR (optional)</b><span class="tag tag-infra">Later</span></div><p>Phase 2: self-hostable OCR sidecar or LLM-vision via the existing AI access service. Suggests merchant/amount/date, never auto-fills.</p></div>
+			</div>
+		</div>
+
+	<!-- ================= API ================= -->
+		<div class="release">
+			<div class="dot" style="background: var(--cyan);"></div>
+			<div class="release-head">
+				<h3>The Public API</h3><span class="ver">v0.8.0</span><span class="badge b-planned">Planned</span>
+			</div>
+			<p class="theme">Retrospend becomes a platform. REST + OpenAPI over the existing service layer — the door for the GNOME client, community integrations, and scripts.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>REST /api/v1</b><span class="tag tag-infra">Infra</span></div><p>Hand-written route handlers over the service layer (not tRPC annotations). Start with ~20 endpoints: expenses, budgets, people, projects.</p></div>
+				<div class="fcard"><div class="t"><b>API keys</b><span class="tag tag-infra">Infra</span></div><p>Personal access tokens via better-auth's apiKey plugin: scoped, rate-limited, expiring. A Developer section in Settings.</p></div>
+				<div class="fcard"><div class="t"><b>OpenAPI spec + docs</b><span class="tag tag-infra">Infra</span></div><p>Generated from the existing Zod schemas. Typed client SDKs fall out for free — the Immich move.</p></div>
+				<div class="fcard"><div class="t"><b>OIDC / SSO login</b><span class="tag tag-feat">Feature</span></div><p>The most-requested self-hoster auth feature. better-auth supports generic OIDC today.</p></div>
+			</div>
+		</div>
+
+	<!-- ================= MOBILE ================= -->
+		<div class="release">
+			<div class="dot" style="background: var(--violet);"></div>
+			<div class="release-head">
+				<h3>Mobile</h3><span class="ver">v0.9.0</span><span class="badge b-planned">Planned</span>
+			</div>
+			<p class="theme">Native Android &amp; iOS via Expo + React Native — the tRPC types carry over intact. The killer mobile loop: snap a receipt, split it, done in ten seconds.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>Expo app: the core loop</b><span class="tag tag-flag">Flagship</span></div><p>Auth, dashboard (widgets!), transactions, quick expense entry with receipt capture, budget view, people &amp; settle-up.</p></div>
+				<div class="fcard"><div class="t"><b>Connect-to-your-server UX</b><span class="tag tag-feat">Feature</span></div><p>Bitwarden-style: one server URL, connection probe, then login. retrospend.app prefilled as the default.</p></div>
+				<div class="fcard"><div class="t"><b>Push notifications</b><span class="tag tag-feat">Feature</span></div><p>Splits to verify, settlements, reminders — the notification system already exists server-side.</p></div>
+				<div class="fcard"><div class="t"><b>Demo mode</b><span class="tag tag-infra">Infra</span></div><p>Sample-data mode for App Store review and for the curious — doubles as the public demo.</p></div>
+			</div>
+		</div>
+
+	<!-- ================= 1.0 ================= -->
+		<div class="release">
+			<div class="dot" style="background: var(--rose);"></div>
+			<div class="release-head">
+				<h3>Stable</h3><span class="ver">v1.0</span><span class="badge b-vision">Vision</span>
+			</div>
+			<p class="theme">Apps in the stores, a compatibility promise, and a proper launch. From here: bank sync (SimpleFIN / Enable Banking), the GNOME client on the public API, deeper wealth analytics.</p>
+			<div class="cards">
+				<div class="fcard"><div class="t"><b>Launch</b><span class="tag tag-flag">Milestone</span></div><p>demo.retrospend.app, docs site, Show HN / r/selfhosted. The “expect bugs” banner comes down ceremonially.</p></div>
+				<div class="fcard"><div class="t"><b>Compatibility guarantee</b><span class="tag tag-infra">Infra</span></div><p>Any 1.x mobile app works with any 1.x server. Semver from here on.</p></div>
+				<div class="fcard"><div class="t"><b>Bank sync</b><span class="tag tag-feat">Post-1.0</span></div><p>SimpleFIN (US/CA) and Enable Banking (EU) — kills manual-entry fatigue, the #2 reason people quit YNAB.</p></div>
+				<div class="fcard"><div class="t"><b>GNOME / libadwaita client</b><span class="tag tag-feat">Post-1.0</span></div><p>First consumer of the public API. There is no client-server finance app in the GNOME ecosystem — a genuine gap.</p></div>
+			</div>
+		</div>
+
+	</div>
+
+	<!-- ================= PLAYBOOK ================= -->
+	<div class="section-h"><h2>The Immich Playbook</h2><span class="hint">operating principles borrowed from the best self-hosted project of the decade</span></div>
+	<div class="playbook">
+		<div class="pb"><span class="n">01</span><b>Mobile is the product</b><p>Immich won because the app genuinely replaced Google Photos day-to-day. Retrospend's equivalent: expense entry so fast you stop using your notes app.</p></div>
+		<div class="pb"><span class="n">02</span><b>API-first, SDK for free</b><p>OpenAPI spec generates typed clients for web, mobile, CLI, and community tools. One contract, many surfaces.</p></div>
+		<div class="pb"><span class="n">03</span><b>Visible cadence</b><p>Frequent small releases with real notes signal the project is alive. Keep the /releases page honest and current.</p></div>
+		<div class="pb"><span class="n">04</span><b>Ten-minute deploy</b><p>One docker-compose, one .env, published hardware minimums, and the top three misconfigurations documented up front.</p></div>
+		<div class="pb"><span class="n">05</span><b>Demo everything</b><p>A live demo instance converts skeptics and satisfies app-store reviewers. Sample-data mode ships with the mobile app.</p></div>
+		<div class="pb"><span class="n">06</span><b>Mission-first messaging</b><p>Every announcement leads with privacy and ownership, not feature lists. Year-in-review posts with real numbers build trust.</p></div>
+		<div class="pb"><span class="n">07</span><b>Don't repeat YNAB's sins</b><p>No credit-card-handling homework, no overspending shame, no pricing rug-pulls — the three things that make YNAB users quit.</p></div>
+		<div class="pb"><span class="n">08</span><b>Free means free</b><p>Splitwise's 3-expenses-a-day paywall created this market. The hosted tier can charge for convenience, never for features.</p></div>
+	</div>
+
+	<footer>
+		<span>Retrospend · roadmap drafted 2026-07-14</span>
+		<span>budgets ⇄ splits ⇄ wealth — one app, your server</span>
+	</footer>
+
+</div>
+</body>
+</html>
