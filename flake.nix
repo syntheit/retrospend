@@ -28,7 +28,7 @@
           pkgs = import nixpkgs { inherit system; };
           prisma = prisma-utils.lib.prisma-factory {
             inherit pkgs;
-            hash = "sha256-H3iZMOF0JJ2dUUGwhu3zPfRMX3gjWkhnJSHYSSsh8i4=";
+            hash = "sha256-8UgfgblhrvU6ISDZmdp7vKqE1eiRltATEF1AFzL3Yas=";
             pnpmLock = ./pnpm-lock.yaml;
           };
         in
