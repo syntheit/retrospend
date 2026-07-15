@@ -23,7 +23,10 @@ function Table({
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
 	return (
 		<thead
-			className={cn("sticky top-0 z-10 bg-muted/50 [&_tr]:border-b", className)}
+			className={cn(
+				"sticky top-0 z-10 bg-[color-mix(in_oklab,var(--muted)_50%,var(--background))] [&_tr]:border-b",
+				className,
+			)}
 			data-slot="table-header"
 			{...props}
 		/>
