@@ -15,7 +15,7 @@
 		"db:up": "docker compose -f docker-compose.dev.yml up -d --wait",
 		"db:down": "docker compose -f docker-compose.dev.yml down",
 		"db:sync-prod": "bash scripts/sync-dev-db.sh",
-		"dev": "prisma migrate deploy && next dev -p 1997",
+		"dev": "prisma migrate deploy && next dev -H 0.0.0.0 -p 1999",
 		"dev:test": "prisma migrate deploy && next dev -p 1998",
 		"postinstall": "prisma generate && mkdir -p public/images/flags && cp -n node_modules/circle-flags/flags/*.svg public/images/flags/ 2>/dev/null || true && mkdir -p public/images/crypto && cp -n node_modules/cryptocurrency-icons/svg/color/*.svg public/images/crypto/ 2>/dev/null || true && node scripts/generate-crypto-icons-list.mjs",
 		"preview": "node scripts/next-build.mjs && next start",
