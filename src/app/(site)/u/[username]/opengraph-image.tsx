@@ -1,6 +1,11 @@
 import { ImageResponse } from "next/og";
 import { OG } from "~/lib/og/brand";
-import { AvatarCircle, Footer, truncate } from "~/lib/og/components";
+import {
+	AvatarCircle,
+	BrandHeader,
+	StatPill,
+	truncate,
+} from "~/lib/og/components";
 import { loadFonts } from "~/lib/og/fonts";
 import { env } from "~/env";
 import { db } from "~/server/db";
@@ -9,6 +14,140 @@ export const runtime = "nodejs";
 export const contentType = "image/png";
 export const size = { width: OG.WIDTH, height: OG.HEIGHT };
 export const alt = "User Profile - Retrospend";
+
+type ProfileData = {
+	name: string | null;
+	username: string | null;
+	avatarPath: string | null;
+	createdAt: Date;
+	_count: { paymentMethods: number };
+};
+
+function renderProfileCard(
+	data: ProfileData,
+	rawUsername: string,
+	fonts: { name: string; data: ArrayBuffer; weight: 400 | 700 }[],
+) {
+	const displayName = data.name ?? data.username ?? rawUsername;
+	const avatarUrl = data.avatarPath
+		? `${env.NEXT_PUBLIC_APP_URL}/api/images/${data.avatarPath}`
+		: null;
+	const memberSince = data.createdAt.toLocaleDateString("en-US", {
+		month: "short",
+		year: "numeric",
+	});
+	const methodCount = data._count.paymentMethods;
+
+	return new ImageResponse(
+		(
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					justifyContent: "center",
+					width: "100%",
+					height: "100%",
+					background: `linear-gradient(135deg, ${OG.DARK_BG_FROM} 0%, ${OG.DARK_BG_VIA} 55%, ${OG.DARK_BG_TO} 100%)`,
+					fontFamily: "DM Sans",
+					position: "relative",
+					overflow: "hidden",
+				}}
+			>
+				{/* Decorative circles — top-right */}
+				<div
+					style={{
+						position: "absolute",
+						top: -110,
+						right: -110,
+						width: 460,
+						height: 460,
+						borderRadius: 230,
+						background: "rgba(255,255,255,0.04)",
+					}}
+				/>
+				<div
+					style={{
+						position: "absolute",
+						top: -40,
+						right: -40,
+						width: 260,
+						height: 260,
+						borderRadius: 130,
+						background: "rgba(255,255,255,0.03)",
+					}}
+				/>
+				{/* Decorative circles — bottom-left */}
+				<div
+					style={{
+						position: "absolute",
+						bottom: -100,
+						left: -100,
+						width: 400,
+						height: 400,
+						borderRadius: 200,
+						background: "rgba(255,255,255,0.03)",
+					}}
+				/>
+
+				{/* Brand header top-left */}
+				<BrandHeader />
+
+				{/* Avatar */}
+				<AvatarCircle avatarUrl={avatarUrl} name={displayName} size={120} />
+
+				{/* Display name */}
+				<span
+					style={{
+						fontSize: 54,
+						fontWeight: 700,
+						color: OG.DARK_FG,
+						marginTop: 20,
+						letterSpacing: "-0.025em",
+						lineHeight: 1.1,
+						textAlign: "center",
+						maxWidth: 800,
+					}}
+				>
+					{truncate(displayName, 28)}
+				</span>
+
+				{/* Username */}
+				{data.username && (
+					<span
+						style={{
+							fontSize: 24,
+							fontWeight: 400,
+							color: OG.DARK_MUTED,
+							marginTop: 8,
+							letterSpacing: "0.01em",
+						}}
+					>
+						@{truncate(data.username, 24)}
+					</span>
+				)}
+
+				{/* Stats row */}
+				<div
+					style={{
+						display: "flex",
+						flexDirection: "row",
+						gap: 12,
+						marginTop: 28,
+					}}
+				>
+					<StatPill label={`Member since ${memberSince}`} />
+					{methodCount > 0 && (
+						<StatPill
+							label={`${methodCount} payment method${methodCount === 1 ? "" : "s"}`}
+						/>
+					)}
+				</div>
+			</div>
+		),
+		{ ...size, fonts },
+	);
+}
 
 export default async function Image({
 	params,
@@ -34,7 +173,7 @@ export default async function Image({
 	});
 
 	if (!user) {
-		// Check username history - use current user's data for OG image
+		// Check username history — use current user's data for OG image
 		const historyEntry = await db.usernameHistory.findFirst({
 			where: { previousUsername: { equals: username, mode: "insensitive" } },
 			select: {
@@ -55,123 +194,10 @@ export default async function Image({
 		});
 
 		if (historyEntry) {
-			// Re-use the found user and fall through to the normal rendering below
-			const u = historyEntry.user;
-			const displayName = u.name ?? u.username ?? username;
-			const avatarUrl = u.avatarPath
-				? `${env.NEXT_PUBLIC_APP_URL}/api/images/${u.avatarPath}`
-				: null;
-			const memberSince = u.createdAt.toLocaleDateString("en-US", {
-				month: "short",
-				year: "numeric",
-			});
-			const methodCount = u._count.paymentMethods;
-
-			return new ImageResponse(
-				(
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							width: "100%",
-							height: "100%",
-							backgroundColor: OG.BG,
-							fontFamily: "DM Sans",
-							position: "relative",
-						}}
-					>
-						<div
-							style={{
-								display: "flex",
-								flexDirection: "column",
-								alignItems: "center",
-								backgroundColor: OG.CARD,
-								border: `1px solid ${OG.BORDER}`,
-								borderRadius: OG.RADIUS,
-								boxShadow: OG.CARD_SHADOW,
-								padding: 48,
-								minWidth: 420,
-							}}
-						>
-							<AvatarCircle
-								avatarUrl={avatarUrl}
-								name={displayName}
-								size={96}
-							/>
-							<span
-								style={{
-									fontSize: 36,
-									fontWeight: 700,
-									color: OG.FG,
-									marginTop: 16,
-									textAlign: "center",
-								}}
-							>
-								{truncate(displayName, 25)}
-							</span>
-							{u.username && (
-								<span
-									style={{
-										fontSize: 20,
-										fontWeight: 400,
-										color: OG.MUTED_FG,
-										marginTop: 6,
-									}}
-								>
-									@{u.username}
-								</span>
-							)}
-							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									marginTop: 16,
-									backgroundColor: OG.SECONDARY,
-									borderRadius: 16,
-									padding: "6px 16px",
-								}}
-							>
-								<span
-									style={{
-										fontSize: 14,
-										fontWeight: 400,
-										color: OG.MUTED_FG,
-									}}
-								>
-									Member since {memberSince}
-								</span>
-							</div>
-							<div
-								style={{
-									display: "flex",
-									width: 200,
-									height: 1,
-									backgroundColor: OG.BORDER,
-									marginTop: 20,
-								}}
-							/>
-							{methodCount > 0 && (
-								<span
-									style={{
-										fontSize: 16,
-										fontWeight: 400,
-										color: OG.MUTED_FG,
-										marginTop: 16,
-									}}
-								>
-									{methodCount} payment method
-									{methodCount === 1 ? "" : "s"} available
-								</span>
-							)}
-						</div>
-						<Footer />
-					</div>
-				),
-				{ ...size, fonts },
-			);
+			return renderProfileCard(historyEntry.user, username, fonts);
 		}
 
+		// Generic fallback for unknown username
 		return new ImageResponse(
 			(
 				<div
@@ -182,151 +208,51 @@ export default async function Image({
 						justifyContent: "center",
 						width: "100%",
 						height: "100%",
-						backgroundColor: OG.BG,
+						background: `linear-gradient(135deg, ${OG.DARK_BG_FROM} 0%, ${OG.DARK_BG_VIA} 55%, ${OG.DARK_BG_TO} 100%)`,
 						fontFamily: "DM Sans",
 						position: "relative",
+						overflow: "hidden",
 					}}
 				>
-					<AvatarCircle name="?" size={80} />
+					<div
+						style={{
+							position: "absolute",
+							top: -110,
+							right: -110,
+							width: 460,
+							height: 460,
+							borderRadius: 230,
+							background: "rgba(255,255,255,0.04)",
+						}}
+					/>
+					<BrandHeader />
+					<AvatarCircle name="?" size={100} />
 					<span
 						style={{
-							fontSize: 32,
+							fontSize: 42,
 							fontWeight: 700,
-							color: OG.FG,
-							marginTop: 16,
+							color: OG.DARK_FG,
+							marginTop: 20,
+							letterSpacing: "-0.02em",
 						}}
 					>
 						User Profile
 					</span>
 					<span
 						style={{
-							fontSize: 18,
+							fontSize: 22,
 							fontWeight: 400,
-							color: OG.MUTED_FG,
-							marginTop: 8,
+							color: OG.DARK_MUTED,
+							marginTop: 10,
 						}}
 					>
 						View this profile on Retrospend
 					</span>
-					<Footer />
 				</div>
 			),
 			{ ...size, fonts },
 		);
 	}
 
-	const displayName = user.name ?? user.username ?? username;
-	const avatarUrl = user.avatarPath
-		? `${env.NEXT_PUBLIC_APP_URL}/api/images/${user.avatarPath}`
-		: null;
-	const memberSince = user.createdAt.toLocaleDateString("en-US", {
-		month: "short",
-		year: "numeric",
-	});
-	const methodCount = user._count.paymentMethods;
-
-	return new ImageResponse(
-		(
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					width: "100%",
-					height: "100%",
-					backgroundColor: OG.BG,
-					fontFamily: "DM Sans",
-					position: "relative",
-				}}
-			>
-				<div
-					style={{
-						display: "flex",
-						flexDirection: "column",
-						alignItems: "center",
-						backgroundColor: OG.CARD,
-						border: `1px solid ${OG.BORDER}`,
-						borderRadius: OG.RADIUS,
-						boxShadow: OG.CARD_SHADOW,
-						padding: 48,
-						minWidth: 420,
-					}}
-				>
-					<AvatarCircle
-						avatarUrl={avatarUrl}
-						name={displayName}
-						size={96}
-					/>
-					<span
-						style={{
-							fontSize: 36,
-							fontWeight: 700,
-							color: OG.FG,
-							marginTop: 16,
-							textAlign: "center",
-						}}
-					>
-						{truncate(displayName, 25)}
-					</span>
-					{user.username && (
-						<span
-							style={{
-								fontSize: 20,
-								fontWeight: 400,
-								color: OG.MUTED_FG,
-								marginTop: 6,
-							}}
-						>
-							@{user.username}
-						</span>
-					)}
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							marginTop: 16,
-							backgroundColor: OG.SECONDARY,
-							borderRadius: 16,
-							padding: "6px 16px",
-						}}
-					>
-						<span
-							style={{
-								fontSize: 14,
-								fontWeight: 400,
-								color: OG.MUTED_FG,
-							}}
-						>
-							Member since {memberSince}
-						</span>
-					</div>
-					{/* Divider */}
-					<div
-						style={{
-							display: "flex",
-							width: 200,
-							height: 1,
-							backgroundColor: OG.BORDER,
-							marginTop: 20,
-						}}
-					/>
-					{methodCount > 0 && (
-						<span
-							style={{
-								fontSize: 16,
-								fontWeight: 400,
-								color: OG.MUTED_FG,
-								marginTop: 16,
-							}}
-						>
-							{methodCount} payment method
-							{methodCount === 1 ? "" : "s"} available
-						</span>
-					)}
-				</div>
-				<Footer />
-			</div>
-		),
-		{ ...size, fonts },
-	);
+	return renderProfileCard(user, username, fonts);
 }
