@@ -16,7 +16,7 @@ import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 
 export interface SplitParticipant {
-	participantType: "user" | "shadow";
+	participantType: "user" | "guest" | "shadow";
 	participantId: string;
 	name: string;
 	email: string | null;
@@ -109,17 +109,19 @@ export function SplitWithPicker({
 		return results;
 	}, [allResults, selectedKeys, projectParticipantKeys, isOrganizer]);
 
-	// Chip participants: project members or frequent partners
+	// Chip participants: project members (any type, incl. guests) or frequent partners
 	const chipParticipants = useMemo((): SplitParticipant[] => {
 		if (projectId && projectDetail) {
 			return projectDetail.participants
 				.filter(
 					(p) =>
-						(p.participantType === "user" || p.participantType === "shadow") &&
 						!(p.participantType === "user" && p.participantId === currentUserId),
 				)
 				.map((p) => ({
-					participantType: p.participantType as "user" | "shadow",
+					participantType: p.participantType as
+						| "user"
+						| "guest"
+						| "shadow",
 					participantId: p.participantId,
 					name: p.name,
 					email: p.email,
@@ -139,6 +141,14 @@ export function SplitWithPicker({
 		}
 		return [];
 	}, [projectId, projectDetail, frequentPartners, currentUserId]);
+
+	// Client-side filter of the chip list by the search box (keeps guest
+	// candidates sourced only from project.detail — never leaked via the router).
+	const visibleChipParticipants = useMemo(() => {
+		const q = searchQuery.trim().toLowerCase();
+		if (!q) return chipParticipants;
+		return chipParticipants.filter((p) => p.name.toLowerCase().includes(q));
+	}, [chipParticipants, searchQuery]);
 
 	const handleSelect = useCallback(
 		(participant: SplitParticipant) => {
@@ -215,7 +225,7 @@ export function SplitWithPicker({
 		<div className="space-y-1.5">
 			{/* Participant chips + inline search */}
 			<div className="flex flex-wrap items-center gap-1.5">
-				{chipParticipants.map((p) => {
+				{visibleChipParticipants.map((p) => {
 					const key = `${p.participantType}:${p.participantId}`;
 					const isSelected = selectedKeys.has(key);
 					return (
