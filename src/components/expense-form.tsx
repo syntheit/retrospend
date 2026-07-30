@@ -134,7 +134,6 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			isSharedTransactionEdit,
 			hasVerifiedParticipants,
 			sharedTxProjectId,
-			sharedTxProjectName,
 			// Project selector
 			selectedProjectId,
 			handleProjectChange,
