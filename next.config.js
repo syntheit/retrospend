@@ -29,6 +29,11 @@ const config = {
 	devIndicators: {
 		position: "bottom-right",
 	},
+	// Dev-only: allow the dev server to be reached over Tailscale (by hostname
+	// or IP). Ignored by `next build`/`next start`, so production is unaffected.
+	...(process.env.NODE_ENV === "development"
+		? { allowedDevOrigins: ["harbor", "100.109.63.87", "localhost"] }
+		: {}),
 };
 
 export default withNextIntl(withBundleAnalyzer(config));
