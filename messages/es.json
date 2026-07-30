@@ -380,6 +380,7 @@
     "exchangeRateSync": "Sincronización de Tasas de Cambio",
     "exchangeRateSyncDescription": "Gestiona la sincronización automática de tasas de cambio. Las tasas se actualizan diariamente a las 09:05 UTC.",
     "lastSynced": "Última Sincronización:",
+    "never": "Nunca",
     "syncing": "Sincronizando...",
     "syncNow": "Sincronizar Ahora"
   },
@@ -1574,6 +1575,7 @@
     "selectCategory": "Seleccionar categoría",
     "searchCategories": "Buscar categorías...",
     "noCategoriesFound": "No se encontraron categorías.",
+    "noCategory": "Sin categoría",
     "janShort": "Ene",
     "febShort": "Feb",
     "marShort": "Mar",
