@@ -1,0 +1,28 @@
+# Local development database for Retrospend.
+# Fully isolated from production — a throwaway Postgres on 127.0.0.1:5434.
+#   pnpm db:up          start it
+#   pnpm db:sync-prod   copy the production data into it (read-only on prod)
+#   pnpm db:down        stop it
+name: retrospend-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: retrospend_dev_db
+    environment:
+      POSTGRES_USER: retrospend
+      POSTGRES_PASSWORD: retrospend_dev
+      POSTGRES_DB: retrospend_dev
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - retrospend_dev_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retrospend -d retrospend_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  retrospend_dev_db_data:
