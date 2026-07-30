@@ -383,6 +383,7 @@
     "exchangeRateSync": "Exchange Rate Sync",
     "exchangeRateSyncDescription": "Manage automatic synchronization of exchange rates. Rates are updated daily at 09:05 UTC.",
     "lastSynced": "Last Synced:",
+    "never": "Never",
     "syncing": "Syncing...",
     "syncNow": "Sync Now"
   },
@@ -1577,6 +1578,7 @@
     "selectCategory": "Select category",
     "searchCategories": "Search categories...",
     "noCategoriesFound": "No categories found.",
+    "noCategory": "No category",
     "janShort": "Jan",
     "febShort": "Feb",
     "marShort": "Mar",
