@@ -378,7 +378,7 @@ input[type="number"]::-webkit-outer-spin-button {
 	   drops backdrop-filter on sticky-in-overflow elements and doesn't render the
 	   oklab color-mix here, so a plain solid color is the only bulletproof choice.
 	   Frost lives on the non-sticky menus (.glass-popover) where it works. */
-	background-color: var(--muted);
+	background-color: var(--accent);
 }
 
 .glass-popover {

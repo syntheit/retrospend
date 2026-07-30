@@ -6,7 +6,6 @@ import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { DatePicker } from "~/components/ui/date-picker";
-import { MonthStepper } from "~/components/date/MonthStepper";
 import { useCategoryName } from "~/hooks/use-category-name";
 import { getCategoryIcon } from "~/lib/category-icons";
 import type { DateRangeState, AmountRange } from "~/hooks/use-table-filters";
@@ -262,40 +261,6 @@ export function TableFilters({
 		: availableCategories.slice(0, CATEGORY_LIMIT);
 	const hasMoreCategories = availableCategories.length > CATEGORY_LIMIT;
 
-	// Derive MonthStepper value from selected year+month
-	const monthStepperValue = useMemo(() => {
-		if (selectedYears.size !== 1 || selectedMonths.size !== 1) return null;
-		const year = [...selectedYears][0]!;
-		const month = [...selectedMonths][0]!;
-		return new Date(year, month, 1);
-	}, [selectedYears, selectedMonths]);
-
-	const monthStepperMin = useMemo(() => {
-		if (availableYears.length === 0) return undefined;
-		const minYear = Math.min(...availableYears);
-		return new Date(minYear, 0, 1);
-	}, [availableYears]);
-
-	const monthStepperMax = useMemo(() => {
-		if (availableYears.length === 0) return undefined;
-		const maxYear = Math.max(...availableYears);
-		return new Date(maxYear, 11, 31);
-	}, [availableYears]);
-
-	const handleMonthStepperChange = (date: Date) => {
-		if (dateRange) clearDateRange();
-		// Clear existing selections and set exactly one year+month
-		clearYears();
-		clearMonths();
-		toggleYear(date.getFullYear());
-		toggleMonth(date.getMonth());
-	};
-
-	const handleMonthStepperClear = () => {
-		clearYears();
-		clearMonths();
-	};
-
 	return (
 		<div className="space-y-5">
 			{/* Category (scope): All / Personal / Shared + recent project chips.
@@ -399,24 +364,22 @@ export function TableFilters({
 									aria-pressed={active}
 									className="h-7 px-2.5 text-xs"
 									key={`${year}-${month}`}
-									onClick={() => selectMonth(year, month)}
+									onClick={() => {
+										if (active) {
+											clearYears();
+											clearMonths();
+										} else {
+											selectMonth(year, month);
+										}
+									}}
 									size="sm"
 									variant={active ? "default" : "outline"}
 								>
-									{`${SHORT_MONTH_NAMES[month]} '${String(year).slice(-2)}`}
+									{`${SHORT_MONTH_NAMES[month]} ${String(year).slice(-2)}`}
 								</Button>
 							);
 						})}
 					</div>
-					<MonthStepper
-						compact
-						maxDate={monthStepperMax}
-						minDate={monthStepperMin}
-						onChange={handleMonthStepperChange}
-						onClear={handleMonthStepperClear}
-						placeholder={t("selectMonth")}
-						value={monthStepperValue}
-					/>
 				</div>
 
 				{/* Custom date range */}
