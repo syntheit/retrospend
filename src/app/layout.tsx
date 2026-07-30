@@ -61,7 +61,7 @@ const dmSans = DM_Sans({
 });
 
 const jetbrainsMono = JetBrains_Mono({
-	subsets: ["latin"],
+	subsets: ["latin", "cyrillic"],
 	variable: "--font-jetbrains-mono",
 	display: "swap",
 });
