@@ -1135,7 +1135,21 @@
     "duplicate": "Duplicar",
     "itemsSelected": "{count, plural, one {1 elemento seleccionado} other {{count} elementos seleccionados}}",
     "recategorize": "Recategorizar",
-    "export": "Exportar"
+    "export": "Exportar",
+    "you": "Tú",
+    "detailAmount": "Tu parte",
+    "detailTotal": "Total",
+    "detailPaidBy": "Pagado por",
+    "detailDate": "Fecha",
+    "detailCategory": "Categoría",
+    "detailNone": "Ninguna",
+    "detailProject": "Proyecto",
+    "detailDescription": "Nota",
+    "detailStatus": "Estado",
+    "detailSplitBreakdown": "Desglose de la división",
+    "statusAccepted": "Aceptado",
+    "statusRejected": "Rechazado",
+    "statusPending": "Pendiente"
   },
   "settleUp": {
     "title": "Liquidar",
