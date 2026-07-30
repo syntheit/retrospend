@@ -33,6 +33,9 @@ export function useExpensesController(options?: {
 	const homeCurrency = settings?.homeCurrency || "USD";
 	const [typeFilter, setTypeFilter] = useState<"all" | "personal" | "shared">("all");
 	const [excludeFilter, setExcludeFilter] = useState<"all" | "included" | "excluded">("all");
+	// When set, restrict the list to shared expenses belonging to this project.
+	// Selected via the "Category" scope control (project chips). null = no project scope.
+	const [projectFilter, setProjectFilter] = useState<string | null>(null);
 
 	const {
 		data: personalExpenses,
@@ -55,6 +58,15 @@ export function useExpensesController(options?: {
 
 	const { data: sharedParticipations, isLoading: isLoadingShared } =
 		api.expense.listSharedParticipations.useQuery();
+
+	// Projects the user participates in, most-recently-active first (the API orders
+	// by updatedAt desc). Used to build the "Category" scope chips. Reuses the
+	// existing project.list query — no new server work.
+	const { data: projectList } = api.project.list.useQuery({});
+	const availableProjects = useMemo(
+		() => (projectList ?? []).map((p) => ({ id: p.id, name: p.name })),
+		[projectList],
+	);
 
 	const expenses = useMemo(() => {
 		let personal: NormalizedExpense[] = (personalExpenses ?? []).map((e) => ({
@@ -84,10 +96,19 @@ export function useExpensesController(options?: {
 			sharedContext: sp.sharedContext,
 		}));
 
+		// Project scope: a selected project restricts the list to that project's
+		// shared expenses (personal expenses have no project), so it takes
+		// precedence over the personal/shared/all type selection.
+		if (projectFilter) {
+			return shared.filter(
+				(e) => e.sharedContext?.projectId === projectFilter,
+			);
+		}
+
 		if (typeFilter === "personal") return personal;
 		if (typeFilter === "shared") return shared;
 		return [...personal, ...shared];
-	}, [personalExpenses, sharedParticipations, typeFilter, excludeFilter]);
+	}, [personalExpenses, sharedParticipations, typeFilter, excludeFilter, projectFilter]);
 
 	const isLoading = isLoadingPersonal || isLoadingShared;
 
@@ -173,6 +194,9 @@ export function useExpensesController(options?: {
 		setTypeFilter,
 		excludeFilter,
 		setExcludeFilter,
+		projectFilter,
+		setProjectFilter,
+		availableProjects,
 		hasSharedExpenses,
 	};
 }

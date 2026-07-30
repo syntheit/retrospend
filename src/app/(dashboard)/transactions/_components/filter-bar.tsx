@@ -41,8 +41,17 @@ type ActivePill = {
 function useActivePills(props: FilterBarProps, t: (key: string, values?: Record<string, string | number | Date>) => string, tFilters: ReturnType<typeof useTranslations<"tableFilters">>, MONTH_NAMES: string[], SHORT_MONTH_NAMES: string[], displayName: (name: string) => string): ActivePill[] {
 	const pills: ActivePill[] = [];
 
-	// Type filter (only relevant when user has shared expenses)
-	if (props.hasSharedExpenses && props.typeFilter !== "all") {
+	// Category scope: a selected project takes precedence over the type filter.
+	if (props.projectFilter) {
+		const project = props.availableProjects.find(
+			(p) => p.id === props.projectFilter,
+		);
+		pills.push({
+			key: "project",
+			label: project?.name ?? tFilters("category"),
+			onDismiss: () => props.setProjectFilter(null),
+		});
+	} else if (props.hasSharedExpenses && props.typeFilter !== "all") {
 		pills.push({
 			key: "type",
 			label: props.typeFilter === "personal" ? t("personal") : t("shared"),
@@ -161,7 +170,8 @@ function useActivePills(props: FilterBarProps, t: (key: string, values?: Record<
 
 function countActiveFilters(props: FilterBarProps): number {
 	let count = 0;
-	if (props.hasSharedExpenses && props.typeFilter !== "all") count++;
+	if (props.projectFilter) count++;
+	else if (props.hasSharedExpenses && props.typeFilter !== "all") count++;
 	if (props.excludeFilter !== "all") count++;
 	// Period: date range OR year/month selection counts as a single filter
 	if (
@@ -246,6 +256,7 @@ export function FilterBar(props: FilterBarProps) {
 		props.clearFilters();
 		props.setTypeFilter("all");
 		props.setExcludeFilter("all");
+		props.setProjectFilter(null);
 	};
 
 	return (

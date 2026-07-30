@@ -94,6 +94,25 @@ function formatDateForInput(date: Date): string {
 	return `${y}-${m}-${d}`;
 }
 
+/**
+ * The last `count` months as {year, month} pairs, newest first. Powers the
+ * quick "By month" chips (e.g. "July 2026", "June 2026", …) so the picker no
+ * longer surfaces only the current month.
+ */
+function getRecentMonths(count = 12): { year: number; month: number }[] {
+	const out: { year: number; month: number }[] = [];
+	const now = new Date();
+	for (let i = 0; i < count; i++) {
+		const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+		out.push({ year: d.getFullYear(), month: d.getMonth() });
+	}
+	return out;
+}
+
+/** How many project chips the "Category" scope row shows. Capped small so the
+ * row never overflows or scrolls; the rest stay reachable via the projects page. */
+const PROJECT_CHIP_LIMIT = 3;
+
 export interface TableFiltersProps {
 	// Type filter
 	typeFilter: TypeFilter;
@@ -101,6 +120,12 @@ export interface TableFiltersProps {
 
 	// Whether the user has any shared expenses at all
 	hasSharedExpenses?: boolean;
+
+	// Project scope (part of the "Category" control): selecting a project chip
+	// narrows the list to that project's shared expenses.
+	projectFilter: string | null;
+	setProjectFilter: (projectId: string | null) => void;
+	availableProjects: { id: string; name: string }[];
 
 	// Exclusion filter
 	excludeFilter: ExcludeFilter;
@@ -164,6 +189,9 @@ export function TableFilters({
 	typeFilter,
 	setTypeFilter,
 	hasSharedExpenses,
+	projectFilter,
+	setProjectFilter,
+	availableProjects,
 	excludeFilter,
 	setExcludeFilter,
 	selectedYears,
@@ -188,11 +216,42 @@ export function TableFilters({
 }: TableFiltersProps) {
 	const t = useTranslations("tableFilters");
 	const tUi = useTranslations("ui");
+	const MONTH_NAMES = useMemo(() => getMonthNames(tUi), [tUi]);
 	const { displayName } = useCategoryName();
 	const datePresets = getDatePresets(t);
 	const isDateRangeActive = dateRange !== null;
 	const TYPE_OPTIONS = useMemo(() => getTypeOptions(t), [t]);
 	const EXCLUDE_OPTIONS = useMemo(() => getExcludeOptions(t), [t]);
+
+	// Recent months for the quick "By month" chips (newest first, e.g. "July 2026").
+	const recentMonths = useMemo(() => getRecentMonths(12), []);
+	// Cap project chips so the "Category" row never overflows / scrolls.
+	const projectChips = useMemo(
+		() => availableProjects.slice(0, PROJECT_CHIP_LIMIT),
+		[availableProjects],
+	);
+
+	// Select a single year+month from the chips, mirroring the stepper's single-select.
+	const selectMonth = (year: number, month: number) => {
+		if (dateRange) clearDateRange();
+		const alreadySelected =
+			selectedYears.size === 1 &&
+			selectedMonths.size === 1 &&
+			selectedYears.has(year) &&
+			selectedMonths.has(month);
+		clearYears();
+		clearMonths();
+		if (!alreadySelected) {
+			toggleYear(year);
+			toggleMonth(month);
+		}
+	};
+
+	const isMonthChipActive = (year: number, month: number) =>
+		selectedYears.size === 1 &&
+		selectedMonths.size === 1 &&
+		selectedYears.has(year) &&
+		selectedMonths.has(month);
 
 	// Show expanded categories
 	const [showAllCategories, setShowAllCategories] = useState(false);
@@ -238,25 +297,50 @@ export function TableFilters({
 
 	return (
 		<div className="space-y-5">
-			{/* Type - only show when user has shared expenses */}
-			{hasSharedExpenses && (
+			{/* Category (scope): All / Personal / Shared + recent project chips.
+			    Shown when the user has shared expenses or belongs to any project. */}
+			{(hasSharedExpenses || projectChips.length > 0) && (
 				<section className="space-y-2">
 					<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-						{t("type")}
+						{t("category")}
 					</h3>
 					<div className="flex flex-wrap gap-1.5">
-						{TYPE_OPTIONS.map(({ value, label }) => (
-							<Button
-								aria-pressed={typeFilter === value}
-								className="h-7 px-3 text-xs"
-								key={value}
-								onClick={() => setTypeFilter(value)}
-								size="sm"
-								variant={typeFilter === value ? "default" : "outline"}
-							>
-								{label}
-							</Button>
-						))}
+						{TYPE_OPTIONS.map(({ value, label }) => {
+							const active = projectFilter === null && typeFilter === value;
+							return (
+								<Button
+									aria-pressed={active}
+									className="h-7 px-3 text-xs"
+									key={value}
+									onClick={() => {
+										setProjectFilter(null);
+										setTypeFilter(value);
+									}}
+									size="sm"
+									variant={active ? "default" : "outline"}
+								>
+									{label}
+								</Button>
+							);
+						})}
+						{projectChips.map((project) => {
+							const active = projectFilter === project.id;
+							return (
+								<Button
+									aria-pressed={active}
+									className="h-7 max-w-[10rem] px-3 text-xs"
+									key={project.id}
+									onClick={() =>
+										setProjectFilter(active ? null : project.id)
+									}
+									size="sm"
+									title={project.name}
+									variant={active ? "default" : "outline"}
+								>
+									<span className="truncate">{project.name}</span>
+								</Button>
+							);
+						})}
 					</div>
 				</section>
 			)}
@@ -303,6 +387,26 @@ export function TableFilters({
 					)}
 				>
 					<span className="text-muted-foreground text-[11px]">{t("byMonth")}</span>
+					{/* Quick chips for the last 12 months (newest first). Selecting one
+					    sets a single year+month; the stepper below still allows reaching
+					    any earlier month. */}
+					<div className="flex flex-wrap gap-1.5">
+						{recentMonths.map(({ year, month }) => {
+							const active = isMonthChipActive(year, month);
+							return (
+								<Button
+									aria-pressed={active}
+									className="h-7 px-2.5 text-xs"
+									key={`${year}-${month}`}
+									onClick={() => selectMonth(year, month)}
+									size="sm"
+									variant={active ? "default" : "outline"}
+								>
+									{`${MONTH_NAMES[month]} ${year}`}
+								</Button>
+							);
+						})}
+					</div>
 					<MonthStepper
 						compact
 						maxDate={monthStepperMax}
@@ -352,11 +456,11 @@ export function TableFilters({
 				</div>
 			</section>
 
-			{/* Category */}
+			{/* Spending category (expense categories: Food, Transport, …) */}
 			{availableCategories.length > 0 && (
 				<section className="space-y-2">
 					<h3 className="font-medium text-muted-foreground text-xs tracking-wider">
-						{t("category")}
+						{t("spendingCategory")}
 					</h3>
 					<div className="flex flex-wrap gap-1.5">
 						{visibleCategories.map((category) => {
