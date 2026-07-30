@@ -53,10 +53,10 @@ export function useRecurringStatus(template: RecurringTemplate) {
 			color = "text-destructive";
 		} else if (daysRemaining === 0) {
 			status = "Renewing today";
-			color = "text-orange-500";
+			color = "text-amber-600 dark:text-amber-400";
 		} else if (daysRemaining < 7) {
 			status = `Due in ${daysRemaining} days`;
-			color = "text-orange-500";
+			color = "text-amber-600 dark:text-amber-400";
 		} else {
 			status = `Renews ${format(nextDate, "MMM d")}`;
 			color = "text-muted-foreground";
