@@ -1,6 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
+
+/**
+ * A row is bulk-deletable through this hook only when it is a personal
+ * expense the caller owns. Shared rows are excluded: they are identified by a
+ * synthetic `shared:<txnId>` id and can only be removed via the dedicated
+ * `sharedTransaction.delete` / `verification.removeSelf` flows (which are
+ * permission-gated elsewhere). Firing `expense.deleteExpense` on a shared id
+ * would always be rejected server-side, so we must never offer it here.
+ */
+function isBulkDeletable(row: { source?: "personal" | "shared" }): boolean {
+	return row.source !== "shared";
+}
 
 /**
  * useTableActions - Headless hook for managing table actions and mutations
@@ -11,10 +23,9 @@ import { api } from "~/trpc/react";
  * - Confirmation dialog state
  * - Mutation execution
  */
-export function useTableActions<T extends { id: string }>(
-	filteredData: T[],
-	onDataChanged?: () => void,
-) {
+export function useTableActions<
+	T extends { id: string; source?: "personal" | "shared" },
+>(filteredData: T[], onDataChanged?: () => void) {
 	// Selection State
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -107,15 +118,31 @@ export function useTableActions<T extends { id: string }>(
 		}
 	};
 
+	// The subset of the current selection that this bulk path is actually
+	// allowed to delete (personal expenses only). Everything else — shared
+	// rows the user can't delete this way — is skipped so we never trigger a
+	// mutation the server will reject.
+	const deletableSelectedIds = useMemo(() => {
+		const deletable = new Set(
+			filteredData.filter(isBulkDeletable).map((r) => r.id),
+		);
+		return Array.from(selectedIds).filter((id) => deletable.has(id));
+	}, [filteredData, selectedIds]);
+
 	const handleDeleteSelected = () => {
-		if (selectedIds.size === 0) return;
+		// Inert affordance when nothing in the selection is deletable here.
+		if (deletableSelectedIds.length === 0) return;
 		setShowDeleteDialog(true);
 	};
 
 	const confirmDelete = async () => {
+		if (deletableSelectedIds.length === 0) {
+			setShowDeleteDialog(false);
+			return;
+		}
 		try {
 			await Promise.all(
-				Array.from(selectedIds).map((id) =>
+				deletableSelectedIds.map((id) =>
 					deleteExpenseMutation.mutateAsync({ id }),
 				),
 			);
@@ -132,6 +159,10 @@ export function useTableActions<T extends { id: string }>(
 	return {
 		// State
 		selectedIds,
+		// Count of selected rows this bulk path will actually delete (personal
+		// only). Used so the confirmation dialog never promises to delete rows
+		// it will skip.
+		deletableSelectedCount: deletableSelectedIds.length,
 		showDeleteDialog,
 		isDeleting: deleteExpenseMutation.isPending,
 		isExporting: exportMutation.isPending,

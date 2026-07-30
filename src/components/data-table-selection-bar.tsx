@@ -26,6 +26,24 @@ interface DataTableSelectionBarProps {
 	onDuplicateSelected?: (id: string) => void;
 	onDeleteSelected?: () => void;
 	onRecategorize?: (categoryId: string) => void;
+	/**
+	 * When false, the single-selection Edit affordance is hidden — used to keep
+	 * a shared expense the caller can't edit from offering a saveable editor.
+	 * Defaults to true (personal rows are always editable by their owner).
+	 */
+	canEditSelected?: boolean;
+	/**
+	 * When false, the Delete affordance is hidden because nothing in the current
+	 * selection can be deleted via this bulk path (e.g. only shared rows the
+	 * caller can't delete). Defaults to true.
+	 */
+	canDeleteSelected?: boolean;
+	/**
+	 * When false, the bulk Recategorize affordance is hidden because the current
+	 * selection has no personal expenses the caller owns (recategorize can't
+	 * touch shared rows). Defaults to true.
+	 */
+	canRecategorize?: boolean;
 	categories?: Array<{
 		id: string;
 		name: string;
@@ -44,6 +62,9 @@ export function DataTableSelectionBar({
 	onDuplicateSelected,
 	onDeleteSelected,
 	onRecategorize,
+	canEditSelected = true,
+	canDeleteSelected = true,
+	canRecategorize = true,
 	categories,
 }: DataTableSelectionBarProps) {
 	const t = useTranslations("transactions");
@@ -73,7 +94,7 @@ export function DataTableSelectionBar({
 				{t("itemsSelected", { count: selectedRows.size })}
 			</span>
 			<div className="ml-auto flex items-center gap-2">
-				{onRecategorize && categories && categories.length > 0 && (
+				{onRecategorize && canRecategorize && categories && categories.length > 0 && (
 					<Popover
 						onOpenChange={setRecategorizeOpen}
 						open={recategorizeOpen}
@@ -140,7 +161,7 @@ export function DataTableSelectionBar({
 						</span>
 					</Button>
 				)}
-				{selectedRows.size === 1 && onEditSelected && (
+				{selectedRows.size === 1 && canEditSelected && onEditSelected && (
 					<Button
 						className="flex h-8 items-center gap-2"
 						onClick={() => {
@@ -172,7 +193,7 @@ export function DataTableSelectionBar({
 						<span className="sr-only sm:not-sr-only sm:inline-block">{t("duplicate")}</span>
 					</Button>
 				)}
-				{onDeleteSelected && (
+				{onDeleteSelected && canDeleteSelected && (
 					<Button
 						className="flex h-8 items-center gap-2"
 						onClick={onDeleteSelected}

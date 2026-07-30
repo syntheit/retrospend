@@ -1071,6 +1071,7 @@
     "addExpense": "Agregar Gasto",
     "resetFilters": "Restablecer Filtros",
     "editExpense": "Editar gasto",
+    "noEditPermission": "No tienes permiso para editar este gasto",
     "duplicateExpense": "Duplicar gasto",
     "copyAsText": "Copiar como texto",
     "copiedToClipboard": "Copiado al portapapeles",

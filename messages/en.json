@@ -1071,6 +1071,7 @@
     "addExpense": "Add Expense",
     "resetFilters": "Reset Filters",
     "editExpense": "Edit expense",
+    "noEditPermission": "You don't have permission to edit this expense",
     "duplicateExpense": "Duplicate expense",
     "copyAsText": "Copy as text",
     "copiedToClipboard": "Copied to clipboard",

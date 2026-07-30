@@ -194,6 +194,7 @@ function TransactionsContent() {
 	// Action Logic Hook
 	const {
 		selectedIds: selectedExpenseIds,
+		deletableSelectedCount,
 		showDeleteDialog,
 		isDeleting,
 		isExporting,
@@ -278,7 +279,16 @@ function TransactionsContent() {
 	});
 
 	const handleRecategorize = async (categoryId: string) => {
-		const ids = Array.from(selectedExpenseIds);
+		// Recategorize only targets personal expenses the caller owns. Shared
+		// rows carry a synthetic `shared:<txnId>` id which is not a real expense
+		// key — including one would make the whole mutation fail input validation
+		// server-side, so filter them out and skip if nothing is left.
+		const personalSelectedIds = new Set(
+			filteredExpenses
+				.filter((e) => e.source !== "shared" && selectedExpenseIds.has(e.id))
+				.map((e) => e.id),
+		);
+		const ids = Array.from(personalSelectedIds);
 		if (ids.length === 0) return;
 		try {
 			const result = await bulkRecategorizeMutation.mutateAsync({
@@ -441,11 +451,23 @@ function TransactionsContent() {
 						onDeleteSelected={handleDeleteSelected}
 						onEditRow={(id) => {
 							const expense = filteredExpenses.find((e) => e.id === id);
-							if (expense?.source === "shared" && expense.sharedContext?.transactionId) {
-								openSharedExpense(expense.sharedContext.transactionId);
-							} else {
-								openExpense(id);
+							if (expense?.source === "shared") {
+								// Impossible actions must not appear: a participant without
+								// edit rights (e.g. a project VIEWER a split was shared to)
+								// must never be handed a saveable editor that the server
+								// will reject. Only open the editor when they can edit.
+								if (
+									expense.sharedContext?.canEdit &&
+									expense.sharedContext.transactionId
+								) {
+									openSharedExpense(expense.sharedContext.transactionId);
+									setSelectedExpenseIds(new Set());
+								} else {
+									toast.info(t("noEditPermission"));
+								}
+								return;
 							}
+							openExpense(id);
 							setSelectedExpenseIds(new Set());
 						}}
 						emptyState={
@@ -623,6 +645,13 @@ function TransactionsContent() {
 							const isInSelection = selectedExpenseIds.has(row.id);
 							const selectionCount = selectedExpenseIds.size;
 							const isMultiSelected = isInSelection && selectionCount > 1;
+							// Bulk delete and bulk recategorize only operate on personal
+							// rows the caller owns; shared rows go through their own gated
+							// flows and would fail these mutations, so gate both affordances
+							// on how many personal rows are in the selection.
+							const personalInSelection = filteredExpenses.filter(
+								(e) => e.source !== "shared" && selectedExpenseIds.has(e.id),
+							).length;
 
 							if (isMultiSelected) {
 								return (
@@ -633,11 +662,11 @@ function TransactionsContent() {
 											<Download className="mr-2 h-4 w-4" />
 											{t("exportSelected", { count: selectionCount })}
 										</ContextMenuItem>
-										{allCategories && allCategories.length > 0 && (
+										{allCategories && allCategories.length > 0 && personalInSelection > 0 && (
 											<ContextMenuSub onOpenChange={(open) => { if (!open) setCategorySearch(""); }}>
 												<ContextMenuSubTrigger className="gap-2">
 													<Tags className="size-4" />
-													{t("recategorizeSelected", { count: selectionCount })}
+													{t("recategorizeSelected", { count: personalInSelection })}
 												</ContextMenuSubTrigger>
 												<ContextMenuSubContent className="w-56 p-0">
 													<div className="flex items-center gap-2 border-b px-3 py-2">
@@ -680,14 +709,18 @@ function TransactionsContent() {
 												</ContextMenuSubContent>
 											</ContextMenuSub>
 										)}
-										<ContextMenuSeparator />
-										<ContextMenuItem
-											onClick={handleDeleteSelected}
-											variant="destructive"
-										>
-											<Trash2 className="mr-2 h-4 w-4" />
-											{t("deleteSelected", { count: selectionCount })}
-										</ContextMenuItem>
+										{personalInSelection > 0 && (
+											<>
+												<ContextMenuSeparator />
+												<ContextMenuItem
+													onClick={handleDeleteSelected}
+													variant="destructive"
+												>
+													<Trash2 className="mr-2 h-4 w-4" />
+													{t("deleteSelected", { count: personalInSelection })}
+												</ContextMenuItem>
+											</>
+										)}
 									</>
 								);
 							}
@@ -737,28 +770,56 @@ function TransactionsContent() {
 								</>
 							);
 						}}
-						renderToolbar={(_table, headerHeight) => (
-							<DataTableSelectionBar
-								categories={allCategories}
-								exportMutation={{ isPending: isExporting }}
-								headerHeight={headerHeight}
-								onDeleteSelected={handleDeleteSelected}
-								onDuplicateSelected={handleDuplicate}
-								onEditSelected={(id) => {
-									if (id.startsWith("shared:")) {
-										const txId = id.slice("shared:".length);
-										openSharedExpense(txId);
-									} else {
+						renderToolbar={(_table, headerHeight) => {
+							// When exactly one row is selected, decide whether the Edit
+							// affordance may appear: personal rows are always editable by
+							// their owner; shared rows only when sharedContext.canEdit.
+							const singleSelectedId =
+								selectedExpenseIds.size === 1
+									? Array.from(selectedExpenseIds)[0]
+									: undefined;
+							const singleSelected = singleSelectedId
+								? filteredExpenses.find((e) => e.id === singleSelectedId)
+								: undefined;
+							const canEditSelected = singleSelected
+								? singleSelected.source !== "shared" ||
+									!!singleSelected.sharedContext?.canEdit
+								: true;
+							return (
+								<DataTableSelectionBar
+									canDeleteSelected={deletableSelectedCount > 0}
+									canEditSelected={canEditSelected}
+									canRecategorize={deletableSelectedCount > 0}
+									categories={allCategories}
+									exportMutation={{ isPending: isExporting }}
+									headerHeight={headerHeight}
+									onDeleteSelected={handleDeleteSelected}
+									onDuplicateSelected={handleDuplicate}
+									onEditSelected={(id) => {
+										const expense = filteredExpenses.find((e) => e.id === id);
+										if (expense?.source === "shared") {
+											// Never open a saveable editor a participant can't save.
+											if (
+												expense.sharedContext?.canEdit &&
+												expense.sharedContext.transactionId
+											) {
+												openSharedExpense(expense.sharedContext.transactionId);
+												setSelectedExpenseIds(new Set());
+											} else {
+												toast.info(t("noEditPermission"));
+											}
+											return;
+										}
 										openExpense(id);
-									}
-									setSelectedExpenseIds(new Set());
-								}}
-								onExportSelected={handleExportSelected}
-								onRecategorize={handleRecategorize}
-								onSelectAll={handleSelectAll}
-								selectedRows={selectedExpenseIds}
-							/>
-						)}
+										setSelectedExpenseIds(new Set());
+									}}
+									onExportSelected={handleExportSelected}
+									onRecategorize={handleRecategorize}
+									onSelectAll={handleSelectAll}
+									selectedRows={selectedExpenseIds}
+								/>
+							);
+						}}
 						rowClassName={(row) =>
 							row.original.excludeFromAnalytics ? "opacity-60" : undefined
 						}
@@ -773,7 +834,7 @@ function TransactionsContent() {
 					<DialogHeader>
 						<DialogTitle>{t("deleteExpensesTitle")}</DialogTitle>
 						<DialogDescription>
-							{t("deleteExpensesDescription", { count: selectedExpenseIds.size })}
+							{t("deleteExpensesDescription", { count: deletableSelectedCount })}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
