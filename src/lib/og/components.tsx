@@ -46,7 +46,8 @@ export function BrandMark({ size }: { size: number }) {
 				width: size,
 				height: size,
 				borderRadius: size / 2,
-				backgroundColor: OG.PRIMARY,
+				background: `linear-gradient(135deg, #8b7355, ${OG.PRIMARY})`,
+				boxShadow: `0 0 ${Math.round(size * 0.4)}px rgba(107,92,79,0.45)`,
 			}}
 		>
 			<span
@@ -74,13 +75,25 @@ export function AvatarCircle({
 }) {
 	if (avatarUrl) {
 		return (
-			<img
-				alt=""
-				height={size}
-				src={avatarUrl}
-				style={{ borderRadius: size / 2, objectFit: "cover" }}
-				width={size}
-			/>
+			<div
+				style={{
+					display: "flex",
+					width: size + 6,
+					height: size + 6,
+					borderRadius: (size + 6) / 2,
+					background: "rgba(255,255,255,0.15)",
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<img
+					alt=""
+					height={size}
+					src={avatarUrl}
+					style={{ borderRadius: size / 2, objectFit: "cover" }}
+					width={size}
+				/>
+			</div>
 		);
 	}
 	const color = getAvatarColor(name);
@@ -90,24 +103,36 @@ export function AvatarCircle({
 		<div
 			style={{
 				display: "flex",
+				width: size + 6,
+				height: size + 6,
+				borderRadius: (size + 6) / 2,
+				background: "rgba(255,255,255,0.15)",
 				alignItems: "center",
 				justifyContent: "center",
-				width: size,
-				height: size,
-				borderRadius: size / 2,
-				backgroundColor: color,
 			}}
 		>
-			<span
+			<div
 				style={{
-					color: "white",
-					fontSize,
-					fontWeight: 600,
-					lineHeight: 1,
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: size,
+					height: size,
+					borderRadius: size / 2,
+					backgroundColor: color,
 				}}
 			>
-				{initials}
-			</span>
+				<span
+					style={{
+						color: "white",
+						fontSize,
+						fontWeight: 600,
+						lineHeight: 1,
+					}}
+				>
+					{initials}
+				</span>
+			</div>
 		</div>
 	);
 }
@@ -154,6 +179,34 @@ export function ProjectBadge({
 	);
 }
 
+// Branded header strip for dark-bg cards
+export function BrandHeader() {
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 10,
+				position: "absolute",
+				top: 36,
+				left: 52,
+			}}
+		>
+			<BrandMark size={32} />
+			<span
+				style={{
+					fontSize: 20,
+					color: OG.DARK_MUTED,
+					fontWeight: 500,
+					letterSpacing: "0.02em",
+				}}
+			>
+				Retrospend
+			</span>
+		</div>
+	);
+}
+
 export function Footer() {
 	return (
 		<div
@@ -180,7 +233,34 @@ export function Footer() {
 	);
 }
 
+// A small pill badge — label/value pair used on dark hero cards
+export function StatPill({ label }: { label: string }) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "center",
+				backgroundColor: OG.DARK_SURFACE,
+				border: `1px solid ${OG.DARK_BORDER}`,
+				borderRadius: 24,
+				padding: "7px 18px",
+			}}
+		>
+			<span
+				style={{
+					fontSize: 15,
+					fontWeight: 400,
+					color: OG.DARK_MUTED,
+					letterSpacing: "0.01em",
+				}}
+			>
+				{label}
+			</span>
+		</div>
+	);
+}
+
 export function truncate(text: string, maxLen: number): string {
 	if (text.length <= maxLen) return text;
-	return text.slice(0, maxLen - 1).trimEnd() + "\u2026";
+	return text.slice(0, maxLen - 1).trimEnd() + "…";
 }
