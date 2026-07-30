@@ -217,6 +217,7 @@ export function TableFilters({
 	const t = useTranslations("tableFilters");
 	const tUi = useTranslations("ui");
 	const MONTH_NAMES = useMemo(() => getMonthNames(tUi), [tUi]);
+	const SHORT_MONTH_NAMES = useMemo(() => getShortMonthNames(tUi), [tUi]);
 	const { displayName } = useCategoryName();
 	const datePresets = getDatePresets(t);
 	const isDateRangeActive = dateRange !== null;
@@ -402,7 +403,7 @@ export function TableFilters({
 									size="sm"
 									variant={active ? "default" : "outline"}
 								>
-									{`${MONTH_NAMES[month]} ${year}`}
+									{`${SHORT_MONTH_NAMES[month]} '${String(year).slice(-2)}`}
 								</Button>
 							);
 						})}

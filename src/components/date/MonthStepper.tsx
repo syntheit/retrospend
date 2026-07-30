@@ -215,7 +215,7 @@ export function MonthStepper({
 						)}
 						type="button"
 					>
-						{value ? `${MONTHS[value.getMonth()]} ${value.getFullYear()}` : placeholder}
+						{value ? `${MONTHS[value.getMonth()]} '${String(value.getFullYear()).slice(-2)}` : placeholder}
 					</button>
 				</PopoverTrigger>
 				{popoverContent}
@@ -241,7 +241,7 @@ export function MonthStepper({
 						className="min-w-[100px] text-sm tabular-nums tracking-wide"
 						variant="ghost"
 					>
-						{value ? `${MONTHS[value.getMonth()]} ${value.getFullYear()}` : placeholder}
+						{value ? `${MONTHS[value.getMonth()]} '${String(value.getFullYear()).slice(-2)}` : placeholder}
 					</Button>
 				</PopoverTrigger>
 				{popoverContent}
