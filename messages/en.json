@@ -1992,6 +1992,7 @@
     "fromDate": "From date",
     "toDate": "To date",
     "category": "Category",
+    "spendingCategory": "Spending category",
     "showLess": "Show less",
     "showMore": "+{count} more",
     "amount": "Amount",

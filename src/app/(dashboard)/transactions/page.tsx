@@ -134,6 +134,9 @@ function TransactionsContent() {
 		setTypeFilter,
 		excludeFilter,
 		setExcludeFilter,
+		projectFilter,
+		setProjectFilter,
+		availableProjects,
 		hasSharedExpenses,
 	} = useExpensesController(initialFilterState);
 
@@ -429,6 +432,9 @@ function TransactionsContent() {
 		setTypeFilter,
 		excludeFilter,
 		hasSharedExpenses,
+		projectFilter,
+		setProjectFilter,
+		availableProjects,
 		setExcludeFilter,
 		selectedYears,
 		selectedMonths,

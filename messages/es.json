@@ -1992,6 +1992,7 @@
     "fromDate": "Desde",
     "toDate": "Hasta",
     "category": "Categoría",
+    "spendingCategory": "Categoría de gasto",
     "showLess": "Mostrar menos",
     "showMore": "+{count} más",
     "amount": "Monto",
