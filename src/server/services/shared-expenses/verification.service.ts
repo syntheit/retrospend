@@ -472,6 +472,90 @@ export class VerificationService {
 	}
 
 	/**
+	 * Remove the caller's own split from a shared transaction ("Remove me").
+	 *
+	 * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
+	 * delete other participants' splits and does not delete the transaction.
+	 * The remaining shares are intentionally left as-is — the unassigned amount
+	 * becomes the creator's "hole". Balances recompute from the surviving split
+	 * rows automatically (see shared-expenses/balance.ts), so no balance code
+	 * needs to change.
+	 *
+	 * Guards:
+	 * - Caller must actually be a participant on the transaction.
+	 * - Forbidden when the transaction is locked (settled).
+	 */
+	async removeSelf(txnId: string): Promise<{ success: true }> {
+		return await this.runInTransaction(async (tx) => {
+			const txn = await tx.sharedTransaction.findUnique({
+				where: { id: txnId },
+				select: {
+					id: true,
+					isLocked: true,
+					projectId: true,
+					splitParticipants: {
+						select: {
+							id: true,
+							participantType: true,
+							participantId: true,
+						},
+					},
+				},
+			});
+
+			if (!txn) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Transaction not found or has been deleted",
+				});
+			}
+
+			if (txn.isLocked) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "This expense is settled and can no longer be changed",
+				});
+			}
+
+			const mySplits = txn.splitParticipants.filter(
+				(p) =>
+					p.participantType === this.actor.participantType &&
+					p.participantId === this.actor.participantId,
+			);
+
+			if (mySplits.length === 0) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "You are not a participant on this transaction",
+				});
+			}
+
+			// Delete only the caller's own split row(s). Never touch others'.
+			await tx.splitParticipant.deleteMany({
+				where: { id: { in: mySplits.map((sp) => sp.id) } },
+			});
+
+			// Audit the removal. Reuses the existing PARTICIPANT_REMOVED action and
+			// SPLIT_PARTICIPANT target type — no new enum value / migration needed.
+			await logAudit(tx, {
+				actor: this.actor,
+				action: "PARTICIPANT_REMOVED",
+				targetType: "SPLIT_PARTICIPANT",
+				targetId: txnId,
+				changes: {
+					participantType: this.actor.participantType,
+					participantId: this.actor.participantId,
+					removedSplitIds: mySplits.map((sp) => sp.id),
+					selfRemoved: true,
+				},
+				projectId: txn.projectId ?? undefined,
+			});
+
+			return { success: true as const };
+		});
+	}
+
+	/**
 	 * Returns all transactions created by the current user where at least one
 	 * other participant still has a PENDING verification status.
 	 *
