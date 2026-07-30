@@ -31,6 +31,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
 import { ExpandableSearch } from "./table-search";
@@ -270,6 +271,12 @@ interface DataTableProps<TData> {
 	onDeleteSelected?: () => void;
 	/** Called when E/Enter is pressed with exactly one selected row */
 	onEditRow?: (id: string) => void;
+	/**
+	 * Mobile-only override for a plain row tap. When provided and the viewport is
+	 * mobile, tapping a row calls this (e.g. to open a detail/actions sheet)
+	 * instead of toggling selection. Desktop behavior is unchanged.
+	 */
+	onMobileRowActivate?: (row: TData) => void;
 }
 
 /**
@@ -312,7 +319,9 @@ export function DataTable<TData extends { id: string }>({
 	countExtra,
 	onDeleteSelected,
 	onEditRow,
+	onMobileRowActivate,
 }: DataTableProps<TData>) {
+	const isMobile = useIsMobile();
 	const isControlledSearch = searchValue !== undefined;
 	const [searchInput, setSearchInput] = React.useState("");
 	const activeSearch = isControlledSearch ? searchValue : searchInput;
@@ -465,6 +474,10 @@ export function DataTable<TData extends { id: string }>({
 	onDeleteSelectedRef.current = onDeleteSelected;
 	const onEditRowRef = React.useRef(onEditRow);
 	onEditRowRef.current = onEditRow;
+	const onMobileRowActivateRef = React.useRef(onMobileRowActivate);
+	onMobileRowActivateRef.current = onMobileRowActivate;
+	const isMobileRef = React.useRef(isMobile);
+	isMobileRef.current = isMobile;
 	// Track shift state in a ref so stable callbacks can read it without deps
 	const isShiftHeldRef = React.useRef(false);
 
@@ -603,6 +616,13 @@ export function DataTable<TData extends { id: string }>({
 			const rowIsSelectable = isRowSelectableRef.current
 				? isRowSelectableRef.current(row.original)
 				: true;
+			// Mobile-only: a plain tap opens the detail/actions sheet instead of
+			// toggling selection. Shift-tap still range-selects (touch devices
+			// won't send it, but this keeps the branch safe on hybrid devices).
+			if (!shifted && isMobileRef.current && onMobileRowActivateRef.current) {
+				onMobileRowActivateRef.current(row.original);
+				return;
+			}
 			if (onRowSelectRef.current && rowIsSelectable) {
 				if (shifted) {
 					const lastId = lastSelectedIdRef.current;

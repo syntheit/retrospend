@@ -1135,7 +1135,21 @@
     "duplicate": "Duplicate",
     "itemsSelected": "{count, plural, one {1 item selected} other {{count} items selected}}",
     "recategorize": "Recategorize",
-    "export": "Export"
+    "export": "Export",
+    "you": "You",
+    "detailAmount": "Your share",
+    "detailTotal": "Total",
+    "detailPaidBy": "Paid by",
+    "detailDate": "Date",
+    "detailCategory": "Category",
+    "detailNone": "None",
+    "detailProject": "Project",
+    "detailDescription": "Note",
+    "detailStatus": "Status",
+    "detailSplitBreakdown": "Split breakdown",
+    "statusAccepted": "Accepted",
+    "statusRejected": "Rejected",
+    "statusPending": "Pending"
   },
   "settleUp": {
     "title": "Settle Up",
