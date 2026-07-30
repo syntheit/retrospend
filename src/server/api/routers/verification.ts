@@ -84,4 +84,20 @@ export const verificationRouter = createTRPCRouter({
 			const service = new VerificationService(ctx.db, actor);
 			return await service.reject(input.txnId, input.reason);
 		}),
+
+	/**
+	 * POST /api/verification/:txnId/remove-self
+	 *
+	 * Removes the caller's OWN split from a shared transaction ("Remove me").
+	 * Deletes only the caller's SplitParticipant row — never other participants'
+	 * splits and never the transaction itself. Forbidden once the transaction is
+	 * locked (settled). Remaining shares are left as-is by design.
+	 */
+	removeSelf: guestOrProtectedProcedure
+		.input(z.object({ txnId: z.string().min(1) }))
+		.mutation(async ({ ctx, input }) => {
+			const actor = assertWritableParticipant(ctx.participant);
+			const service = new VerificationService(ctx.db, actor);
+			return await service.removeSelf(input.txnId);
+		}),
 });

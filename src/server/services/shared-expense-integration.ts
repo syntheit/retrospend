@@ -166,6 +166,7 @@ export async function listSharedParticipationsForUser(
 		},
 		select: {
 			shareAmount: true,
+			verificationStatus: true,
 			transaction: {
 				select: {
 					id: true,
@@ -360,6 +361,8 @@ export async function listSharedParticipationsForUser(
 					: undefined,
 				canEdit,
 				canDelete,
+				myVerificationStatus: p.verificationStatus,
+				isLocked: tx.isLocked,
 				splitParticipants: tx.splitParticipants.map((sp) => {
 					const spKey = `${sp.participantType}:${sp.participantId}`;
 					return {

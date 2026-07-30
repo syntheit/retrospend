@@ -37,6 +37,14 @@ export type NormalizedExpense = {
 		projectName?: string;
 		canEdit?: boolean;
 		canDelete?: boolean;
+		/** The current user's own verification status on this shared expense. */
+		myVerificationStatus?:
+			| "PENDING"
+			| "ACCEPTED"
+			| "AUTO_ACCEPTED"
+			| "REJECTED";
+		/** Whether the underlying shared transaction is settled/locked. */
+		isLocked?: boolean;
 	};
 };
 

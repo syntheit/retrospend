@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	Check,
 	ClipboardCopy,
 	Copy,
 	Download,
@@ -9,6 +10,8 @@ import {
 	Search,
 	Tags,
 	Trash2,
+	UserMinus,
+	X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -37,6 +40,7 @@ import {
 	DialogTitle,
 } from "~/components/ui/dialog";
 import { EmptyState } from "~/components/ui/empty-state";
+import { Input } from "~/components/ui/input";
 import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExpensesController } from "~/hooks/use-expenses-controller";
@@ -223,6 +227,53 @@ function TransactionsContent() {
 		},
 		onError: () => {
 			toast.error(t("sharedDeleteFailed"));
+		},
+	});
+
+	// Invalidate everything a change to the caller's shared participation touches.
+	const invalidateSharedParticipation = () => {
+		void utils.expense.listSharedParticipations.invalidate();
+		void utils.dashboard.getOverviewStats.invalidate();
+		void utils.dashboard.getRecentActivity.invalidate();
+		void utils.stats.invalidate();
+		void utils.budget.getBudgets.invalidate();
+		void utils.verification.queue.invalidate();
+	};
+
+	// Accept / reject the caller's own pending verification on a shared expense.
+	const acceptSharedMutation = api.verification.accept.useMutation({
+		onSuccess: () => {
+			toast.success(t("expenseAccepted"));
+			invalidateSharedParticipation();
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
+	const [pendingReject, setPendingReject] = useState<string | null>(null);
+	const [rejectReason, setRejectReason] = useState("");
+	const rejectSharedMutation = api.verification.reject.useMutation({
+		onSuccess: () => {
+			toast.success(t("expenseRejected"));
+			invalidateSharedParticipation();
+			setPendingReject(null);
+			setRejectReason("");
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
+	// "Remove me" — deletes only the caller's own split from the shared expense.
+	const [pendingRemoveSelf, setPendingRemoveSelf] = useState<string | null>(
+		null,
+	);
+	const removeSelfMutation = api.verification.removeSelf.useMutation({
+		onSuccess: () => {
+			toast.success(t("removed"));
+			invalidateSharedParticipation();
+			setPendingRemoveSelf(null);
+		},
+		onError: (e) => {
+			toast.error(e.message || t("removeFailed"));
+			setPendingRemoveSelf(null);
 		},
 	});
 
@@ -478,9 +529,40 @@ function TransactionsContent() {
 								if (!sharedTxId) return null;
 								const canEdit = !!sharedCtx?.canEdit;
 								const canDelete = !!sharedCtx?.canDelete;
-								if (!canEdit && !canDelete) return null;
+								const isLocked = !!sharedCtx?.isLocked;
+								const isPending =
+									sharedCtx?.myVerificationStatus === "PENDING" && !isLocked;
+								// A participant can always remove their own split from an
+								// unsettled shared expense — this is the useful action for a
+								// plain participant with no edit/delete rights.
+								const canRemoveSelf = !isLocked;
+								// Always render a menu for shared rows the user participates in:
+								// copy is always available, plus accept/reject/remove/delete
+								// depending on state and permissions.
 								return (
 									<>
+										{isPending && (
+											<>
+												<ContextMenuItem
+													onClick={() =>
+														acceptSharedMutation.mutate({ txnId: sharedTxId })
+													}
+												>
+													<Check className="mr-2 h-4 w-4 text-emerald-500" />
+													{t("accept")}
+												</ContextMenuItem>
+												<ContextMenuItem
+													onClick={() => {
+														setPendingReject(sharedTxId);
+														setRejectReason("");
+													}}
+												>
+													<X className="mr-2 h-4 w-4 text-rose-500" />
+													{t("reject")}
+												</ContextMenuItem>
+												<ContextMenuSeparator />
+											</>
+										)}
 										{canEdit && (
 											<ContextMenuItem
 												onClick={() => {
@@ -509,6 +591,17 @@ function TransactionsContent() {
 											<ClipboardCopy className="mr-2 h-4 w-4" />
 											{t("copyAsText")}
 										</ContextMenuItem>
+										{canRemoveSelf && (
+											<>
+												<ContextMenuSeparator />
+												<ContextMenuItem
+													onClick={() => setPendingRemoveSelf(sharedTxId)}
+												>
+													<UserMinus className="mr-2 h-4 w-4" />
+													{t("removeMe")}
+												</ContextMenuItem>
+											</>
+										)}
 										{canDelete && (
 											<>
 												<ContextMenuSeparator />
@@ -726,6 +819,90 @@ function TransactionsContent() {
 							variant="destructive"
 						>
 							{deleteSharedTxMutation.isPending ? tc("deleting") : tc("delete")}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+			{/* Reject Shared Expense Dialog (with optional reason) */}
+			<Dialog
+				onOpenChange={(open) => {
+					if (!open) {
+						setPendingReject(null);
+						setRejectReason("");
+					}
+				}}
+				open={pendingReject !== null}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{t("rejectThisExpense")}</DialogTitle>
+						<DialogDescription>{t("rejectReasonPrompt")}</DialogDescription>
+					</DialogHeader>
+					<Input
+						autoFocus
+						maxLength={500}
+						onChange={(e) => setRejectReason(e.target.value)}
+						placeholder={t("reasonOptional")}
+						value={rejectReason}
+					/>
+					<DialogFooter>
+						<Button
+							disabled={rejectSharedMutation.isPending}
+							onClick={() => {
+								setPendingReject(null);
+								setRejectReason("");
+							}}
+							variant="ghost"
+						>
+							{tc("cancel")}
+						</Button>
+						<Button
+							disabled={rejectSharedMutation.isPending}
+							onClick={() => {
+								if (pendingReject) {
+									rejectSharedMutation.mutate({
+										txnId: pendingReject,
+										reason: rejectReason.trim() || undefined,
+									});
+								}
+							}}
+							variant="destructive"
+						>
+							{t("reject")}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+			{/* Remove Me Dialog */}
+			<Dialog
+				onOpenChange={(open) => {
+					if (!open) setPendingRemoveSelf(null);
+				}}
+				open={pendingRemoveSelf !== null}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{t("removeMeTitle")}</DialogTitle>
+						<DialogDescription>{t("removeMeDescription")}</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							disabled={removeSelfMutation.isPending}
+							onClick={() => setPendingRemoveSelf(null)}
+							variant="ghost"
+						>
+							{tc("cancel")}
+						</Button>
+						<Button
+							disabled={removeSelfMutation.isPending}
+							onClick={() => {
+								if (pendingRemoveSelf) {
+									removeSelfMutation.mutate({ txnId: pendingRemoveSelf });
+								}
+							}}
+							variant="destructive"
+						>
+							{removeSelfMutation.isPending ? tc("deleting") : t("removeMe")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
