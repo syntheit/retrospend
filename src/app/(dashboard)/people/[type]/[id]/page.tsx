@@ -2,7 +2,6 @@
 
 import { format } from "date-fns";
 import {
-	ArrowLeft,
 	CheckCircle2,
 	ChevronDown,
 	Download,
@@ -16,12 +15,12 @@ import {
 	Link2,
 	Receipt,
 	ReceiptText,
+	Scale,
 	SlidersHorizontal,
 	UserX,
 	XCircle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -72,9 +71,14 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
+import { Card, CardContent } from "~/components/ui/card";
+import { EmptyState } from "~/components/ui/empty-state";
+import { SegmentedToggle } from "~/components/ui/segmented-toggle";
+import { StatCard } from "~/components/ui/stat-card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { UserAvatar } from "~/components/ui/user-avatar";
+import { getCategoryColorClasses } from "~/lib/constants";
 import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useIsMobile } from "~/hooks/use-mobile";
@@ -437,7 +441,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 										className={cn(
 											"h-3 w-3 shrink-0",
 											!selectedCategories.has(cat.id) &&
-												`text-${cat.color}-500`,
+												getCategoryColorClasses(cat.color, "accent"),
 										)}
 									/>
 									{displayName(cat.name)}
@@ -496,17 +500,15 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 			<>
 				<SiteHeader title={t("personNotFound")} />
 				<PageContent>
-					<div className="flex h-64 flex-col items-center justify-center gap-3">
-						<p className="text-muted-foreground">
-							{t("personCouldNotBeFound")}
-						</p>
-						<Button asChild variant="outline">
-							<Link href="/people">
-								<ArrowLeft className="mr-2 h-4 w-4" />
-								{t("backToPeople")}
-							</Link>
-						</Button>
-					</div>
+					<EmptyState
+						action={{
+							label: t("backToPeople"),
+							onClick: () => router.push("/people"),
+						}}
+						description={t("personCouldNotBeFound")}
+						icon={UserX}
+						title={t("personNotFound")}
+					/>
 				</PageContent>
 			</>
 		);
@@ -548,9 +550,11 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 							</div>
 						</div>
 					) : (
-						<div className={cn("flex flex-col gap-4", hasHistory && "sm:grid sm:grid-cols-[1fr_auto] sm:gap-x-6 sm:gap-y-0")}>
-							{/* Left: avatar + name/stats + pills */}
-							<div className="flex flex-col gap-4">
+						<>
+						{/* Summary card: person header + actions + balance */}
+						<Card>
+							<CardContent className={cn("flex flex-col gap-4", hasHistory && "sm:grid sm:grid-cols-[1fr_auto] sm:items-start sm:gap-x-6 sm:gap-y-0")}>
+								{/* Left: avatar + name/stats */}
 								<div className="flex items-center gap-4">
 								<UserAvatar
 									avatarUrl={identity?.avatarUrl}
@@ -593,20 +597,152 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 										)}
 								</div>
 							</div>
-																						{/* Per-project filter pills + table controls */}
-								{!isLoading && hasHistory && (
-									<div className="-mx-4 flex flex-col gap-4 px-4 sm:mx-0 sm:px-0">
-										{projectBreakdown.length > 0 && (
+
+							{/* Right: Actions + Balance */}
+							{hasHistory && <div className="flex flex-col items-start gap-3 sm:items-end">
+								{/* Action buttons */}
+								<div className="flex flex-wrap items-center gap-1.5">
+									{!isSettled && (
+										<Button onClick={() => setSettleUpOpen(true)} size="sm">
+											{settleButtonLabel}
+										</Button>
+									)}
+									{!isSettled && netDirection === "they_owe_you" && participantType === "user" && (
+										<Button
+											disabled={remindPayment.isPending || reminderSent}
+											onClick={() => remindPayment.mutate({ participantType, participantId: id })}
+											size="sm"
+											variant="outline"
+										>
+											{reminderSent ? (
+												<>
+													<CheckCircle2 className="h-4 w-4" />
+													{t("sent")}
+												</>
+											) : (
+												<>
+													<Bell className="h-4 w-4" />
+													{remindPayment.isPending ? t("sending") : t("remind")}
+												</>
+											)}
+										</Button>
+									)}
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												disabled={isExporting}
+												size="sm"
+												variant="ghost"
+												className="focus-visible:ring-0 focus-visible:ring-offset-0"
+											>
+												<Download className="h-4 w-4" />
+												{isExporting ? t("exporting") : t("export")}
+												<ChevronDown className="h-3 w-3 opacity-60" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem onClick={handleExportHistory}>
+												<FileSpreadsheet className="mr-2 h-4 w-4" />
+												{t("exportHistoryCsv")}
+											</DropdownMenuItem>
+											{!isSettled && (
+												<DropdownMenuItem onClick={handleExportSettlement}>
+													<Receipt className="mr-2 h-4 w-4" />
+													{t("exportSettlementPlan")}
+												</DropdownMenuItem>
+											)}
+											<DropdownMenuItem onClick={handleExportPdf}>
+												<FileText className="mr-2 h-4 w-4" />
+												{t("downloadPdfSummary")}
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+								{/* Balance hero */}
+								<StatCard
+									className="w-full sm:w-64"
+									icon={isSettled ? CheckCircle2 : Scale}
+									subValue={
+										!isSettled &&
+										((homeCurrencyTotal && homeCurrencyTotal.canConvert
+											? balances.some((b) => b.currency !== homeCurrency)
+											: true)) ? (
+											<div className="flex flex-wrap gap-1.5">
+												{balances.map((b) => (
+													<span
+														key={b.currency}
+														className={cn(
+															"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
+															b.direction === "they_owe_you"
+																? "border-emerald-200/60 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30"
+																: "border-amber-200/60 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30",
+														)}
+													>
+														<CurrencyFlag
+															className="!h-3.5 !w-3.5"
+															currencyCode={b.currency}
+														/>
+														<span
+															className={cn(
+																"font-semibold text-sm leading-none tabular-nums",
+																b.direction === "they_owe_you"
+																	? "text-emerald-700 dark:text-emerald-300"
+																	: "text-amber-700 dark:text-amber-300",
+															)}
+														>
+															{formatCurrency(b.balance, b.currency)}
+														</span>
+														<span className="text-[10px] text-muted-foreground leading-none">
+															{b.currency}
+														</span>
+													</span>
+												))}
+											</div>
+										) : undefined
+									}
+									title={
+										isSettled
+											? t("allSettledUp")
+											: netDirection === "they_owe_you"
+												? t("theyOweYou")
+												: t("youOweThem")
+									}
+									value={
+										isSettled
+											? formatCurrency(0, homeCurrency)
+											: homeCurrencyTotal && homeCurrencyTotal.canConvert
+												? formatCurrency(
+														Math.abs(homeCurrencyTotal.amount),
+														homeCurrency,
+													)
+												: undefined
+									}
+									variant={
+										isSettled
+											? "neutral"
+											: netDirection === "they_owe_you"
+												? "emerald"
+												: "amber"
+									}
+								/>
+							</div>}
+							</CardContent>
+						</Card>
+
+						{/* Per-project filter pills + table controls */}
+						{!isLoading && hasHistory && (
+								<div className="-mx-4 flex flex-col gap-4 px-4 sm:mx-0 sm:px-0">
+									{projectBreakdown.length > 0 && (
 											<div className="flex gap-2 overflow-x-auto pb-1">
 												{/* All pill */}
 												<ContextMenu>
 													<ContextMenuTrigger asChild>
 														<button
 															className={cn(
-																"flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 font-medium text-sm transition-colors",
+																"flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 font-medium text-sm transition-all",
 																selectedProjectId === undefined
-																	? "border-primary bg-primary text-primary-foreground"
-																	: "border-border bg-secondary hover:bg-accent",
+																	? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+																	: "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
 															)}
 															onClick={() => setSelectedProjectId(undefined)}
 															type="button"
@@ -630,7 +766,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																			? "text-primary-foreground/80"
 																			: netDirection === "they_owe_you"
 																				? "text-emerald-600 dark:text-emerald-400"
-																				: "text-rose-600 dark:text-rose-400",
+																				: "text-amber-600 dark:text-amber-400",
 																	)}
 																>
 																	{formatCurrency(
@@ -671,10 +807,10 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 															<ContextMenuTrigger asChild>
 																<button
 																	className={cn(
-																		"flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 font-medium text-sm transition-colors",
+																		"flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 font-medium text-sm transition-all",
 																		isSelected
-																			? "border-primary bg-primary text-primary-foreground"
-																			: "border-border bg-secondary hover:bg-accent",
+																			? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+																			: "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
 																	)}
 																	onClick={(e) => {
 																		if ((e.ctrlKey || e.metaKey) && proj.projectId) {
@@ -733,7 +869,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																					? "text-primary-foreground/80"
 																					: projTotal.amount > 0
 																						? "text-emerald-600 dark:text-emerald-400"
-																						: "text-rose-600 dark:text-rose-400",
+																						: "text-amber-600 dark:text-amber-400",
 																			)}
 																		>
 																			{formatCurrency(
@@ -804,23 +940,14 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 													{t("expenseCount", { count: expenseCount })}
 												</span>
 											)}
-											<div className="flex rounded-lg border border-border p-0.5">
-												{(["all", "active"] as const).map((filter) => (
-													<button
-														className={cn(
-															"cursor-pointer rounded-md px-2.5 py-1 font-medium text-xs transition-colors",
-															statusFilter === filter
-																? "bg-primary text-primary-foreground"
-																: "text-muted-foreground hover:text-foreground",
-														)}
-														key={filter}
-														onClick={() => setStatusFilter(filter)}
-														type="button"
-													>
-														{filter === "all" ? t("all") : t("outstanding")}
-													</button>
-												))}
-											</div>
+											<SegmentedToggle
+												options={[
+													{ value: "all" as const, label: t("all") },
+													{ value: "active" as const, label: t("outstanding") },
+												]}
+												value={statusFilter}
+												onChange={setStatusFilter}
+											/>
 											{isMobile ? (
 												<>
 													<Button
@@ -887,148 +1014,8 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											/>
 										</div>
 									</div>
-								)}
-							</div>
-
-							{/* Right: Actions + Balance */}
-							{hasHistory && <div className="flex flex-col items-start gap-3 sm:items-end">
-								{/* Action buttons */}
-								<div className="flex flex-wrap items-center gap-1.5">
-									{!isSettled && (
-										<Button onClick={() => setSettleUpOpen(true)} size="sm">
-											{settleButtonLabel}
-										</Button>
-									)}
-									{!isSettled && netDirection === "they_owe_you" && participantType === "user" && (
-										<Button
-											disabled={remindPayment.isPending || reminderSent}
-											onClick={() => remindPayment.mutate({ participantType, participantId: id })}
-											size="sm"
-											variant="outline"
-										>
-											{reminderSent ? (
-												<>
-													<CheckCircle2 className="h-4 w-4" />
-													{t("sent")}
-												</>
-											) : (
-												<>
-													<Bell className="h-4 w-4" />
-													{remindPayment.isPending ? t("sending") : t("remind")}
-												</>
-											)}
-										</Button>
-									)}
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												disabled={isExporting}
-												size="sm"
-												variant="ghost"
-												className="focus-visible:ring-0 focus-visible:ring-offset-0"
-											>
-												<Download className="h-4 w-4" />
-												{isExporting ? t("exporting") : t("export")}
-												<ChevronDown className="h-3 w-3 opacity-60" />
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem onClick={handleExportHistory}>
-												<FileSpreadsheet className="mr-2 h-4 w-4" />
-												{t("exportHistoryCsv")}
-											</DropdownMenuItem>
-											{!isSettled && (
-												<DropdownMenuItem onClick={handleExportSettlement}>
-													<Receipt className="mr-2 h-4 w-4" />
-													{t("exportSettlementPlan")}
-												</DropdownMenuItem>
-											)}
-											<DropdownMenuItem onClick={handleExportPdf}>
-												<FileText className="mr-2 h-4 w-4" />
-												{t("downloadPdfSummary")}
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</div>
-{/* Balance hero */}
-								<div className="flex flex-col items-start gap-0.5 sm:items-end sm:text-right">
-									{isSettled ? (
-										<div className="flex items-center gap-2 font-semibold text-xl text-emerald-600 dark:text-emerald-400">
-											<CheckCircle2 className="h-5 w-5" />
-											{t("allSettledUp")}
-										</div>
-									) : (
-										<>
-											{/* Home currency total */}
-											{homeCurrencyTotal && homeCurrencyTotal.canConvert ? (
-												<>
-													<p className="text-muted-foreground text-sm">
-														{netDirection === "they_owe_you"
-															? t("theyOweYou")
-															: t("youOweThem")}
-													</p>
-													<span
-														className={cn(
-															"font-semibold text-xl tabular-nums",
-															netDirection === "they_owe_you"
-																? "text-emerald-600 dark:text-emerald-400"
-																: "text-rose-600 dark:text-rose-400",
-														)}
-													>
-														{formatCurrency(
-															Math.abs(homeCurrencyTotal.amount),
-															homeCurrency,
-														)}
-													</span>
-													{balances.some(b => b.currency !== homeCurrency) && (
-														<div className="mt-1 flex flex-wrap justify-end gap-2">
-															{balances.map((b) => (
-																<span key={b.currency} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/10 px-3 py-1.5">
-																	<CurrencyFlag
-																		className="!h-3.5 !w-3.5"
-																		currencyCode={b.currency}
-																	/>
-																	<span className="text-sm font-semibold leading-none text-foreground tabular-nums">{formatCurrency(b.balance, b.currency)}</span>
-																	<span className="text-xs leading-none text-muted-foreground">{b.currency}</span>
-																</span>
-															))}
-														</div>
-													)}
-												</>
-											) : (
-												/* Fallback: show per-currency amounts without total */
-												<>
-													<p className="text-muted-foreground text-sm">
-														{netDirection === "they_owe_you"
-															? t("theyOweYou")
-															: netDirection === "you_owe_them"
-																? t("youOweThem")
-																: ""}
-													</p>
-													<div className="mt-1 flex flex-wrap justify-end gap-2">
-														{balances.map((b) => (
-															<span key={b.currency} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white/10 px-3 py-1.5">
-																<CurrencyFlag
-																	className="!h-3.5 !w-3.5"
-																	currencyCode={b.currency}
-																/>
-																<span className={cn(
-																	"text-sm font-semibold leading-none tabular-nums",
-																	b.direction === "they_owe_you"
-																		? "text-emerald-600 dark:text-emerald-400"
-																		: "text-rose-600 dark:text-rose-400",
-																)}>{formatCurrency(b.balance, b.currency)}</span>
-																<span className="text-xs leading-none text-muted-foreground">{b.currency}</span>
-															</span>
-														))}
-													</div>
-												</>
-											)}
-										</>
-									)}
-								</div>
-							</div>}
-						</div>
+							)}
+						</>
 					)}
 
 
@@ -1038,10 +1025,12 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 							{pendingForMe.map((s) => (
 								<div
 									key={s.id}
-									className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30"
+									className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3"
 								>
-									<div className="flex items-center gap-2 text-sm">
-										<HandCoins className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+									<div className="flex items-center gap-3 text-sm">
+										<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+											<HandCoins className="h-4 w-4 text-amber-500" />
+										</div>
 										<span>
 											{t("settlementBanner", {
 												name: identity?.name ?? t("they"),
@@ -1094,20 +1083,21 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 							statusFilter={statusFilter}
 						/>
 					) : (
-						<div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
-							<ReceiptText className="mb-3 h-10 w-10 text-muted-foreground/40" />
-							<h3 className="font-medium">{t("noSharedExpenses")}</h3>
-							<p className="mt-1 max-w-sm text-muted-foreground text-sm">
-								{t("noSharedExpensesDescription", { name: identity?.name ?? t("thisPerson") })}
-							</p>
-							{identity?.isVerifiedUser && identity?.username && (
-								<Button asChild className="mt-4" size="sm" variant="outline">
-									<Link href={`/u/${identity.username}`}>
-										<ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-										{t("viewPublicProfile")}
-									</Link>
-								</Button>
-							)}
+						<div className="rounded-xl border border-border border-dashed">
+							<EmptyState
+								action={
+									identity?.isVerifiedUser && identity?.username
+										? {
+												label: t("viewPublicProfile"),
+												onClick: () => router.push(`/u/${identity.username}`),
+												variant: "outline",
+											}
+										: undefined
+								}
+								description={t("noSharedExpensesDescription", { name: identity?.name ?? t("thisPerson") })}
+								icon={ReceiptText}
+								title={t("noSharedExpenses")}
+							/>
 						</div>
 					)}
 				</div>

@@ -4,7 +4,6 @@ import type { Row, VisibilityState } from "@tanstack/react-table";
 import { Edit2, History, Trash2, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "~/lib/utils";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
@@ -17,6 +16,7 @@ import {
 	ContextMenuSeparator,
 } from "~/components/ui/context-menu";
 import { EmptyState } from "~/components/ui/empty-state";
+import { SegmentedToggle } from "~/components/ui/segmented-toggle";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ConfirmDialog } from "~/components/ui/confirmation-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
@@ -458,23 +458,14 @@ export function PeopleTimelineTable({
 	}
 
 	const statusToggle = (
-		<div className="flex rounded-lg border border-border p-0.5">
-			{(["all", "active"] as const).map((filter) => (
-				<button
-					className={cn(
-						"cursor-pointer rounded-md px-2.5 py-1 font-medium text-xs transition-colors",
-						statusFilter === filter
-							? "bg-primary text-primary-foreground"
-							: "text-muted-foreground hover:text-foreground",
-					)}
-					key={filter}
-					onClick={() => onStatusFilterChange(filter)}
-					type="button"
-				>
-					{filter === "all" ? t("all") : t("outstanding")}
-				</button>
-			))}
-		</div>
+		<SegmentedToggle
+			options={[
+				{ value: "all" as const, label: t("all") },
+				{ value: "active" as const, label: t("outstanding") },
+			]}
+			value={statusFilter}
+			onChange={onStatusFilterChange}
+		/>
 	);
 
 	return (
