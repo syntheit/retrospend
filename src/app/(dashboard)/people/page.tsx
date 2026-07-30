@@ -634,10 +634,9 @@ export default function PeoplePage() {
 
 					{/* ── People Section ── */}
 					<div className="space-y-3">
-						{/* Section header with search + sort */}
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-							<h2 className="font-semibold text-lg tracking-tight">{t("title")}</h2>
-							{(people?.length ?? 0) >= 2 && (
+						{/* Search + sort controls */}
+						{(people?.length ?? 0) >= 2 && (
+							<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
 								<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 									<TableSearch
 										className="sm:w-48"
@@ -656,8 +655,8 @@ export default function PeoplePage() {
 										onChange={setSortBy}
 									/>
 								</div>
-							)}
-						</div>
+							</div>
+						)}
 
 						{/* People grid */}
 						{peopleLoading ? (

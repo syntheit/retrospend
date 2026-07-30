@@ -10,6 +10,10 @@ import { z } from "zod";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { useThemeContext } from "~/components/theme-provider";
 import { setLocaleCookie } from "~/i18n/actions";
+import {
+	type AppLocale,
+	LOCALE_OPTIONS,
+} from "~/i18n/locales";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -41,11 +45,6 @@ import {
 } from "~/lib/currencies";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
-
-const LANGUAGE_OPTIONS = [
-	{ value: "en", label: "English", flag: "EN" },
-	{ value: "es", label: "Español", flag: "ES" },
-] as const;
 
 const currencyCodeSchema = z
 	.string()
@@ -223,12 +222,12 @@ export function AppPreferencesContent() {
 		void form.handleSubmit(onSubmitRef.current)();
 	}, [form]);
 
-	const handleLanguageChange = async (value: string) => {
+	const handleLanguageChange = async (value: AppLocale) => {
 		if (!settings) return;
 		try {
 			await updateSettingsMutation.mutateAsync({
 				homeCurrency: settings.homeCurrency,
-				language: value as "en" | "es",
+				language: value,
 			});
 			// Set the locale cookie via server action and reload so next-intl picks up the new locale
 			await setLocaleCookie(value);
@@ -565,20 +564,21 @@ function LanguagePicker({
 	onValueChange,
 }: {
 	value: string;
-	onValueChange: (value: string) => void;
+	onValueChange: (value: AppLocale) => void;
 }) {
+	const t = useTranslations("settings");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
 
 	const selectedOption = useMemo(
-		() => LANGUAGE_OPTIONS.find((opt) => opt.value === value),
+		() => LOCALE_OPTIONS.find((opt) => opt.value === value),
 		[value],
 	);
 
 	const filteredOptions = useMemo(() => {
-		if (!search) return LANGUAGE_OPTIONS;
+		if (!search) return LOCALE_OPTIONS;
 		const searchLower = search.toLowerCase();
-		return LANGUAGE_OPTIONS.filter(
+		return LOCALE_OPTIONS.filter(
 			(opt) =>
 				opt.label.toLowerCase().includes(searchLower) ||
 				opt.value.toLowerCase().includes(searchLower),
@@ -602,7 +602,7 @@ function LanguagePicker({
 							{selectedOption.label}
 						</span>
 					) : (
-						"Select language..."
+						t("selectLanguage")
 					)}
 					<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 				</Button>
@@ -610,7 +610,7 @@ function LanguagePicker({
 			<PopoverContent align="start" className="w-[min(18rem,calc(100vw-3rem))] p-0">
 				<div className="p-2">
 					<Input
-						placeholder="Search languages..."
+						placeholder={t("searchLanguages")}
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						className="mb-2"
@@ -622,7 +622,7 @@ function LanguagePicker({
 				>
 					{filteredOptions.length === 0 ? (
 						<div className="p-4 text-center text-muted-foreground">
-							No languages found.
+							{t("noLanguagesFound")}
 						</div>
 					) : (
 						filteredOptions.map((opt) => (
