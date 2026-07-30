@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Check, X } from "lucide-react";
+import { Check, MoreHorizontal, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
 import { SharedTransactionActionsMenu } from "~/components/shared-transaction-actions-menu";
@@ -40,6 +40,14 @@ interface ColumnOptions {
 	onAccept?: (txnId: string) => void;
 	onReject?: (txnId: string) => void;
 	locale?: string;
+	/** True on mobile — the actions column then renders a "⋯" that opens the sheet. */
+	isMobile?: boolean;
+	/**
+	 * Open the mobile detail/actions sheet for a transaction. When provided and
+	 * `isMobile` is true, the actions column shows a single "⋯" trigger that opens
+	 * the sheet instead of the desktop dropdown.
+	 */
+	onOpenSheet?: (id: string) => void;
 }
 
 export function createProjectExpenseColumns({
@@ -55,6 +63,8 @@ export function createProjectExpenseColumns({
 	onAccept,
 	onReject,
 	locale,
+	isMobile,
+	onOpenSheet,
 }: ColumnOptions): ColumnDef<ProjectExpense>[] {
 	const label = (key: string) => t?.(key) ?? key;
 	const columns: ColumnDef<ProjectExpense>[] = [
@@ -222,6 +232,27 @@ export function createProjectExpenseColumns({
 			size: 48,
 			cell: ({ row }) => {
 				const txn = row.original;
+
+				// On mobile, the actions column is a single "⋯" tap target that opens
+				// the shared detail/actions sheet (details + gated actions). Desktop
+				// keeps the dropdown menu; the right-click context menu is unchanged.
+				if (isMobile && onOpenSheet) {
+					return (
+						<Button
+							className="h-8 w-8"
+							onClick={(e) => {
+								e.stopPropagation();
+								onOpenSheet(txn.id);
+							}}
+							size="icon"
+							variant="ghost"
+						>
+							<MoreHorizontal className="h-4 w-4" />
+							<span className="sr-only">{label("actions")}</span>
+						</Button>
+					);
+				}
+
 				const mySplitForActions = currentParticipant
 					? txn.splitParticipants?.find(
 							(sp) =>

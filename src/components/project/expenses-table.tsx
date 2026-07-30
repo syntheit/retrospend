@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { ExpandableSearch } from "~/components/table-search";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
+import { ExpenseActionsSheet } from "~/components/expense-actions-sheet";
 import { ExpenseModal } from "~/components/expense-modal";
 import {
 	createProjectExpenseColumns,
@@ -49,6 +50,7 @@ import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { useLocale, useTranslations } from "next-intl";
+import type { NormalizedExpense } from "~/lib/normalize";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -118,6 +120,14 @@ export function ExpensesTable({
 		currency: string;
 		date: Date;
 	} | null>(null);
+
+	// Mobile detail/actions sheet: the transaction id whose sheet is open (null =
+	// closed). Opened by a plain row tap on mobile or the per-row "⋯" trigger.
+	const [sheetTxnId, setSheetTxnId] = useState<string | null>(null);
+	// The transaction the caller is confirming to remove themselves from.
+	const [pendingRemoveSelf, setPendingRemoveSelf] = useState<string | null>(
+		null,
+	);
 
 	// Selection state
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -218,6 +228,21 @@ export function ExpensesTable({
 		onError: (e) => toast.error(e.message),
 	});
 
+	// Remove the caller's own split from a shared expense. The procedure already
+	// exists (used by the transactions page); wiring it here reuses that server
+	// call with no schema/server change.
+	const removeSelfMutation = api.verification.removeSelf.useMutation({
+		onSuccess: () => {
+			toast.success(t("removed"));
+			invalidateVerification();
+			setPendingRemoveSelf(null);
+		},
+		onError: (e) => {
+			toast.error(e.message || t("removeFailed"));
+			setPendingRemoveSelf(null);
+		},
+	});
+
 	// Stable refs so column memoization isn't defeated by mutation object identity
 	const acceptRef = useRef(acceptMutation.mutate);
 	acceptRef.current = acceptMutation.mutate;
@@ -308,6 +333,76 @@ export function ExpensesTable({
 	]);
 	filteredTransactionsRef.current = filteredTransactions;
 
+	// Adapt the currently-open project row into the NormalizedExpense shape the
+	// shared ExpenseActionsSheet consumes. Project rows are always "shared", so we
+	// only populate sharedContext; per-row canEdit/canDelete/verification come
+	// straight from the server-computed row so gating matches the desktop menu.
+	const sheetExpense = useMemo<NormalizedExpense | null>(() => {
+		if (sheetTxnId == null) return null;
+		const txn = allTransactions.find((t) => t.id === sheetTxnId) as
+			| ProjectExpense
+			| undefined;
+		if (!txn) return null;
+
+		const mySplit = currentParticipant
+			? txn.splitParticipants?.find(
+					(sp) =>
+						sp.participantType === currentParticipant.type &&
+						sp.participantId === currentParticipant.id,
+				)
+			: undefined;
+
+		// The payer stands in for the creator here: the project.listExpenses row
+		// doesn't expose createdBy, and the server forbids the payer/creator from
+		// removing just themselves, so gating on payer keeps "Remove me" hidden
+		// from the person who must delete instead.
+		const isCreator = txn.paidBy?.isMe ?? false;
+
+		return {
+			id: txn.id,
+			title: txn.description,
+			// The sheet's "Your share" row uses `amount`; the split total goes in
+			// sharedContext.totalAmount.
+			amount: mySplit?.shareAmount ?? txn.amount,
+			currency: txn.currency,
+			exchangeRate: null,
+			amountInUSD: null,
+			date: new Date(txn.date),
+			location: null,
+			description: null,
+			categoryId: txn.category?.id ?? null,
+			category: txn.category
+				? {
+						id: txn.category.id,
+						name: txn.category.name,
+						color: txn.category.color,
+						icon: txn.category.icon,
+					}
+				: null,
+			source: "shared",
+			sharedContext: {
+				totalAmount: txn.amount,
+				participantCount: txn.splitParticipants?.length ?? 0,
+				paidByName: txn.paidBy?.name ?? "",
+				paidByAvatarUrl: txn.paidBy?.avatarUrl ?? null,
+				iPayedThis: txn.paidBy?.isMe ?? false,
+				transactionId: txn.id,
+				canEdit: txn.canEdit && !txn.isLocked,
+				canDelete: txn.canDelete && !txn.isLocked,
+				isCreator,
+				myVerificationStatus: mySplit?.verificationStatus,
+				isLocked: txn.isLocked,
+				splitParticipants: (txn.splitParticipants ?? []).map((sp) => ({
+					participantType: sp.participantType,
+					participantId: sp.participantId,
+					shareAmount: sp.shareAmount,
+					name: sp.name,
+					avatarUrl: sp.avatarUrl,
+				})),
+			},
+		};
+	}, [sheetTxnId, allTransactions, currentParticipant]);
+
 	// Revision summaries for all filtered transactions
 	const txnIds = useMemo(
 		() => filteredTransactions.map((t) => t.id),
@@ -387,8 +482,10 @@ export function ExpensesTable({
 				onAccept: handleAccept,
 				onReject: handleReject,
 				locale,
+				isMobile,
+				onOpenSheet: (id) => setSheetTxnId(id),
 			}),
-		[isSolo, isReadOnly, formatCurrency, t, revisionSummaries, openHistory, currentParticipant, handleAccept, handleReject],
+		[isSolo, isReadOnly, formatCurrency, t, revisionSummaries, openHistory, currentParticipant, handleAccept, handleReject, locale, isMobile],
 	);
 
 	// Row class for settled rows
@@ -690,6 +787,9 @@ export function ExpensesTable({
 					isRowSelectable={isReadOnly ? () => false : undefined}
 					lastSelectedId={lastSelectedId}
 					onClearSelection={() => handleSelectAll(false)}
+					onMobileRowActivate={
+						isReadOnly ? undefined : (txn) => setSheetTxnId(txn.id)
+					}
 					onRangeSelect={handleRangeSelect}
 					onRowSelect={handleRowSelect}
 					progressive
@@ -885,6 +985,65 @@ export function ExpensesTable({
 				}}
 				open={!!rejectingTxnId}
 				title={t("rejectThisExpense")}
+				variant="destructive"
+			/>
+
+			{/* Mobile detail + actions sheet. Reuses the shared component and the
+			    table's existing mutation handlers; only shows actions the caller may
+			    actually perform (gating driven by the server-computed row). */}
+			<ExpenseActionsSheet
+				expense={sheetExpense}
+				onAccept={(txnId) => handleAccept(txnId)}
+				onCopy={(expense) => {
+					const text = formatExpenseAsText(
+						expense.title,
+						expense.sharedContext?.totalAmount ?? expense.amount,
+						expense.currency,
+						new Date(expense.date),
+						formatCurrency,
+						locale,
+					);
+					void navigator.clipboard.writeText(text);
+					toast.success(t("copiedToClipboard"));
+				}}
+				onDelete={(expense) => {
+					const txn = allTransactions.find((t) => t.id === expense.id);
+					if (!txn) return;
+					setDeletingTransaction({
+						id: txn.id,
+						description: txn.description,
+						amount: txn.amount,
+						currency: txn.currency,
+						date: new Date(txn.date),
+					});
+				}}
+				// Project expenses are always shared, so the duplicate action never
+				// surfaces; provide a no-op to satisfy the shared component's contract.
+				onDuplicate={() => undefined}
+				onEdit={(expense) => setEditingTransactionId(expense.id)}
+				onOpenChange={(open) => {
+					if (!open) setSheetTxnId(null);
+				}}
+				onReject={(txnId) => handleReject(txnId)}
+				onRemoveSelf={(txnId) => setPendingRemoveSelf(txnId)}
+				open={sheetExpense !== null}
+			/>
+
+			{/* Remove-self confirmation (for participants who can't delete). */}
+			<ConfirmDialog
+				confirmText={t("removeMe")}
+				description={t("removeMeDescription")}
+				isLoading={removeSelfMutation.isPending}
+				onConfirm={() => {
+					if (pendingRemoveSelf) {
+						removeSelfMutation.mutate({ txnId: pendingRemoveSelf });
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) setPendingRemoveSelf(null);
+				}}
+				open={!!pendingRemoveSelf}
+				title={t("removeMeTitle")}
 				variant="destructive"
 			/>
 		</div>
