@@ -31,7 +31,6 @@ import { Switch } from "~/components/ui/switch";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { useTranslations } from "next-intl";
 import { useSettings } from "~/hooks/use-settings";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 interface NewProjectDialogProps {
@@ -51,8 +50,7 @@ export function NewProjectDialog({
 
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
-	const [budgetAmount, setBudgetAmount] = useState("");
-	const [budgetCurrency, setBudgetCurrency] = useState(homeCurrency);
+	const [primaryCurrency, setPrimaryCurrency] = useState(homeCurrency);
 	const [billingEnabled, setBillingEnabled] = useState(false);
 	const [billingCycleLength, setBillingCycleLength] = useState("MONTHLY");
 	const [billingAutoClose, setBillingAutoClose] = useState(false);
@@ -108,8 +106,7 @@ export function NewProjectDialog({
 	const resetForm = () => {
 		setName("");
 		setDescription("");
-		setBudgetAmount("");
-		setBudgetCurrency(homeCurrency);
+		setPrimaryCurrency(homeCurrency);
 		setBillingEnabled(false);
 		setBillingCycleLength("MONTHLY");
 		setBillingAutoClose(false);
@@ -151,21 +148,10 @@ export function NewProjectDialog({
 			return;
 		}
 
-		const budget = budgetAmount ? parseFloat(budgetAmount) : undefined;
-		if (
-			budgetAmount &&
-			(Number.isNaN(budget) || (budget !== undefined && budget <= 0))
-		) {
-			toast.error(t("enterValidBudgetAmount"));
-			return;
-		}
-
 		const result = await createMutation.mutateAsync({
 			name: name.trim(),
 			description: description.trim() || undefined,
-			budgetAmount: budget,
-			budgetCurrency: budget ? budgetCurrency : undefined,
-			primaryCurrency: homeCurrency,
+			primaryCurrency: primaryCurrency,
 			billingCycleLength: billingEnabled
 				? (billingCycleLength as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM")
 				: undefined,
@@ -271,30 +257,14 @@ export function NewProjectDialog({
 						/>
 					</div>
 
-					{/* Budget */}
+					{/* Default Currency */}
 					<div className="space-y-1.5">
-						<Label>{t("budgetOptional")}</Label>
-						<div
-							className={cn(
-								"flex h-9 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
-							)}
-						>
-							<CurrencyPicker
-								onValueChange={setBudgetCurrency}
-								triggerClassName="h-full rounded-none border-r border-input px-3 shrink-0 focus-visible:ring-0"
-								triggerDisplay="flag+code"
-								triggerVariant="ghost"
-								value={budgetCurrency}
-							/>
-							<Input
-								className="h-full w-full border-0 bg-transparent px-3 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-								inputMode="decimal"
-								onChange={(e) => setBudgetAmount(e.target.value)}
-								placeholder={t("amount")}
-								type="number"
-								value={budgetAmount}
-							/>
-						</div>
+						<Label>{t("defaultCurrency")}</Label>
+						<CurrencyPicker
+							onValueChange={setPrimaryCurrency}
+							triggerDisplay="full"
+							value={primaryCurrency}
+						/>
 					</div>
 
 					{/* Billing periods */}
