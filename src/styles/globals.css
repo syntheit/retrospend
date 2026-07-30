@@ -374,11 +374,19 @@ input[type="number"]::-webkit-outer-spin-button {
  * frost, Firefox/Chrome-on-overflow-container get a clean solid-ish header.
  */
 .glass-surface {
-	/* Sticky table header: solid + opaque so it is NEVER see-through. Firefox
-	   drops backdrop-filter on sticky-in-overflow elements and doesn't render the
-	   oklab color-mix here, so a plain solid color is the only bulletproof choice.
-	   Frost lives on the non-sticky menus (.glass-popover) where it works. */
-	background-color: var(--accent);
+	/* Decently dark header, frosted where the engine allows it. Uses oklch WITH
+	   alpha (not color-mix — some Firefox builds silently drop the oklab color-mix
+	   here) so it stays a solid-ish dark surface even when backdrop-filter doesn't
+	   render. will-change nudges Firefox to composite the sticky header so the blur
+	   can actually apply on it inside the scroll container. */
+	background-color: oklch(0.83 0.018 55 / 0.92);
+	backdrop-filter: blur(10px) saturate(1.4);
+	-webkit-backdrop-filter: blur(10px) saturate(1.4);
+	will-change: transform;
+}
+
+.dark .glass-surface {
+	background-color: oklch(0.3 0 0 / 0.92);
 }
 
 .glass-popover {
