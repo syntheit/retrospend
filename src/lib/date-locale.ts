@@ -1,11 +1,13 @@
 import type { Locale } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
 import { es } from "date-fns/locale/es";
+import { ptBR } from "date-fns/locale/pt-BR";
 import { ru } from "date-fns/locale/ru";
 
 const DATE_LOCALE_MAP: Record<string, Locale> = {
 	en: enUS,
 	es: es,
+	"pt-BR": ptBR,
 	ru,
 };
 
