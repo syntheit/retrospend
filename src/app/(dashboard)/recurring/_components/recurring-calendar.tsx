@@ -7,7 +7,9 @@ import * as React from "react";
 import { BrandIcon } from "~/components/ui/BrandIcon";
 import { Button } from "~/components/ui/button";
 import { Calendar } from "~/components/ui/calendar";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { EmptyState } from "~/components/ui/empty-state";
+import { Skeleton } from "~/components/ui/skeleton";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { getDateFnsLocale } from "~/lib/date-locale";
 import { isProjectedOnDate } from "~/lib/recurring";
@@ -91,25 +93,22 @@ export function RecurringCalendar({
 
 	if (loading) {
 		return (
-			<div className="mx-auto w-full max-w-[320px] space-y-4 rounded-xl border border-border/40 bg-transparent p-4">
-				<div className="flex justify-center">
-					<div className="h-[240px] w-full animate-pulse rounded-lg bg-muted/30" />
+			<Card className="gap-0 py-0">
+				<CardContent className="flex justify-center p-4 pb-2">
+					<Skeleton className="h-[240px] w-full" />
+				</CardContent>
+				<div className="border-t p-4">
+					<Skeleton className="mb-3 h-3 w-20" />
+					<Skeleton className="h-10 w-full" />
 				</div>
-				<div className="h-[1px] bg-border/40" />
-				<div className="space-y-3">
-					<div className="h-3 w-20 animate-pulse rounded bg-muted/40" />
-					<div className="space-y-2">
-						<div className="h-10 animate-pulse rounded bg-muted/20" />
-					</div>
-				</div>
-			</div>
+			</Card>
 		);
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-[320px] flex-col overflow-hidden rounded-xl border border-border/40 bg-transparent shadow-sm">
+		<Card className="gap-0 overflow-hidden py-0">
 			{/* Calendar View */}
-			<div className="flex justify-center p-4 pb-2">
+			<CardContent className="flex justify-center p-4 pb-2">
 				<Calendar
 					className="pointer-events-auto p-0"
 					locale={dateFnsLocale}
@@ -147,27 +146,27 @@ export function RecurringCalendar({
 					onSelect={setSelectedDate}
 					selected={selectedDate}
 				/>
-			</div>
+			</CardContent>
 
 			{/* Details Section / Agenda Footer Panel */}
-			<div className="mt-2 border-border/50 border-t bg-secondary/5 p-4">
-				<div className="mb-3 flex items-center justify-between">
-					<h3 className="font-semibold text-[10px] text-muted-foreground tracking-wide">
+			<div className="border-t p-4">
+				<CardHeader className="mb-3 flex flex-row items-center justify-between p-0">
+					<h3 className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">
 						{selectedDate
 							? t("paymentsOnDate", { date: format(selectedDate, "MMM d", { locale: dateFnsLocale }) })
 							: t("upcomingPayments")}
 					</h3>
 					{selectedDate && (
 						<Button
-							className="h-auto p-0 font-medium text-[10px] text-muted-foreground hover:text-foreground"
 							onClick={() => setSelectedDate(undefined)}
+							size="sm"
 							type="button"
 							variant="ghost"
 						>
 							{t("clear")}
 						</Button>
 					)}
-				</div>
+				</CardHeader>
 
 				<div className="min-h-[100px] space-y-1.5">
 					{displayedPayments.length > 0 ? (
@@ -205,6 +204,6 @@ export function RecurringCalendar({
 					)}
 				</div>
 			</div>
-		</div>
+		</Card>
 	);
 }

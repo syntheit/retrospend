@@ -153,111 +153,110 @@ export default function RecurringPage() {
 
 	return (
 		<>
-			<SiteHeader title={t("title")} />
+			<SiteHeader
+				actions={
+					<Button className="h-8" onClick={openNewRecurring} size="sm">
+						<Plus className="mr-2 h-4 w-4" />
+						{t("addRecurring")}
+					</Button>
+				}
+				title={t("title")}
+			/>
 			<PageContent>
-				<div className="mx-auto w-full max-w-6xl">
-					<div className="flex items-start gap-6">
-						{/* Main column */}
-						<div className="min-w-0 flex-1 space-y-6">
-							<RecurringStatsCards
-								homeCurrency={homeCurrency}
+				<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+					{/* Main column */}
+					<div className="min-w-0 space-y-6 lg:col-span-8">
+						<RecurringStatsCards
+							homeCurrency={homeCurrency}
+							loading={isLoading}
+							serverTime={serverTime}
+							templates={templates}
+						/>
+
+						{/* Pending Payments */}
+						{pendingTemplates && pendingTemplates.length > 0 && (
+							<PendingPayments
+								onConfirm={(id) => confirmAndCreate.mutate({ id })}
+								pendingTemplates={pendingTemplates}
+								confirmingId={
+									confirmAndCreate.isPending
+										? (confirmAndCreate.variables?.id ?? null)
+										: null
+								}
+							/>
+						)}
+
+						<div className="space-y-4">
+							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<div>
+									<h2 className="font-semibold text-lg">
+										{t("yourSubscriptions")}
+									</h2>
+									<p className="text-muted-foreground text-sm">
+										{t("subscriptionsDescription")}
+									</p>
+								</div>
+								{hasTemplates && (
+									<div className="flex items-center gap-2">
+										<ExpandableSearch
+											onChange={setSearchQuery}
+											placeholder={t("searchPlaceholder")}
+											value={searchQuery}
+											slashFocus
+										/>
+										<Select
+											onValueChange={(v) => setSortBy(v as SortKey)}
+											value={sortBy}
+										>
+											<SelectTrigger className="w-[160px] shrink-0">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="nextPayment">
+													{t("sortNextPayment")}
+												</SelectItem>
+												<SelectItem value="amountDesc">
+													{t("sortAmountHighLow")}
+												</SelectItem>
+												<SelectItem value="amountAsc">
+													{t("sortAmountLowHigh")}
+												</SelectItem>
+												<SelectItem value="nameAz">{t("sortNameAz")}</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+							</div>
+
+							<RecurringList
+								loading={isLoading}
+								onCreate={openNewRecurring}
+								onDelete={handleDelete}
+								onEdit={handleEdit}
+								onResetSearch={() => setSearchQuery("")}
+								onTogglePause={handleTogglePause}
+								onViewHistory={setHistoryTemplateId}
+								searchActive={searchQuery.trim().length > 0}
+								templates={filteredTemplates}
+							/>
+						</div>
+					</div>
+
+					{/* Sidebar — hidden below lg, hidden when no templates */}
+					{(isLoading || hasTemplates) && (
+						<aside className="sticky top-6 hidden space-y-6 lg:col-span-4 lg:block">
+							<RecurringCalendar
 								loading={isLoading}
 								serverTime={serverTime}
 								templates={templates}
 							/>
-
-							{/* Pending Payments */}
-							{pendingTemplates && pendingTemplates.length > 0 && (
-								<PendingPayments
-									onConfirm={(id) => confirmAndCreate.mutate({ id })}
-									pendingTemplates={pendingTemplates}
-									confirmingId={
-										confirmAndCreate.isPending
-											? (confirmAndCreate.variables?.id ?? null)
-											: null
-									}
-								/>
-							)}
-
-							<div className="space-y-3">
-								<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-									<div>
-										<h2 className="font-semibold text-lg">
-											{t("yourSubscriptions")}
-										</h2>
-										<p className="text-muted-foreground text-sm">
-											{t("subscriptionsDescription")}
-										</p>
-									</div>
-									<div className="flex items-center gap-2">
-										{hasTemplates && (
-											<>
-												<ExpandableSearch
-													onChange={setSearchQuery}
-													placeholder={t("searchPlaceholder")}
-													value={searchQuery}
-													slashFocus
-												/>
-												<Select
-													onValueChange={(v) => setSortBy(v as SortKey)}
-													value={sortBy}
-												>
-													<SelectTrigger className="w-[160px] shrink-0">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="nextPayment">
-															{t("sortNextPayment")}
-														</SelectItem>
-														<SelectItem value="amountDesc">
-															{t("sortAmountHighLow")}
-														</SelectItem>
-														<SelectItem value="amountAsc">
-															{t("sortAmountLowHigh")}
-														</SelectItem>
-														<SelectItem value="nameAz">{t("sortNameAz")}</SelectItem>
-													</SelectContent>
-												</Select>
-											</>
-										)}
-										<Button
-											aria-label={t("addRecurring")}
-											onClick={openNewRecurring}
-										>
-											<Plus className="h-4 w-4 sm:mr-2" />
-											<span className="hidden sm:inline">{t("addRecurring")}</span>
-										</Button>
-									</div>
-								</div>
-
-								<RecurringList
-									loading={isLoading}
-									onCreate={openNewRecurring}
-									onDelete={handleDelete}
-									onEdit={handleEdit}
-									onTogglePause={handleTogglePause}
-									onViewHistory={setHistoryTemplateId}
-									templates={filteredTemplates}
-								/>
-							</div>
-						</div>
-
-						{/* Sidebar — hidden below lg, hidden when no templates */}
-						{(isLoading || hasTemplates) && (
-							<aside className="sticky top-6 hidden w-[280px] shrink-0 space-y-4 lg:block">
-								<RecurringCalendar
-									loading={isLoading}
-									serverTime={serverTime}
-									templates={templates}
-								/>
-								<RecurringProjections
-									homeCurrency={homeCurrency}
-									loading={isLoading}
-									templates={templates}
-								/>
-							</aside>
-						)}
-					</div>
+							<RecurringProjections
+								homeCurrency={homeCurrency}
+								loading={isLoading}
+								templates={templates}
+							/>
+						</aside>
+					)}
 				</div>
 			</PageContent>
 

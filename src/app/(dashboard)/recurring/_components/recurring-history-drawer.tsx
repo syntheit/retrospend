@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { CategoryChip } from "~/components/category-chip";
+import { EmptyState } from "~/components/ui/empty-state";
 import {
 	Sheet,
 	SheetContent,
@@ -14,8 +15,10 @@ import {
 } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { formatExpenseDate } from "~/lib/format";
 import { FREQUENCY_LABELS } from "~/lib/recurring";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 interface RecurringHistoryDrawerProps {
@@ -30,6 +33,7 @@ export function RecurringHistoryDrawer({
 	const isOpen = templateId !== null;
 	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
+	const isMobile = useIsMobile();
 
 	const { data, isLoading, isError, refetch } = api.recurring.get.useQuery(
 		{ id: templateId ?? "" },
@@ -46,8 +50,13 @@ export function RecurringHistoryDrawer({
 		<Sheet onOpenChange={(open) => !open && onClose()} open={isOpen}>
 			<SheetContent
 				aria-label="Payment history"
-				className="w-full gap-0 sm:max-w-full md:max-w-[420px] lg:max-w-[480px]"
-				side="right"
+				className={cn(
+					"gap-0",
+					isMobile
+						? "max-h-[85dvh] w-full"
+						: "w-full sm:max-w-full md:max-w-[420px] lg:max-w-[480px]",
+				)}
+				side={isMobile ? "bottom" : "right"}
 			>
 				<SheetHeader className="border-b px-6 py-4 pr-12">
 					<SheetTitle>{t("paymentHistory")}</SheetTitle>
@@ -108,15 +117,11 @@ export function RecurringHistoryDrawer({
 					)}
 
 					{data && expenses.length === 0 && (
-						<div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-							<Receipt className="h-8 w-8 text-muted-foreground/40" />
-							<p className="text-muted-foreground text-sm">
-								{t("noPaymentHistoryYet")}
-							</p>
-							<p className="text-muted-foreground/60 text-xs">
-								{t("paymentsWillAppear")}
-							</p>
-						</div>
+						<EmptyState
+							description={t("paymentsWillAppear")}
+							icon={Receipt}
+							title={t("noPaymentHistoryYet")}
+						/>
 					)}
 
 					{data && expenses.length > 0 && (
@@ -127,7 +132,7 @@ export function RecurringHistoryDrawer({
 									<p className="font-semibold text-sm tabular-nums">
 										{formatCurrency(totalSpent, data.currency)}
 									</p>
-									<p className="text-muted-foreground text-[10px]">
+									<p className="text-muted-foreground text-xs">
 										{t("totalSpent")}
 									</p>
 								</div>
@@ -135,7 +140,7 @@ export function RecurringHistoryDrawer({
 									<p className="font-semibold text-sm tabular-nums">
 										{expenses.length}
 									</p>
-									<p className="text-muted-foreground text-[10px]">{t("payments")}</p>
+									<p className="text-muted-foreground text-xs">{t("payments")}</p>
 								</div>
 								<div className="text-center">
 									<p className="font-semibold text-sm tabular-nums">
@@ -144,7 +149,7 @@ export function RecurringHistoryDrawer({
 											data.currency,
 										)}
 									</p>
-									<p className="text-muted-foreground text-[10px]">{t("average")}</p>
+									<p className="text-muted-foreground text-xs">{t("average")}</p>
 								</div>
 							</div>
 

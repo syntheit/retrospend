@@ -3,11 +3,11 @@
 import { TrendingUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
+import { Card, CardContent, CardHeader } from "~/components/ui/card";
+import { Skeleton } from "~/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { toMonthlyEquivalent } from "~/lib/recurring";
-import { cn } from "~/lib/utils";
 import type { RecurringTemplate } from "~/types/recurring";
 
 type ProjectionPeriod = "monthly" | "quarterly" | "annual";
@@ -69,9 +69,15 @@ export function RecurringProjections({
 
 	if (loading) {
 		return (
-			<Card className="border border-border bg-card">
-				<CardContent className="p-5">
-					<div className="h-16 animate-pulse rounded bg-muted/30" />
+			<Card>
+				<CardHeader className="flex flex-row items-center justify-between">
+					<div className="flex items-center gap-2 text-muted-foreground text-sm">
+						<TrendingUp className="h-4 w-4" />
+						<span>{t("projectedSpending")}</span>
+					</div>
+				</CardHeader>
+				<CardContent>
+					<Skeleton className="h-8 w-32" />
 				</CardContent>
 			</Card>
 		);
@@ -80,35 +86,28 @@ export function RecurringProjections({
 	if (activeTemplates.length === 0) return null;
 
 	return (
-		<Card className="border border-border bg-card">
-			<CardContent className="p-5">
-				{/* Header with toggle */}
-				<div className="mb-3 space-y-2">
-					<div className="flex items-center gap-2 text-muted-foreground text-sm">
-						<TrendingUp className="h-4 w-4" />
-						<span>{t("projectedSpending")}</span>
-					</div>
-					<div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
-						{(["monthly", "quarterly", "annual"] as const).map((p) => (
-							<Button
-								className={cn(
-									"flex-1 rounded-md px-2.5 py-1 text-xs",
-									period === p
-										? "bg-background text-foreground shadow-sm"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-								key={p}
-								onClick={() => setPeriod(p)}
-								type="button"
-								variant="ghost"
-								size="sm"
-							>
-								{t(`period_${p}`)}
-							</Button>
-						))}
-					</div>
+		<Card>
+			<CardHeader className="flex flex-row items-center justify-between">
+				<div className="flex items-center gap-2 text-muted-foreground text-sm">
+					<TrendingUp className="h-4 w-4" />
+					<span>{t("projectedSpending")}</span>
 				</div>
-
+				<ToggleGroup
+					onValueChange={(value) => {
+						if (value) setPeriod(value as ProjectionPeriod);
+					}}
+					size="sm"
+					type="single"
+					value={period}
+				>
+					{(["monthly", "quarterly", "annual"] as const).map((p) => (
+						<ToggleGroupItem className="cursor-pointer" key={p} value={p}>
+							{t(`period_${p}`)}
+						</ToggleGroupItem>
+					))}
+				</ToggleGroup>
+			</CardHeader>
+			<CardContent>
 				{/* Projected total */}
 				<div className="font-bold text-2xl tabular-nums tracking-tight">
 					{formatCurrency(projectedTotal, homeCurrency)}
