@@ -9,11 +9,14 @@ describe("matchSupportedLocale", () => {
 		expect(matchSupportedLocale("en")).toBe("en");
 		expect(matchSupportedLocale("es")).toBe("es");
 		expect(matchSupportedLocale("ru")).toBe("ru");
+		expect(matchSupportedLocale("pt-BR")).toBe("pt-BR");
 	});
 
 	it("matches regional and underscore variants by language", () => {
 		expect(matchSupportedLocale("es-MX")).toBe("es");
 		expect(matchSupportedLocale("ru_RU")).toBe("ru");
+		expect(matchSupportedLocale("pt_BR")).toBe("pt-BR");
+		expect(matchSupportedLocale("pt-PT")).toBe("pt-BR");
 	});
 
 	it("rejects unsupported and empty locales", () => {
@@ -32,6 +35,11 @@ describe("matchAcceptLanguage", () => {
 
 	it("preserves header order when qualities are equal", () => {
 		expect(matchAcceptLanguage("ru-RU,es-ES")).toBe("ru");
+	});
+
+	it("matches Brazilian Portuguese and generic Portuguese preferences", () => {
+		expect(matchAcceptLanguage("pt-BR")).toBe("pt-BR");
+		expect(matchAcceptLanguage("pt")).toBe("pt-BR");
 	});
 
 	it("ignores locales with zero quality", () => {
