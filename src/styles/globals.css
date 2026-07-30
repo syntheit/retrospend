@@ -362,31 +362,29 @@ input[type="number"]::-webkit-outer-spin-button {
 	text-decoration: var(--shiki-dark-text-decoration);
 }
 
-/* Frosted-glass surfaces — subtle backdrop-blur with opaque fallback */
+/*
+ * Frosted-glass surfaces
+ *
+ * Firefox quirk: backdrop-filter silently does nothing on sticky/fixed elements
+ * inside an overflow:auto/scroll ancestor (a known compositor limitation), even
+ * though @supports(backdrop-filter: blur(0)) reports true. The @supports fallback
+ * therefore cannot be relied upon. The fix: use a near-opaque base background
+ * (95 %+ of the surface token) so the header is always legible on its own.
+ * backdrop-filter is kept as a pure visual enhancement — Safari/iOS get the live
+ * frost, Firefox/Chrome-on-overflow-container get a clean solid-ish header.
+ */
 .glass-surface {
-	background-color: color-mix(in oklab, var(--background) 85%, transparent);
+	/* 95 % opacity: indistinguishable from solid in practice, never see-through */
+	background-color: color-mix(in oklab, var(--background) 95%, transparent);
+	/* Enhancement only — legibility does not depend on this rendering */
 	backdrop-filter: blur(8px) saturate(1.4);
 	-webkit-backdrop-filter: blur(8px) saturate(1.4);
 }
 
-@supports not (backdrop-filter: blur(0)) {
-	.glass-surface {
-		background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
-		backdrop-filter: none;
-		-webkit-backdrop-filter: none;
-	}
-}
-
 .glass-popover {
-	background-color: color-mix(in oklab, var(--popover) 88%, transparent);
+	/* 96 % opacity: popover is already a raised surface; tiny alpha lets Safari
+	   blur show a whisper of context without depending on it for legibility */
+	background-color: color-mix(in oklab, var(--popover) 96%, transparent);
 	backdrop-filter: blur(12px) saturate(1.5);
 	-webkit-backdrop-filter: blur(12px) saturate(1.5);
-}
-
-@supports not (backdrop-filter: blur(0)) {
-	.glass-popover {
-		background-color: var(--popover);
-		backdrop-filter: none;
-		-webkit-backdrop-filter: none;
-	}
 }

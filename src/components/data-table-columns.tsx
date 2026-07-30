@@ -341,7 +341,7 @@ function createExpenseColumns(
 				if (onOpenSheet) {
 					return (
 						<Button
-							className="h-8 w-8 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+							className="h-9 w-9 md:h-7 md:w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
 							onClick={() => onOpenSheet(row.original.id)}
 							size="icon"
 							variant="ghost"

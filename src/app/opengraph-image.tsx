@@ -22,56 +22,118 @@ export default async function Image() {
 					justifyContent: "center",
 					width: "100%",
 					height: "100%",
-					backgroundColor: OG.BG,
+					background: `linear-gradient(135deg, ${OG.DARK_BG_FROM} 0%, ${OG.DARK_BG_VIA} 55%, ${OG.DARK_BG_TO} 100%)`,
 					fontFamily: "DM Sans",
 					position: "relative",
+					overflow: "hidden",
 				}}
 			>
-				{/* Decorative blob */}
+				{/* Decorative depth circles — top-right */}
 				<div
 					style={{
 						position: "absolute",
-						top: -80,
-						left: -80,
-						width: 400,
-						height: 400,
-						borderRadius: 200,
-						background: `radial-gradient(circle, ${OG.PRIMARY}1F, transparent 70%)`,
+						top: -100,
+						right: -100,
+						width: 480,
+						height: 480,
+						borderRadius: 240,
+						background: "rgba(255,255,255,0.04)",
+					}}
+				/>
+				<div
+					style={{
+						position: "absolute",
+						top: -40,
+						right: -40,
+						width: 280,
+						height: 280,
+						borderRadius: 140,
+						background: "rgba(255,255,255,0.035)",
+					}}
+				/>
+				{/* Decorative depth circles — bottom-left */}
+				<div
+					style={{
+						position: "absolute",
+						bottom: -120,
+						left: -120,
+						width: 440,
+						height: 440,
+						borderRadius: 220,
+						background: "rgba(255,255,255,0.03)",
 					}}
 				/>
 
-				<BrandMark size={72} />
+				{/* Brand lockup */}
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 20,
+						marginBottom: 28,
+					}}
+				>
+					<BrandMark size={80} />
+				</div>
+
 				<span
 					style={{
-						fontSize: 44,
+						fontSize: 72,
 						fontWeight: 700,
-						color: OG.FG,
-						marginTop: 20,
-						letterSpacing: "-0.02em",
+						color: OG.DARK_FG,
+						letterSpacing: "-0.03em",
+						lineHeight: 1,
 					}}
 				>
 					Retrospend
 				</span>
+
 				<span
 					style={{
-						fontSize: 24,
+						fontSize: 26,
 						fontWeight: 400,
-						color: OG.MUTED_FG,
-						marginTop: 12,
+						color: OG.DARK_MUTED,
+						marginTop: 16,
+						letterSpacing: "0.01em",
 					}}
 				>
 					The Financial Multitool
 				</span>
-				<span
+
+				{/* Feature pills row */}
+				<div
 					style={{
-						fontSize: 18,
-						fontWeight: 400,
-						color: OG.MUTED_FG,
-						marginTop: 8,
+						display: "flex",
+						flexDirection: "row",
+						gap: 12,
+						marginTop: 40,
 					}}
 				>
-					Expenses, budgets, and wealth tracking.
-				</span>
+					{["Expense Tracking", "Budgets", "Wealth Overview"].map((label) => (
+						<div
+							key={label}
+							style={{
+								display: "flex",
+								alignItems: "center",
+								backgroundColor: OG.DARK_SURFACE,
+								border: `1px solid ${OG.DARK_BORDER}`,
+								borderRadius: 24,
+								padding: "9px 20px",
+							}}
+						>
+							<span
+								style={{
+									fontSize: 16,
+									fontWeight: 500,
+									color: OG.DARK_MUTED,
+									letterSpacing: "0.01em",
+								}}
+							>
+								{label}
+							</span>
+						</div>
+					))}
+				</div>
 			</div>
 		),
 		{ ...size, fonts },

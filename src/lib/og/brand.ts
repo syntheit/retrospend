@@ -11,6 +11,19 @@ export const OG = {
 	HEIGHT: 630,
 	RADIUS: 16,
 	CARD_SHADOW: "0 2px 16px rgba(0,0,0,0.06)",
+
+	// Dark hero aesthetic — matches design system Hero Card Pattern
+	DARK_BG_FROM: "#292524",   // stone-800
+	DARK_BG_VIA: "#1c1917",   // stone-900
+	DARK_BG_TO: "#0c0a09",    // stone-950
+	DARK_FG: "#fafaf9",        // stone-50
+	DARK_MUTED: "#a8a29e",     // stone-400
+	DARK_BORDER: "rgba(255,255,255,0.10)",
+	DARK_SURFACE: "rgba(255,255,255,0.06)",
+
+	// Accent colors for CTAs and highlights
+	EMERALD: "#10b981",        // emerald-500
+	EMERALD_DIM: "rgba(16,185,129,0.15)",
 } as const;
 
 // From user-avatar.tsx - WCAG AA 4.5:1 with white text
