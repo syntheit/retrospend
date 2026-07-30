@@ -47,5 +47,19 @@ docker exec "$PROD_CONTAINER" sh -c \
 | docker exec -i "$DEV_CONTAINER" sh -c \
   "PGPASSWORD='$DEV_PASSWORD' psql -q -v ON_ERROR_STOP=0 -U '$DEV_USER' -d '$DEV_DB'" >/dev/null
 
+# The dump was taken with --no-privileges (keeps the restore clean), so re-grant
+# the app role its table privileges. The app connects and does SET ROLE
+# retrospend_app for row-level security; without these grants it gets
+# "permission denied". --clean recreated the tables, so this must run every sync.
+docker exec -i "$DEV_CONTAINER" psql -U "$DEV_USER" -d "$DEV_DB" >/dev/null 2>&1 <<'GRANTS'
+GRANT USAGE ON SCHEMA public TO retrospend_app;
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA public TO retrospend_app;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO retrospend_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO retrospend_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO retrospend_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO retrospend_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO retrospend_app;
+GRANTS
+
 echo "Done. Dev db now mirrors production."
 echo "Layer any in-progress migrations on top with:  pnpm prisma migrate dev"
