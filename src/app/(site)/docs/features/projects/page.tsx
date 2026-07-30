@@ -1,13 +1,12 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
 import { Callout } from "../../_components/callout"
 import { DocsNav } from "../../_components/docs-nav"
 import { getAdjacentDocs } from "../../docs-config"
 
 export const metadata: Metadata = {
 	title: "Projects",
-	description: "Group shared expenses into trips, households, or any ongoing group.",
+	description: "Group shared expenses into a named project — with budgets, billing periods, and participant roles.",
 }
 
 const slug = "features/projects"
@@ -25,25 +24,16 @@ export default function ProjectsPage() {
 				</p>
 			</div>
 
-			<h2 id="project-types" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
-				Project Types
+			<h2 id="how-projects-work" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+				How projects work
 			</h2>
-			<div className="grid gap-3 sm:grid-cols-3">
-				{[
-					{ title: "Trip", desc: "Time-bound group expenses (vacations, weekend trips)." },
-					{ title: "Ongoing", desc: "Open-ended shared costs (roommates, couples)." },
-					{ title: "Solo", desc: "Personal project for tracking a specific spending goal." },
-					{ title: "One-Time", desc: "A single shared purchase (group gift, furniture)." },
-					{ title: "General", desc: "Catch-all for anything that doesn't fit the other types." },
-				].map((card) => (
-					<Card key={card.title} className="border-border bg-card">
-						<CardContent className="p-4">
-							<p className="font-semibold text-sm">{card.title}</p>
-							<p className="mt-1 text-muted-foreground text-sm">{card.desc}</p>
-						</CardContent>
-					</Card>
-				))}
-			</div>
+			<p className="mb-4 text-muted-foreground leading-relaxed">
+				A project is a named container for expenses — nothing more, nothing less. There are no fixed
+				types. A solo project is one where you are the only participant. An ongoing project is one
+				where you use billing periods to segment time. A one-time purchase is just a project you
+				archive when the expense is settled. The features (billing periods, budgets, roles, sharing)
+				are there when you need them; you do not have to use any of them.
+			</p>
 
 			<h2 id="creating-a-project" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
 				Creating a Project
@@ -53,7 +43,6 @@ export default function ProjectsPage() {
 			</p>
 			<ul className="mb-4 list-disc space-y-1.5 pl-6 text-muted-foreground text-sm leading-relaxed">
 				<li><strong>Name</strong>: what the project is called.</li>
-				<li><strong>Type</strong>: one of the five types above.</li>
 				<li><strong>Image</strong> (optional): displayed as a cover photo in the project header and in project lists.</li>
 				<li><strong>Default currency</strong>: the currency used for balances and summaries.</li>
 				<li><strong>Budget</strong> (optional): a spending cap for the project.</li>
