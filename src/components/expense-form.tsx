@@ -3,9 +3,9 @@
 import { AlertTriangle, Info, ListPlus, Trash2, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { forwardRef, useImperativeHandle, useState } from "react";
+import { ProjectVisual } from "~/components/project/project-visual";
 import { SplitWithPicker } from "~/components/split-with-picker";
 import { Button } from "~/components/ui/button";
-import { Chip } from "~/components/ui/chip";
 import {
 	Dialog,
 	DialogContent,
@@ -31,20 +31,11 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { getImageUrl } from "~/lib/image-url";
 import { cn } from "~/lib/utils";
 import { CurrencyAmountInput } from "./expense/form-sections/CurrencyAmountInput";
 import { DetailsSection } from "./expense/form-sections/DetailsSection";
 import { FrequencySection } from "./expense/form-sections/FrequencySection";
 import { SharedExpenseSection } from "./expense/form-sections/SharedExpenseSection";
-
-function ProjectDot({ imagePath }: { imagePath?: string | null }) {
-	const imageUrl = getImageUrl(imagePath ?? null);
-	if (imageUrl) {
-		return <img alt="" className="h-3.5 w-3.5 shrink-0 rounded-full object-cover" src={imageUrl} />;
-	}
-	return <span className="h-3 w-3 shrink-0 rounded-full bg-indigo-500" />;
-}
 
 interface ExpenseFormProps {
 	expenseId: string;
@@ -380,27 +371,56 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 								<div className="space-y-2">
 									<Label className="font-normal text-muted-foreground">{t("project")}</Label>
 									<div className="flex flex-wrap items-center gap-1.5">
-										<Chip
-											active={!selectedProjectId}
+										<Button
+											type="button"
 											onClick={() => handleProjectClick(null)}
+											variant="outline"
+											size="sm"
+											className={cn(
+												"h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+												!selectedProjectId
+													? "border-primary/40 bg-primary/10 dark:bg-primary/10 text-primary"
+													: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+											)}
 										>
 											{t("none")}
-										</Chip>
-										{selectableProjects.slice(0, visiblePillCount).map((project) => (
-											<Chip
-												key={project.id}
-												active={selectedProjectId === project.id}
-												onClick={() => handleProjectClick(project.id)}
-												className="gap-1.5"
-											>
-												<ProjectDot imagePath={project.imagePath} />
-												<span className="max-w-[120px] truncate">{project.name}</span>
-											</Chip>
-										))}
+										</Button>
+										{selectableProjects.slice(0, visiblePillCount).map((project) => {
+											const active = selectedProjectId === project.id;
+											return (
+												<Button
+													key={project.id}
+													type="button"
+													onClick={() => handleProjectClick(project.id)}
+													variant="outline"
+													size="sm"
+													className={cn(
+														"h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+														active
+															? "border-primary/40 bg-primary/10 dark:bg-primary/10 text-primary"
+															: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+													)}
+												>
+													<ProjectVisual
+														size="xs"
+														imagePath={project.imagePath}
+														projectName={project.name}
+													/>
+													<span className="max-w-[120px] truncate">{project.name}</span>
+												</Button>
+											);
+										})}
 										{selectableProjects.length > visiblePillCount && (
 											<Popover>
 												<PopoverTrigger asChild>
-													<Chip>{t("more", { count: selectableProjects.length - visiblePillCount })}</Chip>
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														className="h-auto gap-1.5 rounded-full px-2.5 py-1 text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground"
+													>
+														{t("more", { count: selectableProjects.length - visiblePillCount })}
+													</Button>
 												</PopoverTrigger>
 												<PopoverContent align="start" className="w-56 p-1">
 													<div className="flex flex-col">
@@ -416,7 +436,11 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 																onClick={() => handleProjectClick(project.id)}
 																type="button"
 															>
-																<ProjectDot imagePath={project.imagePath} />
+																<ProjectVisual
+																	size="xs"
+																	imagePath={project.imagePath}
+																	projectName={project.name}
+																/>
 																{project.name}
 															</Button>
 														))}
