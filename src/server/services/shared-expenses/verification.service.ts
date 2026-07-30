@@ -493,6 +493,8 @@ export class VerificationService {
 					id: true,
 					isLocked: true,
 					projectId: true,
+					createdByType: true,
+					createdById: true,
 					splitParticipants: {
 						select: {
 							id: true,
@@ -514,6 +516,19 @@ export class VerificationService {
 				throw new TRPCError({
 					code: "FORBIDDEN",
 					message: "This expense is settled and can no longer be changed",
+				});
+			}
+
+			// The creator can't remove just themselves — that would hide the
+			// expense from their own view while leaving it live for everyone else
+			// with them still the payer. They should delete it instead.
+			if (
+				txn.createdByType === this.actor.participantType &&
+				txn.createdById === this.actor.participantId
+			) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Delete the expense instead of removing yourself from it",
 				});
 			}
 

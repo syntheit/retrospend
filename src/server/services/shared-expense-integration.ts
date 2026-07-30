@@ -361,6 +361,7 @@ export async function listSharedParticipationsForUser(
 					: undefined,
 				canEdit,
 				canDelete,
+				isCreator,
 				myVerificationStatus: p.verificationStatus,
 				isLocked: tx.isLocked,
 				splitParticipants: tx.splitParticipants.map((sp) => {

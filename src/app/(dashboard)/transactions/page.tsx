@@ -532,10 +532,12 @@ function TransactionsContent() {
 								const isLocked = !!sharedCtx?.isLocked;
 								const isPending =
 									sharedCtx?.myVerificationStatus === "PENDING" && !isLocked;
-								// A participant can always remove their own split from an
-								// unsettled shared expense — this is the useful action for a
-								// plain participant with no edit/delete rights.
-								const canRemoveSelf = !isLocked;
+								// A participant can remove their own split from an unsettled
+								// shared expense — the useful action for a plain participant
+								// with no edit/delete rights. Creators are excluded: removing
+								// themselves would hide the expense from their own view while
+								// leaving it live for everyone else, so they delete instead.
+								const canRemoveSelf = !isLocked && !sharedCtx?.isCreator;
 								// Always render a menu for shared rows the user participates in:
 								// copy is always available, plus accept/reject/remove/delete
 								// depending on state and permissions.

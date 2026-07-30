@@ -37,6 +37,8 @@ export type NormalizedExpense = {
 		projectName?: string;
 		canEdit?: boolean;
 		canDelete?: boolean;
+		/** Whether the current user created this shared expense. */
+		isCreator?: boolean;
 		/** The current user's own verification status on this shared expense. */
 		myVerificationStatus?:
 			| "PENDING"
