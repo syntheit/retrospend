@@ -59,6 +59,11 @@ export const expenseSchema = z.object({
 			projectName: z.string().optional(),
 			canEdit: z.boolean().optional(),
 			canDelete: z.boolean().optional(),
+			isCreator: z.boolean().optional(),
+			myVerificationStatus: z
+				.enum(["PENDING", "ACCEPTED", "AUTO_ACCEPTED", "REJECTED"])
+				.optional(),
+			isLocked: z.boolean().optional(),
 			splitParticipants: z.array(z.object({
 				participantType: z.string(),
 				participantId: z.string(),
@@ -84,6 +89,13 @@ function createExpenseColumns(
 	hasSharedExpenses?: boolean,
 	t?: (key: string, values?: Record<string, string | number | Date>) => string,
 	locale?: string,
+	/**
+	 * When provided, the actions column renders a single "⋯" trigger that opens
+	 * the expense actions sheet (details + gated actions). This appears on every
+	 * row and every screen size, because details are always available. Takes
+	 * precedence over the legacy per-row dropdown menu.
+	 */
+	onOpenSheet?: (id: string) => void,
 ): ColumnDef<z.infer<typeof expenseSchema>>[] {
 	const columns: ColumnDef<z.infer<typeof expenseSchema>>[] = [
 		{
@@ -315,13 +327,30 @@ function createExpenseColumns(
 	});
 
 	// Add per-row actions column if handlers are provided
-	if (onRowEdit ?? onRowDelete ?? onRowDuplicate) {
+	if (onOpenSheet ?? onRowEdit ?? onRowDelete ?? onRowDuplicate) {
 		columns.push({
 			id: "actions",
 			header: () => null,
 			cell: ({ row }) => {
 				const isShared = row.original.source === "shared";
 				const sharedCtx = row.original.sharedContext;
+
+				// Preferred path: a single "⋯" trigger that opens the actions sheet
+				// (details + gated actions). Always visible on mobile for tap access;
+				// reveals on hover on desktop to keep the row clean.
+				if (onOpenSheet) {
+					return (
+						<Button
+							className="h-8 w-8 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+							onClick={() => onOpenSheet(row.original.id)}
+							size="icon"
+							variant="ghost"
+						>
+							<MoreHorizontal className="h-4 w-4" />
+							<span className="sr-only">{t?.("actions") ?? "Actions"}</span>
+						</Button>
+					);
+				}
 
 				if (isShared) {
 					const sharedTxId = sharedCtx?.transactionId;

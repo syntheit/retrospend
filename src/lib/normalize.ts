@@ -47,6 +47,14 @@ export type NormalizedExpense = {
 			| "REJECTED";
 		/** Whether the underlying shared transaction is settled/locked. */
 		isLocked?: boolean;
+		/** Per-participant split breakdown, used by the split column and detail sheet. */
+		splitParticipants?: {
+			participantType: string;
+			participantId: string;
+			shareAmount: number;
+			name: string;
+			avatarUrl: string | null;
+		}[];
 	};
 };
 

@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { createExpenseColumns } from "~/components/data-table-columns";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
+import { ExpenseActionsSheet } from "~/components/expense-actions-sheet";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
@@ -116,6 +117,9 @@ function TransactionsContent() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [displayedCount, setDisplayedCount] = useState(0);
 	const [categorySearch, setCategorySearch] = useState("");
+	// The expense whose detail/actions sheet is open (null = closed). Opened by the
+	// per-row "⋯" trigger on any screen, or by a plain row tap on mobile.
+	const [sheetExpenseId, setSheetExpenseId] = useState<string | null>(null);
 
 	const {
 		expenses: filteredExpenses,
@@ -325,6 +329,56 @@ function TransactionsContent() {
 		setSelectedExpenseIds(new Set());
 	};
 
+	// The expense backing the actions sheet, resolved from the current list.
+	const sheetExpense =
+		sheetExpenseId != null
+			? (filteredExpenses.find((e) => e.id === sheetExpenseId) ?? null)
+			: null;
+
+	// Shared copy-as-text used by both the context menu and the actions sheet.
+	const copyExpenseAsText = (expense: (typeof filteredExpenses)[number]) => {
+		const text = formatExpenseAsText(
+			expense.title,
+			expense.amount,
+			expense.currency,
+			new Date(expense.date),
+			formatCurrency,
+			locale,
+		);
+		void navigator.clipboard.writeText(text);
+		toast.success(t("copiedToClipboard"));
+	};
+
+	// Open the editor for either a personal or shared expense. Shared rows only
+	// open when the caller can actually edit — never hand a viewer a saveable
+	// editor the server will reject (the "impossible actions" invariant).
+	const openExpenseEditor = (expense: (typeof filteredExpenses)[number]) => {
+		if (expense.source === "shared") {
+			if (expense.sharedContext?.canEdit && expense.sharedContext.transactionId) {
+				openSharedExpense(expense.sharedContext.transactionId);
+				setSelectedExpenseIds(new Set());
+			} else {
+				toast.info(t("noEditPermission"));
+			}
+			return;
+		}
+		openExpense(expense.id);
+		setSelectedExpenseIds(new Set());
+	};
+
+	// Delete for either kind. Personal goes through the multi-delete confirm
+	// dialog (single id); shared goes through the shared-delete confirm dialog.
+	const deleteExpense = (expense: (typeof filteredExpenses)[number]) => {
+		if (expense.source === "shared") {
+			if (expense.sharedContext?.transactionId) {
+				setPendingSharedDelete(expense.sharedContext.transactionId);
+			}
+			return;
+		}
+		setSelectedExpenseIds(new Set([expense.id]));
+		setShowDeleteDialog(true);
+	};
+
 	const columns = useMemo(
 		() =>
 			createExpenseColumns(
@@ -352,6 +406,7 @@ function TransactionsContent() {
 				hasSharedExpenses,
 				t,
 				locale,
+				(id) => setSheetExpenseId(id),
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[
@@ -450,26 +505,16 @@ function TransactionsContent() {
 						onFilteredCountChange={setDisplayedCount}
 						onDeleteSelected={handleDeleteSelected}
 						onEditRow={(id) => {
+							// Impossible actions must not appear: a participant without
+							// edit rights (e.g. a project VIEWER a split was shared to)
+							// must never be handed a saveable editor the server rejects.
 							const expense = filteredExpenses.find((e) => e.id === id);
-							if (expense?.source === "shared") {
-								// Impossible actions must not appear: a participant without
-								// edit rights (e.g. a project VIEWER a split was shared to)
-								// must never be handed a saveable editor that the server
-								// will reject. Only open the editor when they can edit.
-								if (
-									expense.sharedContext?.canEdit &&
-									expense.sharedContext.transactionId
-								) {
-									openSharedExpense(expense.sharedContext.transactionId);
-									setSelectedExpenseIds(new Set());
-								} else {
-									toast.info(t("noEditPermission"));
-								}
-								return;
-							}
-							openExpense(id);
-							setSelectedExpenseIds(new Set());
+							if (expense) openExpenseEditor(expense);
 						}}
+						// Mobile: a plain row tap opens the detail/actions sheet instead
+						// of the edit modal, giving mobile participants a way to reach the
+						// contextual actions the desktop right-click menu provides.
+						onMobileRowActivate={(row) => setSheetExpenseId(row.id)}
 						emptyState={
 							<EmptyState
 								action={
@@ -970,6 +1015,24 @@ function TransactionsContent() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			{/* Expense detail + actions sheet (mobile tap target / read-only view) */}
+			<ExpenseActionsSheet
+				expense={sheetExpense}
+				onAccept={(txnId) => acceptSharedMutation.mutate({ txnId })}
+				onCopy={copyExpenseAsText}
+				onDelete={deleteExpense}
+				onDuplicate={handleDuplicate}
+				onEdit={openExpenseEditor}
+				onOpenChange={(open) => {
+					if (!open) setSheetExpenseId(null);
+				}}
+				onReject={(txnId) => {
+					setPendingReject(txnId);
+					setRejectReason("");
+				}}
+				onRemoveSelf={(txnId) => setPendingRemoveSelf(txnId)}
+				open={sheetExpense !== null}
+			/>
 		</>
 	);
 }
