@@ -7,6 +7,7 @@ import {
 	ArrowRight,
 	ArrowUpRight,
 	Check,
+	CheckCircle2,
 	ChevronUp,
 	Handshake,
 	Scale,
@@ -26,9 +27,11 @@ import {
 import { SettleUpDialog } from "~/components/settle-up-dialog";
 import { SiteHeader } from "~/components/site-header";
 import { UserAvatar } from "~/components/ui/user-avatar";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { EmptyState } from "~/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { StatCard } from "~/components/ui/stat-card";
 import { SegmentedToggle } from "~/components/ui/segmented-toggle";
 import { Skeleton } from "~/components/ui/skeleton";
 import { TableSearch } from "~/components/table-search";
@@ -388,95 +391,60 @@ export default function PeoplePage() {
 			<SiteHeader title={t("title")} />
 			<PageContent>
 				<div className="space-y-6">
-					{/* ── Balance Summary Cards ── */}
-					{!isLoading && (people?.length ?? 0) > 0 && (
-						<div className="grid gap-3 lg:grid-cols-3">
-							{/* Hero: Net Balance (dark gradient — the headline metric) */}
-							<Card className="relative overflow-hidden border-0 bg-gradient-to-br from-stone-800 via-stone-700 to-stone-900 text-white shadow-xl lg:col-span-1 dark:from-stone-900 dark:via-stone-800 dark:to-black">
-								<div className="absolute top-0 right-0 h-32 w-32 translate-x-10 -translate-y-10 rounded-full bg-white/5" />
-								<div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-8 translate-y-8 rounded-full bg-white/5" />
-								<CardContent className="relative flex h-full flex-col justify-between gap-4 p-5">
-									<div className="flex items-start justify-between">
-										<p className="font-medium text-sm text-white/70">{t("netBalance")}</p>
-										<div className="rounded-lg bg-white/10 p-2 backdrop-blur-sm">
-											<Scale className="h-4 w-4 text-white/90" />
-										</div>
-									</div>
-									<div className="space-y-1">
-										<p
+					{/* ── Balance Summary Cards (shared StatCard, semantic accents) ── */}
+					{(isLoading || (people?.length ?? 0) > 0) && (
+						<div className="grid gap-4 md:grid-cols-3">
+							<StatCard
+								description={
+									isLoading
+										? undefined
+										: `${stats.activeCount} ${stats.activeCount === 1 ? t("person") : t("personPlural")}`
+								}
+								icon={stats.net === 0 ? CheckCircle2 : Scale}
+								loading={isLoading}
+								subValue={
+									isLoading ? undefined : (
+										<Badge
 											className={cn(
-												"font-bold text-3xl tracking-tight tabular-nums sm:text-4xl",
+												"border-transparent",
 												stats.net > 0
-													? "text-emerald-300"
+													? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
 													: stats.net < 0
-														? "text-rose-300"
-														: "text-white",
+														? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+														: "bg-muted text-muted-foreground",
 											)}
+											variant="secondary"
 										>
-											{formatCurrency(Math.abs(stats.net), homeCurrency)}
-										</p>
-										<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-white/70 text-xs">
-											<span
-												className={cn(
-													"inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium",
-													stats.net > 0
-														? "bg-emerald-500/20 text-emerald-200"
-														: stats.net < 0
-															? "bg-rose-500/20 text-rose-200"
-															: "bg-white/10 text-white/80",
-												)}
-											>
-												{stats.net > 0
-													? t("theyOweYou")
-													: stats.net < 0
-														? t("youOweThem")
-														: t("settled")}
-											</span>
-											<span>
-												{stats.activeCount}{" "}
-												{stats.activeCount === 1 ? t("person") : t("personPlural")}
-											</span>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
+											{stats.net > 0
+												? t("theyOweYou")
+												: stats.net < 0
+													? t("youOweThem")
+													: t("settled")}
+										</Badge>
+									)
+								}
+								title={t("netBalance")}
+								value={formatCurrency(Math.abs(stats.net), homeCurrency)}
+								variant={
+									stats.net > 0 ? "emerald" : stats.net < 0 ? "amber" : "neutral"
+								}
+							/>
 
-							{/* Secondary: Receivable (emerald) + Payable (amber) */}
-							<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
-								<Card className="group relative overflow-hidden border-emerald-200/50 bg-gradient-to-br from-emerald-50 to-white transition-all duration-300 hover:shadow-emerald-100 hover:shadow-lg dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-card">
-									<div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-emerald-500/10 transition-transform duration-300 group-hover:scale-150" />
-									<CardContent className="relative flex h-full flex-col justify-between gap-4 p-5">
-										<div className="flex items-start justify-between">
-											<p className="font-medium text-emerald-700 text-sm dark:text-emerald-400">
-												{t("receivable")}
-											</p>
-											<div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/50">
-												<ArrowDownLeft className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-											</div>
-										</div>
-										<p className="font-bold text-2xl text-emerald-900 tabular-nums dark:text-emerald-100">
-											{formatCurrency(stats.receivable, homeCurrency)}
-										</p>
-									</CardContent>
-								</Card>
+							<StatCard
+								icon={ArrowDownLeft}
+								loading={isLoading}
+								title={t("receivable")}
+								value={formatCurrency(stats.receivable, homeCurrency)}
+								variant="emerald"
+							/>
 
-								<Card className="group relative overflow-hidden border-amber-200/50 bg-gradient-to-br from-amber-50 to-white transition-all duration-300 hover:shadow-amber-100 hover:shadow-lg dark:border-amber-900/50 dark:from-amber-950/30 dark:to-card">
-									<div className="absolute top-0 right-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-amber-500/10 transition-transform duration-300 group-hover:scale-150" />
-									<CardContent className="relative flex h-full flex-col justify-between gap-4 p-5">
-										<div className="flex items-start justify-between">
-											<p className="font-medium text-amber-700 text-sm dark:text-amber-400">
-												{t("payable")}
-											</p>
-											<div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/50">
-												<ArrowUpRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-											</div>
-										</div>
-										<p className="font-bold text-2xl text-amber-900 tabular-nums dark:text-amber-100">
-											{formatCurrency(stats.payable, homeCurrency)}
-										</p>
-									</CardContent>
-								</Card>
-							</div>
+							<StatCard
+								icon={ArrowUpRight}
+								loading={isLoading}
+								title={t("payable")}
+								value={formatCurrency(stats.payable, homeCurrency)}
+								variant="amber"
+							/>
 						</div>
 					)}
 
@@ -632,23 +600,7 @@ export default function PeoplePage() {
 							<div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
 								{/* biome-ignore lint/suspicious/noArrayIndexKey: static skeleton */}
 								{[...Array(6)].map((_, i) => (
-									<div
-										className="rounded-xl border border-border bg-card p-4 shadow-sm"
-										key={i}
-									>
-										<div className="flex items-center gap-3">
-											<Skeleton className="h-10 w-10 shrink-0 rounded-full" />
-											<div className="flex-1 space-y-1.5">
-												<Skeleton className="h-4 w-28" />
-												<Skeleton className="h-3 w-20" />
-											</div>
-										</div>
-										<div className="mt-4 space-y-1.5">
-											<Skeleton className="h-3 w-16" />
-											<Skeleton className="h-6 w-24" />
-										</div>
-										<Skeleton className="mt-3 h-9 w-full rounded-md" />
-									</div>
+									<Skeleton className="h-[168px] rounded-xl" key={i} />
 								))}
 							</div>
 						) : people && people.length > 0 ? (
@@ -664,24 +616,32 @@ export default function PeoplePage() {
 										const href = `/people/${person.identity.participantType}/${person.identity.participantId}`;
 										const hct = person.homeCurrencyTotal;
 
-										// Semantic accent by balance direction (design-system colors)
-										const accentBar = isSettled
-											? "before:bg-transparent"
+										// Semantic accent by balance direction (small chip + amount color only)
+										const balanceLabel = isSettled
+											? t("settled")
 											: direction === "they_owe_you"
-												? "before:bg-emerald-500"
-												: "before:bg-amber-500";
+												? t("theyOweYou")
+												: t("youOweThem");
+										const amountColor = isSettled
+											? "text-muted-foreground"
+											: direction === "they_owe_you"
+												? "text-emerald-600 dark:text-emerald-400"
+												: "text-amber-600 dark:text-amber-400";
+
+										const lastActivity =
+											person.mostRecentTransactionDescription
+												? person.mostRecentTransactionProject
+													? `${t("youSplit", { title: person.mostRecentTransactionDescription })} ${t("inProject", { project: person.mostRecentTransactionProject })} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
+													: `${t("youSplit", { title: person.mostRecentTransactionDescription })} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
+												: person.mostRecentTransactionDate
+													? t("lastActive", { time: formatDistanceToNow(new Date(person.mostRecentTransactionDate), { addSuffix: true }) })
+													: null;
 
 										return (
-											<div
+											<Card
 												className={cn(
-													"group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-all duration-300",
-													"before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-['']",
-													accentBar,
-													isSettled
-														? "opacity-70 hover:opacity-100 hover:shadow-md"
-														: direction === "they_owe_you"
-															? "hover:border-emerald-300/60 hover:shadow-emerald-100 hover:shadow-lg dark:hover:border-emerald-800/60"
-															: "hover:border-amber-300/60 hover:shadow-amber-100 hover:shadow-lg dark:hover:border-amber-800/60",
+													"group cursor-pointer gap-0 overflow-hidden p-0 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-xl active:translate-y-0 active:scale-[0.98] active:shadow-none",
+													isSettled && "opacity-70 hover:opacity-100",
 												)}
 												key={`${person.identity.participantType}:${person.identity.participantId}`}
 												onClick={() => router.push(href)}
@@ -691,124 +651,107 @@ export default function PeoplePage() {
 												role="button"
 												tabIndex={0}
 											>
-												{/* Top row: Avatar + Name */}
-												<div className="flex items-center gap-3">
-													<div className="relative shrink-0">
-														<UserAvatar
-															avatarUrl={person.identity.avatarUrl}
-															name={person.identity.name}
-															size="md"
-														/>
-														{person.unseenChangesCount > 0 && (
-															<span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-amber-500" />
+												<div className="flex flex-1 flex-col gap-3 p-4">
+													{/* Top row: Avatar + Name + direction badge */}
+													<div className="flex items-center gap-3">
+														<div className="relative shrink-0">
+															<UserAvatar
+																avatarUrl={person.identity.avatarUrl}
+																name={person.identity.name}
+																size="md"
+															/>
+															{person.unseenChangesCount > 0 && (
+																<span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-amber-500" />
+															)}
+														</div>
+														<div className="min-w-0 flex-1">
+															<div className="truncate font-semibold text-sm">
+																{person.identity.name}
+															</div>
+															<div className="truncate text-muted-foreground text-xs">
+																{person.identity.username
+																	? `@${person.identity.username}`
+																	: person.identity.email ?? null}
+															</div>
+														</div>
+														<Badge className="shrink-0" variant="outline">
+															{balanceLabel}
+														</Badge>
+													</div>
+
+													{/* Balance (color used only as a small accent on the amount) */}
+													<div>
+														{isSettled ? (
+															<span className="font-bold text-muted-foreground text-xl tabular-nums">
+																{formatCurrency(0, homeCurrency)}
+															</span>
+														) : hct && hct.canConvert ? (
+															<span className={cn("font-bold text-xl tabular-nums", amountColor)}>
+																{formatCurrency(Math.abs(hct.amount), homeCurrency)}
+															</span>
+														) : (
+															<div className="flex flex-wrap gap-1.5">
+																{person.balances.map((b) => (
+																	<span
+																		key={b.currency}
+																		className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1"
+																	>
+																		<span
+																			className={cn(
+																				"font-semibold text-sm leading-none tabular-nums",
+																				b.direction === "they_owe_you"
+																					? "text-emerald-600 dark:text-emerald-400"
+																					: "text-amber-600 dark:text-amber-400",
+																			)}
+																		>
+																			{formatCurrency(b.balance, b.currency)}
+																		</span>
+																		<span className="text-[10px] text-muted-foreground leading-none">
+																			{b.currency}
+																		</span>
+																	</span>
+																))}
+															</div>
 														)}
 													</div>
-													<div className="min-w-0 flex-1">
-														<div className="truncate font-semibold text-sm">
-															{person.identity.name}
-														</div>
-														<div className="truncate text-muted-foreground text-xs">
-															{person.identity.username
-																? `@${person.identity.username}`
-																: person.identity.email ?? null}
-														</div>
-													</div>
-												</div>
 
-												{/* Middle row: Balance */}
-												<div className="mt-4">
-													<div className="mb-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">
-														{isSettled
-															? t("settled")
-															: direction === "they_owe_you"
-																? t("theyOweYou")
-																: t("youOweThem")}
-													</div>
-													{isSettled ? (
-														<span className="font-bold text-muted-foreground text-xl tabular-nums">
-															{formatCurrency(0, homeCurrency)}
-														</span>
-													) : hct && hct.canConvert ? (
-														<span
-															className={cn(
-																"font-bold text-xl tabular-nums",
-																hct.amount > 0
-																	? "text-emerald-600 dark:text-emerald-400"
-																	: "text-amber-600 dark:text-amber-400",
-															)}
-														>
-															{formatCurrency(Math.abs(hct.amount), homeCurrency)}
-														</span>
-													) : (
-														<div className="flex flex-wrap gap-1.5">
-															{person.balances.map((b) => (
-																<span
-																	key={b.currency}
-																	className={cn(
-																		"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-																		b.direction === "they_owe_you"
-																			? "border-emerald-200/60 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30"
-																			: "border-amber-200/60 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30",
-																	)}
-																>
-																	<span
-																		className={cn(
-																			"font-semibold text-sm leading-none tabular-nums",
-																			b.direction === "they_owe_you"
-																				? "text-emerald-700 dark:text-emerald-300"
-																				: "text-amber-700 dark:text-amber-300",
-																		)}
-																	>
-																		{formatCurrency(b.balance, b.currency)}
-																	</span>
-																	<span className="text-[10px] text-muted-foreground leading-none">
-																		{b.currency}
-																	</span>
-																</span>
-															))}
+													{/* Last activity */}
+													{lastActivity && (
+														<div className="mt-auto truncate text-muted-foreground text-xs">
+															{lastActivity}
 														</div>
 													)}
 												</div>
 
-												{/* Settle button — full-width, comfortable touch target */}
+												{/* Action footer (mirrors ProjectCard footer) */}
 												{!isSettled && (
-													<Button
-														className="mt-3 h-9 w-full justify-center"
-														onClick={(e) => {
-															e.stopPropagation();
-															setSettleTarget({
-																participantType: person.identity.participantType as "user" | "guest" | "shadow",
-																participantId: person.identity.participantId,
-																name: person.identity.name,
-																avatarUrl: person.identity.avatarUrl,
-															});
-														}}
-														size="sm"
-														variant="outline"
+													<div
+														className="flex items-center border-t border-border px-2 py-2"
+														onClick={(e) => e.stopPropagation()}
 													>
-														<Handshake className="h-3.5 w-3.5" />
-														{formatSettleLabel(direction as "they_owe_you" | "you_owe_them", hct, homeCurrency, person.balances, formatCurrency, {
-															pay: (amount) => t("payAmount", { amount }),
-															request: (amount) => t("requestAmount", { amount }),
-														})}
-													</Button>
-												)}
-
-												{/* Bottom row: Last activity */}
-												{(person.mostRecentTransactionDescription || person.mostRecentTransactionDate) && (
-													<div className="mt-3 border-border/70 border-t pt-3">
-														<div className="truncate text-muted-foreground text-xs">
-															{person.mostRecentTransactionDescription
-																? person.mostRecentTransactionProject
-																	? `${t("youSplit", { title: person.mostRecentTransactionDescription })} ${t("inProject", { project: person.mostRecentTransactionProject })} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
-																	: `${t("youSplit", { title: person.mostRecentTransactionDescription })} · ${formatDistanceToNow(new Date(person.mostRecentTransactionDate!), { addSuffix: false }).replace("about ", "")}`
-																: person.mostRecentTransactionDate
-																	? t("lastActive", { time: formatDistanceToNow(new Date(person.mostRecentTransactionDate), { addSuffix: true }) })
-																	: null}
-														</div>
+														<Button
+															className="h-8 w-full justify-center"
+															onClick={(e) => {
+																e.stopPropagation();
+																setSettleTarget({
+																	participantType: person.identity.participantType as "user" | "guest" | "shadow",
+																	participantId: person.identity.participantId,
+																	name: person.identity.name,
+																	avatarUrl: person.identity.avatarUrl,
+																});
+															}}
+															size="sm"
+															variant="ghost"
+														>
+															<Handshake className="h-3.5 w-3.5" />
+															{formatSettleLabel(direction as "they_owe_you" | "you_owe_them", hct, homeCurrency, person.balances, formatCurrency, {
+																pay: (amount) => t("payAmount", { amount }),
+																request: (amount) => t("requestAmount", { amount }),
+															})}
+														</Button>
 													</div>
 												)}
-											</div>
+											</Card>
 										);
 									})}
 								</div>
