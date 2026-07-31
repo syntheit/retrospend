@@ -268,6 +268,8 @@
     "noLanguagesFound": "No languages found.",
     "defaultPrivacyMode": "Default Privacy Mode",
     "defaultPrivacyModeDescription": "Hide balances when opening the Wealth page",
+    "autoAcceptSplits": "Auto-accept shared expenses",
+    "autoAcceptSplitsDescription": "Expenses others add with you are accepted automatically — no approval step. Your revision history still records every change.",
     "behavior": "Behavior",
     "defaultExpenseDate": "Default Expense Date",
     "defaultExpenseDateDescription": "Pre-filled when creating a new expense",

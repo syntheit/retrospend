@@ -268,6 +268,8 @@
     "noLanguagesFound": "No se encontraron idiomas.",
     "defaultPrivacyMode": "Modo Privacidad",
     "defaultPrivacyModeDescription": "Ocultar saldos al abrir la página de Patrimonio",
+    "autoAcceptSplits": "Aceptar gastos compartidos automáticamente",
+    "autoAcceptSplitsDescription": "Los gastos que otros añaden contigo se aceptan automáticamente, sin paso de aprobación. Tu historial de revisiones sigue registrando cada cambio.",
     "behavior": "Comportamiento",
     "defaultExpenseDate": "Fecha de Gasto Predeterminada",
     "defaultExpenseDateDescription": "Se completa al crear un nuevo gasto",

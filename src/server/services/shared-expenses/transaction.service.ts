@@ -257,6 +257,18 @@ export class SharedTransactionService {
 				}
 			}
 
+			// Resolve auto-accept for non-actor user participants so their splits
+			// skip the manual approval gate when they've opted in.
+			const autoAcceptMap = await this.getAutoAcceptMap(
+				tx,
+				participants
+					.filter((p) => !sameParticipant(p, actor))
+					.map((p) => ({
+						participantType: p.participantType,
+						participantId: p.participantId,
+					})),
+			);
+
 			const transaction = await tx.sharedTransaction.create({
 				data: {
 					description: input.description,
@@ -274,17 +286,22 @@ export class SharedTransactionService {
 					projectId: input.projectId,
 					billingPeriodId,
 					splitParticipants: {
-						create: participants.map((p) => ({
-							participantType: p.participantType,
-							participantId: p.participantId,
-							shareAmount: p.shareAmount!,
-							sharePercentage: p.sharePercentage ?? null,
-							shareUnits: p.shareUnits ?? null,
-							verificationStatus: sameParticipant(p, actor)
-								? "ACCEPTED"
-								: "PENDING",
-							verifiedAt: sameParticipant(p, actor) ? new Date() : undefined,
-						})),
+						create: participants.map((p) => {
+							const { status, verifiedAt } = this.resolveVerification(
+								p,
+								actor,
+								autoAcceptMap,
+							);
+							return {
+								participantType: p.participantType,
+								participantId: p.participantId,
+								shareAmount: p.shareAmount!,
+								sharePercentage: p.sharePercentage ?? null,
+								shareUnits: p.shareUnits ?? null,
+								verificationStatus: status,
+								verifiedAt,
+							};
+						}),
 					},
 				},
 				include: { splitParticipants: true },
@@ -678,24 +695,42 @@ export class SharedTransactionService {
 					where: { transactionId: input.id },
 				});
 
+				const autoAcceptMap = await this.getAutoAcceptMap(
+					tx,
+					newParticipants
+						.filter((p) => !sameParticipant(p, actor))
+						.map((p) => ({
+							participantType: p.participantType,
+							participantId: p.participantId,
+						})),
+				);
+
 				await tx.splitParticipant.createMany({
-					data: newParticipants.map((p) => ({
-						transactionId: input.id,
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareAmount: p.shareAmount!,
-						sharePercentage: p.sharePercentage ?? null,
-						shareUnits: p.shareUnits ?? null,
-						verificationStatus: sameParticipant(p, actor)
-							? ("ACCEPTED" as const)
-							: ("PENDING" as const),
-						verifiedAt: sameParticipant(p, actor) ? new Date() : undefined,
-					})),
+					data: newParticipants.map((p) => {
+						const { status, verifiedAt } = this.resolveVerification(
+							p,
+							actor,
+							autoAcceptMap,
+						);
+						return {
+							transactionId: input.id,
+							participantType: p.participantType,
+							participantId: p.participantId,
+							shareAmount: p.shareAmount!,
+							sharePercentage: p.sharePercentage ?? null,
+							shareUnits: p.shareUnits ?? null,
+							verificationStatus: status,
+							verifiedAt,
+						};
+					}),
 				});
 			} else {
 				// Even if splits didn't change structurally, reset verification
-				// because the transaction details changed
-				await tx.splitParticipant.updateMany({
+				// because the transaction details changed. A single updateMany can't
+				// branch per-row, so split the non-actor participants into those whose
+				// owner opted into auto-accept (re-accept immediately) and everyone
+				// else (reset to PENDING for manual re-approval).
+				const nonActorParticipants = await tx.splitParticipant.findMany({
 					where: {
 						transactionId: input.id,
 						NOT: {
@@ -703,12 +738,51 @@ export class SharedTransactionService {
 							participantId: actor.participantId,
 						},
 					},
-					data: {
-						verificationStatus: "PENDING",
-						verifiedAt: null,
-						rejectionReason: null,
-					},
+					select: { id: true, participantType: true, participantId: true },
 				});
+
+				const autoAcceptMap = await this.getAutoAcceptMap(
+					tx,
+					nonActorParticipants.map((p) => ({
+						participantType: p.participantType,
+						participantId: p.participantId,
+					})),
+				);
+
+				const autoAcceptIds: string[] = [];
+				const resetIds: string[] = [];
+				for (const p of nonActorParticipants) {
+					if (
+						p.participantType === "user" &&
+						autoAcceptMap.get(p.participantId) === true
+					) {
+						autoAcceptIds.push(p.id);
+					} else {
+						resetIds.push(p.id);
+					}
+				}
+
+				if (autoAcceptIds.length > 0) {
+					await tx.splitParticipant.updateMany({
+						where: { id: { in: autoAcceptIds } },
+						data: {
+							verificationStatus: "AUTO_ACCEPTED",
+							verifiedAt: new Date(),
+							rejectionReason: null,
+						},
+					});
+				}
+
+				if (resetIds.length > 0) {
+					await tx.splitParticipant.updateMany({
+						where: { id: { in: resetIds } },
+						data: {
+							verificationStatus: "PENDING",
+							verifiedAt: null,
+							rejectionReason: null,
+						},
+					});
+				}
 			}
 
 			// Mark all participants except the editor as having unseen changes
@@ -898,6 +972,59 @@ export class SharedTransactionService {
 				},
 			});
 		}
+	}
+
+	/**
+	 * Batch-fetches the autoAcceptSplits flag for the given user participants in a
+	 * single query and returns a Map keyed by user id. Non-user participants
+	 * (guest/shadow) are ignored since they can't approve splits anyway.
+	 */
+	private async getAutoAcceptMap(
+		tx: Prisma.TransactionClient,
+		participants: ParticipantRef[],
+	): Promise<Map<string, boolean>> {
+		const userIds = participants
+			.filter((p) => p.participantType === "user")
+			.map((p) => p.participantId);
+
+		const map = new Map<string, boolean>();
+		if (userIds.length === 0) return map;
+
+		const users = await tx.user.findMany({
+			where: { id: { in: userIds } },
+			select: { id: true, autoAcceptSplits: true },
+		});
+		for (const u of users) {
+			map.set(u.id, u.autoAcceptSplits);
+		}
+		return map;
+	}
+
+	/**
+	 * Resolves the verification status for a split participant on create/replace.
+	 * - The actor always ACCEPTED (they authored the change).
+	 * - A user participant who opted into auto-accept is AUTO_ACCEPTED, so the
+	 *   split skips the manual approval gate while still recording the change.
+	 * - Everyone else (opted-out users, guests, shadows) stays PENDING.
+	 */
+	private resolveVerification(
+		p: ParticipantRef,
+		actor: ParticipantRef,
+		autoAcceptMap: Map<string, boolean>,
+	): {
+		status: "ACCEPTED" | "AUTO_ACCEPTED" | "PENDING";
+		verifiedAt: Date | undefined;
+	} {
+		if (sameParticipant(p, actor)) {
+			return { status: "ACCEPTED", verifiedAt: new Date() };
+		}
+		if (
+			p.participantType === "user" &&
+			autoAcceptMap.get(p.participantId) === true
+		) {
+			return { status: "AUTO_ACCEPTED", verifiedAt: new Date() };
+		}
+		return { status: "PENDING", verifiedAt: undefined };
 	}
 
 	private computeSplits(
