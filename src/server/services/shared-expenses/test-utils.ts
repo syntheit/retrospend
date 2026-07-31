@@ -1217,18 +1217,42 @@ export function createStatefulDb() {
 		),
 		findMany: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
 			let results = [...projectParticipants.values()];
-			if (args.where?.projectId)
+			const where = args.where;
+			if (where?.projectId !== undefined) {
+				const pid = where.projectId as
+					| string
+					| { in?: string[]; notIn?: string[] };
+				if (typeof pid === "object" && pid !== null) {
+					if (Array.isArray(pid.in))
+						results = results.filter((pp) => pid.in!.includes(pp.projectId));
+					if (Array.isArray(pid.notIn))
+						results = results.filter((pp) => !pid.notIn!.includes(pp.projectId));
+				} else {
+					results = results.filter((pp) => pp.projectId === pid);
+				}
+			}
+			if (where?.participantType)
 				results = results.filter(
-					(pp) => pp.projectId === args.where!.projectId,
+					(pp) => pp.participantType === where.participantType,
 				);
-			if (args.where?.participantType)
+			if (where?.participantId)
 				results = results.filter(
-					(pp) => pp.participantType === args.where!.participantType,
+					(pp) => pp.participantId === where.participantId,
 				);
-			if (args.where?.participantId)
-				results = results.filter(
-					(pp) => pp.participantId === args.where!.participantId,
+			// Alias-aware role lookup uses an OR of {participantType, participantId}
+			// pairs (see buildCallerRoleMap). Match a row if it satisfies any pair.
+			if (Array.isArray(where?.OR)) {
+				const clauses = where.OR as Array<Record<string, unknown>>;
+				results = results.filter((pp) =>
+					clauses.some(
+						(c) =>
+							(c.participantType === undefined ||
+								c.participantType === pp.participantType) &&
+							(c.participantId === undefined ||
+								c.participantId === pp.participantId),
+					),
 				);
+			}
 			return results;
 		}),
 		delete: vi.fn((args: { where: { id: string } }) => {

@@ -10,6 +10,10 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { toUSD } from "../currency";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
+import {
+	buildCallerRoleMap,
+	deriveCanModify,
+} from "./shared-expenses/project-permissions";
 import type { RateCache } from "./rate-cache";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
@@ -287,21 +291,13 @@ export async function listSharedParticipationsForUser(
 			: [];
 	const projectMap = new Map(projects.map((p) => [p.id, p.name]));
 
-	// Batch-fetch user's project roles for permission checks
-	const projectRoleMap = new Map<string, string>();
-	if (projectIds.length > 0) {
-		const memberships = await (db as PrismaClient).projectParticipant.findMany({
-			where: {
-				projectId: { in: projectIds },
-				participantType: "user",
-				participantId: userId,
-			},
-			select: { projectId: true, role: true },
-		});
-		for (const m of memberships) {
-			projectRoleMap.set(m.projectId, m.role);
-		}
-	}
+	// Batch-fetch user's project roles for permission checks. ORGANIZER/EDITOR
+	// get edit/delete on every project expense; CONTRIBUTOR only their own.
+	const projectRoleMap = await buildCallerRoleMap(
+		db,
+		[{ participantType: "user", participantId: userId }],
+		projectIds,
+	);
 
 	return participations.map((p) => {
 		const tx = p.transaction;
@@ -319,23 +315,14 @@ export async function listSharedParticipationsForUser(
 
 		// Compute edit/delete permissions
 		const isCreator = tx.createdByType === "user" && tx.createdById === userId;
-		let canEdit = false;
-		let canDelete = false;
-		if (!tx.isLocked) {
-			if (tx.projectId) {
-				const role = projectRoleMap.get(tx.projectId);
-				if (role === "ORGANIZER" || role === "EDITOR") {
-					canEdit = true;
-					canDelete = true;
-				} else if (role === "CONTRIBUTOR" && isCreator) {
-					canEdit = true;
-					canDelete = true;
-				}
-			} else if (isCreator) {
-				canEdit = true;
-				canDelete = true;
-			}
-		}
+		const canModify = deriveCanModify({
+			isLocked: tx.isLocked,
+			projectId: tx.projectId,
+			isCreator,
+			roleMap: projectRoleMap,
+		});
+		const canEdit = canModify;
+		const canDelete = canModify;
 
 		return {
 			id: `shared:${tx.id}`,
