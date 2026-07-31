@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, VerificationStatus } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { logAudit } from "./audit-log";
+import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
@@ -166,52 +167,31 @@ export class VerificationService {
 			),
 		];
 
-		const [users, roles] = await Promise.all([
+		const [users, callerRoleMap] = await Promise.all([
 			userIds.size > 0
 				? this.db.user.findMany({
 						where: { id: { in: [...userIds] } },
 						select: { id: true, name: true, username: true, image: true },
 					})
 				: Promise.resolve([]),
-			projectIds.length > 0
-				? this.db.projectParticipant.findMany({
-						where: {
-							projectId: { in: projectIds },
-							participantType: this.actor.participantType,
-							participantId: this.actor.participantId,
-						},
-						select: { projectId: true, role: true },
-					})
-				: Promise.resolve([]),
+			buildCallerRoleMap(this.db, [this.actor], projectIds),
 		]);
 
 		const userMap = new Map(users.map((u) => [u.id, u]));
-		const callerRoleMap = new Map<string, string>();
-		for (const r of roles) callerRoleMap.set(r.projectId, r.role);
 
 		return participants.map((sp) => {
 			const txn = sp.transaction;
 			const isCreator =
 				txn.createdByType === this.actor.participantType &&
 				txn.createdById === this.actor.participantId;
-			let canEdit = false;
-			let canDelete = false;
-			if (!txn.isLocked) {
-				if (txn.projectId) {
-					const role = callerRoleMap.get(txn.projectId);
-					if (
-						role === "ORGANIZER" ||
-						role === "EDITOR" ||
-						(role === "CONTRIBUTOR" && isCreator)
-					) {
-						canEdit = true;
-						canDelete = true;
-					}
-				} else {
-					canEdit = isCreator;
-					canDelete = isCreator;
-				}
-			}
+			const canModify = deriveCanModify({
+				isLocked: txn.isLocked,
+				projectId: txn.projectId,
+				isCreator,
+				roleMap: callerRoleMap,
+			});
+			const canEdit = canModify;
+			const canDelete = canModify;
 			return {
 				participantId: sp.id,
 				shareAmount: serializeDecimal(sp.shareAmount),

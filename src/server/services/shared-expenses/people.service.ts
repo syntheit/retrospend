@@ -4,6 +4,7 @@ import { getImageUrl } from "~/server/storage";
 import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
 import { computeBalance, computeBalanceBatch } from "./balance";
 import { resolveClaimAliases } from "./identity";
+import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
@@ -513,6 +514,9 @@ export class PeopleService {
 		}
 
 		// Batch-fetch the caller's project roles for permission computation.
+		// Alias-aware: consider every identity the caller controls so an
+		// ORGANIZER/EDITOR keeps edit rights on cross-project expenses surfaced
+		// under a claimed-shadow alias, not just their canonical user ref.
 		const projectIds = [
 			...new Set(
 				rawTransactions
@@ -520,20 +524,11 @@ export class PeopleService {
 					.filter((id): id is string => id !== null),
 			),
 		];
-		const callerRoleMap = new Map<string, string>();
-		if (projectIds.length > 0) {
-			const roles = await this.db.projectParticipant.findMany({
-				where: {
-					projectId: { in: projectIds },
-					participantType: this.currentUserRef.participantType,
-					participantId: this.currentUserRef.participantId,
-				},
-				select: { projectId: true, role: true },
-			});
-			for (const r of roles) {
-				callerRoleMap.set(r.projectId, r.role);
-			}
-		}
+		const callerRoleMap = await buildCallerRoleMap(
+			this.db,
+			currentUserRefs,
+			projectIds,
+		);
 
 		const transactions: TransactionHistoryItem[] = rawTransactions.map(
 			(tx) => {
@@ -559,27 +554,19 @@ export class PeopleService {
 					txStatus = "active";
 				}
 
-				const isCreator =
-					tx.createdByType === this.currentUserRef.participantType &&
-					tx.createdById === this.currentUserRef.participantId;
-				let canEdit = false;
-				let canDelete = false;
-				if (!tx.isLocked) {
-					if (tx.projectId) {
-						const role = callerRoleMap.get(tx.projectId);
-						if (
-							role === "ORGANIZER" ||
-							role === "EDITOR" ||
-							(role === "CONTRIBUTOR" && isCreator)
-						) {
-							canEdit = true;
-							canDelete = true;
-						}
-					} else {
-						canEdit = isCreator;
-						canDelete = isCreator;
-					}
-				}
+				const isCreator = currentUserRefs.some(
+					(r) =>
+						tx.createdByType === r.participantType &&
+						tx.createdById === r.participantId,
+				);
+				const canModify = deriveCanModify({
+					isLocked: tx.isLocked,
+					projectId: tx.projectId,
+					isCreator,
+					roleMap: callerRoleMap,
+				});
+				const canEdit = canModify;
+				const canDelete = canModify;
 
 				const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
 
@@ -911,6 +898,7 @@ export class PeopleService {
 			const transactions = await this.mapTransactions(
 				slicedTransactions,
 				ref,
+				currentUserRefs,
 			);
 
 			const balances: BalanceCurrency[] = Object.entries(
@@ -951,7 +939,11 @@ export class PeopleService {
 			nextCursor = lastItem.date.toISOString();
 		}
 
-		const transactions = await this.mapTransactions(slicedTransactions, ref);
+		const transactions = await this.mapTransactions(
+			slicedTransactions,
+			ref,
+			currentUserRefs,
+		);
 
 		return {
 			transactions,
@@ -1005,6 +997,7 @@ export class PeopleService {
 			}>;
 		}>,
 		ref: ParticipantRef,
+		callerRefs: ParticipantRef[],
 	): Promise<TransactionHistoryItem[]> {
 		// Resolve paidBy + split participant names and avatars with deduplication.
 		const allRefs: ParticipantRef[] = [];
@@ -1030,20 +1023,14 @@ export class PeopleService {
 					.filter((id): id is string => id !== null),
 			),
 		];
-		const callerRoleMap = new Map<string, string>();
-		if (projectIds.length > 0) {
-			const roles = await this.db.projectParticipant.findMany({
-				where: {
-					projectId: { in: projectIds },
-					participantType: this.currentUserRef.participantType,
-					participantId: this.currentUserRef.participantId,
-				},
-				select: { projectId: true, role: true },
-			});
-			for (const r of roles) {
-				callerRoleMap.set(r.projectId, r.role);
-			}
-		}
+		// Alias-aware role lookup: an ORGANIZER/EDITOR keeps edit rights on every
+		// project expense in the list, including cross-project rows surfaced under
+		// a claimed-shadow alias.
+		const callerRoleMap = await buildCallerRoleMap(
+			this.db,
+			callerRefs,
+			projectIds,
+		);
 
 		return rawTransactions.map((tx) => {
 			const myPart = tx.splitParticipants.find(
@@ -1070,27 +1057,19 @@ export class PeopleService {
 				txStatus = "active";
 			}
 
-			const isCreator =
-				tx.createdByType === this.currentUserRef.participantType &&
-				tx.createdById === this.currentUserRef.participantId;
-			let canEdit = false;
-			let canDelete = false;
-			if (!tx.isLocked) {
-				if (tx.projectId) {
-					const role = callerRoleMap.get(tx.projectId);
-					if (
-						role === "ORGANIZER" ||
-						role === "EDITOR" ||
-						(role === "CONTRIBUTOR" && isCreator)
-					) {
-						canEdit = true;
-						canDelete = true;
-					}
-				} else {
-					canEdit = isCreator;
-					canDelete = isCreator;
-				}
-			}
+			const isCreator = callerRefs.some(
+				(r) =>
+					tx.createdByType === r.participantType &&
+					tx.createdById === r.participantId,
+			);
+			const canModify = deriveCanModify({
+				isLocked: tx.isLocked,
+				projectId: tx.projectId,
+				isCreator,
+				roleMap: callerRoleMap,
+			});
+			const canEdit = canModify;
+			const canDelete = canModify;
 
 			const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
 

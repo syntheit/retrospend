@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, ProjectParticipant } from "~prisma";
+import type { ParticipantRef } from "./types";
 
 type TransactionWithParticipants = Prisma.SharedTransactionGetPayload<{
 	include: { splitParticipants: true };
@@ -13,6 +14,85 @@ const ROLE_RANK: Record<string, number> = {
 	EDITOR: 2,
 	ORGANIZER: 3,
 };
+
+/**
+ * Builds a `projectId -> highest role` map for the caller across the given
+ * projects. The caller is expressed as one or more participant refs
+ * (`callerRefs`) so that all of a person's claim aliases — e.g. a claimed
+ * shadow and the user who claimed it — are considered together. If the caller
+ * holds a membership under any alias, that role is returned; when multiple
+ * aliases are members of the same project the highest-ranked role wins.
+ *
+ * This is what powers the read-side `canEdit`/`canDelete` flags: a project's
+ * ORGANIZER/EDITOR must see edit affordances on EVERY expense in that project,
+ * even ones they didn't create and even ones surfaced (in the person view)
+ * under a different alias identity. Keying the lookup on a single canonical ref
+ * would leave `role` undefined for those rows and wrongly gate the ⋯ menu off.
+ */
+export async function buildCallerRoleMap(
+	db: DbClient,
+	callerRefs: ParticipantRef[],
+	projectIds: string[],
+): Promise<Map<string, string>> {
+	const roleMap = new Map<string, string>();
+	if (projectIds.length === 0 || callerRefs.length === 0) return roleMap;
+
+	const memberships = await (db as PrismaClient).projectParticipant.findMany({
+		where: {
+			projectId: { in: projectIds },
+			OR: callerRefs.map((ref) => ({
+				participantType: ref.participantType,
+				participantId: ref.participantId,
+			})),
+		},
+		select: { projectId: true, role: true },
+	});
+
+	for (const m of memberships) {
+		const existing = roleMap.get(m.projectId);
+		if (
+			existing === undefined ||
+			(ROLE_RANK[m.role] ?? -1) > (ROLE_RANK[existing] ?? -1)
+		) {
+			roleMap.set(m.projectId, m.role);
+		}
+	}
+
+	return roleMap;
+}
+
+/**
+ * Derives the read-side edit/delete permission for a single transaction from a
+ * caller-role map (see {@link buildCallerRoleMap}). Mirrors the authoritative
+ * write-side rules in {@link assertCanModifyTransaction} exactly so the ⋯ menu
+ * never offers an action the mutation would reject, and never hides one it
+ * would allow:
+ *
+ * - Locked (settled) transactions: never editable.
+ * - Project-scoped: ORGANIZER/EDITOR may edit any expense; CONTRIBUTOR only
+ *   their own; VIEWER / non-members none.
+ * - Standalone (no project): only the creator.
+ *
+ * `isCreator` must already account for the caller's claim aliases.
+ */
+export function deriveCanModify(args: {
+	isLocked: boolean;
+	projectId: string | null;
+	isCreator: boolean;
+	roleMap: Map<string, string>;
+}): boolean {
+	const { isLocked, projectId, isCreator, roleMap } = args;
+	if (isLocked) return false;
+	if (projectId) {
+		const role = roleMap.get(projectId);
+		return (
+			role === "ORGANIZER" ||
+			role === "EDITOR" ||
+			(role === "CONTRIBUTOR" && isCreator)
+		);
+	}
+	return isCreator;
+}
 
 /**
  * Fetches the ProjectParticipant record for the given participant and verifies
