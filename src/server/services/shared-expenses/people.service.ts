@@ -354,11 +354,26 @@ export class PeopleService {
 			};
 		}
 
+		// Expand both parties into their claim aliases so a claimed shadow and its
+		// claiming user are treated as one person. Without this the header balance
+		// (which is alias-aware via computeBalance) would disagree with the
+		// transaction list / stats / settlement count below (which key by the raw
+		// ref) after a claim.
+		const { aliasesByKey } = await resolveClaimAliases(this.db, [
+			this.currentUserRef,
+			ref,
+		]);
+		const keyOf = (r: ParticipantRef) => `${r.participantType}:${r.participantId}`;
+		const currentUserRefs = aliasesByKey.get(keyOf(this.currentUserRef)) ?? [
+			this.currentUserRef,
+		];
+		const refAliases = aliasesByKey.get(keyOf(ref)) ?? [ref];
+
 		// Base where clause: all transactions where both people are involved
-		// (each is either the payer or a split participant).
+		// (each is either the payer or a split participant), across all aliases.
 		const baseAndClauses: Prisma.SharedTransactionWhereInput[] = [
-			this.involvementClause(this.currentUserRef),
-			this.involvementClause(ref),
+			this.involvementClauseForRefs(currentUserRefs),
+			this.involvementClauseForRefs(refAliases),
 		];
 
 		// Filtered where clause: applies status/projectId filters for the paginated list
@@ -441,18 +456,10 @@ export class PeopleService {
 					paidById: true,
 					splitParticipants: {
 						where: {
-							OR: [
-								{
-									participantType:
-										this.currentUserRef.participantType,
-									participantId:
-										this.currentUserRef.participantId,
-								},
-								{
-									participantType: ref.participantType,
-									participantId: ref.participantId,
-								},
-							],
+							OR: [...currentUserRefs, ...refAliases].map((r) => ({
+								participantType: r.participantType,
+								participantId: r.participantId,
+							})),
 						},
 						select: {
 							participantType: true,
@@ -462,26 +469,26 @@ export class PeopleService {
 					},
 				},
 			}),
-			// Settlement count between the two people
+			// Settlement count between the two people (across all claim aliases).
 			this.db.settlement.count({
 				where: {
 					OR: [
-						{
-							fromParticipantType:
-								this.currentUserRef.participantType,
-							fromParticipantId:
-								this.currentUserRef.participantId,
-							toParticipantType: ref.participantType,
-							toParticipantId: ref.participantId,
-						},
-						{
-							fromParticipantType: ref.participantType,
-							fromParticipantId: ref.participantId,
-							toParticipantType:
-								this.currentUserRef.participantType,
-							toParticipantId:
-								this.currentUserRef.participantId,
-						},
+						...currentUserRefs.flatMap((from) =>
+							refAliases.map((to) => ({
+								fromParticipantType: from.participantType,
+								fromParticipantId: from.participantId,
+								toParticipantType: to.participantType,
+								toParticipantId: to.participantId,
+							})),
+						),
+						...refAliases.flatMap((from) =>
+							currentUserRefs.map((to) => ({
+								fromParticipantType: from.participantType,
+								fromParticipantId: from.participantId,
+								toParticipantType: to.participantType,
+								toParticipantId: to.participantId,
+							})),
+						),
 					],
 				},
 			}),
@@ -768,11 +775,24 @@ export class PeopleService {
 			return { transactions: [], nextCursor: undefined };
 		}
 
+		// Expand both parties into their claim aliases so a claimed shadow and its
+		// claiming user are treated as one person (keeps the list/stats/settlement
+		// count consistent with the alias-aware balance).
+		const { aliasesByKey } = await resolveClaimAliases(this.db, [
+			this.currentUserRef,
+			ref,
+		]);
+		const keyOf = (r: ParticipantRef) => `${r.participantType}:${r.participantId}`;
+		const currentUserRefs = aliasesByKey.get(keyOf(this.currentUserRef)) ?? [
+			this.currentUserRef,
+		];
+		const refAliases = aliasesByKey.get(keyOf(ref)) ?? [ref];
+
 		// Base where clause: all transactions where both people are involved
-		// (each is either the payer or a split participant).
+		// (each is either the payer or a split participant), across all aliases.
 		const baseAndClauses: Prisma.SharedTransactionWhereInput[] = [
-			this.involvementClause(this.currentUserRef),
-			this.involvementClause(ref),
+			this.involvementClauseForRefs(currentUserRefs),
+			this.involvementClauseForRefs(refAliases),
 		];
 
 		const andClauses = [...baseAndClauses];
@@ -841,18 +861,10 @@ export class PeopleService {
 						paidById: true,
 						splitParticipants: {
 							where: {
-								OR: [
-									{
-										participantType:
-											this.currentUserRef.participantType,
-										participantId:
-											this.currentUserRef.participantId,
-									},
-									{
-										participantType: ref.participantType,
-										participantId: ref.participantId,
-									},
-								],
+								OR: [...currentUserRefs, ...refAliases].map((r) => ({
+									participantType: r.participantType,
+									participantId: r.participantId,
+								})),
 							},
 							select: {
 								participantType: true,
@@ -865,22 +877,22 @@ export class PeopleService {
 				this.db.settlement.count({
 					where: {
 						OR: [
-							{
-								fromParticipantType:
-									this.currentUserRef.participantType,
-								fromParticipantId:
-									this.currentUserRef.participantId,
-								toParticipantType: ref.participantType,
-								toParticipantId: ref.participantId,
-							},
-							{
-								fromParticipantType: ref.participantType,
-								fromParticipantId: ref.participantId,
-								toParticipantType:
-									this.currentUserRef.participantType,
-								toParticipantId:
-									this.currentUserRef.participantId,
-							},
+							...currentUserRefs.flatMap((from) =>
+								refAliases.map((to) => ({
+									fromParticipantType: from.participantType,
+									fromParticipantId: from.participantId,
+									toParticipantType: to.participantType,
+									toParticipantId: to.participantId,
+								})),
+							),
+							...refAliases.flatMap((from) =>
+								currentUserRefs.map((to) => ({
+									fromParticipantType: from.participantType,
+									fromParticipantId: from.participantId,
+									toParticipantType: to.participantType,
+									toParticipantId: to.participantId,
+								})),
+							),
 						],
 					},
 				}),
@@ -1310,8 +1322,21 @@ export class PeopleService {
 	private involvementClause(
 		ref: ParticipantRef,
 	): Prisma.SharedTransactionWhereInput {
+		return this.involvementClauseForRefs([ref]);
+	}
+
+	/**
+	 * Alias-aware variant of {@link involvementClause}: a transaction matches when
+	 * ANY of the given refs (a person and their claim aliases) paid for it or
+	 * appears as a split participant. Used so a claimed shadow and its claiming
+	 * user resolve to the same "involvement" and the history stays consistent with
+	 * the alias-aware balance.
+	 */
+	private involvementClauseForRefs(
+		refs: ParticipantRef[],
+	): Prisma.SharedTransactionWhereInput {
 		return {
-			OR: [
+			OR: refs.flatMap((ref) => [
 				{
 					paidByType: ref.participantType,
 					paidById: ref.participantId,
@@ -1324,7 +1349,7 @@ export class PeopleService {
 						},
 					},
 				},
-			],
+			]),
 		};
 	}
 
@@ -1402,12 +1427,26 @@ export class PeopleService {
 		const key = (c: { participantType: string; participantId: string }) =>
 			`${c.participantType}:${c.participantId}`;
 
+		// Snapshot every contributing contact's ORIGINAL stats up front. The
+		// canonical merged entry is written back into `contactStats` under the
+		// canonical key, which may collide with a raw contact key (the user's own
+		// key). Reading originals first avoids overwriting a contact's stats before
+		// they have been folded in — the order-dependent loss this fixes.
+		const originalByKey = new Map<
+			string,
+			NonNullable<ReturnType<typeof contactStats.get>>
+		>();
+		for (const contact of contacts) {
+			const s = contactStats.get(key(contact));
+			if (s) originalByKey.set(key(contact), s);
+		}
+
 		const merged: T[] = [];
 		const seenCanonical = new Set<string>();
 
 		for (const contact of contacts) {
 			const cKey = canonicalKey(contact);
-			const originalStats = contactStats.get(key(contact));
+			const originalStats = originalByKey.get(key(contact));
 			if (!originalStats) continue;
 
 			if (!seenCanonical.has(cKey)) {
@@ -1419,27 +1458,35 @@ export class PeopleService {
 					participantType: type as ParticipantType,
 					participantId: id,
 				};
-				// Seed the merged stats under the canonical key.
+				// Seed the merged entry from a ZERO baseline so that EVERY
+				// contributing contact (shadow AND user) is folded in below,
+				// regardless of iteration order. Seeding from the first contact's
+				// stats instead would silently drop the other contact's own counts
+				// (e.g. the user's own expenses when the shadow is seen first).
 				contactStats.set(cKey, {
-					...originalStats,
 					participantType: type as ParticipantType,
 					participantId: id,
-					projectIds: new Set(originalStats.projectIds),
+					mostRecentDate: new Date(0),
+					mostRecentDescription: null,
+					mostRecentProjectName: null,
+					pendingVerificationCount: 0,
+					unseenChangesCount: 0,
+					transactionCount: 0,
+					projectIds: new Set<string>(),
 				});
 				merged.push(canonicalContact);
-			} else if (key(contact) !== cKey) {
-				// Fold this contact's stats into the already-created canonical entry.
-				const target = contactStats.get(cKey)!;
-				target.transactionCount += originalStats.transactionCount;
-				target.pendingVerificationCount +=
-					originalStats.pendingVerificationCount;
-				target.unseenChangesCount += originalStats.unseenChangesCount;
-				for (const pid of originalStats.projectIds) target.projectIds.add(pid);
-				if (originalStats.mostRecentDate > target.mostRecentDate) {
-					target.mostRecentDate = originalStats.mostRecentDate;
-					target.mostRecentDescription = originalStats.mostRecentDescription;
-					target.mostRecentProjectName = originalStats.mostRecentProjectName;
-				}
+			}
+
+			// Fold this contact's own (snapshotted) stats into the canonical entry.
+			const target = contactStats.get(cKey)!;
+			target.transactionCount += originalStats.transactionCount;
+			target.pendingVerificationCount += originalStats.pendingVerificationCount;
+			target.unseenChangesCount += originalStats.unseenChangesCount;
+			for (const pid of originalStats.projectIds) target.projectIds.add(pid);
+			if (originalStats.mostRecentDate > target.mostRecentDate) {
+				target.mostRecentDate = originalStats.mostRecentDate;
+				target.mostRecentDescription = originalStats.mostRecentDescription;
+				target.mostRecentProjectName = originalStats.mostRecentProjectName;
 			}
 		}
 
