@@ -365,28 +365,48 @@ input[type="number"]::-webkit-outer-spin-button {
 /*
  * Frosted-glass surfaces
  *
- * Firefox quirk: backdrop-filter silently does nothing on sticky/fixed elements
- * inside an overflow:auto/scroll ancestor (a known compositor limitation), even
- * though @supports(backdrop-filter: blur(0)) reports true. The @supports fallback
- * therefore cannot be relied upon. The fix: use a near-opaque base background
- * (95 %+ of the surface token) so the header is always legible on its own.
- * backdrop-filter is kept as a pure visual enhancement — Safari/iOS get the live
- * frost, Firefox/Chrome-on-overflow-container get a clean solid-ish header.
+ * .glass-surface is used ONLY on the sticky <thead> of the data table, which lives
+ * inside <div class="overflow-hidden rounded-xl"> → <div class="overflow-auto"> (see
+ * data-table.tsx / ui/table.tsx). That is the exact shape of Firefox bug 1803813:
+ * backdrop-filter is dropped on a `position: sticky` element when an ANCESTOR has
+ * `border-radius` (> 3px) together with a non-visible `overflow`. Firefox applies the
+ * ancestor's rounded-rect clip before the backdrop is sampled, so the sticky header
+ * has no backdrop left to blur.
+ *   Bug (still open / UNCONFIRMED): https://bugzilla.mozilla.org/show_bug.cgi?id=1803813
+ *
+ * There is NO header-scoped CSS workaround that restores the live blur here:
+ *   - A ::before/::after blur layer is still a descendant of the same rounded+overflow
+ *     ancestor, so Firefox clips it identically — no blur.
+ *   - transform/translateZ/will-change on the sticky element only promotes a
+ *     compositing layer; it does not remove the ancestor rounded-clip that causes the
+ *     drop (we shipped `will-change: transform` before and it stayed broken).
+ *   - The only real fixes (remove the ancestor's border-radius/overflow, or clip it
+ *     with mask-image instead) live on the wrapper component, not this class, and would
+ *     change the table's rounded-card framing app-wide.
+ *   - @supports (backdrop-filter: blur(0)) is NOT a usable gate: Firefox reports true
+ *     yet still drops the effect for this structure.
+ *
+ * So the guarantee is a SOLID, opaque, decently-dark base (no alpha, no bleed-through)
+ * that is identical in every engine. backdrop-filter is layered on purely as progressive
+ * enhancement for Chrome/Safari (which render it fine); Firefox simply keeps the solid
+ * base. No color-mix(in oklab, …) here — some Firefox builds silently drop it.
  */
 .glass-surface {
-	/* Decently dark header, frosted where the engine allows it. Uses oklch WITH
-	   alpha (not color-mix — some Firefox builds silently drop the oklab color-mix
-	   here) so it stays a solid-ish dark surface even when backdrop-filter doesn't
-	   render. will-change nudges Firefox to composite the sticky header so the blur
-	   can actually apply on it inside the scroll container. */
-	background-color: oklch(0.83 0.018 55 / 0.92);
+	/* Solid, opaque, decently-dark. L 0.84 sits below --accent (0.88) and --background
+	   (0.95) so the header reads as clearly darker than the page/rows, on the same warm
+	   hue family as --accent/--border. Muted-foreground labels (L 0.45) keep ample
+	   contrast. Fully opaque → zero bleed-through in Firefox. */
+	background-color: oklch(0.84 0.02 55);
+	/* Progressive enhancement only (Chrome/Safari). Firefox drops this for the sticky
+	   header per bug 1803813 above and falls back to the solid base — which is fine. */
 	backdrop-filter: blur(10px) saturate(1.4);
 	-webkit-backdrop-filter: blur(10px) saturate(1.4);
-	will-change: transform;
 }
 
 .dark .glass-surface {
-	background-color: oklch(0.3 0 0 / 0.92);
+	/* Solid dark surface matching --accent (0.285) in dark mode; fully opaque. Reads
+	   clearly on the 0.1776 page background with light (L 0.77+) header labels. */
+	background-color: oklch(0.28 0 0);
 }
 
 .glass-popover {
