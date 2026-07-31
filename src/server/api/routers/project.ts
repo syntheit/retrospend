@@ -20,7 +20,12 @@ import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
 import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import {
+	getAutoAcceptMap,
+	resolveVerification,
+} from "~/server/services/shared-expenses/auto-accept";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import { sameParticipant } from "~/server/services/shared-expenses/types";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -1171,6 +1176,29 @@ export const projectRouter = createTRPCRouter({
 			}
 
 			await runInProjectTransaction(ctx.db, userId, async (tx) => {
+				// Resolve auto-accept once for the UNION of every user participant
+				// touched by the rebalance (existing splits across all affected
+				// expenses, plus the newcomer). A single batched query keeps this
+				// O(1) regardless of how many expenses are rebalanced. The actor is
+				// excluded — they always ACCEPTED via resolveVerification.
+				const autoAcceptMap = await getAutoAcceptMap(
+					tx,
+					[
+						{
+							participantType: input.participantType,
+							participantId: input.participantId,
+						},
+						...candidates
+							.filter((e) => rebalancedIds.includes(e.id))
+							.flatMap((e) =>
+								e.splitParticipants.map((sp) => ({
+									participantType: sp.participantType,
+									participantId: sp.participantId,
+								})),
+							),
+					].filter((p) => !sameParticipant(p, actor)),
+				);
+
 				for (const e of candidates) {
 					if (!rebalancedIds.includes(e.id)) continue;
 
@@ -1190,26 +1218,32 @@ export const projectRouter = createTRPCRouter({
 						participantId: e.paidById,
 					});
 
-					// Replace all split rows with the recomputed shares. Existing
-					// participants get PENDING (their share changed); the actor, if
-					// present, stays ACCEPTED.
+					// Replace all split rows with the recomputed shares. Everyone's
+					// share changed, so re-resolve verification per row: the actor
+					// stays ACCEPTED, auto-accept users (existing or newcomer) return
+					// to AUTO_ACCEPTED, everyone else is PENDING for manual approval.
 					await tx.splitParticipant.deleteMany({
 						where: { transactionId: e.id },
 					});
 					await tx.splitParticipant.createMany({
 						data: shares.map((p) => {
-							const isActor =
-								p.participantType === actor.participantType &&
-								p.participantId === actor.participantId;
-							return {
-								transactionId: e.id,
+							const ref = {
 								participantType: p.participantType as ParticipantType,
 								participantId: p.participantId,
+							};
+							const isActor = sameParticipant(ref, actor);
+							const { status, verifiedAt } = resolveVerification(
+								ref,
+								actor,
+								autoAcceptMap,
+							);
+							return {
+								transactionId: e.id,
+								participantType: ref.participantType,
+								participantId: p.participantId,
 								shareAmount: p.shareAmount,
-								verificationStatus: isActor
-									? ("ACCEPTED" as const)
-									: ("PENDING" as const),
-								verifiedAt: isActor ? new Date() : undefined,
+								verificationStatus: status,
+								verifiedAt,
 								hasUnseenChanges: !isActor,
 							};
 						}),
