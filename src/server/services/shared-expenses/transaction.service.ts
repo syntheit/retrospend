@@ -10,6 +10,7 @@ import {
 	requireProjectRole,
 } from "./project-permissions";
 import { type ParticipantRef, sameParticipant } from "./types";
+import { getAutoAcceptMap, resolveVerification } from "./auto-accept";
 
 type AppDb = PrismaClient;
 
@@ -975,37 +976,19 @@ export class SharedTransactionService {
 	}
 
 	/**
-	 * Batch-fetches the autoAcceptSplits flag for the given user participants in a
-	 * single query and returns a Map keyed by user id. Non-user participants
-	 * (guest/shadow) are ignored since they can't approve splits anyway.
+	 * Delegates to the shared {@link getAutoAcceptMap} helper. Kept as a thin
+	 * instance method so the create/update call sites read unchanged.
 	 */
-	private async getAutoAcceptMap(
+	private getAutoAcceptMap(
 		tx: Prisma.TransactionClient,
 		participants: ParticipantRef[],
 	): Promise<Map<string, boolean>> {
-		const userIds = participants
-			.filter((p) => p.participantType === "user")
-			.map((p) => p.participantId);
-
-		const map = new Map<string, boolean>();
-		if (userIds.length === 0) return map;
-
-		const users = await tx.user.findMany({
-			where: { id: { in: userIds } },
-			select: { id: true, autoAcceptSplits: true },
-		});
-		for (const u of users) {
-			map.set(u.id, u.autoAcceptSplits);
-		}
-		return map;
+		return getAutoAcceptMap(tx, participants);
 	}
 
 	/**
-	 * Resolves the verification status for a split participant on create/replace.
-	 * - The actor always ACCEPTED (they authored the change).
-	 * - A user participant who opted into auto-accept is AUTO_ACCEPTED, so the
-	 *   split skips the manual approval gate while still recording the change.
-	 * - Everyone else (opted-out users, guests, shadows) stays PENDING.
+	 * Delegates to the shared {@link resolveVerification} helper. Kept as a thin
+	 * instance method so the create/update call sites read unchanged.
 	 */
 	private resolveVerification(
 		p: ParticipantRef,
@@ -1015,16 +998,7 @@ export class SharedTransactionService {
 		status: "ACCEPTED" | "AUTO_ACCEPTED" | "PENDING";
 		verifiedAt: Date | undefined;
 	} {
-		if (sameParticipant(p, actor)) {
-			return { status: "ACCEPTED", verifiedAt: new Date() };
-		}
-		if (
-			p.participantType === "user" &&
-			autoAcceptMap.get(p.participantId) === true
-		) {
-			return { status: "AUTO_ACCEPTED", verifiedAt: new Date() };
-		}
-		return { status: "PENDING", verifiedAt: undefined };
+		return resolveVerification(p, actor, autoAcceptMap);
 	}
 
 	private computeSplits(

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { Button } from "~/components/ui/button";
 import { ConfirmDialog } from "~/components/ui/confirmation-dialog";
-import { RebalanceExpensesDialog } from "~/components/project/rebalance-expenses-dialog";
+import { useRebalanceOnAdd } from "~/hooks/use-rebalance-on-add";
 import { Input } from "~/components/ui/input";
 import {
 	Popover,
@@ -74,8 +74,8 @@ export function SplitWithPicker({
 	const utils = api.useUtils();
 
 	// After a member is added, offer to fold them into existing expenses.
-	const [rebalanceTarget, setRebalanceTarget] =
-		useState<SplitParticipant | null>(null);
+	// Single source of the rebalance-on-add prompt (shared with the Share dialog).
+	const { promptRebalance, rebalanceElement } = useRebalanceOnAdd(projectId);
 
 	const isOrganizer = projectDetail?.myRole === "ORGANIZER";
 
@@ -185,8 +185,12 @@ export function SplitWithPicker({
 		setSearch("");
 		setShowNewContact(false);
 		// Offer to fold the new member into existing project expenses.
-		setRebalanceTarget(added);
-	}, [pendingNonMember, projectId, addParticipantMutation, utils, onChange, value]);
+		promptRebalance({
+			participantType: added.participantType,
+			participantId: added.participantId,
+			name: added.name,
+		});
+	}, [pendingNonMember, projectId, addParticipantMutation, utils, onChange, value, promptRebalance]);
 
 	const handleRemove = useCallback(
 		(participantId: string, participantType: string) => {
@@ -566,15 +570,7 @@ export function SplitWithPicker({
 			/>
 
 			{/* Offer to include the newly-added member in existing expenses */}
-			{projectId && (
-				<RebalanceExpensesDialog
-					projectId={projectId}
-					participant={rebalanceTarget}
-					onOpenChange={(o) => {
-						if (!o) setRebalanceTarget(null);
-					}}
-				/>
-			)}
+			{rebalanceElement}
 		</div>
 	);
 }
