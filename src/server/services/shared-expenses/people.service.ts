@@ -3,6 +3,7 @@ import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
 import { computeBalance, computeBalanceBatch } from "./balance";
+import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
@@ -141,10 +142,10 @@ export class PeopleService {
 	 * balance table. The current approach runs 4 DB queries per contact
 	 * (concurrently), which is fine for v1.
 	 *
-	 * NOTE: When a shadow profile has been claimed by a verified user (claimedById
-	 * is set), the balance is only computed for the shadow profile ref. Transactions
-	 * created after the merge that use the user ref are NOT yet included. A future
-	 * improvement should detect claimed shadows and sum both refs' balances.
+	 * Claimed shadows: when a shadow profile has been claimed by a verified user
+	 * (claimedById set), its pre-claim history and the claiming user's post-claim
+	 * history refer to the same person. Such contacts are collapsed into a single
+	 * merged entry (keyed by the user ref) so balances are summed, not split.
 	 */
 	async listPeople(): Promise<PersonListItem[]> {
 		// Single query: all transactions the user is part of, with participant data.
@@ -246,10 +247,18 @@ export class PeopleService {
 
 				const allContacts = Array.from(contactStats.values());
 
-		// Filter out shadow profiles not owned by the current user.
-		// (The RLS policy on shadow_profile already enforces createdById=userId at
-		// the DB layer, so the findMany below naturally returns only owned shadows.)
-		const contacts = await this.filterAuthorizedContacts(allContacts);
+		// Filter out shadow profiles not visible to the current user.
+		// (The RLS policy on shadow_profile allows the creator plus any project the
+		// user shares with the shadow, so the findMany below naturally returns only
+		// visible shadows.)
+		const authorizedContacts = await this.filterAuthorizedContacts(allContacts);
+
+		// Collapse claimed shadows and their claiming users into a single merged
+		// contact (keyed by the user ref) so pre- and post-claim history unify.
+		const contacts = await this.mergeClaimedContacts(
+			authorizedContacts,
+			contactStats,
+		);
 
 		// Batch compute all balances in 4 queries total (instead of 4 per contact).
 		const [balanceResults, identities] = await Promise.all([
@@ -1361,6 +1370,80 @@ export class PeopleService {
 				c.participantType !== "shadow" ||
 				authorizedShadowIds.has(c.participantId),
 		);
+	}
+
+	/**
+	 * Collapses claimed-shadow contacts and their claiming users into a single
+	 * merged contact (keyed by the canonical user ref). Stats are summed and the
+	 * `contactStats` map is updated so the caller can look up the merged entry by
+	 * the canonical key. Contacts with no claim relationship pass through as-is.
+	 */
+	private async mergeClaimedContacts<
+		T extends { participantType: ParticipantType; participantId: string },
+	>(
+		contacts: T[],
+		contactStats: Map<
+			string,
+			{
+				participantType: ParticipantType;
+				participantId: string;
+				mostRecentDate: Date;
+				mostRecentDescription: string | null;
+				mostRecentProjectName: string | null;
+				pendingVerificationCount: number;
+				unseenChangesCount: number;
+				transactionCount: number;
+				projectIds: Set<string>;
+			}
+		>,
+	): Promise<T[]> {
+		const { canonicalKey } = await resolveClaimAliases(this.db, contacts);
+
+		const key = (c: { participantType: string; participantId: string }) =>
+			`${c.participantType}:${c.participantId}`;
+
+		const merged: T[] = [];
+		const seenCanonical = new Set<string>();
+
+		for (const contact of contacts) {
+			const cKey = canonicalKey(contact);
+			const originalStats = contactStats.get(key(contact));
+			if (!originalStats) continue;
+
+			if (!seenCanonical.has(cKey)) {
+				seenCanonical.add(cKey);
+				// Choose the canonical ref (user for a claimed shadow, else itself).
+				const [type, id] = cKey.split(/:(.*)/s) as [string, string];
+				const canonicalContact = {
+					...contact,
+					participantType: type as ParticipantType,
+					participantId: id,
+				};
+				// Seed the merged stats under the canonical key.
+				contactStats.set(cKey, {
+					...originalStats,
+					participantType: type as ParticipantType,
+					participantId: id,
+					projectIds: new Set(originalStats.projectIds),
+				});
+				merged.push(canonicalContact);
+			} else if (key(contact) !== cKey) {
+				// Fold this contact's stats into the already-created canonical entry.
+				const target = contactStats.get(cKey)!;
+				target.transactionCount += originalStats.transactionCount;
+				target.pendingVerificationCount +=
+					originalStats.pendingVerificationCount;
+				target.unseenChangesCount += originalStats.unseenChangesCount;
+				for (const pid of originalStats.projectIds) target.projectIds.add(pid);
+				if (originalStats.mostRecentDate > target.mostRecentDate) {
+					target.mostRecentDate = originalStats.mostRecentDate;
+					target.mostRecentDescription = originalStats.mostRecentDescription;
+					target.mostRecentProjectName = originalStats.mostRecentProjectName;
+				}
+			}
+		}
+
+		return merged;
 	}
 
 	/**

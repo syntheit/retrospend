@@ -305,6 +305,24 @@ function InviteJoinView({
 	const [email, setEmail] = useState("");
 	const [registered, setRegistered] = useState(false);
 	const [isExistingUser, setIsExistingUser] = useState(false);
+	// "Are you one of these people?" chooser: shown after a NEW guest registers
+	// if the project has unclaimed ghosts they might already be.
+	const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
+	const [showGhostChooser, setShowGhostChooser] = useState(false);
+
+	// Unclaimed ghosts in this project, offered so the guest links instead of
+	// creating a duplicate. Only fetched once a guest session exists.
+	const { data: projectGhosts } = api.claim.projectGhosts.useQuery(
+		{ linkId },
+		{ enabled: guestSessionId !== null },
+	);
+
+	const linkGhostMutation = api.claim.linkGuestToGhost.useMutation({
+		onSuccess: () => {
+			setShowGhostChooser(false);
+			setRegistered(true);
+		},
+	});
 
 	const registerMutation = api.guest.register.useMutation({
 		onSuccess: (data) => {
@@ -314,7 +332,9 @@ function InviteJoinView({
 			} else {
 				localStorage.setItem("guest_session_token", data.sessionToken);
 				localStorage.setItem("guest_project_id", data.projectId);
-				setRegistered(true);
+				setGuestSessionId(data.guestSessionId);
+				// Defer the success screen: offer the ghost chooser first.
+				setShowGhostChooser(true);
 			}
 		},
 	});
@@ -338,6 +358,81 @@ function InviteJoinView({
 			window.location.href = `/projects/${projectId}`;
 		}
 	};
+
+	// If the chooser is showing but the project has no unclaimed ghosts, skip it.
+	useEffect(() => {
+		if (
+			showGhostChooser &&
+			projectGhosts !== undefined &&
+			projectGhosts.length === 0
+		) {
+			setShowGhostChooser(false);
+			setRegistered(true);
+		}
+	}, [showGhostChooser, projectGhosts]);
+
+	// ── "Are you one of these people?" chooser ──
+	if (showGhostChooser && projectGhosts && projectGhosts.length > 0) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background p-4">
+				<Card className="w-full max-w-md">
+					<CardContent className="flex flex-col gap-4 p-8">
+						<div className="text-center">
+							<h1 className="font-bold text-xl">Are you one of these people?</h1>
+							<p className="mt-1 text-muted-foreground text-sm">
+								Someone may have already added you to{" "}
+								<span className="font-medium text-foreground">
+									{linkInfo.projectName}
+								</span>
+								. Pick yourself to keep your existing history, or skip to join
+								as a new person.
+							</p>
+						</div>
+
+						{linkGhostMutation.isError && (
+							<div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-destructive text-sm">
+								{linkGhostMutation.error.message}
+							</div>
+						)}
+
+						<div className="flex flex-col gap-2">
+							{projectGhosts.map((ghost) => (
+								<Button
+									className="justify-start gap-2"
+									disabled={linkGhostMutation.isPending}
+									key={ghost.id}
+									onClick={() =>
+										guestSessionId &&
+										linkGhostMutation.mutate({
+											linkId,
+											guestSessionId,
+											shadowId: ghost.id,
+										})
+									}
+									variant="outline"
+								>
+									<Users className="h-4 w-4" />
+									{ghost.name}
+								</Button>
+							))}
+						</div>
+
+						<Button
+							className="w-full"
+							disabled={linkGhostMutation.isPending}
+							onClick={() => {
+								setShowGhostChooser(false);
+								setRegistered(true);
+							}}
+							variant="ghost"
+						>
+							None of these — I&apos;m new
+						</Button>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
 
 	// ── Success state ──
 	if (registered) {

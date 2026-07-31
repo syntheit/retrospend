@@ -25,21 +25,53 @@ function createMockDb(
 		currency: string;
 	}[],
 ) {
+	// Participant/paidBy conditions may be expressed either flat
+	// (`participantType`/`participantId`) or as an `OR` list of refs — the claimed
+	// -shadow alias expansion emits the latter. Normalise to a matcher.
+	const participantMatcher = (w: Record<string, unknown>) => {
+		const or = w.OR as
+			| Array<{ participantType?: string; participantId?: string }>
+			| undefined;
+		if (or) {
+			return (ref: ParticipantRef) =>
+				or.some(
+					(c) =>
+						c.participantType === ref.participantType &&
+						c.participantId === ref.participantId,
+				);
+		}
+		return (ref: ParticipantRef) =>
+			w.participantType === ref.participantType &&
+			w.participantId === ref.participantId;
+	};
+	const payerMatcher = (tx: Record<string, unknown>) => {
+		const or = tx.OR as
+			| Array<{ paidByType?: string; paidById?: string }>
+			| undefined;
+		if (or) {
+			return (ref: ParticipantRef) =>
+				or.some(
+					(c) =>
+						c.paidByType === ref.participantType &&
+						c.paidById === ref.participantId,
+				);
+		}
+		return (ref: ParticipantRef) =>
+			tx.paidByType === ref.participantType &&
+			tx.paidById === ref.participantId;
+	};
+
 	return {
 		splitParticipant: {
 			findMany: vi.fn(({ where }: { where: Record<string, unknown> }) => {
-				const w = where as {
-					participantType: string;
-					participantId: string;
-					transaction: { paidByType: string; paidById: string };
-				};
+				const matchesParticipant = participantMatcher(where);
+				const matchesPayer = payerMatcher(
+					where.transaction as Record<string, unknown>,
+				);
 				return splits
 					.filter(
 						(s) =>
-							s.participant.participantType === w.participantType &&
-							s.participant.participantId === w.participantId &&
-							s.payer.participantType === w.transaction.paidByType &&
-							s.payer.participantId === w.transaction.paidById,
+							matchesParticipant(s.participant) && matchesPayer(s.payer),
 					)
 					.map((s) => ({
 						shareAmount: s.shareAmount,
@@ -49,22 +81,38 @@ function createMockDb(
 		},
 		settlement: {
 			findMany: vi.fn(({ where }: { where: Record<string, unknown> }) => {
-				const w = where as {
-					fromParticipantType: string;
-					fromParticipantId: string;
-					toParticipantType: string;
-					toParticipantId: string;
-					status: { in: string[] };
+				const status = where.status as { in?: string[] } | undefined;
+				const or = where.OR as
+					| Array<{
+							fromParticipantType?: string;
+							fromParticipantId?: string;
+							toParticipantType?: string;
+							toParticipantId?: string;
+					  }>
+					| undefined;
+				const matches = (s: (typeof settlements)[number]) => {
+					const conds = or ?? [
+						{
+							fromParticipantType: where.fromParticipantType as string,
+							fromParticipantId: where.fromParticipantId as string,
+							toParticipantType: where.toParticipantType as string,
+							toParticipantId: where.toParticipantId as string,
+						},
+					];
+					return conds.some(
+						(c) =>
+							s.from.participantType === c.fromParticipantType &&
+							s.from.participantId === c.fromParticipantId &&
+							s.to.participantType === c.toParticipantType &&
+							s.to.participantId === c.toParticipantId,
+					);
 				};
 				return settlements
 					.filter(
 						(s) =>
-							s.from.participantType === w.fromParticipantType &&
-							s.from.participantId === w.fromParticipantId &&
-							s.to.participantType === w.toParticipantType &&
-							s.to.participantId === w.toParticipantId &&
-							Array.isArray(w.status?.in) &&
-							w.status.in.includes("FINALIZED"),
+							matches(s) &&
+							Array.isArray(status?.in) &&
+							status.in.includes("FINALIZED"),
 					)
 					.map((s) => ({
 						amount: s.amount,

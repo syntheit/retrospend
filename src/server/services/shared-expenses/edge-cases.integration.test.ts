@@ -351,8 +351,8 @@ describe("Edge Case 7: Unicode in descriptions and names", () => {
 
 // ── Edge Case 8: Shadow profile claimed by new user ──────────────────────────
 
-describe("Edge Case 8: Shadow profile claimed by existing user: known limitation", () => {
-	it("KNOWN BUG: after shadow is claimed, balance only includes pre-merge transactions", async () => {
+describe("Edge Case 8: Shadow profile claimed by existing user: balance merge", () => {
+	it("after shadow is claimed, balance sums pre- and post-merge transactions", async () => {
 		const db = createStatefulDb();
 
 		// Set up shadow profile for "marcus"
@@ -406,27 +406,81 @@ describe("Edge Case 8: Shadow profile claimed by existing user: known limitation
 			splitMode: "EQUAL",
 		});
 
-		// KNOWN LIMITATION (documented in people.service.ts):
-		// computeBalance(alice, shadowRef) only counts the pre-merge transaction ($50)
+		// FIXED (edge-case 8): the shadow and its claiming user are the same party,
+		// so querying EITHER ref sums both pre-merge ($50) and post-merge ($30) → $80.
 		const shadowBalance = await computeBalance(
 			db as never,
 			aliceRef,
 			marcusShadowRef,
 		);
-		expect(shadowBalance.byCurrency.USD).toBe(50);
+		expect(shadowBalance.byCurrency.USD).toBe(80);
 
-		// computeBalance(alice, userRef) only counts the post-merge transaction ($30)
 		const userBalance = await computeBalance(
 			db as never,
 			aliceRef,
 			marcusUserRef,
 		);
-		expect(userBalance.byCurrency.USD).toBe(30);
+		expect(userBalance.byCurrency.USD).toBe(80);
+	});
 
-		// EXPECTED (but not yet implemented): total owed by marcus should be $80 ($50 + $30)
-		// A future implementation should detect claimed shadows and sum both refs' balances.
-		// For now, the total is NOT combined; each ref is tracked independently.
-		// This is the documented limitation in people.service.ts (see NOTE comment).
+	it("listPeople collapses a claimed shadow and its user into one merged contact", async () => {
+		const db = createStatefulDb();
+
+		db._stores.users.set(ALICE, {
+			id: ALICE,
+			name: "Alice",
+			email: "alice@example.com",
+			image: null,
+			username: null,
+		});
+		db._stores.users.set("marcus-user", {
+			id: "marcus-user",
+			name: "Marcus",
+			email: "marcus@example.com",
+			image: null,
+			username: "marcus",
+		});
+		db._stores.shadowProfiles.set("shadow-marcus", {
+			id: "shadow-marcus",
+			name: "Marcus",
+			email: null,
+			phone: null,
+			createdById: ALICE,
+			claimedById: "marcus-user",
+		});
+
+		const marcusShadowRef = makeShadowRef("shadow-marcus");
+		const marcusUserRef = makeUserRef("marcus-user");
+		const txService = new SharedTransactionService(db as never, aliceRef);
+
+		// One expense using the pre-claim shadow ref, one using the post-claim user ref.
+		await txService.create({
+			amount: 100,
+			currency: "USD",
+			description: "Pre-merge expense",
+			date: new Date("2026-03-01"),
+			paidBy: aliceRef,
+			splitWith: [aliceRef, marcusShadowRef],
+			splitMode: "EQUAL",
+		});
+		await txService.create({
+			amount: 60,
+			currency: "USD",
+			description: "Post-merge expense",
+			date: new Date("2026-03-10"),
+			paidBy: aliceRef,
+			splitWith: [aliceRef, marcusUserRef],
+			splitMode: "EQUAL",
+		});
+
+		const people = await new PeopleService(db as never, aliceRef).listPeople();
+
+		// Should be a single merged contact for Marcus, not two, with $80 owed.
+		expect(people).toHaveLength(1);
+		expect(people[0]!.identity.participantType).toBe("user");
+		expect(people[0]!.identity.participantId).toBe("marcus-user");
+		expect(people[0]!.balances[0]!.balance).toBe(80);
+		expect(people[0]!.balances[0]!.direction).toBe("they_owe_you");
 	});
 });
 

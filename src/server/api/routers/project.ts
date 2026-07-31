@@ -210,6 +210,53 @@ async function runInProjectTransaction<T>(
 	});
 }
 
+/**
+ * Recomputes an EQUAL split across the given participants using integer cents.
+ * Mirrors SharedTransactionService.computeEqualSplits: the payer receives the
+ * first extra cent, then remaining cents are distributed in order — so results
+ * are identical to how the expense would have been split at creation time.
+ */
+function recomputeEqualShares(
+	amount: number,
+	participants: Array<{ participantType: string; participantId: string }>,
+	paidBy: { participantType: string; participantId: string },
+): Array<{ participantType: string; participantId: string; shareAmount: number }> {
+	const count = participants.length;
+	const totalCents = Math.round(amount * 100);
+	const baseCents = Math.floor(totalCents / count);
+	let remainder = totalCents - baseCents * count;
+
+	const result = participants.map((p) => ({
+		participantType: p.participantType,
+		participantId: p.participantId,
+		cents: baseCents,
+	}));
+
+	if (remainder > 0) {
+		const payerIdx = result.findIndex(
+			(r) =>
+				r.participantType === paidBy.participantType &&
+				r.participantId === paidBy.participantId,
+		);
+		if (payerIdx >= 0) {
+			result[payerIdx]!.cents += 1;
+			remainder -= 1;
+		}
+		for (let i = 0; i < result.length && remainder > 0; i++) {
+			if (i !== payerIdx) {
+				result[i]!.cents += 1;
+				remainder -= 1;
+			}
+		}
+	}
+
+	return result.map((r) => ({
+		participantType: r.participantType,
+		participantId: r.participantId,
+		shareAmount: r.cents / 100,
+	}));
+}
+
 // ── input schemas ─────────────────────────────────────────────────────────────
 
 const participantRefSchema = z.object({
@@ -919,6 +966,242 @@ export const projectRouter = createTRPCRouter({
 			}
 
 			return participant;
+		}),
+
+	/**
+	 * Lists past expenses in a project that a newly-added participant could be
+	 * folded into. Used to power the "Include {name} in existing expenses?"
+	 * chooser. Excludes locked (settled) expenses, expenses the participant is
+	 * already part of, and flags non-EQUAL expenses as ineligible for automatic
+	 * rebalancing (their amounts can't be recomputed without user input).
+	 */
+	rebalanceableExpenses: protectedProcedure
+		.input(
+			z.object({
+				projectId: z.string().min(1),
+				participantType: z.enum(["user", "guest", "shadow"]),
+				participantId: z.string().min(1),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+			await requireProjectRole(
+				ctx.db,
+				input.projectId,
+				"user",
+				userId,
+				"EDITOR",
+			);
+
+			const expenses = await ctx.db.sharedTransaction.findMany({
+				where: { projectId: input.projectId },
+				select: {
+					id: true,
+					description: true,
+					amount: true,
+					currency: true,
+					date: true,
+					splitMode: true,
+					isLocked: true,
+					splitParticipants: {
+						select: { participantType: true, participantId: true },
+					},
+				},
+				orderBy: { date: "desc" },
+			});
+
+			return expenses
+				.filter((e) => !e.isLocked)
+				.filter(
+					(e) =>
+						!e.splitParticipants.some(
+							(sp) =>
+								sp.participantType === input.participantType &&
+								sp.participantId === input.participantId,
+						),
+				)
+				.map((e) => ({
+					id: e.id,
+					description: e.description,
+					amount: Number(e.amount),
+					currency: e.currency,
+					date: e.date,
+					splitMode: e.splitMode,
+					// Only EQUAL-mode expenses can be recomputed automatically.
+					eligible: e.splitMode === "EQUAL",
+					currentParticipantCount: e.splitParticipants.length,
+				}));
+		}),
+
+	/**
+	 * Folds a participant into a chosen set of existing project expenses.
+	 *
+	 * Only EQUAL-mode expenses are recomputed (their equal division is re-derived
+	 * including the new participant). EXACT / PERCENTAGE / SHARES expenses are
+	 * NEVER silently altered — they are skipped and reported back, because their
+	 * amounts encode explicit user intent that can't be inferred. Locked (settled)
+	 * expenses are always skipped.
+	 *
+	 * The participant must already be a member of the project. New split rows are
+	 * created as PENDING so the added person can verify their inclusion, and all
+	 * other participants are flagged with unseen changes — matching an edit.
+	 */
+	rebalanceExpenses: protectedProcedure
+		.input(
+			z.object({
+				projectId: z.string().min(1),
+				participantType: z.enum(["user", "guest", "shadow"]),
+				participantId: z.string().min(1),
+				// Omit to target every eligible (EQUAL, unlocked) expense.
+				expenseIds: z.array(z.string().min(1)).optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+			const actor = { participantType: "user" as const, participantId: userId };
+
+			await requireProjectRole(
+				ctx.db,
+				input.projectId,
+				"user",
+				userId,
+				"EDITOR",
+			);
+
+			// The participant being folded in must already belong to the project.
+			const membership = await ctx.db.projectParticipant.findUnique({
+				where: {
+					projectId_participantType_participantId: {
+						projectId: input.projectId,
+						participantType: input.participantType,
+						participantId: input.participantId,
+					},
+				},
+				select: { id: true },
+			});
+			if (!membership) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "That person is not a member of this project",
+				});
+			}
+
+			const idFilter =
+				input.expenseIds && input.expenseIds.length > 0
+					? { id: { in: input.expenseIds } }
+					: {};
+
+			const candidates = await ctx.db.sharedTransaction.findMany({
+				where: { projectId: input.projectId, ...idFilter },
+				select: {
+					id: true,
+					amount: true,
+					splitMode: true,
+					isLocked: true,
+					paidByType: true,
+					paidById: true,
+					splitParticipants: {
+						select: { participantType: true, participantId: true },
+					},
+				},
+			});
+
+			let rebalancedCount = 0;
+			const skipped: Array<{ id: string; reason: string }> = [];
+			const rebalancedIds: string[] = [];
+
+			for (const e of candidates) {
+				if (e.isLocked) {
+					skipped.push({ id: e.id, reason: "locked" });
+					continue;
+				}
+				const alreadyIn = e.splitParticipants.some(
+					(sp) =>
+						sp.participantType === input.participantType &&
+						sp.participantId === input.participantId,
+				);
+				if (alreadyIn) {
+					skipped.push({ id: e.id, reason: "already_included" });
+					continue;
+				}
+				if (e.splitMode !== "EQUAL") {
+					// EXACT / PERCENTAGE / SHARES: never silently alter amounts.
+					skipped.push({ id: e.id, reason: "non_equal_split" });
+					continue;
+				}
+				rebalancedIds.push(e.id);
+			}
+
+			if (rebalancedIds.length === 0) {
+				return { rebalancedCount: 0, skipped };
+			}
+
+			await runInProjectTransaction(ctx.db, userId, async (tx) => {
+				for (const e of candidates) {
+					if (!rebalancedIds.includes(e.id)) continue;
+
+					const newParticipants = [
+						...e.splitParticipants.map((sp) => ({
+							participantType: sp.participantType,
+							participantId: sp.participantId,
+						})),
+						{
+							participantType: input.participantType,
+							participantId: input.participantId,
+						},
+					];
+
+					const shares = recomputeEqualShares(Number(e.amount), newParticipants, {
+						participantType: e.paidByType,
+						participantId: e.paidById,
+					});
+
+					// Replace all split rows with the recomputed shares. Existing
+					// participants get PENDING (their share changed); the actor, if
+					// present, stays ACCEPTED.
+					await tx.splitParticipant.deleteMany({
+						where: { transactionId: e.id },
+					});
+					await tx.splitParticipant.createMany({
+						data: shares.map((p) => {
+							const isActor =
+								p.participantType === actor.participantType &&
+								p.participantId === actor.participantId;
+							return {
+								transactionId: e.id,
+								participantType: p.participantType as ParticipantType,
+								participantId: p.participantId,
+								shareAmount: p.shareAmount,
+								verificationStatus: isActor
+									? ("ACCEPTED" as const)
+									: ("PENDING" as const),
+								verifiedAt: isActor ? new Date() : undefined,
+								hasUnseenChanges: !isActor,
+							};
+						}),
+					});
+
+					await logAudit(tx, {
+						actor,
+						action: "EDITED",
+						targetType: "SHARED_TRANSACTION",
+						targetId: e.id,
+						changes: {
+							rebalanced: {
+								addedParticipant: {
+									participantType: input.participantType,
+									participantId: input.participantId,
+								},
+							},
+						},
+						projectId: input.projectId,
+					});
+
+					rebalancedCount += 1;
+				}
+			});
+
+			return { rebalancedCount, skipped, rebalancedIds };
 		}),
 
 	updateParticipantRole: protectedProcedure

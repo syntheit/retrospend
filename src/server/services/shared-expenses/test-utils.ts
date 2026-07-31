@@ -487,7 +487,22 @@ export function createStatefulDb() {
 
 				if (args.where) {
 					const w = args.where;
+					// Top-level OR over participant refs (claimed-shadow alias expansion).
+					const spOr = w.OR as
+						| Array<{ participantType?: string; participantId?: string }>
+						| undefined;
 					results = results.filter((sp) => {
+						if (
+							spOr !== undefined &&
+							!spOr.some(
+								(c) =>
+									(c.participantType === undefined ||
+										sp.participantType === c.participantType) &&
+									(c.participantId === undefined ||
+										sp.participantId === c.participantId),
+							)
+						)
+							return false;
 						if (
 							w.participantType !== undefined &&
 							sp.participantType !== w.participantType
@@ -512,6 +527,21 @@ export function createStatefulDb() {
 							const txFilter = w.transaction as Record<string, unknown>;
 							const tx = transactions.get(sp.transactionId);
 							if (!tx) return false;
+							// transaction.OR over paidBy refs (alias expansion).
+							const txOr = txFilter.OR as
+								| Array<{ paidByType?: string; paidById?: string }>
+								| undefined;
+							if (
+								txOr !== undefined &&
+								!txOr.some(
+									(c) =>
+										(c.paidByType === undefined ||
+											tx.paidByType === c.paidByType) &&
+										(c.paidById === undefined ||
+											tx.paidById === c.paidById),
+								)
+							)
+								return false;
 							if (
 								txFilter.paidByType !== undefined &&
 								tx.paidByType !== txFilter.paidByType
@@ -776,8 +806,36 @@ export function createStatefulDb() {
 				let results = [...settlements.values()];
 				const w = args.where ?? {};
 
+				const statusIn = (w.status as { in?: string[] } | undefined)?.in;
+				if (statusIn !== undefined)
+					results = results.filter((s) => statusIn.includes(s.status));
 				if (w.status !== undefined && typeof w.status === "string")
 					results = results.filter((s) => s.status === w.status);
+
+				// Top-level OR over from/to participant refs (alias expansion).
+				const sOr = w.OR as
+					| Array<{
+							fromParticipantType?: string;
+							fromParticipantId?: string;
+							toParticipantType?: string;
+							toParticipantId?: string;
+					  }>
+					| undefined;
+				if (sOr !== undefined)
+					results = results.filter((s) =>
+						sOr.some(
+							(c) =>
+								(c.fromParticipantType === undefined ||
+									s.fromParticipantType === c.fromParticipantType) &&
+								(c.fromParticipantId === undefined ||
+									s.fromParticipantId === c.fromParticipantId) &&
+								(c.toParticipantType === undefined ||
+									s.toParticipantType === c.toParticipantType) &&
+								(c.toParticipantId === undefined ||
+									s.toParticipantId === c.toParticipantId),
+						),
+					);
+
 				if (w.fromParticipantType !== undefined)
 					results = results.filter(
 						(s) => s.fromParticipantType === w.fromParticipantType,
@@ -864,12 +922,38 @@ export function createStatefulDb() {
 		findMany: vi.fn(
 			(args: { where?: Record<string, unknown>; select?: unknown } = {}) => {
 				return [...shadowProfiles.values()].filter((sp) => {
+					const w = args.where;
 					if (
-						args.where?.id &&
-						typeof args.where.id === "object" &&
-						(args.where.id as { in?: string[] }).in
+						w?.id &&
+						typeof w.id === "object" &&
+						(w.id as { in?: string[] }).in
 					) {
-						return (args.where.id as { in: string[] }).in.includes(sp.id);
+						if (!(w.id as { in: string[] }).in.includes(sp.id)) return false;
+					}
+					// claimedById: { not: null }
+					const claimedFilter = w?.claimedById as
+						| { not?: unknown; in?: string[] }
+						| string
+						| null
+						| undefined;
+					if (claimedFilter && typeof claimedFilter === "object") {
+						if (
+							"not" in claimedFilter &&
+							claimedFilter.not === null &&
+							sp.claimedById === null
+						)
+							return false;
+						if (
+							claimedFilter.in !== undefined &&
+							(sp.claimedById === null ||
+								!claimedFilter.in.includes(sp.claimedById))
+						)
+							return false;
+					} else if (
+						claimedFilter !== undefined &&
+						sp.claimedById !== claimedFilter
+					) {
+						return false;
 					}
 					return true;
 				});
