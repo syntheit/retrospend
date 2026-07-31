@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "~prisma";
+import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 import { sameParticipant } from "./types";
@@ -51,7 +51,7 @@ export async function computeBalance(
 	// Expand each ref into all of its equivalent refs so a claimed shadow and
 	// its claiming user are treated as the same party — pre-claim and post-claim
 	// history is summed rather than tracked separately (edge-case 8 fix).
-	const { aliasesByKey } = await resolveClaimAliases(prisma, [
+	const { aliasesByKey, canonicalKey } = await resolveClaimAliases(prisma, [
 		participantA,
 		participantB,
 	]);
@@ -89,6 +89,9 @@ export async function computeBalance(
 			transaction: { OR: paidByConds(aRefs) },
 		},
 		select: {
+			transactionId: true,
+			participantType: true,
+			participantId: true,
 			shareAmount: true,
 			transaction: {
 				select: { currency: true },
@@ -103,6 +106,9 @@ export async function computeBalance(
 			transaction: { OR: paidByConds(bRefs) },
 		},
 		select: {
+			transactionId: true,
+			participantType: true,
+			participantId: true,
 			shareAmount: true,
 			transaction: {
 				select: { currency: true },
@@ -124,6 +130,11 @@ export async function computeBalance(
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 		},
 		select: {
+			id: true,
+			fromParticipantType: true,
+			fromParticipantId: true,
+			toParticipantType: true,
+			toParticipantId: true,
 			amount: true,
 			currency: true,
 		},
@@ -143,6 +154,11 @@ export async function computeBalance(
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 		},
 		select: {
+			id: true,
+			fromParticipantType: true,
+			fromParticipantId: true,
+			toParticipantType: true,
+			toParticipantId: true,
 			amount: true,
 			currency: true,
 		},
@@ -154,23 +170,67 @@ export async function computeBalance(
 		byCurrency[currency] = (byCurrency[currency] ?? 0) + value;
 	};
 
+	// A person can appear on ONE transaction under multiple alias refs (e.g. both
+	// `shadow:S` and `user:U` where U claimed S). Summing every matching split row
+	// would double-count their share. Dedupe per (transactionId, canonical
+	// identity of the split participant) so each person counts once per
+	// transaction — summing is only valid ACROSS different transactions.
+	const seenSplits = new Set<string>();
+	const splitKey = (
+		transactionId: string,
+		participantType: ParticipantType,
+		participantId: string,
+	) =>
+		`${transactionId}|${canonicalKey({ participantType, participantId })}`;
+
 	// A paid, B owes -> positive (B owes A)
 	for (const row of aPayedBOwes) {
+		const k = splitKey(row.transactionId, row.participantType, row.participantId);
+		if (seenSplits.has(k)) continue;
+		seenSplits.add(k);
 		add(row.transaction.currency, Number(row.shareAmount));
 	}
 
 	// B paid, A owes -> negative (A owes B, so B is owed less)
 	for (const row of bPayedAOwes) {
+		const k = splitKey(row.transactionId, row.participantType, row.participantId);
+		if (seenSplits.has(k)) continue;
+		seenSplits.add(k);
 		add(row.transaction.currency, -Number(row.shareAmount));
 	}
 
+	// Settlements can also match under multiple alias refs on both ends. Dedupe
+	// per (settlement id, canonical from, canonical to) so each real settlement
+	// counts once.
+	const seenSettlements = new Set<string>();
+	const settlementKey = (row: {
+		id: string;
+		fromParticipantType: ParticipantType;
+		fromParticipantId: string;
+		toParticipantType: ParticipantType;
+		toParticipantId: string;
+	}) =>
+		`${row.id}|${canonicalKey({
+			participantType: row.fromParticipantType,
+			participantId: row.fromParticipantId,
+		})}|${canonicalKey({
+			participantType: row.toParticipantType,
+			participantId: row.toParticipantId,
+		})}`;
+
 	// Settlements from B to A reduce what B owes A -> subtract
 	for (const row of settlementsBA) {
+		const k = settlementKey(row);
+		if (seenSettlements.has(k)) continue;
+		seenSettlements.add(k);
 		add(row.currency, -Number(row.amount));
 	}
 
 	// Settlements from A to B increase what B owes A -> add
 	for (const row of settlementsAB) {
+		const k = settlementKey(row);
+		if (seenSettlements.has(k)) continue;
+		seenSettlements.add(k);
 		add(row.currency, Number(row.amount));
 	}
 
@@ -246,6 +306,7 @@ export async function computeBalanceBatch(
 					transaction: { OR: aPaidConds },
 				},
 				select: {
+					transactionId: true,
 					participantType: true,
 					participantId: true,
 					shareAmount: true,
@@ -264,6 +325,9 @@ export async function computeBalanceBatch(
 					},
 				},
 				select: {
+					transactionId: true,
+					participantType: true,
+					participantId: true,
 					shareAmount: true,
 					transaction: {
 						select: {
@@ -288,8 +352,11 @@ export async function computeBalanceBatch(
 					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 				},
 				select: {
+					id: true,
 					fromParticipantType: true,
 					fromParticipantId: true,
+					toParticipantType: true,
+					toParticipantId: true,
 					amount: true,
 					currency: true,
 				},
@@ -308,6 +375,9 @@ export async function computeBalanceBatch(
 					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 				},
 				select: {
+					id: true,
+					fromParticipantType: true,
+					fromParticipantId: true,
 					toParticipantType: true,
 					toParticipantId: true,
 					amount: true,
@@ -333,47 +403,73 @@ export async function computeBalanceBatch(
 		m[currency] = (m[currency] ?? 0) + value;
 	};
 
-	// A paid, B owes -> positive
+	// A person can appear on ONE transaction/settlement under multiple alias refs
+	// (e.g. both `shadow:S` and `user:U` where U claimed S). Summing every
+	// matching row would double-count. Dedupe per (row, canonical identity) so a
+	// person is counted at most once per transaction/settlement — summing is only
+	// valid ACROSS different transactions/settlements.
+	const seenRows = new Set<string>();
+	const once = (k: string): boolean => {
+		if (seenRows.has(k)) return false;
+		seenRows.add(k);
+		return true;
+	};
+
+	// A paid, B owes -> positive. Counterpart (B) is the split participant; dedupe
+	// per (transaction, canonical B).
 	for (const row of aPayedRows) {
-		const m = getOrCreate(
-			canonicalKey({
-				participantType: row.participantType,
-				participantId: row.participantId,
-			}),
-		);
+		const cKey = canonicalKey({
+			participantType: row.participantType,
+			participantId: row.participantId,
+		});
+		if (!once(`sp+|${row.transactionId}|${cKey}`)) continue;
+		const m = getOrCreate(cKey);
 		add(m, row.transaction.currency, Number(row.shareAmount));
 	}
 
-	// B paid, A owes -> negative
+	// B paid, A owes -> negative. Bucket by the payer (counterpart); the counted
+	// value is A's own share. Dedupe per (transaction, canonical payer, canonical A).
 	for (const row of bPayedRows) {
-		const m = getOrCreate(
-			canonicalKey({
-				participantType: row.transaction.paidByType,
-				participantId: row.transaction.paidById,
-			}),
-		);
+		const payerKey = canonicalKey({
+			participantType: row.transaction.paidByType,
+			participantId: row.transaction.paidById,
+		});
+		const aKey = canonicalKey({
+			participantType: row.participantType,
+			participantId: row.participantId,
+		});
+		if (!once(`sp-|${row.transactionId}|${payerKey}|${aKey}`)) continue;
+		const m = getOrCreate(payerKey);
 		add(m, row.transaction.currency, -Number(row.shareAmount));
 	}
 
-	// Settlements from B to A -> subtract
+	// Settlements from B to A -> subtract. Dedupe per (settlement, canonical from, to).
 	for (const row of settlementsFromB) {
-		const m = getOrCreate(
-			canonicalKey({
-				participantType: row.fromParticipantType,
-				participantId: row.fromParticipantId,
-			}),
-		);
+		const fromKey = canonicalKey({
+			participantType: row.fromParticipantType,
+			participantId: row.fromParticipantId,
+		});
+		const toKey = canonicalKey({
+			participantType: row.toParticipantType,
+			participantId: row.toParticipantId,
+		});
+		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
+		const m = getOrCreate(fromKey);
 		add(m, row.currency, -Number(row.amount));
 	}
 
-	// Settlements from A to B -> add
+	// Settlements from A to B -> add. Dedupe per (settlement, canonical from, to).
 	for (const row of settlementsFromA) {
-		const m = getOrCreate(
-			canonicalKey({
-				participantType: row.toParticipantType,
-				participantId: row.toParticipantId,
-			}),
-		);
+		const fromKey = canonicalKey({
+			participantType: row.fromParticipantType,
+			participantId: row.fromParticipantId,
+		});
+		const toKey = canonicalKey({
+			participantType: row.toParticipantType,
+			participantId: row.toParticipantId,
+		});
+		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
+		const m = getOrCreate(toKey);
 		add(m, row.currency, Number(row.amount));
 	}
 

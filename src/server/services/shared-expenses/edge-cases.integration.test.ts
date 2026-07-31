@@ -423,6 +423,97 @@ describe("Edge Case 8: Shadow profile claimed by existing user: balance merge", 
 		expect(userBalance.byCurrency.USD).toBe(80);
 	});
 
+	it("counts a person's share ONCE when one expense lists them as both shadow and user", async () => {
+		// Regression: an expense can list the SAME person under two alias refs —
+		// `shadow:S` and `user:U` where U claimed S. Expanding each party to its
+		// aliases and summing every matching split row would double-count that
+		// person's share. The balance layer must dedupe per (transaction, canonical
+		// identity) so the share counts once.
+		const db = createStatefulDb();
+
+		// Marcus already claimed his shadow.
+		db._stores.shadowProfiles.set("shadow-marcus", {
+			id: "shadow-marcus",
+			name: "Marcus",
+			email: null,
+			phone: null,
+			createdById: ALICE,
+			claimedById: "marcus-user",
+		});
+		const marcusShadowRef = makeShadowRef("shadow-marcus");
+		const marcusUserRef = makeUserRef("marcus-user");
+
+		// Alice pays $100. Marcus's $50 share ends up on the SAME expense under BOTH
+		// his shadow ref and his (post-claim) user ref — the double-participant
+		// state the dedupe must collapse.
+		const txId = "tx-double";
+		db._stores.transactions.set(txId, {
+			id: txId,
+			description: "Dinner",
+			amount: 100,
+			currency: "USD",
+			date: new Date("2026-03-01"),
+			paidByType: aliceRef.participantType,
+			paidById: aliceRef.participantId,
+			createdByType: aliceRef.participantType,
+			createdById: aliceRef.participantId,
+			splitMode: "EQUAL",
+			projectId: null,
+			billingPeriodId: null,
+			isLocked: false,
+			notes: null,
+			receiptUrl: null,
+			categoryId: null,
+			createdAt: new Date("2026-03-01"),
+			updatedAt: new Date("2026-03-01"),
+		});
+		const mkSplit = (
+			id: string,
+			participantType: string,
+			participantId: string,
+			shareAmount: number,
+		) => ({
+			id,
+			transactionId: txId,
+			participantType,
+			participantId,
+			shareAmount,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "ACCEPTED",
+			verifiedAt: new Date("2026-03-01"),
+			rejectionReason: null,
+			hasUnseenChanges: false,
+		});
+		db._stores.splits.set(
+			"sp-alice",
+			mkSplit("sp-alice", aliceRef.participantType, aliceRef.participantId, 50),
+		);
+		db._stores.splits.set(
+			"sp-marcus-shadow",
+			mkSplit("sp-marcus-shadow", "shadow", "shadow-marcus", 50),
+		);
+		db._stores.splits.set(
+			"sp-marcus-user",
+			mkSplit("sp-marcus-user", "user", "marcus-user", 50),
+		);
+
+		// Marcus's share is $50, counted once — NOT $100 (both rows summed).
+		const shadowBalance = await computeBalance(
+			db as never,
+			aliceRef,
+			marcusShadowRef,
+		);
+		expect(shadowBalance.byCurrency.USD).toBe(50);
+
+		const userBalance = await computeBalance(
+			db as never,
+			aliceRef,
+			marcusUserRef,
+		);
+		expect(userBalance.byCurrency.USD).toBe(50);
+	});
+
 	it("listPeople collapses a claimed shadow and its user into one merged contact", async () => {
 		const db = createStatefulDb();
 
@@ -481,6 +572,11 @@ describe("Edge Case 8: Shadow profile claimed by existing user: balance merge", 
 		expect(people[0]!.identity.participantId).toBe("marcus-user");
 		expect(people[0]!.balances[0]!.balance).toBe(80);
 		expect(people[0]!.balances[0]!.direction).toBe("they_owe_you");
+		// Counts must SUM across the shadow (pre-claim) and user (post-claim)
+		// contributions, not be dropped for whichever was folded second. Marcus
+		// shares two expenses with Alice → expenseCount 2.
+		expect(people[0]!.expenseCount).toBe(2);
+		expect(people[0]!.projectCount).toBe(0);
 	});
 });
 

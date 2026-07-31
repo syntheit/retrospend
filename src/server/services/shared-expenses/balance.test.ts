@@ -68,14 +68,25 @@ function createMockDb(
 				const matchesPayer = payerMatcher(
 					where.transaction as Record<string, unknown>,
 				);
+				// Each entry is a DISTINCT transaction (synthetic id by index) so the
+				// balance layer's per-(transaction, identity) dedupe sums them rather
+				// than collapsing them.
 				return splits
+					.map((s, i) => ({ ...s, _txnId: `txn-${i}` }))
 					.filter(
 						(s) =>
 							matchesParticipant(s.participant) && matchesPayer(s.payer),
 					)
 					.map((s) => ({
+						transactionId: s._txnId,
+						participantType: s.participant.participantType,
+						participantId: s.participant.participantId,
 						shareAmount: s.shareAmount,
-						transaction: { currency: s.currency },
+						transaction: {
+							currency: s.currency,
+							paidByType: s.payer.participantType,
+							paidById: s.payer.participantId,
+						},
 					}));
 			}),
 		},
@@ -108,6 +119,7 @@ function createMockDb(
 					);
 				};
 				return settlements
+					.map((s, i) => ({ ...s, _id: `stl-${i}` }))
 					.filter(
 						(s) =>
 							matches(s) &&
@@ -115,6 +127,11 @@ function createMockDb(
 							status.in.includes("FINALIZED"),
 					)
 					.map((s) => ({
+						id: s._id,
+						fromParticipantType: s.from.participantType,
+						fromParticipantId: s.from.participantId,
+						toParticipantType: s.to.participantType,
+						toParticipantId: s.to.participantId,
 						amount: s.amount,
 						currency: s.currency,
 					}));

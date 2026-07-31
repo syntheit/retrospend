@@ -577,8 +577,21 @@ export function createStatefulDb() {
 						const tx = transactions.get(sp.transactionId);
 						const out: Record<string, unknown> = {};
 						if (sel.shareAmount) out.shareAmount = sp.shareAmount;
-						if (sel.transaction)
-							out.transaction = { currency: tx?.currency ?? "USD" };
+						if (sel.transactionId) out.transactionId = sp.transactionId;
+						if (sel.transaction) {
+							// Honor the nested transaction.select (currency, paidBy…).
+							const txSel = (sel.transaction as { select?: Record<string, unknown> })
+								.select;
+							if (txSel) {
+								const txOut: Record<string, unknown> = {};
+								if (txSel.currency) txOut.currency = tx?.currency ?? "USD";
+								if (txSel.paidByType) txOut.paidByType = tx?.paidByType;
+								if (txSel.paidById) txOut.paidById = tx?.paidById;
+								out.transaction = txOut;
+							} else {
+								out.transaction = { currency: tx?.currency ?? "USD" };
+							}
+						}
 						if (sel.id) out.id = sp.id;
 						if (sel.participantType) out.participantType = sp.participantType;
 						if (sel.participantId) out.participantId = sp.participantId;
