@@ -66,6 +66,7 @@ import {
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { useSession } from "~/hooks/use-session";
+import { useRebalanceOnAdd } from "~/hooks/use-rebalance-on-add";
 import { useTranslations } from "next-intl";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -186,6 +187,8 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 	const [newEmail, setNewEmail] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 	const utils = api.useUtils();
+	// After adding someone, offer to fold them into existing project expenses.
+	const { promptRebalance, rebalanceElement } = useRebalanceOnAdd(projectId);
 
 	const searchQuery = search.startsWith("@") ? search.slice(1) : search;
 
@@ -229,26 +232,50 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 		[allResults, existingKeys],
 	);
 
-	const addMutation = api.project.addParticipant.useMutation({
-		onSuccess: () => {
-			toast.success(t("participantAdded"));
-			void utils.project.detail.invalidate({ id: projectId });
-			setSearch("");
-			setPopoverOpen(false);
-		},
-		onError: (e) => {
-			if (e.message.includes("already in the project")) {
-				toast.info(t("alreadyInProject"));
-			} else {
-				toast.error(e.message);
-			}
-		},
-	});
+	const addMutation = api.project.addParticipant.useMutation();
 
 	const createShadowMutation = api.people.createShadow.useMutation();
 
+	// Adds a participant, then offers to fold them into past expenses. Shared by
+	// the search-select path and the new-contact path so both prompt identically.
+	const addParticipant = useCallback(
+		async (participant: {
+			participantType: "user" | "guest" | "shadow";
+			participantId: string;
+			name: string;
+		}) => {
+			try {
+				await addMutation.mutateAsync({
+					projectId,
+					participantType: participant.participantType,
+					participantId: participant.participantId,
+					role: "CONTRIBUTOR",
+				});
+			} catch (e) {
+				const message = e instanceof Error ? e.message : "";
+				if (message.includes("already in the project")) {
+					toast.info(t("alreadyInProject"));
+				} else {
+					toast.error(message);
+				}
+				return;
+			}
+			toast.success(t("participantAdded"));
+			await utils.project.detail.invalidate({ id: projectId });
+			setSearch("");
+			setPopoverOpen(false);
+			// Fold the newcomer into eligible past expenses (organizer/editor only).
+			promptRebalance(participant);
+		},
+		[projectId, addMutation, utils, t, promptRebalance],
+	);
+
 	const handleSelect = useCallback(
-		(participant: { participantType: string; participantId: string }) => {
+		(participant: {
+			participantType: string;
+			participantId: string;
+			name: string;
+		}) => {
 			if (
 				existingKeys.has(
 					`${participant.participantType}:${participant.participantId}`,
@@ -257,17 +284,16 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 				toast.info(t("alreadyInProject"));
 				return;
 			}
-			addMutation.mutate({
-				projectId,
+			void addParticipant({
 				participantType: participant.participantType as
 					| "user"
 					| "guest"
 					| "shadow",
 				participantId: participant.participantId,
-				role: "CONTRIBUTOR",
+				name: participant.name,
 			});
 		},
-		[projectId, existingKeys, addMutation],
+		[existingKeys, addParticipant, t],
 	);
 
 	const handleCreateShadow = useCallback(async () => {
@@ -277,19 +303,18 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 				name: newName.trim(),
 				email: newEmail.trim() || undefined,
 			});
-			addMutation.mutate({
-				projectId,
-				participantType: "shadow",
-				participantId: result.participantId,
-				role: "CONTRIBUTOR",
-			});
 			setNewName("");
 			setNewEmail("");
 			setShowNewContact(false);
+			await addParticipant({
+				participantType: "shadow",
+				participantId: result.participantId,
+				name: result.name,
+			});
 		} catch {
 			toast.error(t("failedToCreateContact"));
 		}
-	}, [newName, newEmail, createShadowMutation, addMutation, projectId]);
+	}, [newName, newEmail, createShadowMutation, addParticipant, t]);
 
 	const isEmailLike = searchQuery.includes("@") && searchQuery.includes(".");
 	const noExactMatch =
@@ -299,6 +324,7 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 		alreadyInProject.length === 0;
 
 	return (
+		<>
 		<Popover onOpenChange={setPopoverOpen} open={popoverOpen}>
 			<PopoverAnchor asChild>
 				<div className="relative">
@@ -496,6 +522,8 @@ function AddPeopleSearch({ projectId }: { projectId: string }) {
 				</div>
 			</PopoverContent>
 		</Popover>
+		{rebalanceElement}
+		</>
 	);
 }
 
