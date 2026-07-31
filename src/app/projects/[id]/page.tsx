@@ -326,6 +326,10 @@ function InviteJoinView({
 		},
 	});
 
+	// NOTE: joining via an invite link never triggers rebalance-on-add. That
+	// prompt is organizer-driven (from the Share dialog) — the joiner is the
+	// actor, so they must not fold themselves into everyone else's past
+	// expenses. See guest.register for the server-side counterpart.
 	const registerMutation = api.guest.register.useMutation({
 		onSuccess: (data) => {
 			if (data.existingUser) {

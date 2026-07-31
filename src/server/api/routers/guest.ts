@@ -252,7 +252,13 @@ export const guestRouter = createTRPCRouter({
 					},
 				});
 
-				// Add as a project participant
+				// Add as a project participant.
+				//
+				// Intentionally NO rebalance-on-add here: rebalancing existing
+				// expenses is organizer-driven and offered from the Share dialog.
+				// The joiner is the actor, not an organizer, so folding themselves
+				// into everyone else's past expenses would be a self-service change
+				// to other people's balances. Don't "fix" this by triggering it.
 				await tx.projectParticipant.create({
 					data: {
 						projectId,
