@@ -110,6 +110,10 @@ export const recurringRouter = createTRPCRouter({
 
 				return {
 					...t,
+					// Prisma Decimal can't cross the RSC boundary (this query is
+					// server-prefetched in recurring/layout.tsx and dehydrated into
+					// HydrateClient). Return a plain number.
+					amount: Number(t.amount),
 					amountInHomeCurrency,
 					exchangeRate,
 				};
