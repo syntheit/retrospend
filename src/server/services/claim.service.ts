@@ -89,24 +89,27 @@ export async function claimShadowProfile(
 			});
 
 			if (existingUserMembership) {
-				// User already in project: keep the higher-privilege role and drop
-				// the shadow membership.
-				const shadowPriority = ROLE_PRIORITY[shadowMembership.role] ?? 0;
-				const userPriority = ROLE_PRIORITY[existingUserMembership.role] ?? 0;
-				if (shadowPriority > userPriority) {
-					await tx.projectParticipant.update({
-						where: { id: existingUserMembership.id },
-						data: { role: shadowMembership.role },
-					});
-				}
+				// User already in project: KEEP their existing role unchanged and
+				// drop the shadow membership. Never upgrade to the shadow's role —
+				// claiming a ghost must not be a privilege-escalation vector.
 				await tx.projectParticipant.delete({
 					where: { id: shadowMembership.id },
 				});
 			} else {
-				// Convert shadow membership → user membership.
+				// Convert shadow membership → user membership, but cap the granted
+				// role at CONTRIBUTOR: a claim must never confer EDITOR/ORGANIZER.
+				const cappedRole =
+					shadowMembership.role === "ORGANIZER" ||
+					shadowMembership.role === "EDITOR"
+						? "CONTRIBUTOR"
+						: shadowMembership.role;
 				await tx.projectParticipant.update({
 					where: { id: shadowMembership.id },
-					data: { participantType: "user", participantId: userId },
+					data: {
+						participantType: "user",
+						participantId: userId,
+						role: cappedRole,
+					},
 				});
 			}
 		}

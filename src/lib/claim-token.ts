@@ -15,7 +15,7 @@ import crypto from "crypto";
  * better-auth uses to sign sessions, so it is guaranteed to be configured.
  */
 
-const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function sign(payload: string, secret: string): string {
 	return crypto
@@ -28,7 +28,7 @@ function sign(payload: string, secret: string): string {
  * Signs a claim token for the given shadow profile id.
  * @param shadowId  ShadowProfile.id to encode.
  * @param secret    Server secret (BETTER_AUTH_SECRET).
- * @param ttlMs     Time-to-live in milliseconds (default 30 days).
+ * @param ttlMs     Time-to-live in milliseconds (default 7 days).
  */
 export function signClaimToken(
 	shadowId: string,

@@ -20,6 +20,7 @@ import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
 import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -864,6 +865,16 @@ export const projectRouter = createTRPCRouter({
 				});
 			}
 
+			// Shadows can't log in, so they must never hold an elevated (EDITOR/
+			// ORGANIZER) role — otherwise claiming the shadow could grant that role
+			// to whoever claims it. Cap the shadow's participant-row role at
+			// CONTRIBUTOR. (The magic-link role is downgraded separately below.)
+			const effectiveRole =
+				input.participantType === "shadow" &&
+				(input.role === "ORGANIZER" || input.role === "EDITOR")
+					? "CONTRIBUTOR"
+					: input.role;
+
 			const participant = await runInProjectTransaction(
 				ctx.db,
 				userId,
@@ -873,7 +884,7 @@ export const projectRouter = createTRPCRouter({
 							projectId: input.projectId,
 							participantType: input.participantType,
 							participantId: input.participantId,
-							role: input.role,
+							role: effectiveRole,
 						},
 					});
 
@@ -885,7 +896,7 @@ export const projectRouter = createTRPCRouter({
 						changes: {
 							participantType: input.participantType,
 							participantId: input.participantId,
-							role: input.role,
+							role: effectiveRole,
 						},
 						projectId: input.projectId,
 					});
@@ -1110,6 +1121,27 @@ export const projectRouter = createTRPCRouter({
 			const skipped: Array<{ id: string; reason: string }> = [];
 			const rebalancedIds: string[] = [];
 
+			// Resolve claim aliases so a claimed shadow and its claiming user count as
+			// the SAME party when deciding "already included". Otherwise adding
+			// `user:U` to an expense that already lists `shadow:S` (U claimed S) would
+			// create a duplicate participant and double-count the balance.
+			const { canonicalKey } = await resolveClaimAliases(ctx.db, [
+				{
+					participantType: input.participantType,
+					participantId: input.participantId,
+				},
+				...candidates.flatMap((e) =>
+					e.splitParticipants.map((sp) => ({
+						participantType: sp.participantType,
+						participantId: sp.participantId,
+					})),
+				),
+			]);
+			const inputCanonical = canonicalKey({
+				participantType: input.participantType,
+				participantId: input.participantId,
+			});
+
 			for (const e of candidates) {
 				if (e.isLocked) {
 					skipped.push({ id: e.id, reason: "locked" });
@@ -1117,8 +1149,10 @@ export const projectRouter = createTRPCRouter({
 				}
 				const alreadyIn = e.splitParticipants.some(
 					(sp) =>
-						sp.participantType === input.participantType &&
-						sp.participantId === input.participantId,
+						canonicalKey({
+							participantType: sp.participantType,
+							participantId: sp.participantId,
+						}) === inputCanonical,
 				);
 				if (alreadyIn) {
 					skipped.push({ id: e.id, reason: "already_included" });

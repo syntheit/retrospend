@@ -8,6 +8,7 @@ import {
 } from "~/server/api/trpc";
 import { db as globalDb } from "~/server/db";
 import { signClaimToken, verifyClaimToken } from "~/lib/claim-token";
+import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import {
 	AlreadyClaimedError,
 	claimShadowProfile,
@@ -35,13 +36,21 @@ export const claimRouter = createTRPCRouter({
 	 * Organizer action: mint a signed claim link for a ghost. The caller must be
 	 * able to see the shadow (RLS: creator or shares a project with it), so we
 	 * read it through the user-scoped ctx.db — an unrelated user gets NOT_FOUND.
+	 *
+	 * A claim link grants the holder the shadow's identity (and, on claim, project
+	 * access), so minting one is a privileged action: the caller must be an
+	 * EDITOR or ORGANIZER of at least one project the shadow participates in. A
+	 * mere VIEWER/CONTRIBUTOR — or someone who only shares an unrelated project —
+	 * cannot mint a link. (Mirrors how addParticipant authorizes with EDITOR+.)
 	 */
 	generateLink: protectedProcedure
 		.input(z.object({ shadowId: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+
 			const shadow = await ctx.db.shadowProfile.findUnique({
 				where: { id: input.shadowId },
-				select: { id: true, name: true, claimedById: true },
+				select: { id: true, name: true, claimedById: true, createdById: true },
 			});
 			if (!shadow) {
 				throw new TRPCError({
@@ -53,6 +62,40 @@ export const claimRouter = createTRPCRouter({
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "This person has already been linked to an account",
+				});
+			}
+
+			// The shadow's project memberships determine where the caller must hold
+			// EDITOR+. Require EDITOR+ in at least ONE of them.
+			const shadowMemberships = await ctx.db.projectParticipant.findMany({
+				where: { participantType: "shadow", participantId: shadow.id },
+				select: { projectId: true },
+			});
+			// A shadow with no project memberships is a standalone contact and grants
+			// no project access when claimed; its creator may still mint a link.
+			let authorized =
+				shadowMemberships.length === 0 && shadow.createdById === userId;
+			for (const m of shadowMemberships) {
+				if (authorized) break;
+				try {
+					await requireProjectRole(
+						ctx.db,
+						m.projectId,
+						"user",
+						userId,
+						"EDITOR",
+					);
+					authorized = true;
+					break;
+				} catch {
+					// Not EDITOR+ (or not a member) of this project — keep checking.
+				}
+			}
+			if (!authorized) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						"Only an editor or organizer of this person's project can generate a claim link",
 				});
 			}
 
