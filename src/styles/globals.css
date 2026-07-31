@@ -392,11 +392,12 @@ input[type="number"]::-webkit-outer-spin-button {
  * base. No color-mix(in oklab, …) here — some Firefox builds silently drop it.
  */
 .glass-surface {
-	/* Solid, opaque, decently-dark. L 0.84 sits below --accent (0.88) and --background
-	   (0.95) so the header reads as clearly darker than the page/rows, on the same warm
-	   hue family as --accent/--border. Muted-foreground labels (L 0.45) keep ample
-	   contrast. Fully opaque → zero bleed-through in Firefox. */
-	background-color: oklch(0.84 0.02 55);
+	/* Solid, opaque, clearly-dark. L 0.82 (= --border) sits well below --accent (0.88)
+	   and --muted (0.91) — both of which read as "too light" — so the header is a
+	   distinct darker bar. Warm hue family of --accent/--border. Dark foreground text
+	   (L 0.25) / muted-foreground labels (L 0.45) stay legible. Fully opaque → zero
+	   bleed-through in Firefox. */
+	background-color: oklch(0.82 0.02 55);
 	/* Progressive enhancement only (Chrome/Safari). Firefox drops this for the sticky
 	   header per bug 1803813 above and falls back to the solid base — which is fine. */
 	backdrop-filter: blur(10px) saturate(1.4);
@@ -404,9 +405,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .dark .glass-surface {
-	/* Solid dark surface matching --accent (0.285) in dark mode; fully opaque. Reads
-	   clearly on the 0.1776 page background with light (L 0.77+) header labels. */
-	background-color: oklch(0.28 0 0);
+	/* Solid, opaque, genuinely dark — L 0.17 is BELOW the card/row surface (0.2134) and
+	   the page (0.1776), so the header reads as a distinct dark bar, not a lighter
+	   "elevated" strip. Darker than --muted (0.252)/--accent (0.285), both of which the
+	   owner rejected as too light. Light header labels (L 0.77+) stay legible. */
+	background-color: oklch(0.17 0 0);
 }
 
 .glass-popover {
