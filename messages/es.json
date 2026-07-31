@@ -621,7 +621,10 @@
     "signIn": "Iniciar sesión",
     "createAccount": "Crear cuenta",
     "alreadyClaimed": "Esta persona ya fue vinculada a una cuenta.",
-    "returnHome": "Volver al inicio"
+    "returnHome": "Volver al inicio",
+    "chooserTitle": "¿Eres una de estas personas?",
+    "chooserDescription": "Es posible que alguien ya te haya agregado a <strong>{projectName}</strong>. Elígete para conservar tu historial existente, u omítelo para unirte como una persona nueva.",
+    "chooserNoneNew": "Ninguna de estas — soy nuevo"
   },
   "projects": {
     "title": "Proyectos",

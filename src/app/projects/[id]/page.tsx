@@ -12,6 +12,7 @@ import {
 	Plus,
 	Users,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -300,6 +301,7 @@ function InviteJoinView({
 	projectId: string;
 	onComplete: () => void;
 }) {
+	const t = useTranslations("claim");
 	const router = useRouter();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -378,14 +380,14 @@ function InviteJoinView({
 				<Card className="w-full max-w-md">
 					<CardContent className="flex flex-col gap-4 p-8">
 						<div className="text-center">
-							<h1 className="font-bold text-xl">Are you one of these people?</h1>
+							<h1 className="font-bold text-xl">{t("chooserTitle")}</h1>
 							<p className="mt-1 text-muted-foreground text-sm">
-								Someone may have already added you to{" "}
-								<span className="font-medium text-foreground">
-									{linkInfo.projectName}
-								</span>
-								. Pick yourself to keep your existing history, or skip to join
-								as a new person.
+								{t.rich("chooserDescription", {
+									projectName: linkInfo.projectName,
+									strong: (chunks) => (
+										<span className="font-medium text-foreground">{chunks}</span>
+									),
+								})}
 							</p>
 						</div>
 
@@ -426,7 +428,7 @@ function InviteJoinView({
 							}}
 							variant="ghost"
 						>
-							None of these — I&apos;m new
+							{t("chooserNoneNew")}
 						</Button>
 					</CardContent>
 				</Card>
