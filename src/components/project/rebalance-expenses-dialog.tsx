@@ -57,6 +57,14 @@ export function RebalanceExpensesDialog({
 		() => (expenses ?? []).filter((e) => e.eligible),
 		[expenses],
 	);
+	// Ineligible = present but not EQUAL-split (EXACT / PERCENTAGE / SHARES).
+	// Locked expenses are already excluded server-side, so these are purely the
+	// exact/percentage/share splits we can't recompute automatically.
+	const ineligible = useMemo(
+		() => (expenses ?? []).filter((e) => !e.eligible),
+		[expenses],
+	);
+	const total = (expenses ?? []).length;
 
 	const rebalanceMutation = api.project.rebalanceExpenses.useMutation({
 		onSuccess: async (res) => {
@@ -176,26 +184,59 @@ export function RebalanceExpensesDialog({
 						</div>
 					</>
 				) : (
-					<div className="flex flex-col gap-2 px-6 pt-2 pb-6">
-						<Button
-							type="button"
-							variant="outline"
-							disabled={rebalanceMutation.isPending}
-							onClick={() => runRebalance()}
-						>
-							{t("includeAllEligible", { count: eligible.length })}
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							disabled={rebalanceMutation.isPending}
-							onClick={() => setChoosing(true)}
-						>
-							{t("chooseExpenses")}
-						</Button>
-						<Button type="button" variant="ghost" onClick={close}>
-							{t("futureOnly")}
-						</Button>
+					<div className="flex flex-col gap-3 px-6 pt-2 pb-6">
+						{/* What "eligible" means, plus how many of the past
+						    expenses actually qualify for automatic rebalancing. */}
+						<div className="space-y-1 text-muted-foreground text-sm">
+							<p>{t("rebalanceEligibleExplainer")}</p>
+							<p className="font-medium text-foreground">
+								{t("rebalanceQualifyCount", {
+									count: eligible.length,
+									total,
+								})}
+							</p>
+							{ineligible.length > 0 && (
+								<p>
+									{t("rebalanceIneligibleCount", {
+										count: ineligible.length,
+									})}
+								</p>
+							)}
+						</div>
+
+						{/* Balances warning — adding to past changes what everyone owes. */}
+						<p className="rounded-md bg-muted px-3 py-2 text-muted-foreground text-xs">
+							{t("rebalanceBalanceWarning", {
+								name: participant?.name ?? "",
+							})}
+						</p>
+
+						{/* Add-to-past and future-only carry equal visual weight. */}
+						<div className="flex flex-col gap-2">
+							<Button
+								type="button"
+								disabled={rebalanceMutation.isPending}
+								onClick={() => runRebalance()}
+							>
+								{t("addToPast", { count: eligible.length })}
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								disabled={rebalanceMutation.isPending}
+								onClick={() => setChoosing(true)}
+							>
+								{t("chooseExpenses")}
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								disabled={rebalanceMutation.isPending}
+								onClick={close}
+							>
+								{t("futureOnly")}
+							</Button>
+						</div>
 					</div>
 				)}
 			</ResponsiveDialogContent>
