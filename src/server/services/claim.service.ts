@@ -208,13 +208,21 @@ export async function mergeShadowIntoGuest(
 				},
 			},
 		});
+		// A guest (self-service, magic-link) must never inherit ORGANIZER/EDITOR from
+		// a shadow — cap the promoted role at CONTRIBUTOR. Defense-in-depth: shadows
+		// are already capped at write time (addParticipant / updateParticipantRole).
+		const cappedShadowRole =
+			shadowMembership.role === "ORGANIZER" ||
+			shadowMembership.role === "EDITOR"
+				? "CONTRIBUTOR"
+				: shadowMembership.role;
 		if (guestMembership) {
-			const shadowPriority = ROLE_PRIORITY[shadowMembership.role] ?? 0;
+			const shadowPriority = ROLE_PRIORITY[cappedShadowRole] ?? 0;
 			const guestPriority = ROLE_PRIORITY[guestMembership.role] ?? 0;
 			if (shadowPriority > guestPriority) {
 				await tx.projectParticipant.update({
 					where: { id: guestMembership.id },
-					data: { role: shadowMembership.role },
+					data: { role: cappedShadowRole },
 				});
 			}
 			await tx.projectParticipant.delete({
@@ -223,7 +231,11 @@ export async function mergeShadowIntoGuest(
 		} else {
 			await tx.projectParticipant.update({
 				where: { id: shadowMembership.id },
-				data: { participantType: "guest", participantId: guestSessionId },
+				data: {
+					participantType: "guest",
+					participantId: guestSessionId,
+					role: cappedShadowRole,
+				},
 			});
 		}
 

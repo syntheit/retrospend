@@ -1309,10 +1309,18 @@ export const projectRouter = createTRPCRouter({
 
 			const oldRole = target.role;
 
+			// Shadows can't log in or act; never let one hold ORGANIZER/EDITOR — a
+			// later claim or guest-merge would otherwise inherit the elevated role.
+			const effectiveRole =
+				input.participantType === "shadow" &&
+				(input.role === "ORGANIZER" || input.role === "EDITOR")
+					? "CONTRIBUTOR"
+					: input.role;
+
 			return runInProjectTransaction(ctx.db, userId, async (tx) => {
 				const updated = await tx.projectParticipant.update({
 					where: { id: target.id },
-					data: { role: input.role },
+					data: { role: effectiveRole },
 				});
 
 				await logAudit(tx, {
@@ -1324,7 +1332,7 @@ export const projectRouter = createTRPCRouter({
 						participantType: input.participantType,
 						participantId: input.participantId,
 						oldRole,
-						newRole: input.role,
+						newRole: effectiveRole,
 					},
 					projectId: input.projectId,
 				});
