@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Search, UserPlus, X } from "lucide-react";
+import { Check, Search, UserPlus, Users, X } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/components/ui/user-avatar";
@@ -195,6 +195,33 @@ export function SplitWithPicker({
 		[value, onChange],
 	);
 
+	// "Split with everyone in project" — toggles all project members at once.
+	const chipKeys = useMemo(
+		() =>
+			chipParticipants.map((p) => `${p.participantType}:${p.participantId}`),
+		[chipParticipants],
+	);
+	const allChipsSelected =
+		chipParticipants.length > 0 && chipKeys.every((k) => selectedKeys.has(k));
+
+	const handleToggleEveryone = useCallback(() => {
+		if (allChipsSelected) {
+			const chipKeySet = new Set(chipKeys);
+			onChange(
+				value.filter(
+					(p) => !chipKeySet.has(`${p.participantType}:${p.participantId}`),
+				),
+			);
+		} else {
+			const toAdd = chipParticipants.filter(
+				(p) => !selectedKeys.has(`${p.participantType}:${p.participantId}`),
+			);
+			onChange([...value, ...toAdd]);
+		}
+		setSearch("");
+		setShowNewContact(false);
+	}, [allChipsSelected, chipKeys, chipParticipants, selectedKeys, value, onChange]);
+
 	const handleCreateShadow = useCallback(async () => {
 		if (!newName.trim()) return;
 		const result = await createShadowMutation.mutateAsync({
@@ -225,6 +252,24 @@ export function SplitWithPicker({
 		<div className="space-y-1.5">
 			{/* Participant chips + inline search */}
 			<div className="flex flex-wrap items-center gap-1.5">
+				{projectId && chipParticipants.length >= 2 && !searchQuery && (
+					<Button
+						type="button"
+						onClick={handleToggleEveryone}
+						variant="outline"
+						size="sm"
+						className={cn(
+							"h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+							allChipsSelected
+								? "border-primary/40 bg-primary/10 text-primary dark:bg-primary/10"
+								: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+						)}
+					>
+						<Users className="h-3.5 w-3.5" />
+						<span>{t("everyone")}</span>
+						{allChipsSelected && <Check className="h-3 w-3" />}
+					</Button>
+				)}
 				{visibleChipParticipants.map((p) => {
 					const key = `${p.participantType}:${p.participantId}`;
 					const isSelected = selectedKeys.has(key);
