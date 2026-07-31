@@ -26,6 +26,7 @@ export const settingsRouter = createTRPCRouter({
 				monthlyIncomeCurrency: true,
 				smartCurrencyFormatting: true,
 				defaultPrivacyMode: true,
+				autoAcceptSplits: true,
 				fiscalMonthStartDay: true,
 				defaultExpenseDateBehavior: true,
 				aiMode: true,
@@ -48,6 +49,7 @@ export const settingsRouter = createTRPCRouter({
 			monthlyIncomeCurrency: user.monthlyIncomeCurrency,
 			smartCurrencyFormatting: user.smartCurrencyFormatting,
 			defaultPrivacyMode: user.defaultPrivacyMode,
+			autoAcceptSplits: user.autoAcceptSplits,
 			fiscalMonthStartDay: user.fiscalMonthStartDay,
 			defaultExpenseDateBehavior: user.defaultExpenseDateBehavior,
 			aiMode: user.aiMode,
@@ -75,6 +77,7 @@ export const settingsRouter = createTRPCRouter({
 				monthlyIncomeCurrency: z.string().length(3).optional(),
 				smartCurrencyFormatting: z.boolean().optional(),
 				defaultPrivacyMode: z.boolean().optional(),
+				autoAcceptSplits: z.boolean().optional(),
 				fiscalMonthStartDay: z.number().int().min(1).max(28).optional(),
 				defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]).optional(),
 				aiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
@@ -109,6 +112,9 @@ export const settingsRouter = createTRPCRouter({
 					}),
 					...(input.defaultPrivacyMode !== undefined && {
 						defaultPrivacyMode: input.defaultPrivacyMode,
+					}),
+					...(input.autoAcceptSplits !== undefined && {
+						autoAcceptSplits: input.autoAcceptSplits,
 					}),
 					...(input.fiscalMonthStartDay !== undefined && {
 						fiscalMonthStartDay: input.fiscalMonthStartDay,

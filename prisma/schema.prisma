@@ -28,6 +28,7 @@ model User {
   monthlyIncomeCurrency       String                        @default("USD")
   smartCurrencyFormatting     Boolean                       @default(true)
   defaultPrivacyMode          Boolean                       @default(false)
+  autoAcceptSplits            Boolean                       @default(true)
   fiscalMonthStartDay         Int                           @default(1)
   defaultExpenseDateBehavior  DefaultExpenseDateBehavior    @default(TODAY)
   accounts                Account[]
