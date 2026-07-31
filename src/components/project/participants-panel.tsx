@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Download, UserPlus } from "lucide-react";
+import { CheckCircle2, Download, Link2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserAvatar } from "~/components/ui/user-avatar";
@@ -59,6 +59,20 @@ export function ParticipantsPanel({
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const exportMutation = api.exportData.exportSettlementPlan.useMutation();
+
+	// Organizer action: copy a claim link so a ghost can link their own account.
+	const claimLinkMutation = api.claim.generateLink.useMutation({
+		onSuccess: async (res) => {
+			try {
+				await navigator.clipboard.writeText(res.url);
+				toast.success(t("claimLinkCopied", { name: res.name }));
+			} catch {
+				// Clipboard blocked (e.g. insecure context): surface the URL instead.
+				toast.success(res.url);
+			}
+		},
+		onError: (e) => toast.error(e.message),
+	});
 
 	const { data: settlementPlan } = api.project.settlementPlan.useQuery(
 		{ projectId },
@@ -123,6 +137,21 @@ export function ParticipantsPanel({
 							<div className="min-w-0 flex-1">
 								<div className="truncate font-medium text-sm">{p.name}</div>
 							</div>
+							{isEditor && p.participantType === "shadow" && (
+								<Button
+									className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground"
+									disabled={claimLinkMutation.isPending}
+									onClick={() =>
+										claimLinkMutation.mutate({ shadowId: p.participantId })
+									}
+									size="sm"
+									title={t("copyClaimLink")}
+									variant="ghost"
+								>
+									<Link2 className="h-3 w-3" />
+									{t("claimLink")}
+								</Button>
+							)}
 							<Badge
 								className={`text-[10px] ${ROLE_COLORS[p.role] ?? ""}`}
 								variant="outline"

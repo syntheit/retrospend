@@ -30,10 +30,14 @@ export const peopleRouter = createTRPCRouter({
 			const query = input.query.toLowerCase();
 			const userId = ctx.session.user.id;
 
-			// Search shadow profiles owned by this user
+			// Search shadow profiles visible to this user: ones they created plus
+			// ones that share a project with them. The shadow_profile RLS policy
+			// enforces this scope at the DB layer (creator OR shared project), so we
+			// do NOT filter by createdById here — that would hide project ghosts
+			// created by other members. Private (non-project) shadows of unrelated
+			// users are never returned because RLS excludes them.
 			const shadows = await ctx.db.shadowProfile.findMany({
 				where: {
-					createdById: userId,
 					claimedById: null,
 					OR: [
 						{ name: { contains: query, mode: "insensitive" } },

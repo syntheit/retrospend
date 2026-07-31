@@ -56,6 +56,16 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 	const isInvited = searchParams.get("invited") === "true";
 	const showFeatures = isUpgrade || isInvited;
 
+	// Post-signup destination: honour a same-origin `redirect` (e.g. a claim
+	// link that bounced through auth), otherwise land on the dashboard.
+	const redirectParam = searchParams.get("redirect");
+	const signupRedirectTo =
+		redirectParam &&
+		redirectParam.startsWith("/") &&
+		!redirectParam.startsWith("//")
+			? redirectParam
+			: "/dashboard";
+
 	const [inviteCode, setInviteCode] = useState("");
 	const [inviteState, setInviteState] = useState<InviteState>("idle");
 	const [inviteError, setInviteError] = useState("");
@@ -205,7 +215,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							// Non-fatal: consent recording failure should not block signup
 						}
 					}
-					window.location.href = "/dashboard";
+					window.location.href = signupRedirectTo;
 				}
 			}
 		} catch (error) {

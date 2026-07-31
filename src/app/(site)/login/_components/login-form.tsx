@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -21,8 +22,20 @@ import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
 import { api } from "~/trpc/react";
 
-export function LoginForm() {
+/**
+ * Resolves a post-login destination from the `redirect` query param. Only
+ * same-origin relative paths are honoured to prevent open-redirects; anything
+ * else falls back to the dashboard.
+ */
+function safeRedirect(raw: string | null): string {
+	if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+	return "/dashboard";
+}
+
+function LoginFormInner() {
 	const t = useTranslations("auth");
+	const searchParams = useSearchParams();
+	const redirectTo = safeRedirect(searchParams.get("redirect"));
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +77,7 @@ export function LoginForm() {
 					setShow2FA(true);
 					setError("");
 				} else {
-					window.location.href = "/dashboard";
+					window.location.href = redirectTo;
 				}
 			}
 		} catch (_) {
@@ -92,7 +105,7 @@ export function LoginForm() {
 			if (result.error) {
 				setError(result.error.message || t("invalidAuthenticatorCode"));
 			} else {
-				window.location.href = "/dashboard";
+				window.location.href = redirectTo;
 			}
 		} catch (_) {
 			setError(t("unexpectedErrorVerification"));
@@ -232,7 +245,11 @@ export function LoginForm() {
 							{t("dontHaveAccount")}{" "}
 							<Link
 								className="font-medium text-primary hover:underline"
-								href="/signup"
+								href={
+									redirectTo === "/dashboard"
+										? "/signup"
+										: `/signup?redirect=${encodeURIComponent(redirectTo)}`
+								}
 							>
 								{t("signUp")}
 							</Link>
@@ -241,5 +258,23 @@ export function LoginForm() {
 				</CardContent>
 			</Card>
 		</div>
+	);
+}
+
+export function LoginForm() {
+	return (
+		<Suspense
+			fallback={
+				<div className="flex min-h-screen items-center justify-center bg-background px-4">
+					<Card className="w-full max-w-md">
+						<CardContent className="flex items-center justify-center p-12">
+							<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+						</CardContent>
+					</Card>
+				</div>
+			}
+		>
+			<LoginFormInner />
+		</Suspense>
 	);
 }
