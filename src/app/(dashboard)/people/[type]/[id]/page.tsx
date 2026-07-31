@@ -71,10 +71,8 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
-import { Card, CardContent } from "~/components/ui/card";
 import { EmptyState } from "~/components/ui/empty-state";
 import { SegmentedToggle } from "~/components/ui/segmented-toggle";
-import { StatCard } from "~/components/ui/stat-card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { UserAvatar } from "~/components/ui/user-avatar";
@@ -541,29 +539,33 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 				<div className="flex flex-col gap-4">
 					{/* Person Header */}
 					{isLoading ? (
-						<div className="flex items-start gap-4">
-							<Skeleton className="h-16 w-16 rounded-full" />
-							<div className="space-y-2">
-								<Skeleton className="h-6 w-40" />
-								<Skeleton className="h-4 w-24" />
-								<Skeleton className="h-8 w-28" />
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex items-center gap-3">
+								<Skeleton className="h-14 w-14 rounded-full" />
+								<div className="space-y-2">
+									<Skeleton className="h-6 w-40" />
+									<Skeleton className="h-4 w-24" />
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<Skeleton className="h-9 w-28" />
+								<Skeleton className="h-9 w-24" />
 							</div>
 						</div>
 					) : (
 						<>
-						{/* Summary card: person header + actions + balance */}
-						<Card>
-							<CardContent className={cn("flex flex-col gap-4", hasHistory && "sm:grid sm:grid-cols-[1fr_auto] sm:items-start sm:gap-x-6 sm:gap-y-0")}>
-								{/* Left: avatar + name/stats */}
-								<div className="flex items-center gap-4">
+						{/* Compact person header: identity row + balance + actions */}
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+							{/* Left: avatar + name/stats */}
+							<div className="flex min-w-0 items-center gap-3">
 								<UserAvatar
 									avatarUrl={identity?.avatarUrl}
 									name={identity?.name ?? "?"}
-									size="xl"
+									size="lg"
 								/>
-								<div className="space-y-2">
+								<div className="min-w-0 space-y-0.5">
 									<div className="flex flex-wrap items-center gap-2">
-										<h2 className="font-bold text-2xl">{identity?.name}</h2>
+										<h2 className="truncate font-bold text-2xl">{identity?.name}</h2>
 										{identity && (
 											<IdentityBadge
 												isVerifiedUser={identity.isVerifiedUser}
@@ -573,161 +575,161 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											/>
 										)}
 									</div>
-									{identity?.isVerifiedUser && identity.username ? (
-										<p className="text-muted-foreground text-sm">
-											@{identity.username}
-										</p>
-									) : !identity?.isVerifiedUser && identity?.email ? (
-										<p className="text-muted-foreground text-sm">
-											{identity.email}
-										</p>
-									) : null}
-									{relationshipStats &&
-										relationshipStats.transactionCount > 0 && (
-											<p className="text-muted-foreground text-sm tabular-nums">
-												{relationshipStats.firstTransactionDate
-													? t("sharingSince", { date: new Date(relationshipStats.firstTransactionDate).toLocaleDateString(undefined, { month: "short", year: "numeric" }) })
-													: ""}
-												{relationshipStats.firstTransactionDate ? " · " : ""}
-												{t("expenseCount", { count: relationshipStats.transactionCount })}
-												{relationshipStats.projectCount > 0
-													? ` · ${t("projectCount", { count: relationshipStats.projectCount })}`
-													: ""}
-											</p>
-										)}
+									<div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-sm">
+										{identity?.isVerifiedUser && identity.username ? (
+											<span>@{identity.username}</span>
+										) : !identity?.isVerifiedUser && identity?.email ? (
+											<span>{identity.email}</span>
+										) : null}
+										{relationshipStats &&
+											relationshipStats.transactionCount > 0 && (
+												<span className="tabular-nums">
+													{(identity?.username || identity?.email) ? "· " : ""}
+													{relationshipStats.firstTransactionDate
+														? t("sharingSince", { date: new Date(relationshipStats.firstTransactionDate).toLocaleDateString(undefined, { month: "short", year: "numeric" }) })
+														: ""}
+													{relationshipStats.firstTransactionDate ? " · " : ""}
+													{t("expenseCount", { count: relationshipStats.transactionCount })}
+													{relationshipStats.projectCount > 0
+														? ` · ${t("projectCount", { count: relationshipStats.projectCount })}`
+														: ""}
+												</span>
+											)}
+									</div>
 								</div>
 							</div>
 
-							{/* Right: Actions + Balance */}
-							{hasHistory && <div className="flex flex-col items-start gap-3 sm:items-end">
-								{/* Action buttons */}
-								<div className="flex flex-wrap items-center gap-1.5">
-									{!isSettled && (
-										<Button onClick={() => setSettleUpOpen(true)} size="sm">
-											{settleButtonLabel}
-										</Button>
-									)}
-									{!isSettled && netDirection === "they_owe_you" && participantType === "user" && (
-										<Button
-											disabled={remindPayment.isPending || reminderSent}
-											onClick={() => remindPayment.mutate({ participantType, participantId: id })}
-											size="sm"
-											variant="outline"
-										>
-											{reminderSent ? (
-												<>
-													<CheckCircle2 className="h-4 w-4" />
-													{t("sent")}
-												</>
+							{/* Right: compact balance + actions */}
+							{hasHistory && (
+								<div className="flex flex-col items-start gap-2 sm:items-end">
+									{/* Compact balance: label + colored amount (color as accent only) */}
+									<div className="flex flex-col items-start gap-0.5 sm:items-end">
+										<span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+											{isSettled ? (
+												<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
 											) : (
-												<>
-													<Bell className="h-4 w-4" />
-													{remindPayment.isPending ? t("sending") : t("remind")}
-												</>
+												<Scale className="h-3.5 w-3.5" />
 											)}
-										</Button>
-									)}
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												disabled={isExporting}
-												size="sm"
-												variant="ghost"
-												className="focus-visible:ring-0 focus-visible:ring-offset-0"
+											{isSettled
+												? t("allSettledUp")
+												: netDirection === "they_owe_you"
+													? t("theyOweYou")
+													: t("youOweThem")}
+										</span>
+										{isSettled ? (
+											<span className="font-bold text-2xl text-foreground tabular-nums tracking-tight">
+												{formatCurrency(0, homeCurrency)}
+											</span>
+										) : homeCurrencyTotal && homeCurrencyTotal.canConvert ? (
+											<span
+												className={cn(
+													"font-bold text-2xl tabular-nums tracking-tight",
+													netDirection === "they_owe_you"
+														? "text-emerald-600 dark:text-emerald-400"
+														: "text-amber-600 dark:text-amber-400",
+												)}
 											>
-												<Download className="h-4 w-4" />
-												{isExporting ? t("exporting") : t("export")}
-												<ChevronDown className="h-3 w-3 opacity-60" />
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem onClick={handleExportHistory}>
-												<FileSpreadsheet className="mr-2 h-4 w-4" />
-												{t("exportHistoryCsv")}
-											</DropdownMenuItem>
-											{!isSettled && (
-												<DropdownMenuItem onClick={handleExportSettlement}>
-													<Receipt className="mr-2 h-4 w-4" />
-													{t("exportSettlementPlan")}
-												</DropdownMenuItem>
-											)}
-											<DropdownMenuItem onClick={handleExportPdf}>
-												<FileText className="mr-2 h-4 w-4" />
-												{t("downloadPdfSummary")}
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</div>
-								{/* Balance hero */}
-								<StatCard
-									className="w-full sm:w-64"
-									icon={isSettled ? CheckCircle2 : Scale}
-									subValue={
-										!isSettled &&
-										((homeCurrencyTotal && homeCurrencyTotal.canConvert
-											? balances.some((b) => b.currency !== homeCurrency)
-											: true)) ? (
-											<div className="flex flex-wrap gap-1.5">
-												{balances.map((b) => (
-													<span
-														key={b.currency}
-														className={cn(
-															"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-															b.direction === "they_owe_you"
-																? "border-emerald-200/60 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30"
-																: "border-amber-200/60 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30",
-														)}
-													>
-														<CurrencyFlag
-															className="!h-3.5 !w-3.5"
-															currencyCode={b.currency}
-														/>
+												{formatCurrency(
+													Math.abs(homeCurrencyTotal.amount),
+													homeCurrency,
+												)}
+											</span>
+										) : null}
+										{/* Per-currency breakdown chips (accent color only) */}
+										{!isSettled &&
+											(homeCurrencyTotal && homeCurrencyTotal.canConvert
+												? balances.some((b) => b.currency !== homeCurrency)
+												: true) && (
+												<div className="flex flex-wrap gap-1.5 sm:justify-end">
+													{balances.map((b) => (
 														<span
-															className={cn(
-																"font-semibold text-sm leading-none tabular-nums",
-																b.direction === "they_owe_you"
-																	? "text-emerald-700 dark:text-emerald-300"
-																	: "text-amber-700 dark:text-amber-300",
-															)}
+															key={b.currency}
+															className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2 py-0.5"
 														>
-															{formatCurrency(b.balance, b.currency)}
+															<CurrencyFlag
+																className="!h-3 !w-3"
+																currencyCode={b.currency}
+															/>
+															<span
+																className={cn(
+																	"font-semibold text-xs leading-none tabular-nums",
+																	b.direction === "they_owe_you"
+																		? "text-emerald-600 dark:text-emerald-400"
+																		: "text-amber-600 dark:text-amber-400",
+																)}
+															>
+																{formatCurrency(b.balance, b.currency)}
+															</span>
+															<span className="text-[10px] text-muted-foreground leading-none">
+																{b.currency}
+															</span>
 														</span>
-														<span className="text-[10px] text-muted-foreground leading-none">
-															{b.currency}
-														</span>
-													</span>
-												))}
-											</div>
-										) : undefined
-									}
-									title={
-										isSettled
-											? t("allSettledUp")
-											: netDirection === "they_owe_you"
-												? t("theyOweYou")
-												: t("youOweThem")
-									}
-									value={
-										isSettled
-											? formatCurrency(0, homeCurrency)
-											: homeCurrencyTotal && homeCurrencyTotal.canConvert
-												? formatCurrency(
-														Math.abs(homeCurrencyTotal.amount),
-														homeCurrency,
-													)
-												: undefined
-									}
-									variant={
-										isSettled
-											? "neutral"
-											: netDirection === "they_owe_you"
-												? "emerald"
-												: "amber"
-									}
-								/>
-							</div>}
-							</CardContent>
-						</Card>
+													))}
+												</div>
+											)}
+									</div>
+
+									{/* Action buttons */}
+									<div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+										{!isSettled && (
+											<Button onClick={() => setSettleUpOpen(true)} size="sm">
+												{settleButtonLabel}
+											</Button>
+										)}
+										{!isSettled && netDirection === "they_owe_you" && participantType === "user" && (
+											<Button
+												disabled={remindPayment.isPending || reminderSent}
+												onClick={() => remindPayment.mutate({ participantType, participantId: id })}
+												size="sm"
+												variant="outline"
+											>
+												{reminderSent ? (
+													<>
+														<CheckCircle2 className="h-4 w-4" />
+														{t("sent")}
+													</>
+												) : (
+													<>
+														<Bell className="h-4 w-4" />
+														{remindPayment.isPending ? t("sending") : t("remind")}
+													</>
+												)}
+											</Button>
+										)}
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													disabled={isExporting}
+													size="sm"
+													variant="ghost"
+													className="focus-visible:ring-0 focus-visible:ring-offset-0"
+												>
+													<Download className="h-4 w-4" />
+													{isExporting ? t("exporting") : t("export")}
+													<ChevronDown className="h-3 w-3 opacity-60" />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem onClick={handleExportHistory}>
+													<FileSpreadsheet className="mr-2 h-4 w-4" />
+													{t("exportHistoryCsv")}
+												</DropdownMenuItem>
+												{!isSettled && (
+													<DropdownMenuItem onClick={handleExportSettlement}>
+														<Receipt className="mr-2 h-4 w-4" />
+														{t("exportSettlementPlan")}
+													</DropdownMenuItem>
+												)}
+												<DropdownMenuItem onClick={handleExportPdf}>
+													<FileText className="mr-2 h-4 w-4" />
+													{t("downloadPdfSummary")}
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</div>
+								</div>
+							)}
+						</div>
 
 						{/* Per-project filter pills + table controls */}
 						{!isLoading && hasHistory && (
