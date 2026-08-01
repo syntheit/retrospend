@@ -26,15 +26,7 @@ import {
 	useState,
 	type ComponentType,
 } from "react";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
 	Tooltip,
@@ -694,11 +686,12 @@ function PersonFilter({
 
 // ── Activity Feed (shared body) ─────────────────────────────────────────────
 //
-// Filters + list + infinite scroll, with no surrounding chrome. Rendered inside
-// the Sheet (ActivityFeedPanel) AND directly in the project's Activity tab
-// (ActivityTab). `onClose` lets the "view full history" action dismiss whatever
-// container is showing the feed before opening the revision drawer; in the tab
-// there is nothing to close, so it's a no-op.
+// Filters + list + infinite scroll, with no surrounding chrome. Rendered
+// directly in the project's Activity tab (ActivityTab). `onClose` lets the
+// "view full history" action dismiss whatever container is showing the feed
+// before opening the revision drawer; in the tab there is nothing to close, so
+// it's a no-op. The "sheet" layout is kept for callers that host the feed in a
+// side panel.
 
 interface ActivityFeedProps {
 	projectId: string;
@@ -1014,65 +1007,5 @@ export function ActivityFeed({
 			{filtersBlock}
 			<div>{listBlock}</div>
 		</div>
-	);
-}
-
-// ── Main Activity Feed Panel (Sheet) ────────────────────────────────────────
-
-interface ActivityFeedPanelProps {
-	projectId: string | null;
-	projectName: string;
-	onClose: () => void;
-}
-
-export function ActivityFeedPanel({
-	projectId,
-	projectName,
-	onClose,
-}: ActivityFeedPanelProps) {
-	const t = useTranslations("projects");
-	const isOpen = projectId !== null;
-	const [totalCount, setTotalCount] = useState(0);
-
-	return (
-		<Sheet onOpenChange={(open) => !open && onClose()} open={isOpen}>
-			<SheetContent
-				aria-label="Activity feed"
-				className="w-full gap-0 sm:max-w-full md:max-w-[480px] lg:max-w-[520px]"
-				side="right"
-			>
-				{isOpen && projectId ? (
-					<ActivityFeed
-						header={
-							<SheetHeader className="gap-1 border-0 p-0">
-								<SheetTitle>{t("activity")}</SheetTitle>
-								<SheetDescription className="text-muted-foreground text-sm">
-									{projectName}
-									{totalCount > 0 && (
-										<>
-											{" "}
-											&middot;{" "}
-											<span className="tabular-nums">{totalCount}</span>{" "}
-											{t("eventCount", { count: totalCount })}
-										</>
-									)}
-								</SheetDescription>
-							</SheetHeader>
-						}
-						layout="sheet"
-						onClose={onClose}
-						onTotalCountChange={setTotalCount}
-						projectId={projectId}
-					/>
-				) : (
-					<>
-						<SheetHeader className="sr-only">
-							<SheetTitle>{t("activity")}</SheetTitle>
-							<SheetDescription>{projectName}</SheetDescription>
-						</SheetHeader>
-					</>
-				)}
-			</SheetContent>
-		</Sheet>
 	);
 }

@@ -334,9 +334,7 @@ export function PeopleTab({
 
 										{/* Paid */}
 										<td className="px-4 py-3 text-right tabular-nums">
-											{isMultiPerson
-												? formatCurrency(paid, primaryCurrency)
-												: formatCurrency(paid, primaryCurrency)}
+											{formatCurrency(paid, primaryCurrency)}
 										</td>
 
 										{/* Balance */}

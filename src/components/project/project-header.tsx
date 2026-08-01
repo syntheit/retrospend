@@ -17,7 +17,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserAvatar } from "~/components/ui/user-avatar";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
