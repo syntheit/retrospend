@@ -165,7 +165,7 @@ export default function RecurringPage() {
 			<PageContent>
 				<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
 					{/* Main column */}
-					<div className="min-w-0 space-y-6 lg:col-span-8">
+					<div className="min-w-0 space-y-6 lg:col-span-9">
 						<RecurringStatsCards
 							homeCurrency={homeCurrency}
 							loading={isLoading}
@@ -244,7 +244,7 @@ export default function RecurringPage() {
 
 					{/* Sidebar — hidden below lg, hidden when no templates */}
 					{(isLoading || hasTemplates) && (
-						<aside className="sticky top-6 hidden space-y-6 lg:col-span-4 lg:block">
+						<aside className="sticky top-6 hidden space-y-6 lg:col-span-3 lg:block">
 							<RecurringCalendar
 								loading={isLoading}
 								serverTime={serverTime}
