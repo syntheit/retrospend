@@ -13,7 +13,10 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "~/components/ui/popover";
-import { useRebalanceOnAdd } from "~/hooks/use-rebalance-on-add";
+import {
+	type RebalanceParticipant,
+	useRebalanceOnAdd,
+} from "~/hooks/use-rebalance-on-add";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -31,12 +34,22 @@ export function AddPeopleSearch({
 	variant = "search",
 	autoFocus = true,
 	onAdded,
+	promptRebalance: externalPromptRebalance,
 }: {
 	projectId: string;
 	variant?: "search" | "ghost";
 	autoFocus?: boolean;
 	/** Fired after a participant is successfully added (e.g. to invalidate balances). */
 	onAdded?: () => void;
+	/**
+	 * When this component lives inside a container that unmounts on add (a
+	 * popover/dialog that closes after the add), the internal rebalance dialog
+	 * would be torn down before it can appear. Callers in that situation own a
+	 * stable `useRebalanceOnAdd` instance and pass its `promptRebalance` in; the
+	 * dialog element is then rendered by the caller at a level that survives the
+	 * close.
+	 */
+	promptRebalance?: (participant: RebalanceParticipant) => void;
 }) {
 	const t = useTranslations("projects");
 	const [search, setSearch] = useState("");
@@ -47,7 +60,13 @@ export function AddPeopleSearch({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const utils = api.useUtils();
 	// After adding someone, offer to fold them into existing project expenses.
-	const { promptRebalance, rebalanceElement } = useRebalanceOnAdd(projectId);
+	// If the caller supplied a stable prompt (because this component unmounts on
+	// add), use it and skip rendering our own dialog; otherwise own it locally.
+	const internalRebalance = useRebalanceOnAdd(projectId);
+	const promptRebalance = externalPromptRebalance ?? internalRebalance.promptRebalance;
+	const rebalanceElement = externalPromptRebalance
+		? null
+		: internalRebalance.rebalanceElement;
 
 	const searchQuery = search.startsWith("@") ? search.slice(1) : search;
 

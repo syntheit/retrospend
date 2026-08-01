@@ -271,7 +271,9 @@ export function SplitWithPicker({
 						variant="outline"
 						size="sm"
 						className={cn(
-							"h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+							// min-h-8 matches sibling pills, whose xs avatar (h-6) makes them
+							// taller than this icon/text-only chip would otherwise be.
+							"h-auto min-h-8 gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
 							allChipsSelected
 								? "border-primary/40 bg-primary/10 text-primary dark:bg-primary/10"
 								: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",

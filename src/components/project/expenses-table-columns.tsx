@@ -6,7 +6,6 @@ import { Button } from "~/components/ui/button";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
 import { SharedTransactionActionsMenu } from "~/components/shared-transaction-actions-menu";
 import { formatExpenseAsText, formatExpenseDate } from "~/lib/format";
-import { TransactionEditedIndicator } from "~/components/transaction-edited-indicator";
 import { TransactionStatusBadge } from "~/components/ui/transaction-status-badge";
 import { AvatarStack } from "~/components/ui/avatar-stack";
 import type { RouterOutputs } from "~/trpc/react";
@@ -55,7 +54,6 @@ export function createProjectExpenseColumns({
 	isReadOnly,
 	formatCurrency,
 	t,
-	revisionSummaries,
 	currentParticipant,
 	onEdit,
 	onDelete,
@@ -75,21 +73,11 @@ export function createProjectExpenseColumns({
 			meta: { flex: true },
 			cell: ({ row }) => {
 				const txn = row.original;
-				const summary = revisionSummaries?.[txn.id];
-				const showIndicator = summary ?? txn.hasUnseenChanges;
-
+				// The inline "edited" tag was removed; revision history is reachable
+				// from the row actions menu (View history).
 				return (
 					<div>
 						<div className="font-medium">{txn.description}</div>
-						{showIndicator && (
-							<TransactionEditedIndicator
-								editCount={summary?.editCount ?? 0}
-								hasUnseenChanges={txn.hasUnseenChanges}
-								lastEditedAt={summary?.lastEditedAt ?? null}
-								lastEditedBy={summary?.lastEditedBy ?? null}
-								onClick={() => onViewHistory?.(txn.id)}
-							/>
-						)}
 					</div>
 				);
 			},

@@ -1,14 +1,12 @@
 "use client";
 
-import { Activity, Receipt, Share2, Users } from "lucide-react";
+import { Activity, Receipt, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 
 import { ActivityTab } from "~/components/project/activity-tab";
 import { PeopleTab } from "~/components/project/people-tab";
-import { ShareProjectDialog } from "~/components/project/share-project-dialog";
-import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 const TAB_VALUES = ["expenses", "people", "activity"] as const;
@@ -59,7 +57,6 @@ export function ProjectTabs({
 	const t = useTranslations("projects");
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const [shareOpen, setShareOpen] = useState(false);
 
 	const paramTab = searchParams.get("tab");
 	const activeTab: TabValue = useMemo(() => {
@@ -95,70 +92,52 @@ export function ProjectTabs({
 	}
 
 	return (
-		<>
-			<Tabs
-				className="flex flex-1 flex-col gap-4"
-				onValueChange={handleTabChange}
-				value={activeTab}
+		<Tabs
+			className="flex flex-1 flex-col gap-4"
+			onValueChange={handleTabChange}
+			value={activeTab}
+		>
+			<TabsList>
+				<TabsTrigger value="expenses">
+					<Receipt className="h-4 w-4" />
+					{t("tabExpenses")}
+				</TabsTrigger>
+				<TabsTrigger value="people">
+					<Users className="h-4 w-4" />
+					{t("tabPeople")}
+				</TabsTrigger>
+				<TabsTrigger value="activity">
+					<Activity className="h-4 w-4" />
+					{t("tabActivity")}
+				</TabsTrigger>
+			</TabsList>
+
+			{/* Expenses: force-mounted so switching tabs never resets the selected
+			    billing period or expense filters (Radix unmounts inactive content). */}
+			<TabsContent
+				className="mt-0 flex flex-col gap-4 data-[state=inactive]:hidden"
+				forceMount
+				value="expenses"
 			>
-				<div className="flex items-center justify-between gap-3">
-					<TabsList>
-						<TabsTrigger value="expenses">
-							<Receipt className="h-4 w-4" />
-							{t("tabExpenses")}
-						</TabsTrigger>
-						<TabsTrigger value="people">
-							<Users className="h-4 w-4" />
-							{t("tabPeople")}
-						</TabsTrigger>
-						<TabsTrigger value="activity">
-							<Activity className="h-4 w-4" />
-							{t("tabActivity")}
-						</TabsTrigger>
-					</TabsList>
-					<Button onClick={() => setShareOpen(true)} size="sm" variant="outline">
-						<Share2 className="mr-1 h-4 w-4" />
-						{t("share")}
-					</Button>
-				</div>
+				{expensesPanel}
+			</TabsContent>
 
-				{/* Expenses: force-mounted so switching tabs never resets the selected
-				    billing period or expense filters (Radix unmounts inactive content). */}
-				<TabsContent
-					className="mt-0 flex flex-col gap-4 data-[state=inactive]:hidden"
-					forceMount
-					value="expenses"
-				>
-					{expensesPanel}
-				</TabsContent>
+			<TabsContent className="mt-0" value="people">
+				<PeopleTab
+					createdById={createdById}
+					currentUserId={currentUserId}
+					isEditor={isEditor}
+					isOrganizer={isOrganizer}
+					participants={participants}
+					primaryCurrency={primaryCurrency}
+					projectId={projectId}
+					projectName={projectName}
+				/>
+			</TabsContent>
 
-				<TabsContent className="mt-0" value="people">
-					<PeopleTab
-						createdById={createdById}
-						currentUserId={currentUserId}
-						isEditor={isEditor}
-						isOrganizer={isOrganizer}
-						participants={participants}
-						primaryCurrency={primaryCurrency}
-						projectId={projectId}
-						projectName={projectName}
-					/>
-				</TabsContent>
-
-				<TabsContent className="mt-0" value="activity">
-					<ActivityTab projectId={projectId} />
-				</TabsContent>
-			</Tabs>
-
-			<ShareProjectDialog
-				createdById={createdById}
-				isEditor={isEditor}
-				isOrganizer={isOrganizer}
-				onOpenChange={setShareOpen}
-				open={shareOpen}
-				projectId={projectId}
-				projectName={projectName}
-			/>
-		</>
+			<TabsContent className="mt-0" value="activity">
+				<ActivityTab projectId={projectId} />
+			</TabsContent>
+		</Tabs>
 	);
 }

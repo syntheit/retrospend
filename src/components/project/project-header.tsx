@@ -11,6 +11,7 @@ import {
 	Plus,
 	Receipt,
 	Settings,
+	Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -31,6 +32,7 @@ import {
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { ProjectVisual } from "~/components/project/project-visual";
+import { ShareProjectDialog } from "~/components/project/share-project-dialog";
 
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
@@ -205,6 +207,7 @@ export function ProjectHeader({
 }: ProjectHeaderProps) {
 	const t = useTranslations("projects");
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+	const [shareOpen, setShareOpen] = useState(false);
 	const utils = api.useUtils();
 	const { settings } = useUserSettings();
 	const isSolo = !participants || participants.length <= 1;
@@ -303,6 +306,7 @@ export function ProjectHeader({
 							<ParticipantRow
 								currentUserId={currentUserId}
 								linkMode="people"
+								onMoreClick={() => setShareOpen(true)}
 								participants={participants}
 							/>
 						)}
@@ -318,6 +322,17 @@ export function ProjectHeader({
 						</Button>
 					)}
 					<div className="flex items-center gap-0.5">
+						{!isSolo && (
+							<Button
+								onClick={() => setShareOpen(true)}
+								size="sm"
+								variant="ghost"
+								title={t("share")}
+							>
+								<Share2 className="h-4 w-4" />
+								{t("share")}
+							</Button>
+						)}
 						{hasExportOptions && (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
@@ -420,6 +435,17 @@ export function ProjectHeader({
 				</div>
 			</div>
 
+			{!isSolo && (
+				<ShareProjectDialog
+					createdById={project.createdById}
+					isEditor={isEditor}
+					isOrganizer={isOrganizer}
+					onOpenChange={setShareOpen}
+					open={shareOpen}
+					projectId={project.id}
+					projectName={project.name}
+				/>
+			)}
 		</>
 	);
 }

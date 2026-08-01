@@ -20,7 +20,6 @@ import {
 	PaymentMethodIcon,
 	getPaymentMethodName,
 } from "~/components/ui/payment-method-icon";
-import { TransactionEditedIndicator } from "~/components/transaction-edited-indicator";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -151,9 +150,8 @@ export function createTimelineColumns(
 					);
 				}
 
-				const summary = revisionSummaries?.[item.id];
-				const showIndicator = summary ?? item.hasUnseenChanges;
-
+				// The inline "edited" tag was removed; revision history is reachable
+				// from the row actions menu (View history).
 				return (
 					<div className="flex items-center gap-2">
 						<span className="font-medium text-sm">{item.description}</span>
@@ -172,15 +170,6 @@ export function createTimelineColumns(
 									<p>{t("openProject", { name: item.project.name })}</p>
 								</TooltipContent>
 							</Tooltip>
-						)}
-						{showIndicator && (
-							<TransactionEditedIndicator
-								editCount={summary?.editCount ?? 0}
-								hasUnseenChanges={item.hasUnseenChanges ?? false}
-								lastEditedAt={summary?.lastEditedAt ?? null}
-								lastEditedBy={summary?.lastEditedBy ?? null}
-								onClick={() => callbacks.onViewHistory(item.id)}
-							/>
 						)}
 					</div>
 				);
@@ -219,7 +208,7 @@ export function createTimelineColumns(
 				if (item.type === "settlement") return null;
 				const participants = item.splitParticipants;
 				if (!participants || participants.length === 0) {
-					return <span className="text-muted-foreground">—</span>;
+					return <span className="text-muted-foreground">-</span>;
 				}
 				return (
 					<AvatarStack
