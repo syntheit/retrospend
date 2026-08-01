@@ -127,7 +127,9 @@ export function RebalanceExpensesDialog({
 					<ResponsiveDialogDescription>
 						{showEmpty
 							? t("includeInExpensesNone")
-							: t("includeInExpensesDescription")}
+							: t("includeInExpensesDescription", {
+									name: participant?.name ?? "",
+								})}
 					</ResponsiveDialogDescription>
 				</ResponsiveDialogHeader>
 
