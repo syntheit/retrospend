@@ -47,12 +47,15 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "~/components/ui/popover";
+	ResponsiveDialog,
+	ResponsiveDialogContent,
+	ResponsiveDialogDescription,
+	ResponsiveDialogHeader,
+	ResponsiveDialogTitle,
+} from "~/components/ui/responsive-dialog";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { useRebalanceOnAdd } from "~/hooks/use-rebalance-on-add";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -454,69 +457,87 @@ function AddPersonChooser({
 	const [open, setOpen] = useState(false);
 	const [mode, setMode] = useState<"chooser" | "invite" | "ghost">("chooser");
 
+	// Own the rebalance prompt at this stable level so the dialog survives the
+	// add modal closing. AddPeopleSearch renders inside the modal and unmounts on
+	// add; if it owned the dialog, the prompt would be torn down before it could
+	// appear (the root cause of ghosts never offering to join past equal splits).
+	const { promptRebalance, rebalanceElement } = useRebalanceOnAdd(projectId);
+
 	const reset = () => setMode("chooser");
 
 	return (
-		<Popover
-			onOpenChange={(o) => {
-				setOpen(o);
-				if (!o) reset();
-			}}
-			open={open}
-		>
-			<PopoverTrigger asChild>
-				<Button size="sm">
-					<Plus className="mr-1 h-4 w-4" />
-					{t("addPerson")}
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent align="end" className="w-72 p-1.5">
-				{mode === "chooser" && (
-					<div className="flex flex-col gap-0.5">
-						<p className="px-2.5 pt-1.5 pb-1 font-semibold text-[11px] uppercase tracking-wide text-muted-foreground">
+		<>
+			<Button onClick={() => setOpen(true)} size="sm">
+				<Plus className="mr-1 h-4 w-4" />
+				{t("addPerson")}
+			</Button>
+			<ResponsiveDialog
+				onOpenChange={(o) => {
+					setOpen(o);
+					if (!o) reset();
+				}}
+				open={open}
+			>
+				<ResponsiveDialogContent
+					className="sm:max-w-md"
+					onOpenAutoFocus={(e) => {
+						// Only steal focus for the search/ghost inputs, not the chooser.
+						if (mode === "chooser") e.preventDefault();
+					}}
+				>
+					<ResponsiveDialogHeader>
+						<ResponsiveDialogTitle>{t("addPerson")}</ResponsiveDialogTitle>
+						<ResponsiveDialogDescription>
 							{t("addPersonChooserTitle")}
-						</p>
-						<ChooserOption
-							description={t("inviteSomeoneDesc")}
-							icon={<UserPlus className="h-4 w-4 text-primary" />}
-							onClick={() => setMode("invite")}
-							primary
-							title={t("inviteSomeone")}
-						/>
-						<ChooserOption
-							description={t("addANameDesc")}
-							icon={<Ghost className="h-4 w-4" />}
-							onClick={() => setMode("ghost")}
-							title={t("addAName")}
-						/>
-					</div>
-				)}
-				{mode === "invite" && (
-					<div className="p-1.5">
+						</ResponsiveDialogDescription>
+					</ResponsiveDialogHeader>
+
+					{mode === "chooser" && (
+						<div className="flex flex-col gap-1">
+							<ChooserOption
+								description={t("inviteSomeoneDesc")}
+								icon={<UserPlus className="h-4 w-4 text-primary" />}
+								onClick={() => setMode("invite")}
+								primary
+								title={t("inviteSomeone")}
+							/>
+							<ChooserOption
+								description={t("addANameDesc")}
+								icon={<Ghost className="h-4 w-4" />}
+								onClick={() => setMode("ghost")}
+								title={t("addAName")}
+							/>
+						</div>
+					)}
+					{mode === "invite" && (
 						<AddPeopleSearch
 							onAdded={() => {
 								onAdded();
 								setOpen(false);
 							}}
 							projectId={projectId}
+							promptRebalance={promptRebalance}
 							variant="search"
 						/>
-					</div>
-				)}
-				{mode === "ghost" && (
-					<div className="p-1.5">
+					)}
+					{mode === "ghost" && (
 						<AddPeopleSearch
 							onAdded={() => {
 								onAdded();
 								setOpen(false);
 							}}
 							projectId={projectId}
+							promptRebalance={promptRebalance}
 							variant="ghost"
 						/>
-					</div>
-				)}
-			</PopoverContent>
-		</Popover>
+					)}
+				</ResponsiveDialogContent>
+			</ResponsiveDialog>
+
+			{/* Rendered outside the add modal so it stays mounted when the modal
+			    closes and the rebalance prompt can actually appear. */}
+			{rebalanceElement}
+		</>
 	);
 }
 
@@ -535,7 +556,7 @@ function ChooserOption({
 }) {
 	return (
 		<button
-			className="flex items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-accent"
+			className="flex cursor-pointer items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-accent"
 			onClick={onClick}
 			type="button"
 		>

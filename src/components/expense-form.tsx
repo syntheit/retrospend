@@ -376,7 +376,9 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 											variant="outline"
 											size="sm"
 											className={cn(
-												"h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+												// min-h-8 matches sibling project pills, whose xs project
+												// visual (h-6) makes them taller than this text-only chip.
+												"h-auto min-h-8 gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
 												!selectedProjectId
 													? "border-primary/40 bg-primary/10 dark:bg-primary/10 text-primary"
 													: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -416,7 +418,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 														type="button"
 														variant="outline"
 														size="sm"
-														className="h-auto gap-1.5 rounded-full px-2.5 py-1 text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground"
+														className="h-auto min-h-8 gap-1.5 rounded-full px-2.5 py-1 text-muted-foreground text-xs font-medium hover:bg-accent hover:text-accent-foreground"
 													>
 														{t("more", { count: selectableProjects.length - visiblePillCount })}
 													</Button>
