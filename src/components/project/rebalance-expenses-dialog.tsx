@@ -13,7 +13,6 @@ import {
 	ResponsiveDialogTitle,
 } from "~/components/ui/responsive-dialog";
 import { api } from "~/trpc/react";
-import { cn } from "~/lib/utils";
 
 interface RebalanceExpensesDialogProps {
 	projectId: string;
@@ -147,15 +146,24 @@ export function RebalanceExpensesDialog({
 					<>
 						<div className="flex-1 overflow-y-auto px-3 py-2">
 							{eligible.map((e) => (
-								<button
-									type="button"
+								<div
 									key={e.id}
+									role="button"
+									tabIndex={0}
 									onClick={() => toggle(e.id)}
-									className={cn(
-										"flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent",
-									)}
+									onKeyDown={(ev) => {
+										if (ev.key === "Enter" || ev.key === " ") {
+											ev.preventDefault();
+											toggle(e.id);
+										}
+									}}
+									className="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-accent"
 								>
-									<Checkbox checked={selected.has(e.id)} />
+									<Checkbox
+										checked={selected.has(e.id)}
+										className="pointer-events-none"
+										tabIndex={-1}
+									/>
 									<div className="flex min-w-0 flex-1 flex-col">
 										<span className="truncate text-sm">{e.description}</span>
 										<span className="text-muted-foreground text-xs">
@@ -163,7 +171,7 @@ export function RebalanceExpensesDialog({
 											{e.amount} {e.currency}
 										</span>
 									</div>
-								</button>
+								</div>
 							))}
 						</div>
 						<div className="flex justify-between gap-2 border-t px-6 py-4">
