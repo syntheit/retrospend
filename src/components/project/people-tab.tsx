@@ -29,7 +29,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Card, CardContent } from "~/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -254,23 +253,15 @@ export function PeopleTab({
 	const isOwner = currentUserId === createdById;
 
 	return (
-		<Card>
-			<CardContent className="p-0">
-				{/* Head */}
-				<div className="flex items-center justify-between px-4 py-3 sm:px-6">
-					<h3 className="font-semibold text-base tracking-tight">
-						{t("tabPeople")}
-					</h3>
-					{isEditor && (
-						<AddPersonChooser
-							projectId={projectId}
-							onAdded={invalidateAll}
-						/>
-					)}
+		<div className="space-y-3">
+			{isEditor && (
+				<div className="flex justify-end">
+					<AddPersonChooser projectId={projectId} onAdded={invalidateAll} />
 				</div>
+			)}
 
-				{/* Table */}
-				<div className="overflow-x-auto">
+			{/* Roster floats on the project background (no card) like Expenses. */}
+			<div className="overflow-x-auto">
 					<table className="w-full text-sm">
 						<thead>
 							<tr className="border-border border-y text-muted-foreground text-xs">
@@ -342,7 +333,7 @@ export function PeopleTab({
 										<td className="px-4 py-3 text-right tabular-nums">
 											{isMultiPerson
 												? formatCurrency(paid, primaryCurrency)
-												: "—"}
+												: formatCurrency(paid, primaryCurrency)}
 										</td>
 
 										{/* Balance */}
@@ -378,7 +369,6 @@ export function PeopleTab({
 						</tbody>
 					</table>
 				</div>
-			</CardContent>
 
 			{/* Remove confirmation */}
 			<AlertDialog
@@ -447,7 +437,7 @@ export function PeopleTab({
 				onRenamed={invalidateAll}
 				shadow={renameTarget}
 			/>
-		</Card>
+		</div>
 	);
 }
 
@@ -720,10 +710,10 @@ function BalanceCell({
 }) {
 	const t = useTranslations("projects");
 	if (isMe || !isMultiPerson) {
-		return <span className="text-muted-foreground">—</span>;
+		return null;
 	}
 	if (net === undefined || Math.abs(net) < 0.005) {
-		return <span className="text-muted-foreground">—</span>;
+		return null;
 	}
 	if (net > 0) {
 		return (
