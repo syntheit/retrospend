@@ -13,7 +13,6 @@ import { getShadowInviteEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { getImageUrl } from "~/server/storage";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
-import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 
 const participantRefSchema = z.object({
 	participantType: z.enum(["user", "guest", "shadow"]),
@@ -224,35 +223,15 @@ export const peopleRouter = createTRPCRouter({
 				});
 			}
 
-			// Same authorization as claim.generateLink: EDITOR+ in at least one of
-			// the shadow's projects, or the creator of a standalone shadow.
-			const shadowMemberships = await ctx.db.projectParticipant.findMany({
-				where: { participantType: "shadow", participantId: shadow.id },
-				select: { projectId: true },
-			});
-			let authorized =
-				shadowMemberships.length === 0 && shadow.createdById === userId;
-			for (const m of shadowMemberships) {
-				if (authorized) break;
-				try {
-					await requireProjectRole(
-						ctx.db,
-						m.projectId,
-						"user",
-						userId,
-						"EDITOR",
-					);
-					authorized = true;
-					break;
-				} catch {
-					// Not EDITOR+ (or not a member) of this project — keep checking.
-				}
-			}
-			if (!authorized) {
+			// Renaming writes to shadow_profile, whose RLS WITH CHECK is creator-only,
+			// so only the person who created the ghost can rename it. Enforce at the app
+			// layer for a clean error instead of a Postgres rejection. (Letting project
+			// editors rename a shared ghost would require loosening that RLS policy —
+			// deferred as a fast-follow.)
+			if (shadow.createdById !== userId) {
 				throw new TRPCError({
 					code: "FORBIDDEN",
-					message:
-						"Only an editor or organizer of this person's project can rename them",
+					message: "Only the person who added this contact can rename them",
 				});
 			}
 

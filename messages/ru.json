@@ -984,7 +984,8 @@
     "shareViaLinkTitle": "Share “{name}”",
     "shareViaLinkDescription": "Anyone with the link can access this project.",
     "copyClaimLink": "Copy claim link",
-    "claimLink": "Claim link"
+    "claimLink": "Claim link",
+    "claimLinkCopied": "Claim link for {name} copied"
   },
   "wealth": {
     "title": "Капитал",
