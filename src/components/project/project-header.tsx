@@ -1,7 +1,6 @@
 "use client";
 
 import {
-	Activity,
 	BarChart3,
 	ChevronDown,
 	Download,
@@ -12,7 +11,6 @@ import {
 	Plus,
 	Receipt,
 	Settings,
-	Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -33,7 +31,6 @@ import {
 	TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { ProjectVisual } from "~/components/project/project-visual";
-import { ShareProjectDialog } from "~/components/project/share-project-dialog";
 
 import { useTranslations } from "next-intl";
 import { api } from "~/trpc/react";
@@ -174,8 +171,6 @@ interface ProjectHeaderProps {
 	isExporting?: boolean;
 	onClosePeriod?: () => void;
 	showClosePeriod?: boolean;
-	onActivityOpen?: () => void;
-	unseenCount?: number;
 	participants?: Participant[];
 	showPeriodSummaryExport?: boolean;
 	primaryCurrency?: string;
@@ -199,8 +194,6 @@ export function ProjectHeader({
 	isExporting,
 	onClosePeriod,
 	showClosePeriod,
-	onActivityOpen,
-	unseenCount,
 	participants,
 	showPeriodSummaryExport,
 	primaryCurrency,
@@ -211,7 +204,6 @@ export function ProjectHeader({
 	isAnalyticsTogglePending,
 }: ProjectHeaderProps) {
 	const t = useTranslations("projects");
-	const [shareOpen, setShareOpen] = useState(false);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 	const utils = api.useUtils();
 	const { settings } = useUserSettings();
@@ -311,7 +303,6 @@ export function ProjectHeader({
 							<ParticipantRow
 								currentUserId={currentUserId}
 								linkMode="people"
-								onMoreClick={() => setShareOpen(true)}
 								participants={participants}
 							/>
 						)}
@@ -327,34 +318,6 @@ export function ProjectHeader({
 						</Button>
 					)}
 					<div className="flex items-center gap-0.5">
-						{!isSolo && (
-							<Button
-								onClick={() => setShareOpen(true)}
-								size="sm"
-								variant="ghost"
-								title={t("share")}
-							>
-								<Share2 className="h-4 w-4" />
-								{t("share")}
-							</Button>
-						)}
-						{!isSolo && onActivityOpen && (
-							<Button
-								onClick={onActivityOpen}
-								size="sm"
-								variant="ghost"
-								className="relative"
-								title={t("activity")}
-							>
-								<Activity className="h-4 w-4" />
-								{t("activity")}
-								{!!unseenCount && unseenCount > 0 && (
-									<span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
-										{unseenCount > 99 ? "99+" : unseenCount}
-									</span>
-								)}
-							</Button>
-						)}
 						{hasExportOptions && (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
@@ -457,15 +420,6 @@ export function ProjectHeader({
 				</div>
 			</div>
 
-			<ShareProjectDialog
-				createdById={project.createdById}
-				isOrganizer={isOrganizer}
-				isEditor={isEditor}
-				onOpenChange={setShareOpen}
-				open={shareOpen}
-				projectId={project.id}
-				projectName={project.name}
-			/>
 		</>
 	);
 }
