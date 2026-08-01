@@ -19,7 +19,13 @@ import {
 	ArrowRight,
 	Activity,
 } from "lucide-react";
-import { useCallback, useMemo, useState, type ComponentType } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+	type ComponentType,
+} from "react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -686,21 +692,34 @@ function PersonFilter({
 	);
 }
 
-// ── Main Activity Feed Panel ────────────────────────────────────────────────
+// ── Activity Feed (shared body) ─────────────────────────────────────────────
+//
+// Filters + list + infinite scroll, with no surrounding chrome. Rendered inside
+// the Sheet (ActivityFeedPanel) AND directly in the project's Activity tab
+// (ActivityTab). `onClose` lets the "view full history" action dismiss whatever
+// container is showing the feed before opening the revision drawer; in the tab
+// there is nothing to close, so it's a no-op.
 
-interface ActivityFeedPanelProps {
-	projectId: string | null;
-	projectName: string;
-	onClose: () => void;
+interface ActivityFeedProps {
+	projectId: string;
+	/** Called before opening revision history (closes the Sheet when applicable). */
+	onClose?: () => void;
+	/** Optional slot rendered inside the header block (e.g. the Sheet's title). */
+	header?: React.ReactNode;
+	/** Layout: "sheet" keeps the sticky-header split; "panel" is a plain block. */
+	layout?: "sheet" | "panel";
+	/** Reports the total event count so containers can render it in their chrome. */
+	onTotalCountChange?: (count: number) => void;
 }
 
-export function ActivityFeedPanel({
+export function ActivityFeed({
 	projectId,
-	projectName,
 	onClose,
-}: ActivityFeedPanelProps) {
+	header,
+	layout = "panel",
+	onTotalCountChange,
+}: ActivityFeedProps) {
 	const t = useTranslations("projects");
-	const isOpen = projectId !== null;
 	const { openHistory } = useRevisionHistory();
 	const filterGroups = useMemo(() => getFilterGroups(t), [t]);
 	const locale = useLocale();
@@ -731,8 +750,7 @@ export function ActivityFeedPanel({
 
 	// Filters query
 	const { data: filtersData } = api.auditLog.projectActivityFilters.useQuery(
-		{ projectId: projectId! },
-		{ enabled: isOpen },
+		{ projectId },
 	);
 
 	// Build the filters object for the query
@@ -767,12 +785,11 @@ export function ActivityFeedPanel({
 		isFetchingNextPage,
 	} = api.auditLog.projectActivityFeed.useInfiniteQuery(
 		{
-			projectId: projectId!,
+			projectId,
 			limit: 50,
 			filters: queryFilters,
 		},
 		{
-			enabled: isOpen,
 			getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 			initialCursor: undefined,
 		},
@@ -784,6 +801,11 @@ export function ActivityFeedPanel({
 		[feedData],
 	);
 	const totalCount = feedData?.pages[0]?.totalCount ?? 0;
+
+	// Bubble the count up so the containing chrome (Sheet header) can show it.
+	useEffect(() => {
+		onTotalCountChange?.(totalCount);
+	}, [totalCount, onTotalCountChange]);
 
 	// Filter handlers
 	const toggleGroup = useCallback((label: string) => {
@@ -824,9 +846,13 @@ export function ActivityFeedPanel({
 	// Handle "View full history" - close activity feed, open revision history
 	const handleViewFullHistory = useCallback(
 		(transactionId: string) => {
-			onClose();
-			// Small delay to let the sheet close animation start
-			setTimeout(() => openHistory(transactionId), 150);
+			if (onClose) {
+				onClose();
+				// Small delay to let the sheet close animation start
+				setTimeout(() => openHistory(transactionId), 150);
+			} else {
+				openHistory(transactionId);
+			}
 		},
 		[onClose, openHistory],
 	);
@@ -855,6 +881,159 @@ export function ActivityFeedPanel({
 		return result;
 	}, [allEntries]);
 
+	const filtersBlock = filtersData ? (
+		<div className="space-y-2 pt-2">
+			<ActionFilterChips
+				actionTypes={filtersData.actionTypes}
+				filterGroups={filterGroups}
+				onToggleGroup={toggleGroup}
+				selectedGroups={selectedGroups}
+			/>
+			<div className="flex items-center gap-2">
+				<PersonFilter
+					actors={filtersData.actors}
+					onToggleActor={toggleActor}
+					selectedActorIds={selectedActorIds}
+				/>
+				{hasActiveFilters && (
+					<Button
+						className="h-7 px-2 text-xs"
+						onClick={clearFilters}
+						size="sm"
+						variant="ghost"
+					>
+						{t("clearFilters")}
+					</Button>
+				)}
+			</div>
+		</div>
+	) : null;
+
+	const listBlock = (
+		<>
+			{isLoading && (
+				<div
+					className="animate-in fade-in-0 duration-200"
+					style={{
+						animationDelay: "150ms",
+						animationFillMode: "backwards",
+					}}
+				>
+					<FeedSkeleton />
+				</div>
+			)}
+
+			{isError && (
+				<div className="flex flex-col items-center justify-center gap-3 py-12">
+					<p className="text-muted-foreground text-sm">
+						{t("couldntLoadActivityFeed")}
+					</p>
+					<Button onClick={() => void refetch()} size="sm" variant="outline">
+						{t("tryAgain")}
+					</Button>
+				</div>
+			)}
+
+			{!isLoading && !isError && allEntries.length === 0 && (
+				<div className="flex flex-col items-center justify-center gap-2 py-12">
+					{hasActiveFilters ? (
+						<>
+							<p className="text-muted-foreground text-sm">
+								{t("noEventsMatchFilters")}
+							</p>
+							<Button onClick={clearFilters} size="sm" variant="outline">
+								{t("clearFilters")}
+							</Button>
+						</>
+					) : (
+						<p className="text-center text-muted-foreground text-sm">
+							{t("noActivityYet")}
+						</p>
+					)}
+				</div>
+			)}
+
+			{!isLoading && !isError && allEntries.length > 0 && (
+				<>
+					{entriesWithSeparators.map((item) =>
+						item.type === "separator" ? (
+							<DateSeparator key={item.key} label={item.label} />
+						) : (
+							<ActivityGroupView
+								group={item.group}
+								key={item.key}
+								onViewFullHistory={handleViewFullHistory}
+							/>
+						),
+					)}
+
+					{/* Load more */}
+					{hasNextPage && (
+						<div className="flex justify-center py-4">
+							<Button
+								disabled={isFetchingNextPage}
+								onClick={() => void fetchNextPage()}
+								size="sm"
+								variant="outline"
+							>
+								{isFetchingNextPage ? (
+									<>
+										<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+										{t("loading")}
+									</>
+								) : (
+									t("loadMore")
+								)}
+							</Button>
+						</div>
+					)}
+				</>
+			)}
+		</>
+	);
+
+	// Sheet layout keeps the sticky-header split used by ActivityFeedPanel.
+	if (layout === "sheet") {
+		return (
+			<>
+				<div className="border-b px-6 py-4 pr-12">
+					{header}
+					{filtersBlock}
+				</div>
+				<div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
+					{listBlock}
+				</div>
+			</>
+		);
+	}
+
+	// Plain panel layout for the Activity tab.
+	return (
+		<div className="flex flex-col gap-3">
+			{header}
+			{filtersBlock}
+			<div>{listBlock}</div>
+		</div>
+	);
+}
+
+// ── Main Activity Feed Panel (Sheet) ────────────────────────────────────────
+
+interface ActivityFeedPanelProps {
+	projectId: string | null;
+	projectName: string;
+	onClose: () => void;
+}
+
+export function ActivityFeedPanel({
+	projectId,
+	projectName,
+	onClose,
+}: ActivityFeedPanelProps) {
+	const t = useTranslations("projects");
+	const isOpen = projectId !== null;
+	const [totalCount, setTotalCount] = useState(0);
+
 	return (
 		<Sheet onOpenChange={(open) => !open && onClose()} open={isOpen}>
 			<SheetContent
@@ -862,139 +1041,37 @@ export function ActivityFeedPanel({
 				className="w-full gap-0 sm:max-w-full md:max-w-[480px] lg:max-w-[520px]"
 				side="right"
 			>
-				<SheetHeader className="border-b px-6 py-4 pr-12">
-					<SheetTitle>{t("activity")}</SheetTitle>
-					<SheetDescription className="text-muted-foreground text-sm">
-						{projectName}
-						{totalCount > 0 && (
-							<>
-								{" "}
-								&middot;{" "}
-								<span className="tabular-nums">{totalCount}</span>{" "}
-								{t("eventCount", { count: totalCount })}
-								{hasActiveFilters && ` (${t("filtered")})`}
-							</>
-						)}
-					</SheetDescription>
-
-					{/* Filters */}
-					{filtersData && (
-						<div className="space-y-2 pt-2">
-							<ActionFilterChips
-								actionTypes={filtersData.actionTypes}
-								filterGroups={filterGroups}
-								onToggleGroup={toggleGroup}
-								selectedGroups={selectedGroups}
-							/>
-							<div className="flex items-center gap-2">
-								<PersonFilter
-									actors={filtersData.actors}
-									onToggleActor={toggleActor}
-									selectedActorIds={selectedActorIds}
-								/>
-								{hasActiveFilters && (
-									<Button
-										className="h-7 px-2 text-xs"
-										onClick={clearFilters}
-										size="sm"
-										variant="ghost"
-									>
-										{t("clearFilters")}
-									</Button>
-								)}
-							</div>
-						</div>
-					)}
-				</SheetHeader>
-
-				<div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
-					{isLoading && (
-						<div
-							className="animate-in fade-in-0 duration-200"
-							style={{
-								animationDelay: "150ms",
-								animationFillMode: "backwards",
-							}}
-						>
-							<FeedSkeleton />
-						</div>
-					)}
-
-					{isError && (
-						<div className="flex flex-col items-center justify-center gap-3 py-12">
-							<p className="text-muted-foreground text-sm">
-								{t("couldntLoadActivityFeed")}
-							</p>
-							<Button
-								onClick={() => void refetch()}
-								size="sm"
-								variant="outline"
-							>
-								{t("tryAgain")}
-							</Button>
-						</div>
-					)}
-
-					{!isLoading && !isError && allEntries.length === 0 && (
-						<div className="flex flex-col items-center justify-center gap-2 py-12">
-							{hasActiveFilters ? (
-								<>
-									<p className="text-muted-foreground text-sm">
-										{t("noEventsMatchFilters")}
-									</p>
-									<Button
-										onClick={clearFilters}
-										size="sm"
-										variant="outline"
-									>
-										{t("clearFilters")}
-									</Button>
-								</>
-							) : (
-								<p className="text-center text-muted-foreground text-sm">
-									{t("noActivityYet")}
-								</p>
-							)}
-						</div>
-					)}
-
-					{!isLoading && !isError && allEntries.length > 0 && (
-						<>
-							{entriesWithSeparators.map((item) =>
-								item.type === "separator" ? (
-									<DateSeparator key={item.key} label={item.label} />
-								) : (
-									<ActivityGroupView
-										group={item.group}
-										key={item.key}
-										onViewFullHistory={handleViewFullHistory}
-									/>
-								),
-							)}
-
-							{/* Load more */}
-							{hasNextPage && (
-								<div className="flex justify-center py-4">
-									<Button
-										disabled={isFetchingNextPage}
-										onClick={() => void fetchNextPage()}
-										size="sm"
-										variant="outline"
-									>
-										{isFetchingNextPage ? (
-											<>
-												<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-												{t("loading")}
-											</>
-										) : (
-											t("loadMore")
-										)}
-									</Button>
-								</div>
-							)}
-						</>
-					)}
-				</div>
+				{isOpen && projectId ? (
+					<ActivityFeed
+						header={
+							<SheetHeader className="gap-1 border-0 p-0">
+								<SheetTitle>{t("activity")}</SheetTitle>
+								<SheetDescription className="text-muted-foreground text-sm">
+									{projectName}
+									{totalCount > 0 && (
+										<>
+											{" "}
+											&middot;{" "}
+											<span className="tabular-nums">{totalCount}</span>{" "}
+											{t("eventCount", { count: totalCount })}
+										</>
+									)}
+								</SheetDescription>
+							</SheetHeader>
+						}
+						layout="sheet"
+						onClose={onClose}
+						onTotalCountChange={setTotalCount}
+						projectId={projectId}
+					/>
+				) : (
+					<>
+						<SheetHeader className="sr-only">
+							<SheetTitle>{t("activity")}</SheetTitle>
+							<SheetDescription>{projectName}</SheetDescription>
+						</SheetHeader>
+					</>
+				)}
 			</SheetContent>
 		</Sheet>
 	);

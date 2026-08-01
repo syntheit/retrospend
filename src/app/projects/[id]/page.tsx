@@ -19,11 +19,11 @@ import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { usePageTitle } from "~/hooks/use-page-title";
-import { ActivityFeedPanel } from "~/components/project/activity-feed-panel";
 import { BillingPeriodTabs } from "~/components/project/billing-period-tabs";
 import { BudgetCard } from "~/components/project/budget-card";
 import { ExpensesTable } from "~/components/project/expenses-table";
 import { ParticipantRow, ProjectHeader } from "~/components/project/project-header";
+import { ProjectTabs } from "~/components/project/project-tabs";
 import { ProjectSettingsDialog } from "~/components/project/project-settings-dialog";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { CommandPalette } from "~/components/command-palette";
@@ -614,7 +614,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 
 	const utils = api.useUtils();
 	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [activityOpen, setActivityOpen] = useState(false);
 	const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
 	const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 	const [pendingFilterKey, setPendingFilterKey] = useState(0);
@@ -864,7 +863,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								isExporting={isAnyExporting}
 								isEditor={isEditor}
 								isOrganizer={isOrganizer}
-								onActivityOpen={() => setActivityOpen(true)}
 								onAddExpense={handleAddExpense}
 								onExportExpenses={handleExportExpenses}
 								onExportSettlement={
@@ -889,7 +887,6 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 									imagePath: project.imagePath,
 								}}
 								showPeriodSummaryExport={isOngoing && !!selectedPeriodId}
-								unseenCount={project.unseenChangesCount}
 								primaryCurrency={project.primaryCurrency}
 								expenseCount={project.categoryStats.reduce((sum, s) => sum + s.count, 0)}
 								currentUserId={userId}
@@ -903,6 +900,18 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								isAnalyticsTogglePending={analyticsExclusionMutation.isPending}
 							/>
 
+							<ProjectTabs
+								createdById={project.createdById}
+								currentUserId={userId}
+								isEditor={isEditor}
+								isOrganizer={isOrganizer}
+								isSolo={isSolo}
+								participants={project.participants}
+								primaryCurrency={project.primaryCurrency}
+								projectId={id}
+								projectName={project.name}
+								expensesPanel={
+									<>
 							{hasBudget && (
 								<BudgetCard
 									budget={Number(project.budgetAmount)}
@@ -937,17 +946,13 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								onAddExpense={handleAddExpense}
 								projectId={id}
 							/>
+									</>
+								}
+							/>
 					</div>
 				) : null}
 			</PageContent>
 
-			{project && (
-				<ActivityFeedPanel
-					onClose={() => setActivityOpen(false)}
-					projectId={activityOpen ? id : null}
-					projectName={project.name}
-				/>
-			)}
 
 			{project && isEditor && (
 				<ProjectSettingsDialog

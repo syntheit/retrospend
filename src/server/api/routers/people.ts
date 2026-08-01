@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { env } from "~/env";
 import {
@@ -12,6 +13,7 @@ import { getShadowInviteEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { getImageUrl } from "~/server/storage";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
+import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 
 const participantRefSchema = z.object({
 	participantType: z.enum(["user", "guest", "shadow"]),
@@ -181,6 +183,89 @@ export const peopleRouter = createTRPCRouter({
 				name: profile.name,
 				email: profile.email,
 			};
+		}),
+
+	/**
+	 * Rename (and optionally re-email) a shadow profile — the "ghost" someone set
+	 * up to track a person without an account.
+	 *
+	 * Authorized exactly like claim.generateLink: the shadow is read through the
+	 * user-scoped ctx.db (RLS ensures the caller can already see it), an already
+	 * claimed shadow is off-limits (its identity now belongs to a real account),
+	 * and the caller must be the shadow's creator OR an EDITOR+ of at least one
+	 * project the shadow participates in. A standalone (project-less) shadow can
+	 * only be edited by its creator. The write goes through ctx.db so RLS applies.
+	 */
+	updateShadow: protectedProcedure
+		.input(
+			z.object({
+				shadowId: z.string().min(1),
+				name: z.string().min(1).max(191),
+				email: z.string().email().max(255).optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+
+			const shadow = await ctx.db.shadowProfile.findUnique({
+				where: { id: input.shadowId },
+				select: { id: true, name: true, claimedById: true, createdById: true },
+			});
+			if (!shadow) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Person not found",
+				});
+			}
+			if (shadow.claimedById) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "This person has already been linked to an account",
+				});
+			}
+
+			// Same authorization as claim.generateLink: EDITOR+ in at least one of
+			// the shadow's projects, or the creator of a standalone shadow.
+			const shadowMemberships = await ctx.db.projectParticipant.findMany({
+				where: { participantType: "shadow", participantId: shadow.id },
+				select: { projectId: true },
+			});
+			let authorized =
+				shadowMemberships.length === 0 && shadow.createdById === userId;
+			for (const m of shadowMemberships) {
+				if (authorized) break;
+				try {
+					await requireProjectRole(
+						ctx.db,
+						m.projectId,
+						"user",
+						userId,
+						"EDITOR",
+					);
+					authorized = true;
+					break;
+				} catch {
+					// Not EDITOR+ (or not a member) of this project — keep checking.
+				}
+			}
+			if (!authorized) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message:
+						"Only an editor or organizer of this person's project can rename them",
+				});
+			}
+
+			const updated = await ctx.db.shadowProfile.update({
+				where: { id: shadow.id },
+				data: {
+					name: input.name,
+					...(input.email !== undefined ? { email: input.email } : {}),
+				},
+				select: { id: true, name: true, email: true },
+			});
+
+			return { id: updated.id, name: updated.name, email: updated.email };
 		}),
 
 	/**
