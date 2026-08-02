@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -26,9 +26,12 @@ interface RebalanceExpensesDialogProps {
 
 /**
  * Prompts the organizer to fold a newly-added participant into a project's
- * existing expenses. Offers three choices: future-only (default, no change),
- * all eligible past expenses, or a hand-picked subset. Only EQUAL-mode,
- * unlocked expenses are eligible for automatic rebalancing.
+ * existing expenses. Opens directly to a checklist of every eligible past
+ * expense: the genuine "split with everyone" ones (all other current members
+ * already included) are pre-checked, single-person or partial splits are left
+ * unchecked but visible. The organizer confirms the selection or picks
+ * "Future only" to leave the past untouched. Only EQUAL-mode, unlocked expenses
+ * are eligible for automatic rebalancing.
  */
 export function RebalanceExpensesDialog({
 	projectId,
@@ -37,7 +40,6 @@ export function RebalanceExpensesDialog({
 }: RebalanceExpensesDialogProps) {
 	const t = useTranslations("projects");
 	const utils = api.useUtils();
-	const [choosing, setChoosing] = useState(false);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 
 	const open = participant !== null;
@@ -65,6 +67,18 @@ export function RebalanceExpensesDialog({
 	);
 	const total = (expenses ?? []).length;
 
+	// Pre-check the genuine "split with everyone" expenses once results land.
+	// Partial / single-person splits stay unchecked but visible so the organizer
+	// can opt them in deliberately.
+	useEffect(() => {
+		if (!expenses) return;
+		setSelected(
+			new Set(
+				eligible.filter((e) => e.hasAllOtherMembers).map((e) => e.id),
+			),
+		);
+	}, [expenses, eligible]);
+
 	const rebalanceMutation = api.project.rebalanceExpenses.useMutation({
 		onSuccess: async (res) => {
 			if (res.rebalancedCount > 0) {
@@ -82,18 +96,17 @@ export function RebalanceExpensesDialog({
 	});
 
 	const close = () => {
-		setChoosing(false);
 		setSelected(new Set());
 		onOpenChange(false);
 	};
 
-	const runRebalance = (expenseIds?: string[]) => {
+	const runRebalance = (expenseIds: string[]) => {
 		if (!participant) return;
 		rebalanceMutation.mutate({
 			projectId,
 			participantType: participant.participantType,
 			participantId: participant.participantId,
-			...(expenseIds ? { expenseIds } : {}),
+			expenseIds,
 		});
 	};
 
@@ -142,9 +155,29 @@ export function RebalanceExpensesDialog({
 							{t("done")}
 						</Button>
 					</div>
-				) : choosing ? (
+				) : (
 					<>
-						<div className="flex-1 overflow-y-auto px-3 py-2">
+						{/* What "eligible" means, plus how many of the past expenses
+						    actually qualify for automatic rebalancing. */}
+						<div className="space-y-1 px-6 pb-2 text-muted-foreground text-sm">
+							<p className="font-medium text-foreground">
+								{t("rebalanceQualifyCount", {
+									count: eligible.length,
+									total,
+								})}
+							</p>
+							{ineligible.length > 0 && (
+								<p>
+									{t("rebalanceIneligibleCount", {
+										count: ineligible.length,
+									})}
+								</p>
+							)}
+						</div>
+
+						{/* Checklist of every eligible past expense. Genuine
+						    "split with everyone" ones arrive pre-checked. */}
+						<div className="flex-1 overflow-y-auto px-3 py-1">
 							{eligible.map((e) => (
 								<div
 									key={e.id}
@@ -174,14 +207,16 @@ export function RebalanceExpensesDialog({
 								</div>
 							))}
 						</div>
-						<div className="flex justify-between gap-2 border-t px-6 py-4">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => setChoosing(false)}
-							>
-								{t("cancel")}
-							</Button>
+
+						{/* Balances warning — adding to past changes what everyone owes. */}
+						<p className="mx-6 mt-2 rounded-md bg-muted px-3 py-2 text-muted-foreground text-xs">
+							{t("rebalanceBalanceWarning", {
+								name: participant?.name ?? "",
+							})}
+						</p>
+
+						{/* Add-to-selected and future-only carry equal visual weight. */}
+						<div className="flex flex-col gap-2 px-6 py-4">
 							<Button
 								type="button"
 								disabled={selected.size === 0 || rebalanceMutation.isPending}
@@ -190,53 +225,6 @@ export function RebalanceExpensesDialog({
 								{rebalanceMutation.isPending
 									? t("adding")
 									: t("includeSelected", { count: selected.size })}
-							</Button>
-						</div>
-					</>
-				) : (
-					<div className="flex flex-col gap-3 px-6 pt-2 pb-6">
-						{/* What "eligible" means, plus how many of the past
-						    expenses actually qualify for automatic rebalancing. */}
-						<div className="space-y-1 text-muted-foreground text-sm">
-							<p>{t("rebalanceEligibleExplainer")}</p>
-							<p className="font-medium text-foreground">
-								{t("rebalanceQualifyCount", {
-									count: eligible.length,
-									total,
-								})}
-							</p>
-							{ineligible.length > 0 && (
-								<p>
-									{t("rebalanceIneligibleCount", {
-										count: ineligible.length,
-									})}
-								</p>
-							)}
-						</div>
-
-						{/* Balances warning — adding to past changes what everyone owes. */}
-						<p className="rounded-md bg-muted px-3 py-2 text-muted-foreground text-xs">
-							{t("rebalanceBalanceWarning", {
-								name: participant?.name ?? "",
-							})}
-						</p>
-
-						{/* Add-to-past and future-only carry equal visual weight. */}
-						<div className="flex flex-col gap-2">
-							<Button
-								type="button"
-								disabled={rebalanceMutation.isPending}
-								onClick={() => runRebalance()}
-							>
-								{t("addToPast", { count: eligible.length })}
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								disabled={rebalanceMutation.isPending}
-								onClick={() => setChoosing(true)}
-							>
-								{t("chooseExpenses")}
 							</Button>
 							<Button
 								type="button"
@@ -247,7 +235,7 @@ export function RebalanceExpensesDialog({
 								{t("futureOnly")}
 							</Button>
 						</div>
-					</div>
+					</>
 				)}
 			</ResponsiveDialogContent>
 		</ResponsiveDialog>

@@ -1009,22 +1009,68 @@ export const projectRouter = createTRPCRouter({
 				"EDITOR",
 			);
 
-			const expenses = await ctx.db.sharedTransaction.findMany({
-				where: { projectId: input.projectId },
-				select: {
-					id: true,
-					description: true,
-					amount: true,
-					currency: true,
-					date: true,
-					splitMode: true,
-					isLocked: true,
-					splitParticipants: {
-						select: { participantType: true, participantId: true },
+			const [expenses, members] = await Promise.all([
+				ctx.db.sharedTransaction.findMany({
+					where: { projectId: input.projectId },
+					select: {
+						id: true,
+						description: true,
+						amount: true,
+						currency: true,
+						date: true,
+						splitMode: true,
+						isLocked: true,
+						splitParticipants: {
+							select: { participantType: true, participantId: true },
+						},
 					},
+					orderBy: { date: "desc" },
+				}),
+				ctx.db.projectParticipant.findMany({
+					where: { projectId: input.projectId },
+					select: { participantType: true, participantId: true },
+				}),
+			]);
+
+			// Resolve claim aliases so a claimed shadow and its claiming user count
+			// as the SAME party — matching how rebalanceExpenses decides "already
+			// included". Cover every member ref plus every split participant so the
+			// canonical map is complete.
+			const { canonicalKey } = await resolveClaimAliases(ctx.db, [
+				{
+					participantType: input.participantType,
+					participantId: input.participantId,
 				},
-				orderBy: { date: "desc" },
+				...members.map((m) => ({
+					participantType: m.participantType,
+					participantId: m.participantId,
+				})),
+				...expenses.flatMap((e) =>
+					e.splitParticipants.map((sp) => ({
+						participantType: sp.participantType,
+						participantId: sp.participantId,
+					})),
+				),
+			]);
+
+			const newcomerCanonical = canonicalKey({
+				participantType: input.participantType,
+				participantId: input.participantId,
 			});
+
+			// Every current member EXCEPT the newly-added person, canonicalized and
+			// de-duplicated. An expense is a genuine "split with everyone" only if it
+			// already contains all of these.
+			const otherMemberCanonicals = new Set(
+				members
+					.map((m) =>
+						canonicalKey({
+							participantType: m.participantType,
+							participantId: m.participantId,
+						}),
+					)
+					.filter((k) => k !== newcomerCanonical),
+			);
 
 			return expenses
 				.filter((e) => !e.isLocked)
@@ -1032,21 +1078,40 @@ export const projectRouter = createTRPCRouter({
 					(e) =>
 						!e.splitParticipants.some(
 							(sp) =>
-								sp.participantType === input.participantType &&
-								sp.participantId === input.participantId,
+								canonicalKey({
+									participantType: sp.participantType,
+									participantId: sp.participantId,
+								}) === newcomerCanonical,
 						),
 				)
-				.map((e) => ({
-					id: e.id,
-					description: e.description,
-					amount: Number(e.amount),
-					currency: e.currency,
-					date: e.date,
-					splitMode: e.splitMode,
-					// Only EQUAL-mode expenses can be recomputed automatically.
-					eligible: e.splitMode === "EQUAL",
-					currentParticipantCount: e.splitParticipants.length,
-				}));
+				.map((e) => {
+					const splitCanonicals = new Set(
+						e.splitParticipants.map((sp) =>
+							canonicalKey({
+								participantType: sp.participantType,
+								participantId: sp.participantId,
+							}),
+						),
+					);
+					// True only when every OTHER current member is already a split
+					// participant — i.e. this expense was genuinely "split with
+					// everyone" and the newcomer should be folded in by default.
+					const hasAllOtherMembers = [...otherMemberCanonicals].every((k) =>
+						splitCanonicals.has(k),
+					);
+					return {
+						id: e.id,
+						description: e.description,
+						amount: Number(e.amount),
+						currency: e.currency,
+						date: e.date,
+						splitMode: e.splitMode,
+						// Only EQUAL-mode expenses can be recomputed automatically.
+						eligible: e.splitMode === "EQUAL",
+						currentParticipantCount: e.splitParticipants.length,
+						hasAllOtherMembers,
+					};
+				});
 		}),
 
 	/**
