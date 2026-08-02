@@ -597,6 +597,7 @@
     "columnStatus": "Estado",
     "columnType": "Tipo",
     "actions": "Acciones",
+    "paidLabel": "pagó",
     "personPaidYou": "{name} te pagó",
     "youPaidPerson": "Pagaste a {name}",
     "settlement": "Liquidación",

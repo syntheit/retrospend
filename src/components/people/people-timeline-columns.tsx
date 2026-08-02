@@ -49,7 +49,13 @@ export type TimelineRow = {
 	theirShare?: number;
 	currency: string;
 	amount?: number;
-	paidBy?: { name: string; avatarUrl: string | null; isMe?: boolean };
+	paidBy?: {
+		participantType?: string;
+		participantId?: string;
+		name: string;
+		avatarUrl: string | null;
+		isMe?: boolean;
+	};
 	splitParticipants?: Array<{
 		participantType: string;
 		participantId: string;
@@ -215,6 +221,15 @@ export function createTimelineColumns(
 						currency={item.currency}
 						formatCurrency={formatCurrency}
 						participants={participants}
+						payerRef={
+							item.paidBy?.participantType && item.paidBy?.participantId
+								? {
+										participantType: item.paidBy.participantType,
+										participantId: item.paidBy.participantId,
+									}
+								: null
+						}
+						highlightTooltip={t("paidLabel")}
 					/>
 				);
 			},
