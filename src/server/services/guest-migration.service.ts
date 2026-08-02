@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "~prisma";
+import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
 
 interface MigrationResult {
 	migratedSessionCount: number;
@@ -199,20 +200,41 @@ async function migrateSplitParticipants(
 	});
 }
 
+/**
+ * Auto-claims unclaimed ShadowProfiles whose email matches a newly-registered
+ * user, fully absorbing each one (re-points splits/payments/settlements/audit
+ * and promotes memberships) via the shared claim service — the same treatment
+ * as an explicit claim-link claim, so email-matched history shows the real user
+ * rather than the old ghost name.
+ *
+ * Runs after the guest-session migration transaction has committed, so the user
+ * may already own split rows the shadow also has; `claimShadowProfile`'s 3-step
+ * merge respects the SplitParticipant unique constraint. Requires the global
+ * (RLS-bypassing) db.
+ */
 async function claimShadowProfiles(
-	db: PrismaClient | Prisma.TransactionClient,
+	db: PrismaClient,
 	userId: string,
 	userEmail: string,
 ): Promise<number> {
-	const result = await db.shadowProfile.updateMany({
+	const shadows = await db.shadowProfile.findMany({
 		where: {
 			email: userEmail.toLowerCase(),
 			claimedById: null,
 		},
-		data: {
-			claimedById: userId,
-			claimedAt: new Date(),
-		},
+		select: { id: true },
 	});
-	return result.count;
+
+	let claimed = 0;
+	for (const shadow of shadows) {
+		try {
+			await claimShadowProfile(db, shadow.id, userId);
+			claimed += 1;
+		} catch (err) {
+			// A concurrent claim by someone else shouldn't abort signup migration.
+			if (err instanceof AlreadyClaimedError) continue;
+			throw err;
+		}
+	}
+	return claimed;
 }

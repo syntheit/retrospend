@@ -4,16 +4,17 @@ import type { Prisma, PrismaClient } from "~prisma";
  * Explicit shadow-profile claiming (claim link + "are you one of these people?"
  * chooser).
  *
- * The EXISTING email auto-claim at signup (`claimShadowProfiles` in
- * guest-migration.service.ts) only stamps `claimedById`/`claimedAt`; balances
- * are then merged at read time by `resolveClaimAliases` (see identity.ts). This
- * service does the same stamping, and ADDITIONALLY promotes the shadow's project
- * memberships to the claiming user so they actually gain access to those
- * projects — a shadow that never had an account obviously can't have logged in.
+ * Both the user-claim path (`claimShadowProfile`) and the guest-link path
+ * (`mergeShadowIntoGuest`) fully ABSORB the shadow into the claiming identity:
+ * every polymorphic reference (splits, payments, settlements, audit, project
+ * membership) is re-pointed from the shadow to the claiming user/guest, and the
+ * now-empty shadow row is deleted. After a claim the history therefore shows the
+ * real person's identity directly — a claimed split no longer displays the old
+ * ghost name.
  *
- * Split/settlement rows are intentionally NOT rewritten: the balance layer
- * already treats `{shadow}` and its claiming `{user}` as one party, so history
- * is summed without a destructive migration.
+ * (The lightweight email auto-claim at signup — `claimShadowProfiles` in
+ * guest-migration.service.ts — routes through `claimShadowProfile` so those
+ * claims also fully absorb the shadow rather than merely stamping claimedById.)
  *
  * All operations MUST use the global (RLS-bypassing) db: a user claiming a ghost
  * has, by definition, no prior relationship the RLS policy would grant, so a
@@ -34,8 +35,86 @@ const ROLE_PRIORITY: Record<string, number> = {
 	VIEWER: 0,
 };
 
+/** A polymorphic participant reference type (`ParticipantType`). */
+type ParticipantType = "user" | "guest" | "shadow";
+
 /**
- * Claims a shadow profile for `userId`, promoting its project memberships.
+ * Re-points every non-membership polymorphic reference from a shadow onto a
+ * target participant (a claiming user or guest), using the 3-step merge that
+ * respects the SplitParticipant unique constraint. Membership rows are handled
+ * separately by each caller because their role-capping rules differ.
+ *
+ * Shared by `claimShadowProfile` (target = user) and `mergeShadowIntoGuest`
+ * (target = guest) so both paths absorb history identically.
+ */
+async function repointShadowReferences(
+	tx: Prisma.TransactionClient,
+	shadowId: string,
+	targetType: ParticipantType,
+	targetId: string,
+): Promise<void> {
+	// ── SharedTransaction: paidBy / createdBy ──
+	await tx.sharedTransaction.updateMany({
+		where: { paidByType: "shadow", paidById: shadowId },
+		data: { paidByType: targetType, paidById: targetId },
+	});
+	await tx.sharedTransaction.updateMany({
+		where: { createdByType: "shadow", createdById: shadowId },
+		data: { createdByType: targetType, createdById: targetId },
+	});
+
+	// ── SplitParticipant: 3-step merge for the unique constraint ──
+	// The target may already be a split participant on the same transaction (e.g.
+	// they were added as a user before claiming the ghost), so sum-then-delete
+	// the conflicting rows before re-pointing the rest.
+	await tx.$executeRaw`
+		UPDATE split_participant AS target
+		SET    "shareAmount" = target."shareAmount" + source."shareAmount"
+		FROM   split_participant AS source
+		WHERE  source."participantType" = 'shadow'
+		  AND  source."participantId"   = ${shadowId}
+		  AND  target."transactionId"   = source."transactionId"
+		  AND  target."participantType" = ${targetType}::"ParticipantType"
+		  AND  target."participantId"   = ${targetId}
+	`;
+	await tx.$executeRaw`
+		DELETE FROM split_participant
+		WHERE  "participantType" = 'shadow'
+		  AND  "participantId"   = ${shadowId}
+		  AND  "transactionId" IN (
+			SELECT "transactionId"
+			FROM   split_participant
+			WHERE  "participantType" = ${targetType}::"ParticipantType"
+			  AND  "participantId"   = ${targetId}
+		  )
+	`;
+	await tx.splitParticipant.updateMany({
+		where: { participantType: "shadow", participantId: shadowId },
+		data: { participantType: targetType, participantId: targetId },
+	});
+
+	// ── Settlement: from / to ──
+	await tx.settlement.updateMany({
+		where: { fromParticipantType: "shadow", fromParticipantId: shadowId },
+		data: { fromParticipantType: targetType, fromParticipantId: targetId },
+	});
+	await tx.settlement.updateMany({
+		where: { toParticipantType: "shadow", toParticipantId: shadowId },
+		data: { toParticipantType: targetType, toParticipantId: targetId },
+	});
+
+	// ── AuditLogEntry: actor ──
+	await tx.auditLogEntry.updateMany({
+		where: { actorType: "shadow", actorId: shadowId },
+		data: { actorType: targetType, actorId: targetId },
+	});
+}
+
+/**
+ * Claims a shadow profile for `userId`, fully absorbing it: the shadow's project
+ * memberships are promoted to the user, all of its historical refs (splits,
+ * payments, settlements, audit) are re-pointed to the user, and the shadow row
+ * is deleted. The claimed person then appears as the real user everywhere.
  *
  * Idempotent for the same claimer: re-claiming a shadow already claimed by
  * `userId` is a no-op success. Throws if the shadow is already claimed by
@@ -55,22 +134,25 @@ export async function claimShadowProfile(
 		return { shadowId, shadowName: "", projectIds: [], alreadyClaimed: false };
 	}
 
-	if (shadow.claimedById && shadow.claimedById !== userId) {
+	// Already claimed by THIS user: nothing left to absorb (a prior claim already
+	// re-pointed everything and deleted the shadow). Idempotent success.
+	if (shadow.claimedById === userId) {
+		return {
+			shadowId,
+			shadowName: shadow.name,
+			projectIds: [],
+			alreadyClaimed: true,
+		};
+	}
+
+	if (shadow.claimedById) {
 		throw new AlreadyClaimedError();
 	}
 
 	const projectIds: string[] = [];
 
 	await db.$transaction(async (tx) => {
-		// Stamp the claim (skip if this user already claimed it — idempotent).
-		if (shadow.claimedById !== userId) {
-			await tx.shadowProfile.update({
-				where: { id: shadowId },
-				data: { claimedById: userId, claimedAt: new Date() },
-			});
-		}
-
-		// Promote each of the shadow's project memberships to the user.
+		// ── ProjectParticipant: promote each shadow membership to the user ──
 		const memberships = await tx.projectParticipant.findMany({
 			where: { participantType: "shadow", participantId: shadowId },
 		});
@@ -89,15 +171,15 @@ export async function claimShadowProfile(
 			});
 
 			if (existingUserMembership) {
-				// User already in project: KEEP their existing role unchanged and
-				// drop the shadow membership. Never upgrade to the shadow's role —
-				// claiming a ghost must not be a privilege-escalation vector.
+				// User already in project: KEEP their existing role unchanged and drop
+				// the shadow membership. Never upgrade to the shadow's role — claiming
+				// a ghost must not be a privilege-escalation vector.
 				await tx.projectParticipant.delete({
 					where: { id: shadowMembership.id },
 				});
 			} else {
-				// Convert shadow membership → user membership, but cap the granted
-				// role at CONTRIBUTOR: a claim must never confer EDITOR/ORGANIZER.
+				// Convert shadow membership → user membership, but cap the granted role
+				// at CONTRIBUTOR: a claim must never confer EDITOR/ORGANIZER.
 				const cappedRole =
 					shadowMembership.role === "ORGANIZER" ||
 					shadowMembership.role === "EDITOR"
@@ -113,13 +195,17 @@ export async function claimShadowProfile(
 				});
 			}
 		}
+
+		// ── Re-point all other refs, then delete the now-empty shadow ──
+		await repointShadowReferences(tx, shadowId, "user", userId);
+		await tx.shadowProfile.delete({ where: { id: shadowId } });
 	});
 
 	return {
 		shadowId,
 		shadowName: shadow.name,
 		projectIds: [...new Set(projectIds)],
-		alreadyClaimed: shadow.claimedById === userId,
+		alreadyClaimed: false,
 	};
 }
 
@@ -162,9 +248,9 @@ export async function listUnclaimedProjectGhosts(
  * historical refs (splits, settlements, payments, audit, membership) are
  * re-pointed to the guest, and the now-empty shadow row is deleted.
  *
- * This is the guest-facing counterpart of the user email auto-claim; it reuses
- * the same 3-step split-merge pattern that guest-migration.service.ts uses to
- * respect the SplitParticipant unique constraint.
+ * This is the guest-facing counterpart of the user claim; it reuses the same
+ * `repointShadowReferences` merge helper as `claimShadowProfile` so both paths
+ * absorb history identically.
  *
  * Must run with the RLS-bypassing global db (the joining guest has no prior
  * relationship to the ghost's rows).
@@ -239,60 +325,8 @@ export async function mergeShadowIntoGuest(
 			});
 		}
 
-		// ── SharedTransaction: paidBy / createdBy ──
-		await tx.sharedTransaction.updateMany({
-			where: { paidByType: "shadow", paidById: shadowId },
-			data: { paidByType: "guest", paidById: guestSessionId },
-		});
-		await tx.sharedTransaction.updateMany({
-			where: { createdByType: "shadow", createdById: shadowId },
-			data: { createdByType: "guest", createdById: guestSessionId },
-		});
-
-		// ── SplitParticipant: 3-step merge for the unique constraint ──
-		await tx.$executeRaw`
-			UPDATE split_participant AS target
-			SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-			FROM   split_participant AS source
-			WHERE  source."participantType" = 'shadow'
-			  AND  source."participantId"   = ${shadowId}
-			  AND  target."transactionId"   = source."transactionId"
-			  AND  target."participantType" = 'guest'
-			  AND  target."participantId"   = ${guestSessionId}
-		`;
-		await tx.$executeRaw`
-			DELETE FROM split_participant
-			WHERE  "participantType" = 'shadow'
-			  AND  "participantId"   = ${shadowId}
-			  AND  "transactionId" IN (
-				SELECT "transactionId"
-				FROM   split_participant
-				WHERE  "participantType" = 'guest'
-				  AND  "participantId"   = ${guestSessionId}
-			  )
-		`;
-		await tx.splitParticipant.updateMany({
-			where: { participantType: "shadow", participantId: shadowId },
-			data: { participantType: "guest", participantId: guestSessionId },
-		});
-
-		// ── Settlement: from / to ──
-		await tx.settlement.updateMany({
-			where: { fromParticipantType: "shadow", fromParticipantId: shadowId },
-			data: { fromParticipantType: "guest", fromParticipantId: guestSessionId },
-		});
-		await tx.settlement.updateMany({
-			where: { toParticipantType: "shadow", toParticipantId: shadowId },
-			data: { toParticipantType: "guest", toParticipantId: guestSessionId },
-		});
-
-		// ── AuditLogEntry: actor ──
-		await tx.auditLogEntry.updateMany({
-			where: { actorType: "shadow", actorId: shadowId },
-			data: { actorType: "guest", actorId: guestSessionId },
-		});
-
-		// ── Delete the now-empty shadow profile ──
+		// ── Re-point all other refs, then delete the now-empty shadow ──
+		await repointShadowReferences(tx, shadowId, "guest", guestSessionId);
 		await tx.shadowProfile.delete({ where: { id: shadowId } });
 	});
 
