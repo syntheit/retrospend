@@ -10,6 +10,7 @@ describe("matchSupportedLocale", () => {
 		expect(matchSupportedLocale("es")).toBe("es");
 		expect(matchSupportedLocale("ru")).toBe("ru");
 		expect(matchSupportedLocale("pt-BR")).toBe("pt-BR");
+		expect(matchSupportedLocale("fr")).toBe("fr");
 	});
 
 	it("matches regional and underscore variants by language", () => {
@@ -17,10 +18,11 @@ describe("matchSupportedLocale", () => {
 		expect(matchSupportedLocale("ru_RU")).toBe("ru");
 		expect(matchSupportedLocale("pt_BR")).toBe("pt-BR");
 		expect(matchSupportedLocale("pt-PT")).toBe("pt-BR");
+		expect(matchSupportedLocale("fr-CA")).toBe("fr");
 	});
 
 	it("rejects unsupported and empty locales", () => {
-		expect(matchSupportedLocale("fr")).toBeUndefined();
+		expect(matchSupportedLocale("de")).toBeUndefined();
 		expect(matchSupportedLocale("")).toBeUndefined();
 		expect(matchSupportedLocale(undefined)).toBeUndefined();
 	});
@@ -42,12 +44,17 @@ describe("matchAcceptLanguage", () => {
 		expect(matchAcceptLanguage("pt")).toBe("pt-BR");
 	});
 
+	it("matches French and regional French preferences", () => {
+		expect(matchAcceptLanguage("fr-FR")).toBe("fr");
+		expect(matchAcceptLanguage("fr-CA, en;q=0.8")).toBe("fr");
+	});
+
 	it("ignores locales with zero quality", () => {
 		expect(matchAcceptLanguage("ru;q=0, es;q=0.8")).toBe("es");
 	});
 
 	it("falls back to English", () => {
-		expect(matchAcceptLanguage("fr-FR,de-DE")).toBe("en");
+		expect(matchAcceptLanguage("de-DE,it-IT")).toBe("en");
 		expect(matchAcceptLanguage(null)).toBe("en");
 	});
 });
