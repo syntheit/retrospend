@@ -1000,12 +1000,15 @@ export function ActivityFeed({
 		);
 	}
 
-	// Plain panel layout for the Activity tab.
+	// Plain panel layout for the Activity tab. The list gets its own scroll box so
+	// the feed (and its "load more") stays reachable even when the tab area clips.
 	return (
 		<div className="flex flex-col gap-3">
 			{header}
 			{filtersBlock}
-			<div>{listBlock}</div>
+			<div className="max-h-[calc(100dvh-14rem)] overflow-y-auto">
+				{listBlock}
+			</div>
 		</div>
 	);
 }
