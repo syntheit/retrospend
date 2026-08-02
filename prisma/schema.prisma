@@ -898,6 +898,7 @@ model Project {
   billingAutoClose         Boolean                @default(false)
   billingCloseReminderDays Int                    @default(3)
   billingClosePermission   BillingClosePermission @default(ORGANIZER_ONLY)
+  autoAcceptSplits         Boolean                @default(true)
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @default(now()) @updatedAt
 

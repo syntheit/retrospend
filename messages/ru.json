@@ -678,6 +678,8 @@
     "failedToUploadIcon": "Не удалось загрузить иконку",
     "projectSettings": "Настройки проекта",
     "updateProjectConfiguration": "Измените настройки проекта.",
+    "autoAcceptSplits": "Auto-accept shared expenses",
+    "autoAcceptSplitsDescription": "When on, expenses added in this project are accepted automatically, no approval step. The revision history still records every change.",
     "projectIcon": "Значок проекта",
     "uploading": "Загрузка...",
     "changeIcon": "Изменить значок",

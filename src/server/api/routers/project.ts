@@ -20,10 +20,7 @@ import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
 import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
-import {
-	getAutoAcceptMap,
-	resolveVerification,
-} from "~/server/services/shared-expenses/auto-accept";
+import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { sameParticipant } from "~/server/services/shared-expenses/types";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
@@ -751,6 +748,7 @@ export const projectRouter = createTRPCRouter({
 				billingClosePermission: z
 					.enum(["ORGANIZER_ONLY", "ANY_PARTICIPANT"])
 					.optional(),
+				autoAcceptSplits: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -787,6 +785,7 @@ export const projectRouter = createTRPCRouter({
 			trackField("billingAutoClose", fields.billingAutoClose);
 			trackField("billingCloseReminderDays", fields.billingCloseReminderDays);
 			trackField("billingClosePermission", fields.billingClosePermission);
+			trackField("autoAcceptSplits", fields.autoAcceptSplits);
 
 			if (Object.keys(diff).length === 0) {
 				return existing;
@@ -1241,28 +1240,13 @@ export const projectRouter = createTRPCRouter({
 			}
 
 			await runInProjectTransaction(ctx.db, userId, async (tx) => {
-				// Resolve auto-accept once for the UNION of every user participant
-				// touched by the rebalance (existing splits across all affected
-				// expenses, plus the newcomer). A single batched query keeps this
-				// O(1) regardless of how many expenses are rebalanced. The actor is
-				// excluded — they always ACCEPTED via resolveVerification.
-				const autoAcceptMap = await getAutoAcceptMap(
-					tx,
-					[
-						{
-							participantType: input.participantType,
-							participantId: input.participantId,
-						},
-						...candidates
-							.filter((e) => rebalancedIds.includes(e.id))
-							.flatMap((e) =>
-								e.splitParticipants.map((sp) => ({
-									participantType: sp.participantType,
-									participantId: sp.participantId,
-								})),
-							),
-					].filter((p) => !sameParticipant(p, actor)),
-				);
+				// Auto-accept is decided by the PROJECT these expenses belong to.
+				// Resolve the flag once and apply it to every re-split row.
+				const rebalanceProject = await tx.project.findUnique({
+					where: { id: input.projectId },
+					select: { autoAcceptSplits: true },
+				});
+				const projectAutoAccept = rebalanceProject?.autoAcceptSplits ?? true;
 
 				for (const e of candidates) {
 					if (!rebalancedIds.includes(e.id)) continue;
@@ -1285,8 +1269,9 @@ export const projectRouter = createTRPCRouter({
 
 					// Replace all split rows with the recomputed shares. Everyone's
 					// share changed, so re-resolve verification per row: the actor
-					// stays ACCEPTED, auto-accept users (existing or newcomer) return
-					// to AUTO_ACCEPTED, everyone else is PENDING for manual approval.
+					// stays ACCEPTED, and when the project auto-accepts, user
+					// participants (existing or newcomer) return to AUTO_ACCEPTED;
+					// otherwise everyone else is PENDING for manual approval.
 					await tx.splitParticipant.deleteMany({
 						where: { transactionId: e.id },
 					});
@@ -1300,7 +1285,7 @@ export const projectRouter = createTRPCRouter({
 							const { status, verifiedAt } = resolveVerification(
 								ref,
 								actor,
-								autoAcceptMap,
+								projectAutoAccept,
 							);
 							return {
 								transactionId: e.id,

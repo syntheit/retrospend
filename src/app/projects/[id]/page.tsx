@@ -974,6 +974,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 						billingAutoClose: project.billingAutoClose,
 						billingCloseReminderDays: project.billingCloseReminderDays,
 						billingClosePermission: project.billingClosePermission,
+						autoAcceptSplits: project.autoAcceptSplits,
 						imagePath: project.imagePath,
 					}}
 				/>

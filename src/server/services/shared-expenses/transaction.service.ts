@@ -11,7 +11,7 @@ import {
 	requireProjectRole,
 } from "./project-permissions";
 import { type ParticipantRef, sameParticipant } from "./types";
-import { getAutoAcceptMap, resolveVerification } from "./auto-accept";
+import { resolveVerification } from "./auto-accept";
 
 type AppDb = PrismaClient;
 
@@ -259,16 +259,12 @@ export class SharedTransactionService {
 				}
 			}
 
-			// Resolve auto-accept for non-actor user participants so their splits
-			// skip the manual approval gate when they've opted in.
-			const autoAcceptMap = await this.getAutoAcceptMap(
+			// Auto-accept is decided by the expense's PROJECT: when the project
+			// auto-accepts (or it's a standalone expense) non-actor user splits
+			// skip the manual approval gate.
+			const projectAutoAccept = await this.resolveProjectAutoAccept(
 				tx,
-				participants
-					.filter((p) => !sameParticipant(p, actor))
-					.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-					})),
+				input.projectId,
 			);
 
 			const transaction = await tx.sharedTransaction.create({
@@ -292,7 +288,7 @@ export class SharedTransactionService {
 							const { status, verifiedAt } = this.resolveVerification(
 								p,
 								actor,
-								autoAcceptMap,
+								projectAutoAccept,
 							);
 							return {
 								participantType: p.participantType,
@@ -691,28 +687,27 @@ export class SharedTransactionService {
 				data: fieldUpdates as Prisma.SharedTransactionUncheckedUpdateInput,
 			});
 
+			// Auto-accept is decided by the expense's PROJECT. Use the incoming
+			// project when the update moves the expense, otherwise the existing one.
+			const effectiveProjectId =
+				input.projectId !== undefined ? input.projectId : existing.projectId;
+			const projectAutoAccept = await this.resolveProjectAutoAccept(
+				tx,
+				effectiveProjectId,
+			);
+
 			// Replace split participants if they changed
 			if (newParticipants !== undefined && diff.splitParticipants) {
 				await tx.splitParticipant.deleteMany({
 					where: { transactionId: input.id },
 				});
 
-				const autoAcceptMap = await this.getAutoAcceptMap(
-					tx,
-					newParticipants
-						.filter((p) => !sameParticipant(p, actor))
-						.map((p) => ({
-							participantType: p.participantType,
-							participantId: p.participantId,
-						})),
-				);
-
 				await tx.splitParticipant.createMany({
 					data: newParticipants.map((p) => {
 						const { status, verifiedAt } = this.resolveVerification(
 							p,
 							actor,
-							autoAcceptMap,
+							projectAutoAccept,
 						);
 						return {
 							transactionId: input.id,
@@ -729,8 +724,8 @@ export class SharedTransactionService {
 			} else {
 				// Even if splits didn't change structurally, reset verification
 				// because the transaction details changed. A single updateMany can't
-				// branch per-row, so split the non-actor participants into those whose
-				// owner opted into auto-accept (re-accept immediately) and everyone
+				// branch per-row, so split the non-actor participants into those the
+				// project auto-accepts (users, re-accept immediately) and everyone
 				// else (reset to PENDING for manual re-approval).
 				const nonActorParticipants = await tx.splitParticipant.findMany({
 					where: {
@@ -743,21 +738,10 @@ export class SharedTransactionService {
 					select: { id: true, participantType: true, participantId: true },
 				});
 
-				const autoAcceptMap = await this.getAutoAcceptMap(
-					tx,
-					nonActorParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-					})),
-				);
-
 				const autoAcceptIds: string[] = [];
 				const resetIds: string[] = [];
 				for (const p of nonActorParticipants) {
-					if (
-						p.participantType === "user" &&
-						autoAcceptMap.get(p.participantId) === true
-					) {
+					if (p.participantType === "user" && projectAutoAccept) {
 						autoAcceptIds.push(p.id);
 					} else {
 						resetIds.push(p.id);
@@ -1050,14 +1034,20 @@ export class SharedTransactionService {
 	}
 
 	/**
-	 * Delegates to the shared {@link getAutoAcceptMap} helper. Kept as a thin
-	 * instance method so the create/update call sites read unchanged.
+	 * Resolves the auto-accept behavior for an expense from its PROJECT flag.
+	 * Standalone expenses (no project) have no approval gate, so they always
+	 * auto-accept. A missing project row also falls back to auto-accept.
 	 */
-	private getAutoAcceptMap(
+	private async resolveProjectAutoAccept(
 		tx: Prisma.TransactionClient,
-		participants: ParticipantRef[],
-	): Promise<Map<string, boolean>> {
-		return getAutoAcceptMap(tx, participants);
+		projectId: string | null | undefined,
+	): Promise<boolean> {
+		if (!projectId) return true;
+		const project = await tx.project.findUnique({
+			where: { id: projectId },
+			select: { autoAcceptSplits: true },
+		});
+		return project?.autoAcceptSplits ?? true;
 	}
 
 	/**
@@ -1067,12 +1057,12 @@ export class SharedTransactionService {
 	private resolveVerification(
 		p: ParticipantRef,
 		actor: ParticipantRef,
-		autoAcceptMap: Map<string, boolean>,
+		projectAutoAccept: boolean,
 	): {
 		status: "ACCEPTED" | "AUTO_ACCEPTED" | "PENDING";
 		verifiedAt: Date | undefined;
 	} {
-		return resolveVerification(p, actor, autoAcceptMap);
+		return resolveVerification(p, actor, projectAutoAccept);
 	}
 
 	private computeSplits(

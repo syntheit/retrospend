@@ -1,47 +1,27 @@
-import type { Prisma } from "~prisma";
 import { type ParticipantRef, sameParticipant } from "./types";
 
 /**
- * Batch-fetches the autoAcceptSplits flag for the given user participants in a
- * single query and returns a Map keyed by user id. Non-user participants
- * (guest/shadow) are ignored since they can't approve splits anyway.
+ * Resolves the verification status for a split participant on create/replace.
+ *
+ * Auto-accept is a PROJECT behavior, not a per-user preference: an expense's
+ * project either accepts splits automatically or requires manual approval.
+ * Standalone expenses (no project) have no approval gate, so callers pass
+ * `true` and they always auto-accept.
+ *
+ * - The actor always ACCEPTED (they authored the change).
+ * - A non-actor user participant is AUTO_ACCEPTED when the project auto-accepts,
+ *   so the split skips the manual approval gate while still recording the
+ *   change; otherwise PENDING.
+ * - Guests and shadows can never approve splits, so they stay PENDING.
  *
  * Shared by the create/update paths (transaction.service.ts) and the
  * rebalance-on-add path (project.ts) so all three resolve auto-accept
  * identically.
  */
-export async function getAutoAcceptMap(
-	tx: Prisma.TransactionClient,
-	participants: ParticipantRef[],
-): Promise<Map<string, boolean>> {
-	const userIds = participants
-		.filter((p) => p.participantType === "user")
-		.map((p) => p.participantId);
-
-	const map = new Map<string, boolean>();
-	if (userIds.length === 0) return map;
-
-	const users = await tx.user.findMany({
-		where: { id: { in: userIds } },
-		select: { id: true, autoAcceptSplits: true },
-	});
-	for (const u of users) {
-		map.set(u.id, u.autoAcceptSplits);
-	}
-	return map;
-}
-
-/**
- * Resolves the verification status for a split participant on create/replace.
- * - The actor always ACCEPTED (they authored the change).
- * - A user participant who opted into auto-accept is AUTO_ACCEPTED, so the
- *   split skips the manual approval gate while still recording the change.
- * - Everyone else (opted-out users, guests, shadows) stays PENDING.
- */
 export function resolveVerification(
 	p: ParticipantRef,
 	actor: ParticipantRef,
-	autoAcceptMap: Map<string, boolean>,
+	projectAutoAccept: boolean,
 ): {
 	status: "ACCEPTED" | "AUTO_ACCEPTED" | "PENDING";
 	verifiedAt: Date | undefined;
@@ -49,10 +29,7 @@ export function resolveVerification(
 	if (sameParticipant(p, actor)) {
 		return { status: "ACCEPTED", verifiedAt: new Date() };
 	}
-	if (
-		p.participantType === "user" &&
-		autoAcceptMap.get(p.participantId) === true
-	) {
+	if (p.participantType === "user" && projectAutoAccept) {
 		return { status: "AUTO_ACCEPTED", verifiedAt: new Date() };
 	}
 	return { status: "PENDING", verifiedAt: undefined };
