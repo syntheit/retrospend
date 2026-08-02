@@ -73,6 +73,9 @@ export function ProjectSettingsDialog({
 	const [budgetCurrency, setBudgetCurrency] = useState(
 		project.budgetCurrency ?? project.primaryCurrency,
 	);
+	const [billingEnabled, setBillingEnabled] = useState(
+		project.billingCycleLength != null,
+	);
 	const [billingCycleLength, setBillingCycleLength] = useState(
 		project.billingCycleLength ?? "MONTHLY",
 	);
@@ -206,20 +209,16 @@ export function ProjectSettingsDialog({
 			primaryCurrency,
 			budgetAmount: budget,
 			budgetCurrency: budget ? budgetCurrency : null,
-			billingCycleLength: billingCycleLength as
-					| "WEEKLY"
-					| "BIWEEKLY"
-					| "MONTHLY"
-					| "CUSTOM",
-			billingAutoClose,
-			billingClosePermission: billingClosePermission as
-					| "ORGANIZER_ONLY"
-					| "ANY_PARTICIPANT",
+			billingCycleLength: billingEnabled
+				? (billingCycleLength as "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "CUSTOM")
+				: null,
+			billingAutoClose: billingEnabled ? billingAutoClose : false,
+			billingClosePermission: billingEnabled
+				? (billingClosePermission as "ORGANIZER_ONLY" | "ANY_PARTICIPANT")
+				: undefined,
 			autoAcceptSplits,
 		});
 	};
-
-	const hasBilling = project.billingCycleLength != null;
 
 	return (
 		<>
@@ -348,11 +347,11 @@ export function ProjectSettingsDialog({
 								{t("enableBillingPeriods")}
 							</Label>
 							<Switch
-								checked={hasBilling}
-								disabled
+								checked={billingEnabled}
+								onCheckedChange={setBillingEnabled}
 							/>
 						</div>
-						{hasBilling && (<>
+						{billingEnabled && (<>
 							<div className="space-y-1.5">
 								<Label>{t("cycleLength")}</Label>
 								<Select
