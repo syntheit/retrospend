@@ -70,7 +70,6 @@ const allPreferencesSchema = z.object({
 	monthlyIncomeCurrency: currencyCodeSchema,
 	smartCurrencyFormatting: z.boolean(),
 	defaultPrivacyMode: z.boolean(),
-	autoAcceptSplits: z.boolean(),
 	fiscalMonthStartDay: z.number().int().min(1).max(28),
 	categoryClickBehavior: z.enum(["navigate", "toggle"]),
 	currencySymbolStyle: z.enum(["native", "standard"]),
@@ -147,7 +146,6 @@ export function AppPreferencesContent() {
 			monthlyIncomeCurrency: "USD" as CurrencyCode,
 			smartCurrencyFormatting: true,
 			defaultPrivacyMode: false,
-			autoAcceptSplits: true,
 			fiscalMonthStartDay: 1,
 			categoryClickBehavior: "toggle",
 			currencySymbolStyle: "standard",
@@ -172,7 +170,6 @@ export function AppPreferencesContent() {
 					"USD",
 				smartCurrencyFormatting: settings.smartCurrencyFormatting ?? true,
 				defaultPrivacyMode: settings.defaultPrivacyMode ?? false,
-				autoAcceptSplits: settings.autoAcceptSplits ?? true,
 				fiscalMonthStartDay: settings.fiscalMonthStartDay ?? 1,
 				categoryClickBehavior: settings.categoryClickBehavior || "toggle",
 				currencySymbolStyle: settings.currencySymbolStyle || "standard",
@@ -200,7 +197,6 @@ export function AppPreferencesContent() {
 					monthlyIncomeCurrency: values.monthlyIncomeCurrency,
 					smartCurrencyFormatting: values.smartCurrencyFormatting,
 					defaultPrivacyMode: values.defaultPrivacyMode,
-					autoAcceptSplits: values.autoAcceptSplits,
 					fiscalMonthStartDay: values.fiscalMonthStartDay,
 					categoryClickBehavior: values.categoryClickBehavior,
 					currencySymbolStyle: values.currencySymbolStyle,
@@ -552,27 +548,6 @@ export function AppPreferencesContent() {
 										</SelectItem>
 									</SelectContent>
 								</Select>
-							</SettingRow>
-						)}
-					/>
-
-					<FormField
-						control={form.control}
-						name="autoAcceptSplits"
-						render={({ field }) => (
-							<SettingRow
-								label={t("autoAcceptSplits")}
-								description={t("autoAcceptSplitsDescription")}
-							>
-								<FormControl>
-									<Switch
-										checked={field.value}
-										onCheckedChange={(checked) => {
-											field.onChange(checked);
-											save();
-										}}
-									/>
-								</FormControl>
 							</SettingRow>
 						)}
 					/>

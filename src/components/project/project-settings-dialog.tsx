@@ -47,6 +47,7 @@ interface ProjectSettingsDialogProps {
 		billingAutoClose: boolean;
 		billingCloseReminderDays: number;
 		billingClosePermission: string;
+		autoAcceptSplits: boolean;
 		imagePath?: string | null;
 	};
 }
@@ -80,6 +81,9 @@ export function ProjectSettingsDialog({
 	);
 	const [billingClosePermission, setBillingClosePermission] = useState(
 		project.billingClosePermission,
+	);
+	const [autoAcceptSplits, setAutoAcceptSplits] = useState(
+		project.autoAcceptSplits,
 	);
 
 	// Image state
@@ -211,6 +215,7 @@ export function ProjectSettingsDialog({
 			billingClosePermission: billingClosePermission as
 					| "ORGANIZER_ONLY"
 					| "ANY_PARTICIPANT",
+			autoAcceptSplits,
 		});
 	};
 
@@ -318,6 +323,22 @@ export function ProjectSettingsDialog({
 								value={budgetAmount}
 							/>
 						</div>
+					</div>
+
+					{/* Shared expenses */}
+					<div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-muted/30 p-3">
+						<div className="space-y-0.5">
+							<Label className="font-normal text-sm">
+								{t("autoAcceptSplits")}
+							</Label>
+							<p className="text-muted-foreground text-xs">
+								{t("autoAcceptSplitsDescription")}
+							</p>
+						</div>
+						<Switch
+							checked={autoAcceptSplits}
+							onCheckedChange={setAutoAcceptSplits}
+						/>
 					</div>
 
 					{/* Billing periods */}
