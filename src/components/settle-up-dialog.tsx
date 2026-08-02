@@ -217,6 +217,14 @@ export function SettleUpDialog({
 		onSuccess: (result) => {
 			invalidateAfterSettle();
 
+			if (result.skipped.length > 0) {
+				toast.warning(
+					t("settleAllSkipped", {
+						currencies: result.skipped.map((s) => s.currency).join(", "),
+					}),
+				);
+			}
+
 			setSuccessSummary({
 				amount: result.totalInPaymentCurrency,
 				currency: result.paymentCurrency,

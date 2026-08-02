@@ -83,11 +83,18 @@ export const sharedTransactionRouter = createTRPCRouter({
 		}),
 
 	delete: guestOrProtectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
+		.input(
+			z.object({
+				id: z.string().min(1),
+				// Set true to delete an expense that still carries an unsettled
+				// balance between participants (acknowledging the debt is erased).
+				confirmUnsettled: z.boolean().optional(),
+			}),
+		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
 			const service = new SharedTransactionService(ctx.db, actor);
-			await service.delete(input.id);
+			await service.delete(input.id, input.confirmUnsettled ?? false);
 			return { success: true };
 		}),
 

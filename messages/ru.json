@@ -739,6 +739,9 @@
     "editExpense": "Изменить расход",
     "deleteExpenseWarning": "Это действие нельзя отменить. Все участники получат уведомление.",
     "deleteThisExpense": "Удалить этот расход?",
+    "deleteAnyway": "Delete anyway",
+    "deleteUnsettledTitle": "Delete despite unsettled balance?",
+    "deleteUnsettledWarning": "This expense still has an unsettled balance between participants. Deleting it erases that debt from everyone's balance. This cannot be undone.",
     "bulkDeleteDescription": "Удалить {count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}?",
     "bulkDeleteTitle": "Удалить {count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}?",
     "rejectReasonPrompt": "При желании укажите причину отклонения расхода.",
@@ -1181,6 +1184,7 @@
     "statusPending": "Ожидает"
   },
   "settleUp": {
+    "settleAllSkipped": "Some balances couldn't be settled because no exchange rate was available: {currencies}. They were left unsettled.",
     "title": "Рассчитаться",
     "titleWith": "Расчёт с {name}",
     "description": "Запишите платёж, чтобы погасить задолженность.",
@@ -1993,6 +1997,9 @@
     "deleteButton": "Удалить",
     "deleteExpenseWarning": "Это действие нельзя отменить. Все участники получат уведомление.",
     "deleteExpenseTitle": "Удалить этот расход?",
+    "deleteAnyway": "Delete anyway",
+    "deleteUnsettledTitle": "Delete despite unsettled balance?",
+    "deleteUnsettledWarning": "This expense still has an unsettled balance between participants. Deleting it erases that debt from everyone's balance. This cannot be undone.",
     "expenseDeleted": "Расход удалён",
     "csvExported": "CSV экспортирован",
     "failedToExportCsv": "Не удалось экспортировать CSV",

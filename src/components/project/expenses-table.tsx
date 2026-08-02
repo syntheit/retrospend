@@ -120,6 +120,16 @@ export function ExpensesTable({
 		currency: string;
 		date: Date;
 	} | null>(null);
+	// When a delete is blocked because the expense still has an unsettled balance,
+	// hold the transaction here to show a stronger "delete anyway?" confirmation
+	// that retries with confirmUnsettled: true.
+	const [unsettledDeleteTxn, setUnsettledDeleteTxn] = useState<{
+		id: string;
+		description: string;
+		amount: number;
+		currency: string;
+		date: Date;
+	} | null>(null);
 
 	// Mobile detail/actions sheet: the transaction id whose sheet is open (null =
 	// closed). Opened by a plain row tap on mobile or the per-row "⋯" trigger.
@@ -173,10 +183,24 @@ export function ExpensesTable({
 			void utils.project.detail.invalidate({ id: projectId });
 			void utils.people.list.invalidate();
 			setDeletingTransaction(null);
+			setUnsettledDeleteTxn(null);
 		},
 		onError: (e) => {
+			// Backend blocks deleting an expense that still has an unsettled
+			// balance unless confirmUnsettled is set. Escalate to a stronger
+			// confirmation instead of just showing the error.
+			if (
+				e.data?.code === "PRECONDITION_FAILED" &&
+				deletingTransaction &&
+				!unsettledDeleteTxn
+			) {
+				setUnsettledDeleteTxn(deletingTransaction);
+				setDeletingTransaction(null);
+				return;
+			}
 			toast.error(e.message);
 			setDeletingTransaction(null);
+			setUnsettledDeleteTxn(null);
 		},
 	});
 
@@ -936,6 +960,42 @@ export function ExpensesTable({
 				}}
 				open={!!deletingTransaction}
 				title={t("deleteThisExpense")}
+				variant="destructive"
+			/>
+
+			<ConfirmDialog
+				confirmText={t("deleteAnyway")}
+				description={
+					unsettledDeleteTxn ? (
+						<span>
+							<strong>{unsettledDeleteTxn.description}</strong>
+							<br />
+							{formatCurrency(
+								unsettledDeleteTxn.amount,
+								unsettledDeleteTxn.currency,
+							)}{" "}
+							· {formatExpenseDate(unsettledDeleteTxn.date)}
+							<br />
+							<span className="text-destructive text-xs">
+								{t("deleteUnsettledWarning")}
+							</span>
+						</span>
+					) : undefined
+				}
+				isLoading={deleteMutation.isPending}
+				onConfirm={() => {
+					if (unsettledDeleteTxn) {
+						deleteMutation.mutate({
+							id: unsettledDeleteTxn.id,
+							confirmUnsettled: true,
+						});
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) setUnsettledDeleteTxn(null);
+				}}
+				open={!!unsettledDeleteTxn}
+				title={t("deleteUnsettledTitle")}
 				variant="destructive"
 			/>
 

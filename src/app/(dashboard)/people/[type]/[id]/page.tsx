@@ -188,6 +188,16 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 		currency: string;
 		date: Date;
 	} | null>(null);
+	// Holds an expense whose delete was blocked for still having an unsettled
+	// balance, so we can show a stronger "delete anyway?" confirmation that
+	// retries with confirmUnsettled: true.
+	const [unsettledDeleteTxn, setUnsettledDeleteTxn] = useState<{
+		id: string;
+		description: string;
+		amount: number;
+		currency: string;
+		date: Date;
+	} | null>(null);
 
 	const utils = api.useUtils();
 	const deleteMutation = api.sharedTransaction.delete.useMutation({
@@ -200,10 +210,21 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 			void utils.people.detailCursor.invalidate();
 			void utils.people.list.invalidate();
 			setDeletingTransaction(null);
+			setUnsettledDeleteTxn(null);
 		},
 		onError: (e) => {
+			if (
+				e.data?.code === "PRECONDITION_FAILED" &&
+				deletingTransaction &&
+				!unsettledDeleteTxn
+			) {
+				setUnsettledDeleteTxn(deletingTransaction);
+				setDeletingTransaction(null);
+				return;
+			}
 			toast.error(e.message);
 			setDeletingTransaction(null);
+			setUnsettledDeleteTxn(null);
 		},
 	});
 
@@ -1158,6 +1179,42 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 				}}
 				open={!!deletingTransaction}
 				title={t("deleteExpenseTitle")}
+				variant="destructive"
+			/>
+
+			<ConfirmDialog
+				confirmText={t("deleteAnyway")}
+				description={
+					unsettledDeleteTxn ? (
+						<span>
+							<strong>{unsettledDeleteTxn.description}</strong>
+							<br />
+							{formatCurrency(
+								unsettledDeleteTxn.amount,
+								unsettledDeleteTxn.currency,
+							)}{" "}
+							· {format(new Date(unsettledDeleteTxn.date), "MMM d, yyyy")}
+							<br />
+							<span className="text-destructive text-xs">
+								{t("deleteUnsettledWarning")}
+							</span>
+						</span>
+					) : undefined
+				}
+				isLoading={deleteMutation.isPending}
+				onConfirm={() => {
+					if (unsettledDeleteTxn) {
+						deleteMutation.mutate({
+							id: unsettledDeleteTxn.id,
+							confirmUnsettled: true,
+						});
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) setUnsettledDeleteTxn(null);
+				}}
+				open={!!unsettledDeleteTxn}
+				title={t("deleteUnsettledTitle")}
 				variant="destructive"
 			/>
 		</>

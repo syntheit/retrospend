@@ -768,6 +768,9 @@
     "editExpense": "Editar Gasto",
     "deleteExpenseWarning": "Esta acción no se puede deshacer. Todos los participantes serán notificados.",
     "deleteThisExpense": "¿Eliminar este gasto?",
+    "deleteAnyway": "Eliminar de todos modos",
+    "deleteUnsettledTitle": "¿Eliminar pese al saldo pendiente?",
+    "deleteUnsettledWarning": "Este gasto aún tiene un saldo pendiente entre los participantes. Eliminarlo borra esa deuda del saldo de todos. Esta acción no se puede deshacer.",
     "bulkDeleteDescription": "¿Eliminar {count, plural, one {1 gasto} other {{count} gastos}}?",
     "bulkDeleteTitle": "¿Eliminar {count, plural, one {1 gasto} other {{count} gastos}}?",
     "rejectReasonPrompt": "Opcionalmente proporciona una razón para rechazar este gasto.",
@@ -1225,6 +1228,7 @@
     "statusPending": "Pendiente"
   },
   "settleUp": {
+    "settleAllSkipped": "Algunos saldos no se pudieron liquidar porque no había tipo de cambio disponible: {currencies}. Quedaron pendientes.",
     "title": "Liquidar",
     "titleWith": "Liquidar con {name}",
     "description": "Registra un pago para saldar tu balance.",
@@ -2038,6 +2042,9 @@
     "deleteButton": "Eliminar",
     "deleteExpenseWarning": "Esta acción no se puede deshacer. Todos los participantes serán notificados.",
     "deleteExpenseTitle": "¿Eliminar este gasto?",
+    "deleteAnyway": "Eliminar de todos modos",
+    "deleteUnsettledTitle": "¿Eliminar pese al saldo pendiente?",
+    "deleteUnsettledWarning": "Este gasto aún tiene un saldo pendiente entre los participantes. Eliminarlo borra esa deuda del saldo de todos. Esta acción no se puede deshacer.",
     "expenseDeleted": "Gasto eliminado",
     "csvExported": "CSV exportado",
     "failedToExportCsv": "Error al exportar CSV",
