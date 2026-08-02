@@ -123,18 +123,36 @@ export function PeopleTab({
 
 	const isMultiPerson = participants.length > 1;
 
-	// Paid + net balance both come from existing project-scoped endpoints — no
-	// new balance query. "Paid" = participantBalances.totalPaid; the directed
-	// "owes you / you owe" figure is read from the settlement plan (same source
-	// participants-panel already uses).
+	// "Paid" comes from participantBalances.totalPaid (a separate concept). The
+	// Balance column shows the REAL pairwise, multi-currency balance between the
+	// current user and each person via balancesFromPerspective — NOT the
+	// group-optimal routed settlement plan, which could route debt through third
+	// parties (e.g. "Charlie owes you" when you never transacted with Charlie) and
+	// only surfaced the primary currency.
 	const { data: balancesData } = api.project.participantBalances.useQuery(
 		{ projectId },
 		{ enabled: isMultiPerson },
 	);
-	const { data: settlementPlan } = api.project.settlementPlan.useQuery(
-		{ projectId },
-		{ enabled: isMultiPerson },
-	);
+
+	// The perspective is the logged-in user's participant row — the People tab is
+	// always shown from the current user's angle. Absent when the current user is
+	// not a project participant, in which case the query stays disabled.
+	const perspective = useMemo(() => {
+		const mine = participants.find(
+			(p) => p.participantType === "user" && p.participantId === currentUserId,
+		);
+		if (!mine) return null;
+		return {
+			participantType: mine.participantType as "user" | "guest" | "shadow",
+			participantId: mine.participantId,
+		};
+	}, [participants, currentUserId]);
+
+	const { data: perspectiveData } =
+		api.project.balancesFromPerspective.useQuery(
+			{ projectId, perspective: perspective! },
+			{ enabled: isMultiPerson && perspective != null },
+		);
 
 	// totalPaid per participant, restricted to the project's primary currency
 	// (v1: no cross-currency summing — see plan risk note #1).
@@ -150,32 +168,19 @@ export function PeopleTab({
 		return map;
 	}, [balancesData, primaryCurrency]);
 
-	// Directed balance vs the current user, from settlement steps in the primary
-	// currency. Positive → they owe you; negative → you owe them.
-	const netVsMe = useMemo(() => {
-		const map = new Map<string, number>();
-		if (!settlementPlan || !currentUserId) return map;
-		const breakdown = settlementPlan.byCurrency[primaryCurrency];
-		if (!breakdown) return map;
-		for (const step of breakdown.plan) {
-			const fromMe =
-				step.from.participantType === "user" &&
-				step.from.participantId === currentUserId;
-			const toMe =
-				step.to.participantType === "user" &&
-				step.to.participantId === currentUserId;
-			if (fromMe) {
-				// I pay `to` → I owe them.
-				const key = `${step.to.participantType}:${step.to.participantId}`;
-				map.set(key, (map.get(key) ?? 0) - step.amount);
-			} else if (toMe) {
-				// `from` pays me → they owe me.
-				const key = `${step.from.participantType}:${step.from.participantId}`;
-				map.set(key, (map.get(key) ?? 0) + step.amount);
-			}
+	// Raw pairwise net balance vs the current user, keyed by
+	// `${participantType}:${participantId}` -> netByCurrency. Positive amounts mean
+	// that person owes you; negative means you owe them. Multi-currency.
+	const netByParticipant = useMemo(() => {
+		const map = new Map<string, Record<string, number>>();
+		for (const s of perspectiveData?.statements ?? []) {
+			map.set(
+				`${s.counterpart.participantType}:${s.counterpart.participantId}`,
+				s.netByCurrency,
+			);
 		}
 		return map;
-	}, [settlementPlan, currentUserId, primaryCurrency]);
+	}, [perspectiveData]);
 
 	const isCreator = useCallback(
 		(p: Participant) =>
@@ -207,6 +212,7 @@ export function PeopleTab({
 		void utils.project.detail.invalidate({ id: projectId });
 		void utils.project.participantBalances.invalidate({ projectId });
 		void utils.project.settlementPlan.invalidate({ projectId });
+		void utils.project.balancesFromPerspective.invalidate({ projectId });
 	}, [utils, projectId]);
 
 	// ── Mutations ──────────────────────────────────────────────────────────────
@@ -285,7 +291,7 @@ export function PeopleTab({
 							{sorted.map((p) => {
 								const key = `${p.participantType}:${p.participantId}`;
 								const paid = paidByParticipant.get(key) ?? 0;
-								const net = netVsMe.get(key);
+								const netByCurrency = netByParticipant.get(key);
 								const me = isCurrentUser(p);
 								return (
 									<tr
@@ -343,8 +349,8 @@ export function PeopleTab({
 												formatCurrency={formatCurrency}
 												isMe={me}
 												isMultiPerson={isMultiPerson}
-												net={net}
-												primaryCurrency={primaryCurrency}
+												name={p.name}
+												netByCurrency={netByCurrency}
 											/>
 										</td>
 
@@ -717,34 +723,54 @@ function RoleCell({
 function BalanceCell({
 	isMe,
 	isMultiPerson,
-	net,
-	primaryCurrency,
+	name,
+	netByCurrency,
 	formatCurrency,
 }: {
 	isMe: boolean;
 	isMultiPerson: boolean;
-	net: number | undefined;
-	primaryCurrency: string;
+	name: string;
+	netByCurrency: Record<string, number> | undefined;
 	formatCurrency: (amount: number, currency: string) => string;
 }) {
 	const t = useTranslations("projects");
 	if (isMe || !isMultiPerson) {
 		return null;
 	}
-	if (net === undefined || Math.abs(net) < 0.005) {
+
+	// Real pairwise balance per currency: positive => they owe you, negative =>
+	// you owe them. Render every nonzero currency on its own line so multi-currency
+	// balances are never dropped.
+	const lines = Object.entries(netByCurrency ?? {}).filter(
+		([, value]) => Math.abs(value) >= 0.005,
+	);
+	if (lines.length === 0) {
 		return null;
 	}
-	if (net > 0) {
-		return (
-			<span className="text-emerald-600 dark:text-emerald-400">
-				{t("owesYou", { amount: formatCurrency(net, primaryCurrency) })}
-			</span>
-		);
-	}
+
 	return (
-		<span className="text-amber-600 dark:text-amber-400">
-			{t("youOwe", { amount: formatCurrency(-net, primaryCurrency) })}
-		</span>
+		<div className="flex flex-col items-end gap-0.5">
+			{lines.map(([currency, value]) =>
+				value > 0 ? (
+					<span
+						className="text-emerald-600 dark:text-emerald-400"
+						key={currency}
+					>
+						{t("counterpartOwesYou", {
+							name,
+							amount: formatCurrency(value, currency),
+						})}
+					</span>
+				) : (
+					<span className="text-amber-600 dark:text-amber-400" key={currency}>
+						{t("youOweCounterpart", {
+							name,
+							amount: formatCurrency(-value, currency),
+						})}
+					</span>
+				),
+			)}
+		</div>
 	);
 }
 
