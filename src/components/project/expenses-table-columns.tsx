@@ -120,6 +120,15 @@ export function createProjectExpenseColumns({
 						currency={txn.currency}
 						formatCurrency={formatCurrency}
 						participants={txn.splitParticipants ?? []}
+						payerRef={
+							txn.paidBy
+								? {
+										participantType: txn.paidBy.type,
+										participantId: txn.paidBy.id,
+									}
+								: null
+						}
+						highlightTooltip={label("paidLabel")}
 					/>
 				);
 			},
