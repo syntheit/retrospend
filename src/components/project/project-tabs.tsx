@@ -1,15 +1,16 @@
 "use client";
 
-import { Activity, Receipt, Users } from "lucide-react";
+import { Activity, Receipt, Scale, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, type ReactNode } from "react";
 
 import { ActivityTab } from "~/components/project/activity-tab";
+import { BalancesTab } from "~/components/project/balances-tab";
 import { PeopleTab } from "~/components/project/people-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-const TAB_VALUES = ["expenses", "people", "activity"] as const;
+const TAB_VALUES = ["expenses", "people", "balances", "activity"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 interface Participant {
@@ -106,6 +107,10 @@ export function ProjectTabs({
 					<Users className="h-4 w-4" />
 					{t("tabPeople")}
 				</TabsTrigger>
+				<TabsTrigger value="balances">
+					<Scale className="h-4 w-4" />
+					{t("tabBalances")}
+				</TabsTrigger>
 				<TabsTrigger value="activity">
 					<Activity className="h-4 w-4" />
 					{t("tabActivity")}
@@ -132,6 +137,14 @@ export function ProjectTabs({
 					primaryCurrency={primaryCurrency}
 					projectId={projectId}
 					projectName={projectName}
+				/>
+			</TabsContent>
+
+			<TabsContent className="mt-0" value="balances">
+				<BalancesTab
+					currentUserId={currentUserId}
+					participants={participants}
+					projectId={projectId}
 				/>
 			</TabsContent>
 

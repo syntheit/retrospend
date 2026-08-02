@@ -20,6 +20,7 @@ import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
 import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import { getBalancesFromPerspective } from "~/server/services/shared-expenses/balances-perspective.service";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { sameParticipant } from "~/server/services/shared-expenses/types";
@@ -2290,6 +2291,52 @@ export const projectRouter = createTRPCRouter({
 				balances: allBalances,
 				participantCount: result.participantCount,
 			};
+		}),
+
+	/**
+	 * GET /api/project/balancesFromPerspective
+	 *
+	 * Per-project RAW PAIRWISE balances from ONE chosen person's perspective.
+	 *
+	 * For the perspective person X within this project, returns one statement per
+	 * OTHER participant Y that shares any history with X: the net balance (signed
+	 * from X's angle) per currency, plus the itemized shared expenses behind it.
+	 *
+	 * Unlike settlementPlan (group-optimal, routed, primary-currency only), these
+	 * are the real expenses shared directly between X and Y. Project-scoped:
+	 * expenses are restricted to this project; claim aliases are resolved so a
+	 * claimed shadow and its claiming user are one party.
+	 *
+	 * Auth mirrors participantBalances: any VIEWER+ member of the project may read
+	 * it (the whole project's balances are already visible to members, so a
+	 * per-perspective view leaks nothing new). Read-only.
+	 */
+	balancesFromPerspective: guestOrProtectedProcedure
+		.input(
+			z.object({
+				projectId: z.string().min(1),
+				perspective: z.object({
+					participantType: z.enum(["user", "guest", "shadow"]),
+					participantId: z.string().min(1),
+				}),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			assertGuestProjectScope(ctx.participant, input.projectId);
+			const { participantType, participantId } = ctx.participant;
+			await requireProjectRole(
+				ctx.db,
+				input.projectId,
+				participantType,
+				participantId,
+				"VIEWER",
+			);
+
+			return getBalancesFromPerspective(
+				ctx.db,
+				input.projectId,
+				input.perspective,
+			);
 		}),
 });
 
