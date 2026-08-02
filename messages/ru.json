@@ -606,6 +606,26 @@
     "payAmount": "Заплатить {amount}",
     "requestAmount": "Запросить {amount}"
   },
+  "claim": {
+    "title": "Claim your spot",
+    "subtitle": "Link this person to your account",
+    "loading": "Loading...",
+    "isThisYou": "You've been added as <strong>{name}</strong>. Is this you?",
+    "addedTo": "In {projects}",
+    "confirmThisIsMe": "Yes, this is me",
+    "notMe": "This isn't me",
+    "signInToClaim": "Sign in or create an account to link this person to you.",
+    "createAccountToClaim": "Create a free account to link this person to you.",
+    "alreadyHaveAccount": "Already have an account? <link>Sign in</link>",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "alreadyClaimed": "This person has already been linked to an account.",
+    "returnHome": "Return home",
+    "chooserTitle": "Are you one of these people?",
+    "chooserDescription": "Someone may have already added you to <strong>{projectName}</strong>. Pick yourself to keep your existing history, or skip to join as a new person.",
+    "chooserNoneNew": "None of these - I'm new",
+    "chooserBack": "Back to the list"
+  },
   "projects": {
     "title": "Проекты",
     "active": "Активные",

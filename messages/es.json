@@ -619,13 +619,16 @@
     "confirmThisIsMe": "Sí, soy yo",
     "notMe": "No soy yo",
     "signInToClaim": "Inicia sesión o crea una cuenta para vincular a esta persona contigo.",
+    "createAccountToClaim": "Crea una cuenta gratis para vincular a esta persona contigo.",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta? <link>Inicia sesión</link>",
     "signIn": "Iniciar sesión",
     "createAccount": "Crear cuenta",
     "alreadyClaimed": "Esta persona ya fue vinculada a una cuenta.",
     "returnHome": "Volver al inicio",
     "chooserTitle": "¿Eres una de estas personas?",
     "chooserDescription": "Es posible que alguien ya te haya agregado a <strong>{projectName}</strong>. Elígete para conservar tu historial existente, u omítelo para unirte como una persona nueva.",
-    "chooserNoneNew": "Ninguna de estas — soy nuevo"
+    "chooserNoneNew": "Ninguna de estas — soy nuevo",
+    "chooserBack": "Volver a la lista"
   },
   "projects": {
     "title": "Proyectos",

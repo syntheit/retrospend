@@ -307,21 +307,35 @@ function InviteJoinView({
 	const [email, setEmail] = useState("");
 	const [registered, setRegistered] = useState(false);
 	const [isExistingUser, setIsExistingUser] = useState(false);
-	// "Are you one of these people?" chooser: shown after a NEW guest registers
-	// if the project has unclaimed ghosts they might already be.
-	const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
-	const [showGhostChooser, setShowGhostChooser] = useState(false);
+	// Two-step identify flow: pick your own name from the project's existing
+	// ghosts FIRST, then confirm your email. Only "None of these — I'm new"
+	// falls through to a blank name form.
+	//   "choose" - "are you one of these people?" chooser (default when ghosts exist)
+	//   "form"   - name (pre-filled if a ghost was picked) + email
+	const [identifyStep, setIdentifyStep] = useState<"choose" | "form">("form");
+	// The ghost the joiner recognised as themselves, if any. When set, the guest
+	// session absorbs this ghost's history after registering (via linkGuestToGhost).
+	const [selectedGhostId, setSelectedGhostId] = useState<string | null>(null);
+	// Guards the auto-open effect so a later refetch of the ghost list can't yank
+	// the user back to the chooser after they've moved on to the form.
+	const [autoOpenedChooser, setAutoOpenedChooser] = useState(false);
 
-	// Unclaimed ghosts in this project, offered so the guest links instead of
-	// creating a duplicate. Only fetched once a guest session exists.
-	const { data: projectGhosts } = api.claim.projectGhosts.useQuery(
-		{ linkId },
-		{ enabled: guestSessionId !== null },
-	);
+	// Unclaimed ghosts in this project, offered so the joiner picks their own
+	// name (and links to their existing history) instead of re-typing it. Fetched
+	// up front so the chooser can be the FIRST thing shown.
+	const { data: projectGhosts, isLoading: ghostsLoading } =
+		api.claim.projectGhosts.useQuery({ linkId });
+
+	// Open on the chooser the first time we learn the project has unclaimed ghosts.
+	useEffect(() => {
+		if (!autoOpenedChooser && projectGhosts && projectGhosts.length > 0) {
+			setIdentifyStep("choose");
+			setAutoOpenedChooser(true);
+		}
+	}, [autoOpenedChooser, projectGhosts]);
 
 	const linkGhostMutation = api.claim.linkGuestToGhost.useMutation({
 		onSuccess: () => {
-			setShowGhostChooser(false);
 			setRegistered(true);
 		},
 	});
@@ -338,9 +352,17 @@ function InviteJoinView({
 			} else {
 				localStorage.setItem("guest_session_token", data.sessionToken);
 				localStorage.setItem("guest_project_id", data.projectId);
-				setGuestSessionId(data.guestSessionId);
-				// Defer the success screen: offer the ghost chooser first.
-				setShowGhostChooser(true);
+				if (selectedGhostId) {
+					// The joiner recognised themselves as an existing ghost: absorb its
+					// history into the new guest session instead of leaving a duplicate.
+					linkGhostMutation.mutate({
+						linkId,
+						guestSessionId: data.guestSessionId,
+						shadowId: selectedGhostId,
+					});
+				} else {
+					setRegistered(true);
+				}
 			}
 		},
 	});
@@ -355,6 +377,19 @@ function InviteJoinView({
 		});
 	};
 
+	// Picked an existing ghost: carry its name into the form, then just confirm
+	// email. Choosing "I'm new" clears any prior pick.
+	const handlePickGhost = (ghost: { id: string; name: string }) => {
+		setSelectedGhostId(ghost.id);
+		setName(ghost.name);
+		setIdentifyStep("form");
+	};
+	const handlePickNew = () => {
+		setSelectedGhostId(null);
+		setName("");
+		setIdentifyStep("form");
+	};
+
 	const handleContinue = () => {
 		if (isExistingUser) {
 			router.push("/login");
@@ -365,20 +400,11 @@ function InviteJoinView({
 		}
 	};
 
-	// If the chooser is showing but the project has no unclaimed ghosts, skip it.
-	useEffect(() => {
-		if (
-			showGhostChooser &&
-			projectGhosts !== undefined &&
-			projectGhosts.length === 0
-		) {
-			setShowGhostChooser(false);
-			setRegistered(true);
-		}
-	}, [showGhostChooser, projectGhosts]);
+	const isJoining =
+		registerMutation.isPending || linkGhostMutation.isPending;
 
-	// ── "Are you one of these people?" chooser ──
-	if (showGhostChooser && projectGhosts && projectGhosts.length > 0) {
+	// ── "Are you one of these people?" chooser (shown first) ──
+	if (identifyStep === "choose" && projectGhosts && projectGhosts.length > 0) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background p-4">
 				<Card className="w-full max-w-md">
@@ -395,26 +421,12 @@ function InviteJoinView({
 							</p>
 						</div>
 
-						{linkGhostMutation.isError && (
-							<div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-destructive text-sm">
-								{linkGhostMutation.error.message}
-							</div>
-						)}
-
 						<div className="flex flex-col gap-2">
 							{projectGhosts.map((ghost) => (
 								<Button
 									className="justify-start gap-2"
-									disabled={linkGhostMutation.isPending}
 									key={ghost.id}
-									onClick={() =>
-										guestSessionId &&
-										linkGhostMutation.mutate({
-											linkId,
-											guestSessionId,
-											shadowId: ghost.id,
-										})
-									}
+									onClick={() => handlePickGhost(ghost)}
 									variant="outline"
 								>
 									<Users className="h-4 w-4" />
@@ -425,11 +437,7 @@ function InviteJoinView({
 
 						<Button
 							className="w-full"
-							disabled={linkGhostMutation.isPending}
-							onClick={() => {
-								setShowGhostChooser(false);
-								setRegistered(true);
-							}}
+							onClick={handlePickNew}
 							variant="ghost"
 						>
 							{t("chooserNoneNew")}
@@ -492,6 +500,13 @@ function InviteJoinView({
 		);
 	}
 
+	// While the ghost list is still loading, hold on the spinner so we can open
+	// straight onto the chooser (if there are ghosts) rather than flashing the
+	// blank form first.
+	if (ghostsLoading && !registered) {
+		return <LoadingScreen />;
+	}
+
 	// ── Registration form ──
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -530,6 +545,17 @@ function InviteJoinView({
 						</div>
 					</div>
 
+					{projectGhosts && projectGhosts.length > 0 && (
+						<button
+							className="mb-4 flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
+							onClick={() => setIdentifyStep("choose")}
+							type="button"
+						>
+							<ArrowLeft className="h-3.5 w-3.5" />
+							{t("chooserBack")}
+						</button>
+					)}
+
 					<form className="space-y-4" onSubmit={handleSubmit}>
 						<div className="space-y-2">
 							<label className="font-medium text-sm" htmlFor="join-name">
@@ -561,22 +587,19 @@ function InviteJoinView({
 							</p>
 						</div>
 
-						{registerMutation.isError && (
+						{(registerMutation.isError || linkGhostMutation.isError) && (
 							<div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-destructive text-sm">
-								{registerMutation.error.message}
+								{registerMutation.error?.message ??
+									linkGhostMutation.error?.message}
 							</div>
 						)}
 
 						<Button
 							className="w-full gap-2"
-							disabled={
-								!name.trim() ||
-								!email.trim() ||
-								registerMutation.isPending
-							}
+							disabled={!name.trim() || !email.trim() || isJoining}
 							type="submit"
 						>
-							{registerMutation.isPending ? (
+							{isJoining ? (
 								<>
 									<Loader2 className="h-4 w-4 animate-spin" />
 									Joining...
