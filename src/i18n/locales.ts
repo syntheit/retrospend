@@ -1,4 +1,11 @@
-export const SUPPORTED_LOCALES = ["en", "es", "ru", "pt-BR", "fr"] as const;
+export const SUPPORTED_LOCALES = [
+	"en",
+	"es",
+	"es-AR",
+	"ru",
+	"pt-BR",
+	"fr",
+] as const;
 
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -7,6 +14,7 @@ export const DEFAULT_LOCALE: AppLocale = "en";
 export const LOCALE_OPTIONS = [
 	{ value: "en", label: "English", flag: "EN" },
 	{ value: "es", label: "Español", flag: "ES" },
+	{ value: "es-AR", label: "Español (Argentina)", flag: "AR" },
 	{ value: "ru", label: "Русский", flag: "RU" },
 	{ value: "pt-BR", label: "Português (Brasil)", flag: "BR" },
 	{ value: "fr", label: "Français", flag: "FR" },
