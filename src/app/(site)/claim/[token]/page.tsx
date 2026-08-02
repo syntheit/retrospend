@@ -136,23 +136,28 @@ export default function ClaimPage() {
 								) : (
 									<div className="flex w-full flex-col gap-2">
 										<p className="text-center text-muted-foreground text-sm">
-											{t("signInToClaim")}
+											{t("createAccountToClaim")}
 										</p>
 										<Button asChild className="w-full gap-2">
-											<Link
-												href={`/login?redirect=${encodeURIComponent(redirectTarget)}`}
-											>
-												{t("signIn")}
-												<ArrowRight className="h-4 w-4" />
-											</Link>
-										</Button>
-										<Button asChild className="w-full" variant="outline">
 											<Link
 												href={`/signup?redirect=${encodeURIComponent(redirectTarget)}`}
 											>
 												{t("createAccount")}
+												<ArrowRight className="h-4 w-4" />
 											</Link>
 										</Button>
+										<p className="text-center text-muted-foreground text-xs">
+											{t.rich("alreadyHaveAccount", {
+												link: (chunks) => (
+													<Link
+														className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+														href={`/login?redirect=${encodeURIComponent(redirectTarget)}`}
+													>
+														{chunks}
+													</Link>
+												),
+											})}
+										</p>
 									</div>
 								)}
 							</>
