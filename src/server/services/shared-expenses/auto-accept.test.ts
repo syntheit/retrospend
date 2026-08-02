@@ -58,7 +58,7 @@ describe("resolveVerification", () => {
 		expect(res.verifiedAt).toBeUndefined();
 	});
 
-	it("guests and shadows can never auto-accept (they can't approve splits)", () => {
+	it("guests and shadows also auto-accept when the project auto-accepts", () => {
 		const guest: ParticipantRef = {
 			participantType: "guest",
 			participantId: "g1",
@@ -67,8 +67,25 @@ describe("resolveVerification", () => {
 			participantType: "shadow",
 			participantId: "s1",
 		};
-		// Even when the project auto-accepts, non-users stay PENDING.
-		expect(resolveVerification(guest, actor, true).status).toBe("PENDING");
-		expect(resolveVerification(shadow, actor, true).status).toBe("PENDING");
+		// A shadow can never tap "accept", so leaving it PENDING would strand the
+		// whole expense in a perpetual pending state that auto-accept is meant to
+		// avoid. When the project auto-accepts, every non-actor participant does.
+		expect(resolveVerification(guest, actor, true).status).toBe("AUTO_ACCEPTED");
+		expect(resolveVerification(shadow, actor, true).status).toBe(
+			"AUTO_ACCEPTED",
+		);
+	});
+
+	it("guests and shadows stay PENDING when the project requires approval", () => {
+		const guest: ParticipantRef = {
+			participantType: "guest",
+			participantId: "g1",
+		};
+		const shadow: ParticipantRef = {
+			participantType: "shadow",
+			participantId: "s1",
+		};
+		expect(resolveVerification(guest, actor, false).status).toBe("PENDING");
+		expect(resolveVerification(shadow, actor, false).status).toBe("PENDING");
 	});
 });

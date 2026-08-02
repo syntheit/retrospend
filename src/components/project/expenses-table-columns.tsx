@@ -16,6 +16,11 @@ export type ProjectExpense =
 interface ColumnOptions {
 	isSolo?: boolean;
 	isReadOnly?: boolean;
+	/**
+	 * When the project auto-accepts splits there is no approval to track, so the
+	 * acceptance-status column is hidden entirely.
+	 */
+	autoAccept?: boolean;
 	formatCurrency: (amount: number, currency: string) => string;
 	t?: (key: string) => string;
 	revisionSummaries?: Record<
@@ -52,6 +57,7 @@ interface ColumnOptions {
 export function createProjectExpenseColumns({
 	isSolo,
 	isReadOnly,
+	autoAccept,
 	formatCurrency,
 	t,
 	currentParticipant,
@@ -164,8 +170,9 @@ export function createProjectExpenseColumns({
 		},
 	);
 
-	// Status column (group projects only)
-	if (!isSolo) {
+	// Status column (group projects only; hidden when the project auto-accepts,
+	// since there is then no pending/approval state worth showing).
+	if (!isSolo && !autoAccept) {
 		columns.push({
 			id: "status",
 			header: label("columnStatus"),

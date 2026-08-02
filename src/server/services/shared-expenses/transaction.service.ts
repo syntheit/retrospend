@@ -723,10 +723,9 @@ export class SharedTransactionService {
 				});
 			} else {
 				// Even if splits didn't change structurally, reset verification
-				// because the transaction details changed. A single updateMany can't
-				// branch per-row, so split the non-actor participants into those the
-				// project auto-accepts (users, re-accept immediately) and everyone
-				// else (reset to PENDING for manual re-approval).
+				// because the transaction details changed. When the project
+				// auto-accepts, every non-actor participant re-accepts immediately;
+				// otherwise they all reset to PENDING for manual re-approval.
 				const nonActorParticipants = await tx.splitParticipant.findMany({
 					where: {
 						transactionId: input.id,
@@ -735,18 +734,12 @@ export class SharedTransactionService {
 							participantId: actor.participantId,
 						},
 					},
-					select: { id: true, participantType: true, participantId: true },
+					select: { id: true },
 				});
 
-				const autoAcceptIds: string[] = [];
-				const resetIds: string[] = [];
-				for (const p of nonActorParticipants) {
-					if (p.participantType === "user" && projectAutoAccept) {
-						autoAcceptIds.push(p.id);
-					} else {
-						resetIds.push(p.id);
-					}
-				}
+				const nonActorIds = nonActorParticipants.map((p) => p.id);
+				const autoAcceptIds = projectAutoAccept ? nonActorIds : [];
+				const resetIds = projectAutoAccept ? [] : nonActorIds;
 
 				if (autoAcceptIds.length > 0) {
 					await tx.splitParticipant.updateMany({

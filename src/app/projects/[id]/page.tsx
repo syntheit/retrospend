@@ -966,6 +966,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								pendingFilterTrigger={pendingFilterKey}
 								isSolo={isSolo}
 								isReadOnly={isViewer}
+								autoAcceptSplits={project.autoAcceptSplits}
 								onAddExpense={handleAddExpense}
 								projectId={id}
 							/>
@@ -1115,6 +1116,7 @@ function GuestProjectView({ id }: { id: string }) {
 				</div>
 
 				<ReadOnlyExpensesTable
+					autoAccept={project?.autoAcceptSplits}
 					formatCurrency={formatCurrency}
 					isLoading={expensesLoading}
 					isSolo={isSolo}
@@ -1210,6 +1212,7 @@ function ViewerProjectView({ id }: { id: string }) {
 				</div>
 
 				<ReadOnlyExpensesTable
+					autoAccept={project?.autoAcceptSplits}
 					formatCurrency={formatCurrency}
 					isLoading={expensesLoading}
 					isSolo={isSolo}
@@ -1297,6 +1300,7 @@ function PublicProjectView({ id }: { id: string }) {
 				</div>
 
 				<ReadOnlyExpensesTable
+					autoAccept={project?.autoAcceptSplits}
 					formatCurrency={formatCurrency}
 					isLoading={expensesLoading}
 					isSolo={isSolo}
@@ -1422,11 +1426,13 @@ function ReadOnlyExpensesTable({
 	isLoading,
 	formatCurrency,
 	isSolo,
+	autoAccept,
 }: {
 	transactions: ProjectExpense[];
 	isLoading: boolean;
 	formatCurrency: (amount: number, currency: string) => string;
 	isSolo?: boolean;
+	autoAccept?: boolean;
 }) {
 	// Bind the same "projects" translator the authenticated table uses so viewer
 	// and public read-only tables show real column headers, not the raw keys.
@@ -1436,10 +1442,11 @@ function ReadOnlyExpensesTable({
 			createProjectExpenseColumns({
 				isSolo,
 				isReadOnly: true,
+				autoAccept,
 				formatCurrency,
 				t,
 			}),
-		[isSolo, formatCurrency, t],
+		[isSolo, autoAccept, formatCurrency, t],
 	);
 
 	if (isLoading) {

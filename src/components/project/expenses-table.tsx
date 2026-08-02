@@ -66,6 +66,8 @@ interface ExpensesTableProps {
 	billingPeriodId?: string;
 	isSolo?: boolean;
 	isReadOnly?: boolean;
+	/** When the project auto-accepts splits, the acceptance-status column is hidden. */
+	autoAcceptSplits?: boolean;
 	onAddExpense?: () => void;
 	/** Incrementing counter — each bump filters the table to "pending" status */
 	pendingFilterTrigger?: number;
@@ -77,6 +79,7 @@ export function ExpensesTable({
 	billingPeriodId,
 	isSolo,
 	isReadOnly = false,
+	autoAcceptSplits,
 	onAddExpense,
 	pendingFilterTrigger,
 	currentParticipant,
@@ -496,6 +499,7 @@ export function ExpensesTable({
 			createProjectExpenseColumns({
 				isSolo,
 				isReadOnly,
+				autoAccept: autoAcceptSplits,
 				formatCurrency,
 				t,
 				revisionSummaries: revisionSummaries ?? undefined,
@@ -509,7 +513,7 @@ export function ExpensesTable({
 				isMobile,
 				onOpenSheet: (id) => setSheetTxnId(id),
 			}),
-		[isSolo, isReadOnly, formatCurrency, t, revisionSummaries, openHistory, currentParticipant, handleAccept, handleReject, locale, isMobile],
+		[isSolo, isReadOnly, autoAcceptSplits, formatCurrency, t, revisionSummaries, openHistory, currentParticipant, handleAccept, handleReject, locale, isMobile],
 	);
 
 	// Row class for settled rows

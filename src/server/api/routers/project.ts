@@ -791,11 +791,46 @@ export const projectRouter = createTRPCRouter({
 				return existing;
 			}
 
+			// Turning billing periods ON (from off): open a first period so the
+			// project has a current cycle, mirroring project creation. Only when
+			// none is already open, so re-enabling reuses a leftover open period.
+			const enablingBilling =
+				existing.billingCycleLength == null &&
+				fields.billingCycleLength != null;
+
 			return runInProjectTransaction(ctx.db, userId, async (tx) => {
 				const updated = await tx.project.update({
 					where: { id },
 					data: updateData as Prisma.ProjectUncheckedUpdateInput,
 				});
+
+				if (enablingBilling && fields.billingCycleLength) {
+					const openPeriod = await tx.billingPeriod.findFirst({
+						where: { projectId: id, status: "OPEN" },
+						select: { id: true },
+					});
+					if (!openPeriod) {
+						const periodStart = new Date();
+						const periodEnd = computeBillingPeriodEnd(
+							periodStart,
+							fields.billingCycleLength,
+							fields.billingCycleDays ?? undefined,
+						);
+						await tx.billingPeriod.create({
+							data: {
+								projectId: id,
+								label: computePeriodLabel(
+									periodStart,
+									periodEnd,
+									fields.billingCycleLength,
+								),
+								startDate: periodStart,
+								endDate: periodEnd,
+								status: "OPEN",
+							},
+						});
+					}
+				}
 
 				await logAudit(tx, {
 					actor: { participantType: "user", participantId: userId },
@@ -2055,6 +2090,7 @@ export const projectRouter = createTRPCRouter({
 				budgetCurrency: project.budgetCurrency,
 				primaryCurrency: project.primaryCurrency,
 				visibility: project.visibility,
+				autoAcceptSplits: project.autoAcceptSplits,
 				createdAt: project.createdAt,
 				participants,
 				categoryStats,
