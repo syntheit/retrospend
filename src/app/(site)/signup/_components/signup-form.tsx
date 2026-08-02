@@ -457,7 +457,13 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 							{t("alreadyHaveAccount")}{" "}
 							<Button
 								className="h-auto p-0 font-medium text-primary hover:underline"
-								onClick={() => router.push("/login")}
+								onClick={() =>
+									router.push(
+										signupRedirectTo === "/dashboard"
+											? "/login"
+											: `/login?redirect=${encodeURIComponent(signupRedirectTo)}`,
+									)
+								}
 								type="button"
 								variant="link"
 							>
