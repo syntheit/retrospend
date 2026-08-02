@@ -100,7 +100,11 @@ export const claimRouter = createTRPCRouter({
 			}
 
 			const token = signClaimToken(shadow.id, env.BETTER_AUTH_SECRET);
-			const url = `${env.NEXT_PUBLIC_APP_URL}/claim/${token}`;
+			// Build an ABSOLUTE URL the recipient can open from anywhere. On the
+			// server the canonical base is PUBLIC_URL; fall back to the client var
+			// (which also maps to PUBLIC_URL at runtime). Mirrors email-templates.ts.
+			const baseUrl = env.PUBLIC_URL ?? env.NEXT_PUBLIC_APP_URL;
+			const url = `${baseUrl}/claim/${token}`;
 			return { url, token, name: shadow.name };
 		}),
 

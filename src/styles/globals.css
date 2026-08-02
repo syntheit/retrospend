@@ -419,3 +419,23 @@ input[type="number"]::-webkit-outer-spin-button {
 	backdrop-filter: blur(12px) saturate(1.5);
 	-webkit-backdrop-filter: blur(12px) saturate(1.5);
 }
+
+/*
+ * Data-table vertical scroll (Safari fix)
+ *
+ * The data table's scroll container lives inside
+ *   <div class="overflow-hidden rounded-xl border">  (rounded card, clips overflow)
+ *     <div class="overflow-x-auto overflow-y-auto ...">  (THIS scroll container)
+ *       <div class="overflow-visible"><table>
+ *         <thead class="sticky top-0 ...">
+ * Safari (WebKit) fails to scroll this vertically: with a sticky <thead> inside a
+ * scroll box whose ancestor has border-radius + overflow:hidden, it mis-computes the
+ * scrollable region and the wheel/trackpad gesture does nothing. Chrome/Firefox scroll
+ * fine. Promoting the scroll box to its own compositing layer and enabling momentum
+ * scrolling forces WebKit to treat it as a real, independently-scrollable area. These
+ * properties are inert in Chrome/Firefox, so the rounded-card look is unchanged.
+ */
+.data-table-scroll {
+	-webkit-overflow-scrolling: touch;
+	transform: translateZ(0);
+}

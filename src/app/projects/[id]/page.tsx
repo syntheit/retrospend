@@ -1404,14 +1404,18 @@ function ReadOnlyExpensesTable({
 	formatCurrency: (amount: number, currency: string) => string;
 	isSolo?: boolean;
 }) {
+	// Bind the same "projects" translator the authenticated table uses so viewer
+	// and public read-only tables show real column headers, not the raw keys.
+	const t = useTranslations("projects");
 	const columns = useMemo(
 		() =>
 			createProjectExpenseColumns({
 				isSolo,
 				isReadOnly: true,
 				formatCurrency,
+				t,
 			}),
-		[isSolo, formatCurrency],
+		[isSolo, formatCurrency, t],
 	);
 
 	if (isLoading) {

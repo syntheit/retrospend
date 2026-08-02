@@ -784,10 +784,11 @@ export function DataTable<TData extends { id: string }>({
 			>
 				{renderToolbar?.(table, headerHeight)}
 
-				{/* Scroll container - holds the table and the progressive-render sentinel */}
+				{/* Scroll container - holds the table and the progressive-render sentinel.
+				    `data-table-scroll` carries the Safari vertical-scroll fix (see globals.css). */}
 				<div
 					className={cn(
-						"overflow-x-auto overflow-y-auto",
+						"data-table-scroll overflow-x-auto overflow-y-auto",
 						fillHeight ? "min-h-0 flex-1" : "max-h-[48rem]",
 					)}
 					ref={scrollContainerRef}
