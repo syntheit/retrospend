@@ -768,6 +768,9 @@
     "editExpense": "Editar despesa",
     "deleteExpenseWarning": "Esta ação não pode ser desfeita. Todos os participantes serão notificados.",
     "deleteThisExpense": "Excluir esta despesa?",
+    "deleteAnyway": "Delete anyway",
+    "deleteUnsettledTitle": "Delete despite unsettled balance?",
+    "deleteUnsettledWarning": "This expense still has an unsettled balance between participants. Deleting it erases that debt from everyone's balance. This cannot be undone.",
     "bulkDeleteDescription": "Excluir {count, plural, =0 {0 despesas} one {# despesa} other {{count} despesas}}?",
     "bulkDeleteTitle": "Excluir {count, plural, =0 {0 despesas} one {# despesa} other {{count} despesas}}?",
     "rejectReasonPrompt": "Se quiser, informe o motivo da rejeição.",
@@ -1225,6 +1228,7 @@
     "statusPending": "Pendente"
   },
   "settleUp": {
+    "settleAllSkipped": "Some balances couldn't be settled because no exchange rate was available: {currencies}. They were left unsettled.",
     "title": "Quitar",
     "titleWith": "Quitar com {name}",
     "description": "Registre um pagamento para zerar seu saldo.",
@@ -2038,6 +2042,9 @@
     "deleteButton": "Excluir",
     "deleteExpenseWarning": "Esta ação não pode ser desfeita. Todos os participantes serão notificados.",
     "deleteExpenseTitle": "Excluir esta despesa?",
+    "deleteAnyway": "Delete anyway",
+    "deleteUnsettledTitle": "Delete despite unsettled balance?",
+    "deleteUnsettledWarning": "This expense still has an unsettled balance between participants. Deleting it erases that debt from everyone's balance. This cannot be undone.",
     "expenseDeleted": "Despesa excluída",
     "csvExported": "CSV exportado",
     "failedToExportCsv": "Falha ao exportar o CSV",

@@ -44,7 +44,10 @@ export class SettlementService {
 
 	/**
 	 * Creates a new settlement record initiated by the current user (the payer).
-	 * Warns (but does not block) if the settlement exceeds the current balance owed.
+	 * Rejects (does not record) if the settlement exceeds the current balance owed:
+	 * over-payment would fabricate a reverse balance against the recipient, and for
+	 * non-user recipients that record is irreversible. Partial settlements
+	 * (amount <= outstanding) are still allowed.
 	 * Auto-confirms immediately for non-user recipients (shadow/guest) who cannot authenticate.
 	 */
 	async initiateSettlement(input: InitiateSettlementInput) {
@@ -61,7 +64,7 @@ export class SettlementService {
 
 		// Wrap balance check + create + audit in a transaction to prevent
 		// concurrent settlements from racing past the balance check.
-		const { settlement, warning } = await this.db.$transaction(async (tx) => {
+		const { settlement } = await this.db.$transaction(async (tx) => {
 			// computeBalance(currentUser, other): positive = other owes us, negative = we owe other.
 			const balanceResult = await computeBalance(
 				tx as unknown as PrismaClient,
@@ -71,10 +74,14 @@ export class SettlementService {
 			const rawBalance = balanceResult.byCurrency[input.currency] ?? 0;
 			const amountOwed = Math.max(0, -rawBalance);
 
-			let warning: string | null = null;
+			// Hard block over-payment: recording more than the outstanding balance
+			// fabricates a reverse debt against the recipient, and for non-user
+			// recipients the settlement auto-finalizes and cannot be reversed.
 			if (input.amount > amountOwed + 0.01) {
-				const excess = (input.amount - amountOwed).toFixed(2);
-				warning = `This settlement exceeds your current balance with this person by ${input.currency} ${excess}.`;
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `This settlement of ${input.currency} ${input.amount.toFixed(2)} exceeds the outstanding balance of ${input.currency} ${amountOwed.toFixed(2)} with this person. Enter an amount up to the outstanding balance.`,
+				});
 			}
 
 			const settlement = await tx.settlement.create({
@@ -120,7 +127,7 @@ export class SettlementService {
 				},
 			});
 
-			return { settlement, warning };
+			return { settlement };
 		});
 
 		// Notify the payee if they're a registered user (outside transaction, best-effort)
@@ -143,7 +150,7 @@ export class SettlementService {
 
 		return {
 			settlement,
-			warning,
+			warning: null as string | null,
 			requiresPayeeConfirmation: !isNonUserRecipient,
 		};
 	}
@@ -633,6 +640,10 @@ export class SettlementService {
 	 *
 	 * Only settles currencies where the current user owes the other person
 	 * (negative balance = you_owe_them).
+	 *
+	 * A currency that cannot be converted to the payment currency (no exchange
+	 * rate available) is excluded and reported in `skipped` rather than recorded
+	 * with an unconverted amount. If nothing can be converted, throws.
 	 */
 	async settleAll(input: {
 		toParticipant: ParticipantRef;
@@ -697,6 +708,74 @@ export class SettlementService {
 			if (result) rateMap.set(input.paymentCurrency, result.rate);
 		}
 
+		// Partition the batch into convertible entries and those we must skip
+		// because a rate is missing. Never fold an unconverted foreign amount into
+		// the payment-currency total: that would report a settled balance the human
+		// may never have actually paid.
+		const skipped: Array<{ currency: string; reason: string }> = [];
+		const settleable: Array<{
+			currency: string;
+			amount: number;
+			convertedAmount: number | null;
+			convertedCurrency: string | null;
+			exchangeRateUsed: number | null;
+			paymentCurrencyValue: number;
+		}> = [];
+
+		for (const entry of entries) {
+			if (entry.currency === input.paymentCurrency) {
+				settleable.push({
+					currency: entry.currency,
+					amount: entry.amount,
+					convertedAmount: null,
+					convertedCurrency: null,
+					exchangeRateUsed: null,
+					paymentCurrencyValue: entry.amount,
+				});
+				continue;
+			}
+
+			// Convert via USD: source → USD → paymentCurrency
+			const sourceRate = rateMap.get(entry.currency);
+			const targetRate =
+				input.paymentCurrency === "USD"
+					? 1
+					: rateMap.get(input.paymentCurrency);
+
+			if (!sourceRate || !targetRate) {
+				skipped.push({
+					currency: entry.currency,
+					reason: "no_exchange_rate",
+				});
+				continue;
+			}
+
+			const usdAmount = toUSD(entry.amount, entry.currency, sourceRate);
+			const converted =
+				input.paymentCurrency === "USD"
+					? usdAmount
+					: fromUSD(usdAmount, input.paymentCurrency, targetRate);
+			const convertedAmount = Math.round(converted * 100) / 100;
+
+			settleable.push({
+				currency: entry.currency,
+				amount: entry.amount,
+				convertedAmount,
+				convertedCurrency: input.paymentCurrency,
+				exchangeRateUsed: sourceRate,
+				paymentCurrencyValue: convertedAmount,
+			});
+		}
+
+		if (settleable.length === 0) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: `Could not settle: no exchange rate available to convert ${skipped
+					.map((s) => s.currency)
+					.join(", ")} to ${input.paymentCurrency}.`,
+			});
+		}
+
 		// Create all settlements in a single transaction
 		const { settlements, totalInPaymentCurrency } =
 			await this.db.$transaction(async (tx) => {
@@ -709,42 +788,11 @@ export class SettlementService {
 				}> = [];
 				let totalInPaymentCurrency = 0;
 
-				for (const entry of entries) {
-					let convertedAmount: number | null = null;
-					let convertedCurrency: string | null = null;
-					let exchangeRateUsed: number | null = null;
-
-					if (entry.currency !== input.paymentCurrency) {
-						// Convert via USD: source → USD → paymentCurrency
-						const sourceRate = rateMap.get(entry.currency);
-						const targetRate =
-							input.paymentCurrency === "USD"
-								? 1
-								: rateMap.get(input.paymentCurrency);
-
-						if (sourceRate && targetRate) {
-							const usdAmount = toUSD(
-								entry.amount,
-								entry.currency,
-								sourceRate,
-							);
-							const converted =
-								input.paymentCurrency === "USD"
-									? usdAmount
-									: fromUSD(usdAmount, input.paymentCurrency, targetRate);
-
-							convertedAmount =
-								Math.round(converted * 100) / 100;
-							convertedCurrency = input.paymentCurrency;
-							exchangeRateUsed = sourceRate;
-							totalInPaymentCurrency += convertedAmount;
-						} else {
-							// Fallback: cannot convert, record without conversion
-							totalInPaymentCurrency += entry.amount;
-						}
-					} else {
-						totalInPaymentCurrency += entry.amount;
-					}
+				for (const entry of settleable) {
+					const convertedAmount = entry.convertedAmount;
+					const convertedCurrency = entry.convertedCurrency;
+					const exchangeRateUsed = entry.exchangeRateUsed;
+					totalInPaymentCurrency += entry.paymentCurrencyValue;
 
 					const settlement = await tx.settlement.create({
 						data: {
@@ -836,6 +884,7 @@ export class SettlementService {
 
 		return {
 			settlements,
+			skipped,
 			totalInPaymentCurrency:
 				Math.round(totalInPaymentCurrency * 100) / 100,
 			paymentCurrency: input.paymentCurrency,

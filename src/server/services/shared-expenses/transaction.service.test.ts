@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Must be mocked before importing SharedTransactionService because the service
 // module imports notifications at the top level, which transitively imports
@@ -8,6 +8,13 @@ vi.mock("~/server/services/notifications", () => ({
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
 }));
 
+// Mock computeBalance so the delete guard's unsettled-balance check is controlled
+// per-test (its own correctness is covered in balance.test.ts).
+vi.mock("./balance", () => ({
+	computeBalance: vi.fn().mockResolvedValue({ byCurrency: {} }),
+}));
+
+import { computeBalance } from "./balance";
 import { SharedTransactionService } from "./transaction.service";
 
 // Mock Prisma transaction client
@@ -1521,6 +1528,13 @@ describe("SharedTransactionService", () => {
 	});
 
 	describe("delete", () => {
+		beforeEach(() => {
+			// Reset call history and default to no unsettled balance so delete
+			// proceeds without confirmation unless a test says otherwise.
+			vi.mocked(computeBalance).mockClear();
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+		});
+
 		it("rejects delete by non-creator", async () => {
 			const { db, txClient } = createMockDb();
 			txClient.sharedTransaction.findUnique.mockResolvedValue({
@@ -1559,13 +1573,15 @@ describe("SharedTransactionService", () => {
 			);
 		});
 
-		it("snapshots to audit log and hard-deletes", async () => {
+		it("snapshots to audit log and hard-deletes when balance is settled", async () => {
 			const { db, txClient } = createMockDb();
 			const existing = {
 				id: "txn-1",
 				description: "Dinner",
 				amount: 50,
 				currency: "USD",
+				paidByType: "user",
+				paidById: "alice",
 				createdByType: "user",
 				createdById: "alice",
 				isLocked: false,
@@ -1577,6 +1593,8 @@ describe("SharedTransactionService", () => {
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			txClient.sharedTransaction.delete.mockResolvedValue(existing);
+			// bob has already repaid alice → no outstanding balance
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -1589,9 +1607,78 @@ describe("SharedTransactionService", () => {
 			if (!firstAuditCall) throw new Error("Expected audit log to be created");
 			const auditCall = firstAuditCall[0];
 			expect(auditCall.data.action).toBe("DELETED");
-			expect(auditCall.data.changes).toHaveProperty("title", "Dinner");
+			expect(auditCall.data.changes).toHaveProperty("description", "Dinner");
 
 			// Hard delete was performed
+			expect(txClient.sharedTransaction.delete).toHaveBeenCalledWith({
+				where: { id: "txn-1" },
+			});
+		});
+
+		it("blocks delete when the expense still has an unsettled balance", async () => {
+			const { db, txClient } = createMockDb();
+			const existing = {
+				id: "txn-1",
+				description: "Dinner",
+				amount: 50,
+				currency: "USD",
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				projectId: null,
+				splitParticipants: [
+					{ participantType: "user", participantId: "alice", shareAmount: 25 },
+					{ participantType: "user", participantId: "bob", shareAmount: 25 },
+				],
+			};
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			// bob still owes alice $25 in USD (computeBalance(alice, bob) positive)
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 } });
+
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+
+			await expect(service.delete("txn-1")).rejects.toThrow(
+				/unsettled balance/,
+			);
+			expect(txClient.sharedTransaction.delete).not.toHaveBeenCalled();
+		});
+
+		it("deletes an unsettled expense when confirmUnsettled is true", async () => {
+			const { db, txClient } = createMockDb();
+			const existing = {
+				id: "txn-1",
+				description: "Dinner",
+				amount: 50,
+				currency: "USD",
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				projectId: null,
+				splitParticipants: [
+					{ participantType: "user", participantId: "alice", shareAmount: 25 },
+					{ participantType: "user", participantId: "bob", shareAmount: 25 },
+				],
+			};
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			txClient.sharedTransaction.delete.mockResolvedValue(existing);
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 } });
+
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+
+			await service.delete("txn-1", true);
+
+			// computeBalance should not even be consulted when confirmed
+			expect(computeBalance).not.toHaveBeenCalled();
 			expect(txClient.sharedTransaction.delete).toHaveBeenCalledWith({
 				where: { id: "txn-1" },
 			});

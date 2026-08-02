@@ -768,6 +768,9 @@
     "editExpense": "Edit Expense",
     "deleteExpenseWarning": "This action cannot be undone. All participants will be notified.",
     "deleteThisExpense": "Delete this expense?",
+    "deleteAnyway": "Delete anyway",
+    "deleteUnsettledTitle": "Delete despite unsettled balance?",
+    "deleteUnsettledWarning": "This expense still has an unsettled balance between participants. Deleting it erases that debt from everyone's balance. This cannot be undone.",
     "bulkDeleteDescription": "Delete {count, plural, one {1 expense} other {{count} expenses}}?",
     "bulkDeleteTitle": "Delete {count, plural, one {1 expense} other {{count} expenses}}?",
     "rejectReasonPrompt": "Optionally provide a reason for rejecting this expense.",
@@ -1225,6 +1228,7 @@
     "statusPending": "Pending"
   },
   "settleUp": {
+    "settleAllSkipped": "Some balances couldn't be settled because no exchange rate was available: {currencies}. They were left unsettled.",
     "title": "Settle Up",
     "titleWith": "Settle Up with {name}",
     "description": "Record a payment to zero out your balance.",
@@ -2038,6 +2042,9 @@
     "deleteButton": "Delete",
     "deleteExpenseWarning": "This action cannot be undone. All participants will be notified.",
     "deleteExpenseTitle": "Delete this expense?",
+    "deleteAnyway": "Delete anyway",
+    "deleteUnsettledTitle": "Delete despite unsettled balance?",
+    "deleteUnsettledWarning": "This expense still has an unsettled balance between participants. Deleting it erases that debt from everyone's balance. This cannot be undone.",
     "expenseDeleted": "Expense deleted",
     "csvExported": "CSV exported",
     "failedToExportCsv": "Failed to export CSV",

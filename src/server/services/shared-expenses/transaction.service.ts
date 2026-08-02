@@ -5,6 +5,7 @@ import {
 } from "~/server/services/notifications";
 import type { Prisma, PrismaClient, SplitMode } from "~prisma";
 import { logAudit } from "./audit-log";
+import { computeBalance } from "./balance";
 import {
 	assertCanModifyTransaction,
 	requireProjectRole,
@@ -879,7 +880,7 @@ export class SharedTransactionService {
 		}
 	}
 
-	async delete(id: string) {
+	async delete(id: string, confirmUnsettled = false) {
 		const actor = this.actor;
 		let deletedSnapshot: {
 			id: string;
@@ -899,6 +900,25 @@ export class SharedTransactionService {
 				this.actor.participantType,
 				this.actor.participantId,
 			);
+
+			// Guard against silently erasing a live debt. Deleting an expense
+			// cascades its split rows away, so any balance it created disappears
+			// from computeBalance (only the audit log retains a trace). If the
+			// expense still carries a non-zero unsettled balance between the payer
+			// and the people they covered, require an explicit acknowledgement.
+			if (!confirmUnsettled) {
+				const unsettled = await this.hasUnsettledBalance(
+					tx as unknown as PrismaClient,
+					existing,
+				);
+				if (unsettled) {
+					throw new TRPCError({
+						code: "PRECONDITION_FAILED",
+						message:
+							"This expense still has an unsettled balance between participants. Deleting it removes that debt. Confirm to delete anyway.",
+					});
+				}
+			}
 
 			// Capture snapshot for notification before deleting
 				deletedSnapshot = {
@@ -973,6 +993,60 @@ export class SharedTransactionService {
 				},
 			});
 		}
+	}
+
+	/**
+	 * Returns true when the expense still represents a live debt: the payer
+	 * covered shares for other participants AND, in the expense currency, at least
+	 * one of those participants still owes the payer (the balance has not been
+	 * settled). Reuses {@link computeBalance} rather than re-deriving balances by
+	 * hand so it honors settlements, claim aliases, and the same rounding rules.
+	 */
+	private async hasUnsettledBalance(
+		db: PrismaClient,
+		existing: {
+			currency: string;
+			paidByType: string;
+			paidById: string;
+			splitParticipants: Array<{
+				participantType: string;
+				participantId: string;
+				shareAmount: Prisma.Decimal | number;
+			}>;
+		},
+	): Promise<boolean> {
+		const payer: ParticipantRef = {
+			participantType: existing.paidByType as "user" | "guest" | "shadow",
+			participantId: existing.paidById,
+		};
+		const currency = existing.currency;
+		const TOLERANCE = 0.005;
+
+		for (const sp of existing.splitParticipants) {
+			// The payer's own share is not a debt.
+			if (
+				sp.participantType === payer.participantType &&
+				sp.participantId === payer.participantId
+			) {
+				continue;
+			}
+			// This participant contributes debt only if they were charged a share.
+			if (Number(sp.shareAmount) <= TOLERANCE) continue;
+
+			const participant: ParticipantRef = {
+				participantType: sp.participantType as "user" | "guest" | "shadow",
+				participantId: sp.participantId,
+			};
+
+			// computeBalance(payer, participant): positive = participant owes payer.
+			const balance = await computeBalance(db, payer, participant);
+			const owed = balance.byCurrency[currency] ?? 0;
+			if (owed > TOLERANCE) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

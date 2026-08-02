@@ -148,7 +148,7 @@ describe("SettlementService", () => {
 			expect(result.warning).toBeNull();
 		});
 
-		it("over-settlement: warns when settlement exceeds balance owed", async () => {
+		it("over-settlement: throws when settlement exceeds balance owed", async () => {
 			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } }); // alice owes bob $50
 			db.settlement.create.mockResolvedValue({
 				id: "s-1",
@@ -156,18 +156,18 @@ describe("SettlementService", () => {
 				fromParticipantId: "alice",
 			});
 
-			const result = await service.initiateSettlement({
-				toParticipant: bob,
-				amount: 60,
-				currency: "USD",
-			});
-
-			// $60 > $50 owed → warn about $10 excess
-			expect(result.warning).toBeTruthy();
-			expect(result.warning).toContain("10.00");
+			// $60 > $50 owed → hard block, no settlement recorded
+			await expect(
+				service.initiateSettlement({
+					toParticipant: bob,
+					amount: 60,
+					currency: "USD",
+				}),
+			).rejects.toThrow(/exceeds the outstanding balance/);
+			expect(db.settlement.create).not.toHaveBeenCalled();
 		});
 
-		it("settlement on zero balance: warns (bob owes alice, not the other way)", async () => {
+		it("settlement on zero balance: throws (bob owes alice, not the other way)", async () => {
 			// computeBalance(alice, bob) = +50 means BOB owes ALICE, not alice owes bob.
 			// amountOwed = max(0, -50) = 0 → alice owes bob $0
 			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 50 } });
@@ -177,17 +177,18 @@ describe("SettlementService", () => {
 				fromParticipantId: "alice",
 			});
 
-			const result = await service.initiateSettlement({
-				toParticipant: bob,
-				amount: 30,
-				currency: "USD",
-			});
-
-			// alice doesn't owe bob anything, but is trying to settle → warn
-			expect(result.warning).toBeTruthy();
+			// alice doesn't owe bob anything, but is trying to settle → block
+			await expect(
+				service.initiateSettlement({
+					toParticipant: bob,
+					amount: 30,
+					currency: "USD",
+				}),
+			).rejects.toThrow(/exceeds the outstanding balance/);
+			expect(db.settlement.create).not.toHaveBeenCalled();
 		});
 
-		it("settlement on completely zero balance (no transactions): warns", async () => {
+		it("settlement on completely zero balance (no transactions): throws", async () => {
 			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} }); // no balance at all
 			db.settlement.create.mockResolvedValue({
 				id: "s-1",
@@ -195,14 +196,15 @@ describe("SettlementService", () => {
 				fromParticipantId: "alice",
 			});
 
-			const result = await service.initiateSettlement({
-				toParticipant: bob,
-				amount: 30,
-				currency: "USD",
-			});
-
-			// No balance exists → any settlement amount exceeds $0 → warn
-			expect(result.warning).toBeTruthy();
+			// No balance exists → any settlement amount exceeds $0 → block
+			await expect(
+				service.initiateSettlement({
+					toParticipant: bob,
+					amount: 30,
+					currency: "USD",
+				}),
+			).rejects.toThrow(/exceeds the outstanding balance/);
+			expect(db.settlement.create).not.toHaveBeenCalled();
 		});
 
 		it("multiple settlements scenario: warning is based on current computed balance", async () => {
