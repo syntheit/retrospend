@@ -10,6 +10,7 @@ import {
 	History,
 	MoreHorizontal,
 	Trash2,
+	Undo2,
 	XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -76,6 +77,7 @@ export type TimelineRow = {
 	canConfirmSettlement?: boolean;
 	canRejectSettlement?: boolean;
 	canDeleteSettlement?: boolean;
+	canVoidSettlement?: boolean;
 	canRemindSettlement?: boolean;
 };
 
@@ -96,6 +98,7 @@ export function createTimelineColumns(
 		onConfirmSettlement?: (id: string) => void;
 		onRejectSettlement?: (id: string) => void;
 		onDeleteSettlement?: (id: string) => void;
+		onVoidSettlement?: (id: string) => void;
 		onRemindSettlement?: (id: string) => void;
 	},
 	revisionSummaries?: Record<
@@ -336,6 +339,7 @@ export function createTimelineColumns(
 						item.canConfirmSettlement ||
 						item.canRejectSettlement ||
 						item.canDeleteSettlement ||
+						item.canVoidSettlement ||
 						item.canRemindSettlement;
 					if (!hasActions) return null;
 
@@ -377,7 +381,7 @@ export function createTimelineColumns(
 									</DropdownMenuItem>
 								)}
 								{(item.canConfirmSettlement || item.canRejectSettlement || item.canRemindSettlement) &&
-									item.canDeleteSettlement && <DropdownMenuSeparator />}
+									(item.canDeleteSettlement || item.canVoidSettlement) && <DropdownMenuSeparator />}
 								{item.canDeleteSettlement && item.settlementId && (
 									<DropdownMenuItem
 										onClick={() => callbacks.onDeleteSettlement?.(item.settlementId!)}
@@ -385,6 +389,15 @@ export function createTimelineColumns(
 									>
 										<Trash2 className="mr-2 h-4 w-4" />
 										{t("cancelSettlement")}
+									</DropdownMenuItem>
+								)}
+								{item.canVoidSettlement && item.settlementId && (
+									<DropdownMenuItem
+										onClick={() => callbacks.onVoidSettlement?.(item.settlementId!)}
+										variant="destructive"
+									>
+										<Undo2 className="mr-2 h-4 w-4" />
+										{t("voidSettlement")}
 									</DropdownMenuItem>
 								)}
 							</DropdownMenuContent>

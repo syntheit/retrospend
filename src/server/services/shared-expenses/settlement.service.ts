@@ -288,6 +288,99 @@ export class SettlementService {
 	}
 
 	/**
+	 * Voids (undoes) an auto-finalized settlement whose payee is a non-user
+	 * (shadow or guest). Only the payer can call this.
+	 *
+	 * A settlement to a shadow/guest is FINALIZED the instant it is created,
+	 * because a non-user counterparty can never authenticate to confirm it. That
+	 * auto-finalization is a system convenience, NOT a real agreement: no human
+	 * ever accepted the payment. So a fat-fingered or wrong-person settlement
+	 * would otherwise permanently rewrite a balance with no recourse — deletePending
+	 * refuses finalized rows and reject requires a real user payee.
+	 *
+	 * This method restores that recourse: it hard-deletes the auto-finalized row,
+	 * which cleanly reverses its effect because balances are recomputed from the
+	 * remaining settlement rows (see computeBalance).
+	 *
+	 * Protected (NOT voidable) here:
+	 * - A settlement whose payee is a real USER (needs mutual agreement to undo).
+	 * - A settlement a real user payee actually confirmed (autoConfirmedReason is
+	 *   null): genuine agreement, out of scope.
+	 * - A PROPOSED settlement (use deletePendingSettlement instead).
+	 */
+	async voidAutoFinalizedSettlement(settlementId: string) {
+		const settlement = await this.db.settlement.findUnique({
+			where: { id: settlementId },
+		});
+
+		if (!settlement) {
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "Settlement not found",
+			});
+		}
+
+		// Only the payer (as the logged-in user) can void.
+		if (
+			settlement.fromParticipantType !== "user" ||
+			settlement.fromParticipantId !== this.userId
+		) {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Only the payer can void this settlement",
+			});
+		}
+
+		// Payee must be a non-user (shadow or guest). A real user payee's
+		// settlement can only be reversed by mutual agreement, never unilaterally.
+		if (settlement.toParticipantType === "user") {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message:
+					"Cannot void a settlement to a registered user. It can only be reversed by mutual agreement.",
+			});
+		}
+
+		// Only auto-finalized settlements are voidable: FINALIZED with an
+		// autoConfirmedReason recorded (i.e. the payee never genuinely confirmed;
+		// the system confirmed it because the payee cannot authenticate).
+		const isAutoFinalized =
+			settlement.status === "FINALIZED" &&
+			settlement.confirmedByPayee &&
+			settlement.autoConfirmedReason !== null;
+
+		if (!isAutoFinalized) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Only an auto-finalized settlement can be voided",
+			});
+		}
+
+		await this.db.settlement.delete({ where: { id: settlementId } });
+
+		await logAudit(this.db, {
+			actor: this.currentUserRef,
+			action: "DELETED",
+			targetType: "SETTLEMENT",
+			targetId: settlementId,
+			changes: {
+				amount: Number(settlement.amount),
+				currency: settlement.currency,
+				fromParticipantType: settlement.fromParticipantType,
+				fromParticipantId: settlement.fromParticipantId,
+				toParticipantType: settlement.toParticipantType,
+				toParticipantId: settlement.toParticipantId,
+				status: settlement.status,
+				autoConfirmedReason: settlement.autoConfirmedReason,
+				initiatedAt: settlement.initiatedAt.toISOString(),
+			},
+			context: { action: "settlement_voided" },
+		});
+
+		return { success: true };
+	}
+
+	/**
 	 * Rejects a pending settlement. Only the payee (toParticipant) can call this.
 	 */
 	async rejectSettlement(settlementId: string, reason?: string) {
@@ -604,6 +697,19 @@ export class SettlementService {
 				}
 			}
 
+			// A settlement to a non-user payee (shadow/guest) is auto-finalized on
+			// creation because the payee can never confirm. The payer can void that
+			// (undo the recorded payment) since no real counterparty ever agreed.
+			// Genuine user-confirmed settlements (autoConfirmedReason == null) stay
+			// protected and are NOT voidable.
+			const isNonUserPayee = s.toParticipantType !== "user";
+			const canVoid =
+				isPayer &&
+				isNonUserPayee &&
+				s.status === "FINALIZED" &&
+				s.confirmedByPayee &&
+				s.autoConfirmedReason !== null;
+
 			return {
 				id: s.id,
 				amount: Number(s.amount),
@@ -628,6 +734,7 @@ export class SettlementService {
 				canConfirm: isPayee && isPending,
 				canReject: isPayee && isPending,
 				canDelete: isPayer && isPending,
+				canVoid,
 				canRemind,
 			};
 		});
