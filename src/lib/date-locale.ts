@@ -8,6 +8,7 @@ import { ru } from "date-fns/locale/ru";
 const DATE_LOCALE_MAP: Record<string, Locale> = {
 	en: enUS,
 	es: es,
+	"es-AR": es,
 	fr,
 	"pt-BR": ptBR,
 	ru,
