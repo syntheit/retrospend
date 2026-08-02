@@ -58,7 +58,7 @@ describe("resolveVerification", () => {
 		expect(res.verifiedAt).toBeUndefined();
 	});
 
-	it("guests and shadows also auto-accept when the project auto-accepts", () => {
+	it("guests and shadows auto-accept when the project auto-accepts", () => {
 		const guest: ParticipantRef = {
 			participantType: "guest",
 			participantId: "g1",
@@ -67,25 +67,30 @@ describe("resolveVerification", () => {
 			participantType: "shadow",
 			participantId: "s1",
 		};
-		// A shadow can never tap "accept", so leaving it PENDING would strand the
-		// whole expense in a perpetual pending state that auto-accept is meant to
-		// avoid. When the project auto-accepts, every non-actor participant does.
 		expect(resolveVerification(guest, actor, true).status).toBe("AUTO_ACCEPTED");
 		expect(resolveVerification(shadow, actor, true).status).toBe(
 			"AUTO_ACCEPTED",
 		);
 	});
 
-	it("guests and shadows stay PENDING when the project requires approval", () => {
-		const guest: ParticipantRef = {
-			participantType: "guest",
-			participantId: "g1",
-		};
+	it("a shadow always auto-accepts, even when the project requires approval", () => {
+		// A ghost has no account or session and can never tap "accept", so leaving
+		// it PENDING would strand the split forever and block period settlement.
 		const shadow: ParticipantRef = {
 			participantType: "shadow",
 			participantId: "s1",
 		};
+		const res = resolveVerification(shadow, actor, false);
+		expect(res.status).toBe("AUTO_ACCEPTED");
+		expect(res.verifiedAt).toBeInstanceOf(Date);
+	});
+
+	it("a guest stays PENDING when the project requires approval", () => {
+		// A guest has a session and CAN approve, so they follow the manual gate.
+		const guest: ParticipantRef = {
+			participantType: "guest",
+			participantId: "g1",
+		};
 		expect(resolveVerification(guest, actor, false).status).toBe("PENDING");
-		expect(resolveVerification(shadow, actor, false).status).toBe("PENDING");
 	});
 });

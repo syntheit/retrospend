@@ -725,7 +725,8 @@ export class SharedTransactionService {
 				// Even if splits didn't change structurally, reset verification
 				// because the transaction details changed. When the project
 				// auto-accepts, every non-actor participant re-accepts immediately;
-				// otherwise they all reset to PENDING for manual re-approval.
+				// shadows always re-accept (a ghost can never approve); everyone else
+				// resets to PENDING for manual re-approval.
 				const nonActorParticipants = await tx.splitParticipant.findMany({
 					where: {
 						transactionId: input.id,
@@ -734,12 +735,18 @@ export class SharedTransactionService {
 							participantId: actor.participantId,
 						},
 					},
-					select: { id: true },
+					select: { id: true, participantType: true },
 				});
 
-				const nonActorIds = nonActorParticipants.map((p) => p.id);
-				const autoAcceptIds = projectAutoAccept ? nonActorIds : [];
-				const resetIds = projectAutoAccept ? [] : nonActorIds;
+				const autoAcceptIds: string[] = [];
+				const resetIds: string[] = [];
+				for (const p of nonActorParticipants) {
+					if (projectAutoAccept || p.participantType === "shadow") {
+						autoAcceptIds.push(p.id);
+					} else {
+						resetIds.push(p.id);
+					}
+				}
 
 				if (autoAcceptIds.length > 0) {
 					await tx.splitParticipant.updateMany({

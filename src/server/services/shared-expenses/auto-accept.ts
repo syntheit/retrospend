@@ -9,12 +9,15 @@ import { type ParticipantRef, sameParticipant } from "./types";
  * `true` and they always auto-accept.
  *
  * - The actor always ACCEPTED (they authored the change).
- * - When the project auto-accepts, EVERY other participant is AUTO_ACCEPTED so
- *   the split skips the manual approval gate entirely. This includes guests and
- *   shadows: a ghost can never tap "accept", so leaving them PENDING would strand
- *   the whole expense in a perpetual pending state that auto-accept is meant to
- *   avoid.
- * - Otherwise (manual project) every non-actor participant is PENDING.
+ * - A shadow (ghost) is ALWAYS AUTO_ACCEPTED, even in a manual-approval project:
+ *   a ghost has no account or session, so it can never tap "accept". Leaving it
+ *   PENDING would strand the split forever and block billing-period settlement.
+ *   When the ghost is later claimed, the real user inherits the accepted split
+ *   and can still dispute it.
+ * - When the project auto-accepts, every other participant is AUTO_ACCEPTED too,
+ *   skipping the manual approval gate entirely.
+ * - Otherwise (manual project) real users and guests are PENDING, since they can
+ *   actually approve.
  *
  * Shared by the create/update paths (transaction.service.ts) and the
  * rebalance-on-add path (project.ts) so all three resolve auto-accept
@@ -31,7 +34,7 @@ export function resolveVerification(
 	if (sameParticipant(p, actor)) {
 		return { status: "ACCEPTED", verifiedAt: new Date() };
 	}
-	if (projectAutoAccept) {
+	if (projectAutoAccept || p.participantType === "shadow") {
 		return { status: "AUTO_ACCEPTED", verifiedAt: new Date() };
 	}
 	return { status: "PENDING", verifiedAt: undefined };
