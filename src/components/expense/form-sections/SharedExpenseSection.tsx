@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown, Minus, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { SplitParticipant } from "~/components/split-with-picker";
 import { Button } from "~/components/ui/button";
@@ -48,6 +48,8 @@ interface SharedExpenseSectionProps {
 	onSharesChange: (key: string, units: number) => void;
 	theyOweFullAmount: boolean;
 	onTheyOweFullAmountChange: (value: boolean) => void;
+	/** Whether the current user ("You") is part of the split. */
+	youIncluded: boolean;
 }
 
 export function SharedExpenseSection({
@@ -65,6 +67,7 @@ export function SharedExpenseSection({
 	onSharesChange,
 	theyOweFullAmount,
 	onTheyOweFullAmountChange,
+	youIncluded,
 }: SharedExpenseSectionProps) {
 	const t = useTranslations("expenseForm");
 	const { watch } = useFormContext<ExpenseFormData>();
@@ -75,28 +78,41 @@ export function SharedExpenseSection({
 	const currencySymbol = getCurrencySymbol(watchedCurrency);
 	const amount = watchedAmount || 0;
 
-	const allParticipants = useMemo(
-		() => [
-			{
-				participantType: "user" as const,
-				participantId: currentUser.id,
-				name: currentUser.name,
-				label: `${currentUser.name} (${t("you")})`,
-				avatarUrl: currentUser.avatarUrl ?? null,
-			},
-			...splitWith.map((p) => ({
+	// "You" is the first entry of the participants list, matching every other
+	// member's row. It is present only when included in the split; removing it
+	// (via the participant picker) makes the expense entirely the others'.
+	const youParticipant = useMemo(
+		() => ({
+			participantType: "user" as const,
+			participantId: currentUser.id,
+			name: currentUser.name,
+			label: `${currentUser.name} (${t("you")})`,
+			avatarUrl: currentUser.avatarUrl ?? null,
+		}),
+		[currentUser, t],
+	);
+
+	const otherParticipants = useMemo(
+		() =>
+			splitWith.map((p) => ({
 				participantType: p.participantType,
 				participantId: p.participantId,
 				name: p.name,
 				label: p.name,
 				avatarUrl: p.avatarUrl ?? null,
 			})),
-		],
-		[currentUser, splitWith],
+		[splitWith],
 	);
 
-	const isSinglePerson = splitWith.length === 1;
-	const isMultiPerson = splitWith.length >= 2;
+	const allParticipants = useMemo(
+		() =>
+			youIncluded ? [youParticipant, ...otherParticipants] : otherParticipants,
+		[youIncluded, youParticipant, otherParticipants],
+	);
+
+	// The full-amount ("owe all") toggle applies only when it's You plus exactly
+	// one other. With You removed the toggle is meaningless.
+	const isSinglePerson = youIncluded && splitWith.length === 1;
 
 	// Determine the current payer
 	const paidByPerson = allParticipants.find(
@@ -107,6 +123,20 @@ export function SharedExpenseSection({
 	const youPaid =
 		paidBy.participantType === "user" &&
 		paidBy.participantId === currentUser.id;
+
+	// If the selected payer leaves the split (e.g. You is removed while You was
+	// the payer), fall back to the first remaining participant so "who paid" and
+	// the split stay coherent.
+	useEffect(() => {
+		if (allParticipants.length === 0) return;
+		if (!paidByPerson) {
+			const first = allParticipants[0]!;
+			onPaidByChange({
+				participantType: first.participantType,
+				participantId: first.participantId,
+			});
+		}
+	}, [paidByPerson, allParticipants, onPaidByChange]);
 
 	// --- Derive UI split choice from internal state ---
 	const [customSubMode, setCustomSubMode] = useState<CustomSubMode>("amount");
@@ -170,10 +200,15 @@ export function SharedExpenseSection({
 	const shares_computed = useMemo(() => {
 		if (splitMode === "EQUAL") {
 			if (isSinglePerson && theyOweFullAmount) {
-				return allParticipants.map((p) => ({
-					...p,
-					amount: p.participantId === currentUser.id ? 0 : amount,
-				}));
+				// Full-amount split: the NON-payer bears the whole cost, the payer 0.
+				// This keeps the split, the percentages, and the summary in agreement
+				// with the actual payer no matter who paid.
+				return allParticipants.map((p) => {
+					const isPayer =
+						p.participantType === paidBy.participantType &&
+						p.participantId === paidBy.participantId;
+					return { ...p, amount: isPayer ? 0 : amount };
+				});
 			}
 			const count = allParticipants.length;
 			const totalCents = Math.round(amount * 100);
@@ -235,7 +270,8 @@ export function SharedExpenseSection({
 		shares,
 		isSinglePerson,
 		theyOweFullAmount,
-		currentUser.id,
+		paidBy.participantType,
+		paidBy.participantId,
 	]);
 
 	// --- Validation ---
@@ -274,42 +310,71 @@ export function SharedExpenseSection({
 	const usePaidByPills = allParticipants.length <= 3;
 
 	// --- Summary text ---
+	// The summary is derived from the actual per-person shares and the selected
+	// payer (net = share - paid), so it can never contradict the split preview.
 	const summaryText = useMemo(() => {
 		if (amount <= 0) return null;
 
-		if (splitChoice === "even") {
-			if (allParticipants.length === 2) {
-				return t("eachPersonPays", { amount: `${currencySymbol}${formatNumber(amount / 2, 2)}` });
-			}
-			const perPerson = Math.floor(Math.round(amount * 100) / allParticipants.length) / 100;
-			return t("eachPersonPays", { amount: `${currencySymbol}${formatNumber(perPerson, 2)}` });
-		}
+		const fmt = (v: number) => `${currencySymbol}${formatNumber(v, 2)}`;
 
-		if (splitChoice === "full" && isSinglePerson) {
-			const otherName = splitWith[0]!.name;
-			if (youPaid) {
-				return t("personOwesYou", { name: otherName, amount: `${currencySymbol}${formatNumber(amount, 2)}` });
-			}
-			return t("youOwePerson", { name: otherName, amount: `${currencySymbol}${formatNumber(amount, 2)}` });
-		}
-
-		if (splitChoice === "custom") {
-			if (allParticipants.length === 2) {
-				const myComputed = shares_computed.find(
-					(s) => s.participantId === currentUser.id,
-				);
-				const otherComputed = shares_computed.find(
-					(s) => s.participantId !== currentUser.id,
-				);
-				if (myComputed && otherComputed) {
-					return t("youPayOtherPays", { yourAmount: `${currencySymbol}${formatNumber(myComputed.amount, 2)}`, otherName: otherComputed.name, otherAmount: `${currencySymbol}${formatNumber(otherComputed.amount, 2)}` });
+		// Two-party splits (You + one other, whether via "full", "custom" or an
+		// even split) get a directional "who owes whom" line based on net balances.
+		if (youIncluded && allParticipants.length === 2) {
+			const mine = shares_computed.find((s) => s.participantId === currentUser.id);
+			const other = shares_computed.find((s) => s.participantId !== currentUser.id);
+			if (mine && other) {
+				const myPaid = youPaid ? amount : 0;
+				const myNet = mine.amount - myPaid; // >0 => I owe; <0 => I'm owed
+				if (myNet > 0.005) {
+					return t("youOwePerson", { name: other.name, amount: fmt(myNet) });
 				}
+				if (myNet < -0.005) {
+					return t("personOwesYou", { name: other.name, amount: fmt(-myNet) });
+				}
+				return t("splitSettled");
 			}
-			return null; // Too complex for a single line with 3+
 		}
 
-		return null;
-	}, [amount, splitChoice, allParticipants, isSinglePerson, splitWith, youPaid, currencySymbol, shares_computed, currentUser.id]);
+		// Single other participant, You excluded: the expense is entirely theirs.
+		if (!youIncluded && allParticipants.length === 1) {
+			const only = allParticipants[0]!;
+			const paidByThem =
+				paidBy.participantType === only.participantType &&
+				paidBy.participantId === only.participantId;
+			// They paid and owe their own full share => nobody owes anybody.
+			if (paidByThem) return t("splitSettled");
+			// Someone else paid: they owe the payer the full amount.
+			return t("personOwesName", {
+				name: only.name,
+				payer: paidByPerson?.name ?? "",
+				amount: fmt(amount),
+			});
+		}
+
+		// Even split across 3+ participants: state the per-person amount rather
+		// than a single direction.
+		if (splitChoice === "even") {
+			const count = allParticipants.length;
+			if (count === 0) return null;
+			const perPerson = Math.floor(Math.round(amount * 100) / count) / 100;
+			return t("eachPersonPays", { amount: fmt(perPerson) });
+		}
+
+		return null; // Too complex for a single line with 3+ custom shares.
+	}, [
+		amount,
+		splitChoice,
+		allParticipants,
+		youIncluded,
+		youPaid,
+		paidBy.participantType,
+		paidBy.participantId,
+		paidByPerson,
+		currencySymbol,
+		shares_computed,
+		currentUser.id,
+		t,
+	]);
 
 	// Determine if we're in an editable (custom) mode
 	const isEditable = splitChoice === "custom";
