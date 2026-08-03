@@ -635,24 +635,51 @@ describe("Edge Case 9: Person detail correctly populates project name", () => {
 
 // ── Edge Case 10: Payer not in split ─────────────────────────────────────────
 
-describe("Edge Case 10: Payer validation: payer must be in splitWith", () => {
-	it("creating expense where payer is not in splitWith: throws BAD_REQUEST", async () => {
+describe("Edge Case 10: Payer may front a cost they are not part of", () => {
+	it("payer not in splitWith is allowed; payer gets no split row and is owed the full amount", async () => {
 		const db = createStatefulDb();
 		const txService = new SharedTransactionService(db as never, aliceRef);
 
 		const carolRef = makeUserRef("carol");
 
-		await expect(
-			txService.create({
-				amount: 100,
-				currency: "USD",
-				description: "Test",
-				date: new Date("2026-03-01"),
-				paidBy: carolRef, // carol pays, but carol is NOT in splitWith
-				splitWith: [aliceRef, bobRef], // carol not included
-				splitMode: "EQUAL",
-			}),
-		).rejects.toThrow("The payer must be included in the split participants");
+		// Carol fronts a $100 cost split equally between alice and bob only.
+		// Carol is the payer but is NOT one of the split participants.
+		const { transaction } = await txService.create({
+			amount: 100,
+			currency: "USD",
+			description: "Carol covers alice and bob",
+			date: new Date("2026-03-01"),
+			paidBy: carolRef,
+			splitWith: [aliceRef, bobRef],
+			splitMode: "EQUAL",
+		});
+
+		// The payer (carol) has no split row: only alice and bob do.
+		expect(transaction.splitParticipants).toHaveLength(2);
+		expect(
+			transaction.splitParticipants.some(
+				(sp: { participantId: string }) => sp.participantId === "carol",
+			),
+		).toBe(false);
+		const aliceSplit = transaction.splitParticipants.find(
+			(sp: { participantId: string }) => sp.participantId === ALICE,
+		);
+		const bobSplit = transaction.splitParticipants.find(
+			(sp: { participantId: string }) => sp.participantId === BOB,
+		);
+		expect(Number(aliceSplit?.shareAmount)).toBe(50);
+		expect(Number(bobSplit?.shareAmount)).toBe(50);
+
+		// Pairwise balances: carol is owed $50 by each of alice and bob.
+		// computeBalance(carol, X) is positive when X owes carol.
+		const carolAlice = await computeBalance(db as never, carolRef, aliceRef);
+		expect(carolAlice.byCurrency).toEqual({ USD: 50 });
+		const carolBob = await computeBalance(db as never, carolRef, bobRef);
+		expect(carolBob.byCurrency).toEqual({ USD: 50 });
+
+		// Alice and bob owe carol, not each other.
+		const aliceBob = await computeBalance(db as never, aliceRef, bobRef);
+		expect(aliceBob.byCurrency).toEqual({});
 	});
 });
 

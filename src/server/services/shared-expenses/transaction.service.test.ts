@@ -168,27 +168,52 @@ describe("SharedTransactionService", () => {
 			).toBe(100);
 		});
 
-		it("rejects when payer is not in split participants", async () => {
-			const { db } = createMockDb();
+		it("allows a payer who is not in the split (fronting a cost)", async () => {
+			const { db, txClient } = createMockDb();
+			txClient.sharedTransaction.create.mockResolvedValue({
+				id: "txn-1",
+				splitParticipants: [],
+			});
+
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
 				participantId: "alice",
 			});
 
-			await expect(
-				service.create({
-					amount: 50,
-					currency: "USD",
-					description: "Taxi",
-					date: new Date("2026-03-01"),
-					paidBy: { participantType: "user", participantId: "alice" },
-					splitWith: [
-						{ participantType: "user", participantId: "bob" },
-						{ participantType: "user", participantId: "carol" },
-					],
-					splitMode: "EQUAL",
-				}),
-			).rejects.toThrow("The payer must be included in the split participants");
+			// Alice pays a $50 taxi she is NOT part of: bob and carol split it.
+			await service.create({
+				amount: 50,
+				currency: "USD",
+				description: "Taxi",
+				date: new Date("2026-03-01"),
+				paidBy: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "bob" },
+					{ participantType: "user", participantId: "carol" },
+				],
+				splitMode: "EQUAL",
+			});
+
+			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
+			if (!firstCall) throw new Error("Expected create to be called");
+			const splits = firstCall[0].data.splitParticipants.create;
+
+			// Only the two split participants get a row; the payer (alice) has none,
+			// so she owes nothing and is owed the full $50.
+			expect(splits).toHaveLength(2);
+			expect(
+				splits.some(
+					(s: { participantId: string }) => s.participantId === "alice",
+				),
+			).toBe(false);
+			const bob = splits.find(
+				(s: { participantId: string }) => s.participantId === "bob",
+			);
+			const carol = splits.find(
+				(s: { participantId: string }) => s.participantId === "carol",
+			);
+			expect(bob.shareAmount).toBe(25);
+			expect(carol.shareAmount).toBe(25);
 		});
 
 		it("validates exact split amounts sum to total", async () => {
