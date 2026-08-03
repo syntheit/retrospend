@@ -784,11 +784,18 @@ export function useExpenseForm({
 						shareUnits: shares[`${p.participantType}:${p.participantId}`] ?? 1,
 					}));
 				} else if (splitWith.length === 1 && theyOweFullAmount) {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareAmount: p.participantId === resolvedParticipant.participantId ? 0 : data.amount,
-					}));
+					// One person owes the entire amount; the current user takes no
+					// share. Rather than sending the current user with a zero share,
+					// omit them entirely so they have no split row at all (the backend
+					// no longer requires the payer/current user to be in the split).
+					// Balance-equivalent to a zero-share row, but a cleaner record.
+					splitWithInput = allParticipants
+						.filter((p) => p.participantId !== resolvedParticipant.participantId)
+						.map((p) => ({
+							participantType: p.participantType,
+							participantId: p.participantId,
+							shareAmount: data.amount,
+						}));
 				} else {
 					splitWithInput = allParticipants.map((p) => ({
 						participantType: p.participantType,
@@ -869,12 +876,18 @@ export function useExpenseForm({
 						shareUnits: shares[`${p.participantType}:${p.participantId}`] ?? 1,
 					}));
 				} else if (splitWith.length === 1 && theyOweFullAmount) {
-					// "They owe full amount": current user gets 0, other gets all
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareAmount: p.participantId === resolvedParticipant.participantId ? 0 : data.amount,
-					}));
+					// One person owes the entire amount; the current user takes no
+					// share. Rather than sending the current user with a zero share,
+					// omit them entirely so they have no split row at all (the backend
+					// no longer requires the payer/current user to be in the split).
+					// Balance-equivalent to a zero-share row, but a cleaner record.
+					splitWithInput = allParticipants
+						.filter((p) => p.participantId !== resolvedParticipant.participantId)
+						.map((p) => ({
+							participantType: p.participantType,
+							participantId: p.participantId,
+							shareAmount: data.amount,
+						}));
 				} else {
 					// Equal split: let the server compute
 					splitWithInput = allParticipants.map((p) => ({

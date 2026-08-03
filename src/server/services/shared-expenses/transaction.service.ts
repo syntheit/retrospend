@@ -174,14 +174,10 @@ export class SharedTransactionService {
 			seen.add(key);
 		}
 
-		// Validate payer is in the split
-		const payerInSplit = splitWith.some((p) => sameParticipant(p, paidBy));
-		if (!payerInSplit) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "The payer must be included in the split participants",
-			});
-		}
+		// The payer is intentionally NOT required to be one of the split
+		// participants. A payer outside the split simply gets no split row: they
+		// owe nothing and are owed the full amount ("I fronted a cost I'm not
+		// part of"). computeBalance already treats this correctly.
 
 		const participants = this.computeSplits(
 			amount,
@@ -528,20 +524,8 @@ export class SharedTransactionService {
 					input.paidBy.participantType !== existing.paidByType ||
 					input.paidBy.participantId !== existing.paidById
 				) {
-					// If splitWith is not being changed, validate the new payer is in the existing split
-					if (input.splitWith === undefined) {
-						const payerInExistingSplit = existing.splitParticipants.some(
-							(sp) =>
-								sp.participantType === input.paidBy!.participantType &&
-								sp.participantId === input.paidBy!.participantId,
-						);
-						if (!payerInExistingSplit) {
-							throw new TRPCError({
-								code: "BAD_REQUEST",
-								message: "The payer must be included in the split participants",
-							});
-						}
-					}
+					// The new payer is intentionally allowed to be outside the split:
+					// they front the cost without owing a share. No validation needed.
 
 					diff.paidBy = {
 						old: {
@@ -582,16 +566,9 @@ export class SharedTransactionService {
 					seen.add(key);
 				}
 
-				// Validate payer is in split
-				const payerInSplit = input.splitWith.some((p) =>
-					sameParticipant(p, effectivePaidBy),
-				);
-				if (!payerInSplit) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: "The payer must be included in the split participants",
-					});
-				}
+				// The payer is intentionally allowed to be outside the split: they
+				// front the cost without owing a share, so they simply get no split
+				// row. No validation needed.
 
 				newParticipants = this.computeSplits(
 					effectiveAmount,
