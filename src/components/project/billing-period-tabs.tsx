@@ -174,53 +174,60 @@ export function BillingPeriodTabs({
 						const allVerified = selectedPeriod.unverifiedCount === 0;
 
 						return (
-							<div className="flex items-center gap-2">
-								<div
-									aria-label={allVerified ? t("allExpensesVerified") : t("verificationInProgressAria", { verified, total })}
-									role={!allVerified && onFilterPending ? "button" : undefined}
-									tabIndex={!allVerified && onFilterPending ? 0 : undefined}
-									className={cn(
-										"inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm",
-										allVerified
-											? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/60 dark:bg-emerald-900/10"
-											: "border-amber-200 bg-amber-50/50 dark:border-amber-800/60 dark:bg-amber-900/10",
-										!allVerified && onFilterPending && "cursor-pointer hover:ring-1 hover:ring-amber-400/50 transition-shadow",
-									)}
-									onClick={!allVerified && onFilterPending ? onFilterPending : undefined}
-									onKeyDown={!allVerified && onFilterPending ? (e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											onFilterPending();
-										}
-									} : undefined}
-								>
-									{allVerified ? (
-										<Check aria-hidden="true" className="h-4 w-4 text-emerald-500" />
-									) : (
-										<AlertCircle aria-hidden="true" className="h-4 w-4 text-amber-500" />
-									)}
-									<span className="font-medium">
-										{allVerified ? t("allExpensesVerified") : t("verificationInProgress")}
-									</span>
-									<span className="text-muted-foreground text-xs">{verified}/{total}</span>
-									{!allVerified && onFilterPending && (
-										<span className="text-muted-foreground text-xs">· {t("clickToFilter")}</span>
+							<div className="space-y-1.5">
+								<div className="flex items-center gap-2">
+									<div
+										aria-label={allVerified ? t("allExpensesVerified") : t("verificationInProgressAria", { verified, total })}
+										role={!allVerified && onFilterPending ? "button" : undefined}
+										tabIndex={!allVerified && onFilterPending ? 0 : undefined}
+										className={cn(
+											"inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm",
+											allVerified
+												? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/60 dark:bg-emerald-900/10"
+												: "border-amber-200 bg-amber-50/50 dark:border-amber-800/60 dark:bg-amber-900/10",
+											!allVerified && onFilterPending && "cursor-pointer hover:ring-1 hover:ring-amber-400/50 transition-shadow",
+										)}
+										onClick={!allVerified && onFilterPending ? onFilterPending : undefined}
+										onKeyDown={!allVerified && onFilterPending ? (e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												onFilterPending();
+											}
+										} : undefined}
+									>
+										{allVerified ? (
+											<Check aria-hidden="true" className="h-4 w-4 text-emerald-500" />
+										) : (
+											<AlertCircle aria-hidden="true" className="h-4 w-4 text-amber-500" />
+										)}
+										<span className="font-medium">
+											{allVerified ? t("allExpensesVerified") : t("verificationInProgress")}
+										</span>
+										<span className="text-muted-foreground text-xs">{verified}/{total}</span>
+										{!allVerified && onFilterPending && (
+											<span className="text-muted-foreground text-xs">· {t("clickToFilter")}</span>
+										)}
+									</div>
+									{allVerified && canClosePeriod && (
+										<Button
+											className="h-7 gap-1 text-xs"
+											disabled={settleMutation.isPending}
+											onClick={() =>
+												settleMutation.mutate({
+													projectId,
+													periodId: selectedPeriod.id,
+												})
+											}
+											size="sm"
+										>
+											{settleMutation.isPending ? t("finalizing") : t("finalizePeriod")}
+										</Button>
 									)}
 								</div>
 								{allVerified && canClosePeriod && (
-									<Button
-										className="h-7 gap-1 text-xs"
-										disabled={settleMutation.isPending}
-										onClick={() =>
-											settleMutation.mutate({
-												projectId,
-												periodId: selectedPeriod.id,
-											})
-										}
-										size="sm"
-									>
-										{settleMutation.isPending ? t("finalizing") : t("finalizePeriod")}
-									</Button>
+									<p className="text-muted-foreground text-xs">
+										{t("finalizeHint")}
+									</p>
 								)}
 							</div>
 						);
