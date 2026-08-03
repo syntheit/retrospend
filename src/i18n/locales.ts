@@ -5,6 +5,7 @@ export const SUPPORTED_LOCALES = [
 	"ru",
 	"pt-BR",
 	"fr",
+	"de",
 ] as const;
 
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number];
@@ -18,6 +19,7 @@ export const LOCALE_OPTIONS = [
 	{ value: "ru", label: "Русский", flag: "RU" },
 	{ value: "pt-BR", label: "Português (Brasil)", flag: "BR" },
 	{ value: "fr", label: "Français", flag: "FR" },
+	{ value: "de", label: "Deutsch", flag: "DE" },
 ] as const satisfies readonly {
 	value: AppLocale;
 	label: string;
