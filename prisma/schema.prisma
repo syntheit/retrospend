@@ -769,12 +769,18 @@ model Settlement {
   reminderCount        Int              @default(0)
   autoConfirmedReason  String?          @db.VarChar(200)
 
+  projectId            String?
+
+  project              Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
   @@index([fromParticipantType, fromParticipantId])
   @@index([toParticipantType, toParticipantId])
   @@index([billingPeriodId])
   @@index([status])
   @@index([status, fromParticipantType, fromParticipantId])
   @@index([status, toParticipantType, toParticipantId])
+  @@index([projectId], map: "settlement_projectId_idx")
+  @@index([projectId, fromParticipantType, fromParticipantId, toParticipantType, toParticipantId], map: "settlement_project_pair_idx")
   @@map("settlement")
 }
 
@@ -909,6 +915,7 @@ model Project {
   billingPeriods     BillingPeriod[]
   magicLinks         MagicLink[]
   sharedTransactions SharedTransaction[]
+  settlements        Settlement[]
 
   @@index([createdById])
   @@index([status])

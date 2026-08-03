@@ -30,6 +30,13 @@ export interface InitiateSettlementInput {
 	exchangeRateUsed?: number | null;
 	paymentMethod?: string | null;
 	note?: string | null;
+	/**
+	 * Project scope for this settlement. When set, the over-payment cap is
+	 * computed against the per-project balance (same scope as the write) and the
+	 * settlement row is stamped with this projectId. Omitted/null => global cap
+	 * and a project-less (direct/rollup) settlement.
+	 */
+	projectId?: string | null;
 }
 
 export class SettlementService {
@@ -62,6 +69,13 @@ export class SettlementService {
 
 		const isNonUserRecipient = input.toParticipant.participantType !== "user";
 
+		// A string projectId scopes the over-payment cap to that project and is
+		// stamped on the row. Omitted/null => GLOBAL cap (projectScope undefined)
+		// and a project-less (direct/rollup) settlement (projectId null). The cap
+		// MUST be computed in the same scope as the write.
+		const projectScope = input.projectId ?? undefined;
+		const stampProjectId = input.projectId ?? null;
+
 		// Wrap balance check + create + audit in a transaction to prevent
 		// concurrent settlements from racing past the balance check.
 		const { settlement } = await this.db.$transaction(async (tx) => {
@@ -70,6 +84,7 @@ export class SettlementService {
 				tx as unknown as PrismaClient,
 				this.currentUserRef,
 				input.toParticipant,
+				{ projectScope },
 			);
 			const rawBalance = balanceResult.byCurrency[input.currency] ?? 0;
 			const amountOwed = Math.max(0, -rawBalance);
@@ -92,6 +107,7 @@ export class SettlementService {
 					toParticipantId: input.toParticipant.participantId,
 					amount: input.amount,
 					currency: input.currency,
+					projectId: stampProjectId,
 					convertedAmount: input.convertedAmount ?? null,
 					convertedCurrency: input.convertedCurrency ?? null,
 					exchangeRateUsed: input.exchangeRateUsed ?? null,
@@ -636,13 +652,17 @@ export class SettlementService {
 	 * Returns per-currency net balances and suggested settlement amounts between
 	 * the current user and the specified person. Read-only, no side effects.
 	 */
-	async getSettlementPlan(ref: ParticipantRef) {
+	async getSettlementPlan(ref: ParticipantRef, projectId?: string | null) {
 		await this.assertRelationship(ref);
 
+		// Scope the plan to the same project the settle-up action will write in
+		// (string => that project; omitted/null => GLOBAL, the default for the
+		// cross-project People view).
 		const balanceResult = await computeBalance(
 			this.db,
 			this.currentUserRef,
 			ref,
+			{ projectScope: projectId ?? undefined },
 		);
 
 		return Object.entries(balanceResult.byCurrency).map(
@@ -757,6 +777,7 @@ export class SettlementService {
 		paymentCurrency: string;
 		paymentMethod?: string | null;
 		note?: string | null;
+		projectId?: string | null;
 	}) {
 		if (sameParticipant(this.currentUserRef, input.toParticipant)) {
 			throw new TRPCError({
@@ -769,11 +790,17 @@ export class SettlementService {
 
 		const isNonUserRecipient = input.toParticipant.participantType !== "user";
 
-		// Compute all per-currency balances
+		// See initiateSettlement: string scopes the settled balances + stamps rows;
+		// omitted/null => GLOBAL balances and project-less settlements.
+		const projectScope = input.projectId ?? undefined;
+		const stampProjectId = input.projectId ?? null;
+
+		// Compute all per-currency balances IN THE SAME SCOPE as the writes below.
 		const balanceResult = await computeBalance(
 			this.db,
 			this.currentUserRef,
 			input.toParticipant,
+			{ projectScope },
 		);
 
 		// Filter to currencies where we owe them (negative balance)
@@ -913,6 +940,7 @@ export class SettlementService {
 								input.toParticipant.participantId,
 							amount: entry.amount,
 							currency: entry.currency,
+							projectId: stampProjectId,
 							convertedAmount,
 							convertedCurrency,
 							exchangeRateUsed,

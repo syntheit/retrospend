@@ -9,6 +9,35 @@ interface BalanceResult {
 }
 
 /**
+ * Optional scoping for a balance computation.
+ *
+ * - `projectScope` omitted or `undefined`: GLOBAL. No project filter is applied
+ *   to settlements or transactions (the historical default; every existing
+ *   caller keeps identical behavior).
+ * - `projectScope` a string: restrict BOTH settlements and transactions to that
+ *   projectId.
+ * - `projectScope` null: restrict BOTH settlements and transactions to
+ *   projectId IS NULL (direct / project-less rows only).
+ */
+export interface BalanceOptions {
+	projectScope?: string | null;
+}
+
+/**
+ * Build a `projectId` where-fragment from a balance scope. Returns an empty
+ * object when the scope is GLOBAL (undefined) so no filter is applied; returns
+ * `{ projectId: <scope> }` (including `{ projectId: null }`) otherwise.
+ *
+ * Applied identically to settlements (top-level) and to the nested `transaction`
+ * filter of the split queries, so a scoped balance sees the same projectId on
+ * both sides of the ledger.
+ */
+function projectScopeWhere(opts?: BalanceOptions): { projectId?: string | null } {
+	if (!opts || opts.projectScope === undefined) return {};
+	return { projectId: opts.projectScope };
+}
+
+/**
  * Settlement statuses that count toward balance calculations.
  * PROPOSED settlements are included for optimistic balance display —
  * balances update immediately when a settlement is proposed.
@@ -41,12 +70,17 @@ export async function computeBalance(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	participantB: ParticipantRef,
+	opts?: BalanceOptions,
 ): Promise<BalanceResult> {
 	if (sameParticipant(participantA, participantB)) {
 		return { byCurrency: {} };
 	}
 
 	const prisma = db as PrismaClient;
+
+	// Project scope fragment, applied identically to settlements and to the
+	// nested transaction filter of the split queries (see projectScopeWhere).
+	const projectWhere = projectScopeWhere(opts);
 
 	// Expand each ref into all of its equivalent refs so a claimed shadow and
 	// its claiming user are treated as the same party — pre-claim and post-claim
@@ -86,7 +120,7 @@ export async function computeBalance(
 	const aPayedBOwes = await prisma.splitParticipant.findMany({
 		where: {
 			OR: orConds(bRefs),
-			transaction: { OR: paidByConds(aRefs) },
+			transaction: { OR: paidByConds(aRefs), ...projectWhere },
 		},
 		select: {
 			transactionId: true,
@@ -103,7 +137,7 @@ export async function computeBalance(
 	const bPayedAOwes = await prisma.splitParticipant.findMany({
 		where: {
 			OR: orConds(aRefs),
-			transaction: { OR: paidByConds(bRefs) },
+			transaction: { OR: paidByConds(bRefs), ...projectWhere },
 		},
 		select: {
 			transactionId: true,
@@ -128,6 +162,7 @@ export async function computeBalance(
 				})),
 			),
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
+			...projectWhere,
 		},
 		select: {
 			id: true,
@@ -152,6 +187,7 @@ export async function computeBalance(
 				})),
 			),
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
+			...projectWhere,
 		},
 		select: {
 			id: true,
@@ -246,11 +282,16 @@ export async function computeBalanceBatch(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	counterparts: ParticipantRef[],
+	opts?: BalanceOptions,
 ): Promise<BalanceResult[]> {
 	if (counterparts.length === 0) return [];
 
 	const prisma = db as PrismaClient;
 	const key = (type: string, id: string) => `${type}:${id}`;
+
+	// Project scope fragment, applied identically to settlements and to the
+	// nested transaction filter of the split queries (see projectScopeWhere).
+	const projectWhere = projectScopeWhere(opts);
 
 	// Expand A and every counterpart into their claim-alias refs so a claimed
 	// shadow and its claiming user are summed together (edge-case 8 fix).
@@ -303,7 +344,7 @@ export async function computeBalanceBatch(
 			prisma.splitParticipant.findMany({
 				where: {
 					OR: counterpartConditions,
-					transaction: { OR: aPaidConds },
+					transaction: { OR: aPaidConds, ...projectWhere },
 				},
 				select: {
 					transactionId: true,
@@ -322,6 +363,7 @@ export async function computeBalanceBatch(
 							paidByType: c.participantType,
 							paidById: c.participantId,
 						})),
+						...projectWhere,
 					},
 				},
 				select: {
@@ -350,6 +392,7 @@ export async function computeBalanceBatch(
 						})),
 					),
 					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
+					...projectWhere,
 				},
 				select: {
 					id: true,
@@ -373,6 +416,7 @@ export async function computeBalanceBatch(
 						})),
 					),
 					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
+					...projectWhere,
 				},
 				select: {
 					id: true,

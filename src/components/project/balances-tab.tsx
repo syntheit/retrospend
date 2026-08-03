@@ -159,6 +159,7 @@ export function BalancesTab({
 									activePerspective?.participantType === "user" &&
 									activePerspective.participantId === currentUserId
 								}
+								projectId={projectId}
 								statement={s}
 							/>
 						))}
@@ -304,10 +305,12 @@ function StatementCard({
 	statement,
 	perspectiveName,
 	perspectiveIsCurrentUser,
+	projectId,
 }: {
 	statement: Statement;
 	perspectiveName: string;
 	perspectiveIsCurrentUser: boolean;
+	projectId: string;
 }) {
 	const t = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
@@ -436,6 +439,7 @@ function StatementCard({
 					participantType={counterpart.participantType}
 					personAvatarUrl={counterpart.avatarUrl}
 					personName={counterpart.name}
+					projectId={projectId}
 				/>
 			)}
 		</Card>

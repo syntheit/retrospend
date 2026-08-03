@@ -64,6 +64,12 @@ export interface SettleUpDialogProps {
 	participantId: string;
 	personName: string;
 	personAvatarUrl?: string | null;
+	/**
+	 * When set, the plan/cap and the created settlement are scoped to this
+	 * project (the per-project balance shown in the project view). Omitted (the
+	 * global People view) => global cap and a project-less settlement.
+	 */
+	projectId?: string | null;
 }
 
 export function SettleUpDialog({
@@ -73,6 +79,7 @@ export function SettleUpDialog({
 	participantId,
 	personName,
 	personAvatarUrl,
+	projectId,
 }: SettleUpDialogProps) {
 	const t = useTranslations("settleUp");
 	const { formatCurrency } = useCurrencyFormatter();
@@ -82,7 +89,7 @@ export function SettleUpDialog({
 	const myImage = session.data?.user?.image ?? null;
 
 	const { data: plan, isLoading: planLoading } = api.settlement.plan.useQuery(
-		{ participantType, participantId },
+		{ participantType, participantId, projectId },
 		{ enabled: open },
 	);
 
@@ -246,6 +253,7 @@ export function SettleUpDialog({
 				paymentCurrency: homeCurrency,
 				note: note.trim() || null,
 				paymentMethod: selectedMethod?.type ?? null,
+				projectId,
 			});
 			return;
 		}
@@ -261,6 +269,7 @@ export function SettleUpDialog({
 			currency,
 			note: note.trim() || null,
 			paymentMethod: selectedMethod?.type ?? null,
+			projectId,
 		});
 	};
 

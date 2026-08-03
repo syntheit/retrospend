@@ -474,56 +474,35 @@ export const projectRouter = createTRPCRouter({
 					list.push(tx);
 				}
 
-				// 2. Collect all unique participant pairs across all transactions
-				type PPair = { participantType: ParticipantType; participantId: string };
-				const participantMap = new Map<string, PPair>();
-				for (const tx of allTxns) {
-					const pk = `${tx.paidByType}:${tx.paidById}`;
-					if (!participantMap.has(pk)) participantMap.set(pk, { participantType: tx.paidByType, participantId: tx.paidById });
-					for (const sp of tx.splitParticipants) {
-						const spk = `${sp.participantType}:${sp.participantId}`;
-						if (!participantMap.has(spk)) participantMap.set(spk, { participantType: sp.participantType, participantId: sp.participantId });
-					}
+				// 2. Batch fetch this batch of projects' FINALIZED settlements,
+				// scoped by projectId (settlements are project-scoped now), and group
+				// them by project.
+				const allSettlements = await ctx.db.settlement.findMany({
+					where: {
+						projectId: { in: multiParticipantWithTxIds },
+						status: "FINALIZED",
+					},
+					select: {
+						projectId: true,
+						fromParticipantType: true, fromParticipantId: true,
+						toParticipantType: true, toParticipantId: true,
+						amount: true, currency: true,
+					},
+				});
+				const settlementsByProject = new Map<string, typeof allSettlements>();
+				for (const s of allSettlements) {
+					const pid = s.projectId!;
+					let list = settlementsByProject.get(pid);
+					if (!list) { list = []; settlementsByProject.set(pid, list); }
+					list.push(s);
 				}
 
-				// 3. Batch fetch all relevant FINALIZED settlements
-				const participantPairs = [...participantMap.values()];
-				const allSettlements = participantPairs.length >= 2
-					? await ctx.db.settlement.findMany({
-						where: {
-							status: "FINALIZED",
-							AND: [
-								{ OR: participantPairs.map((p) => ({ fromParticipantType: p.participantType, fromParticipantId: p.participantId })) },
-								{ OR: participantPairs.map((p) => ({ toParticipantType: p.participantType, toParticipantId: p.participantId })) },
-							],
-						},
-						select: {
-							fromParticipantType: true, fromParticipantId: true,
-							toParticipantType: true, toParticipantId: true,
-							amount: true, currency: true,
-						},
-					})
-					: [];
-
-				// 4. Compute settlement plan per project using in-memory partitioning
+				// 3. Compute settlement plan per project.
 				for (const pid of multiParticipantWithTxIds) {
 					const projectTxns = txsByProject.get(pid) ?? [];
 					if (projectTxns.length === 0) continue;
 
-					// Collect this project's participant keys for filtering settlements
-					const projectKeys = new Set<string>();
-					for (const tx of projectTxns) {
-						projectKeys.add(`${tx.paidByType}:${tx.paidById}`);
-						for (const sp of tx.splitParticipants) {
-							projectKeys.add(`${sp.participantType}:${sp.participantId}`);
-						}
-					}
-
-					const projectSettlements = projectKeys.size >= 2
-						? allSettlements.filter((s) =>
-							projectKeys.has(`${s.fromParticipantType}:${s.fromParticipantId}`)
-							&& projectKeys.has(`${s.toParticipantType}:${s.toParticipantId}`))
-						: [];
+					const projectSettlements = settlementsByProject.get(pid) ?? [];
 
 					const plan = computeSettlementPlan(projectTxns, projectSettlements);
 					settlementResults.set(pid, isFullySettled(plan));
@@ -2406,24 +2385,14 @@ async function fetchProjectTransactionsAndSettlements(
 		return { transactions, settlements: [] };
 	}
 
-	// Fetch FINALIZED settlements where both parties are project participants
+	// Fetch this project's FINALIZED settlements. Settlements are now
+	// project-scoped (settlement.projectId), so filter by projectId instead of by
+	// "both parties are project participants". This keeps computeSettlementPlan and
+	// participantBalances consistent with the per-project balances shown in the UI.
 	const settlements = await db.settlement.findMany({
 		where: {
+			projectId,
 			status: "FINALIZED",
-			AND: [
-				{
-					OR: participants.map((p) => ({
-						fromParticipantType: p.participantType,
-						fromParticipantId: p.participantId,
-					})),
-				},
-				{
-					OR: participants.map((p) => ({
-						toParticipantType: p.participantType,
-						toParticipantId: p.participantId,
-					})),
-				},
-			],
 		},
 		select: {
 			fromParticipantType: true,

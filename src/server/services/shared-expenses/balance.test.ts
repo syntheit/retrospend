@@ -17,12 +17,14 @@ function createMockDb(
 		participant: ParticipantRef;
 		shareAmount: number;
 		currency: string;
+		projectId?: string | null;
 	}[],
 	settlements: {
 		from: ParticipantRef;
 		to: ParticipantRef;
 		amount: number;
 		currency: string;
+		projectId?: string | null;
 	}[],
 ) {
 	// Participant/paidBy conditions may be expressed either flat
@@ -65,9 +67,14 @@ function createMockDb(
 		splitParticipant: {
 			findMany: vi.fn(({ where }: { where: Record<string, unknown> }) => {
 				const matchesParticipant = participantMatcher(where);
-				const matchesPayer = payerMatcher(
-					where.transaction as Record<string, unknown>,
-				);
+				const txWhere = where.transaction as Record<string, unknown>;
+				const matchesPayer = payerMatcher(txWhere);
+				// Project scope arrives on the nested transaction filter. Key absent =>
+				// no filter (GLOBAL); string => that project; null => null-project only.
+				const matchesProject = (projectId: string | null | undefined) => {
+					if (!("projectId" in txWhere)) return true;
+					return (projectId ?? null) === (txWhere.projectId as string | null);
+				};
 				// Each entry is a DISTINCT transaction (synthetic id by index) so the
 				// balance layer's per-(transaction, identity) dedupe sums them rather
 				// than collapsing them.
@@ -75,7 +82,9 @@ function createMockDb(
 					.map((s, i) => ({ ...s, _txnId: `txn-${i}` }))
 					.filter(
 						(s) =>
-							matchesParticipant(s.participant) && matchesPayer(s.payer),
+							matchesParticipant(s.participant) &&
+							matchesPayer(s.payer) &&
+							matchesProject(s.projectId),
 					)
 					.map((s) => ({
 						transactionId: s._txnId,
@@ -118,11 +127,18 @@ function createMockDb(
 							s.to.participantId === c.toParticipantId,
 					);
 				};
+				// Project scope. Key absent => GLOBAL; string => that project; null =>
+				// null-project only.
+				const matchesProject = (projectId: string | null | undefined) => {
+					if (!("projectId" in where)) return true;
+					return (projectId ?? null) === (where.projectId as string | null);
+				};
 				return settlements
 					.map((s, i) => ({ ...s, _id: `stl-${i}` }))
 					.filter(
 						(s) =>
 							matches(s) &&
+							matchesProject(s.projectId) &&
 							Array.isArray(status?.in) &&
 							status.in.includes("FINALIZED"),
 					)
@@ -461,5 +477,92 @@ describe("computeBalance", () => {
 		// ARS: 5000 still outstanding
 		expect(result.byCurrency).toEqual({ ARS: 5000 });
 		expect(result.byCurrency.USD).toBeUndefined();
+	});
+
+	// ── project scope ───────────────────────────────────────────────────────────
+
+	describe("projectScope option", () => {
+		// Data spanning two projects + a project-less (direct) row.
+		const makeScopedDb = () =>
+			createMockDb(
+				[
+					// Project P: alice paid, bob owes $40
+					{
+						payer: alice,
+						participant: bob,
+						shareAmount: 40,
+						currency: "USD",
+						projectId: "P",
+					},
+					// Project Q: alice paid, bob owes $10
+					{
+						payer: alice,
+						participant: bob,
+						shareAmount: 10,
+						currency: "USD",
+						projectId: "Q",
+					},
+					// Direct (no project): alice paid, bob owes $7
+					{
+						payer: alice,
+						participant: bob,
+						shareAmount: 7,
+						currency: "USD",
+						projectId: null,
+					},
+				],
+				[
+					// Project P settlement: bob paid alice $15
+					{ from: bob, to: alice, amount: 15, currency: "USD", projectId: "P" },
+					// Project Q settlement: bob paid alice $10 (fully clears Q)
+					{ from: bob, to: alice, amount: 10, currency: "USD", projectId: "Q" },
+					// Direct settlement: bob paid alice $2
+					{ from: bob, to: alice, amount: 2, currency: "USD", projectId: null },
+				],
+			);
+
+		it("projectScope: P counts only project P transactions and settlements", async () => {
+			const db = makeScopedDb();
+			const result = await computeBalance(db as never, alice, bob, {
+				projectScope: "P",
+			});
+			// P: bob owes 40, settled 15 => 25. Q and direct excluded.
+			expect(result.byCurrency).toEqual({ USD: 25 });
+		});
+
+		it("projectScope: null counts only project-less (direct) transactions and settlements", async () => {
+			const db = makeScopedDb();
+			const result = await computeBalance(db as never, alice, bob, {
+				projectScope: null,
+			});
+			// Direct: bob owes 7, settled 2 => 5. Projects P and Q excluded.
+			expect(result.byCurrency).toEqual({ USD: 5 });
+		});
+
+		it("projectScope: undefined reproduces the global cross-project total (regression guard)", async () => {
+			const db = makeScopedDb();
+			// Explicit undefined and omitted opts must both mean GLOBAL.
+			const withUndefined = await computeBalance(db as never, alice, bob, {
+				projectScope: undefined,
+			});
+			const omitted = await computeBalance(db as never, alice, bob);
+			// Global: (40+10+7) owed - (15+10+2) settled = 57 - 27 = 30.
+			expect(withUndefined.byCurrency).toEqual({ USD: 30 });
+			expect(omitted.byCurrency).toEqual({ USD: 30 });
+		});
+
+		it("scoped settlement query filters by projectId (guards against vacuous scoping)", async () => {
+			const db = makeScopedDb();
+			await computeBalance(db as never, alice, bob, { projectScope: "P" });
+			const calls = (db.settlement.findMany as ReturnType<typeof vi.fn>).mock
+				.calls;
+			expect(calls.length).toBeGreaterThan(0);
+			for (const [callArgs] of calls) {
+				expect((callArgs as { where: { projectId?: unknown } }).where).toHaveProperty(
+					"projectId",
+					"P",
+				);
+			}
+		});
 	});
 });

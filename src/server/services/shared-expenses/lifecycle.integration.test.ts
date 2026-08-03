@@ -161,6 +161,7 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 			exchangeRateUsed: null,
 			paymentMethod: null,
 			note: null,
+			projectId: null,
 		});
 
 		// Balance should still show bob owes alice $50
@@ -758,5 +759,231 @@ describe("Suite 1H: Settlement edge cases", () => {
 		await expect(
 			settlementService.deletePendingSettlement(settlement.id),
 		).rejects.toThrow("Cannot delete a confirmed settlement");
+	});
+});
+
+// ── Suite 1I: Project-scoped settlements (real computeBalance) ────────────────
+//
+// Uses the real computeBalance + stateful DB to verify that a project-scoped
+// settle-up acts on the SAME per-project balance the UI shows: it clears the
+// scoped balance, leaves other projects untouched, and still reduces the global
+// cross-project rollup by exactly the settled amount.
+
+describe("Suite 1I: Project-scoped settlements", () => {
+	let db: ReturnType<typeof createStatefulDb>;
+
+	// Seed a project-scoped shared transaction directly into the stores: bob owes
+	// alice `bobShare` in `projectId` (alice paid). Bypasses the project-setup
+	// machinery of SharedTransactionService.create to keep the test focused on
+	// balance scoping. Both alice and bob are split participants (alice's own
+	// share is 0 so it does not affect the pairwise balance) so the settlement
+	// relationship check passes.
+	function seedBobOwesAlice(projectId: string | null, bobShare: number) {
+		const txId = `tx-${db._stores.transactions.size + 1}`;
+		db._stores.transactions.set(txId, {
+			id: txId,
+			description: "Shared expense",
+			amount: bobShare,
+			currency: "USD",
+			date: new Date("2026-03-01"),
+			paidByType: "user",
+			paidById: ALICE,
+			createdByType: "user",
+			createdById: ALICE,
+			splitMode: "EXACT",
+			projectId,
+			billingPeriodId: null,
+			isLocked: false,
+			notes: null,
+			receiptUrl: null,
+			categoryId: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		const addSplit = (participantId: string, shareAmount: number) => {
+			const spId = `sp-${db._stores.splits.size + 1}`;
+			db._stores.splits.set(spId, {
+				id: spId,
+				transactionId: txId,
+				participantType: "user",
+				participantId,
+				shareAmount,
+				sharePercentage: null,
+				shareUnits: null,
+				verificationStatus: "ACCEPTED",
+				verifiedAt: new Date(),
+				rejectionReason: null,
+				hasUnseenChanges: false,
+			});
+		};
+		addSplit(BOB, bobShare);
+		addSplit(ALICE, 0);
+	}
+
+	beforeEach(() => {
+		db = createStatefulDb();
+	});
+
+	it("settling within project A clears A, leaves B untouched, and reduces the global rollup by the settled amount", async () => {
+		// bob owes alice $40 in project A and $10 in project B.
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice("B", 10);
+
+		// Bob settles the full project-A balance ($40), scoped to project A.
+		const bobSettle = new SettlementService(db as never, BOB);
+		const { settlement } = await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 40,
+			currency: "USD",
+			projectId: "A",
+		});
+		// Row stamped with the project.
+		expect(db._stores.settlements.get(settlement.id)?.projectId).toBe("A");
+
+		// Confirm so it FINALIZES (a user payee must confirm).
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		await aliceSettle.confirmSettlement(settlement.id);
+
+		// Project A is now cleared.
+		const balanceA = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(balanceA.byCurrency.USD ?? 0).toBe(0);
+
+		// Project B is untouched: bob still owes alice $10.
+		const balanceB = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "B",
+		});
+		expect(balanceB.byCurrency).toEqual({ USD: 10 });
+
+		// Global rollup reduced by exactly the settled $40: 50 - 40 = 10.
+		const balanceGlobal = await computeBalance(db as never, aliceRef, bobRef);
+		expect(balanceGlobal.byCurrency).toEqual({ USD: 10 });
+	});
+
+	it("over-payment cap is project-scoped: cannot settle more than the project balance", async () => {
+		// bob owes alice $40 in project A and $100 in project B. The global debt is
+		// $140, but a project-A settle-up may not exceed $40.
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice("B", 100);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 60, // > project-A balance ($40), though < global ($140)
+				currency: "USD",
+				projectId: "A",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+		expect(db._stores.settlements.size).toBe(0);
+	});
+
+	it("global entry (no projectId) writes a project-less settlement row (projectId=null)", async () => {
+		// A direct (project-less) shared expense: bob owes alice $25.
+		seedBobOwesAlice(null, 25);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		const { settlement } = await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 25,
+			currency: "USD",
+			// no projectId => global cap, project-less row
+		});
+		expect(db._stores.settlements.get(settlement.id)?.projectId).toBeNull();
+	});
+
+	it("voidAutoFinalizedSettlement works on a scoped settlement to a non-user payee", async () => {
+		// bob owes a shadow $30 in project A (shadow paid). We settle bob -> shadow
+		// scoped to A; a shadow payee auto-finalizes; voiding restores the balance.
+		const shadow = db._stores.shadowProfiles;
+		shadow.set("shadow-x", {
+			id: "shadow-x",
+			name: "Marcus",
+			email: null,
+			phone: null,
+			createdById: BOB,
+			claimedById: null,
+		});
+		const shadowRef = makeShadowRef("shadow-x");
+
+		// Shadow paid $30 in project A; bob owes $30.
+		const txId = "tx-shadow";
+		db._stores.transactions.set(txId, {
+			id: txId,
+			description: "Shadow expense",
+			amount: 30,
+			currency: "USD",
+			date: new Date("2026-03-01"),
+			paidByType: "shadow",
+			paidById: "shadow-x",
+			createdByType: "user",
+			createdById: BOB,
+			splitMode: "EXACT",
+			projectId: "A",
+			billingPeriodId: null,
+			isLocked: false,
+			notes: null,
+			receiptUrl: null,
+			categoryId: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		db._stores.splits.set("sp-shadow-bob", {
+			id: "sp-shadow-bob",
+			transactionId: txId,
+			participantType: "user",
+			participantId: BOB,
+			shareAmount: 30,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "ACCEPTED",
+			verifiedAt: new Date(),
+			rejectionReason: null,
+			hasUnseenChanges: false,
+		});
+		// Shadow is also a split participant (own share 0) so the bob<->shadow
+		// relationship check passes without changing the pairwise balance.
+		db._stores.splits.set("sp-shadow-self", {
+			id: "sp-shadow-self",
+			transactionId: txId,
+			participantType: "shadow",
+			participantId: "shadow-x",
+			shareAmount: 0,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "ACCEPTED",
+			verifiedAt: new Date(),
+			rejectionReason: null,
+			hasUnseenChanges: false,
+		});
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		const { settlement, requiresPayeeConfirmation } =
+			await bobSettle.initiateSettlement({
+				toParticipant: shadowRef,
+				amount: 30,
+				currency: "USD",
+				projectId: "A",
+			});
+		// Shadow payee auto-finalizes (no confirmation needed) and is stamped.
+		expect(requiresPayeeConfirmation).toBe(false);
+		const row = db._stores.settlements.get(settlement.id)!;
+		expect(row.projectId).toBe("A");
+		expect(row.status).toBe("FINALIZED");
+
+		// Scoped balance now settled.
+		const before = await computeBalance(db as never, bobRef, shadowRef, {
+			projectScope: "A",
+		});
+		expect(before.byCurrency.USD ?? 0).toBe(0);
+
+		// Void restores the scoped balance (bob owes shadow $30 again).
+		await bobSettle.voidAutoFinalizedSettlement(settlement.id);
+		expect(db._stores.settlements.size).toBe(0);
+		const after = await computeBalance(db as never, bobRef, shadowRef, {
+			projectScope: "A",
+		});
+		expect(after.byCurrency).toEqual({ USD: -30 });
 	});
 });
