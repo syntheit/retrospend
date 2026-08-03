@@ -30,6 +30,15 @@ interface SplitWithPickerProps {
 	onChange: (participants: SplitParticipant[]) => void;
 	projectId?: string;
 	currentUserId?: string;
+	/**
+	 * The current user ("You"). When provided, "You" shows as the first chip in
+	 * the same participants list, with the same toggle-to-remove / re-add
+	 * behavior as every other member. Omit to hide the "You" chip entirely
+	 * (e.g. the new-project dialog, where the creator is implicit).
+	 */
+	you?: { id: string; name: string; avatarUrl?: string | null };
+	youIncluded?: boolean;
+	onToggleYou?: (included: boolean) => void;
 }
 
 export function SplitWithPicker({
@@ -37,7 +46,11 @@ export function SplitWithPicker({
 	onChange,
 	projectId,
 	currentUserId,
+	you,
+	youIncluded = true,
+	onToggleYou,
 }: SplitWithPickerProps) {
+	const tExpense = useTranslations("expenseForm");
 	const t = useTranslations("projects");
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
@@ -264,6 +277,31 @@ export function SplitWithPicker({
 		<div className="space-y-1.5">
 			{/* Participant chips + inline search */}
 			<div className="flex flex-wrap items-center gap-1.5">
+				{/* "You" is the first participant, same chip and same toggle-to-remove
+				    / re-add as everyone else. */}
+				{you && onToggleYou && !searchQuery && (
+					<Button
+						key="you"
+						type="button"
+						onClick={() => onToggleYou(!youIncluded)}
+						variant="outline"
+						size="sm"
+						className={cn(
+							"h-auto gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+							youIncluded
+								? "border-primary/40 bg-primary/10 dark:bg-primary/10 text-primary"
+								: "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+						)}
+					>
+						<UserAvatar
+							name={you.name}
+							avatarUrl={you.avatarUrl ?? undefined}
+							size="xs"
+						/>
+						<span>{tExpense("youLabel")}</span>
+						{youIncluded && <Check className="h-3 w-3" />}
+					</Button>
+				)}
 				{projectId && chipParticipants.length >= 2 && !searchQuery && (
 					<Button
 						type="button"

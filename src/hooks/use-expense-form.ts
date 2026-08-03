@@ -54,6 +54,32 @@ export type ExpenseInitialValues = {
 	location?: string | null;
 };
 
+type SplitRef = {
+	participantType: "user" | "guest" | "shadow";
+	participantId: string;
+};
+
+/**
+ * Builds the split rows for a single-person "full amount" expense, where one of
+ * the two people covers the entire cost. The non-payer bears the full share; the
+ * payer gets no split row (they already fronted the money, so a share for them
+ * would net to zero). This makes "You owe all" / "They owe all" resolve to the
+ * correct debtor no matter who actually paid.
+ */
+function fullAmountSplit(
+	you: SplitRef,
+	other: SplitRef,
+	paidBy: { participantType: string; participantId: string },
+	amount: number,
+): Array<SplitRef & { shareAmount: number }> {
+	const payerIsYou =
+		paidBy.participantType === you.participantType &&
+		paidBy.participantId === you.participantId;
+	// The non-payer owes the whole amount.
+	const debtor = payerIsYou ? other : you;
+	return [{ ...debtor, shareAmount: amount }];
+}
+
 interface UseExpenseFormOptions {
 	expenseId?: string;
 	sharedTransactionId?: string;
@@ -107,7 +133,10 @@ export function useExpenseForm({
 	// tracks "Save & Add Another" intent for the current submission
 	const saveAndNewRef = useRef(false);
 
-	// Shared expense state
+	// Shared expense state.
+	// `splitWith` is the single source of truth for every OTHER split member,
+	// of ANY type (user, guest, shadow). Guests are no longer tracked apart:
+	// they live here too, so the picker and the split preview stay in sync.
 	const [splitWith, setSplitWith] = useState<SplitParticipant[]>([]);
 	const [splitMode, setSplitMode] = useState<
 		"EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES"
@@ -120,10 +149,10 @@ export function useExpenseForm({
 	const [percentages, setPercentages] = useState<Record<string, number>>({});
 	const [shares, setShares] = useState<Record<string, number>>({});
 	const [theyOweFullAmount, setTheyOweFullAmount] = useState(false);
-	// Guest participants from a shared transaction being edited (picker doesn't support guests)
-	const [guestParticipantsFromTx, setGuestParticipantsFromTx] = useState<
-		Array<{ participantType: "guest"; participantId: string }>
-	>([]);
+	// Whether the current user ("You") is part of the split. "You" is a normal,
+	// first-class member of the participants list; removing it means the expense
+	// is entirely the others' (you owe/get nothing). Default: included.
+	const [youIncluded, setYouIncluded] = useState(true);
 
 	// Project selector state
 	const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projectId ?? null);
@@ -175,7 +204,7 @@ export function useExpenseForm({
 			if (mode === "PERCENTAGE") {
 				// Set equal percentages for all participants
 				const allParticipants = [
-					resolvedParticipant,
+					...(youIncluded ? [resolvedParticipant] : []),
 					...splitWith.map((p) => ({
 						participantType: p.participantType,
 						participantId: p.participantId,
@@ -198,7 +227,7 @@ export function useExpenseForm({
 			} else if (mode === "SHARES") {
 				// Set 1 share each
 				const allParticipants = [
-					resolvedParticipant,
+					...(youIncluded ? [resolvedParticipant] : []),
 					...splitWith.map((p) => ({
 						participantType: p.participantType,
 						participantId: p.participantId,
@@ -217,7 +246,7 @@ export function useExpenseForm({
 			setSplitMode(mode);
 		},
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[splitWith, resolvedParticipant.participantId],
+		[splitWith, resolvedParticipant.participantId, youIncluded],
 	);
 
 	const handleProjectChange = useCallback((newProjectId: string | null) => {
@@ -229,6 +258,7 @@ export function useExpenseForm({
 		setPercentages({});
 		setShares({});
 		setTheyOweFullAmount(false);
+		setYouIncluded(true);
 	}, []);
 
 	const { data: expense, isLoading: isLoadingExpense } =
@@ -576,23 +606,28 @@ export function useExpenseForm({
 			(sp) => !(sp.participantType === resolvedParticipant.participantType && sp.participantId === resolvedParticipant.participantId),
 		);
 
-		const guests: Array<{ participantType: "guest"; participantId: string }> = [];
-		const nonGuests: SplitParticipant[] = [];
-		for (const sp of others) {
-			if (sp.participantType === "guest") {
-				guests.push({ participantType: "guest", participantId: sp.participantId });
-			} else {
-				nonGuests.push({
-					participantType: sp.participantType as "user" | "shadow",
-					participantId: sp.participantId,
-					name: sp.name,
-					email: null,
-					avatarUrl: sp.avatarUrl ?? null,
-				});
-			}
-		}
-		setSplitWith(nonGuests);
-		setGuestParticipantsFromTx(guests);
+		// Every other saved participant of ANY type (user, shadow, AND guest)
+		// goes into the single `splitWith` list, so the picker marks them all as
+		// selected and the split preview shows them. Guests round-trip through the
+		// edit form correctly instead of being dropped from the selection.
+		setSplitWith(
+			others.map((sp) => ({
+				participantType: sp.participantType as "user" | "guest" | "shadow",
+				participantId: sp.participantId,
+				name: sp.name,
+				email: null,
+				avatarUrl: sp.avatarUrl ?? null,
+			})),
+		);
+
+		// "You" is present only if the current user actually has a saved split row.
+		setYouIncluded(
+			sharedTx.splitParticipants.some(
+				(sp) =>
+					sp.participantType === resolvedParticipant.participantType &&
+					sp.participantId === resolvedParticipant.participantId,
+			),
+		);
 
 		if (sharedTx.splitMode === "EXACT") {
 			const amounts: Record<string, number> = {};
@@ -744,18 +779,17 @@ export function useExpenseForm({
 		try {
 			if (isSharedTransactionEdit && sharedTransactionId) {
 				// --- Shared transaction update path ---
-				// Merge current user + the split + guests, then DEDUPE by identity.
-				// The same person (the current user, a guest, or a re-picked member)
-				// can otherwise appear twice across these three sources, which the
-				// server rejects as "Duplicate participant in split".
+				// One unified list: the current user (when included) plus every
+				// member of `splitWith` (users, guests, shadows). DEDUPE by identity
+				// as a safety net so the same person can never be sent twice (the
+				// server rejects "Duplicate participant in split").
 				const seenParticipants = new Set<string>();
 				const allParticipants = [
-					resolvedParticipant,
+					...(youIncluded ? [resolvedParticipant] : []),
 					...splitWith.map((p) => ({
 						participantType: p.participantType,
 						participantId: p.participantId,
 					})),
-					...guestParticipantsFromTx,
 				].filter((p) => {
 					const key = `${p.participantType}:${p.participantId}`;
 					if (seenParticipants.has(key)) return false;
@@ -793,19 +827,21 @@ export function useExpenseForm({
 						participantId: p.participantId,
 						shareUnits: shares[`${p.participantType}:${p.participantId}`] ?? 1,
 					}));
-				} else if (splitWith.length === 1 && theyOweFullAmount) {
-					// One person owes the entire amount; the current user takes no
-					// share. Rather than sending the current user with a zero share,
-					// omit them entirely so they have no split row at all (the backend
-					// no longer requires the payer/current user to be in the split).
-					// Balance-equivalent to a zero-share row, but a cleaner record.
-					splitWithInput = allParticipants
-						.filter((p) => p.participantId !== resolvedParticipant.participantId)
-						.map((p) => ({
-							participantType: p.participantType,
-							participantId: p.participantId,
-							shareAmount: data.amount,
-						}));
+				} else if (splitWith.length === 1 && youIncluded && theyOweFullAmount) {
+					// "Full amount" single-person split: the NON-payer bears the whole
+					// cost. The payer already fronted the money, so charging them a
+					// share would be a wash; instead we omit the payer's row and give
+					// the other person the full amount. This keeps the saved split in
+					// step with the label and the summary regardless of who paid.
+					splitWithInput = fullAmountSplit(
+						resolvedParticipant,
+						{
+							participantType: splitWith[0]!.participantType,
+							participantId: splitWith[0]!.participantId,
+						},
+						paidBy,
+						data.amount,
+					);
 				} else {
 					splitWithInput = allParticipants.map((p) => ({
 						participantType: p.participantType,
@@ -814,7 +850,7 @@ export function useExpenseForm({
 				}
 
 				const effectiveSplitMode =
-					theyOweFullAmount && splitWith.length === 1
+					theyOweFullAmount && youIncluded && splitWith.length === 1
 						? ("EXACT" as const)
 						: splitMode;
 
@@ -848,11 +884,13 @@ export function useExpenseForm({
 				toast.success("Expense updated!");
 			} else if (isSharedExpense || selectedProjectId) {
 				// --- Shared expense create path ---
-				// Dedupe by identity so a re-picked member can't appear twice (the
-				// server rejects "Duplicate participant in split").
+				// One unified list: the current user (when included) plus every
+				// member of `splitWith`. DEDUPE by identity as a safety net so a
+				// re-picked member can't appear twice (the server rejects "Duplicate
+				// participant in split").
 				const seenCreateParticipants = new Set<string>();
 				const allParticipants = [
-					resolvedParticipant,
+					...(youIncluded ? [resolvedParticipant] : []),
 					...splitWith.map((p) => ({
 						participantType: p.participantType,
 						participantId: p.participantId,
@@ -893,19 +931,21 @@ export function useExpenseForm({
 						participantId: p.participantId,
 						shareUnits: shares[`${p.participantType}:${p.participantId}`] ?? 1,
 					}));
-				} else if (splitWith.length === 1 && theyOweFullAmount) {
-					// One person owes the entire amount; the current user takes no
-					// share. Rather than sending the current user with a zero share,
-					// omit them entirely so they have no split row at all (the backend
-					// no longer requires the payer/current user to be in the split).
-					// Balance-equivalent to a zero-share row, but a cleaner record.
-					splitWithInput = allParticipants
-						.filter((p) => p.participantId !== resolvedParticipant.participantId)
-						.map((p) => ({
-							participantType: p.participantType,
-							participantId: p.participantId,
-							shareAmount: data.amount,
-						}));
+				} else if (splitWith.length === 1 && youIncluded && theyOweFullAmount) {
+					// "Full amount" single-person split: the NON-payer bears the whole
+					// cost. The payer already fronted the money, so charging them a
+					// share would be a wash; instead we omit the payer's row and give
+					// the other person the full amount. This keeps the saved split in
+					// step with the label and the summary regardless of who paid.
+					splitWithInput = fullAmountSplit(
+						resolvedParticipant,
+						{
+							participantType: splitWith[0]!.participantType,
+							participantId: splitWith[0]!.participantId,
+						},
+						paidBy,
+						data.amount,
+					);
 				} else {
 					// Equal split: let the server compute
 					splitWithInput = allParticipants.map((p) => ({
@@ -914,10 +954,10 @@ export function useExpenseForm({
 					}));
 				}
 
-				// When "they owe full amount" is active, we send EXACT with
-				// explicit per-person amounts (0 for us, full for them)
+				// When "they owe full amount" is active, we send EXACT with the full
+				// amount on the non-payer (and no row for the payer).
 				const effectiveSplitMode =
-					theyOweFullAmount && splitWith.length === 1
+					theyOweFullAmount && youIncluded && splitWith.length === 1
 						? ("EXACT" as const)
 						: splitMode;
 
@@ -999,6 +1039,7 @@ export function useExpenseForm({
 			setPercentages({});
 			setShares({});
 			setTheyOweFullAmount(false);
+			setYouIncluded(true);
 
 			if (saveAndNewRef.current) {
 				saveAndNewRef.current = false;
@@ -1122,6 +1163,8 @@ export function useExpenseForm({
 		handleSharesChange,
 		theyOweFullAmount,
 		setTheyOweFullAmount,
+		youIncluded,
+		setYouIncluded,
 		isSharedExpense,
 		currentUser,
 		// Project selector
