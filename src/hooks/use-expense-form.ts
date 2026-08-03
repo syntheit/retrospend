@@ -744,6 +744,11 @@ export function useExpenseForm({
 		try {
 			if (isSharedTransactionEdit && sharedTransactionId) {
 				// --- Shared transaction update path ---
+				// Merge current user + the split + guests, then DEDUPE by identity.
+				// The same person (the current user, a guest, or a re-picked member)
+				// can otherwise appear twice across these three sources, which the
+				// server rejects as "Duplicate participant in split".
+				const seenParticipants = new Set<string>();
 				const allParticipants = [
 					resolvedParticipant,
 					...splitWith.map((p) => ({
@@ -751,7 +756,12 @@ export function useExpenseForm({
 						participantId: p.participantId,
 					})),
 					...guestParticipantsFromTx,
-				];
+				].filter((p) => {
+					const key = `${p.participantType}:${p.participantId}`;
+					if (seenParticipants.has(key)) return false;
+					seenParticipants.add(key);
+					return true;
+				});
 
 				type SplitInput = {
 					participantType: "user" | "guest" | "shadow";
@@ -838,13 +848,21 @@ export function useExpenseForm({
 				toast.success("Expense updated!");
 			} else if (isSharedExpense || selectedProjectId) {
 				// --- Shared expense create path ---
+				// Dedupe by identity so a re-picked member can't appear twice (the
+				// server rejects "Duplicate participant in split").
+				const seenCreateParticipants = new Set<string>();
 				const allParticipants = [
 					resolvedParticipant,
 					...splitWith.map((p) => ({
 						participantType: p.participantType,
 						participantId: p.participantId,
 					})),
-				];
+				].filter((p) => {
+					const key = `${p.participantType}:${p.participantId}`;
+					if (seenCreateParticipants.has(key)) return false;
+					seenCreateParticipants.add(key);
+					return true;
+				});
 
 				let splitWithInput: Array<{
 					participantType: "user" | "guest" | "shadow";
