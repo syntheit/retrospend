@@ -11,8 +11,12 @@ import {
 	resolveParticipantName,
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
+import {
+	computeSettlementPlan,
+	isFullySettled,
+} from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
-import type { Prisma, PrismaClient } from "~prisma";
+import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -216,6 +220,99 @@ async function notifyPeriodClosed(
 			data: { projectId, periodId },
 		});
 	}
+}
+
+// ── Outstanding-balance guard ─────────────────────────────────────────────────
+
+/**
+ * Compute the outstanding settlement plan for a single billing period: the
+ * transactions in that period plus the FINALIZED settlements between their
+ * participants. Read-only, creates nothing.
+ *
+ * Reused to decide whether a period is honestly settled (all balances zero)
+ * before it can be marked SETTLED. A period is only "settled" when real
+ * settle-ups have zeroed every balance; this never fabricates settlement rows.
+ */
+async function computePeriodSettlementPlan(
+	db: PrismaClient | Prisma.TransactionClient,
+	periodId: string,
+) {
+	const prisma = db as PrismaClient;
+
+	const transactions = await prisma.sharedTransaction.findMany({
+		where: { billingPeriodId: periodId },
+		select: {
+			currency: true,
+			amount: true,
+			paidByType: true,
+			paidById: true,
+			splitParticipants: {
+				select: {
+					participantType: true,
+					participantId: true,
+					shareAmount: true,
+				},
+			},
+		},
+	});
+
+	if (transactions.length === 0) {
+		return computeSettlementPlan([], []);
+	}
+
+	// Collect every participant that appears in this period.
+	const participantSet = new Map<
+		string,
+		{ participantType: ParticipantType; participantId: string }
+	>();
+	for (const tx of transactions) {
+		participantSet.set(`${tx.paidByType}:${tx.paidById}`, {
+			participantType: tx.paidByType,
+			participantId: tx.paidById,
+		});
+		for (const sp of tx.splitParticipants) {
+			participantSet.set(`${sp.participantType}:${sp.participantId}`, {
+				participantType: sp.participantType,
+				participantId: sp.participantId,
+			});
+		}
+	}
+	const participants = [...participantSet.values()];
+
+	if (participants.length < 2) {
+		return computeSettlementPlan(transactions, []);
+	}
+
+	// Only FINALIZED settlements between these participants reduce balances.
+	const settlements = await prisma.settlement.findMany({
+		where: {
+			status: "FINALIZED",
+			AND: [
+				{
+					OR: participants.map((p) => ({
+						fromParticipantType: p.participantType,
+						fromParticipantId: p.participantId,
+					})),
+				},
+				{
+					OR: participants.map((p) => ({
+						toParticipantType: p.participantType,
+						toParticipantId: p.participantId,
+					})),
+				},
+			],
+		},
+		select: {
+			fromParticipantType: true,
+			fromParticipantId: true,
+			toParticipantType: true,
+			toParticipantId: true,
+			amount: true,
+			currency: true,
+		},
+	});
+
+	return computeSettlementPlan(transactions, settlements);
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -581,6 +678,50 @@ export const billingPeriodRouter = createTRPCRouter({
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: `Not all expenses have been verified. ${unverifiedCount} participant${unverifiedCount === 1 ? "" : "s"} still need${unverifiedCount === 1 ? "s" : ""} to verify.`,
+				});
+			}
+
+			// A period may only become SETTLED when its balances are actually zero.
+			// "Settle period" must never fabricate settlement rows or assert payments
+			// that did not happen: it only confirms that real settle-ups already
+			// zeroed every balance. If any balance remains outstanding, refuse and
+			// tell the organizer exactly what is still owed. Outstanding balances stay
+			// live and visible until real settle-ups clear them.
+			const plan = await computePeriodSettlementPlan(ctx.db, input.periodId);
+
+			if (!isFullySettled(plan)) {
+				// Surface the largest single outstanding payment so the message is
+				// concrete and actionable.
+				let biggest: {
+					from: { participantType: ParticipantType; participantId: string };
+					to: { participantType: ParticipantType; participantId: string };
+					amount: number;
+					currency: string;
+				} | null = null;
+				for (const breakdown of Object.values(plan.byCurrency)) {
+					for (const step of breakdown.plan) {
+						if (!biggest || step.amount > biggest.amount) biggest = step;
+					}
+				}
+
+				let detail = "";
+				if (biggest) {
+					const [fromName, toName] = await Promise.all([
+						resolveParticipantName(
+							biggest.from.participantType,
+							biggest.from.participantId,
+						),
+						resolveParticipantName(
+							biggest.to.participantType,
+							biggest.to.participantId,
+						),
+					]);
+					detail = ` ${biggest.currency} ${biggest.amount.toFixed(2)} from ${fromName} to ${toName} is still outstanding.`;
+				}
+
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Settle all balances before marking this period settled.${detail} Record the remaining settle-ups, then finalize.`,
 				});
 			}
 
