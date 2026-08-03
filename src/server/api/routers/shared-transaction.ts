@@ -68,7 +68,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				paidBy: participantRefSchema.optional(),
 				splitWith: z
 					.array(splitParticipantSchema)
-					.min(2, "A shared expense must have at least 2 participants")
+					.min(1, "A shared expense must have at least 1 participant")
 					.optional(),
 				splitMode: splitModeEnum.optional(),
 				projectId: z.string().cuid().nullish(),
