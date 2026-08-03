@@ -40,14 +40,58 @@ function collectVariableTypes(
 	return result;
 }
 
+function collectSelectOptions(
+	ast: MessageFormatElement[],
+	result = new Map<string, string[]>(),
+): Map<string, string[]> {
+	for (const element of ast) {
+		if (element.type === TYPE.select) {
+			result.set(element.value, Object.keys(element.options).sort());
+		}
+
+		if (element.type === TYPE.plural || element.type === TYPE.select) {
+			for (const option of Object.values(element.options)) {
+				collectSelectOptions(option.value, result);
+			}
+		} else if (element.type === TYPE.tag) {
+			collectSelectOptions(element.children, result);
+		}
+	}
+
+	return result;
+}
+
+function collectExactPluralOptions(
+	ast: MessageFormatElement[],
+	result = new Map<string, string[]>(),
+): Map<string, string[]> {
+	for (const element of ast) {
+		if (element.type === TYPE.plural) {
+			result.set(
+				element.value,
+				Object.keys(element.options)
+					.filter((option) => option.startsWith("="))
+					.sort(),
+			);
+		}
+
+		if (element.type === TYPE.plural || element.type === TYPE.select) {
+			for (const option of Object.values(element.options)) {
+				collectExactPluralOptions(option.value, result);
+			}
+		} else if (element.type === TYPE.tag) {
+			collectExactPluralOptions(element.children, result);
+		}
+	}
+
+	return result;
+}
+
 function hasCompatibleIcuVariables(
 	sourceAst: MessageFormatElement[],
 	localizedAst: MessageFormatElement[],
 ): boolean {
-	if (isStructurallySame(sourceAst, localizedAst).success) {
-		return true;
-	}
-
+	const structurallySame = isStructurallySame(sourceAst, localizedAst).success;
 	const sourceVariables = collectVariableTypes(sourceAst);
 	const localizedVariables = collectVariableTypes(localizedAst);
 	const countTypes = new Set([TYPE.argument, TYPE.number, TYPE.plural]);
@@ -56,16 +100,42 @@ function hasCompatibleIcuVariables(
 		return false;
 	}
 
-	return Array.from(sourceVariables).every(([name, sourceType]) => {
-		const localizedType = localizedVariables.get(name);
+	const variablesMatch =
+		structurallySame ||
+		Array.from(sourceVariables).every(([name, sourceType]) => {
+			const localizedType = localizedVariables.get(name);
 
-		return (
-			localizedType === sourceType ||
-			(localizedType !== undefined &&
-				countTypes.has(sourceType) &&
-				countTypes.has(localizedType))
-		);
-	});
+			return (
+				localizedType === sourceType ||
+				(localizedType !== undefined &&
+					countTypes.has(sourceType) &&
+					countTypes.has(localizedType))
+			);
+		});
+
+	if (!variablesMatch) {
+		return false;
+	}
+
+	const localizedSelectOptions = collectSelectOptions(localizedAst);
+	for (const [name, options] of collectSelectOptions(sourceAst)) {
+		if (localizedSelectOptions.get(name)?.join("\0") !== options.join("\0")) {
+			return false;
+		}
+	}
+
+	const localizedExactPlurals = collectExactPluralOptions(localizedAst);
+	for (const [name, options] of collectExactPluralOptions(sourceAst)) {
+		if (
+			options.some(
+				(option) => !localizedExactPlurals.get(name)?.includes(option),
+			)
+		) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 function readCatalog(locale: string): Record<string, unknown> {
@@ -119,6 +189,23 @@ describe("ICU variable compatibility", () => {
 			hasCompatibleIcuVariables(
 				parse("Hello <strong>{name}</strong>"),
 				parse("Здравствуйте, {person}"),
+			),
+		).toBe(false);
+	});
+
+	it("rejects missing select and exact-number plural branches", () => {
+		expect(
+			hasCompatibleIcuVariables(
+				parse(
+					"{status, select, open {Open} closed {Closed} other {Unknown}}",
+				),
+				parse("{status, select, open {Offen} other {Unbekannt}}"),
+			),
+		).toBe(false);
+		expect(
+			hasCompatibleIcuVariables(
+				parse("{count, plural, =0 {None} one {One} other {Many}}"),
+				parse("{count, plural, one {Eins} other {Mehrere}}"),
 			),
 		).toBe(false);
 	});
