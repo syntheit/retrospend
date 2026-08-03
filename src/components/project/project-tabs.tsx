@@ -140,7 +140,10 @@ export function ProjectTabs({
 				/>
 			</TabsContent>
 
-			<TabsContent className="mt-0" value="balances">
+			<TabsContent
+				className="mt-0 min-h-0 flex-1 overflow-y-auto"
+				value="balances"
+			>
 				<BalancesTab
 					currentUserId={currentUserId}
 					participants={participants}
