@@ -117,7 +117,7 @@ export function BalancesTab({
 	);
 
 	return (
-		<div className="space-y-4">
+		<div className="max-h-[calc(100dvh-14rem)] space-y-4 overflow-y-auto">
 			{/* Perspective switcher */}
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-muted-foreground text-sm">{t("viewingAs")}</span>

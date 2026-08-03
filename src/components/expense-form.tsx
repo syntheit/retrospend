@@ -129,6 +129,8 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			handleSharesChange,
 			theyOweFullAmount,
 			setTheyOweFullAmount,
+			youIncluded,
+			setYouIncluded,
 			isSharedExpense,
 			currentUser,
 			isSharedTransactionEdit,
@@ -456,7 +458,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 							{/* Share With (hidden for solo projects) */}
 							{(mode === "create" || isSharedTransactionEdit) && !isSelectedSoloProject && (
 								<div className="space-y-2">
-									<Label>{t("shareWith")}</Label>
+									<Label>{t("participants")}</Label>
 									<SplitWithPicker
 										onChange={setSplitWith}
 										value={splitWith}
@@ -477,12 +479,14 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 									onSharesChange={handleSharesChange}
 									onSplitModeChange={handleSplitModeChange}
 									onTheyOweFullAmountChange={setTheyOweFullAmount}
+									onYouIncludedChange={setYouIncluded}
 									paidBy={paidBy}
 									percentages={percentages}
 									shares={shares}
 									splitMode={splitMode}
 									splitWith={splitWith}
 									theyOweFullAmount={theyOweFullAmount}
+									youIncluded={youIncluded}
 								/>
 							)}
 
