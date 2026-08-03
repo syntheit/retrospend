@@ -181,6 +181,111 @@ describe("SettlementService.deletePendingSettlement", () => {
 	});
 });
 
+// ── Tests: voidAutoFinalizedSettlement ────────────────────────────────────
+
+/** An auto-finalized settlement whose payee is a non-user (shadow/guest). */
+function makeAutoFinalized(overrides: Record<string, unknown> = {}) {
+	return makeSettlement({
+		toParticipantType: "shadow" as const,
+		toParticipantId: "shadow-1",
+		confirmedByPayee: true,
+		status: "FINALIZED" as const,
+		settledAt: new Date(),
+		autoConfirmedReason: "Recipient is a shadow and cannot confirm",
+		...overrides,
+	});
+}
+
+describe("SettlementService.voidAutoFinalizedSettlement", () => {
+	it("payer can void an auto-finalized shadow settlement (hard delete)", async () => {
+		const db = makeMockDb();
+		db.settlement.findUnique.mockResolvedValue(makeAutoFinalized());
+		const svc = new SettlementService(db as never, "payer-user");
+		const result = await svc.voidAutoFinalizedSettlement("s-1");
+		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-1" } });
+		expect(result).toEqual({ success: true });
+	});
+
+	it("payer can void an auto-finalized guest settlement", async () => {
+		const db = makeMockDb();
+		db.settlement.findUnique.mockResolvedValue(
+			makeAutoFinalized({
+				toParticipantType: "guest",
+				toParticipantId: "guest-1",
+				autoConfirmedReason: "Recipient is a guest and cannot confirm",
+			}),
+		);
+		const svc = new SettlementService(db as never, "payer-user");
+		const result = await svc.voidAutoFinalizedSettlement("s-1");
+		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-1" } });
+		expect(result).toEqual({ success: true });
+	});
+
+	it("non-payer cannot void", async () => {
+		const db = makeMockDb();
+		db.settlement.findUnique.mockResolvedValue(makeAutoFinalized());
+		const svc = new SettlementService(db as never, "someone-else");
+		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
+		expect(db.settlement.delete).not.toHaveBeenCalled();
+	});
+
+	it("cannot void a settlement to a real USER payee", async () => {
+		const db = makeMockDb();
+		// Payee is a user; even if it were somehow finalized, mutual agreement is required.
+		db.settlement.findUnique.mockResolvedValue(
+			makeAutoFinalized({
+				toParticipantType: "user",
+				toParticipantId: "payee-user",
+			}),
+		);
+		const svc = new SettlementService(db as never, "payer-user");
+		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
+		expect(db.settlement.delete).not.toHaveBeenCalled();
+	});
+
+	it("cannot void a genuinely confirmed settlement (no autoConfirmedReason)", async () => {
+		const db = makeMockDb();
+		// FINALIZED + confirmed but autoConfirmedReason is null -> a real agreement.
+		db.settlement.findUnique.mockResolvedValue(
+			makeAutoFinalized({ autoConfirmedReason: null }),
+		);
+		const svc = new SettlementService(db as never, "payer-user");
+		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+		expect(db.settlement.delete).not.toHaveBeenCalled();
+	});
+
+	it("cannot void a PROPOSED (not yet finalized) settlement", async () => {
+		const db = makeMockDb();
+		db.settlement.findUnique.mockResolvedValue(
+			makeAutoFinalized({
+				status: "PROPOSED",
+				confirmedByPayee: false,
+				settledAt: null,
+			}),
+		);
+		const svc = new SettlementService(db as never, "payer-user");
+		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+		expect(db.settlement.delete).not.toHaveBeenCalled();
+	});
+
+	it("non-existent settlement throws NOT_FOUND", async () => {
+		const db = makeMockDb();
+		db.settlement.findUnique.mockResolvedValue(null);
+		const svc = new SettlementService(db as never, "payer-user");
+		await expect(
+			svc.voidAutoFinalizedSettlement("ghost-id"),
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+	});
+});
+
 // ── Tests: initiateSettlement ─────────────────────────────────────────────
 
 describe("SettlementService.initiateSettlement", () => {

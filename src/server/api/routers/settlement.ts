@@ -87,6 +87,27 @@ export const settlementRouter = createTRPCRouter({
 		}),
 
 	/**
+	 * POST /api/settlements/:id/void
+	 *
+	 * Voids (undoes) an auto-finalized settlement whose payee is a non-user
+	 * (shadow or guest). Only the payer can call this.
+	 *
+	 * A settlement to a shadow/guest auto-finalizes on creation (the payee can
+	 * never authenticate to confirm), which would otherwise permanently rewrite a
+	 * balance with no recourse. Voiding hard-deletes the row, restoring the balance
+	 * (balances are recomputed from the remaining settlement rows).
+	 *
+	 * Settlements to a real user payee, genuinely confirmed settlements, and
+	 * pending (PROPOSED) settlements are NOT voidable via this endpoint.
+	 */
+	void: protectedProcedure
+		.input(z.object({ id: z.string().min(1) }))
+		.mutation(async ({ ctx, input }) => {
+			const service = new SettlementService(ctx.db, ctx.session.user.id);
+			return service.voidAutoFinalizedSettlement(input.id);
+		}),
+
+	/**
 	 * POST /api/settlements/:id/reject
 	 *
 	 * Rejects a pending settlement. Only the payee can call this.

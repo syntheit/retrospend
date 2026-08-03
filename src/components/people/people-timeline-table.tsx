@@ -89,6 +89,7 @@ export function PeopleTimelineTable({
 	const [confirmingSettlementId, setConfirmingSettlementId] = useState<string | null>(null);
 	const [rejectingSettlementId, setRejectingSettlementId] = useState<string | null>(null);
 	const [deletingSettlementId, setDeletingSettlementId] = useState<string | null>(null);
+	const [voidingSettlementId, setVoidingSettlementId] = useState<string | null>(null);
 
 	const timelineRowsRef = useRef<TimelineRow[]>([]);
 
@@ -152,6 +153,15 @@ export function PeopleTimelineTable({
 			toast.success(t("settlementCancelled"));
 			invalidateAll();
 			setDeletingSettlementId(null);
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
+	const voidSettlementMutation = api.settlement.void.useMutation({
+		onSuccess: () => {
+			toast.success(t("settlementVoided"));
+			invalidateAll();
+			setVoidingSettlementId(null);
 		},
 		onError: (e) => toast.error(e.message),
 	});
@@ -315,6 +325,7 @@ export function PeopleTimelineTable({
 						canConfirmSettlement: s.canConfirm,
 						canRejectSettlement: s.canReject,
 						canDeleteSettlement: s.canDelete,
+						canVoidSettlement: s.canVoid,
 						canRemindSettlement: s.canRemind,
 					}))
 				: [];
@@ -346,6 +357,7 @@ export function PeopleTimelineTable({
 					onConfirmSettlement: (id) => setConfirmingSettlementId(id),
 					onRejectSettlement: (id) => setRejectingSettlementId(id),
 					onDeleteSettlement: (id) => setDeletingSettlementId(id),
+					onVoidSettlement: (id) => setVoidingSettlementId(id),
 					onRemindSettlement: (id) => {
 						remindSettlementMutation.mutate({ id });
 					},
@@ -584,6 +596,24 @@ export function PeopleTimelineTable({
 				}}
 				open={!!deletingSettlementId}
 				title={t("cancelSettlementTitle")}
+				variant="destructive"
+			/>
+
+			{/* Void settlement dialog (auto-finalized ghost/guest payment) */}
+			<ConfirmDialog
+				confirmText={t("voidSettlement")}
+				description={t("voidSettlementDescription")}
+				isLoading={voidSettlementMutation.isPending}
+				onConfirm={() => {
+					if (voidingSettlementId) {
+						voidSettlementMutation.mutate({ id: voidingSettlementId });
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) setVoidingSettlementId(null);
+				}}
+				open={!!voidingSettlementId}
+				title={t("voidSettlementTitle")}
 				variant="destructive"
 			/>
 		</>
