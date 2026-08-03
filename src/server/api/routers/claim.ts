@@ -6,8 +6,10 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import type { PrismaClient } from "~prisma";
 import { db as globalDb } from "~/server/db";
 import { signClaimToken, verifyClaimToken } from "~/lib/claim-token";
+import { createNotification } from "~/server/services/notifications";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import {
 	AlreadyClaimedError,
@@ -29,6 +31,48 @@ function decodeTokenOrThrow(token: string): string {
 		});
 	}
 	return result.shadowId;
+}
+
+/**
+ * Soft guardrail for the invite-chooser impersonation vector: when a guest who
+ * joined via the project invite link claims an existing ghost (and silently
+ * absorbs its balance), tell the project's organizers so they can review it.
+ *
+ * Notifies every ORGANIZER of the project (project_participant rows with role
+ * ORGANIZER and participantType 'user'). The claimer is a guest, so it can never
+ * be one of these user rows, but we still resolve names defensively. Fires one
+ * notification per organizer and is best-effort: the caller wraps it so a
+ * notification failure never breaks the claim.
+ */
+async function notifyGhostClaimedByGuest(
+	db: PrismaClient,
+	projectId: string,
+	ghostName: string,
+	guestName: string,
+	guestSessionId: string,
+	shadowId: string,
+) {
+	const project = await db.project.findUnique({
+		where: { id: projectId },
+		select: { name: true },
+	});
+	const projectName = project?.name ?? "a project";
+	const displayGuestName = guestName?.trim() || "A guest";
+
+	const organizers = await db.projectParticipant.findMany({
+		where: { projectId, participantType: "user", role: "ORGANIZER" },
+		select: { participantId: true },
+	});
+
+	for (const organizer of organizers) {
+		await createNotification({
+			userId: organizer.participantId,
+			type: "PARTICIPANT_ADDED",
+			title: `Someone identified as ${ghostName}`,
+			body: `${displayGuestName} joined '${projectName}' and claimed the profile for ${ghostName}. Review it in the People tab if that is not right.`,
+			data: { projectId, shadowName: ghostName, shadowId, guestSessionId },
+		});
+	}
 }
 
 export const claimRouter = createTRPCRouter({
@@ -222,7 +266,12 @@ export const claimRouter = createTRPCRouter({
 			const hashed = createHash("sha256").update(guestToken).digest("hex");
 			const guestSession = await globalDb.guestSession.findUnique({
 				where: { id: input.guestSessionId },
-				select: { id: true, sessionToken: true, projectId: true },
+				select: {
+					id: true,
+					name: true,
+					sessionToken: true,
+					projectId: true,
+				},
 			});
 			if (!guestSession || guestSession.sessionToken !== hashed) {
 				throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -247,6 +296,26 @@ export const claimRouter = createTRPCRouter({
 					guestSession.id,
 					guestSession.projectId,
 				);
+
+				// Soft guardrail: tell the project's organizers that a link-holder
+				// claimed (and absorbed) an existing ghost. Best-effort: a
+				// notification failure must never fail the claim itself.
+				try {
+					await notifyGhostClaimedByGuest(
+						globalDb,
+						guestSession.projectId,
+						shadowName,
+						guestSession.name,
+						guestSession.id,
+						input.shadowId,
+					);
+				} catch (notifyErr) {
+					console.error(
+						"[Notification Error] ghost claimed via invite chooser:",
+						notifyErr,
+					);
+				}
+
 				return { name: shadowName };
 			} catch (err) {
 				if (err instanceof AlreadyClaimedError) {
