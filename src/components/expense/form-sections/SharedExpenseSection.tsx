@@ -17,6 +17,7 @@ import { UserAvatar } from "~/components/ui/user-avatar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { ExpenseFormData } from "~/hooks/use-expense-form";
 import { formatNumber } from "~/lib/currency-format";
+import { resolveSplits } from "~/lib/shared-split-computation";
 import { cn } from "~/lib/utils";
 
 type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
@@ -197,70 +198,92 @@ export function SharedExpenseSection({
 	};
 
 	// --- Compute per-person shares for display ---
+	// Uses the SAME pure resolveSplits() the server uses, so the preview shows
+	// exactly what gets saved (rounding remainder to the payer, etc). While the
+	// user is mid-edit the inputs may be invalid (percentages not at 100, exact
+	// not summing to the amount); resolveSplits throws there, so we fall back to
+	// a best-effort per-row display and let the section's own validation flag it.
 	const shares_computed = useMemo(() => {
-		if (splitMode === "EQUAL") {
-			if (isSinglePerson && theyOweFullAmount) {
-				// Full-amount split: the NON-payer bears the whole cost, the payer 0.
-				// This keeps the split, the percentages, and the summary in agreement
-				// with the actual payer no matter who paid.
-				return allParticipants.map((p) => {
-					const isPayer =
-						p.participantType === paidBy.participantType &&
-						p.participantId === paidBy.participantId;
-					return { ...p, amount: isPayer ? 0 : amount };
-				});
-			}
-			const count = allParticipants.length;
-			const totalCents = Math.round(amount * 100);
-			const baseCents = Math.floor(totalCents / count);
-			let remainder = totalCents - baseCents * count;
-
+		if (splitMode === "EQUAL" && isSinglePerson && theyOweFullAmount) {
+			// Full-amount split: the NON-payer bears the whole cost, the payer 0.
+			// This keeps the split, the percentages, and the summary in agreement
+			// with the actual payer no matter who paid.
 			return allParticipants.map((p) => {
-				let cents = baseCents;
-				if (remainder > 0) {
-					cents += 1;
-					remainder -= 1;
-				}
-				return { ...p, amount: cents / 100 };
+				const isPayer =
+					p.participantType === paidBy.participantType &&
+					p.participantId === paidBy.participantId;
+				return { ...p, amount: isPayer ? 0 : amount };
 			});
 		}
 
-		if (splitMode === "EXACT") {
-			return allParticipants.map((p) => ({
-				...p,
-				amount: exactAmounts[`${p.participantType}:${p.participantId}`] ?? 0,
-			}));
-		}
-
-		if (splitMode === "PERCENTAGE") {
-			const totalCents = Math.round(amount * 100);
-			return allParticipants.map((p) => {
-				const key = `${p.participantType}:${p.participantId}`;
-				const pct = percentages[key] ?? 0;
-				return {
-					...p,
-					amount: Math.floor((totalCents * pct) / 100) / 100,
-				};
-			});
-		}
-
-		// SHARES
-		const totalUnits = allParticipants.reduce((s, p) => {
+		// Build the participant input the same way the form submits it, so the
+		// preview and the saved split come from one code path.
+		const participants = allParticipants.map((p) => {
 			const key = `${p.participantType}:${p.participantId}`;
-			return s + (shares[key] ?? 1);
-		}, 0);
-		const totalCents = Math.round(amount * 100);
-		return allParticipants.map((p) => {
-			const key = `${p.participantType}:${p.participantId}`;
-			const units = shares[key] ?? 1;
 			return {
-				...p,
-				amount:
-					totalUnits > 0
-						? Math.floor((totalCents * units) / totalUnits) / 100
-						: 0,
+				participantType: p.participantType,
+				participantId: p.participantId,
+				shareAmount: exactAmounts[key] ?? 0,
+				sharePercentage: percentages[key] ?? 0,
+				shareUnits: shares[key] ?? 1,
 			};
 		});
+
+		try {
+			const resolved = resolveSplits({
+				mode: splitMode,
+				amount,
+				participants,
+				paidBy: {
+					participantType: paidBy.participantType as
+						| "user"
+						| "guest"
+						| "shadow",
+					participantId: paidBy.participantId,
+				},
+			});
+			// resolveSplits preserves input order, so it lines up with allParticipants.
+			return allParticipants.map((p, i) => ({
+				...p,
+				amount: resolved[i]?.shareAmount ?? 0,
+			}));
+		} catch {
+			// Invalid mid-edit state: show a best-effort per-row breakdown.
+			if (splitMode === "EXACT") {
+				return allParticipants.map((p) => ({
+					...p,
+					amount: exactAmounts[`${p.participantType}:${p.participantId}`] ?? 0,
+				}));
+			}
+			if (splitMode === "PERCENTAGE") {
+				const totalCents = Math.round(amount * 100);
+				return allParticipants.map((p) => {
+					const key = `${p.participantType}:${p.participantId}`;
+					const pct = percentages[key] ?? 0;
+					return { ...p, amount: Math.floor((totalCents * pct) / 100) / 100 };
+				});
+			}
+			if (splitMode === "SHARES") {
+				const totalUnits = allParticipants.reduce((s, p) => {
+					const key = `${p.participantType}:${p.participantId}`;
+					return s + (shares[key] ?? 1);
+				}, 0);
+				const totalCents = Math.round(amount * 100);
+				return allParticipants.map((p) => {
+					const key = `${p.participantType}:${p.participantId}`;
+					const units = shares[key] ?? 1;
+					return {
+						...p,
+						amount:
+							totalUnits > 0
+								? Math.floor((totalCents * units) / totalUnits) / 100
+								: 0,
+					};
+				});
+			}
+			// EQUAL never throws for a positive count, but keep a safe fallback.
+			return allParticipants.map((p) => ({ ...p, amount: 0 }));
+		}
 	}, [
 		splitMode,
 		allParticipants,

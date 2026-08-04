@@ -1095,6 +1095,167 @@ describe("SharedTransactionService", () => {
 		});
 	});
 
+	// ── characterization: current server split behavior (safety net) ─────────
+	// These lock the CURRENT server output for the edge cases the health audit
+	// flags as divergence risks, so the shared-split extraction can be proven
+	// behavior-preserving. The server rounding rule (remainder to the payer,
+	// else the first row) is the canonical source of truth for what gets saved.
+	describe("split characterization (server = source of truth)", () => {
+		async function splitViaCreate(input: {
+			amount: number;
+			splitMode: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
+			payer: { participantType: "user" | "guest" | "shadow"; participantId: string };
+			splitWith: Array<{
+				participantType: "user" | "guest" | "shadow";
+				participantId: string;
+				shareAmount?: number;
+				sharePercentage?: number;
+				shareUnits?: number;
+			}>;
+		}) {
+			const { db, txClient } = createMockDb();
+			txClient.sharedTransaction.create.mockResolvedValue({
+				id: "txn-1",
+				splitParticipants: [],
+			});
+			const service = new SharedTransactionService(db as never, input.payer);
+			await service.create({
+				amount: input.amount,
+				currency: "USD",
+				description: "Test",
+				date: new Date("2026-03-01"),
+				paidBy: input.payer,
+				splitWith: input.splitWith,
+				splitMode: input.splitMode,
+			});
+			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
+			if (!firstCall) throw new Error("Expected create to be called");
+			return firstCall[0].data.splitParticipants.create as Array<{
+				participantType: string;
+				participantId: string;
+				shareAmount: number;
+				sharePercentage: number | null;
+				shareUnits: number | null;
+			}>;
+		}
+
+		it("EQUAL, payer NOT in split, indivisible: remainder goes to first row", async () => {
+			// $100 / 3 debtors, alice pays but is not a debtor. The payer has no
+			// row, so the extra cent lands on the first split row (bob).
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "EQUAL",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "bob" },
+					{ participantType: "user", participantId: "carol" },
+					{ participantType: "user", participantId: "dave" },
+				],
+			});
+			expect(splits).toHaveLength(3);
+			expect(splits.map((s) => s.shareAmount)).toEqual([33.34, 33.33, 33.33]);
+			expect(Math.round(splits.reduce((a, s) => a + s.shareAmount, 0) * 100)).toBe(
+				10000,
+			);
+		});
+
+		it("EQUAL, single participant, payer outside: debtor owes the full amount", async () => {
+			const splits = await splitViaCreate({
+				amount: 42.5,
+				splitMode: "EQUAL",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [{ participantType: "user", participantId: "bob" }],
+			});
+			expect(splits).toHaveLength(1);
+			expect(splits[0]!.participantId).toBe("bob");
+			expect(splits[0]!.shareAmount).toBe(42.5);
+		});
+
+		it("EQUAL with a guest and a shadow present: types preserved, payer gets remainder", async () => {
+			// $10 / 3 (alice user payer, a guest, a shadow). Divides evenly to
+			// $3.33 with 1 remainder cent going to the payer (alice).
+			const splits = await splitViaCreate({
+				amount: 10,
+				splitMode: "EQUAL",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "guest", participantId: "g1" },
+					{ participantType: "shadow", participantId: "s1" },
+				],
+			});
+			expect(splits).toHaveLength(3);
+			const alice = splits.find((s) => s.participantId === "alice")!;
+			const guest = splits.find((s) => s.participantId === "g1")!;
+			const shadow = splits.find((s) => s.participantId === "s1")!;
+			expect(guest.participantType).toBe("guest");
+			expect(shadow.participantType).toBe("shadow");
+			expect(alice.shareAmount).toBe(3.34); // payer takes the extra cent
+			expect(guest.shareAmount).toBe(3.33);
+			expect(shadow.shareAmount).toBe(3.33);
+			expect(Math.round(splits.reduce((a, s) => a + s.shareAmount, 0) * 100)).toBe(
+				1000,
+			);
+		});
+
+		it("SHARES, payer NOT in split: remainder falls to the LAST row", async () => {
+			// $100, units 10:1, payer alice is outside the split. In SHARES (and
+			// PERCENTAGE), when the payer has no row the remainder cent lands on the
+			// LAST split row (idx = length - 1), not the first. This differs from the
+			// EQUAL path, which fills remaining rows from index 0. Locking it here.
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "SHARES",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "bob", shareUnits: 10 },
+					{ participantType: "user", participantId: "carol", shareUnits: 1 },
+				],
+			});
+			const bob = splits.find((s) => s.participantId === "bob")!;
+			const carol = splits.find((s) => s.participantId === "carol")!;
+			expect(bob.shareAmount).toBe(90.9); // floor 9090 cents, no remainder here
+			expect(carol.shareAmount).toBe(9.1); // floor 909 + remainder cent → last row
+			expect(bob.shareUnits).toBe(10);
+			expect(carol.shareUnits).toBe(1);
+			expect(Math.round(splits.reduce((a, s) => a + s.shareAmount, 0) * 100)).toBe(
+				10000,
+			);
+		});
+
+		it("PERCENTAGE preserves sharePercentage on the saved rows", async () => {
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "PERCENTAGE",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "alice", sharePercentage: 60 },
+					{ participantType: "user", participantId: "bob", sharePercentage: 40 },
+				],
+			});
+			const alice = splits.find((s) => s.participantId === "alice")!;
+			const bob = splits.find((s) => s.participantId === "bob")!;
+			expect(alice.shareAmount).toBe(60);
+			expect(bob.shareAmount).toBe(40);
+			expect(alice.sharePercentage).toBe(60);
+			expect(bob.sharePercentage).toBe(40);
+		});
+
+		it("EXACT preserves the exact per-row amounts", async () => {
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "EXACT",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "alice", shareAmount: 70 },
+					{ participantType: "user", participantId: "bob", shareAmount: 30 },
+				],
+			});
+			expect(splits.find((s) => s.participantId === "alice")!.shareAmount).toBe(70);
+			expect(splits.find((s) => s.participantId === "bob")!.shareAmount).toBe(30);
+		});
+	});
+
 	// ── update: auto-recalculation on amount change ──────────────────────────
 
 	describe("update recalculation on amount change", () => {
@@ -1301,12 +1462,17 @@ describe("SharedTransactionService", () => {
 			expect(bobSplit.shareAmount).toBe(40);
 		});
 
-		it("EXACT mode: changing amount does NOT auto-recalculate splits", async () => {
-			const { db, txClient } = createMockDb();
-			const existing = {
+		// EXACT shares used to go stale when the amount changed (their sum no
+		// longer matched the amount — silent corruption). They are now rescaled
+		// proportionally to the new amount.
+		function exactRescaleExisting(
+			oldAmount: number,
+			shares: Array<{ id: string; amount: number }>,
+		) {
+			return {
 				id: "txn-1",
 				description: "Dinner",
-				amount: { toNumber: () => 100 },
+				amount: { toNumber: () => oldAmount },
 				currency: "USD",
 				date: new Date("2026-03-01"),
 				categoryId: null,
@@ -1319,23 +1485,83 @@ describe("SharedTransactionService", () => {
 				createdByType: "user",
 				createdById: "alice",
 				isLocked: false,
-				splitParticipants: [
-					{
-						participantType: "user",
-						participantId: "alice",
-						shareAmount: { toNumber: () => 60 },
-						sharePercentage: null,
-						shareUnits: null,
-					},
-					{
-						participantType: "user",
-						participantId: "bob",
-						shareAmount: { toNumber: () => 40 },
-						sharePercentage: null,
-						shareUnits: null,
-					},
-				],
+				splitParticipants: shares.map((s) => ({
+					participantType: "user",
+					participantId: s.id,
+					shareAmount: { toNumber: () => s.amount },
+					sharePercentage: null,
+					shareUnits: null,
+				})),
 			};
+		}
+
+		async function runExactRescale(
+			oldAmount: number,
+			shares: Array<{ id: string; amount: number }>,
+			newAmount: number,
+		) {
+			const { db, txClient } = createMockDb();
+			const existing = exactRescaleExisting(oldAmount, shares);
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			txClient.sharedTransaction.update.mockResolvedValue({
+				...existing,
+				amount: newAmount,
+			});
+			txClient.sharedTransaction.findUniqueOrThrow.mockResolvedValue({
+				...existing,
+				amount: newAmount,
+				splitParticipants: [],
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await service.update({ id: "txn-1", amount: newAmount });
+			const call = txClient.splitParticipant.createMany.mock.calls[0];
+			if (!call) throw new Error("Expected createMany to be called");
+			return call[0].data as Array<{ participantId: string; shareAmount: number }>;
+		}
+
+		it("EXACT mode: amount change rescales shares proportionally ($100 [40/60] → $200 [80/120])", async () => {
+			const newSplits = await runExactRescale(
+				100,
+				[
+					{ id: "alice", amount: 40 },
+					{ id: "bob", amount: 60 },
+				],
+				200,
+			);
+			const alice = newSplits.find((s) => s.participantId === "alice");
+			const bob = newSplits.find((s) => s.participantId === "bob");
+			if (!alice || !bob) throw new Error("Expected alice and bob splits");
+			expect(alice.shareAmount).toBe(80);
+			expect(bob.shareAmount).toBe(120);
+			expect(alice.shareAmount + bob.shareAmount).toBe(200);
+		});
+
+		it("EXACT mode: rescale keeps the sum equal to the amount with indivisible cents", async () => {
+			// $100 [60/40] → $100.01: 60% = 60.006 → floor 60.00, 40% = 40.004 →
+			// floor 40.00, remainder cent goes to the payer (alice).
+			const newSplits = await runExactRescale(
+				100,
+				[
+					{ id: "alice", amount: 60 },
+					{ id: "bob", amount: 40 },
+				],
+				100.01,
+			);
+			const total = newSplits.reduce((s, p) => s + p.shareAmount, 0);
+			expect(Math.round(total * 100)).toBe(10001);
+			const alice = newSplits.find((s) => s.participantId === "alice");
+			expect(alice!.shareAmount).toBe(60.01); // payer absorbs the remainder cent
+		});
+
+		it("EXACT mode: amount change replaces the split rows (deleteMany + createMany)", async () => {
+			const { db, txClient } = createMockDb();
+			const existing = exactRescaleExisting(100, [
+				{ id: "alice", amount: 60 },
+				{ id: "bob", amount: 40 },
+			]);
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			txClient.sharedTransaction.update.mockResolvedValue({
 				...existing,
@@ -1346,17 +1572,249 @@ describe("SharedTransactionService", () => {
 				amount: 120,
 				splitParticipants: [],
 			});
-
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
 				participantId: "alice",
 			});
 			await service.update({ id: "txn-1", amount: 120 });
+			expect(txClient.splitParticipant.deleteMany).toHaveBeenCalled();
+			expect(txClient.splitParticipant.createMany).toHaveBeenCalled();
+		});
+	});
 
-			// EXACT mode: no new participants created, only verification reset
-			expect(txClient.splitParticipant.deleteMany).not.toHaveBeenCalled();
-			expect(txClient.splitParticipant.createMany).not.toHaveBeenCalled();
-			expect(txClient.splitParticipant.updateMany).toHaveBeenCalled(); // verification reset only
+	// ── create/update parity in a project (membership + shadow auto-add) ─────
+
+	describe("update parity: project membership + shadow auto-add", () => {
+		function projectExisting(splitParticipants: Array<Record<string, unknown>>) {
+			return {
+				id: "txn-1",
+				description: "Dinner",
+				amount: { toNumber: () => 100 },
+				currency: "USD",
+				date: new Date("2026-03-01"),
+				categoryId: null,
+				splitMode: "EQUAL",
+				notes: null,
+				receiptUrl: null,
+				projectId: "proj-1",
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				splitParticipants,
+			};
+		}
+
+		function mockUpdateDb(opts: {
+			existing: Record<string, unknown>;
+			// project members recognized by validateProjectMembership
+			members: Array<{ participantType: string; participantId: string }>;
+			// existing shadow rows in projectParticipant (for auto-add dedupe)
+			existingShadowIds?: string[];
+		}) {
+			const shadowSet = new Set(opts.existingShadowIds ?? []);
+			const created: Array<Record<string, unknown>> = [];
+			const txClient = {
+				$executeRaw: vi.fn().mockResolvedValue(undefined),
+				sharedTransaction: {
+					create: vi.fn(),
+					findUnique: vi.fn().mockResolvedValue(opts.existing),
+					findUniqueOrThrow: vi
+						.fn()
+						.mockResolvedValue({ ...opts.existing, splitParticipants: [] }),
+					update: vi.fn().mockResolvedValue(opts.existing),
+					delete: vi.fn(),
+				},
+				splitParticipant: {
+					createMany: vi.fn(),
+					deleteMany: vi.fn(),
+					updateMany: vi.fn(),
+					findMany: vi.fn().mockResolvedValue([]),
+				},
+				projectParticipant: {
+					// Used both by assertCanModifyTransaction (actor role) and by the
+					// shadow auto-add dedupe check.
+					findUnique: vi.fn(async (args: { where: Record<string, unknown> }) => {
+						const key = args.where.projectId_participantType_participantId as
+							| { participantType: string; participantId: string }
+							| undefined;
+						if (key?.participantType === "shadow") {
+							return shadowSet.has(key.participantId)
+								? { projectId: "proj-1", ...key, role: "CONTRIBUTOR" }
+								: null;
+						}
+						// actor membership (alice is an ORGANIZER, can edit)
+						return {
+							projectId: "proj-1",
+							participantType: "user",
+							participantId: "alice",
+							role: "ORGANIZER",
+						};
+					}),
+					findMany: vi
+						.fn()
+						.mockResolvedValue(
+							opts.members.map((m) => ({
+								participantType: m.participantType,
+								participantId: m.participantId,
+							})),
+						),
+					create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+						created.push(args.data);
+						return args.data;
+					}),
+				},
+				project: {
+					findUnique: vi.fn().mockResolvedValue({ autoAcceptSplits: true }),
+				},
+				billingPeriod: { findFirst: vi.fn().mockResolvedValue(null) },
+				auditLogEntry: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) },
+			};
+			const db = {
+				$transaction: vi.fn(
+					async (cb: (tx: typeof txClient) => Promise<unknown>) =>
+						await cb(txClient),
+				),
+			};
+			return { db, txClient, created };
+		}
+
+		it("rejects an edit that adds a non-member user to the split (parity with create)", async () => {
+			const { db } = mockUpdateDb({
+				existing: projectExisting([
+					{
+						participantType: "user",
+						participantId: "alice",
+						shareAmount: { toNumber: () => 50 },
+						sharePercentage: null,
+						shareUnits: null,
+					},
+					{
+						participantType: "user",
+						participantId: "bob",
+						shareAmount: { toNumber: () => 50 },
+						sharePercentage: null,
+						shareUnits: null,
+					},
+				]),
+				// only alice and bob are members; "mallory" is not
+				members: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "user", participantId: "bob" },
+				],
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await expect(
+				service.update({
+					id: "txn-1",
+					splitWith: [
+						{ participantType: "user", participantId: "alice" },
+						{ participantType: "user", participantId: "mallory" },
+					],
+					splitMode: "EQUAL",
+				}),
+			).rejects.toThrow("is not a member of this project");
+		});
+
+		it("allows an edit whose split members are all project members", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: projectExisting([
+					{
+						participantType: "user",
+						participantId: "alice",
+						shareAmount: { toNumber: () => 100 },
+						sharePercentage: null,
+						shareUnits: null,
+					},
+				]),
+				members: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "user", participantId: "bob" },
+				],
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await service.update({
+				id: "txn-1",
+				splitWith: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "user", participantId: "bob" },
+				],
+				splitMode: "EQUAL",
+			});
+			expect(txClient.splitParticipant.createMany).toHaveBeenCalled();
+		});
+
+		it("auto-adds a new shadow to the project roster on edit (parity with create)", async () => {
+			const { db, created } = mockUpdateDb({
+				existing: projectExisting([
+					{
+						participantType: "user",
+						participantId: "alice",
+						shareAmount: { toNumber: () => 100 },
+						sharePercentage: null,
+						shareUnits: null,
+					},
+				]),
+				members: [{ participantType: "user", participantId: "alice" }],
+				existingShadowIds: [], // shadow-1 not yet in the project
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await service.update({
+				id: "txn-1",
+				splitWith: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "shadow", participantId: "shadow-1" },
+				],
+				splitMode: "EQUAL",
+			});
+			// The shadow was added to projectParticipant as a CONTRIBUTOR.
+			const addedShadow = created.find(
+				(c) => c.participantType === "shadow" && c.participantId === "shadow-1",
+			);
+			expect(addedShadow).toBeDefined();
+			expect(addedShadow!.role).toBe("CONTRIBUTOR");
+			expect(addedShadow!.projectId).toBe("proj-1");
+		});
+
+		it("does not duplicate a shadow that is already in the project", async () => {
+			const { db, created } = mockUpdateDb({
+				existing: projectExisting([
+					{
+						participantType: "user",
+						participantId: "alice",
+						shareAmount: { toNumber: () => 100 },
+						sharePercentage: null,
+						shareUnits: null,
+					},
+				]),
+				members: [{ participantType: "user", participantId: "alice" }],
+				existingShadowIds: ["shadow-1"], // already a member
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await service.update({
+				id: "txn-1",
+				splitWith: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "shadow", participantId: "shadow-1" },
+				],
+				splitMode: "EQUAL",
+			});
+			expect(
+				created.some((c) => c.participantType === "shadow"),
+			).toBe(false);
 		});
 	});
 
