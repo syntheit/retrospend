@@ -208,41 +208,12 @@ export class SharedTransactionService {
 
 				// Validate that non-shadow paidBy and splitWith refs are actual
 				// project participants (prevents phantom balances from arbitrary user refs)
-				const refsToValidate: ParticipantRef[] = [];
-				if (paidBy.participantType !== "shadow") {
-					refsToValidate.push(paidBy);
-				}
-				for (const p of splitWith) {
-					if (p.participantType !== "shadow") {
-						refsToValidate.push(p);
-					}
-				}
-				if (refsToValidate.length > 0) {
-					const validParticipants = await tx.projectParticipant.findMany({
-						where: {
-							projectId: input.projectId!,
-							OR: refsToValidate.map((r) => ({
-								participantType: r.participantType,
-								participantId: r.participantId,
-							})),
-						},
-						select: { participantType: true, participantId: true },
-					});
-					const validKeys = new Set(
-						validParticipants.map(
-							(vp) => `${vp.participantType}:${vp.participantId}`,
-						),
-					);
-					for (const ref of refsToValidate) {
-						const key = `${ref.participantType}:${ref.participantId}`;
-						if (!validKeys.has(key)) {
-							throw new TRPCError({
-								code: "BAD_REQUEST",
-								message: `Participant ${ref.participantId} is not a member of this project`,
-							});
-						}
-					}
-				}
+				await this.validateProjectMembership(
+					tx,
+					input.projectId,
+					paidBy,
+					splitWith,
+				);
 
 				// Auto-link to the current OPEN billing period (if any).
 				// Always assigns to the OPEN period regardless of the transaction's date:
@@ -307,28 +278,11 @@ export class SharedTransactionService {
 
 			// Auto-add shadow participants not yet in the project
 			if (input.projectId) {
-				for (const p of input.splitWith) {
-					if (p.participantType !== "shadow") continue;
-					const alreadyIn = await tx.projectParticipant.findUnique({
-						where: {
-							projectId_participantType_participantId: {
-								projectId: input.projectId!,
-								participantType: "shadow",
-								participantId: p.participantId,
-							},
-						},
-					});
-					if (!alreadyIn) {
-						await tx.projectParticipant.create({
-							data: {
-								projectId: input.projectId!,
-								participantType: "shadow",
-								participantId: p.participantId,
-								role: "CONTRIBUTOR",
-							},
-						});
-					}
-				}
+				await this.autoAddShadowParticipants(
+					tx,
+					input.projectId,
+					input.splitWith,
+				);
 			}
 
 			await logAudit(tx, {
@@ -550,6 +504,11 @@ export class SharedTransactionService {
 			const effectiveSplitMode = (input.splitMode ??
 				existing.splitMode) as SplitModeType;
 
+			// The project the expense belongs to after this update. Membership and
+			// shadow auto-add are enforced against it, mirroring create.
+			const effectiveProjectId =
+				input.projectId !== undefined ? input.projectId : existing.projectId;
+
 			// Handle split participant changes
 			let newParticipants: SplitParticipantInput[] | undefined;
 
@@ -572,7 +531,16 @@ export class SharedTransactionService {
 
 				// The payer is intentionally allowed to be outside the split: they
 				// front the cost without owing a share, so they simply get no split
-				// row. No validation needed.
+				// row. But like create, non-shadow refs must be project members so an
+				// edit cannot introduce a phantom split.
+				if (effectiveProjectId) {
+					await this.validateProjectMembership(
+						tx,
+						effectiveProjectId,
+						effectivePaidBy,
+						input.splitWith,
+					);
+				}
 
 				newParticipants = this.computeSplits(
 					effectiveAmount,
@@ -622,8 +590,25 @@ export class SharedTransactionService {
 						"SHARES",
 						effectivePaidBy,
 					);
+				} else if (effectiveSplitMode === "EXACT") {
+					// EXACT with the amount changed but splitWith unchanged: the stored
+					// exact shares would otherwise go stale (their sum no longer equals
+					// the amount, silently corrupting balances). Rescale each share
+					// proportionally to the new amount, keeping it cent-accurate.
+					newParticipants = this.rescaleExactSplits(
+						serializeDecimal(existing.amount),
+						effectiveAmount,
+						existing.splitParticipants.map((sp) => ({
+							participantType: sp.participantType as
+								| "user"
+								| "guest"
+								| "shadow",
+							participantId: sp.participantId,
+							shareAmount: serializeDecimal(sp.shareAmount),
+						})),
+						effectivePaidBy,
+					);
 				}
-				// EXACT: don't auto-recalculate
 			}
 
 			// Compute split diff
@@ -668,10 +653,9 @@ export class SharedTransactionService {
 				data: fieldUpdates as Prisma.SharedTransactionUncheckedUpdateInput,
 			});
 
-			// Auto-accept is decided by the expense's PROJECT. Use the incoming
-			// project when the update moves the expense, otherwise the existing one.
-			const effectiveProjectId =
-				input.projectId !== undefined ? input.projectId : existing.projectId;
+			// Auto-accept is decided by the expense's PROJECT (effectiveProjectId
+			// computed above): the incoming project when the update moves the
+			// expense, otherwise the existing one.
 			const projectAutoAccept = await this.resolveProjectAutoAccept(
 				tx,
 				effectiveProjectId,
@@ -750,6 +734,17 @@ export class SharedTransactionService {
 						},
 					});
 				}
+			}
+
+			// Auto-add any shadow participant introduced by this edit to the project
+			// roster, mirroring create. Without this a shadow can be in the split but
+			// missing from the project's participant list (balances/settlement).
+			if (input.splitWith !== undefined && effectiveProjectId) {
+				await this.autoAddShadowParticipants(
+					tx,
+					effectiveProjectId,
+					input.splitWith,
+				);
 			}
 
 			// Mark all participants except the editor as having unseen changes
@@ -1047,6 +1042,87 @@ export class SharedTransactionService {
 	}
 
 	/**
+	 * Validates that the non-shadow paidBy and splitWith refs are actual members
+	 * of the project (prevents phantom balances from arbitrary refs). Shadows are
+	 * exempt: CREATE/UPDATE auto-add them. Used by both create and update so the
+	 * two paths enforce membership identically.
+	 */
+	private async validateProjectMembership(
+		tx: Prisma.TransactionClient,
+		projectId: string,
+		paidBy: ParticipantRef,
+		splitWith: SplitParticipantInput[],
+	): Promise<void> {
+		const refsToValidate: ParticipantRef[] = [];
+		if (paidBy.participantType !== "shadow") {
+			refsToValidate.push(paidBy);
+		}
+		for (const p of splitWith) {
+			if (p.participantType !== "shadow") {
+				refsToValidate.push(p);
+			}
+		}
+		if (refsToValidate.length === 0) return;
+
+		const validParticipants = await tx.projectParticipant.findMany({
+			where: {
+				projectId,
+				OR: refsToValidate.map((r) => ({
+					participantType: r.participantType,
+					participantId: r.participantId,
+				})),
+			},
+			select: { participantType: true, participantId: true },
+		});
+		const validKeys = new Set(
+			validParticipants.map((vp) => `${vp.participantType}:${vp.participantId}`),
+		);
+		for (const ref of refsToValidate) {
+			const key = `${ref.participantType}:${ref.participantId}`;
+			if (!validKeys.has(key)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Participant ${ref.participantId} is not a member of this project`,
+				});
+			}
+		}
+	}
+
+	/**
+	 * Auto-adds any shadow participants not yet in the project as CONTRIBUTORs, so
+	 * a shadow added via create or edit shows up in the project roster (balances,
+	 * settlement). No-op for a standalone (project-less) expense.
+	 */
+	private async autoAddShadowParticipants(
+		tx: Prisma.TransactionClient,
+		projectId: string,
+		splitWith: SplitParticipantInput[],
+	): Promise<void> {
+		for (const p of splitWith) {
+			if (p.participantType !== "shadow") continue;
+			const alreadyIn = await tx.projectParticipant.findUnique({
+				where: {
+					projectId_participantType_participantId: {
+						projectId,
+						participantType: "shadow",
+						participantId: p.participantId,
+					},
+				},
+			});
+			if (!alreadyIn) {
+				await tx.projectParticipant.create({
+					data: {
+						projectId,
+						participantType: "shadow",
+						participantId: p.participantId,
+						role: "CONTRIBUTOR",
+					},
+				});
+			}
+		}
+	}
+
+	/**
 	 * Resolves the concrete per-participant split rows. Delegates to the shared
 	 * pure {@link resolveSplits} utility (the same code the client preview uses,
 	 * so the preview matches what is saved) and translates its validation errors
@@ -1071,6 +1147,58 @@ export class SharedTransactionService {
 			}
 			throw err;
 		}
+	}
+
+	/**
+	 * Proportionally rescales stored EXACT shares to a new total. Each share keeps
+	 * its fraction of the old total; the leftover cent from flooring goes to the
+	 * payer first (else the last row), matching the rounding rule used elsewhere.
+	 * If the old total was 0 (no proportion to preserve), falls back to an equal
+	 * split so the shares still sum to the new amount.
+	 */
+	private rescaleExactSplits(
+		oldAmount: number,
+		newAmount: number,
+		splits: Array<SplitParticipantInput & { shareAmount: number }>,
+		paidBy: ParticipantRef,
+	): SplitParticipantInput[] {
+		const newTotalCents = Math.round(newAmount * 100);
+
+		if (Math.round(oldAmount * 100) === 0) {
+			// Degenerate case: nothing to scale from. Split equally.
+			return this.computeSplits(newAmount, splits, "EQUAL", paidBy);
+		}
+
+		const oldTotalCents = splits.reduce(
+			(s, p) => s + Math.round(p.shareAmount * 100),
+			0,
+		);
+		if (oldTotalCents === 0) {
+			return this.computeSplits(newAmount, splits, "EQUAL", paidBy);
+		}
+
+		const result = splits.map((p) => {
+			const oldCents = Math.round(p.shareAmount * 100);
+			return {
+				participantType: p.participantType,
+				participantId: p.participantId,
+				cents: Math.floor((newTotalCents * oldCents) / oldTotalCents),
+			};
+		});
+
+		let remainder = newTotalCents - result.reduce((s, r) => s + r.cents, 0);
+		if (remainder !== 0) {
+			const payerIdx = result.findIndex((r) => sameParticipant(r, paidBy));
+			const idx = payerIdx >= 0 ? payerIdx : result.length - 1;
+			result[idx]!.cents += remainder;
+			remainder = 0;
+		}
+
+		return result.map((r) => ({
+			participantType: r.participantType,
+			participantId: r.participantId,
+			shareAmount: r.cents / 100,
+		}));
 	}
 
 	private async runInTransaction<T>(
