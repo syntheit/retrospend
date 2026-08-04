@@ -924,6 +924,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 							/>
 
 							<ProjectTabs
+								categoryStats={project.categoryStats}
 								createdById={project.createdById}
 								currentUserId={userId}
 								isEditor={isEditor}
@@ -933,6 +934,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 								primaryCurrency={project.primaryCurrency}
 								projectId={id}
 								projectName={project.name}
+								totalSpent={project.totalSpent}
 								expensesPanel={
 									<>
 							{hasBudget && (

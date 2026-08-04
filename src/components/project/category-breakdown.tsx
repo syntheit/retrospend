@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Cell, Label, Pie, PieChart } from "recharts";
@@ -41,6 +42,7 @@ export function CategoryBreakdown({
 	totalSpent,
 	currency,
 }: CategoryBreakdownProps) {
+	const t = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
 	const { displayName } = useCategoryName();
 	const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -50,12 +52,12 @@ export function CategoryBreakdown({
 			<Card className="border border-border bg-card shadow-sm">
 				<CardHeader className="px-4 sm:px-6">
 					<CardTitle className="font-semibold text-lg tracking-tight">
-						Category Breakdown
+						{t("categoryBreakdown")}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="rounded-lg border bg-muted/40 p-4 text-muted-foreground text-sm">
-						No expenses logged yet.
+						{t("noExpensesLogged")}
 					</div>
 				</CardContent>
 			</Card>
@@ -82,7 +84,7 @@ export function CategoryBreakdown({
 		<Card className="border border-border bg-card shadow-sm">
 			<CardHeader className="px-4 sm:px-6">
 				<CardTitle className="font-semibold text-lg tracking-tight">
-					Category Breakdown
+					{t("categoryBreakdown")}
 				</CardTitle>
 			</CardHeader>
 			<CardContent>
