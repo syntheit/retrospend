@@ -11,15 +11,22 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { CategoryBreakdown } from "~/components/project/category-breakdown";
 import { SettleUpDialog } from "~/components/settle-up-dialog";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "~/components/ui/collapsible";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { SegmentedToggle } from "~/components/ui/segmented-toggle";
 import { Skeleton } from "~/components/ui/skeleton";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
@@ -44,16 +51,30 @@ interface Participant {
 	joinedAt: Date;
 }
 
+interface CategoryStat {
+	categoryId: string | null;
+	name: string;
+	color: string;
+	total: number;
+	count: number;
+}
+
 interface BalancesTabProps {
 	projectId: string;
 	participants: Participant[];
 	currentUserId: string | undefined;
+	primaryCurrency: string;
+	totalSpent: number;
+	categoryStats: CategoryStat[];
 }
 
 type ParticipantRefLite = {
 	participantType: "user" | "guest" | "shadow";
 	participantId: string;
 };
+
+/** Which per-person figure the "Who spent what" bars show. */
+type SpendMetric = "paid" | "share";
 
 // Number of line items shown before the "View all" toggle.
 const INITIAL_ITEMS = 4;
@@ -64,6 +85,9 @@ export function BalancesTab({
 	projectId,
 	participants,
 	currentUserId,
+	primaryCurrency,
+	totalSpent,
+	categoryStats,
 }: BalancesTabProps) {
 	const t = useTranslations("projects");
 
@@ -116,55 +140,295 @@ export function BalancesTab({
 		{ enabled: activePerspective != null },
 	);
 
+	// Settle-up section starts open when there is a balance worth acting on and
+	// there is more than one person; single-person / all-settled projects lead
+	// with a collapsed section so the read-only overview is the whole story.
+	const hasStatements = (data?.statements.length ?? 0) > 0;
+	const [settleOpen, setSettleOpen] = useState(true);
+
 	return (
-		<div className="max-h-[calc(100dvh-14rem)] space-y-4 overflow-y-auto">
-			{/* Perspective switcher */}
-			<div className="flex flex-wrap items-center gap-2">
-				<span className="text-muted-foreground text-sm">{t("viewingAs")}</span>
-				<PerspectiveSwitcher
-					current={perspectiveParticipant}
-					currentUserId={currentUserId}
-					onSelect={(p) =>
-						setPerspective({
-							participantType: p.participantType as
-								| "user"
-								| "guest"
-								| "shadow",
-							participantId: p.participantId,
-						})
-					}
-					participants={participants}
-				/>
+		<div className="max-h-[calc(100dvh-14rem)] space-y-6 overflow-y-auto">
+			{/* ── Spending overview (read-only) ── */}
+			<SpendingOverview
+				categoryStats={categoryStats}
+				currentUserId={currentUserId}
+				participants={participants}
+				primaryCurrency={primaryCurrency}
+				projectId={projectId}
+				totalSpent={totalSpent}
+			/>
+
+			{/* ── Divider into the actionable settle-up view ── */}
+			<Collapsible onOpenChange={setSettleOpen} open={settleOpen}>
+				<CollapsibleTrigger className="group flex w-full items-center gap-3 border-border border-t pt-5 text-left">
+					<span className="font-semibold text-sm uppercase tracking-wide">
+						{t("settleUpDivider")}
+					</span>
+					<span className="h-px flex-1 bg-border" />
+					<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+				</CollapsibleTrigger>
+				<CollapsibleContent className="space-y-4 pt-4">
+					{/* Perspective switcher */}
+					<div className="flex flex-wrap items-center gap-2">
+						<span className="text-muted-foreground text-sm">
+							{t("viewingAs")}
+						</span>
+						<PerspectiveSwitcher
+							current={perspectiveParticipant}
+							currentUserId={currentUserId}
+							onSelect={(p) =>
+								setPerspective({
+									participantType: p.participantType as
+										| "user"
+										| "guest"
+										| "shadow",
+									participantId: p.participantId,
+								})
+							}
+							participants={participants}
+						/>
+					</div>
+
+					{isLoading ? (
+						<div className="space-y-3">
+							<Skeleton className="h-16 w-full" />
+							<Skeleton className="h-40 w-full" />
+							<Skeleton className="h-40 w-full" />
+						</div>
+					) : !data || !hasStatements ? (
+						<EmptyState
+							name={
+								data?.perspective.name ?? perspectiveParticipant?.name ?? ""
+							}
+						/>
+					) : (
+						<>
+							<SummaryCard totals={data.totals} />
+							<div className="space-y-3">
+								{data.statements.map((s) => (
+									<StatementCard
+										key={`${s.counterpart.participantType}:${s.counterpart.participantId}`}
+										perspectiveName={data.perspective.name}
+										perspectiveIsCurrentUser={
+											activePerspective?.participantType === "user" &&
+											activePerspective.participantId === currentUserId
+										}
+										statement={s}
+									/>
+								))}
+							</div>
+						</>
+					)}
+				</CollapsibleContent>
+			</Collapsible>
+		</div>
+	);
+}
+
+// ── Spending overview (total + who-spent-what + category breakdown) ──────────
+
+function SpendingOverview({
+	projectId,
+	participants,
+	currentUserId,
+	primaryCurrency,
+	totalSpent,
+	categoryStats,
+}: {
+	projectId: string;
+	participants: Participant[];
+	currentUserId: string | undefined;
+	primaryCurrency: string;
+	totalSpent: number;
+	categoryStats: CategoryStat[];
+}) {
+	const t = useTranslations("projects");
+	const { formatCurrency } = useCurrencyFormatter();
+	const [metric, setMetric] = useState<SpendMetric>("paid");
+
+	const isMultiPerson = participants.length > 1;
+	const { data: balancesData } = api.project.participantBalances.useQuery(
+		{ projectId },
+		{ enabled: isMultiPerson },
+	);
+
+	// Per-person paid/share for the primary currency only (v1). Other currencies
+	// are surfaced as a note rather than silently folded into the primary total.
+	const { rows, hasOtherCurrencies } = useMemo(() => {
+		const byKey = new Map<string, { paid: number; share: number }>();
+		let otherCurrencies = false;
+		for (const b of balancesData?.balances ?? []) {
+			if (b.currency !== primaryCurrency) {
+				otherCurrencies = true;
+				continue;
+			}
+			const key = `${b.participant.participantType}:${b.participant.participantId}`;
+			byKey.set(key, { paid: b.totalPaid, share: b.fairShare });
+		}
+
+		const built = participants.map((p) => {
+			const key = `${p.participantType}:${p.participantId}`;
+			const figures = byKey.get(key) ?? { paid: 0, share: 0 };
+			return {
+				participant: p,
+				isMe:
+					p.participantType === "user" && p.participantId === currentUserId,
+				paid: figures.paid,
+				share: figures.share,
+			};
+		});
+
+		return { rows: built, hasOtherCurrencies: otherCurrencies };
+	}, [balancesData, participants, primaryCurrency, currentUserId]);
+
+	const metricTotal = useMemo(
+		() => rows.reduce((sum, r) => sum + Math.max(0, r[metric]), 0),
+		[rows, metric],
+	);
+
+	const sortedRows = useMemo(
+		() => [...rows].sort((a, b) => b[metric] - a[metric]),
+		[rows, metric],
+	);
+
+	const expenseCount = categoryStats.reduce((sum, s) => sum + s.count, 0);
+	const avgShare =
+		participants.length > 0 ? totalSpent / participants.length : 0;
+
+	return (
+		<div className="space-y-4">
+			{/* Total spent hero */}
+			<div className="flex flex-wrap items-end justify-between gap-4">
+				<div className="space-y-1">
+					<p className="text-muted-foreground text-xs uppercase tracking-wide">
+						{t("totalSpent")}
+					</p>
+					<p className="font-bold text-3xl tabular-nums tracking-tight sm:text-4xl">
+						{formatCurrency(totalSpent, primaryCurrency)}
+					</p>
+					<p className="text-muted-foreground text-xs">
+						{t("totalSpentMeta", { count: expenseCount })}
+					</p>
+				</div>
+				{isMultiPerson && (
+					<div className="flex gap-6 text-sm">
+						<div className="space-y-0.5">
+							<p className="font-semibold text-lg tabular-nums">
+								{participants.length}
+							</p>
+							<p className="text-muted-foreground text-xs">
+								{t("peopleCount", { count: participants.length })}
+							</p>
+						</div>
+						<div className="space-y-0.5">
+							<p className="font-semibold text-lg tabular-nums">
+								{formatCurrency(avgShare, primaryCurrency)}
+							</p>
+							<p className="text-muted-foreground text-xs">
+								{t("avgSharePerPerson")}
+							</p>
+						</div>
+					</div>
+				)}
 			</div>
 
-			{isLoading ? (
-				<div className="space-y-3">
-					<Skeleton className="h-16 w-full" />
-					<Skeleton className="h-40 w-full" />
-					<Skeleton className="h-40 w-full" />
-				</div>
-			) : !data || data.statements.length === 0 ? (
-				<EmptyState
-					name={data?.perspective.name ?? perspectiveParticipant?.name ?? ""}
-				/>
-			) : (
-				<>
-					<SummaryCard totals={data.totals} />
-					<div className="space-y-3">
-						{data.statements.map((s) => (
-							<StatementCard
-								key={`${s.counterpart.participantType}:${s.counterpart.participantId}`}
-								perspectiveName={data.perspective.name}
-								perspectiveIsCurrentUser={
-									activePerspective?.participantType === "user" &&
-									activePerspective.participantId === currentUserId
-								}
-								statement={s}
+			{/* Who spent what */}
+			{isMultiPerson && (
+				<Card>
+					<CardContent className="space-y-3 py-4">
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<h3 className="font-semibold text-sm">{t("whoSpentWhat")}</h3>
+							<SegmentedToggle<SpendMetric>
+								onChange={setMetric}
+								options={[
+									{ value: "paid", label: t("paid") },
+									{ value: "share", label: t("share") },
+								]}
+								value={metric}
 							/>
-						))}
-					</div>
-				</>
+						</div>
+						<p className="text-muted-foreground text-xs">
+							{metric === "paid" ? t("paidHint") : t("shareHint")}
+						</p>
+						<div className="space-y-2.5">
+							{sortedRows.map((row) => (
+								<SpendRow
+									amount={row[metric]}
+									formatCurrency={formatCurrency}
+									isMe={row.isMe}
+									key={row.participant.id}
+									participant={row.participant}
+									primaryCurrency={primaryCurrency}
+									total={metricTotal}
+								/>
+							))}
+						</div>
+						{hasOtherCurrencies && (
+							<p className="text-muted-foreground text-xs">
+								{t("spendingInOtherCurrencies")}
+							</p>
+						)}
+					</CardContent>
+				</Card>
 			)}
+
+			{/* Category breakdown */}
+			<CategoryBreakdown
+				categories={categoryStats}
+				currency={primaryCurrency}
+				totalSpent={totalSpent}
+			/>
+		</div>
+	);
+}
+
+function SpendRow({
+	participant,
+	isMe,
+	amount,
+	total,
+	primaryCurrency,
+	formatCurrency,
+}: {
+	participant: Participant;
+	isMe: boolean;
+	amount: number;
+	total: number;
+	primaryCurrency: string;
+	formatCurrency: (amount: number, currency: string) => string;
+}) {
+	const t = useTranslations("projects");
+	const pct = total > 0 ? (Math.max(0, amount) / total) * 100 : 0;
+
+	return (
+		<div className="flex items-center gap-3">
+			<PersonAvatar participant={participant} size="sm" />
+			<div className="min-w-0 flex-1">
+				<div className="flex items-baseline justify-between gap-2">
+					<span className="truncate font-medium text-sm">
+						{participant.name}
+						{isMe && (
+							<span className="ml-1 font-normal text-muted-foreground">
+								({t("you")})
+							</span>
+						)}
+					</span>
+					<span className="flex shrink-0 items-baseline gap-2 tabular-nums">
+						<span className="font-medium text-sm">
+							{formatCurrency(amount, primaryCurrency)}
+						</span>
+						<span className="text-muted-foreground text-xs">
+							{pct.toFixed(pct < 10 ? 1 : 0)}%
+						</span>
+					</span>
+				</div>
+				<div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+					<span
+						className="block h-full rounded-full bg-primary transition-[width]"
+						style={{ width: `${Math.min(100, pct)}%` }}
+					/>
+				</div>
+			</div>
 		</div>
 	);
 }

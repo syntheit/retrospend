@@ -10,7 +10,7 @@ import { BalancesTab } from "~/components/project/balances-tab";
 import { PeopleTab } from "~/components/project/people-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-const TAB_VALUES = ["expenses", "people", "balances", "activity"] as const;
+const TAB_VALUES = ["expenses", "people", "summary", "activity"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 interface Participant {
@@ -25,6 +25,14 @@ interface Participant {
 	joinedAt: Date;
 }
 
+interface CategoryStat {
+	categoryId: string | null;
+	name: string;
+	color: string;
+	total: number;
+	count: number;
+}
+
 interface ProjectTabsProps {
 	projectId: string;
 	projectName: string;
@@ -35,6 +43,10 @@ interface ProjectTabsProps {
 	isEditor: boolean;
 	isSolo: boolean;
 	currentUserId: string | undefined;
+	/** Project-wide spend (primary currency) for the Summary overview. */
+	totalSpent: number;
+	/** Per-category spend for the Summary breakdown. */
+	categoryStats: CategoryStat[];
 	/** The Expenses experience (BudgetCard + BillingPeriodTabs + ExpensesTable), lifted from the page. */
 	expensesPanel: ReactNode;
 }
@@ -53,6 +65,8 @@ export function ProjectTabs({
 	isEditor,
 	isSolo,
 	currentUserId,
+	totalSpent,
+	categoryStats,
 	expensesPanel,
 }: ProjectTabsProps) {
 	const t = useTranslations("projects");
@@ -107,9 +121,9 @@ export function ProjectTabs({
 					<Users className="h-4 w-4" />
 					{t("tabPeople")}
 				</TabsTrigger>
-				<TabsTrigger value="balances">
+				<TabsTrigger value="summary">
 					<Scale className="h-4 w-4" />
-					{t("tabBalances")}
+					{t("tabSummary")}
 				</TabsTrigger>
 				<TabsTrigger value="activity">
 					<Activity className="h-4 w-4" />
@@ -140,11 +154,14 @@ export function ProjectTabs({
 				/>
 			</TabsContent>
 
-			<TabsContent className="mt-0" value="balances">
+			<TabsContent className="mt-0" value="summary">
 				<BalancesTab
+					categoryStats={categoryStats}
 					currentUserId={currentUserId}
 					participants={participants}
+					primaryCurrency={primaryCurrency}
 					projectId={projectId}
+					totalSpent={totalSpent}
 				/>
 			</TabsContent>
 

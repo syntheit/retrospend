@@ -112,7 +112,6 @@ export function PeopleTab({
 	projectName,
 	createdById,
 	participants,
-	primaryCurrency,
 	isOrganizer,
 	isEditor,
 	currentUserId,
@@ -123,16 +122,12 @@ export function PeopleTab({
 
 	const isMultiPerson = participants.length > 1;
 
-	// "Paid" comes from participantBalances.totalPaid (a separate concept). The
-	// Balance column shows the REAL pairwise, multi-currency balance between the
-	// current user and each person via balancesFromPerspective — NOT the
+	// The Balance column shows the REAL pairwise, multi-currency balance between
+	// the current user and each person via balancesFromPerspective — NOT the
 	// group-optimal routed settlement plan, which could route debt through third
 	// parties (e.g. "Charlie owes you" when you never transacted with Charlie) and
-	// only surfaced the primary currency.
-	const { data: balancesData } = api.project.participantBalances.useQuery(
-		{ projectId },
-		{ enabled: isMultiPerson },
-	);
+	// only surfaced the primary currency. Per-person "Paid" now lives in the
+	// Summary tab, so this roster no longer fetches participantBalances.
 
 	// The perspective is the logged-in user's participant row — the People tab is
 	// always shown from the current user's angle. Absent when the current user is
@@ -153,20 +148,6 @@ export function PeopleTab({
 			{ projectId, perspective: perspective! },
 			{ enabled: isMultiPerson && perspective != null },
 		);
-
-	// totalPaid per participant, restricted to the project's primary currency
-	// (v1: no cross-currency summing — see plan risk note #1).
-	const paidByParticipant = useMemo(() => {
-		const map = new Map<string, number>();
-		for (const b of balancesData?.balances ?? []) {
-			if (b.currency !== primaryCurrency) continue;
-			map.set(
-				`${b.participant.participantType}:${b.participant.participantId}`,
-				b.totalPaid,
-			);
-		}
-		return map;
-	}, [balancesData, primaryCurrency]);
 
 	// Raw pairwise net balance vs the current user, keyed by
 	// `${participantType}:${participantId}` -> netByCurrency. Positive amounts mean
@@ -279,9 +260,6 @@ export function PeopleTab({
 								</th>
 								<th className="px-4 py-2 text-left font-medium">{t("role")}</th>
 								<th className="px-4 py-2 text-right font-medium">
-									{t("paidColumn")}
-								</th>
-								<th className="px-4 py-2 text-right font-medium">
 									{t("balanceColumn")}
 								</th>
 								<th className="w-11 px-2 py-2" />
@@ -290,7 +268,6 @@ export function PeopleTab({
 						<tbody>
 							{sorted.map((p) => {
 								const key = `${p.participantType}:${p.participantId}`;
-								const paid = paidByParticipant.get(key) ?? 0;
 								const netByCurrency = netByParticipant.get(key);
 								const me = isCurrentUser(p);
 								return (
@@ -336,11 +313,6 @@ export function PeopleTab({
 												}
 												participant={p}
 											/>
-										</td>
-
-										{/* Paid */}
-										<td className="px-4 py-3 text-right tabular-nums">
-											{formatCurrency(paid, primaryCurrency)}
 										</td>
 
 										{/* Balance */}
