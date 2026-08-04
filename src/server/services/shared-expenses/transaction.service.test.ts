@@ -1095,6 +1095,167 @@ describe("SharedTransactionService", () => {
 		});
 	});
 
+	// ── characterization: current server split behavior (safety net) ─────────
+	// These lock the CURRENT server output for the edge cases the health audit
+	// flags as divergence risks, so the shared-split extraction can be proven
+	// behavior-preserving. The server rounding rule (remainder to the payer,
+	// else the first row) is the canonical source of truth for what gets saved.
+	describe("split characterization (server = source of truth)", () => {
+		async function splitViaCreate(input: {
+			amount: number;
+			splitMode: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
+			payer: { participantType: "user" | "guest" | "shadow"; participantId: string };
+			splitWith: Array<{
+				participantType: "user" | "guest" | "shadow";
+				participantId: string;
+				shareAmount?: number;
+				sharePercentage?: number;
+				shareUnits?: number;
+			}>;
+		}) {
+			const { db, txClient } = createMockDb();
+			txClient.sharedTransaction.create.mockResolvedValue({
+				id: "txn-1",
+				splitParticipants: [],
+			});
+			const service = new SharedTransactionService(db as never, input.payer);
+			await service.create({
+				amount: input.amount,
+				currency: "USD",
+				description: "Test",
+				date: new Date("2026-03-01"),
+				paidBy: input.payer,
+				splitWith: input.splitWith,
+				splitMode: input.splitMode,
+			});
+			const firstCall = txClient.sharedTransaction.create.mock.calls[0];
+			if (!firstCall) throw new Error("Expected create to be called");
+			return firstCall[0].data.splitParticipants.create as Array<{
+				participantType: string;
+				participantId: string;
+				shareAmount: number;
+				sharePercentage: number | null;
+				shareUnits: number | null;
+			}>;
+		}
+
+		it("EQUAL, payer NOT in split, indivisible: remainder goes to first row", async () => {
+			// $100 / 3 debtors, alice pays but is not a debtor. The payer has no
+			// row, so the extra cent lands on the first split row (bob).
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "EQUAL",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "bob" },
+					{ participantType: "user", participantId: "carol" },
+					{ participantType: "user", participantId: "dave" },
+				],
+			});
+			expect(splits).toHaveLength(3);
+			expect(splits.map((s) => s.shareAmount)).toEqual([33.34, 33.33, 33.33]);
+			expect(Math.round(splits.reduce((a, s) => a + s.shareAmount, 0) * 100)).toBe(
+				10000,
+			);
+		});
+
+		it("EQUAL, single participant, payer outside: debtor owes the full amount", async () => {
+			const splits = await splitViaCreate({
+				amount: 42.5,
+				splitMode: "EQUAL",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [{ participantType: "user", participantId: "bob" }],
+			});
+			expect(splits).toHaveLength(1);
+			expect(splits[0]!.participantId).toBe("bob");
+			expect(splits[0]!.shareAmount).toBe(42.5);
+		});
+
+		it("EQUAL with a guest and a shadow present: types preserved, payer gets remainder", async () => {
+			// $10 / 3 (alice user payer, a guest, a shadow). Divides evenly to
+			// $3.33 with 1 remainder cent going to the payer (alice).
+			const splits = await splitViaCreate({
+				amount: 10,
+				splitMode: "EQUAL",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "alice" },
+					{ participantType: "guest", participantId: "g1" },
+					{ participantType: "shadow", participantId: "s1" },
+				],
+			});
+			expect(splits).toHaveLength(3);
+			const alice = splits.find((s) => s.participantId === "alice")!;
+			const guest = splits.find((s) => s.participantId === "g1")!;
+			const shadow = splits.find((s) => s.participantId === "s1")!;
+			expect(guest.participantType).toBe("guest");
+			expect(shadow.participantType).toBe("shadow");
+			expect(alice.shareAmount).toBe(3.34); // payer takes the extra cent
+			expect(guest.shareAmount).toBe(3.33);
+			expect(shadow.shareAmount).toBe(3.33);
+			expect(Math.round(splits.reduce((a, s) => a + s.shareAmount, 0) * 100)).toBe(
+				1000,
+			);
+		});
+
+		it("SHARES, payer NOT in split: remainder falls to the LAST row", async () => {
+			// $100, units 10:1, payer alice is outside the split. In SHARES (and
+			// PERCENTAGE), when the payer has no row the remainder cent lands on the
+			// LAST split row (idx = length - 1), not the first. This differs from the
+			// EQUAL path, which fills remaining rows from index 0. Locking it here.
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "SHARES",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "bob", shareUnits: 10 },
+					{ participantType: "user", participantId: "carol", shareUnits: 1 },
+				],
+			});
+			const bob = splits.find((s) => s.participantId === "bob")!;
+			const carol = splits.find((s) => s.participantId === "carol")!;
+			expect(bob.shareAmount).toBe(90.9); // floor 9090 cents, no remainder here
+			expect(carol.shareAmount).toBe(9.1); // floor 909 + remainder cent → last row
+			expect(bob.shareUnits).toBe(10);
+			expect(carol.shareUnits).toBe(1);
+			expect(Math.round(splits.reduce((a, s) => a + s.shareAmount, 0) * 100)).toBe(
+				10000,
+			);
+		});
+
+		it("PERCENTAGE preserves sharePercentage on the saved rows", async () => {
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "PERCENTAGE",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "alice", sharePercentage: 60 },
+					{ participantType: "user", participantId: "bob", sharePercentage: 40 },
+				],
+			});
+			const alice = splits.find((s) => s.participantId === "alice")!;
+			const bob = splits.find((s) => s.participantId === "bob")!;
+			expect(alice.shareAmount).toBe(60);
+			expect(bob.shareAmount).toBe(40);
+			expect(alice.sharePercentage).toBe(60);
+			expect(bob.sharePercentage).toBe(40);
+		});
+
+		it("EXACT preserves the exact per-row amounts", async () => {
+			const splits = await splitViaCreate({
+				amount: 100,
+				splitMode: "EXACT",
+				payer: { participantType: "user", participantId: "alice" },
+				splitWith: [
+					{ participantType: "user", participantId: "alice", shareAmount: 70 },
+					{ participantType: "user", participantId: "bob", shareAmount: 30 },
+				],
+			});
+			expect(splits.find((s) => s.participantId === "alice")!.shareAmount).toBe(70);
+			expect(splits.find((s) => s.participantId === "bob")!.shareAmount).toBe(30);
+		});
+	});
+
 	// ── update: auto-recalculation on amount change ──────────────────────────
 
 	describe("update recalculation on amount change", () => {
