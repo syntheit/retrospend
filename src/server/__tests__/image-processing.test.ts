@@ -168,21 +168,23 @@ describe("processAvatar", () => {
 // ─── processProjectImage ───────────────────────────────────────────────────
 
 describe("processProjectImage", () => {
-	it("converts 1600×900 JPEG to 800×400 WebP (cover crop)", async () => {
+	// Project images are shown as square, circular icons (see ProjectVisual), so
+	// the pipeline produces a 400×400 square with a centre cover crop.
+	it("converts 1600×900 JPEG to a 400×400 WebP (cover crop)", async () => {
 		const input = await makeJpeg(1600, 900);
 		const output = await processProjectImage(input);
 		const meta = await sharp(output).metadata();
 		expect(meta.format).toBe("webp");
-		expect(meta.width).toBe(800);
+		expect(meta.width).toBe(400);
 		expect(meta.height).toBe(400);
 	});
 
-	it("crops 400×400 square to 800×400 WebP", async () => {
+	it("keeps a 400×400 square as a 400×400 WebP", async () => {
 		const input = await makeJpeg(400, 400);
 		const output = await processProjectImage(input);
 		const meta = await sharp(output).metadata();
 		expect(meta.format).toBe("webp");
-		expect(meta.width).toBe(800);
+		expect(meta.width).toBe(400);
 		expect(meta.height).toBe(400);
 	});
 

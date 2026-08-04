@@ -35,7 +35,7 @@ const mockDb = vi.hoisted(() => ({
 	sharedTransaction: { count: vi.fn(), aggregate: vi.fn() },
 	billingPeriod: { create: vi.fn() },
 	auditLog: { create: vi.fn() },
-	magicLink: { create: vi.fn() },
+	magicLink: { create: vi.fn(), findFirst: vi.fn() },
 	$transaction: vi.fn(),
 	$executeRaw: vi.fn(),
 }));

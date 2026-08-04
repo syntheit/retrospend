@@ -81,8 +81,12 @@ export function getFiscalMonthProgress(
 } {
 	const { start, end } = getFiscalMonthRange(month, startDay);
 
+	// end is set to 23:59:59.999 of the last day, so the raw span is (N-1) days
+	// plus a fractional remainder just under 1. Math.floor drops that remainder,
+	// giving N-1, and +1 yields the inclusive day count N. Using Math.round here
+	// rounded the remainder up and produced an off-by-one (N+1).
 	const daysInPeriod =
-		Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+		Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
 	const isCurrentPeriod = now >= start && now <= end;
 

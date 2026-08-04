@@ -81,11 +81,13 @@ describe("isCrypto", () => {
 	});
 
 	describe("edge cases", () => {
-		it("2-char code not in fiat list is treated as crypto", () => {
-			expect(isCrypto("XX")).toBe(true);
+		it("unknown code (not in the crypto allowlist) is NOT treated as crypto", () => {
+			// isCrypto checks an explicit crypto allowlist, so a made-up code is not
+			// assumed to be a cryptocurrency.
+			expect(isCrypto("XX")).toBe(false);
 		});
 
-		it("4-char code not in fiat list is treated as crypto", () => {
+		it("known stablecoin USDT is crypto", () => {
 			expect(isCrypto("USDT")).toBe(true);
 		});
 	});

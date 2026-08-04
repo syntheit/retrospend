@@ -201,6 +201,9 @@ describe("Suite 2B: Billing period lifecycle: close and settle", () => {
 		const project = addProject(db, {
 			createdById: ALICE,
 			billingCycleLength: "MONTHLY",
+			// Manual approval so non-actor splits start PENDING; this suite verifies
+			// that unaccepted splits gate billing-period close/settle.
+			autoAcceptSplits: false,
 		});
 		projectId = project.id;
 

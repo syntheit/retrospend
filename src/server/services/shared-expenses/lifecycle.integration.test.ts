@@ -18,7 +18,13 @@ vi.mock("~/server/services/notifications", () => ({
 
 import { computeBalance } from "./balance";
 import { SettlementService } from "./settlement.service";
-import { createStatefulDb, makeShadowRef, makeUserRef } from "./test-utils";
+import {
+	addProject,
+	addProjectParticipant,
+	createStatefulDb,
+	makeShadowRef,
+	makeUserRef,
+} from "./test-utils";
 import { SharedTransactionService } from "./transaction.service";
 import { VerificationService } from "./verification.service";
 
@@ -44,6 +50,7 @@ function makeCreateInput(
 			shareAmount?: number;
 		}>;
 		splitMode?: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
+		projectId?: string;
 	} = {},
 ) {
 	return {
@@ -54,6 +61,7 @@ function makeCreateInput(
 		paidBy: overrides.paidBy ?? aliceRef,
 		splitWith: overrides.splitWith ?? [aliceRef, bobRef],
 		splitMode: overrides.splitMode ?? ("EQUAL" as const),
+		...(overrides.projectId ? { projectId: overrides.projectId } : {}),
 	};
 }
 
@@ -85,9 +93,11 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 			(sp: { participantId: string }) => sp.participantId === BOB,
 		);
 
-		// Payer (alice) is auto-ACCEPTED; non-payer (bob) is PENDING
+		// Payer (alice) is ACCEPTED. This is a standalone expense, so it
+		// auto-accepts: bob is AUTO_ACCEPTED, not PENDING. Manual PENDING approval
+		// only applies inside a project that has auto-accept turned off.
 		expect(aliceSplit?.verificationStatus).toBe("ACCEPTED");
-		expect(bobSplit?.verificationStatus).toBe("PENDING");
+		expect(bobSplit?.verificationStatus).toBe("AUTO_ACCEPTED");
 
 		// Equal split: each gets $50
 		expect(aliceSplit?.shareAmount).toBe(50);
@@ -98,26 +108,32 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 		expect(db._stores.audits[0]).toMatchObject({ action: "CREATED" });
 	});
 
-	it("step 2: bob accepts the expense; computedStatus becomes active", async () => {
+	it("step 2: standalone expense is active on create; bob accepting is idempotent", async () => {
 		const txService = new SharedTransactionService(db as never, aliceRef);
 		const { transaction } = await txService.create(makeCreateInput());
 
+		// A standalone expense auto-accepts, so it is already active before bob
+		// does anything: bob's split is AUTO_ACCEPTED, not PENDING.
 		const verifyService = new VerificationService(db as never, bobRef);
 		const accepted = await verifyService.accept(transaction.id);
 
 		expect(accepted.computedStatus).toBe("active");
+		// Every split is in an accepted state (the payer ACCEPTED, others
+		// AUTO_ACCEPTED). Bob accepting an already-accepted split is a no-op.
 		expect(
 			accepted.splitParticipants.every(
 				(sp: { verificationStatus: string }) =>
-					sp.verificationStatus === "ACCEPTED",
+					sp.verificationStatus === "ACCEPTED" ||
+					sp.verificationStatus === "AUTO_ACCEPTED",
 			),
 		).toBe(true);
 
-		// Audit entry for VERIFIED
+		// No VERIFIED audit entry: bob's split was already auto-accepted, so accept
+		// short-circuits without recording a manual verification.
 		const verifyAudit = db._stores.audits.find(
 			(a: unknown) => (a as { action: string }).action === "VERIFIED",
 		);
-		expect(verifyAudit).toBeDefined();
+		expect(verifyAudit).toBeUndefined();
 	});
 
 	it("step 2b: bob accepting an already-accepted split is idempotent", async () => {
@@ -133,25 +149,30 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 		expect(second.computedStatus).toBe("active");
 	});
 
-	it("step 3: unconfirmed settlement does NOT affect balance (PROPOSED is ignored)", async () => {
+	it("step 3: a PROPOSED settlement reduces the balance optimistically", async () => {
 		const txService = new SharedTransactionService(db as never, aliceRef);
 		const { transaction } = await txService.create(makeCreateInput());
 
-		// Bob accepts
+		// Bob accepts (standalone expense is already auto-accepted; idempotent)
 		const verifyService = new VerificationService(db as never, bobRef);
 		await verifyService.accept(transaction.id);
 
-		// Bob initiates a settlement toward alice (PROPOSED, not yet confirmed)
-		// We manually insert a PROPOSED settlement to verify it's excluded from balance
+		// Bob owes alice $50 before any settlement.
+		const before = await computeBalance(db as never, aliceRef, bobRef);
+		expect(before.byCurrency).toEqual({ USD: 50 });
+
+		// Bob proposes a PARTIAL settlement toward alice (PROPOSED, not confirmed).
+		// PROPOSED settlements now count optimistically, so the displayed balance
+		// drops immediately rather than waiting for the payee to confirm.
 		db._stores.settlements.set("settle-proposed", {
 			id: "settle-proposed",
 			fromParticipantType: "user",
 			fromParticipantId: BOB,
 			toParticipantType: "user",
 			toParticipantId: ALICE,
-			amount: 50,
+			amount: 30,
 			currency: "USD",
-			status: "PROPOSED", // NOT FINALIZED
+			status: "PROPOSED",
 			confirmedByPayer: true,
 			confirmedByPayee: false,
 			initiatedAt: new Date(),
@@ -163,9 +184,9 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 			note: null,
 		});
 
-		// Balance should still show bob owes alice $50
+		// $50 owed minus the $30 optimistic settlement leaves $20.
 		const balance = await computeBalance(db as never, aliceRef, bobRef);
-		expect(balance.byCurrency).toEqual({ USD: 50 });
+		expect(balance.byCurrency).toEqual({ USD: 20 });
 	});
 
 	it("step 4: bob initiates settlement, alice confirms; balance becomes zero", async () => {
@@ -195,9 +216,10 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 		// No over-settlement warning (bob owes exactly $50)
 		expect(warning).toBeNull();
 
-		// Balance still shows bob owes $50 because settlement is PROPOSED, not FINALIZED
+		// The PROPOSED settlement already counts optimistically, so the displayed
+		// balance drops to zero right away (before the payee confirms).
 		const balanceDuring = await computeBalance(db as never, aliceRef, bobRef);
-		expect(balanceDuring.byCurrency).toEqual({ USD: 50 });
+		expect(balanceDuring.byCurrency).toEqual({});
 
 		// Alice confirms receipt of payment
 		const aliceSettlementService = new SettlementService(db as never, ALICE);
@@ -235,23 +257,26 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 		expect(balance.byCurrency).toEqual({ USD: 20 });
 	});
 
-	it("over-settlement: settlement warns when exceeding the balance", async () => {
+	it("over-settlement is blocked: settling more than owed is rejected", async () => {
 		const txService = new SharedTransactionService(db as never, aliceRef);
 		const { transaction } = await txService.create(makeCreateInput());
 		const verifyService = new VerificationService(db as never, bobRef);
 		await verifyService.accept(transaction.id);
 
-		// Bob tries to settle $60 when only $50 is owed
+		// Bob tries to settle $60 when only $50 is owed. Over-payment is now hard
+		// blocked (not just warned) because recording it would fabricate a reverse
+		// debt against the recipient.
 		const settlementService = new SettlementService(db as never, BOB);
-		const { settlement, warning } = await settlementService.initiateSettlement({
-			toParticipant: aliceRef,
-			amount: 60,
-			currency: "USD",
-		});
+		await expect(
+			settlementService.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 60,
+				currency: "USD",
+			}),
+		).rejects.toThrow("exceeds the outstanding balance");
 
-		expect(settlement).toBeDefined();
-		expect(warning).toBeTruthy();
-		expect(warning).toContain("10.00"); // $10 excess
+		// No settlement record was written.
+		expect(db._stores.settlements.size).toBe(0);
 	});
 });
 
@@ -311,9 +336,31 @@ describe("Suite 1B: Rejection flow: reject -> edit -> re-accept", () => {
 		expect(second.rejectionPendingNotification).toBe(false);
 	});
 
-	it("alice edits the expense; bob's status resets to PENDING", async () => {
+	it("alice edits the expense in a manual-approval project; bob's status resets to PENDING", async () => {
+		// Reset-to-PENDING on edit only happens when the project requires manual
+		// approval (autoAcceptSplits off). In an auto-accept project or a standalone
+		// expense, an edit re-accepts non-actor splits automatically instead.
+		const project = addProject(db, {
+			createdById: ALICE,
+			autoAcceptSplits: false,
+		});
+		addProjectParticipant(db, {
+			projectId: project.id,
+			participantType: "user",
+			participantId: ALICE,
+			role: "ORGANIZER",
+		});
+		addProjectParticipant(db, {
+			projectId: project.id,
+			participantType: "user",
+			participantId: BOB,
+			role: "CONTRIBUTOR",
+		});
+
 		const txService = new SharedTransactionService(db as never, aliceRef);
-		const { transaction } = await txService.create(makeCreateInput());
+		const { transaction } = await txService.create(
+			makeCreateInput({ projectId: project.id }),
+		);
 
 		const verifyService = new VerificationService(db as never, bobRef);
 		await verifyService.reject(transaction.id, "Amount looks wrong");
@@ -353,9 +400,30 @@ describe("Suite 1B: Rejection flow: reject -> edit -> re-accept", () => {
 		expect(editAudit).toBeDefined();
 	});
 
-	it("alice edits with new splits; old split participants are replaced, bob is PENDING", async () => {
+	it("alice edits with new splits in a manual-approval project; old splits are replaced, bob is PENDING", async () => {
+		// As above, resetting bob to PENDING on edit requires a manual-approval
+		// project; a standalone/auto-accept expense would AUTO_ACCEPT the new split.
+		const project = addProject(db, {
+			createdById: ALICE,
+			autoAcceptSplits: false,
+		});
+		addProjectParticipant(db, {
+			projectId: project.id,
+			participantType: "user",
+			participantId: ALICE,
+			role: "ORGANIZER",
+		});
+		addProjectParticipant(db, {
+			projectId: project.id,
+			participantType: "user",
+			participantId: BOB,
+			role: "CONTRIBUTOR",
+		});
+
 		const txService = new SharedTransactionService(db as never, aliceRef);
-		const { transaction } = await txService.create(makeCreateInput());
+		const { transaction } = await txService.create(
+			makeCreateInput({ projectId: project.id }),
+		);
 
 		const verifyService = new VerificationService(db as never, bobRef);
 		await verifyService.reject(transaction.id, "Amount looks wrong");
@@ -562,18 +630,22 @@ describe("Suite 1E: Shadow profile participants", () => {
 		const marcusSplit = result.transaction.splitParticipants.find(
 			(sp: { participantId: string }) => sp.participantId === "shadow-marcus",
 		);
-		// Shadow profiles start PENDING (they can't verify themselves)
-		expect(marcusSplit?.verificationStatus).toBe("PENDING");
+		// A shadow (ghost) is ALWAYS AUTO_ACCEPTED: it has no account or session and
+		// can never tap "accept", so leaving it PENDING would strand the split forever.
+		expect(marcusSplit?.verificationStatus).toBe("AUTO_ACCEPTED");
 	});
 
-	it("alice can settle with a shadow profile", async () => {
+	it("alice can settle a debt she owes a shadow profile", async () => {
 		const marcusRef = makeShadowRef("shadow-marcus");
 		const txService = new SharedTransactionService(db as never, aliceRef);
+		// Marcus (the shadow) paid, so alice owes marcus her $50 share. Alice can
+		// then record paying marcus back. (Alice cannot record a payment TO marcus
+		// when marcus owes HER: that would over-settle and is now blocked.)
 		await txService.create(
-			makeCreateInput({ splitWith: [aliceRef, marcusRef] }),
+			makeCreateInput({ paidBy: marcusRef, splitWith: [aliceRef, marcusRef] }),
 		);
 
-		// Alice settles on behalf of marcus
+		// Alice records that she paid marcus back.
 		const settlementService = new SettlementService(db as never, ALICE);
 		const { settlement } = await settlementService.initiateSettlement({
 			toParticipant: marcusRef,
@@ -581,9 +653,10 @@ describe("Suite 1E: Shadow profile participants", () => {
 			currency: "USD",
 		});
 
-		// Shadow profiles can't confirm, but the settlement was created
+		// A shadow can't confirm, so the settlement auto-finalizes on creation.
 		expect(settlement.toParticipantType).toBe("shadow");
 		expect(settlement.toParticipantId).toBe("shadow-marcus");
+		expect(settlement.status).toBe("FINALIZED");
 	});
 
 	it("settlement with non-existent shadow profile throws", async () => {
@@ -628,11 +701,13 @@ describe("Suite 1F: Concurrent verification: two users accept simultaneously", (
 		expect(bobResult.computedStatus).toBe("active");
 		expect(carolResult.computedStatus).toBe("active");
 
-		// All participants now ACCEPTED
+		// All participants are in an accepted state (the standalone expense
+		// auto-accepts, so non-payers are AUTO_ACCEPTED; the payer is ACCEPTED).
 		expect(
 			carolResult.splitParticipants.every(
 				(sp: { verificationStatus: string }) =>
-					sp.verificationStatus === "ACCEPTED",
+					sp.verificationStatus === "ACCEPTED" ||
+					sp.verificationStatus === "AUTO_ACCEPTED",
 			),
 		).toBe(true);
 	});
@@ -649,8 +724,9 @@ describe("Suite 1G: Create then immediately delete", () => {
 		// Splits were created
 		expect(db._stores.splits.size).toBe(2);
 
-		// Delete immediately
-		await txService.delete(transaction.id);
+		// Delete immediately. The fresh expense has an unsettled balance, so
+		// acknowledge it; this test verifies clean cascade deletion, not the guard.
+		await txService.delete(transaction.id, true);
 
 		// Transaction and all splits are gone
 		expect(db._stores.transactions.size).toBe(0);
