@@ -12,6 +12,10 @@ import {
 } from "./project-permissions";
 import { type ParticipantRef, sameParticipant } from "./types";
 import { resolveVerification } from "./auto-accept";
+import {
+	resolveSplits,
+	SplitComputationError,
+} from "~/lib/shared-split-computation";
 
 type AppDb = PrismaClient;
 
@@ -1042,201 +1046,31 @@ export class SharedTransactionService {
 		return resolveVerification(p, actor, projectAutoAccept);
 	}
 
+	/**
+	 * Resolves the concrete per-participant split rows. Delegates to the shared
+	 * pure {@link resolveSplits} utility (the same code the client preview uses,
+	 * so the preview matches what is saved) and translates its validation errors
+	 * into TRPCErrors for the API layer.
+	 */
 	private computeSplits(
 		amount: number,
 		splitWith: SplitParticipantInput[],
 		splitMode: SplitModeType,
 		paidBy: ParticipantRef,
 	): SplitParticipantInput[] {
-		if (splitMode === "EQUAL") {
-			return this.computeEqualSplits(amount, splitWith, paidBy);
-		}
-		if (splitMode === "EXACT") {
-			return this.computeExactSplits(amount, splitWith);
-		}
-		if (splitMode === "PERCENTAGE") {
-			return this.computePercentageSplits(amount, splitWith, paidBy);
-		}
-		return this.computeSharesSplits(amount, splitWith, paidBy);
-	}
-
-	private computeEqualSplits(
-		amount: number,
-		splitWith: SplitParticipantInput[],
-		paidBy: ParticipantRef,
-	): SplitParticipantInput[] {
-		const count = splitWith.length;
-		// Use integer cents to avoid floating point issues
-		const totalCents = Math.round(amount * 100);
-		const baseCents = Math.floor(totalCents / count);
-		let remainder = totalCents - baseCents * count;
-
-		// Build result with base amounts
-		const result = splitWith.map((p) => ({
-			participantType: p.participantType,
-			participantId: p.participantId,
-			cents: baseCents,
-		}));
-
-		// Assign extra cents: payer first, then others in order
-		if (remainder > 0) {
-			const payerIdx = result.findIndex((r) => sameParticipant(r, paidBy));
-			if (payerIdx >= 0) {
-				result[payerIdx]!.cents += 1;
-				remainder -= 1;
-			}
-			for (let i = 0; i < result.length && remainder > 0; i++) {
-				if (i !== payerIdx) {
-					result[i]!.cents += 1;
-					remainder -= 1;
-				}
-			}
-		}
-
-		return result.map((r) => ({
-			participantType: r.participantType,
-			participantId: r.participantId,
-			shareAmount: r.cents / 100,
-		}));
-	}
-
-	private computeExactSplits(
-		amount: number,
-		splitWith: SplitParticipantInput[],
-	): SplitParticipantInput[] {
-		const totalCents = Math.round(amount * 100);
-		const sumCents = splitWith.reduce(
-			(sum, p) => sum + Math.round((p.shareAmount ?? 0) * 100),
-			0,
-		);
-
-		if (sumCents !== totalCents) {
-			const difference = Math.abs(amount - sumCents / 100);
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: `Split amounts must sum to the transaction amount. Expected ${amount}, got ${sumCents / 100} (difference: ${difference.toFixed(2)})`,
+		try {
+			return resolveSplits({
+				mode: splitMode,
+				amount,
+				participants: splitWith,
+				paidBy,
 			});
-		}
-
-		return splitWith.map((p) => ({
-			participantType: p.participantType,
-			participantId: p.participantId,
-			shareAmount: p.shareAmount!,
-		}));
-	}
-
-	private computePercentageSplits(
-		amount: number,
-		splitWith: SplitParticipantInput[],
-		paidBy: ParticipantRef,
-	): SplitParticipantInput[] {
-		// Validate all participants have sharePercentage
-		for (const p of splitWith) {
-			if (p.sharePercentage === undefined || p.sharePercentage === null) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: `Participant ${p.participantId} is missing sharePercentage for PERCENTAGE split mode`,
-				});
+		} catch (err) {
+			if (err instanceof SplitComputationError) {
+				throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
 			}
+			throw err;
 		}
-
-		const rawSum = splitWith.reduce((s, p) => s + p.sharePercentage!, 0);
-		if (rawSum < 99.99 || rawSum > 100.01) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: `Percentages must sum to 100. Got ${rawSum.toFixed(4)}`,
-			});
-		}
-
-		// Adjust last participant so percentages sum to exactly 100
-		const participants = splitWith.map((p) => ({ ...p }));
-		const othersSum = participants
-			.slice(0, -1)
-			.reduce((s, p) => s + p.sharePercentage!, 0);
-		participants[participants.length - 1]!.sharePercentage = 100 - othersSum;
-
-		// Compute amounts using integer cents, floor each
-		const totalCents = Math.round(amount * 100);
-		const result = participants.map((p) => ({
-			participantType: p.participantType,
-			participantId: p.participantId,
-			sharePercentage: p.sharePercentage!,
-			cents: Math.floor((totalCents * p.sharePercentage!) / 100),
-		}));
-
-		const sumCents = result.reduce((s, r) => s + r.cents, 0);
-		const remainder = totalCents - sumCents;
-
-		if (Math.abs(remainder) > result.length) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Unexpected large rounding error in percentage split",
-			});
-		}
-
-		// Assign remainder cents to payer first
-		if (remainder !== 0) {
-			const payerIdx = result.findIndex((r) => sameParticipant(r, paidBy));
-			const idx = payerIdx >= 0 ? payerIdx : result.length - 1;
-			result[idx]!.cents += remainder;
-		}
-
-		return result.map((r) => ({
-			participantType: r.participantType,
-			participantId: r.participantId,
-			shareAmount: r.cents / 100,
-			sharePercentage: r.sharePercentage,
-		}));
-	}
-
-	private computeSharesSplits(
-		amount: number,
-		splitWith: SplitParticipantInput[],
-		paidBy: ParticipantRef,
-	): SplitParticipantInput[] {
-		// Validate all participants have positive integer shareUnits
-		for (const p of splitWith) {
-			if (!p.shareUnits || p.shareUnits < 1) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: `Participant ${p.participantId} must have shareUnits >= 1 for SHARES split mode`,
-				});
-			}
-		}
-
-		const totalUnits = splitWith.reduce((s, p) => s + p.shareUnits!, 0);
-		const totalCents = Math.round(amount * 100);
-
-		const result = splitWith.map((p) => ({
-			participantType: p.participantType,
-			participantId: p.participantId,
-			shareUnits: p.shareUnits!,
-			cents: Math.floor((totalCents * p.shareUnits!) / totalUnits),
-		}));
-
-		const sumCents = result.reduce((s, r) => s + r.cents, 0);
-		const remainder = totalCents - sumCents;
-
-		if (Math.abs(remainder) > result.length) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Unexpected large rounding error in shares split",
-			});
-		}
-
-		// Assign remainder cents to payer first
-		if (remainder !== 0) {
-			const payerIdx = result.findIndex((r) => sameParticipant(r, paidBy));
-			const idx = payerIdx >= 0 ? payerIdx : result.length - 1;
-			result[idx]!.cents += remainder;
-		}
-
-		return result.map((r) => ({
-			participantType: r.participantType,
-			participantId: r.participantId,
-			shareAmount: r.cents / 100,
-			shareUnits: r.shareUnits,
-		}));
 	}
 
 	private async runInTransaction<T>(
