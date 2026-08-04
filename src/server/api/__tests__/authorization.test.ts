@@ -75,14 +75,16 @@ const createTestCaller = createCallerFactory(testRouter);
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeSession(overrides: { role?: string; id?: string } = {}) {
+function makeSession(
+	overrides: { role?: string; id?: string; isActive?: boolean } = {},
+) {
 	return {
 		user: {
 			id: overrides.id ?? "user-1",
 			role: overrides.role ?? "USER",
 			email: "test@test.com",
 			name: "Test User",
-			isActive: true,
+			isActive: overrides.isActive ?? true,
 		},
 	} as never;
 }
@@ -136,10 +138,11 @@ describe("protectedProcedure", () => {
 		);
 	});
 
-	it("throws UNAUTHORIZED when user.isActive is false", async () => {
-		mockDb.user.findUnique.mockResolvedValue({ isActive: false });
+	it("throws UNAUTHORIZED when session.user.isActive is false", async () => {
+		// isActive comes from the better-auth session, not a DB lookup: an inactive
+		// user's session is rejected without touching the database.
 		const caller = createTestCaller({
-			session: makeSession(),
+			session: makeSession({ isActive: false }),
 			db: mockDb as never,
 			headers: new Headers(),
 		});
@@ -148,16 +151,19 @@ describe("protectedProcedure", () => {
 		);
 	});
 
-	it("throws UNAUTHORIZED when user does not exist in DB", async () => {
+	it("does not query the DB for isActive: trusts the session flag", async () => {
+		// The middleware reads isActive from the session, so an active session
+		// succeeds even if user.findUnique is never set up.
 		mockDb.user.findUnique.mockResolvedValue(null);
 		const caller = createTestCaller({
-			session: makeSession(),
+			session: makeSession({ isActive: true }),
 			db: mockDb as never,
 			headers: new Headers(),
 		});
-		await expect(callAndFlush(() => caller.protectedAction())).rejects.toThrow(
-			TRPCError,
-		);
+		await expect(
+			callAndFlush(() => caller.protectedAction()),
+		).resolves.toBe("ok");
+		expect(mockDb.user.findUnique).not.toHaveBeenCalled();
 	});
 
 	it("succeeds for active user with valid session", async () => {
@@ -332,11 +338,10 @@ describe("guestOrProtectedProcedure", () => {
 	});
 
 	it("inactive user falls through to guest token check", async () => {
-		// When the user in the session is inactive, the middleware falls through to
-		// the guest token path. With no guest token, it throws UNAUTHORIZED.
-		mockDb.user.findUnique.mockResolvedValue({ isActive: false });
+		// When the session's user is inactive, the middleware falls through to the
+		// guest token path. With no guest token, it throws UNAUTHORIZED.
 		const caller = createTestCaller({
-			session: makeSession(),
+			session: makeSession({ isActive: false }),
 			db: mockDb as never,
 			headers: new Headers(), // no guest token
 		});

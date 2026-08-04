@@ -125,8 +125,8 @@ describe("getFiscalMonthProgress", () => {
 	// Use July 2024 (summer, no DST transitions) for reliable day counting
 	describe("current period - July 2024 (DST-safe)", () => {
 		it(
-			// BUG: daysInPeriod formula uses Math.round(~30.999) + 1 = 32 instead of 31.
-			// Math.floor + 1 would be correct. Correct value for July is 31.
+			// July has 31 days. daysInPeriod uses Math.floor(span) + 1 for the
+			// inclusive count (a prior Math.round variant produced 32).
 			"calculates correct daysInPeriod for July (startDay=1)",
 			() => {
 				const now = new Date(2024, 6, 15);
@@ -144,9 +144,7 @@ describe("getFiscalMonthProgress", () => {
 		});
 
 		it(
-			// BUG: daysRemaining = max(0, daysInPeriod - currentDay + 1). If daysInPeriod is
-			// incorrectly 32 (bug above), then daysRemaining = 32 - 15 + 1 = 18, not 17.
-			// Correct: 31 - 15 + 1 = 17.
+			// daysRemaining = max(0, daysInPeriod - currentDay + 1) = 31 - 15 + 1 = 17.
 			"calculates daysRemaining correctly (Jul 15, 31-day period)",
 			() => {
 				const now = new Date(2024, 6, 15);
@@ -164,7 +162,7 @@ describe("getFiscalMonthProgress", () => {
 		});
 
 		it(
-			// BUG: same daysInPeriod off-by-one bug. Jul 15 to Aug 14 = 31 days, not 32.
+			// Jul 15 to Aug 14 inclusive = 31 days.
 			"calculates 31-day fiscal period (startDay=15, July)",
 			() => {
 				const now = new Date(2024, 6, 20);

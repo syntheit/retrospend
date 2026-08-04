@@ -85,13 +85,17 @@ describe("StatsService", () => {
 		});
 
 		it("projectedSpend uses average of last 3 months with positive spend", async () => {
-			// Current: 0, last month: 0, historicals: 100, 200, 300
+			// Current + last month are 0 (via aggregate). The 3 historical months come
+			// from a single batched groupBy over their date range: Dec/Nov/Oct 2022
+			// relative to PAST_MONTH (2023-01), each bucketed by its fiscal range.
 			db.expense.aggregate
 				.mockResolvedValueOnce(makeAggregate(0)) // current
-				.mockResolvedValueOnce(makeAggregate(0)) // last month
-				.mockResolvedValueOnce(makeAggregate(100)) // hist month 1
-				.mockResolvedValueOnce(makeAggregate(200)) // hist month 2
-				.mockResolvedValueOnce(makeAggregate(300)); // hist month 3
+				.mockResolvedValueOnce(makeAggregate(0)); // last month
+			db.expense.groupBy.mockResolvedValue([
+				{ date: new Date("2022-12-15"), _sum: { amountInUSD: 100 } },
+				{ date: new Date("2022-11-15"), _sum: { amountInUSD: 200 } },
+				{ date: new Date("2022-10-15"), _sum: { amountInUSD: 300 } },
+			]);
 			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
@@ -104,10 +108,12 @@ describe("StatsService", () => {
 			// Historicals: 100, 0 (excluded), 300 → average = (100+300)/2 = 200
 			db.expense.aggregate
 				.mockResolvedValueOnce(makeAggregate(0)) // current
-				.mockResolvedValueOnce(makeAggregate(0)) // last month
-				.mockResolvedValueOnce(makeAggregate(100)) // hist 1
-				.mockResolvedValueOnce(makeAggregate(0)) // hist 2: zero, excluded
-				.mockResolvedValueOnce(makeAggregate(300)); // hist 3
+				.mockResolvedValueOnce(makeAggregate(0)); // last month
+			db.expense.groupBy.mockResolvedValue([
+				{ date: new Date("2022-12-15"), _sum: { amountInUSD: 100 } },
+				// Nov 2022 has no rows -> zero total -> excluded from the average.
+				{ date: new Date("2022-10-15"), _sum: { amountInUSD: 300 } },
+			]);
 			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");

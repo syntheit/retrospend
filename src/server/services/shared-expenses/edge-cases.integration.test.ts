@@ -90,8 +90,9 @@ describe("Edge Case 1: Delete only shared transaction: person disappears from pe
 		const balanceBefore = await computeBalance(db as never, aliceRef, bobRef);
 		expect(balanceBefore.byCurrency).toEqual({ USD: 50 });
 
-		// Delete the transaction
-		await txService.delete(transaction.id);
+		// Delete the transaction. It has an unsettled balance, so acknowledge it;
+		// this test asserts the post-deletion state, not the balance guard itself.
+		await txService.delete(transaction.id, true);
 
 		// After deletion, no financial relationship remains
 		const balanceAfter = await computeBalance(db as never, aliceRef, bobRef);
@@ -130,7 +131,8 @@ describe("Edge Case 2: Delete all transactions in a project", () => {
 		const { transaction } = await createExpense(db, aliceRef, {
 			projectId: project.id,
 		});
-		await txService.delete(transaction.id);
+		// Unsettled balance present; acknowledge it (test asserts empty project state).
+		await txService.delete(transaction.id, true);
 
 		// Project still exists
 		expect(db._stores.projects.get(project.id)).toBeDefined();
@@ -860,8 +862,8 @@ describe("Edge Case 15: Verify a deleted transaction: NOT_FOUND", () => {
 			splitMode: "EQUAL",
 		});
 
-		// Delete immediately
-		await txService.delete(transaction.id);
+		// Delete immediately (acknowledge the unsettled balance guard).
+		await txService.delete(transaction.id, true);
 
 		// Bob tries to accept; should get NOT_FOUND
 		const verifyService = new VerificationService(db as never, bobRef);

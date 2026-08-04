@@ -80,6 +80,7 @@ export interface ProjectRecord {
 	billingCloseReminderDays: number;
 	billingClosePermission: string;
 	visibility: string;
+	autoAcceptSplits: boolean;
 	budgetAmount: number | null;
 	budgetCurrency: string | null;
 	updatedAt: Date;
@@ -516,6 +517,19 @@ export function createStatefulDb() {
 						if (
 							w.verificationStatus !== undefined &&
 							sp.verificationStatus !== w.verificationStatus
+						)
+							return false;
+
+						// NOT: { participantType, participantId } excludes the actor's own
+						// split (used by the edit path to re-verify only OTHER participants).
+						const notClause = w.NOT as
+							| { participantType?: string; participantId?: string }
+							| undefined;
+						if (
+							notClause?.participantType !== undefined &&
+							notClause?.participantId !== undefined &&
+							sp.participantType === notClause.participantType &&
+							sp.participantId === notClause.participantId
 						)
 							return false;
 
@@ -1043,6 +1057,7 @@ export function createStatefulDb() {
 					billingClosePermission:
 						args.data.billingClosePermission ?? "ORGANIZER_ONLY",
 					visibility: args.data.visibility ?? "PRIVATE",
+					autoAcceptSplits: args.data.autoAcceptSplits ?? true,
 					budgetAmount: args.data.budgetAmount ?? null,
 					budgetCurrency: args.data.budgetCurrency ?? null,
 					updatedAt: new Date(),
@@ -1474,6 +1489,7 @@ export function addProject(
 		billingClosePermission:
 			overrides.billingClosePermission ?? "ORGANIZER_ONLY",
 		visibility: overrides.visibility ?? "PRIVATE",
+		autoAcceptSplits: overrides.autoAcceptSplits ?? true,
 		budgetAmount: overrides.budgetAmount ?? null,
 		budgetCurrency: overrides.budgetCurrency ?? null,
 		updatedAt: new Date(),

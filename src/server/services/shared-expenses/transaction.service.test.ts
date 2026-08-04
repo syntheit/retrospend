@@ -32,6 +32,10 @@ function createMockDb() {
 			createMany: vi.fn(),
 			deleteMany: vi.fn(),
 			updateMany: vi.fn(),
+			// The update path reads the current non-actor participants to decide
+			// which to auto-accept vs reset. Default to none; tests that exercise
+			// the split-unchanged branch set their own rows.
+			findMany: vi.fn().mockResolvedValue([]),
 		},
 		auditLogEntry: {
 			create: vi.fn().mockResolvedValue({ id: "audit-1" }),
@@ -122,10 +126,13 @@ describe("SharedTransactionService", () => {
 			expect(splits[1].shareAmount).toBe(30);
 			expect(splits[2].shareAmount).toBe(30);
 
-			// Creator's split is auto-accepted
+			// Creator's split is ACCEPTED (they authored it). This is a standalone
+			// expense (no project), so it auto-accepts: the other participants are
+			// AUTO_ACCEPTED, not PENDING. Manual approval only applies to a project
+			// that has autoAcceptSplits turned off.
 			expect(splits[0].verificationStatus).toBe("ACCEPTED");
-			expect(splits[1].verificationStatus).toBe("PENDING");
-			expect(splits[2].verificationStatus).toBe("PENDING");
+			expect(splits[1].verificationStatus).toBe("AUTO_ACCEPTED");
+			expect(splits[2].verificationStatus).toBe("AUTO_ACCEPTED");
 
 			// Audit log was created
 			expect(txClient.auditLogEntry.create).toHaveBeenCalled();
@@ -314,7 +321,7 @@ describe("SharedTransactionService", () => {
 			).rejects.toThrow("Settled transactions cannot be modified");
 		});
 
-		it("description-only edit resets verification via updateMany", async () => {
+		it("description-only edit re-accepts non-actor splits via updateMany (auto-accept expense)", async () => {
 			const { db, txClient } = createMockDb();
 			const existing = {
 				id: "txn-1",
@@ -354,6 +361,11 @@ describe("SharedTransactionService", () => {
 				...existing,
 				description: "Dinner at Sotto",
 			});
+			// Split-unchanged branch reads the current non-actor participants to
+			// classify them; here only bob (a real user) is non-actor.
+			txClient.splitParticipant.findMany.mockResolvedValue([
+				{ id: "sp-bob", participantType: "user" },
+			]);
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
@@ -364,18 +376,16 @@ describe("SharedTransactionService", () => {
 				description: "Dinner at Sotto",
 			});
 
-			// Splits did not change, so verification is reset via updateMany
+			// Splits did not change structurally, so verification is refreshed via
+			// updateMany. This is a standalone (auto-accept) expense, so the non-actor
+			// participant is re-accepted as AUTO_ACCEPTED, not reset to PENDING.
+			// Manual reset to PENDING only happens when the project turns auto-accept
+			// off (covered by the integration lifecycle suite).
 			expect(txClient.splitParticipant.updateMany).toHaveBeenCalledWith({
-				where: {
-					transactionId: "txn-1",
-					NOT: {
-						participantType: "user",
-						participantId: "alice",
-					},
-				},
+				where: { id: { in: ["sp-bob"] } },
 				data: {
-					verificationStatus: "PENDING",
-					verifiedAt: null,
+					verificationStatus: "AUTO_ACCEPTED",
+					verifiedAt: expect.any(Date),
 					rejectionReason: null,
 				},
 			});
@@ -383,12 +393,14 @@ describe("SharedTransactionService", () => {
 			// deleteMany should NOT have been called (splits unchanged)
 			expect(txClient.splitParticipant.deleteMany).not.toHaveBeenCalled();
 
-			// Audit log has title diff
+			// Audit log records the description change. The audit "changes" payload
+			// is the field-level diff keyed by field name (description/amount/...),
+			// so it has a "description" key, not "title".
 			const firstAuditCall = txClient.auditLogEntry.create.mock.calls[0];
 			if (!firstAuditCall) throw new Error("Expected audit log to be created");
 			const auditCall = firstAuditCall[0];
 			expect(auditCall.data.action).toBe("EDITED");
-			expect(auditCall.data.changes).toHaveProperty("title");
+			expect(auditCall.data.changes).toHaveProperty("description");
 			expect(auditCall.data.changes.description).toEqual({
 				old: "Dinner",
 				new: "Dinner at Sotto",
