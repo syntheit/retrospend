@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	computePeriodOutstanding,
 	computeSettlementPlan,
 	type SettlementForPlan,
 	type TxForSettlement,
@@ -417,5 +418,72 @@ describe("computeSettlementPlan", () => {
 		expect(Math.round((received.bob ?? 0) * 100)).toBe(2000);
 		expect(Math.round((paid.carol ?? 0) * 100)).toBe(2500);
 		expect(Math.round((paid.dave ?? 0) * 100)).toBe(2500);
+	});
+});
+
+// ── computePeriodOutstanding ──────────────────────────────────────────────────
+
+describe("computePeriodOutstanding", () => {
+	// Period 1: alice paid 100 for alice+bob => bob owes alice 50.
+	const p1 = [
+		tx("alice", 100, "USD", [
+			{ id: "alice", amount: 50 },
+			{ id: "bob", amount: 50 },
+		]),
+	];
+
+	it("is open when nothing has been paid", () => {
+		const open = computePeriodOutstanding(p1, []);
+		expect(open).toEqual([
+			{ participant: userRef("alice"), currency: "USD", amount: 50 },
+			{ participant: userRef("bob"), currency: "USD", amount: -50 },
+		]);
+	});
+
+	it("is settled once the period's debt is paid", () => {
+		expect(
+			computePeriodOutstanding(p1, [settlement("bob", "alice", 50, "USD")]),
+		).toEqual([]);
+	});
+
+	it("is still open after a partial payment", () => {
+		const open = computePeriodOutstanding(p1, [
+			settlement("bob", "alice", 20, "USD"),
+		]);
+		expect(open.map((o) => o.amount)).toEqual([30, -30]);
+	});
+
+	it("counts a payment that also covers a later period as covering this one first", () => {
+		// Bob paid 80: 50 for period 1 and 30 toward a later period.
+		expect(
+			computePeriodOutstanding(p1, [settlement("bob", "alice", 80, "USD")]),
+		).toEqual([]);
+	});
+
+	it("ignores payments between people who were even through this period", () => {
+		// carol and dave only appear later; their settle-up does not belong here,
+		// and it must not make period 1 look settled either.
+		const open = computePeriodOutstanding(
+			[
+				...p1,
+				tx("carol", 0, "USD", [
+					{ id: "carol", amount: 0 },
+					{ id: "dave", amount: 0 },
+				]),
+			],
+			[settlement("dave", "carol", 40, "USD")],
+		);
+		expect(open.map((o) => o.participant.participantId).sort()).toEqual([
+			"alice",
+			"bob",
+		]);
+	});
+
+	it("does not treat a payment in the other direction as settling the period", () => {
+		// alice paying bob (for something later) increases what bob owes her net.
+		const open = computePeriodOutstanding(p1, [
+			settlement("alice", "bob", 10, "USD"),
+		]);
+		expect(open.map((o) => o.amount)).toEqual([60, -60]);
 	});
 });

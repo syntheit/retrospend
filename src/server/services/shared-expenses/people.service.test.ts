@@ -8,6 +8,7 @@ vi.mock("~/server/storage", () => ({
 }));
 
 import {
+	addProject,
 	addUser,
 	createStatefulDb,
 	makeUserRef,
@@ -38,6 +39,7 @@ function addTransaction(
 		amount: number;
 		currency?: string;
 		date?: Date;
+		projectId?: string | null;
 	},
 ): string {
 	const id = `txn-${++txSeq}`;
@@ -52,7 +54,7 @@ function addTransaction(
 		createdByType: opts.paidBy.participantType,
 		createdById: opts.paidBy.participantId,
 		splitMode: "EXACT",
-		projectId: null,
+		projectId: opts.projectId ?? null,
 		billingPeriodId: null,
 		isLocked: false,
 		notes: null,
@@ -198,5 +200,103 @@ describe("PeopleService.getPersonDetail — payer-or-split involvement", () => {
 		expect(detail.total).toBe(2);
 		expect(detail.transactions).toHaveLength(2);
 		expect(detail.relationshipStats.transactionCount).toBe(2);
+	});
+});
+
+describe("PeopleService person detail: per-project balances", () => {
+	let db: Db;
+	const me = makeUserRef("me");
+	const them = makeUserRef("them");
+
+	beforeEach(() => {
+		txSeq = 0;
+		spSeq = 0;
+		db = createStatefulDb();
+		addUser(db, { id: "me", name: "Me" });
+		addUser(db, { id: "them", name: "Them" });
+	});
+
+	function addSettlement(projectId: string | null, amount: number) {
+		db._stores.settlements.set(`st-${db._stores.settlements.size + 1}`, {
+			id: `st-${db._stores.settlements.size + 1}`,
+			fromParticipantType: "user",
+			fromParticipantId: "them",
+			toParticipantType: "user",
+			toParticipantId: "me",
+			amount,
+			currency: "USD",
+			status: "FINALIZED",
+			confirmedByPayer: true,
+			confirmedByPayee: true,
+			initiatedAt: new Date(),
+			settledAt: new Date(),
+			convertedAmount: null,
+			convertedCurrency: null,
+			exchangeRateUsed: null,
+			paymentMethod: null,
+			note: null,
+			projectId,
+		});
+	}
+
+	it("subtracts each project's settlements from its pill and keeps the header total", async () => {
+		const trip = addProject(db, { createdById: "me", name: "Trip" });
+		const flat = addProject(db, { createdById: "me", name: "Flat" });
+		// Them owes me 40 in Trip and 10 in Flat.
+		addTransaction(db, {
+			paidBy: me,
+			amount: 40,
+			projectId: trip.id,
+			splits: [{ participantType: "user", participantId: "them", shareAmount: 40 }],
+		});
+		addTransaction(db, {
+			paidBy: me,
+			amount: 10,
+			projectId: flat.id,
+			splits: [{ participantType: "user", participantId: "them", shareAmount: 10 }],
+		});
+		// Them settled Trip in full.
+		addSettlement(trip.id, 40);
+
+		const service = new PeopleService(db as never, me);
+		for (const detail of [
+			await service.getPersonDetail(them),
+			await service.getPersonDetailCursor(them),
+		]) {
+			const byId = new Map(
+				(detail.projectBreakdown ?? []).map((p) => [p.projectId, p]),
+			);
+			expect(byId.get(trip.id)?.balances).toEqual([]);
+			expect(byId.get(flat.id)?.balances).toEqual([
+				{ balance: 10, currency: "USD", direction: "they_owe_you" },
+			]);
+			expect(detail.balances).toEqual([
+				{ balance: 10, currency: "USD", direction: "they_owe_you" },
+			]);
+		}
+	});
+
+	it("shows a direct settlement without direct expenses as its own bucket", async () => {
+		const trip = addProject(db, { createdById: "me", name: "Trip" });
+		addTransaction(db, {
+			paidBy: me,
+			amount: 40,
+			projectId: trip.id,
+			splits: [{ participantType: "user", participantId: "them", shareAmount: 40 }],
+		});
+		// A project-less settle-up (recorded before settlements were scoped).
+		addSettlement(null, 40);
+
+		const service = new PeopleService(db as never, me);
+		const detail = await service.getPersonDetail(them);
+		const byId = new Map(detail.projectBreakdown.map((p) => [p.projectId, p]));
+
+		expect(detail.balances).toEqual([]);
+		expect(byId.get(trip.id)?.balances).toEqual([
+			{ balance: 40, currency: "USD", direction: "they_owe_you" },
+		]);
+		expect(byId.get(null)?.balances).toEqual([
+			{ balance: 40, currency: "USD", direction: "you_owe_them" },
+		]);
 	});
 });

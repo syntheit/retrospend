@@ -65,9 +65,11 @@ export interface SettleUpDialogProps {
 	personName: string;
 	personAvatarUrl?: string | null;
 	/**
-	 * When set, the plan/cap and the created settlement are scoped to this
-	 * project (the per-project balance shown in the project view). Omitted (the
-	 * global People view) => global cap and a project-less settlement.
+	 * Scope of the settle-up. A projectId scopes the plan/cap and the created
+	 * settlement to that project (the per-project balance shown in the project
+	 * view). null = only the expenses outside any project. Omitted (the global
+	 * People view) = global cap, and the server allocates the payment across the
+	 * per-project balances so every project view stays in sync.
 	 */
 	projectId?: string | null;
 }
@@ -186,11 +188,13 @@ export function SettleUpDialog({
 	const compatible = methodMatch?.compatible ?? [];
 
 	const invalidateAfterSettle = () => {
-		void utils.people.detail.invalidate();
-		void utils.people.detailCursor.invalidate();
-		void utils.settlement.plan.invalidate();
-		void utils.settlement.history.invalidate();
-		void utils.people.list.invalidate();
+		void utils.people.invalidate();
+		void utils.settlement.invalidate();
+		// Project Balances/Summary/People tabs read settlements through project.*
+		// (settlementPlan, participantBalances, balancesFromPerspective). A global
+		// settle-up can touch several projects, so refresh them all.
+		void utils.project.invalidate();
+		void utils.billingPeriod.invalidate();
 	};
 
 	const createSettlement = api.settlement.create.useMutation({

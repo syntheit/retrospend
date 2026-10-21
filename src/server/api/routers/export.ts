@@ -148,23 +148,14 @@ async function fetchTxAndSettlements(
 
 	if (participants.length < 2) return { transactions, settlements: [] };
 
+	// Settlements are project-scoped (settlement.projectId): only this project's
+	// settle-ups reduce its balances, matching the project views. Matching on
+	// "both parties are participants" would pull in settlements made for other
+	// projects or for direct expenses between the same people.
 	const settlements = await db.settlement.findMany({
 		where: {
+			projectId,
 			status: "FINALIZED",
-			AND: [
-				{
-					OR: participants.map((p) => ({
-						fromParticipantType: p.participantType,
-						fromParticipantId: p.participantId,
-					})),
-				},
-				{
-					OR: participants.map((p) => ({
-						toParticipantType: p.participantType,
-						toParticipantId: p.participantId,
-					})),
-				},
-			],
 		},
 		select: {
 			fromParticipantType: true,

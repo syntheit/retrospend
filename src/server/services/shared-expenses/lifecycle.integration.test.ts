@@ -16,7 +16,7 @@ vi.mock("~/server/services/notifications", () => ({
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
 }));
 
-import { computeBalance } from "./balance";
+import { computeBalance, computeBalanceByProject } from "./balance";
 import { SettlementService } from "./settlement.service";
 import {
 	addProject,
@@ -896,8 +896,49 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		addSplit(ALICE, 0);
 	}
 
+	// Alice paid for bob: the reverse direction (alice owes bob `aliceShare`).
+	function seedAliceOwesBob(projectId: string | null, aliceShare: number) {
+		seedBobOwesAlice(projectId, 0);
+		const txId = `tx-${db._stores.transactions.size}`;
+		const tx = db._stores.transactions.get(txId)!;
+		db._stores.transactions.set(txId, {
+			...tx,
+			amount: aliceShare,
+			paidById: BOB,
+			createdById: BOB,
+		});
+		for (const [id, sp] of db._stores.splits) {
+			if (sp.transactionId !== txId) continue;
+			db._stores.splits.set(id, {
+				...sp,
+				shareAmount: sp.participantId === ALICE ? aliceShare : 0,
+			});
+		}
+	}
+
+	const settlementRows = () =>
+		[...db._stores.settlements.values()].map((s) => ({
+			projectId: s.projectId,
+			amount: Number(s.amount),
+		}));
+
 	beforeEach(() => {
 		db = createStatefulDb();
+		// alice, bob and the shadow used below participate in projects A and B.
+		for (const projectId of ["A", "B"]) {
+			for (const [participantType, participantId] of [
+				["user", ALICE],
+				["user", BOB],
+				["shadow", "shadow-x"],
+			] as const) {
+				addProjectParticipant(db, {
+					projectId,
+					participantType,
+					participantId,
+					role: "EDITOR",
+				});
+			}
+		}
 	});
 
 	it("settling within project A clears A, leaves B untouched, and reduces the global rollup by the settled amount", async () => {
@@ -967,6 +1008,177 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			// no projectId => global cap, project-less row
 		});
 		expect(db._stores.settlements.get(settlement.id)?.projectId).toBeNull();
+	});
+
+	it("global entry allocates the payment across projects and the direct bucket", async () => {
+		// bob owes alice $40 in A, $10 in B and $5 directly: $55 globally.
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice("B", 10);
+		seedBobOwesAlice(null, 5);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		const result = await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 55,
+			currency: "USD",
+		});
+
+		// One row per scope, each capped at that scope's debt.
+		expect(result.settlements).toHaveLength(3);
+		expect(settlementRows()).toEqual([
+			{ projectId: null, amount: 5 },
+			{ projectId: "B", amount: 10 },
+			{ projectId: "A", amount: 40 },
+		]);
+
+		// Every view agrees: each project and the global rollup are settled.
+		for (const projectScope of ["A", "B", null]) {
+			const scoped = await computeBalance(db as never, aliceRef, bobRef, {
+				projectScope,
+			});
+			expect(scoped.byCurrency).toEqual({});
+		}
+		const global = await computeBalance(db as never, aliceRef, bobRef);
+		expect(global.byCurrency).toEqual({});
+	});
+
+	it("partial global payment clears the smallest debts first and never over-pays a scope", async () => {
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice("B", 10);
+		seedBobOwesAlice(null, 5);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 12,
+			currency: "USD",
+		});
+
+		expect(settlementRows()).toEqual([
+			{ projectId: null, amount: 5 },
+			{ projectId: "B", amount: 7 },
+		]);
+		const byProject = await computeBalanceByProject(
+			db as never,
+			aliceRef,
+			bobRef,
+		);
+		expect(Object.fromEntries(byProject)).toEqual({
+			A: { USD: 40 },
+			B: { USD: 3 },
+		});
+	});
+
+	it("global payment with opposing project balances only pays down scopes that are owed", async () => {
+		// bob owes alice $40 in A; alice owes bob $15 in B. Globally bob owes $25.
+		seedBobOwesAlice("A", 40);
+		seedAliceOwesBob("B", 15);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		// The global cap still applies: $30 > $25 owed globally.
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 30,
+				currency: "USD",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 25,
+			currency: "USD",
+		});
+
+		// Only project A (where bob owes) receives the payment. B keeps its own
+		// genuine debt in the other direction, and the rollup is settled.
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 25 }]);
+		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(a.byCurrency).toEqual({ USD: 15 });
+		const b = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "B",
+		});
+		expect(b.byCurrency).toEqual({ USD: -15 });
+		const global = await computeBalance(db as never, aliceRef, bobRef);
+		expect(global.byCurrency).toEqual({});
+	});
+
+	it("global settleAll writes one row per scope", async () => {
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice(null, 5);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		const result = await bobSettle.settleAll({
+			toParticipant: aliceRef,
+			paymentCurrency: "USD",
+		});
+
+		expect(result.totalInPaymentCurrency).toBe(45);
+		expect(settlementRows()).toEqual([
+			{ projectId: null, amount: 5 },
+			{ projectId: "A", amount: 40 },
+		]);
+		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(a.byCurrency).toEqual({});
+	});
+
+	it("direct-only entry (projectId null) settles just the project-less bucket", async () => {
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice(null, 5);
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		// The direct bucket only holds $5, so $10 is an over-payment there.
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 10,
+				currency: "USD",
+				projectId: null,
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 5,
+			currency: "USD",
+			projectId: null,
+		});
+		expect(settlementRows()).toEqual([{ projectId: null, amount: 5 }]);
+	});
+
+	it("rejects a projectId the parties do not both belong to", async () => {
+		seedBobOwesAlice("A", 40);
+		const bobSettle = new SettlementService(db as never, BOB);
+
+		// Neither party is in project Z.
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 10,
+				currency: "USD",
+				projectId: "Z",
+			}),
+		).rejects.toThrow(/not a member of this project/);
+
+		// Bob is in project C but alice is not.
+		addProjectParticipant(db, {
+			projectId: "C",
+			participantType: "user",
+			participantId: BOB,
+			role: "EDITOR",
+		});
+		await expect(
+			bobSettle.settleAll({
+				toParticipant: aliceRef,
+				paymentCurrency: "USD",
+				projectId: "C",
+			}),
+		).rejects.toThrow(/not a participant of this project/);
+		expect(db._stores.settlements.size).toBe(0);
 	});
 
 	it("voidAutoFinalizedSettlement works on a scoped settlement to a non-user payee", async () => {

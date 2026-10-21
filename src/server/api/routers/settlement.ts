@@ -31,9 +31,13 @@ export const settlementRouter = createTRPCRouter({
 				exchangeRateUsed: z.number().positive().nullish(),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
-				// When set, the over-payment cap is computed in the same project
-				// scope and the settlement is stamped with this projectId. Omitted =>
-				// global cap and a project-less (direct/rollup) settlement.
+				// Scope of the settle-up:
+				//   string  => that project (cap + row stamped with projectId; both
+				//              parties must be project participants)
+				//   null    => the direct (project-less) bucket only
+				//   omitted => GLOBAL: global cap, and the payment is allocated
+				//              across the pair's per-project and direct debts, one
+				//              row per scope, so every view stays consistent.
 				projectId: z.string().min(1).nullish(),
 			}),
 		)
@@ -56,7 +60,7 @@ export const settlementRouter = createTRPCRouter({
 				paymentCurrency: z.string().min(1).max(10),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
-				// See create.projectId — scopes the settled balances and stamps rows.
+				// See create.projectId: same scoping and allocation rules.
 				projectId: z.string().min(1).nullish(),
 			}),
 		)
@@ -184,8 +188,8 @@ export const settlementRouter = createTRPCRouter({
 	plan: protectedProcedure
 		.input(
 			participantRefSchema.extend({
-				// See create.projectId — scopes the returned balances/plan. Omitted =>
-				// global balances (unchanged default for the cross-project People view).
+				// See create.projectId: scopes the returned balances/plan. Omitted =>
+				// global balances (the default for the cross-project People view).
 				projectId: z.string().min(1).nullish(),
 			}),
 		)

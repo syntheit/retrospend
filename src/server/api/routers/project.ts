@@ -2325,8 +2325,8 @@ export const projectRouter = createTRPCRouter({
  * Fetch transactions (with split participants) and FINALIZED settlements for
  * a project, optionally scoped to a billing period.
  *
- * Settlements are filtered to pairs where both participants appear in the
- * fetched transactions, so cross-project settlements don't bleed in.
+ * Settlements are filtered by projectId (settlements are project-scoped), so
+ * settle-ups made for other projects or direct expenses don't bleed in.
  */
 async function fetchProjectTransactionsAndSettlements(
 	db: PrismaClient,

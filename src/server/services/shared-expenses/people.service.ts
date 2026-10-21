@@ -2,7 +2,11 @@ import { TRPCError } from "@trpc/server";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
-import { computeBalance, computeBalanceBatch } from "./balance";
+import {
+	computeBalance,
+	computeBalanceBatch,
+	computeBalanceWithProjects,
+} from "./balance";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import type { ParticipantRef } from "./types";
@@ -443,7 +447,7 @@ export class PeopleService {
 				skip: (page - 1) * limit,
 				take: limit,
 			}),
-			computeBalance(this.db, this.currentUserRef, ref),
+			computeBalanceWithProjects(this.db, this.currentUserRef, ref),
 			this.resolveIdentity(ref),
 			// Lightweight query for stats + project breakdown (all transactions, no pagination)
 			this.db.sharedTransaction.findMany({
@@ -452,22 +456,6 @@ export class PeopleService {
 					date: true,
 					projectId: true,
 					project: { select: { id: true, name: true } },
-					currency: true,
-					paidByType: true,
-					paidById: true,
-					splitParticipants: {
-						where: {
-							OR: [...currentUserRefs, ...refAliases].map((r) => ({
-								participantType: r.participantType,
-								participantId: r.participantId,
-							})),
-						},
-						select: {
-							participantType: true,
-							participantId: true,
-							shareAmount: true,
-						},
-					},
 				},
 			}),
 			// Settlement count between the two people (across all claim aliases).
@@ -615,103 +603,12 @@ export class PeopleService {
 			direction: toDirection(balance),
 		}));
 
-		// Compute relationship stats and per-project breakdown from allTxnsSummary
-		let firstTransactionDate: Date | null = null;
-		const projectStatsMap = new Map<
-			string | null,
-			{
-				projectName: string | null;
-				transactionCount: number;
-				byCurrency: Record<string, number>;
-			}
-		>();
-		const distinctProjectIds = new Set<string>();
-
-		for (const tx of allTxnsSummary) {
-			// Track earliest date
-			if (!firstTransactionDate || tx.date < firstTransactionDate) {
-				firstTransactionDate = tx.date;
-			}
-			// Track distinct projects
-			if (tx.projectId) {
-				distinctProjectIds.add(tx.projectId);
-			}
-			// Per-project stats
-			const key = tx.projectId;
-			let entry = projectStatsMap.get(key);
-			if (!entry) {
-				entry = {
-					projectName: tx.project?.name ?? null,
-					transactionCount: 0,
-					byCurrency: {},
-				};
-				projectStatsMap.set(key, entry);
-			}
-			entry.transactionCount++;
-
-			const theirPart = tx.splitParticipants.find(
-				(sp) =>
-					sp.participantType === ref.participantType &&
-					sp.participantId === ref.participantId,
+		const { relationshipStats, projectBreakdown } =
+			this.computeStatsAndBreakdown(
+				allTxnsSummary,
+				settlementCount,
+				balanceResult.byProject,
 			);
-			const myPart = tx.splitParticipants.find(
-				(sp) =>
-					sp.participantType ===
-						this.currentUserRef.participantType &&
-					sp.participantId === this.currentUserRef.participantId,
-			);
-
-			const isPaidByMe =
-				tx.paidByType === this.currentUserRef.participantType &&
-				tx.paidById === this.currentUserRef.participantId;
-			const isPaidByThem =
-				tx.paidByType === ref.participantType &&
-				tx.paidById === ref.participantId;
-
-			if (isPaidByMe && theirPart) {
-				entry.byCurrency[tx.currency] =
-					(entry.byCurrency[tx.currency] ?? 0) +
-					Number(theirPart.shareAmount);
-			}
-			if (isPaidByThem && myPart) {
-				entry.byCurrency[tx.currency] =
-					(entry.byCurrency[tx.currency] ?? 0) -
-					Number(myPart.shareAmount);
-			}
-		}
-
-		const relationshipStats: RelationshipStats = {
-			firstTransactionDate,
-			transactionCount: allTxnsSummary.length,
-			projectCount: distinctProjectIds.size,
-			settlementCount,
-		};
-
-		const projectBreakdown: ProjectBreakdownItem[] = Array.from(
-			projectStatsMap.entries(),
-		)
-			.map(([projectId, data]) => ({
-				projectId,
-				projectName: data.projectName,
-				transactionCount: data.transactionCount,
-				balances: Object.entries(data.byCurrency)
-					.filter(
-						([, balance]) => Math.abs(balance) >= 0.00000001,
-					)
-					.map(([currency, balance]) => ({
-						balance: Math.abs(balance),
-						currency,
-						direction: toDirection(balance),
-					})),
-			}))
-			// Sort: projects with balances first, then by transaction count
-			.sort((a, b) => {
-				const aHasBalance = a.balances.length > 0;
-				const bHasBalance = b.balances.length > 0;
-				if (aHasBalance && !bHasBalance) return -1;
-				if (!aHasBalance && bHasBalance) return 1;
-				return b.transactionCount - a.transactionCount;
-			});
 
 		return {
 			identity,
@@ -835,7 +732,7 @@ export class PeopleService {
 				settlementCount,
 			] = await Promise.all([
 				rawTransactionsPromise,
-				computeBalance(this.db, this.currentUserRef, ref),
+				computeBalanceWithProjects(this.db, this.currentUserRef, ref),
 				this.resolveIdentity(ref),
 				this.db.sharedTransaction.findMany({
 					where: baseWhere,
@@ -843,22 +740,6 @@ export class PeopleService {
 						date: true,
 						projectId: true,
 						project: { select: { id: true, name: true } },
-						currency: true,
-						paidByType: true,
-						paidById: true,
-						splitParticipants: {
-							where: {
-								OR: [...currentUserRefs, ...refAliases].map((r) => ({
-									participantType: r.participantType,
-									participantId: r.participantId,
-								})),
-							},
-							select: {
-								participantType: true,
-								participantId: true,
-								shareAmount: true,
-							},
-						},
 					},
 				}),
 				this.db.settlement.count({
@@ -912,8 +793,8 @@ export class PeopleService {
 			const { relationshipStats, projectBreakdown } =
 				this.computeStatsAndBreakdown(
 					allTxnsSummary,
-					ref,
 					settlementCount,
+					balanceResult.byProject,
 				);
 
 			return {
@@ -1112,34 +993,26 @@ export class PeopleService {
 	}
 
 	/**
-	 * Computes relationship stats and per-project balance breakdown from a
-	 * summary of all transactions between two people.
+	 * Computes relationship stats and the per-project breakdown from a summary
+	 * of all transactions between two people.
+	 *
+	 * Per-project balances come from `byProject` (computeBalanceWithProjects):
+	 * alias-aware and net of that project's settlements, so a settled project
+	 * shows as even and the pills add up to the header balance.
 	 */
 	private computeStatsAndBreakdown(
 		allTxnsSummary: Array<{
 			date: Date;
 			projectId: string | null;
 			project: { id: string; name: string } | null;
-			currency: string;
-			paidByType: string;
-			paidById: string;
-			splitParticipants: Array<{
-				participantType: string;
-				participantId: string;
-				shareAmount: unknown;
-			}>;
 		}>,
-		ref: ParticipantRef,
 		settlementCount: number,
+		byProject: Map<string | null, Record<string, number>>,
 	): { relationshipStats: RelationshipStats; projectBreakdown: ProjectBreakdownItem[] } {
 		let firstTransactionDate: Date | null = null;
 		const projectStatsMap = new Map<
 			string | null,
-			{
-				projectName: string | null;
-				transactionCount: number;
-				byCurrency: Record<string, number>;
-			}
+			{ projectName: string | null; transactionCount: number }
 		>();
 		const distinctProjectIds = new Set<string>();
 
@@ -1156,41 +1029,17 @@ export class PeopleService {
 				entry = {
 					projectName: tx.project?.name ?? null,
 					transactionCount: 0,
-					byCurrency: {},
 				};
 				projectStatsMap.set(key, entry);
 			}
 			entry.transactionCount++;
+		}
 
-			const theirPart = tx.splitParticipants.find(
-				(sp) =>
-					sp.participantType === ref.participantType &&
-					sp.participantId === ref.participantId,
-			);
-			const myPart = tx.splitParticipants.find(
-				(sp) =>
-					sp.participantType ===
-						this.currentUserRef.participantType &&
-					sp.participantId === this.currentUserRef.participantId,
-			);
-
-			const isPaidByMe =
-				tx.paidByType === this.currentUserRef.participantType &&
-				tx.paidById === this.currentUserRef.participantId;
-			const isPaidByThem =
-				tx.paidByType === ref.participantType &&
-				tx.paidById === ref.participantId;
-
-			if (isPaidByMe && theirPart) {
-				entry.byCurrency[tx.currency] =
-					(entry.byCurrency[tx.currency] ?? 0) +
-					Number(theirPart.shareAmount);
-			}
-			if (isPaidByThem && myPart) {
-				entry.byCurrency[tx.currency] =
-					(entry.byCurrency[tx.currency] ?? 0) -
-					Number(myPart.shareAmount);
-			}
+		// A direct (project-less) balance can exist without direct expenses, e.g.
+		// a settle-up recorded before settlements were project-scoped. Show it so
+		// the pills still add up to the overall balance.
+		if (byProject.has(null) && !projectStatsMap.has(null)) {
+			projectStatsMap.set(null, { projectName: null, transactionCount: 0 });
 		}
 
 		const relationshipStats: RelationshipStats = {
@@ -1207,7 +1056,7 @@ export class PeopleService {
 				projectId,
 				projectName: data.projectName,
 				transactionCount: data.transactionCount,
-				balances: Object.entries(data.byCurrency)
+				balances: Object.entries(byProject.get(projectId) ?? {})
 					.filter(
 						([, balance]) => Math.abs(balance) >= 0.00000001,
 					)
@@ -1217,6 +1066,7 @@ export class PeopleService {
 						direction: toDirection(balance),
 					})),
 			}))
+			// Sort: projects with balances first, then by transaction count
 			.sort((a, b) => {
 				const aHasBalance = a.balances.length > 0;
 				const bHasBalance = b.balances.length > 0;
