@@ -16,6 +16,7 @@ import {
 import { notificationEmail } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
+import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
 import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
@@ -514,13 +515,13 @@ export const projectRouter = createTRPCRouter({
 					list.push(tx);
 				}
 
-				// 2. Batch fetch this batch of projects' FINALIZED settlements,
+				// 2. Batch fetch this batch of projects' counted settlements,
 				// scoped by projectId (settlements are project-scoped now), and group
 				// them by project.
 				const allSettlements = await ctx.db.settlement.findMany({
 					where: {
 						projectId: { in: multiParticipantWithTxIds },
-						status: "FINALIZED",
+						status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 					},
 					select: {
 						projectId: true,
@@ -2411,7 +2412,8 @@ export const projectRouter = createTRPCRouter({
 // ── shared data fetcher ───────────────────────────────────────────────────────
 
 /**
- * Fetch transactions (with split participants) and FINALIZED settlements for
+ * Fetch transactions (with split participants) and counted settlements
+ * (BALANCE_SETTLEMENT_STATUSES) for
  * a project, optionally scoped to a billing period.
  *
  * Settlements are filtered by projectId (settlements are project-scoped), so
@@ -2474,14 +2476,14 @@ async function fetchProjectTransactionsAndSettlements(
 		return { transactions, settlements: [] };
 	}
 
-	// Fetch this project's FINALIZED settlements. Settlements are now
+	// Fetch this project's counted settlements. Settlements are now
 	// project-scoped (settlement.projectId), so filter by projectId instead of by
 	// "both parties are project participants". This keeps computeSettlementPlan and
 	// participantBalances consistent with the per-project balances shown in the UI.
 	const settlements = await db.settlement.findMany({
 		where: {
 			projectId,
-			status: "FINALIZED",
+			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 		},
 		select: {
 			fromParticipantType: true,

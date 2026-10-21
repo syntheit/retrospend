@@ -17,7 +17,7 @@ export interface TxForSettlement {
 	}>;
 }
 
-/** Minimal settlement row. Only pass FINALIZED settlements. */
+/** Minimal settlement row. Only pass settlements in BALANCE_SETTLEMENT_STATUSES. */
 export interface SettlementForPlan {
 	fromParticipantType: ParticipantType;
 	fromParticipantId: string;
@@ -93,7 +93,7 @@ const ZERO_TOLERANCE = 0.005;
  *
  * @param transactions  Transactions with their split participants. Must be
  *                      pre-filtered to the desired project/period scope.
- * @param existingSettlements  FINALIZED settlements between project participants.
+ * @param existingSettlements  Counted settlements (BALANCE_SETTLEMENT_STATUSES) between project participants.
  *                             These reduce the remaining balances before computing
  *                             the plan.
  */
@@ -138,7 +138,7 @@ export function computeSettlementPlan(
 			}
 		}
 
-		// Subtract FINALIZED settlements between project participants.
+		// Subtract counted settlements between project participants.
 		// Settlement from P→Q: P paid Q, so P's net goes up, Q's net goes down.
 		const settlementOut = new Map<string, number>(); // paid out by key
 		const settlementIn = new Map<string, number>(); // received by key
@@ -259,7 +259,7 @@ export interface PeriodOutstanding {
  *
  * @param throughPeriodTxs  Expenses of this period AND every earlier period
  *                          (plus project expenses without a period).
- * @param settlements       All FINALIZED settlements of the project.
+ * @param settlements       All counted settlements (BALANCE_SETTLEMENT_STATUSES) of the project.
  * @returns The participants that are still open, largest first. Empty = settled.
  */
 export function computePeriodOutstanding(
