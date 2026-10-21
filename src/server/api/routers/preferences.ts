@@ -16,7 +16,6 @@ export const preferencesRouter = createTRPCRouter({
 		.input(
 			z.object({
 				page: z.enum([
-					"DASHBOARD",
 					"BUDGET",
 					"ANALYTICS",
 					"WEALTH",
@@ -39,7 +38,6 @@ export const preferencesRouter = createTRPCRouter({
 		.input(
 			z.object({
 				page: z.enum([
-					"DASHBOARD",
 					"BUDGET",
 					"ANALYTICS",
 					"WEALTH",
@@ -55,27 +53,6 @@ export const preferencesRouter = createTRPCRouter({
 				settings: z
 					.object({
 						version: z.number().optional(),
-						// Dashboard v2 layout
-						layout: z
-							.array(
-								z.object({
-									id: z.string(),
-									visible: z.boolean(),
-									size: z.enum(["xs", "sm", "md", "lg"]),
-									order: z.number(),
-								}),
-							)
-							.optional(),
-						// Dashboard v1 (legacy)
-						widgets: z
-							.object({
-								spendComposition: z.object({ visible: z.boolean() }).optional(),
-								monthlyPacing: z.object({ visible: z.boolean() }).optional(),
-								categoryTrends: z.object({ visible: z.boolean() }).optional(),
-								recentExpenses: z.object({ visible: z.boolean() }).optional(),
-								wealthAllocation: z.object({ visible: z.boolean() }).optional(),
-							})
-							.optional(),
 						categoryPreferences: z
 							.record(z.string(), z.object({ isFlexible: z.boolean() }))
 							.optional(),

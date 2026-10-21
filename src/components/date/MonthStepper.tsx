@@ -1,6 +1,5 @@
 "use client";
 
-import { addMonths, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +10,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
+import { shiftMonth } from "~/lib/fiscal-month";
 import { cn } from "~/lib/utils";
 
 interface MonthStepperProps {
@@ -65,26 +65,26 @@ export function MonthStepper({
 
 	const canGoForward = useMemo(() => {
 		if (!value) return false;
-		const nextMonth = addMonths(value, 1);
+		const nextMonth = shiftMonth(value, 1);
 		return nextMonth <= effectiveMaxDate;
 	}, [value, effectiveMaxDate]);
 
 	const canGoBackward = useMemo(() => {
 		if (!value) return false;
 		if (!minDate) return true;
-		const prevMonth = subMonths(value, 1);
+		const prevMonth = shiftMonth(value, -1);
 		return prevMonth >= minDate;
 	}, [value, minDate]);
 
 	const handlePrevious = useCallback(() => {
 		if (value && canGoBackward) {
-			onChange(subMonths(value, 1));
+			onChange(shiftMonth(value, -1));
 		}
 	}, [value, onChange, canGoBackward]);
 
 	const handleNext = useCallback(() => {
 		if (value && canGoForward) {
-			onChange(addMonths(value, 1));
+			onChange(shiftMonth(value, 1));
 		}
 	}, [value, onChange, canGoForward]);
 

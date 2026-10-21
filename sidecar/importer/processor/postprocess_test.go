@@ -2,6 +2,7 @@ package processor
 
 import (
 	"fmt"
+	"math"
 	"retrospend-sidecar/importer/models"
 	"strings"
 	"testing"
@@ -77,14 +78,62 @@ func TestApplyExchangeRates_EmptyDefaultCurrency(t *testing.T) {
 }
 
 func TestApplyExchangeRates_ZeroAmountDivisionGuard(t *testing.T) {
-	// Amount=0 with a non-zero OriginalAmount: rate should default to 1.0
+	// Amount=0 with a non-zero OriginalAmount: the rate is unknown (0), never 1
 	txs := []models.NormalizedTransaction{
 		{Title: "Zero", Amount: 0, OriginalAmount: 500, OriginalCurrency: "EUR"},
 	}
 	ApplyExchangeRates(txs, "USD")
 
-	if txs[0].ExchangeRate != 1.0 {
-		t.Errorf("expected ExchangeRate=1.0 (division-by-zero guard), got %.6f", txs[0].ExchangeRate)
+	if txs[0].ExchangeRate != 0 || txs[0].AmountInUSD != 0 {
+		t.Errorf("expected unknown rate and USD value, got rate %.6f usd %.2f", txs[0].ExchangeRate, txs[0].AmountInUSD)
+	}
+}
+
+func TestApplyExchangeRates_CryptoOriginalUsesUSDPerCoin(t *testing.T) {
+	txs := []models.NormalizedTransaction{
+		{Title: "Exchange", Amount: 600, OriginalAmount: 0.01, OriginalCurrency: "BTC"},
+	}
+	ApplyExchangeRates(txs, "USD")
+
+	tx := txs[0]
+	if tx.Currency != "BTC" || tx.Amount != 0.01 || tx.AmountInUSD != 600 {
+		t.Fatalf("unexpected transaction %+v", tx)
+	}
+	// 600 USD for 0.01 BTC: 60000 USD per coin, not 0.0000167 coins per USD
+	if math.Abs(tx.ExchangeRate-60000) > 1e-6 {
+		t.Errorf("expected ExchangeRate=60000, got %.10f", tx.ExchangeRate)
+	}
+}
+
+func TestApplyExchangeRates_NonUSDStatementLeavesRateUnknown(t *testing.T) {
+	txs := []models.NormalizedTransaction{
+		{Title: "Super", Amount: 25000},
+		{Title: "Netflix", Amount: 15000, OriginalAmount: 10, OriginalCurrency: "USD"},
+		{Title: "Hotel", Amount: 150000, OriginalAmount: 90, OriginalCurrency: "EUR"},
+	}
+	ApplyExchangeRates(txs, "ARS")
+
+	if txs[0].Currency != "ARS" || txs[0].ExchangeRate != 0 || txs[0].AmountInUSD != 0 {
+		t.Errorf("ARS charge: expected unknown rate (never 1), got %+v", txs[0])
+	}
+	if txs[1].Currency != "USD" || txs[1].ExchangeRate != 1 || txs[1].AmountInUSD != 10 {
+		t.Errorf("USD charge on an ARS statement: expected 10 USD at rate 1, got %+v", txs[1])
+	}
+	if txs[2].Currency != "EUR" || txs[2].Amount != 90 || txs[2].ExchangeRate != 0 || txs[2].AmountInUSD != 0 {
+		t.Errorf("EUR charge on an ARS statement: expected unknown rate, got %+v", txs[2])
+	}
+}
+
+func TestApplyExchangeRates_NonUSDStatementCreditsStillFiltered(t *testing.T) {
+	txs := []models.NormalizedTransaction{
+		{Title: "Refund", Amount: -5000},
+		{Title: "Super", Amount: 25000},
+	}
+	ApplyExchangeRates(txs, "ARS")
+	kept := FilterPayments(txs)
+
+	if len(kept) != 1 || kept[0].Title != "Super" {
+		t.Errorf("expected only the charge to remain, got %+v", kept)
 	}
 }
 

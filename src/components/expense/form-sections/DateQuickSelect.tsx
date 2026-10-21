@@ -1,7 +1,6 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
 import { DatePicker } from "~/components/ui/date-picker";
 import { cn } from "~/lib/utils";
 
@@ -20,12 +19,11 @@ function isSameDay(a: Date, b: Date): boolean {
 
 export function DateQuickSelect({ date, onSelect }: DateQuickSelectProps) {
 	const t = useTranslations("expenseForm");
-	const today = useMemo(() => new Date(), []);
-	const yesterday = useMemo(() => {
-		const d = new Date();
-		d.setDate(d.getDate() - 1);
-		return d;
-	}, []);
+	// Read on every render so a form left open past midnight moves on. The
+	// date is a local instant; the server buckets it in the browser's zone.
+	const today = new Date();
+	const yesterday = new Date(today);
+	yesterday.setDate(yesterday.getDate() - 1);
 
 	const chips: { label: string; date: Date }[] = [
 		{ label: t("today"), date: today },

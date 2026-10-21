@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	amountIn,
 	computeAmountInUSD,
 	convertAmount,
 	crossRate,
@@ -7,11 +8,13 @@ import {
 	fromMinorUnits,
 	fromUSD,
 	MissingRateError,
+	periodRateDate,
 	pickBestRate,
 	quoteRate,
 	rateFromQuote,
 	rateFromUsdPerUnit,
 	roundMoney,
+	sumIn,
 	toMinorUnits,
 	toUSD,
 } from "../money";
@@ -196,5 +199,62 @@ describe("pickBestRate", () => {
 		expect(
 			pickBestRate([{ type: "official", rate: 0, date: d("2026-01-01") }]),
 		).toBeNull();
+	});
+});
+
+describe("totals rule (sumIn)", () => {
+	const items = [
+		// 100000 ARS logged at 1000 ARS/USD: stored 100 USD
+		{ amount: 100000, currency: "ARS", amountInUSD: 100 },
+		{ amount: 20, currency: "USD", amountInUSD: 20 },
+		{ amount: 10, currency: "EUR", amountInUSD: 11.38 },
+		{ amount: 0.001, currency: "BTC", amountInUSD: 64.55 },
+	];
+
+	it("ARS home: ARS as entered, the rest from USD at the home rate", () => {
+		expect(sumIn(items, "ARS", RATES.ARS)).toBeCloseTo(
+			100000 + (20 + 11.38 + 64.55) * 1560,
+			6,
+		);
+	});
+
+	it("USD home: USD as entered, the rest from their stored USD", () => {
+		expect(sumIn(items, "USD", 1)).toBeCloseTo(100 + 20 + 11.38 + 64.55, 6);
+	});
+
+	it("EUR, JPY and BRL homes use their own rate", () => {
+		expect(sumIn(items, "EUR", RATES.EUR)).toBeCloseTo(
+			10 + (100 + 20 + 64.55) * 0.8787,
+			6,
+		);
+		expect(sumIn(items, "JPY", RATES.JPY)).toBeCloseTo(
+			(100 + 20 + 11.38 + 64.55) * 163.83,
+			6,
+		);
+		expect(sumIn(items, "BRL", RATES.BRL)).toBeCloseTo(
+			(100 + 20 + 11.38 + 64.55) * 5.1178,
+			6,
+		);
+	});
+
+	it("crypto home divides by the coin price", () => {
+		expect(sumIn(items, "BTC", RATES.BTC)).toBeCloseTo(
+			0.001 + (100 + 20 + 11.38) / 64545.9,
+			12,
+		);
+	});
+
+	it("a missing rate throws only when something needs converting", () => {
+		expect(() => sumIn(items, "ARS", undefined)).toThrow(MissingRateError);
+		expect(sumIn([items[0]!], "ARS", undefined)).toBe(100000);
+		expect(amountIn(items[1]!, "USD", null)).toBe(20);
+	});
+
+	it("periodRateDate is the period end, or now while it runs", () => {
+		const now = new Date("2026-10-21T12:00:00Z");
+		const pastEnd = new Date("2026-09-30T23:59:59Z");
+		const futureEnd = new Date("2026-10-31T23:59:59Z");
+		expect(periodRateDate(pastEnd, now)).toBe(pastEnd);
+		expect(periodRateDate(futureEnd, now)).toBe(now);
 	});
 });

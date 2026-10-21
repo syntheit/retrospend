@@ -255,7 +255,7 @@ model Budget {
   userId         String
   categoryId     String?
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([userId, categoryId, period])
   @@index([userId, period])

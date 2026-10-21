@@ -19,6 +19,13 @@
  * A missing rate never becomes 1. Lookups fall back to the nearest rate on
  * the other side of the requested date; when a currency has no rate at all,
  * the math functions throw MissingRateError.
+ *
+ * TOTALS RULE (dashboard, budget page, stats, runway): a total shown in some
+ * currency (home or budget currency) counts amounts already in that currency
+ * as entered, and converts every other amount from its stored amountInUSD at
+ * that currency's rate for the period (sumIn). The period's rate is the one
+ * for its last day, or today while the period is still running
+ * (periodRateDate).
  */
 import { getDecimalDigits, isCrypto } from "./currency-format";
 
@@ -134,6 +141,44 @@ export function expenseAmounts(args: {
 	else if (hasRate && hasHomeRate)
 		homeAmount = convertAmount(amount, currency, rate, homeCurrency, homeRate);
 	return { amountInUSD, homeAmount };
+}
+
+// ── Totals in a display currency ─────────────────────────────────────────────
+
+/** Anything with an original amount and its stored USD value. */
+export interface MoneyItem {
+	amount: number;
+	currency: string;
+	amountInUSD: number;
+}
+
+/**
+ * One item in `currency` under the totals rule: its own amount when it is
+ * already in `currency`, else its USD value converted at `rate`.
+ */
+export function amountIn(
+	item: MoneyItem,
+	currency: string,
+	rate: number | null | undefined,
+): number {
+	if (item.currency === currency) return item.amount;
+	return fromUSD(item.amountInUSD, currency, rate);
+}
+
+/** Sum of `items` in `currency` under the totals rule (unrounded). */
+export function sumIn(
+	items: Iterable<MoneyItem>,
+	currency: string,
+	rate: number | null | undefined,
+): number {
+	let total = 0;
+	for (const item of items) total += amountIn(item, currency, rate);
+	return total;
+}
+
+/** The date whose rate converts a period's totals: its end, or now if sooner. */
+export function periodRateDate(periodEnd: Date, now: Date = new Date()): Date {
+	return periodEnd.getTime() < now.getTime() ? periodEnd : now;
 }
 
 // ── Display quotes ───────────────────────────────────────────────────────────

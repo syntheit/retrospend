@@ -3,9 +3,13 @@ import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { generateCsv } from "~/lib/csv";
 import { normalizeDate } from "~/lib/date";
-import { toNumberWithDefault } from "~/lib/utils";
+import { isValidRate, sumIn, toUSD } from "~/lib/money";
+import { addMonthsClamped } from "~/lib/recurring";
+import { toNumberOrNull } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { fromUSD, toUSD } from "~/server/currency";
+import { findExchangeRate } from "~/server/exchange-rates";
+import { getExcludedProjectIds } from "~/server/services/shared-expense-integration";
+import { getSpendingItems, spendingWhere } from "~/server/services/spending";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
 
@@ -34,9 +38,7 @@ export const wealthRouter = createTRPCRouter({
 			const { rate, rateType } = await wealthService.resolveExchangeRate(
 				input.currency,
 				today,
-				input.exchangeRate && input.exchangeRateType
-					? { rate: input.exchangeRate, type: input.exchangeRateType }
-					: undefined,
+				{ rate: input.exchangeRate, type: input.exchangeRateType },
 			);
 
 			// Calculate balance in USD with sanity check
@@ -108,28 +110,18 @@ export const wealthRouter = createTRPCRouter({
 				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 			}
 
-			// Resolve exchange rate (prioritize user input, then stored rate, then fetch)
-			let resolvedRate: { rate: number; rateType: string | null };
-
-			if (input.exchangeRate && input.exchangeRateType) {
-				// User provided rate
-				resolvedRate = {
-					rate: input.exchangeRate,
-					rateType: input.exchangeRateType,
-				};
-			} else if (asset.exchangeRate) {
-				// Use stored rate
-				resolvedRate = {
-					rate: toNumberWithDefault(asset.exchangeRate),
-					rateType: asset.exchangeRateType,
-				};
-			} else {
-				// Fetch new rate
-				resolvedRate = await wealthService.resolveExchangeRate(
-					asset.currency,
-					today,
-				);
-			}
+			// Today's rate of the asset's own type (or a newly picked one); a
+			// custom rate stays until the user changes it.
+			const resolvedRate = await wealthService.resolveExchangeRate(
+				asset.currency,
+				today,
+				input.exchangeRateType
+					? { rate: input.exchangeRate, type: input.exchangeRateType }
+					: {
+							rate: toNumberOrNull(asset.exchangeRate),
+							type: asset.exchangeRateType,
+						},
+			);
 
 			// Calculate balance in USD with sanity check
 			const balanceInUSD = wealthService.calculateBalanceInUSD(
@@ -204,9 +196,7 @@ export const wealthRouter = createTRPCRouter({
 			const { rate, rateType } = await wealthService.resolveExchangeRate(
 				input.currency,
 				today,
-				input.exchangeRate && input.exchangeRateType
-					? { rate: input.exchangeRate, type: input.exchangeRateType }
-					: undefined,
+				{ rate: input.exchangeRate, type: input.exchangeRateType },
 			);
 
 			// Calculate balance in USD with sanity check
@@ -272,13 +262,19 @@ export const wealthRouter = createTRPCRouter({
 			const targetCurrency = input?.currency ?? BASE_CURRENCY;
 			const today = new Date();
 
-			const sixMonthsAgo = new Date();
-			sixMonthsAgo.setMonth(today.getMonth() - 6);
+			const userId = session.user.id;
+			const sixMonthsAgo = addMonthsClamped(today, -6);
 
-			const oldestExpenseOverall = await db.expense.findFirst({
-				where: { userId: session.user.id, status: "FINALIZED" },
-				orderBy: { date: "asc" },
-			});
+			// Same spending as every other total: finalized, not excluded,
+			// amortized purchases counted once (through their monthly parts).
+			const [oldestExpenseOverall, excludedProjectIds] = await Promise.all([
+				db.expense.findFirst({
+					where: spendingWhere(userId),
+					orderBy: { date: "asc" },
+					select: { date: true },
+				}),
+				getExcludedProjectIds(db, userId),
+			]);
 
 			let monthsActive = 6;
 			if (oldestExpenseOverall) {
@@ -289,38 +285,18 @@ export const wealthRouter = createTRPCRouter({
 				monthsActive = 1;
 			}
 
-			const expenses = await db.expense.findMany({
-				where: {
-					userId: session.user.id,
-					date: {
-						gte: sixMonthsAgo,
-						lte: today,
-					},
-					status: "FINALIZED",
-				},
-			});
+			const [items, targetRate] = await Promise.all([
+				getSpendingItems(
+					db,
+					userId,
+					{ gte: sixMonthsAgo, lte: today },
+					excludedProjectIds,
+				),
+				findExchangeRate(db, targetCurrency, today),
+			]);
 
-			// We need the current exchange rate for the target currency
-			const wealthService = new WealthService(db);
-			const targetRateData = await wealthService.resolveExchangeRate(
-				targetCurrency,
-				normalizeDate(today),
-			);
-			const targetRate = targetRateData.rate;
-			// BUG FIX: was `rateType === "crypto"` - NEVER use DB rateType to determine
-			// conversion direction; always use isCrypto(currency). fromUSD handles this correctly.
-			const convertToTarget = (usdVal: number) =>
-				fromUSD(usdVal, targetCurrency, targetRate);
-
-			let totalSpendUSD = 0;
-			for (const expense of expenses) {
-				// We can sum the amountInUSD which was calculated when the expense was logged
-				// Or calculate current value if needed. Usually, spending is fixed in the past USD value.
-				totalSpendUSD += toNumberWithDefault(expense.amountInUSD);
-			}
-
-			const averageMonthlySpendUSD = totalSpendUSD / monthsActive;
-			const averageMonthlySpend = convertToTarget(averageMonthlySpendUSD);
+			const averageMonthlySpend =
+				sumIn(items, targetCurrency, targetRate?.rate) / monthsActive;
 
 			return {
 				averageMonthlySpend,
@@ -365,28 +341,26 @@ export const wealthRouter = createTRPCRouter({
 			},
 		});
 
-		const currencies = [...new Set(assets.map((asset) => asset.currency))];
-		const rates = await db.exchangeRate.findMany({
-			where: {
-				currency: {
-					in: currencies,
-				},
-			},
-			orderBy: {
-				date: "desc",
-			},
-		});
-
-		const rateMap = new Map<string, { rate: number; type: string | null }>();
-		for (const currency of currencies) {
-			const currencyRates = rates.filter((rate) => rate.currency === currency);
-			if (currencyRates.length > 0 && currencyRates[0]) {
-				rateMap.set(currency, {
-					rate: toNumberWithDefault(currencyRates[0].rate),
-					type: currencyRates[0].type,
-				});
-			}
-		}
+		const today = new Date();
+		const wealthService = new WealthService(db);
+		const balancesInUSD = await Promise.all(
+			assets.map(async (asset) => {
+				const stored = toNumberOrNull(asset.exchangeRate);
+				try {
+					const { rate } = await wealthService.resolveExchangeRate(
+						asset.currency,
+						today,
+						{ rate: stored, type: asset.exchangeRateType },
+					);
+					return toUSD(Number(asset.balance), asset.currency, rate);
+				} catch {
+					// No table rate: the asset's own stored rate, else left blank
+					return isValidRate(stored)
+						? toUSD(Number(asset.balance), asset.currency, stored)
+						: null;
+				}
+			}),
+		);
 
 		const header = [
 			"name",
@@ -401,10 +375,8 @@ export const wealthRouter = createTRPCRouter({
 			"updatedAt",
 		];
 
-		const rows = assets.map((asset) => {
-			const rateData = rateMap.get(asset.currency) || { rate: 1, type: null };
-			const balance = toNumberWithDefault(asset.balance);
-			const balanceInUSD = toUSD(balance, asset.currency, rateData.rate);
+		const rows = assets.map((asset, i) => {
+			const balanceInUSD = balancesInUSD[i];
 			return [
 				asset.name,
 				asset.type,

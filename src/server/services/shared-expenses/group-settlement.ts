@@ -1,3 +1,4 @@
+import { currencyDecimals, roundMoney } from "~/lib/money";
 import type { ParticipantType } from "~prisma";
 
 // ── input types ───────────────────────────────────────────────────────────────
@@ -74,8 +75,13 @@ function pkey(type: string, id: string): string {
 	return `${type}:${id}`;
 }
 
-/** Balances below this threshold (in absolute value) are treated as zero. */
-const ZERO_TOLERANCE = 0.005;
+/**
+ * Balances below half of the currency's smallest unit (in absolute value) are
+ * treated as zero: 0.005 USD, 0.5 JPY, 0.000000005 BTC.
+ */
+function zeroTolerance(currency: string): number {
+	return 0.5 * 10 ** -currencyDecimals(currency);
+}
 
 // ── algorithm ─────────────────────────────────────────────────────────────────
 
@@ -89,7 +95,7 @@ const ZERO_TOLERANCE = 0.005;
  *   Positive net = creditor (is owed money). Negative net = debtor (owes money).
  *
  * Step 3: Greedy settlement: repeatedly match the largest creditor with the
- *   largest debtor until all balances are within ZERO_TOLERANCE of zero.
+ *   largest debtor until all balances are within zeroTolerance of zero.
  *
  * @param transactions  Transactions with their split participants. Must be
  *                      pre-filtered to the desired project/period scope.
@@ -114,6 +120,7 @@ export function computeSettlementPlan(
 
 	for (const currency of currencies) {
 		const currencyTxns = transactions.filter((tx) => tx.currency === currency);
+		const ZERO_TOLERANCE = zeroTolerance(currency);
 
 		// Step 2: accumulate paid / share totals per participant
 		const paidMap = new Map<string, number>();
@@ -170,15 +177,15 @@ export function computeSettlementPlan(
 			netMap.set(key, net);
 			balances.push({
 				participant: refMap.get(key)!,
-				totalPaid: Math.round(paid * 100) / 100,
-				fairShare: Math.round(share * 100) / 100,
-				netBalance: Math.round(net * 100) / 100,
+				totalPaid: roundMoney(paid, currency),
+				fairShare: roundMoney(share, currency),
+				netBalance: roundMoney(net, currency),
 			});
 		}
 
 		// Sanity check: balances should sum to ~0
 		const balanceSum = [...netMap.values()].reduce((a, b) => a + b, 0);
-		if (Math.abs(balanceSum) > 0.01) {
+		if (Math.abs(balanceSum) > 2 * ZERO_TOLERANCE) {
 			console.warn(
 				`[group-settlement] Balances for ${currency} sum to ${balanceSum.toFixed(6)}, expected ~0`,
 			);
@@ -202,7 +209,7 @@ export function computeSettlementPlan(
 			const debtor = debtors[0]!;
 
 			const payment = Math.min(creditor.balance, -debtor.balance);
-			const roundedPayment = Math.round(payment * 100) / 100;
+			const roundedPayment = roundMoney(payment, currency);
 
 			if (roundedPayment > 0) {
 				plan.push({
@@ -271,6 +278,7 @@ export function computePeriodOutstanding(
 
 	const outstanding: PeriodOutstanding[] = [];
 	for (const [currency, breakdown] of Object.entries(before.byCurrency)) {
+		const ZERO_TOLERANCE = zeroTolerance(currency);
 		const afterNet = new Map<string, number>();
 		for (const b of after.byCurrency[currency]?.balances ?? []) {
 			afterNet.set(

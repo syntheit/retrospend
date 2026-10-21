@@ -3,16 +3,15 @@ import { useTranslations } from "next-intl";
 import { Card, CardContent } from "~/components/ui/card";
 
 import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
-import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 import type { Budget } from "~/types/budget-types";
 
 interface BudgetHeaderProps {
 	selectedMonth: Date;
 	homeCurrency: string;
 	budgets: Budget[];
-	usdToHomeCurrencyRate: number;
 	serverTime?: Date;
 }
 
@@ -20,40 +19,30 @@ export function BudgetHeader({
 	selectedMonth,
 	homeCurrency,
 	budgets,
-	usdToHomeCurrencyRate,
 	serverTime,
 }: BudgetHeaderProps) {
 	const t = useTranslations("budget");
 	const { formatCurrency } = useCurrencyFormatter();
-	const { fromUSD } = useCurrencyConversion();
+	// Home-currency totals computed by the server, same as the dashboard
 	const {
-		displayAmountInUSD,
-		totalSpentInUSD,
-		remainingInUSD,
+		displayAmount: displayAmountInHomeCurrency,
+		totalSpent: totalSpentInHomeCurrency,
+		remaining,
 		isOverBudget,
 		percentUsed,
 	} = useBudgetCalculations({
 		budgets,
 	});
+	const remainingInHomeCurrency = Math.abs(remaining);
 
-	// Convert USD values to home currency using the centralized conversion function
-	const displayAmountInHomeCurrency = fromUSD(
-		displayAmountInUSD,
+	// Everything spent in the month, budgeted or not (the dashboard's Month Total)
+	const { data: overviewStats } = api.dashboard.getOverviewStats.useQuery({
+		month: selectedMonth,
 		homeCurrency,
-		usdToHomeCurrencyRate,
-	);
-	const totalSpentInHomeCurrency = fromUSD(
-		totalSpentInUSD,
-		homeCurrency,
-		usdToHomeCurrencyRate,
-	);
-	const remainingInHomeCurrency = fromUSD(
-		Math.abs(remainingInUSD),
-		homeCurrency,
-		usdToHomeCurrencyRate,
-	);
+	});
+	const monthTotal = overviewStats?.monthTotal ?? totalSpentInHomeCurrency;
 
-	const hasData = budgets.length > 0 || totalSpentInUSD > 0;
+	const hasData = budgets.length > 0 || monthTotal > 0;
 
 	// Use server time for consistent timezone handling
 	const today = serverTime ?? new Date();
@@ -86,7 +75,7 @@ export function BudgetHeader({
 											{t("youSpent")}
 										</p>
 										<p className="font-bold text-4xl tabular-nums tracking-tighter text-white sm:text-6xl lg:text-8xl">
-											{formatCurrency(totalSpentInHomeCurrency, homeCurrency)}
+											{formatCurrency(monthTotal, homeCurrency)}
 										</p>
 									</div>
 

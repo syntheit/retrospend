@@ -1116,6 +1116,7 @@
     "deleteAssets": "Delete Assets",
     "deleting": "Deleting...",
     "assetsDeleted": "Assets deleted successfully",
+    "missingRates": "No exchange rate for {currencies}. Those assets are left out of the totals.",
     "editAsset": "Edit Asset",
     "editAssetDescription": "Update your asset details.",
     "addAssetDescription": "Create a new asset to track your wealth.",

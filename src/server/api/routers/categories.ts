@@ -214,10 +214,18 @@ export const categoriesRouter = createTRPCRouter({
 							});
 						}
 					}
-					await tx.budget.updateMany({
-						where: { categoryId: input.id, userId: session.user.id },
-						data: { categoryId: newCategoryId },
-					});
+					// Budgets move to the replacement category. Without one they are
+					// deleted: a budget with no category would read as a global budget.
+					if (newCategoryId) {
+						await tx.budget.updateMany({
+							where: { categoryId: input.id, userId: session.user.id },
+							data: { categoryId: newCategoryId },
+						});
+					} else {
+						await tx.budget.deleteMany({
+							where: { categoryId: input.id, userId: session.user.id },
+						});
+					}
 
 					await tx.recurringTemplate.updateMany({
 						where: { categoryId: input.id, userId: session.user.id },
@@ -228,12 +236,19 @@ export const categoriesRouter = createTRPCRouter({
 					});
 				});
 			} else {
-				// No expenses: delete directly
-				await db.category.delete({
-					where: {
-						id: input.id,
-						userId: session.user.id,
-					},
+				// No expenses: delete the category and its budgets
+				await db.$transaction(async (tx) => {
+					await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+					                            set_config('role', 'retrospend_app', true)`;
+					await tx.budget.deleteMany({
+						where: { categoryId: input.id, userId: session.user.id },
+					});
+					await tx.category.delete({
+						where: {
+							id: input.id,
+							userId: session.user.id,
+						},
+					});
 				});
 			}
 

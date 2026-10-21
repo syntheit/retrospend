@@ -28,6 +28,7 @@ const importerTransactionSchema = z.object({
 	pricingSource: z.string().max(200),
 	category: z.string().max(200),
 	categoryId: z.string().optional(),
+	excludeFromAnalytics: z.boolean().optional(),
 });
 
 const listJobsSchema = z
@@ -100,9 +101,12 @@ export const importQueueRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const service = new ImportQueueService(ctx.db);
-			return await service.finalizeImport(ctx.session.user.id, input.jobId, {
-				selectedTransactions: input.selectedTransactions,
-			});
+			return await service.finalizeImport(
+				ctx.session.user.id,
+				input.jobId,
+				{ selectedTransactions: input.selectedTransactions },
+				ctx.timeZone,
+			);
 		}),
 
 	/**

@@ -49,6 +49,7 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { useTableActions } from "~/hooks/use-table-actions";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getCategoryColorClasses } from "~/lib/constants";
+import { formatDateOnly } from "~/lib/date";
 import { formatExpenseAsText } from "~/lib/format";
 import { cn, convertExpenseAmountForDisplay } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -176,8 +177,9 @@ function TransactionsContent() {
 			if (selectedMonths.size > 0)
 				params.set("m", [...selectedMonths].join(","));
 		} else {
-			params.set("from", dateRange.from.toISOString().split("T")[0]!);
-			params.set("to", dateRange.to.toISOString().split("T")[0]!);
+			// Local calendar dates; the mount code above reads them as local days
+			params.set("from", formatDateOnly(dateRange.from));
+			params.set("to", formatDateOnly(dateRange.to));
 			if (dateRange.preset) params.set("range", dateRange.preset);
 		}
 		if (selectedCategories.size > 0)

@@ -1116,6 +1116,7 @@
     "deleteAssets": "Eliminar Activos",
     "deleting": "Eliminando...",
     "assetsDeleted": "Activos eliminados correctamente",
+    "missingRates": "No hay cotización para {currencies}. Esos activos no se suman a los totales.",
     "editAsset": "Editar Activo",
     "editAssetDescription": "Actualizá los detalles de tu activo.",
     "addAssetDescription": "Creá un nuevo activo para seguir la evolución de tu patrimonio.",

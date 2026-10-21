@@ -132,13 +132,13 @@ export default function RecurringPage() {
 			case "amountDesc":
 				sorted.sort(
 					(a, b) =>
-						Number(b.amountInHomeCurrency) - Number(a.amountInHomeCurrency),
+						(b.amountInHomeCurrency ?? 0) - (a.amountInHomeCurrency ?? 0),
 				);
 				break;
 			case "amountAsc":
 				sorted.sort(
 					(a, b) =>
-						Number(a.amountInHomeCurrency) - Number(b.amountInHomeCurrency),
+						(a.amountInHomeCurrency ?? 0) - (b.amountInHomeCurrency ?? 0),
 				);
 				break;
 			case "nameAz":

@@ -12,10 +12,12 @@ vi.mock("~/server/services/notifications", () => ({
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
 }));
 
-// Exchange rates for settleAll conversions: 3 EUR per USD.
+// Exchange rates for settleAll conversions: 3 EUR and 151 JPY per USD,
+// 60000 USD per BTC.
+const TEST_RATES: Record<string, number> = { EUR: 3, JPY: 151, BTC: 60000 };
 vi.mock("~/server/api/routers/shared-currency", () => ({
 	getBestExchangeRate: vi.fn(async (_db: unknown, currency: string) =>
-		currency === "EUR" ? { rate: 3 } : null,
+		TEST_RATES[currency] ? { rate: TEST_RATES[currency] } : null,
 	),
 }));
 
@@ -511,6 +513,31 @@ describe("SettlementService", () => {
 				"P",
 				"Q",
 			]);
+		});
+
+		it.each([
+			// EUR 1 = USD 0.3333: 50.33 JPY rounds to whole yen, BTC keeps 8 decimals
+			["JPY", 50],
+			["BTC", 0.00000556],
+		])("converts into %s with that currency's decimals", async (currency, expected) => {
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { EUR: -1 } });
+			vi.mocked(computeBalanceByProject).mockResolvedValue(
+				new Map<string | null, Record<string, number>>([[null, { EUR: -1 }]]),
+			);
+			db.settlement.create.mockImplementation(
+				(args: { data: Record<string, unknown> }) =>
+					Promise.resolve({ id: "s", ...args.data }),
+			);
+
+			const result = await service.settleAll({
+				toParticipant: bob,
+				paymentCurrency: currency,
+			});
+
+			expect(result.settlements.map((r) => r.convertedAmount)).toEqual([
+				expected,
+			]);
+			expect(result.totalInPaymentCurrency).toBe(expected);
 		});
 	});
 

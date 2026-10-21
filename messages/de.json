@@ -1116,6 +1116,7 @@
     "deleteAssets": "Vermögenswerte löschen",
     "deleting": "Wird gelöscht …",
     "assetsDeleted": "Vermögenswerte wurden gelöscht",
+    "missingRates": "Kein Wechselkurs für {currencies}. Diese Vermögenswerte fehlen in den Summen.",
     "editAsset": "Vermögenswert bearbeiten",
     "editAssetDescription": "Details des Vermögenswerts aktualisieren.",
     "addAssetDescription": "Erstellen Sie einen Vermögenswert, um Ihr Vermögen zu verfolgen.",

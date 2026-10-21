@@ -1,14 +1,28 @@
 import { TRPCError } from "@trpc/server";
-import { Prisma } from "~prisma";
-import { getFiscalMonthRange } from "~/lib/fiscal-month";
+import {
+	budgetPeriod,
+	budgetPeriodRange,
+	getCurrentFiscalMonth,
+	getFiscalMonthRange,
+	shiftMonth,
+} from "~/lib/fiscal-month";
+import {
+	fromUSD,
+	type MoneyItem,
+	periodRateDate,
+	roundMoney,
+	sumIn,
+	toUSD,
+} from "~/lib/money";
+import { toNumberWithDefault as toNumber } from "~/lib/utils";
 import type { db as PrismaClient } from "~/server/db";
-import { fromUSD, toUSD } from "../currency";
 import {
 	getBestExchangeRate,
 	sumExpensesForCurrency,
 } from "../api/routers/shared-currency";
-import { getSharedExpenseShares } from "./shared-expense-integration";
 import type { RateCache } from "./rate-cache";
+import { getSharedExpenseShares } from "./shared-expense-integration";
+import { spendingWhere } from "./spending";
 
 export interface BudgetWithStats {
 	id: string;
@@ -26,6 +40,10 @@ export interface BudgetWithStats {
 	actualSpendInUSD: number;
 	effectiveAmount: number;
 	effectiveAmountInUSD: number;
+	/** The same figures in the home currency, by the totals rule (~/lib/money). */
+	amountInHome: number;
+	actualSpendInHome: number;
+	effectiveAmountInHome: number;
 	category?: {
 		id: string;
 		name: string;
@@ -35,40 +53,86 @@ export interface BudgetWithStats {
 	} | null;
 }
 
-import { toNumberWithDefault as toNumber } from "~/lib/utils";
+type CategoryItem = MoneyItem & { categoryId: string | null };
+
+function groupByCategory(items: CategoryItem[]) {
+	const map = new Map<string | null, CategoryItem[]>();
+	for (const item of items) {
+		const list = map.get(item.categoryId) ?? [];
+		list.push(item);
+		map.set(item.categoryId, list);
+	}
+	return map;
+}
+
+/** Personal expenses plus shared shares in a fiscal range. */
+async function spendingInRange(
+	db: typeof PrismaClient,
+	userId: string,
+	range: { start: Date; end: Date },
+	excludedProjectIds?: string[],
+): Promise<CategoryItem[]> {
+	const date = { gte: range.start, lte: range.end };
+	const [personal, shared] = await Promise.all([
+		db.expense.findMany({
+			where: spendingWhere(userId, date),
+			select: {
+				amount: true,
+				currency: true,
+				amountInUSD: true,
+				categoryId: true,
+			},
+		}),
+		getSharedExpenseShares(db, userId, date, undefined, excludedProjectIds),
+	]);
+	return [
+		...personal.map((e) => ({
+			amount: Number(e.amount),
+			currency: e.currency,
+			amountInUSD: Number(e.amountInUSD),
+			categoryId: e.categoryId,
+		})),
+		...shared,
+	];
+}
 
 /**
  * Fetches budgets for a given month with calculated spend statistics.
+ *
+ * Spend in a budget's own currency follows the totals rule: expenses in that
+ * currency count as entered, others convert from amountInUSD at the budget
+ * currency's rate for the period. The *InHome fields do the same for the
+ * home currency, so the budget page and the dashboard show the same numbers.
  */
 export async function getBudgets(
 	db: typeof PrismaClient,
 	userId: string,
 	month: Date,
-	options: { includeGlobal?: boolean; fiscalMonthStartDay?: number; rateCache?: RateCache; excludedProjectIds?: string[] } = {},
+	options: {
+		includeGlobal?: boolean;
+		fiscalMonthStartDay?: number;
+		rateCache?: RateCache;
+		excludedProjectIds?: string[];
+		homeCurrency?: string;
+		timeZone?: string;
+	} = {},
 ): Promise<BudgetWithStats[]> {
 	const fiscalStartDay = options.fiscalMonthStartDay ?? 1;
-	// Budget period lookup: always calendar month
-	const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-	const endOfMonth = new Date(
-		month.getFullYear(),
-		month.getMonth() + 1,
-		0,
-		23,
-		59,
-		59,
-		999,
+	const tz = options.timeZone;
+	const homeCurrency = options.homeCurrency ?? "USD";
+	// Budget period lookup: always calendar month. Expenses: fiscal month.
+	const fiscal = getFiscalMonthRange(month, fiscalStartDay, tz);
+	const lastFiscal = getFiscalMonthRange(
+		shiftMonth(month, -1, tz),
+		fiscalStartDay,
+		tz,
 	);
-	// Expense date boundaries: fiscal month
-	const fiscal = getFiscalMonthRange(month, fiscalStartDay);
 
 	const budgets = await db.budget.findMany({
 		where: {
 			userId,
 			...(options.includeGlobal ? {} : { categoryId: { not: null } }),
-			period: {
-				gte: startOfMonth,
-				lte: endOfMonth,
-			},
+			period: budgetPeriodRange(month, tz),
 		},
 		include: {
 			category: {
@@ -81,110 +145,47 @@ export async function getBudgets(
 				},
 			},
 		},
-		orderBy: {
-			category: {
-				name: "asc",
-			},
-		},
+		orderBy: [{ category: { name: "asc" } }, { createdAt: "asc" }],
 	});
 
-	// Fetch all finalized expenses for this fiscal month to aggregate in memory
-	const personalExpenses = await db.expense.findMany({
-		where: {
-			userId,
-			status: "FINALIZED",
-			isAmortizedParent: false,
-			excludeFromAnalytics: false,
-			date: {
-				gte: fiscal.start,
-				lte: fiscal.end,
-			},
-		},
-		select: {
-			amount: true,
-			currency: true,
-			amountInUSD: true,
-			categoryId: true,
-		},
-	});
+	const expenses = await spendingInRange(
+		db,
+		userId,
+		fiscal,
+		options.excludedProjectIds,
+	);
+	const categoryExpensesMap = groupByCategory(expenses);
 
-	// Fetch shared expense shares for this fiscal month
-	const sharedShares = await getSharedExpenseShares(db, userId, {
-		gte: fiscal.start,
-		lte: fiscal.end,
-	}, options.rateCache, options.excludedProjectIds);
-
-	// Merge personal and shared expenses into a unified list
-	const expenses = [
-		...personalExpenses,
-		...sharedShares.map((s) => ({
-			amount: new Prisma.Decimal(s.amount),
-			currency: s.currency,
-			amountInUSD: new Prisma.Decimal(s.amountInUSD),
-			categoryId: s.categoryId,
-		})),
-	];
-
-	// Group expenses by category
-	const categoryExpensesMap = new Map<string | null, typeof expenses>();
-	for (const exp of expenses) {
-		const list = categoryExpensesMap.get(exp.categoryId) ?? [];
-		list.push(exp);
-		categoryExpensesMap.set(exp.categoryId, list);
-	}
-
-	// Fetch all expenses for the previous month only if needed
+	// Last month's spending (personal and shared) only if a budget pegs to it
 	const hasPegToLastMonth = budgets.some((b) => b.type === "PEG_TO_LAST_MONTH");
-	const lastMonthExpensesMap = new Map<string | null, typeof expenses>();
+	const lastMonthExpensesMap = hasPegToLastMonth
+		? groupByCategory(
+				await spendingInRange(
+					db,
+					userId,
+					lastFiscal,
+					options.excludedProjectIds,
+				),
+			)
+		: new Map<string | null, CategoryItem[]>();
 
-	if (hasPegToLastMonth) {
-		const lastMonth = new Date(month);
-		lastMonth.setMonth(lastMonth.getMonth() - 1);
-		const lastFiscal = getFiscalMonthRange(lastMonth, fiscalStartDay);
-
-		const lastMonthExpenses = await db.expense.findMany({
-			where: {
-				userId,
-				status: "FINALIZED",
-				isAmortizedParent: false,
-				excludeFromAnalytics: false,
-				date: {
-					gte: lastFiscal.start,
-					lte: lastFiscal.end,
-				},
-			},
-			select: {
-				amount: true,
-				currency: true,
-				amountInUSD: true,
-				categoryId: true,
-			},
-		});
-
-		for (const exp of lastMonthExpenses) {
-			const list = lastMonthExpensesMap.get(exp.categoryId) ?? [];
-			list.push(exp);
-			lastMonthExpensesMap.set(exp.categoryId, list);
+	// Rates for the period; a currency without any rate stays null and only
+	// fails if something actually needs converting (never a silent 1).
+	const rates = new Map<string, Promise<number | null>>();
+	const getRate = (currency: string, date: Date) => {
+		const key = `${currency}:${date.toISOString()}`;
+		let rate = rates.get(key);
+		if (!rate) {
+			rate = options.rateCache
+				? options.rateCache.rate(currency, date)
+				: getBestExchangeRate(db, currency, date).then((r) => r?.rate ?? null);
+			rates.set(key, rate);
 		}
-	}
-
-	// Cache for exchange rates to avoid repeated lookups
-	const localRateCache = new Map<string, { rate: number; type: string | null }>();
-	const getCachedRate = async (currency: string, date: Date) => {
-		if (options.rateCache) {
-			const result = await options.rateCache.get(currency, date);
-			return result ?? { rate: 1, type: null };
-		}
-		const cacheKey = `${currency}-${date.toISOString().slice(0, 7)}`;
-		if (localRateCache.has(cacheKey))
-			return localRateCache.get(cacheKey) as { rate: number; type: string | null };
-		const bestRate = await getBestExchangeRate(db, currency, date);
-		const rateData = bestRate
-			? { rate: bestRate.rate, type: bestRate.type }
-			: { rate: 1, type: null };
-		localRateCache.set(cacheKey, rateData);
-		return rateData;
+		return rate;
 	};
+	const rateDate = periodRateDate(fiscal.end);
+	const lastRateDate = periodRateDate(lastFiscal.end);
+	const homeRate = await getRate(homeCurrency, rateDate);
 
 	return Promise.all(
 		budgets.map(async (budget): Promise<BudgetWithStats> => {
@@ -192,58 +193,54 @@ export async function getBudgets(
 				budget.categoryId === null
 					? expenses
 					: (categoryExpensesMap.get(budget.categoryId) ?? []);
-			const { rate } = await getCachedRate(budget.currency, month);
+			const rate = await getRate(budget.currency, rateDate);
 
-			let actualSpend = 0;
-			let actualSpendInUSD = 0;
-
-			for (const exp of catExpenses) {
-				const usd = Number(exp.amountInUSD);
-				actualSpendInUSD += usd;
-				if (exp.currency === budget.currency) {
-					actualSpend += Number(exp.amount);
-				} else {
-					actualSpend += fromUSD(usd, budget.currency, rate);
-				}
-			}
+			const actualSpend = sumIn(catExpenses, budget.currency, rate);
+			const actualSpendInUSD = catExpenses.reduce(
+				(sum, e) => sum + e.amountInUSD,
+				0,
+			);
+			const actualSpendInHome = sumIn(catExpenses, homeCurrency, homeRate);
 
 			const budgetAmount = toNumber(budget.amount);
 			const amountInUSD = toUSD(budgetAmount, budget.currency, rate);
+			const amountInHome =
+				budget.currency === homeCurrency
+					? budgetAmount
+					: fromUSD(amountInUSD, homeCurrency, homeRate);
 
 			let effectiveAmount = budgetAmount;
 			let effectiveAmountInUSD = amountInUSD;
+			let effectiveAmountInHome = amountInHome;
 
 			if (budget.type === "PEG_TO_ACTUAL" || budget.pegToActual) {
 				effectiveAmount = actualSpend;
 				effectiveAmountInUSD = actualSpendInUSD;
+				effectiveAmountInHome = actualSpendInHome;
 			} else if (budget.type === "PEG_TO_LAST_MONTH") {
 				// If current month has spend, show last month's actuals as the budget
 				if (actualSpend > 0) {
 					const lastMonthExpenses =
 						lastMonthExpensesMap.get(budget.categoryId) ?? [];
-					const lastMonth = new Date(month);
-					lastMonth.setMonth(lastMonth.getMonth() - 1);
-					const lastMonthRate = await getCachedRate(budget.currency, lastMonth);
-
-					let lastMonthSpend = 0;
-					let lastMonthSpendInUSD = 0;
-
-					for (const exp of lastMonthExpenses) {
-						const usd = Number(exp.amountInUSD);
-						lastMonthSpendInUSD += usd;
-						if (exp.currency === budget.currency) {
-							lastMonthSpend += Number(exp.amount);
-						} else {
-							lastMonthSpend += fromUSD(usd, budget.currency, lastMonthRate.rate);
-						}
-					}
-
-					effectiveAmount = lastMonthSpend;
-					effectiveAmountInUSD = lastMonthSpendInUSD;
+					const [lastRate, lastHomeRate] = await Promise.all([
+						getRate(budget.currency, lastRateDate),
+						getRate(homeCurrency, lastRateDate),
+					]);
+					effectiveAmount = sumIn(lastMonthExpenses, budget.currency, lastRate);
+					effectiveAmountInUSD = lastMonthExpenses.reduce(
+						(sum, e) => sum + e.amountInUSD,
+						0,
+					);
+					effectiveAmountInHome = sumIn(
+						lastMonthExpenses,
+						homeCurrency,
+						lastHomeRate,
+					);
 				} else {
 					// Hide/zero-out if no spend yet
 					effectiveAmount = 0;
 					effectiveAmountInUSD = 0;
+					effectiveAmountInHome = 0;
 				}
 			}
 
@@ -252,9 +249,12 @@ export async function getBudgets(
 				amount: budgetAmount,
 				amountInUSD,
 				actualSpend,
-				actualSpendInUSD: actualSpendInUSD,
+				actualSpendInUSD,
 				effectiveAmount,
 				effectiveAmountInUSD,
+				amountInHome,
+				actualSpendInHome,
+				effectiveAmountInHome,
 				rolloverAmount: toNumber(budget.rolloverAmount),
 				type: budget.type as BudgetWithStats["type"],
 			};
@@ -263,76 +263,8 @@ export async function getBudgets(
 }
 
 /**
- * Fetches the global budget for a given month.
- */
-export async function getGlobalBudget(
-	db: typeof PrismaClient,
-	userId: string,
-	month: Date,
-	options: { fiscalMonthStartDay?: number } = {},
-) {
-	const fiscalStartDay = options.fiscalMonthStartDay ?? 1;
-	// Budget period lookup: calendar month
-	const startOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-	const endOfMonth = new Date(
-		month.getFullYear(),
-		month.getMonth() + 1,
-		0,
-		23,
-		59,
-		59,
-		999,
-	);
-	// Expense boundaries: fiscal month
-	const fiscal = getFiscalMonthRange(month, fiscalStartDay);
-
-	const globalBudget = await db.budget.findFirst({
-		where: {
-			userId,
-			categoryId: null,
-			period: {
-				gte: startOfMonth,
-				lte: endOfMonth,
-			},
-		},
-	});
-
-	if (!globalBudget) return null;
-
-	const { totalInUSD: totalSpendAsNumber } = await sumExpensesForCurrency(
-		db,
-		{
-			userId,
-			isAmortizedParent: false,
-			date: {
-				gte: fiscal.start,
-				lte: fiscal.end,
-			},
-		},
-		globalBudget.currency,
-	);
-
-	const budgetAmount = toNumber(globalBudget.amount);
-	const bestRate = await getBestExchangeRate(
-		db,
-		globalBudget.currency,
-		new Date(),
-	);
-	const rate = bestRate?.rate ?? 1;
-
-	const amountInUSD = toUSD(budgetAmount, globalBudget.currency, rate);
-
-	return {
-		...globalBudget,
-		amount: budgetAmount,
-		amountInUSD,
-		actualSpend: totalSpendAsNumber,
-		rolloverAmount: toNumber(globalBudget.rolloverAmount),
-	};
-}
-
-/**
- * Generates budget suggestions based on the last 3 months of spending.
+ * Generates budget suggestions from the last 3 complete fiscal months of
+ * spending in the category (the running month is left out).
  */
 export async function getSuggestions(
 	db: typeof PrismaClient,
@@ -340,6 +272,7 @@ export async function getSuggestions(
 	categoryId: string,
 	currency = "USD",
 	fiscalMonthStartDay = 1,
+	timeZone?: string,
 ) {
 	const category = await db.category.findFirst({
 		where: { id: categoryId, userId },
@@ -352,17 +285,22 @@ export async function getSuggestions(
 		});
 	}
 
-	const threeMonthsAgo = new Date();
-	threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-	// Fetch all 3 months in parallel
-	const monthLabels = Array.from({ length: 3 }, (_, i) =>
-		new Date(threeMonthsAgo.getFullYear(), threeMonthsAgo.getMonth() + i, 1),
+	const currentMonth = getCurrentFiscalMonth(
+		new Date(),
+		fiscalMonthStartDay,
+		timeZone,
+	);
+	// Oldest first, so the last entry is last month
+	const ranges = [3, 2, 1].map((i) =>
+		getFiscalMonthRange(
+			shiftMonth(currentMonth, -i, timeZone),
+			fiscalMonthStartDay,
+			timeZone,
+		),
 	);
 	const results = await Promise.all(
-		monthLabels.map((monthLabel) => {
-			const fiscal = getFiscalMonthRange(monthLabel, fiscalMonthStartDay);
-			return sumExpensesForCurrency(
+		ranges.map((fiscal) =>
+			sumExpensesForCurrency(
 				db,
 				{
 					userId,
@@ -371,9 +309,11 @@ export async function getSuggestions(
 					date: { gte: fiscal.start, lte: fiscal.end },
 				},
 				currency,
-			);
-		}),
+				periodRateDate(fiscal.end),
+			),
+		),
 	);
+	const lastMonthSpend = results[results.length - 1]?.total ?? 0;
 	const monthlySpends = results
 		.map((r) => r.total)
 		.filter((amount) => amount > 0);
@@ -384,7 +324,6 @@ export async function getSuggestions(
 
 	const averageSpend =
 		monthlySpends.reduce((sum, v) => sum + v, 0) / monthlySpends.length;
-	const lastMonthSpend = monthlySpends[monthlySpends.length - 1] ?? 0;
 
 	monthlySpends.sort((a, b) => a - b);
 	const mid = Math.floor(monthlySpends.length / 2);
@@ -402,28 +341,30 @@ export async function getSuggestions(
 	}
 
 	return {
-		suggestedAmount: Math.round(median * 100) / 100,
-		averageSpend: Math.round(averageSpend * 100) / 100,
-		lastMonthSpend: Math.round(lastMonthSpend * 100) / 100,
+		suggestedAmount: roundMoney(median, currency),
+		averageSpend: roundMoney(averageSpend, currency),
+		lastMonthSpend: roundMoney(lastMonthSpend, currency),
 	};
 }
 
 /**
- * Copies budgets from the most recent month that has them.
+ * Copies category budgets (amount, currency and settings) from the most
+ * recent earlier month that has them.
  */
 export async function copyFromLastMonth(
 	db: typeof PrismaClient,
 	userId: string,
 	targetMonth: Date,
+	timeZone?: string,
 ) {
-	const targetPeriod = new Date(
-		targetMonth.getFullYear(),
-		targetMonth.getMonth(),
-		1,
-	);
+	const targetPeriod = budgetPeriod(targetMonth, timeZone);
 
 	const existingBudgets = await db.budget.findMany({
-		where: { userId, period: targetPeriod, categoryId: { not: null } },
+		where: {
+			userId,
+			period: budgetPeriodRange(targetMonth, timeZone),
+			categoryId: { not: null },
+		},
 	});
 
 	if (existingBudgets.length > 0) {
@@ -435,7 +376,7 @@ export async function copyFromLastMonth(
 
 	const budgetsByMonth = await db.budget.groupBy({
 		by: ["period"],
-		where: { userId, categoryId: { not: null }, period: { not: targetPeriod } },
+		where: { userId, categoryId: { not: null }, period: { lt: targetPeriod } },
 		_count: { period: true },
 		orderBy: { period: "desc" },
 	});
@@ -447,27 +388,11 @@ export async function copyFromLastMonth(
 		});
 	}
 
-	const sourceMonth = budgetsByMonth[0].period;
-	const sourceMonthStart = new Date(
-		sourceMonth.getFullYear(),
-		sourceMonth.getMonth(),
-		1,
-	);
-	const sourceMonthEnd = new Date(
-		sourceMonth.getFullYear(),
-		sourceMonth.getMonth() + 1,
-		0,
-		23,
-		59,
-		59,
-		999,
-	);
-
 	const sourceBudgets = await db.budget.findMany({
 		where: {
 			userId,
 			categoryId: { not: null },
-			period: { gte: sourceMonthStart, lte: sourceMonthEnd },
+			period: budgetsByMonth[0].period,
 		},
 	});
 
@@ -478,6 +403,7 @@ export async function copyFromLastMonth(
 					userId,
 					categoryId: sourceBudget.categoryId,
 					amount: sourceBudget.amount,
+					currency: sourceBudget.currency,
 					period: targetPeriod,
 					isRollover: sourceBudget.isRollover,
 					pegToActual: sourceBudget.pegToActual,

@@ -16,6 +16,8 @@ export type ParsedCsvRow = {
 export type ParsedBudgetRow = {
 	categoryName?: string;
 	amount: number;
+	/** Missing in exports made before budgets carried a currency. */
+	currency?: string;
 	period: Date;
 	isRollover: boolean;
 	rolloverAmount: number;
@@ -266,6 +268,7 @@ export const parseBudgetCsv = (text: string) => {
 		const cells = splitCsvLine(line);
 		const categoryName = readCell(cells, "categoryName") || undefined;
 		const amount = normalizeNumber(readCell(cells, "amount"));
+		const currencyCell = readCell(cells, "currency").toUpperCase();
 		// try period, fallback to date
 		const periodString = readCell(cells, "period") || readCell(cells, "date");
 		const isRollover = parseBoolean(readCell(cells, "isRollover"));
@@ -275,6 +278,11 @@ export const parseBudgetCsv = (text: string) => {
 
 		if (amount === undefined || amount < 0) {
 			errors.push(`Row ${i + 1}: amount must be a non-negative number.`);
+			continue;
+		}
+
+		if (currencyCell && !/^[A-Z0-9]{3}$/.test(currencyCell)) {
+			errors.push(`Row ${i + 1}: currency must be a 3-letter code.`);
 			continue;
 		}
 
@@ -289,6 +297,7 @@ export const parseBudgetCsv = (text: string) => {
 		rows.push({
 			categoryName,
 			amount,
+			...(currencyCell ? { currency: currencyCell } : {}),
 			period,
 			isRollover,
 			rolloverAmount,

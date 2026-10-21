@@ -131,6 +131,7 @@ export async function getSharedExpenseShares(
 					date: true,
 					categoryId: true,
 					exchangeRate: true,
+					category: { select: { userId: true } },
 				},
 			},
 		},
@@ -151,7 +152,12 @@ export async function getSharedExpenseShares(
 			amount: shareAmount,
 			currency,
 			amountInUSD: shareToUSD(shareAmount, currency, rateFor(p.transaction)),
-			categoryId: p.transaction.categoryId,
+			// The category belongs to whoever created the expense. Another
+			// participant's budgets and breakdowns cannot use it: uncategorized.
+			categoryId:
+				p.transaction.category?.userId === userId
+					? p.transaction.categoryId
+					: null,
 			date: p.transaction.date,
 		};
 	});

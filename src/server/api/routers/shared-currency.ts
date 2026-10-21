@@ -1,5 +1,5 @@
+import { sumIn } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
-import { fromUSD } from "~/server/currency";
 import { findExchangeRate } from "~/server/exchange-rates";
 
 /**
@@ -16,9 +16,10 @@ export async function getBestExchangeRate(
 }
 
 /**
- * Sums expenses with same-currency awareness.
- * Same-currency = original amount. Cross-currency = convert via USD.
- * Returns both the target currency total and the USD total.
+ * Sums finalized, non-excluded expenses in `targetCurrency` by the totals
+ * rule (~/lib/money): same-currency amounts as entered, the rest from
+ * amountInUSD at the target currency's rate on `date`. Also returns the USD
+ * total.
  */
 export async function sumExpensesForCurrency(
 	db: PrismaClient,
@@ -26,26 +27,22 @@ export async function sumExpensesForCurrency(
 	targetCurrency: string,
 	date: Date = new Date(),
 ) {
-	const expenses = await db.expense.findMany({
-		where: { ...where, status: "FINALIZED", excludeFromAnalytics: false },
-		select: { amount: true, currency: true, amountInUSD: true },
-	});
+	const [expenses, bestRate] = await Promise.all([
+		db.expense.findMany({
+			where: { ...where, status: "FINALIZED", excludeFromAnalytics: false },
+			select: { amount: true, currency: true, amountInUSD: true },
+		}),
+		getBestExchangeRate(db, targetCurrency, date),
+	]);
 
-	const bestRate = await getBestExchangeRate(db, targetCurrency, date);
-	const rate = bestRate?.rate ?? 1;
+	const items = expenses.map((e) => ({
+		amount: Number(e.amount),
+		currency: e.currency,
+		amountInUSD: Number(e.amountInUSD),
+	}));
 
-	let total = 0;
-	let totalInUSD = 0;
-
-	for (const exp of expenses) {
-		const usd = Number(exp.amountInUSD);
-		totalInUSD += usd;
-		if (exp.currency === targetCurrency) {
-			total += Number(exp.amount);
-		} else {
-			total += fromUSD(usd, targetCurrency, rate);
-		}
-	}
-
-	return { total, totalInUSD };
+	return {
+		total: sumIn(items, targetCurrency, bestRate?.rate),
+		totalInUSD: items.reduce((sum, e) => sum + e.amountInUSD, 0),
+	};
 }

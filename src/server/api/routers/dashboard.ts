@@ -1,23 +1,20 @@
 import { z } from "zod";
-import {
-	getFiscalMonthProgress,
-	getFiscalMonthRange,
-} from "~/lib/fiscal-month";
+import { sumIn, toUSD } from "~/lib/money";
+import { dayKey, startOfDayIn } from "~/lib/time-zone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import * as BudgetService from "~/server/services/budget.service";
+import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import {
+	getOverviewSettings,
+	getOverviewStats,
+} from "~/server/services/overview.service";
+import { RateCache } from "~/server/services/rate-cache";
 import {
 	getExcludedProjectIds,
 	getSharedExpenseShares,
-	getSharedExpenseTotalInUSD,
 	listSharedParticipationsForUser,
 } from "~/server/services/shared-expense-integration";
-import { RateCache } from "~/server/services/rate-cache";
+import { spendingWhere } from "~/server/services/spending";
 import { StatsService } from "~/server/services/stats.service";
-import { fromUSD, toUSD } from "~/server/currency";
-import { getBestExchangeRate, sumExpensesForCurrency } from "./shared-currency";
-
-/** Category names treated as "fixed" for budget pacing calculations */
-const FIXED_CATEGORY_NAMES = ["rent", "utilities", "mortgage", "bills", "insurance"];
 
 export const dashboardRouter = createTRPCRouter({
 	getOverviewStats: protectedProcedure
@@ -31,160 +28,18 @@ export const dashboardRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const { session, db } = ctx;
-
-			const selectedDate = input?.month ?? new Date();
-			const now = new Date();
-			const homeCurrency = input?.homeCurrency ?? "USD";
-
-			const rateCache = new RateCache(db);
-
-			// Single query for all user settings needed by this procedure
-			const [userSettings, excludedProjectIds] = await Promise.all([
-				db.user.findUnique({
-					where: { id: session.user.id },
-					select: {
-						fiscalMonthStartDay: true,
-						monthlyIncome: true,
-						monthlyIncomeCurrency: true,
-					},
-				}),
+			const [settings, excludedProjectIds] = await Promise.all([
+				getOverviewSettings(db, session.user.id),
 				getExcludedProjectIds(db, session.user.id),
 			]);
-			const fiscalStartDay = userSettings?.fiscalMonthStartDay ?? 1;
-			const fiscal = getFiscalMonthRange(selectedDate, fiscalStartDay);
-			const fiscalProgress = getFiscalMonthProgress(
-				now,
-				selectedDate,
-				fiscalStartDay,
-			);
-
-			const isCurrentMonth = fiscalProgress.isCurrentPeriod;
-			const daysRemaining = fiscalProgress.daysRemaining;
-
-			let last24HoursSpend = 0;
-			if (isCurrentMonth) {
-				const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-				const [{ total: personalTotal }, sharedTotalUSD] = await Promise.all([
-					sumExpensesForCurrency(
-						db,
-						{
-							userId: session.user.id,
-							isAmortizedParent: false,
-							date: {
-								gte: last24Hours,
-							},
-						},
-						homeCurrency,
-					),
-					getSharedExpenseTotalInUSD(db, session.user.id, {
-						gte: last24Hours,
-					}, rateCache, excludedProjectIds),
-				]);
-				const homeRate = await rateCache.get(homeCurrency, selectedDate);
-				const hRate = homeRate?.rate ?? 1;
-				const sharedInHome = fromUSD(sharedTotalUSD, homeCurrency, hRate);
-				last24HoursSpend = personalTotal + sharedInHome;
-			}
-
-			const bestHomeRate = await rateCache.get(homeCurrency, selectedDate);
-			const homeCurrencyRate = bestHomeRate?.rate ?? 1;
-
-			const detailedBudgets = await BudgetService.getBudgets(
-				db,
-				session.user.id,
-				selectedDate,
-				{ includeGlobal: true, fiscalMonthStartDay: fiscalStartDay, rateCache, excludedProjectIds },
-			);
-
-			const toHome = (usd: number) => fromUSD(usd, homeCurrency, homeCurrencyRate);
-
-			const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
-			const globalBudgetLimit = globalBudget
-				? toHome(globalBudget.effectiveAmountInUSD)
-				: 0;
-
-			const categoryBudgets = detailedBudgets.filter(
-				(b) => b.categoryId !== null,
-			);
-
-			const isFixed = (b: BudgetService.BudgetWithStats) =>
-				b.category?.isFixed ||
-				FIXED_CATEGORY_NAMES.includes(b.category?.name.toLowerCase() ?? "");
-
-			// 1. Calculate Sums
-			const fixedBudgetsSum = categoryBudgets
-				.filter(isFixed)
-				.reduce((sum: number, b) => sum + toHome(b.effectiveAmountInUSD), 0);
-
-			const explicitVariableBudgetsSum = categoryBudgets
-				.filter((b) => !isFixed(b))
-				.reduce((sum: number, b) => sum + toHome(b.effectiveAmountInUSD), 0);
-
-			const peggedAdjustment = categoryBudgets
-				.filter((b) => b.type === "PEG_TO_ACTUAL" || b.pegToActual)
-				.reduce((sum: number, b) => sum + toHome(b.actualSpendInUSD), 0);
-
-			// 2. Determine "Total Budget" for the month
-			const totalBudget =
-				globalBudgetLimit > 0
-					? globalBudgetLimit + peggedAdjustment
-					: fixedBudgetsSum + explicitVariableBudgetsSum;
-
-			// 3. Determine "Variable Budget"
-			const residualVariableBudget = Math.max(0, totalBudget - fixedBudgetsSum);
-
-			let variableBudget =
-				explicitVariableBudgetsSum > 0
-					? explicitVariableBudgetsSum
-					: residualVariableBudget;
-
-			if (variableBudget === 0 && totalBudget > 0) {
-				variableBudget = totalBudget;
-			}
-
-			const totalSpent = globalBudget
-				? toHome(globalBudget.actualSpendInUSD)
-				: categoryBudgets.reduce(
-						(sum: number, b) => sum + toHome(b.actualSpendInUSD),
-						0,
-					);
-
-			const variableSpent = categoryBudgets
-				.filter((b) => !isFixed(b))
-				.reduce((sum: number, b) => sum + toHome(b.actualSpendInUSD), 0);
-
-			const rawIncome = Number(userSettings?.monthlyIncome ?? 0);
-			const incomeCurrency = userSettings?.monthlyIncomeCurrency ?? "USD";
-
-			let monthlyIncome = rawIncome;
-			if (rawIncome > 0 && incomeCurrency !== homeCurrency) {
-				let incomeInUSD: number;
-				if (incomeCurrency === "USD") {
-					incomeInUSD = rawIncome;
-				} else {
-					const incomeRate = await rateCache.get(incomeCurrency, selectedDate);
-					const incomeRateVal = Number(incomeRate?.rate ?? 1);
-					incomeInUSD = toUSD(rawIncome, incomeCurrency, incomeRateVal);
-				}
-				monthlyIncome = fromUSD(incomeInUSD, homeCurrency, homeCurrencyRate);
-			}
-
-			return {
-				last24Hours: last24HoursSpend,
-				isCurrentMonth,
-				monthTotal: totalSpent,
-				dailyBudgetPace: {
-					totalBudget,
-					totalSpent,
-					variableBudget: variableBudget || totalBudget,
-					variableSpent,
-					daysRemaining,
-				},
-				workEquivalent: {
-					totalSpent,
-					monthlyIncome,
-				},
-			};
+			return getOverviewStats(db, session.user.id, {
+				...settings,
+				month: input?.month ?? new Date(),
+				homeCurrency: input?.homeCurrency ?? "USD",
+				excludedProjectIds,
+				rateCache: new RateCache(db),
+				timeZone: ctx.timeZone,
+			});
 		}),
 	getOverviewData: protectedProcedure
 		.input(
@@ -198,162 +53,20 @@ export const dashboardRouter = createTRPCRouter({
 			const { month, homeCurrency } = input;
 			const userId = session.user.id;
 
-			// Single query for all user settings (avoids duplicate fetches)
-			const [userSettings, excludedProjectIds] = await Promise.all([
-				db.user.findUnique({
-					where: { id: userId },
-					select: {
-						fiscalMonthStartDay: true,
-						monthlyIncome: true,
-						monthlyIncomeCurrency: true,
-					},
-				}),
+			const [settings, excludedProjectIds] = await Promise.all([
+				getOverviewSettings(db, userId),
 				getExcludedProjectIds(db, userId),
 			]);
-			const fiscalStartDay = userSettings?.fiscalMonthStartDay ?? 1;
+			const { fiscalStartDay } = settings;
 
 			// Per-request exchange rate cache to avoid duplicate lookups
 			const rateCache = new RateCache(db);
-			const statsService = new StatsService(db, rateCache, excludedProjectIds);
-
-			const fetchOverviewStats = async () => {
-				const selectedDate = month;
-				const now = new Date();
-				const fiscalProgress = getFiscalMonthProgress(
-					now,
-					selectedDate,
-					fiscalStartDay,
-				);
-
-				const isCurrentMonth = fiscalProgress.isCurrentPeriod;
-				const daysRemaining = fiscalProgress.daysRemaining;
-
-				let last24HoursSpend = 0;
-				if (isCurrentMonth) {
-					const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-					const [{ total: personalTotal2 }, sharedTotalUSD2] =
-						await Promise.all([
-							sumExpensesForCurrency(
-								db,
-								{
-									userId: session.user.id,
-									isAmortizedParent: false,
-									date: {
-										gte: last24Hours,
-									},
-								},
-								homeCurrency,
-							),
-							getSharedExpenseTotalInUSD(db, session.user.id, {
-								gte: last24Hours,
-							}, rateCache, excludedProjectIds),
-						]);
-					const homeRate2 = await rateCache.get(homeCurrency, month);
-					const hRate2 = homeRate2?.rate ?? 1;
-					const sharedInHome2 = fromUSD(sharedTotalUSD2, homeCurrency, hRate2);
-					last24HoursSpend = personalTotal2 + sharedInHome2;
-				}
-
-				const bestHomeRate = await rateCache.get(homeCurrency, selectedDate);
-				const homeCurrencyRate = bestHomeRate?.rate ?? 1;
-
-				const toHome = (usd: number) => fromUSD(usd, homeCurrency, homeCurrencyRate);
-
-				const detailedBudgets = await BudgetService.getBudgets(
-					db,
-					session.user.id,
-					selectedDate,
-					{ includeGlobal: true, fiscalMonthStartDay: fiscalStartDay, rateCache, excludedProjectIds },
-				);
-
-				const globalBudget = detailedBudgets.find((b) => b.categoryId === null);
-				const globalBudgetLimit = globalBudget
-					? toHome(globalBudget.effectiveAmountInUSD)
-					: 0;
-
-				const categoryBudgets = detailedBudgets.filter(
-					(b) => b.categoryId !== null,
-				);
-
-				const isFixed = (b: BudgetService.BudgetWithStats) =>
-					b.category?.isFixed ||
-					FIXED_CATEGORY_NAMES.includes(b.category?.name.toLowerCase() ?? "");
-
-				const fixedBudgetsSum = categoryBudgets
-					.filter(isFixed)
-					.reduce((sum: number, b) => sum + toHome(b.effectiveAmountInUSD), 0);
-
-				const explicitVariableBudgetsSum = categoryBudgets
-					.filter((b) => !isFixed(b))
-					.reduce((sum: number, b) => sum + toHome(b.effectiveAmountInUSD), 0);
-
-				const peggedAdjustment = categoryBudgets
-					.filter((b) => b.type === "PEG_TO_ACTUAL" || b.pegToActual)
-					.reduce((sum: number, b) => sum + toHome(b.actualSpendInUSD), 0);
-
-				const totalBudget =
-					globalBudgetLimit > 0
-						? globalBudgetLimit + peggedAdjustment
-						: fixedBudgetsSum + explicitVariableBudgetsSum;
-
-				const residualVariableBudget = Math.max(
-					0,
-					totalBudget - fixedBudgetsSum,
-				);
-
-				let variableBudget =
-					explicitVariableBudgetsSum > 0
-						? explicitVariableBudgetsSum
-						: residualVariableBudget;
-
-				if (variableBudget === 0 && totalBudget > 0) {
-					variableBudget = totalBudget;
-				}
-
-				const totalSpent = globalBudget
-					? toHome(globalBudget.actualSpendInUSD)
-					: categoryBudgets.reduce(
-							(sum: number, b) => sum + toHome(b.actualSpendInUSD),
-							0,
-						);
-
-				const variableSpent = categoryBudgets
-					.filter((b) => !isFixed(b))
-					.reduce((sum: number, b) => sum + toHome(b.actualSpendInUSD), 0);
-
-				const rawIncome = Number(userSettings?.monthlyIncome ?? 0);
-				const incomeCurrency = userSettings?.monthlyIncomeCurrency ?? "USD";
-
-				let monthlyIncome = rawIncome;
-				if (rawIncome > 0 && incomeCurrency !== homeCurrency) {
-					let incomeInUSD: number;
-					if (incomeCurrency === "USD") {
-						incomeInUSD = rawIncome;
-					} else {
-						const incomeRate = await rateCache.get(incomeCurrency, selectedDate);
-						const incomeRateVal = Number(incomeRate?.rate ?? 1);
-						incomeInUSD = toUSD(rawIncome, incomeCurrency, incomeRateVal);
-					}
-					monthlyIncome = toHome(incomeInUSD);
-				}
-
-				return {
-					last24Hours: last24HoursSpend,
-					isCurrentMonth,
-					monthTotal: totalSpent,
-					dailyBudgetPace: {
-						totalBudget,
-						totalSpent,
-						variableBudget: variableBudget || totalBudget,
-						variableSpent,
-						daysRemaining,
-					},
-					workEquivalent: {
-						totalSpent,
-						monthlyIncome,
-					},
-				};
-			};
+			const statsService = new StatsService(
+				db,
+				rateCache,
+				excludedProjectIds,
+				ctx.timeZone,
+			);
 
 			const [
 				hasExpenses,
@@ -381,7 +94,14 @@ export const dashboardRouter = createTRPCRouter({
 							rate: f.exchangeRate,
 						})),
 					),
-				fetchOverviewStats(),
+				getOverviewStats(db, userId, {
+					...settings,
+					month,
+					homeCurrency,
+					excludedProjectIds,
+					rateCache,
+					timeZone: ctx.timeZone,
+				}),
 				db.budget
 					.findFirst({
 						where: { userId },
@@ -423,45 +143,50 @@ export const dashboardRouter = createTRPCRouter({
 			const userId = session.user.id;
 			const { homeCurrency, days } = input;
 
-			const startDate = new Date();
-			startDate.setDate(startDate.getDate() - days);
-			startDate.setHours(0, 0, 0, 0);
+			// The window starts at local midnight `days` days ago.
+			const now = new Date();
+			const startDate = startOfDayIn(
+				new Date(now.getTime() - days * 24 * 60 * 60 * 1000),
+				ctx.timeZone,
+			);
 
 			const excludedProjectIds = await getExcludedProjectIds(db, userId);
 
-			const [personalAggs, sharedShares] = await Promise.all([
+			const [personalAggs, sharedShares, rateCache] = await Promise.all([
 				db.expense.groupBy({
-					by: ["date"],
-					where: {
-						userId,
-						status: "FINALIZED",
-						isAmortizedParent: false,
-						excludeFromAnalytics: false,
-						date: { gte: startDate },
-					},
-					_sum: { amountInUSD: true },
+					by: ["date", "currency"],
+					where: spendingWhere(userId, { gte: startDate }),
+					_sum: { amount: true, amountInUSD: true },
 				}),
 				getSharedExpenseShares(db, userId, { gte: startDate }, undefined, excludedProjectIds),
+				new RateCache(db),
 			]);
+			const rate = await rateCache.rate(homeCurrency, now);
 
-			const bestRate = await getBestExchangeRate(db, homeCurrency, new Date());
-			const rate = bestRate?.rate ?? 1;
-
-			// Merge personal + shared by day
+			// Merge personal + shared by the user's local day
 			const byDay = new Map<string, number>();
-			for (const agg of personalAggs) {
-				const key = agg.date.toISOString().slice(0, 10);
-				const amount = fromUSD(
-					Number(agg._sum.amountInUSD ?? 0),
-					homeCurrency,
-					rate,
-				);
+			const add = (date: Date, amount: number) => {
+				const key = dayKey(date, ctx.timeZone);
 				byDay.set(key, (byDay.get(key) ?? 0) + amount);
+			};
+			for (const agg of personalAggs) {
+				add(
+					agg.date,
+					sumIn(
+						[
+							{
+								currency: agg.currency,
+								amount: Number(agg._sum.amount ?? 0),
+								amountInUSD: Number(agg._sum.amountInUSD ?? 0),
+							},
+						],
+						homeCurrency,
+						rate,
+					),
+				);
 			}
 			for (const share of sharedShares) {
-				const key = share.date.toISOString().slice(0, 10);
-				const amount = fromUSD(share.amountInUSD, homeCurrency, rate);
-				byDay.set(key, (byDay.get(key) ?? 0) + amount);
+				add(share.date, sumIn([share], homeCurrency, rate));
 			}
 
 			return Array.from(byDay.entries())
@@ -548,19 +273,11 @@ export const dashboardRouter = createTRPCRouter({
 				nameMap.set(`user:${u.id}`, u.name ?? "Unknown");
 			for (const s of sShadows) nameMap.set(`shadow:${s.id}`, s.name);
 
-			// Compute amountInUSD for settlements — batch fetch rates in parallel
-			const settlementCurrencies = [
-				...new Set(settlements.map((s) => s.currency)),
-			];
-			const nonUsdCurrencies = settlementCurrencies.filter((c) => c !== "USD");
-			const fetchedRates = await Promise.all(
-				nonUsdCurrencies.map((c) => getBestExchangeRate(db, c, new Date())),
+			// USD value of each settlement at the rate for its own date
+			const settlementRate = await findExchangeRatesForDates(
+				db,
+				settlements.map((s) => s.currency),
 			);
-			const settlementRateCache = new Map<string, number | null>();
-			settlementRateCache.set("USD", 1);
-			for (let i = 0; i < nonUsdCurrencies.length; i++) {
-				settlementRateCache.set(nonUsdCurrencies[i]!, fetchedRates[i]?.rate ?? null);
-			}
 
 			// Build unified activity items
 			type ActivityItem = {
@@ -658,9 +375,8 @@ export const dashboardRouter = createTRPCRouter({
 					amount,
 					currency: s.currency,
 					amountInUSD: (() => {
-						const cachedRate = settlementRateCache.get(s.currency);
-						if (cachedRate == null) return null;
-						return toUSD(amount, s.currency, cachedRate);
+						const rate = settlementRate(s.currency, s.initiatedAt);
+						return rate ? toUSD(amount, s.currency, rate.rate) : null;
 					})(),
 					date: s.initiatedAt,
 					category: null,

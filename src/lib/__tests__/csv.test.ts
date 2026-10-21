@@ -191,6 +191,27 @@ describe("parseBudgetCsv", () => {
 		expect(rows[0]?.period).toBeInstanceOf(Date);
 	});
 
+	it("reads the currency column", () => {
+		const { rows, errors } = parseBudgetCsv(
+			"amount,currency,period\n250000,ars,2024-03-01",
+		);
+		expect(errors).toHaveLength(0);
+		expect(rows[0]?.currency).toBe("ARS");
+	});
+
+	it("leaves currency unset for exports without the column", () => {
+		const { rows } = parseBudgetCsv(validRow);
+		expect(rows[0]).not.toHaveProperty("currency");
+	});
+
+	it("rejects a malformed currency", () => {
+		const { rows, errors } = parseBudgetCsv(
+			"amount,currency,period\n500,dollars,2024-03-01",
+		);
+		expect(rows).toHaveLength(0);
+		expect(errors[0]).toMatch(/currency/);
+	});
+
 	it("accepts 'date' column instead of 'period'", () => {
 		const csv = "amount,date\n500,2024-03-01";
 		const { rows, errors } = parseBudgetCsv(csv);

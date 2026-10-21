@@ -96,6 +96,26 @@ describe("getSharedExpenseShares", () => {
 		expect(spy).toHaveBeenCalled();
 		spy.mockRestore();
 	});
+
+	it("keeps the category only when it is the participant's own", async () => {
+		const own = participation(10, "USD", null);
+		own.transaction = {
+			...own.transaction,
+			categoryId: "cat-mine" as never,
+			category: { userId: "user-1" } as never,
+		};
+		const creators = participation(20, "USD", null);
+		creators.transaction = {
+			...creators.transaction,
+			categoryId: "cat-theirs" as never,
+			category: { userId: "user-2" } as never,
+		};
+		db.splitParticipant.findMany.mockResolvedValue([own, creators]);
+
+		const shares = await getSharedExpenseShares(db as never, "user-1");
+
+		expect(shares.map((s) => s.categoryId)).toEqual(["cat-mine", null]);
+	});
 });
 
 describe("listSharedParticipationsForUser", () => {

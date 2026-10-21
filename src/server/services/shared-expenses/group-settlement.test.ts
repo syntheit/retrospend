@@ -487,3 +487,55 @@ describe("computePeriodOutstanding", () => {
 		expect(open.map((o) => o.amount)).toEqual([60, -60]);
 	});
 });
+
+describe("settlement rounding follows the currency", () => {
+	it("crypto debts below a cent-sized threshold still settle, to the satoshi", () => {
+		// 0.003 BTC split three ways: each owes 0.001 BTC (about 65 USD)
+		const result = computeSettlementPlan(
+			[
+				tx("alice", 0.003, "BTC", [
+					{ id: "alice", amount: 0.001 },
+					{ id: "bob", amount: 0.001 },
+					{ id: "carol", amount: 0.001 },
+				]),
+			],
+			[],
+		);
+		const plan = result.byCurrency.BTC!.plan;
+		expect(plan.map((p) => p.amount)).toEqual([0.001, 0.001]);
+		expect(
+			result.byCurrency.BTC!.balances.find(
+				(b) => b.participant.participantId === "alice",
+			)!.netBalance,
+		).toBe(0.002);
+	});
+
+	it("JPY rounds to whole yen", () => {
+		const result = computeSettlementPlan(
+			[
+				tx("alice", 1000, "JPY", [
+					{ id: "alice", amount: 333.33 },
+					{ id: "bob", amount: 333.33 },
+					{ id: "carol", amount: 333.34 },
+				]),
+			],
+			[],
+		);
+		expect(result.byCurrency.JPY!.plan.map((p) => p.amount)).toEqual([
+			333, 333,
+		]);
+	});
+
+	it("an open crypto balance is outstanding even when tiny", () => {
+		const open = computePeriodOutstanding(
+			[
+				tx("alice", 0.0002, "BTC", [
+					{ id: "alice", amount: 0.0001 },
+					{ id: "bob", amount: 0.0001 },
+				]),
+			],
+			[],
+		);
+		expect(open.map((o) => o.amount)).toEqual([0.0001, -0.0001]);
+	});
+});

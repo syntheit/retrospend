@@ -252,3 +252,25 @@ describe("recurring.confirmAndCreate", () => {
 		expect(state.expenses[0]).toMatchObject({ amountInUSD: usd });
 	});
 });
+
+describe("recurring.list home-currency amounts", () => {
+	it("converts by the money rules and leaves a missing rate as null", async () => {
+		mockDb.recurringTemplate.findMany.mockResolvedValue([
+			{ id: "t1", amount: 50000, currency: "ARS", isActive: true },
+			{ id: "t2", amount: 10, currency: "USD", isActive: true },
+			{ id: "t3", amount: 0.001, currency: "BTC", isActive: true },
+			{ id: "t4", amount: 5, currency: "XYZ", isActive: true },
+		]);
+		mockDb.user.findUnique.mockResolvedValue({ homeCurrency: "ARS" });
+
+		const list = await callAndFlush(() => caller().list());
+		const byId = Object.fromEntries(
+			list.map((t) => [t.id, t.amountInHomeCurrency]),
+		);
+
+		expect(byId.t1).toBe(50000);
+		expect(byId.t2).toBeCloseTo(10 * 1560);
+		expect(byId.t3).toBeCloseTo(0.001 * 64545.9 * 1560, 2);
+		expect(byId.t4).toBeNull();
+	});
+});

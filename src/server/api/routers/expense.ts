@@ -137,6 +137,7 @@ export const expenseRouter = createTRPCRouter({
 							pricingSource: z.string().nullable().optional(),
 							isAmortized: z.boolean().optional().default(false),
 							amortizeDuration: z.number().int().min(2).max(60).optional(),
+							excludeFromAnalytics: z.boolean().optional(),
 						}),
 					)
 					.min(1)
@@ -149,6 +150,7 @@ export const expenseRouter = createTRPCRouter({
 				return await service.importExpensesFromRows(
 					ctx.session.user.id,
 					input.rows,
+					{ timeZone: ctx.timeZone },
 				);
 			} catch (error) {
 				throw new TRPCError({
@@ -177,39 +179,6 @@ export const expenseRouter = createTRPCRouter({
 			);
 		}),
 
-	getCategorySpending: protectedProcedure
-		.input(
-			z.object({
-				categoryId: z.string().cuid(),
-				month: z.date(),
-				targetCurrency: z.string().min(3).max(10).optional(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const service = new ExpenseService(ctx.db);
-			return await service.getCategorySpending(
-				ctx.session.user.id,
-				input.categoryId,
-				input.month,
-				input.targetCurrency,
-			);
-		}),
-
-	getTotalSpending: protectedProcedure
-		.input(
-			z.object({
-				month: z.date(),
-				targetCurrency: z.string().min(3).max(10).optional(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const service = new ExpenseService(ctx.db);
-			return await service.getTotalSpending(
-				ctx.session.user.id,
-				input.month,
-				input.targetCurrency,
-			);
-		}),
 	getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
 		const service = new ExpenseService(ctx.db);
 		return await service.getFilterOptions(ctx.session.user.id);

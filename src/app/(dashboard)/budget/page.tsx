@@ -26,7 +26,6 @@ export default function BudgetPage() {
 		hasPreviousBudgets,
 		hasContent,
 		homeCurrency,
-		usdToHomeRate,
 		serverTime,
 		budgetMaxDate,
 		budgetMinDate,
@@ -101,7 +100,6 @@ export default function BudgetPage() {
 						homeCurrency={homeCurrency}
 						selectedMonth={selectedMonth}
 						serverTime={serverTime}
-						usdToHomeCurrencyRate={usdToHomeRate}
 					/>
 
 					{categoryBudgets.length > 0 && (

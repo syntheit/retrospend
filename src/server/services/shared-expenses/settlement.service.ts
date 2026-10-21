@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { toUSD, fromUSD } from "~/server/currency";
+import { convertAmount, currencyDecimals, roundMoney } from "~/lib/money";
 import { db as globalDb } from "~/server/db";
 import {
 	createNotification,
@@ -16,6 +16,11 @@ import {
 	scopeDebtsForCurrency,
 } from "./settlement-allocation";
 import { type ParticipantRef, sameParticipant } from "./types";
+
+/** An amount with its currency's decimals, for messages (2 for USD, 8 for BTC). */
+function formatAmount(amount: number, currency: string): string {
+	return amount.toFixed(currencyDecimals(currency));
+}
 
 type AppDb = PrismaClient;
 
@@ -210,7 +215,7 @@ export class SettlementService {
 			if (input.amount > amountOwed + 0.01) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: `This settlement of ${input.currency} ${input.amount.toFixed(2)} exceeds the outstanding balance of ${input.currency} ${amountOwed.toFixed(2)} with this person. Enter an amount up to the outstanding balance.`,
+					message: `This settlement of ${input.currency} ${formatAmount(input.amount, input.currency)} exceeds the outstanding balance of ${input.currency} ${formatAmount(amountOwed, input.currency)} with this person. Enter an amount up to the outstanding balance.`,
 				});
 			}
 
@@ -319,7 +324,7 @@ export class SettlementService {
 		if (input.toParticipant.participantType === "user") {
 			await this.notifySettlementRecorded(
 				sides,
-				`${input.currency} ${input.amount.toFixed(2)}`,
+				`${input.currency} ${formatAmount(input.amount, input.currency)}`,
 				{ settlementId: settlement.id },
 			);
 		}
@@ -434,7 +439,7 @@ export class SettlementService {
 				userId: settlement.fromParticipantId,
 				type: "SETTLEMENT_CONFIRMED",
 				title: "Settlement confirmed",
-				body: `${payeeName} confirmed your settlement of ${settlement.currency} ${Number(settlement.amount).toFixed(2)}`,
+				body: `${payeeName} confirmed your settlement of ${settlement.currency} ${formatAmount(Number(settlement.amount), settlement.currency)}`,
 				data: {
 					settlementId,
 					toParticipantType: "user",
@@ -692,7 +697,7 @@ export class SettlementService {
 				userId: settlement.fromParticipantId,
 				type: "SETTLEMENT_REJECTED",
 				title: "Settlement rejected",
-				body: `${payeeName} rejected your settlement of ${settlement.currency} ${Number(settlement.amount).toFixed(2)}${reason ? `: ${reason}` : ""}`,
+				body: `${payeeName} rejected your settlement of ${settlement.currency} ${formatAmount(Number(settlement.amount), settlement.currency)}${reason ? `: ${reason}` : ""}`,
 				data: {
 					settlementId,
 					toParticipantType: "user",
@@ -768,7 +773,7 @@ export class SettlementService {
 				userId: settlement.toParticipantId,
 				type: "PAYMENT_REMINDER",
 				title: "Settlement reminder",
-				body: `${payerName} is reminding you about a settlement of ${settlement.currency} ${Number(settlement.amount).toFixed(2)}`,
+				body: `${payerName} is reminding you about a settlement of ${settlement.currency} ${formatAmount(Number(settlement.amount), settlement.currency)}`,
 				data: {
 					settlementId,
 					fromParticipantType: "user",
@@ -1131,12 +1136,14 @@ export class SettlementService {
 						currency: entry.currency,
 						amount: entry.amount,
 						convert: (amount: number) => {
-							const usdAmount = toUSD(amount, entry.currency, sourceRate);
-							const converted =
-								input.paymentCurrency === "USD"
-									? usdAmount
-									: fromUSD(usdAmount, input.paymentCurrency, targetRate);
-							return Math.round(converted * 100) / 100;
+							const converted = convertAmount(
+								amount,
+								entry.currency,
+								sourceRate,
+								input.paymentCurrency,
+								targetRate,
+							);
+							return roundMoney(converted, input.paymentCurrency);
 						},
 						exchangeRateUsed: sourceRate,
 					});
@@ -1189,7 +1196,10 @@ export class SettlementService {
 						if (entry.convert && convertedTotal !== null) {
 							convertedAmount =
 								i === rows.length - 1
-									? Math.round((convertedTotal - convertedSoFar) * 100) / 100
+									? roundMoney(
+											convertedTotal - convertedSoFar,
+											input.paymentCurrency,
+										)
 									: entry.convert(allocation.amount);
 							convertedSoFar += convertedAmount;
 						}
@@ -1260,7 +1270,7 @@ export class SettlementService {
 		const settledCurrencyCount = new Set(settlements.map((s) => s.currency))
 			.size;
 		if (input.toParticipant.participantType === "user") {
-			const formattedTotal = `${input.paymentCurrency} ${totalInPaymentCurrency.toFixed(2)}`;
+			const formattedTotal = `${input.paymentCurrency} ${formatAmount(totalInPaymentCurrency, input.paymentCurrency)}`;
 			await this.notifySettlementRecorded(
 				sides,
 				settledCurrencyCount > 1
@@ -1273,8 +1283,10 @@ export class SettlementService {
 		return {
 			settlements,
 			skipped,
-			totalInPaymentCurrency:
-				Math.round(totalInPaymentCurrency * 100) / 100,
+			totalInPaymentCurrency: roundMoney(
+				totalInPaymentCurrency,
+				input.paymentCurrency,
+			),
 			paymentCurrency: input.paymentCurrency,
 			requiresPayeeConfirmation:
 				confirmationFor(sides, new Date()).status === "PROPOSED",

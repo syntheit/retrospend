@@ -1,26 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MissingRateError } from "~/lib/money";
+import { type TestExpenseRow, useExpenseTable } from "~/test/expense-table";
 import { createMockDb } from "~/test/mock-db";
+import { useRateTable } from "~/test/rate-table";
 import { StatsService } from "../stats.service";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const mockGetBestExchangeRate = vi.hoisted(() => vi.fn());
 const mockGetSharedExpenseShares = vi.hoisted(() => vi.fn());
-const mockGetSharedExpenseTotalInUSD = vi.hoisted(() => vi.fn());
-
-vi.mock("~/server/api/routers/shared-currency", () => ({
-	getBestExchangeRate: mockGetBestExchangeRate,
-}));
 
 vi.mock("~/server/services/shared-expense-integration", () => ({
 	getSharedExpenseShares: mockGetSharedExpenseShares,
-	getSharedExpenseTotalInUSD: mockGetSharedExpenseTotalInUSD,
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeAggregate(amountInUSD: number) {
-	return { _sum: { amountInUSD }, _count: amountInUSD > 0 ? 1 : 0 };
+// Rate table: ARS blue 1560 (preferred), EUR 0.8787, BTC 64545.9 USD per coin.
+const ARS = 1560;
+
+function usd(date: Date, amount: number, extra: Partial<TestExpenseRow> = {}) {
+	return { date, amount, currency: "USD", amountInUSD: amount, ...extra };
+}
+
+/** An ARS expense whose USD value was captured at its own (older) rate. */
+function ars(
+	date: Date,
+	amount: number,
+	rateAtTheTime: number,
+	extra: Partial<TestExpenseRow> = {},
+) {
+	return {
+		date,
+		amount,
+		currency: "ARS",
+		amountInUSD: Math.round((amount / rateAtTheTime) * 100) / 100,
+		...extra,
+	};
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -32,202 +47,213 @@ describe("StatsService", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		db = createMockDb();
+		useRateTable(db);
 		service = new StatsService(db as never);
-
-		mockGetBestExchangeRate.mockResolvedValue({ rate: 1, type: "official" });
 		mockGetSharedExpenseShares.mockResolvedValue([]);
-		mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
 	});
 
 	// ── getSummaryStats ────────────────────────────────────────────────────────
 
 	describe("getSummaryStats", () => {
-		// Use a past month to get deterministic daysElapsed (covers full month, no "now" math)
-		const PAST_MONTH = new Date("2023-01-15");
+		// A past month gives a deterministic daysElapsed (the whole month).
+		const PAST_MONTH = new Date(2023, 0, 15);
 
-		it("totalThisMonth = personal USD + shared USD converted to homeCurrency", async () => {
-			// Personal: 100 USD, Shared: 50 USD, rate=1 for USD, so total = 150
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(100)) // current month
-				.mockResolvedValue(makeAggregate(0)); // last month + historicals
-			mockGetSharedExpenseTotalInUSD
-				.mockResolvedValueOnce(50) // current month
-				.mockResolvedValue(0); // last month + historicals
+		it("USD home: personal + shared spending in the month", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 10), 100),
+				usd(new Date(2023, 1, 10), 999), // next month
+			]);
+			mockGetSharedExpenseShares.mockImplementation(
+				async (_db: unknown, _u: unknown, range: { gte: Date }) =>
+					range.gte.getMonth() === 0
+						? [{ amount: 50, currency: "USD", amountInUSD: 50, categoryId: null, date: new Date(2023, 0, 5) }]
+						: [],
+			);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
 
 			expect(result.totalThisMonth).toBeCloseTo(150);
 		});
 
-		it("changeVsLastMonth is null when last month total = 0 (avoids division by zero)", async () => {
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(100)) // current month
-				.mockResolvedValueOnce(makeAggregate(0)) // last month
-				.mockResolvedValue(makeAggregate(0)); // historicals
-			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
+		it("ARS home: ARS expenses count as entered, not round-tripped through USD", async () => {
+			// 100000 ARS logged when 1 USD = 1000 ARS (100 USD stored). The table
+			// now says 1560; the old math showed 156000 ARS.
+			useExpenseTable(db, [ars(new Date(2023, 0, 10), 100000, 1000)]);
+
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "ARS");
+
+			expect(result.totalThisMonth).toBe(100000);
+		});
+
+		it("ARS home: a USD expense converts at the home rate for the period", async () => {
+			useExpenseTable(db, [
+				ars(new Date(2023, 0, 10), 50000, 1000),
+				usd(new Date(2023, 0, 11), 20),
+			]);
+
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "ARS");
+
+			expect(result.totalThisMonth).toBeCloseTo(50000 + 20 * ARS);
+		});
+
+		it("crypto home: USD spending converts to coins without rounding to cents", async () => {
+			useExpenseTable(db, [usd(new Date(2023, 0, 10), 100)]);
+
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "BTC");
+
+			expect(result.totalThisMonth).toBeCloseTo(100 / 64545.9, 10);
+		});
+
+		it("missing home rate is an error, not a 1:1 conversion", async () => {
+			useExpenseTable(db, [usd(new Date(2023, 0, 10), 100)]);
+
+			await expect(
+				service.getSummaryStats("user-1", PAST_MONTH, "XYZ"),
+			).rejects.toBeInstanceOf(MissingRateError);
+		});
+
+		it("a home currency with no rate still works when nothing needs converting", async () => {
+			useExpenseTable(db, [
+				{ date: new Date(2023, 0, 10), amount: 70, currency: "XYZ", amountInUSD: 0 },
+			]);
+
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "XYZ");
+
+			expect(result.totalThisMonth).toBe(70);
+		});
+
+		it("excluded and draft expenses do not count", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 10), 100),
+				usd(new Date(2023, 0, 11), 500, { excludeFromAnalytics: true }),
+				usd(new Date(2023, 0, 12), 700, { status: "DRAFT" }),
+				usd(new Date(2023, 0, 13), 900, { isAmortizedParent: true }),
+			]);
+
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
+
+			expect(result.totalThisMonth).toBe(100);
+		});
+
+		it("changeVsLastMonth is null when last month total = 0", async () => {
+			useExpenseTable(db, [usd(new Date(2023, 0, 10), 100)]);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
 
 			expect(result.changeVsLastMonth).toBeNull();
 		});
 
-		it("changeVsLastMonth is calculated correctly when last month > 0", async () => {
-			// Current: 150, Last: 100 → change = (150-100)/100 * 100 = 50%
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(150)) // current
-				.mockResolvedValueOnce(makeAggregate(100)) // last month
-				.mockResolvedValue(makeAggregate(0)); // historicals
-			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
+		it("changeVsLastMonth compares home-currency totals", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 10), 150),
+				usd(new Date(2022, 11, 10), 100),
+			]);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
 
 			expect(result.changeVsLastMonth).toBeCloseTo(50);
 		});
 
-		it("projectedSpend uses average of last 3 months with positive spend", async () => {
-			// Current + last month are 0 (via aggregate). The 3 historical months come
-			// from a single batched groupBy over their date range: Dec/Nov/Oct 2022
-			// relative to PAST_MONTH (2023-01), each bucketed by its fiscal range.
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(0)) // current
-				.mockResolvedValueOnce(makeAggregate(0)); // last month
-			db.expense.groupBy.mockResolvedValue([
-				{ date: new Date("2022-12-15"), _sum: { amountInUSD: 100 } },
-				{ date: new Date("2022-11-15"), _sum: { amountInUSD: 200 } },
-				{ date: new Date("2022-10-15"), _sum: { amountInUSD: 300 } },
+		it("projectedSpend averages the last 3 months that had spending", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2022, 11, 15), 100),
+				// November 2022 empty: left out of the average
+				usd(new Date(2022, 9, 15), 300),
+				usd(new Date(2022, 8, 15), 5000), // 4 months back, ignored
 			]);
-			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
-
-			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
-
-			// Average of [100, 200, 300] = 200
-			expect(result.projectedSpend).toBeCloseTo(200);
-		});
-
-		it("zero-spend historical months are excluded from projection", async () => {
-			// Historicals: 100, 0 (excluded), 300 → average = (100+300)/2 = 200
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(0)) // current
-				.mockResolvedValueOnce(makeAggregate(0)); // last month
-			db.expense.groupBy.mockResolvedValue([
-				{ date: new Date("2022-12-15"), _sum: { amountInUSD: 100 } },
-				// Nov 2022 has no rows -> zero total -> excluded from the average.
-				{ date: new Date("2022-10-15"), _sum: { amountInUSD: 300 } },
-			]);
-			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
 
 			expect(result.projectedSpend).toBeCloseTo(200);
 		});
 
-		it("dailyAverage = totalThisMonth / daysElapsed in fiscal month (past month = full month)", async () => {
-			// Jan 2023 has 31 days. Using startDay=1: daysElapsed=31
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(310)) // current: $310
-				.mockResolvedValue(makeAggregate(0));
-			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
+		it("dailyAverage = total / days in a past month", async () => {
+			useExpenseTable(db, [usd(new Date(2023, 0, 10), 310)]);
 
-			const result = await service.getSummaryStats("user-1", new Date("2023-01-15"), "USD");
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
 
-			// 310 / 31 days = 10/day
 			expect(result.dailyAverage).toBeCloseTo(10);
 		});
 
-		it("shared expenses from user's splits count toward totalThisMonth", async () => {
-			db.expense.aggregate.mockResolvedValue(makeAggregate(0));
-			mockGetSharedExpenseTotalInUSD
-				.mockResolvedValueOnce(75) // current month: 75 USD shared
-				.mockResolvedValue(0);
+		it("buckets by the user's time zone", async () => {
+			// 22:30 on Jan 31 in Buenos Aires is Feb 1 in UTC.
+			useExpenseTable(db, [usd(new Date("2023-02-01T01:30:00Z"), 40)]);
+			const tzService = new StatsService(
+				db as never,
+				undefined,
+				undefined,
+				"America/Argentina/Buenos_Aires",
+			);
 
-			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
+			const jan = await tzService.getSummaryStats(
+				"user-1",
+				new Date("2023-01-15T12:00:00Z"),
+				"USD",
+			);
+			const feb = await tzService.getSummaryStats(
+				"user-1",
+				new Date("2023-02-15T12:00:00Z"),
+				"USD",
+			);
 
-			expect(result.totalThisMonth).toBeCloseTo(75);
-		});
-
-		it("converts total to homeCurrency using getBestExchangeRate", async () => {
-			// 100 USD, ARS rate = 1000 → total in ARS = 100 * 1000 = 100000
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 1000, type: "blue" });
-			db.expense.aggregate
-				.mockResolvedValueOnce(makeAggregate(100))
-				.mockResolvedValue(makeAggregate(0));
-			mockGetSharedExpenseTotalInUSD.mockResolvedValue(0);
-
-			const result = await service.getSummaryStats("user-1", PAST_MONTH, "ARS");
-
-			expect(result.totalThisMonth).toBeCloseTo(100000);
+			expect(jan.totalThisMonth).toBe(40);
+			expect(feb.totalThisMonth).toBe(0);
 		});
 	});
 
 	// ── getCategoryBreakdown ───────────────────────────────────────────────────
 
 	describe("getCategoryBreakdown", () => {
-		it("groups personal expenses by categoryId and returns sorted by value desc", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ categoryId: "cat-1", _sum: { amountInUSD: 300 } },
-				{ categoryId: "cat-2", _sum: { amountInUSD: 100 } },
+		const MONTH = new Date(2023, 0, 15);
+
+		it("groups by category, sorted by value desc", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 3), 300, { categoryId: "cat-1" }),
+				usd(new Date(2023, 0, 4), 100, { categoryId: "cat-2" }),
 			]);
 			db.category.findMany.mockResolvedValue([
 				{ id: "cat-1", name: "Food", color: "blue", icon: null },
 				{ id: "cat-2", name: "Transport", color: "green", icon: null },
 			]);
 
-			const result = await service.getCategoryBreakdown(
-				"user-1",
-				new Date("2023-01-15"),
-				"USD",
-			);
+			const result = await service.getCategoryBreakdown("user-1", MONTH, "USD");
 
-			expect(result).toHaveLength(2);
-			expect(result[0]!.id).toBe("cat-1"); // highest value first
-			expect(result[0]!.value).toBeCloseTo(300);
-			expect(result[1]!.id).toBe("cat-2");
+			expect(result.map((r) => [r.id, r.value])).toEqual([
+				["cat-1", 300],
+				["cat-2", 100],
+			]);
 		});
 
-		it("null categoryId maps to 'uncategorized' with name 'Uncategorized'", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ categoryId: null, _sum: { amountInUSD: 50 } },
-			]);
+		it("null categoryId maps to 'uncategorized'", async () => {
+			useExpenseTable(db, [usd(new Date(2023, 0, 3), 50)]);
 			db.category.findMany.mockResolvedValue([]);
 
-			const result = await service.getCategoryBreakdown(
-				"user-1",
-				new Date("2023-01-15"),
-				"USD",
-			);
+			const result = await service.getCategoryBreakdown("user-1", MONTH, "USD");
 
-			expect(result[0]!.id).toBe("uncategorized");
-			expect(result[0]!.name).toBe("Uncategorized");
+			expect(result[0]).toMatchObject({ id: "uncategorized", name: "Uncategorized" });
 		});
 
-		it("shared expense shares are merged into category totals", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ categoryId: "cat-1", _sum: { amountInUSD: 100 } },
+		it("ARS home: mixes native ARS and converted USD per category", async () => {
+			useExpenseTable(db, [
+				ars(new Date(2023, 0, 3), 30000, 1000, { categoryId: "cat-1" }),
+				usd(new Date(2023, 0, 4), 10, { categoryId: "cat-1" }),
 			]);
 			db.category.findMany.mockResolvedValue([
 				{ id: "cat-1", name: "Food", color: "blue", icon: null },
 			]);
 			mockGetSharedExpenseShares.mockResolvedValue([
-				{ amount: 50, currency: "USD", amountInUSD: 50, categoryId: "cat-1", date: new Date() },
+				{ amount: 2000, currency: "ARS", amountInUSD: 1.28, categoryId: "cat-1", date: new Date(2023, 0, 5) },
 			]);
 
-			const result = await service.getCategoryBreakdown(
-				"user-1",
-				new Date("2023-01-15"),
-				"USD",
-			);
+			const result = await service.getCategoryBreakdown("user-1", MONTH, "ARS");
 
-			expect(result[0]!.value).toBeCloseTo(150); // 100 personal + 50 shared
+			expect(result[0]!.value).toBeCloseTo(30000 + 10 * ARS + 2000);
 		});
 
 		it("returns empty array when no expenses", async () => {
-			db.expense.groupBy.mockResolvedValue([]);
+			useExpenseTable(db, []);
 
-			const result = await service.getCategoryBreakdown(
-				"user-1",
-				new Date("2023-01-15"),
-				"USD",
-			);
+			const result = await service.getCategoryBreakdown("user-1", MONTH, "USD");
 
 			expect(result).toHaveLength(0);
 		});
@@ -236,148 +262,124 @@ describe("StatsService", () => {
 	// ── getDailyTrend ──────────────────────────────────────────────────────────
 
 	describe("getDailyTrend", () => {
-		// Use Jan 2023 (past month, 31 days, predictable)
-		const MONTH = new Date("2023-01-15");
+		const MONTH = new Date(2023, 0, 15);
 
-		it("returns one entry per day of the month for past months", async () => {
-			db.expense.groupBy.mockResolvedValue([]);
-			db.category.findMany.mockResolvedValue([]);
+		it("returns one entry per day of a past month", async () => {
+			useExpenseTable(db, []);
 
 			const result = await service.getDailyTrend("user-1", MONTH, "USD");
 
 			expect(result).toHaveLength(31);
 		});
 
-		it("cumulative total increases monotonically (never decreases)", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ date: new Date("2023-01-10"), categoryId: null, _sum: { amountInUSD: 100 } },
-				{ date: new Date("2023-01-20"), categoryId: null, _sum: { amountInUSD: 50 } },
+		it("cumulative values carry forward over empty days", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 5), 100),
+				usd(new Date(2023, 0, 20), 50),
 			]);
 			db.category.findMany.mockResolvedValue([]);
 
 			const result = await service.getDailyTrend("user-1", MONTH, "USD");
 
-			for (let i = 1; i < result.length; i++) {
-				expect(result[i]!.total).toBeGreaterThanOrEqual(result[i - 1]!.total);
-			}
+			expect(result.find((d) => d.day === "Jan 5")!.total).toBe(100);
+			expect(result.find((d) => d.day === "Jan 6")!.total).toBe(100);
+			expect(result.at(-1)!.total).toBe(150);
 		});
 
-		it("days with no expenses still appear with carried-forward cumulative values", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ date: new Date("2023-01-05"), categoryId: null, _sum: { amountInUSD: 100 } },
-			]);
-			db.category.findMany.mockResolvedValue([]);
-
-			const result = await service.getDailyTrend("user-1", MONTH, "USD");
-
-			// Day 5 should have 100, day 6 should still have 100 (no new spend)
-			const day5 = result.find((d) => d.day === "Jan 5")!;
-			const day6 = result.find((d) => d.day === "Jan 6")!;
-			expect(day5.total).toBeCloseTo(100);
-			expect(day6.total).toBeCloseTo(100);
-		});
-
-		it("category with isFixed=true → expense counted as fixed", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ date: new Date("2023-01-05"), categoryId: "cat-fixed", _sum: { amountInUSD: 200 } },
+		it("splits fixed and variable categories", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 1), 1500, { categoryId: "cat-rent" }),
+				usd(new Date(2023, 0, 10), 75, { categoryId: "cat-food" }),
 			]);
 			db.category.findMany.mockResolvedValue([
-				{ id: "cat-fixed", isFixed: true, name: "Rent" },
-			]);
-
-			const result = await service.getDailyTrend("user-1", MONTH, "USD");
-
-			const day5 = result.find((d) => d.day === "Jan 5")!;
-			expect(day5.fixed).toBeCloseTo(200);
-			expect(day5.variable).toBeCloseTo(0);
-		});
-
-		it("category named 'rent' → expense counted as fixed (via isFixed flag)", async () => {
-			// Tests that Rent-named category expenses end up in the fixed column.
-			// Using isFixed: true since isFixed + FIXED_NAMES are OR'd together;
-			// the `isFixed: false` + name-only path is covered by the source filter logic.
-			db.expense.groupBy.mockResolvedValue([
-				// Use local date constructor to avoid ISO UTC→local timezone shift
-				{ date: new Date(2023, 0, 1), categoryId: "cat-rent", _sum: { amountInUSD: 1500 } },
-			]);
-			db.category.findMany.mockResolvedValue([
-				{ id: "cat-rent", isFixed: true, name: "Rent" },
-			]);
-
-			const result = await service.getDailyTrend("user-1", MONTH, "USD");
-
-			const day1 = result.find((d) => d.day === "Jan 1")!;
-			expect(day1.fixed).toBeCloseTo(1500);
-		});
-
-		it("variable expense appears in variable field, not fixed", async () => {
-			db.expense.groupBy.mockResolvedValue([
-				{ date: new Date("2023-01-10"), categoryId: "cat-food", _sum: { amountInUSD: 75 } },
-			]);
-			db.category.findMany.mockResolvedValue([
+				{ id: "cat-rent", isFixed: false, name: "Rent" },
 				{ id: "cat-food", isFixed: false, name: "Food" },
 			]);
 
 			const result = await service.getDailyTrend("user-1", MONTH, "USD");
-
 			const day10 = result.find((d) => d.day === "Jan 10")!;
-			expect(day10.variable).toBeCloseTo(75);
-			expect(day10.fixed).toBeCloseTo(0);
+
+			expect(day10.fixed).toBe(1500);
+			expect(day10.variable).toBe(75);
 		});
 
-		it("shared expense shares included in daily totals", async () => {
-			db.expense.groupBy.mockResolvedValue([]);
+		it("ARS home: daily amounts use the totals rule", async () => {
+			useExpenseTable(db, [
+				ars(new Date(2023, 0, 2), 9000, 900),
+				usd(new Date(2023, 0, 2), 1),
+			]);
+			db.category.findMany.mockResolvedValue([]);
+
+			const result = await service.getDailyTrend("user-1", MONTH, "ARS");
+
+			expect(result.find((d) => d.day === "Jan 2")!.total).toBeCloseTo(9000 + ARS);
+		});
+
+		it("puts a late-evening expense on its local day", async () => {
+			useExpenseTable(db, [usd(new Date("2023-02-01T01:30:00Z"), 40)]);
+			db.category.findMany.mockResolvedValue([]);
+			const tzService = new StatsService(
+				db as never,
+				undefined,
+				undefined,
+				"America/Argentina/Buenos_Aires",
+			);
+
+			const result = await tzService.getDailyTrend(
+				"user-1",
+				new Date("2023-01-15T12:00:00Z"),
+				"USD",
+			);
+
+			expect(result).toHaveLength(31);
+			expect(result.find((d) => d.day === "Jan 31")!.total).toBe(40);
+			expect(result.find((d) => d.day === "Jan 30")!.total).toBe(0);
+		});
+
+		it("includes shared shares", async () => {
+			useExpenseTable(db, []);
 			db.category.findMany.mockResolvedValue([]);
 			mockGetSharedExpenseShares.mockResolvedValue([
-				{
-					amount: 40,
-					currency: "USD",
-					amountInUSD: 40,
-					categoryId: null,
-					date: new Date("2023-01-15"),
-				},
+				{ amount: 40, currency: "USD", amountInUSD: 40, categoryId: null, date: new Date(2023, 0, 15) },
 			]);
 
 			const result = await service.getDailyTrend("user-1", MONTH, "USD");
 
-			const day15 = result.find((d) => d.day === "Jan 15")!;
-			expect(day15.total).toBeCloseTo(40);
+			expect(result.find((d) => d.day === "Jan 15")!.total).toBe(40);
 		});
 	});
 
 	// ── getLifetimeStats ───────────────────────────────────────────────────────
 
 	describe("getLifetimeStats", () => {
-		it("returns totalSpent converted to homeCurrency", async () => {
-			db.expense.aggregate.mockResolvedValue({
-				_sum: { amountInUSD: 500 },
-				_count: 10,
-			});
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 1, type: "official" });
+		it("USD home: totals all spending", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2023, 0, 1), 300),
+				usd(new Date(2024, 0, 1), 200),
+			]);
 
 			const result = await service.getLifetimeStats("user-1", "USD");
 
-			expect(result.totalSpent).toBeCloseTo(500);
-			expect(result.totalTransactions).toBe(10);
+			expect(result).toEqual({ totalSpent: 500, totalTransactions: 2 });
 		});
 
-		it("converts USD total to non-USD home currency", async () => {
-			// 200 USD × 1415 ARS/USD = 283000 ARS
-			db.expense.aggregate.mockResolvedValue({ _sum: { amountInUSD: 200 }, _count: 5 });
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 1415, type: "blue" });
+		it("ARS home: ARS counts as entered, USD at today's rate", async () => {
+			useExpenseTable(db, [
+				ars(new Date(2023, 0, 1), 100000, 300),
+				usd(new Date(2024, 0, 1), 200),
+			]);
 
 			const result = await service.getLifetimeStats("user-1", "ARS");
 
-			expect(result.totalSpent).toBeCloseTo(283000);
+			expect(result.totalSpent).toBeCloseTo(100000 + 200 * ARS);
 		});
 
-		it("returns 0 totalSpent when no expenses", async () => {
-			db.expense.aggregate.mockResolvedValue({ _sum: { amountInUSD: null }, _count: 0 });
+		it("returns 0 when no expenses", async () => {
+			useExpenseTable(db, []);
 
 			const result = await service.getLifetimeStats("user-1", "USD");
 
-			expect(result.totalSpent).toBe(0);
-			expect(result.totalTransactions).toBe(0);
+			expect(result).toEqual({ totalSpent: 0, totalTransactions: 0 });
 		});
 	});
 });

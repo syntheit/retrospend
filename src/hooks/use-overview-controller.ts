@@ -104,7 +104,6 @@ export function useOverviewController() {
 	}, [favoritesData]);
 
 	// Use server time as the authoritative "now" to avoid timezone mismatches
-	// Server is in NY timezone, so this ensures consistent date handling
 	const now = useMemo(
 		() => (serverTime ? new Date(serverTime) : new Date()),
 		[serverTime],

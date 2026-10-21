@@ -85,7 +85,9 @@ export async function requireExchangeRate(
 export async function findExchangeRatesForDates(
 	db: RateDb,
 	currencies: Iterable<string>,
-): Promise<(currency: string, date: Date) => PickedRate | null> {
+): Promise<
+	(currency: string, date: Date, preferredType?: string | null) => PickedRate | null
+> {
 	const wanted = [...new Set(currencies)].filter((c) => c !== USD);
 	const rowsByCurrency = new Map<
 		string,
@@ -102,8 +104,11 @@ export async function findExchangeRatesForDates(
 			rowsByCurrency.set(r.currency, list);
 		}
 	}
-	return (currency, date) => {
+	return (currency, date, preferredType) => {
 		if (currency === USD) return USD_RATE(date);
-		return pickBestRate(rowsByCurrency.get(currency) ?? [], { date });
+		return pickBestRate(rowsByCurrency.get(currency) ?? [], {
+			date,
+			preferredType,
+		});
 	};
 }

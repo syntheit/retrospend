@@ -33,7 +33,7 @@ export function RecurringStatsCards({
 				(sum, t) =>
 					sum +
 					toMonthlyEquivalent(
-						Number(t.amountInHomeCurrency),
+						t.amountInHomeCurrency ?? 0,
 						t.frequency,
 					),
 				0,

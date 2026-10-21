@@ -14,6 +14,10 @@ export interface Budget {
 	actualSpendInUSD: number;
 	effectiveAmount: number;
 	effectiveAmountInUSD: number;
+	/** Home-currency figures computed by the server (totals rule). */
+	amountInHome: number;
+	actualSpendInHome: number;
+	effectiveAmountInHome: number;
 	pegToActual: boolean;
 	type: "FIXED" | "PEG_TO_ACTUAL" | "PEG_TO_LAST_MONTH";
 	category?: Category | null;

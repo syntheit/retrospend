@@ -8,74 +8,6 @@ type AppDb = typeof globalDb;
 
 // Zod schemas for settings validation
 
-// V1 schema (legacy — kept for migration)
-export const DashboardSettingsV1Schema = z.object({
-	version: z.literal(1),
-	widgets: z.object({
-		spendComposition: z.object({ visible: z.boolean() }),
-		monthlyPacing: z.object({ visible: z.boolean() }),
-		categoryTrends: z.object({ visible: z.boolean() }),
-		recentExpenses: z.object({ visible: z.boolean() }),
-		wealthAllocation: z.object({ visible: z.boolean() }),
-	}),
-});
-
-const LayoutItemSchema = z.object({
-	id: z.string(),
-	visible: z.boolean(),
-	size: z.enum(["xs", "sm", "md", "lg"]),
-	order: z.number(),
-});
-
-// V2 schema (current — widget layout system)
-export const DashboardSettingsSchema = z.object({
-	version: z.literal(2),
-	layout: z.array(LayoutItemSchema),
-});
-
-export type LayoutItem = z.infer<typeof LayoutItemSchema>;
-
-const DEFAULT_DASHBOARD_LAYOUT: LayoutItem[] = [
-	{ id: "safe-to-spend", visible: true, size: "sm", order: 0 },
-	{ id: "monthly-summary", visible: true, size: "sm", order: 1 },
-	{ id: "budget-pacing", visible: true, size: "lg", order: 2 },
-	{ id: "recent-activity", visible: true, size: "md", order: 3 },
-	{ id: "category-breakdown", visible: true, size: "md", order: 4 },
-	{ id: "upcoming-recurring", visible: false, size: "md", order: 5 },
-	{ id: "net-worth-snapshot", visible: false, size: "xs", order: 6 },
-	{ id: "people-balances", visible: false, size: "xs", order: 7 },
-	{ id: "pending-actions", visible: false, size: "xs", order: 8 },
-	{ id: "currency-watchlist", visible: false, size: "xs", order: 9 },
-	{ id: "savings-rate", visible: false, size: "xs", order: 10 },
-	{ id: "monthly-comparison", visible: false, size: "md", order: 11 },
-];
-
-/** Migrate v1 dashboard settings to v2 layout format */
-function migrateDashboardV1toV2(
-	v1: z.infer<typeof DashboardSettingsV1Schema>,
-): z.infer<typeof DashboardSettingsSchema> {
-	// Map old widget keys to new widget IDs where possible
-	const v1WidgetMap: Record<string, string> = {
-		monthlyPacing: "budget-pacing",
-		categoryTrends: "category-breakdown",
-		recentExpenses: "recent-activity",
-	};
-
-	const layout = DEFAULT_DASHBOARD_LAYOUT.map((item) => {
-		// Check if this widget had a v1 equivalent
-		const v1Key = Object.entries(v1WidgetMap).find(
-			([, newId]) => newId === item.id,
-		)?.[0] as keyof typeof v1.widgets | undefined;
-
-		if (v1Key && v1Key in v1.widgets) {
-			return { ...item, visible: v1.widgets[v1Key].visible };
-		}
-		return item;
-	});
-
-	return { version: 2, layout };
-}
-
 export const AnalyticsSettingsSchema = z.object({
 	version: z.literal(1),
 	categoryPreferences: z.record(
@@ -135,9 +67,8 @@ export const ExpenseSettingsSchema = z.object({
 	showExchangeRates: z.boolean(),
 });
 
-// Union type for all page settings (v1 dashboard handled by migration, not in union)
+// Union type for all page settings
 export const PageSettingsSchema = z.union([
-	DashboardSettingsSchema,
 	AnalyticsSettingsSchema,
 	BudgetSettingsSchema,
 	WealthSettingsSchema,
@@ -150,14 +81,34 @@ export const PageSettingsSchema = z.union([
 	ExpenseSettingsSchema,
 ]);
 
+/**
+ * Each page's own schema. Parsing through the union would hand back the first
+ * schema that fits and strip the rest (a TABLE row read as plain settings).
+ * DASHBOARD keeps only a version: the widget dashboard that wrote layouts
+ * there was removed, and those stored rows now fall back to the default.
+ */
+const PAGE_SCHEMAS: Record<Page, z.ZodType<PageSettings>> = {
+	DASHBOARD: SettingsSchema,
+	ANALYTICS: AnalyticsSettingsSchema,
+	BUDGET: BudgetSettingsSchema,
+	WEALTH: WealthSettingsSchema,
+	EXCHANGE_RATES: ExchangeRatesSettingsSchema,
+	SETTINGS: SettingsSchema,
+	TABLE: TableSettingsSchema,
+	ACCOUNT: AccountSettingsSchema,
+	INVITE_CODES: InviteCodesSettingsSchema,
+	ADMIN: AdminSettingsSchema,
+	EXPENSE: ExpenseSettingsSchema,
+	PROFILE: SettingsSchema,
+};
+
 // Default settings for each page
 export const DEFAULT_PAGE_SETTINGS: Record<
 	Page,
 	z.infer<typeof PageSettingsSchema>
 > = {
 	DASHBOARD: {
-		version: 2,
-		layout: DEFAULT_DASHBOARD_LAYOUT,
+		version: 1,
 	},
 	ANALYTICS: {
 		version: 1,
@@ -207,8 +158,6 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 };
 
 // Type helpers
-export type DashboardSettingsV1 = z.infer<typeof DashboardSettingsV1Schema>;
-export type DashboardSettings = z.infer<typeof DashboardSettingsSchema>;
 export type AnalyticsSettings = z.infer<typeof AnalyticsSettingsSchema>;
 export type BudgetSettings = z.infer<typeof BudgetSettingsSchema>;
 export type WealthSettings = z.infer<typeof WealthSettingsSchema>;
@@ -242,25 +191,8 @@ export async function getPageSettings<T extends Page>(
 		return DEFAULT_PAGE_SETTINGS[page];
 	}
 
-	try {
-		// Auto-migrate v1 dashboard settings to v2
-		if (page === "DASHBOARD") {
-			const v1Result = DashboardSettingsV1Schema.safeParse(setting.settings);
-			if (v1Result.success) {
-				const v2 = migrateDashboardV1toV2(v1Result.data);
-				await db.userPageSetting.update({
-					where: { userId_page: { userId, page } },
-					data: { settings: v2 },
-				});
-				return v2;
-			}
-		}
-
-		const parsed = PageSettingsSchema.parse(setting.settings);
-		return parsed;
-	} catch {
-		return DEFAULT_PAGE_SETTINGS[page];
-	}
+	const parsed = PAGE_SCHEMAS[page].safeParse(setting.settings);
+	return parsed.success ? parsed.data : DEFAULT_PAGE_SETTINGS[page];
 }
 
 /**
@@ -278,7 +210,7 @@ export async function updatePageSettings<T extends Page>(
 	const updatedSettings = { ...currentSettings, ...settings } as PageSettings;
 
 	// Validate the merged settings
-	PageSettingsSchema.parse(updatedSettings);
+	PAGE_SCHEMAS[page].parse(updatedSettings);
 
 	// Save to database
 	await db.userPageSetting.upsert({

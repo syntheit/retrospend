@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateCsv } from "~/lib/csv";
+import { budgetPeriod } from "~/lib/fiscal-month";
 import { toNumber } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import * as BudgetService from "~/server/services/budget.service";
+import { getExcludedProjectIds } from "~/server/services/shared-expense-integration";
 
 export const budgetRouter = createTRPCRouter({
 	hasBudgetsBeforeMonth: protectedProcedure
@@ -15,11 +17,7 @@ export const budgetRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			const targetPeriod = new Date(
-				input.month.getFullYear(),
-				input.month.getMonth(),
-				1,
-			);
+			const targetPeriod = budgetPeriod(input.month, ctx.timeZone);
 
 			// Check if there are any budgets BEFORE this month
 			const count = await db.budget.count({
@@ -60,12 +58,19 @@ export const budgetRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const month = input.month ?? new Date();
-			const user = await ctx.db.user.findUnique({
-				where: { id: ctx.session.user.id },
-				select: { fiscalMonthStartDay: true },
-			});
-			return BudgetService.getBudgets(ctx.db, ctx.session.user.id, month, {
+			const userId = ctx.session.user.id;
+			const [user, excludedProjectIds] = await Promise.all([
+				ctx.db.user.findUnique({
+					where: { id: userId },
+					select: { fiscalMonthStartDay: true, homeCurrency: true },
+				}),
+				getExcludedProjectIds(ctx.db, userId),
+			]);
+			return BudgetService.getBudgets(ctx.db, userId, month, {
 				fiscalMonthStartDay: user?.fiscalMonthStartDay ?? 1,
+				homeCurrency: user?.homeCurrency ?? "USD",
+				excludedProjectIds,
+				timeZone: ctx.timeZone,
 			});
 		}),
 
@@ -101,11 +106,7 @@ export const budgetRouter = createTRPCRouter({
 				});
 			}
 
-			const normalizedPeriod = new Date(
-				input.period.getFullYear(),
-				input.period.getMonth(),
-				1,
-			);
+			const normalizedPeriod = budgetPeriod(input.period, ctx.timeZone);
 
 			// Logic to align pegToActual boolean with type enum if not explicitly provided or if conflicting
 			// If pegToActual is true and type is FIXED, set type to PEG_TO_ACTUAL (legacy support)
@@ -202,11 +203,7 @@ export const budgetRouter = createTRPCRouter({
 				const processed = [];
 
 				for (const item of input) {
-					const normalizedPeriod = new Date(
-						item.period.getFullYear(),
-						item.period.getMonth(),
-						1,
-					);
+					const normalizedPeriod = budgetPeriod(item.period, ctx.timeZone);
 
 					let budgetType = item.type;
 					if (item.pegToActual && budgetType === "FIXED") {
@@ -267,24 +264,8 @@ export const budgetRouter = createTRPCRouter({
 				input.categoryId,
 				input.currency,
 				user?.fiscalMonthStartDay ?? 1,
+				ctx.timeZone,
 			);
-		}),
-
-	getGlobalBudget: protectedProcedure
-		.input(
-			z.object({
-				month: z.date().optional(), // Defaults to current month
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const month = input.month ?? new Date();
-			const user = await ctx.db.user.findUnique({
-				where: { id: ctx.session.user.id },
-				select: { fiscalMonthStartDay: true },
-			});
-			return BudgetService.getGlobalBudget(ctx.db, ctx.session.user.id, month, {
-				fiscalMonthStartDay: user?.fiscalMonthStartDay ?? 1,
-			});
 		}),
 
 	upsertGlobalBudget: protectedProcedure
@@ -298,11 +279,7 @@ export const budgetRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			const normalizedPeriod = new Date(
-				input.period.getFullYear(),
-				input.period.getMonth(),
-				1,
-			);
+			const normalizedPeriod = budgetPeriod(input.period, ctx.timeZone);
 
 			const existingBudget = await db.budget.findFirst({
 				where: {
@@ -373,11 +350,7 @@ export const budgetRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
-			const normalizedPeriod = new Date(
-				input.period.getFullYear(),
-				input.period.getMonth(),
-				1,
-			);
+			const normalizedPeriod = budgetPeriod(input.period, ctx.timeZone);
 
 			await db.budget.deleteMany({
 				where: {
@@ -401,6 +374,7 @@ export const budgetRouter = createTRPCRouter({
 				ctx.db,
 				ctx.session.user.id,
 				input.targetMonth,
+				ctx.timeZone,
 			);
 		}),
 
@@ -416,6 +390,7 @@ export const budgetRouter = createTRPCRouter({
 		const headers = [
 			"categoryName",
 			"amount",
+			"currency",
 			"period",
 			"isRollover",
 			"rolloverAmount",
@@ -425,6 +400,7 @@ export const budgetRouter = createTRPCRouter({
 		const rows = budgets.map((budget) => [
 			budget.category?.name ?? "",
 			toNumber(budget.amount),
+			budget.currency,
 			budget.period,
 			budget.isRollover,
 			toNumber(budget.rolloverAmount),
@@ -443,6 +419,8 @@ export const budgetRouter = createTRPCRouter({
 						z.object({
 							categoryName: z.string().optional(),
 							amount: z.number().nonnegative(),
+							// Older exports have no currency column: home currency
+							currency: z.string().length(3).optional(),
 							period: z.date(),
 							isRollover: z.boolean().optional().default(false),
 							rolloverAmount: z.number().optional().default(0),
@@ -458,10 +436,17 @@ export const budgetRouter = createTRPCRouter({
 			const { rows } = input;
 
 			// 1. Fetch all user categories to map names to IDs
-			const categories = await db.category.findMany({
-				where: { userId: session.user.id },
-				select: { id: true, name: true },
-			});
+			const [categories, user] = await Promise.all([
+				db.category.findMany({
+					where: { userId: session.user.id },
+					select: { id: true, name: true },
+				}),
+				db.user.findUnique({
+					where: { id: session.user.id },
+					select: { homeCurrency: true },
+				}),
+			]);
+			const defaultCurrency = user?.homeCurrency ?? "USD";
 
 			const categoryMap = new Map<string, string>();
 			for (const c of categories) {
@@ -473,11 +458,8 @@ export const budgetRouter = createTRPCRouter({
 
 			// 2. Process each row
 			for (const row of rows) {
-				const period = new Date(
-					row.period.getFullYear(),
-					row.period.getMonth(),
-					1,
-				);
+				const period = budgetPeriod(row.period, ctx.timeZone);
+				const currency = row.currency?.toUpperCase() ?? defaultCurrency;
 
 				let categoryId: string | null = null;
 
@@ -517,6 +499,7 @@ export const budgetRouter = createTRPCRouter({
 							where: { id: existing.id },
 							data: {
 								amount: row.amount,
+								currency,
 								// Global budgets don't use rollover/pegToActual typically, but schema supports it
 							},
 						});
@@ -526,6 +509,7 @@ export const budgetRouter = createTRPCRouter({
 								userId: session.user.id,
 								categoryId: null,
 								amount: row.amount,
+								currency,
 								period,
 							},
 						});
@@ -541,6 +525,7 @@ export const budgetRouter = createTRPCRouter({
 						},
 						update: {
 							amount: row.amount,
+							currency,
 							isRollover: row.isRollover,
 							rolloverAmount: row.rolloverAmount,
 							pegToActual: row.pegToActual,
@@ -550,6 +535,7 @@ export const budgetRouter = createTRPCRouter({
 							userId: session.user.id,
 							categoryId,
 							amount: row.amount,
+							currency,
 							period,
 							isRollover: row.isRollover,
 							rolloverAmount: row.rolloverAmount,

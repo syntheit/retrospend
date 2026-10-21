@@ -28,7 +28,8 @@ import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrency } from "~/hooks/use-currency";
 import type { CurrencyCode } from "~/lib/currencies";
 import { formatNumber } from "~/lib/currency-format";
-import { parseDateOnly } from "~/lib/date";
+import { formatDateOnly, parseDateOnly } from "~/lib/date";
+import { computeAmountInUSD, isValidRate, sumIn, USD } from "~/lib/money";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { CurrencyPicker } from "../currency-picker";
@@ -47,11 +48,12 @@ export interface ImporterTransaction {
 	pricingSource: string;
 	category: string;
 	categoryId?: string;
+	excludeFromAnalytics?: boolean;
 }
 
 /**
  * Creates a unique fingerprint for duplicate detection.
- * Uses: date + title + amount + currency
+ * Uses: local calendar date + title + amount + currency
  */
 function createTransactionFingerprint(
 	date: Date | string,
@@ -59,9 +61,20 @@ function createTransactionFingerprint(
 	amount: number,
 	currency: string,
 ): string {
-	const dateStr =
-		typeof date === "string" ? date : date.toISOString().split("T")[0];
+	const dateStr = typeof date === "string" ? date : formatDateOnly(date);
 	return `${dateStr}|${title.trim()}|${Math.abs(amount)}|${currency.toUpperCase()}`;
+}
+
+/**
+ * A row moved to another currency. Its old rate and USD value belonged to the
+ * old currency, so they are dropped (USD aside) and the server fills them from
+ * the rate table on import; a rate is never assumed to be 1.
+ */
+function withCurrency(tx: ImportTransaction, currency: string): ImportTransaction {
+	if (currency === USD) {
+		return { ...tx, currency, exchangeRate: 1, amountInUSD: tx.amount };
+	}
+	return { ...tx, currency, exchangeRate: null, amountInUSD: null };
 }
 
 /** Client-side enriched transaction for review */
@@ -78,6 +91,7 @@ export interface ImportTransaction {
 	category: string | null;
 	categoryId: string | null;
 	pricingSource: string;
+	excludeFromAnalytics?: boolean;
 	isDuplicate?: boolean;
 }
 
@@ -108,9 +122,12 @@ export function ImporterReviewManager({
 	const queryDateRange = useMemo(() => {
 		if (!importerData.length) return null;
 		const dates = importerData.map((tx) => parseDateOnly(tx.date).getTime());
+		// Through the end of the last day, so expenses saved later that day count
+		const to = new Date(Math.max(...dates));
+		to.setHours(23, 59, 59, 999);
 		return {
 			from: new Date(Math.min(...dates)),
-			to: new Date(Math.max(...dates)),
+			to,
 		};
 	}, [importerData]);
 
@@ -184,6 +201,7 @@ export function ImporterReviewManager({
 				category: tx.category || null,
 				categoryId: matchedCat?.id ?? null,
 				pricingSource: tx.pricingSource || "IMPORTED",
+				excludeFromAnalytics: tx.excludeFromAnalytics,
 				isDuplicate,
 			};
 		});
@@ -205,24 +223,12 @@ export function ImporterReviewManager({
 	const handleApplyCurrencyToAll = useCallback(() => {
 		setTransactions((prev) =>
 			prev.map((tx) => {
-				const updated = { ...tx, currency: mainCurrency };
-				// Recalculate amountInUSD if it's a foreign currency and we have an exchange rate
-				// Or if it was foreign and now it's home, or vice versa
-				// Actually, since we don't have a reliable exchange rate for the *new* currency yet
-				// (unless it was already provided by the worker), we might need to be careful.
-				// However, if the user is setting it to home currency, exchangeRate should be 1.
-				if (mainCurrency === homeCurrency) {
-					updated.exchangeRate = 1;
-					updated.amountInUSD = updated.amount;
-				}
-				// If it's still foreign, we keep the previous USD value but change the local amount/currency?
-				// Usually, "Apply all currency" means "I wanted to import these AS BRL".
-				// So we should probably keep the local amount as is.
-				return updated;
+				if (tx.currency === mainCurrency) return tx;
+				return withCurrency(tx, mainCurrency);
 			}),
 		);
 		toast.success(t("appliedCurrencyToAll", { currency: mainCurrency }));
-	}, [mainCurrency, homeCurrency]);
+	}, [mainCurrency]);
 
 	const updateTransaction = useCallback(
 		(id: string, field: keyof ImportTransaction, value: unknown) => {
@@ -242,20 +248,25 @@ export function ImporterReviewManager({
 						}
 					}
 
-					// Maintain consistency for foreign currency amounts
-					if (
-						field === "amount" &&
-						updated.exchangeRate &&
-						updated.currency !== homeCurrency
-					) {
-						updated.amountInUSD = Number(value) / updated.exchangeRate;
+					// The old rate belongs to the old currency
+					if (field === "currency" && value !== tx.currency) {
+						return withCurrency(tx, String(value));
+					}
+
+					// Keep the USD value in step with the amount
+					if (field === "amount" && isValidRate(updated.exchangeRate)) {
+						updated.amountInUSD = computeAmountInUSD(
+							Number(value),
+							updated.currency,
+							updated.exchangeRate,
+						);
 					}
 
 					return updated;
 				}),
 			);
 		},
-		[categories, homeCurrency],
+		[categories],
 	);
 
 	const handleRowSelect = useCallback((id: string, checked: boolean) => {
@@ -297,13 +308,30 @@ export function ImporterReviewManager({
 		[transactions, selectedIds],
 	);
 
+	// Totals rule (~/lib/money): home-currency rows as entered, others from
+	// their USD value. Null while a needed rate or USD value is unknown.
 	const totalAmount = useMemo(() => {
-		const totalInUSD = selectedTransactions.reduce(
-			(sum, t) => sum + (t.amountInUSD ?? 0),
-			0,
+		const needsRate = selectedTransactions.some(
+			(t) => t.currency !== homeCurrency,
 		);
-		return totalInUSD * (usdToHomeRate ?? 1);
-	}, [selectedTransactions, usdToHomeRate]);
+		if (needsRate && usdToHomeRate === null) return null;
+		if (
+			selectedTransactions.some(
+				(t) => t.currency !== homeCurrency && t.amountInUSD === null,
+			)
+		) {
+			return null;
+		}
+		return sumIn(
+			selectedTransactions.map((t) => ({
+				amount: t.amount,
+				currency: t.currency,
+				amountInUSD: t.amountInUSD ?? 0,
+			})),
+			homeCurrency,
+			usdToHomeRate,
+		);
+	}, [selectedTransactions, homeCurrency, usdToHomeRate]);
 
 	const dateRange = useMemo(() => {
 		if (selectedTransactions.length === 0) return null;
@@ -336,12 +364,13 @@ export function ImporterReviewManager({
 					// rate table instead of assuming a rate of 1.
 					exchangeRate: tx.exchangeRate ?? undefined,
 					amountInUSD: tx.amountInUSD ?? undefined,
-					date: tx.date.toISOString().split("T")[0]!,
+					date: formatDateOnly(tx.date),
 					location: tx.location ?? "",
 					description: tx.description ?? "",
 					pricingSource: tx.pricingSource || "IMPORTED",
 					category: tx.category ?? "",
 					categoryId: tx.categoryId ?? undefined,
+					excludeFromAnalytics: tx.excludeFromAnalytics,
 				}));
 				await onImportConfirm(importerTransactions);
 				return;
@@ -359,6 +388,7 @@ export function ImporterReviewManager({
 				description: tx.description,
 				categoryId: tx.categoryId ?? undefined,
 				pricingSource: tx.pricingSource || "IMPORTED",
+				excludeFromAnalytics: tx.excludeFromAnalytics,
 			}));
 
 			const result = await importMutation.mutateAsync({ rows });
@@ -686,7 +716,9 @@ export function ImporterReviewManager({
 							</Button>
 
 							<div className="whitespace-nowrap tabular-nums">
-								{homeCurrency} {formatNumber(totalAmount, 2)} {t("total")}
+								{homeCurrency}{" "}
+								{totalAmount === null ? "..." : formatNumber(totalAmount, 2)}{" "}
+								{t("total")}
 							</div>
 
 							{dateRange && (

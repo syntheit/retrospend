@@ -5,7 +5,7 @@ import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SuperJSON from "superjson";
 
 import type { AppRouter } from "~/server/api/root";
@@ -39,9 +39,26 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
  */
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
+/** The browser's IANA time zone; the server buckets days and months in it. */
+function browserTimeZone(): string | undefined {
+	if (typeof window === "undefined") return undefined;
+	try {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone;
+	} catch {
+		return undefined;
+	}
+}
+
 function TRPCProviderInner(props: { children: React.ReactNode }) {
 	const _router = useRouter();
 	const queryClient = getQueryClient();
+
+	// Server components read the zone from this cookie (no tRPC header there).
+	useEffect(() => {
+		const timeZone = browserTimeZone();
+		if (!timeZone) return;
+		document.cookie = `tz=${encodeURIComponent(timeZone)}; path=/; max-age=31536000; samesite=lax`;
+	}, []);
 
 	const [trpcClient] = useState(() =>
 		api.createClient({
@@ -57,6 +74,8 @@ function TRPCProviderInner(props: { children: React.ReactNode }) {
 					headers: () => {
 						const headers = new Headers();
 						headers.set("x-trpc-source", "nextjs-react");
+						const timeZone = browserTimeZone();
+						if (timeZone) headers.set("x-timezone", timeZone);
 						// Include guest session token if present (set by the /join page after registration)
 						if (typeof window !== "undefined") {
 							const guestToken = localStorage.getItem("guest_session_token");
