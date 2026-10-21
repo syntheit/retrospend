@@ -293,8 +293,7 @@ export class SettlementService {
 
 		// Balance check + create + audit run in one transaction that first takes
 		// the pair lock, so two concurrent payments cannot both pass the cap.
-		const { settlements, paymentGroupId } = await this.db.$transaction(
-			async (tx) => {
+		const { settlements, paymentGroupId } = await this.db.$transaction(async (tx) => {
 			await this.lockPair(tx, input.toParticipant);
 
 			// computeBalance(payer, payee): negative = the payer owes the payee.
@@ -379,8 +378,7 @@ export class SettlementService {
 				paymentMethod: input.paymentMethod ?? null,
 				note: input.note ?? null,
 			});
-			},
-		);
+		});
 		// The first cash row stands for the payment (offset rows follow it).
 		const settlement = settlements.find((s) => !s.isOffset) ?? settlements[0]!;
 
@@ -1175,9 +1173,11 @@ export class SettlementService {
 	}
 
 	/**
-	 * Settles ALL outstanding balances with a person at once.
-	 * Creates one settlement per currency, atomically in a single transaction.
-	 * Each settlement records the converted amount in the payment currency.
+	 * Settles ALL outstanding balances with a person at once, atomically in a
+	 * single transaction, as one payment group: per currency, one row per
+	 * project scope (global) plus the offset rows that square up opposite
+	 * project debts in that currency (see allocateFullSettlement). Each cash
+	 * row records the converted amount in the payment currency.
 	 *
 	 * Only settles currencies where the payer owes the payee. With direction
 	 * "incoming" the other person is the payer: the current user records that
