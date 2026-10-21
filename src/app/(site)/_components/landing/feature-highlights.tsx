@@ -2,7 +2,6 @@ import {
 	ArrowLeftRight,
 	FileText,
 	Gauge,
-	Github,
 	Globe,
 	Lock,
 	Repeat,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { Github } from "~/components/icons/github";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 

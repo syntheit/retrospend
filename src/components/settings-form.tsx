@@ -1,9 +1,10 @@
 "use client";
 
-import { Github, Globe, Hash, Heart } from "lucide-react";
+import { Globe, Hash, Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
+import { Github } from "~/components/icons/github";
 import { AppPreferencesContent } from "~/components/settings/app-preferences-card";
 import { CategorySettings } from "~/components/settings/category-settings";
 import { DeleteAccountDialog } from "~/components/settings/delete-account-dialog";
