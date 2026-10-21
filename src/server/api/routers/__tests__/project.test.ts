@@ -307,6 +307,101 @@ describe("project.addParticipant", () => {
 			),
 		).rejects.toMatchObject({ code: "CONFLICT" });
 	});
+
+	it("throws FORBIDDEN when an EDITOR tries to add someone as ORGANIZER", async () => {
+		mockRequireProjectRole.mockResolvedValue({
+			id: "pp-editor",
+			role: "EDITOR",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "editor-1",
+			joinedAt: new Date(),
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue(null);
+
+		const caller = createCaller({
+			session: makeOrganizerSession("editor-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await expect(
+			callAndFlush(() =>
+				caller.addParticipant({
+					projectId: "proj-1",
+					participantType: "user",
+					participantId: "new-user",
+					role: "ORGANIZER",
+				}),
+			),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		expect(mockDb.projectParticipant.create).not.toHaveBeenCalled();
+	});
+
+	it("lets an ORGANIZER add someone as ORGANIZER", async () => {
+		mockDb.projectParticipant.findUnique.mockResolvedValue(null);
+		mockDb.projectParticipant.create.mockResolvedValue({ id: "pp-new" });
+		mockDb.project.findUnique.mockResolvedValue({ name: "Trip" });
+
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await callAndFlush(() =>
+			caller.addParticipant({
+				projectId: "proj-1",
+				participantType: "user",
+				participantId: "new-user",
+				role: "ORGANIZER",
+			}),
+		);
+		expect(mockDb.projectParticipant.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ role: "ORGANIZER" }),
+			}),
+		);
+	});
+
+	it("shadow invite magic link grants the same capped role as the participant row", async () => {
+		mockDb.shadowProfile.findUnique.mockResolvedValue({
+			id: "shadow-1",
+			createdById: "organizer-1",
+			name: "Ghost",
+			email: "ghost@example.com",
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue(null);
+		mockDb.projectParticipant.create.mockResolvedValue({ id: "pp-new" });
+		mockDb.project.findUnique.mockResolvedValue({ name: "Trip" });
+		mockDb.magicLink.create.mockResolvedValue({ id: "link-1" });
+
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await callAndFlush(() =>
+			caller.addParticipant({
+				projectId: "proj-1",
+				participantType: "shadow",
+				participantId: "shadow-1",
+				role: "EDITOR",
+			}),
+		);
+
+		expect(mockDb.projectParticipant.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ role: "CONTRIBUTOR" }),
+			}),
+		);
+		expect(mockDb.magicLink.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ roleGranted: "CONTRIBUTOR", maxUses: 1 }),
+			}),
+		);
+	});
 });
 
 // ── 3. project.updateParticipantRole ─────────────────────────────────────────
@@ -360,6 +455,85 @@ describe("project.updateParticipantRole", () => {
 				}),
 			),
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
+	});
+
+	it("throws FORBIDDEN when an EDITOR tries to promote someone to ORGANIZER", async () => {
+		mockRequireProjectRole.mockResolvedValue({
+			id: "pp-editor",
+			role: "EDITOR",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "editor-1",
+			joinedAt: new Date(),
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue({
+			id: "pp-target",
+			role: "CONTRIBUTOR",
+			participantType: "user",
+			participantId: "target-user",
+		});
+		mockDb.project.findUniqueOrThrow.mockResolvedValue({
+			id: "proj-1",
+			createdById: "creator-user",
+		});
+
+		const caller = createCaller({
+			session: makeOrganizerSession("editor-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await expect(
+			callAndFlush(() =>
+				caller.updateParticipantRole({
+					projectId: "proj-1",
+					participantType: "user",
+					participantId: "target-user",
+					role: "ORGANIZER",
+				}),
+			),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		expect(mockDb.projectParticipant.update).not.toHaveBeenCalled();
+	});
+
+	it("lets an EDITOR promote a contributor to EDITOR", async () => {
+		mockRequireProjectRole.mockResolvedValue({
+			id: "pp-editor",
+			role: "EDITOR",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "editor-1",
+			joinedAt: new Date(),
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue({
+			id: "pp-target",
+			role: "CONTRIBUTOR",
+			participantType: "user",
+			participantId: "target-user",
+		});
+		mockDb.project.findUniqueOrThrow.mockResolvedValue({
+			id: "proj-1",
+			createdById: "creator-user",
+		});
+		mockDb.projectParticipant.update.mockResolvedValue({ id: "pp-target" });
+
+		const caller = createCaller({
+			session: makeOrganizerSession("editor-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await callAndFlush(() =>
+			caller.updateParticipantRole({
+				projectId: "proj-1",
+				participantType: "user",
+				participantId: "target-user",
+				role: "EDITOR",
+			}),
+		);
+		expect(mockDb.projectParticipant.update).toHaveBeenCalledWith(
+			expect.objectContaining({ data: { role: "EDITOR" } }),
+		);
 	});
 });
 

@@ -202,6 +202,19 @@ async function batchResolveIdentities(
 	return result;
 }
 
+/**
+ * Granting ORGANIZER (Owner) requires the caller to be an ORGANIZER. Editors
+ * may grant EDITOR and below. Mirrors magic links, which refuse ORGANIZER.
+ */
+function assertCanGrantRole(callerRole: string, grantedRole: string): void {
+	if (grantedRole === "ORGANIZER" && callerRole !== "ORGANIZER") {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "Only an Owner can make someone an Owner",
+		});
+	}
+}
+
 async function runInProjectTransaction<T>(
 	db: PrismaClient,
 	userId: string,
@@ -837,7 +850,7 @@ export const projectRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 
-			await requireProjectRole(
+			const callerParticipant = await requireProjectRole(
 				ctx.db,
 				input.projectId,
 				"user",
@@ -893,6 +906,10 @@ export const projectRouter = createTRPCRouter({
 				(input.role === "ORGANIZER" || input.role === "EDITOR")
 					? "CONTRIBUTOR"
 					: input.role;
+
+			// Only an Owner can make someone else an Owner. Editors can add people
+			// at their own level or below.
+			assertCanGrantRole(callerParticipant.role, effectiveRole);
 
 			const participant = await runInProjectTransaction(
 				ctx.db,
@@ -958,9 +975,10 @@ export const projectRouter = createTRPCRouter({
 					const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 					const title = "You've been added to a project";
 
-					// Create a single-use magic link so the recipient can join directly
-					const magicLinkRole =
-						input.role === "ORGANIZER" ? "CONTRIBUTOR" : input.role;
+					// Create a single-use magic link so the recipient can join directly.
+					// It grants the same (capped) role as the shadow's participant row,
+					// so joining through it can never outrank the row it stands for.
+					const magicLinkRole = effectiveRole;
 					let joinUrl: string | undefined;
 					try {
 						const magicLink = await ctx.db.magicLink.create({
@@ -1415,6 +1433,9 @@ export const projectRouter = createTRPCRouter({
 				(input.role === "ORGANIZER" || input.role === "EDITOR")
 					? "CONTRIBUTOR"
 					: input.role;
+
+			// Only an Owner can promote someone to Owner.
+			assertCanGrantRole(callerParticipant.role, effectiveRole);
 
 			return runInProjectTransaction(ctx.db, userId, async (tx) => {
 				const updated = await tx.projectParticipant.update({
