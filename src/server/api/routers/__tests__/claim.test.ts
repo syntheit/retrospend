@@ -87,7 +87,9 @@ vi.mock("~/server/services/claim.service", async () => {
 		...actual,
 		claimShadowProfile: mockClaimShadowProfile,
 		mergeShadowIntoGuest: mockMergeShadowIntoGuest,
-		listUnclaimedProjectGhosts: vi.fn().mockResolvedValue([{ id: "s", name: "Ghost" }]),
+		listUnclaimedProjectGhosts: vi
+			.fn()
+			.mockResolvedValue([{ id: "s", name: "Ghost", linkable: true }]),
 	};
 });
 
@@ -349,6 +351,19 @@ describe("claim.linkGuestToGhost", () => {
 		await expect(
 			callAndFlush(() => caller(null, guestHeaders()).linkGuestToGhost(input)),
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
+	});
+
+	it("refuses a ghost that is also in other projects with a clear message", async () => {
+		const { GhostInOtherProjectsError } = await import(
+			"~/server/services/claim.service"
+		);
+		mockMergeShadowIntoGuest.mockRejectedValue(new GhostInOtherProjectsError());
+		await expect(
+			callAndFlush(() => caller(null, guestHeaders()).linkGuestToGhost(input)),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			message: expect.stringContaining("claim link"),
+		});
 	});
 
 	it("rejects a viewer guest", async () => {

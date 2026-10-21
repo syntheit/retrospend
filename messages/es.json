@@ -635,7 +635,8 @@
     "chooserBack": "Volver a la lista",
     "resumeEmailTitle": "Revisa tu correo",
     "resumeEmailBody": "Este correo ya se unió a <strong>{projectName}</strong>. Enviamos un enlace a esa dirección para que puedas continuar donde lo dejaste. Funciona una sola vez y caduca en una hora.",
-    "resumeLinkInvalid": "Este enlace no es válido, ya se usó o ha caducado. Abre de nuevo el enlace de invitación para obtener uno nuevo."
+    "resumeLinkInvalid": "Este enlace no es válido, ya se usó o ha caducado. Abre de nuevo el enlace de invitación para obtener uno nuevo.",
+    "chooserGhostElsewhere": "<strong>{name}</strong> también forma parte de otros proyectos, así que no puedes quedarte con su historial desde esta invitación. Únete como tú mismo abajo y luego pide a un organizador un enlace de reclamo para unirlo."
   },
   "projects": {
     "title": "Proyectos",

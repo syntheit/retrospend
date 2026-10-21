@@ -635,7 +635,8 @@
     "chooserBack": "Back to the list",
     "resumeEmailTitle": "Check your email",
     "resumeEmailBody": "This email has already joined <strong>{projectName}</strong>. We sent a link to that address so you can continue where you left off. It works once and expires in one hour.",
-    "resumeLinkInvalid": "This link is invalid, was already used, or has expired. Open the invite link again to get a new one."
+    "resumeLinkInvalid": "This link is invalid, was already used, or has expired. Open the invite link again to get a new one.",
+    "chooserGhostElsewhere": "<strong>{name}</strong> is also part of other projects, so you can't take over their history from this invite. Join as yourself below, then ask an organizer for a claim link to merge it."
   },
   "projects": {
     "title": "Projects",

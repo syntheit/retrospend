@@ -635,7 +635,8 @@
     "chooserBack": "Zurück zur Liste",
     "resumeEmailTitle": "Prüfen Sie Ihre E-Mails",
     "resumeEmailBody": "Mit dieser E-Mail-Adresse ist bereits jemand <strong>{projectName}</strong> beigetreten. Wir haben einen Link an diese Adresse geschickt, damit Sie dort weitermachen können, wo Sie aufgehört haben. Er funktioniert einmal und läuft nach einer Stunde ab.",
-    "resumeLinkInvalid": "Dieser Link ist ungültig, wurde bereits verwendet oder ist abgelaufen. Öffnen Sie den Einladungslink erneut, um einen neuen zu erhalten."
+    "resumeLinkInvalid": "Dieser Link ist ungültig, wurde bereits verwendet oder ist abgelaufen. Öffnen Sie den Einladungslink erneut, um einen neuen zu erhalten.",
+    "chooserGhostElsewhere": "<strong>{name}</strong> ist auch Teil anderer Projekte, daher können Sie den Verlauf nicht über diese Einladung übernehmen. Treten Sie unten als Sie selbst bei und bitten Sie danach einen Organisator um einen Übernahme-Link, um ihn zusammenzuführen."
   },
   "projects": {
     "title": "Projekte",

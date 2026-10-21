@@ -635,7 +635,8 @@
     "chooserBack": "Retour à la liste",
     "resumeEmailTitle": "Consultez vos e-mails",
     "resumeEmailBody": "Cette adresse e-mail a déjà rejoint <strong>{projectName}</strong>. Nous avons envoyé un lien à cette adresse pour que vous puissiez reprendre là où vous en étiez. Il ne fonctionne qu'une fois et expire dans une heure.",
-    "resumeLinkInvalid": "Ce lien n'est pas valide, a déjà été utilisé ou a expiré. Rouvrez le lien d'invitation pour en obtenir un nouveau."
+    "resumeLinkInvalid": "Ce lien n'est pas valide, a déjà été utilisé ou a expiré. Rouvrez le lien d'invitation pour en obtenir un nouveau.",
+    "chooserGhostElsewhere": "<strong>{name}</strong> fait aussi partie d'autres projets, vous ne pouvez donc pas reprendre son historique depuis cette invitation. Rejoignez le projet en votre nom ci-dessous, puis demandez à un organisateur un lien de revendication pour le fusionner."
   },
   "projects": {
     "title": "Projets",

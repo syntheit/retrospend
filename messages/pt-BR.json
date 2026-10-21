@@ -635,7 +635,8 @@
     "chooserBack": "Voltar à lista",
     "resumeEmailTitle": "Confira seu e-mail",
     "resumeEmailBody": "Este e-mail já entrou em <strong>{projectName}</strong>. Enviamos um link para esse endereço para você continuar de onde parou. Ele funciona uma única vez e expira em uma hora.",
-    "resumeLinkInvalid": "Este link é inválido, já foi usado ou expirou. Abra o link de convite novamente para receber um novo."
+    "resumeLinkInvalid": "Este link é inválido, já foi usado ou expirou. Abra o link de convite novamente para receber um novo.",
+    "chooserGhostElsewhere": "<strong>{name}</strong> também faz parte de outros projetos, então você não pode assumir esse histórico por este convite. Entre como você mesmo abaixo e depois peça a um organizador um link de reivindicação para unificá-lo."
   },
   "projects": {
     "title": "Projetos",

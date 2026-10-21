@@ -350,6 +350,9 @@ function InviteJoinView({
 	// The ghost the joiner recognised as themselves, if any. When set, the guest
 	// session absorbs this ghost's history after registering (via linkGuestToGhost).
 	const [selectedGhostId, setSelectedGhostId] = useState<string | null>(null);
+	const [unlinkableGhostName, setUnlinkableGhostName] = useState<
+		string | null
+	>(null);
 	// Guards the auto-open effect so a later refetch of the ghost list can't yank
 	// the user back to the chooser after they've moved on to the form.
 	const [autoOpenedChooser, setAutoOpenedChooser] = useState(false);
@@ -417,13 +420,22 @@ function InviteJoinView({
 
 	// Picked an existing ghost: carry its name into the form, then just confirm
 	// email. Choosing "I'm new" clears any prior pick.
-	const handlePickGhost = (ghost: { id: string; name: string }) => {
-		setSelectedGhostId(ghost.id);
+	// A ghost that is also in other projects can't be linked by a guest (the
+	// server refuses): join as a new person with that name and explain how to
+	// merge the history later.
+	const handlePickGhost = (ghost: {
+		id: string;
+		name: string;
+		linkable: boolean;
+	}) => {
+		setSelectedGhostId(ghost.linkable ? ghost.id : null);
+		setUnlinkableGhostName(ghost.linkable ? null : ghost.name);
 		setName(ghost.name);
 		setIdentifyStep("form");
 	};
 	const handlePickNew = () => {
 		setSelectedGhostId(null);
+		setUnlinkableGhostName(null);
 		setName("");
 		setIdentifyStep("form");
 	};
@@ -616,6 +628,17 @@ function InviteJoinView({
 							<ArrowLeft className="h-3.5 w-3.5" />
 							{t("chooserBack")}
 						</button>
+					)}
+
+					{unlinkableGhostName && (
+						<p className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground text-xs">
+							{t.rich("chooserGhostElsewhere", {
+								name: unlinkableGhostName,
+								strong: (chunks) => (
+									<span className="font-medium text-foreground">{chunks}</span>
+								),
+							})}
+						</p>
 					)}
 
 					<form className="space-y-4" onSubmit={handleSubmit}>

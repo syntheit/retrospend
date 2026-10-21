@@ -15,6 +15,7 @@ import {
 	AlreadyClaimedError,
 	canMintClaimLink,
 	claimShadowProfile,
+	GhostInOtherProjectsError,
 	listUnclaimedProjectGhosts,
 	mergeShadowIntoGuest,
 } from "~/server/services/claim.service";
@@ -377,6 +378,9 @@ export const claimRouter = createTRPCRouter({
 			} catch (err) {
 				if (err instanceof AlreadyClaimedError) {
 					throw new TRPCError({ code: "CONFLICT", message: err.message });
+				}
+				if (err instanceof GhostInOtherProjectsError) {
+					throw new TRPCError({ code: "FORBIDDEN", message: err.message });
 				}
 				throw err;
 			}
