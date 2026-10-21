@@ -141,3 +141,157 @@ export async function resolveClaimAliases(
 		canonicalKey: (ref) => key(canonicalRef(ref)),
 	};
 }
+
+// ── Project ledger canonicalization ───────────────────────────────────────────
+
+type Amount = number | { toString(): string };
+type RefType = ParticipantRef["participantType"];
+
+interface LedgerTx {
+	paidByType: RefType;
+	paidById: string;
+	splitParticipants: Array<{
+		participantType: RefType;
+		participantId: string;
+		shareAmount: Amount;
+	}>;
+}
+
+interface LedgerSettlement {
+	fromParticipantType: RefType;
+	fromParticipantId: string;
+	toParticipantType: RefType;
+	toParticipantId: string;
+}
+
+function parseKey(k: string): ParticipantRef {
+	const i = k.indexOf(":");
+	return {
+		participantType: k.slice(0, i) as RefType,
+		participantId: k.slice(i + 1),
+	};
+}
+
+/**
+ * Rewrites a project's expenses and settlements so every claim alias of a
+ * person (a claimed shadow and the user who claimed it) appears under ONE
+ * ref before they are fed to the group computations (computeSettlementPlan,
+ * the period guard, exports).
+ *
+ * Pairwise balances (computeBalance / computeBalanceByProject) already treat
+ * aliases as one party, so a settlement can be recorded against the user
+ * while the project's expenses still name the shadow. That happens for shadows
+ * claimed before claims re-pointed history (until 2026-08-01 the signup email
+ * auto-claim only stamped claimedById). Without this the project views would
+ * count the settlement for one ref and the debt for another.
+ *
+ * The representative ref is the alias that is a member of the project when
+ * there is one (so results still line up with the project's participant list),
+ * otherwise the canonical (user) ref. A person's split rows on one expense are
+ * merged by summing their shares; a settlement that becomes a self-payment is
+ * dropped. Returns the input untouched, without a DB read, when no shadow ref
+ * appears in the ledger.
+ */
+export async function canonicalizeProjectLedger<
+	T extends LedgerTx,
+	S extends LedgerSettlement,
+>(
+	db: PrismaClient | Prisma.TransactionClient,
+	projectId: string,
+	transactions: T[],
+	settlements: S[],
+): Promise<{ transactions: T[]; settlements: S[] }> {
+	const refs: ParticipantRef[] = [];
+	for (const tx of transactions) {
+		refs.push({ participantType: tx.paidByType, participantId: tx.paidById });
+		for (const sp of tx.splitParticipants) {
+			refs.push({
+				participantType: sp.participantType,
+				participantId: sp.participantId,
+			});
+		}
+	}
+	for (const s of settlements) {
+		refs.push(
+			{ participantType: s.fromParticipantType, participantId: s.fromParticipantId },
+			{ participantType: s.toParticipantType, participantId: s.toParticipantId },
+		);
+	}
+
+	// Aliases only ever pair a shadow with a user: no shadow, nothing to merge.
+	if (!refs.some((r) => r.participantType === "shadow")) {
+		return { transactions, settlements };
+	}
+
+	const prisma = db as PrismaClient;
+	const members: ParticipantRef[] = await prisma.projectParticipant.findMany({
+		where: { projectId },
+		select: { participantType: true, participantId: true },
+	});
+
+	const { canonicalKey } = await resolveClaimAliases(db, [...refs, ...members]);
+	const representative = new Map<string, ParticipantRef>();
+	for (const m of members) {
+		const ck = canonicalKey(m);
+		if (!representative.has(ck)) {
+			representative.set(ck, {
+				participantType: m.participantType,
+				participantId: m.participantId,
+			});
+		}
+	}
+	const rep = (r: ParticipantRef): ParticipantRef => {
+		const ck = canonicalKey(r);
+		return representative.get(ck) ?? parseKey(ck);
+	};
+
+	const outTxs = transactions.map((tx) => {
+		const payer = rep({ participantType: tx.paidByType, participantId: tx.paidById });
+		const merged = new Map<string, T["splitParticipants"][number]>();
+		for (const sp of tx.splitParticipants) {
+			const r = rep({
+				participantType: sp.participantType,
+				participantId: sp.participantId,
+			});
+			const k = key(r);
+			const existing = merged.get(k);
+			merged.set(k, {
+				...sp,
+				participantType: r.participantType,
+				participantId: r.participantId,
+				shareAmount: existing
+					? Number(existing.shareAmount.toString()) +
+						Number(sp.shareAmount.toString())
+					: sp.shareAmount,
+			});
+		}
+		return {
+			...tx,
+			paidByType: payer.participantType,
+			paidById: payer.participantId,
+			splitParticipants: [...merged.values()],
+		};
+	});
+
+	const outSettlements: S[] = [];
+	for (const s of settlements) {
+		const from = rep({
+			participantType: s.fromParticipantType,
+			participantId: s.fromParticipantId,
+		});
+		const to = rep({
+			participantType: s.toParticipantType,
+			participantId: s.toParticipantId,
+		});
+		if (key(from) === key(to)) continue;
+		outSettlements.push({
+			...s,
+			fromParticipantType: from.participantType,
+			fromParticipantId: from.participantId,
+			toParticipantType: to.participantType,
+			toParticipantId: to.participantId,
+		});
+	}
+
+	return { transactions: outTxs, settlements: outSettlements };
+}

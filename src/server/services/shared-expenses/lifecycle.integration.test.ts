@@ -17,6 +17,8 @@ vi.mock("~/server/services/notifications", () => ({
 }));
 
 import { computeBalance, computeBalanceByProject } from "./balance";
+import { computeSettlementPlan, isFullySettled } from "./group-settlement";
+import { canonicalizeProjectLedger } from "./identity";
 import { SettlementService } from "./settlement.service";
 import {
 	addProject,
@@ -1150,11 +1152,11 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		expect(settlementRows()).toEqual([{ projectId: null, amount: 5 }]);
 	});
 
-	it("rejects a projectId the parties do not both belong to", async () => {
+	it("rejects a projectId the caller has no part in", async () => {
 		seedBobOwesAlice("A", 40);
 		const bobSettle = new SettlementService(db as never, BOB);
 
-		// Neither party is in project Z.
+		// Bob has no membership and no expenses in project Z.
 		await expect(
 			bobSettle.initiateSettlement({
 				toParticipant: aliceRef,
@@ -1162,9 +1164,18 @@ describe("Suite 1I: Project-scoped settlements", () => {
 				currency: "USD",
 				projectId: "Z",
 			}),
-		).rejects.toThrow(/not a member of this project/);
+		).rejects.toThrow(/not part of this project/);
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 0.01,
+				currency: "USD",
+				projectId: "Z",
+			}),
+		).rejects.toThrow(/not part of this project/);
 
-		// Bob is in project C but alice is not.
+		// Bob is in project C but has no balance with alice there: even a
+		// tolerance-sized amount cannot be stamped onto C.
 		addProjectParticipant(db, {
 			projectId: "C",
 			participantType: "user",
@@ -1172,13 +1183,184 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			role: "EDITOR",
 		});
 		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 0.01,
+				currency: "USD",
+				projectId: "C",
+			}),
+		).rejects.toThrow(/no outstanding USD balance/);
+		await expect(
 			bobSettle.settleAll({
 				toParticipant: aliceRef,
 				paymentCurrency: "USD",
 				projectId: "C",
 			}),
-		).rejects.toThrow(/not a participant of this project/);
+		).rejects.toThrow(/No outstanding balance/);
 		expect(db._stores.settlements.size).toBe(0);
+	});
+
+	it("a member removed from the project can still settle their balance there", async () => {
+		seedBobOwesAlice("A", 40);
+		// Bob (the payer) was removed from project A: his membership row is gone
+		// but his expenses and balance there remain.
+		for (const [id, pp] of db._stores.projectParticipants) {
+			if (pp.projectId === "A" && pp.participantId === BOB) {
+				db._stores.projectParticipants.delete(id);
+			}
+		}
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 15,
+			currency: "USD",
+			projectId: "A",
+		});
+		await bobSettle.settleAll({
+			toParticipant: aliceRef,
+			paymentCurrency: "USD",
+			projectId: "A",
+		});
+
+		expect(settlementRows()).toEqual([
+			{ projectId: "A", amount: 15 },
+			{ projectId: "A", amount: 25 },
+		]);
+		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(a.byCurrency).toEqual({});
+	});
+
+	it("can settle with a counterparty who was removed from the project", async () => {
+		seedBobOwesAlice("A", 40);
+		for (const [id, pp] of db._stores.projectParticipants) {
+			if (pp.projectId === "A" && pp.participantId === ALICE) {
+				db._stores.projectParticipants.delete(id);
+			}
+		}
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 40,
+			currency: "USD",
+			projectId: "A",
+		});
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
+	});
+
+	it("records at most the scoped debt when the amount is within the tolerance", async () => {
+		seedBobOwesAlice("A", 40);
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 40.01,
+			currency: "USD",
+			projectId: "A",
+		});
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
+	});
+
+	it("project views count a global settle-up against a legacy claimed shadow's debt", async () => {
+		// Before 2026-08-01 the signup auto-claim only stamped claimedById: bob's
+		// pre-claim debt in project A still names his shadow.
+		db._stores.shadowProfiles.set("shadow-bob", {
+			id: "shadow-bob",
+			name: "Bobby",
+			email: null,
+			phone: null,
+			createdById: ALICE,
+			claimedById: BOB,
+		});
+		seedBobOwesAlice("A", 30);
+		for (const [id, sp] of db._stores.splits) {
+			if (sp.participantId === BOB && Number(sp.shareAmount) === 30) {
+				db._stores.splits.set(id, {
+					...sp,
+					participantType: "shadow",
+					participantId: "shadow-bob",
+				});
+			}
+		}
+		// A direct expense with both raw refs so the settle-up relationship holds.
+		seedBobOwesAlice(null, 0);
+
+		// Bob pays globally; the alias-aware allocation puts it in project A
+		// under his USER ref.
+		const bobSettle = new SettlementService(db as never, BOB);
+		const { settlement } = await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 30,
+			currency: "USD",
+		});
+		await new SettlementService(db as never, ALICE).confirmSettlement(
+			settlement.id,
+		);
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 30 }]);
+
+		// The project's ledger as the project views read it.
+		const txs = [...db._stores.transactions.values()]
+			.filter((tx) => tx.projectId === "A")
+			.map((tx) => ({
+				currency: tx.currency,
+				amount: tx.amount,
+				paidByType: tx.paidByType as "user",
+				paidById: tx.paidById,
+				splitParticipants: [...db._stores.splits.values()]
+					.filter((sp) => sp.transactionId === tx.id)
+					.map((sp) => ({
+						participantType: sp.participantType as "user" | "shadow",
+						participantId: sp.participantId,
+						shareAmount: sp.shareAmount,
+					})),
+			}));
+		const settlements = [...db._stores.settlements.values()]
+			.filter((st) => st.projectId === "A" && st.status === "FINALIZED")
+			.map((st) => ({
+				fromParticipantType: st.fromParticipantType as "user",
+				fromParticipantId: st.fromParticipantId,
+				toParticipantType: st.toParticipantType as "user",
+				toParticipantId: st.toParticipantId,
+				amount: st.amount,
+				currency: st.currency,
+			}));
+
+		const nets = (plan: ReturnType<typeof computeSettlementPlan>) =>
+			Object.fromEntries(
+				(plan.byCurrency.USD?.balances ?? []).map((b) => [
+					`${b.participant.participantType}:${b.participant.participantId}`,
+					b.netBalance,
+				]),
+			);
+
+		// Raw refs: the debt sits on the shadow and the payment on the user, so
+		// the shadow still shows as owing (and the balances no longer add up).
+		expect(nets(computeSettlementPlan(txs, settlements))).toEqual({
+			"user:alice": 0,
+			"shadow:shadow-bob": -30,
+		});
+
+		// Canonicalized: one person, settled.
+		const ledger = await canonicalizeProjectLedger(
+			db as never,
+			"A",
+			txs,
+			settlements,
+		);
+		const canonical = computeSettlementPlan(
+			ledger.transactions,
+			ledger.settlements,
+		);
+		expect(isFullySettled(canonical)).toBe(true);
+		expect(nets(canonical)).toEqual({ "user:alice": 0, "user:bob": 0 });
+		// Bob is represented by his project membership ref (user:bob).
+		expect(
+			ledger.transactions.flatMap((tx) =>
+				tx.splitParticipants.map((sp) => `${sp.participantType}:${sp.participantId}`),
+			),
+		).toEqual(["user:bob", "user:alice"]);
 	});
 
 	it("voidAutoFinalizedSettlement works on a scoped settlement to a non-user payee", async () => {

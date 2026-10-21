@@ -37,16 +37,25 @@ describe("allocateAcrossScopes", () => {
 		]);
 	});
 
-	it("folds a tolerance-level remainder into the last row so rows sum to the amount", () => {
-		const result = allocateAcrossScopes([{ projectId: "A", owed: 9.995 }], 10);
-		expect(result).toHaveLength(1);
-		expect(result[0]!.amount).toBeCloseTo(10, 10);
+	it("drops a tolerance-level excess instead of over-paying a scope", () => {
+		// The caller allows up to 0.01 over the global debt. That excess must not
+		// land on a row, or the scope would show a cent of reverse debt.
+		expect(
+			allocateAcrossScopes(
+				[
+					{ projectId: "A", owed: 9.995 },
+					{ projectId: null, owed: 5 },
+				],
+				15.005,
+			),
+		).toEqual([
+			{ projectId: null, amount: 5 },
+			{ projectId: "A", amount: 9.995 },
+		]);
 	});
 
-	it("falls back to a direct row when nothing is owed in any scope", () => {
-		expect(allocateAcrossScopes([], 0.01)).toEqual([
-			{ projectId: null, amount: 0.01 },
-		]);
+	it("returns nothing when nothing is owed in any scope", () => {
+		expect(allocateAcrossScopes([], 0.01)).toEqual([]);
 	});
 
 	it("ignores non-positive debts and returns nothing for a zero amount", () => {

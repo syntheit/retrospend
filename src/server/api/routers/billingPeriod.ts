@@ -16,6 +16,7 @@ import {
 	computeSettlementPlan,
 	isFullySettled,
 } from "~/server/services/shared-expenses/group-settlement";
+import { canonicalizeProjectLedger } from "~/server/services/shared-expenses/identity";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { Prisma, PrismaClient } from "~prisma";
 
@@ -260,7 +261,7 @@ async function computePeriodSettleStatus(
 ) {
 	const prisma = db as PrismaClient;
 
-	const [throughPeriods, allProjectTxs, settlements] = await Promise.all([
+	const [throughPeriods, rawProjectTxs, rawSettlements] = await Promise.all([
 		prisma.billingPeriod.findMany({
 			where: { projectId: period.projectId },
 			select: { id: true, startDate: true },
@@ -281,6 +282,16 @@ async function computePeriodSettleStatus(
 			},
 		}),
 	]);
+
+	// One ref per person (claimed shadows merged into their users), matching
+	// the project views and the alias-aware balances settle-ups use.
+	const { transactions: allProjectTxs, settlements } =
+		await canonicalizeProjectLedger(
+			prisma,
+			period.projectId,
+			rawProjectTxs,
+			rawSettlements,
+		);
 
 	const throughIds = new Set(
 		throughPeriods

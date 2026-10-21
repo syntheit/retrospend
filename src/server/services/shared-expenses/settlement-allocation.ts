@@ -17,8 +17,9 @@
  *   result is deterministic.
  * - The caller enforces the GLOBAL cap (amount <= global amount owed, with a
  *   small tolerance). Since the global balance is the sum of every scope, the
- *   owed scopes always cover it. Any tolerance-level remainder is added to the
- *   last allocated row so the rows sum exactly to the amount paid.
+ *   owed scopes always cover the amount owed. A tolerance-level excess beyond
+ *   every scope's debt is dropped rather than recorded: adding it to a row
+ *   would leave that scope with a cent of reverse debt.
  */
 
 export interface ScopeDebt {
@@ -58,17 +59,6 @@ export function allocateAcrossScopes(
 		const portion = Math.min(remaining, debt.owed);
 		allocations.push({ projectId: debt.projectId, amount: portion });
 		remaining -= portion;
-	}
-
-	if (remaining > DUST) {
-		if (allocations.length > 0) {
-			// Within the caller's tolerance: fold into the last row.
-			allocations[allocations.length - 1]!.amount += remaining;
-		} else {
-			// Nothing is owed in any scope (only reachable within the caller's
-			// tolerance): record it as a direct settlement.
-			allocations.push({ projectId: null, amount: remaining });
-		}
 	}
 
 	return allocations;
