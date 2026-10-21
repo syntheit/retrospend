@@ -127,10 +127,30 @@ export function fromWallTime(
 	return new Date(instant);
 }
 
+/** "yyyy-MM-dd" as midnight of that day in `timeZone`. */
+export function parseDateOnlyIn(value: string, timeZone?: string): Date {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) throw new Error("Date must be in YYYY-MM-DD format");
+	return fromWallTime(
+		{
+			year: Number(match[1]),
+			month: Number(match[2]) - 1,
+			day: Number(match[3]),
+		},
+		timeZone,
+	);
+}
+
 /** Midnight at the start of `date`'s day in `timeZone`. */
 export function startOfDayIn(date: Date, timeZone?: string): Date {
 	const { year, month, day } = wallTime(date, timeZone);
 	return fromWallTime({ year, month, day }, timeZone);
+}
+
+/** Midnight at the start of the day after `date`'s day in `timeZone`. */
+export function startOfNextDayIn(date: Date, timeZone?: string): Date {
+	const { year, month, day } = wallTime(date, timeZone);
+	return fromWallTime({ year, month, day: day + 1 }, timeZone);
 }
 
 /** "yyyy-MM-dd" of `date` in `timeZone`. */

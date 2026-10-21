@@ -9,6 +9,7 @@ import {
 	USD,
 } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
+import { dayKey, startOfDayIn, startOfNextDayIn } from "~/lib/time-zone";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import { AmortizationService } from "./amortization.service";
 
@@ -86,6 +87,8 @@ export interface ImportExpenseRow {
 	pricingSource?: string | null;
 	isAmortized?: boolean;
 	amortizeDuration?: number;
+	/** Unset means the category's excludeByDefault (like the expense form). */
+	excludeFromAnalytics?: boolean;
 }
 
 export class CsvService {
@@ -161,7 +164,12 @@ export class CsvService {
 	/**
 	 * Processes and imports expenses from raw rows.
 	 */
-	async importExpensesFromRows(userId: string, rows: ImportExpenseRow[]) {
+	async importExpensesFromRows(
+		userId: string,
+		rows: ImportExpenseRow[],
+		options: { timeZone?: string } = {},
+	) {
+		const tz = options.timeZone;
 		// Validate categories
 		const categoryIds = Array.from(
 			new Set(
@@ -171,37 +179,52 @@ export class CsvService {
 			),
 		);
 
-		let validCategoryIds = new Set<string>();
+		// Valid category ids and whether each excludes from analytics by default
+		const categoryExcludes = new Map<string, boolean>();
 		if (categoryIds.length > 0) {
 			const categories = await this.db.category.findMany({
 				where: {
 					id: { in: categoryIds },
 					userId: userId,
 				},
-				select: { id: true },
+				select: { id: true, excludeByDefault: true },
 			});
-			validCategoryIds = new Set(
-				categories.map((category: { id: string }) => category.id),
-			);
+			for (const category of categories) {
+				categoryExcludes.set(category.id, category.excludeByDefault);
+			}
 		}
 
-		// Fetch existing expenses in the date range to detect duplicates
-		const dates = Array.from(new Set(rows.map((row) => row.date)));
-		const existingExpenses = await this.db.expense.findMany({
-			where: {
-				userId: userId,
-				date: { in: dates },
-				status: "FINALIZED",
-			},
-			select: { date: true, title: true, amount: true, currency: true },
-		});
+		// Duplicates are matched by calendar day in the user's zone, so an
+		// existing expense saved at any time of that day counts.
+		const fingerprint = (
+			date: Date,
+			title: string,
+			amount: number,
+			currency: string,
+		) =>
+			`${dayKey(date, tz)}|${title.trim()}|${Math.abs(amount)}|${currency.toUpperCase()}`;
+
+		const times = rows.map((row) => row.date.getTime());
+		const existingExpenses =
+			rows.length === 0
+				? []
+				: await this.db.expense.findMany({
+						where: {
+							userId: userId,
+							date: {
+								gte: startOfDayIn(new Date(Math.min(...times)), tz),
+								lt: startOfNextDayIn(new Date(Math.max(...times)), tz),
+							},
+							status: "FINALIZED",
+						},
+						select: { date: true, title: true, amount: true, currency: true },
+					});
 
 		// Build fingerprint set for duplicate detection
 		const existingFingerprints = new Set(
-			existingExpenses.map((e) => {
-				const dateStr = e.date.toISOString().split("T")[0];
-				return `${dateStr}|${e.title.trim()}|${Math.abs(Number(e.amount))}|${e.currency.toUpperCase()}`;
-			}),
+			existingExpenses.map((e) =>
+				fingerprint(e.date, e.title, Number(e.amount), e.currency),
+			),
 		);
 
 		let totalCreated = 0;
@@ -215,7 +238,13 @@ export class CsvService {
 				.map((r) => r.currency.toUpperCase()),
 		);
 
-		type PreparedRow = { data: ImportExpenseRow; exchangeRate: number; amountInUSD: number; categoryId: string | null };
+		type PreparedRow = {
+			data: ImportExpenseRow;
+			exchangeRate: number;
+			amountInUSD: number;
+			categoryId: string | null;
+			excludeFromAnalytics: boolean;
+		};
 
 		const buildExpenseData = (r: PreparedRow) => ({
 			id: randomUUID(),
@@ -230,6 +259,7 @@ export class CsvService {
 			pricingSource: r.data.pricingSource ?? "IMPORT",
 			location: r.data.location ?? undefined,
 			description: r.data.description ?? undefined,
+			excludeFromAnalytics: r.excludeFromAnalytics,
 			status: "FINALIZED" as const,
 		});
 
@@ -238,10 +268,14 @@ export class CsvService {
 		const amortizedRows: PreparedRow[] = [];
 
 		for (const row of rows) {
-			const dateStr = row.date.toISOString().split("T")[0];
-			const fingerprint = `${dateStr}|${row.title.trim()}|${Math.abs(row.amount)}|${row.currency.toUpperCase()}`;
+			const rowFingerprint = fingerprint(
+				row.date,
+				row.title,
+				row.amount,
+				row.currency,
+			);
 
-			if (existingFingerprints.has(fingerprint)) {
+			if (existingFingerprints.has(rowFingerprint)) {
 				skippedDuplicates++;
 				continue;
 			}
@@ -252,11 +286,21 @@ export class CsvService {
 			);
 
 			const categoryId =
-				row.categoryId && validCategoryIds.has(row.categoryId)
+				row.categoryId && categoryExcludes.has(row.categoryId)
 					? row.categoryId
 					: null;
+			// Explicit column > category default > counted
+			const excludeFromAnalytics =
+				row.excludeFromAnalytics ??
+				(categoryId ? (categoryExcludes.get(categoryId) ?? false) : false);
 
-			const prepared = { data: row, exchangeRate, amountInUSD, categoryId };
+			const prepared = {
+				data: row,
+				exchangeRate,
+				amountInUSD,
+				categoryId,
+				excludeFromAnalytics,
+			};
 			const duration = row.amortizeDuration;
 
 			if (row.isAmortized && duration && duration > 1) {
@@ -265,7 +309,7 @@ export class CsvService {
 				batchRows.push(prepared);
 			}
 
-			existingFingerprints.add(fingerprint);
+			existingFingerprints.add(rowFingerprint);
 		}
 
 		// Batch create all non-amortized rows in one call

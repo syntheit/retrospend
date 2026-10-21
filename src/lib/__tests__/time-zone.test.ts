@@ -11,6 +11,7 @@ import {
 	dayKey,
 	fromWallTime,
 	normalizeTimeZone,
+	parseDateOnlyIn,
 	startOfDayIn,
 	wallTime,
 } from "../time-zone";
@@ -72,6 +73,16 @@ describe("time-zone helpers", () => {
 		expect(startOfDayIn(lateEvening, BA).toISOString()).toBe(
 			"2026-10-31T03:00:00.000Z",
 		);
+	});
+
+	it("parseDateOnlyIn reads a plain date as that day's local midnight", () => {
+		expect(parseDateOnlyIn("2026-10-01", BA).toISOString()).toBe(
+			"2026-10-01T03:00:00.000Z",
+		);
+		expect(parseDateOnlyIn("2026-10-01", BERLIN).toISOString()).toBe(
+			"2026-09-30T22:00:00.000Z",
+		);
+		expect(() => parseDateOnlyIn("10/01/2026", BA)).toThrow();
 	});
 
 	it("calendarDaysBetween counts days, not 24h blocks", () => {

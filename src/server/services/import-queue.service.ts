@@ -2,7 +2,8 @@ import { TRPCError } from "@trpc/server";
 import * as XLSX from "xlsx";
 import { env } from "~/env";
 import { parseRawCsv } from "~/lib/csv";
-import { parseDateOnly } from "~/lib/date";
+import { formatDateOnly, parseDateOnly } from "~/lib/date";
+import { parseDateOnlyIn } from "~/lib/time-zone";
 import { generateId } from "~/lib/id";
 import {
 	computeAmountInUSD,
@@ -31,6 +32,8 @@ export interface ImporterTransaction {
 	pricingSource: string;
 	category: string;
 	categoryId?: string;
+	/** From an "excludeFromAnalytics" CSV column; unset means the category default. */
+	excludeFromAnalytics?: boolean;
 }
 
 export interface CreateJobInput {
@@ -339,6 +342,11 @@ export class ImportQueueService {
 				const description = row.description?.trim() || "";
 				const category = row.category?.trim() || "";
 				const pricingSource = row.pricingsource?.trim() || "IMPORT";
+				const excludeCell = row.excludefromanalytics?.trim().toLowerCase();
+				const excludeFromAnalytics =
+					excludeCell === undefined || excludeCell === ""
+						? undefined
+						: ["true", "yes", "1"].includes(excludeCell);
 
 				// Calculate exchange rate and USD amount. Rates use the stored
 				// convention (fiat: units per USD, crypto: USD per coin).
@@ -385,11 +393,12 @@ export class ImportQueueService {
 					currency,
 					exchangeRate,
 					amountInUSD,
-					date: date.toISOString().split("T")[0]!,
+					date: formatDateOnly(date),
 					location,
 					description,
 					pricingSource,
 					category,
+					...(excludeFromAnalytics === undefined ? {} : { excludeFromAnalytics }),
 				});
 			} catch (error) {
 				warnings.push(
@@ -700,6 +709,7 @@ export class ImportQueueService {
 		userId: string,
 		jobId: string,
 		input: FinalizeImportInput,
+		timeZone?: string,
 	) {
 		const job = await this.db.importJob.findUnique({
 			where: { id: jobId },
@@ -731,18 +741,22 @@ export class ImportQueueService {
 			title: t.title,
 			amount: t.amount,
 			currency: t.currency,
-			date: parseDateOnly(t.date),
+			// The calendar day in the user's zone, like dates from the form
+			date: parseDateOnlyIn(t.date, timeZone),
 			exchangeRate: t.exchangeRate,
 			amountInUSD: t.amountInUSD,
 			location: t.location || null,
 			description: t.description || null,
 			categoryId: t.categoryId ?? null, // Categories are mapped client-side
 			pricingSource: t.pricingSource || "IMPORT",
+			excludeFromAnalytics: t.excludeFromAnalytics,
 		}));
 
 		// Use CsvService to do the actual import (handles duplicates, validation, etc.)
 		const csvService = new CsvService(this.db);
-		const result = await csvService.importExpensesFromRows(userId, rows);
+		const result = await csvService.importExpensesFromRows(userId, rows, {
+			timeZone,
+		});
 
 		// Mark job as COMPLETED
 		await this.db.importJob.update({

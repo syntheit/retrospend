@@ -50,6 +50,11 @@ export const ExpenseImportSchema = z.object({
 	description: z.string().optional(),
 	category: z.string().optional(), // Maps to categoryName in previous logic
 	pricingSource: z.string().optional(),
+	// Exports write it; unset means the category default
+	excludeFromAnalytics: z.preprocess(
+		(val) => (val === "" || val === undefined ? undefined : val),
+		booleanString.optional(),
+	),
 });
 
 export const BudgetImportSchema = z.object({

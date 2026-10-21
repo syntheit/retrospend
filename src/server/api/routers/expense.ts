@@ -137,6 +137,7 @@ export const expenseRouter = createTRPCRouter({
 							pricingSource: z.string().nullable().optional(),
 							isAmortized: z.boolean().optional().default(false),
 							amortizeDuration: z.number().int().min(2).max(60).optional(),
+							excludeFromAnalytics: z.boolean().optional(),
 						}),
 					)
 					.min(1)
@@ -149,6 +150,7 @@ export const expenseRouter = createTRPCRouter({
 				return await service.importExpensesFromRows(
 					ctx.session.user.id,
 					input.rows,
+					{ timeZone: ctx.timeZone },
 				);
 			} catch (error) {
 				throw new TRPCError({

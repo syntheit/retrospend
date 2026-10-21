@@ -26,6 +26,8 @@ import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
 import { useCurrency } from "~/hooks/use-currency";
 import { useNavigationGuard } from "~/hooks/use-navigation-guard";
 import { parseRawCsv } from "~/lib/csv";
+import { formatDateOnly } from "~/lib/date";
+import { computeAmountInUSD } from "~/lib/money";
 import { ExpenseImportSchema } from "~/lib/schemas/data-importer";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -256,13 +258,19 @@ function RetrospendCsvImport({
 						: undefined;
 
 					const resolvedCurrency = row.currency || mainCurrency;
+					// Unknown rates stay unknown; the server fills them from the
+					// rate table (never 1 for a non-USD currency).
 					const resolvedExchangeRate =
-						row.exchangeRate ?? (resolvedCurrency === "USD" ? 1 : 1);
+						row.exchangeRate ?? (resolvedCurrency === "USD" ? 1 : undefined);
 					const resolvedAmountInUSD =
 						row.amountInUSD ??
 						(resolvedExchangeRate
-							? row.amount / resolvedExchangeRate
-							: row.amount);
+							? computeAmountInUSD(
+									row.amount,
+									resolvedCurrency,
+									resolvedExchangeRate,
+								)
+							: undefined);
 
 					return {
 						title: row.title,
@@ -270,11 +278,12 @@ function RetrospendCsvImport({
 						currency: resolvedCurrency,
 						exchangeRate: resolvedExchangeRate,
 						amountInUSD: resolvedAmountInUSD,
-						date: row.date.toISOString().split("T")[0] ?? "",
+						date: formatDateOnly(row.date),
 						location: row.location ?? "",
 						description: row.description ?? "",
 						pricingSource: row.pricingSource ?? "IMPORT",
 						category: matchedCategory?.name ?? row.category ?? "",
+						excludeFromAnalytics: row.excludeFromAnalytics,
 					};
 				},
 			);
