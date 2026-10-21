@@ -26,6 +26,8 @@ vi.mock("./balance", () => ({
 
 function createMockDb() {
 	const iface = {
+		// pg_advisory_xact_lock for the settlement pair lock.
+		$executeRaw: vi.fn().mockResolvedValue(1),
 		settlement: {
 			create: vi.fn(),
 			findUnique: vi.fn(),
@@ -844,5 +846,123 @@ describe("SettlementService", () => {
 				"No financial relationship found",
 			);
 		});
+	});
+});
+
+// ── concurrency: the over-payment cap must hold under concurrent payments ──────
+
+describe("SettlementService pair lock", () => {
+	/**
+	 * A db whose $transaction behaves like Postgres with an advisory lock: a
+	 * transaction that calls $executeRaw (the pair lock) waits for the previous
+	 * holder's transaction to finish. The balance is derived from the rows
+	 * created so far, so a second payment only sees the first one if it waited.
+	 */
+	function createLockingDb(owed: number) {
+		const created: Array<{ amount: number }> = [];
+		let lockChain: Promise<void> = Promise.resolve();
+		const base = createMockDb();
+		base.settlement.create.mockImplementation(
+			async (args: { data: { amount: number } }) => {
+				// Yield so a concurrent transaction gets a chance to interleave.
+				await new Promise((r) => setTimeout(r, 0));
+				created.push({ amount: args.data.amount });
+				return { id: `s-${created.length}`, ...args.data };
+			},
+		);
+		vi.mocked(computeBalance).mockImplementation(async () => ({
+			byCurrency: {
+				USD: -(owed - created.reduce((sum, c) => sum + c.amount, 0)),
+			},
+		}));
+		const db = {
+			...base,
+			$transaction: vi.fn(
+				async <T>(cb: (tx: typeof base) => Promise<T>): Promise<T> => {
+					let release: () => void = () => {};
+					const tx = {
+						...base,
+						$executeRaw: vi.fn(async () => {
+							const previous = lockChain;
+							lockChain = new Promise<void>((r) => {
+								release = r;
+							});
+							await previous;
+							return 1;
+						}),
+					};
+					try {
+						return await cb(tx);
+					} finally {
+						release();
+					}
+				},
+			),
+		};
+		return { db, created };
+	}
+
+	beforeEach(() => {
+		vi.mocked(computeBalanceByProject).mockImplementation(async (...args) => {
+			const { byCurrency } = await vi.mocked(computeBalance)(...args);
+			return new Map([[null, byCurrency]]);
+		});
+	});
+
+	it("lets only one of two concurrent full payments through", async () => {
+		const { db, created } = createLockingDb(50);
+		const service = new SettlementService(db as never, "alice");
+		const pay = () =>
+			service.initiateSettlement({
+				toParticipant: bob,
+				amount: 50,
+				currency: "USD",
+				projectId: "P",
+			});
+
+		const results = await Promise.allSettled([pay(), pay()]);
+
+		expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+		expect(created).toEqual([{ amount: 50 }]);
+	});
+
+	it("serializes concurrent settle-all calls the same way", async () => {
+		const { db, created } = createLockingDb(50);
+		const service = new SettlementService(db as never, "alice");
+		const settle = () =>
+			service.settleAll({
+				toParticipant: bob,
+				paymentCurrency: "USD",
+				projectId: "P",
+			});
+
+		const results = await Promise.allSettled([settle(), settle()]);
+
+		expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+		expect(created).toEqual([{ amount: 50 }]);
+	});
+
+	it("takes the lock before reading the balance, keyed on the unordered pair", async () => {
+		const db = createMockDb();
+		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -10 } });
+		db.settlement.create.mockResolvedValue({ id: "s-1" });
+
+		await new SettlementService(db as never, "alice").initiateSettlement({
+			toParticipant: bob,
+			amount: 10,
+			currency: "USD",
+			projectId: "P",
+		});
+
+		const lockOrder = db.$executeRaw.mock.invocationCallOrder[0]!;
+		const readOrder = vi.mocked(computeBalance).mock.invocationCallOrder.at(-1)!;
+		expect(lockOrder).toBeLessThan(readOrder);
+		const call = db.$executeRaw.mock.calls[0] as unknown as [
+			TemplateStringsArray,
+			string,
+		];
+		expect(call[0].join("?")).toContain("pg_advisory_xact_lock");
+		// Same key whichever side of the pair is the caller.
+		expect(call[1]).toBe("user:alice|user:bob");
 	});
 });

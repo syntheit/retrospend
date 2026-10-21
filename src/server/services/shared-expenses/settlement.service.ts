@@ -92,9 +92,11 @@ export class SettlementService {
 		const isGlobal = input.projectId === undefined;
 		const projectScope = isGlobal ? undefined : input.projectId;
 
-		// Wrap balance check + create + audit in a transaction to prevent
-		// concurrent settlements from racing past the balance check.
+		// Balance check + create + audit run in one transaction that first takes
+		// the pair lock, so two concurrent payments cannot both pass the cap.
 		const { settlements } = await this.db.$transaction(async (tx) => {
+			await this.lockPair(tx, input.toParticipant);
+
 			// computeBalance(currentUser, other): positive = other owes us, negative = we owe other.
 			const balanceResult = await computeBalance(
 				tx as unknown as PrismaClient,
@@ -873,133 +875,137 @@ export class SettlementService {
 		const isGlobal = input.projectId === undefined;
 		const projectScope = isGlobal ? undefined : input.projectId;
 
-		// Compute all per-currency balances IN THE SAME SCOPE as the writes below.
-		const balanceResult = await computeBalance(
-			this.db,
-			this.currentUserRef,
-			input.toParticipant,
-			{ projectScope },
-		);
+		// The balance read, the cap and the writes all run in one transaction
+		// that first takes the pair lock, so a concurrent payment between the
+		// same two people cannot also pass the balance check.
+		const { settlements, totalInPaymentCurrency, skipped } =
+			await this.db.$transaction(async (tx) => {
+				await this.lockPair(tx, input.toParticipant);
 
-		// Filter to currencies where we owe them (negative balance)
-		const entries = Object.entries(balanceResult.byCurrency)
-			.filter(([, balance]) => balance < -0.00000001)
-			.map(([currency, balance]) => ({ currency, amount: Math.abs(balance) }));
-
-		if (entries.length === 0) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "No outstanding balance to settle",
-			});
-		}
-
-		// Fetch exchange rates for currencies that differ from payment currency
-		const currenciesToConvert = entries
-			.map((e) => e.currency)
-			.filter((c) => c !== input.paymentCurrency);
-
-		const rateMap = new Map<string, number>();
-		const now = new Date();
-
-		for (const currency of currenciesToConvert) {
-			const result = await getBestExchangeRate(
-				this.db as PrismaClient,
-				currency,
-				now,
-			);
-			if (result) rateMap.set(currency, result.rate);
-		}
-
-		// Also get rate for payment currency (needed for cross-currency conversion)
-		if (input.paymentCurrency !== "USD" && !rateMap.has(input.paymentCurrency)) {
-			const result = await getBestExchangeRate(
-				this.db as PrismaClient,
-				input.paymentCurrency,
-				now,
-			);
-			if (result) rateMap.set(input.paymentCurrency, result.rate);
-		}
-
-		// Partition the batch into convertible entries and those we must skip
-		// because a rate is missing. Never fold an unconverted foreign amount into
-		// the payment-currency total: that would report a settled balance the human
-		// may never have actually paid.
-		const skipped: Array<{ currency: string; reason: string }> = [];
-		const settleable: Array<{
-			currency: string;
-			amount: number;
-			/** Converts an amount of this currency into the payment currency. */
-			convert: ((amount: number) => number) | null;
-			exchangeRateUsed: number | null;
-		}> = [];
-
-		for (const entry of entries) {
-			if (entry.currency === input.paymentCurrency) {
-				settleable.push({
-					currency: entry.currency,
-					amount: entry.amount,
-					convert: null,
-					exchangeRateUsed: null,
-				});
-				continue;
-			}
-
-			// Convert via USD: source -> USD -> paymentCurrency
-			const sourceRate = rateMap.get(entry.currency);
-			const targetRate =
-				input.paymentCurrency === "USD"
-					? 1
-					: rateMap.get(input.paymentCurrency);
-
-			if (!sourceRate || !targetRate) {
-				skipped.push({
-					currency: entry.currency,
-					reason: "no_exchange_rate",
-				});
-				continue;
-			}
-
-			settleable.push({
-				currency: entry.currency,
-				amount: entry.amount,
-				convert: (amount: number) => {
-					const usdAmount = toUSD(amount, entry.currency, sourceRate);
-					const converted =
-						input.paymentCurrency === "USD"
-							? usdAmount
-							: fromUSD(usdAmount, input.paymentCurrency, targetRate);
-					return Math.round(converted * 100) / 100;
-				},
-				exchangeRateUsed: sourceRate,
-			});
-		}
-
-		if (settleable.length === 0) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: `Could not settle: no exchange rate available to convert ${skipped
-					.map((s) => s.currency)
-					.join(", ")} to ${input.paymentCurrency}.`,
-			});
-		}
-
-		// Global settle-all: split each currency's payment across the per-scope
-		// debts (same rules as a single global settlement).
-		const byProject = isGlobal
-			? await computeBalanceByProject(
-					this.db,
+				// Compute all per-currency balances IN THE SAME SCOPE as the writes below.
+				const balanceResult = await computeBalance(
+					tx as unknown as PrismaClient,
 					this.currentUserRef,
 					input.toParticipant,
-				)
-			: null;
-		const allocate = (currency: string, amount: number): ScopeAllocation[] =>
-			byProject
-				? allocateAcrossScopes(scopeDebtsForCurrency(byProject, currency), amount)
-				: [{ projectId: input.projectId ?? null, amount }];
+					{ projectScope },
+				);
 
-		// Create all settlements in a single transaction
-		const { settlements, totalInPaymentCurrency } =
-			await this.db.$transaction(async (tx) => {
+				// Filter to currencies where we owe them (negative balance)
+				const entries = Object.entries(balanceResult.byCurrency)
+					.filter(([, balance]) => balance < -0.00000001)
+					.map(([currency, balance]) => ({ currency, amount: Math.abs(balance) }));
+
+				if (entries.length === 0) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "No outstanding balance to settle",
+					});
+				}
+
+				// Fetch exchange rates for currencies that differ from payment currency
+				const currenciesToConvert = entries
+					.map((e) => e.currency)
+					.filter((c) => c !== input.paymentCurrency);
+
+				const rateMap = new Map<string, number>();
+				const now = new Date();
+
+				for (const currency of currenciesToConvert) {
+					const result = await getBestExchangeRate(
+						tx as unknown as PrismaClient,
+						currency,
+						now,
+					);
+					if (result) rateMap.set(currency, result.rate);
+				}
+
+				// Also get rate for payment currency (needed for cross-currency conversion)
+				if (input.paymentCurrency !== "USD" && !rateMap.has(input.paymentCurrency)) {
+					const result = await getBestExchangeRate(
+						tx as unknown as PrismaClient,
+						input.paymentCurrency,
+						now,
+					);
+					if (result) rateMap.set(input.paymentCurrency, result.rate);
+				}
+
+				// Partition the batch into convertible entries and those we must skip
+				// because a rate is missing. Never fold an unconverted foreign amount into
+				// the payment-currency total: that would report a settled balance the human
+				// may never have actually paid.
+				const skipped: Array<{ currency: string; reason: string }> = [];
+				const settleable: Array<{
+					currency: string;
+					amount: number;
+					/** Converts an amount of this currency into the payment currency. */
+					convert: ((amount: number) => number) | null;
+					exchangeRateUsed: number | null;
+				}> = [];
+
+				for (const entry of entries) {
+					if (entry.currency === input.paymentCurrency) {
+						settleable.push({
+							currency: entry.currency,
+							amount: entry.amount,
+							convert: null,
+							exchangeRateUsed: null,
+						});
+						continue;
+					}
+
+					// Convert via USD: source -> USD -> paymentCurrency
+					const sourceRate = rateMap.get(entry.currency);
+					const targetRate =
+						input.paymentCurrency === "USD"
+							? 1
+							: rateMap.get(input.paymentCurrency);
+
+					if (!sourceRate || !targetRate) {
+						skipped.push({
+							currency: entry.currency,
+							reason: "no_exchange_rate",
+						});
+						continue;
+					}
+
+					settleable.push({
+						currency: entry.currency,
+						amount: entry.amount,
+						convert: (amount: number) => {
+							const usdAmount = toUSD(amount, entry.currency, sourceRate);
+							const converted =
+								input.paymentCurrency === "USD"
+									? usdAmount
+									: fromUSD(usdAmount, input.paymentCurrency, targetRate);
+							return Math.round(converted * 100) / 100;
+						},
+						exchangeRateUsed: sourceRate,
+					});
+				}
+
+				if (settleable.length === 0) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: `Could not settle: no exchange rate available to convert ${skipped
+							.map((s) => s.currency)
+							.join(", ")} to ${input.paymentCurrency}.`,
+					});
+				}
+
+				// Global settle-all: split each currency's payment across the per-scope
+				// debts (same rules as a single global settlement).
+				const byProject = isGlobal
+					? await computeBalanceByProject(
+							tx as unknown as PrismaClient,
+							this.currentUserRef,
+							input.toParticipant,
+						)
+					: null;
+				const allocate = (currency: string, amount: number): ScopeAllocation[] =>
+					byProject
+						? allocateAcrossScopes(scopeDebtsForCurrency(byProject, currency), amount)
+						: [{ projectId: input.projectId ?? null, amount }];
+
 				const settlements: Array<{
 					id: string;
 					amount: number;
@@ -1100,7 +1106,7 @@ export class SettlementService {
 					}
 				}
 
-				return { settlements, totalInPaymentCurrency };
+				return { settlements, totalInPaymentCurrency, skipped };
 			});
 
 		// Send a single notification for the batch
@@ -1135,6 +1141,28 @@ export class SettlementService {
 			paymentCurrency: input.paymentCurrency,
 			requiresPayeeConfirmation: !isNonUserRecipient,
 		};
+	}
+
+	/**
+	 * Serializes settlement writes between the current user and `other`. Taken
+	 * as the first statement of the transaction that reads the balance and
+	 * writes the settlement rows, it makes a second concurrent payment between
+	 * the same two people wait until the first commits, so its balance read
+	 * sees the first payment and the over-payment cap holds. The key is the
+	 * unordered pair, so payments in either direction share one lock.
+	 * Transaction-scoped: released automatically on commit or rollback.
+	 */
+	private async lockPair(
+		tx: Pick<PrismaClient, "$executeRaw">,
+		other: ParticipantRef,
+	): Promise<void> {
+		const pairKey = [
+			`${this.currentUserRef.participantType}:${this.currentUserRef.participantId}`,
+			`${other.participantType}:${other.participantId}`,
+		]
+			.sort()
+			.join("|");
+		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('settlement-pair'), hashtext(${pairKey}))`;
 	}
 
 	/**
