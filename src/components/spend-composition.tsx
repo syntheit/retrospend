@@ -208,7 +208,7 @@ export function SpendComposition({
 
 			<div className="h-[220px] sm:h-[300px] w-full min-w-0" role="img" aria-label={`Spend composition: Fixed ${chartData[0]?.percentage ?? 0}%, Flexible ${chartData[1]?.percentage ?? 0}%`}>
 				<ResponsiveContainer height="100%" width="100%">
-					<PieChart>
+					<PieChart accessibilityLayer={false}>
 						<Pie
 							cx="50%"
 							cy="50%"

@@ -6,6 +6,7 @@ import {
 	Area,
 	CartesianGrid,
 	ComposedChart,
+	DefaultZIndexes,
 	Line,
 	XAxis,
 	YAxis,
@@ -261,6 +262,8 @@ export function BudgetPacing({
 								activeDot={false}
 								dataKey="ideal"
 								dot={false}
+								// Keep the guide under the area, as in Recharts 2 render order
+								zIndex={DefaultZIndexes.area - 1}
 								stroke="#525252"
 								strokeDasharray="5 5"
 								strokeWidth={2}

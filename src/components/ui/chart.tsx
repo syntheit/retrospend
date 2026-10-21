@@ -2,11 +2,14 @@
 
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
+import type { TooltipValueType } from "recharts";
 
 import { cn } from "~/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
+
+type TooltipNameType = number | string;
 
 export type ChartConfig = {
 	[k in string]: {
@@ -103,11 +106,13 @@ ${colorConfig
 	);
 };
 
-const ChartTooltip = RechartsPrimitive.Tooltip;
-ChartTooltip.defaultProps = {
-	...ChartTooltip.defaultProps,
-	useTranslate3d: true,
-};
+// Recharts 3 Tooltip is a function component, so defaultProps no longer
+// applies. Wrap it to keep translate3d positioning on by default.
+function ChartTooltip(
+	props: React.ComponentProps<typeof RechartsPrimitive.Tooltip>,
+) {
+	return <RechartsPrimitive.Tooltip useTranslate3d {...props} />;
+}
 
 function ChartTooltipContent({
 	active,
@@ -130,7 +135,13 @@ function ChartTooltipContent({
 		indicator?: "line" | "dot" | "dashed";
 		nameKey?: string;
 		labelKey?: string;
-	}) {
+	} & Omit<
+		RechartsPrimitive.DefaultTooltipContentProps<
+			TooltipValueType,
+			TooltipNameType
+		>,
+		"accessibilityLayer"
+	>) {
 	const { config } = useChart();
 
 	const tooltipLabel = React.useMemo(() => {
@@ -189,7 +200,7 @@ function ChartTooltipContent({
 					.map((item, index) => {
 						const key = `${nameKey || item.name || item.dataKey || "value"}`;
 						const itemConfig = getPayloadConfigFromPayload(config, item, key);
-						const indicatorColor = color || item.payload.fill || item.color;
+						const indicatorColor = color || item.payload?.fill || item.color;
 
 						return (
 							<div
@@ -197,7 +208,7 @@ function ChartTooltipContent({
 									"flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
 									indicator === "dot" && "items-center",
 								)}
-								key={item.dataKey}
+								key={index}
 							>
 								{formatter && item?.value !== undefined && item.name ? (
 									formatter(item.value, item.name, item, index, item.payload)
@@ -263,11 +274,10 @@ function ChartLegendContent({
 	payload,
 	verticalAlign = "bottom",
 	nameKey,
-}: React.ComponentProps<"div"> &
-	Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
-		hideIcon?: boolean;
-		nameKey?: string;
-	}) {
+}: React.ComponentProps<"div"> & {
+	hideIcon?: boolean;
+	nameKey?: string;
+} & RechartsPrimitive.DefaultLegendContentProps) {
 	const { config } = useChart();
 
 	if (!payload?.length) {
@@ -284,7 +294,7 @@ function ChartLegendContent({
 		>
 			{payload
 				.filter((item) => item.type !== "none")
-				.map((item) => {
+				.map((item, index) => {
 					const key = `${nameKey || item.dataKey || "value"}`;
 					const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
@@ -293,7 +303,7 @@ function ChartLegendContent({
 							className={cn(
 								"flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground",
 							)}
-							key={item.value}
+							key={index}
 						>
 							{itemConfig?.icon && !hideIcon ? (
 								<itemConfig.icon />

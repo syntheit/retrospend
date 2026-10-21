@@ -144,6 +144,7 @@ export function WealthHistoryChart({
 					role="img"
 				>
 					<AreaChart
+						accessibilityLayer={false}
 						data={data}
 						margin={{
 							top: 10,
@@ -215,7 +216,7 @@ export function WealthHistoryChart({
 									)}
 									indicator="dot"
 									labelFormatter={(value) => {
-										return parseDateOnly(value).toLocaleDateString(locale, {
+										return parseDateOnly(String(value)).toLocaleDateString(locale, {
 											month: "long",
 											day: "numeric",
 											year: "numeric",

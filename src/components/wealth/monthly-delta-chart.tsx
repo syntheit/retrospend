@@ -3,7 +3,15 @@
 import { TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Bar, BarChart, Cell, ReferenceLine, XAxis, YAxis } from "recharts";
+import {
+	Bar,
+	BarChart,
+	Cell,
+	DefaultZIndexes,
+	ReferenceLine,
+	XAxis,
+	YAxis,
+} from "recharts";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -165,6 +173,8 @@ export function MonthlyDeltaChart({
 							strokeDasharray="3 3"
 							strokeWidth={1}
 							y={0}
+							// Keep the zero line under the bars, as in Recharts 2
+							zIndex={DefaultZIndexes.bar - 1}
 						/>
 						<Bar dataKey="delta" radius={[2, 2, 0, 0]}>
 							{chartData.map((entry) => (

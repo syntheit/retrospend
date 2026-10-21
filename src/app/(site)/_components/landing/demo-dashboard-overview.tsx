@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import type { PieSectorDataItem } from "recharts/types/polar/Pie";
+import type { PieSectorDataItem } from "recharts";
 import { BudgetPacingChart } from "~/app/(dashboard)/_components/budget-pacing-chart";
 import { CategoryDonut } from "~/app/(dashboard)/_components/category-donut";
 import type { CategorySegment } from "~/app/(dashboard)/_components/category-donut-legend";

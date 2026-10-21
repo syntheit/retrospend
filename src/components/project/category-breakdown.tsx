@@ -148,7 +148,6 @@ export function CategoryBreakdown({
 												);
 											}
 										}}
-										position="center"
 									/>
 								</Pie>
 							</PieChart>

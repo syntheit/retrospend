@@ -1,7 +1,14 @@
 "use client";
 
-import { Cell, Label, Pie, PieChart, Sector } from "recharts";
-import type { PieSectorDataItem } from "recharts/types/polar/Pie";
+import {
+	Cell,
+	Label,
+	Pie,
+	PieChart,
+	type PieSectorDataItem,
+	type PieSectorShapeProps,
+	Sector,
+} from "recharts";
 import { useTranslations } from "next-intl";
 import {
 	Card,
@@ -60,6 +67,14 @@ function renderActiveShape(
 	);
 }
 
+// Sector props carry the Cell's React key; pass the rest through.
+function renderSector(props: PieSectorShapeProps) {
+	const { key: _key, ...rest } = props as PieSectorShapeProps & {
+		key?: unknown;
+	};
+	return <Sector {...rest} />;
+}
+
 export function CategoryDonut({
 	expensesLoading,
 	categoryBreakdown,
@@ -116,10 +131,6 @@ export function CategoryDonut({
 							>
 								<PieChart>
 									<Pie
-										activeIndex={activeSliceIndex ?? undefined}
-										activeShape={(props: PieSectorDataItem) =>
-											renderActiveShape(props, "none", 0)
-										}
 										cornerRadius={5}
 										cx="50%"
 										cy="50%"
@@ -137,6 +148,13 @@ export function CategoryDonut({
 										onMouseLeave={handleSliceLeave}
 										outerRadius="85%"
 										paddingAngle={4}
+										// Recharts 3 dropped activeIndex; draw the active slice
+										// from our own state so legend hover still enlarges it.
+										shape={(props: PieSectorShapeProps) =>
+											props.index === activeSliceIndex
+												? renderActiveShape(props, "none", 0)
+												: renderSector(props)
+										}
 										stroke="none"
 									>
 										{visibleCategoryBreakdown.map((segment, index) => (
@@ -183,7 +201,6 @@ export function CategoryDonut({
 													);
 												}
 											}}
-											position="center"
 										/>
 									</Pie>
 								</PieChart>

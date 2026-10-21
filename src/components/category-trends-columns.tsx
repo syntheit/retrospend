@@ -1,6 +1,6 @@
 "use client";
 
-import type { TooltipProps } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import {
 	Line,
 	LineChart,
@@ -67,7 +67,7 @@ function SparklineTooltip({
 	active,
 	payload,
 	formatCurrency,
-}: TooltipProps<number, string> & {
+}: Partial<TooltipContentProps<number, string>> & {
 	formatCurrency: (amount: number) => string;
 }) {
 	if (active && payload && payload.length) {
@@ -196,6 +196,7 @@ export function createCategoryTrendColumns(
 						<div className="h-8 w-20">
 							<ResponsiveContainer height="100%" width="100%">
 								<LineChart
+									accessibilityLayer={false}
 									data={item.trendData}
 									margin={{ top: 2, right: 2, bottom: 2, left: 2 }}
 								>

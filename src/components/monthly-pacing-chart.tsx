@@ -177,6 +177,7 @@ export function MonthlyPacingChart({
 			<div className="h-[220px] sm:h-[300px] w-full min-w-0" role="img" aria-label={`Spending over time chart. ${comparison.status}`}>
 				<ChartContainer config={chartConfig}>
 					<LineChart
+						accessibilityLayer={false}
 						data={chartData}
 						margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
 					>
@@ -225,7 +226,7 @@ export function MonthlyPacingChart({
 							strokeWidth={3}
 							type="monotone"
 						/>
-						{totalBudget && (
+						{totalBudget ? (
 							<Line
 								activeDot={{ r: 4 }}
 								dataKey="budgetPace"
@@ -236,7 +237,7 @@ export function MonthlyPacingChart({
 								strokeWidth={2}
 								type="monotone"
 							/>
-						)}
+						) : null}
 					</LineChart>
 				</ChartContainer>
 			</div>
