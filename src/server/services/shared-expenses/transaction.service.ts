@@ -215,13 +215,17 @@ export class SharedTransactionService {
 					splitWith,
 				);
 
+				// Shadows outside the project are auto-added below; only allow ones
+				// the caller already has a relationship with.
+				await this.assertShadowsAddable(tx, input.projectId, [
+					paidBy,
+					...splitWith,
+				]);
+
 				// Auto-link to the current OPEN billing period (if any).
 				// Always assigns to the OPEN period regardless of the transaction's date:
 				// if the date predates the period start, surface a warning to the caller.
-				const openPeriod = await tx.billingPeriod.findFirst({
-					where: { projectId: input.projectId, status: "OPEN" },
-					orderBy: { startDate: "desc" },
-				});
+				const openPeriod = await this.findOpenPeriod(tx, input.projectId);
 				if (openPeriod) {
 					billingPeriodId = openPeriod.id;
 					if (input.date < openPeriod.startDate) {
@@ -276,13 +280,13 @@ export class SharedTransactionService {
 				include: { splitParticipants: true },
 			});
 
-			// Auto-add shadow participants not yet in the project
+			// Auto-add shadow participants (split members and a shadow payer) not
+			// yet in the project
 			if (input.projectId) {
-				await this.autoAddShadowParticipants(
-					tx,
-					input.projectId,
-					input.splitWith,
-				);
+				await this.autoAddShadowParticipants(tx, input.projectId, [
+					paidBy,
+					...input.splitWith,
+				]);
 			}
 
 			await logAudit(tx, {
@@ -389,6 +393,7 @@ export class SharedTransactionService {
 				notes: string | null;
 				receiptUrl: string | null;
 				projectId: string | null;
+				billingPeriodId: string | null;
 				paidByType: string;
 				paidById: string;
 			}> = {};
@@ -465,23 +470,43 @@ export class SharedTransactionService {
 				};
 				fieldUpdates.receiptUrl = input.receiptUrl;
 			}
-			if (
+			const projectChanged =
 				input.projectId !== undefined &&
-				input.projectId !== existing.projectId
-			) {
+				input.projectId !== existing.projectId;
+			if (projectChanged) {
 				diff.projectId = {
 					old: existing.projectId,
 					new: input.projectId,
 				};
 				fieldUpdates.projectId = input.projectId;
+
+				if (input.projectId) {
+					// Moving into a project takes the same role as creating there.
+					await requireProjectRole(
+						tx,
+						input.projectId,
+						this.actor.participantType,
+						this.actor.participantId,
+						"CONTRIBUTOR",
+					);
+				}
+
+				// The old project's billing period means nothing in the new one.
+				// Mirror create: join the target's current OPEN period, if any.
+				const openPeriod = input.projectId
+					? await this.findOpenPeriod(tx, input.projectId)
+					: null;
+				fieldUpdates.billingPeriodId = openPeriod?.id ?? null;
 			}
 
 			// Handle paidBy changes
+			let paidByChanged = false;
 			if (input.paidBy !== undefined) {
 				if (
 					input.paidBy.participantType !== existing.paidByType ||
 					input.paidBy.participantId !== existing.paidById
 				) {
+					paidByChanged = true;
 					// The new payer is intentionally allowed to be outside the split:
 					// they front the cost without owing a share. No validation needed.
 
@@ -509,6 +534,38 @@ export class SharedTransactionService {
 			const effectiveProjectId =
 				input.projectId !== undefined ? input.projectId : existing.projectId;
 
+			// The split and payer the expense will have after this update.
+			const effectiveSplitRefs: SplitParticipantInput[] =
+				input.splitWith ??
+				existing.splitParticipants.map((sp) => ({
+					participantType: sp.participantType as "user" | "guest" | "shadow",
+					participantId: sp.participantId,
+				}));
+
+			// Whoever ends up on the expense must belong to its project, like on
+			// create. Moving projects re-checks everyone; an explicit new split is
+			// checked with the payer; a payer-only change checks just the payer, so
+			// old expenses with since-removed members stay editable.
+			if (
+				effectiveProjectId &&
+				(projectChanged || input.splitWith !== undefined || paidByChanged)
+			) {
+				const refsToCheck =
+					projectChanged || input.splitWith !== undefined
+						? effectiveSplitRefs
+						: [];
+				await this.validateProjectMembership(
+					tx,
+					effectiveProjectId,
+					effectivePaidBy,
+					refsToCheck,
+				);
+				await this.assertShadowsAddable(tx, effectiveProjectId, [
+					effectivePaidBy,
+					...refsToCheck,
+				]);
+			}
+
 			// Handle split participant changes
 			let newParticipants: SplitParticipantInput[] | undefined;
 
@@ -531,16 +588,7 @@ export class SharedTransactionService {
 
 				// The payer is intentionally allowed to be outside the split: they
 				// front the cost without owing a share, so they simply get no split
-				// row. But like create, non-shadow refs must be project members so an
-				// edit cannot introduce a phantom split.
-				if (effectiveProjectId) {
-					await this.validateProjectMembership(
-						tx,
-						effectiveProjectId,
-						effectivePaidBy,
-						input.splitWith,
-					);
-				}
+				// row. Project membership of the new split was checked above.
 
 				newParticipants = this.computeSplits(
 					effectiveAmount,
@@ -736,15 +784,20 @@ export class SharedTransactionService {
 				}
 			}
 
-			// Auto-add any shadow participant introduced by this edit to the project
-			// roster, mirroring create. Without this a shadow can be in the split but
-			// missing from the project's participant list (balances/settlement).
-			if (input.splitWith !== undefined && effectiveProjectId) {
-				await this.autoAddShadowParticipants(
-					tx,
-					effectiveProjectId,
-					input.splitWith,
-				);
+			// Auto-add any shadow participant introduced by this edit (or brought
+			// along by a project move) to the project roster, mirroring create.
+			// Without this a shadow can be in the split but missing from the
+			// project's participant list (balances/settlement).
+			if (
+				effectiveProjectId &&
+				(projectChanged || input.splitWith !== undefined || paidByChanged)
+			) {
+				await this.autoAddShadowParticipants(tx, effectiveProjectId, [
+					effectivePaidBy,
+					...(projectChanged || input.splitWith !== undefined
+						? effectiveSplitRefs
+						: []),
+				]);
 			}
 
 			// Mark all participants except the editor as having unseen changes
@@ -1099,18 +1152,107 @@ export class SharedTransactionService {
 		}
 	}
 
+	/** The project's current OPEN billing period, if any (same pick as create). */
+	private async findOpenPeriod(
+		tx: Prisma.TransactionClient,
+		projectId: string,
+	) {
+		return tx.billingPeriod.findFirst({
+			where: { projectId, status: "OPEN" },
+			orderBy: { startDate: "desc" },
+		});
+	}
+
+	/**
+	 * Shadows that aren't in the project yet get auto-added to it, which also
+	 * puts them on the path to being claimed through this project. So the actor
+	 * may only bring in a shadow they have a relationship with: one they created,
+	 * or one already in another project where they are CONTRIBUTOR or higher.
+	 * Guests can only use shadows already in their project. Without this anyone
+	 * could pull an arbitrary shadow id into their own project.
+	 */
+	private async assertShadowsAddable(
+		tx: Prisma.TransactionClient,
+		projectId: string,
+		refs: ParticipantRef[],
+	): Promise<void> {
+		const shadowIds = [
+			...new Set(
+				refs
+					.filter((r) => r.participantType === "shadow")
+					.map((r) => r.participantId),
+			),
+		];
+		for (const shadowId of shadowIds) {
+			const alreadyIn = await tx.projectParticipant.findUnique({
+				where: {
+					projectId_participantType_participantId: {
+						projectId,
+						participantType: "shadow",
+						participantId: shadowId,
+					},
+				},
+				select: { id: true },
+			});
+			if (alreadyIn) continue;
+
+			if (
+				this.actor.participantType === "user" &&
+				(await this.actorCanUseShadow(tx, shadowId))
+			) {
+				continue;
+			}
+
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "You can only add people you know to this project",
+			});
+		}
+	}
+
+	/** See {@link assertShadowsAddable}. Only meaningful for user actors. */
+	private async actorCanUseShadow(
+		tx: Prisma.TransactionClient,
+		shadowId: string,
+	): Promise<boolean> {
+		const shadow = await tx.shadowProfile.findUnique({
+			where: { id: shadowId },
+			select: { createdById: true },
+		});
+		if (shadow?.createdById === this.actor.participantId) return true;
+
+		const shadowProjects = await tx.projectParticipant.findMany({
+			where: { participantType: "shadow", participantId: shadowId },
+			select: { projectId: true },
+		});
+		if (shadowProjects.length === 0) return false;
+
+		const shared = await tx.projectParticipant.findMany({
+			where: {
+				projectId: { in: shadowProjects.map((p) => p.projectId) },
+				participantType: "user",
+				participantId: this.actor.participantId,
+			},
+			select: { role: true },
+		});
+		return shared.some((m) => m.role !== "VIEWER");
+	}
+
 	/**
 	 * Auto-adds any shadow participants not yet in the project as CONTRIBUTORs, so
 	 * a shadow added via create or edit shows up in the project roster (balances,
-	 * settlement). No-op for a standalone (project-less) expense.
+	 * settlement). Callers must run {@link assertShadowsAddable} first.
 	 */
 	private async autoAddShadowParticipants(
 		tx: Prisma.TransactionClient,
 		projectId: string,
-		splitWith: SplitParticipantInput[],
+		refs: ParticipantRef[],
 	): Promise<void> {
-		for (const p of splitWith) {
+		const seen = new Set<string>();
+		for (const p of refs) {
 			if (p.participantType !== "shadow") continue;
+			if (seen.has(p.participantId)) continue;
+			seen.add(p.participantId);
 			const alreadyIn = await tx.projectParticipant.findUnique({
 				where: {
 					projectId_participantType_participantId: {

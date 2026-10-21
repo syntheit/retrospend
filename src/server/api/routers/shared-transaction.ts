@@ -78,6 +78,15 @@ export const sharedTransactionRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
+			// A guest can't move an expense out of their project, same as create.
+			if (input.projectId) {
+				assertGuestProjectScope(ctx.participant, input.projectId);
+			} else if (input.projectId === null && actor.participantType === "guest") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Guests must keep expenses in their project",
+				});
+			}
 			const service = new SharedTransactionService(ctx.db, actor);
 			return await service.update(input);
 		}),
