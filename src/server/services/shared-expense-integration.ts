@@ -7,9 +7,9 @@
  * IMPORTANT: These functions return the CURRENT USER'S SHARE only,
  * never the full transaction amount.
  */
+import { computeAmountInUSD, USD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
-import { toUSD } from "../currency";
-import { getBestExchangeRate } from "../api/routers/shared-currency";
+import { findExchangeRatesForDates } from "../exchange-rates";
 import {
 	buildCallerRoleMap,
 	deriveCanModify,
@@ -49,6 +49,42 @@ function excludedProjectFilter(
 	};
 }
 
+type ShareRateSource = {
+	currency: string;
+	date: Date;
+	exchangeRate: Prisma.Decimal | number | null;
+};
+
+/**
+ * Rate for each shared expense: the one captured when it was saved, else the
+ * nearest table rate for its own date (never today's rate for a past month,
+ * never 1). Null only for a currency with no rate at all.
+ */
+async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
+	const lookup = await findExchangeRatesForDates(
+		db,
+		rows
+			.filter((r) => r.exchangeRate === null && r.currency !== USD)
+			.map((r) => r.currency),
+	);
+	return (row: ShareRateSource): number | null => {
+		if (row.currency === USD) return 1;
+		if (row.exchangeRate !== null) return Number(row.exchangeRate);
+		return lookup(row.currency, row.date)?.rate ?? null;
+	};
+}
+
+/** USD value of a share; 0 (and a log line) when its currency has no rate. */
+function shareToUSD(amount: number, currency: string, rate: number | null) {
+	if (rate === null) {
+		console.error(
+			`[shared-expense-integration] No exchange rate for ${currency}; share left out of USD totals`,
+		);
+		return 0;
+	}
+	return computeAmountInUSD(amount, currency, rate);
+}
+
 /**
  * Represents a user's share of a shared expense, compatible with
  * the budget/stats aggregation format (same fields as personal expenses).
@@ -71,7 +107,9 @@ export async function getSharedExpenseShares(
 	db: AppDb,
 	userId: string,
 	dateFilter?: { gte?: Date; lte?: Date },
-	rateCache?: RateCache,
+	// Kept for callers; rates are now resolved per transaction date in one
+	// batched lookup instead of today's rate from the cache.
+	_rateCache?: RateCache,
 	excludedProjectIds?: string[],
 ): Promise<SharedExpenseShare[]> {
 	const whereTransaction: Prisma.SharedTransactionWhereInput = {
@@ -92,6 +130,7 @@ export async function getSharedExpenseShares(
 					currency: true,
 					date: true,
 					categoryId: true,
+					exchangeRate: true,
 				},
 			},
 		},
@@ -99,37 +138,19 @@ export async function getSharedExpenseShares(
 
 	if (participations.length === 0) return [];
 
-	// Batch compute exchange rates for currency conversion
-	const currencies = [
-		...new Set(participations.map((p) => p.transaction.currency)),
-	];
-	const localRateCache = new Map<string, { rate: number; type: string | null }>();
-
-	if (rateCache) {
-		const rateMap = await rateCache.getMany(currencies, new Date());
-		for (const [currency, rate] of rateMap) {
-			localRateCache.set(currency, rate ?? { rate: 1, type: null });
-		}
-	} else {
-		const nonUsdCurrencies = currencies.filter((c) => c !== "USD");
-		localRateCache.set("USD", { rate: 1, type: null });
-		const fetchedRates = await Promise.all(
-			nonUsdCurrencies.map((c) => getBestExchangeRate(db as PrismaClient, c, new Date())),
-		);
-		for (let i = 0; i < nonUsdCurrencies.length; i++) {
-			localRateCache.set(nonUsdCurrencies[i]!, fetchedRates[i] ?? { rate: 1, type: null });
-		}
-	}
+	const rateFor = await shareRateResolver(
+		db,
+		participations.map((p) => p.transaction),
+	);
 
 	return participations.map((p) => {
 		const shareAmount = Number(p.shareAmount);
 		const currency = p.transaction.currency;
-		const rateData = localRateCache.get(currency) ?? { rate: 1, type: null };
 
 		return {
 			amount: shareAmount,
 			currency,
-			amountInUSD: toUSD(shareAmount, currency, rateData.rate),
+			amountInUSD: shareToUSD(shareAmount, currency, rateFor(p.transaction)),
 			categoryId: p.transaction.categoryId,
 			date: p.transaction.date,
 		};
@@ -179,6 +200,7 @@ export async function listSharedParticipationsForUser(
 					currency: true,
 					date: true,
 					categoryId: true,
+					exchangeRate: true,
 					category: {
 						select: { id: true, name: true, color: true, icon: true },
 					},
@@ -260,19 +282,11 @@ export async function listSharedParticipationsForUser(
 	for (const s of resolvedShadows) nameMap.set(`shadow:${s.id}`, s.name);
 	for (const g of resolvedGuests) nameMap.set(`guest:${g.id}`, g.name);
 
-	// Compute amountInUSD for each share — batch fetch rates in parallel
-	const currencies = [
-		...new Set(participations.map((p) => p.transaction.currency)),
-	];
-	const nonUsdCurrencies = currencies.filter((c) => c !== "USD");
-	const fetchedRates = await Promise.all(
-		nonUsdCurrencies.map((c) => getBestExchangeRate(db as PrismaClient, c, new Date())),
+	// Each share converts at its own transaction's rate.
+	const rateFor = await shareRateResolver(
+		db,
+		participations.map((p) => p.transaction),
 	);
-	const rateCache = new Map<string, { rate: number; type: string | null }>();
-	rateCache.set("USD", { rate: 1, type: null });
-	for (let i = 0; i < nonUsdCurrencies.length; i++) {
-		rateCache.set(nonUsdCurrencies[i]!, fetchedRates[i] ?? { rate: 1, type: null });
-	}
 
 	// Resolve project names in batch
 	const projectIds = [
@@ -303,9 +317,8 @@ export async function listSharedParticipationsForUser(
 		const tx = p.transaction;
 		const shareAmount = Number(p.shareAmount);
 		const currency = tx.currency;
-		const rateData = rateCache.get(currency) ?? { rate: 1, type: null };
-
-		const amountInUSD = toUSD(shareAmount, currency, rateData.rate);
+		const rate = rateFor(tx);
+		const amountInUSD = shareToUSD(shareAmount, currency, rate);
 
 		const payerKey = `${tx.paidByType}:${tx.paidById}`;
 		const paidByName = nameMap.get(payerKey) ?? "Unknown";
@@ -329,7 +342,7 @@ export async function listSharedParticipationsForUser(
 			description: tx.description,
 			amount: shareAmount,
 			currency,
-			exchangeRate: rateData.rate !== 1 ? rateData.rate : null,
+			exchangeRate: currency === USD ? null : rate,
 			amountInUSD,
 			date: tx.date,
 			categoryId: tx.categoryId,

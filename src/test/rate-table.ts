@@ -41,37 +41,41 @@ export const DEFAULT_RATES: TestRateRow[] = [
 	{ currency: "ETH", type: "crypto", rate: 1916.61, date: RATE_DATE },
 ];
 
+/** Applies a Prisma-style exchangeRate.findMany query to a list of rows. */
+export function queryRateRows(rows: TestRateRow[], args: FindManyArgs = {}) {
+	const where = args.where ?? {};
+	let result = rows.filter((r) => {
+		if (typeof where.currency === "string" && r.currency !== where.currency)
+			return false;
+		if (
+			where.currency &&
+			typeof where.currency === "object" &&
+			!where.currency.in.includes(r.currency)
+		)
+			return false;
+		if (where.date?.lte && r.date > where.date.lte) return false;
+		if (where.date?.gt && r.date <= where.date.gt) return false;
+		return true;
+	});
+	const order = Array.isArray(args.orderBy)
+		? args.orderBy.find((o) => o.date)?.date
+		: args.orderBy?.date;
+	if (order) {
+		result = [...result].sort((a, b) =>
+			order === "asc"
+				? a.date.getTime() - b.date.getTime()
+				: b.date.getTime() - a.date.getTime(),
+		);
+	}
+	if (args.take) result = result.slice(0, args.take);
+	return result.map((r) => ({ ...r }));
+}
+
 export function useRateTable(
 	db: { exchangeRate: { findMany: Mock } },
 	rows: TestRateRow[] = DEFAULT_RATES,
 ) {
-	db.exchangeRate.findMany.mockImplementation(async (args: FindManyArgs = {}) => {
-		const where = args.where ?? {};
-		let result = rows.filter((r) => {
-			if (typeof where.currency === "string" && r.currency !== where.currency)
-				return false;
-			if (
-				where.currency &&
-				typeof where.currency === "object" &&
-				!where.currency.in.includes(r.currency)
-			)
-				return false;
-			if (where.date?.lte && r.date > where.date.lte) return false;
-			if (where.date?.gt && r.date <= where.date.gt) return false;
-			return true;
-		});
-		const order = Array.isArray(args.orderBy)
-			? args.orderBy.find((o) => o.date)?.date
-			: args.orderBy?.date;
-		if (order) {
-			result = [...result].sort((a, b) =>
-				order === "asc"
-					? a.date.getTime() - b.date.getTime()
-					: b.date.getTime() - a.date.getTime(),
-			);
-		}
-		if (args.take) result = result.slice(0, args.take);
-		// Prisma returns Decimal; the code under test calls Number() on it.
-		return result.map((r) => ({ ...r }));
-	});
+	db.exchangeRate.findMany.mockImplementation(async (args: FindManyArgs = {}) =>
+		queryRateRows(rows, args),
+	);
 }
