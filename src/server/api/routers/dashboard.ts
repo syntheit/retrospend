@@ -219,6 +219,8 @@ export const dashboardRouter = createTRPCRouter({
 					listSharedParticipationsForUser(db, userId, excludedProjectIds),
 					db.settlement.findMany({
 						where: {
+							// Offset rows move no money (see settlement-groups.ts).
+							isOffset: false,
 							OR: [
 								{
 									fromParticipantType: "user",
@@ -350,8 +352,21 @@ export const dashboardRouter = createTRPCRouter({
 				});
 			}
 
-			// Settlements
+			// Settlements: one item per payment. A payment split over several
+			// projects is one row per project with a shared paymentGroupId.
+			const payments = new Map<
+				string,
+				(typeof settlements)[number] & { total: number }
+			>();
 			for (const s of settlements) {
+				const key = s.paymentGroupId
+					? `${s.paymentGroupId}|${s.currency}`
+					: s.id;
+				const existing = payments.get(key);
+				if (existing) existing.total += Number(s.amount);
+				else payments.set(key, { ...s, total: Number(s.amount) });
+			}
+			for (const s of payments.values()) {
 				const isFrom =
 					s.fromParticipantType === "user" &&
 					s.fromParticipantId === userId;
@@ -364,7 +379,7 @@ export const dashboardRouter = createTRPCRouter({
 				const otherName =
 					nameMap.get(`${otherType}:${otherId}`) ?? "Unknown";
 				const direction = isFrom ? "outgoing" : "incoming";
-				const amount = Number(s.amount);
+				const amount = s.total;
 
 				items.push({
 					type: "settlement",
