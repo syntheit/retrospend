@@ -172,6 +172,13 @@ export function SettleUpDialog({
 			? String(firstActivePlan.suggestedAmount)
 			: "";
 	const currency = isAllMode ? homeCurrency : (firstActivePlan?.currency ?? "USD");
+	// They owe you: recording this payment means they paid you. The server then
+	// records them as the payer and you as the payee, final at once (you are
+	// the one confirming you were paid).
+	const isReceiving =
+		(isAllMode ? activePlans[0]?.direction : firstActivePlan?.direction) ===
+		"they_owe_you";
+	const direction = isReceiving ? ("incoming" as const) : ("outgoing" as const);
 
 	const parsedAmount = parseFloat(amount);
 	const parsedDefault = parseFloat(defaultAmount);
@@ -254,6 +261,7 @@ export function SettleUpDialog({
 		if (isAllMode) {
 			settleAllMutation.mutate({
 				toParticipant: { participantType, participantId },
+				direction,
 				paymentCurrency: homeCurrency,
 				note: note.trim() || null,
 				paymentMethod: selectedMethod?.type ?? null,
@@ -269,6 +277,7 @@ export function SettleUpDialog({
 		}
 		createSettlement.mutate({
 			toParticipant: { participantType, participantId },
+			direction,
 			amount: parsed,
 			currency,
 			note: note.trim() || null,
@@ -662,8 +671,8 @@ export function SettleUpDialog({
 							)}
 						</div>
 
-						{/* Payment methods */}
-						{participantType === "user" && (
+						{/* Payment methods (theirs, so only when you are paying) */}
+						{participantType === "user" && !isReceiving && (
 							<div className="space-y-2">
 								<Label>{t("payViaOptional")}</Label>
 								{matchLoading ? (
@@ -788,7 +797,7 @@ export function SettleUpDialog({
 						<CheckCircle2 className="h-4 w-4" />
 						{isMutating ? t("saving") : t("recordPayment")}
 					</Button>
-					{participantType === "user" && firstActivePlan && (
+					{participantType === "user" && firstActivePlan && !isReceiving && (
 						<p className="text-center text-muted-foreground text-xs">
 							{t("balanceUpdateNote", { name: personName })}
 						</p>

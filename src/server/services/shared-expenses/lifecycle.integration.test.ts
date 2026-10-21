@@ -1456,6 +1456,76 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		});
 		expect(after.byCurrency).toEqual({ USD: -30 });
 	});
+
+	it("alice records a payment received from bob in the People view: every scope clears", async () => {
+		// bob owes alice $40 in project A and $10 in direct expenses.
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice(null, 10);
+
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		const result = await aliceSettle.initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: 50,
+			currency: "USD",
+		});
+
+		// Final at once, bob is the payer.
+		expect(result.requiresPayeeConfirmation).toBe(false);
+		for (const s of db._stores.settlements.values()) {
+			expect(s.fromParticipantId).toBe(BOB);
+			expect(s.toParticipantId).toBe(ALICE);
+			expect(s.status).toBe("FINALIZED");
+		}
+		expect(settlementRows()).toEqual(
+			expect.arrayContaining([
+				{ projectId: "A", amount: 40 },
+				{ projectId: null, amount: 10 },
+			]),
+		);
+
+		const global = await computeBalance(db as never, aliceRef, bobRef);
+		expect(global.byCurrency.USD ?? 0).toBe(0);
+		const inA = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(inA.byCurrency.USD ?? 0).toBe(0);
+	});
+
+	it("alice cannot record more than bob owes her", async () => {
+		seedBobOwesAlice("A", 40);
+
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		await expect(
+			aliceSettle.initiateSettlement({
+				toParticipant: bobRef,
+				direction: "incoming",
+				amount: 45,
+				currency: "USD",
+				projectId: "A",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+		expect(db._stores.settlements.size).toBe(0);
+	});
+
+	it("alice can undo a payment she recorded as received", async () => {
+		seedBobOwesAlice("A", 40);
+
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		const { settlement } = await aliceSettle.initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: 40,
+			currency: "USD",
+			projectId: "A",
+		});
+		await aliceSettle.voidAutoFinalizedSettlement(settlement.id);
+
+		const inA = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(inA.byCurrency).toEqual({ USD: 40 });
+	});
 });
 
 // ── Suite 1J: Auto-accept window restarts on edit ─────────────────────────────

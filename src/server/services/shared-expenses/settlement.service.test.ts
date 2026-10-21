@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createNotification } from "~/server/services/notifications";
 import { computeBalance, computeBalanceByProject } from "./balance";
-import { SettlementService } from "./settlement.service";
+import {
+	RECORDED_BY_PAYEE_REASON,
+	SettlementService,
+} from "./settlement.service";
 
 // Mock the notifications module: it uses the global DB and cannot run in unit tests.
 vi.mock("~/server/services/notifications", () => ({
@@ -964,5 +968,219 @@ describe("SettlementService pair lock", () => {
 		expect(call[0].join("?")).toContain("pg_advisory_xact_lock");
 		// Same key whichever side of the pair is the caller.
 		expect(call[1]).toBe("user:alice|user:bob");
+	});
+});
+
+// ── recording a payment received ("they paid me") ──────────────────────────────
+
+describe("SettlementService incoming payments", () => {
+	let db: ReturnType<typeof createMockDb>;
+	let service: SettlementService;
+
+	beforeEach(() => {
+		db = createMockDb();
+		service = new SettlementService(db as never, "alice");
+		vi.mocked(createNotification).mockClear();
+		vi.mocked(computeBalanceByProject).mockImplementation(async (...args) => {
+			const { byCurrency } = await vi.mocked(computeBalance)(...args);
+			return new Map([[null, byCurrency]]);
+		});
+	});
+
+	it("records bob as payer and alice as payee, final at once", async () => {
+		// From the payer's (bob's) side: bob owes alice $50.
+		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
+		db.settlement.create.mockImplementation(
+			async (args: { data: Record<string, unknown> }) => ({
+				id: "s-in",
+				...args.data,
+			}),
+		);
+
+		const result = await service.initiateSettlement({
+			toParticipant: bob,
+			direction: "incoming",
+			amount: 50,
+			currency: "USD",
+			projectId: "P",
+		});
+
+		// Cap read from the payer's side.
+		expect(computeBalance).toHaveBeenLastCalledWith(
+			expect.anything(),
+			bob,
+			expect.objectContaining({ participantId: "alice" }),
+			{ projectScope: "P" },
+		);
+		expect(db.settlement.create).toHaveBeenCalledWith({
+			data: expect.objectContaining({
+				fromParticipantType: "user",
+				fromParticipantId: "bob",
+				toParticipantType: "user",
+				toParticipantId: "alice",
+				amount: 50,
+				status: "FINALIZED",
+				confirmedByPayer: false,
+				confirmedByPayee: true,
+				autoConfirmedReason: RECORDED_BY_PAYEE_REASON,
+			}),
+		});
+		expect(result.requiresPayeeConfirmation).toBe(false);
+		// Bob hears that alice recorded his payment.
+		expect(createNotification).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: "bob",
+				type: "SETTLEMENT_CONFIRMED",
+			}),
+		);
+	});
+
+	it("caps at what the other person owes you", async () => {
+		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -20 } });
+
+		await expect(
+			service.initiateSettlement({
+				toParticipant: bob,
+				direction: "incoming",
+				amount: 30,
+				currency: "USD",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+		expect(db.settlement.create).not.toHaveBeenCalled();
+	});
+
+	it("refuses when they do not owe you anything", async () => {
+		// From bob's side: alice owes bob, so bob owes alice nothing.
+		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 40 } });
+
+		await expect(
+			service.initiateSettlement({
+				toParticipant: bob,
+				direction: "incoming",
+				amount: 10,
+				currency: "USD",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+		expect(db.settlement.create).not.toHaveBeenCalled();
+	});
+
+	it("still requires confirmation for an outgoing payment to a user", async () => {
+		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
+		db.settlement.create.mockImplementation(
+			async (args: { data: Record<string, unknown> }) => ({
+				id: "s-out",
+				...args.data,
+			}),
+		);
+
+		const result = await service.initiateSettlement({
+			toParticipant: bob,
+			direction: "outgoing",
+			amount: 50,
+			currency: "USD",
+		});
+
+		expect(result.requiresPayeeConfirmation).toBe(true);
+		expect(createNotification).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: "bob", type: "SETTLEMENT_RECEIVED" }),
+		);
+	});
+
+	it("settleAll records everything they owe you as received", async () => {
+		vi.mocked(computeBalance).mockResolvedValue({
+			byCurrency: { USD: -30, EUR: 5 },
+		});
+		db.settlement.create.mockImplementation(
+			async (args: { data: Record<string, unknown> }) => ({
+				id: "s-all",
+				...args.data,
+			}),
+		);
+
+		const result = await service.settleAll({
+			toParticipant: bob,
+			direction: "incoming",
+			paymentCurrency: "USD",
+			projectId: "P",
+		});
+
+		// Only USD: in EUR it is alice who owes bob.
+		expect(db.settlement.create).toHaveBeenCalledTimes(1);
+		expect(db.settlement.create).toHaveBeenCalledWith({
+			data: expect.objectContaining({
+				fromParticipantId: "bob",
+				toParticipantId: "alice",
+				amount: 30,
+				currency: "USD",
+				status: "FINALIZED",
+			}),
+		});
+		expect(result.requiresPayeeConfirmation).toBe(false);
+	});
+
+	it("lets the payee void a payment they recorded, but not one bob sent", async () => {
+		const recorded = {
+			id: "s-in",
+			fromParticipantType: "user",
+			fromParticipantId: "bob",
+			toParticipantType: "user",
+			toParticipantId: "alice",
+			amount: 50,
+			currency: "USD",
+			status: "FINALIZED",
+			confirmedByPayer: false,
+			confirmedByPayee: true,
+			autoConfirmedReason: RECORDED_BY_PAYEE_REASON,
+			initiatedAt: new Date(),
+			projectId: null,
+		};
+		db.settlement.findUnique.mockResolvedValueOnce(recorded);
+		await expect(service.voidAutoFinalizedSettlement("s-in")).resolves.toEqual({
+			success: true,
+		});
+		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-in" } });
+
+		// A payment bob sent and alice confirmed is not alice's to undo.
+		db.settlement.delete.mockClear();
+		db.settlement.findUnique.mockResolvedValueOnce({
+			...recorded,
+			id: "s-sent",
+			confirmedByPayer: true,
+			autoConfirmedReason: null,
+		});
+		await expect(service.voidAutoFinalizedSettlement("s-sent")).rejects.toThrow(
+			"Only the payer can void",
+		);
+		expect(db.settlement.delete).not.toHaveBeenCalled();
+	});
+
+	it("history marks a payment you recorded as received voidable", async () => {
+		db.settlement.findMany.mockResolvedValueOnce([
+			{
+				id: "s-in",
+				fromParticipantType: "user",
+				fromParticipantId: "bob",
+				toParticipantType: "user",
+				toParticipantId: "alice",
+				amount: 50,
+				currency: "USD",
+				status: "FINALIZED",
+				confirmedByPayer: false,
+				confirmedByPayee: true,
+				autoConfirmedReason: RECORDED_BY_PAYEE_REASON,
+				reminderCount: 0,
+				reminderSentAt: null,
+				initiatedAt: new Date(),
+			},
+		]);
+
+		const [row] = await service.getSettlementHistory(bob);
+
+		expect(row).toMatchObject({
+			direction: "incoming",
+			status: "confirmed",
+			canVoid: true,
+			canConfirm: false,
+		});
 	});
 });

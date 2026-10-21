@@ -30,8 +30,94 @@ function toDirection(
 	return "settled";
 }
 
+/**
+ * Which way the money moved, from the current user's side.
+ * - "outgoing": the current user paid `toParticipant` (the default).
+ * - "incoming": `toParticipant` paid the current user. Used to record a
+ *   payment received from someone who owed you; the other person is then the
+ *   payer and the current user the payee.
+ */
+export type SettlementDirection = "outgoing" | "incoming";
+
+/** Marks a settlement the payee recorded themselves ("they paid me"). */
+export const RECORDED_BY_PAYEE_REASON =
+	"Recorded by the payee as a payment received";
+
+interface SettlementSides {
+	payer: ParticipantRef;
+	payee: ParticipantRef;
+	/** The current user is the payee and is recording a payment received. */
+	recordedByPayee: boolean;
+}
+
+/**
+ * Confirmation state of a new settlement row.
+ * - Recorded by the payee: FINALIZED at once. The payee is the one whose
+ *   claim shrinks, so their own record needs no further confirmation, and
+ *   the payer only owes less. confirmedByPayer stays false: the payer did not
+ *   act.
+ * - Paid to a ghost/guest: FINALIZED at once (they can never confirm).
+ * - Paid to a registered user: PROPOSED until that user confirms or rejects.
+ */
+function confirmationFor(sides: SettlementSides, now: Date) {
+	if (sides.recordedByPayee) {
+		return {
+			confirmedByPayer: false,
+			confirmedByPayee: true,
+			status: "FINALIZED" as const,
+			settledAt: now,
+			autoConfirmedReason: RECORDED_BY_PAYEE_REASON,
+			auditAction: "settlement_recorded_by_payee",
+		};
+	}
+	if (sides.payee.participantType !== "user") {
+		return {
+			confirmedByPayer: true,
+			confirmedByPayee: true,
+			status: "FINALIZED" as const,
+			settledAt: now,
+			autoConfirmedReason: `Recipient is a ${sides.payee.participantType} and cannot confirm`,
+			auditAction: "settlement_auto_confirmed",
+		};
+	}
+	return {
+		confirmedByPayer: true,
+		confirmedByPayee: false,
+		status: "PROPOSED" as const,
+		settledAt: null,
+		autoConfirmedReason: null,
+		auditAction: "settlement_initiated",
+	};
+}
+
+/** Whether `userId` is the payee and recorded this settlement themselves. */
+function isRecordedByPayee(
+	s: {
+		toParticipantType: string;
+		toParticipantId: string;
+		status: string;
+		confirmedByPayer: boolean;
+		autoConfirmedReason: string | null;
+	},
+	userId: string,
+): boolean {
+	return (
+		s.toParticipantType === "user" &&
+		s.toParticipantId === userId &&
+		s.status === "FINALIZED" &&
+		!s.confirmedByPayer &&
+		s.autoConfirmedReason === RECORDED_BY_PAYEE_REASON
+	);
+}
+
 export interface InitiateSettlementInput {
+	/**
+	 * The other person. They receive the payment for an "outgoing" settlement
+	 * and made it for an "incoming" one.
+	 */
 	toParticipant: ParticipantRef;
+	/** Defaults to "outgoing" (the current user paid). */
+	direction?: SettlementDirection;
 	amount: number;
 	currency: string;
 	convertedAmount?: number | null;
@@ -63,13 +149,23 @@ export class SettlementService {
 		this.currentUserRef = { participantType: "user", participantId: userId };
 	}
 
+	private sides(
+		other: ParticipantRef,
+		direction: SettlementDirection | undefined,
+	): SettlementSides {
+		return direction === "incoming"
+			? { payer: other, payee: this.currentUserRef, recordedByPayee: true }
+			: { payer: this.currentUserRef, payee: other, recordedByPayee: false };
+	}
+
 	/**
-	 * Creates a new settlement record initiated by the current user (the payer).
-	 * Rejects (does not record) if the settlement exceeds the current balance owed:
-	 * over-payment would fabricate a reverse balance against the recipient, and for
-	 * non-user recipients that record is irreversible. Partial settlements
-	 * (amount <= outstanding) are still allowed.
-	 * Auto-confirms immediately for non-user recipients (shadow/guest) who cannot authenticate.
+	 * Records a settlement between the current user and `toParticipant`: either
+	 * a payment the current user made ("outgoing", the default) or one they
+	 * received ("incoming"). Rejects (does not record) if the amount exceeds
+	 * what the payer owes the payee: over-payment would fabricate a reverse
+	 * balance, and an auto-finalized record cannot be confirmed away. Partial
+	 * settlements (amount <= outstanding) are still allowed.
+	 * See confirmationFor for which records need the payee to confirm.
 	 */
 	async initiateSettlement(input: InitiateSettlementInput) {
 		if (sameParticipant(this.currentUserRef, input.toParticipant)) {
@@ -84,7 +180,8 @@ export class SettlementService {
 			await this.assertProjectInvolvement(input.projectId);
 		}
 
-		const isNonUserRecipient = input.toParticipant.participantType !== "user";
+		const sides = this.sides(input.toParticipant, input.direction);
+		const { payer, payee } = sides;
 
 		// projectId undefined => GLOBAL cap, payment allocated across scopes.
 		// string / null => that single scope (project / direct bucket). The cap
@@ -97,19 +194,19 @@ export class SettlementService {
 		const { settlements } = await this.db.$transaction(async (tx) => {
 			await this.lockPair(tx, input.toParticipant);
 
-			// computeBalance(currentUser, other): positive = other owes us, negative = we owe other.
+			// computeBalance(payer, payee): negative = the payer owes the payee.
 			const balanceResult = await computeBalance(
 				tx as unknown as PrismaClient,
-				this.currentUserRef,
-				input.toParticipant,
+				payer,
+				payee,
 				{ projectScope },
 			);
 			const rawBalance = balanceResult.byCurrency[input.currency] ?? 0;
 			const amountOwed = Math.max(0, -rawBalance);
 
 			// Hard block over-payment: recording more than the outstanding balance
-			// fabricates a reverse debt against the recipient, and for non-user
-			// recipients the settlement auto-finalizes and cannot be reversed.
+			// fabricates a reverse debt, and an auto-finalized settlement cannot be
+			// confirmed or rejected away.
 			if (input.amount > amountOwed + 0.01) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
@@ -134,8 +231,8 @@ export class SettlementService {
 			if (isGlobal) {
 				const byProject = await computeBalanceByProject(
 					tx as unknown as PrismaClient,
-					this.currentUserRef,
-					input.toParticipant,
+					payer,
+					payee,
 				);
 				allocations = allocateAcrossScopes(
 					scopeDebtsForCurrency(byProject, input.currency),
@@ -159,15 +256,16 @@ export class SettlementService {
 			}
 
 			const now = new Date();
+			const { auditAction, ...confirmation } = confirmationFor(sides, now);
 			const settlements = [];
 			for (const allocation of allocations) {
 				const ratio = allocation.amount / input.amount;
 				const settlement = await tx.settlement.create({
 					data: {
-						fromParticipantType: this.currentUserRef.participantType,
-						fromParticipantId: this.currentUserRef.participantId,
-						toParticipantType: input.toParticipant.participantType,
-						toParticipantId: input.toParticipant.participantId,
+						fromParticipantType: payer.participantType,
+						fromParticipantId: payer.participantId,
+						toParticipantType: payee.participantType,
+						toParticipantId: payee.participantId,
 						amount: allocation.amount,
 						currency: input.currency,
 						projectId: allocation.projectId,
@@ -179,15 +277,8 @@ export class SettlementService {
 						exchangeRateUsed: input.exchangeRateUsed ?? null,
 						paymentMethod: input.paymentMethod ?? null,
 						note: input.note ?? null,
-						confirmedByPayer: true,
-						// Auto-confirm for non-user recipients
-						confirmedByPayee: isNonUserRecipient,
-						status: isNonUserRecipient ? "FINALIZED" : "PROPOSED",
+						...confirmation,
 						initiatedAt: now,
-						settledAt: isNonUserRecipient ? now : null,
-						autoConfirmedReason: isNonUserRecipient
-							? `Recipient is a ${input.toParticipant.participantType} and cannot confirm`
-							: null,
 					},
 				});
 
@@ -199,18 +290,20 @@ export class SettlementService {
 					changes: {
 						amount: allocation.amount,
 						currency: input.currency,
-						toParticipantType: input.toParticipant.participantType,
-						toParticipantId: input.toParticipant.participantId,
+						...(sides.recordedByPayee
+							? {
+									fromParticipantType: payer.participantType,
+									fromParticipantId: payer.participantId,
+								}
+							: {}),
+						toParticipantType: payee.participantType,
+						toParticipantId: payee.participantId,
 						projectId: allocation.projectId,
 						...(allocations.length > 1
 							? { allocatedFromTotal: input.amount }
 							: {}),
 					},
-					context: {
-						action: isNonUserRecipient
-							? "settlement_auto_confirmed"
-							: "settlement_initiated",
-					},
+					context: { action: auditAction },
 					projectId: allocation.projectId ?? undefined,
 				});
 
@@ -221,21 +314,13 @@ export class SettlementService {
 		});
 		const settlement = settlements[0]!;
 
-		// Notify the payee if they're a registered user (outside transaction, best-effort)
+		// Notify the other person if they're a registered user (outside
+		// transaction, best-effort)
 		if (input.toParticipant.participantType === "user") {
-			const payerName = await resolveParticipantName("user", this.userId);
-			createNotification({
-				userId: input.toParticipant.participantId,
-				type: "SETTLEMENT_RECEIVED",
-				title: "Settlement received",
-				body: `${payerName} sent you a settlement of ${input.currency} ${input.amount.toFixed(2)}`,
-				data: {
-					settlementId: settlement.id,
-					fromParticipantType: "user",
-					fromParticipantId: this.userId,
-				},
-			}).catch((err) =>
-				console.error("[Notification Error] SETTLEMENT_RECEIVED:", err),
+			await this.notifySettlementRecorded(
+				sides,
+				`${input.currency} ${input.amount.toFixed(2)}`,
+				{ settlementId: settlement.id },
 			);
 		}
 
@@ -243,8 +328,47 @@ export class SettlementService {
 			settlement,
 			settlements,
 			warning: null as string | null,
-			requiresPayeeConfirmation: !isNonUserRecipient,
+			requiresPayeeConfirmation: settlement.status === "PROPOSED",
 		};
+	}
+
+	/**
+	 * Tells the registered counterparty about a new settlement: the payee that
+	 * a payment was sent (to confirm), or the payer that the payee recorded
+	 * receiving their payment.
+	 */
+	private async notifySettlementRecorded(
+		sides: SettlementSides,
+		formattedAmount: string,
+		ids: Record<string, unknown>,
+	) {
+		const myName = await resolveParticipantName("user", this.userId);
+		const notification = sides.recordedByPayee
+			? {
+					userId: sides.payer.participantId,
+					type: "SETTLEMENT_CONFIRMED" as const,
+					title: "Payment recorded",
+					body: `${myName} recorded receiving your payment of ${formattedAmount}`,
+					data: {
+						...ids,
+						toParticipantType: "user",
+						toParticipantId: this.userId,
+					},
+				}
+			: {
+					userId: sides.payee.participantId,
+					type: "SETTLEMENT_RECEIVED" as const,
+					title: "Settlement received",
+					body: `${myName} sent you a settlement of ${formattedAmount}`,
+					data: {
+						...ids,
+						fromParticipantType: "user",
+						fromParticipantId: this.userId,
+					},
+				};
+		createNotification(notification).catch((err) =>
+			console.error(`[Notification Error] ${notification.type}:`, err),
+		);
 	}
 
 	/**
@@ -381,7 +505,8 @@ export class SettlementService {
 
 	/**
 	 * Voids (undoes) an auto-finalized settlement whose payee is a non-user
-	 * (shadow or guest). Only the payer can call this.
+	 * (shadow or guest). Only the payer can call this. Separately, a payee can
+	 * void a payment they recorded themselves as received.
 	 *
 	 * A settlement to a shadow/guest is FINALIZED the instant it is created,
 	 * because a non-user counterparty can never authenticate to confirm it. That
@@ -412,7 +537,34 @@ export class SettlementService {
 			});
 		}
 
-		// Only the payer (as the logged-in user) can void.
+		// A payment the current user recorded as received can be undone by
+		// them: they are the one whose claim it reduced, and nobody else
+		// confirmed it.
+		if (isRecordedByPayee(settlement, this.userId)) {
+			await this.db.settlement.delete({ where: { id: settlementId } });
+			await logAudit(this.db, {
+				actor: this.currentUserRef,
+				action: "DELETED",
+				targetType: "SETTLEMENT",
+				targetId: settlementId,
+				changes: {
+					amount: Number(settlement.amount),
+					currency: settlement.currency,
+					fromParticipantType: settlement.fromParticipantType,
+					fromParticipantId: settlement.fromParticipantId,
+					toParticipantType: settlement.toParticipantType,
+					toParticipantId: settlement.toParticipantId,
+					status: settlement.status,
+					autoConfirmedReason: settlement.autoConfirmedReason,
+					initiatedAt: settlement.initiatedAt.toISOString(),
+				},
+				context: { action: "settlement_voided" },
+				projectId: settlement.projectId ?? undefined,
+			});
+			return { success: true };
+		}
+
+		// Otherwise only the payer (as the logged-in user) can void.
 		if (
 			settlement.fromParticipantType !== "user" ||
 			settlement.fromParticipantId !== this.userId
@@ -799,12 +951,14 @@ export class SettlementService {
 			// Genuine user-confirmed settlements (autoConfirmedReason == null) stay
 			// protected and are NOT voidable.
 			const isNonUserPayee = s.toParticipantType !== "user";
+			// A payment the current user recorded as received is theirs to undo.
 			const canVoid =
-				isPayer &&
-				isNonUserPayee &&
-				s.status === "FINALIZED" &&
-				s.confirmedByPayee &&
-				s.autoConfirmedReason !== null;
+				(isPayer &&
+					isNonUserPayee &&
+					s.status === "FINALIZED" &&
+					s.confirmedByPayee &&
+					s.autoConfirmedReason !== null) ||
+				isRecordedByPayee(s, this.userId);
 
 			return {
 				id: s.id,
@@ -841,8 +995,9 @@ export class SettlementService {
 	 * Creates one settlement per currency, atomically in a single transaction.
 	 * Each settlement records the converted amount in the payment currency.
 	 *
-	 * Only settles currencies where the current user owes the other person
-	 * (negative balance = you_owe_them).
+	 * Only settles currencies where the payer owes the payee. With direction
+	 * "incoming" the other person is the payer: the current user records that
+	 * they were paid everything they were owed.
 	 *
 	 * A currency that cannot be converted to the payment currency (no exchange
 	 * rate available) is excluded and reported in `skipped` rather than recorded
@@ -850,6 +1005,8 @@ export class SettlementService {
 	 */
 	async settleAll(input: {
 		toParticipant: ParticipantRef;
+		/** See InitiateSettlementInput.direction. */
+		direction?: SettlementDirection;
 		paymentCurrency: string;
 		paymentMethod?: string | null;
 		note?: string | null;
@@ -867,7 +1024,8 @@ export class SettlementService {
 			await this.assertProjectInvolvement(input.projectId);
 		}
 
-		const isNonUserRecipient = input.toParticipant.participantType !== "user";
+		const sides = this.sides(input.toParticipant, input.direction);
+		const { payer, payee } = sides;
 
 		// See initiateSettlement: undefined => GLOBAL balances, each currency's
 		// payment allocated across the per-scope debts; string / null => that one
@@ -882,15 +1040,16 @@ export class SettlementService {
 			await this.db.$transaction(async (tx) => {
 				await this.lockPair(tx, input.toParticipant);
 
-				// Compute all per-currency balances IN THE SAME SCOPE as the writes below.
+				// Compute all per-currency balances IN THE SAME SCOPE as the writes
+				// below, from the payer's side.
 				const balanceResult = await computeBalance(
 					tx as unknown as PrismaClient,
-					this.currentUserRef,
-					input.toParticipant,
+					payer,
+					payee,
 					{ projectScope },
 				);
 
-				// Filter to currencies where we owe them (negative balance)
+				// Filter to currencies where the payer owes the payee (negative balance)
 				const entries = Object.entries(balanceResult.byCurrency)
 					.filter(([, balance]) => balance < -0.00000001)
 					.map(([currency, balance]) => ({ currency, amount: Math.abs(balance) }));
@@ -997,8 +1156,8 @@ export class SettlementService {
 				const byProject = isGlobal
 					? await computeBalanceByProject(
 							tx as unknown as PrismaClient,
-							this.currentUserRef,
-							input.toParticipant,
+							payer,
+							payee,
 						)
 					: null;
 				const allocate = (currency: string, amount: number): ScopeAllocation[] =>
@@ -1015,6 +1174,7 @@ export class SettlementService {
 					projectId: string | null;
 				}> = [];
 				let totalInPaymentCurrency = 0;
+				const { auditAction, ...confirmation } = confirmationFor(sides, now);
 
 				for (const entry of settleable) {
 					const rows = allocate(entry.currency, entry.amount);
@@ -1040,14 +1200,10 @@ export class SettlementService {
 
 						const settlement = await tx.settlement.create({
 							data: {
-								fromParticipantType:
-									this.currentUserRef.participantType,
-								fromParticipantId:
-									this.currentUserRef.participantId,
-								toParticipantType:
-									input.toParticipant.participantType,
-								toParticipantId:
-									input.toParticipant.participantId,
+								fromParticipantType: payer.participantType,
+								fromParticipantId: payer.participantId,
+								toParticipantType: payee.participantType,
+								toParticipantId: payee.participantId,
 								amount: allocation.amount,
 								currency: entry.currency,
 								projectId: allocation.projectId,
@@ -1056,16 +1212,8 @@ export class SettlementService {
 								exchangeRateUsed: entry.exchangeRateUsed,
 								paymentMethod: input.paymentMethod ?? null,
 								note: input.note ?? null,
-								confirmedByPayer: true,
-								confirmedByPayee: isNonUserRecipient,
-								status: isNonUserRecipient
-									? "FINALIZED"
-									: "PROPOSED",
+								...confirmation,
 								initiatedAt: now,
-								settledAt: isNonUserRecipient ? now : null,
-								autoConfirmedReason: isNonUserRecipient
-									? `Recipient is a ${input.toParticipant.participantType} and cannot confirm`
-									: null,
 							},
 						});
 
@@ -1077,19 +1225,18 @@ export class SettlementService {
 							changes: {
 								amount: allocation.amount,
 								currency: entry.currency,
-								toParticipantType:
-									input.toParticipant.participantType,
-								toParticipantId:
-									input.toParticipant.participantId,
+								...(sides.recordedByPayee
+									? {
+											fromParticipantType: payer.participantType,
+											fromParticipantId: payer.participantId,
+										}
+									: {}),
+								toParticipantType: payee.participantType,
+								toParticipantId: payee.participantId,
 								projectId: allocation.projectId,
 								batchSettlement: true,
 							},
-							context: {
-								action: isNonUserRecipient
-									? "settlement_auto_confirmed"
-									: "settlement_initiated",
-								batch: true,
-							},
+							context: { action: auditAction, batch: true },
 							projectId: allocation.projectId ?? undefined,
 						});
 
@@ -1113,23 +1260,13 @@ export class SettlementService {
 		const settledCurrencyCount = new Set(settlements.map((s) => s.currency))
 			.size;
 		if (input.toParticipant.participantType === "user") {
-			const payerName = await resolveParticipantName("user", this.userId);
-			const formattedTotal = totalInPaymentCurrency.toFixed(2);
-			createNotification({
-				userId: input.toParticipant.participantId,
-				type: "SETTLEMENT_RECEIVED",
-				title: "Settlement received",
-				body:
-					settledCurrencyCount > 1
-						? `${payerName} sent you a settlement of ${input.paymentCurrency} ${formattedTotal} across ${settledCurrencyCount} currencies`
-						: `${payerName} sent you a settlement of ${input.paymentCurrency} ${formattedTotal}`,
-				data: {
-					settlementIds: settlements.map((s) => s.id),
-					fromParticipantType: "user",
-					fromParticipantId: this.userId,
-				},
-			}).catch((err) =>
-				console.error("[Notification Error] SETTLEMENT_RECEIVED:", err),
+			const formattedTotal = `${input.paymentCurrency} ${totalInPaymentCurrency.toFixed(2)}`;
+			await this.notifySettlementRecorded(
+				sides,
+				settledCurrencyCount > 1
+					? `${formattedTotal} across ${settledCurrencyCount} currencies`
+					: formattedTotal,
+				{ settlementIds: settlements.map((s) => s.id) },
 			);
 		}
 
@@ -1139,7 +1276,8 @@ export class SettlementService {
 			totalInPaymentCurrency:
 				Math.round(totalInPaymentCurrency * 100) / 100,
 			paymentCurrency: input.paymentCurrency,
-			requiresPayeeConfirmation: !isNonUserRecipient,
+			requiresPayeeConfirmation:
+				confirmationFor(sides, new Date()).status === "PROPOSED",
 		};
 	}
 

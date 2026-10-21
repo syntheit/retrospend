@@ -67,6 +67,7 @@ export interface SettlementRecord {
 	paymentMethod: string | null;
 	note: string | null;
 	projectId: string | null;
+	autoConfirmedReason?: string | null;
 }
 
 export interface ProjectRecord {
@@ -848,6 +849,7 @@ export function createStatefulDb() {
 				paymentMethod: args.data.paymentMethod ?? null,
 				note: args.data.note ?? null,
 				projectId: args.data.projectId ?? null,
+				autoConfirmedReason: args.data.autoConfirmedReason ?? null,
 			};
 			settlements.set(id, record);
 			return record;
