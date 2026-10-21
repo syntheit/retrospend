@@ -70,6 +70,12 @@ export interface SettlementRecord {
 	note: string | null;
 	projectId: string | null;
 	autoConfirmedReason?: string | null;
+	paymentGroupId?: string | null;
+	isOffset?: boolean;
+	rejectedAt?: Date | null;
+	rejectedReason?: string | null;
+	reminderCount?: number;
+	reminderSentAt?: Date | null;
 }
 
 export interface ProjectRecord {
@@ -447,6 +453,8 @@ export function createStatefulDb() {
 						if (sel.paidByType) out.paidByType = tx.paidByType;
 						if (sel.paidById) out.paidById = tx.paidById;
 						if (sel.projectId !== undefined) out.projectId = tx.projectId;
+						if (sel.billingPeriodId !== undefined)
+							out.billingPeriodId = tx.billingPeriodId;
 						if (sel.project !== undefined) {
 							if (tx.projectId) {
 								const p = projects.get(tx.projectId);
@@ -836,6 +844,21 @@ export function createStatefulDb() {
 
 	// ── settlement model ─────────────────────────────────────────────────────
 
+	// where for updateMany/deleteMany: { id: { in } } and a status filter.
+	const settlementWhereMatches = (
+		s: SettlementRecord,
+		where: Record<string, unknown>,
+	) => {
+		const idIn = (where.id as { in?: string[] } | undefined)?.in;
+		if (idIn !== undefined && !idIn.includes(s.id)) return false;
+		if (typeof where.id === "string" && s.id !== where.id) return false;
+		const statusIn = (where.status as { in?: string[] } | undefined)?.in;
+		if (statusIn !== undefined && !statusIn.includes(s.status)) return false;
+		if (typeof where.status === "string" && s.status !== where.status)
+			return false;
+		return true;
+	};
+
 	const settlementModel = {
 		create: vi.fn((args: { data: Partial<SettlementRecord> }) => {
 			const id = nextId();
@@ -850,8 +873,8 @@ export function createStatefulDb() {
 				status: args.data.status ?? "PROPOSED",
 				confirmedByPayer: args.data.confirmedByPayer ?? true,
 				confirmedByPayee: args.data.confirmedByPayee ?? false,
-				initiatedAt: new Date(),
-				settledAt: null,
+				initiatedAt: args.data.initiatedAt ?? new Date(),
+				settledAt: args.data.settledAt ?? null,
 				convertedAmount: args.data.convertedAmount ?? null,
 				convertedCurrency: args.data.convertedCurrency ?? null,
 				exchangeRateUsed: args.data.exchangeRateUsed ?? null,
@@ -859,6 +882,12 @@ export function createStatefulDb() {
 				note: args.data.note ?? null,
 				projectId: args.data.projectId ?? null,
 				autoConfirmedReason: args.data.autoConfirmedReason ?? null,
+				paymentGroupId: args.data.paymentGroupId ?? null,
+				isOffset: args.data.isOffset ?? false,
+				rejectedAt: null,
+				rejectedReason: null,
+				reminderCount: 0,
+				reminderSentAt: null,
 			};
 			settlements.set(id, record);
 			return record;
@@ -869,9 +898,23 @@ export function createStatefulDb() {
 		}),
 
 		findMany: vi.fn(
-			(args: { where?: Record<string, unknown>; orderBy?: unknown } = {}) => {
+			(
+				args: {
+					where?: Record<string, unknown>;
+					orderBy?: unknown;
+					include?: { project?: unknown };
+				} = {},
+			) => {
 				let results = [...settlements.values()];
 				const w = args.where ?? {};
+
+				if (w.paymentGroupId !== undefined)
+					results = results.filter(
+						(s) => s.paymentGroupId === w.paymentGroupId,
+					);
+				const idIn = (w.id as { in?: string[] } | undefined)?.in;
+				if (idIn !== undefined)
+					results = results.filter((s) => idIn.includes(s.id));
 
 				const statusIn = (w.status as { in?: string[] } | undefined)?.in;
 				if (statusIn !== undefined)
@@ -931,9 +974,50 @@ export function createStatefulDb() {
 					results = results.filter((s) => s.projectId === wantProjectId);
 				}
 
+				// Newest first, like the history query. Ties keep insertion order.
+				const ob = args.orderBy as { initiatedAt?: string } | undefined;
+				if (ob?.initiatedAt) {
+					const dir = ob.initiatedAt === "desc" ? -1 : 1;
+					results = [...results].sort(
+						(a, b) =>
+							dir * (a.initiatedAt.getTime() - b.initiatedAt.getTime()),
+					);
+				}
+
+				if (args.include?.project) {
+					return results.map((s) => {
+						const p = s.projectId ? projects.get(s.projectId) : undefined;
+						return { ...s, project: p ? { id: p.id, name: p.name } : null };
+					});
+				}
 				return results;
 			},
 		),
+
+		updateMany: vi.fn(
+			(args: {
+				where: Record<string, unknown>;
+				data: Partial<SettlementRecord>;
+			}) => {
+				let count = 0;
+				for (const [id, s] of settlements) {
+					if (!settlementWhereMatches(s, args.where)) continue;
+					settlements.set(id, { ...s, ...args.data });
+					count++;
+				}
+				return { count };
+			},
+		),
+
+		deleteMany: vi.fn((args: { where: Record<string, unknown> }) => {
+			let count = 0;
+			for (const [id, s] of settlements) {
+				if (!settlementWhereMatches(s, args.where)) continue;
+				settlements.delete(id);
+				count++;
+			}
+			return { count };
+		}),
 
 		update: vi.fn(
 			(args: { where: { id: string }; data: Partial<SettlementRecord> }) => {
@@ -1120,6 +1204,14 @@ export function createStatefulDb() {
 				};
 				projects.set(id, record);
 				return record;
+			},
+		),
+		findMany: vi.fn(
+			(args: { where?: { id?: { in?: string[] } }; select?: unknown } = {}) => {
+				const idIn = args.where?.id?.in;
+				return [...projects.values()].filter(
+					(p) => idIn === undefined || idIn.includes(p.id),
+				);
 			},
 		),
 	};

@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { buildRateMap, computeHomeCurrencyTotal } from "~/lib/balance-utils";
+import { oppositeCurrencyBalances } from "~/lib/settlement-display";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -193,6 +194,21 @@ export function SettleUpDialog({
 		parsedDefault > 0;
 
 	const compatible = methodMatch?.compatible ?? [];
+
+	// Balances in other currencies going the other way. A settle-up never
+	// nets across currencies, so they are only mentioned.
+	const otherWay =
+		!isAllMode && firstActivePlan
+			? oppositeCurrencyBalances(activePlans, firstActivePlan)
+			: [];
+	// A full global settle-up also cancels project debts going the other way
+	// in the same currency (offsets), so every project ends even.
+	const offsetAmount =
+		projectId === undefined
+			? isAllMode
+				? activePlans.reduce((sum, p) => sum + (p.offsetAmount ?? 0), 0)
+				: (firstActivePlan?.offsetAmount ?? 0)
+			: 0;
 
 	const invalidateAfterSettle = () => {
 		void utils.people.invalidate();
@@ -669,6 +685,29 @@ export function SettleUpDialog({
 									)}
 								</>
 							)}
+							{offsetAmount > 0.005 && (
+								<p className="flex items-start gap-1.5 text-muted-foreground text-xs">
+									<Info className="mt-px h-3.5 w-3.5 shrink-0" />
+									{isAllMode
+										? t("offsetNoteAll")
+										: isPartial
+											? t("offsetNotePartial")
+											: t("offsetNote", {
+													amount: formatCurrency(offsetAmount, currency),
+												})}
+								</p>
+							)}
+							{otherWay.length > 0 && (
+								<p className="flex items-start gap-1.5 text-muted-foreground text-xs">
+									<Info className="mt-px h-3.5 w-3.5 shrink-0" />
+									{t(isReceiving ? "alsoYouOwe" : "alsoTheyOwe", {
+										name: personName,
+										amounts: otherWay
+											.map((p) => formatCurrency(p.balance, p.currency))
+											.join(", "),
+									})}
+								</p>
+							)}
 						</div>
 
 						{/* Payment methods (theirs, so only when you are paying) */}
@@ -752,7 +791,7 @@ export function SettleUpDialog({
 							</div>
 						)}
 
-						{/* Note — collapsible */}
+						{/* Note, collapsible */}
 						{showNote ? (
 							<div className="space-y-1.5">
 								<Label htmlFor="settle-note">{t("note")}</Label>

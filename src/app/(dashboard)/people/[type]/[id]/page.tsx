@@ -354,6 +354,34 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 		onError: (e) => toast.error(e.message),
 	});
 
+	// "Square up projects": the overall balance in a currency is even but the
+	// project balances are not (you owe in one, they owe in another).
+	const { data: squareUpOptions } = api.settlement.squareUpOptions.useQuery(
+		{ participantType, participantId: id },
+		{ enabled: !isLoading },
+	);
+	const [squareUpCurrency, setSquareUpCurrency] = useState<string | null>(
+		null,
+	);
+	const squareUpOption = squareUpOptions?.find(
+		(o) => o.currency === squareUpCurrency,
+	);
+	const squareUp = api.settlement.squareUp.useMutation({
+		onSuccess: (result) => {
+			toast.success(
+				result.requiresPayeeConfirmation
+					? t("squareUpSentToast", { name: data?.identity?.name ?? t("they") })
+					: t("squareUpDoneToast"),
+			);
+			setSquareUpCurrency(null);
+			void utils.people.invalidate();
+			void utils.settlement.invalidate();
+			void utils.project.invalidate();
+			void utils.billingPeriod.invalidate();
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
 	const [reminderSent, setReminderSent] = useState(false);
 	const remindPayment = api.settlement.requestPayment.useMutation({
 		onSuccess: () => {
@@ -707,6 +735,19 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 												{settleButtonLabel}
 											</Button>
 										)}
+										{(squareUpOptions ?? []).map((option) => (
+											<Button
+												key={option.currency}
+												onClick={() => setSquareUpCurrency(option.currency)}
+												size="sm"
+												variant="outline"
+											>
+												<Scale className="h-4 w-4" />
+												{(squareUpOptions?.length ?? 0) > 1
+													? t("squareUpProjectsIn", { currency: option.currency })
+													: t("squareUpProjects")}
+											</Button>
+										))}
 										{!isSettled && netDirection === "they_owe_you" && participantType === "user" && (
 											<Button
 												disabled={remindPayment.isPending || reminderSent}
@@ -1065,10 +1106,15 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 											<HandCoins className="h-4 w-4 text-amber-500" />
 										</div>
 										<span>
-											{t("settlementBanner", {
-												name: identity?.name ?? t("they"),
-												amount: formatCurrency(s.amount, s.currency),
-											})}
+											{t(
+												s.kind === "square_up"
+													? "squareUpBanner"
+													: "settlementBanner",
+												{
+													name: identity?.name ?? t("they"),
+													amount: formatCurrency(s.amount, s.currency),
+												},
+											)}
 										</span>
 									</div>
 									<div className="flex items-center gap-1.5">
@@ -1147,6 +1193,65 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					projectId={settleScope}
 				/>
 			)}
+			<ConfirmDialog
+				confirmText={t("squareUpConfirm")}
+				description={
+					squareUpOption ? (
+						<span className="space-y-2">
+							<span className="block">
+								{t("squareUpDescription", {
+									amount: formatCurrency(
+										squareUpOption.amount,
+										squareUpOption.currency,
+									),
+								})}
+							</span>
+							<span className="block">
+								{squareUpOption.scopes
+									.map((scope) => {
+										const name = scope.projectId
+											? (scope.projectName ?? t("unknownProject"))
+											: t("standalone");
+										const amount = formatCurrency(
+											Math.abs(scope.balance),
+											squareUpOption.currency,
+										);
+										return scope.balance > 0
+											? t("squareUpScopeTheyOwe", {
+													project: name,
+													name: identity?.name ?? t("they"),
+													amount,
+												})
+											: t("squareUpScopeYouOwe", { project: name, amount });
+									})
+									.join(" · ")}
+							</span>
+							{participantType === "user" && (
+								<span className="block text-muted-foreground text-xs">
+									{t("squareUpConfirmNote", {
+										name: identity?.name ?? t("they"),
+									})}
+								</span>
+							)}
+						</span>
+					) : undefined
+				}
+				isLoading={squareUp.isPending}
+				onConfirm={() => {
+					if (squareUpOption) {
+						squareUp.mutate({
+							toParticipant: { participantType, participantId: id },
+							currency: squareUpOption.currency,
+						});
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) setSquareUpCurrency(null);
+				}}
+				open={!!squareUpOption}
+				title={t("squareUpTitle")}
+			/>
+
 			{editingTransactionId && (
 				<ExpenseModal
 					expenseId=""

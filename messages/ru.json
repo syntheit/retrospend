@@ -612,7 +612,16 @@
     "theyOweYouLower": "вам должны",
     "youOweThemLower": "вы должны",
     "payAmount": "Заплатить {amount}",
-    "requestAmount": "Запросить {amount}"
+    "requestAmount": "Запросить {amount}",
+    "noMoneyMoved": "Без перевода денег",
+    "projectsSquaredUp": "Взаимозачёт между проектами",
+    "standaloneScope": "Без проекта",
+    "unknownProject": "Другой проект",
+    "settlementOffsetDetail": "Оплачено {paid}, зачтено {offset}: {from} против {against}",
+    "settlementSquareUpDetail": "Зачтено {offset}: {from} против {against}",
+    "settlementPartOf": "{part} из платежа на {total}",
+    "settlementPartOffset": "{offset} зачтено с другим проектом",
+    "settlementPartSquareUp": "Часть взаимозачёта между проектами"
   },
   "claim": {
     "title": "Подтвердите, что это вы",
@@ -1090,7 +1099,12 @@
     "renamed": "Имя изменено",
     "renameFailed": "Не удалось изменить имя",
     "shareViaLinkTitle": "Поделиться проектом «{name}»",
-    "shareViaLinkDescription": "Любой, у кого есть ссылка, сможет получить доступ к этому проекту."
+    "shareViaLinkDescription": "Любой, у кого есть ссылка, сможет получить доступ к этому проекту.",
+    "activityCreatedSettlementPart": "{actor}: начат расчёт на {amount} с {name}, часть платежа на {total}",
+    "activityCreatedSettlementWithOffset": "{actor}: начат расчёт на {amount} с {name}, из них {offset} зачтено с другим проектом",
+    "activityOffsetSettlement": "{actor}: зачтено {amount} с {name} против другого проекта",
+    "activityReopenedPeriod": "Период {period} снова открыт: платёж был отклонён или отменён",
+    "activityReopenedPeriodGeneric": "Расчётный период снова открыт: платёж был отклонён или отменён"
   },
   "wealth": {
     "title": "Капитал",
@@ -1332,7 +1346,12 @@
     "allSettled": "Все расчёты с {name} закрыты!",
     "remainingBalance": "Оставшийся баланс",
     "done": "Готово",
-    "allAmount": "Вся сумма — {amount}"
+    "allAmount": "Вся сумма: {amount}",
+    "offsetNote": "При оплате полной суммы также будет зачтено {amount}, которые причитаются в обратную сторону в других проектах, и все проекты обнулятся.",
+    "offsetNotePartial": "Частичный платёж не меняет балансы проектов в обратную сторону.",
+    "offsetNoteAll": "При полном расчёте также зачитываются балансы проектов в обратную сторону, и все проекты обнуляются.",
+    "alsoTheyOwe": "{name} также должен вам {amounts}. Каждая валюта рассчитывается отдельно.",
+    "alsoYouOwe": "Вы также должны {name} {amounts}. Каждая валюта рассчитывается отдельно."
   },
   "expenseForm": {
     "duplicateWarning": "В этот день уже есть похожий расход. Всё равно сохранить?",
@@ -2121,7 +2140,19 @@
     "settlementRejected": "Расчёт отклонён",
     "reminderSentToast": "Напоминание отправлено",
     "payAmount": "Заплатить {amount}",
-    "requestAmount": "Запросить {amount}"
+    "requestAmount": "Запросить {amount}",
+    "squareUpProjects": "Взаимозачёт проектов",
+    "squareUpProjectsIn": "Взаимозачёт проектов ({currency})",
+    "squareUpTitle": "Взаимозачёт между проектами",
+    "squareUpDescription": "Общий баланс равен нулю, но балансы проектов нет. Будет записан взаимозачёт на {amount}, чтобы все проекты обнулились. Деньги не переводятся.",
+    "squareUpScopeYouOwe": "{project}: вы должны {amount}",
+    "squareUpScopeTheyOwe": "{project}: {name} должен вам {amount}",
+    "squareUpConfirmNote": "{name} получит запрос на подтверждение.",
+    "squareUpConfirm": "Зачесть",
+    "squareUpSentToast": "Отправлено {name} на подтверждение",
+    "squareUpDoneToast": "Взаимозачёт записан",
+    "squareUpBanner": "{name}: взаимозачёт между вашими проектами на {amount}, без перевода денег",
+    "unknownProject": "Другой проект"
   },
   "tableFilters": {
     "all": "Все",

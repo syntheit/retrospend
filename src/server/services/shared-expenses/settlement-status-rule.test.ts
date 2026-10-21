@@ -14,9 +14,30 @@ const BALANCE_QUERY_FILES = [
 	"src/server/services/shared-expenses/balance.ts",
 	"src/server/services/shared-expenses/balances-perspective.service.ts",
 	"src/server/api/routers/project.ts",
-	"src/server/api/routers/billingPeriod.ts",
+	"src/server/services/shared-expenses/billing-period-settle.ts",
 	"src/server/api/routers/export.ts",
 ];
+
+describe("project delete", () => {
+	// Deleting a project moves its expenses AND its settlements to the direct
+	// (project-less) bucket. If only one of them moved (or one cascaded away),
+	// the direct bucket would show a phantom balance.
+	it("treats expenses and settlements the same way", () => {
+		const schema = readFileSync(
+			join(process.cwd(), "prisma/schema.prisma"),
+			"utf8",
+		);
+		const relation = (model: string) => {
+			const body = schema.slice(schema.indexOf(`model ${model} {`));
+			return body
+				.slice(0, body.indexOf("\n}"))
+				.split("\n")
+				.find((l) => /^\s+project\s+Project\?/.test(l));
+		};
+		expect(relation("SharedTransaction")).toContain("onDelete: SetNull");
+		expect(relation("Settlement")).toContain("onDelete: SetNull");
+	});
+});
 
 describe("settlement status rule", () => {
 	it("counts PROPOSED and FINALIZED, never REJECTED", () => {

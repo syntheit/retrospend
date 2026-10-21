@@ -230,12 +230,18 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		},
 	});
 
+	// A pending row has exactly one side agreed: the person who recorded it.
+	// That is the payer for a payment, but an offset row of a payment group
+	// points the other way (see settlement-groups.ts), so check "one side
+	// agreed" rather than "the payer agreed". Every row of a pending group then
+	// gets the same outcome and the group is never split.
 	for (const s of settlementsAsPayer) {
-		if (s.confirmedByPayer && !s.confirmedByPayee) {
-			// User confirmed they paid - finalize to benefit the other party
+		if (s.confirmedByPayer !== s.confirmedByPayee) {
+			// The payment was recorded - finalize to benefit the other party
 			await tx.settlement.update({
 				where: { id: s.id },
 				data: {
+					confirmedByPayer: true,
 					confirmedByPayee: true,
 					status: "FINALIZED",
 					settledAt: new Date(),
@@ -284,11 +290,12 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 	});
 
 	for (const s of settlementsAsPayee) {
-		if (s.confirmedByPayer && !s.confirmedByPayee) {
-			// Payer confirmed - auto-confirm payee side since user is leaving
+		if (s.confirmedByPayer !== s.confirmedByPayee) {
+			// One side recorded it - auto-confirm the rest since user is leaving
 			await tx.settlement.update({
 				where: { id: s.id },
 				data: {
+					confirmedByPayer: true,
 					confirmedByPayee: true,
 					status: "FINALIZED",
 					settledAt: new Date(),
@@ -405,12 +412,13 @@ export async function previewAccountDeletion(
 	let settlementsToAutoConfirm = 0;
 	let settlementsToCancel = 0;
 
+	// Same rule as preDeletionCleanup: one side agreed => auto-confirm.
 	for (const s of settlementsAsPayer) {
-		if (s.confirmedByPayer && !s.confirmedByPayee) settlementsToAutoConfirm++;
+		if (s.confirmedByPayer !== s.confirmedByPayee) settlementsToAutoConfirm++;
 		else settlementsToCancel++;
 	}
 	for (const s of settlementsAsPayee) {
-		if (s.confirmedByPayer && !s.confirmedByPayee) settlementsToAutoConfirm++;
+		if (s.confirmedByPayer !== s.confirmedByPayee) settlementsToAutoConfirm++;
 		else settlementsToCancel++;
 	}
 

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { convertAmount, currencyDecimals, roundMoney } from "~/lib/money";
 import { db as globalDb } from "~/server/db";
@@ -6,15 +7,26 @@ import {
 	resolveParticipantName,
 } from "~/server/services/notifications";
 import { getBestExchangeRate } from "~/server/api/routers/shared-currency";
-import type { PrismaClient } from "~prisma";
+import type { Prisma, PrismaClient, SettlementStatus } from "~prisma";
 import { logAudit } from "./audit-log";
 import { computeBalance, computeBalanceByProject } from "./balance";
+import { reopenUnsettledPeriods } from "./billing-period-settle";
 import { resolveClaimAliases } from "./identity";
 import {
-	allocateAcrossScopes,
+	allocateFullSettlement,
+	reverseScopeDebtsForCurrency,
 	type ScopeAllocation,
+	type ScopeDebt,
 	scopeDebtsForCurrency,
 } from "./settlement-allocation";
+import {
+	describeGroupAmount,
+	type GroupRow,
+	groupCounterparty,
+	groupRoles,
+	groupRows,
+	summarizeGroup,
+} from "./settlement-groups";
 import { type ParticipantRef, sameParticipant } from "./types";
 
 /** An amount with its currency's decimals, for messages (2 for USD, 8 for BTC). */
@@ -95,24 +107,109 @@ function confirmationFor(sides: SettlementSides, now: Date) {
 	};
 }
 
-/** Whether `userId` is the payee and recorded this settlement themselves. */
-function isRecordedByPayee(
-	s: {
-		toParticipantType: string;
-		toParticipantId: string;
-		status: string;
-		confirmedByPayer: boolean;
-		autoConfirmedReason: string | null;
-	},
-	userId: string,
-): boolean {
-	return (
-		s.toParticipantType === "user" &&
-		s.toParticipantId === userId &&
-		s.status === "FINALIZED" &&
-		!s.confirmedByPayer &&
-		s.autoConfirmedReason === RECORDED_BY_PAYEE_REASON
-	);
+/** Reminder count and last reminder of a group (rows are updated together). */
+function groupReminderState(
+	rows: Array<{ reminderCount: number; reminderSentAt: Date | null }>,
+) {
+	let count = 0;
+	let sentAt: Date | null = null;
+	for (const r of rows) {
+		count = Math.max(count, r.reminderCount);
+		if (r.reminderSentAt && (!sentAt || r.reminderSentAt > sentAt))
+			sentAt = r.reminderSentAt;
+	}
+	return { count, sentAt };
+}
+
+/**
+ * Currencies where a pair's overall balance is even (within the owed
+ * tolerance) while project scopes still point in opposite directions.
+ * `byProject` is signed from the current user's side (positive = they owe).
+ * `amount` is what squaring up cancels: the larger side of the offsets.
+ */
+function squareUpCandidates(
+	byProject: Map<string | null, Record<string, number>>,
+) {
+	const currencies = new Set<string>();
+	for (const scope of byProject.values())
+		for (const c of Object.keys(scope)) currencies.add(c);
+
+	const options: Array<{
+		currency: string;
+		amount: number;
+		scopes: Array<{ projectId: string | null; balance: number }>;
+	}> = [];
+	for (const currency of [...currencies].sort()) {
+		const scopes: Array<{ projectId: string | null; balance: number }> = [];
+		let total = 0;
+		let owedToMe = 0;
+		let owedByMe = 0;
+		for (const [projectId, byCurrency] of byProject) {
+			const balance = byCurrency[currency] ?? 0;
+			if (Math.abs(balance) <= OWED_TOLERANCE) continue;
+			scopes.push({ projectId, balance });
+			total += balance;
+			if (balance > 0) owedToMe += balance;
+			else owedByMe -= balance;
+		}
+		if (owedToMe === 0 || owedByMe === 0) continue;
+		if (Math.abs(total) > OWED_TOLERANCE) continue;
+		options.push({ currency, amount: Math.max(owedToMe, owedByMe), scopes });
+	}
+	return options;
+}
+
+/** One settlement row to write as part of a payment group. */
+interface PlannedRow {
+	projectId: string | null;
+	currency: string;
+	amount: number;
+	/** Moves no cash, see allocateFullSettlement. */
+	isOffset: boolean;
+	/** Goes payee -> payer: an offset against a debt the payee owes. */
+	reverse: boolean;
+	convertedAmount: number | null;
+	convertedCurrency: string | null;
+	exchangeRateUsed: number | null;
+}
+
+function cashRow(allocation: ScopeAllocation, currency: string): PlannedRow {
+	return {
+		projectId: allocation.projectId,
+		currency,
+		amount: allocation.amount,
+		isOffset: false,
+		reverse: false,
+		convertedAmount: null,
+		convertedCurrency: null,
+		exchangeRateUsed: null,
+	};
+}
+
+/**
+ * Rows of a global settle-up in one currency: the cash rows, then the offset
+ * rows when `payeeDebts` is not empty (see allocateFullSettlement).
+ */
+function planFullSettlementRows(
+	payerDebts: ScopeDebt[],
+	payeeDebts: ScopeDebt[],
+	cash: number,
+	currency: string,
+): PlannedRow[] {
+	const { cash: cashRows, payerOffsets, payeeOffsets } =
+		allocateFullSettlement(payerDebts, payeeDebts, cash);
+	return [
+		...cashRows.map((a) => cashRow(a, currency)),
+		...payerOffsets.map((a) => ({
+			...cashRow(a, currency),
+			isOffset: true,
+		})),
+		...payeeOffsets.map((a) => ({
+			...cashRow(a, currency),
+			isOffset: true,
+			reverse: true,
+		})),
+	];
 }
 
 export interface InitiateSettlementInput {
@@ -196,7 +293,7 @@ export class SettlementService {
 
 		// Balance check + create + audit run in one transaction that first takes
 		// the pair lock, so two concurrent payments cannot both pass the cap.
-		const { settlements } = await this.db.$transaction(async (tx) => {
+		const { settlements, paymentGroupId } = await this.db.$transaction(async (tx) => {
 			await this.lockPair(tx, input.toParticipant);
 
 			// computeBalance(payer, payee): negative = the payer owes the payee.
@@ -232,100 +329,66 @@ export class SettlementService {
 			// One row per scope. A scoped settle-up is a single row; a global one
 			// is split across the per-project (and direct) debts so no scope is
 			// over-paid and every view sees its share of the payment.
-			let allocations: ScopeAllocation[];
+			const cash = Math.min(input.amount, amountOwed);
+			let planned: PlannedRow[];
 			if (isGlobal) {
 				const byProject = await computeBalanceByProject(
 					tx as unknown as PrismaClient,
 					payer,
 					payee,
 				);
-				allocations = allocateAcrossScopes(
+				// Paying the full global amount in this currency also cancels the
+				// debts going the other way between scopes, so every project ends
+				// at zero together with the global view. A partial payment never
+				// offsets. Other currencies are never touched.
+				const isFullPayment = input.amount >= amountOwed - OWED_TOLERANCE;
+				planned = planFullSettlementRows(
 					scopeDebtsForCurrency(byProject, input.currency),
-					input.amount,
+					isFullPayment
+						? reverseScopeDebtsForCurrency(byProject, input.currency)
+						: [],
+					cash,
+					input.currency,
 				);
 			} else {
 				// Within the over-payment tolerance, record at most what is owed so
 				// the scope ends at zero instead of a cent of reverse debt.
-				allocations = [
-					{
-						projectId: input.projectId ?? null,
-						amount: Math.min(input.amount, amountOwed),
-					},
+				planned = [
+					cashRow({ projectId: input.projectId ?? null, amount: cash }, input.currency),
 				];
 			}
-			if (allocations.length === 0) {
+			if (!planned.some((r) => !r.isOffset)) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: `There is no outstanding ${input.currency} balance to settle with this person.`,
 				});
 			}
-
-			const now = new Date();
-			const { auditAction, ...confirmation } = confirmationFor(sides, now);
-			const settlements = [];
-			for (const allocation of allocations) {
-				const ratio = allocation.amount / input.amount;
-				const settlement = await tx.settlement.create({
-					data: {
-						fromParticipantType: payer.participantType,
-						fromParticipantId: payer.participantId,
-						toParticipantType: payee.participantType,
-						toParticipantId: payee.participantId,
-						amount: allocation.amount,
-						currency: input.currency,
-						projectId: allocation.projectId,
-						convertedAmount:
-							input.convertedAmount != null
-								? input.convertedAmount * ratio
-								: null,
-						convertedCurrency: input.convertedCurrency ?? null,
-						exchangeRateUsed: input.exchangeRateUsed ?? null,
-						paymentMethod: input.paymentMethod ?? null,
-						note: input.note ?? null,
-						...confirmation,
-						initiatedAt: now,
-					},
-				});
-
-				await logAudit(tx, {
-					actor: this.currentUserRef,
-					action: "CREATED",
-					targetType: "SETTLEMENT",
-					targetId: settlement.id,
-					changes: {
-						amount: allocation.amount,
-						currency: input.currency,
-						...(sides.recordedByPayee
-							? {
-									fromParticipantType: payer.participantType,
-									fromParticipantId: payer.participantId,
-								}
-							: {}),
-						toParticipantType: payee.participantType,
-						toParticipantId: payee.participantId,
-						projectId: allocation.projectId,
-						...(allocations.length > 1
-							? { allocatedFromTotal: input.amount }
-							: {}),
-					},
-					context: { action: auditAction },
-					projectId: allocation.projectId ?? undefined,
-				});
-
-				settlements.push(settlement);
+			for (const row of planned) {
+				if (row.isOffset) continue;
+				row.convertedAmount =
+					input.convertedAmount != null
+						? (input.convertedAmount * row.amount) / input.amount
+						: null;
+				row.convertedCurrency = input.convertedCurrency ?? null;
+				row.exchangeRateUsed = input.exchangeRateUsed ?? null;
 			}
 
-			return { settlements };
+			return this.createPaymentGroup(tx, sides, planned, {
+				now: new Date(),
+				paymentMethod: input.paymentMethod ?? null,
+				note: input.note ?? null,
+			});
 		});
-		const settlement = settlements[0]!;
+		// The first cash row stands for the payment (offset rows follow it).
+		const settlement = settlements.find((s) => !s.isOffset) ?? settlements[0]!;
 
 		// Notify the other person if they're a registered user (outside
-		// transaction, best-effort)
+		// transaction, best-effort). One notification for the whole group.
 		if (input.toParticipant.participantType === "user") {
 			await this.notifySettlementRecorded(
 				sides,
 				`${input.currency} ${formatAmount(input.amount, input.currency)}`,
-				{ settlementId: settlement.id },
+				{ settlementId: settlement.id, paymentGroupId },
 			);
 		}
 
@@ -377,71 +440,66 @@ export class SettlementService {
 	}
 
 	/**
-	 * Confirms a settlement. Only the payee (toParticipant) can call this.
-	 * Sets confirmedByPayee=true, status=FINALIZED, settledAt=now.
+	 * Confirms a payment. Only the person it waits for can call this: the
+	 * payee of a payment sent to them (or the other side of a square-up).
+	 * Every row of the payment group turns FINALIZED together.
 	 */
 	async confirmSettlement(settlementId: string) {
-		const settlement = await this.db.settlement.findUnique({
-			where: { id: settlementId },
-		});
+		const now = new Date();
+		const { lead, rows } = await this.db.$transaction(async (tx) => {
+			const { lead, rows } = await this.loadGroup(tx, settlementId);
+			const roles = groupRoles(rows, this.userId);
 
-		if (!settlement) {
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Settlement not found",
-			});
-		}
+			if (!roles.isParty) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payee can confirm this settlement",
+				});
+			}
+			if (roles.status === "FINALIZED") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Settlement is already confirmed",
+				});
+			}
+			if (roles.status === "REJECTED") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Settlement is already rejected",
+				});
+			}
+			if (!roles.awaitingMe) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payee can confirm this settlement",
+				});
+			}
 
-		if (
-			settlement.toParticipantType !== "user" ||
-			settlement.toParticipantId !== this.userId
-		) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Only the payee can confirm this settlement",
-			});
-		}
-
-		if (settlement.confirmedByPayee) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Settlement is already confirmed",
-			});
-		}
-
-		const updated = await this.db.settlement.update({
-			where: { id: settlementId },
-			data: {
+			await this.updateGroup(tx, rows, ["PROPOSED"], {
+				confirmedByPayer: true,
 				confirmedByPayee: true,
 				status: "FINALIZED",
-				settledAt: new Date(),
-			},
+				settledAt: now,
+			});
+			await this.logGroupAction(tx, rows, {
+				action: "SETTLED",
+				context: "settlement_confirmed",
+			});
+			return { lead, rows };
 		});
 
-		await logAudit(this.db, {
-			actor: this.currentUserRef,
-			action: "SETTLED",
-			targetType: "SETTLEMENT",
-			targetId: settlementId,
-			changes: {
-				amount: Number(settlement.amount),
-				currency: settlement.currency,
-				fromParticipantType: settlement.fromParticipantType,
-				fromParticipantId: settlement.fromParticipantId,
-			},
-			context: { action: "settlement_confirmed" },
-		});
-
-		// Notify the payer that their settlement was confirmed
-		if (settlement.fromParticipantType === "user") {
-			const payeeName = await resolveParticipantName("user", this.userId);
+		// Notify the person who recorded it, once for the whole group.
+		const other = groupCounterparty(rows, this.userId);
+		if (other?.participantType === "user") {
+			const myName = await resolveParticipantName("user", this.userId);
 			createNotification({
-				userId: settlement.fromParticipantId,
+				userId: other.participantId,
 				type: "SETTLEMENT_CONFIRMED",
 				title: "Settlement confirmed",
-				body: `${payeeName} confirmed your settlement of ${settlement.currency} ${formatAmount(Number(settlement.amount), settlement.currency)}`,
+				body: `${myName} confirmed your settlement of ${describeGroupAmount(rows, other.participantId)}`,
 				data: {
-					settlementId,
+					settlementId: lead.id,
+					paymentGroupId: lead.paymentGroupId,
 					toParticipantType: "user",
 					toParticipantId: this.userId,
 				},
@@ -450,256 +508,208 @@ export class SettlementService {
 			);
 		}
 
-		return updated;
+		return {
+			...lead,
+			confirmedByPayer: true,
+			confirmedByPayee: true,
+			status: "FINALIZED" as const,
+			settledAt: now,
+		};
 	}
 
 	/**
-	 * Deletes a pending (unconfirmed) settlement. Only the payer can delete.
-	 * Once confirmed by the payee, a settlement cannot be deleted.
+	 * Deletes a pending (unconfirmed) payment with all its rows. Only the
+	 * person who recorded it can delete it. Once the other person confirmed,
+	 * it cannot be deleted.
 	 */
 	async deletePendingSettlement(settlementId: string) {
-		const settlement = await this.db.settlement.findUnique({
-			where: { id: settlementId },
-		});
+		await this.db.$transaction(async (tx) => {
+			const { rows } = await this.loadGroup(tx, settlementId);
+			const roles = groupRoles(rows, this.userId);
 
-		if (!settlement) {
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Settlement not found",
+			if (!roles.isParty) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payer can delete this settlement",
+				});
+			}
+			if (roles.status === "FINALIZED") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Cannot delete a confirmed settlement",
+				});
+			}
+			if (!roles.recordedByMe) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payer can delete this settlement",
+				});
+			}
+
+			await this.deleteGroup(tx, rows, ["PROPOSED", "REJECTED"]);
+			await this.logGroupAction(tx, rows, {
+				action: "DELETED",
+				context: "settlement_deleted",
+				changes: {
+					status: roles.status,
+					initiatedAt: rows[0]!.initiatedAt.toISOString(),
+				},
 			});
-		}
-
-		if (
-			settlement.fromParticipantType !== "user" ||
-			settlement.fromParticipantId !== this.userId
-		) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Only the payer can delete this settlement",
-			});
-		}
-
-		if (settlement.confirmedByPayee) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Cannot delete a confirmed settlement",
-			});
-		}
-
-		await this.db.settlement.delete({ where: { id: settlementId } });
-
-		await logAudit(this.db, {
-			actor: this.currentUserRef,
-			action: "DELETED",
-			targetType: "SETTLEMENT",
-			targetId: settlementId,
-			changes: {
-				amount: Number(settlement.amount),
-				currency: settlement.currency,
-				fromParticipantType: settlement.fromParticipantType,
-				fromParticipantId: settlement.fromParticipantId,
-				toParticipantType: settlement.toParticipantType,
-				toParticipantId: settlement.toParticipantId,
-				status: settlement.status,
-				initiatedAt: settlement.initiatedAt.toISOString(),
-			},
+			// A pending payment counted toward balances; without it a period it
+			// settled may be open again.
+			await reopenUnsettledPeriods(
+				tx,
+				rows.map((r) => r.projectId),
+				this.currentUserRef,
+				{ reason: "settlement_deleted", settlementIds: rows.map((r) => r.id) },
+			);
 		});
 
 		return { success: true };
 	}
 
 	/**
-	 * Voids (undoes) an auto-finalized settlement whose payee is a non-user
-	 * (shadow or guest). Only the payer can call this. Separately, a payee can
-	 * void a payment they recorded themselves as received.
+	 * Voids (undoes) a payment that became final without the other person
+	 * agreeing to it. Two cases:
+	 * - The other person is a shadow or guest. Such a payment is FINALIZED the
+	 *   instant it is created, because a non-user can never authenticate to
+	 *   confirm it. That auto-finalization is a system convenience, NOT a real
+	 *   agreement, so a fat-fingered or wrong-person payment would otherwise
+	 *   permanently rewrite a balance with no recourse: deletePending refuses
+	 *   finalized rows and reject requires a real user payee.
+	 * - The current user recorded a payment they received ("they paid me"):
+	 *   they are the one whose claim it reduced, and nobody else confirmed it.
 	 *
-	 * A settlement to a shadow/guest is FINALIZED the instant it is created,
-	 * because a non-user counterparty can never authenticate to confirm it. That
-	 * auto-finalization is a system convenience, NOT a real agreement: no human
-	 * ever accepted the payment. So a fat-fingered or wrong-person settlement
-	 * would otherwise permanently rewrite a balance with no recourse — deletePending
-	 * refuses finalized rows and reject requires a real user payee.
-	 *
-	 * This method restores that recourse: it hard-deletes the auto-finalized row,
-	 * which cleanly reverses its effect because balances are recomputed from the
-	 * remaining settlement rows (see computeBalance).
+	 * Voiding hard-deletes every row of the group, which cleanly reverses its
+	 * effect because balances are recomputed from the remaining rows (see
+	 * computeBalance).
 	 *
 	 * Protected (NOT voidable) here:
-	 * - A settlement whose payee is a real USER (needs mutual agreement to undo).
-	 * - A settlement a real user payee actually confirmed (autoConfirmedReason is
-	 *   null): genuine agreement, out of scope.
-	 * - A PROPOSED settlement (use deletePendingSettlement instead).
+	 * - A payment to a real USER (needs mutual agreement to undo).
+	 * - A payment a real user actually confirmed (autoConfirmedReason is null):
+	 *   genuine agreement, out of scope.
+	 * - A PROPOSED payment (use deletePendingSettlement instead).
 	 */
 	async voidAutoFinalizedSettlement(settlementId: string) {
-		const settlement = await this.db.settlement.findUnique({
-			where: { id: settlementId },
-		});
+		await this.db.$transaction(async (tx) => {
+			const { rows } = await this.loadGroup(tx, settlementId);
+			const roles = groupRoles(rows, this.userId);
 
-		if (!settlement) {
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Settlement not found",
-			});
-		}
+			if (!roles.isParty) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payer can void this settlement",
+				});
+			}
+			if (!roles.canVoid) {
+				const otherIsUser =
+					groupCounterparty(rows, this.userId)?.participantType === "user";
+				const autoFinalized =
+					roles.status === "FINALIZED" &&
+					rows.every((r) => r.autoConfirmedReason !== null);
+				if (otherIsUser && !roles.recordedByMe) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message:
+							"Cannot void a settlement to a registered user. It can only be reversed by mutual agreement.",
+					});
+				}
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: autoFinalized
+						? "This settlement cannot be voided"
+						: "Only an auto-finalized settlement can be voided",
+				});
+			}
 
-		// A payment the current user recorded as received can be undone by
-		// them: they are the one whose claim it reduced, and nobody else
-		// confirmed it.
-		if (isRecordedByPayee(settlement, this.userId)) {
-			await this.db.settlement.delete({ where: { id: settlementId } });
-			await logAudit(this.db, {
-				actor: this.currentUserRef,
+			await this.deleteGroup(tx, rows, ["FINALIZED"]);
+			await this.logGroupAction(tx, rows, {
 				action: "DELETED",
-				targetType: "SETTLEMENT",
-				targetId: settlementId,
+				context: "settlement_voided",
 				changes: {
-					amount: Number(settlement.amount),
-					currency: settlement.currency,
-					fromParticipantType: settlement.fromParticipantType,
-					fromParticipantId: settlement.fromParticipantId,
-					toParticipantType: settlement.toParticipantType,
-					toParticipantId: settlement.toParticipantId,
-					status: settlement.status,
-					autoConfirmedReason: settlement.autoConfirmedReason,
-					initiatedAt: settlement.initiatedAt.toISOString(),
+					status: roles.status,
+					autoConfirmedReason: rows[0]!.autoConfirmedReason,
+					initiatedAt: rows[0]!.initiatedAt.toISOString(),
 				},
-				context: { action: "settlement_voided" },
-				projectId: settlement.projectId ?? undefined,
 			});
-			return { success: true };
-		}
-
-		// Otherwise only the payer (as the logged-in user) can void.
-		if (
-			settlement.fromParticipantType !== "user" ||
-			settlement.fromParticipantId !== this.userId
-		) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Only the payer can void this settlement",
-			});
-		}
-
-		// Payee must be a non-user (shadow or guest). A real user payee's
-		// settlement can only be reversed by mutual agreement, never unilaterally.
-		if (settlement.toParticipantType === "user") {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message:
-					"Cannot void a settlement to a registered user. It can only be reversed by mutual agreement.",
-			});
-		}
-
-		// Only auto-finalized settlements are voidable: FINALIZED with an
-		// autoConfirmedReason recorded (i.e. the payee never genuinely confirmed;
-		// the system confirmed it because the payee cannot authenticate).
-		const isAutoFinalized =
-			settlement.status === "FINALIZED" &&
-			settlement.confirmedByPayee &&
-			settlement.autoConfirmedReason !== null;
-
-		if (!isAutoFinalized) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Only an auto-finalized settlement can be voided",
-			});
-		}
-
-		await this.db.settlement.delete({ where: { id: settlementId } });
-
-		await logAudit(this.db, {
-			actor: this.currentUserRef,
-			action: "DELETED",
-			targetType: "SETTLEMENT",
-			targetId: settlementId,
-			changes: {
-				amount: Number(settlement.amount),
-				currency: settlement.currency,
-				fromParticipantType: settlement.fromParticipantType,
-				fromParticipantId: settlement.fromParticipantId,
-				toParticipantType: settlement.toParticipantType,
-				toParticipantId: settlement.toParticipantId,
-				status: settlement.status,
-				autoConfirmedReason: settlement.autoConfirmedReason,
-				initiatedAt: settlement.initiatedAt.toISOString(),
-			},
-			context: { action: "settlement_voided" },
+			await reopenUnsettledPeriods(
+				tx,
+				rows.map((r) => r.projectId),
+				this.currentUserRef,
+				{ reason: "settlement_voided", settlementIds: rows.map((r) => r.id) },
+			);
 		});
 
 		return { success: true };
 	}
 
 	/**
-	 * Rejects a pending settlement. Only the payee (toParticipant) can call this.
+	 * Rejects a pending payment, all its rows at once. Only the person it
+	 * waits for can call this (see confirmSettlement). The debt comes back
+	 * everywhere, and a billing period the payment had settled reopens.
 	 */
 	async rejectSettlement(settlementId: string, reason?: string) {
-		const settlement = await this.db.settlement.findUnique({
-			where: { id: settlementId },
-		});
+		const now = new Date();
+		const { lead, rows } = await this.db.$transaction(async (tx) => {
+			const { lead, rows } = await this.loadGroup(tx, settlementId);
+			const roles = groupRoles(rows, this.userId);
 
-		if (!settlement) {
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Settlement not found",
-			});
-		}
+			if (!roles.isParty) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payee can reject this settlement",
+				});
+			}
+			if (roles.status === "FINALIZED") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Settlement is already confirmed",
+				});
+			}
+			if (roles.status === "REJECTED") {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Settlement is already rejected",
+				});
+			}
+			if (!roles.awaitingMe) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only the payee can reject this settlement",
+				});
+			}
 
-		if (
-			settlement.toParticipantType !== "user" ||
-			settlement.toParticipantId !== this.userId
-		) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "Only the payee can reject this settlement",
-			});
-		}
-
-		if (settlement.confirmedByPayee) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Settlement is already confirmed",
-			});
-		}
-
-		if (settlement.status === "REJECTED") {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "Settlement is already rejected",
-			});
-		}
-
-		const updated = await this.db.settlement.update({
-			where: { id: settlementId },
-			data: {
+			await this.updateGroup(tx, rows, ["PROPOSED"], {
 				status: "REJECTED",
-				rejectedAt: new Date(),
+				rejectedAt: now,
 				rejectedReason: reason ?? null,
-			},
+			});
+			await this.logGroupAction(tx, rows, {
+				action: "REJECTED",
+				context: "settlement_rejected",
+				changes: { reason: reason ?? null },
+			});
+			await reopenUnsettledPeriods(
+				tx,
+				rows.map((r) => r.projectId),
+				this.currentUserRef,
+				{ reason: "settlement_rejected", settlementIds: rows.map((r) => r.id) },
+			);
+			return { lead, rows };
 		});
 
-		await logAudit(this.db, {
-			actor: this.currentUserRef,
-			action: "REJECTED",
-			targetType: "SETTLEMENT",
-			targetId: settlementId,
-			changes: {
-				amount: Number(settlement.amount),
-				currency: settlement.currency,
-				reason: reason ?? null,
-			},
-			context: { action: "settlement_rejected" },
-		});
-
-		// Notify the payer
-		if (settlement.fromParticipantType === "user") {
-			const payeeName = await resolveParticipantName("user", this.userId);
+		// Notify the person who recorded it, once for the whole group.
+		const other = groupCounterparty(rows, this.userId);
+		if (other?.participantType === "user") {
+			const myName = await resolveParticipantName("user", this.userId);
 			createNotification({
-				userId: settlement.fromParticipantId,
+				userId: other.participantId,
 				type: "SETTLEMENT_REJECTED",
 				title: "Settlement rejected",
-				body: `${payeeName} rejected your settlement of ${settlement.currency} ${formatAmount(Number(settlement.amount), settlement.currency)}${reason ? `: ${reason}` : ""}`,
+				body: `${myName} rejected your settlement of ${describeGroupAmount(rows, other.participantId)}${reason ? `: ${reason}` : ""}`,
 				data: {
-					settlementId,
+					settlementId: lead.id,
+					paymentGroupId: lead.paymentGroupId,
 					toParticipantType: "user",
 					toParticipantId: this.userId,
 				},
@@ -708,49 +718,47 @@ export class SettlementService {
 			);
 		}
 
-		return updated;
+		return {
+			...lead,
+			status: "REJECTED" as const,
+			rejectedAt: now,
+			rejectedReason: reason ?? null,
+		};
 	}
 
 	/**
-	 * Sends a reminder notification for a pending settlement.
+	 * Sends a reminder notification for a pending payment (one per group).
 	 * Rate-limited: max 3 reminders, minimum 24h between each.
 	 */
 	async sendReminder(settlementId: string) {
-		const settlement = await this.db.settlement.findUnique({
-			where: { id: settlementId },
-		});
+		const { rows } = await this.loadGroup(this.db, settlementId);
+		const roles = groupRoles(rows, this.userId);
 
-		if (!settlement) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
-		}
-
-		if (
-			settlement.fromParticipantType !== "user" ||
-			settlement.fromParticipantId !== this.userId
-		) {
+		if (!roles.isParty || !roles.recordedByMe) {
 			throw new TRPCError({
 				code: "FORBIDDEN",
 				message: "Only the payer can send reminders",
 			});
 		}
 
-		if (settlement.status !== "PROPOSED") {
+		if (roles.status !== "PROPOSED") {
 			throw new TRPCError({
 				code: "BAD_REQUEST",
 				message: "Can only remind for pending settlements",
 			});
 		}
 
-		if (settlement.reminderCount >= 3) {
+		const reminder = groupReminderState(rows);
+		if (reminder.count >= 3) {
 			throw new TRPCError({
 				code: "TOO_MANY_REQUESTS",
 				message: "Maximum number of reminders reached (3)",
 			});
 		}
 
-		if (settlement.reminderSentAt) {
+		if (reminder.sentAt) {
 			const hoursSince =
-				(Date.now() - settlement.reminderSentAt.getTime()) / (1000 * 60 * 60);
+				(Date.now() - reminder.sentAt.getTime()) / (1000 * 60 * 60);
 			if (hoursSince < 24) {
 				throw new TRPCError({
 					code: "TOO_MANY_REQUESTS",
@@ -759,21 +767,22 @@ export class SettlementService {
 			}
 		}
 
-		await this.db.settlement.update({
-			where: { id: settlementId },
+		await this.db.settlement.updateMany({
+			where: { id: { in: rows.map((r) => r.id) } },
 			data: {
 				reminderSentAt: new Date(),
-				reminderCount: { increment: 1 },
+				reminderCount: reminder.count + 1,
 			},
 		});
 
-		if (settlement.toParticipantType === "user") {
-			const payerName = await resolveParticipantName("user", this.userId);
+		const other = groupCounterparty(rows, this.userId);
+		if (other?.participantType === "user") {
+			const myName = await resolveParticipantName("user", this.userId);
 			createNotification({
-				userId: settlement.toParticipantId,
+				userId: other.participantId,
 				type: "PAYMENT_REMINDER",
 				title: "Settlement reminder",
-				body: `${payerName} is reminding you about a settlement of ${settlement.currency} ${formatAmount(Number(settlement.amount), settlement.currency)}`,
+				body: `${myName} is reminding you about a settlement of ${describeGroupAmount(rows, other.participantId)}`,
 				data: {
 					settlementId,
 					fromParticipantType: "user",
@@ -788,28 +797,40 @@ export class SettlementService {
 	}
 
 	/**
-	 * Returns PROPOSED settlements where the current user is the payee.
+	 * Returns the pending payments waiting for the current user to confirm,
+	 * one entry per payment group.
 	 */
 	async getPendingForMe() {
-		const settlements = await this.db.settlement.findMany({
+		const rows = await this.db.settlement.findMany({
 			where: {
-				toParticipantType: "user",
-				toParticipantId: this.userId,
 				status: "PROPOSED",
+				OR: [
+					{ toParticipantType: "user", toParticipantId: this.userId },
+					{ fromParticipantType: "user", fromParticipantId: this.userId },
+				],
 			},
 			orderBy: { initiatedAt: "desc" },
 		});
 
-		return settlements.map((s) => ({
-			id: s.id,
-			amount: Number(s.amount),
-			currency: s.currency,
-			paymentMethod: s.paymentMethod,
-			note: s.note,
-			initiatedAt: s.initiatedAt,
-			fromParticipantType: s.fromParticipantType,
-			fromParticipantId: s.fromParticipantId,
-		}));
+		return groupRows(rows)
+			.filter((group) => groupRoles(group, this.userId).awaitingMe)
+			.map((group) => {
+				const lead = group.find((r) => !r.isOffset) ?? group[0]!;
+				const summary = summarizeGroup(group, this.userId);
+				const other = groupCounterparty(group, this.userId)!;
+				return {
+					id: lead.id,
+					paymentGroupId: lead.paymentGroupId,
+					kind: summary.kind,
+					amount: summary.amount,
+					currency: summary.currency,
+					paymentMethod: lead.paymentMethod,
+					note: lead.note,
+					initiatedAt: lead.initiatedAt,
+					fromParticipantType: other.participantType,
+					fromParticipantId: other.participantId,
+				};
+			});
 	}
 
 	/**
@@ -884,6 +905,10 @@ export class SettlementService {
 	/**
 	 * Returns per-currency net balances and suggested settlement amounts between
 	 * the current user and the specified person. Read-only, no side effects.
+	 *
+	 * In the global scope, `offsetAmount` is how much of the opposite-direction
+	 * project debts in that currency a full settle-up also cancels (see
+	 * allocateFullSettlement). 0 when every scope points the same way.
 	 */
 	async getSettlementPlan(ref: ParticipantRef, projectId?: string | null) {
 		await this.assertRelationship(ref);
@@ -897,20 +922,40 @@ export class SettlementService {
 			ref,
 			{ projectScope: projectId },
 		);
+		const byProject =
+			projectId === undefined
+				? await computeBalanceByProject(this.db, this.currentUserRef, ref)
+				: null;
 
 		return Object.entries(balanceResult.byCurrency).map(
-			([currency, balance]) => ({
-				currency,
-				balance: Math.abs(balance),
-				direction: toDirection(balance),
-				suggestedAmount: Math.abs(balance),
-			}),
+			([currency, balance]) => {
+				// From my side: positive = they owe me. The opposite debts are the
+				// scopes pointing against the global direction.
+				let offsetAmount = 0;
+				if (byProject) {
+					for (const scope of byProject.values()) {
+						const value = scope[currency] ?? 0;
+						if (Math.sign(value) === -Math.sign(balance))
+							offsetAmount += Math.abs(value);
+					}
+				}
+				return {
+					currency,
+					balance: Math.abs(balance),
+					direction: toDirection(balance),
+					suggestedAmount: Math.abs(balance),
+					offsetAmount,
+				};
+			},
 		);
 	}
 
 	/**
-	 * Returns all settlement records between the current user and the specified
-	 * person, sorted by initiatedAt descending.
+	 * Returns the payments between the current user and the specified person,
+	 * one entry per payment group (a payment split across projects and its
+	 * offset rows is one entry), sorted by initiatedAt descending. `parts`
+	 * lists the group's rows per project so views can show the breakdown, or
+	 * only their own project's part.
 	 */
 	async getSettlementHistory(ref: ParticipantRef) {
 		await this.assertRelationship(ref);
@@ -932,73 +977,207 @@ export class SettlementService {
 					},
 				],
 			},
+			include: { project: { select: { id: true, name: true } } },
 			orderBy: { initiatedAt: "desc" },
 		});
 
-		return settlements.map((s) => {
-			const isOutgoing = s.fromParticipantId === this.userId;
-			const isPending = s.status === "PROPOSED";
-			const isPayee = s.toParticipantType === "user" && s.toParticipantId === this.userId;
-			const isPayer = s.fromParticipantType === "user" && s.fromParticipantId === this.userId;
+		return groupRows(settlements).map((group) => {
+			const lead = group.find((r) => !r.isOffset) ?? group[0]!;
+			const roles = groupRoles(group, this.userId);
+			const summary = summarizeGroup(group, this.userId);
+			const isPending = roles.status === "PROPOSED";
 
 			let canRemind = false;
-			if (isPayer && isPending) {
-				canRemind = s.reminderCount < 3;
-				if (s.reminderSentAt) {
-					const hoursSince = (Date.now() - s.reminderSentAt.getTime()) / (1000 * 60 * 60);
+			if (roles.recordedByMe && isPending) {
+				const reminder = groupReminderState(group);
+				canRemind = reminder.count < 3;
+				if (reminder.sentAt) {
+					const hoursSince = (Date.now() - reminder.sentAt.getTime()) / (1000 * 60 * 60);
 					if (hoursSince < 24) canRemind = false;
 				}
 			}
 
-			// A settlement to a non-user payee (shadow/guest) is auto-finalized on
-			// creation because the payee can never confirm. The payer can void that
-			// (undo the recorded payment) since no real counterparty ever agreed.
-			// Genuine user-confirmed settlements (autoConfirmedReason == null) stay
-			// protected and are NOT voidable.
-			const isNonUserPayee = s.toParticipantType !== "user";
-			// A payment the current user recorded as received is theirs to undo.
-			const canVoid =
-				(isPayer &&
-					isNonUserPayee &&
-					s.status === "FINALIZED" &&
-					s.confirmedByPayee &&
-					s.autoConfirmedReason !== null) ||
-				isRecordedByPayee(s, this.userId);
-
 			return {
-				id: s.id,
-				amount: Number(s.amount),
-				currency: s.currency,
-				convertedAmount: s.convertedAmount ? Number(s.convertedAmount) : null,
-				convertedCurrency: s.convertedCurrency,
-				exchangeRateUsed: s.exchangeRateUsed ? Number(s.exchangeRateUsed) : null,
-				paymentMethod: s.paymentMethod,
-				note: s.note,
-				status: s.status === "REJECTED"
+				id: lead.id,
+				paymentGroupId: lead.paymentGroupId,
+				kind: summary.kind,
+				amount: summary.amount,
+				currency: summary.currency,
+				cashByCurrency: summary.cashByCurrency,
+				offsetByCurrency: summary.offsetByCurrency,
+				parts: summary.parts.map((part, i) => ({
+					...part,
+					projectName: group[i]!.project?.name ?? null,
+				})),
+				convertedAmount:
+					group.length === 1 && lead.convertedAmount
+						? Number(lead.convertedAmount)
+						: null,
+				convertedCurrency: group.length === 1 ? lead.convertedCurrency : null,
+				exchangeRateUsed:
+					group.length === 1 && lead.exchangeRateUsed
+						? Number(lead.exchangeRateUsed)
+						: null,
+				paymentMethod: lead.paymentMethod,
+				note: lead.note,
+				status: roles.status === "REJECTED"
 					? ("rejected" as const)
-					: s.confirmedByPayee
+					: roles.status === "FINALIZED"
 						? ("confirmed" as const)
 						: ("pending_payee_confirmation" as const),
-				direction: isOutgoing ? ("outgoing" as const) : ("incoming" as const),
-				initiatedAt: s.initiatedAt,
-				settledAt: s.settledAt,
-				rejectedAt: s.rejectedAt,
-				rejectedReason: s.rejectedReason,
-				autoConfirmedReason: s.autoConfirmedReason,
-				// Action flags
-				canConfirm: isPayee && isPending,
-				canReject: isPayee && isPending,
-				canDelete: isPayer && isPending,
-				canVoid,
+				direction: summary.direction,
+				initiatedAt: lead.initiatedAt,
+				settledAt: lead.settledAt,
+				rejectedAt: lead.rejectedAt,
+				rejectedReason: lead.rejectedReason,
+				autoConfirmedReason: lead.autoConfirmedReason,
+				// Action flags, for the whole group
+				canConfirm: roles.awaitingMe,
+				canReject: roles.awaitingMe,
+				canDelete: roles.recordedByMe && isPending,
+				// A payment to a ghost/guest, or one the current user recorded as
+				// received, became final without a real agreement and can be undone.
+				// Payments a real user confirmed stay protected.
+				canVoid: roles.canVoid,
 				canRemind,
 			};
 		});
 	}
 
 	/**
-	 * Settles ALL outstanding balances with a person at once.
-	 * Creates one settlement per currency, atomically in a single transaction.
-	 * Each settlement records the converted amount in the payment currency.
+	 * Currencies where the overall balance with `ref` is even but project
+	 * scopes are not, in opposite directions (e.g. you owe 30 in Trip and are
+	 * owed 30 in Rent). Read-only; squareUpProjects records the offsets.
+	 */
+	async getSquareUpOptions(ref: ParticipantRef) {
+		await this.assertRelationship(ref);
+		const byProject = await computeBalanceByProject(
+			this.db,
+			this.currentUserRef,
+			ref,
+		);
+		const options = squareUpCandidates(byProject);
+		if (options.length === 0) return [];
+
+		const projectIds = [
+			...new Set(
+				options.flatMap((o) =>
+					o.scopes
+						.map((s) => s.projectId)
+						.filter((p): p is string => p !== null),
+				),
+			),
+		];
+		const projects =
+			projectIds.length > 0
+				? await this.db.project.findMany({
+						where: { id: { in: projectIds } },
+						select: { id: true, name: true },
+					})
+				: [];
+		const names = new Map(projects.map((p) => [p.id, p.name]));
+
+		return options.map((o) => ({
+			...o,
+			scopes: o.scopes.map((s) => ({
+				...s,
+				projectName: s.projectId ? (names.get(s.projectId) ?? null) : null,
+			})),
+		}));
+	}
+
+	/**
+	 * "Square up projects": when the overall balance with `toParticipant` in a
+	 * currency is even but projects are not, records only offset rows (no
+	 * cash) so every project scope ends at zero. Handled like a payment the
+	 * current user sends: a registered user confirms or rejects it (it changes
+	 * their project balances, and billing periods depend on those), a ghost
+	 * or guest is auto-confirmed. Same pair lock as a payment.
+	 */
+	async squareUpProjects(input: {
+		toParticipant: ParticipantRef;
+		currency: string;
+	}) {
+		if (sameParticipant(this.currentUserRef, input.toParticipant)) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Cannot create a settlement with yourself",
+			});
+		}
+		await this.assertRelationship(input.toParticipant);
+
+		const sides = this.sides(input.toParticipant, "outgoing");
+
+		const { settlements, paymentGroupId, offset } = await this.db.$transaction(
+			async (tx) => {
+				await this.lockPair(tx, input.toParticipant);
+				const byProject = await computeBalanceByProject(
+					tx as unknown as PrismaClient,
+					sides.payer,
+					sides.payee,
+				);
+				const option = squareUpCandidates(byProject).find(
+					(o) => o.currency === input.currency,
+				);
+				if (!option) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: `There are no ${input.currency} project balances to square up with this person.`,
+					});
+				}
+
+				// From my side: negative = I owe in that scope (row me -> them),
+				// positive = they owe there (offset row them -> me).
+				const rows: PlannedRow[] = option.scopes.map((scope) => ({
+					...cashRow(
+						{ projectId: scope.projectId, amount: Math.abs(scope.balance) },
+						input.currency,
+					),
+					isOffset: true,
+					reverse: scope.balance > 0,
+				}));
+				const created = await this.createPaymentGroup(tx, sides, rows, {
+					now: new Date(),
+					paymentMethod: null,
+					note: null,
+					squareUp: true,
+				});
+				return { ...created, offset: option.amount };
+			},
+		);
+
+		if (input.toParticipant.participantType === "user") {
+			const myName = await resolveParticipantName("user", this.userId);
+			const formatted = `${input.currency} ${formatAmount(offset, input.currency)}`;
+			createNotification({
+				userId: input.toParticipant.participantId,
+				type: "SETTLEMENT_RECEIVED",
+				title: "Project balances squared up",
+				body: `${myName} squared up your project balances (an offset of ${formatted}, no money moved)`,
+				data: {
+					settlementId: settlements[0]!.id,
+					paymentGroupId,
+					fromParticipantType: "user",
+					fromParticipantId: this.userId,
+				},
+			}).catch((err) =>
+				console.error("[Notification Error] SETTLEMENT_RECEIVED:", err),
+			);
+		}
+
+		return {
+			settlements,
+			paymentGroupId,
+			requiresPayeeConfirmation: settlements[0]!.status === "PROPOSED",
+		};
+	}
+
+	/**
+	 * Settles ALL outstanding balances with a person at once, atomically in a
+	 * single transaction, as one payment group: per currency, one row per
+	 * project scope (global) plus the offset rows that square up opposite
+	 * project debts in that currency (see allocateFullSettlement). Each cash
+	 * row records the converted amount in the payment currency.
 	 *
 	 * Only settles currencies where the payer owes the payee. With direction
 	 * "incoming" the other person is the payer: the current user records that
@@ -1041,7 +1220,7 @@ export class SettlementService {
 		// The balance read, the cap and the writes all run in one transaction
 		// that first takes the pair lock, so a concurrent payment between the
 		// same two people cannot also pass the balance check.
-		const { settlements, totalInPaymentCurrency, skipped } =
+		const { settlements, paymentGroupId, totalInPaymentCurrency, skipped } =
 			await this.db.$transaction(async (tx) => {
 				await this.lockPair(tx, input.toParticipant);
 
@@ -1159,7 +1338,10 @@ export class SettlementService {
 				}
 
 				// Global settle-all: split each currency's payment across the per-scope
-				// debts (same rules as a single global settlement).
+				// debts (same rules as a single global settlement). It pays the full
+				// global amount in every currency it settles, so each currency also
+				// gets its offset rows (allocateFullSettlement): every project ends at
+				// zero. Offsets never cross currencies.
 				const byProject = isGlobal
 					? await computeBalanceByProject(
 							tx as unknown as PrismaClient,
@@ -1167,108 +1349,76 @@ export class SettlementService {
 							payee,
 						)
 					: null;
-				const allocate = (currency: string, amount: number): ScopeAllocation[] =>
+				const plan = (currency: string, amount: number): PlannedRow[] =>
 					byProject
-						? allocateAcrossScopes(scopeDebtsForCurrency(byProject, currency), amount)
-						: [{ projectId: input.projectId ?? null, amount }];
+						? planFullSettlementRows(
+								scopeDebtsForCurrency(byProject, currency),
+								reverseScopeDebtsForCurrency(byProject, currency),
+								amount,
+								currency,
+							)
+						: [cashRow({ projectId: input.projectId ?? null, amount }, currency)];
 
-				const settlements: Array<{
-					id: string;
-					amount: number;
-					currency: string;
-					convertedAmount: number | null;
-					convertedCurrency: string | null;
-					projectId: string | null;
-				}> = [];
+				const planned: PlannedRow[] = [];
 				let totalInPaymentCurrency = 0;
-				const { auditAction, ...confirmation } = confirmationFor(sides, now);
 
 				for (const entry of settleable) {
-					const rows = allocate(entry.currency, entry.amount);
+					const rows = plan(entry.currency, entry.amount);
+					const cashRows = rows.filter((r) => !r.isOffset);
 					// Converted amounts are rounded per row; the last row takes the
 					// rounding remainder so the rows add up to the converted total.
 					const convertedTotal = entry.convert
 						? entry.convert(entry.amount)
 						: null;
 					let convertedSoFar = 0;
-					for (const [i, allocation] of rows.entries()) {
+					for (const [i, row] of cashRows.entries()) {
 						let convertedAmount: number | null = null;
 						if (entry.convert && convertedTotal !== null) {
 							convertedAmount =
-								i === rows.length - 1
+								i === cashRows.length - 1
 									? roundMoney(
 											convertedTotal - convertedSoFar,
 											input.paymentCurrency,
 										)
-									: entry.convert(allocation.amount);
+									: entry.convert(row.amount);
 							convertedSoFar += convertedAmount;
 						}
-						const convertedCurrency = entry.convert
+						row.convertedAmount = convertedAmount;
+						row.convertedCurrency = entry.convert
 							? input.paymentCurrency
 							: null;
-						totalInPaymentCurrency += convertedAmount ?? allocation.amount;
-
-						const settlement = await tx.settlement.create({
-							data: {
-								fromParticipantType: payer.participantType,
-								fromParticipantId: payer.participantId,
-								toParticipantType: payee.participantType,
-								toParticipantId: payee.participantId,
-								amount: allocation.amount,
-								currency: entry.currency,
-								projectId: allocation.projectId,
-								convertedAmount,
-								convertedCurrency,
-								exchangeRateUsed: entry.exchangeRateUsed,
-								paymentMethod: input.paymentMethod ?? null,
-								note: input.note ?? null,
-								...confirmation,
-								initiatedAt: now,
-							},
-						});
-
-						await logAudit(tx, {
-							actor: this.currentUserRef,
-							action: "CREATED",
-							targetType: "SETTLEMENT",
-							targetId: settlement.id,
-							changes: {
-								amount: allocation.amount,
-								currency: entry.currency,
-								...(sides.recordedByPayee
-									? {
-											fromParticipantType: payer.participantType,
-											fromParticipantId: payer.participantId,
-										}
-									: {}),
-								toParticipantType: payee.participantType,
-								toParticipantId: payee.participantId,
-								projectId: allocation.projectId,
-								batchSettlement: true,
-							},
-							context: { action: auditAction, batch: true },
-							projectId: allocation.projectId ?? undefined,
-						});
-
-						settlements.push({
-							id: settlement.id,
-							amount: Number(settlement.amount),
-							currency: settlement.currency,
-							convertedAmount: settlement.convertedAmount
-								? Number(settlement.convertedAmount)
-								: null,
-							convertedCurrency: settlement.convertedCurrency,
-							projectId: settlement.projectId ?? null,
-						});
+						row.exchangeRateUsed = entry.exchangeRateUsed;
+						totalInPaymentCurrency += convertedAmount ?? row.amount;
 					}
+					planned.push(...rows);
 				}
 
-				return { settlements, totalInPaymentCurrency, skipped };
+				const { paymentGroupId, settlements: created } =
+					await this.createPaymentGroup(tx, sides, planned, {
+						now,
+						paymentMethod: input.paymentMethod ?? null,
+						note: input.note ?? null,
+						batch: true,
+					});
+				const settlements = created.map((settlement) => ({
+					id: settlement.id,
+					amount: Number(settlement.amount),
+					currency: settlement.currency,
+					convertedAmount: settlement.convertedAmount
+						? Number(settlement.convertedAmount)
+						: null,
+					convertedCurrency: settlement.convertedCurrency,
+					projectId: settlement.projectId ?? null,
+					isOffset: settlement.isOffset,
+				}));
+
+				return { settlements, paymentGroupId, totalInPaymentCurrency, skipped };
 			});
 
 		// Send a single notification for the batch
-		const settledCurrencyCount = new Set(settlements.map((s) => s.currency))
-			.size;
+		const settledCurrencyCount = new Set(
+			settlements.filter((s) => !s.isOffset).map((s) => s.currency),
+		).size;
 		if (input.toParticipant.participantType === "user") {
 			const formattedTotal = `${input.paymentCurrency} ${formatAmount(totalInPaymentCurrency, input.paymentCurrency)}`;
 			await this.notifySettlementRecorded(
@@ -1276,12 +1426,13 @@ export class SettlementService {
 				settledCurrencyCount > 1
 					? `${formattedTotal} across ${settledCurrencyCount} currencies`
 					: formattedTotal,
-				{ settlementIds: settlements.map((s) => s.id) },
+				{ settlementIds: settlements.map((s) => s.id), paymentGroupId },
 			);
 		}
 
 		return {
 			settlements,
+			paymentGroupId,
 			skipped,
 			totalInPaymentCurrency: roundMoney(
 				totalInPaymentCurrency,
@@ -1291,6 +1442,226 @@ export class SettlementService {
 			requiresPayeeConfirmation:
 				confirmationFor(sides, new Date()).status === "PROPOSED",
 		};
+	}
+
+	/**
+	 * Writes the rows of one settle-up call as a payment group (one shared
+	 * paymentGroupId) and logs one CREATED activity entry per project and
+	 * currency of the group, so each project feed shows its own part once.
+	 * Offset rows going payee -> payer get their confirmation flags swapped:
+	 * the recorder has agreed to every row, see settlement-groups.ts.
+	 */
+	private async createPaymentGroup(
+		tx: Prisma.TransactionClient,
+		sides: SettlementSides,
+		rows: PlannedRow[],
+		opts: {
+			now: Date;
+			paymentMethod: string | null;
+			note: string | null;
+			batch?: boolean;
+			squareUp?: boolean;
+		},
+	) {
+		const paymentGroupId = randomUUID();
+		const { auditAction, ...confirmation } = confirmationFor(sides, opts.now);
+		const { payer, payee } = sides;
+
+		const settlements: Prisma.SettlementGetPayload<object>[] = [];
+		for (const row of rows) {
+			const [from, to] = row.reverse ? [payee, payer] : [payer, payee];
+			const settlement = await tx.settlement.create({
+				data: {
+					fromParticipantType: from.participantType,
+					fromParticipantId: from.participantId,
+					toParticipantType: to.participantType,
+					toParticipantId: to.participantId,
+					amount: row.amount,
+					currency: row.currency,
+					projectId: row.projectId,
+					convertedAmount: row.convertedAmount,
+					convertedCurrency: row.convertedCurrency,
+					exchangeRateUsed: row.exchangeRateUsed,
+					paymentMethod: row.isOffset ? null : opts.paymentMethod,
+					note: opts.note,
+					...confirmation,
+					...(row.reverse
+						? {
+								confirmedByPayer: confirmation.confirmedByPayee,
+								confirmedByPayee: confirmation.confirmedByPayer,
+							}
+						: {}),
+					initiatedAt: opts.now,
+					paymentGroupId,
+					isOffset: row.isOffset,
+				},
+			});
+			settlements.push(settlement);
+		}
+
+		const cashTotal = new Map<string, number>();
+		for (const row of rows) {
+			if (row.isOffset) continue;
+			cashTotal.set(row.currency, (cashTotal.get(row.currency) ?? 0) + row.amount);
+		}
+
+		const scopes = new Map<string, number[]>();
+		rows.forEach((row, i) => {
+			const key = `${row.projectId ?? ""}|${row.currency}`;
+			const list = scopes.get(key) ?? [];
+			list.push(i);
+			scopes.set(key, list);
+		});
+		for (const indexes of scopes.values()) {
+			const first = rows[indexes[0]!]!;
+			const cash = indexes.reduce(
+				(sum, i) => sum + (rows[i]!.isOffset ? 0 : rows[i]!.amount),
+				0,
+			);
+			const offsetAmount = indexes.reduce(
+				(sum, i) => sum + (rows[i]!.isOffset ? rows[i]!.amount : 0),
+				0,
+			);
+			const total = cashTotal.get(first.currency) ?? 0;
+			await logAudit(tx, {
+				actor: this.currentUserRef,
+				action: "CREATED",
+				targetType: "SETTLEMENT",
+				targetId: settlements[indexes[0]!]!.id,
+				changes: {
+					amount: cash,
+					currency: first.currency,
+					...(sides.recordedByPayee
+						? {
+								fromParticipantType: payer.participantType,
+								fromParticipantId: payer.participantId,
+							}
+						: {}),
+					toParticipantType: payee.participantType,
+					toParticipantId: payee.participantId,
+					projectId: first.projectId,
+					paymentGroupId,
+					settlementIds: indexes.map((i) => settlements[i]!.id),
+					...(total > cash + OWED_TOLERANCE ? { allocatedFromTotal: total } : {}),
+					...(offsetAmount > 0 ? { offsetAmount } : {}),
+					...(opts.squareUp ? { squareUp: true } : {}),
+					...(opts.batch ? { batchSettlement: true } : {}),
+				},
+				context: { action: auditAction, ...(opts.batch ? { batch: true } : {}) },
+				projectId: first.projectId ?? undefined,
+			});
+		}
+
+		return { paymentGroupId, settlements };
+	}
+
+	/**
+	 * Loads every row of the payment group `settlementId` belongs to (just
+	 * that row for a legacy payment without a group).
+	 */
+	private async loadGroup(
+		db: Pick<PrismaClient, "settlement"> | Prisma.TransactionClient,
+		settlementId: string,
+	) {
+		const lead = await db.settlement.findUnique({ where: { id: settlementId } });
+		if (!lead) {
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "Settlement not found",
+			});
+		}
+		if (!lead.paymentGroupId) return { lead, rows: [lead] };
+		const rows = await db.settlement.findMany({
+			where: { paymentGroupId: lead.paymentGroupId },
+			orderBy: { initiatedAt: "asc" },
+		});
+		return { lead, rows: rows.length > 0 ? rows : [lead] };
+	}
+
+	/**
+	 * Applies `data` to every row of a group, only while each row still has
+	 * one of `fromStatuses`. If another request changed the group first, the
+	 * whole action fails rather than touching part of the group.
+	 */
+	private async updateGroup(
+		tx: Prisma.TransactionClient,
+		rows: Array<{ id: string }>,
+		fromStatuses: SettlementStatus[],
+		data: Prisma.SettlementUpdateManyMutationInput,
+	) {
+		const { count } = await tx.settlement.updateMany({
+			where: { id: { in: rows.map((r) => r.id) }, status: { in: fromStatuses } },
+			data,
+		});
+		if (count !== rows.length) {
+			throw new TRPCError({
+				code: "CONFLICT",
+				message: "This payment was changed in the meantime. Refresh and try again.",
+			});
+		}
+	}
+
+	private async deleteGroup(
+		tx: Prisma.TransactionClient,
+		rows: Array<{ id: string }>,
+		fromStatuses: SettlementStatus[],
+	) {
+		const { count } = await tx.settlement.deleteMany({
+			where: { id: { in: rows.map((r) => r.id) }, status: { in: fromStatuses } },
+		});
+		if (count !== rows.length) {
+			throw new TRPCError({
+				code: "CONFLICT",
+				message: "This payment was changed in the meantime. Refresh and try again.",
+			});
+		}
+	}
+
+	/** One audit entry for an action on a whole group. */
+	private async logGroupAction(
+		tx: Prisma.TransactionClient | PrismaClient,
+		rows: GroupRow[],
+		params: {
+			action: "SETTLED" | "REJECTED" | "DELETED";
+			context: string;
+			changes?: Record<string, unknown>;
+		},
+	) {
+		// The cash row, or for a square-up a row towards the actor, so the feed
+		// names the other person as "from".
+		const lead =
+			rows.find((r) => !r.isOffset) ??
+			rows.find(
+				(r) => r.toParticipantType === "user" && r.toParticipantId === this.userId,
+			) ??
+			rows[0]!;
+		const summary = summarizeGroup(rows, this.userId);
+		const projectIds = [...new Set(rows.map((r) => r.projectId ?? null))];
+		await logAudit(tx, {
+			actor: this.currentUserRef,
+			action: params.action,
+			targetType: "SETTLEMENT",
+			targetId: lead.id,
+			changes: {
+				amount: summary.amount,
+				currency: summary.currency,
+				fromParticipantType: lead.fromParticipantType,
+				fromParticipantId: lead.fromParticipantId,
+				toParticipantType: lead.toParticipantType,
+				toParticipantId: lead.toParticipantId,
+				...(lead.paymentGroupId
+					? {
+							paymentGroupId: lead.paymentGroupId,
+							settlementIds: rows.map((r) => r.id),
+						}
+					: {}),
+				...params.changes,
+			} as Prisma.InputJsonValue,
+			context: { action: params.context },
+			// A group that touched one project shows up in that project's feed.
+			projectId:
+				projectIds.length === 1 ? (projectIds[0] ?? undefined) : undefined,
+		});
 	}
 
 	/**

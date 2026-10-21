@@ -662,6 +662,12 @@ function getActionMeta(action: string): {
 			color: "gray",
 			icon: "lock",
 		},
+		PERIOD_REOPENED: {
+			type: "period_reopened",
+			label: "Period reopened",
+			color: "amber",
+			icon: "lock-open",
+		},
 		PARTICIPANT_ADDED: {
 			type: "participant_added",
 			label: "Participant added",

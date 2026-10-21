@@ -780,6 +780,14 @@ model Settlement {
 
   projectId            String?
 
+  // Shared by every row one settle-up call creates (one row per project
+  // scope, plus offset rows). Confirm, reject, delete and void act on the
+  // whole group. NULL only on legacy single-row payments.
+  paymentGroupId       String?
+  // An offset row moves no cash: it cancels a debt in one scope against an
+  // opposite debt in another scope of the same payment group.
+  isOffset             Boolean          @default(false)
+
   project              Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([fromParticipantType, fromParticipantId])
@@ -790,6 +798,7 @@ model Settlement {
   @@index([status, toParticipantType, toParticipantId])
   @@index([projectId], map: "settlement_projectId_idx")
   @@index([projectId, fromParticipantType, fromParticipantId, toParticipantType, toParticipantId], map: "settlement_project_pair_idx")
+  @@index([paymentGroupId])
   @@map("settlement")
 }
 
@@ -849,6 +858,7 @@ enum AuditAction {
   AUTO_VERIFIED
   SETTLED
   PERIOD_CLOSED
+  PERIOD_REOPENED
   PARTICIPANT_ADDED
   PARTICIPANT_REMOVED
   ROLE_CHANGED

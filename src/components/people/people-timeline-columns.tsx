@@ -8,6 +8,7 @@ import {
 	Edit2,
 	History,
 	MoreHorizontal,
+	Scale,
 	Trash2,
 	Undo2,
 	XCircle,
@@ -79,6 +80,10 @@ export type TimelineRow = {
 	canDeleteSettlement?: boolean;
 	canVoidSettlement?: boolean;
 	canRemindSettlement?: boolean;
+	/** "square_up": offsets only, no money moved. */
+	settlementKind?: "payment" | "square_up";
+	/** Muted second line: per-project breakdown, offsets or this project's part. */
+	settlementDetail?: string | null;
 };
 
 export function createTimelineColumns(
@@ -126,35 +131,47 @@ export function createTimelineColumns(
 				const item = row.original;
 				if (item.type === "settlement") {
 					const isIncoming = item.direction === "incoming";
-					const directionLabel = isIncoming
-						? t("personPaidYou", { name: identityName })
-						: t("youPaidPerson", { name: identityName });
+					const isSquareUp = item.settlementKind === "square_up";
+					const directionLabel = isSquareUp
+						? t("noMoneyMoved")
+						: isIncoming
+							? t("personPaidYou", { name: identityName })
+							: t("youPaidPerson", { name: identityName });
 					const methodName = item.paymentMethod
 						? getPaymentMethodName(item.paymentMethod, null, item.currency)
 						: null;
 					return (
-						<div className="flex items-center gap-2">
-							{item.paymentMethod ? (
-								<PaymentMethodIcon
-									className="shrink-0"
-									currency={item.currency}
-									size="sm"
-									typeId={item.paymentMethod}
-								/>
-							) : (
-								<Banknote className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-							)}
-							<span className="font-medium text-sm">
-								{t("settlement")}
-								{methodName && (
-									<span className="text-muted-foreground font-normal">
-										{" "}{t("via")} {methodName}
-									</span>
+						<div className="flex min-w-0 flex-col gap-0.5">
+							<div className="flex items-center gap-2">
+								{item.paymentMethod ? (
+									<PaymentMethodIcon
+										className="shrink-0"
+										currency={item.currency}
+										size="sm"
+										typeId={item.paymentMethod}
+									/>
+								) : isSquareUp ? (
+									<Scale className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+								) : (
+									<Banknote className="h-3.5 w-3.5 shrink-0 text-blue-500" />
 								)}
-							</span>
-							<span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-700/10 ring-inset dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
-								{directionLabel}
-							</span>
+								<span className="font-medium text-sm">
+									{isSquareUp ? t("projectsSquaredUp") : t("settlement")}
+									{methodName && (
+										<span className="text-muted-foreground font-normal">
+											{" "}{t("via")} {methodName}
+										</span>
+									)}
+								</span>
+								<span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-700/10 ring-inset dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
+									{directionLabel}
+								</span>
+							</div>
+							{item.settlementDetail && (
+								<span className="truncate pl-5.5 text-muted-foreground text-xs">
+									{item.settlementDetail}
+								</span>
+							)}
 						</div>
 					);
 				}
@@ -258,6 +275,7 @@ export function createTimelineColumns(
 			size: 120,
 			accessorFn: (row) => {
 				if (row.type === "settlement") {
+					if (row.settlementKind === "square_up") return 0;
 					return row.direction === "incoming"
 						? (row.amount ?? 0)
 						: -(row.amount ?? 0);
@@ -268,6 +286,14 @@ export function createTimelineColumns(
 				const item = row.original;
 				if (item.type === "settlement") {
 					const isIncoming = item.direction === "incoming";
+					// A square-up moves no money: show what it offset, unsigned.
+					if (item.settlementKind === "square_up") {
+						return (
+							<div className="text-right font-medium text-muted-foreground text-sm tabular-nums">
+								{formatCurrency(item.amount ?? 0, item.currency)}
+							</div>
+						);
+					}
 					return (
 						<div
 							className={cn(

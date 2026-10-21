@@ -612,7 +612,16 @@
     "theyOweYouLower": "devem a você",
     "youOweThemLower": "você deve",
     "payAmount": "Pagar {amount}",
-    "requestAmount": "Solicitar {amount}"
+    "requestAmount": "Solicitar {amount}",
+    "noMoneyMoved": "Sem movimentação de dinheiro",
+    "projectsSquaredUp": "Projetos equilibrados",
+    "standaloneScope": "Avulso",
+    "unknownProject": "Outro projeto",
+    "settlementOffsetDetail": "Pago {paid}, compensado {offset}: {from} contra {against}",
+    "settlementSquareUpDetail": "Compensado {offset}: {from} contra {against}",
+    "settlementPartOf": "{part} de um pagamento de {total}",
+    "settlementPartOffset": "{offset} compensado com outro projeto",
+    "settlementPartSquareUp": "Parte do equilíbrio entre projetos"
   },
   "claim": {
     "title": "Confirme seu perfil",
@@ -1090,7 +1099,12 @@
     "renamed": "Renamed",
     "renameFailed": "Couldn't rename",
     "shareViaLinkTitle": "Share “{name}”",
-    "shareViaLinkDescription": "Anyone with the link can access this project."
+    "shareViaLinkDescription": "Anyone with the link can access this project.",
+    "activityCreatedSettlementPart": "{actor} iniciou uma quitação de {amount} com {name}, parte de um pagamento de {total}",
+    "activityCreatedSettlementWithOffset": "{actor} iniciou uma quitação de {amount} com {name}, dos quais {offset} foram compensados com outro projeto",
+    "activityOffsetSettlement": "{actor} compensou {amount} com {name} contra outro projeto",
+    "activityReopenedPeriod": "O período {period} foi reaberto porque um pagamento foi recusado ou desfeito",
+    "activityReopenedPeriodGeneric": "Um período de cobrança foi reaberto porque um pagamento foi recusado ou desfeito"
   },
   "wealth": {
     "title": "Patrimônio",
@@ -1332,7 +1346,12 @@
     "allSettled": "Está tudo quitado com {name}!",
     "remainingBalance": "Saldo restante",
     "done": "Concluído",
-    "allAmount": "Valor total: {amount}"
+    "allAmount": "Valor total: {amount}",
+    "offsetNote": "Pagar o valor total também compensa {amount} devidos no sentido contrário em outros projetos, assim todos os projetos ficam zerados.",
+    "offsetNotePartial": "Um pagamento parcial mantém como estão os saldos de projetos no sentido contrário.",
+    "offsetNoteAll": "Quitar tudo também compensa os saldos de projetos no sentido contrário, assim todos os projetos ficam zerados.",
+    "alsoTheyOwe": "{name} também deve {amounts} a você. Cada moeda é quitada separadamente.",
+    "alsoYouOwe": "Você também deve {amounts} a {name}. Cada moeda é quitada separadamente."
   },
   "expenseForm": {
     "duplicateWarning": "Uma despesa semelhante já existe nesta data. Salvar de qualquer maneira?",
@@ -2121,7 +2140,19 @@
     "settlementRejected": "Quitação rejeitada",
     "reminderSentToast": "Lembrete enviado",
     "payAmount": "Pagar {amount}",
-    "requestAmount": "Solicitar {amount}"
+    "requestAmount": "Solicitar {amount}",
+    "squareUpProjects": "Equilibrar projetos",
+    "squareUpProjectsIn": "Equilibrar projetos ({currency})",
+    "squareUpTitle": "Equilibrar projetos",
+    "squareUpDescription": "Seu saldo geral está zerado, mas seus projetos não. Isto registra uma compensação de {amount} para que todos os projetos fiquem zerados. Nenhum dinheiro é movimentado.",
+    "squareUpScopeYouOwe": "{project}: você deve {amount}",
+    "squareUpScopeTheyOwe": "{project}: {name} deve {amount} a você",
+    "squareUpConfirmNote": "{name} receberá um pedido de confirmação.",
+    "squareUpConfirm": "Equilibrar",
+    "squareUpSentToast": "Enviado para {name} confirmar",
+    "squareUpDoneToast": "Projetos equilibrados",
+    "squareUpBanner": "{name} equilibrou seus projetos (uma compensação de {amount}, sem movimentação de dinheiro)",
+    "unknownProject": "Outro projeto"
   },
   "tableFilters": {
     "all": "Tudo",

@@ -81,9 +81,9 @@ export const settlementRouter = createTRPCRouter({
 	/**
 	 * POST /api/settlements/:id/confirm
 	 *
-	 * Confirms receipt of a settlement. Only the payee (to_participant) can call this.
-	 * Sets confirmedByPayee=true, status=FINALIZED, settledAt=now.
-	 * The settlement is immutable after confirmation.
+	 * Confirms receipt of a payment. Only the person it waits for (the payee)
+	 * can call this. Every row of its payment group turns FINALIZED together
+	 * and is immutable after confirmation.
 	 */
 	confirm: protectedProcedure
 		.input(z.object({ id: z.string().min(1) }))
@@ -95,7 +95,7 @@ export const settlementRouter = createTRPCRouter({
 	/**
 	 * DELETE /api/settlements/:id
 	 *
-	 * Deletes an unconfirmed (pending) settlement. Only the payer can delete.
+	 * Deletes an unconfirmed (pending) payment with all its rows. Only the payer can delete.
 	 * Confirmed settlements cannot be deleted: they are permanent records.
 	 */
 	deletePending: protectedProcedure
@@ -114,7 +114,7 @@ export const settlementRouter = createTRPCRouter({
 	 *
 	 * A settlement to a shadow/guest auto-finalizes on creation (the payee can
 	 * never authenticate to confirm), which would otherwise permanently rewrite a
-	 * balance with no recourse. Voiding hard-deletes the row, restoring the balance
+	 * balance with no recourse. Voiding hard-deletes every row of its payment group, restoring the balance
 	 * (balances are recomputed from the remaining settlement rows).
 	 *
 	 * Settlements to a real user payee, genuinely confirmed settlements, and
@@ -130,7 +130,7 @@ export const settlementRouter = createTRPCRouter({
 	/**
 	 * POST /api/settlements/:id/reject
 	 *
-	 * Rejects a pending settlement. Only the payee can call this.
+	 * Rejects a pending payment, its whole payment group. Only the payee can call this.
 	 */
 	reject: protectedProcedure
 		.input(
@@ -160,7 +160,8 @@ export const settlementRouter = createTRPCRouter({
 	/**
 	 * GET /api/settlements/pending-for-me
 	 *
-	 * Returns PROPOSED settlements where the current user is the payee.
+	 * Returns the pending payments waiting for the current user to confirm,
+	 * one entry per payment group.
 	 */
 	pendingForMe: protectedProcedure.query(async ({ ctx }) => {
 		const service = new SettlementService(ctx.db, ctx.session.user.id);
@@ -217,16 +218,45 @@ export const settlementRouter = createTRPCRouter({
 	/**
 	 * GET /api/settlements/history/:personRef
 	 *
-	 * Returns all settlement records between the current user and the specified
-	 * person, sorted by initiatedAt descending.
+	 * Returns the payments between the current user and the specified person,
+	 * one entry per payment group, sorted by initiatedAt descending.
 	 *
-	 * Includes: amount, currency, convertedAmount/currency, exchangeRateUsed,
-	 * paymentMethod, note, status, direction, initiatedAt, settledAt.
+	 * Includes: amount, currency, parts (per project, offsets marked),
+	 * paymentMethod, note, status, direction, initiatedAt, settledAt and the
+	 * action flags for the whole group.
 	 */
 	history: protectedProcedure
 		.input(participantRefSchema)
 		.query(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
 			return service.getSettlementHistory(input);
+		}),
+
+	/**
+	 * Currencies where the overall balance with the person is even but their
+	 * project balances point in opposite directions. Read-only.
+	 */
+	squareUpOptions: protectedProcedure
+		.input(participantRefSchema)
+		.query(async ({ ctx, input }) => {
+			const service = new SettlementService(ctx.db, ctx.session.user.id);
+			return service.getSquareUpOptions(input);
+		}),
+
+	/**
+	 * Records offset rows only (no cash) so every project ends at zero when
+	 * the overall balance in that currency is already even. The other person
+	 * confirms or rejects it like a payment.
+	 */
+	squareUp: protectedProcedure
+		.input(
+			z.object({
+				toParticipant: participantRefSchema,
+				currency: z.string().min(1).max(10),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const service = new SettlementService(ctx.db, ctx.session.user.id);
+			return service.squareUpProjects(input);
 		}),
 });
