@@ -1,6 +1,33 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { getExcludedProjectIds } from "~/server/services/shared-expense-integration";
 import { StatsService } from "~/server/services/stats.service";
+import type { db as Db } from "~/server/db";
+
+/** Stats service plus fiscal start day for the caller. */
+async function statsFor(ctx: {
+	db: typeof Db;
+	session: { user: { id: string } };
+	timeZone?: string;
+}) {
+	const userId = ctx.session.user.id;
+	const [user, excludedProjectIds] = await Promise.all([
+		ctx.db.user.findUnique({
+			where: { id: userId },
+			select: { fiscalMonthStartDay: true },
+		}),
+		getExcludedProjectIds(ctx.db, userId),
+	]);
+	return {
+		service: new StatsService(
+			ctx.db,
+			undefined,
+			excludedProjectIds,
+			ctx.timeZone,
+		),
+		fiscalStartDay: user?.fiscalMonthStartDay ?? 1,
+	};
+}
 
 export const statsRouter = createTRPCRouter({
 	getSummary: protectedProcedure
@@ -11,16 +38,12 @@ export const statsRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const service = new StatsService(ctx.db);
-			const user = await ctx.db.user.findUnique({
-				where: { id: ctx.session.user.id },
-				select: { fiscalMonthStartDay: true },
-			});
+			const { service, fiscalStartDay } = await statsFor(ctx);
 			return await service.getSummaryStats(
 				ctx.session.user.id,
 				input.month,
 				input.homeCurrency,
-				user?.fiscalMonthStartDay ?? 1,
+				fiscalStartDay,
 			);
 		}),
 
@@ -32,16 +55,12 @@ export const statsRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const service = new StatsService(ctx.db);
-			const user = await ctx.db.user.findUnique({
-				where: { id: ctx.session.user.id },
-				select: { fiscalMonthStartDay: true },
-			});
+			const { service, fiscalStartDay } = await statsFor(ctx);
 			return await service.getCategoryBreakdown(
 				ctx.session.user.id,
 				input.month,
 				input.homeCurrency,
-				user?.fiscalMonthStartDay ?? 1,
+				fiscalStartDay,
 			);
 		}),
 
@@ -53,16 +72,12 @@ export const statsRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const service = new StatsService(ctx.db);
-			const user = await ctx.db.user.findUnique({
-				where: { id: ctx.session.user.id },
-				select: { fiscalMonthStartDay: true },
-			});
+			const { service, fiscalStartDay } = await statsFor(ctx);
 			return await service.getDailyTrend(
 				ctx.session.user.id,
 				input.month,
 				input.homeCurrency,
-				user?.fiscalMonthStartDay ?? 1,
+				fiscalStartDay,
 			);
 		}),
 

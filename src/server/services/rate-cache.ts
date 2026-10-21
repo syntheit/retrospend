@@ -32,6 +32,11 @@ export class RateCache {
 		return promise;
 	}
 
+	/** The rate number for `currency` on `date`, or null when it has none. */
+	async rate(currency: string, date: Date): Promise<number | null> {
+		return (await this.get(currency, date))?.rate ?? null;
+	}
+
 	async getMany(
 		currencies: string[],
 		date: Date,

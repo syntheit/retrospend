@@ -12,9 +12,11 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { MissingRateError } from "~/lib/money";
 import { auth } from "~/server/better-auth";
 import type { Session } from "~/server/better-auth/config";
 import { createUserScopedDb, db } from "~/server/db";
+import { requestTimeZone } from "~/server/time-zone";
 import type { ParticipantType } from "~prisma";
 
 export type GuestParticipant = {
@@ -158,6 +160,16 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 
 	const result = await next();
 
+	// A conversion with no exchange rate is a user-facing problem (sync rates
+	// or pick another currency), not a server crash.
+	if (!result.ok && result.error.cause instanceof MissingRateError) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+
 	return result;
 });
 
@@ -200,6 +212,8 @@ export const protectedProcedure = t.procedure
 				// infers the `session` as non-nullable with additional user fields
 				session: ctx.session as Session,
 				db: userDb,
+				// The user's IANA zone for day and month bucketing (undefined = server zone)
+				timeZone: requestTimeZone(ctx.headers),
 			},
 		});
 	});
