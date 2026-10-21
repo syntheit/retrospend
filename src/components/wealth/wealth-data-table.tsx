@@ -1,10 +1,11 @@
 "use client";
 
-import type { Row, VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { Edit2, Landmark, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 import { DataTable } from "~/components/data-table";
+import type { DataTableRow } from "~/components/data-table-features";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
 import {
 	ContextMenuItem,
@@ -41,7 +42,7 @@ export function WealthDataTable({
 	hidePagination?: boolean;
 	fillHeight?: boolean;
 	readOnly?: boolean;
-	columnVisibility?: VisibilityState;
+	columnVisibility?: ColumnVisibilityState;
 }) {
 	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();

@@ -18,7 +18,7 @@ import {
 	ContextMenuItem,
 	ContextMenuSeparator,
 } from "~/components/ui/context-menu";
-import type { VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 import { DataTable } from "~/components/data-table";
@@ -80,7 +80,7 @@ export function UsersTable({
 		[currentUserId, onResetPassword, onToggleUserStatus, onMarkEmailVerified, onDeleteUser, onSetAiAccess],
 	);
 
-	const columnVisibility: VisibilityState = isMobile
+	const columnVisibility: ColumnVisibilityState = isMobile
 		? { features: false, expenseCount: false, createdAt: false }
 		: {};
 

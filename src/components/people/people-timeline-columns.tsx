@@ -1,6 +1,5 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import {
 	Banknote,
 	Bell,
@@ -14,6 +13,7 @@ import {
 	XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { formatExpenseAsText } from "~/lib/format";
 import Link from "next/link";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
@@ -110,14 +110,14 @@ export function createTimelineColumns(
 		}
 	>,
 	locale?: string,
-): ColumnDef<TimelineRow>[] {
+): DataTableColumnDef<TimelineRow>[] {
 	return [
 		{
 			id: "description",
 			header: t("columnTitle"),
 			enableSorting: true,
 			meta: { flex: true },
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.description ?? "";
 				const b = rowB.original.description ?? "";
 				return a.localeCompare(b);
@@ -189,7 +189,7 @@ export function createTimelineColumns(
 			header: t("columnCategory"),
 			enableSorting: true,
 			size: 130,
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.category?.name ?? "";
 				const b = rowB.original.category?.name ?? "";
 				return a.localeCompare(b);
@@ -242,7 +242,7 @@ export function createTimelineColumns(
 			header: t("columnDate"),
 			enableSorting: true,
 			size: 110,
-			sortingFn: (rowA, rowB) =>
+			sortFn: (rowA, rowB) =>
 				new Date(rowA.original.date).getTime() -
 				new Date(rowB.original.date).getTime(),
 			cell: ({ row }) => (
@@ -294,7 +294,7 @@ export function createTimelineColumns(
 			header: t("columnStatus"),
 			enableSorting: true,
 			size: 100,
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.status;
 				const b = rowB.original.status;
 				return a.localeCompare(b);

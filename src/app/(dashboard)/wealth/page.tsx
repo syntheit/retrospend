@@ -109,7 +109,7 @@ export default function WealthPage() {
 		setShowDeleteDialog(false);
 	};
 
-	const columnVisibility: import("@tanstack/react-table").VisibilityState =
+	const columnVisibility: import("@tanstack/react-table").ColumnVisibilityState =
 		isMobile ? { select: false, allocation: false, balanceInUSD: false } : {};
 
 	const isSelectionMode = selectedAssetIds.size > 0;

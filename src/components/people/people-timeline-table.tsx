@@ -1,11 +1,12 @@
 "use client";
 
-import type { Row, VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { Edit2, History, Trash2, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import type { DataTableRow } from "~/components/data-table-features";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
 import {
 	createTimelineColumns,
@@ -377,7 +378,7 @@ export function PeopleTimelineTable({
 		],
 	);
 
-	const columnVisibility = useMemo<VisibilityState>(
+	const columnVisibility = useMemo<ColumnVisibilityState>(
 		() => ({
 			category: !isMobile,
 			split: !isMobile,
@@ -387,7 +388,7 @@ export function PeopleTimelineTable({
 	);
 
 	const rowClassName = useMemo(
-		() => (row: Row<TimelineRow>) => {
+		() => (row: DataTableRow<TimelineRow>) => {
 			const item = row.original;
 			if (item.status === "settled") {
 				return "opacity-60";

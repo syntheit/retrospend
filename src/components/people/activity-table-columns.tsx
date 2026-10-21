@@ -1,7 +1,7 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import {
 	Tooltip,
 	TooltipContent,
@@ -29,14 +29,14 @@ export type ActivityTableRow = {
 export function createActivityColumns(
 	formatCurrency: (amount: number, currency: string) => string,
 	t?: (key: string, values?: Record<string, string | number | Date>) => string,
-): ColumnDef<ActivityTableRow>[] {
+): DataTableColumnDef<ActivityTableRow>[] {
 	return [
 		{
 			id: "description",
 			header: t?.("columnTitle") ?? "Title",
 			enableSorting: true,
 			meta: { flex: true },
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				return rowA.original.description.localeCompare(
 					rowB.original.description,
 				);
@@ -83,7 +83,7 @@ export function createActivityColumns(
 			header: t?.("columnDate") ?? "Date",
 			enableSorting: true,
 			size: 130,
-			sortingFn: (rowA, rowB) =>
+			sortFn: (rowA, rowB) =>
 				new Date(rowA.original.date).getTime() -
 				new Date(rowB.original.date).getTime(),
 			cell: ({ row }) => (

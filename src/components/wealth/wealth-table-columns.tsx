@@ -1,6 +1,5 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import {
 	Banknote,
 	Coins,
@@ -10,6 +9,7 @@ import {
 	TrendingUp,
 	Wallet,
 } from "lucide-react";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -78,9 +78,9 @@ export function createWealthColumns(
 	isPrivacyMode: boolean,
 	selection?: SelectionHandlers,
 	t?: TranslationFn,
-): ColumnDef<Asset>[] {
+): DataTableColumnDef<Asset>[] {
 	const label = (key: string, fallback: string) => (t ? t(key) : fallback);
-	const columns: ColumnDef<Asset>[] = [];
+	const columns: DataTableColumnDef<Asset>[] = [];
 
 	if (selection) {
 		columns.push({

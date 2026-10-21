@@ -1,6 +1,5 @@
 "use client";
 
-import type { Row } from "@tanstack/react-table";
 import { formatExpenseAsText, formatExpenseDate } from "~/lib/format";
 import {
 	Check,
@@ -15,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import type { DataTableRow } from "~/components/data-table-features";
 import { ExpandableSearch } from "~/components/table-search";
 import { DataTableSelectionBar } from "~/components/data-table-selection-bar";
 import { ExpenseActionsSheet } from "~/components/expense-actions-sheet";
@@ -528,7 +528,7 @@ export function ExpensesTable({
 
 	// Row class for settled rows
 	const rowClassName = useMemo(
-		() => (row: Row<ProjectExpense>) =>
+		() => (row: DataTableRow<ProjectExpense>) =>
 			row.original.status === "settled"
 				? "text-muted-foreground/60 opacity-60"
 				: undefined,

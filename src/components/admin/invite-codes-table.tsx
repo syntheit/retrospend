@@ -1,10 +1,11 @@
-import { type ColumnDef, type VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { Copy, Link, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -57,7 +58,7 @@ interface InviteCodesTableProps {
 function createColumns(
 	onDeleteCode: (inviteCodeId: string, code: string) => void,
 	t: ReturnType<typeof useTranslations<"admin">>,
-): ColumnDef<InviteCode>[] {
+): DataTableColumnDef<InviteCode>[] {
 	return [
 	{
 		accessorKey: "code",
@@ -96,7 +97,7 @@ function createColumns(
 		id: "createdBy",
 		header: t("columnCreatedBy"),
 		enableSorting: true,
-		sortingFn: (rowA, rowB) => {
+		sortFn: (rowA, rowB) => {
 			const a = rowA.original.createdBy.username;
 			const b = rowB.original.createdBy.username;
 			return a.localeCompare(b);
@@ -123,7 +124,7 @@ function createColumns(
 		id: "usedBy",
 		header: t("columnUsedBy"),
 		enableSorting: true,
-		sortingFn: (rowA, rowB) => {
+		sortFn: (rowA, rowB) => {
 			const a = rowA.original.usedBy?.username ?? "";
 			const b = rowB.original.usedBy?.username ?? "";
 			return a.localeCompare(b);
@@ -238,7 +239,7 @@ export function InviteCodesTable({
 		[onDeleteCode, t],
 	);
 
-	const columnVisibility: VisibilityState = isMobile
+	const columnVisibility: ColumnVisibilityState = isMobile
 		? { createdBy: false, usedBy: false, usedAt: false }
 		: {};
 

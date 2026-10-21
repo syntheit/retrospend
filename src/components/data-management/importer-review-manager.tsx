@@ -1,6 +1,5 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import {
@@ -15,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -412,7 +412,7 @@ export function ImporterReviewManager({
 	};
 
 	const columns = useMemo(
-		(): ColumnDef<ImportTransaction>[] => [
+		(): DataTableColumnDef<ImportTransaction>[] => [
 			{
 				id: "select",
 				header: ({ table }) => {
@@ -538,7 +538,7 @@ export function ImporterReviewManager({
 				accessorKey: "date",
 				header: t("date"),
 				enableSorting: true,
-				sortingFn: "datetime",
+				sortFn: "datetime",
 				cell: ({ row }) => {
 					const isDuplicate = row.original.isDuplicate;
 					return (
@@ -602,7 +602,7 @@ export function ImporterReviewManager({
 						</div>
 					);
 				},
-				sortingFn: (rowA, rowB) => {
+				sortFn: (rowA, rowB) => {
 					const a = rowA.original.category ?? "";
 					const b = rowB.original.category ?? "";
 					return a.localeCompare(b);

@@ -1,10 +1,11 @@
-import { type ColumnDef, type VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -44,7 +45,7 @@ interface ShadowProfile {
 function createShadowColumns(
 	onDelete: (id: string, name: string) => void,
 	t: ReturnType<typeof useTranslations<"admin">>,
-): ColumnDef<ShadowProfile>[] {
+): DataTableColumnDef<ShadowProfile>[] {
 	return [
 		{
 			accessorKey: "name",
@@ -122,7 +123,7 @@ function createShadowColumns(
 			header: () => <div className="text-right">{t("columnCreated")}</div>,
 			enableSorting: true,
 			size: 130,
-			sortingFn: "datetime",
+			sortFn: "datetime",
 			cell: ({ row }) => (
 				<div className="text-right text-muted-foreground text-sm">
 					{format(new Date(row.original.createdAt), "MMM d, yyyy")}
@@ -178,7 +179,7 @@ interface GuestSession {
 function createGuestColumns(
 	onDelete: (id: string, name: string) => void,
 	t: ReturnType<typeof useTranslations<"admin">>,
-): ColumnDef<GuestSession>[] {
+): DataTableColumnDef<GuestSession>[] {
 	return [
 		{
 			accessorKey: "name",
@@ -214,7 +215,7 @@ function createGuestColumns(
 			header: () => <div className="text-right">{t("columnLastActive")}</div>,
 			enableSorting: true,
 			size: 130,
-			sortingFn: "datetime",
+			sortFn: "datetime",
 			cell: ({ row }) => (
 				<div className="text-right text-muted-foreground text-sm">
 					{format(new Date(row.original.lastActiveAt), "MMM d, yyyy")}
@@ -226,7 +227,7 @@ function createGuestColumns(
 			header: () => <div className="text-right">{t("columnCreated")}</div>,
 			enableSorting: true,
 			size: 130,
-			sortingFn: "datetime",
+			sortFn: "datetime",
 			cell: ({ row }) => (
 				<div className="text-right text-muted-foreground text-sm">
 					{format(new Date(row.original.createdAt), "MMM d, yyyy")}
@@ -384,11 +385,11 @@ export function ParticipantsTable() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [t]);
 
-	const shadowVisibility: VisibilityState = isMobile
+	const shadowVisibility: ColumnVisibilityState = isMobile
 		? { projectCount: false, createdAt: false }
 		: {};
 
-	const guestVisibility: VisibilityState = isMobile
+	const guestVisibility: ColumnVisibilityState = isMobile
 		? { createdAt: false }
 		: {};
 

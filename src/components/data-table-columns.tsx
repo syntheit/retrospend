@@ -1,10 +1,10 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { ClipboardCopy, Copy, Edit2, EyeOff, Info, MoreHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { z } from "zod";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
@@ -96,8 +96,8 @@ function createExpenseColumns(
 	 * precedence over the legacy per-row dropdown menu.
 	 */
 	onOpenSheet?: (id: string) => void,
-): ColumnDef<z.infer<typeof expenseSchema>>[] {
-	const columns: ColumnDef<z.infer<typeof expenseSchema>>[] = [
+): DataTableColumnDef<z.infer<typeof expenseSchema>>[] {
+	const columns: DataTableColumnDef<z.infer<typeof expenseSchema>>[] = [
 		{
 			accessorKey: "title",
 			header: t?.("columnTitle") ?? "Title",
@@ -186,7 +186,7 @@ function createExpenseColumns(
 					/>
 				);
 			},
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.category?.name || "";
 				const b = rowB.original.category?.name || "";
 				return a.localeCompare(b);
@@ -197,7 +197,7 @@ function createExpenseColumns(
 			header: t?.("columnDate") ?? "Date",
 			enableSorting: true,
 			size: 130,
-			sortingFn: "datetime",
+			sortFn: "datetime",
 			cell: ({ row }) => {
 				const date = row.original.date;
 				return (
@@ -243,7 +243,7 @@ function createExpenseColumns(
 				return row.currency === "USD" || !row.exchangeRate ? 0 : row.amount;
 			},
 			enableSorting: true,
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a =
 					rowA.original.currency === "USD" || !rowA.original.exchangeRate
 						? 0
@@ -298,7 +298,7 @@ function createExpenseColumns(
 			);
 		},
 		enableSorting: true,
-		sortingFn: (rowA, rowB) => {
+		sortFn: (rowA, rowB) => {
 			const a = convertExpenseAmountForDisplay(
 				rowA.original,
 				_homeCurrency,

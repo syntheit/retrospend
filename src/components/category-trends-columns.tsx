@@ -1,6 +1,5 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import type { TooltipProps } from "recharts";
 import {
 	Line,
@@ -10,6 +9,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import {
 	TooltipContent,
 	TooltipProvider,
@@ -97,7 +97,7 @@ export function createCategoryTrendColumns(
 	getPeriodLabel: (bucketSize: BucketSize) => string,
 	displayName?: (name: string) => string,
 	t?: TFunction,
-): ColumnDef<CategoryTrendRow>[] {
+): DataTableColumnDef<CategoryTrendRow>[] {
 	const periodLabel = getPeriodLabel(bucketSize);
 	const tr = t ?? ((key: string) => key);
 
@@ -107,7 +107,7 @@ export function createCategoryTrendColumns(
 			header: tr("categoryColumn"),
 			enableSorting: true,
 			meta: { flex: true },
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.category.name;
 				const b = rowB.original.category.name;
 				return a.localeCompare(b);
