@@ -12,6 +12,7 @@ import { db as globalDb } from "~/server/db";
 import { getShadowInviteEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { getImageUrl } from "~/server/storage";
+import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 
 const participantRefSchema = z.object({
@@ -37,7 +38,12 @@ export const peopleRouter = createTRPCRouter({
 			// do NOT filter by createdById here — that would hide project ghosts
 			// created by other members. Private (non-project) shadows of unrelated
 			// users are never returned because RLS excludes them.
-			const shadows = await ctx.db.shadowProfile.findMany({
+			//
+			// Being able to see a ghost doesn't mean seeing its email: that follows
+			// the shared contact rule (creator, or EDITOR+ in one of its projects).
+			// So match on email only for ghosts whose email the caller may see,
+			// otherwise a substring search would leak the address bit by bit.
+			const candidates = await ctx.db.shadowProfile.findMany({
 				where: {
 					claimedById: null,
 					OR: [
@@ -46,8 +52,29 @@ export const peopleRouter = createTRPCRouter({
 					],
 				},
 				select: { id: true, name: true, email: true },
-				take: 10,
+				take: 50,
 			});
+			const contactVisible = await buildContactVisibility(
+				ctx.db,
+				{ participantType: "user", participantId: userId },
+				candidates.map((s) => ({
+					participantType: "shadow",
+					participantId: s.id,
+				})),
+			);
+			const shadows = candidates
+				.map((s) => ({
+					...s,
+					email: contactVisible({ participantType: "shadow", participantId: s.id })
+						? s.email
+						: null,
+				}))
+				.filter(
+					(s) =>
+						s.name.toLowerCase().includes(query) ||
+						(s.email?.toLowerCase().includes(query) ?? false),
+				)
+				.slice(0, 10);
 
 			// Contacts: users we've previously transacted with (fuzzy search)
 			const contactUserIds = await ctx.db.splitParticipant.findMany({

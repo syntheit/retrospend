@@ -7,6 +7,7 @@ import {
 	computeBalanceBatch,
 	computeBalanceWithProjects,
 } from "./balance";
+import { buildContactVisibility, redactContact } from "./contact-visibility";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import type { ParticipantRef } from "./types";
@@ -1323,10 +1324,33 @@ export class PeopleService {
 	}
 
 	/**
-	 * Resolves display identities for a batch of participant refs.
-	 * Deduplicates DB lookups per participant type.
+	 * Resolves display identities for a batch of participant refs, with ghost
+	 * and guest contact details (email, phone) only where the actor may see
+	 * them under the shared contact-visibility rule.
 	 */
 	private async resolveIdentitiesBatch(
+		contacts: Array<{
+			participantType: ParticipantType;
+			participantId: string;
+		}>,
+	): Promise<PersonIdentity[]> {
+		const identities = await this.resolveIdentitiesUnfiltered(contacts);
+		if (identities.length === 0) return identities;
+		const visible = await buildContactVisibility(
+			this.db,
+			this.actor,
+			identities,
+		);
+		return identities.map((identity) => redactContact(identity, visible));
+	}
+
+	/**
+	 * Resolves display identities for a batch of participant refs, including
+	 * raw contact details. Deduplicates DB lookups per participant type. Only
+	 * for internal use: anything returned to a client goes through
+	 * {@link resolveIdentitiesBatch}.
+	 */
+	private async resolveIdentitiesUnfiltered(
 		contacts: Array<{
 			participantType: ParticipantType;
 			participantId: string;
@@ -1467,7 +1491,8 @@ export class PeopleService {
 			).values(),
 		);
 
-		const identities = await this.resolveIdentitiesBatch(uniqueRefs);
+		// Names and avatars only, so the contact-detail check isn't needed.
+		const identities = await this.resolveIdentitiesUnfiltered(uniqueRefs);
 		const identityMap = new Map(
 			uniqueRefs.map((ref, i) => [
 				`${ref.participantType}:${ref.participantId}`,

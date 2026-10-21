@@ -119,6 +119,11 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 	// Session check
 	const { data: session, isPending: sessionPending } = useSession();
 
+	// Signed-in users join through the invite with their own account. The ref
+	// keeps it to one call even if the effect below runs again.
+	const joinWithAccount = api.guest.joinWithAccount.useMutation();
+	const joinStarted = useRef(false);
+
 	// Invite link validation
 	const {
 		data: linkInfo,
@@ -154,11 +159,27 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 			return;
 		}
 
-		// Non-VIEWER: check if user is already authenticated
+		// Non-VIEWER: wait for the session so a signed-in user isn't shown the
+		// guest form while it loads.
+		if (sessionPending) return;
 		if (session?.user) {
-			// Logged-in user: strip param and continue as authenticated
-			stripInviteParam();
-			setInviteHandled(true);
+			// Signed-in user: join with their own account (the server only adds
+			// the account behind this session), then continue as authenticated.
+			if (joinStarted.current) return;
+			joinStarted.current = true;
+			joinWithAccount.mutate(
+				{ linkId: inviteLinkId },
+				{
+					onSuccess: () => {
+						stripInviteParam();
+						setInviteHandled(true);
+					},
+					onError: (err) => {
+						setInviteErrorMessage(err.message);
+						setAccessMode("invite-error");
+					},
+				},
+			);
 			return;
 		}
 
@@ -173,7 +194,7 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 
 		// Show join form
 		setAccessMode("invite-join");
-	}, [inviteLinkId, inviteHandled, linkLoading, linkError, linkInfo, session, id]);
+	}, [inviteLinkId, inviteHandled, linkLoading, linkError, linkInfo, session, sessionPending, joinWithAccount, id]);
 
 	// Access resolution (after invite is handled or if no invite)
 	useEffect(() => {
@@ -335,11 +356,9 @@ function InviteJoinView({
 	onComplete: () => void;
 }) {
 	const t = useTranslations("claim");
-	const router = useRouter();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [registered, setRegistered] = useState(false);
-	const [isExistingUser, setIsExistingUser] = useState(false);
 	const [resumeEmailSent, setResumeEmailSent] = useState(false);
 	// Two-step identify flow: pick your own name from the project's existing
 	// ghosts FIRST, then confirm your email. Only "None of these — I'm new"
@@ -350,6 +369,9 @@ function InviteJoinView({
 	// The ghost the joiner recognised as themselves, if any. When set, the guest
 	// session absorbs this ghost's history after registering (via linkGuestToGhost).
 	const [selectedGhostId, setSelectedGhostId] = useState<string | null>(null);
+	const [unlinkableGhostName, setUnlinkableGhostName] = useState<
+		string | null
+	>(null);
 	// Guards the auto-open effect so a later refetch of the ghost list can't yank
 	// the user back to the chooser after they've moved on to the form.
 	const [autoOpenedChooser, setAutoOpenedChooser] = useState(false);
@@ -380,10 +402,7 @@ function InviteJoinView({
 	// expenses. See guest.register for the server-side counterpart.
 	const registerMutation = api.guest.register.useMutation({
 		onSuccess: (data) => {
-			if (data.existingUser) {
-				setIsExistingUser(true);
-				setRegistered(true);
-			} else if (data.resumeEmailSent) {
+			if (data.resumeEmailSent) {
 				// This email already joined: the server mailed a resume link
 				// instead of handing out the existing session.
 				setResumeEmailSent(true);
@@ -417,25 +436,30 @@ function InviteJoinView({
 
 	// Picked an existing ghost: carry its name into the form, then just confirm
 	// email. Choosing "I'm new" clears any prior pick.
-	const handlePickGhost = (ghost: { id: string; name: string }) => {
-		setSelectedGhostId(ghost.id);
+	// A ghost that is also in other projects can't be linked by a guest (the
+	// server refuses): join as a new person with that name and explain how to
+	// merge the history later.
+	const handlePickGhost = (ghost: {
+		id: string;
+		name: string;
+		linkable: boolean;
+	}) => {
+		setSelectedGhostId(ghost.linkable ? ghost.id : null);
+		setUnlinkableGhostName(ghost.linkable ? null : ghost.name);
 		setName(ghost.name);
 		setIdentifyStep("form");
 	};
 	const handlePickNew = () => {
 		setSelectedGhostId(null);
+		setUnlinkableGhostName(null);
 		setName("");
 		setIdentifyStep("form");
 	};
 
 	const handleContinue = () => {
-		if (isExistingUser) {
-			router.push("/login");
-		} else {
-			onComplete();
-			// Force page reload so the tRPC client picks up the new guest token
-			window.location.href = `/projects/${projectId}`;
-		}
+		onComplete();
+		// Force page reload so the tRPC client picks up the new guest token
+		window.location.href = `/projects/${projectId}`;
 	};
 
 	const isJoining =
@@ -519,43 +543,22 @@ function InviteJoinView({
 						<div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
 							<CheckCircle2 className="h-8 w-8 text-emerald-500" />
 						</div>
-						{isExistingUser ? (
-							<>
-								<h1 className="font-bold text-xl">
-									You&apos;re Already a Member!
-								</h1>
-								<p className="text-muted-foreground text-sm">
-									Your account has been added to{" "}
-									<span className="font-medium text-foreground">
-										{linkInfo.projectName}
-									</span>
-									. Log in to view the project.
-								</p>
-								<Button className="mt-2 gap-2" onClick={handleContinue}>
-									Go to Login
-									<ArrowRight className="h-4 w-4" />
-								</Button>
-							</>
-						) : (
-							<>
-								<h1 className="font-bold text-xl">You&apos;re In!</h1>
-								<p className="text-muted-foreground text-sm">
-									You&apos;ve joined{" "}
-									<span className="font-medium text-foreground">
-										{linkInfo.projectName}
-									</span>{" "}
-									as a{" "}
-									<span className="capitalize">
-										{linkInfo.roleGranted.toLowerCase()}
-									</span>
-									.
-								</p>
-								<Button className="mt-2 gap-2" onClick={handleContinue}>
-									View Project
-									<ArrowRight className="h-4 w-4" />
-								</Button>
-							</>
-						)}
+						<h1 className="font-bold text-xl">You&apos;re In!</h1>
+						<p className="text-muted-foreground text-sm">
+							You&apos;ve joined{" "}
+							<span className="font-medium text-foreground">
+								{linkInfo.projectName}
+							</span>{" "}
+							as a{" "}
+							<span className="capitalize">
+								{linkInfo.roleGranted.toLowerCase()}
+							</span>
+							.
+						</p>
+						<Button className="mt-2 gap-2" onClick={handleContinue}>
+							View Project
+							<ArrowRight className="h-4 w-4" />
+						</Button>
 					</CardContent>
 				</Card>
 			</div>
@@ -616,6 +619,17 @@ function InviteJoinView({
 							<ArrowLeft className="h-3.5 w-3.5" />
 							{t("chooserBack")}
 						</button>
+					)}
+
+					{unlinkableGhostName && (
+						<p className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground text-xs">
+							{t.rich("chooserGhostElsewhere", {
+								name: unlinkableGhostName,
+								strong: (chunks) => (
+									<span className="font-medium text-foreground">{chunks}</span>
+								),
+							})}
+						</p>
 					)}
 
 					<form className="space-y-4" onSubmit={handleSubmit}>

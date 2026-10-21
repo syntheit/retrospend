@@ -980,6 +980,11 @@ export function createStatefulDb() {
 					) {
 						if (!(w.id as { in: string[] }).in.includes(sp.id)) return false;
 					}
+					if (
+						typeof w?.createdById === "string" &&
+						sp.createdById !== w.createdById
+					)
+						return false;
 					// claimedById: { not: null }
 					const claimedFilter = w?.claimedById as
 						| { not?: unknown; in?: string[] }
@@ -1273,10 +1278,28 @@ export function createStatefulDb() {
 				results = results.filter(
 					(pp) => pp.participantType === where.participantType,
 				);
-			if (where?.participantId)
-				results = results.filter(
-					(pp) => pp.participantId === where.participantId,
+			if (where?.participantId) {
+				const pid = where.participantId as string | { in?: string[] };
+				results = results.filter((pp) =>
+					typeof pid === "object"
+						? (pid.in ?? []).includes(pp.participantId)
+						: pp.participantId === pid,
 				);
+			}
+			// role: { in: [...] } (contact-visibility manager lookup)
+			const roleFilter = where?.role as { in?: string[] } | string | undefined;
+			if (roleFilter !== undefined) {
+				results = results.filter((pp) =>
+					typeof roleFilter === "object"
+						? (roleFilter.in ?? []).includes(pp.role)
+						: pp.role === roleFilter,
+				);
+			}
+			// NOT: { projectId } (ghost-in-other-projects checks)
+			const notClause = where?.NOT as { projectId?: string } | undefined;
+			if (notClause?.projectId !== undefined) {
+				results = results.filter((pp) => pp.projectId !== notClause.projectId);
+			}
 			// Alias-aware role lookup uses an OR of {participantType, participantId}
 			// pairs (see buildCallerRoleMap). Match a row if it satisfies any pair.
 			if (Array.isArray(where?.OR)) {
@@ -1376,6 +1399,29 @@ export function createStatefulDb() {
 		findUnique: vi.fn((args: { where: { id: string } }) => {
 			return guestSessions.get(args.where.id) ?? null;
 		}),
+		findMany: vi.fn(
+			(
+				args: {
+					where?: {
+						id?: { in?: string[] };
+						projectId?: { in?: string[] } | string;
+					};
+				} = {},
+			) =>
+				[...guestSessions.values()].filter((gs) => {
+					const w = args.where;
+					if (w?.id?.in && !w.id.in.includes(gs.id)) return false;
+					if (typeof w?.projectId === "string" && gs.projectId !== w.projectId)
+						return false;
+					if (
+						typeof w?.projectId === "object" &&
+						w.projectId.in &&
+						!w.projectId.in.includes(gs.projectId)
+					)
+						return false;
+					return true;
+				}),
+		),
 		create: vi.fn((args: { data: Partial<GuestSessionRecord> }) => {
 			const id = nextId();
 			const record: GuestSessionRecord = {

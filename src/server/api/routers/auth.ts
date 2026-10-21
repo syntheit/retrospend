@@ -19,17 +19,15 @@ import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
-import { getAppSettings } from "~/server/services/settings";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 
 const rateLimiter = new InMemoryRateLimiter();
 
 export const authRouter = createTRPCRouter({
 	getAppFeatures: publicProcedure.query(async () => {
-		const settings = await getAppSettings();
-		const isSmtpConfigured = !!env.SMTP_HOST;
 		return {
-			isEmailEnabled: isSmtpConfigured && settings.enableEmail,
-			isSmtpConfigured,
+			isEmailEnabled: await isEmailDeliveryEnabled(),
+			isSmtpConfigured: !!env.SMTP_HOST,
 		};
 	}),
 
@@ -48,14 +46,9 @@ export const authRouter = createTRPCRouter({
 				});
 			}
 
-			const settings = await getAppSettings();
-			if (!env.SMTP_HOST || !settings.enableEmail) {
-				throw new TRPCError({
-					code: "PRECONDITION_FAILED",
-					message: "Email functionality is disabled",
-				});
-			}
-
+			// No "email disabled" guard here: a token only exists if a mail was
+			// sent, and redeeming it proves ownership even if an admin has since
+			// turned email off. Refusing would strand those users unverified.
 			const { db } = ctx;
 
 			const verificationToken = await db.verificationToken.findFirst({
@@ -108,8 +101,7 @@ export const authRouter = createTRPCRouter({
 				});
 			}
 
-			const settings = await getAppSettings();
-			if (!env.SMTP_HOST || !settings.enableEmail) {
+			if (!(await isEmailDeliveryEnabled())) {
 				throw new TRPCError({
 					code: "PRECONDITION_FAILED",
 					message: "Email functionality is disabled",
@@ -122,7 +114,7 @@ export const authRouter = createTRPCRouter({
 				where: { email: input.email },
 			});
 
-			if (!user || !env.SMTP_HOST || !settings.enableEmail) {
+			if (!user) {
 				// Run dummy hash to mitigate timing attacks
 				await hashPassword(crypto.randomBytes(32).toString("hex"));
 				return { success: true }; // Generic success to prevent enumeration
@@ -224,8 +216,7 @@ export const authRouter = createTRPCRouter({
 				where: { token: input.token },
 			});
 
-			const settings = await getAppSettings();
-			if (env.SMTP_HOST && settings.enableEmail) {
+			if (await isEmailDeliveryEnabled()) {
 				const htmlContent = getPasswordChangedAlertTemplate();
 
 				sendEmail(
@@ -281,13 +272,7 @@ export const authRouter = createTRPCRouter({
 			where: { id: session.user.id },
 		});
 
-		const settings = await getAppSettings();
-		if (
-			!user ||
-			user.emailVerified ||
-			!env.SMTP_HOST ||
-			!settings.enableEmail
-		) {
+		if (!user || user.emailVerified || !(await isEmailDeliveryEnabled())) {
 			return { success: true };
 		}
 

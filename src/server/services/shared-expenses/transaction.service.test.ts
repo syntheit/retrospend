@@ -1767,13 +1767,50 @@ describe("SharedTransactionService", () => {
 			).rejects.toMatchObject({ code: "FORBIDDEN" });
 		});
 
-		it("allows a shadow from another project the editor contributes to", async () => {
+		it("refuses a shadow from another project where the editor only contributes", async () => {
 			const { db, created } = mockUpdateDb({
 				existing: projectExisting(ALICE_ONLY),
 				members: [{ participantType: "user", participantId: "alice" }],
 				shadowCreators: { "shadow-x": "someone-else" },
 				shadowProjects: { "shadow-x": ["proj-other"] },
 				actorRoles: { "proj-other": "CONTRIBUTOR" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({
+					id: "txn-1",
+					splitWith: [alice, { participantType: "shadow", participantId: "shadow-x" }],
+					splitMode: "EQUAL",
+				}),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+			expect(created).toHaveLength(0);
+		});
+
+		it("lets a contributor use a shadow that is already in this project", async () => {
+			const { db, txClient, created } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				existingShadowIds: ["shadow-x"],
+				shadowCreators: { "shadow-x": "someone-else" },
+				actorRoles: { "proj-1": "CONTRIBUTOR" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await service.update({
+				id: "txn-1",
+				splitWith: [alice, { participantType: "shadow", participantId: "shadow-x" }],
+				splitMode: "EQUAL",
+			});
+			expect(txClient.splitParticipant.createMany).toHaveBeenCalled();
+			expect(created).toHaveLength(0);
+		});
+
+		it("allows a shadow from another project the editor manages", async () => {
+			const { db, created } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				shadowCreators: { "shadow-x": "someone-else" },
+				shadowProjects: { "shadow-x": ["proj-other"] },
+				actorRoles: { "proj-other": "EDITOR" },
 			});
 			const service = new SharedTransactionService(db as never, alice);
 			await service.update({

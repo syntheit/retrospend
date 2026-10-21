@@ -18,7 +18,13 @@ const mockEnv = vi.hoisted(() => ({
 const mockSendEmail = vi.hoisted(() => vi.fn());
 
 vi.mock("~/env", () => ({ env: mockEnv }));
-vi.mock("~/server/db", () => ({ db: {}, createUserScopedDb: vi.fn() }));
+// The router's global db (and the user-scoped one) point at whichever
+// stateful db the current call uses.
+const dbHolder = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+vi.mock("~/server/db", () => ({
+	db: new Proxy({}, { get: (_t, prop: string) => dbHolder.current[prop] }),
+	createUserScopedDb: vi.fn(() => dbHolder.current),
+}));
 vi.mock("~/server/better-auth", () => ({
 	auth: { api: { getSession: vi.fn().mockResolvedValue(null) } },
 }));
@@ -93,18 +99,34 @@ function withVerificationTokens(db: ReturnType<typeof createStatefulDb>) {
 }
 
 let ipCounter = 0;
-function guestCaller(db: ReturnType<typeof createStatefulDb>) {
+function guestCaller(db: ReturnType<typeof createStatefulDb>, userId?: string) {
 	ipCounter += 1;
+	const { wrapped } = withVerificationTokens(db);
+	dbHolder.current = wrapped;
 	return createGuestCaller({
-		session: null,
-		db: withVerificationTokens(db).wrapped as never,
+		session: userId
+			? ({
+					user: { id: userId, isActive: true, role: "USER", email: `${userId}@example.com` },
+				} as never)
+			: null,
+		db: wrapped as never,
 		// fresh IP per call so the per-IP rate limiter never trips in tests
 		headers: new Headers({ "x-forwarded-for": `10.0.${Math.floor(ipCounter / 250)}.${ipCounter % 250}` }),
 	});
 }
 
+async function joinWithAccount(
+	db: ReturnType<typeof createStatefulDb>,
+	userId: string,
+	linkId: string,
+) {
+	const promise = guestCaller(db, userId).joinWithAccount({ linkId });
+	promise.catch(() => undefined);
+	await vi.runAllTimersAsync();
+	return promise;
+}
+
 type RegisterGuestResult = {
-	existingUser: boolean;
 	projectId: string;
 	projectName: string;
 	resumeEmailSent?: boolean;
@@ -282,7 +304,7 @@ describe("Suite 3B: Guest registration via magic link", () => {
 			email: "marcus@example.com",
 		});
 
-		expect(result.existingUser).toBe(false);
+		expect(result.resumeEmailSent).toBe(false);
 		expect(result.projectId).toBe(projectId);
 		expect(result.role).toBe("CONTRIBUTOR");
 		expect(typeof result.sessionToken).toBe("string");
@@ -335,7 +357,7 @@ describe("Suite 3B: Guest registration via magic link", () => {
 			email: "marcus@example.com",
 		});
 
-		expect(second.existingUser).toBe(false);
+		expect(second.sessionToken).toBeUndefined();
 		expect(second.resumeEmailSent).toBe(true);
 		expect(second.sessionToken).toBeUndefined();
 		expect(second.guestSessionId).toBeUndefined();
@@ -446,7 +468,7 @@ describe("Suite 3B: Guest registration via magic link", () => {
 		).rejects.toThrow("This invite link is no longer valid");
 	});
 
-	it("existing Retrospend user email: adds as full participant, returns existingUser=true", async () => {
+	it("a registered user's email gets a plain guest: the account is never added", async () => {
 		// Pre-populate an existing user with the same email
 		db._stores.users.set("existing-user-1", {
 			id: "existing-user-1",
@@ -462,28 +484,20 @@ describe("Suite 3B: Guest registration via magic link", () => {
 			email: "regular@example.com",
 		});
 
-		// Should return existingUser=true (redirect to login)
-		expect(result.existingUser).toBe(true);
-		expect(result.projectId).toBe(projectId);
+		// Same answer as for any unknown address: no hint that an account exists
+		expect(result.resumeEmailSent).toBe(false);
+		expect(result.sessionToken).toBeDefined();
+		expect(db._stores.guestSessions.size).toBe(1);
 
-		// No GuestSession created
-		expect(db._stores.guestSessions.size).toBe(0);
-
-		// Full user added as ProjectParticipant
-		const participants = [...db._stores.projectParticipants.values()];
-		const userParticipant = participants.find(
+		// The registered account was NOT enrolled in the project
+		const userParticipant = [...db._stores.projectParticipants.values()].find(
 			(pp) =>
 				pp.participantType === "user" && pp.participantId === "existing-user-1",
 		);
-		expect(userParticipant).toBeDefined();
-		expect(userParticipant?.role).toBe("CONTRIBUTOR");
-
-		// useCount still incremented even for existing users
-		expect(db._stores.magicLinks.get(linkId)?.useCount).toBe(1);
+		expect(userParticipant).toBeUndefined();
 	});
 
-	it("existing user that is already a participant: upsert is a no-op (no duplicate)", async () => {
-		// Pre-populate the existing user
+	it("register responds the same shape for registered and unknown emails", async () => {
 		db._stores.users.set("existing-user-1", {
 			id: "existing-user-1",
 			name: "Alice Regular",
@@ -492,24 +506,85 @@ describe("Suite 3B: Guest registration via magic link", () => {
 			username: null,
 		});
 
-		// Add them as a participant already
+		const registered = await registerGuest(db, {
+			linkId,
+			name: "A",
+			email: "regular@example.com",
+		});
+		const unknown = await registerGuest(db, {
+			linkId,
+			name: "B",
+			email: "nobody@example.com",
+		});
+
+		expect(Object.keys(registered).sort()).toEqual(Object.keys(unknown).sort());
+	});
+});
+
+// ── Suite 3B2: Signed-in users join with their own account ───────────────────
+
+describe("Suite 3B2: joinWithAccount", () => {
+	let db: ReturnType<typeof createStatefulDb>;
+	let projectId: string;
+	let linkId: string;
+
+	beforeEach(() => {
+		db = createStatefulDb();
+		const project = addProject(db, { createdById: "alice", name: "Team Trip" });
+		projectId = project.id;
+		linkId = addMagicLink(db, {
+			projectId,
+			createdById: "alice",
+			roleGranted: "CONTRIBUTOR",
+		}).id;
+	});
+
+	it("adds the signed-in account with the link's role and counts the use", async () => {
+		const result = await joinWithAccount(db, "bob", linkId);
+
+		expect(result).toEqual({ projectId, alreadyMember: false });
+		const bob = [...db._stores.projectParticipants.values()].find(
+			(pp) => pp.participantType === "user" && pp.participantId === "bob",
+		);
+		expect(bob?.role).toBe("CONTRIBUTOR");
+		expect(db._stores.magicLinks.get(linkId)?.useCount).toBe(1);
+	});
+
+	it("leaves an existing member's role alone", async () => {
 		addProjectParticipant(db, {
 			projectId,
 			participantType: "user",
-			participantId: "existing-user-1",
-			role: "EDITOR", // higher role than link would grant
+			participantId: "bob",
+			role: "EDITOR",
 		});
 
-		const participantsBefore = db._stores.projectParticipants.size;
+		const result = await joinWithAccount(db, "bob", linkId);
 
-		await registerGuest(db, {
-			linkId,
-			name: "Alice Regular",
-			email: "regular@example.com",
+		expect(result.alreadyMember).toBe(true);
+		const rows = [...db._stores.projectParticipants.values()].filter(
+			(pp) => pp.participantId === "bob",
+		);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.role).toBe("EDITOR");
+		expect(db._stores.magicLinks.get(linkId)?.useCount).toBe(0);
+	});
+
+	it("rejects a revoked link", async () => {
+		const revoked = addMagicLink(db, {
+			projectId,
+			createdById: "alice",
+			isActive: false,
 		});
+		await expect(joinWithAccount(db, "bob", revoked.id)).rejects.toMatchObject({
+			code: "NOT_FOUND",
+		});
+	});
 
-		// No new participant record should be created (upsert update={} is a no-op)
-		expect(db._stores.projectParticipants.size).toBe(participantsBefore);
+	it("requires a signed-in user", async () => {
+		const promise = guestCaller(db).joinWithAccount({ linkId });
+		promise.catch(() => undefined);
+		await vi.runAllTimersAsync();
+		await expect(promise).rejects.toMatchObject({ code: "UNAUTHORIZED" });
 	});
 });
 
@@ -677,7 +752,7 @@ describe("Suite 3D: Guest registration idempotency", () => {
 			email: "marcus@example.com",
 		});
 
-		if (result.existingUser) throw new Error("Should be a new guest");
+		if (result.resumeEmailSent) throw new Error("Should be a new guest");
 
 		const session = db._stores.guestSessions.get(result.guestSessionId!);
 		expect(session).toBeDefined();

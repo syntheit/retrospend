@@ -5,14 +5,16 @@ import { env } from "~/env";
 import {
 	createTRPCRouter,
 	guestOrProtectedProcedure,
+	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { db as globalDb } from "~/server/db";
 import { notificationEmail } from "~/server/email-templates";
 import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
-import { getAppSettings } from "~/server/services/settings";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
 	anonymizeParticipantReferences,
 	DELETED_GUEST_SENTINEL,
@@ -32,12 +34,6 @@ const GUEST_RESUME_TTL_MS = 60 * 60 * 1000; // 1 hour
 function newGuestToken() {
 	const raw = randomBytes(32).toString("hex");
 	return { raw, hashed: createHash("sha256").update(raw).digest("hex") };
-}
-
-async function canSendEmail(): Promise<boolean> {
-	if (!env.SMTP_HOST) return false;
-	const settings = await getAppSettings();
-	return settings.enableEmail;
 }
 
 export const guestRouter = createTRPCRouter({
@@ -97,9 +93,8 @@ export const guestRouter = createTRPCRouter({
 	 *   be sent, mails a one-time resume link to that address and returns
 	 *   { resumeEmailSent: true } (no token: the caller hasn't proven they own
 	 *   the email). Without email, a separate guest session is created instead.
-	 * - If the email belongs to an existing User, adds them as a participant
-	 *   directly and returns { existingUser: true } so the frontend can redirect
-	 *   to login.
+	 * - A registered user's email is NOT special-cased (see below): signed-in
+	 *   users join through joinWithAccount instead.
 	 * - Otherwise creates a GuestSession and ProjectParticipant, increments
 	 *   useCount, and returns the session token (unhashed) for the frontend to
 	 *   store.
@@ -144,42 +139,13 @@ export const guestRouter = createTRPCRouter({
 			const { projectId } = link;
 			const email = input.email.toLowerCase().trim();
 
-			// Check if email belongs to an existing Retrospend user
-			const existingUser = await ctx.db.user.findUnique({
-				where: { email },
-				select: { id: true },
-			});
-
-			if (existingUser) {
-				// Add as a full participant (skip guest session)
-				await ctx.db.projectParticipant.upsert({
-					where: {
-						projectId_participantType_participantId: {
-							projectId,
-							participantType: "user",
-							participantId: existingUser.id,
-						},
-					},
-					create: {
-						projectId,
-						participantType: "user",
-						participantId: existingUser.id,
-						role: link.roleGranted,
-					},
-					update: {}, // already a participant: no change needed
-				});
-
-				await ctx.db.magicLink.update({
-					where: { id: link.id },
-					data: { useCount: { increment: 1 } },
-				});
-
-				return {
-					existingUser: true as const,
-					projectId,
-					projectName: link.project.name,
-				};
-			}
+			// Deliberately no lookup of registered accounts here. The caller is
+			// unauthenticated, so adding "the account with this email" to the
+			// project would let anyone with an invite link enroll any user, and
+			// answering differently for registered emails would reveal who has
+			// an account. A registered person joins with their account through
+			// joinWithAccount (signed in); typing their email here just makes a
+			// plain guest, exactly like any other address.
 
 			// The email may already have a guest session in this project (someone
 			// rejoining from a new device). Nobody has proven they own that email,
@@ -187,7 +153,7 @@ export const guestRouter = createTRPCRouter({
 			// who knows a guest's email take over their identity. Instead, when
 			// email works, mail a one-time resume link to the address on file;
 			// otherwise fall through and create a separate guest.
-			const emailAvailable = await canSendEmail();
+			const emailAvailable = await isEmailDeliveryEnabled();
 
 			// Wrap guest session creation in a transaction to prevent duplicates
 			// from concurrent registrations with the same email + project.
@@ -284,7 +250,6 @@ export const guestRouter = createTRPCRouter({
 				);
 
 				return {
-					existingUser: false as const,
 					resumeEmailSent: true as const,
 					projectId,
 					projectName: link.project.name,
@@ -292,7 +257,6 @@ export const guestRouter = createTRPCRouter({
 			}
 
 			return {
-				existingUser: false as const,
 				resumeEmailSent: false as const,
 				sessionToken: result.sessionToken,
 				guestSessionId: result.guestSessionId,
@@ -390,6 +354,70 @@ export const guestRouter = createTRPCRouter({
 					guestSessionId: session.id,
 					projectId: session.projectId,
 				};
+			});
+		}),
+
+	/**
+	 * A signed-in user joins a project through its invite link with their own
+	 * account. This is the only way an invite link adds a registered account:
+	 * the session proves who is joining, unlike the email typed into register.
+	 *
+	 * Uses the global db because RLS hides a project's links and roster from
+	 * someone who isn't a member yet. Already a member: no change, and the link
+	 * use isn't counted again.
+	 */
+	joinWithAccount: protectedProcedure
+		.input(z.object({ linkId: z.string().min(1) }))
+		.mutation(async ({ ctx, input }) => {
+			const userId = ctx.session.user.id;
+			const clientIp = getClientIp(ctx.headers);
+			if (!rateLimiter.check(`guestJoinAccount_${clientIp}`, 10, 60_000)) {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: "Rate limit exceeded",
+				});
+			}
+
+			return await globalDb.$transaction(async (tx) => {
+				const link = await tx.magicLink.findUnique({
+					where: { id: input.linkId },
+				});
+				if (!link) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "This invite link is no longer valid",
+					});
+				}
+
+				const existing = await tx.projectParticipant.findUnique({
+					where: {
+						projectId_participantType_participantId: {
+							projectId: link.projectId,
+							participantType: "user",
+							participantId: userId,
+						},
+					},
+				});
+				if (existing) {
+					return { projectId: link.projectId, alreadyMember: true };
+				}
+
+				validateLinkOrThrow(link);
+
+				await tx.projectParticipant.create({
+					data: {
+						projectId: link.projectId,
+						participantType: "user",
+						participantId: userId,
+						role: link.roleGranted,
+					},
+				});
+				await tx.magicLink.update({
+					where: { id: link.id },
+					data: { useCount: { increment: 1 } },
+				});
+
+				return { projectId: link.projectId, alreadyMember: false };
 			});
 		}),
 

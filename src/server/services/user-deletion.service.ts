@@ -582,6 +582,23 @@ export async function anonymizeAndDeleteUser(
 		// UPDATE ... SET changes = replace(changes::text, userId, DELETED_USER_SENTINEL)::jsonb
 		// query can be added here.
 
+		// Ghosts this user created are cascade-deleted with the user. Detach them
+		// from shared records first (same as an admin deleting a ghost), so no
+		// project membership, split or settlement is left pointing at a shadow
+		// row that no longer exists.
+		const ownedShadows = await tx.shadowProfile.findMany({
+			where: { createdById: userId },
+			select: { id: true },
+		});
+		for (const shadow of ownedShadows) {
+			await anonymizeParticipantReferences(
+				tx as unknown as PrismaTx,
+				"shadow",
+				shadow.id,
+				DELETED_SHADOW_SENTINEL,
+			);
+		}
+
 		// Delete the user - cascades all personal data (expenses, budgets, sessions, etc.)
 		await tx.user.delete({ where: { id: userId } });
 

@@ -1167,10 +1167,11 @@ export class SharedTransactionService {
 	/**
 	 * Shadows that aren't in the project yet get auto-added to it, which also
 	 * puts them on the path to being claimed through this project. So the actor
-	 * may only bring in a shadow they have a relationship with: one they created,
-	 * or one already in another project where they are CONTRIBUTOR or higher.
-	 * Guests can only use shadows already in their project. Without this anyone
-	 * could pull an arbitrary shadow id into their own project.
+	 * may only bring in a shadow they created, or one already in another project
+	 * where they are EDITOR or ORGANIZER. Using a shadow that is already in this
+	 * project is fine for anyone who may write here. Guests can only use shadows
+	 * already in their project. Without this anyone could pull an arbitrary
+	 * shadow id into their own project.
 	 */
 	private async assertShadowsAddable(
 		tx: Prisma.TransactionClient,
@@ -1236,7 +1237,12 @@ export class SharedTransactionService {
 			},
 			select: { role: true },
 		});
-		return shared.some((m) => m.role !== "VIEWER");
+		// Pulling a ghost into another project widens what claiming it grants,
+		// and canMintClaimLink then needs EDITOR+ there too. So only someone who
+		// already manages one of the ghost's projects may do it: a CONTRIBUTOR
+		// must not be able to spread a ghost (and lock its organizer out of
+		// claim links) just by splitting an expense with it.
+		return shared.some((m) => m.role === "EDITOR" || m.role === "ORGANIZER");
 	}
 
 	/**

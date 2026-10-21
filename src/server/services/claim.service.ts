@@ -244,6 +244,20 @@ export async function canMintClaimLink(
 	return projectIds.every((id) => managed.has(id));
 }
 
+/**
+ * Thrown when a guest tries to link to a ghost that is also part of other
+ * projects. Only a claim link (minted by someone who runs all of them) may
+ * absorb such a ghost.
+ */
+export class GhostInOtherProjectsError extends Error {
+	constructor() {
+		super(
+			"This person is also part of other projects, so you can't link to them here. Join as yourself and ask an organizer for a claim link.",
+		);
+		this.name = "GhostInOtherProjectsError";
+	}
+}
+
 /** Thrown when a shadow is already claimed by a different user. */
 export class AlreadyClaimedError extends Error {
 	constructor() {
@@ -260,7 +274,7 @@ export class AlreadyClaimedError extends Error {
 export async function listUnclaimedProjectGhosts(
 	db: PrismaClient | Prisma.TransactionClient,
 	projectId: string,
-): Promise<Array<{ id: string; name: string }>> {
+): Promise<Array<{ id: string; name: string; linkable: boolean }>> {
 	const memberships = await db.projectParticipant.findMany({
 		where: { projectId, participantType: "shadow" },
 		select: { participantId: true },
@@ -273,7 +287,21 @@ export async function listUnclaimedProjectGhosts(
 		select: { id: true, name: true },
 		orderBy: { name: "asc" },
 	});
-	return shadows;
+
+	// Ghosts that are also in other projects are still listed (the joiner may
+	// recognise themselves) but can't be linked by a guest; see
+	// mergeShadowIntoGuest.
+	const elsewhere = await db.projectParticipant.findMany({
+		where: {
+			participantType: "shadow",
+			participantId: { in: shadows.map((s) => s.id) },
+			NOT: { projectId },
+		},
+		select: { participantId: true },
+	});
+	const inOtherProjects = new Set(elsewhere.map((m) => m.participantId));
+
+	return shadows.map((s) => ({ ...s, linkable: !inOtherProjects.has(s.id) }));
 }
 
 /**
@@ -338,6 +366,24 @@ export async function mergeShadowIntoGuest(
 		if (!guestMembership) {
 			throw new Error("You are not a participant of this project");
 		}
+
+		// The merge re-points the ghost's history in EVERY project and deletes
+		// it, but the guest only belongs to this one. A ghost that is also in
+		// other projects needs a claim link from someone who runs all of them.
+		// (Checked inside the transaction so a concurrent add can't slip by.)
+		const otherProjects = await tx.projectParticipant.findMany({
+			where: {
+				participantType: "shadow",
+				participantId: shadowId,
+				NOT: { projectId },
+			},
+			select: { id: true },
+			take: 1,
+		});
+		if (otherProjects.length > 0) {
+			throw new GhostInOtherProjectsError();
+		}
+
 		await tx.projectParticipant.delete({
 			where: { id: shadowMembership.id },
 		});

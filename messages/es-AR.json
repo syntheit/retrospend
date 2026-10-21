@@ -635,7 +635,8 @@
     "chooserBack": "Volver a la lista",
     "resumeEmailTitle": "Revisá tu correo",
     "resumeEmailBody": "Este correo ya se unió a <strong>{projectName}</strong>. Te mandamos un enlace a esa dirección para que puedas seguir donde lo dejaste. Funciona una sola vez y vence en una hora.",
-    "resumeLinkInvalid": "Este enlace no es válido, ya se usó o venció. Abrí de nuevo el enlace de invitación para obtener uno nuevo."
+    "resumeLinkInvalid": "Este enlace no es válido, ya se usó o venció. Abrí de nuevo el enlace de invitación para obtener uno nuevo.",
+    "chooserGhostElsewhere": "<strong>{name}</strong> también forma parte de otros proyectos, así que no podés quedarte con su historial desde esta invitación. Unite como vos mismo abajo y después pedile a un organizador un enlace de reclamo para unirlo."
   },
   "projects": {
     "title": "Proyectos",

@@ -9,6 +9,8 @@ vi.mock("~/server/storage", () => ({
 
 import {
 	addProject,
+	addProjectParticipant,
+	addShadowProfile,
 	addUser,
 	createStatefulDb,
 	makeUserRef,
@@ -298,5 +300,98 @@ describe("PeopleService person detail: per-project balances", () => {
 		expect(byId.get(null)?.balances).toEqual([
 			{ balance: 40, currency: "USD", direction: "you_owe_them" },
 		]);
+	});
+});
+
+describe("PeopleService identity contact details", () => {
+	let db: Db;
+	let projectId: string;
+	let ghostId: string;
+	const owner = makeUserRef("owner");
+	const viewer = makeUserRef("viewer");
+	const guest = { participantType: "guest" as const, participantId: "guest-1" };
+
+	beforeEach(() => {
+		txSeq = 0;
+		spSeq = 0;
+		db = createStatefulDb();
+		addUser(db, { id: "owner", name: "Owner" });
+		addUser(db, { id: "viewer", name: "Viewer" });
+		projectId = addProject(db, { createdById: "owner" }).id;
+		ghostId = addShadowProfile(db, {
+			createdById: "owner",
+			name: "Ghost",
+			email: "ghost@example.com",
+			phone: "+100",
+		}).id;
+		db._stores.guestSessions.set("guest-1", {
+			id: "guest-1",
+			name: "Guest",
+			email: "guest@example.com",
+			magicLinkId: "link-1",
+			projectId,
+			sessionToken: "x",
+			lastActiveAt: new Date(),
+			createdAt: new Date(),
+		});
+		for (const [type, id, role] of [
+			["user", "owner", "ORGANIZER"],
+			["user", "viewer", "VIEWER"],
+			["guest", "guest-1", "CONTRIBUTOR"],
+			["shadow", ghostId, "CONTRIBUTOR"],
+		] as const) {
+			addProjectParticipant(db, {
+				projectId,
+				participantType: type,
+				participantId: id,
+				role,
+			});
+		}
+		addTransaction(db, {
+			paidBy: owner,
+			amount: 40,
+			projectId,
+			splits: [
+				{ participantType: "user", participantId: "owner", shareAmount: 10 },
+				{ participantType: "user", participantId: "viewer", shareAmount: 10 },
+				{ participantType: "guest", participantId: "guest-1", shareAmount: 10 },
+				{ participantType: "shadow", participantId: ghostId, shareAmount: 10 },
+			],
+		});
+	});
+
+	const ghost = () => ({ participantType: "shadow" as const, participantId: ghostId });
+
+	it("a VIEWER sharing an expense sees no ghost email or phone", async () => {
+		const detail = await new PeopleService(db as never, viewer).getPersonDetail(
+			ghost(),
+		);
+		expect(detail.identity.email).toBeNull();
+		expect(detail.identity.phone).toBeNull();
+	});
+
+	it("a VIEWER's people list has no ghost or guest emails", async () => {
+		const people = await new PeopleService(db as never, viewer).listPeople();
+		expect(people.length).toBeGreaterThan(0);
+		for (const p of people) expect(p.identity.email).toBeNull();
+	});
+
+	it("a contributing guest sees no ghost email", async () => {
+		const detail = await new PeopleService(db as never, guest).getPersonDetail(
+			ghost(),
+			{ projectId },
+		);
+		expect(detail.identity.email).toBeNull();
+		expect(detail.identity.phone).toBeNull();
+	});
+
+	it("the ghost's organizer sees ghost and guest contact details", async () => {
+		const service = new PeopleService(db as never, owner);
+		const ghostDetail = await service.getPersonDetail(ghost());
+		expect(ghostDetail.identity.email).toBe("ghost@example.com");
+		expect(ghostDetail.identity.phone).toBe("+100");
+
+		const guestDetail = await service.getPersonDetail(guest);
+		expect(guestDetail.identity.email).toBe("guest@example.com");
 	});
 });
