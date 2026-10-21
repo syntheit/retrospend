@@ -51,6 +51,16 @@ interface SharedExpenseSectionProps {
 	onTheyOweFullAmountChange: (value: boolean) => void;
 	/** Whether the current user ("You") is part of the split. */
 	youIncluded: boolean;
+	/**
+	 * A saved payer who is not a split member (they paid for the others). Kept
+	 * as a "who paid" option so editing does not silently switch the payer.
+	 */
+	outsidePayer?: {
+		participantType: string;
+		participantId: string;
+		name: string;
+		avatarUrl?: string | null;
+	} | null;
 }
 
 export function SharedExpenseSection({
@@ -69,6 +79,7 @@ export function SharedExpenseSection({
 	theyOweFullAmount,
 	onTheyOweFullAmountChange,
 	youIncluded,
+	outsidePayer,
 }: SharedExpenseSectionProps) {
 	const t = useTranslations("expenseForm");
 	const { watch } = useFormContext<ExpenseFormData>();
@@ -115,8 +126,38 @@ export function SharedExpenseSection({
 	// one other. With You removed the toggle is meaningless.
 	const isSinglePerson = youIncluded && splitWith.length === 1;
 
+	// Who can be picked as the payer: every split member, plus a saved payer
+	// who paid for the others without taking a share (edit mode only).
+	const payerOptions = useMemo(() => {
+		if (
+			!outsidePayer ||
+			allParticipants.some(
+				(p) =>
+					p.participantType === outsidePayer.participantType &&
+					p.participantId === outsidePayer.participantId,
+			)
+		) {
+			return allParticipants;
+		}
+		const isYou =
+			outsidePayer.participantType === "user" &&
+			outsidePayer.participantId === currentUser.id;
+		return [
+			...allParticipants,
+			isYou
+				? youParticipant
+				: {
+						participantType: outsidePayer.participantType,
+						participantId: outsidePayer.participantId,
+						name: outsidePayer.name,
+						label: outsidePayer.name,
+						avatarUrl: outsidePayer.avatarUrl ?? null,
+					},
+		];
+	}, [allParticipants, outsidePayer, currentUser.id, youParticipant]);
+
 	// Determine the current payer
-	const paidByPerson = allParticipants.find(
+	const paidByPerson = payerOptions.find(
 		(p) =>
 			p.participantType === paidBy.participantType &&
 			p.participantId === paidBy.participantId,
@@ -124,10 +165,18 @@ export function SharedExpenseSection({
 	const youPaid =
 		paidBy.participantType === "user" &&
 		paidBy.participantId === currentUser.id;
+	// Whether the payer is one of the split members (false when they paid for
+	// the others without a share).
+	const payerInSplit = allParticipants.some(
+		(p) =>
+			p.participantType === paidBy.participantType &&
+			p.participantId === paidBy.participantId,
+	);
 
 	// If the selected payer leaves the split (e.g. You is removed while You was
 	// the payer), fall back to the first remaining participant so "who paid" and
-	// the split stay coherent.
+	// the split stay coherent. A saved outside payer is a valid option, so an
+	// edited expense keeps its payer.
 	useEffect(() => {
 		if (allParticipants.length === 0) return;
 		if (!paidByPerson) {
@@ -330,7 +379,7 @@ export function SharedExpenseSection({
 		totalShareUnits > 0 ? amount / totalShareUnits : 0;
 
 	// --- "Paid By" overflow: pills for <= 3 people, dropdown for 4+ ---
-	const usePaidByPills = allParticipants.length <= 3;
+	const usePaidByPills = payerOptions.length <= 3;
 
 	// --- Summary text ---
 	// The summary is derived from the actual per-person shares and the selected
@@ -342,7 +391,7 @@ export function SharedExpenseSection({
 
 		// Two-party splits (You + one other, whether via "full", "custom" or an
 		// even split) get a directional "who owes whom" line based on net balances.
-		if (youIncluded && allParticipants.length === 2) {
+		if (youIncluded && allParticipants.length === 2 && payerInSplit) {
 			const mine = shares_computed.find((s) => s.participantId === currentUser.id);
 			const other = shares_computed.find((s) => s.participantId !== currentUser.id);
 			if (mine && other) {
@@ -390,6 +439,7 @@ export function SharedExpenseSection({
 		allParticipants,
 		youIncluded,
 		youPaid,
+		payerInSplit,
 		paidBy.participantType,
 		paidBy.participantId,
 		paidByPerson,
@@ -412,7 +462,7 @@ export function SharedExpenseSection({
 				<Label className="font-semibold text-sm">{t("whoPaid")}</Label>
 				{usePaidByPills ? (
 					<div className="flex gap-2">
-						{allParticipants.map((p) => {
+						{payerOptions.map((p) => {
 							const isSelected =
 								paidBy.participantType === p.participantType &&
 								paidBy.participantId === p.participantId;
@@ -479,7 +529,7 @@ export function SharedExpenseSection({
 							align="start"
 							className="w-[var(--radix-popover-trigger-width)] p-1"
 						>
-							{allParticipants.map((p) => {
+							{payerOptions.map((p) => {
 								const isSelected =
 									paidBy.participantType === p.participantType &&
 									paidBy.participantId === p.participantId;

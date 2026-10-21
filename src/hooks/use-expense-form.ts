@@ -13,6 +13,10 @@ import { useSettings } from "~/hooks/use-settings";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
+import {
+	buildSharedExpensePrefill,
+	type PrefillPerson,
+} from "~/lib/shared-expense-prefill";
 
 import { api } from "~/trpc/react";
 
@@ -153,6 +157,10 @@ export function useExpenseForm({
 	// first-class member of the participants list; removing it means the expense
 	// is entirely the others' (you owe/get nothing). Default: included.
 	const [youIncluded, setYouIncluded] = useState(true);
+	// When editing an expense whose payer is not part of the split (someone
+	// paid for others), the payer is kept here so the form still offers and
+	// keeps them as "who paid" instead of falling back to a split member.
+	const [outsidePayer, setOutsidePayer] = useState<PrefillPerson | null>(null);
 
 	// Project selector state
 	const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projectId ?? null);
@@ -259,6 +267,7 @@ export function useExpenseForm({
 		setShares({});
 		setTheyOweFullAmount(false);
 		setYouIncluded(true);
+		setOutsidePayer(null);
 	}, []);
 
 	const { data: expense, isLoading: isLoadingExpense } =
@@ -595,59 +604,23 @@ export function useExpenseForm({
 		});
 		onTitleChange?.(sharedTx.description);
 
-		setPaidBy({
-			participantType: sharedTx.paidBy.participantType,
-			participantId: sharedTx.paidBy.participantId,
+		// All split state is derived in one pure step (see shared-expense-prefill)
+		// and applied together, so the form never renders a half-applied state:
+		// a "full amount" expense reopens as You + them with the toggle on, and a
+		// payer outside the split stays the payer.
+		const prefill = buildSharedExpensePrefill(sharedTx, {
+			participantType: resolvedParticipant.participantType,
+			participantId: resolvedParticipant.participantId,
 		});
-
-		setSplitMode(sharedTx.splitMode as "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES");
-
-		const others = sharedTx.splitParticipants.filter(
-			(sp) => !(sp.participantType === resolvedParticipant.participantType && sp.participantId === resolvedParticipant.participantId),
-		);
-
-		// Every other saved participant of ANY type (user, shadow, AND guest)
-		// goes into the single `splitWith` list, so the picker marks them all as
-		// selected and the split preview shows them. Guests round-trip through the
-		// edit form correctly instead of being dropped from the selection.
-		setSplitWith(
-			others.map((sp) => ({
-				participantType: sp.participantType as "user" | "guest" | "shadow",
-				participantId: sp.participantId,
-				name: sp.name,
-				email: null,
-				avatarUrl: sp.avatarUrl ?? null,
-			})),
-		);
-
-		// "You" is present only if the current user actually has a saved split row.
-		setYouIncluded(
-			sharedTx.splitParticipants.some(
-				(sp) =>
-					sp.participantType === resolvedParticipant.participantType &&
-					sp.participantId === resolvedParticipant.participantId,
-			),
-		);
-
-		if (sharedTx.splitMode === "EXACT") {
-			const amounts: Record<string, number> = {};
-			for (const sp of sharedTx.splitParticipants) {
-				amounts[`${sp.participantType}:${sp.participantId}`] = sp.shareAmount ?? 0;
-			}
-			setExactAmounts(amounts);
-		} else if (sharedTx.splitMode === "PERCENTAGE") {
-			const pcts: Record<string, number> = {};
-			for (const sp of sharedTx.splitParticipants) {
-				pcts[`${sp.participantType}:${sp.participantId}`] = sp.sharePercentage ?? 0;
-			}
-			setPercentages(pcts);
-		} else if (sharedTx.splitMode === "SHARES") {
-			const sh: Record<string, number> = {};
-			for (const sp of sharedTx.splitParticipants) {
-				sh[`${sp.participantType}:${sp.participantId}`] = sp.shareUnits ?? 1;
-			}
-			setShares(sh);
-		}
+		setPaidBy(prefill.paidBy);
+		setSplitMode(prefill.splitMode);
+		setSplitWith(prefill.splitWith);
+		setYouIncluded(prefill.youIncluded);
+		setTheyOweFullAmount(prefill.theyOweFullAmount);
+		setOutsidePayer(prefill.outsidePayer);
+		setExactAmounts(prefill.exactAmounts);
+		setPercentages(prefill.percentages);
+		setShares(prefill.shares);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [sharedTx?.id, currentUser.id]);
 
@@ -1040,6 +1013,7 @@ export function useExpenseForm({
 			setShares({});
 			setTheyOweFullAmount(false);
 			setYouIncluded(true);
+			setOutsidePayer(null);
 
 			if (saveAndNewRef.current) {
 				saveAndNewRef.current = false;
@@ -1165,6 +1139,7 @@ export function useExpenseForm({
 		setTheyOweFullAmount,
 		youIncluded,
 		setYouIncluded,
+		outsidePayer,
 		isSharedExpense,
 		currentUser,
 		// Project selector

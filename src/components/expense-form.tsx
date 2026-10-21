@@ -131,6 +131,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 			setTheyOweFullAmount,
 			youIncluded,
 			setYouIncluded,
+			outsidePayer,
 			isSharedExpense,
 			currentUser,
 			isSharedTransactionEdit,
@@ -490,6 +491,7 @@ export const ExpenseForm = forwardRef<ExpenseFormHandle, ExpenseFormProps>(
 									onSharesChange={handleSharesChange}
 									onSplitModeChange={handleSplitModeChange}
 									onTheyOweFullAmountChange={setTheyOweFullAmount}
+									outsidePayer={outsidePayer}
 									paidBy={paidBy}
 									percentages={percentages}
 									shares={shares}
