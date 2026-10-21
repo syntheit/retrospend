@@ -27,7 +27,6 @@ export const userRouter = createTRPCRouter({
 						)
 						.transform((v) => v.toLowerCase()),
 					email: z
-						.string()
 						.email("Invalid email address")
 						.max(254)
 						.transform((v) => v.toLowerCase().trim()),
@@ -46,7 +45,7 @@ export const userRouter = createTRPCRouter({
 						.optional(),
 				})
 				.refine((data) => !data.password || !!data.currentPassword, {
-					message: "Current password is required",
+					error: "Current password is required",
 					path: ["currentPassword"],
 				}),
 		)

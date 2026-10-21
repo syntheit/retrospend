@@ -49,8 +49,8 @@ import { api } from "~/trpc/react";
 const currencyCodeSchema = z
 	.string()
 	.refine(
-		(val): val is CurrencyCode => val in CURRENCIES || val in CRYPTO_CURRENCIES,
-		{ message: "Invalid currency code" },
+		(val) => val in CURRENCIES || val in CRYPTO_CURRENCIES,
+		{ error: "Invalid currency code" },
 	);
 
 const allPreferencesSchema = z.object({

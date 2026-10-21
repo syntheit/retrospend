@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Page } from "~prisma";
 import { DEFAULT_PAGE_SETTINGS, getPageSettings, updatePageSettings } from "../user-settings";
 
 function dbWith(stored: unknown) {
@@ -53,5 +54,67 @@ describe("page settings parsing", () => {
 		await expect(
 			updatePageSettings(db as never, "u", "TABLE", { pageSize: 25 } as never),
 		).resolves.toMatchObject({ pageSize: 25, showDescriptions: true });
+	});
+});
+
+describe("stored page settings rows", () => {
+	const pages = Object.keys(DEFAULT_PAGE_SETTINGS) as Page[];
+
+	it.each(pages)("%s reads back a stored copy of its default", async (page) => {
+		const stored = JSON.parse(JSON.stringify(DEFAULT_PAGE_SETTINGS[page]));
+		await expect(getPageSettings(dbWith(stored) as never, "u", page)).resolves.toEqual(
+			DEFAULT_PAGE_SETTINGS[page],
+		);
+	});
+
+	it("drops keys a page no longer uses and keeps the rest", async () => {
+		const budget = dbWith({
+			version: 1,
+			showRolloverAmounts: false,
+			showPegToActual: true,
+			showChart: true,
+		});
+
+		await expect(getPageSettings(budget as never, "u", "BUDGET")).resolves.toEqual({
+			version: 1,
+			showRolloverAmounts: false,
+			showPegToActual: true,
+		});
+	});
+
+	it("reads analytics category preferences keyed by category id", async () => {
+		const analytics = dbWith({
+			version: 1,
+			categoryPreferences: {
+				cat_a: { isFlexible: true },
+				cat_b: { isFlexible: false, legacy: 1 },
+			},
+		});
+
+		await expect(getPageSettings(analytics as never, "u", "ANALYTICS")).resolves.toEqual({
+			version: 1,
+			categoryPreferences: {
+				cat_a: { isFlexible: true },
+				cat_b: { isFlexible: false },
+			},
+		});
+	});
+
+	it("falls back to the default for rows that are missing fields or are not objects", async () => {
+		const cases: [Page, unknown][] = [
+			["WEALTH", { version: 1, showCurrencyExposure: false }],
+			["ANALYTICS", { version: 1, categoryPreferences: { cat_a: { isFlexible: "yes" } } }],
+			["EXPENSE", { version: 1, defaultCurrency: "EURO", showExchangeRates: true }],
+			["TABLE", { version: 2, pageSize: 25, showDescriptions: true }],
+			["TABLE", null],
+			["TABLE", "settings"],
+			["TABLE", []],
+		];
+
+		for (const [page, stored] of cases) {
+			await expect(getPageSettings(dbWith(stored) as never, "u", page)).resolves.toEqual(
+				DEFAULT_PAGE_SETTINGS[page],
+			);
+		}
 	});
 });

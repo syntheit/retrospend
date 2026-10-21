@@ -22,7 +22,7 @@ import { api } from "~/trpc/react";
 
 export const expenseSchema = z.object({
 	title: z.string().optional(),
-	amount: z.number({ invalid_type_error: "Amount is required" }).positive("Amount must be positive"),
+	amount: z.number({ error: "Amount is required" }).positive("Amount must be positive"),
 	currency: z
 		.string()
 		.refine(
@@ -37,7 +37,7 @@ export const expenseSchema = z.object({
 	// round to 0 USD, which must not block saving.
 	amountInUSD: z.number().nonnegative().optional(),
 	pricingSource: z.string().optional(),
-	date: z.date(),
+	date: z.date({ error: "Please select a date" }),
 	location: z.string().optional(),
 	description: z.string().optional(),
 	categoryId: z.string().min(1, "Please select a category"),

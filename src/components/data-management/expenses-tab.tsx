@@ -86,10 +86,10 @@ export function ExpensesTab() {
 
 		if (!parseResult.success) {
 			// Format Zod errors
-			const formattedErrors: string[] = parseResult.error.errors.map((err) => {
+			const formattedErrors: string[] = parseResult.error.issues.map((err) => {
 				const rowIdx = (err.path[0] as number) + 1;
 				const field = err.path[1];
-				return `Row ${rowIdx}: ${field} - ${err.message}`;
+				return `Row ${rowIdx}: ${String(field)} - ${err.message}`;
 			});
 			// Deduplicate and slice if too many
 			return {

@@ -8,14 +8,14 @@ export const env = createEnv({
 	 */
 	server: {
 		BETTER_AUTH_SECRET: z.string().min(1),
-		DATABASE_URL: z.string().url(),
-		SIDECAR_URL: z.string().url().default("http://retrospend-sidecar:8080"),
+		DATABASE_URL: z.url(),
+		SIDECAR_URL: z.url().default("http://retrospend-sidecar:8080"),
 		WORKER_API_KEY: z.string().min(1).optional(),
 
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
-		PUBLIC_URL: z.string().url().optional(),
+		PUBLIC_URL: z.url().optional(),
 		TRUSTED_ORIGINS: z.string().optional(),
 		OPENROUTER_API_KEY: z.string().optional(),
 		SMTP_HOST: z.string().optional(),
@@ -36,7 +36,7 @@ export const env = createEnv({
 	 * `NEXT_PUBLIC_`.
 	 */
 	client: {
-		NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:1997"),
+		NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:1997"),
 		NEXT_PUBLIC_SHOW_LANDING_PAGE: z.enum(["true", "false"]).default("false"),
 		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: z.enum(["true", "false"]).default("true"),
 	},

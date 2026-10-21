@@ -86,7 +86,6 @@ export const authRouter = createTRPCRouter({
 		.input(
 			z.object({
 				email: z
-					.string()
 					.email()
 					.max(255)
 					.transform((v) => v.toLowerCase().trim()),

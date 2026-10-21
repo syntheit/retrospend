@@ -44,7 +44,7 @@ const recurringSchema = z.object({
 	categoryId: z.string().min(1, "Please select a category"),
 	frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]),
 	nextDueDate: z.date(),
-	websiteUrl: z.string().url().optional().or(z.literal("")),
+	websiteUrl: z.url().optional().or(z.literal("")),
 	paymentSource: z.string().optional(),
 	autoPay: z.boolean(),
 });

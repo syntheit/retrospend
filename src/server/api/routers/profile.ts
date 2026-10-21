@@ -168,7 +168,6 @@ export const profileRouter = createTRPCRouter({
 					)
 					.transform((v) => v.toLowerCase()),
 				email: z
-					.string()
 					.email("Invalid email address")
 					.max(254)
 					.transform((v) => v.toLowerCase().trim()),
@@ -366,7 +365,7 @@ export const profileRouter = createTRPCRouter({
 					confirmPassword: z.string().min(1, "Please confirm your password"),
 				})
 				.refine((data) => data.newPassword === data.confirmPassword, {
-					message: "Passwords do not match",
+					error: "Passwords do not match",
 					path: ["confirmPassword"],
 				}),
 		)

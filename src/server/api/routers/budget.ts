@@ -77,7 +77,7 @@ export const budgetRouter = createTRPCRouter({
 	upsertBudget: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.string().cuid(),
+				categoryId: z.cuid(),
 				amount: z.number().min(0, "Budget amount must be non-negative"),
 				currency: z.string().length(3, "Currency must be a 3-letter code"),
 				period: z.date(),
@@ -165,7 +165,7 @@ export const budgetRouter = createTRPCRouter({
 			z
 				.array(
 					z.object({
-						categoryId: z.string().cuid(),
+						categoryId: z.cuid(),
 						amount: z.number().min(0, "Budget amount must be non-negative"),
 						currency: z.string().length(3, "Currency must be a 3-letter code"),
 						period: z.date(),
@@ -249,7 +249,7 @@ export const budgetRouter = createTRPCRouter({
 	getBudgetSuggestions: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.string().cuid(),
+				categoryId: z.cuid(),
 				currency: z.string().length(3).optional().default("USD"),
 			}),
 		)
@@ -313,7 +313,7 @@ export const budgetRouter = createTRPCRouter({
 	deleteBudget: protectedProcedure
 		.input(
 			z.object({
-				budgetId: z.string().cuid(),
+				budgetId: z.cuid(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

@@ -87,7 +87,7 @@ export const categoriesRouter = createTRPCRouter({
 	update: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 				name: z.string().min(1, "Category name is required").max(64),
 				color: z.enum(CATEGORY_COLORS, {
 					message: "Category color is invalid",
@@ -140,8 +140,8 @@ export const categoriesRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
-				replacementCategoryId: z.string().cuid().optional(),
+				id: z.cuid(),
+				replacementCategoryId: z.cuid().optional(),
 				reassignToUncategorized: z.boolean().optional(),
 			}),
 		)

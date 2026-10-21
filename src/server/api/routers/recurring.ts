@@ -87,7 +87,7 @@ export const recurringRouter = createTRPCRouter({
 	get: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
@@ -137,10 +137,10 @@ export const recurringRouter = createTRPCRouter({
 				name: z.string().min(1).max(191),
 				amount: z.number().positive(),
 				currency: z.string().length(3).default("USD"),
-				categoryId: z.string().cuid().optional(),
+				categoryId: z.cuid().optional(),
 				frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]),
 				nextDueDate: z.date(),
-				websiteUrl: z.string().url().max(512).optional(),
+				websiteUrl: z.url().max(512).optional(),
 				paymentSource: z.string().min(1).max(191).optional(),
 				autoPay: z.boolean().default(true),
 			}),
@@ -192,14 +192,14 @@ export const recurringRouter = createTRPCRouter({
 	update: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 				name: z.string().min(1).max(191).optional(),
 				amount: z.number().positive().optional(),
 				currency: z.string().length(3).optional(),
-				categoryId: z.string().cuid().nullable().optional(),
+				categoryId: z.cuid().nullable().optional(),
 				frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]).optional(),
 				nextDueDate: z.date().optional(),
-				websiteUrl: z.string().url().max(512).nullable().optional(),
+				websiteUrl: z.url().max(512).nullable().optional(),
 				paymentSource: z.string().min(1).max(191).nullable().optional(),
 				autoPay: z.boolean().optional(),
 				isActive: z.boolean().optional(),
@@ -270,7 +270,7 @@ export const recurringRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -332,7 +332,7 @@ export const recurringRouter = createTRPCRouter({
 	confirmAndCreate: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 				// The due date the user is confirming. When sent, a repeat of the
 				// same confirm (double click, second tab) is rejected instead of
 				// booking the next period.

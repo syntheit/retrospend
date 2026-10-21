@@ -50,25 +50,23 @@ export const preferencesRouter = createTRPCRouter({
 					"EXPENSE",
 					"PROFILE",
 				]),
-				settings: z
-					.object({
-						version: z.number().optional(),
-						categoryPreferences: z
-							.record(z.string(), z.object({ isFlexible: z.boolean() }))
-							.optional(),
-						showRolloverAmounts: z.boolean().optional(),
-						showPegToActual: z.boolean().optional(),
-						showCurrencyExposure: z.boolean().optional(),
-						showHistoryChart: z.boolean().optional(),
-						showFavoritesOnly: z.boolean().optional(),
-						pageSize: z.number().min(10).max(100).optional(),
-						showDescriptions: z.boolean().optional(),
-						showUsedCodes: z.boolean().optional(),
-						showInactiveUsers: z.boolean().optional(),
-						defaultCurrency: z.string().length(3).optional(),
-						showExchangeRates: z.boolean().optional(),
-					})
-					.strict(),
+				settings: z.strictObject({
+					version: z.number().optional(),
+					categoryPreferences: z
+						.record(z.string(), z.object({ isFlexible: z.boolean() }))
+						.optional(),
+					showRolloverAmounts: z.boolean().optional(),
+					showPegToActual: z.boolean().optional(),
+					showCurrencyExposure: z.boolean().optional(),
+					showHistoryChart: z.boolean().optional(),
+					showFavoritesOnly: z.boolean().optional(),
+					pageSize: z.number().min(10).max(100).optional(),
+					showDescriptions: z.boolean().optional(),
+					showUsedCodes: z.boolean().optional(),
+					showInactiveUsers: z.boolean().optional(),
+					defaultCurrency: z.string().length(3).optional(),
+					showExchangeRates: z.boolean().optional(),
+				}),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -90,7 +88,7 @@ export const preferencesRouter = createTRPCRouter({
 	updateAnalyticsCategoryPreference: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.string().cuid(),
+				categoryId: z.cuid(),
 				isFlexible: z.boolean(),
 			}),
 		)
@@ -117,7 +115,7 @@ export const preferencesRouter = createTRPCRouter({
 	deleteAnalyticsCategoryPreference: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.string().cuid(),
+				categoryId: z.cuid(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -207,7 +205,7 @@ export const preferencesRouter = createTRPCRouter({
 	reorderFavorites: protectedProcedure
 		.input(
 			z.object({
-				exchangeRateIds: z.array(z.string().cuid()).max(100),
+				exchangeRateIds: z.array(z.cuid()).max(100),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -281,7 +279,7 @@ export const preferencesRouter = createTRPCRouter({
 	toggleFavoriteExchangeRate: protectedProcedure
 		.input(
 			z.object({
-				exchangeRateId: z.string().cuid(),
+				exchangeRateId: z.cuid(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

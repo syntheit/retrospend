@@ -10,9 +10,9 @@
 import { createHash } from "node:crypto";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { ZodError } from "zod";
 
 import { MissingRateError } from "~/lib/money";
+import { errorFormatter } from "~/server/api/error-formatter";
 import { auth } from "~/server/better-auth";
 import type { Session } from "~/server/better-auth/config";
 import { createUserScopedDb, db } from "~/server/db";
@@ -110,16 +110,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  */
 const t = initTRPC.context<typeof createTRPCContext>().create({
 	transformer: superjson,
-	errorFormatter({ shape, error }) {
-		return {
-			...shape,
-			data: {
-				...shape.data,
-				zodError:
-					error.cause instanceof ZodError ? error.cause.flatten() : null,
-			},
-		};
-	},
+	errorFormatter,
 });
 
 /**

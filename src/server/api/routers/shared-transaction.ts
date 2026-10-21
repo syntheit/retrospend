@@ -29,16 +29,16 @@ export const sharedTransactionRouter = createTRPCRouter({
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
 				description: z.string().min(1).max(500),
-				categoryId: z.string().cuid().optional(),
+				categoryId: z.cuid().optional(),
 				date: z.date(),
 				paidBy: participantRefSchema,
 				splitWith: z
 					.array(splitParticipantSchema)
 					.min(1, "A shared expense must have at least 1 participant"),
 				splitMode: splitModeEnum,
-				projectId: z.string().cuid().optional(),
+				projectId: z.cuid().optional(),
 				notes: z.string().max(5000).optional(),
-				receiptUrl: z.string().url().max(2048).optional(),
+				receiptUrl: z.url().max(2048).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -63,7 +63,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				amount: z.number().positive("Amount must be positive").optional(),
 				currency: z.string().min(1).max(10).optional(),
 				description: z.string().min(1).max(500).optional(),
-				categoryId: z.string().cuid().nullish(),
+				categoryId: z.cuid().nullish(),
 				date: z.date().optional(),
 				paidBy: participantRefSchema.optional(),
 				splitWith: z
@@ -71,9 +71,9 @@ export const sharedTransactionRouter = createTRPCRouter({
 					.min(1, "A shared expense must have at least 1 participant")
 					.optional(),
 				splitMode: splitModeEnum.optional(),
-				projectId: z.string().cuid().nullish(),
+				projectId: z.cuid().nullish(),
 				notes: z.string().max(5000).nullish(),
-				receiptUrl: z.string().url().max(2048).nullish(),
+				receiptUrl: z.url().max(2048).nullish(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

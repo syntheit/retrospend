@@ -7,7 +7,7 @@ import { ExpenseService } from "~/server/services/expense.service";
 import { getExcludedProjectIds, listSharedParticipationsForUser } from "~/server/services/shared-expense-integration";
 
 const expenseInputSchema = z.object({
-	id: z.string().uuid(),
+	id: z.guid(),
 	title: z.string().min(1).max(500),
 	amount: z.number().positive("Amount must be positive"),
 	currency: z.string().min(3).max(10).default(BASE_CURRENCY),
@@ -17,7 +17,7 @@ const expenseInputSchema = z.object({
 	date: z.date(),
 	location: z.string().max(500).optional(),
 	description: z.string().max(2000).optional(),
-	categoryId: z.string().cuid().optional(),
+	categoryId: z.cuid().optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
 });
@@ -62,7 +62,7 @@ export const expenseRouter = createTRPCRouter({
 		}),
 
 	getExpense: protectedProcedure
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.guid() }))
 		.query(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
 			const expense = await service.getExpense(ctx.session.user.id, input.id);
@@ -98,7 +98,7 @@ export const expenseRouter = createTRPCRouter({
 		}),
 
 	deleteExpense: protectedProcedure
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.guid() }))
 		.mutation(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
 			return await service.deleteExpense(ctx.session.user.id, input.id);
@@ -107,7 +107,7 @@ export const expenseRouter = createTRPCRouter({
 	exportCsv: protectedProcedure
 		.input(
 			z
-				.object({ expenseIds: z.array(z.string().uuid()).optional() })
+				.object({ expenseIds: z.array(z.guid()).optional() })
 				.optional(),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -133,7 +133,7 @@ export const expenseRouter = createTRPCRouter({
 							amountInUSD: z.number().positive().optional(),
 							location: z.string().nullable().optional(),
 							description: z.string().nullable().optional(),
-							categoryId: z.string().cuid().nullable().optional(),
+							categoryId: z.cuid().nullable().optional(),
 							pricingSource: z.string().nullable().optional(),
 							isAmortized: z.boolean().optional().default(false),
 							amortizeDuration: z.number().int().min(2).max(60).optional(),
@@ -166,8 +166,8 @@ export const expenseRouter = createTRPCRouter({
 	bulkUpdateCategory: protectedProcedure
 		.input(
 			z.object({
-				expenseIds: z.array(z.string().uuid()).min(1).max(500),
-				categoryId: z.string().cuid(),
+				expenseIds: z.array(z.guid()).min(1).max(500),
+				categoryId: z.cuid(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
