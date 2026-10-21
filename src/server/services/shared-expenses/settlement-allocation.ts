@@ -79,3 +79,74 @@ export function scopeDebtsForCurrency(
 	}
 	return debts;
 }
+
+/**
+ * The opposite of {@link scopeDebtsForCurrency}: the scopes where the PAYEE
+ * owes the payer in one currency (positive balance from the payer's side).
+ */
+export function reverseScopeDebtsForCurrency(
+	byProject: Map<string | null, Record<string, number>>,
+	currency: string,
+): ScopeDebt[] {
+	const debts: ScopeDebt[] = [];
+	for (const [projectId, byCurrency] of byProject) {
+		const balance = byCurrency[currency] ?? 0;
+		if (balance > DUST) debts.push({ projectId, owed: balance });
+	}
+	return debts;
+}
+
+/** Rows of a full settle-up in one currency, see allocateFullSettlement. */
+export interface FullSettlementRows {
+	cash: ScopeAllocation[];
+	payerOffsets: ScopeAllocation[];
+	payeeOffsets: ScopeAllocation[];
+}
+
+/**
+ * Rows of a full settle-up in one currency, when the pair also has debts
+ * going the other way in some scopes.
+ *
+ * Example: the payer owes 50 in Trip and is owed 30 in Rent, so the global
+ * balance is 20. Paying only the 20 into Trip would leave Trip at "you owe
+ * 30" and Rent at "they owe you 30" while the global view says even. A full
+ * settle-up therefore also cancels the opposite debts:
+ * - `cash`: the money actually paid (the net), allocated over the payer's
+ *   debts like any global payment (allocateAcrossScopes).
+ * - `payeeOffsets`: payee -> payer, one per scope where the payee owes, for
+ *   that scope's full debt. Moves no cash.
+ * - `payerOffsets`: payer -> payee, covering the payer's debts the cash did
+ *   not reach, adding up to the same total as `payeeOffsets`. Moves no cash.
+ * Every scope ends at zero and the offsets cancel out globally, so cash moved
+ * is still exactly the net.
+ *
+ * `cash` must not exceed the net (payer debts minus payee debts); the caller
+ * caps it at the global amount owed. With no payee debts this is a plain
+ * global allocation.
+ */
+export function allocateFullSettlement(
+	payerDebts: ScopeDebt[],
+	payeeDebts: ScopeDebt[],
+	cash: number,
+): FullSettlementRows {
+	const cashRows = allocateAcrossScopes(payerDebts, cash);
+
+	const payeeOffsets = allocateAcrossScopes(
+		payeeDebts,
+		payeeDebts.reduce((sum, d) => sum + Math.max(0, d.owed), 0),
+	);
+	const offsetTotal = payeeOffsets.reduce((sum, a) => sum + a.amount, 0);
+
+	// What each payer scope still owes after the cash.
+	const paid = new Map<string | null, number>();
+	for (const row of cashRows) {
+		paid.set(row.projectId, (paid.get(row.projectId) ?? 0) + row.amount);
+	}
+	const residual = payerDebts.map((d) => ({
+		projectId: d.projectId,
+		owed: d.owed - (paid.get(d.projectId) ?? 0),
+	}));
+	const payerOffsets = allocateAcrossScopes(residual, offsetTotal);
+
+	return { cash: cashRows, payerOffsets, payeeOffsets };
+}
