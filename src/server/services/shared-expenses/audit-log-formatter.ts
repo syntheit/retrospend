@@ -691,6 +691,30 @@ function getActionMeta(action: string): {
 	);
 }
 
+/**
+ * The other person on a settlement CREATED entry. Normally the payee
+ * (toParticipant), but when the actor IS the payee (they recorded a payment
+ * they received) it is the payer (fromParticipant).
+ */
+export function settlementCounterparty(
+	actor: { actorType: string; actorId: string },
+	changes: Record<string, unknown> | null,
+): { participantType: string; participantId: string } | null {
+	const toType = changes?.toParticipantType as string | undefined;
+	const toId = changes?.toParticipantId as string | undefined;
+	const fromType = changes?.fromParticipantType as string | undefined;
+	const fromId = changes?.fromParticipantId as string | undefined;
+	if (
+		fromType &&
+		fromId &&
+		toType === actor.actorType &&
+		toId === actor.actorId
+	) {
+		return { participantType: fromType, participantId: fromId };
+	}
+	return toType && toId ? { participantType: toType, participantId: toId } : null;
+}
+
 // ── Main Entry Formatter ──────────────────────────────────────────────────────
 
 export interface RawAuditEntry {
