@@ -1,19 +1,44 @@
 import { createHash, randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { env } from "~/env";
 import {
 	createTRPCRouter,
 	guestOrProtectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { notificationEmail } from "~/server/email-templates";
 import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
+import { hashToken } from "~/server/lib/tokens";
+import { sendEmail } from "~/server/mailer";
+import { getAppSettings } from "~/server/services/settings";
 import {
 	anonymizeParticipantReferences,
 	DELETED_GUEST_SENTINEL,
 } from "~/server/services/user-deletion.service";
 
 const rateLimiter = new InMemoryRateLimiter();
+
+/**
+ * Resume links let a guest who already joined get back into their session on a
+ * new device, after proving they own the email. They live in the
+ * verification_token table (token stored hashed) under this identifier prefix
+ * plus the guest session id and the invite link id.
+ */
+const GUEST_RESUME_PREFIX = "guest-resume:";
+const GUEST_RESUME_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function newGuestToken() {
+	const raw = randomBytes(32).toString("hex");
+	return { raw, hashed: createHash("sha256").update(raw).digest("hex") };
+}
+
+async function canSendEmail(): Promise<boolean> {
+	if (!env.SMTP_HOST) return false;
+	const settings = await getAppSettings();
+	return settings.enableEmail;
+}
 
 export const guestRouter = createTRPCRouter({
 
@@ -68,8 +93,10 @@ export const guestRouter = createTRPCRouter({
 	/**
 	 * Registers a guest user via a magic link.
 	 *
-	 * - If the email already has a GuestSession for this project, returns the
-	 *   existing session (updates lastActiveAt).
+	 * - If the email already has a GuestSession for this project and email can
+	 *   be sent, mails a one-time resume link to that address and returns
+	 *   { resumeEmailSent: true } (no token: the caller hasn't proven they own
+	 *   the email). Without email, a separate guest session is created instead.
 	 * - If the email belongs to an existing User, adds them as a participant
 	 *   directly and returns { existingUser: true } so the frontend can redirect
 	 *   to login.
@@ -154,63 +181,52 @@ export const guestRouter = createTRPCRouter({
 				};
 			}
 
+			// The email may already have a guest session in this project (someone
+			// rejoining from a new device). Nobody has proven they own that email,
+			// so never hand out that session's token here: that would let anyone
+			// who knows a guest's email take over their identity. Instead, when
+			// email works, mail a one-time resume link to the address on file;
+			// otherwise fall through and create a separate guest.
+			const emailAvailable = await canSendEmail();
+
 			// Wrap guest session creation in a transaction to prevent duplicates
 			// from concurrent registrations with the same email + project.
-			return await ctx.db.$transaction(async (tx) => {
+			const result = await ctx.db.$transaction(async (tx) => {
 				// Re-check for existing session inside the transaction
-				const existingSession = await tx.guestSession.findFirst({
-					where: { email, projectId },
-				});
+				const existingSession = emailAvailable
+					? await tx.guestSession.findFirst({
+							where: { email, projectId },
+						})
+					: null;
 
 				if (existingSession) {
-					// Generate a new token for the client: we can't recover the original
-					// unhashed token. Issue a fresh one and update the hash in the DB.
-					const newToken = randomBytes(32).toString("hex");
-					const newHashedToken = createHash("sha256")
-						.update(newToken)
-						.digest("hex");
-
-					await tx.guestSession.update({
-						where: { id: existingSession.id },
-						data: {
-							sessionToken: newHashedToken,
-							lastActiveAt: new Date(),
-							name: input.name, // allow name update on re-registration
-						},
-					});
-
-					// Ensure participant record exists (may have been removed by an
-					// organizer or via deleteMyData between registrations).
-					await tx.projectParticipant.upsert({
+					const resume = randomBytes(32).toString("hex");
+					const identifier = `${GUEST_RESUME_PREFIX}${existingSession.id}:${link.id}`;
+					// One live resume link per guest session.
+					await tx.verificationToken.deleteMany({
 						where: {
-							projectId_participantType_participantId: {
-								projectId,
-								participantType: "guest",
-								participantId: existingSession.id,
+							identifier: {
+								startsWith: `${GUEST_RESUME_PREFIX}${existingSession.id}:`,
 							},
 						},
-						create: {
-							projectId,
-							participantType: "guest",
-							participantId: existingSession.id,
-							role: link.roleGranted,
+					});
+					await tx.verificationToken.create({
+						data: {
+							identifier,
+							token: hashToken(resume),
+							expires: new Date(Date.now() + GUEST_RESUME_TTL_MS),
 						},
-						update: {},
 					});
 
 					return {
-						existingUser: false as const,
-						sessionToken: newToken,
-						guestSessionId: existingSession.id,
-						projectId,
-						projectName: link.project.name,
-						role: link.roleGranted,
+						kind: "resume" as const,
+						resumeToken: resume,
+						sendTo: existingSession.email,
 					};
 				}
 
 				// Create a new guest session
-				const rawToken = randomBytes(32).toString("hex");
-				const hashedToken = createHash("sha256").update(rawToken).digest("hex");
+				const { raw: rawToken, hashed: hashedToken } = newGuestToken();
 
 				const guestSession = await tx.guestSession.create({
 					data: {
@@ -245,15 +261,138 @@ export const guestRouter = createTRPCRouter({
 				});
 
 				return {
-					existingUser: false as const,
+					kind: "created" as const,
 					sessionToken: rawToken,
 					guestSessionId: guestSession.id,
+				};
+			});
+
+			if (result.kind === "resume") {
+				const baseUrl =
+					env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997";
+				const resumeUrl = `${baseUrl}/projects/${projectId}?guestResume=${result.resumeToken}`;
+				const html = notificationEmail({
+					title: `Continue in ${link.project.name}`,
+					body: `Someone asked to rejoin '${link.project.name}' on Retrospend with this email address. If it was you, use the button below to pick up where you left off. The link works once and expires in one hour. If it wasn't you, you can ignore this email.`,
+					ctaUrl: resumeUrl,
+					ctaLabel: "Continue",
+				});
+				await sendEmail(
+					result.sendTo,
+					`Retrospend: continue in ${link.project.name}`,
+					html,
+				);
+
+				return {
+					existingUser: false as const,
+					resumeEmailSent: true as const,
 					projectId,
 					projectName: link.project.name,
-					role: link.roleGranted,
+				};
+			}
+
+			return {
+				existingUser: false as const,
+				resumeEmailSent: false as const,
+				sessionToken: result.sessionToken,
+				guestSessionId: result.guestSessionId,
+				projectId,
+				projectName: link.project.name,
+				role: link.roleGranted,
+			};
+		}),
+
+	/**
+	 * Redeems a resume link mailed by `register` to a guest who already joined
+	 * this project. Holding the link proves ownership of the email, so the
+	 * guest's session gets a fresh token (signing out any other device, as
+	 * before). The link is single-use and expires after an hour.
+	 *
+	 * If an organizer removed the guest in the meantime, membership is restored
+	 * only while the invite link they rejoined through is still valid.
+	 */
+	resume: publicProcedure
+		.input(z.object({ token: z.string().min(1).max(255) }))
+		.mutation(async ({ ctx, input }) => {
+			const clientIp = getClientIp(ctx.headers);
+			if (!rateLimiter.check(`guestResume_${clientIp}`, 10, 60_000)) {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: "Rate limit exceeded",
+				});
+			}
+
+			const invalid = () =>
+				new TRPCError({
+					code: "NOT_FOUND",
+					message: "This link is invalid or has expired",
+				});
+
+			return await ctx.db.$transaction(async (tx) => {
+				const stored = await tx.verificationToken.findUnique({
+					where: { token: hashToken(input.token) },
+				});
+				if (!stored?.identifier.startsWith(GUEST_RESUME_PREFIX)) {
+					throw invalid();
+				}
+				// Single use.
+				await tx.verificationToken.delete({ where: { token: stored.token } });
+				if (stored.expires < new Date()) throw invalid();
+
+				const [guestSessionId, linkId] = stored.identifier
+					.slice(GUEST_RESUME_PREFIX.length)
+					.split(":");
+				const session = guestSessionId
+					? await tx.guestSession.findUnique({ where: { id: guestSessionId } })
+					: null;
+				if (!session) throw invalid();
+
+				const { raw, hashed } = newGuestToken();
+				await tx.guestSession.update({
+					where: { id: session.id },
+					data: { sessionToken: hashed, lastActiveAt: new Date() },
+				});
+
+				const membership = await tx.projectParticipant.findUnique({
+					where: {
+						projectId_participantType_participantId: {
+							projectId: session.projectId,
+							participantType: "guest",
+							participantId: session.id,
+						},
+					},
+				});
+				if (!membership && linkId) {
+					const link = await tx.magicLink.findUnique({ where: { id: linkId } });
+					let linkOk = false;
+					if (link && link.projectId === session.projectId) {
+						try {
+							validateLinkOrThrow(link, { allowUsedUp: true });
+							linkOk = true;
+						} catch {
+							linkOk = false;
+						}
+					}
+					if (linkOk && link) {
+						await tx.projectParticipant.create({
+							data: {
+								projectId: session.projectId,
+								participantType: "guest",
+								participantId: session.id,
+								role: link.roleGranted,
+							},
+						});
+					}
+				}
+
+				return {
+					sessionToken: raw,
+					guestSessionId: session.id,
+					projectId: session.projectId,
 				};
 			});
 		}),
+
 	/**
 	 * Self-service data deletion for guests.
 	 *

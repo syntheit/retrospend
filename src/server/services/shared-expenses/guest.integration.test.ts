@@ -1,15 +1,32 @@
 /**
  * Integration Test Suite 3: Guest Flow
  *
- * Tests magic link validation and guest registration logic.
- * Since the guest router uses DB directly (no separate service class),
- * we test the core validation logic and DB interaction patterns
- * used by the router procedures.
+ * Tests magic link validation and guest registration. Registration and resume
+ * run through the real guest router against the stateful in-memory db.
  */
 
 import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockEnv = vi.hoisted(() => ({
+	DATABASE_URL: "postgresql://mock",
+	NODE_ENV: "test",
+	BETTER_AUTH_SECRET: "secret",
+	NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+	SMTP_HOST: undefined as string | undefined,
+}));
+const mockSendEmail = vi.hoisted(() => vi.fn());
+
+vi.mock("~/env", () => ({ env: mockEnv }));
+vi.mock("~/server/db", () => ({ db: {}, createUserScopedDb: vi.fn() }));
+vi.mock("~/server/better-auth", () => ({
+	auth: { api: { getSession: vi.fn().mockResolvedValue(null) } },
+}));
+vi.mock("~/server/storage", () => ({ deleteFile: vi.fn() }));
+vi.mock("~/server/mailer", () => ({ sendEmail: mockSendEmail }));
+vi.mock("~/server/services/settings", () => ({
+	getAppSettings: vi.fn().mockResolvedValue({ enableEmail: true }),
+}));
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
@@ -26,15 +43,71 @@ import {
 // The shared invite-link validator used by guest.ts and claim.ts.
 import { validateLinkOrThrow } from "~/server/lib/magic-link";
 
-// ── Inline the guest registration flow for direct testing ─────────────────────
-// (mirrors guest.ts register procedure logic without tRPC overhead)
+import { createHash } from "node:crypto";
+import { createCallerFactory } from "~/server/api/trpc";
+import { guestRouter } from "~/server/api/routers/guest";
 
-import { createHash, randomBytes } from "node:crypto";
+// ── Drive the real guest router ───────────────────────────────────────────────
+
+const createGuestCaller = createCallerFactory(guestRouter);
+
+type VerificationTokenRow = { identifier: string; token: string; expires: Date };
+
+/**
+ * The stateful db has no verification_token model; resume links live there.
+ * Wrap the db with a small one (shared by the transaction client too).
+ */
+const tokenStores = new WeakMap<object, Map<string, VerificationTokenRow>>();
+function withVerificationTokens(db: ReturnType<typeof createStatefulDb>) {
+	const tokens = tokenStores.get(db) ?? new Map<string, VerificationTokenRow>();
+	tokenStores.set(db, tokens);
+	const verificationToken = {
+		create: vi.fn(async (args: { data: VerificationTokenRow }) => {
+			tokens.set(args.data.token, { ...args.data });
+			return args.data;
+		}),
+		deleteMany: vi.fn(
+			async (args: { where: { identifier: { startsWith: string } } }) => {
+				let count = 0;
+				for (const [k, v] of tokens) {
+					if (v.identifier.startsWith(args.where.identifier.startsWith)) {
+						tokens.delete(k);
+						count++;
+					}
+				}
+				return { count };
+			},
+		),
+		findUnique: vi.fn(
+			async (args: { where: { token: string } }) => tokens.get(args.where.token) ?? null,
+		),
+		delete: vi.fn(async (args: { where: { token: string } }) => {
+			const row = tokens.get(args.where.token);
+			tokens.delete(args.where.token);
+			return row;
+		}),
+	};
+	const wrapped: Record<string, unknown> = { ...db, verificationToken };
+	wrapped.$transaction = async (cb: (tx: unknown) => Promise<unknown>) => cb(wrapped);
+	return { wrapped, tokens };
+}
+
+let ipCounter = 0;
+function guestCaller(db: ReturnType<typeof createStatefulDb>) {
+	ipCounter += 1;
+	return createGuestCaller({
+		session: null,
+		db: withVerificationTokens(db).wrapped as never,
+		// fresh IP per call so the per-IP rate limiter never trips in tests
+		headers: new Headers({ "x-forwarded-for": `10.0.${Math.floor(ipCounter / 250)}.${ipCounter % 250}` }),
+	});
+}
 
 type RegisterGuestResult = {
 	existingUser: boolean;
 	projectId: string;
 	projectName: string;
+	resumeEmailSent?: boolean;
 	role?: string;
 	sessionToken?: string;
 	guestSessionId?: string;
@@ -44,137 +117,31 @@ async function registerGuest(
 	db: ReturnType<typeof createStatefulDb>,
 	input: { linkId: string; name: string; email: string },
 ): Promise<RegisterGuestResult> {
-	const link = await db.magicLink.findUnique({
-		where: { id: input.linkId },
-		include: { project: true },
-	});
-
-	if (!link) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-
-	validateLinkOrThrow(
-		link as {
-			isActive: boolean;
-			expiresAt: Date | null;
-			maxUses: number | null;
-			useCount: number;
-		},
-	);
-
-	const projectId = (link as { projectId: string }).projectId;
-	const email = input.email.toLowerCase().trim();
-
-	// Check if email belongs to existing user
-	const existingUser = await db.user.findUnique({
-		where: { email },
-		select: { id: true },
-	});
-
-	if (existingUser) {
-		await db.projectParticipant.upsert({
-			where: {
-				projectId_participantType_participantId: {
-					projectId,
-					participantType: "user",
-					participantId: existingUser.id,
-				},
-			},
-			create: {
-				projectId,
-				participantType: "user",
-				participantId: existingUser.id,
-				role: (link as { roleGranted: string }).roleGranted,
-			},
-			update: {},
-		});
-
-		await db.magicLink.update({
-			where: { id: link.id as string },
-			data: { useCount: { increment: 1 } },
-		});
-
-		return {
-			existingUser: true as const,
-			projectId,
-			projectName:
-				(link as { project?: { name?: string } }).project?.name ?? "Project",
-		};
-	}
-
-	// Transaction: prevent duplicate guest sessions
-	return await (db.$transaction(async (tx) => {
-		const existingSession = await tx.guestSession.findFirst({
-			where: { email, projectId },
-		});
-
-		if (existingSession) {
-			const newToken = randomBytes(32).toString("hex");
-			const newHashedToken = createHash("sha256")
-				.update(newToken)
-				.digest("hex");
-
-			await tx.guestSession.update({
-				where: { id: existingSession.id },
-				data: {
-					sessionToken: newHashedToken,
-					lastActiveAt: new Date(),
-					name: input.name,
-				},
-			});
-
-			return {
-				existingUser: false as const,
-				sessionToken: newToken,
-				guestSessionId: existingSession.id,
-				projectId,
-				projectName:
-					(link as { project?: { name?: string } }).project?.name ?? "Project",
-				role: (link as { roleGranted: string }).roleGranted,
-			};
-		}
-
-		const rawToken = randomBytes(32).toString("hex");
-		const hashedToken = createHash("sha256").update(rawToken).digest("hex");
-
-		const guestSession = await tx.guestSession.create({
-			data: {
-				name: input.name,
-				email,
-				magicLinkId: link.id as string,
-				projectId,
-				sessionToken: hashedToken,
-			},
-		});
-
-		await tx.projectParticipant.create({
-			data: {
-				projectId,
-				participantType: "guest",
-				participantId: guestSession.id,
-				role: (link as { roleGranted: string }).roleGranted,
-			},
-		});
-
-		await tx.magicLink.update({
-			where: { id: link.id as string },
-			data: { useCount: { increment: 1 } },
-		});
-
-		return {
-			existingUser: false as const,
-			sessionToken: rawToken,
-			guestSessionId: guestSession.id,
-			projectId,
-			projectName:
-				(link as { project?: { name?: string } }).project?.name ?? "Project",
-			role: (link as { roleGranted: string }).roleGranted,
-		};
-	}) as Promise<RegisterGuestResult>);
+	const promise = guestCaller(db).register(input);
+	promise.catch(() => undefined);
+	await vi.runAllTimersAsync();
+	return promise;
 }
+
+async function resumeGuest(
+	db: ReturnType<typeof createStatefulDb>,
+	token: string,
+) {
+	const promise = guestCaller(db).resume({ token });
+	promise.catch(() => undefined);
+	await vi.runAllTimersAsync();
+	return promise;
+}
+
+beforeEach(() => {
+	vi.useFakeTimers();
+	mockSendEmail.mockReset();
+	mockEnv.SMTP_HOST = undefined;
+});
+
+afterEach(() => {
+	vi.useRealTimers();
+});
 
 // ── Suite 3A: Magic link validation ──────────────────────────────────────────
 
@@ -340,39 +307,73 @@ describe("Suite 3B: Guest registration via magic link", () => {
 		expect(db._stores.magicLinks.get(linkId)?.useCount).toBe(1);
 	});
 
-	it("email is lowercased and trimmed during registration", async () => {
+	it("email is lowercased during registration", async () => {
 		await registerGuest(db, {
 			linkId,
 			name: "Marcus",
-			email: "  Marcus@EXAMPLE.COM  ",
+			email: "Marcus@EXAMPLE.COM",
 		});
 
 		const session = [...db._stores.guestSessions.values()][0];
 		expect(session?.email).toBe("marcus@example.com");
 	});
 
-	it("same email re-registers: returns new session token, no duplicate session", async () => {
-		await registerGuest(db, {
+	it("same email re-registers with email on: no token, a resume link is mailed instead", async () => {
+		mockEnv.SMTP_HOST = "smtp.test";
+		const first = await registerGuest(db, {
+			linkId,
+			name: "Marcus",
+			email: "marcus@example.com",
+		});
+		const original = db._stores.guestSessions.get(first.guestSessionId!)!;
+		const originalHash = original.sessionToken;
+
+		// Someone else types Marcus's email into the join form
+		const second = await registerGuest(db, {
+			linkId,
+			name: "Mallory",
+			email: "marcus@example.com",
+		});
+
+		expect(second.existingUser).toBe(false);
+		expect(second.resumeEmailSent).toBe(true);
+		expect(second.sessionToken).toBeUndefined();
+		expect(second.guestSessionId).toBeUndefined();
+
+		// The existing session is untouched: same token hash, same name
+		expect(db._stores.guestSessions.size).toBe(1);
+		const after = db._stores.guestSessions.get(first.guestSessionId!)!;
+		expect(after.sessionToken).toBe(originalHash);
+		expect(after.name).toBe("Marcus");
+
+		// The resume link went to the address on file
+		expect(mockSendEmail).toHaveBeenCalledTimes(1);
+		expect(mockSendEmail.mock.calls[0]![0]).toBe("marcus@example.com");
+		expect(mockSendEmail.mock.calls[0]![2]).toContain("guestResume=");
+	});
+
+	it("same email re-registers with email off: a separate guest is created", async () => {
+		const first = await registerGuest(db, {
+			linkId,
+			name: "Marcus",
+			email: "marcus@example.com",
+		});
+		const originalHash = db._stores.guestSessions.get(first.guestSessionId!)!
+			.sessionToken;
+
+		const second = await registerGuest(db, {
 			linkId,
 			name: "Marcus",
 			email: "marcus@example.com",
 		});
 
-		// Register again with same email+project
-		const secondResult = await registerGuest(db, {
-			linkId,
-			name: "Marcus Updated",
-			email: "marcus@example.com",
-		});
-
-		expect(secondResult.existingUser).toBe(false);
-		expect(secondResult.sessionToken).toBeDefined();
-
-		// Only one guest session should exist
-		expect(db._stores.guestSessions.size).toBe(1);
-		// Name was updated
-		const session = [...db._stores.guestSessions.values()][0];
-		expect(session?.name).toBe("Marcus Updated");
+		expect(second.sessionToken).toBeDefined();
+		expect(second.guestSessionId).not.toBe(first.guestSessionId);
+		expect(db._stores.guestSessions.size).toBe(2);
+		expect(
+			db._stores.guestSessions.get(first.guestSessionId!)!.sessionToken,
+		).toBe(originalHash);
+		expect(mockSendEmail).not.toHaveBeenCalled();
 	});
 
 	it("magic link with maxUses=1: second registration is rejected", async () => {
@@ -569,24 +570,80 @@ describe("Suite 3D: Guest registration idempotency", () => {
 		linkId = link.id;
 	});
 
-	it("guest re-registering after token loss gets a fresh valid token", async () => {
+	/** Registers twice with the same email (email on) and returns the mailed token. */
+	async function mailedResumeToken() {
+		mockEnv.SMTP_HOST = "smtp.test";
 		const first = await registerGuest(db, {
 			linkId,
 			name: "Marcus",
 			email: "marcus@example.com",
 		});
-
-		const second = await registerGuest(db, {
+		await registerGuest(db, {
 			linkId,
 			name: "Marcus",
 			email: "marcus@example.com",
 		});
+		const html = mockSendEmail.mock.calls.at(-1)![2] as string;
+		const token = /guestResume=([0-9a-f]{64})/.exec(html)![1]!;
+		return { first, token };
+	}
 
-		// Second registration succeeds
-		expect(second.existingUser).toBe(false);
-		expect(second.guestSessionId).toBe(first.guestSessionId); // Same session
-		// But a new token is issued
-		expect(second.sessionToken).not.toBe(first.sessionToken);
+	it("guest who lost their token gets back in through the mailed resume link", async () => {
+		const { first, token } = await mailedResumeToken();
+
+		const resumed = await resumeGuest(db, token);
+
+		expect(resumed.guestSessionId).toBe(first.guestSessionId); // Same session
+		expect(resumed.projectId).toBe(projectId);
+		expect(resumed.sessionToken).not.toBe(first.sessionToken);
+		const session = db._stores.guestSessions.get(first.guestSessionId!)!;
+		expect(session.sessionToken).toBe(
+			createHash("sha256").update(resumed.sessionToken).digest("hex"),
+		);
+	});
+
+	it("a resume link works only once", async () => {
+		const { token } = await mailedResumeToken();
+		await resumeGuest(db, token);
+		await expect(resumeGuest(db, token)).rejects.toMatchObject({
+			code: "NOT_FOUND",
+		});
+	});
+
+	it("an expired resume link is rejected", async () => {
+		const { first, token } = await mailedResumeToken();
+		const hashBefore = db._stores.guestSessions.get(first.guestSessionId!)!
+			.sessionToken;
+		vi.setSystemTime(Date.now() + 2 * 60 * 60 * 1000);
+
+		await expect(resumeGuest(db, token)).rejects.toMatchObject({
+			code: "NOT_FOUND",
+		});
+		expect(
+			db._stores.guestSessions.get(first.guestSessionId!)!.sessionToken,
+		).toBe(hashBefore);
+	});
+
+	it("a made-up resume token is rejected", async () => {
+		await expect(resumeGuest(db, "f".repeat(64))).rejects.toMatchObject({
+			code: "NOT_FOUND",
+		});
+	});
+
+	it("resuming restores a removed guest's membership while the invite is live", async () => {
+		const { first, token } = await mailedResumeToken();
+		for (const [id, pp] of db._stores.projectParticipants) {
+			if (pp.participantId === first.guestSessionId) {
+				db._stores.projectParticipants.delete(id);
+			}
+		}
+
+		await resumeGuest(db, token);
+
+		const restored = [...db._stores.projectParticipants.values()].find(
+			(pp) => pp.participantId === first.guestSessionId,
+		);
+		expect(restored?.role).toBe("CONTRIBUTOR");
 	});
 
 	it("role granted by the link is stored on the ProjectParticipant", async () => {

@@ -9,13 +9,14 @@ import {
 	Loader2,
 	Lock,
 	LogIn,
+	Mail,
 	Plus,
 	Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { usePageTitle } from "~/hooks/use-page-title";
@@ -86,6 +87,30 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const inviteLinkId = searchParams.get("invite");
+	const guestResumeToken = searchParams.get("guestResume");
+	const tClaim = useTranslations("claim");
+
+	// Resume link from the "you already joined" email: trade it for a fresh
+	// guest session token, then reload into the guest view. The ref keeps it to
+	// one call (the token is single-use) even if the effect runs twice.
+	const resumeMutation = api.guest.resume.useMutation();
+	const resumeStarted = useRef(false);
+	const [resumeFailed, setResumeFailed] = useState(false);
+	useEffect(() => {
+		if (!guestResumeToken || resumeStarted.current) return;
+		resumeStarted.current = true;
+		resumeMutation.mutate(
+			{ token: guestResumeToken },
+			{
+				onSuccess: (data) => {
+					localStorage.setItem("guest_session_token", data.sessionToken);
+					localStorage.setItem("guest_project_id", data.projectId);
+					window.location.replace(`/projects/${data.projectId}`);
+				},
+				onError: () => setResumeFailed(true),
+			},
+		);
+	}, [guestResumeToken, resumeMutation]);
 
 	const [accessMode, setAccessMode] = useState<AccessMode>("resolving");
 	const [inviteHandled, setInviteHandled] = useState(!inviteLinkId);
@@ -186,6 +211,14 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 	}
 
 	// ── Render based on access mode ──
+
+	if (guestResumeToken) {
+		return resumeFailed ? (
+			<InviteErrorView message={tClaim("resumeLinkInvalid")} />
+		) : (
+			<LoadingScreen />
+		);
+	}
 
 	if (accessMode === "resolving") {
 		return <LoadingScreen />;
@@ -307,6 +340,7 @@ function InviteJoinView({
 	const [email, setEmail] = useState("");
 	const [registered, setRegistered] = useState(false);
 	const [isExistingUser, setIsExistingUser] = useState(false);
+	const [resumeEmailSent, setResumeEmailSent] = useState(false);
 	// Two-step identify flow: pick your own name from the project's existing
 	// ghosts FIRST, then confirm your email. Only "None of these — I'm new"
 	// falls through to a blank name form.
@@ -349,6 +383,10 @@ function InviteJoinView({
 			if (data.existingUser) {
 				setIsExistingUser(true);
 				setRegistered(true);
+			} else if (data.resumeEmailSent) {
+				// This email already joined: the server mailed a resume link
+				// instead of handing out the existing session.
+				setResumeEmailSent(true);
 			} else {
 				localStorage.setItem("guest_session_token", data.sessionToken);
 				localStorage.setItem("guest_project_id", data.projectId);
@@ -442,6 +480,30 @@ function InviteJoinView({
 						>
 							{t("chooserNoneNew")}
 						</Button>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	// ── Already joined: resume link sent by email ──
+	if (resumeEmailSent) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background p-4">
+				<Card className="w-full max-w-md">
+					<CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+						<div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+							<Mail className="h-8 w-8 text-primary" />
+						</div>
+						<h1 className="font-bold text-xl">{t("resumeEmailTitle")}</h1>
+						<p className="text-muted-foreground text-sm">
+							{t.rich("resumeEmailBody", {
+								projectName: linkInfo.projectName,
+								strong: (chunks) => (
+									<span className="font-medium text-foreground">{chunks}</span>
+								),
+							})}
+						</p>
 					</CardContent>
 				</Card>
 			</div>
