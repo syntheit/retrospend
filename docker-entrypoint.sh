@@ -14,7 +14,7 @@ echo "Database is ready!"
 echo "Applying database migrations..."
 
 # Try to migrate, capturing output
-if ! pnpm prisma migrate deploy > /tmp/migrate.log 2>&1; then
+if ! ./node_modules/.bin/prisma migrate deploy > /tmp/migrate.log 2>&1; then
   cat /tmp/migrate.log
   
   # Check for P3009 (failed migrations): roll back the failed one and retry
@@ -22,8 +22,8 @@ if ! pnpm prisma migrate deploy > /tmp/migrate.log 2>&1; then
     FAILED_MIGRATION=$(grep "The \`" /tmp/migrate.log | sed "s/.*The \`\(.*\)\` migration.*/\1/" | head -n 1)
     if [ -n "$FAILED_MIGRATION" ]; then
       echo "Found failed migration: $FAILED_MIGRATION. Rolling back and retrying..."
-      pnpm prisma migrate resolve --rolled-back "$FAILED_MIGRATION"
-      pnpm prisma migrate deploy
+      ./node_modules/.bin/prisma migrate resolve --rolled-back "$FAILED_MIGRATION"
+      ./node_modules/.bin/prisma migrate deploy
       echo "Database migrations applied successfully after rollback!"
     else
       echo "Migration failed (P3009) but could not parse migration name."
@@ -39,9 +39,9 @@ if ! pnpm prisma migrate deploy > /tmp/migrate.log 2>&1; then
 
     if [ -n "$FIRST_MIGRATION" ]; then
       echo "Marking baseline migration as applied: $FIRST_MIGRATION"
-      if pnpm prisma migrate resolve --applied "$FIRST_MIGRATION"; then
+      if ./node_modules/.bin/prisma migrate resolve --applied "$FIRST_MIGRATION"; then
         echo "Baseline migration resolved. Retrying migrations..."
-        pnpm prisma migrate deploy
+        ./node_modules/.bin/prisma migrate deploy
         echo "Database migrations applied successfully after baseline!"
       else
         echo "Failed to resolve baseline migration."
