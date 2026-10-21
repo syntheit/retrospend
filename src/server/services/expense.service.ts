@@ -1,9 +1,6 @@
 import { TRPCError } from "@trpc/server";
-import { BASE_CURRENCY } from "~/lib/constants";
-import { getFiscalMonthRange } from "~/lib/fiscal-month";
 import { computeAmountInUSD, isValidRate, USD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
-import { sumExpensesForCurrency } from "../api/routers/shared-currency";
 import { requireExchangeRate } from "../exchange-rates";
 import { AmortizationService } from "./amortization.service";
 
@@ -304,52 +301,6 @@ export class ExpenseService {
 				category: true,
 			},
 		});
-	}
-
-	async getCategorySpending(
-		userId: string,
-		categoryId: string,
-		month: Date,
-		targetCurrency = BASE_CURRENCY,
-		fiscalMonthStartDay = 1,
-	) {
-		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
-
-		const { total } = await sumExpensesForCurrency(
-			this.db as PrismaClient,
-			{
-				userId,
-				categoryId,
-				isAmortizedParent: false,
-				date: { gte: fiscal.start, lte: fiscal.end },
-			},
-			targetCurrency,
-			month,
-		);
-
-		return { total, categoryId };
-	}
-
-	async getTotalSpending(
-		userId: string,
-		month: Date,
-		targetCurrency = BASE_CURRENCY,
-		fiscalMonthStartDay = 1,
-	) {
-		const fiscal = getFiscalMonthRange(month, fiscalMonthStartDay);
-
-		const { total } = await sumExpensesForCurrency(
-			this.db as PrismaClient,
-			{
-				userId,
-				isAmortizedParent: false,
-				date: { gte: fiscal.start, lte: fiscal.end },
-			},
-			targetCurrency,
-			month,
-		);
-
-		return { total };
 	}
 
 	async bulkUpdateCategory(

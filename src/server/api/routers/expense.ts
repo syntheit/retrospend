@@ -177,39 +177,6 @@ export const expenseRouter = createTRPCRouter({
 			);
 		}),
 
-	getCategorySpending: protectedProcedure
-		.input(
-			z.object({
-				categoryId: z.string().cuid(),
-				month: z.date(),
-				targetCurrency: z.string().min(3).max(10).optional(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const service = new ExpenseService(ctx.db);
-			return await service.getCategorySpending(
-				ctx.session.user.id,
-				input.categoryId,
-				input.month,
-				input.targetCurrency,
-			);
-		}),
-
-	getTotalSpending: protectedProcedure
-		.input(
-			z.object({
-				month: z.date(),
-				targetCurrency: z.string().min(3).max(10).optional(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const service = new ExpenseService(ctx.db);
-			return await service.getTotalSpending(
-				ctx.session.user.id,
-				input.month,
-				input.targetCurrency,
-			);
-		}),
 	getFilterOptions: protectedProcedure.query(async ({ ctx }) => {
 		const service = new ExpenseService(ctx.db);
 		return await service.getFilterOptions(ctx.session.user.id);

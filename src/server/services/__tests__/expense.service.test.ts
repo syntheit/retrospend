@@ -7,12 +7,7 @@ import { ExpenseService } from "../expense.service";
 
 // ── Hoisted mocks (referenced inside vi.mock factories) ───────────────────────
 
-const mockSumExpensesForCurrency = vi.hoisted(() => vi.fn());
 const mockSyncAmortization = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-
-vi.mock("~/server/api/routers/shared-currency", () => ({
-	sumExpensesForCurrency: mockSumExpensesForCurrency,
-}));
 
 vi.mock("~/server/services/amortization.service", () => ({
 	// Regular function required - arrow functions cannot be used with `new`
@@ -44,7 +39,6 @@ describe("ExpenseService", () => {
 
 		// Sensible defaults
 		useRateTable(db);
-		mockSumExpensesForCurrency.mockResolvedValue({ total: 0, totalInUSD: 0 });
 		db.expense.create.mockResolvedValue(makeExpense());
 	});
 
@@ -380,57 +374,6 @@ describe("ExpenseService", () => {
 			});
 
 			expect(result).toMatchObject({ id: "exp-123" });
-		});
-	});
-
-	// ── getCategorySpending ────────────────────────────────────────────────────
-
-	describe("getCategorySpending", () => {
-		it("calls sumExpensesForCurrency with correct userId, categoryId, and isAmortizedParent=false", async () => {
-			mockSumExpensesForCurrency.mockResolvedValue({ total: 150, totalInUSD: 150 });
-
-			const result = await service.getCategorySpending("user-1", "cat-1", new Date("2024-06-15"));
-
-			expect(mockSumExpensesForCurrency).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({
-					userId: "user-1",
-					categoryId: "cat-1",
-					isAmortizedParent: false,
-					date: expect.objectContaining({ gte: expect.any(Date), lte: expect.any(Date) }),
-				}),
-				"USD",
-				expect.any(Date),
-			);
-			expect(result.total).toBe(150);
-			expect(result.categoryId).toBe("cat-1");
-		});
-
-		it("uses fiscal month boundaries from getFiscalMonthRange", async () => {
-			mockSumExpensesForCurrency.mockResolvedValue({ total: 0, totalInUSD: 0 });
-
-			// With startDay=15, June dates should start on June 15
-			await service.getCategorySpending("user-1", "cat-1", new Date("2024-06-20"), "USD", 15);
-
-			const callArgs = mockSumExpensesForCurrency.mock.calls[0]![1] as {
-				date: { gte: Date; lte: Date };
-			};
-			expect(callArgs.date.gte.getDate()).toBe(15);
-		});
-	});
-
-	// ── getTotalSpending ───────────────────────────────────────────────────────
-
-	describe("getTotalSpending", () => {
-		it("calls sumExpensesForCurrency without categoryId filter", async () => {
-			mockSumExpensesForCurrency.mockResolvedValue({ total: 500, totalInUSD: 500 });
-
-			const result = await service.getTotalSpending("user-1", new Date("2024-06-15"));
-
-			const callArgs = mockSumExpensesForCurrency.mock.calls[0]![1] as Record<string, unknown>;
-			expect(callArgs).not.toHaveProperty("categoryId");
-			expect(callArgs).toMatchObject({ userId: "user-1", isAmortizedParent: false });
-			expect(result.total).toBe(500);
 		});
 	});
 });
