@@ -612,7 +612,16 @@
     "theyOweYouLower": "schuldet Ihnen",
     "youOweThemLower": "Sie schulden der Person",
     "payAmount": "{amount} bezahlen",
-    "requestAmount": "{amount} anfordern"
+    "requestAmount": "{amount} anfordern",
+    "noMoneyMoved": "Kein Geld bewegt",
+    "projectsSquaredUp": "Projekte ausgeglichen",
+    "standaloneScope": "Eigenständig",
+    "unknownProject": "Ein anderes Projekt",
+    "settlementOffsetDetail": "{paid} bezahlt, {offset} verrechnet: {from} gegen {against}",
+    "settlementSquareUpDetail": "{offset} verrechnet: {from} gegen {against}",
+    "settlementPartOf": "{part} von einer Zahlung über {total}",
+    "settlementPartOffset": "{offset} mit einem anderen Projekt verrechnet",
+    "settlementPartSquareUp": "Teil eines Projektausgleichs"
   },
   "claim": {
     "title": "Ihren Platz beanspruchen",
@@ -1090,7 +1099,12 @@
     "renamed": "Umbenannt",
     "renameFailed": "Umbenennen fehlgeschlagen",
     "shareViaLinkTitle": "„{name}“ teilen",
-    "shareViaLinkDescription": "Jeder mit dem Link kann auf dieses Projekt zugreifen."
+    "shareViaLinkDescription": "Jeder mit dem Link kann auf dieses Projekt zugreifen.",
+    "activityCreatedSettlementPart": "{actor} hat einen Ausgleich über {amount} mit {name} eingeleitet, Teil einer Zahlung über {total}",
+    "activityCreatedSettlementWithOffset": "{actor} hat einen Ausgleich über {amount} mit {name} eingeleitet, davon {offset} mit einem anderen Projekt verrechnet",
+    "activityOffsetSettlement": "{actor} hat {amount} mit {name} gegen ein anderes Projekt verrechnet",
+    "activityReopenedPeriod": "Der Zeitraum {period} wurde wieder geöffnet, weil eine Zahlung abgelehnt oder rückgängig gemacht wurde",
+    "activityReopenedPeriodGeneric": "Ein Abrechnungszeitraum wurde wieder geöffnet, weil eine Zahlung abgelehnt oder rückgängig gemacht wurde"
   },
   "wealth": {
     "title": "Vermögen",
@@ -1332,7 +1346,12 @@
     "allSettled": "Mit {name} ist alles ausgeglichen!",
     "remainingBalance": "Verbleibender Saldo",
     "done": "Fertig",
-    "allAmount": "Alle · {amount}"
+    "allAmount": "Alle · {amount}",
+    "offsetNote": "Wenn Sie den vollen Betrag zahlen, werden auch {amount} verrechnet, die in anderen Projekten in die Gegenrichtung geschuldet sind. So steht jedes Projekt auf null.",
+    "offsetNotePartial": "Eine Teilzahlung lässt Projektsalden in der Gegenrichtung unverändert.",
+    "offsetNoteAll": "Wenn Sie alles ausgleichen, werden auch Projektsalden in der Gegenrichtung verrechnet. So steht jedes Projekt auf null.",
+    "alsoTheyOwe": "{name} schuldet Ihnen außerdem {amounts}. Jede Währung wird separat ausgeglichen.",
+    "alsoYouOwe": "Sie schulden {name} außerdem {amounts}. Jede Währung wird separat ausgeglichen."
   },
   "expenseForm": {
     "duplicateWarning": "Am selben Datum ist bereits eine ähnliche Ausgabe vorhanden. Trotzdem speichern?",
@@ -2121,7 +2140,19 @@
     "settlementRejected": "Ausgleich wurde abgelehnt",
     "reminderSentToast": "Erinnerung wurde gesendet",
     "payAmount": "{amount} bezahlen",
-    "requestAmount": "{amount} anfordern"
+    "requestAmount": "{amount} anfordern",
+    "squareUpProjects": "Projekte ausgleichen",
+    "squareUpProjectsIn": "Projekte ausgleichen ({currency})",
+    "squareUpTitle": "Projekte ausgleichen",
+    "squareUpDescription": "Ihr Gesamtsaldo ist ausgeglichen, Ihre Projekte aber nicht. Dabei wird eine Verrechnung über {amount} erfasst, sodass jedes Projekt auf null steht. Es wird kein Geld bewegt.",
+    "squareUpScopeYouOwe": "{project}: Sie schulden {amount}",
+    "squareUpScopeTheyOwe": "{project}: {name} schuldet Ihnen {amount}",
+    "squareUpConfirmNote": "{name} wird um eine Bestätigung gebeten.",
+    "squareUpConfirm": "Ausgleichen",
+    "squareUpSentToast": "An {name} zur Bestätigung gesendet",
+    "squareUpDoneToast": "Projekte ausgeglichen",
+    "squareUpBanner": "{name} hat Ihre Projekte ausgeglichen (Verrechnung über {amount}, kein Geld bewegt)",
+    "unknownProject": "Ein anderes Projekt"
   },
   "tableFilters": {
     "all": "Alle",

@@ -612,7 +612,16 @@
     "theyOweYouLower": "they owe you",
     "youOweThemLower": "you owe them",
     "payAmount": "Pay {amount}",
-    "requestAmount": "Request {amount}"
+    "requestAmount": "Request {amount}",
+    "noMoneyMoved": "No money moved",
+    "projectsSquaredUp": "Projects squared up",
+    "standaloneScope": "Standalone",
+    "unknownProject": "Another project",
+    "settlementOffsetDetail": "Paid {paid}, offset {offset}: {from} against {against}",
+    "settlementSquareUpDetail": "Offset {offset}: {from} against {against}",
+    "settlementPartOf": "{part} of a {total} payment",
+    "settlementPartOffset": "{offset} offset against another project",
+    "settlementPartSquareUp": "Part of squaring up projects"
   },
   "claim": {
     "title": "Claim your spot",
@@ -1090,7 +1099,12 @@
     "renamed": "Renamed",
     "renameFailed": "Couldn't rename",
     "shareViaLinkTitle": "Share “{name}”",
-    "shareViaLinkDescription": "Anyone with the link can access this project."
+    "shareViaLinkDescription": "Anyone with the link can access this project.",
+    "activityCreatedSettlementPart": "{actor} initiated a {amount} settlement with {name}, part of a {total} payment",
+    "activityCreatedSettlementWithOffset": "{actor} initiated a {amount} settlement with {name}, {offset} of it offset against another project",
+    "activityOffsetSettlement": "{actor} offset {amount} with {name} against another project",
+    "activityReopenedPeriod": "{period} was reopened because a payment was rejected or undone",
+    "activityReopenedPeriodGeneric": "A billing period was reopened because a payment was rejected or undone"
   },
   "wealth": {
     "title": "Wealth",
@@ -1332,7 +1346,12 @@
     "allSettled": "You're all settled up with {name}!",
     "remainingBalance": "Remaining balance",
     "done": "Done",
-    "allAmount": "All {amount}"
+    "allAmount": "All {amount}",
+    "offsetNote": "Paying the full amount also offsets {amount} owed the other way in other projects, so every project ends even.",
+    "offsetNotePartial": "A partial payment leaves project balances that go the other way as they are.",
+    "offsetNoteAll": "Settling everything also offsets project balances that go the other way, so every project ends even.",
+    "alsoTheyOwe": "{name} also owes you {amounts}. Each currency is settled separately.",
+    "alsoYouOwe": "You also owe {name} {amounts}. Each currency is settled separately."
   },
   "expenseForm": {
     "duplicateWarning": "A similar expense already exists on this date. Save anyway?",
@@ -2121,7 +2140,19 @@
     "settlementRejected": "Settlement rejected",
     "reminderSentToast": "Reminder sent",
     "payAmount": "Pay {amount}",
-    "requestAmount": "Request {amount}"
+    "requestAmount": "Request {amount}",
+    "squareUpProjects": "Square up projects",
+    "squareUpProjectsIn": "Square up projects ({currency})",
+    "squareUpTitle": "Square up projects",
+    "squareUpDescription": "Your overall balance is even, but your projects are not. This records an offset of {amount} so every project ends even. No money moves.",
+    "squareUpScopeYouOwe": "{project}: you owe {amount}",
+    "squareUpScopeTheyOwe": "{project}: {name} owes you {amount}",
+    "squareUpConfirmNote": "{name} will be asked to confirm.",
+    "squareUpConfirm": "Square up",
+    "squareUpSentToast": "Sent to {name} to confirm",
+    "squareUpDoneToast": "Projects squared up",
+    "squareUpBanner": "{name} squared up your projects (an offset of {amount}, no money moved)",
+    "unknownProject": "Another project"
   },
   "tableFilters": {
     "all": "All",

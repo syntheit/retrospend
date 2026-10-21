@@ -21,6 +21,10 @@ import { SegmentedToggle } from "~/components/ui/segmented-toggle";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ConfirmDialog } from "~/components/ui/confirmation-dialog";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import {
+	settlementDetail,
+	settlementProjectParts,
+} from "~/lib/settlement-display";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
 
@@ -309,32 +313,57 @@ export function PeopleTimelineTable({
 			project: t.project,
 		}));
 
-		// Only include settlements when no project filter is active
-		const settlementRows: TimelineRow[] =
-			selectedProjectId === undefined
-				? (settlementData ?? []).map((s) => ({
-						id: `settlement-${s.id}`,
-						type: "settlement" as const,
-						date: new Date(s.initiatedAt),
-						currency: s.currency,
-						amount: s.amount,
-						status: s.status,
-						direction: s.direction,
-						settlementId: s.id,
-						paymentMethod: s.paymentMethod,
-						note: s.note,
-						canConfirmSettlement: s.canConfirm,
-						canRejectSettlement: s.canReject,
-						canDeleteSettlement: s.canDelete,
-						canVoidSettlement: s.canVoid,
-						canRemindSettlement: s.canRemind,
-					}))
-				: [];
+		// One row per payment group. With a project filter, only payments with
+		// a part in that project, showing that part ("60 of a 100 payment").
+		// Actions still apply to the whole payment.
+		const settlementRows: TimelineRow[] = (settlementData ?? []).flatMap(
+			(s) => {
+				const base = {
+					type: "settlement" as const,
+					date: new Date(s.initiatedAt),
+					status: s.status,
+					settlementId: s.id,
+					settlementKind: s.kind,
+					paymentMethod: s.paymentMethod,
+					note: s.note,
+					canConfirmSettlement: s.canConfirm,
+					canRejectSettlement: s.canReject,
+					canDeleteSettlement: s.canDelete,
+					canVoidSettlement: s.canVoid,
+					canRemindSettlement: s.canRemind,
+				};
+				if (selectedProjectId === undefined) {
+					return [
+						{
+							...base,
+							id: `settlement-${s.id}`,
+							currency: s.currency,
+							amount: s.amount,
+							direction: s.direction,
+							settlementDetail: settlementDetail(s, formatCurrency, t),
+						},
+					];
+				}
+				return settlementProjectParts(
+					s,
+					selectedProjectId,
+					formatCurrency,
+					t,
+				).map((part) => ({
+					...base,
+					id: `settlement-${s.id}-${part.currency}`,
+					currency: part.currency,
+					amount: part.amount,
+					direction: part.direction,
+					settlementDetail: part.detail,
+				}));
+			},
+		);
 
 		const rows = [...txnRows, ...settlementRows];
 		timelineRowsRef.current = rows;
 		return rows;
-	}, [allTransactions, settlementData, hideSettled, selectedProjectId, selectedCategories, paidByFilter]);
+	}, [allTransactions, settlementData, hideSettled, selectedProjectId, selectedCategories, paidByFilter, formatCurrency, t]);
 
 	const txnCount = useMemo(
 		() => timelineRows.filter((r) => r.type === "transaction").length,
