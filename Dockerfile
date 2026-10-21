@@ -1,5 +1,5 @@
 # Install dependencies only when needed
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -19,7 +19,7 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Install pnpm
@@ -50,7 +50,7 @@ ENV ENABLE_LEGAL_PAGES=${ENABLE_LEGAL_PAGES}
 RUN pnpm build
 
 # Production image, copy all the files and run next
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
