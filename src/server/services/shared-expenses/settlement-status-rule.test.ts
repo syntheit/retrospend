@@ -14,7 +14,7 @@ const BALANCE_QUERY_FILES = [
 	"src/server/services/shared-expenses/balance.ts",
 	"src/server/services/shared-expenses/balances-perspective.service.ts",
 	"src/server/api/routers/project.ts",
-	"src/server/api/routers/billingPeriod.ts",
+	"src/server/services/shared-expenses/billing-period-settle.ts",
 	"src/server/api/routers/export.ts",
 ];
 
