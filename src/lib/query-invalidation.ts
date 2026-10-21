@@ -57,9 +57,11 @@ const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 
 	// ── Settlements ─────────────────────────────────────────────────────
 	"settlement.create": SETTLEMENT_DEPS,
+	"settlement.settleAll": SETTLEMENT_DEPS,
 	"settlement.confirm": SETTLEMENT_DEPS,
 	"settlement.reject": SETTLEMENT_DEPS,
 	"settlement.deletePending": SETTLEMENT_DEPS,
+	"settlement.void": SETTLEMENT_DEPS,
 
 	// ── Billing periods ─────────────────────────────────────────────────
 	"billingPeriod.closeCurrent": [
