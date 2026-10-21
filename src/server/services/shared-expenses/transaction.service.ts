@@ -508,7 +508,8 @@ export class SharedTransactionService {
 				) {
 					paidByChanged = true;
 					// The new payer is intentionally allowed to be outside the split:
-					// they front the cost without owing a share. No validation needed.
+					// they front the cost without owing a share. They must still be a
+					// member of the project (checked below with the split).
 
 					diff.paidBy = {
 						old: {
