@@ -728,6 +728,34 @@ describe("SharedTransactionService", () => {
 				}),
 			).rejects.toThrow("Split amounts must sum to the transaction amount");
 		});
+
+		it("rejects a participant with no shareAmount as a validation error", async () => {
+			const { db, txClient } = createMockDb();
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+
+			// bob's missing amount would count as 0 and pass the sum check.
+			await expect(
+				service.create({
+					amount: 100,
+					currency: "USD",
+					description: "Missing share",
+					date: new Date("2026-03-01"),
+					paidBy: { participantType: "user", participantId: "alice" },
+					splitWith: [
+						{ participantType: "user", participantId: "alice", shareAmount: 100 },
+						{ participantType: "user", participantId: "bob" },
+					],
+					splitMode: "EXACT",
+				}),
+			).rejects.toMatchObject({
+				code: "BAD_REQUEST",
+				message: expect.stringContaining("missing shareAmount"),
+			});
+			expect(txClient.sharedTransaction.create).not.toHaveBeenCalled();
+		});
 	});
 
 	// ── split mode: PERCENTAGE ───────────────────────────────────────────────

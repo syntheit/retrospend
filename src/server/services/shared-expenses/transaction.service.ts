@@ -1294,6 +1294,20 @@ export class SharedTransactionService {
 		splitMode: SplitModeType,
 		paidBy: ParticipantRef,
 	): SplitParticipantInput[] {
+		// A missing EXACT amount counts as 0 in the sum check, so it can pass
+		// validation and then fail the insert (shareAmount is required). Reject
+		// it here as a validation error instead.
+		if (splitMode === "EXACT") {
+			const missing = splitWith.find(
+				(p) => p.shareAmount === undefined || p.shareAmount === null,
+			);
+			if (missing) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Participant ${missing.participantId} is missing shareAmount for EXACT split mode`,
+				});
+			}
+		}
 		try {
 			return resolveSplits({
 				mode: splitMode,
