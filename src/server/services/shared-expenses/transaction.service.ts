@@ -961,10 +961,16 @@ export class SharedTransactionService {
 	 * one of those participants still owes the payer (the balance has not been
 	 * settled). Reuses {@link computeBalance} rather than re-deriving balances by
 	 * hand so it honors settlements, claim aliases, and the same rounding rules.
+	 *
+	 * A project expense is checked against that project's balance (settlements
+	 * are project-scoped), so debts or settle-ups elsewhere between the same
+	 * people neither trigger nor hide the warning. A standalone expense keeps
+	 * the global balance.
 	 */
 	private async hasUnsettledBalance(
 		db: PrismaClient,
 		existing: {
+			projectId: string | null;
 			currency: string;
 			paidByType: string;
 			paidById: string;
@@ -999,7 +1005,12 @@ export class SharedTransactionService {
 			};
 
 			// computeBalance(payer, participant): positive = participant owes payer.
-			const balance = await computeBalance(db, payer, participant);
+			const balance = await computeBalance(
+				db,
+				payer,
+				participant,
+				existing.projectId ? { projectScope: existing.projectId } : undefined,
+			);
 			const owed = balance.byCurrency[currency] ?? 0;
 			if (owed > TOLERANCE) {
 				return true;

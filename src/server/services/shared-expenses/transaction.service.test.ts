@@ -2143,6 +2143,50 @@ describe("SharedTransactionService", () => {
 			expect(txClient.sharedTransaction.delete).not.toHaveBeenCalled();
 		});
 
+		it("checks a project expense against that project's balance only", async () => {
+			const { db, txClient } = createMockDb();
+			const existing = {
+				id: "txn-1",
+				description: "Dinner",
+				amount: 50,
+				currency: "USD",
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				projectId: "proj-1",
+				splitParticipants: [
+					{ participantType: "user", participantId: "alice", shareAmount: 25 },
+					{ participantType: "user", participantId: "bob", shareAmount: 25 },
+				],
+			};
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			txClient.sharedTransaction.delete.mockResolvedValue(existing);
+			Object.assign(txClient, {
+				projectParticipant: {
+					findUnique: vi.fn().mockResolvedValue({ role: "ORGANIZER" }),
+				},
+			});
+			// Settled within the project (bob may still owe alice elsewhere, but
+			// that is not this expense's debt).
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+			await service.delete("txn-1");
+
+			expect(computeBalance).toHaveBeenCalledWith(
+				expect.anything(),
+				{ participantType: "user", participantId: "alice" },
+				{ participantType: "user", participantId: "bob" },
+				{ projectScope: "proj-1" },
+			);
+			expect(txClient.sharedTransaction.delete).toHaveBeenCalled();
+		});
+
 		it("deletes an unsettled expense when confirmUnsettled is true", async () => {
 			const { db, txClient } = createMockDb();
 			const existing = {

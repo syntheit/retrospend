@@ -12,11 +12,12 @@ import {
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import {
+	computePeriodOutstanding,
 	computeSettlementPlan,
 	isFullySettled,
 } from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
-import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
+import type { Prisma, PrismaClient } from "~prisma";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -224,95 +225,82 @@ async function notifyPeriodClosed(
 
 // ── Outstanding-balance guard ─────────────────────────────────────────────────
 
+const txForPlanSelect = {
+	currency: true,
+	amount: true,
+	paidByType: true,
+	paidById: true,
+	splitParticipants: {
+		select: {
+			participantType: true,
+			participantId: true,
+			shareAmount: true,
+		},
+	},
+} as const;
+
 /**
- * Compute the outstanding settlement plan for a single billing period: the
- * transactions in that period plus the FINALIZED settlements between their
- * participants. Read-only, creates nothing.
+ * Decide whether a billing period is honestly settled before it can be marked
+ * SETTLED. Read-only, creates nothing: a period is only "settled" when real
+ * settle-ups have cleared its balances; this never fabricates settlement rows.
  *
- * Reused to decide whether a period is honestly settled (all balances zero)
- * before it can be marked SETTLED. A period is only "settled" when real
- * settle-ups have zeroed every balance; this never fabricates settlement rows.
+ * Settlements are project-scoped but NOT tied to a period (settle-up acts on
+ * the project-wide balance, so Settlement.billingPeriodId is never set). A
+ * naive "this period's expenses minus every settlement" check therefore counts
+ * payments that belong to other periods. Instead:
+ * - expenses of this period and every earlier one are compared with all of the
+ *   project's FINALIZED settlements, applied oldest debt first
+ *   (see computePeriodOutstanding);
+ * - if the project as a whole is settled, the period is settled too (a debt
+ *   can also be cancelled by a later expense in the other direction).
  */
-async function computePeriodSettlementPlan(
+async function computePeriodSettleStatus(
 	db: PrismaClient | Prisma.TransactionClient,
-	periodId: string,
+	period: { id: string; projectId: string; startDate: Date },
 ) {
 	const prisma = db as PrismaClient;
 
-	const transactions = await prisma.sharedTransaction.findMany({
-		where: { billingPeriodId: periodId },
-		select: {
-			currency: true,
-			amount: true,
-			paidByType: true,
-			paidById: true,
-			splitParticipants: {
-				select: {
-					participantType: true,
-					participantId: true,
-					shareAmount: true,
-				},
+	const [throughPeriods, allProjectTxs, settlements] = await Promise.all([
+		prisma.billingPeriod.findMany({
+			where: { projectId: period.projectId },
+			select: { id: true, startDate: true },
+		}),
+		prisma.sharedTransaction.findMany({
+			where: { projectId: period.projectId },
+			select: { ...txForPlanSelect, billingPeriodId: true },
+		}),
+		prisma.settlement.findMany({
+			where: { projectId: period.projectId, status: "FINALIZED" },
+			select: {
+				fromParticipantType: true,
+				fromParticipantId: true,
+				toParticipantType: true,
+				toParticipantId: true,
+				amount: true,
+				currency: true,
 			},
-		},
-	});
+		}),
+	]);
 
-	if (transactions.length === 0) {
-		return computeSettlementPlan([], []);
-	}
+	const throughIds = new Set(
+		throughPeriods
+			.filter(
+				(p) =>
+					p.id === period.id ||
+					p.startDate.getTime() < period.startDate.getTime(),
+			)
+			.map((p) => p.id),
+	);
+	const throughPeriodTxs = allProjectTxs.filter(
+		(tx) => tx.billingPeriodId === null || throughIds.has(tx.billingPeriodId),
+	);
 
-	// Collect every participant that appears in this period.
-	const participantSet = new Map<
-		string,
-		{ participantType: ParticipantType; participantId: string }
-	>();
-	for (const tx of transactions) {
-		participantSet.set(`${tx.paidByType}:${tx.paidById}`, {
-			participantType: tx.paidByType,
-			participantId: tx.paidById,
-		});
-		for (const sp of tx.splitParticipants) {
-			participantSet.set(`${sp.participantType}:${sp.participantId}`, {
-				participantType: sp.participantType,
-				participantId: sp.participantId,
-			});
-		}
-	}
-	const participants = [...participantSet.values()];
+	const outstanding = computePeriodOutstanding(throughPeriodTxs, settlements);
+	const projectSettled =
+		outstanding.length === 0 ||
+		isFullySettled(computeSettlementPlan(allProjectTxs, settlements));
 
-	if (participants.length < 2) {
-		return computeSettlementPlan(transactions, []);
-	}
-
-	// Only FINALIZED settlements between these participants reduce balances.
-	const settlements = await prisma.settlement.findMany({
-		where: {
-			status: "FINALIZED",
-			AND: [
-				{
-					OR: participants.map((p) => ({
-						fromParticipantType: p.participantType,
-						fromParticipantId: p.participantId,
-					})),
-				},
-				{
-					OR: participants.map((p) => ({
-						toParticipantType: p.participantType,
-						toParticipantId: p.participantId,
-					})),
-				},
-			],
-		},
-		select: {
-			fromParticipantType: true,
-			fromParticipantId: true,
-			toParticipantType: true,
-			toParticipantId: true,
-			amount: true,
-			currency: true,
-		},
-	});
-
-	return computeSettlementPlan(transactions, settlements);
+	return { outstanding: projectSettled ? [] : outstanding };
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -687,36 +675,42 @@ export const billingPeriodRouter = createTRPCRouter({
 			// zeroed every balance. If any balance remains outstanding, refuse and
 			// tell the organizer exactly what is still owed. Outstanding balances stay
 			// live and visible until real settle-ups clear them.
-			const plan = await computePeriodSettlementPlan(ctx.db, input.periodId);
+			const { outstanding } = await computePeriodSettleStatus(ctx.db, period);
 
-			if (!isFullySettled(plan)) {
-				// Surface the largest single outstanding payment so the message is
-				// concrete and actionable.
-				let biggest: {
-					from: { participantType: ParticipantType; participantId: string };
-					to: { participantType: ParticipantType; participantId: string };
-					amount: number;
-					currency: string;
-				} | null = null;
-				for (const breakdown of Object.values(plan.byCurrency)) {
-					for (const step of breakdown.plan) {
-						if (!biggest || step.amount > biggest.amount) biggest = step;
-					}
-				}
+			if (outstanding.length > 0) {
+				// Surface the largest open amount so the message is concrete and
+				// actionable. Pair the largest debtor with the largest creditor in
+				// that currency when both exist.
+				const first = outstanding[0]!;
+				const inCurrency = outstanding.filter(
+					(o) => o.currency === first.currency,
+				);
+				const debtor = inCurrency.find((o) => o.amount < 0);
+				const creditor = inCurrency.find((o) => o.amount > 0);
 
 				let detail = "";
-				if (biggest) {
+				if (debtor && creditor) {
 					const [fromName, toName] = await Promise.all([
 						resolveParticipantName(
-							biggest.from.participantType,
-							biggest.from.participantId,
+							debtor.participant.participantType,
+							debtor.participant.participantId,
 						),
 						resolveParticipantName(
-							biggest.to.participantType,
-							biggest.to.participantId,
+							creditor.participant.participantType,
+							creditor.participant.participantId,
 						),
 					]);
-					detail = ` ${biggest.currency} ${biggest.amount.toFixed(2)} from ${fromName} to ${toName} is still outstanding.`;
+					const amount = Math.min(-debtor.amount, creditor.amount);
+					detail = ` ${first.currency} ${amount.toFixed(2)} from ${fromName} to ${toName} is still outstanding.`;
+				} else {
+					const name = await resolveParticipantName(
+						first.participant.participantType,
+						first.participant.participantId,
+					);
+					detail =
+						first.amount < 0
+							? ` ${name} still owes ${first.currency} ${(-first.amount).toFixed(2)}.`
+							: ` ${name} is still owed ${first.currency} ${first.amount.toFixed(2)}.`;
 				}
 
 				throw new TRPCError({

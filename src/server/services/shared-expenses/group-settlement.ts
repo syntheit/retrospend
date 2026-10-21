@@ -231,3 +231,67 @@ export function computeSettlementPlan(
 export function isFullySettled(plan: SettlementPlanResult): boolean {
 	return Object.values(plan.byCurrency).every((c) => c.plan.length === 0);
 }
+
+// ── billing-period settle check ───────────────────────────────────────────────
+
+export interface PeriodOutstanding {
+	participant: ParticipantRef;
+	currency: string;
+	/**
+	 * What is still open for this participant from the period (and earlier):
+	 * positive = still owed to them, negative = they still owe.
+	 */
+	amount: number;
+}
+
+/**
+ * Decide what is still outstanding for a billing period when settlements are
+ * not tied to a period (Settlement.billingPeriodId is never set: settle-ups
+ * happen on the project-wide balance).
+ *
+ * Settlements are applied oldest debt first. A participant's net payments
+ * first cover what they owed through the end of this period; anything beyond
+ * that belongs to later periods. So the period is settled when:
+ * - everyone who owed through this period has paid at least that much (net),
+ * - everyone who was owed through this period has received at least that much.
+ * Participants who were even through this period are ignored: their payments
+ * relate to later periods.
+ *
+ * @param throughPeriodTxs  Expenses of this period AND every earlier period
+ *                          (plus project expenses without a period).
+ * @param settlements       All FINALIZED settlements of the project.
+ * @returns The participants that are still open, largest first. Empty = settled.
+ */
+export function computePeriodOutstanding(
+	throughPeriodTxs: TxForSettlement[],
+	settlements: SettlementForPlan[],
+): PeriodOutstanding[] {
+	const before = computeSettlementPlan(throughPeriodTxs, []);
+	const after = computeSettlementPlan(throughPeriodTxs, settlements);
+
+	const outstanding: PeriodOutstanding[] = [];
+	for (const [currency, breakdown] of Object.entries(before.byCurrency)) {
+		const afterNet = new Map<string, number>();
+		for (const b of after.byCurrency[currency]?.balances ?? []) {
+			afterNet.set(
+				pkey(b.participant.participantType, b.participant.participantId),
+				b.netBalance,
+			);
+		}
+
+		for (const b of breakdown.balances) {
+			const owedBefore = b.netBalance;
+			const net =
+				afterNet.get(
+					pkey(b.participant.participantType, b.participant.participantId),
+				) ?? owedBefore;
+			const stillOwes = owedBefore < -ZERO_TOLERANCE && net < -ZERO_TOLERANCE;
+			const stillOwed = owedBefore > ZERO_TOLERANCE && net > ZERO_TOLERANCE;
+			if (stillOwes || stillOwed) {
+				outstanding.push({ participant: b.participant, currency, amount: net });
+			}
+		}
+	}
+
+	return outstanding.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+}
