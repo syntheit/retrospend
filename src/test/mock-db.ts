@@ -58,6 +58,7 @@ export function createMockDb() {
 		category: makeMockModel(),
 		budget: makeMockModel(),
 		recurringExpense: makeMockModel(),
+		recurringTemplate: makeMockModel(),
 		exchangeRate: makeMockModel(),
 		asset: makeMockModel(),
 		assetSnapshot: makeMockModel(),

@@ -1,38 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { BASE_CURRENCY } from "~/lib/constants";
+import { computeAmountInUSD } from "~/lib/money";
+import { nextRecurringDate } from "~/lib/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { fromUSD, toUSD } from "~/server/currency";
+import { requireExchangeRate } from "~/server/exchange-rates";
 import { RateCache } from "~/server/services/rate-cache";
-import { getBestExchangeRate } from "./shared-currency";
-
-// Helper to calculate next due date based on frequency
-function calculateNextDueDate(
-	currentDate: Date,
-	frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY",
-): Date {
-	const next = new Date(currentDate);
-
-	switch (frequency) {
-		case "WEEKLY":
-			next.setDate(next.getDate() + 7);
-			break;
-		case "BIWEEKLY":
-			next.setDate(next.getDate() + 14);
-			break;
-		case "MONTHLY":
-			next.setMonth(next.getMonth() + 1);
-			break;
-		case "QUARTERLY":
-			next.setMonth(next.getMonth() + 3);
-			break;
-		case "YEARLY":
-			next.setFullYear(next.getFullYear() + 1);
-			break;
-	}
-
-	return next;
-}
 
 export const recurringRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -208,6 +181,7 @@ export const recurringRouter = createTRPCRouter({
 					categoryId: input.categoryId,
 					frequency: input.frequency,
 					nextDueDate: input.nextDueDate,
+					anchorDay: input.nextDueDate.getDate(),
 					websiteUrl: input.websiteUrl,
 					paymentSource: input.paymentSource,
 					autoPay: input.autoPay,
@@ -281,6 +255,10 @@ export const recurringRouter = createTRPCRouter({
 					categoryId: input.categoryId,
 					frequency: input.frequency,
 					nextDueDate: input.nextDueDate,
+					// A due date the user sets is the new anchor for monthly steps.
+					...(input.nextDueDate && {
+						anchorDay: input.nextDueDate.getDate(),
+					}),
 					websiteUrl: input.websiteUrl,
 					paymentSource: input.paymentSource,
 					autoPay: input.autoPay,
@@ -366,6 +344,10 @@ export const recurringRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().cuid(),
+				// The due date the user is confirming. When sent, a repeat of the
+				// same confirm (double click, second tab) is rejected instead of
+				// booking the next period.
+				dueDate: z.date().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -386,34 +368,61 @@ export const recurringRouter = createTRPCRouter({
 				});
 			}
 
-			// Get exchange rate
-			let exchangeRate = 1;
-			let amountInUSD = Number(template.amount);
-
-			if (template.currency !== BASE_CURRENCY) {
-				const bestRate = await getBestExchangeRate(
-					db,
-					template.currency,
-					template.nextDueDate,
-				);
-				if (bestRate) {
-					exchangeRate = bestRate.rate;
-					amountInUSD = toUSD(Number(template.amount), template.currency, exchangeRate);
-				}
+			if (
+				(input.dueDate &&
+					input.dueDate.getTime() !== template.nextDueDate.getTime()) ||
+				template.nextDueDate > new Date()
+			) {
+				throw new TRPCError({
+					code: "CONFLICT",
+					message: "This payment was already confirmed",
+				});
 			}
 
-			// Calculate next due date
-			const nextDueDate = calculateNextDueDate(
+			// Rate for the due date (nearest available). A currency without any
+			// rate fails here instead of being booked at a rate of 1.
+			const { rate: exchangeRate } = await requireExchangeRate(
+				db,
+				template.currency,
 				template.nextDueDate,
-				template.frequency,
+			);
+			const amountInUSD = computeAmountInUSD(
+				Number(template.amount),
+				template.currency,
+				exchangeRate,
 			);
 
-			// Create expense and update template in a transaction
-			// This prevents orphaned expenses if the nextDueDate update fails
+			const nextDueDate = nextRecurringDate(
+				template.nextDueDate,
+				template.frequency,
+				template.anchorDay,
+			);
+
+			// Advance the template and create the expense in one transaction.
+			// The advance only succeeds while nextDueDate is still the one read
+			// above, so two confirms racing each other create a single expense.
 			const expense = await db.$transaction(async (tx) => {
 				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
 				                            set_config('role', 'retrospend_app', true)`;
-				const createdExpense = await tx.expense.create({
+				const advanced = await tx.recurringTemplate.updateMany({
+					where: {
+						id: template.id,
+						userId: session.user.id,
+						nextDueDate: template.nextDueDate,
+					},
+					data: {
+						nextDueDate,
+						anchorDay: template.anchorDay ?? template.nextDueDate.getDate(),
+					},
+				});
+				if (advanced.count === 0) {
+					throw new TRPCError({
+						code: "CONFLICT",
+						message: "This payment was already confirmed",
+					});
+				}
+
+				return await tx.expense.create({
 					data: {
 						userId: session.user.id,
 						title: template.name,
@@ -428,14 +437,6 @@ export const recurringRouter = createTRPCRouter({
 						status: "FINALIZED",
 					},
 				});
-
-				// Update next due date
-				await tx.recurringTemplate.update({
-					where: { id: template.id },
-					data: { nextDueDate },
-				});
-
-				return createdExpense;
 			});
 
 			return expense;
