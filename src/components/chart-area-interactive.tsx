@@ -256,7 +256,7 @@ export function ChartAreaInteractive() {
 								<ChartTooltipContent
 									indicator="dot"
 									labelFormatter={(value) => {
-										return new Date(value).toLocaleDateString("en-US", {
+										return new Date(String(value)).toLocaleDateString("en-US", {
 											month: "short",
 											day: "numeric",
 										});
