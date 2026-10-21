@@ -1,5 +1,6 @@
 import type { PrismaClient } from "~prisma";
 import { deleteFile } from "~/server/storage";
+import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 export const DELETED_USER_SENTINEL = "DELETED_USER";
 export const DELETED_USER_NAME = "Deleted User";
@@ -29,29 +30,13 @@ export async function anonymizeParticipantReferences(
 	participantId: string,
 	sentinelId: string,
 ): Promise<void> {
-	// Merge split_participant shares where sentinel already exists (unique constraint)
-	await tx.$executeRaw`
-		UPDATE split_participant AS target
-		SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-		FROM   split_participant AS source
-		WHERE  source."participantType" = ${participantType}::"ParticipantType"
-		  AND  source."participantId"   = ${participantId}
-		  AND  target."transactionId"   = source."transactionId"
-		  AND  target."participantType" = ${participantType}::"ParticipantType"
-		  AND  target."participantId"   = ${sentinelId}
-	`;
-	// Delete merged rows (now duplicates)
-	await tx.$executeRaw`
-		DELETE FROM split_participant
-		WHERE  "participantType" = ${participantType}::"ParticipantType"
-		  AND  "participantId"   = ${participantId}
-		  AND  "transactionId" IN (
-			SELECT "transactionId"
-			FROM   split_participant
-			WHERE  "participantType" = ${participantType}::"ParticipantType"
-			  AND  "participantId"   = ${sentinelId}
-		  )
-	`;
+	// Merge split_participant shares where sentinel already exists (unique
+	// constraint), then delete the merged rows (now duplicates)
+	await mergeOverlappingSplitRows(
+		tx,
+		{ participantType, participantId },
+		{ participantType, participantId: sentinelId },
+	);
 	// Update remaining split_participant rows
 	await tx.splitParticipant.updateMany({
 		where: { participantType, participantId },
@@ -505,30 +490,14 @@ export async function anonymizeAndDeleteUser(
 		// user already deleted their account and was in the same split).
 		//
 		// Strategy:
-		//   1. Merge shareAmount into the pre-existing DELETED_USER row.
+		//   1. Merge the share into the pre-existing DELETED_USER row.
 		//   2. Delete the user's row that was just merged (it would conflict).
 		//   3. Update the remaining user rows where no conflict exists.
-		await tx.$executeRaw`
-			UPDATE split_participant AS target
-			SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-			FROM   split_participant AS source
-			WHERE  source."participantType" = 'user'
-			  AND  source."participantId"   = ${userId}
-			  AND  target."transactionId"   = source."transactionId"
-			  AND  target."participantType" = 'user'
-			  AND  target."participantId"   = ${DELETED_USER_SENTINEL}
-		`;
-		await tx.$executeRaw`
-			DELETE FROM split_participant
-			WHERE  "participantType" = 'user'
-			  AND  "participantId"   = ${userId}
-			  AND  "transactionId" IN (
-				SELECT "transactionId"
-				FROM   split_participant
-				WHERE  "participantType" = 'user'
-				  AND  "participantId"   = ${DELETED_USER_SENTINEL}
-			  )
-		`;
+		await mergeOverlappingSplitRows(
+			tx,
+			{ participantType: "user", participantId: userId },
+			{ participantType: "user", participantId: DELETED_USER_SENTINEL },
+		);
 		await tx.splitParticipant.updateMany({
 			where: { participantType: "user", participantId: userId },
 			data: { participantId: DELETED_USER_SENTINEL },

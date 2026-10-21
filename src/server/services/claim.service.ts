@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "~prisma";
+import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 /**
  * Explicit shadow-profile claiming (claim link + "are you one of these people?"
@@ -60,27 +61,11 @@ async function repointShadowReferences(
 	// The target may already be a split participant on the same transaction (e.g.
 	// they were added as a user before claiming the ghost), so sum-then-delete
 	// the conflicting rows before re-pointing the rest.
-	await tx.$executeRaw`
-		UPDATE split_participant AS target
-		SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-		FROM   split_participant AS source
-		WHERE  source."participantType" = 'shadow'
-		  AND  source."participantId"   = ${shadowId}
-		  AND  target."transactionId"   = source."transactionId"
-		  AND  target."participantType" = ${targetType}::"ParticipantType"
-		  AND  target."participantId"   = ${targetId}
-	`;
-	await tx.$executeRaw`
-		DELETE FROM split_participant
-		WHERE  "participantType" = 'shadow'
-		  AND  "participantId"   = ${shadowId}
-		  AND  "transactionId" IN (
-			SELECT "transactionId"
-			FROM   split_participant
-			WHERE  "participantType" = ${targetType}::"ParticipantType"
-			  AND  "participantId"   = ${targetId}
-		  )
-	`;
+	await mergeOverlappingSplitRows(
+		tx,
+		{ participantType: "shadow", participantId: shadowId },
+		{ participantType: targetType, participantId: targetId },
+	);
 	await tx.splitParticipant.updateMany({
 		where: { participantType: "shadow", participantId: shadowId },
 		data: { participantType: targetType, participantId: targetId },
