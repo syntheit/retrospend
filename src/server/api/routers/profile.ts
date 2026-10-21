@@ -441,9 +441,10 @@ export const profileRouter = createTRPCRouter({
 			where: { userId, status: "FINALIZED" },
 		});
 
+		// Amortized purchases count once, through their monthly parts
 		const { total: lifetimeSpend } = await sumExpensesForCurrency(
 			db,
-			{ userId },
+			{ userId, isAmortizedParent: false },
 			user.homeCurrency,
 		);
 
