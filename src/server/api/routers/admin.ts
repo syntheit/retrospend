@@ -336,6 +336,11 @@ export const adminRouter = createTRPCRouter({
 				select: { username: true },
 			});
 
+			// Sign the user out everywhere so the disable takes effect immediately
+			await db.session.deleteMany({
+				where: { userId: input.userId },
+			});
+
 			// Log the account disable
 			logEventAsync({
 				eventType: "ACCOUNT_DISABLED",
