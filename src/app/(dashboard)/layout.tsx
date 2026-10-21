@@ -28,7 +28,9 @@ export default async function Layout({
 		headers: await headers(),
 	});
 
-	if (!session) {
+	// Disabled accounts are treated as signed out (the login page does the same,
+	// so this cannot loop).
+	if (!session || !session.user.isActive) {
 		redirect("/login");
 	}
 

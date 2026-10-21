@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // variables referenced inside factory functions.
 
 const mockDb = vi.hoisted(() => ({
-	user: { findUnique: vi.fn() },
+	user: { findUnique: vi.fn(), findMany: vi.fn() },
 	project: {
 		findUniqueOrThrow: vi.fn(),
 		findUnique: vi.fn(),
@@ -30,17 +30,20 @@ const mockDb = vi.hoisted(() => ({
 		update: vi.fn(),
 		delete: vi.fn(),
 	},
-	shadowProfile: { findUnique: vi.fn() },
-	guestSession: { findUnique: vi.fn(), update: vi.fn() },
-	sharedTransaction: { count: vi.fn(), aggregate: vi.fn() },
+	shadowProfile: { findUnique: vi.fn(), findMany: vi.fn() },
+	guestSession: { findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() },
+	sharedTransaction: { count: vi.fn(), aggregate: vi.fn(), groupBy: vi.fn() },
+	splitParticipant: { count: vi.fn() },
+	category: { findMany: vi.fn() },
 	billingPeriod: { create: vi.fn() },
 	auditLog: { create: vi.fn() },
-	magicLink: { create: vi.fn(), findFirst: vi.fn() },
+	magicLink: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
 	$transaction: vi.fn(),
 	$executeRaw: vi.fn(),
 }));
 
 const mockRequireProjectRole = vi.hoisted(() => vi.fn());
+const mockGetBalancesFromPerspective = vi.hoisted(() => vi.fn());
 
 vi.mock("~/env", () => ({
 	env: {
@@ -84,6 +87,10 @@ vi.mock("~/server/services/shared-expenses/group-settlement", () => ({
 vi.mock("~/server/services/shared-expenses/project-permissions", () => ({
 	requireProjectRole: mockRequireProjectRole,
 	assertCanModifyTransaction: vi.fn(),
+}));
+
+vi.mock("~/server/services/shared-expenses/balances-perspective.service", () => ({
+	getBalancesFromPerspective: mockGetBalancesFromPerspective,
 }));
 
 // ── Imports (after mocks) ───────────────────────────────────────────────────
@@ -307,6 +314,101 @@ describe("project.addParticipant", () => {
 			),
 		).rejects.toMatchObject({ code: "CONFLICT" });
 	});
+
+	it("throws FORBIDDEN when an EDITOR tries to add someone as ORGANIZER", async () => {
+		mockRequireProjectRole.mockResolvedValue({
+			id: "pp-editor",
+			role: "EDITOR",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "editor-1",
+			joinedAt: new Date(),
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue(null);
+
+		const caller = createCaller({
+			session: makeOrganizerSession("editor-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await expect(
+			callAndFlush(() =>
+				caller.addParticipant({
+					projectId: "proj-1",
+					participantType: "user",
+					participantId: "new-user",
+					role: "ORGANIZER",
+				}),
+			),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		expect(mockDb.projectParticipant.create).not.toHaveBeenCalled();
+	});
+
+	it("lets an ORGANIZER add someone as ORGANIZER", async () => {
+		mockDb.projectParticipant.findUnique.mockResolvedValue(null);
+		mockDb.projectParticipant.create.mockResolvedValue({ id: "pp-new" });
+		mockDb.project.findUnique.mockResolvedValue({ name: "Trip" });
+
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await callAndFlush(() =>
+			caller.addParticipant({
+				projectId: "proj-1",
+				participantType: "user",
+				participantId: "new-user",
+				role: "ORGANIZER",
+			}),
+		);
+		expect(mockDb.projectParticipant.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ role: "ORGANIZER" }),
+			}),
+		);
+	});
+
+	it("shadow invite magic link grants the same capped role as the participant row", async () => {
+		mockDb.shadowProfile.findUnique.mockResolvedValue({
+			id: "shadow-1",
+			createdById: "organizer-1",
+			name: "Ghost",
+			email: "ghost@example.com",
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue(null);
+		mockDb.projectParticipant.create.mockResolvedValue({ id: "pp-new" });
+		mockDb.project.findUnique.mockResolvedValue({ name: "Trip" });
+		mockDb.magicLink.create.mockResolvedValue({ id: "link-1" });
+
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await callAndFlush(() =>
+			caller.addParticipant({
+				projectId: "proj-1",
+				participantType: "shadow",
+				participantId: "shadow-1",
+				role: "EDITOR",
+			}),
+		);
+
+		expect(mockDb.projectParticipant.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ role: "CONTRIBUTOR" }),
+			}),
+		);
+		expect(mockDb.magicLink.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ roleGranted: "CONTRIBUTOR", maxUses: 1 }),
+			}),
+		);
+	});
 });
 
 // ── 3. project.updateParticipantRole ─────────────────────────────────────────
@@ -360,6 +462,85 @@ describe("project.updateParticipantRole", () => {
 				}),
 			),
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
+	});
+
+	it("throws FORBIDDEN when an EDITOR tries to promote someone to ORGANIZER", async () => {
+		mockRequireProjectRole.mockResolvedValue({
+			id: "pp-editor",
+			role: "EDITOR",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "editor-1",
+			joinedAt: new Date(),
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue({
+			id: "pp-target",
+			role: "CONTRIBUTOR",
+			participantType: "user",
+			participantId: "target-user",
+		});
+		mockDb.project.findUniqueOrThrow.mockResolvedValue({
+			id: "proj-1",
+			createdById: "creator-user",
+		});
+
+		const caller = createCaller({
+			session: makeOrganizerSession("editor-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await expect(
+			callAndFlush(() =>
+				caller.updateParticipantRole({
+					projectId: "proj-1",
+					participantType: "user",
+					participantId: "target-user",
+					role: "ORGANIZER",
+				}),
+			),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		expect(mockDb.projectParticipant.update).not.toHaveBeenCalled();
+	});
+
+	it("lets an EDITOR promote a contributor to EDITOR", async () => {
+		mockRequireProjectRole.mockResolvedValue({
+			id: "pp-editor",
+			role: "EDITOR",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "editor-1",
+			joinedAt: new Date(),
+		});
+		mockDb.projectParticipant.findUnique.mockResolvedValue({
+			id: "pp-target",
+			role: "CONTRIBUTOR",
+			participantType: "user",
+			participantId: "target-user",
+		});
+		mockDb.project.findUniqueOrThrow.mockResolvedValue({
+			id: "proj-1",
+			createdById: "creator-user",
+		});
+		mockDb.projectParticipant.update.mockResolvedValue({ id: "pp-target" });
+
+		const caller = createCaller({
+			session: makeOrganizerSession("editor-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		await callAndFlush(() =>
+			caller.updateParticipantRole({
+				projectId: "proj-1",
+				participantType: "user",
+				participantId: "target-user",
+				role: "EDITOR",
+			}),
+		);
+		expect(mockDb.projectParticipant.update).toHaveBeenCalledWith(
+			expect.objectContaining({ data: { role: "EDITOR" } }),
+		);
 	});
 });
 
@@ -533,5 +714,198 @@ describe("project.delete", () => {
 		expect(mockDb.project.delete).toHaveBeenCalledWith({
 			where: { id: "proj-1" },
 		});
+	});
+});
+
+// ── Participant email exposure ───────────────────────────────────────────────
+
+describe("participant emails in project responses", () => {
+	const PARTICIPANT_ROWS = [
+		{
+			id: "pp-org",
+			projectId: "proj-1",
+			participantType: "user",
+			participantId: "organizer-1",
+			role: "ORGANIZER",
+			joinedAt: new Date(),
+			excludeFromAnalytics: true,
+		},
+		{
+			id: "pp-ghost",
+			projectId: "proj-1",
+			participantType: "shadow",
+			participantId: "shadow-1",
+			role: "CONTRIBUTOR",
+			joinedAt: new Date(),
+			excludeFromAnalytics: false,
+		},
+		{
+			id: "pp-guest",
+			projectId: "proj-1",
+			participantType: "guest",
+			participantId: "guest-1",
+			role: "CONTRIBUTOR",
+			joinedAt: new Date(),
+			excludeFromAnalytics: false,
+		},
+	];
+
+	const VIEWER_LINK = {
+		projectId: "proj-1",
+		roleGranted: "VIEWER",
+		isActive: true,
+		expiresAt: null,
+		maxUses: null,
+		useCount: 0,
+	};
+
+	beforeEach(() => {
+		mockDb.project.findUnique.mockResolvedValue({
+			id: "proj-1",
+			name: "Trip",
+			visibility: "PUBLIC",
+			billingCycleLength: null,
+			participants: PARTICIPANT_ROWS,
+			billingPeriods: [],
+		});
+		mockDb.user.findMany.mockResolvedValue([
+			{ id: "organizer-1", name: "Org", username: "org", image: null, avatarPath: null },
+		]);
+		mockDb.shadowProfile.findMany.mockResolvedValue([
+			{ id: "shadow-1", name: "Ghost", email: "ghost@example.com" },
+		]);
+		mockDb.guestSession.findMany.mockResolvedValue([
+			{ id: "guest-1", name: "Guest", email: "guest@example.com" },
+		]);
+		mockDb.sharedTransaction.groupBy.mockResolvedValue([]);
+		mockDb.category.findMany.mockResolvedValue([]);
+		mockDb.splitParticipant.count.mockResolvedValue(0);
+	});
+
+	function emailsOf(
+		participants: Array<{ participantId: string; email?: string | null }>,
+	) {
+		return Object.fromEntries(
+			participants.map((p) => [p.participantId, p.email ?? null]),
+		);
+	}
+
+	it("publicDetail returns no emails or member preferences", async () => {
+		const caller = createCaller({
+			session: null,
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		const result = await callAndFlush(() => caller.publicDetail({ id: "proj-1" }));
+
+		expect(result).not.toBeNull();
+		for (const p of result!.participants) {
+			expect(p).not.toHaveProperty("email");
+			expect(p).not.toHaveProperty("excludeFromAnalytics");
+		}
+		expect(result!.participants.map((p) => p.name)).toEqual([
+			"Org",
+			"Ghost",
+			"Guest",
+		]);
+	});
+
+	it("detail via an anonymous viewer link hides every email", async () => {
+		mockDb.magicLink.findUnique.mockResolvedValue(VIEWER_LINK);
+		const caller = createCaller({
+			session: null,
+			db: mockDb as never,
+			headers: new Headers({ "x-viewer-link-id": "link-1" }),
+		});
+
+		const result = await callAndFlush(() => caller.detail({ id: "proj-1" }));
+
+		expect(emailsOf(result.participants)).toEqual({
+			"organizer-1": null,
+			"shadow-1": null,
+			"guest-1": null,
+		});
+	});
+
+	it("detail for a guest keeps only the guest's own email", async () => {
+		const { createHash } = await import("node:crypto");
+		mockDb.guestSession.findUnique.mockResolvedValue({
+			id: "guest-1",
+			projectId: "proj-1",
+			sessionToken: createHash("sha256").update("raw-token").digest("hex"),
+			lastActiveAt: new Date(),
+		});
+		mockDb.guestSession.update.mockResolvedValue({});
+		const caller = createCaller({
+			session: null,
+			db: mockDb as never,
+			headers: new Headers({ "x-guest-token": "raw-token" }),
+		});
+
+		const result = await callAndFlush(() => caller.detail({ id: "proj-1" }));
+
+		expect(emailsOf(result.participants)).toEqual({
+			"organizer-1": null,
+			"shadow-1": null,
+			"guest-1": "guest@example.com",
+		});
+	});
+
+	it("detail for a contributing member still shows emails", async () => {
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		const result = await callAndFlush(() => caller.detail({ id: "proj-1" }));
+
+		expect(emailsOf(result.participants)).toEqual({
+			"organizer-1": null,
+			"shadow-1": "ghost@example.com",
+			"guest-1": "guest@example.com",
+		});
+	});
+
+	it("balancesFromPerspective hides emails from viewer links", async () => {
+		mockDb.magicLink.findUnique.mockResolvedValue(VIEWER_LINK);
+		mockRequireProjectRole.mockResolvedValue({ role: "VIEWER" });
+		mockGetBalancesFromPerspective.mockResolvedValue({
+			perspective: {
+				participantType: "shadow",
+				participantId: "shadow-1",
+				name: "Ghost",
+				email: "ghost@example.com",
+			},
+			statements: [
+				{
+					counterpart: {
+						participantType: "guest",
+						participantId: "guest-1",
+						name: "Guest",
+						email: "guest@example.com",
+					},
+					netByCurrency: {},
+					itemized: [],
+				},
+			],
+			totals: { owedToPerspective: {}, owedByPerspective: {} },
+		});
+		const caller = createCaller({
+			session: null,
+			db: mockDb as never,
+			headers: new Headers({ "x-viewer-link-id": "link-1" }),
+		});
+
+		const result = await callAndFlush(() =>
+			caller.balancesFromPerspective({
+				projectId: "proj-1",
+				perspective: { participantType: "shadow", participantId: "shadow-1" },
+			}),
+		);
+
+		expect(result.perspective.email).toBeNull();
+		expect(result.statements[0]!.counterpart.email).toBeNull();
 	});
 });

@@ -632,7 +632,10 @@
     "chooserTitle": "Você é uma destas pessoas?",
     "chooserDescription": "Talvez alguém já tenha adicionado você a <strong>{projectName}</strong>. Selecione seu perfil para manter o histórico existente ou pule esta etapa para entrar como uma nova pessoa.",
     "chooserNoneNew": "Nenhuma delas — sou uma nova pessoa",
-    "chooserBack": "Voltar à lista"
+    "chooserBack": "Voltar à lista",
+    "resumeEmailTitle": "Confira seu e-mail",
+    "resumeEmailBody": "Este e-mail já entrou em <strong>{projectName}</strong>. Enviamos um link para esse endereço para você continuar de onde parou. Ele funciona uma única vez e expira em uma hora.",
+    "resumeLinkInvalid": "Este link é inválido, já foi usado ou expirou. Abra o link de convite novamente para receber um novo."
   },
   "projects": {
     "title": "Projetos",

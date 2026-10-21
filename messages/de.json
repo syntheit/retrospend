@@ -632,7 +632,10 @@
     "chooserTitle": "Sind Sie eine dieser Personen?",
     "chooserDescription": "Möglicherweise hat Sie bereits jemand zu <strong>{projectName}</strong> hinzugefügt. Wählen Sie sich aus, um Ihren bisherigen Verlauf zu behalten, oder überspringen Sie diesen Schritt, um als neue Person beizutreten.",
     "chooserNoneNew": "Keine davon – ich bin neu",
-    "chooserBack": "Zurück zur Liste"
+    "chooserBack": "Zurück zur Liste",
+    "resumeEmailTitle": "Prüfen Sie Ihre E-Mails",
+    "resumeEmailBody": "Mit dieser E-Mail-Adresse ist bereits jemand <strong>{projectName}</strong> beigetreten. Wir haben einen Link an diese Adresse geschickt, damit Sie dort weitermachen können, wo Sie aufgehört haben. Er funktioniert einmal und läuft nach einer Stunde ab.",
+    "resumeLinkInvalid": "Dieser Link ist ungültig, wurde bereits verwendet oder ist abgelaufen. Öffnen Sie den Einladungslink erneut, um einen neuen zu erhalten."
   },
   "projects": {
     "title": "Projekte",

@@ -632,7 +632,10 @@
     "chooserTitle": "Are you one of these people?",
     "chooserDescription": "Someone may have already added you to <strong>{projectName}</strong>. Pick yourself to keep your existing history, or skip to join as a new person.",
     "chooserNoneNew": "None of these — I'm new",
-    "chooserBack": "Back to the list"
+    "chooserBack": "Back to the list",
+    "resumeEmailTitle": "Check your email",
+    "resumeEmailBody": "This email has already joined <strong>{projectName}</strong>. We sent a link to that address so you can continue where you left off. It works once and expires in one hour.",
+    "resumeLinkInvalid": "This link is invalid, was already used, or has expired. Open the invite link again to get a new one."
   },
   "projects": {
     "title": "Projects",

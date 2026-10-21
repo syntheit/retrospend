@@ -1,17 +1,28 @@
 import crypto from "crypto";
 
 /**
- * Stateless signed claim tokens for shadow-profile claim links.
+ * Signed claim tokens for shadow-profile claim links.
  *
- * A token lets whoever holds it prove that a shadow profile was intentionally
- * shared by its creator, without storing anything in the database (the claim
- * STATE — claimedById/claimedAt — already lives on the shadow_profile row).
+ * Nothing is stored in the database. Instead the token is bound to state that
+ * already lives there, so it dies when that state changes:
+ *
+ *   - `version` is the shadow's `updatedAt` (ms) when the link was minted.
+ *     Claiming deletes the shadow and editing it bumps `updatedAt`, so a used
+ *     link stops working and the creator can revoke outstanding links by
+ *     editing the ghost.
+ *   - `issuerId` is the user who minted the link. The claim re-checks that this
+ *     user still has the rights a claim grants (see `canMintClaimLink`), so a
+ *     link stops working if the issuer loses their role or the ghost is added
+ *     to a project they don't run.
  *
  * Format (all base64url, joined by "."):
- *   payload := "<shadowId>:<expiresAtMs>"
+ *   payload := "<shadowId>:<expiresAtMs>:<versionMs>:<issuerId>"
  *   token   := base64url(payload) + "." + base64url(HMAC-SHA256(payload, secret))
  *
- * The signing secret is the server's BETTER_AUTH_SECRET — the same secret
+ * Tokens in the old two-field format ("<shadowId>:<expiresAtMs>") are treated
+ * as expired: they carry no binding, so the issuer has to mint a new link.
+ *
+ * The signing secret is the server's BETTER_AUTH_SECRET, the same secret
  * better-auth uses to sign sessions, so it is guaranteed to be configured.
  */
 
@@ -24,30 +35,46 @@ function sign(payload: string, secret: string): string {
 		.digest("base64url");
 }
 
+export interface ClaimTokenBinding {
+	/** ShadowProfile.id to encode. */
+	shadowId: string;
+	/** ShadowProfile.updatedAt (ms) at mint time. */
+	version: number;
+	/** User.id of the person minting the link. */
+	issuerId: string;
+}
+
 /**
- * Signs a claim token for the given shadow profile id.
- * @param shadowId  ShadowProfile.id to encode.
- * @param secret    Server secret (BETTER_AUTH_SECRET).
- * @param ttlMs     Time-to-live in milliseconds (default 7 days).
+ * Signs a claim token for the given shadow profile.
+ * @param binding  Shadow id, shadow version and issuer (see module docs).
+ * @param secret   Server secret (BETTER_AUTH_SECRET).
+ * @param ttlMs    Time-to-live in milliseconds (default 7 days).
  */
 export function signClaimToken(
-	shadowId: string,
+	binding: ClaimTokenBinding,
 	secret: string,
 	ttlMs: number = DEFAULT_TTL_MS,
 ): string {
 	const expiresAt = Date.now() + ttlMs;
-	const payload = `${shadowId}:${expiresAt}`;
+	const payload = `${binding.shadowId}:${expiresAt}:${binding.version}:${binding.issuerId}`;
 	const encodedPayload = Buffer.from(payload).toString("base64url");
 	return `${encodedPayload}.${sign(payload, secret)}`;
 }
 
 export type ClaimTokenResult =
-	| { valid: true; shadowId: string; expiresAt: number }
+	| {
+			valid: true;
+			shadowId: string;
+			expiresAt: number;
+			version: number;
+			issuerId: string;
+	  }
 	| { valid: false; reason: "malformed" | "invalid" | "expired" };
 
 /**
  * Verifies a claim token using timing-safe comparison and checks expiry.
- * Returns the decoded shadow id when valid.
+ * Returns the decoded binding when valid. Callers must still compare
+ * `version` with the shadow's current `updatedAt` and re-check the issuer.
  */
 export function verifyClaimToken(
 	token: string,
@@ -80,18 +107,33 @@ export function verifyClaimToken(
 		return { valid: false, reason: "invalid" };
 	}
 
-	const sep = payload.lastIndexOf(":");
-	if (sep <= 0) {
+	const fields = payload.split(":");
+	// Legacy unbound token: genuine, but no longer accepted.
+	if (fields.length === 2) {
+		return { valid: false, reason: "expired" };
+	}
+	if (fields.length !== 4) {
 		return { valid: false, reason: "malformed" };
 	}
-	const shadowId = payload.slice(0, sep);
-	const expiresAt = Number(payload.slice(sep + 1));
-	if (!shadowId || !Number.isFinite(expiresAt)) {
+	const [shadowId, expiresRaw, versionRaw, issuerId] = fields as [
+		string,
+		string,
+		string,
+		string,
+	];
+	const expiresAt = Number(expiresRaw);
+	const version = Number(versionRaw);
+	if (
+		!shadowId ||
+		!issuerId ||
+		!Number.isFinite(expiresAt) ||
+		!Number.isFinite(version)
+	) {
 		return { valid: false, reason: "malformed" };
 	}
 	if (Date.now() > expiresAt) {
 		return { valid: false, reason: "expired" };
 	}
 
-	return { valid: true, shadowId, expiresAt };
+	return { valid: true, shadowId, expiresAt, version, issuerId };
 }

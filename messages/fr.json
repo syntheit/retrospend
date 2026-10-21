@@ -632,7 +632,10 @@
     "chooserTitle": "Êtes-vous l’une de ces personnes ?",
     "chooserDescription": "Quelqu’un vous a peut-être déjà ajouté à <strong>{projectName}</strong>. Sélectionnez votre profil pour conserver votre historique existant, ou passez cette étape pour rejoindre le projet en tant que nouvelle personne.",
     "chooserNoneNew": "Aucun de ces profils — créer un nouveau profil",
-    "chooserBack": "Retour à la liste"
+    "chooserBack": "Retour à la liste",
+    "resumeEmailTitle": "Consultez vos e-mails",
+    "resumeEmailBody": "Cette adresse e-mail a déjà rejoint <strong>{projectName}</strong>. Nous avons envoyé un lien à cette adresse pour que vous puissiez reprendre là où vous en étiez. Il ne fonctionne qu'une fois et expire dans une heure.",
+    "resumeLinkInvalid": "Ce lien n'est pas valide, a déjà été utilisé ou a expiré. Rouvrez le lien d'invitation pour en obtenir un nouveau."
   },
   "projects": {
     "title": "Projets",

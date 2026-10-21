@@ -1612,9 +1612,21 @@ describe("SharedTransactionService", () => {
 			members: Array<{ participantType: string; participantId: string }>;
 			// existing shadow rows in projectParticipant (for auto-add dedupe)
 			existingShadowIds?: string[];
+			// shadowId -> createdById (who may bring the shadow into a project)
+			shadowCreators?: Record<string, string>;
+			// shadowId -> other projects the shadow is already in
+			shadowProjects?: Record<string, string[]>;
+			// projectId -> alice's role there (default ORGANIZER; null = not a member)
+			actorRoles?: Record<string, string | null>;
+			// projectId -> id of its OPEN billing period
+			openPeriods?: Record<string, string>;
 		}) {
 			const shadowSet = new Set(opts.existingShadowIds ?? []);
 			const created: Array<Record<string, unknown>> = [];
+			const actorRole = (projectId: string) =>
+				opts.actorRoles && projectId in opts.actorRoles
+					? opts.actorRoles[projectId]!
+					: "ORGANIZER";
 			const txClient = {
 				$executeRaw: vi.fn().mockResolvedValue(undefined),
 				sharedTransaction: {
@@ -1637,38 +1649,65 @@ describe("SharedTransactionService", () => {
 					// shadow auto-add dedupe check.
 					findUnique: vi.fn(async (args: { where: Record<string, unknown> }) => {
 						const key = args.where.projectId_participantType_participantId as
-							| { participantType: string; participantId: string }
+							| { projectId: string; participantType: string; participantId: string }
 							| undefined;
 						if (key?.participantType === "shadow") {
 							return shadowSet.has(key.participantId)
-								? { projectId: "proj-1", ...key, role: "CONTRIBUTOR" }
+								? { ...key, id: `pp-${key.participantId}`, role: "CONTRIBUTOR" }
 								: null;
 						}
-						// actor membership (alice is an ORGANIZER, can edit)
-						return {
-							projectId: "proj-1",
-							participantType: "user",
-							participantId: "alice",
-							role: "ORGANIZER",
-						};
+						// actor membership (alice is an ORGANIZER by default, can edit)
+						const projectId = key?.projectId ?? "proj-1";
+						const role = actorRole(projectId);
+						return role === null
+							? null
+							: {
+									projectId,
+									participantType: "user",
+									participantId: "alice",
+									role,
+								};
 					}),
-					findMany: vi
-						.fn()
-						.mockResolvedValue(
-							opts.members.map((m) => ({
-								participantType: m.participantType,
-								participantId: m.participantId,
-							})),
-						),
+					findMany: vi.fn(async (args: { where: Record<string, unknown> }) => {
+						const where = args.where;
+						// a shadow's other projects (assertShadowsAddable)
+						if (where.participantType === "shadow") {
+							const ids = opts.shadowProjects?.[where.participantId as string] ?? [];
+							return ids.map((projectId) => ({ projectId }));
+						}
+						// alice's memberships across those projects
+						if (where.participantType === "user") {
+							const ids = (where.projectId as { in: string[] }).in;
+							return ids
+								.map((projectId) => ({ projectId, role: actorRole(projectId) }))
+								.filter((r) => r.role !== null);
+						}
+						// validateProjectMembership
+						return opts.members.map((m) => ({
+							participantType: m.participantType,
+							participantId: m.participantId,
+						}));
+					}),
 					create: vi.fn(async (args: { data: Record<string, unknown> }) => {
 						created.push(args.data);
 						return args.data;
 					}),
 				},
+				shadowProfile: {
+					findUnique: vi.fn(async (args: { where: { id: string } }) => {
+						const createdById = opts.shadowCreators?.[args.where.id];
+						return createdById ? { createdById } : null;
+					}),
+				},
 				project: {
 					findUnique: vi.fn().mockResolvedValue({ autoAcceptSplits: true }),
 				},
-				billingPeriod: { findFirst: vi.fn().mockResolvedValue(null) },
+				billingPeriod: {
+					findFirst: vi.fn(async (args: { where: { projectId: string } }) => {
+						const id = opts.openPeriods?.[args.where.projectId];
+						return id ? { id, startDate: new Date("2026-01-01") } : null;
+					}),
+				},
 				auditLogEntry: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) },
 			};
 			const db = {
@@ -1679,6 +1718,242 @@ describe("SharedTransactionService", () => {
 			};
 			return { db, txClient, created };
 		}
+
+		const ALICE_ONLY = [
+			{
+				participantType: "user",
+				participantId: "alice",
+				shareAmount: { toNumber: () => 100 },
+				sharePercentage: null,
+				shareUnits: null,
+			},
+		];
+		const alice = { participantType: "user" as const, participantId: "alice" };
+
+		it("refuses to pull in a shadow the editor has no relationship with", async () => {
+			const { db, created } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				shadowCreators: { "shadow-x": "someone-else" },
+				shadowProjects: { "shadow-x": ["proj-other"] },
+				actorRoles: { "proj-other": null },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({
+					id: "txn-1",
+					splitWith: [alice, { participantType: "shadow", participantId: "shadow-x" }],
+					splitMode: "EQUAL",
+				}),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+			expect(created).toHaveLength(0);
+		});
+
+		it("refuses a shadow the editor only views elsewhere", async () => {
+			const { db } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				shadowCreators: { "shadow-x": "someone-else" },
+				shadowProjects: { "shadow-x": ["proj-other"] },
+				actorRoles: { "proj-other": "VIEWER" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({
+					id: "txn-1",
+					splitWith: [alice, { participantType: "shadow", participantId: "shadow-x" }],
+					splitMode: "EQUAL",
+				}),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+		});
+
+		it("allows a shadow from another project the editor contributes to", async () => {
+			const { db, created } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				shadowCreators: { "shadow-x": "someone-else" },
+				shadowProjects: { "shadow-x": ["proj-other"] },
+				actorRoles: { "proj-other": "CONTRIBUTOR" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await service.update({
+				id: "txn-1",
+				splitWith: [alice, { participantType: "shadow", participantId: "shadow-x" }],
+				splitMode: "EQUAL",
+			});
+			expect(created.map((c) => c.participantId)).toEqual(["shadow-x"]);
+		});
+
+		it("create: a guest cannot bring a shadow from outside their project", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "guest", participantId: "guest-1" }],
+				shadowCreators: { "shadow-x": "someone" },
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "guest",
+				participantId: "guest-1",
+			});
+			await expect(
+				service.create({
+					amount: 10,
+					currency: "USD",
+					description: "Snacks",
+					date: new Date("2026-03-02"),
+					paidBy: { participantType: "guest", participantId: "guest-1" },
+					splitWith: [
+						{ participantType: "guest", participantId: "guest-1" },
+						{ participantType: "shadow", participantId: "shadow-x" },
+					],
+					splitMode: "EQUAL",
+					projectId: "proj-1",
+				}),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+			expect(txClient.sharedTransaction.create).not.toHaveBeenCalled();
+		});
+
+		it("create: a shadow already in the project is fine for anyone", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "guest", participantId: "guest-1" }],
+				existingShadowIds: ["shadow-x"],
+			});
+			txClient.sharedTransaction.create.mockResolvedValue({
+				id: "txn-2",
+				splitParticipants: [],
+			});
+			const service = new SharedTransactionService(db as never, {
+				participantType: "guest",
+				participantId: "guest-1",
+			});
+			await service.create({
+				amount: 10,
+				currency: "USD",
+				description: "Snacks",
+				date: new Date("2026-03-02"),
+				paidBy: { participantType: "guest", participantId: "guest-1" },
+				splitWith: [
+					{ participantType: "guest", participantId: "guest-1" },
+					{ participantType: "shadow", participantId: "shadow-x" },
+				],
+				splitMode: "EQUAL",
+				projectId: "proj-1",
+			});
+			expect(txClient.sharedTransaction.create).toHaveBeenCalled();
+		});
+
+		it("checks a shadow payer too, even when only the payer changes", async () => {
+			const { db } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({
+					id: "txn-1",
+					paidBy: { participantType: "shadow", participantId: "shadow-x" },
+				}),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+		});
+
+		it("rejects a payer-only change to someone outside the project", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({
+					id: "txn-1",
+					paidBy: { participantType: "user", participantId: "mallory" },
+				}),
+			).rejects.toThrow("is not a member of this project");
+			expect(txClient.sharedTransaction.update).not.toHaveBeenCalled();
+		});
+
+		it("refuses to move an expense into a project where the editor is only a viewer", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				actorRoles: { "proj-2": "VIEWER" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({ id: "txn-1", projectId: "proj-2" }),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+			expect(txClient.sharedTransaction.update).not.toHaveBeenCalled();
+		});
+
+		it("refuses to move an expense into a project the editor is not in", async () => {
+			const { db } = mockUpdateDb({
+				existing: projectExisting(ALICE_ONLY),
+				members: [{ participantType: "user", participantId: "alice" }],
+				actorRoles: { "proj-2": null },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({ id: "txn-1", projectId: "proj-2" }),
+			).rejects.toMatchObject({ code: "NOT_FOUND" });
+		});
+
+		it("moving projects re-checks the existing split against the target", async () => {
+			const { db } = mockUpdateDb({
+				existing: projectExisting([
+					...ALICE_ONLY,
+					{
+						participantType: "user",
+						participantId: "bob",
+						shareAmount: { toNumber: () => 0 },
+						sharePercentage: null,
+						shareUnits: null,
+					},
+				]),
+				// bob is not in the target project
+				members: [{ participantType: "user", participantId: "alice" }],
+				actorRoles: { "proj-2": "CONTRIBUTOR" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await expect(
+				service.update({ id: "txn-1", projectId: "proj-2" }),
+			).rejects.toThrow("is not a member of this project");
+		});
+
+		it("moving projects puts the expense in the target's open billing period", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: { ...projectExisting(ALICE_ONLY), billingPeriodId: "bp-old" },
+				members: [{ participantType: "user", participantId: "alice" }],
+				actorRoles: { "proj-2": "CONTRIBUTOR" },
+				openPeriods: { "proj-2": "bp-new" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await service.update({ id: "txn-1", projectId: "proj-2" });
+			expect(txClient.sharedTransaction.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({
+						projectId: "proj-2",
+						billingPeriodId: "bp-new",
+					}),
+				}),
+			);
+		});
+
+		it("moving projects clears the billing period when the target has none open", async () => {
+			const { db, txClient } = mockUpdateDb({
+				existing: { ...projectExisting(ALICE_ONLY), billingPeriodId: "bp-old" },
+				members: [{ participantType: "user", participantId: "alice" }],
+				actorRoles: { "proj-2": "CONTRIBUTOR" },
+			});
+			const service = new SharedTransactionService(db as never, alice);
+			await service.update({ id: "txn-1", projectId: "proj-2" });
+			expect(txClient.sharedTransaction.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: expect.objectContaining({
+						projectId: "proj-2",
+						billingPeriodId: null,
+					}),
+				}),
+			);
+		});
 
 		it("rejects an edit that adds a non-member user to the split (parity with create)", async () => {
 			const { db } = mockUpdateDb({
@@ -1764,6 +2039,7 @@ describe("SharedTransactionService", () => {
 				]),
 				members: [{ participantType: "user", participantId: "alice" }],
 				existingShadowIds: [], // shadow-1 not yet in the project
+				shadowCreators: { "shadow-1": "alice" }, // alice's own contact
 			});
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",

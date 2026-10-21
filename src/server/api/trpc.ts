@@ -185,9 +185,10 @@ export const protectedProcedure = t.procedure
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}
 
-		// isActive is already present in the session from better-auth.
-		// Session refreshes based on updateAge (24h). For immediate deactivation,
-		// the admin endpoint should also delete the user's active sessions.
+		// isActive comes from the user row, which better-auth loads on every
+		// getSession (no cookie cache is configured), so a disabled user is
+		// rejected on their next request. admin.disableUser also deletes the
+		// user's sessions, and session.create.before blocks new sign-ins.
 		if (!ctx.session.user.isActive) {
 			throw new TRPCError({ code: "UNAUTHORIZED" });
 		}

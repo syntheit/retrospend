@@ -12,7 +12,7 @@ import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
-import { migrateGuestSessionsToUser } from "~/server/services/guest-migration.service";
+import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { USERNAME_RESERVATION_DAYS } from "~/server/services/username.service";
 
 // ── Rate limiting for auth endpoints ──────────────────────────────────
@@ -300,33 +300,14 @@ export const auth = betterAuth({
 						});
 					}
 
-					// Migrate guest sessions to the new user account
-					try {
-						const migrationResult = await migrateGuestSessionsToUser(
-							db,
-							user.id,
-							user.email,
-						);
-						if (
-							migrationResult.migratedSessionCount > 0 ||
-							migrationResult.claimedShadowCount > 0
-						) {
-							logEventAsync({
-								eventType: "GUEST_UPGRADED",
-								userId: user.id,
-								ipAddress,
-								userAgent,
-								metadata: {
-									migratedSessions: migrationResult.migratedSessionCount,
-									claimedShadowProfiles: migrationResult.claimedShadowCount,
-									projectIds: migrationResult.projectIds,
-								},
-							});
-						}
-					} catch (err) {
-						console.error("[Guest Migration Error]", err);
-						// Non-fatal: account creation should still succeed
-					}
+					// Absorb guest sessions and ghosts with this email, but only once
+					// the email is verified. Without SMTP it was auto-verified above;
+					// otherwise this is a no-op here and runs from auth.verifyEmail.
+					// The helper re-reads emailVerified and never throws.
+					await migrateGuestDataForVerifiedUser(db, user.id, {
+						ipAddress,
+						userAgent,
+					});
 				},
 			},
 		},

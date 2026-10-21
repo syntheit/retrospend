@@ -142,6 +142,48 @@ async function resolveParticipantNames(
 }
 
 /**
+ * Whether a caller may see other participants' emails. Ghost and guest emails
+ * are contact details the organizers entered (or a guest typed in under "not
+ * shared publicly"), so only signed-in members who can contribute see them.
+ * Anonymous viewer links, guests and VIEWER-role members only see their own.
+ */
+function canSeeParticipantEmails(
+	callerType: string,
+	callerRole: string | null | undefined,
+): boolean {
+	return callerType === "user" && !!callerRole && callerRole !== "VIEWER";
+}
+
+type EmailBearing = {
+	participantType: string;
+	participantId: string;
+	email: string | null;
+};
+type ParticipantSelf = { participantType: string; participantId: string } | null;
+
+/**
+ * Nulls out a participant's email unless it is the caller's own entry. Used
+ * for callers that fail {@link canSeeParticipantEmails}.
+ */
+function redactParticipantEmail<T extends EmailBearing>(
+	item: T,
+	self: ParticipantSelf,
+): T {
+	const isSelf =
+		self !== null &&
+		item.participantType === self.participantType &&
+		item.participantId === self.participantId;
+	return isSelf ? item : { ...item, email: null };
+}
+
+function redactParticipantEmails<T extends EmailBearing>(
+	items: T[],
+	self: ParticipantSelf,
+): T[] {
+	return items.map((item) => redactParticipantEmail(item, self));
+}
+
+/**
  * Batch-resolve names + avatars for a set of (participantType, participantId) pairs.
  * Returns a Map keyed by "type:id" → { name, avatarUrl }.
  */
@@ -203,6 +245,19 @@ async function batchResolveIdentities(
 	result.set("user:DELETED_USER", { name: "Deleted User", avatarUrl: null });
 
 	return result;
+}
+
+/**
+ * Granting ORGANIZER (Owner) requires the caller to be an ORGANIZER. Editors
+ * may grant EDITOR and below. Mirrors magic links, which refuse ORGANIZER.
+ */
+function assertCanGrantRole(callerRole: string, grantedRole: string): void {
+	if (grantedRole === "ORGANIZER" && callerRole !== "ORGANIZER") {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "Only an Owner can make someone an Owner",
+		});
+	}
 }
 
 async function runInProjectTransaction<T>(
@@ -525,10 +580,17 @@ export const projectRouter = createTRPCRouter({
 						pp.participantType === "user" && pp.participantId === userId,
 				);
 
+				const myRole = myParticipant?.role ?? null;
+
 				return {
 					...p,
-					participants: participantDetails,
-					myRole: myParticipant?.role ?? null,
+					participants: canSeeParticipantEmails("user", myRole)
+						? participantDetails
+						: redactParticipantEmails(participantDetails, {
+								participantType: "user",
+								participantId: userId,
+							}),
+					myRole,
 					excludeFromAnalytics: rawMyParticipant?.excludeFromAnalytics ?? false,
 					totalSpent: spentMap.get(p.id) ?? 0,
 					currentBillingPeriod: p.billingPeriods[0] ?? null,
@@ -577,7 +639,7 @@ export const projectRouter = createTRPCRouter({
 			}
 
 			// Resolve participant names
-			const participants = await resolveParticipantNames(
+			const resolvedParticipants = await resolveParticipantNames(
 				ctx.db,
 				project.participants,
 			);
@@ -586,7 +648,7 @@ export const projectRouter = createTRPCRouter({
 			const myParticipant =
 				participantType === "viewerLink"
 					? null
-					: participants.find(
+					: resolvedParticipants.find(
 							(pp) =>
 								pp.participantType === participantType &&
 								pp.participantId === participantId,
@@ -595,6 +657,16 @@ export const projectRouter = createTRPCRouter({
 				participantType === "viewerLink"
 					? ("VIEWER" as const)
 					: (myParticipant?.role ?? null);
+
+			// Viewer links, guests and VIEWER members don't get other people's emails.
+			const participants = canSeeParticipantEmails(participantType, myRole)
+				? resolvedParticipants
+				: redactParticipantEmails(
+						resolvedParticipants,
+						participantType === "viewerLink"
+							? null
+							: { participantType, participantId },
+					);
 
 			// Expense stats grouped by category
 			const rawCategoryStats = await ctx.db.sharedTransaction.groupBy({
@@ -840,7 +912,7 @@ export const projectRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 
-			await requireProjectRole(
+			const callerParticipant = await requireProjectRole(
 				ctx.db,
 				input.projectId,
 				"user",
@@ -896,6 +968,10 @@ export const projectRouter = createTRPCRouter({
 				(input.role === "ORGANIZER" || input.role === "EDITOR")
 					? "CONTRIBUTOR"
 					: input.role;
+
+			// Only an Owner can make someone else an Owner. Editors can add people
+			// at their own level or below.
+			assertCanGrantRole(callerParticipant.role, effectiveRole);
 
 			const participant = await runInProjectTransaction(
 				ctx.db,
@@ -961,9 +1037,10 @@ export const projectRouter = createTRPCRouter({
 					const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 					const title = "You've been added to a project";
 
-					// Create a single-use magic link so the recipient can join directly
-					const magicLinkRole =
-						input.role === "ORGANIZER" ? "CONTRIBUTOR" : input.role;
+					// Create a single-use magic link so the recipient can join directly.
+					// It grants the same (capped) role as the shadow's participant row,
+					// so joining through it can never outrank the row it stands for.
+					const magicLinkRole = effectiveRole;
 					let joinUrl: string | undefined;
 					try {
 						const magicLink = await ctx.db.magicLink.create({
@@ -1418,6 +1495,9 @@ export const projectRouter = createTRPCRouter({
 				(input.role === "ORGANIZER" || input.role === "EDITOR")
 					? "CONTRIBUTOR"
 					: input.role;
+
+			// Only an Owner can promote someone to Owner.
+			assertCanGrantRole(callerParticipant.role, effectiveRole);
 
 			return runInProjectTransaction(ctx.db, userId, async (tx) => {
 				const updated = await tx.projectParticipant.update({
@@ -2017,10 +2097,20 @@ export const projectRouter = createTRPCRouter({
 				return null;
 			}
 
-			const participants = await resolveParticipantNames(
-				ctx.db,
-				project.participants,
-			);
+			// Anyone on the internet can read this: return only what the public
+			// page displays. No emails, no per-member preferences.
+			const participants = (
+				await resolveParticipantNames(ctx.db, project.participants)
+			).map((p) => ({
+				id: p.id,
+				participantType: p.participantType,
+				participantId: p.participantId,
+				role: p.role,
+				joinedAt: p.joinedAt,
+				name: p.name,
+				username: p.username,
+				avatarUrl: p.avatarUrl,
+			}));
 
 			// Category stats
 			const rawCategoryStats = await ctx.db.sharedTransaction.groupBy({
@@ -2306,7 +2396,7 @@ export const projectRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			assertGuestProjectScope(ctx.participant, input.projectId);
 			const { participantType, participantId } = ctx.participant;
-			await requireProjectRole(
+			const caller = await requireProjectRole(
 				ctx.db,
 				input.projectId,
 				participantType,
@@ -2314,11 +2404,29 @@ export const projectRouter = createTRPCRouter({
 				"VIEWER",
 			);
 
-			return getBalancesFromPerspective(
+			const result = await getBalancesFromPerspective(
 				ctx.db,
 				input.projectId,
 				input.perspective,
 			);
+
+			if (canSeeParticipantEmails(participantType, caller.role)) {
+				return result;
+			}
+
+			// Same email rule as project.detail: only the caller's own email.
+			const self =
+				participantType === "viewerLink"
+					? null
+					: { participantType, participantId };
+			return {
+				...result,
+				perspective: redactParticipantEmail(result.perspective, self),
+				statements: result.statements.map((s) => ({
+					...s,
+					counterpart: redactParticipantEmail(s.counterpart, self),
+				})),
+			};
 		}),
 });
 

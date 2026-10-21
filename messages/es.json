@@ -632,7 +632,10 @@
     "chooserTitle": "¿Eres una de estas personas?",
     "chooserDescription": "Es posible que alguien ya te haya agregado a <strong>{projectName}</strong>. Elígete para conservar tu historial existente, u omítelo para unirte como una persona nueva.",
     "chooserNoneNew": "Ninguna de estas — soy nuevo",
-    "chooserBack": "Volver a la lista"
+    "chooserBack": "Volver a la lista",
+    "resumeEmailTitle": "Revisa tu correo",
+    "resumeEmailBody": "Este correo ya se unió a <strong>{projectName}</strong>. Enviamos un enlace a esa dirección para que puedas continuar donde lo dejaste. Funciona una sola vez y caduca en una hora.",
+    "resumeLinkInvalid": "Este enlace no es válido, ya se usó o ha caducado. Abre de nuevo el enlace de invitación para obtener uno nuevo."
   },
   "projects": {
     "title": "Proyectos",
