@@ -9,17 +9,30 @@ import {
 import type { PrismaClient } from "~prisma";
 import { db as globalDb } from "~/server/db";
 import { signClaimToken, verifyClaimToken } from "~/lib/claim-token";
+import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { createNotification } from "~/server/services/notifications";
-import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import {
 	AlreadyClaimedError,
+	canMintClaimLink,
 	claimShadowProfile,
 	listUnclaimedProjectGhosts,
 	mergeShadowIntoGuest,
 } from "~/server/services/claim.service";
 
-/** Verifies a claim token and turns verification failures into tRPC errors. */
-function decodeTokenOrThrow(token: string): string {
+const INVALID_CLAIM_LINK = "This claim link is not valid";
+const STALE_CLAIM_LINK =
+	"This claim link is no longer valid. Ask for a new one.";
+
+/**
+ * Verifies a claim token and loads the shadow it points at, rejecting links
+ * that no longer match the database:
+ *   - the shadow is gone (claiming deletes it, so a used link is dead),
+ *   - the shadow was edited after the link was minted (how a creator revokes),
+ *   - the issuer no longer has the rights a claim grants.
+ * A shadow that is already claimed is returned as-is so callers can report it.
+ * Uses the global db: the caller may have no relationship to the shadow yet.
+ */
+async function resolveClaimTokenOrThrow(token: string) {
 	const result = verifyClaimToken(token, env.BETTER_AUTH_SECRET);
 	if (!result.valid) {
 		throw new TRPCError({
@@ -27,10 +40,33 @@ function decodeTokenOrThrow(token: string): string {
 			message:
 				result.reason === "expired"
 					? "This claim link has expired"
-					: "This claim link is not valid",
+					: INVALID_CLAIM_LINK,
 		});
 	}
-	return result.shadowId;
+
+	const shadow = await globalDb.shadowProfile.findUnique({
+		where: { id: result.shadowId },
+		select: {
+			id: true,
+			name: true,
+			claimedById: true,
+			createdById: true,
+			updatedAt: true,
+		},
+	});
+	if (!shadow) {
+		throw new TRPCError({ code: "NOT_FOUND", message: INVALID_CLAIM_LINK });
+	}
+	if (shadow.claimedById) {
+		return shadow;
+	}
+	if (shadow.updatedAt.getTime() !== result.version) {
+		throw new TRPCError({ code: "NOT_FOUND", message: STALE_CLAIM_LINK });
+	}
+	if (!(await canMintClaimLink(globalDb, result.issuerId, shadow))) {
+		throw new TRPCError({ code: "NOT_FOUND", message: STALE_CLAIM_LINK });
+	}
+	return shadow;
 }
 
 /**
@@ -81,11 +117,11 @@ export const claimRouter = createTRPCRouter({
 	 * able to see the shadow (RLS: creator or shares a project with it), so we
 	 * read it through the user-scoped ctx.db — an unrelated user gets NOT_FOUND.
 	 *
-	 * A claim link grants the holder the shadow's identity (and, on claim, project
-	 * access), so minting one is a privileged action: the caller must be an
-	 * EDITOR or ORGANIZER of at least one project the shadow participates in. A
-	 * mere VIEWER/CONTRIBUTOR — or someone who only shares an unrelated project —
-	 * cannot mint a link. (Mirrors how addParticipant authorizes with EDITOR+.)
+	 * A claim link grants the holder the shadow's identity and, on claim, a
+	 * membership in EVERY project the shadow is in. So the caller must be an
+	 * EDITOR or ORGANIZER of every one of those projects (see canMintClaimLink);
+	 * a standalone shadow can only be shared by its creator. The same check runs
+	 * again at claim time against the issuer recorded in the token.
 	 */
 	generateLink: protectedProcedure
 		.input(z.object({ shadowId: z.string().min(1) }))
@@ -94,7 +130,13 @@ export const claimRouter = createTRPCRouter({
 
 			const shadow = await ctx.db.shadowProfile.findUnique({
 				where: { id: input.shadowId },
-				select: { id: true, name: true, claimedById: true, createdById: true },
+				select: {
+					id: true,
+					name: true,
+					claimedById: true,
+					createdById: true,
+					updatedAt: true,
+				},
 			});
 			if (!shadow) {
 				throw new TRPCError({
@@ -109,41 +151,22 @@ export const claimRouter = createTRPCRouter({
 				});
 			}
 
-			// The shadow's project memberships determine where the caller must hold
-			// EDITOR+. Require EDITOR+ in at least ONE of them.
-			const shadowMemberships = await ctx.db.projectParticipant.findMany({
-				where: { participantType: "shadow", participantId: shadow.id },
-				select: { projectId: true },
-			});
-			// A shadow with no project memberships is a standalone contact and grants
-			// no project access when claimed; its creator may still mint a link.
-			let authorized =
-				shadowMemberships.length === 0 && shadow.createdById === userId;
-			for (const m of shadowMemberships) {
-				if (authorized) break;
-				try {
-					await requireProjectRole(
-						ctx.db,
-						m.projectId,
-						"user",
-						userId,
-						"EDITOR",
-					);
-					authorized = true;
-					break;
-				} catch {
-					// Not EDITOR+ (or not a member) of this project — keep checking.
-				}
-			}
-			if (!authorized) {
+			if (!(await canMintClaimLink(ctx.db, userId, shadow))) {
 				throw new TRPCError({
 					code: "FORBIDDEN",
 					message:
-						"Only an editor or organizer of this person's project can generate a claim link",
+						"Only an editor or organizer of every project this person is in can generate a claim link",
 				});
 			}
 
-			const token = signClaimToken(shadow.id, env.BETTER_AUTH_SECRET);
+			const token = signClaimToken(
+				{
+					shadowId: shadow.id,
+					version: shadow.updatedAt.getTime(),
+					issuerId: userId,
+				},
+				env.BETTER_AUTH_SECRET,
+			);
 			// Build an ABSOLUTE URL the recipient can open from anywhere. On the
 			// server the canonical base is PUBLIC_URL; fall back to the client var
 			// (which also maps to PUBLIC_URL at runtime). Mirrors email-templates.ts.
@@ -153,42 +176,39 @@ export const claimRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Public preview for the /claim/[token] page: "You've been added as {name}
-	 * in {projects} — is this you?". Uses global db because the (possibly
-	 * logged-out) viewer has no relationship to the shadow yet.
+	 * Public preview for the /claim/[token] page: "Is this you, {name}?". Uses
+	 * global db because the (possibly logged-out) viewer has no relationship to
+	 * the shadow yet.
+	 *
+	 * Project names are only listed for a signed-in caller, who is about to
+	 * confirm the claim and join those projects. A logged-out visitor holding a
+	 * forwarded link only learns the ghost's name.
 	 */
 	info: publicProcedure
 		.input(z.object({ token: z.string().min(1) }))
-		.query(async ({ input }) => {
-			const shadowId = decodeTokenOrThrow(input.token);
+		.query(async ({ ctx, input }) => {
+			const shadow = await resolveClaimTokenOrThrow(input.token);
+			const alreadyClaimed = shadow.claimedById !== null;
 
-			const shadow = await globalDb.shadowProfile.findUnique({
-				where: { id: shadowId },
-				select: { id: true, name: true, claimedById: true },
-			});
-			if (!shadow) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "This claim link is not valid",
+			let projects: Array<{ id: string; name: string }> = [];
+			if (ctx.session?.user && !alreadyClaimed) {
+				const memberships = await globalDb.projectParticipant.findMany({
+					where: { participantType: "shadow", participantId: shadow.id },
+					select: { projectId: true },
 				});
+				const projectIds = memberships.map((m) => m.projectId);
+				projects =
+					projectIds.length > 0
+						? await globalDb.project.findMany({
+								where: { id: { in: projectIds } },
+								select: { id: true, name: true },
+							})
+						: [];
 			}
-
-			const memberships = await globalDb.projectParticipant.findMany({
-				where: { participantType: "shadow", participantId: shadowId },
-				select: { projectId: true },
-			});
-			const projectIds = memberships.map((m) => m.projectId);
-			const projects =
-				projectIds.length > 0
-					? await globalDb.project.findMany({
-							where: { id: { in: projectIds } },
-							select: { id: true, name: true },
-						})
-					: [];
 
 			return {
 				name: shadow.name,
-				alreadyClaimed: shadow.claimedById !== null,
+				alreadyClaimed,
 				projects,
 			};
 		}),
@@ -202,11 +222,11 @@ export const claimRouter = createTRPCRouter({
 	claimByToken: protectedProcedure
 		.input(z.object({ token: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
-			const shadowId = decodeTokenOrThrow(input.token);
+			const shadow = await resolveClaimTokenOrThrow(input.token);
 			try {
 				const result = await claimShadowProfile(
 					globalDb,
-					shadowId,
+					shadow.id,
 					ctx.session.user.id,
 				);
 				return {
@@ -232,7 +252,13 @@ export const claimRouter = createTRPCRouter({
 		.query(async ({ input }) => {
 			const link = await globalDb.magicLink.findUnique({
 				where: { id: input.linkId },
-				select: { projectId: true },
+				select: {
+					projectId: true,
+					isActive: true,
+					expiresAt: true,
+					maxUses: true,
+					useCount: true,
+				},
 			});
 			if (!link) {
 				throw new TRPCError({
@@ -240,6 +266,8 @@ export const claimRouter = createTRPCRouter({
 					message: "This invite link is not valid",
 				});
 			}
+			// Revoked, expired or used-up links reveal nothing, same as validateLink.
+			validateLinkOrThrow(link);
 			return listUnclaimedProjectGhosts(globalDb, link.projectId);
 		}),
 
@@ -280,12 +308,41 @@ export const claimRouter = createTRPCRouter({
 			// The ghost must belong to the same project the guest joined.
 			const link = await globalDb.magicLink.findUnique({
 				where: { id: input.linkId },
-				select: { projectId: true },
+				select: {
+					projectId: true,
+					isActive: true,
+					expiresAt: true,
+					maxUses: true,
+					useCount: true,
+				},
 			});
 			if (!link || link.projectId !== guestSession.projectId) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "This invite link is not valid",
+				});
+			}
+			// The link must still be live. Its last use may have been the guest's
+			// own registration a moment ago, so a used-up link is fine here.
+			validateLinkOrThrow(link, { allowUsedUp: true });
+
+			// Absorbing a ghost rewrites shared history, so the guest must be a
+			// current member who can contribute. Viewers, and guests an organizer
+			// already removed, cannot take over a ghost.
+			const guestMembership = await globalDb.projectParticipant.findUnique({
+				where: {
+					projectId_participantType_participantId: {
+						projectId: guestSession.projectId,
+						participantType: "guest",
+						participantId: guestSession.id,
+					},
+				},
+				select: { role: true },
+			});
+			if (!guestMembership || guestMembership.role === "VIEWER") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "You can't link to an existing person with this invite",
 				});
 			}
 

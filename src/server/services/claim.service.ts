@@ -28,13 +28,6 @@ interface ClaimResult {
 	alreadyClaimed: boolean;
 }
 
-const ROLE_PRIORITY: Record<string, number> = {
-	ORGANIZER: 3,
-	EDITOR: 2,
-	CONTRIBUTOR: 1,
-	VIEWER: 0,
-};
-
 /** A polymorphic participant reference type (`ParticipantType`). */
 type ParticipantType = "user" | "guest" | "shadow";
 
@@ -209,6 +202,48 @@ export async function claimShadowProfile(
 	};
 }
 
+/**
+ * Whether `userId` may mint a claim link for a shadow, i.e. hand its identity
+ * to someone else. Claiming converts the shadow's membership in EVERY project
+ * it belongs to, so the issuer must be an EDITOR or ORGANIZER of every one of
+ * them: the link then grants nothing the issuer couldn't grant by adding the
+ * person directly. A shadow with no projects is a standalone contact and only
+ * its creator may share it.
+ *
+ * Checked when the link is minted and again when it is claimed (against the
+ * issuer recorded in the token), so memberships that changed in between are
+ * honoured. Reads only project_participant, which any db client can see.
+ */
+export async function canMintClaimLink(
+	db: PrismaClient | Prisma.TransactionClient,
+	userId: string,
+	shadow: { id: string; createdById: string },
+): Promise<boolean> {
+	const memberships = await db.projectParticipant.findMany({
+		where: { participantType: "shadow", participantId: shadow.id },
+		select: { projectId: true },
+	});
+	if (memberships.length === 0) {
+		return shadow.createdById === userId;
+	}
+
+	const projectIds = [...new Set(memberships.map((m) => m.projectId))];
+	const issuerRows = await db.projectParticipant.findMany({
+		where: {
+			projectId: { in: projectIds },
+			participantType: "user",
+			participantId: userId,
+		},
+		select: { projectId: true, role: true },
+	});
+	const managed = new Set(
+		issuerRows
+			.filter((r) => r.role === "ORGANIZER" || r.role === "EDITOR")
+			.map((r) => r.projectId),
+	);
+	return projectIds.every((id) => managed.has(id));
+}
+
 /** Thrown when a shadow is already claimed by a different user. */
 export class AlreadyClaimedError extends Error {
 	constructor() {
@@ -245,8 +280,9 @@ export async function listUnclaimedProjectGhosts(
  * Merges a shadow profile into a guest session: a guest who just joined a
  * project recognises themselves as an existing ghost and links instead of
  * creating a duplicate. The guest "absorbs" the ghost — all of the ghost's
- * historical refs (splits, settlements, payments, audit, membership) are
- * re-pointed to the guest, and the now-empty shadow row is deleted.
+ * historical refs (splits, settlements, payments, audit) are re-pointed to the
+ * guest, the shadow's membership row is dropped (the guest keeps the role its
+ * invite link granted), and the now-empty shadow row is deleted.
  *
  * This is the guest-facing counterpart of the user claim; it reuses the same
  * `repointShadowReferences` merge helper as `claimShadowProfile` so both paths
@@ -277,14 +313,18 @@ export async function mergeShadowIntoGuest(
 				participantId: shadowId,
 			},
 		},
-		select: { id: true, role: true },
+		select: { id: true },
 	});
 	if (!shadowMembership) {
 		throw new Error("That person is not part of this project");
 	}
 
 	await db.$transaction(async (tx) => {
-		// ── ProjectParticipant: merge shadow membership into the guest's ──
+		// ── ProjectParticipant: drop the shadow membership, keep the guest's ──
+		// The guest's role is whatever its invite link granted, and absorbing a
+		// ghost must never raise it (a VIEWER link must not become CONTRIBUTOR via
+		// a CONTRIBUTOR ghost). The guest must already be a member: a guest whose
+		// membership was removed can't rejoin by taking over a ghost.
 		const guestMembership = await tx.projectParticipant.findUnique({
 			where: {
 				projectId_participantType_participantId: {
@@ -293,37 +333,14 @@ export async function mergeShadowIntoGuest(
 					participantId: guestSessionId,
 				},
 			},
+			select: { id: true },
 		});
-		// A guest (self-service, magic-link) must never inherit ORGANIZER/EDITOR from
-		// a shadow — cap the promoted role at CONTRIBUTOR. Defense-in-depth: shadows
-		// are already capped at write time (addParticipant / updateParticipantRole).
-		const cappedShadowRole =
-			shadowMembership.role === "ORGANIZER" ||
-			shadowMembership.role === "EDITOR"
-				? "CONTRIBUTOR"
-				: shadowMembership.role;
-		if (guestMembership) {
-			const shadowPriority = ROLE_PRIORITY[cappedShadowRole] ?? 0;
-			const guestPriority = ROLE_PRIORITY[guestMembership.role] ?? 0;
-			if (shadowPriority > guestPriority) {
-				await tx.projectParticipant.update({
-					where: { id: guestMembership.id },
-					data: { role: cappedShadowRole },
-				});
-			}
-			await tx.projectParticipant.delete({
-				where: { id: shadowMembership.id },
-			});
-		} else {
-			await tx.projectParticipant.update({
-				where: { id: shadowMembership.id },
-				data: {
-					participantType: "guest",
-					participantId: guestSessionId,
-					role: cappedShadowRole,
-				},
-			});
+		if (!guestMembership) {
+			throw new Error("You are not a participant of this project");
 		}
+		await tx.projectParticipant.delete({
+			where: { id: shadowMembership.id },
+		});
 
 		// ── Re-point all other refs, then delete the now-empty shadow ──
 		await repointShadowReferences(tx, shadowId, "guest", guestSessionId);

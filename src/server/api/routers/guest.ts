@@ -6,6 +6,7 @@ import {
 	guestOrProtectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import {
 	anonymizeParticipantReferences,
@@ -13,37 +14,6 @@ import {
 } from "~/server/services/user-deletion.service";
 
 const rateLimiter = new InMemoryRateLimiter();
-
-/**
- * Validates an invite link and returns safe project info.
- * Returns NOT_FOUND for all invalid states (expired / revoked / max uses) to
- * prevent enumeration attacks.
- */
-function validateLinkOrThrow(link: {
-	isActive: boolean;
-	expiresAt: Date | null;
-	maxUses: number | null;
-	useCount: number;
-}): void {
-	if (!link.isActive) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-	if (link.expiresAt !== null && link.expiresAt < new Date()) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-	if (link.maxUses !== null && link.useCount >= link.maxUses) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-}
 
 export const guestRouter = createTRPCRouter({
 

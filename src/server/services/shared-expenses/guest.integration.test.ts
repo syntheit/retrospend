@@ -23,34 +23,8 @@ import {
 	makeUserRef,
 } from "./test-utils";
 
-// ── Inline the validateLinkOrThrow logic for direct testing ──────────────────
-// (mirrors guest.ts private function exactly)
-
-function validateLinkOrThrow(link: {
-	isActive: boolean;
-	expiresAt: Date | null;
-	maxUses: number | null;
-	useCount: number;
-}): void {
-	if (!link.isActive) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-	if (link.expiresAt !== null && link.expiresAt < new Date()) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-	if (link.maxUses !== null && link.useCount >= link.maxUses) {
-		throw new TRPCError({
-			code: "NOT_FOUND",
-			message: "This invite link is no longer valid",
-		});
-	}
-}
+// The shared invite-link validator used by guest.ts and claim.ts.
+import { validateLinkOrThrow } from "~/server/lib/magic-link";
 
 // ── Inline the guest registration flow for direct testing ─────────────────────
 // (mirrors guest.ts register procedure logic without tRPC overhead)
@@ -271,6 +245,27 @@ describe("Suite 3A: validateLinkOrThrow: all invalid states return NOT_FOUND", (
 				useCount: 2, // 2 of 3 used: still valid
 			}),
 		).not.toThrow();
+	});
+
+	it("allowUsedUp skips only the max-uses check", () => {
+		expect(() =>
+			validateLinkOrThrow(
+				{ isActive: true, expiresAt: null, maxUses: 1, useCount: 1 },
+				{ allowUsedUp: true },
+			),
+		).not.toThrow();
+		expect(() =>
+			validateLinkOrThrow(
+				{ isActive: false, expiresAt: null, maxUses: 1, useCount: 1 },
+				{ allowUsedUp: true },
+			),
+		).toThrowError(TRPCError);
+		expect(() =>
+			validateLinkOrThrow(
+				{ isActive: true, expiresAt: new Date(0), maxUses: null, useCount: 0 },
+				{ allowUsedUp: true },
+			),
+		).toThrowError(TRPCError);
 	});
 
 	it("all invalid at once: revoked+expired+exhausted still throws", () => {
