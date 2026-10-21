@@ -604,7 +604,7 @@ export const adminRouter = createTRPCRouter({
 	sendTestEmail: adminProcedure
 		.input(
 			z.object({
-				email: z.string().email(),
+				email: z.email(),
 				type: z
 					.enum([
 						"basic",

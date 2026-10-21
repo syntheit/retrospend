@@ -131,7 +131,7 @@ export function normalizeExpensesFromApi(
 			const result = RawExpenseSchema.safeParse(e);
 
 			if (!result.success) {
-				console.error("Invalid expense data from API:", result.error.format());
+				console.error("Invalid expense data from API:", z.treeifyError(result.error));
 				throw new Error(
 					`Failed to normalize expense: ${result.error.issues[0]?.message || "Unknown validation error"}`,
 				);

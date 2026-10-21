@@ -59,7 +59,7 @@ export function ProfileDashboard() {
 			z.object({
 				name: z.string().min(1, t("nameRequired")),
 				username: z.string().min(1, t("usernameRequired")),
-				email: z.string().email(t("invalidEmail")),
+				email: z.email(t("invalidEmail")),
 			}),
 		[t],
 	);

@@ -107,7 +107,7 @@ export const guestRouter = createTRPCRouter({
 			z.object({
 				linkId: z.string().min(1),
 				name: z.string().min(1).max(191),
-				email: z.string().email().max(255),
+				email: z.email().max(255),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

@@ -42,7 +42,7 @@ export function ProfileSection() {
 	const profileSchema = z.object({
 		name: z.string().min(1, t("nameRequired")),
 		username: z.string().min(1, t("usernameRequired")),
-		email: z.string().email(t("invalidEmail")),
+		email: z.email(t("invalidEmail")),
 		currentPassword: z.string().optional(),
 	});
 

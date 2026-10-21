@@ -18,7 +18,7 @@ export const wealthRouter = createTRPCRouter({
 		.input(
 			z.object({
 				name: z.string().min(1).max(191),
-				type: z.nativeEnum(AssetType),
+				type: z.enum(AssetType),
 				currency: z.string().length(3),
 				balance: z.number(),
 				exchangeRate: z.number().optional(),
@@ -87,7 +87,7 @@ export const wealthRouter = createTRPCRouter({
 	updateAssetBalance: protectedProcedure
 		.input(
 			z.object({
-				assetId: z.string().cuid(),
+				assetId: z.cuid(),
 				newBalance: z.number(),
 				exchangeRate: z.number().optional(),
 				exchangeRateType: z.string().optional(),
@@ -162,9 +162,9 @@ export const wealthRouter = createTRPCRouter({
 	updateAsset: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 				name: z.string().min(1).max(191),
-				type: z.nativeEnum(AssetType),
+				type: z.enum(AssetType),
 				currency: z.string().length(3),
 				balance: z.number(),
 				exchangeRate: z.number().optional(),
@@ -306,7 +306,7 @@ export const wealthRouter = createTRPCRouter({
 	deleteAsset: protectedProcedure
 		.input(
 			z.object({
-				id: z.string().cuid(),
+				id: z.cuid(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -401,7 +401,7 @@ export const wealthRouter = createTRPCRouter({
 					.array(
 						z.object({
 							name: z.string().min(1).max(191),
-							type: z.nativeEnum(AssetType),
+							type: z.enum(AssetType),
 							currency: z.string().length(3),
 							balance: z.number(),
 							isLiquid: z.boolean(),

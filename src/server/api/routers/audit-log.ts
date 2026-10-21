@@ -1006,9 +1006,9 @@ export const auditLogRouter = createTRPCRouter({
 				limit: z.number().int().min(1).max(100).default(50),
 				filters: z
 					.object({
-						actions: z.array(z.nativeEnum(AuditAction)).optional(),
+						actions: z.array(z.enum(AuditAction)).optional(),
 						actorId: z.string().optional(),
-						actorType: z.nativeEnum(ParticipantType).optional(),
+						actorType: z.enum(ParticipantType).optional(),
 					})
 					.optional(),
 			}),

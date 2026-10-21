@@ -159,7 +159,7 @@ export const peopleRouter = createTRPCRouter({
 		.input(
 			z.object({
 				name: z.string().min(1).max(191),
-				email: z.string().email().max(255).optional(),
+				email: z.email().max(255).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -227,7 +227,7 @@ export const peopleRouter = createTRPCRouter({
 			z.object({
 				shadowId: z.string().min(1),
 				name: z.string().min(1).max(191),
-				email: z.string().email().max(255).optional(),
+				email: z.email().max(255).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -320,7 +320,7 @@ export const peopleRouter = createTRPCRouter({
 		.input(
 			participantRefSchema.extend({
 				status: z.enum(["active", "pending", "settled"]).optional(),
-				projectId: z.string().cuid().optional(),
+				projectId: z.cuid().optional(),
 				page: z.number().int().positive().default(1),
 				limit: z.number().int().positive().max(100).default(20),
 			}),
@@ -350,7 +350,7 @@ export const peopleRouter = createTRPCRouter({
 			participantRefSchema.extend({
 				limit: z.number().int().positive().max(100).default(30),
 				cursor: z.string().optional(),
-				projectId: z.string().cuid().optional(),
+				projectId: z.cuid().optional(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {

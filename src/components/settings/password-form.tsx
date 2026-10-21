@@ -41,7 +41,7 @@ export function PasswordForm() {
 			confirmPassword: z.string().min(1, t("pleaseConfirmPassword")),
 		})
 		.refine((data) => data.newPassword === data.confirmPassword, {
-			message: t("passwordsDoNotMatch"),
+			error: t("passwordsDoNotMatch"),
 			path: ["confirmPassword"],
 		});
 

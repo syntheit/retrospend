@@ -54,7 +54,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 				/^[a-zA-Z0-9]+$/,
 				t("usernameAlphanumeric"),
 			),
-		email: z.string().email(t("invalidEmail")).max(254),
+		email: z.email(t("invalidEmail")).max(254),
 		currentPassword: z.string().optional(),
 	});
 
