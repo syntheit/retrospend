@@ -5,6 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { ExportService } from "~/server/services/export.service";
 import { generatePersonPdf, generateProjectPdf } from "~/server/services/pdf.service";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
+import { canonicalizeProjectLedger } from "~/server/services/shared-expenses/identity";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import { db as globalDb } from "~/server/db";
 import type { ParticipantType, PrismaClient } from "~prisma";
@@ -167,7 +168,9 @@ async function fetchTxAndSettlements(
 		},
 	});
 
-	return { transactions, settlements };
+	// One ref per person (claimed shadows merged into their users), matching
+	// the project views.
+	return canonicalizeProjectLedger(db, projectId, transactions, settlements);
 }
 
 function txStatus(

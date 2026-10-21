@@ -22,7 +22,10 @@ import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import { getBalancesFromPerspective } from "~/server/services/shared-expenses/balances-perspective.service";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
-import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import {
+	canonicalizeProjectLedger,
+	resolveClaimAliases,
+} from "~/server/services/shared-expenses/identity";
 import { sameParticipant } from "~/server/services/shared-expenses/types";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 
@@ -2404,5 +2407,7 @@ async function fetchProjectTransactionsAndSettlements(
 		},
 	});
 
-	return { transactions, settlements };
+	// One ref per person: claimed shadows and their users are merged, matching
+	// the alias-aware pairwise balances that settle-ups are recorded against.
+	return canonicalizeProjectLedger(db, projectId, transactions, settlements);
 }

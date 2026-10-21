@@ -17,6 +17,8 @@ vi.mock("~/server/services/notifications", () => ({
 }));
 
 import { computeBalance, computeBalanceByProject } from "./balance";
+import { computeSettlementPlan, isFullySettled } from "./group-settlement";
+import { canonicalizeProjectLedger } from "./identity";
 import { SettlementService } from "./settlement.service";
 import {
 	addProject,
@@ -1259,6 +1261,106 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			projectId: "A",
 		});
 		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
+	});
+
+	it("project views count a global settle-up against a legacy claimed shadow's debt", async () => {
+		// Before 2026-08-01 the signup auto-claim only stamped claimedById: bob's
+		// pre-claim debt in project A still names his shadow.
+		db._stores.shadowProfiles.set("shadow-bob", {
+			id: "shadow-bob",
+			name: "Bobby",
+			email: null,
+			phone: null,
+			createdById: ALICE,
+			claimedById: BOB,
+		});
+		seedBobOwesAlice("A", 30);
+		for (const [id, sp] of db._stores.splits) {
+			if (sp.participantId === BOB && Number(sp.shareAmount) === 30) {
+				db._stores.splits.set(id, {
+					...sp,
+					participantType: "shadow",
+					participantId: "shadow-bob",
+				});
+			}
+		}
+		// A direct expense with both raw refs so the settle-up relationship holds.
+		seedBobOwesAlice(null, 0);
+
+		// Bob pays globally; the alias-aware allocation puts it in project A
+		// under his USER ref.
+		const bobSettle = new SettlementService(db as never, BOB);
+		const { settlement } = await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 30,
+			currency: "USD",
+		});
+		await new SettlementService(db as never, ALICE).confirmSettlement(
+			settlement.id,
+		);
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 30 }]);
+
+		// The project's ledger as the project views read it.
+		const txs = [...db._stores.transactions.values()]
+			.filter((tx) => tx.projectId === "A")
+			.map((tx) => ({
+				currency: tx.currency,
+				amount: tx.amount,
+				paidByType: tx.paidByType as "user",
+				paidById: tx.paidById,
+				splitParticipants: [...db._stores.splits.values()]
+					.filter((sp) => sp.transactionId === tx.id)
+					.map((sp) => ({
+						participantType: sp.participantType as "user" | "shadow",
+						participantId: sp.participantId,
+						shareAmount: sp.shareAmount,
+					})),
+			}));
+		const settlements = [...db._stores.settlements.values()]
+			.filter((st) => st.projectId === "A" && st.status === "FINALIZED")
+			.map((st) => ({
+				fromParticipantType: st.fromParticipantType as "user",
+				fromParticipantId: st.fromParticipantId,
+				toParticipantType: st.toParticipantType as "user",
+				toParticipantId: st.toParticipantId,
+				amount: st.amount,
+				currency: st.currency,
+			}));
+
+		const nets = (plan: ReturnType<typeof computeSettlementPlan>) =>
+			Object.fromEntries(
+				(plan.byCurrency.USD?.balances ?? []).map((b) => [
+					`${b.participant.participantType}:${b.participant.participantId}`,
+					b.netBalance,
+				]),
+			);
+
+		// Raw refs: the debt sits on the shadow and the payment on the user, so
+		// the shadow still shows as owing (and the balances no longer add up).
+		expect(nets(computeSettlementPlan(txs, settlements))).toEqual({
+			"user:alice": 0,
+			"shadow:shadow-bob": -30,
+		});
+
+		// Canonicalized: one person, settled.
+		const ledger = await canonicalizeProjectLedger(
+			db as never,
+			"A",
+			txs,
+			settlements,
+		);
+		const canonical = computeSettlementPlan(
+			ledger.transactions,
+			ledger.settlements,
+		);
+		expect(isFullySettled(canonical)).toBe(true);
+		expect(nets(canonical)).toEqual({ "user:alice": 0, "user:bob": 0 });
+		// Bob is represented by his project membership ref (user:bob).
+		expect(
+			ledger.transactions.flatMap((tx) =>
+				tx.splitParticipants.map((sp) => `${sp.participantType}:${sp.participantId}`),
+			),
+		).toEqual(["user:bob", "user:alice"]);
 	});
 
 	it("voidAutoFinalizedSettlement works on a scoped settlement to a non-user payee", async () => {
