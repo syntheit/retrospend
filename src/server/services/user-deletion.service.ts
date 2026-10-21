@@ -130,6 +130,53 @@ async function resolveParticipantDisplayName(
 	return "another member";
 }
 
+/**
+ * Picks who takes over a project whose only organizer is deleting their
+ * account: the longest-standing registered user, preferring EDITOR, then
+ * CONTRIBUTOR, then VIEWER. Ghosts (shadows) and guests are never promoted:
+ * neither can sign in, so an ORGANIZER ghost would leave the project with no
+ * one able to run it. Returns null when no other registered user is a member.
+ */
+async function findSuccessorOrganizer(
+	db: PrismaClient | PrismaTx,
+	projectId: string,
+	userId: string,
+) {
+	for (const role of ["EDITOR", "CONTRIBUTOR", "VIEWER"] as const) {
+		const candidate = await (db as PrismaClient).projectParticipant.findFirst({
+			where: {
+				projectId,
+				participantType: "user",
+				participantId: { not: userId },
+				role,
+			},
+			orderBy: { joinedAt: "asc" },
+		});
+		if (candidate) return candidate;
+	}
+	return null;
+}
+
+/**
+ * Counts the project's other registered-user organizers. A non-user
+ * ORGANIZER row (which should not exist) does not count: it cannot run the
+ * project.
+ */
+async function countOtherUserOrganizers(
+	db: PrismaClient | PrismaTx,
+	projectId: string,
+	userId: string,
+): Promise<number> {
+	return (db as PrismaClient).projectParticipant.count({
+		where: {
+			projectId,
+			participantType: "user",
+			participantId: { not: userId },
+			role: "ORGANIZER",
+		},
+	});
+}
+
 // ── Pre-deletion cleanup ──────────────────────────────────────────────────────
 
 /**
@@ -149,40 +196,13 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 	});
 
 	for (const pp of userOrganizerRoles) {
-		const otherOrganizerCount = await tx.projectParticipant.count({
-			where: {
-				projectId: pp.projectId,
-				participantId: { not: userId },
-				role: "ORGANIZER",
-			},
-		});
-
 		// If another organizer already exists, no action needed
-		if (otherOrganizerCount > 0) continue;
+		if ((await countOtherUserOrganizers(tx, pp.projectId, userId)) > 0) continue;
 
-		// Find the best candidate to promote: EDITOR first, then CONTRIBUTOR, oldest joinedAt
-		const editorCandidate = await tx.projectParticipant.findFirst({
-			where: {
-				projectId: pp.projectId,
-				participantId: { not: userId },
-				role: "EDITOR",
-			},
-			orderBy: { joinedAt: "asc" },
-		});
-
-		const promotee =
-			editorCandidate ??
-			(await tx.projectParticipant.findFirst({
-				where: {
-					projectId: pp.projectId,
-					participantId: { not: userId },
-					role: "CONTRIBUTOR",
-				},
-				orderBy: { joinedAt: "asc" },
-			}));
+		const promotee = await findSuccessorOrganizer(tx, pp.projectId, userId);
 
 		if (!promotee) {
-			// Solo project - no other participants, delete it entirely
+			// No other registered user - delete the project entirely
 			await tx.project.delete({ where: { id: pp.projectId } });
 		} else {
 			// Promote to organizer
@@ -212,13 +232,16 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 	}
 
 	// ── Step 2: Auto-resolve pending settlements ──────────────────────────────
+	// Only PROPOSED settlements are pending. A REJECTED one was refused by the
+	// payee and must stay refused: finalizing it would wipe a debt the payee
+	// said was never paid. It is left as is and anonymized with the rest.
 
 	// User as payer (fromParticipant)
 	const settlementsAsPayer = await tx.settlement.findMany({
 		where: {
 			fromParticipantType: "user",
 			fromParticipantId: userId,
-			status: { notIn: ["CONFIRMED", "FINALIZED"] },
+			status: "PROPOSED",
 		},
 	});
 
@@ -271,7 +294,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		where: {
 			toParticipantType: "user",
 			toParticipantId: userId,
-			status: { notIn: ["CONFIRMED", "FINALIZED"] },
+			status: "PROPOSED",
 		},
 	});
 
@@ -354,35 +377,9 @@ export async function previewAccountDeletion(
 	});
 
 	for (const pp of userOrganizerRoles) {
-		const otherOrganizerCount = await db.projectParticipant.count({
-			where: {
-				projectId: pp.projectId,
-				participantId: { not: userId },
-				role: "ORGANIZER",
-			},
-		});
+		if ((await countOtherUserOrganizers(db, pp.projectId, userId)) > 0) continue;
 
-		if (otherOrganizerCount > 0) continue;
-
-		const editorCandidate = await db.projectParticipant.findFirst({
-			where: {
-				projectId: pp.projectId,
-				participantId: { not: userId },
-				role: "EDITOR",
-			},
-			orderBy: { joinedAt: "asc" },
-		});
-
-		const promotee =
-			editorCandidate ??
-			(await db.projectParticipant.findFirst({
-				where: {
-					projectId: pp.projectId,
-					participantId: { not: userId },
-					role: "CONTRIBUTOR",
-				},
-				orderBy: { joinedAt: "asc" },
-			}));
+		const promotee = await findSuccessorOrganizer(db, pp.projectId, userId);
 
 		if (!promotee) {
 			projectsToDelete.push({ id: pp.projectId, name: pp.project.name });
@@ -406,7 +403,7 @@ export async function previewAccountDeletion(
 			where: {
 				fromParticipantType: "user",
 				fromParticipantId: userId,
-				status: { notIn: ["CONFIRMED", "FINALIZED"] },
+				status: "PROPOSED",
 			},
 			select: { id: true, confirmedByPayer: true, confirmedByPayee: true },
 		}),
@@ -414,7 +411,7 @@ export async function previewAccountDeletion(
 			where: {
 				toParticipantType: "user",
 				toParticipantId: userId,
-				status: { notIn: ["CONFIRMED", "FINALIZED"] },
+				status: "PROPOSED",
 			},
 			select: { id: true, confirmedByPayer: true, confirmedByPayee: true },
 		}),
