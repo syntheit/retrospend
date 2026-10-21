@@ -1627,7 +1627,14 @@ export class SettlementService {
 			changes?: Record<string, unknown>;
 		},
 	) {
-		const lead = rows.find((r) => !r.isOffset) ?? rows[0]!;
+		// The cash row, or for a square-up a row towards the actor, so the feed
+		// names the other person as "from".
+		const lead =
+			rows.find((r) => !r.isOffset) ??
+			rows.find(
+				(r) => r.toParticipantType === "user" && r.toParticipantId === this.userId,
+			) ??
+			rows[0]!;
 		const summary = summarizeGroup(rows, this.userId);
 		const projectIds = [...new Set(rows.map((r) => r.projectId ?? null))];
 		await logAudit(tx, {

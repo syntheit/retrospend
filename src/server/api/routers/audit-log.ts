@@ -63,6 +63,7 @@ const ACTIVITY_ACTION_LABELS: Record<string, string> = {
 	AUTO_VERIFIED: "Auto-verified",
 	SETTLED: "Settled",
 	PERIOD_CLOSED: "Period closed",
+	PERIOD_REOPENED: "Period reopened",
 	PARTICIPANT_ADDED: "Participant added",
 	PARTICIPANT_REMOVED: "Participant removed",
 	ROLE_CHANGED: "Role changed",
@@ -146,6 +147,8 @@ function getActivityActionMeta(
 	}
 	if (action === "PERIOD_CLOSED")
 		return { label: "Period closed", icon: "lock", color: "amber" };
+	if (action === "PERIOD_REOPENED")
+		return { label: "Period reopened", icon: "lock-open", color: "amber" };
 	if (action === "PARTICIPANT_ADDED")
 		return { label: "Participant added", icon: "user-plus", color: "blue" };
 	if (action === "PARTICIPANT_REMOVED")
@@ -157,7 +160,7 @@ function getActivityActionMeta(
 
 type SummaryResult = { text: string; key: string | null; params: Record<string, string> | null };
 
-function buildActivitySummary(
+export function buildActivitySummary(
 	action: string,
 	targetType: string,
 	actorName: string,
@@ -184,8 +187,29 @@ function buildActivitySummary(
 					return r(text, "activityCreatedExpense", { actor: actorName, description: desc });
 				}
 				if (targetType === "SETTLEMENT") {
-					const amt = safeFormatAmount(c?.amount, c?.currency);
+					// One entry per project of a payment group (see
+					// SettlementService.createPaymentGroup): `amount` is this
+					// project's cash, `offsetAmount` what was offset here against
+					// another project, `allocatedFromTotal` the whole payment.
+					const cash = typeof c?.amount === "number" ? c.amount : 0;
+					const offset =
+						typeof c?.offsetAmount === "number" ? c.offsetAmount : 0;
+					const name = otherActorName ?? "";
 					const to = otherActorName ? ` with ${otherActorName}` : "";
+					if (c?.squareUp || (cash === 0 && offset > 0)) {
+						const amt = safeFormatAmount(offset, c?.currency);
+						return r(`${actorName} offset ${amt}${to} against another project`, "activityOffsetSettlement", { actor: actorName, amount: amt, name });
+					}
+					if (offset > 0) {
+						const amt = safeFormatAmount(cash + offset, c?.currency);
+						const off = safeFormatAmount(offset, c?.currency);
+						return r(`${actorName} initiated a ${amt} settlement${to}, ${off} of it offset against another project`, "activityCreatedSettlementWithOffset", { actor: actorName, amount: amt, offset: off, name });
+					}
+					const amt = safeFormatAmount(c?.amount, c?.currency);
+					if (typeof c?.allocatedFromTotal === "number") {
+						const total = safeFormatAmount(c.allocatedFromTotal, c?.currency);
+						return r(`${actorName} initiated a ${amt} settlement${to}, part of a ${total} payment`, "activityCreatedSettlementPart", { actor: actorName, amount: amt, total, name });
+					}
 					return r(`${actorName} initiated a ${amt} settlement${to}`, "activityCreatedSettlement", { actor: actorName, amount: amt, ...(otherActorName ? { name: otherActorName } : {}) });
 				}
 				if (c?.linkId) {
@@ -412,6 +436,12 @@ function buildActivitySummary(
 				}
 				return r(`${actorName} settled`, "activityMadeChange", { actor: actorName });
 			}
+
+			case "PERIOD_REOPENED":
+				// A payment that settled the period was rejected or undone.
+				return billingPeriodLabel
+					? r(`'${billingPeriodLabel}' was reopened because a payment was rejected or undone`, "activityReopenedPeriod", { period: billingPeriodLabel })
+					: r("A billing period was reopened because a payment was rejected or undone", "activityReopenedPeriodGeneric", {});
 
 			case "PERIOD_CLOSED":
 				return billingPeriodLabel

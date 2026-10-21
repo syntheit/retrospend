@@ -7,6 +7,7 @@ import {
 	Clock,
 	ListFilter,
 	Lock,
+	LockOpen,
 	Loader2,
 	Pencil,
 	Plus,
@@ -124,7 +125,7 @@ const FILTER_GROUP_DEFS = [
 	{ key: "deleted", actions: ["DELETED"] },
 	{ key: "verified", actions: ["VERIFIED", "AUTO_VERIFIED", "REJECTED"] },
 	{ key: "settled", actions: ["SETTLED"] },
-	{ key: "period", actions: ["PERIOD_CLOSED"] },
+	{ key: "period", actions: ["PERIOD_CLOSED", "PERIOD_REOPENED"] },
 	{ key: "members", actions: ["PARTICIPANT_ADDED", "PARTICIPANT_REMOVED", "ROLE_CHANGED"] },
 ] as const;
 
@@ -163,6 +164,7 @@ const iconMap: Record<string, ComponentType<{ className?: string }>> = {
 	clock: Clock,
 	trash: Trash2,
 	lock: Lock,
+	"lock-open": LockOpen,
 	"user-plus": UserPlus,
 	"user-minus": UserMinus,
 	shield: Shield,
