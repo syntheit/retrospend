@@ -17,6 +17,7 @@ import { UserAvatar } from "~/components/ui/user-avatar";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { ExpenseFormData } from "~/hooks/use-expense-form";
 import { formatNumber } from "~/lib/currency-format";
+import { evenSharePerPerson } from "~/lib/even-split-display";
 import { resolveSplits } from "~/lib/shared-split-computation";
 import { cn } from "~/lib/utils";
 
@@ -428,8 +429,9 @@ export function SharedExpenseSection({
 		if (splitChoice === "even") {
 			const count = allParticipants.length;
 			if (count === 0) return null;
-			const perPerson = Math.floor(Math.round(amount * 100) / count) / 100;
-			return t("eachPersonPays", { amount: fmt(perPerson) });
+			return t("eachPersonPays", {
+				amount: fmt(evenSharePerPerson(amount, count)),
+			});
 		}
 
 		return null; // Too complex for a single line with 3+ custom shares.
