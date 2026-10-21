@@ -56,13 +56,13 @@ import { api } from "~/trpc/react";
 
 const formSchema = z.object({
 	name: z.string().min(1, "Name is required"),
-	type: z.nativeEnum(AssetType),
+	type: z.enum(AssetType),
 	currency: z.string().length(3, "Currency must be 3 characters"),
-	balance: z.coerce.number().min(0, "Balance must be positive"),
-	exchangeRate: z.coerce.number().optional(),
+	balance: z.coerce.number<number>().min(0, "Balance must be positive"),
+	exchangeRate: z.coerce.number<number>().optional(),
 	exchangeRateType: z.string().optional(),
 	isLiquid: z.boolean(),
-	interestRate: z.coerce.number().min(0).optional(),
+	interestRate: z.coerce.number<number>().min(0).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;

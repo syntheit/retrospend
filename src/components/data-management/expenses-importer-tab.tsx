@@ -238,11 +238,11 @@ function RetrospendCsvImport({
 				.safeParse(normalizedData);
 
 			if (!parseResult.success) {
-				const formattedErrors: string[] = parseResult.error.errors.map(
+				const formattedErrors: string[] = parseResult.error.issues.map(
 					(err) => {
 						const rowIdx = (err.path[0] as number) + 1;
 						const field = err.path[1];
-						return `Row ${rowIdx}: ${field} - ${err.message}`;
+						return `Row ${rowIdx}: ${String(field)} - ${err.message}`;
 					},
 				);
 				return {
