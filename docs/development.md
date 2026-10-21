@@ -143,7 +143,7 @@ New default categories added to the app are not automatically pushed to existing
 
    ```bash
    docker exec -it retrospend sh
-   pnpm ts-node scripts/sync-default-categories.ts
+   pnpm tsx scripts/sync-default-categories.ts
    ```
 
 ## Building
