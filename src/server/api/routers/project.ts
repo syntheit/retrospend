@@ -36,6 +36,10 @@ import {
 	redactContact,
 } from "~/server/services/shared-expenses/contact-visibility";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
+import {
+	resolveSplits,
+	type SplitParticipantRef,
+} from "~/lib/shared-split-computation";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -247,53 +251,6 @@ async function runInProjectTransaction<T>(
 		                            set_config('role', 'retrospend_app', true)`;
 		return callback(tx);
 	});
-}
-
-/**
- * Recomputes an EQUAL split across the given participants using integer cents.
- * Mirrors SharedTransactionService.computeEqualSplits: the payer receives the
- * first extra cent, then remaining cents are distributed in order — so results
- * are identical to how the expense would have been split at creation time.
- */
-function recomputeEqualShares(
-	amount: number,
-	participants: Array<{ participantType: string; participantId: string }>,
-	paidBy: { participantType: string; participantId: string },
-): Array<{ participantType: string; participantId: string; shareAmount: number }> {
-	const count = participants.length;
-	const totalCents = Math.round(amount * 100);
-	const baseCents = Math.floor(totalCents / count);
-	let remainder = totalCents - baseCents * count;
-
-	const result = participants.map((p) => ({
-		participantType: p.participantType,
-		participantId: p.participantId,
-		cents: baseCents,
-	}));
-
-	if (remainder > 0) {
-		const payerIdx = result.findIndex(
-			(r) =>
-				r.participantType === paidBy.participantType &&
-				r.participantId === paidBy.participantId,
-		);
-		if (payerIdx >= 0) {
-			result[payerIdx]!.cents += 1;
-			remainder -= 1;
-		}
-		for (let i = 0; i < result.length && remainder > 0; i++) {
-			if (i !== payerIdx) {
-				result[i]!.cents += 1;
-				remainder -= 1;
-			}
-		}
-	}
-
-	return result.map((r) => ({
-		participantType: r.participantType,
-		participantId: r.participantId,
-		shareAmount: r.cents / 100,
-	}));
 }
 
 // ── input schemas ─────────────────────────────────────────────────────────────
@@ -1251,6 +1208,7 @@ export const projectRouter = createTRPCRouter({
 				select: {
 					id: true,
 					amount: true,
+					currency: true,
 					splitMode: true,
 					isLocked: true,
 					paidByType: true,
@@ -1337,9 +1295,17 @@ export const projectRouter = createTRPCRouter({
 						},
 					];
 
-					const shares = recomputeEqualShares(Number(e.amount), newParticipants, {
-						participantType: e.paidByType,
-						participantId: e.paidById,
+					// Same split code as create, in the expense's own currency
+					// units, so the result matches a fresh EQUAL split.
+					const shares = resolveSplits({
+						mode: "EQUAL",
+						amount: Number(e.amount),
+						currency: e.currency,
+						participants: newParticipants as SplitParticipantRef[],
+						paidBy: {
+							participantType: e.paidByType,
+							participantId: e.paidById,
+						},
 					});
 
 					// Replace all split rows with the recomputed shares. Everyone's

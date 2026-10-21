@@ -76,6 +76,7 @@ describe("buildSharedExpensePrefill", () => {
 		// Round trip: the form submits the same split it was opened with.
 		const resubmitted = resolveSplits({
 			mode: prefill.splitMode,
+			currency: "USD",
 			amount: tx.amount,
 			participants: prefill.splitWith.map((p) => ({
 				participantType: p.participantType,

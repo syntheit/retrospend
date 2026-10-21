@@ -1,21 +1,15 @@
 /**
- * CENTRALIZED SERVER-SIDE CURRENCY CONVERSION
+ * Legacy server-side conversion helpers. The formulas live in ~/lib/money,
+ * which documents the rate convention; prefer it in new code.
  *
- * This is the server-side equivalent of `useCurrencyConversion` (client hook).
- * Uses `isCrypto(currency)` to determine conversion direction: NEVER relies
- * on the exchange rate's `type` field from the database.
- *
- * DATABASE STORAGE RUBRIC (must never change):
- * - Fiat rates: Stored as Units per 1 USD (e.g., ARS = 1467.95)
- * - Crypto rates: Stored as USD per 1 Unit (e.g., BTC = 50000)
- *
- * CONVERSION FORMULAS:
- * - Fiat → USD:   amount / rate
- * - Crypto → USD: amount * rate
- * - USD → Fiat:   usdAmount * rate
- * - USD → Crypto: usdAmount / rate
+ * These wrappers keep their old contract: a missing or zero rate converts to
+ * 0 instead of throwing, and results are not rounded.
  */
-import { isCrypto } from "~/lib/currency-format";
+import {
+	isValidRate,
+	fromUSD as moneyFromUSD,
+	toUSD as moneyToUSD,
+} from "~/lib/money";
 
 /**
  * Convert any currency amount to USD.
@@ -26,8 +20,8 @@ export function toUSD(
 	rate: number,
 ): number {
 	if (currency === "USD") return amount;
-	if (!rate || rate === 0) return 0;
-	return isCrypto(currency) ? amount * rate : amount / rate;
+	if (!isValidRate(rate)) return 0;
+	return moneyToUSD(amount, currency, rate);
 }
 
 /**
@@ -39,6 +33,6 @@ export function fromUSD(
 	rate: number,
 ): number {
 	if (currency === "USD") return usdAmount;
-	if (!rate || rate === 0) return 0;
-	return isCrypto(currency) ? usdAmount / rate : usdAmount * rate;
+	if (!isValidRate(rate)) return 0;
+	return moneyFromUSD(usdAmount, currency, rate);
 }

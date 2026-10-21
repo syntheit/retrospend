@@ -4,15 +4,21 @@
  * divided across participants, so the amounts a user sees in the form preview
  * are byte-for-byte the amounts the server saves.
  *
- * The server rounding rule is canonical: any leftover cent from an indivisible
- * amount goes to the payer first (when the payer has a split row), otherwise to
- * the last row for PERCENTAGE/SHARES or filled in row order for EQUAL. This
- * file preserves that exact behavior.
+ * Amounts are split in the currency's own minor units (cents, satoshis for
+ * BTC, fils for KWD, whole yen for JPY; see currencyDecimals in ~/lib/money),
+ * so 0.003 BTC split three ways is 0.001 each, not 0.
+ *
+ * The server rounding rule is canonical: any leftover minor unit from an
+ * indivisible amount goes to the payer first (when the payer has a split row),
+ * otherwise to the last row for PERCENTAGE/SHARES or filled in row order for
+ * EQUAL. This file preserves that exact behavior.
  *
  * This module MUST stay free of server-only imports (Prisma, tRPC, env) so it
  * can run in the browser. Validation failures throw {@link SplitComputationError};
  * the server catches it and rethrows as a TRPCError.
  */
+
+import { fromMinorUnits, toMinorUnits } from "./money";
 
 export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
 
@@ -49,32 +55,35 @@ function sameRef(a: SplitParticipantRef, b: SplitParticipantRef): boolean {
 }
 
 /**
- * Resolve a split into concrete per-participant amounts (in whole currency
- * units, cent-accurate). Payer may be outside the split (fronting a cost): they
+ * Resolve a split into concrete per-participant amounts, accurate to the
+ * currency's minor unit. Payer may be outside the split (fronting a cost): they
  * simply get no row. Callers should dedupe participants beforehand.
  */
 export function resolveSplits(args: {
 	mode: SplitMode;
 	amount: number;
+	currency: string;
 	participants: SplitParticipantInput[];
 	paidBy: SplitParticipantRef;
 }): ResolvedSplit[] {
-	const { mode, amount, participants, paidBy } = args;
-	if (mode === "EQUAL") return computeEqualSplits(amount, participants, paidBy);
-	if (mode === "EXACT") return computeExactSplits(amount, participants);
+	const { mode, amount, currency, participants, paidBy } = args;
+	if (mode === "EQUAL")
+		return computeEqualSplits(amount, currency, participants, paidBy);
+	if (mode === "EXACT") return computeExactSplits(amount, currency, participants);
 	if (mode === "PERCENTAGE")
-		return computePercentageSplits(amount, participants, paidBy);
-	return computeSharesSplits(amount, participants, paidBy);
+		return computePercentageSplits(amount, currency, participants, paidBy);
+	return computeSharesSplits(amount, currency, participants, paidBy);
 }
 
 function computeEqualSplits(
 	amount: number,
+	currency: string,
 	splitWith: SplitParticipantInput[],
 	paidBy: SplitParticipantRef,
 ): ResolvedSplit[] {
 	const count = splitWith.length;
-	// Use integer cents to avoid floating point issues
-	const totalCents = Math.round(amount * 100);
+	// Integer minor units ("cents") avoid floating point issues
+	const totalCents = toMinorUnits(amount, currency);
 	const baseCents = Math.floor(totalCents / count);
 	let remainder = totalCents - baseCents * count;
 
@@ -102,24 +111,29 @@ function computeEqualSplits(
 	return result.map((r) => ({
 		participantType: r.participantType,
 		participantId: r.participantId,
-		shareAmount: r.cents / 100,
+		shareAmount: fromMinorUnits(r.cents, currency),
 	}));
 }
 
 function computeExactSplits(
 	amount: number,
+	currency: string,
 	splitWith: SplitParticipantInput[],
 ): ResolvedSplit[] {
-	const totalCents = Math.round(amount * 100);
+	const totalCents = toMinorUnits(amount, currency);
 	const sumCents = splitWith.reduce(
-		(sum, p) => sum + Math.round((p.shareAmount ?? 0) * 100),
+		(sum, p) => sum + toMinorUnits(p.shareAmount ?? 0, currency),
 		0,
 	);
 
 	if (sumCents !== totalCents) {
-		const difference = Math.abs(amount - sumCents / 100);
+		const got = fromMinorUnits(sumCents, currency);
+		const difference = fromMinorUnits(
+			Math.abs(totalCents - sumCents),
+			currency,
+		);
 		throw new SplitComputationError(
-			`Split amounts must sum to the transaction amount. Expected ${amount}, got ${sumCents / 100} (difference: ${difference.toFixed(2)})`,
+			`Split amounts must sum to the transaction amount. Expected ${amount}, got ${got} (difference: ${difference})`,
 		);
 	}
 
@@ -132,6 +146,7 @@ function computeExactSplits(
 
 function computePercentageSplits(
 	amount: number,
+	currency: string,
 	splitWith: SplitParticipantInput[],
 	paidBy: SplitParticipantRef,
 ): ResolvedSplit[] {
@@ -158,8 +173,8 @@ function computePercentageSplits(
 		.reduce((s, p) => s + p.sharePercentage!, 0);
 	participants[participants.length - 1]!.sharePercentage = 100 - othersSum;
 
-	// Compute amounts using integer cents, floor each
-	const totalCents = Math.round(amount * 100);
+	// Compute amounts using integer minor units, floor each
+	const totalCents = toMinorUnits(amount, currency);
 	const result = participants.map((p) => ({
 		participantType: p.participantType,
 		participantId: p.participantId,
@@ -186,13 +201,14 @@ function computePercentageSplits(
 	return result.map((r) => ({
 		participantType: r.participantType,
 		participantId: r.participantId,
-		shareAmount: r.cents / 100,
+		shareAmount: fromMinorUnits(r.cents, currency),
 		sharePercentage: r.sharePercentage,
 	}));
 }
 
 function computeSharesSplits(
 	amount: number,
+	currency: string,
 	splitWith: SplitParticipantInput[],
 	paidBy: SplitParticipantRef,
 ): ResolvedSplit[] {
@@ -206,7 +222,7 @@ function computeSharesSplits(
 	}
 
 	const totalUnits = splitWith.reduce((s, p) => s + p.shareUnits!, 0);
-	const totalCents = Math.round(amount * 100);
+	const totalCents = toMinorUnits(amount, currency);
 
 	const result = splitWith.map((p) => ({
 		participantType: p.participantType,
@@ -234,7 +250,7 @@ function computeSharesSplits(
 	return result.map((r) => ({
 		participantType: r.participantType,
 		participantId: r.participantId,
-		shareAmount: r.cents / 100,
+		shareAmount: fromMinorUnits(r.cents, currency),
 		shareUnits: r.shareUnits,
 	}));
 }

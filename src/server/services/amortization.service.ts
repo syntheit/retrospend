@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { fromMinorUnits, toMinorUnits, USD } from "~/lib/money";
+import { addMonthsClamped } from "~/lib/recurring";
 import type { Prisma, PrismaClient } from "~prisma";
 
 export interface AmortizationSplit {
@@ -8,71 +10,45 @@ export interface AmortizationSplit {
 	amountInUSD: number;
 }
 
+/**
+ * Splits `total` into `parts` whole minor units of `currency`; the first
+ * parts take the leftover units, so the parts always add up to the total.
+ */
+function splitMinorUnits(total: number, parts: number, currency: string) {
+	const units = toMinorUnits(total, currency);
+	const base = Math.floor(units / parts);
+	let remainder = units - base * parts;
+	return Array.from({ length: parts }, () => {
+		const extra = remainder > 0 ? 1 : 0;
+		remainder -= extra;
+		return fromMinorUnits(base + extra, currency);
+	});
+}
+
 export class AmortizationService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
 	/**
-	 * Safely adds months to a date, clamping to the last day of the month if the day exceeds the target month's length.
-	 */
-	private addMonthsClamped(baseDate: Date, monthsToAdd: number): Date {
-		const date = new Date(baseDate);
-		const targetMonth = date.getMonth() + monthsToAdd;
-
-		date.setMonth(targetMonth);
-
-		if (date.getMonth() % 12 !== (targetMonth + 12) % 12) {
-			date.setDate(0);
-		}
-
-		return date;
-	}
-
-	/**
-	 * Calculates monthly amortization splits with penny-perfect accuracy.
+	 * Calculates monthly amortization splits with penny-perfect accuracy. The
+	 * amount is split in the currency's own minor units (satoshis for BTC,
+	 * fils for KWD, whole yen for JPY), the USD amount in cents.
 	 */
 	calculateSplits(
 		startDate: Date,
 		totalAmount: number,
 		totalAmountInUSD: number,
 		months: number,
+		currency = USD,
 	): AmortizationSplit[] {
-		const splits: AmortizationSplit[] = [];
-		const precision = 2;
-		const multiplier = 10 ** precision;
+		const amounts = splitMinorUnits(totalAmount, months, currency);
+		const amountsInUSD = splitMinorUnits(totalAmountInUSD, months, USD);
 
-		const totalUnits = Math.round(totalAmount * multiplier);
-		const totalUnitsInUSD = Math.round(totalAmountInUSD * multiplier);
-
-		const baseUnits = Math.floor(totalUnits / months);
-		const baseUnitsInUSD = Math.floor(totalUnitsInUSD / months);
-
-		let remainingUnits = totalUnits - baseUnits * months;
-		let remainingUnitsInUSD = totalUnitsInUSD - baseUnitsInUSD * months;
-
-		for (let i = 0; i < months; i++) {
-			const date = this.addMonthsClamped(startDate, i);
-
-			let currentUnits = baseUnits;
-			let currentUnitsInUSD = baseUnitsInUSD;
-
-			if (remainingUnits > 0) {
-				currentUnits += 1;
-				remainingUnits -= 1;
-			}
-			if (remainingUnitsInUSD > 0) {
-				currentUnitsInUSD += 1;
-				remainingUnitsInUSD -= 1;
-			}
-
-			splits.push({
-				id: randomUUID(),
-				date,
-				amount: currentUnits / multiplier,
-				amountInUSD: currentUnitsInUSD / multiplier,
-			});
-		}
-
-		return splits;
+		return amounts.map((amount, i) => ({
+			id: randomUUID(),
+			date: addMonthsClamped(startDate, i),
+			amount,
+			amountInUSD: amountsInUSD[i]!,
+		}));
 	}
 
 	/**
@@ -86,10 +62,11 @@ export class AmortizationService {
 			amount: number | Prisma.Decimal;
 			amountInUSD: number | Prisma.Decimal;
 			currency: string;
-			exchangeRate: number | Prisma.Decimal | null;
+			exchangeRate: number | Prisma.Decimal;
 			pricingSource: string | null;
 			date: Date;
 			categoryId: string | null;
+			excludeFromAnalytics?: boolean | null;
 		},
 		amortizeOver: number,
 	) {
@@ -106,9 +83,12 @@ export class AmortizationService {
 			Number(expense.amount),
 			Number(expense.amountInUSD),
 			amortizeOver,
+			expense.currency,
 		);
 
-		// 3. Create new children
+		// 3. Create new children. They carry the parent's rate and its
+		// excludeFromAnalytics flag, so an excluded purchase stays excluded
+		// month by month.
 		const children = splits.map((split, i) => ({
 			id: split.id,
 			userId: expense.userId,
@@ -116,10 +96,11 @@ export class AmortizationService {
 			amount: split.amount,
 			currency: expense.currency,
 			amountInUSD: split.amountInUSD,
-			exchangeRate: Number(expense.exchangeRate ?? 1),
+			exchangeRate: Number(expense.exchangeRate),
 			pricingSource: expense.pricingSource ?? "MANUAL",
 			date: split.date,
 			categoryId: expense.categoryId || undefined,
+			excludeFromAnalytics: expense.excludeFromAnalytics ?? false,
 			isAmortizedChild: true,
 			parentId: expense.id,
 			status: "FINALIZED" as const,

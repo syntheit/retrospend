@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	"retrospend-sidecar/db"
@@ -18,25 +19,66 @@ type RecurringTemplate struct {
 	CategoryID  *string
 	Frequency   string
 	NextDueDate time.Time
+	AnchorDay   *int
 }
 
-func calculateNextDueDate(current time.Time, frequency string) time.Time {
-	next := current
+// addMonthsClamped adds months to t, landing on anchorDay (default: t's own
+// day) or the last day of the target month when that month is shorter.
+// Jan 31 + 1 month is Feb 28, and Feb 28 + 1 month with anchor 31 is Mar 31.
+// Mirrors addMonthsClamped in src/lib/recurring.ts.
+func addMonthsClamped(t time.Time, months int, anchorDay *int) time.Time {
+	day := t.Day()
+	if anchorDay != nil && *anchorDay > 0 {
+		day = *anchorDay
+	}
+	firstOfTarget := time.Date(t.Year(), t.Month(), 1, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location()).AddDate(0, months, 0)
+	lastDay := firstOfTarget.AddDate(0, 1, -1).Day()
+	if day > lastDay {
+		day = lastDay
+	}
+	return firstOfTarget.AddDate(0, 0, day-1)
+}
+
+func calculateNextDueDate(current time.Time, frequency string, anchorDay *int) time.Time {
 	switch frequency {
 	case "WEEKLY":
-		next = next.AddDate(0, 0, 7)
+		return current.AddDate(0, 0, 7)
 	case "BIWEEKLY":
-		next = next.AddDate(0, 0, 14)
+		return current.AddDate(0, 0, 14)
 	case "MONTHLY":
-		next = next.AddDate(0, 1, 0)
+		return addMonthsClamped(current, 1, anchorDay)
 	case "QUARTERLY":
-		next = next.AddDate(0, 3, 0)
+		return addMonthsClamped(current, 3, anchorDay)
 	case "YEARLY":
-		next = next.AddDate(1, 0, 0)
+		return addMonthsClamped(current, 12, anchorDay)
 	}
-	return next
+	return current
 }
 
+// isCryptoCurrency decides the rate direction by currency code, never by the
+// rate type: ARS has a "crypto" rate type that is still ARS per USD.
+func isCryptoCurrency(currency string) bool {
+	return supportedCryptoCurrencies[currency]
+}
+
+// amountToUSD follows the stored convention in src/lib/money.ts: fiat rates
+// are units per USD, crypto rates are USD per coin. Rounded to cents.
+func amountToUSD(amount float64, currency string, rate float64) float64 {
+	var usd float64
+	switch {
+	case currency == "USD":
+		usd = amount
+	case isCryptoCurrency(currency):
+		usd = amount * rate
+	default:
+		usd = amount / rate
+	}
+	return math.Round(usd*100) / 100
+}
+
+// getBestExchangeRate mirrors pickBestRate in src/lib/money.ts: the latest
+// rate on or before the date, else the nearest one after it; types ranked
+// blue > official > crypto > the rest. Never falls back to 1.
 func getBestExchangeRate(ctx context.Context, database *db.DB, currency string, date time.Time) (float64, string, error) {
 	if currency == "USD" {
 		return 1.0, "official", nil
@@ -46,10 +88,13 @@ func getBestExchangeRate(ctx context.Context, database *db.DB, currency string, 
 	var rateType string
 	err := database.Pool.QueryRow(ctx, `
 		SELECT rate, type FROM exchange_rate
-		WHERE currency = $1 AND date <= $2
+		WHERE currency = $1 AND rate > 0
 		ORDER BY
-			CASE WHEN type = 'crypto' THEN 0 WHEN type = 'blue' THEN 1 WHEN type = 'official' THEN 2 ELSE 3 END,
-			date DESC
+			CASE WHEN date <= $2 THEN 0 ELSE 1 END,
+			CASE WHEN date <= $2 THEN date END DESC,
+			CASE WHEN date > $2 THEN date END ASC,
+			CASE type WHEN 'blue' THEN 0 WHEN 'official' THEN 1 WHEN 'crypto' THEN 2 ELSE 3 END,
+			type
 		LIMIT 1
 	`, currency, date).Scan(&rate, &rateType)
 
@@ -69,7 +114,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	// Get all due templates
 	// Note: using camelCase "userId", "categoryId", "nextDueDate", "isActive", "autoPay"
 	rows, err := database.Pool.Query(ctx, `
-		SELECT id, "userId", name, amount, currency, "categoryId", frequency, "nextDueDate"
+		SELECT id, "userId", name, amount, currency, "categoryId", frequency, "nextDueDate", "anchorDay"
 		FROM recurring_template
 		WHERE "isActive" = true
 		  AND "autoPay" = true
@@ -83,7 +128,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	var templates []RecurringTemplate
 	for rows.Next() {
 		var t RecurringTemplate
-		if err := rows.Scan(&t.ID, &t.UserID, &t.Name, &t.Amount, &t.Currency, &t.CategoryID, &t.Frequency, &t.NextDueDate); err != nil {
+		if err := rows.Scan(&t.ID, &t.UserID, &t.Name, &t.Amount, &t.Currency, &t.CategoryID, &t.Frequency, &t.NextDueDate, &t.AnchorDay); err != nil {
 			return fmt.Errorf("failed to scan template: %w", err)
 		}
 		templates = append(templates, t)
@@ -102,23 +147,43 @@ func ProcessRecurringExpenses(database *db.DB) error {
 
 	for _, template := range templates {
 		// Get exchange rate
-		exchangeRate, rateType, err := getBestExchangeRate(ctx, database, template.Currency, template.NextDueDate)
+		exchangeRate, _, err := getBestExchangeRate(ctx, database, template.Currency, template.NextDueDate)
 		if err != nil {
 			log.Printf("[RECURRING] Warning: %v, skipping template %s", err, template.ID)
 			continue
 		}
 
-		var amountInUSD float64
-		if rateType == "crypto" {
-			amountInUSD = template.Amount * exchangeRate
-		} else {
-			amountInUSD = template.Amount / exchangeRate
-		}
+		amountInUSD := amountToUSD(template.Amount, template.Currency, exchangeRate)
 
-		// Wrap INSERT + UPDATE in a transaction for atomicity
+		// Wrap UPDATE + INSERT in a transaction for atomicity
 		tx, err := database.Pool.Begin(ctx)
 		if err != nil {
 			log.Printf("[RECURRING] Error starting transaction for template %s: %v", template.ID, err)
+			continue
+		}
+
+		// Advance the template first, only if nobody else did since we read it
+		// (a manual confirm or an overlapping run), so each period is booked once.
+		anchorDay := template.AnchorDay
+		if anchorDay == nil {
+			day := template.NextDueDate.Day()
+			anchorDay = &day
+		}
+		nextDueDate := calculateNextDueDate(template.NextDueDate, template.Frequency, anchorDay)
+		tag, err := tx.Exec(ctx, `
+			UPDATE recurring_template
+			SET "nextDueDate" = $1, "anchorDay" = $2, "updatedAt" = NOW()
+			WHERE id = $3 AND "nextDueDate" = $4
+		`, nextDueDate, *anchorDay, template.ID, template.NextDueDate)
+
+		if err != nil {
+			tx.Rollback(ctx)
+			log.Printf("[RECURRING] Error updating template %s: %v", template.ID, err)
+			continue
+		}
+		if tag.RowsAffected() == 0 {
+			tx.Rollback(ctx)
+			log.Printf("[RECURRING] Template %s was already advanced, skipping", template.ID)
 			continue
 		}
 
@@ -137,20 +202,6 @@ func ProcessRecurringExpenses(database *db.DB) error {
 		if err != nil {
 			tx.Rollback(ctx)
 			log.Printf("[RECURRING] Error creating expense for template %s: %v", template.ID, err)
-			continue
-		}
-
-		// Update next due date
-		nextDueDate := calculateNextDueDate(template.NextDueDate, template.Frequency)
-		_, err = tx.Exec(ctx, `
-			UPDATE recurring_template
-			SET "nextDueDate" = $1, "updatedAt" = NOW()
-			WHERE id = $2
-		`, nextDueDate, template.ID)
-
-		if err != nil {
-			tx.Rollback(ctx)
-			log.Printf("[RECURRING] Error updating template %s: %v", template.ID, err)
 			continue
 		}
 

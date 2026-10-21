@@ -2,16 +2,15 @@ import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeCategory, makeExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
+import { RATE_DATE, useRateTable } from "~/test/rate-table";
 import { ExpenseService } from "../expense.service";
 
 // ── Hoisted mocks (referenced inside vi.mock factories) ───────────────────────
 
-const mockGetBestExchangeRate = vi.hoisted(() => vi.fn());
 const mockSumExpensesForCurrency = vi.hoisted(() => vi.fn());
 const mockSyncAmortization = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("~/server/api/routers/shared-currency", () => ({
-	getBestExchangeRate: mockGetBestExchangeRate,
 	sumExpensesForCurrency: mockSumExpensesForCurrency,
 }));
 
@@ -44,7 +43,7 @@ describe("ExpenseService", () => {
 		service = new ExpenseService(db as never);
 
 		// Sensible defaults
-		mockGetBestExchangeRate.mockResolvedValue({ rate: 1, type: "official" });
+		useRateTable(db);
 		mockSumExpensesForCurrency.mockResolvedValue({ total: 0, totalInUSD: 0 });
 		db.expense.create.mockResolvedValue(makeExpense());
 	});
@@ -70,67 +69,63 @@ describe("ExpenseService", () => {
 			);
 		});
 
-		it("USD: does not call getBestExchangeRate", async () => {
+		it("USD: does not look up a rate", async () => {
 			await service.createExpense("user-1", BASE_INPUT);
 
-			expect(mockGetBestExchangeRate).not.toHaveBeenCalled();
+			expect(db.exchangeRate.findMany).not.toHaveBeenCalled();
 		});
 
-		it("fiat with user-provided exchangeRate: uses it, calculates amountInUSD=amount/rate", async () => {
+		it("custom fiat rate: kept, amountInUSD = amount / rate", async () => {
 			// ARS: 1000 ARS / 1000 = 1 USD
 			await service.createExpense("user-1", {
 				...BASE_INPUT,
 				amount: 1000,
 				currency: "ARS",
 				exchangeRate: 1000,
+				pricingSource: "custom",
 			});
 
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
 						exchangeRate: 1000,
-						amountInUSD: 1, // 1000 / 1000
+						amountInUSD: 1,
 						currency: "ARS",
 					}),
 				}),
 			);
-			expect(mockGetBestExchangeRate).not.toHaveBeenCalled();
 		});
 
-		it("fiat without rate: calls getBestExchangeRate and uses returned rate", async () => {
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 1415, type: "blue" });
-
+		it("fiat without rate: uses the best table rate (blue for ARS)", async () => {
 			await service.createExpense("user-1", {
 				...BASE_INPUT,
-				amount: 1415,
+				amount: 1560,
 				currency: "ARS",
 			});
 
-			expect(mockGetBestExchangeRate).toHaveBeenCalledWith(
-				expect.anything(),
-				"ARS",
-				BASE_INPUT.date,
-			);
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
-						exchangeRate: 1415,
-						amountInUSD: 1, // 1415 / 1415 = 1
+						exchangeRate: 1560,
+						amountInUSD: 1,
 					}),
 				}),
 			);
 		});
 
 		it("fiat without rate AND no rate available: throws BAD_REQUEST", async () => {
-			mockGetBestExchangeRate.mockResolvedValue(null);
+			useRateTable(db, []);
 
 			await expect(
 				service.createExpense("user-1", { ...BASE_INPUT, amount: 1000, currency: "ARS" }),
 			).rejects.toMatchObject({ code: "BAD_REQUEST" });
+			expect(db.expense.create).not.toHaveBeenCalled();
 		});
 
 		it("crypto (BTC): amountInUSD = amount * rate (multiplication)", async () => {
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 50000, type: "crypto" });
+			useRateTable(db, [
+				{ currency: "BTC", type: "crypto", rate: 50000, date: RATE_DATE },
+			]);
 
 			await service.createExpense("user-1", {
 				...BASE_INPUT,
@@ -149,7 +144,9 @@ describe("ExpenseService", () => {
 
 		it("crypto: exchange rate is NOT divided (confirmed by checking exact amountInUSD)", async () => {
 			// ETH: 2 ETH @ 3000 USD/ETH = 6000 USD (multiply), NOT 2/3000
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 3000, type: "crypto" });
+			useRateTable(db, [
+				{ currency: "ETH", type: "crypto", rate: 3000, date: RATE_DATE },
+			]);
 
 			await service.createExpense("user-1", {
 				...BASE_INPUT,

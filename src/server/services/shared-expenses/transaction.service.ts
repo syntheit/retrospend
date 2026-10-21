@@ -1,4 +1,6 @@
 import { TRPCError } from "@trpc/server";
+import { fromMinorUnits, toMinorUnits } from "~/lib/money";
+import { findExchangeRate } from "~/server/exchange-rates";
 import {
 	createNotification,
 	resolveParticipantName,
@@ -188,12 +190,22 @@ export class SharedTransactionService {
 
 		const participants = this.computeSplits(
 			amount,
+			input.currency,
 			splitWith,
 			splitMode,
 			paidBy,
 		);
 
 		const actor = this.actor;
+
+		// Freeze the rate of the expense's own date, so shares keep converting
+		// at it later. Null only when the currency has no rate at all; readers
+		// then fall back to a lookup by date.
+		const capturedRate = await findExchangeRate(
+			this.db,
+			input.currency,
+			input.date,
+		);
 
 		const result = await this.runInTransaction(async (tx) => {
 			let billingPeriodId: string | null = null;
@@ -250,6 +262,7 @@ export class SharedTransactionService {
 					description: input.description,
 					amount: input.amount,
 					currency: input.currency,
+					exchangeRate: capturedRate?.rate ?? null,
 					date: input.date,
 					categoryId: input.categoryId,
 					splitMode: splitMode as SplitMode,
@@ -390,6 +403,7 @@ export class SharedTransactionService {
 			description: string;
 				amount: number;
 				currency: string;
+				exchangeRate: number | null;
 				date: Date;
 				categoryId: string | null;
 				splitMode: SplitMode;
@@ -502,6 +516,19 @@ export class SharedTransactionService {
 				fieldUpdates.billingPeriodId = openPeriod?.id ?? null;
 			}
 
+			// A new currency or date needs the rate of that currency and date.
+			if (
+				fieldUpdates.currency !== undefined ||
+				fieldUpdates.date !== undefined
+			) {
+				const recaptured = await findExchangeRate(
+					tx,
+					fieldUpdates.currency ?? existing.currency,
+					fieldUpdates.date ?? existing.date,
+				);
+				fieldUpdates.exchangeRate = recaptured?.rate ?? null;
+			}
+
 			// Handle paidBy changes
 			let paidByChanged = false;
 			if (input.paidBy !== undefined) {
@@ -532,6 +559,7 @@ export class SharedTransactionService {
 			};
 			const effectiveSplitMode = (input.splitMode ??
 				existing.splitMode) as SplitModeType;
+			const effectiveCurrency = input.currency ?? existing.currency;
 
 			// The project the expense belongs to after this update. Membership and
 			// shadow auto-add are enforced against it, mirroring create.
@@ -596,6 +624,7 @@ export class SharedTransactionService {
 
 				newParticipants = this.computeSplits(
 					effectiveAmount,
+					effectiveCurrency,
 					input.splitWith,
 					effectiveSplitMode,
 					effectivePaidBy,
@@ -612,6 +641,7 @@ export class SharedTransactionService {
 					}));
 					newParticipants = this.computeSplits(
 						effectiveAmount,
+						effectiveCurrency,
 						existingSplit,
 						"EQUAL",
 						effectivePaidBy,
@@ -626,6 +656,7 @@ export class SharedTransactionService {
 					}));
 					newParticipants = this.computeSplits(
 						effectiveAmount,
+						effectiveCurrency,
 						existingSplit,
 						"PERCENTAGE",
 						effectivePaidBy,
@@ -638,6 +669,7 @@ export class SharedTransactionService {
 					}));
 					newParticipants = this.computeSplits(
 						effectiveAmount,
+						effectiveCurrency,
 						existingSplit,
 						"SHARES",
 						effectivePaidBy,
@@ -650,6 +682,7 @@ export class SharedTransactionService {
 					newParticipants = this.rescaleExactSplits(
 						serializeDecimal(existing.amount),
 						effectiveAmount,
+						effectiveCurrency,
 						existing.splitParticipants.map((sp) => ({
 							participantType: sp.participantType as
 								| "user"
@@ -1293,6 +1326,7 @@ export class SharedTransactionService {
 	 */
 	private computeSplits(
 		amount: number,
+		currency: string,
 		splitWith: SplitParticipantInput[],
 		splitMode: SplitModeType,
 		paidBy: ParticipantRef,
@@ -1315,6 +1349,7 @@ export class SharedTransactionService {
 			return resolveSplits({
 				mode: splitMode,
 				amount,
+				currency,
 				participants: splitWith,
 				paidBy,
 			});
@@ -1328,34 +1363,36 @@ export class SharedTransactionService {
 
 	/**
 	 * Proportionally rescales stored EXACT shares to a new total. Each share keeps
-	 * its fraction of the old total; the leftover cent from flooring goes to the
-	 * payer first (else the last row), matching the rounding rule used elsewhere.
+	 * its fraction of the old total; the leftover minor unit from flooring goes to
+	 * the payer first (else the last row), matching the rounding rule used
+	 * elsewhere.
 	 * If the old total was 0 (no proportion to preserve), falls back to an equal
 	 * split so the shares still sum to the new amount.
 	 */
 	private rescaleExactSplits(
 		oldAmount: number,
 		newAmount: number,
+		currency: string,
 		splits: Array<SplitParticipantInput & { shareAmount: number }>,
 		paidBy: ParticipantRef,
 	): SplitParticipantInput[] {
-		const newTotalCents = Math.round(newAmount * 100);
+		const newTotalCents = toMinorUnits(newAmount, currency);
 
-		if (Math.round(oldAmount * 100) === 0) {
+		if (toMinorUnits(oldAmount, currency) === 0) {
 			// Degenerate case: nothing to scale from. Split equally.
-			return this.computeSplits(newAmount, splits, "EQUAL", paidBy);
+			return this.computeSplits(newAmount, currency, splits, "EQUAL", paidBy);
 		}
 
 		const oldTotalCents = splits.reduce(
-			(s, p) => s + Math.round(p.shareAmount * 100),
+			(s, p) => s + toMinorUnits(p.shareAmount, currency),
 			0,
 		);
 		if (oldTotalCents === 0) {
-			return this.computeSplits(newAmount, splits, "EQUAL", paidBy);
+			return this.computeSplits(newAmount, currency, splits, "EQUAL", paidBy);
 		}
 
 		const result = splits.map((p) => {
-			const oldCents = Math.round(p.shareAmount * 100);
+			const oldCents = toMinorUnits(p.shareAmount, currency);
 			return {
 				participantType: p.participantType,
 				participantId: p.participantId,
@@ -1374,7 +1411,7 @@ export class SharedTransactionService {
 		return result.map((r) => ({
 			participantType: r.participantType,
 			participantId: r.participantId,
-			shareAmount: r.cents / 100,
+			shareAmount: fromMinorUnits(r.cents, currency),
 		}));
 	}
 

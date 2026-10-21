@@ -8,6 +8,65 @@ export const FREQUENCY_LABELS: Record<string, string> = {
 	YEARLY: "Yearly",
 };
 
+export type RecurringFrequency =
+	| "WEEKLY"
+	| "BIWEEKLY"
+	| "MONTHLY"
+	| "QUARTERLY"
+	| "YEARLY";
+
+/**
+ * Adds months to a date, landing on `anchorDay` (default: the date's own day)
+ * or the last day of the target month when that month is shorter. Jan 31 + 1
+ * is Feb 28 (or 29), and Feb 28 + 1 with anchor 31 is back to Mar 31.
+ */
+export function addMonthsClamped(
+	date: Date,
+	months: number,
+	anchorDay?: number | null,
+): Date {
+	const result = new Date(date);
+	const day = anchorDay ?? date.getDate();
+	result.setDate(1);
+	result.setMonth(result.getMonth() + months);
+	const lastDay = new Date(
+		result.getFullYear(),
+		result.getMonth() + 1,
+		0,
+	).getDate();
+	result.setDate(Math.min(day, lastDay));
+	return result;
+}
+
+/**
+ * Next due date of a recurring template. Month-based frequencies keep the
+ * template's anchor day instead of drifting after a short month.
+ */
+export function nextRecurringDate(
+	current: Date,
+	frequency: RecurringFrequency,
+	anchorDay?: number | null,
+): Date {
+	switch (frequency) {
+		case "WEEKLY": {
+			const next = new Date(current);
+			next.setDate(next.getDate() + 7);
+			return next;
+		}
+		case "BIWEEKLY": {
+			const next = new Date(current);
+			next.setDate(next.getDate() + 14);
+			return next;
+		}
+		case "MONTHLY":
+			return addMonthsClamped(current, 1, anchorDay);
+		case "QUARTERLY":
+			return addMonthsClamped(current, 3, anchorDay);
+		case "YEARLY":
+			return addMonthsClamped(current, 12, anchorDay);
+	}
+}
+
 /**
  * Check if a recurring template is projected to occur on a given date
  * based on its frequency and nextDueDate.

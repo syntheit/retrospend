@@ -4,7 +4,15 @@ import { env } from "~/env";
 import { parseRawCsv } from "~/lib/csv";
 import { parseDateOnly } from "~/lib/date";
 import { generateId } from "~/lib/id";
+import {
+	computeAmountInUSD,
+	isValidRate,
+	rateFromUsdPerUnit,
+	roundUSD,
+	USD,
+} from "~/lib/money";
 import type { ImportJobStatus, Prisma, PrismaClient } from "~prisma";
+import { findExchangeRate } from "../exchange-rates";
 import { recordTokenUsage, resolveAiAccess } from "./ai-access.service";
 import { CsvService } from "./csv.service";
 import { getAppSettings } from "./settings";
@@ -15,8 +23,8 @@ export interface ImporterTransaction {
 	title: string;
 	amount: number;
 	currency: string;
-	exchangeRate: number;
-	amountInUSD: number;
+	exchangeRate?: number;
+	amountInUSD?: number;
 	date: string; // YYYY-MM-DD
 	location: string;
 	description: string;
@@ -304,7 +312,7 @@ export class ImportQueueService {
 					continue;
 				}
 
-				if (!currency || currency.length !== 3) {
+				if (!currency || !/^[A-Z0-9]{3,10}$/.test(currency)) {
 					warnings.push(
 						`Row ${i + 1}: Invalid currency "${currency}", skipping`,
 					);
@@ -332,36 +340,43 @@ export class ImportQueueService {
 				const category = row.category?.trim() || "";
 				const pricingSource = row.pricingsource?.trim() || "IMPORT";
 
-				// Calculate exchange rate and USD amount
+				// Calculate exchange rate and USD amount. Rates use the stored
+				// convention (fiat: units per USD, crypto: USD per coin).
 				let exchangeRate: number;
 				let amountInUSD: number;
 
-				if (currency === "USD") {
+				if (currency === USD) {
 					exchangeRate = 1;
-					amountInUSD = amount;
+					amountInUSD = roundUSD(amount);
 				} else if (exchangeRateStr) {
 					exchangeRate = parseFloat(exchangeRateStr);
-					if (isNaN(exchangeRate) || exchangeRate <= 0) {
+					if (!isValidRate(exchangeRate)) {
 						warnings.push(
 							`Row ${i + 1}: Invalid exchange rate "${exchangeRateStr}", skipping`,
 						);
 						continue;
 					}
-					amountInUSD = amount / exchangeRate;
+					amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
 				} else if (amountInUSDStr) {
 					amountInUSD = parseFloat(amountInUSDStr);
-					if (isNaN(amountInUSD) || amountInUSD <= 0) {
+					if (!isValidRate(amountInUSD)) {
 						warnings.push(
 							`Row ${i + 1}: Invalid USD amount "${amountInUSDStr}", skipping`,
 						);
 						continue;
 					}
-					exchangeRate = amount / amountInUSD;
+					exchangeRate = rateFromUsdPerUnit(currency, amountInUSD / amount);
+					amountInUSD = roundUSD(amountInUSD);
 				} else {
-					warnings.push(
-						`Row ${i + 1}: Missing exchange rate or USD amount for ${currency}, skipping`,
-					);
-					continue;
+					const picked = await findExchangeRate(this.db, currency, date);
+					if (!picked) {
+						warnings.push(
+							`Row ${i + 1}: No exchange rate or USD amount for ${currency}, skipping`,
+						);
+						continue;
+					}
+					exchangeRate = picked.rate;
+					amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
 				}
 
 				transactions.push({

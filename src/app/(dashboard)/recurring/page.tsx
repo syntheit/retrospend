@@ -176,7 +176,13 @@ export default function RecurringPage() {
 						{/* Pending Payments */}
 						{pendingTemplates && pendingTemplates.length > 0 && (
 							<PendingPayments
-								onConfirm={(id) => confirmAndCreate.mutate({ id })}
+								onConfirm={(id) => {
+									const due = pendingTemplates.find((p) => p.id === id)?.nextDueDate;
+									confirmAndCreate.mutate({
+										id,
+										dueDate: due ? new Date(due) : undefined,
+									});
+								}}
 								pendingTemplates={pendingTemplates}
 								confirmingId={
 									confirmAndCreate.isPending

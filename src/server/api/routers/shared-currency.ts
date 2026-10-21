@@ -1,41 +1,18 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { fromUSD } from "~/server/currency";
+import { findExchangeRate } from "~/server/exchange-rates";
 
 /**
- * Fetches the best available exchange rate for a currency on or before a given date.
- * Priority: "blue" > "official" > first available.
+ * Fetches the best available exchange rate for a currency on a given date.
+ * Priority: "blue" > "official" > "crypto" > first available. Falls back to
+ * the nearest rate after the date when none exists on or before it.
  */
 export async function getBestExchangeRate(
 	db: PrismaClient,
 	currency: string,
 	date: Date,
 ): Promise<{ rate: number; type: string } | null> {
-	if (currency === "USD") return { rate: 1, type: "official" };
-
-	const rates = await db.exchangeRate.findMany({
-		where: {
-			currency,
-			date: { lte: date },
-		},
-		orderBy: [{ date: "desc" }, { type: "asc" }],
-		take: 10,
-	});
-
-	if (rates.length === 0) return null;
-
-	// Priority: blue > official > crypto > first available
-	const blueRate = rates.find((r) => r.type === "blue");
-	if (blueRate) return { rate: blueRate.rate.toNumber(), type: "blue" };
-
-	const officialRate = rates.find((r) => r.type === "official");
-	if (officialRate)
-		return { rate: officialRate.rate.toNumber(), type: "official" };
-
-	const cryptoRate = rates.find((r) => r.type === "crypto");
-	if (cryptoRate) return { rate: cryptoRate.rate.toNumber(), type: "crypto" };
-
-	const first = rates[0];
-	return first ? { rate: first.rate.toNumber(), type: first.type } : null;
+	return findExchangeRate(db, currency, date);
 }
 
 /**

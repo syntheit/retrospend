@@ -1,4 +1,15 @@
 import { isCrypto } from "~/lib/currency-format";
+import {
+	isValidRate,
+	fromUSD as moneyFromUSD,
+	toUSD as moneyToUSD,
+} from "~/lib/money";
+
+// Legacy client helpers. Formulas come from ~/lib/money (which documents the
+// rate convention); these keep their old contract of returning 0 for a
+// missing rate and rounding results to 2 decimals.
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
 
 export function toUSD(
 	amount: number,
@@ -7,14 +18,8 @@ export function toUSD(
 ): number {
 	if (!amount || amount === 0) return 0;
 	if (currency === "USD") return amount;
-	if (!exchangeRate || exchangeRate === 0) return 0;
-
-	// RUBRIC: Crypto to USD = multiply, Fiat to USD = divide
-	const usdValue = isCrypto(currency)
-		? amount * exchangeRate
-		: amount / exchangeRate;
-
-	return Math.round(usdValue * 100) / 100;
+	if (!isValidRate(exchangeRate)) return 0;
+	return round2(moneyToUSD(amount, currency, exchangeRate));
 }
 
 export function fromUSD(
@@ -24,14 +29,8 @@ export function fromUSD(
 ): number {
 	if (!usdAmount || usdAmount === 0) return 0;
 	if (targetCurrency === "USD") return usdAmount;
-	if (!exchangeRate || exchangeRate === 0) return 0;
-
-	// RUBRIC: USD to Crypto = divide, USD to Fiat = multiply
-	const targetValue = isCrypto(targetCurrency)
-		? usdAmount / exchangeRate
-		: usdAmount * exchangeRate;
-
-	return Math.round(targetValue * 100) / 100;
+	if (!isValidRate(exchangeRate)) return 0;
+	return round2(moneyFromUSD(usdAmount, targetCurrency, exchangeRate));
 }
 
 export function convert(
@@ -44,29 +43,12 @@ export function convert(
 	if (!amount || amount === 0) return 0;
 	if (sourceCurrency === targetCurrency) return amount;
 
-	// Convert to USD first
-	let usdAmount: number;
-	if (sourceCurrency === "USD") {
-		usdAmount = amount;
-	} else if (!sourceRate || sourceRate === 0) {
-		return 0;
-	} else {
-		usdAmount = isCrypto(sourceCurrency)
-			? amount * sourceRate
-			: amount / sourceRate;
-	}
+	if (sourceCurrency !== "USD" && !isValidRate(sourceRate)) return 0;
+	const usdAmount = moneyToUSD(amount, sourceCurrency, sourceRate);
 
-	// Convert from USD to target
-	if (targetCurrency === "USD") {
-		return Math.round(usdAmount * 100) / 100;
-	} else if (!targetRate || targetRate === 0) {
-		return 0;
-	} else {
-		const targetValue = isCrypto(targetCurrency)
-			? usdAmount / targetRate
-			: usdAmount * targetRate;
-		return Math.round(targetValue * 100) / 100;
-	}
+	if (targetCurrency === "USD") return round2(usdAmount);
+	if (!isValidRate(targetRate)) return 0;
+	return round2(moneyFromUSD(usdAmount, targetCurrency, targetRate));
 }
 
 export function getDisplayRate(

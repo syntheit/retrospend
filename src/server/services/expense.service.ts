@@ -1,13 +1,70 @@
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { getFiscalMonthRange } from "~/lib/fiscal-month";
+import { computeAmountInUSD, isValidRate, USD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
-import { toUSD } from "../currency";
-import {
-	getBestExchangeRate,
-	sumExpensesForCurrency,
-} from "../api/routers/shared-currency";
+import { sumExpensesForCurrency } from "../api/routers/shared-currency";
+import { requireExchangeRate } from "../exchange-rates";
 import { AmortizationService } from "./amortization.service";
+
+/** pricingSource of a rate the user typed in by hand. */
+export const CUSTOM_PRICING_SOURCE = "custom";
+
+function sameRate(a: number, b: number): boolean {
+	return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-6;
+}
+
+/**
+ * Works out the stored exchangeRate and amountInUSD of an expense on the
+ * server. The client's amountInUSD is never used. Its exchangeRate is kept
+ * only when it is a custom rate the user typed, or the rate already stored on
+ * the expense being edited. Anything else comes from the rate table for the
+ * expense date, using the pricingSource rate type when it exists.
+ */
+export async function resolveExpenseRate(
+	db: PrismaClient | Prisma.TransactionClient,
+	input: {
+		amount: number;
+		currency: string;
+		date: Date;
+		exchangeRate?: number;
+		pricingSource?: string | null;
+	},
+	existing?: { currency: string; exchangeRate: number } | null,
+): Promise<{ exchangeRate: number; amountInUSD: number }> {
+	let exchangeRate: number;
+
+	if (input.currency === USD) {
+		exchangeRate = 1;
+	} else if (
+		input.pricingSource === CUSTOM_PRICING_SOURCE &&
+		isValidRate(input.exchangeRate)
+	) {
+		exchangeRate = input.exchangeRate;
+	} else if (
+		existing &&
+		existing.currency === input.currency &&
+		isValidRate(existing.exchangeRate) &&
+		(input.exchangeRate === undefined ||
+			sameRate(input.exchangeRate, existing.exchangeRate))
+	) {
+		// Editing without touching the rate keeps the rate of its own day.
+		exchangeRate = existing.exchangeRate;
+	} else {
+		const picked = await requireExchangeRate(
+			db,
+			input.currency,
+			input.date,
+			input.pricingSource,
+		);
+		exchangeRate = picked.rate;
+	}
+
+	return {
+		exchangeRate,
+		amountInUSD: computeAmountInUSD(input.amount, input.currency, exchangeRate),
+	};
+}
 
 export class ExpenseService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
@@ -45,36 +102,11 @@ export class ExpenseService {
 			categoryExcludeByDefault = category.excludeByDefault;
 		}
 
-		let exchangeRate = input.exchangeRate;
-		let amountInUSD = input.amountInUSD;
 		const pricingSource = input.pricingSource ?? "MANUAL";
-
-		if (!exchangeRate) {
-			if (input.currency === BASE_CURRENCY) {
-				exchangeRate = 1;
-			} else {
-				const bestRate = await getBestExchangeRate(
-					this.db as PrismaClient,
-					input.currency,
-					input.date,
-				);
-				if (bestRate) {
-					exchangeRate = bestRate.rate;
-					if (!amountInUSD) {
-						amountInUSD = toUSD(input.amount, input.currency, exchangeRate);
-					}
-				} else {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: `Exchange rate not found for ${input.currency}.`,
-					});
-				}
-			}
-		}
-
-		if (!amountInUSD) {
-			amountInUSD = toUSD(input.amount, input.currency, exchangeRate ?? 1);
-		}
+		const { exchangeRate, amountInUSD } = await resolveExpenseRate(
+			this.db,
+			input,
+		);
 
 		// Determine excludeFromAnalytics: explicit input > category default > false
 		// Project expenses always have excludeFromAnalytics: false
@@ -163,6 +195,15 @@ export class ExpenseService {
 			}
 		}
 
+		const { exchangeRate, amountInUSD } = await resolveExpenseRate(
+			this.db,
+			input,
+			{
+				currency: existingExpense.currency,
+				exchangeRate: Number(existingExpense.exchangeRate),
+			},
+		);
+
 		return await this.runInTransaction(async (tx) => {
 			const expense = await tx.expense.update({
 				where: { id: input.id, userId },
@@ -170,8 +211,8 @@ export class ExpenseService {
 					title: input.title,
 					amount: input.amount,
 					currency: input.currency,
-					exchangeRate: input.exchangeRate,
-					amountInUSD: input.amountInUSD,
+					exchangeRate,
+					amountInUSD,
 					pricingSource: input.pricingSource,
 					date: input.date,
 					location: input.location || null,

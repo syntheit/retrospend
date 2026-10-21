@@ -9,6 +9,7 @@
  */
 
 import { vi } from "vitest";
+import { DEFAULT_RATES, queryRateRows, type TestRateRow } from "~/test/rate-table";
 
 // ── Record types (minimal fields needed by the services) ─────────────────────
 
@@ -17,6 +18,7 @@ export interface TxRecord {
 	description: string;
 	amount: number;
 	currency: string;
+	exchangeRate?: number | null;
 	date: Date;
 	paidByType: string;
 	paidById: string;
@@ -269,6 +271,7 @@ export function createStatefulDb() {
 					description: args.data.description as string,
 					amount: args.data.amount as number,
 					currency: args.data.currency as string,
+					exchangeRate: (args.data.exchangeRate as number | null) ?? null,
 					date: args.data.date as Date,
 					paidByType: args.data.paidByType as string,
 					paidById: args.data.paidById as string,
@@ -1490,10 +1493,20 @@ export function createStatefulDb() {
 		findMany: vi.fn(() => [...users.values()]),
 	};
 
+	// ── exchangeRate model (read only; same rows as ~/test/rate-table) ───────
+
+	const exchangeRates: TestRateRow[] = [...DEFAULT_RATES];
+	const exchangeRateModel = {
+		findMany: vi.fn((args?: Parameters<typeof queryRateRows>[1]) =>
+			queryRateRows(exchangeRates, args),
+		),
+	};
+
 	// ── Assemble the full interface ───────────────────────────────────────────
 
 	const iface = {
 		$executeRaw: vi.fn().mockResolvedValue(undefined),
+		exchangeRate: exchangeRateModel,
 		sharedTransaction: sharedTransactionModel,
 		splitParticipant: splitParticipantModel,
 		settlement: settlementModel,
@@ -1525,6 +1538,7 @@ export function createStatefulDb() {
 			guestSessions,
 			users,
 			shadowProfiles,
+			exchangeRates,
 		},
 	};
 
