@@ -228,6 +228,30 @@ describe("pending settlements on account deletion", () => {
 		expect(settlement.delete).not.toHaveBeenCalled();
 	});
 
+	it("finalizes every row of a pending payment group, offset rows included", async () => {
+		// user-1 sent a full settle-up: a payment row to bob and an offset row
+		// from bob (its flags point the other way: user-1 is its payee).
+		const groupRows: Row[] = [
+			{ id: "group-cash", fromParticipantId: "user-1", toParticipantId: "bob", status: "PROPOSED", confirmedByPayer: true, confirmedByPayee: false },
+			{ id: "group-offset", fromParticipantId: "bob", toParticipantId: "user-1", status: "PROPOSED", confirmedByPayer: false, confirmedByPayee: true },
+		];
+		const settlement = settlementModel(groupRows);
+		const { tx } = makeTx({ settlement });
+		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+
+		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
+
+		const updatedIds = settlement.update.mock.calls.map(
+			(c) => (c as unknown as [{ where: { id: string } }])[0].where.id,
+		);
+		expect(updatedIds.sort()).toEqual(["group-cash", "group-offset"]);
+		expect(settlement.delete).not.toHaveBeenCalled();
+
+		const preview = await previewAccountDeletion(tx as never, "user-1");
+		expect(preview.settlementsToAutoConfirm).toBe(2);
+		expect(preview.settlementsToCancel).toBe(0);
+	});
+
 	it("preview does not count REJECTED settlements", async () => {
 		const settlement = settlementModel(rows);
 		const { tx } = makeTx({ settlement });
