@@ -7,12 +7,12 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { SplitParticipant } from "~/components/split-with-picker";
-import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useSession } from "~/hooks/use-session";
 import { useSettings } from "~/hooks/use-settings";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
+import { expenseAmounts, USD } from "~/lib/money";
 import {
 	buildSharedExpensePrefill,
 	type PrefillPerson,
@@ -33,7 +33,9 @@ export const expenseSchema = z.object({
 		.number()
 		.positive("Exchange rate must be positive")
 		.optional(),
-	amountInUSD: z.number().positive("Amount in USD must be positive").optional(),
+	// Display and transport only: the server recomputes it. Tiny amounts can
+	// round to 0 USD, which must not block saving.
+	amountInUSD: z.number().nonnegative().optional(),
 	pricingSource: z.string().optional(),
 	date: z.date(),
 	location: z.string().optional(),
@@ -448,9 +450,6 @@ export function useExpenseForm({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [titleSuggestionsData, debouncedTitle]);
 
-	// Currency conversion hook
-	const { toUSD } = useCurrencyConversion();
-
 	// Mutations
 	const invalidateExpenseRelated = () =>
 		void Promise.all([
@@ -541,29 +540,37 @@ export function useExpenseForm({
 		setExcludeAutoNote(false);
 	};
 
+	// The form keeps `exchangeRate` in the stored convention (see ~/lib/money)
+	// and `amountInUSD` in USD. Home-currency amounts are display only.
+	const usdFor = (amount: number, currency: string, rate: number | undefined) =>
+		expenseAmounts({ amount, currency, rate, homeCurrency, homeRate: undefined })
+			.amountInUSD;
+
 	const handleAmountChange = (value: number) => {
-		const usdValue = toUSD(value, watchedCurrency, watchedExchangeRate);
-		setValue("amountInUSD", usdValue, { shouldDirty: true });
+		setValue("amountInUSD", usdFor(value, watchedCurrency, watchedExchangeRate), {
+			shouldDirty: true,
+		});
 	};
 
 	const handleCurrencyChange = (currency: string) => {
 		setValue("currency", currency, { shouldDirty: true });
+		setIsCustomRateSet(false);
 
-		if (currency === homeCurrency) {
+		if (currency === USD) {
 			setValue("exchangeRate", 1, { shouldDirty: true });
 			setValue("pricingSource", "official", { shouldDirty: true });
-			setValue("amountInUSD", watchedAmount || 0, { shouldDirty: true });
-			setIsCustomRateSet(false);
+			setValue("amountInUSD", usdFor(watchedAmount, USD, 1), {
+				shouldDirty: true,
+			});
 			return;
 		}
 
-		// Let RateSelector auto-determine the default rate.
-		// By clearing the exchange rate and type, we prompt RateSelector
-		// to fetch rates and auto-select based on history and favorites.
+		// Every other currency, the home currency included, needs its own rate
+		// to USD. Clearing it lets CurrencyAmountInput auto-select the default
+		// rate (favorites, then blue, then official).
 		setValue("exchangeRate", undefined, { shouldDirty: true });
 		setValue("pricingSource", undefined, { shouldDirty: true });
 		setValue("amountInUSD", undefined, { shouldDirty: true });
-		setIsCustomRateSet(false);
 	};
 
 	const handleExchangeRateChange = (
@@ -575,8 +582,9 @@ export function useExpenseForm({
 		if (type) {
 			setValue("pricingSource", type, { shouldDirty });
 		}
-		const usdValue = toUSD(watchedAmount, watchedCurrency, rate);
-		setValue("amountInUSD", usdValue, { shouldDirty });
+		setValue("amountInUSD", usdFor(watchedAmount, watchedCurrency, rate), {
+			shouldDirty,
+		});
 	};
 
 	// Manage navigation guard ref manually

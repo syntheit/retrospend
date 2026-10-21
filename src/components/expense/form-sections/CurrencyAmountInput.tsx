@@ -2,7 +2,7 @@
 
 import { Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { CurrencyPicker } from "~/components/currency-picker";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
@@ -16,10 +16,18 @@ import {
 	formatNumber,
 	getDecimalDigits,
 	isCrypto as checkIsCrypto,
-	isMajorCrypto,
 	parseFormattedNumber,
 } from "~/lib/currency-format";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
+import {
+	expenseAmounts,
+	isValidRate,
+	pickBestRate,
+	quoteRate,
+	type RateQuote,
+	rateFromQuote,
+	USD,
+} from "~/lib/money";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -86,61 +94,81 @@ export function CurrencyAmountInput({
 	const watchedAmount = watch("amount");
 	const watchedExchangeRate = watch("exchangeRate");
 	const watchedPricingSource = watch("pricingSource");
-	const watchedAmountInUSD = watch("amountInUSD");
 
 	const isForeignCurrency = watchedCurrency !== homeCurrency;
 	const isCrypto = checkIsCrypto(watchedCurrency);
+	// Every currency but USD needs a stored rate to USD, even when it is the
+	// home currency and no rate picker is shown.
+	const needsRate = watchedCurrency !== USD;
 
 	const {
 		rawRateOptions,
 		isLoading: ratesLoading,
 		getDefaultRate,
 		getRateByType,
-		getEffectiveRate,
 	} = useExchangeRates({
 		currency: watchedCurrency,
 		includeCustomOption: false,
 		preferFavorites: true,
-		enabled: isForeignCurrency,
+		enabled: needsRate || isForeignCurrency,
 	});
 
 	const { data: homeRates } = api.exchangeRate.getRatesForCurrency.useQuery(
 		{ currency: homeCurrency },
-		{ enabled: !!homeCurrency && homeCurrency !== "USD", staleTime: 60000 },
+		{ enabled: !!homeCurrency && homeCurrency !== USD, staleTime: 60000 },
 	);
 
-	// --- Cross-rate logic (from rate-selector.tsx) ---
-	const getHomeRate = useCallback(() => {
-		if (homeCurrency === "USD") return 1;
-		if (!homeRates || homeRates.length === 0) return 1;
-		const blue = homeRates.find((r) => r.type === "blue");
-		if (blue) return Number(blue.rate);
-		const official = homeRates.find((r) => r.type === "official");
-		if (official) return Number(official.rate);
-		return Number(homeRates[0]?.rate) || 1;
+	// Home currency rate to USD, picked with the same rules as the server.
+	// Undefined while loading: never assume 1.
+	const homeRate = useMemo(() => {
+		if (homeCurrency === USD) return 1;
+		if (!homeRates) return undefined;
+		return pickBestRate(
+			homeRates.map((r) => ({
+				type: r.type,
+				rate: Number(r.rate),
+				date: new Date(r.date),
+			})),
+		)?.rate;
 	}, [homeCurrency, homeRates]);
 
-	const getCrossRate = useCallback(
-		(dbRate: number) => {
-			const homeRate = getHomeRate();
-			if (isCrypto) {
-				let rate = dbRate;
-				if (isMajorCrypto(watchedCurrency) && rate > 0 && rate < 1) {
-					rate = 1 / rate;
-				}
-				return rate * homeRate;
-			}
-			return dbRate > 0 ? homeRate / dbRate : 0;
+	// Rates are stored as units per USD (crypto: USD per coin) and shown as a
+	// quote against the home currency, e.g. "1 EUR = 1,775 ARS".
+	const getQuote = useCallback(
+		(dbRate: number | undefined): RateQuote | null => {
+			if (!isValidRate(dbRate) || !isValidRate(homeRate)) return null;
+			if (watchedCurrency === homeCurrency) return null;
+			return quoteRate(watchedCurrency, dbRate, homeCurrency, homeRate);
 		},
-		[getHomeRate, isCrypto, watchedCurrency],
+		[watchedCurrency, homeCurrency, homeRate],
+	);
+
+	// Orientation of the custom rate input follows the quote of the table
+	// rate, so typing "1500" means the same thing as the pill shows. It must
+	// not follow the typed value, or it would flip mid-typing.
+	const customQuoteSides = useMemo(() => {
+		const reference = getQuote(rawRateOptions[0]?.rate);
+		return reference
+			? { base: reference.base, quote: reference.quote }
+			: { base: watchedCurrency, quote: homeCurrency };
+	}, [getQuote, rawRateOptions, watchedCurrency, homeCurrency]);
+
+	const toCustomInputValue = useCallback(
+		(dbRate: number | undefined) => {
+			const q = getQuote(dbRate);
+			if (!q) return "";
+			const value = q.base === customQuoteSides.base ? q.value : 1 / q.value;
+			return String(Number(value.toPrecision(10)));
+		},
+		[getQuote, customQuoteSides],
 	);
 
 	// --- Local state ---
 	const [selectedRateType, setSelectedRateType] = useState<string>(
 		isCustomRateSet ? "custom" : watchedPricingSource || "official",
 	);
-	const [customInputValue, setCustomInputValue] = useState<string>(
-		watchedExchangeRate?.toString() ?? "",
+	const [customInputValue, setCustomInputValue] = useState<string>(() =>
+		toCustomInputValue(watchedExchangeRate),
 	);
 	const [showCustomInput, setShowCustomInput] = useState(
 		isCustomRateSet,
@@ -288,10 +316,19 @@ export function CurrencyAmountInput({
 			setSelectedRateType(watchedPricingSource);
 			if (watchedPricingSource === "custom") {
 				setShowCustomInput(true);
-				setCustomInputValue(watchedExchangeRate?.toString() ?? "");
 			}
 		}
-	}, [watchedPricingSource, watchedExchangeRate]);
+	}, [watchedPricingSource]);
+
+	// Fill the custom input from a loaded custom rate once the quote can be
+	// built (the home rate may still be loading on first render).
+	const customInputTouched = useRef(false);
+	useEffect(() => {
+		if (customInputTouched.current) return;
+		if (watchedPricingSource !== "custom") return;
+		const value = toCustomInputValue(watchedExchangeRate);
+		if (value) setCustomInputValue(value);
+	}, [watchedPricingSource, watchedExchangeRate, toCustomInputValue]);
 
 	// --- Auto-select default rate ---
 	const hasAutoSelected = useRef(false);
@@ -301,13 +338,15 @@ export function CurrencyAmountInput({
 	useEffect(() => {
 		if (prevCurrency.current !== watchedCurrency) {
 			hasAutoSelected.current = false;
+			customInputTouched.current = false;
 			prevCurrency.current = watchedCurrency;
 			setShowCustomInput(false);
+			setCustomInputValue("");
 		}
 	}, [watchedCurrency]);
 
 	useEffect(() => {
-		if (hasAutoSelected.current || !isForeignCurrency) return;
+		if (hasAutoSelected.current || !needsRate) return;
 		if (rawRateOptions.length === 0) return;
 		if (isCustomRateSet) {
 			setSelectedRateType("custom");
@@ -325,15 +364,18 @@ export function CurrencyAmountInput({
 			}
 		}
 
+		// A loaded expense keeps the rate of its own day; only a fresh currency
+		// selection (which clears the rate) picks today's default.
+		if (isValidRate(watchedExchangeRate)) {
+			hasAutoSelected.current = true;
+			return;
+		}
+
 		const defaultRate = getDefaultRate();
 		if (defaultRate) {
 			setSelectedRateType(defaultRate.type);
-			const rate =
-				homeCurrency === "USD"
-					? defaultRate.rate
-					: getCrossRate(defaultRate.rate);
 			handleExchangeRateChange(
-				isCrypto ? rate : getEffectiveRate(rate, false),
+				defaultRate.rate,
 				defaultRate.type,
 				false, // auto-selection should not mark form as dirty
 			);
@@ -341,15 +383,12 @@ export function CurrencyAmountInput({
 		}
 	}, [
 		rawRateOptions,
-		isForeignCurrency,
+		needsRate,
 		isCustomRateSet,
 		watchedPricingSource,
+		watchedExchangeRate,
 		getDefaultRate,
 		getRateByType,
-		getEffectiveRate,
-		getCrossRate,
-		isCrypto,
-		homeCurrency,
 		handleExchangeRateChange,
 	]);
 
@@ -361,7 +400,7 @@ export function CurrencyAmountInput({
 			if (type === "custom") {
 				setIsCustomRateSet(true);
 				setShowCustomInput(true);
-				setCustomInputValue(watchedExchangeRate?.toString() ?? "");
+				setCustomInputValue(toCustomInputValue(watchedExchangeRate));
 				return;
 			}
 
@@ -369,39 +408,52 @@ export function CurrencyAmountInput({
 			setShowCustomInput(false);
 			const selectedRate = getRateByType(type);
 			if (selectedRate) {
-				const rate =
-					homeCurrency === "USD"
-						? selectedRate.rate
-						: getCrossRate(selectedRate.rate);
-				handleExchangeRateChange(
-					isCrypto ? rate : getEffectiveRate(rate, false),
-					selectedRate.type,
-				);
+				handleExchangeRateChange(selectedRate.rate, selectedRate.type);
 			}
 		},
 		[
 			getRateByType,
-			getEffectiveRate,
-			getCrossRate,
-			isCrypto,
-			homeCurrency,
 			handleExchangeRateChange,
 			setIsCustomRateSet,
+			toCustomInputValue,
 			watchedExchangeRate,
 		],
 	);
 
+	// The custom input holds a quote ("1 USD = x ARS"); the form stores the
+	// rate in the canonical convention.
 	const handleCustomRateSubmit = useCallback(
 		(inputValue: string) => {
+			customInputTouched.current = true;
 			setCustomInputValue(inputValue);
 			const numericValue = inputValue.trim()
 				? parseFloat(inputValue)
 				: undefined;
-			if (numericValue === undefined || !Number.isNaN(numericValue)) {
-				handleExchangeRateChange(numericValue, "custom");
+			if (numericValue === undefined) {
+				handleExchangeRateChange(undefined, "custom");
+				return;
 			}
+			if (!isValidRate(numericValue)) return;
+			const homeUsable = homeCurrency === USD || isValidRate(homeRate);
+			if (!homeUsable) return;
+			const stored =
+				watchedCurrency === homeCurrency
+					? undefined
+					: rateFromQuote(
+							{ ...customQuoteSides, value: numericValue },
+							watchedCurrency,
+							homeCurrency,
+							homeRate,
+						);
+			handleExchangeRateChange(stored, "custom");
 		},
-		[handleExchangeRateChange],
+		[
+			handleExchangeRateChange,
+			homeCurrency,
+			homeRate,
+			watchedCurrency,
+			customQuoteSides,
+		],
 	);
 
 	// --- Determine mode ---
@@ -411,35 +463,36 @@ export function CurrencyAmountInput({
 	const mode = !isForeignCurrency ? 1 : rawRateOptions.length <= 1 ? 2 : 3;
 
 	// --- Compute display values ---
-	const getDisplayRateValue = (dbRate: number) => {
-		const rate =
-			homeCurrency === "USD" ? dbRate : getCrossRate(dbRate);
-		return rate;
-	};
+	const getDisplayRateValue = (dbRate: number) => getQuote(dbRate)?.value ?? 0;
 
 	const formatRate = (rate: number) => {
 		return rate.toLocaleString(undefined, {
-			minimumFractionDigits: isCrypto ? 2 : 0,
-			maximumFractionDigits: isCrypto ? 2 : 6,
+			minimumFractionDigits: 0,
+			maximumFractionDigits: rate >= 100 ? 2 : 4,
 		});
 	};
 
-	const convertedAmount = watchedAmountInUSD ?? 0;
+	const homeDecimals = getDecimalDigits(homeCurrency);
+	const amountsFor = (dbRate: number | undefined) =>
+		expenseAmounts({
+			amount: watchedAmount,
+			currency: watchedCurrency,
+			rate: dbRate,
+			homeCurrency,
+			homeRate,
+		});
+
+	// "In budget as": the amount in the home currency (display only).
+	const convertedAmount = amountsFor(watchedExchangeRate).homeAmount ?? 0;
 	const formatConvertedAmount = (amount: number) => {
-		if (!amount || amount === 0) return "0.00";
-		return formatNumber(amount, 2);
+		if (!amount || amount === 0) return formatNumber(0, homeDecimals);
+		return formatNumber(amount, homeDecimals);
 	};
 
 	// Compute preview for a given rate option
-	const getPreviewAmount = (dbRate: number) => {
-		if (!watchedAmount || watchedAmount === 0) return 0;
-		const rate = getDisplayRateValue(dbRate);
-		if (!rate || rate === 0) return 0;
-		if (isCrypto) {
-			return watchedAmount * rate;
-		}
-		return watchedAmount / rate;
-	};
+	const getPreviewAmount = (dbRate: number) => amountsFor(dbRate).homeAmount ?? 0;
+
+	const singleQuote = getQuote(rawRateOptions[0]?.rate);
 
 	// Shared amount input element
 	const amountInput = (
@@ -529,22 +582,17 @@ export function CurrencyAmountInput({
 									<NoRateAvailable
 										customInputValue={customInputValue}
 										onCustomRateChange={handleCustomRateSubmit}
+										quoteSides={customQuoteSides}
 										setIsCustomRateSet={setIsCustomRateSet}
 										setSelectedRateType={setSelectedRateType}
 										setShowCustomInput={setShowCustomInput}
 									/>
-								) : (
+								) : singleQuote ? (
 									<span className="rounded-full bg-muted/60 px-2.5 py-0.5 text-sm tabular-nums text-muted-foreground">
-										{isCrypto && `1 ${watchedCurrency} = `}
-										{formatRate(
-											getDisplayRateValue(
-												rawRateOptions[0]!.rate,
-											),
-										)}
-										{!isCrypto &&
-											` ${watchedCurrency}/${homeCurrency}`}
-										{isCrypto && ` ${homeCurrency}`}
+										{`1 ${singleQuote.base} = ${formatRate(singleQuote.value)} ${singleQuote.quote}`}
 									</span>
+								) : (
+									<Skeleton className="h-5 w-24" />
 								)}
 							</div>
 						) : (
@@ -570,7 +618,7 @@ export function CurrencyAmountInput({
 					{showCustomInput && mode === 3 && (
 						<div className="flex items-center gap-2 border-t border-input bg-muted/10 px-3 py-1.5">
 							<span className="shrink-0 text-muted-foreground text-sm">
-								{t("customRate")}:
+								{t("customRate")}: 1 {customQuoteSides.base} =
 							</span>
 							<Input
 								aria-label={t("customExchangeRate")}
@@ -593,6 +641,9 @@ export function CurrencyAmountInput({
 								type="number"
 								value={customInputValue}
 							/>
+							<span className="shrink-0 text-muted-foreground text-sm">
+								{customQuoteSides.quote}
+							</span>
 							{invalidRateWarn && (
 								<span className="text-amber-500 text-xs">
 									{t("numbersOnly")}
@@ -716,7 +767,7 @@ function RateSegmentStrip({
 						{preview > 0 && (
 							<span className="text-xs tabular-nums text-muted-foreground leading-tight">
 								{"\u2248"} {getCurrencySymbol(homeCurrency)}
-								{formatNumber(preview, 2)}
+								{formatNumber(preview, getDecimalDigits(homeCurrency))}
 							</span>
 						)}
 					</button>
@@ -748,6 +799,7 @@ function RateSegmentStrip({
 interface NoRateAvailableProps {
 	customInputValue: string;
 	onCustomRateChange: (value: string) => void;
+	quoteSides: { base: string; quote: string };
 	setIsCustomRateSet: (v: boolean) => void;
 	setSelectedRateType: (type: string) => void;
 	setShowCustomInput: (v: boolean) => void;
@@ -756,6 +808,7 @@ interface NoRateAvailableProps {
 function NoRateAvailable({
 	customInputValue,
 	onCustomRateChange,
+	quoteSides,
 	setIsCustomRateSet,
 	setSelectedRateType,
 	setShowCustomInput,
@@ -790,7 +843,7 @@ function NoRateAvailable({
 	return (
 		<div className="flex items-center gap-2">
 			<span className="shrink-0 text-muted-foreground text-sm">
-				{t("rateLabel")}:
+				{t("rateLabel")}: 1 {quoteSides.base} =
 			</span>
 			<Input
 				autoFocus
@@ -810,6 +863,9 @@ function NoRateAvailable({
 				type="number"
 				value={customInputValue}
 			/>
+			<span className="shrink-0 text-muted-foreground text-sm">
+				{quoteSides.quote}
+			</span>
 			{invalidWarn && (
 				<span className="text-amber-500 text-xs">{t("numbersOnly")}</span>
 			)}
