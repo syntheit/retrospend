@@ -279,6 +279,43 @@ describe("ExpenseService", () => {
 
 			expect(db.expense.update).not.toHaveBeenCalled();
 		});
+
+		it("changed categoryId not owned by user: throws FORBIDDEN and does not update", async () => {
+			const existing = makeExpense({ id: "exp-1", userId: "user-1", categoryId: "cat-1" });
+			db.expense.findFirst.mockResolvedValue(existing);
+			db.category.findFirst.mockResolvedValue(null);
+
+			await expect(
+				service.updateExpense("user-1", { ...UPDATE_INPUT, categoryId: "cat-other" }),
+			).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+			expect(db.category.findFirst).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: "cat-other", userId: "user-1" } }),
+			);
+			expect(db.expense.update).not.toHaveBeenCalled();
+		});
+
+		it("changed categoryId owned by user: proceeds", async () => {
+			const existing = makeExpense({ id: "exp-1", userId: "user-1", categoryId: "cat-1" });
+			db.expense.findFirst.mockResolvedValue(existing);
+			db.expense.update.mockResolvedValue(existing);
+			db.category.findFirst.mockResolvedValue(makeCategory({ id: "cat-2", userId: "user-1" }));
+
+			await service.updateExpense("user-1", { ...UPDATE_INPUT, categoryId: "cat-2" });
+
+			expect(db.expense.update).toHaveBeenCalled();
+		});
+
+		it("unchanged categoryId: skips the ownership lookup", async () => {
+			const existing = makeExpense({ id: "exp-1", userId: "user-1", categoryId: "cat-1" });
+			db.expense.findFirst.mockResolvedValue(existing);
+			db.expense.update.mockResolvedValue(existing);
+
+			await service.updateExpense("user-1", { ...UPDATE_INPUT, categoryId: "cat-1" });
+
+			expect(db.category.findFirst).not.toHaveBeenCalled();
+			expect(db.expense.update).toHaveBeenCalled();
+		});
 	});
 
 	// ── deleteExpense ──────────────────────────────────────────────────────────

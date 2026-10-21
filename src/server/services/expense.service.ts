@@ -144,17 +144,21 @@ export class ExpenseService {
 		// Determine excludeFromAnalytics for the update
 		let excludeFromAnalytics: boolean | undefined = input.excludeFromAnalytics;
 
-		// If category changed and user didn't explicitly set the flag, apply new category's default
-		if (
-			excludeFromAnalytics === undefined &&
-			input.categoryId &&
-			input.categoryId !== existingExpense.categoryId
-		) {
+		// A changed category must belong to the user, same as on create. An
+		// unchanged category is left alone so editing never trips on it.
+		if (input.categoryId && input.categoryId !== existingExpense.categoryId) {
 			const newCategory = await (this.db as PrismaClient).category.findFirst({
 				where: { id: input.categoryId, userId },
 				select: { excludeByDefault: true },
 			});
-			if (newCategory?.excludeByDefault) {
+			if (!newCategory) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Category not found",
+				});
+			}
+			// If the user didn't explicitly set the flag, apply the new category's default
+			if (excludeFromAnalytics === undefined && newCategory.excludeByDefault) {
 				excludeFromAnalytics = true;
 			}
 		}
