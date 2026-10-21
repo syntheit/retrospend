@@ -26,6 +26,7 @@ const mockDb = vi.hoisted(() => ({
 	},
 	projectParticipant: {
 		findUnique: vi.fn(),
+		findMany: vi.fn().mockResolvedValue([]),
 		create: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
@@ -759,6 +760,8 @@ describe("participant emails in project responses", () => {
 		useCount: 0,
 	};
 
+	let memberRows: Array<(typeof PARTICIPANT_ROWS)[number]> = [];
+
 	beforeEach(() => {
 		mockDb.project.findUnique.mockResolvedValue({
 			id: "proj-1",
@@ -771,12 +774,54 @@ describe("participant emails in project responses", () => {
 		mockDb.user.findMany.mockResolvedValue([
 			{ id: "organizer-1", name: "Org", username: "org", image: null, avatarPath: null },
 		]);
-		mockDb.shadowProfile.findMany.mockResolvedValue([
-			{ id: "shadow-1", name: "Ghost", email: "ghost@example.com" },
-		]);
-		mockDb.guestSession.findMany.mockResolvedValue([
-			{ id: "guest-1", name: "Guest", email: "guest@example.com" },
-		]);
+		const shadows = [
+			{
+				id: "shadow-1",
+				name: "Ghost",
+				email: "ghost@example.com",
+				createdById: "ghost-maker",
+			},
+		];
+		mockDb.shadowProfile.findMany.mockImplementation(
+			async (args: { where: { createdById?: string } }) =>
+				shadows.filter(
+					(s) =>
+						args.where.createdById === undefined ||
+						s.createdById === args.where.createdById,
+				),
+		);
+		const guests = [
+			{ id: "guest-1", name: "Guest", email: "guest@example.com", projectId: "proj-1" },
+		];
+		mockDb.guestSession.findMany.mockImplementation(
+			async (args: { where: { projectId?: { in: string[] } } }) =>
+				guests.filter(
+					(g) => !args.where.projectId || args.where.projectId.in.includes(g.projectId),
+				),
+		);
+		// Membership lookups for the contact-visibility rule.
+		mockDb.projectParticipant.findMany.mockImplementation(
+			async (args: {
+				where: {
+					participantType: string;
+					participantId: string | { in: string[] };
+					role?: { in: string[] };
+					projectId?: { in: string[] };
+				};
+			}) => {
+				const w = args.where;
+				return memberRows.filter(
+					(r) =>
+						r.participantType === w.participantType &&
+						(typeof w.participantId === "string"
+							? r.participantId === w.participantId
+							: w.participantId.in.includes(r.participantId)) &&
+						(!w.role || w.role.in.includes(r.role)) &&
+						(!w.projectId || w.projectId.in.includes(r.projectId)),
+				);
+			},
+		);
+		memberRows = [...PARTICIPANT_ROWS];
 		mockDb.sharedTransaction.groupBy.mockResolvedValue([]);
 		mockDb.category.findMany.mockResolvedValue([]);
 		mockDb.splitParticipant.count.mockResolvedValue(0);
@@ -852,7 +897,7 @@ describe("participant emails in project responses", () => {
 		});
 	});
 
-	it("detail for a contributing member still shows emails", async () => {
+	it("detail for an organizer shows ghost and guest emails", async () => {
 		const caller = createCaller({
 			session: makeOrganizerSession("organizer-1"),
 			db: mockDb as never,
@@ -866,6 +911,63 @@ describe("participant emails in project responses", () => {
 			"shadow-1": "ghost@example.com",
 			"guest-1": "guest@example.com",
 		});
+	});
+
+	it("detail for a contributor hides ghost and guest emails", async () => {
+		memberRows = PARTICIPANT_ROWS.map((r) =>
+			r.participantId === "organizer-1" ? { ...r, role: "CONTRIBUTOR" } : r,
+		);
+		mockDb.project.findUnique.mockResolvedValue({
+			id: "proj-1",
+			name: "Trip",
+			visibility: "PUBLIC",
+			billingCycleLength: null,
+			participants: memberRows,
+			billingPeriods: [],
+		});
+		const caller = createCaller({
+			session: makeOrganizerSession("organizer-1"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+
+		const result = await callAndFlush(() => caller.detail({ id: "proj-1" }));
+
+		expect(emailsOf(result.participants)).toEqual({
+			"organizer-1": null,
+			"shadow-1": null,
+			"guest-1": null,
+		});
+	});
+
+	it("detail for a contributor still shows emails of ghosts they created", async () => {
+		memberRows = PARTICIPANT_ROWS.map((r) =>
+			r.participantId === "organizer-1" ? { ...r, role: "CONTRIBUTOR" } : r,
+		);
+		mockDb.project.findUnique.mockResolvedValue({
+			id: "proj-1",
+			name: "Trip",
+			visibility: "PUBLIC",
+			billingCycleLength: null,
+			participants: memberRows,
+			billingPeriods: [],
+		});
+		const caller = createCaller({
+			session: makeOrganizerSession("ghost-maker"),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+		memberRows.push({
+			...PARTICIPANT_ROWS[0]!,
+			id: "pp-maker",
+			participantId: "ghost-maker",
+			role: "CONTRIBUTOR",
+		});
+
+		const result = await callAndFlush(() => caller.detail({ id: "proj-1" }));
+
+		expect(emailsOf(result.participants)["shadow-1"]).toBe("ghost@example.com");
+		expect(emailsOf(result.participants)["guest-1"]).toBeNull();
 	});
 
 	it("balancesFromPerspective hides emails from viewer links", async () => {

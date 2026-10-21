@@ -26,7 +26,14 @@ import {
 	canonicalizeProjectLedger,
 	resolveClaimAliases,
 } from "~/server/services/shared-expenses/identity";
-import { sameParticipant } from "~/server/services/shared-expenses/types";
+import {
+	type ParticipantRef,
+	sameParticipant,
+} from "~/server/services/shared-expenses/types";
+import {
+	buildContactVisibility,
+	redactContact,
+} from "~/server/services/shared-expenses/contact-visibility";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -142,45 +149,14 @@ async function resolveParticipantNames(
 }
 
 /**
- * Whether a caller may see other participants' emails. Ghost and guest emails
- * are contact details the organizers entered (or a guest typed in under "not
- * shared publicly"), so only signed-in members who can contribute see them.
- * Anonymous viewer links, guests and VIEWER-role members only see their own.
+ * Applies the shared contact-visibility rule (see contact-visibility.ts) to a
+ * list of resolved participants. `viewer` is null for viewer links.
  */
-function canSeeParticipantEmails(
-	callerType: string,
-	callerRole: string | null | undefined,
-): boolean {
-	return callerType === "user" && !!callerRole && callerRole !== "VIEWER";
-}
-
-type EmailBearing = {
-	participantType: string;
-	participantId: string;
-	email: string | null;
-};
-type ParticipantSelf = { participantType: string; participantId: string } | null;
-
-/**
- * Nulls out a participant's email unless it is the caller's own entry. Used
- * for callers that fail {@link canSeeParticipantEmails}.
- */
-function redactParticipantEmail<T extends EmailBearing>(
-	item: T,
-	self: ParticipantSelf,
-): T {
-	const isSelf =
-		self !== null &&
-		item.participantType === self.participantType &&
-		item.participantId === self.participantId;
-	return isSelf ? item : { ...item, email: null };
-}
-
-function redactParticipantEmails<T extends EmailBearing>(
-	items: T[],
-	self: ParticipantSelf,
-): T[] {
-	return items.map((item) => redactParticipantEmail(item, self));
+async function redactParticipantEmails<
+	T extends { participantType: string; participantId: string; email: string | null },
+>(db: PrismaClient, viewer: ParticipantRef | null, items: T[]): Promise<T[]> {
+	const visible = await buildContactVisibility(db, viewer, items);
+	return items.map((item) => redactContact(item, visible));
 }
 
 /**
@@ -477,6 +453,12 @@ export const projectRouter = createTRPCRouter({
 				ctx.db,
 				allParticipants,
 			);
+			// Ghost/guest emails only for those allowed to see them (shared rule).
+			const contactVisible = await buildContactVisibility(
+				ctx.db,
+				{ participantType: "user", participantId: userId },
+				resolvedAll,
+			);
 
 			// Group resolved participants back by project
 			const participantsByProject = new Map<string, typeof resolvedAll>();
@@ -584,12 +566,9 @@ export const projectRouter = createTRPCRouter({
 
 				return {
 					...p,
-					participants: canSeeParticipantEmails("user", myRole)
-						? participantDetails
-						: redactParticipantEmails(participantDetails, {
-								participantType: "user",
-								participantId: userId,
-							}),
+					participants: participantDetails.map((pp) =>
+						redactContact(pp, contactVisible),
+					),
 					myRole,
 					excludeFromAnalytics: rawMyParticipant?.excludeFromAnalytics ?? false,
 					totalSpent: spentMap.get(p.id) ?? 0,
@@ -658,15 +637,15 @@ export const projectRouter = createTRPCRouter({
 					? ("VIEWER" as const)
 					: (myParticipant?.role ?? null);
 
-			// Viewer links, guests and VIEWER members don't get other people's emails.
-			const participants = canSeeParticipantEmails(participantType, myRole)
-				? resolvedParticipants
-				: redactParticipantEmails(
-						resolvedParticipants,
-						participantType === "viewerLink"
-							? null
-							: { participantType, participantId },
-					);
+			// Ghost/guest emails only for their creator, the guest themself, or
+			// editors/organizers (shared rule). Viewer links see none.
+			const participants = await redactParticipantEmails(
+				ctx.db,
+				participantType === "viewerLink"
+					? null
+					: { participantType, participantId },
+				resolvedParticipants,
+			);
 
 			// Expense stats grouped by category
 			const rawCategoryStats = await ctx.db.sharedTransaction.groupBy({
@@ -2396,7 +2375,7 @@ export const projectRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			assertGuestProjectScope(ctx.participant, input.projectId);
 			const { participantType, participantId } = ctx.participant;
-			const caller = await requireProjectRole(
+			await requireProjectRole(
 				ctx.db,
 				input.projectId,
 				participantType,
@@ -2410,21 +2389,20 @@ export const projectRouter = createTRPCRouter({
 				input.perspective,
 			);
 
-			if (canSeeParticipantEmails(participantType, caller.role)) {
-				return result;
-			}
-
-			// Same email rule as project.detail: only the caller's own email.
-			const self =
+			// Same contact rule as project.detail.
+			const visible = await buildContactVisibility(
+				ctx.db,
 				participantType === "viewerLink"
 					? null
-					: { participantType, participantId };
+					: { participantType, participantId },
+				[result.perspective, ...result.statements.map((s) => s.counterpart)],
+			);
 			return {
 				...result,
-				perspective: redactParticipantEmail(result.perspective, self),
+				perspective: redactContact(result.perspective, visible),
 				statements: result.statements.map((s) => ({
 					...s,
-					counterpart: redactParticipantEmail(s.counterpart, self),
+					counterpart: redactContact(s.counterpart, visible),
 				})),
 			};
 		}),
