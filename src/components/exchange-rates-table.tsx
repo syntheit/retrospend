@@ -20,11 +20,7 @@ import {
 	ChevronRight,
 	GripVertical,
 } from "lucide-react";
-import {
-	type ColumnDef,
-	flexRender,
-	type Row,
-} from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
 import {
 	Calculator,
 	ChartLine,
@@ -38,6 +34,7 @@ import { useTranslations } from "next-intl";
 import React, { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import type { DataTableColumnDef, DataTableRow } from "~/components/data-table-features";
 import { Button } from "~/components/ui/button";
 import {
 	ContextMenu,
@@ -84,7 +81,7 @@ type ExchangeRate = z.infer<typeof exchangeRateSchema> & {
 // ---- Shared menu items ----
 
 interface MenuItemsProps {
-	row: Row<ExchangeRate>;
+	row: DataTableRow<ExchangeRate>;
 	onRowClick?: (currency: string) => void;
 	onToggleFavorite: (id: string) => Promise<void>;
 	Item: React.ComponentType<React.ComponentProps<typeof ContextMenuItem>>;
@@ -171,7 +168,7 @@ function createExchangeRateColumns({
 	isDraggable,
 	grouped,
 	t,
-}: ExchangeRateColumnOptions): ColumnDef<ExchangeRate>[] {
+}: ExchangeRateColumnOptions): DataTableColumnDef<ExchangeRate>[] {
 	return [
 		...(isDraggable
 			? [
@@ -189,7 +186,7 @@ function createExchangeRateColumns({
 							</Button>
 						),
 						enableSorting: false,
-					} as ColumnDef<ExchangeRate>,
+					} as DataTableColumnDef<ExchangeRate>,
 				]
 			: []),
 		...(grouped
@@ -199,7 +196,7 @@ function createExchangeRateColumns({
 						header: () => null,
 						size: 40,
 						enableSorting: false,
-						cell: ({ row }: { row: Row<ExchangeRate> }) => {
+						cell: ({ row }: { row: DataTableRow<ExchangeRate> }) => {
 							if (!row.getCanExpand()) return null;
 							return (
 								<Button
@@ -219,7 +216,7 @@ function createExchangeRateColumns({
 								</Button>
 							);
 						},
-					} as ColumnDef<ExchangeRate>,
+					} as DataTableColumnDef<ExchangeRate>,
 				]
 			: []),
 		{
@@ -428,7 +425,7 @@ const DraggableRow = React.forwardRef<
 
 // ---- Shared row rendering helpers ----
 
-function renderCells(row: Row<ExchangeRate>) {
+function renderCells(row: DataTableRow<ExchangeRate>) {
 	return row.getVisibleCells().map((cell) => {
 		const meta = cell.column.columnDef.meta as Record<string, unknown> | undefined;
 		const hasFixedSize =
@@ -567,7 +564,7 @@ export function ExchangeRatesTable({
 	// ---- Context menu ----
 
 	const renderContextMenuContent = useCallback(
-		(row: Row<ExchangeRate>) => (
+		(row: DataTableRow<ExchangeRate>) => (
 			<ContextMenuContent>
 				{renderMenuItems({
 					row,
@@ -585,7 +582,7 @@ export function ExchangeRatesTable({
 	// ---- Row renderers ----
 
 	const renderDraggableRow = useCallback(
-		(row: Row<ExchangeRate>) => (
+		(row: DataTableRow<ExchangeRate>) => (
 			<ContextMenu key={row.id}>
 				<ContextMenuTrigger asChild>
 					<DraggableRow
@@ -603,7 +600,7 @@ export function ExchangeRatesTable({
 	);
 
 	const renderGroupedRow = useCallback(
-		(row: Row<ExchangeRate>) => {
+		(row: DataTableRow<ExchangeRate>) => {
 			const isSubRow = row.depth > 0;
 			return (
 				<ContextMenu key={row.id}>

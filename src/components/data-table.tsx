@@ -2,19 +2,11 @@
 
 import { ChevronDown, ChevronUp } from "lucide-react";
 import {
-	type ColumnDef,
+	type ColumnVisibilityState,
 	type ExpandedState,
 	flexRender,
-	getCoreRowModel,
-	getExpandedRowModel,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	type Row,
 	type SortingState,
-	type Table as TableType,
-	useReactTable,
-	type VisibilityState,
+	useTable,
 } from "@tanstack/react-table";
 import * as React from "react";
 import {
@@ -31,6 +23,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import {
+	type DataTableColumnDef,
+	type DataTableInstance,
+	type DataTableRow,
+	type DataTableRowData,
+	dataTableFeatures,
+} from "~/components/data-table-features";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
@@ -41,8 +40,8 @@ const PROGRESSIVE_BATCH = 100;
 
 // ---- Memoized row ----
 
-interface DataRowProps<TData extends { id: string }> {
-	row: Row<TData>;
+interface DataRowProps<TData extends DataTableRowData> {
+	row: DataTableRow<TData>;
 	/** Number of visible columns - busts memo when column visibility changes */
 	cellCount: number;
 	/** Increments when column definitions change - busts memo when cell renderers change */
@@ -64,7 +63,7 @@ interface DataRowProps<TData extends { id: string }> {
 	rowExtraClassName?: string;
 }
 
-function DataRowInner<TData extends { id: string }>({
+function DataRowInner<TData extends DataTableRowData>({
 	row,
 	isSelected,
 	isSelectable,
@@ -167,14 +166,14 @@ interface PaginationConfig {
 	pageSizeOptions?: number[];
 }
 
-interface DataTableProps<TData> {
+interface DataTableProps<TData extends DataTableRowData> {
 	data: TData[];
-	columns: ColumnDef<TData>[];
+	columns: DataTableColumnDef<TData>[];
 	onRowClick?: (row: TData) => void;
 	searchPlaceholder?: string;
 	emptyState?: React.ReactNode;
 	renderToolbar?: (
-		table: TableType<TData>,
+		table: DataTableInstance<TData>,
 		headerHeight: string,
 	) => React.ReactNode;
 	/** Static footer node, or a function receiving the currently visible rows */
@@ -183,7 +182,7 @@ interface DataTableProps<TData> {
 	/** @deprecated pagination removed; prop kept for API compatibility */
 	pageSize?: number;
 	/** Columns to hide: keys must match column id/accessorKey */
-	columnVisibility?: VisibilityState;
+	columnVisibility?: ColumnVisibilityState;
 	/** Render context menu items for a row (shown on right-click) */
 	renderContextMenu?: (row: TData) => React.ReactNode;
 	/** Set of selected row IDs for click-to-select behavior */
@@ -246,7 +245,7 @@ interface DataTableProps<TData> {
 	 * Custom row renderer. When provided, bypasses MemoizedDataRow.
 	 * Consumer must render TableRow + cells.
 	 */
-	renderRow?: (row: Row<TData>) => React.ReactNode;
+	renderRow?: (row: DataTableRow<TData>) => React.ReactNode;
 	/**
 	 * Wraps the content inside <TableBody>. Useful for DndContext/SortableContext.
 	 */
@@ -260,7 +259,7 @@ interface DataTableProps<TData> {
 	 * Return additional CSS class names for a row based on its data.
 	 * Merged with existing row classes.
 	 */
-	rowClassName?: (row: Row<TData>) => string | undefined;
+	rowClassName?: (row: DataTableRow<TData>) => string | undefined;
 	/**
 	 * Called when progressive rendering has rendered all loaded rows and the
 	 * scroll sentinel fires. Useful for triggering `fetchNextPage` in
@@ -284,7 +283,7 @@ interface DataTableProps<TData> {
  * Handles search, sorting, and rendering internally.
  * Toolbars (selection bars) and footers are delegated to the parent.
  */
-export function DataTable<TData extends { id: string }>({
+export function DataTable<TData extends DataTableRowData>({
 	data,
 	columns,
 	onRowClick,
@@ -293,7 +292,7 @@ export function DataTable<TData extends { id: string }>({
 	renderToolbar,
 	footer,
 	initialSorting = [],
-	columnVisibility = {} as VisibilityState,
+	columnVisibility = {} as ColumnVisibilityState,
 	renderContextMenu,
 	selectedRows,
 	onRowSelect,
@@ -345,7 +344,8 @@ export function DataTable<TData extends { id: string }>({
 			: paginationProp
 		: null;
 
-	const table = useReactTable({
+	const table = useTable({
+		features: dataTableFeatures,
 		data,
 		columns,
 		// Stable row identity based on the record's own ID rather than array index.
@@ -366,21 +366,21 @@ export function DataTable<TData extends { id: string }>({
 				setSearchInput(value ?? "");
 			}
 		},
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
 		...(getSubRows
 			? {
-					getExpandedRowModel: getExpandedRowModel(),
 					getSubRows,
 					onExpandedChange: setExpanded,
 				}
 			: {}),
+		// Every row model is registered on the shared features, so tables
+		// without pagination opt out by treating it as manual (rows pass
+		// through unsliced, matching v8 without getPaginationRowModel).
+		manualPagination: !paginationEnabled,
 		...(paginationEnabled
 			? {
-					getPaginationRowModel: getPaginationRowModel(),
 					initialState: {
 						pagination: {
+							pageIndex: 0,
 							pageSize: paginationConfig?.defaultPageSize ?? 20,
 						},
 					},
@@ -392,7 +392,7 @@ export function DataTable<TData extends { id: string }>({
 	// When pagination is enabled, use the paginated row model for display
 	const allFilteredRows = table.getFilteredRowModel().rows;
 	const rows = paginationEnabled
-		? table.getPaginationRowModel().rows
+		? table.getPaginatedRowModel().rows
 		: table.getRowModel().rows;
 
 	// Scroll to top and reset progressive rendering when external data changes

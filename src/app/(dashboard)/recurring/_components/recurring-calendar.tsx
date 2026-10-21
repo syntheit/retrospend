@@ -115,11 +115,8 @@ export function RecurringCalendar({
 					classNames={{
 						months: "relative w-full",
 						month: "w-full space-y-1",
-						table: "w-full border-collapse",
-						head_row: "mt-1 flex w-full",
 						weekday:
 							"flex-1 w-9 font-normal text-[0.75rem] text-muted-foreground",
-						row: "mt-0.5 flex w-full",
 						day: cn(
 							"relative mx-auto flex h-8 w-8 cursor-pointer items-center justify-center p-0 font-normal transition-colors aria-selected:opacity-100",
 							"rounded-full hover:bg-primary/10 hover:text-primary",

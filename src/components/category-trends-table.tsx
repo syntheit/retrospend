@@ -1,6 +1,6 @@
 "use client";
 
-import type { VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { DataTable } from "~/components/data-table";
@@ -185,7 +185,7 @@ export function CategoryTrendsTable({
 		[formatAmount, bucketSize, displayName, t],
 	);
 
-	const columnVisibility: VisibilityState = isMobile
+	const columnVisibility: ColumnVisibilityState = isMobile
 		? { periodAverage: false }
 		: {};
 

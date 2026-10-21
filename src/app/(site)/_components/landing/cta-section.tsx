@@ -1,6 +1,7 @@
-import { BookOpen, Github } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { Github } from "~/components/icons/github";
 import { Button } from "~/components/ui/button";
 
 export function CtaSection() {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import {
 	CalendarClock,
 	ExternalLink,
@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 import { CategoryChip } from "~/components/category-chip";
 import { DataTable } from "~/components/data-table";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { BrandIcon } from "~/components/ui/BrandIcon";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -139,7 +140,7 @@ function createRecurringColumns(
 	formatCurrency: (value: number, currency?: string) => string,
 	handlers: RowActionHandlers,
 	t: (key: string) => string,
-): ColumnDef<RecurringTemplate>[] {
+): DataTableColumnDef<RecurringTemplate>[] {
 	return [
 		{
 			accessorKey: "name",
@@ -293,7 +294,7 @@ export function RecurringList({
 	);
 
 	// Hide the category column on mobile to reduce horizontal scroll.
-	const columnVisibility: VisibilityState = isMobile
+	const columnVisibility: ColumnVisibilityState = isMobile
 		? { category: false }
 		: {};
 

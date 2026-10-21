@@ -1,6 +1,7 @@
-import { Github, Hash, Heart } from "lucide-react";
+import { Hash, Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { Github } from "~/components/icons/github";
 
 export function LandingFooter({ showLegalLinks }: { showLegalLinks: boolean }) {
 	const t = useTranslations("landing");

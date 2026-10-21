@@ -1,6 +1,5 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import {
 	Bot,
@@ -20,6 +19,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import type { useTranslations } from "next-intl";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -73,7 +73,7 @@ export function createUserColumns(
 		onCopyResetLink: (userId: string) => void;
 	},
 	t: ReturnType<typeof useTranslations<"admin">>,
-): ColumnDef<User>[] {
+): DataTableColumnDef<User>[] {
 	return [
 		{
 			accessorKey: "username",
@@ -252,7 +252,7 @@ export function createUserColumns(
 			header: () => <div className="text-right">{t("joined")}</div>,
 			enableSorting: true,
 			size: 130,
-			sortingFn: "datetime",
+			sortFn: "datetime",
 			cell: ({ row }) => (
 				<div className="text-right text-muted-foreground text-sm">
 					{format(new Date(row.original.createdAt), "MMM d, yyyy")}

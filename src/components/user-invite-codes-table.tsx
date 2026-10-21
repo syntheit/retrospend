@@ -1,10 +1,11 @@
-import type { ColumnDef, VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { Copy, Link, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -84,7 +85,7 @@ export function UserInviteCodesTable({
 		}
 	};
 
-	const columns = useMemo<ColumnDef<InviteCode>[]>(
+	const columns = useMemo<DataTableColumnDef<InviteCode>[]>(
 		() => [
 			{
 				accessorKey: "code",
@@ -209,7 +210,7 @@ export function UserInviteCodesTable({
 		[onDeleteCode, t],
 	);
 
-	const columnVisibility: VisibilityState = isMobile
+	const columnVisibility: ColumnVisibilityState = isMobile
 		? { usedBy: false, usedAt: false }
 		: {};
 

@@ -67,7 +67,7 @@ function TransactionsContent() {
 	const isMobile = useIsMobile();
 
 	// On mobile, hide less important columns to reduce horizontal scroll
-	const columnVisibility: import("@tanstack/react-table").VisibilityState =
+	const columnVisibility: import("@tanstack/react-table").ColumnVisibilityState =
 		isMobile ? { category: false, localPrice: false } : {};
 
 	const searchParams = useSearchParams();

@@ -1,8 +1,9 @@
 "use client";
 
-import { type ColumnDef, type VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Badge } from "~/components/ui/badge";
 import { DataTable } from "~/components/data-table";
 import { MonthStepper } from "~/components/date/MonthStepper";
@@ -43,7 +44,7 @@ export function AiUsageTable() {
 	const totalExternal =
 		data?.usages.reduce((sum, u) => sum + u.externalTokensUsed, 0) ?? 0;
 
-	const columns: ColumnDef<AiUsageRow>[] = useMemo(() => [
+	const columns: DataTableColumnDef<AiUsageRow>[] = useMemo(() => [
 		{
 			accessorKey: "username",
 			header: t("aiUsernameLabel"),
@@ -146,7 +147,7 @@ export function AiUsageTable() {
 		}));
 	}, [data]);
 
-	const columnVisibility: VisibilityState = isMobile
+	const columnVisibility: ColumnVisibilityState = isMobile
 		? { localTokensUsed: false, externalTokensUsed: false }
 		: {};
 

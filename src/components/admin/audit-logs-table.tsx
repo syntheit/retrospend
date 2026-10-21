@@ -1,11 +1,11 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { ClipboardCopy, Eye, Info, MoreHorizontal, ScrollText, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { ContextMenuItem } from "~/components/ui/context-menu";
 import {
 	Dialog,
@@ -185,7 +185,7 @@ export function AuditLogsTable() {
 		[data],
 	);
 
-	const columns = useMemo<ColumnDef<EventLog>[]>(() => [
+	const columns = useMemo<DataTableColumnDef<EventLog>[]>(() => [
 		{
 			accessorKey: "timestamp",
 			header: t("columnDateTime"),
@@ -221,7 +221,7 @@ export function AuditLogsTable() {
 			accessorKey: "user",
 			header: t("columnUser"),
 			enableSorting: true,
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.user?.username ?? "";
 				const b = rowB.original.user?.username ?? "";
 				return a.localeCompare(b);

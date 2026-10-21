@@ -213,7 +213,7 @@ export function DatePicker({
 				>
 					<Calendar
 						captionLayout="dropdown"
-						fromYear={fromYear}
+						endMonth={new Date(toYear, 11)}
 						mode="single"
 						month={monthView}
 						onMonthChange={setMonthView}
@@ -224,7 +224,7 @@ export function DatePicker({
 							}
 						}}
 						selected={date}
-						toYear={toYear}
+						startMonth={new Date(fromYear, 0)}
 					/>
 				</PopoverContent>
 			</Popover>

@@ -1,7 +1,7 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { Check, MoreHorizontal, X } from "lucide-react";
+import type { DataTableColumnDef } from "~/components/data-table-features";
 import { Button } from "~/components/ui/button";
 import { CategoryChip, NoCategoryLabel } from "~/components/category-chip";
 import { SharedTransactionActionsMenu } from "~/components/shared-transaction-actions-menu";
@@ -69,9 +69,9 @@ export function createProjectExpenseColumns({
 	locale,
 	isMobile,
 	onOpenSheet,
-}: ColumnOptions): ColumnDef<ProjectExpense>[] {
+}: ColumnOptions): DataTableColumnDef<ProjectExpense>[] {
 	const label = (key: string) => t?.(key) ?? key;
-	const columns: ColumnDef<ProjectExpense>[] = [
+	const columns: DataTableColumnDef<ProjectExpense>[] = [
 		{
 			accessorKey: "description",
 			header: label("columnTitle"),
@@ -104,7 +104,7 @@ export function createProjectExpenseColumns({
 					/>
 				);
 			},
-			sortingFn: (rowA, rowB) => {
+			sortFn: (rowA, rowB) => {
 				const a = rowA.original.category?.name ?? "";
 				const b = rowB.original.category?.name ?? "";
 				return a.localeCompare(b);
@@ -147,7 +147,7 @@ export function createProjectExpenseColumns({
 			header: label("columnDate"),
 			enableSorting: true,
 			size: 130,
-			sortingFn: (rowA, rowB) =>
+			sortFn: (rowA, rowB) =>
 				new Date(rowA.original.date).getTime() -
 				new Date(rowB.original.date).getTime(),
 			cell: ({ row }) => (
