@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"retrospend-sidecar/db"
+	"retrospend-sidecar/money"
 )
 
 const (
@@ -25,30 +26,10 @@ var (
 	validType     = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 )
 
-// supportedCryptoCurrencies mirrors the CRYPTO_CURRENCIES list in src/lib/currencies.ts.
-// Only crypto rates for currencies in this set will be synced; others are ignored and
-// any existing DB records for unsupported cryptos will be deleted by the stale-rate cleanup.
-var supportedCryptoCurrencies = map[string]bool{
-	"BTC":  true,
-	"ETH":  true,
-	"SOL":  true,
-	"BNB":  true,
-	"XRP":  true,
-	"DOGE": true,
-	"ADA":  true,
-	"AVAX": true,
-	"POL":  true,
-	"LTC":  true,
-	"DOT":  true,
-	"LINK": true,
-	"TON":  true,
-	"UNI":  true,
-	"NEAR": true,
-	"SUI":  true,
-	"USDC": true,
-	"USDT": true,
-	"DAI":  true,
-}
+// supportedCryptoCurrencies: only crypto rates for these currencies are
+// synced; others are ignored and any existing DB records for unsupported
+// cryptos will be deleted by the stale-rate cleanup.
+var supportedCryptoCurrencies = money.CryptoCurrencies
 
 type OracleRatesResponse struct {
 	UpdatedAt string             `json:"updatedAt"`
