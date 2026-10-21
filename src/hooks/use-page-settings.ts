@@ -4,7 +4,8 @@ import type { PageSettings } from "~/server/services/user-settings";
 import { api } from "~/trpc/react";
 import type { Page } from "~prisma";
 
-export function usePageSettings<T extends Page>(page: T) {
+/** Pages with stored settings (the removed widget dashboard has none). */
+export function usePageSettings<T extends Exclude<Page, "DASHBOARD">>(page: T) {
 	const { data: settings, ...queryResult } =
 		api.preferences.getPageSettings.useQuery({
 			page,
