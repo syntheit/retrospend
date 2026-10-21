@@ -892,7 +892,7 @@
     "roleViewer": "Lecteur",
     "transferOwnership": "Transfert de propriété",
     "removeAccess": "Supprimer l'accès",
-    "shadowProfileNoAccount": "Profil sans compte · Aucun compte pour le moment",
+    "shadowProfileNoAccount": "Aucun compte pour le moment",
     "guestViaInviteLink": "Invité (par lien d'invitation)",
     "removeFromProject": "Supprimer {name} de ce projet ?",
     "existingExpensesRemain": "Leurs dépenses actuelles demeureront dans le projet.",

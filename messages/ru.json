@@ -892,7 +892,7 @@
     "roleViewer": "Читатель",
     "transferOwnership": "Передать права владельца",
     "removeAccess": "Удалить доступ",
-    "shadowProfileNoAccount": "Профиль без учётной записи · Учётной записи пока нет",
+    "shadowProfileNoAccount": "Учётной записи пока нет",
     "guestViaInviteLink": "Гость (через ссылку на приглашение)",
     "removeFromProject": "Удалить {name} из этого проекта?",
     "existingExpensesRemain": "Существующие расходы останутся в проекте.",

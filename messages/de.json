@@ -892,7 +892,7 @@
     "roleViewer": "Betrachter",
     "transferOwnership": "Eigentümerschaft übertragen",
     "removeAccess": "Zugriff entfernen",
-    "shadowProfileNoAccount": "Schattenprofil · Noch kein Konto",
+    "shadowProfileNoAccount": "Noch kein Konto",
     "guestViaInviteLink": "Gast (über Einladungslink)",
     "removeFromProject": "{name} aus diesem Projekt entfernen?",
     "existingExpensesRemain": "Die vorhandenen Ausgaben der Person bleiben im Projekt.",
