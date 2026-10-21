@@ -20,6 +20,7 @@ describe("resolveSplits", () => {
 		it("divides evenly when the amount is divisible", () => {
 			const splits = resolveSplits({
 				mode: "EQUAL",
+				currency: "USD",
 				amount: 100,
 				participants: [user("alice"), user("bob")],
 				paidBy: payer,
@@ -30,6 +31,7 @@ describe("resolveSplits", () => {
 		it("gives the leftover cent to the payer first", () => {
 			const splits = resolveSplits({
 				mode: "EQUAL",
+				currency: "USD",
 				amount: 100,
 				participants: [user("alice"), user("bob"), user("carol")],
 				paidBy: payer,
@@ -42,6 +44,7 @@ describe("resolveSplits", () => {
 		it("payer outside the split: fills remaining rows from index 0", () => {
 			const splits = resolveSplits({
 				mode: "EQUAL",
+				currency: "USD",
 				amount: 100,
 				participants: [user("bob"), user("carol"), user("dave")],
 				paidBy: payer, // alice, not in the split
@@ -53,6 +56,7 @@ describe("resolveSplits", () => {
 		it("single participant owes the whole amount", () => {
 			const splits = resolveSplits({
 				mode: "EQUAL",
+				currency: "USD",
 				amount: 42.5,
 				participants: [user("bob")],
 				paidBy: payer,
@@ -64,6 +68,7 @@ describe("resolveSplits", () => {
 		it("$0.01 across 2, payer gets the only cent", () => {
 			const splits = resolveSplits({
 				mode: "EQUAL",
+				currency: "USD",
 				amount: 0.01,
 				participants: [user("alice"), user("bob")],
 				paidBy: payer,
@@ -74,6 +79,7 @@ describe("resolveSplits", () => {
 		it("preserves guest and shadow participant types", () => {
 			const splits = resolveSplits({
 				mode: "EQUAL",
+				currency: "USD",
 				amount: 10,
 				participants: [
 					user("alice"),
@@ -98,6 +104,7 @@ describe("resolveSplits", () => {
 		it("passes through exact amounts that sum to the total", () => {
 			const splits = resolveSplits({
 				mode: "EXACT",
+				currency: "USD",
 				amount: 100,
 				participants: [
 					{ ...user("alice"), shareAmount: 70 },
@@ -112,6 +119,7 @@ describe("resolveSplits", () => {
 			expect(() =>
 				resolveSplits({
 					mode: "EXACT",
+					currency: "USD",
 					amount: 100,
 					participants: [
 						{ ...user("alice"), shareAmount: 60 },
@@ -126,6 +134,7 @@ describe("resolveSplits", () => {
 			expect(() =>
 				resolveSplits({
 					mode: "EXACT",
+					currency: "USD",
 					amount: 100,
 					participants: [{ ...user("alice"), shareAmount: 90 }],
 					paidBy: payer,
@@ -138,6 +147,7 @@ describe("resolveSplits", () => {
 		it("computes amounts from percentages and keeps sharePercentage", () => {
 			const splits = resolveSplits({
 				mode: "PERCENTAGE",
+				currency: "USD",
 				amount: 100,
 				participants: [
 					{ ...user("alice"), sharePercentage: 60 },
@@ -153,6 +163,7 @@ describe("resolveSplits", () => {
 		it("routes the rounding remainder to the payer", () => {
 			const splits = resolveSplits({
 				mode: "PERCENTAGE",
+				currency: "USD",
 				amount: 33.33,
 				participants: [
 					{ ...user("alice"), sharePercentage: 50 },
@@ -168,6 +179,7 @@ describe("resolveSplits", () => {
 		it("payer outside the split: remainder goes to the last row", () => {
 			const splits = resolveSplits({
 				mode: "PERCENTAGE",
+				currency: "USD",
 				amount: 33.33,
 				participants: [
 					{ ...user("bob"), sharePercentage: 50 },
@@ -184,6 +196,7 @@ describe("resolveSplits", () => {
 			expect(() =>
 				resolveSplits({
 					mode: "PERCENTAGE",
+					currency: "USD",
 					amount: 100,
 					participants: [
 						{ ...user("alice"), sharePercentage: 50 },
@@ -198,6 +211,7 @@ describe("resolveSplits", () => {
 			expect(() =>
 				resolveSplits({
 					mode: "PERCENTAGE",
+					currency: "USD",
 					amount: 100,
 					participants: [user("alice"), { ...user("bob"), sharePercentage: 50 }],
 					paidBy: payer,
@@ -210,6 +224,7 @@ describe("resolveSplits", () => {
 		it("splits by weight and keeps shareUnits", () => {
 			const splits = resolveSplits({
 				mode: "SHARES",
+				currency: "USD",
 				amount: 90,
 				participants: [
 					{ ...user("alice"), shareUnits: 2 },
@@ -225,6 +240,7 @@ describe("resolveSplits", () => {
 		it("routes the remainder to the payer when in the split", () => {
 			const splits = resolveSplits({
 				mode: "SHARES",
+				currency: "USD",
 				amount: 100,
 				participants: [
 					{ ...user("alice"), shareUnits: 10 },
@@ -241,6 +257,7 @@ describe("resolveSplits", () => {
 		it("payer outside the split: remainder goes to the last row", () => {
 			const splits = resolveSplits({
 				mode: "SHARES",
+				currency: "USD",
 				amount: 100,
 				participants: [
 					{ ...user("bob"), shareUnits: 10 },
@@ -257,6 +274,7 @@ describe("resolveSplits", () => {
 			expect(() =>
 				resolveSplits({
 					mode: "SHARES",
+					currency: "USD",
 					amount: 100,
 					participants: [user("alice"), { ...user("bob"), shareUnits: 1 }],
 					paidBy: payer,

@@ -18,6 +18,7 @@ import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { ExpenseFormData } from "~/hooks/use-expense-form";
 import { formatNumber } from "~/lib/currency-format";
 import { evenSharePerPerson } from "~/lib/even-split-display";
+import { currencyDecimals, fromMinorUnits, toMinorUnits } from "~/lib/money";
 import { resolveSplits } from "~/lib/shared-split-computation";
 import { cn } from "~/lib/utils";
 
@@ -89,6 +90,8 @@ export function SharedExpenseSection({
 	const watchedAmount = watch("amount");
 	const watchedCurrency = watch("currency");
 	const currencySymbol = getCurrencySymbol(watchedCurrency);
+	// Shares are shown to the currency's precision (8 for BTC, 3 for KWD).
+	const amountDecimals = currencyDecimals(watchedCurrency);
 	const amount = watchedAmount || 0;
 
 	// "You" is the first entry of the participants list, matching every other
@@ -283,6 +286,7 @@ export function SharedExpenseSection({
 			const resolved = resolveSplits({
 				mode: splitMode,
 				amount,
+				currency: watchedCurrency,
 				participants,
 				paidBy: {
 					participantType: paidBy.participantType as
@@ -306,11 +310,17 @@ export function SharedExpenseSection({
 				}));
 			}
 			if (splitMode === "PERCENTAGE") {
-				const totalCents = Math.round(amount * 100);
+				const totalCents = toMinorUnits(amount, watchedCurrency);
 				return allParticipants.map((p) => {
 					const key = `${p.participantType}:${p.participantId}`;
 					const pct = percentages[key] ?? 0;
-					return { ...p, amount: Math.floor((totalCents * pct) / 100) / 100 };
+					return {
+						...p,
+						amount: fromMinorUnits(
+							Math.floor((totalCents * pct) / 100),
+							watchedCurrency,
+						),
+					};
 				});
 			}
 			if (splitMode === "SHARES") {
@@ -318,7 +328,7 @@ export function SharedExpenseSection({
 					const key = `${p.participantType}:${p.participantId}`;
 					return s + (shares[key] ?? 1);
 				}, 0);
-				const totalCents = Math.round(amount * 100);
+				const totalCents = toMinorUnits(amount, watchedCurrency);
 				return allParticipants.map((p) => {
 					const key = `${p.participantType}:${p.participantId}`;
 					const units = shares[key] ?? 1;
@@ -326,7 +336,10 @@ export function SharedExpenseSection({
 						...p,
 						amount:
 							totalUnits > 0
-								? Math.floor((totalCents * units) / totalUnits) / 100
+								? fromMinorUnits(
+										Math.floor((totalCents * units) / totalUnits),
+										watchedCurrency,
+									)
 								: 0,
 					};
 				});
@@ -338,6 +351,7 @@ export function SharedExpenseSection({
 		splitMode,
 		allParticipants,
 		amount,
+		watchedCurrency,
 		exactAmounts,
 		percentages,
 		shares,
@@ -388,7 +402,8 @@ export function SharedExpenseSection({
 	const summaryText = useMemo(() => {
 		if (amount <= 0) return null;
 
-		const fmt = (v: number) => `${currencySymbol}${formatNumber(v, 2)}`;
+		const fmt = (v: number) =>
+			`${currencySymbol}${formatNumber(v, amountDecimals)}`;
 
 		// Two-party splits (You + one other, whether via "full", "custom" or an
 		// even split) get a directional "who owes whom" line based on net balances.
@@ -430,7 +445,7 @@ export function SharedExpenseSection({
 			const count = allParticipants.length;
 			if (count === 0) return null;
 			return t("eachPersonPays", {
-				amount: fmt(evenSharePerPerson(amount, count)),
+				amount: fmt(evenSharePerPerson(amount, count, watchedCurrency)),
 			});
 		}
 
@@ -446,6 +461,8 @@ export function SharedExpenseSection({
 		paidBy.participantId,
 		paidByPerson,
 		currencySymbol,
+		watchedCurrency,
+		amountDecimals,
 		shares_computed,
 		currentUser.id,
 		t,
@@ -725,7 +742,7 @@ export function SharedExpenseSection({
 									<div className="flex items-center gap-2">
 										<span className="text-muted-foreground text-xs tabular-nums">
 											{currencySymbol}
-											{formatNumber(computed?.amount ?? 0, 2)}
+											{formatNumber(computed?.amount ?? 0, amountDecimals)}
 										</span>
 										<div className="flex items-center gap-1">
 											<Input
@@ -751,7 +768,7 @@ export function SharedExpenseSection({
 									<div className="flex items-center gap-2">
 										<span className="text-muted-foreground text-xs tabular-nums">
 											{currencySymbol}
-											{formatNumber(computed?.amount ?? 0, 2)}
+											{formatNumber(computed?.amount ?? 0, amountDecimals)}
 										</span>
 										<div className="flex items-center gap-1">
 											<Button
@@ -790,7 +807,7 @@ export function SharedExpenseSection({
 								{!isEditable && (
 									<span className="font-medium text-sm tabular-nums">
 										{currencySymbol}
-										{formatNumber(computed?.amount ?? 0, 2)}
+										{formatNumber(computed?.amount ?? 0, amountDecimals)}
 									</span>
 								)}
 							</div>
@@ -804,12 +821,12 @@ export function SharedExpenseSection({
 				<div className="flex items-center justify-between rounded-md bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
 					<span>
 						Split total: {currencySymbol}
-						{formatNumber(exactTotal, 2)} / {currencySymbol}
-						{formatNumber(amount, 2)}
+						{formatNumber(exactTotal, amountDecimals)} / {currencySymbol}
+						{formatNumber(amount, amountDecimals)}
 					</span>
 					<span>
 						{currencySymbol}
-						{formatNumber(Math.abs(exactDiff), 2)}{" "}
+						{formatNumber(Math.abs(exactDiff), amountDecimals)}{" "}
 						{exactDiff > 0 ? t("remaining") : t("over")}
 					</span>
 				</div>
@@ -828,7 +845,7 @@ export function SharedExpenseSection({
 			{splitMode === "SHARES" && splitChoice === "custom" && (
 				<div className="rounded-md bg-muted/60 px-3 py-2 text-muted-foreground text-sm">
 					{t("totalShares", { count: totalShareUnits })} · {currencySymbol}
-					{formatNumber(perShareAmount, 2)} {t("perShare")}
+					{formatNumber(perShareAmount, amountDecimals)} {t("perShare")}
 				</div>
 			)}
 
