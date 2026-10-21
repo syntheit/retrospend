@@ -47,13 +47,8 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
-import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import type { CurrencyCode } from "~/lib/currencies";
-import {
-	formatNumber,
-	isCrypto as checkIsCrypto,
-	isMajorCrypto,
-} from "~/lib/currency-format";
+import { formatNumber, isCrypto as checkIsCrypto } from "~/lib/currency-format";
 import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { AssetType } from "~/lib/db-enums";
 import { cn } from "~/lib/utils";
@@ -120,28 +115,18 @@ export function AssetDialog({
 			: createDefaults,
 	});
 
-	// Initial rate fix (one-time logic for corrupt data)
-	const [exchangeRate, setExchangeRate] = useState<number | undefined>(() => {
-		const initRate = initialValues?.exchangeRate;
-		const initCurr = initialValues?.currency;
-
-		if (initRate && initCurr && initCurr !== "USD") {
-			const isActuallyCrypto = checkIsCrypto(initCurr);
-			// Known big cryptos fix: BTC/SOL/etc should be > 1
-			if (isActuallyCrypto) {
-				if (isMajorCrypto(initCurr) && initRate > 0 && initRate < 1) {
-					return 1 / initRate;
-				}
-			}
-			return initRate;
-		}
-		return initRate;
-	});
+	// Rates are kept in the stored convention (fiat: units per USD, crypto:
+	// USD per coin). The server looks non-custom types up again on save.
+	const [exchangeRate, setExchangeRate] = useState<number | undefined>(
+		initialValues?.exchangeRate,
+	);
 
 	const [exchangeRateType, setExchangeRateType] = useState<string | undefined>(
 		initialValues?.exchangeRateType,
 	);
-	const [isCustomRate, setIsCustomRate] = useState(false);
+	const [isCustomRate, setIsCustomRate] = useState(
+		initialValues?.exchangeRateType === "custom",
+	);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
 	// Get form values for hooks and effects
@@ -167,60 +152,6 @@ export function AssetDialog({
 		},
 		[],
 	);
-
-	// Fetch rates to validate and auto-correct potential inversion bugs
-	const { rateOptions } = useExchangeRates({
-		currency: watchedCurrency,
-		enabled: open && watchedCurrency !== "USD",
-	});
-
-	// Fiat: State and Picker now both use "System" rate (Units per USD) to avoid precision loss.
-	// Crypto: State and Picker both use "Human" rate (USD per Coin).
-	useEffect(() => {
-		if (isCustomRate || !exchangeRate || !exchangeRateType) return;
-
-		const matchingOption = rateOptions.find((r) => r.type === exchangeRateType);
-		if (!matchingOption) return;
-
-		const systemRate = matchingOption.rate;
-		if (systemRate === 0) return;
-
-		const isActuallyCrypto = checkIsCrypto(watchedCurrency);
-
-		// 1. "Big Crypto" Rubric Fix: Ensure major coins are shown as USD prices (> 1).
-		if (
-			isActuallyCrypto &&
-			isMajorCrypto(watchedCurrency) &&
-			exchangeRate < 1
-		) {
-			setExchangeRate((prev) => (prev && prev < 1 ? 1 / prev : prev));
-			return;
-		}
-
-		// 2. Inversion Fix: If state is the inverse of DB.
-		const currentRatio = exchangeRate * systemRate;
-		if (currentRatio > 0.99 && currentRatio < 1.01) {
-			// One is the inverse of the other.
-			// We only flip if it would result in the "Corrected" state.
-			if (isActuallyCrypto) {
-				// For crypto, we want the "Big Number" (USD/Unit).
-				if (exchangeRate < 1 && systemRate > 1) {
-					setExchangeRate(systemRate);
-				}
-			} else {
-				// For Fiat, we match the DB's orientation (Units/USD).
-				if (Math.abs(exchangeRate - systemRate) > 0.000001) {
-					setExchangeRate(systemRate);
-				}
-			}
-		}
-	}, [
-		rateOptions,
-		exchangeRate,
-		exchangeRateType,
-		isCustomRate,
-		watchedCurrency,
-	]);
 
 	const usdEquivalent = useMemo(() => {
 		const currentBalance = watchedBalance || 0;
@@ -282,7 +213,6 @@ export function AssetDialog({
 	});
 
 	const onSubmit = (data: FormValues) => {
-		// Both are now stored exactly as displayed in state.
 		const systemRate = exchangeRate;
 
 		if (isEdit && assetId) {
@@ -443,11 +373,9 @@ export function AssetDialog({
 										</FormLabel>
 										<RateSelector
 											currency={watchedCurrency}
-											displayMode="foreign-to-default"
 											homeCurrency="USD"
 											isCustomSet={isCustomRate}
 											onCustomCleared={() => setIsCustomRate(false)}
-											onCustomClick={() => setIsCustomRate(true)}
 											onCustomSet={() => setIsCustomRate(true)}
 											onValueChange={handleExchangeRateChange}
 											value={exchangeRate}
