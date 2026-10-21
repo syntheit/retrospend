@@ -20,8 +20,8 @@ const importerTransactionSchema = z.object({
 	title: z.string().min(1).max(500),
 	amount: z.number().positive(),
 	currency: z.string().min(1).max(10),
-	exchangeRate: z.number().positive(),
-	amountInUSD: z.number().positive(),
+	exchangeRate: z.number().positive().optional(),
+	amountInUSD: z.number().positive().optional(),
 	date: z.string().max(10), // YYYY-MM-DD
 	location: z.string().max(500),
 	description: z.string().max(2000),

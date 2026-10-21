@@ -1,9 +1,60 @@
 import { randomUUID } from "node:crypto";
-import { BASE_CURRENCY } from "~/lib/constants";
 import { generateCsv } from "~/lib/csv";
+import {
+	computeAmountInUSD,
+	isValidRate,
+	type PickedRate,
+	rateFromUsdPerUnit,
+	roundUSD,
+	USD,
+} from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
-import { toUSD } from "~/server/currency";
+import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import { AmortizationService } from "./amortization.service";
+
+/**
+ * Stored rate and USD amount of an imported row. A rate in the file wins
+ * (amountInUSD is recomputed from it), then a USD amount (the rate is derived
+ * from it), then the rate table for the row's date. Never a rate of 1.
+ */
+export function resolveImportRate(
+	row: {
+		title: string;
+		amount: number;
+		currency: string;
+		date: Date;
+		exchangeRate?: number;
+		amountInUSD?: number;
+	},
+	rateFor: (currency: string, date: Date) => PickedRate | null,
+): { exchangeRate: number; amountInUSD: number } {
+	const currency = row.currency.toUpperCase();
+	if (currency === USD) {
+		return { exchangeRate: 1, amountInUSD: roundUSD(row.amount) };
+	}
+	if (isValidRate(row.exchangeRate)) {
+		return {
+			exchangeRate: row.exchangeRate,
+			amountInUSD: computeAmountInUSD(row.amount, currency, row.exchangeRate),
+		};
+	}
+	if (isValidRate(row.amountInUSD)) {
+		return {
+			exchangeRate: rateFromUsdPerUnit(currency, row.amountInUSD / row.amount),
+			amountInUSD: roundUSD(row.amountInUSD),
+		};
+	}
+	const picked = rateFor(currency, row.date);
+	if (!picked) {
+		throw new Error(
+			`Missing exchange rate or USD amount for ${row.currency} on row: ${row.title}`,
+		);
+	}
+	return {
+		exchangeRate: picked.rate,
+		amountInUSD: computeAmountInUSD(row.amount, currency, picked.rate),
+	};
+}
 
 type ExportExpensePayload = Prisma.ExpenseGetPayload<{
 	include: {
@@ -156,6 +207,14 @@ export class CsvService {
 		let totalCreated = 0;
 		let skippedDuplicates = 0;
 
+		// Table rates for rows that bring neither a rate nor a USD amount.
+		const rateFor = await findExchangeRatesForDates(
+			this.db,
+			rows
+				.filter((r) => !isValidRate(r.exchangeRate) && !isValidRate(r.amountInUSD))
+				.map((r) => r.currency.toUpperCase()),
+		);
+
 		type PreparedRow = { data: ImportExpenseRow; exchangeRate: number; amountInUSD: number; categoryId: string | null };
 
 		const buildExpenseData = (r: PreparedRow) => ({
@@ -187,17 +246,10 @@ export class CsvService {
 				continue;
 			}
 
-			const exchangeRate =
-				row.exchangeRate ??
-				(row.currency.toUpperCase() === BASE_CURRENCY ? 1 : null);
-			const amountInUSD =
-				row.amountInUSD ?? (exchangeRate ? toUSD(row.amount, row.currency, exchangeRate) : null);
-
-			if (!exchangeRate || !amountInUSD) {
-				throw new Error(
-					`Missing exchange rate or USD amount for ${row.currency} on row: ${row.title}`,
-				);
-			}
+			const { exchangeRate, amountInUSD } = resolveImportRate(
+				row,
+				rateFor,
+			);
 
 			const categoryId =
 				row.categoryId && validCategoryIds.has(row.categoryId)

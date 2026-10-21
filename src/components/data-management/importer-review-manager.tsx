@@ -39,8 +39,8 @@ export interface ImporterTransaction {
 	title: string;
 	amount: number;
 	currency: string;
-	exchangeRate: number;
-	amountInUSD: number;
+	exchangeRate?: number;
+	amountInUSD?: number;
 	date: string; // YYYY-MM-DD
 	location: string;
 	description: string;
@@ -332,8 +332,10 @@ export function ImporterReviewManager({
 					title: tx.title || "Untitled",
 					amount: tx.amount,
 					currency: tx.currency,
-					exchangeRate: tx.exchangeRate ?? 1,
-					amountInUSD: tx.amountInUSD ?? tx.amount,
+					// Unknown values stay unknown: the server fills them from the
+					// rate table instead of assuming a rate of 1.
+					exchangeRate: tx.exchangeRate ?? undefined,
+					amountInUSD: tx.amountInUSD ?? undefined,
 					date: tx.date.toISOString().split("T")[0]!,
 					location: tx.location ?? "",
 					description: tx.description ?? "",

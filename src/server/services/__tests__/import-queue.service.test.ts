@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
+import { useRateTable } from "~/test/rate-table";
 import { ImportQueueService } from "../import-queue.service";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
@@ -475,5 +476,71 @@ describe("ImportQueueService", () => {
 
 			await expect(service.deleteJob("user-1", "job-1")).resolves.toEqual({ success: true });
 		});
+	});
+});
+
+// ── Import conversions follow the stored rate convention ─────────────────────
+
+describe("ImportQueueService CSV conversion", () => {
+	let db: ReturnType<typeof createMockDb>;
+	let service: ImportQueueService;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		db = createMockDb();
+		useRateTable(db);
+		service = new ImportQueueService(db as never);
+	});
+
+	async function importCsv(csv: string) {
+		const job = makeJob({
+			status: "QUEUED",
+			type: "CSV",
+			fileName: "t.csv",
+			fileData: Buffer.from(csv).toString("base64"),
+		});
+		db.importJob.findFirst.mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+		db.importJob.update.mockResolvedValue(job);
+		await service.processQueue("user-1");
+		const reviewCall = db.importJob.update.mock.calls.find(
+			(c) => (c[0] as { data: { status?: string } }).data.status === "READY_FOR_REVIEW",
+		);
+		return (reviewCall![0] as {
+			data: {
+				transactions: Array<{ currency: string; exchangeRate: number; amountInUSD: number }>;
+			};
+		}).data.transactions;
+	}
+
+	it("crypto rate multiplies: 0.1 BTC at 50,000 USD/BTC is 5,000 USD", async () => {
+		const txs = await importCsv(
+			"title,amount,currency,date,exchangeRate\nCoin,0.1,BTC,2026-08-01,50000",
+		);
+		expect(txs[0]!.exchangeRate).toBe(50000);
+		expect(txs[0]!.amountInUSD).toBe(5000);
+	});
+
+	it("crypto USD amount derives USD per coin: 2 ETH for 6,000 USD is 3,000", async () => {
+		const txs = await importCsv(
+			"title,amount,currency,date,amountInUSD\nCoin,2,ETH,2026-08-01,6000",
+		);
+		expect(txs[0]!.exchangeRate).toBeCloseTo(3000, 8);
+		expect(txs[0]!.amountInUSD).toBe(6000);
+	});
+
+	it("4-letter crypto codes such as USDT are accepted", async () => {
+		const txs = await importCsv(
+			"title,amount,currency,date,exchangeRate\nStable,10,USDT,2026-08-01,1",
+		);
+		expect(txs[0]!.currency).toBe("USDT");
+		expect(txs[0]!.amountInUSD).toBe(10);
+	});
+
+	it("a row without rate or USD amount uses the nearest table rate", async () => {
+		const txs = await importCsv(
+			"title,amount,currency,date\nFactura,156000,ARS,2025-12-01\nBook,100,EUR,2026-08-01",
+		);
+		expect(txs[0]).toMatchObject({ exchangeRate: 1560, amountInUSD: 100 });
+		expect(txs[1]).toMatchObject({ exchangeRate: 0.8787, amountInUSD: 113.8 });
 	});
 });
