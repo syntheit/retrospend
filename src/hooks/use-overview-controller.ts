@@ -171,7 +171,7 @@ export function useOverviewController() {
 				name: c.name,
 				value: c.value,
 				color:
-					resolveCategoryColorValue(c.color) ?? "hsl(var(--muted-foreground))",
+					resolveCategoryColorValue(c.color) ?? "var(--muted-foreground)",
 				categoryColor: c.color,
 				categoryId: c.id,
 			});
@@ -205,7 +205,7 @@ export function useOverviewController() {
 		>((config, segment) => {
 			config[segment.key] = {
 				label: segment.name,
-				color: segment.color ?? "hsl(var(--muted))",
+				color: segment.color ?? "var(--muted)",
 			};
 			return config;
 		}, {});

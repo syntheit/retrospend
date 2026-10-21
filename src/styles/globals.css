@@ -335,7 +335,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .bg-stripes-primary {
-	background-color: hsl(var(--primary) / 0.8);
+	background-color: color-mix(in oklch, var(--primary) 80%, transparent);
 }
 
 /* Shiki dual-theme syntax highlighting (class-based dark mode) */

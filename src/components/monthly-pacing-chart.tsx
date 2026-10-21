@@ -179,7 +179,7 @@ export function MonthlyPacingChart({
 					<LineChart
 						accessibilityLayer={false}
 						data={chartData}
-						margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+						margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
 					>
 						<CartesianGrid className="stroke-muted" strokeDasharray="3 3" />
 						<XAxis

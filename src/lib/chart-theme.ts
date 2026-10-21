@@ -25,7 +25,7 @@ export function getCategoryColor(index: number): string {
 	return (
 		CHART_PALETTE[index % CHART_PALETTE.length] ??
 		CHART_PALETTE[0] ??
-		"hsl(var(--muted))"
+		"var(--muted)"
 	);
 }
 
@@ -40,11 +40,11 @@ export const CHART_CONFIG_DEFAULTS = {
 	pacingChart: {
 		variable: {
 			label: "Variable Spend",
-			color: "hsl(var(--primary))",
+			color: "var(--primary)",
 		},
 		guide: {
 			label: "Target Pace",
-			color: "hsl(var(--muted-foreground))",
+			color: "var(--muted-foreground)",
 		},
 	},
 };

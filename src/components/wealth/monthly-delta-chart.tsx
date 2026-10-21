@@ -58,7 +58,7 @@ export function MonthlyDeltaChart({
 		return data.map((item) => ({
 			month: item.month,
 			delta: item.delta,
-			fill: item.delta >= 0 ? "hsl(var(--chart-1))" : "hsl(var(--chart-2))",
+			fill: item.delta >= 0 ? "var(--chart-1)" : "var(--chart-2)",
 		}));
 	}, [data]);
 
@@ -169,7 +169,7 @@ export function MonthlyDeltaChart({
 							}
 						/>
 						<ReferenceLine
-							stroke="hsl(var(--muted-foreground))"
+							stroke="var(--muted-foreground)"
 							strokeDasharray="3 3"
 							strokeWidth={1}
 							y={0}
