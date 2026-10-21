@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
+import { requestTimeZone } from "~/server/time-zone";
 import { api } from "~/trpc/server";
 
 export async function generateMetadata() {
@@ -14,7 +16,9 @@ export default async function Layout({
 }) {
 	const settings = await api.settings.getGeneral();
 	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
-	const month = getCurrentFiscalMonth(new Date(), fiscalStartDay);
+	// Same month label the browser computes, so the prefetch is reused
+	const timeZone = requestTimeZone(await headers());
+	const month = getCurrentFiscalMonth(new Date(), fiscalStartDay, timeZone);
 
 	void api.system.getServerTime.prefetch();
 	void api.budget.getBudgets.prefetch({ month });
