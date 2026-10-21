@@ -84,7 +84,7 @@ COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml ./
 COPY --chown=nextjs:nodejs prisma/ ./prisma/
 COPY --chown=nextjs:nodejs prisma.config.ts ./
-COPY --chown=nextjs:nodejs tsconfig.json tsconfig.scripts.json ./
+COPY --chown=nextjs:nodejs tsconfig.json ./
 
 # Copy scripts directory for runtime operations
 COPY --chown=nextjs:nodejs scripts/ ./scripts/
