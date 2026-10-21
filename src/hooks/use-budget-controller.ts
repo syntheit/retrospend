@@ -13,7 +13,7 @@ export function useBudgetController() {
 	const { data: settings } = useSettings();
 	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
 	const isMobile = useIsMobile();
-	const { homeCurrency, usdToHomeRate } = useCurrency();
+	const { homeCurrency } = useCurrency();
 	const utils = api.useUtils();
 
 	// Use server time for initial month to avoid timezone mismatch
@@ -72,10 +72,13 @@ export function useBudgetController() {
 					id: category.id,
 					name: category.name,
 					color: category.color,
+					// Home currency, so budgets in different currencies add up
 					allocatedAmount: Number(
-						budget.pegToActual ? budget.effectiveAmount : budget.amount,
+						budget.pegToActual
+							? budget.effectiveAmountInHome
+							: budget.amountInHome,
 					),
-					actualSpend: Number(budget.actualSpend),
+					actualSpend: Number(budget.actualSpendInHome),
 					pegToActual: budget.pegToActual ?? false,
 				};
 			})
@@ -115,7 +118,6 @@ export function useBudgetController() {
 
 		// Currency
 		homeCurrency,
-		usdToHomeRate: usdToHomeRate ?? 1,
 
 		// Dates
 		serverTime,

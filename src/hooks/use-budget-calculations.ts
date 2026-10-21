@@ -9,37 +9,24 @@ export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 	return useMemo(() => {
 		const validBudgets = budgets.filter((b) => b.category !== null);
 
-		// Use USD amounts for aggregation (consistent unit)
-		const totalSpentInUSD = validBudgets.reduce(
-			(sum, b) => sum + Number(b.actualSpendInUSD),
-			0,
-		);
-
-		const totalAllocatedInUSD = validBudgets.reduce(
-			(sum, b) =>
-				sum + Number(b.pegToActual ? b.effectiveAmountInUSD : b.amountInUSD),
-			0,
-		);
-
-		const displayAmountInUSD = totalAllocatedInUSD;
-		const remainingInUSD = displayAmountInUSD - totalSpentInUSD;
-		const isOverBudget = remainingInUSD < 0;
-		const percentUsed =
-			displayAmountInUSD > 0 ? (totalSpentInUSD / displayAmountInUSD) * 100 : 0;
-
-		// Also keep per-budget currency values for display
+		// Budgets can be in different currencies: totals add the home-currency
+		// figures the server computed for each budget.
 		const totalSpent = validBudgets.reduce(
-			(sum, b) => sum + Number(b.actualSpend),
+			(sum, b) => sum + Number(b.actualSpendInHome),
 			0,
 		);
 
 		const totalAllocated = validBudgets.reduce(
-			(sum, b) => sum + Number(b.pegToActual ? b.effectiveAmount : b.amount),
+			(sum, b) =>
+				sum + Number(b.pegToActual ? b.effectiveAmountInHome : b.amountInHome),
 			0,
 		);
 
 		const displayAmount = totalAllocated;
 		const remaining = displayAmount - totalSpent;
+		const isOverBudget = remaining < 0;
+		const percentUsed =
+			displayAmount > 0 ? (totalSpent / displayAmount) * 100 : 0;
 
 		const variableBudgets = validBudgets
 			.filter(
@@ -69,19 +56,14 @@ export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 			overBudgetCategories,
 			underBudgetCategories: validBudgets.length - overBudgetCategories,
 			unallocatedAmount: 0,
-			unallocatedAmountInUSD: 0,
 		};
 
 		return {
 			validBudgets,
 			totalSpent,
-			totalSpentInUSD,
 			totalAllocated,
-			totalAllocatedInUSD,
 			displayAmount,
-			displayAmountInUSD,
 			remaining,
-			remainingInUSD,
 			isOverBudget,
 			percentUsed,
 			variableBudgets,
