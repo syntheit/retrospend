@@ -23,6 +23,7 @@ vi.mock("~/server/services/notifications", () => ({
 
 vi.mock("~/server/services/shared-expenses/balance", () => ({
 	computeBalance: vi.fn().mockResolvedValue({ byCurrency: { USD: -100 } }),
+	computeBalanceByProject: vi.fn().mockResolvedValue(new Map()),
 }));
 
 // ── Import under test ─────────────────────────────────────────────────────

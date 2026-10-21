@@ -72,8 +72,65 @@ export async function computeBalance(
 	participantB: ParticipantRef,
 	opts?: BalanceOptions,
 ): Promise<BalanceResult> {
+	const { byCurrency } = await computePairBalance(
+		db,
+		participantA,
+		participantB,
+		opts,
+	);
+	return { byCurrency };
+}
+
+/**
+ * Per-scope breakdown of the pairwise balance between A and B: one entry per
+ * projectId the pair has history in (`null` = direct / project-less rows).
+ * Each entry uses the same sign convention as {@link computeBalance} (positive
+ * = B owes A) and already nets that scope's settlements, so summing every
+ * entry gives exactly the GLOBAL balance. Scopes whose balance is zero in
+ * every currency are omitted.
+ *
+ * Used to allocate a payment entered in the global (People) view across the
+ * per-project balances, and to show settlement-aware per-project pills.
+ */
+export async function computeBalanceByProject(
+	db: PrismaClient | Prisma.TransactionClient,
+	participantA: ParticipantRef,
+	participantB: ParticipantRef,
+): Promise<Map<string | null, Record<string, number>>> {
+	const { byProject } = await computePairBalance(
+		db,
+		participantA,
+		participantB,
+	);
+	return byProject;
+}
+
+/**
+ * {@link computeBalance} (global) plus its per-scope breakdown (see
+ * {@link computeBalanceByProject}) from a single set of queries.
+ */
+export async function computeBalanceWithProjects(
+	db: PrismaClient | Prisma.TransactionClient,
+	participantA: ParticipantRef,
+	participantB: ParticipantRef,
+): Promise<{
+	byCurrency: Record<string, number>;
+	byProject: Map<string | null, Record<string, number>>;
+}> {
+	return computePairBalance(db, participantA, participantB);
+}
+
+async function computePairBalance(
+	db: PrismaClient | Prisma.TransactionClient,
+	participantA: ParticipantRef,
+	participantB: ParticipantRef,
+	opts?: BalanceOptions,
+): Promise<{
+	byCurrency: Record<string, number>;
+	byProject: Map<string | null, Record<string, number>>;
+}> {
 	if (sameParticipant(participantA, participantB)) {
-		return { byCurrency: {} };
+		return { byCurrency: {}, byProject: new Map() };
 	}
 
 	const prisma = db as PrismaClient;
@@ -102,7 +159,7 @@ export async function computeBalance(
 		aRefs.map((r) => `${r.participantType}:${r.participantId}`),
 	);
 	if (bRefs.some((r) => aKeys.has(`${r.participantType}:${r.participantId}`))) {
-		return { byCurrency: {} };
+		return { byCurrency: {}, byProject: new Map() };
 	}
 
 	const orConds = (refs: ParticipantRef[]) =>
@@ -128,7 +185,7 @@ export async function computeBalance(
 			participantId: true,
 			shareAmount: true,
 			transaction: {
-				select: { currency: true },
+				select: { currency: true, projectId: true },
 			},
 		},
 	});
@@ -145,7 +202,7 @@ export async function computeBalance(
 			participantId: true,
 			shareAmount: true,
 			transaction: {
-				select: { currency: true },
+				select: { currency: true, projectId: true },
 			},
 		},
 	});
@@ -172,6 +229,7 @@ export async function computeBalance(
 			toParticipantId: true,
 			amount: true,
 			currency: true,
+			projectId: true,
 		},
 	});
 
@@ -197,13 +255,26 @@ export async function computeBalance(
 			toParticipantId: true,
 			amount: true,
 			currency: true,
+			projectId: true,
 		},
 	});
 
 	const byCurrency: Record<string, number> = {};
+	const byProject = new Map<string | null, Record<string, number>>();
 
-	const add = (currency: string, value: number) => {
+	const add = (
+		currency: string,
+		value: number,
+		projectId: string | null | undefined,
+	) => {
 		byCurrency[currency] = (byCurrency[currency] ?? 0) + value;
+		const scope = projectId ?? null;
+		let bucket = byProject.get(scope);
+		if (!bucket) {
+			bucket = {};
+			byProject.set(scope, bucket);
+		}
+		bucket[currency] = (bucket[currency] ?? 0) + value;
 	};
 
 	// A person can appear on ONE transaction under multiple alias refs (e.g. both
@@ -224,7 +295,11 @@ export async function computeBalance(
 		const k = splitKey(row.transactionId, row.participantType, row.participantId);
 		if (seenSplits.has(k)) continue;
 		seenSplits.add(k);
-		add(row.transaction.currency, Number(row.shareAmount));
+		add(
+			row.transaction.currency,
+			Number(row.shareAmount),
+			row.transaction.projectId,
+		);
 	}
 
 	// B paid, A owes -> negative (A owes B, so B is owed less)
@@ -232,7 +307,11 @@ export async function computeBalance(
 		const k = splitKey(row.transactionId, row.participantType, row.participantId);
 		if (seenSplits.has(k)) continue;
 		seenSplits.add(k);
-		add(row.transaction.currency, -Number(row.shareAmount));
+		add(
+			row.transaction.currency,
+			-Number(row.shareAmount),
+			row.transaction.projectId,
+		);
 	}
 
 	// Settlements can also match under multiple alias refs on both ends. Dedupe
@@ -259,7 +338,7 @@ export async function computeBalance(
 		const k = settlementKey(row);
 		if (seenSettlements.has(k)) continue;
 		seenSettlements.add(k);
-		add(row.currency, -Number(row.amount));
+		add(row.currency, -Number(row.amount), row.projectId);
 	}
 
 	// Settlements from A to B increase what B owes A -> add
@@ -267,11 +346,15 @@ export async function computeBalance(
 		const k = settlementKey(row);
 		if (seenSettlements.has(k)) continue;
 		seenSettlements.add(k);
-		add(row.currency, Number(row.amount));
+		add(row.currency, Number(row.amount), row.projectId);
 	}
 
 	pruneZeroBalances(byCurrency);
-	return { byCurrency };
+	for (const [scope, bucket] of byProject) {
+		pruneZeroBalances(bucket);
+		if (Object.keys(bucket).length === 0) byProject.delete(scope);
+	}
+	return { byCurrency, byProject };
 }
 
 /**

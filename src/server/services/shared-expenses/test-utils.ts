@@ -611,6 +611,7 @@ export function createStatefulDb() {
 								if (txSel.currency) txOut.currency = tx?.currency ?? "USD";
 								if (txSel.paidByType) txOut.paidByType = tx?.paidByType;
 								if (txSel.paidById) txOut.paidById = tx?.paidById;
+								if (txSel.projectId) txOut.projectId = tx?.projectId ?? null;
 								out.transaction = txOut;
 							} else {
 								out.transaction = { currency: tx?.currency ?? "USD" };

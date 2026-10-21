@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { computeBalance } from "./balance";
+import { computeBalance, computeBalanceByProject } from "./balance";
 import { SettlementService } from "./settlement.service";
 
 // Mock the notifications module: it uses the global DB and cannot run in unit tests.
@@ -12,6 +12,7 @@ vi.mock("~/server/services/notifications", () => ({
 // of the balance module's own correctness (tested separately in balance.test.ts).
 vi.mock("./balance", () => ({
 	computeBalance: vi.fn(),
+	computeBalanceByProject: vi.fn(),
 }));
 
 // ── mock factory ───────────────────────────────────────────────────────────────
@@ -30,6 +31,24 @@ function createMockDb() {
 		},
 		shadowProfile: {
 			findUnique: vi.fn().mockResolvedValue({ id: "shadow-1" }),
+		},
+		// Project "P" has alice, bob and the shadow as participants.
+		projectParticipant: {
+			findMany: vi.fn(
+				(args: {
+					where: {
+						projectId: string;
+						OR: Array<{ participantType: string; participantId: string }>;
+					};
+				}) =>
+					Promise.resolve(
+						args.where.projectId === "P"
+							? args.where.OR.filter((r) =>
+									["alice", "bob", "shadow-1"].includes(r.participantId),
+								)
+							: [],
+					),
+			),
 		},
 		auditLogEntry: {
 			create: vi.fn().mockResolvedValue({ id: "audit-1" }),
@@ -63,6 +82,7 @@ describe("SettlementService", () => {
 		service = new SettlementService(db as never, "alice");
 		// Default: alice has no balance with bob (owes nothing)
 		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+		vi.mocked(computeBalanceByProject).mockResolvedValue(new Map());
 	});
 
 	// ── initiateSettlement ────────────────────────────────────────────────────
@@ -362,6 +382,51 @@ describe("SettlementService", () => {
 				bob,
 				{ projectScope: "P" },
 			);
+		});
+
+		it("global entry splits the payment into one row per scope, smallest debt first", async () => {
+			// Globally alice owes bob $50: $30 in project P and $20 directly.
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
+			vi.mocked(computeBalanceByProject).mockResolvedValue(
+				new Map<string | null, Record<string, number>>([
+					["P", { USD: -30 }],
+					[null, { USD: -20 }],
+				]),
+			);
+			db.settlement.create.mockImplementation(
+				(args: { data: Record<string, unknown> }) =>
+					Promise.resolve({ id: `s-${String(args.data.projectId)}` }),
+			);
+
+			const result = await service.initiateSettlement({
+				toParticipant: bob,
+				amount: 50,
+				currency: "USD",
+			});
+
+			const rows = (
+				db.settlement.create.mock.calls as Array<
+					[{ data: { projectId: unknown; amount: unknown } }]
+				>
+			).map(([a]) => ({ projectId: a.data.projectId, amount: a.data.amount }));
+			expect(rows).toEqual([
+				{ projectId: null, amount: 20 },
+				{ projectId: "P", amount: 30 },
+			]);
+			expect(result.settlements).toHaveLength(2);
+		});
+
+		it("rejects a project the caller is not a member of", async () => {
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
+			await expect(
+				service.initiateSettlement({
+					toParticipant: bob,
+					amount: 10,
+					currency: "USD",
+					projectId: "OTHER",
+				}),
+			).rejects.toThrow(/not a member of this project/);
+			expect(db.settlement.create).not.toHaveBeenCalled();
 		});
 
 		it("global entry (no projectId): cap is GLOBAL and the row is stamped projectId=null", async () => {

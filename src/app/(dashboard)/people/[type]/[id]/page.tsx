@@ -137,6 +137,16 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 	const isMobile = useIsMobile();
 
 	const [settleUpOpen, setSettleUpOpen] = useState(false);
+	// Scope of the open settle-up: undefined = everything with this person (the
+	// server splits the payment across projects), a projectId = that project,
+	// null = only the expenses outside any project.
+	const [settleScope, setSettleScope] = useState<string | null | undefined>(
+		undefined,
+	);
+	const openSettleUp = (scope?: string | null) => {
+		setSettleScope(scope);
+		setSettleUpOpen(true);
+	};
 	const [selectedProjectId, setSelectedProjectId] = useState<
 		string | null | undefined
 	>(undefined);
@@ -693,7 +703,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 									{/* Action buttons */}
 									<div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
 										{!isSettled && (
-											<Button onClick={() => setSettleUpOpen(true)} size="sm">
+											<Button onClick={() => openSettleUp()} size="sm">
 												{settleButtonLabel}
 											</Button>
 										)}
@@ -802,7 +812,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 													</ContextMenuTrigger>
 													{!isSettled && (
 														<ContextMenuContent>
-															<ContextMenuItem onClick={() => setSettleUpOpen(true)}>
+															<ContextMenuItem onClick={() => openSettleUp()}>
 																<CheckCircle2 className="h-4 w-4" />
 																{t("settleUp")}
 															</ContextMenuItem>
@@ -944,7 +954,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																	<>
 																		{hasProject && <ContextMenuSeparator />}
 																		<ContextMenuItem
-																			onClick={() => setSettleUpOpen(true)}
+																			onClick={() => openSettleUp(proj.projectId)}
 																		>
 																			<CheckCircle2 className="h-4 w-4" />
 																			{t("settleUp")}
@@ -1134,6 +1144,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 					participantType={participantType}
 					personAvatarUrl={identity.avatarUrl}
 					personName={identity.name}
+					projectId={settleScope}
 				/>
 			)}
 			{editingTransactionId && (
