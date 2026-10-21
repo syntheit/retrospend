@@ -8,6 +8,7 @@ import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import { db } from "~/server/db";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
@@ -231,8 +232,9 @@ export const auth = betterAuth({
 					});
 
 					// Email Verification Logic
-					if (!env.SMTP_HOST) {
-						// Bypass verification if SMTP is not configured
+					if (!(await isEmailDeliveryEnabled())) {
+						// Bypass verification if mail can't go out (no SMTP, or the
+						// admin turned email off): the user could never verify.
 						await db.user.update({
 							where: { id: user.id },
 							data: { emailVerified: true },
@@ -301,7 +303,7 @@ export const auth = betterAuth({
 					}
 
 					// Absorb guest sessions and ghosts with this email, but only once
-					// the email is verified. Without SMTP it was auto-verified above;
+					// the email is verified. With email off it was auto-verified above;
 					// otherwise this is a no-op here and runs from auth.verifyEmail.
 					// The helper re-reads emailVerified and never throws.
 					await migrateGuestDataForVerifiedUser(db, user.id, {

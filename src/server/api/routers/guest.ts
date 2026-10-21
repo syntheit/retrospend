@@ -12,7 +12,7 @@ import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
-import { getAppSettings } from "~/server/services/settings";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
 	anonymizeParticipantReferences,
 	DELETED_GUEST_SENTINEL,
@@ -32,12 +32,6 @@ const GUEST_RESUME_TTL_MS = 60 * 60 * 1000; // 1 hour
 function newGuestToken() {
 	const raw = randomBytes(32).toString("hex");
 	return { raw, hashed: createHash("sha256").update(raw).digest("hex") };
-}
-
-async function canSendEmail(): Promise<boolean> {
-	if (!env.SMTP_HOST) return false;
-	const settings = await getAppSettings();
-	return settings.enableEmail;
 }
 
 export const guestRouter = createTRPCRouter({
@@ -187,7 +181,7 @@ export const guestRouter = createTRPCRouter({
 			// who knows a guest's email take over their identity. Instead, when
 			// email works, mail a one-time resume link to the address on file;
 			// otherwise fall through and create a separate guest.
-			const emailAvailable = await canSendEmail();
+			const emailAvailable = await isEmailDeliveryEnabled();
 
 			// Wrap guest session creation in a transaction to prevent duplicates
 			// from concurrent registrations with the same email + project.

@@ -8,15 +8,16 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { db } from "~/server/db";
+import { db, db as globalDb } from "~/server/db";
 import {
 	getEmailChangeAlertTemplate,
 	getEmailChangeVerificationTemplate,
 } from "~/server/email-templates";
+import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
 import { getImageUrl } from "~/server/storage";
 import { sendEmail } from "~/server/mailer";
-import { getAppSettings } from "~/server/services/settings";
+import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 import {
 	backgroundSettingsSchema,
@@ -236,8 +237,7 @@ export const profileRouter = createTRPCRouter({
 				}
 			}
 
-			const settings = await getAppSettings();
-			const canSendEmail = !!env.SMTP_HOST && settings.enableEmail;
+			const canSendEmail = await isEmailDeliveryEnabled();
 
 			// If email is changing and we can send verification emails, use the pending flow
 			if (isEmailChange && canSendEmail) {
@@ -298,7 +298,7 @@ export const profileRouter = createTRPCRouter({
 			}
 
 			// No email change, or email is disabled - update directly
-			return await db.user.update({
+			const updated = await db.user.update({
 				where: { id: session.user.id },
 				data: {
 					name: input.name,
@@ -312,6 +312,16 @@ export const profileRouter = createTRPCRouter({
 					email: true,
 				},
 			});
+
+			// With email off, addresses are trusted like at signup: if the account
+			// is verified, pick up guest sessions and ghosts for the new address,
+			// same as a confirmed email change. Needs the global db (RLS bypass);
+			// the helper re-checks emailVerified and never throws.
+			if (isEmailChange) {
+				await migrateGuestDataForVerifiedUser(globalDb, session.user.id);
+			}
+
+			return updated;
 		}),
 
 	getPendingEmail: protectedProcedure.query(async ({ ctx }) => {
