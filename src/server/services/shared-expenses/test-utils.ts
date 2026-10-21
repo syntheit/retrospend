@@ -45,6 +45,7 @@ export interface SplitRecord {
 	verifiedAt: Date | null;
 	rejectionReason: string | null;
 	hasUnseenChanges: boolean;
+	createdAt?: Date;
 }
 
 export interface SettlementRecord {
@@ -256,6 +257,7 @@ export function createStatefulDb() {
 						verifiedAt: (sp.verifiedAt as Date | null) ?? null,
 						rejectionReason: null,
 						hasUnseenChanges: false,
+						createdAt: new Date(),
 					};
 					splits.set(spId, record);
 					return record;
@@ -537,6 +539,14 @@ export function createStatefulDb() {
 						const idIn = (w.id as { in?: string[] } | undefined)?.in;
 						if (idIn !== undefined && !idIn.includes(sp.id)) return false;
 
+						// createdAt filter for auto-accept expiry
+						const spCreatedLt = (w.createdAt as { lt?: Date } | undefined)?.lt;
+						if (
+							spCreatedLt !== undefined &&
+							!((sp.createdAt ?? new Date()) < spCreatedLt)
+						)
+							return false;
+
 						// Nested transaction filter (for computeBalance)
 						if (w.transaction) {
 							const txFilter = w.transaction as Record<string, unknown>;
@@ -573,6 +583,12 @@ export function createStatefulDb() {
 								| undefined;
 							if (createdAtFilter?.lt !== undefined) {
 								if (!(tx.createdAt < createdAtFilter.lt)) return false;
+							}
+							const updatedAtFilter = txFilter.updatedAt as
+								| { lt?: Date }
+								| undefined;
+							if (updatedAtFilter?.lt !== undefined) {
+								if (!(tx.updatedAt < updatedAtFilter.lt)) return false;
 							}
 							if (
 								txFilter.billingPeriodId !== undefined &&
@@ -757,6 +773,7 @@ export function createStatefulDb() {
 						verifiedAt: item.verifiedAt ?? null,
 						rejectionReason: null,
 						hasUnseenChanges: (item.hasUnseenChanges as boolean | undefined) ?? false,
+						createdAt: new Date(),
 					});
 				}
 				return { count: args.data.length };

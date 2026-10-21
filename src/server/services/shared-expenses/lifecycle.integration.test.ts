@@ -1457,3 +1457,104 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		expect(after.byCurrency).toEqual({ USD: -30 });
 	});
 });
+
+// ── Suite 1J: Auto-accept window restarts on edit ─────────────────────────────
+
+describe("Suite 1J: Auto-accept expiry counts from the last re-verification", () => {
+	const DAY = 24 * 60 * 60 * 1000;
+	let db: ReturnType<typeof createStatefulDb>;
+
+	beforeEach(() => {
+		db = createStatefulDb();
+	});
+
+	function seedPendingSplit(dates: {
+		txCreated: Date;
+		txUpdated: Date;
+		splitCreated: Date;
+	}) {
+		db._stores.transactions.set("tx-old", {
+			id: "tx-old",
+			description: "Old dinner",
+			amount: 100,
+			currency: "USD",
+			date: dates.txCreated,
+			paidByType: "user",
+			paidById: ALICE,
+			createdByType: "user",
+			createdById: ALICE,
+			splitMode: "EQUAL",
+			projectId: null,
+			billingPeriodId: null,
+			isLocked: false,
+			notes: null,
+			receiptUrl: null,
+			categoryId: null,
+			createdAt: dates.txCreated,
+			updatedAt: dates.txUpdated,
+		});
+		db._stores.splits.set("sp-bob", {
+			id: "sp-bob",
+			transactionId: "tx-old",
+			participantType: "user",
+			participantId: BOB,
+			shareAmount: 50,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "PENDING",
+			verifiedAt: null,
+			rejectionReason: null,
+			hasUnseenChanges: true,
+			createdAt: dates.splitCreated,
+		});
+	}
+
+	it("auto-accepts a split that has been pending for more than 7 days", async () => {
+		const old = new Date(Date.now() - 30 * DAY);
+		seedPendingSplit({ txCreated: old, txUpdated: old, splitCreated: old });
+
+		const accepted = await new VerificationService(
+			db as never,
+			bobRef,
+		).findAndAutoAcceptExpired();
+
+		expect(accepted).toBe(1);
+		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe(
+			"AUTO_ACCEPTED",
+		);
+	});
+
+	it("keeps an old expense edited yesterday pending (reset in place)", async () => {
+		const old = new Date(Date.now() - 30 * DAY);
+		seedPendingSplit({
+			txCreated: old,
+			txUpdated: new Date(Date.now() - DAY),
+			splitCreated: old,
+		});
+
+		const accepted = await new VerificationService(
+			db as never,
+			bobRef,
+		).findAndAutoAcceptExpired();
+
+		expect(accepted).toBe(0);
+		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe("PENDING");
+	});
+
+	it("keeps a split recreated yesterday pending (split rows replaced)", async () => {
+		const old = new Date(Date.now() - 30 * DAY);
+		seedPendingSplit({
+			txCreated: old,
+			txUpdated: old,
+			splitCreated: new Date(Date.now() - DAY),
+		});
+
+		const accepted = await new VerificationService(
+			db as never,
+			bobRef,
+		).findAndAutoAcceptExpired();
+
+		expect(accepted).toBe(0);
+		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe("PENDING");
+	});
+});

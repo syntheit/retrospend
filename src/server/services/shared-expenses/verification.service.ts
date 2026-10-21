@@ -61,7 +61,14 @@ export class VerificationService {
 
 	/**
 	 * Auto-accepts all PENDING SplitParticipant records for the current user
-	 * where the transaction was created more than `days` days ago.
+	 * that have been waiting more than `days` days.
+	 *
+	 * The clock starts when the split was last put up for verification, not
+	 * when the expense was created: an edit either recreates the split rows
+	 * (fresh createdAt) or resets them in place alongside an update of the
+	 * expense row (fresh updatedAt). Requiring both to be older than the cutoff
+	 * gives a re-verification after an edit its full window, even on an old
+	 * expense.
 	 *
 	 * TODO: Move this to a proper scheduled job. For v1, called at the start of
 	 * getQueue() so stale items are cleaned up whenever the user checks their queue.
@@ -76,8 +83,9 @@ export class VerificationService {
 				participantType: this.actor.participantType,
 				participantId: this.actor.participantId,
 				verificationStatus: "PENDING",
+				createdAt: { lt: cutoff },
 				transaction: {
-					createdAt: { lt: cutoff },
+					updatedAt: { lt: cutoff },
 				},
 			},
 			include: {
