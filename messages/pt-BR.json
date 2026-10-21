@@ -1116,6 +1116,7 @@
     "deleteAssets": "Excluir ativos",
     "deleting": "Excluindo...",
     "assetsDeleted": "Ativos excluídos",
+    "missingRates": "Sem taxa de câmbio para {currencies}. Esses ativos ficam fora dos totais.",
     "editAsset": "Editar ativo",
     "editAssetDescription": "Atualize os dados do ativo.",
     "addAssetDescription": "Crie um novo ativo para acompanhar seu patrimônio.",

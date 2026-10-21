@@ -61,6 +61,8 @@ export function createMockDb() {
 		recurringTemplate: makeMockModel(),
 		exchangeRate: makeMockModel(),
 		asset: makeMockModel(),
+		assetAccount: makeMockModel(),
+		assetHistory: makeMockModel(),
 		assetSnapshot: makeMockModel(),
 		project: makeMockModel(),
 		projectParticipant: makeMockModel(),

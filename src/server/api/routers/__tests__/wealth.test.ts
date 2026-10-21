@@ -1,0 +1,138 @@
+/**
+ * Wealth router (batch 4): runway counts spending once and only what counts
+ * toward analytics; balance updates use today's rate, not the stored one.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useExpenseTable } from "~/test/expense-table";
+import { createMockDb } from "~/test/mock-db";
+import { useRateTable } from "~/test/rate-table";
+
+const mockDb = vi.hoisted(() => ({}) as ReturnType<typeof createMockDb>);
+
+vi.mock("~/env", () => ({
+	env: {
+		DATABASE_URL: "postgresql://mock",
+		NODE_ENV: "test",
+		BETTER_AUTH_SECRET: "secret",
+		NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+	},
+}));
+
+vi.mock("~/server/db", () => ({
+	db: mockDb as never,
+	createUserScopedDb: vi.fn(() => mockDb),
+}));
+
+vi.mock("~/server/better-auth", () => ({
+	auth: { api: { getSession: vi.fn().mockResolvedValue(null) } },
+}));
+
+import { createCallerFactory } from "~/server/api/trpc";
+import { callAndFlush, makeSession } from "~/test/trpc-test-utils";
+import { wealthRouter } from "../wealth";
+
+const createCaller = createCallerFactory(wealthRouter);
+const caller = () =>
+	createCaller({
+		session: makeSession({ id: "user-1" }),
+		db: mockDb as never,
+		headers: new Headers(),
+	});
+
+const NOW = new Date(2026, 9, 21, 12);
+const ASSET_ID = "classet00000000000000001";
+
+beforeEach(() => {
+	vi.useFakeTimers();
+	vi.setSystemTime(NOW);
+	vi.clearAllMocks();
+	Object.assign(mockDb, createMockDb());
+	useRateTable(mockDb);
+	mockDb.expense.findFirst.mockResolvedValue({ date: new Date(2025, 0, 1) });
+});
+
+afterEach(() => {
+	vi.useRealTimers();
+});
+
+describe("getRunwayStats", () => {
+	it("counts an amortized purchase once and skips excluded and draft expenses", async () => {
+		useExpenseTable(mockDb, [
+			// 600 USD laptop spread over 6 months: parent + 6 children of 100
+			{ date: new Date(2026, 4, 1), amount: 600, currency: "USD", amountInUSD: 600, isAmortizedParent: true },
+			...[4, 5, 6, 7, 8, 9].map((m) => ({
+				date: new Date(2026, m, 1),
+				amount: 100,
+				currency: "USD",
+				amountInUSD: 100,
+				isAmortizedChild: true,
+			})),
+			{ date: new Date(2026, 8, 3), amount: 900, currency: "USD", amountInUSD: 900, excludeFromAnalytics: true },
+			{ date: new Date(2026, 8, 4), amount: 700, currency: "USD", amountInUSD: 700, status: "DRAFT" },
+			{ date: new Date(2026, 8, 5), amount: 300, currency: "USD", amountInUSD: 300 },
+		]);
+
+		const result = await callAndFlush(() => caller().getRunwayStats({ currency: "USD" }));
+
+		expect(result.monthsActive).toBe(6);
+		expect(result.averageMonthlySpend).toBeCloseTo((600 + 300) / 6);
+	});
+
+	it("ARS: ARS spending as entered, USD at the ARS rate", async () => {
+		useExpenseTable(mockDb, [
+			{ date: new Date(2026, 8, 1), amount: 600000, currency: "ARS", amountInUSD: 600 },
+			{ date: new Date(2026, 8, 2), amount: 100, currency: "USD", amountInUSD: 100 },
+		]);
+
+		const result = await callAndFlush(() => caller().getRunwayStats({ currency: "ARS" }));
+
+		expect(result.averageMonthlySpend).toBeCloseTo((600000 + 100 * 1560) / 6);
+	});
+});
+
+describe("updateAssetBalance", () => {
+	it("values the new balance at today's rate of the asset's type", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue({
+			id: ASSET_ID,
+			userId: "user-1",
+			currency: "ARS",
+			exchangeRate: 900, // stale
+			exchangeRateType: "official",
+		});
+		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
+
+		await callAndFlush(() =>
+			caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: 1495000 }),
+		);
+
+		expect(mockDb.assetAccount.update).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({ exchangeRate: 1495, exchangeRateType: "official" }),
+			}),
+		);
+		const snapshot = mockDb.assetSnapshot.upsert.mock.calls[0]![0] as {
+			create: { balanceInUSD: number };
+		};
+		expect(snapshot.create.balanceInUSD).toBeCloseTo(1000);
+	});
+
+	it("keeps a custom rate", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue({
+			id: ASSET_ID,
+			userId: "user-1",
+			currency: "ARS",
+			exchangeRate: 2000,
+			exchangeRateType: "custom",
+		});
+		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
+
+		await callAndFlush(() =>
+			caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: -4000 }),
+		);
+
+		const snapshot = mockDb.assetSnapshot.upsert.mock.calls[0]![0] as {
+			create: { balanceInUSD: number };
+		};
+		expect(snapshot.create.balanceInUSD).toBeCloseTo(-2);
+	});
+});

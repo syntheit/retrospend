@@ -1,133 +1,79 @@
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
+import { fromUSD, isValidRate, toUSD, USD } from "~/lib/money";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
 import type { Prisma, PrismaClient } from "~prisma";
-import { isCrypto as isCryptoCheck } from "~/lib/currency-format";
-import { fromUSD, toUSD } from "../currency";
-import { getBestExchangeRate } from "../api/routers/shared-currency";
+import {
+	findExchangeRate,
+	findExchangeRatesForDates,
+} from "../exchange-rates";
+
+/** Rate type of a rate the user typed in; it is kept as is, never looked up. */
+export const CUSTOM_RATE_TYPE = "custom";
+
+/** End of a snapshot's UTC day, so rates published that day count for it. */
+function endOfSnapshotDay(dateStr: string): Date {
+	return new Date(`${dateStr}T23:59:59.999Z`);
+}
 
 /**
  * WealthService - Encapsulates business logic for wealth/asset management
  *
- * Extracted from wealth.ts router to eliminate ~120 lines of duplication
- * across createAsset, updateAssetBalance, and updateAsset mutations.
+ * Asset rates follow the money convention (~/lib/money). An asset keeps the
+ * rate type it was saved with (blue, official, ...) and every valuation looks
+ * that type up in the rate table for the date being valued. Only a custom
+ * rate (type "custom") is used as typed.
  */
 export class WealthService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
 	/**
-	 * Resolves the exchange rate for a given currency and date.
+	 * Resolves the exchange rate to store on an asset.
 	 *
-	 * Priority:
-	 * 1. User-provided rate (if both rate and type are supplied)
-	 * 2. Best available rate from database (getBestExchangeRate)
-	 * 3. Throws error if no rate found for non-base currency
-	 *
-	 * @returns { rate: number, rateType: string | null }
+	 * 1. USD: 1.
+	 * 2. A custom rate typed by the user: used as is.
+	 * 3. Otherwise the table rate for the date, preferring the requested type.
+	 * 4. No rate at all: BAD_REQUEST, never 1.
 	 */
 	async resolveExchangeRate(
 		currency: string,
 		date: Date,
-		userProvidedRate?: { rate: number; type: string },
+		requested?: { rate?: number | null; type?: string | null },
 	): Promise<{ rate: number; rateType: string | null }> {
-		// Base currency always has rate of 1
 		if (currency === BASE_CURRENCY) {
 			return { rate: 1, rateType: null };
 		}
 
-		// Use user-provided rate if available
-		if (userProvidedRate?.rate && userProvidedRate?.type) {
-			return { rate: userProvidedRate.rate, rateType: userProvidedRate.type };
+		if (requested?.type === CUSTOM_RATE_TYPE && isValidRate(requested.rate)) {
+			return { rate: requested.rate, rateType: CUSTOM_RATE_TYPE };
 		}
 
-		// Fetch exchange rate automatically using prioritized logic
-		const bestRate = await getBestExchangeRate(
-			this.db as PrismaClient,
+		const bestRate = await findExchangeRate(
+			this.db,
 			currency,
 			date,
+			requested?.type,
 		);
-
 		if (bestRate) {
 			return { rate: bestRate.rate, rateType: bestRate.type };
 		}
 
-		// No rate found - throw error
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: `No exchange rate found for ${currency}. Please sync rates or provide a custom rate.`,
 		});
 	}
 
-	/**
-	 * Calculates balance in USD with "Billion Dollar" sanity check.
-	 *
-	 * The sanity check prevents a common bug where developers multiply
-	 * instead of divide when converting to USD. If rate > 1 and the
-	 * USD balance is somehow larger than the original balance, we know
-	 * something went wrong.
-	 *
-	 * @throws TRPCError if sanity check fails
-	 */
-	calculateBalanceInUSD(
-		balance: number,
-		rate: number,
-		currency: string,
-		_rateType: string | null = null,
-	): number {
-		if (rate <= 0) {
+	/** Balance in USD (unrounded). Negative balances convert like any other. */
+	calculateBalanceInUSD(balance: number, rate: number, currency: string): number {
+		if (currency !== USD && !isValidRate(rate)) {
 			throw new TRPCError({
 				code: "INTERNAL_SERVER_ERROR",
 				message: `Invalid exchange rate: ${rate}. Rate must be positive.`,
 			});
 		}
-
-		if (isCryptoCheck(currency)) {
-			return balance * rate;
-		}
-
-		let effectiveRate = rate;
-
-		// FIAT AUTO-INVERSION DETECTION
-		// For many weak currencies (like ARS, BRL, CLP, PYG), the rate is > 1 (Units per USD).
-		// If we see a rate like 0.000699 for ARS, it's almost certainly inverted (1/1430).
-		// NOTE: This only applies to fiat currencies we know are weaker than USD.
-		const isStrongCurrency = [
-			"GBP",
-			"EUR",
-			"KWD",
-			"BHD",
-			"OMR",
-			"JOD",
-		].includes(currency);
-
-		if (
-			currency !== BASE_CURRENCY &&
-			!isStrongCurrency &&
-			effectiveRate < 0.1
-		) {
-			// If rate is very small for a weak currency, it's likely inverted.
-			// 0.0007 for ARS -> 1428
-			effectiveRate = 1 / effectiveRate;
-		}
-
-		const balanceInUSD = balance / effectiveRate;
-
-		// Sanity check to prevent "Billion Dollar" bug (multiplying instead of dividing)
-		// If the resulting USD balance is more than 50% LARGER than the native balance,
-		// and it's not a strong currency, something is wrong.
-		if (
-			currency !== BASE_CURRENCY &&
-			!isStrongCurrency &&
-			balanceInUSD > balance * 1.5
-		) {
-			throw new TRPCError({
-				code: "INTERNAL_SERVER_ERROR",
-				message: `Exchange rate calculation sanity check failed for ${currency}. Resulting USD balance ($${balanceInUSD.toLocaleString()}) is nonsensical relative to native balance (${balance.toLocaleString()}). The rate (${rate}) might be inverted or incorrect.`,
-			});
-		}
-
-		return balanceInUSD;
+		return toUSD(balance, currency, rate);
 	}
 
 	/**
@@ -174,9 +120,11 @@ export class WealthService {
 			},
 		});
 	}
+
 	async getDashboardSummary(userId: string, targetCurrency: string) {
 		const db = this.db as PrismaClient;
 		const today = normalizeDate(new Date());
+		const now = new Date();
 
 		const assets = await db.assetAccount.findMany({
 			where: { userId: userId },
@@ -196,110 +144,76 @@ export class WealthService {
 		});
 
 		const assetMap = new Map(assets.map((a) => [a.id, a]));
-		const currencies = [
-			...new Set([...assets.map((a) => a.currency), targetCurrency]),
-		];
 
-		// BATCH FETCH EXCHANGE RATES (O(1) lookups)
-		const allRates = await db.exchangeRate.findMany({
-			where: {
-				currency: { in: currencies },
-				date: { lte: today },
-			},
-			orderBy: [{ date: "desc" }, { type: "asc" }],
-		});
+		// One rate query per currency; per-date picks happen in memory.
+		const rateFor = await findExchangeRatesForDates(db, [
+			...assets.map((a) => a.currency),
+			targetCurrency,
+		]);
 
-		const ratesInfoMap = new Map<
-			string,
-			{ rate: number; type: string | null }
-		>();
-		ratesInfoMap.set(BASE_CURRENCY, { rate: 1, type: null });
-		const finalizedCurrencies = new Set<string>();
-
-		for (const r of allRates) {
-			if (finalizedCurrencies.has(r.currency)) continue;
-			// Sorting combined with early exit ensures best rate (date desc, type asc)
-			ratesInfoMap.set(r.currency, {
-				rate: toNumberWithDefault(r.rate),
-				type: r.type,
-			});
-			finalizedCurrencies.add(r.currency);
-		}
-
-		// Validate and log missing rates
-		for (const currency of currencies) {
-			if (currency === BASE_CURRENCY) continue;
-			if (!ratesInfoMap.has(currency)) {
-				console.warn(
-					`[WealthDashboard] Missing exchange rate for ${currency} on or before ${today.toISOString()}. Defaulting to 1.`,
-				);
-				ratesInfoMap.set(currency, { rate: 1, type: null });
+		/**
+		 * The rate that values `asset` on `date`: its custom rate, else the
+		 * table rate of its own type, else the rate stored on the asset when
+		 * its currency has no table rate at all. Null when there is none.
+		 */
+		const assetRate = (asset: (typeof assets)[number], date: Date) => {
+			if (asset.currency === USD) return 1;
+			const stored = toNumberOrNull(asset.exchangeRate);
+			if (asset.exchangeRateType === CUSTOM_RATE_TYPE && isValidRate(stored)) {
+				return stored;
 			}
-		}
-
-		const targetRateData = ratesInfoMap.get(targetCurrency) ?? {
-			rate: 1,
-			type: null,
+			const picked = rateFor(asset.currency, date, asset.exchangeRateType);
+			if (picked) return picked.rate;
+			return isValidRate(stored) ? stored : null;
 		};
-		// Target conversion always assumes targetRate is Units per USD (fiat-style)
-		// unless the target currency itself is crypto, but dashboard usually displays in fiat.
-		const targetRate = targetRateData.rate;
+		const targetRateAt = (date: Date) =>
+			rateFor(targetCurrency, date)?.rate ?? null;
+
+		const targetRate = targetRateAt(now);
 		const convertToTarget = (usdVal: number) =>
 			fromUSD(usdVal, targetCurrency, targetRate);
 
-		let totalNetWorthUSD = 0;
-		let totalAssetsUSD = 0;
-		let totalLiabilitiesUSD = 0;
-		let totalLiquidAssetsUSD = 0;
 		let weightedAPR = 0;
 		let totalLiabilityBalanceUSD = 0;
+		const missingRateCurrencies = new Set<string>();
 
 		const assetsWithUSD = assets.map((asset) => {
-			const rateData = ratesInfoMap.get(asset.currency) || {
-				rate: toNumberOrNull(asset.exchangeRate) || 1,
-				type: asset.exchangeRateType || null,
-			};
+			const balance = toNumberWithDefault(asset.balance);
+			const rate = assetRate(asset, now);
 
-			let balanceInUSD = 0;
-			try {
-				balanceInUSD = this.calculateBalanceInUSD(
-					toNumberWithDefault(asset.balance),
-					rateData.rate,
-					asset.currency,
-					rateData.type,
+			if (rate === null) {
+				// Left out of every total and reported, never valued at 1:1.
+				console.warn(
+					`[WealthDashboard] No exchange rate for ${asset.currency}; asset ${asset.id} left out of totals`,
 				);
-			} catch (e) {
-				console.error(
-					`[WealthDashboard] Error calculating balance for ${asset.name}:`,
-					e,
-				);
-				// Last resort fallback
-				balanceInUSD = toUSD(toNumberWithDefault(asset.balance), asset.currency, rateData.rate);
+				missingRateCurrencies.add(asset.currency);
+				return {
+					...asset,
+					balance,
+					balanceInUSD: 0,
+					balanceInTargetCurrency: 0,
+					rateMissing: true,
+				};
 			}
 
-			const isLiability = asset.type.startsWith("LIABILITY_");
-			const adjustedBalanceInUSD = isLiability ? -balanceInUSD : balanceInUSD;
+			const balanceInUSD = toUSD(balance, asset.currency, rate);
 
-			totalNetWorthUSD += adjustedBalanceInUSD;
-
-			if (isLiability) {
-				totalLiabilitiesUSD += balanceInUSD;
+			if (asset.type.startsWith("LIABILITY_")) {
 				totalLiabilityBalanceUSD += balanceInUSD;
 				if (asset.interestRate && balanceInUSD > 0) {
 					weightedAPR += asset.interestRate * balanceInUSD;
-				}
-			} else {
-				totalAssetsUSD += balanceInUSD;
-				if (asset.isLiquid) {
-					totalLiquidAssetsUSD += balanceInUSD;
 				}
 			}
 
 			return {
 				...asset,
-				balance: toNumberWithDefault(asset.balance),
+				balance,
 				balanceInUSD,
-				balanceInTargetCurrency: convertToTarget(balanceInUSD),
+				balanceInTargetCurrency:
+					asset.currency === targetCurrency
+						? balance
+						: convertToTarget(balanceInUSD),
+				rateMissing: false,
 			};
 		});
 
@@ -356,61 +270,6 @@ export class WealthService {
 			}
 		});
 
-		// Organize rates for historical lookup
-		// Map<Currency, Array<{ date: string, type: string, rate: number }>>
-		const historicalRates = new Map<
-			string,
-			{ date: string; type: string; rate: number }[]
-		>();
-		const sortedRatesAsc = [...allRates].sort(
-			(a, b) => a.date.getTime() - b.date.getTime(),
-		);
-
-		for (const r of sortedRatesAsc) {
-			const list = historicalRates.get(r.currency) || [];
-			list.push({
-				date: r.date.toISOString().split("T")[0] || "",
-				type: r.type,
-				rate: toNumberWithDefault(r.rate),
-			});
-			historicalRates.set(r.currency, list);
-		}
-
-		const getHistoricalRate = (
-			currency: string,
-			targetType: string | null,
-			dateStr: string,
-		): { rate: number; type: string | null } | null => {
-			if (currency === BASE_CURRENCY) return { rate: 1, type: null };
-			const rates = historicalRates.get(currency);
-			if (!rates || rates.length === 0) return null;
-
-			const candidateRates = rates.filter((r) => r.date <= dateStr);
-			if (candidateRates.length === 0) return null;
-
-			// Get the subset of rates for the LATEST available date
-			const lastDate = candidateRates[candidateRates.length - 1]?.date;
-			const ratesOnDate = candidateRates.filter((r) => r.date === lastDate);
-
-			if (targetType) {
-				const match = ratesOnDate.find((r) => r.type === targetType);
-				if (match) return { rate: match.rate, type: match.type };
-			}
-
-			// Fallback logic "blue" > "official" > "crypto" > Any
-			const blue = ratesOnDate.find((r) => r.type === "blue");
-			if (blue) return { rate: blue.rate, type: blue.type };
-
-			const official = ratesOnDate.find((r) => r.type === "official");
-			if (official) return { rate: official.rate, type: official.type };
-
-			const crypto = ratesOnDate.find((r) => r.type === "crypto");
-			if (crypto) return { rate: crypto.rate, type: crypto.type };
-
-			const first = ratesOnDate[0];
-			return first ? { rate: first.rate, type: first.type } : null;
-		};
-
 		const history: {
 			date: string;
 			amount: number;
@@ -434,6 +293,11 @@ export class WealthService {
 				);
 			});
 
+			// Every value on this date uses the rates for this date, both the
+			// asset's own and the target currency's.
+			const day = endOfSnapshotDay(dateStr);
+			const dayTargetRate = targetRateAt(day);
+
 			let assetsInTarget = 0;
 			let liabilitiesInTarget = 0;
 
@@ -441,71 +305,19 @@ export class WealthService {
 				const asset = assetMap.get(assetId);
 				if (!asset) continue;
 
-				// Try to recalculate USD/Target value using historical rate
-				let histRateData = getHistoricalRate(
-					asset.currency,
-					asset.exchangeRateType,
-					dateStr,
-				);
+				const rate = assetRate(asset, day);
+				// No rate for the asset: the USD value recorded with the snapshot.
+				const balInUSD =
+					rate === null
+						? (currentBalancesUSD.get(assetId) ?? 0)
+						: toUSD(balNative, asset.currency, rate);
 
-				// Fallback to earliest available rate if history is missing for this currency
-				if (!histRateData) {
-					const rates = historicalRates.get(asset.currency);
-					if (rates && rates.length > 0) {
-						// rates are sorted by date (earliest first) in the historicalRates map
-						const first = rates[0];
-						if (first) {
-							histRateData = { rate: first.rate, type: first.type };
-						}
-					}
-				}
+				const value =
+					asset.currency === targetCurrency && rate !== null
+						? balNative
+						: fromUSD(balInUSD, targetCurrency, dayTargetRate);
 
-				let balInUSD = 0;
-				if (histRateData) {
-					try {
-						balInUSD = this.calculateBalanceInUSD(
-							balNative,
-							histRateData.rate,
-							asset.currency,
-							histRateData.type,
-						);
-					} catch (_e) {
-						// If service throws (sanity check failed), it means the rate is likely garbage
-						// Fallback to snapshot but with extreme suspicion
-						balInUSD = currentBalancesUSD.get(assetId) ?? 0;
-					}
-				} else {
-					// Fallback to snapshot's stored USD value (last resort)
-					balInUSD = currentBalancesUSD.get(assetId) ?? 0;
-				}
-
-				// FINAL SANITY CHECK for historical data points
-				// If a single day's balance in USD is > $500M and native balance is much smaller,
-				// it's almost certainly a "Billion Dollar bug" snapshot. We skip this asset for this date.
-				const isStrongCurrency = [
-					"GBP",
-					"EUR",
-					"KWD",
-					"BHD",
-					"OMR",
-					"JOD",
-				].includes(asset.currency);
-				if (
-					!isStrongCurrency &&
-					asset.currency !== BASE_CURRENCY &&
-					balInUSD > 500_000_000 &&
-					balInUSD > balNative * 10
-				) {
-					console.warn(
-						`[WealthDashboard] Ignoring suspicious historical data point for asset ${asset.id} on ${dateStr}: USD ${balInUSD}`,
-					);
-					balInUSD = 0;
-				}
-
-				const isLiability = asset.type.startsWith("LIABILITY_");
-				const value = convertToTarget(balInUSD);
-
-				if (isLiability) {
+				if (asset.type.startsWith("LIABILITY_")) {
 					liabilitiesInTarget += value;
 				} else {
 					assetsInTarget += value;
@@ -520,16 +332,32 @@ export class WealthService {
 			});
 		}
 
+		const sumTarget = (pick: (a: (typeof assetsWithUSD)[number]) => boolean) =>
+			assetsWithUSD
+				.filter((a) => !a.rateMissing && pick(a))
+				.reduce((total, a) => total + a.balanceInTargetCurrency, 0);
+		const totalAssets = sumTarget((a) => !a.type.startsWith("LIABILITY_"));
+		const totalLiabilities = sumTarget((a) => a.type.startsWith("LIABILITY_"));
+		const totalLiquidAssets = sumTarget(
+			(a) => !a.type.startsWith("LIABILITY_") && a.isLiquid,
+		);
+		const totalNetWorth = totalAssets - totalLiabilities;
+
 		const todayStr = today.toISOString().split("T")[0] ?? "";
-		if (
-			history.length === 0 ||
-			history[history.length - 1]?.date !== todayStr
-		) {
+		const lastEntry = history[history.length - 1];
+		if (lastEntry?.date === todayStr) {
+			// Today's point matches the headline numbers
+			Object.assign(lastEntry, {
+				amount: totalNetWorth,
+				assets: totalAssets,
+				liabilities: totalLiabilities,
+			});
+		} else {
 			history.push({
 				date: todayStr,
-				amount: convertToTarget(totalNetWorthUSD),
-				assets: convertToTarget(totalAssetsUSD),
-				liabilities: convertToTarget(totalLiabilitiesUSD),
+				amount: totalNetWorth,
+				assets: totalAssets,
+				liabilities: totalLiabilities,
 			});
 		}
 
@@ -544,15 +372,17 @@ export class WealthService {
 		const netWorth30DaysAgo = entry30DaysAgo?.amount ?? 0;
 
 		return {
-			totalNetWorth: convertToTarget(totalNetWorthUSD),
-			totalAssets: convertToTarget(totalAssetsUSD),
-			totalLiabilities: convertToTarget(totalLiabilitiesUSD),
-			totalLiquidAssets: convertToTarget(totalLiquidAssetsUSD),
+			totalNetWorth,
+			totalAssets,
+			totalLiabilities,
+			totalLiquidAssets,
 			weightedAPR,
 			assets: assetsWithUSD,
 			history,
 			currency: targetCurrency,
 			netWorth30DaysAgo,
+			/** Currencies with no rate at all; their assets are left out of totals. */
+			missingRateCurrencies: [...missingRateCurrencies],
 		};
 	}
 }

@@ -1116,6 +1116,7 @@
     "deleteAssets": "Удалить активы",
     "deleting": "Удаление...",
     "assetsDeleted": "Активы успешно удалены",
+    "missingRates": "Нет курса для {currencies}. Эти активы не учтены в итогах.",
     "editAsset": "Изменить актив",
     "editAssetDescription": "Обновите данные своего актива.",
     "addAssetDescription": "Добавьте актив, чтобы учитывать его в капитале.",

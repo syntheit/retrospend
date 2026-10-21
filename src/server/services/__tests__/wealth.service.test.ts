@@ -1,106 +1,222 @@
 import { TRPCError } from "@trpc/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { MissingRateError } from "~/lib/money";
+import { createMockDb } from "~/test/mock-db";
+import { DEFAULT_RATES, RATE_DATE, type TestRateRow, useRateTable } from "~/test/rate-table";
 import { WealthService } from "../wealth.service";
 
-// WealthService constructor takes a db, but calculateBalanceInUSD is purely synchronous
-// and does not access the db. Pass an empty object cast to avoid spinning up Prisma.
+// calculateBalanceInUSD is synchronous and never touches the db.
 const svc = new WealthService({} as never);
 
 describe("WealthService.calculateBalanceInUSD", () => {
-	describe("crypto currencies (amount * rate)", () => {
-		it("BTC: 0.5 BTC @ 50000 USD/BTC → 25000 USD", () => {
-			expect(svc.calculateBalanceInUSD(0.5, 50000, "BTC")).toBe(25000);
-		});
+	it("crypto multiplies by the USD price", () => {
+		expect(svc.calculateBalanceInUSD(0.5, 50000, "BTC")).toBe(25000);
+		expect(svc.calculateBalanceInUSD(1000, 0.08, "DOGE")).toBeCloseTo(80);
+	});
 
-		it("ETH: 2 ETH @ 3000 USD/ETH → 6000 USD", () => {
-			expect(svc.calculateBalanceInUSD(2, 3000, "ETH")).toBe(6000);
-		});
+	it("fiat divides by units per USD, strong or weak", () => {
+		expect(svc.calculateBalanceInUSD(5000, 1415, "ARS")).toBeCloseTo(3.534, 3);
+		expect(svc.calculateBalanceInUSD(1000, 0.92, "EUR")).toBeCloseTo(1087, 0);
+		expect(svc.calculateBalanceInUSD(100, 0.3102, "KWD")).toBeCloseTo(322.4, 1);
+		expect(svc.calculateBalanceInUSD(100, 1, "USD")).toBe(100);
+	});
 
-		it("low-price crypto (DOGE): 1000 DOGE @ 0.08 USD/DOGE → 80 USD", () => {
-			expect(svc.calculateBalanceInUSD(1000, 0.08, "DOGE")).toBeCloseTo(80);
-		});
+	it("negative balances (overdrafts) convert instead of throwing", () => {
+		expect(svc.calculateBalanceInUSD(-156000, 1560, "ARS")).toBeCloseTo(-100);
+		expect(svc.calculateBalanceInUSD(-5000, 163.83, "JPY")).toBeCloseTo(-30.52, 2);
+	});
 
-		it("crypto with very small rate is NOT auto-inverted (uses multiply path)", () => {
-			// DOGE at 0.001 USD - crypto goes through `balance * rate`, not the fiat branch
-			expect(svc.calculateBalanceInUSD(10000, 0.001, "DOGE")).toBeCloseTo(10);
+	it("throws for a zero or negative rate", () => {
+		expect(() => svc.calculateBalanceInUSD(100, 0, "ARS")).toThrow(TRPCError);
+		expect(() => svc.calculateBalanceInUSD(100, -1, "ARS")).toThrow(TRPCError);
+	});
+});
+
+describe("WealthService.resolveExchangeRate", () => {
+	let db: ReturnType<typeof createMockDb>;
+	let service: WealthService;
+
+	beforeEach(() => {
+		db = createMockDb();
+		useRateTable(db);
+		service = new WealthService(db as never);
+	});
+
+	it("USD is always 1", async () => {
+		await expect(service.resolveExchangeRate("USD", RATE_DATE)).resolves.toEqual({
+			rate: 1,
+			rateType: null,
 		});
 	});
 
-	describe("fiat currencies (balance / rate)", () => {
-		it("ARS: 5000 ARS @ 1415 ARS/USD → ~3.534 USD", () => {
-			expect(svc.calculateBalanceInUSD(5000, 1415, "ARS")).toBeCloseTo(3.534, 3);
-		});
-
-		it("EUR: 1000 EUR @ 0.92 EUR/USD → ~1087 USD", () => {
-			expect(svc.calculateBalanceInUSD(1000, 0.92, "EUR")).toBeCloseTo(1087, 0);
-		});
-
-		it("USD passthrough: 100 USD @ rate 1 → 100 USD", () => {
-			// BASE_CURRENCY skips the strong-currency and sanity checks
-			expect(svc.calculateBalanceInUSD(100, 1, "USD")).toBeCloseTo(100);
-		});
+	it("looks up the requested type instead of trusting the sent number", async () => {
+		await expect(
+			service.resolveExchangeRate("ARS", RATE_DATE, { rate: 0.00067, type: "official" }),
+		).resolves.toEqual({ rate: 1495, rateType: "official" });
 	});
 
-	describe("auto-inversion for weak currencies with inverted rates", () => {
-		it("ARS stored inverted (0.0007 instead of ~1430) is auto-corrected", () => {
-			// effectiveRate = 1 / 0.0007 ≈ 1428.57; result = 5000 / 1428.57 ≈ 3.5
-			const result = svc.calculateBalanceInUSD(5000, 0.0007, "ARS");
-			expect(result).toBeCloseTo(3.5, 1);
-		});
-
-		it("auto-inversion does NOT apply to strong currencies", () => {
-			// KWD rate = 0.30 (< 0.1 is false for 0.30, so no auto-inversion anyway)
-			// The key: isStrongCurrency = true skips both the inversion AND the sanity check
-			const result = svc.calculateBalanceInUSD(100, 0.3, "KWD");
-			expect(result).toBeCloseTo(333, 0);
-		});
+	it("keeps a custom rate as typed", async () => {
+		await expect(
+			service.resolveExchangeRate("ARS", RATE_DATE, { rate: 1700, type: "custom" }),
+		).resolves.toEqual({ rate: 1700, rateType: "custom" });
 	});
 
-	describe("strong currencies (GBP, EUR, KWD, BHD, OMR, JOD)", () => {
-		it("GBP: 1000 GBP @ 0.79 → ~1266 USD, no sanity throw", () => {
-			// 1266 < 1000 * 1.5 = 1500, so no throw even without exception
-			expect(svc.calculateBalanceInUSD(1000, 0.79, "GBP")).toBeCloseTo(1266, 0);
-		});
-
-		it("KWD: 100 KWD @ 0.3 → ~333 USD, sanity check skipped due to isStrongCurrency", () => {
-			// 333 > 100 * 1.5 = 150 would fire the sanity check, but KWD is in the strong list
-			expect(svc.calculateBalanceInUSD(100, 0.3, "KWD")).toBeCloseTo(333, 0);
-		});
-
-		it("all 6 strong currencies bypass the sanity check", () => {
-			const strongCurrencies = ["GBP", "EUR", "KWD", "BHD", "OMR", "JOD"];
-			for (const currency of strongCurrencies) {
-				// Use a rate that would fire the sanity check for a non-strong currency
-				expect(() => svc.calculateBalanceInUSD(100, 0.3, currency)).not.toThrow();
-			}
+	it("a currency without rates is a BAD_REQUEST", async () => {
+		await expect(service.resolveExchangeRate("XYZ", RATE_DATE)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
 		});
 	});
+});
 
-	describe("sanity check (Billion Dollar bug prevention)", () => {
-		it("throws for non-strong fiat when balanceInUSD > balance * 1.5", () => {
-			// CHF is a valid fiat currency but NOT in the strong list
-			// Rate 0.5 → balanceInUSD = 1000 / 0.5 = 2000; 2000 > 1000 * 1.5 = 1500 → throws
-			expect(() => svc.calculateBalanceInUSD(1000, 0.5, "CHF")).toThrow(TRPCError);
-		});
+describe("WealthService.getDashboardSummary", () => {
+	let db: ReturnType<typeof createMockDb>;
+	let service: WealthService;
 
-		it("sanity check does NOT fire when balanceInUSD ≤ balance * 1.5", () => {
-			// ARS @ 1415: 5000 / 1415 ≈ 3.53; 3.53 < 5000 * 1.5 → no throw
-			expect(() => svc.calculateBalanceInUSD(5000, 1415, "ARS")).not.toThrow();
-		});
+	function asset(overrides: Record<string, unknown>) {
+		return {
+			id: "a1",
+			name: "Account",
+			type: "CASH",
+			currency: "USD",
+			balance: 0,
+			exchangeRate: null,
+			exchangeRateType: null,
+			isLiquid: true,
+			interestRate: null,
+			createdAt: new Date(2026, 0, 1),
+			updatedAt: new Date(2026, 0, 1),
+			...overrides,
+		};
+	}
 
-		it("sanity check does NOT fire for USD (base currency exempt)", () => {
-			// Even with a bad rate, USD skips the sanity check entirely
-			expect(() => svc.calculateBalanceInUSD(1000, 0.5, "USD")).not.toThrow();
-		});
+	beforeEach(() => {
+		db = createMockDb();
+		useRateTable(db);
+		service = new WealthService(db as never);
+		db.assetSnapshot.findMany.mockResolvedValue([]);
+		db.assetSnapshot.findFirst.mockResolvedValue(null);
 	});
 
-	describe("invalid rates", () => {
-		it("throws TRPCError for zero rate", () => {
-			expect(() => svc.calculateBalanceInUSD(100, 0, "EUR")).toThrow(TRPCError);
-		});
+	it("ARS home: ARS balance as is, USD at the ARS rate, crypto via USD", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "pesos", currency: "ARS", balance: 1000000, exchangeRateType: "blue" }),
+			asset({ id: "dollars", currency: "USD", balance: 500 }),
+			asset({ id: "btc", currency: "BTC", balance: 0.01, exchangeRateType: "crypto", isLiquid: false }),
+		]);
 
-		it("throws TRPCError for negative rate", () => {
-			expect(() => svc.calculateBalanceInUSD(100, -1, "EUR")).toThrow(TRPCError);
-		});
+		const summary = await service.getDashboardSummary("user-1", "ARS");
+
+		expect(summary.totalNetWorth).toBeCloseTo(1000000 + 500 * 1560 + 645.459 * 1560, 2);
+		expect(summary.totalLiquidAssets).toBeCloseTo(1000000 + 500 * 1560, 2);
+		expect(summary.assets.find((a) => a.id === "pesos")!.balanceInTargetCurrency).toBe(1000000);
+	});
+
+	it("USD home: each asset uses its own rate type", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "blue", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+			asset({ id: "official", currency: "ARS", balance: 1495000, exchangeRateType: "official" }),
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.assets.map((a) => a.balanceInUSD)).toEqual([1000, 1000]);
+		expect(summary.totalNetWorth).toBeCloseTo(2000);
+	});
+
+	it("a custom rate wins over the table", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ currency: "ARS", balance: 200000, exchangeRate: 2000, exchangeRateType: "custom" }),
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.totalNetWorth).toBeCloseTo(100);
+	});
+
+	it("liabilities subtract, negative balances included", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "cash", currency: "EUR", balance: 878.7, exchangeRateType: "official" }),
+			asset({ id: "card", type: "LIABILITY_CREDIT_CARD", currency: "USD", balance: 300, interestRate: 40 }),
+			asset({ id: "overdraft", currency: "ARS", balance: -156000, exchangeRateType: "blue" }),
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.totalAssets).toBeCloseTo(1000 - 100);
+		expect(summary.totalLiabilities).toBeCloseTo(300);
+		expect(summary.totalNetWorth).toBeCloseTo(600);
+		expect(summary.weightedAPR).toBe(40);
+	});
+
+	it("an asset whose currency has no rate is left out and reported, not taken 1:1", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "usd", balance: 100 }),
+			asset({ id: "odd", currency: "XYZ", balance: 1000000 }),
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.totalNetWorth).toBe(100);
+		expect(summary.missingRateCurrencies).toEqual(["XYZ"]);
+		expect(summary.assets.find((a) => a.id === "odd")!.rateMissing).toBe(true);
+	});
+
+	it("falls back to the asset's stored rate when its currency has no table rate", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ currency: "XYZ", balance: 1000, exchangeRate: 10, exchangeRateType: "official" }),
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.totalNetWorth).toBe(100);
+		expect(summary.missingRateCurrencies).toEqual([]);
+	});
+
+	it("a home currency with no rate is an error", async () => {
+		db.assetAccount.findMany.mockResolvedValue([asset({ balance: 100 })]);
+
+		await expect(service.getDashboardSummary("user-1", "XYZ")).rejects.toBeInstanceOf(
+			MissingRateError,
+		);
+	});
+
+	it("history values each day at that day's rates, not today's", async () => {
+		const OLD = new Date("2026-03-01T00:00:00Z");
+		const rows: TestRateRow[] = [
+			...DEFAULT_RATES,
+			{ currency: "ARS", type: "blue", rate: 1000, date: OLD },
+			{ currency: "EUR", type: "official", rate: 0.9, date: OLD },
+		];
+		useRateTable(db, rows);
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "pesos", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+		]);
+		db.assetSnapshot.findMany.mockResolvedValue([
+			{ accountId: "pesos", date: new Date("2026-03-10T00:00:00Z"), balance: 1000000, balanceInUSD: 1000 },
+		]);
+
+		const usdHome = await service.getDashboardSummary("user-1", "USD");
+		const eurHome = await service.getDashboardSummary("user-1", "EUR");
+
+		const marchUSD = usdHome.history.find((h) => h.date === "2026-03-10")!;
+		expect(marchUSD.amount).toBeCloseTo(1000); // 1M ARS at 1000, not at 1560
+		const marchEUR = eurHome.history.find((h) => h.date === "2026-03-10")!;
+		expect(marchEUR.amount).toBeCloseTo(900); // EUR rate of that day too
+		// Today's point matches the headline total
+		expect(usdHome.history.at(-1)!.amount).toBeCloseTo(usdHome.totalNetWorth);
+		expect(usdHome.totalNetWorth).toBeCloseTo(1000);
+	});
+
+	it("history falls back to the snapshot's recorded USD value when no rate exists", async () => {
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "odd", currency: "XYZ", balance: 5 }),
+		]);
+		db.assetSnapshot.findMany.mockResolvedValue([
+			{ accountId: "odd", date: new Date("2026-03-10T00:00:00Z"), balance: 5, balanceInUSD: 42 },
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBe(42);
 	});
 });

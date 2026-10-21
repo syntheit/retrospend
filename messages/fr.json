@@ -1116,6 +1116,7 @@
     "deleteAssets": "Supprimer les actifs",
     "deleting": "Suppression...",
     "assetsDeleted": "Actifs supprimés avec succès",
+    "missingRates": "Aucun taux de change pour {currencies}. Ces actifs ne sont pas inclus dans les totaux.",
     "editAsset": "Modifier l'actif",
     "editAssetDescription": "Mettez à jour les détails de votre actif.",
     "addAssetDescription": "Créez un actif pour suivre l’évolution de votre patrimoine.",

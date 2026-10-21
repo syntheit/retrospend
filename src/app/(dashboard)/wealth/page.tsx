@@ -219,6 +219,14 @@ export default function WealthPage() {
 						weightedAPR={stats.weightedAPR}
 					/>
 
+					{dashboardData && dashboardData.missingRateCurrencies.length > 0 && (
+						<p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+							{t("missingRates", {
+								currencies: dashboardData.missingRateCurrencies.join(", "),
+							})}
+						</p>
+					)}
+
 					{/* Chart + Portfolio side by side */}
 					<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
 						<div className="lg:col-span-7">
