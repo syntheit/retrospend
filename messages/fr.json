@@ -1346,7 +1346,7 @@
     "allSettled": "Votre solde avec {name} est réglé.",
     "remainingBalance": "Solde restant",
     "done": "Terminé",
-    "allAmount": "Totalité — {amount}",
+    "allAmount": "Totalité : {amount}",
     "offsetNote": "Payer le montant total compense aussi {amount} dus dans l’autre sens dans d’autres projets, pour que chaque projet revienne à zéro.",
     "offsetNotePartial": "Un paiement partiel laisse tels quels les soldes de projets dans l’autre sens.",
     "offsetNoteAll": "Tout régler compense aussi les soldes de projets dans l’autre sens, pour que chaque projet revienne à zéro.",
