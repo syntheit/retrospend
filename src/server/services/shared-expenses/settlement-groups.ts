@@ -15,6 +15,8 @@
  * flag is false on the rows, whichever way each row points.
  */
 
+import { currencyDecimals } from "~/lib/money";
+
 export interface GroupRow {
 	id: string;
 	fromParticipantType: string;
@@ -253,7 +255,7 @@ export function summarizeGroup(rows: GroupRow[], userId: string): GroupSummary {
 /** Short English description of a group for notifications. */
 export function describeGroupAmount(rows: GroupRow[], userId: string): string {
 	const summary = summarizeGroup(rows, userId);
-	const formatted = `${summary.currency} ${summary.amount.toFixed(2)}`;
+	const formatted = `${summary.currency} ${summary.amount.toFixed(currencyDecimals(summary.currency))}`;
 	if (summary.kind === "square_up") return `an offset of ${formatted}`;
 	return summary.cashByCurrency.length > 1
 		? `${formatted} across ${summary.cashByCurrency.length} currencies`

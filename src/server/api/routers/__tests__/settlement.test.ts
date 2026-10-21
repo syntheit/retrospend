@@ -35,14 +35,16 @@ import { SettlementService } from "~/server/services/shared-expenses/settlement.
 // ── Mock DB factory ───────────────────────────────────────────────────────
 
 function makeMockDb() {
+	const settlement = {
+		findUnique: vi.fn(),
+		create: vi.fn().mockResolvedValue({ id: "s-new" }),
+		// Group writes: every row of the (single-row) group matches.
+		updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+		deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+		findMany: vi.fn().mockResolvedValue([]),
+	};
 	return {
-		settlement: {
-			findUnique: vi.fn(),
-			create: vi.fn().mockResolvedValue({ id: "s-new" }),
-			update: vi.fn().mockResolvedValue({ id: "s-1", confirmedByPayee: true }),
-			delete: vi.fn().mockResolvedValue({}),
-			findMany: vi.fn().mockResolvedValue([]),
-		},
+		settlement,
 		sharedTransaction: {
 			count: vi.fn().mockResolvedValue(1), // assert relationship passes by default
 		},
@@ -51,9 +53,7 @@ function makeMockDb() {
 		},
 		$transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
 			cb({
-				settlement: {
-					create: vi.fn().mockResolvedValue({ id: "s-new" }),
-				},
+				settlement,
 				$executeRaw: vi.fn().mockResolvedValue(1),
 				auditLog: { create: vi.fn().mockResolvedValue({}) },
 			}),
@@ -93,9 +93,9 @@ describe("SettlementService.confirmSettlement", () => {
 		// Service is constructed with payee's userId
 		const svc = new SettlementService(db as never, "payee-user");
 		const result = await svc.confirmSettlement("s-1");
-		expect(db.settlement.update).toHaveBeenCalledWith(
+		expect(db.settlement.updateMany).toHaveBeenCalledWith(
 			expect.objectContaining({
-				where: { id: "s-1" },
+				where: { id: { in: ["s-1"] }, status: { in: ["PROPOSED"] } },
 				data: expect.objectContaining({ confirmedByPayee: true, status: "FINALIZED" }),
 			}),
 		);
@@ -124,7 +124,7 @@ describe("SettlementService.confirmSettlement", () => {
 	it("already-confirmed settlement throws BAD_REQUEST", async () => {
 		const db = makeMockDb();
 		db.settlement.findUnique.mockResolvedValue(
-			makeSettlement({ confirmedByPayee: true }),
+			makeSettlement({ confirmedByPayee: true, status: "FINALIZED" }),
 		);
 		const svc = new SettlementService(db as never, "payee-user");
 		await expect(svc.confirmSettlement("s-1")).rejects.toMatchObject({
@@ -150,7 +150,9 @@ describe("SettlementService.deletePendingSettlement", () => {
 		db.settlement.findUnique.mockResolvedValue(makeSettlement());
 		const svc = new SettlementService(db as never, "payer-user");
 		const result = await svc.deletePendingSettlement("s-1");
-		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-1" } });
+		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
+			where: { id: { in: ["s-1"] }, status: { in: ["PROPOSED", "REJECTED"] } },
+		});
 		expect(result).toEqual({ success: true });
 	});
 
@@ -166,7 +168,7 @@ describe("SettlementService.deletePendingSettlement", () => {
 	it("confirmed settlement cannot be deleted", async () => {
 		const db = makeMockDb();
 		db.settlement.findUnique.mockResolvedValue(
-			makeSettlement({ confirmedByPayee: true }),
+			makeSettlement({ confirmedByPayee: true, status: "FINALIZED" }),
 		);
 		const svc = new SettlementService(db as never, "payer-user");
 		await expect(svc.deletePendingSettlement("s-1")).rejects.toMatchObject({
@@ -205,7 +207,9 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 		db.settlement.findUnique.mockResolvedValue(makeAutoFinalized());
 		const svc = new SettlementService(db as never, "payer-user");
 		const result = await svc.voidAutoFinalizedSettlement("s-1");
-		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-1" } });
+		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
+			where: { id: { in: ["s-1"] }, status: { in: ["FINALIZED"] } },
+		});
 		expect(result).toEqual({ success: true });
 	});
 
@@ -220,7 +224,9 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 		);
 		const svc = new SettlementService(db as never, "payer-user");
 		const result = await svc.voidAutoFinalizedSettlement("s-1");
-		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-1" } });
+		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
+			where: { id: { in: ["s-1"] }, status: { in: ["FINALIZED"] } },
+		});
 		expect(result).toEqual({ success: true });
 	});
 
@@ -231,7 +237,7 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-		expect(db.settlement.delete).not.toHaveBeenCalled();
+		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
 	});
 
 	it("cannot void a settlement to a real USER payee", async () => {
@@ -247,7 +253,7 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-		expect(db.settlement.delete).not.toHaveBeenCalled();
+		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
 	});
 
 	it("cannot void a genuinely confirmed settlement (no autoConfirmedReason)", async () => {
@@ -260,7 +266,7 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		});
-		expect(db.settlement.delete).not.toHaveBeenCalled();
+		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
 	});
 
 	it("cannot void a PROPOSED (not yet finalized) settlement", async () => {
@@ -276,7 +282,7 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		});
-		expect(db.settlement.delete).not.toHaveBeenCalled();
+		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
 	});
 
 	it("non-existent settlement throws NOT_FOUND", async () => {

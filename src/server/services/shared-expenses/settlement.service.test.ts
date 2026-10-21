@@ -38,8 +38,9 @@ function createMockDb() {
 			create: vi.fn(),
 			findUnique: vi.fn(),
 			findMany: vi.fn().mockResolvedValue([]),
-			update: vi.fn(),
-			delete: vi.fn(),
+			// Group writes; one row per group unless a test says otherwise.
+			updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+			deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
 		},
 		sharedTransaction: {
 			// Relationship exists by default. Project "OTHER" has no expenses
@@ -592,27 +593,31 @@ describe("SettlementService", () => {
 	// ── confirmSettlement ─────────────────────────────────────────────────────
 
 	describe("confirmSettlement", () => {
+		const pendingFromBob = {
+			id: "settle-1",
+			toParticipantType: "user",
+			toParticipantId: "alice", // alice is the payee
+			fromParticipantType: "user",
+			fromParticipantId: "bob",
+			status: "PROPOSED",
+			confirmedByPayer: true,
+			confirmedByPayee: false,
+			amount: 50,
+			currency: "USD",
+			projectId: null,
+			paymentGroupId: null,
+			isOffset: false,
+		};
+
 		it("sets status to FINALIZED when payee confirms", async () => {
-			db.settlement.findUnique.mockResolvedValue({
-				id: "settle-1",
-				toParticipantType: "user",
-				toParticipantId: "alice", // alice is the payee
-				fromParticipantType: "user",
-				fromParticipantId: "bob",
-				confirmedByPayee: false,
-				amount: 50,
-				currency: "USD",
-			});
-			db.settlement.update.mockResolvedValue({
-				id: "settle-1",
-				status: "FINALIZED",
-			});
+			db.settlement.findUnique.mockResolvedValue(pendingFromBob);
 
 			await service.confirmSettlement("settle-1");
 
-			expect(db.settlement.update).toHaveBeenCalledWith({
-				where: { id: "settle-1" },
+			expect(db.settlement.updateMany).toHaveBeenCalledWith({
+				where: { id: { in: ["settle-1"] }, status: { in: ["PROPOSED"] } },
 				data: {
+					confirmedByPayer: true,
 					confirmedByPayee: true,
 					status: "FINALIZED",
 					settledAt: expect.any(Date),
@@ -621,22 +626,11 @@ describe("SettlementService", () => {
 		});
 
 		it("returns the updated settlement record", async () => {
-			db.settlement.findUnique.mockResolvedValue({
-				id: "settle-1",
-				toParticipantType: "user",
-				toParticipantId: "alice",
-				fromParticipantType: "user",
-				fromParticipantId: "bob",
-				confirmedByPayee: false,
-				amount: 50,
-				currency: "USD",
-			});
-			const finalized = { id: "settle-1", status: "FINALIZED" };
-			db.settlement.update.mockResolvedValue(finalized);
+			db.settlement.findUnique.mockResolvedValue(pendingFromBob);
 
 			const result = await service.confirmSettlement("settle-1");
 
-			expect(result).toBe(finalized);
+			expect(result).toMatchObject({ id: "settle-1", status: "FINALIZED" });
 		});
 
 		it("rejects when non-payee tries to confirm", async () => {
@@ -656,11 +650,8 @@ describe("SettlementService", () => {
 
 		it("rejects when settlement is already confirmed", async () => {
 			db.settlement.findUnique.mockResolvedValue({
-				id: "settle-1",
-				toParticipantType: "user",
-				toParticipantId: "alice",
-				fromParticipantType: "user",
-				fromParticipantId: "bob",
+				...pendingFromBob,
+				status: "FINALIZED",
 				confirmedByPayee: true, // already confirmed
 			});
 
@@ -681,25 +672,33 @@ describe("SettlementService", () => {
 	// ── deletePendingSettlement ───────────────────────────────────────────────
 
 	describe("deletePendingSettlement", () => {
+		const pendingFromAlice = {
+			id: "settle-1",
+			fromParticipantType: "user",
+			fromParticipantId: "alice", // alice is the payer
+			toParticipantType: "user",
+			toParticipantId: "bob",
+			amount: 30,
+			currency: "USD",
+			status: "PROPOSED",
+			initiatedAt: new Date("2026-03-01"),
+			confirmedByPayer: true,
+			confirmedByPayee: false,
+			projectId: null,
+			paymentGroupId: null,
+			isOffset: false,
+		};
+
 		it("payer can delete an unconfirmed (PROPOSED) settlement", async () => {
-			db.settlement.findUnique.mockResolvedValue({
-				id: "settle-1",
-				fromParticipantType: "user",
-				fromParticipantId: "alice", // alice is the payer
-				toParticipantType: "user",
-				toParticipantId: "bob",
-				amount: 30,
-				currency: "USD",
-				status: "PROPOSED",
-				initiatedAt: new Date("2026-03-01"),
-				confirmedByPayee: false,
-			});
-			db.settlement.delete.mockResolvedValue({ id: "settle-1" });
+			db.settlement.findUnique.mockResolvedValue(pendingFromAlice);
 
 			const result = await service.deletePendingSettlement("settle-1");
 
-			expect(db.settlement.delete).toHaveBeenCalledWith({
-				where: { id: "settle-1" },
+			expect(db.settlement.deleteMany).toHaveBeenCalledWith({
+				where: {
+					id: { in: ["settle-1"] },
+					status: { in: ["PROPOSED", "REJECTED"] },
+				},
 			});
 			expect(result).toEqual({ success: true });
 		});
@@ -719,9 +718,8 @@ describe("SettlementService", () => {
 
 		it("rejects deletion of a confirmed settlement", async () => {
 			db.settlement.findUnique.mockResolvedValue({
-				id: "settle-1",
-				fromParticipantType: "user",
-				fromParticipantId: "alice",
+				...pendingFromAlice,
+				status: "FINALIZED",
 				confirmedByPayee: true, // already confirmed by payee
 			});
 
@@ -803,9 +801,15 @@ describe("SettlementService", () => {
 					id: "s-1",
 					amount: 50,
 					currency: "USD",
+					fromParticipantType: "user",
 					fromParticipantId: "alice", // outgoing: alice paid
+					toParticipantType: "user",
 					toParticipantId: "bob",
+					status: "FINALIZED",
+					confirmedByPayer: true,
 					confirmedByPayee: true,
+					reminderCount: 0,
+					reminderSentAt: null,
 					initiatedAt: now,
 					settledAt: now,
 					convertedAmount: null,
@@ -818,9 +822,15 @@ describe("SettlementService", () => {
 					id: "s-2",
 					amount: 30,
 					currency: "USD",
+					fromParticipantType: "user",
 					fromParticipantId: "bob", // incoming: bob paid alice
+					toParticipantType: "user",
 					toParticipantId: "alice",
+					status: "PROPOSED",
+					confirmedByPayer: true,
 					confirmedByPayee: false,
+					reminderCount: 0,
+					reminderSentAt: null,
 					initiatedAt: earlier,
 					settledAt: null,
 					convertedAmount: null,
@@ -851,9 +861,15 @@ describe("SettlementService", () => {
 					id: "s-1",
 					amount: { toNumber: () => 75, toString: () => "75" }, // Prisma Decimal mock
 					currency: "USD",
+					fromParticipantType: "user",
 					fromParticipantId: "alice",
+					toParticipantType: "user",
 					toParticipantId: "bob",
+					status: "PROPOSED",
+					confirmedByPayer: true,
 					confirmedByPayee: false,
+					reminderCount: 0,
+					reminderSentAt: null,
 					initiatedAt: new Date(),
 					settledAt: null,
 					convertedAmount: null,
@@ -1165,10 +1181,12 @@ describe("SettlementService incoming payments", () => {
 		await expect(service.voidAutoFinalizedSettlement("s-in")).resolves.toEqual({
 			success: true,
 		});
-		expect(db.settlement.delete).toHaveBeenCalledWith({ where: { id: "s-in" } });
+		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
+			where: { id: { in: ["s-in"] }, status: { in: ["FINALIZED"] } },
+		});
 
 		// A payment bob sent and alice confirmed is not alice's to undo.
-		db.settlement.delete.mockClear();
+		db.settlement.deleteMany.mockClear();
 		db.settlement.findUnique.mockResolvedValueOnce({
 			...recorded,
 			id: "s-sent",
@@ -1176,9 +1194,9 @@ describe("SettlementService incoming payments", () => {
 			autoConfirmedReason: null,
 		});
 		await expect(service.voidAutoFinalizedSettlement("s-sent")).rejects.toThrow(
-			"Only the payer can void",
+			"Cannot void a settlement to a registered user",
 		);
-		expect(db.settlement.delete).not.toHaveBeenCalled();
+		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
 	});
 
 	it("history marks a payment you recorded as received voidable", async () => {

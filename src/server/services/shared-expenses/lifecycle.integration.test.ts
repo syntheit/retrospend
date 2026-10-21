@@ -1071,7 +1071,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		});
 	});
 
-	it("global payment with opposing project balances only pays down scopes that are owed", async () => {
+	it("partial global payment with opposing project balances only pays down scopes that are owed", async () => {
 		// bob owes alice $40 in A; alice owes bob $15 in B. Globally bob owes $25.
 		seedBobOwesAlice("A", 40);
 		seedAliceOwesBob("B", 15);
@@ -1086,23 +1086,50 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			}),
 		).rejects.toThrow(/exceeds the outstanding balance/);
 
+		// A partial payment never offsets: only project A (where bob owes)
+		// receives it and B keeps its own debt in the other direction.
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 20,
+			currency: "USD",
+		});
+
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 20 }]);
+		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(a.byCurrency).toEqual({ USD: 20 });
+		const b = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "B",
+		});
+		expect(b.byCurrency).toEqual({ USD: -15 });
+		const global = await computeBalance(db as never, aliceRef, bobRef);
+		expect(global.byCurrency).toEqual({ USD: 5 });
+	});
+
+	it("full global payment with opposing project balances also offsets them", async () => {
+		seedBobOwesAlice("A", 40);
+		seedAliceOwesBob("B", 15);
+
+		const bobSettle = new SettlementService(db as never, BOB);
 		await bobSettle.initiateSettlement({
 			toParticipant: aliceRef,
 			amount: 25,
 			currency: "USD",
 		});
 
-		// Only project A (where bob owes) receives the payment. B keeps its own
-		// genuine debt in the other direction, and the rollup is settled.
-		expect(settlementRows()).toEqual([{ projectId: "A", amount: 25 }]);
-		const a = await computeBalance(db as never, aliceRef, bobRef, {
-			projectScope: "A",
-		});
-		expect(a.byCurrency).toEqual({ USD: 15 });
-		const b = await computeBalance(db as never, aliceRef, bobRef, {
-			projectScope: "B",
-		});
-		expect(b.byCurrency).toEqual({ USD: -15 });
+		// Cash 25 into A, plus a 15 offset in A against alice's 15 in B.
+		expect(settlementRows()).toEqual([
+			{ projectId: "A", amount: 25 },
+			{ projectId: "A", amount: 15 },
+			{ projectId: "B", amount: 15 },
+		]);
+		for (const projectScope of ["A", "B"]) {
+			const scoped = await computeBalance(db as never, aliceRef, bobRef, {
+				projectScope,
+			});
+			expect(scoped.byCurrency).toEqual({});
+		}
 		const global = await computeBalance(db as never, aliceRef, bobRef);
 		expect(global.byCurrency).toEqual({});
 	});

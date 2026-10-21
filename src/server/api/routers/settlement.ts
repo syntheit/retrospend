@@ -217,16 +217,45 @@ export const settlementRouter = createTRPCRouter({
 	/**
 	 * GET /api/settlements/history/:personRef
 	 *
-	 * Returns all settlement records between the current user and the specified
-	 * person, sorted by initiatedAt descending.
+	 * Returns the payments between the current user and the specified person,
+	 * one entry per payment group, sorted by initiatedAt descending.
 	 *
-	 * Includes: amount, currency, convertedAmount/currency, exchangeRateUsed,
-	 * paymentMethod, note, status, direction, initiatedAt, settledAt.
+	 * Includes: amount, currency, parts (per project, offsets marked),
+	 * paymentMethod, note, status, direction, initiatedAt, settledAt and the
+	 * action flags for the whole group.
 	 */
 	history: protectedProcedure
 		.input(participantRefSchema)
 		.query(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
 			return service.getSettlementHistory(input);
+		}),
+
+	/**
+	 * Currencies where the overall balance with the person is even but their
+	 * project balances point in opposite directions. Read-only.
+	 */
+	squareUpOptions: protectedProcedure
+		.input(participantRefSchema)
+		.query(async ({ ctx, input }) => {
+			const service = new SettlementService(ctx.db, ctx.session.user.id);
+			return service.getSquareUpOptions(input);
+		}),
+
+	/**
+	 * Records offset rows only (no cash) so every project ends at zero when
+	 * the overall balance in that currency is already even. The other person
+	 * confirms or rejects it like a payment.
+	 */
+	squareUp: protectedProcedure
+		.input(
+			z.object({
+				toParticipant: participantRefSchema,
+				currency: z.string().min(1).max(10),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const service = new SettlementService(ctx.db, ctx.session.user.id);
+			return service.squareUpProjects(input);
 		}),
 });
