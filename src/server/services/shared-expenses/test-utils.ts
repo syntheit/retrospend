@@ -295,10 +295,14 @@ export function createStatefulDb() {
 		),
 
 		findUnique: vi.fn(
-			(args: { where: { id: string }; include?: Record<string, unknown> }) => {
+			(args: {
+				where: { id: string };
+				include?: Record<string, unknown>;
+				select?: Record<string, unknown>;
+			}) => {
 				const tx = transactions.get(args.where.id);
 				if (!tx) return null;
-				if (args.include?.splitParticipants) {
+				if (args.include?.splitParticipants || args.select?.splitParticipants) {
 					const txSplits = [...splits.values()].filter(
 						(sp) => sp.transactionId === tx.id,
 					);
@@ -744,12 +748,14 @@ export function createStatefulDb() {
 
 		deleteMany: vi.fn((args: { where: Record<string, unknown> }) => {
 			let count = 0;
+			const idIn = (args.where.id as { in?: string[] } | undefined)?.in;
 			for (const [id, sp] of splits) {
 				if (
 					args.where.transactionId !== undefined &&
 					sp.transactionId !== args.where.transactionId
 				)
 					continue;
+				if (idIn !== undefined && !idIn.includes(id)) continue;
 				splits.delete(id);
 				count++;
 			}

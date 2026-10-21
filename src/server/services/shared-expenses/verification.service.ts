@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, VerificationStatus } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { logAudit } from "./audit-log";
+import { effectOfRemovingShare } from "./balance-change";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import type { ParticipantRef } from "./types";
 
@@ -472,8 +473,16 @@ export class VerificationService {
 	 * Guards:
 	 * - Caller must actually be a participant on the transaction.
 	 * - Forbidden when the transaction is locked (settled).
+	 * - When the caller's share is already paid (settlements recorded against
+	 *   it) or offset by other expenses, removing it would leave the payer
+	 *   owing the caller. That needs `confirmBalanceChange`. Erasing a share
+	 *   the caller still owes is the point of "Remove me" and needs no
+	 *   confirmation.
 	 */
-	async removeSelf(txnId: string): Promise<{ success: true }> {
+	async removeSelf(
+		txnId: string,
+		confirmBalanceChange = false,
+	): Promise<{ success: true }> {
 		return await this.runInTransaction(async (tx) => {
 			const txn = await tx.sharedTransaction.findUnique({
 				where: { id: txnId },
@@ -481,6 +490,9 @@ export class VerificationService {
 					id: true,
 					isLocked: true,
 					projectId: true,
+					currency: true,
+					paidByType: true,
+					paidById: true,
 					createdByType: true,
 					createdById: true,
 					splitParticipants: {
@@ -488,6 +500,7 @@ export class VerificationService {
 							id: true,
 							participantType: true,
 							participantId: true,
+							shareAmount: true,
 						},
 					},
 				},
@@ -531,6 +544,36 @@ export class VerificationService {
 					code: "FORBIDDEN",
 					message: "You are not a participant on this transaction",
 				});
+			}
+
+			const iPaid =
+				txn.paidByType === this.actor.participantType &&
+				txn.paidById === this.actor.participantId;
+			const myShare = mySplits.reduce(
+				(sum, sp) => sum + Number(sp.shareAmount),
+				0,
+			);
+			if (!confirmBalanceChange && !iPaid && myShare > 0) {
+				const effect = await effectOfRemovingShare(
+					tx as unknown as PrismaClient,
+					{
+						payer: {
+							participantType: txn.paidByType,
+							participantId: txn.paidById,
+						},
+						participant: this.actor,
+						share: myShare,
+						currency: txn.currency,
+						projectId: txn.projectId,
+					},
+				);
+				if (effect === "flips_balance") {
+					throw new TRPCError({
+						code: "PRECONDITION_FAILED",
+						message:
+							"Your share of this expense is already paid, so removing yourself would leave the payer owing you. Confirm to remove anyway.",
+					});
+				}
 			}
 
 			// Delete only the caller's own split row(s). Never touch others'.

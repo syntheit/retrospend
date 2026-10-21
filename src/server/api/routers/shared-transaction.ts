@@ -95,8 +95,9 @@ export const sharedTransactionRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().min(1),
-				// Set true to delete an expense that still carries an unsettled
-				// balance between participants (acknowledging the debt is erased).
+				// Set true to delete an expense whose removal changes who owes whom:
+				// it erases an unsettled debt, or turns payments already recorded
+				// for it into a balance the other way round.
 				confirmUnsettled: z.boolean().optional(),
 			}),
 		)

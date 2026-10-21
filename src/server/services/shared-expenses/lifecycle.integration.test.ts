@@ -1628,3 +1628,66 @@ describe("Suite 1J: Auto-accept expiry counts from the last re-verification", ()
 		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe("PENDING");
 	});
 });
+
+// ── Suite 1K: Delete / "Remove me" after the share was already paid ───────────
+
+describe("Suite 1K: Removing a paid share asks before creating a reverse debt", () => {
+	let db: ReturnType<typeof createStatefulDb>;
+	let txnId: string;
+
+	beforeEach(async () => {
+		db = createStatefulDb();
+		// alice pays $100, split with bob: bob owes alice $50.
+		const { transaction } = await new SharedTransactionService(
+			db as never,
+			aliceRef,
+		).create(makeCreateInput());
+		txnId = transaction.id;
+	});
+
+	async function bobPaysAlice(amount: number) {
+		await new SettlementService(db as never, BOB).initiateSettlement({
+			toParticipant: aliceRef,
+			amount,
+			currency: "USD",
+		});
+	}
+
+	it("bob can remove himself without confirmation while he still owes his share", async () => {
+		await new VerificationService(db as never, bobRef).removeSelf(txnId);
+
+		const balance = await computeBalance(db as never, aliceRef, bobRef);
+		expect(balance.byCurrency.USD ?? 0).toBe(0);
+	});
+
+	it("bob must confirm removing himself after he already paid alice", async () => {
+		await bobPaysAlice(50);
+		const verify = new VerificationService(db as never, bobRef);
+
+		await expect(verify.removeSelf(txnId)).rejects.toMatchObject({
+			code: "PRECONDITION_FAILED",
+		});
+		// Nothing removed yet.
+		expect(
+			[...db._stores.splits.values()].some((sp) => sp.participantId === BOB),
+		).toBe(true);
+
+		await verify.removeSelf(txnId, true);
+		// Confirmed: his $50 payment is now owed back to him.
+		const balance = await computeBalance(db as never, aliceRef, bobRef);
+		expect(balance.byCurrency).toEqual({ USD: -50 });
+	});
+
+	it("alice must confirm deleting the expense after bob already paid her", async () => {
+		await bobPaysAlice(50);
+		const txService = new SharedTransactionService(db as never, aliceRef);
+
+		await expect(txService.delete(txnId)).rejects.toMatchObject({
+			code: "PRECONDITION_FAILED",
+		});
+		expect(db._stores.transactions.has(txnId)).toBe(true);
+
+		await txService.delete(txnId, true);
+		expect(db._stores.transactions.has(txnId)).toBe(false);
+	});
+});

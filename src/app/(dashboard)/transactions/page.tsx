@@ -273,15 +273,25 @@ function TransactionsContent() {
 	const [pendingRemoveSelf, setPendingRemoveSelf] = useState<string | null>(
 		null,
 	);
+	// Set when the server refuses because the caller's share is already paid
+	// (removing it would leave the payer owing them): the dialog then asks
+	// again and retries with confirmBalanceChange.
+	const [removeSelfPaid, setRemoveSelfPaid] = useState(false);
 	const removeSelfMutation = api.verification.removeSelf.useMutation({
 		onSuccess: () => {
 			toast.success(t("removed"));
 			invalidateSharedParticipation();
 			setPendingRemoveSelf(null);
+			setRemoveSelfPaid(false);
 		},
 		onError: (e) => {
+			if (e.data?.code === "PRECONDITION_FAILED" && !removeSelfPaid) {
+				setRemoveSelfPaid(true);
+				return;
+			}
 			toast.error(e.message || t("removeFailed"));
 			setPendingRemoveSelf(null);
+			setRemoveSelfPaid(false);
 		},
 	});
 
@@ -990,19 +1000,31 @@ function TransactionsContent() {
 			{/* Remove Me Dialog */}
 			<Dialog
 				onOpenChange={(open) => {
-					if (!open) setPendingRemoveSelf(null);
+					if (!open) {
+						setPendingRemoveSelf(null);
+						setRemoveSelfPaid(false);
+					}
 				}}
 				open={pendingRemoveSelf !== null}
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>{t("removeMeTitle")}</DialogTitle>
-						<DialogDescription>{t("removeMeDescription")}</DialogDescription>
+						<DialogTitle>
+							{removeSelfPaid ? t("removeMePaidTitle") : t("removeMeTitle")}
+						</DialogTitle>
+						<DialogDescription>
+							{removeSelfPaid
+								? t("removeMePaidWarning")
+								: t("removeMeDescription")}
+						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button
 							disabled={removeSelfMutation.isPending}
-							onClick={() => setPendingRemoveSelf(null)}
+							onClick={() => {
+								setPendingRemoveSelf(null);
+								setRemoveSelfPaid(false);
+							}}
 							variant="ghost"
 						>
 							{tc("cancel")}
@@ -1011,12 +1033,19 @@ function TransactionsContent() {
 							disabled={removeSelfMutation.isPending}
 							onClick={() => {
 								if (pendingRemoveSelf) {
-									removeSelfMutation.mutate({ txnId: pendingRemoveSelf });
+									removeSelfMutation.mutate({
+										txnId: pendingRemoveSelf,
+										confirmBalanceChange: removeSelfPaid,
+									});
 								}
 							}}
 							variant="destructive"
 						>
-							{removeSelfMutation.isPending ? tc("deleting") : t("removeMe")}
+							{removeSelfMutation.isPending
+								? tc("deleting")
+								: removeSelfPaid
+									? t("removeAnyway")
+									: t("removeMe")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
