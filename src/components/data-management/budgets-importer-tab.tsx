@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { parseBudgetCsv } from "~/lib/csv";
+import { formatDateOnly } from "~/lib/date";
 import { api } from "~/trpc/react";
 import { DataImporter } from "./data-importer";
 
@@ -11,6 +12,7 @@ interface BudgetPreview {
 	id: string;
 	categoryName?: string;
 	amount: number;
+	currency?: string;
 	period: Date;
 	isRollover: boolean;
 	rolloverAmount: number;
@@ -36,6 +38,7 @@ export function BudgetsImporterTab({
 				id: `preview-${index}`,
 				categoryName: row.categoryName ?? undefined,
 				amount: Number(row.amount) || 0,
+				currency: row.currency,
 				period: row.period,
 				isRollover: row.isRollover,
 				rolloverAmount: Number(row.rolloverAmount) || 0,
@@ -51,6 +54,7 @@ export function BudgetsImporterTab({
 			const rows = previewData.map((item) => ({
 				categoryName: item.categoryName,
 				amount: item.amount,
+				currency: item.currency,
 				period: item.period,
 				isRollover: item.isRollover,
 				rolloverAmount: item.rolloverAmount,
@@ -103,9 +107,11 @@ export function BudgetsImporterTab({
 											</span>
 										)}
 									</td>
-									<td className="p-4 align-middle">{row.amount}</td>
 									<td className="p-4 align-middle">
-										{row.period.toISOString().slice(0, 7)}
+										{row.amount} {row.currency}
+									</td>
+									<td className="p-4 align-middle">
+										{formatDateOnly(row.period).slice(0, 7)}
 									</td>
 									<td className="p-4 align-middle text-muted-foreground text-xs">
 										{row.isRollover && t("rollover")}
@@ -130,7 +136,8 @@ export function BudgetsImporterTab({
 				<p>
 					Required: <code className="text-primary">amount</code>,{" "}
 					<code className="text-primary">period (YYYY-MM-DD)</code>. <br />
-					Optional: <code className="text-muted-foreground">categoryName</code>,{" "}
+					Optional: <code className="text-muted-foreground">currency</code>,{" "}
+					<code className="text-muted-foreground">categoryName</code>,{" "}
 					<code className="text-muted-foreground">isRollover</code>,{" "}
 					<code className="text-muted-foreground">pegToActual</code>.
 				</p>
@@ -141,9 +148,9 @@ export function BudgetsImporterTab({
 			parseCsv={handleParseCsv}
 			renderPreview={Preview}
 			sampleData={[
-				"amount,period,categoryName,isRollover,pegToActual",
-				"500,2024-01-01,Groceries,true,false",
-				"100,2024-01-01,Dining,false,true",
+				"amount,currency,period,categoryName,isRollover,pegToActual",
+				"500,USD,2024-01-01,Groceries,true,false",
+				"100,USD,2024-01-01,Dining,false,true",
 			].join("\n")}
 			sampleFilename="budgets_sample.csv"
 			title={t("budgets")}

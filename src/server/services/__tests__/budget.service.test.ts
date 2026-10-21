@@ -1,29 +1,27 @@
-import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MissingRateError } from "~/lib/money";
+import { type TestExpenseRow, useExpenseTable } from "~/test/expense-table";
 import { createMockDb } from "~/test/mock-db";
+import { useRateTable } from "~/test/rate-table";
 import {
 	copyFromLastMonth,
 	getBudgets,
-	getGlobalBudget,
 	getSuggestions,
 } from "../budget.service";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const mockGetBestExchangeRate = vi.hoisted(() => vi.fn());
-const mockSumExpensesForCurrency = vi.hoisted(() => vi.fn());
 const mockGetSharedExpenseShares = vi.hoisted(() => vi.fn());
-
-vi.mock("~/server/api/routers/shared-currency", () => ({
-	getBestExchangeRate: mockGetBestExchangeRate,
-	sumExpensesForCurrency: mockSumExpensesForCurrency,
-}));
 
 vi.mock("~/server/services/shared-expense-integration", () => ({
 	getSharedExpenseShares: mockGetSharedExpenseShares,
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Rate table: ARS blue 1560 (preferred), EUR 0.8787.
+const ARS = 1560;
+const JUNE = new Date(2024, 5, 15);
 
 function makeDbBudget(overrides: Record<string, unknown> = {}) {
 	return {
@@ -32,11 +30,12 @@ function makeDbBudget(overrides: Record<string, unknown> = {}) {
 		categoryId: "cat-1",
 		amount: 500,
 		currency: "USD",
-		period: new Date("2024-06-01"),
+		period: new Date(2024, 5, 1),
 		type: "FIXED" as const,
 		isRollover: false,
 		rolloverAmount: 0,
 		pegToActual: false,
+		createdAt: new Date(2024, 0, 1),
 		category: {
 			id: "cat-1",
 			name: "Food",
@@ -48,13 +47,30 @@ function makeDbBudget(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function makeExpenseRow(overrides: Record<string, unknown> = {}) {
+function usd(date: Date, amount: number, extra: Partial<TestExpenseRow> = {}) {
 	return {
-		amount: 100,
+		date,
+		amount,
 		currency: "USD",
-		amountInUSD: 100,
+		amountInUSD: amount,
 		categoryId: "cat-1",
-		...overrides,
+		...extra,
+	};
+}
+
+function ars(
+	date: Date,
+	amount: number,
+	rateAtTheTime: number,
+	extra: Partial<TestExpenseRow> = {},
+) {
+	return {
+		date,
+		amount,
+		currency: "ARS",
+		amountInUSD: Math.round((amount / rateAtTheTime) * 100) / 100,
+		categoryId: "cat-1",
+		...extra,
 	};
 }
 
@@ -66,10 +82,9 @@ describe("BudgetService", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		db = createMockDb();
-
-		mockGetBestExchangeRate.mockResolvedValue({ rate: 1, type: "official" });
+		useRateTable(db);
+		useExpenseTable(db, []);
 		mockGetSharedExpenseShares.mockResolvedValue([]);
-		mockSumExpensesForCurrency.mockResolvedValue({ total: 0, totalInUSD: 0 });
 	});
 
 	// ── getBudgets ─────────────────────────────────────────────────────────────
@@ -77,163 +92,194 @@ describe("BudgetService", () => {
 	describe("getBudgets", () => {
 		it("FIXED budget: effectiveAmount = budget.amount regardless of actual spend", async () => {
 			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "FIXED", amount: 500 })]);
-			db.expense.findMany.mockResolvedValue([makeExpenseRow({ amount: 200, amountInUSD: 200 })]);
+			useExpenseTable(db, [usd(new Date(2024, 5, 3), 200)]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			expect(result[0]!.effectiveAmount).toBe(500);
-			expect(result[0]!.actualSpend).toBe(200);
+			expect(budget!.effectiveAmount).toBe(500);
+			expect(budget!.actualSpend).toBe(200);
 		});
 
 		it("PEG_TO_ACTUAL: effectiveAmount = actualSpend", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_ACTUAL", amount: 500 })]);
-			db.expense.findMany.mockResolvedValue([
-				makeExpenseRow({ amount: 150, amountInUSD: 150 }),
-				makeExpenseRow({ amount: 50, amountInUSD: 50 }),
+			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_ACTUAL" })]);
+			useExpenseTable(db, [
+				usd(new Date(2024, 5, 3), 150),
+				usd(new Date(2024, 5, 4), 50),
 			]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			expect(result[0]!.effectiveAmount).toBe(200);
+			expect(budget!.effectiveAmount).toBe(200);
 		});
 
-		it("PEG_TO_ACTUAL via pegToActual=true legacy flag: effectiveAmount = actualSpend", async () => {
+		it("PEG_TO_ACTUAL via pegToActual=true legacy flag", async () => {
 			db.budget.findMany.mockResolvedValue([
-				makeDbBudget({ type: "FIXED", pegToActual: true, amount: 500 }),
+				makeDbBudget({ type: "FIXED", pegToActual: true }),
 			]);
-			db.expense.findMany.mockResolvedValue([makeExpenseRow({ amount: 120, amountInUSD: 120 })]);
+			useExpenseTable(db, [usd(new Date(2024, 5, 3), 120)]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			expect(result[0]!.effectiveAmount).toBe(120);
+			expect(budget!.effectiveAmount).toBe(120);
 		});
 
-		it("PEG_TO_LAST_MONTH with current spend > 0: effectiveAmount = last month's spend", async () => {
+		it("PEG_TO_LAST_MONTH with current spend: last month's spending, shared included", async () => {
 			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_LAST_MONTH" })]);
-			// First findMany call: current month expenses
-			// Second findMany call (last month): fetched because hasPegToLastMonth
-			db.expense.findMany
-				.mockResolvedValueOnce([makeExpenseRow({ amount: 100, amountInUSD: 100 })]) // current
-				.mockResolvedValueOnce([makeExpenseRow({ amount: 300, amountInUSD: 300 })]); // last month
+			useExpenseTable(db, [
+				usd(new Date(2024, 5, 3), 100),
+				usd(new Date(2024, 4, 10), 300),
+			]);
+			mockGetSharedExpenseShares.mockImplementation(
+				async (_db: unknown, _u: unknown, range: { gte: Date }) =>
+					range.gte.getMonth() === 4
+						? [{ amount: 40, currency: "USD", amountInUSD: 40, categoryId: "cat-1", date: new Date(2024, 4, 12) }]
+						: [],
+			);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			expect(result[0]!.effectiveAmount).toBe(300);
-			expect(result[0]!.actualSpend).toBe(100);
+			expect(budget!.effectiveAmount).toBe(340);
+			expect(budget!.actualSpend).toBe(100);
 		});
 
-		it("PEG_TO_LAST_MONTH with current spend = 0: effectiveAmount = 0 (not last month's value)", async () => {
+		it("PEG_TO_LAST_MONTH with no spend yet: effectiveAmount = 0", async () => {
 			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_LAST_MONTH" })]);
-			db.expense.findMany
-				.mockResolvedValueOnce([]) // current month: no spend
-				.mockResolvedValueOnce([makeExpenseRow({ amount: 300, amountInUSD: 300 })]); // last month
+			useExpenseTable(db, [usd(new Date(2024, 4, 10), 300)]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			expect(result[0]!.effectiveAmount).toBe(0);
+			expect(budget!.effectiveAmount).toBe(0);
 		});
 
-		it("empty month: all budgets show 0 actualSpend", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget()]);
-			db.expense.findMany.mockResolvedValue([]);
-
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
-
-			expect(result[0]!.actualSpend).toBe(0);
-			expect(result[0]!.actualSpendInUSD).toBe(0);
-		});
-
-		it("cross-currency expense: converts via USD to budget currency", async () => {
-			// Budget in ARS, expense in USD - rate: 1000 ARS/USD
-			mockGetBestExchangeRate.mockResolvedValue({ rate: 1000, type: "blue" });
+		it("ARS budget: ARS expenses count as entered, USD ones at the ARS rate", async () => {
 			db.budget.findMany.mockResolvedValue([
-				makeDbBudget({ currency: "ARS", amount: 100000 }),
+				makeDbBudget({ currency: "ARS", amount: 300000 }),
 			]);
-			// expense in USD: 50 USD = 50,000 ARS @ 1000 ARS/USD
-			db.expense.findMany.mockResolvedValue([
-				makeExpenseRow({ amount: 50, currency: "USD", amountInUSD: 50 }),
+			useExpenseTable(db, [
+				ars(new Date(2024, 5, 3), 100000, 1000),
+				usd(new Date(2024, 5, 4), 10),
 			]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			// fromUSD(50, "ARS", 1000) = 50 * 1000 = 50000
-			expect(result[0]!.actualSpend).toBeCloseTo(50000);
+			expect(budget!.actualSpend).toBeCloseTo(100000 + 10 * ARS);
+			expect(budget!.amountInUSD).toBeCloseTo(300000 / ARS);
 		});
 
-		it("same-currency expense: uses original amount directly", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget({ currency: "USD" })]);
-			db.expense.findMany.mockResolvedValue([
-				makeExpenseRow({ amount: 75, currency: "USD", amountInUSD: 75 }),
+		it("home-currency fields: ARS home with a USD budget", async () => {
+			db.budget.findMany.mockResolvedValue([makeDbBudget({ amount: 500 })]);
+			useExpenseTable(db, [
+				ars(new Date(2024, 5, 3), 100000, 1000),
+				usd(new Date(2024, 5, 4), 10),
 			]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE, {
+				homeCurrency: "ARS",
+			});
 
-			expect(result[0]!.actualSpend).toBe(75);
+			expect(budget!.amountInHome).toBeCloseTo(500 * ARS);
+			expect(budget!.effectiveAmountInHome).toBeCloseTo(500 * ARS);
+			expect(budget!.actualSpendInHome).toBeCloseTo(100000 + 10 * ARS);
+			// In the budget's own currency: USD as entered, ARS from its stored USD
+			expect(budget!.actualSpend).toBeCloseTo(10 + 100);
+		});
+
+		it("home-currency fields: USD home with an ARS budget", async () => {
+			db.budget.findMany.mockResolvedValue([
+				makeDbBudget({ currency: "ARS", amount: 156000 }),
+			]);
+			useExpenseTable(db, [ars(new Date(2024, 5, 3), 15600, 1560)]);
+
+			const [budget] = await getBudgets(db as never, "user-1", JUNE, {
+				homeCurrency: "USD",
+			});
+
+			expect(budget!.amountInHome).toBeCloseTo(100);
+			expect(budget!.actualSpendInHome).toBeCloseTo(10);
+		});
+
+		it("a budget currency with no rate is an error, never 1:1", async () => {
+			db.budget.findMany.mockResolvedValue([makeDbBudget({ currency: "XYZ" })]);
+
+			await expect(getBudgets(db as never, "user-1", JUNE)).rejects.toBeInstanceOf(
+				MissingRateError,
+			);
 		});
 
 		it("shared expense shares count toward budget", async () => {
 			db.budget.findMany.mockResolvedValue([makeDbBudget()]);
-			db.expense.findMany.mockResolvedValue([makeExpenseRow({ amount: 100, amountInUSD: 100 })]);
 			mockGetSharedExpenseShares.mockResolvedValue([
-				{ amount: 50, currency: "USD", amountInUSD: 50, categoryId: "cat-1", date: new Date() },
+				{ amount: 75, currency: "USD", amountInUSD: 75, categoryId: "cat-1", date: new Date(2024, 5, 9) },
 			]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const [budget] = await getBudgets(db as never, "user-1", JUNE);
 
-			expect(result[0]!.actualSpend).toBe(150); // 100 personal + 50 shared
+			expect(budget!.actualSpend).toBe(75);
 		});
 
 		it("fiscal month boundary: expenses outside range not counted", async () => {
-			// startDay=15: fiscal month for June 2024 is Jun 15 – Jul 14
-			// We can verify the fiscal boundary is passed correctly to expense query
 			db.budget.findMany.mockResolvedValue([makeDbBudget()]);
-			db.expense.findMany.mockResolvedValue([]);
+			useExpenseTable(db, [
+				usd(new Date(2024, 5, 14), 999), // before the 15th
+				usd(new Date(2024, 5, 20), 30),
+				usd(new Date(2024, 6, 14), 20),
+			]);
 
-			await getBudgets(db as never, "user-1", new Date("2024-06-20"), { fiscalMonthStartDay: 15 });
+			const [budget] = await getBudgets(db as never, "user-1", JUNE, {
+				fiscalMonthStartDay: 15,
+			});
 
-			const expenseQuery = db.expense.findMany.mock.calls[0]![0] as {
-				where: { date: { gte: Date; lte: Date } };
-			};
-			expect(expenseQuery.where.date.gte.getDate()).toBe(15);
+			expect(budget!.actualSpend).toBe(50);
+		});
+
+		it("reads budget periods and expense dates in the user's time zone", async () => {
+			db.budget.findMany.mockResolvedValue([makeDbBudget()]);
+			// 22:30 on May 31 in Buenos Aires is June 1 in UTC.
+			useExpenseTable(db, [usd(new Date("2024-06-01T01:30:00Z"), 60)]);
+			const tz = "America/Argentina/Buenos_Aires";
+
+			const [june] = await getBudgets(
+				db as never,
+				"user-1",
+				new Date("2024-06-15T12:00:00Z"),
+				{ timeZone: tz },
+			);
+			const [may] = await getBudgets(
+				db as never,
+				"user-1",
+				new Date("2024-05-15T12:00:00Z"),
+				{ timeZone: tz },
+			);
+
+			expect(june!.actualSpend).toBe(0);
+			expect(may!.actualSpend).toBe(60);
+			expect(db.budget.findMany.mock.calls[0]![0].where.period).toEqual({
+				gte: new Date(2024, 5, 1),
+				lt: new Date(2024, 6, 1),
+			});
 		});
 
 		it("returns empty array when no budgets exist for the month", async () => {
 			db.budget.findMany.mockResolvedValue([]);
 
-			const result = await getBudgets(db as never, "user-1", new Date("2024-06-15"));
+			const result = await getBudgets(db as never, "user-1", JUNE);
 
 			expect(result).toHaveLength(0);
-		});
-	});
-
-	// ── getGlobalBudget ────────────────────────────────────────────────────────
-
-	describe("getGlobalBudget", () => {
-		it("returns null when no global budget exists", async () => {
-			db.budget.findFirst.mockResolvedValue(null);
-
-			const result = await getGlobalBudget(db as never, "user-1", new Date("2024-06-15"));
-
-			expect(result).toBeNull();
-		});
-
-		it("returns global budget with actualSpend from sumExpensesForCurrency", async () => {
-			db.budget.findFirst.mockResolvedValue(
-				makeDbBudget({ categoryId: null, amount: 2000, currency: "USD" }),
-			);
-			mockSumExpensesForCurrency.mockResolvedValue({ total: 450, totalInUSD: 450 });
-
-			const result = await getGlobalBudget(db as never, "user-1", new Date("2024-06-15"));
-
-			expect(result).not.toBeNull();
-			expect(result!.actualSpend).toBe(450);
-			expect(result!.amount).toBe(2000);
 		});
 	});
 
 	// ── getSuggestions ─────────────────────────────────────────────────────────
 
 	describe("getSuggestions", () => {
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ["Date"] });
+			vi.setSystemTime(new Date(2024, 6, 10, 12)); // July 10
+			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
 		it("throws FORBIDDEN if category not owned by user", async () => {
 			db.category.findFirst.mockResolvedValue(null);
 
@@ -243,63 +289,75 @@ describe("BudgetService", () => {
 		});
 
 		it("returns all zeros when no spending history", async () => {
-			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
-			mockSumExpensesForCurrency.mockResolvedValue({ total: 0, totalInUSD: 0 });
-
 			const result = await getSuggestions(db as never, "user-1", "cat-1");
 
 			expect(result).toEqual({ suggestedAmount: 0, averageSpend: 0, lastMonthSpend: 0 });
 		});
 
-		it("zero-spend months are excluded from average calculation", async () => {
-			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
-			// Month 1: 300, Month 2: 0 (excluded), Month 3: 100
-			// Only months with positive spend are included
-			mockSumExpensesForCurrency
-				.mockResolvedValueOnce({ total: 300, totalInUSD: 300 })
-				.mockResolvedValueOnce({ total: 0, totalInUSD: 0 })
-				.mockResolvedValueOnce({ total: 100, totalInUSD: 100 });
+		it("uses the 3 complete months before the running one", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2024, 6, 2), 9999), // July: running month, ignored
+				usd(new Date(2024, 5, 10), 100), // June
+				usd(new Date(2024, 4, 10), 400), // May
+				usd(new Date(2024, 3, 10), 200), // April
+				usd(new Date(2024, 2, 10), 7777), // March: too old
+			]);
 
 			const result = await getSuggestions(db as never, "user-1", "cat-1");
 
-			// Average of [300, 100] = 200 (zero month excluded)
+			expect(result).toEqual({
+				suggestedAmount: 200,
+				averageSpend: 233.33,
+				lastMonthSpend: 100,
+			});
+		});
+
+		it("follows the fiscal month: with start day 15 the running period is Jun 15 to Jul 14", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2024, 5, 20), 9999), // running period, ignored
+				usd(new Date(2024, 5, 10), 300), // May 15 to Jun 14
+				usd(new Date(2024, 4, 1), 100), // Apr 15 to May 14
+			]);
+
+			const result = await getSuggestions(db as never, "user-1", "cat-1", "USD", 15);
+
+			expect(result.lastMonthSpend).toBe(300);
 			expect(result.averageSpend).toBe(200);
 		});
 
-		it("median of 3 equal months returns that value", async () => {
-			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
-			mockSumExpensesForCurrency.mockResolvedValue({ total: 200, totalInUSD: 200 });
+		it("zero-spend months are excluded from the average", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2024, 5, 10), 300),
+				usd(new Date(2024, 3, 10), 100),
+			]);
 
 			const result = await getSuggestions(db as never, "user-1", "cat-1");
 
-			// Median of [200, 200, 200] = 200
-			expect(result.suggestedAmount).toBe(200);
+			expect(result.averageSpend).toBe(200);
 		});
 
-		it("median picks middle value of sorted array", async () => {
-			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
-			mockSumExpensesForCurrency
-				.mockResolvedValueOnce({ total: 100, totalInUSD: 100 })
-				.mockResolvedValueOnce({ total: 400, totalInUSD: 400 })
-				.mockResolvedValueOnce({ total: 200, totalInUSD: 200 });
+		it("ARS suggestions keep ARS amounts as entered", async () => {
+			useExpenseTable(db, [
+				ars(new Date(2024, 5, 10), 120000, 1000),
+				usd(new Date(2024, 5, 11), 10),
+			]);
 
-			const result = await getSuggestions(db as never, "user-1", "cat-1");
+			const result = await getSuggestions(db as never, "user-1", "cat-1", "ARS");
 
-			// Sorted: [100, 200, 400] - median = 200
-			expect(result.suggestedAmount).toBe(200);
+			expect(result.lastMonthSpend).toBe(120000 + 10 * ARS);
 		});
 
-		it("rounds suggestedAmount and averageSpend to 2 decimal places", async () => {
-			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
-			mockSumExpensesForCurrency
-				.mockResolvedValueOnce({ total: 100, totalInUSD: 100 })
-				.mockResolvedValueOnce({ total: 200, totalInUSD: 200 });
-			// Only 2 months with spend → average = 300/2 = 150
+		it("rounds to the currency's decimals", async () => {
+			useExpenseTable(db, [
+				usd(new Date(2024, 5, 10), 100.004),
+				usd(new Date(2024, 4, 10), 200.006),
+			]);
 
-			const result = await getSuggestions(db as never, "user-1", "cat-1");
+			const usdResult = await getSuggestions(db as never, "user-1", "cat-1");
+			const jpyResult = await getSuggestions(db as never, "user-1", "cat-1", "JPY");
 
-			expect(Number.isInteger(result.suggestedAmount * 100)).toBe(true);
-			expect(Number.isInteger(result.averageSpend * 100)).toBe(true);
+			expect(usdResult.averageSpend).toBe(150.01);
+			expect(Number.isInteger(jpyResult.averageSpend)).toBe(true);
 		});
 	});
 
@@ -307,37 +365,54 @@ describe("BudgetService", () => {
 
 	describe("copyFromLastMonth", () => {
 		it("throws CONFLICT if budgets already exist for target month", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget()]); // existing budgets found
+			db.budget.findMany.mockResolvedValue([makeDbBudget()]);
 
 			await expect(
-				copyFromLastMonth(db as never, "user-1", new Date("2024-06-01")),
+				copyFromLastMonth(db as never, "user-1", new Date(2024, 5, 1)),
 			).rejects.toMatchObject({ code: "CONFLICT" });
 		});
 
-		it("throws NOT_FOUND if no source month has budgets", async () => {
-			db.budget.findMany.mockResolvedValue([]); // no existing budgets in target month
-			db.budget.groupBy.mockResolvedValue([]); // no other months either
+		it("throws NOT_FOUND if no earlier month has budgets", async () => {
+			db.budget.findMany.mockResolvedValue([]);
+			db.budget.groupBy.mockResolvedValue([]);
 
 			await expect(
-				copyFromLastMonth(db as never, "user-1", new Date("2024-06-01")),
+				copyFromLastMonth(db as never, "user-1", new Date(2024, 5, 1)),
 			).rejects.toMatchObject({ code: "NOT_FOUND" });
 		});
 
-		it("copies budgets from most recent source month", async () => {
+		it("copies amount, currency and settings from the most recent earlier month", async () => {
 			db.budget.findMany
 				.mockResolvedValueOnce([]) // no existing budgets in target month
-				.mockResolvedValueOnce([makeDbBudget({ period: new Date("2024-05-01") })]); // source month
-			db.budget.groupBy.mockResolvedValue([{ period: new Date("2024-05-01"), _count: { period: 1 } }]);
-			db.budget.create.mockResolvedValue(
-				makeDbBudget({ period: new Date("2024-06-01"), rolloverAmount: 0 }),
-			);
+				.mockResolvedValueOnce([
+					makeDbBudget({
+						period: new Date(2024, 4, 1),
+						currency: "ARS",
+						amount: 250000,
+						type: "PEG_TO_LAST_MONTH",
+					}),
+				]);
+			db.budget.groupBy.mockResolvedValue([
+				{ period: new Date(2024, 4, 1), _count: { period: 1 } },
+			]);
+			db.budget.create.mockImplementation(async (args: { data: object }) => ({
+				...makeDbBudget(),
+				...args.data,
+			}));
 
-			const result = await copyFromLastMonth(db as never, "user-1", new Date("2024-06-01"));
+			const result = await copyFromLastMonth(db as never, "user-1", new Date(2024, 5, 1));
 
+			expect(db.budget.groupBy.mock.calls[0]![0].where.period).toEqual({
+				lt: new Date(2024, 5, 1),
+			});
 			expect(db.budget.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					data: expect.objectContaining({
 						userId: "user-1",
+						currency: "ARS",
+						amount: 250000,
+						type: "PEG_TO_LAST_MONTH",
+						period: new Date(2024, 5, 1),
 					}),
 				}),
 			);
