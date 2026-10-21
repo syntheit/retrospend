@@ -88,3 +88,5 @@ docker-compose.override.yml
 result
 
 .cursorrules
+# Copied from circle-flags by postinstall
+/public/images/flags/
