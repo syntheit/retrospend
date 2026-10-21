@@ -46,6 +46,11 @@ vi.mock("~/server/services/integration.service", () => ({
 	IntegrationService: vi.fn(),
 }));
 
+const mockMigrate = vi.hoisted(() => vi.fn());
+vi.mock("~/server/services/guest-migration.service", () => ({
+	migrateGuestDataForVerifiedUser: mockMigrate,
+}));
+
 import { createCallerFactory } from "~/server/api/trpc";
 import { makeAdminSession } from "~/test/trpc-test-utils";
 import { adminRouter } from "../admin";
@@ -102,5 +107,32 @@ describe("admin.disableUser", () => {
 			callAndFlush(() => caller.disableUser({ userId: "admin-1" })),
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
 		expect(mockDb.session.deleteMany).not.toHaveBeenCalled();
+	});
+});
+
+describe("admin email verification", () => {
+	function adminCaller() {
+		return createCaller({
+			session: makeAdminSession({ id: "admin-1" }),
+			db: mockDb as never,
+			headers: new Headers(),
+		});
+	}
+
+	it("markEmailVerified runs the deferred guest migration", async () => {
+		await callAndFlush(() => adminCaller().markEmailVerified({ userId: "user-2" }));
+		expect(mockMigrate).toHaveBeenCalledWith(mockDb, "user-2");
+	});
+
+	it("toggleEmailVerification runs it only when verifying", async () => {
+		await callAndFlush(() =>
+			adminCaller().toggleEmailVerification({ userId: "user-2", verified: false }),
+		);
+		expect(mockMigrate).not.toHaveBeenCalled();
+
+		await callAndFlush(() =>
+			adminCaller().toggleEmailVerification({ userId: "user-2", verified: true }),
+		);
+		expect(mockMigrate).toHaveBeenCalledWith(mockDb, "user-2");
 	});
 });

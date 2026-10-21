@@ -18,6 +18,7 @@ import {
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 
+import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { getAppSettings } from "~/server/services/settings";
 
 const rateLimiter = new InMemoryRateLimiter();
@@ -68,13 +69,21 @@ export const authRouter = createTRPCRouter({
 				});
 			}
 
-			await db.user.update({
+			const verifiedUser = await db.user.update({
 				where: { email: verificationToken.identifier },
 				data: { emailVerified: true },
+				select: { id: true },
 			});
 
 			await db.verificationToken.delete({
 				where: { token: input.token },
+			});
+
+			// Email ownership is now proven: absorb guest sessions and ghosts that
+			// were waiting on this address. Best-effort, never throws.
+			await migrateGuestDataForVerifiedUser(db, verifiedUser.id, {
+				ipAddress: clientIp,
+				userAgent: ctx.headers.get("user-agent") ?? undefined,
 			});
 
 			return { success: true };
@@ -392,6 +401,13 @@ export const authRouter = createTRPCRouter({
 					where: { identifier: oldEmail },
 				})
 				.catch(() => {});
+
+			// The new address is verified: pick up guest sessions and ghosts
+			// that were created for it. Best-effort, never throws.
+			await migrateGuestDataForVerifiedUser(db, user.id, {
+				ipAddress: clientIp,
+				userAgent: ctx.headers.get("user-agent") ?? undefined,
+			});
 
 			return { success: true };
 		}),

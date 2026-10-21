@@ -18,6 +18,7 @@ import {
 } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
+import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
 import { deleteFile, getStorageSize } from "~/server/storage";
 import { logEventAsync } from "~/server/services/audit.service";
 import { IntegrationService } from "~/server/services/integration.service";
@@ -390,6 +391,9 @@ export const adminRouter = createTRPCRouter({
 				data: { emailVerified: true },
 			});
 
+			// Same as a self-service verification: absorb waiting guest data.
+			await migrateGuestDataForVerifiedUser(db, input.userId);
+
 			return { success: true };
 		}),
 
@@ -415,6 +419,9 @@ export const adminRouter = createTRPCRouter({
 						targetUsername: user.username,
 					},
 				});
+
+				// Same as a self-service verification: absorb waiting guest data.
+				await migrateGuestDataForVerifiedUser(db, input.userId);
 			}
 
 			return { success: true };

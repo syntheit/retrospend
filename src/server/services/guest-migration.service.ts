@@ -1,10 +1,58 @@
 import type { Prisma, PrismaClient } from "~prisma";
+import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
 
 interface MigrationResult {
 	migratedSessionCount: number;
 	claimedShadowCount: number;
 	projectIds: string[];
+}
+
+/**
+ * Absorbs guest sessions and unclaimed ghosts that carry the user's email, but
+ * only once the user has proven they own that email. Anyone can sign up with
+ * any address, so doing this for an unverified account would hand a stranger
+ * the guest's or ghost's history and project memberships.
+ *
+ * Call it whenever `emailVerified` becomes true: at signup when no SMTP is
+ * configured (emails are auto-verified), on email verification, when an admin
+ * marks the email verified, and when an email change is confirmed. The
+ * migration is idempotent, so calling it again is harmless.
+ *
+ * Best-effort: failures are logged and swallowed so the triggering action
+ * (signup, verification) still succeeds.
+ */
+export async function migrateGuestDataForVerifiedUser(
+	db: PrismaClient,
+	userId: string,
+	meta: { ipAddress?: string; userAgent?: string } = {},
+): Promise<MigrationResult | null> {
+	try {
+		const user = await db.user.findUnique({
+			where: { id: userId },
+			select: { email: true, emailVerified: true },
+		});
+		if (!user?.emailVerified) return null;
+
+		const result = await migrateGuestSessionsToUser(db, userId, user.email);
+		if (result.migratedSessionCount > 0 || result.claimedShadowCount > 0) {
+			logEventAsync({
+				eventType: "GUEST_UPGRADED",
+				userId,
+				ipAddress: meta.ipAddress,
+				userAgent: meta.userAgent,
+				metadata: {
+					migratedSessions: result.migratedSessionCount,
+					claimedShadowProfiles: result.claimedShadowCount,
+					projectIds: result.projectIds,
+				},
+			});
+		}
+		return result;
+	} catch (err) {
+		console.error("[Guest Migration Error]", err);
+		return null;
+	}
 }
 
 /**
@@ -201,7 +249,7 @@ async function migrateSplitParticipants(
 }
 
 /**
- * Auto-claims unclaimed ShadowProfiles whose email matches a newly-registered
+ * Auto-claims unclaimed ShadowProfiles whose email matches a newly-verified
  * user, fully absorbing each one (re-points splits/payments/settlements/audit
  * and promotes memberships) via the shared claim service — the same treatment
  * as an explicit claim-link claim, so email-matched history shows the real user

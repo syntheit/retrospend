@@ -12,7 +12,7 @@ import type { Prisma, PrismaClient } from "~prisma";
  * real person's identity directly — a claimed split no longer displays the old
  * ghost name.
  *
- * (The lightweight email auto-claim at signup — `claimShadowProfiles` in
+ * (The email auto-claim once a user's email is verified — `claimShadowProfiles` in
  * guest-migration.service.ts — routes through `claimShadowProfile` so those
  * claims also fully absorb the shadow rather than merely stamping claimedById.)
  *
