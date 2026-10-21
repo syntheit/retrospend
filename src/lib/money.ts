@@ -110,6 +110,32 @@ export function computeAmountInUSD(
 	return roundUSD(toUSD(amount, currency, rate));
 }
 
+/**
+ * What an expense form shows and sends for an amount: amountInUSD (stored)
+ * and the same amount in the home currency (display only). Either is
+ * undefined while a needed rate is still unknown.
+ */
+export function expenseAmounts(args: {
+	amount: number | null | undefined;
+	currency: string;
+	rate: number | null | undefined;
+	homeCurrency: string;
+	homeRate: number | null | undefined;
+}): { amountInUSD?: number; homeAmount?: number } {
+	const { amount, currency, rate, homeCurrency, homeRate } = args;
+	if (typeof amount !== "number" || !Number.isFinite(amount)) return {};
+	const hasRate = currency === USD || isValidRate(rate);
+	const hasHomeRate = homeCurrency === USD || isValidRate(homeRate);
+	const amountInUSD = hasRate
+		? computeAmountInUSD(amount, currency, rate)
+		: undefined;
+	let homeAmount: number | undefined;
+	if (currency === homeCurrency) homeAmount = amount;
+	else if (hasRate && hasHomeRate)
+		homeAmount = convertAmount(amount, currency, rate, homeCurrency, homeRate);
+	return { amountInUSD, homeAmount };
+}
+
 // ── Display quotes ───────────────────────────────────────────────────────────
 
 /** A rate as people read it: 1 `base` = `value` `quote`. */
