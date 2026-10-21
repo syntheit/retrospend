@@ -31,6 +31,10 @@ export const settlementRouter = createTRPCRouter({
 				exchangeRateUsed: z.number().positive().nullish(),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
+				// When set, the over-payment cap is computed in the same project
+				// scope and the settlement is stamped with this projectId. Omitted =>
+				// global cap and a project-less (direct/rollup) settlement.
+				projectId: z.string().min(1).nullish(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -52,6 +56,8 @@ export const settlementRouter = createTRPCRouter({
 				paymentCurrency: z.string().min(1).max(10),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
+				// See create.projectId — scopes the settled balances and stamps rows.
+				projectId: z.string().min(1).nullish(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -176,10 +182,22 @@ export const settlementRouter = createTRPCRouter({
 	 * - suggestedAmount: same as balance (the full settlement amount to zero out)
 	 */
 	plan: protectedProcedure
-		.input(participantRefSchema)
+		.input(
+			participantRefSchema.extend({
+				// See create.projectId — scopes the returned balances/plan. Omitted =>
+				// global balances (unchanged default for the cross-project People view).
+				projectId: z.string().min(1).nullish(),
+			}),
+		)
 		.query(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.getSettlementPlan(input);
+			return service.getSettlementPlan(
+				{
+					participantType: input.participantType,
+					participantId: input.participantId,
+				},
+				input.projectId,
+			);
 		}),
 
 	/**

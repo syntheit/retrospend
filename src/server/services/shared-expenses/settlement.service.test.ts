@@ -304,6 +304,142 @@ describe("SettlementService", () => {
 		});
 	});
 
+	// ── project-scoped settlements ────────────────────────────────────────────
+	//
+	// These assert the KEY correctness invariant: the over-payment cap is computed
+	// in the SAME scope as the settlement is written, and the row is stamped with
+	// the caller's projectId (null for a global/direct entry).
+
+	describe("project-scoped initiateSettlement", () => {
+		it("computes the cap in the project scope and stamps projectId on the row", async () => {
+			// In project P alice owes bob $50; globally she might owe more/less, but
+			// only the scoped balance is consulted.
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
+			db.settlement.create.mockResolvedValue({
+				id: "s-1",
+				fromParticipantType: "user",
+				fromParticipantId: "alice",
+			});
+
+			await service.initiateSettlement({
+				toParticipant: bob,
+				amount: 50,
+				currency: "USD",
+				projectId: "P",
+			});
+
+			// Cap computed with the project scope (same scope as the write).
+			expect(computeBalance).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ participantId: "alice" }),
+				bob,
+				{ projectScope: "P" },
+			);
+			// Row stamped with the project.
+			expect(db.settlement.create).toHaveBeenCalledWith({
+				data: expect.objectContaining({ projectId: "P" }),
+			});
+		});
+
+		it("over-payment cap is project-scoped: blocks when amount exceeds the project balance", async () => {
+			// alice owes bob only $20 in project P.
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -20 } });
+			db.settlement.create.mockResolvedValue({ id: "s-1" });
+
+			await expect(
+				service.initiateSettlement({
+					toParticipant: bob,
+					amount: 30,
+					currency: "USD",
+					projectId: "P",
+				}),
+			).rejects.toThrow(/exceeds the outstanding balance/);
+			expect(db.settlement.create).not.toHaveBeenCalled();
+			// The cap was read from the SAME (scoped) balance, not the global one.
+			expect(computeBalance).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ participantId: "alice" }),
+				bob,
+				{ projectScope: "P" },
+			);
+		});
+
+		it("global entry (no projectId): cap is GLOBAL and the row is stamped projectId=null", async () => {
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
+			db.settlement.create.mockResolvedValue({
+				id: "s-1",
+				fromParticipantType: "user",
+				fromParticipantId: "alice",
+			});
+
+			await service.initiateSettlement({
+				toParticipant: bob,
+				amount: 50,
+				currency: "USD",
+			});
+
+			// projectScope undefined => GLOBAL cap.
+			expect(computeBalance).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ participantId: "alice" }),
+				bob,
+				{ projectScope: undefined },
+			);
+			// Row stamped null (direct / rollup settlement).
+			expect(db.settlement.create).toHaveBeenCalledWith({
+				data: expect.objectContaining({ projectId: null }),
+			});
+		});
+	});
+
+	describe("project-scoped settleAll", () => {
+		it("stamps projectId on every settlement row and scopes the balance", async () => {
+			// alice owes bob in USD within project P. Paying in USD avoids exchange
+			// -rate lookups (not needed to prove scoping + stamping).
+			vi.mocked(computeBalance).mockResolvedValue({
+				byCurrency: { USD: -30 },
+			});
+			let created = 0;
+			db.settlement.create.mockImplementation(
+				(args: { data: Record<string, unknown> }) => {
+					created += 1;
+					return Promise.resolve({
+						id: `s-${created}`,
+						amount: args.data.amount,
+						currency: args.data.currency,
+						convertedAmount: args.data.convertedAmount ?? null,
+						convertedCurrency: args.data.convertedCurrency ?? null,
+						projectId: args.data.projectId ?? null,
+					});
+				},
+			);
+
+			const result = await service.settleAll({
+				toParticipant: bob,
+				paymentCurrency: "USD",
+				projectId: "P",
+			});
+
+			// Balance scoped to the project (same scope as the writes).
+			expect(computeBalance).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ participantId: "alice" }),
+				bob,
+				{ projectScope: "P" },
+			);
+
+			// At least one row was written and EVERY written row carries projectId=P.
+			expect(db.settlement.create).toHaveBeenCalled();
+			const createCalls = db.settlement.create.mock.calls as Array<
+				[{ data: { projectId?: unknown } }]
+			>;
+			for (const [callArgs] of createCalls) {
+				expect(callArgs.data.projectId).toBe("P");
+			}
+			expect(result.settlements.length).toBeGreaterThan(0);
+		});
+	});
+
 	// ── confirmSettlement ─────────────────────────────────────────────────────
 
 	describe("confirmSettlement", () => {

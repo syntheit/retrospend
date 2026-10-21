@@ -209,18 +209,13 @@ export async function getBalancesFromPerspective(
 			},
 			orderBy: { date: "desc" },
 		}) as Promise<RawTransaction[]>,
-		// Settlements where the perspective person is one party. NOTE: the
-		// Settlement model has NO projectId — payments between two people are
-		// global, not per-project. We therefore match the same pairwise semantics
-		// as computeBalance (all settlements between the perspective person and a
-		// project counterpart), which is exactly what the People-tab pair balance
-		// uses. A settlement is only ever bucketed onto a counterpart we already
-		// surface as a project participant below, so unrelated people never leak
-		// in; the only imprecision (shared with the existing group settlement path)
-		// is that a settlement between the same pair made in a *different* project
-		// still counts here. This keeps the net consistent with computeBalance.
+		// Settlements where the perspective person is one party, scoped to THIS
+		// project. Settlements are now project-scoped (settlement.projectId), so
+		// the per-project perspective view only counts this project's payments and
+		// no longer leaks settlements the same pair made in a different project.
 		prisma.settlement.findMany({
 			where: {
+				projectId,
 				status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 				OR: [
 					{

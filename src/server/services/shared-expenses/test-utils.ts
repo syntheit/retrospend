@@ -65,6 +65,7 @@ export interface SettlementRecord {
 	exchangeRateUsed: number | null;
 	paymentMethod: string | null;
 	note: string | null;
+	projectId: string | null;
 }
 
 export interface ProjectRecord {
@@ -578,6 +579,15 @@ export function createStatefulDb() {
 								tx.billingPeriodId !== txFilter.billingPeriodId
 							)
 								return false;
+							// Project scope (computeBalance projectScope). Key absent =>
+							// no filter; string => that project; null => null-project only.
+							if ("projectId" in txFilter) {
+								const wantProjectId = txFilter.projectId as
+									| string
+									| null;
+								if ((tx.projectId ?? null) !== wantProjectId)
+									return false;
+							}
 						}
 
 						return true;
@@ -819,6 +829,7 @@ export function createStatefulDb() {
 				exchangeRateUsed: args.data.exchangeRateUsed ?? null,
 				paymentMethod: args.data.paymentMethod ?? null,
 				note: args.data.note ?? null,
+				projectId: args.data.projectId ?? null,
 			};
 			settlements.set(id, record);
 			return record;
@@ -879,6 +890,17 @@ export function createStatefulDb() {
 					results = results.filter(
 						(s) => s.toParticipantId === w.toParticipantId,
 					);
+
+				// Project scope. Semantics mirror computeBalance's projectScopeWhere:
+				//   projectId absent (key not present) => no filter (GLOBAL)
+				//   projectId: string => only that project's settlements
+				//   projectId: null   => only project-less settlements
+				// Use `"projectId" in w` so an explicit `null` is a real filter, not
+				// "no filter". A `null` value would fail a `!== undefined` guard.
+				if ("projectId" in w) {
+					const wantProjectId = w.projectId as string | null;
+					results = results.filter((s) => s.projectId === wantProjectId);
+				}
 
 				return results;
 			},
