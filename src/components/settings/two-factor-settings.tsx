@@ -49,7 +49,7 @@ export function TwoFactorSettings() {
 				setStatus("idle");
 				return;
 			}
-			setTotpUri(data?.totpURI || "");
+			setTotpUri(data?.method === "totp" ? data.totpURI : "");
 			setStatus("setup");
 			setPassword("");
 		} catch {
