@@ -7,12 +7,18 @@ const participantRefSchema = z.object({
 	participantId: z.string().min(1),
 });
 
+/** Which way the money moved, from the caller's side. */
+const settlementDirectionSchema = z.enum(["outgoing", "incoming"]);
+
 export const settlementRouter = createTRPCRouter({
 	/**
 	 * POST /api/settlements
 	 *
-	 * Creates a new settlement. The current user is always the payer (from_participant).
-	 * The to_participant must have an existing financial relationship with the current user.
+	 * Creates a new settlement between the current user and toParticipant, who
+	 * must have an existing financial relationship with them. With direction
+	 * "outgoing" (default) the current user paid toParticipant; with "incoming"
+	 * toParticipant paid the current user (recording a payment received, which
+	 * is final at once since the payee is the one recording it).
 	 *
 	 * Returns { settlement, warning } where warning is a string if the settlement
 	 * amount exceeds the current balance owed, or null otherwise.
@@ -24,6 +30,7 @@ export const settlementRouter = createTRPCRouter({
 		.input(
 			z.object({
 				toParticipant: participantRefSchema,
+				direction: settlementDirectionSchema.optional(),
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
 				convertedAmount: z.number().positive().nullish(),
@@ -57,6 +64,8 @@ export const settlementRouter = createTRPCRouter({
 		.input(
 			z.object({
 				toParticipant: participantRefSchema,
+				// See create.direction.
+				direction: settlementDirectionSchema.optional(),
 				paymentCurrency: z.string().min(1).max(10),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
@@ -100,7 +109,8 @@ export const settlementRouter = createTRPCRouter({
 	 * POST /api/settlements/:id/void
 	 *
 	 * Voids (undoes) an auto-finalized settlement whose payee is a non-user
-	 * (shadow or guest). Only the payer can call this.
+	 * (shadow or guest). Only the payer can call this. The payee can also void
+	 * a payment they recorded themselves as received (direction "incoming").
 	 *
 	 * A settlement to a shadow/guest auto-finalizes on creation (the payee can
 	 * never authenticate to confirm), which would otherwise permanently rewrite a

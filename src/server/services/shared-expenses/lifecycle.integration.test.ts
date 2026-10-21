@@ -1456,4 +1456,238 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		});
 		expect(after.byCurrency).toEqual({ USD: -30 });
 	});
+
+	it("alice records a payment received from bob in the People view: every scope clears", async () => {
+		// bob owes alice $40 in project A and $10 in direct expenses.
+		seedBobOwesAlice("A", 40);
+		seedBobOwesAlice(null, 10);
+
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		const result = await aliceSettle.initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: 50,
+			currency: "USD",
+		});
+
+		// Final at once, bob is the payer.
+		expect(result.requiresPayeeConfirmation).toBe(false);
+		for (const s of db._stores.settlements.values()) {
+			expect(s.fromParticipantId).toBe(BOB);
+			expect(s.toParticipantId).toBe(ALICE);
+			expect(s.status).toBe("FINALIZED");
+		}
+		expect(settlementRows()).toEqual(
+			expect.arrayContaining([
+				{ projectId: "A", amount: 40 },
+				{ projectId: null, amount: 10 },
+			]),
+		);
+
+		const global = await computeBalance(db as never, aliceRef, bobRef);
+		expect(global.byCurrency.USD ?? 0).toBe(0);
+		const inA = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(inA.byCurrency.USD ?? 0).toBe(0);
+	});
+
+	it("alice cannot record more than bob owes her", async () => {
+		seedBobOwesAlice("A", 40);
+
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		await expect(
+			aliceSettle.initiateSettlement({
+				toParticipant: bobRef,
+				direction: "incoming",
+				amount: 45,
+				currency: "USD",
+				projectId: "A",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance/);
+		expect(db._stores.settlements.size).toBe(0);
+	});
+
+	it("alice can undo a payment she recorded as received", async () => {
+		seedBobOwesAlice("A", 40);
+
+		const aliceSettle = new SettlementService(db as never, ALICE);
+		const { settlement } = await aliceSettle.initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: 40,
+			currency: "USD",
+			projectId: "A",
+		});
+		await aliceSettle.voidAutoFinalizedSettlement(settlement.id);
+
+		const inA = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(inA.byCurrency).toEqual({ USD: 40 });
+	});
+});
+
+// ── Suite 1J: Auto-accept window restarts on edit ─────────────────────────────
+
+describe("Suite 1J: Auto-accept expiry counts from the last re-verification", () => {
+	const DAY = 24 * 60 * 60 * 1000;
+	let db: ReturnType<typeof createStatefulDb>;
+
+	beforeEach(() => {
+		db = createStatefulDb();
+	});
+
+	function seedPendingSplit(dates: {
+		txCreated: Date;
+		txUpdated: Date;
+		splitCreated: Date;
+	}) {
+		db._stores.transactions.set("tx-old", {
+			id: "tx-old",
+			description: "Old dinner",
+			amount: 100,
+			currency: "USD",
+			date: dates.txCreated,
+			paidByType: "user",
+			paidById: ALICE,
+			createdByType: "user",
+			createdById: ALICE,
+			splitMode: "EQUAL",
+			projectId: null,
+			billingPeriodId: null,
+			isLocked: false,
+			notes: null,
+			receiptUrl: null,
+			categoryId: null,
+			createdAt: dates.txCreated,
+			updatedAt: dates.txUpdated,
+		});
+		db._stores.splits.set("sp-bob", {
+			id: "sp-bob",
+			transactionId: "tx-old",
+			participantType: "user",
+			participantId: BOB,
+			shareAmount: 50,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "PENDING",
+			verifiedAt: null,
+			rejectionReason: null,
+			hasUnseenChanges: true,
+			createdAt: dates.splitCreated,
+		});
+	}
+
+	it("auto-accepts a split that has been pending for more than 7 days", async () => {
+		const old = new Date(Date.now() - 30 * DAY);
+		seedPendingSplit({ txCreated: old, txUpdated: old, splitCreated: old });
+
+		const accepted = await new VerificationService(
+			db as never,
+			bobRef,
+		).findAndAutoAcceptExpired();
+
+		expect(accepted).toBe(1);
+		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe(
+			"AUTO_ACCEPTED",
+		);
+	});
+
+	it("keeps an old expense edited yesterday pending (reset in place)", async () => {
+		const old = new Date(Date.now() - 30 * DAY);
+		seedPendingSplit({
+			txCreated: old,
+			txUpdated: new Date(Date.now() - DAY),
+			splitCreated: old,
+		});
+
+		const accepted = await new VerificationService(
+			db as never,
+			bobRef,
+		).findAndAutoAcceptExpired();
+
+		expect(accepted).toBe(0);
+		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe("PENDING");
+	});
+
+	it("keeps a split recreated yesterday pending (split rows replaced)", async () => {
+		const old = new Date(Date.now() - 30 * DAY);
+		seedPendingSplit({
+			txCreated: old,
+			txUpdated: old,
+			splitCreated: new Date(Date.now() - DAY),
+		});
+
+		const accepted = await new VerificationService(
+			db as never,
+			bobRef,
+		).findAndAutoAcceptExpired();
+
+		expect(accepted).toBe(0);
+		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe("PENDING");
+	});
+});
+
+// ── Suite 1K: Delete / "Remove me" after the share was already paid ───────────
+
+describe("Suite 1K: Removing a paid share asks before creating a reverse debt", () => {
+	let db: ReturnType<typeof createStatefulDb>;
+	let txnId: string;
+
+	beforeEach(async () => {
+		db = createStatefulDb();
+		// alice pays $100, split with bob: bob owes alice $50.
+		const { transaction } = await new SharedTransactionService(
+			db as never,
+			aliceRef,
+		).create(makeCreateInput());
+		txnId = transaction.id;
+	});
+
+	async function bobPaysAlice(amount: number) {
+		await new SettlementService(db as never, BOB).initiateSettlement({
+			toParticipant: aliceRef,
+			amount,
+			currency: "USD",
+		});
+	}
+
+	it("bob can remove himself without confirmation while he still owes his share", async () => {
+		await new VerificationService(db as never, bobRef).removeSelf(txnId);
+
+		const balance = await computeBalance(db as never, aliceRef, bobRef);
+		expect(balance.byCurrency.USD ?? 0).toBe(0);
+	});
+
+	it("bob must confirm removing himself after he already paid alice", async () => {
+		await bobPaysAlice(50);
+		const verify = new VerificationService(db as never, bobRef);
+
+		await expect(verify.removeSelf(txnId)).rejects.toMatchObject({
+			code: "PRECONDITION_FAILED",
+		});
+		// Nothing removed yet.
+		expect(
+			[...db._stores.splits.values()].some((sp) => sp.participantId === BOB),
+		).toBe(true);
+
+		await verify.removeSelf(txnId, true);
+		// Confirmed: his $50 payment is now owed back to him.
+		const balance = await computeBalance(db as never, aliceRef, bobRef);
+		expect(balance.byCurrency).toEqual({ USD: -50 });
+	});
+
+	it("alice must confirm deleting the expense after bob already paid her", async () => {
+		await bobPaysAlice(50);
+		const txService = new SharedTransactionService(db as never, aliceRef);
+
+		await expect(txService.delete(txnId)).rejects.toMatchObject({
+			code: "PRECONDITION_FAILED",
+		});
+		expect(db._stores.transactions.has(txnId)).toBe(true);
+
+		await txService.delete(txnId, true);
+		expect(db._stores.transactions.has(txnId)).toBe(false);
+	});
 });

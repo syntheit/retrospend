@@ -5,7 +5,10 @@ import {
 } from "~/server/services/notifications";
 import type { Prisma, PrismaClient, SplitMode } from "~prisma";
 import { logAudit } from "./audit-log";
-import { computeBalance } from "./balance";
+import {
+	effectOfRemovingShare,
+	type ShareRemovalEffect,
+} from "./balance-change";
 import {
 	assertCanModifyTransaction,
 	requireProjectRole,
@@ -915,17 +918,25 @@ export class SharedTransactionService {
 				this.actor.participantId,
 			);
 
-			// Guard against silently erasing a live debt. Deleting an expense
+			// Guard against silently changing who owes whom. Deleting an expense
 			// cascades its split rows away, so any balance it created disappears
-			// from computeBalance (only the audit log retains a trace). If the
-			// expense still carries a non-zero unsettled balance between the payer
-			// and the people they covered, require an explicit acknowledgement.
+			// from computeBalance (only the audit log retains a trace). Require an
+			// explicit acknowledgement when that erases an unpaid debt, or when
+			// payments already recorded for it would turn into a debt the other
+			// way round.
 			if (!confirmUnsettled) {
-				const unsettled = await this.hasUnsettledBalance(
+				const effect = await this.deletionEffect(
 					tx as unknown as PrismaClient,
 					existing,
 				);
-				if (unsettled) {
+				if (effect === "flips_balance") {
+					throw new TRPCError({
+						code: "PRECONDITION_FAILED",
+						message:
+							"Payments or other expenses already cover this expense, so deleting it would leave the payer owing money. Confirm to delete anyway.",
+					});
+				}
+				if (effect === "erases_debt") {
 					throw new TRPCError({
 						code: "PRECONDITION_FAILED",
 						message:
@@ -1010,18 +1021,13 @@ export class SharedTransactionService {
 	}
 
 	/**
-	 * Returns true when the expense still represents a live debt: the payer
-	 * covered shares for other participants AND, in the expense currency, at least
-	 * one of those participants still owes the payer (the balance has not been
-	 * settled). Reuses {@link computeBalance} rather than re-deriving balances by
-	 * hand so it honors settlements, claim aliases, and the same rounding rules.
-	 *
-	 * A project expense is checked against that project's balance (settlements
-	 * are project-scoped), so debts or settle-ups elsewhere between the same
-	 * people neither trigger nor hide the warning. A standalone expense keeps
-	 * the global balance.
+	 * The strongest effect deleting this expense has on the balance between
+	 * its payer and any participant they covered (see
+	 * {@link effectOfRemovingShare}): "flips_balance" when a recorded payment
+	 * would become a debt the other way round, else "erases_debt" when someone
+	 * still owes the payer, else "none".
 	 */
-	private async hasUnsettledBalance(
+	private async deletionEffect(
 		db: PrismaClient,
 		existing: {
 			projectId: string | null;
@@ -1034,13 +1040,13 @@ export class SharedTransactionService {
 				shareAmount: Prisma.Decimal | number;
 			}>;
 		},
-	): Promise<boolean> {
+	): Promise<ShareRemovalEffect> {
 		const payer: ParticipantRef = {
 			participantType: existing.paidByType as "user" | "guest" | "shadow",
 			participantId: existing.paidById,
 		};
-		const currency = existing.currency;
 		const TOLERANCE = 0.005;
+		let strongest: ShareRemovalEffect = "none";
 
 		for (const sp of existing.splitParticipants) {
 			// The payer's own share is not a debt.
@@ -1051,27 +1057,24 @@ export class SharedTransactionService {
 				continue;
 			}
 			// This participant contributes debt only if they were charged a share.
-			if (Number(sp.shareAmount) <= TOLERANCE) continue;
+			const share = Number(sp.shareAmount);
+			if (share <= TOLERANCE) continue;
 
-			const participant: ParticipantRef = {
-				participantType: sp.participantType as "user" | "guest" | "shadow",
-				participantId: sp.participantId,
-			};
-
-			// computeBalance(payer, participant): positive = participant owes payer.
-			const balance = await computeBalance(
-				db,
+			const effect = await effectOfRemovingShare(db, {
 				payer,
-				participant,
-				existing.projectId ? { projectScope: existing.projectId } : undefined,
-			);
-			const owed = balance.byCurrency[currency] ?? 0;
-			if (owed > TOLERANCE) {
-				return true;
-			}
+				participant: {
+					participantType: sp.participantType as "user" | "guest" | "shadow",
+					participantId: sp.participantId,
+				},
+				share,
+				currency: existing.currency,
+				projectId: existing.projectId,
+			});
+			if (effect === "flips_balance") return effect;
+			if (effect === "erases_debt") strongest = effect;
 		}
 
-		return false;
+		return strongest;
 	}
 
 	/**
@@ -1294,6 +1297,20 @@ export class SharedTransactionService {
 		splitMode: SplitModeType,
 		paidBy: ParticipantRef,
 	): SplitParticipantInput[] {
+		// A missing EXACT amount counts as 0 in the sum check, so it can pass
+		// validation and then fail the insert (shareAmount is required). Reject
+		// it here as a validation error instead.
+		if (splitMode === "EXACT") {
+			const missing = splitWith.find(
+				(p) => p.shareAmount === undefined || p.shareAmount === null,
+			);
+			if (missing) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Participant ${missing.participantId} is missing shareAmount for EXACT split mode`,
+				});
+			}
+		}
 		try {
 			return resolveSplits({
 				mode: splitMode,

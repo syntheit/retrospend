@@ -94,10 +94,20 @@ export const verificationRouter = createTRPCRouter({
 	 * locked (settled). Remaining shares are left as-is by design.
 	 */
 	removeSelf: guestOrProtectedProcedure
-		.input(z.object({ txnId: z.string().min(1) }))
+		.input(
+			z.object({
+				txnId: z.string().min(1),
+				// Set true to remove yourself even though your share is already
+				// paid (the payer then owes that payment back to you).
+				confirmBalanceChange: z.boolean().optional(),
+			}),
+		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
 			const service = new VerificationService(ctx.db, actor);
-			return await service.removeSelf(input.txnId);
+			return await service.removeSelf(
+				input.txnId,
+				input.confirmBalanceChange ?? false,
+			);
 		}),
 });

@@ -1,15 +1,11 @@
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
+import { BALANCE_SETTLEMENT_STATUSES } from "./balance";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
 
-/**
- * Settlement statuses that count toward balances. Mirrors balance.ts so the
- * perspective view agrees with computeBalance's optimistic-PROPOSED behaviour.
- */
-const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
 
 export interface PerspectiveIdentity {
 	name: string;

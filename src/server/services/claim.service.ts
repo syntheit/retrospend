@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "~prisma";
+import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 /**
  * Explicit shadow-profile claiming (claim link + "are you one of these people?"
@@ -60,27 +61,11 @@ async function repointShadowReferences(
 	// The target may already be a split participant on the same transaction (e.g.
 	// they were added as a user before claiming the ghost), so sum-then-delete
 	// the conflicting rows before re-pointing the rest.
-	await tx.$executeRaw`
-		UPDATE split_participant AS target
-		SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-		FROM   split_participant AS source
-		WHERE  source."participantType" = 'shadow'
-		  AND  source."participantId"   = ${shadowId}
-		  AND  target."transactionId"   = source."transactionId"
-		  AND  target."participantType" = ${targetType}::"ParticipantType"
-		  AND  target."participantId"   = ${targetId}
-	`;
-	await tx.$executeRaw`
-		DELETE FROM split_participant
-		WHERE  "participantType" = 'shadow'
-		  AND  "participantId"   = ${shadowId}
-		  AND  "transactionId" IN (
-			SELECT "transactionId"
-			FROM   split_participant
-			WHERE  "participantType" = ${targetType}::"ParticipantType"
-			  AND  "participantId"   = ${targetId}
-		  )
-	`;
+	await mergeOverlappingSplitRows(
+		tx,
+		{ participantType: "shadow", participantId: shadowId },
+		{ participantType: targetType, participantId: targetId },
+	);
 	await tx.splitParticipant.updateMany({
 		where: { participantType: "shadow", participantId: shadowId },
 		data: { participantType: targetType, participantId: targetId },
@@ -246,13 +231,13 @@ export async function canMintClaimLink(
 
 /**
  * Thrown when a guest tries to link to a ghost that is also part of other
- * projects. Only a claim link (minted by someone who runs all of them) may
- * absorb such a ghost.
+ * projects, or has expenses or settlements outside this one. Only a claim link
+ * (minted by someone who runs all of them) may absorb such a ghost.
  */
 export class GhostInOtherProjectsError extends Error {
 	constructor() {
 		super(
-			"This person is also part of other projects, so you can't link to them here. Join as yourself and ask an organizer for a claim link.",
+			"This person is also part of other projects or has expenses outside this one, so you can't link to them here. Join as yourself and ask an organizer for a claim link.",
 		);
 		this.name = "GhostInOtherProjectsError";
 	}
@@ -264,6 +249,79 @@ export class AlreadyClaimedError extends Error {
 		super("This person has already been linked to another account");
 		this.name = "AlreadyClaimedError";
 	}
+}
+
+/**
+ * Of the given ghosts, returns those with anything outside `projectId`: a
+ * membership in another project, or an expense (as payer or split member) or
+ * a settlement that belongs to another project or to no project at all.
+ *
+ * Absorbing a ghost re-points ALL of its history, so a guest may only absorb
+ * one whose history lives entirely in the project the guest joined. Checking
+ * memberships alone is not enough: a ghost removed from a project keeps its
+ * expenses there, and direct (project-less) expenses have no membership row.
+ */
+async function ghostsWithHistoryOutsideProject(
+	db: PrismaClient | Prisma.TransactionClient,
+	shadowIds: string[],
+	projectId: string,
+): Promise<Set<string>> {
+	if (shadowIds.length === 0) return new Set();
+	// `projectId: { not }` alone skips NULL rows in SQL, so name them too.
+	const outsideProject = {
+		OR: [{ projectId: null }, { projectId: { not: projectId } }],
+	};
+
+	const [memberships, paid, splits, sent, received] = await Promise.all([
+		db.projectParticipant.findMany({
+			where: {
+				participantType: "shadow",
+				participantId: { in: shadowIds },
+				NOT: { projectId },
+			},
+			select: { participantId: true },
+		}),
+		db.sharedTransaction.findMany({
+			where: {
+				paidByType: "shadow",
+				paidById: { in: shadowIds },
+				...outsideProject,
+			},
+			select: { paidById: true },
+		}),
+		db.splitParticipant.findMany({
+			where: {
+				participantType: "shadow",
+				participantId: { in: shadowIds },
+				transaction: outsideProject,
+			},
+			select: { participantId: true },
+		}),
+		db.settlement.findMany({
+			where: {
+				fromParticipantType: "shadow",
+				fromParticipantId: { in: shadowIds },
+				...outsideProject,
+			},
+			select: { fromParticipantId: true },
+		}),
+		db.settlement.findMany({
+			where: {
+				toParticipantType: "shadow",
+				toParticipantId: { in: shadowIds },
+				...outsideProject,
+			},
+			select: { toParticipantId: true },
+		}),
+	]);
+
+	return new Set([
+		...memberships.map((m) => m.participantId),
+		...paid.map((t) => t.paidById),
+		...splits.map((s) => s.participantId),
+		...sent.map((s) => s.fromParticipantId),
+		...received.map((s) => s.toParticipantId),
+	]);
 }
 
 /**
@@ -288,20 +346,16 @@ export async function listUnclaimedProjectGhosts(
 		orderBy: { name: "asc" },
 	});
 
-	// Ghosts that are also in other projects are still listed (the joiner may
-	// recognise themselves) but can't be linked by a guest; see
+	// Ghosts with history outside this project are still listed (the joiner
+	// may recognise themselves) but can't be linked by a guest; see
 	// mergeShadowIntoGuest.
-	const elsewhere = await db.projectParticipant.findMany({
-		where: {
-			participantType: "shadow",
-			participantId: { in: shadows.map((s) => s.id) },
-			NOT: { projectId },
-		},
-		select: { participantId: true },
-	});
-	const inOtherProjects = new Set(elsewhere.map((m) => m.participantId));
+	const elsewhere = await ghostsWithHistoryOutsideProject(
+		db,
+		shadows.map((s) => s.id),
+		projectId,
+	);
 
-	return shadows.map((s) => ({ ...s, linkable: !inOtherProjects.has(s.id) }));
+	return shadows.map((s) => ({ ...s, linkable: !elsewhere.has(s.id) }));
 }
 
 /**
@@ -367,20 +421,17 @@ export async function mergeShadowIntoGuest(
 			throw new Error("You are not a participant of this project");
 		}
 
-		// The merge re-points the ghost's history in EVERY project and deletes
-		// it, but the guest only belongs to this one. A ghost that is also in
-		// other projects needs a claim link from someone who runs all of them.
-		// (Checked inside the transaction so a concurrent add can't slip by.)
-		const otherProjects = await tx.projectParticipant.findMany({
-			where: {
-				participantType: "shadow",
-				participantId: shadowId,
-				NOT: { projectId },
-			},
-			select: { id: true },
-			take: 1,
-		});
-		if (otherProjects.length > 0) {
+		// The merge re-points the ghost's history everywhere and deletes it,
+		// but the guest only belongs to this project. A ghost with memberships,
+		// expenses or settlements outside it needs a claim link from someone
+		// who runs all of them. (Checked inside the transaction so a concurrent
+		// add can't slip by.)
+		const elsewhere = await ghostsWithHistoryOutsideProject(
+			tx,
+			[shadowId],
+			projectId,
+		);
+		if (elsewhere.size > 0) {
 			throw new GhostInOtherProjectsError();
 		}
 

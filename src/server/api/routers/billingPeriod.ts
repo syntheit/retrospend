@@ -11,6 +11,7 @@ import {
 	resolveParticipantName,
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
+import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import {
 	computePeriodOutstanding,
 	computeSettlementPlan,
@@ -250,7 +251,8 @@ const txForPlanSelect = {
  * naive "this period's expenses minus every settlement" check therefore counts
  * payments that belong to other periods. Instead:
  * - expenses of this period and every earlier one are compared with all of the
- *   project's FINALIZED settlements, applied oldest debt first
+ *   project's counted settlements (BALANCE_SETTLEMENT_STATUSES), applied
+ *   oldest debt first
  *   (see computePeriodOutstanding);
  * - if the project as a whole is settled, the period is settled too (a debt
  *   can also be cancelled by a later expense in the other direction).
@@ -271,7 +273,10 @@ async function computePeriodSettleStatus(
 			select: { ...txForPlanSelect, billingPeriodId: true },
 		}),
 		prisma.settlement.findMany({
-			where: { projectId: period.projectId, status: "FINALIZED" },
+			where: {
+				projectId: period.projectId,
+				status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
+			},
 			select: {
 				fromParticipantType: true,
 				fromParticipantId: true,

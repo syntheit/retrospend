@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
+import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 interface MigrationResult {
 	migratedSessionCount: number;
@@ -216,30 +217,13 @@ async function migrateSplitParticipants(
 	// If the user already has a split entry for the same transaction (e.g. they were
 	// added as a user participant before registering as a guest), we merge amounts.
 
-	// Step 1: Merge shareAmount into pre-existing user row
-	await tx.$executeRaw`
-		UPDATE split_participant AS target
-		SET    "shareAmount" = target."shareAmount" + source."shareAmount"
-		FROM   split_participant AS source
-		WHERE  source."participantType" = 'guest'
-		  AND  source."participantId"   = ${guestId}
-		  AND  target."transactionId"   = source."transactionId"
-		  AND  target."participantType" = 'user'
-		  AND  target."participantId"   = ${userId}
-	`;
-
-	// Step 2: Delete the guest rows that were merged (would conflict on unique)
-	await tx.$executeRaw`
-		DELETE FROM split_participant
-		WHERE  "participantType" = 'guest'
-		  AND  "participantId"   = ${guestId}
-		  AND  "transactionId" IN (
-			SELECT "transactionId"
-			FROM   split_participant
-			WHERE  "participantType" = 'user'
-			  AND  "participantId"   = ${userId}
-		  )
-	`;
+	// Steps 1 and 2: merge into a pre-existing user row, then drop the merged
+	// guest rows (would conflict on unique).
+	await mergeOverlappingSplitRows(
+		tx,
+		{ participantType: "guest", participantId: guestId },
+		{ participantType: "user", participantId: userId },
+	);
 
 	// Step 3: Update remaining guest rows to user (no conflict now)
 	await tx.splitParticipant.updateMany({

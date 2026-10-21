@@ -12,6 +12,7 @@ import {
 	type FieldChange,
 	formatSplitMode,
 	generateSummary,
+	settlementCounterparty,
 } from "./audit-log-formatter";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -277,5 +278,33 @@ describe("generateSummary: actor name edge cases", () => {
 			autoAcceptedAfterDays: 7,
 		});
 		expect(result).toBe("Auto-verified after 7 days of no response");
+	});
+});
+
+describe("settlementCounterparty", () => {
+	const alice = { actorType: "user", actorId: "alice" };
+
+	it("is the payee when the actor paid", () => {
+		expect(
+			settlementCounterparty(alice, {
+				toParticipantType: "user",
+				toParticipantId: "bob",
+			}),
+		).toEqual({ participantType: "user", participantId: "bob" });
+	});
+
+	it("is the payer when the actor recorded a payment they received", () => {
+		expect(
+			settlementCounterparty(alice, {
+				fromParticipantType: "shadow",
+				fromParticipantId: "ghost-1",
+				toParticipantType: "user",
+				toParticipantId: "alice",
+			}),
+		).toEqual({ participantType: "shadow", participantId: "ghost-1" });
+	});
+
+	it("is null without participant fields", () => {
+		expect(settlementCounterparty(alice, null)).toBeNull();
 	});
 });

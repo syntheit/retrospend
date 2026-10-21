@@ -728,6 +728,34 @@ describe("SharedTransactionService", () => {
 				}),
 			).rejects.toThrow("Split amounts must sum to the transaction amount");
 		});
+
+		it("rejects a participant with no shareAmount as a validation error", async () => {
+			const { db, txClient } = createMockDb();
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+
+			// bob's missing amount would count as 0 and pass the sum check.
+			await expect(
+				service.create({
+					amount: 100,
+					currency: "USD",
+					description: "Missing share",
+					date: new Date("2026-03-01"),
+					paidBy: { participantType: "user", participantId: "alice" },
+					splitWith: [
+						{ participantType: "user", participantId: "alice", shareAmount: 100 },
+						{ participantType: "user", participantId: "bob" },
+					],
+					splitMode: "EXACT",
+				}),
+			).rejects.toMatchObject({
+				code: "BAD_REQUEST",
+				message: expect.stringContaining("missing shareAmount"),
+			});
+			expect(txClient.sharedTransaction.create).not.toHaveBeenCalled();
+		});
 	});
 
 	// ── split mode: PERCENTAGE ───────────────────────────────────────────────
@@ -2381,7 +2409,7 @@ describe("SharedTransactionService", () => {
 			);
 		});
 
-		it("snapshots to audit log and hard-deletes when balance is settled", async () => {
+		it("snapshots to audit log and hard-deletes when no one else has a share", async () => {
 			const { db, txClient } = createMockDb();
 			const existing = {
 				id: "txn-1",
@@ -2395,13 +2423,12 @@ describe("SharedTransactionService", () => {
 				isLocked: false,
 				projectId: null,
 				splitParticipants: [
-					{ participantType: "user", participantId: "alice", shareAmount: 25 },
-					{ participantType: "user", participantId: "bob", shareAmount: 25 },
+					{ participantType: "user", participantId: "alice", shareAmount: 50 },
+					{ participantType: "user", participantId: "bob", shareAmount: 0 },
 				],
 			};
 			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
 			txClient.sharedTransaction.delete.mockResolvedValue(existing);
-			// bob has already repaid alice → no outstanding balance
 			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
 
 			const service = new SharedTransactionService(db as never, {
@@ -2481,15 +2508,16 @@ describe("SharedTransactionService", () => {
 					findUnique: vi.fn().mockResolvedValue({ role: "ORGANIZER" }),
 				},
 			});
-			// Settled within the project (bob may still owe alice elsewhere, but
-			// that is not this expense's debt).
-			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+			// bob still owes alice his share within the project.
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 25 } });
 
 			const service = new SharedTransactionService(db as never, {
 				participantType: "user",
 				participantId: "alice",
 			});
-			await service.delete("txn-1");
+			await expect(service.delete("txn-1")).rejects.toMatchObject({
+				code: "PRECONDITION_FAILED",
+			});
 
 			expect(computeBalance).toHaveBeenCalledWith(
 				expect.anything(),
@@ -2497,7 +2525,75 @@ describe("SharedTransactionService", () => {
 				{ participantType: "user", participantId: "bob" },
 				{ projectScope: "proj-1" },
 			);
-			expect(txClient.sharedTransaction.delete).toHaveBeenCalled();
+			expect(txClient.sharedTransaction.delete).not.toHaveBeenCalled();
+		});
+
+		it("asks for confirmation when bob already repaid his share (reverse debt)", async () => {
+			const { db, txClient } = createMockDb();
+			const existing = {
+				id: "txn-1",
+				description: "Dinner",
+				amount: 50,
+				currency: "USD",
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				projectId: null,
+				splitParticipants: [
+					{ participantType: "user", participantId: "alice", shareAmount: 25 },
+					{ participantType: "user", participantId: "bob", shareAmount: 25 },
+				],
+			};
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			// bob paid alice back, so nothing is owed now. Deleting the expense
+			// would leave his $25 payment as alice owing bob.
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
+
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+
+			await expect(service.delete("txn-1")).rejects.toMatchObject({
+				code: "PRECONDITION_FAILED",
+				message: expect.stringContaining("leave the payer owing money"),
+			});
+			expect(txClient.sharedTransaction.delete).not.toHaveBeenCalled();
+		});
+
+		it("asks for confirmation when bob repaid only part of his share", async () => {
+			const { db, txClient } = createMockDb();
+			const existing = {
+				id: "txn-1",
+				description: "Dinner",
+				amount: 50,
+				currency: "USD",
+				paidByType: "user",
+				paidById: "alice",
+				createdByType: "user",
+				createdById: "alice",
+				isLocked: false,
+				projectId: null,
+				splitParticipants: [
+					{ participantType: "user", participantId: "alice", shareAmount: 25 },
+					{ participantType: "user", participantId: "bob", shareAmount: 25 },
+				],
+			};
+			txClient.sharedTransaction.findUnique.mockResolvedValue(existing);
+			// bob paid $15 of his $25: $10 left, but deleting removes $25.
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: 10 } });
+
+			const service = new SharedTransactionService(db as never, {
+				participantType: "user",
+				participantId: "alice",
+			});
+
+			await expect(service.delete("txn-1")).rejects.toMatchObject({
+				code: "PRECONDITION_FAILED",
+				message: expect.stringContaining("leave the payer owing money"),
+			});
 		});
 
 		it("deletes an unsettled expense when confirmUnsettled is true", async () => {

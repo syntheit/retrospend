@@ -20,6 +20,7 @@ import {
 	type RawAuditEntry,
 	type TimelineDetail,
 	resolveActorName,
+	settlementCounterparty,
 } from "~/server/services/shared-expenses/audit-log-formatter";
 
 // ── Activity Feed Types & Helpers ──────────────────────────────────────────────
@@ -490,13 +491,12 @@ async function formatActivityEntry(
 			entry.action === "CREATED" &&
 			entry.targetType === "SETTLEMENT"
 		) {
-			const toType = c?.toParticipantType as string | undefined;
-			const toId = c?.toParticipantId as string | undefined;
-			if (toType && toId) {
+			const other = settlementCounterparty(entry, c);
+			if (other) {
 				otherActorName = await resolveActorName(
 					globalDb,
-					toType,
-					toId,
+					other.participantType,
+					other.participantId,
 					nameCache,
 				);
 			}

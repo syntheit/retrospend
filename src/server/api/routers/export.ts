@@ -4,6 +4,7 @@ import { generateCsv } from "~/lib/csv";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { ExportService } from "~/server/services/export.service";
 import { generatePersonPdf, generateProjectPdf } from "~/server/services/pdf.service";
+import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
 import { canonicalizeProjectLedger } from "~/server/services/shared-expenses/identity";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
@@ -100,7 +101,8 @@ function csvMeta(lines: string[]): string {
 	return lines.join("\n") + "\n";
 }
 
-// Fetch transactions + FINALIZED settlements for a project/period.
+// Fetch transactions + counted settlements (BALANCE_SETTLEMENT_STATUSES) for a
+// project/period.
 // Replicates the logic from project.ts fetchProjectTransactionsAndSettlements.
 async function fetchTxAndSettlements(
 	db: PrismaClient,
@@ -156,7 +158,7 @@ async function fetchTxAndSettlements(
 	const settlements = await db.settlement.findMany({
 		where: {
 			projectId,
-			status: "FINALIZED",
+			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 		},
 		select: {
 			fromParticipantType: true,
@@ -565,10 +567,10 @@ export const exportRouter = createTRPCRouter({
 				balanceMap.set(tx.currency, (balanceMap.get(tx.currency) ?? 0) + net);
 			}
 
-			// Also account for finalized settlements between the two
+			// Also account for settlements between the two
 			const settlements = await ctx.db.settlement.findMany({
 				where: {
-					status: "FINALIZED",
+					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 					OR: [
 						{
 							fromParticipantType: "user",
@@ -741,10 +743,10 @@ export const exportRouter = createTRPCRouter({
 				balanceMap.set(tx.currency, (balanceMap.get(tx.currency) ?? 0) + net);
 			}
 
-			// Account for finalized settlements
+			// Account for settlements between the two
 			const settlements = await ctx.db.settlement.findMany({
 				where: {
-					status: "FINALIZED",
+					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 					OR: [
 						{
 							fromParticipantType: "user",

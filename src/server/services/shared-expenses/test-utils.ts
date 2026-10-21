@@ -45,6 +45,7 @@ export interface SplitRecord {
 	verifiedAt: Date | null;
 	rejectionReason: string | null;
 	hasUnseenChanges: boolean;
+	createdAt?: Date;
 }
 
 export interface SettlementRecord {
@@ -66,6 +67,7 @@ export interface SettlementRecord {
 	paymentMethod: string | null;
 	note: string | null;
 	projectId: string | null;
+	autoConfirmedReason?: string | null;
 }
 
 export interface ProjectRecord {
@@ -256,6 +258,7 @@ export function createStatefulDb() {
 						verifiedAt: (sp.verifiedAt as Date | null) ?? null,
 						rejectionReason: null,
 						hasUnseenChanges: false,
+						createdAt: new Date(),
 					};
 					splits.set(spId, record);
 					return record;
@@ -292,10 +295,14 @@ export function createStatefulDb() {
 		),
 
 		findUnique: vi.fn(
-			(args: { where: { id: string }; include?: Record<string, unknown> }) => {
+			(args: {
+				where: { id: string };
+				include?: Record<string, unknown>;
+				select?: Record<string, unknown>;
+			}) => {
 				const tx = transactions.get(args.where.id);
 				if (!tx) return null;
-				if (args.include?.splitParticipants) {
+				if (args.include?.splitParticipants || args.select?.splitParticipants) {
 					const txSplits = [...splits.values()].filter(
 						(sp) => sp.transactionId === tx.id,
 					);
@@ -537,6 +544,14 @@ export function createStatefulDb() {
 						const idIn = (w.id as { in?: string[] } | undefined)?.in;
 						if (idIn !== undefined && !idIn.includes(sp.id)) return false;
 
+						// createdAt filter for auto-accept expiry
+						const spCreatedLt = (w.createdAt as { lt?: Date } | undefined)?.lt;
+						if (
+							spCreatedLt !== undefined &&
+							!((sp.createdAt ?? new Date()) < spCreatedLt)
+						)
+							return false;
+
 						// Nested transaction filter (for computeBalance)
 						if (w.transaction) {
 							const txFilter = w.transaction as Record<string, unknown>;
@@ -573,6 +588,12 @@ export function createStatefulDb() {
 								| undefined;
 							if (createdAtFilter?.lt !== undefined) {
 								if (!(tx.createdAt < createdAtFilter.lt)) return false;
+							}
+							const updatedAtFilter = txFilter.updatedAt as
+								| { lt?: Date }
+								| undefined;
+							if (updatedAtFilter?.lt !== undefined) {
+								if (!(tx.updatedAt < updatedAtFilter.lt)) return false;
 							}
 							if (
 								txFilter.billingPeriodId !== undefined &&
@@ -727,12 +748,14 @@ export function createStatefulDb() {
 
 		deleteMany: vi.fn((args: { where: Record<string, unknown> }) => {
 			let count = 0;
+			const idIn = (args.where.id as { in?: string[] } | undefined)?.in;
 			for (const [id, sp] of splits) {
 				if (
 					args.where.transactionId !== undefined &&
 					sp.transactionId !== args.where.transactionId
 				)
 					continue;
+				if (idIn !== undefined && !idIn.includes(id)) continue;
 				splits.delete(id);
 				count++;
 			}
@@ -757,6 +780,7 @@ export function createStatefulDb() {
 						verifiedAt: item.verifiedAt ?? null,
 						rejectionReason: null,
 						hasUnseenChanges: (item.hasUnseenChanges as boolean | undefined) ?? false,
+						createdAt: new Date(),
 					});
 				}
 				return { count: args.data.length };
@@ -831,6 +855,7 @@ export function createStatefulDb() {
 				paymentMethod: args.data.paymentMethod ?? null,
 				note: args.data.note ?? null,
 				projectId: args.data.projectId ?? null,
+				autoConfirmedReason: args.data.autoConfirmedReason ?? null,
 			};
 			settlements.set(id, record);
 			return record;

@@ -38,11 +38,22 @@ function projectScopeWhere(opts?: BalanceOptions): { projectId?: string | null }
 }
 
 /**
- * Settlement statuses that count toward balance calculations.
- * PROPOSED settlements are included for optimistic balance display —
- * balances update immediately when a settlement is proposed.
+ * Settlement statuses that count toward balances. This is the ONE rule for
+ * every balance in the app: pairwise and per-project balances, settle-up
+ * plans and caps, project and People views, the billing-period settle check
+ * and exports. A settlement counts unless the payee REJECTED it.
+ *
+ * - FINALIZED: confirmed by the payee, recorded by the payee, or
+ *   auto-confirmed because the payee is a ghost/guest who cannot confirm.
+ * - PROPOSED: recorded by the payer and waiting for the payee. It counts right
+ *   away so every view shows the same number as the over-payment cap (which
+ *   must count it, or the same debt could be paid twice). If the payee
+ *   rejects it, it turns REJECTED and the debt comes back everywhere at once.
+ *
+ * Filter settlement queries with `status: { in: [...BALANCE_SETTLEMENT_STATUSES] }`
+ * rather than a literal status.
  */
-const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
+export const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
 
 /** Remove currencies with effectively zero balance (floating point tolerance). */
 function pruneZeroBalances(byCurrency: Record<string, number>) {
