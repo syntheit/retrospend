@@ -2,14 +2,15 @@ import { isCrypto } from "~/lib/currency-format";
 import {
 	isValidRate,
 	fromUSD as moneyFromUSD,
+	roundMoney,
+	roundUSD,
 	toUSD as moneyToUSD,
 } from "~/lib/money";
 
 // Legacy client helpers. Formulas come from ~/lib/money (which documents the
 // rate convention); these keep their old contract of returning 0 for a
-// missing rate and rounding results to 2 decimals.
-
-const round2 = (value: number) => Math.round(value * 100) / 100;
+// missing rate. Results are rounded to the target currency's decimals
+// (2 for USD, 0 for JPY, 8 for BTC).
 
 export function toUSD(
 	amount: number,
@@ -19,7 +20,7 @@ export function toUSD(
 	if (!amount || amount === 0) return 0;
 	if (currency === "USD") return amount;
 	if (!isValidRate(exchangeRate)) return 0;
-	return round2(moneyToUSD(amount, currency, exchangeRate));
+	return roundUSD(moneyToUSD(amount, currency, exchangeRate));
 }
 
 export function fromUSD(
@@ -30,7 +31,10 @@ export function fromUSD(
 	if (!usdAmount || usdAmount === 0) return 0;
 	if (targetCurrency === "USD") return usdAmount;
 	if (!isValidRate(exchangeRate)) return 0;
-	return round2(moneyFromUSD(usdAmount, targetCurrency, exchangeRate));
+	return roundMoney(
+		moneyFromUSD(usdAmount, targetCurrency, exchangeRate),
+		targetCurrency,
+	);
 }
 
 export function convert(
@@ -46,9 +50,12 @@ export function convert(
 	if (sourceCurrency !== "USD" && !isValidRate(sourceRate)) return 0;
 	const usdAmount = moneyToUSD(amount, sourceCurrency, sourceRate);
 
-	if (targetCurrency === "USD") return round2(usdAmount);
+	if (targetCurrency === "USD") return roundUSD(usdAmount);
 	if (!isValidRate(targetRate)) return 0;
-	return round2(moneyFromUSD(usdAmount, targetCurrency, targetRate));
+	return roundMoney(
+		moneyFromUSD(usdAmount, targetCurrency, targetRate),
+		targetCurrency,
+	);
 }
 
 export function getDisplayRate(

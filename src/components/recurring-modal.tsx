@@ -391,13 +391,14 @@ function CurrencyEstimate({
 	if (isLoading)
 		return <p className="text-muted-foreground text-xs">{t("calculating")}</p>;
 
-	if (!rate) return null;
+	// No estimate until both rates are known (never assume 1)
+	if (!rate || usdToHomeRate === null) return null;
 
 	// 1. Convert to USD first
 	const usdValue = toUSD(amount, currency, rate);
 
 	// 2. Convert to home currency
-	const estimation = fromUSD(usdValue, homeCurrency, usdToHomeRate ?? 1);
+	const estimation = fromUSD(usdValue, homeCurrency, usdToHomeRate);
 
 	return (
 		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">

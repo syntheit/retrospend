@@ -37,7 +37,7 @@ export function RecurringProjections({
 			activeTemplates.map((t) => ({
 				template: t,
 				monthlyAmount: toMonthlyEquivalent(
-					Number(t.amountInHomeCurrency),
+					t.amountInHomeCurrency ?? 0,
 					t.frequency,
 				),
 			})),

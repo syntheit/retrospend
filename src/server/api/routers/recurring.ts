@@ -1,9 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { computeAmountInUSD } from "~/lib/money";
+import { computeAmountInUSD, convertAmount } from "~/lib/money";
 import { nextRecurringDate } from "~/lib/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { fromUSD, toUSD } from "~/server/currency";
 import { requireExchangeRate } from "~/server/exchange-rates";
 import { RateCache } from "~/server/services/rate-cache";
 
@@ -57,29 +56,19 @@ export const recurringRouter = createTRPCRouter({
 			const rateMap = await rateCache.getMany([...currenciesNeeded], new Date());
 
 			const enrichedTemplates = templates.map((t) => {
-				let amountInHomeCurrency = Number(t.amount);
-				let exchangeRate = 1;
-
-				if (t.currency !== homeCurrency) {
-					const bestRateFrom = rateMap.get(t.currency);
-
-					let usdValue = Number(t.amount);
-					if (t.currency !== "USD" && bestRateFrom) {
-						exchangeRate = bestRateFrom.rate;
-						usdValue = toUSD(Number(t.amount), t.currency, bestRateFrom.rate);
-					}
-
-					if (homeCurrency === "USD") {
-						amountInHomeCurrency = usdValue;
-					} else {
-						const bestRateTo = rateMap.get(homeCurrency);
-						if (bestRateTo) {
-							amountInHomeCurrency = fromUSD(usdValue, homeCurrency, bestRateTo.rate);
-						} else {
-							amountInHomeCurrency = usdValue;
-						}
-					}
-				}
+				const amount = Number(t.amount);
+				const fromRate =
+					t.currency === "USD" ? 1 : (rateMap.get(t.currency)?.rate ?? null);
+				const toRate =
+					homeCurrency === "USD" ? 1 : (rateMap.get(homeCurrency)?.rate ?? null);
+				// Null when a rate is missing: never priced at 1:1
+				const amountInHomeCurrency =
+					t.currency === homeCurrency
+						? amount
+						: fromRate !== null && toRate !== null
+							? convertAmount(amount, t.currency, fromRate, homeCurrency, toRate)
+							: null;
+				const exchangeRate = fromRate;
 
 				return {
 					...t,

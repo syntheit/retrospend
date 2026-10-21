@@ -104,9 +104,18 @@ describe("Currency conversion logic", () => {
 			// BTC rate: 50000 (1 BTC = 50000 USD)
 			// ETH rate: 3000 (1 ETH = 3000 USD)
 			// Step 1: 1 BTC to USD = 1 * 50000 = 50000 USD
-			// Step 2: 50000 USD to ETH = 50000 / 3000 = 16.67 ETH
+			// Step 2: 50000 USD to ETH = 50000 / 3000 = 16.66666667 ETH
+			// (crypto keeps 8 decimals, not cents)
 			const ethValue = convert(1, "BTC", 50000, "ETH", 3000);
-			expect(ethValue).toBe(16.67);
+			expect(ethValue).toBe(16.66666667);
+		});
+
+		it("rounds to the target currency's decimals", () => {
+			// 10 USD into BTC keeps satoshis; JPY has no minor unit
+			expect(convert(10, "USD", undefined, "BTC", 64545.9)).toBe(0.00015493);
+			expect(fromUSD(10, "BTC", 64545.9)).toBe(0.00015493);
+			expect(convert(1000, "ARS", 1560, "JPY", 163.83)).toBe(105);
+			expect(fromUSD(1.234, "KWD", 0.3102)).toBe(0.383);
 		});
 
 		it("returns amount as-is when source and target are same", () => {
