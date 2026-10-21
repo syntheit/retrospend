@@ -1150,11 +1150,11 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		expect(settlementRows()).toEqual([{ projectId: null, amount: 5 }]);
 	});
 
-	it("rejects a projectId the parties do not both belong to", async () => {
+	it("rejects a projectId the caller has no part in", async () => {
 		seedBobOwesAlice("A", 40);
 		const bobSettle = new SettlementService(db as never, BOB);
 
-		// Neither party is in project Z.
+		// Bob has no membership and no expenses in project Z.
 		await expect(
 			bobSettle.initiateSettlement({
 				toParticipant: aliceRef,
@@ -1162,9 +1162,18 @@ describe("Suite 1I: Project-scoped settlements", () => {
 				currency: "USD",
 				projectId: "Z",
 			}),
-		).rejects.toThrow(/not a member of this project/);
+		).rejects.toThrow(/not part of this project/);
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 0.01,
+				currency: "USD",
+				projectId: "Z",
+			}),
+		).rejects.toThrow(/not part of this project/);
 
-		// Bob is in project C but alice is not.
+		// Bob is in project C but has no balance with alice there: even a
+		// tolerance-sized amount cannot be stamped onto C.
 		addProjectParticipant(db, {
 			projectId: "C",
 			participantType: "user",
@@ -1172,13 +1181,84 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			role: "EDITOR",
 		});
 		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 0.01,
+				currency: "USD",
+				projectId: "C",
+			}),
+		).rejects.toThrow(/no outstanding USD balance/);
+		await expect(
 			bobSettle.settleAll({
 				toParticipant: aliceRef,
 				paymentCurrency: "USD",
 				projectId: "C",
 			}),
-		).rejects.toThrow(/not a participant of this project/);
+		).rejects.toThrow(/No outstanding balance/);
 		expect(db._stores.settlements.size).toBe(0);
+	});
+
+	it("a member removed from the project can still settle their balance there", async () => {
+		seedBobOwesAlice("A", 40);
+		// Bob (the payer) was removed from project A: his membership row is gone
+		// but his expenses and balance there remain.
+		for (const [id, pp] of db._stores.projectParticipants) {
+			if (pp.projectId === "A" && pp.participantId === BOB) {
+				db._stores.projectParticipants.delete(id);
+			}
+		}
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 15,
+			currency: "USD",
+			projectId: "A",
+		});
+		await bobSettle.settleAll({
+			toParticipant: aliceRef,
+			paymentCurrency: "USD",
+			projectId: "A",
+		});
+
+		expect(settlementRows()).toEqual([
+			{ projectId: "A", amount: 15 },
+			{ projectId: "A", amount: 25 },
+		]);
+		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			projectScope: "A",
+		});
+		expect(a.byCurrency).toEqual({});
+	});
+
+	it("can settle with a counterparty who was removed from the project", async () => {
+		seedBobOwesAlice("A", 40);
+		for (const [id, pp] of db._stores.projectParticipants) {
+			if (pp.projectId === "A" && pp.participantId === ALICE) {
+				db._stores.projectParticipants.delete(id);
+			}
+		}
+
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 40,
+			currency: "USD",
+			projectId: "A",
+		});
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
+	});
+
+	it("records at most the scoped debt when the amount is within the tolerance", async () => {
+		seedBobOwesAlice("A", 40);
+		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 40.01,
+			currency: "USD",
+			projectId: "A",
+		});
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
 	});
 
 	it("voidAutoFinalizedSettlement works on a scoped settlement to a non-user payee", async () => {

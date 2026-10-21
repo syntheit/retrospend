@@ -19,6 +19,9 @@ import { type ParticipantRef, sameParticipant } from "./types";
 
 type AppDb = PrismaClient;
 
+/** Owed amounts at or below this are treated as nothing owed. */
+const OWED_TOLERANCE = 0.005;
+
 function toDirection(
 	balance: number,
 ): "they_owe_you" | "you_owe_them" | "settled" {
@@ -78,7 +81,7 @@ export class SettlementService {
 
 		await this.assertRelationship(input.toParticipant);
 		if (typeof input.projectId === "string") {
-			await this.assertProjectMembership(input.projectId, input.toParticipant);
+			await this.assertProjectInvolvement(input.projectId);
 		}
 
 		const isNonUserRecipient = input.toParticipant.participantType !== "user";
@@ -112,6 +115,16 @@ export class SettlementService {
 				});
 			}
 
+			// Nothing owed in this scope (and currency): there is nothing to settle.
+			// Without this an amount inside the tolerance above could still be
+			// recorded, e.g. stamped onto a project where this pair has no balance.
+			if (amountOwed <= OWED_TOLERANCE) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `There is no outstanding ${input.currency} balance to settle with this person${typeof input.projectId === "string" ? " in this project" : ""}.`,
+				});
+			}
+
 			// One row per scope. A scoped settle-up is a single row; a global one
 			// is split across the per-project (and direct) debts so no scope is
 			// over-paid and every view sees its share of the payment.
@@ -127,9 +140,20 @@ export class SettlementService {
 					input.amount,
 				);
 			} else {
+				// Within the over-payment tolerance, record at most what is owed so
+				// the scope ends at zero instead of a cent of reverse debt.
 				allocations = [
-					{ projectId: input.projectId ?? null, amount: input.amount },
+					{
+						projectId: input.projectId ?? null,
+						amount: Math.min(input.amount, amountOwed),
+					},
 				];
+			}
+			if (allocations.length === 0) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `There is no outstanding ${input.currency} balance to settle with this person.`,
+				});
 			}
 
 			const now = new Date();
@@ -838,7 +862,7 @@ export class SettlementService {
 
 		await this.assertRelationship(input.toParticipant);
 		if (typeof input.projectId === "string") {
-			await this.assertProjectMembership(input.projectId, input.toParticipant);
+			await this.assertProjectInvolvement(input.projectId);
 		}
 
 		const isNonUserRecipient = input.toParticipant.participantType !== "user";
@@ -987,10 +1011,22 @@ export class SettlementService {
 				let totalInPaymentCurrency = 0;
 
 				for (const entry of settleable) {
-					for (const allocation of allocate(entry.currency, entry.amount)) {
-						const convertedAmount = entry.convert
-							? entry.convert(allocation.amount)
-							: null;
+					const rows = allocate(entry.currency, entry.amount);
+					// Converted amounts are rounded per row; the last row takes the
+					// rounding remainder so the rows add up to the converted total.
+					const convertedTotal = entry.convert
+						? entry.convert(entry.amount)
+						: null;
+					let convertedSoFar = 0;
+					for (const [i, allocation] of rows.entries()) {
+						let convertedAmount: number | null = null;
+						if (entry.convert && convertedTotal !== null) {
+							convertedAmount =
+								i === rows.length - 1
+									? Math.round((convertedTotal - convertedSoFar) * 100) / 100
+									: entry.convert(allocation.amount);
+							convertedSoFar += convertedAmount;
+						}
 						const convertedCurrency = entry.convert
 							? input.paymentCurrency
 							: null;
@@ -1102,49 +1138,55 @@ export class SettlementService {
 	}
 
 	/**
-	 * A client-supplied projectId must name a project the current user belongs
-	 * to and the counterparty participates in. Otherwise a caller could stamp
-	 * settlements onto (and move the balances of) an arbitrary project.
-	 * Claim aliases count: a claimed shadow's membership is its user's.
+	 * A client-supplied projectId must name a project the current user is or
+	 * was part of: a current participant, or the payer / a split member of one
+	 * of its expenses (claim aliases count). Otherwise a caller could stamp
+	 * settlements onto an arbitrary project.
+	 *
+	 * Current membership alone is not required: removing someone from a project
+	 * deletes their membership row but keeps their expenses and balances, and
+	 * they must still be able to settle those. The counterparty is covered by
+	 * the scoped balance check in initiateSettlement/settleAll: a nonzero
+	 * balance between the two in this project only exists if both have
+	 * history in it.
 	 */
-	private async assertProjectMembership(
-		projectId: string,
-		other: ParticipantRef,
-	): Promise<void> {
+	private async assertProjectInvolvement(projectId: string): Promise<void> {
 		const { aliasesByKey } = await resolveClaimAliases(this.db, [
 			this.currentUserRef,
-			other,
 		]);
-		const keyOf = (r: ParticipantRef) => `${r.participantType}:${r.participantId}`;
-		const myRefs = aliasesByKey.get(keyOf(this.currentUserRef)) ?? [
-			this.currentUserRef,
-		];
-		const otherRefs = aliasesByKey.get(keyOf(other)) ?? [other];
+		const myRefs = aliasesByKey.get(
+			`${this.currentUserRef.participantType}:${this.currentUserRef.participantId}`,
+		) ?? [this.currentUserRef];
+		const refConds = myRefs.map((r) => ({
+			participantType: r.participantType,
+			participantId: r.participantId,
+		}));
 
 		const members = await this.db.projectParticipant.findMany({
+			where: { projectId, OR: refConds },
+			select: { id: true },
+			take: 1,
+		});
+		if (members.length > 0) return;
+
+		const involvedExpenses = await this.db.sharedTransaction.count({
 			where: {
 				projectId,
-				OR: [...myRefs, ...otherRefs].map((r) => ({
-					participantType: r.participantType,
-					participantId: r.participantId,
-				})),
+				OR: [
+					...refConds.map((r) => ({
+						paidByType: r.participantType,
+						paidById: r.participantId,
+					})),
+					...refConds.map((r) => ({ splitParticipants: { some: r } })),
+				],
 			},
-			select: { participantType: true, participantId: true },
 		});
-		const memberKeys = new Set(members.map((m) => keyOf(m)));
+		if (involvedExpenses > 0) return;
 
-		if (!myRefs.some((r) => memberKeys.has(keyOf(r)))) {
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "You are not a member of this project",
-			});
-		}
-		if (!otherRefs.some((r) => memberKeys.has(keyOf(r)))) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message: "This person is not a participant of this project",
-			});
-		}
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "You are not part of this project",
+		});
 	}
 
 	/**

@@ -8,6 +8,13 @@ vi.mock("~/server/services/notifications", () => ({
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
 }));
 
+// Exchange rates for settleAll conversions: 3 EUR per USD.
+vi.mock("~/server/api/routers/shared-currency", () => ({
+	getBestExchangeRate: vi.fn(async (_db: unknown, currency: string) =>
+		currency === "EUR" ? { rate: 3 } : null,
+	),
+}));
+
 // Mock computeBalance so settlement service tests control the balance independently
 // of the balance module's own correctness (tested separately in balance.test.ts).
 vi.mock("./balance", () => ({
@@ -27,7 +34,11 @@ function createMockDb() {
 			delete: vi.fn(),
 		},
 		sharedTransaction: {
-			count: vi.fn().mockResolvedValue(1), // relationship exists by default
+			// Relationship exists by default. Project "OTHER" has no expenses
+			// involving the caller (see the projectParticipant mock below).
+			count: vi.fn((args?: { where?: { projectId?: string } }) =>
+				Promise.resolve(args?.where?.projectId === "OTHER" ? 0 : 1),
+			),
 		},
 		shadowProfile: {
 			findUnique: vi.fn().mockResolvedValue({ id: "shadow-1" }),
@@ -82,7 +93,12 @@ describe("SettlementService", () => {
 		service = new SettlementService(db as never, "alice");
 		// Default: alice has no balance with bob (owes nothing)
 		vi.mocked(computeBalance).mockResolvedValue({ byCurrency: {} });
-		vi.mocked(computeBalanceByProject).mockResolvedValue(new Map());
+		// By default every debt sits in the direct (project-less) bucket, so the
+		// global allocation mirrors whatever computeBalance is mocked to return.
+		vi.mocked(computeBalanceByProject).mockImplementation(async (...args) => {
+			const { byCurrency } = await vi.mocked(computeBalance)(...args);
+			return new Map([[null, byCurrency]]);
+		});
 	});
 
 	// ── initiateSettlement ────────────────────────────────────────────────────
@@ -416,7 +432,7 @@ describe("SettlementService", () => {
 			expect(result.settlements).toHaveLength(2);
 		});
 
-		it("rejects a project the caller is not a member of", async () => {
+		it("rejects a project the caller has no part in", async () => {
 			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { USD: -50 } });
 			await expect(
 				service.initiateSettlement({
@@ -425,7 +441,7 @@ describe("SettlementService", () => {
 					currency: "USD",
 					projectId: "OTHER",
 				}),
-			).rejects.toThrow(/not a member of this project/);
+			).rejects.toThrow(/not part of this project/);
 			expect(db.settlement.create).not.toHaveBeenCalled();
 		});
 
@@ -454,6 +470,41 @@ describe("SettlementService", () => {
 			expect(db.settlement.create).toHaveBeenCalledWith({
 				data: expect.objectContaining({ projectId: null }),
 			});
+		});
+	});
+
+	describe("global settleAll", () => {
+		it("splits a converted payment across scopes with rows summing to the converted total", async () => {
+			// alice owes bob EUR 1 in each of three scopes (EUR 3 globally).
+			vi.mocked(computeBalance).mockResolvedValue({ byCurrency: { EUR: -3 } });
+			vi.mocked(computeBalanceByProject).mockResolvedValue(
+				new Map<string | null, Record<string, number>>([
+					[null, { EUR: -1 }],
+					["P", { EUR: -1 }],
+					["Q", { EUR: -1 }],
+				]),
+			);
+			db.settlement.create.mockImplementation(
+				(args: { data: Record<string, unknown> }) =>
+					Promise.resolve({ id: "s", ...args.data }),
+			);
+
+			const result = await service.settleAll({
+				toParticipant: bob,
+				paymentCurrency: "USD",
+			});
+
+			// EUR 1 = USD 0.333...: two rows round to 0.33 and the last row takes
+			// the remainder so the rows add up to USD 1.00 (the converted EUR 3).
+			expect(result.settlements.map((r) => r.convertedAmount)).toEqual([
+				0.33, 0.33, 0.34,
+			]);
+			expect(result.totalInPaymentCurrency).toBe(1);
+			expect(result.settlements.map((r) => r.projectId)).toEqual([
+				null,
+				"P",
+				"Q",
+			]);
 		});
 	});
 
