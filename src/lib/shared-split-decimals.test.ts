@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { evenSharePerPerson } from "./even-split-display";
 import {
 	resolveSplits,
 	SplitComputationError,
@@ -72,6 +73,12 @@ describe("resolveSplits in the currency's own minor units", () => {
 	it("ARS and USD keep cents", () => {
 		expect(equal(100000, "ARS")).toEqual([33333.34, 33333.33, 33333.33]);
 		expect(equal(100, "USD")).toEqual([33.34, 33.33, 33.33]);
+	});
+
+	it("the even split summary uses the same units", () => {
+		expect(evenSharePerPerson(0.003, 3, "BTC")).toBe(0.001);
+		expect(evenSharePerPerson(10, 3, "KWD")).toBe(3.333);
+		expect(evenSharePerPerson(1000, 3, "JPY")).toBe(333);
 	});
 
 	it("EXACT compares BTC shares to the satoshi", () => {
