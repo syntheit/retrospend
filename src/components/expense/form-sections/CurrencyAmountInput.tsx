@@ -17,6 +17,7 @@ import {
 	getDecimalDigits,
 	isCrypto as checkIsCrypto,
 	isMajorCrypto,
+	parseFormattedNumber,
 } from "~/lib/currency-format";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
 import { cn } from "~/lib/utils";
@@ -262,7 +263,9 @@ export function CurrencyAmountInput({
 				handleAmountChange(result);
 			}
 		} else {
-			const num = parseFloat(current);
+			// Blur can run on already-formatted text ("5,000.00"), so strip commas
+			// before parsing or the comma truncates it to 5.
+			const num = parseFormattedNumber(current);
 			if (!isNaN(num) && num > 0) {
 				const decimals = getDecimalDigits(watchedCurrency);
 				setExpressionText(formatNumber(num, decimals));
@@ -273,7 +276,8 @@ export function CurrencyAmountInput({
 	const handleExpressionKeyDown = (
 		e: React.KeyboardEvent<HTMLInputElement>,
 	) => {
-		if (e.key === "Enter" || e.key === "Tab") {
+		// Tab is handled by the blur that follows it.
+		if (e.key === "Enter") {
 			handleExpressionBlur();
 		}
 	};
