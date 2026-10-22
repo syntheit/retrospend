@@ -1,5 +1,6 @@
 import type { PrismaClient } from "~prisma";
 import { deleteFile } from "~/server/storage";
+import { repointSettlementParty, syncPaymentHeaders } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 export const DELETED_USER_SENTINEL = "DELETED_USER";
@@ -53,15 +54,8 @@ export async function anonymizeParticipantReferences(
 		data: { createdById: sentinelId },
 	});
 
-	// Anonymize Settlement from/to
-	await tx.settlement.updateMany({
-		where: { fromParticipantType: participantType, fromParticipantId: participantId },
-		data: { fromParticipantId: sentinelId },
-	});
-	await tx.settlement.updateMany({
-		where: { toParticipantType: participantType, toParticipantId: participantId },
-		data: { toParticipantId: sentinelId },
-	});
+	// Anonymize Settlement from/to and payment headers
+	await repointSettlementParty(tx, { participantType, participantId }, { participantType, participantId: sentinelId });
 
 	// Anonymize AuditLogEntry actor
 	await tx.auditLogEntry.updateMany({
@@ -334,6 +328,9 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		}
 	}
 
+	// Headers take their rows' new status; one whose rows were all cancelled goes.
+	await syncPaymentHeaders(tx, [...settlementsAsPayer, ...settlementsAsPayee].map((s) => s.paymentGroupId));
+
 	// ── Step 3: Auto-accept pending verifications ─────────────────────────────
 
 	await tx.splitParticipant.updateMany({
@@ -511,17 +508,8 @@ export async function anonymizeAndDeleteUser(
 			data: { participantId: DELETED_USER_SENTINEL },
 		});
 
-		// Anonymize Settlement fromParticipant
-		await tx.settlement.updateMany({
-			where: { fromParticipantType: "user", fromParticipantId: userId },
-			data: { fromParticipantId: DELETED_USER_SENTINEL },
-		});
-
-		// Anonymize Settlement toParticipant
-		await tx.settlement.updateMany({
-			where: { toParticipantType: "user", toParticipantId: userId },
-			data: { toParticipantId: DELETED_USER_SENTINEL },
-		});
+		// Anonymize Settlement from/to and payment headers
+		await repointSettlementParty(tx, { participantType: "user", participantId: userId }, { participantType: "user", participantId: DELETED_USER_SENTINEL });
 
 		// Anonymize ProjectParticipant
 		//

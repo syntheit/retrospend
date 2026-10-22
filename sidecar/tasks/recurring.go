@@ -5,21 +5,45 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strconv"
 	"time"
 
 	"retrospend-sidecar/db"
 )
 
 type RecurringTemplate struct {
-	ID          string
-	UserID      string
-	Name        string
-	Amount      float64
+	ID     string
+	UserID string
+	Name   string
+	// Amount is the exact decimal text of recurring_template.amount, written
+	// back as is so the posted row never goes through a float.
+	Amount      string
 	Currency    string
 	CategoryID  *string
 	Frequency   string
 	NextDueDate time.Time
 	AnchorDay   *int
+	// Direction is OUT (a recurring expense) or IN (recurring income).
+	Direction string
+}
+
+// posting is what a due template writes to expense besides its amount.
+type posting struct {
+	Direction string
+	// InType is INCOME for money in and nil for spending, matching the
+	// expense_in_type_check constraint (IN STANDARD rows always carry one).
+	InType *string
+}
+
+// postingFor copies the template's direction onto the posted row. Recurring
+// money in is always income: a refund or a transfer never repeats on a
+// schedule. Anything but IN posts as spending, the column's default.
+func postingFor(t RecurringTemplate) posting {
+	if t.Direction == "IN" {
+		income := "INCOME"
+		return posting{Direction: "IN", InType: &income}
+	}
+	return posting{Direction: "OUT"}
 }
 
 // addMonthsClamped adds months to t, landing on anchorDay (default: t's own
@@ -111,13 +135,16 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	ctx := context.Background()
 	now := time.Now()
 
-	// Get all due templates
+	// Get all due templates. "Amount varies: ask me" (amountMode ASK) never
+	// posts on its own: the user confirms the real amount in the app.
 	// Note: using camelCase "userId", "categoryId", "nextDueDate", "isActive", "autoPay"
 	rows, err := database.Pool.Query(ctx, `
-		SELECT id, "userId", name, amount, currency, "categoryId", frequency, "nextDueDate", "anchorDay"
+		SELECT id, "userId", name, amount::text, currency, "categoryId", frequency, "nextDueDate", "anchorDay",
+		       direction::text
 		FROM recurring_template
 		WHERE "isActive" = true
 		  AND "autoPay" = true
+		  AND "amountMode" = 'FIXED'
 		  AND "nextDueDate" <= $1
 	`, now)
 	if err != nil {
@@ -128,7 +155,7 @@ func ProcessRecurringExpenses(database *db.DB) error {
 	var templates []RecurringTemplate
 	for rows.Next() {
 		var t RecurringTemplate
-		if err := rows.Scan(&t.ID, &t.UserID, &t.Name, &t.Amount, &t.Currency, &t.CategoryID, &t.Frequency, &t.NextDueDate, &t.AnchorDay); err != nil {
+		if err := rows.Scan(&t.ID, &t.UserID, &t.Name, &t.Amount, &t.Currency, &t.CategoryID, &t.Frequency, &t.NextDueDate, &t.AnchorDay, &t.Direction); err != nil {
 			return fmt.Errorf("failed to scan template: %w", err)
 		}
 		templates = append(templates, t)
@@ -153,7 +180,13 @@ func ProcessRecurringExpenses(database *db.DB) error {
 			continue
 		}
 
-		amountInUSD := amountToUSD(template.Amount, template.Currency, exchangeRate)
+		amount, err := strconv.ParseFloat(template.Amount, 64)
+		if err != nil {
+			log.Printf("[RECURRING] Warning: bad amount %q, skipping template %s", template.Amount, template.ID)
+			continue
+		}
+		amountInUSD := amountToUSD(amount, template.Currency, exchangeRate)
+		post := postingFor(template)
 
 		// Wrap UPDATE + INSERT in a transaction for atomicity
 		tx, err := database.Pool.Begin(ctx)
@@ -187,17 +220,18 @@ func ProcessRecurringExpenses(database *db.DB) error {
 			continue
 		}
 
-		// Create expense
+		// Create the expense or money-in row, with the template's direction
 		_, err = tx.Exec(ctx, `
 			INSERT INTO expense (
 				id, "userId", title, amount, currency, date, "categoryId",
 				"amountInUSD", "exchangeRate", "pricingSource", "recurringTemplateId",
-				status, "createdAt", "updatedAt"
+				status, direction, "inType", "createdAt", "updatedAt"
 			) VALUES (
-				gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, 'RECURRING', $9, 'FINALIZED', NOW(), NOW()
+				gen_random_uuid()::text, $1, $2, $3::numeric, $4, $5, $6, $7, $8, 'RECURRING', $9, 'FINALIZED',
+				$10::"ExpenseDirection", $11::"InType", NOW(), NOW()
 			)
 		`, template.UserID, template.Name, template.Amount, template.Currency, template.NextDueDate,
-			template.CategoryID, amountInUSD, exchangeRate, template.ID)
+			template.CategoryID, amountInUSD, exchangeRate, template.ID, post.Direction, post.InType)
 
 		if err != nil {
 			tx.Rollback(ctx)

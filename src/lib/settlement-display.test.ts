@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "@retrospend/i18n/messages/en.json";
 import {
+	claimConflictAction,
 	oppositeCurrencyBalances,
 	type SettlementEntryView,
 	settlementDetail,
@@ -148,5 +149,16 @@ describe("oppositeCurrencyBalances", () => {
 		expect(hint).toBe(
 			"Bob also owes you ARS 30,000.00. Each currency is settled separately.",
 		);
+	});
+});
+
+describe("claimConflictAction", () => {
+	it("offers the retry only for a claim conflict", () => {
+		const retry = () => {};
+		expect(claimConflictAction({ data: { code: "CONFLICT" } }, "Record", retry)).toEqual({
+			action: { label: "Record", onClick: retry },
+		});
+		expect(claimConflictAction({ data: { code: "BAD_REQUEST" } }, "Record", retry)).toBeUndefined();
+		expect(claimConflictAction({}, "Record", retry)).toBeUndefined();
 	});
 });

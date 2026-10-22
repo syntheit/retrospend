@@ -188,6 +188,14 @@ model Expense {
   // Analytics exclusion
   excludeFromAnalytics Boolean @default(false)
 
+  // Money in (M1, budget SPEC §5.2). `amount` stays positive; direction carries
+  // the sign. inType is set exactly when direction is IN and entryKind is
+  // STANDARD (CHECK expense_in_type_check in the money_in migration).
+  direction    ExpenseDirection @default(OUT)
+  entryKind    EntryKind        @default(STANDARD)
+  inType       InType?
+  amortizeMode AmortizeMode     @default(INSTALLMENTS)
+
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -198,6 +206,7 @@ model Expense {
   @@index([userId, status, date])
   @@index([userId, excludeFromAnalytics, date])
   @@index([userId, isAmortizedParent, date])
+  @@index([userId, direction, date])
   @@map("expense")
 }
 
@@ -208,6 +217,8 @@ model Category {
   icon                 String?                       @db.VarChar(32)
   isFixed              Boolean                       @default(false)
   excludeByDefault     Boolean                       @default(false)
+  // INCOME categories are for money in only, never for spending or envelopes.
+  kind                 CategoryKind                  @default(EXPENSE)
   userId               String
   user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses             Expense[]
@@ -225,9 +236,12 @@ model RecurringTemplate {
   id            String             @id @default(cuid())
   userId        String
   name          String             @db.VarChar(191)
-  amount        Decimal            @db.Decimal(10, 2)
+  amount        Decimal            @db.Decimal(19, 8)
   currency      String             @default("USD")
   categoryId    String?
+  // IN posts money in (recurring income); ASK never posts on its own.
+  direction     ExpenseDirection    @default(OUT)
+  amountMode    RecurringAmountMode @default(FIXED)
   frequency     RecurringFrequency
   nextDueDate   DateTime
   // Day of month the schedule is anchored to; monthly steps clamp to it so a
@@ -456,6 +470,38 @@ enum UserRole {
 enum ExpenseStatus {
   DRAFT
   FINALIZED
+}
+
+enum ExpenseDirection {
+  OUT
+  IN
+}
+
+enum EntryKind {
+  STANDARD
+  STARTING_BALANCE
+  ADJUSTMENT
+  NOT_SPENDING
+}
+
+enum InType {
+  INCOME
+  REFUND
+}
+
+enum AmortizeMode {
+  INSTALLMENTS
+  REPORTS_ONLY
+}
+
+enum CategoryKind {
+  EXPENSE
+  INCOME
+}
+
+enum RecurringAmountMode {
+  FIXED
+  ASK
 }
 
 enum RecurringFrequency {
@@ -815,8 +861,19 @@ model Settlement {
   // An offset row moves no cash: it cancels a debt in one scope against an
   // opposite debt in another scope of the same payment group.
   isOffset             Boolean          @default(false)
+  // PAYMENT for money paid (or an offset of one); FORGIVE for a balance let
+  // go (2C.2), which moves no cash and is charged to forgiveEnvelopeId.
+  kind                 SettlementKind   @default(PAYMENT)
+  // Rate type of the conversion when the row's debt currency differs from the
+  // payment currency (blue, official, mep, card, custom). With it set,
+  // exchangeRateUsed is payment-currency units per 1 unit of `currency`.
+  // NULL on same-currency rows and on rows written before payments_corrections.
+  rateType             String?          @db.VarChar(32)
+  // The envelope a FORGIVE row is charged to (M6 adds the envelope table).
+  forgiveEnvelopeId    String?
 
   project              Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  payment              Payment?         @relation(fields: [paymentGroupId], references: [id], onDelete: Cascade)
 
   @@index([fromParticipantType, fromParticipantId])
   @@index([toParticipantType, toParticipantId])
@@ -828,6 +885,47 @@ model Settlement {
   @@index([projectId, fromParticipantType, fromParticipantId, toParticipantType, toParticipantId], map: "settlement_project_pair_idx")
   @@index([paymentGroupId])
   @@map("settlement")
+}
+
+enum SettlementKind {
+  PAYMENT
+  FORGIVE
+}
+
+/// One payment as people see it (MONEY-MOVES §1.1): the header of a payment
+/// group. Its id is the rows' paymentGroupId. The rows hold the allocation
+/// per scope and debt currency; the header holds what was paid, in the
+/// currency it was paid in. Row status and header status move together.
+model Payment {
+  id             String           @id
+  payerType      ParticipantType
+  payerId        String
+  payeeType      ParticipantType
+  payeeId        String
+  /// What was paid, in `currency`. 0 for a payment that only offsets.
+  amount         Decimal          @db.Decimal(19, 8)
+  currency       String
+  /// Set when part of the payment converted into exactly one other currency:
+  /// `rate` units of `currency` per 1 unit of `rateCurrency`, of `rateType`.
+  rateType       String?          @db.VarChar(32)
+  rate           Decimal?         @db.Decimal(30, 12)
+  rateCurrency   String?
+  paymentMethod  String?          @db.VarChar(191)
+  /// The day the money moved, as the recorder entered it. "Settled since" uses it.
+  paidOn         DateTime         @db.Date
+  note           String?          @db.VarChar(500)
+  recordedByType ParticipantType
+  recordedById   String
+  status         SettlementStatus @default(PROPOSED)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now()) @updatedAt
+
+  settlements Settlement[]
+
+  @@index([payerType, payerId])
+  @@index([payeeType, payeeId])
+  @@index([status, payeeType, payeeId])
+  @@map("payment")
 }
 
 model AuditLogEntry {
@@ -976,6 +1074,12 @@ model ProjectParticipant {
   participantId         String
   role                  ProjectRole     @default(CONTRIBUTOR)
   joinedAt              DateTime        @default(now())
+  // Membership dates (RC-11): a member on day D joined on or before D and had
+  // not left by D. Null joinedOn = member from the project's start; null
+  // leftOn = still a member. They choose who new expenses include by
+  // default; past splits are never changed by them.
+  joinedOn              DateTime?       @db.Date
+  leftOn                DateTime?       @db.Date
   excludeFromAnalytics  Boolean         @default(false)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)

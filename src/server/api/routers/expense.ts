@@ -4,7 +4,11 @@ import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { CsvService } from "~/server/services/csv.service";
 import { ExpenseService } from "~/server/services/expense.service";
-import { getExcludedProjectIds, listSharedParticipationsForUser } from "~/server/services/shared-expense-integration";
+import {
+	getExcludedProjectIds,
+	listSharedParticipationsForUser,
+} from "~/server/services/shared-expense-integration";
+import { titleSuggestions } from "~/server/services/title-suggestions.service";
 
 const expenseInputSchema = z.object({
 	id: z.guid(),
@@ -104,11 +108,7 @@ export const expenseRouter = createTRPCRouter({
 		}),
 
 	exportCsv: protectedProcedure
-		.input(
-			z
-				.object({ expenseIds: z.array(z.guid()).optional() })
-				.optional(),
-		)
+		.input(z.object({ expenseIds: z.array(z.guid()).optional() }).optional())
 		.mutation(async ({ ctx, input }) => {
 			const service = new CsvService(ctx.db);
 			const csv = await service.exportExpensesAsCsv(
@@ -189,8 +189,15 @@ export const expenseRouter = createTRPCRouter({
 	 * Each record shows the user's share amount, not the full transaction.
 	 */
 	listSharedParticipations: protectedProcedure.query(async ({ ctx }) => {
-		const excludedProjectIds = await getExcludedProjectIds(ctx.db, ctx.session.user.id);
-		return await listSharedParticipationsForUser(ctx.db, ctx.session.user.id, excludedProjectIds);
+		const excludedProjectIds = await getExcludedProjectIds(
+			ctx.db,
+			ctx.session.user.id,
+		);
+		return await listSharedParticipationsForUser(
+			ctx.db,
+			ctx.session.user.id,
+			excludedProjectIds,
+		);
 	}),
 
 	/**
@@ -206,21 +213,8 @@ export const expenseRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const startOfDay = new Date(input.date);
-			startOfDay.setHours(0, 0, 0, 0);
-			const endOfDay = new Date(input.date);
-			endOfDay.setHours(23, 59, 59, 999);
-
-			const match = await ctx.db.expense.findFirst({
-				where: {
-					userId: ctx.session.user.id,
-					title: { equals: input.title, mode: "insensitive" },
-					amount: { equals: input.amount },
-					date: { gte: startOfDay, lte: endOfDay },
-				},
-				select: { id: true, title: true },
-			});
-
+			const service = new ExpenseService(ctx.db);
+			const match = await service.findDuplicate(ctx.session.user.id, input);
 			return match
 				? { isDuplicate: true, existingTitle: match.title }
 				: { isDuplicate: false, existingTitle: null };
@@ -233,78 +227,7 @@ export const expenseRouter = createTRPCRouter({
 	 */
 	titleSuggestions: protectedProcedure
 		.input(z.object({ query: z.string().min(1).max(100) }))
-		.query(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			const query = input.query;
-
-			const [expenseGroups, sharedGroups] = await Promise.all([
-				ctx.db.expense.groupBy({
-					by: ["title"],
-					where: {
-						userId,
-						title: { contains: query, mode: "insensitive" },
-					},
-					_count: { title: true },
-					orderBy: { _count: { title: "desc" } },
-					take: 15,
-				}),
-				ctx.db.sharedTransaction.groupBy({
-					by: ["description"],
-					where: {
-						description: { contains: query, mode: "insensitive" },
-						splitParticipants: {
-							some: { participantType: "user", participantId: userId },
-						},
-					},
-					_count: { description: true },
-					orderBy: { _count: { description: "desc" } },
-					take: 15,
-				}),
-			]);
-
-			// Merge counts by title (case-insensitive), preserving canonical casing
-			const countMap = new Map<string, number>();
-			const canonicalTitle = new Map<string, string>();
-			for (const g of expenseGroups) {
-				const key = g.title.toLowerCase();
-				if (!canonicalTitle.has(key)) canonicalTitle.set(key, g.title);
-				countMap.set(key, (countMap.get(key) ?? 0) + g._count.title);
-			}
-			for (const g of sharedGroups) {
-				const key = g.description.toLowerCase();
-				if (!canonicalTitle.has(key)) canonicalTitle.set(key, g.description);
-				countMap.set(key, (countMap.get(key) ?? 0) + g._count.description);
-			}
-
-			const sorted = [...countMap.entries()]
-				.sort((a, b) => b[1] - a[1])
-				.slice(0, 8);
-
-			if (sorted.length === 0) return [];
-
-			// Get the most recent expense's categoryId for each top title
-			const topTitles = sorted.map(([key]) => canonicalTitle.get(key) ?? key);
-			const recentExpenses = await ctx.db.expense.findMany({
-				where: { userId, title: { in: topTitles } },
-				orderBy: { date: "desc" },
-				select: { title: true, categoryId: true, amount: true, currency: true },
-				distinct: ["title"],
-			});
-
-			const categoryByTitle = new Map<string, string | null>();
-			const amountByTitle = new Map<string, { amount: number; currency: string }>();
-			for (const e of recentExpenses) {
-				const key = e.title.toLowerCase();
-				if (!categoryByTitle.has(key)) categoryByTitle.set(key, e.categoryId);
-				if (!amountByTitle.has(key)) amountByTitle.set(key, { amount: Number(e.amount), currency: e.currency });
-			}
-
-			return sorted.map(([lowKey, count]) => ({
-				title: canonicalTitle.get(lowKey) ?? lowKey,
-				count,
-				lastCategoryId: categoryByTitle.get(lowKey) ?? null,
-				lastAmount: amountByTitle.get(lowKey)?.amount ?? null,
-				lastCurrency: amountByTitle.get(lowKey)?.currency ?? null,
-			}));
-		}),
+		.query(async ({ ctx, input }) =>
+			titleSuggestions(ctx.db, ctx.session.user.id, input.query),
+		),
 });

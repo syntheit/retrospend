@@ -327,10 +327,11 @@ describe("offsets on a full settle-up", () => {
 
 		expect(result.totalInPaymentCurrency).toBe(20);
 		const created = rows();
+		// Cash first, then the offsets: bob's Rent debt, then the same 30 of Trip.
 		expect(created.map((r) => [r.projectId, r.fromParticipantId, Number(r.amount), r.isOffset])).toEqual([
 			[trip, ALICE, 20, false],
-			[trip, ALICE, 30, true],
 			[rent, BOB, 30, true],
+			[trip, ALICE, 30, true],
 		]);
 		expect(new Set(created.map((r) => r.paymentGroupId)).size).toBe(1);
 		// Cash moved is the net; every scope is even.
@@ -340,7 +341,7 @@ describe("offsets on a full settle-up", () => {
 
 		// Pending until bob confirms, offsets included; bob confirms it all.
 		expect(created.every((r) => r.status === "PROPOSED")).toBe(true);
-		const offsetFromBob = created[2]!;
+		const offsetFromBob = created[1]!;
 		expect(offsetFromBob).toMatchObject({
 			confirmedByPayer: false,
 			confirmedByPayee: true,
@@ -375,11 +376,18 @@ describe("offsets on a full settle-up", () => {
 			rows().map((r) => [r.projectId, r.fromParticipantId, Number(r.amount), r.isOffset]),
 		).toEqual([
 			[trip, BOB, 20, false],
-			[trip, BOB, 30, true],
 			[rent, ALICE, 30, true],
+			[trip, BOB, 30, true],
 		]);
-		expect(await aliceBalance(trip)).toEqual({});
-		expect(await aliceBalance(rent)).toEqual({});
+		// Bob recorded it, so his view is even at once; alice's waits for her (I5).
+		for (const projectScope of [trip, rent]) {
+			const bobView = await computeBalance(db as never, aliceRef, bobRef, {
+				projectScope,
+				viewer: bobRef,
+			});
+			expect(bobView.byCurrency).toEqual({});
+		}
+		expect(await aliceBalance(trip)).toEqual({ USD: 50 });
 
 		// alice is awaited on every row, including the one she "pays".
 		const [entry] = await new SettlementService(
@@ -433,7 +441,7 @@ describe("offsets on a full settle-up", () => {
 		expect(await aliceBalance(rent)).toEqual({ USD: 30 });
 	});
 
-	it("never nets across currencies, and the plan reports the other currency", async () => {
+	it("settle all nets another currency at the reference rate with a cross-currency offset", async () => {
 		seedDebt(aliceRef, bobRef, trip, 50);
 		seedDebt(bobRef, aliceRef, rent, 30);
 		// bob also owes alice 30,000 ARS: the opposite way, another currency.
@@ -458,10 +466,20 @@ describe("offsets on a full settle-up", () => {
 			]),
 		);
 
-		await alice.settleAll({ toParticipant: bobRef, paymentCurrency: "USD" });
+		// USD 50 owed against USD 30 + ARS 30,000 (Blue 1,560 = USD 19.23) owed
+		// back: Everything is USD 0.77, and every scope and currency ends at zero.
+		const result = await alice.settleAll({ toParticipant: bobRef, paymentCurrency: "USD" });
 
-		expect(rows().every((r) => r.currency === "USD")).toBe(true);
-		expect(await aliceBalance()).toEqual({ ARS: 30000 });
+		expect(result.totalInPaymentCurrency).toBe(0.77);
+		expect(
+			rows().map((r) => [r.projectId, r.currency, Number(r.amount), r.isOffset]),
+		).toEqual([
+			[trip, "USD", 0.77, false],
+			[rent, "USD", 30, true],
+			[trip, "ARS", 30000, true],
+			[trip, "USD", 49.23, true],
+		]);
+		expect(await aliceBalance()).toEqual({});
 	});
 
 	it("the over-payment cap still holds with opposite debts present", async () => {
@@ -476,7 +494,7 @@ describe("offsets on a full settle-up", () => {
 		await alice.initiateSettlement({ toParticipant: bobRef, amount: 20, currency: "USD" });
 		await expect(
 			alice.initiateSettlement({ toParticipant: bobRef, amount: 1, currency: "USD" }),
-		).rejects.toThrow(/exceeds the outstanding balance/);
+		).rejects.toThrow(/no outstanding USD balance/);
 	});
 
 	it("two concurrent full settle-ups: the pair lock lets one through", async () => {

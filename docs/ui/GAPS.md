@@ -127,3 +127,7 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 
 - **Clicks before hydration do nothing (S4).** Buttons rendered on the server (Add Expense, New Project, the user menu) ignore a click that lands before React hydrates; the user has to click again, and nothing says the page is not ready yet. The e2e suite waits for `html[data-hydrated="true"]` (`src/components/hydration-marker.tsx`) before it clicks. The v2 pages should either work without JavaScript for their primary action or show it as not ready until hydration.
 - **Profile form labels point nowhere (S4).** In `src/components/settings/profile-section.tsx` the labels use `htmlFor="name"` (and `username`, `email`) while `FormControl` gives each input a generated id, so screen readers announce the fields without their labels. The e2e spec selects the name field by `input[name="name"]` until the form is rebuilt.
+
+## 9. Data the server does not have yet
+
+- **Per-user time zone.** Server-side calendar days (project membership dates, which expenses fall before someone joined) come from `userTimeZone()` in `src/server/services/user-time-zone.ts`, which returns `DEFAULT_TIME_ZONE` or Buenos Aires for everyone. When a per-user zone setting exists, that function reads it; no call site changes. The M5 backfill used the same default.

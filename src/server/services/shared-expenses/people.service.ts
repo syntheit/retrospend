@@ -2,11 +2,9 @@ import { TRPCError } from "@trpc/server";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
-import {
-	computeBalance,
-	computeBalanceBatch,
-	computeBalanceWithProjects,
-} from "./balance";
+import { computeBalance, computeBalanceWithProjects } from "./balance";
+import { computeBalanceBatch } from "./balance-batch";
+import { type PersonSettled, settledOf } from "~/server/services/payments/ledger";
 import { buildContactVisibility, redactContact } from "./contact-visibility";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
@@ -93,6 +91,7 @@ export interface ProjectBreakdownItem {
 export interface PersonDetail {
 	identity: PersonIdentity;
 	balances: BalanceCurrency[];
+	settled: PersonSettled;
 	transactions: TransactionHistoryItem[];
 	total: number;
 	page: number;
@@ -104,6 +103,7 @@ export interface PersonDetail {
 export interface PersonDetailCursorResult {
 	identity?: PersonIdentity;
 	balances?: BalanceCurrency[];
+	settled?: PersonSettled;
 	transactions: TransactionHistoryItem[];
 	nextCursor: string | undefined;
 	relationshipStats?: RelationshipStats;
@@ -182,7 +182,6 @@ export class PeopleService {
 
 		if (transactions.length === 0) return [];
 
-		// Single pass: collect per-contact stats.
 		const contactStats = new Map<
 			string,
 			{
@@ -266,7 +265,6 @@ export class PeopleService {
 			contactStats,
 		);
 
-		// Batch compute all balances in 4 queries total (instead of 4 per contact).
 		const [balanceResults, identities] = await Promise.all([
 			computeBalanceBatch(
 				this.db,
@@ -346,6 +344,7 @@ export class PeopleService {
 			return {
 				identity,
 				balances: [],
+				settled: settledOf([]),
 				transactions: [],
 				total: 0,
 				page,
@@ -493,7 +492,6 @@ export class PeopleService {
 			}
 		}
 		const allResolvedData = await this.resolveNamesBatch(allRefs);
-		// Build a map for O(1) lookup
 		const identityMap = new Map<string, { name: string; avatarUrl: string | null }>();
 		for (let i = 0; i < allRefs.length; i++) {
 			const key = `${allRefs[i]!.participantType}:${allRefs[i]!.participantId}`;
@@ -614,6 +612,7 @@ export class PeopleService {
 		return {
 			identity,
 			balances,
+			settled: settledOf(balanceResult.events),
 			transactions,
 			total,
 			page,
@@ -646,6 +645,7 @@ export class PeopleService {
 				return {
 					identity,
 					balances: [],
+					settled: settledOf([]),
 					transactions: [],
 					nextCursor: undefined,
 					relationshipStats: {
@@ -693,7 +693,6 @@ export class PeopleService {
 			AND: baseAndClauses,
 		};
 
-		// Build parallel queries
 		const rawTransactionsPromise = this.db.sharedTransaction.findMany({
 			where,
 			select: {
@@ -801,6 +800,7 @@ export class PeopleService {
 			return {
 				identity,
 				balances,
+				settled: settledOf(balanceResult.events),
 				transactions,
 				nextCursor,
 				relationshipStats,

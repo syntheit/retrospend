@@ -86,6 +86,47 @@ function zeroTolerance(currency: string): number {
 // ── algorithm ─────────────────────────────────────────────────────────────────
 
 /**
+ * The greedy matcher behind computeSettlementPlan, for one currency: the
+ * largest creditor is paid by the largest debtor until every balance is
+ * within `tolerance` of zero. Exported so the project summary can run it on
+ * integer minor units (tolerance 0.5, no rounding), where it is exact.
+ *
+ * `balances` are signed: positive = is owed, negative = owes. Ties keep the
+ * input order (Array.prototype.sort is stable).
+ */
+export function planGreedyTransfers<Ref>(
+	balances: ReadonlyArray<{ ref: Ref; balance: number }>,
+	tolerance: number,
+	round: (amount: number) => number,
+): Array<{ from: Ref; to: Ref; amount: number }> {
+	const creditors = balances
+		.filter((b) => b.balance > tolerance)
+		.map((b) => ({ ...b }))
+		.sort((a, b) => b.balance - a.balance);
+	const debtors = balances
+		.filter((b) => b.balance < -tolerance)
+		.map((b) => ({ ...b }))
+		.sort((a, b) => a.balance - b.balance); // most negative first
+
+	const plan: Array<{ from: Ref; to: Ref; amount: number }> = [];
+	while (creditors.length > 0 && debtors.length > 0) {
+		const creditor = creditors[0]!;
+		const debtor = debtors[0]!;
+		const payment = Math.min(creditor.balance, -debtor.balance);
+		const rounded = round(payment);
+		if (rounded > 0) {
+			plan.push({ from: debtor.ref, to: creditor.ref, amount: rounded });
+		}
+		// Reduce balances using the exact (unrounded) payment to avoid drift.
+		creditor.balance -= payment;
+		debtor.balance += payment;
+		if (Math.abs(creditor.balance) < tolerance) creditors.shift();
+		if (Math.abs(debtor.balance) < tolerance) debtors.shift();
+	}
+	return plan;
+}
+
+/**
  * Compute an optimal greedy settlement plan for a set of shared transactions.
  *
  * Step 1: Group transactions by currency. Each currency is processed independently.
@@ -192,41 +233,14 @@ export function computeSettlementPlan(
 		}
 
 		// Step 3: greedy settlement
-		const creditors = [...netMap.entries()]
-			.filter(([, bal]) => bal > ZERO_TOLERANCE)
-			.map(([key, balance]) => ({ key, balance }))
-			.sort((a, b) => b.balance - a.balance);
-
-		const debtors = [...netMap.entries()]
-			.filter(([, bal]) => bal < -ZERO_TOLERANCE)
-			.map(([key, balance]) => ({ key, balance }))
-			.sort((a, b) => a.balance - b.balance); // most negative first
-
-		const plan: SettlementStep[] = [];
-
-		while (creditors.length > 0 && debtors.length > 0) {
-			const creditor = creditors[0]!;
-			const debtor = debtors[0]!;
-
-			const payment = Math.min(creditor.balance, -debtor.balance);
-			const roundedPayment = roundMoney(payment, currency);
-
-			if (roundedPayment > 0) {
-				plan.push({
-					from: refMap.get(debtor.key)!,
-					to: refMap.get(creditor.key)!,
-					amount: roundedPayment,
-					currency,
-				});
-			}
-
-			// Reduce balances using exact (unrounded) payment to avoid drift
-			creditor.balance -= payment;
-			debtor.balance += payment;
-
-			if (Math.abs(creditor.balance) < ZERO_TOLERANCE) creditors.shift();
-			if (Math.abs(debtor.balance) < ZERO_TOLERANCE) debtors.shift();
-		}
+		const plan: SettlementStep[] = planGreedyTransfers(
+			[...netMap.entries()].map(([key, balance]) => ({
+				ref: refMap.get(key)!,
+				balance,
+			})),
+			ZERO_TOLERANCE,
+			(amount) => roundMoney(amount, currency),
+		).map((step) => ({ ...step, currency }));
 
 		byCurrency[currency] = { plan, balances };
 	}
