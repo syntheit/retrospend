@@ -71,3 +71,24 @@ describe("category RLS through createUserScopedDb", () => {
 		expect(names.map((c) => c.name)).toEqual(["Groceries", "Rent"]);
 	});
 });
+
+describe("tables the app role may only read", () => {
+	// Writes here go through the owner connection only (settings service,
+	// auth procedures, the sidecar). See 20261022130001_revoke_app_writes.
+	for (const table of [
+		"app_settings",
+		"exchange_rate",
+		"password_reset_token",
+	]) {
+		it(`${table} is SELECT only for retrospend_app`, async () => {
+			const rows = await adminDb.$queryRaw<
+				{ privilege: string; granted: boolean }[]
+			>`SELECT p AS privilege, has_table_privilege('retrospend_app', ${table}, p) AS granted
+			  FROM unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) AS p`;
+
+			expect(
+				Object.fromEntries(rows.map((r) => [r.privilege, r.granted])),
+			).toEqual({ SELECT: true, INSERT: false, UPDATE: false, DELETE: false });
+		});
+	}
+});
