@@ -92,7 +92,8 @@ beforeEach(() => {
 	db = createStatefulDb();
 	ghostRef = {
 		participantType: "shadow",
-		participantId: addShadowProfile(db, { createdById: ALICE, name: "Ghost" }).id,
+		participantId: addShadowProfile(db, { createdById: ALICE, name: "Ghost" })
+			.id,
 	};
 	project = addProject(db, { createdById: ALICE, name: "Trip" }).id;
 	for (const ref of [aliceRef, bobRef]) {
@@ -141,13 +142,23 @@ describe("initiateSettlement", () => {
 	it("refuses more than is owed in that currency, and nothing owed", async () => {
 		seedDebt(aliceRef, bobRef, 50);
 		await expect(
-			alice().initiateSettlement({ toParticipant: bobRef, amount: 60, currency: "USD" }),
+			alice().initiateSettlement({
+				toParticipant: bobRef,
+				amount: 60,
+				currency: "USD",
+			}),
 		).rejects.toThrow(
 			"This settlement of USD 60.00 exceeds the outstanding balance of USD 50.00 with this person.",
 		);
 		await expect(
-			alice().initiateSettlement({ toParticipant: bobRef, amount: 5, currency: "EUR" }),
-		).rejects.toThrow("There is no outstanding EUR balance to settle with this person.");
+			alice().initiateSettlement({
+				toParticipant: bobRef,
+				amount: 5,
+				currency: "EUR",
+			}),
+		).rejects.toThrow(
+			"There is no outstanding EUR balance to settle with this person.",
+		);
 		expect(rows()).toEqual([]);
 		expect(headers()).toEqual([]);
 	});
@@ -156,7 +167,11 @@ describe("initiateSettlement", () => {
 		seedDebt(aliceRef, bobRef, 10);
 		seedDebt(aliceRef, bobRef, 30, { currency: "EUR" });
 		await expect(
-			alice().initiateSettlement({ toParticipant: bobRef, amount: 15, currency: "USD" }),
+			alice().initiateSettlement({
+				toParticipant: bobRef,
+				amount: 15,
+				currency: "USD",
+			}),
 		).rejects.toThrow(/exceeds the outstanding balance of USD 10.00/);
 	});
 
@@ -164,7 +179,11 @@ describe("initiateSettlement", () => {
 		seedDebt(aliceRef, bobRef, 5, { date: "2026-03-09" });
 		seedDebt(aliceRef, bobRef, 30, { projectId: project, date: "2026-03-01" });
 
-		await alice().initiateSettlement({ toParticipant: bobRef, amount: 32, currency: "USD" });
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			amount: 32,
+			currency: "USD",
+		});
 
 		expect(rows().map((r) => [r.projectId, Number(r.amount)])).toEqual([
 			[project, 30],
@@ -193,7 +212,11 @@ describe("initiateSettlement", () => {
 			}),
 		).rejects.toThrow("Person not found");
 		await expect(
-			alice().initiateSettlement({ toParticipant: bobRef, amount: 1, currency: "USD" }),
+			alice().initiateSettlement({
+				toParticipant: bobRef,
+				amount: 1,
+				currency: "USD",
+			}),
 		).rejects.toThrow("No financial relationship found");
 		seedDebt(aliceRef, bobRef, 5);
 		await expect(
@@ -208,13 +231,20 @@ describe("initiateSettlement", () => {
 
 	it("takes the pair lock before it reads the balance, keyed on the unordered pair", async () => {
 		seedDebt(aliceRef, bobRef, 10);
-		await alice().initiateSettlement({ toParticipant: bobRef, amount: 10, currency: "USD" });
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			amount: 10,
+			currency: "USD",
+		});
 
 		const lockOrder = db.$executeRaw.mock.invocationCallOrder[0] ?? 0;
 		const readOrder = db.settlement.findMany.mock.invocationCallOrder[0] ?? 0;
 		expect(lockOrder).toBeGreaterThan(0);
 		expect(lockOrder).toBeLessThan(readOrder);
-		const call = db.$executeRaw.mock.calls[0] as unknown as [TemplateStringsArray, string];
+		const call = db.$executeRaw.mock.calls[0] as unknown as [
+			TemplateStringsArray,
+			string,
+		];
 		expect(call[0].join("?")).toContain("pg_advisory_xact_lock");
 		expect(call[1]).toBe("user:alice|user:bob");
 	});
@@ -256,7 +286,9 @@ describe("incoming payments (they paid me)", () => {
 				amount: 10,
 				currency: "USD",
 			}),
-		).rejects.toThrow("There is no outstanding USD balance to settle with this person.");
+		).rejects.toThrow(
+			"There is no outstanding USD balance to settle with this person.",
+		);
 	});
 });
 
@@ -268,21 +300,36 @@ describe("settleAll", () => {
 			seedDebt(aliceRef, bobRef, 1, { currency: "EUR", projectId });
 		}
 
-		const result = await alice().settleAll({ toParticipant: bobRef, paymentCurrency: "USD" });
+		const result = await alice().settleAll({
+			toParticipant: bobRef,
+			paymentCurrency: "USD",
+		});
 
-		expect(result.settlements.map((r) => r.convertedAmount)).toEqual([1.14, 1.14, 1.14]);
+		expect(result.settlements.map((r) => r.convertedAmount)).toEqual([
+			1.14, 1.14, 1.14,
+		]);
 		expect(result.totalInPaymentCurrency).toBe(3.42);
-		expect(headers()[0]).toMatchObject({ amount: "3.42", currency: "USD", rateCurrency: "EUR" });
+		expect(headers()[0]).toMatchObject({
+			amount: "3.42",
+			currency: "USD",
+			rateCurrency: "EUR",
+		});
 	});
 
 	it.each([
 		["JPY", 186],
 		["BTC", 0.00001763],
-	])("converts into %s with that currency's decimals", async (currency, expected) => {
-		seedDebt(aliceRef, bobRef, 1, { currency: "EUR" });
-		const result = await alice().settleAll({ toParticipant: bobRef, paymentCurrency: currency });
-		expect(result.totalInPaymentCurrency).toBe(expected);
-	});
+	])(
+		"converts into %s with that currency's decimals",
+		async (currency, expected) => {
+			seedDebt(aliceRef, bobRef, 1, { currency: "EUR" });
+			const result = await alice().settleAll({
+				toParticipant: bobRef,
+				paymentCurrency: currency,
+			});
+			expect(result.totalInPaymentCurrency).toBe(expected);
+		},
+	);
 
 	it("reports a currency without a rate and refuses when nothing else is owed", async () => {
 		seedDebt(aliceRef, bobRef, 7, { currency: "XTS" });
@@ -316,18 +363,23 @@ describe("confirm and delete", () => {
 		await expect(alice().confirmSettlement(settlement.id)).rejects.toThrow(
 			"Only the payee can confirm this settlement",
 		);
-		const confirmed = await new SettlementService(db as never, "bob").confirmSettlement(
-			settlement.id,
-		);
+		const confirmed = await new SettlementService(
+			db as never,
+			"bob",
+		).confirmSettlement(settlement.id);
 		expect(confirmed.status).toBe("FINALIZED");
 		expect(headers()[0]?.status).toBe("FINALIZED");
 		expect(createNotification).toHaveBeenCalledWith(
 			expect.objectContaining({ userId: ALICE, type: "SETTLEMENT_CONFIRMED" }),
 		);
 		await expect(
-			new SettlementService(db as never, "bob").confirmSettlement(settlement.id),
+			new SettlementService(db as never, "bob").confirmSettlement(
+				settlement.id,
+			),
 		).rejects.toThrow("Settlement is already confirmed");
-		await expect(alice().confirmSettlement("missing")).rejects.toThrow("Settlement not found");
+		await expect(alice().confirmSettlement("missing")).rejects.toThrow(
+			"Settlement not found",
+		);
 	});
 
 	it("the payer deletes a pending payment with its header", async () => {
@@ -352,15 +404,28 @@ describe("plan and history", () => {
 
 		expect(plan).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ currency: "USD", balance: 50, direction: "they_owe_you", suggestedAmount: 50 }),
-				expect.objectContaining({ currency: "ARS", balance: 5000, direction: "you_owe_them" }),
+				expect.objectContaining({
+					currency: "USD",
+					balance: 50,
+					direction: "they_owe_you",
+					suggestedAmount: 50,
+				}),
+				expect.objectContaining({
+					currency: "ARS",
+					balance: 5000,
+					direction: "you_owe_them",
+				}),
 			]),
 		);
 	});
 
 	it("lists one entry per payment, newest first, with the header's amount and date", async () => {
 		seedDebt(aliceRef, bobRef, 50);
-		await alice().initiateSettlement({ toParticipant: bobRef, amount: 20, currency: "USD" });
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			amount: 20,
+			currency: "USD",
+		});
 
 		const [entry] = await alice().getSettlementHistory(bobRef);
 		expect(entry).toMatchObject({

@@ -168,6 +168,27 @@ export function settledSince(events: readonly PairEvent[]): SettledSince {
 	return { overall, pending, byScope, nothingShared: false };
 }
 
+/** "Settled since" for the person page (MONEY-MOVES §1.9, I7). */
+export interface PersonSettled {
+	/** YYYY-MM-DD of the record that brought every balance to zero; null while any is not. */
+	since: string | null;
+	/** The zeroing payment still waits for the other side. */
+	pending: boolean;
+	/** The same rule per scope: a project id, or null for Outside projects. */
+	byScope: Array<{ projectId: string | null; since: string | null }>;
+	nothingShared: boolean;
+}
+
+export function settledOf(events: readonly PairEvent[]): PersonSettled {
+	const s = settledSince(events);
+	return {
+		since: s.overall,
+		pending: s.pending,
+		byScope: [...s.byScope].map(([projectId, since]) => ({ projectId, since })),
+		nothingShared: s.nothingShared,
+	};
+}
+
 /** The confirmation fields of a settlement row, enough to decide whether it counts for someone. */
 export interface CountableRow {
 	readonly status: string;

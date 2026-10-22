@@ -1,83 +1,48 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import {
-	confirmPayment,
-	paymentCounterparty,
-} from "~/server/services/payments/confirm.mutation";
 import {
 	confirmPaymentSchema,
 	participantRefSchema,
 	recordPaymentSchema,
 } from "~/server/services/payments/input";
-import { recordPayment } from "~/server/services/payments/record.mutation";
-import { forUser } from "~/server/services/preview";
+import {
+	applyConfirm,
+	applyPayment,
+	previewConfirm,
+	previewPayment,
+} from "~/server/services/payments/procedures";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
-
-/** Why payment.record wrote nothing, as the error the sheet shows. */
-const NOT_RECORDED = {
-	overpay: "That is more than is owed. Confirm the overpayment to record it.",
-	nothing_owed: "There is nothing to settle with this person.",
-} as const;
 
 /** Which way the money moved, from the caller's side. */
 const settlementDirectionSchema = z.enum(["outgoing", "incoming"]);
 
 export const settlementRouter = createTRPCRouter({
 	/**
-	 * Settle up sheet (MONEY-MOVES §1, R30): what recording this payment would
-	 * do, from the same mutation as paymentRecord, rolled back. Returns the
-	 * allocation ("This pays", remainder, overpay), a "Same payment?" match
-	 * for money received, and the figures that change and do not.
+	 * Settle up sheet (MONEY-MOVES §1, R30): the same mutation as
+	 * paymentRecord, rolled back: allocation ("This pays", remainder,
+	 * overpay), a "Same payment?" match, and what changes and does not.
 	 */
 	paymentPreview: protectedProcedure
 		.input(recordPaymentSchema)
-		.query(({ ctx, input }) =>
-			forUser(ctx.session.user.id).preview(recordPayment, input),
-		),
-
+		.query(({ ctx, input }) => previewPayment(ctx.session.user.id, input)),
 	/** Records the payment the preview showed; refuses an unconfirmed overpayment. */
 	paymentRecord: protectedProcedure
 		.input(recordPaymentSchema)
-		.mutation(async ({ ctx, input }) => {
-			const result = await forUser(ctx.session.user.id).apply(recordPayment, input);
-			if (!result.value.recorded) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: NOT_RECORDED[result.value.reason],
-				});
-			}
-			if (!input.matchClaimId) {
-				await new SettlementService(ctx.db, ctx.session.user.id).notifyPaymentRecorded(
-					result.value.paymentId,
-				);
-			}
-			return result;
-		}),
-
-	/** Preview of confirming a payment that waits for the caller, with their details. */
+		.mutation(({ ctx, input }) =>
+			applyPayment(ctx.db, ctx.session.user.id, input),
+		),
+	/** Preview of confirming a payment that waits for the caller. */
 	paymentConfirmPreview: protectedProcedure
 		.input(confirmPaymentSchema)
-		.query(async ({ ctx, input }) => {
-			const person = await paymentCounterparty(ctx.db, input.paymentId, ctx.session.user.id);
-			return forUser(ctx.session.user.id).preview(confirmPayment, { ...input, person });
-		}),
-
+		.query(({ ctx, input }) =>
+			previewConfirm(ctx.db, ctx.session.user.id, input),
+		),
 	/** Confirms a payment that waits for the caller; the receiver's details win. */
 	paymentConfirm: protectedProcedure
 		.input(confirmPaymentSchema)
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			const person = await paymentCounterparty(ctx.db, input.paymentId, userId);
-			const result = await forUser(userId).apply(confirmPayment, { ...input, person });
-			const service = new SettlementService(ctx.db, userId);
-			const rows = await ctx.db.settlement.findMany({
-				where: { paymentGroupId: result.value.paymentId },
-			});
-			const lead = rows.find((r) => !r.isOffset) ?? rows[0];
-			if (lead) await service.notifyConfirmed(rows, lead);
-			return result;
-		}),
+		.mutation(({ ctx, input }) =>
+			applyConfirm(ctx.db, ctx.session.user.id, input),
+		),
 
 	/**
 	 * POST /api/settlements

@@ -222,7 +222,8 @@ export const recordPayment: MoneyMutation<
 			rows: [{ table: "payment", id }],
 		};
 
-		const owesNothing = allocation.gross === 0 && allocation.offsets.length === 0;
+		const owesNothing =
+			allocation.gross === 0 && allocation.offsets.length === 0;
 		if (allocation.overpay > 0 && input.allowOverpay !== true && !owesNothing) {
 			return {
 				value: { recorded: false, reason: "overpay", allocation: view, match },

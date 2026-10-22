@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { computeBalance, computeBalanceBatch } from "./balance";
+import { computeBalance } from "./balance";
+import { computeBalanceBatch } from "./balance-batch";
 import type { ParticipantRef } from "./types";
 
 const alice: ParticipantRef = {

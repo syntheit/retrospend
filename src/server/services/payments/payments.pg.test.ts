@@ -13,21 +13,26 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
+import { userTransaction } from "~/server/db-tx";
+import { figures, readFiguresIn } from "~/server/figures/registry";
 import { forUser, userTransactionRunner } from "~/server/services/preview";
 import { createPreviewRunner } from "~/server/services/preview/runner";
-import { figures, readFiguresIn } from "~/server/figures/registry";
-import { userTransaction } from "~/server/db-tx";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
-import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
+import { adminDb, createTestUser } from "~/test/pg-harness";
 import { confirmPayment } from "./confirm.mutation";
-import { recordPayment, type RecordPaymentInput } from "./record.mutation";
+import { type RecordPaymentInput, recordPayment } from "./record.mutation";
 import { personKey } from "./view";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 
-const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
-const ref = (u: TestUser): ParticipantRef => ({ participantType: "user", participantId: u.user.id });
+const today = new Date(
+	`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`,
+);
+const ref = (u: TestUser): ParticipantRef => ({
+	participantType: "user",
+	participantId: u.user.id,
+});
 
 async function seedRates() {
 	for (const [currency, rate] of [
@@ -72,11 +77,18 @@ async function seedShare(
 }
 
 const runnerFor = (u: TestUser) =>
-	createPreviewRunner({ figures, actor: { userId: u.user.id }, transaction: userTransactionRunner(u.user.id) });
+	createPreviewRunner({
+		figures,
+		actor: { userId: u.user.id },
+		transaction: userTransactionRunner(u.user.id),
+	});
 
 async function figureFor(u: TestUser, id: string, personId?: string) {
 	return userTransaction(adminDb, u.user.id, (tx) =>
-		readFiguresIn(tx, [figures.get(id)], { userId: u.user.id, ...(personId ? { personId } : {}) }),
+		readFiguresIn(tx, [figures.get(id)], {
+			userId: u.user.id,
+			...(personId ? { personId } : {}),
+		}),
 	).then((m) => m.get(id));
 }
 
@@ -90,11 +102,18 @@ beforeAll(async () => {
 	sofia = await createTestUser();
 	martin = await createTestUser();
 	for (const u of [sofia, martin]) {
-		await adminDb.user.update({ where: { id: u.user.id }, data: { homeCurrency: "ARS" } });
+		await adminDb.user.update({
+			where: { id: u.user.id },
+			data: { homeCurrency: "ARS" },
+		});
 	}
 	floripa = (
 		await adminDb.project.create({
-			data: { name: "Florianópolis", createdById: sofia.user.id, primaryCurrency: "BRL" },
+			data: {
+				name: "Florianópolis",
+				createdById: sofia.user.id,
+				primaryCurrency: "BRL",
+			},
 		})
 	).id;
 	for (const u of [sofia, martin]) {
@@ -107,7 +126,10 @@ beforeAll(async () => {
 	});
 	paz = { participantType: "shadow", participantId: shadow.id };
 	await seedShare(ref(martin), ref(sofia), "18000", "ARS");
-	await seedShare(ref(martin), ref(sofia), "412.5", "BRL", { projectId: floripa, date: "2026-10-09" });
+	await seedShare(ref(martin), ref(sofia), "412.5", "BRL", {
+		projectId: floripa,
+		date: "2026-10-09",
+	});
 	await seedShare(ref(sofia), paz, "80000", "ARS", { date: "2026-10-16" });
 });
 
@@ -121,11 +143,15 @@ const payMartin = (amount: string | null): RecordPaymentInput => ({
 
 describe("figure balance.person", () => {
 	it("is the balance with one person per currency, from the viewer's side", async () => {
-		expect(await figureFor(sofia, "balance.person", personKey(ref(martin)))).toEqual([
+		expect(
+			await figureFor(sofia, "balance.person", personKey(ref(martin))),
+		).toEqual([
 			{ minor: -1_800_000, currency: "ARS" },
 			{ minor: -41_250, currency: "BRL" },
 		]);
-		expect(await figureFor(martin, "balance.person", personKey(ref(sofia)))).toEqual([
+		expect(
+			await figureFor(martin, "balance.person", personKey(ref(sofia))),
+		).toEqual([
 			{ minor: 1_800_000, currency: "ARS" },
 			{ minor: 41_250, currency: "BRL" },
 		]);
@@ -134,14 +160,18 @@ describe("figure balance.person", () => {
 
 describe("figure owed.owedToYou", () => {
 	it("adds up the people who owe you, net at the reference rate", async () => {
-		expect(await figureFor(sofia, "owed.owedToYou")).toEqual([{ minor: 8_000_000, currency: "ARS" }]);
+		expect(await figureFor(sofia, "owed.owedToYou")).toEqual([
+			{ minor: 8_000_000, currency: "ARS" },
+		]);
 	});
 });
 
 describe("figure owed.youOwe", () => {
 	it("adds up the people you owe, never netted against Owed to you", async () => {
 		// ARS 18,000 + BRL 412.50 x 271 = ARS 129,787.50.
-		expect(await figureFor(sofia, "owed.youOwe")).toEqual([{ minor: 12_978_750, currency: "ARS" }]);
+		expect(await figureFor(sofia, "owed.youOwe")).toEqual([
+			{ minor: 12_978_750, currency: "ARS" },
+		]);
 	});
 });
 
@@ -152,17 +182,29 @@ describe("payment.record on Postgres", () => {
 
 		const previewed = await runner.preview(recordPayment, payMartin("129788"));
 		expect(await adminDb.payment.count()).toBe(before);
-		expect(previewed.value).toMatchObject({ recorded: true, status: "PROPOSED" });
-		expect(previewed.changes.map((c) => [c.id, c.currency, c.delta.minor])).toEqual([
+		expect(previewed.value).toMatchObject({
+			recorded: true,
+			status: "PROPOSED",
+		});
+		expect(
+			previewed.changes.map((c) => [c.id, c.currency, c.delta.minor]),
+		).toEqual([
 			["balance.person", "ARS", 1_800_000],
 			["balance.person", "BRL", 41_250],
 			["owed.youOwe", "ARS", -12_978_750],
 		]);
 		expect(previewed.unchanged.map((u) => u.id)).toEqual(["owed.owedToYou"]);
 
-		const { undo, ...applied } = await runner.apply(recordPayment, payMartin("129788"));
-		const { paymentId: _a, ...appliedValue } = applied.value as { paymentId: string };
-		const { paymentId: _p, ...previewedValue } = previewed.value as { paymentId: string };
+		const { undo, ...applied } = await runner.apply(
+			recordPayment,
+			payMartin("129788"),
+		);
+		const { paymentId: _a, ...appliedValue } = applied.value as {
+			paymentId: string;
+		};
+		const { paymentId: _p, ...previewedValue } = previewed.value as {
+			paymentId: string;
+		};
 		expect(appliedValue).toEqual(previewedValue);
 		expect(applied.changes).toEqual(previewed.changes);
 		expect(undo).toMatchObject({ kind: "revert", mutation: "payment.record" });
@@ -171,10 +213,16 @@ describe("payment.record on Postgres", () => {
 			where: { payerId: sofia.user.id },
 			include: { settlements: { orderBy: { initiatedAt: "asc" } } },
 		});
-		expect(header).toMatchObject({ currency: "ARS", status: "PROPOSED", recordedById: sofia.user.id });
+		expect(header).toMatchObject({
+			currency: "ARS",
+			status: "PROPOSED",
+			recordedById: sofia.user.id,
+		});
 		expect(header.amount.toString()).toBe("129788");
 		// I2: the cash rows add up to the payment exactly.
-		const paid = header.settlements.map((s) => Number(s.convertedAmount ?? s.amount));
+		const paid = header.settlements.map((s) =>
+			Number(s.convertedAmount ?? s.amount),
+		);
 		expect(paid.reduce((a, b) => a + b, 0)).toBe(129_788);
 	});
 
@@ -184,17 +232,23 @@ describe("payment.record on Postgres", () => {
 		expect(sofiaView.byCurrency).toEqual({});
 		expect(martinView.byCurrency).toEqual({ ARS: 18000, BRL: 412.5 });
 
-		const header = await adminDb.payment.findFirstOrThrow({ where: { payerId: sofia.user.id } });
+		const header = await adminDb.payment.findFirstOrThrow({
+			where: { payerId: sofia.user.id },
+		});
 		const confirmed = await forUser(martin.user.id).apply(confirmPayment, {
 			paymentId: header.id,
 			person: ref(sofia),
 		});
-		expect(confirmed.changes.map((c) => [c.id, c.currency, c.delta.minor])).toEqual([
+		expect(
+			confirmed.changes.map((c) => [c.id, c.currency, c.delta.minor]),
+		).toEqual([
 			["balance.person", "ARS", -1_800_000],
 			["balance.person", "BRL", -41_250],
 			["owed.owedToYou", "ARS", -12_978_750],
 		]);
-		expect((await computeBalance(adminDb, ref(martin), ref(sofia))).byCurrency).toEqual({});
+		expect(
+			(await computeBalance(adminDb, ref(martin), ref(sofia))).byCurrency,
+		).toEqual({});
 	});
 
 	it("records money received from someone not on Retrospend as final, and refuses an overpayment", async () => {
@@ -214,8 +268,13 @@ describe("payment.record on Postgres", () => {
 			currency: "ARS",
 			amount: "80000",
 		});
-		expect(received.value).toMatchObject({ recorded: true, status: "FINALIZED" });
-		expect(await figureFor(sofia, "owed.owedToYou")).toEqual([{ minor: 0, currency: "ARS" }]);
+		expect(received.value).toMatchObject({
+			recorded: true,
+			status: "FINALIZED",
+		});
+		expect(await figureFor(sofia, "owed.owedToYou")).toEqual([
+			{ minor: 0, currency: "ARS" },
+		]);
 	});
 
 	it("keeps payment headers to the people on them (RLS)", async () => {
@@ -245,7 +304,10 @@ SELECT
 describe("M3 payments_corrections backfill", () => {
 	it("gives every legacy row a group and a header, and running it twice changes nothing", async () => {
 		const migration = readFileSync(
-			join(process.cwd(), "prisma/migrations/20261023200000_payments_corrections/migration.sql"),
+			join(
+				process.cwd(),
+				"prisma/migrations/20261023200000_payments_corrections/migration.sql",
+			),
 			"utf8",
 		);
 		const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -254,22 +316,90 @@ describe("M3 payments_corrections backfill", () => {
 			// Before the migration: rows from the old settle-up, with no header.
 			const count = async () => {
 				const row = (await client.query(M3_PRECHECK)).rows[0];
-				return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v)]));
+				return Object.fromEntries(
+					Object.entries(row).map(([k, v]) => [k, Number(v)]),
+				);
 			};
 			const baseline = await count();
-			await client.query('ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"');
+			await client.query(
+				'ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"',
+			);
 			const legacy = await createTestUser();
 			const insert = `INSERT INTO settlement (id, "fromParticipantType", "fromParticipantId", "toParticipantType", "toParticipantId",
 				amount, currency, "convertedAmount", "convertedCurrency", status, "confirmedByPayer", "confirmedByPayee",
 				"initiatedAt", "paymentGroupId", "isOffset", "autoConfirmedReason")
 				VALUES ($1, 'user', $2, 'user', $3, $4, $5, $6, $7, $8, true, $9, '2026-09-01 12:00:00', $10, $11, $12)`;
 			const [a, b] = [legacy.user.id, martin.user.id];
-			await client.query(insert, ["legacy-single", a, b, 10, "USD", null, null, "FINALIZED", true, null, false, null]);
-			await client.query(insert, ["legacy-g1", a, b, 5, "EUR", 6, "USD", "PROPOSED", false, "group-1", false, null]);
-			await client.query(insert, ["legacy-g2", a, b, 4, "USD", null, null, "PROPOSED", false, "group-1", false, null]);
-			await client.query(insert, ["legacy-off", b, a, 3, "USD", null, null, "PROPOSED", false, "group-1", true, null]);
-			await client.query(insert, ["legacy-recv", b, a, 7, "USD", null, null, "FINALIZED", true, "group-2", false,
-				"Recorded by the payee as a payment received"]);
+			await client.query(insert, [
+				"legacy-single",
+				a,
+				b,
+				10,
+				"USD",
+				null,
+				null,
+				"FINALIZED",
+				true,
+				null,
+				false,
+				null,
+			]);
+			await client.query(insert, [
+				"legacy-g1",
+				a,
+				b,
+				5,
+				"EUR",
+				6,
+				"USD",
+				"PROPOSED",
+				false,
+				"group-1",
+				false,
+				null,
+			]);
+			await client.query(insert, [
+				"legacy-g2",
+				a,
+				b,
+				4,
+				"USD",
+				null,
+				null,
+				"PROPOSED",
+				false,
+				"group-1",
+				false,
+				null,
+			]);
+			await client.query(insert, [
+				"legacy-off",
+				b,
+				a,
+				3,
+				"USD",
+				null,
+				null,
+				"PROPOSED",
+				false,
+				"group-1",
+				true,
+				null,
+			]);
+			await client.query(insert, [
+				"legacy-recv",
+				b,
+				a,
+				7,
+				"USD",
+				null,
+				null,
+				"FINALIZED",
+				true,
+				"group-2",
+				false,
+				"Recorded by the payee as a payment received",
+			]);
 
 			const before = await count();
 			expect(before).toEqual({
@@ -291,7 +421,14 @@ describe("M3 payments_corrections backfill", () => {
 				orderBy: { id: "asc" },
 			});
 			expect(
-				headers.map((h) => [h.id, h.payerId, h.amount.toString(), h.currency, h.status, h.recordedById]),
+				headers.map((h) => [
+					h.id,
+					h.payerId,
+					h.amount.toString(),
+					h.currency,
+					h.status,
+					h.recordedById,
+				]),
 			).toEqual([
 				["group-1", a, "10", "USD", "PROPOSED", a],
 				["group-2", b, "7", "USD", "FINALIZED", a],

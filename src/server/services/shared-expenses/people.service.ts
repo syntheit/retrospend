@@ -2,12 +2,9 @@ import { TRPCError } from "@trpc/server";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
-import {
-	computeBalance,
-	computeBalanceBatch,
-	computeBalanceWithProjects,
-} from "./balance";
-import { settledSince } from "~/server/services/payments/ledger";
+import { computeBalance, computeBalanceWithProjects } from "./balance";
+import { computeBalanceBatch } from "./balance-batch";
+import { type PersonSettled, settledOf } from "~/server/services/payments/ledger";
 import { buildContactVisibility, redactContact } from "./contact-visibility";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
@@ -89,27 +86,6 @@ export interface ProjectBreakdownItem {
 	projectName: string | null;
 	transactionCount: number;
 	balances: BalanceCurrency[];
-}
-
-/** "Settled since" for the person page (MONEY-MOVES §1.9, I7). */
-export interface PersonSettled {
-	/** YYYY-MM-DD of the record that brought every balance to zero; null while any is not. */
-	since: string | null;
-	/** The zeroing payment still waits for the other side. */
-	pending: boolean;
-	/** The same rule per scope: a project id, or null for Outside projects. */
-	byScope: Array<{ projectId: string | null; since: string | null }>;
-	nothingShared: boolean;
-}
-
-function settledOf(events: Parameters<typeof settledSince>[0]): PersonSettled {
-	const s = settledSince(events);
-	return {
-		since: s.overall,
-		pending: s.pending,
-		byScope: [...s.byScope].map(([projectId, since]) => ({ projectId, since })),
-		nothingShared: s.nothingShared,
-	};
 }
 
 export interface PersonDetail {
@@ -206,7 +182,6 @@ export class PeopleService {
 
 		if (transactions.length === 0) return [];
 
-		// Single pass: collect per-contact stats.
 		const contactStats = new Map<
 			string,
 			{
@@ -290,7 +265,6 @@ export class PeopleService {
 			contactStats,
 		);
 
-		// Batch compute all balances in 4 queries total (instead of 4 per contact).
 		const [balanceResults, identities] = await Promise.all([
 			computeBalanceBatch(
 				this.db,
@@ -518,7 +492,6 @@ export class PeopleService {
 			}
 		}
 		const allResolvedData = await this.resolveNamesBatch(allRefs);
-		// Build a map for O(1) lookup
 		const identityMap = new Map<string, { name: string; avatarUrl: string | null }>();
 		for (let i = 0; i < allRefs.length; i++) {
 			const key = `${allRefs[i]!.participantType}:${allRefs[i]!.participantId}`;
@@ -720,7 +693,6 @@ export class PeopleService {
 			AND: baseAndClauses,
 		};
 
-		// Build parallel queries
 		const rawTransactionsPromise = this.db.sharedTransaction.findMany({
 			where,
 			select: {

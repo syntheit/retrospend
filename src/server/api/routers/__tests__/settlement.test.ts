@@ -96,22 +96,33 @@ describe("SettlementService.confirmSettlement", () => {
 	it("payee can confirm settlement", async () => {
 		const id = await pay();
 		const result = await as(PAYEE).confirmSettlement(id);
-		expect(result).toMatchObject({ status: "FINALIZED", confirmedByPayee: true });
+		expect(result).toMatchObject({
+			status: "FINALIZED",
+			confirmedByPayee: true,
+		});
 	});
 
 	it("payer and third parties cannot confirm", async () => {
 		const id = await pay();
-		await expect(as(PAYER).confirmSettlement(id)).rejects.toMatchObject({ code: "FORBIDDEN" });
-		await expect(as("random-user").confirmSettlement(id)).rejects.toMatchObject({
+		await expect(as(PAYER).confirmSettlement(id)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
+		await expect(as("random-user").confirmSettlement(id)).rejects.toMatchObject(
+			{
+				code: "FORBIDDEN",
+			},
+		);
 	});
 
 	it("already-confirmed settlement throws BAD_REQUEST, a missing one NOT_FOUND", async () => {
 		const id = await pay();
 		await as(PAYEE).confirmSettlement(id);
-		await expect(as(PAYEE).confirmSettlement(id)).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		await expect(as(PAYEE).confirmSettlement("missing-id")).rejects.toMatchObject({
+		await expect(as(PAYEE).confirmSettlement(id)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+		await expect(
+			as(PAYEE).confirmSettlement("missing-id"),
+		).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 	});
@@ -120,7 +131,9 @@ describe("SettlementService.confirmSettlement", () => {
 describe("SettlementService.deletePendingSettlement", () => {
 	it("payer can delete their pending settlement", async () => {
 		const id = await pay();
-		expect(await as(PAYER).deletePendingSettlement(id)).toEqual({ success: true });
+		expect(await as(PAYER).deletePendingSettlement(id)).toEqual({
+			success: true,
+		});
 		expect(db._stores.settlements.size).toBe(0);
 		expect(db._stores.payments.size).toBe(0);
 	});
@@ -134,7 +147,9 @@ describe("SettlementService.deletePendingSettlement", () => {
 		await expect(as(PAYER).deletePendingSettlement(id)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-		await expect(as(PAYER).deletePendingSettlement("ghost-id")).rejects.toMatchObject({
+		await expect(
+			as(PAYER).deletePendingSettlement("ghost-id"),
+		).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 	});
@@ -144,11 +159,14 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 	it("payer can void an auto-finalized shadow or guest settlement (hard delete)", async () => {
 		const shadow: ParticipantRef = {
 			participantType: "shadow",
-			participantId: addShadowProfile(db, { createdById: PAYER, name: "Ghost" }).id,
+			participantId: addShadowProfile(db, { createdById: PAYER, name: "Ghost" })
+				.id,
 		};
 		for (const to of [shadow, makeGuestRef("guest-1")]) {
 			const id = await pay(to);
-			expect(await as(PAYER).voidAutoFinalizedSettlement(id)).toEqual({ success: true });
+			expect(await as(PAYER).voidAutoFinalizedSettlement(id)).toEqual({
+				success: true,
+			});
 		}
 		expect(db._stores.settlements.size).toBe(0);
 		expect(db._stores.payments.size).toBe(0);
@@ -157,22 +175,31 @@ describe("SettlementService.voidAutoFinalizedSettlement", () => {
 	it("non-payer cannot void, nor anyone a payment to a real user", async () => {
 		const shadow: ParticipantRef = {
 			participantType: "shadow",
-			participantId: addShadowProfile(db, { createdById: PAYER, name: "Ghost" }).id,
+			participantId: addShadowProfile(db, { createdById: PAYER, name: "Ghost" })
+				.id,
 		};
 		const toShadow = await pay(shadow);
-		await expect(as("someone-else").voidAutoFinalizedSettlement(toShadow)).rejects.toMatchObject({
+		await expect(
+			as("someone-else").voidAutoFinalizedSettlement(toShadow),
+		).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
 		// Pending: delete it instead. Confirmed by a real user: protected.
 		const toUser = await pay(payeeRef);
-		await expect(as(PAYER).voidAutoFinalizedSettlement(toUser)).rejects.toMatchObject({
+		await expect(
+			as(PAYER).voidAutoFinalizedSettlement(toUser),
+		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		});
 		await as(PAYEE).confirmSettlement(toUser);
-		await expect(as(PAYER).voidAutoFinalizedSettlement(toUser)).rejects.toMatchObject({
+		await expect(
+			as(PAYER).voidAutoFinalizedSettlement(toUser),
+		).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-		await expect(as(PAYER).voidAutoFinalizedSettlement("ghost-id")).rejects.toMatchObject({
+		await expect(
+			as(PAYER).voidAutoFinalizedSettlement("ghost-id"),
+		).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 		expect(db._stores.settlements.size).toBe(2);
@@ -183,7 +210,11 @@ describe("SettlementService.initiateSettlement", () => {
 	it("self-settlement is rejected with BAD_REQUEST", async () => {
 		seedDebt(payeeRef);
 		await expect(
-			as(PAYER).initiateSettlement({ toParticipant: payerRef, amount: 50, currency: "USD" }),
+			as(PAYER).initiateSettlement({
+				toParticipant: payerRef,
+				amount: 50,
+				currency: "USD",
+			}),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 	});
 

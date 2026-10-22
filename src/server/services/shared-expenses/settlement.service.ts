@@ -252,7 +252,9 @@ export class SettlementService {
 	 */
 	/** Notifies the other person about a payment payment.record wrote (best effort, after commit). */
 	async notifyPaymentRecorded(paymentId: string) {
-		const header = await this.db.payment.findUnique({ where: { id: paymentId } });
+		const header = await this.db.payment.findUnique({
+			where: { id: paymentId },
+		});
 		if (!header) return;
 		const payer: ParticipantRef = {
 			participantType: header.payerType,
@@ -835,7 +837,9 @@ export class SettlementService {
 			const isPending = roles.status === "PROPOSED";
 			// One payment, one amount (I4): what was paid, in the currency it was
 			// paid in. A square-up pays nothing and shows what it cancelled.
-			const header = lead.paymentGroupId ? headers.get(lead.paymentGroupId) : undefined;
+			const header = lead.paymentGroupId
+				? headers.get(lead.paymentGroupId)
+				: undefined;
 			const paid =
 				header && summary.kind === "payment"
 					? { amount: Number(header.amount), currency: header.currency }

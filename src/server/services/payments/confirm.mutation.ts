@@ -230,7 +230,8 @@ export async function paymentCounterparty(
 ): Promise<ParticipantRef> {
 	const { rows } = await loadPayment(db, paymentId);
 	const other = groupCounterparty(rows, userId);
-	if (!other) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
+	if (!other)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
 	return other as ParticipantRef;
 }
 

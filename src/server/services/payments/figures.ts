@@ -15,10 +15,8 @@ import type {
 	FigureScope,
 	Money,
 } from "~/server/figures/registry";
-import {
-	computeBalanceBatch,
-	computePairLedger,
-} from "~/server/services/shared-expenses/balance";
+import { computePairLedger } from "~/server/services/shared-expenses/balance";
+import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { ledgerLines, overallByCurrency } from "./ledger";
