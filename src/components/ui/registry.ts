@@ -41,7 +41,7 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "alert",
-		status: "core",
+		status: "legacy",
 		job: "Old bordered alert on today's pages; new code uses notice",
 		use: "notice",
 	},
@@ -241,7 +241,7 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "segmented-toggle",
-		status: "core",
+		status: "legacy",
 		job: "Old pill toggle on today's pages; new code uses segmented",
 		use: "segmented",
 	},
@@ -335,7 +335,7 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "user-avatar",
-		status: "core",
+		status: "legacy",
 		job: "Old face (10 colors, old sizes) on today's pages; new code uses Face from avatar-face",
 		use: "avatar-face (Face)",
 	},
