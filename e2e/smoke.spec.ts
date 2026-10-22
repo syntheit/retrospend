@@ -5,9 +5,7 @@ test.describe("smoke", () => {
 	test("login page is accessible", async ({ page }) => {
 		await page.goto("/login");
 		await expect(page).toHaveTitle(/Retrospend/);
-		await expect(
-			page.getByRole("button", { name: /sign in/i }),
-		).toBeVisible();
+		await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
 	});
 
 	test("unauthenticated access to protected routes redirects to login", async ({
