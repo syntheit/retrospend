@@ -51,6 +51,7 @@ import {
 } from "~/server/services/project/project-write.service";
 import { rebalanceExpenses } from "~/server/services/project/rebalance.mutation";
 import { rebalanceableExpenses } from "~/server/services/project/rebalance.service";
+import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 
 // ── input schemas ─────────────────────────────────────────────────────────────
@@ -356,6 +357,22 @@ export const projectRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
 			return projectSettlementPlan(ctx.db, input.projectId, input.periodId);
+		}),
+
+	/**
+	 * The Summary tab: group total, Paid / Share / Received / Sent / Balance
+	 * per member and currency in minor units, and who pays whom.
+	 */
+	summary: guestOrProtectedProcedure
+		.input(groupInput)
+		.query(async ({ ctx, input }) => {
+			await assertReader(ctx, input.projectId);
+			return getProjectSummary(
+				ctx.db,
+				input.projectId,
+				ctx.participant,
+				input.periodId,
+			);
 		}),
 
 	/** Each person's paid, fair share and net balance, one row per currency. */

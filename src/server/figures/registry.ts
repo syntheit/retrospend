@@ -13,6 +13,7 @@
  * registry.test.ts scans test sources for that literal and fails for any
  * registered id without one, so keep the title a literal, not a template.
  */
+import { projectFigures } from "~/server/services/project/figures";
 import type { Prisma } from "~prisma";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
@@ -198,4 +199,4 @@ export async function readFiguresIn<Db>(
 }
 
 /** Every figure in the product. Track 2A and later tracks add their definitions here. */
-export const figures = createFiguresRegistry<FigureDb>([]);
+export const figures = createFiguresRegistry<FigureDb>([...projectFigures]);
