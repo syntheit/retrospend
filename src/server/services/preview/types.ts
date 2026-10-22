@@ -65,6 +65,8 @@ export interface FigureChange {
 	readonly after: Money | null;
 	/** after minus before, counting a missing side as zero. Always in `currency`: a diff never converts. */
 	readonly delta: Money;
+	/** Every currency line of the figure after the mutation, so a sheet can say "USD 20 stays". */
+	readonly figureAfter: readonly Money[];
 }
 
 /** A figure none of whose currency lines moved, with what it holds. */
@@ -99,7 +101,10 @@ export interface ApplyResult<Value> extends PreviewResult<Value> {
 	readonly undo: UndoToken;
 }
 
+export type TransactionPurpose = "preview" | "apply";
+
 /** Opens one database transaction and runs `work` in it: commits when it resolves, rolls back when it throws. */
 export type TransactionRunner<Tx> = <T>(
 	work: (tx: Tx) => Promise<T>,
+	purpose: TransactionPurpose,
 ) => Promise<T>;

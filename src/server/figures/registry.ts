@@ -41,8 +41,10 @@ export type FigureNarrowing = Partial<Record<ScopeKey, string>>;
 export type FigureScope = FigureNarrowing & { readonly userId: string };
 
 /**
- * What a figure reads through: the user-scoped client for plain reads, or the
- * open transaction during a preview, so it sees the mutation's uncommitted rows.
+ * What a figure reads through: always an open transaction with RLS set.
+ * Plain reads go through readFigures (figures/read.ts), which opens a
+ * userTransaction, so even `$queryRaw` runs under RLS; a preview passes its
+ * own transaction, so figures see the mutation's uncommitted rows.
  */
 export type FigureDb = Prisma.TransactionClient;
 
@@ -146,18 +148,25 @@ function checkMoney(id: string, money: Money): Money {
 	return { minor: money.minor, currency: money.currency };
 }
 
-/** One list shape for every figure, so a diff can always pair amounts by currency. */
+const byCurrency = (a: Money, b: Money) =>
+	a.currency < b.currency ? -1 : a.currency > b.currency ? 1 : 0;
+
+/**
+ * One list shape for every figure, sorted by currency code so the same
+ * holdings always read the same way, whatever order a query returned them in.
+ */
 function toReading(id: string, value: FigureValue | null): FigureReading {
 	if (value === null) return null;
 	const list = "currency" in value ? [value] : value;
 	const seen = new Set<string>();
-	return list.map((money) => {
+	const reading = list.map((money) => {
 		if (seen.has(money.currency)) {
 			throw new FigureError(id, `lists ${money.currency} twice`);
 		}
 		seen.add(money.currency);
 		return checkMoney(id, money);
 	});
+	return reading.sort(byCurrency);
 }
 
 /** The one way to read a figure: narrowed scope, validated output, failures named by id. */
@@ -173,6 +182,19 @@ export async function readFigure<Db>(
 		throw new FigureError(definition.id, "compute failed", { cause: error });
 	}
 	return toReading(definition.id, value);
+}
+
+/** Reads figures one at a time: a transaction holds one connection, so parallel reads would only queue. */
+export async function readFiguresIn<Db>(
+	db: Db,
+	definitions: readonly FigureDefinition<Db>[],
+	scope: FigureScope,
+): Promise<ReadonlyMap<string, FigureReading>> {
+	const readings = new Map<string, FigureReading>();
+	for (const definition of definitions) {
+		readings.set(definition.id, await readFigure(definition, db, scope));
+	}
+	return readings;
 }
 
 /** Every figure in the product. Track 2A and later tracks add their definitions here. */

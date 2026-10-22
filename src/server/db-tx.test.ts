@@ -49,4 +49,19 @@ describe("userTransaction", () => {
 			}),
 		).rejects.toBe(failure);
 	});
+
+	it("passes the isolation level and timeout to Prisma", async () => {
+		const { client } = fakeClient();
+		const options = {
+			isolationLevel: "RepeatableRead",
+			timeout: 15_000,
+		} as const;
+
+		await userTransaction(client, "user-1", async () => null, options);
+
+		expect(client.$transaction).toHaveBeenCalledWith(
+			expect.any(Function),
+			options,
+		);
+	});
 });

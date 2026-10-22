@@ -24,7 +24,11 @@ export function moneyDelta(
 	return { minor, currency };
 }
 
-/** Pairs two readings of one figure by currency; only lines whose amount differs are returned. */
+/**
+ * Pairs two readings of one figure by currency, in currency-code order, and
+ * returns only lines whose amount differs. A missing line and a zero line
+ * hold the same amount, so a balance going from absent to 0 is no change.
+ */
 export function diffReadings(
 	id: string,
 	before: readonly Money[],
@@ -32,18 +36,19 @@ export function diffReadings(
 ): FigureChange[] {
 	const was = new Map(before.map((money) => [money.currency, money]));
 	const now = new Map(after.map((money) => [money.currency, money]));
-	const currencies = new Set([...was.keys(), ...now.keys()]);
+	const currencies = [...new Set([...was.keys(), ...now.keys()])].sort();
 	const changes: FigureChange[] = [];
 	for (const currency of currencies) {
 		const a = was.get(currency) ?? null;
 		const b = now.get(currency) ?? null;
-		if (a?.minor === b?.minor) continue;
+		if ((a?.minor ?? 0) === (b?.minor ?? 0)) continue;
 		changes.push({
 			id,
 			currency,
 			before: a,
 			after: b,
 			delta: moneyDelta(currency, a, b),
+			figureAfter: after,
 		});
 	}
 	return changes;

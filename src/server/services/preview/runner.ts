@@ -1,11 +1,10 @@
 import {
 	type FigureDefinition,
-	type FigureReading,
 	type FigureScope,
 	type FiguresRegistry,
-	readFigure,
+	readFiguresIn,
 } from "~/server/figures/registry";
-import { diffSnapshots, type Snapshot } from "./diff";
+import { diffSnapshots } from "./diff";
 import type {
 	Actor,
 	ApplyResult,
@@ -16,7 +15,11 @@ import type {
 
 export interface PreviewRunnerDeps<Tx> {
 	readonly figures: FiguresRegistry<Tx>;
-	/** Must be scoped to `actor` (RLS), so figures and the mutation see only that user's rows. */
+	/**
+	 * Must be scoped to `actor` (RLS), so figures and the mutation see only that
+	 * user's rows. Told whether it runs a preview or an apply, so it can pick
+	 * the isolation level for each.
+	 */
 	readonly transaction: TransactionRunner<Tx>;
 	readonly actor: Actor;
 }
@@ -55,19 +58,6 @@ function figuresFor<Tx>(
 	return [...ids].map((id) => figures.get(id));
 }
 
-/** Read one figure at a time: a transaction holds one connection, so parallel reads would only queue. */
-async function snapshot<Tx>(
-	tx: Tx,
-	definitions: readonly FigureDefinition<Tx>[],
-	scope: FigureScope,
-): Promise<Snapshot> {
-	const values: [string, FigureReading][] = [];
-	for (const definition of definitions) {
-		values.push([definition.id, await readFigure(definition, tx, scope)]);
-	}
-	return new Map(values);
-}
-
 /** The single code path behind both preview and apply, so preview = result by construction (I22, RC-1). */
 async function runMeasured<Tx, Input, Value>(
 	tx: Tx,
@@ -81,9 +71,9 @@ async function runMeasured<Tx, Input, Value>(
 		...mutation.scope?.(input),
 		userId: actor.userId,
 	};
-	const before = await snapshot(tx, definitions, scope);
+	const before = await readFiguresIn(tx, definitions, scope);
 	const { value, undo } = await mutation.run(tx, input, actor);
-	const after = await snapshot(tx, definitions, scope);
+	const after = await readFiguresIn(tx, definitions, scope);
 	return { value, undo, ...diffSnapshots(before, after) };
 }
 
@@ -107,7 +97,7 @@ export function createPreviewRunner<Tx>({
 					actor,
 				);
 				throw new PreviewRollback(result);
-			});
+			}, "preview");
 		} catch (error) {
 			if (error instanceof PreviewRollback) {
 				return error.result as PreviewResult<Value>;
@@ -125,8 +115,9 @@ export function createPreviewRunner<Tx>({
 		input: Input,
 	): Promise<ApplyResult<Value>> {
 		const definitions = figuresFor(figures, mutation.touches);
-		return transaction((tx) =>
-			runMeasured(tx, mutation, input, definitions, actor),
+		return transaction(
+			(tx) => runMeasured(tx, mutation, input, definitions, actor),
+			"apply",
 		);
 	}
 

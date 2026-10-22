@@ -24,10 +24,22 @@ const constant = (
 	...extra,
 });
 
+/**
+ * Drops block and line comments so a commented-out describe does not count.
+ * A `//` right after a colon or a quote is kept, so URLs in strings survive.
+ */
+function stripComments(source: string): string {
+	return source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+}
+
 /** Ids that have a `describe("figure <id>", ...)` block in `source` (the convention in registry.ts). */
 function testedFigureIds(source: string): string[] {
 	const title = /describe\(\s*(["'])figure ([A-Za-z0-9.]+)\1/g;
-	return [...source.matchAll(title)].map((match) => match[2] ?? "");
+	return [...stripComments(source).matchAll(title)].map(
+		(match) => match[2] ?? "",
+	);
 }
 
 function allTestSources(): string[] {
@@ -129,6 +141,23 @@ describe("readFigure", () => {
 		expect(await readFigure(both, null, { userId: "u1" })).toEqual(lines);
 	});
 
+	it("sorts currency lines by code, whatever order the query returned", async () => {
+		const lines = [
+			{ minor: 2_000, currency: "USD" },
+			{ minor: 1, currency: "BTC" },
+			{ minor: 350_000, currency: "ARS" },
+		];
+		const mixed = constant("balance.withPerson", {
+			compute: async () => lines,
+		});
+		const reading = await readFigure(mixed, null, { userId: "u1" });
+		expect(reading?.map((money) => money.currency)).toEqual([
+			"ARS",
+			"BTC",
+			"USD",
+		]);
+	});
+
 	it("rejects a list that names a currency twice", async () => {
 		const twice = constant("balance.withPerson", {
 			compute: async () => [
@@ -157,6 +186,16 @@ describe("figures (the product registry)", () => {
 		const [dq, sq] = ['"', "'"];
 		const source = `describe(${dq}figure owed.owedToYou${dq}, () => {});\ndescribe(${sq}figure netWorth${sq}, () => {});`;
 		expect(testedFigureIds(source)).toEqual(["owed.owedToYou", "netWorth"]);
+	});
+
+	it("ignores a describe that is commented out", () => {
+		const [dq, sl] = ['"', "/"];
+		const line = `${sl}${sl} describe(${dq}figure spent${dq}, () => {});`;
+		const block = `${sl}* describe(${dq}figure netWorth${dq}, () => {}); *${sl}`;
+		const url = `const u = ${dq}https:${sl}${sl}x${dq}; describe(${dq}figure owed.youOwe${dq}, () => {});`;
+		expect(testedFigureIds([line, block, url].join("\n"))).toEqual([
+			"owed.youOwe",
+		]);
 	});
 
 	// A duplicate id in the product list already fails here: importing ./registry throws.

@@ -7,7 +7,11 @@ import {
 	type Money,
 } from "~/server/figures/registry";
 import { createPreviewRunner } from "./runner";
-import type { MoneyMutation, TransactionRunner } from "./types";
+import type {
+	MoneyMutation,
+	TransactionPurpose,
+	TransactionRunner,
+} from "./types";
 
 /** A tiny ledger in ARS minor units: what each person owes you (negative = you owe them) and your cash. */
 interface Book {
@@ -22,14 +26,21 @@ interface FakeTx {
 function fakeDatabase(initial: Book) {
 	let committed = structuredClone(initial);
 	let commits = 0;
-	const transaction: TransactionRunner<FakeTx> = async (work) => {
+	const purposes: TransactionPurpose[] = [];
+	const transaction: TransactionRunner<FakeTx> = async (work, purpose) => {
+		purposes.push(purpose);
 		const tx = { book: structuredClone(committed) };
 		const result = await work(tx);
 		committed = tx.book;
 		commits += 1;
 		return result;
 	};
-	return { transaction, book: () => committed, commits: () => commits };
+	return {
+		transaction,
+		purposes,
+		book: () => committed,
+		commits: () => commits,
+	};
 }
 
 const ars = (minor: number): Money => ({ minor, currency: "ARS" });
@@ -114,6 +125,7 @@ describe("preview", () => {
 					before: ars(14_602_500),
 					after: ars(175_000),
 					delta: ars(-14_427_500),
+					figureAfter: [ars(175_000)],
 				},
 				{
 					id: "balance.withPerson",
@@ -121,6 +133,7 @@ describe("preview", () => {
 					before: ars(14_427_500),
 					after: ars(0),
 					delta: ars(-14_427_500),
+					figureAfter: [ars(0)],
 				},
 			],
 			unchanged: [{ id: "netWorth", value: [ars(90_000_000)] }],
@@ -144,6 +157,7 @@ describe("preview", () => {
 			before: ars(175_000),
 			after: ars(-300_000),
 			delta: ars(-475_000),
+			figureAfter: [ars(-300_000)],
 		});
 	});
 
@@ -218,6 +232,7 @@ describe("apply", () => {
 			mutation: "test.settle",
 			rows: [{ table: "payment", id: "pay1" }],
 		});
+		expect(database.purposes).toEqual(["preview", "apply"]);
 		expect(database.book().balances.martin).toBe(4_427_500);
 		expect(database.commits()).toBe(1);
 	});

@@ -40,6 +40,7 @@ describe("diffSnapshots", () => {
 				before: ars(14_427_500),
 				after: ars(0),
 				delta: ars(-14_427_500),
+				figureAfter: [ars(0)],
 			},
 		]);
 		expect(diff.unchanged).toEqual([]);
@@ -67,6 +68,7 @@ describe("diffSnapshots", () => {
 				before: null,
 				after: usd(2_000),
 				delta: usd(2_000),
+				figureAfter: [ars(500), usd(2_000)],
 			},
 		]);
 	});
@@ -84,14 +86,15 @@ describe("diffSnapshots", () => {
 				before: usd(2_000),
 				after: null,
 				delta: usd(-2_000),
+				figureAfter: [ars(500)],
 			},
 		]);
 	});
 
-	it("reports only the currency that moved when a figure holds two", () => {
+	it("reports only the currency that moved, with every line it now holds", () => {
 		const diff = diffSnapshots(
 			snap([["balance.withPerson", [ars(500), usd(2_000)]]]),
-			snap([["balance.withPerson", [usd(2_000), ars(0)]]]),
+			snap([["balance.withPerson", [ars(0), usd(2_000)]]]),
 		);
 
 		expect(diff.changes).toEqual([
@@ -101,9 +104,31 @@ describe("diffSnapshots", () => {
 				before: ars(500),
 				after: ars(0),
 				delta: ars(-500),
+				figureAfter: [ars(0), usd(2_000)],
 			},
 		]);
 		expect(diff.unchanged).toEqual([]);
+	});
+
+	it("treats a missing currency line and a zero line as the same amount", () => {
+		const diff = diffSnapshots(
+			snap([["balance.withPerson", [ars(500)]]]),
+			snap([["balance.withPerson", [ars(500), usd(0)]]]),
+		);
+
+		expect(diff.changes).toEqual([]);
+		expect(diff.unchanged).toEqual([
+			{ id: "balance.withPerson", value: [ars(500), usd(0)] },
+		]);
+	});
+
+	it("lists changed currencies in code order", () => {
+		const diff = diffSnapshots(
+			snap([["netWorth", [usd(1)]]]),
+			snap([["netWorth", [ars(1)]]]),
+		);
+
+		expect(diff.changes.map((c) => c.currency)).toEqual(["ARS", "USD"]);
 	});
 
 	it("never nets one currency against another", () => {
