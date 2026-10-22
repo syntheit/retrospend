@@ -3,10 +3,10 @@
 import { parseScopeList } from "@retrospend/api-contract/common";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
-import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Notice } from "~/components/ui/notice";
 import { authClient } from "~/lib/auth-client";
 
 type Request = { userCode: string; clientId: string; scopes: string[] };
@@ -93,11 +93,7 @@ export function DeviceApproval({ initialCode }: { initialCode: string }) {
 							/>
 						</div>
 						{phase.error && (
-							<Alert variant="destructive">
-								<AlertDescription>
-									{t(`errors.${phase.error}`)}
-								</AlertDescription>
-							</Alert>
+							<Notice tone="danger">{t(`errors.${phase.error}`)}</Notice>
 						)}
 						<Button
 							className="w-full"
@@ -158,11 +154,7 @@ function ReviewRequest({
 					))}
 				</ul>
 			</div>
-			{error && (
-				<Alert variant="destructive">
-					<AlertDescription>{t(`errors.${error}`)}</AlertDescription>
-				</Alert>
-			)}
+			{error && <Notice tone="danger">{t(`errors.${error}`)}</Notice>}
 			<div className="flex gap-2">
 				<Button disabled={busy} onClick={() => onDecide(true)}>
 					{t("approve")}
