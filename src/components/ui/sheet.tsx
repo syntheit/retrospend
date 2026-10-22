@@ -6,6 +6,7 @@ import * as React from "react";
 import { Drawer } from "vaul";
 
 import { Button } from "~/components/ui/button";
+import { Tip } from "~/components/ui/tooltip";
 import {
 	DETENT_SNAP,
 	detentOf,
@@ -57,21 +58,26 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 				<DialogPrimitive.Title className="min-w-0 flex-1 truncate text-fg text-section">
 					{props.title}
 				</DialogPrimitive.Title>
-				<Button
-					aria-label={s.t("close")}
-					onClick={s.requestClose}
-					icon
-					kind="ghost"
-				>
-					<XIcon />
-				</Button>
+				<Tip content={s.t("close")}>
+					<Button
+						aria-label={s.t("close")}
+						onClick={s.requestClose}
+						icon
+						kind="ghost"
+					>
+						<XIcon />
+					</Button>
+				</Tip>
 			</div>
 			{props.description ? (
 				<DialogPrimitive.Description className="px-6 pb-2 text-fg-2 text-small max-md:px-4">
 					{props.description}
 				</DialogPrimitive.Description>
 			) : null}
-			<div className="min-h-0 flex-1 overflow-y-auto px-6 py-2 max-md:px-4">
+			<div
+				className="min-h-0 flex-1 overflow-y-auto px-6 py-2 max-md:px-4"
+				data-sheet-body=""
+			>
 				{props.children}
 			</div>
 			{s.error ? (
@@ -92,6 +98,7 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 							{props.submitLabel ? (
 								<Button
 									disabled={props.submitDisabled}
+									data-sheet-submit=""
 									kind="primary"
 									loading={s.busy}
 									onClick={() => void s.submit()}
