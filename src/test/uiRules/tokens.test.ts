@@ -123,6 +123,25 @@ describe("design tokens", () => {
 		);
 	});
 
+	it("UI-102: reduced motion drops movement durations and keeps fades", () => {
+		const reduced =
+			/@media \(prefers-reduced-motion: reduce\) \{([^}]*)\}/.exec(
+				read("src/styles/tokens.css"),
+			)?.[1] ?? "";
+		const dropped = [...reduced.matchAll(/--t-([\w-]+): 1ms;/g)].map(
+			(m) => m[1],
+		);
+		// Slides, height changes and number rolls stop; hover and menu fades,
+		// the only motion reduced motion allows, keep their duration.
+		expect(dropped.sort()).toEqual([
+			"num-in",
+			"num-out",
+			"row",
+			"sheet",
+			"tab",
+		]);
+	});
+
 	it("the motion tokens match the durations UI-100 accepts", async () => {
 		const { MOTION_MS } = await import("./rules");
 		for (const t of tokens.light.values()) {

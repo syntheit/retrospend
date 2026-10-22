@@ -42,6 +42,18 @@ export async function loadTokens(): Promise<Record<Theme, Tokens>> {
 	return { light, dark };
 }
 
+/**
+ * Whether a duration token times movement (a slide, scale or height change)
+ * or a fade. Reduced motion drops movement to 1ms and keeps fades, so motion
+ * becomes opacity only (GUIDELINE §11).
+ */
+export function isMovement(t: TransformedToken): boolean {
+	const motion = t.$extensions?.["app.retrospend"]?.motion;
+	if (motion !== "movement" && motion !== "fade")
+		throw new Error(`${t.path.join(".")} needs a motion of movement or fade`);
+	return motion === "movement";
+}
+
 /** The tokens tokens.dark.json changes. */
 export function darkOverrides(dark: Tokens): TransformedToken[] {
 	return [...dark.values()].filter((t) => t.isSource);

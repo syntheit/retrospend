@@ -157,11 +157,9 @@
 	}
 }
 
-/* Reduced motion: opacity only. Movement durations drop to 1ms. */
+/* Reduced motion: opacity only. Movement durations drop to 1ms, fades stay. */
 @media (prefers-reduced-motion: reduce) {
 	:root {
-		--t-state: 1ms;
-		--t-menu: 1ms;
 		--t-sheet: 1ms;
 		--t-tab: 1ms;
 		--t-row: 1ms;

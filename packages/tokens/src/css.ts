@@ -5,6 +5,7 @@
 import type { TransformedToken } from "style-dictionary/types";
 import {
 	darkOverrides,
+	isMovement,
 	type Dimension,
 	type ShadowLayer,
 	type Theme,
@@ -112,11 +113,12 @@ export function tokensCss({ light, dark }: Record<Theme, Tokens>): string {
 		"\t}",
 		"}",
 		"",
-		"/* Reduced motion: opacity only. Movement durations drop to 1ms. */",
+		"/* Reduced motion: opacity only. Movement durations drop to 1ms, fades stay. */",
 		"@media (prefers-reduced-motion: reduce) {",
 		"\t:root {",
 	);
-	for (const t of durations) L.push(`\t\t--t-${leaf(t)}: 1ms;`);
+	for (const t of durations.filter(isMovement))
+		L.push(`\t\t--t-${leaf(t)}: 1ms;`);
 
 	L.push("\t}", "}", "", "@theme inline {");
 	for (const t of colors)
