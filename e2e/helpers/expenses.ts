@@ -11,6 +11,9 @@ export async function addExpense(
 	const dialog = page
 		.getByRole("dialog")
 		.filter({ has: page.getByRole("button", { name: "Create Expense" }) });
+	// On a cold dev server the first compile can reload the page and close the
+	// dialog midway; wait until the page is quiet before opening it.
+	await page.waitForLoadState("networkidle");
 	// The sidebar's button sits in a list item; empty states repeat the label
 	// in <main>. A click before hydration does nothing, so retry until it opens.
 	await expect(async () => {
