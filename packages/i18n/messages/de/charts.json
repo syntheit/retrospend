@@ -1,0 +1,26 @@
+{
+	"day": "Tag {day}",
+	"noData": "keine Daten",
+	"pace": {
+		"summary": "Tag {day}: bisher {spent} ausgegeben, letzten Monat bis heute {before}"
+	},
+	"bars": {
+		"label": "Ausgegeben",
+		"summary": "Ausgaben pro Monat. {month}: {total}"
+	},
+	"area": {
+		"label": "Vermögen",
+		"summary": "Das Vermögen ging von {start} am {from} auf {end} am {to}"
+	},
+	"ranked": {
+		"summary": "Größte zuerst: {list}"
+	},
+	"allocation": {
+		"summary": "Aufteilung: {list}"
+	},
+	"balance": {
+		"summary": "Dir geschuldet {owed}. Du schuldest {owe}",
+		"owesYou": "{name}: schuldet dir {amount}",
+		"youOwe": "{name}: du schuldest {amount}"
+	}
+}
