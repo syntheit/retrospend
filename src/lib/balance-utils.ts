@@ -58,8 +58,23 @@ export function computeHomeCurrencyTotal(
 }
 
 /**
+ * True when nothing is owed either way. A home-currency total that could not
+ * be computed (null, or only partly converted) never counts as settled: the
+ * per-currency balances decide instead.
+ */
+export function isBalanceSettled(
+	balances: BalanceEntry[],
+	homeCurrencyTotal: { amount: number; canConvert: boolean } | null,
+): boolean {
+	if (balances.every((b) => b.balance === 0)) return true;
+	return homeCurrencyTotal?.canConvert === true && homeCurrencyTotal.amount === 0;
+}
+
+/**
  * Build a settle button label like "Pay $20" or "Request $20".
- * Falls back to the primary balance currency if home currency conversion is unavailable.
+ * Uses the home-currency total when it fully converts, with the verb taken from
+ * its sign. Otherwise falls back to a per-currency balance in the requested
+ * direction, and the verb follows that balance so the two always agree.
  */
 export function formatSettleLabel(
 	direction: "they_owe_you" | "you_owe_them" | "settled",
@@ -69,15 +84,31 @@ export function formatSettleLabel(
 	formatCurrency: (amount: number, currency: string) => string,
 	labels?: { pay: (amount: string) => string; request: (amount: string) => string },
 ): string {
-	const amount = homeCurrencyTotal?.canConvert
-		? formatCurrency(Math.abs(homeCurrencyTotal.amount), homeCurrency)
-		: balances[0]
-			? formatCurrency(balances[0].balance, balances[0].currency)
+	const converted =
+		homeCurrencyTotal?.canConvert && homeCurrencyTotal.amount !== 0
+			? homeCurrencyTotal
+			: null;
+	// The verb must match the amount shown: a converted total carries its own
+	// sign, a per-currency fallback must be in the requested direction.
+	const verb = converted
+		? converted.amount > 0
+			? "they_owe_you"
+			: "you_owe_them"
+		: direction;
+	const fallback =
+		balances.find((b) => b.direction === verb && b.balance !== 0) ??
+		balances.find((b) => b.balance !== 0);
+	const amount = converted
+		? formatCurrency(Math.abs(converted.amount), homeCurrency)
+		: fallback
+			? formatCurrency(fallback.balance, fallback.currency)
 			: "";
+	const pay =
+		(converted ? verb : (fallback?.direction ?? verb)) === "you_owe_them";
 	if (labels) {
-		return direction === "you_owe_them" ? labels.pay(amount) : labels.request(amount);
+		return pay ? labels.pay(amount) : labels.request(amount);
 	}
-	return direction === "you_owe_them" ? `Pay ${amount}` : `Request ${amount}`;
+	return pay ? `Pay ${amount}` : `Request ${amount}`;
 }
 
 /**

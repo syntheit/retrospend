@@ -80,7 +80,12 @@ import { getCategoryColorClasses } from "~/lib/constants";
 import { useCategoryName } from "~/hooks/use-category-name";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { buildRateMap, computeHomeCurrencyTotal, formatSettleLabel } from "~/lib/balance-utils";
+import {
+	buildRateMap,
+	computeHomeCurrencyTotal,
+	formatSettleLabel,
+	isBalanceSettled,
+} from "~/lib/balance-utils";
 import { getCategoryIcon } from "~/lib/category-icons";
 import { getImageUrl } from "~/lib/image-url";
 import { usePageTitle } from "~/hooks/use-page-title";
@@ -848,7 +853,25 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																		homeCurrency,
 																	)}
 																</span>
-															) : null}
+															) : (
+																balances
+																	.filter((b) => b.balance !== 0)
+																	.map((b) => (
+																		<span
+																			className={cn(
+																				"tabular-nums text-xs",
+																				selectedProjectId === undefined
+																					? "text-primary-foreground/80"
+																					: b.direction === "they_owe_you"
+																						? "text-emerald-600 dark:text-emerald-400"
+																						: "text-amber-600 dark:text-amber-400",
+																			)}
+																			key={b.currency}
+																		>
+																			{formatCurrency(b.balance, b.currency)}
+																		</span>
+																	))
+															)}
 														</button>
 													</ContextMenuTrigger>
 													{!isSettled && (
@@ -869,7 +892,7 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 														: undefined;
 													const imageUrl = getImageUrl(meta?.imagePath ?? null);
 													const projTotal = projectHomeTotals.get(proj.projectId);
-													const projIsEven = !projTotal || projTotal.amount === 0;
+													const projIsEven = isBalanceSettled(proj.balances, projTotal ?? null);
 													const canAddExpense =
 														meta &&
 														meta.status !== "ARCHIVED" &&
@@ -951,7 +974,25 @@ export default function PersonDetailPage({ params }: { params: PageParams }) {
 																				homeCurrency,
 																			)}
 																		</span>
-																	) : null}
+																	) : (
+																		proj.balances
+																			.filter((b) => b.balance !== 0)
+																			.map((b) => (
+																				<span
+																					className={cn(
+																						"tabular-nums text-xs",
+																						isSelected
+																							? "text-primary-foreground/80"
+																							: b.direction === "they_owe_you"
+																								? "text-emerald-600 dark:text-emerald-400"
+																								: "text-amber-600 dark:text-amber-400",
+																					)}
+																					key={b.currency}
+																				>
+																					{formatCurrency(b.balance, b.currency)}
+																				</span>
+																			))
+																	)}
 																</button>
 															</ContextMenuTrigger>
 															<ContextMenuContent>
