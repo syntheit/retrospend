@@ -24,10 +24,10 @@ describe("the home leg an expense books", () => {
 	let db: ReturnType<typeof createMockDb>;
 	let service: ExpenseService;
 
-	const created = () =>
-		(db.expense.create.mock.calls[0]?.[0] as { data: Row }).data;
-	const updated = () =>
-		(db.expense.update.mock.calls[0]?.[0] as { data: Row }).data;
+	const firstData = (calls: unknown[][]) =>
+		(calls[0]?.[0] as { data: Row } | undefined)?.data;
+	const created = () => firstData(db.expense.create.mock.calls);
+	const updated = () => firstData(db.expense.update.mock.calls);
 	const asUser = (homeCurrency: string, defaultRateTypes: object = {}) =>
 		db.user.findUnique.mockResolvedValue({ homeCurrency, defaultRateTypes });
 
