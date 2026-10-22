@@ -235,12 +235,24 @@ describe("money", () => {
 		hit("UI-070", `export const s = (n: number) => n.toFixed(2);`);
 		hit("UI-070", `export const s = (d: Date) => d.toLocaleDateString();`);
 		hit("UI-070", `export const f = new Intl.NumberFormat("en-US");`);
+		miss("UI-070", `// n.toFixed(2)\nexport const x = 1;`);
+	});
+	it("UI-070 applies everywhere but the services (IMPLEMENTATION §4)", () => {
+		const fixed = `export const s = (n: number) => n.toFixed(2);`;
+		hit("UI-070", fixed, "src/lib/currency-format.ts");
+		hit("UI-070", fixed, "src/server/api/routers/x.ts");
+		hit("UI-070", fixed, "src/server/exchange-rates.ts");
+		miss("UI-070", fixed, "src/server/services/x.service.ts");
+		hit(
+			"UI-070",
+			`export const f = new Intl.NumberFormat("en-US");`,
+			"src/lib/date-locale.ts",
+		);
 		miss(
 			"UI-070",
-			`export const s = (n: number) => n.toFixed(2);`,
-			"src/lib/currency-format.ts",
+			`export const s = (d: Date) => d.toLocaleDateString();`,
+			"src/lib/date-locale.ts",
 		);
-		miss("UI-070", `// n.toFixed(2)\nexport const x = 1;`);
 	});
 	it("UI-071 hand-built money strings", () => {
 		hit("UI-071", "export const s = (x: number) => `$${x}`;");
@@ -414,5 +426,96 @@ describe("accessibility", () => {
 			`${head}export const A = () => <Button asChild><Link aria-label={t("home")} href="/"><X /></Link></Button>;`,
 		);
 		miss("UI-131", `export const A = () => <Button>{label}</Button>;`);
+	});
+});
+
+describe("copy in code (UI-124)", () => {
+	it("hits literal English in JSX children and text props", () => {
+		hit("UI-124", `export const A = () => <p>Add expense</p>;`);
+		hit(
+			"UI-124",
+			`export const A = () => <Input placeholder="Search people" />;`,
+		);
+		hit("UI-124", `export const A = () => <Button aria-label="Close" />;`);
+		hit("UI-124", `export const A = () => <p title="Settings" />;`);
+		hit("UI-124", `export const A = () => <p>{"Save"}</p>;`);
+		hit(
+			"UI-124",
+			`export const A = ({ ok }: { ok: boolean }) => <p>{ok ? "Yes" : "No"}</p>;`,
+		);
+		hit(
+			"UI-124",
+			"export const A = ({ n }: { n: string }) => <p aria-label={`Remove ${n}`} />;",
+		);
+	});
+	it("ignores t(), symbols, codes, code samples and class names", () => {
+		miss("UI-124", `export const A = () => <p>{t("save")}</p>;`);
+		miss(
+			"UI-124",
+			`export const A = () => <Input placeholder={t("search")} />;`,
+		);
+		miss("UI-124", `export const A = () => <p>· / %</p>;`);
+		miss(
+			"UI-124",
+			`export const A = ({ a, b }: { a: number; b: number }) => <p>{a} / {b}</p>;`,
+		);
+		miss("UI-124", `export const A = () => <p>USD</p>;`);
+		miss("UI-124", `export const A = () => <p>&middot; &nbsp;</p>;`);
+		miss("UI-124", `export const A = () => <p>Retrospend</p>;`);
+		miss("UI-124", `export const A = () => <code>pnpm dev</code>;`);
+		miss("UI-124", `export const A = () => <p className="text-sm text-fg" />;`);
+		miss("UI-124", `export const A = () => <a href="/settings">{t("go")}</a>;`);
+		miss("UI-124", `export const msg = "Saved";`);
+		miss(
+			"UI-124",
+			`export const A = () => <p>Add expense</p>;`,
+			"src/server/x.tsx",
+		);
+	});
+});
+
+describe("code shape", () => {
+	const lines = (n: number) =>
+		Array.from({ length: n }, (_, i) => `export const a${i} = ${i};`).join(
+			"\n",
+		);
+	const size = (file: string, n: number) =>
+		scanFile(file, lines(n))
+			.filter((h) => h.rule === "UI-150")
+			.reduce((a, h) => a + (h.count ?? 1), 0);
+	it("UI-150 counts lines over the limit for components, services and routers", () => {
+		expect(size("src/components/x.tsx", 300)).toBe(0);
+		expect(size("src/components/x.tsx", 301)).toBe(1);
+		expect(size("src/app/(dashboard)/x/page.tsx", 340)).toBe(40);
+		expect(size("src/server/services/x.service.ts", 500)).toBe(0);
+		expect(size("src/server/services/x.service.ts", 520)).toBe(20);
+		expect(size("src/server/api/routers/x.ts", 310)).toBe(10);
+		expect(size("src/lib/x.ts", 900)).toBe(0);
+	});
+	it("UI-151 no database import in transport files", () => {
+		const db = `import { db } from "~/server/db";\nexport const x = db;`;
+		hit("UI-151", db, "src/server/api/routers/x.ts");
+		hit("UI-151", db, "src/app/api/x/route.ts");
+		hit(
+			"UI-151",
+			`import { db } from "../../db";\nexport const x = db;`,
+			"src/server/api/routers/x.ts",
+		);
+		hit(
+			"UI-151",
+			`export const x = () => import("~/server/db");`,
+			"src/server/api/trpc.ts",
+		);
+		miss("UI-151", db, "src/server/services/x.service.ts");
+		miss(
+			"UI-151",
+			`import type { PrismaClient } from "~/server/db";\nexport type X = PrismaClient;`,
+			"src/server/api/routers/x.ts",
+		);
+		miss(
+			"UI-151",
+			`import { list } from "~/server/services/x.service";\nexport const x = list;`,
+			"src/server/api/routers/x.ts",
+		);
 	});
 });

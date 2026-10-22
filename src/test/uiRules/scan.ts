@@ -64,7 +64,7 @@ export function countHits(hits: Hit[]): Counts {
 	for (const h of hits) {
 		const byFile = c[h.rule] ?? {};
 		c[h.rule] = byFile;
-		byFile[h.file] = (byFile[h.file] ?? 0) + 1;
+		byFile[h.file] = (byFile[h.file] ?? 0) + (h.count ?? 1);
 	}
 	return c;
 }
@@ -104,7 +104,14 @@ export function raisedSince(base: Counts, work: Counts): string[] {
 	return out;
 }
 
-/** Totals per rule, and the files with the most hits, for docs/ui/GAPS.md. */
+/** Rules whose count is not a number of violations (UI-150 counts lines over the limit). */
+const MEASURES = new Set(["UI-150"]);
+
+/**
+ * Totals per rule, and the files with the most hits, for docs/ui/GAPS.md.
+ * UI-150 is listed in lines over the limit and left out of the totals and
+ * the file ranking.
+ */
 export function report(c: Counts, top = 15): string {
 	const lines: string[] = [
 		"| Rule | Hits | Files | What |",
@@ -115,12 +122,17 @@ export function report(c: Counts, top = 15): string {
 	for (const rule of Object.keys(c).sort()) {
 		const files = c[rule] ?? {};
 		const n = Object.values(files).reduce((a, b) => a + b, 0);
+		const what = (RULES[rule] ?? "").split(";")[0];
+		if (MEASURES.has(rule)) {
+			lines.push(
+				`| ${rule} | ${n} lines over | ${Object.keys(files).length} | ${what} |`,
+			);
+			continue;
+		}
 		total += n;
 		for (const [f, k] of Object.entries(files))
 			perFile[f] = (perFile[f] ?? 0) + k;
-		lines.push(
-			`| ${rule} | ${n} | ${Object.keys(files).length} | ${(RULES[rule] ?? "").split(";")[0]} |`,
-		);
+		lines.push(`| ${rule} | ${n} | ${Object.keys(files).length} | ${what} |`);
 	}
 	lines.push(
 		`| Total | ${total} | ${Object.keys(perFile).length} | |`,
@@ -133,7 +145,8 @@ export function report(c: Counts, top = 15): string {
 	);
 	for (const [f, n] of ranked.slice(0, top)) {
 		const rules = Object.keys(c)
-			.filter((r) => c[r]?.[f])
+			.sort()
+			.filter((r) => c[r]?.[f] && !MEASURES.has(r))
 			.map((r) => `${r} ${c[r]?.[f]}`)
 			.join(", ");
 		lines.push(`| ${f} | ${n} | ${rules} |`);

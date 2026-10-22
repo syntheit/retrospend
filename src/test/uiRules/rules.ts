@@ -44,6 +44,8 @@ export type Hit = {
 	line: number;
 	match: string;
 	message: string;
+	/** How much this hit counts in the ratchet (UI-150: lines over the limit). Default 1. */
+	count?: number;
 };
 
 export const RULES: Record<string, string> = {
@@ -87,10 +89,16 @@ export const RULES: Record<string, string> = {
 		"Em dash in UI text; use a comma, colon or period (GUIDELINE §13, R11).",
 	"UI-121":
 		"Word the glossary replaces (log in, participant, receivable...); use the glossary word (GUIDELINE §13).",
+	"UI-124":
+		"Literal English in JSX (a text child or a placeholder, title, aria-label, alt or label prop); put the copy in messages/en.json and render it with t() (GUIDELINE §13).",
 	"UI-130":
-		"Focus outline removed without a focus-visible replacement (GUIDELINE §14).",
+		"Focus outline removed without a focus-visible replacement; keep a visible focus-visible:ring or outline (GUIDELINE §14).",
 	"UI-131":
 		"Icon-only button without an accessible name; add aria-label (GUIDELINE §14).",
+	"UI-150":
+		"File over its size limit (component 300 lines, service 500, router 300); split it. A file in the baseline may only shrink (IMPLEMENTATION §8.2).",
+	"UI-151":
+		"Database import in a transport file (src/server/api, src/app/api); call a service in src/server/services instead (IMPLEMENTATION §2.2).",
 };
 
 // ---- scope ----------------------------------------------------------------
@@ -122,33 +130,54 @@ export const THEME_FILES = new Set([
 	"src/styles/globals.css",
 ]);
 
-/** Formatter modules: the only places that call Intl, toLocaleString or toFixed. */
-export const FORMATTERS = new Set([
-	"src/lib/currency-format.ts",
-	"src/lib/money.ts",
-	"src/lib/format.ts",
+/**
+ * Date helpers: the only places that format dates by hand (toLocaleString,
+ * toLocaleDateString, Intl.DateTimeFormat...). Number formatting (toFixed,
+ * Intl.NumberFormat) is allowed only in packages/domain and src/server/services
+ * (IMPLEMENTATION §4), so today's src/lib formatters sit in the baseline until
+ * they move into packages/domain.
+ */
+export const DATE_HELPERS = new Set([
 	"src/lib/date-locale.ts",
 	"src/lib/date.ts",
 	"src/lib/time-zone.ts",
-	"src/lib/decimal.ts",
 ]);
+
+/** Transport files: they call services, never the database (UI-151). */
+const isTransport = (f: string) =>
+	f.startsWith("src/server/api/") || f.startsWith("src/app/api/");
+
+/** Size limits in lines (IMPLEMENTATION §8.2), first match wins. */
+const SIZE_LIMITS: [RegExp, number][] = [
+	[/^src\/server\/services\/.*\.ts$/, 500],
+	[/^src\/server\/api\/routers\/.*\.ts$/, 300],
+	[/\.tsx$/, 300],
+];
 
 const EXEMPT: Record<string, (file: string) => boolean> = {
 	"UI-041": (f) => f.startsWith("src/components/ui/"),
 	"UI-042": (f) => f.startsWith("src/components/ui/"),
-	"UI-070": (f) => FORMATTERS.has(f),
 	"UI-100": (f) => f === "src/styles/tokens.css",
+};
+
+/** Rules with their own scope instead of "UI code only". */
+const SCOPE: Record<string, (file: string) => boolean> = {
+	"UI-070": (f) => !f.startsWith("src/server/services/"),
+	"UI-150": () => true,
+	"UI-151": isTransport,
 };
 
 function applies(rule: string, file: string): boolean {
 	if (EXEMPT[rule]?.(file)) return false;
+	const scope = SCOPE[rule];
+	if (scope) return scope(file);
 	if (file.startsWith("messages/")) return true;
 	return COPY_RULES.has(rule) || isUi(file);
 }
 
 // ---- shared patterns ------------------------------------------------------
 
-type Raw = { rule: string; line: number; match: string };
+type Raw = { rule: string; line: number; match: string; count?: number };
 
 /** Not preceded by a class-name character (variants like `md:` and `!` are fine). */
 const NB = String.raw`(?<![\w-])`;
@@ -511,6 +540,9 @@ function copyRules(
 	}
 }
 
+/** A short one-line excerpt of a string for a hit's match. */
+const clip = (text: string) => text.replace(/\s+/g, " ").trim().slice(0, 40);
+
 function excerpt(text: string, re: RegExp): string {
 	const i = text.search(re);
 	return text
@@ -671,6 +703,65 @@ function context(
 	return { classCtx, owner, console: isConsole, isText, key };
 }
 
+// ---- UI-124 literal English in JSX -------------------------------------------
+
+/** JSX props whose value people read or hear. */
+const COPY_ATTRS = new Set([
+	"placeholder",
+	"title",
+	"aria-label",
+	"aria-description",
+	"alt",
+	"label",
+	"description",
+	"tooltip",
+	"heading",
+]);
+/** Elements whose text is code or a key name, not copy. */
+const CODE_TAGS = new Set(["code", "pre", "kbd", "samp", "style", "script"]);
+const WRAPPERS = new Set([
+	"ConditionalExpression",
+	"LogicalExpression",
+	"ParenthesizedExpression",
+	"TemplateLiteral",
+	"TSAsExpression",
+]);
+
+/** A word a reader would read: two letters or more, some lowercase, not the brand. */
+export function isEnglish(text: string): boolean {
+	const words = text.replace(/&#?\w+;/g, " ").match(/[A-Za-z][A-Za-z']+/g);
+	return (words ?? []).some((w) => /[a-z]/.test(w) && w !== "Retrospend");
+}
+
+function inCodeTag(stack: Node[]): boolean {
+	for (let i = stack.length - 1; i >= 0; i--) {
+		const n = stack[i] as Node;
+		if (n.type === "JSXElement") {
+			const tag = nameOf(get(get(n, "openingElement"), "name")) ?? "";
+			if (CODE_TAGS.has(tag)) return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * A string that renders as JSX copy: a child (`{"Save"}`, `{ok ? "Yes" : "No"}`)
+ * or the value of a copy prop. A `t()` argument is not (calls are not wrappers).
+ */
+function isJsxCopy(stack: Node[]): boolean {
+	let i = stack.length - 1;
+	while (i >= 0 && WRAPPERS.has((stack[i] as Node).type)) i--;
+	let n = stack[i];
+	if (n?.type === "JSXExpressionContainer") {
+		n = stack[i - 1];
+		if (n?.type === "JSXElement" || n?.type === "JSXFragment")
+			return !inCodeTag(stack);
+	}
+	return (
+		n?.type === "JSXAttribute" && COPY_ATTRS.has(nameOf(get(n, "name")) ?? "")
+	);
+}
+
 // ---- TS/TSX ----------------------------------------------------------------
 
 const BANNED_ICON =
@@ -809,12 +900,19 @@ function scanTs(file: string, text: string, out: Raw[]) {
 	const program = parsed.program as unknown as Node;
 	const starts = lineStarts(text);
 	const line = (i: number) => lineOf(starts, i);
+	const dateHelper = DATE_HELPERS.has(file);
 	/** Names bound to a translator in this file (`const tX = useTranslations()`). */
 	const tNames = new Set(["t"]);
 	/** Local names of icon components imported from an icon set. */
 	const icons = new Set<string>();
-	const legacyImport = (src: string, at: number) => {
+	const legacyImport = (src: string, at: number, typeOnly = false) => {
 		const target = resolveImport(file, src);
+		if (
+			!typeOnly &&
+			target &&
+			(target === "src/server/db" || target.startsWith("src/server/db/"))
+		)
+			out.push({ rule: "UI-151", line: line(at), match: src });
 		const ui = target ? /^src\/components\/ui\/([\w-]+)$/.exec(target) : null;
 		const p = ui ? PRIMITIVE.get(ui[1] ?? "") : undefined;
 		if (p && p.status !== "core")
@@ -844,7 +942,7 @@ function scanTs(file: string, text: string, out: Raw[]) {
 			case "ExportNamedDeclaration":
 			case "ExportAllDeclaration": {
 				const src = str(get(n, "source"), "value");
-				if (src) legacyImport(src, n.start);
+				if (src) legacyImport(src, n.start, n.exportKind === "type");
 				break;
 			}
 			case "ImportExpression": {
@@ -865,6 +963,12 @@ function scanTs(file: string, text: string, out: Raw[]) {
 					line,
 					out,
 				);
+				if (isEnglish(n.value) && isJsxCopy(stack))
+					out.push({
+						rule: "UI-124",
+						line: line(n.start),
+						match: clip(n.value),
+					});
 				break;
 			}
 			case "TemplateElement": {
@@ -874,18 +978,29 @@ function scanTs(file: string, text: string, out: Raw[]) {
 					line,
 					out,
 				);
+				// one hit per template literal: only its first quasi with words reports
+				if (isEnglish(text) && isJsxCopy(stack.slice(0, -1))) {
+					const tl = parent as Node;
+					const first = (tl.quasis as Node[]).find((q) =>
+						isEnglish(cooked(q) ?? ""),
+					);
+					if (first === n)
+						out.push({
+							rule: "UI-124",
+							line: line(n.start),
+							match: clip(text),
+						});
+				}
 				break;
 			}
 			case "JSXText": {
 				const v = str(n, "value") ?? "";
-				if (v.trim())
-					copyRules(
-						v,
-						line(n.start + (v.length - v.trimStart().length)),
-						out,
-						false,
-						true,
-					);
+				if (v.trim()) {
+					const at = line(n.start + (v.length - v.trimStart().length));
+					copyRules(v, at, out, false, true);
+					if (isEnglish(v) && !inCodeTag(stack))
+						out.push({ rule: "UI-124", line: at, match: clip(v) });
+				}
 				break;
 			}
 			case "ImportDeclaration": {
@@ -906,7 +1021,7 @@ function scanTs(file: string, text: string, out: Raw[]) {
 							});
 					}
 				}
-				legacyImport(src, n.start);
+				legacyImport(src, n.start, n.importKind === "type");
 				break;
 			}
 			case "JSXOpeningElement": {
@@ -1075,11 +1190,13 @@ function scanTs(file: string, text: string, out: Raw[]) {
 				const callee = get(n, "callee");
 				if (callee?.type === "MemberExpression") {
 					const prop = nameOf(get(callee, "property")) ?? "";
-					if (
-						/^(?:toLocaleString|toLocaleDateString|toLocaleTimeString|toFixed)$/.test(
-							prop,
-						)
-					) {
+					const fmt =
+						prop === "toFixed" ||
+						(!dateHelper &&
+							/^(?:toLocaleString|toLocaleDateString|toLocaleTimeString)$/.test(
+								prop,
+							));
+					if (fmt) {
 						out.push({
 							rule: "UI-070",
 							line: line(n.start),
@@ -1096,7 +1213,9 @@ function scanTs(file: string, text: string, out: Raw[]) {
 				) {
 					const prop = nameOf(get(n, "property")) ?? "";
 					if (
-						/^(?:NumberFormat|DateTimeFormat|RelativeTimeFormat)$/.test(prop)
+						prop === "NumberFormat" ||
+						(!dateHelper &&
+							/^(?:DateTimeFormat|RelativeTimeFormat)$/.test(prop))
 					) {
 						out.push({
 							rule: "UI-070",
@@ -1273,6 +1392,17 @@ export function scanFile(file: string, text: string): Hit[] {
 	if (file.endsWith(".json")) scanMessages(file, text, raw);
 	else if (file.endsWith(".css")) scanCss(file, text, raw);
 	else scanTs(file, text, raw);
+	const limit = SIZE_LIMITS.find(([re]) => re.test(file))?.[1];
+	const lines = text.endsWith("\n")
+		? text.split("\n").length - 1
+		: text.split("\n").length;
+	if (limit !== undefined && lines > limit)
+		raw.push({
+			rule: "UI-150",
+			line: limit + 1,
+			match: `${lines} lines, limit ${limit}`,
+			count: lines - limit,
+		});
 	return raw
 		.filter((h) => applies(h.rule, file))
 		.map((h) => ({ ...h, file, message: RULES[h.rule] ?? h.rule }))

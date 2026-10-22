@@ -59,7 +59,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-062 [review] Hover and right-click only on fine pointers; every swipe has a menu twin; phone web has no swipe. §6 R13
 
 ## Money
-- UI-070 [auto] Numbers, money and dates go through the formatters: no `toFixed`, `toLocaleString`, `toLocaleDateString`, `toLocaleTimeString`, `Intl.NumberFormat`, `Intl.DateTimeFormat` outside the formatter modules in `src/lib`. §7 R10
+- UI-070 [auto] Numbers, money and dates go through the formatters: no `toFixed`, `toLocaleString` or `Intl.NumberFormat` outside `packages/domain` and `src/server/services` (anywhere else in `src`, server code and today's `src/lib` formatters included); no `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` or `Intl.RelativeTimeFormat` outside the date helpers (`src/lib/date-locale.ts`, `date.ts`, `time-zone.ts`). §7 R10, IMPLEMENTATION §4
 - UI-071 [auto] No hand-built money strings: no currency symbol written next to an interpolated value or after it (`` `$${x}` ``, `` `${x} €` ``, `"€" + x`, `<span>${x}</span>`, `<span>{x} €</span>`). §7 R10
 - UI-072 [review] The client never converts, sums or rounds money; it formats what the server sends; a missing rate is never 1. §7 R9
 - UI-073 [review] Foreign amounts show the ISO code, original first and home second; the rate type shows when it is not the default; a "$" currency always shows its code. §7 R10
@@ -94,6 +94,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 ## Wording
 - UI-120 [auto] No em dashes in UI text: string literals, JSX text, `messages/*.json`, including the `&mdash;` and `&#8212;` entities. §13 R11
 - UI-121 [auto] No words the glossary replaces in English copy (translation keys such as `t("receivable")` are not copy) (log in, log out, login, participant, shadow profile, square up, pay off, receivable, payable, portfolio). §13 R11
+- UI-124 [auto] No literal English in JSX: text children, string children (`{"Save"}`, `{ok ? "Yes" : "No"}`) and the copy props `placeholder`, `title`, `aria-label`, `alt`, `label`, `description`, `tooltip`, `heading` go through `t()`. Code samples in `<code>`, `<pre>`, `<kbd>` and words without a lowercase letter (`USD`) are not counted. §13 R11
 - UI-122 [review] US English, sentence case, at most one short sentence; the interface shows the rule instead of explaining it. §13 R11
 - UI-123 [review] Nouns and verbs follow the glossary table (Expense, Person, Settle up, Recurring expense, Not planned yet...). §13
 
@@ -107,3 +108,8 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-140 [auto] The ratchet passes: no rule and file above `baseline.json`; fixes lowered with `pnpm ui:ratchet`; `allow.json` entries carry a real reason. Before merging a branch: `pnpm ui:ratchet --check-base <main's baseline.json>`.
 - UI-141 [review] Before and after screenshots of every changed screen: 1440 and 390, light and dark.
 - UI-142 [review] Results reported by ID in the final message or PR.
+
+## Code shape
+- UI-150 [auto] File size limits: component (`.tsx`) 300 lines, service (`src/server/services`) 500, router (`src/server/api/routers`) 300. Existing files over the limit are in the baseline (counted in lines over the limit) and may only shrink. IMPLEMENTATION §8.2
+- UI-151 [auto] No `~/server/db` import (static, dynamic or re-export; type-only imports are fine) in transport files (`src/server/api/**`, `src/app/api/**`): they call services. IMPLEMENTATION §2.2
+- UI-152 [review] No arithmetic on money fields (`a.amount + b.amount`, `* rate`, `Math.round(total)`) outside `packages/domain` and `src/server/services`. A scan cannot tell a money field from a count, so the reviewer checks it. IMPLEMENTATION §4
