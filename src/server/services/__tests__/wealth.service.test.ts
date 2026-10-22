@@ -239,4 +239,215 @@ describe("WealthService.getDashboardSummary", () => {
 
 		expect(summary.netWorth30DaysAgo).toBe(400);
 	});
+
+	describe("closed accounts", () => {
+		const CLOSED_AT = new Date("2026-05-01T15:30:00Z");
+
+		function snap(
+			accountId: string,
+			date: string,
+			balance: number,
+			extra: Record<string, unknown> = {},
+		) {
+			return {
+				accountId,
+				date: new Date(`${date}T00:00:00Z`),
+				balance,
+				balanceInUSD: balance,
+				currency: "USD",
+				type: "CASH",
+				exchangeRateType: null,
+				...extra,
+			};
+		}
+
+		beforeEach(() => {
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "open", balance: 1000 }),
+				asset({ id: "gone", balance: 500, closedAt: CLOSED_AT }),
+			]);
+		});
+
+		it("history keeps a closed account's past values and drops it from the closing day", async () => {
+			db.assetSnapshot.findMany.mockResolvedValue([
+				snap("gone", "2026-03-10", 500),
+				snap("open", "2026-04-01", 1000),
+				// The zero point closeAsset records on the closing day
+				snap("gone", "2026-05-01", 0),
+				snap("open", "2026-06-01", 1000),
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+			const at = (date: string) => summary.history.find((h) => h.date === date)!.amount;
+
+			expect(at("2026-03-10")).toBe(500);
+			expect(at("2026-04-01")).toBe(1500);
+			expect(at("2026-05-01")).toBe(1000);
+			expect(at("2026-06-01")).toBe(1000);
+		});
+
+		it("a closed account counts 0 from its closedAt day even without a zero snapshot", async () => {
+			db.assetSnapshot.findMany.mockResolvedValue([
+				snap("gone", "2026-03-10", 500),
+				snap("open", "2026-04-30", 1000),
+				snap("open", "2026-05-01", 1000),
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+			const at = (date: string) => summary.history.find((h) => h.date === date)!.amount;
+
+			expect(at("2026-04-30")).toBe(1500);
+			expect(at("2026-05-01")).toBe(1000);
+		});
+
+		it("totals, liquid totals and the asset list leave closed accounts out", async () => {
+			const summary = await service.getDashboardSummary("user-1", "USD");
+
+			expect(summary.totalNetWorth).toBe(1000);
+			expect(summary.totalAssets).toBe(1000);
+			expect(summary.totalLiquidAssets).toBe(1000);
+			expect(summary.assets.map((a) => a.id)).toEqual(["open"]);
+			expect(summary.history.at(-1)!.amount).toBe(1000);
+			expect(summary.closedAssets).toEqual([
+				expect.objectContaining({ id: "gone", balance: 500, closedAt: CLOSED_AT }),
+			]);
+		});
+
+		it("an account closed before the history window adds nothing to it", async () => {
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "open", balance: 1000 }),
+				asset({ id: "old", balance: 500, closedAt: new Date("2020-01-01T00:00:00Z") }),
+			]);
+			db.assetSnapshot.findFirst.mockImplementation(
+				async (args: { where: { accountId: string } }) =>
+					args.where.accountId === "old" ? snap("old", "2019-12-01", 500) : null,
+			);
+			db.assetSnapshot.findMany.mockResolvedValue([snap("open", "2026-04-01", 1000)]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+
+			expect(summary.history.find((h) => h.date === "2026-04-01")!.amount).toBe(1000);
+		});
+	});
+
+	describe("snapshots keep their own currency, type and rate type", () => {
+		const OLD = new Date("2026-03-01T00:00:00Z");
+
+		beforeEach(() => {
+			useRateTable(db, [
+				...DEFAULT_RATES,
+				{ currency: "ARS", type: "blue", rate: 1000, date: OLD },
+				{ currency: "ARS", type: "official", rate: 800, date: OLD },
+			]);
+		});
+
+		it("a currency change does not revalue old snapshots", async () => {
+			// The account was ARS (blue) in March and is USD now.
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "acct", currency: "USD", balance: 1200 }),
+			]);
+			db.assetSnapshot.findMany.mockResolvedValue([
+				{
+					accountId: "acct",
+					date: new Date("2026-03-10T00:00:00Z"),
+					balance: 1000000,
+					balanceInUSD: 1000,
+					currency: "ARS",
+					type: "CASH",
+					exchangeRateType: "blue",
+				},
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+
+			// 1M ARS at that day's blue rate, not 1M "USD"
+			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+			expect(summary.totalNetWorth).toBe(1200);
+		});
+
+		it("a rate type change does not revalue old snapshots", async () => {
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "acct", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+			]);
+			db.assetSnapshot.findMany.mockResolvedValue([
+				{
+					accountId: "acct",
+					date: new Date("2026-03-10T00:00:00Z"),
+					balance: 800000,
+					balanceInUSD: 1000,
+					currency: "ARS",
+					type: "CASH",
+					exchangeRateType: "official",
+				},
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+
+			// official 800 that day, not blue 1000
+			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+		});
+
+		it("a type change does not move old snapshots between assets and liabilities", async () => {
+			db.assetAccount.findMany.mockResolvedValue([asset({ id: "acct", balance: 50 })]);
+			db.assetSnapshot.findMany.mockResolvedValue([
+				{
+					accountId: "acct",
+					date: new Date("2026-03-10T00:00:00Z"),
+					balance: 300,
+					balanceInUSD: 300,
+					currency: "USD",
+					type: "LIABILITY_LOAN",
+					exchangeRateType: null,
+				},
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+			const march = summary.history.find((h) => h.date === "2026-03-10")!;
+
+			expect(march.liabilities).toBe(300);
+			expect(march.amount).toBe(-300);
+		});
+
+		it("a custom rate typed back then is taken from the recorded USD value", async () => {
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "acct", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+			]);
+			db.assetSnapshot.findMany.mockResolvedValue([
+				{
+					accountId: "acct",
+					date: new Date("2026-03-10T00:00:00Z"),
+					balance: 2000000,
+					balanceInUSD: 1000,
+					currency: "ARS",
+					type: "CASH",
+					exchangeRateType: "custom",
+				},
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+
+			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+		});
+
+		it("snapshots older than these columns fall back to the account's", async () => {
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "acct", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+			]);
+			db.assetSnapshot.findMany.mockResolvedValue([
+				{
+					accountId: "acct",
+					date: new Date("2026-03-10T00:00:00Z"),
+					balance: 1000000,
+					balanceInUSD: 1000,
+					currency: null,
+					type: null,
+					exchangeRateType: null,
+				},
+			]);
+
+			const summary = await service.getDashboardSummary("user-1", "USD");
+
+			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+		});
+	});
 });

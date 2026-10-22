@@ -2,6 +2,8 @@
  * Wealth router (batch 4): runway counts spending once and only what counts
  * toward analytics; balance updates use today's rate, not the stored one.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useExpenseTable } from "~/test/expense-table";
 import { createMockDb } from "~/test/mock-db";
@@ -134,5 +136,157 @@ describe("updateAssetBalance", () => {
 			create: { balanceInUSD: number };
 		};
 		expect(snapshot.create.balanceInUSD).toBeCloseTo(-2);
+	});
+});
+
+describe("closing and deleting accounts", () => {
+	const openAccount = {
+		id: ASSET_ID,
+		userId: "user-1",
+		currency: "ARS",
+		type: "CASH",
+		balance: 1560000,
+		exchangeRate: 1560,
+		exchangeRateType: "blue",
+		closedAt: null,
+	};
+	const today = new Date(Date.UTC(2026, 9, 21));
+
+	type SnapshotCall = {
+		where: { accountId_date: { accountId: string; date: Date } };
+		create: Record<string, unknown>;
+		update: Record<string, unknown>;
+	};
+	const snapshotCall = () =>
+		mockDb.assetSnapshot.upsert.mock.calls[0]![0] as SnapshotCall;
+
+	it("updateAssetBalance records the account's currency, type and rate type on the snapshot", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue(openAccount);
+		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
+
+		await callAndFlush(() =>
+			caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: 1000 }),
+		);
+
+		expect(snapshotCall().create).toMatchObject({
+			currency: "ARS",
+			type: "CASH",
+			exchangeRateType: "blue",
+		});
+		expect(snapshotCall().update).toMatchObject({ currency: "ARS" });
+	});
+
+	it("closeAsset sets closedAt and records a zero snapshot for today", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue(openAccount);
+		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
+
+		await callAndFlush(() => caller().closeAsset({ id: ASSET_ID }));
+
+		expect(mockDb.assetAccount.findFirst).toHaveBeenCalledWith({
+			where: { id: ASSET_ID, userId: "user-1" },
+		});
+		expect(mockDb.assetAccount.update).toHaveBeenCalledWith({
+			where: { id: ASSET_ID },
+			data: { closedAt: expect.any(Date) },
+		});
+		expect(snapshotCall().where.accountId_date).toEqual({
+			accountId: ASSET_ID,
+			date: today,
+		});
+		expect(snapshotCall().create).toMatchObject({
+			balance: 0,
+			balanceInUSD: 0,
+			currency: "ARS",
+			type: "CASH",
+			exchangeRateType: "blue",
+		});
+		// The account and its past snapshots stay
+		expect(mockDb.assetAccount.deleteMany).not.toHaveBeenCalled();
+		expect(mockDb.assetSnapshot.deleteMany).not.toHaveBeenCalled();
+	});
+
+	it("closeAsset on an account of another user is NOT_FOUND", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue(null);
+
+		await expect(
+			callAndFlush(() => caller().closeAsset({ id: ASSET_ID })),
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(mockDb.assetAccount.update).not.toHaveBeenCalled();
+	});
+
+	it("a closed account takes no balance updates until it is reopened", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue({
+			...openAccount,
+			closedAt: new Date(2026, 8, 1),
+		});
+
+		await expect(
+			callAndFlush(() =>
+				caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: 5 }),
+			),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(mockDb.assetSnapshot.upsert).not.toHaveBeenCalled();
+	});
+
+	it("reopenAsset clears closedAt and records the kept balance for today", async () => {
+		mockDb.assetAccount.findFirst.mockResolvedValue({
+			...openAccount,
+			closedAt: new Date(2026, 8, 1),
+		});
+		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
+
+		await callAndFlush(() => caller().reopenAsset({ id: ASSET_ID }));
+
+		expect(mockDb.assetAccount.update).toHaveBeenCalledWith({
+			where: { id: ASSET_ID },
+			data: { closedAt: null },
+		});
+		expect(snapshotCall().where.accountId_date.date).toEqual(today);
+		expect(snapshotCall().create).toMatchObject({ balance: 1560000 });
+		expect(snapshotCall().create.balanceInUSD as number).toBeCloseTo(1000);
+	});
+
+	it("deleteAssetPermanently deletes the account, scoped to the user", async () => {
+		mockDb.assetAccount.deleteMany.mockResolvedValue({ count: 1 });
+
+		await callAndFlush(() => caller().deleteAssetPermanently({ id: ASSET_ID }));
+
+		expect(mockDb.assetAccount.deleteMany).toHaveBeenCalledWith({
+			where: { id: ASSET_ID, userId: "user-1" },
+		});
+	});
+
+	it("deleteAssetPermanently of a missing account is NOT_FOUND", async () => {
+		mockDb.assetAccount.deleteMany.mockResolvedValue({ count: 0 });
+
+		await expect(
+			callAndFlush(() => caller().deleteAssetPermanently({ id: ASSET_ID })),
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+	});
+
+	it("a permanent delete erases the balance history with the account", () => {
+		// Snapshots and history rows go through the cascade on their account.
+		const schema = readFileSync(
+			join(process.cwd(), "prisma/schema.prisma"),
+			"utf8",
+		);
+		const model = (name: string) =>
+			new RegExp(`model ${name} \\{[\\s\\S]*?\\n\\}`).exec(schema)?.[0] ?? "";
+		expect(model("AssetSnapshot")).toMatch(
+			/account\s+AssetAccount\s+@relation\([^)]*onDelete: Cascade\)/,
+		);
+		expect(model("AssetHistory")).toMatch(
+			/asset\s+AssetAccount\s+@relation\([^)]*onDelete: Cascade\)/,
+		);
+	});
+
+	it("exportCsv leaves closed accounts out", async () => {
+		await callAndFlush(() => caller().exportCsv());
+
+		expect(mockDb.assetAccount.findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { userId: "user-1", closedAt: null },
+			}),
+		);
 	});
 });

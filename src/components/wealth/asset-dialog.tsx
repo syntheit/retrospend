@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Archive, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -126,7 +126,7 @@ export function AssetDialog({
 	const [isCustomRate, setIsCustomRate] = useState(
 		initialValues?.exchangeRateType === "custom",
 	);
-	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [showCloseDialog, setShowCloseDialog] = useState(false);
 
 	// Get form values for hooks and effects
 	const watchedBalance = form.watch("balance");
@@ -210,9 +210,9 @@ export function AssetDialog({
 		},
 	});
 
-	const deleteAsset = api.wealth.deleteAsset.useMutation({
+	const closeAsset = api.wealth.closeAsset.useMutation({
 		onSuccess: () => {
-			toast.success(t("assetDeletedSingle"));
+			toast.success(t("accountClosed"));
 			if (setOpen) setOpen(false);
 			void utils.wealth.getDashboard.invalidate();
 		},
@@ -244,10 +244,10 @@ export function AssetDialog({
 		setIsCustomRate(false);
 	};
 
-	const handleDelete = async () => {
+	const handleClose = async () => {
 		if (assetId) {
-			setShowDeleteDialog(false);
-			await deleteAsset.mutateAsync({ id: assetId });
+			setShowCloseDialog(false);
+			await closeAsset.mutateAsync({ id: assetId });
 		}
 	};
 
@@ -465,25 +465,26 @@ export function AssetDialog({
 								)}
 							/>
 							<ResponsiveDialogFooter>
-								{/* Delete button - only visible in edit mode */}
+								{/* Close account button - only visible in edit mode */}
 								{isEdit && (
 									<Button
-										className="mr-auto h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
-										disabled={deleteAsset.isPending}
-										onClick={() => setShowDeleteDialog(true)}
+										className="mr-auto h-9 w-9 text-muted-foreground"
+										disabled={closeAsset.isPending}
+										title={t("closeAccount")}
+										onClick={() => setShowCloseDialog(true)}
 										size="icon"
 										type="button"
 										variant="ghost"
 									>
-										<Trash2 className="h-4 w-4" />
-										<span className="sr-only">{t("deleteAssetSr")}</span>
+										<Archive className="h-4 w-4" />
+										<span className="sr-only">{t("closeAccount")}</span>
 									</Button>
 								)}
 								<Button
 									disabled={
 										createAsset.isPending ||
 										updateAsset.isPending ||
-										deleteAsset.isPending
+										closeAsset.isPending
 									}
 									type="submit"
 								>
@@ -497,28 +498,25 @@ export function AssetDialog({
 				</ResponsiveDialogContent>
 			</ResponsiveDialog>
 
-			{/* Delete confirmation dialog */}
-			<Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
+			{/* Close account confirmation dialog */}
+			<Dialog onOpenChange={setShowCloseDialog} open={showCloseDialog}>
 				<DialogContent className="w-full max-w-full sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>{t("deleteAssetTitle")}</DialogTitle>
-						<DialogDescription>
-							{t("deleteAssetConfirmDescription", { name: form.watch("name") || t("thisAsset") })}
-						</DialogDescription>
+						<DialogTitle>{t("closeAccount")}</DialogTitle>
+						<DialogDescription>{t("closeAccountDescription")}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button
-							onClick={() => setShowDeleteDialog(false)}
+							onClick={() => setShowCloseDialog(false)}
 							variant="outline"
 						>
 							{t("cancel")}
 						</Button>
 						<Button
-							disabled={deleteAsset.isPending}
-							onClick={handleDelete}
-							variant="destructive"
+							disabled={closeAsset.isPending}
+							onClick={handleClose}
 						>
-							{deleteAsset.isPending ? t("deleting") : t("deleteAssetTitle")}
+							{closeAsset.isPending ? t("closing") : t("closeAccount")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

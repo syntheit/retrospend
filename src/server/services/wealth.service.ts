@@ -3,7 +3,7 @@ import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
 import { fromUSD, isValidRate, toUSD, USD } from "~/lib/money";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
-import type { Prisma, PrismaClient } from "~prisma";
+import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import {
 	findExchangeRate,
 	findExchangeRatesForDates,
@@ -11,6 +11,24 @@ import {
 
 /** Rate type of a rate the user typed in; it is kept as is, never looked up. */
 export const CUSTOM_RATE_TYPE = "custom";
+
+/** What an account was when a snapshot of it was taken. */
+export interface SnapshotMeta {
+	currency: string;
+	type: AssetType;
+	exchangeRateType: string | null;
+}
+
+/** An account's latest snapshot while history is rebuilt, as recorded. */
+interface HeldSnapshot extends SnapshotMeta {
+	balance: number;
+	balanceInUSD: number;
+}
+
+/** UTC day of a date, as YYYY-MM-DD. */
+function dayString(date: Date): string {
+	return date.toISOString().slice(0, 10);
+}
 
 /** End of a snapshot's UTC day, so rates published that day count for it. */
 function endOfSnapshotDay(dateStr: string): Date {
@@ -24,6 +42,10 @@ function endOfSnapshotDay(dateStr: string): Date {
  * rate type it was saved with (blue, official, ...) and every valuation looks
  * that type up in the rate table for the date being valued. Only a custom
  * rate (type "custom") is used as typed.
+ *
+ * A closed account (closedAt set) is out of today's totals and counts 0 in
+ * the history from the day it was closed, but its earlier snapshots still
+ * count, so closing an account never rewrites past net worth.
  */
 export class WealthService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
@@ -81,6 +103,8 @@ export class WealthService {
 	 *
 	 * This method must be called within a Prisma transaction context.
 	 * It creates/updates the daily snapshot and appends to the history log.
+	 * The snapshot keeps the account's currency, type and rate type, so a
+	 * later edit of the account does not revalue it.
 	 */
 	async recordAssetSnapshot(
 		tx: Prisma.TransactionClient,
@@ -89,7 +113,14 @@ export class WealthService {
 		balance: number,
 		balanceInUSD: number,
 		userId: string,
+		meta: SnapshotMeta,
 	): Promise<void> {
+		const snapshotMeta = {
+			currency: meta.currency,
+			type: meta.type,
+			exchangeRateType: meta.exchangeRateType ?? null,
+		};
+
 		// Upsert snapshot (one per asset per day)
 		await tx.assetSnapshot.upsert({
 			where: {
@@ -101,6 +132,7 @@ export class WealthService {
 			update: {
 				balance,
 				balanceInUSD,
+				...snapshotMeta,
 			},
 			create: {
 				accountId: assetId,
@@ -108,6 +140,7 @@ export class WealthService {
 				date,
 				balance,
 				balanceInUSD,
+				...snapshotMeta,
 			},
 		});
 
@@ -126,7 +159,9 @@ export class WealthService {
 		const today = normalizeDate(new Date());
 		const now = new Date();
 
-		const assets = await db.assetAccount.findMany({
+		// Closed accounts are loaded too: they are out of today's totals but
+		// keep their past in the history.
+		const allAssets = await db.assetAccount.findMany({
 			where: { userId: userId },
 			select: {
 				id: true,
@@ -138,34 +173,115 @@ export class WealthService {
 				exchangeRateType: true,
 				isLiquid: true,
 				interestRate: true,
+				closedAt: true,
 				createdAt: true,
 				updatedAt: true,
 			},
 		});
 
-		const assetMap = new Map(assets.map((a) => [a.id, a]));
+		const assets = allAssets.filter((a) => !a.closedAt);
+		const closedAssets = allAssets.flatMap((a) =>
+			a.closedAt ? [{ ...a, closedAt: a.closedAt }] : [],
+		);
+		const assetMap = new Map(allAssets.map((a) => [a.id, a]));
+		/** Day (YYYY-MM-DD) from which a closed account counts 0. */
+		const closedFrom = new Map(
+			closedAssets.map((a) => [a.id, dayString(a.closedAt)]),
+		);
+
+		const oneYearAgo = new Date(today);
+		oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+		const oneYearAgoStr = dayString(oneYearAgo);
+
+		// History reconstruction optimization
+		const snapshots = await db.assetSnapshot.findMany({
+			where: {
+				account: { userId: userId },
+				date: { gte: oneYearAgo },
+			},
+			orderBy: { date: "asc" },
+		});
+
+		// Latest point before one year ago for each account that still counts
+		// in that window (an account closed before it never shows).
+		const initialPoints = await Promise.all(
+			allAssets
+				.filter((a) => (closedFrom.get(a.id) ?? "9999-12-31") > oneYearAgoStr)
+				.map((a) =>
+					db.assetSnapshot.findFirst({
+						where: { accountId: a.id, date: { lt: oneYearAgo } },
+						orderBy: { date: "desc" },
+						select: {
+							accountId: true,
+							balanceInUSD: true,
+							balance: true,
+							currency: true,
+							type: true,
+							exchangeRateType: true,
+						},
+					}),
+				),
+		);
 
 		// One rate query per currency; per-date picks happen in memory.
 		const rateFor = await findExchangeRatesForDates(db, [
-			...assets.map((a) => a.currency),
+			...allAssets.map((a) => a.currency),
+			...snapshots.flatMap((s) => (s.currency ? [s.currency] : [])),
+			...initialPoints.flatMap((p) => (p?.currency ? [p.currency] : [])),
 			targetCurrency,
 		]);
 
 		/**
-		 * The rate that values `asset` on `date`: its custom rate, else the
-		 * table rate of its own type, else the rate stored on the asset when
-		 * its currency has no table rate at all. Null when there is none.
+		 * The rate for `currency` on `date`: a custom rate as stored, else the
+		 * table rate of the rate type, else the stored rate when the currency
+		 * has no table rate at all. Null when there is none.
 		 */
-		const assetRate = (asset: (typeof assets)[number], date: Date) => {
-			if (asset.currency === USD) return 1;
-			const stored = toNumberOrNull(asset.exchangeRate);
-			if (asset.exchangeRateType === CUSTOM_RATE_TYPE && isValidRate(stored)) {
+		const rateOf = (
+			currency: string,
+			rateType: string | null,
+			stored: number | null,
+			date: Date,
+		) => {
+			if (currency === USD) return 1;
+			if (rateType === CUSTOM_RATE_TYPE && isValidRate(stored)) {
 				return stored;
 			}
-			const picked = rateFor(asset.currency, date, asset.exchangeRateType);
+			const picked = rateFor(currency, date, rateType);
 			if (picked) return picked.rate;
 			return isValidRate(stored) ? stored : null;
 		};
+
+		/** The rate that values `asset` on `date`, with its own stored rate. */
+		const assetRate = (asset: (typeof allAssets)[number], date: Date) =>
+			rateOf(
+				asset.currency,
+				asset.exchangeRateType,
+				toNumberOrNull(asset.exchangeRate),
+				date,
+			);
+
+		/**
+		 * The rate that values a snapshot on `date`. A snapshot taken when the
+		 * account had another currency or rate type uses its own, never the
+		 * account's current one. A custom rate typed back then only survives
+		 * in the recorded USD value, so that case returns null.
+		 */
+		const snapshotRate = (
+			snap: HeldSnapshot,
+			asset: (typeof allAssets)[number],
+			date: Date,
+		) => {
+			if (
+				snap.currency === asset.currency &&
+				snap.exchangeRateType === asset.exchangeRateType
+			) {
+				return assetRate(asset, date);
+			}
+			if (snap.currency === USD) return 1;
+			if (snap.exchangeRateType === CUSTOM_RATE_TYPE) return null;
+			return rateOf(snap.currency, snap.exchangeRateType, null, date);
+		};
+
 		const targetRateAt = (date: Date) =>
 			rateFor(targetCurrency, date)?.rate ?? null;
 
@@ -221,41 +337,32 @@ export class WealthService {
 			weightedAPR = weightedAPR / totalLiabilityBalanceUSD;
 		}
 
-		const oneYearAgo = new Date(today);
-		oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-		// History reconstruction optimization
-		const snapshots = await db.assetSnapshot.findMany({
-			where: {
-				account: { userId: userId },
-				date: { gte: oneYearAgo },
-			},
-			orderBy: { date: "asc" },
-		});
-
-		// Fetch latest initial point before one year ago for each asset
-		const initialPoints = await Promise.all(
-			assets.map((a) =>
-				db.assetSnapshot.findFirst({
-					where: { accountId: a.id, date: { lt: oneYearAgo } },
-					orderBy: { date: "desc" },
-					select: { accountId: true, balanceInUSD: true, balance: true },
-				}),
-			),
-		);
-
-		const currentBalancesUSD = new Map<string, number>();
-		const currentBalancesNative = new Map<string, number>();
-		for (const asset of assets) {
-			const initial = initialPoints.find((p) => p?.accountId === asset.id);
-			currentBalancesUSD.set(
-				asset.id,
-				toNumberWithDefault(initial?.balanceInUSD),
-			);
-			currentBalancesNative.set(
-				asset.id,
-				toNumberWithDefault(initial?.balance),
-			);
+		/** Each account's latest snapshot so far, as it was recorded. */
+		const held = new Map<string, HeldSnapshot>();
+		const hold = (snap: {
+			accountId: string;
+			balance: unknown;
+			balanceInUSD: unknown;
+			currency: string | null;
+			type: AssetType | null;
+			exchangeRateType: string | null;
+		}) => {
+			const asset = assetMap.get(snap.accountId);
+			if (!asset) return;
+			// Rows older than the snapshot columns fall back to the account.
+			const recorded = Boolean(snap.currency);
+			held.set(snap.accountId, {
+				balance: toNumberWithDefault(snap.balance),
+				balanceInUSD: toNumberWithDefault(snap.balanceInUSD),
+				currency: snap.currency ?? asset.currency,
+				type: snap.type ?? asset.type,
+				exchangeRateType: recorded
+					? snap.exchangeRateType
+					: asset.exchangeRateType,
+			});
+		};
+		for (const initial of initialPoints) {
+			if (initial) hold(initial);
 		}
 
 		const snapshotsByDate = new Map<string, typeof snapshots>();
@@ -282,16 +389,7 @@ export class WealthService {
 			const daysSnapshots = snapshotsByDate.get(dateStr);
 			if (!daysSnapshots) continue;
 
-			daysSnapshots.forEach((snap) => {
-				currentBalancesUSD.set(
-					snap.accountId,
-					toNumberWithDefault(snap.balanceInUSD),
-				);
-				currentBalancesNative.set(
-					snap.accountId,
-					toNumberWithDefault(snap.balance),
-				);
-			});
+			daysSnapshots.forEach(hold);
 
 			// Every value on this date uses the rates for this date, both the
 			// asset's own and the target currency's.
@@ -301,23 +399,27 @@ export class WealthService {
 			let assetsInTarget = 0;
 			let liabilitiesInTarget = 0;
 
-			for (const [assetId, balNative] of currentBalancesNative.entries()) {
+			for (const [assetId, snap] of held.entries()) {
 				const asset = assetMap.get(assetId);
 				if (!asset) continue;
 
-				const rate = assetRate(asset, day);
+				// A closed account counts 0 from the day it was closed.
+				const closedDay = closedFrom.get(assetId);
+				if (closedDay && dateStr >= closedDay) continue;
+
+				const rate = snapshotRate(snap, asset, day);
 				// No rate for the asset: the USD value recorded with the snapshot.
 				const balInUSD =
 					rate === null
-						? (currentBalancesUSD.get(assetId) ?? 0)
-						: toUSD(balNative, asset.currency, rate);
+						? snap.balanceInUSD
+						: toUSD(snap.balance, snap.currency, rate);
 
 				const value =
-					asset.currency === targetCurrency && rate !== null
-						? balNative
+					snap.currency === targetCurrency && rate !== null
+						? snap.balance
 						: fromUSD(balInUSD, targetCurrency, dayTargetRate);
 
-				if (asset.type.startsWith("LIABILITY_")) {
+				if (snap.type.startsWith("LIABILITY_")) {
 					liabilitiesInTarget += value;
 				} else {
 					assetsInTarget += value;
@@ -385,6 +487,15 @@ export class WealthService {
 			netWorth30DaysAgo,
 			/** Currencies with no rate at all; their assets are left out of totals. */
 			missingRateCurrencies: [...missingRateCurrencies],
+			/** Closed accounts: out of every total, still part of the history. */
+			closedAssets: closedAssets.map((a) => ({
+				id: a.id,
+				name: a.name,
+				type: a.type,
+				currency: a.currency,
+				balance: toNumberWithDefault(a.balance),
+				closedAt: a.closedAt,
+			})),
 		};
 	}
 }

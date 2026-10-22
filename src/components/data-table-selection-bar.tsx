@@ -25,6 +25,8 @@ interface DataTableSelectionBarProps {
 	onEditSelected?: (id: string) => void;
 	onDuplicateSelected?: (id: string) => void;
 	onDeleteSelected?: () => void;
+	/** Label of the delete button when it does something milder (e.g. close). */
+	deleteLabel?: string;
 	onRecategorize?: (categoryId: string) => void;
 	/**
 	 * When false, the single-selection Edit affordance is hidden — used to keep
@@ -61,6 +63,7 @@ export function DataTableSelectionBar({
 	onEditSelected,
 	onDuplicateSelected,
 	onDeleteSelected,
+	deleteLabel,
 	onRecategorize,
 	canEditSelected = true,
 	canDeleteSelected = true,
@@ -202,7 +205,7 @@ export function DataTableSelectionBar({
 					>
 						<Trash2 className="h-4 w-4" />
 						<span className="sr-only sm:not-sr-only sm:inline-block">
-							{t("delete")}
+							{deleteLabel ?? t("delete")}
 						</span>
 					</Button>
 				)}
