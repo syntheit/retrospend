@@ -2,10 +2,7 @@ import { z } from "zod";
 import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
-import {
-	getOverviewSettings,
-	getOverviewStats,
-} from "~/server/services/overview.service";
+import { getOverviewSettings, getOverviewStats } from "~/server/services/overview.service";
 import { RateCache } from "~/server/services/rate-cache";
 import { listedEntryWhere } from "~/server/services/spending";
 import {
@@ -76,11 +73,7 @@ export const dashboardRouter = createTRPCRouter({
 				trendData,
 			] = await Promise.all([
 				db.expense.count({
-					where: {
-						...listedEntryWhere(userId),
-						status: "FINALIZED",
-						isAmortizedChild: false,
-					},
+					where: { ...listedEntryWhere(userId), status: "FINALIZED", isAmortizedChild: false },
 					take: 1,
 				}).then((c) => c > 0),
 				db.exchangeRateFavorite

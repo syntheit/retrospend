@@ -281,7 +281,10 @@ describe("ExpenseService", () => {
 			).rejects.toMatchObject({ code: "FORBIDDEN" });
 
 			expect(db.category.findFirst).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: "cat-other", userId: "user-1" } }),
+				// Income categories never hold an expense.
+				expect.objectContaining({
+					where: { id: "cat-other", userId: "user-1", kind: "EXPENSE" },
+				}),
 			);
 			expect(db.expense.update).not.toHaveBeenCalled();
 		});

@@ -208,21 +208,8 @@ export const expenseRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const startOfDay = new Date(input.date);
-			startOfDay.setHours(0, 0, 0, 0);
-			const endOfDay = new Date(input.date);
-			endOfDay.setHours(23, 59, 59, 999);
-
-			const match = await ctx.db.expense.findFirst({
-				where: {
-					...listedEntryWhere(ctx.session.user.id),
-					title: { equals: input.title, mode: "insensitive" },
-					amount: { equals: input.amount },
-					date: { gte: startOfDay, lte: endOfDay },
-				},
-				select: { id: true, title: true },
-			});
-
+			const service = new ExpenseService(ctx.db);
+			const match = await service.findDuplicate(ctx.session.user.id, input);
 			return match
 				? { isDuplicate: true, existingTitle: match.title }
 				: { isDuplicate: false, existingTitle: null };

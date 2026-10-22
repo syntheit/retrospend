@@ -323,6 +323,28 @@ export class ExpenseService {
 		});
 	}
 
+	/** An expense with the same title (any case), amount and day, for the duplicate warning. */
+	async findDuplicate(
+		userId: string,
+		input: { title: string; amount: number; date: Date },
+	) {
+		const startOfDay = new Date(input.date);
+		startOfDay.setHours(0, 0, 0, 0);
+		const endOfDay = new Date(input.date);
+		endOfDay.setHours(23, 59, 59, 999);
+
+		return await (this.db as PrismaClient).expense.findFirst({
+			where: {
+				// Money in never makes an expense look like a duplicate.
+				...listedEntryWhere(userId),
+				title: { equals: input.title, mode: "insensitive" },
+				amount: { equals: input.amount },
+				date: { gte: startOfDay, lte: endOfDay },
+			},
+			select: { id: true, title: true },
+		});
+	}
+
 	async getExpensesByDate(userId: string, date: Date) {
 		const startOfDay = new Date(date);
 		startOfDay.setHours(0, 0, 0, 0);
