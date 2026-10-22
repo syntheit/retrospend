@@ -11,9 +11,10 @@
  * A new file in src/components/ui fails the registry test (UI-040) until it
  * has an entry here, and a new entry needs the owner's sign-off (R18).
  *
- * PLANNED lists the PLAN §6 components that do not exist yet: their job, what
- * they replace and where they will live (IMPLEMENTATION §1.3). Build them
- * there, not as a local lookalike. Every name in PLAN_COMPONENTS is either a
+ * PLANNED lists the PLAN §6 components that live outside src/components/ui:
+ * their job, what they replace and where they live (IMPLEMENTATION §1.3).
+ * "planned" ones do not exist yet: build them there, not as a local
+ * lookalike. "built" ones exist at their target: use them. Every name in PLAN_COMPONENTS is either a
  * core file (its `plan` field) or a planned entry; the registry test checks it.
  */
 
@@ -144,8 +145,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "date-picker",
 		status: "core",
-		plan: ["DatePicker"],
-		job: "Pick a date or range, with presets",
+		job: "Today's date field for the pages that already use it. New code uses DatePicker or DateRange from src/components/pickers",
 	},
 	{
 		file: "dialog",
@@ -168,7 +168,7 @@ export const REGISTRY: Primitive[] = [
 		file: "edge-panel",
 		status: "legacy",
 		job: "Radix dialog drawn as an edge panel: the phone bottom sheet inside ResponsiveDialog and the sidebar's phone panel",
-		use: "responsive-dialog (Sheet)",
+		use: "sheet (Sheet)",
 	},
 	{
 		file: "empty-state",
@@ -212,8 +212,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "responsive-dialog",
 		status: "core",
-		plan: ["Sheet"],
-		job: "Sheet: dialog on desktop, bottom sheet on phone. One per task",
+		job: "Today's task dialog (dialog on desktop, bottom sheet on phone) for the pages that already use it. New task sheets use sheet",
 	},
 	{
 		file: "scroll-area",
@@ -233,6 +232,18 @@ export const REGISTRY: Primitive[] = [
 	},
 	{ file: "separator", status: "core", job: "Hairline between groups" },
 	{
+		file: "sheet",
+		status: "core",
+		plan: ["Sheet"],
+		job: "Sheet: one task that finishes in place. Dialog on desktop, medium and large detent sheet on phone; focus return, Cmd+Enter, nested Cancel returns to the parent",
+	},
+	{
+		file: "sheet-behavior",
+		status: "internal",
+		job: "The Sheet's key, submit, focus and detent rules as plain functions",
+		use: "sheet",
+	},
+	{
 		file: "sidebar",
 		status: "core",
 		plan: ["Sidebar"],
@@ -248,8 +259,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "sonner",
 		status: "core",
-		plan: ["Toast"],
-		job: "Toast: confirms a finished action and offers Undo (R15)",
+		job: "The one Toaster, mounted in the root layout. Show a toast with useToast from toast",
 	},
 	{
 		file: "stat-card",
@@ -275,6 +285,12 @@ export const REGISTRY: Primitive[] = [
 		job: "Underline tabs: switch sibling pages or whole panes (R21)",
 	},
 	{ file: "textarea", status: "core", job: "Multi-line text (notes)" },
+	{
+		file: "toast",
+		status: "core",
+		plan: ["Toast"],
+		job: "Toast: confirms a finished action and offers Undo (R15); at most 3, above sheets",
+	},
 	{
 		file: "toggle",
 		status: "legacy",
@@ -355,7 +371,7 @@ export const PLAN_COMPONENTS: string[] = [
 export type Planned = {
 	/** The PLAN §6 name. */
 	name: string;
-	status: "planned";
+	status: "planned" | "built";
 	/** The one job. */
 	job: string;
 	/** What it replaces (PLAN §6). */
@@ -364,7 +380,7 @@ export type Planned = {
 	planRow: string;
 	/** Where it will live (IMPLEMENTATION §1.3, §1.2 for sheets). */
 	target: string;
-	/** What to use until it exists. */
+	/** What to use until it exists; for a built entry, the component itself. */
 	use: string;
 };
 
@@ -526,21 +542,22 @@ export const PLANNED: Planned[] = [
 	},
 	{
 		name: "ActionMenu",
-		status: "planned",
-		job: "The ⋯ menu, right-click and long press of an entity, read from one action registry (R8)",
+		status: "built",
+		job: "The ⋯ menu (ActionMenu), right-click and long press (ActionArea) of an entity, read from one action registry (R8)",
 		replaces: "Per-page dropdowns and context menus",
 		planRow: ACTIONS,
-		target: "src/components/actions/registry.ts (one file per entity)",
-		use: "dropdown-menu and context-menu with the existing per-entity actions",
+		target:
+			"src/components/actions/action-menu.tsx (actions in src/components/actions/registry.ts, one file per entity)",
+		use: "ActionMenu and ActionArea; add an action to the entity's registry file",
 	},
 	{
 		name: "SwipeActions",
-		status: "planned",
-		job: "Phone swipe actions, each with a menu twin from the same registry (R8, R13)",
+		status: "built",
+		job: "Phone swipe actions, each with a menu twin from the same registry (R8, R13); swipe stays off on phone web",
 		replaces: "Per-page swipe and long-press handling",
 		planRow: ACTIONS,
 		target: "src/components/actions/swipe-actions.tsx",
-		use: "Nothing on phone web (no swipe); the ⋯ menu",
+		use: "SwipeActions (long press always; swipe only where no browser back gesture competes)",
 	},
 	{
 		name: "AddExpenseSheet",
@@ -571,30 +588,41 @@ export const PLANNED: Planned[] = [
 	},
 	{
 		name: "MoneyInput",
-		status: "planned",
-		job: "Amount entry: groups while typing, parses the page locale, rate chip (R22)",
+		status: "built",
+		job: "Amount entry: groups while typing, parses the page locale, + - × ÷ math, currency and rate chips (R22)",
 		replaces: "CurrencyAmountInput and local amount inputs",
 		planRow: INPUTS,
 		target: "src/components/money/money-input.tsx",
-		use: "CurrencyAmountInput",
+		use: "MoneyInput (new screens); CurrencyAmountInput stays in today's expense form",
 	},
 	{
 		name: "CategoryPicker",
-		status: "planned",
+		status: "built",
 		job: "Pick a category, recents first, bare glyph in its color (R25)",
 		replaces: "4 category pickers",
 		planRow: INPUTS,
 		target: "src/components/pickers/category-picker.tsx",
-		use: "The existing category picker of the form you are in; do not add a fifth",
+		use: "CategoryPicker in a PickerPopover; do not add a fifth",
 	},
 	{
 		name: "PersonPicker",
-		status: "planned",
+		status: "built",
 		job: "Pick people with their faces",
 		replaces: "split-with-picker and add-people-search",
 		planRow: INPUTS,
 		target: "src/components/pickers/person-picker.tsx",
-		use: "split-with-picker or add-people-search",
+		use: "PersonPicker in a PickerPopover",
+	},
+	{
+		name: "DatePicker",
+		status: "built",
+		job: "Pick a day: Today, Yesterday, then a month calendar or a typed date. Date filters use DateRange (presets, two months, typed, Compare) in the same folder",
+		replaces:
+			"4 date pickers, the by-month grid and the custom from and to fields",
+		planRow: INPUTS,
+		target:
+			"src/components/pickers/date-picker.tsx (DateRange: src/components/pickers/date-range.tsx)",
+		use: "DatePicker or DateRange",
 	},
 	{
 		name: "BottomNav",
