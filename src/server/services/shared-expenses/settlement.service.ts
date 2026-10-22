@@ -15,7 +15,11 @@ import { allocatePayment } from "~/server/services/payments/allocate";
 import { claimMatchError } from "~/server/services/payments/claim-match";
 import { confirmClaim } from "~/server/services/payments/confirm.mutation";
 import { confirmationFor } from "~/server/services/payments/confirmation";
-import { ledgerLines, payerLines } from "~/server/services/payments/ledger";
+import {
+	ledgerLines,
+	overallByCurrency,
+	payerLines,
+} from "~/server/services/payments/ledger";
 import {
 	type RecordPaymentInput,
 	type RecordPaymentValue,
@@ -153,6 +157,8 @@ export interface InitiateSettlementInput {
 	projectId?: string | null;
 	/** Money received that is not the pending payment the payer already claims (§1.5). */
 	differentPayment?: boolean;
+	/** The user's IANA zone, for today's date. */
+	timeZone?: string;
 }
 
 /** Amount in `currency` major units as the decimal string the engine takes. */
@@ -228,6 +234,9 @@ export class SettlementService {
 			paymentMethod: input.paymentMethod,
 			note: input.note,
 			differentPayment: input.differentPayment,
+			timeZone: input.timeZone,
+			// The old dialog has no overpay confirm: a cent over is what is owed.
+			clampOverpayUpTo: 1,
 			applyTo: [
 				scoped
 					? { scope: input.projectId ?? null, currency: input.currency }
@@ -778,38 +787,35 @@ export class SettlementService {
 		// Scope the plan to the same scope the settle-up action will write in
 		// (string => that project; null => direct bucket; omitted => GLOBAL, the
 		// default for the cross-project People view).
-		const balanceResult = await computeBalance(
-			this.db,
-			this.currentUserRef,
-			ref,
-			{ projectScope: projectId },
+		// Exact minor units (the engine's ledger), so the amount the dialog
+		// prefills is exactly what is owed.
+		const lines = ledgerLines(
+			await computePairLedger(this.db, this.currentUserRef, ref, {
+				projectScope: projectId,
+			}),
 		);
-		const byProject =
-			projectId === undefined
-				? await computeBalanceByProject(this.db, this.currentUserRef, ref)
-				: null;
-
-		return Object.entries(balanceResult.byCurrency).map(
-			([currency, balance]) => {
-				// From my side: positive = they owe me. The opposite debts are the
-				// scopes pointing against the global direction.
-				let offsetAmount = 0;
-				if (byProject) {
-					for (const scope of byProject.values()) {
-						const value = scope[currency] ?? 0;
-						if (Math.sign(value) === -Math.sign(balance))
-							offsetAmount += Math.abs(value);
-					}
-				}
-				return {
-					currency,
-					balance: Math.abs(balance),
-					direction: toDirection(balance),
-					suggestedAmount: Math.abs(balance),
-					offsetAmount,
-				};
-			},
-		);
+		return [...overallByCurrency(lines)].map(([currency, balance]) => {
+			// From my side: positive = they owe me. The opposite debts are the
+			// scopes pointing against the overall direction (global view only).
+			const offset =
+				projectId === undefined
+					? lines
+							.filter(
+								(l) =>
+									l.currency === currency &&
+									Math.sign(l.balance) === -Math.sign(balance),
+							)
+							.reduce((sum, l) => sum + Math.abs(l.balance), 0)
+					: 0;
+			const amount = asNumber(Math.abs(balance), currency);
+			return {
+				currency,
+				balance: amount,
+				direction: toDirection(balance),
+				suggestedAmount: amount,
+				offsetAmount: asNumber(offset, currency),
+			};
+		});
 	}
 
 	/**
@@ -1081,6 +1087,7 @@ export class SettlementService {
 		projectId?: string | null;
 		/** See InitiateSettlementInput.differentPayment. */
 		differentPayment?: boolean;
+		timeZone?: string;
 	}) {
 		const value = await this.record({
 			person: input.toParticipant,
@@ -1088,6 +1095,7 @@ export class SettlementService {
 			currency: input.paymentCurrency,
 			amount: null,
 			differentPayment: input.differentPayment,
+			timeZone: input.timeZone,
 			paymentMethod: input.paymentMethod,
 			note: input.note,
 			applyTo:

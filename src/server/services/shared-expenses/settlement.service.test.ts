@@ -456,6 +456,22 @@ describe("plan and history", () => {
 		);
 	});
 
+	it("builds the plan from exact minor units, so the prefilled amount is recorded in full", async () => {
+		// 0.1 + 0.2 as floats is 0.30000000000000004.
+		seedDebt(aliceRef, bobRef, 0.1);
+		seedDebt(aliceRef, bobRef, 0.2);
+
+		const [plan] = await alice().getSettlementPlan(bobRef);
+		expect(plan).toMatchObject({ currency: "USD", balance: 0.3, suggestedAmount: 0.3 });
+
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			amount: plan?.suggestedAmount ?? 0,
+			currency: "USD",
+		});
+		expect(await alice().getSettlementPlan(bobRef)).toEqual([]);
+	});
+
 	it("lists one entry per payment, newest first, with the header's amount and date", async () => {
 		seedDebt(aliceRef, bobRef, 50);
 		await alice().initiateSettlement({

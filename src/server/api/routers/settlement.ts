@@ -24,12 +24,12 @@ export const settlementRouter = createTRPCRouter({
 	 */
 	paymentPreview: protectedProcedure
 		.input(recordPaymentSchema)
-		.query(({ ctx, input }) => previewPayment(ctx.session.user.id, input)),
+		.query(({ ctx, input }) => previewPayment(ctx.session.user.id, input, ctx.timeZone)),
 	/** Records the payment the preview showed; refuses an unconfirmed overpayment. */
 	paymentRecord: protectedProcedure
 		.input(recordPaymentSchema)
 		.mutation(({ ctx, input }) =>
-			applyPayment(ctx.db, ctx.session.user.id, input),
+			applyPayment(ctx.db, ctx.session.user.id, input, ctx.timeZone),
 		),
 	/** Preview of confirming a payment that waits for the caller. */
 	paymentConfirmPreview: protectedProcedure
@@ -82,7 +82,7 @@ export const settlementRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.initiateSettlement(input);
+			return service.initiateSettlement({ ...input, timeZone: ctx.timeZone });
 		}),
 
 	/**
@@ -108,7 +108,7 @@ export const settlementRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.settleAll(input);
+			return service.settleAll({ ...input, timeZone: ctx.timeZone });
 		}),
 
 	/**

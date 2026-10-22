@@ -24,15 +24,22 @@ const NOT_RECORDED = {
 	matches_claim: "They already say they paid you this. Confirm that payment instead.",
 } as const;
 
-export const previewPayment = (userId: string, input: RecordInput) =>
-	forUser(userId).preview(recordPayment, input);
+export const previewPayment = (
+	userId: string,
+	input: RecordInput,
+	timeZone?: string,
+) => forUser(userId).preview(recordPayment, { ...input, timeZone });
 
 export async function applyPayment(
 	db: PrismaClient,
 	userId: string,
 	input: RecordInput,
+	timeZone?: string,
 ) {
-	const result = await forUser(userId).apply(recordPayment, input);
+	const result = await forUser(userId).apply(recordPayment, {
+		...input,
+		timeZone,
+	});
 	if (!result.value.recorded && result.value.reason === "matches_claim") {
 		const { match } = result.value;
 		const header = match

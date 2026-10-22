@@ -43,6 +43,7 @@ function makeDb(opts: {
 					opts.outside?.split ? [{ participantId: "shadow-1" }] : [],
 				),
 		},
+		payment: { updateMany: vi.fn() },
 		settlement: {
 			updateMany: vi.fn(),
 			findMany: vi.fn(async (args: { where: Record<string, unknown> }) =>

@@ -202,10 +202,41 @@ describe("allocatePayment", () => {
 		expect(a.rows).toEqual([]);
 	});
 
-	it("dust is one whole unit for currencies shown whole, else one minor unit", () => {
+	it("dust is under ARS 1 for ARS only, else under one minor unit (§1.2 rule 5)", () => {
 		expect(dustOf("ARS")).toBe(100);
 		expect(dustOf("BRL")).toBe(1);
 		expect(dustOf("JPY")).toBe(1);
+		// Shown whole, but the whole-unit rule is ARS only.
+		expect(dustOf("COP")).toBe(1);
+		expect(dustOf("CLP")).toBe(1);
+		const cop = allocatePayment({
+			lines: [{ scope: null, currency: "COP", owed: 1_000_000, oldest: "2026-10-01" }],
+			currency: "COP",
+			amount: 1_000_050,
+			quotes: new Map(),
+		});
+		expect(cop.overpay).toBe(50);
+	});
+
+	it("reports as overpay only what would be booked as excess", () => {
+		// The payee owes more overall: the payment still only pays the payer's
+		// own debt, and only what goes beyond it is excess.
+		const lines = [
+			{ scope: "trip", currency: "USD", owed: 5_000, oldest: "2026-10-01" },
+			{ scope: "rent", currency: "USD", owed: -8_000, oldest: "2026-10-02" },
+		];
+		const within = allocatePayment({ lines, currency: "USD", amount: 2_000, quotes: new Map() });
+		expect(within.overpay).toBe(0);
+		expect(within.rows.map((r) => [r.scope, r.amount])).toEqual([["trip", 2_000]]);
+		const beyond = allocatePayment({
+			lines,
+			currency: "USD",
+			amount: 6_000,
+			quotes: new Map(),
+			allowOverpay: true,
+		});
+		expect(beyond.overpay).toBe(1_000);
+		expect(beyond.rows.filter((r) => r.excess).map((r) => r.amount)).toEqual([1_000]);
 	});
 
 	it("rejects a fractional or negative amount", () => {

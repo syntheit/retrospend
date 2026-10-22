@@ -11,6 +11,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
+import { dayKey } from "~/lib/time-zone";
 import { toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";
@@ -66,6 +67,13 @@ export interface RecordPaymentInput {
 	readonly matchClaimId?: string | null;
 	/** The receiver said this is not the payment the payer already claims (§1.5). */
 	readonly differentPayment?: boolean;
+	/** The user's IANA zone, for today's date. Set by the transport, not the client. */
+	readonly timeZone?: string;
+	/**
+	 * An overpayment up to this many minor units is recorded as exactly what is
+	 * owed. Only the old dialog sets it (1), until the new sheet asks.
+	 */
+	readonly clampOverpayUpTo?: number;
 	/** Extra audit context of a legacy entry point. */
 	readonly auditTags?: Readonly<Record<string, true>>;
 }
@@ -96,9 +104,17 @@ const userRef = (userId: string): ParticipantRef => ({
 	participantId: userId,
 });
 
-/** The calendar day a payment is dated, as a UTC midnight. */
-export function paidOnDate(paidOn: string | null | undefined, now: Date): Date {
-	const day = paidOn ?? now.toISOString().slice(0, 10);
+/**
+ * The calendar day a payment is dated, as a UTC midnight: the date the
+ * client sent, else today in the user's time zone (the request's zone; the
+ * server's when unknown), never the UTC day.
+ */
+export function paidOnDate(
+	paidOn: string | null | undefined,
+	now: Date,
+	timeZone?: string,
+): Date {
+	const day = paidOn ?? dayKey(now, timeZone);
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
 		throw new TRPCError({ code: "BAD_REQUEST", message: "Pick a valid date" });
 	}
@@ -190,7 +206,7 @@ export const recordPayment: MoneyMutation<
 		}
 
 		const now = new Date();
-		const paidOn = paidOnDate(input.paidOn, now);
+		const paidOn = paidOnDate(input.paidOn, now, input.timeZone);
 		const outgoing = input.direction === "outgoing";
 		const events = await computePairLedger(tx, me, input.person, {
 			viewer: me,
@@ -203,15 +219,24 @@ export const recordPayment: MoneyMutation<
 			rateType: input.rateType,
 			custom: input.customRate,
 		});
-		const allocation = allocatePayment({
-			lines,
-			currency: input.currency,
-			amount:
-				input.amount === null ? null : toMinor(input.amount, input.currency),
-			quotes,
-			applyTo: input.applyTo,
-			allowOverpay: input.allowOverpay,
-		});
+		const allocate = (amount: number | null) =>
+			allocatePayment({
+				lines,
+				currency: input.currency,
+				amount,
+				quotes,
+				applyTo: input.applyTo,
+				allowOverpay: input.allowOverpay,
+			});
+		let allocation = allocate(
+			input.amount === null ? null : toMinor(input.amount, input.currency),
+		);
+		if (
+			allocation.overpay > 0 &&
+			allocation.overpay <= (input.clampOverpayUpTo ?? 0)
+		) {
+			allocation = allocate(allocation.amount - allocation.overpay);
+		}
 		const view = viewAllocation(allocation);
 		const match = outgoing
 			? null

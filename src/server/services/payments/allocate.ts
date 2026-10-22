@@ -11,10 +11,10 @@
  * 4. "Everything" (the net the payer owes) with debts going the other way
  *    also writes offsets, so every scope ends at zero; offsets may cross
  *    currencies at the payment's quotes. A partial payment never offsets.
- * 5. Dust: a debt left smaller than its dust is closed, and a payment left
- *    smaller than its dust goes to the last row (I2: the rows add up to the
- *    payment exactly). Dust is one major unit for currencies shown whole
- *    (ARS 1, MONEY-MOVES §1.2 rule 5) and one minor unit otherwise.
+ * 5. Dust (MONEY-MOVES §1.2 rule 5): a remainder smaller than one minor
+ *    unit of its currency after conversion, or under ARS 1 for ARS. A debt
+ *    left with dust is closed, and payment dust goes to the last row (I2:
+ *    the rows add up to the payment exactly).
  * 6. More than everything owed (net, all currencies at the payment's
  *    quotes) is an overpayment: reported, and recorded only with
  *    `allowOverpay`, as an excess row Outside projects in the payment
@@ -25,7 +25,6 @@
  * `unpriced`: a missing rate is never 1 (R14).
  */
 import type { Decimal } from "@prisma/client/runtime/index-browser";
-import { SMART_NO_DECIMAL_CURRENCIES } from "~/lib/currency-format";
 import { currencyDecimals } from "~/lib/money";
 import {
 	dec,
@@ -97,13 +96,14 @@ export interface Allocation {
 	readonly unpriced: readonly string[];
 }
 
-/** The smallest amount that is not dust in `currency`, in its minor units. */
+/**
+ * The smallest amount that is not dust in `currency`, in its minor units:
+ * ARS 1 for ARS (pesos are shown whole), one minor unit for every other
+ * currency. The ARS rule is the owner's and is not extended to other
+ * currencies shown whole.
+ */
 export function dustOf(currency: string): Minor {
-	const decimals = currencyDecimals(currency);
-	const whole = (SMART_NO_DECIMAL_CURRENCIES as readonly string[]).includes(
-		currency.toUpperCase(),
-	);
-	return whole ? 10 ** decimals : 1;
+	return currency.toUpperCase() === "ARS" ? 10 ** currencyDecimals("ARS") : 1;
 }
 
 /**
@@ -329,8 +329,7 @@ export function allocatePayment(input: AllocateInput): Allocation {
 
 	// "Everything" exists when the payer owes on balance (or is even). Paying
 	// it, or more, also offsets the debts going the other way, and the cash is
-	// the net: anything above it is an overpayment. When the payee owes more,
-	// the payer owes nothing and any amount is an overpayment.
+	// the net: anything above it is an overpayment.
 	const owesOnBalance = owedBack - gross < dustP;
 	const everything =
 		opposite.length > 0 && owesOnBalance && amount > full - dustP;
@@ -345,7 +344,9 @@ export function allocatePayment(input: AllocateInput): Allocation {
 		P,
 		input.allowOverpay === true,
 	);
-	const overpay = owesOnBalance ? rest : amount;
+	// Only what goes beyond every debt is excess; when the payee owes more
+	// overall the payment still only pays down the payer's own debts.
+	const overpay = rest;
 
 	return {
 		currency: P,

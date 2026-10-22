@@ -1301,18 +1301,26 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
 	});
 
-	it("a cent over the scoped debt is an overpayment (USD dust is one cent)", async () => {
+	it("records at most the scoped debt when the amount is within the tolerance", async () => {
+		// The old dialog keeps a one-cent tolerance until the new sheet asks
+		// about overpaying, so a prefilled full amount is never refused.
 		seedBobOwesAlice("A", 40);
 		const bobSettle = new SettlementService(db as never, BOB);
+		await bobSettle.initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 40.01,
+			currency: "USD",
+			projectId: "A",
+		});
+		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
 		await expect(
 			bobSettle.initiateSettlement({
 				toParticipant: aliceRef,
-				amount: 40.01,
+				amount: 0.02,
 				currency: "USD",
 				projectId: "A",
 			}),
-		).rejects.toThrow(/exceeds the outstanding balance of USD 40.00/);
-		expect(settlementRows()).toEqual([]);
+		).rejects.toThrow(/no outstanding USD balance/);
 	});
 
 	it("project views count a global settle-up against a legacy claimed shadow's debt", async () => {
