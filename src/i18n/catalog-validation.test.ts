@@ -4,7 +4,7 @@ import {
 	TYPE,
 	type MessageFormatElement,
 } from "@formatjs/icu-messageformat-parser";
-import { loadCatalog } from "@retrospend/i18n/load";
+import { catalogLocales, loadCatalog } from "@retrospend/i18n/load";
 import { describe, expect, it } from "vitest";
 import { SUPPORTED_LOCALES } from "./locales";
 
@@ -218,6 +218,13 @@ const catalogs = new Map(
 );
 
 describe("localized message catalogs", () => {
+	it("only has files for supported locales (catches a misnamed folder)", () => {
+		const supported: readonly string[] = SUPPORTED_LOCALES;
+		expect(
+			catalogLocales().filter((locale) => !supported.includes(locale)),
+		).toEqual([]);
+	});
+
 	const english = catalogs.get("en") ?? {};
 	const englishKeys = Object.keys(english);
 

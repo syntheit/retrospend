@@ -13,6 +13,17 @@ const FEATURES = import.meta.glob<MessageCatalog>("../messages/*/*.json", {
 });
 const FEATURE_PATH = /^\.\.\/messages\/([^/]+)\/([^/]+)\.json$/;
 
+/**
+ * The locale of every shared and feature file. loadCatalog only reads the
+ * locale it is asked for, so a misnamed folder (es_AR/) would otherwise be
+ * skipped without a word; the i18n check compares this list with the app's.
+ */
+export function catalogLocales(): string[] {
+	return [...Object.keys(SHARED), ...Object.keys(FEATURES)].map(
+		(path) => /^\.\.\/messages\/([^/.]+)/.exec(path)?.[1] ?? path,
+	);
+}
+
 /** One locale's messages (shared plus feature files), with no fallback. */
 export async function loadCatalog(locale: string): Promise<MessageCatalog> {
 	const loadShared = SHARED[`../messages/${locale}.json`];
