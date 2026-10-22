@@ -1,6 +1,7 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type * as React from "react";
 
 import { cn } from "~/lib/utils";
@@ -49,11 +50,11 @@ const kindVariants = cva(
 	{
 		variants: {
 			kind: {
-				primary: "bg-brand text-brand-fg can-hover:hover:bg-brand/90",
+				primary: "bg-brand text-brand-fg can-hover:hover:bg-brand-hover",
 				secondary:
 					"border-line-strong bg-surface text-fg can-hover:hover:bg-raised",
 				ghost: "text-fg-2 can-hover:hover:bg-raised can-hover:hover:text-fg",
-				danger: "bg-danger text-danger-fg can-hover:hover:bg-danger/90",
+				danger: "bg-danger text-danger-fg can-hover:hover:bg-danger-hover",
 			},
 			size: {
 				ctl: "h-ctl px-3 text-body",
@@ -70,6 +71,14 @@ const kindVariants = cva(
 );
 
 type Kind = NonNullable<VariantProps<typeof kindVariants>["kind"]>;
+
+/** The spinner keeps the label's color while the label itself goes clear. */
+const SPINNER: Record<Kind, string> = {
+	primary: "text-brand-fg",
+	secondary: "text-fg-2",
+	ghost: "text-fg-2",
+	danger: "text-danger-fg",
+};
 type LegacySize = NonNullable<VariantProps<typeof buttonVariants>["size"]>;
 
 /**
@@ -124,6 +133,18 @@ function Button({
 	);
 }
 
+/**
+ * A busy button swallows the press. Enter and Space on a button arrive as a
+ * click too, so this covers pointer and keyboard alike, and preventDefault
+ * also stops a submit button from submitting its form.
+ */
+function guardBusy<E extends { preventDefault: () => void }>(
+	busy: boolean,
+	onClick?: (e: E) => void,
+): ((e: E) => void) | undefined {
+	return busy ? (e) => e.preventDefault() : onClick;
+}
+
 function KindButton({
 	className,
 	kind,
@@ -133,6 +154,7 @@ function KindButton({
 	asChild,
 	children,
 	type,
+	onClick,
 	...rest
 }: React.ComponentProps<"button"> & {
 	asChild: boolean;
@@ -141,28 +163,36 @@ function KindButton({
 	icon: boolean;
 	loading: boolean;
 }) {
+	const t = useTranslations("kit.button");
 	const Comp = asChild ? Slot : "button";
 	// Slot takes a single child, so a link styled as a button never spins.
 	const busy = loading && !asChild;
 	return (
 		<Comp
 			aria-busy={busy || undefined}
-			className={cn(kindVariants({ kind, size, icon }), className)}
+			className={cn(
+				kindVariants({ kind, size, icon }),
+				busy && "text-transparent can-hover:hover:text-transparent",
+				className,
+			)}
 			data-kind={kind}
 			data-slot="button"
+			onClick={guardBusy(busy, onClick)}
 			type={asChild ? undefined : (type ?? "button")}
 			{...rest}
 		>
-			{busy ? (
+			{children}
+			{busy && (
 				<>
-					<span className="invisible contents">{children}</span>
-					<LoaderCircle aria-hidden="true" className="absolute animate-spin" />
+					<LoaderCircle
+						aria-hidden="true"
+						className={cn("absolute size-3.5! animate-spin", SPINNER[kind])}
+					/>
+					<span className="sr-only">{t("loading")}</span>
 				</>
-			) : (
-				children
 			)}
 		</Comp>
 	);
 }
 
-export { Button, buttonVariants, kindVariants };
+export { Button, buttonVariants, guardBusy, kindVariants };

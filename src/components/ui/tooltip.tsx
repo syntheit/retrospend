@@ -83,7 +83,7 @@ function Tip({
 			<TooltipPrimitive.Portal>
 				<TooltipPrimitive.Content
 					className={cn(
-						"fade-in-0 data-[state=closed]:fade-out-0 z-50 max-w-56 animate-in rounded-ctl bg-fg px-2 py-1 text-bg text-meta duration-(--t-state) data-[state=closed]:animate-out",
+						"fade-in-0 data-[state=closed]:fade-out-0 z-50 max-w-55 animate-in rounded-ctl bg-fg px-2 py-1 text-bg text-meta duration-(--t-state) data-[state=closed]:animate-out",
 						className,
 					)}
 					data-slot="tip"

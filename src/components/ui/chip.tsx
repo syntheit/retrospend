@@ -35,7 +35,7 @@ export function Chip({ active, className, ...props }: ChipProps) {
 }
 
 const chipBase =
-	"inline-flex h-ctl shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-chip border px-3 font-medium text-body transition-colors duration-(--t-state) ease-land focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-45 [&_svg]:size-4 [&_svg]:shrink-0";
+	"inline-flex h-ctl shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-chip border px-3 font-medium text-body transition-colors duration-(--t-state) ease-land focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-45 [&_svg]:size-3.5 [&_svg]:shrink-0";
 
 /**
  * A filter chip (FilterChips, R7, R25 amended by R31): text only, selected by

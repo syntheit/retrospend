@@ -1,6 +1,6 @@
 import { createElement as h } from "react";
-import { describe, expect, it } from "vitest";
-import { Button } from "~/components/ui/button";
+import { describe, expect, it, vi } from "vitest";
+import { Button, guardBusy } from "~/components/ui/button";
 import { FilterChip, FilterChips, FilterMenu } from "~/components/ui/chip";
 import { nextEnabled, Segmented } from "~/components/ui/segmented";
 import { kit, render } from "./render";
@@ -38,8 +38,27 @@ describe("Button kinds", () => {
 	it("keeps its width while loading and blocks presses", () => {
 		const html = render(h(Button, { kind: "primary", loading: true }, "Save"));
 		expect(html).toContain('aria-busy="true"');
-		expect(html).toContain("invisible");
+		expect(html).toContain("text-transparent");
 		expect(html).toContain("animate-spin");
+		expect(html).toContain("size-3.5!");
+		// The label stays in the accessible name, plus a spoken Loading.
+		expect(html).toContain("Save");
+		expect(html).toContain(
+			`<span class="sr-only">${kit.button?.loading}</span>`,
+		);
+	});
+
+	it("swallows presses while busy and passes them otherwise", () => {
+		const press = vi.fn();
+		const click = (busy: boolean) => {
+			const e = { preventDefault: vi.fn() };
+			guardBusy(busy, press)?.(e);
+			return e.preventDefault;
+		};
+		expect(click(true)).toHaveBeenCalledOnce();
+		expect(press).not.toHaveBeenCalled();
+		click(false);
+		expect(press).toHaveBeenCalledOnce();
 	});
 
 	it("keeps the old look for today's pages", () => {
