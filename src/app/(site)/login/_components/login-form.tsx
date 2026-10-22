@@ -43,6 +43,9 @@ function LoginFormInner() {
 
 	const [show2FA, setShow2FA] = useState(false);
 	const [totpCode, setTotpCode] = useState("");
+	// Second step with a saved backup code instead of the authenticator app
+	const [useBackupCode, setUseBackupCode] = useState(false);
+	const [backupCode, setBackupCode] = useState("");
 
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
 
@@ -114,6 +117,111 @@ function LoginFormInner() {
 		}
 	};
 
+	const handleVerifyBackupCode = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (isLoading) return;
+
+		const code = backupCode.trim();
+		if (!code) return;
+
+		setIsLoading(true);
+		setError("");
+
+		try {
+			const result = await authClient.twoFactor.verifyBackupCode({ code });
+
+			if (result.error) {
+				setError(result.error.message || t("invalidBackupCode"));
+			} else {
+				window.location.href = redirectTo;
+			}
+		} catch (_) {
+			setError(t("unexpectedErrorVerification"));
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const switch2FAMethod = (backup: boolean) => {
+		setUseBackupCode(backup);
+		setTotpCode("");
+		setBackupCode("");
+		setError("");
+	};
+
+	if (show2FA && useBackupCode) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background px-4">
+				<Card className="w-full max-w-md">
+					<CardHeader className="space-y-1">
+						<CardTitle className="text-center font-bold text-2xl">
+							{t("twoFactorAuth")}
+						</CardTitle>
+						<CardDescription className="text-center">
+							{t("backupCodeDescription")}
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<form className="space-y-6" onSubmit={handleVerifyBackupCode}>
+							<div className="space-y-2">
+								<Label htmlFor="backup-code">{t("backupCode")}</Label>
+								<Input
+									autoCapitalize="none"
+									autoComplete="one-time-code"
+									autoCorrect="off"
+									autoFocus
+									className="font-mono"
+									disabled={isLoading}
+									id="backup-code"
+									onChange={(e) => setBackupCode(e.target.value)}
+									placeholder={t("enterBackupCode")}
+									spellCheck={false}
+									value={backupCode}
+								/>
+							</div>
+
+							{error && (
+								<div className="text-destructive text-sm">
+									{error}
+								</div>
+							)}
+
+							<Button
+								className="w-full"
+								disabled={isLoading || !backupCode.trim()}
+								type="submit"
+							>
+								{isLoading ? t("verifying") : t("verifyCode")}
+							</Button>
+
+							<div className="flex flex-col items-center gap-2 text-sm">
+								<Button
+									className="h-auto p-0 text-muted-foreground hover:underline"
+									onClick={() => switch2FAMethod(false)}
+									type="button"
+									variant="link"
+								>
+									{t("useAuthenticatorCode")}
+								</Button>
+								<Button
+									className="h-auto p-0 text-muted-foreground hover:underline"
+									onClick={() => {
+										switch2FAMethod(false);
+										setShow2FA(false);
+									}}
+									type="button"
+									variant="link"
+								>
+									{t("backToLogin")}
+								</Button>
+							</div>
+						</form>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
 	if (show2FA) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -163,7 +271,15 @@ function LoginFormInner() {
 								{isLoading ? t("verifying") : t("verifyCode")}
 							</Button>
 
-							<div className="mt-4 text-center text-sm">
+							<div className="mt-4 flex flex-col items-center gap-2 text-sm">
+								<Button
+									className="h-auto p-0 text-muted-foreground hover:underline"
+									onClick={() => switch2FAMethod(true)}
+									type="button"
+									variant="link"
+								>
+									{t("useBackupCode")}
+								</Button>
 								<Button
 									className="h-auto p-0 text-muted-foreground hover:underline"
 									onClick={() => {
