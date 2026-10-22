@@ -54,10 +54,23 @@ import {
 	projectSettlementPlan,
 } from "~/server/services/project/group.service";
 import {
+	assertGrantableByLink,
+	createMagicLink,
+	listMagicLinks,
+	resetMagicLink,
+	revokeMagicLink,
+} from "~/server/services/project/magic-links.service";
+import {
 	getProjectDetail,
 	getPublicProjectDetail,
 	listProjects,
 } from "~/server/services/project/project-read.service";
+import {
+	createProject,
+	deleteProject,
+	setAnalyticsExclusion,
+	updateProject,
+} from "~/server/services/project/project-write.service";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -395,84 +408,7 @@ const actor = (ctx: { session: { user: { id: string } } }) => ({
 export const projectRouter = createTRPCRouter({
 	create: protectedProcedure
 		.input(createProjectSchema)
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-
-			const project = await runInProjectTransaction(
-				ctx.db,
-				userId,
-				async (tx) => {
-					const created = await tx.project.create({
-						data: {
-							name: input.name,
-							description: input.description ?? null,
-							budgetAmount: input.budgetAmount ?? null,
-							budgetCurrency: input.budgetCurrency ?? null,
-							primaryCurrency: input.primaryCurrency,
-							createdById: userId,
-							visibility: input.visibility,
-							billingCycleLength: input.billingCycleLength ?? null,
-							billingCycleDays: input.billingCycleDays ?? null,
-							billingAutoClose: input.billingAutoClose,
-							billingCloseReminderDays: input.billingCloseReminderDays,
-							billingClosePermission: input.billingClosePermission,
-						},
-						include: { participants: true },
-					});
-
-					// Creator is always ORGANIZER
-					await tx.projectParticipant.create({
-						data: {
-							projectId: created.id,
-							participantType: "user",
-							participantId: userId,
-							role: "ORGANIZER",
-						},
-					});
-
-					// Auto-create first billing period for projects with a cycle
-					if (input.billingCycleLength) {
-						const periodStart = new Date();
-						const periodEnd = computeBillingPeriodEnd(
-							periodStart,
-							input.billingCycleLength,
-							input.billingCycleDays,
-						);
-						const label = computePeriodLabel(
-							periodStart,
-							periodEnd,
-							input.billingCycleLength,
-						);
-						await tx.billingPeriod.create({
-							data: {
-								projectId: created.id,
-								label,
-								startDate: periodStart,
-								endDate: periodEnd,
-								status: "OPEN",
-							},
-						});
-					}
-
-					await logAudit(tx, {
-						actor: { participantType: "user", participantId: userId },
-						action: "CREATED",
-						targetType: "PROJECT",
-						targetId: created.id,
-						changes: { name: input.name },
-						projectId: created.id,
-					});
-
-					return created;
-				},
-			);
-
-			// Re-fetch with fresh participant list (created in same tx above)
-			return ctx.db.project.findUniqueOrThrow({
-				where: { id: project.id },
-				include: { participants: true, billingPeriods: true },
-			});
-		}),
+		.mutation(({ ctx, input }) => createProject(ctx.db, actor(ctx), input)),
 
 	list: protectedProcedure
 		.input(z.object({ status: z.enum(["ACTIVE", "ARCHIVED"]).optional() }))
@@ -488,149 +424,17 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	updateAnalyticsExclusion: protectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				exclude: z.boolean(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-
-			const updated = await ctx.db.projectParticipant.updateMany({
-				where: {
-					projectId: input.projectId,
-					participantType: "user",
-					participantId: userId,
-				},
-				data: { excludeFromAnalytics: input.exclude },
-			});
-
-			if (updated.count === 0) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "You are not a participant in this project",
-				});
-			}
-
-			return { excludeFromAnalytics: input.exclude };
-		}),
+		.input(z.object({ projectId: z.string().min(1), exclude: z.boolean() }))
+		.mutation(({ ctx, input }) =>
+			setAnalyticsExclusion(ctx.db, actor(ctx), input.projectId, input.exclude),
+		),
 
 	update: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().min(1),
-				name: z.string().min(1).max(191).optional(),
-				description: z.string().max(500).nullish(),
-				budgetAmount: z.number().positive().nullish(),
-				budgetCurrency: z.string().min(1).max(10).nullish(),
-				primaryCurrency: z.string().min(1).max(10).optional(),
-				status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
-				visibility: z.enum(["PRIVATE", "PUBLIC"]).optional(),
-				billingCycleLength: z
-					.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"])
-					.nullish(),
-				billingCycleDays: z.number().int().positive().nullish(),
-				billingAutoClose: z.boolean().optional(),
-				billingCloseReminderDays: z.number().int().min(0).optional(),
-				billingClosePermission: z
-					.enum(["ORGANIZER_ONLY", "ANY_PARTICIPANT"])
-					.optional(),
-				autoAcceptSplits: z.boolean().optional(),
-			}),
-		)
+		.input(updateProjectSchema)
 		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
 			const { id, ...fields } = input;
-
-			await requireProjectRole(ctx.db, id, "user", userId, "EDITOR");
-
-			const existing = await ctx.db.project.findUniqueOrThrow({
-				where: { id },
-			});
-
-			// Build field-level diff and update data
-			const diff: Record<string, { old: unknown; new: unknown }> = {};
-			const updateData: Record<string, unknown> = {};
-
-			const trackField = (key: string, newVal: unknown) => {
-				const oldVal = (existing as Record<string, unknown>)[key];
-				if (newVal !== undefined && newVal !== oldVal) {
-					diff[key] = { old: oldVal, new: newVal };
-					updateData[key] = newVal;
-				}
-			};
-
-			trackField("name", fields.name);
-			trackField("description", fields.description);
-			trackField("budgetAmount", fields.budgetAmount);
-			trackField("budgetCurrency", fields.budgetCurrency);
-			trackField("primaryCurrency", fields.primaryCurrency);
-			trackField("status", fields.status);
-			trackField("visibility", fields.visibility);
-			trackField("billingCycleLength", fields.billingCycleLength);
-			trackField("billingCycleDays", fields.billingCycleDays);
-			trackField("billingAutoClose", fields.billingAutoClose);
-			trackField("billingCloseReminderDays", fields.billingCloseReminderDays);
-			trackField("billingClosePermission", fields.billingClosePermission);
-			trackField("autoAcceptSplits", fields.autoAcceptSplits);
-
-			if (Object.keys(diff).length === 0) {
-				return existing;
-			}
-
-			// Turning billing periods ON (from off): open a first period so the
-			// project has a current cycle, mirroring project creation. Only when
-			// none is already open, so re-enabling reuses a leftover open period.
-			const enablingBilling =
-				existing.billingCycleLength == null &&
-				fields.billingCycleLength != null;
-
-			return runInProjectTransaction(ctx.db, userId, async (tx) => {
-				const updated = await tx.project.update({
-					where: { id },
-					data: updateData as Prisma.ProjectUncheckedUpdateInput,
-				});
-
-				if (enablingBilling && fields.billingCycleLength) {
-					const openPeriod = await tx.billingPeriod.findFirst({
-						where: { projectId: id, status: "OPEN" },
-						select: { id: true },
-					});
-					if (!openPeriod) {
-						const periodStart = new Date();
-						const periodEnd = computeBillingPeriodEnd(
-							periodStart,
-							fields.billingCycleLength,
-							fields.billingCycleDays ?? undefined,
-						);
-						await tx.billingPeriod.create({
-							data: {
-								projectId: id,
-								label: computePeriodLabel(
-									periodStart,
-									periodEnd,
-									fields.billingCycleLength,
-								),
-								startDate: periodStart,
-								endDate: periodEnd,
-								status: "OPEN",
-							},
-						});
-					}
-				}
-
-				await logAudit(tx, {
-					actor: { participantType: "user", participantId: userId },
-					action: "EDITED",
-					targetType: "PROJECT",
-					targetId: id,
-					changes: diff as Prisma.InputJsonValue,
-					projectId: id,
-				});
-
-				return updated;
-			});
+			await roleOf(ctx, id, "EDITOR");
+			return updateProject(ctx.db, actor(ctx), id, fields);
 		}),
 
 	addParticipant: protectedProcedure
@@ -1488,37 +1292,11 @@ export const projectRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(z.object({ id: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			await requireProjectRole(ctx.db, input.id, "user", userId, "ORGANIZER");
-
-			const project = await ctx.db.project.findUniqueOrThrow({
-				where: { id: input.id },
-				select: { createdById: true, name: true },
-			});
-
-			if (project.createdById !== userId) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the project creator can delete a project",
-				});
-			}
-
-			return runInProjectTransaction(ctx.db, userId, async (tx) => {
-				await logAudit(tx, {
-					actor: { participantType: "user", participantId: userId },
-					action: "DELETED",
-					targetType: "PROJECT",
-					targetId: input.id,
-					changes: { name: project.name },
-					projectId: input.id,
-				});
-
-				await tx.project.delete({ where: { id: input.id } });
-				return { success: true };
-			});
+			await roleOf(ctx, input.id, "ORGANIZER");
+			return deleteProject(ctx.db, actor(ctx), input.id);
 		}),
 
-	// ── Magic Links ───────────────────────────────────────────────────────────
+	// ── Magic links ─────────────────────────────────────────────────────────
 
 	createMagicLink: protectedProcedure
 		.input(
@@ -1530,195 +1308,36 @@ export const projectRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			if (input.roleGranted === "ORGANIZER") {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Magic links cannot grant the Owner role",
-				});
-			}
-
-			const userId = ctx.session.user.id;
-			await requireProjectRole(
-				ctx.db,
-				input.projectId,
-				"user",
-				userId,
-				"EDITOR",
-			);
-
-			// Return existing active link for this project + role if one exists
-			const existing = await ctx.db.magicLink.findFirst({
-				where: {
-					projectId: input.projectId,
-					roleGranted: input.roleGranted,
-					isActive: true,
-				},
-			});
-			if (existing) {
-				return {
-					...existing,
-					url: `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/projects/${input.projectId}?invite=${existing.id}`,
-				};
-			}
-
-			return runInProjectTransaction(ctx.db, userId, async (tx) => {
-				const magicLink = await tx.magicLink.create({
-					data: {
-						id: crypto.randomUUID(),
-						projectId: input.projectId,
-						roleGranted: input.roleGranted,
-						createdById: userId,
-						expiresAt: input.expiresAt ?? null,
-						maxUses: input.maxUses ?? null,
-					},
-				});
-
-				await logAudit(tx, {
-					actor: { participantType: "user", participantId: userId },
-					action: "CREATED",
-					targetType: "PROJECT",
-					targetId: input.projectId,
-					changes: { linkId: magicLink.id, roleGranted: input.roleGranted },
-					projectId: input.projectId,
-				});
-
-				return {
-					...magicLink,
-					url: `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/projects/${input.projectId}?invite=${magicLink.id}`,
-				};
-			});
+			assertGrantableByLink(input.roleGranted);
+			await roleOf(ctx, input.projectId, "EDITOR");
+			return createMagicLink(ctx.db, actor(ctx), input);
 		}),
 
 	listMagicLinks: protectedProcedure
 		.input(z.object({ projectId: z.string().min(1) }))
 		.query(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			await requireProjectRole(
-				ctx.db,
-				input.projectId,
-				"user",
-				userId,
-				"EDITOR",
-			);
-
-			return ctx.db.magicLink.findMany({
-				where: { projectId: input.projectId, isActive: true },
-				orderBy: { createdAt: "desc" },
-			});
+			await roleOf(ctx, input.projectId, "EDITOR");
+			return listMagicLinks(ctx.db, input.projectId);
 		}),
 
 	revokeMagicLink: protectedProcedure
 		.input(
-			z.object({
-				projectId: z.string().min(1),
-				linkId: z.string().min(1),
-			}),
+			z.object({ projectId: z.string().min(1), linkId: z.string().min(1) }),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			await requireProjectRole(
-				ctx.db,
-				input.projectId,
-				"user",
-				userId,
-				"EDITOR",
-			);
-
-			const link = await ctx.db.magicLink.findUnique({
-				where: { id: input.linkId },
-				select: { id: true, projectId: true },
-			});
-
-			if (!link || link.projectId !== input.projectId) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Magic link not found",
-				});
-			}
-
-			return runInProjectTransaction(ctx.db, userId, async (tx) => {
-				const updated = await tx.magicLink.update({
-					where: { id: input.linkId },
-					data: { isActive: false },
-				});
-
-				await logAudit(tx, {
-					actor: { participantType: "user", participantId: userId },
-					action: "EDITED",
-					targetType: "PROJECT",
-					targetId: input.projectId,
-					changes: { linkId: input.linkId, revoked: true },
-					projectId: input.projectId,
-				});
-
-				return updated;
-			});
+			await roleOf(ctx, input.projectId, "EDITOR");
+			return revokeMagicLink(ctx.db, actor(ctx), input.projectId, input.linkId);
 		}),
 
 	resetMagicLink: protectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				role: projectRoleSchema,
-			}),
-		)
+		.input(z.object({ projectId: z.string().min(1), role: projectRoleSchema }))
 		.mutation(async ({ ctx, input }) => {
-			if (input.role === "ORGANIZER") {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Magic links cannot grant the Owner role",
-				});
-			}
-
-			const userId = ctx.session.user.id;
-			await requireProjectRole(
-				ctx.db,
-				input.projectId,
-				"user",
-				userId,
-				"EDITOR",
-			);
-
-			return runInProjectTransaction(ctx.db, userId, async (tx) => {
-				await tx.magicLink.updateMany({
-					where: {
-						projectId: input.projectId,
-						roleGranted: input.role,
-						isActive: true,
-					},
-					data: { isActive: false },
-				});
-
-				const magicLink = await tx.magicLink.create({
-					data: {
-						id: crypto.randomUUID(),
-						projectId: input.projectId,
-						roleGranted: input.role,
-						createdById: userId,
-					},
-				});
-
-				await logAudit(tx, {
-					actor: { participantType: "user", participantId: userId },
-					action: "CREATED",
-					targetType: "PROJECT",
-					targetId: input.projectId,
-					changes: {
-						linkId: magicLink.id,
-						roleGranted: input.role,
-						reset: true,
-					},
-					projectId: input.projectId,
-				});
-
-				return {
-					...magicLink,
-					url: `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/projects/${input.projectId}?invite=${magicLink.id}`,
-				};
-			});
+			assertGrantableByLink(input.role);
+			await roleOf(ctx, input.projectId, "EDITOR");
+			return resetMagicLink(ctx.db, actor(ctx), input.projectId, input.role);
 		}),
 
-	// ── Public (unauthenticated) access ──────────────────────────────────────
+	// ── Public (no sign-in): PUBLIC projects only, no balances or emails ─────
 
 	publicDetail: publicProcedure
 		.input(z.object({ id: z.string().min(1) }))
