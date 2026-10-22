@@ -182,10 +182,9 @@ export function MoneyInput(p: MoneyInputProps) {
 					aria-label={t("rate", { rate: p.rate.label })}
 					className="self-start font-normal text-fg-2 tabular-nums"
 					disabled={!p.rate.onClick}
+					kind="ghost"
 					onClick={p.rate.onClick}
 					size="sm"
-					type="button"
-					variant="ghost"
 				>
 					<ArrowRightLeftIcon aria-hidden="true" />
 					{p.rate.label}
@@ -256,8 +255,7 @@ function CurrencyChip(p: MoneyInputProps) {
 			aria-label={t("currency", { code: p.currency })}
 			className="h-full rounded-none border-0 border-line-strong border-r px-3"
 			disabled={p.disabled || !p.onCurrencyChange}
-			type="button"
-			variant="ghost"
+			kind="ghost"
 		>
 			{p.currency}
 			{p.onCurrencyChange ? <ChevronDownIcon aria-hidden="true" /> : null}

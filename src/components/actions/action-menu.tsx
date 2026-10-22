@@ -71,9 +71,8 @@ export function ActionMenu<E extends Entity>(
 				<DropdownMenuTrigger asChild>
 					<Button
 						aria-label={t("more", { name: props.target.name })}
-						size="icon-sm"
-						type="button"
-						variant="ghost"
+						icon
+						kind="ghost"
 					>
 						<EllipsisIcon />
 					</Button>

@@ -141,9 +141,9 @@ function DayCell(props: {
 			onClick={() => props.onPick(day)}
 			onFocus={props.onFocus}
 			onPointerEnter={() => props.onHover?.(day)}
+			kind="ghost"
+			size="sm"
 			tabIndex={props.tabbable ? 0 : -1}
-			type="button"
-			variant="ghost"
 		>
 			{Number(day.slice(8))}
 		</Button>
