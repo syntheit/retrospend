@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { Button } from "~/components/ui/button";
+import { Tip } from "~/components/ui/tooltip";
 import { FilterChip } from "~/components/ui/chip";
 import {
 	Select,
@@ -81,26 +82,30 @@ export function DateRangePanel(p: DateRangePanelProps) {
 			<div className="flex flex-col gap-3">
 				<RangeFields {...part} />
 				<div className="flex items-center gap-2">
-					<Button
-						aria-label={t("earlier")}
-						onClick={() => d.page(-1)}
-						icon
-						kind="ghost"
-						size="sm"
-					>
-						<ChevronLeftIcon />
-					</Button>
+					<Tip content={t("earlier")}>
+						<Button
+							aria-label={t("earlier")}
+							onClick={() => d.page(-1)}
+							icon
+							kind="ghost"
+							size="sm"
+						>
+							<ChevronLeftIcon />
+						</Button>
+					</Tip>
 					<MonthJump {...part} />
 					<span className="flex-1" />
-					<Button
-						aria-label={t("later")}
-						onClick={() => d.page(1)}
-						icon
-						kind="ghost"
-						size="sm"
-					>
-						<ChevronRightIcon />
-					</Button>
+					<Tip content={t("later")}>
+						<Button
+							aria-label={t("later")}
+							onClick={() => d.page(1)}
+							icon
+							kind="ghost"
+							size="sm"
+						>
+							<ChevronRightIcon />
+						</Button>
+					</Tip>
 				</div>
 				<Calendars {...part} />
 				<div className="flex items-center gap-2 border-line border-t pt-3">

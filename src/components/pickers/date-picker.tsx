@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { Button } from "~/components/ui/button";
+import { Tip } from "~/components/ui/tooltip";
 import {
 	Popover,
 	PopoverAnchor,
@@ -132,24 +133,28 @@ function DayCalendar(p: {
 				value={p.value}
 			/>
 			<div className="flex items-center justify-between">
-				<Button
-					aria-label={t("earlier")}
-					onClick={() => page("PageUp")}
-					icon
-					kind="ghost"
-					size="sm"
-				>
-					<ChevronLeftIcon />
-				</Button>
-				<Button
-					aria-label={t("later")}
-					onClick={() => page("PageDown")}
-					icon
-					kind="ghost"
-					size="sm"
-				>
-					<ChevronRightIcon />
-				</Button>
+				<Tip content={t("earlier")}>
+					<Button
+						aria-label={t("earlier")}
+						onClick={() => page("PageUp")}
+						icon
+						kind="ghost"
+						size="sm"
+					>
+						<ChevronLeftIcon />
+					</Button>
+				</Tip>
+				<Tip content={t("later")}>
+					<Button
+						aria-label={t("later")}
+						onClick={() => page("PageDown")}
+						icon
+						kind="ghost"
+						size="sm"
+					>
+						<ChevronRightIcon />
+					</Button>
+				</Tip>
 			</div>
 			<MonthGrid
 				dayName={f.dayName}
