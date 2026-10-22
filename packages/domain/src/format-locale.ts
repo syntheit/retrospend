@@ -17,10 +17,31 @@ export interface NumberSymbols {
 }
 
 const cache = new Map<string, NumberSymbols>();
+const FALLBACK_LOCALE = "en-US";
+
+/**
+ * "en_US" (as Android and POSIX write it) becomes "en-US". An unknown or
+ * malformed tag becomes en-US rather than whatever the host defaults to, so
+ * the server, the browser and a phone format it the same way.
+ */
+function resolveLocale(locale: string): string {
+	const tag = locale.trim().replace(/_/g, "-");
+	try {
+		return Intl.NumberFormat.supportedLocalesOf(tag)[0] ?? FALLBACK_LOCALE;
+	} catch {
+		return FALLBACK_LOCALE;
+	}
+}
 
 export function numberSymbols(locale: string): NumberSymbols {
 	const hit = cache.get(locale);
 	if (hit) return hit;
+	const symbols = readSymbols(resolveLocale(locale));
+	cache.set(locale, symbols);
+	return symbols;
+}
+
+function readSymbols(locale: string): NumberSymbols {
 	// 123456789.5 has enough digits to show a secondary group size.
 	const parts = new Intl.NumberFormat(locale, {
 		numberingSystem: "latn",
@@ -35,15 +56,13 @@ export function numberSymbols(locale: string): NumberSymbols {
 	})
 		.formatToParts(1)
 		.some((p) => p.type === "literal" && /\s/.test(p.value));
-	const symbols: NumberSymbols = {
+	return {
 		decimal: parts.find((p) => p.type === "decimal")?.value ?? ".",
 		group: parts.find((p) => p.type === "group")?.value ?? "",
 		primary,
 		secondary: groups.length > 2 ? (groups[groups.length - 2] ?? 0) : primary,
 		symbolSpaced,
 	};
-	cache.set(locale, symbols);
-	return symbols;
 }
 
 /** The decimal separator a keypad shows for `locale` ("." en-US, "," es-AR). */
