@@ -1,4 +1,10 @@
+"use client";
+
+import { ChevronLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { Button } from "~/components/ui/button";
+import { Tip } from "~/components/ui/tooltip";
 
 /**
  * The scrolling column a v2 page sits in inside the shell's main: the kit's
@@ -24,5 +30,27 @@ export function PageFrame({
 				{children}
 			</div>
 		</div>
+	);
+}
+
+/**
+ * Phones push Wealth (from Home) and Currencies (from Wealth), so their
+ * header leads with a back button naming where it goes. Button asChild
+ * cannot wrap a link yet (the kit's spinner child), so it navigates.
+ */
+export function BackButton({ href, label }: { href: string; label: string }) {
+	const router = useRouter();
+	return (
+		<Tip content={label}>
+			<Button
+				aria-label={label}
+				className="md:hidden"
+				icon
+				kind="ghost"
+				onClick={() => router.push(href)}
+			>
+				<ChevronLeft />
+			</Button>
+		</Tip>
 	);
 }

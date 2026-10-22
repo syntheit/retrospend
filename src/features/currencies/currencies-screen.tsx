@@ -12,7 +12,7 @@ import { Empty } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
 import { Sheet } from "~/components/ui/sheet";
-import { PageFrame } from "~/features/wealth/page-frame";
+import { BackButton, PageFrame } from "~/features/wealth/page-frame";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { CurrencyDetail, useCurrencyName } from "./currency-detail";
@@ -58,6 +58,7 @@ export function CurrenciesScreen({
 	initial: string | null;
 }) {
 	const t = useTranslations("currenciesPage");
+	const nav = useTranslations("shell.nav");
 	const locale = useLocale();
 	const phone = useIsMobile();
 	const name = useCurrencyName();
@@ -153,7 +154,11 @@ export function CurrenciesScreen({
 
 	return (
 		<PageFrame label="currencies">
-			<PageHeader sub={sub} title={t("title")} />
+			<PageHeader
+				lead={<BackButton href="/wealth" label={nav("wealth")} />}
+				sub={sub}
+				title={t("title")}
+			/>
 			<Toolbar
 				label={t("filters.label")}
 				search={

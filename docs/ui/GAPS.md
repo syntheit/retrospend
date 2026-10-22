@@ -122,6 +122,22 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Verify your email (today's sidebar banner) | Its mockup home is a Home Needs you item | A single attention Notice at the top of the content in the new shell (`verify-email-notice.tsx`) | 2E + S4 Home |
 | Public profile (`/u/{username}`) | A link from Settings, Profile; the new account menu's Your profile opens Settings as the mockup says, so the public page has no entry in the new shell | Reachable by URL only | S4H settings |
 | Sidebar group label letter spacing | A tracking token for the one eyebrow the guideline allows | `tracking-wider` on the sidebar's Tools and Pinned labels (allow.json UI-012) | S0a tokens |
+| Wealth and Currencies: figure ids | `netWorth`, `netWorthChange`, account and rate figures in the figures registry, so `/api/v1/figures` can serve them | The pages render every amount through `Money` with `data-minor` and `data-currency` but tag no `data-figure`; the e2e flows skip the figure audit for them and `required-figures.ts` lists none | 2D |
+| Wealth: Money DTOs | `wealth.getDashboard` / `getRunwayStats` return float major units | `src/features/wealth/server/` converts them to Money once, on the server, with the domain's `toMinor`, and sums groups and shares in integer minor units; 2D deletes that adapter when its read models return Money | 2D |
+| Wealth: account legs, transfers, `inBudget`, Not tracked | The middle-option accounts (N75) | Left out: no Not tracked line, no transfer rows, no "in budget" marker | 2D |
+| Wealth: net worth change breakdown | `netWorthChange(30).breakdown` (income, spending, revaluation, exchange, not logged) | The 30-day change shows as text, not as a link to the breakdown sheet | 2D |
+| Wealth: rate type history per account | Dated revaluations (D3) and a rate type per account in the pair (a USD account valued at ARS official or blue) | The rate type chips show only when the account's own currency has several types (what `updateAssetBalance` honors today); a USD account is valued at the home currency's best type | 2D |
+| Wealth: previews | `preview()` for update balance, edit, add, close, reopen, delete | No "What this changes" block in the sheets; every write still ends with Undo (delete has a named confirm and no undo) | 2D |
+| Wealth: Owed to you / You owe groups | `owed()` per person (`owed.owedToYou`, `owed.youOwe`) on this branch | Left out of the list and of the assets by group bar | 2E (money-engine) |
+| Wealth: runway at the plan's cost | `planCost()` from the budget engine | Runway reads "at your average spending of X a month" from today's `getRunwayStats` | 2B |
+| Wealth: View history | A per-account balance history read (`AssetHistory`) | The menu item has no handler, so it is hidden; closed rows do not open | 2D |
+| Wealth: Add income here | The Add income sheet | The menu item has no handler, so it is hidden | 4G |
+| Wealth: liability terms on edit | Minimum payment and due day in the dashboard read | Asked when adding a liability; an edit leaves them as they are | 2D |
+| Wealth: "All" range | History older than a year | Ranges are 1M, 3M, 6M and 1Y | 2D |
+| Currencies: default rate type per currency | `rateOptions` / `defaultRateType` / `setDefaultRateType` (money-engine `src/server/services/rate-types.ts`) | `src/features/currencies/server/rate-default-seam.ts` returns the built-in default (blue, then official) and `CAN_SET_DEFAULT = false`, so the page shows the default without a picker and the header has no Default rate menu | 2A.2 merge |
+| Currencies: custom rate for a missing currency | A mutation to save a typed rate | The missing-rate row and notice name the accounts left out; no Save rate field | 2D |
+| Currencies: USD as a favorite | Favorites are exchange rate rows; USD is the table's base and has none | The USD star is disabled with a tip | 2A.2 (rate prefs) |
+| Currencies: prices under one minor unit | A rate formatter (significant digits, or the price of 1,000 units) | With a USD home, 1 ARS reads 0.00 | domain |
 
 ## 8. Behavior gaps found by the e2e suite
 

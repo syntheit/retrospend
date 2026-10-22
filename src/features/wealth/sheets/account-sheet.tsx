@@ -39,8 +39,8 @@ const TYPES: AssetTypeKey[] = [
 const isLiability = (type: AssetTypeKey) => type.startsWith("LIABILITY_");
 
 /** USD is the rate table's base: it always has a value. Others need a row. */
-const hasRate = (currency: string, types: string[]) =>
-	currency === "USD" || types.length > 0;
+const hasRate = (currency: string, rateTypes: Record<string, string[]>) =>
+	currency === "USD" || (rateTypes[currency]?.length ?? 0) > 0;
 
 /**
  * Add account / Edit account: name, type, currency and balance, the rate
@@ -80,7 +80,7 @@ export function AccountSheet({
 	const liability = useLiability(account);
 	const [tried, setTried] = useState(false);
 	const result = parseMoneyInput(text, locale, currency);
-	const rated = hasRate(currency, types);
+	const rated = hasRate(currency, rateTypes);
 	const debt = isLiability(type);
 
 	const submit = async () => {

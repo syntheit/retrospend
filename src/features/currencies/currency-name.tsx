@@ -42,15 +42,15 @@ export function useCurrencySub() {
 export function CurrencyName({ row }: { row: CurrencyRow }) {
 	const sub = useCurrencySub();
 	return (
-		<div className="flex items-center gap-3">
+		<div className="flex min-w-0 items-center gap-3">
 			<CurrencyLead row={row} />
 			<div className="flex min-w-0 flex-col leading-snug">
 				<span className="text-body text-fg font-semibold">{row.code}</span>
 				<span
 					className={
 						row.types.length
-							? "text-fg-3 text-meta"
-							: "text-attention-text text-meta"
+							? "text-fg-3 text-meta truncate"
+							: "text-attention-text text-meta truncate"
 					}
 				>
 					{sub(row)}

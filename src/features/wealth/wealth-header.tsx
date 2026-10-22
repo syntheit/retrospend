@@ -24,7 +24,9 @@ import {
 import { useToast } from "~/components/ui/toast";
 import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { entryOf, hrefOf } from "~/lib/nav";
 import { api } from "~/trpc/react";
+import { BackButton } from "./page-frame";
 import type { WealthView } from "./types";
 
 /** Saves the server's CSV as a file. */
@@ -54,6 +56,7 @@ export function WealthHeader({
 	onAdd: () => void;
 }) {
 	const t = useTranslations("wealthPage");
+	const nav = useTranslations("shell.nav");
 	const toast = useToast();
 	const phone = useIsMobile();
 	const { short } = useRowDates();
@@ -142,6 +145,9 @@ export function WealthHeader({
 	);
 	return (
 		<PageHeader
+			lead={
+				<BackButton href={hrefOf(entryOf("home")) ?? "/"} label={nav("home")} />
+			}
 			overflow={menu}
 			primary={
 				<>

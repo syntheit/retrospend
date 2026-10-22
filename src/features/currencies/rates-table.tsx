@@ -81,7 +81,7 @@ export function RatesTable({
 	return (
 		<div>
 			<div className="text-fg-3 text-meta mb-2">{t("priceOf", { home })}</div>
-			<div className={cn(TABLE_LOOK, "border-line overflow-hidden border")}>
+			<div className={cn(TABLE_LOOK, "border-line overflow-x-auto border")}>
 				<Table>
 					<TableHeader>
 						<TableRow>
@@ -124,7 +124,7 @@ export function RatesTable({
 											row={row}
 										/>
 									</TableCell>
-									<TableCell>
+									<TableCell className="max-w-52">
 										<CurrencyName row={row} />
 									</TableCell>
 									{columns.map((c) => (

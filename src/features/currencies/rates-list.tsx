@@ -7,6 +7,7 @@ import type { ActionHandlers } from "~/components/actions/types";
 import { Money } from "~/components/money/money";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
+import { useCurrencyName } from "./currency-detail";
 import { useCurrencySub } from "./currency-name";
 import { StarButton } from "./star-button";
 import type { CurrencyRow } from "./types";
@@ -27,6 +28,7 @@ export function RatesList({
 	const t = useTranslations("currenciesPage");
 	const label = useRateLabel();
 	const sub = useCurrencySub();
+	const name = useCurrencyName();
 	return (
 		<RowList label={t("title")}>
 			{rows.map((row) => {
@@ -62,7 +64,11 @@ export function RatesList({
 								<StarButton onToggle={(on) => onFavorite(row, on)} row={row} />
 							}
 							open={{ onOpen: () => onSelect(row.code), label: row.code }}
-							sub={<RowSub parts={[sub(row)]} />}
+							sub={
+								<RowSub
+									parts={[row.types.length ? name(row.code) : sub(row)]}
+								/>
+							}
 							title={row.code}
 						/>
 					</ActionArea>
