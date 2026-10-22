@@ -8,7 +8,12 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		include: ["src/**/*.test.ts", "packages/*/**/*.test.ts"],
+		include: [
+			"src/**/*.test.ts",
+			"packages/*/**/*.test.ts",
+			// Pure helpers of the Playwright suite (no browser).
+			"e2e/**/*.test.ts",
+		],
 		// Real-Postgres tests run through `pnpm test:pg` (vitest.pg.config.ts).
 		exclude: [...configDefaults.exclude, "**/*.pg.test.ts"],
 		// The module cache keys a file by its own content, so it would keep a
