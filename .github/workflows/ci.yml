@@ -109,6 +109,60 @@ jobs:
       - name: Build
         run: pnpm build
 
+  # The Expo app (apps/mobile). Biome covers it through `pnpm lint` in check.
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The app and the workspace packages it uses, not the web app.
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter "@retrospend/mobile..."
+
+      - name: Typecheck
+        run: pnpm --filter @retrospend/mobile typecheck
+
+      # Includes the golden money vectors and the Google-free npm guard.
+      - name: Test
+        run: pnpm --filter @retrospend/mobile test
+
+  # The Gradle half of the Google-free guard: resolves the Android dependency
+  # tree of a fresh prebuild and fails on Play services or Firebase groups.
+  # Dependency resolution only, no native compile.
+  android-google-free:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter "@retrospend/mobile..."
+
+      - name: Prebuild
+        run: pnpm --filter @retrospend/mobile exec expo prebuild --platform android --clean --no-install
+
+      - name: Google-free dependency tree
+        run: bash apps/mobile/scripts/check-google-free.sh
+
   sidecar:
     runs-on: ubuntu-latest
     defaults:

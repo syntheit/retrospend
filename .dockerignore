@@ -53,3 +53,6 @@ flake.nix
 **/node_modules
 **/.next
 **/*.tsbuildinfo
+
+# The native app (apps/mobile) never enters the web image
+apps
