@@ -4,7 +4,7 @@ How to do each thing. Strict and simple. When this file and older code disagree,
 
 - **Sources:** the UI overhaul decision log (PLAN rules R1 to R31, tokens §4, glossary §7), the mockup kit (kit.css, COLOR.md, README) and the owner's notes (BRIEF N38 to N78). They live in `docs/ui-overhaul/` in the main checkout and are not committed; this file carries everything an agent needs.
 - **Tags:** `[Rn]` is the PLAN rule a line comes from. `UI-0nn` IDs are in [CHECKLIST.md](CHECKLIST.md). Where today's app breaks a rule: [GAPS.md](GAPS.md).
-- **Tokens:** [design.json](design.json) is the source of truth, `src/styles/tokens.css` is generated from it (`pnpm ui:tokens`).
+- **Tokens:** [packages/tokens/src](../../packages/tokens/src) (DTCG JSON; `tokens.dark.json` holds the dark values) is the source of truth. `pnpm ui:tokens` generates `src/styles/tokens.css` and the native files in `packages/tokens/dist` from it.
 - **Superseded:** `docs/design-system.md` and `docs/web-experience/design-language.md` described the old look (gradient hero cards, tinted stat cards). Do not follow them.
 
 ## 1. Principles
@@ -385,7 +385,7 @@ Known exceptions: light-theme attention (amber dot) is 2.1:1 on bg and category 
 
 The native apps share the meaning, the numbers, the data visuals, the color jobs and the glossary with the web. Chrome, sheets, pickers and gestures are native. "Familiar, not the same."
 
-- **Tokens:** read `docs/ui/design.json`: `color.<name>.hex.light|dark` for colors (React Native has no oklch), `type.scale`, `space`, `radius`, `size` (dp), `motion`. Do not copy values by hand.
+- **Tokens:** import `light` and `dark` from `@retrospend/tokens/theme` (colors as hex, since React Native has no oklch; sizes in dp; durations in ms). Other clients read the flat `packages/tokens/dist/tokens.json`. Do not copy values by hand.
 - **iOS** [R17, R28]: follow the HIG. Liquid Glass only on chrome (tab bar, navigation bar buttons, the bottom accessory, toolbars, sheets at partial detents), never on rows, charts or numbers. Primary input sits in the thumb zone. Tab roots get the large title; pushed pages get an inline title and a back button labeled with the parent. The account button trails the large title on Home. At most two trailing nav bar buttons (primary and overflow). The + beside the tab bar is a separate button, never a tab: it opens a plain personal expense in the home currency, or the screen's own context; long press offers Add expense and Add income. The accessory is a context pill (an active trip, drafts, a settlement in flight) and is absent when there is no context. Search is per list, pulled down under the title (searchable). Dynamic Type and system font in chrome.
 - **Android:** Material 3 equivalents: navigation bar for the five tabs, a FAB for Add, modal bottom sheets, Material menus, 48dp targets, the system back gesture.
 - **Both:** rows are lists, never tables; swipe actions each have a menu twin; haptics and system morph transitions are native; reduced motion and larger text are honored; widgets later (WidgetKit, Glance).

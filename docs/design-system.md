@@ -6,7 +6,7 @@ The design language is now:
 
 - [docs/ui/GUIDELINE.md](ui/GUIDELINE.md): how to do each thing
 - [docs/ui/CHECKLIST.md](ui/CHECKLIST.md): the checks, [auto] and [review]
-- [docs/ui/design.json](ui/design.json): the tokens (web and native)
+- [packages/tokens/src](../packages/tokens/src): the tokens (web and native)
 - [docs/ui/GAPS.md](ui/GAPS.md): where today's app still differs
 
 The old text is in git history.

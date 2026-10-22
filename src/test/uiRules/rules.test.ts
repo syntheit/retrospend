@@ -28,7 +28,7 @@ describe("scope", () => {
 		expect(inScope("src/lib/a.ts")).toBe(true);
 		expect(inScope("packages/i18n/messages/en.json")).toBe(true);
 		expect(inScope("packages/i18n/messages/en/budget.json")).toBe(true);
-		expect(inScope("docs/ui/design.json")).toBe(false);
+		expect(inScope("packages/tokens/src/tokens.json")).toBe(false);
 	});
 	it("throws with the file path on a parse error", () => {
 		expect(() => scanFile(TSX, "export const A = () => <div>{ broken")).toThrow(

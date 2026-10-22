@@ -1,0 +1,23 @@
+{
+	"name": "@retrospend/tokens",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Retrospend design tokens: DTCG JSON in src, generated CSS, TS theme and flat JSON.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./theme": "./dist/theme.ts",
+		"./tokens.json": "./dist/tokens.json",
+		"./color": "./src/color.ts",
+		"./load": "./src/load.ts",
+		"./outputs": "./src/outputs.ts"
+	},
+	"scripts": {
+		"build": "tsx src/build.ts"
+	},
+	"devDependencies": {
+		"style-dictionary": "^5.6.1",
+		"tsx": "^4.23.15",
+		"vitest": "^5.0.5"
+	}
+}

@@ -2,27 +2,27 @@
 	{
 		"rule": "UI-001",
 		"file": "src/lib/og/brand.ts",
-		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in docs/ui/design.json."
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
 	},
 	{
 		"rule": "UI-001",
 		"file": "src/lib/og/components.tsx",
-		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in docs/ui/design.json."
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
 	},
 	{
 		"rule": "UI-001",
 		"file": "src/app/opengraph-image.tsx",
-		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in docs/ui/design.json."
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
 	},
 	{
 		"rule": "UI-001",
 		"file": "src/app/(site)/u/[username]/opengraph-image.tsx",
-		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in docs/ui/design.json."
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
 	},
 	{
 		"rule": "UI-001",
 		"file": "src/app/(site)/pay/[username]/opengraph-image.tsx",
-		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in docs/ui/design.json."
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
 	},
 	{
 		"rule": "UI-001",

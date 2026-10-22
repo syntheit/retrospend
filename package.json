@@ -28,7 +28,7 @@
 		"test:e2e:headed": "playwright test --headed",
 		"typecheck": "tsc --noEmit && pnpm --filter @retrospend/domain typecheck",
 		"ui:ratchet": "tsx src/test/uiRules/ratchet.ts",
-		"ui:tokens": "tsx src/test/uiRules/build-tokens.ts"
+		"ui:tokens": "pnpm --filter @retrospend/tokens build"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "^6.3.1",
@@ -108,6 +108,7 @@
 		"@formatjs/icu-messageformat-parser": "3.5.22",
 		"@next/bundle-analyzer": "^16.4.2",
 		"@playwright/test": "^1.64.1",
+		"@retrospend/tokens": "workspace:*",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@types/node": "^24.19.2",
 		"@types/pdfkit": "^0.17.6",
