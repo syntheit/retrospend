@@ -8,11 +8,12 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import { contract } from "@retrospend/api-contract";
 import { v1 as probe } from "@retrospend/api-contract/common";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 import { auth } from "~/server/better-auth";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import type { FeatureFlagMode } from "~prisma";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
 import { RATE_LIMITS } from "../rate-limit";
@@ -141,11 +142,17 @@ describe("/api/v1 on Postgres", () => {
 	let alice: TestUser;
 	let bob: TestUser;
 	let admin: TestUser;
+	let initialMode: FeatureFlagMode = "OFF";
+
+	// Test files share one database: leave the flag as this file found it.
+	afterAll(async () => {
+		await updateAppSettings({ apiV1Mode: initialMode });
+	});
 
 	beforeAll(async () => {
 		// updateAppSettings' upsert drops the flag columns when it has to
 		// create the row, so make sure the row exists first.
-		await getAppSettings();
+		initialMode = (await getAppSettings()).apiV1Mode;
 		await updateAppSettings({ apiV1Mode: "ALL" });
 		alice = await createTestUser();
 		bob = await createTestUser();
