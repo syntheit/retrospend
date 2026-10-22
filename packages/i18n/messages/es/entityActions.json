@@ -72,14 +72,26 @@
 		"updateBalance": {
 			"label": "Actualizar saldo"
 		},
+		"addIncome": {
+			"label": "Añadir un ingreso aquí"
+		},
 		"history": {
 			"label": "Ver historial"
 		},
 		"edit": {
 			"label": "Editar cuenta"
 		},
-		"archive": {
-			"label": "Archivar"
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Cerrar cuenta"
+		},
+		"delete": {
+			"label": "Eliminar definitivamente",
+			"confirmTitle": "¿Eliminar {name} definitivamente?",
+			"confirmBody": "Se eliminan la cuenta y todo su historial de saldos, y también cambia tu patrimonio pasado. Para conservar el historial, cierra la cuenta.",
+			"confirmButton": "Eliminar definitivamente"
 		}
 	},
 	"recurring": {

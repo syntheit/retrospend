@@ -72,14 +72,26 @@
 		"updateBalance": {
 			"label": "Mettre à jour le solde"
 		},
+		"addIncome": {
+			"label": "Ajouter un revenu ici"
+		},
 		"history": {
 			"label": "Voir l'historique"
 		},
 		"edit": {
 			"label": "Modifier le compte"
 		},
-		"archive": {
-			"label": "Archiver"
+		"reopen": {
+			"label": "Rouvrir"
+		},
+		"close": {
+			"label": "Clôturer le compte"
+		},
+		"delete": {
+			"label": "Supprimer définitivement",
+			"confirmTitle": "Supprimer {name} définitivement ?",
+			"confirmBody": "Le compte et tout son historique de soldes sont supprimés, et votre patrimoine passé change aussi. Pour garder l'historique, clôturez plutôt le compte.",
+			"confirmButton": "Supprimer définitivement"
 		}
 	},
 	"recurring": {

@@ -72,14 +72,26 @@
 		"updateBalance": {
 			"label": "Saldo aktualisieren"
 		},
+		"addIncome": {
+			"label": "Einnahme hier erfassen"
+		},
 		"history": {
 			"label": "Verlauf ansehen"
 		},
 		"edit": {
 			"label": "Konto bearbeiten"
 		},
-		"archive": {
-			"label": "Archivieren"
+		"reopen": {
+			"label": "Wieder öffnen"
+		},
+		"close": {
+			"label": "Konto schließen"
+		},
+		"delete": {
+			"label": "Endgültig löschen",
+			"confirmTitle": "{name} endgültig löschen?",
+			"confirmBody": "Das Konto und sein gesamter Saldoverlauf werden gelöscht, und auch dein früheres Vermögen ändert sich. Um den Verlauf zu behalten, schließe das Konto stattdessen.",
+			"confirmButton": "Endgültig löschen"
 		}
 	},
 	"recurring": {

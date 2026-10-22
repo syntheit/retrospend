@@ -72,14 +72,26 @@
 		"updateBalance": {
 			"label": "Actualizar saldo"
 		},
+		"addIncome": {
+			"label": "Sumar un ingreso acá"
+		},
 		"history": {
 			"label": "Ver historial"
 		},
 		"edit": {
 			"label": "Editar cuenta"
 		},
-		"archive": {
-			"label": "Archivar"
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Cerrar cuenta"
+		},
+		"delete": {
+			"label": "Borrar para siempre",
+			"confirmTitle": "¿Borrar {name} para siempre?",
+			"confirmBody": "Se borran la cuenta y todo su historial de saldos, y también cambia tu patrimonio pasado. Si querés conservar el historial, cerrá la cuenta.",
+			"confirmButton": "Borrar para siempre"
 		}
 	},
 	"recurring": {

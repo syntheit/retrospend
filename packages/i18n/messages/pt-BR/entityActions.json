@@ -72,14 +72,26 @@
 		"updateBalance": {
 			"label": "Atualizar saldo"
 		},
+		"addIncome": {
+			"label": "Adicionar receita aqui"
+		},
 		"history": {
 			"label": "Ver histórico"
 		},
 		"edit": {
 			"label": "Editar conta"
 		},
-		"archive": {
-			"label": "Arquivar"
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Encerrar conta"
+		},
+		"delete": {
+			"label": "Excluir definitivamente",
+			"confirmTitle": "Excluir {name} definitivamente?",
+			"confirmBody": "A conta e todo o histórico de saldos são excluídos, e seu patrimônio passado também muda. Para manter o histórico, encerre a conta.",
+			"confirmButton": "Excluir definitivamente"
 		}
 	},
 	"recurring": {

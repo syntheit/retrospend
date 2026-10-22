@@ -20,7 +20,15 @@ export const ACTION_IDS = {
 	],
 	person: ["settle", "request", "remind", "addExpense", "profile"],
 	project: ["addExpense", "pin", "share", "settleAll", "archive"],
-	account: ["updateBalance", "history", "edit", "archive"],
+	account: [
+		"updateBalance",
+		"addIncome",
+		"history",
+		"edit",
+		"reopen",
+		"close",
+		"delete",
+	],
 	recurring: ["confirm", "editAmount", "pause", "resume", "skip", "delete"],
 } as const;
 

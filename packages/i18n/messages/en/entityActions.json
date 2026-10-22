@@ -72,14 +72,26 @@
 		"updateBalance": {
 			"label": "Update balance"
 		},
+		"addIncome": {
+			"label": "Add income here"
+		},
 		"history": {
 			"label": "View history"
 		},
 		"edit": {
 			"label": "Edit account"
 		},
-		"archive": {
-			"label": "Archive"
+		"reopen": {
+			"label": "Reopen"
+		},
+		"close": {
+			"label": "Close account"
+		},
+		"delete": {
+			"label": "Delete permanently",
+			"confirmTitle": "Delete {name} permanently?",
+			"confirmBody": "This removes the account and its whole balance history, and past net worth changes too. To keep the history, close the account instead.",
+			"confirmButton": "Delete permanently"
 		}
 	},
 	"recurring": {
