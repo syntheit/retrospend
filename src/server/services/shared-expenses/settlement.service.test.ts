@@ -25,6 +25,11 @@ import {
 	makeUserRef,
 } from "./test-utils";
 import type { ParticipantRef } from "./types";
+import { computeBalance } from "./balance";
+import {
+	confirmPayment,
+	unconfirmPayment,
+} from "~/server/services/payments/confirm.mutation";
 
 const ALICE = "alice";
 const aliceRef = makeUserRef(ALICE);
@@ -385,6 +390,101 @@ describe("settleAll", () => {
 		});
 		expect(result.settlements.map((r) => r.projectId)).toEqual([project]);
 		expect(result.totalInPaymentCurrency).toBe(30);
+	});
+});
+
+describe("undo a confirm (payment.unconfirm)", () => {
+	const unconfirm = (userId: string, paymentId: string, person: ParticipantRef) =>
+		unconfirmPayment.run(db as never, { paymentId, person }, { userId });
+
+	it("only the payee undoes a confirm of a payment the payer recorded", async () => {
+		seedDebt(aliceRef, bobRef, 30);
+		const { settlement } = await alice().initiateSettlement({
+			toParticipant: bobRef,
+			amount: 30,
+			currency: "USD",
+		});
+		const paymentId = settlement.paymentGroupId ?? "";
+		await new SettlementService(db as never, "bob").confirmSettlement(settlement.id);
+
+		await expect(unconfirm(ALICE, paymentId, bobRef)).rejects.toThrow(
+			"Only the person who confirmed this payment can undo it",
+		);
+		await unconfirm("bob", paymentId, aliceRef);
+		expect(headers()[0]?.status).toBe("PROPOSED");
+		expect(rows()[0]).toMatchObject({ confirmedByPayer: true, confirmedByPayee: false });
+	});
+
+	it("cannot undo a payment the receiver recorded, which was never confirmed", async () => {
+		seedDebt(bobRef, aliceRef, 30);
+		const { settlement } = await alice().initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: 30,
+			currency: "USD",
+		});
+		const paymentId = settlement.paymentGroupId ?? "";
+		for (const [userId, person] of [
+			[ALICE, bobRef],
+			["bob", aliceRef],
+		] as const) {
+			await expect(unconfirm(userId, paymentId, person)).rejects.toThrow(
+				"Only the person who confirmed this payment can undo it",
+			);
+		}
+		expect(headers()[0]?.status).toBe("FINALIZED");
+	});
+});
+
+describe("confirming a claim that is no longer owed", () => {
+	/** Bob owes alice 100 and says he paid 50; alice then records `received` herself. */
+	async function claimThenReceived(received: number) {
+		seedDebt(bobRef, aliceRef, 100);
+		const { settlement: claim } = await new SettlementService(db as never, "bob").initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 50,
+			currency: "USD",
+		});
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: received,
+			currency: "USD",
+			differentPayment: true,
+		});
+		return claim;
+	}
+	const aliceSees = async () => (await computeBalance(db as never, aliceRef, bobRef)).byCurrency;
+
+	it("refuses a claim when the full balance was already recorded, with no double credit", async () => {
+		const claim = await claimThenReceived(100);
+		expect(await aliceSees()).toEqual({});
+
+		await expect(alice().confirmSettlement(claim.id)).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: "Nothing is owed on this payment anymore. Say it was not received instead.",
+		});
+		// I3: nothing moved, nothing flipped.
+		expect(await aliceSees()).toEqual({});
+		expect(headers().find((h) => h.id === claim.paymentGroupId)?.status).toBe("PROPOSED");
+	});
+
+	it("offers to confirm what is still owed, and confirming that settles without flipping", async () => {
+		const claim = await claimThenReceived(80);
+
+		await expect(alice().confirmSettlement(claim.id)).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: "That is more than is still owed. Confirm USD 20.00 instead.",
+			instead: { minor: 2000, currency: "USD" },
+		});
+		expect(await aliceSees()).toEqual({ USD: 20 });
+
+		await confirmPayment.run(
+			db as never,
+			{ paymentId: claim.paymentGroupId ?? "", person: bobRef, amount: "20" },
+			{ userId: ALICE },
+		);
+		expect(await aliceSees()).toEqual({});
 	});
 });
 

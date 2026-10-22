@@ -6,7 +6,9 @@
  * which case the payment is allocated again from the receiver's side.
  */
 import { TRPCError } from "@trpc/server";
-import { toMinor } from "~/server/services/envelope/units";
+import { currencyDecimals } from "~/lib/money";
+import type { Money } from "~/server/figures/registry";
+import { fromMinor, toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation, UndoToken } from "~/server/services/preview/types";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";
 import {
@@ -24,6 +26,24 @@ import { type AllocationView, personKey, viewAllocation } from "./view";
 import { logGroupAction, updateGroup, writeRows } from "./write";
 
 type Tx = Prisma.TransactionClient;
+
+/**
+ * Confirming a claim would credit more than the receiver is still owed on
+ * those debts (they already recorded the money themselves): the claim is
+ * refused, and `instead` is what is still owed, to confirm in its place
+ * (null when nothing is). Keeps I3 and the "no double credit" rule.
+ */
+export class ConfirmInsteadError extends TRPCError {
+	constructor(readonly instead: Money | null) {
+		super({
+			code: "CONFLICT",
+			message: instead
+				? `That is more than is still owed. Confirm ${instead.currency} ${fromMinor(instead.minor, instead.currency).toFixed(currencyDecimals(instead.currency))} instead.`
+				: "Nothing is owed on this payment anymore. Say it was not received instead.",
+		});
+		this.name = "ConfirmInsteadError";
+	}
+}
 
 export interface ConfirmPaymentInput {
 	/** The payment id, or the id of any of its settlement rows. */
@@ -93,8 +113,12 @@ function assertAwaitingMe(roles: ReturnType<typeof groupRoles>) {
 	}
 }
 
-/** Allocates `amount` again from `me`'s side; the claim's old rows are gone by then. */
-async function reallocate(
+/**
+ * Allocates `amount` from `me`'s side, where a claim waiting for me does not
+ * count yet: what it would pay of what I am still owed. More than that is
+ * refused with what is still owed as the amount to confirm instead.
+ */
+async function allocateForMe(
 	tx: Tx,
 	me: ParticipantRef,
 	header: Awaited<ReturnType<typeof loadPayment>>["header"],
@@ -120,10 +144,9 @@ async function reallocate(
 		quotes,
 	});
 	if (allocation.overpay > 0) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "That is more than is owed. Confirm a smaller amount.",
-		});
+		throw new ConfirmInsteadError(
+			allocation.full > 0 ? { minor: allocation.full, currency: header.currency } : null,
+		);
 	}
 	return allocation;
 }
@@ -155,9 +178,19 @@ export async function confirmClaim(
 
 	let allocation: Allocation | null = null;
 	let written = rows;
+	// Checked before anything is written: the claim, or the amount the
+	// receiver typed, must fit what is still owed (H1, I3).
+	const fits = await allocateForMe(
+		tx,
+		me,
+		header,
+		amount ?? toMinor(header.amount.toString(), header.currency),
+		paidOn,
+		counterparty,
+	);
 	if (changed) {
 		await tx.settlement.deleteMany({ where: { paymentGroupId: header.id } });
-		allocation = await reallocate(tx, me, header, amount, paidOn, counterparty);
+		allocation = fits;
 		const payer = {
 			participantType: header.payerType,
 			participantId: header.payerId,
@@ -302,15 +335,25 @@ export const unconfirmPayment: MoneyMutation<
 			participantType: header.recordedByType,
 			participantId: header.recordedById,
 		};
-		const isParty = groupRoles(rows, me.participantId).isParty;
-		if (
-			!isParty ||
-			header.status !== "FINALIZED" ||
-			personKey(recorder) === personKey(me)
-		) {
+		const payer: ParticipantRef = {
+			participantType: header.payerType,
+			participantId: header.payerId,
+		};
+		const payee: ParticipantRef = {
+			participantType: header.payeeType,
+			participantId: header.payeeId,
+		};
+		// Only a real confirm can be undone: the payer recorded it, the payee
+		// (the caller) confirmed it, and no row was final at once.
+		const confirmedByMe =
+			header.status === "FINALIZED" &&
+			personKey(payee) === personKey(me) &&
+			personKey(recorder) === personKey(payer) &&
+			rows.every((r) => r.autoConfirmedReason === null);
+		if (!confirmedByMe) {
 			throw new TRPCError({
 				code: "BAD_REQUEST",
-				message: "Only a payment you confirmed can go back to waiting",
+				message: "Only the person who confirmed this payment can undo it",
 			});
 		}
 		await lockPair(tx, me, input.person);
