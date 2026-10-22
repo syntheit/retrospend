@@ -230,6 +230,7 @@ describe("leftToSpend (D-owner-2026-10-22d, kit BudgetPlan.leftToSpend)", () => 
 		envelopes?: LeftToSpendEnvelope[];
 		today?: string;
 		billNeeds?: number[];
+		recurringSpent?: number;
 	}) =>
 		leftToSpend({
 			envelopes: o.envelopes ?? seed,
@@ -237,6 +238,7 @@ describe("leftToSpend (D-owner-2026-10-22d, kit BudgetPlan.leftToSpend)", () => 
 			billNeeds: (o.billNeeds ?? []).map(m),
 			month: OCT,
 			today: o.today ?? "2026-10-21",
+			recurringSpent: m(o.recurringSpent ?? 0),
 		});
 
 	it("D-owner-2026-10-22d the Spending group only: bills, savings and Not planned yet stay out", () => {
@@ -299,6 +301,24 @@ describe("leftToSpend (D-owner-2026-10-22d, kit BudgetPlan.leftToSpend)", () => 
 			envelopes: [env("SPENDING", 0, 640_000, -300_000)],
 		});
 		expect(out.fasterThanPlanned).toBe(false);
+	});
+
+	it("D60 the pace line leaves recurring spending out of both sides", () => {
+		// Seed: pool 640,000, spent 580,839 on day 21 of 31 is faster than
+		// planned (90.8% spent, 67.7% of the month gone). With 400,000 of that
+		// posted by recurring templates, the rest is 180,839 of 240,000:
+		// 75.3% spent, still more than 5 points ahead: faster.
+		expect(run({ toAssign: 0, recurringSpent: 400_000 }).fasterThanPlanned).toBe(
+			true,
+		);
+		// With 500,000 recurring, the rest is 80,839 of 140,000: 57.7% spent,
+		// behind the 67.7% of the month gone: on track. The hero is unchanged.
+		const out = run({ toAssign: 0, recurringSpent: 500_000 });
+		expect(out).toMatchObject({
+			fasterThanPlanned: false,
+			left: m(59_161),
+			spent: m(580_839),
+		});
 	});
 
 	it("D-owner-2026-10-22d a closed month reads as the whole month gone", () => {
