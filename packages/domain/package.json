@@ -17,7 +17,7 @@
 		"./recurring": "./src/recurring.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
 		"./time-zone": "./src/time-zone.ts",
-		"./vectors/*": "./vectors/*"
+		"./vectors/*.json": "./vectors/*.json"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"
