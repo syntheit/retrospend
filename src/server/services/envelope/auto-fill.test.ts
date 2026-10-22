@@ -132,4 +132,51 @@ describe("autoFill (SPEC §5.4 order)", () => {
 		const filled = out.lines.reduce((t, l) => t + l.amount, 0);
 		expect(filled + out.left).toBe(Math.max(0, m(available)));
 	});
+
+	it.each([
+		{
+			// By hand: group target 500, nothing assigned yet. Groceries (main, set aside 300) is over by 100.
+			// Cover 100, then 200 more for its own 300, then the group's other 200: 500 in all.
+			name: "a cover counts once when the main envelope has its own target",
+			cands: [c("groceries", "MONTHLY", 1, 300, { left: -m(100) })],
+			group: {
+				envelopeIds: ["groceries"],
+				mainEnvelopeId: "groceries",
+				mainExtra: 200,
+			},
+			lines: [
+				["groceries", 100, "OVERSPENT"],
+				["groceries", 200, "GROUP"],
+				["groceries", 200, "GROUP"],
+			],
+		},
+		{
+			// By hand: group target 500. Wants (main, no target) is over by 100; Dining needs 300.
+			// Cover 100 + Dining 300 + the rest of the group 100 = 500.
+			name: "a cover on a main envelope without a target comes off the group's rest",
+			cands: [
+				c("dining", "MONTHLY", 1, 300),
+				c("wants", "NONE", 2, 0, { left: -m(100) }),
+			],
+			group: {
+				envelopeIds: ["dining", "wants"],
+				mainEnvelopeId: "wants",
+				mainExtra: 200,
+			},
+			lines: [
+				["wants", 100, "OVERSPENT"],
+				["dining", 300, "GROUP"],
+				["wants", 100, "GROUP"],
+			],
+		},
+	])("$name", ({ cands, group, lines }) => {
+		const groups: TargetedGroup[] = [
+			{ groupOrder: 1, ...group, mainExtra: m(group.mainExtra) },
+		];
+		const out = autoFill(m(1_000), cands, groups);
+		expect(out.lines.map((l) => [l.envelopeId, l.amount, l.step])).toEqual(
+			lines.map(([id, a, s]) => [id, m(a as number), s]),
+		);
+		expect(out.lines.reduce((t, l) => t + l.amount, 0)).toBe(m(500));
+	});
 });

@@ -92,7 +92,9 @@ function fillQueue(
  * targets in group order (children, then the main envelope's extra, §5.9),
  * Monthly, then Savings, until `available` runs out.
  * Money that covers an overspend also counts toward that envelope's need,
- * since every need subtracts what is assigned this month.
+ * since every need subtracts what is assigned this month. It counts once:
+ * first against the envelope's own need, and what is left of it against the
+ * group's rest when the envelope is a group's main envelope.
  */
 export function autoFill(
 	available: Minor,
@@ -100,15 +102,23 @@ export function autoFill(
 	groups: readonly TargetedGroup[] = [],
 ): { lines: FillLine[]; left: Minor } {
 	let left = Math.max(0, available);
-	const covered = new Map<string, Minor>();
+	// Cover not yet counted against a later need of the same envelope; used up once.
+	const coverLeft = new Map<string, Minor>();
 	const lines: FillLine[] = [];
 	for (const item of fillQueue(candidates, groups)) {
-		const cover =
-			item.step === "OVERSPENT" ? 0 : (covered.get(item.envelopeId) ?? 0);
-		const amount = Math.min(left, Math.max(0, item.want - cover));
+		let want = item.want;
+		if (item.step !== "OVERSPENT") {
+			const cover = Math.min(coverLeft.get(item.envelopeId) ?? 0, want);
+			coverLeft.set(
+				item.envelopeId,
+				(coverLeft.get(item.envelopeId) ?? 0) - cover,
+			);
+			want -= cover;
+		}
+		const amount = Math.min(left, Math.max(0, want));
 		if (amount <= 0) continue;
 		lines.push({ envelopeId: item.envelopeId, amount, step: item.step });
-		if (item.step === "OVERSPENT") covered.set(item.envelopeId, amount);
+		if (item.step === "OVERSPENT") coverLeft.set(item.envelopeId, amount);
 		left -= amount;
 	}
 	return { lines, left };
