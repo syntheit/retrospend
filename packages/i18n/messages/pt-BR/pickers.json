@@ -1,0 +1,82 @@
+{
+	"category": {
+		"label": "Categoria",
+		"find": "Buscar uma categoria",
+		"recent": "Recentes",
+		"all": "Todas as categorias",
+		"empty": "Nenhum resultado",
+		"selected": "Selecionada"
+	},
+	"person": {
+		"label": "Pessoas",
+		"find": "Buscar uma pessoa",
+		"empty": "Nenhum resultado",
+		"selected": "Selecionada",
+		"notOnRetrospend": "Fora do Retrospend",
+		"add": "Adicionar pessoa",
+		"addNamed": "Adicionar {name}"
+	},
+	"currency": {
+		"label": "Moeda",
+		"find": "Buscar uma moeda",
+		"favorites": "Favoritas",
+		"recent": "Recentes",
+		"all": "Todas as moedas",
+		"empty": "Nenhum resultado",
+		"selected": "Selecionada"
+	},
+	"date": {
+		"title": "Data",
+		"today": "Hoje",
+		"yesterday": "Ontem",
+		"pick": "Escolher data",
+		"typed": "Data",
+		"placeholder": "Digite uma data",
+		"earlier": "Anterior",
+		"later": "Seguinte"
+	},
+	"dateRange": {
+		"title": "Datas",
+		"trigger": "Datas: {range}",
+		"presets": "Atalhos",
+		"preset": {
+			"thisMonth": "Este mês",
+			"lastMonth": "Mês passado",
+			"last30": "Últimos 30 dias",
+			"last90": "Últimos 90 dias",
+			"thisYear": "Este ano",
+			"lastYear": "Ano passado",
+			"allTime": "Todo o período"
+		},
+		"span": "{from} a {to}",
+		"start": "Início",
+		"today": "hoje",
+		"from": "De",
+		"to": "Até",
+		"startDate": "Data inicial",
+		"endDate": "Data final",
+		"compare": "Comparar com o período anterior",
+		"jump": "Ir para o mês",
+		"earlier": "Anterior",
+		"later": "Seguinte",
+		"cancel": "Cancelar",
+		"apply": "Aplicar"
+	},
+	"money": {
+		"amount": "Valor",
+		"currency": "Moeda, {code}",
+		"rate": "Câmbio: {rate}",
+		"error": {
+			"empty": "Digite um valor",
+			"invalidCharacter": "Use só dígitos e + - × ÷",
+			"syntax": "Confira a conta",
+			"incomplete": "Complete a conta",
+			"ambiguous": "Use {decimal} para decimais",
+			"tooPrecise": "Casas decimais demais para {currency}",
+			"divideByZero": "Não dá para dividir por zero",
+			"outOfRange": "Valor grande demais",
+			"zero": "Digite um valor acima de zero",
+			"negative": "O valor deve ser maior que zero"
+		}
+	}
+}

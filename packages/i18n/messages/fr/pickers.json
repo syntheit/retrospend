@@ -1,0 +1,82 @@
+{
+	"category": {
+		"label": "Catégorie",
+		"find": "Trouver une catégorie",
+		"recent": "Récentes",
+		"all": "Toutes les catégories",
+		"empty": "Aucun résultat",
+		"selected": "Sélectionnée"
+	},
+	"person": {
+		"label": "Personnes",
+		"find": "Trouver une personne",
+		"empty": "Aucun résultat",
+		"selected": "Sélectionnée",
+		"notOnRetrospend": "Pas sur Retrospend",
+		"add": "Ajouter une personne",
+		"addNamed": "Ajouter {name}"
+	},
+	"currency": {
+		"label": "Devise",
+		"find": "Trouver une devise",
+		"favorites": "Favorites",
+		"recent": "Récentes",
+		"all": "Toutes les devises",
+		"empty": "Aucun résultat",
+		"selected": "Sélectionnée"
+	},
+	"date": {
+		"title": "Date",
+		"today": "Aujourd'hui",
+		"yesterday": "Hier",
+		"pick": "Choisir une date",
+		"typed": "Date",
+		"placeholder": "Saisir une date",
+		"earlier": "Précédent",
+		"later": "Suivant"
+	},
+	"dateRange": {
+		"title": "Dates",
+		"trigger": "Dates : {range}",
+		"presets": "Raccourcis",
+		"preset": {
+			"thisMonth": "Ce mois-ci",
+			"lastMonth": "Mois dernier",
+			"last30": "30 derniers jours",
+			"last90": "90 derniers jours",
+			"thisYear": "Cette année",
+			"lastYear": "L'année dernière",
+			"allTime": "Toute la période"
+		},
+		"span": "{from} au {to}",
+		"start": "Début",
+		"today": "aujourd'hui",
+		"from": "Du",
+		"to": "Au",
+		"startDate": "Date de début",
+		"endDate": "Date de fin",
+		"compare": "Comparer à la période précédente",
+		"jump": "Aller au mois",
+		"earlier": "Précédent",
+		"later": "Suivant",
+		"cancel": "Annuler",
+		"apply": "Appliquer"
+	},
+	"money": {
+		"amount": "Montant",
+		"currency": "Devise, {code}",
+		"rate": "Taux de change : {rate}",
+		"error": {
+			"empty": "Saisissez un montant",
+			"invalidCharacter": "Chiffres et + - × ÷ uniquement",
+			"syntax": "Vérifiez le calcul",
+			"incomplete": "Terminez le calcul",
+			"ambiguous": "Utilisez {decimal} pour les décimales",
+			"tooPrecise": "Trop de décimales pour {currency}",
+			"divideByZero": "Division par zéro impossible",
+			"outOfRange": "Montant trop élevé",
+			"zero": "Saisissez un montant supérieur à zéro",
+			"negative": "Le montant doit être supérieur à zéro"
+		}
+	}
+}

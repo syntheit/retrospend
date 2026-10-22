@@ -1,0 +1,82 @@
+{
+	"category": {
+		"label": "Categoría",
+		"find": "Buscar una categoría",
+		"recent": "Recientes",
+		"all": "Todas las categorías",
+		"empty": "Sin resultados",
+		"selected": "Seleccionada"
+	},
+	"person": {
+		"label": "Personas",
+		"find": "Buscar una persona",
+		"empty": "Sin resultados",
+		"selected": "Seleccionada",
+		"notOnRetrospend": "No está en Retrospend",
+		"add": "Agregar persona",
+		"addNamed": "Agregar a {name}"
+	},
+	"currency": {
+		"label": "Moneda",
+		"find": "Buscar una moneda",
+		"favorites": "Favoritas",
+		"recent": "Recientes",
+		"all": "Todas las monedas",
+		"empty": "Sin resultados",
+		"selected": "Seleccionada"
+	},
+	"date": {
+		"title": "Fecha",
+		"today": "Hoy",
+		"yesterday": "Ayer",
+		"pick": "Elegir fecha",
+		"typed": "Fecha",
+		"placeholder": "Escribí una fecha",
+		"earlier": "Anterior",
+		"later": "Siguiente"
+	},
+	"dateRange": {
+		"title": "Fechas",
+		"trigger": "Fechas: {range}",
+		"presets": "Atajos",
+		"preset": {
+			"thisMonth": "Este mes",
+			"lastMonth": "Mes pasado",
+			"last30": "Últimos 30 días",
+			"last90": "Últimos 90 días",
+			"thisYear": "Este año",
+			"lastYear": "Año pasado",
+			"allTime": "Todo el tiempo"
+		},
+		"span": "{from} a {to}",
+		"start": "Inicio",
+		"today": "hoy",
+		"from": "Desde",
+		"to": "Hasta",
+		"startDate": "Fecha de inicio",
+		"endDate": "Fecha de fin",
+		"compare": "Comparar con el período anterior",
+		"jump": "Ir al mes",
+		"earlier": "Anterior",
+		"later": "Siguiente",
+		"cancel": "Cancelar",
+		"apply": "Aplicar"
+	},
+	"money": {
+		"amount": "Monto",
+		"currency": "Moneda, {code}",
+		"rate": "Cotización: {rate}",
+		"error": {
+			"empty": "Ingresá un monto",
+			"invalidCharacter": "Usá solo dígitos y + - × ÷",
+			"syntax": "Revisá la cuenta",
+			"incomplete": "Completá la cuenta",
+			"ambiguous": "Usá {decimal} para los decimales",
+			"tooPrecise": "Demasiados decimales para {currency}",
+			"divideByZero": "No se puede dividir por cero",
+			"outOfRange": "El monto es demasiado grande",
+			"zero": "Ingresá un monto mayor a cero",
+			"negative": "El monto debe ser mayor a cero"
+		}
+	}
+}
