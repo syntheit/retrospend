@@ -40,9 +40,21 @@ const CATEGORY_DEPS = [
 	"sharedTransaction",
 	"project",
 	"dashboard",
+	"budget",
 ] as const;
 
-const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
+// Budgets feed the dashboard overview (budget totals, remaining).
+const BUDGET_DEPS = ["dashboard"] as const;
+
+// Fiscal month start and home currency shift every month-scoped reader.
+const GENERAL_SETTINGS_DEPS = [
+	"dashboard",
+	"budget",
+	"stats",
+	"expense",
+] as const;
+
+export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Shared transactions (project expenses) ──────────────────────────
 	"sharedTransaction.create": SHARED_TX_DEPS,
 	"sharedTransaction.update": [...SHARED_TX_DEPS, "verification"],
@@ -53,7 +65,7 @@ const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"expense.updateExpense": EXPENSE_DEPS,
 	"expense.deleteExpense": EXPENSE_DEPS,
 	"expense.importExpenses": EXPENSE_DEPS,
-	"expense.bulkUpdateCategory": ["dashboard", "stats"],
+	"expense.bulkUpdateCategory": ["dashboard", "stats", "budget"],
 
 	// ── Settlements ─────────────────────────────────────────────────────
 	"settlement.create": SETTLEMENT_DEPS,
@@ -79,12 +91,21 @@ const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	],
 	"billingPeriod.updateLabel": ["project"],
 
+	// ── Budgets ─────────────────────────────────────────────────────────
+	"budget.upsertBudget": BUDGET_DEPS,
+	"budget.batchUpsertBudgets": BUDGET_DEPS,
+	"budget.deleteBudget": BUDGET_DEPS,
+	"budget.copyFromLastMonth": BUDGET_DEPS,
+	"budget.upsertGlobalBudget": BUDGET_DEPS,
+	"budget.deleteGlobalBudget": BUDGET_DEPS,
+	"budget.importBudgets": BUDGET_DEPS,
+
 	// ── Categories ──────────────────────────────────────────────────────
 	"categories.update": CATEGORY_DEPS,
 	"categories.delete": CATEGORY_DEPS,
 
 	// ── Recurring ───────────────────────────────────────────────────────
-	"recurring.executeNow": [
+	"recurring.confirmAndCreate": [
 		"expense",
 		"dashboard",
 		"budget",
@@ -122,8 +143,7 @@ const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	],
 
 	// ── Guest ───────────────────────────────────────────────────────────
-	"guest.upgradeToProject": ["project"],
-	"guest.acceptMagicLink": ["project"],
+	"guest.joinWithAccount": ["project", "people"],
 
 	// ── User ────────────────────────────────────────────────────────────
 	"user.updateProfile": ["profile"],
@@ -134,6 +154,9 @@ const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 
 	// ── Audit log ───────────────────────────────────────────────────────
 	"auditLog.markTransactionSeen": ["project", "sharedTransaction"],
+
+	// ── Settings ────────────────────────────────────────────────────────
+	"settings.updateGeneral": GENERAL_SETTINGS_DEPS,
 
 	// ── Admin ───────────────────────────────────────────────────────────
 	"admin.updateSettings": ["settings"],
