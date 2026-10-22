@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS "asset_rate_type" (
   "accountId" TEXT NOT NULL,
   "from"      TIMESTAMP(3) NOT NULL,
   "type"      VARCHAR(32),
+  -- The account's type before this switch, so undoing it restores that type.
+  "previousType" VARCHAR(32),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "asset_rate_type_pkey" PRIMARY KEY ("id")
 );

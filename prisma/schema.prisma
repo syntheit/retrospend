@@ -454,9 +454,11 @@ model AssetRateType {
   id        String       @id @default(cuid())
   userId    String
   accountId String
-  from      DateTime
-  type      String?      @db.VarChar(32)
-  createdAt DateTime     @default(now())
+  from         DateTime
+  type         String?      @db.VarChar(32)
+  /// The account's type before this switch; undo restores it.
+  previousType String?      @db.VarChar(32)
+  createdAt    DateTime     @default(now())
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   account AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
