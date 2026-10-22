@@ -67,5 +67,47 @@
 		"attributes": ["class", "className", "classList"],
 		"mergeFunctions": ["clsx", "cn"],
 		"variantFunctions": ["cva"]
-	}
+	},
+	"overrides": [
+		{
+			// @retrospend/domain runs on the server, the web and React Native.
+			// packages/domain/boundary.test.ts enforces the same rule in tests.
+			"includes": ["packages/domain/src/**"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noNodejsModules": "error"
+					},
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"next",
+											"next/**",
+											"react",
+											"react/**",
+											"react-dom",
+											"react-dom/**",
+											"react-native",
+											"react-native/**",
+											"prisma",
+											"prisma/**",
+											"@prisma/**",
+											"server-only",
+											"~/**",
+											"~prisma"
+										],
+										"message": "@retrospend/domain may not import a framework, the database client or app code."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		}
+	]
 }

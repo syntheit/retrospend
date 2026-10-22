@@ -135,13 +135,10 @@ export const THEME_FILES = new Set([
  * toLocaleDateString, Intl.DateTimeFormat...). Number formatting (toFixed,
  * Intl.NumberFormat) is allowed only in packages/domain and src/server/services
  * (IMPLEMENTATION §4), so today's src/lib formatters sit in the baseline until
- * they move into packages/domain.
+ * they move into packages/domain. The scan does not cover packages/domain,
+ * which already holds the money and time zone helpers.
  */
-export const DATE_HELPERS = new Set([
-	"src/lib/date-locale.ts",
-	"src/lib/date.ts",
-	"src/lib/time-zone.ts",
-]);
+export const DATE_HELPERS = new Set(["src/lib/date-locale.ts", "src/lib/date.ts"]);
 
 /** Transport files: they call services, never the database (UI-151). */
 const isTransport = (f: string) =>

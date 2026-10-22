@@ -1,3 +1,9 @@
+# The root is the web app (package "retrospend"); shared code lives in
+# packages/ and the native app in apps/.
+packages:
+  - apps/*
+  - packages/*
+
 onlyBuiltDependencies:
   - '@prisma/engines'
   - prisma

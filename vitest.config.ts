@@ -8,15 +8,19 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		include: ["src/**/*.test.ts"],
+		include: ["src/**/*.test.ts", "packages/*/**/*.test.ts"],
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "html", "lcov"],
-			include: ["src/lib/**/*.ts", "src/server/**/*.ts"],
+			include: [
+				"src/lib/**/*.ts",
+				"src/server/**/*.ts",
+				"packages/domain/src/**/*.ts",
+			],
 			exclude: [
 				"src/**/__tests__/**",
-				"src/**/*.test.ts",
-				"src/lib/currencies.ts",
+				"**/*.test.ts",
+				"packages/domain/src/currencies.ts",
 				"src/lib/supported-crypto-icons.ts",
 				"src/lib/db-enums.ts",
 			],
