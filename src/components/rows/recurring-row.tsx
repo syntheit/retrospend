@@ -4,16 +4,11 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Money } from "~/components/money/money";
 import { Button } from "~/components/ui/button";
+import { CategoryTile } from "~/components/ui/category-badge";
 import { StatusDot } from "~/components/ui/status-dot";
 import { cn } from "~/lib/cn";
 import { useRowDates } from "./dates";
-import {
-	CategoryTile,
-	Row,
-	type RowPassThrough,
-	RowSub,
-	useRowVariant,
-} from "./row";
+import { Row, type RowPassThrough, RowSub, useRowVariant } from "./row";
 import type { RecurringVM } from "./types";
 
 /** The amount: money in reads positive with a plus; a foreign one pairs. */
@@ -24,12 +19,20 @@ function RecurringAmount({ item }: { item: RecurringVM }) {
 		return (
 			<Money.pair
 				className={tone}
+				figure={item.figure}
 				home={item.home}
 				original={item.amount}
 				sign={sign}
 			/>
 		);
-	return <Money className={tone} sign={sign} value={item.amount} />;
+	return (
+		<Money
+			className={tone}
+			figure={item.figure}
+			sign={sign}
+			value={item.amount}
+		/>
+	);
 }
 
 /**

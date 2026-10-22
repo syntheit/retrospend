@@ -3,7 +3,7 @@
 	"empty": "Всё в порядке",
 	"emptyHint": "Сейчас ничего не требует внимания.",
 	"text": {
-		"assign": "Распределите {amount}",
+		"assign": "Распределите <amount></amount>",
 		"review": "Проверить импорт: {count}",
 		"confirmPayment": "{person} сообщает об оплате",
 		"verify": "{person} добавил(а) вас в {title}",

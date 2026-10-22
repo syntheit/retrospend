@@ -52,7 +52,8 @@ export const LABEL = { fontSize: 12, fill: COLOR.label } as const;
 
 /** Inner margins per kind: room for axis labels and the end dot. */
 export const MARGIN = {
-	pace: { top: 6, right: 6, bottom: 0, left: 0 },
+	/** Room for the end dot (radius 5 and its 2px ring) so it never clips. */
+	pace: { top: 8, right: 8, bottom: 0, left: 8 },
 	bars: { top: 8, right: 0, bottom: 0, left: 0 },
 	area: { top: 10, right: 8, bottom: 0, left: 0 },
 } as const;

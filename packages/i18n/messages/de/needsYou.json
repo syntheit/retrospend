@@ -3,7 +3,7 @@
 	"empty": "Alles erledigt",
 	"emptyHint": "Gerade braucht dich nichts.",
 	"text": {
-		"assign": "Gib {amount} eine Aufgabe",
+		"assign": "Gib <amount></amount> eine Aufgabe",
 		"review": "{count} importierte prüfen",
 		"confirmPayment": "{person} sagt, die Zahlung ist raus",
 		"verify": "{person} hat dich zu {title} hinzugefügt",

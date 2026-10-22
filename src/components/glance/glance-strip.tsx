@@ -68,18 +68,19 @@ function useLine() {
 /**
  * GlanceStrip: Home's answer to "am I OK?". One hero (spent this month),
  * one line under it, the pace line, then only the rows with something to
- * say, each linking to its page. Variant B is the compact three-number strip.
+ * say, each linking to its page. Variant B is the compact number strip.
  * Owed to you and You owe are two rows, never netted (D1).
+ *
+ * It lays itself out by its own width (container breakpoints): the pace
+ * line moves beside the hero from 576px, and B's strip is a 2 by 2 grid
+ * below that, so a phone column and a narrow rail both read well.
  */
 export function GlanceStrip({
 	glance,
 	variant = "A",
-	phone = false,
 }: {
 	glance: GlanceVM;
 	variant?: "A" | "B";
-	/** One column and a smaller hero, as on a phone. */
-	phone?: boolean;
 }) {
 	const t = useTranslations("glance");
 	const { month } = useRowDates();
@@ -103,15 +104,16 @@ export function GlanceStrip({
 	);
 	if (variant === "B")
 		return (
-			<div>
+			<div className="@container">
 				{lead}
-				<div className="mt-4 grid auto-cols-fr grid-flow-col overflow-hidden">
+				<div className="mt-4 grid grid-cols-2 gap-y-2 @xl:auto-cols-fr @xl:grid-flow-col @xl:grid-cols-none @xl:gap-y-0">
 					{glance.rows.map((r, i) => (
 						<Link
 							className={cn(
-								"flex min-w-0 flex-col gap-0.5 py-1",
-								i > 0 && "border-line border-l",
-								i > 0 ? (phone ? "px-2" : "px-4") : "pr-2",
+								"border-line flex min-w-0 flex-col gap-0.5 py-1 pr-2",
+								i % 2 === 1 && "border-l pl-4",
+								i > 0 && "@xl:border-l @xl:pl-4",
+								i >= 2 && "@max-xl:border-t @max-xl:pt-2",
 							)}
 							href={r.href}
 							key={r.id}
@@ -120,10 +122,7 @@ export function GlanceStrip({
 								{t(`row.${r.id}`)}
 							</span>
 							<Money
-								className={cn(
-									"font-semibold",
-									phone ? "text-body" : "text-section",
-								)}
+								className="text-body @xl:text-section font-semibold"
 								figure={r.figure}
 								value={r.amount}
 							/>
@@ -133,13 +132,8 @@ export function GlanceStrip({
 			</div>
 		);
 	return (
-		<div>
-			<div
-				className={cn(
-					"grid items-end gap-x-8 gap-y-2",
-					!phone && "grid-cols-[1fr_minmax(180px,360px)]",
-				)}
-			>
+		<div className="@container">
+			<div className="grid items-end gap-x-8 gap-y-2 @xl:grid-cols-[1fr_minmax(180px,360px)]">
 				{lead}
 				<PaceLine
 					currentLabel={name}
@@ -166,7 +160,10 @@ export function GlanceStrip({
 						>
 							<span className="flex-1">{t(`row.${r.id}`)}</span>
 							<Money
-								className={cn("font-semibold", TONE[r.id] ?? "text-fg")}
+								className={cn(
+									"text-body font-semibold",
+									TONE[r.id] ?? "text-fg",
+								)}
 								figure={r.figure}
 								value={r.amount}
 							/>

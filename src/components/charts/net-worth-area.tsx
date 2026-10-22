@@ -2,11 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { Area, AreaChart, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, ReferenceDot, XAxis, YAxis } from "recharts";
 import type { MoneyValue } from "~/components/money/format";
 import { useRowDates } from "~/components/rows/dates";
 import { ChartContainer, ChartTooltip } from "~/components/ui/chart";
-import { ChartFrame, useChartMotion, useMoneyText } from "./chart-frame";
+import {
+	ChartEmpty,
+	ChartFrame,
+	isEmptySeries,
+	useChartMotion,
+	useMoneyText,
+} from "./chart-frame";
 import { COLOR, edgeTicks, LABEL, MARGIN, MOTION, STROKE } from "./spec";
 
 export type AreaPoint = {
@@ -15,6 +21,20 @@ export type AreaPoint = {
 	/** The value that day; null is a gap (no data), never zero. */
 	value: MoneyValue | null;
 };
+
+/**
+ * The point under a scrub: the chart's active index, or null when the
+ * pointer or finger is off the data. Recharts sends the index as a number
+ * or a string.
+ */
+export function scrubPoint(
+	points: AreaPoint[],
+	index: unknown,
+): AreaPoint | null {
+	if (index == null || index === "") return null;
+	const i = Number(index);
+	return Number.isInteger(i) ? (points[i] ?? null) : null;
+}
 
 /**
  * Area with scrub: net worth over time, accent line over a soft fill, a dot
@@ -49,13 +69,16 @@ export function NetWorthArea({
 			})),
 		[points],
 	);
+	const values = data.flatMap((d) => (d.value == null ? [] : [d.value]));
+	if (isEmptySeries(values)) return <ChartEmpty height={height} />;
 	const ticks = edgeTicks(data.map((d) => d.date));
 	const last = points[points.length - 1];
 	const first = points[0];
-	const values = data.flatMap((d) => (d.value == null ? [] : [d.value]));
 	const low = Math.min(...values);
 	const high = Math.max(...values);
 	const pad = (high - low) * 0.12 || 1;
+	const scrub = (state: { activeTooltipIndex?: unknown }) =>
+		onScrub?.(scrubPoint(points, state.activeTooltipIndex));
 	return (
 		<ChartFrame
 			height={height}
@@ -74,11 +97,10 @@ export function NetWorthArea({
 					data={data}
 					margin={MARGIN.area}
 					onMouseLeave={() => onScrub?.(null)}
-					onMouseMove={(state) => {
-						const i = Number(state.activeTooltipIndex);
-						onScrub?.(Number.isInteger(i) ? (points[i] ?? null) : null);
-					}}
+					onMouseMove={scrub}
 					onTouchEnd={() => onScrub?.(null)}
+					onTouchMove={scrub}
+					onTouchStart={scrub}
 				>
 					<XAxis
 						axisLine={{ stroke: COLOR.axis }}
@@ -102,21 +124,7 @@ export function NetWorthArea({
 						animationDuration={MOTION.duration}
 						connectNulls={false}
 						dataKey="value"
-						dot={(p: { index?: number; cx?: number; cy?: number }) =>
-							p.index === data.length - 1 && p.cx != null && p.cy != null ? (
-								<circle
-									cx={p.cx}
-									cy={p.cy}
-									fill={COLOR.accent}
-									key="end"
-									r={STROKE.dot}
-									stroke={COLOR.ring}
-									strokeWidth={STROKE.dotRing}
-								/>
-							) : (
-								<g key={`d${p.index}`} />
-							)
-						}
+						dot={false}
 						fill={COLOR.area}
 						fillOpacity={1}
 						isAnimationActive={animate}
@@ -124,6 +132,16 @@ export function NetWorthArea({
 						strokeWidth={STROKE.line}
 						type="linear"
 					/>
+					{last?.value && (
+						<ReferenceDot
+							fill={COLOR.accent}
+							r={STROKE.dot}
+							stroke={COLOR.ring}
+							strokeWidth={STROKE.dotRing}
+							x={last.date}
+							y={last.value.minor}
+						/>
+					)}
 				</AreaChart>
 			</ChartContainer>
 		</ChartFrame>

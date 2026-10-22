@@ -12,6 +12,7 @@ import {
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Money } from "~/components/money/money";
+import { CryptoIcon } from "~/components/ui/crypto-icon";
 import { useRowDates } from "./dates";
 import { usePercent } from "./percent";
 import { IconTile, Row, type RowPassThrough, RowSub } from "./row";
@@ -53,12 +54,28 @@ export function AccountRow({
 			actions={actions}
 			end={
 				foreign ? (
-					<Money.pair home={account.home ?? null} original={account.amount} />
+					<Money.pair
+						figure={account.figure}
+						home={account.home ?? null}
+						homeFigure={account.homeFigure}
+						original={account.amount}
+					/>
 				) : (
-					<Money value={account.amount} />
+					<Money figure={account.figure} value={account.amount} />
 				)
 			}
-			lead={<IconTile icon={KIND_ICON[account.kind]} />}
+			lead={
+				account.kind === "crypto" ? (
+					<IconTile>
+						<CryptoIcon
+							className="size-5 border-0 bg-transparent"
+							currencyCode={account.amount.currency}
+						/>
+					</IconTile>
+				) : (
+					<IconTile icon={KIND_ICON[account.kind]} />
+				)
+			}
 			open={onOpen ? { onOpen, label: account.name } : undefined}
 			sub={
 				<RowSub

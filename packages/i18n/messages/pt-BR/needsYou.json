@@ -3,7 +3,7 @@
 	"empty": "Tudo em dia",
 	"emptyHint": "Nada precisa de você agora.",
 	"text": {
-		"assign": "Dê um destino a {amount}",
+		"assign": "Dê um destino a <amount></amount>",
 		"review": "Revisar {count} importados",
 		"confirmPayment": "{person} diz que pagou você",
 		"verify": "{person} adicionou você a {title}",

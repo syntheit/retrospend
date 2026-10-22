@@ -6,7 +6,12 @@
  */
 import type { MoneyValue } from "~/components/money/format";
 
-type Base = { id: string; href?: string };
+type Base = {
+	id: string;
+	href?: string;
+	/** Figures registry key of the item's amount, for the audit. */
+	figure?: string;
+};
 
 export type NeedsYouItemVM =
 	/** Budget money with no job yet ("Give ARS 850,000 a job"). */

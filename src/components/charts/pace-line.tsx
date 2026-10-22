@@ -2,13 +2,14 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { Line, LineChart, XAxis, YAxis } from "recharts";
-import type { MoneyValue } from "~/components/money/format";
+import { Line, LineChart, ReferenceDot, XAxis, YAxis } from "recharts";
 import { Money } from "~/components/money/money";
 import { ChartContainer, ChartTooltip } from "~/components/ui/chart";
 import {
+	ChartEmpty,
 	ChartFrame,
 	ChartTip,
+	isEmptySeries,
 	useChartMotion,
 	useMoneyText,
 } from "./chart-frame";
@@ -16,18 +17,18 @@ import { COLOR, LABEL, MARGIN, MOTION, STROKE } from "./spec";
 
 export type PaceSeries = {
 	currency: string;
-	/** Spent so far this period, cumulative per day, minor units. */
-	current: number[];
+	/** Spent so far this period, cumulative per day, minor units; null is a gap. */
+	current: (number | null)[];
 	/** The last period, cumulative per day, for comparison. */
-	previous: number[];
+	previous: (number | null)[];
 	/** Days in the period (the x axis). */
 	days: number;
 };
 
 /**
  * Pace line: this period against the last, cumulative. The accent line ends
- * in a dot at today; the last period is a dashed fg-3 line. One question:
- * am I spending faster than last month?
+ * in one dot at today; the last period is a dashed fg-3 line. One question:
+ * am I spending faster than last month? No data: says so, never a flat zero.
  */
 export function PaceLine({
 	pace,
@@ -56,22 +57,20 @@ export function PaceLine({
 			})),
 		[pace],
 	);
+	if (isEmptySeries([...pace.current, ...pace.previous]))
+		return <ChartEmpty height={height} />;
 	const today = pace.current.length;
-	const spent: MoneyValue = {
-		minor: pace.current[today - 1] ?? 0,
-		currency: pace.currency,
-	};
-	const before: MoneyValue = {
-		minor: pace.previous[today - 1] ?? 0,
-		currency: pace.currency,
-	};
+	const end = pace.current[today - 1] ?? null;
+	const before = pace.previous[today - 1] ?? null;
+	const money = (minor: number | null) =>
+		minor == null ? t("noData") : text({ minor, currency: pace.currency });
 	return (
 		<ChartFrame
 			height={height}
 			summary={t("pace.summary", {
 				day: today,
-				spent: text(spent),
-				before: text(before),
+				spent: money(end),
+				before: money(before),
 			})}
 		>
 			<ChartContainer
@@ -93,27 +92,16 @@ export function PaceLine({
 					/>
 					<YAxis domain={[0, (max: number) => max * 1.04]} hide type="number" />
 					<ChartTooltip
-						content={({ active, payload }) =>
-							active && payload?.[0] ? (
-								<ChartTip label={t("day", { day: payload[0].payload.day })}>
-									{payload[0].payload.current != null ? (
-										<Money
-											value={{
-												minor: payload[0].payload.current,
-												currency: pace.currency,
-											}}
-										/>
-									) : (
-										<Money
-											value={{
-												minor: payload[0].payload.previous ?? 0,
-												currency: pace.currency,
-											}}
-										/>
-									)}
+						content={({ active, payload }) => {
+							const p = payload?.[0]?.payload;
+							if (!active || !p) return null;
+							const minor = p.current ?? p.previous;
+							return minor == null ? null : (
+								<ChartTip label={t("day", { day: p.day })}>
+									<Money value={{ minor, currency: pace.currency }} />
 								</ChartTip>
-							) : null
-						}
+							);
+						}}
 						cursor={{ stroke: COLOR.axis }}
 					/>
 					<Line
@@ -131,21 +119,7 @@ export function PaceLine({
 						animationDuration={MOTION.duration}
 						connectNulls={false}
 						dataKey="current"
-						dot={(p: { index?: number; cx?: number; cy?: number }) =>
-							p.index === today - 1 && p.cx != null && p.cy != null ? (
-								<circle
-									cx={p.cx}
-									cy={p.cy}
-									fill={COLOR.accent}
-									key="end"
-									r={STROKE.dot}
-									stroke={COLOR.ring}
-									strokeWidth={STROKE.dotRing}
-								/>
-							) : (
-								<g key={`d${p.index}`} />
-							)
-						}
+						dot={false}
 						isAnimationActive={animate}
 						stroke={COLOR.accent}
 						strokeLinecap="round"
@@ -153,6 +127,16 @@ export function PaceLine({
 						strokeWidth={STROKE.line}
 						type="linear"
 					/>
+					{end != null && (
+						<ReferenceDot
+							fill={COLOR.accent}
+							r={STROKE.dot}
+							stroke={COLOR.ring}
+							strokeWidth={STROKE.dotRing}
+							x={today}
+							y={end}
+						/>
+					)}
 				</LineChart>
 			</ChartContainer>
 		</ChartFrame>

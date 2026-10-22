@@ -6,7 +6,7 @@
 	},
 	"bars": {
 		"label": "Spent",
-		"summary": "Spending by month. {month}: {total}"
+		"summary": "Spending by month: {list}"
 	},
 	"area": {
 		"label": "Net worth",
@@ -22,5 +22,6 @@
 		"summary": "Owed to you {owed}. You owe {owe}",
 		"owesYou": "{name}: owes you {amount}",
 		"youOwe": "{name}: you owe {amount}"
-	}
+	},
+	"empty": "No data yet"
 }

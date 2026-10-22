@@ -56,6 +56,7 @@
 		"amount": "Importe",
 		"actions": "Acciones",
 		"yourSpending": "Tu gasto",
-		"count": "{count, plural, one {# gasto} other {# gastos}}"
+		"count": "{count, plural, one {# gasto} other {# gastos}}",
+		"withoutRate": "{count, plural, one {# sin cotización} other {# sin cotización}}"
 	}
 }

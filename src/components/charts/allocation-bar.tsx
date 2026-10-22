@@ -7,7 +7,7 @@ import { usePercent } from "~/components/rows/percent";
 import type { Basis } from "~/components/rows/types";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
-import { useMoneyText } from "./chart-frame";
+import { ChartEmpty, useMoneyText } from "./chart-frame";
 import { seriesColor, THIN } from "./spec";
 
 export type AllocationItem = {
@@ -46,11 +46,14 @@ export function AllocationBar({
 	const percent = usePercent();
 	const text = useMoneyText();
 	const pct = (b: Basis) => percent(b, { digits: 0 });
+	if (!items.length) return <ChartEmpty height={THIN.allocation * 4} />;
 	return (
 		<div>
 			<div
 				aria-label={t("allocation.summary", {
-					list: items.map((i) => `${i.label} ${pct(i.share)}`).join(", "),
+					list: items
+						.map((i) => `${i.label} ${text(i.value)} (${pct(i.share)})`)
+						.join(", "),
 				})}
 				className="rounded-chip flex overflow-hidden"
 				role="img"

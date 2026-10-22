@@ -45,12 +45,22 @@ export type TransactionVM = {
 	counter?: MoneyValue;
 	/** The rate behind a foreign amount, as the server words it. */
 	rateTip?: string;
+	/**
+	 * The server's sort key for the amount column: this row's value in home
+	 * minor units. Null when there is no rate yet; such rows sort last. A
+	 * table never sorts native minor units across currencies.
+	 */
+	sortKey?: number | null;
+	/** Figures registry keys of the amount and of your share, for the audit. */
+	figure?: string;
+	shareFigure?: string;
 	reviewed: boolean;
 	/** A shared expense waiting on you, or one you rejected. */
 	waiting?: "review" | "rejected";
 	/** A payment that the other side has not confirmed yet. */
 	pending?: boolean;
-	project?: { id: string; name: string } | null;
+	/** The project, with its cover (photo or illustrated scene) when it has one. */
+	project?: { id: string; name: string; cover?: ReactNode } | null;
 	/** Everyone in the split, you included. */
 	people?: FacePerson[];
 	payerId?: string;
@@ -69,6 +79,8 @@ export type PersonVM = {
 	lastShared: string;
 	/** Positive: they owe you. Negative: you owe them. Zero: settled. */
 	balance: MoneyValue;
+	/** Figures registry key of the balance. */
+	figure?: string;
 	href: string;
 };
 
@@ -90,6 +102,8 @@ export type ProjectVM = {
 	balance?: MoneyValue | null;
 	/** Total spent in a solo project (or a shared one with no balance). */
 	spent?: MoneyValue;
+	/** Figures registry key of the balance or the spent amount. */
+	figure?: string;
 	/** How much of the budget is used, when there is one. */
 	budgetUsed?: { basis: Basis; over: boolean } | null;
 };
@@ -114,6 +128,9 @@ export type AccountVM = {
 	updated: string;
 	/** Signed change this month, in hundredths of a percent. */
 	change?: Basis | null;
+	/** Figures registry keys of the native and home amounts. */
+	figure?: string;
+	homeFigure?: string;
 };
 
 export type EnvelopeVM = {
@@ -124,6 +141,8 @@ export type EnvelopeVM = {
 	status: "funded" | "underfunded" | "overspent";
 	/** Spent against assigned, capped at 10000. */
 	spent: Basis;
+	/** Figures registry key of the available amount. */
+	figure?: string;
 };
 
 export type RecurringFrequency = "weekly" | "monthly" | "quarterly" | "yearly";
@@ -140,4 +159,6 @@ export type RecurringVM = {
 	amount: MoneyValue;
 	/** Home value when foreign; null means no rate yet. */
 	home?: MoneyValue | null;
+	/** Figures registry key of the amount. */
+	figure?: string;
 };

@@ -11,5 +11,7 @@
 	"replaces": "Substitui:",
 	"noMatch": "Nenhum gasto corresponde",
 	"noMatchHint": "Tente remover um filtro.",
-	"clearFilters": "Limpar filtros"
+	"clearFilters": "Limpar filtros",
+	"noExpenses": "Ainda não há gastos",
+	"addExpense": "Adicionar gasto"
 }

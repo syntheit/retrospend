@@ -28,6 +28,7 @@ export function PersonRow({
 			end={
 				<Balance
 					amount={person.balance}
+					figure={person.figure}
 					className={
 						variant === "group"
 							? "flex flex-col items-end"
@@ -42,12 +43,11 @@ export function PersonRow({
 			sub={
 				<RowSub
 					parts={[
-						person.lastShared,
+						{ shrink: person.lastShared },
 						!person.onRetrospend && (
 							<StatusDot kind="notOnRetrospend" size="sm" />
 						),
 					]}
-					truncate={0}
 				/>
 			}
 			title={person.name}

@@ -1,41 +1,21 @@
 "use client";
 
-import type { ComponentType, CSSProperties } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Progress } from "~/components/ui/progress";
-import { getCategoryIcon } from "~/lib/category-icons";
 import { cn } from "~/lib/cn";
-import type { CategoryRef } from "./types";
 
-/** Category identity in a row: the tinted tile with its glyph (R25, rows only). */
-export function CategoryTile({
-	category,
-	size = "default",
-}: {
-	category: CategoryRef;
-	size?: "default" | "sm";
-}) {
-	const Icon = getCategoryIcon(category.name, category.icon);
-	return (
-		<span
-			aria-hidden="true"
-			className={cn(
-				"rounded-ctl inline-flex shrink-0 items-center justify-center bg-[color-mix(in_oklab,var(--c)_15%,var(--surface))] text-(--c)",
-				size === "sm" ? "size-6 [&_svg]:size-3.5" : "size-8 [&_svg]:size-4",
-			)}
-			style={{ "--c": `var(--category-${category.tone})` } as CSSProperties}
-		>
-			<Icon strokeWidth={1.75} />
-		</span>
-	);
-}
-
-/** A neutral lead tile: money moves, accounts, Needs you items. */
+/**
+ * A neutral lead tile: money moves, accounts, Needs you items. Takes a
+ * lucide glyph, or an identity mark as children (a crypto coin).
+ */
 export function IconTile({
 	icon: Icon,
 	tone = "neutral",
+	children,
 }: {
-	icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+	icon?: ComponentType<{ className?: string; strokeWidth?: number }>;
 	tone?: "neutral" | "attention";
+	children?: ReactNode;
 }) {
 	return (
 		<span
@@ -47,7 +27,7 @@ export function IconTile({
 					: "bg-raised text-fg-2",
 			)}
 		>
-			<Icon className="size-4" strokeWidth={1.75} />
+			{Icon ? <Icon className="size-4" strokeWidth={1.75} /> : children}
 		</span>
 	);
 }

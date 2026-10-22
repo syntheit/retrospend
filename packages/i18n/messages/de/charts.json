@@ -6,7 +6,7 @@
 	},
 	"bars": {
 		"label": "Ausgegeben",
-		"summary": "Ausgaben pro Monat. {month}: {total}"
+		"summary": "Ausgaben pro Monat: {list}"
 	},
 	"area": {
 		"label": "Vermögen",
@@ -22,5 +22,6 @@
 		"summary": "Dir geschuldet {owed}. Du schuldest {owe}",
 		"owesYou": "{name}: schuldet dir {amount}",
 		"youOwe": "{name}: du schuldest {amount}"
-	}
+	},
+	"empty": "Noch keine Daten"
 }

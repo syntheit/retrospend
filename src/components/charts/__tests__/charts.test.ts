@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AllocationBar } from "~/components/charts/allocation-bar";
 import { BalanceBar } from "~/components/charts/balance-bar";
 import { MonthlyBars } from "~/components/charts/monthly-bars";
-import { NetWorthArea } from "~/components/charts/net-worth-area";
+import { NetWorthArea, scrubPoint } from "~/components/charts/net-worth-area";
 import { PaceLine } from "~/components/charts/pace-line";
 import { RankedBars } from "~/components/charts/ranked-bars";
 import {
@@ -73,7 +73,7 @@ describe("chart summaries (accessible names)", () => {
 		);
 	});
 
-	it("monthly bars name the highlighted month", () => {
+	it("monthly bars name every month shown", () => {
 		const html = render(
 			h(MonthlyBars, {
 				currency: "ARS",
@@ -83,7 +83,9 @@ describe("chart summaries (accessible names)", () => {
 				],
 			}),
 		);
-		expect(html).toContain("Spending by month. October: ARS 2,706,602");
+		expect(html).toContain(
+			"Spending by month: September ARS 3,820,000, October ARS 2,706,602",
+		);
 	});
 
 	it("area names its start and end", () => {
@@ -131,7 +133,9 @@ describe("chart summaries (accessible names)", () => {
 				],
 			}),
 		);
-		expect(html).toContain("Split: Property 83%, Cash 9%");
+		expect(html).toContain(
+			"Split: Property ARS 0.01 (83%), Cash ARS 0.01 (9%)",
+		);
 		expect(html).toContain("width:83.42%");
 	});
 
@@ -158,5 +162,58 @@ describe("chart summaries (accessible names)", () => {
 		);
 		expect(html).toContain("Owed to you ARS 1,520,393. You owe ARS 197,970");
 		expect(html).toContain("url(#");
+	});
+});
+
+describe("chart states (R14)", () => {
+	it("an empty or all-gap series says No data yet instead of a flat line", () => {
+		const pace = render(
+			h(PaceLine, {
+				pace: { currency: "ARS", days: 31, current: [], previous: [] },
+				currentLabel: "October",
+				previousLabel: "Last month",
+			}),
+		);
+		expect(pace).toContain("No data yet");
+		const bars = render(
+			h(MonthlyBars, {
+				currency: "ARS",
+				months: [{ month: "2026-10-01", total: null }],
+			}),
+		);
+		expect(bars).toContain("No data yet");
+		const area = render(h(NetWorthArea, { currency: "ARS", points: [] }));
+		expect(area).toContain("No data yet");
+		for (const html of [pace, bars, area])
+			expect(html).not.toMatch(/Infinity|NaN/);
+	});
+
+	it("empty ranked, allocation and balance bars say so too", () => {
+		expect(render(h(RankedBars, { items: [] }))).toContain("No data yet");
+		expect(render(h(AllocationBar, { items: [] }))).toContain("No data yet");
+		expect(
+			render(
+				h(BalanceBar, { owedToYou: ars(0), youOwe: ars(0), segments: [] }),
+			),
+		).toContain("No data yet");
+	});
+});
+
+describe("area scrub (pointer and touch share one handler)", () => {
+	const points = [
+		{ date: "2026-09-28", value: ars(100) },
+		{ date: "2026-10-21", value: ars(200) },
+	];
+
+	it("finds the point under the pointer or finger, by number or string index", () => {
+		expect(scrubPoint(points, 1)).toBe(points[1]);
+		expect(scrubPoint(points, "0")).toBe(points[0]);
+	});
+
+	it("lets go when off the data", () => {
+		expect(scrubPoint(points, undefined)).toBeNull();
+		expect(scrubPoint(points, "")).toBeNull();
+		expect(scrubPoint(points, 5)).toBeNull();
+		expect(scrubPoint(points, 0.5)).toBeNull();
 	});
 });

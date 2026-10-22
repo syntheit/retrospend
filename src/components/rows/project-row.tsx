@@ -78,10 +78,14 @@ export function ProjectRow({
 			/>
 		);
 	const end = project.balance ? (
-		<Balance amount={project.balance} className={stacked} />
+		<Balance
+			amount={project.balance}
+			className={stacked}
+			figure={project.figure}
+		/>
 	) : project.spent ? (
 		<>
-			<Money value={project.spent} />
+			<Money figure={project.figure} value={project.spent} />
 			<span className="text-fg-3 text-meta">{t("spent")}</span>
 		</>
 	) : null;

@@ -11,5 +11,7 @@
 	"replaces": "Ersetzt:",
 	"noMatch": "Keine passenden Ausgaben",
 	"noMatchHint": "Entferne einen Filter.",
-	"clearFilters": "Filter löschen"
+	"clearFilters": "Filter löschen",
+	"noExpenses": "Noch keine Ausgaben",
+	"addExpense": "Ausgabe hinzufügen"
 }

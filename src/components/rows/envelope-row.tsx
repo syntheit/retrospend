@@ -2,7 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { AvailablePill } from "~/components/money/available-pill";
-import { CategoryTile, Row, RowBar, type RowPassThrough } from "./row";
+import { CategoryTile } from "~/components/ui/category-badge";
+import { Row, RowBar, type RowPassThrough } from "./row";
 import type { EnvelopeVM } from "./types";
 
 /**
@@ -23,7 +24,11 @@ export function EnvelopeRow({
 		<Row
 			{...rest}
 			end={
-				<AvailablePill amount={envelope.available} status={envelope.status} />
+				<AvailablePill
+					amount={envelope.available}
+					figure={envelope.figure}
+					status={envelope.status}
+				/>
 			}
 			lead={<CategoryTile category={envelope.category} />}
 			open={onOpen ? { onOpen, label: envelope.name } : undefined}

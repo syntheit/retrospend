@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
 	type ComponentProps,
 	createContext,
+	isValidElement,
 	type ReactNode,
 	useContext,
 } from "react";
@@ -126,7 +127,7 @@ export function Row({
 				{sub}
 			</div>
 			{end != null && (
-				<div className="relative z-10 flex flex-col items-end gap-0.5 text-right leading-snug">
+				<div className="text-body relative z-10 flex flex-col items-end gap-0.5 text-right leading-snug">
 					{end}
 				</div>
 			)}
@@ -185,44 +186,66 @@ function RowMore({ children }: { children: ReactNode }) {
 	);
 }
 
-/** The subline: small fg-3 parts on one line with a dot between them. */
+/** A subline part that may give way with an ellipsis when the row is narrow. */
+export type Shrinkable = { shrink: ReactNode };
+/** A subline part that never shrinks, even last (a stack of faces). */
+export type Kept = { keep: ReactNode };
+
+function isMarked<K extends string>(
+	p: unknown,
+	key: K,
+): p is Record<K, ReactNode> {
+	return typeof p === "object" && p !== null && !isValidElement(p) && key in p;
+}
+const isShrinkable = (p: unknown): p is Shrinkable => isMarked(p, "shrink");
+const isKept = (p: unknown): p is Kept => isMarked(p, "keep");
+
+/**
+ * The subline: small fg-3 parts on one line with a dot between them. Like
+ * the kit, the last part and any part marked `{ shrink }` give way with an
+ * ellipsis (a last part marked `{ keep }`, such as faces, does not); the
+ * rest keep their width, and nothing spills out of the row.
+ */
 export function RowSub({
 	parts,
-	truncate,
 	className,
 }: {
 	/** Each part; falsy parts are left out. */
-	parts: ReactNode[];
-	/** Which shown part shrinks with an ellipsis; the last one by default. */
-	truncate?: number;
+	parts: (ReactNode | Shrinkable | Kept)[];
 	className?: string;
 }) {
 	const shown = parts.filter((p) => p != null && p !== false && p !== "");
-	// Like the kit: the chosen part and the last part give way, the rest keep their width.
 	const last = shown.length - 1;
-	const shrinks = (i: number) => i === (truncate ?? last) || i === last;
 	return (
 		<div
 			className={cn(
-				"text-fg-3 text-meta mt-px flex min-w-0 items-center gap-2 whitespace-nowrap",
+				"text-fg-3 text-meta mt-px flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap",
 				className,
 			)}
 		>
-			{shown.map((p, i) => (
-				<span
-					className={cn(
-						"flex items-center gap-2",
-						shrinks(i) ? "min-w-0 shrink truncate" : "shrink-0",
-					)}
-					// biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
-					key={i}
-				>
-					{i > 0 && <span aria-hidden="true">·</span>}
-					{shrinks(i) ? <span className="truncate">{p}</span> : p}
-				</span>
-			))}
+			{shown.map((p, i) => {
+				const shrinks = isShrinkable(p) || (i === last && !isKept(p));
+				const node = isShrinkable(p)
+					? p.shrink
+					: isKept(p)
+						? p.keep
+						: (p as ReactNode);
+				return (
+					<span
+						className={cn(
+							"flex items-center gap-2",
+							shrinks ? "min-w-0 shrink truncate" : "shrink-0",
+						)}
+						// biome-ignore lint/suspicious/noArrayIndexKey: parts are positional
+						key={i}
+					>
+						{i > 0 && <span aria-hidden="true">·</span>}
+						{shrinks ? <span className="truncate">{node}</span> : node}
+					</span>
+				);
+			})}
 		</div>
 	);
 }
 
-export { CategoryTile, IconTile, RowBar } from "./lead";
+export { IconTile, RowBar } from "./lead";

@@ -7,7 +7,7 @@ import type { Basis } from "~/components/rows/types";
 import { Face, type FacePerson, faceColor } from "~/components/ui/avatar-face";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
-import { useMoneyText } from "./chart-frame";
+import { ChartEmpty, useMoneyText } from "./chart-frame";
 import { COLOR, seriesColor, THIN } from "./spec";
 
 export type BalanceSegment = {
@@ -65,6 +65,7 @@ export function BalanceBar({
 		centers.set(s, ((at + s.share / 2) / total) * 100);
 		at += s.share;
 	}
+	if (!segments.length) return <ChartEmpty height={THIN.balance * 4} />;
 	const seg = (s: BalanceSegment) => (
 		<Tip
 			content={t(

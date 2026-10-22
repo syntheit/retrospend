@@ -56,6 +56,7 @@
 		"amount": "Montant",
 		"actions": "Actions",
 		"yourSpending": "Tes dépenses",
-		"count": "{count, plural, one {# dépense} other {# dépenses}}"
+		"count": "{count, plural, one {# dépense} other {# dépenses}}",
+		"withoutRate": "{count, plural, one {# sans taux} other {# sans taux}}"
 	}
 }

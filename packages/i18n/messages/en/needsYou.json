@@ -3,7 +3,7 @@
 	"empty": "All clear",
 	"emptyHint": "Nothing needs you right now.",
 	"text": {
-		"assign": "Give {amount} a job",
+		"assign": "Give <amount></amount> a job",
 		"review": "Review {count} imported",
 		"confirmPayment": "{person} says they paid you",
 		"verify": "{person} added you to {title}",

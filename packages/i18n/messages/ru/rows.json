@@ -56,6 +56,7 @@
 		"amount": "Сумма",
 		"actions": "Действия",
 		"yourSpending": "Ваши расходы",
-		"count": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}"
+		"count": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}",
+		"withoutRate": "{count, plural, one {# без курса} few {# без курса} many {# без курса} other {# без курса}}"
 	}
 }

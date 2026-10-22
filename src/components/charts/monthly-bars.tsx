@@ -8,8 +8,10 @@ import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
 import { ChartContainer, ChartTooltip } from "~/components/ui/chart";
 import {
+	ChartEmpty,
 	ChartFrame,
 	ChartTip,
+	isEmptySeries,
 	useAxisTick,
 	useChartMotion,
 	useMoneyText,
@@ -55,16 +57,15 @@ export function MonthlyBars({
 			})),
 		[months, monthShort],
 	);
+	if (isEmptySeries(data.map((d) => d.value)))
+		return <ChartEmpty height={height} />;
 	const top = niceMax(Math.max(0, ...data.map((d) => d.value ?? 0)));
-	const focus = months[hi];
+	// Every month the chart shows, so a screen reader hears what a glance sees.
+	const list = months
+		.map((m) => `${month(m.month)} ${m.total ? text(m.total) : t("noData")}`)
+		.join(", ");
 	return (
-		<ChartFrame
-			height={height}
-			summary={t("bars.summary", {
-				month: focus ? month(focus.month) : "",
-				total: focus?.total ? text(focus.total) : t("noData"),
-			})}
-		>
+		<ChartFrame height={height} summary={t("bars.summary", { list })}>
 			<ChartContainer
 				className="aspect-auto size-full"
 				config={{ value: { label: t("bars.label"), color: COLOR.accent } }}

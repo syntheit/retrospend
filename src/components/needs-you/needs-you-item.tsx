@@ -11,8 +11,8 @@ import {
 	Wallet,
 } from "lucide-react";
 import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
-import { formatMoney } from "~/components/money/format";
+import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { Money } from "~/components/money/money";
 import { IconTile } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
@@ -43,12 +43,11 @@ const ACTION: Record<NeedsYouKind, string> = {
 /** The one sentence of an item, from its kind. */
 function useSentence() {
 	const t = useTranslations("needsYou.text");
-	const locale = useLocale();
-	return (item: NeedsYouItemVM): string => {
+	return (item: NeedsYouItemVM): ReactNode => {
 		switch (item.kind) {
 			case "assign":
-				return t("assign", {
-					amount: formatMoney(item.amount, { locale }) ?? "",
+				return t.rich("assign", {
+					amount: () => <Money value={item.amount} />,
 				});
 			case "review":
 				return t("review", { count: item.count });
@@ -103,11 +102,17 @@ export function NeedsYouItem({
 			<div className="text-body text-fg min-w-0 leading-snug">
 				{sentence}
 				{group && amount && (
-					<Money className="text-fg-3 text-meta block" value={amount} />
+					<Money
+						className="text-fg-3 text-meta block"
+						figure={item.figure}
+						value={amount}
+					/>
 				)}
 			</div>
 			{!group && (
-				<span className="text-fg-2">{amount && <Money value={amount} />}</span>
+				<span className="text-body text-fg-2">
+					{amount && <Money figure={item.figure} value={amount} />}
+				</span>
 			)}
 			{item.href ? (
 				<Button asChild kind="secondary" size="sm">

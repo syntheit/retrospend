@@ -1,8 +1,6 @@
 "use client";
 
-import { formatCompactAmount } from "@retrospend/domain/currency-format";
-import { fromMinor } from "@retrospend/domain/money-minor";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useSyncExternalStore } from "react";
 import { formatMoney, type MoneyValue } from "~/components/money/format";
 import { cn } from "~/lib/cn";
@@ -28,22 +26,40 @@ export function useChartMotion(): boolean {
 }
 
 /**
- * A compact axis label ("2.5M") for a value in minor units. Axis ticks are
- * approximate by nature; every exact amount on a chart (tooltip, legend)
- * goes through the one money formatter instead.
+ * A compact axis label ("2.5M") through the one money formatter's compact
+ * form, from minor units. The axis title names the currency, so the label
+ * leaves it out. Tick positions come from the chart scale, so they are
+ * snapped to whole minor units first.
  */
 export function useAxisTick(currency: string) {
 	const locale = useLocale();
 	return useCallback(
 		(minor: number) =>
-			minor === 0
-				? "0"
-				: formatCompactAmount(
-						Number(fromMinor({ minor: Math.round(minor), currency })),
-						"",
-						locale,
-					),
+			formatMoney(
+				{ minor: Math.round(minor), currency },
+				{ locale, compact: true, display: "none" },
+			),
 		[currency, locale],
+	);
+}
+
+/** True when a series has nothing to draw: no points, or every point a gap. */
+export function isEmptySeries(values: readonly (number | null)[]): boolean {
+	return !values.some((v) => v != null && Number.isFinite(v));
+}
+
+/** What a chart shows with no data (R14): one muted line, no axes. */
+export function ChartEmpty({ height }: { height: number }) {
+	const t = useTranslations("charts");
+	return (
+		<div
+			className="text-fg-3 text-small flex items-center justify-center"
+			role="img"
+			aria-label={t("empty")}
+			style={{ height }}
+		>
+			{t("empty")}
+		</div>
 	);
 }
 

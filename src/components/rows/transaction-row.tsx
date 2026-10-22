@@ -11,11 +11,11 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback } from "react";
 import { Money } from "~/components/money/money";
 import { FaceStack } from "~/components/ui/avatar-face";
+import { CategoryTile } from "~/components/ui/category-badge";
 import { StatusDot } from "~/components/ui/status-dot";
 import { cn } from "~/lib/cn";
 import { useRowDates } from "./dates";
 import {
-	CategoryTile,
 	IconTile,
 	Row,
 	type RowPassThrough,
@@ -76,6 +76,7 @@ export function TransactionAmount({ tx }: { tx: TransactionVM }) {
 	const top = (
 		<Money
 			className={tone}
+			figure={tx.figure}
 			sign={signed ? "exceptZero" : "auto"}
 			value={tx.amount}
 		/>
@@ -92,7 +93,7 @@ export function TransactionAmount({ tx }: { tx: TransactionVM }) {
 			<span className="flex flex-col items-end">
 				{top}
 				<span className={cn("whitespace-nowrap", muted)}>
-					{t("yourShare")} <Money value={tx.share} />
+					{t("yourShare")} <Money figure={tx.shareFigure} value={tx.share} />
 				</span>
 			</span>
 		);
@@ -100,6 +101,7 @@ export function TransactionAmount({ tx }: { tx: TransactionVM }) {
 		return (
 			<Money.pair
 				className={tone}
+				figure={tx.figure}
 				home={tx.home}
 				original={tx.amount}
 				tip={tx.rateTip}
@@ -125,6 +127,11 @@ export function TransactionWith({ tx }: { tx: TransactionVM }) {
 			)}
 		</span>
 	);
+}
+
+/** Whether a row carries a status word (TransactionStatus renders something). */
+export function hasStatus(tx: TransactionVM): boolean {
+	return !tx.reviewed || tx.waiting != null;
 }
 
 /** The status words a row can carry: not reviewed, waiting on you, rejected. */
@@ -169,20 +176,13 @@ export function TransactionRow({
 	const kindWord = useKindWord()(tx);
 	const dates = useRowDates(today);
 	const split = (tx.people?.length ?? 0) > 1;
-	const statuses = [
-		!tx.reviewed && <StatusDot key="r" kind="review" size="sm" />,
-		tx.waiting === "review" && (
-			<StatusDot key="w" kind="review" label={t("waiting")} size="sm" />
-		),
-		tx.waiting === "rejected" && (
-			<StatusDot key="x" kind="rejected" size="sm" />
-		),
-	].filter(Boolean);
-	const who = split ? (
-		<TransactionWith tx={tx} />
-	) : !hideProject && tx.project ? (
-		tx.project.name
-	) : null;
+	const category =
+		tx.category?.name ?? (isMoneyMove(tx.kind) ? null : t("other"));
+	const who = split
+		? { keep: <TransactionWith tx={tx} /> }
+		: !hideProject && tx.project
+			? tx.project.name
+			: null;
 	return (
 		<Row
 			{...rest}
@@ -194,9 +194,9 @@ export function TransactionRow({
 			sub={
 				<RowSub
 					parts={[
-						...statuses,
+						hasStatus(tx) && <TransactionStatus tx={tx} />,
 						kindWord,
-						tx.category?.name ?? (isMoneyMove(tx.kind) ? null : t("other")),
+						category && { shrink: category },
 						who,
 						showDate && dates.day(tx.date),
 					]}

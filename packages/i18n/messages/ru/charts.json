@@ -6,7 +6,7 @@
 	},
 	"bars": {
 		"label": "Потрачено",
-		"summary": "Расходы по месяцам. {month}: {total}"
+		"summary": "Расходы по месяцам: {list}"
 	},
 	"area": {
 		"label": "Капитал",
@@ -22,5 +22,6 @@
 		"summary": "Вам должны {owed}. Вы должны {owe}",
 		"owesYou": "{name}: должен вам {amount}",
 		"youOwe": "{name}: вы должны {amount}"
-	}
+	},
+	"empty": "Пока нет данных"
 }

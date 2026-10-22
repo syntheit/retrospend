@@ -214,3 +214,32 @@ describe("entity rows", () => {
 		expect(t).toContain("Skip");
 	});
 });
+
+describe("narrow rows (390)", () => {
+	it("the subline clips and the category gives way before the money does", () => {
+		const html = list(
+			h(TransactionRow, {
+				tx: { ...base, title: "Churrasco de despedida", reviewed: false },
+			}),
+			"group",
+		);
+		expect(html).toMatch(/class="[^"]*overflow-hidden[^"]*whitespace-nowrap/);
+		expect(html).toMatch(
+			/min-w-0 shrink truncate"><span aria-hidden="true">·<\/span><span class="truncate">Groceries/,
+		);
+	});
+
+	it("money in a row is body size (14px)", () => {
+		const html = list(h(TransactionRow, { tx: base }));
+		expect(html).toMatch(
+			/class="text-body relative z-10 flex flex-col items-end/,
+		);
+	});
+
+	it("amounts carry their figure id for the audit", () => {
+		const html = list(
+			h(TransactionRow, { tx: { ...base, figure: "expense.t1.amount" } }),
+		);
+		expect(html).toContain('data-figure="expense.t1.amount"');
+	});
+});

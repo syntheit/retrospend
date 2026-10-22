@@ -103,7 +103,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "category-badge",
 		status: "core",
-		job: "Category identity in a list or table row (tinted tile allowed in rows only, R25 amended)",
+		job: "Category identity in a list or table row: CategoryTile, the tinted tile with its glyph (rows only, R25 amended); CategoryBadge is the old name pill on today's pages",
 	},
 	{
 		file: "chart",

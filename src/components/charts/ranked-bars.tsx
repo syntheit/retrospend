@@ -6,7 +6,7 @@ import type { MoneyValue } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import type { CategoryRef } from "~/components/rows/types";
 import { getCategoryIcon } from "~/lib/category-icons";
-import { useMoneyText } from "./chart-frame";
+import { ChartEmpty, useMoneyText } from "./chart-frame";
 import { barShare, COLOR, categoryColor, seriesColor, THIN } from "./spec";
 
 export type RankedItem = {
@@ -28,6 +28,7 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 	const t = useTranslations("charts");
 	const text = useMoneyText();
 	const max = Math.max(0, ...items.map((i) => i.value.minor));
+	if (!items.length) return <ChartEmpty height={THIN.ranked * 8} />;
 	return (
 		<ul
 			aria-label={t("ranked.summary", {

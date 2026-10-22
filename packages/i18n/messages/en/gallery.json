@@ -11,5 +11,7 @@
 	"replaces": "Replaces:",
 	"noMatch": "No expenses match",
 	"noMatchHint": "Try removing a filter.",
-	"clearFilters": "Clear filters"
+	"clearFilters": "Clear filters",
+	"noExpenses": "No expenses yet",
+	"addExpense": "Add expense"
 }

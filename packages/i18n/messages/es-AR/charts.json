@@ -6,7 +6,7 @@
 	},
 	"bars": {
 		"label": "Gastado",
-		"summary": "Gasto por mes. {month}: {total}"
+		"summary": "Gasto por mes: {list}"
 	},
 	"area": {
 		"label": "Patrimonio",
@@ -22,5 +22,6 @@
 		"summary": "Te deben {owed}. Debés {owe}",
 		"owesYou": "{name}: te debe {amount}",
 		"youOwe": "{name}: le debés {amount}"
-	}
+	},
+	"empty": "Sin datos aún"
 }

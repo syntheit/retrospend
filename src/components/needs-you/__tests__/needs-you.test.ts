@@ -101,3 +101,31 @@ describe("GlanceStrip", () => {
 		expect(html).toContain("grid-flow-col");
 	});
 });
+
+describe("narrow layouts", () => {
+	it("GlanceStrip lays out by its own width, B is 2 by 2 when narrow", () => {
+		const a = render(h(GlanceStrip, { glance: GLANCE }));
+		expect(a).toContain("@container");
+		expect(a).toContain("@xl:grid-cols-[1fr_minmax(180px,360px)]");
+		const b = render(h(GlanceStrip, { glance: GLANCE, variant: "B" }));
+		expect(b).toContain("grid-cols-2");
+		expect(b).toContain("@xl:grid-flow-col");
+	});
+
+	it("the assign sentence carries the amount as Money; the figure sits on the amount column", () => {
+		const html = render(
+			h(NeedsYouList, {
+				items: [
+					{
+						id: "a",
+						kind: "assign",
+						amount: ars(85000000),
+						figure: "budget.notPlannedYet",
+					},
+				],
+			}),
+		);
+		expect(text(html)).toContain("Give ARS 850,000 a job");
+		expect(html.match(/data-figure="budget.notPlannedYet"/g)).toHaveLength(1);
+	});
+});

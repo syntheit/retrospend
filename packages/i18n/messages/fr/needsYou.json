@@ -3,7 +3,7 @@
 	"empty": "Tout est en ordre",
 	"emptyHint": "Rien ne t'attend pour l'instant.",
 	"text": {
-		"assign": "Donne une mission à {amount}",
+		"assign": "Donne une mission à <amount></amount>",
 		"review": "Vérifier {count} importées",
 		"confirmPayment": "{person} dit avoir payé",
 		"verify": "{person} t'a ajouté à {title}",
