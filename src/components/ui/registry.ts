@@ -64,7 +64,7 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "avatar-stack",
-		status: "core",
+		status: "legacy",
 		job: "Old faces stack on today's split rows; new code uses FaceStack from avatar-face",
 		use: "avatar-face (FaceStack)",
 	},
