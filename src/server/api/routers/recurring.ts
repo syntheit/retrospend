@@ -5,6 +5,7 @@ import { nextRecurringDate } from "~/lib/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { requireExchangeRate } from "~/server/exchange-rates";
 import { RateCache } from "~/server/services/rate-cache";
+import { listRecurringView } from "~/server/services/recurring-view.service";
 
 export const recurringRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -83,6 +84,11 @@ export const recurringRouter = createTRPCRouter({
 
 			return enrichedTemplates;
 		}),
+
+	/** The Recurring tab (v2): templates, due states and the cost summary as Money. */
+	listView: protectedProcedure.query(({ ctx }) =>
+		listRecurringView(ctx.db, ctx.session.user.id, ctx.timeZone),
+	),
 
 	get: protectedProcedure
 		.input(
