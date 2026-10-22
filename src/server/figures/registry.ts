@@ -13,6 +13,7 @@
  * registry.test.ts scans test sources for that literal and fails for any
  * registered id without one, so keep the title a literal, not a template.
  */
+import { accountFigures } from "~/server/services/accounts/figures";
 import { spentFigure } from "~/server/services/figures/spent";
 import {
 	balancePersonFigure,
@@ -211,4 +212,5 @@ export const figures = createFiguresRegistry<FigureDb>([
 	owedToYouFigure,
 	youOweFigure,
 	...projectFigures,
+	...accountFigures,
 ]);

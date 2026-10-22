@@ -1,6 +1,6 @@
 /**
  * Wealth router (batch 4): runway counts spending once and only what counts
- * toward analytics; balance updates use today's rate, not the stored one.
+ * toward analytics; closing, reopening, deleting and exporting accounts.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -61,7 +61,13 @@ describe("getRunwayStats", () => {
 	it("counts an amortized purchase once and skips excluded and draft expenses", async () => {
 		useExpenseTable(mockDb, [
 			// 600 USD laptop spread over 6 months: parent + 6 children of 100
-			{ date: new Date(2026, 4, 1), amount: 600, currency: "USD", amountInUSD: 600, isAmortizedParent: true },
+			{
+				date: new Date(2026, 4, 1),
+				amount: 600,
+				currency: "USD",
+				amountInUSD: 600,
+				isAmortizedParent: true,
+			},
 			...[4, 5, 6, 7, 8, 9].map((m) => ({
 				date: new Date(2026, m, 1),
 				amount: 100,
@@ -69,12 +75,31 @@ describe("getRunwayStats", () => {
 				amountInUSD: 100,
 				isAmortizedChild: true,
 			})),
-			{ date: new Date(2026, 8, 3), amount: 900, currency: "USD", amountInUSD: 900, excludeFromAnalytics: true },
-			{ date: new Date(2026, 8, 4), amount: 700, currency: "USD", amountInUSD: 700, status: "DRAFT" },
-			{ date: new Date(2026, 8, 5), amount: 300, currency: "USD", amountInUSD: 300 },
+			{
+				date: new Date(2026, 8, 3),
+				amount: 900,
+				currency: "USD",
+				amountInUSD: 900,
+				excludeFromAnalytics: true,
+			},
+			{
+				date: new Date(2026, 8, 4),
+				amount: 700,
+				currency: "USD",
+				amountInUSD: 700,
+				status: "DRAFT",
+			},
+			{
+				date: new Date(2026, 8, 5),
+				amount: 300,
+				currency: "USD",
+				amountInUSD: 300,
+			},
 		]);
 
-		const result = await callAndFlush(() => caller().getRunwayStats({ currency: "USD" }));
+		const result = await callAndFlush(() =>
+			caller().getRunwayStats({ currency: "USD" }),
+		);
 
 		expect(result.monthsActive).toBe(6);
 		expect(result.averageMonthlySpend).toBeCloseTo((600 + 300) / 6);
@@ -82,62 +107,30 @@ describe("getRunwayStats", () => {
 
 	it("ARS: ARS spending as entered, USD at the ARS rate", async () => {
 		useExpenseTable(mockDb, [
-			{ date: new Date(2026, 8, 1), amount: 600000, currency: "ARS", amountInUSD: 600 },
-			{ date: new Date(2026, 8, 2), amount: 100, currency: "USD", amountInUSD: 100 },
+			{
+				date: new Date(2026, 8, 1),
+				amount: 600000,
+				currency: "ARS",
+				amountInUSD: 600,
+			},
+			{
+				date: new Date(2026, 8, 2),
+				amount: 100,
+				currency: "USD",
+				amountInUSD: 100,
+			},
 		]);
 
-		const result = await callAndFlush(() => caller().getRunwayStats({ currency: "ARS" }));
+		const result = await callAndFlush(() =>
+			caller().getRunwayStats({ currency: "ARS" }),
+		);
 
 		expect(result.averageMonthlySpend).toBeCloseTo((600000 + 100 * 1560) / 6);
 	});
 });
 
-describe("updateAssetBalance", () => {
-	it("values the new balance at today's rate of the asset's type", async () => {
-		mockDb.assetAccount.findFirst.mockResolvedValue({
-			id: ASSET_ID,
-			userId: "user-1",
-			currency: "ARS",
-			exchangeRate: 900, // stale
-			exchangeRateType: "official",
-		});
-		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
-
-		await callAndFlush(() =>
-			caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: 1495000 }),
-		);
-
-		expect(mockDb.assetAccount.update).toHaveBeenCalledWith(
-			expect.objectContaining({
-				data: expect.objectContaining({ exchangeRate: 1495, exchangeRateType: "official" }),
-			}),
-		);
-		const snapshot = mockDb.assetSnapshot.upsert.mock.calls[0]![0] as {
-			create: { balanceInUSD: number };
-		};
-		expect(snapshot.create.balanceInUSD).toBeCloseTo(1000);
-	});
-
-	it("keeps a custom rate", async () => {
-		mockDb.assetAccount.findFirst.mockResolvedValue({
-			id: ASSET_ID,
-			userId: "user-1",
-			currency: "ARS",
-			exchangeRate: 2000,
-			exchangeRateType: "custom",
-		});
-		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
-
-		await callAndFlush(() =>
-			caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: -4000 }),
-		);
-
-		const snapshot = mockDb.assetSnapshot.upsert.mock.calls[0]![0] as {
-			create: { balanceInUSD: number };
-		};
-		expect(snapshot.create.balanceInUSD).toBeCloseTo(-2);
-	});
-});
+// updateAssetBalance runs account.updateBalance through the preview runner on
+// real Postgres now: src/server/services/accounts/accounts.pg.test.ts.
 
 describe("closing and deleting accounts", () => {
 	const openAccount = {
@@ -159,22 +152,6 @@ describe("closing and deleting accounts", () => {
 	};
 	const snapshotCall = () =>
 		mockDb.assetSnapshot.upsert.mock.calls[0]![0] as SnapshotCall;
-
-	it("updateAssetBalance records the account's currency, type and rate type on the snapshot", async () => {
-		mockDb.assetAccount.findFirst.mockResolvedValue(openAccount);
-		mockDb.assetAccount.update.mockResolvedValue({ id: ASSET_ID });
-
-		await callAndFlush(() =>
-			caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: 1000 }),
-		);
-
-		expect(snapshotCall().create).toMatchObject({
-			currency: "ARS",
-			type: "CASH",
-			exchangeRateType: "blue",
-		});
-		expect(snapshotCall().update).toMatchObject({ currency: "ARS" });
-	});
 
 	it("closeAsset sets closedAt and records a zero snapshot for today", async () => {
 		mockDb.assetAccount.findFirst.mockResolvedValue(openAccount);
@@ -212,20 +189,6 @@ describe("closing and deleting accounts", () => {
 			callAndFlush(() => caller().closeAsset({ id: ASSET_ID })),
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		expect(mockDb.assetAccount.update).not.toHaveBeenCalled();
-	});
-
-	it("a closed account takes no balance updates until it is reopened", async () => {
-		mockDb.assetAccount.findFirst.mockResolvedValue({
-			...openAccount,
-			closedAt: new Date(2026, 8, 1),
-		});
-
-		await expect(
-			callAndFlush(() =>
-				caller().updateAssetBalance({ assetId: ASSET_ID, newBalance: 5 }),
-			),
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		expect(mockDb.assetSnapshot.upsert).not.toHaveBeenCalled();
 	});
 
 	it("reopenAsset clears closedAt and records the kept balance for today", async () => {

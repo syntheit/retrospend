@@ -27,11 +27,11 @@ export interface Valued {
 	readonly currency: string;
 	readonly rateType: string | null;
 	/** The rate stored on the account (currency per USD, USD per coin). */
-	readonly storedRate: Decimal | number | string | null;
+	readonly storedRate: { toString(): string } | number | null;
 }
 
-const validRate = (rate: Decimal | number | string | null) =>
-	rate !== null && dec(rate.toString()).gt(0) ? dec(rate.toString()) : null;
+const validRate = (rate: Valued["storedRate"]) =>
+	rate !== null && dec(String(rate)).gt(0) ? dec(String(rate)) : null;
 
 /** USD per one unit, from a rate in the stored convention (fiat per USD, USD per coin). */
 const usdPer = (currency: string, rate: Decimal) =>

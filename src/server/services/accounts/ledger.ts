@@ -100,10 +100,17 @@ export async function ratePickFor(
 	return findExchangeRatesForDates(tx, currencies);
 }
 
+/** The fields that value an account (its currency, rate type and stored rate). */
+export interface Valuable {
+	readonly currency: string;
+	readonly exchangeRateType: string | null;
+	readonly exchangeRate: { toString(): string } | number | null;
+}
+
 /** What `amount` of a place is worth at home on `date`: an account at its own rate type, Not tracked at the default pick. */
 export function bookHome(
 	pick: RatePick,
-	place: { currency: string; account: AccountRow | null },
+	place: { currency: string; account: Valuable | null },
 	amount: Decimal,
 	homeCurrency: string,
 	date: Date,
@@ -146,6 +153,8 @@ export async function writeLeg(
 			source: leg.source,
 			transferId: leg.transferId ?? null,
 			expenseId: leg.expenseId ?? null,
+			// The app clock, like asset_snapshot.recordedAt, so the two order the same way.
+			createdAt: new Date(),
 		},
 	});
 	if (!account) return null;

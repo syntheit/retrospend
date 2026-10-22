@@ -1,8 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MissingRateError } from "~/lib/money";
 import { createMockDb } from "~/test/mock-db";
-import { DEFAULT_RATES, RATE_DATE, type TestRateRow, useRateTable } from "~/test/rate-table";
+import {
+	DEFAULT_RATES,
+	RATE_DATE,
+	type TestRateRow,
+	useRateTable,
+} from "~/test/rate-table";
 import { WealthService } from "../wealth.service";
 
 // calculateBalanceInUSD is synchronous and never touches the db.
@@ -23,7 +28,10 @@ describe("WealthService.calculateBalanceInUSD", () => {
 
 	it("negative balances (overdrafts) convert instead of throwing", () => {
 		expect(svc.calculateBalanceInUSD(-156000, 1560, "ARS")).toBeCloseTo(-100);
-		expect(svc.calculateBalanceInUSD(-5000, 163.83, "JPY")).toBeCloseTo(-30.52, 2);
+		expect(svc.calculateBalanceInUSD(-5000, 163.83, "JPY")).toBeCloseTo(
+			-30.52,
+			2,
+		);
 	});
 
 	it("throws for a zero or negative rate", () => {
@@ -43,7 +51,9 @@ describe("WealthService.resolveExchangeRate", () => {
 	});
 
 	it("USD is always 1", async () => {
-		await expect(service.resolveExchangeRate("USD", RATE_DATE)).resolves.toEqual({
+		await expect(
+			service.resolveExchangeRate("USD", RATE_DATE),
+		).resolves.toEqual({
 			rate: 1,
 			rateType: null,
 		});
@@ -51,18 +61,26 @@ describe("WealthService.resolveExchangeRate", () => {
 
 	it("looks up the requested type instead of trusting the sent number", async () => {
 		await expect(
-			service.resolveExchangeRate("ARS", RATE_DATE, { rate: 0.00067, type: "official" }),
+			service.resolveExchangeRate("ARS", RATE_DATE, {
+				rate: 0.00067,
+				type: "official",
+			}),
 		).resolves.toEqual({ rate: 1495, rateType: "official" });
 	});
 
 	it("keeps a custom rate as typed", async () => {
 		await expect(
-			service.resolveExchangeRate("ARS", RATE_DATE, { rate: 1700, type: "custom" }),
+			service.resolveExchangeRate("ARS", RATE_DATE, {
+				rate: 1700,
+				type: "custom",
+			}),
 		).resolves.toEqual({ rate: 1700, rateType: "custom" });
 	});
 
 	it("a currency without rates is a BAD_REQUEST", async () => {
-		await expect(service.resolveExchangeRate("XYZ", RATE_DATE)).rejects.toMatchObject({
+		await expect(
+			service.resolveExchangeRate("XYZ", RATE_DATE),
+		).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		});
 	});
@@ -92,6 +110,11 @@ describe("WealthService.getDashboardSummary", () => {
 	beforeEach(() => {
 		db = createMockDb();
 		useRateTable(db);
+		// No money moves and no rate type switches: today's history (M4).
+		Object.assign(db, {
+			accountLeg: { findMany: vi.fn().mockResolvedValue([]) },
+			assetRateType: { findMany: vi.fn().mockResolvedValue([]) },
+		});
 		service = new WealthService(db as never);
 		db.assetSnapshot.findMany.mockResolvedValue([]);
 		db.assetSnapshot.findFirst.mockResolvedValue(null);
@@ -99,22 +122,48 @@ describe("WealthService.getDashboardSummary", () => {
 
 	it("ARS home: ARS balance as is, USD at the ARS rate, crypto via USD", async () => {
 		db.assetAccount.findMany.mockResolvedValue([
-			asset({ id: "pesos", currency: "ARS", balance: 1000000, exchangeRateType: "blue" }),
+			asset({
+				id: "pesos",
+				currency: "ARS",
+				balance: 1000000,
+				exchangeRateType: "blue",
+			}),
 			asset({ id: "dollars", currency: "USD", balance: 500 }),
-			asset({ id: "btc", currency: "BTC", balance: 0.01, exchangeRateType: "crypto", isLiquid: false }),
+			asset({
+				id: "btc",
+				currency: "BTC",
+				balance: 0.01,
+				exchangeRateType: "crypto",
+				isLiquid: false,
+			}),
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "ARS");
 
-		expect(summary.totalNetWorth).toBeCloseTo(1000000 + 500 * 1560 + 645.459 * 1560, 2);
+		expect(summary.totalNetWorth).toBeCloseTo(
+			1000000 + 500 * 1560 + 645.459 * 1560,
+			2,
+		);
 		expect(summary.totalLiquidAssets).toBeCloseTo(1000000 + 500 * 1560, 2);
-		expect(summary.assets.find((a) => a.id === "pesos")!.balanceInTargetCurrency).toBe(1000000);
+		expect(
+			summary.assets.find((a) => a.id === "pesos")!.balanceInTargetCurrency,
+		).toBe(1000000);
 	});
 
 	it("USD home: each asset uses its own rate type", async () => {
 		db.assetAccount.findMany.mockResolvedValue([
-			asset({ id: "blue", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
-			asset({ id: "official", currency: "ARS", balance: 1495000, exchangeRateType: "official" }),
+			asset({
+				id: "blue",
+				currency: "ARS",
+				balance: 1560000,
+				exchangeRateType: "blue",
+			}),
+			asset({
+				id: "official",
+				currency: "ARS",
+				balance: 1495000,
+				exchangeRateType: "official",
+			}),
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "USD");
@@ -125,7 +174,12 @@ describe("WealthService.getDashboardSummary", () => {
 
 	it("a custom rate wins over the table", async () => {
 		db.assetAccount.findMany.mockResolvedValue([
-			asset({ currency: "ARS", balance: 200000, exchangeRate: 2000, exchangeRateType: "custom" }),
+			asset({
+				currency: "ARS",
+				balance: 200000,
+				exchangeRate: 2000,
+				exchangeRateType: "custom",
+			}),
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "USD");
@@ -135,9 +189,25 @@ describe("WealthService.getDashboardSummary", () => {
 
 	it("liabilities subtract, negative balances included", async () => {
 		db.assetAccount.findMany.mockResolvedValue([
-			asset({ id: "cash", currency: "EUR", balance: 878.7, exchangeRateType: "official" }),
-			asset({ id: "card", type: "LIABILITY_CREDIT_CARD", currency: "USD", balance: 300, interestRate: 40 }),
-			asset({ id: "overdraft", currency: "ARS", balance: -156000, exchangeRateType: "blue" }),
+			asset({
+				id: "cash",
+				currency: "EUR",
+				balance: 878.7,
+				exchangeRateType: "official",
+			}),
+			asset({
+				id: "card",
+				type: "LIABILITY_CREDIT_CARD",
+				currency: "USD",
+				balance: 300,
+				interestRate: 40,
+			}),
+			asset({
+				id: "overdraft",
+				currency: "ARS",
+				balance: -156000,
+				exchangeRateType: "blue",
+			}),
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "USD");
@@ -163,7 +233,12 @@ describe("WealthService.getDashboardSummary", () => {
 
 	it("falls back to the asset's stored rate when its currency has no table rate", async () => {
 		db.assetAccount.findMany.mockResolvedValue([
-			asset({ currency: "XYZ", balance: 1000, exchangeRate: 10, exchangeRateType: "official" }),
+			asset({
+				currency: "XYZ",
+				balance: 1000,
+				exchangeRate: 10,
+				exchangeRateType: "official",
+			}),
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "USD");
@@ -175,9 +250,9 @@ describe("WealthService.getDashboardSummary", () => {
 	it("a home currency with no rate is an error", async () => {
 		db.assetAccount.findMany.mockResolvedValue([asset({ balance: 100 })]);
 
-		await expect(service.getDashboardSummary("user-1", "XYZ")).rejects.toBeInstanceOf(
-			MissingRateError,
-		);
+		await expect(
+			service.getDashboardSummary("user-1", "XYZ"),
+		).rejects.toBeInstanceOf(MissingRateError);
 	});
 
 	it("history values each day at that day's rates, not today's", async () => {
@@ -189,10 +264,20 @@ describe("WealthService.getDashboardSummary", () => {
 		];
 		useRateTable(db, rows);
 		db.assetAccount.findMany.mockResolvedValue([
-			asset({ id: "pesos", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+			asset({
+				id: "pesos",
+				currency: "ARS",
+				balance: 1560000,
+				exchangeRateType: "blue",
+			}),
 		]);
 		db.assetSnapshot.findMany.mockResolvedValue([
-			{ accountId: "pesos", date: new Date("2026-03-10T00:00:00Z"), balance: 1000000, balanceInUSD: 1000 },
+			{
+				accountId: "pesos",
+				date: new Date("2026-03-10T00:00:00Z"),
+				balance: 1000000,
+				balanceInUSD: 1000,
+			},
 		]);
 
 		const usdHome = await service.getDashboardSummary("user-1", "USD");
@@ -212,12 +297,19 @@ describe("WealthService.getDashboardSummary", () => {
 			asset({ id: "odd", currency: "XYZ", balance: 5 }),
 		]);
 		db.assetSnapshot.findMany.mockResolvedValue([
-			{ accountId: "odd", date: new Date("2026-03-10T00:00:00Z"), balance: 5, balanceInUSD: 42 },
+			{
+				accountId: "odd",
+				date: new Date("2026-03-10T00:00:00Z"),
+				balance: 5,
+				balanceInUSD: 42,
+			},
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "USD");
 
-		expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBe(42);
+		expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBe(
+			42,
+		);
 	});
 
 	it("netWorth30DaysAgo is null, not 0, with no history that old", async () => {
@@ -230,9 +322,16 @@ describe("WealthService.getDashboardSummary", () => {
 	});
 
 	it("netWorth30DaysAgo is the last history point at least 30 days old", async () => {
-		db.assetAccount.findMany.mockResolvedValue([asset({ id: "cash", balance: 1000 })]);
+		db.assetAccount.findMany.mockResolvedValue([
+			asset({ id: "cash", balance: 1000 }),
+		]);
 		db.assetSnapshot.findMany.mockResolvedValue([
-			{ accountId: "cash", date: new Date("2020-01-10T00:00:00Z"), balance: 400, balanceInUSD: 400 },
+			{
+				accountId: "cash",
+				date: new Date("2020-01-10T00:00:00Z"),
+				balance: 400,
+				balanceInUSD: 400,
+			},
 		]);
 
 		const summary = await service.getDashboardSummary("user-1", "USD");
@@ -278,7 +377,8 @@ describe("WealthService.getDashboardSummary", () => {
 			]);
 
 			const summary = await service.getDashboardSummary("user-1", "USD");
-			const at = (date: string) => summary.history.find((h) => h.date === date)!.amount;
+			const at = (date: string) =>
+				summary.history.find((h) => h.date === date)!.amount;
 
 			expect(at("2026-03-10")).toBe(500);
 			expect(at("2026-04-01")).toBe(1500);
@@ -294,7 +394,8 @@ describe("WealthService.getDashboardSummary", () => {
 			]);
 
 			const summary = await service.getDashboardSummary("user-1", "USD");
-			const at = (date: string) => summary.history.find((h) => h.date === date)!.amount;
+			const at = (date: string) =>
+				summary.history.find((h) => h.date === date)!.amount;
 
 			expect(at("2026-04-30")).toBe(1500);
 			expect(at("2026-05-01")).toBe(1000);
@@ -309,24 +410,38 @@ describe("WealthService.getDashboardSummary", () => {
 			expect(summary.assets.map((a) => a.id)).toEqual(["open"]);
 			expect(summary.history.at(-1)!.amount).toBe(1000);
 			expect(summary.closedAssets).toEqual([
-				expect.objectContaining({ id: "gone", balance: 500, closedAt: CLOSED_AT }),
+				expect.objectContaining({
+					id: "gone",
+					balance: 500,
+					closedAt: CLOSED_AT,
+				}),
 			]);
 		});
 
 		it("an account closed before the history window adds nothing to it", async () => {
 			db.assetAccount.findMany.mockResolvedValue([
 				asset({ id: "open", balance: 1000 }),
-				asset({ id: "old", balance: 500, closedAt: new Date("2020-01-01T00:00:00Z") }),
+				asset({
+					id: "old",
+					balance: 500,
+					closedAt: new Date("2020-01-01T00:00:00Z"),
+				}),
 			]);
 			db.assetSnapshot.findFirst.mockImplementation(
 				async (args: { where: { accountId: string } }) =>
-					args.where.accountId === "old" ? snap("old", "2019-12-01", 500) : null,
+					args.where.accountId === "old"
+						? snap("old", "2019-12-01", 500)
+						: null,
 			);
-			db.assetSnapshot.findMany.mockResolvedValue([snap("open", "2026-04-01", 1000)]);
+			db.assetSnapshot.findMany.mockResolvedValue([
+				snap("open", "2026-04-01", 1000),
+			]);
 
 			const summary = await service.getDashboardSummary("user-1", "USD");
 
-			expect(summary.history.find((h) => h.date === "2026-04-01")!.amount).toBe(1000);
+			expect(summary.history.find((h) => h.date === "2026-04-01")!.amount).toBe(
+				1000,
+			);
 		});
 	});
 
@@ -361,13 +476,20 @@ describe("WealthService.getDashboardSummary", () => {
 			const summary = await service.getDashboardSummary("user-1", "USD");
 
 			// 1M ARS at that day's blue rate, not 1M "USD"
-			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+			expect(
+				summary.history.find((h) => h.date === "2026-03-10")!.amount,
+			).toBeCloseTo(1000);
 			expect(summary.totalNetWorth).toBe(1200);
 		});
 
 		it("a rate type change does not revalue old snapshots", async () => {
 			db.assetAccount.findMany.mockResolvedValue([
-				asset({ id: "acct", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+				asset({
+					id: "acct",
+					currency: "ARS",
+					balance: 1560000,
+					exchangeRateType: "blue",
+				}),
 			]);
 			db.assetSnapshot.findMany.mockResolvedValue([
 				{
@@ -384,11 +506,15 @@ describe("WealthService.getDashboardSummary", () => {
 			const summary = await service.getDashboardSummary("user-1", "USD");
 
 			// official 800 that day, not blue 1000
-			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+			expect(
+				summary.history.find((h) => h.date === "2026-03-10")!.amount,
+			).toBeCloseTo(1000);
 		});
 
 		it("a type change does not move old snapshots between assets and liabilities", async () => {
-			db.assetAccount.findMany.mockResolvedValue([asset({ id: "acct", balance: 50 })]);
+			db.assetAccount.findMany.mockResolvedValue([
+				asset({ id: "acct", balance: 50 }),
+			]);
 			db.assetSnapshot.findMany.mockResolvedValue([
 				{
 					accountId: "acct",
@@ -410,7 +536,12 @@ describe("WealthService.getDashboardSummary", () => {
 
 		it("a custom rate typed back then is taken from the recorded USD value", async () => {
 			db.assetAccount.findMany.mockResolvedValue([
-				asset({ id: "acct", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+				asset({
+					id: "acct",
+					currency: "ARS",
+					balance: 1560000,
+					exchangeRateType: "blue",
+				}),
 			]);
 			db.assetSnapshot.findMany.mockResolvedValue([
 				{
@@ -426,12 +557,19 @@ describe("WealthService.getDashboardSummary", () => {
 
 			const summary = await service.getDashboardSummary("user-1", "USD");
 
-			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+			expect(
+				summary.history.find((h) => h.date === "2026-03-10")!.amount,
+			).toBeCloseTo(1000);
 		});
 
 		it("snapshots older than these columns fall back to the account's", async () => {
 			db.assetAccount.findMany.mockResolvedValue([
-				asset({ id: "acct", currency: "ARS", balance: 1560000, exchangeRateType: "blue" }),
+				asset({
+					id: "acct",
+					currency: "ARS",
+					balance: 1560000,
+					exchangeRateType: "blue",
+				}),
 			]);
 			db.assetSnapshot.findMany.mockResolvedValue([
 				{
@@ -447,7 +585,9 @@ describe("WealthService.getDashboardSummary", () => {
 
 			const summary = await service.getDashboardSummary("user-1", "USD");
 
-			expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBeCloseTo(1000);
+			expect(
+				summary.history.find((h) => h.date === "2026-03-10")!.amount,
+			).toBeCloseTo(1000);
 		});
 	});
 });
