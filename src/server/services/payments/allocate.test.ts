@@ -125,6 +125,31 @@ describe("allocatePayment", () => {
 		]);
 	});
 
+	it("everything brings every scope to zero across several projects, cash exactly the net", () => {
+		const lines = [
+			{ scope: "a", currency: "USD", owed: 1000, oldest: "2026-10-01" },
+			{ scope: "b", currency: "USD", owed: 4500, oldest: "2026-10-02" },
+			{ scope: null, currency: "USD", owed: 500, oldest: "2026-10-03" },
+			{ scope: "c", currency: "USD", owed: -1200, oldest: "2026-10-04" },
+			{ scope: "d", currency: "USD", owed: -800, oldest: "2026-10-05" },
+		];
+		const a = allocatePayment({
+			lines,
+			currency: "USD",
+			amount: null,
+			quotes: new Map(),
+		});
+		expect(a.amount).toBe(4000);
+		const left = new Map(lines.map((l) => [l.scope, l.owed]));
+		for (const r of a.rows)
+			left.set(r.scope, (left.get(r.scope) ?? 0) - r.amount);
+		for (const o of a.offsets) {
+			const sign = o.from === "payer" ? -1 : 1;
+			left.set(o.scope, (left.get(o.scope) ?? 0) + sign * o.amount);
+		}
+		expect([...left.values()].every((v) => v === 0)).toBe(true);
+	});
+
 	it("an overpayment is reported and booked Outside projects only when allowed", () => {
 		const lines = [
 			{ scope: null, currency: "ARS", owed: 900_000, oldest: "2026-10-03" },

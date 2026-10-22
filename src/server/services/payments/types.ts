@@ -34,8 +34,11 @@ export interface Quote {
 	readonly rateType: string;
 }
 
-/** Restricts an allocation to some scopes, and optionally one currency in each ("Apply to"). */
+/**
+ * Restricts an allocation ("Apply to"): a scope (omitted = every scope) and
+ * optionally one currency in it. `{ currency: "USD" }` pays USD debts only.
+ */
 export interface ApplyTo {
-	readonly scope: Scope;
+	readonly scope?: Scope;
 	readonly currency?: string;
 }

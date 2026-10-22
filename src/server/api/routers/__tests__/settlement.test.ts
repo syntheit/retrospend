@@ -1,336 +1,197 @@
 /**
  * Settlement Authorization Tests
  *
- * Tests SettlementService directly (not through tRPC) to verify:
+ * Tests SettlementService directly (not through tRPC), on the stateful
+ * in-memory DB, to verify:
  * - Only the payee can confirm a settlement
  * - Only the payer can delete a pending settlement
+ * - Only auto-finalized payments to a shadow or guest can be voided
  * - Self-settlements are rejected
  * - Confirmed settlements are immutable
  */
-import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// ── Mocks ─────────────────────────────────────────────────────────────────
-
-vi.mock("~/server/services/shared-expenses/audit-log", () => ({
-	logAudit: vi.fn().mockResolvedValue(undefined),
-}));
 
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
 }));
 
-vi.mock("~/server/services/shared-expenses/balance", () => ({
-	computeBalance: vi.fn().mockResolvedValue({ byCurrency: { USD: -100 } }),
-	computeBalanceByProject: vi
-		.fn()
-		.mockResolvedValue(new Map([[null, { USD: -100 }]])),
-}));
-
-// ── Import under test ─────────────────────────────────────────────────────
-
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
+import {
+	addShadowProfile,
+	createStatefulDb,
+	makeGuestRef,
+	makeUserRef,
+} from "~/server/services/shared-expenses/test-utils";
+import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 
-// ── Mock DB factory ───────────────────────────────────────────────────────
+const PAYER = "payer-user";
+const PAYEE = "payee-user";
+const payerRef = makeUserRef(PAYER);
+const payeeRef = makeUserRef(PAYEE);
 
-function makeMockDb() {
-	const settlement = {
-		findUnique: vi.fn(),
-		create: vi.fn().mockResolvedValue({ id: "s-new" }),
-		// Group writes: every row of the (single-row) group matches.
-		updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-		deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
-		findMany: vi.fn().mockResolvedValue([]),
-	};
-	return {
-		settlement,
-		sharedTransaction: {
-			count: vi.fn().mockResolvedValue(1), // assert relationship passes by default
-		},
-		shadowProfile: {
-			findUnique: vi.fn(),
-		},
-		$transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
-			cb({
-				settlement,
-				$executeRaw: vi.fn().mockResolvedValue(1),
-				auditLog: { create: vi.fn().mockResolvedValue({}) },
-			}),
-		),
-	};
-}
+let db: ReturnType<typeof createStatefulDb>;
 
-function makeSettlement(overrides: Record<string, unknown> = {}) {
-	return {
-		id: "s-1",
-		fromParticipantType: "user" as const,
-		fromParticipantId: "payer-user",
-		toParticipantType: "user" as const,
-		toParticipantId: "payee-user",
+/** The payer owes `to` 100 USD on one shared expense. */
+function seedDebt(to: ParticipantRef) {
+	const txId = `tx-${db._stores.transactions.size + 1}`;
+	db._stores.transactions.set(txId, {
+		id: txId,
+		description: "Dinner",
 		amount: 100,
 		currency: "USD",
-		convertedAmount: null,
-		convertedCurrency: null,
-		exchangeRateUsed: null,
-		paymentMethod: null,
-		note: null,
-		confirmedByPayer: true,
-		confirmedByPayee: false,
-		status: "PROPOSED" as const,
-		initiatedAt: new Date(),
-		settledAt: null,
-		...overrides,
-	};
+		date: new Date("2026-03-10"),
+		paidByType: to.participantType,
+		paidById: to.participantId,
+		createdByType: to.participantType,
+		createdById: to.participantId,
+		splitMode: "EXACT",
+		projectId: null,
+		billingPeriodId: null,
+		isLocked: false,
+		notes: null,
+		receiptUrl: null,
+		categoryId: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	});
+	for (const [ref, share] of [
+		[payerRef, 100],
+		[to, 0],
+	] as const) {
+		const id = `sp-${db._stores.splits.size + 1}`;
+		db._stores.splits.set(id, {
+			id,
+			transactionId: txId,
+			participantType: ref.participantType,
+			participantId: ref.participantId,
+			shareAmount: share,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "ACCEPTED",
+			verifiedAt: new Date(),
+			rejectionReason: null,
+			hasUnseenChanges: false,
+		});
+	}
 }
 
-// ── Tests: confirmSettlement ──────────────────────────────────────────────
+const as = (userId: string) => new SettlementService(db as never, userId);
+
+async function pay(to: ParticipantRef = payeeRef) {
+	seedDebt(to);
+	const { settlement } = await as(PAYER).initiateSettlement({
+		toParticipant: to,
+		amount: 50,
+		currency: "USD",
+	});
+	return settlement.id;
+}
+
+beforeEach(() => {
+	db = createStatefulDb();
+});
 
 describe("SettlementService.confirmSettlement", () => {
 	it("payee can confirm settlement", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeSettlement());
-		// Service is constructed with payee's userId
-		const svc = new SettlementService(db as never, "payee-user");
-		const result = await svc.confirmSettlement("s-1");
-		expect(db.settlement.updateMany).toHaveBeenCalledWith(
-			expect.objectContaining({
-				where: { id: { in: ["s-1"] }, status: { in: ["PROPOSED"] } },
-				data: expect.objectContaining({ confirmedByPayee: true, status: "FINALIZED" }),
-			}),
-		);
-		expect(result).toBeTruthy();
+		const id = await pay();
+		const result = await as(PAYEE).confirmSettlement(id);
+		expect(result).toMatchObject({ status: "FINALIZED", confirmedByPayee: true });
 	});
 
-	it("payer cannot confirm their own settlement", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeSettlement());
-		// Payer tries to confirm - toParticipantId is "payee-user", not "payer-user"
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(svc.confirmSettlement("s-1")).rejects.toMatchObject({
+	it("payer and third parties cannot confirm", async () => {
+		const id = await pay();
+		await expect(as(PAYER).confirmSettlement(id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+		await expect(as("random-user").confirmSettlement(id)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
 	});
 
-	it("third party cannot confirm settlement", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeSettlement());
-		const svc = new SettlementService(db as never, "random-user");
-		await expect(svc.confirmSettlement("s-1")).rejects.toMatchObject({
-			code: "FORBIDDEN",
-		});
-	});
-
-	it("already-confirmed settlement throws BAD_REQUEST", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(
-			makeSettlement({ confirmedByPayee: true, status: "FINALIZED" }),
-		);
-		const svc = new SettlementService(db as never, "payee-user");
-		await expect(svc.confirmSettlement("s-1")).rejects.toMatchObject({
-			code: "BAD_REQUEST",
-		});
-	});
-
-	it("non-existent settlement throws NOT_FOUND", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(null);
-		const svc = new SettlementService(db as never, "payee-user");
-		await expect(svc.confirmSettlement("missing-id")).rejects.toMatchObject({
+	it("already-confirmed settlement throws BAD_REQUEST, a missing one NOT_FOUND", async () => {
+		const id = await pay();
+		await as(PAYEE).confirmSettlement(id);
+		await expect(as(PAYEE).confirmSettlement(id)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(as(PAYEE).confirmSettlement("missing-id")).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 	});
 });
-
-// ── Tests: deletePendingSettlement ────────────────────────────────────────
 
 describe("SettlementService.deletePendingSettlement", () => {
 	it("payer can delete their pending settlement", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeSettlement());
-		const svc = new SettlementService(db as never, "payer-user");
-		const result = await svc.deletePendingSettlement("s-1");
-		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
-			where: { id: { in: ["s-1"] }, status: { in: ["PROPOSED", "REJECTED"] } },
-		});
-		expect(result).toEqual({ success: true });
+		const id = await pay();
+		expect(await as(PAYER).deletePendingSettlement(id)).toEqual({ success: true });
+		expect(db._stores.settlements.size).toBe(0);
+		expect(db._stores.payments.size).toBe(0);
 	});
 
-	it("payee cannot delete a settlement they did not initiate", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeSettlement());
-		const svc = new SettlementService(db as never, "payee-user");
-		await expect(svc.deletePendingSettlement("s-1")).rejects.toMatchObject({
+	it("payee cannot delete it, and a confirmed one cannot be deleted", async () => {
+		const id = await pay();
+		await expect(as(PAYEE).deletePendingSettlement(id)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-	});
-
-	it("confirmed settlement cannot be deleted", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(
-			makeSettlement({ confirmedByPayee: true, status: "FINALIZED" }),
-		);
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(svc.deletePendingSettlement("s-1")).rejects.toMatchObject({
+		await as(PAYEE).confirmSettlement(id);
+		await expect(as(PAYER).deletePendingSettlement(id)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-	});
-
-	it("non-existent settlement throws NOT_FOUND", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(null);
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(svc.deletePendingSettlement("ghost-id")).rejects.toMatchObject({
+		await expect(as(PAYER).deletePendingSettlement("ghost-id")).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 	});
 });
 
-// ── Tests: voidAutoFinalizedSettlement ────────────────────────────────────
-
-/** An auto-finalized settlement whose payee is a non-user (shadow/guest). */
-function makeAutoFinalized(overrides: Record<string, unknown> = {}) {
-	return makeSettlement({
-		toParticipantType: "shadow" as const,
-		toParticipantId: "shadow-1",
-		confirmedByPayee: true,
-		status: "FINALIZED" as const,
-		settledAt: new Date(),
-		autoConfirmedReason: "Recipient is a shadow and cannot confirm",
-		...overrides,
-	});
-}
-
 describe("SettlementService.voidAutoFinalizedSettlement", () => {
-	it("payer can void an auto-finalized shadow settlement (hard delete)", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeAutoFinalized());
-		const svc = new SettlementService(db as never, "payer-user");
-		const result = await svc.voidAutoFinalizedSettlement("s-1");
-		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
-			where: { id: { in: ["s-1"] }, status: { in: ["FINALIZED"] } },
-		});
-		expect(result).toEqual({ success: true });
+	it("payer can void an auto-finalized shadow or guest settlement (hard delete)", async () => {
+		const shadow: ParticipantRef = {
+			participantType: "shadow",
+			participantId: addShadowProfile(db, { createdById: PAYER, name: "Ghost" }).id,
+		};
+		for (const to of [shadow, makeGuestRef("guest-1")]) {
+			const id = await pay(to);
+			expect(await as(PAYER).voidAutoFinalizedSettlement(id)).toEqual({ success: true });
+		}
+		expect(db._stores.settlements.size).toBe(0);
+		expect(db._stores.payments.size).toBe(0);
 	});
 
-	it("payer can void an auto-finalized guest settlement", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(
-			makeAutoFinalized({
-				toParticipantType: "guest",
-				toParticipantId: "guest-1",
-				autoConfirmedReason: "Recipient is a guest and cannot confirm",
-			}),
-		);
-		const svc = new SettlementService(db as never, "payer-user");
-		const result = await svc.voidAutoFinalizedSettlement("s-1");
-		expect(db.settlement.deleteMany).toHaveBeenCalledWith({
-			where: { id: { in: ["s-1"] }, status: { in: ["FINALIZED"] } },
-		});
-		expect(result).toEqual({ success: true });
-	});
-
-	it("non-payer cannot void", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(makeAutoFinalized());
-		const svc = new SettlementService(db as never, "someone-else");
-		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
+	it("non-payer cannot void, nor anyone a payment to a real user", async () => {
+		const shadow: ParticipantRef = {
+			participantType: "shadow",
+			participantId: addShadowProfile(db, { createdById: PAYER, name: "Ghost" }).id,
+		};
+		const toShadow = await pay(shadow);
+		await expect(as("someone-else").voidAutoFinalizedSettlement(toShadow)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
-	});
-
-	it("cannot void a settlement to a real USER payee", async () => {
-		const db = makeMockDb();
-		// Payee is a user; even if it were somehow finalized, mutual agreement is required.
-		db.settlement.findUnique.mockResolvedValue(
-			makeAutoFinalized({
-				toParticipantType: "user",
-				toParticipantId: "payee-user",
-			}),
-		);
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
+		// Pending: delete it instead. Confirmed by a real user: protected.
+		const toUser = await pay(payeeRef);
+		await expect(as(PAYER).voidAutoFinalizedSettlement(toUser)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+		await as(PAYEE).confirmSettlement(toUser);
+		await expect(as(PAYER).voidAutoFinalizedSettlement(toUser)).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
-		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
-	});
-
-	it("cannot void a genuinely confirmed settlement (no autoConfirmedReason)", async () => {
-		const db = makeMockDb();
-		// FINALIZED + confirmed but autoConfirmedReason is null -> a real agreement.
-		db.settlement.findUnique.mockResolvedValue(
-			makeAutoFinalized({ autoConfirmedReason: null }),
-		);
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
-			code: "BAD_REQUEST",
+		await expect(as(PAYER).voidAutoFinalizedSettlement("ghost-id")).rejects.toMatchObject({
+			code: "NOT_FOUND",
 		});
-		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
-	});
-
-	it("cannot void a PROPOSED (not yet finalized) settlement", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(
-			makeAutoFinalized({
-				status: "PROPOSED",
-				confirmedByPayee: false,
-				settledAt: null,
-			}),
-		);
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(svc.voidAutoFinalizedSettlement("s-1")).rejects.toMatchObject({
-			code: "BAD_REQUEST",
-		});
-		expect(db.settlement.deleteMany).not.toHaveBeenCalled();
-	});
-
-	it("non-existent settlement throws NOT_FOUND", async () => {
-		const db = makeMockDb();
-		db.settlement.findUnique.mockResolvedValue(null);
-		const svc = new SettlementService(db as never, "payer-user");
-		await expect(
-			svc.voidAutoFinalizedSettlement("ghost-id"),
-		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(db._stores.settlements.size).toBe(2);
 	});
 });
 
-// ── Tests: initiateSettlement ─────────────────────────────────────────────
-
 describe("SettlementService.initiateSettlement", () => {
 	it("self-settlement is rejected with BAD_REQUEST", async () => {
-		const db = makeMockDb();
-		const svc = new SettlementService(db as never, "user-1");
+		seedDebt(payeeRef);
 		await expect(
-			svc.initiateSettlement({
-				toParticipant: { participantType: "user", participantId: "user-1" },
-				amount: 50,
-				currency: "USD",
-			}),
+			as(PAYER).initiateSettlement({ toParticipant: payerRef, amount: 50, currency: "USD" }),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 	});
 
 	it("normal creation succeeds and sets confirmedByPayer=true", async () => {
-		const db = makeMockDb();
-		db.$transaction.mockImplementation(
-			async (cb: (tx: Record<string, unknown>) => Promise<unknown>) => {
-				const tx = {
-					settlement: {
-						create: vi.fn().mockResolvedValue({ id: "s-new", amount: 50 }),
-					},
-					$executeRaw: vi.fn(),
-					auditLog: { create: vi.fn().mockResolvedValue({}) },
-				};
-				// computeBalance mock returns { byCurrency: { USD: -100 } }
-				return cb(tx as never);
-			},
-		);
-		const svc = new SettlementService(db as never, "user-1");
-		const { settlement } = await svc.initiateSettlement({
-			toParticipant: { participantType: "user", participantId: "user-2" },
-			amount: 50,
-			currency: "USD",
+		const id = await pay();
+		expect(db._stores.settlements.get(id)).toMatchObject({
+			confirmedByPayer: true,
+			confirmedByPayee: false,
 		});
-		expect(settlement).toBeTruthy();
 	});
 });

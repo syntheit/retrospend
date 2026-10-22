@@ -1,15 +1,12 @@
 /**
- * Today's settle dialog numbers next to allocatePayment's. Each scenario
- * pins what the old allocator (settlement-allocation.ts: smallest debt
- * first, offsets in one currency) wrote, then what allocatePayment writes.
- * A difference is always one of the owner-decided rules (MONEY-MOVES §1.2):
- * same currency first, oldest first, offsets across currencies.
+ * The settle dialog's numbers before and after allocatePayment. Each
+ * scenario states what the old allocator (settlement-allocation.ts, removed:
+ * smallest debt first, offsets in one currency) wrote, pinned by running it
+ * when this file was written, then asserts what allocatePayment writes. A
+ * difference is always an owner-decided rule (MONEY-MOVES §1.2): same
+ * currency first, oldest first, offsets across currencies, dust, overpay.
  */
 import { describe, expect, it } from "vitest";
-import {
-	allocateAcrossScopes,
-	allocateFullSettlement,
-} from "~/server/services/shared-expenses/settlement-allocation";
 import { allocatePayment, quote } from "./allocate";
 import type { PairLine } from "./types";
 
@@ -25,18 +22,7 @@ const NO_QUOTES = new Map();
 describe("settle dialog, today vs allocatePayment", () => {
 	it("partial payment in one currency: today smallest first, now oldest first (changed)", () => {
 		// Direct USD 5 (Oct 9), A USD 10 (Oct 1), B USD 30 (Oct 5); pay USD 12.
-		const today = allocateAcrossScopes(
-			[
-				{ projectId: null, owed: 5 },
-				{ projectId: "A", owed: 10 },
-				{ projectId: "B", owed: 30 },
-			],
-			12,
-		);
-		expect(today).toEqual([
-			{ projectId: null, amount: 5 },
-			{ projectId: "A", amount: 7 },
-		]);
+		// Today (allocateAcrossScopes): direct 5, A 7.
 
 		const now = allocatePayment({
 			lines: [
@@ -57,16 +43,8 @@ describe("settle dialog, today vs allocatePayment", () => {
 
 	it("full payment with a debt the other way, one currency: same rows as today", () => {
 		// Payer owes Trip USD 50, is owed Rent USD 30; pays the net USD 20.
-		const today = allocateFullSettlement(
-			[{ projectId: "Trip", owed: 50 }],
-			[{ projectId: "Rent", owed: 30 }],
-			20,
-		);
-		expect(today).toEqual({
-			cash: [{ projectId: "Trip", amount: 20 }],
-			payerOffsets: [{ projectId: "Trip", amount: 30 }],
-			payeeOffsets: [{ projectId: "Rent", amount: 30 }],
-		});
+		// Today (allocateFullSettlement): cash Trip 20, payer offset Trip 30,
+		// payee offset Rent 30.
 
 		const now = allocatePayment({
 			lines: [

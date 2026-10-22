@@ -33,9 +33,6 @@ export const settlementRouter = createTRPCRouter({
 				direction: settlementDirectionSchema.optional(),
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
-				convertedAmount: z.number().positive().nullish(),
-				convertedCurrency: z.string().min(1).max(10).nullish(),
-				exchangeRateUsed: z.number().positive().nullish(),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
 				// Scope of the settle-up:

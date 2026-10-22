@@ -187,9 +187,12 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 			projectId: null,
 		});
 
-		// $50 owed minus the $30 optimistic settlement leaves $20.
-		const balance = await computeBalance(db as never, aliceRef, bobRef);
-		expect(balance.byCurrency).toEqual({ USD: 20 });
+		// I5: bob recorded it, so his view counts it at once ($50 - $30 = $20
+		// owed); alice has not confirmed, so hers still shows $50.
+		const bobView = await computeBalance(db as never, bobRef, aliceRef);
+		expect(bobView.byCurrency).toEqual({ USD: -20 });
+		const aliceView = await computeBalance(db as never, aliceRef, bobRef);
+		expect(aliceView.byCurrency).toEqual({ USD: 50 });
 	});
 
 	it("step 4: bob initiates settlement, alice confirms; balance becomes zero", async () => {
@@ -219,10 +222,12 @@ describe("Suite 1A: Full expense lifecycle: happy path", () => {
 		// No over-settlement warning (bob owes exactly $50)
 		expect(warning).toBeNull();
 
-		// The PROPOSED settlement already counts optimistically, so the displayed
-		// balance drops to zero right away (before the payee confirms).
-		const balanceDuring = await computeBalance(db as never, aliceRef, bobRef);
-		expect(balanceDuring.byCurrency).toEqual({});
+		// I5: the payer sees the pending payment at once; the payee only once
+		// she confirms.
+		const bobDuring = await computeBalance(db as never, bobRef, aliceRef);
+		expect(bobDuring.byCurrency).toEqual({});
+		const aliceDuring = await computeBalance(db as never, aliceRef, bobRef);
+		expect(aliceDuring.byCurrency).toEqual({ USD: 50 });
 
 		// Alice confirms receipt of payment
 		const aliceSettlementService = new SettlementService(db as never, ALICE);
@@ -965,18 +970,22 @@ describe("Suite 1I: Project-scoped settlements", () => {
 
 		// Project A is now cleared.
 		const balanceA = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "A",
 		});
 		expect(balanceA.byCurrency.USD ?? 0).toBe(0);
 
 		// Project B is untouched: bob still owes alice $10.
 		const balanceB = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "B",
 		});
 		expect(balanceB.byCurrency).toEqual({ USD: 10 });
 
 		// Global rollup reduced by exactly the settled $40: 50 - 40 = 10.
-		const balanceGlobal = await computeBalance(db as never, aliceRef, bobRef);
+		const balanceGlobal = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
+		});
 		expect(balanceGlobal.byCurrency).toEqual({ USD: 10 });
 	});
 
@@ -1025,26 +1034,30 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			currency: "USD",
 		});
 
-		// One row per scope, each capped at that scope's debt.
+		// One row per scope, each capped at that scope's debt; oldest first,
+		// and on the same day Outside projects first, then by project id.
 		expect(result.settlements).toHaveLength(3);
 		expect(settlementRows()).toEqual([
 			{ projectId: null, amount: 5 },
-			{ projectId: "B", amount: 10 },
 			{ projectId: "A", amount: 40 },
+			{ projectId: "B", amount: 10 },
 		]);
 
 		// Every view agrees: each project and the global rollup are settled.
 		for (const projectScope of ["A", "B", null]) {
 			const scoped = await computeBalance(db as never, aliceRef, bobRef, {
+				viewer: bobRef,
 				projectScope,
 			});
 			expect(scoped.byCurrency).toEqual({});
 		}
-		const global = await computeBalance(db as never, aliceRef, bobRef);
+		const global = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
+		});
 		expect(global.byCurrency).toEqual({});
 	});
 
-	it("partial global payment clears the smallest debts first and never over-pays a scope", async () => {
+	it("partial global payment clears the oldest debts first and never over-pays a scope", async () => {
 		seedBobOwesAlice("A", 40);
 		seedBobOwesAlice("B", 10);
 		seedBobOwesAlice(null, 5);
@@ -1058,16 +1071,17 @@ describe("Suite 1I: Project-scoped settlements", () => {
 
 		expect(settlementRows()).toEqual([
 			{ projectId: null, amount: 5 },
-			{ projectId: "B", amount: 7 },
+			{ projectId: "A", amount: 7 },
 		]);
 		const byProject = await computeBalanceByProject(
 			db as never,
 			aliceRef,
 			bobRef,
+			{ viewer: bobRef },
 		);
 		expect(Object.fromEntries(byProject)).toEqual({
-			A: { USD: 40 },
-			B: { USD: 3 },
+			A: { USD: 33 },
+			B: { USD: 10 },
 		});
 	});
 
@@ -1096,14 +1110,18 @@ describe("Suite 1I: Project-scoped settlements", () => {
 
 		expect(settlementRows()).toEqual([{ projectId: "A", amount: 20 }]);
 		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "A",
 		});
 		expect(a.byCurrency).toEqual({ USD: 20 });
 		const b = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "B",
 		});
 		expect(b.byCurrency).toEqual({ USD: -15 });
-		const global = await computeBalance(db as never, aliceRef, bobRef);
+		const global = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
+		});
 		expect(global.byCurrency).toEqual({ USD: 5 });
 	});
 
@@ -1118,19 +1136,22 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			currency: "USD",
 		});
 
-		// Cash 25 into A, plus a 15 offset in A against alice's 15 in B.
+		// Cash 25 into A, then alice's 15 in B offset against 15 of bob's A.
 		expect(settlementRows()).toEqual([
 			{ projectId: "A", amount: 25 },
-			{ projectId: "A", amount: 15 },
 			{ projectId: "B", amount: 15 },
+			{ projectId: "A", amount: 15 },
 		]);
 		for (const projectScope of ["A", "B"]) {
 			const scoped = await computeBalance(db as never, aliceRef, bobRef, {
+				viewer: bobRef,
 				projectScope,
 			});
 			expect(scoped.byCurrency).toEqual({});
 		}
-		const global = await computeBalance(db as never, aliceRef, bobRef);
+		const global = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
+		});
 		expect(global.byCurrency).toEqual({});
 	});
 
@@ -1150,6 +1171,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			{ projectId: "A", amount: 40 },
 		]);
 		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "A",
 		});
 		expect(a.byCurrency).toEqual({});
@@ -1255,6 +1277,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			{ projectId: "A", amount: 25 },
 		]);
 		const a = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "A",
 		});
 		expect(a.byCurrency).toEqual({});
@@ -1278,16 +1301,18 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
 	});
 
-	it("records at most the scoped debt when the amount is within the tolerance", async () => {
+	it("a cent over the scoped debt is an overpayment (USD dust is one cent)", async () => {
 		seedBobOwesAlice("A", 40);
 		const bobSettle = new SettlementService(db as never, BOB);
-		await bobSettle.initiateSettlement({
-			toParticipant: aliceRef,
-			amount: 40.01,
-			currency: "USD",
-			projectId: "A",
-		});
-		expect(settlementRows()).toEqual([{ projectId: "A", amount: 40 }]);
+		await expect(
+			bobSettle.initiateSettlement({
+				toParticipant: aliceRef,
+				amount: 40.01,
+				currency: "USD",
+				projectId: "A",
+			}),
+		).rejects.toThrow(/exceeds the outstanding balance of USD 40.00/);
+		expect(settlementRows()).toEqual([]);
 	});
 
 	it("project views count a global settle-up against a legacy claimed shadow's debt", async () => {
@@ -1511,9 +1536,12 @@ describe("Suite 1I: Project-scoped settlements", () => {
 			]),
 		);
 
-		const global = await computeBalance(db as never, aliceRef, bobRef);
+		const global = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
+		});
 		expect(global.byCurrency.USD ?? 0).toBe(0);
 		const inA = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "A",
 		});
 		expect(inA.byCurrency.USD ?? 0).toBe(0);
@@ -1549,6 +1577,7 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		await aliceSettle.voidAutoFinalizedSettlement(settlement.id);
 
 		const inA = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
 			projectScope: "A",
 		});
 		expect(inA.byCurrency).toEqual({ USD: 40 });
@@ -1700,8 +1729,11 @@ describe("Suite 1K: Removing a paid share asks before creating a reverse debt", 
 		).toBe(true);
 
 		await verify.removeSelf(txnId, true);
-		// Confirmed: his $50 payment is now owed back to him.
-		const balance = await computeBalance(db as never, aliceRef, bobRef);
+		// Confirmed: his $50 payment is now owed back to him (as bob sees it;
+		// alice has not confirmed the payment yet, I5).
+		const balance = await computeBalance(db as never, aliceRef, bobRef, {
+			viewer: bobRef,
+		});
 		expect(balance.byCurrency).toEqual({ USD: -50 });
 	});
 

@@ -8,16 +8,17 @@
  * 2. The remainder converts at the payment's quotes into the other
  *    currencies' debts, oldest first.
  * 3. A scope is paid at most to zero (no side effects, I3).
- * 4. "Everything" with debts going the other way also writes offsets, so
- *    every scope ends at zero; offsets may cross currencies at the payment's
- *    quotes. A partial payment never offsets.
+ * 4. "Everything" (the net the payer owes) with debts going the other way
+ *    also writes offsets, so every scope ends at zero; offsets may cross
+ *    currencies at the payment's quotes. A partial payment never offsets.
  * 5. Dust: a debt left smaller than its dust is closed, and a payment left
  *    smaller than its dust goes to the last row (I2: the rows add up to the
  *    payment exactly). Dust is one major unit for currencies shown whole
  *    (ARS 1, MONEY-MOVES §1.2 rule 5) and one minor unit otherwise.
- * 6. More than everything owed is an overpayment: reported, and recorded
- *    only with `allowOverpay`, as an excess row Outside projects in the
- *    payment currency (owner Q2).
+ * 6. More than everything owed (net, all currencies at the payment's
+ *    quotes) is an overpayment: reported, and recorded only with
+ *    `allowOverpay`, as an excess row Outside projects in the payment
+ *    currency (owner Q2).
  * 7. "Apply to" runs the same rules inside the chosen scopes and currencies.
  *
  * A debt currency without a quote is left untouched and listed in
@@ -44,8 +45,6 @@ export interface AllocateInput {
 	/** One quote per other currency the payment may convert into. */
 	readonly quotes: ReadonlyMap<string, Quote>;
 	readonly applyTo?: readonly ApplyTo[];
-	/** Pay everything (with offsets) even if `amount` differs by more than dust. */
-	readonly everything?: boolean;
 	readonly allowOverpay?: boolean;
 }
 
@@ -170,7 +169,8 @@ function inApplyTo(line: PairLine, applyTo: readonly ApplyTo[] | undefined) {
 	if (!applyTo) return true;
 	return applyTo.some(
 		(a) =>
-			a.scope === line.scope && (!a.currency || a.currency === line.currency),
+			(a.scope === undefined || a.scope === line.scope) &&
+			(!a.currency || a.currency === line.currency),
 	);
 }
 
@@ -327,18 +327,25 @@ export function allocatePayment(input: AllocateInput): Allocation {
 	const amount = input.amount ?? full;
 	const dustP = dustOf(P);
 
-	// Offsets only when everything is paid and the payment points the right
-	// way: if the payee owes more than the payer, "everything" pays nothing.
+	// "Everything" exists when the payer owes on balance (or is even). Paying
+	// it, or more, also offsets the debts going the other way, and the cash is
+	// the net: anything above it is an overpayment. When the payee owes more,
+	// the payer owes nothing and any amount is an overpayment.
+	const owesOnBalance = owedBack - gross < dustP;
 	const everything =
-		opposite.length > 0 &&
-		owedBack - gross < dustP &&
-		(input.everything === true ||
-			input.amount === null ||
-			Math.abs(amount - full) < dustP);
+		opposite.length > 0 && owesOnBalance && amount > full - dustP;
+	const cash = everything ? Math.min(amount, full) : amount;
 
-	const { rows, rest } = payCash(pricing, debts, amount);
+	const paid = payCash(pricing, debts, cash);
+	const rows = paid.rows;
 	const offsets = everything ? writeOffsets(pricing, opposite, debts) : [];
-	const overpay = settleRest(rows, rest, P, input.allowOverpay === true);
+	const rest = settleRest(
+		rows,
+		paid.rest + (amount - cash),
+		P,
+		input.allowOverpay === true,
+	);
+	const overpay = owesOnBalance ? rest : amount;
 
 	return {
 		currency: P,

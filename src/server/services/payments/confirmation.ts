@@ -17,7 +17,8 @@ export interface Confirmation {
 	readonly auditAction:
 		| "settlement_recorded_by_payee"
 		| "settlement_auto_confirmed"
-		| "settlement_initiated";
+		| "settlement_initiated"
+		| "settlement_confirmed";
 }
 
 /**

@@ -2523,7 +2523,7 @@ describe("SharedTransactionService", () => {
 				expect.anything(),
 				{ participantType: "user", participantId: "alice" },
 				{ participantType: "user", participantId: "bob" },
-				{ projectScope: "proj-1" },
+				expect.objectContaining({ projectScope: "proj-1" }),
 			);
 			expect(txClient.sharedTransaction.delete).not.toHaveBeenCalled();
 		});

@@ -76,6 +76,30 @@ export interface SettlementRecord {
 	rejectedReason?: string | null;
 	reminderCount?: number;
 	reminderSentAt?: Date | null;
+	kind?: string;
+	rateType?: string | null;
+}
+
+/** A payment header (payments_corrections); its id is the rows' paymentGroupId. */
+export interface PaymentRecord {
+	id: string;
+	payerType: string;
+	payerId: string;
+	payeeType: string;
+	payeeId: string;
+	amount: number | string;
+	currency: string;
+	rateType: string | null;
+	rate: string | null;
+	rateCurrency: string | null;
+	paymentMethod: string | null;
+	paidOn: Date;
+	note: string | null;
+	recordedByType: string;
+	recordedById: string;
+	status: string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface ProjectRecord {
@@ -165,6 +189,7 @@ export function createStatefulDb() {
 	const transactions = new Map<string, TxRecord>();
 	const splits = new Map<string, SplitRecord>();
 	const settlements = new Map<string, SettlementRecord>();
+	const payments = new Map<string, PaymentRecord>();
 	const audits: unknown[] = [];
 	const projects = new Map<string, ProjectRecord>();
 	const billingPeriods = new Map<string, BillingPeriodRecord>();
@@ -644,6 +669,7 @@ export function createStatefulDb() {
 								if (txSel.paidByType) txOut.paidByType = tx?.paidByType;
 								if (txSel.paidById) txOut.paidById = tx?.paidById;
 								if (txSel.projectId) txOut.projectId = tx?.projectId ?? null;
+								if (txSel.date) txOut.date = tx?.date;
 								out.transaction = txOut;
 							} else {
 								out.transaction = { currency: tx?.currency ?? "USD" };
@@ -856,6 +882,13 @@ export function createStatefulDb() {
 		if (statusIn !== undefined && !statusIn.includes(s.status)) return false;
 		if (typeof where.status === "string" && s.status !== where.status)
 			return false;
+		if (
+			where.paymentGroupId !== undefined &&
+			s.paymentGroupId !== where.paymentGroupId
+		)
+			return false;
+		if (where.isOffset !== undefined && (s.isOffset ?? false) !== where.isOffset)
+			return false;
 		return true;
 	};
 
@@ -884,6 +917,8 @@ export function createStatefulDb() {
 				autoConfirmedReason: args.data.autoConfirmedReason ?? null,
 				paymentGroupId: args.data.paymentGroupId ?? null,
 				isOffset: args.data.isOffset ?? false,
+				kind: args.data.kind ?? "PAYMENT",
+				rateType: args.data.rateType ?? null,
 				rejectedAt: null,
 				rejectedReason: null,
 				reminderCount: 0,
@@ -903,6 +938,7 @@ export function createStatefulDb() {
 					where?: Record<string, unknown>;
 					orderBy?: unknown;
 					include?: { project?: unknown };
+					select?: { payment?: unknown };
 				} = {},
 			) => {
 				let results = [...settlements.values()];
@@ -988,6 +1024,13 @@ export function createStatefulDb() {
 					return results.map((s) => {
 						const p = s.projectId ? projects.get(s.projectId) : undefined;
 						return { ...s, project: p ? { id: p.id, name: p.name } : null };
+					});
+				}
+				// The header's date, as balance queries select it.
+				if (args.select?.payment) {
+					return results.map((s) => {
+						const header = s.paymentGroupId ? payments.get(s.paymentGroupId) : undefined;
+						return { ...s, payment: header ? { paidOn: header.paidOn } : null };
 					});
 				}
 				return results;
@@ -1594,6 +1637,81 @@ export function createStatefulDb() {
 		),
 	};
 
+	// ── payment model (headers) ──────────────────────────────────────────────
+
+	const paymentMatches = (p: PaymentRecord, where: Record<string, unknown> = {}): boolean => {
+		const idIn = (where.id as { in?: string[] } | undefined)?.in;
+		if (idIn !== undefined && !idIn.includes(p.id)) return false;
+		if (typeof where.id === "string" && p.id !== where.id) return false;
+		for (const field of ["status", "payerType", "payerId", "payeeType", "payeeId"] as const) {
+			if (typeof where[field] === "string" && p[field] !== where[field]) return false;
+		}
+		const or = where.OR as Array<Record<string, unknown>> | undefined;
+		if (or && !or.some((clause) => paymentMatches(p, clause))) return false;
+		return true;
+	};
+
+	const paymentModel = {
+		create: vi.fn((args: { data: Partial<PaymentRecord> & { id: string } }) => {
+			const now = new Date();
+			const record: PaymentRecord = {
+				payerType: "user",
+				payerId: "",
+				payeeType: "user",
+				payeeId: "",
+				amount: 0,
+				currency: "USD",
+				rateType: null,
+				rate: null,
+				rateCurrency: null,
+				paymentMethod: null,
+				paidOn: now,
+				note: null,
+				recordedByType: "user",
+				recordedById: "",
+				status: "PROPOSED",
+				createdAt: now,
+				updatedAt: now,
+				...args.data,
+			};
+			payments.set(record.id, record);
+			return record;
+		}),
+		findUnique: vi.fn((args: { where: { id: string } }) => payments.get(args.where.id) ?? null),
+		findMany: vi.fn((args: { where?: Record<string, unknown> } = {}) =>
+			[...payments.values()].filter((p) => paymentMatches(p, args.where)),
+		),
+		update: vi.fn((args: { where: { id: string }; data: Partial<PaymentRecord> }) => {
+			const p = payments.get(args.where.id);
+			if (!p) throw new Error(`Payment ${args.where.id} not found`);
+			const updated = { ...p, ...args.data, updatedAt: new Date() };
+			payments.set(p.id, updated);
+			return updated;
+		}),
+		updateMany: vi.fn((args: { where: Record<string, unknown>; data: Partial<PaymentRecord> }) => {
+			let count = 0;
+			for (const p of payments.values()) {
+				if (!paymentMatches(p, args.where)) continue;
+				payments.set(p.id, { ...p, ...args.data });
+				count++;
+			}
+			return { count };
+		}),
+		// Deleting a header deletes its rows (ON DELETE CASCADE).
+		deleteMany: vi.fn((args: { where: Record<string, unknown> }) => {
+			let count = 0;
+			for (const p of [...payments.values()]) {
+				if (!paymentMatches(p, args.where)) continue;
+				payments.delete(p.id);
+				for (const [id, row] of settlements) {
+					if (row.paymentGroupId === p.id) settlements.delete(id);
+				}
+				count++;
+			}
+			return { count };
+		}),
+	};
+
 	// ── Assemble the full interface ───────────────────────────────────────────
 
 	const iface = {
@@ -1602,6 +1720,7 @@ export function createStatefulDb() {
 		sharedTransaction: sharedTransactionModel,
 		splitParticipant: splitParticipantModel,
 		settlement: settlementModel,
+		payment: paymentModel,
 		auditLogEntry: auditLogEntryModel,
 		shadowProfile: shadowProfileModel,
 		project: projectModel,
@@ -1622,6 +1741,7 @@ export function createStatefulDb() {
 			transactions,
 			splits,
 			settlements,
+			payments,
 			audits,
 			projects,
 			billingPeriods,
