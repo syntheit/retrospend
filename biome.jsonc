@@ -67,5 +67,33 @@
 		"attributes": ["class", "className", "classList"],
 		"mergeFunctions": ["clsx", "cn"],
 		"variantFunctions": ["cva"]
-	}
+	},
+	"overrides": [
+		{
+			// Money mutations and figures run inside a preview transaction that
+			// always rolls back. The global db opens another connection that
+			// commits anyway, so they must use the tx they are given.
+			"includes": [
+				"src/server/services/**/*.mutation.ts",
+				"src/server/services/figures/**"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/server/db", "**/../db"],
+										"message": "Use the tx you are given: the global db commits outside a preview's transaction."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		}
+	]
 }
