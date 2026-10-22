@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type * as React from "react";
 
 import { Button } from "~/components/ui/button";
+import { Tip } from "~/components/ui/tooltip";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -68,15 +69,17 @@ export function ActionMenu<E extends Entity>(
 	return (
 		<>
 			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						aria-label={t("more", { name: props.target.name })}
-						icon
-						kind="ghost"
-					>
-						<EllipsisIcon />
-					</Button>
-				</DropdownMenuTrigger>
+				<Tip content={t("more", { name: props.target.name })}>
+					<DropdownMenuTrigger asChild>
+						<Button
+							aria-label={t("more", { name: props.target.name })}
+							icon
+							kind="ghost"
+						>
+							<EllipsisIcon />
+						</Button>
+					</DropdownMenuTrigger>
+				</Tip>
 				<DropdownMenuContent align={props.align ?? "end"}>
 					<Items
 						actions={actions}
