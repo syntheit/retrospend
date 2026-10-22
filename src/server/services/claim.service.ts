@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "~prisma";
-import { repointPaymentParty } from "./payments/participants";
+import { repointSettlementParty } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 /**
@@ -72,16 +72,8 @@ async function repointShadowReferences(
 		data: { participantType: targetType, participantId: targetId },
 	});
 
-	// ── Settlement: from / to ──
-	await tx.settlement.updateMany({
-		where: { fromParticipantType: "shadow", fromParticipantId: shadowId },
-		data: { fromParticipantType: targetType, fromParticipantId: targetId },
-	});
-	await tx.settlement.updateMany({
-		where: { toParticipantType: "shadow", toParticipantId: shadowId },
-		data: { toParticipantType: targetType, toParticipantId: targetId },
-	});
-	await repointPaymentParty(
+	// ── Settlement and payment headers: from / to ──
+	await repointSettlementParty(
 		tx,
 		{ participantType: "shadow", participantId: shadowId },
 		{ participantType: targetType, participantId: targetId },

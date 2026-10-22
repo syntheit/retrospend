@@ -1170,11 +1170,11 @@
 		"src/server/services/shared-expenses/audit-log-formatter.ts": 339,
 		"src/server/services/shared-expenses/balances-perspective.service.ts": 102,
 		"src/server/services/shared-expenses/people.service.ts": 1013,
-		"src/server/services/shared-expenses/settlement.service.ts": 691,
+		"src/server/services/shared-expenses/settlement.service.ts": 554,
 		"src/server/services/shared-expenses/test-utils.ts": 1046,
 		"src/server/services/shared-expenses/transaction.service.ts": 927,
 		"src/server/services/shared-expenses/verification.service.ts": 332,
-		"src/server/services/user-deletion.service.ts": 82,
+		"src/server/services/user-deletion.service.ts": 70,
 		"src/server/services/wealth.service.ts": 1
 	},
 	"UI-151": {

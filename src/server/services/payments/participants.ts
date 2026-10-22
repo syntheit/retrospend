@@ -14,6 +14,35 @@ type Tx = Pick<
 	"payment" | "settlement"
 >;
 
+/** Re-points every settlement row and payment header that names `from` to `to`. */
+export async function repointSettlementParty(
+	tx: Tx,
+	from: ParticipantRef,
+	to: ParticipantRef,
+): Promise<void> {
+	await tx.settlement.updateMany({
+		where: {
+			fromParticipantType: from.participantType,
+			fromParticipantId: from.participantId,
+		},
+		data: {
+			fromParticipantType: to.participantType,
+			fromParticipantId: to.participantId,
+		},
+	});
+	await tx.settlement.updateMany({
+		where: {
+			toParticipantType: from.participantType,
+			toParticipantId: from.participantId,
+		},
+		data: {
+			toParticipantType: to.participantType,
+			toParticipantId: to.participantId,
+		},
+	});
+	await repointPaymentParty(tx, from, to);
+}
+
 /** Re-points every header that names `from` (payer, payee or recorder) to `to`. */
 export async function repointPaymentParty(
 	tx: Tx,

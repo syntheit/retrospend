@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
-import { repointPaymentParty } from "./payments/participants";
+import { repointSettlementParty } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 interface MigrationResult {
@@ -111,18 +111,8 @@ export async function migrateGuestSessionsToUser(
 			// ─── 4. SplitParticipant (unique constraint merge pattern) ─────
 			await migrateSplitParticipants(tx, guestId, userId);
 
-			// ─── 5. Settlement: fromParticipant ────────────────────────────
-			await tx.settlement.updateMany({
-				where: { fromParticipantType: "guest", fromParticipantId: guestId },
-				data: { fromParticipantType: "user", fromParticipantId: userId },
-			});
-
-			// ─── 6. Settlement: toParticipant ──────────────────────────────
-			await tx.settlement.updateMany({
-				where: { toParticipantType: "guest", toParticipantId: guestId },
-				data: { toParticipantType: "user", toParticipantId: userId },
-			});
-			await repointPaymentParty(
+			// ─── 5 and 6. Settlement from / to, and payment headers ────────
+			await repointSettlementParty(
 				tx,
 				{ participantType: "guest", participantId: guestId },
 				{ participantType: "user", participantId: userId },
