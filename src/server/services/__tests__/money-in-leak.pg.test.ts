@@ -228,7 +228,8 @@ describe("money in never reaches a spending reader", () => {
 					averageSpend: 36_833.33,
 					lastMonthSpend: 60_500,
 				},
-				lifetime: { totalSpent: 536_500, totalTransactions: 11 },
+				// The refund lowers the total but is not a transaction, as in totalEntries.
+				lifetime: { totalSpent: 536_500, totalTransactions: 10 },
 				profileLifetime: { lifetimeSpend: 536_500, totalEntries: 12 },
 				runway: {
 					averageMonthlySpend: 516_500 / (80 / 30.436875),

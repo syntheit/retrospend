@@ -64,7 +64,10 @@ export interface SpentItem extends MoneyItem {
 	categoryId: string | null;
 	/** The entry date for "day" grouping and for shares; null otherwise. */
 	date: Date | null;
-	/** Rows behind this item (a refund counts as a row too). */
+	/**
+	 * Spending entries behind this item. A refund nets the amount but is not
+	 * an expense, so refund items count 0, matching the profile's entry count.
+	 */
 	count: number;
 }
 
@@ -130,7 +133,7 @@ const toItem =
 		amountInUSD: sign * Number(row._sum.amountInUSD ?? 0),
 		categoryId: row.categoryId ?? null,
 		date: row.date ?? null,
-		count: row._count._all,
+		count: sign === 1 ? row._count._all : 0,
 	});
 
 async function sharesFor(db: AppDb, filter: SpentFilter) {

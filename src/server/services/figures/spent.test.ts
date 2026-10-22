@@ -94,7 +94,7 @@ describe("figure spent", () => {
 				amountInUSD: -2,
 				categoryId: "groceries",
 				date: null,
-				count: 1,
+				count: 0,
 			},
 		]);
 	});

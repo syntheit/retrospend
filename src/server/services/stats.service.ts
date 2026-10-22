@@ -253,7 +253,9 @@ export class StatsService {
 	 */
 	async getLifetimeStats(userId: string, homeCurrency: string) {
 		// Lifetime has always counted personal rows only; shares stay out so
-		// the number people know does not move.
+		// the number people know does not move. Refunds lower the total but
+		// are not transactions (spent items count them 0), like the profile's
+		// entry count.
 		const [items, rate] = await Promise.all([
 			this.spent(userId, null, "currency", true),
 			this.getRate(homeCurrency, new Date()),
