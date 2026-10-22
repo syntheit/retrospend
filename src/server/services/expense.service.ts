@@ -64,41 +64,6 @@ export async function resolveExpenseRate(
 	};
 }
 
-/** Income categories every user gets on first money in (budget SPEC §12.1). */
-export const INCOME_CATEGORIES = [
-	{ name: "Salary", color: "emerald" },
-	{ name: "Freelance", color: "teal" },
-	{ name: "Gifts", color: "pink" },
-	{ name: "Interest", color: "cyan" },
-	{ name: "Sales", color: "amber" },
-	{ name: "Other income", color: "lime" },
-] as const;
-
-/**
- * Seeds a user's income categories, once. Seeded on first use rather than
- * in the migration, so today's category pickers, which do not filter by kind
- * yet, never show them to someone who has not recorded money in. Safe to
- * call concurrently: the (name, userId) unique key absorbs a second insert.
- * A name the user already has as an expense category is left alone.
- */
-export async function ensureIncomeCategories(
-	db: PrismaClient | Prisma.TransactionClient,
-	userId: string,
-) {
-	await db.category.createMany({
-		data: INCOME_CATEGORIES.map((category) => ({
-			...category,
-			kind: "INCOME" as const,
-			userId,
-		})),
-		skipDuplicates: true,
-	});
-	return db.category.findMany({
-		where: { userId, kind: "INCOME" },
-		orderBy: { name: "asc" },
-	});
-}
-
 export interface CreateExpenseInput {
 	id: string;
 	title: string;
