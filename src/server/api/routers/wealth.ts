@@ -13,6 +13,16 @@ import { getSpendingItems, spendingWhere } from "~/server/services/spending";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
 
+/** A closed account takes no changes until it is reopened. */
+function assertOpen(asset: { closedAt: Date | null }) {
+	if (asset.closedAt) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "This account is closed. Reopen it to change it.",
+		});
+	}
+}
+
 export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
 		.input(
@@ -76,6 +86,7 @@ export const wealthRouter = createTRPCRouter({
 					input.balance,
 					balanceInUSD,
 					session.user.id,
+					{ currency: input.currency, type: input.type, exchangeRateType: rateType },
 				);
 
 				return account;
@@ -109,6 +120,7 @@ export const wealthRouter = createTRPCRouter({
 			if (!asset) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 			}
+			assertOpen(asset);
 
 			// Today's rate of the asset's own type (or a newly picked one); a
 			// custom rate stays until the user changes it.
@@ -151,6 +163,11 @@ export const wealthRouter = createTRPCRouter({
 					input.newBalance,
 					balanceInUSD,
 					session.user.id,
+					{
+						currency: asset.currency,
+						type: asset.type,
+						exchangeRateType: resolvedRate.rateType,
+					},
 				);
 
 				return updatedAsset;
@@ -191,6 +208,7 @@ export const wealthRouter = createTRPCRouter({
 			if (!existingAsset) {
 				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 			}
+			assertOpen(existingAsset);
 
 			// Resolve exchange rate using service
 			const { rate, rateType } = await wealthService.resolveExchangeRate(
@@ -234,6 +252,7 @@ export const wealthRouter = createTRPCRouter({
 					input.balance,
 					balanceInUSD,
 					session.user.id,
+					{ currency: input.currency, type: input.type, exchangeRateType: rateType },
 				);
 
 				return updatedAsset;
@@ -303,15 +322,124 @@ export const wealthRouter = createTRPCRouter({
 				monthsActive: Math.round(monthsActive),
 			};
 		}),
-	deleteAsset: protectedProcedure
-		.input(
-			z.object({
-				id: z.cuid(),
-			}),
-		)
+	/**
+	 * Closes an account: it leaves today's totals and counts 0 in the history
+	 * from today on, but its past balances stay. The balance is kept on the
+	 * account so reopening brings it back.
+	 */
+	closeAsset: protectedProcedure
+		.input(z.object({ id: z.cuid() }))
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+			const now = new Date();
+			const today = normalizeDate(now);
+			const wealthService = new WealthService(db);
+
+			const asset = await db.assetAccount.findFirst({
+				where: { id: input.id, userId: session.user.id },
+			});
+			if (!asset) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+			}
+			if (asset.closedAt) return { success: true };
+
+			await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                             set_config('role', 'retrospend_app', true)`;
+				await tx.assetAccount.update({
+					where: { id: asset.id },
+					data: { closedAt: now },
+				});
+				// A zero point on the closing day, so the chart drops there.
+				await wealthService.recordAssetSnapshot(
+					tx,
+					asset.id,
+					today,
+					0,
+					0,
+					session.user.id,
+					{
+						currency: asset.currency,
+						type: asset.type,
+						exchangeRateType: asset.exchangeRateType,
+					},
+				);
+			});
+
+			return { success: true };
+		}),
+
+	/**
+	 * Reopens a closed account with the balance it had. That balance is
+	 * recorded for today, so the history picks the account up again from the
+	 * day it was reopened (the closed days stay at 0).
+	 */
+	reopenAsset: protectedProcedure
+		.input(z.object({ id: z.cuid() }))
+		.mutation(async ({ ctx, input }) => {
+			const { db, session } = ctx;
+			const today = normalizeDate(new Date());
+			const wealthService = new WealthService(db);
+
+			const asset = await db.assetAccount.findFirst({
+				where: { id: input.id, userId: session.user.id },
+			});
+			if (!asset) {
+				throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+			}
+			if (!asset.closedAt) return { success: true };
+
+			const balance = Number(asset.balance);
+			const stored = toNumberOrNull(asset.exchangeRate);
+			let rate: number | null;
+			try {
+				({ rate } = await wealthService.resolveExchangeRate(
+					asset.currency,
+					today,
+					{ rate: stored, type: asset.exchangeRateType },
+				));
+			} catch {
+				// No table rate: the account's own stored rate, if any
+				rate = isValidRate(stored) ? stored : null;
+			}
+			const balanceInUSD =
+				rate === null ? 0 : toUSD(balance, asset.currency, rate);
+
+			await db.$transaction(async (tx) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
+				                             set_config('role', 'retrospend_app', true)`;
+				await tx.assetAccount.update({
+					where: { id: asset.id },
+					data: { closedAt: null },
+				});
+				await wealthService.recordAssetSnapshot(
+					tx,
+					asset.id,
+					today,
+					balance,
+					balanceInUSD,
+					session.user.id,
+					{
+						currency: asset.currency,
+						type: asset.type,
+						exchangeRateType: asset.exchangeRateType,
+					},
+				);
+			});
+
+			return { success: true };
+		}),
+
+	/**
+	 * Deletes an account and its whole balance history, as if it never
+	 * existed. Past net worth changes; closing is the way to keep it.
+	 */
+	deleteAssetPermanently: protectedProcedure
+		.input(z.object({ id: z.cuid() }))
 		.mutation(async ({ ctx, input }) => {
 			const { db, session } = ctx;
 
+			// Snapshots and history go with it (onDelete: Cascade).
 			const result = await db.assetAccount.deleteMany({
 				where: {
 					id: input.id,
@@ -332,9 +460,12 @@ export const wealthRouter = createTRPCRouter({
 	exportCsv: protectedProcedure.mutation(async ({ ctx }) => {
 		const { db, session } = ctx;
 
+		// Open accounts only, like the wealth page; closed ones are in the
+		// full data export.
 		const assets = await db.assetAccount.findMany({
 			where: {
 				userId: session.user.id,
+				closedAt: null,
 			},
 			orderBy: {
 				createdAt: "asc",
@@ -422,11 +553,13 @@ export const wealthRouter = createTRPCRouter({
 
 			for (const row of input.rows) {
 				try {
-					// Find existing by name
+					// Find an open account by name; a closed one keeps its history
+					// and a new account is created next to it.
 					const existing = await db.assetAccount.findFirst({
 						where: {
 							userId: session.user.id,
 							name: row.name,
+							closedAt: null,
 						},
 					});
 
@@ -489,6 +622,7 @@ export const wealthRouter = createTRPCRouter({
 							row.balance,
 							balanceInUSD,
 							session.user.id,
+							{ currency: row.currency, type: row.type, exchangeRateType: rateType },
 						);
 					});
 

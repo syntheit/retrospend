@@ -153,7 +153,7 @@ export class ExportService {
 			zip.file("expenses.csv", generateCsv(expenseHeader, expenseRows));
 		}
 
-		// 4. Asset Accounts
+		// 4. Asset Accounts (closed ones too: this is the full backup)
 		const assets = await db.assetAccount.findMany({
 			where: { userId },
 			orderBy: { createdAt: "asc" },
@@ -172,6 +172,7 @@ export class ExportService {
 				"interestRate",
 				"minimumPayment",
 				"dueDate",
+				"closedAt",
 				"createdAt",
 				"updatedAt",
 			];
@@ -187,6 +188,7 @@ export class ExportService {
 				asset.interestRate,
 				asset.minimumPayment,
 				asset.dueDate,
+				asset.closedAt,
 				asset.createdAt,
 				asset.updatedAt,
 			]);
@@ -219,6 +221,9 @@ export class ExportService {
 				"date",
 				"balance",
 				"balanceInUSD",
+				"currency",
+				"type",
+				"exchangeRateType",
 			];
 			const snapshotRows = snapshots.map((snapshot) => [
 				snapshot.id,
@@ -227,6 +232,9 @@ export class ExportService {
 				snapshot.date,
 				snapshot.balance,
 				snapshot.balanceInUSD,
+				snapshot.currency,
+				snapshot.type,
+				snapshot.exchangeRateType,
 			]);
 			zip.file(
 				"asset_snapshots.csv",
