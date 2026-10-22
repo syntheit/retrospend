@@ -172,9 +172,12 @@ describe("compareValues", () => {
 		currency,
 	});
 
-	it("treats opposite signs as a mismatch even inside the tolerance", () => {
-		expect(compareValues(money(50n), money(-50n))).toMatch(/sign flipped/);
-		expect(compareValues(money(0n), money(-50n))).toBeNull();
+	it("is exact: one centavo apart is a mismatch", () => {
+		expect(compareValues(money(4110000n), money(4110000n))).toBeNull();
+		expect(compareValues(money(4110000n), money(4110001n))).toBe(
+			"4110001 ARS vs 4110000 ARS",
+		);
+		expect(compareValues(money(50n), money(-50n))).toBe("-50 ARS vs 50 ARS");
 	});
 
 	it("fails a different currency or unit", () => {
@@ -187,45 +190,59 @@ describe("compareValues", () => {
 	});
 });
 
+const page = (tags: FigureTag[], v2 = false) => ({
+	tags,
+	locale: "en-US",
+	v2,
+});
+
 describe("FigureAudit", () => {
-	it("passes a page whose figures match the API", async () => {
+	it("passes a page whose figures match the API exactly", async () => {
 		const audit = new FigureAudit(
 			fixtureFetcher({
 				"owed.net": { minor: "-4110000", currency: "ARS" },
-				"spent.month": { minor: "189520000", currency: "ARS" },
+				"spent.month": { minor: "189520049", currency: "ARS" },
 			}),
 		);
-		const problems = await audit.checkTags(
+		const problems = await audit.checkRendered(
 			"home",
-			[
+			page([
 				ars("owed.net", "-4110000", "−ARS 41,100"),
+				// Shown in whole pesos: the text may round, data-minor may not.
 				ars("spent.month", "189520049", "ARS 1,895,200"),
-			],
-			"en-US",
+			]),
 		);
 		expect(problems).toEqual([]);
 	});
 
-	it("reports API mismatches, flipped signs and ids the API does not serve", async () => {
+	it("reports API mismatches, flipped signs and missing ids", async () => {
 		const audit = new FigureAudit(
 			fixtureFetcher({
 				"owed.net": { minor: "4110000", currency: "ARS" },
 				netWorth: { minor: "910000000", currency: "ARS" },
 			}),
 		);
-		const problems = await audit.checkTags(
+		const problems = await audit.checkRendered(
 			"home",
-			[
+			page([
 				ars("owed.net", "-4110000", "ARS 41,100"),
-				ars("netWorth", "910020000", "ARS 9,100,200"),
+				ars("netWorth", "910000001", "ARS 9,100,000"),
 				ars("budget.left", "100", "ARS 1"),
-			],
-			"en-US",
+			]),
 		);
 		expect(problems).toEqual([
-			"home: owed.net screen vs API: sign flipped: -4110000 ARS vs 4110000 ARS",
-			"home: netWorth screen vs API: 910020000 ARS vs 910000000 ARS (tolerance 100)",
-			"home: budget.left is not served by the figures API",
+			"home: owed.net screen vs API: -4110000 ARS vs 4110000 ARS",
+			"home: netWorth screen vs API: 910000001 ARS vs 910000000 ARS",
+			"home: budget.left: the figures API reports it missing",
+		]);
+	});
+
+	it("flags an id the API neither serves nor lists as missing", async () => {
+		const audit = new FigureAudit(async () => ({ figures: [] }));
+		expect(
+			await audit.checkRendered("home", page([ars("spent", "100", "ARS 1")])),
+		).toEqual([
+			"home: spent: the figures API neither served nor listed it as missing",
 		]);
 	});
 
@@ -234,31 +251,44 @@ describe("FigureAudit", () => {
 			throw new Error("no endpoint yet");
 		});
 		const audit = new FigureAudit(fetcher);
-		expect(await audit.checkTags("settings", [], "en-US")).toEqual([]);
+		expect(await audit.checkRendered("settings", page([]))).toEqual([]);
 		expect(fetcher).not.toHaveBeenCalled();
 	});
 
-	it("checks the same id across pages", async () => {
+	it("fails a v2 page with no figures and a page missing a required id", async () => {
+		const audit = new FigureAudit(
+			fixtureFetcher({ "owed.net": { minor: "0", currency: "ARS" } }),
+		);
+		expect(await audit.checkRendered("home", page([], true))).toEqual([
+			"home: is a v2 page but renders no figures",
+		]);
+		expect(
+			await audit.checkRendered(
+				"home",
+				page([ars("owed.net", "0", "ARS 0")], true),
+				["owed.net", "netWorth"],
+			),
+		).toEqual(["home: required figure netWorth is not on the page"]);
+	});
+
+	it("checks the same id across pages exactly", async () => {
 		const audit = new FigureAudit(
 			fixtureFetcher({ "owed.net": { minor: "-4110000", currency: "ARS" } }),
 		);
-		await audit.checkTags(
+		await audit.checkRendered(
 			"home",
-			[ars("owed.net", "-4110000", "ARS 41,100")],
-			"en-US",
+			page([ars("owed.net", "-4110000", "ARS 41,100")]),
 		);
-		await audit.checkTags(
+		await audit.checkRendered(
 			"people",
-			[ars("owed.net", "-4110050", "ARS 41,100")],
-			"en-US",
+			page([ars("owed.net", "-4110000", "ARS 41,100")]),
 		);
-		await audit.checkTags(
+		await audit.checkRendered(
 			"wealth",
-			[ars("owed.net", "-4120000", "ARS 41,200")],
-			"en-US",
+			page([ars("owed.net", "-4110050", "ARS 41,100")]),
 		);
 		expect(audit.crossPage()).toEqual([
-			"owed.net: wealth vs home: -4120000 ARS vs -4110000 ARS (tolerance 100)",
+			"owed.net: wealth vs home: -4110050 ARS vs -4110000 ARS",
 		]);
 		expect(audit.figureCount).toBe(3);
 	});
@@ -267,13 +297,12 @@ describe("FigureAudit", () => {
 		const audit = new FigureAudit(
 			fixtureFetcher({ "spent.month": { minor: "500000", currency: "ARS" } }),
 		);
-		const problems = await audit.checkTags(
+		const problems = await audit.checkRendered(
 			"activity",
-			[
+			page([
 				ars("spent.month", "abc", "ARS 5,000"),
 				ars("spent.month", "500000", "ARS 5,000"),
-			],
-			"en-US",
+			]),
 		);
 		expect(problems).toEqual([
 			'activity: spent.month: data-minor "abc" is not an integer',
