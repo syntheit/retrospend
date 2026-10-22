@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { LoaderCircle } from "lucide-react";
 import type * as React from "react";
 
 import { cn } from "~/lib/utils";
@@ -9,7 +10,8 @@ const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
-				default: "border border-transparent bg-primary text-primary-foreground hover:bg-primary/90",
+				default:
+					"border border-transparent bg-primary text-primary-foreground hover:bg-primary/90",
 				destructive:
 					"bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
 				outline:
@@ -36,22 +38,85 @@ const buttonVariants = cva(
 	},
 );
 
+/**
+ * The design's button (GUIDELINE §4 Buttons), chosen with `kind`. Every
+ * control in a row shares one height: `ctl` (32, 36 on phone) or all `sm`
+ * (28). Today's pages still pass `variant` and get the old look until the
+ * switch-over moves them to `kind`.
+ */
+const kindVariants = cva(
+	"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-ctl border border-transparent font-medium transition-colors duration-(--t-state) ease-land focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-45 aria-busy:pointer-events-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+	{
+		variants: {
+			kind: {
+				primary: "bg-brand text-brand-fg can-hover:hover:bg-brand/90",
+				secondary:
+					"border-line-strong bg-surface text-fg can-hover:hover:bg-raised",
+				ghost: "text-fg-2 can-hover:hover:bg-raised can-hover:hover:text-fg",
+				danger: "bg-danger text-danger-fg can-hover:hover:bg-danger/90",
+			},
+			size: {
+				ctl: "h-ctl px-3 text-body",
+				sm: "h-ctl-sm px-3 text-small",
+			},
+			icon: { true: "px-0", false: "" },
+		},
+		compoundVariants: [
+			{ size: "ctl", icon: true, className: "w-ctl" },
+			{ size: "sm", icon: true, className: "w-ctl-sm" },
+		],
+		defaultVariants: { kind: "secondary", size: "ctl", icon: false },
+	},
+);
+
+type Kind = NonNullable<VariantProps<typeof kindVariants>["kind"]>;
+type LegacySize = NonNullable<VariantProps<typeof buttonVariants>["size"]>;
+
+/**
+ * One props type, not a union, so wrappers can spread
+ * React.ComponentProps<typeof Button>. With `kind`, `size` is ctl or sm
+ * (anything else reads as ctl) and `variant` is ignored.
+ */
+type ButtonProps = React.ComponentProps<"button"> & {
+	asChild?: boolean;
+	variant?: VariantProps<typeof buttonVariants>["variant"];
+	size?: LegacySize | "ctl";
+	kind?: Kind;
+	/** Icon-only (with `kind`): square, needs an aria-label and a Tooltip (UI-131). */
+	icon?: boolean;
+	/** With `kind`: keeps the width, swaps the label for a spinner, blocks presses. */
+	loading?: boolean;
+};
+
 function Button({
 	className,
 	variant = "default",
-	size = "default",
+	size,
 	asChild = false,
+	kind,
+	icon = false,
+	loading = false,
 	...props
-}: React.ComponentProps<"button"> &
-	VariantProps<typeof buttonVariants> & {
-		asChild?: boolean;
-	}) {
+}: ButtonProps) {
+	if (kind)
+		return (
+			<KindButton
+				asChild={asChild}
+				className={className}
+				icon={icon}
+				kind={kind}
+				loading={loading}
+				size={size === "sm" ? "sm" : "ctl"}
+				{...props}
+			/>
+		);
+	const legacySize = size === "ctl" || size == null ? "default" : size;
 	const Comp = asChild ? Slot : "button";
 
 	return (
 		<Comp
-			className={cn(buttonVariants({ variant, size, className }))}
-			data-size={size}
+			className={cn(buttonVariants({ variant, size: legacySize, className }))}
+			data-size={legacySize}
 			data-slot="button"
 			data-variant={variant}
 			{...props}
@@ -59,4 +124,45 @@ function Button({
 	);
 }
 
-export { Button, buttonVariants };
+function KindButton({
+	className,
+	kind,
+	size,
+	icon,
+	loading,
+	asChild,
+	children,
+	type,
+	...rest
+}: React.ComponentProps<"button"> & {
+	asChild: boolean;
+	kind: Kind;
+	size: "ctl" | "sm";
+	icon: boolean;
+	loading: boolean;
+}) {
+	const Comp = asChild ? Slot : "button";
+	// Slot takes a single child, so a link styled as a button never spins.
+	const busy = loading && !asChild;
+	return (
+		<Comp
+			aria-busy={busy || undefined}
+			className={cn(kindVariants({ kind, size, icon }), className)}
+			data-kind={kind}
+			data-slot="button"
+			type={asChild ? undefined : (type ?? "button")}
+			{...rest}
+		>
+			{busy ? (
+				<>
+					<span className="invisible contents">{children}</span>
+					<LoaderCircle aria-hidden="true" className="absolute animate-spin" />
+				</>
+			) : (
+				children
+			)}
+		</Comp>
+	);
+}
+
+export { Button, buttonVariants, kindVariants };
