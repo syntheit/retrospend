@@ -7,6 +7,8 @@ const config: ExpoConfig = {
 	slug: "retrospend",
 	scheme: "retrospend",
 	version: "0.1.0",
+	// The web client is the Next app at the repo root, not an Expo web build.
+	platforms: ["ios", "android"],
 	orientation: "default",
 	// Light and dark follow the system; colors come from @retrospend/tokens.
 	userInterfaceStyle: "automatic",
