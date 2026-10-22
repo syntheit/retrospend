@@ -69,4 +69,19 @@ describe("PageTabs", () => {
 		expect(html).toContain("tab-indicator");
 		expect(html).toMatch(/text-fg-3[^>]*>11</);
 	});
+
+	it("underlines the current tab before the indicator has measured", () => {
+		const html = render(h(PageTabs, { items, current: "r" }));
+		const current = /<a aria-current="page" class="([^"]*)"/.exec(html)?.[1];
+		expect(current).toContain("after:bg-ds-accent");
+		expect(current).toContain("in-data-[indicator=ready]:after:hidden");
+		const other = /<a class="([^"]*)" href="\/activity"/.exec(html)?.[1];
+		expect(other).not.toContain("after:bg-ds-accent");
+	});
+});
+
+describe("Tabs fallback underline", () => {
+	it("keys the trigger's own underline on data-state", () => {
+		expect(lineTabs()).toContain("data-[state=active]:after:bg-ds-accent");
+	});
 });

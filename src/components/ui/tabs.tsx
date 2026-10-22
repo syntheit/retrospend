@@ -31,7 +31,8 @@ const ACTIVE = '[data-state="active"], [aria-current="page"]';
  * ease-land) when the selection changes. It also tells the tabs root which
  * way the selection moved, so the entering pane comes from that side.
  * Reduced motion: --t-tab drops to 1ms and globals.css stops transforms, so
- * the indicator jumps and the pane only fades.
+ * the indicator jumps and the new pane appears in place, with no slide and
+ * no visible fade.
  */
 function TabIndicator() {
 	const ref = useRef<HTMLSpanElement>(null);
@@ -51,6 +52,7 @@ function TabIndicator() {
 			bar.dataset.animate = String(animate);
 			bar.style.width = on ? `${on.offsetWidth}px` : "0px";
 			bar.style.transform = `translateX(${on?.offsetLeft ?? 0}px)`;
+			list.dataset.indicator = "ready";
 		};
 		place(false);
 
@@ -68,8 +70,11 @@ function TabIndicator() {
 			attributes: true,
 			attributeFilter: ["data-state", "aria-current"],
 		});
+		// The list and every tab: a label can change width (a count, a font
+		// swap, a locale) without the list resizing.
 		const resized = new ResizeObserver(() => place(false));
 		resized.observe(list);
+		for (const tab of tabs()) resized.observe(tab);
 		return () => {
 			moved.disconnect();
 			resized.disconnect();
@@ -118,7 +123,16 @@ function TabsList({
 /** Underline tab classes, shared with PageTabs. */
 const lineTab =
 	"relative inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap font-medium text-body text-fg-2 transition-colors duration-(--t-state) ease-land focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-45 can-hover:hover:text-fg";
-const lineTabOn = "font-semibold text-fg can-hover:hover:text-fg";
+/**
+ * The selected tab. Until the indicator has measured (server render, before
+ * hydration) the tab draws its own underline, so the page never shows tabs
+ * without one; the list's data-indicator="ready" hides it.
+ */
+const lineTabOn =
+	"font-semibold text-fg can-hover:hover:text-fg after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-chip after:bg-ds-accent in-data-[indicator=ready]:after:hidden";
+/** lineTabOn for a Radix trigger, keyed on its data-state. */
+const lineTriggerOn =
+	"data-[state=active]:font-semibold data-[state=active]:text-fg data-[state=active]:after:pointer-events-none data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:bottom-0 data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-chip data-[state=active]:after:bg-ds-accent in-data-[indicator=ready]:after:hidden";
 
 function TabsTrigger({
 	className,
@@ -134,10 +148,7 @@ function TabsTrigger({
 		<TabsPrimitive.Trigger
 			className={cn(
 				variant === "line"
-					? cn(
-							lineTab,
-							"data-[state=active]:font-semibold data-[state=active]:text-fg",
-						)
+					? cn(lineTab, lineTriggerOn)
 					: "inline-flex h-[calc(100%-1px)] flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-2 py-1 font-medium text-foreground text-sm transition-[color,box-shadow] focus-visible:border-ring focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:shadow-sm dark:text-muted-foreground dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 dark:data-[state=active]:text-foreground [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 				className,
 			)}
