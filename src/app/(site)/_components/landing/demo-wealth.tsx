@@ -5,7 +5,7 @@ import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
 import { WealthPortfolioBreakdown } from "~/components/wealth/wealth-portfolio-breakdown";
-import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
+import { computeAmountInUSD, isValidRate } from "~/lib/money";
 import { api } from "~/trpc/react";
 import {
 	DEMO_NET_WORTH,
@@ -16,19 +16,19 @@ import {
 
 export function DemoWealth() {
 	const historyData = useMemo(() => generateDemoWealthHistory(), []);
-	const { toUSD } = useCurrencyConversion();
 	const { data: brlRate } = api.exchangeRate.getRate.useQuery({
 		currency: "BRL",
 	});
 
 	const assets = useMemo(() => {
-		if (!brlRate) return DEMO_WEALTH_ASSETS;
+		const rate = Number(brlRate?.rate);
+		if (!isValidRate(rate)) return DEMO_WEALTH_ASSETS;
 		return DEMO_WEALTH_ASSETS.map((asset) => {
 			if (asset.currency !== "BRL") return asset;
-			const balanceInUSD = toUSD(asset.balance, "BRL", Number(brlRate.rate));
+			const balanceInUSD = computeAmountInUSD(asset.balance, "BRL", rate);
 			return { ...asset, balanceInUSD, balanceInTargetCurrency: balanceInUSD };
 		});
-	}, [brlRate, toUSD]);
+	}, [brlRate]);
 
 	return (
 		<div className="space-y-6">
@@ -57,6 +57,7 @@ export function DemoWealth() {
 						assets={assets}
 						className="h-full"
 						hasMultipleCurrencies
+						homeCurrency="USD"
 					/>
 				</div>
 			</div>
@@ -66,7 +67,7 @@ export function DemoWealth() {
 				hidePagination
 				homeCurrency="USD"
 				readOnly
-				totalNetWorth={DEMO_NET_WORTH.totalNetWorth}
+				totalAssets={DEMO_NET_WORTH.totalAssets}
 			/>
 		</div>
 	);

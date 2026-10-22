@@ -167,6 +167,15 @@ describe("StatsService", () => {
 			expect(result.projectedSpend).toBeCloseTo(200);
 		});
 
+		it("projectedSpend is 0, not this month's total, with no earlier spending", async () => {
+			useExpenseTable(db, [usd(new Date(2023, 0, 10), 310)]);
+
+			const result = await service.getSummaryStats("user-1", PAST_MONTH, "USD");
+
+			expect(result.totalThisMonth).toBeCloseTo(310);
+			expect(result.projectedSpend).toBe(0);
+		});
+
 		it("dailyAverage = total / days in a past month", async () => {
 			useExpenseTable(db, [usd(new Date(2023, 0, 10), 310)]);
 

@@ -5,6 +5,7 @@ import type { Asset } from "~/components/wealth/wealth-table-columns";
 import { parseDateOnly } from "~/lib/date";
 import type { AssetType } from "~/lib/db-enums";
 import { normalizeAssets, toNumber } from "~/lib/utils";
+import { computeWealthStats } from "~/lib/wealth-stats";
 import {
 	ASSET_COLORS,
 	ASSET_LABELS,
@@ -102,48 +103,12 @@ export function useWealthDashboard({
 		});
 	}, [normalizedAssets, search, category, type, liquidity]);
 
-	// 3. Calculate statistics
-	const stats = useMemo(() => {
-		let totalAssets = 0;
-		let totalLiabilities = 0;
-		let totalLiquidAssets = 0;
-		let weightedAPRSum = 0;
-		let totalLiabilityBalanceForAPR = 0;
-
-		filteredData.forEach((asset) => {
-			const isLiability = asset.type.startsWith("LIABILITY_");
-			const value = asset.balanceInTargetCurrency;
-			const usdValue = asset.balanceInUSD;
-			const interestRate = toNumber(asset.interestRate);
-
-			if (isLiability) {
-				totalLiabilities += value;
-				totalLiabilityBalanceForAPR += usdValue;
-				if (interestRate && usdValue > 0) {
-					weightedAPRSum += interestRate * usdValue;
-				}
-			} else {
-				totalAssets += value;
-				if (asset.isLiquid) {
-					totalLiquidAssets += value;
-				}
-			}
-		});
-
-		const weightedAPR =
-			totalLiabilityBalanceForAPR > 0
-				? weightedAPRSum / totalLiabilityBalanceForAPR
-				: 0;
-
-		return {
-			assets: totalAssets,
-			liabilities: totalLiabilities,
-			netWorth: totalAssets - totalLiabilities,
-			totalLiquidAssets,
-			weightedAPR,
-			netWorth30DaysAgo,
-		};
-	}, [filteredData, netWorth30DaysAgo]);
+	// 3. Headline statistics. Always over every asset: filters only narrow the
+	// table, so the tiles agree with the 30-day change and the history chart.
+	const stats = useMemo(
+		() => computeWealthStats(normalizedAssets, netWorth30DaysAgo),
+		[normalizedAssets, netWorth30DaysAgo],
+	);
 
 	// 4. Selectors for Charts
 	const historyChartData = useMemo(() => {

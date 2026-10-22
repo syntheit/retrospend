@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { buildRateMap, computeHomeCurrencyTotal } from "~/lib/balance-utils";
+import { toAmountString } from "~/lib/money";
 import { oppositeCurrencyBalances } from "~/lib/settlement-display";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -160,7 +161,7 @@ export function SettleUpDialog({
 	// Pre-fill amount when currency tab changes (Issue 6 fix)
 	useEffect(() => {
 		if (isAllMode && homeCurrencyTotal?.canConvert) {
-			setAmount(String(Math.abs(homeCurrencyTotal.amount).toFixed(2)));
+			setAmount(toAmountString(Math.abs(homeCurrencyTotal.amount), homeCurrency));
 		} else if (firstActivePlan) {
 			setAmount(String(firstActivePlan.suggestedAmount));
 		}
@@ -168,7 +169,7 @@ export function SettleUpDialog({
 	}, [selectedCurrencyIdx, firstActivePlan?.currency, isAllMode, homeCurrencyTotal?.amount]);
 
 	const defaultAmount = isAllMode && homeCurrencyTotal?.canConvert
-		? String(Math.abs(homeCurrencyTotal.amount).toFixed(2))
+		? toAmountString(Math.abs(homeCurrencyTotal.amount), homeCurrency)
 		: firstActivePlan
 			? String(firstActivePlan.suggestedAmount)
 			: "";
@@ -319,6 +320,7 @@ export function SettleUpDialog({
 			method.theirIdentifier,
 			parsed,
 			noteToUse,
+			{ amountCurrency: currency },
 		);
 
 		const sel: SelectedMethod = {

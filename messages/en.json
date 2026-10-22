@@ -180,8 +180,8 @@
     "ofBudget": "{spent} of {total}",
     "overBudget": "over budget",
     "underBudget": "under budget",
-    "projectedTotal": "Projected Total",
-    "last3MonthsAvg": "Last 3 months average"
+    "projectedTotal": "3-month average",
+    "last3MonthsAvg": "Previous 3 months with spending"
   },
   "recentActivity": {
     "title": "Recent Activity",
@@ -1107,6 +1107,7 @@
     "balanceLabel": "Balance",
     "exchangeRateLabel": "Exchange Rate",
     "usdEquivalent": "USD Equivalent:",
+    "noRate": "No rate",
     "interestRateLabel": "Interest Rate (APR)",
     "interestRateDescription": "Annual percentage rate for this liability.",
     "liquidAsset": "Liquid Asset",

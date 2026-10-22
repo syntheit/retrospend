@@ -2,7 +2,11 @@
 
 import { useCallback } from "react";
 import { BASE_CURRENCY } from "~/lib/constants";
-import { formatCurrency, getCurrencySymbolWithPreference } from "~/lib/utils";
+import {
+	type CurrencySignDisplay,
+	formatCurrency,
+	getCurrencySymbolWithPreference,
+} from "~/lib/utils";
 import { useUserSettings } from "./use-user-settings";
 
 export function useCurrencyFormatter() {
@@ -12,8 +16,18 @@ export function useCurrencyFormatter() {
 	const smartFormatting = settings?.smartCurrencyFormatting ?? true;
 
 	const formatCurrencyWithSettings = useCallback(
-		(amount: number, currency = BASE_CURRENCY): string => {
-			return formatCurrency(amount, currency, symbolStyle, smartFormatting);
+		(
+			amount: number,
+			currency = BASE_CURRENCY,
+			signDisplay: CurrencySignDisplay = "auto",
+		): string => {
+			return formatCurrency(
+				amount,
+				currency,
+				symbolStyle,
+				smartFormatting,
+				signDisplay,
+			);
 		},
 		[symbolStyle, smartFormatting],
 	);

@@ -16,6 +16,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { AssetType } from "~/lib/db-enums";
 import { maskAmount } from "~/lib/masking";
+import { allocationPercent } from "~/lib/wealth-stats";
 
 export interface Asset {
 	id: string;
@@ -74,7 +75,8 @@ interface SelectionHandlers {
 export function createWealthColumns(
 	homeCurrency: string,
 	formatCurrency: (amount: number, currency?: string) => string,
-	totalNetWorth: number,
+	/** Total of all assets (unfiltered); allocation is a share of it. */
+	totalAssets: number,
 	isPrivacyMode: boolean,
 	selection?: SelectionHandlers,
 	t?: TranslationFn,
@@ -171,8 +173,9 @@ export function createWealthColumns(
 		header: label("allocationColumn", "Allocation"),
 		enableSorting: false,
 		cell: ({ row }) => {
-			const value = row.original.balanceInTargetCurrency;
-			const percentage = totalNetWorth > 0 ? (value / totalNetWorth) * 100 : 0;
+			// Allocation is a share of assets; a liability has none.
+			const percentage = allocationPercent(row.original, totalAssets);
+			if (percentage === null) return null;
 			const displayPercentage = Math.max(0, percentage);
 
 			return (

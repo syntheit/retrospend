@@ -9,6 +9,7 @@ import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { formatPercent } from "~/lib/currency-format";
 import { maskAmount } from "~/lib/masking";
+import { netWorthPercentChange } from "~/lib/wealth-stats";
 
 interface NetWorthSummaryProps {
 	totalNetWorth: number;
@@ -42,12 +43,8 @@ export function NetWorthSummary({
 	);
 
 	const absoluteChange = totalNetWorth - netWorth30DaysAgo;
-	const percentChange =
-		netWorth30DaysAgo === 0
-			? absoluteChange === 0
-				? 0
-				: 100
-			: (absoluteChange / Math.abs(netWorth30DaysAgo)) * 100;
+	// No percent without an earlier value to compare against.
+	const percentChange = netWorthPercentChange(totalNetWorth, netWorth30DaysAgo);
 
 	const isPositive = absoluteChange >= 0;
 	const trendColor = isPositive ? "text-emerald-500" : "text-red-500";
@@ -59,9 +56,9 @@ export function NetWorthSummary({
 				<span className="text-muted-foreground">••••••</span>
 			) : (
 				<span className={trendColor}>
-					{trendSign}
-					{formatCurrency(Math.abs(absoluteChange), homeCurrency)} ({trendSign}
-					{formatPercent(percentChange)})
+					{formatCurrency(absoluteChange, homeCurrency, "exceptZero")}
+					{percentChange !== null &&
+						` (${trendSign}${formatPercent(percentChange)})`}
 				</span>
 			)}
 			<span className="font-normal text-muted-foreground">{t("past30Days")}</span>

@@ -1,3 +1,6 @@
+import { formatCurrency } from "./currency-format";
+import { toAmountString } from "./money";
+
 export type PaymentLinkResult = {
 	url: string | null;
 	webUrl: string | null;
@@ -14,9 +17,14 @@ export function generatePaymentLink(
 	identifier: string | null,
 	amount: number,
 	note: string,
-	opts?: { currency?: string | null; network?: string | null },
+	opts?: {
+		currency?: string | null;
+		network?: string | null;
+		/** Currency `amount` is in; defaults to `currency`, then USD. */
+		amountCurrency?: string | null;
+	},
 ): PaymentLinkResult {
-	const { currency, network } = opts ?? {};
+	const { currency, network, amountCurrency } = opts ?? {};
 
 	if (!identifier) {
 		return {
@@ -28,7 +36,7 @@ export function generatePaymentLink(
 	}
 
 	const encodedNote = encodeURIComponent(note);
-	const amtStr = amount.toFixed(2);
+	const amtStr = toAmountString(amount, amountCurrency || currency || "USD");
 
 	switch (type.toLowerCase()) {
 		case "venmo": {
@@ -114,12 +122,7 @@ export function autoPaymentNote(
 	currency: string,
 	projectName?: string,
 ): string {
-	const fmt = new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency,
-		minimumFractionDigits: 2,
-	});
-	let note = `Retrospend: Settling ${fmt.format(amount)}`;
+	let note = `Retrospend: Settling ${formatCurrency(amount, currency)}`;
 	if (projectName) note += `: ${projectName}`;
 	return note;
 }

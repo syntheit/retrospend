@@ -29,10 +29,10 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { useCurrency } from "~/hooks/use-currency";
-import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
+import { tryConvertAmount } from "~/lib/money";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -385,20 +385,20 @@ function CurrencyEstimate({
 	const t = useTranslations("recurring");
 	const { formatCurrency } = useCurrencyFormatter();
 	const { usdToHomeRate } = useCurrency();
-	const { toUSD, fromUSD } = useCurrencyConversion();
 
 	if (currency === homeCurrency || !amount) return null;
 	if (isLoading)
 		return <p className="text-muted-foreground text-xs">{t("calculating")}</p>;
 
 	// No estimate until both rates are known (never assume 1)
-	if (!rate || usdToHomeRate === null) return null;
-
-	// 1. Convert to USD first
-	const usdValue = toUSD(amount, currency, rate);
-
-	// 2. Convert to home currency
-	const estimation = fromUSD(usdValue, homeCurrency, usdToHomeRate);
+	const estimation = tryConvertAmount(
+		amount,
+		currency,
+		rate,
+		homeCurrency,
+		usdToHomeRate,
+	);
+	if (estimation === null) return null;
 
 	return (
 		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">

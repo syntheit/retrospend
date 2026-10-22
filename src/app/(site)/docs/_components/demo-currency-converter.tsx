@@ -13,8 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select"
-import { isCrypto } from "~/lib/currency-format"
-import { convert } from "~/lib/currency-math"
+import { convertAmount as convert, toAmountString } from "~/lib/money"
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared"
 import { cn } from "~/lib/utils"
 
@@ -54,10 +53,7 @@ function getRateByType(currency: string, type: string): number | undefined {
 }
 
 function formatResult(value: number, currency: string): string {
-	if (isCrypto(currency)) {
-		return value.toFixed(8).replace(/\.?0+$/, "")
-	}
-	return value.toFixed(2)
+	return toAmountString(value, currency)
 }
 
 export function DemoCurrencyConverter() {

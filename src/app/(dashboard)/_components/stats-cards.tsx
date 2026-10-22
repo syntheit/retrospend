@@ -200,7 +200,10 @@ export function StatsCards({
 					}
 					variant={budgetStandingVariant(standing)}
 				/>
-			) : (
+			) : overviewStats?.isCurrentMonth !== false &&
+				(expensesLoading || projectedSpend > 0) ? (
+				// Average of the 3 months before this one, not a projection. Shown
+				// for the running month only, and only when there is history.
 				<StatCard
 					description={t("last3MonthsAvg")}
 					icon={Wallet}
@@ -209,7 +212,7 @@ export function StatsCards({
 					value={expensesLoading ? undefined : formatMoney(projectedSpend)}
 					variant="emerald"
 				/>
-			)}
+			) : null}
 		</div>
 	);
 }

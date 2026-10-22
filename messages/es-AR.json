@@ -180,8 +180,8 @@
     "ofBudget": "{spent} de {total}",
     "overBudget": "sobre presupuesto",
     "underBudget": "bajo presupuesto",
-    "projectedTotal": "Total Proyectado",
-    "last3MonthsAvg": "Promedio últimos 3 meses"
+    "projectedTotal": "Promedio de 3 meses",
+    "last3MonthsAvg": "3 meses anteriores con gastos"
   },
   "recentActivity": {
     "title": "Actividad Reciente",
@@ -1107,6 +1107,7 @@
     "balanceLabel": "Saldo",
     "exchangeRateLabel": "Tasa de Cambio",
     "usdEquivalent": "Equivalente en USD:",
+    "noRate": "Sin cotización",
     "interestRateLabel": "Tasa de Interés (APR)",
     "interestRateDescription": "Tasa de porcentaje anual para este pasivo.",
     "liquidAsset": "Activo Líquido",

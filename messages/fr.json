@@ -180,8 +180,8 @@
     "ofBudget": "{spent} sur {total}",
     "overBudget": "au-dessus du budget",
     "underBudget": "sous le budget",
-    "projectedTotal": "Total prévu",
-    "last3MonthsAvg": "Moyenne des 3 derniers mois"
+    "projectedTotal": "Moyenne sur 3 mois",
+    "last3MonthsAvg": "3 mois précédents avec des dépenses"
   },
   "recentActivity": {
     "title": "Activité récente",
@@ -1107,6 +1107,7 @@
     "balanceLabel": "Solde",
     "exchangeRateLabel": "Taux de change",
     "usdEquivalent": "Équivalent en USD :",
+    "noRate": "Pas de taux",
     "interestRateLabel": "Taux d’intérêt annuel (TAEG)",
     "interestRateDescription": "Taux annuel de ce passif.",
     "liquidAsset": "Actif liquide",

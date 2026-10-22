@@ -72,12 +72,13 @@ export class StatsService {
 				? ((totalThisMonth - lastMonthTotal) / lastMonthTotal) * 100
 				: null;
 
-		// Projection: average of the last 3 months that had spending.
+		// Trailing average of the 3 months before this one that had spending
+		// (not a projection). 0 when none had any: there is nothing to average.
 		const spentMonths = historyTotals.filter((t) => t > 0);
 		const projectedSpend =
 			spentMonths.length > 0
 				? spentMonths.reduce((a, b) => a + b, 0) / spentMonths.length
-				: totalThisMonth;
+				: 0;
 
 		// Daily average over the days elapsed (the whole period once it is over).
 		const now = new Date();

@@ -17,7 +17,7 @@ The server is already a standalone API — nothing needs to change:
 
 All of these are platform-agnostic and can be shared directly:
 
-- `currency-math.ts`, `currencies.ts`, `currency-format.ts` — all currency conversion
+- `money.ts`, `currencies.ts`, `currency-format.ts` — all currency conversion
 - `csv.ts` — parsing/generation
 - `date.ts`, `fiscal-month.ts` — date utilities
 - `balance-utils.ts`, `recurring.ts` — business calculations
@@ -130,7 +130,7 @@ retrospend/
 │   └── mobile/           ← new Expo/React Native app
 ├── packages/
 │   ├── shared/           ← extracted from src/lib/
-│   │   ├── currency-math.ts
+│   │   ├── money.ts
 │   │   ├── currencies.ts
 │   │   ├── date.ts
 │   │   ├── fiscal-month.ts

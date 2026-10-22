@@ -15,8 +15,10 @@ import {
 	rateFromUsdPerUnit,
 	roundMoney,
 	sumIn,
+	toAmountString,
 	toMinorUnits,
 	toUSD,
+	tryConvertAmount,
 } from "../money";
 
 // Stored rates: fiat = units per USD, crypto = USD per coin.
@@ -256,5 +258,33 @@ describe("totals rule (sumIn)", () => {
 		const futureEnd = new Date("2026-10-31T23:59:59Z");
 		expect(periodRateDate(pastEnd, now)).toBe(pastEnd);
 		expect(periodRateDate(futureEnd, now)).toBe(now);
+	});
+});
+
+describe("tryConvertAmount", () => {
+	it("returns null for a missing rate, never 0 or the raw amount", () => {
+		expect(tryConvertAmount(100, "ARS", undefined, "USD", 1)).toBeNull();
+		expect(tryConvertAmount(100, "USD", 1, "EUR", 0)).toBeNull();
+	});
+
+	it("converts when both rates are known", () => {
+		expect(tryConvertAmount(3000, "ARS", 1500, "USD", 1)).toBe(2);
+		expect(tryConvertAmount(5, "EUR", undefined, "EUR", undefined)).toBe(5);
+	});
+});
+
+describe("toAmountString", () => {
+	it("uses ISO minor units for fiat", () => {
+		expect(toAmountString(12.5, "USD")).toBe("12.50");
+		expect(toAmountString(1200.4, "JPY")).toBe("1200");
+		expect(toAmountString(5000, "CLP")).toBe("5000");
+		expect(toAmountString(1.25, "KWD")).toBe("1.250");
+	});
+
+	it("keeps crypto precision and drops trailing zeros", () => {
+		expect(toAmountString(0.004, "ETH")).toBe("0.004");
+		expect(toAmountString(0.000123456789, "BTC")).toBe("0.00012346");
+		expect(toAmountString(100, "BTC")).toBe("100");
+		expect(toAmountString(10, "USDT")).toBe("10");
 	});
 });

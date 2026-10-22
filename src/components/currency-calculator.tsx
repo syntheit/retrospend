@@ -76,6 +76,12 @@ export const CurrencyCalculator = forwardRef<
 									{calc.bottomCurrency}
 								</span>
 							</div>
+						) : calc.missingRate ? (
+							<div className="flex justify-center">
+								<span className="rounded-full bg-muted/60 px-3 py-1 text-muted-foreground text-sm">
+									{t("noExchangeRatesFound")}
+								</span>
+							</div>
 						) : (
 							<div className="w-full border-t border-border" />
 						)}

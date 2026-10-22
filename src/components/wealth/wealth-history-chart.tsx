@@ -77,7 +77,9 @@ export function WealthHistoryChart({
 
 	const formatCompactCurrency = (value: number, currency: string): string => {
 		const symbol = getCurrencySymbol(currency);
-		return `${symbol}${compactNumberFormatter.format(value)}`;
+		const digits = compactNumberFormatter.format(Math.abs(value));
+		const sign = value < 0 && /[1-9]/.test(digits) ? "-" : "";
+		return `${sign}${symbol}${digits}`;
 	};
 
 	if (!data || data.length === 0) {

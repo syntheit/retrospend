@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { isCrypto } from "~/lib/currency-format";
-import { convert } from "~/lib/currency-math";
+import { toAmountString, tryConvertAmount } from "~/lib/money";
 
 interface UseCurrencyCalculatorOptions {
 	homeCurrency: string;
@@ -121,28 +120,30 @@ export function useCurrencyCalculator({
 					setBottomAmount("");
 					return;
 				}
-				const result = convert(
+				const result = tryConvertAmount(
 					parsed,
 					topCurrency,
 					topRate,
 					bottomCurrency,
 					bottomRate,
 				);
-				setBottomAmount(result ? formatNumber(result, bottomCurrency) : "");
+				setBottomAmount(
+					result === null ? "" : formatNumber(result, bottomCurrency),
+				);
 			} else {
 				const parsed = parseFloat(bAmt);
 				if (!bAmt || isNaN(parsed)) {
 					setTopAmount("");
 					return;
 				}
-				const result = convert(
+				const result = tryConvertAmount(
 					parsed,
 					bottomCurrency,
 					bottomRate,
 					topCurrency,
 					topRate,
 				);
-				setTopAmount(result ? formatNumber(result, topCurrency) : "");
+				setTopAmount(result === null ? "" : formatNumber(result, topCurrency));
 			}
 		},
 		[topCurrency, bottomCurrency, getActiveTopRate, getActiveBottomRate],
@@ -224,13 +225,14 @@ export function useCurrencyCalculator({
 
 	// Get the display rate for the pill (single-rate or cross-rate)
 	const displayRate = useMemo(() => {
-		const topRate = getActiveTopRate();
-		const bottomRate = getActiveBottomRate();
-		if (!topRate || !bottomRate) return null;
-
 		// Cross-rate: 1 unit of top currency = X units of bottom
-		const result = convert(1, topCurrency, topRate, bottomCurrency, bottomRate);
-		return result || null;
+		return tryConvertAmount(
+			1,
+			topCurrency,
+			getActiveTopRate(),
+			bottomCurrency,
+			getActiveBottomRate(),
+		);
 	}, [
 		topCurrency,
 		bottomCurrency,
@@ -248,6 +250,9 @@ export function useCurrencyCalculator({
 		stripCurrency,
 		stripRateOptions,
 		displayRate,
+		/** A side has no rate, so nothing can be converted. */
+		missingRate:
+			!topRatesLoading && !bottomRatesLoading && displayRate === null,
 		isLoading: topRatesLoading || bottomRatesLoading,
 
 		handleTopAmountChange,
@@ -260,8 +265,5 @@ export function useCurrencyCalculator({
 }
 
 function formatNumber(value: number, currency: string): string {
-	if (isCrypto(currency)) {
-		return value.toFixed(8).replace(/\.?0+$/, "");
-	}
-	return value.toFixed(2);
+	return toAmountString(value, currency);
 }
