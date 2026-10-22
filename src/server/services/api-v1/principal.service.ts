@@ -93,7 +93,10 @@ export async function resolvePrincipal(
 
 	const stored = session.session.scopes ?? null;
 	const clientId = session.session.clientId ?? null;
-	const kind = sessionKind(clientId, hasBearer);
+	const kind = sessionKind(clientId);
+	// A web session token is only good as the web app's cookie: one sent as
+	// a bearer was copied out of the browser, so it is refused, not upgraded.
+	if (kind === "web" && hasBearer) return { ok: false, reason: "invalid" };
 	return {
 		ok: true,
 		principal: {

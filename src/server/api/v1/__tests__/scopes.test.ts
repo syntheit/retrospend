@@ -51,10 +51,9 @@ describe("effectiveScopes", () => {
 
 describe("sessionKind", () => {
 	it("reads the kind from the stamped client id, not the transport", () => {
-		expect(sessionKind("retrospend-mobile", false)).toBe("mobile");
-		expect(sessionKind("retrospend-cli", false)).toBe("device");
-		expect(sessionKind(null, false)).toBe("web");
-		expect(sessionKind(null, true)).toBe("mobile");
+		expect(sessionKind("retrospend-mobile")).toBe("mobile");
+		expect(sessionKind("retrospend-cli")).toBe("device");
+		expect(sessionKind(null)).toBe("web");
 	});
 });
 

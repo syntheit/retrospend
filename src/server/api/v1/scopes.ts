@@ -63,16 +63,17 @@ export function apiKeyScopes(
 	return parseScopeList((permissions?.scopes ?? []).join(" ")).scopes;
 }
 
-/** The kind of a session from its row: stamped client id first. */
+/**
+ * The kind of a session from its stamped client id. Mobile and device
+ * sessions are stamped when they are made; an unstamped session is the web
+ * app's and only ever valid as its cookie.
+ */
 export function sessionKind(
 	clientId: string | null,
-	sentAsBearer: boolean,
-): PrincipalKind {
+): Exclude<PrincipalKind, "apiKey"> {
 	if (clientId === MOBILE_CLIENT_ID) return "mobile";
 	if (clientId) return "device";
-	// An unstamped session over Authorization can only be a token handed out
-	// before mobile sessions were stamped; it gets the mobile set.
-	return sentAsBearer ? "mobile" : "web";
+	return "web";
 }
 
 /**
