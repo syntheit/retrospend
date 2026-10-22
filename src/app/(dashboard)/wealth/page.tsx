@@ -17,10 +17,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog";
+import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ExpandableSearch } from "~/components/table-search";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { AssetDialog } from "~/components/wealth/asset-dialog";
+import { ClosedAccounts } from "~/components/wealth/closed-accounts";
 import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthPortfolioBreakdown } from "~/components/wealth/wealth-portfolio-breakdown";
@@ -52,10 +54,14 @@ export default function WealthPage() {
 	const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(
 		new Set(),
 	);
-	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-	const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string> | null>(
+	const [showCloseDialog, setShowCloseDialog] = useState(false);
+	const [pendingCloseIds, setPendingCloseIds] = useState<Set<string> | null>(
 		null,
 	);
+	const [pendingPermanentDelete, setPendingPermanentDelete] = useState<{
+		id: string;
+		name: string;
+	} | null>(null);
 	const [isPrivacyMode, setIsPrivacyMode] = useState(false);
 
 	useEffect(() => {
@@ -79,10 +85,31 @@ export default function WealthPage() {
 		netWorth30DaysAgo: dashboardData?.netWorth30DaysAgo,
 	});
 
-	const deleteAsset = api.wealth.deleteAsset.useMutation({
+	const closeAsset = api.wealth.closeAsset.useMutation({
 		onSuccess: () => {
-			toast.success(t("assetsDeleted"));
-			setSelectedAssetIds(new Set()); // Clear selection on delete
+			setSelectedAssetIds(new Set()); // Clear selection on close
+			void utils.wealth.getDashboard.invalidate();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const reopenAsset = api.wealth.reopenAsset.useMutation({
+		onSuccess: () => {
+			toast.success(t("accountReopened"));
+			void utils.wealth.getDashboard.invalidate();
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const deleteAssetPermanently = api.wealth.deleteAssetPermanently.useMutation({
+		onSuccess: () => {
+			toast.success(t("assetDeletedSingle"));
+			setPendingPermanentDelete(null);
+			setSelectedAssetIds(new Set());
 			void utils.wealth.getDashboard.invalidate();
 		},
 		onError: (error) => {
@@ -95,18 +122,24 @@ export default function WealthPage() {
 		[normalizedAssets],
 	);
 
-	const handleDeleteSelected = (ids?: Set<string>) => {
-		setPendingDeleteIds(ids ?? selectedAssetIds);
-		setShowDeleteDialog(true);
+	const handleCloseSelected = (ids?: Set<string>) => {
+		setPendingCloseIds(ids ?? selectedAssetIds);
+		setShowCloseDialog(true);
 	};
 
-	const confirmDeleteSelected = async () => {
-		const idsToDelete = pendingDeleteIds ?? selectedAssetIds;
+	const confirmCloseSelected = async () => {
+		const idsToClose = pendingCloseIds ?? selectedAssetIds;
 		await Promise.all(
-			Array.from(idsToDelete).map((id) => deleteAsset.mutateAsync({ id })),
+			Array.from(idsToClose).map((id) => closeAsset.mutateAsync({ id })),
 		);
-		setPendingDeleteIds(null);
-		setShowDeleteDialog(false);
+		toast.success(idsToClose.size > 1 ? t("accountsClosed") : t("accountClosed"));
+		setPendingCloseIds(null);
+		setShowCloseDialog(false);
+	};
+
+	const handleDeletePermanently = (id: string) => {
+		const asset = normalizedAssets.find((a) => a.id === id);
+		setPendingPermanentDelete({ id, name: asset?.name ?? t("thisAsset") });
 	};
 
 	const columnVisibility: import("@tanstack/react-table").ColumnVisibilityState =
@@ -337,48 +370,80 @@ export default function WealthPage() {
 							fillHeight
 							homeCurrency={homeCurrency}
 							isPrivacyMode={isPrivacyMode}
-							onDeleteSelected={handleDeleteSelected}
+							onCloseSelected={handleCloseSelected}
+							onDeletePermanently={handleDeletePermanently}
 							onSelectionChange={setSelectedAssetIds}
 							selectedRows={selectedAssetIds}
 							totalAssets={stats.assets}
+						/>
+
+						<ClosedAccounts
+							accounts={dashboardData.closedAssets}
+							onDeletePermanently={(account) =>
+								setPendingPermanentDelete({ id: account.id, name: account.name })
+							}
+							onReopen={(id) => reopenAsset.mutate({ id })}
+							pendingId={reopenAsset.isPending ? reopenAsset.variables?.id : null}
 						/>
 					</div>
 				</div>
 			</PageContent>
 
-			{/* Delete Confirmation Dialog */}
+			{/* Close Account Confirmation Dialog */}
 			<Dialog onOpenChange={(open) => {
-					setShowDeleteDialog(open);
-					if (!open) setPendingDeleteIds(null);
-				}} open={showDeleteDialog}>
+					setShowCloseDialog(open);
+					if (!open) setPendingCloseIds(null);
+				}} open={showCloseDialog}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>{(pendingDeleteIds ?? selectedAssetIds).size !== 1 ? t("deleteAssetsTitle") : t("deleteAssetTitle")}</DialogTitle>
-						<DialogDescription>
-							{t("deleteAssetDescription", { count: (pendingDeleteIds ?? selectedAssetIds).size })}
-						</DialogDescription>
+						<DialogTitle>{(pendingCloseIds ?? selectedAssetIds).size !== 1 ? t("closeAccounts") : t("closeAccount")}</DialogTitle>
+						<DialogDescription>{t("closeAccountDescription")}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<Button
-							disabled={deleteAsset.isPending}
+							disabled={closeAsset.isPending}
 							onClick={() => {
-								setShowDeleteDialog(false);
-								setPendingDeleteIds(null);
+								setShowCloseDialog(false);
+								setPendingCloseIds(null);
 							}}
 							variant="ghost"
 						>
 							{t("cancel")}
 						</Button>
 						<Button
-							disabled={deleteAsset.isPending}
-							onClick={confirmDeleteSelected}
-							variant="destructive"
+							disabled={closeAsset.isPending}
+							onClick={confirmCloseSelected}
 						>
-							{deleteAsset.isPending ? t("deleting") : t("deleteAssets")}
+							{closeAsset.isPending
+								? t("closing")
+								: (pendingCloseIds ?? selectedAssetIds).size !== 1
+									? t("closeAccounts")
+									: t("closeAccount")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			{/* Permanent Delete Confirmation Dialog */}
+			<ConfirmationDialog
+				cancelLabel={t("cancel")}
+				confirmLabel={t("deletePermanently")}
+				description={t("deletePermanentlyDescription", {
+					name: pendingPermanentDelete?.name ?? t("thisAsset"),
+				})}
+				isLoading={deleteAssetPermanently.isPending}
+				onConfirm={() => {
+					if (pendingPermanentDelete) {
+						deleteAssetPermanently.mutate({ id: pendingPermanentDelete.id });
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) setPendingPermanentDelete(null);
+				}}
+				open={pendingPermanentDelete !== null}
+				title={t("deletePermanently")}
+				variant="destructive"
+			/>
 		</>
 	);
 }

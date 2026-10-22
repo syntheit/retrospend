@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnVisibilityState } from "@tanstack/react-table";
-import { Edit2, Landmark, Trash2 } from "lucide-react";
+import { Archive, Edit2, Landmark, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 import { DataTable } from "~/components/data-table";
@@ -23,7 +23,8 @@ export function WealthDataTable({
 	homeCurrency = "USD",
 	selectedRows: controlledSelectedRows,
 	onSelectionChange: setControlledSelectedRows,
-	onDeleteSelected,
+	onCloseSelected,
+	onDeletePermanently,
 	totalAssets = 0,
 	isPrivacyMode = false,
 	hidePagination = false,
@@ -37,7 +38,10 @@ export function WealthDataTable({
 	isPrivacyMode?: boolean;
 	selectedRows?: Set<string>;
 	onSelectionChange?: (selectedIds: Set<string>) => void;
-	onDeleteSelected?: (selectedIds: Set<string>) => void;
+	/** Closes accounts: out of the totals from today, history kept. */
+	onCloseSelected?: (selectedIds: Set<string>) => void;
+	/** Deletes an account and its balance history. */
+	onDeletePermanently?: (id: string) => void;
 	/** @deprecated no longer has any effect; progressive rendering is always used */
 	hidePagination?: boolean;
 	fillHeight?: boolean;
@@ -120,26 +124,37 @@ export function WealthDataTable({
 					<Edit2 className="mr-2 h-4 w-4" />
 					{t("editAssetAction")}
 				</ContextMenuItem>
-				{(onDeleteSelected || readOnly) && (
-					<>
-						<ContextMenuSeparator />
-						<ContextMenuItem
-							className="cursor-pointer"
-							onClick={
-								readOnly
-									? undefined
-									: () => onDeleteSelected?.(new Set([row.id]))
-							}
-							variant="destructive"
-						>
-							<Trash2 className="mr-2 h-4 w-4" />
-							{t("deleteAssetAction")}
-						</ContextMenuItem>
-					</>
+				{(onCloseSelected || onDeletePermanently || readOnly) && (
+					<ContextMenuSeparator />
+				)}
+				{(onCloseSelected || readOnly) && (
+					<ContextMenuItem
+						className="cursor-pointer"
+						onClick={
+							readOnly
+								? undefined
+								: () => onCloseSelected?.(new Set([row.id]))
+						}
+					>
+						<Archive className="mr-2 h-4 w-4" />
+						{t("closeAccount")}
+					</ContextMenuItem>
+				)}
+				{(onDeletePermanently || readOnly) && (
+					<ContextMenuItem
+						className="cursor-pointer"
+						onClick={
+							readOnly ? undefined : () => onDeletePermanently?.(row.id)
+						}
+						variant="destructive"
+					>
+						<Trash2 className="mr-2 h-4 w-4" />
+						{t("deletePermanently")}
+					</ContextMenuItem>
 				)}
 			</>
 		);
-	}, [readOnly, onDeleteSelected, t]);
+	}, [readOnly, onCloseSelected, onDeletePermanently, t]);
 
 	const renderToolbar = React.useCallback(
 		(_table: unknown, headerHeight: string) => {
@@ -147,8 +162,11 @@ export function WealthDataTable({
 			return (
 				<DataTableSelectionBar
 					headerHeight={headerHeight}
+					deleteLabel={
+						selectedRows.size > 1 ? t("closeAccounts") : t("closeAccount")
+					}
 					onDeleteSelected={
-						onDeleteSelected ? () => onDeleteSelected(selectedRows) : undefined
+						onCloseSelected ? () => onCloseSelected(selectedRows) : undefined
 					}
 					onEditSelected={(id) => {
 						setEditingAssetId(id);
@@ -161,7 +179,7 @@ export function WealthDataTable({
 				/>
 			);
 		},
-		[readOnly, selectedRows, onDeleteSelected, setControlledSelectedRows],
+		[readOnly, selectedRows, onCloseSelected, setControlledSelectedRows, t],
 	);
 
 	const footer = React.useCallback(
