@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { BASE_CURRENCY } from "~/lib/constants";
+import { formatCompactAmount } from "~/lib/currency-format";
 import {
 	type CurrencySignDisplay,
 	formatCurrency,
@@ -39,8 +40,20 @@ export function useCurrencyFormatter() {
 		[symbolStyle],
 	);
 
+	/** Compact axis label in `currency`, e.g. "AR$1.2M". */
+	const formatCompactCurrency = useCallback(
+		(amount: number, currency = BASE_CURRENCY, locale?: string): string =>
+			formatCompactAmount(
+				amount,
+				getCurrencySymbolWithPreference(currency, symbolStyle),
+				locale,
+			),
+		[symbolStyle],
+	);
+
 	return {
 		formatCurrency: formatCurrencyWithSettings,
+		formatCompactCurrency,
 		getCurrencySymbol: getCurrencySymbolWithSettings,
 	};
 }

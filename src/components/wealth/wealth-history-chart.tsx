@@ -1,6 +1,5 @@
 import { TrendingUp } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { CurrencyPicker } from "~/components/currency-picker";
 import {
@@ -51,7 +50,7 @@ export function WealthHistoryChart({
 }: WealthHistoryChartProps) {
 	const t = useTranslations("wealth");
 	const locale = useLocale();
-	const { formatCurrency, getCurrencySymbol } = useCurrencyFormatter();
+	const { formatCurrency, formatCompactCurrency } = useCurrencyFormatter();
 
 	const chartConfig = {
 		amount: {
@@ -67,20 +66,6 @@ export function WealthHistoryChart({
 			color: ASSET_COLORS.LIABILITY_LOAN,
 		},
 	} satisfies ChartConfig;
-
-	const compactNumberFormatter = useMemo(() => {
-		return new Intl.NumberFormat(locale, {
-			notation: "compact",
-			maximumFractionDigits: 1,
-		});
-	}, [locale]);
-
-	const formatCompactCurrency = (value: number, currency: string): string => {
-		const symbol = getCurrencySymbol(currency);
-		const digits = compactNumberFormatter.format(Math.abs(value));
-		const sign = value < 0 && /[1-9]/.test(digits) ? "-" : "";
-		return `${sign}${symbol}${digits}`;
-	};
 
 	if (!data || data.length === 0) {
 		return (
@@ -189,7 +174,7 @@ export function WealthHistoryChart({
 							tickFormatter={(value) =>
 								isPrivacyMode
 									? maskAmount(value)
-									: formatCompactCurrency(value, baseCurrency)
+									: formatCompactCurrency(value, baseCurrency, locale)
 							}
 							tickLine={false}
 							width={80}

@@ -3,6 +3,7 @@
 import {
 	type DehydratedState,
 	hydrate,
+	type QueryClient,
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -28,6 +29,24 @@ export function HydrateQueries({
 	children: React.ReactNode;
 }) {
 	const client = useQueryClient();
-	useMemo(() => hydrate(client, state), [client, state]);
+	useMemo(() => hydrateAsStale(client, state), [client, state]);
 	return children;
+}
+
+/**
+ * Hydrates `state` and marks every query in it stale, so the first component
+ * that uses one refetches it in the background (the data still shows at once).
+ *
+ * The payload can be older than it looks. Next prefetches a page's layouts
+ * when a link to it is on screen and reuses them on navigation, so a
+ * dashboard payload can predate a budget change made since. The mutation's
+ * invalidation found no dashboard query to mark (it did not exist yet), and
+ * the hydrated data looked fresh for staleTime, so the stale card stayed.
+ */
+export function hydrateAsStale(client: QueryClient, state: DehydratedState) {
+	hydrate(client, state);
+	const cache = client.getQueryCache();
+	for (const { queryHash } of state.queries) {
+		cache.get(queryHash)?.invalidate();
+	}
 }

@@ -19,6 +19,7 @@ export const ASSET_COLORS: Record<string, string> = {
 	INVESTMENT: "hsl(217, 91%, 60%)", // Blue
 	CRYPTO: "hsl(263, 70%, 50%)", // Violet
 	REAL_ESTATE: "hsl(38, 92%, 50%)", // Amber/Gold
+	VEHICLE: "hsl(190, 80%, 42%)", // Cyan
 	LIABILITY_LOAN: "hsl(0, 84%, 60%)", // Red/Danger
 	LIABILITY_CREDIT_CARD: "hsl(25, 95%, 53%)", // Orange
 	LIABILITY_MORTGAGE: "hsl(32, 95%, 40%)", // Brown/Earth
@@ -30,7 +31,20 @@ export const ASSET_LABELS: Record<string, string> = {
 	INVESTMENT: "Investment",
 	CRYPTO: "Crypto",
 	REAL_ESTATE: "Real Estate",
+	VEHICLE: "Vehicle",
 	LIABILITY_LOAN: "Loans",
 	LIABILITY_CREDIT_CARD: "Credit Cards",
 	LIABILITY_MORTGAGE: "Mortgages",
+};
+
+/** The wealth.* message key of each asset type's label. */
+export const ASSET_TYPE_LABEL_KEYS: Record<string, string> = {
+	CASH: "cash",
+	INVESTMENT: "investment",
+	CRYPTO: "crypto",
+	REAL_ESTATE: "realEstate",
+	VEHICLE: "vehicle",
+	LIABILITY_LOAN: "loan",
+	LIABILITY_CREDIT_CARD: "creditCard",
+	LIABILITY_MORTGAGE: "mortgage",
 };

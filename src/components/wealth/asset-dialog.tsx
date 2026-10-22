@@ -308,6 +308,9 @@ export function AssetDialog({
 												<SelectItem value={AssetType.REAL_ESTATE}>
 													{t("realEstate")}
 												</SelectItem>
+												<SelectItem value={AssetType.VEHICLE}>
+													{t("vehicle")}
+												</SelectItem>
 												<SelectItem value={AssetType.LIABILITY_LOAN}>
 													{t("loan")}
 												</SelectItem>

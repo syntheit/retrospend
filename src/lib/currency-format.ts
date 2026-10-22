@@ -70,6 +70,24 @@ export function getCurrencySymbolWithPreference(
 		: currencyData?.symbol || currency.toUpperCase();
 }
 
+/**
+ * A compact money label for chart axes: "AR$1.2M", "-US$250K". `symbol` is
+ * the currency symbol in the user's chosen style (see useCurrencyFormatter),
+ * so an axis names the same currency as every other amount on the page.
+ */
+export function formatCompactAmount(
+	amount: number,
+	symbol: string,
+	locale = "en-US",
+): string {
+	const digits = new Intl.NumberFormat(locale, {
+		notation: "compact",
+		maximumFractionDigits: 1,
+	}).format(Math.abs(amount));
+	const sign = amount < 0 && /[1-9]/.test(digits) ? "-" : "";
+	return `${sign}${symbol}${digits}`;
+}
+
 export function getCurrencyName(currency: string): string {
 	const code = currency.toUpperCase();
 	const fiatData = CURRENCIES[code as keyof typeof CURRENCIES];

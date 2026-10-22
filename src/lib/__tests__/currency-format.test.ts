@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	isCrypto,
+	formatCompactAmount,
 	formatCurrency,
 	getCurrencySymbol,
+	getCurrencySymbolWithPreference,
 	getDecimalDigits,
 	formatNumber,
 	formatPercent,
@@ -284,5 +286,20 @@ describe("getCurrencySymbol", () => {
 
 	it("lowercased currency is normalized to uppercase for fallback", () => {
 		expect(getCurrencySymbol("btc")).toBe("BTC");
+	});
+});
+
+describe("formatCompactAmount", () => {
+	const ars = getCurrencySymbolWithPreference("ARS", "standard");
+
+	it("labels a peso axis as pesos, not dollars", () => {
+		expect(ars).toBe("AR$");
+		expect(formatCompactAmount(1_000_000, ars)).toBe("AR$1M");
+		expect(formatCompactAmount(250_000, ars)).toBe("AR$250K");
+		expect(formatCompactAmount(0, ars)).toBe("AR$0");
+	});
+
+	it("puts the sign before the symbol", () => {
+		expect(formatCompactAmount(-1_500_000, ars)).toBe("-AR$1.5M");
 	});
 });
