@@ -29,6 +29,23 @@ function maintenanceUrl(url: URL): string {
 }
 
 export default async function setup(project: TestProject) {
+	try {
+		return await createRunDatabase(project);
+	} catch (error) {
+		// vitest 5.0.5 crashes while source-mapping an error thrown from a
+		// global setup file ("code.charCodeAt is not a function"), which hides
+		// the real cause. Print it first; pg reports a refused connection as an
+		// AggregateError whose own message is empty.
+		const causes =
+			error instanceof AggregateError
+				? error.errors.map(String)
+				: [String(error)];
+		console.error(`pg test setup failed: ${causes.join("; ")}`);
+		throw error;
+	}
+}
+
+async function createRunDatabase(project: TestProject) {
 	const raw = process.env.TEST_DATABASE_URL;
 	if (!raw) {
 		throw new Error(
