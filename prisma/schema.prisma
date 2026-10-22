@@ -76,6 +76,8 @@ model User {
   paymentMethods          PaymentMethod[]
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  budgetBooks             BudgetBook[]             @relation("BudgetBookCreator")
+  budgetMemberships       BudgetMember[]
 
   // API v1 (M11 auth_tokens, M16 idempotency_keys)
   apiKeys                 Apikey[]
@@ -198,6 +200,9 @@ model Expense {
 
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Envelope budget (M6): the starting balance row of a book, and rule movements it fed.
+  startingBalanceOf BudgetBook?      @relation("BookStartingBalance")
+  budgetMovements   BudgetMovement[] @relation("MovementSourceExpense")
 
   @@index([userId, date])
   @@index([parentId])
@@ -226,6 +231,7 @@ model Category {
   recurringTemplates   RecurringTemplate[]
   analyticsPreferences AnalyticsCategoryPreference[]
   sharedTransactions   SharedTransaction[]
+  envelopeLinks        EnvelopeCategory[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -257,6 +263,7 @@ model RecurringTemplate {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   expenses Expense[]
+  envelopes Envelope[]
 
   @@index([userId, nextDueDate])
   @@index([userId, isActive])
@@ -286,10 +293,9 @@ model Budget {
 
 // Envelope budget (M6, budget SPEC §5, build plan 02 §2 and §4). A book holds
 // every envelope, group and movement; BudgetMember rows decide access, so a
-// household book later adds members instead of re-keying data (D33). Columns
-// that point at tables other tracks own (users, categories, templates, Wealth
-// accounts, expenses) are plain ids with database foreign keys, so this hunk
-// adds no back-relations to their models.
+// household book later adds members instead of re-keying data (D33). Links
+// and movements name envelopes through (id, bookId), so a row can never point
+// into another book.
 model BudgetBook {
   id                       String        @id @default(cuid())
   name                     String        @default("Personal") @db.VarChar(64)
@@ -322,10 +328,13 @@ model BudgetBook {
   createdAt                DateTime      @default(now())
   updatedAt                DateTime      @updatedAt
 
+  createdBy              User      @relation("BudgetBookCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  defaultEnvelope        Envelope? @relation("BookDefaultEnvelope", fields: [defaultEnvelopeId, id], references: [id, bookId], onDelete: NoAction)
+  startingBalanceExpense Expense?  @relation("BookStartingBalance", fields: [startingBalanceExpenseId], references: [id])
   members   BudgetMember[]
   periods   BookPeriod[]
   groups    EnvelopeGroup[]
-  envelopes Envelope[]
+  envelopes Envelope[]       @relation("BookEnvelopes")
   links     EnvelopeCategory[]
   movements BudgetMovement[]
 
@@ -354,6 +363,7 @@ model BudgetMember {
   role      BudgetMemberRole @default(OWNER)
   createdAt DateTime         @default(now())
   book      BudgetBook       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([bookId, userId])
   @@index([userId])
@@ -375,7 +385,8 @@ model EnvelopeGroup {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   book           BudgetBook      @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  envelopes      Envelope[]
+  envelopes      Envelope[]      @relation("GroupEnvelopes")
+  mainEnvelope   Envelope?       @relation("GroupMainEnvelope", fields: [mainEnvelopeId], references: [id])
 
   @@index([bookId, sortOrder])
   @@map("envelope_group")
@@ -411,10 +422,20 @@ model Envelope {
   archivedAt          DateTime?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
-  book                BudgetBook          @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  group               EnvelopeGroup?      @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  book                BudgetBook          @relation("BookEnvelopes", fields: [bookId], references: [id], onDelete: Cascade)
+  group               EnvelopeGroup?      @relation("GroupEnvelopes", fields: [groupId], references: [id])
+  targetTemplate      RecurringTemplate?  @relation(fields: [targetTemplateId], references: [id])
+  targetLiability     AssetAccount?       @relation("EnvelopeLiability", fields: [targetLiabilityId], references: [id])
+  wealthAccount       AssetAccount?       @relation("EnvelopeWealthAccount", fields: [wealthAccountId], references: [id])
+  leftoverSweepTo     Envelope?           @relation("EnvelopeSweep", fields: [leftoverSweepToId, bookId], references: [id, bookId], onDelete: NoAction)
+  sweptFrom           Envelope[]          @relation("EnvelopeSweep")
   categories          EnvelopeCategory[]
+  defaultOf           BudgetBook[]        @relation("BookDefaultEnvelope")
+  mainOfGroups        EnvelopeGroup[]     @relation("GroupMainEnvelope")
+  movementsOut        BudgetMovement[]    @relation("MovementFrom")
+  movementsIn         BudgetMovement[]    @relation("MovementTo")
 
+  @@unique([id, bookId])
   @@index([bookId, archivedAt])
   @@index([groupId])
   @@map("envelope")
@@ -427,7 +448,8 @@ model EnvelopeCategory {
   categoryId String
   createdAt  DateTime   @default(now())
   book       BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  envelope   Envelope   @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  envelope   Envelope   @relation(fields: [envelopeId, bookId], references: [id, bookId], onDelete: Cascade)
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([bookId, categoryId])
   @@index([envelopeId])
@@ -454,7 +476,13 @@ model BudgetMovement {
   actorUserId     String
   createdAt       DateTime     @default(now())
   book            BudgetBook   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  fromEnvelope    Envelope?    @relation("MovementFrom", fields: [fromEnvelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+  toEnvelope      Envelope?    @relation("MovementTo", fields: [toEnvelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+  reverts         BudgetMovement?  @relation("MovementUndo", fields: [revertsId, bookId], references: [id, bookId], onDelete: NoAction)
+  undoneBy        BudgetMovement[] @relation("MovementUndo")
+  sourceExpense   Expense?     @relation("MovementSourceExpense", fields: [sourceExpenseId], references: [id])
 
+  @@unique([id, bookId])
   @@index([bookId, month])
   @@index([bookId, createdAt])
   @@index([batchId])
@@ -586,6 +614,8 @@ model AssetAccount {
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots        AssetSnapshot[]
   history          AssetHistory[]
+  liabilityEnvelopes Envelope[]  @relation("EnvelopeLiability")
+  goalEnvelopes      Envelope[]  @relation("EnvelopeWealthAccount")
 
   @@index([userId])
   @@index([userId, closedAt])

@@ -11,8 +11,9 @@
 --    backfilled and no existing table is rewritten.
 -- 4. Integrity in the database, not only in services:
 --    - one personal book per user (partial unique index);
---    - a link and a movement can only name envelopes of their own book
---      (composite foreign keys on (id, bookId));
+--    - a link and a movement can only name envelopes of their own book,
+--      and an undo only rows of its own book (composite foreign keys on
+--      (id, bookId));
 --    - budget_movement: amount > 0, at least one side, never the same side
 --      twice. Movements are append-only: retrospend_app may insert and read
 --      them, never update or delete (undo appends a mirror row, D28).
@@ -23,9 +24,10 @@
 -- 5. RLS: two SECURITY DEFINER helpers read budget_member without RLS, so
 --    the member policy can call them without recursing (pattern of
 --    20260305000005_fix_rls_recursion). Every book table is visible to the
---    book's members. A user creates only their own book and only its owner
---    adds members. Grants and policies are written here (no FORCE, per
---    20260311000000).
+--    book's members. A user creates only their own book; only an owner
+--    deletes it, adds members or changes roles; a member may leave. A
+--    trigger keeps the book's id and creator fixed. Grants and policies
+--    are written here (no FORCE, per 20260311000000).
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'BudgetStyle') THEN
@@ -206,6 +208,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS "envelope_id_bookId_key" ON "envelope" ("id", 
 CREATE UNIQUE INDEX IF NOT EXISTS "envelope_category_bookId_categoryId_key" ON "envelope_category" ("bookId", "categoryId");
 CREATE INDEX IF NOT EXISTS "envelope_category_envelopeId_idx" ON "envelope_category" ("envelopeId");
 CREATE UNIQUE INDEX IF NOT EXISTS "budget_movement_revertsId_key" ON "budget_movement" ("revertsId");
+-- Target of the same-book foreign key on revertsId: an undo mirrors a row of its own book.
+CREATE UNIQUE INDEX IF NOT EXISTS "budget_movement_id_bookId_key" ON "budget_movement" ("id", "bookId");
 CREATE INDEX IF NOT EXISTS "budget_movement_bookId_month_idx" ON "budget_movement" ("bookId", "month");
 CREATE INDEX IF NOT EXISTS "budget_movement_bookId_createdAt_idx" ON "budget_movement" ("bookId", "createdAt");
 CREATE INDEX IF NOT EXISTS "budget_movement_batchId_idx" ON "budget_movement" ("batchId");
@@ -217,7 +221,7 @@ BEGIN
   FOR fk IN SELECT * FROM (VALUES
     ('budget_book', 'budget_book_createdById_fkey',
       'FOREIGN KEY ("createdById") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
-    ('budget_book', 'budget_book_defaultEnvelopeId_fkey',
+    ('budget_book', 'budget_book_defaultEnvelopeId_id_fkey',
       'FOREIGN KEY ("defaultEnvelopeId", "id") REFERENCES "envelope"("id", "bookId") ON DELETE NO ACTION ON UPDATE CASCADE'),
     ('budget_book', 'budget_book_startingBalanceExpenseId_fkey',
       'FOREIGN KEY ("startingBalanceExpenseId") REFERENCES "expense"("id") ON DELETE SET NULL ON UPDATE CASCADE'),
@@ -241,22 +245,22 @@ BEGIN
       'FOREIGN KEY ("targetLiabilityId") REFERENCES "asset_account"("id") ON DELETE SET NULL ON UPDATE CASCADE'),
     ('envelope', 'envelope_wealthAccountId_fkey',
       'FOREIGN KEY ("wealthAccountId") REFERENCES "asset_account"("id") ON DELETE SET NULL ON UPDATE CASCADE'),
-    ('envelope', 'envelope_leftoverSweepToId_fkey',
+    ('envelope', 'envelope_leftoverSweepToId_bookId_fkey',
       'FOREIGN KEY ("leftoverSweepToId", "bookId") REFERENCES "envelope"("id", "bookId") ON DELETE NO ACTION ON UPDATE CASCADE'),
     ('envelope_category', 'envelope_category_bookId_fkey',
       'FOREIGN KEY ("bookId") REFERENCES "budget_book"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
-    ('envelope_category', 'envelope_category_envelopeId_fkey',
+    ('envelope_category', 'envelope_category_envelopeId_bookId_fkey',
       'FOREIGN KEY ("envelopeId", "bookId") REFERENCES "envelope"("id", "bookId") ON DELETE CASCADE ON UPDATE CASCADE'),
     ('envelope_category', 'envelope_category_categoryId_fkey',
       'FOREIGN KEY ("categoryId") REFERENCES "category"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
     ('budget_movement', 'budget_movement_bookId_fkey',
       'FOREIGN KEY ("bookId") REFERENCES "budget_book"("id") ON DELETE CASCADE ON UPDATE CASCADE'),
-    ('budget_movement', 'budget_movement_fromEnvelopeId_fkey',
+    ('budget_movement', 'budget_movement_fromEnvelopeId_bookId_fkey',
       'FOREIGN KEY ("fromEnvelopeId", "bookId") REFERENCES "envelope"("id", "bookId") ON DELETE NO ACTION ON UPDATE CASCADE'),
-    ('budget_movement', 'budget_movement_toEnvelopeId_fkey',
+    ('budget_movement', 'budget_movement_toEnvelopeId_bookId_fkey',
       'FOREIGN KEY ("toEnvelopeId", "bookId") REFERENCES "envelope"("id", "bookId") ON DELETE NO ACTION ON UPDATE CASCADE'),
-    ('budget_movement', 'budget_movement_revertsId_fkey',
-      'FOREIGN KEY ("revertsId") REFERENCES "budget_movement"("id") ON DELETE NO ACTION ON UPDATE CASCADE'),
+    ('budget_movement', 'budget_movement_revertsId_bookId_fkey',
+      'FOREIGN KEY ("revertsId", "bookId") REFERENCES "budget_movement"("id", "bookId") ON DELETE NO ACTION ON UPDATE CASCADE'),
     ('budget_movement', 'budget_movement_sourceExpenseId_fkey',
       'FOREIGN KEY ("sourceExpenseId") REFERENCES "expense"("id") ON DELETE SET NULL ON UPDATE CASCADE')
   ) AS t(tbl, name, def)
@@ -318,21 +322,70 @@ ALTER TABLE "envelope" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "envelope_category" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "budget_movement" ENABLE ROW LEVEL SECURITY;
 
--- The creator sees their book before the member row exists (INSERT ... RETURNING at setup).
+-- budget_book, one policy per command. The creator sees their book before
+-- the member row exists (INSERT ... RETURNING at setup); members read and
+-- edit it; only an owner deletes it. The creator column never changes
+-- (trigger below), so no member can make themselves the book's creator and
+-- through it an owner.
 DROP POLICY IF EXISTS budget_book_access ON "budget_book";
-CREATE POLICY budget_book_access ON "budget_book"
-  AS PERMISSIVE FOR ALL TO retrospend_app
+DROP POLICY IF EXISTS budget_book_select ON "budget_book";
+CREATE POLICY budget_book_select ON "budget_book"
+  AS PERMISSIVE FOR SELECT TO retrospend_app
   USING ("createdById" = current_setting('app.current_user_id', TRUE)
-         OR is_budget_member("id", current_setting('app.current_user_id', TRUE)))
-  WITH CHECK ("createdById" = current_setting('app.current_user_id', TRUE)
-              OR is_budget_member("id", current_setting('app.current_user_id', TRUE)));
+         OR is_budget_member("id", current_setting('app.current_user_id', TRUE)));
+DROP POLICY IF EXISTS budget_book_insert ON "budget_book";
+CREATE POLICY budget_book_insert ON "budget_book"
+  AS PERMISSIVE FOR INSERT TO retrospend_app
+  WITH CHECK ("createdById" = current_setting('app.current_user_id', TRUE));
+DROP POLICY IF EXISTS budget_book_update ON "budget_book";
+CREATE POLICY budget_book_update ON "budget_book"
+  AS PERMISSIVE FOR UPDATE TO retrospend_app
+  USING (is_budget_member("id", current_setting('app.current_user_id', TRUE)))
+  WITH CHECK (is_budget_member("id", current_setting('app.current_user_id', TRUE)));
+DROP POLICY IF EXISTS budget_book_delete ON "budget_book";
+CREATE POLICY budget_book_delete ON "budget_book"
+  AS PERMISSIVE FOR DELETE TO retrospend_app
+  USING (is_budget_owner("id", current_setting('app.current_user_id', TRUE)));
 
+CREATE OR REPLACE FUNCTION budget_book_keep_creator()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW."createdById" IS DISTINCT FROM OLD."createdById" OR NEW."id" IS DISTINCT FROM OLD."id" THEN
+    RAISE EXCEPTION 'a budget book keeps its id and creator' USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END
+$$;
+DROP TRIGGER IF EXISTS budget_book_keep_creator ON "budget_book";
+CREATE TRIGGER budget_book_keep_creator
+  BEFORE UPDATE ON "budget_book"
+  FOR EACH ROW EXECUTE FUNCTION budget_book_keep_creator();
+
+-- budget_member: members see the member list; only an owner adds members or
+-- changes a role; a member may leave (delete their own row), and only an
+-- owner removes someone else.
 DROP POLICY IF EXISTS budget_member_access ON "budget_member";
-CREATE POLICY budget_member_access ON "budget_member"
-  AS PERMISSIVE FOR ALL TO retrospend_app
+DROP POLICY IF EXISTS budget_member_select ON "budget_member";
+CREATE POLICY budget_member_select ON "budget_member"
+  AS PERMISSIVE FOR SELECT TO retrospend_app
   USING ("userId" = current_setting('app.current_user_id', TRUE)
-         OR is_budget_member("bookId", current_setting('app.current_user_id', TRUE)))
+         OR is_budget_member("bookId", current_setting('app.current_user_id', TRUE)));
+DROP POLICY IF EXISTS budget_member_insert ON "budget_member";
+CREATE POLICY budget_member_insert ON "budget_member"
+  AS PERMISSIVE FOR INSERT TO retrospend_app
   WITH CHECK (is_budget_owner("bookId", current_setting('app.current_user_id', TRUE)));
+DROP POLICY IF EXISTS budget_member_update ON "budget_member";
+CREATE POLICY budget_member_update ON "budget_member"
+  AS PERMISSIVE FOR UPDATE TO retrospend_app
+  USING (is_budget_owner("bookId", current_setting('app.current_user_id', TRUE)))
+  WITH CHECK (is_budget_owner("bookId", current_setting('app.current_user_id', TRUE)));
+DROP POLICY IF EXISTS budget_member_delete ON "budget_member";
+CREATE POLICY budget_member_delete ON "budget_member"
+  AS PERMISSIVE FOR DELETE TO retrospend_app
+  USING ("userId" = current_setting('app.current_user_id', TRUE)
+         OR is_budget_owner("bookId", current_setting('app.current_user_id', TRUE)));
 
 DROP POLICY IF EXISTS book_period_access ON "book_period";
 CREATE POLICY book_period_access ON "book_period"
