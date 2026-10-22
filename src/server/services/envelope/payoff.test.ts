@@ -1,0 +1,205 @@
+import { describe, expect, it } from "vitest";
+import { type PayoffDebt, type PayoffInput, projectPayoff } from "./payoff";
+
+const m = (n: number) => Math.round(n * 100);
+
+const debt = (
+	id: string,
+	balance: number,
+	apr: string,
+	minimum: number,
+	o: Partial<PayoffDebt> = {},
+): PayoffDebt => ({
+	id,
+	currency: "ARS",
+	balance: m(balance),
+	aprPercent: apr,
+	minimum: m(minimum),
+	bookPerUnit: "1",
+	...o,
+});
+
+const payoffInput = (
+	o: Partial<PayoffInput> & Pick<PayoffInput, "debts">,
+): PayoffInput => ({
+	bookCurrency: "ARS",
+	strategy: "SNOWBALL",
+	extraMonthly: 0,
+	startMonth: 202610,
+	...o,
+});
+
+const run = (o: Partial<PayoffInput> & Pick<PayoffInput, "debts">) =>
+	projectPayoff(payoffInput(o));
+
+/** Invariant on every finished schedule: each debt paid its balance plus its interest. */
+function expectPaidInFull(
+	input: PayoffInput,
+	result: ReturnType<typeof projectPayoff>,
+) {
+	expect(result.capped).toBe(false);
+	for (const d of result.debts) {
+		const start = input.debts.find((x) => x.id === d.id)?.balance ?? 0;
+		expect(d.paid, d.id).toBe(start + d.interest);
+	}
+}
+
+describe("projectPayoff (SPEC §5.11)", () => {
+	const two = [debt("card", 5_000, "24", 150), debt("loan", 1_000, "6", 50)];
+
+	it.each([
+		{
+			name: "snowball: smallest balance first, the loan clears in month 5",
+			strategy: "SNOWBALL" as const,
+			debtFree: 202804,
+			interest: 1_152.32,
+			payoff: { card: 202804, loan: 202703 },
+			next: { card: [150, 0], loan: [50, 200] },
+		},
+		{
+			name: "avalanche: highest APR first, less interest",
+			strategy: "AVALANCHE" as const,
+			debtFree: 202804,
+			interest: 1_001.6,
+			payoff: { card: 202803, loan: 202804 },
+			next: { card: [150, 200], loan: [50, 0] },
+		},
+	])("$name", ({ strategy, debtFree, interest, payoff, next }) => {
+		const input: PayoffInput = {
+			bookCurrency: "ARS",
+			debts: two,
+			strategy,
+			extraMonthly: m(200),
+			startMonth: 202610,
+		};
+		const out = projectPayoff(input);
+		expect(out.debtFreeMonth).toBe(debtFree);
+		expect(out.months).toBe(18);
+		expect(out.totalInterest).toBe(m(interest));
+		for (const d of out.debts) {
+			expect(d.payoffMonth).toBe(payoff[d.id as "card" | "loan"]);
+			expect([d.nextMinimum, d.nextExtra]).toEqual(
+				next[d.id as "card" | "loan"].map(m),
+			);
+		}
+		expectPaidInFull(input, out);
+	});
+
+	it("custom order follows the list the user set", () => {
+		const i = payoffInput({
+			debts: two,
+			strategy: "CUSTOM",
+			customOrder: ["loan", "card"],
+			extraMonthly: m(200),
+		});
+		const out = projectPayoff(i);
+		expect(out.debts.find((d) => d.id === "loan")?.payoffMonth).toBe(202703);
+		expect(out.totalInterest).toBe(m(1_152.32));
+		expectPaidInFull(i, out);
+	});
+
+	it("a single card at 12% with a 100 minimum: 13 months, 84.78 interest (hand-checked first month 1,212 - 100)", () => {
+		const i = payoffInput({ debts: [debt("visa", 1_200, "12", 100)] });
+		const out = projectPayoff(i);
+		expect(out).toMatchObject({
+			months: 13,
+			debtFreeMonth: 202711,
+			totalInterest: m(84.78),
+			capped: false,
+		});
+		expect(out.debts[0]?.nextMinimum).toBe(m(100));
+		expectPaidInFull(i, out);
+	});
+
+	it("zero APR: freed minimums roll over to the next debt", () => {
+		const i = payoffInput({
+			debts: [debt("a", 1_000, "0", 100), debt("b", 500, "0", 50)],
+			extraMonthly: m(100),
+		});
+		const out = projectPayoff(i);
+		expectPaidInFull(i, out);
+		expect(out.debts.map((d) => [d.id, d.payoffMonth])).toEqual([
+			["a", 202704],
+			["b", 202702],
+		]);
+		expect(out.months).toBe(6);
+		expect(out.totalInterest).toBe(0);
+	});
+
+	it("a foreign-currency debt is projected in its own currency; the ARS extra converts at today's rate", () => {
+		const usd = debt("usd-loan", 1_000, "0", 100, {
+			currency: "USD",
+			bookPerUnit: "1465",
+		});
+		const i = payoffInput({ debts: [usd], extraMonthly: m(146_500) });
+		const out = projectPayoff(i);
+		expect(out.months).toBe(5);
+		expectPaidInFull(i, out);
+		expect(out.debts[0]).toMatchObject({
+			nextMinimum: m(100),
+			nextExtra: m(100),
+			payoffMonth: 202703,
+		});
+	});
+
+	it("a foreign debt's interest is totaled in H at today's rate", () => {
+		const usd = debt("usd-card", 1_200, "12", 100, {
+			currency: "USD",
+			bookPerUnit: "1465",
+		});
+		const out = run({ debts: [usd] });
+		expect(out.debts[0]?.interest).toBe(m(84.78));
+		expect(out.totalInterest).toBe(m(84.78 * 1_465));
+	});
+
+	it("stops at 50 years when the minimum never covers the interest", () => {
+		const out = run({ debts: [debt("payday", 10_000, "24", 100)] });
+		expect(out).toMatchObject({
+			capped: true,
+			debtFreeMonth: null,
+			months: 600,
+		});
+		expect(out.debts[0]?.payoffMonth).toBeNull();
+	});
+
+	it("no debts: debt-free now", () => {
+		expect(run({ debts: [] })).toMatchObject({
+			months: 0,
+			debtFreeMonth: 202610,
+			totalInterest: 0,
+			capped: false,
+		});
+	});
+
+	it("a debt already at 0 frees nothing: its minimum was never being paid", () => {
+		// By hand: the loan alone, 100 at 25 a month, no interest, no extra: 4 months, Nov to Feb.
+		const out = run({
+			debts: [debt("done", 0, "10", 50), debt("loan", 100, "0", 25)],
+		});
+		expect(out.debts.map((d) => d.payoffMonth)).toEqual([202610, 202702]);
+		expect(out.months).toBe(4);
+	});
+
+	it("a debt paid off during the projection frees its minimum", () => {
+		// By hand: a = 50 at 50 a month clears in Nov; b = 300 at 50: Nov 250, then 100 a month: Dec 150, Jan 50, Feb 0.
+		const out = run({
+			debts: [debt("a", 50, "0", 50), debt("b", 300, "0", 50)],
+		});
+		expect(out.debts.map((d) => d.payoffMonth)).toEqual([202611, 202702]);
+	});
+
+	it.each(["0", "-1465"])(
+		"rejects a book rate of %s for a foreign debt",
+		(bookPerUnit) => {
+			expect(() =>
+				run({
+					debts: [debt("usd", 100, "0", 10, { currency: "USD", bookPerUnit })],
+				}),
+			).toThrow(/rate to the book currency must be positive/);
+		},
+	);
+
+	it("rejects negative balances", () => {
+		expect(() => run({ debts: [debt("x", -1, "0", 0)] })).toThrow(RangeError);
+	});
+});
