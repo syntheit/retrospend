@@ -36,7 +36,7 @@ interface UseWealthDashboardProps {
 	rawHistory: HistoryPoint[] | undefined;
 	isLoading: boolean;
 	homeCurrency: string;
-	netWorth30DaysAgo?: number;
+	netWorth30DaysAgo?: number | null;
 }
 
 /**
@@ -48,7 +48,7 @@ export function useWealthDashboard({
 	rawHistory,
 	isLoading,
 	homeCurrency = DEFAULT_CURRENCY,
-	netWorth30DaysAgo = 0,
+	netWorth30DaysAgo = null,
 }: UseWealthDashboardProps) {
 	// Filter State
 	const [search, setSearch] = useState("");

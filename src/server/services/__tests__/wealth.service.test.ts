@@ -219,4 +219,24 @@ describe("WealthService.getDashboardSummary", () => {
 
 		expect(summary.history.find((h) => h.date === "2026-03-10")!.amount).toBe(42);
 	});
+
+	it("netWorth30DaysAgo is null, not 0, with no history that old", async () => {
+		db.assetAccount.findMany.mockResolvedValue([asset({ balance: 1000 })]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.totalNetWorth).toBe(1000);
+		expect(summary.netWorth30DaysAgo).toBeNull();
+	});
+
+	it("netWorth30DaysAgo is the last history point at least 30 days old", async () => {
+		db.assetAccount.findMany.mockResolvedValue([asset({ id: "cash", balance: 1000 })]);
+		db.assetSnapshot.findMany.mockResolvedValue([
+			{ accountId: "cash", date: new Date("2020-01-10T00:00:00Z"), balance: 400, balanceInUSD: 400 },
+		]);
+
+		const summary = await service.getDashboardSummary("user-1", "USD");
+
+		expect(summary.netWorth30DaysAgo).toBe(400);
+	});
 });

@@ -22,7 +22,8 @@ export function isLiabilityType(type: string): boolean {
  */
 export function computeWealthStats(
 	assets: readonly WealthStatsAsset[],
-	netWorth30DaysAgo?: number,
+	/** Null or missing when there is no history that old. */
+	netWorth30DaysAgo?: number | null,
 ) {
 	let totalAssets = 0;
 	let totalLiabilities = 0;
@@ -60,7 +61,7 @@ export function computeWealthStats(
 		netWorth: totalAssets - totalLiabilities,
 		totalLiquidAssets,
 		weightedAPR,
-		netWorth30DaysAgo,
+		netWorth30DaysAgo: netWorth30DaysAgo ?? null,
 	};
 }
 
@@ -75,6 +76,18 @@ export function allocationPercent(
 	if (isLiabilityType(asset.type)) return null;
 	if (totalAssets <= 0) return 0;
 	return (asset.balanceInTargetCurrency / totalAssets) * 100;
+}
+
+/**
+ * Change in net worth over the period. Null without a baseline: a missing
+ * earlier value is not 0.
+ */
+export function netWorthChange(
+	current: number,
+	before: number | null | undefined,
+): number | null {
+	if (before === null || before === undefined) return null;
+	return current - before;
 }
 
 /**

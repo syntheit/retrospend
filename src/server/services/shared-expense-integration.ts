@@ -74,14 +74,12 @@ async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
 	};
 }
 
-/** USD value of a share; 0 (and a log line) when its currency has no rate. */
+/**
+ * USD value of a share. A currency with no rate at all throws
+ * MissingRateError, like every other total under the totals rule: a share
+ * is never counted as 0.
+ */
 function shareToUSD(amount: number, currency: string, rate: number | null) {
-	if (rate === null) {
-		console.error(
-			`[shared-expense-integration] No exchange rate for ${currency}; share left out of USD totals`,
-		);
-		return 0;
-	}
 	return computeAmountInUSD(amount, currency, rate);
 }
 
@@ -327,7 +325,10 @@ export async function listSharedParticipationsForUser(
 		const shareAmount = Number(p.shareAmount);
 		const currency = tx.currency;
 		const rate = rateFor(tx);
-		const amountInUSD = shareToUSD(shareAmount, currency, rate);
+		// The feed lists every share; one with no rate shows as "no rate"
+		// (null, as for personal expenses) instead of failing the whole list.
+		const amountInUSD =
+			rate === null ? null : shareToUSD(shareAmount, currency, rate);
 
 		const payerKey = `${tx.paidByType}:${tx.paidById}`;
 		const paidByName = nameMap.get(payerKey) ?? "Unknown";

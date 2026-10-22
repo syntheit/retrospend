@@ -3,6 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
+import { MissingRateError } from "~/lib/money";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
 import {
 	createStatefulDb,
@@ -85,16 +86,14 @@ describe("getSharedExpenseShares", () => {
 		expect(shares.map((s) => s.amountInUSD)).toEqual([60, 958.31]);
 	});
 
-	it("a currency with no rate at all is not converted at 1", async () => {
-		const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+	it("a currency with no rate at all raises MissingRateError, never 0 or 1", async () => {
 		db.splitParticipant.findMany.mockResolvedValue([
 			participation(1000, "XAU", null),
 			participation(25, "USD", null),
 		]);
-		const shares = await getSharedExpenseShares(db as never, "user-1");
-		expect(shares.map((s) => s.amountInUSD)).toEqual([0, 25]);
-		expect(spy).toHaveBeenCalled();
-		spy.mockRestore();
+		await expect(
+			getSharedExpenseShares(db as never, "user-1"),
+		).rejects.toBeInstanceOf(MissingRateError);
 	});
 
 	it("keeps the category only when it is the participant's own", async () => {
@@ -129,6 +128,20 @@ describe("getSharedExpenseShares", () => {
 });
 
 describe("listSharedParticipationsForUser", () => {
+	it("shows a share with no rate as null (no rate), not 0", async () => {
+		const db = createMockDb();
+		useRateTable(db);
+		db.splitParticipant.findMany.mockResolvedValue([
+			participation(1000, "XAU", null),
+			participation(25, "USD", null),
+		]);
+		const rows = await listSharedParticipationsForUser(db as never, "user-1");
+		expect(rows.map((r) => [r.amount, r.amountInUSD])).toEqual([
+			[1000, null],
+			[25, 25],
+		]);
+	});
+
 	it("reports each share's own rate and USD amount", async () => {
 		const db = createMockDb();
 		useRateTable(db);

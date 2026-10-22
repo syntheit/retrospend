@@ -369,7 +369,9 @@ export class WealthService {
 			.filter((h) => h.date <= thirtyDaysAgoStr)
 			.slice(-1)[0];
 
-		const netWorth30DaysAgo = entry30DaysAgo?.amount ?? 0;
+		// Null when there is no history that old: no baseline, so no change to
+		// show (0 would make the whole net worth look like a 30-day gain).
+		const netWorth30DaysAgo: number | null = entry30DaysAgo?.amount ?? null;
 
 		return {
 			totalNetWorth,

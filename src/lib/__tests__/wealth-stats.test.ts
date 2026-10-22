@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	allocationPercent,
 	computeWealthStats,
+	netWorthChange,
 	netWorthPercentChange,
 } from "../wealth-stats";
 
@@ -48,6 +49,19 @@ describe("allocationPercent", () => {
 
 	it("is null for a liability", () => {
 		expect(allocationPercent(loan, 1000)).toBeNull();
+	});
+});
+
+describe("netWorthChange", () => {
+	it("is null without a baseline, never the whole net worth", () => {
+		expect(netWorthChange(800, null)).toBeNull();
+		expect(netWorthChange(800, undefined)).toBeNull();
+		expect(computeWealthStats([cash]).netWorth30DaysAgo).toBeNull();
+	});
+
+	it("is the difference when a baseline exists, 0 included", () => {
+		expect(netWorthChange(800, 700)).toBe(100);
+		expect(netWorthChange(800, 0)).toBe(800);
 	});
 });
 
