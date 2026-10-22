@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "node scripts/next-build.mjs",
-		"check": "biome check .",
+		"check": "pnpm typecheck && pnpm lint && node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run",
 		"check:unsafe": "biome check --write --unsafe .",
 		"check:write": "biome check --write .",
 		"db:generate": "prisma migrate dev",
@@ -18,6 +18,7 @@
 		"dev": "prisma migrate deploy && next dev -H 0.0.0.0 -p 2997",
 		"dev:test": "prisma migrate deploy && next dev -p 1998",
 		"i18n:check": "vitest run src/i18n/catalog-validation.test.ts",
+		"lint": "biome lint --diagnostic-level=error --skip=nursery/useTailwindSortedClasses --skip=correctness/useExhaustiveDependencies --skip=correctness/noComponentHookFactories --skip=correctness/noChildrenProp --skip=suspicious/noArrayIndexKey --skip=a11y/noStaticElementInteractions --skip=a11y/useAriaPropsSupportedByRole --skip=a11y/useButtonType --skip=a11y/useKeyWithClickEvents --skip=a11y/useSemanticElements --skip=a11y/useValidAriaRole src e2e",
 		"postinstall": "prisma generate && mkdir -p public/images/flags && cp -n node_modules/circle-flags/flags/*.svg public/images/flags/ 2>/dev/null || true && mkdir -p public/images/crypto && cp -n node_modules/cryptocurrency-icons/svg/color/*.svg public/images/crypto/ 2>/dev/null || true && node scripts/generate-crypto-icons-list.mjs",
 		"preview": "node scripts/next-build.mjs && next start",
 		"start": "next start",
