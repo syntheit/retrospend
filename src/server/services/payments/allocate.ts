@@ -98,9 +98,9 @@ export interface Allocation {
 
 /**
  * The smallest amount that is not dust in `currency`, in its minor units:
- * ARS 1 for ARS (pesos are shown whole), one minor unit for every other
- * currency. The ARS rule is the owner's and is not extended to other
- * currencies shown whole.
+ * ARS 1 for ARS, one minor unit for every other currency (MONEY-MOVES
+ * §1.2 rule 5). The whole-unit rule is written for ARS only and is not
+ * extended to other currencies shown whole.
  */
 export function dustOf(currency: string): Minor {
 	return currency.toUpperCase() === "ARS" ? 10 ** currencyDecimals("ARS") : 1;
@@ -333,7 +333,9 @@ export function allocatePayment(input: AllocateInput): Allocation {
 	const owesOnBalance = owedBack - gross < dustP;
 	const everything =
 		opposite.length > 0 && owesOnBalance && amount > full - dustP;
-	const cash = everything ? Math.min(amount, full) : amount;
+	// When the payee owes more, the payer owes nothing on balance: no cash
+	// reaches a debt implicitly (paying one scope down is an Apply to).
+	const cash = everything ? Math.min(amount, full) : owesOnBalance ? amount : 0;
 
 	const paid = payCash(pricing, debts, cash);
 	const rows = paid.rows;
@@ -344,8 +346,8 @@ export function allocatePayment(input: AllocateInput): Allocation {
 		P,
 		input.allowOverpay === true,
 	);
-	// Only what goes beyond every debt is excess; when the payee owes more
-	// overall the payment still only pays down the payer's own debts.
+	// Rule 6: the overpayment is what goes beyond everything owed, netted at
+	// the payment's quotes, and it is exactly what an excess row books.
 	const overpay = rest;
 
 	return {

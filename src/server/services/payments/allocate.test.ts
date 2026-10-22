@@ -220,34 +220,42 @@ describe("allocatePayment", () => {
 		expect(cop.overpay).toBe(50);
 	});
 
-	it("reports as overpay only what would be booked as excess", () => {
-		// The payee owes more overall: the payment still only pays the payer's
-		// own debt, and only what goes beyond it is excess.
+	it("measures overpay against everything owed, net, and books it whole Outside projects (rule 6)", () => {
+		// The payee owes more overall (USD 80 against USD 50): the payer owes
+		// nothing, so the whole payment is an overpayment.
 		const lines = [
 			{ scope: "trip", currency: "USD", owed: 5_000, oldest: "2026-10-01" },
 			{ scope: "rent", currency: "USD", owed: -8_000, oldest: "2026-10-02" },
 		];
-		const within = allocatePayment({
+		const refused = allocatePayment({ lines, currency: "USD", amount: 2_000, quotes: new Map() });
+		expect(refused.full).toBe(0);
+		expect(refused.overpay).toBe(2_000);
+		const confirmed = allocatePayment({
 			lines,
 			currency: "USD",
 			amount: 2_000,
 			quotes: new Map(),
-		});
-		expect(within.overpay).toBe(0);
-		expect(within.rows.map((r) => [r.scope, r.amount])).toEqual([
-			["trip", 2_000],
-		]);
-		const beyond = allocatePayment({
-			lines,
-			currency: "USD",
-			amount: 6_000,
-			quotes: new Map(),
 			allowOverpay: true,
 		});
-		expect(beyond.overpay).toBe(1_000);
-		expect(beyond.rows.filter((r) => r.excess).map((r) => r.amount)).toEqual([
-			1_000,
-		]);
+		expect(confirmed.rows.map((r) => [r.scope, r.amount, r.excess])).toEqual([[null, 2_000, true]]);
+		// Paying down Trip itself is an Apply to.
+		const trip = allocatePayment({
+			lines,
+			currency: "USD",
+			amount: 2_000,
+			quotes: new Map(),
+			applyTo: [{ scope: "trip" }],
+		});
+		expect(trip.overpay).toBe(0);
+		expect(trip.rows.map((r) => [r.scope, r.amount])).toEqual([["trip", 2_000]]);
+	});
+
+	it("Valentina: more than the net is the overpay, not more than what is owed one way", () => {
+		const lines = payerLines(ledgerLines(eventsFor(fixtureLedger().valentina, "me")), true);
+		// Everything is ARS 25,688; ARS 26,688 is ARS 1,000 more.
+		const a = allocatePayment({ lines, currency: "ARS", amount: 2_668_800, quotes: BLUE });
+		expect(a.overpay).toBe(100_000);
+		expect(a.everything).toBe(true);
 	});
 
 	it("rejects a fractional or negative amount", () => {
