@@ -7,6 +7,7 @@ import {
 	computeBalanceBatch,
 	computeBalanceWithProjects,
 } from "./balance";
+import { settledSince } from "~/server/services/payments/ledger";
 import { buildContactVisibility, redactContact } from "./contact-visibility";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
@@ -90,9 +91,31 @@ export interface ProjectBreakdownItem {
 	balances: BalanceCurrency[];
 }
 
+/** "Settled since" for the person page (MONEY-MOVES §1.9, I7). */
+export interface PersonSettled {
+	/** YYYY-MM-DD of the record that brought every balance to zero; null while any is not. */
+	since: string | null;
+	/** The zeroing payment still waits for the other side. */
+	pending: boolean;
+	/** The same rule per scope: a project id, or null for Outside projects. */
+	byScope: Array<{ projectId: string | null; since: string | null }>;
+	nothingShared: boolean;
+}
+
+function settledOf(events: Parameters<typeof settledSince>[0]): PersonSettled {
+	const s = settledSince(events);
+	return {
+		since: s.overall,
+		pending: s.pending,
+		byScope: [...s.byScope].map(([projectId, since]) => ({ projectId, since })),
+		nothingShared: s.nothingShared,
+	};
+}
+
 export interface PersonDetail {
 	identity: PersonIdentity;
 	balances: BalanceCurrency[];
+	settled: PersonSettled;
 	transactions: TransactionHistoryItem[];
 	total: number;
 	page: number;
@@ -104,6 +127,7 @@ export interface PersonDetail {
 export interface PersonDetailCursorResult {
 	identity?: PersonIdentity;
 	balances?: BalanceCurrency[];
+	settled?: PersonSettled;
 	transactions: TransactionHistoryItem[];
 	nextCursor: string | undefined;
 	relationshipStats?: RelationshipStats;
@@ -346,6 +370,7 @@ export class PeopleService {
 			return {
 				identity,
 				balances: [],
+				settled: settledOf([]),
 				transactions: [],
 				total: 0,
 				page,
@@ -614,6 +639,7 @@ export class PeopleService {
 		return {
 			identity,
 			balances,
+			settled: settledOf(balanceResult.events),
 			transactions,
 			total,
 			page,
@@ -646,6 +672,7 @@ export class PeopleService {
 				return {
 					identity,
 					balances: [],
+					settled: settledOf([]),
 					transactions: [],
 					nextCursor: undefined,
 					relationshipStats: {
@@ -801,6 +828,7 @@ export class PeopleService {
 			return {
 				identity,
 				balances,
+				settled: settledOf(balanceResult.events),
 				transactions,
 				nextCursor,
 				relationshipStats,

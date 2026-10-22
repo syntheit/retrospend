@@ -222,6 +222,18 @@ export async function confirmClaim(
 	};
 }
 
+/** The other person on a payment, from `userId`'s side, for the preview's narrowing. */
+export async function paymentCounterparty(
+	db: Tx,
+	paymentId: string,
+	userId: string,
+): Promise<ParticipantRef> {
+	const { rows } = await loadPayment(db, paymentId);
+	const other = groupCounterparty(rows, userId);
+	if (!other) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
+	return other as ParticipantRef;
+}
+
 export interface ConfirmPaymentValue {
 	readonly paymentId: string;
 	readonly counterparty: ParticipantRef;

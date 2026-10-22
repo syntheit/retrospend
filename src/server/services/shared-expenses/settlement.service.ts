@@ -250,6 +250,29 @@ export class SettlementService {
 	 * a payment was sent (to confirm), or the payer that the payee recorded
 	 * receiving their payment.
 	 */
+	/** Notifies the other person about a payment payment.record wrote (best effort, after commit). */
+	async notifyPaymentRecorded(paymentId: string) {
+		const header = await this.db.payment.findUnique({ where: { id: paymentId } });
+		if (!header) return;
+		const payer: ParticipantRef = {
+			participantType: header.payerType,
+			participantId: header.payerId,
+		};
+		const payee: ParticipantRef = {
+			participantType: header.payeeType,
+			participantId: header.payeeId,
+		};
+		const recordedByPayee = payee.participantId === this.userId;
+		const other = recordedByPayee ? payer : payee;
+		if (other.participantType !== "user") return;
+		const amount = Number(header.amount);
+		await this.notifySettlementRecorded(
+			{ payer, payee, recordedByPayee },
+			`${header.currency} ${formatAmount(amount, header.currency)}`,
+			{ paymentGroupId: paymentId },
+		);
+	}
+
 	private async notifySettlementRecorded(
 		sides: SettlementSides,
 		formattedAmount: string,
