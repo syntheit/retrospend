@@ -1,5 +1,6 @@
-import { dehydrate, hydrate } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { dehydrate, hydrate, QueryObserver } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
+import { hydrateAsStale } from "~/trpc/hydrate-queries";
 import { createQueryClient } from "~/trpc/query-client";
 
 /** Stand-in for Prisma's Decimal: a class instance with toJSON. */
@@ -54,5 +55,25 @@ describe("server to browser query hand-off", () => {
 
 		hydrate(browser, state);
 		expect(browser.getQueryData(["list"])).toEqual([1, 2]);
+	});
+
+	it("treats hydrated data as stale, so a reused old payload gets refetched", async () => {
+		// Next reuses a dashboard layout prefetched before a budget change. Its
+		// data must show at once but be refreshed when the page mounts.
+		const server = createQueryClient();
+		await server.prefetchQuery({ queryKey: ["overview"], queryFn: () => "old" });
+		const state = dehydrate(server);
+
+		const browser = createQueryClient();
+		hydrateAsStale(browser, state);
+		expect(browser.getQueryData(["overview"])).toBe("old");
+		expect(browser.getQueryState(["overview"])?.isInvalidated).toBe(true);
+
+		const queryFn = vi.fn(async () => "new");
+		const observer = new QueryObserver(browser, { queryKey: ["overview"], queryFn });
+		const unsubscribe = observer.subscribe(() => {});
+		await vi.waitFor(() => expect(browser.getQueryData(["overview"])).toBe("new"));
+		expect(queryFn).toHaveBeenCalledTimes(1);
+		unsubscribe();
 	});
 });
