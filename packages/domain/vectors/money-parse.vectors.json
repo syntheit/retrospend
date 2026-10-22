@@ -1,5 +1,5 @@
 {
-	"about": "Golden cases for parseMoneyInput, formatMoneyDraft, decimalSeparator and groupSeparator (@retrospend/domain/parse). Every client runs this file. parse expects either { minor } or { error }. \u00a0 is a no-break space, \u202f a narrow no-break space, \u2212 the minus sign, \u00d7 times, \u00f7 divide.",
+	"about": "Golden cases for parseMoneyInput, formatMoneyDraft, decimalSeparator and groupSeparator (@retrospend/domain/parse). Every client runs this file. parse expects either { minor } or { error }. keystrokes replays typing: each key is appended, \u232b deletes the last character, and every step calls formatMoneyDraft(text, locale, currency, previousDraft). draftFromMinor is the editable text for a saved value; it must parse back to the same minor and be a fixed point of formatMoneyDraft. \u00a0 is a no-break space, \u202f a narrow no-break space, \u2212 the minus sign, \u00d7 times, \u00f7 divide.",
 	"parse": [
 		{
 			"name": "en-US grouped",
@@ -644,6 +644,48 @@
 			"currency": "usd",
 			"text": "1",
 			"expected": { "minor": 100 }
+		},
+		{
+			"name": "a factor in parentheses may be precise",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1234*(3.555)",
+			"expected": { "minor": 438687 }
+		},
+		{
+			"name": "a sum in parentheses that is a factor may be precise",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "2*(1.005+1)",
+			"expected": { "minor": 401 }
+		},
+		{
+			"name": "a parenthesized factor before a times sign may be precise",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(3.555)*2",
+			"expected": { "minor": 711 }
+		},
+		{
+			"name": "money in parentheses is still money",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(1.005)",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "money in a parenthesized sum is still money",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(12.345+1)",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "nested parentheses",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "((1+2))*3",
+			"expected": { "minor": 900 }
 		}
 	],
 	"draft": [
@@ -800,6 +842,220 @@
 			"currency": "INR",
 			"text": "1234567",
 			"expected": "12,34,567"
+		},
+		{
+			"name": "a factor in parentheses keeps its digits",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1234*(3.555)",
+			"expected": "1,234*(3.555)"
+		},
+		{
+			"name": "a sum in parentheses that is a factor keeps its digits",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "2*(1.005+1)",
+			"expected": "2*(1.005+1)"
+		},
+		{
+			"name": "an open parenthesis after a times sign is a factor",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1234*(3.555",
+			"expected": "1,234*(3.555"
+		},
+		{
+			"name": "a parenthesized factor before a times sign keeps its digits",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(3.555)*2",
+			"expected": "(3.555)*2"
+		},
+		{
+			"name": "a negated factor keeps its digits",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "2*-3.555",
+			"expected": "2*-3.555"
+		},
+		{
+			"name": "money in parentheses is still capped",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(12.345+1)",
+			"expected": "(12.34+1)"
+		}
+	],
+	"keystrokes": [
+		{
+			"name": "es-AR: a typed dot is not taken as grouping (100x guard)",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"keys": ["1", "2", ".", "5", "0"],
+			"drafts": ["1", "12", "12.", "12.5", "12.50"],
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "en-US: a typed comma is not taken as grouping (100x guard)",
+			"locale": "en-US",
+			"currency": "USD",
+			"keys": ["1", "2", ",", "3", "4"],
+			"drafts": ["1", "12", "12,", "12,3", "12,34"],
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "fr: a typed dot is another convention's decimal mark",
+			"locale": "fr",
+			"currency": "EUR",
+			"keys": ["1", "2", ".", "5"],
+			"drafts": ["1", "12", "12.", "12.5"],
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "es-AR: deleting the typed dot recovers",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"keys": ["1", "2", ".", "5", "\u232b", "\u232b", "3", "4"],
+			"drafts": ["1", "12", "12.", "12.5", "12.", "12", "123", "1.234"],
+			"expected": { "minor": 123400 }
+		},
+		{
+			"name": "es-AR: digits and the decimal comma group as you type",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"keys": ["1", "2", "3", "4", "5", ",", "5"],
+			"drafts": ["1", "12", "123", "1.234", "12.345", "12.345,", "12.345,5"],
+			"expected": { "minor": 1234550 }
+		},
+		{
+			"name": "en-US: grouping follows typing and deleting",
+			"locale": "en-US",
+			"currency": "USD",
+			"keys": ["1", "2", "3", "4", "\u232b", "4", "5", ".", "5", "0"],
+			"drafts": [
+				"1",
+				"12",
+				"123",
+				"1,234",
+				"123",
+				"1,234",
+				"12,345",
+				"12,345.",
+				"12,345.5",
+				"12,345.50"
+			],
+			"expected": { "minor": 1234550 }
+		},
+		{
+			"name": "en-US: the 000 key",
+			"locale": "en-US",
+			"currency": "USD",
+			"keys": ["5", "000", "+", "2", "000"],
+			"drafts": ["5", "5,000", "5,000+", "5,000+2", "5,000+2,000"],
+			"expected": { "minor": 700000 }
+		},
+		{
+			"name": "en-US: a typed comma inside a sum",
+			"locale": "en-US",
+			"currency": "USD",
+			"keys": ["1", "0", "0", "0", "+", "1", ",", "5"],
+			"drafts": [
+				"1",
+				"10",
+				"100",
+				"1,000",
+				"1,000+",
+				"1,000+1",
+				"1,000+1,",
+				"1,000+1,5"
+			],
+			"expected": { "error": "ambiguous" }
+		}
+	],
+	"draftFromMinor": [
+		{
+			"name": "es-AR with cents",
+			"locale": "es-AR",
+			"money": { "minor": 123456, "currency": "ARS" },
+			"expected": "1.234,56"
+		},
+		{
+			"name": "es-AR 7+ digits whole",
+			"locale": "es-AR",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"expected": "1.234.567"
+		},
+		{
+			"name": "es-AR 7+ digits with cents",
+			"locale": "es-AR",
+			"money": { "minor": 123456750, "currency": "ARS" },
+			"expected": "1.234.567,50"
+		},
+		{
+			"name": "en-US with cents keeps both digits",
+			"locale": "en-US",
+			"money": { "minor": 123450, "currency": "USD" },
+			"expected": "1,234.50"
+		},
+		{
+			"name": "en-US whole drops .00",
+			"locale": "en-US",
+			"money": { "minor": 123400, "currency": "USD" },
+			"expected": "1,234"
+		},
+		{
+			"name": "en-US small",
+			"locale": "en-US",
+			"money": { "minor": 5, "currency": "USD" },
+			"expected": "0.05"
+		},
+		{
+			"name": "JPY",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "JPY" },
+			"expected": "1,200"
+		},
+		{
+			"name": "KWD keeps every minor digit",
+			"locale": "en-US",
+			"money": { "minor": 1250, "currency": "KWD" },
+			"expected": "1.250"
+		},
+		{
+			"name": "0.004 ETH",
+			"locale": "en-US",
+			"money": { "minor": 400000, "currency": "ETH" },
+			"expected": "0.004"
+		},
+		{
+			"name": "BTC keeps every satoshi, not 8 significant digits",
+			"locale": "en-US",
+			"money": { "minor": 123456789, "currency": "BTC" },
+			"expected": "1.23456789"
+		},
+		{
+			"name": "BTC near the whole supply",
+			"locale": "es-AR",
+			"money": { "minor": 2099999912345678, "currency": "BTC" },
+			"expected": "20.999.999,12345678"
+		},
+		{
+			"name": "BTC whole coin",
+			"locale": "en-US",
+			"money": { "minor": 100000000, "currency": "BTC" },
+			"expected": "1"
+		},
+		{
+			"name": "fr",
+			"locale": "fr",
+			"money": { "minor": 123456, "currency": "EUR" },
+			"expected": "1\u202f234,56"
+		},
+		{
+			"name": "en-IN",
+			"locale": "en-IN",
+			"money": { "minor": 1234567800, "currency": "INR" },
+			"expected": "1,23,45,678"
 		}
 	],
 	"separators": [

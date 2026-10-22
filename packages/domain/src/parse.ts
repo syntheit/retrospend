@@ -15,11 +15,7 @@
  *
  * Golden cases: packages/domain/vectors/money-parse.vectors.json.
  */
-import {
-	groupDigits,
-	type NumberSymbols,
-	numberSymbols,
-} from "./format-locale";
+import { type NumberSymbols, numberSymbols } from "./format-locale";
 import { currencyDecimals } from "./money";
 import {
 	isForeignMark,
@@ -29,6 +25,7 @@ import {
 } from "./parse-tokens";
 
 export { decimalSeparator, groupSeparator } from "./format-locale";
+export { draftFromMinor, formatMoneyDraft } from "./parse-draft";
 
 export type MoneyInputError =
 	/** Nothing typed. */
@@ -61,8 +58,8 @@ interface Ratio {
 
 interface Operand {
 	value: Ratio;
-	/** The literal behind this operand, if it is one: its precision is checked as money. */
-	literalDecimals: number | null;
+	/** Most decimals of a literal typed as money in this operand (0 if none). */
+	moneyDecimals: number;
 }
 
 class InputError extends Error {
@@ -111,20 +108,29 @@ function readNumber(
 	};
 }
 
-/** Recursive descent over expr := term (+|- term)*, term := unary (*|/ unary)*. */
+/** Deeper input is refused as syntax: nobody types it, and recursion has limits. */
+const MAX_DEPTH = 64;
+
+/**
+ * Recursive descent over expr := term (+|- term)*, term := unary (*|/ unary)*.
+ * Each operand carries moneyDecimals: the most decimals any literal typed as
+ * money has inside it. A term with a * or / is a product, so its literals
+ * are factors and drop out ("2*(1.005+1)"); what is left is checked once,
+ * at the top.
+ */
 class Evaluator {
 	private at = 0;
+	private depth = 0;
 
 	constructor(
 		private readonly tokens: Token[],
 		private readonly symbols: NumberSymbols,
-		private readonly decimals: number,
 	) {}
 
-	run(): Ratio {
-		const value = this.expr();
+	run(): Operand {
+		const result = this.expr();
 		if (this.at < this.tokens.length) throw new InputError("syntax");
-		return value;
+		return result;
 	}
 
 	private peekOp(...ops: string[]): string | null {
@@ -132,18 +138,29 @@ class Evaluator {
 		return token?.kind === "op" && ops.includes(token.op) ? token.op : null;
 	}
 
-	private expr(): Ratio {
-		let value = this.term();
+	private nested<T>(read: () => T): T {
+		if (++this.depth > MAX_DEPTH) throw new InputError("syntax");
+		const result = read();
+		this.depth--;
+		return result;
+	}
+
+	private expr(): Operand {
+		let { value, moneyDecimals } = this.term();
 		for (let op = this.peekOp("+", "-"); op; op = this.peekOp("+", "-")) {
 			this.at++;
 			const rhs = this.term();
-			const n = op === "+" ? rhs.n : -rhs.n;
-			value = { n: value.n * rhs.d + n * value.d, d: value.d * rhs.d };
+			const n = op === "+" ? rhs.value.n : -rhs.value.n;
+			value = {
+				n: value.n * rhs.value.d + n * value.d,
+				d: value.d * rhs.value.d,
+			};
+			moneyDecimals = Math.max(moneyDecimals, rhs.moneyDecimals);
 		}
-		return value;
+		return { value, moneyDecimals };
 	}
 
-	private term(): Ratio {
+	private term(): Operand {
 		const first = this.unary();
 		let value = first.value;
 		let factors = 0;
@@ -158,19 +175,14 @@ class Evaluator {
 				value = { n: value.n * rhs.d * sign, d: value.d * rhs.n * sign };
 			}
 		}
-		if (factors === 0 && first.literalDecimals !== null) {
-			if (first.literalDecimals > this.decimals) {
-				throw new InputError("tooPrecise");
-			}
-		}
-		return value;
+		return { value, moneyDecimals: factors === 0 ? first.moneyDecimals : 0 };
 	}
 
 	private unary(): Operand {
 		const op = this.peekOp("+", "-");
 		if (!op) return this.primary();
 		this.at++;
-		const inner = this.unary();
+		const inner = this.nested(() => this.unary());
 		if (op === "+") return inner;
 		return { ...inner, value: { n: -inner.value.n, d: inner.value.d } };
 	}
@@ -181,15 +193,14 @@ class Evaluator {
 		if (token.kind === "number") {
 			const { value, fraction } = readNumber(token.text, this.symbols);
 			// Trailing zeros are exact ("12.500", the 000 key after a decimal).
-			const significant = fraction.replace(/0+$/, "").length;
-			return { value, literalDecimals: significant };
+			return { value, moneyDecimals: fraction.replace(/0+$/, "").length };
 		}
 		if (token.kind !== "open") throw new InputError("syntax");
-		const value = this.expr();
+		const inner = this.nested(() => this.expr());
 		const close = this.tokens[this.at++];
 		if (!close) throw new InputError("incomplete");
 		if (close.kind !== "close") throw new InputError("syntax");
-		return { value, literalDecimals: null };
+		return inner;
 	}
 }
 
@@ -202,8 +213,9 @@ function roundHalfEven(n: bigint, d: bigint): bigint {
 
 /**
  * Reads typed money in `locale` as minor units of `currency`, or a typed
- * error. Call it on pasted text before formatMoneyDraft: the draft treats
- * group separators as the field's own and would hide an ambiguous paste.
+ * error. For live typing, pass the field's text through formatMoneyDraft
+ * with the previous draft first; it keeps a typed "." or "," as typed so
+ * this reports it as ambiguous.
  */
 export function parseMoneyInput(
 	text: string,
@@ -219,7 +231,9 @@ export function parseMoneyInput(
 	const decimals = currencyDecimals(currency);
 	let value: Ratio;
 	try {
-		value = new Evaluator(tokens, symbols, decimals).run();
+		const result = new Evaluator(tokens, symbols).run();
+		if (result.moneyDecimals > decimals) throw new InputError("tooPrecise");
+		value = result.value;
 	} catch (error) {
 		if (error instanceof InputError) return { ok: false, error: error.code };
 		throw error;
@@ -233,62 +247,4 @@ export function parseMoneyInput(
 	}
 	const expression = tokens.some((t) => t.kind !== "number");
 	return { ok: true, minor: Number(magnitude), expression };
-}
-
-function isFactor(tokens: Token[], index: number): boolean {
-	const near = (step: number): Token | undefined => {
-		let i = index + step;
-		while (tokens[i]?.kind === "space") i += step;
-		return tokens[i];
-	};
-	return [near(-1), near(1)].some(
-		(t) => t?.kind === "op" && (t.op === "*" || t.op === "/"),
-	);
-}
-
-/** One operand regrouped; anything it cannot read stays as typed. */
-function draftNumber(
-	text: string,
-	symbols: NumberSymbols,
-	maxFraction: number,
-): string {
-	if ([...text].some((char) => isForeignMark(char, symbols))) return text;
-	const point = text.indexOf(symbols.decimal);
-	const whole = point < 0 ? text : text.slice(0, point);
-	const digits = [...whole].filter((c) => !isGroupChar(c, symbols)).join("");
-	if (!/^\d*$/.test(digits)) return text;
-	// The 000 key on an empty field gives "0"; "0005" is "5".
-	const grouped = groupDigits(digits.replace(/^0+(?=\d)/, ""), symbols);
-	if (point < 0) return grouped;
-	const fraction = text.slice(point + 1);
-	if (!/^\d*$/.test(fraction)) return grouped + text.slice(point);
-	return grouped + symbols.decimal + fraction.slice(0, maxFraction);
-}
-
-/**
- * Grouping while typing: regroups the integer part of every operand with
- * the locale's separators ("1234567,5" -> "1.234.567,5" in es-AR) and caps a
- * money operand at the currency's decimals. Operators, spaces, a trailing
- * decimal separator and anything unreadable stay as typed, and
- * formatMoneyDraft(formatMoneyDraft(x)) === formatMoneyDraft(x).
- */
-export function formatMoneyDraft(
-	text: string,
-	locale: string,
-	currency: string,
-): string {
-	const symbols = numberSymbols(locale);
-	const decimals = currencyDecimals(currency);
-	const tokens = tokenize(text, symbols);
-	return tokens
-		.map((token, i) =>
-			token.kind === "number"
-				? draftNumber(
-						token.text,
-						symbols,
-						isFactor(tokens, i) ? Number.POSITIVE_INFINITY : decimals,
-					)
-				: token.text,
-		)
-		.join("");
 }
