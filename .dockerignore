@@ -48,3 +48,8 @@ next-env.d.ts
 flake.lock
 flake.nix
 
+# Agent worktrees under .claude/ were shipping ~1.8 GB of build context
+.claude
+**/node_modules
+**/.next
+**/*.tsbuildinfo
