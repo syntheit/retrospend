@@ -46,11 +46,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { useCurrencyConversion } from "~/hooks/use-currency-conversion";
 import type { CurrencyCode } from "~/lib/currencies";
 import { formatNumber, isCrypto as checkIsCrypto } from "~/lib/currency-format";
 import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { AssetType } from "~/lib/db-enums";
+import { tryConvertAmount } from "~/lib/money";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -105,7 +105,6 @@ export function AssetDialog({
 	const open = isControlled ? controlledOpen : internalOpen;
 	const setOpen = isControlled ? setControlledOpen : setInternalOpen;
 
-	const { toUSD } = useCurrencyConversion();
 	const utils = api.useUtils();
 
 	const form = useForm<FormValues>({
@@ -155,8 +154,15 @@ export function AssetDialog({
 
 	const usdEquivalent = useMemo(() => {
 		const currentBalance = watchedBalance || 0;
-		return toUSD(currentBalance, watchedCurrency, exchangeRate);
-	}, [watchedBalance, watchedCurrency, exchangeRate, toUSD]);
+		// null when the rate is missing: shown as "no rate", never as 0.
+		return tryConvertAmount(
+			currentBalance,
+			watchedCurrency,
+			exchangeRate,
+			"USD",
+			1,
+		);
+	}, [watchedBalance, watchedCurrency, exchangeRate]);
 
 	// Check if asset type is a liability
 	const assetType = form.watch("type");
@@ -391,9 +397,15 @@ export function AssetDialog({
 											<span className="text-muted-foreground">
 												{t("usdEquivalent")}
 											</span>
-											<span className="font-medium">
-												${formatNumber(usdEquivalent, 2)}
-											</span>
+											{usdEquivalent === null ? (
+												<span className="text-muted-foreground">
+													{t("noRate")}
+												</span>
+											) : (
+												<span className="font-medium">
+													${formatNumber(usdEquivalent, 2)}
+												</span>
+											)}
 										</div>
 									</div>
 								)}

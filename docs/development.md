@@ -27,7 +27,7 @@ prisma/                     # Schema and migrations
 Key patterns:
 - tRPC routers are thin; business logic lives in `src/server/services/`
 - `protectedProcedure` for authenticated endpoints, `publicProcedure` for public ones
-- Currency amounts stored as `Decimal(19,8)`, all conversions go through `useCurrencyConversion()` hook (client) or `convertCurrency()` (server)
+- Currency amounts stored as `Decimal(19,8)`, all conversion math lives in `src/lib/money.ts` (client and server); a missing rate throws `MissingRateError`
 - Server time is authoritative for date comparisons (never `new Date()` on client for month logic)
 
 ## Prerequisites

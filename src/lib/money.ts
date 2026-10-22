@@ -98,6 +98,25 @@ export function convertAmount(
 	return fromUSD(toUSD(amount, from, fromRate), to, toRate);
 }
 
+/**
+ * convertAmount for display code that has a "no rate" state: null instead
+ * of throwing when a needed rate is missing.
+ */
+export function tryConvertAmount(
+	amount: number,
+	from: string,
+	fromRate: number | null | undefined,
+	to: string,
+	toRate: number | null | undefined,
+): number | null {
+	try {
+		return convertAmount(amount, from, fromRate, to, toRate);
+	} catch (error) {
+		if (error instanceof MissingRateError) return null;
+		throw error;
+	}
+}
+
 /** Units of `to` per one unit of `from`. */
 export function crossRate(
 	from: string,

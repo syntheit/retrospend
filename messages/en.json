@@ -1107,6 +1107,7 @@
     "balanceLabel": "Balance",
     "exchangeRateLabel": "Exchange Rate",
     "usdEquivalent": "USD Equivalent:",
+    "noRate": "No rate",
     "interestRateLabel": "Interest Rate (APR)",
     "interestRateDescription": "Annual percentage rate for this liability.",
     "liquidAsset": "Liquid Asset",

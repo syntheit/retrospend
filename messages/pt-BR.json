@@ -1107,6 +1107,7 @@
     "balanceLabel": "Saldo",
     "exchangeRateLabel": "Taxa de câmbio",
     "usdEquivalent": "Equivalente em USD:",
+    "noRate": "Sem cotação",
     "interestRateLabel": "Taxa de juros (APR)",
     "interestRateDescription": "Taxa percentual anual deste passivo.",
     "liquidAsset": "Ativo líquido",

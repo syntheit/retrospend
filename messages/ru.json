@@ -1107,6 +1107,7 @@
     "balanceLabel": "Баланс",
     "exchangeRateLabel": "Обменный курс",
     "usdEquivalent": "Эквивалент в USD:",
+    "noRate": "Нет курса",
     "interestRateLabel": "Процентная ставка (APR)",
     "interestRateDescription": "Годовая процентная ставка по этому обязательству.",
     "liquidAsset": "Ликвидный актив",

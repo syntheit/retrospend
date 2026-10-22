@@ -1107,6 +1107,7 @@
     "balanceLabel": "Saldo",
     "exchangeRateLabel": "Wechselkurs",
     "usdEquivalent": "USD-Gegenwert:",
+    "noRate": "Kein Kurs",
     "interestRateLabel": "Zinssatz (effektiv p. a.)",
     "interestRateDescription": "Jährlicher Prozentsatz für diese Verbindlichkeit.",
     "liquidAsset": "Liquider Vermögenswert",

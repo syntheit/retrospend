@@ -1,4 +1,4 @@
-import { convert } from "~/lib/currency-math";
+import { roundMoney, tryConvertAmount } from "~/lib/money";
 
 type BalanceEntry = {
 	balance: number;
@@ -34,23 +34,19 @@ export function computeHomeCurrencyTotal(
 			continue;
 		}
 
-		const sourceRate = rateMap.get(b.currency);
-		const targetRate =
-			homeCurrency === "USD" ? undefined : rateMap.get(homeCurrency);
-
-		if (!sourceRate || (homeCurrency !== "USD" && !targetRate)) {
+		const converted = tryConvertAmount(
+			Math.abs(signed),
+			b.currency,
+			rateMap.get(b.currency),
+			homeCurrency,
+			rateMap.get(homeCurrency),
+		);
+		if (converted === null) {
 			allConverted = false;
 			continue;
 		}
-
-		const converted = convert(
-			Math.abs(signed),
-			b.currency,
-			sourceRate,
-			homeCurrency,
-			targetRate,
-		);
-		total += signed > 0 ? converted : -converted;
+		const rounded = roundMoney(converted, homeCurrency);
+		total += signed > 0 ? rounded : -rounded;
 	}
 
 	if (!allConverted && total === 0) return null;

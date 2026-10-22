@@ -18,6 +18,7 @@ import {
 	toAmountString,
 	toMinorUnits,
 	toUSD,
+	tryConvertAmount,
 } from "../money";
 
 // Stored rates: fiat = units per USD, crypto = USD per coin.
@@ -257,6 +258,18 @@ describe("totals rule (sumIn)", () => {
 		const futureEnd = new Date("2026-10-31T23:59:59Z");
 		expect(periodRateDate(pastEnd, now)).toBe(pastEnd);
 		expect(periodRateDate(futureEnd, now)).toBe(now);
+	});
+});
+
+describe("tryConvertAmount", () => {
+	it("returns null for a missing rate, never 0 or the raw amount", () => {
+		expect(tryConvertAmount(100, "ARS", undefined, "USD", 1)).toBeNull();
+		expect(tryConvertAmount(100, "USD", 1, "EUR", 0)).toBeNull();
+	});
+
+	it("converts when both rates are known", () => {
+		expect(tryConvertAmount(3000, "ARS", 1500, "USD", 1)).toBe(2);
+		expect(tryConvertAmount(5, "EUR", undefined, "EUR", undefined)).toBe(5);
 	});
 });
 

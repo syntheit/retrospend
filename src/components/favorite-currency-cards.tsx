@@ -37,7 +37,6 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import type { FavoriteCurrencyCardData } from "~/hooks/use-exchange-rates-controller";
 import { getCurrencyName } from "~/lib/currency-format";
-import { getDisplayRate } from "~/lib/currency-math";
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared";
 import { cn } from "~/lib/utils";
 
@@ -235,7 +234,8 @@ function FavoriteCurrencyCard({
 	const handleCopyRate = useCallback(() => {
 		const primaryRate = card.rateTypes[0];
 		if (!primaryRate) return;
-		const displayVal = getDisplayRate(primaryRate.rate, card.currency);
+		// Stored rates read as is: 1 USD = X fiat, 1 coin = X USD.
+		const displayVal = primaryRate.rate;
 		void navigator.clipboard.writeText(
 			displayVal.toLocaleString(undefined, {
 				minimumFractionDigits: 2,
@@ -321,7 +321,7 @@ function FavoriteCurrencyCard({
 							{card.rateTypes.length > 0 && (
 								<div className="mt-1.5 ml-[22px] space-y-0.5">
 									{card.rateTypes.map((rt) => {
-										const displayVal = getDisplayRate(rt.rate, card.currency);
+										const displayVal = rt.rate;
 										return (
 											<div
 												className="flex items-center justify-between text-xs"
@@ -396,7 +396,7 @@ function FavoriteCurrencyCard({
 						{/* Rate types list */}
 						<div className="space-y-1.5">
 							{card.rateTypes.map((rt) => {
-								const displayVal = getDisplayRate(rt.rate, card.currency);
+								const displayVal = rt.rate;
 								return (
 									<div
 										className="flex items-center justify-between text-sm"
