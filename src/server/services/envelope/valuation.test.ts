@@ -305,3 +305,39 @@ describe("rateTypeForMonth", () => {
 		).toBe(type);
 	});
 });
+
+describe("fiat rates multiply, never divide by an inverse", () => {
+	const sevenPerUsd = (c: string) => (c === "ARS" ? "7" : null);
+
+	it("USD 0.005 at 7 ARS per USD is 0.035 ARS = 3.5 minor, half-even to 4", () => {
+		const v = valueRow(
+			row({ amount: "0.005", currency: "USD" }),
+			bookContext("ARS", { usdRate: sevenPerUsd }),
+		);
+		expect(v).toMatchObject({ ok: true, minor: 4 });
+	});
+
+	it("ARS 0.245 at 7 ARS per USD is USD 0.035 = 3.5 cents, half-even to 4", () => {
+		const on = {
+			date: "2026-10-22",
+			month: 202610,
+			foreignRateType: "official",
+		};
+		expect(
+			convertToBookOrThrow(
+				"0.245",
+				"ARS",
+				on,
+				bookContext("USD", { usdRate: sevenPerUsd }),
+			),
+		).toBe(4);
+	});
+
+	it("a zero or negative rate is missing, never used", () => {
+		const v = valueRow(
+			row({ amount: "1", currency: "USD" }),
+			bookContext("ARS", { usdRate: () => "0" }),
+		);
+		expect(v.ok).toBe(false);
+	});
+});

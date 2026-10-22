@@ -14,6 +14,7 @@
  * Rates use the stored convention of ~/lib/money: fiat in units per USD,
  * crypto in USD per coin. The loader supplies them through `usdRate`.
  */
+import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { isCrypto } from "~/lib/currency-format";
 import { MissingRateError, USD } from "~/lib/money";
 import type {
@@ -90,21 +91,27 @@ export function rateTypeForMonth(
 	return periodForMonth(month, ctx.periods)?.rateType ?? ctx.defaultRateType;
 }
 
-function usdPerUnit(currency: string, rate: DecimalLike) {
-	const r = dec(rate);
-	if (!r.isFinite() || r.lte(0)) return null;
-	return isCrypto(currency) ? r : dec(1).div(r);
-}
-
+/** A stored rate as a Decimal, or null when absent, zero or negative. */
 function rateOf(
 	currency: string,
 	rateType: string,
 	date: IsoDate,
 	ctx: ValuationContext,
 ) {
-	if (currency === USD) return dec(1);
 	const raw = ctx.usdRate(currency, rateType, date);
-	return raw == null ? null : usdPerUnit(currency, raw);
+	if (raw == null) return null;
+	const r = dec(raw);
+	return r.isFinite() && r.gt(0) ? r : null;
+}
+
+/** USD to `currency`: fiat rates are units per USD (multiply), crypto USD per coin (divide). */
+function fromUsd(usd: Decimal, currency: string, rate: Decimal): Decimal {
+	return isCrypto(currency) ? usd.div(rate) : usd.mul(rate);
+}
+
+/** `currency` to USD, the inverse of fromUsd. */
+function toUsd(amount: Decimal, currency: string, rate: Decimal): Decimal {
+	return isCrypto(currency) ? amount.mul(rate) : amount.div(rate);
 }
 
 /**
@@ -146,11 +153,14 @@ export function valueRow(row: ValuationRow, ctx: ValuationContext): Valuation {
 	const rateType = rateTypeForMonth(row.month, ctx);
 	const usd = usdValue(row);
 	if (!usd) return missing(row, row.currency, null);
-	const hUsdPerUnit = rateOf(H, rateType, row.date, ctx);
-	if (!hUsdPerUnit) return missing(row, H, rateType);
+	if (H === USD) {
+		return { ok: true, minor: toMinor(usd, H), source: "BOOK_RATE", rateType };
+	}
+	const hRate = rateOf(H, rateType, row.date, ctx);
+	if (!hRate) return missing(row, H, rateType);
 	return {
 		ok: true,
-		minor: toMinor(usd.div(hUsdPerUnit), H),
+		minor: toMinor(fromUsd(usd, H, hRate), H),
 		source: "BOOK_RATE",
 		rateType,
 	};
@@ -200,8 +210,8 @@ function usdAt(
 	date: IsoDate,
 	ctx: ValuationContext,
 ) {
-	const perUnit = rateOf(currency, rateType, date, ctx);
-	return perUnit ? dec(amount).mul(perUnit) : null;
+	const rate = rateOf(currency, rateType, date, ctx);
+	return rate ? toUsd(dec(amount), currency, rate) : null;
 }
 
 /**
