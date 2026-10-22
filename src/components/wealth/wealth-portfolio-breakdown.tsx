@@ -34,6 +34,8 @@ interface WealthPortfolioBreakdownProps {
 		isLiquid: boolean;
 	}[];
 	hasMultipleCurrencies: boolean;
+	/** Currency of allocationData values (balanceInTargetCurrency). */
+	homeCurrency: string;
 	isPrivacyMode?: boolean;
 	className?: string;
 }
@@ -90,6 +92,7 @@ export function WealthPortfolioBreakdown({
 	allocationData,
 	assets,
 	hasMultipleCurrencies,
+	homeCurrency,
 	isPrivacyMode = false,
 	className,
 }: WealthPortfolioBreakdownProps) {
@@ -169,8 +172,12 @@ export function WealthPortfolioBreakdown({
 
 	if (allocationData.length === 0) return null;
 
+	// Currency and liquidity segments sum balanceInUSD; type segments are in
+	// the home currency.
 	const formatValue = (value: number) =>
 		isPrivacyMode ? maskAmount(value) : formatCurrency(value, "USD");
+	const formatHomeValue = (value: number) =>
+		isPrivacyMode ? maskAmount(value) : formatCurrency(value, homeCurrency);
 
 	return (
 		<Card className={cn("border border-border bg-card shadow-sm", className)}>
@@ -198,7 +205,7 @@ export function WealthPortfolioBreakdown({
 													{segment.percentage.toFixed(1)}%
 												</span>
 												<span className="font-semibold text-foreground tabular-nums">
-													{formatValue(segment.value)}
+													{formatHomeValue(segment.value)}
 												</span>
 											</div>
 										</div>

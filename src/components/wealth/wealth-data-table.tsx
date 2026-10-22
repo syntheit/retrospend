@@ -24,7 +24,7 @@ export function WealthDataTable({
 	selectedRows: controlledSelectedRows,
 	onSelectionChange: setControlledSelectedRows,
 	onDeleteSelected,
-	totalNetWorth = 0,
+	totalAssets = 0,
 	isPrivacyMode = false,
 	hidePagination = false,
 	fillHeight = false,
@@ -33,7 +33,7 @@ export function WealthDataTable({
 }: {
 	data: Asset[];
 	homeCurrency?: string;
-	totalNetWorth?: number;
+	totalAssets?: number;
 	isPrivacyMode?: boolean;
 	selectedRows?: Set<string>;
 	onSelectionChange?: (selectedIds: Set<string>) => void;
@@ -88,7 +88,7 @@ export function WealthDataTable({
 			createWealthColumns(
 				homeCurrency,
 				formatCurrency,
-				totalNetWorth,
+				totalAssets,
 				isPrivacyMode,
 				selectionHandlers,
 				t,
@@ -96,7 +96,7 @@ export function WealthDataTable({
 		[
 			homeCurrency,
 			formatCurrency,
-			totalNetWorth,
+			totalAssets,
 			isPrivacyMode,
 			selectionHandlers,
 			t,

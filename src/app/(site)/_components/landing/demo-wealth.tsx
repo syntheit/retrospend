@@ -57,6 +57,7 @@ export function DemoWealth() {
 						assets={assets}
 						className="h-full"
 						hasMultipleCurrencies
+						homeCurrency="USD"
 					/>
 				</div>
 			</div>
@@ -66,7 +67,7 @@ export function DemoWealth() {
 				hidePagination
 				homeCurrency="USD"
 				readOnly
-				totalNetWorth={DEMO_NET_WORTH.totalNetWorth}
+				totalAssets={DEMO_NET_WORTH.totalAssets}
 			/>
 		</div>
 	);

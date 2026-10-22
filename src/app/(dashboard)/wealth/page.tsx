@@ -244,6 +244,7 @@ export default function WealthPage() {
 								assets={normalizedAssets}
 								className="h-full"
 								hasMultipleCurrencies={hasMultipleCurrencies}
+								homeCurrency={homeCurrency}
 								isPrivacyMode={isPrivacyMode}
 							/>
 						</div>
@@ -339,7 +340,7 @@ export default function WealthPage() {
 							onDeleteSelected={handleDeleteSelected}
 							onSelectionChange={setSelectedAssetIds}
 							selectedRows={selectedAssetIds}
-							totalNetWorth={stats.assets}
+							totalAssets={stats.assets}
 						/>
 					</div>
 				</div>
