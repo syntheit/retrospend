@@ -1,0 +1,117 @@
+{
+	"brand": "Retrospend",
+	"skipToContent": "Перейти к основному содержимому",
+	"sidebar": {
+		"label": "Главное меню",
+		"destinations": "Разделы",
+		"tools": "Инструменты",
+		"pinned": "Закреплённые",
+		"pinnedLabel": "Закреплённые проекты"
+	},
+	"bottomNav": {
+		"label": "Главное меню"
+	},
+	"nav": {
+		"home": "Главная",
+		"activity": "Операции",
+		"budget": "Бюджет",
+		"people": "Люди",
+		"projects": "Проекты",
+		"wealth": "Капитал",
+		"import": "Импорт",
+		"currencies": "Валюты",
+		"settings": "Настройки",
+		"recurring": "Регулярные",
+		"insights": "Аналитика",
+		"needsYou": "{count, plural, one {# ждёт вас} few {# ждут вас} many {# ждут вас} other {# ждут вас}}"
+	},
+	"add": {
+		"group": "Добавить",
+		"expense": "Добавить расход",
+		"income": "Добавить доход",
+		"transfer": "Перевод",
+		"short": "Добавить",
+		"more": "Другие способы добавить",
+		"comingSoon": "Скоро",
+		"notYet": "{what}: скоро"
+	},
+	"palette": {
+		"trigger": "Поиск и команды",
+		"title": "Поиск и команды",
+		"description": "Перейти на страницу или выполнить команду",
+		"placeholder": "Искать страницы и команды",
+		"noResults": "Ничего не найдено",
+		"recent": "Недавние",
+		"project": "Проект",
+		"goTo": "Перейти",
+		"commands": "Команды",
+		"settingsSection": "Настройки: {section}",
+		"addRecurring": "Добавить регулярный расход",
+		"manageCategories": "Управлять категориями",
+		"move": "Перемещение",
+		"openHint": "Открыть"
+	},
+	"settingsSections": {
+		"profile": "Профиль",
+		"preferences": "Предпочтения",
+		"categories": "Категории",
+		"payment": "Способы оплаты",
+		"notifications": "Уведомления",
+		"security": "Безопасность",
+		"data": "Данные и экспорт"
+	},
+	"notifications": {
+		"title": "Уведомления",
+		"labelUnread": "{count, plural, one {Уведомления, # непрочитанное} few {Уведомления, # непрочитанных} many {Уведомления, # непрочитанных} other {Уведомления, # непрочитанных}}",
+		"unread": "Не прочитано",
+		"filterLabel": "Показать",
+		"filter": {
+			"all": "Все",
+			"expenses": "Расходы",
+			"settlements": "Расчёты",
+			"projects": "Проекты"
+		},
+		"markAllRead": "Отметить все как прочитанные",
+		"empty": "Уведомлений пока нет",
+		"noMatches": "Совпадений нет",
+		"loadFailed": "Не удалось загрузить уведомления",
+		"retry": "Повторить"
+	},
+	"account": {
+		"title": "Аккаунт",
+		"menu": "Меню аккаунта",
+		"profile": "Ваш профиль",
+		"settings": "Настройки",
+		"admin": "Администрирование",
+		"inviteCodes": "Коды приглашений",
+		"feedbackInbox": "Входящие отзывы",
+		"sendFeedback": "Отправить отзыв",
+		"docs": "Документация",
+		"releaseNotes": "Примечания к выпуску",
+		"shortcuts": "Сочетания клавиш",
+		"signOut": "Выйти",
+		"signOutFailed": "Не удалось выйти",
+		"newCount": "{count, plural, one {# новое} few {# новых} many {# новых} other {# новых}}",
+		"version": "Версия {version}",
+		"goTo": "Перейти"
+	},
+	"shortcuts": {
+		"title": "Сочетания клавиш",
+		"global": "Везде",
+		"palette": "Поиск и команды",
+		"close": "Закрыть верхний слой",
+		"list": "Этот список",
+		"tables": "В таблицах",
+		"selectAll": "Выбрать все строки",
+		"range": "Выбрать диапазон",
+		"edit": "Изменить выбранную строку",
+		"delete": "Удалить выбранные строки",
+		"clear": "Снять выделение"
+	},
+	"verifyEmail": {
+		"message": "Подтвердите почту, чтобы защитить аккаунт.",
+		"resend": "Отправить письмо ещё раз",
+		"sent": "Письмо для подтверждения отправлено",
+		"failed": "Не удалось отправить письмо"
+	}
+}
