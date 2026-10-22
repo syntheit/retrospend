@@ -11,7 +11,15 @@
  */
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { Prisma, RecurringTemplate } from "~prisma";
-import { budgetRefundWhere, budgetSpendingWhere } from "../spending";
+import {
+	shareParticipations,
+	shareRateResolver,
+} from "../shared-expense-integration";
+import {
+	budgetMoneyInWhere,
+	budgetRefundWhere,
+	budgetSpendingWhere,
+} from "../spending";
 import { addDays } from "./calendar";
 import type { EngineInput } from "./engine";
 import {
@@ -44,27 +52,6 @@ export function findPersonalBook(tx: Tx, userId: string) {
 		where: { createdById: userId, isPersonal: true },
 		include: BOOK_INCLUDE,
 	});
-}
-
-/**
- * Money in the budget counts (SPEC §5.2, §12.3): income entering To assign,
- * the starting balance and adjustments. Refunds are envelope Activity, own
- * transfers (NOT_SPENDING) are nothing. The sibling of spending.ts's budget
- * filters; it moves there with the income service (2D).
- */
-export function budgetMoneyInWhere(
-	userId: string,
-	from: Date,
-): Prisma.ExpenseWhereInput {
-	return {
-		userId,
-		status: "FINALIZED",
-		date: { gte: from },
-		OR: [
-			{ direction: "IN", entryKind: "STANDARD", inType: "INCOME" },
-			{ entryKind: { in: ["STARTING_BALANCE", "ADJUSTMENT"] } },
-		],
-	};
 }
 
 const NOT_INCOME_CATEGORY = {
@@ -122,34 +109,24 @@ async function loadRows(tx: Tx, row: BookRow, userId: string) {
 		},
 		select,
 	});
-	const shares = await tx.splitParticipant.findMany({
-		where: {
-			participantType: "user",
-			participantId: userId,
-			verificationStatus: { not: "REJECTED" },
-			transaction: { date: { gte: from } },
-		},
-		select: {
-			id: true,
-			shareAmount: true,
-			verificationStatus: true,
-			transaction: {
-				select: {
-					currency: true,
-					date: true,
-					categoryId: true,
-					exchangeRate: true,
-					category: { select: { userId: true } },
-				},
-			},
-		},
-	});
+	// Which shares count and at which rate: the spending readers' own rule.
+	// Every share counts until project budget routing lands (M7).
+	const shares = await shareParticipations(tx, userId, { gte: from });
+	const rateFor = await shareRateResolver(
+		tx,
+		shares.map((p) => p.transaction),
+	);
 	const movements = await tx.budgetMovement.groupBy({
 		by: ["month", "fromEnvelopeId", "toEnvelopeId"],
 		where: { bookId: row.id },
 		_sum: { amount: true },
 	});
-	return { moneyIn, spending, refunds, shares, movements };
+	// Decimal(18,6) rates round-trip exactly through a JS number's shortest form.
+	const shareRate = (p: ShareRow) => {
+		const rate = rateFor(p.transaction);
+		return rate === null ? null : String(rate);
+	};
+	return { moneyIn, spending, refunds, shares, shareRate, movements };
 }
 
 function viewEnvelopes(row: BookRow, ctx: TargetContext): ViewEnvelope[] {
@@ -194,12 +171,11 @@ function viewBook(
 	};
 }
 
-/** Rates for the book currency and every other currency a target, template or old share needs. */
+/** Rates for the book currency and every other currency a target or template needs. */
 function loadRates(
 	tx: Tx,
 	row: BookRow,
 	templates: readonly RecurringTemplate[],
-	shares: readonly ShareRow[],
 ) {
 	return RateBook.load(tx, {
 		bookCurrency: row.currency,
@@ -212,9 +188,6 @@ function loadRates(
 				e.targetCurrency ? [e.targetCurrency] : [],
 			),
 			...templates.map((t) => t.currency),
-			...shares
-				.filter((s) => !s.transaction.exchangeRate)
-				.map((s) => s.transaction.currency),
 		],
 	});
 }
@@ -239,7 +212,7 @@ export async function loadBook(
 				where: { id: { in: templateIds } },
 			})
 		: [];
-	const rates = await loadRates(tx, row, templates, rows.shares);
+	const rates = await loadRates(tx, row, templates);
 	const valuation: ValuationContext = {
 		bookCurrency: row.currency,
 		periods: row.periods.map((p) => ({
@@ -263,7 +236,7 @@ export async function loadBook(
 			categoryIds: e.categories.map((c) => c.categoryId),
 		})),
 		moneyIn: moneyInEntries(rows.moneyIn, valuer),
-		activity: activityEntries(rows, valuer, rates, userId),
+		activity: activityEntries(rows, valuer, userId),
 		movements: movementEntries(rows.movements, row.currency),
 		splits: [],
 	};

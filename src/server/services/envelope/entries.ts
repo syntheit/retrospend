@@ -9,7 +9,6 @@ import { USD } from "~/lib/money";
 import type { Prisma } from "~prisma";
 import type { ActivityEntry, MoneyInEntry, MovementEntry } from "./engine";
 import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
-import type { RateBook } from "./rate-book";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import { dec, toMinor } from "./units";
 import { type ValuationContext, valueRow } from "./valuation";
@@ -128,9 +127,9 @@ export function activityEntries(
 		spending: readonly ExpenseRow[];
 		refunds: readonly ExpenseRow[];
 		shares: readonly ShareRow[];
+		shareRate: (s: ShareRow) => string | null;
 	},
 	v: Valuer,
-	rates: RateBook,
 	userId: string,
 ): ActivityEntry[] {
 	const out: ActivityEntry[] = [];
@@ -153,7 +152,7 @@ export function activityEntries(
 	for (const s of rows.shares) {
 		const t = s.transaction;
 		const { date, month } = v.dated(t.date);
-		const rate = t.exchangeRate?.toString() ?? rates.anyRate(t.currency, date);
+		const rate = rows.shareRate(s);
 		const minor = v.value(
 			{
 				id: s.id,

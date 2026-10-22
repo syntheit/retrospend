@@ -77,13 +77,4 @@ export class RateBook {
 
 	readonly lookup: UsdRateLookup = (currency, rateType, date) =>
 		pick(this.points.get(`${currency}\0${rateType}`), date);
-
-	/** Any rate of `currency` on `date`, official first: for rows that stored none (old shares). */
-	anyRate(currency: string, date: IsoDate): string | null {
-		const official = this.lookup(currency, "official", date);
-		if (official) return official.toString();
-		for (const [key, list] of this.points)
-			if (key.startsWith(`${currency}\0`)) return pick(list, date);
-		return null;
-	}
 }

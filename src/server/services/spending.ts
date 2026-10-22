@@ -86,6 +86,26 @@ export function budgetRefundWhere(
 }
 
 /**
+ * Money in the budget counts (budget SPEC §5.2, §12.3): income entering To
+ * assign, the starting balance and adjustments. Refunds are envelope
+ * Activity (budgetRefundWhere); own transfers (NOT_SPENDING) are nothing.
+ */
+export function budgetMoneyInWhere(
+	userId: string,
+	from: Date,
+): Prisma.ExpenseWhereInput {
+	return {
+		userId,
+		status: "FINALIZED",
+		date: { gte: from },
+		OR: [
+			{ direction: "IN", entryKind: "STANDARD", inType: "INCOME" },
+			{ entryKind: { in: ["STARTING_BALANCE", "ADJUSTMENT"] } },
+		],
+	};
+}
+
+/**
  * Rows today's expense lists, duplicate checks and title suggestions know how
  * to show: spending entries only. Money in, own transfers and adjustments
  * wait for the Activity rebuild, which labels them.
