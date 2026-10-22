@@ -1,7 +1,6 @@
 generator client {
-  provider      = "prisma-client"
-  output        = "../generated/prisma"
-  binaryTargets = ["native", "linux-nixos"]
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
