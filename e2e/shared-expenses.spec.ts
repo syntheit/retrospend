@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { attemptTitle } from "./helpers/attempt";
 import { gotoReady } from "./helpers/navigation";
+import { untilSaved } from "./helpers/trpc";
 
 test.describe("projects", () => {
 	test("projects page loads", async ({ page }) => {
@@ -25,7 +26,9 @@ test.describe("projects", () => {
 			.getByRole("dialog")
 			.filter({ has: page.getByRole("button", { name: "Create Project" }) });
 		await dialog.getByRole("textbox", { name: "Name" }).fill(name);
-		await dialog.getByRole("button", { name: "Create Project" }).click();
+		await untilSaved(page, "project.create", () =>
+			dialog.getByRole("button", { name: "Create Project" }).click(),
+		);
 		await expect(dialog).toBeHidden();
 
 		await gotoReady(page, "/projects");

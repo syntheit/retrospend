@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { untilSaved } from "./trpc";
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -28,7 +29,9 @@ export async function addExpense(
 		.getByRole("group", { name: "Category" })
 		.getByRole("button", { name: expense.category ?? "Groceries", exact: true })
 		.click();
-	await dialog.getByRole("button", { name: "Create Expense" }).click();
+	await untilSaved(page, "expense.createExpense", () =>
+		dialog.getByRole("button", { name: "Create Expense" }).click(),
+	);
 	await expect(dialog).toBeHidden();
 }
 
