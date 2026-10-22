@@ -14,6 +14,8 @@ import {
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import type { PrismaClient } from "~prisma";
+import { fromIsoDate, type IsoDate } from "./membership";
+import { badDates } from "./membership.service";
 import type { MemberRef, ProjectActor, ProjectRoleName } from "./types";
 
 /**
@@ -92,9 +94,16 @@ export async function addParticipant(
 	db: PrismaClient,
 	{ userId }: ProjectActor,
 	callerRole: ProjectRoleName,
-	input: MemberRef & { projectId: string; role: ProjectRoleName },
+	input: MemberRef & {
+		projectId: string;
+		role: ProjectRoleName;
+		/** When they join (RC-11); omit for "from the start", as before dates existed. */
+		joinedOn?: IsoDate;
+	},
 ) {
 	const { projectId, participantType, participantId } = input;
+	const day = input.joinedOn;
+	const joinedOn = day ? badDates(() => fromIsoDate(day)) : null;
 	await assertAddable(db, userId, projectId, {
 		participantType,
 		participantId,
@@ -104,14 +113,19 @@ export async function addParticipant(
 
 	const participant = await userTransaction(db, userId, async (tx) => {
 		const p = await tx.projectParticipant.create({
-			data: { projectId, participantType, participantId, role },
+			data: { projectId, participantType, participantId, role, joinedOn },
 		});
 		await logAudit(tx, {
 			actor: { participantType: "user", participantId: userId },
 			action: "PARTICIPANT_ADDED",
 			targetType: "PROJECT",
 			targetId: projectId,
-			changes: { participantType, participantId, role },
+			changes: {
+				participantType,
+				participantId,
+				role,
+				...(input.joinedOn ? { joinedOn: input.joinedOn } : {}),
+			},
 			projectId,
 		});
 		return p;

@@ -18,6 +18,7 @@ import { resolveVerification } from "~/server/services/shared-expenses/auto-acce
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { sameParticipant } from "~/server/services/shared-expenses/types";
 import type { ParticipantType, Prisma } from "~prisma";
+import { joinedAfter, membershipOf, toIsoDate } from "./membership";
 import type { MemberRef, ProjectActor } from "./types";
 
 export interface RebalanceInput extends MemberRef {
@@ -29,7 +30,8 @@ export interface RebalanceInput extends MemberRef {
 export type RebalanceSkipReason =
 	| "locked"
 	| "already_included"
-	| "non_equal_split";
+	| "non_equal_split"
+	| "before_join";
 
 export interface RebalanceResult {
 	rebalancedCount: number;
@@ -50,6 +52,7 @@ function loadCandidates(tx: Prisma.TransactionClient, input: RebalanceInput) {
 			id: true,
 			amount: true,
 			currency: true,
+			date: true,
 			splitMode: true,
 			isLocked: true,
 			paidByType: true,
@@ -70,7 +73,11 @@ async function pickExpenses(
 	tx: Prisma.TransactionClient,
 	input: RebalanceInput,
 	candidates: Candidate[],
+	joined: { joinedOn: string | null },
 ) {
+	// Chosen by hand, an earlier expense is the user's call; "all eligible"
+	// never reaches back before the person joined (RC-11).
+	const byHand = Boolean(input.expenseIds && input.expenseIds.length > 0);
 	const newcomer = {
 		participantType: input.participantType,
 		participantId: input.participantId,
@@ -92,6 +99,8 @@ async function pickExpenses(
 			skipped.push({ id: e.id, reason: "already_included" });
 		} else if (e.splitMode !== "EQUAL") {
 			skipped.push({ id: e.id, reason: "non_equal_split" });
+		} else if (!byHand && joinedAfter(joined, toIsoDate(e.date))) {
+			skipped.push({ id: e.id, reason: "before_join" });
 		} else {
 			chosen.push(e);
 		}
@@ -164,7 +173,7 @@ export async function rebalanceExpenses(
 				...newcomer,
 			},
 		},
-		select: { id: true },
+		select: { id: true, joinedOn: true, leftOn: true },
 	});
 	if (!membership) {
 		throw new TRPCError({
@@ -174,7 +183,12 @@ export async function rebalanceExpenses(
 	}
 
 	const candidates = await loadCandidates(tx, input);
-	const { chosen, skipped } = await pickExpenses(tx, input, candidates);
+	const { chosen, skipped } = await pickExpenses(
+		tx,
+		input,
+		candidates,
+		membershipOf(membership),
+	);
 	if (chosen.length === 0) return { rebalancedCount: 0, skipped };
 
 	// Auto-accept is decided by the project these expenses belong to.

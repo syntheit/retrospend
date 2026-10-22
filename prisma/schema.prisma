@@ -967,6 +967,12 @@ model ProjectParticipant {
   participantId         String
   role                  ProjectRole     @default(CONTRIBUTOR)
   joinedAt              DateTime        @default(now())
+  // Membership dates (RC-11): a member on day D joined on or before D and had
+  // not left by D. Null joinedOn = member from the project's start; null
+  // leftOn = still a member. They choose who new expenses include by
+  // default; past splits are never changed by them.
+  joinedOn              DateTime?       @db.Date
+  leftOn                DateTime?       @db.Date
   excludeFromAnalytics  Boolean         @default(false)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)

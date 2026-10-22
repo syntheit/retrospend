@@ -33,6 +33,11 @@ import {
 	transferOwnership,
 	updateParticipantRole,
 } from "~/server/services/project/members.service";
+import { isIsoDate } from "~/server/services/project/membership";
+import {
+	membersOn,
+	setMembershipDates,
+} from "~/server/services/project/membership.service";
 import {
 	getProjectDetail,
 	getPublicProjectDetail,
@@ -62,6 +67,11 @@ const memberSchema = z.object({
 	participantType: z.enum(["user", "guest", "shadow"]),
 	participantId: z.string().min(1),
 });
+
+/** A calendar day, YYYY-MM-DD, as the client's local date. */
+const isoDateSchema = z
+	.string()
+	.refine(isIsoDate, { message: "Expected a calendar day (YYYY-MM-DD)" });
 
 const cycleLengthSchema = z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"]);
 const closePermissionSchema = z.enum(["ORGANIZER_ONLY", "ANY_PARTICIPANT"]);
@@ -184,7 +194,10 @@ export const projectRouter = createTRPCRouter({
 
 	addParticipant: protectedProcedure
 		.input(
-			memberSchema.extend({ role: projectRoleSchema.default("CONTRIBUTOR") }),
+			memberSchema.extend({
+				role: projectRoleSchema.default("CONTRIBUTOR"),
+				joinedOn: isoDateSchema.optional(),
+			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const caller = await roleOf(ctx, input.projectId, "EDITOR");
@@ -241,6 +254,27 @@ export const projectRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const caller = await roleOf(ctx, input.projectId, "EDITOR");
 			return removeParticipant(ctx.db, actor(ctx), caller.role, input);
+		}),
+
+	/** Who was a member on a day: what a new expense on that day includes by default (RC-11). */
+	membersOn: guestOrProtectedProcedure
+		.input(z.object({ projectId: z.string().min(1), date: isoDateSchema }))
+		.query(async ({ ctx, input }) => {
+			await assertReader(ctx, input.projectId);
+			return membersOn(ctx.db, input.projectId, input.date);
+		}),
+
+	/** Join and leave dates. Leaving keeps the person and their past expenses. */
+	setMembershipDates: protectedProcedure
+		.input(
+			memberSchema.extend({
+				joinedOn: isoDateSchema.nullish(),
+				leftOn: isoDateSchema.nullish(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			await roleOf(ctx, input.projectId, "EDITOR");
+			return setMembershipDates(ctx.db, actor(ctx), input);
 		}),
 
 	listExpenses: guestOrProtectedProcedure
