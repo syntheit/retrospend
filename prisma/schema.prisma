@@ -386,7 +386,17 @@ model AppSettings {
   maxConcurrentImportJobs Int                 @default(3)
   enableFeedback         Boolean              @default(false)
 
+  // Rollout of the UI overhaul, read through src/server/flags.ts
+  uiV2Mode  FeatureFlagMode @default(OFF)
+  apiV1Mode FeatureFlagMode @default(OFF)
+
   @@map("app_settings")
+}
+
+enum FeatureFlagMode {
+  OFF
+  ADMINS
+  ALL
 }
 
 enum AuditPrivacyMode {

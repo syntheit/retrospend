@@ -8,7 +8,7 @@ const APP_URL = process.env.E2E_BASE_URL ?? "http://localhost:1998";
 const DATABASE_URL =
 	process.env.E2E_DATABASE_URL ??
 	process.env.DATABASE_URL ??
-	"postgresql://postgres:testpassword@localhost:5433/retrospend_test";
+	"postgresql://postgres:testpassword@localhost:5436/retrospend_test";
 
 async function deleteTestUsers(pool: Pool): Promise<void> {
 	const emails = [TEST_USER.email, ADMIN_USER.email];
