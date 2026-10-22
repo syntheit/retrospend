@@ -1,12 +1,17 @@
 package pdf
 
 import (
+	"os"
 	"testing"
 )
 
 func TestExtractTextFromPDF(t *testing.T) {
-	// Using an existing PDF from the data folder for testing
+	// A real bank statement, kept out of the repo because it is private data.
+	// The test runs only where a local copy exists.
 	filePath := "../../data/Capital One REI Mastercard CC/Statement_012026_5258.pdf"
+	if _, err := os.Stat(filePath); err != nil {
+		t.Skipf("statement fixture not present: %v", err)
+	}
 
 	text, err := ExtractTextFromPDF(filePath)
 	if err != nil {
