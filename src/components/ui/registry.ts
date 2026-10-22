@@ -151,13 +151,13 @@ export const REGISTRY: Primitive[] = [
 		file: "dialog",
 		status: "internal",
 		job: "Radix dialog building block",
-		use: "responsive-dialog (Sheet) or confirmation-dialog",
+		use: "sheet (Sheet) or confirmation-dialog",
 	},
 	{
 		file: "drawer",
 		status: "internal",
 		job: "Vaul drawer building block",
-		use: "responsive-dialog (Sheet)",
+		use: "sheet (Sheet)",
 	},
 	{
 		file: "dropdown-menu",
