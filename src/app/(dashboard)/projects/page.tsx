@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ElementType, type MouseEvent as ReactMouseEvent, type RefObject, useEffect, useRef, useState } from "react";
+import { type ElementType, type MouseEvent as ReactMouseEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { PageContent } from "~/components/page-content";
@@ -50,14 +50,19 @@ import { getImageUrl } from "~/lib/image-url";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 
-function LastActivityLabel({ projectId, fallbackDate }: { projectId: string; fallbackDate: Date | string }) {
-	const t = useTranslations("projects");
-	const { data, isLoading } = api.auditLog.projectLastActivity.useQuery(
-		{ projectId },
-		{ staleTime: 60_000 },
-	);
+type LastActivity =
+	RouterOutputs["auditLog"]["projectsLastActivity"][string];
 
-	if (isLoading || !data) {
+function LastActivityLabel({
+	data,
+	fallbackDate,
+}: {
+	data: LastActivity | undefined;
+	fallbackDate: Date | string;
+}) {
+	const t = useTranslations("projects");
+
+	if (!data) {
 		return (
 			<span>
 				{t("updated")}{" "}
@@ -259,10 +264,12 @@ function ProjectCard({
 	project,
 	filter,
 	formatCurrency,
+	lastActivity,
 }: {
 	project: ProjectItem;
 	filter: StatusFilter;
 	formatCurrency: (amount: number, currency: string) => string;
+	lastActivity: LastActivity | undefined;
 }) {
 	const t = useTranslations("projects");
 	const router = useRouter();
@@ -541,8 +548,8 @@ function ProjectCard({
 								{/* Last activity */}
 								<div className="text-white/40 text-xs">
 									<LastActivityLabel
+										data={lastActivity}
 										fallbackDate={project.updatedAt}
-										projectId={project.id}
 									/>
 								</div>
 							</div>
@@ -676,6 +683,17 @@ export default function ProjectsPage() {
 		isError,
 	} = api.project.list.useQuery(filter === "ALL" ? {} : { status: filter });
 
+	// One query for every card's last activity (not one per card)
+	const projectIds = useMemo(
+		() => (projects ?? []).map((p) => p.id).sort(),
+		[projects],
+	);
+	const { data: lastActivityByProject } =
+		api.auditLog.projectsLastActivity.useQuery(
+			{ projectIds },
+			{ enabled: projectIds.length > 0, staleTime: 60_000 },
+		);
+
 	const filteredProjects = projects?.filter((p) =>
 		!search || p.name.toLowerCase().includes(search.toLowerCase()),
 	);
@@ -739,6 +757,7 @@ export default function ProjectsPage() {
 									filter={filter}
 									formatCurrency={formatCurrency}
 									key={project.id}
+									lastActivity={lastActivityByProject?.[project.id]}
 									project={project}
 								/>
 							))}

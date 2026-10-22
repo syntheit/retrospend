@@ -11,7 +11,10 @@ import {
 import { db as globalDb } from "~/server/db";
 import { AuditAction, ParticipantType } from "~prisma";
 import { getImageUrl } from "~/server/storage";
-import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import {
+	buildCallerRoleMap,
+	requireProjectRole,
+} from "~/server/services/shared-expenses/project-permissions";
 import {
 	buildCreationSnapshot,
 	formatAuditEntry,
@@ -1067,32 +1070,46 @@ export const auditLogRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Returns the single most recent activity entry for a project.
-	 * Used on project list cards to show "what happened last".
+	 * The most recent activity entry per project, for the project list cards
+	 * ("what happened last"). One round trip for the whole list. Like the
+	 * activity feed, the caller must be a participant (any role); projects the
+	 * caller isn't part of are left out of the result.
 	 */
-	projectLastActivity: protectedProcedure
-		.input(z.object({ projectId: z.string().min(1) }))
+	projectsLastActivity: protectedProcedure
+		.input(z.object({ projectIds: z.array(z.string().min(1)).max(500) }))
 		.query(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
-			await requireProjectRole(
+			const requested = [...new Set(input.projectIds)];
+			if (requested.length === 0) return {};
+
+			const roles = await buildCallerRoleMap(
 				globalDb,
-				input.projectId,
-				"user",
-				userId,
-				"VIEWER",
+				[{ participantType: "user", participantId: userId }],
+				requested,
+			);
+			const projectIds = requested.filter((id) => roles.has(id));
+			if (projectIds.length === 0) return {};
+
+			const latest = await globalDb.$queryRaw<{ id: string }[]>`
+				SELECT DISTINCT ON ("projectId") "id"
+				FROM "audit_log_entry"
+				WHERE "projectId" = ANY(${projectIds})
+				ORDER BY "projectId", "timestamp" DESC, "id" DESC`;
+			if (latest.length === 0) return {};
+
+			const entries = await globalDb.auditLogEntry.findMany({
+				where: { id: { in: latest.map((r) => r.id) } },
+			});
+			const formatted = await batchFormatActivityEntries(
+				entries as RawAuditEntry[],
 			);
 
-			const entry = await globalDb.auditLogEntry.findFirst({
-				where: { projectId: input.projectId },
-				orderBy: { timestamp: "desc" },
+			const result: Record<string, ActivityEntry> = {};
+			entries.forEach((entry, i) => {
+				const item = formatted[i];
+				if (entry.projectId && item) result[entry.projectId] = item;
 			});
-
-			if (!entry) return null;
-
-			const [formatted] = await batchFormatActivityEntries([
-				entry as RawAuditEntry,
-			]);
-			return formatted ?? null;
+			return result;
 		}),
 
 	/**
