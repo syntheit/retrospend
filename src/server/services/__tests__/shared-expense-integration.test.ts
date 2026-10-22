@@ -116,6 +116,16 @@ describe("getSharedExpenseShares", () => {
 
 		expect(shares.map((s) => s.categoryId)).toEqual(["cat-mine", null]);
 	});
+
+	it("leaves out shares the user rejected, keeps pending ones", async () => {
+		db.splitParticipant.findMany.mockResolvedValue([]);
+		await getSharedExpenseShares(db as never, "user-1");
+		const where = db.splitParticipant.findMany.mock.calls[0]?.[0]?.where;
+		expect(where).toMatchObject({
+			participantId: "user-1",
+			verificationStatus: { not: "REJECTED" },
+		});
+	});
 });
 
 describe("listSharedParticipationsForUser", () => {

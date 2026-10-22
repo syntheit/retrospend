@@ -121,6 +121,9 @@ export async function getSharedExpenseShares(
 		where: {
 			participantType: "user",
 			participantId: userId,
+			// A share the user rejected is not their spending. Pending shares
+			// still count until they are accepted or rejected.
+			verificationStatus: { not: "REJECTED" },
 			transaction: whereTransaction,
 		},
 		select: {
