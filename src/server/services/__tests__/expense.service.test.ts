@@ -7,7 +7,9 @@ import { ExpenseService } from "../expense.service";
 
 // ── Hoisted mocks (referenced inside vi.mock factories) ───────────────────────
 
-const mockSyncAmortization = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockSyncAmortization = vi.hoisted(() =>
+	vi.fn().mockResolvedValue(undefined),
+);
 
 vi.mock("~/server/services/amortization.service", () => ({
 	// Regular function required - arrow functions cannot be used with `new`
@@ -47,7 +49,13 @@ describe("ExpenseService", () => {
 	describe("createExpense", () => {
 		it("USD: sets exchangeRate=1 and amountInUSD=amount", async () => {
 			db.expense.create.mockResolvedValue(
-				makeExpense({ id: "exp-1", amount: 10, currency: "USD", exchangeRate: 1, amountInUSD: 10 }),
+				makeExpense({
+					id: "exp-1",
+					amount: 10,
+					currency: "USD",
+					exchangeRate: 1,
+					amountInUSD: 10,
+				}),
 			);
 
 			await service.createExpense("user-1", BASE_INPUT);
@@ -111,7 +119,11 @@ describe("ExpenseService", () => {
 			useRateTable(db, []);
 
 			await expect(
-				service.createExpense("user-1", { ...BASE_INPUT, amount: 1000, currency: "ARS" }),
+				service.createExpense("user-1", {
+					...BASE_INPUT,
+					amount: 1000,
+					currency: "ARS",
+				}),
 			).rejects.toMatchObject({ code: "BAD_REQUEST" });
 			expect(db.expense.create).not.toHaveBeenCalled();
 		});
@@ -148,7 +160,9 @@ describe("ExpenseService", () => {
 				currency: "ETH",
 			});
 
-			const call = db.expense.create.mock.calls[0]![0] as { data: { amountInUSD: number } };
+			const call = db.expense.create.mock.calls[0]![0] as {
+				data: { amountInUSD: number };
+			};
 			expect(call.data.amountInUSD).toBeCloseTo(6000);
 		});
 
@@ -156,7 +170,11 @@ describe("ExpenseService", () => {
 			const parentExpense = makeExpense({ id: "exp-3" });
 			db.expense.create.mockResolvedValue(parentExpense);
 
-			await service.createExpense("user-1", { ...BASE_INPUT, id: "exp-3", amortizeOver: 3 });
+			await service.createExpense("user-1", {
+				...BASE_INPUT,
+				id: "exp-3",
+				amortizeOver: 3,
+			});
 
 			expect(mockSyncAmortization).toHaveBeenCalledWith(parentExpense, 3);
 		});
@@ -177,14 +195,22 @@ describe("ExpenseService", () => {
 			db.category.findFirst.mockResolvedValue(null);
 
 			await expect(
-				service.createExpense("user-1", { ...BASE_INPUT, categoryId: "cat-999" }),
+				service.createExpense("user-1", {
+					...BASE_INPUT,
+					categoryId: "cat-999",
+				}),
 			).rejects.toMatchObject({ code: "FORBIDDEN" });
 		});
 
 		it("valid categoryId owned by user: proceeds and creates expense", async () => {
-			db.category.findFirst.mockResolvedValue(makeCategory({ id: "cat-1", userId: "user-1" }));
+			db.category.findFirst.mockResolvedValue(
+				makeCategory({ id: "cat-1", userId: "user-1" }),
+			);
 
-			await service.createExpense("user-1", { ...BASE_INPUT, categoryId: "cat-1" });
+			await service.createExpense("user-1", {
+				...BASE_INPUT,
+				categoryId: "cat-1",
+			});
 
 			expect(db.expense.create).toHaveBeenCalled();
 		});
@@ -204,7 +230,10 @@ describe("ExpenseService", () => {
 		});
 
 		it("explicit pricingSource in input overrides default MANUAL", async () => {
-			await service.createExpense("user-1", { ...BASE_INPUT, pricingSource: "IMPORT" });
+			await service.createExpense("user-1", {
+				...BASE_INPUT,
+				pricingSource: "IMPORT",
+			});
 
 			expect(db.expense.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -258,7 +287,9 @@ describe("ExpenseService", () => {
 		it("non-existent expense: throws NOT_FOUND", async () => {
 			db.expense.findFirst.mockResolvedValue(null);
 
-			await expect(service.updateExpense("user-1", UPDATE_INPUT)).rejects.toMatchObject({
+			await expect(
+				service.updateExpense("user-1", UPDATE_INPUT),
+			).rejects.toMatchObject({
 				code: "NOT_FOUND",
 			});
 		});
@@ -266,43 +297,71 @@ describe("ExpenseService", () => {
 		it("non-existent expense: does not call update", async () => {
 			db.expense.findFirst.mockResolvedValue(null);
 
-			await expect(service.updateExpense("user-1", UPDATE_INPUT)).rejects.toThrow(TRPCError);
+			await expect(
+				service.updateExpense("user-1", UPDATE_INPUT),
+			).rejects.toThrow(TRPCError);
 
 			expect(db.expense.update).not.toHaveBeenCalled();
 		});
 
 		it("changed categoryId not owned by user: throws FORBIDDEN and does not update", async () => {
-			const existing = makeExpense({ id: "exp-1", userId: "user-1", categoryId: "cat-1" });
+			const existing = makeExpense({
+				id: "exp-1",
+				userId: "user-1",
+				categoryId: "cat-1",
+			});
 			db.expense.findFirst.mockResolvedValue(existing);
 			db.category.findFirst.mockResolvedValue(null);
 
 			await expect(
-				service.updateExpense("user-1", { ...UPDATE_INPUT, categoryId: "cat-other" }),
+				service.updateExpense("user-1", {
+					...UPDATE_INPUT,
+					categoryId: "cat-other",
+				}),
 			).rejects.toMatchObject({ code: "FORBIDDEN" });
 
 			expect(db.category.findFirst).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: "cat-other", userId: "user-1" } }),
+				// Income categories never hold an expense.
+				expect.objectContaining({
+					where: { id: "cat-other", userId: "user-1", kind: "EXPENSE" },
+				}),
 			);
 			expect(db.expense.update).not.toHaveBeenCalled();
 		});
 
 		it("changed categoryId owned by user: proceeds", async () => {
-			const existing = makeExpense({ id: "exp-1", userId: "user-1", categoryId: "cat-1" });
+			const existing = makeExpense({
+				id: "exp-1",
+				userId: "user-1",
+				categoryId: "cat-1",
+			});
 			db.expense.findFirst.mockResolvedValue(existing);
 			db.expense.update.mockResolvedValue(existing);
-			db.category.findFirst.mockResolvedValue(makeCategory({ id: "cat-2", userId: "user-1" }));
+			db.category.findFirst.mockResolvedValue(
+				makeCategory({ id: "cat-2", userId: "user-1" }),
+			);
 
-			await service.updateExpense("user-1", { ...UPDATE_INPUT, categoryId: "cat-2" });
+			await service.updateExpense("user-1", {
+				...UPDATE_INPUT,
+				categoryId: "cat-2",
+			});
 
 			expect(db.expense.update).toHaveBeenCalled();
 		});
 
 		it("unchanged categoryId: skips the ownership lookup", async () => {
-			const existing = makeExpense({ id: "exp-1", userId: "user-1", categoryId: "cat-1" });
+			const existing = makeExpense({
+				id: "exp-1",
+				userId: "user-1",
+				categoryId: "cat-1",
+			});
 			db.expense.findFirst.mockResolvedValue(existing);
 			db.expense.update.mockResolvedValue(existing);
 
-			await service.updateExpense("user-1", { ...UPDATE_INPUT, categoryId: "cat-1" });
+			await service.updateExpense("user-1", {
+				...UPDATE_INPUT,
+				categoryId: "cat-1",
+			});
 
 			expect(db.category.findFirst).not.toHaveBeenCalled();
 			expect(db.expense.update).toHaveBeenCalled();
@@ -313,17 +372,25 @@ describe("ExpenseService", () => {
 
 	describe("deleteExpense", () => {
 		it("normal (non-amortized) expense: deletes it, returns success", async () => {
-			db.expense.findFirst.mockResolvedValue({ id: "exp-1", isAmortizedParent: false });
+			db.expense.findFirst.mockResolvedValue({
+				id: "exp-1",
+				isAmortizedParent: false,
+			});
 			db.expense.delete.mockResolvedValue({});
 
 			const result = await service.deleteExpense("user-1", "exp-1");
 
-			expect(db.expense.delete).toHaveBeenCalledWith({ where: { id: "exp-1" } });
+			expect(db.expense.delete).toHaveBeenCalledWith({
+				where: { id: "exp-1" },
+			});
 			expect(result).toEqual({ success: true });
 		});
 
 		it("normal expense: does NOT delete children", async () => {
-			db.expense.findFirst.mockResolvedValue({ id: "exp-1", isAmortizedParent: false });
+			db.expense.findFirst.mockResolvedValue({
+				id: "exp-1",
+				isAmortizedParent: false,
+			});
 			db.expense.delete.mockResolvedValue({});
 
 			await service.deleteExpense("user-1", "exp-1");
@@ -332,7 +399,10 @@ describe("ExpenseService", () => {
 		});
 
 		it("amortized parent: deletes children first, then parent", async () => {
-			db.expense.findFirst.mockResolvedValue({ id: "exp-1", isAmortizedParent: true });
+			db.expense.findFirst.mockResolvedValue({
+				id: "exp-1",
+				isAmortizedParent: true,
+			});
 			db.expense.delete.mockResolvedValue({});
 
 			await service.deleteExpense("user-1", "exp-1");
@@ -340,19 +410,26 @@ describe("ExpenseService", () => {
 			expect(db.expense.deleteMany).toHaveBeenCalledWith({
 				where: { parentId: "exp-1", userId: "user-1" },
 			});
-			expect(db.expense.delete).toHaveBeenCalledWith({ where: { id: "exp-1" } });
+			expect(db.expense.delete).toHaveBeenCalledWith({
+				where: { id: "exp-1" },
+			});
 		});
 
 		it("non-existent expense: throws NOT_FOUND", async () => {
 			db.expense.findFirst.mockResolvedValue(null);
 
-			await expect(service.deleteExpense("user-1", "exp-999")).rejects.toMatchObject({
+			await expect(
+				service.deleteExpense("user-1", "exp-999"),
+			).rejects.toMatchObject({
 				code: "NOT_FOUND",
 			});
 		});
 
 		it("calls $executeRaw (set_config) inside transaction", async () => {
-			db.expense.findFirst.mockResolvedValue({ id: "exp-1", isAmortizedParent: false });
+			db.expense.findFirst.mockResolvedValue({
+				id: "exp-1",
+				isAmortizedParent: false,
+			});
 			db.expense.delete.mockResolvedValue({});
 
 			await service.deleteExpense("user-1", "exp-1");

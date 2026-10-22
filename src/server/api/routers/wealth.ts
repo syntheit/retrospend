@@ -9,7 +9,8 @@ import { toNumberOrNull } from "~/lib/utils";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { getExcludedProjectIds } from "~/server/services/shared-expense-integration";
-import { getSpendingItems, spendingWhere } from "~/server/services/spending";
+import { spentItems } from "~/server/services/figures/spent";
+import { reportSpendingWhere } from "~/server/services/spending";
 import { WealthService } from "~/server/services/wealth.service";
 import { AssetType } from "~prisma";
 
@@ -288,7 +289,7 @@ export const wealthRouter = createTRPCRouter({
 			// amortized purchases counted once (through their monthly parts).
 			const [oldestExpenseOverall, excludedProjectIds] = await Promise.all([
 				db.expense.findFirst({
-					where: spendingWhere(userId),
+					where: reportSpendingWhere(userId),
 					orderBy: { date: "asc" },
 					select: { date: true },
 				}),
@@ -305,12 +306,11 @@ export const wealthRouter = createTRPCRouter({
 			}
 
 			const [items, targetRate] = await Promise.all([
-				getSpendingItems(
-					db,
+				spentItems(db, {
 					userId,
-					{ gte: sixMonthsAgo, lte: today },
+					date: { gte: sixMonthsAgo, lte: today },
 					excludedProjectIds,
-				),
+				}),
 				findExchangeRate(db, targetCurrency, today),
 			]);
 

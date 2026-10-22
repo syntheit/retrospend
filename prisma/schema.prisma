@@ -179,6 +179,14 @@ model Expense {
   // Analytics exclusion
   excludeFromAnalytics Boolean @default(false)
 
+  // Money in (M1, budget SPEC §5.2). `amount` stays positive; direction carries
+  // the sign. inType is set exactly when direction is IN and entryKind is
+  // STANDARD (CHECK expense_in_type_check in the money_in migration).
+  direction    ExpenseDirection @default(OUT)
+  entryKind    EntryKind        @default(STANDARD)
+  inType       InType?
+  amortizeMode AmortizeMode     @default(INSTALLMENTS)
+
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -189,6 +197,7 @@ model Expense {
   @@index([userId, status, date])
   @@index([userId, excludeFromAnalytics, date])
   @@index([userId, isAmortizedParent, date])
+  @@index([userId, direction, date])
   @@map("expense")
 }
 
@@ -199,6 +208,8 @@ model Category {
   icon                 String?                       @db.VarChar(32)
   isFixed              Boolean                       @default(false)
   excludeByDefault     Boolean                       @default(false)
+  // INCOME categories are for money in only, never for spending or envelopes.
+  kind                 CategoryKind                  @default(EXPENSE)
   userId               String
   user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses             Expense[]
@@ -216,9 +227,12 @@ model RecurringTemplate {
   id            String             @id @default(cuid())
   userId        String
   name          String             @db.VarChar(191)
-  amount        Decimal            @db.Decimal(10, 2)
+  amount        Decimal            @db.Decimal(19, 8)
   currency      String             @default("USD")
   categoryId    String?
+  // IN posts money in (recurring income); ASK never posts on its own.
+  direction     ExpenseDirection    @default(OUT)
+  amountMode    RecurringAmountMode @default(FIXED)
   frequency     RecurringFrequency
   nextDueDate   DateTime
   // Day of month the schedule is anchored to; monthly steps clamp to it so a
@@ -447,6 +461,38 @@ enum UserRole {
 enum ExpenseStatus {
   DRAFT
   FINALIZED
+}
+
+enum ExpenseDirection {
+  OUT
+  IN
+}
+
+enum EntryKind {
+  STANDARD
+  STARTING_BALANCE
+  ADJUSTMENT
+  NOT_SPENDING
+}
+
+enum InType {
+  INCOME
+  REFUND
+}
+
+enum AmortizeMode {
+  INSTALLMENTS
+  REPORTS_ONLY
+}
+
+enum CategoryKind {
+  EXPENSE
+  INCOME
+}
+
+enum RecurringAmountMode {
+  FIXED
+  ASK
 }
 
 enum RecurringFrequency {
