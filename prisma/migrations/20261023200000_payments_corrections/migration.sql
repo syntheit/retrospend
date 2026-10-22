@@ -61,8 +61,11 @@ UPDATE "settlement" SET "paymentGroupId" = "id" WHERE "paymentGroupId" IS NULL;
 -- Recorded by: the payee when the lead says the payee recorded it
 -- (RECORDED_BY_PAYEE_REASON in settlement.service.ts), else the lead's payer,
 -- which is who settle-up and square-up wrote as "from" on the lead.
--- Amount: the cash rows' paid amounts (convertedAmount when the row was paid
--- in another currency) in the lead's paid currency; a square-up pays 0.
+-- Amount: the cash rows' paid amounts in the lead's paid currency; a
+-- square-up pays 0. A row was paid in another currency only when both
+-- convertedAmount and convertedCurrency are set; a convertedAmount without a
+-- currency is ignored (it cannot be labeled) and the row counts as paid in
+-- its own currency. The deploy pre-check counts those rows.
 -- Every cash row of one call shares its paid currency (initiateSettlement
 -- converts every row to one convertedCurrency, settleAll to the payment
 -- currency); the deploy pre-check counts groups where that does not hold.
@@ -71,6 +74,10 @@ UPDATE "settlement" SET "paymentGroupId" = "id" WHERE "paymentGroupId" IS NULL;
 -- exchangeRateUsed is a stored-convention rate, not a payment rate.
 WITH ranked AS (
   SELECT s.*,
+    CASE WHEN s."convertedAmount" IS NOT NULL AND s."convertedCurrency" IS NOT NULL
+      THEN s."convertedAmount" ELSE s."amount" END AS paid_amount,
+    CASE WHEN s."convertedAmount" IS NOT NULL AND s."convertedCurrency" IS NOT NULL
+      THEN s."convertedCurrency" ELSE s."currency" END AS paid_currency,
     ROW_NUMBER() OVER (
       PARTITION BY s."paymentGroupId"
       ORDER BY s."isOffset" ASC,
@@ -87,9 +94,8 @@ lead AS (
 ),
 totals AS (
   SELECT r."paymentGroupId",
-    SUM(COALESCE(r."convertedAmount", r."amount")) FILTER (
-      WHERE NOT r."isOffset"
-        AND COALESCE(r."convertedCurrency", r."currency") = COALESCE(l."convertedCurrency", l."currency")
+    SUM(r.paid_amount) FILTER (
+      WHERE NOT r."isOffset" AND r.paid_currency = l.paid_currency
     ) AS paid,
     BOOL_OR(r."status" = 'REJECTED') AS any_rejected,
     BOOL_OR(r."status" = 'PROPOSED') AS any_proposed,
@@ -108,7 +114,7 @@ SELECT
   l."fromParticipantType", l."fromParticipantId",
   l."toParticipantType", l."toParticipantId",
   COALESCE(t.paid, 0),
-  CASE WHEN l."isOffset" THEN l."currency" ELSE COALESCE(l."convertedCurrency", l."currency") END,
+  CASE WHEN l."isOffset" THEN l."currency" ELSE l.paid_currency END,
   l."paymentMethod",
   l."initiatedAt"::date,
   l."note",

@@ -286,126 +286,123 @@ describe("payment.record on Postgres", () => {
 });
 
 /**
- * The deploy pre-check for M3 (read only): what the backfill will do, and
- * the one condition it cannot handle (a group whose cash rows were paid in
- * two currencies), which must be 0.
+ * The deploy pre-check for M3 (read only, runs before or after M3): what the
+ * backfill will do, and what it cannot do cleanly. mixed_paid_currency_groups
+ * must be 0. converted_without_currency rows are backfilled as paid in their
+ * own currency (their convertedAmount cannot be labeled); sub_minor_amounts
+ * are rows with more decimals than their currency keeps, which the engine
+ * rounds half-even. Before M3 there is no payment table, so headers are
+ * counted through query_to_xml, which only runs when the table exists.
  */
 const M3_PRECHECK = `
+WITH decimals(code, d) AS (VALUES
+  ('BIF',0),('CLP',0),('DJF',0),('GNF',0),('ISK',0),('JPY',0),('KMF',0),('KRW',0),('PYG',0),
+  ('RWF',0),('UGX',0),('UYI',0),('VND',0),('VUV',0),('XAF',0),('XOF',0),('XPF',0),
+  ('BHD',3),('IQD',3),('JOD',3),('KWD',3),('LYD',3),('OMR',3),('TND',3),
+  ('USDC',2),('USDT',2),('DAI',2),('BUSD',2),
+  ('BTC',8),('ETH',8),('SOL',8),('BNB',8),('XRP',8),('DOGE',8),('ADA',8),('AVAX',8),('POL',8),
+  ('LTC',8),('DOT',8),('LINK',8),('TON',8),('UNI',8),('NEAR',8),('SUI',8),('BCH',8)
+),
+srows AS (
+  SELECT s.*,
+    COALESCE(s."paymentGroupId", s.id) AS group_id,
+    (s."convertedAmount" IS NOT NULL AND s."convertedCurrency" IS NOT NULL) AS converted,
+    COALESCE(d.d, 2) AS amount_decimals,
+    COALESCE(cd.d, 2) AS converted_decimals
+  FROM settlement s
+  LEFT JOIN decimals d ON d.code = s.currency
+  LEFT JOIN decimals cd ON cd.code = s."convertedCurrency"
+)
 SELECT
-  (SELECT COUNT(*) FROM settlement WHERE "paymentGroupId" IS NULL) AS rows_without_group,
-  (SELECT COUNT(DISTINCT COALESCE("paymentGroupId", id)) FROM settlement s
-    WHERE NOT EXISTS (SELECT 1 FROM payment p WHERE p.id = COALESCE(s."paymentGroupId", s.id))) AS headers_to_create,
+  (SELECT COUNT(*) FROM srows WHERE "paymentGroupId" IS NULL) AS rows_without_group,
+  (SELECT COUNT(DISTINCT group_id) FROM srows)
+    - CASE WHEN to_regclass('public.payment') IS NULL THEN 0 ELSE
+        (xpath('/row/n/text()', query_to_xml(
+          'SELECT COUNT(*) AS n FROM payment p WHERE EXISTS (SELECT 1 FROM settlement s WHERE COALESCE(s."paymentGroupId", s.id) = p.id)',
+          false, true, '')))[1]::text::bigint
+      END AS headers_to_create,
   (SELECT COUNT(*) FROM (
-    SELECT COALESCE("paymentGroupId", id) FROM settlement WHERE NOT "isOffset"
-    GROUP BY COALESCE("paymentGroupId", id)
-    HAVING COUNT(DISTINCT COALESCE("convertedCurrency", currency)) > 1) g) AS mixed_paid_currency_groups
+    SELECT group_id FROM srows WHERE NOT "isOffset" GROUP BY group_id
+    HAVING COUNT(DISTINCT CASE WHEN converted THEN "convertedCurrency" ELSE currency END) > 1) g
+  ) AS mixed_paid_currency_groups,
+  (SELECT COUNT(*) FROM srows WHERE "convertedAmount" IS NOT NULL AND "convertedCurrency" IS NULL)
+    AS converted_without_currency,
+  (SELECT COUNT(*) FROM srows
+    WHERE amount <> round(amount, amount_decimals)
+      OR (converted AND "convertedAmount" <> round("convertedAmount", converted_decimals)))
+    AS sub_minor_amounts
 `;
+
+/** One legacy settlement row, as the old settle-up wrote it. */
+interface LegacyRow {
+	id: string;
+	from: string;
+	to: string;
+	amount: string;
+	currency: string;
+	convertedAmount?: string;
+	convertedCurrency?: string;
+	status: "FINALIZED" | "PROPOSED";
+	payeeAgreed: boolean;
+	group: string | null;
+	offset?: boolean;
+	reason?: string;
+}
+
+const INSERT_LEGACY = `INSERT INTO settlement (id, "fromParticipantType", "fromParticipantId", "toParticipantType", "toParticipantId",
+	amount, currency, "convertedAmount", "convertedCurrency", status, "confirmedByPayer", "confirmedByPayee",
+	"initiatedAt", "paymentGroupId", "isOffset", "autoConfirmedReason")
+	VALUES ($1, 'user', $2, 'user', $3, $4, $5, $6, $7, $8, true, $9, '2026-09-01 12:00:00', $10, $11, $12)`;
 
 describe("M3 payments_corrections backfill", () => {
 	it("gives every legacy row a group and a header, and running it twice changes nothing", async () => {
 		const migration = readFileSync(
-			join(
-				process.cwd(),
-				"prisma/migrations/20261023200000_payments_corrections/migration.sql",
-			),
+			join(process.cwd(), "prisma/migrations/20261023200000_payments_corrections/migration.sql"),
 			"utf8",
 		);
 		const client = new Client({ connectionString: process.env.DATABASE_URL });
 		await client.connect();
+		const count = async () => {
+			const row = (await client.query(M3_PRECHECK)).rows[0];
+			return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v)]));
+		};
 		try {
-			// Before the migration: rows from the old settle-up, with no header.
-			const count = async () => {
-				const row = (await client.query(M3_PRECHECK)).rows[0];
-				return Object.fromEntries(
-					Object.entries(row).map(([k, v]) => [k, Number(v)]),
-				);
-			};
-			const baseline = await count();
-			await client.query(
-				'ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"',
+			// The pre-check also runs before M3, when there is no payment table.
+			await client.query("BEGIN");
+			await client.query("ALTER TABLE payment RENAME TO payment_hidden");
+			const groups = await client.query(
+				'SELECT COUNT(DISTINCT COALESCE("paymentGroupId", id)) AS n FROM settlement',
 			);
-			const legacy = await createTestUser();
-			const insert = `INSERT INTO settlement (id, "fromParticipantType", "fromParticipantId", "toParticipantType", "toParticipantId",
-				amount, currency, "convertedAmount", "convertedCurrency", status, "confirmedByPayer", "confirmedByPayee",
-				"initiatedAt", "paymentGroupId", "isOffset", "autoConfirmedReason")
-				VALUES ($1, 'user', $2, 'user', $3, $4, $5, $6, $7, $8, true, $9, '2026-09-01 12:00:00', $10, $11, $12)`;
-			const [a, b] = [legacy.user.id, martin.user.id];
-			await client.query(insert, [
-				"legacy-single",
-				a,
-				b,
-				10,
-				"USD",
-				null,
-				null,
-				"FINALIZED",
-				true,
-				null,
-				false,
-				null,
-			]);
-			await client.query(insert, [
-				"legacy-g1",
-				a,
-				b,
-				5,
-				"EUR",
-				6,
-				"USD",
-				"PROPOSED",
-				false,
-				"group-1",
-				false,
-				null,
-			]);
-			await client.query(insert, [
-				"legacy-g2",
-				a,
-				b,
-				4,
-				"USD",
-				null,
-				null,
-				"PROPOSED",
-				false,
-				"group-1",
-				false,
-				null,
-			]);
-			await client.query(insert, [
-				"legacy-off",
-				b,
-				a,
-				3,
-				"USD",
-				null,
-				null,
-				"PROPOSED",
-				false,
-				"group-1",
-				true,
-				null,
-			]);
-			await client.query(insert, [
-				"legacy-recv",
-				b,
-				a,
-				7,
-				"USD",
-				null,
-				null,
-				"FINALIZED",
-				true,
-				"group-2",
-				false,
-				"Recorded by the payee as a payment received",
-			]);
+			expect((await count()).headers_to_create).toBe(Number(groups.rows[0].n));
+			await client.query("ROLLBACK");
 
-			const before = await count();
-			expect(before).toEqual({
-				rows_without_group: (baseline.rows_without_group ?? 0) + 1,
-				headers_to_create: (baseline.headers_to_create ?? 0) + 3,
+			const baseline = await count();
+			await client.query('ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"');
+			const a = (await createTestUser()).user.id;
+			const b = martin.user.id;
+			const legacy: LegacyRow[] = [
+				{ id: "legacy-single", from: a, to: b, amount: "10", currency: "USD", status: "FINALIZED", payeeAgreed: true, group: null },
+				// convertedAmount without a currency: paid in its own currency, 10.005 is sub-minor.
+				{ id: "legacy-conv", from: a, to: b, amount: "10.005", currency: "USD", convertedAmount: "12", status: "FINALIZED", payeeAgreed: true, group: null },
+				{ id: "legacy-g1", from: a, to: b, amount: "5", currency: "EUR", convertedAmount: "6", convertedCurrency: "USD", status: "PROPOSED", payeeAgreed: false, group: "group-1" },
+				{ id: "legacy-g2", from: a, to: b, amount: "4", currency: "USD", status: "PROPOSED", payeeAgreed: false, group: "group-1" },
+				{ id: "legacy-off", from: b, to: a, amount: "3", currency: "USD", status: "PROPOSED", payeeAgreed: false, group: "group-1", offset: true },
+				{ id: "legacy-recv", from: b, to: a, amount: "7", currency: "USD", status: "FINALIZED", payeeAgreed: true, group: "group-2", reason: "Recorded by the payee as a payment received" },
+			];
+			for (const r of legacy) {
+				await client.query(INSERT_LEGACY, [
+					r.id, r.from, r.to, r.amount, r.currency, r.convertedAmount ?? null, r.convertedCurrency ?? null,
+					r.status, r.payeeAgreed, r.group, r.offset ?? false, r.reason ?? null,
+				]);
+			}
+
+			const plus = (key: string, n: number) => (baseline[key] ?? 0) + n;
+			expect(await count()).toEqual({
+				rows_without_group: plus("rows_without_group", 2),
+				headers_to_create: plus("headers_to_create", 4),
 				mixed_paid_currency_groups: 0,
+				converted_without_currency: plus("converted_without_currency", 1),
+				sub_minor_amounts: plus("sub_minor_amounts", 1),
 			});
 
 			await client.query(migration);
@@ -415,23 +412,19 @@ describe("M3 payments_corrections backfill", () => {
 				rows_without_group: 0,
 				headers_to_create: 0,
 				mixed_paid_currency_groups: 0,
+				converted_without_currency: plus("converted_without_currency", 1),
+				sub_minor_amounts: plus("sub_minor_amounts", 1),
 			});
 			const headers = await adminDb.payment.findMany({
-				where: { id: { in: ["legacy-single", "group-1", "group-2"] } },
+				where: { id: { in: ["legacy-single", "legacy-conv", "group-1", "group-2"] } },
 				orderBy: { id: "asc" },
 			});
 			expect(
-				headers.map((h) => [
-					h.id,
-					h.payerId,
-					h.amount.toString(),
-					h.currency,
-					h.status,
-					h.recordedById,
-				]),
+				headers.map((h) => [h.id, h.payerId, h.amount.toString(), h.currency, h.status, h.recordedById]),
 			).toEqual([
 				["group-1", a, "10", "USD", "PROPOSED", a],
 				["group-2", b, "7", "USD", "FINALIZED", a],
+				["legacy-conv", a, "10.005", "USD", "FINALIZED", a],
 				["legacy-single", a, "10", "USD", "FINALIZED", a],
 			]);
 		} finally {
