@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { formatDateOnly } from "~/lib/date";
 import { api } from "~/trpc/react";
 import { DataExport } from "./data-export";
 
@@ -16,7 +17,7 @@ export function WealthExportTab() {
 			const url = URL.createObjectURL(blob);
 			const link = document.createElement("a");
 			link.href = url;
-			link.download = `wealth-${new Date().toISOString().slice(0, 10)}.csv`;
+			link.download = `wealth-${formatDateOnly(new Date())}.csv`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);

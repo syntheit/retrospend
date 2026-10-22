@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { formatDateOnly } from "~/lib/date";
 import { api } from "~/trpc/react";
 
 /**
@@ -103,7 +104,7 @@ export function useTableActions<
 			const url = URL.createObjectURL(blob);
 			const link = document.createElement("a");
 			link.href = url;
-			link.download = `expenses-selected-${new Date().toISOString().slice(0, 10)}.csv`;
+			link.download = `expenses-selected-${formatDateOnly(new Date())}.csv`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
