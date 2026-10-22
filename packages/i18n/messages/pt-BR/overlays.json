@@ -1,0 +1,14 @@
+{
+	"sheet": {
+		"close": "Fechar",
+		"cancel": "Cancelar"
+	},
+	"toast": {
+		"undo": "Desfazer",
+		"undone": "Desfeito",
+		"undoFailed": "Não foi possível desfazer"
+	},
+	"menu": {
+		"more": "Mais ações para {name}"
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"sheet": {
+		"close": "Fermer",
+		"cancel": "Annuler"
+	},
+	"toast": {
+		"undo": "Annuler",
+		"undone": "Annulé",
+		"undoFailed": "Impossible d'annuler"
+	},
+	"menu": {
+		"more": "Plus d'actions pour {name}"
+	}
+}

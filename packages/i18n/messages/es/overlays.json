@@ -1,0 +1,14 @@
+{
+	"sheet": {
+		"close": "Cerrar",
+		"cancel": "Cancelar"
+	},
+	"toast": {
+		"undo": "Deshacer",
+		"undone": "Deshecho",
+		"undoFailed": "No se pudo deshacer"
+	},
+	"menu": {
+		"more": "Más acciones para {name}"
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"sheet": {
+		"close": "Schließen",
+		"cancel": "Abbrechen"
+	},
+	"toast": {
+		"undo": "Rückgängig",
+		"undone": "Rückgängig gemacht",
+		"undoFailed": "Rückgängig nicht möglich"
+	},
+	"menu": {
+		"more": "Weitere Aktionen für {name}"
+	}
+}
