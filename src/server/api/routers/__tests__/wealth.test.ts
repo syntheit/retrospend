@@ -61,13 +61,7 @@ describe("getRunwayStats", () => {
 	it("counts an amortized purchase once and skips excluded and draft expenses", async () => {
 		useExpenseTable(mockDb, [
 			// 600 USD laptop spread over 6 months: parent + 6 children of 100
-			{
-				date: new Date(2026, 4, 1),
-				amount: 600,
-				currency: "USD",
-				amountInUSD: 600,
-				isAmortizedParent: true,
-			},
+			{ date: new Date(2026, 4, 1), amount: 600, currency: "USD", amountInUSD: 600, isAmortizedParent: true },
 			...[4, 5, 6, 7, 8, 9].map((m) => ({
 				date: new Date(2026, m, 1),
 				amount: 100,
@@ -75,31 +69,12 @@ describe("getRunwayStats", () => {
 				amountInUSD: 100,
 				isAmortizedChild: true,
 			})),
-			{
-				date: new Date(2026, 8, 3),
-				amount: 900,
-				currency: "USD",
-				amountInUSD: 900,
-				excludeFromAnalytics: true,
-			},
-			{
-				date: new Date(2026, 8, 4),
-				amount: 700,
-				currency: "USD",
-				amountInUSD: 700,
-				status: "DRAFT",
-			},
-			{
-				date: new Date(2026, 8, 5),
-				amount: 300,
-				currency: "USD",
-				amountInUSD: 300,
-			},
+			{ date: new Date(2026, 8, 3), amount: 900, currency: "USD", amountInUSD: 900, excludeFromAnalytics: true },
+			{ date: new Date(2026, 8, 4), amount: 700, currency: "USD", amountInUSD: 700, status: "DRAFT" },
+			{ date: new Date(2026, 8, 5), amount: 300, currency: "USD", amountInUSD: 300 },
 		]);
 
-		const result = await callAndFlush(() =>
-			caller().getRunwayStats({ currency: "USD" }),
-		);
+		const result = await callAndFlush(() => caller().getRunwayStats({ currency: "USD" }));
 
 		expect(result.monthsActive).toBe(6);
 		expect(result.averageMonthlySpend).toBeCloseTo((600 + 300) / 6);
@@ -107,23 +82,11 @@ describe("getRunwayStats", () => {
 
 	it("ARS: ARS spending as entered, USD at the ARS rate", async () => {
 		useExpenseTable(mockDb, [
-			{
-				date: new Date(2026, 8, 1),
-				amount: 600000,
-				currency: "ARS",
-				amountInUSD: 600,
-			},
-			{
-				date: new Date(2026, 8, 2),
-				amount: 100,
-				currency: "USD",
-				amountInUSD: 100,
-			},
+			{ date: new Date(2026, 8, 1), amount: 600000, currency: "ARS", amountInUSD: 600 },
+			{ date: new Date(2026, 8, 2), amount: 100, currency: "USD", amountInUSD: 100 },
 		]);
 
-		const result = await callAndFlush(() =>
-			caller().getRunwayStats({ currency: "ARS" }),
-		);
+		const result = await callAndFlush(() => caller().getRunwayStats({ currency: "ARS" }));
 
 		expect(result.averageMonthlySpend).toBeCloseTo((600000 + 100 * 1560) / 6);
 	});
