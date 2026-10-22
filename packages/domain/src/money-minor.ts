@@ -6,7 +6,7 @@
  * integer covers BTC 21M (2.1e15 satoshis) and ARS 1e12 (1e14 cents).
  */
 import { isPrismaDecimal, type PrismaDecimal } from "./decimal";
-import { currencyDecimals, toMinorUnits } from "./money";
+import { currencyDecimals } from "./money";
 
 export interface Money {
 	/** Integer minor units, within Number.MAX_SAFE_INTEGER. */
@@ -48,24 +48,43 @@ export function money(minor: number, currency: string): Money {
 /**
  * Minor units for an amount in major units.
  *
- * A number goes through toMinorUnits, which rounds away float noise, so the
- * result matches what the expense form and split math already store. A
- * string or Prisma Decimal is read exactly (BTC 20999999.12345678 has more
- * digits than a float keeps) and refused when it is more precise than the
- * currency, since a stored amount should never need rounding.
+ * A number is scaled with float noise trimmed (1.005 * 100 is
+ * 100.49999999999999 as a float, read as 100.5), then rounded half to even
+ * on its magnitude, so 1.005 and -1.005 USD give 100 and -100. A number at
+ * or above 1e15 minor units is refused: a float cannot hold that many digits
+ * (12345678.12345678 BTC reads back as ...680 satoshis). Pass a string or a
+ * Prisma Decimal instead; those are read exactly, and refused when they are
+ * more precise than the currency, since a stored amount should never need
+ * rounding.
  */
 export function toMinor(
 	amount: number | string | PrismaDecimal,
 	currency: string,
 ): number {
-	if (typeof amount === "number") {
-		if (!Number.isFinite(amount)) {
-			throw new RangeError(`Amount must be finite, got ${amount}`);
-		}
-		return assertSafeMinor(toMinorUnits(amount, currency));
-	}
+	if (typeof amount === "number") return numberToMinor(amount, currency);
 	const text = isPrismaDecimal(amount) ? amount.toString() : amount;
 	return decimalTextToMinor(text, currencyDecimals(currency));
+}
+
+/** Where 15 significant digits, all a float reliably keeps, run out. */
+const FLOAT_DIGITS_LIMIT = 1e15;
+
+function numberToMinor(amount: number, currency: string): number {
+	if (!Number.isFinite(amount)) {
+		throw new RangeError(`Amount must be finite, got ${amount}`);
+	}
+	const factor = 10 ** currencyDecimals(currency);
+	const scaled = Number((Math.abs(amount) * factor).toPrecision(15));
+	if (scaled >= FLOAT_DIGITS_LIMIT) {
+		throw new RangeError(
+			`${amount} ${currency} has more digits than a float keeps; pass it as a string`,
+		);
+	}
+	const whole = Math.floor(scaled);
+	const rest = scaled - whole;
+	const rounded =
+		rest > 0.5 || (rest === 0.5 && whole % 2 === 1) ? whole + 1 : whole;
+	return amount < 0 && rounded !== 0 ? -rounded : rounded;
 }
 
 const DECIMAL_TEXT = /^([+-]?)(\d*)(?:\.(\d*))?(?:e([+-]?\d+))?$/i;

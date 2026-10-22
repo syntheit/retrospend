@@ -39,9 +39,35 @@ describe("toMinor", () => {
 		expect(toMinor(-45, "USD")).toBe(-4500);
 	});
 
-	it("trims float noise the way toMinorUnits does", () => {
-		expect(toMinor(1.005, "USD")).toBe(101);
+	it("trims float noise", () => {
 		expect(toMinor(0.1 + 0.2, "USD")).toBe(30);
+		expect(toMinor(1.015, "USD")).toBe(102);
+	});
+
+	it("rounds a tie half to even on the magnitude, so signs are symmetric", () => {
+		expect(toMinor(1.005, "USD")).toBe(100);
+		expect(toMinor(-1.005, "USD")).toBe(-100);
+		expect(toMinor(1.015, "USD")).toBe(102);
+		expect(toMinor(-1.015, "USD")).toBe(-102);
+		expect(toMinor(0.125, "USD")).toBe(12);
+		expect(toMinor(-0.125, "USD")).toBe(-12);
+	});
+
+	it("never returns -0", () => {
+		expect(Object.is(toMinor(-0.5, "JPY"), 0)).toBe(true);
+		expect(Object.is(toMinor(-0.004, "USD"), 0)).toBe(true);
+	});
+
+	it("refuses a number at or above 1e15 minor units, where a float drops digits", () => {
+		// 12345678.12345678 BTC as a float reads back as ...680 satoshis.
+		expect(() => toMinor(12345678.12345678, "BTC")).toThrow(RangeError);
+		expect(() => toMinor(21_000_000, "BTC")).toThrow(RangeError);
+		expect(() => toMinor(10_000_000_000_000, "USD")).toThrow(RangeError);
+		expect(() => toMinor(-10_000_000_000_000, "USD")).toThrow(RangeError);
+		expect(toMinor(9_999_999_999_999.99, "USD")).toBe(999_999_999_999_999);
+		// The same amounts as text keep every digit.
+		expect(toMinor("12345678.12345678", "BTC")).toBe(1234567812345678);
+		expect(toMinor("21000000", "BTC")).toBe(2_100_000_000_000_000);
 	});
 
 	it("refuses non-finite numbers", () => {
