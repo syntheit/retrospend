@@ -1,0 +1,17 @@
+{
+	"spentIn": "Gasto em {month}",
+	"faster": "Gastando mais rápido que o planejado",
+	"lastMonth": "Mês passado",
+	"row": {
+		"toAssign": "Ainda não planejado",
+		"owedToYou": "Devem a você",
+		"youOwe": "Você deve",
+		"netWorth": "Patrimônio"
+	},
+	"line": {
+		"perDay": "<amount></amount> por dia por {days, plural, one {# dia} other {# dias}}",
+		"leftToday": "<amount></amount> restantes hoje",
+		"over": "<amount></amount> acima do plano este mês",
+		"noBudget": "Sem orçamento para este mês"
+	}
+}

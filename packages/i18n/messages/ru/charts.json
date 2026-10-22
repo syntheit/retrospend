@@ -1,0 +1,27 @@
+{
+	"day": "День {day}",
+	"noData": "нет данных",
+	"pace": {
+		"summary": "День {day}: потрачено {spent}, в прошлом месяце к этому дню {before}"
+	},
+	"bars": {
+		"label": "Потрачено",
+		"summary": "Расходы по месяцам: {list}"
+	},
+	"area": {
+		"label": "Капитал",
+		"summary": "Капитал изменился с {start} ({from}) до {end} ({to})"
+	},
+	"ranked": {
+		"summary": "По убыванию: {list}"
+	},
+	"allocation": {
+		"summary": "Распределение: {list}"
+	},
+	"balance": {
+		"summary": "Вам должны {owed}. Вы должны {owe}",
+		"owesYou": "{name}: должен вам {amount}",
+		"youOwe": "{name}: вы должны {amount}"
+	},
+	"empty": "Пока нет данных"
+}

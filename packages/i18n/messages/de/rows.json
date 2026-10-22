@@ -1,0 +1,62 @@
+{
+	"date": {
+		"today": "Heute",
+		"yesterday": "Gestern"
+	},
+	"kind": {
+		"income": "Einnahme",
+		"refund": "Erstattung",
+		"reimbursement": "Für jemand anderen",
+		"payment": "Zahlung",
+		"paymentPending": "Zahlung · Ausstehend",
+		"transfer": "Überweisung",
+		"exchange": "Umtausch",
+		"balance": "Saldoanpassung"
+	},
+	"transaction": {
+		"yourShare": "dein Anteil",
+		"paid": "{name} hat bezahlt",
+		"waiting": "Wartet auf dich",
+		"other": "Sonstiges"
+	},
+	"project": {
+		"range": "{start} bis {end}",
+		"since": "Seit {start}",
+		"open": "Offen",
+		"solo": "Allein",
+		"people": "{count, plural, one {# Person} other {# Personen}}",
+		"spent": "ausgegeben",
+		"budgetUsed": "Budget genutzt"
+	},
+	"account": {
+		"updated": "Aktualisiert {date}",
+		"change": "{change} diesen Monat"
+	},
+	"envelope": {
+		"spent": "Ausgegeben vom Geplanten"
+	},
+	"recurring": {
+		"overdueSince": "Überfällig seit {date}",
+		"next": "Nächste {date}",
+		"confirm": "Bestätigen",
+		"skip": "Überspringen",
+		"weekly": "Wöchentlich",
+		"monthly": "Monatlich",
+		"quarterly": "Vierteljährlich",
+		"yearly": "Jährlich"
+	},
+	"table": {
+		"selectAll": "Alle auswählen",
+		"select": "{title} auswählen",
+		"title": "Titel",
+		"category": "Kategorie",
+		"project": "Projekt",
+		"with": "Mit",
+		"date": "Datum",
+		"amount": "Betrag",
+		"actions": "Aktionen",
+		"yourSpending": "Deine Ausgaben",
+		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"withoutRate": "{count, plural, one {# ohne Kurs} other {# ohne Kurs}}"
+	}
+}

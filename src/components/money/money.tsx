@@ -37,13 +37,14 @@ function MoneyAmount({
 	display,
 	sign,
 	cents,
+	compact,
 	missing = "none",
 	figure,
 	className,
 }: MoneyProps) {
 	const locale = useLocale();
 	const t = useTranslations("kit.money");
-	const text = formatMoney(value, { locale, display, sign, cents });
+	const text = formatMoney(value, { locale, display, sign, cents, compact });
 	return (
 		<span
 			className={cn(
