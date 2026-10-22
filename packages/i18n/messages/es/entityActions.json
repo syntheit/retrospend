@@ -1,0 +1,108 @@
+{
+	"expense": {
+		"review": {
+			"label": "Marcar como revisado"
+		},
+		"open": {
+			"label": "Abrir"
+		},
+		"edit": {
+			"label": "Editar"
+		},
+		"askFix": {
+			"label": "Pedir que lo corrija"
+		},
+		"correct": {
+			"label": "Corregir"
+		},
+		"split": {
+			"label": "Dividir"
+		},
+		"category": {
+			"label": "Cambiar categoría"
+		},
+		"project": {
+			"label": "Mover a proyecto"
+		},
+		"duplicate": {
+			"label": "Duplicar"
+		},
+		"delete": {
+			"label": "Eliminar",
+			"confirmTitle": "¿Eliminar {name}?",
+			"confirmBody": "Los saldos afectados se actualizan para todos.",
+			"confirmButton": "Eliminar gasto"
+		}
+	},
+	"person": {
+		"settle": {
+			"label": "Saldar"
+		},
+		"request": {
+			"label": "Pedir"
+		},
+		"remind": {
+			"label": "Recordar"
+		},
+		"addExpense": {
+			"label": "Agregar gasto con esta persona"
+		},
+		"profile": {
+			"label": "Ver perfil"
+		}
+	},
+	"project": {
+		"addExpense": {
+			"label": "Agregar gasto"
+		},
+		"pin": {
+			"label": "Fijar"
+		},
+		"share": {
+			"label": "Compartir enlace"
+		},
+		"settleAll": {
+			"label": "Saldar todo"
+		},
+		"archive": {
+			"label": "Archivar"
+		}
+	},
+	"account": {
+		"updateBalance": {
+			"label": "Actualizar saldo"
+		},
+		"history": {
+			"label": "Ver historial"
+		},
+		"edit": {
+			"label": "Editar cuenta"
+		},
+		"archive": {
+			"label": "Archivar"
+		}
+	},
+	"recurring": {
+		"confirm": {
+			"label": "Confirmar"
+		},
+		"editAmount": {
+			"label": "Editar monto"
+		},
+		"pause": {
+			"label": "Pausar"
+		},
+		"resume": {
+			"label": "Reanudar"
+		},
+		"skip": {
+			"label": "Saltar esta vez"
+		},
+		"delete": {
+			"label": "Eliminar",
+			"confirmTitle": "¿Eliminar {name}?",
+			"confirmBody": "Los próximos se detienen; los gastos pasados quedan.",
+			"confirmButton": "Eliminar gasto recurrente"
+		}
+	}
+}

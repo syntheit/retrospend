@@ -1,0 +1,82 @@
+{
+	"category": {
+		"label": "Category",
+		"find": "Find a category",
+		"recent": "Recent",
+		"all": "All categories",
+		"empty": "No matches",
+		"selected": "Selected"
+	},
+	"person": {
+		"label": "People",
+		"find": "Find a person",
+		"empty": "No matches",
+		"selected": "Selected",
+		"notOnRetrospend": "Not on Retrospend",
+		"add": "Add person",
+		"addNamed": "Add {name}"
+	},
+	"currency": {
+		"label": "Currency",
+		"find": "Find a currency",
+		"favorites": "Favorites",
+		"recent": "Recent",
+		"all": "All currencies",
+		"empty": "No matches",
+		"selected": "Selected"
+	},
+	"date": {
+		"title": "Date",
+		"today": "Today",
+		"yesterday": "Yesterday",
+		"pick": "Pick date",
+		"typed": "Date",
+		"placeholder": "Type a date",
+		"earlier": "Earlier",
+		"later": "Later"
+	},
+	"dateRange": {
+		"title": "Dates",
+		"trigger": "Dates: {range}",
+		"presets": "Presets",
+		"preset": {
+			"thisMonth": "This month",
+			"lastMonth": "Last month",
+			"last30": "Last 30 days",
+			"last90": "Last 90 days",
+			"thisYear": "This year",
+			"lastYear": "Last year",
+			"allTime": "All time"
+		},
+		"span": "{from} to {to}",
+		"start": "Start",
+		"today": "today",
+		"from": "From",
+		"to": "To",
+		"startDate": "Start date",
+		"endDate": "End date",
+		"compare": "Compare to previous period",
+		"jump": "Jump to month",
+		"earlier": "Earlier",
+		"later": "Later",
+		"cancel": "Cancel",
+		"apply": "Apply"
+	},
+	"money": {
+		"amount": "Amount",
+		"currency": "Currency, {code}",
+		"rate": "Exchange rate: {rate}",
+		"error": {
+			"empty": "Enter an amount",
+			"invalidCharacter": "Use digits and + - × ÷ only",
+			"syntax": "Check the calculation",
+			"incomplete": "Finish the calculation",
+			"ambiguous": "Use {decimal} for decimals",
+			"tooPrecise": "Too many decimals for {currency}",
+			"divideByZero": "Can't divide by zero",
+			"outOfRange": "That amount is too large",
+			"zero": "Enter an amount above zero",
+			"negative": "The amount must be above zero"
+		}
+	}
+}

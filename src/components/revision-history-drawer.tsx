@@ -22,7 +22,7 @@ import {
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
-} from "~/components/ui/sheet";
+} from "~/components/ui/edge-panel";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
 	Tooltip,
