@@ -180,8 +180,8 @@
     "ofBudget": "{spent} de {total}",
     "overBudget": "acima do orçamento",
     "underBudget": "abaixo do orçamento",
-    "projectedTotal": "Total projetado",
-    "last3MonthsAvg": "Média dos últimos 3 meses"
+    "projectedTotal": "Média de 3 meses",
+    "last3MonthsAvg": "3 meses anteriores com gastos"
   },
   "recentActivity": {
     "title": "Atividade recente",

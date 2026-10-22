@@ -180,8 +180,8 @@
     "ofBudget": "{spent} из {total}",
     "overBudget": "сверх бюджета",
     "underBudget": "в пределах бюджета",
-    "projectedTotal": "Прогноз на месяц",
-    "last3MonthsAvg": "Последние 3 месяца в среднем"
+    "projectedTotal": "Среднее за 3 месяца",
+    "last3MonthsAvg": "Предыдущие 3 месяца с расходами"
   },
   "recentActivity": {
     "title": "Недавние действия",
