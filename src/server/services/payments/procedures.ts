@@ -109,12 +109,17 @@ async function notifyConfirmedPayment(
 	if (lead) await service.notifyConfirmed(rows, lead);
 }
 
-/** Undo of a confirm: the payment waits for the caller again. */
-export async function applyUnconfirm(
+/** Undo of a confirm, previewed (R30: an undo has its own preview) or applied. */
+export async function unconfirm(
 	db: PrismaClient,
 	userId: string,
 	paymentId: string,
+	mode: "preview" | "apply",
 ) {
 	const person = await paymentCounterparty(db, paymentId, userId);
-	return forUser(userId).apply(unconfirmPayment, { paymentId, person });
+	const runner = forUser(userId);
+	const input = { paymentId, person };
+	return mode === "preview"
+		? runner.preview(unconfirmPayment, input)
+		: runner.apply(unconfirmPayment, input);
 }

@@ -8,9 +8,9 @@ import {
 import {
 	applyConfirm,
 	applyPayment,
-	applyUnconfirm,
 	previewConfirm,
 	previewPayment,
+	unconfirm,
 } from "~/server/services/payments/procedures";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 
@@ -37,11 +37,12 @@ export const settlementRouter = createTRPCRouter({
 		.input(confirmPaymentSchema)
 		.mutation(({ ctx, input }) => applyConfirm(ctx.db, ctx.session.user.id, input)),
 	/** Undo of paymentConfirm: the payment waits for the caller again. */
+	paymentUnconfirmPreview: protectedProcedure
+		.input(z.object({ paymentId: z.string().min(1) }))
+		.query(({ ctx, input }) => unconfirm(ctx.db, ctx.session.user.id, input.paymentId, "preview")),
 	paymentUnconfirm: protectedProcedure
 		.input(z.object({ paymentId: z.string().min(1) }))
-		.mutation(({ ctx, input }) =>
-			applyUnconfirm(ctx.db, ctx.session.user.id, input.paymentId),
-		),
+		.mutation(({ ctx, input }) => unconfirm(ctx.db, ctx.session.user.id, input.paymentId, "apply")),
 
 	/**
 	 * POST /api/settlements

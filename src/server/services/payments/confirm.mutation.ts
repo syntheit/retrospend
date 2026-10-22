@@ -145,7 +145,9 @@ async function allocateForMe(
 	});
 	if (allocation.overpay > 0) {
 		throw new ConfirmInsteadError(
-			allocation.full > 0 ? { minor: allocation.full, currency: header.currency } : null,
+			allocation.full > 0
+				? { minor: allocation.full, currency: header.currency }
+				: null,
 		);
 	}
 	return allocation;

@@ -1303,6 +1303,7 @@
   },
   "settleUp": {
     "settleAllSkipped": "Algunos saldos quedaron pendientes porque no había un tipo de cambio disponible para estas monedas: {currencies}.",
+    "recordAsDifferentPayment": "Registrar como otro pago",
     "title": "Saldar cuentas",
     "titleWith": "Saldar cuentas con {name}",
     "description": "Registrá un pago para dejar tu saldo en cero.",

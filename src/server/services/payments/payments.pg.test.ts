@@ -256,6 +256,25 @@ describe("payment.record on Postgres", () => {
 			mutation: "payment.unconfirm",
 			rows: [{ table: "payment", id: header.id }],
 		});
+		// The undo has its own preview, and it writes nothing.
+		const undoPreview = await forUser(martin.user.id).preview(
+			unconfirmPayment,
+			{
+				paymentId: header.id,
+				person: ref(sofia),
+			},
+		);
+		expect(
+			undoPreview.changes.map((c) => [c.id, c.currency, c.delta.minor]),
+		).toEqual([
+			["balance.person", "ARS", 1_800_000],
+			["balance.person", "BRL", 41_250],
+			["owed.owedToYou", "ARS", 12_978_750],
+		]);
+		expect(
+			(await adminDb.payment.findUniqueOrThrow({ where: { id: header.id } }))
+				.status,
+		).toBe("FINALIZED");
 		await forUser(martin.user.id).apply(unconfirmPayment, {
 			paymentId: header.id,
 			person: ref(sofia),

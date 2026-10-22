@@ -14,6 +14,11 @@ vi.mock("~/server/services/notifications", () => ({
 
 import { createNotification } from "~/server/services/notifications";
 import {
+	confirmPayment,
+	unconfirmPayment,
+} from "~/server/services/payments/confirm.mutation";
+import { computeBalance } from "./balance";
+import {
 	RECORDED_BY_PAYEE_REASON,
 	SettlementService,
 } from "./settlement.service";
@@ -25,11 +30,6 @@ import {
 	makeUserRef,
 } from "./test-utils";
 import type { ParticipantRef } from "./types";
-import { computeBalance } from "./balance";
-import {
-	confirmPayment,
-	unconfirmPayment,
-} from "~/server/services/payments/confirm.mutation";
 
 const ALICE = "alice";
 const aliceRef = makeUserRef(ALICE);
@@ -394,8 +394,11 @@ describe("settleAll", () => {
 });
 
 describe("undo a confirm (payment.unconfirm)", () => {
-	const unconfirm = (userId: string, paymentId: string, person: ParticipantRef) =>
-		unconfirmPayment.run(db as never, { paymentId, person }, { userId });
+	const unconfirm = (
+		userId: string,
+		paymentId: string,
+		person: ParticipantRef,
+	) => unconfirmPayment.run(db as never, { paymentId, person }, { userId });
 
 	it("only the payee undoes a confirm of a payment the payer recorded", async () => {
 		seedDebt(aliceRef, bobRef, 30);
@@ -405,14 +408,19 @@ describe("undo a confirm (payment.unconfirm)", () => {
 			currency: "USD",
 		});
 		const paymentId = settlement.paymentGroupId ?? "";
-		await new SettlementService(db as never, "bob").confirmSettlement(settlement.id);
+		await new SettlementService(db as never, "bob").confirmSettlement(
+			settlement.id,
+		);
 
 		await expect(unconfirm(ALICE, paymentId, bobRef)).rejects.toThrow(
 			"Only the person who confirmed this payment can undo it",
 		);
 		await unconfirm("bob", paymentId, aliceRef);
 		expect(headers()[0]?.status).toBe("PROPOSED");
-		expect(rows()[0]).toMatchObject({ confirmedByPayer: true, confirmedByPayee: false });
+		expect(rows()[0]).toMatchObject({
+			confirmedByPayer: true,
+			confirmedByPayee: false,
+		});
 	});
 
 	it("cannot undo a payment the receiver recorded, which was never confirmed", async () => {
@@ -440,7 +448,10 @@ describe("confirming a claim that is no longer owed", () => {
 	/** Bob owes alice 100 and says he paid 50; alice then records `received` herself. */
 	async function claimThenReceived(received: number) {
 		seedDebt(bobRef, aliceRef, 100);
-		const { settlement: claim } = await new SettlementService(db as never, "bob").initiateSettlement({
+		const { settlement: claim } = await new SettlementService(
+			db as never,
+			"bob",
+		).initiateSettlement({
 			toParticipant: aliceRef,
 			amount: 50,
 			currency: "USD",
@@ -454,7 +465,8 @@ describe("confirming a claim that is no longer owed", () => {
 		});
 		return claim;
 	}
-	const aliceSees = async () => (await computeBalance(db as never, aliceRef, bobRef)).byCurrency;
+	const aliceSees = async () =>
+		(await computeBalance(db as never, aliceRef, bobRef)).byCurrency;
 
 	it("refuses a claim when the full balance was already recorded, with no double credit", async () => {
 		const claim = await claimThenReceived(100);
@@ -462,11 +474,14 @@ describe("confirming a claim that is no longer owed", () => {
 
 		await expect(alice().confirmSettlement(claim.id)).rejects.toMatchObject({
 			code: "CONFLICT",
-			message: "Nothing is owed on this payment anymore. Say it was not received instead.",
+			message:
+				"Nothing is owed on this payment anymore. Say it was not received instead.",
 		});
 		// I3: nothing moved, nothing flipped.
 		expect(await aliceSees()).toEqual({});
-		expect(headers().find((h) => h.id === claim.paymentGroupId)?.status).toBe("PROPOSED");
+		expect(headers().find((h) => h.id === claim.paymentGroupId)?.status).toBe(
+			"PROPOSED",
+		);
 	});
 
 	it("offers to confirm what is still owed, and confirming that settles without flipping", async () => {
@@ -562,7 +577,11 @@ describe("plan and history", () => {
 		seedDebt(aliceRef, bobRef, 0.2);
 
 		const [plan] = await alice().getSettlementPlan(bobRef);
-		expect(plan).toMatchObject({ currency: "USD", balance: 0.3, suggestedAmount: 0.3 });
+		expect(plan).toMatchObject({
+			currency: "USD",
+			balance: 0.3,
+			suggestedAmount: 0.3,
+		});
 
 		await alice().initiateSettlement({
 			toParticipant: bobRef,

@@ -227,7 +227,12 @@ describe("allocatePayment", () => {
 			{ scope: "trip", currency: "USD", owed: 5_000, oldest: "2026-10-01" },
 			{ scope: "rent", currency: "USD", owed: -8_000, oldest: "2026-10-02" },
 		];
-		const refused = allocatePayment({ lines, currency: "USD", amount: 2_000, quotes: new Map() });
+		const refused = allocatePayment({
+			lines,
+			currency: "USD",
+			amount: 2_000,
+			quotes: new Map(),
+		});
 		expect(refused.full).toBe(0);
 		expect(refused.overpay).toBe(2_000);
 		const confirmed = allocatePayment({
@@ -237,7 +242,9 @@ describe("allocatePayment", () => {
 			quotes: new Map(),
 			allowOverpay: true,
 		});
-		expect(confirmed.rows.map((r) => [r.scope, r.amount, r.excess])).toEqual([[null, 2_000, true]]);
+		expect(confirmed.rows.map((r) => [r.scope, r.amount, r.excess])).toEqual([
+			[null, 2_000, true],
+		]);
 		// Paying down Trip itself is an Apply to.
 		const trip = allocatePayment({
 			lines,
@@ -247,13 +254,23 @@ describe("allocatePayment", () => {
 			applyTo: [{ scope: "trip" }],
 		});
 		expect(trip.overpay).toBe(0);
-		expect(trip.rows.map((r) => [r.scope, r.amount])).toEqual([["trip", 2_000]]);
+		expect(trip.rows.map((r) => [r.scope, r.amount])).toEqual([
+			["trip", 2_000],
+		]);
 	});
 
 	it("Valentina: more than the net is the overpay, not more than what is owed one way", () => {
-		const lines = payerLines(ledgerLines(eventsFor(fixtureLedger().valentina, "me")), true);
+		const lines = payerLines(
+			ledgerLines(eventsFor(fixtureLedger().valentina, "me")),
+			true,
+		);
 		// Everything is ARS 25,688; ARS 26,688 is ARS 1,000 more.
-		const a = allocatePayment({ lines, currency: "ARS", amount: 2_668_800, quotes: BLUE });
+		const a = allocatePayment({
+			lines,
+			currency: "ARS",
+			amount: 2_668_800,
+			quotes: BLUE,
+		});
 		expect(a.overpay).toBe(100_000);
 		expect(a.everything).toBe(true);
 	});
