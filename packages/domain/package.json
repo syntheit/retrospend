@@ -10,10 +10,14 @@
 		"./currency-format": "./src/currency-format.ts",
 		"./decimal": "./src/decimal.ts",
 		"./fiscal-month": "./src/fiscal-month.ts",
+		"./format": "./src/format.ts",
 		"./money": "./src/money.ts",
+		"./money-minor": "./src/money-minor.ts",
+		"./parse": "./src/parse.ts",
 		"./recurring": "./src/recurring.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
-		"./time-zone": "./src/time-zone.ts"
+		"./time-zone": "./src/time-zone.ts",
+		"./vectors/*": "./vectors/*"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"

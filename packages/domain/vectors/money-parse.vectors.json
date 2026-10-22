@@ -1,0 +1,814 @@
+{
+	"about": "Golden cases for parseMoneyInput, formatMoneyDraft, decimalSeparator and groupSeparator (@retrospend/domain/parse). Every client runs this file. parse expects either { minor } or { error }. \u00a0 is a no-break space, \u202f a narrow no-break space, \u2212 the minus sign, \u00d7 times, \u00f7 divide.",
+	"parse": [
+		{
+			"name": "en-US grouped",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1,234.56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "en-US plain",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1234.56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "en-US whole",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12",
+			"expected": { "minor": 1200 }
+		},
+		{
+			"name": "trailing decimal while typing",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12.",
+			"expected": { "minor": 1200 }
+		},
+		{
+			"name": "leading decimal",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": ".5",
+			"expected": { "minor": 50 }
+		},
+		{
+			"name": "surrounding spaces",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "  12.5 ",
+			"expected": { "minor": 1250 }
+		},
+		{
+			"name": "en-US millions",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1,234,567.89",
+			"expected": { "minor": 123456789 }
+		},
+		{
+			"name": "trailing zeros beyond the minor unit are exact",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12.500",
+			"expected": { "minor": 1250 }
+		},
+		{
+			"name": "000 shortcut after a number",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "5000",
+			"expected": { "minor": 500000 }
+		},
+		{
+			"name": "leading zeros",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0005",
+			"expected": { "minor": 500 }
+		},
+		{
+			"name": "000 shortcut after a decimal",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1.5000",
+			"expected": { "minor": 150 }
+		},
+		{
+			"name": "comma that cannot be grouping is ambiguous",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1,23",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "group of four is ambiguous",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1,2345",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "European input in en-US is ambiguous",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1.234,56",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "a misplaced group before the decimal is ambiguous",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12,34.5",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "trailing group separator is ambiguous",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12,",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "two decimal separators",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1.2.3",
+			"expected": { "error": "syntax" }
+		},
+		{
+			"name": "too precise for USD",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12.345",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "too precise inside a sum",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12.345+1",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "empty",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "",
+			"expected": { "error": "empty" }
+		},
+		{
+			"name": "only spaces",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "   ",
+			"expected": { "error": "empty" }
+		},
+		{
+			"name": "letters",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "abc",
+			"expected": { "error": "invalidCharacter" }
+		},
+		{
+			"name": "a typed currency symbol",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "$12",
+			"expected": { "error": "invalidCharacter" }
+		},
+		{
+			"name": "zero is refused",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0",
+			"expected": { "error": "zero" }
+		},
+		{
+			"name": "000 alone is zero",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "000",
+			"expected": { "error": "zero" }
+		},
+		{
+			"name": "a negative number is refused",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "-5",
+			"expected": { "error": "negative" }
+		},
+		{
+			"name": "a negative result is refused",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "5-10",
+			"expected": { "error": "negative" }
+		},
+		{
+			"name": "a result that rounds to zero is refused",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0.01/2",
+			"expected": { "error": "zero" }
+		},
+		{
+			"name": "space between numbers in en-US",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1 234",
+			"expected": { "error": "syntax" }
+		},
+		{
+			"name": "addition",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10+5",
+			"expected": { "minor": 1500 }
+		},
+		{
+			"name": "addition with spaces",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10 + 5",
+			"expected": { "minor": 1500 }
+		},
+		{
+			"name": "subtraction",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10-4",
+			"expected": { "minor": 600 }
+		},
+		{
+			"name": "unicode minus",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10\u22124",
+			"expected": { "minor": 600 }
+		},
+		{
+			"name": "multiplication with *",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10*1.5",
+			"expected": { "minor": 1500 }
+		},
+		{
+			"name": "multiplication with x",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10x2",
+			"expected": { "minor": 2000 }
+		},
+		{
+			"name": "multiplication with X",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10X2",
+			"expected": { "minor": 2000 }
+		},
+		{
+			"name": "multiplication with the times sign",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10\u00d72",
+			"expected": { "minor": 2000 }
+		},
+		{
+			"name": "division with the divide sign",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10\u00f74",
+			"expected": { "minor": 250 }
+		},
+		{
+			"name": "division rounds to cents, below half down",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "100/3",
+			"expected": { "minor": 3333 }
+		},
+		{
+			"name": "division rounds to cents, above half up",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "200/3",
+			"expected": { "minor": 6667 }
+		},
+		{
+			"name": "half to even rounds down to even",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0.125*1",
+			"expected": { "minor": 12 }
+		},
+		{
+			"name": "half to even rounds up to even",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0.135*1",
+			"expected": { "minor": 14 }
+		},
+		{
+			"name": "half to even on a halved cent",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0.03/2",
+			"expected": { "minor": 2 }
+		},
+		{
+			"name": "a precise factor is fine (tax rate)",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "15.99*1.0825",
+			"expected": { "minor": 1731 }
+		},
+		{
+			"name": "precedence",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "2+3*4",
+			"expected": { "minor": 1400 }
+		},
+		{
+			"name": "parentheses",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(10+5)*2",
+			"expected": { "minor": 3000 }
+		},
+		{
+			"name": "parentheses on the right",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "2*(3+4)",
+			"expected": { "minor": 1400 }
+		},
+		{
+			"name": "leading unary minus",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "-5+10",
+			"expected": { "minor": 500 }
+		},
+		{
+			"name": "unary plus",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10++5",
+			"expected": { "minor": 1500 }
+		},
+		{
+			"name": "grouped operands",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1,000+2,500.50",
+			"expected": { "minor": 350050 }
+		},
+		{
+			"name": "division by zero",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10/0",
+			"expected": { "error": "divideByZero" }
+		},
+		{
+			"name": "trailing operator while typing",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10+",
+			"expected": { "error": "incomplete" }
+		},
+		{
+			"name": "open parenthesis while typing",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "(10+5",
+			"expected": { "error": "incomplete" }
+		},
+		{
+			"name": "a lone minus",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "-",
+			"expected": { "error": "incomplete" }
+		},
+		{
+			"name": "a lone decimal separator",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": ".",
+			"expected": { "error": "syntax" }
+		},
+		{
+			"name": "an extra closing parenthesis",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10)",
+			"expected": { "error": "syntax" }
+		},
+		{
+			"name": "two operators",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10*/5",
+			"expected": { "error": "syntax" }
+		},
+		{
+			"name": "empty parentheses",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "()",
+			"expected": { "error": "syntax" }
+		},
+		{
+			"name": "out of the safe range",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "99999999999999999",
+			"expected": { "error": "outOfRange" }
+		},
+		{
+			"name": "es-AR grouped",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.234,56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "es-AR plain",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1234,56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "es-AR millions",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.234.567",
+			"expected": { "minor": 123456700 }
+		},
+		{
+			"name": "es-AR millions and cents",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.234.567,5",
+			"expected": { "minor": 123456750 }
+		},
+		{
+			"name": "es-AR decimal comma",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "12,5",
+			"expected": { "minor": 1250 }
+		},
+		{
+			"name": "es-AR trailing decimal while typing",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "12,",
+			"expected": { "minor": 1200 }
+		},
+		{
+			"name": "es-AR leading decimal",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": ",5",
+			"expected": { "minor": 50 }
+		},
+		{
+			"name": "es-AR dot that cannot be grouping is ambiguous",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.23",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "es-AR dot decimal from a US keyboard is ambiguous",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "12.50",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "es-AR US-style input is ambiguous",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1,234.56",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "es-AR trailing dot is ambiguous",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "12.",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "es-AR grouped factor",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.000*3",
+			"expected": { "minor": 300000 }
+		},
+		{
+			"name": "es-AR grouped division",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.500/2",
+			"expected": { "minor": 75000 }
+		},
+		{
+			"name": "es-AR sum with spaces",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1000 + 500",
+			"expected": { "minor": 150000 }
+		},
+		{
+			"name": "JPY whole",
+			"locale": "en-US",
+			"currency": "JPY",
+			"text": "1,200",
+			"expected": { "minor": 1200 }
+		},
+		{
+			"name": "JPY refuses a fraction",
+			"locale": "en-US",
+			"currency": "JPY",
+			"text": "1200.5",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "JPY accepts .0",
+			"locale": "en-US",
+			"currency": "JPY",
+			"text": "1200.0",
+			"expected": { "minor": 1200 }
+		},
+		{
+			"name": "JPY division rounds to yen",
+			"locale": "en-US",
+			"currency": "JPY",
+			"text": "1000/3",
+			"expected": { "minor": 333 }
+		},
+		{
+			"name": "KWD has 3 minor digits",
+			"locale": "en-US",
+			"currency": "KWD",
+			"text": "1.234",
+			"expected": { "minor": 1234 }
+		},
+		{
+			"name": "KWD refuses a fourth",
+			"locale": "en-US",
+			"currency": "KWD",
+			"text": "1.2345",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "0.004 ETH",
+			"locale": "en-US",
+			"currency": "ETH",
+			"text": "0.004",
+			"expected": { "minor": 400000 }
+		},
+		{
+			"name": "one satoshi",
+			"locale": "en-US",
+			"currency": "BTC",
+			"text": "0.00000001",
+			"expected": { "minor": 1 }
+		},
+		{
+			"name": "below one satoshi",
+			"locale": "en-US",
+			"currency": "BTC",
+			"text": "0.000000001",
+			"expected": { "error": "tooPrecise" }
+		},
+		{
+			"name": "BTC division rounds to satoshis",
+			"locale": "en-US",
+			"currency": "BTC",
+			"text": "1/3",
+			"expected": { "minor": 33333333 }
+		},
+		{
+			"name": "fr with a typed space",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1 234,56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "fr with a narrow no-break space",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1\u202f234,56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "fr with a no-break space",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1\u00a0234,56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "fr dot is ambiguous",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1.5",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "fr sum with spaces",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1 000 + 5",
+			"expected": { "minor": 100500 }
+		},
+		{
+			"name": "de grouped",
+			"locale": "de",
+			"currency": "EUR",
+			"text": "1.234,56",
+			"expected": { "minor": 123456 }
+		},
+		{
+			"name": "en-IN lakh grouping",
+			"locale": "en-IN",
+			"currency": "INR",
+			"text": "1,23,456.78",
+			"expected": { "minor": 12345678 }
+		},
+		{
+			"name": "en-IN western grouping is ambiguous",
+			"locale": "en-IN",
+			"currency": "INR",
+			"text": "123,456.78",
+			"expected": { "error": "ambiguous" }
+		},
+		{
+			"name": "lowercase currency",
+			"locale": "en-US",
+			"currency": "usd",
+			"text": "1",
+			"expected": { "minor": 100 }
+		}
+	],
+	"draft": [
+		{
+			"name": "es-AR regroups and keeps the fraction",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1234567,5",
+			"expected": "1.234.567,5"
+		},
+		{
+			"name": "es-AR keeps a trailing decimal separator",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1234567,",
+			"expected": "1.234.567,"
+		},
+		{
+			"name": "es-AR regroups a digit typed after a group",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.2345",
+			"expected": "12.345"
+		},
+		{
+			"name": "es-AR regroups after a deleted digit",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1.23",
+			"expected": "123"
+		},
+		{
+			"name": "es-AR regroups every operand and keeps operators",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "1234+5678",
+			"expected": "1.234+5.678"
+		},
+		{
+			"name": "es-AR keeps spaces and parentheses",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "(1234 + 1)\u00d72",
+			"expected": "(1.234 + 1)\u00d72"
+		},
+		{
+			"name": "000 on an empty field is 0",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "000",
+			"expected": "0"
+		},
+		{
+			"name": "leading zeros go",
+			"locale": "es-AR",
+			"currency": "ARS",
+			"text": "0005",
+			"expected": "5"
+		},
+		{
+			"name": "000 shortcut after a number",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "5000",
+			"expected": "5,000"
+		},
+		{
+			"name": "a zero before the decimal stays",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "0.5",
+			"expected": "0.5"
+		},
+		{
+			"name": "empty",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "",
+			"expected": ""
+		},
+		{
+			"name": "en-US regroups",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1234567.89",
+			"expected": "1,234,567.89"
+		},
+		{
+			"name": "en-US keeps a trailing decimal separator",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1234.",
+			"expected": "1,234."
+		},
+		{
+			"name": "en-US caps a money operand at the minor unit",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12.345",
+			"expected": "12.34"
+		},
+		{
+			"name": "a factor keeps its digits",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "1599*1.0825",
+			"expected": "1,599*1.0825"
+		},
+		{
+			"name": "a divisor keeps its digits",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "10/1.125",
+			"expected": "10/1.125"
+		},
+		{
+			"name": "JPY drops a typed fraction",
+			"locale": "en-US",
+			"currency": "JPY",
+			"text": "1200.5",
+			"expected": "1,200."
+		},
+		{
+			"name": "a lone operator stays",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "-",
+			"expected": "-"
+		},
+		{
+			"name": "unknown characters stay for the parser to report",
+			"locale": "en-US",
+			"currency": "USD",
+			"text": "12abc",
+			"expected": "12abc"
+		},
+		{
+			"name": "fr regroups with a narrow no-break space",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1234567,5",
+			"expected": "1\u202f234\u202f567,5"
+		},
+		{
+			"name": "fr regroups a typed space",
+			"locale": "fr",
+			"currency": "EUR",
+			"text": "1 234",
+			"expected": "1\u202f234"
+		},
+		{
+			"name": "en-IN regroups in lakhs",
+			"locale": "en-IN",
+			"currency": "INR",
+			"text": "1234567",
+			"expected": "12,34,567"
+		}
+	],
+	"separators": [
+		{ "locale": "en-US", "decimal": ".", "group": "," },
+		{ "locale": "es-AR", "decimal": ",", "group": "." },
+		{ "locale": "de", "decimal": ",", "group": "." },
+		{ "locale": "pt-BR", "decimal": ",", "group": "." },
+		{ "locale": "fr", "decimal": ",", "group": "\u202f" },
+		{ "locale": "ru", "decimal": ",", "group": "\u00a0" },
+		{ "locale": "en-IN", "decimal": ".", "group": "," }
+	]
+}
