@@ -20,10 +20,17 @@ export const createQueryClient = () => {
 				staleTime: 30 * 1000,
 			},
 			dehydrate: {
-				serializeData: SuperJSON.serialize,
-				shouldDehydrateQuery: (query) =>
-					defaultShouldDehydrateQuery(query) ||
-					query.state.status === "pending",
+				// Same shape the HTTP link delivers: the JSON round trip turns
+				// values like Prisma's Decimal into the strings the browser gets
+				// over the wire (React cannot pass class instances to the client).
+				serializeData: (data) =>
+					JSON.parse(JSON.stringify(SuperJSON.serialize(data))),
+				// Only settled data goes to the browser. A query sent while still
+				// pending resolves at a different moment on the server and in the
+				// browser, so SSR renders a loading state that the browser, which
+				// hydrates nested Suspense boundaries later, renders with data
+				// (React hydration error 418). Layouts await their prefetches.
+				shouldDehydrateQuery: defaultShouldDehydrateQuery,
 			},
 			hydrate: {
 				deserializeData: SuperJSON.deserialize,

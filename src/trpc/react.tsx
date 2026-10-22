@@ -49,9 +49,12 @@ function browserTimeZone(): string | undefined {
 	}
 }
 
-function TRPCProviderInner(props: { children: React.ReactNode }) {
+function TRPCProviderInner(props: {
+	children: React.ReactNode;
+	queryClient: QueryClient;
+}) {
 	const _router = useRouter();
-	const queryClient = getQueryClient();
+	const { queryClient } = props;
 
 	// Server components read the zone from this cookie (no tRPC header there).
 	useEffect(() => {
@@ -103,11 +106,18 @@ function TRPCProviderInner(props: { children: React.ReactNode }) {
 }
 
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
-	const queryClient = getQueryClient();
+	// One client for both providers. On the server getQueryClient() returns a
+	// new client per call, and tRPC hooks read the client given to api.Provider
+	// while HydrationBoundary fills the one from QueryClientProvider. Two
+	// clients meant SSR never saw the hydrated data and rendered loading
+	// states the browser then rendered with data (React hydration error 418).
+	const [queryClient] = useState(getQueryClient);
 
 	return (
 		<QueryClientProvider client={queryClient}>
-			<TRPCProviderInner>{props.children}</TRPCProviderInner>
+			<TRPCProviderInner queryClient={queryClient}>
+				{props.children}
+			</TRPCProviderInner>
 		</QueryClientProvider>
 	);
 }

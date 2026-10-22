@@ -1,29 +1,46 @@
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
 import { requestTimeZone } from "~/server/time-zone";
-import { api } from "~/trpc/server";
+import { AfterHydration } from "~/components/after-hydration";
+import { HydrateClient, api } from "~/trpc/server";
+import Loading from "./loading";
 
 export async function generateMetadata() {
 	const t = await getTranslations("sidebar");
 	return { title: t("budget") };
 }
 
-export default async function Layout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+/**
+ * Sends the page's data with the HTML (only settled queries are sent, see
+ * shouldDehydrateQuery in ~/trpc/query-client). The page itself renders after
+ * hydration because its dates depend on the browser's zone and clock.
+ */
+async function Prefetched({ children }: { children: React.ReactNode }) {
 	const settings = await api.settings.getGeneral();
 	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
 	// Same month label the browser computes, so the prefetch is reused
 	const timeZone = requestTimeZone(await headers());
 	const month = getCurrentFiscalMonth(new Date(), fiscalStartDay, timeZone);
 
-	void api.system.getServerTime.prefetch();
-	void api.budget.getBudgets.prefetch({ month });
-	void api.categories.getAll.prefetch();
-	void api.budget.hasBudgetsBeforeMonth.prefetch({ month });
+	await Promise.all([
+		api.system.getServerTime.prefetch(),
+		api.budget.getBudgets.prefetch({ month }),
+		api.categories.getAll.prefetch(),
+		api.budget.hasBudgetsBeforeMonth.prefetch({ month }),
+	]);
+	return (
+		<HydrateClient>
+			<AfterHydration fallback={<Loading />}>{children}</AfterHydration>
+		</HydrateClient>
+	);
+}
 
-	return children;
+export default function Layout({ children }: { children: React.ReactNode }) {
+	return (
+		<Suspense fallback={<Loading />}>
+			<Prefetched>{children}</Prefetched>
+		</Suspense>
+	);
 }
