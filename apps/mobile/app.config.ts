@@ -17,6 +17,12 @@ const config: ExpoConfig = {
 		supportsTablet: true,
 		// Stage Manager, Split View and Slide Over stay available on iPad.
 		requireFullScreen: false,
+		infoPlist: {
+			// App Review justification: the app connects to user-hosted servers,
+			// which may use plain http on a home network. The connect screen
+			// warns before it saves one (owner decision, 2026-10-22).
+			NSAppTransportSecurity: { NSAllowsArbitraryLoads: true },
+		},
 	},
 	android: {
 		package: "app.retrospend",
@@ -24,7 +30,13 @@ const config: ExpoConfig = {
 		// pad with safe-area insets.
 		predictiveBackGestureEnabled: true,
 	},
-	plugins: ["expo-router", "expo-localization", "expo-secure-store"],
+	plugins: [
+		"expo-router",
+		"expo-localization",
+		"expo-secure-store",
+		// Android half of the http decision above.
+		"./plugins/with-cleartext-servers",
+	],
 };
 
 export default config;

@@ -16,7 +16,7 @@ export interface ServerInfo {
 }
 
 export type ProbeResult =
-	| { ok: true; baseUrl: string; info: ServerInfo }
+	| { ok: true; baseUrl: string; insecure: boolean; info: ServerInfo }
 	| { ok: false; reason: "invalidUrl" | "unreachable" | "notRetrospend" }
 	| { ok: false; reason: "appTooOld"; minClientVersion: string };
 
@@ -77,7 +77,48 @@ export function compareVersions(a: string, b: string): number {
 	return 0;
 }
 
-/** Asks the server what it is, and whether this app version may talk to it. */
+type Fetched =
+	| { ok: true; body: unknown }
+	| { ok: false; reason: "unreachable" | "notRetrospend" };
+
+function parseJson(text: string): Fetched {
+	try {
+		return { ok: true, body: JSON.parse(text) };
+	} catch {
+		return { ok: false, reason: "notRetrospend" };
+	}
+}
+
+/**
+ * GET server-info and read its body under one timeout: a server that sends
+ * headers and then stalls the body is as unreachable as one that never
+ * answers.
+ */
+async function fetchServerInfo(
+	baseUrl: string,
+	fetchImpl: typeof fetch,
+): Promise<Fetched> {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+	try {
+		const response = await fetchImpl(`${baseUrl}/api/v1/server-info`, {
+			headers: { Accept: "application/json" },
+			signal: controller.signal,
+		});
+		if (!response.ok) return { ok: false, reason: "notRetrospend" };
+		return parseJson(await response.text());
+	} catch {
+		return { ok: false, reason: "unreachable" };
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+/**
+ * Asks the server what it is, and whether this app version may talk to it.
+ * Plain http is allowed (self-hosters own their network) but flagged, so the
+ * connect screen warns before saving it.
+ */
 export async function probeServer(
 	input: string,
 	appVersion: string,
@@ -86,27 +127,9 @@ export async function probeServer(
 	const baseUrl = normalizeServerUrl(input);
 	if (!baseUrl) return { ok: false, reason: "invalidUrl" };
 
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-	let response: Response;
-	try {
-		response = await fetchImpl(`${baseUrl}/api/v1/server-info`, {
-			headers: { Accept: "application/json" },
-			signal: controller.signal,
-		});
-	} catch {
-		return { ok: false, reason: "unreachable" };
-	} finally {
-		clearTimeout(timer);
-	}
-
-	if (!response.ok) return { ok: false, reason: "notRetrospend" };
-	let body: unknown;
-	try {
-		body = await response.json();
-	} catch {
-		return { ok: false, reason: "notRetrospend" };
-	}
+	const fetched = await fetchServerInfo(baseUrl, fetchImpl);
+	if (!fetched.ok) return fetched;
+	const body = fetched.body;
 	if (!isServerInfo(body)) return { ok: false, reason: "notRetrospend" };
 	if (compareVersions(appVersion, body.minClientVersion) < 0) {
 		return {
@@ -115,5 +138,6 @@ export async function probeServer(
 			minClientVersion: body.minClientVersion,
 		};
 	}
-	return { ok: true, baseUrl, info: body };
+	const insecure = baseUrl.startsWith("http:");
+	return { ok: true, baseUrl, insecure, info: body };
 }

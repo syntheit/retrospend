@@ -69,9 +69,49 @@ describe("probeServer", () => {
 	it("asks the v1 server-info route and returns the base URL", async () => {
 		const { impl, calls } = fakeFetch(() => json(INFO));
 		await expect(probeServer("retrospend.app", "0.1.0", impl)).resolves.toEqual(
-			{ ok: true, baseUrl: "https://retrospend.app", info: INFO },
+			{
+				ok: true,
+				baseUrl: "https://retrospend.app",
+				insecure: false,
+				info: INFO,
+			},
 		);
 		expect(calls).toEqual(["https://retrospend.app/api/v1/server-info"]);
+	});
+
+	it("accepts plain http but flags it as insecure", async () => {
+		const { impl } = fakeFetch(() => json(INFO));
+		await expect(
+			probeServer("http://192.168.1.20:2997", "0.1.0", impl),
+		).resolves.toMatchObject({
+			ok: true,
+			baseUrl: "http://192.168.1.20:2997",
+			insecure: true,
+		});
+	});
+
+	it("times out a server that sends headers and then stalls the body", async () => {
+		jest.useFakeTimers();
+		try {
+			const impl = ((_url: string, init: RequestInit) =>
+				Promise.resolve({
+					ok: true,
+					text: () =>
+						new Promise((_resolve, reject) => {
+							init.signal?.addEventListener("abort", () =>
+								reject(new DOMException("aborted", "AbortError")),
+							);
+						}),
+				})) as unknown as typeof fetch;
+			const probe = probeServer("retrospend.app", "0.1.0", impl);
+			await jest.advanceTimersByTimeAsync(10_000);
+			await expect(probe).resolves.toEqual({
+				ok: false,
+				reason: "unreachable",
+			});
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it("does not fetch an invalid address", async () => {

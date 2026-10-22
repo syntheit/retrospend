@@ -14,7 +14,7 @@ import { useTheme } from "@/theme";
 import { NativeHost } from "@/ui/NativeHost";
 import { Screen } from "@/ui/Screen";
 
-type Failure = Extract<ProbeResult, { ok: false }>["reason"];
+type Failure = Extract<ProbeResult, { ok: false }>["reason"] | "saveFailed";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "0.0.0";
 
@@ -25,20 +25,47 @@ export default function ConnectScreen() {
 	const [address, setAddress] = useState(new URL(DEFAULT_SERVER).host);
 	const [checking, setChecking] = useState(false);
 	const [failure, setFailure] = useState<Failure | null>(null);
+	// A plain http server that answered; saved only after "Continue anyway".
+	const [insecureUrl, setInsecureUrl] = useState<string | null>(null);
+
+	async function save(baseUrl: string) {
+		try {
+			await connect(baseUrl);
+		} catch {
+			setFailure("saveFailed");
+			setChecking(false);
+		}
+	}
 
 	async function submit() {
 		if (checking) return;
 		setChecking(true);
 		setFailure(null);
+		setInsecureUrl(null);
 		const result = await probeServer(address, APP_VERSION);
-		if (result.ok) {
-			await connect(result.baseUrl);
-		} else {
+		if (!result.ok) {
 			setFailure(result.reason);
 			setChecking(false);
+		} else if (result.insecure) {
+			setInsecureUrl(result.baseUrl);
+			setChecking(false);
+		} else {
+			await save(result.baseUrl);
 		}
 	}
 
+	function continueInsecure() {
+		if (!insecureUrl || checking) return;
+		setChecking(true);
+		save(insecureUrl);
+	}
+
+	function edit(text: string) {
+		setAddress(text);
+		setInsecureUrl(null);
+	}
+
+	const small = { fontSize: type.small.size };
 	return (
 		<>
 			<Stack.Screen
@@ -60,9 +87,7 @@ export default function ConnectScreen() {
 					{t("intro")}
 				</Text>
 				<View style={{ gap: space[2] }}>
-					<Text style={{ color: color.fg, fontSize: type.small.size }}>
-						{t("urlLabel")}
-					</Text>
+					<Text style={[small, { color: color.fg }]}>{t("urlLabel")}</Text>
 					<TextInput
 						accessibilityLabel={t("urlLabel")}
 						autoCapitalize="none"
@@ -71,7 +96,7 @@ export default function ConnectScreen() {
 						editable={!checking}
 						inputMode="url"
 						keyboardType="url"
-						onChangeText={setAddress}
+						onChangeText={edit}
 						onSubmitEditing={submit}
 						returnKeyType="go"
 						style={{
@@ -91,18 +116,36 @@ export default function ConnectScreen() {
 						<Text
 							accessibilityLiveRegion="polite"
 							accessibilityRole="alert"
-							style={{ color: color.danger, fontSize: type.small.size }}
+							style={[small, { color: color.danger }]}
 						>
 							{t(failure)}
 						</Text>
 					) : null}
+					{insecureUrl ? (
+						<Text
+							accessibilityLiveRegion="polite"
+							accessibilityRole="alert"
+							style={[small, { color: color.attentionText }]}
+						>
+							{t("insecureWarning")}
+						</Text>
+					) : null}
 				</View>
 				<NativeHost>
-					<Button
-						disabled={checking}
-						label={checking ? t("checking") : t("submit")}
-						onPress={submit}
-					/>
+					{insecureUrl ? (
+						<Button
+							disabled={checking}
+							label={t("continueAnyway")}
+							onPress={continueInsecure}
+							variant="outlined"
+						/>
+					) : (
+						<Button
+							disabled={checking}
+							label={checking ? t("checking") : t("submit")}
+							onPress={submit}
+						/>
+					)}
 				</NativeHost>
 			</Screen>
 		</>

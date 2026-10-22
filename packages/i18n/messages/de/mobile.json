@@ -16,6 +16,9 @@
 		"invalidUrl": "Geben Sie eine Webadresse ein, zum Beispiel retrospend.app.",
 		"unreachable": "Dieser Server ist nicht erreichbar. Prüfen Sie die Adresse und Ihre Verbindung.",
 		"notRetrospend": "Diese Adresse ist kein Retrospend-Server.",
-		"appTooOld": "Dieser Server benötigt eine neuere Version der App. Aktualisieren Sie Retrospend und versuchen Sie es erneut."
+		"appTooOld": "Dieser Server benötigt eine neuere Version der App. Aktualisieren Sie Retrospend und versuchen Sie es erneut.",
+		"insecureWarning": "Dieser Server verwendet kein HTTPS. Ihr Passwort und Ihre Daten werden unverschlüsselt übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.",
+		"continueAnyway": "Trotzdem fortfahren",
+		"saveFailed": "Der Server konnte nicht gespeichert werden. Versuchen Sie es erneut."
 	}
 }
