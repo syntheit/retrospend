@@ -81,11 +81,8 @@ export function Face({
 		<Avatar className={cn("rounded-chip", BOX[size], TEXT[size], className)}>
 			{imageUrl && <AvatarImage alt="" src={imageUrl} />}
 			<AvatarFallback
-				// White on every avatar color in both themes (UI-004 checks it).
-				// No token names that job yet: brand-fg is white in light and
-				// fg is near white in dark. See the S1a report.
 				className={cn(
-					"rounded-chip font-semibold text-brand-fg dark:text-fg",
+					"rounded-chip font-semibold text-avatar-fg",
 					faceColor(name),
 				)}
 			>
@@ -172,6 +169,12 @@ export function FaceStack({
 
 	const { shown, rest } = splitFaces(ordered, max);
 	const ring = on === "bg" ? "ring-bg" : "ring-surface";
+	const payerRing =
+		on === "bg"
+			? "ring-ds-accent ring-offset-2 ring-offset-bg"
+			: "ring-ds-accent ring-offset-2 ring-offset-surface";
+	const payer = ordered.find((p) => p.id === payerId);
+	const label = payer ? t("paidBy", { names: all, payer: nameOf(payer) }) : all;
 	const spread = cn(
 		OVERLAP[size],
 		"transition-[margin] duration-(--t-state) ease-land can-hover:group-hover/faces:ml-1",
@@ -179,7 +182,7 @@ export function FaceStack({
 
 	return (
 		<span
-			aria-label={all}
+			aria-label={label}
 			className={cn(
 				"group/faces inline-flex shrink-0 items-center align-middle",
 				className,
@@ -209,9 +212,7 @@ export function FaceStack({
 								"inline-flex rounded-chip ring-2",
 								ring,
 								i > 0 && spread,
-								paid &&
-									!p.isSelf &&
-									"ring-ds-accent ring-offset-2 ring-offset-bg",
+								paid && !p.isSelf && payerRing,
 							)}
 						>
 							<Face imageUrl={p.imageUrl} name={p.name} size={size} />

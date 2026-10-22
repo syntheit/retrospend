@@ -77,6 +77,19 @@ describe("FaceStack", () => {
 			h(FaceStack, { people: people.slice(0, 3), payerId: "lucia" }),
 		);
 		expect(html.match(/ring-ds-accent/g)).toHaveLength(1);
+		expect(html).toContain("ring-offset-bg");
+		expect(html).toContain(
+			'aria-label="Lucía Fernández, You, and Martín Alvarez. Paid by Lucía Fernández"',
+		);
+		const onSurface = render(
+			h(FaceStack, {
+				people: people.slice(0, 3),
+				payerId: "lucia",
+				on: "surface",
+			}),
+		);
+		expect(onSurface).toContain("ring-offset-surface");
+		expect(onSurface).not.toContain("ring-offset-bg");
 		const self = render(
 			h(FaceStack, { people: people.slice(0, 3), payerId: "me" }),
 		);

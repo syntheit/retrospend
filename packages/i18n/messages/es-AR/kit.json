@@ -23,23 +23,25 @@
 		"peopleOweYou": "te deben",
 		"owedToYou": "a tu favor",
 		"youOwe": "debés",
-		"youOwePeople": "debés a otros",
-		"settled": "Saldado"
+		"youOwePeople": "debés a otros"
 	},
 	"money": {
 		"none": "Ninguno",
 		"noRate": "Sin cotización aún"
 	},
 	"filter": {
-		"menu": "Filtrar",
-		"clear": "Quitar filtros"
+		"menu": "Filtrar"
 	},
 	"faces": {
 		"you": "Vos",
 		"paid": "Pagó",
-		"someAndMore": "{first}, {second} y {count} más"
+		"someAndMore": "{first}, {second} y {count} más",
+		"paidBy": "{names}. Pagó {payer}"
 	},
 	"tabs": {
 		"pages": "Páginas de esta sección"
+	},
+	"button": {
+		"loading": "Cargando"
 	}
 }

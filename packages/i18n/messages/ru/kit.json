@@ -23,23 +23,25 @@
 		"peopleOweYou": "вам должны",
 		"owedToYou": "в вашу пользу",
 		"youOwe": "вы должны",
-		"youOwePeople": "вы должны другим",
-		"settled": "Погашено"
+		"youOwePeople": "вы должны другим"
 	},
 	"money": {
 		"none": "Нет",
 		"noRate": "Курса пока нет"
 	},
 	"filter": {
-		"menu": "Фильтр",
-		"clear": "Сбросить фильтры"
+		"menu": "Фильтр"
 	},
 	"faces": {
 		"you": "Вы",
 		"paid": "Оплатил",
-		"someAndMore": "{first}, {second} и ещё {count}"
+		"someAndMore": "{first}, {second} и ещё {count}",
+		"paidBy": "{names}. Оплата: {payer}"
 	},
 	"tabs": {
 		"pages": "Страницы раздела"
+	},
+	"button": {
+		"loading": "Загрузка"
 	}
 }
