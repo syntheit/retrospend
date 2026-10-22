@@ -264,6 +264,19 @@ export function roundMoney(amount: number, currency: string): number {
 	return fromMinorUnits(toMinorUnits(amount, currency), currency);
 }
 
+/**
+ * Plain decimal string for an amount at its currency's precision, for
+ * inputs and payment links: ISO minor units for fiat ("1200" JPY, "12.50"
+ * USD, "1.250" KWD), up to 8 decimals for crypto with trailing zeros
+ * dropped ("0.004" ETH). No grouping, no symbol.
+ */
+export function toAmountString(amount: number, currency: string): string {
+	const decimals = currencyDecimals(currency);
+	const fixed = roundMoney(amount, currency).toFixed(decimals);
+	if (!isCrypto(currency) || decimals === 0) return fixed;
+	return fixed.replace(/\.?0+$/, "");
+}
+
 export function roundUSD(amount: number): number {
 	return roundMoney(amount, USD);
 }

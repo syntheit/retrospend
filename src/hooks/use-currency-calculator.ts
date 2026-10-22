@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { isCrypto } from "~/lib/currency-format";
 import { convert } from "~/lib/currency-math";
+import { toAmountString } from "~/lib/money";
 
 interface UseCurrencyCalculatorOptions {
 	homeCurrency: string;
@@ -260,8 +260,5 @@ export function useCurrencyCalculator({
 }
 
 function formatNumber(value: number, currency: string): string {
-	if (isCrypto(currency)) {
-		return value.toFixed(8).replace(/\.?0+$/, "");
-	}
-	return value.toFixed(2);
+	return toAmountString(value, currency);
 }
