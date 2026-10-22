@@ -7,8 +7,11 @@ const COMMITTED = join(import.meta.dirname, "..", "openapi.json");
 
 describe("openapi.json", () => {
 	it("matches the contract (regenerate with scripts/write-openapi.ts)", async () => {
-		const generated = stableStringify(await generateOpenApiDocument());
-		expect(generated).toBe(readFileSync(COMMITTED, "utf8"));
+		// Compared as data, so a formatter pass over the file is not a diff.
+		const generated = JSON.parse(
+			stableStringify(await generateOpenApiDocument()),
+		);
+		expect(JSON.parse(readFileSync(COMMITTED, "utf8"))).toEqual(generated);
 	});
 
 	it("is OpenAPI 3.1 with problem+json errors and scoped security", async () => {

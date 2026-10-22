@@ -12,7 +12,11 @@
 				"properties": {
 					"currency": {
 						"description": "ISO 4217 code, or the app's code for a crypto asset.",
-						"examples": ["USD", "ARS", "BTC"],
+						"examples": [
+							"USD",
+							"ARS",
+							"BTC"
+						],
 						"pattern": "^[A-Z0-9]{2,10}$",
 						"type": "string"
 					},
@@ -23,7 +27,10 @@
 						"type": "integer"
 					}
 				},
-				"required": ["minor", "currency"],
+				"required": [
+					"minor",
+					"currency"
+				],
 				"type": "object"
 			},
 			"Problem": {
@@ -63,7 +70,10 @@
 									"type": "string"
 								}
 							},
-							"required": ["path", "message"],
+							"required": [
+								"path",
+								"message"
+							],
 							"type": "object"
 						},
 						"type": "array"
@@ -91,7 +101,12 @@
 						"type": "string"
 					}
 				},
-				"required": ["type", "title", "status", "code"],
+				"required": [
+					"type",
+					"title",
+					"status",
+					"code"
+				],
 				"type": "object"
 			}
 		},
@@ -132,7 +147,9 @@
 						"required": true,
 						"schema": {
 							"description": "Comma-separated figure ids, at most 50.",
-							"examples": ["owed.owedToYou,owed.youOwe"],
+							"examples": [
+								"owed.owedToYou,owed.youOwe"
+							],
 							"maxLength": 2000,
 							"pattern": "^[a-z][A-Za-z0-9.]*(,[a-z][A-Za-z0-9.]*)*$",
 							"type": "string"
@@ -179,7 +196,10 @@
 											"items": {
 												"properties": {
 													"id": {
-														"examples": ["owed.owedToYou", "spent"],
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
 														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
 														"type": "string"
 													},
@@ -192,7 +212,11 @@
 																			"anyOf": [
 																				{
 																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
-																					"examples": ["USD", "ARS", "BTC"],
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
 																					"pattern": "^[A-Z0-9]{2,10}$",
 																					"type": "string"
 																				},
@@ -207,7 +231,10 @@
 																			"type": "integer"
 																		}
 																	},
-																	"required": ["minor", "currency"],
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
 																	"type": "object"
 																},
 																"type": "array"
@@ -218,13 +245,18 @@
 														]
 													}
 												},
-												"required": ["id", "lines"],
+												"required": [
+													"id",
+													"lines"
+												],
 												"type": "object"
 											},
 											"type": "array"
 										}
 									},
-									"required": ["figures"],
+									"required": [
+										"figures"
+									],
 									"type": "object"
 								}
 							}
@@ -284,17 +316,25 @@
 				},
 				"security": [
 					{
-						"bearerAuth": ["read"]
+						"bearerAuth": [
+							"read"
+						]
 					},
 					{
-						"apiKeyAuth": ["read"]
+						"apiKeyAuth": [
+							"read"
+						]
 					},
 					{
-						"cookieAuth": ["read"]
+						"cookieAuth": [
+							"read"
+						]
 					}
 				],
 				"summary": "Read figures by id",
-				"tags": ["Figures"],
+				"tags": [
+					"Figures"
+				],
 				"x-required-scope": "read"
 			}
 		},
@@ -356,7 +396,12 @@
 													]
 												},
 												"kind": {
-													"enum": ["cookie", "bearer", "device", "apiKey"],
+													"enum": [
+														"cookie",
+														"bearer",
+														"device",
+														"apiKey"
+													],
 													"type": "string"
 												},
 												"scopes": {
@@ -374,11 +419,19 @@
 													"type": "array"
 												}
 											},
-											"required": ["kind", "scopes", "expiresAt", "clientId"],
+											"required": [
+												"kind",
+												"scopes",
+												"expiresAt",
+												"clientId"
+											],
 											"type": "object"
 										},
 										"role": {
-											"enum": ["USER", "ADMIN"],
+											"enum": [
+												"USER",
+												"ADMIN"
+											],
 											"type": "string"
 										},
 										"twoFactorEnabled": {
@@ -459,17 +512,25 @@
 				},
 				"security": [
 					{
-						"bearerAuth": ["read"]
+						"bearerAuth": [
+							"read"
+						]
 					},
 					{
-						"apiKeyAuth": ["read"]
+						"apiKeyAuth": [
+							"read"
+						]
 					},
 					{
-						"cookieAuth": ["read"]
+						"cookieAuth": [
+							"read"
+						]
 					}
 				],
 				"summary": "The signed-in user and the credential in use",
-				"tags": ["Platform"],
+				"tags": [
+					"Platform"
+				],
 				"x-required-scope": "read"
 			}
 		},
@@ -502,11 +563,17 @@
 													"type": "array"
 												},
 												"signUp": {
-													"enum": ["open", "inviteOnly"],
+													"enum": [
+														"open",
+														"inviteOnly"
+													],
 													"type": "string"
 												}
 											},
-											"required": ["methods", "signUp"],
+											"required": [
+												"methods",
+												"signUp"
+											],
 											"type": "object"
 										},
 										"features": {
@@ -521,7 +588,11 @@
 													"type": "boolean"
 												}
 											},
-											"required": ["apiV1", "uiV2", "envelopeBudget"],
+											"required": [
+												"apiV1",
+												"uiV2",
+												"envelopeBudget"
+											],
 											"type": "object"
 										},
 										"minClientVersion": {
@@ -535,17 +606,25 @@
 											"properties": {
 												"transports": {
 													"items": {
-														"enum": ["apns", "fcm", "unifiedpush"],
+														"enum": [
+															"apns",
+															"fcm",
+															"unifiedpush"
+														],
 														"type": "string"
 													},
 													"type": "array"
 												}
 											},
-											"required": ["transports"],
+											"required": [
+												"transports"
+											],
 											"type": "object"
 										},
 										"version": {
-											"examples": ["0.4.5"],
+											"examples": [
+												"0.4.5"
+											],
 											"type": "string"
 										}
 									},
@@ -597,7 +676,9 @@
 				},
 				"security": [],
 				"summary": "What this server is and supports",
-				"tags": ["Platform"],
+				"tags": [
+					"Platform"
+				],
 				"x-required-scope": "public"
 			}
 		}
