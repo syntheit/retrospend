@@ -1,0 +1,24 @@
+{
+	"tabs": {
+		"home": "Accueil",
+		"activity": "Activité",
+		"budget": "Budget",
+		"people": "Personnes",
+		"projects": "Projets",
+		"add": "Ajouter une dépense"
+	},
+	"connect": {
+		"title": "Se connecter à un serveur",
+		"intro": "Utilisez retrospend.app ou l’adresse d’un serveur que vous hébergez.",
+		"urlLabel": "Adresse du serveur",
+		"submit": "Se connecter",
+		"checking": "Vérification du serveur",
+		"invalidUrl": "Saisissez une adresse web, par exemple retrospend.app.",
+		"unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse et votre connexion.",
+		"notRetrospend": "Cette adresse n’est pas un serveur Retrospend.",
+		"appTooOld": "Ce serveur nécessite une version plus récente de l’app. Mettez Retrospend à jour, puis réessayez.",
+		"insecureWarning": "Ce serveur n’utilise pas HTTPS. Votre mot de passe et vos données circulent sans chiffrement. Ne continuez que sur un réseau de confiance.",
+		"continueAnyway": "Continuer quand même",
+		"saveFailed": "Impossible d’enregistrer le serveur. Réessayez."
+	}
+}

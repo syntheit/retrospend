@@ -78,15 +78,34 @@
                 };
               };
               # The versions React Native 0.81+ (Expo SDK 54+) builds with.
+              # Build-tools 35 too: Android libraries that set no
+              # buildToolsVersion get AGP 8.12's default (35.0.0), and Gradle
+              # cannot install it into the read-only store.
               sdk =
                 (androidPkgs.androidenv.composeAndroidPackages {
                   platformVersions = [ "36" ];
-                  buildToolsVersions = [ "36.0.0" ];
+                  buildToolsVersions = [
+                    "36.0.0"
+                    "35.0.0"
+                  ];
                   includeNDK = true;
                   ndkVersions = [ "27.1.12297006" ];
                   cmakeVersions = [ "3.22.1" ];
                 }).androidsdk;
-              androidHome = "${sdk}/libexec/android-sdk";
+              # The SDK's prebuilt ninja segfaults on NixOS, and AGP always runs
+              # the one next to its CMake. This SDK root links everything from
+              # the composed SDK but swaps that ninja for nixpkgs' own.
+              cmakeBin = "cmake/3.22.1/bin";
+              androidHome = androidPkgs.runCommand "android-sdk-with-ninja" { } ''
+                src=${sdk}/libexec/android-sdk
+                mkdir -p $out/${cmakeBin}
+                for f in $src/*; do [ "$f" = $src/cmake ] || ln -s "$f" $out/; done
+                for f in $src/cmake/3.22.1/*; do
+                  [ "$f" = $src/${cmakeBin} ] || ln -s "$f" $out/cmake/3.22.1/
+                done
+                for f in $src/${cmakeBin}/*; do ln -s "$f" $out/${cmakeBin}/; done
+                ln -sf ${androidPkgs.ninja}/bin/ninja $out/${cmakeBin}/ninja
+              '';
             in
             androidPkgs.mkShell {
               packages = with androidPkgs; [
@@ -97,7 +116,7 @@
               ];
               env = {
                 JAVA_HOME = androidPkgs.jdk17.home;
-                ANDROID_HOME = androidHome;
+                ANDROID_HOME = "${androidHome}";
                 ANDROID_NDK_ROOT = "${androidHome}/ndk-bundle";
                 # Gradle's own aapt2 download is a dynamic binary NixOS cannot run.
                 GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidHome}/build-tools/36.0.0/aapt2";

@@ -1,0 +1,78 @@
+{
+	"about": "Android must work 100% without Google services (IMPLEMENTATION §4). test/google-free.test.ts fails on any npm package below in the shipped dependency tree, or imported outside optionalDir (code there loads only when Play services are detected at runtime). scripts/check-google-free.sh fails on any Maven group matching a prefix below in the resolved Gradle tree of the default build. Each entry says why.",
+	"optionalDir": "src/optional/google",
+	"futureGooglePath": "The FCM-when-present path (S5g) cannot just add a banned package: autolinking would put its Gradle artifacts in every APK. It needs a Gradle product flavor (a 'play' flavor next to the Google-free default) or an autolinking exclude for the Google-free build. Only then may the package be listed in npmExemptions, naming how it is kept out.",
+	"npmExemptions": [],
+	"npm": [
+		{
+			"pattern": "^@react-native-firebase/",
+			"why": "Firebase needs Play services"
+		},
+		{ "pattern": "^(firebase|@firebase/.+)$", "why": "Firebase" },
+		{
+			"pattern": "crashlytics",
+			"why": "Crashlytics; crash reporting is none or self-hosted"
+		},
+		{
+			"pattern": "^(@react-native-google-signin/.+|react-native-google-signin|expo-google-app-auth|expo-google-sign-in)$",
+			"why": "Google Sign-In; sign-in is email and password plus TOTP"
+		},
+		{
+			"pattern": "^expo-notifications$",
+			"why": "its Android push path is FCM (firebase-messaging); push is UnifiedPush plus local notifications"
+		},
+		{
+			"pattern": "^expo-location$",
+			"why": "uses the Play services fused location provider; location goes through LocationManager"
+		},
+		{
+			"pattern": "^(react-native-maps|expo-maps)$",
+			"why": "Google Maps on Android"
+		},
+		{
+			"pattern": "^(expo-store-review|expo-in-app-purchases|react-native-iap)$",
+			"why": "Play review and billing APIs; no in-app purchases"
+		},
+		{
+			"pattern": "^(react-native-google-mobile-ads|expo-ads-admob)$",
+			"why": "Google ads"
+		},
+		{
+			"pattern": "^react-native-play-install-referrer$",
+			"why": "Play install referrer"
+		}
+	],
+	"mavenPrefixes": [
+		{
+			"prefix": "com.google.android.gms",
+			"why": "Play services"
+		},
+		{
+			"prefix": "com.google.android.play",
+			"why": "Play Core (in-app updates, reviews, asset delivery)"
+		},
+		{
+			"prefix": "com.google.android.ump",
+			"why": "User Messaging Platform (ads consent)"
+		},
+		{
+			"prefix": "com.google.android.libraries",
+			"why": "Google client libraries (Places, Maps, Identity) that call Play services"
+		},
+		{
+			"prefix": "com.google.android.recaptcha",
+			"why": "reCAPTCHA (Play services backed)"
+		},
+		{ "prefix": "com.google.firebase", "why": "Firebase" },
+		{
+			"prefix": "com.google.android.datatransport",
+			"why": "Google telemetry transport used by Firebase and ML Kit"
+		},
+		{
+			"prefix": "com.google.mlkit",
+			"why": "ML Kit; review before allowing (bundled models work offline but ship Google telemetry)"
+		},
+		{ "prefix": "com.android.installreferrer", "why": "Play install referrer" },
+		{ "prefix": "com.android.billingclient", "why": "Play billing" }
+	]
+}

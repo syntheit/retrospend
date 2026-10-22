@@ -48,3 +48,6 @@ next-env.d.ts
 flake.lock
 flake.nix
 
+
+# The native app (apps/mobile) never enters the web image
+apps
