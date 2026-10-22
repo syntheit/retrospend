@@ -4,7 +4,9 @@ import {
 	type IncomeRule,
 	isRuleEligible,
 	type MoneyInRow,
+	type MoneyInWithMonth,
 	planRuleRun,
+	type RecordedRun,
 	type RuleLine,
 	ruleBatchMonth,
 } from "./rules";
@@ -230,97 +232,238 @@ describe("allocateRules (SPEC §5.10)", () => {
 	});
 });
 
-describe("planRuleRun (exactly once per change)", () => {
-	const firstRun = allocateRules(salary(), SAVE_FIRST);
+describe("planRuleRun (exactly once per change, recorded rules)", () => {
+	const NOV = 202611;
+	const at = (amount: number, month = NOV, o: Partial<MoneyInRow> = {}) => ({
+		...salary(amount, o),
+		month,
+	});
+	/** The record a first run in November leaves: Save first, 480,000 and 1,920,000. */
+	const recorded = (o: Partial<RecordedRun> = {}): RecordedRun => ({
+		rules: SAVE_FIRST,
+		bookValue: m(2_400_000),
+		rowMonth: NOV,
+		batchMonth: NOV,
+		net: [
+			{ ruleId: "save", envelopeId: "savings", amount: m(480_000) },
+			{ ruleId: "rest", envelopeId: "spending", amount: m(1_920_000) },
+		],
+		skipped: false,
+		...o,
+	});
+	const paused = [
+		rule("save", 1, "savings", pct(2_000), { active: false }),
+		rule("rest", 2, "spending", rest),
+	];
+	const retargeted = [
+		rule("save", 1, "house", pct(2_000)),
+		rule("rest", 2, "spending", rest),
+	];
 
 	it.each<{
 		name: string;
-		row: MoneyInRow | null;
-		previous: { net: RuleLine[]; skipped: boolean } | null;
+		row: MoneyInWithMonth | null;
+		rules?: IncomeRule[];
+		previous: RecordedRun | null;
+		current?: number;
 		kind: string;
-		out: Array<[string, number]>;
+		batches: Array<[number, Array<[string, number]>]>;
 	}>([
 		{
-			name: "S1 first run writes one RULE batch",
-			row: salary(),
+			name: "S1 first run writes one RULE batch in the money in's month",
+			row: at(2_400_000),
 			previous: null,
 			kind: "RUN",
-			out: [
-				["savings", 480_000],
-				["spending", 1_920_000],
+			batches: [
+				[
+					NOV,
+					[
+						["savings", 480_000],
+						["spending", 1_920_000],
+					],
+				],
 			],
 		},
 		{
-			name: "a row no rule matches writes nothing",
-			row: salary(1, { inType: "REFUND" }),
+			name: "a row no rule applies to writes nothing",
+			row: at(1, NOV, { inType: "REFUND" }),
 			previous: null,
 			kind: "NONE",
-			out: [],
+			batches: [],
 		},
 		{
 			name: "the same row read again writes nothing",
-			row: salary(),
-			previous: { net: firstRun, skipped: false },
+			row: at(2_400_000),
+			previous: recorded(),
 			kind: "NONE",
-			out: [],
+			batches: [],
 		},
 		{
+			// By hand: 20% of the extra 200,000 is 40,000; the rest 160,000.
 			name: "salary edited to 2,600,000 writes a delta batch",
-			row: salary(2_600_000),
-			previous: { net: firstRun, skipped: false },
+			row: at(2_600_000),
+			previous: recorded(),
 			kind: "DELTA",
-			out: [
-				["savings", 40_000],
-				["spending", 160_000],
+			batches: [
+				[
+					NOV,
+					[
+						["savings", 40_000],
+						["spending", 160_000],
+					],
+				],
+			],
+		},
+		{
+			name: "pausing a rule never changes a past batch",
+			row: at(2_400_000),
+			rules: paused,
+			previous: recorded(),
+			kind: "NONE",
+			batches: [],
+		},
+		{
+			name: "retargeting a rule never changes a past batch",
+			row: at(2_400_000),
+			rules: retargeted,
+			previous: recorded(),
+			kind: "NONE",
+			batches: [],
+		},
+		{
+			name: "deleting every rule never changes a past batch",
+			row: at(2_400_000),
+			rules: [],
+			previous: recorded(),
+			kind: "NONE",
+			batches: [],
+		},
+		{
+			name: "an edit after a rule was paused reruns with the recorded rules",
+			row: at(2_600_000),
+			rules: paused,
+			previous: recorded(),
+			kind: "DELTA",
+			batches: [
+				[
+					NOV,
+					[
+						["savings", 40_000],
+						["spending", 160_000],
+					],
+				],
 			],
 		},
 		{
 			name: "S16 deleting the income reverts its batch",
 			row: null,
-			previous: { net: firstRun, skipped: false },
+			previous: recorded(),
 			kind: "REVERT",
-			out: [
-				["savings", -480_000],
-				["spending", -1_920_000],
+			batches: [
+				[
+					NOV,
+					[
+						["savings", -480_000],
+						["spending", -1_920_000],
+					],
+				],
 			],
 		},
 		{
 			name: "moving it to Wealth reverts like a delta",
-			row: salary(2_400_000, { keptInWealth: true }),
-			previous: { net: firstRun, skipped: false },
+			row: at(2_400_000, NOV, { keptInWealth: true }),
+			previous: recorded(),
 			kind: "DELTA",
-			out: [
-				["savings", -480_000],
-				["spending", -1_920_000],
+			batches: [
+				[
+					NOV,
+					[
+						["savings", -480_000],
+						["spending", -1_920_000],
+					],
+				],
 			],
 		},
 		{
 			name: "an undone batch marks the row rules skipped",
-			row: salary(2_600_000),
-			previous: { net: [], skipped: true },
+			row: at(2_600_000),
+			previous: recorded({ net: [], skipped: true }),
 			kind: "NONE",
-			out: [],
+			batches: [],
 		},
-	])("$name", ({ row, previous, kind, out }) => {
-		const got = planRuleRun({ row, rules: SAVE_FIRST, previous });
+		{
+			// D22: October closed; the delta lands in December, October is never touched.
+			name: "editing money in from a closed month writes the delta in the current month",
+			row: at(2_600_000, 202610),
+			previous: recorded({ rowMonth: 202610, batchMonth: 202610 }),
+			current: 202612,
+			kind: "DELTA",
+			batches: [
+				[
+					202612,
+					[
+						["savings", 40_000],
+						["spending", 160_000],
+					],
+				],
+			],
+		},
+		{
+			name: "moving the date from November to December reverts in November and runs in December",
+			row: at(2_400_000, 202612),
+			previous: recorded(),
+			kind: "DELTA",
+			batches: [
+				[
+					NOV,
+					[
+						["savings", -480_000],
+						["spending", -1_920_000],
+					],
+				],
+				[
+					202612,
+					[
+						["savings", 480_000],
+						["spending", 1_920_000],
+					],
+				],
+			],
+		},
+	])("$name", ({ row, rules, previous, current, kind, batches }) => {
+		const got = planRuleRun({
+			row,
+			rules: rules ?? SAVE_FIRST,
+			previous,
+			currentMonth: current ?? NOV,
+		});
 		expect(got.kind).toBe(kind);
-		expect(lines(got.lines)).toEqual(out.map(([e, a]) => [e, m(a)]));
+		expect(got.batches.map((b) => [b.month, lines(b.lines)])).toEqual(
+			batches.map(([month, ls]) => [month, ls.map(([e, a]) => [e, m(a)])]),
+		);
 	});
 
-	it("a rule pointed at another envelope moves the money between them", () => {
-		const moved = [
-			rule("save", 1, "house", pct(2_000)),
-			rule("rest", 2, "spending", rest),
-		];
-		const got = planRuleRun({
-			row: salary(),
-			rules: moved,
-			previous: { net: firstRun, skipped: false },
+	it("the first run records the rules that applied, so later rule changes cannot reach it", () => {
+		const first = planRuleRun({
+			row: at(2_400_000),
+			rules: SAVE_FIRST,
+			previous: null,
+			currentMonth: NOV,
 		});
-		expect(got.kind).toBe("DELTA");
-		expect(lines(got.lines)).toEqual([
-			["savings", -m(480_000)],
-			["house", m(480_000)],
+		expect(first.record?.rules.map((r) => r.id)).toEqual(["save", "rest"]);
+		const edited = planRuleRun({
+			row: at(2_600_000),
+			rules: retargeted,
+			previous: first.record,
+			currentMonth: NOV,
+		});
+		expect(edited.batches[0]?.lines.map((l) => l.envelopeId)).toEqual([
+			"savings",
+			"spending",
+		]);
+		expect(edited.record?.net.map((l) => l.amount)).toEqual([
+			m(520_000),
+			m(2_080_000),
 		]);
 	});
 });

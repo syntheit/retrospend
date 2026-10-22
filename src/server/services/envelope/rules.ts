@@ -10,8 +10,10 @@
  * - Fixed and percent rules run in sort order, each capped at what is left
  *   of that money in; remainder rules run last. Rules never assign more than
  *   the money in, so they alone never make To assign negative.
- * - Each row runs once (IncomeRuleRun). An edit writes a delta batch, a
- *   delete reverts the batch, an undone batch marks the row "rules skipped".
+ * - Each row runs once (IncomeRuleRun), which records the rules it used. An
+ *   edit to the row writes a delta with those recorded rules, a delete
+ *   reverts, an undone batch marks the row "rules skipped". Changing a rule
+ *   never touches past batches, and no batch lands in a closed month.
  */
 import { addMonths } from "./calendar";
 import type { Minor, MonthKey } from "./types";
@@ -105,22 +107,27 @@ function byOrder(a: IncomeRule, b: IncomeRule) {
 	return a.sortOrder - b.sortOrder || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
-/**
- * The lines one money-in row produces. `appliedToEarlier` holds rules the
- * user also applied to money in that arrived before the rule existed.
- */
-export function allocateRules(
+/** The rules that apply to a row on its first run, in the order they run. */
+export function applicableRules(
 	row: MoneyInRow,
 	rules: readonly IncomeRule[],
 	appliedToEarlier: ReadonlySet<string> = new Set(),
+): IncomeRule[] {
+	return rules
+		.filter((r) => ruleApplies(r, row, appliedToEarlier))
+		.sort(byOrder);
+}
+
+/** Runs `rules` (already chosen and ordered) on one row: fixed and percent first, remainders last. */
+function allocateWith(
+	row: MoneyInRow,
+	rules: readonly IncomeRule[],
 ): RuleLine[] {
 	if (!isRuleEligible(row) || row.bookValue == null || row.bookValue <= 0)
 		return [];
-	const applicable = rules
-		.filter((r) => ruleApplies(r, row, appliedToEarlier))
-		.sort(byOrder);
-	const fixed = applicable.filter((r) => r.action.kind !== "REMAINDER");
-	const remainder = applicable.filter((r) => r.action.kind === "REMAINDER");
+	const matching = rules.filter((r) => ruleMatches(r.match, row));
+	const fixed = matching.filter((r) => r.action.kind !== "REMAINDER");
+	const remainder = matching.filter((r) => r.action.kind === "REMAINDER");
 	let left = row.bookValue;
 	const lines: RuleLine[] = [];
 	for (const rule of [...fixed, ...remainder]) {
@@ -139,6 +146,18 @@ export function allocateRules(
 	return lines;
 }
 
+/**
+ * The lines one money-in row produces on its first run. `appliedToEarlier`
+ * holds rules the user also applied to money in from before the rule existed.
+ */
+export function allocateRules(
+	row: MoneyInRow,
+	rules: readonly IncomeRule[],
+	appliedToEarlier: ReadonlySet<string> = new Set(),
+): RuleLine[] {
+	return allocateWith(row, applicableRules(row, rules, appliedToEarlier));
+}
+
 /** The month a rule batch is written to: the money in's month if current or next, else the current month. */
 export function ruleBatchMonth(
 	rowMonth: MonthKey,
@@ -150,6 +169,35 @@ export function ruleBatchMonth(
 }
 
 export type RuleRunKind = "NONE" | "RUN" | "DELTA" | "REVERT";
+
+/** What IncomeRuleRun keeps for a row: the rule set of its first run and where its batches stand. */
+export interface RecordedRun {
+	/** The rules that applied on the first run, as they were then, in run order. */
+	rules: readonly IncomeRule[];
+	/** The row as last run: book value and budget month. */
+	bookValue: Minor | null;
+	rowMonth: MonthKey;
+	/** Month of the row's latest batch. */
+	batchMonth: MonthKey;
+	/** Σ of the row's RULE batches so far. */
+	net: readonly RuleLine[];
+	/** An undone batch marked the row "rules skipped". */
+	skipped: boolean;
+}
+
+export interface RuleBatch {
+	month: MonthKey;
+	lines: RuleLine[];
+}
+
+export interface RuleRunPlan {
+	kind: RuleRunKind;
+	batches: RuleBatch[];
+	/** What to store on IncomeRuleRun after writing the batches. */
+	record: RecordedRun | null;
+}
+
+export type MoneyInWithMonth = MoneyInRow & { month: MonthKey };
 
 const lineKey = (l: RuleLine) => `${l.ruleId}\u0000${l.envelopeId}`;
 
@@ -174,27 +222,68 @@ function diffLines(
 	return [...sums.values()].filter((l) => l.amount !== 0);
 }
 
+function firstRun(
+	row: MoneyInWithMonth | null,
+	p: Parameters<typeof planRuleRun>[0],
+): RuleRunPlan {
+	if (!row) return { kind: "NONE", batches: [], record: null };
+	const rules = applicableRules(row, p.rules, p.appliedToEarlier);
+	const lines = allocateWith(row, rules);
+	const month = ruleBatchMonth(row.month, p.currentMonth);
+	const record = {
+		rules,
+		bookValue: row.bookValue,
+		rowMonth: row.month,
+		batchMonth: month,
+		net: lines,
+		skipped: false,
+	};
+	return lines.length
+		? { kind: "RUN", batches: [{ month, lines }], record }
+		: { kind: "NONE", batches: [], record };
+}
+
 /**
- * What to write for one money-in row now (exactly once per change):
- * - no previous run: RUN the rules;
- * - the row was deleted: REVERT what earlier batches assigned (UNDO rows);
- * - rules were skipped (an undone batch): NONE;
- * - otherwise a DELTA between the rules now and what earlier batches net to.
- * `previous.net` is the sum of the row's earlier RULE batches.
+ * What to write for one money-in row now (SPEC §5.10). The first run uses
+ * the rules that apply then and records them. Later runs happen only when
+ * the row itself changes (amount, date, deleted, no longer income in the
+ * budget) and use the recorded rules, so pausing, deleting or retargeting a
+ * rule never changes past batches. Batches go to the row's month when it is
+ * the current or next month, else to the current month (D22: a closed month
+ * never gets a movement). A row moved to another month reverts in the old
+ * batch's month and runs again in the new one.
  */
 export function planRuleRun(p: {
-	row: MoneyInRow | null;
+	row: MoneyInWithMonth | null;
+	/** Current rules; read only on the row's first run. */
 	rules: readonly IncomeRule[];
-	previous: { net: readonly RuleLine[]; skipped: boolean } | null;
+	previous: RecordedRun | null;
+	currentMonth: MonthKey;
 	appliedToEarlier?: ReadonlySet<string>;
-}): { kind: RuleRunKind; lines: RuleLine[] } {
-	if (p.previous?.skipped) return { kind: "NONE", lines: [] };
-	const next = p.row ? allocateRules(p.row, p.rules, p.appliedToEarlier) : [];
-	if (!p.previous)
-		return next.length
-			? { kind: "RUN", lines: next }
-			: { kind: "NONE", lines: [] };
-	const lines = diffLines(next, p.previous.net);
-	if (lines.length === 0) return { kind: "NONE", lines };
-	return { kind: p.row ? "DELTA" : "REVERT", lines };
+}): RuleRunPlan {
+	const prev = p.previous;
+	if (!prev) return firstRun(p.row, p);
+	if (prev.skipped) return { kind: "NONE", batches: [], record: prev };
+	const next = p.row ? allocateWith(p.row, prev.rules) : [];
+	const from = ruleBatchMonth(prev.batchMonth, p.currentMonth);
+	const to = p.row ? ruleBatchMonth(p.row.month, p.currentMonth) : from;
+	const batches: RuleBatch[] =
+		from === to
+			? [{ month: to, lines: diffLines(next, prev.net) }]
+			: [
+					{ month: from, lines: diffLines([], prev.net) },
+					{ month: to, lines: next },
+				];
+	const written = batches.filter((b) => b.lines.length > 0);
+	if (written.length === 0) return { kind: "NONE", batches: [], record: prev };
+	const record = p.row
+		? {
+				...prev,
+				bookValue: p.row.bookValue,
+				rowMonth: p.row.month,
+				batchMonth: to,
+				net: next,
+			}
+		: null;
+	return { kind: p.row ? "DELTA" : "REVERT", batches: written, record };
 }
