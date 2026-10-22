@@ -48,6 +48,58 @@ export const expenseSchema = z.object({
 
 export type ExpenseFormData = z.infer<typeof expenseSchema>;
 
+type LoadableExpense = {
+	id: string;
+	updatedAt?: Date | string | null;
+	title?: string | null;
+	amount: number | string;
+	currency: string;
+	exchangeRate?: number | string | null;
+	amountInUSD?: number | string | null;
+	date: Date | string;
+	location?: string | null;
+	description?: string | null;
+	categoryId?: string | null;
+	isAmortizedParent?: boolean | null;
+	children?: unknown[] | null;
+	excludeFromAnalytics?: boolean | null;
+};
+
+/**
+ * Identifies one saved version of an expense. The load effect only resets the
+ * form when this changes, so typing (which re-renders the parent) never wipes
+ * the user's edits.
+ */
+export function expenseLoadKey(
+	expense: Pick<LoadableExpense, "id" | "updatedAt"> | null | undefined,
+): string | null {
+	if (!expense) return null;
+	const updatedAt = expense.updatedAt
+		? new Date(expense.updatedAt).getTime()
+		: "";
+	return `${expense.id}:${updatedAt}`;
+}
+
+/** Maps a saved expense to the form's values. */
+export function expenseToFormValues(expense: LoadableExpense): ExpenseFormData {
+	return {
+		title: expense.title || "",
+		amount: Number(expense.amount),
+		currency: expense.currency,
+		exchangeRate: expense.exchangeRate
+			? Number(expense.exchangeRate)
+			: undefined,
+		amountInUSD: expense.amountInUSD ? Number(expense.amountInUSD) : undefined,
+		date: new Date(expense.date),
+		location: expense.location || "",
+		description: expense.description || "",
+		categoryId: expense.categoryId || "",
+		spreadOverTime: expense.isAmortizedParent || false,
+		amortizeOver: expense.children?.length || 3,
+		excludeFromAnalytics: expense.excludeFromAnalytics || false,
+	};
+}
+
 export type ExpenseInitialValues = {
 	title?: string | null;
 	amount: number;
@@ -138,6 +190,12 @@ export function useExpenseForm({
 	const excludeInteractedRef = useRef(false);
 	// tracks "Save & Add Another" intent for the current submission
 	const saveAndNewRef = useRef(false);
+	// The parent may pass a new callback on every render. Effects read it from
+	// this ref so they never re-run (and reset the form) because of it.
+	const onTitleChangeRef = useRef(onTitleChange);
+	useEffect(() => {
+		onTitleChangeRef.current = onTitleChange;
+	}, [onTitleChange]);
 
 	// Shared expense state.
 	// `splitWith` is the single source of truth for every OTHER split member,
@@ -610,7 +668,7 @@ export function useExpenseForm({
 			spreadOverTime: false,
 			amortizeOver: 3,
 		});
-		onTitleChange?.(sharedTx.description);
+		onTitleChangeRef.current?.(sharedTx.description);
 
 		// All split state is derived in one pure step (see shared-expense-prefill)
 		// and applied together, so the form never renders a half-applied state:
@@ -632,35 +690,21 @@ export function useExpenseForm({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [sharedTx?.id, currentUser.id]);
 
-	// Load existing expense data
+	// Load existing expense data. Keyed on the expense's id and updatedAt so a
+	// new object identity for the same data (or a re-render of the parent) never
+	// resets fields the user is editing.
+	const loadedExpenseKey = expenseLoadKey(expense);
 	useEffect(() => {
-		if (expense) {
-			reset({
-				title: expense.title || "",
-				amount: Number(expense.amount),
-				currency: expense.currency,
-				exchangeRate: expense.exchangeRate
-					? Number(expense.exchangeRate)
-					: undefined,
-				amountInUSD: expense.amountInUSD
-					? Number(expense.amountInUSD)
-					: undefined,
-				date: new Date(expense.date),
-				location: expense.location || "",
-				description: expense.description || "",
-				categoryId: expense.categoryId || "",
-				spreadOverTime: expense.isAmortizedParent || false,
-				amortizeOver: expense.children?.length || 3,
-				excludeFromAnalytics: expense.excludeFromAnalytics || false,
-			});
-			onTitleChange?.(expense.title || "");
-			categoryAutoPredictedRef.current = false;
-			// Treat existing excluded expenses as user-set (suppress the "auto-excluded" note)
-			if (expense.excludeFromAnalytics) {
-				excludeInteractedRef.current = true;
-			}
+		if (!expense) return;
+		reset(expenseToFormValues(expense));
+		onTitleChangeRef.current?.(expense.title || "");
+		categoryAutoPredictedRef.current = false;
+		// Treat existing excluded expenses as user-set (suppress the "auto-excluded" note)
+		if (expense.excludeFromAnalytics) {
+			excludeInteractedRef.current = true;
 		}
-	}, [expense, reset, onTitleChange]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [loadedExpenseKey, reset]);
 
 	// Apply initial values for duplicate mode
 	const initialValuesApplied = useRef(false);
@@ -682,7 +726,7 @@ export function useExpenseForm({
 				amortizeOver: 3,
 				excludeFromAnalytics: false,
 			});
-			onTitleChange?.(initialValues.title ?? "");
+			onTitleChangeRef.current?.(initialValues.title ?? "");
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [initialValues, mode]);
@@ -1065,23 +1109,7 @@ export function useExpenseForm({
 
 	const handleUndoChanges = () => {
 		if (expense) {
-			reset({
-				title: expense.title || "",
-				amount: Number(expense.amount),
-				currency: expense.currency,
-				exchangeRate: expense.exchangeRate
-					? Number(expense.exchangeRate)
-					: undefined,
-				amountInUSD: expense.amountInUSD
-					? Number(expense.amountInUSD)
-					: undefined,
-				date: new Date(expense.date),
-				location: expense.location || "",
-				description: expense.description || "",
-				categoryId: expense.categoryId || "",
-				spreadOverTime: expense.isAmortizedParent || false,
-				amortizeOver: expense.children?.length || 3,
-			});
+			reset(expenseToFormValues(expense));
 			toast.info("Changes reverted");
 		}
 	};
