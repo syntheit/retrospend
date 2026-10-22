@@ -122,9 +122,7 @@ export class ExportService {
 					},
 				},
 				take: EXPENSE_BATCH_SIZE,
-				...(expenseCursor
-					? { skip: 1, cursor: { id: expenseCursor } }
-					: {}),
+				...(expenseCursor ? { skip: 1, cursor: { id: expenseCursor } } : {}),
 			});
 
 			for (const expense of batch) {

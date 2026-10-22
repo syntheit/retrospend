@@ -97,8 +97,11 @@ export class StatsService {
 		const now = new Date();
 		const isCurrentMonth = now >= current.start && now <= current.end;
 		const daysElapsed =
-			calendarDaysBetween(current.start, isCurrentMonth ? now : current.end, tz) +
-			1;
+			calendarDaysBetween(
+				current.start,
+				isCurrentMonth ? now : current.end,
+				tz,
+			) + 1;
 		const dailyAverage = totalThisMonth / Math.max(1, daysElapsed);
 
 		return {

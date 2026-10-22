@@ -15,7 +15,13 @@ import type { RateCache } from "./rate-cache";
 import { spentItems } from "./figures/spent";
 
 /** Category names treated as "fixed" for budget pacing calculations */
-const FIXED_CATEGORY_NAMES = ["rent", "utilities", "mortgage", "bills", "insurance"];
+const FIXED_CATEGORY_NAMES = [
+	"rent",
+	"utilities",
+	"mortgage",
+	"bills",
+	"insurance",
+];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

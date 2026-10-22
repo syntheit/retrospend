@@ -52,17 +52,25 @@ function normalize(rows: TestExpenseRow[]): Row[] {
 }
 
 function matchesValue(value: unknown, condition: unknown): boolean {
-	if (condition === null || typeof condition !== "object" || condition instanceof Date) {
+	if (
+		condition === null ||
+		typeof condition !== "object" ||
+		condition instanceof Date
+	) {
 		if (condition instanceof Date && value instanceof Date)
 			return value.getTime() === condition.getTime();
 		return value === condition;
 	}
 	const c = condition as Record<string, unknown>;
 	const cmp = (v: unknown) => (v instanceof Date ? v.getTime() : (v as number));
-	if ("gte" in c && c.gte !== undefined && !(cmp(value) >= cmp(c.gte))) return false;
-	if ("lte" in c && c.lte !== undefined && !(cmp(value) <= cmp(c.lte))) return false;
-	if ("gt" in c && c.gt !== undefined && !(cmp(value) > cmp(c.gt))) return false;
-	if ("lt" in c && c.lt !== undefined && !(cmp(value) < cmp(c.lt))) return false;
+	if ("gte" in c && c.gte !== undefined && !(cmp(value) >= cmp(c.gte)))
+		return false;
+	if ("lte" in c && c.lte !== undefined && !(cmp(value) <= cmp(c.lte)))
+		return false;
+	if ("gt" in c && c.gt !== undefined && !(cmp(value) > cmp(c.gt)))
+		return false;
+	if ("lt" in c && c.lt !== undefined && !(cmp(value) < cmp(c.lt)))
+		return false;
 	if ("in" in c && Array.isArray(c.in) && !c.in.includes(value)) return false;
 	if ("not" in c && matchesValue(value, c.not)) return false;
 	return true;
