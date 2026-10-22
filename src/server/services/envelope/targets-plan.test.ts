@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
 	autoFill,
 	type FillCandidate,
-	type GroupExtra,
 	type MonthlyTarget,
 	type PlanCostTarget,
 	planCost,
+	type TargetedGroup,
 } from "./targets";
 
 /** Whole currency units to minor (2 decimals). */
@@ -39,7 +39,7 @@ describe("autoFill (SPEC §5.4 order)", () => {
 		name: string;
 		available: number;
 		cands: FillCandidate[];
-		extras?: GroupExtra[];
+		groups?: TargetedGroup[];
 		lines: Array<[string, number, string]>;
 	}>([
 		{
@@ -86,21 +86,37 @@ describe("autoFill (SPEC §5.4 order)", () => {
 			],
 		},
 		{
-			name: "group targets go after bills and before Monthly, in group order",
+			name: "A3 targeted groups fill after bills, in group order: children, then the main envelope",
 			available: 1_000_000,
 			cands: [
 				c("dining", "MONTHLY", 1, 100_000),
 				c("rent", "BILL", 2, 300_000, { dueDate: "2026-11-05" }),
+				c("groceries", "MONTHLY", 3, 200_000),
+				c("wants-main", "NONE", 4, 0),
+				c("needs-main", "NONE", 5, 0),
+				c("trip", "SAVINGS", 6, 10_000),
 			],
-			extras: [
-				{ envelopeId: "wants-main", groupOrder: 2, need: m(50_000) },
-				{ envelopeId: "needs-main", groupOrder: 1, need: m(40_000) },
+			groups: [
+				{
+					groupOrder: 2,
+					envelopeIds: ["dining", "wants-main"],
+					mainEnvelopeId: "wants-main",
+					mainExtra: m(50_000),
+				},
+				{
+					groupOrder: 1,
+					envelopeIds: ["rent", "groceries", "needs-main"],
+					mainEnvelopeId: "needs-main",
+					mainExtra: m(40_000),
+				},
 			],
 			lines: [
 				["rent", 300_000, "BILL"],
+				["groceries", 200_000, "GROUP"],
 				["needs-main", 40_000, "GROUP"],
+				["dining", 100_000, "GROUP"],
 				["wants-main", 50_000, "GROUP"],
-				["dining", 100_000, "MONTHLY"],
+				["trip", 10_000, "SAVINGS"],
 			],
 		},
 		{
@@ -115,8 +131,8 @@ describe("autoFill (SPEC §5.4 order)", () => {
 			cands: [c("misc", "NONE", 1, 0)],
 			lines: [],
 		},
-	])("$name", ({ available, cands, extras, lines }) => {
-		const out = autoFill(m(available), cands, extras);
+	])("$name", ({ available, cands, groups, lines }) => {
+		const out = autoFill(m(available), cands, groups);
 		expect(out.lines.map((l) => [l.envelopeId, l.amount, l.step])).toEqual(
 			lines.map(([id, a, s]) => [id, m(a), s]),
 		);
