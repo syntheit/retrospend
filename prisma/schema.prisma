@@ -79,6 +79,8 @@ model User {
   paymentMethods          PaymentMethod[]
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  budgetBooks             BudgetBook[]             @relation("BudgetBookCreator")
+  budgetMemberships       BudgetMember[]
 
   // API v1 (M11 auth_tokens, M16 idempotency_keys)
   apiKeys                 Apikey[]
@@ -213,6 +215,9 @@ model Expense {
 
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Envelope budget (M6): the starting balance row of a book, and rule movements it fed.
+  startingBalanceOf BudgetBook?      @relation("BookStartingBalance")
+  budgetMovements   BudgetMovement[] @relation("MovementSourceExpense")
 
   @@index([userId, date])
   @@index([parentId])
@@ -241,6 +246,7 @@ model Category {
   recurringTemplates   RecurringTemplate[]
   analyticsPreferences AnalyticsCategoryPreference[]
   sharedTransactions   SharedTransaction[]
+  envelopeLinks        EnvelopeCategory[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -272,6 +278,7 @@ model RecurringTemplate {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   expenses Expense[]
+  envelopes Envelope[]
 
   @@index([userId, nextDueDate])
   @@index([userId, isActive])
@@ -297,6 +304,279 @@ model Budget {
   @@unique([userId, categoryId, period])
   @@index([userId, period])
   @@map("budget")
+}
+
+// Envelope budget (M6, budget SPEC §5, build plan 02 §2 and §4). A book holds
+// every envelope, group and movement; BudgetMember rows decide access, so a
+// household book later adds members instead of re-keying data (D33). Links
+// and movements name envelopes through (id, bookId), so a row can never point
+// into another book.
+model BudgetBook {
+  id                       String        @id @default(cuid())
+  name                     String        @default("Personal") @db.VarChar(64)
+  isPersonal               Boolean       @default(true)
+  currency                 String
+  style                    BudgetStyle   @default(FLEX)
+  fundingSource            FundingSource @default(INCOME)
+  // Switched to "Just track": the book is kept, Budget shows tracking (SPEC §4.4).
+  pausedAt                 DateTime?
+  // 0 = Sunday. Only weekly pace reads it (SPEC §5.1).
+  weekStartDay             Int           @default(1)
+  // Mirror of the current BookPeriod start day, for queries.
+  monthStartDay            Int           @default(1)
+  // First budget month whose derived state is stale (checkpoints, P4).
+  dirtyFromMonth           Int?
+  // Decides only "today" (SPEC §5.1, C21).
+  timeZone                 String        @default("UTC") @db.VarChar(64)
+  timeZoneConfirmed        Boolean       @default(false)
+  startDate                DateTime
+  // YYYYMM of the first budget month.
+  startMonth               Int
+  // "Everything else": required after setup (service invariant).
+  defaultEnvelopeId        String?       @unique
+  // The STARTING_BALANCE money-in row (D34).
+  startingBalanceExpenseId String?       @unique
+  startingMoneyConfirmedAt DateTime?
+  legacyMigrationRunId     String?       @db.VarChar(64)
+  legacyMigratedAt         DateTime?
+  createdById              String
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  createdBy              User      @relation("BudgetBookCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  defaultEnvelope        Envelope? @relation("BookDefaultEnvelope", fields: [defaultEnvelopeId, id], references: [id, bookId], onDelete: NoAction)
+  startingBalanceExpense Expense?  @relation("BookStartingBalance", fields: [startingBalanceExpenseId], references: [id])
+  members   BudgetMember[]
+  periods   BookPeriod[]
+  groups    EnvelopeGroup[]
+  envelopes Envelope[]       @relation("BookEnvelopes")
+  links     EnvelopeCategory[]
+  movements BudgetMovement[]
+
+  @@index([createdById])
+  @@map("budget_book")
+}
+
+// Start day and rate type in force from a budget month on (SPEC §5.1, B7).
+model BookPeriod {
+  id        String     @id @default(cuid())
+  bookId    String
+  fromMonth Int
+  startDay  Int
+  rateType  String     @db.VarChar(32)
+  createdAt DateTime   @default(now())
+  book      BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, fromMonth])
+  @@map("book_period")
+}
+
+model BudgetMember {
+  id        String           @id @default(cuid())
+  bookId    String
+  userId    String
+  role      BudgetMemberRole @default(OWNER)
+  createdAt DateTime         @default(now())
+  book      BudgetBook       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, userId])
+  @@index([userId])
+  @@map("budget_member")
+}
+
+model EnvelopeGroup {
+  id             String          @id @default(cuid())
+  bookId         String
+  name           String          @db.VarChar(64)
+  sortOrder      Int
+  // Which of Flex's three rows the group is (owner r5 Q4); Left to spend sums SPENDING.
+  role           GroupRole?
+  targetKind     GroupTargetKind @default(NONE)
+  // AMOUNT: book currency; PERCENT_OF_INCOME: percent (30.0).
+  targetValue    Decimal?        @db.Decimal(19, 8)
+  mainEnvelopeId String?
+  archivedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  book           BudgetBook      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  envelopes      Envelope[]      @relation("GroupEnvelopes")
+  mainEnvelope   Envelope?       @relation("GroupMainEnvelope", fields: [mainEnvelopeId], references: [id])
+
+  @@index([bookId, sortOrder])
+  @@map("envelope_group")
+}
+
+model Envelope {
+  id                  String              @id @default(cuid())
+  bookId              String
+  groupId             String?
+  name                String              @db.VarChar(64)
+  icon                String?             @db.VarChar(32)
+  color               CategoryColor?
+  kind                EnvelopeKind        @default(MONTHLY)
+  sortOrder           Int
+  targetAmount        Decimal?            @db.Decimal(19, 8)
+  targetMode          TargetMode          @default(REFILL)
+  targetCadence       TargetCadence       @default(MONTH)
+  // SAVINGS third variable (SPEC §5.4).
+  targetMonthlyAmount Decimal?            @db.Decimal(19, 8)
+  // Null = book currency (D25).
+  targetCurrency      String?
+  targetDueDate       DateTime?           @db.Date
+  targetRepeat        RecurringFrequency?
+  // First budget month the current target applies to: a target counts from when it was set.
+  targetStartMonth    Int?
+  // BILL follows a recurring expense (D26) or a liability's minimum (P6).
+  targetTemplateId    String?
+  targetLiabilityId   String?
+  leftoverRule        LeftoverRule        @default(CARRY)
+  leftoverSweepToId   String?
+  wealthAccountId     String?
+  wealthDedicated     Boolean             @default(false)
+  archivedAt          DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  book                BudgetBook          @relation("BookEnvelopes", fields: [bookId], references: [id], onDelete: Cascade)
+  group               EnvelopeGroup?      @relation("GroupEnvelopes", fields: [groupId], references: [id])
+  targetTemplate      RecurringTemplate?  @relation(fields: [targetTemplateId], references: [id])
+  targetLiability     AssetAccount?       @relation("EnvelopeLiability", fields: [targetLiabilityId], references: [id])
+  wealthAccount       AssetAccount?       @relation("EnvelopeWealthAccount", fields: [wealthAccountId], references: [id])
+  leftoverSweepTo     Envelope?           @relation("EnvelopeSweep", fields: [leftoverSweepToId, bookId], references: [id, bookId], onDelete: NoAction)
+  sweptFrom           Envelope[]          @relation("EnvelopeSweep")
+  categories          EnvelopeCategory[]
+  defaultOf           BudgetBook[]        @relation("BookDefaultEnvelope")
+  mainOfGroups        EnvelopeGroup[]     @relation("GroupMainEnvelope")
+  movementsOut        BudgetMovement[]    @relation("MovementFrom")
+  movementsIn         BudgetMovement[]    @relation("MovementTo")
+
+  @@unique([id, bookId])
+  @@index([bookId, archivedAt])
+  @@index([groupId])
+  @@map("envelope")
+}
+
+model EnvelopeCategory {
+  id         String     @id @default(cuid())
+  bookId     String
+  envelopeId String
+  categoryId String
+  createdAt  DateTime   @default(now())
+  book       BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  envelope   Envelope   @relation(fields: [envelopeId, bookId], references: [id, bookId], onDelete: Cascade)
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, categoryId])
+  @@index([envelopeId])
+  @@map("envelope_category")
+}
+
+// Append-only (D28). Undo appends a mirror row; envelope FKs restrict deletes.
+model BudgetMovement {
+  // Client id, so retries from any client are idempotent.
+  id              String       @id
+  bookId          String
+  month           Int
+  // Null = To assign.
+  fromEnvelopeId  String?
+  toEnvelopeId    String?
+  // > 0, book currency, whole minor units.
+  amount          Decimal      @db.Decimal(19, 8)
+  kind            MovementKind
+  batchId         String?
+  revertsId       String?      @unique
+  sourceExpenseId String?
+  ruleId          String?
+  note            String?      @db.VarChar(200)
+  actorUserId     String
+  createdAt       DateTime     @default(now())
+  book            BudgetBook   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  fromEnvelope    Envelope?    @relation("MovementFrom", fields: [fromEnvelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+  toEnvelope      Envelope?    @relation("MovementTo", fields: [toEnvelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+  reverts         BudgetMovement?  @relation("MovementUndo", fields: [revertsId, bookId], references: [id, bookId], onDelete: NoAction)
+  undoneBy        BudgetMovement[] @relation("MovementUndo")
+  sourceExpense   Expense?     @relation("MovementSourceExpense", fields: [sourceExpenseId], references: [id])
+
+  @@unique([id, bookId])
+  @@index([bookId, month])
+  @@index([bookId, createdAt])
+  @@index([batchId])
+  @@map("budget_movement")
+}
+
+// "Just track" is the absence of a book (SPEC §4.1).
+enum BudgetStyle {
+  LIMITS
+  FLEX
+  EVERY_DOLLAR
+  SAVE_FIRST
+  FIFTY_THIRTY_TWENTY
+  WEEKLY
+  DEBT_PAYOFF
+}
+
+enum FundingSource {
+  INCOME
+  TARGETS
+}
+
+enum EnvelopeKind {
+  MONTHLY
+  BILL
+  SAVINGS
+  NONE
+}
+
+enum TargetMode {
+  REFILL
+  SET_ASIDE
+}
+
+enum TargetCadence {
+  MONTH
+  WEEK
+}
+
+enum LeftoverRule {
+  CARRY
+  RETURN
+  SWEEP
+}
+
+enum GroupTargetKind {
+  NONE
+  AMOUNT
+  PERCENT_OF_INCOME
+}
+
+enum GroupRole {
+  BILLS
+  SPENDING
+  SAVINGS
+}
+
+enum BudgetMemberRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum MovementKind {
+  ASSIGN
+  SET
+  MOVE
+  COVER
+  UNASSIGN
+  AUTO_FILL
+  RULE
+  PLAN_FUND
+  PLAN_APPLY
+  CARRY_OVERSPEND
+  FIX_NEGATIVE
+  RESET
+  ARCHIVE
+  MIGRATION
+  UNDO
 }
 
 model ExchangeRate {
@@ -349,6 +629,8 @@ model AssetAccount {
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots        AssetSnapshot[]
   history          AssetHistory[]
+  liabilityEnvelopes Envelope[]  @relation("EnvelopeLiability")
+  goalEnvelopes      Envelope[]  @relation("EnvelopeWealthAccount")
 
   @@index([userId])
   @@index([userId, closedAt])
@@ -427,6 +709,8 @@ model AppSettings {
   // Rollout of the UI overhaul, read through src/server/flags.ts
   uiV2Mode  FeatureFlagMode @default(OFF)
   apiV1Mode FeatureFlagMode @default(OFF)
+  // New budget page, setup and envelope procedures (M6, budget build plan §8)
+  envelopeBudgetMode FeatureFlagMode @default(OFF)
 
   @@map("app_settings")
 }

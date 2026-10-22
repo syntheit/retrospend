@@ -13,6 +13,7 @@
  * registry.test.ts scans test sources for that literal and fails for any
  * registered id without one, so keep the title a literal, not a template.
  */
+import { budgetFigures } from "~/server/services/envelope/figures";
 import { spentFigure } from "~/server/services/figures/spent";
 import {
 	balancePersonFigure,
@@ -40,11 +41,11 @@ export type FigureValue = Money | readonly Money[];
 export type FigureReading = readonly Money[] | null;
 
 /** The optional narrowings a snapshot can carry on top of its user. */
-export type ScopeKey = "projectId" | "personId" | "accountId";
+export type ScopeKey = "projectId" | "personId" | "accountId" | "envelopeId";
 
 export type FigureNarrowing = Partial<Record<ScopeKey, string>>;
 
-/** A figure is always read for one user, optionally narrowed to one project, person or account. */
+/** A figure is always read for one user, optionally narrowed to one project, person, account or envelope. */
 export type FigureScope = FigureNarrowing & { readonly userId: string };
 
 /**
@@ -211,4 +212,5 @@ export const figures = createFiguresRegistry<FigureDb>([
 	owedToYouFigure,
 	youOweFigure,
 	...projectFigures,
+	...budgetFigures,
 ]);
