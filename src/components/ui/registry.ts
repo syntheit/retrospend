@@ -1,0 +1,617 @@
+/**
+ * The primitive registry: every file in src/components/ui, its one job and
+ * whether new code may import it. docs/ui/GUIDELINE.md §4 explains the jobs.
+ *
+ * - core: use it for its job, and only for that job.
+ * - internal: a building block of another primitive. Import the primitive
+ *   named in `use` instead (outside src/components/ui).
+ * - legacy: being replaced. No new imports; the uiRules ratchet (UI-041)
+ *   counts the old ones and the count can only go down.
+ *
+ * A new file in src/components/ui fails the registry test (UI-040) until it
+ * has an entry here, and a new entry needs the owner's sign-off (R18).
+ *
+ * PLANNED lists the PLAN §6 components that do not exist yet: their job, what
+ * they replace and where they will live (IMPLEMENTATION §1.3). Build them
+ * there, not as a local lookalike. Every name in PLAN_COMPONENTS is either a
+ * core file (its `plan` field) or a planned entry; the registry test checks it.
+ */
+
+export type PrimitiveStatus = "core" | "internal" | "legacy";
+
+export type Primitive = {
+	/** File name without extension, as imported from `~/components/ui/<file>`. */
+	file: string;
+	status: PrimitiveStatus;
+	/** The one job. */
+	job: string;
+	/** What to use instead (internal and legacy entries). */
+	use?: string;
+	/** PLAN §6 components this core file is today (see PLAN_COMPONENTS). */
+	plan?: string[];
+};
+
+export const REGISTRY: Primitive[] = [
+	{
+		file: "accordion",
+		status: "core",
+		job: "Expand and collapse sections of long reference content (docs, FAQ)",
+	},
+	{
+		file: "alert",
+		status: "core",
+		plan: ["Notice"],
+		job: "Notice: one line that needs the person, with at most one action. At most one per page",
+	},
+	{
+		file: "alert-dialog",
+		status: "internal",
+		job: "Radix building block of ConfirmationDialog",
+		use: "confirmation-dialog",
+	},
+	{
+		file: "avatar",
+		status: "internal",
+		job: "Radix avatar building block",
+		use: "user-avatar",
+	},
+	{
+		file: "avatar-stack",
+		status: "core",
+		job: "Faces of a set of people: overlaps, spreads on hover, name tooltip, +N (R20)",
+	},
+	{
+		file: "badge",
+		status: "core",
+		job: "A status word from one status map (R5). Never decoration, never a count, never around money",
+	},
+	{
+		file: "BrandIcon",
+		status: "core",
+		job: "Third-party brand mark (payment apps, banks)",
+	},
+	{
+		file: "breadcrumb",
+		status: "core",
+		job: "Back path on pushed pages (person, project) on desktop",
+	},
+	{
+		file: "button",
+		status: "core",
+		job: "Every action button: primary, secondary, ghost, danger; sizes ctl and ctl-sm",
+	},
+	{
+		file: "calendar",
+		status: "internal",
+		job: "Day grid inside DatePicker",
+		use: "date-picker",
+	},
+	{
+		file: "card",
+		status: "legacy",
+		job: "Bordered box",
+		use: "A flat section (heading + content + space). Borders only around objects you act on (R2)",
+	},
+	{
+		file: "category-badge",
+		status: "core",
+		job: "Category identity in a list or table row (tinted tile allowed in rows only, R25 amended)",
+	},
+	{
+		file: "chart",
+		status: "core",
+		plan: ["Chart"],
+		job: "Chart container and tooltip; colors from series tokens only",
+	},
+	{
+		file: "checkbox",
+		status: "core",
+		job: "Multi-select in tables and settings",
+	},
+	{
+		file: "chip",
+		status: "core",
+		plan: ["FilterChips"],
+		job: "Filter chip: text only, selected by fill (FilterChips, R7)",
+	},
+	{ file: "collapsible", status: "core", job: "Show more inside a section" },
+	{
+		file: "command",
+		status: "core",
+		plan: ["Palette"],
+		job: "Command palette (Cmd+K) and type-to-filter menus",
+	},
+	{
+		file: "confirmation-dialog",
+		status: "core",
+		job: "Confirm a destructive action: title with the object, one line, one specific button",
+	},
+	{
+		file: "context-menu",
+		status: "core",
+		job: "Right-click menu on fine pointers; items come from the action registry (R8)",
+	},
+	{
+		file: "crypto-icon",
+		status: "core",
+		job: "Crypto currency identity glyph",
+	},
+	{
+		file: "currency-flag",
+		status: "core",
+		job: "Fiat currency identity (circle flag)",
+	},
+	{
+		file: "date-picker",
+		status: "core",
+		plan: ["DatePicker"],
+		job: "Pick a date or range, with presets",
+	},
+	{
+		file: "dialog",
+		status: "internal",
+		job: "Radix dialog building block",
+		use: "responsive-dialog (Sheet) or confirmation-dialog",
+	},
+	{
+		file: "drawer",
+		status: "internal",
+		job: "Vaul drawer building block",
+		use: "responsive-dialog (Sheet)",
+	},
+	{
+		file: "dropdown-menu",
+		status: "core",
+		job: "Overflow menu and pickers; items come from the action registry (R8)",
+	},
+	{
+		file: "empty-state",
+		status: "core",
+		plan: ["EmptyState"],
+		job: "Nothing here: one line plus at most one action",
+	},
+	{
+		file: "form",
+		status: "core",
+		job: "react-hook-form field wiring: label, control, hint, error",
+	},
+	{
+		file: "image-crop-dialog",
+		status: "core",
+		job: "Crop an uploaded avatar or project cover",
+	},
+	{ file: "input", status: "core", job: "Text input at control height" },
+	{ file: "input-otp", status: "core", job: "One-time code entry (2FA)" },
+	{ file: "label", status: "core", job: "Field label" },
+	{
+		file: "payment-method-icon",
+		status: "core",
+		job: "Payment method identity (Venmo, PayPal, bank)",
+	},
+	{
+		file: "popover",
+		status: "core",
+		job: "Anchored panel for a picker or a short form",
+	},
+	{
+		file: "progress",
+		status: "core",
+		job: "Progress bar: accent on track, attention only when over",
+	},
+	{
+		file: "rate-selector",
+		status: "core",
+		job: "Pick an exchange rate type (official, blue, card, MEP, custom)",
+	},
+	{
+		file: "responsive-dialog",
+		status: "core",
+		plan: ["Sheet"],
+		job: "Sheet: dialog on desktop, bottom sheet on phone. One per task",
+	},
+	{
+		file: "scroll-area",
+		status: "core",
+		job: "Scroll region with themed scrollbar",
+	},
+	{
+		file: "segmented-toggle",
+		status: "core",
+		plan: ["Segmented"],
+		job: "Segmented: switch views of the same data in place (R7, R21)",
+	},
+	{
+		file: "select",
+		status: "core",
+		job: "Pick one of a list at control height (no native select)",
+	},
+	{ file: "separator", status: "core", job: "Hairline between groups" },
+	{
+		file: "sheet",
+		status: "internal",
+		job: "Radix dialog drawn as an edge panel: the phone bottom sheet inside ResponsiveDialog and the sidebar's phone panel",
+		use: "responsive-dialog (Sheet)",
+	},
+	{
+		file: "sidebar",
+		status: "core",
+		plan: ["Sidebar"],
+		job: "Desktop sidebar: destinations, Tools, pinned projects, account",
+	},
+	{
+		file: "skeleton",
+		status: "core",
+		plan: ["Skeleton"],
+		job: "Loading placeholder in place of the content",
+	},
+	{ file: "slider", status: "core", job: "Pick a value on a range" },
+	{
+		file: "sonner",
+		status: "core",
+		plan: ["Toast"],
+		job: "Toast: confirms a finished action and offers Undo (R15)",
+	},
+	{
+		file: "stat-card",
+		status: "legacy",
+		job: "Metric tile",
+		use: "One hero number plus a glance line or key-value rows (R3)",
+	},
+	{
+		file: "switch",
+		status: "core",
+		job: "On/off setting that applies at once",
+	},
+	{
+		file: "table",
+		status: "core",
+		plan: ["Table"],
+		job: "Desktop table: compare and sort records",
+	},
+	{
+		file: "tabs",
+		status: "core",
+		plan: ["Tabs"],
+		job: "Underline tabs: switch sibling pages or whole panes (R21)",
+	},
+	{ file: "textarea", status: "core", job: "Multi-line text (notes)" },
+	{
+		file: "toggle",
+		status: "legacy",
+		job: "Pressed-state button",
+		use: "segmented-toggle, switch or chip",
+	},
+	{
+		file: "toggle-group",
+		status: "legacy",
+		job: "Second pick-one control",
+		use: "segmented-toggle (R7: one pick-one control)",
+	},
+	{
+		file: "tooltip",
+		status: "core",
+		job: "Name of an icon-only control or a face; one clause",
+	},
+	{
+		file: "transaction-status-badge",
+		status: "core",
+		job: "Shared expense status word on a Badge (Confirmed, Needs review, Settled) from one map (R5)",
+	},
+	{
+		file: "unsaved-changes-dialog",
+		status: "core",
+		job: "Leave with unsaved changes?",
+	},
+	{
+		file: "user-avatar",
+		status: "core",
+		job: "One person's face or initials on their avatar color",
+	},
+];
+
+/** The component names of PLAN §6, row by row (the PLAN is not committed). */
+export const PLAN_COMPONENTS: string[] = [
+	"PageHeader",
+	"Toolbar",
+	"Section",
+	"SummaryLine",
+	"GlanceStrip",
+	"NeedsYouList",
+	"NeedsYouItem",
+	"TransactionRow",
+	"Table",
+	"PersonRow",
+	"ProjectRow",
+	"AccountRow",
+	"EnvelopeRow",
+	"Money",
+	"Balance",
+	"AvailablePill",
+	"StatusDot",
+	"Segmented",
+	"FilterChips",
+	"Tabs",
+	"ActionMenu",
+	"SwipeActions",
+	"Sheet",
+	"AddExpenseSheet",
+	"SettleSheet",
+	"AssignSheet",
+	"MoneyInput",
+	"CategoryPicker",
+	"PersonPicker",
+	"DatePicker",
+	"Chart",
+	"EmptyState",
+	"Notice",
+	"Toast",
+	"Skeleton",
+	"Sidebar",
+	"BottomNav",
+	"AccountMenu",
+	"Palette",
+];
+
+export type Planned = {
+	/** The PLAN §6 name. */
+	name: string;
+	status: "planned";
+	/** The one job. */
+	job: string;
+	/** What it replaces (PLAN §6). */
+	replaces: string;
+	/** The PLAN §6 row it comes from. */
+	planRow: string;
+	/** Where it will live (IMPLEMENTATION §1.3, §1.2 for sheets). */
+	target: string;
+	/** What to use until it exists. */
+	use: string;
+};
+
+const LAYOUT = "PageHeader, Toolbar, Section, SummaryLine";
+const NEEDS_YOU = "NeedsYouList + NeedsYouItem";
+const ROWS = "PersonRow, ProjectRow, AccountRow, EnvelopeRow";
+const BALANCE = "Balance, AvailablePill, StatusDot";
+const ACTIONS =
+	"ActionMenu (registry-driven ⋯, right-click, long press) and SwipeActions (phone)";
+const SHEETS = "AddExpenseSheet, SettleSheet, AssignSheet";
+const INPUTS = "MoneyInput, CategoryPicker, PersonPicker, DatePicker";
+const SHELL = "Sidebar, BottomNav, AccountMenu, Palette";
+
+export const PLANNED: Planned[] = [
+	{
+		name: "PageHeader",
+		status: "planned",
+		job: "Page title, at most one primary action, the overflow menu; optional faces and one sub line (R1)",
+		replaces: "SiteHeader variations and hero cards",
+		planRow: LAYOUT,
+		target: "src/components/layout/page-header.tsx",
+		use: "The page's current header; no tagline or helper paragraph",
+	},
+	{
+		name: "Toolbar",
+		status: "planned",
+		job: "One row under the header: search, filter chips plus Filter menu, view switch at the end (R1)",
+		replaces: "Ad hoc filter bars",
+		planRow: LAYOUT,
+		target: "src/components/layout/toolbar.tsx",
+		use: "Input, chip and segmented-toggle in one row of h-ctl controls",
+	},
+	{
+		name: "Section",
+		status: "planned",
+		job: "Flat section: heading, content and space, no border (R2)",
+		replaces: "Card around sections",
+		planRow: LAYOUT,
+		target: "src/components/layout/section.tsx",
+		use: "A heading (text-section) plus content and mt-8, never card",
+	},
+	{
+		name: "SummaryLine",
+		status: "planned",
+		job: "One glance line of key numbers (Spent ... · Left ...) instead of a tile row (R3)",
+		replaces: "7 KPI tile implementations",
+		planRow: LAYOUT,
+		target: "src/components/layout/summary-line.tsx",
+		use: "One line of text-small with the money formatter, never stat-card",
+	},
+	{
+		name: "GlanceStrip",
+		status: "planned",
+		job: "Home's one hero number with its glance line",
+		replaces: "4 dashboard StatCards",
+		planRow: "GlanceStrip (Home)",
+		target: "src/components/glance/glance-strip.tsx",
+		use: "One text-hero number plus a glance line",
+	},
+	{
+		name: "NeedsYouList",
+		status: "planned",
+		job: "The list of things that need the person now, one style for every kind",
+		replaces:
+			"Verification, settlement and import banners and recurring due badges on 5 pages",
+		planRow: NEEDS_YOU,
+		target: "src/components/needs-you/needs-you-list.tsx",
+		use: "One alert notice per page at most",
+	},
+	{
+		name: "NeedsYouItem",
+		status: "planned",
+		job: "One Needs you entry: what, who, one action",
+		replaces: "Stacked tinted banners",
+		planRow: NEEDS_YOU,
+		target: "src/components/needs-you/needs-you-item.tsx",
+		use: "One alert notice per page at most",
+	},
+	{
+		name: "TransactionRow",
+		status: "planned",
+		job: "One expense, payment or transfer row: lead, title, subline, money right (§6)",
+		replaces: "4 table stacks and 5 activity renderers",
+		planRow: "TransactionRow / Table",
+		target: "src/components/rows/transaction-row.tsx",
+		use: "The existing data-table rows; do not add a new renderer",
+	},
+	{
+		name: "PersonRow",
+		status: "planned",
+		job: "A person with face, balance words and money right",
+		replaces: "Person cards",
+		planRow: ROWS,
+		target: "src/components/rows/person-row.tsx",
+		use: "user-avatar plus a table or list row",
+	},
+	{
+		name: "ProjectRow",
+		status: "planned",
+		job: "A project with its cover, faces and balance",
+		replaces: "Project cards (keeping the cover)",
+		planRow: ROWS,
+		target: "src/components/rows/project-row.tsx",
+		use: "The project cover plus a table or list row",
+	},
+	{
+		name: "AccountRow",
+		status: "planned",
+		job: "A wealth account with its group dot and value",
+		replaces: "Wealth table rows on phone",
+		planRow: ROWS,
+		target: "src/components/rows/account-row.tsx",
+		use: "The wealth table",
+	},
+	{
+		name: "EnvelopeRow",
+		status: "planned",
+		job: "A budget envelope with progress and available money",
+		replaces: "Budget rows",
+		planRow: ROWS,
+		target: "src/components/rows/envelope-row.tsx",
+		use: "The budget rows and progress",
+	},
+	{
+		name: "Money",
+		status: "planned",
+		job: "Render one amount (and Money.pair: original first, home second) through the one formatter",
+		replaces: "15 local formatters, toFixed and toLocaleString sites",
+		planRow: "Money",
+		target: "src/components/money/money.tsx",
+		use: "useCurrencyFormatter() and src/lib/currency-format.ts",
+	},
+	{
+		name: "Balance",
+		status: "planned",
+		job: "Owed to you or you owe: amount plus the words, never netted (R5, D1)",
+		replaces: "Badge, color and verb triplets",
+		planRow: BALANCE,
+		target: "src/components/money/balance.tsx",
+		use: "The money formatter plus the words, text-positive for owed to you",
+	},
+	{
+		name: "AvailablePill",
+		status: "planned",
+		job: "Budget money available in an envelope, attention when over",
+		replaces: "Badge, color and verb triplets",
+		planRow: BALANCE,
+		target: "src/components/money/available-pill.tsx",
+		use: "The money formatter in plain text",
+	},
+	{
+		name: "StatusDot",
+		status: "planned",
+		job: "Status as a dot plus a word, 17 kinds from one map (R5)",
+		replaces: "Badge, color and verb triplets",
+		planRow: BALANCE,
+		target: "src/components/money/status-dot.tsx",
+		use: "badge or transaction-status-badge",
+	},
+	{
+		name: "ActionMenu",
+		status: "planned",
+		job: "The ⋯ menu, right-click and long press of an entity, read from one action registry (R8)",
+		replaces: "Per-page dropdowns and context menus",
+		planRow: ACTIONS,
+		target: "src/components/actions/registry.ts (one file per entity)",
+		use: "dropdown-menu and context-menu with the existing per-entity actions",
+	},
+	{
+		name: "SwipeActions",
+		status: "planned",
+		job: "Phone swipe actions, each with a menu twin from the same registry (R8, R13)",
+		replaces: "Per-page swipe and long-press handling",
+		planRow: ACTIONS,
+		target: "src/components/actions/swipe-actions.tsx",
+		use: "Nothing on phone web (no swipe); the ⋯ menu",
+	},
+	{
+		name: "AddExpenseSheet",
+		status: "planned",
+		job: "Add or edit an expense in one Sheet with its preview (R30)",
+		replaces: "The expense modal",
+		planRow: SHEETS,
+		target: "src/features/entry/* (IMPLEMENTATION §1.2, 4G)",
+		use: "expense-modal",
+	},
+	{
+		name: "SettleSheet",
+		status: "planned",
+		job: "Settle up with a person: amount, account, what changes, Undo",
+		replaces: "The settle-up dialog",
+		planRow: SHEETS,
+		target: "src/features/settle/* (IMPLEMENTATION §1.2, 4D)",
+		use: "settle-up-dialog",
+	},
+	{
+		name: "AssignSheet",
+		status: "planned",
+		job: "Assign budget money to envelopes",
+		replaces: "Budget row inline edit",
+		planRow: SHEETS,
+		target: "src/features/budget/sheets/* (IMPLEMENTATION §1.2, 4C)",
+		use: "The current budget row edit",
+	},
+	{
+		name: "MoneyInput",
+		status: "planned",
+		job: "Amount entry: groups while typing, parses the page locale, rate chip (R22)",
+		replaces: "CurrencyAmountInput and local amount inputs",
+		planRow: INPUTS,
+		target: "src/components/money/money-input.tsx",
+		use: "CurrencyAmountInput",
+	},
+	{
+		name: "CategoryPicker",
+		status: "planned",
+		job: "Pick a category, recents first, bare glyph in its color (R25)",
+		replaces: "4 category pickers",
+		planRow: INPUTS,
+		target: "src/components/pickers/category-picker.tsx",
+		use: "The existing category picker of the form you are in; do not add a fifth",
+	},
+	{
+		name: "PersonPicker",
+		status: "planned",
+		job: "Pick people with their faces",
+		replaces: "split-with-picker and add-people-search",
+		planRow: INPUTS,
+		target: "src/components/pickers/person-picker.tsx",
+		use: "split-with-picker or add-people-search",
+	},
+	{
+		name: "BottomNav",
+		status: "planned",
+		job: "Phone web tab bar: Home, Activity, Budget, People, Projects plus a separate +",
+		replaces: "Hamburger-only mobile nav",
+		planRow: SHELL,
+		target: "src/components/shell/bottom-nav.tsx (items from src/lib/nav.ts)",
+		use: "sidebar (phone panel)",
+	},
+	{
+		name: "AccountMenu",
+		status: "planned",
+		job: "Account menu at the sidebar bottom: Settings, Admin, Invite codes, Feedback, Docs, Release notes, Sign out",
+		replaces: "nav-user and 3 feedback entries",
+		planRow: SHELL,
+		target: "src/components/shell/account-menu.tsx",
+		use: "nav-user",
+	},
+];
