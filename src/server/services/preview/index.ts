@@ -45,7 +45,7 @@ import { type UserTransactionOptions, userTransaction } from "~/server/db-tx";
 import { type FigureDb, figures } from "~/server/figures/registry";
 import { Prisma } from "~prisma";
 import { createPreviewRunner, type PreviewRunner } from "./runner";
-import type { TransactionPurpose } from "./types";
+import type { TransactionPurpose, TransactionRunner } from "./types";
 
 /** A preview reads every figure twice, so it gets more than Prisma's 5s default. */
 const TRANSACTION_OPTIONS: Record<TransactionPurpose, UserTransactionOptions> =
@@ -57,12 +57,19 @@ const TRANSACTION_OPTIONS: Record<TransactionPurpose, UserTransactionOptions> =
 		apply: { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
 	};
 
+/** The RLS transaction a preview or apply runs in for `userId`. Exported so pg tests use the real one. */
+export function userTransactionRunner(
+	userId: string,
+): TransactionRunner<FigureDb> {
+	return (work, purpose) =>
+		userTransaction(db, userId, work, TRANSACTION_OPTIONS[purpose]);
+}
+
 export function forUser(userId: string): PreviewRunner<FigureDb> {
 	return createPreviewRunner({
 		figures,
 		actor: { userId },
-		transaction: (work, purpose) =>
-			userTransaction(db, userId, work, TRANSACTION_OPTIONS[purpose]),
+		transaction: userTransactionRunner(userId),
 	});
 }
 
