@@ -12,8 +12,8 @@ import {
 	computeBook,
 	type EngineInput,
 	invariantSides,
-	type MovementEntry,
 	type MoneyInEntry,
+	type MovementEntry,
 } from "./engine";
 import { buildMonthView, type ViewBook, type ViewEnvelope } from "./month-view";
 import type { EnvelopeTarget } from "./needs";
@@ -62,7 +62,11 @@ const FLEX_GROUPS: Array<[string, GroupRole]> = [
 ];
 
 let seq = 0;
-const income = (month: MonthKey, units: number, source: MoneyInEntry["source"] = "INCOME"): MoneyInEntry => ({
+const income = (
+	month: MonthKey,
+	units: number,
+	source: MoneyInEntry["source"] = "INCOME",
+): MoneyInEntry => ({
 	id: `in${++seq}`,
 	month,
 	minor: m(units),
@@ -82,7 +86,12 @@ const spend = (
 	categoryId,
 	...extra,
 });
-const move = (month: MonthKey, from: string | null, to: string | null, units: number): MovementEntry => ({
+const move = (
+	month: MonthKey,
+	from: string | null,
+	to: string | null,
+	units: number,
+): MovementEntry => ({
 	id: `mv${++seq}`,
 	month,
 	from,
@@ -139,7 +148,14 @@ function run(s: Scenario) {
 	};
 	const state = computeBook(input);
 	const view = (month = s.current): GetMonthOutput =>
-		buildMonthView({ book, input, state, month, today: s.today, missingRates: [] }).dto;
+		buildMonthView({
+			book,
+			input,
+			state,
+			month,
+			today: s.today,
+			missingRates: [],
+		}).dto;
 	const sides = invariantSides(input, state);
 	return { input, state, view, sides };
 }
@@ -159,9 +175,40 @@ const left = (v: GetMonthOutput, id: string) => row(v, id).left.minor;
 // ── Lucía, Buenos Aires (P1) ────────────────────────────────────────────────
 
 const LUCIA: EnvSpec[] = [
-	{ id: "rent", group: "bills", cats: ["c-rent"], target: { kind: "BILL", amount: m(650_000), dueDate: "2026-11-10", repeatMonths: 1, linkedToTemplate: false } },
-	{ id: "groceries", group: "spending", cats: ["c-groc"], target: { kind: "MONTHLY", amount: m(420_000), mode: "REFILL", cadence: "MONTH" } },
-	{ id: "dining", group: "spending", cats: ["c-din"], target: { kind: "MONTHLY", amount: m(180_000), mode: "REFILL", cadence: "MONTH" } },
+	{
+		id: "rent",
+		group: "bills",
+		cats: ["c-rent"],
+		target: {
+			kind: "BILL",
+			amount: m(650_000),
+			dueDate: "2026-11-10",
+			repeatMonths: 1,
+			linkedToTemplate: false,
+		},
+	},
+	{
+		id: "groceries",
+		group: "spending",
+		cats: ["c-groc"],
+		target: {
+			kind: "MONTHLY",
+			amount: m(420_000),
+			mode: "REFILL",
+			cadence: "MONTH",
+		},
+	},
+	{
+		id: "dining",
+		group: "spending",
+		cats: ["c-din"],
+		target: {
+			kind: "MONTHLY",
+			amount: m(180_000),
+			mode: "REFILL",
+			cadence: "MONTH",
+		},
+	},
 	{ id: "spending", group: "spending" },
 	{ id: "vacation", group: "savings", kind: "SAVINGS" },
 ];
@@ -189,7 +236,9 @@ describe("S1 payday assign and undo (Lucía, ARS)", () => {
 		expect(v.toAssign.poolName).toBe("NOT_PLANNED_YET");
 		const fill = fillFromTargets(v);
 		// Bills first (rent 650,000), then Monthly in order: 420,000 + 180,000.
-		expect(fill.lines.map((l) => [l.envelopeId, l.amount.minor, l.step])).toEqual([
+		expect(
+			fill.lines.map((l) => [l.envelopeId, l.amount.minor, l.step]),
+		).toEqual([
 			["rent", m(650_000), "BILL"],
 			["groceries", m(420_000), "MONTHLY"],
 			["dining", m(180_000), "MONTHLY"],
@@ -225,7 +274,8 @@ describe("S1 payday assign and undo (Lucía, ARS)", () => {
 		const r = run({ ...base, movements: [...plan, ...undo(plan)] });
 		const v = r.view();
 		expect(v.toAssign.amount.minor).toBe(m(2_400_000));
-		for (const id of ["rent", "groceries", "dining"]) expect(left(v, id)).toBe(0);
+		for (const id of ["rent", "groceries", "dining"])
+			expect(left(v, id)).toBe(0);
 		expectInvariant(r);
 	});
 });
@@ -262,7 +312,13 @@ describe("S3 overspend recovery (Lucía)", () => {
 		expect(left(v, "groceries")).toBe(m(96_000));
 		// To assign is 0, so it is not offered. Groceries 96,000, Fun 40,000,
 		// then Vacation 1,110,000 (savings). Spending and Rent hold 0.
-		expect(coverSources(v, "dining").map((c) => [c.from, c.available.minor, c.dueDate])).toEqual([
+		expect(
+			coverSources(v, "dining").map((c) => [
+				c.from,
+				c.available.minor,
+				c.dueDate,
+			]),
+		).toEqual([
 			["groceries", m(96_000), null],
 			["fun", m(40_000), null],
 			["vacation", m(1_110_000), null],
@@ -271,12 +327,20 @@ describe("S3 overspend recovery (Lucía)", () => {
 		// of 640,000 (84%) on day 22 of 30 (73%): faster than planned.
 		expect(v.leftToSpend.left.minor).toBe(m(102_000));
 		expect(v.verdict.state).toBe("FASTER_THAN_PLANNED");
-		expect(v.verdict.overEnvelopes).toEqual([{ id: "dining", over: { minor: m(34_000), currency: "ARS" } }]);
+		expect(v.verdict.overEnvelopes).toEqual([
+			{ id: "dining", over: { minor: m(34_000), currency: "ARS" } },
+		]);
 		expectInvariant(r);
 	});
 
 	it("cover 34,000 from Groceries: Dining back to 0, To assign unchanged", () => {
-		const r = run({ ...s, movements: [...(s.movements ?? []), move(202611, "groceries", "dining", 34_000)] });
+		const r = run({
+			...s,
+			movements: [
+				...(s.movements ?? []),
+				move(202611, "groceries", "dining", 34_000),
+			],
+		});
 		const v = r.view();
 		expect(left(v, "dining")).toBe(0);
 		expect(left(v, "groceries")).toBe(m(62_000));
@@ -291,7 +355,13 @@ describe("S9 annual sinking fund (Jordan, USD)", () => {
 		id: "insurance",
 		group: "bills",
 		cats: ["c-ins"],
-		target: { kind: "BILL", amount: m(1_200), dueDate: "2027-05-15", repeatMonths: 12, linkedToTemplate: false },
+		target: {
+			kind: "BILL",
+			amount: m(1_200),
+			dueDate: "2027-05-15",
+			repeatMonths: 12,
+			linkedToTemplate: false,
+		},
 	};
 	const base: Scenario = {
 		currency: "USD",
@@ -307,12 +377,20 @@ describe("S9 annual sinking fund (Jordan, USD)", () => {
 		const r = run(base);
 		const t = row(r.view(), "insurance").target;
 		// ceil(120,000 / 7) = 17,143 minor.
-		expect(t).toMatchObject({ monthsLeft: 7, need: { minor: 17_143 }, perMonth: { minor: 17_143 }, dueDate: "2027-05-15" });
+		expect(t).toMatchObject({
+			monthsLeft: 7,
+			need: { minor: 17_143 },
+			perMonth: { minor: 17_143 },
+			dueDate: "2027-05-15",
+		});
 		expectInvariant(r);
 	});
 
 	it("December, with November's 171.43 carried: 6 months left, still 171.43", () => {
-		const r = run({ ...base, movements: [move(202611, null, "insurance", 171.43)] });
+		const r = run({
+			...base,
+			movements: [move(202611, null, "insurance", 171.43)],
+		});
 		const t = row(r.view(202612), "insurance").target;
 		// ceil((120,000 - 17,143) / 6) = ceil(17,142.83) = 17,143.
 		expect(t).toMatchObject({ monthsLeft: 6, need: { minor: 17_143 } });
@@ -331,7 +409,11 @@ describe("S9 annual sinking fund (Jordan, USD)", () => {
 			activity: [spend("2027-05-15", 1_200, "c-ins")],
 		});
 		const t = row(r.view(), "insurance").target;
-		expect(t).toMatchObject({ paid: true, dueDate: "2028-05-15", need: { minor: 0 } });
+		expect(t).toMatchObject({
+			paid: true,
+			dueDate: "2028-05-15",
+			need: { minor: 0 },
+		});
 		expect(left(r.view(), "insurance")).toBe(0);
 		expectInvariant(r);
 	});
@@ -440,7 +522,10 @@ describe("S15 unassigning is capped at what the envelope holds (Jonas, EUR)", ()
 		start: 202610,
 		current: 202610,
 		today: "2026-10-20",
-		envelopes: [{ id: "fun", group: "spending", cats: ["c-fun"] }, { id: "spending", group: "spending" }],
+		envelopes: [
+			{ id: "fun", group: "spending", cats: ["c-fun"] },
+			{ id: "spending", group: "spending" },
+		],
 		defaultEnvelope: "spending",
 		moneyIn: [income(202610, 300)],
 		activity: [spend("2026-10-12", 220, "c-fun")],
@@ -454,7 +539,10 @@ describe("S15 unassigning is capped at what the envelope holds (Jonas, EUR)", ()
 	});
 
 	it("taking the 80 back leaves Fun at 0 and To assign at 80", () => {
-		const r = run({ ...s, movements: [...(s.movements ?? []), move(202610, "fun", null, 80)] });
+		const r = run({
+			...s,
+			movements: [...(s.movements ?? []), move(202610, "fun", null, 80)],
+		});
 		expect(left(r.view(), "fun")).toBe(0);
 		expect(r.view().toAssign.amount.minor).toBe(m(80));
 		expectInvariant(r);
@@ -464,7 +552,13 @@ describe("S15 unassigning is capped at what the envelope holds (Jonas, EUR)", ()
 describe("S16 a deleted income leaves To assign negative (Rafael, BRL)", () => {
 	const ctx = bookContext("BRL");
 	const invoice = valueRow(
-		{ id: "inv", amount: "1600", currency: "USD", date: "2026-10-19", month: 202610 },
+		{
+			id: "inv",
+			amount: "1600",
+			currency: "USD",
+			date: "2026-10-19",
+			month: 202610,
+		},
 		ctx,
 	);
 	if (!invoice.ok) throw new Error("rate");
@@ -474,10 +568,18 @@ describe("S16 a deleted income leaves To assign negative (Rafael, BRL)", () => {
 		start: 202610,
 		current: 202610,
 		today: "2026-10-25",
-		envelopes: [{ id: "rent", group: "bills" }, { id: "spending", group: "spending" }],
+		envelopes: [
+			{ id: "rent", group: "bills" },
+			{ id: "spending", group: "spending" },
+		],
 		defaultEnvelope: "spending",
-		moneyIn: withIncome ? [{ id: "inv", month: 202610, minor: invoice.minor, source: "INCOME" }] : [],
-		movements: [move(202610, null, "spending", 5_000), move(202610, null, "rent", 3_640)],
+		moneyIn: withIncome
+			? [{ id: "inv", month: 202610, minor: invoice.minor, source: "INCOME" }]
+			: [],
+		movements: [
+			move(202610, null, "spending", 5_000),
+			move(202610, null, "rent", 3_640),
+		],
 	});
 
 	it("USD 1,600 at 5.40 entered as BRL 8,640 and was fully assigned", () => {
@@ -491,7 +593,11 @@ describe("S16 a deleted income leaves To assign negative (Rafael, BRL)", () => {
 		const r = run(s("FLEX", false));
 		const v = r.view();
 		expect(v.toAssign.amount.minor).toBe(-m(8_640));
-		expect(v.verdict).toMatchObject({ state: "PLANNED_TOO_MUCH", action: "FIX_PLAN", plannedTooMuch: { minor: m(8_640) } });
+		expect(v.verdict).toMatchObject({
+			state: "PLANNED_TOO_MUCH",
+			action: "FIX_PLAN",
+			plannedTooMuch: { minor: m(8_640) },
+		});
 		// Spending 5,000 minus the 8,640 planned too much.
 		expect(v.leftToSpend.left.minor).toBe(-m(3_640));
 		expectInvariant(r);
@@ -501,7 +607,11 @@ describe("S16 a deleted income leaves To assign negative (Rafael, BRL)", () => {
 		const r = run(s("EVERY_DOLLAR", false));
 		const v = r.view();
 		expect(v.toAssign.poolName).toBe("TO_ASSIGN");
-		expect(v.verdict).toMatchObject({ state: "OVER_ASSIGNED", action: "TAKE_BACK", lead: { kind: "TO_ASSIGN", amount: { minor: -m(8_640) } } });
+		expect(v.verdict).toMatchObject({
+			state: "OVER_ASSIGNED",
+			action: "TAKE_BACK",
+			lead: { kind: "TO_ASSIGN", amount: { minor: -m(8_640) } },
+		});
 		expectInvariant(r);
 	});
 });
@@ -515,11 +625,20 @@ describe("S20 first run on the 18th (Jonas, EUR)", () => {
 		start: 202610,
 		current: 202610,
 		today: "2026-10-18",
-		envelopes: [{ id: "rent", group: "bills", cats: ["c-rent"] }, { id: "spending", group: "spending" }],
+		envelopes: [
+			{ id: "rent", group: "bills", cats: ["c-rent"] },
+			{ id: "spending", group: "spending" },
+		],
 		defaultEnvelope: "spending",
 		moneyIn: [income(202610, 2_300, "STARTING_BALANCE")],
-		activity: [spend("2026-10-03", 1_000, null), spend("2026-10-15", 660, "c-groceries-unlinked")],
-		movements: [move(202610, null, "spending", 1_800), move(202610, null, "rent", 500)],
+		activity: [
+			spend("2026-10-03", 1_000, null),
+			spend("2026-10-15", 660, "c-groceries-unlinked"),
+		],
+		movements: [
+			move(202610, null, "spending", 1_800),
+			move(202610, null, "rent", 500),
+		],
 	});
 
 	it("every euro has a job and the budget holds exactly the 640 in checking", () => {
@@ -541,9 +660,17 @@ describe("S13 card spend and S24 many small money-in rows", () => {
 			start: 202610,
 			current: 202610,
 			today: "2026-10-20",
-			envelopes: [{ id: "food", group: "spending", cats: ["c-food"] }, { id: "fun", group: "spending" }],
+			envelopes: [
+				{ id: "food", group: "spending", cats: ["c-food"] },
+				{ id: "fun", group: "spending" },
+			],
 			defaultEnvelope: "fun",
-			moneyIn: [income(202610, 4_000), income(202610, 300), income(202610, 450), income(202610, 600)],
+			moneyIn: [
+				income(202610, 4_000),
+				income(202610, 300),
+				income(202610, 450),
+				income(202610, 600),
+			],
 			activity: [spend("2026-10-05", 85, "c-food")],
 			movements: [move(202610, null, "food", 2_200)],
 		});
@@ -562,7 +689,10 @@ describe("D22 assigning ahead: Fund it now from what I have", () => {
 			start: 202610,
 			current: 202610,
 			today: "2026-10-28",
-			envelopes: [{ id: "rent", group: "bills" }, { id: "spending", group: "spending" }],
+			envelopes: [
+				{ id: "rent", group: "bills" },
+				{ id: "spending", group: "spending" },
+			],
 			defaultEnvelope: "spending",
 			moneyIn: [income(202610, 1_000)],
 			movements: [move(202611, null, "rent", 300)],
@@ -585,7 +715,16 @@ describe("A7 weekly budget (Weekly style)", () => {
 			current: 202610,
 			today: "2026-10-14",
 			envelopes: [
-				{ id: "spending", group: "spending", target: { kind: "MONTHLY", amount: m(150), mode: "REFILL", cadence: "WEEK" } },
+				{
+					id: "spending",
+					group: "spending",
+					target: {
+						kind: "MONTHLY",
+						amount: m(150),
+						mode: "REFILL",
+						cadence: "WEEK",
+					},
+				},
 			],
 			defaultEnvelope: "spending",
 			moneyIn: [income(202610, 600)],
@@ -594,10 +733,21 @@ describe("A7 weekly budget (Weekly style)", () => {
 		});
 		const v = r.view();
 		// October 2026 with Monday weeks has 4 weeks: 150 x 4 = 600, all assigned.
-		expect(row(v, "spending").target).toMatchObject({ amount: { minor: m(600) }, need: { minor: 0 } });
+		expect(row(v, "spending").target).toMatchObject({
+			amount: { minor: m(600) },
+			need: { minor: 0 },
+		});
 		// Week 2 (Oct 12 to 18): min(Left 500, 150 x 2 - 100) = 200, over 5 days.
-		expect(row(v, "spending").leftThisWeek).toMatchObject({ amount: { minor: m(200) }, perDay: { minor: m(40) }, weekIndex: 2, resetsOn: "2026-10-19" });
-		expect(v.verdict).toMatchObject({ state: "WEEK_LEFT", lead: { kind: "LEFT_THIS_WEEK", amount: { minor: m(200) } } });
+		expect(row(v, "spending").leftThisWeek).toMatchObject({
+			amount: { minor: m(200) },
+			perDay: { minor: m(40) },
+			weekIndex: 2,
+			resetsOn: "2026-10-19",
+		});
+		expect(v.verdict).toMatchObject({
+			state: "WEEK_LEFT",
+			lead: { kind: "LEFT_THIS_WEEK", amount: { minor: m(200) } },
+		});
 		expectInvariant(r);
 	});
 });
@@ -606,17 +756,58 @@ describe("S5 and C14 splits terms (engine ready for P3)", () => {
 	// Asado ARS 90,000 for three, your share 30,000 (Dining); Juan pays his
 	// 30,000 back; later Paz's 30,000 is forgiven into Dining.
 	const events = [
-		{ kind: "FRONT" as const, id: "f-juan", counterparty: "juan", currency: "ARS", date: "2026-10-04", month: 202610, native: m(30_000), value: m(30_000) },
-		{ kind: "FRONT" as const, id: "f-paz", counterparty: "paz", currency: "ARS", date: "2026-10-04", month: 202610, native: m(30_000), value: m(30_000) },
-		{ kind: "RECV" as const, id: "r-juan", counterparty: "juan", currency: "ARS", date: "2026-10-11", month: 202610, native: m(30_000), status: "FINALIZED" as const, cash: m(30_000) },
+		{
+			kind: "FRONT" as const,
+			id: "f-juan",
+			counterparty: "juan",
+			currency: "ARS",
+			date: "2026-10-04",
+			month: 202610,
+			native: m(30_000),
+			value: m(30_000),
+		},
+		{
+			kind: "FRONT" as const,
+			id: "f-paz",
+			counterparty: "paz",
+			currency: "ARS",
+			date: "2026-10-04",
+			month: 202610,
+			native: m(30_000),
+			value: m(30_000),
+		},
+		{
+			kind: "RECV" as const,
+			id: "r-juan",
+			counterparty: "juan",
+			currency: "ARS",
+			date: "2026-10-11",
+			month: 202610,
+			native: m(30_000),
+			status: "FINALIZED" as const,
+			cash: m(30_000),
+		},
 	];
-	const forgive = { kind: "FORGIVE" as const, id: "fg-paz", counterparty: "paz", currency: "ARS", date: "2026-10-20", month: 202610, native: m(30_000), status: "FINALIZED" as const, envelopeId: "dining" };
+	const forgive = {
+		kind: "FORGIVE" as const,
+		id: "fg-paz",
+		counterparty: "paz",
+		currency: "ARS",
+		date: "2026-10-20",
+		month: 202610,
+		native: m(30_000),
+		status: "FINALIZED" as const,
+		envelopeId: "dining",
+	};
 	const s = (withForgive: boolean): Scenario => ({
 		currency: "ARS",
 		start: 202610,
 		current: 202610,
 		today: "2026-10-21",
-		envelopes: [{ id: "dining", group: "spending", cats: ["c-din"] }, { id: "spending", group: "spending" }],
+		envelopes: [
+			{ id: "dining", group: "spending", cats: ["c-din"] },
+			{ id: "spending", group: "spending" },
+		],
 		defaultEnvelope: "spending",
 		moneyIn: [income(202610, 100_000)],
 		activity: [spend("2026-10-04", 30_000, "c-din", { source: "SHARE" })],

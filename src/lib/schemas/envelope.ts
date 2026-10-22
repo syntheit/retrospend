@@ -48,7 +48,12 @@ export const budgetStyleSchema = z.enum([
 export const SETUP_STYLES = ["FLEX", "EVERY_DOLLAR", "WEEKLY"] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
 
-export const envelopeKindSchema = z.enum(["MONTHLY", "BILL", "SAVINGS", "NONE"]);
+export const envelopeKindSchema = z.enum([
+	"MONTHLY",
+	"BILL",
+	"SAVINGS",
+	"NONE",
+]);
 export const groupRoleSchema = z.enum(["BILLS", "SPENDING", "SAVINGS"]);
 export const targetModeSchema = z.enum(["REFILL", "SET_ASIDE"]);
 export const targetCadenceSchema = z.enum(["MONTH", "WEEK"]);
@@ -474,6 +479,69 @@ export const historyInputSchema = z.object({
 	cursor: idSchema.optional(),
 	limit: z.number().int().min(1).max(100).default(50),
 });
+
+// ── Previews (R30) ──────────────────────────────────────────────────────────
+
+const figureChangeSchema = z.object({
+	id: z.string(),
+	currency: z.string(),
+	before: moneySchema.nullable(),
+	after: moneySchema.nullable(),
+	delta: moneySchema,
+	figureAfter: z.array(moneySchema).readonly(),
+});
+
+const undoTokenSchema = z.union([
+	z.object({
+		kind: z.literal("revert"),
+		mutation: z.string(),
+		rows: z.array(z.object({ table: z.string(), id: z.string() })).readonly(),
+	}),
+	z.object({
+		kind: z.literal("mirror"),
+		mutation: z.string(),
+		movement: z.object({ table: z.string(), id: z.string() }),
+	}),
+]);
+
+/** What a money write changes, what it checked and leaves alone, and what it could not check. */
+export function previewOutputSchema<T extends z.ZodType>(value: T) {
+	return z.object({
+		value,
+		changes: z.array(figureChangeSchema).readonly(),
+		unchanged: z
+			.array(
+				z.object({ id: z.string(), value: z.array(moneySchema).readonly() }),
+			)
+			.readonly(),
+		unavailable: z
+			.array(
+				z.object({
+					id: z.string(),
+					before: z.array(moneySchema).readonly().nullable(),
+					after: z.array(moneySchema).readonly().nullable(),
+				}),
+			)
+			.readonly(),
+	});
+}
+
+/** The applied write: the preview's shape plus the undo token. */
+export function applyOutputSchema<T extends z.ZodType>(value: T) {
+	return previewOutputSchema(value).extend({ undo: undoTokenSchema });
+}
+
+export const setupResultSchema = z.object({ bookId: idSchema });
+
+export const fillFromTargetsInputSchema = z
+	.object({
+		month: monthKeySchema.optional(),
+		/** Plan only this much (an income that just arrived); default: all of To assign. */
+		amountMinor: positiveMinor.optional(),
+	})
+	.default({});
+
+export const setupPresetInputSchema = z.object({ style: setupStyleSchema });
 
 export type Money = z.infer<typeof moneySchema>;
 export type EnvelopeTargetDto = z.infer<typeof envelopeTargetSchema>;

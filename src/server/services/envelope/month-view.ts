@@ -15,7 +15,11 @@ import type {
 import { addMonths } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
-import { type EnvelopeTarget, evaluateTarget, type TargetResult } from "./needs";
+import {
+	type EnvelopeTarget,
+	evaluateTarget,
+	type TargetResult,
+} from "./needs";
 import {
 	type GroupRole,
 	type LeftToSpend,
@@ -25,7 +29,12 @@ import {
 	weeksOfMonth,
 } from "./pace";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
-import { type BudgetStyle, poolNameFor, verdict, type Verdict } from "./verdict";
+import {
+	type BudgetStyle,
+	poolNameFor,
+	type Verdict,
+	verdict,
+} from "./verdict";
 
 export interface ViewEnvelope {
 	id: string;
@@ -151,13 +160,22 @@ function statusOf(r: Row): EnvelopeRowDto["status"] {
 	return (r.target?.need ?? 0) > 0 ? "UNDERFUNDED" : "FUNDED";
 }
 
-function targetDto(r: Row, money: (v: Minor) => Money): EnvelopeTargetDto | null {
+function targetDto(
+	r: Row,
+	money: (v: Minor) => Money,
+): EnvelopeTargetDto | null {
 	const t = r.env.target;
 	if (!r.target && !(r.env.targetIncomplete && r.open)) return null;
 	const res = r.target;
 	const opt = (v: Minor | null | undefined) => (v == null ? null : money(v));
 	return {
-		kind: t?.kind ?? (r.env.kind === "BILL" ? "BILL" : r.env.kind === "SAVINGS" ? "SAVINGS" : "MONTHLY"),
+		kind:
+			t?.kind ??
+			(r.env.kind === "BILL"
+				? "BILL"
+				: r.env.kind === "SAVINGS"
+					? "SAVINGS"
+					: "MONTHLY"),
 		mode: t?.kind === "MONTHLY" ? t.mode : null,
 		cadence: t?.kind === "MONTHLY" ? t.cadence : null,
 		amount: opt(res?.amount),
@@ -174,7 +192,11 @@ function targetDto(r: Row, money: (v: Minor) => Money): EnvelopeTargetDto | null
 	};
 }
 
-function rowDto(r: Row, p: MonthViewInput, money: (v: Minor) => Money): EnvelopeRowDto {
+function rowDto(
+	r: Row,
+	p: MonthViewInput,
+	money: (v: Minor) => Money,
+): EnvelopeRowDto {
 	return {
 		id: r.env.id,
 		name: r.env.name,
@@ -224,7 +246,8 @@ function groupsDto(
 						: r.env.groupId === g.id,
 				)
 				.sort((a, b) => a.env.order - b.env.order);
-			const sum = (f: (r: Row) => Minor) => money(mine.reduce((t, r) => t + f(r), 0));
+			const sum = (f: (r: Row) => Minor) =>
+				money(mine.reduce((t, r) => t + f(r), 0));
 			return {
 				id: g.id,
 				name: g.name,
@@ -259,9 +282,14 @@ function weekTotals(rows: Row[]) {
 }
 
 /** Left to spend for the month (D-owner-2026-10-22d) with the recurring part of Spending for the pace line (D60). */
-function leftToSpendFor(rows: Row[], p: MonthViewInput, toAssign: Minor): LeftToSpend {
+function leftToSpendFor(
+	rows: Row[],
+	p: MonthViewInput,
+	toAssign: Minor,
+): LeftToSpend {
 	const role = new Map(p.book.groups.map((g) => [g.id, g.role]));
-	const roleOf = (r: Row) => (r.env.groupId ? (role.get(r.env.groupId) ?? null) : null);
+	const roleOf = (r: Row) =>
+		r.env.groupId ? (role.get(r.env.groupId) ?? null) : null;
 	const range = monthRange(p.month, p.book.periods);
 	return leftToSpend({
 		envelopes: rows.map((r) => ({
@@ -272,7 +300,9 @@ function leftToSpendFor(rows: Row[], p: MonthViewInput, toAssign: Minor): LeftTo
 			left: r.m.left,
 		})),
 		toAssign,
-		billNeeds: rows.filter((r) => roleOf(r) === "BILLS").map((r) => r.target?.need ?? 0),
+		billNeeds: rows
+			.filter((r) => roleOf(r) === "BILLS")
+			.map((r) => r.target?.need ?? 0),
 		month: range,
 		today: p.today,
 		recurringSpent: -rows
@@ -302,10 +332,14 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 		month: p.month,
 		toAssign: terms.total,
 		leftToSpend: lts,
-		overspent: rows.filter((r) => r.m.left < 0).map((r) => ({ id: r.env.id, over: -r.m.left })),
+		overspent: rows
+			.filter((r) => r.m.left < 0)
+			.map((r) => ({ id: r.env.id, over: -r.m.left })),
 		week: weekTotals(rows),
 	});
-	const incomplete = p.missingRates.length > 0 || p.book.envelopes.some((e) => e.targetIncomplete);
+	const incomplete =
+		p.missingRates.length > 0 ||
+		p.book.envelopes.some((e) => e.targetIncomplete);
 	return {
 		verdict: v,
 		leftToSpend: lts,
@@ -341,7 +375,11 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 			leftToSpend: leftToSpendDto(lts, money),
 			verdict: verdictDto(v, money, incomplete),
 			incomplete,
-			missingRates: p.missingRates.map(({ currency, rateType, date }) => ({ currency, rateType, date })),
+			missingRates: p.missingRates.map(({ currency, rateType, date }) => ({
+				currency,
+				rateType,
+				date,
+			})),
 		},
 	};
 }
@@ -356,7 +394,10 @@ export function verdictDto(
 		lead: { ...v.lead, amount: money(v.lead.amount) },
 		perDay: money(v.perDay),
 		over: money(v.over),
-		overEnvelopes: v.overEnvelopes.map((e) => ({ id: e.id, over: money(e.over) })),
+		overEnvelopes: v.overEnvelopes.map((e) => ({
+			id: e.id,
+			over: money(e.over),
+		})),
 		billsShort: money(v.billsShort),
 		plannedTooMuch: money(v.plannedTooMuch),
 		notice: v.notice ? { ...v.notice, amount: money(v.notice.amount) } : null,

@@ -19,7 +19,9 @@ import type {
 import { autoFill, type FillCandidate } from "./auto-fill";
 import type { Minor } from "./types";
 
-function rowsOf(view: GetMonthOutput): Array<EnvelopeRowDto & { order: number }> {
+function rowsOf(
+	view: GetMonthOutput,
+): Array<EnvelopeRowDto & { order: number }> {
 	return view.groups.flatMap((g, gi) =>
 		g.envelopes.map((e, ei) => ({ ...e, order: gi * 10_000 + ei })),
 	);
@@ -63,7 +65,14 @@ export function coverSources(
 	const currency = view.book.currency;
 	const pool: CoverSource[] =
 		view.toAssign.amount.minor > 0
-			? [{ from: null, kind: "POOL", available: view.toAssign.amount, dueDate: null }]
+			? [
+					{
+						from: null,
+						kind: "POOL",
+						available: view.toAssign.amount,
+						dueDate: null,
+					},
+				]
 			: [];
 	const envelopes = rowsOf(view)
 		.filter((r) => r.id !== envelopeId && r.left.minor > 0)

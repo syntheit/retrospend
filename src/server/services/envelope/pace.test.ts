@@ -308,9 +308,9 @@ describe("leftToSpend (D-owner-2026-10-22d, kit BudgetPlan.leftToSpend)", () => 
 		// planned (90.8% spent, 67.7% of the month gone). With 400,000 of that
 		// posted by recurring templates, the rest is 180,839 of 240,000:
 		// 75.3% spent, still more than 5 points ahead: faster.
-		expect(run({ toAssign: 0, recurringSpent: 400_000 }).fasterThanPlanned).toBe(
-			true,
-		);
+		expect(
+			run({ toAssign: 0, recurringSpent: 400_000 }).fasterThanPlanned,
+		).toBe(true);
 		// With 500,000 recurring, the rest is 80,839 of 140,000: 57.7% spent,
 		// behind the 67.7% of the month gone: on track. The hero is unchanged.
 		const out = run({ toAssign: 0, recurringSpent: 500_000 });

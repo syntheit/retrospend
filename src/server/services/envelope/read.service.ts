@@ -1,0 +1,109 @@
+/**
+ * The envelope reads for transports (tRPC now, /api/v1 later): each opens
+ * one RLS transaction for the user and returns contract DTOs. Writes go
+ * through the money mutations instead (preview + apply).
+ */
+import type {
+	CoverSource,
+	FillFromTargetsOutput,
+	GetMonthOutput,
+	HistoryInput,
+	HistoryOutput,
+	SetupPresetOutput,
+	VerdictDto,
+} from "~/lib/schemas/envelope";
+import { db } from "~/server/db";
+import { userTransaction } from "~/server/db-tx";
+import type { Prisma } from "~prisma";
+import { setupPreset } from "./book.service";
+import { EnvelopeError } from "./errors";
+import {
+	coverSourcesIn,
+	fillFromTargetsIn,
+	historyIn,
+	monthViewIn,
+} from "./month-read";
+import type { SetupStyle } from "./presets";
+import type { Minor, MonthKey } from "./types";
+
+function read<T>(
+	userId: string,
+	work: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+	return userTransaction(db, userId, work);
+}
+
+/** Null when the user has no budget yet ("Just track"). */
+export async function getMonth(
+	userId: string,
+	month?: MonthKey,
+	now = new Date(),
+): Promise<GetMonthOutput | null> {
+	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
+	return view?.dto ?? null;
+}
+
+/** The top of Budget and Home's card (`BudgetPlan.verdict(ym)`), null without a budget. */
+export async function getVerdict(
+	userId: string,
+	month?: MonthKey,
+	now = new Date(),
+): Promise<VerdictDto | null> {
+	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
+	return view?.dto.verdict ?? null;
+}
+
+export async function getLeftToSpend(
+	userId: string,
+	month?: MonthKey,
+	now = new Date(),
+): Promise<GetMonthOutput["leftToSpend"] | null> {
+	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
+	return view?.dto.leftToSpend ?? null;
+}
+
+export function getFillFromTargets(
+	userId: string,
+	month?: MonthKey,
+	amount?: Minor,
+	now = new Date(),
+): Promise<FillFromTargetsOutput> {
+	return read(userId, (tx) =>
+		fillFromTargetsIn(tx, userId, now, month, amount),
+	);
+}
+
+export function getCoverSources(
+	userId: string,
+	envelopeId: string,
+	month?: MonthKey,
+	now = new Date(),
+): Promise<CoverSource[]> {
+	return read(userId, (tx) =>
+		coverSourcesIn(tx, userId, now, envelopeId, month),
+	);
+}
+
+export function getHistory(
+	userId: string,
+	input: HistoryInput,
+	now = new Date(),
+): Promise<HistoryOutput> {
+	return read(userId, (tx) => historyIn(tx, userId, now, input));
+}
+
+export async function getSetupPreset(
+	userId: string,
+	style: SetupStyle,
+): Promise<SetupPresetOutput> {
+	return read(userId, async (tx) => {
+		if (
+			await tx.budgetBook.findFirst({
+				where: { createdById: userId, isPersonal: true },
+				select: { id: true },
+			})
+		)
+			throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
+		return setupPreset(tx, userId, style);
+	});
+}

@@ -111,7 +111,8 @@ function billResult(
 		? addMonthsToDate(open.due, -t.repeatMonths)
 		: "0000-01-01";
 	const cycle = billCycle({ ...base, paidThisCycle: c.spentSince(previous) });
-	if (cycle.done) return { ...EMPTY, amount: t.amount, dueDate: cycle.due, paid: true };
+	if (cycle.done)
+		return { ...EMPTY, amount: t.amount, dueDate: cycle.due, paid: true };
 	const dueMonth = c.monthOf(cycle.due);
 	const monthsLeft = monthsLeftInclusive(c.month, dueMonth);
 	return {
@@ -142,7 +143,9 @@ function savingsResult(
 		{ month: c.month, progress, assigned: c.assigned },
 	);
 	const dated = t.dueMonth != null && c.month <= t.dueMonth;
-	const monthsLeft = dated ? monthsLeftInclusive(c.month, t.dueMonth as MonthKey) : null;
+	const monthsLeft = dated
+		? monthsLeftInclusive(c.month, t.dueMonth as MonthKey)
+		: null;
 	const start = progress - c.assigned;
 	return {
 		...EMPTY,

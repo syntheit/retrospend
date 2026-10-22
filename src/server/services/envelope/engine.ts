@@ -17,10 +17,11 @@
  * Invariant (SPEC §5.3, asserted by every scenario):
  *   ToAssign(c) + Σ Left(e, c) + Assigned(c+1) = MoneyIn - Σ outflows - SplitsNet
  */
-import type { ReplayEffect } from "./splits-replay";
-import type { EnvelopeKind, IsoDate, Minor, MonthKey } from "./types";
+
 import { addMonths } from "./calendar";
 import { monthsFrom } from "./months";
+import type { ReplayEffect } from "./splits-replay";
+import type { EnvelopeKind, IsoDate, Minor, MonthKey } from "./types";
 import { assertMinor } from "./units";
 
 export type LeftoverRule = "CARRY" | "RETURN" | "SWEEP";
@@ -188,7 +189,9 @@ function router(input: EngineInput) {
 		if (!ids.has(id)) throw new EngineInputError(`unknown envelope ${id}`);
 		return id;
 	};
-	const envelopeOf = (entry: Pick<ActivityEntry, "categoryId" | "envelopeId">) =>
+	const envelopeOf = (
+		entry: Pick<ActivityEntry, "categoryId" | "envelopeId">,
+	) =>
 		entry.envelopeId && ids.has(entry.envelopeId)
 			? entry.envelopeId
 			: ((entry.categoryId && byCategory.get(entry.categoryId)) ??
@@ -240,7 +243,8 @@ function monthState(
 		});
 	}
 	const row = (id: string) => rows.get(id) as EnvelopeMonth;
-	for (const m of b.moneyIn.get(month) ?? []) totals.moneyIn += assertMinor(m.minor);
+	for (const m of b.moneyIn.get(month) ?? [])
+		totals.moneyIn += assertMinor(m.minor);
 	for (const mv of b.movements.get(month) ?? []) {
 		if (mv.from === null) totals.assigned += mv.minor;
 		else row(route.known(mv.from)).assigned -= mv.minor;
@@ -392,7 +396,9 @@ export function invariantSides(
 		for (const x of xs) t += x;
 		return t;
 	};
-	const moneyIn = sum(input.moneyIn.filter((r) => inBook(r.month)).map((r) => r.minor));
+	const moneyIn = sum(
+		input.moneyIn.filter((r) => inBook(r.month)).map((r) => r.minor),
+	);
 	const outflows = sum(
 		input.activity.filter((r) => inBook(r.month)).map((r) => r.minor),
 	);
@@ -404,7 +410,10 @@ export function invariantSides(
 	const nextAssigned = sum(
 		input.movements
 			.filter((mv) => mv.month === next)
-			.map((mv) => (mv.from === null ? mv.minor : 0) - (mv.to === null ? mv.minor : 0)),
+			.map(
+				(mv) =>
+					(mv.from === null ? mv.minor : 0) - (mv.to === null ? mv.minor : 0),
+			),
 	);
 	return {
 		budget: state.toAssign(c).total + sumLeft(state, c) + nextAssigned,
