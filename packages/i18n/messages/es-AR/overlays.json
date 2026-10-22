@@ -1,7 +1,8 @@
 {
 	"sheet": {
 		"close": "Cerrar",
-		"cancel": "Cancelar"
+		"cancel": "Cancelar",
+		"failed": "No se pudo guardar. Intentá de nuevo."
 	},
 	"toast": {
 		"undo": "Deshacer",

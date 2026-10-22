@@ -1,7 +1,8 @@
 {
 	"sheet": {
 		"close": "Schließen",
-		"cancel": "Abbrechen"
+		"cancel": "Abbrechen",
+		"failed": "Speichern fehlgeschlagen. Bitte erneut versuchen."
 	},
 	"toast": {
 		"undo": "Rückgängig",

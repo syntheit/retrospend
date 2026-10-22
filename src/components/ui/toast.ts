@@ -5,11 +5,13 @@
  * engine (the one Toaster is mounted in the root layout); this module is the
  * only way new code shows a toast. It keeps at most three, oldest out first,
  * and moves them to the top on a phone while a sheet is open so they never
- * cover the sheet's footer (GUIDELINE §10).
+ * cover the sheet's footer (GUIDELINE §10). A modal sheet hides the rest of
+ * the page from screen readers, so an error toast shown while one is open
+ * is also announced inside the top sheet (useSheetAlert).
  */
 
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { toast as sonner } from "sonner";
 
 export const MAX_TOASTS = 3;
@@ -18,6 +20,7 @@ export const UNDO_TOAST_MS = 6000;
 const PHONE_QUERY = "(max-width: 767px)";
 
 type ToastId = string | number;
+type Kind = "success" | "error" | "info";
 
 /** The visible toasts in order. Adding a fourth returns the oldest to dismiss. */
 export class ToastQueue {
@@ -43,23 +46,6 @@ export class ToastQueue {
 	}
 }
 
-let openSheets = 0;
-
-/** Sheets call this while open; the returned function releases it once. */
-export function trackOpenSheet(): () => void {
-	openSheets += 1;
-	let released = false;
-	return () => {
-		if (released) return;
-		released = true;
-		openSheets -= 1;
-	};
-}
-
-export function openSheetCount(): number {
-	return openSheets;
-}
-
 /** Top on a phone while a sheet is open; otherwise the Toaster's default. */
 export function toastPosition(
 	phone: boolean,
@@ -67,6 +53,64 @@ export function toastPosition(
 ): "top-center" | undefined {
 	return phone && sheetsOpen > 0 ? "top-center" : undefined;
 }
+
+// ---- open sheets (a small external store) ----------------------------------
+
+const sheets: number[] = [];
+let nextSheet = 1;
+let alert: { sheet: number; message: string } | null = null;
+const listeners = new Set<() => void>();
+
+function emit() {
+	for (const l of listeners) l();
+}
+
+function subscribe(l: () => void) {
+	listeners.add(l);
+	return () => listeners.delete(l);
+}
+
+/**
+ * Sheets call this while open. Returns the sheet's id and a release that
+ * runs once. Toasts already showing move when the count changes.
+ */
+export function trackOpenSheet(): { id: number; release: () => void } {
+	const id = nextSheet++;
+	sheets.push(id);
+	emit();
+	let released = false;
+	return {
+		id,
+		release: () => {
+			if (released) return;
+			released = true;
+			sheets.splice(sheets.indexOf(id), 1);
+			if (alert?.sheet === id) alert = null;
+			emit();
+		},
+	};
+}
+
+/** The error to announce inside this sheet (an error toast shown while it is on top). */
+export function sheetAlertFor(sheet: number | null): string | null {
+	return alert && alert.sheet === sheet ? alert.message : null;
+}
+
+export function useSheetAlert(sheet: number | null): string | null {
+	return useSyncExternalStore(
+		subscribe,
+		() => sheetAlertFor(sheet),
+		() => null,
+	);
+}
+
+export function clearSheetAlert(sheet: number | null): void {
+	if (alert?.sheet !== sheet) return;
+	alert = null;
+	emit();
+}
+
+// ---- toasts ----------------------------------------------------------------
 
 function isPhone(): boolean {
 	return (
@@ -79,7 +123,7 @@ export type ToastCopy = { undo: string; undone: string; undoFailed: string };
 export type ToastOptions = {
 	/** Reverts the action: usually the inverse mutation. May return a promise. */
 	undo?: () => unknown;
-	kind?: "success" | "error" | "info";
+	kind?: Kind;
 };
 
 /**
@@ -103,7 +147,25 @@ export function undoRunner(
 	};
 }
 
+type Shown = { kind: Kind; message: string; data: Record<string, unknown> };
 const queue = new ToastQueue();
+const shown = new Map<ToastId, Shown>();
+let lastPosition = toastPosition(false, 0);
+
+const forget = (t: { id: ToastId }) => {
+	queue.remove(t.id);
+	shown.delete(t.id);
+};
+
+/** Re-emits the visible toasts at the position the open sheets ask for. */
+function reposition() {
+	const position = toastPosition(isPhone(), sheets.length);
+	if (position === lastPosition) return;
+	lastPosition = position;
+	for (const [id, s] of shown)
+		sonner[s.kind](s.message, { ...s.data, id, position });
+}
+listeners.add(reposition);
 
 /** Shows one toast; returns its id. Prefer useToast() in components. */
 export function showToast(
@@ -119,17 +181,27 @@ export function showToast(
 					: showToast(copy.undoFailed, copy, { kind: "error" }),
 			)
 		: null;
-	const id = sonner[kind](message, {
+	const data = {
 		// Toasts sit above sheets; a modal sheet makes the page inert, so the
 		// toast takes pointer events back for its Undo button.
 		className: "pointer-events-auto",
 		duration: run ? UNDO_TOAST_MS : undefined,
-		position: toastPosition(isPhone(), openSheets),
 		action: run ? { label: copy.undo, onClick: () => void run() } : undefined,
-		onDismiss: (t) => queue.remove(t.id),
-		onAutoClose: (t) => queue.remove(t.id),
-	});
-	for (const old of queue.add(id)) sonner.dismiss(old);
+		onDismiss: forget,
+		onAutoClose: forget,
+	};
+	lastPosition = toastPosition(isPhone(), sheets.length);
+	const id = sonner[kind](message, { ...data, position: lastPosition });
+	shown.set(id, { kind, message, data });
+	for (const old of queue.add(id)) {
+		shown.delete(old);
+		sonner.dismiss(old);
+	}
+	const top = sheets.at(-1);
+	if (kind === "error" && top !== undefined) {
+		alert = { sheet: top, message };
+		emit();
+	}
 	return id;
 }
 

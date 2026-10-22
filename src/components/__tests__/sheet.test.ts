@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-	DETENT_DRAG,
+	DETENT_SNAP,
+	detentOf,
 	isSingleLineField,
 	isToastTarget,
-	nextDetent,
+	menuTriggerOf,
 	returnFocus,
+	SNAP_POINTS,
 	SubmitGuard,
 	sheetKeySubmits,
 } from "../ui/sheet-behavior";
@@ -73,19 +75,23 @@ describe("Sheet submit guard", () => {
 	it("closes after a submit that does not return false", async () => {
 		const g = new SubmitGuard();
 		const close = vi.fn();
-		await g.run(() => undefined, close);
+		expect(await g.run(() => undefined, close)).toEqual({ status: "closed" });
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
-	it("stays open when submit returns false or throws", async () => {
+	it("stays open when submit returns false", async () => {
 		const g = new SubmitGuard();
 		const close = vi.fn();
-		await g.run(() => false, close);
-		await expect(
-			g.run(() => {
-				throw new Error("server said no");
-			}, close),
-		).rejects.toThrow("server said no");
+		expect(await g.run(() => false, close)).toEqual({ status: "stayed" });
+		expect(close).not.toHaveBeenCalled();
+	});
+
+	it("a throw is reported, not rejected, and keeps the sheet open", async () => {
+		const g = new SubmitGuard();
+		const close = vi.fn();
+		const boom = new Error("server said no");
+		const out = await g.run(() => Promise.reject(boom), close);
+		expect(out).toEqual({ status: "failed", error: boom });
 		expect(close).not.toHaveBeenCalled();
 		expect(g.blocked).toBe(false);
 	});
@@ -98,22 +104,45 @@ describe("Sheet submit guard", () => {
 		);
 		const close = vi.fn();
 		const first = g.run(submit, close);
-		await g.run(submit, close);
+		expect(await g.run(submit, close)).toEqual({ status: "ignored" });
 		finish();
 		await first;
 		expect(submit).toHaveBeenCalledTimes(1);
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 
-	it("a closing sheet ignores Save until it opens again", async () => {
+	it("Esc or Cancel while saving waits, so a false result is not dropped", async () => {
+		const g = new SubmitGuard();
+		let finish: (v: boolean) => void = () => {};
+		const run = g.run(
+			() => new Promise<boolean>((r) => (finish = r)),
+			() => {},
+		);
+		expect(g.canClose).toBe(false);
+		finish(false);
+		expect(await run).toEqual({ status: "stayed" });
+		expect(g.canClose).toBe(true);
+	});
+
+	it("a closed sheet ignores Save until it opens again", async () => {
 		const g = new SubmitGuard();
 		const submit = vi.fn();
-		g.markClosing();
-		await g.run(submit, () => {});
-		expect(submit).not.toHaveBeenCalled();
-		g.reset();
+		g.syncOpen(false);
+		expect(await g.run(submit, () => {})).toEqual({ status: "ignored" });
+		g.syncOpen(true);
 		await g.run(submit, () => {});
 		expect(submit).toHaveBeenCalledTimes(1);
+	});
+
+	it("a parent that keeps the sheet open after Save lifts the closing state", async () => {
+		const g = new SubmitGuard();
+		await g.run(
+			() => undefined,
+			() => {},
+		);
+		expect(g.blocked).toBe(true);
+		g.syncOpen(true);
+		expect(g.blocked).toBe(false);
 	});
 
 	it("reports busy while the submit runs", async () => {
@@ -128,31 +157,54 @@ describe("Sheet submit guard", () => {
 	});
 });
 
+const el = (connected = true) => ({ isConnected: connected, focus: vi.fn() });
+
 describe("Sheet focus return", () => {
 	it("returns focus to the opener while it is on the page", () => {
-		const opener = { isConnected: true, focus: vi.fn() };
+		const opener = el();
 		expect(returnFocus(opener)).toBe(true);
 		expect(opener.focus).toHaveBeenCalledWith({ preventScroll: true });
 	});
 
-	it("does nothing when the opener is gone", () => {
-		const gone = { isConnected: false, focus: vi.fn() };
-		expect(returnFocus(gone)).toBe(false);
-		expect(returnFocus(null)).toBe(false);
-		expect(gone.focus).not.toHaveBeenCalled();
+	it("returnFocusTo wins over the opener", () => {
+		const explicit = el();
+		const opener = el();
+		returnFocus(explicit, opener);
+		expect(explicit.focus).toHaveBeenCalled();
+		expect(opener.focus).not.toHaveBeenCalled();
+	});
+
+	it("a menu item that unmounted falls back to its menu's trigger", () => {
+		const trigger = el();
+		const item = {
+			...el(false),
+			closest: (s: string) =>
+				s === '[role="menu"]' ? { id: "radix-7" } : null,
+		};
+		const lookup = vi.fn((sel: string) =>
+			sel === '[aria-controls="radix-7"]' ? trigger : null,
+		);
+		const fallback = menuTriggerOf(item, lookup);
+		expect(fallback).toBe(trigger);
+		returnFocus(undefined, item, fallback);
+		expect(item.focus).not.toHaveBeenCalled();
+		expect(trigger.focus).toHaveBeenCalled();
+	});
+
+	it("an opener outside a menu has no fallback; nothing on the page, no focus", () => {
+		expect(menuTriggerOf({ closest: () => null }, () => el())).toBeNull();
+		expect(menuTriggerOf(null, () => el())).toBeNull();
+		expect(returnFocus(null, el(false), undefined)).toBe(false);
 	});
 });
 
 describe("Sheet detents (phone)", () => {
-	it("drag up grows medium to large; a small drag keeps the detent", () => {
-		expect(nextDetent("medium", -DETENT_DRAG.up)).toBe("large");
-		expect(nextDetent("medium", -10)).toBe("medium");
-		expect(nextDetent("large", 40)).toBe("large");
-	});
-
-	it("drag down shrinks large to medium, then closes", () => {
-		expect(nextDetent("large", DETENT_DRAG.down)).toBe("medium");
-		expect(nextDetent("medium", DETENT_DRAG.down)).toBe("close");
+	it("medium and large are the kit's 52% and 94% snap points", () => {
+		expect(SNAP_POINTS).toEqual([0.52, 0.94]);
+		expect(DETENT_SNAP.medium).toBe(0.52);
+		expect(detentOf(0.52)).toBe("medium");
+		expect(detentOf(0.94)).toBe("large");
+		expect(detentOf(null)).toBe("large");
 	});
 });
 

@@ -1,7 +1,8 @@
 {
 	"sheet": {
 		"close": "Close",
-		"cancel": "Cancel"
+		"cancel": "Cancel",
+		"failed": "Couldn't save. Try again."
 	},
 	"toast": {
 		"undo": "Undo",

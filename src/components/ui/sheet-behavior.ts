@@ -1,7 +1,7 @@
 /**
  * The Sheet's behavior as plain functions, so it is tested without a DOM:
- * which key submits, when Save is ignored, where focus returns and how the
- * phone detent follows the grabber. ui/sheet.tsx wires these to React.
+ * which key submits, when Save is ignored, where focus returns and which
+ * snap point each detent uses. ui/sheet.tsx wires these to React.
  */
 
 export type SheetDetent = "medium" | "large";
@@ -9,6 +9,17 @@ export type SheetDetent = "medium" | "large";
 /** A sheet submit may return false to stay open (a validation error). */
 // biome-ignore lint/suspicious/noConfusingVoidType: a submit that returns nothing closes the sheet
 export type SheetSubmitResult = boolean | undefined | void;
+
+/** Phone detents as vaul snap points: the kit's 52% and 94% sheet heights. */
+export const DETENT_SNAP: Record<SheetDetent, number> = {
+	medium: 0.52,
+	large: 0.94,
+};
+export const SNAP_POINTS = [DETENT_SNAP.medium, DETENT_SNAP.large];
+
+export function detentOf(snap: number | string | null): SheetDetent {
+	return snap === DETENT_SNAP.medium ? "medium" : "large";
+}
 
 type KeyLike = {
 	key: string;
@@ -48,9 +59,17 @@ export function isSingleLineField(el: {
 	);
 }
 
+export type SubmitOutcome =
+	| { status: "closed" }
+	| { status: "stayed" }
+	| { status: "failed"; error: unknown }
+	| { status: "ignored" };
+
 /**
- * One submit at a time, and none once the sheet is closing: a second Enter
- * or a click on Save during the close animation does not save twice.
+ * One submit at a time, none while the sheet is closing, and no close while
+ * a submit runs (Esc or Cancel then would drop a validation result).
+ * Closing starts when a submit succeeds and is confirmed by the open prop:
+ * a parent that keeps the sheet open (unsaved changes) lifts it again.
  */
 export class SubmitGuard {
 	private busy = false;
@@ -60,38 +79,39 @@ export class SubmitGuard {
 		return this.busy || this.closing;
 	}
 
-	/** Called when the sheet opens again. */
-	reset(): void {
-		this.busy = false;
-		this.closing = false;
+	/** Esc, Cancel, the scrim and the close button ask first. */
+	get canClose(): boolean {
+		return !this.busy;
 	}
 
-	markClosing(): void {
-		this.closing = true;
+	/** Called on every render with the open prop. */
+	syncOpen(open: boolean): void {
+		if (open && !this.busy) this.closing = false;
+		if (!open) this.closing = true;
 	}
 
-	/**
-	 * Runs the submit. Closes unless it returned false or threw; a throw
-	 * keeps the sheet open so the caller's error toast has its context.
-	 */
+	/** Runs the submit; a throw keeps the sheet open and reports it. */
 	async run(
 		submit: () => SheetSubmitResult | Promise<SheetSubmitResult>,
 		close: () => void,
 		onBusy?: (busy: boolean) => void,
-	): Promise<void> {
-		if (this.blocked) return;
+	): Promise<SubmitOutcome> {
+		if (this.blocked) return { status: "ignored" };
 		this.busy = true;
 		onBusy?.(true);
+		let result: SheetSubmitResult;
 		try {
-			const result = await submit();
-			if (result !== false) {
-				this.closing = true;
-				close();
-			}
+			result = await submit();
+		} catch (error) {
+			return { status: "failed", error };
 		} finally {
 			this.busy = false;
 			onBusy?.(false);
 		}
+		if (result === false) return { status: "stayed" };
+		this.closing = true;
+		close();
+		return { status: "closed" };
 	}
 }
 
@@ -99,29 +119,31 @@ type Focusable = { isConnected: boolean; focus: (o?: FocusOptions) => void };
 
 /**
  * Radix returns focus only to a Dialog.Trigger, and our sheets open from
- * menus, rows and shortcuts. The sheet remembers what had focus when it
- * opened and returns there, if that element is still on the page.
+ * menus, rows and shortcuts. Focus goes to the first of these still on the
+ * page: the caller's returnFocusTo, the element that had focus when the
+ * sheet opened, then the trigger of the menu it was in (a menu item
+ * unmounts when its menu closes).
  */
-export function returnFocus(opener: Focusable | null | undefined): boolean {
-	if (!opener?.isConnected) return false;
-	opener.focus({ preventScroll: true });
+export function returnFocus(
+	...candidates: (Focusable | null | undefined)[]
+): boolean {
+	const target = candidates.find((c) => c?.isConnected);
+	if (!target) return false;
+	target.focus({ preventScroll: true });
 	return true;
 }
 
-/** Pixels the grabber must travel before the detent changes. */
-export const DETENT_DRAG = { up: 48, down: 96 } as const;
+type MenuLike = { id?: string } | null;
+type Lookup = (selector: string) => Focusable | null;
 
-/**
- * The grabber: drag up to grow a medium sheet to large, drag down to shrink
- * a large sheet to medium, or to close a medium one. `dy` is positive down.
- */
-export function nextDetent(
-	current: SheetDetent,
-	dy: number,
-): SheetDetent | "close" {
-	if (dy <= -DETENT_DRAG.up) return "large";
-	if (dy >= DETENT_DRAG.down) return current === "large" ? "medium" : "close";
-	return current;
+/** The button that opened the menu an element sits in (Radix sets aria-controls). */
+export function menuTriggerOf(
+	el: { closest?: (s: string) => MenuLike } | null,
+	lookup: Lookup,
+): Focusable | null {
+	const menu = el?.closest?.('[role="menu"]');
+	if (!menu?.id) return null;
+	return lookup(`[aria-controls="${menu.id}"]`);
 }
 
 /**

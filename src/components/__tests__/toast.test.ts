@@ -12,9 +12,14 @@ const sonner = vi.hoisted(() => {
 });
 vi.mock("sonner", () => ({ toast: sonner }));
 
+let phone = false;
+vi.stubGlobal("window", {
+	matchMedia: () => ({ matches: phone }),
+});
+
 const {
 	MAX_TOASTS,
-	openSheetCount,
+	sheetAlertFor,
 	showToast,
 	ToastQueue,
 	toastPosition,
@@ -66,16 +71,58 @@ describe("toast position", () => {
 		expect(toastPosition(false, 2)).toBeUndefined();
 	});
 
-	it("counts open sheets; release is idempotent", () => {
-		const before = openSheetCount();
-		const a = trackOpenSheet();
-		const b = trackOpenSheet();
-		expect(openSheetCount()).toBe(before + 2);
-		a();
-		a();
-		expect(openSheetCount()).toBe(before + 1);
-		b();
-		expect(openSheetCount()).toBe(before);
+	it("on a phone, a new toast goes to the top while a sheet is open", () => {
+		phone = true;
+		const sheet = trackOpenSheet();
+		showToast("Expense added", copy);
+		expect(lastOptions(sonner.success).position).toBe("top-center");
+		sheet.release();
+		showToast("Expense added", copy);
+		expect(lastOptions(sonner.success).position).toBeUndefined();
+		phone = false;
+	});
+
+	it("toasts already showing move when a sheet opens and when it closes", () => {
+		phone = true;
+		const id = showToast("Payment recorded", copy);
+		vi.clearAllMocks();
+		const sheet = trackOpenSheet();
+		expect(sonner.success).toHaveBeenCalledWith(
+			"Payment recorded",
+			expect.objectContaining({ id, position: "top-center" }),
+		);
+		sheet.release();
+		sheet.release();
+		expect(sonner.success).toHaveBeenLastCalledWith(
+			"Payment recorded",
+			expect.objectContaining({ id, position: undefined }),
+		);
+		// Each visible toast (up to three) moves once per change.
+		const moves = sonner.success.mock.calls.filter(
+			(c) => (c[1] as { id?: unknown })?.id === id,
+		);
+		expect(moves).toHaveLength(2);
+		phone = false;
+	});
+});
+
+describe("errors inside a modal sheet", () => {
+	it("an error toast is announced in the top sheet only, until it closes", () => {
+		const below = trackOpenSheet();
+		const top = trackOpenSheet();
+		showToast("Couldn't save the expense", copy, { kind: "error" });
+		expect(sheetAlertFor(top.id)).toBe("Couldn't save the expense");
+		expect(sheetAlertFor(below.id)).toBeNull();
+		top.release();
+		expect(sheetAlertFor(top.id)).toBeNull();
+		below.release();
+	});
+
+	it("a success toast is not announced in the sheet", () => {
+		const sheet = trackOpenSheet();
+		showToast("Expense added", copy);
+		expect(sheetAlertFor(sheet.id)).toBeNull();
+		sheet.release();
 	});
 });
 
