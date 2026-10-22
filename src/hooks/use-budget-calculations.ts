@@ -5,6 +5,35 @@ interface UseBudgetCalculationsProps {
 	budgets: Budget[];
 }
 
+type HomeFigures = Pick<
+	Budget,
+	"actualSpendInHome" | "effectiveAmountInHome"
+>;
+
+/**
+ * Allocated and spent for a group of budgets, in the home currency.
+ *
+ * Budgets can be in different currencies, so their own amounts must never be
+ * added together. Each budget carries home-currency figures the server
+ * computed under the totals rule (~/lib/money sumIn with the period's rate):
+ * an amount already in the home currency counts as entered, any other is
+ * converted, and a missing rate fails with MissingRateError instead of
+ * becoming 1. Allocation is the effective amount, which is the limit for a
+ * fixed budget and the pegged figure for a pegged one.
+ */
+export function budgetTotalsInHome(budgets: readonly HomeFigures[]): {
+	allocated: number;
+	spent: number;
+} {
+	let allocated = 0;
+	let spent = 0;
+	for (const budget of budgets) {
+		allocated += Number(budget.effectiveAmountInHome);
+		spent += Number(budget.actualSpendInHome);
+	}
+	return { allocated, spent };
+}
+
 export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 	return useMemo(() => {
 		const validBudgets = budgets.filter((b) => b.category !== null);
@@ -33,7 +62,7 @@ export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 				(b) =>
 					!b.pegToActual && (b.type === "FIXED" || (!b.type && !b.pegToActual)),
 			)
-			.sort((a, b) => b.actualSpend - a.actualSpend);
+			.sort((a, b) => b.actualSpendInHome - a.actualSpendInHome);
 
 		const fixedBudgets = validBudgets
 			.filter(
@@ -43,7 +72,7 @@ export function useBudgetCalculations({ budgets }: UseBudgetCalculationsProps) {
 					(b.type === "PEG_TO_LAST_MONTH" && b.actualSpend > 0) ||
 					(!b.type && b.pegToActual),
 			)
-			.sort((a, b) => b.actualSpend - a.actualSpend);
+			.sort((a, b) => b.actualSpendInHome - a.actualSpendInHome);
 
 		const overBudgetCategories = validBudgets.filter(
 			(b) =>
