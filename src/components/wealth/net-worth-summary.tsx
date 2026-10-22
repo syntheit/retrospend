@@ -9,7 +9,7 @@ import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { formatPercent } from "~/lib/currency-format";
 import { maskAmount } from "~/lib/masking";
-import { netWorthPercentChange } from "~/lib/wealth-stats";
+import { netWorthChange, netWorthPercentChange } from "~/lib/wealth-stats";
 
 interface NetWorthSummaryProps {
 	totalNetWorth: number;
@@ -20,7 +20,8 @@ interface NetWorthSummaryProps {
 	homeCurrency: string;
 	isPrivacyMode?: boolean;
 	averageMonthlySpend?: number;
-	netWorth30DaysAgo?: number;
+	/** Null or missing when there is no history 30 days back. */
+	netWorth30DaysAgo?: number | null;
 }
 
 export function NetWorthSummary({
@@ -32,7 +33,7 @@ export function NetWorthSummary({
 	homeCurrency,
 	isPrivacyMode = false,
 	averageMonthlySpend,
-	netWorth30DaysAgo = 0,
+	netWorth30DaysAgo = null,
 }: NetWorthSummaryProps) {
 	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
@@ -42,28 +43,29 @@ export function NetWorthSummary({
 		[totalNetWorth, totalAssets, totalLiabilities],
 	);
 
-	const absoluteChange = totalNetWorth - netWorth30DaysAgo;
-	// No percent without an earlier value to compare against.
+	// No change without a baseline 30 days ago, and no percent when it was 0.
+	const absoluteChange = netWorthChange(totalNetWorth, netWorth30DaysAgo);
 	const percentChange = netWorthPercentChange(totalNetWorth, netWorth30DaysAgo);
 
-	const isPositive = absoluteChange >= 0;
+	const isPositive = (absoluteChange ?? 0) >= 0;
 	const trendColor = isPositive ? "text-emerald-500" : "text-red-500";
 	const trendSign = isPositive ? "+" : "";
 
-	const netWorthTrend = (
-		<div className="mt-1 flex items-center gap-1.5 font-medium text-sm">
-			{isPrivacyMode ? (
-				<span className="text-muted-foreground">••••••</span>
-			) : (
-				<span className={trendColor}>
-					{formatCurrency(absoluteChange, homeCurrency, "exceptZero")}
-					{percentChange !== null &&
-						` (${trendSign}${formatPercent(percentChange)})`}
-				</span>
-			)}
-			<span className="font-normal text-muted-foreground">{t("past30Days")}</span>
-		</div>
-	);
+	const netWorthTrend =
+		absoluteChange === null ? undefined : (
+			<div className="mt-1 flex items-center gap-1.5 font-medium text-sm">
+				{isPrivacyMode ? (
+					<span className="text-muted-foreground">••••••</span>
+				) : (
+					<span className={trendColor}>
+						{formatCurrency(absoluteChange, homeCurrency, "exceptZero")}
+						{percentChange !== null &&
+							` (${trendSign}${formatPercent(percentChange)})`}
+					</span>
+				)}
+				<span className="font-normal text-muted-foreground">{t("past30Days")}</span>
+			</div>
+		);
 
 	const runwayMonths = useMemo(() => {
 		if (totalLiquidAssets === 0) return 0;
