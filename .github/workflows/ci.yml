@@ -17,6 +17,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-used-for-anything
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The UI ratchet compares its baseline with the merge base on main.
+          fetch-depth: 0
 
       # Version comes from packageManager in package.json (pnpm@10.25.0)
       - uses: pnpm/action-setup@v4
