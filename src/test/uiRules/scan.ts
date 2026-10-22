@@ -1,6 +1,6 @@
-// Shared by the ratchet test and the ratchet script: walk src/ and messages/,
-// apply allow.json, count hits per rule and file, read and write
-// baseline.json, and compare both with the merge base with main (git).
+// Shared by the ratchet test and the ratchet script: walk src/ and
+// packages/i18n/messages, apply allow.json, count hits per rule and file, read
+// and write baseline.json, and compare both with the merge base with main (git).
 // Limits: see the top of rules.ts.
 import { execFileSync } from "node:child_process";
 import {
@@ -31,7 +31,7 @@ function walkDir(dir: string, out: string[]) {
 export function sourceFiles(root = REPO_ROOT): string[] {
 	const all: string[] = [];
 	walkDir(join(root, "src"), all);
-	walkDir(join(root, "messages"), all);
+	walkDir(join(root, "packages/i18n/messages"), all);
 	return all
 		.map((p) => relative(root, p).split("\\").join("/"))
 		.filter(inScope)
@@ -182,8 +182,19 @@ export function ratchetGuard(
 				"no merge base with main or origin/main (a shallow clone? fetch the full history)",
 		};
 	const renames: [string, string][] = [];
+	// packages: files moved out of src/ and messages/ into the workspace
+	// packages keep their counts.
 	for (const l of (
-		git(["diff", "-M", "--name-status", base, "--", "src", "messages"]) ?? ""
+		git([
+			"diff",
+			"-M",
+			"--name-status",
+			base,
+			"--",
+			"src",
+			"messages",
+			"packages",
+		]) ?? ""
 	).split("\n")) {
 		const [status, from, to] = l.split("\t");
 		if (status?.startsWith("R") && from && to) renames.push([from, to]);

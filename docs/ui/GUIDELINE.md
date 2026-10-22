@@ -345,7 +345,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 - US English, sentence case, one short sentence at most. Show a rule in the interface instead of explaining it.
 - No em dashes anywhere in UI copy, code strings or message catalogs (UI-120). Use a comma, colon, period or parentheses.
 - A missing value is a short muted word ("None", "No rate yet", "Not set"), never a dash glyph.
-- Copy lives in `messages/*.json` (next-intl). English is the source; every locale follows the same rules. Literal English in JSX (a text child, or a `placeholder`, `title`, `aria-label`, `alt` or `label` prop) fails UI-124: render it with `t()`.
+- Copy lives in `packages/i18n/messages` (next-intl). English is the source; every locale follows the same rules. New keys go in a feature file, `messages/<locale>/<feature>.json`, which becomes the `<feature>` namespace; add it for every locale. Literal English in JSX (a text child, or a `placeholder`, `title`, `aria-label`, `alt` or `label` prop) fails UI-124: render it with `t()`.
 
 | Use | Not |
 |---|---|
@@ -447,7 +447,7 @@ Build these; do not build the alternates.
 
 ## 18. The ratchet
 
-`src/test/uiRules` runs every [auto] item of the checklist over `src` and `messages` in `pnpm check`. Today's violations are recorded per rule and file in `baseline.json`.
+`src/test/uiRules` runs every [auto] item of the checklist over `src` and `packages/i18n/messages` in `pnpm check`. Today's violations are recorded per rule and file in `baseline.json`.
 
 - **Above the baseline fails** with file and line: fix the code.
 - **Below the baseline only warns.** Run `pnpm ui:ratchet` to lower it and commit the result with the fix. A merge that fixes something on two branches never turns main red; the review gate (IMPLEMENTATION §6.3) runs `pnpm ui:ratchet` after each merge into a segment or main and commits the tighter baseline.

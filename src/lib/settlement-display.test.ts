@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import en from "../../messages/en.json";
+import en from "@retrospend/i18n/messages/en.json";
 import {
 	oppositeCurrencyBalances,
 	type SettlementEntryView,

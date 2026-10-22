@@ -70,6 +70,14 @@
 	},
 	"overrides": [
 		{
+			// The catalogs are checked by pnpm i18n:check and the uiRules ratchet.
+			// They were never linted before they moved under packages/.
+			"includes": ["packages/i18n/messages/**"],
+			"linter": {
+				"enabled": false
+			}
+		},
+		{
 			// @retrospend/domain runs on the server, the web and React Native.
 			// packages/domain/boundary.test.ts enforces the same rule in tests.
 			"includes": ["packages/domain/src/**"],

@@ -26,7 +26,8 @@ describe("scope", () => {
 		expect(inScope("src/test/uiRules/rules.ts")).toBe(false);
 		expect(inScope("src/types/x.d.ts")).toBe(false);
 		expect(inScope("src/lib/a.ts")).toBe(true);
-		expect(inScope("messages/en.json")).toBe(true);
+		expect(inScope("packages/i18n/messages/en.json")).toBe(true);
+		expect(inScope("packages/i18n/messages/en/budget.json")).toBe(true);
 		expect(inScope("docs/ui/design.json")).toBe(false);
 	});
 	it("throws with the file path on a parse error", () => {
@@ -179,7 +180,7 @@ describe("decoration (R31)", () => {
 	});
 	it("UI-035 emoji", () => {
 		hit("UI-035", `export const A = () => <p>Done 🎉</p>;`);
-		hit("UI-035", `{\n  "a": "Nice 🚀"\n}`, "messages/en.json");
+		hit("UI-035", `{\n  "a": "Nice 🚀"\n}`, "packages/i18n/messages/en.json");
 		miss("UI-035", `export const A = () => <p>© 2026 Retrospend ™</p>;`);
 	});
 });
@@ -312,7 +313,7 @@ describe("wording", () => {
 	it("UI-120 em dashes", () => {
 		hit("UI-120", `export const A = () => <p>Paid ${EM} thanks</p>;`);
 		hit("UI-120", `export const s = "a ${EM} b";`);
-		hit("UI-120", `{\n  "a": "x ${EM} y"\n}`, "messages/es.json");
+		hit("UI-120", `{\n  "a": "x ${EM} y"\n}`, "packages/i18n/messages/es.json");
 		miss("UI-120", `// a ${EM} b\nexport const s = "a, b";`);
 		miss("UI-120", `console.log("debug ${EM} x");`);
 	});
@@ -323,7 +324,16 @@ describe("wording", () => {
 		miss("UI-120", `export const A = () => <p>Paid &ndash; thanks</p>;`);
 	});
 	it("UI-121 glossary", () => {
-		hit("UI-121", `{\n  "a": "Log in to continue"\n}`, "messages/en.json");
+		hit(
+			"UI-121",
+			`{\n  "a": "Log in to continue"\n}`,
+			"packages/i18n/messages/en.json",
+		);
+		hit(
+			"UI-121",
+			`{\n  "a": "Log in to continue"\n}`,
+			"packages/i18n/messages/en/budget.json",
+		);
 		hit("UI-121", `export const A = () => <p>Add a participant</p>;`);
 		hit(
 			"UI-121",
@@ -332,7 +342,7 @@ describe("wording", () => {
 		miss(
 			"UI-121",
 			`{\n  "a": "Iniciar sesión, participante"\n}`,
-			"messages/es.json",
+			"packages/i18n/messages/es.json",
 		);
 		miss("UI-121", `export const ROUTE = "/login";`);
 	});

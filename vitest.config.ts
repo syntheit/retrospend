@@ -9,6 +9,10 @@ export default defineConfig({
 	test: {
 		environment: "node",
 		include: ["src/**/*.test.ts", "packages/*/**/*.test.ts"],
+		// The module cache keys a file by its own content, so it would keep a
+		// stale import.meta.glob result and miss new message files
+		// (packages/i18n/src/load.ts). Turning it off costs no measurable time.
+		fsModuleCache: false,
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "html", "lcov"],

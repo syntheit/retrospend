@@ -92,7 +92,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-111 [review] Shared surfaces (balances, Needs you, verifications) refresh after their mutations and on a poll or push; the mutation's edges are in the one dependency graph. §12 R16
 
 ## Wording
-- UI-120 [auto] No em dashes in UI text: string literals, JSX text, `messages/*.json`, including the `&mdash;` and `&#8212;` entities. §13 R11
+- UI-120 [auto] No em dashes in UI text: string literals, JSX text, `packages/i18n/messages`, including the `&mdash;` and `&#8212;` entities. §13 R11
 - UI-121 [auto] No words the glossary replaces in English copy (translation keys such as `t("receivable")` are not copy) (log in, log out, login, participant, shadow profile, square up, pay off, receivable, payable, portfolio). §13 R11
 - UI-124 [auto] No literal English in JSX: text children, string children (`{"Save"}`, `{ok ? "Yes" : "No"}`) and the copy props `placeholder`, `title`, `aria-label`, `alt`, `label`, `description`, `tooltip`, `heading` go through `t()`. Code samples in `<code>`, `<pre>`, `<kbd>` and words without a lowercase letter (`USD`) are not counted. §13 R11
 - UI-122 [review] US English, sentence case, at most one short sentence; the interface shows the rule instead of explaining it. §13 R11
