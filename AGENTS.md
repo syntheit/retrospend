@@ -21,10 +21,10 @@ Retrospend has one design language, decided with the owner. These rules override
 7. **Money actions preview and undo** (§7, R30, R15). Every action that changes money shows what will change and what will not before Save, and ends with an Undo toast.
 8. **Faces** (§8). A set of people shows faces (AvatarStack); pickers and filter menus carry identity (face, cover, bare category glyph, group dot).
 9. **Motion** (§11). Durations from the tokens (120 state, 160 menus, 200 rows, 220 sheets and tabs). Animate state changes only. No bounce or overshoot, never on money. Reduced motion: opacity only.
-10. **Words** (§13). US English, sentence case, one short sentence at most, the glossary's words (Expense, Person, Settle up, Sign in, Recurring expense, Not planned yet). No em dashes anywhere: UI copy, message catalogs, code strings, docs, comments.
+10. **Words** (§13). US English, sentence case, one short sentence at most, the glossary's words (Expense, Person, Settle up, Sign in, Recurring expense, Not planned yet). No em dashes anywhere: UI copy, message catalogs, code strings, docs, comments. The one exception is the Next.js block at the top of this file, which `next dev` writes and rewrites; leave it as it is.
 11. **Accessibility floor** (§14). Token contrast is tested; keep focus visible (never drop an outline without a focus-visible replacement); every icon-only button has an `aria-label` and a tooltip; status never by color alone; 44pt touch targets on phones.
 12. **Platforms** (§10, §15). Desktop dialogs, phone bottom sheets with detents, native chrome on iOS (HIG, glass on chrome only) and Android (Material 3). Native apps read `docs/ui/design.json` (hex values) instead of copying numbers.
-13. **The ratchet** (`src/test/uiRules`, runs in `pnpm check`). Never raise `baseline.json`, add to `allow.json`, or edit GUIDELINE or CHECKLIST to make a check pass. When you fix violations, lower the baseline with `pnpm ui:ratchet` in the same commit.
+13. **The ratchet** (§18, `src/test/uiRules`, runs in `pnpm check`). Never raise `baseline.json`, add to `allow.json`, or edit GUIDELINE or CHECKLIST to make a check pass; a raise fails unless a commit says `ui-ratchet-raise: <reason>`, and that line is only for a new or fixed rule. When you fix violations, lower the baseline with `pnpm ui:ratchet` in the same commit. When you move a file, run `pnpm ui:ratchet --rename <old> <new>`.
 
 ### Before you touch UI
 

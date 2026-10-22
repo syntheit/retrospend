@@ -17,7 +17,7 @@ How to do each thing. Strict and simple. When this file and older code disagree,
 4. The server computes every money figure; the client formats it. [R9]
 5. Reuse a registered component or propose a new one. Never build a lookalike. [R18]
 6. Every money action shows what it will change before it changes it, and can be undone after. [R30, R15]
-7. Familiar on every platform: same meaning, same data visuals, same numbers; native chrome and input. (PRODUCT.md)
+7. Familiar on every platform: web, iPhone, iPad and Android share the meaning, the data visuals and the numbers; chrome and input are native to each.
 
 **The tells we removed (do not bring them back):** tile rows; boxes standing in for hierarchy; the same fact repeated; color without a job; pill, button and control soup; UI that narrates itself; no type scale; hardcoded money and locale; phone screens that are reflowed desktop; accent stripes, sparkle icons, gradients, glows; ragged alignment. [PLAN §1, R31]
 
@@ -302,7 +302,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 - Ranked lists of categories: bars in one accent fill, the category glyph carries identity. No rainbow, no stacked 100% bar that repeats a ranked list.
 - Attention (amber) only for over budget; positive only for money in.
 - Chart kinds: pace line (spent vs plan), monthly bars, ranked bars, net worth area, allocation bar (one 100% bar + legend rows). Hover shows a tooltip with date and value; gaps are null, never zero.
-- Charts look the same on every platform (PRODUCT.md: shared data visualizations).
+- Charts look the same on every platform: the native apps draw the same chart kinds from the same tokens and numbers.
 
 ## 10. Sheets, dialogs and menus by platform
 
@@ -337,6 +337,8 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 | Toast success | Object + past participle: "Expense added", "Payment recorded" + Undo |
 | Toast failure | "Couldn't save the expense" |
 | Not mocked or not supported | Say so. Never "Saved" when nothing changed |
+
+**Fresh shared surfaces** [R16]: balances, verifications and Needs you are shared between people, so they refresh after their own mutations and on a push or a poll, never only on reload. One dependency graph declares which mutation invalidates which surface; a new mutation adds its edges there instead of refreshing by hand (UI-111).
 
 ## 13. Wording and glossary [R11]
 
@@ -443,6 +445,16 @@ Build these; do not build the alternates.
 | Glass on rows, charts or numbers | [R17] |
 | A new primitive, token, color or icon style without owner sign-off | Drift [R18] |
 
-## 18. Switch-over
+## 18. The ratchet
+
+`src/test/uiRules` runs every [auto] item of the checklist over `src` and `messages` in `pnpm check`. Today's violations are recorded per rule and file in `baseline.json`.
+
+- **Above the baseline fails** with file and line: fix the code.
+- **Below the baseline only warns.** Run `pnpm ui:ratchet` to lower it and commit the result with the fix. A merge that fixes something on two branches never turns main red; the review gate (IMPLEMENTATION §6.3) runs `pnpm ui:ratchet` after each merge into a segment or main and commits the tighter baseline.
+- **Moved a file?** `pnpm ui:ratchet --rename <old> <new>` carries its counts and `allow.json` entries over (folders: end both paths with `/`).
+- **Raising is guarded.** The test compares `baseline.json` and `allow.json` with their copies at the merge base with main. A higher count or a new allow entry fails unless a commit message on the branch has the line `ui-ratchet-raise: <reason>` (a new rule, a rule fix that finds old violations, a move git does not see as a rename). Renames git detects carry their counts along. Without git or a merge base (a shallow clone) the check is skipped with a warning, so CI checks out the full history.
+- Never edit this file or the checklist to make a check pass.
+
+## 19. Switch-over
 
 Today's app still runs on the legacy shadcn theme in `globals.css`. The design tokens sit alongside it, so nothing changed visually. The order to move pages onto them, and what changes when the legacy theme goes, is in [GAPS.md](GAPS.md) §3.

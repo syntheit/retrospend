@@ -2,7 +2,7 @@
 
 Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (no money action)`, `UI-052 fail src/app/(dashboard)/people/page.tsx:120`. Never skip an item silently.
 
-- **[auto]**: a source scan enforces it (`src/test/uiRules`, runs in `pnpm check`). Existing violations are recorded per file in `baseline.json`; the count can only go down. Fix the code; never raise the baseline or add to `allow.json` to make a check pass.
+- **[auto]**: a source scan enforces it (`src/test/uiRules`, runs in `pnpm check`). Existing violations are recorded per file in `baseline.json`; the count can only go down (GUIDELINE §18). Fix the code; never raise the baseline or add to `allow.json` to make a check pass.
 - **[review]**: you (and the reviewer) check it by looking at the screen and the diff.
 - Each item names its GUIDELINE section (§) and PLAN rule (R).
 
@@ -89,7 +89,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 
 ## States
 - UI-110 [review] Empty (one line + one action), filtered empty (Clear filters), loading (skeleton in place) and error (Couldn't + Retry) exist for every list and number. §12 R14
-- UI-111 [review] Shared surfaces (balances, Needs you, verifications) refresh after their mutations and on a poll or push. R16
+- UI-111 [review] Shared surfaces (balances, Needs you, verifications) refresh after their mutations and on a poll or push; the mutation's edges are in the one dependency graph. §12 R16
 
 ## Wording
 - UI-120 [auto] No em dashes in UI text: string literals, JSX text, `messages/*.json`, including the `&mdash;` and `&#8212;` entities. §13 R11
@@ -105,7 +105,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-133 [review] Targets: 24px on desktop web, 44pt iOS, 48dp Android. §14 §15
 
 ## Process
-- UI-140 [auto] The ratchet passes: no rule and file above `baseline.json`; fixes lowered with `pnpm ui:ratchet`; `allow.json` entries carry a real reason. Before merging a branch: `pnpm ui:ratchet --check-base <main's baseline.json>`.
+- UI-140 [auto] The ratchet passes: no rule and file above `baseline.json` (a count below it only warns: lower it with `pnpm ui:ratchet` in the same commit); a moved file's counts carried over with `pnpm ui:ratchet --rename <old> <new>`; `allow.json` entries carry a real reason; `baseline.json` and `allow.json` not raised above the merge base with main unless a commit says `ui-ratchet-raise: <reason>`. The review gate runs `pnpm ui:ratchet` after each merge into a segment or main and commits the tighter baseline. §18
 - UI-141 [review] Before and after screenshots of every changed screen: 1440 and 390, light and dark.
 - UI-142 [review] Results reported by ID in the final message or PR.
 
