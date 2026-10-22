@@ -13,7 +13,7 @@ import {
 	previousPeriod,
 	visibleMonths,
 } from "./date-range-model";
-import { addMonths, type IsoDate } from "./dates";
+import { addMonths, firstOfMonth, type IsoDate } from "./dates";
 import { useDayFocus } from "./month-grid";
 
 export type DateRangeResult = DateRangeValue & { compare: boolean };
@@ -66,7 +66,8 @@ export function useRangeDraft(p: {
 		focusContainer: focus.container,
 		hovering: range.from && !range.to ? setHover : undefined,
 		page: (n: number) => setLeft((l) => addMonths(l, n)),
-		jumpTo: (lastMonth: IsoDate) => setLeft(addMonths(lastMonth, -(count - 1))),
+		/** The month jump names the left month, as in the kit. */
+		jumpTo: (firstMonth: IsoDate) => setLeft(firstOfMonth(firstMonth)),
 		choose: (r: DateRangeValue) => {
 			setRange(r);
 			if (r.to) show(r.to);

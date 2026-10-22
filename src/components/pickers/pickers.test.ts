@@ -23,6 +23,7 @@ import {
 	monthCells,
 	moveDay,
 	parseTypedDate,
+	readTypedDate,
 	weekdayOrder,
 } from "./dates";
 import { fold, pickerFilter, splitRecent } from "./match";
@@ -83,6 +84,16 @@ describe("dates", () => {
 		expect(digitOrderOf("MM/dd/yyyy")).toBe("mdy");
 		expect(digitOrderOf("dd/MM/y")).toBe("dmy");
 		expect(digitOrderOf("dd.MM.y")).toBe("dmy");
+	});
+
+	it("reads the medium form shown at rest, in the field's locale", () => {
+		const en = getDateFnsLocale("en");
+		const es = getDateFnsLocale("es-AR");
+		expect(readTypedDate("Oct 5, 2026", "mdy", en)).toBe("2026-10-05");
+		expect(readTypedDate("10/5/2026", "mdy", en)).toBe("2026-10-05");
+		expect(readTypedDate("5 oct 2026", "dmy", es)).toBe("2026-10-05");
+		expect(readTypedDate("", "mdy", en)).toBe("");
+		expect(readTypedDate("next week", "mdy", en)).toBeNull();
 	});
 
 	it("reads typed dates in the field's digit order", () => {

@@ -5,6 +5,8 @@
  * (the user's time zone), never from the clock here.
  */
 
+import { isValid, type Locale, parse } from "date-fns";
+
 export type IsoDate = string;
 export type WeekStart = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -125,6 +127,24 @@ export function moveDay(
 		default:
 			return null;
 	}
+}
+
+/**
+ * A typed date in any form the field shows: the numeric edit form (or ISO),
+ * or the medium form shown at rest ("Oct 5, 2026", "5 oct 2026"), read with
+ * the same date-fns locale that wrote it.
+ */
+export function readTypedDate(
+	text: string,
+	order: DigitOrder,
+	locale: Locale,
+): IsoDate | "" | null {
+	const typed = parseTypedDate(text, order);
+	if (typed !== null) return typed;
+	const d = parse(text.trim(), "PP", new Date(2000, 0, 1, 12), { locale });
+	if (!isValid(d)) return null;
+	const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+	return isIsoDate(iso) ? iso : null;
 }
 
 /** Which comes first in a short numeric date: month ("MM/dd/yyyy") or day ("dd.MM.y"). */
