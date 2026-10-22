@@ -107,7 +107,7 @@ export function StatsCards({
 			{/* Last 24 Hours / Month Total */}
 			{overviewStats?.isCurrentMonth !== false ? (
 				<StatCard
-					formatCurrency={formatCurrency}
+					formatMoney={formatMoney}
 					icon={Clock}
 					loading={expensesLoading}
 					title={t("last24Hours")}
@@ -204,7 +204,7 @@ export function StatsCards({
 							</>
 						)
 					}
-					formatCurrency={formatMoney}
+					formatMoney={formatMoney}
 					icon={Wallet}
 					loading={expensesLoading}
 					title={t("budgetUsed")}

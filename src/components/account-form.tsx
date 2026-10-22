@@ -22,6 +22,8 @@ import { Label } from "~/components/ui/label";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useSession } from "~/hooks/use-session";
+import { useUserSettings } from "~/hooks/use-user-settings";
+import { BASE_CURRENCY } from "~/lib/constants";
 import { api } from "~/trpc/react";
 
 type ExtendedUser = NonNullable<
@@ -43,6 +45,9 @@ export function AccountForm() {
 	);
 
 	const { formatCurrency } = useCurrencyFormatter();
+	// Lifetime totals come back in the home currency
+	const { settings } = useUserSettings();
+	const homeCurrency = settings?.homeCurrency ?? BASE_CURRENCY;
 
 	if (isPending) {
 		return (
@@ -76,7 +81,7 @@ export function AccountForm() {
 				<StatCard
 					icon={Wallet}
 					title={t("totalTrackedVolume")}
-					value={formatCurrency(lifetimeStats?.totalSpent || 0)}
+					value={formatCurrency(lifetimeStats?.totalSpent || 0, homeCurrency)}
 					variant="blue"
 				/>
 				<StatCard

@@ -83,7 +83,11 @@ export interface StatCardProps extends VariantProps<typeof statCardVariants> {
 		forceNeutral?: boolean;
 	};
 	subValue?: React.ReactNode;
-	formatCurrency?: (value: number) => string;
+	/**
+	 * Formats a money trend (`trend.isMoney`). It must already be bound to the
+	 * right currency, e.g. `(v) => formatCurrency(v, homeCurrency)`.
+	 */
+	formatMoney?: (value: number) => string;
 	className?: string;
 }
 
@@ -96,7 +100,7 @@ export function StatCard({
 	description,
 	loading = false,
 	trend,
-	formatCurrency,
+	formatMoney,
 	className,
 }: StatCardProps) {
 	const iconColor = iconColorVariants({ variant });
@@ -145,13 +149,12 @@ export function StatCard({
 										<TrendingDown aria-hidden="true" className="h-3 w-3" />
 									)}
 									<span className="tabular-nums">
-										{trend.value > 0 ? "+" : ""}
-										{trend.isMoney && formatCurrency
-											? formatCurrency(trend.value)
-											: formatPercent(trend.value)}
+										{trend.isMoney && formatMoney
+											? `${trend.value > 0 ? "+" : trend.value < 0 ? "-" : ""}${formatMoney(Math.abs(trend.value))}`
+											: `${trend.value > 0 ? "+" : ""}${formatPercent(trend.value)}`}
 									</span>
 									<span className="ml-1 hidden opacity-70 xl:inline">
-										{trend.label.replace("vs ", "")}
+										{trend.label}
 									</span>
 								</div>
 							) : (
