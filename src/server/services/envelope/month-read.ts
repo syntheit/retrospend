@@ -26,8 +26,39 @@ export interface MonthRead extends MonthView {
 	loaded: LoadedBook;
 }
 
-/** Null when the user has no book (Just track). */
-export async function monthViewIn(
+/**
+ * Month views per transaction: a preview reads several figures before and
+ * after its write, and each reads the same view. Writers call
+ * forgetMonthViews(tx) after they write, so the after side sees the write.
+ */
+const views = new WeakMap<object, Map<string, Promise<MonthRead | null>>>();
+
+export function forgetMonthViews(tx: Tx) {
+	views.delete(tx);
+}
+
+/** Null when the user has no book (Just track). Memoized per transaction until its next write. */
+export function monthViewIn(
+	tx: Tx,
+	userId: string,
+	now: Date,
+	month?: MonthKey,
+): Promise<MonthRead | null> {
+	let byKey = views.get(tx);
+	if (!byKey) {
+		byKey = new Map();
+		views.set(tx, byKey);
+	}
+	const key = `${userId}:${month ?? "current"}`;
+	const cached = byKey.get(key);
+	if (cached) return cached;
+	const view = computeMonthView(tx, userId, now, month);
+	byKey.set(key, view);
+	view.catch(() => byKey.delete(key));
+	return view;
+}
+
+async function computeMonthView(
 	tx: Tx,
 	userId: string,
 	now: Date,
@@ -106,22 +137,25 @@ export async function historyIn(
 		where: {
 			bookId: loaded.row.id,
 			...(input.month ? { month: input.month } : {}),
-			...(input.envelopeId
-				? {
-						OR: [
-							{ fromEnvelopeId: input.envelopeId },
-							{ toEnvelopeId: input.envelopeId },
-						],
-					}
-				: {}),
-			...(cursor
-				? {
-						OR: [
-							{ createdAt: { lt: cursor.createdAt } },
-							{ createdAt: cursor.createdAt, id: { lt: cursor.id } },
-						],
-					}
-				: {}),
+			// Both filters are ORs, so they go under one AND instead of spread keys overwriting each other.
+			AND: [
+				input.envelopeId
+					? {
+							OR: [
+								{ fromEnvelopeId: input.envelopeId },
+								{ toEnvelopeId: input.envelopeId },
+							],
+						}
+					: {},
+				cursor
+					? {
+							OR: [
+								{ createdAt: { lt: cursor.createdAt } },
+								{ createdAt: cursor.createdAt, id: { lt: cursor.id } },
+							],
+						}
+					: {},
+			],
 		},
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: input.limit + 1,
