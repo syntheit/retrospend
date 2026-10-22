@@ -50,9 +50,14 @@ test.describe("logout", () => {
 		await loginAsTestUser(page);
 		await expect(page).toHaveURL(/\/dashboard/);
 
-		// Open the user dropdown in the sidebar
-		await page.getByText(TEST_USER.name).first().click();
-		await page.getByRole("menuitem", { name: /log out/i }).click();
+		// Open the user menu in the sidebar. A click that lands before
+		// hydration does nothing, so retry until the menu is open.
+		const logOut = page.getByRole("menuitem", { name: "Log out" });
+		await expect(async () => {
+			await page.getByRole("button", { name: "User menu" }).click();
+			await expect(logOut).toBeVisible({ timeout: 2_000 });
+		}).toPass();
+		await logOut.click();
 
 		// Should redirect to login
 		await expect(page).toHaveURL(/\/login/);

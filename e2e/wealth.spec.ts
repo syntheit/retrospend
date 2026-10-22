@@ -1,36 +1,34 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
+// The page title is the level 1 heading; the empty state also says "Wealth".
+const title = (page: Page) =>
+	page.getByRole("main").getByRole("heading", { name: "Wealth", level: 1 });
 
 test.describe("wealth", () => {
 	test("wealth page loads", async ({ page }) => {
 		await page.goto("/wealth");
-		await expect(page.getByRole("heading", { name: "Wealth" })).toBeVisible();
-		await expect(page.getByText(/error/i)).not.toBeVisible();
+		await expect(title(page)).toBeVisible();
+		await expect(page.getByRole("main").getByText(/error/i)).toHaveCount(0);
 	});
 
-	test("wealth page shows net worth section", async ({ page }) => {
+	test("wealth page shows the empty net worth state", async ({ page }) => {
 		await page.goto("/wealth");
-		await page.waitForLoadState("networkidle");
-
-		// Net worth, assets, or liabilities section should be visible
-		// Fresh user has no assets — empty state or zero balance is fine
-		const heading = page.getByRole("heading", { name: "Wealth" });
-		await expect(heading).toBeVisible();
+		await expect(title(page)).toBeVisible();
+		// The test user has no accounts yet.
+		await expect(
+			page.getByRole("heading", { name: "No Wealth Data Yet" }),
+		).toBeVisible();
 	});
 
-	test("add asset button is visible", async ({ page }) => {
+	test("add asset opens the form", async ({ page }) => {
 		await page.goto("/wealth");
-		await page.waitForLoadState("networkidle");
-
-		// There should be a button to add an asset account
-		const addButton = page.getByRole("button", {
-			name: /add asset|new asset|add account/i,
-		});
-		// If the button exists, clicking it should open a form/dialog
-		if (await addButton.isVisible()) {
-			await addButton.click();
-			await expect(page.getByRole("dialog")).toBeVisible();
-			// Close it
-			await page.keyboard.press("Escape");
-		}
+		await page
+			.getByRole("main")
+			.getByRole("button", { name: "Add Asset", exact: true })
+			.click();
+		const dialog = page.getByRole("dialog");
+		await expect(dialog).toBeVisible();
+		await page.keyboard.press("Escape");
+		await expect(dialog).toBeHidden();
 	});
 });
