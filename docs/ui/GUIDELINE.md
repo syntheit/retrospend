@@ -194,6 +194,31 @@ The registry is `src/components/ui/registry.ts`: every primitive with its one jo
 | Pick a rate type | `RateSelector` | A local select |
 | Show money | The money formatter (§7) | `toFixed`, `toLocaleString`, a hand-built "$" string |
 
+### The PLAN components
+
+Every component of the overhaul plan (PLAN §6) is in the registry. These are built today: Table (`table`), Segmented (`segmented-toggle`), FilterChips (`chip`), Tabs (`tabs`), Sheet (`responsive-dialog`), DatePicker (`date-picker`), Chart (`chart`), EmptyState (`empty-state`), Notice (`alert`), Toast (`sonner`), Skeleton (`skeleton`), Sidebar (`sidebar`), Palette (`command`).
+
+The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each replaces). Build one only at its target, in its stream; until then use what the last column names, and never a local lookalike. [R18]
+
+| Planned | Job | Target | Until it exists |
+|---|---|---|---|
+| PageHeader | Title, at most one primary, overflow; optional faces and one sub line | `src/components/layout/page-header.tsx` | The page's current header |
+| Toolbar | Search, filter chips + Filter menu, view switch, one row | `src/components/layout/toolbar.tsx` | `Input`, `Chip`, `SegmentedToggle` in one `h-ctl` row |
+| Section | Flat section: heading, content, space | `src/components/layout/section.tsx` | A `text-section` heading + content, never `Card` |
+| SummaryLine | One glance line of key numbers | `src/components/layout/summary-line.tsx` | One `text-small` line, never `StatCard` |
+| GlanceStrip | Home's hero number and glance line | `src/components/glance/glance-strip.tsx` | One `text-hero` number + a glance line |
+| NeedsYouList, NeedsYouItem | Everything that needs the person, one style | `src/components/needs-you/*` | One `Alert` per page at most |
+| TransactionRow | Expense, payment or transfer row | `src/components/rows/transaction-row.tsx` | The existing data-table rows |
+| PersonRow, ProjectRow, AccountRow, EnvelopeRow | Entity rows (face, cover, group dot, progress) | `src/components/rows/*` | The current rows and tables |
+| Money | One amount, and Money.pair (original, then home) | `src/components/money/money.tsx` | `useCurrencyFormatter()` |
+| Balance, AvailablePill, StatusDot | Amount with its words; envelope money; dot plus word | `src/components/money/*` | The formatter plus words; `Badge` |
+| ActionMenu, SwipeActions | ⋯, right-click, long press and swipe from one action registry | `src/components/actions/*` | `DropdownMenu`, `ContextMenu` |
+| AddExpenseSheet, SettleSheet, AssignSheet | The money task sheets, with preview and Undo | `src/features/{entry,settle,budget/sheets}/*` | `expense-modal`, `settle-up-dialog`, the budget row edit |
+| MoneyInput | Amount entry with grouping, locale parse, rate chip | `src/components/money/money-input.tsx` | `CurrencyAmountInput` |
+| CategoryPicker, PersonPicker | One picker each, with identity | `src/components/pickers/*` | The form's existing picker (no new one) |
+| BottomNav | Phone web tab bar plus a separate + | `src/components/shell/bottom-nav.tsx` | `Sidebar` (phone panel) |
+| AccountMenu | The account menu at the sidebar bottom | `src/components/shell/account-menu.tsx` | `nav-user` |
+
 ### Buttons
 | Tier | Style | Rule |
 |---|---|---|
