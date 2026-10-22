@@ -16,12 +16,16 @@ import {
 	computeAmountInUSD,
 	roundUSD,
 	toAmountString,
+	toMinorUnits,
 	toUSD,
 } from "@retrospend/domain/money";
 import { resolveSplits } from "@retrospend/domain/shared-split-computation";
 import { fromWallTime, wallTime } from "@retrospend/domain/time-zone";
 import { hashPassword } from "better-auth/crypto";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
+import { allocatePayment } from "~/server/services/payments/allocate";
+import { confirmationFor } from "~/server/services/payments/confirmation";
+import { writePayment } from "~/server/services/payments/write";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { PrismaClient } from "~prisma";
 import { assertE2eDatabase } from "../db-guard";
@@ -262,30 +266,41 @@ async function writeSharedEntries(db: Db, anchor: Anchor): Promise<void> {
 	}
 }
 
+/**
+ * Each payment goes through the app's own writer (payments/write.ts): the
+ * Payment header, its settlement rows and audit entries, with the flags the
+ * app gives a payment recorded by the payee (FINALIZED) or by a payer whose
+ * payee is on Retrospend (PROPOSED). Every seeded payment pays one debt in
+ * its own currency, so the allocation is a single cash row.
+ */
 async function writeSettlements(db: Db, anchor: Anchor): Promise<void> {
-	await db.settlement.createMany({
-		data: SETTLEMENTS.map((s) => {
-			const at = daysAgo(anchor, s.back);
-			const done = s.status === "FINALIZED";
-			return {
-				id: `e2e_settle_${s.key}`,
-				fromParticipantType: ref[s.from].participantType,
-				fromParticipantId: ref[s.from].participantId,
-				toParticipantType: ref[s.to].participantType,
-				toParticipantId: ref[s.to].participantId,
-				amount: money(s.amount, s.currency),
-				currency: s.currency,
+	for (const s of SETTLEMENTS) {
+		const at = daysAgo(anchor, s.back);
+		const { year, month, day } = wallTime(at, SEED_TIME_ZONE);
+		const scope = s.project ? PROJECT_IDS[s.project] : null;
+		const minor = toMinorUnits(s.amount, s.currency);
+		const payer = ref[s.from];
+		const payee = ref[s.to];
+		const recordedByPayee = s.status === "FINALIZED";
+		const allocation = allocatePayment({
+			lines: [{ scope, currency: s.currency, owed: minor, oldest: null }],
+			currency: s.currency,
+			amount: minor,
+			quotes: new Map(),
+		});
+		await db.$transaction((tx) =>
+			writePayment(tx, {
+				id: `e2e_pg_${s.key}`,
+				parties: { payer, payee, recorder: recordedByPayee ? payee : payer },
+				allocation,
+				confirmation: confirmationFor(recordedByPayee, payee.participantType),
+				paidOn: new Date(Date.UTC(year, month, day)),
+				now: at,
 				paymentMethod: s.method,
-				status: s.status,
-				confirmedByPayer: true,
-				confirmedByPayee: done,
-				initiatedAt: at,
-				settledAt: done ? at : null,
-				projectId: s.project ? PROJECT_IDS[s.project] : null,
-				paymentGroupId: `e2e_pg_${s.key}`,
-			};
-		}),
-	});
+				note: null,
+			}),
+		);
+	}
 }
 
 /** Start of the next `day` of the month in Buenos Aires after the anchor. */
