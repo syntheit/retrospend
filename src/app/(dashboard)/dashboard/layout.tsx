@@ -23,7 +23,6 @@ export default async function Layout({
 
 	void api.dashboard.getOverviewData.prefetch({ month, homeCurrency });
 	void api.dashboard.getRecentActivity.prefetch({ homeCurrency });
-	void api.dashboard.getDailySpending.prefetch({ homeCurrency, days: 90 });
 
 	return children;
 }

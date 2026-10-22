@@ -34,13 +34,11 @@ interface FavoritesPanelProps {
 		rate: number;
 		date: Date;
 	}>;
-	isUsingMockFavorites: boolean;
 }
 
 export function FavoritesPanel({
 	favoritesLoading,
 	favoriteRates,
-	isUsingMockFavorites,
 }: FavoritesPanelProps) {
 	const t = useTranslations("favorites");
 	const utils = api.useUtils();
@@ -73,7 +71,6 @@ export function FavoritesPanel({
 			<CardContent className="space-y-3 overflow-y-auto lg:flex-1 lg:min-h-0">
 				<FavoritesContent
 					isLoading={favoritesLoading}
-					isMock={isUsingMockFavorites}
 					onUnfavorite={handleUnfavorite}
 					rates={favoriteRates}
 				/>
@@ -85,12 +82,10 @@ export function FavoritesPanel({
 function FavoritesContent({
 	isLoading,
 	rates,
-	isMock,
 	onUnfavorite,
 }: {
 	isLoading: boolean;
 	rates: FavoritesPanelProps["favoriteRates"];
-	isMock: boolean;
 	onUnfavorite: (id: string) => void;
 }) {
 	if (isLoading) {
@@ -101,7 +96,7 @@ function FavoritesContent({
 		return <FavoritesEmpty />;
 	}
 
-	return <FavoritesList isMock={isMock} onUnfavorite={onUnfavorite} rates={rates} />;
+	return <FavoritesList onUnfavorite={onUnfavorite} rates={rates} />;
 }
 
 function FavoritesLoading() {
@@ -130,24 +125,16 @@ function FavoritesEmpty() {
 
 function FavoritesList({
 	rates,
-	isMock,
 	onUnfavorite,
 }: {
 	rates: FavoritesPanelProps["favoriteRates"];
-	isMock: boolean;
 	onUnfavorite: (id: string) => void;
 }) {
-	const t = useTranslations("favorites");
 	return (
 		<div className="space-y-2">
 			{rates.map((rate) => (
 				<FavoriteItem key={rate.id} onUnfavorite={onUnfavorite} rate={rate} />
 			))}
-			{isMock && (
-				<p className="text-muted-foreground text-xs">
-					{t("sampleDataHint")}
-				</p>
-			)}
 		</div>
 	);
 }

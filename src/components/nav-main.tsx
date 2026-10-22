@@ -23,9 +23,8 @@ export function NavMain({
 		subtext?: string;
 		items: {
 			title: string;
-			url?: string;
+			url: string;
 			icon?: Icon;
-			isPlaceholder?: boolean;
 		}[];
 	}[];
 }) {
@@ -66,32 +65,20 @@ export function NavMain({
 						</SidebarGroupLabel>
 						<SidebarMenu>
 							{category.items.map((item) => {
-								const isActive = !item.isPlaceholder && (pathname === item.url || (item.url !== "/dashboard" && pathname.startsWith(item.url + "/")));
+								const isActive = pathname === item.url || (item.url !== "/dashboard" && pathname.startsWith(item.url + "/"));
 								return (
 								<SidebarMenuItem key={item.title}>
-									{item.isPlaceholder ? (
-										<SidebarMenuButton
-											className="h-10 cursor-not-allowed px-4 py-4 text-base opacity-50 [&>svg]:size-5"
-											disabled
-											size="lg"
-											tooltip={`${item.title} (Coming Soon)`}
-										>
+									<SidebarMenuButton
+										asChild
+										className={`h-10 px-4 py-4 text-base [&>svg]:size-5 ${isActive ? "bg-sidebar-accent" : ""}`}
+										size="lg"
+										tooltip={item.title}
+									>
+										<Link href={item.url} aria-current={isActive ? "page" : undefined}>
 											{item.icon && <item.icon />}
 											<span>{item.title}</span>
-										</SidebarMenuButton>
-									) : (
-										<SidebarMenuButton
-											asChild
-											className={`h-10 px-4 py-4 text-base [&>svg]:size-5 ${isActive ? "bg-sidebar-accent" : ""}`}
-											size="lg"
-											tooltip={item.title}
-										>
-											<Link href={item.url!} aria-current={isActive ? "page" : undefined}>
-												{item.icon && <item.icon />}
-												<span>{item.title}</span>
-											</Link>
-										</SidebarMenuButton>
-									)}
+										</Link>
+									</SidebarMenuButton>
 								</SidebarMenuItem>
 								);
 							})}

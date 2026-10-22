@@ -15,13 +15,6 @@ import {
 	LOCALE_OPTIONS,
 } from "~/i18n/locales";
 import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
 import { Form, FormControl, FormField } from "~/components/ui/form";
 import {
 	Popover,
@@ -730,22 +723,5 @@ function AiProcessingRow() {
 					)}
 			</div>
 		</SettingRow>
-	);
-}
-
-export function AppPreferencesCard() {
-	const t = useTranslations("settings");
-	return (
-		<Card className="border-border/50 shadow-sm">
-			<CardHeader>
-				<CardTitle>{t("preferencesTitle")}</CardTitle>
-				<CardDescription>
-					{t("preferencesDescription")}
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<AppPreferencesContent />
-			</CardContent>
-		</Card>
 	);
 }

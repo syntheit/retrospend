@@ -99,7 +99,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain categories={navMainCategories} />
-				<NavSecondary className="mt-auto" items={[]} />
+				<NavSecondary className="mt-auto" />
 			</SidebarContent>
 			<SidebarFooter className="pt-1 pb-[env(safe-area-inset-bottom)]">
 				<SidebarMenu>

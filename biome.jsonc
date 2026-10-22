@@ -9,9 +9,9 @@
 	"assist": {
 		"enabled": true,
 		"actions": {
-			"recommended": true,
+			"preset": "recommended",
 			"source": {
-				"recommended": true,
+				"preset": "recommended",
 				"organizeImports": "on",
 				"useSortedAttributes": "on"
 			}
@@ -23,15 +23,11 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true,
+			"preset": "recommended",
 			"nursery": {
-				"useSortedClasses": {
+				"useTailwindSortedClasses": {
 					"level": "warn",
-					"fix": "safe",
-					"options": {
-						"functions": ["clsx", "cva", "cn"],
-						"attributes": ["classList"]
-					}
+					"fix": "safe"
 				}
 			}
 		}
@@ -66,5 +62,10 @@
 			"cssModules": true,
 			"tailwindDirectives": true
 		}
+	},
+	"tailwind": {
+		"attributes": ["class", "className", "classList"],
+		"mergeFunctions": ["clsx", "cn"],
+		"variantFunctions": ["cva"]
 	}
 }
