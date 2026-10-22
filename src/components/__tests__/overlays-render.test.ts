@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { loadCatalog } from "../../../packages/i18n/src/load";
 import { ActionMenu } from "../actions/action-menu";
-import { MoneyInput, type MoneyInputParser } from "../money/money-input";
+import { MoneyInput } from "../money/money-input";
 import { CategoryPicker } from "../pickers/category-picker";
 import { MonthGrid } from "../pickers/month-grid";
 import { PersonPicker } from "../pickers/person-picker";
@@ -14,7 +14,12 @@ import { PersonPicker } from "../pickers/person-picker";
 const messages = await loadCatalog("en");
 const render = (el: ReactElement) =>
 	renderToStaticMarkup(
-		h(NextIntlClientProvider, { locale: "en", messages, timeZone: "UTC", children: el }),
+		h(NextIntlClientProvider, {
+			locale: "en",
+			messages,
+			timeZone: "UTC",
+			children: el,
+		}),
 	);
 
 describe("ActionMenu", () => {
@@ -112,19 +117,7 @@ describe("MonthGrid", () => {
 });
 
 describe("MoneyInput", () => {
-	const parser: MoneyInputParser = {
-		parseMoneyInput: (text) =>
-			text === "12+"
-				? { ok: false, error: "incomplete" }
-				: text.includes("+")
-					? { ok: true, minor: 350000, expression: true }
-					: { ok: true, minor: 120000, expression: false },
-		formatMoneyDraft: (t) => t,
-		decimalSeparator: () => ".",
-		groupSeparator: () => ",",
-		formatMoney: (m) => `ARS ${m.minor}`,
-	};
-	const base = { parser, currency: "ARS", onChange: vi.fn() };
+	const base = { currency: "ARS", onChange: vi.fn() };
 
 	it("a decimal keypad, a named amount and currency, no error while typing", () => {
 		const html = render(h(MoneyInput, { ...base, value: "12+" }));
@@ -150,7 +143,8 @@ describe("MoneyInput", () => {
 				rate: { label: "USD 1 = ARS 1,468 · Blue" },
 			}),
 		);
-		expect(html).toContain("ARS 350000");
+		// The domain formatter's result: whole ARS shows no cents.
+		expect(html).toContain("ARS\u00a03,500");
 		expect(html).toContain(
 			'aria-label="Exchange rate: USD 1 = ARS 1,468 · Blue"',
 		);

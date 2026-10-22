@@ -1,5 +1,15 @@
 "use client";
 
+import { formatMoney } from "@retrospend/domain/format";
+import {
+	decimalSeparator,
+	draftFromMinor,
+	formatMoneyDraft,
+	groupSeparator,
+	type MoneyInputError,
+	type MoneyInputResult,
+	parseMoneyInput,
+} from "@retrospend/domain/parse";
 import { ArrowRightLeftIcon, ChevronDownIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import * as React from "react";
@@ -10,59 +20,21 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 
-/*
- * The parser comes from @retrospend/domain/parse (parseMoneyInput,
- * formatMoneyDraft, decimalSeparator, groupSeparator) and the preview from
- * @retrospend/domain/format (formatMoney). Until that lands on this branch
- * the caller passes them in; the types below are the domain's.
- */
-export type MoneyInputError =
-	| "empty"
-	| "invalidCharacter"
-	| "syntax"
-	| "incomplete"
-	| "ambiguous"
-	| "tooPrecise"
-	| "divideByZero"
-	| "outOfRange"
-	| "zero"
-	| "negative";
-
-export type MoneyInputResult =
-	| { ok: true; minor: number; expression: boolean }
-	| { ok: false; error: MoneyInputError };
-
-export type MoneyInputParser = {
-	parseMoneyInput: (
-		text: string,
-		locale: string,
-		currency: string,
-	) => MoneyInputResult;
-	/** `previous` is the draft before this edit, so a newly typed foreign mark stays visible. */
-	formatMoneyDraft: (
-		text: string,
-		locale: string,
-		currency: string,
-		previous?: string,
-	) => string;
-	decimalSeparator: (locale: string) => string;
-	groupSeparator: (locale: string) => string;
-	formatMoney: (
-		m: { minor: number; currency: string },
-		o: { locale: string },
-	) => string;
-};
+export type { MoneyInputError, MoneyInputResult };
 
 /**
- * The caret after regrouping: as many non-group characters sit before it
- * as before the edit, so typing "1234" never jumps the caret past a comma.
+ * The caret after the draft: if the draft kept the text as typed (a typed
+ * group or foreign mark the parser will call ambiguous), the caret stays
+ * where it was. Otherwise as many non-group characters sit before it as
+ * before the edit, so typing "1234" never jumps the caret past a comma.
  */
-export function caretAfterRegroup(
+export function caretAfterDraft(
 	before: string,
 	caret: number,
 	after: string,
 	group: string,
 ): number {
+	if (after === before) return caret;
 	let keep = 0;
 	for (const ch of before.slice(0, caret)) if (ch !== group) keep++;
 	let i = 0;
@@ -99,10 +71,43 @@ export function visibleError(
 	return result.error;
 }
 
+/**
+ * One edit: a paste is read as typed first (drafting would regroup "1,23"
+ * and hide that it is ambiguous here); anything else is drafted against the
+ * previous text so a newly typed foreign mark stays visible.
+ */
+export function draftEdit(
+	raw: string,
+	at: number,
+	o: { previous: string; pasted: boolean; locale: string; currency: string },
+): { text: string; caret: number; result: MoneyInputResult } {
+	const asTyped = parseMoneyInput(raw, o.locale, o.currency);
+	if (o.pasted && !asTyped.ok && asTyped.error === "ambiguous")
+		return { text: raw, caret: at, result: asTyped };
+	const text = formatMoneyDraft(raw, o.locale, o.currency, o.previous);
+	return {
+		text,
+		caret: caretAfterDraft(raw, at, text, groupSeparator(o.locale)),
+		result: parseMoneyInput(text, o.locale, o.currency),
+	};
+}
+
+/**
+ * State for a MoneyInput that starts from a saved amount (or empty): the
+ * text, its parse result and the onChange to pass through.
+ */
+export function useMoneyText(minor: number | null, currency: string) {
+	const locale = useLocale();
+	const [text, setText] = React.useState(() =>
+		minor && minor > 0 ? draftFromMinor(minor, locale, currency) : "",
+	);
+	const result = parseMoneyInput(text, locale, currency);
+	return { text, result, onChange: (next: string) => setText(next) };
+}
+
 export type MoneyInputProps = {
-	parser: MoneyInputParser;
 	currency: string;
-	/** The draft text; keep it in state, with the result for Save. */
+	/** The draft text; keep it in state (useMoneyText), with the result for Save. */
 	value: string;
 	onChange: (text: string, result: MoneyInputResult) => void;
 	onCurrencyChange?: (code: string) => void;
@@ -124,83 +129,15 @@ export type MoneyInputProps = {
 export function MoneyInput(p: MoneyInputProps) {
 	const t = useTranslations("pickers.money");
 	const locale = useLocale();
-	const { parser } = p;
-	const ref = React.useRef<HTMLInputElement>(null);
-	const pasted = React.useRef(false);
-	const caret = React.useRef<number | null>(null);
-	const [touched, setTouched] = React.useState(false);
-	const [pickCurrency, setPickCurrency] = React.useState(false);
+	const field = useDraftField(p, locale);
 	const autoId = React.useId();
 	const id = p.id ?? autoId;
-	const result = parser.parseMoneyInput(p.value, locale, p.currency);
-	const error = visibleError(result, touched || !!p.showErrors);
-
-	React.useLayoutEffect(() => {
-		if (caret.current == null || !ref.current) return;
-		ref.current.setSelectionRange(caret.current, caret.current);
-		caret.current = null;
-	});
-
-	const update = (raw: string, at: number) => {
-		// A paste is read as typed first: drafting it would regroup "1,23"
-		// and hide that it is ambiguous in this locale.
-		const wasPaste = pasted.current;
-		pasted.current = false;
-		const asTyped = parser.parseMoneyInput(raw, locale, p.currency);
-		const keepRaw = wasPaste && !asTyped.ok && asTyped.error === "ambiguous";
-		const text = keepRaw
-			? raw
-			: parser.formatMoneyDraft(raw, locale, p.currency, p.value);
-		caret.current = caretAfterRegroup(
-			raw,
-			at,
-			text,
-			parser.groupSeparator(locale),
-		);
-		p.onChange(
-			text,
-			keepRaw ? asTyped : parser.parseMoneyInput(text, locale, p.currency),
-		);
-	};
-
-	const onInput = (e: React.ChangeEvent<HTMLInputElement>) =>
-		update(e.target.value, e.target.selectionStart ?? e.target.value.length);
-
-	const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		const el = e.currentTarget;
-		const end = el.selectionEnd ?? el.value.length;
-		const typed = numpadDecimal(
-			e,
-			el.value,
-			el.selectionStart ?? end,
-			end,
-			parser.decimalSeparator(locale),
-		);
-		if (!typed) return;
-		e.preventDefault();
-		update(typed.text, typed.caret);
-	};
-
+	const result = parseMoneyInput(p.value, locale, p.currency);
+	const error = visibleError(result, field.touched || !!p.showErrors);
 	const preview =
 		result.ok && result.expression
-			? parser.formatMoney(
-					{ minor: result.minor, currency: p.currency },
-					{ locale },
-				)
+			? formatMoney({ minor: result.minor, currency: p.currency }, { locale })
 			: null;
-
-	const currencyButton = (
-		<Button
-			aria-label={t("currency", { code: p.currency })}
-			className="h-full rounded-none border-0 border-line-strong border-r px-3"
-			disabled={p.disabled || !p.onCurrencyChange}
-			type="button"
-			variant="ghost"
-		>
-			{p.currency}
-			{p.onCurrencyChange ? <ChevronDownIcon aria-hidden="true" /> : null}
-		</Button>
-	);
 
 	return (
 		<div className="flex flex-col gap-1">
@@ -211,25 +148,7 @@ export function MoneyInput(p: MoneyInputProps) {
 					p.disabled && "opacity-50",
 				)}
 			>
-				{p.onCurrencyChange ? (
-					<PickerPopover
-						onOpenChange={setPickCurrency}
-						open={pickCurrency}
-						title={t("currency", { code: p.currency })}
-						trigger={currencyButton}
-					>
-						<CurrencyPicker
-							favorites={p.favoriteCurrencies}
-							onChange={(code) => {
-								setPickCurrency(false);
-								p.onCurrencyChange?.(code);
-							}}
-							value={p.currency}
-						/>
-					</PickerPopover>
-				) : (
-					currencyButton
-				)}
+				<CurrencyChip {...p} />
 				<Input
 					aria-describedby={error ? `${id}-error` : undefined}
 					aria-invalid={error ? true : undefined}
@@ -240,15 +159,9 @@ export function MoneyInput(p: MoneyInputProps) {
 					disabled={p.disabled}
 					id={id}
 					inputMode="decimal"
-					onBlur={() => setTouched(true)}
-					onChange={onInput}
-					onKeyDown={onKeyDown}
-					onPaste={() => {
-						pasted.current = true;
-					}}
 					placeholder="0"
-					ref={ref}
 					value={p.value}
+					{...field.handlers}
 				/>
 				{preview ? (
 					<span className="flex items-center pr-3 text-fg-2 text-small tabular-nums">
@@ -260,7 +173,7 @@ export function MoneyInput(p: MoneyInputProps) {
 				<span className="text-danger text-meta" id={`${id}-error`} role="alert">
 					{t(`error.${error}`, {
 						currency: p.currency,
-						decimal: parser.decimalSeparator(locale),
+						decimal: decimalSeparator(locale),
 					})}
 				</span>
 			) : null}
@@ -279,5 +192,93 @@ export function MoneyInput(p: MoneyInputProps) {
 				</Button>
 			) : null}
 		</div>
+	);
+}
+
+/** The input's edit, paste, numpad and caret handling. */
+function useDraftField(p: MoneyInputProps, locale: string) {
+	const ref = React.useRef<HTMLInputElement>(null);
+	const pasted = React.useRef(false);
+	const caret = React.useRef<number | null>(null);
+	const [touched, setTouched] = React.useState(false);
+
+	React.useLayoutEffect(() => {
+		if (caret.current == null || !ref.current) return;
+		ref.current.setSelectionRange(caret.current, caret.current);
+		caret.current = null;
+	});
+
+	const update = (raw: string, at: number) => {
+		const edit = draftEdit(raw, at, {
+			previous: p.value,
+			pasted: pasted.current,
+			locale,
+			currency: p.currency,
+		});
+		pasted.current = false;
+		caret.current = edit.caret;
+		p.onChange(edit.text, edit.result);
+	};
+
+	const handlers = {
+		ref,
+		onBlur: () => setTouched(true),
+		onPaste: () => {
+			pasted.current = true;
+		},
+		onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+			update(e.target.value, e.target.selectionStart ?? e.target.value.length),
+		onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+			const el = e.currentTarget;
+			const end = el.selectionEnd ?? el.value.length;
+			const start = el.selectionStart ?? end;
+			const typed = numpadDecimal(
+				e,
+				el.value,
+				start,
+				end,
+				decimalSeparator(locale),
+			);
+			if (!typed) return;
+			e.preventDefault();
+			update(typed.text, typed.caret);
+		},
+	};
+	return { touched, handlers };
+}
+
+/** The currency chip: opens the CurrencyPicker when the currency can change. */
+function CurrencyChip(p: MoneyInputProps) {
+	const t = useTranslations("pickers.money");
+	const [open, setOpen] = React.useState(false);
+	const button = (
+		<Button
+			aria-label={t("currency", { code: p.currency })}
+			className="h-full rounded-none border-0 border-line-strong border-r px-3"
+			disabled={p.disabled || !p.onCurrencyChange}
+			type="button"
+			variant="ghost"
+		>
+			{p.currency}
+			{p.onCurrencyChange ? <ChevronDownIcon aria-hidden="true" /> : null}
+		</Button>
+	);
+	if (!p.onCurrencyChange) return button;
+	return (
+		<PickerPopover
+			onOpenChange={setOpen}
+			open={open}
+			title={t("currency", { code: p.currency })}
+			trigger={button}
+		>
+			<CurrencyPicker
+				favorites={p.favoriteCurrencies}
+				onChange={(code) => {
+					setOpen(false);
+					p.onCurrencyChange?.(code);
+				}}
+				value={p.currency}
+			/>
+		</PickerPopover>
 	);
 }
