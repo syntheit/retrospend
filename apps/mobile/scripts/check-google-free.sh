@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Prints the resolved Android dependency tree (debug and release runtime
-# classpaths) and fails if a Google services artifact is in it. The banned
-# Maven groups live in google-free.json, shared with the jest guard.
-# Run after `expo prebuild -p android`, inside `nix develop .#android`.
+# classpaths) and fails if a Google services artifact is in it: any group
+# that starts with a prefix in google-free.json (shared with the jest guard).
+# Run after `expo prebuild -p android`, inside `nix develop .#android` or on
+# any machine with JDK 17 and the Android SDK (CI).
 set -euo pipefail
 
 app=$(cd "$(dirname "$0")/.." && pwd)
@@ -16,9 +17,12 @@ for configuration in debugRuntimeClasspath releaseRuntimeClasspath; do
 done
 cat "$tree"
 
+# "com.google.android.gms" matches com.google.android.gms:play-services-base
+# and com.google.android.gms.foo:bar, never com.google.android.material.
 pattern=$(node -e '
   const rules = require(process.argv[1]);
-  console.log(rules.maven.map((r) => r.group.replaceAll(".", "\\.") + ":").join("|"));
+  const prefixes = rules.mavenPrefixes.map((r) => r.prefix.replaceAll(".", "\\."));
+  console.log("(^|[^A-Za-z0-9_.])(" + prefixes.join("|") + ")[.:]");
 ' "$app/google-free.json")
 
 if hits=$(grep -E "$pattern" "$tree"); then
@@ -28,4 +32,4 @@ if hits=$(grep -E "$pattern" "$tree"); then
   exit 1
 fi
 echo
-echo "OK: no Google services artifacts (groups: ${pattern//\\/})"
+echo "OK: no Google services artifacts (prefixes: $(node -p 'require(process.argv[1]).mavenPrefixes.map((r) => r.prefix).join(", ")' "$app/google-free.json"))"

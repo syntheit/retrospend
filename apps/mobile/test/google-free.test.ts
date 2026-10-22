@@ -4,6 +4,9 @@
 /// <reference types="node" />
 // The Google-free guard (IMPLEMENTATION §4). Rules live in google-free.json;
 // scripts/check-google-free.sh applies its Maven half to the Gradle tree.
+// A banned package may ship only through npmExemptions, and only once a
+// product flavor or an autolinking exclude keeps it out of the Google-free
+// build (google-free.json, futureGooglePath). There is none yet.
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import config from "../app.config";
@@ -13,6 +16,14 @@ const APP_DIR = join(__dirname, "..");
 const OPTIONAL_DIR = join(APP_DIR, rules.optionalDir);
 const SOURCE_DIRS = ["app", "src"];
 const BANNED = rules.npm.map((r) => ({ ...r, regex: new RegExp(r.pattern) }));
+
+interface Exemption {
+	name: string;
+	keptOutBy: "productFlavor" | "autolinkingExclude";
+	how: string;
+}
+const EXEMPTIONS = rules.npmExemptions as Exemption[];
+const EXEMPT = new Set(EXEMPTIONS.map((e) => e.name));
 
 interface Manifest {
 	name?: string;
@@ -137,7 +148,7 @@ describe("google-free guard", () => {
 		expect(shipped.has("react-native")).toBe(true);
 		expect(shipped.has("expo-modules-core")).toBe(true);
 		const offenders = [...shipped]
-			.filter(([name]) => bannedReason(name))
+			.filter(([name]) => bannedReason(name) && !EXEMPT.has(name))
 			.map(([name, chain]) => `${chain.join(" > ")}: ${bannedReason(name)}`);
 		expect(offenders).toEqual([]);
 	});
@@ -153,6 +164,16 @@ describe("google-free guard", () => {
 				),
 		);
 		expect(offenders).toEqual([]);
+	});
+
+	it("exempts a package only with a named way to keep it out", () => {
+		for (const exemption of EXEMPTIONS) {
+			expect(bannedReason(exemption.name)).not.toBeNull(); // no stale entries
+			expect(["productFlavor", "autolinkingExclude"]).toContain(
+				exemption.keptOutBy,
+			);
+			expect(exemption.how.trim()).not.toBe("");
+		}
 	});
 
 	it("adds no Google services config plugin", () => {

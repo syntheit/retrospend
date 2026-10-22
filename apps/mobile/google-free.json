@@ -1,6 +1,8 @@
 {
-	"about": "Android must work 100% without Google services (IMPLEMENTATION §4). test/google-free.test.ts fails on any npm package below in the shipped dependency tree, or imported outside src/optional/google/ (code there loads only when Play services are detected). scripts/check-google-free.sh fails on any Maven group below in the resolved Gradle tree. Each entry says why.",
+	"about": "Android must work 100% without Google services (IMPLEMENTATION §4). test/google-free.test.ts fails on any npm package below in the shipped dependency tree, or imported outside optionalDir (code there loads only when Play services are detected at runtime). scripts/check-google-free.sh fails on any Maven group matching a prefix below in the resolved Gradle tree of the default build. Each entry says why.",
 	"optionalDir": "src/optional/google",
+	"futureGooglePath": "The FCM-when-present path (S5g) cannot just add a banned package: autolinking would put its Gradle artifacts in every APK. It needs a Gradle product flavor (a 'play' flavor next to the Google-free default) or an autolinking exclude for the Google-free build. Only then may the package be listed in npmExemptions, naming how it is kept out.",
+	"npmExemptions": [],
 	"npm": [
 		{
 			"pattern": "^@react-native-firebase/",
@@ -40,22 +42,37 @@
 			"why": "Play install referrer"
 		}
 	],
-	"maven": [
-		{ "group": "com.google.android.gms", "why": "Play services" },
-		{ "group": "com.google.firebase", "why": "Firebase" },
+	"mavenPrefixes": [
 		{
-			"group": "com.google.android.play",
-			"why": "Play Core (in-app updates and reviews)"
+			"prefix": "com.google.android.gms",
+			"why": "Play services"
 		},
-		{ "group": "com.android.installreferrer", "why": "Play install referrer" },
-		{ "group": "com.android.billingclient", "why": "Play billing" },
 		{
-			"group": "com.google.android.datatransport",
+			"prefix": "com.google.android.play",
+			"why": "Play Core (in-app updates, reviews, asset delivery)"
+		},
+		{
+			"prefix": "com.google.android.ump",
+			"why": "User Messaging Platform (ads consent)"
+		},
+		{
+			"prefix": "com.google.android.libraries",
+			"why": "Google client libraries (Places, Maps, Identity) that call Play services"
+		},
+		{
+			"prefix": "com.google.android.recaptcha",
+			"why": "reCAPTCHA (Play services backed)"
+		},
+		{ "prefix": "com.google.firebase", "why": "Firebase" },
+		{
+			"prefix": "com.google.android.datatransport",
 			"why": "Google telemetry transport used by Firebase and ML Kit"
 		},
 		{
-			"group": "com.google.mlkit",
+			"prefix": "com.google.mlkit",
 			"why": "ML Kit; review before allowing (bundled models work offline but ship Google telemetry)"
-		}
+		},
+		{ "prefix": "com.android.installreferrer", "why": "Play install referrer" },
+		{ "prefix": "com.android.billingclient", "why": "Play billing" }
 	]
 }
