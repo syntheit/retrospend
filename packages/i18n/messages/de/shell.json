@@ -62,7 +62,7 @@
 	},
 	"notifications": {
 		"title": "Benachrichtigungen",
-		"labelUnread": "Benachrichtigungen, {count} ungelesen",
+		"labelUnread": "{count, plural, one {Benachrichtigungen, # ungelesen} other {Benachrichtigungen, # ungelesen}}",
 		"unread": "Ungelesen",
 		"filterLabel": "Anzeigen",
 		"filter": {
@@ -91,7 +91,7 @@
 		"shortcuts": "Tastenkürzel",
 		"signOut": "Abmelden",
 		"signOutFailed": "Abmelden fehlgeschlagen",
-		"newCount": "{count} neu",
+		"newCount": "{count, plural, one {# neu} other {# neu}}",
 		"version": "Version {version}",
 		"goTo": "Gehe zu"
 	},
@@ -107,5 +107,11 @@
 		"edit": "Ausgewählte Zeile bearbeiten",
 		"delete": "Ausgewählte Zeilen löschen",
 		"clear": "Auswahl aufheben"
+	},
+	"verifyEmail": {
+		"message": "Bestätige deine E-Mail-Adresse, um dein Konto zu schützen.",
+		"resend": "E-Mail erneut senden",
+		"sent": "Bestätigungs-E-Mail gesendet",
+		"failed": "E-Mail konnte nicht gesendet werden"
 	}
 }

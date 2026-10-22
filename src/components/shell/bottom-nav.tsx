@@ -43,8 +43,10 @@ export function BottomNav({
 			)}
 		>
 			{TABS.map((tab) => {
+				const href = hrefOf(tab);
+				// A tab with no page yet is left out, never linked to a 404.
+				if (!href) return null;
 				const Icon = tab.icon;
-				const href = hrefOf(tab) ?? tab.href;
 				return (
 					<Link
 						aria-current={current === tab.id ? "page" : undefined}

@@ -102,6 +102,25 @@ export const PLACES: readonly NavEntry<PlaceId>[] = [
 	},
 ];
 
+/**
+ * Places without a phone tab, as Go to rows in the phone account sheet:
+ * phones have no global search (N65), so everything else is reached here.
+ */
+export const PHONE_GO_TO: readonly NavId[] = [
+	"wealth",
+	"currencies",
+	"import",
+	"recurring",
+	"settings",
+];
+
+/** The nav entry for an id. */
+export function entryOf(id: NavId): NavEntry {
+	const entry = [...DESTINATIONS, ...TOOLS, ...PLACES].find((e) => e.id === id);
+	if (!entry) throw new Error(`No nav entry ${id}`);
+	return entry;
+}
+
 /** Settings sections, by their anchor id on the Settings page. */
 export const SETTINGS_SECTIONS = [
 	"profile",

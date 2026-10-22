@@ -62,7 +62,7 @@
 	},
 	"notifications": {
 		"title": "Notifications",
-		"labelUnread": "Notifications, {count} unread",
+		"labelUnread": "{count, plural, one {Notifications, # unread} other {Notifications, # unread}}",
 		"unread": "Unread",
 		"filterLabel": "Show",
 		"filter": {
@@ -91,7 +91,7 @@
 		"shortcuts": "Keyboard shortcuts",
 		"signOut": "Sign out",
 		"signOutFailed": "Couldn't sign out",
-		"newCount": "{count} new",
+		"newCount": "{count, plural, one {# new} other {# new}}",
 		"version": "Version {version}",
 		"goTo": "Go to"
 	},
@@ -107,5 +107,11 @@
 		"edit": "Edit the selected row",
 		"delete": "Delete the selected rows",
 		"clear": "Clear the selection"
+	},
+	"verifyEmail": {
+		"message": "Verify your email to keep your account secure.",
+		"resend": "Resend email",
+		"sent": "Verification email sent",
+		"failed": "Couldn't send the email"
 	}
 }

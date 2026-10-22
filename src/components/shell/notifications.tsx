@@ -2,7 +2,7 @@
 
 import { Bell, BellOff } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import {
@@ -158,6 +158,7 @@ export function UnreadCount({
 export function NotificationsButton() {
 	const t = useTranslations("shell.notifications");
 	const [open, setOpen] = useState(false);
+	const titleId = useId();
 	const unread = useUnreadNotifications();
 	const label = unread ? t("labelUnread", { count: unread }) : t("title");
 	return (
@@ -178,11 +179,14 @@ export function NotificationsButton() {
 			</Tip>
 			<PopoverContent
 				align="start"
+				aria-labelledby={titleId}
 				className="w-120 max-w-[calc(100vw-2rem)] rounded-panel border-line bg-surface p-0 text-fg shadow-menu"
 				side="right"
 				sideOffset={8}
 			>
-				<h2 className="px-4 pt-3 font-semibold text-body">{t("title")}</h2>
+				<h2 className="px-4 pt-3 font-semibold text-body" id={titleId}>
+					{t("title")}
+				</h2>
 				<NotificationsPanel onNavigate={() => setOpen(false)} open={open} />
 			</PopoverContent>
 		</Popover>

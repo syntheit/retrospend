@@ -4,7 +4,9 @@ import {
 	badgeText,
 	currentNav,
 	DESTINATIONS,
+	entryOf,
 	hrefOf,
+	PHONE_GO_TO,
 	PHONE_TABS,
 	PINNED_MAX,
 	PLACES,
@@ -135,5 +137,25 @@ describe("ADD_ACTIONS", () => {
 			["income", "i", false],
 			["transfer", "t", false],
 		]);
+	});
+});
+
+describe("phone Go to", () => {
+	it("reaches Wealth, the tools, Recurring and Settings from the account sheet", () => {
+		expect(PHONE_GO_TO.map((id) => hrefOf(entryOf(id)))).toEqual([
+			"/wealth",
+			"/currencies",
+			"/import",
+			"/recurring",
+			"/settings",
+		]);
+	});
+
+	it("covers every place without a phone tab that has a page", () => {
+		const reachable = new Set<string>([...PHONE_TABS, ...PHONE_GO_TO]);
+		const missing = [...DESTINATIONS, ...TOOLS, ...PLACES]
+			.filter((e) => hrefOf(e) && !reachable.has(e.id))
+			.map((e) => e.id);
+		expect(missing).toEqual([]);
 	});
 });

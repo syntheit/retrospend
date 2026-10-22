@@ -19,6 +19,18 @@ vi.mock("~/components/shell/app-shell", () => ({
 		h("div", { "data-shell": "v2" }, children),
 }));
 
+// next/dynamic suspends on the server; resolve the loader up front instead
+// (its promise settles before the tests run, after the awaited imports).
+vi.mock("next/dynamic", () => ({
+	default: (load: () => Promise<(p: object) => ReactNode>) => {
+		let Loaded: ((p: object) => ReactNode) | null = null;
+		void load().then((c) => {
+			Loaded = c;
+		});
+		return (props: object) => (Loaded ? h(Loaded, props) : null);
+	},
+}));
+
 const flag = vi.fn<(flag: string, viewer: unknown) => Promise<boolean>>();
 const session = vi.fn();
 vi.mock("~/server/flags", () => ({ isFlagEnabled: flag }));

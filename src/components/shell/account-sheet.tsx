@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
-import { DESTINATIONS, hrefOf, type NavEntry, PLACES, TOOLS } from "~/lib/nav";
+import { entryOf, hrefOf, type NavEntry, PHONE_GO_TO } from "~/lib/nav";
 import { APP_VERSION } from "~/lib/version";
 import { AccountIdentity } from "./account-menu";
 import { useShellActions } from "./shell-context";
@@ -32,6 +32,7 @@ function Row({
 	href,
 	newTab,
 	onSelect,
+	chevron,
 	close,
 }: {
 	icon: ReactNode;
@@ -40,6 +41,8 @@ function Row({
 	href?: string;
 	newTab?: boolean;
 	onSelect?: () => void;
+	/** A row that opens another sheet shows the chevron too. */
+	chevron?: boolean;
 	close: () => void;
 }) {
 	const body = (
@@ -51,7 +54,9 @@ function Row({
 			)}
 			<span className="min-w-0 flex-1 truncate text-left">{label}</span>
 			{end}
-			{href && <ChevronRight aria-hidden="true" className="text-fg-3" />}
+			{(href || chevron) && (
+				<ChevronRight aria-hidden="true" className="size-4 text-fg-3" />
+			)}
 		</>
 	);
 	if (href)
@@ -111,12 +116,7 @@ function EntryRow({
 	);
 }
 
-/** Wealth, the tools and Settings: phones have no global search (N65). */
-const GO_TO: NavEntry[] = (
-	["wealth", "currencies", "import", "settings"] as const
-).flatMap((id) =>
-	[...DESTINATIONS, ...TOOLS, ...PLACES].filter((e) => e.id === id),
-);
+const GO_TO: NavEntry[] = PHONE_GO_TO.map(entryOf).filter((e) => hrefOf(e));
 
 /**
  * The phone account sheet (account.html): who you are, notifications, Go to
@@ -165,6 +165,7 @@ export function AccountSheet({
 						close={close}
 						end={<NewCount count={unread} />}
 						icon={<Bell aria-hidden="true" className="size-4" />}
+						chevron
 						label={t("notifications.title")}
 						onSelect={openNotificationsSheet}
 					/>

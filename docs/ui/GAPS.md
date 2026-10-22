@@ -119,3 +119,6 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Add income, Transfer (split Add menu, palette, I and T keys) | Their sheets (4G) | Shown disabled with "Coming soon"; the keys show a "coming soon" toast | S4G |
 | New routes (`/home`, `/activity`, `/activity/recurring`, `/activity/insights`) | The pages | `SHIPPED_ROUTES` in `src/lib/nav.ts` is empty, so the new shell links today's routes; Insights is hidden. Each page agent adds its route there when it ships | S4 |
 | Phone account entry on today's pages | The new PageHeader with the account avatar | Today's SiteHeader menu button opens the account sheet in the new shell (`LegacyMenuBridge` in `app-shell.tsx`); the button is hidden on desktop | S4 pages |
+| Verify your email (today's sidebar banner) | Its mockup home is a Home Needs you item | A single attention Notice at the top of the content in the new shell (`verify-email-notice.tsx`) | 2E + S4 Home |
+| Public profile (`/u/{username}`) | A link from Settings, Profile; the new account menu's Your profile opens Settings as the mockup says, so the public page has no entry in the new shell | Reachable by URL only | S4H settings |
+| Sidebar group label letter spacing | A tracking token for the one eyebrow the guideline allows | `tracking-wider` on the sidebar's Tools and Pinned labels (allow.json UI-012) | S0a tokens |

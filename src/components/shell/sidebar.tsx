@@ -35,7 +35,7 @@ export function usePinnedProjects() {
 
 function GroupLabel({ children }: { children: string }) {
 	return (
-		<h2 className="px-3 pt-4 pb-1 font-medium text-fg-3 text-meta">
+		<h2 className="px-3 pt-4 pb-1 font-medium text-fg-3 text-meta uppercase tracking-wider">
 			{children}
 		</h2>
 	);

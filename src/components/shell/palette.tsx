@@ -88,10 +88,10 @@ function RecentGroup({
 	const t = useTranslations("shell.palette");
 	const { openExpense } = useExpenseModal();
 	const projects = usePinnedProjects().slice(0, RECENT_PROJECTS);
-	const { data } = api.expense.listFinalized.useQuery(undefined, {
-		enabled: open,
-	});
-	const expenses = (data ?? []).slice(0, RECENT_EXPENSES);
+	const { data: expenses = [] } = api.expense.listFinalized.useQuery(
+		{ limit: RECENT_EXPENSES },
+		{ enabled: open },
+	);
 	if (!projects.length && !expenses.length) return null;
 	return (
 		<CommandGroup className={GROUP} heading={t("recent")}>
@@ -109,7 +109,7 @@ function RecentGroup({
 					}
 					onSelect={() => go(projectHref(p.id))}
 					small={t("project")}
-					value={`recent project ${p.name}`}
+					value={`recent project ${p.id} ${p.name}`}
 				/>
 			))}
 			{expenses.map((e) => (
@@ -119,7 +119,7 @@ function RecentGroup({
 					lead={<Receipt aria-hidden="true" />}
 					onSelect={run(() => openExpense(e.id))}
 					small={<Money value={amountOf(e.amount, e.currency)} />}
-					value={`recent expense ${e.title}`}
+					value={`recent expense ${e.id} ${e.title}`}
 				/>
 			))}
 		</CommandGroup>
@@ -127,7 +127,7 @@ function RecentGroup({
 }
 
 /**
- * The command palette (Cmd+K, account.html): Recent, Go to and Commands
+ * The command palette (Cmd+K, account.html): Go to, Recent and Commands
  * from the one nav definition. Typed results for people, projects, accounts
  * and expenses, and the inline currency converter, are not built yet
  * (docs/ui/GAPS.md); the palette shows nothing in their place.
@@ -169,17 +169,21 @@ export function ShellPalette({
 			showCloseButton={false}
 			title={t("palette.title")}
 		>
-			<CommandInput
-				className="h-12 text-body placeholder:text-fg-3"
-				onValueChange={setSearch}
-				placeholder={t("palette.placeholder")}
-				value={search}
-			/>
+			<div className="relative">
+				<CommandInput
+					className="h-12 pr-12 text-body placeholder:text-fg-3"
+					onValueChange={setSearch}
+					placeholder={t("palette.placeholder")}
+					value={search}
+				/>
+				<kbd className="absolute top-1/2 right-4 -translate-y-1/2 rounded-ctl border border-line-strong px-1 font-mono text-fg-3 text-meta">
+					Esc
+				</kbd>
+			</div>
 			<CommandList className="max-h-[min(60vh,28rem)] p-1">
 				<CommandEmpty className="py-6 text-center text-fg-3 text-small">
 					{t("palette.noResults")}
 				</CommandEmpty>
-				{!typed && <RecentGroup go={go} open={open} run={run} />}
 				<CommandGroup className={GROUP} heading={t("palette.goTo")}>
 					{goToItems(typed).map((item) => {
 						const Icon = item.icon;
@@ -194,11 +198,12 @@ export function ShellPalette({
 								label={label}
 								lead={<Icon aria-hidden="true" />}
 								onSelect={() => go(item.href)}
-								value={`go ${label}`}
+								value={`go ${item.id} ${label}`}
 							/>
 						);
 					})}
 				</CommandGroup>
+				{!typed && <RecentGroup go={go} open={open} run={run} />}
 				<CommandGroup className={GROUP} heading={t("palette.commands")}>
 					{ADD_ACTIONS.map((a) => {
 						const Icon = a.icon;
@@ -210,7 +215,7 @@ export function ShellPalette({
 								lead={<Icon aria-hidden="true" />}
 								onSelect={run(() => actions.add(a.id))}
 								small={a.ready ? a.key.toUpperCase() : t("add.comingSoon")}
-								value={`command ${t(`add.${a.id}`)}`}
+								value={`command ${a.id} ${t(`add.${a.id}`)}`}
 							/>
 						);
 					})}
@@ -218,20 +223,20 @@ export function ShellPalette({
 						label={t("palette.addRecurring")}
 						lead={<Repeat aria-hidden="true" />}
 						onSelect={run(openNewRecurring)}
-						value={`command ${t("palette.addRecurring")}`}
+						value={`command addRecurring ${t("palette.addRecurring")}`}
 					/>
 					<Item
 						label={t("palette.manageCategories")}
 						lead={<Tags aria-hidden="true" />}
 						onSelect={() => go(settingsHref("categories"))}
-						value={`command ${t("palette.manageCategories")}`}
+						value={`command manageCategories ${t("palette.manageCategories")}`}
 					/>
 					{flags?.feedbackEnabled && (
 						<Item
 							label={t("account.sendFeedback")}
 							lead={<MessageSquare aria-hidden="true" />}
 							onSelect={run(actions.openFeedback)}
-							value={`command ${t("account.sendFeedback")}`}
+							value={`command sendFeedback ${t("account.sendFeedback")}`}
 						/>
 					)}
 					<Item
@@ -239,7 +244,7 @@ export function ShellPalette({
 						lead={<Keyboard aria-hidden="true" />}
 						onSelect={run(actions.openShortcuts)}
 						small="?"
-						value={`command ${t("account.shortcuts")}`}
+						value={`command shortcuts ${t("account.shortcuts")}`}
 					/>
 				</CommandGroup>
 			</CommandList>

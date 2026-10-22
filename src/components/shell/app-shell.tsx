@@ -1,7 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import {
+	type CSSProperties,
+	useEffect,
+	useMemo,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { FeedbackModal } from "~/components/feedback-modal";
 import { PageTransition } from "~/components/page-transition";
@@ -17,6 +23,7 @@ import { type ShellActions, ShellActionsContext } from "./shell-context";
 import { shellShortcut } from "./shortcuts";
 import { ShortcutsSheet } from "./shortcuts-sheet";
 import { ShellSidebar } from "./sidebar";
+import { VerifyEmailNotice } from "./verify-email-notice";
 
 type Layer = "palette" | "shortcuts" | "account" | "notifications" | "feedback";
 
@@ -36,19 +43,63 @@ function LegacyMenuBridge({ onOpen }: { onOpen: () => void }) {
 	return null;
 }
 
-function useShellKeys(actions: ShellActions, setLayer: (l: Layer) => void) {
+type SetLayer = React.Dispatch<React.SetStateAction<Layer | null>>;
+
+function useShellKeys(actions: ShellActions, setLayer: SetLayer) {
 	useEffect(() => {
+		// On window, so it runs after document listeners: a page search that
+		// takes focus on its own key leaves the next letters to itself.
 		const onKey = (e: KeyboardEvent) => {
-			const hit = shellShortcut(e);
+			const hit = shellShortcut(e, document.activeElement);
 			if (!hit) return;
 			e.preventDefault();
-			if (hit.kind === "palette") setLayer("palette");
+			if (hit.kind === "palette")
+				setLayer((l) => (l === "palette" ? null : "palette"));
 			else if (hit.kind === "shortcuts") setLayer("shortcuts");
 			else actions.add(hit.id);
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
 	}, [actions, setLayer]);
+}
+
+const DESKTOP = "(min-width: 768px)";
+const onDesktopChange = (notify: () => void) => {
+	const mql = window.matchMedia(DESKTOP);
+	mql.addEventListener("change", notify);
+	return () => mql.removeEventListener("change", notify);
+};
+
+/**
+ * Whether the sidebar is mounted. The server draws it (hidden below md by
+ * CSS) so desktop does not jump; a phone drops it on hydration, so its
+ * queries never run there.
+ */
+function useDesktop(): boolean {
+	return useSyncExternalStore(
+		onDesktopChange,
+		() => window.matchMedia(DESKTOP).matches,
+		() => true,
+	);
+}
+
+// Today's SiteHeader reads --header-height from DashboardLayout's provider.
+const PROVIDER_STYLE = {
+	"--header-height": "calc(var(--spacing) * 12)",
+} as CSSProperties;
+
+/** Phone toasts sit above the bottom bar and the floating Add. */
+function useToastOffset() {
+	useEffect(() => {
+		const root = document.documentElement.style;
+		root.setProperty(
+			"--toast-mobile-bottom",
+			"calc(8.5rem + env(safe-area-inset-bottom))",
+		);
+		return () => {
+			root.removeProperty("--toast-mobile-bottom");
+		};
+	}, []);
 }
 
 /**
@@ -93,10 +144,15 @@ export function AppShell({
 		[openNewExpense, t, toast],
 	);
 	useShellKeys(actions, setLayer);
+	useToastOffset();
+	const desktop = useDesktop();
 
 	return (
 		<ShellActionsContext value={actions}>
-			<SidebarProvider className="h-svh overflow-hidden bg-bg text-fg">
+			<SidebarProvider
+				className="h-svh overflow-hidden bg-bg text-fg"
+				style={PROVIDER_STYLE}
+			>
 				<LegacyMenuBridge onOpen={actions.openAccountSheet} />
 				<a
 					className="sr-only rounded-ctl bg-surface px-4 py-2 font-medium text-body focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:outline-2 focus:outline-brand"
@@ -104,11 +160,12 @@ export function AppShell({
 				>
 					{t("skipToContent")}
 				</a>
-				<ShellSidebar badges={badges} className="hidden md:flex" />
+				{desktop && <ShellSidebar badges={badges} className="hidden md:flex" />}
 				<main
 					className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:[&_[data-sidebar=trigger]]:hidden md:[&_[data-sidebar=trigger]+[data-orientation=vertical]]:hidden"
 					id="main-content"
 				>
+					<VerifyEmailNotice />
 					<PageTransition>{children}</PageTransition>
 				</main>
 				<BottomNav badges={badges} className="md:hidden" />

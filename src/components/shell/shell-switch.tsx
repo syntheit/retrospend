@@ -1,9 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { CommandPalette } from "~/components/command-palette";
 import { DashboardLayout } from "~/components/dashboard-layout";
-import { AppShell } from "./app-shell";
 import { useShellMode } from "./shell-context";
+
+// Loaded only for viewers with the new shell, so guest, public and legacy
+// project pages do not ship it.
+const AppShell = dynamic(() => import("./app-shell").then((m) => m.AppShell));
 
 /**
  * The shell for a client page that draws its own (the project page sits

@@ -62,7 +62,7 @@
 	},
 	"notifications": {
 		"title": "Notificaciones",
-		"labelUnread": "Notificaciones, {count} sin leer",
+		"labelUnread": "{count, plural, one {Notificaciones, # sin leer} other {Notificaciones, # sin leer}}",
 		"unread": "No leída",
 		"filterLabel": "Mostrar",
 		"filter": {
@@ -91,7 +91,7 @@
 		"shortcuts": "Atajos de teclado",
 		"signOut": "Cerrar sesión",
 		"signOutFailed": "No se pudo cerrar la sesión",
-		"newCount": "{count} nuevos",
+		"newCount": "{count, plural, one {# nuevo} other {# nuevos}}",
 		"version": "Versión {version}",
 		"goTo": "Ir a"
 	},
@@ -107,5 +107,11 @@
 		"edit": "Editar la fila seleccionada",
 		"delete": "Eliminar las filas seleccionadas",
 		"clear": "Borrar la selección"
+	},
+	"verifyEmail": {
+		"message": "Verificá tu correo para proteger tu cuenta.",
+		"resend": "Reenviar correo",
+		"sent": "Correo de verificación enviado",
+		"failed": "No se pudo enviar el correo"
 	}
 }
