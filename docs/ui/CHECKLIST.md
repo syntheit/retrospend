@@ -39,7 +39,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 
 ## Components
 - UI-040 [auto] Every file in `src/components/ui` has an entry in `registry.ts` with its job and status; a new primitive needs the owner's sign-off. §4 R18
-- UI-041 [auto] No import of a legacy primitive (`card`, `stat-card`, `toggle`, `toggle-group`) or an internal one (`dialog`, `drawer`, `sheet`, `alert-dialog`, `avatar`, `calendar`) outside `src/components/ui`, by import, re-export or dynamic `import()`, through `~/` or a relative path. §4 R2 R3 R7 R18
+- UI-041 [auto] No import of a legacy primitive (`card`, `stat-card`, `toggle`, `toggle-group`, `responsive-dialog`, `edge-panel`) or an internal one (`dialog`, `drawer`, `sheet-behavior`, `sheet-state`, `alert-dialog`, `avatar`, `calendar`) outside `src/components/ui`; the task sheet is `sheet`, by import, re-export or dynamic `import()`, through `~/` or a relative path. §4 R2 R3 R7 R18
 - UI-042 [auto] No raw `<button>`, `<input>` (other than file and hidden), `<select>`, `<textarea>`, `<table>` outside `src/components/ui`. §4 R18
 - UI-043 [review] The right component for the job per the decision table; no lookalike built. §4 R18
 - UI-044 [review] Segmented switches views of the same data in place; underline tabs move between sibling pages or panes; never two of the same kind stacked; nothing looks like one and acts like the other. §5 R7 R21

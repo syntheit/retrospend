@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "~/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/edge-panel"
 import { useSession } from "~/hooks/use-session"
 import { DocsSidebar } from "./docs-sidebar"
 

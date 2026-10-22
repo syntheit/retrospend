@@ -23,7 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "~/components/ui/sheet";
+} from "~/components/ui/edge-panel";
 
 function ResponsiveDialog({
   ...props

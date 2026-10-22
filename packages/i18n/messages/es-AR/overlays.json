@@ -1,0 +1,15 @@
+{
+	"sheet": {
+		"close": "Cerrar",
+		"cancel": "Cancelar",
+		"failed": "No se pudo guardar. Intentá de nuevo."
+	},
+	"toast": {
+		"undo": "Deshacer",
+		"undone": "Deshecho",
+		"undoFailed": "No se pudo deshacer"
+	},
+	"menu": {
+		"more": "Más acciones para {name}"
+	}
+}

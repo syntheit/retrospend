@@ -1,0 +1,108 @@
+{
+	"expense": {
+		"review": {
+			"label": "Mark as reviewed"
+		},
+		"open": {
+			"label": "Open"
+		},
+		"edit": {
+			"label": "Edit"
+		},
+		"askFix": {
+			"label": "Ask to fix"
+		},
+		"correct": {
+			"label": "Correct"
+		},
+		"split": {
+			"label": "Split"
+		},
+		"category": {
+			"label": "Change category"
+		},
+		"project": {
+			"label": "Move to project"
+		},
+		"duplicate": {
+			"label": "Duplicate"
+		},
+		"delete": {
+			"label": "Delete",
+			"confirmTitle": "Delete {name}?",
+			"confirmBody": "Balances it touched update for everyone on it.",
+			"confirmButton": "Delete expense"
+		}
+	},
+	"person": {
+		"settle": {
+			"label": "Settle up"
+		},
+		"request": {
+			"label": "Request"
+		},
+		"remind": {
+			"label": "Remind"
+		},
+		"addExpense": {
+			"label": "Add expense with them"
+		},
+		"profile": {
+			"label": "View profile"
+		}
+	},
+	"project": {
+		"addExpense": {
+			"label": "Add expense"
+		},
+		"pin": {
+			"label": "Pin"
+		},
+		"share": {
+			"label": "Share link"
+		},
+		"settleAll": {
+			"label": "Settle all"
+		},
+		"archive": {
+			"label": "Archive"
+		}
+	},
+	"account": {
+		"updateBalance": {
+			"label": "Update balance"
+		},
+		"history": {
+			"label": "View history"
+		},
+		"edit": {
+			"label": "Edit account"
+		},
+		"archive": {
+			"label": "Archive"
+		}
+	},
+	"recurring": {
+		"confirm": {
+			"label": "Confirm"
+		},
+		"editAmount": {
+			"label": "Edit amount"
+		},
+		"pause": {
+			"label": "Pause"
+		},
+		"resume": {
+			"label": "Resume"
+		},
+		"skip": {
+			"label": "Skip this time"
+		},
+		"delete": {
+			"label": "Delete",
+			"confirmTitle": "Delete {name}?",
+			"confirmBody": "Future ones stop; past expenses stay.",
+			"confirmButton": "Delete recurring expense"
+		}
+	}
+}
