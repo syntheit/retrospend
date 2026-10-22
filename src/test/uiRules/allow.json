@@ -38,5 +38,10 @@
 		"rule": "UI-001",
 		"file": "src/components/ui/chart.tsx",
 		"reason": "Attribute selectors such as [stroke='#ccc'] match the default colors Recharts writes into its SVG, so they can be restyled with tokens. They select colors, they do not paint them."
+	},
+	{
+		"rule": "UI-012",
+		"file": "src/components/shell/sidebar.tsx",
+		"reason": "The sidebar group labels (Tools, Pinned) are uppercase and letter-spaced, the one exception GUIDELINE §2.3 allows (kit.css .sb-group)."
 	}
 ]

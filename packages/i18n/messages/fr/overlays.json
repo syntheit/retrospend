@@ -1,0 +1,15 @@
+{
+	"sheet": {
+		"close": "Fermer",
+		"cancel": "Annuler",
+		"failed": "Enregistrement impossible. Réessayez."
+	},
+	"toast": {
+		"undo": "Annuler",
+		"undone": "Annulé",
+		"undoFailed": "Impossible d'annuler"
+	},
+	"menu": {
+		"more": "Plus d'actions pour {name}"
+	}
+}

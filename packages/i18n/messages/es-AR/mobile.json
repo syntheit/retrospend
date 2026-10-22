@@ -1,0 +1,24 @@
+{
+	"tabs": {
+		"home": "Inicio",
+		"activity": "Actividad",
+		"budget": "Presupuesto",
+		"people": "Personas",
+		"projects": "Proyectos",
+		"add": "Agregar gasto"
+	},
+	"connect": {
+		"title": "Conectate a un servidor",
+		"intro": "Usá retrospend.app o la dirección de un servidor propio.",
+		"urlLabel": "Dirección del servidor",
+		"submit": "Conectar",
+		"checking": "Revisando el servidor",
+		"invalidUrl": "Ingresá una dirección web, por ejemplo retrospend.app.",
+		"unreachable": "No pudimos conectar con este servidor. Revisá la dirección y tu conexión.",
+		"notRetrospend": "Esta dirección no es un servidor de Retrospend.",
+		"appTooOld": "Este servidor necesita una versión más nueva de la app. Actualizá Retrospend y probá de nuevo.",
+		"insecureWarning": "Este servidor no usa HTTPS. Tu contraseña y tus datos viajan sin cifrar. Seguí solo en una red de confianza.",
+		"continueAnyway": "Continuar igual",
+		"saveFailed": "No pudimos guardar el servidor. Probá de nuevo."
+	}
+}

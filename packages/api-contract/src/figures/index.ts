@@ -1,0 +1,50 @@
+import * as z from "zod";
+import { v1 } from "../common/meta";
+import { figureSchema } from "../common/money";
+
+export const MAX_FIGURE_IDS = 50;
+
+const FIGURE_ID_LIST = /^[a-z][A-Za-z0-9.]*(,[a-z][A-Za-z0-9.]*)*$/;
+
+/** Splits the `ids` query (`a,b`) into figure ids. */
+export function parseFigureIds(ids: string): string[] {
+	return [...new Set(ids.split(","))];
+}
+
+export const figuresQuerySchema = z.object({
+	ids: z
+		.string()
+		.max(2000)
+		.regex(FIGURE_ID_LIST)
+		.meta({
+			description: `Comma-separated figure ids, at most ${MAX_FIGURE_IDS}.`,
+			examples: ["owed.owedToYou,owed.youOwe"],
+		}),
+	projectId: z.string().optional(),
+	personId: z.string().optional(),
+	accountId: z.string().optional(),
+});
+
+export const figuresResultSchema = z.object({
+	figures: z.array(figureSchema),
+});
+
+/**
+ * GET /figures reads named numbers from the figures registry, the same
+ * definitions the web shows and the e2e display audit compares against.
+ * A narrowing (projectId, personId, accountId) applies only to figures
+ * that honor it. Unknown ids are `not_found`.
+ */
+export const figuresContract = {
+	read: v1
+		.route({
+			method: "GET",
+			path: "/figures",
+			operationId: "getFigures",
+			tags: ["Figures"],
+			summary: "Read figures by id",
+		})
+		.meta({ scope: "read" })
+		.input(figuresQuerySchema)
+		.output(figuresResultSchema),
+};

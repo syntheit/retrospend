@@ -1,0 +1,17 @@
+{
+	"title": "Galeria de componentes",
+	"sub": "Cada componente registrado, seus estados e o que substitui",
+	"intro": "Reutilize um componente registrado ou proponha um novo. Cada bloco diz para que serve, para que nunca, e o que substitui. As variantes de celular ficam ao lado das de desktop.",
+	"theme": "Tema",
+	"light": "Claro",
+	"dark": "Escuro",
+	"sections": "Seções",
+	"useFor": "Para",
+	"neverFor": "Nunca para",
+	"replaces": "Substitui:",
+	"noMatch": "Nenhum gasto corresponde",
+	"noMatchHint": "Tente remover um filtro.",
+	"clearFilters": "Limpar filtros",
+	"noExpenses": "Ainda não há gastos",
+	"addExpense": "Adicionar gasto"
+}

@@ -1,0 +1,27 @@
+{
+	"day": "Day {day}",
+	"noData": "no data",
+	"pace": {
+		"summary": "Day {day}: {spent} spent so far, {before} by this day last month"
+	},
+	"bars": {
+		"label": "Spent",
+		"summary": "Spending by month: {list}"
+	},
+	"area": {
+		"label": "Net worth",
+		"summary": "Net worth went from {start} on {from} to {end} on {to}"
+	},
+	"ranked": {
+		"summary": "Largest first: {list}"
+	},
+	"allocation": {
+		"summary": "Split: {list}"
+	},
+	"balance": {
+		"summary": "Owed to you {owed}. You owe {owe}",
+		"owesYou": "{name}: owes you {amount}",
+		"youOwe": "{name}: you owe {amount}"
+	},
+	"empty": "No data yet"
+}

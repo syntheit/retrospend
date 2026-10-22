@@ -1,19 +1,33 @@
+import { apiKey } from "@better-auth/api-key";
+import { expo } from "@better-auth/expo";
+import { MOBILE_SCOPES, parseScopeList } from "@retrospend/api-contract/common";
+import type { BetterAuthPlugin } from "better-auth";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { APIError } from "better-auth/api";
-import { twoFactor } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { bearer, deviceAuthorization, twoFactor } from "better-auth/plugins";
 import crypto from "crypto";
 import { headers } from "next/headers";
 import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
+import {
+	capDeviceScopes,
+	DEFAULT_TOKEN_SCOPES,
+	DEVICE_CLIENT_IDS,
+	formatScopeList,
+	isMobileAppRequest,
+	MAX_SCOPE_LIST_LENGTH,
+	MOBILE_CLIENT_ID,
+} from "~/server/api/v1/scopes";
+import { guardScopedSessions } from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
-import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
+import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
-import { isInviteOnlyEnabled } from "~/server/services/settings";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
+import { isInviteOnlyEnabled } from "~/server/services/settings";
 import { USERNAME_RESERVATION_DAYS } from "~/server/services/username.service";
 
 // ── Rate limiting for auth endpoints ──────────────────────────────────
@@ -26,9 +40,124 @@ const RATE_LIMITED_AUTH_PATHS = [
 	"/two-factor",
 	"/forgot-password",
 	"/reset-password",
+	"/device/code",
 ];
 const AUTH_RATE_LIMIT = 10; // requests per window
 const AUTH_RATE_WINDOW_MS = 60_000; // 1 minute
+
+const DAY_SECONDS = 24 * 60 * 60;
+
+/**
+ * Rejects a device authorization request for an unknown scope (RFC 8628
+ * `invalid_scope`) before a code is issued.
+ */
+function assertKnownScopes(scope: string | undefined) {
+	if (scope && scope.length > MAX_SCOPE_LIST_LENGTH) {
+		throw new APIError("BAD_REQUEST", {
+			error: "invalid_scope",
+			error_description: "Too many scopes",
+		});
+	}
+	const { unknown } = parseScopeList(scope);
+	if (unknown.length > 0) {
+		throw new APIError("BAD_REQUEST", {
+			error: "invalid_scope",
+			error_description: `Unknown scope: ${unknown.join(" ")}`,
+		});
+	}
+}
+
+/**
+ * Client calls to the api-key plugin may not drop a key's expiry (update
+ * with `expiresIn: null`) or pick their own prefix: every key expires, and
+ * /api/v1 tells a key from a session token by the rsk_ prefix.
+ */
+function guardApiKeyRequest(path: string, body: unknown) {
+	const fields = (body ?? {}) as { expiresIn?: unknown; prefix?: unknown };
+	if (path === "/api-key/update" && fields.expiresIn === null) {
+		throw new APIError("BAD_REQUEST", { message: "API keys always expire" });
+	}
+	if (path === "/api-key/create" && fields.prefix !== undefined) {
+		throw new APIError("BAD_REQUEST", {
+			message: "API keys use the rsk_ prefix",
+		});
+	}
+}
+
+/**
+ * The device token endpoint creates a plain session; this stamps it with the
+ * scopes the device asked for, capped to what the approver's own web session
+ * can use, and its client id, before the token leaves the server. If the
+ * update fails the request fails, so no unscoped device token is handed out.
+ */
+const scopeDeviceSession = createAuthMiddleware(async (ctx) => {
+	if (ctx.path !== "/device/token") return;
+	const newSession = ctx.context.newSession;
+	const returned = ctx.context.returned as Record<string, unknown> | undefined;
+	if (!newSession || !returned || returned instanceof Error) return;
+	const role = (newSession.user as { role?: string }).role ?? "USER";
+	const scopes = formatScopeList(
+		capDeviceScopes(returned.scope as string | undefined, role),
+	);
+	await db.session.update({
+		where: { id: newSession.session.id },
+		data: {
+			scopes,
+			clientId: (ctx.body as { client_id?: string } | undefined)?.client_id,
+		},
+	});
+	return ctx.json({ ...returned, scope: scopes });
+});
+
+/** Whether a get-session response is for a scoped (mobile or device) session. */
+function isScopedSessionBody(body: unknown): boolean {
+	const session = (body as { session?: { scopes?: unknown } } | null)?.session;
+	return session?.scopes !== undefined && session.scopes !== null;
+}
+
+/**
+ * Runs after the bearer plugin and decides what a response may hand out:
+ * - `set-auth-token` (the session token, readable by scripts) only for a
+ *   session row stamped as the mobile app's, or a device token response.
+ *   Never from request headers, so a web session's token never leaks to a
+ *   page script.
+ * - no Set-Cookie at all on a session refresh asked with an Authorization
+ *   header or by a scoped session: tokens sent as bearers refresh by bearer
+ *   only, so no client turns a bearer into a signed cookie.
+ */
+const tokenHandout = {
+	id: "token-handout",
+	hooks: {
+		after: [
+			{
+				matcher: () => true,
+				handler: createAuthMiddleware(async (ctx) => {
+					const responseHeaders = ctx.context.responseHeaders;
+					if (!responseHeaders) return;
+					// A refresh answered to a bearer (any Authorization header at
+					// all) or to a scoped session never sets a cookie: otherwise a
+					// token sent as a bearer comes back as a signed cookie.
+					const requestHeaders = ctx.request?.headers ?? ctx.headers;
+					if (
+						ctx.path === "/get-session" &&
+						(requestHeaders?.has("authorization") ||
+							isScopedSessionBody(ctx.context.returned))
+					) {
+						responseHeaders.delete("set-cookie");
+						responseHeaders.delete("set-auth-token");
+						return;
+					}
+					const clientId = (
+						ctx.context.newSession?.session as { clientId?: string | null }
+					)?.clientId;
+					if (ctx.path === "/device/token" || clientId === MOBILE_CLIENT_ID)
+						return;
+					responseHeaders.delete("set-auth-token");
+				}),
+			},
+		],
+	},
+} satisfies BetterAuthPlugin;
 
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
@@ -37,20 +166,39 @@ export const auth = betterAuth({
 	}),
 	trustedOrigins: [
 		env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL,
+		// The Expo app's deep-link scheme (mobile sign-in and redirects).
+		"retrospend://",
 		...(env.TRUSTED_ORIGINS
-			? env.TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+			? env.TRUSTED_ORIGINS.split(",")
+					.map((o) => o.trim())
+					.filter(Boolean)
 			: []),
 	],
 	session: {
 		expiresIn: 60 * 60 * 24 * 60, // 60 days
 		updateAge: 60 * 60 * 24, // Refresh daily
+		additionalFields: {
+			// Set only on device-authorization sessions (scopeDeviceSession).
+			scopes: { type: "string", required: false, input: false },
+			clientId: { type: "string", required: false, input: false },
+		},
 	},
 	emailAndPassword: {
 		enabled: true,
 	},
 	hooks: {
-		before: async (context) => {
-			if (!context.request) return;
+		before: createAuthMiddleware(async (context) => {
+			const requestHeaders = context.request?.headers ?? context.headers;
+			const guarded = requestHeaders
+				? await guardScopedSessions(
+						context.path,
+						requestHeaders,
+						context.context.authCookies.sessionToken.name,
+					)
+				: null;
+			// With a bearer, the endpoint sees no session cookie (see guardScopedSessions).
+			const result = guarded ? { context: { headers: guarded } } : undefined;
+			if (!context.request) return result;
 			const path = new URL(context.request.url).pathname.replace(
 				/^\/api\/auth/,
 				"",
@@ -69,7 +217,10 @@ export const auth = betterAuth({
 					});
 				}
 			}
-		},
+			guardApiKeyRequest(path, context.body);
+			return result;
+		}),
+		after: scopeDeviceSession,
 	},
 	onAPIError: {
 		onError: (error) => {
@@ -315,7 +466,7 @@ export const auth = betterAuth({
 		},
 		session: {
 			create: {
-				before: async (session) => {
+				before: async (session, ctx) => {
 					// Kill Switch Logic: Block sign-in for inactive users
 					const user = await db.user.findUnique({
 						where: { id: session.userId },
@@ -324,6 +475,24 @@ export const auth = betterAuth({
 
 					if (!user?.isActive) {
 						throw new Error("Account is deactivated");
+					}
+
+					// The Expo app gets the mobile scopes (everything but admin,
+					// IMPLEMENTATION §2.3) stamped on its session, so they hold
+					// whether it sends the token as a bearer or as a cookie. Device
+					// sessions are stamped after /device/token instead.
+					const requestHeaders = ctx?.request?.headers ?? ctx?.headers;
+					if (
+						ctx?.path !== "/device/token" &&
+						isMobileAppRequest(requestHeaders)
+					) {
+						return {
+							data: {
+								...session,
+								scopes: formatScopeList(MOBILE_SCOPES),
+								clientId: MOBILE_CLIENT_ID,
+							},
+						};
 					}
 				},
 				after: async (session) => {
@@ -349,6 +518,36 @@ export const auth = betterAuth({
 	plugins: [
 		twoFactor({
 			issuer: "Retrospend",
+		}),
+		// Mobile: `Authorization: Bearer <session token>` (token from the
+		// set-auth-token header at sign-in) and the Expo origin handling.
+		bearer(),
+		tokenHandout,
+		expo(),
+		// Personal access tokens for scripts and integrations: shown once,
+		// stored hashed, always expiring. Scopes live in `permissions` and can
+		// only be set server side; /api/v1 enforces them and rate limits keys
+		// in Postgres, so the plugin's own limiter is off.
+		apiKey({
+			defaultPrefix: "rsk_",
+			requireName: true,
+			keyExpiration: {
+				defaultExpiresIn: 90 * DAY_SECONDS,
+				minExpiresIn: 1,
+				maxExpiresIn: 365,
+			},
+			rateLimit: { enabled: false },
+			permissions: {
+				defaultPermissions: { scopes: [...DEFAULT_TOKEN_SCOPES] },
+			},
+		}),
+		// RFC 8628 for the later CLI and desktop clients; users approve at /device.
+		deviceAuthorization({
+			verificationUri: "/device",
+			expiresIn: "30m",
+			interval: "5s",
+			validateClient: (clientId) => DEVICE_CLIENT_IDS.includes(clientId),
+			onDeviceAuthRequest: (_clientId, scope) => assertKnownScopes(scope),
 		}),
 	],
 	baseURL: env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997",

@@ -103,6 +103,31 @@ These are review items because a scan cannot judge them reliably: layout order a
 
 `docs/design-system.md` (gradient hero cards, tinted semantic cards, decorative circles) and `docs/web-experience/design-language.md` (codified the pre-overhaul pages, including StatCard and `duration-300`) now point here. Their old text is in git history.
 
-## 7. Data the server does not have yet
+## 7. Missing data sources (TODO)
+
+Parts of the new UI that wait for a server source. Each one is left out or shown as not available, never filled with made-up data.
+
+| Where | What is missing | Until then | Owner |
+|---|---|---|---|
+| Shell palette (`src/components/shell/palette.tsx`) | Typed results for people, projects, accounts, categories and expenses (RC14): one search read model that matches accent-insensitively | Typing filters Go to and Commands only | S2 search + S1c part 2 |
+| Shell palette | The inline currency converter ("100 usd", "50000 ars to brl") with every rate type | No converter row; Currencies is in Go to | S1c part 2 (rates read from the server) |
+| Shell palette | Suggestions from Needs you (imports to review, the person you owe most, the next recurring item due) | No Suggestions group | 2E `needsYou()` |
+| Shell palette, Recent | A recent-items read model (people and projects you opened, expenses) with Money DTOs | Recent shows the two most recently updated active projects and the last three expenses from `expense.listFinalized`, whose amounts arrive as numbers and are turned into minor units by `toMinor` | S2 |
+| Shell nav badges (`src/lib/nav.ts` `NavBadges`) | Needs you counts per destination (Activity: imports to review; People; Budget) | `AppShell` takes `badges` as an optional prop; no badge shows | 2E |
+| Sidebar pinned projects | A pin per person and project | The Pinned group lists active projects, most recently updated first, at most 5 (the kit's fallback) | S4F projects |
+| Sidebar pinned projects | A light read of names and covers | The sidebar reuses `project.list({ status: "ACTIVE" })`, which also computes balances | S2 |
+| Add income, Transfer (split Add menu, palette, I and T keys) | Their sheets (4G) | Shown disabled with "Coming soon"; the keys show a "coming soon" toast | S4G |
+| New routes (`/home`, `/activity`, `/activity/recurring`, `/activity/insights`) | The pages | `SHIPPED_ROUTES` in `src/lib/nav.ts` is empty, so the new shell links today's routes; Insights is hidden. Each page agent adds its route there when it ships | S4 |
+| Phone account entry on today's pages | The new PageHeader with the account avatar | Today's SiteHeader menu button opens the account sheet in the new shell (`LegacyMenuBridge` in `app-shell.tsx`); the button is hidden on desktop | S4 pages |
+| Verify your email (today's sidebar banner) | Its mockup home is a Home Needs you item | A single attention Notice at the top of the content in the new shell (`verify-email-notice.tsx`) | 2E + S4 Home |
+| Public profile (`/u/{username}`) | A link from Settings, Profile; the new account menu's Your profile opens Settings as the mockup says, so the public page has no entry in the new shell | Reachable by URL only | S4H settings |
+| Sidebar group label letter spacing | A tracking token for the one eyebrow the guideline allows | `tracking-wider` on the sidebar's Tools and Pinned labels (allow.json UI-012) | S0a tokens |
+
+## 8. Behavior gaps found by the e2e suite
+
+- **Clicks before hydration do nothing (S4).** Buttons rendered on the server (Add Expense, New Project, the user menu) ignore a click that lands before React hydrates; the user has to click again, and nothing says the page is not ready yet. The e2e suite waits for `html[data-hydrated="true"]` (`src/components/hydration-marker.tsx`) before it clicks. The v2 pages should either work without JavaScript for their primary action or show it as not ready until hydration.
+- **Profile form labels point nowhere (S4).** In `src/components/settings/profile-section.tsx` the labels use `htmlFor="name"` (and `username`, `email`) while `FormControl` gives each input a generated id, so screen readers announce the fields without their labels. The e2e spec selects the name field by `input[name="name"]` until the form is rebuilt.
+
+## 9. Data the server does not have yet
 
 - **Per-user time zone.** Server-side calendar days (project membership dates, which expenses fall before someone joined) come from `userTimeZone()` in `src/server/services/user-time-zone.ts`, which returns `DEFAULT_TIME_ZONE` or Buenos Aires for everyone. When a per-user zone setting exists, that function reads it; no call site changes. The M5 backfill used the same default.

@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { cache } from "react";
-import { auth } from ".";
+import { getWebSession } from "./web-session";
 
-export const getSession = cache(async () =>
-	auth.api.getSession({ headers: await headers() }),
-);
+/** The web session for server components (see getWebSession). */
+export const getSession = cache(async () => getWebSession(await headers()));

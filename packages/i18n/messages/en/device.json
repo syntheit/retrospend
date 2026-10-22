@@ -1,0 +1,29 @@
+{
+	"title": "Connect a device",
+	"description": "Enter the code the device shows to let it use your account.",
+	"codeLabel": "Code",
+	"continue": "Continue",
+	"reviewTitle": "Allow {client} to use your account?",
+	"scopesIntro": "It will be able to:",
+	"scopes": {
+		"read": "See your expenses, people, budget and accounts",
+		"writeExpenses": "Add and change expenses",
+		"writeMoney": "Record payments, transfers, income and budget moves",
+		"writeSettings": "Change your settings",
+		"admin": "Manage this server"
+	},
+	"clients": {
+		"retrospend-cli": "Retrospend CLI",
+		"retrospend-desktop": "Retrospend for desktop",
+		"retrospend-mcp": "Retrospend MCP server"
+	},
+	"approve": "Allow",
+	"deny": "Deny",
+	"approved": "Device connected. You can go back to it now.",
+	"denied": "Request denied. The device was not connected.",
+	"errors": {
+		"invalid": "That code is not valid or has expired.",
+		"used": "That code was already used.",
+		"generic": "Couldn't finish. Try again."
+	}
+}
