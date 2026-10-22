@@ -94,10 +94,14 @@ describe("settle dialog, today vs allocatePayment", () => {
 			],
 			currency: "USD",
 			amount: null,
-			quotes: new Map([["EUR", quote("0.3333333333333333333333333333", "official")]]),
+			quotes: new Map([
+				["EUR", quote("0.3333333333333333333333333333", "official")],
+			]),
 		});
 		expect(now.amount).toBe(3000);
-		expect(now.rows.map((r) => [r.scope, r.currency, r.amount, r.paid])).toEqual([
+		expect(
+			now.rows.map((r) => [r.scope, r.currency, r.amount, r.paid]),
+		).toEqual([
 			[null, "USD", 2000, 2000],
 			["A", "EUR", 3000, 1000],
 		]);
@@ -114,11 +118,17 @@ describe("settle dialog, today vs allocatePayment", () => {
 			],
 			currency: "USD",
 			amount: null,
-			quotes: new Map([["EUR", quote("0.3333333333333333333333333333", "official")]]),
+			quotes: new Map([
+				["EUR", quote("0.3333333333333333333333333333", "official")],
+			]),
 		});
 		expect(now.amount).toBe(1000);
-		expect(now.rows.map((r) => [r.scope, r.currency, r.amount])).toEqual([[null, "USD", 1000]]);
-		expect(now.offsets.map((o) => [o.scope, o.currency, o.from, o.amount, o.value])).toEqual([
+		expect(now.rows.map((r) => [r.scope, r.currency, r.amount])).toEqual([
+			[null, "USD", 1000],
+		]);
+		expect(
+			now.offsets.map((o) => [o.scope, o.currency, o.from, o.amount, o.value]),
+		).toEqual([
 			["A", "EUR", "payee", 3000, 1000],
 			[null, "USD", "payer", 1000, 1000],
 		]);
@@ -133,7 +143,9 @@ describe("settle dialog, today vs allocatePayment", () => {
 			],
 			currency: "USD",
 			amount: 1500,
-			quotes: new Map([["EUR", quote("0.3333333333333333333333333333", "official")]]),
+			quotes: new Map([
+				["EUR", quote("0.3333333333333333333333333333", "official")],
+			]),
 		});
 		expect(now.rows.map((r) => [r.currency, r.amount, r.paid])).toEqual([
 			["USD", 1000, 1000],

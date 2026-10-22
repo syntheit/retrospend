@@ -26,7 +26,12 @@
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { SMART_NO_DECIMAL_CURRENCIES } from "~/lib/currency-format";
 import { currencyDecimals } from "~/lib/money";
-import { dec, fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
+import {
+	dec,
+	fromMinor,
+	sumMinor,
+	toMinor,
+} from "~/server/services/envelope/units";
 import type { ApplyTo, Minor, PairLine, Quote, Scope } from "./types";
 
 export interface AllocateInput {
@@ -82,7 +87,11 @@ export interface Allocation {
 	readonly rows: readonly CashRow[];
 	readonly offsets: readonly OffsetRow[];
 	/** What the payer still owes after this payment, per scope and currency. */
-	readonly remainder: readonly { scope: Scope; currency: string; amount: Minor }[];
+	readonly remainder: readonly {
+		scope: Scope;
+		currency: string;
+		amount: Minor;
+	}[];
 	/** Cash beyond everything owed (0 when none). Recorded only with allowOverpay. */
 	readonly overpay: Minor;
 	/** Debt currencies left untouched because they have no quote. */
@@ -98,6 +107,16 @@ export function dustOf(currency: string): Minor {
 	return whole ? 10 ** decimals : 1;
 }
 
+/**
+ * A non-negative amount to the nearest dust step, half up: the one
+ * "Everything" figure a whole-peso user can type (ARS 165,987.50 is
+ * ARS 165,988). Paying it leaves only dust, which the rows absorb.
+ */
+function roundToDust(minor: Minor, currency: string): Minor {
+	const step = dustOf(currency);
+	return Math.floor((2 * minor + step) / (2 * step)) * step;
+}
+
 /** Payment-currency minor units worth `minor` of `currency` at `quote`, rounded half-even. */
 export function toPaymentCurrency(
 	minor: Minor,
@@ -107,7 +126,10 @@ export function toPaymentCurrency(
 ): Minor {
 	if (currency === paymentCurrency) return minor;
 	if (!quote) throw new RangeError(`no quote for ${currency}`);
-	return toMinor(fromMinor(minor, currency).mul(quote.perUnit), paymentCurrency);
+	return toMinor(
+		fromMinor(minor, currency).mul(quote.perUnit),
+		paymentCurrency,
+	);
 }
 
 /** Minor units of `currency` that `paidMinor` of the payment currency buys at `quote`. */
@@ -147,7 +169,8 @@ function debtOrder(paymentCurrency: string) {
 function inApplyTo(line: PairLine, applyTo: readonly ApplyTo[] | undefined) {
 	if (!applyTo) return true;
 	return applyTo.some(
-		(a) => a.scope === line.scope && (!a.currency || a.currency === line.currency),
+		(a) =>
+			a.scope === line.scope && (!a.currency || a.currency === line.currency),
 	);
 }
 
@@ -163,7 +186,7 @@ interface Pricing {
 const quoteFor = (p: Pricing, currency: string): Quote | null =>
 	currency === p.paymentCurrency ? null : (p.quotes.get(currency) ?? null);
 
-const valueOf = (p: Pricing, minor: Minor, currency: string): Minor =>
+const worth = (p: Pricing, minor: Minor, currency: string): Minor =>
 	toPaymentCurrency(minor, currency, p.paymentCurrency, quoteFor(p, currency));
 
 /** Pays `amount` into the debts in order; returns the rows and the cash left. */
@@ -179,7 +202,7 @@ function payCash(
 	for (const debt of debts) {
 		if (rest <= 0) break;
 		const quote = quoteFor(pricing, debt.currency);
-		const need = valueOf(pricing, debt.left, debt.currency);
+		const need = worth(pricing, debt.left, debt.currency);
 		let cleared: Minor;
 		let paid: Minor;
 		if (rest >= need || need - rest < dustP) {
@@ -223,7 +246,7 @@ function writeOffsets(
 		currency: line.currency,
 		amount: -line.owed,
 		from: "payee",
-		value: valueOf(pricing, -line.owed, line.currency),
+		value: worth(pricing, -line.owed, line.currency),
 		quote: quoteFor(pricing, line.currency),
 	}));
 	const total = sumMinor(theirs.map((o) => o.value));
@@ -233,7 +256,7 @@ function writeOffsets(
 		currency: debt.currency,
 		amount: debt.left,
 		from: "payer",
-		value: valueOf(pricing, debt.left, debt.currency),
+		value: worth(pricing, debt.left, debt.currency),
 		quote: quoteFor(pricing, debt.currency),
 	}));
 	const last = mine.at(-1);
@@ -273,8 +296,13 @@ function settleRest(
 export function allocatePayment(input: AllocateInput): Allocation {
 	const P = input.currency;
 	const pricing: Pricing = { paymentCurrency: P, quotes: input.quotes };
-	if (input.amount !== null && !(Number.isSafeInteger(input.amount) && input.amount >= 0)) {
-		throw new RangeError(`payment amount must be a non-negative integer, got ${input.amount}`);
+	if (
+		input.amount !== null &&
+		!(Number.isSafeInteger(input.amount) && input.amount >= 0)
+	) {
+		throw new RangeError(
+			`payment amount must be a non-negative integer, got ${input.amount}`,
+		);
 	}
 
 	const unpriced = new Set<string>();
@@ -291,11 +319,11 @@ export function allocatePayment(input: AllocateInput): Allocation {
 		.map((l) => ({ ...l, left: l.owed }));
 	const opposite = priced.filter((l) => l.owed < 0).sort(order);
 
-	const gross = sumMinor(debts.map((d) => valueOf(pricing, d.owed, d.currency)));
+	const gross = sumMinor(debts.map((d) => worth(pricing, d.owed, d.currency)));
 	const owedBack = sumMinor(
-		opposite.map((o) => valueOf(pricing, -o.owed, o.currency)),
+		opposite.map((o) => worth(pricing, -o.owed, o.currency)),
 	);
-	const full = Math.max(0, gross - owedBack);
+	const full = roundToDust(Math.max(0, gross - owedBack), P);
 	const amount = input.amount ?? full;
 	const dustP = dustOf(P);
 
@@ -331,4 +359,43 @@ export function allocatePayment(input: AllocateInput): Allocation {
 /** A quote from a decimal rate (string, never a float). */
 export function quote(perUnit: string | Decimal, rateType: string): Quote {
 	return { perUnit: dec(perUnit), rateType };
+}
+
+/** One settlement row to write for an allocation, seen from the payer. */
+export interface PlannedSettlement {
+	readonly scope: Scope;
+	readonly currency: string;
+	readonly amount: Minor;
+	/** "payee" rows run payee to payer: offsets of what the payee owed. */
+	readonly from: "payer" | "payee";
+	readonly isOffset: boolean;
+	/** Cash in the payment currency (0 on offsets). */
+	readonly paid: Minor;
+	readonly quote: Quote | null;
+}
+
+/** The rows a payment writes: cash rows first, then offsets. */
+export function plannedSettlements(
+	allocation: Allocation,
+): PlannedSettlement[] {
+	return [
+		...allocation.rows.map((r) => ({
+			scope: r.scope,
+			currency: r.currency,
+			amount: r.amount,
+			from: "payer" as const,
+			isOffset: false,
+			paid: r.paid,
+			quote: r.quote,
+		})),
+		...allocation.offsets.map((o) => ({
+			scope: o.scope,
+			currency: o.currency,
+			amount: o.amount,
+			from: o.from,
+			isOffset: true,
+			paid: 0,
+			quote: o.quote,
+		})),
+	];
 }
