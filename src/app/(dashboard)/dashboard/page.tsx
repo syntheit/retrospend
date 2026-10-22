@@ -253,7 +253,6 @@ export default function Page() {
 								<FavoritesPanel
 									favoriteRates={data.favoriteRates}
 									favoritesLoading={isLoading.favorites}
-									isUsingMockFavorites={state.isUsingMockFavorites}
 								/>
 							</div>
 						</div>

@@ -1,9 +1,6 @@
 "use client";
 
-import {
-	type Icon,
-	IconMailExclamation,
-} from "@tabler/icons-react";
+import { IconMailExclamation } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import type * as React from "react";
 import { toast } from "sonner";
@@ -12,22 +9,14 @@ import {
 	SidebarGroup,
 	SidebarGroupContent,
 	SidebarMenu,
-	SidebarMenuButton,
 	SidebarMenuItem,
 } from "~/components/ui/sidebar";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
-export function NavSecondary({
-	items,
-	...props
-}: {
-	items: {
-		title: string;
-		url: string;
-		icon: Icon;
-	}[];
-} & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+export function NavSecondary(
+	props: React.ComponentPropsWithoutRef<typeof SidebarGroup>,
+) {
 	const t = useTranslations("nav");
 	const { data: session } = useSession();
 	const { data: appFeatures } = api.auth.getAppFeatures.useQuery();
@@ -72,19 +61,6 @@ export function NavSecondary({
 								</div>
 							</SidebarMenuItem>
 						)}
-	{items.map((item) => (
-						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton
-								asChild
-								className="h-10 px-4 py-4 text-base [&>svg]:size-5"
-							>
-								<a href={item.url}>
-									<item.icon />
-									<span>{item.title}</span>
-								</a>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					))}
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>

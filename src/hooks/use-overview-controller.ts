@@ -67,12 +67,6 @@ export function useOverviewController() {
 			{ enabled: settingsReady },
 		);
 
-	const { data: dailySpending, isLoading: isHeatmapLoading } =
-		api.dashboard.getDailySpending.useQuery(
-			{ homeCurrency, days: 90 },
-			{ enabled: settingsReady },
-		);
-
 	// Destructure / Map for compatibility with existing logic
 	const hasExpenses = overviewData?.hasExpenses ?? false;
 	const favoritesData = overviewData?.favorites;
@@ -85,9 +79,6 @@ export function useOverviewController() {
 
 	const dataLoading = isOverviewLoading || !settingsReady;
 	const activityLoading = isActivityLoading || !settingsReady;
-	const heatmapLoading = isHeatmapLoading || !settingsReady;
-
-	const favoritesFetched = !!overviewData;
 
 	// Transformations
 	const categoryClickBehavior = settings?.categoryClickBehavior ?? "toggle";
@@ -258,8 +249,6 @@ export function useOverviewController() {
 			now,
 			serverTime: serverTime ? now : undefined,
 			isUsingMockExpenses: !overviewData || !hasExpenses,
-			isUsingMockFavorites:
-				!favoritesFetched || (favoritesData?.length ?? 0) === 0,
 		},
 		data: {
 			overviewStats,
@@ -270,7 +259,6 @@ export function useOverviewController() {
 			recentActivity: recentActivity ?? [],
 			favoriteRates,
 			dailyTrend: trendData ?? [],
-			dailySpending: dailySpending ?? [],
 			earliestBudgetMonth,
 			pieChartConfig,
 			areaChartConfig: CHART_CONFIG_DEFAULTS.pacingChart,
@@ -286,7 +274,6 @@ export function useOverviewController() {
 			categories: dataLoading,
 			trend: dataLoading,
 			activity: activityLoading,
-			heatmap: heatmapLoading,
 		},
 		actions: {
 			setSelectedMonth,

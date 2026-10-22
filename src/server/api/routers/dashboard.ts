@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { sumIn, toUSD } from "~/lib/money";
-import { dayKey, startOfDayIn } from "~/lib/time-zone";
+import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import {
@@ -10,10 +9,8 @@ import {
 import { RateCache } from "~/server/services/rate-cache";
 import {
 	getExcludedProjectIds,
-	getSharedExpenseShares,
 	listSharedParticipationsForUser,
 } from "~/server/services/shared-expense-integration";
-import { spendingWhere } from "~/server/services/spending";
 import { StatsService } from "~/server/services/stats.service";
 
 export const dashboardRouter = createTRPCRouter({
@@ -134,64 +131,6 @@ export const dashboardRouter = createTRPCRouter({
 				trendData,
 				serverTime: new Date(), // Return server's current time for consistent timezone handling
 			};
-		}),
-
-	getDailySpending: protectedProcedure
-		.input(z.object({ homeCurrency: z.string().length(3), days: z.number().min(1).max(365).default(90) }))
-		.query(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-			const userId = session.user.id;
-			const { homeCurrency, days } = input;
-
-			// The window starts at local midnight `days` days ago.
-			const now = new Date();
-			const startDate = startOfDayIn(
-				new Date(now.getTime() - days * 24 * 60 * 60 * 1000),
-				ctx.timeZone,
-			);
-
-			const excludedProjectIds = await getExcludedProjectIds(db, userId);
-
-			const [personalAggs, sharedShares, rateCache] = await Promise.all([
-				db.expense.groupBy({
-					by: ["date", "currency"],
-					where: spendingWhere(userId, { gte: startDate }),
-					_sum: { amount: true, amountInUSD: true },
-				}),
-				getSharedExpenseShares(db, userId, { gte: startDate }, undefined, excludedProjectIds),
-				new RateCache(db),
-			]);
-			const rate = await rateCache.rate(homeCurrency, now);
-
-			// Merge personal + shared by the user's local day
-			const byDay = new Map<string, number>();
-			const add = (date: Date, amount: number) => {
-				const key = dayKey(date, ctx.timeZone);
-				byDay.set(key, (byDay.get(key) ?? 0) + amount);
-			};
-			for (const agg of personalAggs) {
-				add(
-					agg.date,
-					sumIn(
-						[
-							{
-								currency: agg.currency,
-								amount: Number(agg._sum.amount ?? 0),
-								amountInUSD: Number(agg._sum.amountInUSD ?? 0),
-							},
-						],
-						homeCurrency,
-						rate,
-					),
-				);
-			}
-			for (const share of sharedShares) {
-				add(share.date, sumIn([share], homeCurrency, rate));
-			}
-
-			return Array.from(byDay.entries())
-				.map(([date, total]) => ({ date, total }))
-				.sort((a, b) => a.date.localeCompare(b.date));
 		}),
 
 	getRecentActivity: protectedProcedure
