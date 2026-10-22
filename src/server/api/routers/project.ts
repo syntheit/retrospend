@@ -19,7 +19,10 @@ import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computePeriodLabel } from "~/server/api/routers/billingPeriod";
 import { computeTransactionStatus } from "~/server/services/shared-expenses/verification.service";
-import { computeSettlementPlan, isFullySettled } from "~/server/services/shared-expenses/group-settlement";
+import {
+	computeSettlementPlan,
+	isFullySettled,
+} from "~/server/services/shared-expenses/group-settlement";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import { getBalancesFromPerspective } from "~/server/services/shared-expenses/balances-perspective.service";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
@@ -40,6 +43,12 @@ import {
 	resolveSplits,
 	type SplitParticipantRef,
 } from "~/lib/shared-split-computation";
+
+import {
+	projectBalancesFromPerspective,
+	projectParticipantBalances,
+	projectSettlementPlan,
+} from "~/server/services/project/group.service";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,7 +105,13 @@ async function resolveParticipantNames(
 		userIds.length > 0
 			? db.user.findMany({
 					where: { id: { in: userIds } },
-					select: { id: true, name: true, username: true, image: true, avatarPath: true },
+					select: {
+						id: true,
+						name: true,
+						username: true,
+						image: true,
+						avatarPath: true,
+					},
 				})
 			: [],
 		shadowIds.length > 0
@@ -120,7 +135,13 @@ async function resolveParticipantNames(
 	return participants.map((p) => {
 		if (p.participantType === "user") {
 			if (p.participantId === "DELETED_USER") {
-				return { ...p, name: "Deleted User", email: null, username: null, avatarUrl: null };
+				return {
+					...p,
+					name: "Deleted User",
+					email: null,
+					username: null,
+					avatarUrl: null,
+				};
 			}
 			const user = userMap.get(p.participantId);
 			return {
@@ -158,7 +179,11 @@ async function resolveParticipantNames(
  * list of resolved participants. `viewer` is null for viewer links.
  */
 async function redactParticipantEmails<
-	T extends { participantType: string; participantId: string; email: string | null },
+	T extends {
+		participantType: string;
+		participantId: string;
+		email: string | null;
+	},
 >(db: PrismaClient, viewer: ParticipantRef | null, items: T[]): Promise<T[]> {
 	const visible = await buildContactVisibility(db, viewer, items);
 	return items.map((item) => redactContact(item, visible));
@@ -216,7 +241,10 @@ async function batchResolveIdentities(
 		});
 	}
 	for (const s of shadows) {
-		result.set(`shadow:${s.id}`, { name: s.name ?? "Unknown", avatarUrl: null });
+		result.set(`shadow:${s.id}`, {
+			name: s.name ?? "Unknown",
+			avatarUrl: null,
+		});
 	}
 	for (const g of guests) {
 		result.set(`guest:${g.id}`, { name: g.name ?? "Unknown", avatarUrl: null });
@@ -255,11 +283,6 @@ async function runInProjectTransaction<T>(
 
 // ── input schemas ─────────────────────────────────────────────────────────────
 
-const participantRefSchema = z.object({
-	participantType: z.enum(["user", "guest", "shadow"]),
-	participantId: z.string().min(1),
-});
-
 const projectRoleSchema = z.enum([
 	"ORGANIZER",
 	"EDITOR",
@@ -267,24 +290,95 @@ const projectRoleSchema = z.enum([
 	"VIEWER",
 ]);
 
+const memberSchema = z.object({
+	projectId: z.string().min(1),
+	participantType: z.enum(["user", "guest", "shadow"]),
+	participantId: z.string().min(1),
+});
+
+const cycleLengthSchema = z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"]);
+const closePermissionSchema = z.enum(["ORGANIZER_ONLY", "ANY_PARTICIPANT"]);
+
 const createProjectSchema = z.object({
 	name: z.string().min(1).max(191),
 	description: z.string().max(500).optional(),
 	budgetAmount: z.number().positive().optional(),
 	budgetCurrency: z.string().min(1).max(10).optional(),
 	primaryCurrency: z.string().min(1).max(10).default("USD"),
-	visibility: z
-		.enum(["PRIVATE", "PUBLIC"])
-		.default("PRIVATE"),
-	billingCycleLength: z
-		.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"])
-		.optional(),
+	visibility: z.enum(["PRIVATE", "PUBLIC"]).default("PRIVATE"),
+	billingCycleLength: cycleLengthSchema.optional(),
 	billingCycleDays: z.number().int().positive().optional(),
 	billingAutoClose: z.boolean().default(false),
 	billingCloseReminderDays: z.number().int().min(0).default(3),
-	billingClosePermission: z
-		.enum(["ORGANIZER_ONLY", "ANY_PARTICIPANT"])
-		.default("ORGANIZER_ONLY"),
+	billingClosePermission: closePermissionSchema.default("ORGANIZER_ONLY"),
+});
+
+const updateProjectSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1).max(191).optional(),
+	description: z.string().max(500).nullish(),
+	budgetAmount: z.number().positive().nullish(),
+	budgetCurrency: z.string().min(1).max(10).nullish(),
+	primaryCurrency: z.string().min(1).max(10).optional(),
+	status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
+	visibility: z.enum(["PRIVATE", "PUBLIC"]).optional(),
+	billingCycleLength: cycleLengthSchema.nullish(),
+	billingCycleDays: z.number().int().positive().nullish(),
+	billingAutoClose: z.boolean().optional(),
+	billingCloseReminderDays: z.number().int().min(0).optional(),
+	billingClosePermission: closePermissionSchema.optional(),
+	autoAcceptSplits: z.boolean().optional(),
+});
+
+const pageSchema = {
+	page: z.number().int().positive().default(1),
+	limit: z.number().int().positive().max(500).default(20),
+};
+
+const groupInput = z.object({
+	projectId: z.string().min(1),
+	periodId: z.string().optional(),
+});
+
+/** The signed-in user's role in the project, or FORBIDDEN / NOT_FOUND. */
+function roleOf(
+	ctx: {
+		db: Parameters<typeof requireProjectRole>[0];
+		session: { user: { id: string } };
+	},
+	projectId: string,
+	minimum: "VIEWER" | "CONTRIBUTOR" | "EDITOR" | "ORGANIZER",
+) {
+	return requireProjectRole(
+		ctx.db,
+		projectId,
+		"user",
+		ctx.session.user.id,
+		minimum,
+	);
+}
+
+/** Scope check and membership check for any reader: user, guest or viewer link. */
+async function assertReader(
+	ctx: {
+		db: Parameters<typeof requireProjectRole>[0];
+		participant: Parameters<typeof assertGuestProjectScope>[0];
+	},
+	projectId: string,
+) {
+	assertGuestProjectScope(ctx.participant, projectId);
+	const { participantType, participantId } = ctx.participant;
+	return requireProjectRole(
+		ctx.db,
+		projectId,
+		participantType,
+		participantId,
+		"VIEWER",
+	);
+}
+
+const actor = (ctx: { session: { user: { id: string } } }) => ({
+	userId: ctx.session.user.id,
 });
 
 // ── router ────────────────────────────────────────────────────────────────────
@@ -335,7 +429,11 @@ export const projectRouter = createTRPCRouter({
 							input.billingCycleLength,
 							input.billingCycleDays,
 						);
-						const label = computePeriodLabel(periodStart, periodEnd, input.billingCycleLength);
+						const label = computePeriodLabel(
+							periodStart,
+							periodEnd,
+							input.billingCycleLength,
+						);
 						await tx.billingPeriod.create({
 							data: {
 								projectId: created.id,
@@ -429,13 +527,14 @@ export const projectRouter = createTRPCRouter({
 
 			// Batch: single groupBy for totalSpent across all projects
 			const projectIds = projects.map((p) => p.id);
-			const spentGroupBy = projectIds.length > 0
-				? await ctx.db.sharedTransaction.groupBy({
-						by: ["projectId"],
-						where: { projectId: { in: projectIds } },
-						_sum: { amount: true },
-					})
-				: [];
+			const spentGroupBy =
+				projectIds.length > 0
+					? await ctx.db.sharedTransaction.groupBy({
+							by: ["projectId"],
+							where: { projectId: { in: projectIds } },
+							_sum: { amount: true },
+						})
+					: [];
 			const spentMap = new Map(
 				spentGroupBy.map((g) => [g.projectId, Number(g._sum.amount ?? 0)]),
 			);
@@ -443,7 +542,9 @@ export const projectRouter = createTRPCRouter({
 			// Compute isSettled for multi-participant projects with transactions
 			// Batched: 2 queries total instead of 2 per project
 			const multiParticipantWithTxIds = projects
-				.filter((p) => p._count.participants > 1 && p._count.sharedTransactions > 0)
+				.filter(
+					(p) => p._count.participants > 1 && p._count.sharedTransactions > 0,
+				)
 				.map((p) => p.id);
 
 			const settlementResults = new Map<string, boolean>();
@@ -458,7 +559,11 @@ export const projectRouter = createTRPCRouter({
 						paidByType: true,
 						paidById: true,
 						splitParticipants: {
-							select: { participantType: true, participantId: true, shareAmount: true },
+							select: {
+								participantType: true,
+								participantId: true,
+								shareAmount: true,
+							},
 						},
 					},
 				});
@@ -468,7 +573,10 @@ export const projectRouter = createTRPCRouter({
 				for (const tx of allTxns) {
 					const pid = tx.projectId!;
 					let list = txsByProject.get(pid);
-					if (!list) { list = []; txsByProject.set(pid, list); }
+					if (!list) {
+						list = [];
+						txsByProject.set(pid, list);
+					}
 					list.push(tx);
 				}
 
@@ -482,16 +590,22 @@ export const projectRouter = createTRPCRouter({
 					},
 					select: {
 						projectId: true,
-						fromParticipantType: true, fromParticipantId: true,
-						toParticipantType: true, toParticipantId: true,
-						amount: true, currency: true,
+						fromParticipantType: true,
+						fromParticipantId: true,
+						toParticipantType: true,
+						toParticipantId: true,
+						amount: true,
+						currency: true,
 					},
 				});
 				const settlementsByProject = new Map<string, typeof allSettlements>();
 				for (const s of allSettlements) {
 					const pid = s.projectId!;
 					let list = settlementsByProject.get(pid);
-					if (!list) { list = []; settlementsByProject.set(pid, list); }
+					if (!list) {
+						list = [];
+						settlementsByProject.set(pid, list);
+					}
 					list.push(s);
 				}
 
@@ -510,14 +624,12 @@ export const projectRouter = createTRPCRouter({
 			const enriched = projects.map((p) => {
 				const participantDetails = participantsByProject.get(p.id) ?? [];
 				const myParticipant = participantDetails.find(
-					(pp) =>
-						pp.participantType === "user" && pp.participantId === userId,
+					(pp) => pp.participantType === "user" && pp.participantId === userId,
 				);
 
 				// Find the raw participant record to get excludeFromAnalytics
 				const rawMyParticipant = p.participants.find(
-					(pp) =>
-						pp.participantType === "user" && pp.participantId === userId,
+					(pp) => pp.participantType === "user" && pp.participantId === userId,
 				);
 
 				const myRole = myParticipant?.role ?? null;
@@ -642,10 +754,9 @@ export const projectRouter = createTRPCRouter({
 				};
 			});
 
-			const currentBillingPeriod =
-				project.billingCycleLength
-					? (project.billingPeriods.find((p) => p.status === "OPEN") ?? null)
-					: null;
+			const currentBillingPeriod = project.billingCycleLength
+				? (project.billingPeriods.find((p) => p.status === "OPEN") ?? null)
+				: null;
 
 			// Count unseen changes for the current participant
 			// viewerLink participants are never split participants, so always 0
@@ -989,7 +1100,9 @@ export const projectRouter = createTRPCRouter({
 								maxUses: 1,
 							},
 						});
-						joinUrl = appUrl ? `${appUrl}/projects/${input.projectId}?invite=${magicLink.id}` : undefined;
+						joinUrl = appUrl
+							? `${appUrl}/projects/${input.projectId}?invite=${magicLink.id}`
+							: undefined;
 					} catch (err) {
 						console.error(
 							"[Invitation] Failed to create magic link for shadow email:",
@@ -1007,7 +1120,10 @@ export const projectRouter = createTRPCRouter({
 						ctaLabel: joinUrl ? "Join Project" : undefined,
 					});
 					sendEmail(shadow.email, `Retrospend: ${title}`, html).catch((err) =>
-						console.error("[Notification Error] shadow PARTICIPANT_ADDED email:", err),
+						console.error(
+							"[Notification Error] shadow PARTICIPANT_ADDED email:",
+							err,
+						),
 					);
 				}
 			}
@@ -1409,7 +1525,10 @@ export const projectRouter = createTRPCRouter({
 			}
 
 			// Editors cannot change an Organizer's role
-			if (callerParticipant.role !== "ORGANIZER" && target.role === "ORGANIZER") {
+			if (
+				callerParticipant.role !== "ORGANIZER" &&
+				target.role === "ORGANIZER"
+			) {
 				throw new TRPCError({
 					code: "FORBIDDEN",
 					message: "Only an Owner can change another Owner's role",
@@ -1574,10 +1693,7 @@ export const projectRouter = createTRPCRouter({
 				return { success: true };
 			}).then(async (result) => {
 				// Notify the new owner (fire-and-forget, outside transaction)
-				const callerName = await resolveParticipantName(
-					"user",
-					userId,
-				);
+				const callerName = await resolveParticipantName("user", userId);
 				void createNotification({
 					userId: input.newOwnerParticipantId,
 					type: "PARTICIPANT_ADDED",
@@ -1642,7 +1758,10 @@ export const projectRouter = createTRPCRouter({
 			}
 
 			// Editors cannot remove an Organizer
-			if (callerParticipant.role !== "ORGANIZER" && target.role === "ORGANIZER") {
+			if (
+				callerParticipant.role !== "ORGANIZER" &&
+				target.role === "ORGANIZER"
+			) {
 				throw new TRPCError({
 					code: "FORBIDDEN",
 					message: "Only an Owner can remove another Owner",
@@ -1700,7 +1819,9 @@ export const projectRouter = createTRPCRouter({
 				ctx.db.sharedTransaction.findMany({
 					where,
 					include: {
-						category: { select: { id: true, name: true, color: true, icon: true } },
+						category: {
+							select: { id: true, name: true, color: true, icon: true },
+						},
 						splitParticipants: {
 							select: {
 								id: true,
@@ -1720,17 +1841,31 @@ export const projectRouter = createTRPCRouter({
 			]);
 
 			// Batch-resolve all participant identities (payers + split participants)
-			const allParticipantEntries: Array<{ participantType: string; participantId: string }> = [];
+			const allParticipantEntries: Array<{
+				participantType: string;
+				participantId: string;
+			}> = [];
 			for (const tx of transactions) {
-				allParticipantEntries.push({ participantType: tx.paidByType, participantId: tx.paidById });
+				allParticipantEntries.push({
+					participantType: tx.paidByType,
+					participantId: tx.paidById,
+				});
 				for (const sp of tx.splitParticipants) {
-					allParticipantEntries.push({ participantType: sp.participantType, participantId: sp.participantId });
+					allParticipantEntries.push({
+						participantType: sp.participantType,
+						participantId: sp.participantId,
+					});
 				}
 			}
-			const identityMap = await batchResolveIdentities(ctx.db, allParticipantEntries);
+			const identityMap = await batchResolveIdentities(
+				ctx.db,
+				allParticipantEntries,
+			);
 
 			const enriched = transactions.map((tx) => {
-				const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
+				const payerIdentity = identityMap.get(
+					`${tx.paidByType}:${tx.paidById}`,
+				);
 
 				// Determine status based on verification
 				const status = tx.isLocked
@@ -1760,16 +1895,23 @@ export const projectRouter = createTRPCRouter({
 						id: tx.paidById,
 						name: payerIdentity?.name ?? "Unknown",
 						avatarUrl: payerIdentity?.avatarUrl ?? null,
-						isMe: tx.paidByType === participantType && tx.paidById === participantId,
+						isMe:
+							tx.paidByType === participantType &&
+							tx.paidById === participantId,
 					},
 					status,
 					canEdit: canModifyTx,
 					canDelete: canModifyTx,
-					hasUnseenChanges: tx.splitParticipants.find(
-						(sp) => sp.participantType === participantType && sp.participantId === participantId,
-					)?.hasUnseenChanges ?? false,
+					hasUnseenChanges:
+						tx.splitParticipants.find(
+							(sp) =>
+								sp.participantType === participantType &&
+								sp.participantId === participantId,
+						)?.hasUnseenChanges ?? false,
 					splitParticipants: tx.splitParticipants.map((sp) => {
-						const identity = identityMap.get(`${sp.participantType}:${sp.participantId}`);
+						const identity = identityMap.get(
+							`${sp.participantType}:${sp.participantId}`,
+						);
 						return {
 							...sp,
 							shareAmount: Number(sp.shareAmount),
@@ -1849,20 +1991,20 @@ export const projectRouter = createTRPCRouter({
 				"EDITOR",
 			);
 
-		// Return existing active link for this project + role if one exists
-		const existing = await ctx.db.magicLink.findFirst({
-			where: {
-				projectId: input.projectId,
-				roleGranted: input.roleGranted,
-				isActive: true,
-			},
-		});
-		if (existing) {
-			return {
-				...existing,
-				url: `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/projects/${input.projectId}?invite=${existing.id}`,
-			};
-		}
+			// Return existing active link for this project + role if one exists
+			const existing = await ctx.db.magicLink.findFirst({
+				where: {
+					projectId: input.projectId,
+					roleGranted: input.roleGranted,
+					isActive: true,
+				},
+			});
+			if (existing) {
+				return {
+					...existing,
+					url: `${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/projects/${input.projectId}?invite=${existing.id}`,
+				};
+			}
 
 			return runInProjectTransaction(ctx.db, userId, async (tx) => {
 				const magicLink = await tx.magicLink.create({
@@ -2006,7 +2148,11 @@ export const projectRouter = createTRPCRouter({
 					action: "CREATED",
 					targetType: "PROJECT",
 					targetId: input.projectId,
-					changes: { linkId: magicLink.id, roleGranted: input.role, reset: true },
+					changes: {
+						linkId: magicLink.id,
+						roleGranted: input.role,
+						reset: true,
+					},
 					projectId: input.projectId,
 				});
 
@@ -2094,10 +2240,9 @@ export const projectRouter = createTRPCRouter({
 				};
 			});
 
-			const currentBillingPeriod =
-				project.billingCycleLength
-					? (project.billingPeriods[0] ?? null)
-					: null;
+			const currentBillingPeriod = project.billingCycleLength
+				? (project.billingPeriods[0] ?? null)
+				: null;
 
 			return {
 				id: project.id,
@@ -2166,17 +2311,28 @@ export const projectRouter = createTRPCRouter({
 			]);
 
 			// Batch-resolve all participant identities
-			const allEntries: Array<{ participantType: string; participantId: string }> = [];
+			const allEntries: Array<{
+				participantType: string;
+				participantId: string;
+			}> = [];
 			for (const tx of transactions) {
-				allEntries.push({ participantType: tx.paidByType, participantId: tx.paidById });
+				allEntries.push({
+					participantType: tx.paidByType,
+					participantId: tx.paidById,
+				});
 				for (const sp of tx.splitParticipants) {
-					allEntries.push({ participantType: sp.participantType, participantId: sp.participantId });
+					allEntries.push({
+						participantType: sp.participantType,
+						participantId: sp.participantId,
+					});
 				}
 			}
 			const identityMap = await batchResolveIdentities(ctx.db, allEntries);
 
 			const enriched = transactions.map((tx) => {
-				const payerIdentity = identityMap.get(`${tx.paidByType}:${tx.paidById}`);
+				const payerIdentity = identityMap.get(
+					`${tx.paidByType}:${tx.paidById}`,
+				);
 
 				return {
 					id: tx.id,
@@ -2199,7 +2355,9 @@ export const projectRouter = createTRPCRouter({
 					canDelete: false,
 					hasUnseenChanges: false,
 					splitParticipants: tx.splitParticipants.map((sp) => {
-						const identity = identityMap.get(`${sp.participantType}:${sp.participantId}`);
+						const identity = identityMap.get(
+							`${sp.participantType}:${sp.participantId}`,
+						);
 						return {
 							...sp,
 							shareAmount: Number(sp.shareAmount),
@@ -2220,114 +2378,30 @@ export const projectRouter = createTRPCRouter({
 
 	// ── Group Settlement ──────────────────────────────────────────────────────
 
-	/**
-	 * GET /api/project/settlementPlan
-	 *
-	 * Computes the optimal settlement plan for a project (or a specific billing
-	 * period). Returns the minimum set of payments to bring all balances to zero,
-	 * grouped by currency.
-	 *
-	 * Read-only: does not create any settlement records.
-	 */
+	/** The fewest payments that settle the project (or one billing period), per currency. */
 	settlementPlan: guestOrProtectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				periodId: z.string().optional(),
-			}),
-		)
+		.input(groupInput)
 		.query(async ({ ctx, input }) => {
-			assertGuestProjectScope(ctx.participant, input.projectId);
-			const { participantType, participantId } = ctx.participant;
-			await requireProjectRole(
-				ctx.db,
-				input.projectId,
-				participantType,
-				participantId,
-				"VIEWER",
-			);
-
-			const { transactions, settlements } =
-				await fetchProjectTransactionsAndSettlements(
-					ctx.db,
-					input.projectId,
-					input.periodId,
-				);
-
-			const result = computeSettlementPlan(transactions, settlements);
-
-			return {
-				byCurrency: result.byCurrency,
-				participantCount: result.participantCount,
-			};
+			await assertReader(ctx, input.projectId);
+			return projectSettlementPlan(ctx.db, input.projectId, input.periodId);
 		}),
 
-	/**
-	 * GET /api/project/participantBalances
-	 *
-	 * Returns the per-participant balance breakdown for a project (or billing
-	 * period): how much each person paid, their fair share, and their net balance.
-	 *
-	 * Used by the project dashboard to show individual balance cards.
-	 *
-	 * Read-only: no side effects.
-	 */
+	/** Each person's paid, fair share and net balance, one row per currency. */
 	participantBalances: guestOrProtectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				periodId: z.string().optional(),
-			}),
-		)
+		.input(groupInput)
 		.query(async ({ ctx, input }) => {
-			assertGuestProjectScope(ctx.participant, input.projectId);
-			const { participantType, participantId } = ctx.participant;
-			await requireProjectRole(
+			await assertReader(ctx, input.projectId);
+			return projectParticipantBalances(
 				ctx.db,
 				input.projectId,
-				participantType,
-				participantId,
-				"VIEWER",
+				input.periodId,
 			);
-
-			const { transactions, settlements } =
-				await fetchProjectTransactionsAndSettlements(
-					ctx.db,
-					input.projectId,
-					input.periodId,
-				);
-
-			const result = computeSettlementPlan(transactions, settlements);
-
-			// Flatten balances across all currencies into a single list
-			const allBalances = Object.entries(result.byCurrency).flatMap(
-				([currency, breakdown]) =>
-					breakdown.balances.map((b) => ({ ...b, currency })),
-			);
-
-			return {
-				balances: allBalances,
-				participantCount: result.participantCount,
-			};
 		}),
 
 	/**
-	 * GET /api/project/balancesFromPerspective
-	 *
-	 * Per-project RAW PAIRWISE balances from ONE chosen person's perspective.
-	 *
-	 * For the perspective person X within this project, returns one statement per
-	 * OTHER participant Y that shares any history with X: the net balance (signed
-	 * from X's angle) per currency, plus the itemized shared expenses behind it.
-	 *
-	 * Unlike settlementPlan (group-optimal, routed, primary-currency only), these
-	 * are the real expenses shared directly between X and Y. Project-scoped:
-	 * expenses are restricted to this project; claim aliases are resolved so a
-	 * claimed shadow and its claiming user are one party.
-	 *
-	 * Auth mirrors participantBalances: any VIEWER+ member of the project may read
-	 * it (the whole project's balances are already visible to members, so a
-	 * per-perspective view leaks nothing new). Read-only.
+	 * Raw pairwise balances from one person's side (not the routed plan). Any
+	 * member may read it: the whole project's balances are already visible to
+	 * members, so one person's view leaks nothing new.
 	 */
 	balancesFromPerspective: guestOrProtectedProcedure
 		.input(
@@ -2340,128 +2414,12 @@ export const projectRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			assertGuestProjectScope(ctx.participant, input.projectId);
-			const { participantType, participantId } = ctx.participant;
-			await requireProjectRole(
-				ctx.db,
-				input.projectId,
-				participantType,
-				participantId,
-				"VIEWER",
-			);
-
-			const result = await getBalancesFromPerspective(
+			await assertReader(ctx, input.projectId);
+			return projectBalancesFromPerspective(
 				ctx.db,
 				input.projectId,
 				input.perspective,
+				ctx.participant,
 			);
-
-			// Same contact rule as project.detail.
-			const visible = await buildContactVisibility(
-				ctx.db,
-				participantType === "viewerLink"
-					? null
-					: { participantType, participantId },
-				[result.perspective, ...result.statements.map((s) => s.counterpart)],
-			);
-			return {
-				...result,
-				perspective: redactContact(result.perspective, visible),
-				statements: result.statements.map((s) => ({
-					...s,
-					counterpart: redactContact(s.counterpart, visible),
-				})),
-			};
 		}),
 });
-
-// ── shared data fetcher ───────────────────────────────────────────────────────
-
-/**
- * Fetch transactions (with split participants) and counted settlements
- * (BALANCE_SETTLEMENT_STATUSES) for
- * a project, optionally scoped to a billing period.
- *
- * Settlements are filtered by projectId (settlements are project-scoped), so
- * settle-ups made for other projects or direct expenses don't bleed in.
- */
-async function fetchProjectTransactionsAndSettlements(
-	db: PrismaClient,
-	projectId: string,
-	periodId?: string,
-) {
-	const transactions = await db.sharedTransaction.findMany({
-		where: {
-			projectId,
-			...(periodId ? { billingPeriodId: periodId } : {}),
-		},
-		select: {
-			currency: true,
-			amount: true,
-			paidByType: true,
-			paidById: true,
-			splitParticipants: {
-				select: {
-					participantType: true,
-					participantId: true,
-					shareAmount: true,
-				},
-			},
-		},
-	});
-
-	if (transactions.length === 0) {
-		return { transactions: [], settlements: [] };
-	}
-
-	// Collect unique participant keys from these transactions
-	type ParticipantPair = {
-		participantType: ParticipantType;
-		participantId: string;
-	};
-	const participantSet = new Map<string, ParticipantPair>();
-
-	for (const tx of transactions) {
-		const pk = `${tx.paidByType}:${tx.paidById}`;
-		participantSet.set(pk, {
-			participantType: tx.paidByType,
-			participantId: tx.paidById,
-		});
-		for (const sp of tx.splitParticipants) {
-			const spk = `${sp.participantType}:${sp.participantId}`;
-			participantSet.set(spk, {
-				participantType: sp.participantType,
-				participantId: sp.participantId,
-			});
-		}
-	}
-
-	const participants = [...participantSet.values()];
-
-	if (participants.length < 2) {
-		return { transactions, settlements: [] };
-	}
-
-	// Fetch this project's counted settlements. Settlements are now
-	// project-scoped (settlement.projectId), so filter by projectId instead of by
-	// "both parties are project participants". This keeps computeSettlementPlan and
-	// participantBalances consistent with the per-project balances shown in the UI.
-	const settlements = await db.settlement.findMany({
-		where: {
-			projectId,
-			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
-		},
-		select: {
-			fromParticipantType: true,
-			fromParticipantId: true,
-			toParticipantType: true,
-			toParticipantId: true,
-			amount: true,
-			currency: true,
-		},
-	});
-
-	// One ref per person: claimed shadows and their users are merged, matching
-	// the alias-aware pairwise balances that settle-ups are recorded against.
-	return canonicalizeProjectLedger(db, projectId, transactions, settlements);
-}
