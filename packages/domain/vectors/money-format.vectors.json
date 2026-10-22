@@ -1,0 +1,576 @@
+{
+	"about": "Golden cases for formatMoney and formatMoneyPair (@retrospend/domain/format). Every client runs this file: web vitest, mobile jest, third-party clients. money.minor is integer minor units (cents, satoshis, fils). A missing money is null or absent. Options default to display code, sign auto, cents auto. \u00a0 is a no-break space, \u202f a narrow no-break space. throws names the error a case must raise.",
+	"format": [
+		{
+			"name": "en-US USD",
+			"locale": "en-US",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01,234.56"
+		},
+		{
+			"name": "en-US USD asks for a symbol, $ is ambiguous so the code shows",
+			"locale": "en-US",
+			"money": { "minor": 123456, "currency": "USD" },
+			"options": { "display": "symbol" },
+			"expected": "USD\u00a01,234.56"
+		},
+		{
+			"name": "es-AR USD",
+			"locale": "es-AR",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01.234,56"
+		},
+		{
+			"name": "es-AR ARS 7+ digits, whole by default",
+			"locale": "es-AR",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"expected": "ARS\u00a01.234.567"
+		},
+		{
+			"name": "en-US ARS 7+ digits, whole by default",
+			"locale": "en-US",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"expected": "ARS\u00a01,234,567"
+		},
+		{
+			"name": "ARS with cents shows them under auto",
+			"locale": "en-US",
+			"money": { "minor": 123456750, "currency": "ARS" },
+			"expected": "ARS\u00a01,234,567.50"
+		},
+		{
+			"name": "ARS cents true keeps .00",
+			"locale": "en-US",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"options": { "cents": true },
+			"expected": "ARS\u00a01,234,567.00"
+		},
+		{
+			"name": "ARS cents false, half to even rounds up from odd",
+			"locale": "en-US",
+			"money": { "minor": 123456750, "currency": "ARS" },
+			"options": { "cents": false },
+			"expected": "ARS\u00a01,234,568"
+		},
+		{
+			"name": "ARS cents false, half to even stays on even",
+			"locale": "en-US",
+			"money": { "minor": 123456850, "currency": "ARS" },
+			"options": { "cents": false },
+			"expected": "ARS\u00a01,234,568"
+		},
+		{
+			"name": "ARS cents false, above half rounds up",
+			"locale": "en-US",
+			"money": { "minor": 123456751, "currency": "ARS" },
+			"options": { "cents": false },
+			"expected": "ARS\u00a01,234,568"
+		},
+		{
+			"name": "es-AR ARS 11 digits",
+			"locale": "es-AR",
+			"money": { "minor": 1234567890000, "currency": "ARS" },
+			"expected": "ARS\u00a012.345.678.900"
+		},
+		{
+			"name": "es-AR groups 4 digits too",
+			"locale": "es-AR",
+			"money": { "minor": 123400, "currency": "ARS" },
+			"expected": "ARS\u00a01.234"
+		},
+		{
+			"name": "largest safe integer",
+			"locale": "en-US",
+			"money": { "minor": 9007199254740991, "currency": "ARS" },
+			"expected": "ARS\u00a090,071,992,547,409.91"
+		},
+		{
+			"name": "COP whole by default",
+			"locale": "en-US",
+			"money": { "minor": 1234500, "currency": "COP" },
+			"expected": "COP\u00a012,345"
+		},
+		{
+			"name": "CLP has no minor unit",
+			"locale": "en-US",
+			"money": { "minor": 12345, "currency": "CLP" },
+			"expected": "CLP\u00a012,345"
+		},
+		{
+			"name": "JPY has no minor unit",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "JPY" },
+			"expected": "JPY\u00a01,200"
+		},
+		{
+			"name": "JPY cents true adds nothing",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "JPY" },
+			"options": { "cents": true },
+			"expected": "JPY\u00a01,200"
+		},
+		{
+			"name": "JPY symbol is ambiguous with CNY",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "JPY" },
+			"options": { "display": "symbol" },
+			"expected": "JPY\u00a01,200"
+		},
+		{
+			"name": "KWD has 3 minor digits",
+			"locale": "en-US",
+			"money": { "minor": 1250, "currency": "KWD" },
+			"expected": "KWD\u00a01.250"
+		},
+		{
+			"name": "KWD grouped",
+			"locale": "en-US",
+			"money": { "minor": 1234567, "currency": "KWD" },
+			"expected": "KWD\u00a01,234.567"
+		},
+		{
+			"name": "KWD cents false, 1.5 rounds to 2",
+			"locale": "en-US",
+			"money": { "minor": 1500, "currency": "KWD" },
+			"options": { "cents": false },
+			"expected": "KWD\u00a02"
+		},
+		{
+			"name": "KWD cents false, 2.5 rounds to 2",
+			"locale": "en-US",
+			"money": { "minor": 2500, "currency": "KWD" },
+			"options": { "cents": false },
+			"expected": "KWD\u00a02"
+		},
+		{
+			"name": "BTC whole coin",
+			"locale": "en-US",
+			"money": { "minor": 100000000, "currency": "BTC" },
+			"expected": "BTC\u00a01"
+		},
+		{
+			"name": "BTC capped at 8 significant digits",
+			"locale": "en-US",
+			"money": { "minor": 123456789, "currency": "BTC" },
+			"expected": "BTC\u00a01.2345679"
+		},
+		{
+			"name": "BTC significant digits, half to even stays on even",
+			"locale": "en-US",
+			"money": { "minor": 123456785, "currency": "BTC" },
+			"expected": "BTC\u00a01.2345678"
+		},
+		{
+			"name": "BTC significant digits, half to even rounds up from odd",
+			"locale": "en-US",
+			"money": { "minor": 123456775, "currency": "BTC" },
+			"expected": "BTC\u00a01.2345678"
+		},
+		{
+			"name": "BTC below one keeps every satoshi",
+			"locale": "en-US",
+			"money": { "minor": 12345, "currency": "BTC" },
+			"expected": "BTC\u00a00.00012345"
+		},
+		{
+			"name": "BTC one satoshi",
+			"locale": "en-US",
+			"money": { "minor": 1, "currency": "BTC" },
+			"expected": "BTC\u00a00.00000001"
+		},
+		{
+			"name": "BTC whole supply",
+			"locale": "en-US",
+			"money": { "minor": 2100000000000000, "currency": "BTC" },
+			"expected": "BTC\u00a021,000,000"
+		},
+		{
+			"name": "BTC 8 integer digits keeps them all and drops the fraction",
+			"locale": "en-US",
+			"money": { "minor": 2099999912345678, "currency": "BTC" },
+			"expected": "BTC\u00a020,999,999"
+		},
+		{
+			"name": "BTC 8 integer digits, exact half stays on even",
+			"locale": "en-US",
+			"money": { "minor": 1234567850000000, "currency": "BTC" },
+			"expected": "BTC\u00a012,345,678"
+		},
+		{
+			"name": "BTC cents true shows every minor digit",
+			"locale": "en-US",
+			"money": { "minor": 100000000, "currency": "BTC" },
+			"options": { "cents": true },
+			"expected": "BTC\u00a01.00000000"
+		},
+		{
+			"name": "BTC cents false rounds to whole coins",
+			"locale": "en-US",
+			"money": { "minor": 150000000, "currency": "BTC" },
+			"options": { "cents": false },
+			"expected": "BTC\u00a02"
+		},
+		{
+			"name": "BTC never shows a symbol",
+			"locale": "en-US",
+			"money": { "minor": 100000000, "currency": "BTC" },
+			"options": { "display": "symbol" },
+			"expected": "BTC\u00a01"
+		},
+		{
+			"name": "0.004 ETH",
+			"locale": "en-US",
+			"money": { "minor": 400000, "currency": "ETH" },
+			"expected": "ETH\u00a00.004"
+		},
+		{
+			"name": "0.004 ETH in es-AR",
+			"locale": "es-AR",
+			"money": { "minor": 400000, "currency": "ETH" },
+			"expected": "ETH\u00a00,004"
+		},
+		{
+			"name": "negative 0.004 ETH",
+			"locale": "en-US",
+			"money": { "minor": -400000, "currency": "ETH" },
+			"expected": "-ETH\u00a00.004"
+		},
+		{
+			"name": "stablecoin trims trailing zeros like any crypto",
+			"locale": "en-US",
+			"money": { "minor": 1250, "currency": "USDT" },
+			"expected": "USDT\u00a012.5"
+		},
+		{
+			"name": "stablecoin cents true",
+			"locale": "en-US",
+			"money": { "minor": 1250, "currency": "USDT" },
+			"options": { "cents": true },
+			"expected": "USDT\u00a012.50"
+		},
+		{
+			"name": "negative USD, minus leads",
+			"locale": "en-US",
+			"money": { "minor": -4500, "currency": "USD" },
+			"expected": "-USD\u00a045.00"
+		},
+		{
+			"name": "negative ARS in es-AR",
+			"locale": "es-AR",
+			"money": { "minor": -200000, "currency": "ARS" },
+			"expected": "-ARS\u00a02.000"
+		},
+		{
+			"name": "zero USD",
+			"locale": "en-US",
+			"money": { "minor": 0, "currency": "USD" },
+			"expected": "USD\u00a00.00"
+		},
+		{
+			"name": "zero ARS",
+			"locale": "en-US",
+			"money": { "minor": 0, "currency": "ARS" },
+			"expected": "ARS\u00a00"
+		},
+		{
+			"name": "zero JPY",
+			"locale": "en-US",
+			"money": { "minor": 0, "currency": "JPY" },
+			"expected": "JPY\u00a00"
+		},
+		{
+			"name": "zero BTC",
+			"locale": "en-US",
+			"money": { "minor": 0, "currency": "BTC" },
+			"expected": "BTC\u00a00"
+		},
+		{
+			"name": "zero gets no plus with exceptZero",
+			"locale": "en-US",
+			"money": { "minor": 0, "currency": "USD" },
+			"options": { "sign": "exceptZero" },
+			"expected": "USD\u00a00.00"
+		},
+		{
+			"name": "exceptZero adds a plus",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "USD" },
+			"options": { "sign": "exceptZero" },
+			"expected": "+USD\u00a012.00"
+		},
+		{
+			"name": "exceptZero keeps the minus",
+			"locale": "en-US",
+			"money": { "minor": -1200, "currency": "USD" },
+			"options": { "sign": "exceptZero" },
+			"expected": "-USD\u00a012.00"
+		},
+		{
+			"name": "sign never shows the size only",
+			"locale": "en-US",
+			"money": { "minor": -1200, "currency": "USD" },
+			"options": { "sign": "never" },
+			"expected": "USD\u00a012.00"
+		},
+		{
+			"name": "sign never on a positive amount",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "USD" },
+			"options": { "sign": "never" },
+			"expected": "USD\u00a012.00"
+		},
+		{
+			"name": "sign auto on a positive amount",
+			"locale": "en-US",
+			"money": { "minor": 1200, "currency": "USD" },
+			"options": { "sign": "auto" },
+			"expected": "USD\u00a012.00"
+		},
+		{
+			"name": "a negative that rounds to zero loses its sign",
+			"locale": "en-US",
+			"money": { "minor": -40, "currency": "USD" },
+			"options": { "cents": false },
+			"expected": "USD\u00a00"
+		},
+		{
+			"name": "a positive that rounds to zero gets no plus",
+			"locale": "en-US",
+			"money": { "minor": 40, "currency": "USD" },
+			"options": { "cents": false, "sign": "exceptZero" },
+			"expected": "USD\u00a00"
+		},
+		{
+			"name": "USD cents false rounds half to even, down",
+			"locale": "en-US",
+			"money": { "minor": 123450, "currency": "USD" },
+			"options": { "cents": false },
+			"expected": "USD\u00a01,234"
+		},
+		{
+			"name": "USD cents false rounds half to even, up",
+			"locale": "en-US",
+			"money": { "minor": 123550, "currency": "USD" },
+			"options": { "cents": false },
+			"expected": "USD\u00a01,236"
+		},
+		{
+			"name": "USD cents false rounds above half up",
+			"locale": "en-US",
+			"money": { "minor": 123456, "currency": "USD" },
+			"options": { "cents": false },
+			"expected": "USD\u00a01,235"
+		},
+		{
+			"name": "USD cents true",
+			"locale": "en-US",
+			"money": { "minor": 123400, "currency": "USD" },
+			"options": { "cents": true },
+			"expected": "USD\u00a01,234.00"
+		},
+		{
+			"name": "USD cents auto keeps .00 (not a whole-by-default currency)",
+			"locale": "en-US",
+			"money": { "minor": 123400, "currency": "USD" },
+			"options": { "cents": "auto" },
+			"expected": "USD\u00a01,234.00"
+		},
+		{
+			"name": "EUR symbol in en-US sits against the number",
+			"locale": "en-US",
+			"money": { "minor": 123450, "currency": "EUR" },
+			"options": { "display": "symbol" },
+			"expected": "€1,234.50"
+		},
+		{
+			"name": "EUR symbol in es-AR is spaced",
+			"locale": "es-AR",
+			"money": { "minor": 123450, "currency": "EUR" },
+			"options": { "display": "symbol" },
+			"expected": "€\u00a01.234,50"
+		},
+		{
+			"name": "EUR symbol in de still leads",
+			"locale": "de",
+			"money": { "minor": 123450, "currency": "EUR" },
+			"options": { "display": "symbol" },
+			"expected": "€\u00a01.234,50"
+		},
+		{
+			"name": "EUR code",
+			"locale": "en-US",
+			"money": { "minor": 123450, "currency": "EUR" },
+			"options": { "display": "code" },
+			"expected": "EUR\u00a01,234.50"
+		},
+		{
+			"name": "BRL symbol in en-US",
+			"locale": "en-US",
+			"money": { "minor": 5190, "currency": "BRL" },
+			"options": { "display": "symbol" },
+			"expected": "R$51.90"
+		},
+		{
+			"name": "BRL symbol in pt-BR",
+			"locale": "pt-BR",
+			"money": { "minor": 5190, "currency": "BRL" },
+			"options": { "display": "symbol" },
+			"expected": "R$\u00a051,90"
+		},
+		{
+			"name": "BRL code",
+			"locale": "en-US",
+			"money": { "minor": 5190, "currency": "BRL" },
+			"expected": "BRL\u00a051.90"
+		},
+		{
+			"name": "negative GBP symbol, minus before the symbol",
+			"locale": "en-US",
+			"money": { "minor": -1000, "currency": "GBP" },
+			"options": { "display": "symbol" },
+			"expected": "-£10.00"
+		},
+		{
+			"name": "plus before the symbol",
+			"locale": "en-US",
+			"money": { "minor": 1000, "currency": "GBP" },
+			"options": { "display": "symbol", "sign": "exceptZero" },
+			"expected": "+£10.00"
+		},
+		{
+			"name": "ARS symbol is ambiguous so the code shows",
+			"locale": "es-AR",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"options": { "display": "symbol" },
+			"expected": "ARS\u00a01.234.567"
+		},
+		{
+			"name": "RUB symbol in ru",
+			"locale": "ru",
+			"money": { "minor": 123456789, "currency": "RUB" },
+			"options": { "display": "symbol" },
+			"expected": "₽\u00a01\u00a0234\u00a0567,89"
+		},
+		{
+			"name": "fr groups with a narrow no-break space",
+			"locale": "fr",
+			"money": { "minor": 123456789, "currency": "EUR" },
+			"expected": "EUR\u00a01\u202f234\u202f567,89"
+		},
+		{
+			"name": "en-IN lakh grouping",
+			"locale": "en-IN",
+			"money": { "minor": 1234567800, "currency": "INR" },
+			"expected": "INR\u00a01,23,45,678.00"
+		},
+		{
+			"name": "en-IN INR symbol",
+			"locale": "en-IN",
+			"money": { "minor": 1234567800, "currency": "INR" },
+			"options": { "display": "symbol" },
+			"expected": "₹1,23,45,678.00"
+		},
+		{
+			"name": "unknown code gets 2 minor digits and its code",
+			"locale": "en-US",
+			"money": { "minor": 12345, "currency": "XYZ" },
+			"expected": "XYZ\u00a0123.45"
+		},
+		{
+			"name": "lowercase code is shown upper case",
+			"locale": "en-US",
+			"money": { "minor": 100, "currency": "usd" },
+			"expected": "USD\u00a01.00"
+		},
+		{
+			"name": "negative zero is zero",
+			"locale": "en-US",
+			"money": { "minor": -0, "currency": "USD" },
+			"expected": "USD\u00a00.00"
+		},
+		{
+			"name": "missing money",
+			"locale": "en-US",
+			"money": null,
+			"expected": null
+		},
+		{
+			"name": "unavailable money (absent)",
+			"locale": "es-AR",
+			"expected": null
+		},
+		{
+			"name": "fractional minor is refused",
+			"locale": "en-US",
+			"money": { "minor": 1.5, "currency": "USD" },
+			"throws": "RangeError"
+		},
+		{
+			"name": "minor beyond the safe range is refused",
+			"locale": "en-US",
+			"money": { "minor": 9007199254740992, "currency": "USD" },
+			"throws": "RangeError"
+		},
+		{
+			"name": "empty currency is refused",
+			"locale": "en-US",
+			"money": { "minor": 100, "currency": "" },
+			"throws": "RangeError"
+		}
+	],
+	"pair": [
+		{
+			"name": "foreign original first, home second",
+			"locale": "en-US",
+			"original": { "minor": 5190, "currency": "BRL" },
+			"home": { "minor": 1340700, "currency": "ARS" },
+			"options": { "display": "symbol" },
+			"expected": { "original": "BRL\u00a051.90", "home": "ARS\u00a013,407" }
+		},
+		{
+			"name": "a foreign original always shows its code, even with an unambiguous symbol",
+			"locale": "es-AR",
+			"original": { "minor": 1000, "currency": "EUR" },
+			"home": { "minor": 1700000, "currency": "ARS" },
+			"options": { "display": "symbol" },
+			"expected": { "original": "EUR\u00a010,00", "home": "ARS\u00a017.000" }
+		},
+		{
+			"name": "the home amount may use its symbol",
+			"locale": "en-US",
+			"original": { "minor": 1000, "currency": "USD" },
+			"home": { "minor": 920, "currency": "EUR" },
+			"options": { "display": "symbol" },
+			"expected": { "original": "USD\u00a010.00", "home": "€9.20" }
+		},
+		{
+			"name": "same currency shows once",
+			"locale": "en-US",
+			"original": { "minor": 500000, "currency": "ARS" },
+			"home": { "minor": 500000, "currency": "ARS" },
+			"expected": { "original": "ARS\u00a05,000", "home": null }
+		},
+		{
+			"name": "same currency with a symbol shows once, with the symbol",
+			"locale": "en-US",
+			"original": { "minor": 5000, "currency": "EUR" },
+			"home": { "minor": 5000, "currency": "EUR" },
+			"options": { "display": "symbol" },
+			"expected": { "original": "€50.00", "home": null }
+		},
+		{
+			"name": "no rate yet: home is missing",
+			"locale": "en-US",
+			"original": { "minor": 1000, "currency": "USD" },
+			"home": null,
+			"expected": { "original": "USD\u00a010.00", "home": null }
+		},
+		{
+			"name": "negative pair",
+			"locale": "en-US",
+			"original": { "minor": -5190, "currency": "BRL" },
+			"home": { "minor": -1340700, "currency": "ARS" },
+			"expected": { "original": "-BRL\u00a051.90", "home": "-ARS\u00a013,407" }
+		}
+	]
+}

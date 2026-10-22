@@ -134,6 +134,12 @@ describe("decimals", () => {
 		expect(currencyDecimals("USDT")).toBe(2);
 	});
 
+	it("uses ISO 4217's 4 minor digits for CLF and UYW", () => {
+		expect(currencyDecimals("CLF")).toBe(4);
+		expect(currencyDecimals("UYW")).toBe(4);
+		expect(toMinorUnits(1.2345, "CLF")).toBe(12345);
+	});
+
 	it("converts to and from minor units without float noise", () => {
 		expect(toMinorUnits(1.005, "USD")).toBe(101);
 		expect(toMinorUnits(0.003, "BTC")).toBe(300000);
