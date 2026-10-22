@@ -8,6 +8,7 @@
 	"exports": {
 		"./currencies": "./src/currencies.ts",
 		"./currency-format": "./src/currency-format.ts",
+		"./currency-names": "./src/currency-names.ts",
 		"./decimal": "./src/decimal.ts",
 		"./fiscal-month": "./src/fiscal-month.ts",
 		"./format": "./src/format.ts",
