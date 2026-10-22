@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USER } from "./constants";
 import { loginAsTestUser } from "./helpers/auth";
+import { gotoReady } from "./helpers/navigation";
 
 // ── Login / Logout flows ──────────────────────────────────────────────────────
 
@@ -11,7 +12,7 @@ test.describe("login", () => {
 	test("login with valid credentials redirects to dashboard", async ({
 		page,
 	}) => {
-		await page.goto("/login");
+		await gotoReady(page, "/login");
 		await page.fill("#email", TEST_USER.email);
 		await page.fill("#password", TEST_USER.password);
 		await page.click('button[type="submit"]');
@@ -20,7 +21,7 @@ test.describe("login", () => {
 	});
 
 	test("login with wrong password shows error", async ({ page }) => {
-		await page.goto("/login");
+		await gotoReady(page, "/login");
 		await page.fill("#email", TEST_USER.email);
 		await page.fill("#password", "WrongPassword999!");
 		await page.click('button[type="submit"]');
@@ -31,7 +32,7 @@ test.describe("login", () => {
 	});
 
 	test("login with non-existent email shows error", async ({ page }) => {
-		await page.goto("/login");
+		await gotoReady(page, "/login");
 		await page.fill("#email", "nobody@nowhere.example");
 		await page.fill("#password", "AnyPassword123!");
 		await page.click('button[type="submit"]');
@@ -46,18 +47,13 @@ test.describe("logout", () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test("logout redirects to login and clears session", async ({ page }) => {
-		// Log in first
+		// Log in first (returns once the dashboard has hydrated)
 		await loginAsTestUser(page);
 		await expect(page).toHaveURL(/\/dashboard/);
 
-		// Open the user menu in the sidebar. A click that lands before
-		// hydration does nothing, so retry until the menu is open.
-		const logOut = page.getByRole("menuitem", { name: "Log out" });
-		await expect(async () => {
-			await page.getByRole("button", { name: "User menu" }).click();
-			await expect(logOut).toBeVisible({ timeout: 2_000 });
-		}).toPass();
-		await logOut.click();
+		// Open the user menu in the sidebar
+		await page.getByRole("button", { name: "User menu" }).click();
+		await page.getByRole("menuitem", { name: "Log out" }).click();
 
 		// Should redirect to login
 		await expect(page).toHaveURL(/\/login/);

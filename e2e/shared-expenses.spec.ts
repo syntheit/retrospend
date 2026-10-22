@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { attemptTitle } from "./helpers/attempt";
+import { gotoReady } from "./helpers/navigation";
 
 test.describe("projects", () => {
 	test("projects page loads", async ({ page }) => {
-		await page.goto("/projects");
+		await gotoReady(page, "/projects");
 		await expect(
 			page.getByRole("heading", { name: "Projects", level: 1 }),
 		).toBeVisible();
@@ -10,7 +12,8 @@ test.describe("projects", () => {
 	});
 
 	test("create a new project", async ({ page }) => {
-		await page.goto("/projects");
+		const name = attemptTitle("E2E Test Trip");
+		await gotoReady(page, "/projects");
 		// The toolbar's New Project comes first; an empty list repeats it below.
 		await page
 			.getByRole("main")
@@ -18,21 +21,23 @@ test.describe("projects", () => {
 			.first()
 			.click();
 
-		const dialog = page.getByRole("dialog", { name: "New Project" });
-		await dialog.getByRole("textbox", { name: "Name" }).fill("E2E Test Trip");
+		const dialog = page
+			.getByRole("dialog")
+			.filter({ has: page.getByRole("button", { name: "Create Project" }) });
+		await dialog.getByRole("textbox", { name: "Name" }).fill(name);
 		await dialog.getByRole("button", { name: "Create Project" }).click();
 		await expect(dialog).toBeHidden();
 
-		await page.goto("/projects");
+		await gotoReady(page, "/projects");
 		await expect(
-			page.getByRole("main").getByText("E2E Test Trip", { exact: true }),
+			page.getByRole("main").getByText(name, { exact: true }),
 		).toBeVisible();
 	});
 });
 
 test.describe("people", () => {
 	test("people page loads", async ({ page }) => {
-		await page.goto("/people");
+		await gotoReady(page, "/people");
 		await expect(
 			page.getByRole("heading", { name: "People", level: 1 }),
 		).toBeVisible();

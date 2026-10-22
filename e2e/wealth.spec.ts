@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { gotoReady } from "./helpers/navigation";
 
 // The page title is the level 1 heading; the empty state also says "Wealth".
 const title = (page: Page) =>
@@ -6,13 +7,13 @@ const title = (page: Page) =>
 
 test.describe("wealth", () => {
 	test("wealth page loads", async ({ page }) => {
-		await page.goto("/wealth");
+		await gotoReady(page, "/wealth");
 		await expect(title(page)).toBeVisible();
 		await expect(page.getByRole("main").getByText(/error/i)).toHaveCount(0);
 	});
 
 	test("wealth page shows the empty net worth state", async ({ page }) => {
-		await page.goto("/wealth");
+		await gotoReady(page, "/wealth");
 		await expect(title(page)).toBeVisible();
 		// The test user has no accounts yet.
 		await expect(
@@ -21,7 +22,7 @@ test.describe("wealth", () => {
 	});
 
 	test("add asset opens the form", async ({ page }) => {
-		await page.goto("/wealth");
+		await gotoReady(page, "/wealth");
 		await page
 			.getByRole("main")
 			.getByRole("button", { name: "Add Asset", exact: true })

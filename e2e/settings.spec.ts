@@ -1,38 +1,39 @@
 import { expect, test } from "@playwright/test";
 import { TEST_USER } from "./constants";
+import { gotoReady } from "./helpers/navigation";
 
 test.describe("settings", () => {
 	test("settings page loads", async ({ page }) => {
-		await page.goto("/settings");
-		await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-		await expect(page.getByText(/error/i)).not.toBeVisible();
+		await gotoReady(page, "/settings");
+		await expect(
+			page.getByRole("heading", { name: "Settings", level: 1 }),
+		).toBeVisible();
+		await expect(page.getByRole("main").getByText(/error/i)).toHaveCount(0);
 	});
 
 	test("settings page shows the current user name", async ({ page }) => {
-		await page.goto("/settings");
-		await page.waitForLoadState("networkidle");
-		// The SettingsForm should pre-fill the user's name
-		const nameInput = page.locator('input[id="name"]').or(
-			page.getByRole("textbox", { name: /full name|display name|name/i }).first(),
-		);
-		if (await nameInput.isVisible()) {
-			const value = await nameInput.inputValue();
-			expect(value).toBe(TEST_USER.name);
-		}
+		await gotoReady(page, "/settings");
+		// The profile form pre-fills the user's name. Its "Display name" label
+		// points at id="name" while the input gets a generated id, so the
+		// field has no accessible name to select it by (see docs/ui/GAPS.md).
+		await expect(
+			page.locator('#profile-form input[name="name"]'),
+		).toHaveValue(TEST_USER.name);
 	});
 
 	test("settings page shows profile section", async ({ page }) => {
-		await page.goto("/settings");
-		await page.waitForLoadState("networkidle");
-		// Settings page should show personal information section (merged from Account page)
+		await gotoReady(page, "/settings");
+		// Personal information (merged from the old Account page)
 		await expect(
-			page.getByText("Personal Information"),
+			page.getByRole("main").getByText("Personal Information", { exact: true }),
 		).toBeVisible();
 	});
 
 	test("sidebar shows correct user name", async ({ page }) => {
-		await page.goto("/");
-		// NavUser displays the user's name in the sidebar footer
-		await expect(page.getByText(TEST_USER.name).first()).toBeVisible();
+		await gotoReady(page, "/dashboard");
+		// NavUser shows the user's name in the sidebar footer
+		await expect(page.getByRole("button", { name: "User menu" })).toContainText(
+			TEST_USER.name,
+		);
 	});
 });

@@ -2,7 +2,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Adds an expense through the sidebar's Add Expense button (on every signed-in page). */
+/**
+ * Adds an expense through the sidebar's Add Expense button (on every
+ * signed-in page). Open the page with gotoReady first.
+ */
 export async function addExpense(
 	page: Page,
 	expense: { title: string; amount: string; category?: string },
@@ -11,18 +14,12 @@ export async function addExpense(
 	const dialog = page
 		.getByRole("dialog")
 		.filter({ has: page.getByRole("button", { name: "Create Expense" }) });
-	// On a cold dev server the first compile can reload the page and close the
-	// dialog midway; wait until the page is quiet before opening it.
-	await page.waitForLoadState("networkidle");
-	// The sidebar's button sits in a list item; empty states repeat the label
-	// in <main>. A click before hydration does nothing, so retry until it opens.
-	await expect(async () => {
-		await page
-			.getByRole("listitem")
-			.getByRole("button", { name: "Add Expense", exact: true })
-			.click();
-		await expect(dialog).toBeVisible({ timeout: 2_000 });
-	}).toPass();
+	// The sidebar's button sits in a list item; empty states repeat the label in <main>.
+	await page
+		.getByRole("listitem")
+		.getByRole("button", { name: "Add Expense", exact: true })
+		.click();
+	await expect(dialog).toBeVisible();
 	await dialog.getByRole("textbox", { name: "Amount" }).fill(expense.amount);
 	await dialog
 		.getByRole("textbox", { name: "Expense Title" })
