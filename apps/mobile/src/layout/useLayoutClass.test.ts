@@ -1,5 +1,9 @@
 import { layoutFor, widthClassFor } from "./useLayoutClass";
 
+const IPHONE = { os: "ios", isPad: false } as const;
+const IPAD = { os: "ios", isPad: true } as const;
+const ANDROID = { os: "android", isPad: false } as const;
+
 describe("widthClassFor", () => {
 	it.each([
 		[393, "compact"], // iPhone 15, portrait
@@ -15,16 +19,23 @@ describe("widthClassFor", () => {
 });
 
 describe("layoutFor", () => {
+	it("keeps an iPhone compact in either orientation", () => {
+		const compact = { widthClass: "compact", listDetail: false };
+		expect(layoutFor(393, IPHONE)).toEqual(compact);
+		expect(layoutFor(852, IPHONE)).toEqual(compact); // iPhone 15, landscape
+	});
+
 	it("goes list-detail on iPad from the regular (medium) width", () => {
-		expect(layoutFor(820, "ios")).toEqual({
+		expect(layoutFor(820, IPAD)).toEqual({
 			widthClass: "medium",
 			listDetail: true,
 		});
-		expect(layoutFor(393, "ios").listDetail).toBe(false);
+		expect(layoutFor(1180, IPAD).widthClass).toBe("expanded");
+		expect(layoutFor(507, IPAD).listDetail).toBe(false); // Slide Over
 	});
 
 	it("goes list-detail on Android only when expanded", () => {
-		expect(layoutFor(700, "android").listDetail).toBe(false);
-		expect(layoutFor(900, "android").listDetail).toBe(true);
+		expect(layoutFor(700, ANDROID).listDetail).toBe(false);
+		expect(layoutFor(900, ANDROID).listDetail).toBe(true);
 	});
 });
