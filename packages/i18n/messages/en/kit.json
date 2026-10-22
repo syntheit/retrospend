@@ -1,0 +1,47 @@
+{
+	"status": {
+		"owed": "Owed to you",
+		"owe": "You owe",
+		"settled": "Settled",
+		"funded": "Funded",
+		"underfunded": "Underfunded",
+		"overspent": "Overspent",
+		"pending": "Pending",
+		"confirmed": "Confirmed",
+		"overdue": "Overdue",
+		"due": "Due today",
+		"review": "To review",
+		"importing": "Importing",
+		"error": "Failed",
+		"notOnRetrospend": "Not on Retrospend",
+		"upcoming": "Upcoming",
+		"noRate": "No rate yet",
+		"rejected": "Rejected"
+	},
+	"balance": {
+		"owesYou": "owes you",
+		"peopleOweYou": "people owe you",
+		"owedToYou": "owed to you",
+		"youOwe": "you owe",
+		"youOwePeople": "you owe people"
+	},
+	"money": {
+		"none": "None",
+		"noRate": "No rate yet"
+	},
+	"filter": {
+		"menu": "Filter"
+	},
+	"faces": {
+		"you": "You",
+		"paid": "Paid",
+		"someAndMore": "{first}, {second} and {count} more",
+		"paidBy": "{names}. Paid by {payer}"
+	},
+	"tabs": {
+		"pages": "Pages in this section"
+	},
+	"button": {
+		"loading": "Loading"
+	}
+}

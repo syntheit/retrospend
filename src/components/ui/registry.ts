@@ -11,9 +11,11 @@
  * A new file in src/components/ui fails the registry test (UI-040) until it
  * has an entry here, and a new entry needs the owner's sign-off (R18).
  *
- * PLANNED lists the PLAN §6 components that do not exist yet: their job, what
- * they replace and where they will live (IMPLEMENTATION §1.3). Build them
- * there, not as a local lookalike. Every name in PLAN_COMPONENTS is either a
+ * PLANNED lists the PLAN §6 components that live outside src/components/ui:
+ * their job, what they replace and their target (IMPLEMENTATION §1.3).
+ * `planned` ones do not exist yet: build them there, not as a local
+ * lookalike. `built` ones exist at their target: import them from there.
+ * Every name in PLAN_COMPONENTS is either a
  * core file (its `plan` field) or a planned entry; the registry test checks it.
  */
 
@@ -39,9 +41,9 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "alert",
-		status: "core",
-		plan: ["Notice"],
-		job: "Notice: one line that needs the person, with at most one action. At most one per page",
+		status: "legacy",
+		job: "Old bordered alert on today's pages; new code uses notice",
+		use: "notice",
 	},
 	{
 		file: "alert-dialog",
@@ -56,14 +58,20 @@ export const REGISTRY: Primitive[] = [
 		use: "user-avatar",
 	},
 	{
-		file: "avatar-stack",
+		file: "avatar-face",
 		status: "core",
-		job: "Faces of a set of people: overlaps, spreads on hover, name tooltip, +N (R20)",
+		job: "Face: one person's picture or initials on their avatar color (mod 8, sizes 22 to 48); FaceStack: a set of people, payer first, spreads on hover, +N (R20)",
+	},
+	{
+		file: "avatar-stack",
+		status: "legacy",
+		job: "Old faces stack on today's split rows; new code uses FaceStack from avatar-face",
+		use: "avatar-face (FaceStack)",
 	},
 	{
 		file: "badge",
 		status: "core",
-		job: "A status word from one status map (R5). Never decoration, never a count, never around money",
+		job: "A status kind from the one status map as a pill (`status` prop, R5). Never decoration, never a count, never around money",
 	},
 	{
 		file: "BrandIcon",
@@ -78,7 +86,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "button",
 		status: "core",
-		job: "Every action button: primary, secondary, ghost, danger; sizes ctl and ctl-sm",
+		job: "Every action button: `kind` primary, secondary, ghost, danger; sizes ctl and sm; icon-only and loading",
 	},
 	{
 		file: "calendar",
@@ -112,7 +120,7 @@ export const REGISTRY: Primitive[] = [
 		file: "chip",
 		status: "core",
 		plan: ["FilterChips"],
-		job: "Filter chip: text only, selected by fill (FilterChips, R7)",
+		job: "FilterChip (text only, selected by fill), FilterChips row and the Filter menu (R7, R25)",
 	},
 	{ file: "collapsible", status: "core", job: "Show more inside a section" },
 	{
@@ -168,7 +176,7 @@ export const REGISTRY: Primitive[] = [
 		file: "empty-state",
 		status: "core",
 		plan: ["EmptyState"],
-		job: "Nothing here: one line plus at most one action",
+		job: "Nothing here (Empty): one line plus at most one action",
 	},
 	{
 		file: "form",
@@ -183,6 +191,17 @@ export const REGISTRY: Primitive[] = [
 	{ file: "input", status: "core", job: "Text input at control height" },
 	{ file: "input-otp", status: "core", job: "One-time code entry (2FA)" },
 	{ file: "label", status: "core", job: "Field label" },
+	{
+		file: "notice",
+		status: "core",
+		plan: ["Notice"],
+		job: "Notice: one line that needs the person, with at most one action. At most one per page",
+	},
+	{
+		file: "page-tabs",
+		status: "core",
+		job: "Underline tabs between sibling pages of one destination: real links, aria-current, sliding indicator (R21, R24)",
+	},
 	{
 		file: "payment-method-icon",
 		status: "core",
@@ -215,10 +234,16 @@ export const REGISTRY: Primitive[] = [
 		job: "Scroll region with themed scrollbar",
 	},
 	{
-		file: "segmented-toggle",
+		file: "segmented",
 		status: "core",
 		plan: ["Segmented"],
-		job: "Segmented: switch views of the same data in place (R7, R21)",
+		job: "Segmented: switch views of the same data in place, 2 to 4 options (R7, R21)",
+	},
+	{
+		file: "segmented-toggle",
+		status: "legacy",
+		job: "Old pill toggle on today's pages; new code uses segmented",
+		use: "segmented",
 	},
 	{
 		file: "select",
@@ -242,9 +267,20 @@ export const REGISTRY: Primitive[] = [
 		file: "skeleton",
 		status: "core",
 		plan: ["Skeleton"],
-		job: "Loading placeholder in place of the content",
+		job: "Loading placeholder in place of the content (`shape`, SkeletonRows)",
 	},
 	{ file: "slider", status: "core", job: "Pick a value on a range" },
+	{
+		file: "status-dot",
+		status: "core",
+		plan: ["StatusDot"],
+		job: "StatusDot: a status kind from the one status map as a dot plus a word, never color alone (R5)",
+	},
+	{
+		file: "status-map",
+		status: "core",
+		job: "The one status map (17 kinds, R5): each kind's word key and tone colors, plain data for server and client",
+	},
 	{
 		file: "sonner",
 		status: "core",
@@ -272,7 +308,7 @@ export const REGISTRY: Primitive[] = [
 		file: "tabs",
 		status: "core",
 		plan: ["Tabs"],
-		job: "Underline tabs: switch sibling pages or whole panes (R21)",
+		job: 'Tabs: switch whole panes inside one page; `variant="line"` is the underline with the sliding indicator (R21, R24)',
 	},
 	{ file: "textarea", status: "core", job: "Multi-line text (notes)" },
 	{
@@ -290,7 +326,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "tooltip",
 		status: "core",
-		job: "Name of an icon-only control or a face; one clause",
+		job: "Name of an icon-only control, a face or a rate (Tip); one clause",
 	},
 	{
 		file: "transaction-status-badge",
@@ -304,8 +340,9 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "user-avatar",
-		status: "core",
-		job: "One person's face or initials on their avatar color",
+		status: "legacy",
+		job: "Old face (10 colors, old sizes) on today's pages; new code uses Face from avatar-face",
+		use: "avatar-face (Face)",
 	},
 ];
 
@@ -355,7 +392,8 @@ export const PLAN_COMPONENTS: string[] = [
 export type Planned = {
 	/** The PLAN §6 name. */
 	name: string;
-	status: "planned";
+	/** built: it exists at `target` (outside src/components/ui); use it. */
+	status: "planned" | "built";
 	/** The one job. */
 	job: string;
 	/** What it replaces (PLAN §6). */
@@ -381,39 +419,39 @@ const SHELL = "Sidebar, BottomNav, AccountMenu, Palette";
 export const PLANNED: Planned[] = [
 	{
 		name: "PageHeader",
-		status: "planned",
+		status: "built",
 		job: "Page title, at most one primary action, the overflow menu; optional faces and one sub line (R1)",
 		replaces: "SiteHeader variations and hero cards",
 		planRow: LAYOUT,
 		target: "src/components/layout/page-header.tsx",
-		use: "The page's current header; no tagline or helper paragraph",
+		use: "Import it from src/components/layout/page-header",
 	},
 	{
 		name: "Toolbar",
-		status: "planned",
+		status: "built",
 		job: "One row under the header: search, filter chips plus Filter menu, view switch at the end (R1)",
 		replaces: "Ad hoc filter bars",
 		planRow: LAYOUT,
 		target: "src/components/layout/toolbar.tsx",
-		use: "Input, chip and segmented-toggle in one row of h-ctl controls",
+		use: "Import it from src/components/layout/toolbar",
 	},
 	{
 		name: "Section",
-		status: "planned",
+		status: "built",
 		job: "Flat section: heading, content and space, no border (R2)",
 		replaces: "Card around sections",
 		planRow: LAYOUT,
 		target: "src/components/layout/section.tsx",
-		use: "A heading (text-section) plus content and mt-8, never card",
+		use: "Import it from src/components/layout/section",
 	},
 	{
 		name: "SummaryLine",
-		status: "planned",
+		status: "built",
 		job: "One glance line of key numbers (Spent ... · Left ...) instead of a tile row (R3)",
 		replaces: "7 KPI tile implementations",
 		planRow: LAYOUT,
 		target: "src/components/layout/summary-line.tsx",
-		use: "One line of text-small with the money formatter, never stat-card",
+		use: "Import it from src/components/layout/summary-line",
 	},
 	{
 		name: "GlanceStrip",
@@ -490,39 +528,30 @@ export const PLANNED: Planned[] = [
 	},
 	{
 		name: "Money",
-		status: "planned",
+		status: "built",
 		job: "Render one amount (and Money.pair: original first, home second) through the one formatter",
 		replaces: "15 local formatters, toFixed and toLocaleString sites",
 		planRow: "Money",
 		target: "src/components/money/money.tsx",
-		use: "useCurrencyFormatter() and src/lib/currency-format.ts",
+		use: "Import it from src/components/money/money (Money, Money.pair)",
 	},
 	{
 		name: "Balance",
-		status: "planned",
+		status: "built",
 		job: "Owed to you or you owe: amount plus the words, never netted (R5, D1)",
 		replaces: "Badge, color and verb triplets",
 		planRow: BALANCE,
 		target: "src/components/money/balance.tsx",
-		use: "The money formatter plus the words, text-positive for owed to you",
+		use: "Import it from src/components/money/balance",
 	},
 	{
 		name: "AvailablePill",
-		status: "planned",
+		status: "built",
 		job: "Budget money available in an envelope, attention when over",
 		replaces: "Badge, color and verb triplets",
 		planRow: BALANCE,
 		target: "src/components/money/available-pill.tsx",
-		use: "The money formatter in plain text",
-	},
-	{
-		name: "StatusDot",
-		status: "planned",
-		job: "Status as a dot plus a word, 17 kinds from one map (R5)",
-		replaces: "Badge, color and verb triplets",
-		planRow: BALANCE,
-		target: "src/components/money/status-dot.tsx",
-		use: "badge or transaction-status-badge",
+		use: "Import it from src/components/money/available-pill",
 	},
 	{
 		name: "ActionMenu",
