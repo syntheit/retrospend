@@ -1,5 +1,6 @@
 "use client";
 
+import { fromMinor } from "@retrospend/domain/money-minor";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
 import { ClipboardCopy, Edit2, ExternalLink, Trash2, Users } from "lucide-react";
@@ -272,7 +273,10 @@ const ActivityRow = memo(function ActivityRow({
 
 	// Convert amount for display (same rubric as convertExpenseAmountForDisplay)
 	let displayAmount = item.amount;
-	if (item.amountInUSD && item.currency !== homeCurrency) {
+	if (item.home && item.home.currency === homeCurrency) {
+		// Booked by the server when it was saved (M2): shown as is.
+		displayAmount = Number(fromMinor(item.home));
+	} else if (item.amountInUSD && item.currency !== homeCurrency) {
 		if (liveRateToBaseCurrency) {
 			displayAmount = isCrypto(homeCurrency)
 				? item.amountInUSD / liveRateToBaseCurrency

@@ -146,6 +146,15 @@ async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
 		budgetSpent: [april?.actualSpend, april?.actualSpendInHome],
 		runwayTimesMonths: runway.averageMonthlySpend * MONTHS_ACTIVE,
 		spentApril: await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300),
+		// The lists send the booked value; the client shows it as is.
+		listedHome: Object.fromEntries(
+			(await c.expense.listFinalized()).map((e) => [e.title, e.home]),
+		),
+		activityHome: Object.fromEntries(
+			(await c.dashboard.getRecentActivity({ homeCurrency: HOME })).map(
+				(e) => [e.title, e.home ?? null],
+			),
+		),
 	};
 }
 
@@ -179,6 +188,19 @@ const EXPECTED = {
 	budgetSpent: [31_500, 31_500],
 	runwayTimesMonths: 41_500,
 	spentApril: 31_500,
+	// A 10,000.00, B 24,000.00, C 1,000.00 in minor units; D has none.
+	listedHome: {
+		A: { minor: 1_000_000, currency: HOME },
+		B: { minor: 2_400_000, currency: HOME },
+		C: { minor: 100_000, currency: HOME },
+		D: null,
+	},
+	activityHome: {
+		A: { minor: 1_000_000, currency: HOME },
+		B: { minor: 2_400_000, currency: HOME },
+		C: { minor: 100_000, currency: HOME },
+		D: null,
+	},
 };
 
 describe("spending readers when the rate moves", () => {

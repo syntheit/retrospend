@@ -1,3 +1,4 @@
+import type { Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -7,6 +8,7 @@ import {
 	getOverviewStats,
 } from "~/server/services/overview.service";
 import { RateCache } from "~/server/services/rate-cache";
+import { bookedHome } from "~/server/services/rate-types";
 import { listedEntryWhere } from "~/server/services/spending";
 import {
 	getExcludedProjectIds,
@@ -228,6 +230,8 @@ export const dashboardRouter = createTRPCRouter({
 				amount: number;
 				currency: string;
 				amountInUSD: number | null;
+				/** Booked home value (M2) in homeCurrency; shown as is when set. */
+				home?: Money | null;
 				date: Date;
 				category: {
 					id: string;
@@ -268,6 +272,7 @@ export const dashboardRouter = createTRPCRouter({
 					amount: Number(e.amount),
 					currency: e.currency,
 					amountInUSD: e.amountInUSD ? Number(e.amountInUSD) : null,
+					home: bookedHome(e, homeCurrency),
 					date: e.date,
 					category: e.category
 						? {
@@ -289,6 +294,7 @@ export const dashboardRouter = createTRPCRouter({
 					amount: s.amount,
 					currency: s.currency,
 					amountInUSD: s.amountInUSD,
+					home: null,
 					date: s.date,
 					category: s.category,
 					sharedContext: s.sharedContext,
@@ -330,6 +336,7 @@ export const dashboardRouter = createTRPCRouter({
 						const rate = settlementRate(s.currency, s.initiatedAt);
 						return rate ? toUSD(amount, s.currency, rate.rate) : null;
 					})(),
+					home: null,
 					date: s.initiatedAt,
 					category: null,
 					settlementContext: {

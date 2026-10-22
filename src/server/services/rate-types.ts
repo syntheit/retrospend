@@ -17,6 +17,7 @@
  */
 
 import { Decimal } from "@prisma/client/runtime/index-browser";
+import { type Money, money, toMinor } from "@retrospend/domain/money-minor";
 import { TRPCError } from "@trpc/server";
 import { isCrypto } from "~/lib/currency-format";
 import {
@@ -344,6 +345,25 @@ export async function bookRate(
 			return booked(entry, ctx, entryLeg.rate, homeRate, labelFor(type, legs));
 		}
 	}
+}
+
+/**
+ * A row's booked home value as Money, when it was booked in `homeCurrency`
+ * (the currency a list shows): the client shows it as is instead of
+ * converting the USD value at today's rate. Null for rows with no booked
+ * value or one in another currency.
+ */
+export function bookedHome(
+	row: {
+		homeCurrency: string | null;
+		homeAmount: Prisma.Decimal | null;
+	},
+	homeCurrency: string,
+): Money | null {
+	if (row.homeCurrency !== homeCurrency || row.homeAmount === null) {
+		return null;
+	}
+	return money(toMinor(row.homeAmount, homeCurrency), homeCurrency);
 }
 
 // ── What the Add sheet offers ───────────────────────────────────────────────
