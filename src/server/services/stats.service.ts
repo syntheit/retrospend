@@ -5,8 +5,7 @@ import { calendarDaysBetween, dayKey, wallTime } from "~/lib/time-zone";
 import type { PrismaClient } from "~prisma";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
 import type { RateCache } from "./rate-cache";
-import { getSharedExpenseShares } from "./shared-expense-integration";
-import { getSpendingItems, spendingWhere } from "./spending";
+import { type SpentGrouping, spentItems } from "./figures/spent";
 
 const FIXED_NAMES = ["rent", "utilities", "mortgage", "bills", "insurance"];
 
@@ -24,6 +23,25 @@ export class StatsService {
 		private timeZone?: string,
 	) {}
 
+	/** Your spending in a range, from the one definition (figures/spent.ts). */
+	private spent(
+		userId: string,
+		range: { start: Date; end: Date } | null,
+		by: SpentGrouping = "currency",
+		personalOnly = false,
+	) {
+		return spentItems(
+			this.db,
+			{
+				userId,
+				...(range ? { date: { gte: range.start, lte: range.end } } : {}),
+				excludedProjectIds: this.excludedProjectIds,
+				personalOnly,
+			},
+			by,
+		);
+	}
+
 	private async getRate(currency: string, date: Date): Promise<number | null> {
 		if (this.rateCache) return this.rateCache.rate(currency, date);
 		return (await getBestExchangeRate(this.db, currency, date))?.rate ?? null;
@@ -35,12 +53,7 @@ export class StatsService {
 		homeCurrency: string,
 	): Promise<number> {
 		const [items, rate] = await Promise.all([
-			getSpendingItems(
-				this.db,
-				userId,
-				{ gte: range.start, lte: range.end },
-				this.excludedProjectIds,
-			),
+			this.spent(userId, range),
 			this.getRate(homeCurrency, periodRateDate(range.end)),
 		]);
 		return sumIn(items, homeCurrency, rate);
@@ -84,8 +97,11 @@ export class StatsService {
 		const now = new Date();
 		const isCurrentMonth = now >= current.start && now <= current.end;
 		const daysElapsed =
-			calendarDaysBetween(current.start, isCurrentMonth ? now : current.end, tz) +
-			1;
+			calendarDaysBetween(
+				current.start,
+				isCurrentMonth ? now : current.end,
+				tz,
+			) + 1;
 		const dailyAverage = totalThisMonth / Math.max(1, daysElapsed);
 
 		return {
@@ -111,37 +127,17 @@ export class StatsService {
 			this.timeZone,
 		);
 
-		const [personalCategories, sharedShares, rate] = await Promise.all([
-			this.db.expense.groupBy({
-				by: ["categoryId", "currency"],
-				where: spendingWhere(userId, { gte: start, lte: end }),
-				_sum: { amount: true, amountInUSD: true },
-			}),
-			getSharedExpenseShares(
-				this.db,
-				userId,
-				{ gte: start, lte: end },
-				this.rateCache,
-				this.excludedProjectIds,
-			),
+		const [items, rate] = await Promise.all([
+			this.spent(userId, { start, end }, "category"),
 			this.getRate(homeCurrency, periodRateDate(end)),
 		]);
 
-		// Personal and shared items per category
 		const itemsByCategory = new Map<string | null, MoneyItem[]>();
-		const add = (categoryId: string | null, item: MoneyItem) => {
-			const list = itemsByCategory.get(categoryId) ?? [];
+		for (const item of items) {
+			const list = itemsByCategory.get(item.categoryId) ?? [];
 			list.push(item);
-			itemsByCategory.set(categoryId, list);
-		};
-		for (const c of personalCategories) {
-			add(c.categoryId, {
-				currency: c.currency,
-				amount: Number(c._sum.amount ?? 0),
-				amountInUSD: Number(c._sum.amountInUSD ?? 0),
-			});
+			itemsByCategory.set(item.categoryId, list);
 		}
-		for (const s of sharedShares) add(s.categoryId, s);
 
 		const allCategoryIds = [...itemsByCategory.keys()].filter(
 			(id): id is string => !!id,
@@ -182,32 +178,10 @@ export class StatsService {
 		const { start, end } = getFiscalMonthRange(month, fiscalMonthStartDay, tz);
 
 		// Group by both date and category to distinguish fixed/variable
-		const [personalDailyAggs, sharedShares, rate] = await Promise.all([
-			this.db.expense.groupBy({
-				by: ["date", "categoryId", "currency"],
-				where: spendingWhere(userId, { gte: start, lte: end }),
-				_sum: { amount: true, amountInUSD: true },
-			}),
-			getSharedExpenseShares(
-				this.db,
-				userId,
-				{ gte: start, lte: end },
-				this.rateCache,
-				this.excludedProjectIds,
-			),
+		const [dailyItems, rate] = await Promise.all([
+			this.spent(userId, { start, end }, "day"),
 			this.getRate(homeCurrency, periodRateDate(end)),
 		]);
-
-		const dailyItems = [
-			...personalDailyAggs.map((a) => ({
-				date: a.date,
-				categoryId: a.categoryId,
-				currency: a.currency,
-				amount: Number(a._sum.amount ?? 0),
-				amountInUSD: Number(a._sum.amountInUSD ?? 0),
-			})),
-			...sharedShares,
-		];
 
 		// Fixed categories: isFixed=true or names like Rent, Utilities, Mortgage
 		const categoryIds = [
@@ -231,7 +205,8 @@ export class StatsService {
 		>();
 
 		for (const item of dailyItems) {
-			const key = dayKey(item.date, tz);
+			// "day" grouping always carries the entry date.
+			const key = dayKey(item.date ?? start, tz);
 			const amount = sumIn([item], homeCurrency, rate);
 			const isFixed = item.categoryId && fixedCategoryIds.has(item.categoryId);
 
@@ -280,25 +255,18 @@ export class StatsService {
 	 * Gets lifetime statistics for a user
 	 */
 	async getLifetimeStats(userId: string, homeCurrency: string) {
-		const [byCurrency, rate] = await Promise.all([
-			this.db.expense.groupBy({
-				by: ["currency"],
-				where: spendingWhere(userId),
-				_sum: { amount: true, amountInUSD: true },
-				_count: { _all: true },
-			}),
+		// Lifetime has always counted personal rows only; shares stay out so
+		// the number people know does not move. Refunds lower the total but
+		// are not transactions (spent items count them 0), like the profile's
+		// entry count.
+		const [items, rate] = await Promise.all([
+			this.spent(userId, null, "currency", true),
 			this.getRate(homeCurrency, new Date()),
 		]);
 
-		const items = byCurrency.map((c) => ({
-			currency: c.currency,
-			amount: Number(c._sum.amount ?? 0),
-			amountInUSD: Number(c._sum.amountInUSD ?? 0),
-		}));
-
 		return {
 			totalSpent: sumIn(items, homeCurrency, rate),
-			totalTransactions: byCurrency.reduce((n, c) => n + c._count._all, 0),
+			totalTransactions: items.reduce((n, item) => n + item.count, 0),
 		};
 	}
 }

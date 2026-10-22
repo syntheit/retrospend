@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { computeAmountInUSD, convertAmount } from "~/lib/money";
+import { convertAmount } from "~/lib/money";
 import { nextRecurringDate } from "~/lib/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { requireExchangeRate } from "~/server/exchange-rates";
+import { recurringEntryData } from "~/server/services/money-in.service";
 import { RateCache } from "~/server/services/rate-cache";
 
 export const recurringRouter = createTRPCRouter({
@@ -53,20 +53,31 @@ export const recurringRouter = createTRPCRouter({
 			}
 
 			const rateCache = new RateCache(db);
-			const rateMap = await rateCache.getMany([...currenciesNeeded], new Date());
+			const rateMap = await rateCache.getMany(
+				[...currenciesNeeded],
+				new Date(),
+			);
 
 			const enrichedTemplates = templates.map((t) => {
 				const amount = Number(t.amount);
 				const fromRate =
 					t.currency === "USD" ? 1 : (rateMap.get(t.currency)?.rate ?? null);
 				const toRate =
-					homeCurrency === "USD" ? 1 : (rateMap.get(homeCurrency)?.rate ?? null);
+					homeCurrency === "USD"
+						? 1
+						: (rateMap.get(homeCurrency)?.rate ?? null);
 				// Null when a rate is missing: never priced at 1:1
 				const amountInHomeCurrency =
 					t.currency === homeCurrency
 						? amount
 						: fromRate !== null && toRate !== null
-							? convertAmount(amount, t.currency, fromRate, homeCurrency, toRate)
+							? convertAmount(
+									amount,
+									t.currency,
+									fromRate,
+									homeCurrency,
+									toRate,
+								)
 							: null;
 				const exchangeRate = fromRate;
 
@@ -138,7 +149,13 @@ export const recurringRouter = createTRPCRouter({
 				amount: z.number().positive(),
 				currency: z.string().length(3).default("USD"),
 				categoryId: z.cuid().optional(),
-				frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]),
+				frequency: z.enum([
+					"WEEKLY",
+					"BIWEEKLY",
+					"MONTHLY",
+					"QUARTERLY",
+					"YEARLY",
+				]),
 				nextDueDate: z.date(),
 				websiteUrl: z.url().max(512).optional(),
 				paymentSource: z.string().min(1).max(191).optional(),
@@ -197,7 +214,9 @@ export const recurringRouter = createTRPCRouter({
 				amount: z.number().positive().optional(),
 				currency: z.string().length(3).optional(),
 				categoryId: z.cuid().nullable().optional(),
-				frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]).optional(),
+				frequency: z
+					.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"])
+					.optional(),
 				nextDueDate: z.date().optional(),
 				websiteUrl: z.url().max(512).nullable().optional(),
 				paymentSource: z.string().min(1).max(191).nullable().optional(),
@@ -294,7 +313,8 @@ export const recurringRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Get templates that are pending confirmation (autoPay = false and due)
+	 * Due templates waiting for a confirm: autoPay off, or an amount that
+	 * varies (ASK), which never posts on its own whatever autoPay says.
 	 */
 	getPendingConfirmation: protectedProcedure.query(async ({ ctx }) => {
 		const { session, db } = ctx;
@@ -304,7 +324,7 @@ export const recurringRouter = createTRPCRouter({
 			where: {
 				userId: session.user.id,
 				isActive: true,
-				autoPay: false,
+				OR: [{ autoPay: false }, { amountMode: "ASK" }],
 				nextDueDate: {
 					lte: now,
 				},
@@ -337,6 +357,8 @@ export const recurringRouter = createTRPCRouter({
 				// same confirm (double click, second tab) is rejected instead of
 				// booking the next period.
 				dueDate: z.date().optional(),
+				// The real amount, required for a template whose amount varies (ASK).
+				amount: z.number().positive().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -368,18 +390,8 @@ export const recurringRouter = createTRPCRouter({
 				});
 			}
 
-			// Rate for the due date (nearest available). A currency without any
-			// rate fails here instead of being booked at a rate of 1.
-			const { rate: exchangeRate } = await requireExchangeRate(
-				db,
-				template.currency,
-				template.nextDueDate,
-			);
-			const amountInUSD = computeAmountInUSD(
-				Number(template.amount),
-				template.currency,
-				exchangeRate,
-			);
+			// Direction, amount and the due date's rate (never 1) for the row.
+			const entry = await recurringEntryData(db, template, input.amount);
 
 			const nextDueDate = nextRecurringDate(
 				template.nextDueDate,
@@ -411,21 +423,7 @@ export const recurringRouter = createTRPCRouter({
 					});
 				}
 
-				return await tx.expense.create({
-					data: {
-						userId: session.user.id,
-						title: template.name,
-						amount: template.amount,
-						currency: template.currency,
-						date: template.nextDueDate,
-						categoryId: template.categoryId,
-						amountInUSD,
-						exchangeRate,
-						pricingSource: "RECURRING",
-						recurringTemplateId: template.id,
-						status: "FINALIZED",
-					},
-				});
+				return await tx.expense.create({ data: entry });
 			});
 
 			return expense;
