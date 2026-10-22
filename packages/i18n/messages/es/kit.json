@@ -1,0 +1,45 @@
+{
+	"status": {
+		"owed": "Te deben",
+		"owe": "Debes",
+		"settled": "Saldado",
+		"funded": "Con fondos",
+		"underfunded": "Sin fondos suficientes",
+		"overspent": "Excedido",
+		"pending": "Pendiente",
+		"confirmed": "Confirmado",
+		"overdue": "Vencido",
+		"due": "Vence hoy",
+		"review": "Por revisar",
+		"importing": "Importando",
+		"error": "Falló",
+		"notOnRetrospend": "No está en Retrospend",
+		"upcoming": "Próximo",
+		"noRate": "Sin cotización aún",
+		"rejected": "Rechazado"
+	},
+	"balance": {
+		"owesYou": "te debe",
+		"peopleOweYou": "te deben",
+		"owedToYou": "a tu favor",
+		"youOwe": "debes",
+		"youOwePeople": "debes a otros",
+		"settled": "Saldado"
+	},
+	"money": {
+		"none": "Ninguno",
+		"noRate": "Sin cotización aún"
+	},
+	"filter": {
+		"menu": "Filtrar",
+		"clear": "Quitar filtros"
+	},
+	"faces": {
+		"you": "Tú",
+		"paid": "Pagó",
+		"someAndMore": "{first}, {second} y {count} más"
+	},
+	"tabs": {
+		"pages": "Páginas de esta sección"
+	}
+}

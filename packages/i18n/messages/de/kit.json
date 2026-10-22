@@ -1,0 +1,45 @@
+{
+	"status": {
+		"owed": "Wird dir geschuldet",
+		"owe": "Du schuldest",
+		"settled": "Ausgeglichen",
+		"funded": "Gedeckt",
+		"underfunded": "Unterdeckt",
+		"overspent": "Überzogen",
+		"pending": "Ausstehend",
+		"confirmed": "Bestätigt",
+		"overdue": "Überfällig",
+		"due": "Heute fällig",
+		"review": "Zu prüfen",
+		"importing": "Wird importiert",
+		"error": "Fehlgeschlagen",
+		"notOnRetrospend": "Nicht auf Retrospend",
+		"upcoming": "Anstehend",
+		"noRate": "Noch kein Kurs",
+		"rejected": "Abgelehnt"
+	},
+	"balance": {
+		"owesYou": "schuldet dir",
+		"peopleOweYou": "schulden dir",
+		"owedToYou": "zu deinen Gunsten",
+		"youOwe": "du schuldest",
+		"youOwePeople": "du schuldest anderen",
+		"settled": "Ausgeglichen"
+	},
+	"money": {
+		"none": "Keine",
+		"noRate": "Noch kein Kurs"
+	},
+	"filter": {
+		"menu": "Filtern",
+		"clear": "Filter löschen"
+	},
+	"faces": {
+		"you": "Du",
+		"paid": "Hat bezahlt",
+		"someAndMore": "{first}, {second} und {count} weitere"
+	},
+	"tabs": {
+		"pages": "Seiten in diesem Bereich"
+	}
+}

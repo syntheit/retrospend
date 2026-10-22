@@ -1,0 +1,45 @@
+{
+	"status": {
+		"owed": "Вам должны",
+		"owe": "Вы должны",
+		"settled": "Погашено",
+		"funded": "Обеспечено",
+		"underfunded": "Недостаточно средств",
+		"overspent": "Перерасход",
+		"pending": "Ожидает",
+		"confirmed": "Подтверждено",
+		"overdue": "Просрочено",
+		"due": "Срок сегодня",
+		"review": "На проверку",
+		"importing": "Импорт",
+		"error": "Ошибка",
+		"notOnRetrospend": "Не в Retrospend",
+		"upcoming": "Предстоит",
+		"noRate": "Курса пока нет",
+		"rejected": "Отклонено"
+	},
+	"balance": {
+		"owesYou": "должен вам",
+		"peopleOweYou": "вам должны",
+		"owedToYou": "в вашу пользу",
+		"youOwe": "вы должны",
+		"youOwePeople": "вы должны другим",
+		"settled": "Погашено"
+	},
+	"money": {
+		"none": "Нет",
+		"noRate": "Курса пока нет"
+	},
+	"filter": {
+		"menu": "Фильтр",
+		"clear": "Сбросить фильтры"
+	},
+	"faces": {
+		"you": "Вы",
+		"paid": "Оплатил",
+		"someAndMore": "{first}, {second} и ещё {count}"
+	},
+	"tabs": {
+		"pages": "Страницы раздела"
+	}
+}
