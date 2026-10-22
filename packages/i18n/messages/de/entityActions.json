@@ -116,5 +116,22 @@
 			"confirmBody": "Künftige entfallen, vergangene Ausgaben bleiben.",
 			"confirmButton": "Wiederkehrende Ausgabe löschen"
 		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Umrechnen"
+		},
+		"favorite": {
+			"label": "Zu Favoriten hinzufügen"
+		},
+		"unfavorite": {
+			"label": "Aus Favoriten entfernen"
+		},
+		"copy": {
+			"label": "Kurs kopieren"
+		},
+		"history": {
+			"label": "Kursverlauf ansehen"
+		}
 	}
 }

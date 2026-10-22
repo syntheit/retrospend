@@ -116,5 +116,22 @@
 			"confirmBody": "Os próximos param; as despesas passadas ficam.",
 			"confirmButton": "Excluir despesa recorrente"
 		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Converter"
+		},
+		"favorite": {
+			"label": "Adicionar aos favoritos"
+		},
+		"unfavorite": {
+			"label": "Remover dos favoritos"
+		},
+		"copy": {
+			"label": "Copiar cotação"
+		},
+		"history": {
+			"label": "Ver histórico da cotação"
+		}
 	}
 }

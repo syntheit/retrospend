@@ -5,6 +5,7 @@
  * entityActions message namespace under <entity>.<id>.
  */
 import { ACCOUNT_ACTIONS, type AccountTarget } from "./account";
+import { CURRENCY_ACTIONS, type CurrencyTarget } from "./currency";
 import { EXPENSE_ACTIONS, type ExpenseTarget } from "./expense";
 import { PERSON_ACTIONS, type PersonTarget } from "./person";
 import { PROJECT_ACTIONS, type ProjectTarget } from "./project";
@@ -17,6 +18,7 @@ export type EntityTargets = {
 	project: ProjectTarget;
 	account: AccountTarget;
 	recurring: RecurringTarget;
+	currency: CurrencyTarget;
 };
 
 export type Entity = keyof EntityTargets;
@@ -29,10 +31,12 @@ export const ACTIONS: {
 	project: PROJECT_ACTIONS,
 	account: ACCOUNT_ACTIONS,
 	recurring: RECURRING_ACTIONS,
+	currency: CURRENCY_ACTIONS,
 };
 
 export type {
 	AccountTarget,
+	CurrencyTarget,
 	ExpenseTarget,
 	PersonTarget,
 	ProjectTarget,

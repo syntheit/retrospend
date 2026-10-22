@@ -116,5 +116,22 @@
 			"confirmBody": "Les prochaines s'arrêtent, les dépenses passées restent.",
 			"confirmButton": "Supprimer la dépense récurrente"
 		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convertir"
+		},
+		"favorite": {
+			"label": "Ajouter aux favoris"
+		},
+		"unfavorite": {
+			"label": "Retirer des favoris"
+		},
+		"copy": {
+			"label": "Copier le taux"
+		},
+		"history": {
+			"label": "Voir l'historique du taux"
+		}
 	}
 }

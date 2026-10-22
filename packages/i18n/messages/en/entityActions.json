@@ -116,5 +116,22 @@
 			"confirmBody": "Future ones stop; past expenses stay.",
 			"confirmButton": "Delete recurring expense"
 		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convert"
+		},
+		"favorite": {
+			"label": "Add to favorites"
+		},
+		"unfavorite": {
+			"label": "Remove from favorites"
+		},
+		"copy": {
+			"label": "Copy rate"
+		},
+		"history": {
+			"label": "View rate history"
+		}
 	}
 }

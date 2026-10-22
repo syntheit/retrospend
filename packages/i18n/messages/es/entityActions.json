@@ -116,5 +116,22 @@
 			"confirmBody": "Los próximos se detienen; los gastos pasados quedan.",
 			"confirmButton": "Eliminar gasto recurrente"
 		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convertir"
+		},
+		"favorite": {
+			"label": "Añadir a favoritas"
+		},
+		"unfavorite": {
+			"label": "Quitar de favoritas"
+		},
+		"copy": {
+			"label": "Copiar tipo de cambio"
+		},
+		"history": {
+			"label": "Ver historial del tipo de cambio"
+		}
 	}
 }

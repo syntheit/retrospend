@@ -30,6 +30,7 @@ export const ACTION_IDS = {
 		"delete",
 	],
 	recurring: ["confirm", "editAmount", "pause", "resume", "skip", "delete"],
+	currency: ["convert", "favorite", "unfavorite", "copy", "history"],
 } as const;
 
 /**
