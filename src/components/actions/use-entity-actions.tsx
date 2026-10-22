@@ -10,6 +10,7 @@ import {
 	type ActionHandlers,
 	type ActionTarget,
 	actionForKey,
+	isRowKey,
 	type MenuEntry,
 	menuEntries,
 } from "./types";
@@ -62,8 +63,7 @@ export function useEntityActions<E extends Entity>(
 
 	const onRowKeyDown = React.useCallback(
 		(e: React.KeyboardEvent) => {
-			// Letters typed in a field inside the row are text, not shortcuts.
-			if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+			if (!isRowKey(e)) return;
 			const a = actionForKey(defs, target, handlers, e);
 			if (!a) return;
 			e.preventDefault();

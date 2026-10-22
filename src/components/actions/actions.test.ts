@@ -8,6 +8,7 @@ import {
 	type ActionHandlers,
 	type ActionTarget,
 	actionForKey,
+	isRowKey,
 	menuEntries,
 	registryProblems,
 	swipeEntries,
@@ -158,6 +159,21 @@ describe("row keys", () => {
 		expect(
 			actionForKey(ACTIONS.expense, expense(), all, { key: "Enter" }),
 		).toBeNull();
+	});
+});
+
+describe("row key scope", () => {
+	const row = {};
+	it("only keys on the row itself, not handled ones or ones from children and portals", () => {
+		expect(
+			isRowKey({ defaultPrevented: false, target: row, currentTarget: row }),
+		).toBe(true);
+		expect(
+			isRowKey({ defaultPrevented: true, target: row, currentTarget: row }),
+		).toBe(false);
+		expect(
+			isRowKey({ defaultPrevented: false, target: {}, currentTarget: row }),
+		).toBe(false);
 	});
 });
 

@@ -91,6 +91,19 @@ type KeyLike = {
 	altKey?: boolean;
 };
 
+/**
+ * Row letters apply only to a key on the row itself: not one a child already
+ * handled, not one from a field in the row, and not one that bubbled through
+ * React from a portaled child (a menu or sheet opened from the row).
+ */
+export function isRowKey(e: {
+	defaultPrevented: boolean;
+	target: unknown;
+	currentTarget: unknown;
+}): boolean {
+	return !e.defaultPrevented && e.target === e.currentTarget;
+}
+
 /** A focused row runs the action whose menu hint matches the letter typed. */
 export function actionForKey<T extends ActionTarget>(
 	defs: readonly ActionDef<T>[],
