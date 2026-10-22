@@ -1,19 +1,27 @@
+import { apiKey } from "@better-auth/api-key";
+import { expo } from "@better-auth/expo";
+import { parseScopeList } from "@retrospend/api-contract/common";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { APIError } from "better-auth/api";
-import { twoFactor } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { bearer, deviceAuthorization, twoFactor } from "better-auth/plugins";
 import crypto from "crypto";
 import { headers } from "next/headers";
 import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
+import {
+	DEFAULT_TOKEN_SCOPES,
+	DEVICE_CLIENT_IDS,
+	formatScopeList,
+} from "~/server/api/v1/scopes";
 import { db } from "~/server/db";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
-import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
+import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 import { logEventAsync } from "~/server/services/audit.service";
-import { isInviteOnlyEnabled } from "~/server/services/settings";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
+import { isInviteOnlyEnabled } from "~/server/services/settings";
 import { USERNAME_RESERVATION_DAYS } from "~/server/services/username.service";
 
 // ── Rate limiting for auth endpoints ──────────────────────────────────
@@ -26,9 +34,63 @@ const RATE_LIMITED_AUTH_PATHS = [
 	"/two-factor",
 	"/forgot-password",
 	"/reset-password",
+	"/device/code",
 ];
 const AUTH_RATE_LIMIT = 10; // requests per window
 const AUTH_RATE_WINDOW_MS = 60_000; // 1 minute
+
+const DAY_SECONDS = 24 * 60 * 60;
+
+/**
+ * Rejects a device authorization request for an unknown scope (RFC 8628
+ * `invalid_scope`) before a code is issued.
+ */
+function assertKnownScopes(scope: string | undefined) {
+	const { unknown } = parseScopeList(scope);
+	if (unknown.length > 0) {
+		throw new APIError("BAD_REQUEST", {
+			error: "invalid_scope",
+			error_description: `Unknown scope: ${unknown.join(" ")}`,
+		});
+	}
+}
+
+/**
+ * Client calls to the api-key plugin may not drop a key's expiry (update
+ * with `expiresIn: null`) or pick their own prefix: every key expires, and
+ * /api/v1 tells a key from a session token by the rsk_ prefix.
+ */
+function guardApiKeyRequest(path: string, body: unknown) {
+	const fields = (body ?? {}) as { expiresIn?: unknown; prefix?: unknown };
+	if (path === "/api-key/update" && fields.expiresIn === null) {
+		throw new APIError("BAD_REQUEST", { message: "API keys always expire" });
+	}
+	if (path === "/api-key/create" && fields.prefix !== undefined) {
+		throw new APIError("BAD_REQUEST", { message: "API keys use the rsk_ prefix" });
+	}
+}
+
+/**
+ * The device token endpoint creates a plain session; this stamps it with the
+ * scopes the device asked for and its client id before the token leaves the
+ * server. If the update fails the request fails, so no unscoped device
+ * token is ever handed out.
+ */
+const scopeDeviceSession = createAuthMiddleware(async (ctx) => {
+	if (ctx.path !== "/device/token") return;
+	const session = ctx.context.newSession?.session;
+	const returned = ctx.context.returned as { scope?: string } | undefined;
+	if (!session || !returned || returned instanceof Error) return;
+	const requested = parseScopeList(returned.scope).scopes;
+	const scopes = requested.length > 0 ? requested : DEFAULT_TOKEN_SCOPES;
+	await db.session.update({
+		where: { id: session.id },
+		data: {
+			scopes: formatScopeList(scopes),
+			clientId: (ctx.body as { client_id?: string } | undefined)?.client_id,
+		},
+	});
+});
 
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
@@ -37,13 +99,22 @@ export const auth = betterAuth({
 	}),
 	trustedOrigins: [
 		env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL,
+		// The Expo app's deep-link scheme (mobile sign-in and redirects).
+		"retrospend://",
 		...(env.TRUSTED_ORIGINS
-			? env.TRUSTED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+			? env.TRUSTED_ORIGINS.split(",")
+					.map((o) => o.trim())
+					.filter(Boolean)
 			: []),
 	],
 	session: {
 		expiresIn: 60 * 60 * 24 * 60, // 60 days
 		updateAge: 60 * 60 * 24, // Refresh daily
+		additionalFields: {
+			// Set only on device-authorization sessions (scopeDeviceSession).
+			scopes: { type: "string", required: false, input: false },
+			clientId: { type: "string", required: false, input: false },
+		},
 	},
 	emailAndPassword: {
 		enabled: true,
@@ -69,7 +140,9 @@ export const auth = betterAuth({
 					});
 				}
 			}
+			guardApiKeyRequest(path, context.body);
 		},
+		after: scopeDeviceSession,
 	},
 	onAPIError: {
 		onError: (error) => {
@@ -349,6 +422,35 @@ export const auth = betterAuth({
 	plugins: [
 		twoFactor({
 			issuer: "Retrospend",
+		}),
+		// Mobile: `Authorization: Bearer <session token>` (token from the
+		// set-auth-token header at sign-in) and the Expo origin handling.
+		bearer(),
+		expo(),
+		// Personal access tokens for scripts and integrations: shown once,
+		// stored hashed, always expiring. Scopes live in `permissions` and can
+		// only be set server side; /api/v1 enforces them and rate limits keys
+		// in Postgres, so the plugin's own limiter is off.
+		apiKey({
+			defaultPrefix: "rsk_",
+			requireName: true,
+			keyExpiration: {
+				defaultExpiresIn: 90 * DAY_SECONDS,
+				minExpiresIn: 1,
+				maxExpiresIn: 365,
+			},
+			rateLimit: { enabled: false },
+			permissions: {
+				defaultPermissions: { scopes: [...DEFAULT_TOKEN_SCOPES] },
+			},
+		}),
+		// RFC 8628 for the later CLI and desktop clients; users approve at /device.
+		deviceAuthorization({
+			verificationUri: "/device",
+			expiresIn: "30m",
+			interval: "5s",
+			validateClient: (clientId) => DEVICE_CLIENT_IDS.includes(clientId),
+			onDeviceAuthRequest: (_clientId, scope) => assertKnownScopes(scope),
 		}),
 	],
 	baseURL: env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997",

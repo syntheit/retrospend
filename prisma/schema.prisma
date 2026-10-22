@@ -77,6 +77,11 @@ model User {
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
 
+  // API v1 (M11 auth_tokens, M16 idempotency_keys)
+  apiKeys                 Apikey[]
+  deviceCodes             DeviceCode[]
+  idempotencyKeys         IdempotencyKey[]
+
   @@map("user")
 }
 
@@ -90,6 +95,10 @@ model Session {
   userAgent String?  @db.VarChar(255)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // API v1: space-separated scopes and the client id of a session made by
+  // device authorization. Null on web and mobile sign-in sessions.
+  scopes    String?  @db.VarChar(255)
+  clientId  String?  @db.VarChar(64)
 
   @@index([expiresAt])
   @@index([userId])
@@ -1127,4 +1136,90 @@ model Feedback {
   @@index([status])
   @@index([createdAt])
   @@map("feedback")
+}
+
+// better-auth api-key plugin (@better-auth/api-key; the adapter looks the
+// model up as `apikey`). `key` is the SHA-256 hash: the plain key is shown
+// once at creation. `permissions` is JSON {"scopes":["read",...]}. Rate
+// limits run in /api/v1 (ApiRateLimit), so the plugin's counters stay idle.
+model Apikey {
+  id                  String    @id
+  configId            String    @default("default") @db.VarChar(64)
+  name                String?   @db.VarChar(64)
+  start               String?   @db.VarChar(32)
+  referenceId         String
+  prefix              String?   @db.VarChar(32)
+  key                 String    @db.VarChar(255)
+  refillInterval      Int?
+  refillAmount        Int?
+  lastRefillAt        DateTime?
+  enabled             Boolean?  @default(true)
+  rateLimitEnabled    Boolean?  @default(true)
+  rateLimitTimeWindow Int?
+  rateLimitMax        Int?
+  requestCount        Int?      @default(0)
+  remaining           Int?
+  lastRequest         DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime
+  updatedAt           DateTime
+  permissions         String?
+  metadata            String?
+  user                User      @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@index([key])
+  @@index([referenceId])
+  @@index([configId])
+  @@map("apikey")
+}
+
+// better-auth device authorization (RFC 8628). A row lives for the code's
+// lifetime (30 minutes) and is deleted when redeemed.
+model DeviceCode {
+  id              String    @id
+  deviceCode      String    @unique @db.VarChar(191)
+  userCode        String    @unique @db.VarChar(191)
+  userId          String?
+  expiresAt       DateTime
+  status          String    @db.VarChar(16)
+  lastPolledAt    DateTime?
+  pollingInterval Int?
+  clientId        String?   @db.VarChar(64)
+  scope           String?   @db.VarChar(255)
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_code")
+}
+
+// API v1 Idempotency-Key store (M16): one row per user and key for 24h.
+// `completedAt` is null while the first request runs; `responseBody` stays
+// null for routes whose response holds a secret.
+model IdempotencyKey {
+  id           String    @id @default(cuid())
+  userId       String
+  key          String    @db.VarChar(255)
+  requestHash  String    @db.VarChar(64)
+  completedAt  DateTime?
+  status       Int?
+  responseBody Json?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_key")
+}
+
+// API v1 rate limit counters (M16): fixed windows per key ("ip:<addr>",
+// "tok:<kind>:<id>"), in Postgres so limits survive restarts and hold
+// across instances.
+model ApiRateLimit {
+  key         String   @id @db.VarChar(255)
+  windowStart DateTime
+  count       Int
+
+  @@index([windowStart])
+  @@map("api_rate_limit")
 }
