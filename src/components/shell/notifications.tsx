@@ -154,27 +154,38 @@ export function UnreadCount({
 	);
 }
 
-/** The sidebar's bell: an icon button with the unread count and the popover. */
+/** The bell itself: an icon-only ghost button with the unread count. */
+export function BellButton({
+	count,
+	...props
+}: { count: number } & React.ComponentProps<typeof Button>) {
+	const t = useTranslations("shell.notifications");
+	return (
+		<Button
+			aria-label={count ? t("labelUnread", { count }) : t("title")}
+			className="relative text-fg-3"
+			icon
+			kind="ghost"
+			size="sm"
+			{...props}
+		>
+			<Bell aria-hidden="true" />
+			<UnreadCount className="absolute -top-1 -right-1" count={count} />
+		</Button>
+	);
+}
+
+/** The sidebar's bell with the live unread count and the popover. */
 export function NotificationsButton() {
 	const t = useTranslations("shell.notifications");
 	const [open, setOpen] = useState(false);
 	const titleId = useId();
 	const unread = useUnreadNotifications();
-	const label = unread ? t("labelUnread", { count: unread }) : t("title");
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
 			<Tip content={t("title")}>
 				<PopoverTrigger asChild>
-					<Button
-						aria-label={label}
-						className="relative text-fg-3"
-						icon
-						kind="ghost"
-						size="sm"
-					>
-						<Bell aria-hidden="true" />
-						<UnreadCount className="absolute -top-1 -right-1" count={unread} />
-					</Button>
+					<BellButton count={unread} />
 				</PopoverTrigger>
 			</Tip>
 			<PopoverContent

@@ -276,7 +276,6 @@ export const SECTIONS: GallerySection[] = [
 		never:
 			"a hamburger, more than six destinations, or a tool hidden in the account menu.",
 		replaces: "hamburger-only mobile nav, 3 feedback entries.",
-		pending: "The shell lands from feature/s1c-shell (S1c part 1).",
 	},
 	{
 		id: "bottomnav",
@@ -286,7 +285,6 @@ export const SECTIONS: GallerySection[] = [
 		use: "phone navigation: Home, Activity, Budget, People, Projects, plus a floating Add.",
 		never: "rows, charts or numbers in glass. Never a center plus tab.",
 		replaces: "hamburger-only mobile nav.",
-		pending: "The shell lands from feature/s1c-shell (S1c part 1).",
 	},
 	{
 		id: "tooltip",

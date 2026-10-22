@@ -33,10 +33,10 @@ import { usePinnedProjects } from "./sidebar";
 
 const ITEM =
 	"h-10 gap-3 rounded-ctl px-3 py-0! text-body text-fg data-[selected=true]:bg-raised data-[selected=true]:text-fg";
-const GROUP =
+export const PALETTE_GROUP =
 	"p-0 text-fg [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:font-normal [&_[cmdk-group-heading]]:text-fg-3 [&_[cmdk-group-heading]]:text-meta";
 
-function Item({
+export function PaletteItem({
 	value,
 	lead,
 	label,
@@ -94,9 +94,9 @@ function RecentGroup({
 	);
 	if (!projects.length && !expenses.length) return null;
 	return (
-		<CommandGroup className={GROUP} heading={t("recent")}>
+		<CommandGroup className={PALETTE_GROUP} heading={t("recent")}>
 			{projects.map((p) => (
-				<Item
+				<PaletteItem
 					key={p.id}
 					label={p.name}
 					lead={
@@ -113,7 +113,7 @@ function RecentGroup({
 				/>
 			))}
 			{expenses.map((e) => (
-				<Item
+				<PaletteItem
 					key={e.id}
 					label={e.title}
 					lead={<Receipt aria-hidden="true" />}
@@ -184,7 +184,7 @@ export function ShellPalette({
 				<CommandEmpty className="py-6 text-center text-fg-3 text-small">
 					{t("palette.noResults")}
 				</CommandEmpty>
-				<CommandGroup className={GROUP} heading={t("palette.goTo")}>
+				<CommandGroup className={PALETTE_GROUP} heading={t("palette.goTo")}>
 					{goToItems(typed).map((item) => {
 						const Icon = item.icon;
 						const label = item.label.section
@@ -193,7 +193,7 @@ export function ShellPalette({
 								})
 							: t(item.label.key);
 						return (
-							<Item
+							<PaletteItem
 								key={item.id}
 								label={label}
 								lead={<Icon aria-hidden="true" />}
@@ -204,11 +204,11 @@ export function ShellPalette({
 					})}
 				</CommandGroup>
 				{!typed && <RecentGroup go={go} open={open} run={run} />}
-				<CommandGroup className={GROUP} heading={t("palette.commands")}>
+				<CommandGroup className={PALETTE_GROUP} heading={t("palette.commands")}>
 					{ADD_ACTIONS.map((a) => {
 						const Icon = a.icon;
 						return (
-							<Item
+							<PaletteItem
 								disabled={!a.ready}
 								key={a.id}
 								label={t(`add.${a.id}`)}
@@ -219,27 +219,27 @@ export function ShellPalette({
 							/>
 						);
 					})}
-					<Item
+					<PaletteItem
 						label={t("palette.addRecurring")}
 						lead={<Repeat aria-hidden="true" />}
 						onSelect={run(openNewRecurring)}
 						value={`command addRecurring ${t("palette.addRecurring")}`}
 					/>
-					<Item
+					<PaletteItem
 						label={t("palette.manageCategories")}
 						lead={<Tags aria-hidden="true" />}
 						onSelect={() => go(settingsHref("categories"))}
 						value={`command manageCategories ${t("palette.manageCategories")}`}
 					/>
 					{flags?.feedbackEnabled && (
-						<Item
+						<PaletteItem
 							label={t("account.sendFeedback")}
 							lead={<MessageSquare aria-hidden="true" />}
 							onSelect={run(actions.openFeedback)}
 							value={`command sendFeedback ${t("account.sendFeedback")}`}
 						/>
 					)}
-					<Item
+					<PaletteItem
 						label={t("account.shortcuts")}
 						lead={<Keyboard aria-hidden="true" />}
 						onSelect={run(actions.openShortcuts)}

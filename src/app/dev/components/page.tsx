@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { auth } from "~/server/better-auth";
+import { getWebSession } from "~/server/better-auth/web-session";
 import { canSeeGallery } from "./access";
 import { Gallery } from "./gallery";
 
@@ -12,9 +12,7 @@ export const metadata: Metadata = {
 
 export default async function ComponentGalleryPage() {
 	const prod = process.env.NODE_ENV === "production";
-	const session = prod
-		? await auth.api.getSession({ headers: await headers() })
-		: null;
+	const session = prod ? await getWebSession(await headers()) : null;
 	const role = (session?.user as { role?: string } | undefined)?.role;
 	if (!canSeeGallery(process.env.NODE_ENV, role)) notFound();
 	return <Gallery />;
