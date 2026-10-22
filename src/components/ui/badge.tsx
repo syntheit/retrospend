@@ -1,7 +1,9 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useTranslations } from "next-intl";
 import type * as React from "react";
 
+import { STATUS, type StatusKind, toneOf } from "~/components/ui/status-map";
 import { cn } from "~/lib/utils";
 
 const badgeVariants = cva(
@@ -36,21 +38,54 @@ export interface BadgeProps
 	asChild?: boolean;
 }
 
-function Badge({
-	className,
-	variant,
-	size,
-	asChild = false,
-	...props
-}: BadgeProps) {
+function Badge(props: BadgeProps | StatusBadgeProps) {
+	if ("status" in props) return <StatusBadge {...props} />;
+	const { className, variant, size, asChild = false, ...rest } = props;
 	const Comp = asChild ? Slot : "span";
 
 	return (
 		<Comp
 			className={cn(badgeVariants({ variant, size }), className)}
 			data-slot="badge"
-			{...props}
+			{...rest}
 		/>
+	);
+}
+
+/**
+ * The design's badge: a status kind from the one status map (R5) drawn as a
+ * pill, for places where a dot would get lost (a table cell, next to a sheet
+ * title). The word comes from the map and the fill follows its tone. Never a
+ * count, never money. Today's pages pass `variant` and keep the old look.
+ */
+export interface StatusBadgeProps {
+	status: StatusKind;
+	/** A more specific word than the map's ("Overdue since Oct 3"). */
+	label?: string;
+	className?: string;
+}
+
+function StatusBadge({ status, label, className }: StatusBadgeProps) {
+	// next-intl's useTranslations works in server and client components alike.
+	const t = useTranslations("kit.status");
+	const tone = toneOf(status);
+	return (
+		<span
+			className={cn(
+				"inline-flex h-6 w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-chip px-2 font-medium text-meta",
+				tone.pill,
+				tone.text,
+				className,
+			)}
+			data-slot="badge"
+			data-status={status}
+		>
+			<span
+				aria-hidden="true"
+				className={cn("size-2 shrink-0 rounded-full", tone.dot)}
+			/>
+			{label ?? t(STATUS[status].word)}
+		</span>
 	);
 }
 

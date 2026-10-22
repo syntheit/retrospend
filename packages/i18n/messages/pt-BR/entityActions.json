@@ -1,0 +1,108 @@
+{
+	"expense": {
+		"review": {
+			"label": "Marcar como revisado"
+		},
+		"open": {
+			"label": "Abrir"
+		},
+		"edit": {
+			"label": "Editar"
+		},
+		"askFix": {
+			"label": "Pedir correção"
+		},
+		"correct": {
+			"label": "Corrigir"
+		},
+		"split": {
+			"label": "Dividir"
+		},
+		"category": {
+			"label": "Mudar categoria"
+		},
+		"project": {
+			"label": "Mover para projeto"
+		},
+		"duplicate": {
+			"label": "Duplicar"
+		},
+		"delete": {
+			"label": "Excluir",
+			"confirmTitle": "Excluir {name}?",
+			"confirmBody": "Os saldos afetados são atualizados para todos.",
+			"confirmButton": "Excluir despesa"
+		}
+	},
+	"person": {
+		"settle": {
+			"label": "Acertar"
+		},
+		"request": {
+			"label": "Solicitar"
+		},
+		"remind": {
+			"label": "Lembrar"
+		},
+		"addExpense": {
+			"label": "Adicionar despesa com essa pessoa"
+		},
+		"profile": {
+			"label": "Ver perfil"
+		}
+	},
+	"project": {
+		"addExpense": {
+			"label": "Adicionar despesa"
+		},
+		"pin": {
+			"label": "Fixar"
+		},
+		"share": {
+			"label": "Compartilhar link"
+		},
+		"settleAll": {
+			"label": "Acertar tudo"
+		},
+		"archive": {
+			"label": "Arquivar"
+		}
+	},
+	"account": {
+		"updateBalance": {
+			"label": "Atualizar saldo"
+		},
+		"history": {
+			"label": "Ver histórico"
+		},
+		"edit": {
+			"label": "Editar conta"
+		},
+		"archive": {
+			"label": "Arquivar"
+		}
+	},
+	"recurring": {
+		"confirm": {
+			"label": "Confirmar"
+		},
+		"editAmount": {
+			"label": "Editar valor"
+		},
+		"pause": {
+			"label": "Pausar"
+		},
+		"resume": {
+			"label": "Retomar"
+		},
+		"skip": {
+			"label": "Pular desta vez"
+		},
+		"delete": {
+			"label": "Excluir",
+			"confirmTitle": "Excluir {name}?",
+			"confirmBody": "Os próximos param; as despesas passadas ficam.",
+			"confirmButton": "Excluir despesa recorrente"
+		}
+	}
+}

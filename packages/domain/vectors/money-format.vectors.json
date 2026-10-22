@@ -516,6 +516,90 @@
 			"locale": "en-US",
 			"money": { "minor": 100, "currency": "" },
 			"throws": "RangeError"
+		},
+		{
+			"name": "compact axis label, millions, no currency",
+			"locale": "en-US",
+			"money": { "minor": 270660200, "currency": "ARS" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "2.7M"
+		},
+		{
+			"name": "compact keeps the code by default",
+			"locale": "en-US",
+			"money": { "minor": 382000000, "currency": "ARS" },
+			"options": { "compact": true },
+			"expected": "ARS\u00a03.8M"
+		},
+		{
+			"name": "compact drops a zero tenth",
+			"locale": "en-US",
+			"money": { "minor": 300000000, "currency": "ARS" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "3M"
+		},
+		{
+			"name": "compact es-AR uses its separator and spaced suffix",
+			"locale": "es-AR",
+			"money": { "minor": 270660200, "currency": "ARS" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "2,7\u00a0M"
+		},
+		{
+			"name": "compact thousands",
+			"locale": "en-US",
+			"money": { "minor": 85000000, "currency": "ARS" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "850K"
+		},
+		{
+			"name": "compact de has no thousands suffix, so the whole amount",
+			"locale": "de",
+			"money": { "minor": 85000000, "currency": "ARS" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "850.000"
+		},
+		{
+			"name": "compact rounds half to even on the tenth",
+			"locale": "en-US",
+			"money": { "minor": -125000, "currency": "USD" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "-1.2K"
+		},
+		{
+			"name": "compact moves up a step instead of 1,000K",
+			"locale": "en-US",
+			"money": { "minor": 99996000, "currency": "USD" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "1M"
+		},
+		{
+			"name": "compact stays on K below the next step",
+			"locale": "en-US",
+			"money": { "minor": 95000000, "currency": "USD" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "950K"
+		},
+		{
+			"name": "compact under a thousand is the whole amount",
+			"locale": "en-US",
+			"money": { "minor": 99900, "currency": "USD" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "999"
+		},
+		{
+			"name": "compact zero",
+			"locale": "en-US",
+			"money": { "minor": 0, "currency": "ARS" },
+			"options": { "compact": true, "display": "none" },
+			"expected": "0"
+		},
+		{
+			"name": "compact JPY has no minor units",
+			"locale": "en-US",
+			"money": { "minor": 4800000, "currency": "JPY" },
+			"options": { "compact": true },
+			"expected": "JPY\u00a04.8M"
 		}
 	],
 	"pair": [

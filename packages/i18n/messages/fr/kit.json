@@ -1,0 +1,47 @@
+{
+	"status": {
+		"owed": "On vous doit",
+		"owe": "Vous devez",
+		"settled": "Réglé",
+		"funded": "Financé",
+		"underfunded": "Sous-financé",
+		"overspent": "Dépassé",
+		"pending": "En attente",
+		"confirmed": "Confirmé",
+		"overdue": "En retard",
+		"due": "Échéance aujourd'hui",
+		"review": "À vérifier",
+		"importing": "Importation",
+		"error": "Échec",
+		"notOnRetrospend": "Pas sur Retrospend",
+		"upcoming": "À venir",
+		"noRate": "Pas encore de taux",
+		"rejected": "Refusé"
+	},
+	"balance": {
+		"owesYou": "vous doit",
+		"peopleOweYou": "vous doivent",
+		"owedToYou": "en votre faveur",
+		"youOwe": "vous devez",
+		"youOwePeople": "vous devez à d'autres"
+	},
+	"money": {
+		"none": "Aucun",
+		"noRate": "Pas encore de taux"
+	},
+	"filter": {
+		"menu": "Filtrer"
+	},
+	"faces": {
+		"you": "Vous",
+		"paid": "A payé",
+		"someAndMore": "{first}, {second} et {count} de plus",
+		"paidBy": "{names}. Payé par {payer}"
+	},
+	"tabs": {
+		"pages": "Pages de cette section"
+	},
+	"button": {
+		"loading": "Chargement"
+	}
+}

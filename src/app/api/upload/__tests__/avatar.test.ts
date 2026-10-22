@@ -18,8 +18,8 @@ vi.mock("next/server", () => {
 	return { NextResponse, NextRequest };
 });
 
-vi.mock("~/server/better-auth", () => ({
-	auth: { api: { getSession: vi.fn() } },
+vi.mock("~/server/better-auth/web-session", () => ({
+	getWebSession: vi.fn(),
 }));
 
 vi.mock("~/server/db", () => ({
@@ -38,7 +38,7 @@ vi.mock("~/server/image-processing", () => ({
 	processAvatar: vi.fn(),
 }));
 
-import { auth } from "~/server/better-auth";
+import { getWebSession } from "~/server/better-auth/web-session";
 import { db } from "~/server/db";
 import { processAvatar } from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
@@ -75,7 +75,7 @@ function makeDeleteRequest(): Request {
 }
 
 function mockAuthedUser(): void {
-	vi.mocked(auth.api.getSession).mockResolvedValue({
+	vi.mocked(getWebSession).mockResolvedValue({
 		user: { id: USER_ID, email: "test@example.com" },
 		session: { id: "session-1" },
 	} as never);
@@ -106,19 +106,19 @@ beforeEach(() => {
 
 describe("POST /api/upload/avatar", () => {
 	it("returns 401 when no session", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue(null);
+		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await POST(makePostRequest(makeFile()) as never);
 		expect(res.status).toBe(401);
 	});
 
 	it("returns 401 when session has no user", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue({ user: null } as never);
+		vi.mocked(getWebSession).mockResolvedValue({ user: null } as never);
 		const res = await POST(makePostRequest(makeFile()) as never);
 		expect(res.status).toBe(401);
 	});
 
 	it("returns 403 when user is not active", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue({
+		vi.mocked(getWebSession).mockResolvedValue({
 			user: { id: USER_ID },
 		} as never);
 		vi.mocked(db.user.findUnique).mockResolvedValue({ isActive: false } as never);
@@ -208,7 +208,7 @@ describe("POST /api/upload/avatar", () => {
 
 describe("DELETE /api/upload/avatar", () => {
 	it("returns 401 when unauthenticated", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue(null);
+		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await DELETE(makeDeleteRequest() as never);
 		expect(res.status).toBe(401);
 	});

@@ -13,11 +13,11 @@ import superjson from "superjson";
 
 import { MissingRateError } from "~/lib/money";
 import { errorFormatter } from "~/server/api/error-formatter";
-import { auth } from "~/server/better-auth";
 import type { Session } from "~/server/better-auth/config";
 import { createUserScopedDb, db } from "~/server/db";
 import { requestTimeZone } from "~/server/time-zone";
 import type { ParticipantType } from "~prisma";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 export type GuestParticipant = {
 	participantType: Extract<ParticipantType, "guest">;
@@ -91,9 +91,7 @@ export function assertGuestProjectScope(
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-	const session = await auth.api.getSession({
-		headers: opts.headers,
-	});
+	const session = await getWebSession(opts.headers);
 	return {
 		db,
 		session,

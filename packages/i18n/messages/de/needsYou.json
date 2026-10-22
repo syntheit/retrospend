@@ -1,0 +1,20 @@
+{
+	"label": "Braucht dich",
+	"empty": "Alles erledigt",
+	"emptyHint": "Gerade braucht dich nichts.",
+	"text": {
+		"assign": "Gib <amount></amount> eine Aufgabe",
+		"review": "{count} importierte prüfen",
+		"confirmPayment": "{person} sagt, die Zahlung ist raus",
+		"verify": "{person} hat dich zu {title} hinzugefügt",
+		"due": "{title} ist heute fällig",
+		"overdue": "{title} ist überfällig",
+		"overspent": "{envelope} ist überzogen"
+	},
+	"action": {
+		"assign": "Zuweisen",
+		"review": "Prüfen",
+		"confirm": "Bestätigen",
+		"cover": "Ausgleichen"
+	}
+}

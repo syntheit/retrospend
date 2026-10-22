@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
 import {
 	type ColumnVisibilityState,
 	type ExpandedState,
@@ -34,6 +33,7 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 import { TablePagination } from "./table-pagination";
 import { ExpandableSearch } from "./table-search";
+import { DataTableHeadCell } from "./data-table-head";
 
 const PROGRESSIVE_THRESHOLD = 200;
 const PROGRESSIVE_BATCH = 100;
@@ -59,6 +59,9 @@ interface DataRowProps<TData extends DataTableRowData> {
 	onMouseLeave: () => void;
 	/** Stable ref-backed callback - excluded from memo comparison by design */
 	renderContextMenu?: ((row: TData) => React.ReactNode) | null;
+	/** Stable ref-backed callbacks (see DataTableProps.wrapRow and onRowOpen) */
+	wrapRow?: ((row: TData, tr: React.ReactElement) => React.ReactElement) | null;
+	onOpen?: ((row: TData) => void) | null;
 	/** Additional CSS class for this row */
 	rowExtraClassName?: string;
 }
@@ -75,6 +78,8 @@ function DataRowInner<TData extends DataTableRowData>({
 	onMouseLeave,
 	renderContextMenu,
 	rowExtraClassName,
+	wrapRow,
+	onOpen,
 }: DataRowProps<TData>) {
 	const tableRow = (
 		<TableRow
@@ -106,6 +111,16 @@ function DataRowInner<TData extends DataTableRowData>({
 				hasSelectionMode ? () => onMouseEnter(row.original.id) : undefined
 			}
 			onMouseLeave={hasSelectionMode ? onMouseLeave : undefined}
+			onKeyDown={
+				onOpen
+					? (e) => {
+							if (e.key !== "Enter" || e.target !== e.currentTarget) return;
+							e.preventDefault();
+							onOpen(row.original);
+						}
+					: undefined
+			}
+			tabIndex={onOpen ? 0 : undefined}
 		>
 			{row.getVisibleCells().map((cell) => {
 				const meta = cell.column.columnDef.meta as Record<string, unknown> | undefined;
@@ -131,6 +146,7 @@ function DataRowInner<TData extends DataTableRowData>({
 		</TableRow>
 	);
 
+	if (wrapRow) return wrapRow(row.original, tableRow);
 	if (!renderContextMenu) return tableRow;
 
 	const contextContent = renderContextMenu(row.original);
@@ -185,6 +201,14 @@ interface DataTableProps<TData extends DataTableRowData> {
 	columnVisibility?: ColumnVisibilityState;
 	/** Render context menu items for a row (shown on right-click) */
 	renderContextMenu?: (row: TData) => React.ReactNode;
+	/**
+	 * Wraps each row element, for the action registry: ActionArea makes
+	 * right-click and long press open the same menu as the row's ⋯ button.
+	 * Takes the place of renderContextMenu.
+	 */
+	wrapRow?: (row: TData, tr: React.ReactElement) => React.ReactElement;
+	/** Rows become focusable (tabindex 0) and Enter on a focused row opens it. */
+	onRowOpen?: (row: TData) => void;
 	/** Set of selected row IDs for click-to-select behavior */
 	selectedRows?: Set<string>;
 	/** Callback when a single row is selected/deselected via click */
@@ -294,6 +318,8 @@ export function DataTable<TData extends DataTableRowData>({
 	initialSorting = [],
 	columnVisibility = {} as ColumnVisibilityState,
 	renderContextMenu,
+	wrapRow,
+	onRowOpen,
 	selectedRows,
 	onRowSelect,
 	onRangeSelect,
@@ -468,6 +494,10 @@ export function DataTable<TData extends DataTableRowData>({
 	onRowClickRef.current = onRowClick;
 	const renderContextMenuRef = React.useRef(renderContextMenu);
 	renderContextMenuRef.current = renderContextMenu;
+	const wrapRowRef = React.useRef(wrapRow);
+	wrapRowRef.current = wrapRow;
+	const onRowOpenRef = React.useRef(onRowOpen);
+	onRowOpenRef.current = onRowOpen;
 	const rowClassNameRef = React.useRef(rowClassName);
 	rowClassNameRef.current = rowClassName;
 	const onDeleteSelectedRef = React.useRef(onDeleteSelected);
@@ -674,6 +704,14 @@ export function DataTable<TData extends DataTableRowData>({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[],
 	);
+	const stableWrapRow = React.useCallback(
+		(row: TData, tr: React.ReactElement) => wrapRowRef.current?.(row, tr) ?? tr,
+		[],
+	);
+	const stableOnRowOpen = React.useCallback(
+		(row: TData) => onRowOpenRef.current?.(row),
+		[],
+	);
 
 	// Number of visible columns - tells MemoizedDataRow when column layout changes
 	const cellCount = table.getVisibleLeafColumns().length;
@@ -797,85 +835,9 @@ export function DataTable<TData extends DataTableRowData>({
 						<TableHeader ref={headerRef}>
 							{table.getHeaderGroups().map((headerGroup) => (
 								<TableRow className="hover:bg-transparent" key={headerGroup.id}>
-									{headerGroup.headers.map((header) => {
-										const canSort = header.column.getCanSort();
-										const sortDirection = header.column.getIsSorted();
-
-										const sortIcon = canSort ? (
-											sortDirection ? (
-												sortDirection === "asc" ? (
-													<ChevronUp className="h-3 w-3" />
-												) : (
-													<ChevronDown className="h-3 w-3" />
-												)
-											) : (
-												<div className="flex flex-col items-center text-muted-foreground/30">
-													<ChevronUp className="h-3 w-3" />
-													<ChevronDown className="-mt-1 h-3 w-3" />
-												</div>
-											)
-										) : null;
-
-										const thMeta = header.column.columnDef.meta as Record<string, unknown> | undefined;
-
-										return (
-											<TableHead
-												className={cn("hover:bg-muted/30", thMeta?.className as string)}
-												key={header.id}
-												onClick={
-													header.column.id === "select"
-														? (e) => {
-																const target = e.target as HTMLElement;
-																if (!target.closest('[role="checkbox"]')) {
-																	const cb =
-																		e.currentTarget.querySelector<HTMLElement>(
-																			'[role="checkbox"]',
-																		);
-																	cb?.click();
-																}
-															}
-														: canSort
-															? header.column.getToggleSortingHandler()
-															: undefined
-												}
-												style={
-													header.column.columnDef.size != null && !thMeta?.flex
-														? {
-																width: header.column.getSize(),
-																minWidth: header.column.getSize(),
-															}
-														: undefined
-												}
-											>
-												{header.isPlaceholder ? null : (
-													<div
-														className={cn(
-															"flex select-none items-center gap-2 rounded-md transition-colors",
-															thMeta?.align === "right" ? "justify-end" : "justify-between",
-															canSort && "cursor-pointer",
-														)}
-													>
-														{thMeta?.align === "right" && sortIcon && (
-															<span className="flex flex-shrink-0 items-center text-muted-foreground/50">
-																{sortIcon}
-															</span>
-														)}
-														<span className={cn("truncate font-medium", thMeta?.align === "right" ? "text-right" : "flex-1 text-left")}>
-															{flexRender(
-																header.column.columnDef.header,
-																header.getContext(),
-															)}
-														</span>
-														{thMeta?.align !== "right" && sortIcon && (
-															<span className="flex flex-shrink-0 items-center text-muted-foreground/50">
-																{sortIcon}
-															</span>
-														)}
-													</div>
-												)}
-											</TableHead>
-										);
-									})}
+									{headerGroup.headers.map((header) => (
+									<DataTableHeadCell header={header} key={header.id} />
+								))}
 								</TableRow>
 							))}
 						</TableHeader>
@@ -910,9 +872,11 @@ export function DataTable<TData extends DataTableRowData>({
 												onAction={stableOnAction}
 												onMouseEnter={stableOnMouseEnter}
 												onMouseLeave={stableOnMouseLeave}
+												onOpen={onRowOpen ? stableOnRowOpen : null}
 												renderContextMenu={
 													renderContextMenu ? stableRenderContextMenu : null
 												}
+												wrapRow={wrapRow ? stableWrapRow : null}
 												row={row}
 												rowExtraClassName={rowClassName?.(row)}
 											/>

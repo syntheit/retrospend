@@ -1303,6 +1303,7 @@
   },
   "settleUp": {
     "settleAllSkipped": "Algunos saldos no se pudieron liquidar porque no había tipo de cambio disponible: {currencies}. Quedaron pendientes.",
+    "recordAsDifferentPayment": "Registrar como otro pago",
     "title": "Liquidar",
     "titleWith": "Liquidar con {name}",
     "description": "Registra un pago para saldar tu balance.",

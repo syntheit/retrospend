@@ -1,0 +1,108 @@
+{
+	"expense": {
+		"review": {
+			"label": "Marquer comme vérifié"
+		},
+		"open": {
+			"label": "Ouvrir"
+		},
+		"edit": {
+			"label": "Modifier"
+		},
+		"askFix": {
+			"label": "Demander une correction"
+		},
+		"correct": {
+			"label": "Corriger"
+		},
+		"split": {
+			"label": "Partager"
+		},
+		"category": {
+			"label": "Changer de catégorie"
+		},
+		"project": {
+			"label": "Déplacer vers un projet"
+		},
+		"duplicate": {
+			"label": "Dupliquer"
+		},
+		"delete": {
+			"label": "Supprimer",
+			"confirmTitle": "Supprimer {name} ?",
+			"confirmBody": "Les soldes concernés sont mis à jour pour tous.",
+			"confirmButton": "Supprimer la dépense"
+		}
+	},
+	"person": {
+		"settle": {
+			"label": "Régler"
+		},
+		"request": {
+			"label": "Demander"
+		},
+		"remind": {
+			"label": "Relancer"
+		},
+		"addExpense": {
+			"label": "Ajouter une dépense avec cette personne"
+		},
+		"profile": {
+			"label": "Voir le profil"
+		}
+	},
+	"project": {
+		"addExpense": {
+			"label": "Ajouter une dépense"
+		},
+		"pin": {
+			"label": "Épingler"
+		},
+		"share": {
+			"label": "Partager le lien"
+		},
+		"settleAll": {
+			"label": "Tout régler"
+		},
+		"archive": {
+			"label": "Archiver"
+		}
+	},
+	"account": {
+		"updateBalance": {
+			"label": "Mettre à jour le solde"
+		},
+		"history": {
+			"label": "Voir l'historique"
+		},
+		"edit": {
+			"label": "Modifier le compte"
+		},
+		"archive": {
+			"label": "Archiver"
+		}
+	},
+	"recurring": {
+		"confirm": {
+			"label": "Confirmer"
+		},
+		"editAmount": {
+			"label": "Modifier le montant"
+		},
+		"pause": {
+			"label": "Suspendre"
+		},
+		"resume": {
+			"label": "Reprendre"
+		},
+		"skip": {
+			"label": "Ignorer cette fois"
+		},
+		"delete": {
+			"label": "Supprimer",
+			"confirmTitle": "Supprimer {name} ?",
+			"confirmBody": "Les prochaines s'arrêtent, les dépenses passées restent.",
+			"confirmButton": "Supprimer la dépense récurrente"
+		}
+	}
+}

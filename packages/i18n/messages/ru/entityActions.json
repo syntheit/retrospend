@@ -1,0 +1,108 @@
+{
+	"expense": {
+		"review": {
+			"label": "Отметить как проверенное"
+		},
+		"open": {
+			"label": "Открыть"
+		},
+		"edit": {
+			"label": "Изменить"
+		},
+		"askFix": {
+			"label": "Попросить исправить"
+		},
+		"correct": {
+			"label": "Исправить"
+		},
+		"split": {
+			"label": "Разделить"
+		},
+		"category": {
+			"label": "Изменить категорию"
+		},
+		"project": {
+			"label": "Переместить в проект"
+		},
+		"duplicate": {
+			"label": "Дублировать"
+		},
+		"delete": {
+			"label": "Удалить",
+			"confirmTitle": "Удалить {name}?",
+			"confirmBody": "Затронутые балансы обновятся у всех участников.",
+			"confirmButton": "Удалить расход"
+		}
+	},
+	"person": {
+		"settle": {
+			"label": "Рассчитаться"
+		},
+		"request": {
+			"label": "Запросить"
+		},
+		"remind": {
+			"label": "Напомнить"
+		},
+		"addExpense": {
+			"label": "Добавить расход с этим человеком"
+		},
+		"profile": {
+			"label": "Открыть профиль"
+		}
+	},
+	"project": {
+		"addExpense": {
+			"label": "Добавить расход"
+		},
+		"pin": {
+			"label": "Закрепить"
+		},
+		"share": {
+			"label": "Поделиться ссылкой"
+		},
+		"settleAll": {
+			"label": "Рассчитаться со всеми"
+		},
+		"archive": {
+			"label": "Архивировать"
+		}
+	},
+	"account": {
+		"updateBalance": {
+			"label": "Обновить баланс"
+		},
+		"history": {
+			"label": "История"
+		},
+		"edit": {
+			"label": "Изменить счет"
+		},
+		"archive": {
+			"label": "Архивировать"
+		}
+	},
+	"recurring": {
+		"confirm": {
+			"label": "Подтвердить"
+		},
+		"editAmount": {
+			"label": "Изменить сумму"
+		},
+		"pause": {
+			"label": "Приостановить"
+		},
+		"resume": {
+			"label": "Возобновить"
+		},
+		"skip": {
+			"label": "Пропустить в этот раз"
+		},
+		"delete": {
+			"label": "Удалить",
+			"confirmTitle": "Удалить {name}?",
+			"confirmBody": "Будущие прекратятся, прошлые расходы останутся.",
+			"confirmButton": "Удалить регулярный расход"
+		}
+	}
+}

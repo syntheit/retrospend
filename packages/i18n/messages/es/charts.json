@@ -1,0 +1,27 @@
+{
+	"day": "Día {day}",
+	"noData": "sin datos",
+	"pace": {
+		"summary": "Día {day}: {spent} gastado hasta ahora, {before} a esta altura el mes pasado"
+	},
+	"bars": {
+		"label": "Gastado",
+		"summary": "Gasto por mes: {list}"
+	},
+	"area": {
+		"label": "Patrimonio",
+		"summary": "El patrimonio pasó de {start} el {from} a {end} el {to}"
+	},
+	"ranked": {
+		"summary": "De mayor a menor: {list}"
+	},
+	"allocation": {
+		"summary": "Reparto: {list}"
+	},
+	"balance": {
+		"summary": "Te deben {owed}. Debes {owe}",
+		"owesYou": "{name}: te debe {amount}",
+		"youOwe": "{name}: le debes {amount}"
+	},
+	"empty": "Sin datos aún"
+}

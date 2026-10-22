@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computeBalance } from "./balance";
+import { computeBalanceBatch } from "./balance-batch";
 import type { ParticipantRef } from "./types";
 
 const alice: ParticipantRef = {
@@ -25,6 +26,10 @@ function createMockDb(
 		amount: number;
 		currency: string;
 		projectId?: string | null;
+		/** Defaults to a final row both sides agreed to. */
+		status?: "FINALIZED" | "PROPOSED";
+		confirmedByPayer?: boolean;
+		confirmedByPayee?: boolean;
 	}[],
 ) {
 	// Participant/paidBy conditions may be expressed either flat
@@ -95,6 +100,7 @@ function createMockDb(
 							currency: s.currency,
 							paidByType: s.payer.participantType,
 							paidById: s.payer.participantId,
+							date: new Date("2026-10-01"),
 						},
 					}));
 			}),
@@ -140,7 +146,7 @@ function createMockDb(
 							matches(s) &&
 							matchesProject(s.projectId) &&
 							Array.isArray(status?.in) &&
-							status.in.includes("FINALIZED"),
+							status.in.includes(s.status ?? "FINALIZED"),
 					)
 					.map((s) => ({
 						id: s._id,
@@ -150,6 +156,12 @@ function createMockDb(
 						toParticipantId: s.to.participantId,
 						amount: s.amount,
 						currency: s.currency,
+						projectId: s.projectId ?? null,
+						status: s.status ?? "FINALIZED",
+						confirmedByPayer: s.confirmedByPayer ?? true,
+						confirmedByPayee: s.confirmedByPayee ?? true,
+						initiatedAt: new Date("2026-10-02"),
+						payment: null,
 					}));
 			}),
 		},
@@ -428,6 +440,65 @@ describe("computeBalance", () => {
 		}
 	});
 
+	it("I5 a pending payment counts for its recorder only, not for the payee or a third person", async () => {
+		const carol: ParticipantRef = {
+			participantType: "user",
+			participantId: "carol-id",
+		};
+		const db = createMockDb(
+			[{ payer: bob, participant: alice, shareAmount: 50, currency: "USD" }],
+			[
+				{
+					from: alice,
+					to: bob,
+					amount: 50,
+					currency: "USD",
+					status: "PROPOSED",
+					confirmedByPayer: true,
+					confirmedByPayee: false,
+				},
+			],
+		);
+		// Alice paid and recorded it: she sees it at once.
+		expect((await computeBalance(db as never, alice, bob)).byCurrency).toEqual(
+			{},
+		);
+		// Bob has not confirmed: he still sees Alice owing him.
+		expect((await computeBalance(db as never, bob, alice)).byCurrency).toEqual({
+			USD: 50,
+		});
+		// The same pair read from Alice's side for Bob (viewer) still excludes it.
+		expect(
+			(await computeBalance(db as never, alice, bob, { viewer: bob }))
+				.byCurrency,
+		).toEqual({ USD: -50 });
+		expect(
+			(await computeBalance(db as never, alice, bob, { viewer: carol }))
+				.byCurrency,
+		).toEqual({ USD: -50 });
+	});
+
+	it("I5 the batch (People list) uses the same viewer rule", async () => {
+		const db = createMockDb(
+			[{ payer: alice, participant: bob, shareAmount: 50, currency: "USD" }],
+			[
+				{
+					from: bob,
+					to: alice,
+					amount: 50,
+					currency: "USD",
+					status: "PROPOSED",
+					confirmedByPayer: true,
+					confirmedByPayee: false,
+				},
+			],
+		);
+		const [aliceView] = await computeBalanceBatch(db as never, alice, [bob]);
+		const [bobView] = await computeBalanceBatch(db as never, bob, [alice]);
+		expect(aliceView?.byCurrency).toEqual({ USD: 50 });
+		expect(bobView?.byCurrency).toEqual({});
+	});
+
 	it("locked (settled) transactions are still included in balance computation", async () => {
 		// isLocked is a UI/edit guard, not a financial exclusion. Locked transactions
 		// are immutable but continue to count toward balances.
@@ -558,10 +629,9 @@ describe("computeBalance", () => {
 				.calls;
 			expect(calls.length).toBeGreaterThan(0);
 			for (const [callArgs] of calls) {
-				expect((callArgs as { where: { projectId?: unknown } }).where).toHaveProperty(
-					"projectId",
-					"P",
-				);
+				expect(
+					(callArgs as { where: { projectId?: unknown } }).where,
+				).toHaveProperty("projectId", "P");
 			}
 		});
 	});
