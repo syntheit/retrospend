@@ -1,0 +1,20 @@
+{
+	"label": "Needs you",
+	"empty": "All clear",
+	"emptyHint": "Nothing needs you right now.",
+	"text": {
+		"assign": "Give {amount} a job",
+		"review": "Review {count} imported",
+		"confirmPayment": "{person} says they paid you",
+		"verify": "{person} added you to {title}",
+		"due": "{title} is due today",
+		"overdue": "{title} is overdue",
+		"overspent": "{envelope} is over"
+	},
+	"action": {
+		"assign": "Assign",
+		"review": "Review",
+		"confirm": "Confirm",
+		"cover": "Cover"
+	}
+}

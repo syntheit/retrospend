@@ -1,0 +1,20 @@
+{
+	"label": "Te necesita",
+	"empty": "Todo en orden",
+	"emptyHint": "Nada te necesita ahora.",
+	"text": {
+		"assign": "Dale un destino a {amount}",
+		"review": "Revisar {count} importados",
+		"confirmPayment": "{person} dice que te pagó",
+		"verify": "{person} te agregó a {title}",
+		"due": "{title} vence hoy",
+		"overdue": "{title} está vencido",
+		"overspent": "{envelope} se pasó"
+	},
+	"action": {
+		"assign": "Asignar",
+		"review": "Revisar",
+		"confirm": "Confirmar",
+		"cover": "Cubrir"
+	}
+}

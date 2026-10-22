@@ -1,0 +1,20 @@
+{
+	"label": "Требует внимания",
+	"empty": "Всё в порядке",
+	"emptyHint": "Сейчас ничего не требует внимания.",
+	"text": {
+		"assign": "Распределите {amount}",
+		"review": "Проверить импорт: {count}",
+		"confirmPayment": "{person} сообщает об оплате",
+		"verify": "{person} добавил(а) вас в {title}",
+		"due": "{title}: срок сегодня",
+		"overdue": "{title}: просрочено",
+		"overspent": "{envelope}: перерасход"
+	},
+	"action": {
+		"assign": "Распределить",
+		"review": "Проверить",
+		"confirm": "Подтвердить",
+		"cover": "Покрыть"
+	}
+}

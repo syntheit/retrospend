@@ -1,0 +1,20 @@
+{
+	"label": "T'attend",
+	"empty": "Tout est en ordre",
+	"emptyHint": "Rien ne t'attend pour l'instant.",
+	"text": {
+		"assign": "Donne une mission à {amount}",
+		"review": "Vérifier {count} importées",
+		"confirmPayment": "{person} dit avoir payé",
+		"verify": "{person} t'a ajouté à {title}",
+		"due": "{title} est dû aujourd'hui",
+		"overdue": "{title} est en retard",
+		"overspent": "{envelope} est dépassé"
+	},
+	"action": {
+		"assign": "Attribuer",
+		"review": "Vérifier",
+		"confirm": "Confirmer",
+		"cover": "Couvrir"
+	}
+}
