@@ -189,6 +189,24 @@ describe("figure spent", () => {
 		]);
 	});
 
+	it("rounds a sum more precise than its currency half to even", async () => {
+		const usdRow = (amount: number) => ({
+			date: day(6),
+			amount,
+			currency: "USD",
+			amountInUSD: amount,
+		});
+		useExpenseTable(db, [usdRow(12.345)]);
+		await expect(
+			spentByCurrency(db as never, { userId: USER, date: MARCH }),
+		).resolves.toEqual([{ minor: 1_234, currency: "USD" }]);
+
+		useExpenseTable(db, [usdRow(12.355)]);
+		await expect(
+			spentByCurrency(db as never, { userId: USER, date: MARCH }),
+		).resolves.toEqual([{ minor: 1_236, currency: "USD" }]);
+	});
+
 	it("drops a currency whose refunds cancel its spending", async () => {
 		useExpenseTable(db, [
 			ars(2_000),

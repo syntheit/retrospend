@@ -12,13 +12,10 @@
  * them in (sumIn, the totals rule in ~/lib/money). Runs on whatever client it
  * is given, a preview's transaction included, so it never imports the db.
  */
+
+import { toMinor } from "@retrospend/domain/money-minor";
 import { getCurrentFiscalMonth, getFiscalMonthRange } from "~/lib/fiscal-month";
-import {
-	currencyDecimals,
-	type MoneyItem,
-	sumIn,
-	toMinorUnits,
-} from "~/lib/money";
+import { currencyDecimals, type MoneyItem, sumIn } from "~/lib/money";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -186,12 +183,20 @@ export async function spentIn(
 	return sumIn(await spentItems(db, filter), currency, rate);
 }
 
-/** A summed Decimal in minor units, rounded half up in Decimal (no float step). */
+/**
+ * A summed Decimal in minor units, exactly (no float step). The column keeps
+ * 8 decimals for every currency, so a legacy row can be more precise than its
+ * currency: that sum is first rounded half to even, the domain's one rule,
+ * because toMinor refuses to round a string itself.
+ */
 const decimalMinor = (value: Prisma.Decimal | null, currency: string) =>
-	new Prisma.Decimal(value ?? 0)
-		.mul(10 ** currencyDecimals(currency))
-		.toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP)
-		.toNumber();
+	toMinor(
+		new Prisma.Decimal(value ?? 0).toDecimalPlaces(
+			currencyDecimals(currency),
+			Prisma.Decimal.ROUND_HALF_EVEN,
+		),
+		currency,
+	);
 
 /**
  * Your spending matching `filter` per original currency, in minor units and
@@ -215,7 +220,7 @@ export async function spentByCurrency(
 	for (const row of refunds)
 		add(row.currency, -decimalMinor(row._sum.amount, row.currency));
 	for (const share of shares)
-		add(share.currency, toMinorUnits(share.amount, share.currency));
+		add(share.currency, toMinor(share.amount, share.currency));
 	return [...minor]
 		.filter(([, units]) => units !== 0)
 		.map(([currency, units]) => ({ minor: units, currency }));
