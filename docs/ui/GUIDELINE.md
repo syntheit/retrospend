@@ -324,7 +324,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 - No bounce or overshoot, ever, and especially not on money (UI-101). Numbers slide their digits (80 out, 140 in); never count up money.
 - A removed row collapses (200) and its Undo toast brings it back.
 - Sibling pages may use a cross-document View Transition where supported.
-- Reduced motion: opacity only. `tokens.css` drops the movement durations (sheet, tab, row, numbers) to 1ms and keeps the fade durations of state and menu (UI-102); components must not move things when `prefers-reduced-motion` is set.
+- Reduced motion: opacity only. `tokens.css` drops the movement durations (menu, sheet, tab, row, numbers) to 1ms and keeps the state duration for color and opacity changes (UI-102); components must not move things when `prefers-reduced-motion` is set.
 
 ## 12. Empty, loading and error states [R14]
 

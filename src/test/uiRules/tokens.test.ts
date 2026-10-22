@@ -131,9 +131,11 @@ describe("design tokens", () => {
 		const dropped = [...reduced.matchAll(/--t-([\w-]+): 1ms;/g)].map(
 			(m) => m[1],
 		);
-		// Slides, height changes and number rolls stop; hover and menu fades,
-		// the only motion reduced motion allows, keep their duration.
+		// Zooms, slides, height changes and number rolls stop; state changes
+		// (color and opacity), the only motion reduced motion allows, keep
+		// their duration.
 		expect(dropped.sort()).toEqual([
+			"menu",
 			"num-in",
 			"num-out",
 			"row",
