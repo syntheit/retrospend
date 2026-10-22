@@ -120,9 +120,11 @@ export function savingsNeed(
 ): SavingsResult {
 	const shape = savingsShape(t);
 	const pastDue = t.dueMonth != null && s.month > t.dueMonth;
+	// Progress includes this month's assigned; needs count from the month start (kit needFor).
+	const start = s.progress - s.assigned;
 	if (shape === "AMOUNT_ONLY") return { need: 0 };
 	if (shape === "AMOUNT_DATE") {
-		const toGo = (t.amount as Minor) - s.progress;
+		const toGo = (t.amount as Minor) - start;
 		if (pastDue || toGo <= 0) return { need: 0 };
 		const months = monthsLeftInclusive(s.month, t.dueMonth as MonthKey);
 		return { need: Math.max(0, ceilDiv(toGo, months) - s.assigned) };
@@ -133,9 +135,9 @@ export function savingsNeed(
 		const later = pastDue ? 0 : monthsBetween(s.month, t.dueMonth as MonthKey);
 		return { need, totalAtDue: s.progress + need + monthly * later };
 	}
-	const toGo = (t.amount as Minor) - s.progress;
+	const toGo = (t.amount as Minor) - start;
 	const need = Math.max(0, Math.min(monthly, toGo) - s.assigned);
-	const after = toGo - need;
+	const after = toGo - s.assigned - need;
 	const projectedMonth =
 		after <= 0 ? s.month : addMonths(s.month, ceilDiv(after, monthly));
 	return { need, projectedMonth };

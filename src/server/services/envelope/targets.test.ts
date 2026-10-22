@@ -237,12 +237,41 @@ describe("savingsNeed (SPEC §5.4 savings table)", () => {
 			out: { need: 0 },
 		},
 		{
-			name: "amount and date: assigned this month counts",
-			t: { amount: m(1_200), dueMonth: 202705 },
+			// By hand: 1,200 over Nov to Oct is 100 a month; 50 is already in, 50 to go.
+			name: "amount and date: USD 1,200 in 12 months with 50 assigned needs 50 more",
+			t: { amount: m(1_200), dueMonth: 202710 },
 			month: 202611,
-			progress: 0,
+			progress: 50,
+			assigned: 50,
+			out: { need: m(50) },
+		},
+		{
+			// By hand: 1,100 at the month start, 100 due by this month, 100 assigned.
+			name: "amount and date: the last month fully assigned needs nothing",
+			t: { amount: m(1_200), dueMonth: 202611 },
+			month: 202611,
+			progress: 1_200,
 			assigned: 100,
-			out: { need: m(71.43) },
+			out: { need: 0 },
+		},
+		{
+			// By hand: 5,900 at the month start, 100 to go in all, 50 already in: 50 more, done this month.
+			name: "B13 the last 100 with 50 assigned needs 50 more",
+			t: { amount: m(6_000), monthly: m(200) },
+			month: 202611,
+			progress: 5_950,
+			assigned: 50,
+			out: { need: m(50), projectedMonth: 202611 },
+		},
+		{
+			// By hand: 5,000 at the month start, 200 this month with 120 in, 80 to go;
+			// 5,200 at month end, 800 more at 200 a month is 4 more months.
+			name: "B13 refill 200 a month with 120 assigned needs 80 more",
+			t: { amount: m(6_000), monthly: m(200) },
+			month: 202611,
+			progress: 5_120,
+			assigned: 120,
+			out: { need: m(80), projectedMonth: 202703 },
 		},
 		{
 			name: "amount and date: a past-dated goal takes nothing",
