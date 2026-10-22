@@ -4,9 +4,8 @@
  * Your spending = your personal rows that count (spending.ts filters) plus
  * your share of shared expenses, minus refunds. Never transfers, income,
  * adjustments, starting balances, reimbursements (settlements are not rows
- * here), rejected shares, or projects you hide from analytics (reports).
- * Income categories never hold spending: a row in one is money in by the
- * CHECK on expense.inType.
+ * here), rejected shares, projects you hide from analytics (reports), or
+ * rows filed under an income category (the categories that never count).
  *
  * Every reader (dashboard, stats, budget page, runway, profile, suggestions)
  * takes its items from here and only picks the currency and rate to total
@@ -101,6 +100,8 @@ function rowWhere(
 				: reportRefundWhere;
 	return {
 		...build(filter.userId, filter.date),
+		// An import or an old client can still file a row under an income category.
+		NOT: { category: { is: { kind: "INCOME" } } },
 		...(filter.categoryIds
 			? { categoryId: { in: [...filter.categoryIds] } }
 			: {}),

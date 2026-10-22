@@ -231,4 +231,33 @@ describe("budget and report spending by amortization mode", () => {
 		// Budget: laptop part 40,000 + the phone in full 90,000 + hidden 7,000 - hidden refund 1,000.
 		await expect(march("budget")).resolves.toBe(136_000);
 	});
+
+	it("never counts a row filed under an income category", async () => {
+		const { user, db } = await createTestUser();
+		const [salary] = await ensureIncomeCategories(db, user.id).then((all) =>
+			all.filter((c) => c.name === "Salary"),
+		);
+		await adminDb.expense.createMany({
+			data: [
+				expenseData(user.id, {
+					title: "Lunch",
+					amount: 5_000,
+					date: at("2026-03-02"),
+				}),
+				// An OUT row in an income category, as a CSV import could make.
+				expenseData(user.id, {
+					title: "Payroll fee",
+					amount: 800,
+					date: at("2026-03-02"),
+					categoryId: salary?.id,
+				}),
+			],
+		});
+
+		for (const basis of ["report", "budget"] as const) {
+			await expect(
+				spentIn(db, { userId: user.id, date: MARCH, basis }, "ARS", 1000),
+			).resolves.toBe(5_000);
+		}
+	});
 });
