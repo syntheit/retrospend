@@ -32,9 +32,9 @@
  *    Both return `{ value, changes[], unchanged[] }`; apply adds the `undo` token.
  */
 import { db } from "~/server/db";
+import { userTransaction } from "~/server/db-tx";
 import { type FigureDb, figures } from "~/server/figures/registry";
 import { createPreviewRunner, type PreviewRunner } from "./runner";
-import { userTransaction } from "./transaction";
 
 export function forUser(userId: string): PreviewRunner<FigureDb> {
 	return createPreviewRunner({
