@@ -211,8 +211,9 @@ export const REGISTRY: Primitive[] = [
 	},
 	{
 		file: "responsive-dialog",
-		status: "core",
-		job: "Today's task dialog (dialog on desktop, bottom sheet on phone) for the pages that already use it. New task sheets use sheet",
+		status: "legacy",
+		job: "The old task dialog (dialog on desktop, bottom sheet on phone), kept for the pages that already use it",
+		use: "sheet (Sheet)",
 	},
 	{
 		file: "scroll-area",
