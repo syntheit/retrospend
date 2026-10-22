@@ -62,8 +62,20 @@ function MenuEntry({ entry }: { entry: AccountEntry }) {
 }
 
 /** The person's face, name and handle: the account button and the sheet's first row. */
-export function AccountIdentity({ size }: { size?: FaceSize }) {
-	const user = useAccountUser();
+export type AccountUser = {
+	name: string;
+	username: string;
+	imageUrl: string | null;
+};
+
+/** A person's face, name and handle, drawn from the data it is given. */
+export function IdentityView({
+	user,
+	size,
+}: {
+	user: AccountUser;
+	size?: FaceSize;
+}) {
 	return (
 		<>
 			<Face imageUrl={user.imageUrl} name={user.name || "?"} size={size} />
@@ -81,6 +93,29 @@ export function AccountIdentity({ size }: { size?: FaceSize }) {
 	);
 }
 
+export function AccountIdentity({ size }: { size?: FaceSize }) {
+	return <IdentityView size={size} user={useAccountUser()} />;
+}
+
+/** The account button at the sidebar bottom (the menu's trigger). */
+export function AccountTrigger({
+	user,
+	...props
+}: { user: AccountUser } & React.ComponentProps<typeof Button>) {
+	const t = useTranslations("shell.account");
+	return (
+		<Button
+			className="h-auto w-full justify-start gap-2 p-2"
+			kind="ghost"
+			{...props}
+		>
+			<IdentityView user={user} />
+			<span className="sr-only">{t("menu")}</span>
+			<EllipsisVertical aria-hidden="true" className="text-fg-3" />
+		</Button>
+	);
+}
+
 /**
  * AccountMenu (account.html): the account button at the sidebar bottom and
  * its menu. Profile, Settings, the admin and invite entries, feedback, docs,
@@ -89,6 +124,7 @@ export function AccountIdentity({ size }: { size?: FaceSize }) {
 export function AccountMenu() {
 	const t = useTranslations("shell.account");
 	const e = useAccountEntries();
+	const user = useAccountUser();
 	const groups = accountGroups([
 		[e.profile],
 		[e.settings],
@@ -99,11 +135,7 @@ export function AccountMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button className="h-auto w-full justify-start gap-2 p-2" kind="ghost">
-					<AccountIdentity />
-					<span className="sr-only">{t("menu")}</span>
-					<EllipsisVertical aria-hidden="true" className="text-fg-3" />
-				</Button>
+				<AccountTrigger user={user} />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align="start"

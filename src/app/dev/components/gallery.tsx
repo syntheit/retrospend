@@ -27,6 +27,7 @@ import {
 } from "./sections/overlays";
 import { RefreshSection } from "./sections/refresh";
 import { SheetSection } from "./sections/sheets";
+import { ShellSection } from "./sections/shell";
 import { TokensSection } from "./sections/tokens";
 import { TransactionsSection } from "./sections/transactions";
 import { Spec } from "./spec";
@@ -127,8 +128,7 @@ export function Gallery() {
 					<PickersSection />
 					<ChartSection />
 					<FeedbackSection />
-					<Spec id="shell" />
-					<Spec id="bottomnav" />
+					<ShellSection />
 					<TooltipSection />
 				</main>
 			</div>

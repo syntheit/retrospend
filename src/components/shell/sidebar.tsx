@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
@@ -74,22 +75,32 @@ function EntryLinks({
 	);
 }
 
+/** A pinned project as the sidebar draws it. */
+export type PinnedItem = { id: string; name: string; lead: ReactNode };
+
 /**
  * The desktop and tablet sidebar (components.html, shell): the logo row with
  * search and notifications, the split Add, the six destinations, Tools,
  * pinned projects and the account button. Always shown, in the page color.
+ * The view takes its data so the gallery can draw it on fixtures.
  */
-export function ShellSidebar({
+export function SidebarView({
+	pathname,
+	pinned,
 	badges,
+	bell,
+	account,
 	className,
 }: {
+	pathname: string;
+	pinned: PinnedItem[];
 	badges?: NavBadges;
+	bell: ReactNode;
+	account: ReactNode;
 	className?: string;
 }) {
 	const t = useTranslations("shell");
-	const pathname = usePathname();
 	const { openPalette } = useShellActions();
-	const pinned = usePinnedProjects();
 	const pinnedCurrent = pinned.find((p) => pathname === projectHref(p.id));
 	// One item is the current page: a pinned project wins over Projects.
 	const current = pinnedCurrent ? null : currentNav(pathname);
@@ -118,7 +129,7 @@ export function ShellSidebar({
 						<Search aria-hidden="true" />
 					</Button>
 				</Tip>
-				<NotificationsButton />
+				{bell}
 			</div>
 			<AddSplitButton className="mb-1" />
 			<EntryLinks
@@ -146,21 +157,47 @@ export function ShellSidebar({
 								href={projectHref(p.id)}
 								key={p.id}
 								label={p.name}
-								lead={
-									<ProjectVisual
-										className="size-4.5 shrink-0 rounded-ctl"
-										imagePath={p.imagePath}
-										projectName={p.name}
-										size="xs"
-									/>
-								}
+								lead={p.lead}
 							/>
 						))}
 					</nav>
 				</>
 			)}
 			<div className="flex-1" />
-			<AccountMenu />
+			{account}
 		</aside>
+	);
+}
+
+/** The sidebar on live data: pinned projects, the notifications bell, the account menu. */
+export function ShellSidebar({
+	badges,
+	className,
+}: {
+	badges?: NavBadges;
+	className?: string;
+}) {
+	const pathname = usePathname();
+	const pinned = usePinnedProjects().map((p) => ({
+		id: p.id,
+		name: p.name,
+		lead: (
+			<ProjectVisual
+				className="size-4.5 shrink-0 rounded-ctl"
+				imagePath={p.imagePath}
+				projectName={p.name}
+				size="xs"
+			/>
+		),
+	}));
+	return (
+		<SidebarView
+			account={<AccountMenu />}
+			badges={badges}
+			bell={<NotificationsButton />}
+			className={className}
+			pathname={pathname}
+			pinned={pinned}
+		/>
 	);
 }

@@ -1108,7 +1108,7 @@
 		"src/app/(site)/_components/landing/landing-header.tsx": 45,
 		"src/app/(site)/docs/configuration/environment-variables/page.tsx": 9,
 		"src/app/(site)/docs/self-hosting/page.tsx": 112,
-		"src/app/(site)/login/_components/login-form.tsx": 96,
+		"src/app/(site)/login/_components/login-form.tsx": 93,
 		"src/app/(site)/pay/[username]/page.tsx": 191,
 		"src/app/(site)/releases/_releases/v0-4-0.tsx": 18,
 		"src/app/(site)/signup/_components/signup-form.tsx": 200,

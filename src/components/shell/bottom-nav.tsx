@@ -27,13 +27,16 @@ const TABS = PHONE_TABS.map((id) =>
 export function BottomNav({
 	badges,
 	className,
+	path,
 }: {
 	badges?: NavBadges;
 	className?: string;
+	/** The page to mark current; the gallery passes one, the shell reads the route. */
+	path?: string;
 }) {
 	const t = useTranslations("shell");
 	const pathname = usePathname();
-	const current = currentNav(pathname, TABS);
+	const current = currentNav(path ?? pathname, TABS);
 	return (
 		<nav
 			aria-label={t("bottomNav.label")}

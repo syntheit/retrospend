@@ -34,8 +34,8 @@ vi.mock("next/dynamic", () => ({
 const flag = vi.fn<(flag: string, viewer: unknown) => Promise<boolean>>();
 const session = vi.fn();
 vi.mock("~/server/flags", () => ({ isFlagEnabled: flag }));
-vi.mock("~/server/better-auth", () => ({
-	auth: { api: { getSession: session } },
+vi.mock("~/server/better-auth/web-session", () => ({
+	getWebSession: session,
 }));
 vi.mock("~/server/db", () => ({
 	db: { user: { findUnique: async () => ({ language: "en" }) } },
