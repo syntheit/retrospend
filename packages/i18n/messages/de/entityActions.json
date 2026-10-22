@@ -1,0 +1,108 @@
+{
+	"expense": {
+		"review": {
+			"label": "Als geprüft markieren"
+		},
+		"open": {
+			"label": "Öffnen"
+		},
+		"edit": {
+			"label": "Bearbeiten"
+		},
+		"askFix": {
+			"label": "Um Korrektur bitten"
+		},
+		"correct": {
+			"label": "Korrigieren"
+		},
+		"split": {
+			"label": "Aufteilen"
+		},
+		"category": {
+			"label": "Kategorie ändern"
+		},
+		"project": {
+			"label": "In Projekt verschieben"
+		},
+		"duplicate": {
+			"label": "Duplizieren"
+		},
+		"delete": {
+			"label": "Löschen",
+			"confirmTitle": "{name} löschen?",
+			"confirmBody": "Betroffene Salden werden für alle Beteiligten aktualisiert.",
+			"confirmButton": "Ausgabe löschen"
+		}
+	},
+	"person": {
+		"settle": {
+			"label": "Ausgleichen"
+		},
+		"request": {
+			"label": "Anfordern"
+		},
+		"remind": {
+			"label": "Erinnern"
+		},
+		"addExpense": {
+			"label": "Ausgabe mit dieser Person hinzufügen"
+		},
+		"profile": {
+			"label": "Profil ansehen"
+		}
+	},
+	"project": {
+		"addExpense": {
+			"label": "Ausgabe hinzufügen"
+		},
+		"pin": {
+			"label": "Anheften"
+		},
+		"share": {
+			"label": "Link teilen"
+		},
+		"settleAll": {
+			"label": "Alle ausgleichen"
+		},
+		"archive": {
+			"label": "Archivieren"
+		}
+	},
+	"account": {
+		"updateBalance": {
+			"label": "Saldo aktualisieren"
+		},
+		"history": {
+			"label": "Verlauf ansehen"
+		},
+		"edit": {
+			"label": "Konto bearbeiten"
+		},
+		"archive": {
+			"label": "Archivieren"
+		}
+	},
+	"recurring": {
+		"confirm": {
+			"label": "Bestätigen"
+		},
+		"editAmount": {
+			"label": "Betrag bearbeiten"
+		},
+		"pause": {
+			"label": "Pausieren"
+		},
+		"resume": {
+			"label": "Fortsetzen"
+		},
+		"skip": {
+			"label": "Diesmal überspringen"
+		},
+		"delete": {
+			"label": "Löschen",
+			"confirmTitle": "{name} löschen?",
+			"confirmBody": "Künftige entfallen, vergangene Ausgaben bleiben.",
+			"confirmButton": "Wiederkehrende Ausgabe löschen"
+		}
+	}
+}
