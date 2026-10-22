@@ -6,8 +6,8 @@
 --    which is exactly what the defaults say, so nothing is backfilled.
 --    Columns with a constant default are added without a table rewrite.
 -- 2. A CHECK keeps inType consistent with direction and entryKind, so a
---    money-in row can never look like spending to a reader. Added NOT VALID
---    and validated separately, so the scan does not hold the write lock.
+--    money-in row can never look like spending to a reader. Added NOT VALID,
+--    then validated, so a rerun skips the ADD and still validates.
 -- 3. expense ("userId", "direction", "date") for the money-in reads.
 -- 4. category."kind" (EXPENSE default). Income categories are seeded per user
 --    on first use (ensureIncomeCategories), not here, so today's category
@@ -15,6 +15,11 @@
 -- 5. recurring_template."amount" widens to DECIMAL(19,8) like expense.amount;
 --    "direction" (OUT default) and "amountMode" (FIXED default) let a
 --    template post recurring income. Widening keeps every value.
+-- Locking: Prisma applies this file in one transaction, so CREATE INDEX
+-- CONCURRENTLY is not possible, and the ACCESS EXCLUSIVE lock the first
+-- ADD COLUMN takes on expense is held through the VALIDATE scan and the
+-- index build until commit. It runs once at container start, before the app
+-- serves requests, so the lock is brief.
 -- Grants and RLS policies are per table and every change here is a column
 -- on an existing table, so they need nothing new.
 
