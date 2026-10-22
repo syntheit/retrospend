@@ -27,8 +27,7 @@ import { ParticipantRow, ProjectHeader } from "~/components/project/project-head
 import { ProjectTabs } from "~/components/project/project-tabs";
 import { ProjectSettingsDialog } from "~/components/project/project-settings-dialog";
 import { ProjectVisual } from "~/components/project/project-visual";
-import { CommandPalette } from "~/components/command-palette";
-import { DashboardLayout } from "~/components/dashboard-layout";
+import { ShellSwitch } from "~/components/shell/shell-switch";
 import { ExpenseModalProvider, useExpenseModal } from "~/components/expense-modal-provider";
 import { ExpenseModal } from "~/components/expense-modal";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
@@ -269,13 +268,12 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 			<ExpenseModalProvider>
 				<RecurringModalProvider>
 					<RevisionHistoryProvider>
-						<DashboardLayout>
+						<ShellSwitch>
 							<AuthenticatedProjectView
 								id={id}
 								onFallbackToPublic={() => setAccessMode("public")}
 							/>
-						</DashboardLayout>
-						<CommandPalette />
+						</ShellSwitch>
 					</RevisionHistoryProvider>
 				</RecurringModalProvider>
 			</ExpenseModalProvider>

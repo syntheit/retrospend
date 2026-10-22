@@ -1,0 +1,15 @@
+{
+	"sheet": {
+		"close": "Schließen",
+		"cancel": "Abbrechen",
+		"failed": "Speichern fehlgeschlagen. Bitte erneut versuchen."
+	},
+	"toast": {
+		"undo": "Rückgängig",
+		"undone": "Rückgängig gemacht",
+		"undoFailed": "Rückgängig nicht möglich"
+	},
+	"menu": {
+		"more": "Weitere Aktionen für {name}"
+	}
+}

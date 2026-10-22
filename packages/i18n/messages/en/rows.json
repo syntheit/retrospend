@@ -1,0 +1,62 @@
+{
+	"date": {
+		"today": "Today",
+		"yesterday": "Yesterday"
+	},
+	"kind": {
+		"income": "Money in",
+		"refund": "Refund",
+		"reimbursement": "For someone else",
+		"payment": "Payment",
+		"paymentPending": "Payment · Pending",
+		"transfer": "Transfer",
+		"exchange": "Exchange",
+		"balance": "Balance update"
+	},
+	"transaction": {
+		"yourShare": "your share",
+		"paid": "{name} paid",
+		"waiting": "Waiting for you",
+		"other": "Other"
+	},
+	"project": {
+		"range": "{start} to {end}",
+		"since": "Since {start}",
+		"open": "Open",
+		"solo": "Solo",
+		"people": "{count, plural, one {# person} other {# people}}",
+		"spent": "spent",
+		"budgetUsed": "Budget used"
+	},
+	"account": {
+		"updated": "Updated {date}",
+		"change": "{change} this month"
+	},
+	"envelope": {
+		"spent": "Spent of what you planned"
+	},
+	"recurring": {
+		"overdueSince": "Overdue since {date}",
+		"next": "Next {date}",
+		"confirm": "Confirm",
+		"skip": "Skip",
+		"weekly": "Weekly",
+		"monthly": "Monthly",
+		"quarterly": "Quarterly",
+		"yearly": "Yearly"
+	},
+	"table": {
+		"selectAll": "Select all",
+		"select": "Select {title}",
+		"title": "Title",
+		"category": "Category",
+		"project": "Project",
+		"with": "With",
+		"date": "Date",
+		"amount": "Amount",
+		"actions": "Actions",
+		"yourSpending": "Your spending",
+		"count": "{count, plural, one {# expense} other {# expenses}}",
+		"withoutRate": "{count, plural, one {# without a rate} other {# without a rate}}"
+	}
+}

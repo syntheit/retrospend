@@ -19,6 +19,7 @@
 	--brand: oklch(0.4341 0.0392 42);
 	--brand-fg: oklch(0.99 0.004 70);
 	--brand-soft: color-mix(in oklab, var(--brand) 9%, transparent);
+	--brand-hover: color-mix(in oklab, var(--brand) 88%, var(--fg));
 	--ds-accent: oklch(0.6 0.108 220);
 	--accent-strong: oklch(0.48 0.085 220);
 	--accent-soft: color-mix(in oklab, var(--ds-accent) 14%, var(--surface));
@@ -31,6 +32,7 @@
 	--info-bg: oklch(0.948 0.03 250);
 	--danger: oklch(0.52 0.19 28);
 	--danger-fg: oklch(0.99 0 0);
+	--danger-hover: color-mix(in oklab, var(--danger) 88%, var(--fg));
 	--danger-bg: oklch(0.95 0.03 28);
 	--owe: var(--fg);
 	--scrim: rgb(30 20 10 / 0.34);
@@ -50,6 +52,7 @@
 	--avatar-6: oklch(0.52 0.09 15);
 	--avatar-7: oklch(0.52 0.09 265);
 	--avatar-8: oklch(0.52 0.09 175);
+	--avatar-fg: oklch(1 0 0);
 	--category-1: oklch(0.62 0.13 162);
 	--category-2: oklch(0.62 0.13 299);
 	--category-3: oklch(0.62 0.13 76);
@@ -181,6 +184,7 @@
 	--color-brand: var(--brand);
 	--color-brand-fg: var(--brand-fg);
 	--color-brand-soft: var(--brand-soft);
+	--color-brand-hover: var(--brand-hover);
 	--color-ds-accent: var(--ds-accent);
 	--color-accent-strong: var(--accent-strong);
 	--color-accent-soft: var(--accent-soft);
@@ -193,6 +197,7 @@
 	--color-info-bg: var(--info-bg);
 	--color-danger: var(--danger);
 	--color-danger-fg: var(--danger-fg);
+	--color-danger-hover: var(--danger-hover);
 	--color-danger-bg: var(--danger-bg);
 	--color-owe: var(--owe);
 	--color-scrim: var(--scrim);
@@ -212,6 +217,7 @@
 	--color-avatar-6: var(--avatar-6);
 	--color-avatar-7: var(--avatar-7);
 	--color-avatar-8: var(--avatar-8);
+	--color-avatar-fg: var(--avatar-fg);
 	--color-category-1: var(--category-1);
 	--color-category-2: var(--category-2);
 	--color-category-3: var(--category-3);

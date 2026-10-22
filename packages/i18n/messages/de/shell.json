@@ -1,0 +1,117 @@
+{
+	"brand": "Retrospend",
+	"skipToContent": "Zum Hauptinhalt springen",
+	"sidebar": {
+		"label": "Hauptmenü",
+		"destinations": "Bereiche",
+		"tools": "Werkzeuge",
+		"pinned": "Angeheftet",
+		"pinnedLabel": "Angeheftete Projekte"
+	},
+	"bottomNav": {
+		"label": "Hauptmenü"
+	},
+	"nav": {
+		"home": "Start",
+		"activity": "Aktivität",
+		"budget": "Budget",
+		"people": "Personen",
+		"projects": "Projekte",
+		"wealth": "Vermögen",
+		"import": "Import",
+		"currencies": "Währungen",
+		"settings": "Einstellungen",
+		"recurring": "Wiederkehrend",
+		"insights": "Auswertungen",
+		"needsYou": "{count, plural, one {# braucht dich} other {# brauchen dich}}"
+	},
+	"add": {
+		"group": "Hinzufügen",
+		"expense": "Ausgabe hinzufügen",
+		"income": "Einnahme hinzufügen",
+		"transfer": "Überweisung",
+		"short": "Neu",
+		"more": "Weitere Möglichkeiten",
+		"comingSoon": "Bald verfügbar",
+		"notYet": "{what} ist bald verfügbar"
+	},
+	"palette": {
+		"trigger": "Suche und Befehle",
+		"title": "Suche und Befehle",
+		"description": "Zu einer Seite gehen oder einen Befehl ausführen",
+		"placeholder": "Seiten und Befehle suchen",
+		"noResults": "Keine Ergebnisse",
+		"recent": "Zuletzt",
+		"project": "Projekt",
+		"goTo": "Gehe zu",
+		"commands": "Befehle",
+		"settingsSection": "Einstellungen: {section}",
+		"addRecurring": "Wiederkehrende Ausgabe hinzufügen",
+		"manageCategories": "Kategorien verwalten",
+		"move": "Bewegen",
+		"openHint": "Öffnen"
+	},
+	"settingsSections": {
+		"profile": "Profil",
+		"preferences": "Präferenzen",
+		"categories": "Kategorien",
+		"payment": "Zahlungsmethoden",
+		"notifications": "Benachrichtigungen",
+		"security": "Sicherheit",
+		"data": "Daten und Export"
+	},
+	"notifications": {
+		"title": "Benachrichtigungen",
+		"labelUnread": "{count, plural, one {Benachrichtigungen, # ungelesen} other {Benachrichtigungen, # ungelesen}}",
+		"unread": "Ungelesen",
+		"filterLabel": "Anzeigen",
+		"filter": {
+			"all": "Alle",
+			"expenses": "Ausgaben",
+			"settlements": "Ausgleiche",
+			"projects": "Projekte"
+		},
+		"markAllRead": "Alle als gelesen markieren",
+		"empty": "Noch keine Benachrichtigungen",
+		"noMatches": "Keine Treffer",
+		"loadFailed": "Benachrichtigungen konnten nicht geladen werden",
+		"retry": "Erneut versuchen"
+	},
+	"account": {
+		"title": "Konto",
+		"menu": "Kontomenü",
+		"profile": "Dein Profil",
+		"settings": "Einstellungen",
+		"admin": "Admin",
+		"inviteCodes": "Einladungscodes",
+		"feedbackInbox": "Feedback-Eingang",
+		"sendFeedback": "Feedback senden",
+		"docs": "Dokumentation",
+		"releaseNotes": "Versionshinweise",
+		"shortcuts": "Tastenkürzel",
+		"signOut": "Abmelden",
+		"signOutFailed": "Abmelden fehlgeschlagen",
+		"newCount": "{count, plural, one {# neu} other {# neu}}",
+		"version": "Version {version}",
+		"goTo": "Gehe zu"
+	},
+	"shortcuts": {
+		"title": "Tastenkürzel",
+		"global": "Überall",
+		"palette": "Suche und Befehle",
+		"close": "Oberste Ebene schließen",
+		"list": "Diese Liste",
+		"tables": "In Tabellen",
+		"selectAll": "Alle Zeilen auswählen",
+		"range": "Einen Bereich auswählen",
+		"edit": "Ausgewählte Zeile bearbeiten",
+		"delete": "Ausgewählte Zeilen löschen",
+		"clear": "Auswahl aufheben"
+	},
+	"verifyEmail": {
+		"message": "Bestätige deine E-Mail-Adresse, um dein Konto zu schützen.",
+		"resend": "E-Mail erneut senden",
+		"sent": "Bestätigungs-E-Mail gesendet",
+		"failed": "E-Mail konnte nicht gesendet werden"
+	}
+}

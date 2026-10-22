@@ -1,0 +1,17 @@
+{
+	"spentIn": "Потрачено за {month}",
+	"faster": "Тратите быстрее плана",
+	"lastMonth": "Прошлый месяц",
+	"row": {
+		"toAssign": "Ещё не запланировано",
+		"owedToYou": "Вам должны",
+		"youOwe": "Вы должны",
+		"netWorth": "Капитал"
+	},
+	"line": {
+		"perDay": "<amount></amount> в день, осталось {days, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
+		"leftToday": "На сегодня осталось <amount></amount>",
+		"over": "<amount></amount> сверх плана в этом месяце",
+		"noBudget": "Нет бюджета на этот месяц"
+	}
+}

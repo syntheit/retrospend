@@ -1,0 +1,17 @@
+{
+	"title": "Komponentengalerie",
+	"sub": "Jede registrierte Komponente, ihre Zustände und was sie ersetzt",
+	"intro": "Nutze eine registrierte Komponente oder schlage eine neue vor. Jeder Block sagt, wofür sie da ist, wofür nie, und was sie ersetzt. Telefonvarianten stehen neben den Desktopvarianten.",
+	"theme": "Design",
+	"light": "Hell",
+	"dark": "Dunkel",
+	"sections": "Abschnitte",
+	"useFor": "Für",
+	"neverFor": "Nie für",
+	"replaces": "Ersetzt:",
+	"noMatch": "Keine passenden Ausgaben",
+	"noMatchHint": "Entferne einen Filter.",
+	"clearFilters": "Filter löschen",
+	"noExpenses": "Noch keine Ausgaben",
+	"addExpense": "Ausgabe hinzufügen"
+}

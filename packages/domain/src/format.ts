@@ -15,11 +15,17 @@
  * Golden cases: packages/domain/vectors/money-format.vectors.json.
  */
 import { isCrypto, SMART_NO_DECIMAL_CURRENCIES } from "./currency-format";
-import { groupDigits, numberSymbols } from "./format-locale";
+import {
+	compactAffix,
+	groupDigits,
+	type NumberSymbols,
+	numberSymbols,
+} from "./format-locale";
 import { currencyDecimals } from "./money";
 import { money as checkedMoney, type Money } from "./money-minor";
 
-export type MoneyDisplay = "symbol" | "code";
+/** "none" leaves the currency out: a chart axis whose title names it. */
+export type MoneyDisplay = "symbol" | "code" | "none";
 /** auto: minus for negatives. exceptZero: plus for positives too. never: size only. */
 export type MoneySign = "auto" | "exceptZero" | "never";
 
@@ -36,6 +42,12 @@ export interface FormatMoneyOptions {
 	 * false: whole units, rounded half to even.
 	 */
 	cents?: boolean | "auto";
+	/**
+	 * Short scale for chart axes: "2.7M", "850K" (the locale's own suffix:
+	 * "2,7 M", "850 mil"), one fraction digit at most, rounded half to even
+	 * from minor units. Under 1,000 whole units it is the whole amount.
+	 */
+	compact?: boolean;
 }
 
 /** Symbols no other currency uses. "$", "¥", "kr" and the like are not here. */
@@ -97,8 +109,44 @@ function unitLabel(
 	locale: string,
 ): string {
 	const symbol = display === "symbol" ? UNAMBIGUOUS_SYMBOLS[code] : undefined;
+	if (display === "none") return "";
 	if (!symbol) return code + NBSP;
 	return numberSymbols(locale).symbolSpaced ? symbol + NBSP : symbol;
+}
+
+/** |minor| with `drop` digits rounded away (half to even), or scaled up when negative. */
+function tenthsOf(abs: number, drop: number): number {
+	return drop < 0 ? abs * 10 ** -drop : roundHalfEven(abs, drop);
+}
+
+/** Compact magnitudes, largest first: trillion, billion, million, thousand. */
+const COMPACT_EXPONENTS = [12, 9, 6, 3];
+
+/**
+ * |minor| on the short scale: tenths of the largest magnitude it reaches,
+ * rounded half to even. Returns the text and the rounded size, so the sign
+ * can tell a value that rounds to zero.
+ */
+function compactNumber(
+	abs: number,
+	decimals: number,
+	locale: string,
+	symbols: NumberSymbols,
+): { text: string; rounded: number } {
+	for (const exp of COMPACT_EXPONENTS) {
+		const affix = compactAffix(locale, exp);
+		// Reached when it shows as 1,000.0 or more of the next smaller step,
+		// so 999,960 reads "1M" rather than "1,000K".
+		if (!affix || tenthsOf(abs, decimals + exp - 4) < 10_000) continue;
+		const tenths = roundHalfEven(abs, decimals + exp - 1);
+		const tenth = tenths % 10;
+		const whole = (tenths - tenth) / 10;
+		const digits = groupDigits(String(whole), symbols);
+		const number = tenth ? digits + symbols.decimal + tenth : digits;
+		return { text: number + affix.gap + affix.suffix, rounded: tenths };
+	}
+	const rounded = roundHalfEven(abs, decimals);
+	return { text: groupDigits(String(rounded), symbols), rounded };
 }
 
 /**
@@ -120,6 +168,14 @@ export function formatMoney(
 	const { locale, display = "code", sign = "auto", cents = "auto" } = options;
 	const abs = Math.abs(minor);
 	const decimals = currencyDecimals(currency);
+	if (options.compact) {
+		const c = compactNumber(abs, decimals, locale, numberSymbols(locale));
+		return (
+			signFor(minor, c.rounded, sign) +
+			unitLabel(currency, display, locale) +
+			c.text
+		);
+	}
 	const { shown, trim } = shownDecimals(abs, currency, decimals, cents);
 	const rounded = roundHalfEven(abs, decimals - shown);
 
@@ -132,12 +188,18 @@ export function formatMoney(
 		groupDigits(digits.slice(0, cut), symbols) +
 		(fraction ? symbols.decimal + fraction : "");
 
-	let signText = "";
-	if (rounded !== 0 && sign !== "never") {
-		if (minor < 0) signText = "-";
-		else if (sign === "exceptZero") signText = "+";
-	}
-	return signText + unitLabel(currency, display, locale) + number;
+	return (
+		signFor(minor, rounded, sign) +
+		unitLabel(currency, display, locale) +
+		number
+	);
+}
+
+/** Leading minus, or a plus under exceptZero; nothing for what shows as zero. */
+function signFor(minor: number, rounded: number, sign: MoneySign): string {
+	if (rounded === 0 || sign === "never") return "";
+	if (minor < 0) return "-";
+	return sign === "exceptZero" ? "+" : "";
 }
 
 export interface FormattedMoneyPair {
