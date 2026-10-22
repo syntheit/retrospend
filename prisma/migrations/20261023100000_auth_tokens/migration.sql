@@ -72,11 +72,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- RLS: a user sees only their own keys and device codes.
+-- RLS: a user sees only their own keys and device codes. ENABLE without
+-- FORCE: better-auth writes through the owner connection, which must not
+-- be bound by the app role policies.
 ALTER TABLE "apikey"      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "apikey"      FORCE ROW LEVEL SECURITY;
 ALTER TABLE "device_code" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "device_code" FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS apikey_isolation ON "apikey";
 CREATE POLICY apikey_isolation ON "apikey"

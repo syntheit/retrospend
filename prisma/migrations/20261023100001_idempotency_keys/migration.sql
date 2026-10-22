@@ -3,7 +3,8 @@
 --    kept 24h. Read and written through the user-scoped db, so RLS holds.
 -- 2. api_rate_limit: fixed-window counters per IP and per token. Not user
 --    data (IP keys have no user), so only the owner connection touches it:
---    RLS is on with no policy and the app role has no grant.
+--    RLS is on (not forced, so the owner keeps access) with no policy, and
+--    the app role has no grant.
 
 CREATE TABLE IF NOT EXISTS "idempotency_key" (
   "id"           TEXT         NOT NULL,
@@ -50,5 +51,4 @@ CREATE POLICY idempotency_key_isolation ON "idempotency_key"
 GRANT SELECT, INSERT, UPDATE, DELETE ON "idempotency_key" TO retrospend_app;
 
 ALTER TABLE "api_rate_limit" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "api_rate_limit" FORCE ROW LEVEL SECURITY;
 REVOKE ALL ON "api_rate_limit" FROM retrospend_app;
