@@ -20,7 +20,7 @@ import { createPreviewRunner } from "~/server/services/preview/runner";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import { confirmPayment } from "./confirm.mutation";
+import { confirmPayment, unconfirmPayment } from "./confirm.mutation";
 import { type RecordPaymentInput, recordPayment } from "./record.mutation";
 import { personKey } from "./view";
 
@@ -249,6 +249,31 @@ describe("payment.record on Postgres", () => {
 		expect(
 			(await computeBalance(adminDb, ref(martin), ref(sofia))).byCurrency,
 		).toEqual({});
+
+		// Undo puts the payment back to waiting for Martín, rows and all.
+		expect(confirmed.undo).toEqual({
+			kind: "revert",
+			mutation: "payment.unconfirm",
+			rows: [{ table: "payment", id: header.id }],
+		});
+		await forUser(martin.user.id).apply(unconfirmPayment, {
+			paymentId: header.id,
+			person: ref(sofia),
+		});
+		expect(
+			(await adminDb.payment.findUniqueOrThrow({ where: { id: header.id } })).status,
+		).toBe("PROPOSED");
+		const rows = await adminDb.settlement.findMany({ where: { paymentGroupId: header.id } });
+		expect(
+			rows.every((r) => r.status === "PROPOSED" && r.confirmedByPayer && !r.confirmedByPayee),
+		).toBe(true);
+		expect(
+			(await computeBalance(adminDb, ref(martin), ref(sofia))).byCurrency,
+		).toEqual({ ARS: 18000, BRL: 412.5 });
+		await forUser(martin.user.id).apply(confirmPayment, {
+			paymentId: header.id,
+			person: ref(sofia),
+		});
 	});
 
 	it("records money received from someone not on Retrospend as final, and refuses an overpayment", async () => {
@@ -275,6 +300,37 @@ describe("payment.record on Postgres", () => {
 		expect(await figureFor(sofia, "owed.owedToYou")).toEqual([
 			{ minor: 0, currency: "ARS" },
 		]);
+	});
+
+	it("audits a confirm that changed the amount with the rows it wrote", async () => {
+		const jo = await createTestUser();
+		await seedShare(ref(sofia), ref(jo), "100", "ARS");
+		const claim = await forUser(jo.user.id).apply(recordPayment, {
+			person: ref(sofia),
+			direction: "outgoing",
+			currency: "ARS",
+			amount: "100",
+		});
+		if (!claim.value.recorded) throw new Error("not recorded");
+		await forUser(sofia.user.id).apply(confirmPayment, {
+			paymentId: claim.value.paymentId,
+			person: ref(jo),
+			amount: "98",
+		});
+		const rows = await adminDb.settlement.findMany({
+			where: { paymentGroupId: claim.value.paymentId },
+		});
+		expect(rows.map((r) => [r.amount.toString(), r.status])).toEqual([["98", "FINALIZED"]]);
+		const audit = await adminDb.auditLogEntry.findFirstOrThrow({
+			where: {
+				action: "SETTLED",
+				changes: { path: ["paymentGroupId"], equals: claim.value.paymentId },
+			},
+		});
+		expect(audit.changes).toMatchObject({
+			amount: 98,
+			settlementIds: rows.map((r) => r.id),
+		});
 	});
 
 	it("keeps payment headers to the people on them (RLS)", async () => {

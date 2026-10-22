@@ -8,6 +8,7 @@ import {
 import {
 	applyConfirm,
 	applyPayment,
+	applyUnconfirm,
 	previewConfirm,
 	previewPayment,
 } from "~/server/services/payments/procedures";
@@ -42,6 +43,13 @@ export const settlementRouter = createTRPCRouter({
 		.input(confirmPaymentSchema)
 		.mutation(({ ctx, input }) =>
 			applyConfirm(ctx.db, ctx.session.user.id, input),
+		),
+
+	/** Undo of paymentConfirm: the payment waits for the caller again. */
+	paymentUnconfirm: protectedProcedure
+		.input(z.object({ paymentId: z.string().min(1) }))
+		.mutation(({ ctx, input }) =>
+			applyUnconfirm(ctx.db, ctx.session.user.id, input.paymentId),
 		),
 
 	/**

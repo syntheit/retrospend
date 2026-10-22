@@ -22,6 +22,7 @@ import {
 } from "~/server/services/payments/ledger";
 import {
 	type RecordPaymentInput,
+	paidOnDate,
 	type RecordPaymentValue,
 	recordPayment,
 } from "~/server/services/payments/record.mutation";
@@ -1027,7 +1028,7 @@ export class SettlementService {
 					parties: { payer: me, payee: other, recorder: me },
 					allocation,
 					confirmation: confirmationFor(false, other.participantType),
-					paidOn: new Date(`${now.toISOString().slice(0, 10)}T00:00:00.000Z`),
+					paidOn: paidOnDate(null, now),
 					now,
 					paymentMethod: null,
 					note: null,

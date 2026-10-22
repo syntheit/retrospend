@@ -154,6 +154,7 @@ export async function confirmClaim(
 		amount !== toMinor(header.amount.toString(), header.currency);
 
 	let allocation: Allocation | null = null;
+	let written = rows;
 	if (changed) {
 		await tx.settlement.deleteMany({ where: { paymentGroupId: header.id } });
 		allocation = await reallocate(tx, me, header, amount, paidOn, counterparty);
@@ -165,7 +166,7 @@ export async function confirmClaim(
 			participantType: header.payeeType,
 			participantId: header.payeeId,
 		};
-		await writeRows(tx, {
+		written = await writeRows(tx, {
 			id: header.id,
 			parties: {
 				payer,
@@ -205,7 +206,8 @@ export async function confirmClaim(
 			...(allocation ? { amount: input.amount ?? undefined } : {}),
 		},
 	});
-	await logGroupAction(tx, me, rows, {
+	// The rows as they now stand: after an amount change, the ones just written.
+	await logGroupAction(tx, me, written, {
 		action: "SETTLED",
 		context: "settlement_confirmed",
 		...(changed ? { changes: { confirmedAmount: input.amount } } : {}),
@@ -214,9 +216,10 @@ export async function confirmClaim(
 		paymentId: header.id,
 		counterparty,
 		allocation,
+		// Undo puts the payment back to waiting (payment.unconfirm), never deletes it.
 		undo: {
 			kind: "revert",
-			mutation: "payment.confirm",
+			mutation: "payment.unconfirm",
 			rows: [{ table: "payment", id: header.id }],
 		},
 	};
@@ -272,6 +275,64 @@ export const confirmPayment: MoneyMutation<
 					confirmed.allocation && viewAllocation(confirmed.allocation),
 			},
 			undo: confirmed.undo,
+		};
+	},
+};
+
+/**
+ * payment.unconfirm, the undo of payment.confirm: the payment waits for the
+ * same person again, every row with only the recorder's flag set, and the
+ * receiver's view goes back to showing it as a claim. Details the receiver
+ * changed while confirming (method, date, amount) stay as confirmed.
+ */
+export const unconfirmPayment: MoneyMutation<
+	{ readonly paymentId: string; readonly person: ParticipantRef },
+	{ readonly paymentId: string }
+> = {
+	id: "payment.unconfirm",
+	touches: ["balance.person", "owed.owedToYou", "owed.youOwe"],
+	scope: (input) => ({ personId: personKey(input.person) }),
+	run: async (tx, input, actor) => {
+		const me: ParticipantRef = { participantType: "user", participantId: actor.userId };
+		const { header, rows } = await loadPayment(tx, input.paymentId);
+		const recorder: ParticipantRef = {
+			participantType: header.recordedByType,
+			participantId: header.recordedById,
+		};
+		const isParty = groupRoles(rows, me.participantId).isParty;
+		if (!isParty || header.status !== "FINALIZED" || personKey(recorder) === personKey(me)) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Only a payment you confirmed can go back to waiting",
+			});
+		}
+		await lockPair(tx, me, input.person);
+		for (const row of rows) {
+			const fromRecorder =
+				row.fromParticipantType === recorder.participantType &&
+				row.fromParticipantId === recorder.participantId;
+			await tx.settlement.update({
+				where: { id: row.id },
+				data: {
+					status: "PROPOSED",
+					settledAt: null,
+					confirmedByPayer: fromRecorder,
+					confirmedByPayee: !fromRecorder,
+				},
+			});
+		}
+		await tx.payment.update({ where: { id: header.id }, data: { status: "PROPOSED" } });
+		await logGroupAction(tx, me, rows, {
+			action: "EDITED",
+			context: "settlement_unconfirmed",
+		});
+		return {
+			value: { paymentId: header.id },
+			undo: {
+				kind: "revert",
+				mutation: "payment.confirm",
+				rows: [{ table: "payment", id: header.id }],
+			},
 		};
 	},
 };

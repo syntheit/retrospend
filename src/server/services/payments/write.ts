@@ -172,7 +172,7 @@ export async function logGroupAction(
 	actor: ParticipantRef,
 	rows: GroupRow[],
 	params: {
-		action: "SETTLED" | "REJECTED" | "DELETED";
+		action: "SETTLED" | "REJECTED" | "DELETED" | "EDITED";
 		context: string;
 		changes?: Record<string, unknown>;
 	},

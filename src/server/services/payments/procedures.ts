@@ -10,7 +10,11 @@ import { SettlementService } from "~/server/services/shared-expenses/settlement.
 import type { PrismaClient } from "~prisma";
 import { resolveParticipantName } from "~/server/services/notifications";
 import { claimMatchError } from "./claim-match";
-import { confirmPayment, paymentCounterparty } from "./confirm.mutation";
+import {
+	confirmPayment,
+	paymentCounterparty,
+	unconfirmPayment,
+} from "./confirm.mutation";
 import type { confirmPaymentSchema, recordPaymentSchema } from "./input";
 import { recordPayment } from "./record.mutation";
 
@@ -99,4 +103,14 @@ async function notifyConfirmedPayment(
 	});
 	const lead = rows.find((r) => !r.isOffset) ?? rows[0];
 	if (lead) await service.notifyConfirmed(rows, lead);
+}
+
+/** Undo of a confirm: the payment waits for the caller again. */
+export async function applyUnconfirm(
+	db: PrismaClient,
+	userId: string,
+	paymentId: string,
+) {
+	const person = await paymentCounterparty(db, paymentId, userId);
+	return forUser(userId).apply(unconfirmPayment, { paymentId, person });
 }
