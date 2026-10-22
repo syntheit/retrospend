@@ -3,15 +3,17 @@
  * step 5): which numbers follow the rate of the day they are read, and which
  * keep the value an entry got when it was saved.
  *
- * Home ARS. Blue (the only type) is ARS 1,000 per USD from Mar 1, 1,100 from
- * Mar 20, 1,200 from Apr 1 and 1,300 from Apr 8. "Now" is Apr 10 12:00 UTC,
- * so March is closed (its period rate is the Mar 31 one, 1,100) and April is
- * running (its period rate is today's, 1,300).
+ * The home currency is ZZB, a stand-in for ARS: the pg files share one
+ * database, and moving ARS rates here would move the other files' numbers.
+ * Blue (the only type) is ZZB 1,000 per USD from Mar 1, 1,100 from Mar 20,
+ * 1,200 from Apr 1 and 1,300 from Apr 8. "Now" is Apr 10 12:00 UTC, so March
+ * is closed (its period rate is the Mar 31 one, 1,100) and April is running
+ * (its period rate is today's, 1,300).
  *
  * Entries, all Groceries:
  *   A  Mar 10  USD 10     saved through the expense service (blue 1,000 that day)
  *   B  Apr  5  USD 20     saved through the expense service (blue 1,200 that day)
- *   C  Apr  2  ARS 1,000  saved through the expense service
+ *   C  Apr  2  ZZB 1,000  saved through the expense service
  *   D  Apr  6  USD 5      written straight to the table, no saved home value
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -33,6 +35,7 @@ import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { callers } from "./spending-readers";
 
+const HOME = "ZZB";
 const NOW = new Date("2026-04-10T12:00:00.000Z");
 const MARCH = new Date("2026-03-15T12:00:00.000Z");
 const APRIL = new Date("2026-04-10T12:00:00.000Z");
@@ -53,7 +56,7 @@ async function seed() {
 			["2026-04-08", 1300],
 		].map(([day, rate]) => ({
 			date: new Date(`${day}T00:00:00.000Z`),
-			currency: "ARS",
+			currency: HOME,
 			type: "blue",
 			rate: rate as number,
 		})),
@@ -63,7 +66,7 @@ async function seed() {
 	const userId = user.id;
 	await adminDb.user.update({
 		where: { id: userId },
-		data: { homeCurrency: "ARS" },
+		data: { homeCurrency: HOME },
 	});
 	const groceries = await adminDb.category.create({
 		data: { name: "Groceries", color: "emerald", userId },
@@ -73,7 +76,7 @@ async function seed() {
 			userId,
 			categoryId: groceries.id,
 			amount: 100_000,
-			currency: "ARS",
+			currency: HOME,
 			period: new Date(2026, 3, 1),
 		},
 	});
@@ -90,7 +93,7 @@ async function seed() {
 		});
 	await save("A", 10, "USD", "2026-03-10");
 	await save("B", 20, "USD", "2026-04-05");
-	await save("C", 1000, "ARS", "2026-04-02");
+	await save("C", 1000, HOME, "2026-04-02");
 	await adminDb.expense.create({
 		data: {
 			userId,
@@ -113,60 +116,69 @@ async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
 	const [april] = await getBudgets(db as never, userId, APRIL, {
 		includeGlobal: true,
 		excludedProjectIds: [],
-		homeCurrency: "ARS",
+		homeCurrency: HOME,
 		timeZone: "UTC",
 	});
 	const overview = await getOverviewStats(db as never, userId, {
 		...(await getOverviewSettings(db as never, userId)),
 		month: APRIL,
-		homeCurrency: "ARS",
+		homeCurrency: HOME,
 		excludedProjectIds: [],
 		rateCache: new RateCache(db as never),
 		timeZone: "UTC",
 	});
-	const runway = await c.wealth.getRunwayStats({ currency: "ARS" });
+	const runway = await c.wealth.getRunwayStats({ currency: HOME });
 	return {
-		marchTotal: (await stats.getSummaryStats(userId, MARCH, "ARS"))
+		marchTotal: (await stats.getSummaryStats(userId, MARCH, HOME))
 			.totalThisMonth,
-		aprilTotal: (await stats.getSummaryStats(userId, APRIL, "ARS"))
+		aprilTotal: (await stats.getSummaryStats(userId, APRIL, HOME))
 			.totalThisMonth,
 		aprilInUsd: (await stats.getSummaryStats(userId, APRIL, "USD"))
 			.totalThisMonth,
 		aprilByCategory: (
-			await stats.getCategoryBreakdown(userId, APRIL, "ARS")
+			await stats.getCategoryBreakdown(userId, APRIL, HOME)
 		).map((x) => [x.name, x.value]),
-		aprilTrendEnd: (await stats.getDailyTrend(userId, APRIL, "ARS")).at(-1)
+		aprilTrendEnd: (await stats.getDailyTrend(userId, APRIL, HOME)).at(-1)
 			?.total,
-		lifetime: (await stats.getLifetimeStats(userId, "ARS")).totalSpent,
+		lifetime: (await stats.getLifetimeStats(userId, HOME)).totalSpent,
 		profileLifetime: (await c.profile.getLifetimeStats()).lifetimeSpend,
 		dashboardMonth: overview.monthTotal,
 		budgetSpent: [april?.actualSpend, april?.actualSpendInHome],
 		runwayTimesMonths: runway.averageMonthlySpend * MONTHS_ACTIVE,
-		spentApril: await spentIn(db, { userId, date: APRIL_RANGE }, "ARS", 1300),
+		spentApril: await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300),
 	};
 }
 
 /**
- * Today every reader converts each foreign entry at its period's rate, so
- * April (running) moves with today's 1,300 and lifetime converts everything
- * at today's rate:
+ * Before 2A.2 every reader converted each foreign entry at its period's
+ * rate, so April (running) moved with today's 1,300 and lifetime converted
+ * everything at today's rate (commit "Pin today's expense rates and readers
+ * when the rate moves" pinned these):
  *   March   A 10 x 1,100                             = 11,000
  *   April   B 20 x 1,300 + C 1,000 + D 5 x 1,300     = 33,500
  *   in USD  B 20 + C 1,000 / 1,200 (0.83) + D 5      = 25.83
  *   life    A 13,000 + 33,500                        = 46,500
+ *
+ * Now an entry saved through the expense service books its home value on
+ * its own date, and every reader below counts that value in ZZB. Only D,
+ * which has no booked value, still follows the period rate:
+ *   March   A 10 x 1,000                             = 10,000
+ *   April   B 20 x 1,200 + C 1,000 + D 5 x 1,300     = 31,500
+ *   in USD  unchanged (a booked ZZB value says nothing about USD) = 25.83
+ *   life    A 10,000 + 31,500                        = 41,500
  */
 const EXPECTED = {
-	marchTotal: 11_000,
-	aprilTotal: 33_500,
+	marchTotal: 10_000,
+	aprilTotal: 31_500,
 	aprilInUsd: 25.83,
-	aprilByCategory: [["Groceries", 33_500]],
-	aprilTrendEnd: 33_500,
-	lifetime: 46_500,
-	profileLifetime: 46_500,
-	dashboardMonth: 33_500,
-	budgetSpent: [33_500, 33_500],
-	runwayTimesMonths: 46_500,
-	spentApril: 33_500,
+	aprilByCategory: [["Groceries", 31_500]],
+	aprilTrendEnd: 31_500,
+	lifetime: 41_500,
+	profileLifetime: 41_500,
+	dashboardMonth: 31_500,
+	budgetSpent: [31_500, 31_500],
+	runwayTimesMonths: 41_500,
+	spentApril: 31_500,
 };
 
 describe("spending readers when the rate moves", () => {
