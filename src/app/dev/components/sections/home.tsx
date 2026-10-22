@@ -1,0 +1,81 @@
+"use client";
+
+import { GlanceStrip } from "~/components/glance/glance-strip";
+import { NeedsYouItem } from "~/components/needs-you/needs-you-item";
+import { NeedsYouList } from "~/components/needs-you/needs-you-list";
+import { useToast } from "~/components/ui/toast";
+import { GLANCE, NEEDS_YOU } from "../fixtures/home";
+import { CAP } from "../sections";
+import { Cap, Pair, Spec, States } from "../spec";
+
+export function GlanceSection() {
+	return (
+		<Spec id="glance">
+			<Pair
+				desktop={
+					<>
+						<Cap>{CAP.glanceA}</Cap>
+						<GlanceStrip glance={GLANCE} />
+						<Cap className="mt-6">{CAP.glanceB}</Cap>
+						<GlanceStrip glance={GLANCE} variant="B" />
+					</>
+				}
+				phone={
+					<>
+						<GlanceStrip glance={GLANCE} phone />
+						<Cap className="mt-4">{CAP.glanceB}</Cap>
+						<GlanceStrip glance={GLANCE} phone variant="B" />
+					</>
+				}
+			/>
+		</Spec>
+	);
+}
+
+export function NeedsSection() {
+	const toast = useToast();
+	const act = () => toast.info(CAP.fixtures);
+	const one = (i: number) => {
+		const item = NEEDS_YOU[i];
+		return item ? (
+			<ul className="w-105 max-w-full">
+				<NeedsYouItem item={item} onAction={act} />
+			</ul>
+		) : null;
+	};
+	return (
+		<Spec id="needs">
+			<Pair
+				desktop={
+					<>
+						<Cap>{CAP.listFlat}</Cap>
+						<NeedsYouList items={NEEDS_YOU} onAction={act} />
+					</>
+				}
+				phone={
+					<>
+						<Cap>{CAP.listGroup}</Cap>
+						<NeedsYouList
+							items={NEEDS_YOU.slice(0, 4)}
+							onAction={act}
+							variant="group"
+						/>
+					</>
+				}
+			/>
+			<States
+				className="mt-4"
+				items={[
+					[CAP.itemDefault, one(2)],
+					[CAP.itemOverdue, one(0)],
+					[
+						CAP.allClear,
+						<div className="w-105 max-w-full" key="e">
+							<NeedsYouList items={[]} />
+						</div>,
+					],
+				]}
+			/>
+		</Spec>
+	);
+}

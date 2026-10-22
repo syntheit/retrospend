@@ -1,0 +1,15 @@
+{
+	"title": "Component gallery",
+	"sub": "Every registered component, its states, and where it replaces something old",
+	"intro": "Reuse a registered component or propose a new one. Each block says what it is for, what it is never for, and what it replaces. Phone variants sit beside the desktop ones.",
+	"theme": "Theme",
+	"light": "Light",
+	"dark": "Dark",
+	"sections": "Sections",
+	"useFor": "Use for",
+	"neverFor": "Never for",
+	"replaces": "Replaces:",
+	"noMatch": "No expenses match",
+	"noMatchHint": "Try removing a filter.",
+	"clearFilters": "Clear filters"
+}

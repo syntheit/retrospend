@@ -1,0 +1,15 @@
+{
+	"title": "Galería de componentes",
+	"sub": "Cada componente registrado, sus estados y qué reemplaza",
+	"intro": "Reutiliza un componente registrado o propone uno nuevo. Cada bloque dice para qué sirve, para qué nunca y qué reemplaza. Las variantes de teléfono están junto a las de escritorio.",
+	"theme": "Tema",
+	"light": "Claro",
+	"dark": "Oscuro",
+	"sections": "Secciones",
+	"useFor": "Para",
+	"neverFor": "Nunca para",
+	"replaces": "Reemplaza:",
+	"noMatch": "Ningún gasto coincide",
+	"noMatchHint": "Prueba quitar un filtro.",
+	"clearFilters": "Quitar filtros"
+}
