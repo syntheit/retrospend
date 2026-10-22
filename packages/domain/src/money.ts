@@ -254,6 +254,8 @@ const ZERO_DECIMAL = new Set([
 const THREE_DECIMAL = new Set([
 	"BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND",
 ]);
+// Unidad de Fomento and Unidad Previsional, indexed units of account.
+const FOUR_DECIMAL = new Set(["CLF", "UYW"]);
 
 /**
  * Decimal places money in `currency` is kept to. ISO 4217 for fiat, 8 for
@@ -264,6 +266,7 @@ export function currencyDecimals(currency: string): number {
 	if (isCrypto(code)) return getDecimalDigits(code, false);
 	if (ZERO_DECIMAL.has(code)) return 0;
 	if (THREE_DECIMAL.has(code)) return 3;
+	if (FOUR_DECIMAL.has(code)) return 4;
 	return 2;
 }
 
