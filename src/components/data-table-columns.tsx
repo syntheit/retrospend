@@ -341,7 +341,7 @@ function createExpenseColumns(
 				if (onOpenSheet) {
 					return (
 						<Button
-							className="h-9 w-9 md:h-7 md:w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+							className="h-9 w-9 md:h-7 md:w-7 can-hover:opacity-0 transition-opacity group-hover:opacity-100"
 							onClick={() => onOpenSheet(row.original.id)}
 							size="icon"
 							variant="ghost"
@@ -363,7 +363,7 @@ function createExpenseColumns(
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<Button
-									className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+									className="h-7 w-7 can-hover:opacity-0 transition-opacity group-hover:opacity-100"
 									size="icon"
 									variant="ghost"
 								>
@@ -414,7 +414,7 @@ function createExpenseColumns(
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
-								className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+								className="h-7 w-7 can-hover:opacity-0 transition-opacity group-hover:opacity-100"
 								size="icon"
 								variant="ghost"
 							>

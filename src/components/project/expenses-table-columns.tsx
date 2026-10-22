@@ -294,7 +294,7 @@ export function createProjectExpenseColumns({
 							formatCurrency,
 							locale,
 						)}
-						triggerClassName="md:opacity-0 transition-opacity md:group-hover:opacity-100 focus-within:opacity-100"
+						triggerClassName="can-hover:opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
 					/>
 				);
 			},
