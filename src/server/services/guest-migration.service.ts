@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "~prisma";
 import { logEventAsync } from "./audit.service";
 import { AlreadyClaimedError, claimShadowProfile } from "./claim.service";
+import { repointPaymentParty } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 interface MigrationResult {
@@ -121,6 +122,11 @@ export async function migrateGuestSessionsToUser(
 				where: { toParticipantType: "guest", toParticipantId: guestId },
 				data: { toParticipantType: "user", toParticipantId: userId },
 			});
+			await repointPaymentParty(
+				tx,
+				{ participantType: "guest", participantId: guestId },
+				{ participantType: "user", participantId: userId },
+			);
 
 			// ─── 7. AuditLogEntry: actor ───────────────────────────────────
 			await tx.auditLogEntry.updateMany({

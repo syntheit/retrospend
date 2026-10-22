@@ -48,17 +48,31 @@ export async function assertRelationship(
 		}
 	}
 
+	const other = {
+		participantType: ref.participantType,
+		participantId: ref.participantId,
+	};
+	// RLS shows a split participant only their own split row, so "both are
+	// split members" alone misses a debtor whose creditor paid: the payer of a
+	// transaction you are in counts too.
 	const count = await tx.sharedTransaction.count({
 		where: {
-			AND: [
-				{ splitParticipants: { some: me } },
+			OR: [
 				{
-					splitParticipants: {
-						some: {
-							participantType: ref.participantType,
-							participantId: ref.participantId,
-						},
-					},
+					AND: [
+						{ splitParticipants: { some: me } },
+						{ splitParticipants: { some: other } },
+					],
+				},
+				{
+					splitParticipants: { some: me },
+					paidByType: other.participantType,
+					paidById: other.participantId,
+				},
+				{
+					splitParticipants: { some: other },
+					paidByType: me.participantType,
+					paidById: me.participantId,
 				},
 			],
 		},

@@ -1,5 +1,6 @@
 import type { PrismaClient } from "~prisma";
 import { deleteFile } from "~/server/storage";
+import { repointPaymentParty, syncPaymentHeaders } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 export const DELETED_USER_SENTINEL = "DELETED_USER";
@@ -62,6 +63,11 @@ export async function anonymizeParticipantReferences(
 		where: { toParticipantType: participantType, toParticipantId: participantId },
 		data: { toParticipantId: sentinelId },
 	});
+	await repointPaymentParty(
+		tx,
+		{ participantType, participantId },
+		{ participantType, participantId: sentinelId },
+	);
 
 	// Anonymize AuditLogEntry actor
 	await tx.auditLogEntry.updateMany({
@@ -334,6 +340,12 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 		}
 	}
 
+	// Headers take their rows' new status; one whose rows were all cancelled goes.
+	await syncPaymentHeaders(
+		tx,
+		[...settlementsAsPayer, ...settlementsAsPayee].map((s) => s.paymentGroupId),
+	);
+
 	// ── Step 3: Auto-accept pending verifications ─────────────────────────────
 
 	await tx.splitParticipant.updateMany({
@@ -522,6 +534,11 @@ export async function anonymizeAndDeleteUser(
 			where: { toParticipantType: "user", toParticipantId: userId },
 			data: { toParticipantId: DELETED_USER_SENTINEL },
 		});
+		await repointPaymentParty(
+			tx,
+			{ participantType: "user", participantId: userId },
+			{ participantType: "user", participantId: DELETED_USER_SENTINEL },
+		);
 
 		// Anonymize ProjectParticipant
 		//
