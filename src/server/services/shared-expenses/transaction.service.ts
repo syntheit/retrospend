@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { fromMinorUnits, toMinorUnits } from "~/lib/money";
-import { defaultJoinedOn } from "~/server/services/project/join-date";
 import { findExchangeRate } from "~/server/exchange-rates";
+import { addGhostMembers } from "~/server/services/project/joining";
 import {
 	createNotification,
 	resolveParticipantName,
@@ -300,12 +300,10 @@ export class SharedTransactionService {
 			// Auto-add shadow participants (split members and a shadow payer) not
 			// yet in the project
 			if (input.projectId) {
-				await this.autoAddShadowParticipants(
-					tx,
-					input.projectId,
-					[paidBy, ...input.splitWith],
-					transaction.date,
-				);
+				await addGhostMembers(tx, input.projectId, [
+					paidBy,
+					...input.splitWith,
+				], this.actorUserId(), transaction.date);
 			}
 
 			await logAudit(tx, {
@@ -832,17 +830,12 @@ export class SharedTransactionService {
 				effectiveProjectId &&
 				(projectChanged || input.splitWith !== undefined || paidByChanged)
 			) {
-				await this.autoAddShadowParticipants(
-					tx,
-					effectiveProjectId,
-					[
-						effectivePaidBy,
-						...(projectChanged || input.splitWith !== undefined
-							? effectiveSplitRefs
-							: []),
-					],
-					fieldUpdates.date ?? existing.date,
-				);
+				await addGhostMembers(tx, effectiveProjectId, [
+					effectivePaidBy,
+					...(projectChanged || input.splitWith !== undefined
+						? effectiveSplitRefs
+						: []),
+				], this.actorUserId(), fieldUpdates.date ?? existing.date);
 			}
 
 			// Mark all participants except the editor as having unseen changes
@@ -1256,6 +1249,11 @@ export class SharedTransactionService {
 		}
 	}
 
+	/** The acting user for join dates (addGhostMembers); null for a guest. */
+	private actorUserId(): string | null {
+		return this.actor.participantType === "user" ? this.actor.participantId : null;
+	}
+
 	/** See {@link assertShadowsAddable}. Only meaningful for user actors. */
 	private async actorCanUseShadow(
 		tx: Prisma.TransactionClient,
@@ -1287,53 +1285,6 @@ export class SharedTransactionService {
 		// must not be able to spread a ghost (and lock its organizer out of
 		// claim links) just by splitting an expense with it.
 		return shared.some((m) => m.role === "EDITOR" || m.role === "ORGANIZER");
-	}
-
-	/**
-	 * Auto-adds any shadow participants not yet in the project as CONTRIBUTORs, so
-	 * a shadow added via create or edit shows up in the project roster (balances,
-	 * settlement). Callers must run {@link assertShadowsAddable} first. Their
-	 * join date comes from defaultJoinedOn, never after the expense's day.
-	 */
-	private async autoAddShadowParticipants(
-		tx: Prisma.TransactionClient,
-		projectId: string,
-		refs: ParticipantRef[],
-		expenseDate: Date,
-	): Promise<void> {
-		const seen = new Set<string>();
-		for (const p of refs) {
-			if (p.participantType !== "shadow") continue;
-			if (seen.has(p.participantId)) continue;
-			seen.add(p.participantId);
-			const alreadyIn = await tx.projectParticipant.findUnique({
-				where: {
-					projectId_participantType_participantId: {
-						projectId,
-						participantType: "shadow",
-						participantId: p.participantId,
-					},
-				},
-			});
-			if (!alreadyIn) {
-				await tx.projectParticipant.create({
-					data: {
-						projectId,
-						participantType: "shadow",
-						participantId: p.participantId,
-						role: "CONTRIBUTOR",
-						joinedOn: await defaultJoinedOn(
-							tx,
-							projectId,
-							this.actor.participantType === "user"
-								? this.actor.participantId
-								: null,
-							{ onDay: expenseDate },
-						),
-					},
-				});
-			}
-		}
 	}
 
 	/**

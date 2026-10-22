@@ -14,7 +14,7 @@ import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
-import { defaultJoinedOn } from "~/server/services/project/join-date";
+import { joinProject } from "~/server/services/project/joining";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
 	anonymizeParticipantReferences,
@@ -212,15 +212,12 @@ export const guestRouter = createTRPCRouter({
 				// The joiner is the actor, not an organizer, so folding themselves
 				// into everyone else's past expenses would be a self-service change
 				// to other people's balances. Don't "fix" this by triggering it.
-				await tx.projectParticipant.create({
-					data: {
-						projectId,
-						participantType: "guest",
-						participantId: guestSession.id,
-						role: link.roleGranted,
-						joinedOn: await defaultJoinedOn(tx, projectId, null),
-					},
-				});
+				await joinProject(tx, {
+					projectId,
+					participantType: "guest",
+					participantId: guestSession.id,
+					role: link.roleGranted,
+				}, null);
 
 				// Increment useCount
 				await tx.magicLink.update({
@@ -340,15 +337,12 @@ export const guestRouter = createTRPCRouter({
 						}
 					}
 					if (linkOk && link) {
-						await tx.projectParticipant.create({
-							data: {
-								projectId: session.projectId,
-								participantType: "guest",
-								participantId: session.id,
-								role: link.roleGranted,
-								joinedOn: await defaultJoinedOn(tx, session.projectId, null),
-							},
-						});
+						await joinProject(tx, {
+							projectId: session.projectId,
+							participantType: "guest",
+							participantId: session.id,
+							role: link.roleGranted,
+						}, null);
 					}
 				}
 
@@ -407,15 +401,12 @@ export const guestRouter = createTRPCRouter({
 
 				validateLinkOrThrow(link);
 
-				await tx.projectParticipant.create({
-					data: {
-						projectId: link.projectId,
-						participantType: "user",
-						participantId: userId,
-						role: link.roleGranted,
-						joinedOn: await defaultJoinedOn(tx, link.projectId, userId),
-					},
-				});
+				await joinProject(tx, {
+					projectId: link.projectId,
+					participantType: "user",
+					participantId: userId,
+					role: link.roleGranted,
+				}, userId);
 				await tx.magicLink.update({
 					where: { id: link.id },
 					data: { useCount: { increment: 1 } },
