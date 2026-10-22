@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toNumber, toNumberOrNull, toNumberWithDefault } from "../decimal";
+import { toNumber, toNumberOrNull, toNumberWithDefault } from "./decimal";
 
 describe("Decimal utilities", () => {
 	describe("toNumber", () => {

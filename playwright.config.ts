@@ -11,7 +11,7 @@ const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:1998";
 const DB_URL =
 	process.env.E2E_DATABASE_URL ??
 	process.env.DATABASE_URL ??
-	"postgresql://postgres:testpassword@localhost:5433/retrospend_test";
+	"postgresql://postgres:testpassword@localhost:5436/retrospend_test";
 
 const UPLOAD_DIR =
 	process.env.E2E_UPLOAD_DIR ??

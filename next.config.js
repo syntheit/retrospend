@@ -22,6 +22,10 @@ const config = {
 		NEXT_PUBLIC_ENABLE_LEGAL_PAGES: process.env.ENABLE_LEGAL_PAGES ?? "true",
 	},
 	serverExternalPackages: ["pdfkit"],
+	// Workspace packages ship TypeScript source (packages/*), not built JS.
+	// @retrospend/i18n loads catalogs with import.meta.glob, which only
+	// Turbopack supports: `next build --webpack` (and ANALYZE=true) loses translations.
+	transpilePackages: ["@retrospend/domain", "@retrospend/i18n"],
 	experimental: {
 		externalDir: true,
 		optimizePackageImports: ["recharts", "@tabler/icons-react", "lucide-react", "date-fns"],

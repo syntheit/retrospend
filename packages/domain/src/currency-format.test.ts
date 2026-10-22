@@ -9,7 +9,7 @@ import {
 	formatNumber,
 	formatPercent,
 	parseFormattedNumber,
-} from "../currency-format";
+} from "./currency-format";
 
 describe("isCrypto", () => {
 	describe("known fiat currencies return false", () => {

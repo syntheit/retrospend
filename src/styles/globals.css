@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* Design tokens (docs/ui/GUIDELINE.md §2), generated from docs/ui/design.json. */
+/* Design tokens (docs/ui/GUIDELINE.md §2), generated from packages/tokens/src. */
 @import "./tokens.css";
 
 @custom-variant dark (&:is(.dark *));

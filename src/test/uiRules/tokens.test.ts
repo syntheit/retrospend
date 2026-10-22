@@ -1,42 +1,50 @@
 // UI-003 (tokens in sync), UI-004 (contrast floor) and UI-102 (reduced motion).
+// The tokens live in packages/tokens/src (DTCG JSON); `pnpm ui:tokens`
+// generates the CSS and native files from them.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+	contrast,
+	over,
+	parseColor,
+	type Rgba,
+} from "@retrospend/tokens/color";
+import { loadTokens, type Theme } from "@retrospend/tokens/load";
+import { buildOutputs } from "@retrospend/tokens/outputs";
 import { describe, expect, it } from "vitest";
 import { REPO_ROOT } from "./paths";
-import {
-	buildTokensCss,
-	formatDesign,
-	loadDesign,
-	type Theme,
-	TOKENS_CSS_PATH,
-	tokenContrast,
-	withHex,
-} from "./tokens";
 
-const design = loadDesign();
+const tokens = await loadTokens();
 const THEMES: Theme[] = ["light", "dark"];
 const WHITE = { r: 1, g: 1, b: 1, a: 1 };
+const read = (path: string) => readFileSync(join(REPO_ROOT, path), "utf8");
+
+function color(name: string, theme: Theme): Rgba {
+	const t = tokens[theme].get(`color.${name}`);
+	if (!t) throw new Error(`unknown color token ${name}`);
+	return parseColor(t.$value);
+}
+
+/** Contrast of `fg` on `bg` in a theme; a translucent fg is composited first. */
+function tokenContrast(fg: string | Rgba, bg: string, theme: Theme): number {
+	const under = color(bg, theme);
+	const top = typeof fg === "string" ? color(fg, theme) : fg;
+	return contrast(over(top, under), under);
+}
 
 describe("design tokens", () => {
-	it("UI-003: design.json hex values and src/styles/tokens.css are generated from design.json", () => {
-		const fresh = withHex(design);
-		const hint =
-			"stale: run `pnpm ui:tokens` and commit docs/ui/design.json and src/styles/tokens.css";
-		expect(
-			readFileSync(join(REPO_ROOT, "docs/ui/design.json"), "utf8"),
-			hint,
-		).toBe(formatDesign(fresh));
-		expect(readFileSync(TOKENS_CSS_PATH, "utf8"), hint).toBe(
-			buildTokensCss(fresh),
-		);
+	it("UI-003: every generated token file matches packages/tokens/src", async () => {
+		for (const { path, content } of await buildOutputs()) {
+			expect(read(path), `${path} is stale: run \`pnpm ui:tokens\``).toBe(
+				content,
+			);
+		}
 	});
 
 	it("UI-003: globals.css imports the token file", () => {
-		const globals = readFileSync(
-			join(REPO_ROOT, "src/styles/globals.css"),
-			"utf8",
+		expect(read("src/styles/globals.css")).toMatch(
+			/@import\s+"\.\/tokens\.css";/,
 		);
-		expect(globals).toMatch(/@import\s+"\.\/tokens\.css";/);
 	});
 
 	it("UI-004: text tokens reach 4.5:1 on bg, surface and raised in both themes", () => {
@@ -54,7 +62,7 @@ describe("design tokens", () => {
 		for (const theme of THEMES) {
 			for (const fg of text) {
 				for (const bg of ["bg", "surface", "raised"]) {
-					const ratio = tokenContrast(design, fg, bg, theme);
+					const ratio = tokenContrast(fg, bg, theme);
 					expect(
 						ratio,
 						`${fg} on ${bg} (${theme}) is ${ratio.toFixed(2)}:1`,
@@ -75,14 +83,14 @@ describe("design tokens", () => {
 		];
 		for (const theme of THEMES) {
 			for (const [fg, bg] of pairs) {
-				const ratio = tokenContrast(design, fg as string, bg as string, theme);
+				const ratio = tokenContrast(fg as string, bg as string, theme);
 				expect(
 					ratio,
 					`${fg} on ${bg} (${theme}) is ${ratio.toFixed(2)}:1`,
 				).toBeGreaterThanOrEqual(4.5);
 			}
 			for (let i = 1; i <= 8; i++) {
-				const ratio = tokenContrast(design, WHITE, `avatar-${i}`, theme);
+				const ratio = tokenContrast(WHITE, `avatar-${i}`, theme);
 				expect(
 					ratio,
 					`white initials on avatar-${i} (${theme})`,
@@ -97,7 +105,7 @@ describe("design tokens", () => {
 				"accent",
 				...Array.from({ length: 8 }, (_, i) => `series-${i + 1}`),
 			]) {
-				const ratio = tokenContrast(design, t, "bg", theme);
+				const ratio = tokenContrast(t, "bg", theme);
 				expect(
 					ratio,
 					`${t} on bg (${theme}) is ${ratio.toFixed(2)}:1`,
@@ -107,18 +115,40 @@ describe("design tokens", () => {
 	});
 
 	it("UI-102: reduced motion is honored in the token file and globals.css", () => {
-		const tokens = readFileSync(TOKENS_CSS_PATH, "utf8");
-		const globals = readFileSync(
-			join(REPO_ROOT, "src/styles/globals.css"),
-			"utf8",
+		expect(read("src/styles/tokens.css")).toContain(
+			"prefers-reduced-motion: reduce",
 		);
-		expect(tokens).toContain("prefers-reduced-motion: reduce");
-		expect(globals).toContain("prefers-reduced-motion: reduce");
+		expect(read("src/styles/globals.css")).toContain(
+			"prefers-reduced-motion: reduce",
+		);
+	});
+
+	it("UI-102: reduced motion drops movement durations and keeps fades", () => {
+		const reduced =
+			/@media \(prefers-reduced-motion: reduce\) \{([^}]*)\}/.exec(
+				read("src/styles/tokens.css"),
+			)?.[1] ?? "";
+		const dropped = [...reduced.matchAll(/--t-([\w-]+): 1ms;/g)].map(
+			(m) => m[1],
+		);
+		// Zooms, slides, height changes and number rolls stop; state changes
+		// (color and opacity), the only motion reduced motion allows, keep
+		// their duration.
+		expect(dropped.sort()).toEqual([
+			"menu",
+			"num-in",
+			"num-out",
+			"row",
+			"sheet",
+			"tab",
+		]);
 	});
 
 	it("the motion tokens match the durations UI-100 accepts", async () => {
 		const { MOTION_MS } = await import("./rules");
-		for (const d of Object.values(design.motion.duration))
-			expect(MOTION_MS.has(d.ms), `${d.ms}ms`).toBe(true);
+		for (const t of tokens.light.values()) {
+			if (t.$type === "duration")
+				expect(MOTION_MS.has(t.$value.value), t.path.join(".")).toBe(true);
+		}
 	});
 });

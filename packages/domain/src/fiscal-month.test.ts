@@ -3,7 +3,7 @@ import {
 	getFiscalMonthRange,
 	getCurrentFiscalMonth,
 	getFiscalMonthProgress,
-} from "../fiscal-month";
+} from "./fiscal-month";
 
 describe("getFiscalMonthRange", () => {
 	describe("startDay=1 (fast path)", () => {

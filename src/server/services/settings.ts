@@ -1,4 +1,5 @@
 import { db } from "~/server/db";
+import type { FeatureFlagMode } from "~prisma";
 
 const SETTINGS_ID = "app_settings_singleton";
 const CACHE_TTL_MS = 60_000; // 60 seconds
@@ -16,6 +17,8 @@ export interface AppSettings {
 	auditPrivacyMode: "MINIMAL" | "ANONYMIZED" | "FULL";
 	maxConcurrentImportJobs: number;
 	enableFeedback: boolean;
+	uiV2Mode: FeatureFlagMode;
+	apiV1Mode: FeatureFlagMode;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -61,6 +64,8 @@ export async function updateAppSettings(updates: {
 	auditPrivacyMode?: "MINIMAL" | "ANONYMIZED" | "FULL";
 	maxConcurrentImportJobs?: number;
 	enableFeedback?: boolean;
+	uiV2Mode?: FeatureFlagMode;
+	apiV1Mode?: FeatureFlagMode;
 }): Promise<AppSettings> {
 	const settings = await db.appSettings.upsert({
 		where: { id: SETTINGS_ID },
