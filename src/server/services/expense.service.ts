@@ -1,66 +1,151 @@
 import { TRPCError } from "@trpc/server";
-import { computeAmountInUSD, isValidRate, USD } from "~/lib/money";
+import { isValidRate, USD } from "~/lib/money";
+import {
+	CUSTOM_RATE_TYPE,
+	rateTypeFromPricingSource,
+} from "~/lib/rate-selection";
 import type { Prisma, PrismaClient } from "~prisma";
-import { requireExchangeRate } from "../exchange-rates";
 import { AmortizationService } from "./amortization.service";
+import {
+	type BookedRate,
+	bookRate,
+	loadRateContext,
+	type RateChoice,
+} from "./rate-types";
 import { listedEntryWhere } from "./spending";
 
 /** pricingSource of a rate the user typed in by hand. */
-export const CUSTOM_PRICING_SOURCE = "custom";
+export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
 
 function sameRate(a: number, b: number): boolean {
 	return Math.abs(a - b) <= Math.max(Math.abs(a), Math.abs(b)) * 1e-6;
 }
 
+/** What the form sends about an entry's rate. */
+export interface RateInput {
+	amount: number;
+	currency: string;
+	date: Date;
+	/** Entry leg in the stored convention: kept when custom or unchanged on edit. */
+	exchangeRate?: number;
+	/** Legacy: the entry leg's rate type, or a placeholder (MANUAL, IMPORT). */
+	pricingSource?: string | null;
+	/** The pair's rate type picked on the Add sheet (a table type or "custom"). */
+	rateType?: string;
+	/** A typed rate between entry and home: 1 `base` = `value` of the other. */
+	customRate?: { base: string; value: number };
+}
+
+/** The rate an expense was saved with. */
+export interface SavedRate {
+	currency: string;
+	exchangeRate: number;
+	rateType: string | null;
+	homeCurrency: string | null;
+	homeRate: string | null;
+}
+
+/** Editing without touching the rate: same currency, same rate, same type. */
+function untouched(input: RateInput, saved: SavedRate): boolean {
+	return (
+		saved.currency === input.currency &&
+		isValidRate(saved.exchangeRate) &&
+		(input.exchangeRate === undefined ||
+			sameRate(input.exchangeRate, saved.exchangeRate)) &&
+		(input.rateType === undefined || input.rateType === saved.rateType)
+	);
+}
+
 /**
- * Works out the stored exchangeRate and amountInUSD of an expense on the
- * server. The client's amountInUSD is never used. Its exchangeRate is kept
- * only when it is a custom rate the user typed, or the rate already stored on
- * the expense being edited. Anything else comes from the rate table for the
- * expense date, using the pricingSource rate type when it exists.
+ * How an entry's rate is chosen (pure, so every rule is unit tested):
+ * - a typed cross rate (the Add sheet's Custom) wins;
+ * - an edit that leaves the rate alone keeps both legs (its home leg when it
+ *   was booked in today's home, else the home leg is booked now);
+ * - the old form's custom rate keeps its entry leg;
+ * - anything else comes from the table for the entry date, of the picked
+ *   type on both legs. Without one, the old form's pricingSource picks the
+ *   entry leg only (it sends "official" for EUR and BRL on its own, and
+ *   "official" for USD, whose leg has no type) and the home leg takes the
+ *   user's default.
+ */
+export function rateChoice(
+	input: RateInput,
+	saved: SavedRate | null | undefined,
+	homeCurrency: string,
+): RateChoice {
+	if (input.customRate) return { kind: "custom", ...input.customRate };
+	const legacyType = rateTypeFromPricingSource(input.pricingSource);
+	if (saved && untouched(input, saved)) {
+		if (saved.homeCurrency === homeCurrency && saved.homeRate) {
+			return {
+				kind: "kept",
+				exchangeRate: saved.exchangeRate,
+				homeRate: saved.homeRate,
+				rateType: saved.rateType,
+			};
+		}
+		return {
+			kind: "entryLeg",
+			exchangeRate: saved.exchangeRate,
+			rateType: saved.rateType ?? legacyType,
+		};
+	}
+	const entryType = input.currency === USD ? null : legacyType;
+	if ((input.rateType ?? entryType) === CUSTOM_RATE_TYPE) {
+		if (input.currency !== USD && isValidRate(input.exchangeRate)) {
+			return {
+				kind: "entryLeg",
+				exchangeRate: input.exchangeRate,
+				rateType: CUSTOM_RATE_TYPE,
+			};
+		}
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "Enter the custom rate",
+		});
+	}
+	if (input.rateType !== undefined) {
+		return { kind: "table", rateType: input.rateType };
+	}
+	return { kind: "table", rateType: null, entryType };
+}
+
+/**
+ * Works out both legs of an expense's rate on the server: the entry leg
+ * (exchangeRate, amountInUSD) and the home leg booked once (rateType,
+ * homeCurrency, homeRate, homeAmount), so the entry never drifts with later
+ * rates. The client's amountInUSD is never used. A missing rate throws
+ * MissingRateError: saving is blocked, never done at 0 or 1.
  */
 export async function resolveExpenseRate(
 	db: PrismaClient | Prisma.TransactionClient,
-	input: {
-		amount: number;
-		currency: string;
-		date: Date;
-		exchangeRate?: number;
-		pricingSource?: string | null;
-	},
-	existing?: { currency: string; exchangeRate: number } | null,
-): Promise<{ exchangeRate: number; amountInUSD: number }> {
-	let exchangeRate: number;
+	userId: string,
+	input: RateInput,
+	saved?: SavedRate | null,
+): Promise<BookedRate> {
+	const ctx = await loadRateContext(db, userId);
+	return bookRate(
+		db,
+		ctx,
+		{ amount: input.amount, currency: input.currency, date: input.date },
+		rateChoice(input, saved, ctx.homeCurrency),
+	);
+}
 
-	if (input.currency === USD) {
-		exchangeRate = 1;
-	} else if (
-		input.pricingSource === CUSTOM_PRICING_SOURCE &&
-		isValidRate(input.exchangeRate)
-	) {
-		exchangeRate = input.exchangeRate;
-	} else if (
-		existing &&
-		existing.currency === input.currency &&
-		isValidRate(existing.exchangeRate) &&
-		(input.exchangeRate === undefined ||
-			sameRate(input.exchangeRate, existing.exchangeRate))
-	) {
-		// Editing without touching the rate keeps the rate of its own day.
-		exchangeRate = existing.exchangeRate;
-	} else {
-		const picked = await requireExchangeRate(
-			db,
-			input.currency,
-			input.date,
-			input.pricingSource,
-		);
-		exchangeRate = picked.rate;
-	}
-
+/** The rate columns of a saved expense row. */
+function savedRateOf(row: {
+	currency: string;
+	exchangeRate: Prisma.Decimal | number;
+	rateType: string | null;
+	homeCurrency: string | null;
+	homeRate: Prisma.Decimal | null;
+}): SavedRate {
 	return {
-		exchangeRate,
-		amountInUSD: computeAmountInUSD(input.amount, input.currency, exchangeRate),
+		currency: row.currency,
+		exchangeRate: Number(row.exchangeRate),
+		rateType: row.rateType,
+		homeCurrency: row.homeCurrency,
+		homeRate: row.homeRate?.toString() ?? null,
 	};
 }
 
@@ -72,6 +157,8 @@ export interface CreateExpenseInput {
 	exchangeRate?: number;
 	amountInUSD?: number;
 	pricingSource?: string;
+	rateType?: string;
+	customRate?: { base: string; value: number };
 	date: Date;
 	location?: string;
 	description?: string;
@@ -106,7 +193,7 @@ export async function createExpenseIn(
 	}
 
 	const pricingSource = input.pricingSource ?? "MANUAL";
-	const { exchangeRate, amountInUSD } = await resolveExpenseRate(tx, input);
+	const rate = await resolveExpenseRate(tx, userId, input);
 
 	// Determine excludeFromAnalytics: explicit input > category default > false
 	// Project expenses always have excludeFromAnalytics: false
@@ -121,8 +208,7 @@ export async function createExpenseIn(
 			title: input.title,
 			amount: input.amount,
 			currency: input.currency,
-			exchangeRate: exchangeRate,
-			amountInUSD: amountInUSD,
+			...rate,
 			pricingSource: pricingSource,
 			date: input.date,
 			location: input.location,
@@ -165,6 +251,8 @@ export class ExpenseService {
 			exchangeRate?: number;
 			amountInUSD?: number;
 			pricingSource?: string;
+			rateType?: string;
+			customRate?: { base: string; value: number };
 			date: Date;
 			location?: string;
 			description?: string;
@@ -203,13 +291,11 @@ export class ExpenseService {
 			}
 		}
 
-		const { exchangeRate, amountInUSD } = await resolveExpenseRate(
+		const rate = await resolveExpenseRate(
 			this.db,
+			userId,
 			input,
-			{
-				currency: existingExpense.currency,
-				exchangeRate: Number(existingExpense.exchangeRate),
-			},
+			savedRateOf(existingExpense),
 		);
 
 		return await this.runInTransaction(async (tx) => {
@@ -219,8 +305,7 @@ export class ExpenseService {
 					title: input.title,
 					amount: input.amount,
 					currency: input.currency,
-					exchangeRate,
-					amountInUSD,
+					...rate,
 					pricingSource: input.pricingSource,
 					date: input.date,
 					location: input.location || null,

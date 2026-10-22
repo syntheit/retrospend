@@ -67,6 +67,10 @@ export class AmortizationService {
 			date: Date;
 			categoryId: string | null;
 			excludeFromAnalytics?: boolean | null;
+			rateType?: string | null;
+			homeCurrency?: string | null;
+			homeRate?: number | string | Prisma.Decimal | null;
+			homeAmount?: number | string | Prisma.Decimal | null;
 		},
 		amortizeOver: number,
 	) {
@@ -86,10 +90,22 @@ export class AmortizationService {
 			expense.currency,
 		);
 
+		// The booked home amount splits like the amount, so the parts add up
+		// to the parent's home value and none of them drifts either.
+		const { homeCurrency, homeRate, homeAmount } = expense;
+		const homeParts =
+			homeCurrency && homeRate != null && homeAmount != null
+				? splitMinorUnits(Number(homeAmount), amortizeOver, homeCurrency)
+				: null;
+
 		// 3. Create new children. They carry the parent's rate and its
 		// excludeFromAnalytics flag, so an excluded purchase stays excluded
 		// month by month.
 		const children = splits.map((split, i) => ({
+			rateType: expense.rateType ?? null,
+			...(homeParts
+				? { homeCurrency, homeRate, homeAmount: homeParts[i] }
+				: {}),
 			id: split.id,
 			userId: expense.userId,
 			title: `${expense.title} (${i + 1}/${amortizeOver})`,

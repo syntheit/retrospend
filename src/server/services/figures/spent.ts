@@ -9,8 +9,11 @@
  *
  * Every reader (dashboard, stats, budget page, runway, profile, suggestions)
  * takes its items from here and only picks the currency and rate to total
- * them in (sumIn, the totals rule in ~/lib/money). Runs on whatever client it
- * is given, a preview's transaction included, so it never imports the db.
+ * them in (sumIn, the totals rule in ~/lib/money). A personal row saved with
+ * a booked home value (M2) counts that value in its home currency, so it
+ * never moves with later rates; rows with none, and shares, keep the period
+ * rate. Runs on whatever client it is given, a preview's transaction
+ * included, so it never imports the db.
  */
 
 import { toMinor } from "@retrospend/domain/money-minor";
@@ -71,17 +74,24 @@ export interface SpentItem extends MoneyItem {
 	count: number;
 }
 
+// homeCurrency splits rows booked when saved (M2) from rows with no booked
+// value, so each slice is either all booked or all on the period rate.
 const GROUP_KEYS = {
-	currency: ["currency"],
-	category: ["categoryId", "currency"],
-	day: ["date", "categoryId", "currency"],
+	currency: ["currency", "homeCurrency"],
+	category: ["categoryId", "currency", "homeCurrency"],
+	day: ["date", "categoryId", "currency", "homeCurrency"],
 } as const;
 
 type GroupRow = {
 	currency: string;
+	homeCurrency: string | null;
 	categoryId?: string | null;
 	date?: Date;
-	_sum: { amount: Prisma.Decimal | null; amountInUSD: Prisma.Decimal | null };
+	_sum: {
+		amount: Prisma.Decimal | null;
+		amountInUSD: Prisma.Decimal | null;
+		homeAmount: Prisma.Decimal | null;
+	};
 	_count: { _all: number };
 };
 
@@ -120,7 +130,7 @@ async function groupRows(
 	return groupBy({
 		by: [...GROUP_KEYS[by]],
 		where,
-		_sum: { amount: true, amountInUSD: true },
+		_sum: { amount: true, amountInUSD: true, homeAmount: true },
 		_count: { _all: true },
 	});
 }
@@ -131,6 +141,12 @@ const toItem =
 		currency: row.currency,
 		amount: sign * Number(row._sum.amount ?? 0),
 		amountInUSD: sign * Number(row._sum.amountInUSD ?? 0),
+		booked: row.homeCurrency
+			? {
+					currency: row.homeCurrency,
+					amount: sign * Number(row._sum.homeAmount ?? 0),
+				}
+			: null,
 		categoryId: row.categoryId ?? null,
 		date: row.date ?? null,
 		count: sign === 1 ? row._count._all : 0,

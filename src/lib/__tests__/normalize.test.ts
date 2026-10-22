@@ -209,6 +209,19 @@ describe("convertExpenseAmountForDisplay", () => {
 		expect(result).toBe(20);
 	});
 
+	it("shows a value booked in the target currency as is, never at today's rate (M2)", () => {
+		// USD 20 booked at ARS 24,000.00; today's 1,300 would say 26,000.
+		const expense = makeExpense({
+			currency: "USD",
+			amount: 20,
+			amountInUSD: 20,
+			home: { minor: 2_400_000, currency: "ARS" },
+		});
+		expect(convertExpenseAmountForDisplay(expense, "ARS", 1300)).toBe(24_000);
+		// In another currency it converts the USD value as before.
+		expect(convertExpenseAmountForDisplay(expense, "EUR", 0.9)).toBeCloseTo(18, 8);
+	});
+
 	it("returns amountInUSD as fallback when no rate available", () => {
 		const expense = makeExpense({
 			currency: "ARS",

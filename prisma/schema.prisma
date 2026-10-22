@@ -30,7 +30,10 @@ model User {
   autoAcceptSplits            Boolean                       @default(true)
   fiscalMonthStartDay         Int                           @default(1)
   defaultExpenseDateBehavior  DefaultExpenseDateBehavior    @default(TODAY)
-  accounts                Account[]
+  // Default rate type per home currency, {"ARS": "blue"} (M2, N73).
+  // Empty uses the built-in default (~/lib/rate-selection).
+  defaultRateTypes            Json                          @default("{}")
+  accounts               Account[]
   assetAccounts           AssetAccount[]
   assetSnapshots          AssetSnapshot[]
   assetHistories          AssetHistory[]
@@ -195,6 +198,18 @@ model Expense {
   entryKind    EntryKind        @default(STANDARD)
   inType       InType?
   amortizeMode AmortizeMode     @default(INSTALLMENTS)
+
+  // Rate type per entry (M2, N73). rateType names the conversion: an
+  // exchange_rate type or "custom". The home leg is booked once, at save, so
+  // it never drifts: homeRate is units of homeCurrency per 1 unit of
+  // currency (a cross rate, not exchangeRate's per-USD convention) and
+  // homeAmount is the value it gave. All three are set or all null (CHECK
+  // expense_home_leg_check); null rows (before M2, imports, the sidecar)
+  // follow the totals rule in ~/lib/money.
+  rateType     String?  @db.VarChar(32)
+  homeCurrency String?  @db.VarChar(10)
+  homeRate     Decimal? @db.Decimal(28, 12)
+  homeAmount   Decimal? @db.Decimal(19, 8)
 
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
