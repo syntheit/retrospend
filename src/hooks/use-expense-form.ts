@@ -56,6 +56,7 @@ type LoadableExpense = {
 	currency: string;
 	exchangeRate?: number | string | null;
 	amountInUSD?: number | string | null;
+	pricingSource?: string | null;
 	date: Date | string;
 	location?: string | null;
 	description?: string | null;
@@ -90,6 +91,12 @@ export function expenseToFormValues(expense: LoadableExpense): ExpenseFormData {
 			? Number(expense.exchangeRate)
 			: undefined,
 		amountInUSD: expense.amountInUSD ? Number(expense.amountInUSD) : undefined,
+		// The rate type it was saved with (blue stays blue on edit). "MANUAL" is
+		// the server's placeholder for "no type given", not a rate type.
+		pricingSource:
+			expense.pricingSource && expense.pricingSource !== "MANUAL"
+				? expense.pricingSource
+				: undefined,
 		date: new Date(expense.date),
 		location: expense.location || "",
 		description: expense.description || "",
@@ -697,6 +704,7 @@ export function useExpenseForm({
 	useEffect(() => {
 		if (!expense) return;
 		reset(expenseToFormValues(expense));
+		setIsCustomRateSet(expense.pricingSource === "custom");
 		onTitleChangeRef.current?.(expense.title || "");
 		categoryAutoPredictedRef.current = false;
 		// Treat existing excluded expenses as user-set (suppress the "auto-excluded" note)
