@@ -128,3 +128,150 @@ export async function resolveParticipantName(
 		return "Someone";
 	}
 }
+
+// ---- the caller's own notifications (tRPC notification router, /api/v1) ----
+
+type UserDb = typeof db;
+
+export const NOTIFICATION_TYPES: NotificationType[] = [
+	"EXPENSE_SPLIT",
+	"VERIFICATION_REQUEST",
+	"EXPENSE_EDITED",
+	"EXPENSE_DELETED",
+	"SETTLEMENT_RECEIVED",
+	"SETTLEMENT_CONFIRMED",
+	"SETTLEMENT_REJECTED",
+	"PERIOD_CLOSED",
+	"PARTICIPANT_ADDED",
+	"PAYMENT_REMINDER",
+];
+
+/**
+ * Email defaults written when a user first opens their preferences. These
+ * differ from EMAIL_ON_BY_DEFAULT above, which only applies while no row
+ * exists yet; kept as they were so stored preferences do not change.
+ */
+const PREFERENCE_EMAIL_DEFAULTS = new Set<NotificationType>([
+	"VERIFICATION_REQUEST",
+	"PERIOD_CLOSED",
+]);
+
+/**
+ * A page of notifications, newest first (ties by id). `afterId` is the
+ * last notification of the previous page; one the caller cannot see starts
+ * from the top.
+ */
+export async function listNotifications(
+	userDb: UserDb,
+	userId: string,
+	page: { unreadOnly: boolean; take: number; afterId?: string },
+) {
+	const after = page.afterId
+		? await userDb.notification.findFirst({
+				where: { id: page.afterId, userId },
+				select: { id: true, createdAt: true },
+			})
+		: null;
+	return userDb.notification.findMany({
+		where: {
+			userId,
+			...(page.unreadOnly ? { isRead: false } : {}),
+			...(after
+				? {
+						OR: [
+							{ createdAt: { lt: after.createdAt } },
+							{ createdAt: after.createdAt, id: { lt: after.id } },
+						],
+					}
+				: {}),
+		},
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		take: page.take,
+	});
+}
+
+export function countUnreadNotifications(userDb: UserDb, userId: string) {
+	return userDb.notification.count({ where: { userId, isRead: false } });
+}
+
+/** Marks one notification read; false when the caller has no such notification. */
+export async function markNotificationRead(
+	userDb: UserDb,
+	userId: string,
+	id: string,
+): Promise<boolean> {
+	const found = await userDb.notification.findFirst({
+		where: { id, userId },
+		select: { id: true },
+	});
+	if (!found) return false;
+	await userDb.notification.updateMany({
+		where: { id, userId },
+		data: { isRead: true },
+	});
+	return true;
+}
+
+/** Marks every unread notification read and says how many changed. */
+export async function markAllNotificationsRead(
+	userDb: UserDb,
+	userId: string,
+): Promise<number> {
+	const { count } = await userDb.notification.updateMany({
+		where: { userId, isRead: false },
+		data: { isRead: true },
+	});
+	return count;
+}
+
+/** One row per type, creating the missing ones with their defaults. */
+export async function getNotificationPreferences(
+	userDb: UserDb,
+	userId: string,
+) {
+	const existing = await userDb.notificationPreference.findMany({
+		where: { userId },
+		select: { type: true },
+	});
+	const have = new Set(existing.map((p) => p.type));
+	const missing = NOTIFICATION_TYPES.filter((t) => !have.has(t));
+	if (missing.length > 0) {
+		await userDb.notificationPreference.createMany({
+			data: missing.map((type) => ({
+				userId,
+				type,
+				inApp: true,
+				email: PREFERENCE_EMAIL_DEFAULTS.has(type),
+				digestMode: false,
+			})),
+			skipDuplicates: true,
+		});
+	}
+	return userDb.notificationPreference.findMany({
+		where: { userId },
+		orderBy: { type: "asc" },
+	});
+}
+
+export async function updateNotificationPreferences(
+	userDb: UserDb,
+	userId: string,
+	preferences: {
+		type: NotificationType;
+		inApp: boolean;
+		email: boolean;
+		digestMode: boolean;
+	}[],
+) {
+	for (const pref of preferences) {
+		await userDb.notificationPreference.upsert({
+			where: { userId_type: { userId, type: pref.type } },
+			create: { userId, ...pref },
+			update: {
+				inApp: pref.inApp,
+				email: pref.email,
+				digestMode: pref.digestMode,
+			},
+		});
+	}
+}
