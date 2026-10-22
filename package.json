@@ -23,6 +23,7 @@
 		"preview": "node scripts/next-build.mjs && next start",
 		"start": "next start",
 		"test": "vitest run",
+		"test:pg": "vitest run --config vitest.pg.config.ts",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:headed": "playwright test --headed",

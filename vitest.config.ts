@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
 	plugins: [react()],
@@ -9,6 +9,8 @@ export default defineConfig({
 	test: {
 		environment: "node",
 		include: ["src/**/*.test.ts"],
+		// Real-Postgres tests run through `pnpm test:pg` (vitest.pg.config.ts).
+		exclude: [...configDefaults.exclude, "src/**/*.pg.test.ts"],
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "html", "lcov"],
