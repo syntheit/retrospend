@@ -5,7 +5,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { getDateFnsLocale } from "~/lib/date-locale";
-import { digitOrderOf, type IsoDate, localDay, type WeekStart } from "./dates";
+import {
+	digitOrderOf,
+	type IsoDate,
+	localDay,
+	readTypedDate,
+	type WeekStart,
+} from "./dates";
 import type { LabelFormat } from "./date-range-model";
 
 /**
@@ -40,7 +46,16 @@ export function useDateFormat() {
 			weekdays: [0, 1, 2, 3, 4, 5, 6].map((n) =>
 				format(new Date(2026, 0, 4 + n, 12), "EEEEEE", { locale: dl }),
 			),
+			/** At rest: the kit's medium date ("Oct 5, 2026"). */
+			medium: (iso: IsoDate) => fmt(iso, "PP"),
+			/** While editing: the numeric form ("10/5/2026"). */
 			field: (iso: IsoDate) => fmt(iso, "P"),
+			read: (text: string) =>
+				readTypedDate(
+					text,
+					digitOrderOf(dl.formatLong.date({ width: "short" })),
+					dl,
+				),
 		};
 	}, [locale, t]);
 }

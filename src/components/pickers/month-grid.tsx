@@ -92,8 +92,11 @@ export function MonthGrid(p: MonthGridProps) {
 
 type DayState = {
 	end: boolean;
+	lo: boolean;
+	hi: boolean;
 	inside: boolean;
 	today: boolean;
+	future: boolean;
 	preview: boolean;
 };
 
@@ -106,13 +109,18 @@ export function dayState(
 		preview?: boolean;
 	},
 ): DayState {
-	const end = day === p.lo || day === p.hi;
+	const lo = day === p.lo;
+	const hi = day === p.hi;
 	const inside = !!(p.lo && p.hi && day > p.lo && day < p.hi);
 	return {
-		end,
+		end: lo || hi,
+		lo,
+		hi,
 		inside,
 		today: day === p.today,
-		preview: !!p.preview && (inside || day === p.hi),
+		future: day > p.today,
+		// While picking the end, the days up to the hovered one are a lighter fill.
+		preview: !!p.preview && inside,
 	};
 }
 
@@ -131,10 +139,15 @@ function DayCell(props: {
 			aria-label={props.label}
 			aria-pressed={state.end}
 			className={cn(
-				"h-8 w-full rounded-ctl p-0 font-normal text-body tabular-nums",
-				state.inside && "rounded-none bg-brand-soft",
-				state.preview && "bg-raised",
-				state.end && !state.preview && "bg-brand text-brand-fg hover:bg-brand",
+				// The range is data, so it takes the accent (kit .drp-days), not brand.
+				"h-8 w-full rounded-ctl p-0 font-normal text-fg text-small tabular-nums can-hover:hover:bg-transparent can-hover:hover:ring-1 can-hover:hover:ring-ds-accent can-hover:hover:ring-inset",
+				state.future && "text-fg-3",
+				state.inside && "rounded-none bg-accent-soft",
+				state.preview && "bg-accent-soft/50",
+				state.end &&
+					"bg-ds-accent font-semibold text-accent-fg can-hover:hover:bg-ds-accent can-hover:hover:ring-0",
+				state.lo && !state.hi && "rounded-r-none",
+				state.hi && !state.lo && "rounded-l-none",
 				state.today && !state.end && "font-semibold text-accent-strong",
 			)}
 			data-day={day}

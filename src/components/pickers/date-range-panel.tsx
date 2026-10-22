@@ -164,12 +164,13 @@ function RangeFields({ d }: Part) {
 		<div className="flex items-end gap-2">
 			{(["from", "to"] as const).map((end) => (
 				<DateField
-					display={f.field}
+					display={f.medium}
+					edit={f.field}
 					id={`${id}-${end}`}
 					key={end}
 					label={t(end)}
 					onChange={(iso) => d.setEnd(end, iso)}
-					order={f.order}
+					read={f.read}
 					placeholder={t(end === "from" ? "startDate" : "endDate")}
 					value={d.range[end]}
 				/>
@@ -205,7 +206,7 @@ function MonthJump({ d, today }: Part) {
 	const t = useTranslations("pickers.dateRange");
 	const f = useDateFormat();
 	return (
-		<Select onValueChange={d.jumpTo} value={d.months.at(-1)}>
+		<Select onValueChange={d.jumpTo} value={d.months[0]}>
 			<SelectTrigger aria-label={t("jump")} className="h-ctl-sm">
 				<SelectValue />
 			</SelectTrigger>

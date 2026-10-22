@@ -4,23 +4,30 @@ import * as React from "react";
 
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { type DigitOrder, type IsoDate, parseTypedDate } from "./dates";
+import type { IsoDate } from "./dates";
 
 /**
- * A typed date: shows the day in the locale's short form and reads ISO or
- * the locale's digit order back on blur or Enter. Unreadable text marks the
- * field invalid and keeps the last good value.
+ * A typed date: at rest it shows the kit's medium date ("Oct 5, 2026"); on
+ * focus it switches to the numeric form to edit. Blur or Enter reads either
+ * form back. Unreadable text marks the field invalid and keeps the last
+ * good value.
  */
 export function DateField(props: {
 	id: string;
 	label: string;
 	placeholder: string;
 	value: IsoDate | null;
-	order: DigitOrder;
+	/** At rest. */
 	display: (iso: IsoDate) => string;
+	/** While focused. */
+	edit: (iso: IsoDate) => string;
+	read: (text: string) => IsoDate | "" | null;
 	onChange: (iso: IsoDate | null) => void;
 }) {
-	const shown = props.value ? props.display(props.value) : "";
+	const [focused, setFocused] = React.useState(false);
+	const shown = props.value
+		? (focused ? props.edit : props.display)(props.value)
+		: "";
 	const [text, setText] = React.useState(shown);
 	const [invalid, setInvalid] = React.useState(false);
 
@@ -31,7 +38,7 @@ export function DateField(props: {
 
 	const commit = () => {
 		if (text === shown) return;
-		const parsed = parseTypedDate(text, props.order);
+		const parsed = props.read(text);
 		if (parsed === null) {
 			setInvalid(true);
 			return;
@@ -50,8 +57,12 @@ export function DateField(props: {
 				autoComplete="off"
 				className="h-ctl"
 				id={props.id}
-				onBlur={commit}
+				onBlur={() => {
+					commit();
+					setFocused(false);
+				}}
 				onChange={(e) => setText(e.target.value)}
+				onFocus={() => setFocused(true)}
 				onKeyDown={(e) => {
 					if (e.key !== "Enter") return;
 					commit();

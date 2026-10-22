@@ -124,10 +124,11 @@ function DayCalendar(p: {
 	return (
 		<div className="flex flex-col gap-3" ref={focus.container}>
 			<DateField
-				display={f.field}
+				display={f.medium}
+				edit={f.field}
 				id={id}
 				label={t("typed")}
-				order={f.order}
+				read={f.read}
 				onChange={(iso) => iso && p.onPick(iso)}
 				placeholder={t("placeholder")}
 				value={p.value}
