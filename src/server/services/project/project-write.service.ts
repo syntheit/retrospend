@@ -68,6 +68,21 @@ export interface CreateProjectInput {
 	billingClosePermission: "ORGANIZER_ONLY" | "ANY_PARTICIPANT";
 }
 
+const projectData = (userId: string, input: CreateProjectInput) => ({
+	name: input.name,
+	description: input.description ?? null,
+	budgetAmount: input.budgetAmount ?? null,
+	budgetCurrency: input.budgetCurrency ?? null,
+	primaryCurrency: input.primaryCurrency,
+	createdById: userId,
+	visibility: input.visibility,
+	billingCycleLength: input.billingCycleLength ?? null,
+	billingCycleDays: input.billingCycleDays ?? null,
+	billingAutoClose: input.billingAutoClose,
+	billingCloseReminderDays: input.billingCloseReminderDays,
+	billingClosePermission: input.billingClosePermission,
+});
+
 export async function createProject(
 	db: PrismaClient,
 	{ userId }: ProjectActor,
@@ -75,20 +90,7 @@ export async function createProject(
 ) {
 	const project = await userTransaction(db, userId, async (tx) => {
 		const created = await tx.project.create({
-			data: {
-				name: input.name,
-				description: input.description ?? null,
-				budgetAmount: input.budgetAmount ?? null,
-				budgetCurrency: input.budgetCurrency ?? null,
-				primaryCurrency: input.primaryCurrency,
-				createdById: userId,
-				visibility: input.visibility,
-				billingCycleLength: input.billingCycleLength ?? null,
-				billingCycleDays: input.billingCycleDays ?? null,
-				billingAutoClose: input.billingAutoClose,
-				billingCloseReminderDays: input.billingCloseReminderDays,
-				billingClosePermission: input.billingClosePermission,
-			},
+			data: projectData(userId, input),
 		});
 		// The creator is always the owner.
 		await tx.projectParticipant.create({

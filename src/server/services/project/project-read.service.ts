@@ -52,6 +52,16 @@ async function categoryStats(db: PrismaClient, projectId: string) {
 	return { totalSpent, categoryStats: stats };
 }
 
+function groupBy<T>(rows: readonly T[], key: (row: T) => string) {
+	const out = new Map<string, T[]>();
+	for (const row of rows) {
+		const list = out.get(key(row));
+		if (list) list.push(row);
+		else out.set(key(row), [row]);
+	}
+	return out;
+}
+
 /**
  * Whether each multi-member project with expenses is settled. Two queries
  * for the whole batch instead of two per project.
@@ -96,16 +106,11 @@ async function settledByProject(
 			},
 		}),
 	]);
-	const group = <T extends { projectId: string | null }>(rows: T[]) => {
-		const out = new Map<string, T[]>();
-		for (const row of rows) {
-			const pid = row.projectId as string;
-			out.set(pid, [...(out.get(pid) ?? []), row]);
-		}
-		return out;
-	};
-	const txByProject = group(txns);
-	const settlementsByProject = group(settlements);
+	const txByProject = groupBy(txns, (t) => t.projectId as string);
+	const settlementsByProject = groupBy(
+		settlements,
+		(s) => s.projectId as string,
+	);
 	for (const pid of projectIds) {
 		const projectTxns = txByProject.get(pid) ?? [];
 		if (projectTxns.length === 0) continue;
@@ -118,12 +123,12 @@ async function settledByProject(
 	return result;
 }
 
-export async function listProjects(
+function findMyProjects(
 	db: PrismaClient,
 	userId: string,
 	status?: "ACTIVE" | "ARCHIVED",
 ) {
-	const projects = await db.project.findMany({
+	return db.project.findMany({
 		where: {
 			participants: {
 				some: { participantType: "user", participantId: userId },
@@ -141,25 +146,35 @@ export async function listProjects(
 		},
 		orderBy: { updatedAt: "desc" },
 	});
+}
 
+type ListedProject = Awaited<ReturnType<typeof findMyProjects>>[number];
+
+/** The first few members of each project, named, with the shared contact rule applied. */
+async function namedMembers(
+	db: PrismaClient,
+	userId: string,
+	projects: ListedProject[],
+) {
 	const resolved = await resolveParticipantNames(
 		db,
 		projects.flatMap((p) =>
 			p.participants.map((pp) => ({ ...pp, _projectId: p.id })),
 		),
 	);
-	// Ghost and guest emails only for those allowed to see them (shared rule).
 	const visible = await buildContactVisibility(
 		db,
 		{ participantType: "user", participantId: userId },
 		resolved,
 	);
-	const byProject = new Map<string, typeof resolved>();
-	for (const rp of resolved) {
-		byProject.set(rp._projectId, [...(byProject.get(rp._projectId) ?? []), rp]);
-	}
+	return groupBy(
+		resolved.map((pp) => redactContact(pp, visible)),
+		(pp) => pp._projectId,
+	);
+}
 
-	const projectIds = projects.map((p) => p.id);
+/** Raw amounts summed per project, across currencies, as the list always showed. */
+async function spentByProject(db: PrismaClient, projectIds: string[]) {
 	const spent =
 		projectIds.length > 0
 			? await db.sharedTransaction.groupBy({
@@ -168,8 +183,19 @@ export async function listProjects(
 					_sum: { amount: true },
 				})
 			: [];
-	const spentMap = new Map(
-		spent.map((g) => [g.projectId, Number(g._sum.amount ?? 0)]),
+	return new Map(spent.map((g) => [g.projectId, Number(g._sum.amount ?? 0)]));
+}
+
+export async function listProjects(
+	db: PrismaClient,
+	userId: string,
+	status?: "ACTIVE" | "ARCHIVED",
+) {
+	const projects = await findMyProjects(db, userId, status);
+	const members = await namedMembers(db, userId, projects);
+	const spent = await spentByProject(
+		db,
+		projects.map((p) => p.id),
 	);
 	const settled = await settledByProject(
 		db,
@@ -179,18 +205,18 @@ export async function listProjects(
 			)
 			.map((p) => p.id),
 	);
+	const isMe = (pp: { participantType: string; participantId: string }) =>
+		pp.participantType === "user" && pp.participantId === userId;
 
 	const enriched = projects.map((p) => {
-		const people = byProject.get(p.id) ?? [];
-		const isMe = (pp: { participantType: string; participantId: string }) =>
-			pp.participantType === "user" && pp.participantId === userId;
+		const people = members.get(p.id) ?? [];
 		return {
 			...p,
-			participants: people.map((pp) => redactContact(pp, visible)),
+			participants: people,
 			myRole: people.find(isMe)?.role ?? null,
 			excludeFromAnalytics:
 				p.participants.find(isMe)?.excludeFromAnalytics ?? false,
-			totalSpent: spentMap.get(p.id) ?? 0,
+			totalSpent: spent.get(p.id) ?? 0,
 			currentBillingPeriod: p.billingPeriods[0] ?? null,
 			isSettled: settled.get(p.id) ?? false,
 		};
