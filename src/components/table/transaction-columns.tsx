@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type ReactNode, useMemo } from "react";
+import { createContext, type ReactNode, useContext, useMemo } from "react";
 import type { DataTableColumnDef } from "~/components/data-table-features";
 import { useRowDates } from "~/components/rows/dates";
 import {
@@ -12,64 +12,125 @@ import {
 	useKindWord,
 } from "~/components/rows/transaction-row";
 import type { TransactionVM } from "~/components/rows/types";
+import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { MONEY_CELL } from "./table-style";
 
-type Selection = {
+export type Selection = {
 	selected: Set<string>;
 	onToggle: (id: string, checked: boolean) => void;
 	onToggleAll: (checked: boolean) => void;
 };
 
 /**
+ * Selection reaches the checkbox cells through context, so toggling a row
+ * re-renders that row and the header box, not the column definitions (the
+ * engine re-renders every row when its columns change).
+ */
+export const SelectionContext = createContext<Selection | null>(null);
+
+function SelectAll({ ids }: { ids: string[] }) {
+	const t = useTranslations("rows.table");
+	const s = useContext(SelectionContext);
+	if (!s) return null;
+	const all = ids.length > 0 && ids.every((id) => s.selected.has(id));
+	return (
+		<Checkbox
+			aria-label={t("selectAll")}
+			checked={all}
+			onCheckedChange={(v) => s.onToggleAll(v === true)}
+		/>
+	);
+}
+
+function SelectOne({ tx }: { tx: TransactionVM }) {
+	const t = useTranslations("rows.table");
+	const s = useContext(SelectionContext);
+	if (!s) return null;
+	return (
+		<Checkbox
+			aria-label={t("select", { title: tx.title })}
+			checked={s.selected.has(tx.id)}
+			onCheckedChange={(v) => s.onToggle(tx.id, v === true)}
+		/>
+	);
+}
+
+/** The title as the row's open button (keyboard and screen readers), or plain text. */
+function Title({
+	tx,
+	onOpen,
+}: {
+	tx: TransactionVM;
+	onOpen?: (tx: TransactionVM) => void;
+}) {
+	if (!onOpen) return <span className="text-fg truncate">{tx.title}</span>;
+	return (
+		<Button
+			className="text-body text-fg can-hover:hover:bg-transparent can-hover:hover:text-fg h-auto min-w-0 shrink justify-start border-0 px-0 font-normal"
+			kind="ghost"
+			onClick={() => onOpen(tx)}
+		>
+			<span className="truncate">{tx.title}</span>
+		</Button>
+	);
+}
+
+/** A small project cover in its slot, a flat tile until the project has one. */
+function ProjectCell({
+	project,
+}: {
+	project: NonNullable<TransactionVM["project"]>;
+}) {
+	return (
+		<span className="text-fg-2 flex max-w-40 items-center gap-2">
+			<span
+				aria-hidden="true"
+				className="bg-raised rounded-ctl flex size-6 shrink-0 overflow-hidden *:size-full"
+			>
+				{project.cover}
+			</span>
+			<span className="truncate">{project.name}</span>
+		</span>
+	);
+}
+
+/**
  * The Activity columns (desktop): select, Title, Category, Project, With,
  * Date, Amount and the ⋯ column. Cells are the TransactionRow pieces, so the
  * table and the phone rows show one anatomy (R18). Identity columns have
- * fixed widths so faces start on one edge (R27).
+ * fixed widths so faces start on one edge (R27). The amount sorts on the
+ * server's home-currency sort key, never native minor units across
+ * currencies; rows without a rate sort last either way.
  */
 export function useTransactionColumns({
-	selection,
+	selectable,
 	today,
 	hideProject = false,
 	actions,
+	onOpen,
 }: {
-	selection?: Selection;
+	selectable: boolean;
 	today?: string;
 	hideProject?: boolean;
 	actions?: (tx: TransactionVM) => ReactNode;
+	onOpen?: (tx: TransactionVM) => void;
 }) {
 	const t = useTranslations("rows.table");
 	const kindWord = useKindWord();
 	const { day } = useRowDates(today);
 	return useMemo(() => {
 		const cols: DataTableColumnDef<TransactionVM>[] = [];
-		if (selection)
+		if (selectable)
 			cols.push({
 				id: "select",
 				size: 40,
 				enableSorting: false,
 				meta: { className: "w-10 pr-0" },
-				header: ({ table }) => {
-					const ids = table.getRowModel().rows.map((r) => r.original.id);
-					const all =
-						ids.length > 0 && ids.every((id) => selection.selected.has(id));
-					return (
-						<Checkbox
-							aria-label={t("selectAll")}
-							checked={all}
-							onCheckedChange={(v) => selection.onToggleAll(v === true)}
-						/>
-					);
-				},
-				cell: ({ row }) => (
-					<Checkbox
-						aria-label={t("select", { title: row.original.title })}
-						checked={selection.selected.has(row.original.id)}
-						onCheckedChange={(v) =>
-							selection.onToggle(row.original.id, v === true)
-						}
-					/>
+				header: ({ table }) => (
+					<SelectAll ids={table.getRowModel().rows.map((r) => r.original.id)} />
 				),
+				cell: ({ row }) => <SelectOne tx={row.original} />,
 			});
 		cols.push(
 			{
@@ -82,7 +143,7 @@ export function useTransactionColumns({
 					const word = kindWord(tx);
 					return (
 						<span className="flex min-w-0 items-center gap-2">
-							<span className="text-fg truncate">{tx.title}</span>
+							<Title onOpen={onOpen} tx={tx} />
 							<TransactionStatus tx={tx} />
 							{word && <span className="text-fg-3 text-meta">{word}</span>}
 						</span>
@@ -110,9 +171,7 @@ export function useTransactionColumns({
 				size: 150,
 				cell: ({ row }) =>
 					row.original.project ? (
-						<span className="text-fg-2 block max-w-40 truncate">
-							{row.original.project.name}
-						</span>
+						<ProjectCell project={row.original.project} />
 					) : null,
 			});
 		cols.push(
@@ -133,7 +192,9 @@ export function useTransactionColumns({
 			},
 			{
 				id: "amount",
-				accessorFn: (tx) => tx.amount.minor,
+				accessorFn: (tx) => tx.sortKey ?? undefined,
+				sortFn: "basic",
+				sortUndefined: "last",
 				header: t("amount"),
 				size: 140,
 				meta: { className: MONEY_CELL, align: "right" },
@@ -152,11 +213,11 @@ export function useTransactionColumns({
 				header: () => <span className="sr-only">{t("actions")}</span>,
 				meta: { className: "w-trail" },
 				cell: ({ row }) => (
-					<span className="can-hover:opacity-0 can-hover:group-hover:opacity-100 can-hover:focus-within:opacity-100 ml-auto">
+					<span className="can-hover:opacity-0 can-hover:group-hover:opacity-100 can-hover:group-focus-visible:opacity-100 can-hover:focus-within:opacity-100 ml-auto">
 						{actions(row.original)}
 					</span>
 				),
 			});
 		return cols;
-	}, [selection, hideProject, actions, t, kindWord, day]);
+	}, [selectable, hideProject, actions, onOpen, t, kindWord, day]);
 }

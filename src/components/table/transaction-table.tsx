@@ -1,7 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+	type ReactElement,
+	type ReactNode,
+	useCallback,
+	useMemo,
+	useState,
+} from "react";
 import { DataTable } from "~/components/data-table";
 import type { MoneyValue } from "~/components/money/format";
 import { Money } from "~/components/money/money";
@@ -9,7 +15,7 @@ import type { TransactionVM } from "~/components/rows/types";
 import { TableCell, TableRow } from "~/components/ui/table";
 import { cn } from "~/lib/cn";
 import { TABLE_LOOK } from "./table-style";
-import { useTransactionColumns } from "./transaction-columns";
+import { SelectionContext, useTransactionColumns } from "./transaction-columns";
 
 /** The footer total, computed by the server for the rows the filter shows (R9). */
 export type TableTotal = {
@@ -17,6 +23,8 @@ export type TableTotal = {
 	figure?: string;
 	count: number;
 	total: MoneyValue;
+	/** Rows left out of the total because they have no rate yet. */
+	withoutRate?: number;
 };
 
 /**
@@ -32,8 +40,10 @@ export function TransactionTable({
 	hideProject,
 	selectable = true,
 	actions,
+	rowArea,
 	onOpen,
 	empty,
+	sort,
 	className,
 }: {
 	rows: TransactionVM[];
@@ -44,9 +54,16 @@ export function TransactionTable({
 	selectable?: boolean;
 	/** The ⋯ button per row, from the action registry (R8). */
 	actions?: (tx: TransactionVM) => ReactNode;
+	/**
+	 * Wraps each row in its ActionArea, so right-click and long press open
+	 * the same registry menu as the ⋯ button.
+	 */
+	rowArea?: (tx: TransactionVM, tr: ReactElement) => ReactElement;
 	onOpen?: (tx: TransactionVM) => void;
 	/** EmptyState for no rows, or no matches with Clear filters. */
 	empty?: ReactNode;
+	/** The starting sort, as column ids ("amount", "date"); the header changes it. */
+	sort?: { id: string; desc: boolean }[];
 	className?: string;
 }) {
 	const t = useTranslations("rows.table");
@@ -67,57 +84,66 @@ export function TransactionTable({
 		[rows],
 	);
 	const selection = useMemo(
-		() => (selectable ? { selected, onToggle, onToggleAll } : undefined),
-		[selectable, selected, onToggle, onToggleAll],
+		() => ({ selected, onToggle, onToggleAll }),
+		[selected, onToggle, onToggleAll],
 	);
 	const columns = useTransactionColumns({
-		selection,
+		selectable,
 		today,
 		hideProject,
 		actions,
+		onOpen,
 	});
 	const span = columns.length;
 	return (
 		<div className={cn(TABLE_LOOK, className)} data-slot="transaction-table">
-			<DataTable
-				columns={columns}
-				data={rows}
-				emptyState={empty}
-				footer={
-					total && (
-						<TableRow>
-							{selectable && <TableCell />}
-							<TableCell
-								colSpan={span - (selectable ? 2 : 1) - (actions ? 1 : 0)}
-							>
-								{t("yourSpending")}{" "}
-								<span className="text-fg-3 text-meta font-normal">
-									{t("count", { count: total.count })}
-								</span>
-							</TableCell>
-							<TableCell className="text-right">
-								<Money figure={total.figure} value={total.total} />
-							</TableCell>
-							{actions && <TableCell />}
-						</TableRow>
-					)
-				}
-				hideCount
-				lastSelectedId={anchor}
-				onClearSelection={() => setSelected(new Set())}
-				onEditRow={(id) => {
-					const tx = rows.find((r) => r.id === id);
-					if (tx) onOpen?.(tx);
-				}}
-				onRangeSelect={(ids) => setSelected(new Set(ids))}
-				onRowClick={onOpen}
-				onRowSelect={selectable ? onToggle : undefined}
-				rowClassName={(row) =>
-					row.original.kind === "expense" ? undefined : "text-fg-2"
-				}
-				searchable={false}
-				selectedRows={selected}
-			/>
+			<SelectionContext.Provider value={selection}>
+				<DataTable
+					columns={columns}
+					data={rows}
+					emptyState={empty}
+					footer={
+						total && (
+							<TableRow>
+								{selectable && <TableCell />}
+								<TableCell
+									colSpan={span - (selectable ? 2 : 1) - (actions ? 1 : 0)}
+								>
+									{t("yourSpending")}{" "}
+									<span className="text-fg-3 text-meta font-normal">
+										{t("count", { count: total.count })}
+										{total.withoutRate
+											? ` · ${t("withoutRate", { count: total.withoutRate })}`
+											: null}
+									</span>
+								</TableCell>
+								<TableCell className="text-right">
+									<Money figure={total.figure} value={total.total} />
+								</TableCell>
+								{actions && <TableCell />}
+							</TableRow>
+						)
+					}
+					hideCount
+					initialSorting={sort}
+					lastSelectedId={anchor}
+					onClearSelection={() => setSelected(new Set())}
+					onEditRow={(id) => {
+						const tx = rows.find((r) => r.id === id);
+						if (tx) onOpen?.(tx);
+					}}
+					onRangeSelect={(ids) => setSelected(new Set(ids))}
+					onRowClick={onOpen}
+					onRowSelect={selectable ? onToggle : undefined}
+					rowClassName={(row) =>
+						row.original.kind === "expense" ? undefined : "text-fg-2"
+					}
+					onRowOpen={onOpen}
+					searchable={false}
+					selectedRows={selected}
+					wrapRow={rowArea}
+				/>
+			</SelectionContext.Provider>
 		</div>
 	);
 }
