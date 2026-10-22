@@ -123,8 +123,19 @@ describe("MoneyInput", () => {
 		const html = render(h(MoneyInput, { ...base, value: "12+" }));
 		expect(html).toContain('inputMode="decimal"');
 		expect(html).toContain('aria-label="Amount"');
-		expect(html).toContain('aria-label="Currency, ARS"');
 		expect(html).not.toContain('role="alert"');
+		// The amount sits on the right, as in the kit.
+		expect(html).toContain("text-right");
+	});
+
+	it("shows the currency chip: a fixed one as text, a changeable one as a named button", () => {
+		const fixed = render(h(MoneyInput, { ...base, value: "" }));
+		expect(fixed).toMatch(/<span[^>]*rounded-chip[^>]*>ARS<\/span>/);
+		const open = render(
+			h(MoneyInput, { ...base, value: "", onCurrencyChange: vi.fn() }),
+		);
+		expect(open).toContain('aria-label="Currency, ARS"');
+		expect(open).toContain('aria-haspopup="dialog"');
 	});
 
 	it("shows the error after a Save attempt", () => {
@@ -140,12 +151,27 @@ describe("MoneyInput", () => {
 			h(MoneyInput, {
 				...base,
 				value: "1500+2000",
-				rate: { label: "USD 1 = ARS 1,468 · Blue" },
+				rate: {
+					label: "USD 1 = ARS 1,468 · Blue",
+					home: "About ARS 93,071.20",
+				},
 			}),
 		);
 		// The domain formatter's result: whole ARS shows no cents.
 		expect(html).toContain("ARS\u00a03,500");
-		expect(html).toContain(
+		// A fixed rate is a label, not a dimmed button; the home amount follows it.
+		expect(html).toMatch(
+			/<span[^>]*rounded-chip[^>]*>.*USD 1 = ARS 1,468 · Blue<\/span>/,
+		);
+		expect(html).toContain("About ARS 93,071.20");
+		const changeable = render(
+			h(MoneyInput, {
+				...base,
+				value: "",
+				rate: { label: "USD 1 = ARS 1,468 · Blue", onClick: vi.fn() },
+			}),
+		);
+		expect(changeable).toContain(
 			'aria-label="Exchange rate: USD 1 = ARS 1,468 · Blue"',
 		);
 	});

@@ -10,15 +10,12 @@ import {
 	type MoneyInputResult,
 	parseMoneyInput,
 } from "@retrospend/domain/parse";
-import { ArrowRightLeftIcon, ChevronDownIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import * as React from "react";
 
-import { CurrencyPicker } from "~/components/pickers/currency-picker";
-import { PickerPopover } from "~/components/pickers/picker-popover";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
+import { CurrencyChip, RateChip } from "./money-input-chips";
 
 export type { MoneyInputError, MoneyInputResult };
 
@@ -112,8 +109,11 @@ export type MoneyInputProps = {
 	onChange: (text: string, result: MoneyInputResult) => void;
 	onCurrencyChange?: (code: string) => void;
 	favoriteCurrencies?: readonly string[];
-	/** Foreign amounts: the server's rate line, already formatted ("USD 1 = ARS 1,468 · Blue"). */
-	rate?: { label: string; onClick?: () => void };
+	/**
+	 * Foreign amounts: the server's rate line and home amount, already
+	 * formatted ("USD 1 = ARS 1,468 · Blue", "About ARS 93,071.20").
+	 */
+	rate?: { label: string; home?: string; onClick?: () => void };
 	/** Show errors now (after a Save attempt). */
 	showErrors?: boolean;
 	disabled?: boolean;
@@ -141,9 +141,10 @@ export function MoneyInput(p: MoneyInputProps) {
 
 	return (
 		<div className="flex flex-col gap-1">
+			{/* kit .moneyinput: the currency chip inside the field, the amount on the right */}
 			<div
 				className={cn(
-					"flex h-money items-stretch overflow-hidden rounded-ctl border border-line-strong bg-surface focus-within:ring-2 focus-within:ring-brand",
+					"flex h-money items-center gap-2 rounded-ctl border border-line-strong bg-surface p-1 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand",
 					error && "border-danger",
 					p.disabled && "opacity-50",
 				)}
@@ -155,7 +156,7 @@ export function MoneyInput(p: MoneyInputProps) {
 					aria-label={t("amount")}
 					autoComplete="off"
 					autoFocus={p.autoFocus}
-					className="h-full flex-1 rounded-none border-0 bg-transparent px-3 font-medium text-base tabular-nums shadow-none focus-visible:ring-0"
+					className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 pr-2 text-right font-medium text-base text-fg tabular-nums shadow-none placeholder:text-fg-3 focus-visible:ring-0 dark:bg-transparent"
 					disabled={p.disabled}
 					id={id}
 					inputMode="decimal"
@@ -163,11 +164,6 @@ export function MoneyInput(p: MoneyInputProps) {
 					value={p.value}
 					{...field.handlers}
 				/>
-				{preview ? (
-					<span className="flex items-center pr-3 text-fg-2 text-small tabular-nums">
-						{preview}
-					</span>
-				) : null}
 			</div>
 			{error ? (
 				<span className="text-danger text-meta" id={`${id}-error`} role="alert">
@@ -177,18 +173,14 @@ export function MoneyInput(p: MoneyInputProps) {
 					})}
 				</span>
 			) : null}
-			{p.rate ? (
-				<Button
-					aria-label={t("rate", { rate: p.rate.label })}
-					className="self-start font-normal text-fg-2 tabular-nums"
-					disabled={!p.rate.onClick}
-					kind="ghost"
-					onClick={p.rate.onClick}
-					size="sm"
-				>
-					<ArrowRightLeftIcon aria-hidden="true" />
-					{p.rate.label}
-				</Button>
+			{p.rate || preview ? (
+				<div className="flex flex-wrap items-center gap-2 text-fg-2 text-small">
+					{p.rate ? <RateChip {...p.rate} /> : null}
+					{p.rate?.home ? (
+						<span className="tabular-nums">{p.rate.home}</span>
+					) : null}
+					{preview ? <span className="tabular-nums">{preview}</span> : null}
+				</div>
 			) : null}
 		</div>
 	);
@@ -244,39 +236,4 @@ function useDraftField(p: MoneyInputProps, locale: string) {
 		},
 	};
 	return { touched, handlers };
-}
-
-/** The currency chip: opens the CurrencyPicker when the currency can change. */
-function CurrencyChip(p: MoneyInputProps) {
-	const t = useTranslations("pickers.money");
-	const [open, setOpen] = React.useState(false);
-	const button = (
-		<Button
-			aria-label={t("currency", { code: p.currency })}
-			className="h-full rounded-none border-0 border-line-strong border-r px-3"
-			disabled={p.disabled || !p.onCurrencyChange}
-			kind="ghost"
-		>
-			{p.currency}
-			{p.onCurrencyChange ? <ChevronDownIcon aria-hidden="true" /> : null}
-		</Button>
-	);
-	if (!p.onCurrencyChange) return button;
-	return (
-		<PickerPopover
-			onOpenChange={setOpen}
-			open={open}
-			title={t("currency", { code: p.currency })}
-			trigger={button}
-		>
-			<CurrencyPicker
-				favorites={p.favoriteCurrencies}
-				onChange={(code) => {
-					setOpen(false);
-					p.onCurrencyChange?.(code);
-				}}
-				value={p.currency}
-			/>
-		</PickerPopover>
-	);
 }
