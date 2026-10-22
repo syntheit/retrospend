@@ -1,7 +1,8 @@
 import { createElement as h } from "react";
 import { describe, expect, it } from "vitest";
 import { Badge } from "~/components/ui/badge";
-import { STATUS, type StatusKind, StatusDot } from "~/components/ui/status-dot";
+import { StatusDot } from "~/components/ui/status-dot";
+import { STATUS, type StatusKind } from "~/components/ui/status-map";
 import { kit, render } from "./render";
 
 const kinds = Object.keys(STATUS) as StatusKind[];

@@ -1,13 +1,9 @@
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useTranslations } from "next-intl";
 import type * as React from "react";
 
-import {
-	STATUS,
-	type StatusKind,
-	TONE,
-	useStatusWord,
-} from "~/components/ui/status-dot";
+import { STATUS, type StatusKind, toneOf } from "~/components/ui/status-map";
 import { cn } from "~/lib/utils";
 
 const badgeVariants = cva(
@@ -70,8 +66,9 @@ export interface StatusBadgeProps {
 }
 
 function StatusBadge({ status, label, className }: StatusBadgeProps) {
-	const word = useStatusWord();
-	const tone = TONE[STATUS[status].tone];
+	// next-intl's useTranslations works in server and client components alike.
+	const t = useTranslations("kit.status");
+	const tone = toneOf(status);
 	return (
 		<span
 			className={cn(
@@ -87,7 +84,7 @@ function StatusBadge({ status, label, className }: StatusBadgeProps) {
 				aria-hidden="true"
 				className={cn("size-2 shrink-0 rounded-full", tone.dot)}
 			/>
-			{label ?? word(status)}
+			{label ?? t(STATUS[status].word)}
 		</span>
 	);
 }

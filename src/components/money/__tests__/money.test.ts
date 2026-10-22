@@ -90,7 +90,7 @@ describe("Balance", () => {
 
 	it("says Settled at zero and picks words for people and you", () => {
 		expect(render(h(Balance, { amount: ars(0) }))).toContain(
-			kit.balance?.settled,
+			kit.status?.settled,
 		);
 		expect(render(h(Balance, { amount: ars(1), subject: "people" }))).toContain(
 			kit.balance?.peopleOweYou,
@@ -120,7 +120,8 @@ describe("AvailablePill", () => {
 	it("fills underfunded and overspent with attention", () => {
 		for (const status of ["underfunded", "overspent"] as const) {
 			const html = render(h(AvailablePill, { amount: ars(-4840000), status }));
-			expect(html).toContain("bg-attention-bg text-attention-text");
+			expect(html).toContain("bg-attention-bg");
+			expect(html).toContain("text-attention-text");
 			expect(html).toContain(kit.status?.[status]);
 		}
 	});

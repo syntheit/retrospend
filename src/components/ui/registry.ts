@@ -274,7 +274,12 @@ export const REGISTRY: Primitive[] = [
 		file: "status-dot",
 		status: "core",
 		plan: ["StatusDot"],
-		job: "The one status map (17 kinds, R5) and StatusDot: a dot plus a word, never color alone",
+		job: "StatusDot: a status kind from the one status map as a dot plus a word, never color alone (R5)",
+	},
+	{
+		file: "status-map",
+		status: "core",
+		job: "The one status map (17 kinds, R5): each kind's word key and tone colors, plain data for server and client",
 	},
 	{
 		file: "sonner",
