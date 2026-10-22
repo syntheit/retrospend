@@ -11,8 +11,8 @@
  *   list shows it until the Activity rebuild labels money in.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { ensureIncomeCategories } from "~/server/services/expense.service";
-import { adminDb } from "~/test/pg-harness";
+import { ensureIncomeCategories } from "~/server/services/money-in.service";
+import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
 	EXPECTED_LISTED,
 	EXPECTED_READINGS,
@@ -21,12 +21,17 @@ import {
 import {
 	at,
 	expenseData,
+	MARCH as MARCH_LABEL,
 	NOW,
 	type Row,
 	type SpendingFixture,
 	seedSpendingFixture,
 } from "./spending-fixture";
-import { readAllSpendingReaders } from "./spending-readers";
+import {
+	callers,
+	MONEY_IN_PROBE,
+	readAllSpendingReaders,
+} from "./spending-readers";
 
 vi.mock("~/server/better-auth", () => ({
 	auth: { api: { getSession: vi.fn() } },
@@ -116,7 +121,46 @@ async function addMoneyIn(fixture: SpendingFixture) {
 			date: at("2026-03-16"),
 			entryKind: "ADJUSTMENT",
 		},
+		// Income with no category, shaped as the only match for the
+		// duplicate, title and CSV import probes.
+		{ ...MONEY_IN_PROBE, direction: "IN", inType: "INCOME" },
+		// Income filed under an expense category: only the refund filter's
+		// inType keeps it out of Groceries.
+		{
+			title: "Cashback",
+			amount: 3_000,
+			date: at("2026-03-08"),
+			categoryId: fixture.groceries.id,
+			direction: "IN",
+			inType: "INCOME",
+		},
 	]);
+	await addSidecarIncome(fixture.userId);
+}
+
+/** Recurring income as the Go sidecar posts it (sidecar/tasks/recurring.go), raw SQL included. */
+async function addSidecarIncome(userId: string) {
+	const template = await adminDb.recurringTemplate.create({
+		data: {
+			userId,
+			name: "Acme salary",
+			amount: 900_000,
+			currency: "ARS",
+			frequency: "MONTHLY",
+			nextDueDate: at("2026-04-05"),
+			direction: "IN",
+		},
+	});
+	await adminDb.$executeRaw`
+		INSERT INTO expense (
+			id, "userId", title, amount, currency, date, "categoryId",
+			"amountInUSD", "exchangeRate", "pricingSource", "recurringTemplateId",
+			status, direction, "inType", "createdAt", "updatedAt"
+		) VALUES (
+			gen_random_uuid()::text, ${userId}, ${template.name}, ${"900000.00000000"}::numeric, 'ARS',
+			${at("2026-03-05")}, NULL, 900, 1000, 'RECURRING', ${template.id}, 'FINALIZED',
+			${"IN"}::"ExpenseDirection", ${"INCOME"}::"InType", NOW(), NOW()
+		)`;
 }
 
 describe("money in never reaches a spending reader", () => {
@@ -175,6 +219,18 @@ describe("money in never reaches a spending reader", () => {
 			);
 		});
 	}
+
+	it("posts the sidecar row the way the Go job does", async () => {
+		await expect(
+			adminDb.expense.count({
+				where: {
+					pricingSource: "RECURRING",
+					direction: "IN",
+					inType: "INCOME",
+				},
+			}),
+		).resolves.toBeGreaterThan(0);
+	});
 
 	it("adds only the income categories to the category list", () => {
 		// Pickers filter by kind once the money-in screens land (2D/S4).
@@ -253,4 +309,54 @@ describe("money in never reaches a spending reader", () => {
 			expect(withRefund.csvLines).toBe(EXPECTED_READINGS.csvLines);
 		});
 	});
+});
+
+describe("a user with only money in", () => {
+	beforeAll(() => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(NOW);
+	});
+	afterAll(() => vi.useRealTimers());
+
+	it("has no expenses: the dashboard empty state and the lists stay empty", async () => {
+		const { user } = await createTestUser();
+		await adminDb.expense.createMany({
+			data: [
+				expenseData(user.id, {
+					...MONEY_IN_PROBE,
+					direction: "IN",
+					inType: "INCOME",
+				}),
+				expenseData(user.id, {
+					title: "Refund",
+					amount: 500,
+					date: at("2026-03-09"),
+					direction: "IN",
+					inType: "REFUND",
+				}),
+				expenseData(user.id, {
+					title: "From savings",
+					amount: 9_000,
+					date: at("2026-03-09"),
+					direction: "IN",
+					entryKind: "NOT_SPENDING",
+				}),
+			],
+		});
+		await addSidecarIncome(user.id);
+		const c = callers(user.id);
+
+		const overview = await c.dashboard.getOverviewData({
+			month: MARCH_LABEL,
+			homeCurrency: "ARS",
+		});
+		expect(overview.hasExpenses).toBe(false);
+		await expect(
+			c.dashboard.getRecentActivity({ homeCurrency: "ARS" }),
+		).resolves.toEqual([]);
+		await expect(c.expense.listFinalized()).resolves.toEqual([]);
+		await expect(c.profile.getLifetimeStats()).resolves.toMatchObject({
+			totalEntries: 0,
+		});
+	}, 60_000);
 });

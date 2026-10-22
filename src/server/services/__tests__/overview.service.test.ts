@@ -46,7 +46,12 @@ function usd(date: Date, amount: number, categoryId: string | null) {
 	return { date, amount, currency: "USD", amountInUSD: amount, categoryId };
 }
 
-function ars(date: Date, amount: number, rateAtTheTime: number, categoryId: string | null): TestExpenseRow {
+function ars(
+	date: Date,
+	amount: number,
+	rateAtTheTime: number,
+	categoryId: string | null,
+): TestExpenseRow {
 	return {
 		date,
 		amount,
@@ -114,7 +119,13 @@ describe("getOverviewStats", () => {
 				categoryId: "cat-rent",
 				currency: "ARS",
 				amount: 500000,
-				category: { id: "cat-rent", name: "Rent", color: "red", icon: null, isFixed: true },
+				category: {
+					id: "cat-rent",
+					name: "Rent",
+					color: "red",
+					icon: null,
+					isFixed: true,
+				},
 			}),
 		]);
 		useExpenseTable(db, [
@@ -133,7 +144,9 @@ describe("getOverviewStats", () => {
 	});
 
 	it("matches the budget page: same *InHome figures", async () => {
-		db.budget.findMany.mockResolvedValue([budget({ currency: "ARS", amount: 50000 })]);
+		db.budget.findMany.mockResolvedValue([
+			budget({ currency: "ARS", amount: 50000 }),
+		]);
 		useExpenseTable(db, [ars(new Date(2024, 5, 3), 12345, 900, "cat-food")]);
 
 		const stats = await run({ homeCurrency: "ARS" });
@@ -145,7 +158,12 @@ describe("getOverviewStats", () => {
 
 	it("global budget: pace uses all spending", async () => {
 		db.budget.findMany.mockResolvedValue([
-			budget({ id: "b-global", categoryId: null, category: null, amount: 1000 }),
+			budget({
+				id: "b-global",
+				categoryId: null,
+				category: null,
+				amount: 1000,
+			}),
 			budget(),
 		]);
 		useExpenseTable(db, [
@@ -162,7 +180,13 @@ describe("getOverviewStats", () => {
 	it("includes shared shares in the month total", async () => {
 		db.budget.findMany.mockResolvedValue([]);
 		mockGetSharedExpenseShares.mockResolvedValue([
-			{ amount: 3000, currency: "ARS", amountInUSD: 2, categoryId: null, date: new Date(2024, 5, 9) },
+			{
+				amount: 3000,
+				currency: "ARS",
+				amountInUSD: 2,
+				categoryId: null,
+				date: new Date(2024, 5, 9),
+			},
 		]);
 
 		const stats = await run({ homeCurrency: "ARS" });

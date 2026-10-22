@@ -103,6 +103,10 @@ export const EXPECTED_READINGS = {
 		["Super Mar", 1, 12_000],
 	],
 	csvLines: 10, // header + the 9 finalized rows that are not amortized parts
+	duplicateOfMoneyIn: { isDuplicate: false, existingTitle: null },
+	titlesOfMoneyIn: [],
+	// The probe is new to this ledger, so it imports.
+	csvImport: { count: 1, skippedDuplicates: 0 },
 	categories: ["Groceries", "Rent"],
 };
 

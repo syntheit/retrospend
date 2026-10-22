@@ -10,11 +10,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
+import { spentIn } from "~/server/services/figures/spent";
 import {
 	ensureIncomeCategories,
 	INCOME_CATEGORIES,
-} from "~/server/services/expense.service";
-import { spentIn } from "~/server/services/figures/spent";
+} from "~/server/services/money-in.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { at, expenseData } from "./spending-fixture";
 
@@ -211,6 +211,14 @@ describe("budget and report spending by amortization mode", () => {
 					excludeFromAnalytics: true,
 					direction: "IN",
 					inType: "REFUND",
+				}),
+				// Income with no category never nets against either basis.
+				expenseData(userId, {
+					title: "Salary",
+					amount: 50_000,
+					date: at("2026-03-01"),
+					direction: "IN",
+					inType: "INCOME",
 				}),
 			],
 		});

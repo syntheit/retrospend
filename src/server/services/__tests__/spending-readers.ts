@@ -38,7 +38,14 @@ import {
 
 const iso = (d: Date) => d.toISOString();
 
-function callers(userId: string) {
+/** A spending entry no ledger row has; the leak test gives one user money in with exactly this shape. */
+export const MONEY_IN_PROBE = {
+	title: "Payroll",
+	amount: 777,
+	date: new Date("2026-03-07T12:00:00.000Z"),
+};
+
+export function callers(userId: string) {
 	const ctx = {
 		session: makeSession({ id: userId }),
 		db: adminDb,
@@ -180,14 +187,28 @@ async function routerReaders(fixture: SpendingFixture) {
 			t.count,
 			t.lastAmount,
 		]),
+		// Only a money-in row could match these, and none may.
+		duplicateOfMoneyIn: await c.expense.checkDuplicate(MONEY_IN_PROBE),
+		titlesOfMoneyIn: await c.expense.titleSuggestions({ query: "Payroll" }),
 		csvLines: csv.trim().split("\n").length,
 		categories: (await c.categories.getAll()).map((x) => x.name),
 	};
+}
+
+/**
+ * Imports the probe as an expense: money in must never make it a duplicate.
+ * It writes, so it runs after every other reader.
+ */
+async function csvImport(fixture: SpendingFixture) {
+	return callers(fixture.userId).expense.importExpenses({
+		rows: [{ ...MONEY_IN_PROBE, currency: HOME }],
+	});
 }
 
 export async function readAllSpendingReaders(fixture: SpendingFixture) {
 	return {
 		...(await serviceReaders(fixture)),
 		...(await routerReaders(fixture)),
+		csvImport: await csvImport(fixture),
 	};
 }
