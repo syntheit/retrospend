@@ -1,0 +1,24 @@
+{
+	"name": "@retrospend/api-client",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Typed /api/v1 client built from @retrospend/api-contract. TanStack Query hooks land with S3 milestone 7.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@orpc/client": "1.15.7",
+		"@orpc/contract": "1.15.7",
+		"@orpc/openapi-client": "1.15.7",
+		"@retrospend/api-contract": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.5"
+	}
+}

@@ -1,13 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "~/env";
-import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 export async function POST(request: NextRequest) {
 	// Validate session
-	const session = await auth.api.getSession({
-		headers: request.headers,
-	});
+	const session = await getWebSession(request.headers);
 
 	if (!session?.user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

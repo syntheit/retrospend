@@ -128,3 +128,57 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+  # The Playwright suite on a seeded database (e2e/fixtures/seed.ts). Only on
+  # pull requests and the integration branches: a dev server and Chrome cost
+  # several runner minutes. The helpers' unit tests run in the check job.
+  e2e:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/segment/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: retrospend_test_e2e
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The suite's own default (e2e/constants.ts); prisma.config.ts needs it too.
+      DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_e2e
+      E2E_DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E suite
+        run: pnpm exec playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

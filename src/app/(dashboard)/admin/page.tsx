@@ -1,12 +1,10 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AdminPanel } from "~/components/admin/admin-panel";
-import { auth } from "~/server/better-auth";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 export default async function AdminPage() {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
+	const session = await getWebSession(await headers());
 
 	if (!session) {
 		redirect("/login");

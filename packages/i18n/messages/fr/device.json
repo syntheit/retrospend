@@ -1,0 +1,29 @@
+{
+	"title": "Connecter un appareil",
+	"description": "Saisissez le code affiché par l'appareil pour qu'il puisse utiliser votre compte.",
+	"codeLabel": "Code",
+	"continue": "Continuer",
+	"reviewTitle": "Autoriser {client} à utiliser votre compte ?",
+	"scopesIntro": "Il pourra :",
+	"scopes": {
+		"read": "Voir vos dépenses, personnes, budget et comptes",
+		"writeExpenses": "Ajouter et modifier des dépenses",
+		"writeMoney": "Enregistrer des paiements, virements, revenus et mouvements de budget",
+		"writeSettings": "Modifier vos paramètres",
+		"admin": "Administrer ce serveur"
+	},
+	"clients": {
+		"retrospend-cli": "Retrospend CLI",
+		"retrospend-desktop": "Retrospend pour ordinateur",
+		"retrospend-mcp": "Serveur MCP Retrospend"
+	},
+	"approve": "Autoriser",
+	"deny": "Refuser",
+	"approved": "Appareil connecté. Vous pouvez y retourner.",
+	"denied": "Demande refusée. L'appareil n'a pas été connecté.",
+	"errors": {
+		"invalid": "Ce code n'est pas valide ou a expiré.",
+		"used": "Ce code a déjà été utilisé.",
+		"generic": "Impossible de terminer. Réessayez."
+	}
+}

@@ -1,0 +1,29 @@
+{
+	"title": "Conectar un dispositivo",
+	"description": "Ingresá el código que muestra el dispositivo para que pueda usar tu cuenta.",
+	"codeLabel": "Código",
+	"continue": "Continuar",
+	"reviewTitle": "¿Permitir que {client} use tu cuenta?",
+	"scopesIntro": "Va a poder:",
+	"scopes": {
+		"read": "Ver tus gastos, personas, presupuesto y cuentas",
+		"writeExpenses": "Agregar y cambiar gastos",
+		"writeMoney": "Registrar pagos, transferencias, ingresos y movimientos del presupuesto",
+		"writeSettings": "Cambiar tu configuración",
+		"admin": "Administrar este servidor"
+	},
+	"clients": {
+		"retrospend-cli": "Retrospend CLI",
+		"retrospend-desktop": "Retrospend para escritorio",
+		"retrospend-mcp": "Servidor MCP de Retrospend"
+	},
+	"approve": "Permitir",
+	"deny": "Rechazar",
+	"approved": "Dispositivo conectado. Ya podés volver a él.",
+	"denied": "Solicitud rechazada. El dispositivo no se conectó.",
+	"errors": {
+		"invalid": "Ese código no es válido o venció.",
+		"used": "Ese código ya se usó.",
+		"generic": "No se pudo completar. Intentá de nuevo."
+	}
+}

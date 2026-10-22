@@ -17,8 +17,8 @@ vi.mock("next/server", () => {
 	return { NextResponse, NextRequest };
 });
 
-vi.mock("~/server/better-auth", () => ({
-	auth: { api: { getSession: vi.fn() } },
+vi.mock("~/server/better-auth/web-session", () => ({
+	getWebSession: vi.fn(),
 }));
 
 vi.mock("~/server/db", () => ({
@@ -46,7 +46,7 @@ vi.mock("~/server/services/shared-expenses/audit-log", () => ({
 	logAudit: vi.fn(),
 }));
 
-import { auth } from "~/server/better-auth";
+import { getWebSession } from "~/server/better-auth/web-session";
 import { db } from "~/server/db";
 import { processProjectImage } from "~/server/image-processing";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
@@ -84,7 +84,7 @@ function makeDeleteRequest(projectId = PROJECT_ID): Request {
 }
 
 function mockAuthedUser(): void {
-	vi.mocked(auth.api.getSession).mockResolvedValue({
+	vi.mocked(getWebSession).mockResolvedValue({
 		user: { id: USER_ID },
 		session: { id: "session-1" },
 	} as never);
@@ -120,13 +120,13 @@ beforeEach(() => {
 
 describe("POST /api/upload/project-image", () => {
 	it("returns 401 when no session", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue(null);
+		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await POST(makePostRequest(makeFile()) as never);
 		expect(res.status).toBe(401);
 	});
 
 	it("returns 403 when user is not active", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue({
+		vi.mocked(getWebSession).mockResolvedValue({
 			user: { id: USER_ID },
 		} as never);
 		vi.mocked(db.user.findUnique).mockResolvedValue({ isActive: false } as never);
@@ -262,7 +262,7 @@ describe("POST /api/upload/project-image", () => {
 
 describe("DELETE /api/upload/project-image", () => {
 	it("returns 401 when unauthenticated", async () => {
-		vi.mocked(auth.api.getSession).mockResolvedValue(null);
+		vi.mocked(getWebSession).mockResolvedValue(null);
 		const res = await DELETE(makeDeleteRequest() as never);
 		expect(res.status).toBe(401);
 	});

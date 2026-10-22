@@ -1,17 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { processAvatar } from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
-import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 async function getAuthenticatedUserId(
 	request: NextRequest,
 ): Promise<{ userId: string } | NextResponse> {
 	// Guests authenticate via x-guest-token + GuestSession, not better-auth sessions.
-	// If auth.api.getSession() returns a user, it is always a real (non-guest) account.
-	const session = await auth.api.getSession({
-		headers: request.headers,
-	});
+	// If getWebSession() returns a user, it is always a real (non-guest) account.
+	const session = await getWebSession(request.headers);
 
 	if (!session?.user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
