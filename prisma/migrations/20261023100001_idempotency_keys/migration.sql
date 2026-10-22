@@ -1,6 +1,7 @@
 -- API v1 platform stores (M16).
 -- 1. idempotency_key: the first response per user and Idempotency-Key,
---    kept 24h. Read and written through the user-scoped db, so RLS holds.
+--    kept 24h. Read and written through the user-scoped db, so RLS holds;
+--    the owner connection only prunes expired rows (not forced, so it can).
 -- 2. api_rate_limit: fixed-window counters per IP and per token. Not user
 --    data (IP keys have no user), so only the owner connection touches it:
 --    RLS is on (not forced, so the owner keeps access) with no policy, and
@@ -40,7 +41,6 @@ CREATE TABLE IF NOT EXISTS "api_rate_limit" (
 CREATE INDEX IF NOT EXISTS "api_rate_limit_windowStart_idx" ON "api_rate_limit"("windowStart");
 
 ALTER TABLE "idempotency_key" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "idempotency_key" FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS idempotency_key_isolation ON "idempotency_key";
 CREATE POLICY idempotency_key_isolation ON "idempotency_key"

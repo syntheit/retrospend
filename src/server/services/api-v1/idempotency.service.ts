@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
-import type { db as globalDb } from "~/server/db";
+import { db, type db as globalDb } from "~/server/db";
 import { Prisma } from "~prisma";
 
 /** A user-scoped client (createUserScopedDb): RLS keeps keys per user. */
@@ -65,7 +65,7 @@ export async function startIdempotentRequest(
 ): Promise<IdempotencyStart> {
 	const now = input.now ?? new Date();
 	if (attempt === 0 && Math.random() < PRUNE_PROBABILITY) {
-		await pruneExpiredKeys(userDb, now).catch(() => undefined);
+		await pruneExpiredKeys(now).catch(() => undefined);
 	}
 	try {
 		const row = await userDb.idempotencyKey.create({
@@ -133,12 +133,13 @@ export async function completeIdempotentRequest(
 }
 
 /**
- * Deletes this user's expired keys. Runs now and then from
- * startIdempotentRequest; through the user-scoped client it only ever sees
- * the caller's own rows.
+ * Deletes every user's expired keys through the owner connection (RLS would
+ * limit the user-scoped client to the caller's rows, and a user who stops
+ * writing would keep theirs forever). Runs now and then from
+ * startIdempotentRequest; expired rows hold nothing anyone can replay.
  */
-export async function pruneExpiredKeys(userDb: UserDb, now: Date = new Date()) {
-	const { count } = await userDb.idempotencyKey.deleteMany({
+export async function pruneExpiredKeys(now: Date = new Date()) {
+	const { count } = await db.idempotencyKey.deleteMany({
 		where: { expiresAt: { lt: now } },
 	});
 	return count;
