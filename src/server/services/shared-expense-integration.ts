@@ -359,6 +359,8 @@ export async function listSharedParticipationsForUser(
 				participantCount,
 				paidByName,
 				paidByAvatarUrl,
+				paidByType: tx.paidByType,
+				paidById: tx.paidById,
 				iPayedThis,
 				transactionId: tx.id,
 				projectId: tx.projectId ?? undefined,

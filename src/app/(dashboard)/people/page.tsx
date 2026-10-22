@@ -38,6 +38,7 @@ import { TableSearch } from "~/components/table-search";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useSettings } from "~/hooks/use-settings";
 import { buildRateMap, computeHomeCurrencyTotal, formatSettleLabel } from "~/lib/balance-utils";
+import { buildPeopleLookup, findPerson } from "~/lib/people-lookup";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -216,31 +217,12 @@ export default function PeoplePage() {
 		return [...sortFn(active), ...sortFn(settled)];
 	}, [filtered, sortBy]);
 
-	// Build avatar lookup for timeline (name → avatarUrl)
-	const avatarMap = useMemo(() => {
-		const map = new Map<string, string | null>();
-		if (!people) return map;
-		for (const p of people) {
-			map.set(p.identity.name.toLowerCase(), p.identity.avatarUrl);
-			if (p.identity.username) {
-				map.set(p.identity.username.toLowerCase(), p.identity.avatarUrl);
-			}
-		}
-		return map;
-	}, [people]);
-
-	// Build person lookup for timeline navigation (name → href)
-	const personHrefMap = useMemo(() => {
-		const map = new Map<string, string>();
-		if (!people) return map;
-		for (const p of people) {
-			map.set(
-				p.identity.name.toLowerCase(),
-				`/people/${p.identity.participantType}/${p.identity.participantId}`,
-			);
-		}
-		return map;
-	}, [people]);
+	// Avatar and profile link for timeline rows, keyed by participant type + id
+	// (names are not unique)
+	const peopleLookup = useMemo(
+		() => buildPeopleLookup((people ?? []).map((p) => p.identity)),
+		[people],
+	);
 
 	// Filter activity for timeline (only shared + settlements)
 	const timelineItems = useMemo(() => {
@@ -263,17 +245,20 @@ export default function PeoplePage() {
 			if (item.type === "shared" && item.sharedContext) {
 				const isMine = item.sharedContext.iPayedThis;
 				const personName = isMine ? "Split" : item.sharedContext.paidByName;
+				const payer = isMine
+					? undefined
+					: findPerson(
+							peopleLookup,
+							item.sharedContext.paidByType,
+							item.sharedContext.paidById,
+						);
 				const personAvatarUrl = isMine
 					? null
-					: (item.sharedContext.paidByAvatarUrl ??
-						avatarMap.get(item.sharedContext.paidByName.toLowerCase()) ??
-						null);
+					: (item.sharedContext.paidByAvatarUrl ?? payer?.avatarUrl ?? null);
 				const description = isMine
 					? t("youSplit", { title: item.title })
 					: t("personSplit", { name: item.sharedContext.paidByName, title: item.title });
-				const personHref = isMine
-					? undefined
-					: personHrefMap.get(item.sharedContext.paidByName.toLowerCase());
+				const personHref = payer?.href;
 
 				return {
 					id: item.id,
@@ -296,9 +281,13 @@ export default function PeoplePage() {
 			// Settlement
 			const ctx = item.settlementContext!;
 			const personName = ctx.otherParticipantName;
-			const personAvatarUrl =
-				avatarMap.get(personName.toLowerCase()) ?? null;
-			const personHref = personHrefMap.get(personName.toLowerCase());
+			const other = findPerson(
+				peopleLookup,
+				ctx.otherParticipantType,
+				ctx.otherParticipantId,
+			);
+			const personAvatarUrl = other?.avatarUrl ?? null;
+			const personHref = other?.href;
 			const description =
 				ctx.direction === "incoming"
 					? t("settledUpWith", { name: personName })
@@ -319,7 +308,7 @@ export default function PeoplePage() {
 				personHref,
 			};
 		});
-	}, [timelineItems, avatarMap, personHrefMap, t]);
+	}, [timelineItems, peopleLookup, t]);
 
 	// Verification banner data
 	const visibleQueue = useMemo(
