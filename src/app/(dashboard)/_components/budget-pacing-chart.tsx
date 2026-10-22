@@ -11,7 +11,7 @@ import {
 	YAxis,
 } from "recharts";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
 	type ChartConfig,
@@ -20,7 +20,7 @@ import {
 	ChartTooltipContent,
 } from "~/components/ui/chart";
 import { Skeleton } from "~/components/ui/skeleton";
-import { formatCurrency as formatCurrencyUtil } from "~/lib/utils";
+import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
 interface BudgetPacingChartProps {
 	expensesLoading: boolean;
@@ -53,16 +53,11 @@ export function BudgetPacingChart({
 	const id = useId();
 	const t = useTranslations("dashboard");
 
-	// Custom Y-axis formatter
-	const formatYAxis = (value: number) => {
-		if (value >= 1000) {
-			return `${formatCurrencyUtil(value / 1000, homeCurrency, "native", false).replace(/\.00$/, "")}k`;
-		}
-		return formatCurrencyUtil(value, homeCurrency, "native", false).replace(
-			/\.00$/,
-			"",
-		);
-	};
+	// Same money formatting as the rest of the app, in the home currency
+	const locale = useLocale();
+	const { formatCurrency, formatCompactCurrency } = useCurrencyFormatter();
+	const formatYAxis = (value: number) =>
+		formatCompactCurrency(value, homeCurrency, locale);
 
 	// Calculate "Guide" data points based on VARIABLE budget
 	const chartData = dailyTrend.map((point, index) => {
@@ -106,7 +101,7 @@ export function BudgetPacingChart({
 				</div>
 				<div className="text-right">
 					<div className="font-bold text-2xl tabular-nums tracking-tighter">
-						{formatCurrencyUtil(safeToSpend, homeCurrency, "standard", false)}
+						{formatCurrency(safeToSpend, homeCurrency)}
 						<span className="font-normal font-sans text-base text-muted-foreground">
 							{" "}
 							{t("perDay")}
@@ -150,7 +145,7 @@ export function BudgetPacingChart({
 								tickFormatter={formatYAxis}
 								tickLine={false}
 								tickMargin={8}
-								width={40}
+								width={64}
 							/>
 							<ChartTooltip
 								content={
@@ -170,12 +165,7 @@ export function BudgetPacingChart({
 																: name}
 													</span>
 													<span className="font-semibold text-foreground tabular-nums">
-														{formatCurrencyUtil(
-															value as number,
-															homeCurrency,
-															"standard",
-															false,
-														)}
+														{formatCurrency(value as number, homeCurrency)}
 													</span>
 												</div>
 											</>
