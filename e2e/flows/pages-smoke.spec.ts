@@ -1,55 +1,108 @@
 import { expect, type Page, test } from "@playwright/test";
-import { SOFIA } from "../fixtures/personas";
+import { LUCIA, SOFIA, type SeedUser } from "../fixtures/personas";
 import { loginAs } from "../helpers/auth";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
+import { gotoReady } from "../helpers/navigation";
 
-// Today's pages, each with a line the seed put there, so a blank or broken
-// seed fails here rather than passing on empty pages.
-const PAGES: { label: string; path: string; seeded?: RegExp }[] = [
-	{ label: "dashboard", path: "/dashboard" },
-	{ label: "transactions", path: "/transactions" },
-	{ label: "people", path: "/people", seeded: /Lucía Fernández/ },
-	{ label: "projects", path: "/projects", seeded: /Viaje a Florianópolis/ },
-	{ label: "wealth", path: "/wealth", seeded: /Wise \(USD\)/ },
-	{ label: "budget", path: "/budget" },
-	{ label: "settings", path: "/settings" },
-];
-
-async function settle(page: Page, label: string): Promise<void> {
-	await page.waitForLoadState("networkidle");
-	await expect(page.locator("body")).not.toHaveText(/^\s*$/);
-	// An error boundary swallows the error, so pageerror alone would miss it.
-	await expect(page.getByText(/Something went wrong/i)).toHaveCount(0);
-	await test.info().attach(`${label}.png`, {
-		body: await page.screenshot({ fullPage: true }),
-		contentType: "image/png",
-	});
+interface SmokePage {
+	key: string;
+	path: string;
+	/** A line the seed put there, so a blank or broken seed fails here. */
+	seeded?: RegExp;
 }
 
-test("Sofía's pages show no banned output and their figures match the API", async ({
-	page,
-}) => {
-	// The dev server compiles each page on first visit.
-	test.setTimeout(300_000);
+const PATHS: Record<string, string> = {
+	dashboard: "/dashboard",
+	transactions: "/transactions",
+	people: "/people",
+	projects: "/projects",
+	wealth: "/wealth",
+	budget: "/budget",
+	settings: "/settings",
+};
+
+function smokePages(seeded: Record<string, RegExp>): SmokePage[] {
+	return Object.entries(PATHS).map(([key, path]) => ({
+		key,
+		path,
+		seeded: seeded[key],
+	}));
+}
+
+/** The error boundary's heading in every language the passes use. */
+const ERROR_BOUNDARY = /Something went wrong|Algo salió mal/;
+
+/**
+ * Signs in as `user` and visits every page: no banned output, no error
+ * boundary, no uncaught error, and the figures match the API.
+ */
+async function walkPages(
+	page: Page,
+	user: SeedUser,
+	pages: SmokePage[],
+	variant: string,
+): Promise<void> {
 	const pageErrors: string[] = [];
 	page.on("pageerror", (error) => pageErrors.push(error.message));
-
-	await loginAs(page, SOFIA.email, SOFIA.password);
+	await loginAs(page, user.email, user.password);
 	const audit = new FigureAudit(httpFigureFetcher(page.request));
 
-	for (const { label, path, seeded } of PAGES) {
+	for (const { key, path, seeded } of pages) {
+		const label = `${variant} ${key}`;
 		await test.step(label, async () => {
-			await page.goto(path);
-			await settle(page, label);
-			if (seeded) await expect(page.getByText(seeded).first()).toBeVisible();
+			await gotoReady(page, path);
+			const main = page.getByRole("main");
+			await expect(main).not.toHaveText(/^\s*$/);
+			// An error boundary swallows the error, so pageerror alone would miss it.
+			await expect(page.getByText(ERROR_BOUNDARY)).toHaveCount(0);
+			if (seeded) await expect(main.getByText(seeded).first()).toBeVisible();
+			await test.info().attach(`${label}.png`, {
+				body: await page.screenshot({ fullPage: true }),
+				contentType: "image/png",
+			});
 			expect(await bannedOutputOn(page), `${label}: banned output`).toEqual([]);
-			expect(await audit.checkPage(page, label), `${label}: figures`).toEqual(
-				[],
-			);
+			expect(
+				await audit.checkPage(page, label, key),
+				`${label}: figures`,
+			).toEqual([]);
 		});
 	}
 
 	expect(audit.crossPage(), "figures across pages").toEqual([]);
 	expect(pageErrors, "uncaught page errors").toEqual([]);
+}
+
+test("Sofía's pages at 1440 in English", async ({ page }) => {
+	// The dev server compiles each page on first visit.
+	test.setTimeout(300_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await walkPages(
+		page,
+		SOFIA,
+		smokePages({
+			people: /Lucía Fernández/,
+			projects: /Viaje a Florianópolis/,
+			wealth: /Wise \(USD\)/,
+		}),
+		"en 1440",
+	);
+});
+
+test.describe("es-AR at 390", () => {
+	test.use({ locale: "es-AR", viewport: { width: 390, height: 844 } });
+
+	test("Lucía's pages at 390 in Spanish", async ({ page }) => {
+		test.setTimeout(300_000);
+		await walkPages(
+			page,
+			LUCIA,
+			smokePages({
+				people: /Sofía Reyes/,
+				projects: /Viaje a Florianópolis/,
+			}),
+			"es-AR 390",
+		);
+		await expect(page.locator("html")).toHaveAttribute("lang", "es-AR");
+	});
 });
