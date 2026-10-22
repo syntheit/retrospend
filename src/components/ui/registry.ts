@@ -244,6 +244,12 @@ export const REGISTRY: Primitive[] = [
 		use: "sheet",
 	},
 	{
+		file: "sheet-state",
+		status: "internal",
+		job: "The Sheet's state hook: open tracking, focus return, the submit guard, Enter keys and the inline error",
+		use: "sheet",
+	},
+	{
 		file: "sidebar",
 		status: "core",
 		plan: ["Sidebar"],
