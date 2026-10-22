@@ -7,8 +7,8 @@
  * @retrospend/domain, so the server reads them exactly as it reads rows it
  * wrote itself.
  *
- * It refuses any database whose name does not start with retrospend_test_e2e:
- * the reset truncates every table.
+ * The reset truncates every table, so it runs the same database check as
+ * playwright.config.ts (../db-guard.ts) before touching anything.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { budgetPeriod } from "@retrospend/domain/fiscal-month";
@@ -22,12 +22,15 @@ import { resolveSplits } from "@retrospend/domain/shared-split-computation";
 import { fromWallTime, wallTime } from "@retrospend/domain/time-zone";
 import { hashPassword } from "better-auth/crypto";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
+import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { PrismaClient } from "~prisma";
+import { assertE2eDatabase } from "../db-guard";
 import {
 	ACCOUNTS,
 	type Anchor,
 	BUDGETS,
 	daysAgo,
+	FLORIPA_MANUAL_SINCE_BACK,
 	GLOBAL_BUDGET_ARS,
 	historicBalance,
 	MONTHLY_INCOME_ARS,
@@ -61,15 +64,6 @@ const USER_BY_KEY: Record<Exclude<PersonKey, "paz">, SeedUser> = {
 	martin: MARTIN,
 };
 
-export function assertE2eDatabase(url: string): void {
-	const name = new URL(url).pathname.replace(/^\//, "");
-	if (!name.startsWith("retrospend_test_e2e")) {
-		throw new Error(
-			`Refusing to reset "${name}": the e2e seed only runs on a database named retrospend_test_e2e*`,
-		);
-	}
-}
-
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
 const categoryId = (user: SeedUser, name: string) =>
 	`e2e_cat_${user.username}_${slug(name)}`;
@@ -99,7 +93,7 @@ async function writeUsers(db: Db): Promise<void> {
 			monthlyIncomeCurrency: "ARS",
 			monthlyIncome:
 				u.id === SOFIA.id ? money(MONTHLY_INCOME_ARS, "ARS") : null,
-			language: "en",
+			language: u.language ?? "en",
 		})),
 	});
 	const accounts = [];
@@ -168,6 +162,8 @@ async function writeProjects(db: Db): Promise<void> {
 				primaryCurrency: "BRL",
 				budgetAmount: money(9000, "BRL"),
 				budgetCurrency: "BRL",
+				// Switched to manual approval mid-trip (FLORIPA_MANUAL_SINCE_BACK).
+				autoAcceptSplits: false,
 				createdById: SOFIA.id,
 			},
 			{
@@ -200,16 +196,23 @@ async function writeProjects(db: Db): Promise<void> {
 	});
 }
 
-/** The app's rule (auto-accept.ts): the author accepted, ghosts and auto-accept projects auto-accepted. */
+/**
+ * The app's own rule (auto-accept.ts), with the project's setting as it was
+ * when the entry was added. Standalone splits always auto-accept. The
+ * verification time is the entry's date, so reruns write the same rows.
+ */
 function verificationFor(entry: SharedEntry, key: PersonKey, at: Date) {
-	if (entry.pendingFor?.includes(key)) {
-		return { verificationStatus: "PENDING" as const, verifiedAt: null };
-	}
 	const author = entry.createdBy ?? entry.paidBy;
+	const projectAutoAccept =
+		entry.project !== "floripa" || entry.back > FLORIPA_MANUAL_SINCE_BACK;
+	const { status } = resolveVerification(
+		ref[key],
+		ref[author],
+		projectAutoAccept,
+	);
 	return {
-		verificationStatus:
-			key === author ? ("ACCEPTED" as const) : ("AUTO_ACCEPTED" as const),
-		verifiedAt: at,
+		verificationStatus: status,
+		verifiedAt: status === "PENDING" ? null : at,
 	};
 }
 
@@ -285,13 +288,10 @@ async function writeSettlements(db: Db, anchor: Anchor): Promise<void> {
 	});
 }
 
-/** Next date the clock in Buenos Aires shows `day` of the month at noon, after the anchor. */
+/** Start of the next `day` of the month in Buenos Aires after the anchor. */
 function nextDayOfMonth(anchor: Anchor, day: number): Date {
 	const month = anchor.day < day ? anchor.month : anchor.month + 1;
-	return fromWallTime(
-		{ year: anchor.year, month, day, hour: 12 },
-		SEED_TIME_ZONE,
-	);
+	return fromWallTime({ year: anchor.year, month, day }, SEED_TIME_ZONE);
 }
 
 async function writeRecurringAndBudgets(db: Db, anchor: Anchor): Promise<void> {

@@ -16,6 +16,8 @@ export interface SeedUser {
 	username: string;
 	email: string;
 	password: string;
+	/** App language; English when omitted. */
+	language?: string;
 }
 
 export const SOFIA: SeedUser = {
@@ -32,6 +34,8 @@ export const LUCIA: SeedUser = {
 	username: "lucia",
 	email: "lucia.fernandez@example.com",
 	password: "Lucia-e2e-2026!",
+	// Lucía reads the app in Spanish (the es-AR pass of the smoke flow).
+	language: "es-AR",
 };
 
 export const MARTIN: SeedUser = {

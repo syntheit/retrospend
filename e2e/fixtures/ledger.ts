@@ -2,11 +2,14 @@
  * What the e2e personas own, as plain data relative to one anchor day.
  *
  * Every date is "N days before the anchor", so the same seed gives the same
- * picture whatever day the suite runs (like .staging/seed-demo.mjs), and
- * E2E_SEED_TODAY=YYYY-MM-DD pins the anchor to reproduce a run exactly.
+ * picture whatever day the suite runs (like .staging/seed-demo.mjs).
  * Random-looking spending comes from the staging seed's LCG with its seed.
  * Amounts are numbers here; seed.ts stores them through the app's own money
  * helpers (minor-unit rounding, amountInUSD), never through ad hoc math.
+ *
+ * E2E_SEED_TODAY=YYYY-MM-DD only moves the seed's anchor, to rebuild a past
+ * run's rows. It does not move the app's clock: the server and the browser
+ * still use the real date for "this month" and "today".
  */
 import { fromWallTime, wallTime } from "@retrospend/domain/time-zone";
 import { type PersonKey, SEED_TIME_ZONE } from "./personas";
@@ -35,15 +38,14 @@ export function seedAnchor(
 	return { year, month, day };
 }
 
-/** Noon in Buenos Aires, `back` days before the anchor. */
+/**
+ * Start of the day in Buenos Aires, `back` days before the anchor. Midnight
+ * is how the app stores a date-only entry, and it keeps "today" rows from
+ * landing later than the moment the suite runs.
+ */
 export function daysAgo(anchor: Anchor, back: number): Date {
 	return fromWallTime(
-		{
-			year: anchor.year,
-			month: anchor.month,
-			day: anchor.day - back,
-			hour: 12,
-		},
+		{ year: anchor.year, month: anchor.month, day: anchor.day - back },
 		SEED_TIME_ZONE,
 	);
 }
@@ -69,93 +71,123 @@ export interface PersonalExpense {
 	back: number;
 }
 
+type Add = (e: Omit<PersonalExpense, "back">) => void;
+
 const DAYS_OF_HISTORY = 120;
 
-/** Sofía's own spending: ARS bills and daily life, plus USD subscriptions and gear. */
-export function personalExpenses(anchor: Anchor): PersonalExpense[] {
+/** Bills Sofía pays herself on a fixed day of the month. */
+// biome-ignore format: one row per bill reads as a table
+const MONTHLY_BILLS: readonly (Omit<PersonalExpense, "back"> & { day: number })[] = [
+	{ day: 3, title: "Alquiler depto", amount: 650000, currency: "ARS", category: "Rent" },
+	{ day: 5, title: "Gimnasio Megatlon", amount: 62000, currency: "ARS", category: "Health" },
+	{ day: 15, title: "Netflix", amount: 12.99, currency: "USD", category: "Subscriptions" },
+	{ day: 16, title: "Spotify", amount: 4200, currency: "ARS", category: "Subscriptions" },
+	{ day: 18, title: "iCloud 200GB", amount: 2.99, currency: "USD", category: "Subscriptions" },
+	{ day: 20, title: "Monotributo", amount: 42000, currency: "ARS", category: "Taxes" },
+];
+
+/** One-off USD purchases. */
+// biome-ignore format: one row per purchase reads as a table
+const ONE_OFFS: readonly PersonalExpense[] = [
+	{ title: "Dominio sofiareyes.dev", amount: 14.5, currency: "USD", category: "Subscriptions", back: 100 },
+	{ title: "Auriculares Sony", amount: 189.99, currency: "USD", category: "Electronics", back: 70 },
+	{ title: "Monitor Samsung", amount: 320, currency: "USD", category: "Electronics", back: 45 },
+	{ title: "GitHub Copilot", amount: 10, currency: "USD", category: "Subscriptions", back: 25 },
+];
+
+/** The staging seed's generator: the same seed gives the same sequence. */
+function stagingRandom() {
 	let state = 20261021;
 	const rnd = () => {
 		state = (state * 1664525 + 1013904223) % 4294967296;
 		return state / 4294967296;
 	};
-	const pick = <T>(items: readonly T[]): T =>
-		items[Math.floor(rnd() * items.length)] as T;
-	const between = (lo: number, hi: number, step: number) =>
-		Math.round((lo + rnd() * (hi - lo)) / step) * step;
-
-	const out: PersonalExpense[] = [];
-	const add = (
-		title: string,
-		amount: number,
-		currency: "ARS" | "USD",
-		category: string,
-		back: number,
-	) => out.push({ title, amount, currency, category, back });
-
-	for (let back = DAYS_OF_HISTORY; back >= 0; back--) {
-		const {
-			year,
-			month,
-			day: dom,
-		} = wallTime(daysAgo(anchor, back), SEED_TIME_ZONE);
-		const dow = new Date(Date.UTC(year, month, dom)).getUTCDay();
-		if (dom === 3) add("Alquiler depto", 650000, "ARS", "Rent", back);
-		if (dom === 5) add("Gimnasio Megatlon", 62000, "ARS", "Health", back);
-		if (dom === 15) add("Netflix", 12.99, "USD", "Subscriptions", back);
-		if (dom === 16) add("Spotify", 4200, "ARS", "Subscriptions", back);
-		if (dom === 18) add("iCloud 200GB", 2.99, "USD", "Subscriptions", back);
-		if (dom === 20) add("Monotributo", 42000, "ARS", "Taxes", back);
-		const weekend = dow === 0 || dow === 6;
-		if (weekend && rnd() < 0.55) {
-			const place = pick([
-				"Parrilla Don Julio",
-				"Pizzeria Guerrin",
-				"Sushi Palermo",
-				"Bar Sudestada",
-			]);
-			add(place, between(18000, 72000, 500), "ARS", "Restaurants", back);
-		}
-		if (dow === 6 && rnd() < 0.8) {
-			add(
-				pick(["Carrefour", "Dia", "Coto"]),
-				between(35000, 110000, 100),
-				"ARS",
-				"Groceries",
-				back,
-			);
-		}
-		if (!weekend && rnd() < 0.5) {
-			add(
-				pick(["Cafe Havanna", "Lattente", "Cafe Martinez"]),
-				between(4500, 9500, 100),
-				"ARS",
-				"Cafe",
-				back,
-			);
-		}
-		if (!weekend && rnd() < 0.55) {
-			add("Recarga SUBE", between(5000, 15000, 500), "ARS", "Transport", back);
-		}
-		if (rnd() < 0.05)
-			add("Uber", between(6000, 22000, 100), "ARS", "Transport", back);
-		if (rnd() < 0.07) {
-			add(
-				pick(["PedidosYa", "Rappi"]),
-				between(14000, 32000, 500),
-				"ARS",
-				"Food Delivery",
-				back,
-			);
-		}
-		if (rnd() < 0.04)
-			add("Farmacity", between(8000, 45000, 100), "ARS", "Health", back);
-	}
-	add("Dominio sofiareyes.dev", 14.5, "USD", "Subscriptions", 100);
-	add("Auriculares Sony", 189.99, "USD", "Electronics", 70);
-	add("Monitor Samsung", 320, "USD", "Electronics", 45);
-	add("GitHub Copilot", 10, "USD", "Subscriptions", 25);
-	return out;
+	return {
+		rnd,
+		pick: <T>(items: readonly T[]): T =>
+			items[Math.floor(rnd() * items.length)] as T,
+		between: (lo: number, hi: number, step: number) =>
+			Math.round((lo + rnd() * (hi - lo)) / step) * step,
+	};
 }
+
+/** Daily life on one day: meals out, groceries, coffee, transport. */
+function dailySpending(
+	dayOfWeek: number,
+	random: ReturnType<typeof stagingRandom>,
+	add: Add,
+): void {
+	const { rnd, pick, between } = random;
+	const ars = (title: string, amount: number, category: string) =>
+		add({ title, amount, currency: "ARS", category });
+	const weekend = dayOfWeek === 0 || dayOfWeek === 6;
+	if (weekend && rnd() < 0.55) {
+		const place = pick([
+			"Parrilla Don Julio",
+			"Pizzeria Guerrin",
+			"Sushi Palermo",
+			"Bar Sudestada",
+		]);
+		ars(place, between(18000, 72000, 500), "Restaurants");
+	}
+	if (dayOfWeek === 6 && rnd() < 0.8) {
+		ars(
+			pick(["Carrefour", "Dia", "Coto"]),
+			between(35000, 110000, 100),
+			"Groceries",
+		);
+	}
+	if (!weekend && rnd() < 0.5) {
+		ars(
+			pick(["Cafe Havanna", "Lattente", "Cafe Martinez"]),
+			between(4500, 9500, 100),
+			"Cafe",
+		);
+	}
+	if (!weekend && rnd() < 0.55) {
+		ars("Recarga SUBE", between(5000, 15000, 500), "Transport");
+	}
+	if (rnd() < 0.05) ars("Uber", between(6000, 22000, 100), "Transport");
+	if (rnd() < 0.07) {
+		ars(
+			pick(["PedidosYa", "Rappi"]),
+			between(14000, 32000, 500),
+			"Food Delivery",
+		);
+	}
+	if (rnd() < 0.04) ars("Farmacity", between(8000, 45000, 100), "Health");
+}
+
+/** Sofía's own spending: ARS bills and daily life, plus USD subscriptions and gear. */
+export function personalExpenses(anchor: Anchor): PersonalExpense[] {
+	const random = stagingRandom();
+	const out: PersonalExpense[] = [];
+	for (let back = DAYS_OF_HISTORY; back >= 0; back--) {
+		const add: Add = (e) => out.push({ ...e, back });
+		const { year, month, day } = wallTime(
+			daysAgo(anchor, back),
+			SEED_TIME_ZONE,
+		);
+		for (const { day: due, ...bill } of MONTHLY_BILLS) {
+			if (day === due) add(bill);
+		}
+		dailySpending(
+			new Date(Date.UTC(year, month, day)).getUTCDay(),
+			random,
+			add,
+		);
+	}
+	return [...out, ...ONE_OFFS];
+}
+
+/**
+ * Florianópolis switched to manual approval this many days ago (the project's
+ * "accept splits automatically" turned off mid-trip): entries before that
+ * were auto-accepted, later ones wait for everyone but their author and Paz,
+ * who has no account. That leaves Lucía's "Hospedagem, segunda casa" waiting
+ * for Sofía's review.
+ */
+export const FLORIPA_MANUAL_SINCE_BACK = 34;
 
 export interface SharedEntry {
 	key: string;
@@ -171,8 +203,6 @@ export interface SharedEntry {
 	with: readonly PersonKey[];
 	/** SHARES units per person, in `with` order. Omitted means EQUAL. */
 	units?: readonly number[];
-	/** Participants whose split still waits for their review. */
-	pendingFor?: readonly PersonKey[];
 }
 
 const TRIP = ["sofia", "lucia", "martin", "paz"] as const;
@@ -195,7 +225,7 @@ export const SHARED_ENTRIES: readonly SharedEntry[] = [
 	{ key: "fl_ribeirao", project: "floripa", description: "Jantar no Ribeirão", amount: 925, currency: "BRL", category: "Restaurants", back: 35, paidBy: "martin", with: ["sofia", "martin"] },
 	// The one trip Uber Sofía is not part of.
 	{ key: "fl_uber_jurere", project: "floripa", description: "Uber Jurerê", amount: 52.9, currency: "BRL", category: "Transport", back: 35, paidBy: "lucia", with: ["lucia", "martin", "paz"] },
-	{ key: "fl_segunda_casa", project: "floripa", description: "Hospedagem, segunda casa", amount: 620, currency: "BRL", category: "Travel", back: 34, paidBy: "lucia", with: ["sofia", "lucia", "paz"], pendingFor: ["sofia"] },
+	{ key: "fl_segunda_casa", project: "floripa", description: "Hospedagem, segunda casa", amount: 620, currency: "BRL", category: "Travel", back: 34, paidBy: "lucia", with: ["sofia", "lucia", "paz"] },
 	{ key: "fl_churrasco", project: "floripa", description: "Churrasco de despedida", amount: 780, currency: "BRL", category: "Restaurants", back: 32, paidBy: "sofia", with: TRIP, units: [2, 1, 1, 1] },
 	{ key: "fl_uber_aeroporto", project: "floripa", description: "Uber Aeroporto", amount: 61.5, currency: "BRL", category: "Transport", back: 31, paidBy: "sofia", with: TRIP },
 	{ key: "dp_wifi_prev", project: "depto", description: "Wifi y cable", amount: 113400, currency: "ARS", category: "Utilities", back: 50, paidBy: "martin", with: HOME },
