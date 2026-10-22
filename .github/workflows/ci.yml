@@ -122,5 +122,9 @@ jobs:
           go-version-file: sidecar/go.mod
           cache-dependency-path: sidecar/go.sum
 
+      # The PDF importer shells out to pdftotext (the image installs it too).
+      - name: Install pdftotext
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
       - name: Test
         run: go test ./...
