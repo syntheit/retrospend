@@ -6,48 +6,55 @@ import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 import {
 	type FormatMoneyOptions,
+	figureAttrs,
 	formatMoney,
+	formatMoneyPair,
 	type MoneyValue,
 } from "./format";
 
-type MoneyProps = {
-	/** The amount the server computed (R9). Null: no amount (a muted word). */
+type Format = Omit<FormatMoneyOptions, "locale">;
+
+/** What a missing amount says: "None", or "No rate yet" for a missing conversion. */
+type Missing = "none" | "noRate";
+
+type MoneyProps = Format & {
+	/** The amount the server computed (R9). Null: no amount, a muted word. */
 	value: MoneyValue | null;
-	display?: FormatMoneyOptions["display"];
-	sign?: FormatMoneyOptions["sign"];
-	cents?: FormatMoneyOptions["cents"];
-	/** What a missing amount says ("No rate yet" for a missing conversion). */
-	missing?: "none" | "noRate";
+	missing?: Missing;
+	/** The figures registry key of this number, for the e2e audit. */
+	figure?: string;
 	className?: string;
 };
 
 /**
  * One amount through the one formatter (R10): tabular, lining figures, never
  * wrapped or truncated (7+ digit ARS, 0.004 ETH), leading minus. The client
- * formats what it gets and never converts, sums or rounds (R9).
+ * formats what it gets and never converts, sums or rounds (R9). Every amount
+ * carries data-figure, data-minor and data-currency for the figure audit.
  */
 function MoneyAmount({
 	value,
-	display = "code",
-	sign = "auto",
-	cents = "auto",
+	display,
+	sign,
+	cents,
 	missing = "none",
+	figure,
 	className,
 }: MoneyProps) {
 	const locale = useLocale();
 	const t = useTranslations("kit.money");
-	if (!value)
-		return (
-			<span className={cn("whitespace-nowrap text-fg-3", className)}>
-				{t(missing)}
-			</span>
-		);
+	const text = formatMoney(value, { locale, display, sign, cents });
 	return (
 		<span
-			className={cn("whitespace-nowrap tabular-nums", className)}
-			data-currency={value.currency}
+			className={cn(
+				"whitespace-nowrap",
+				text == null ? "text-fg-3" : "tabular-nums",
+				className,
+			)}
+			data-slot="money"
+			{...figureAttrs(figure, value)}
 		>
-			{formatMoney(value, { locale, display, sign, cents })}
+			{text ?? t(missing)}
 		</span>
 	);
 }
@@ -57,25 +64,47 @@ function MoneyAmount({
  * second, muted (R10). `inline` puts them on one line (a sheet, a glance
  * line); the default stacks them right-aligned (a row's money column). The
  * tip names the rate behind the conversion ("USD 1 = ARS 1,412 · Official ·
- * Oct 21"). Same currency: one amount.
+ * Oct 21"). Same currency: one amount. No home amount: "No rate yet".
  */
 function MoneyPair({
 	original,
 	home,
 	inline = false,
 	tip,
+	figure,
+	homeFigure,
 	className,
-}: {
+	...format
+}: Format & {
 	original: MoneyValue;
 	/** Null when there is no rate yet: says so instead of a number. */
 	home: MoneyValue | null;
 	inline?: boolean;
 	tip?: ReactNode;
+	figure?: string;
+	homeFigure?: string;
 	className?: string;
 }) {
-	if (home && home.currency === original.currency)
-		return <MoneyAmount className={className} value={original} />;
-	const pair = (
+	const locale = useLocale();
+	const t = useTranslations("kit.money");
+	const pair = formatMoneyPair(original, home, { locale, ...format });
+	const same = home != null && pair.home == null;
+	const first = (
+		<span
+			className="whitespace-nowrap tabular-nums"
+			data-slot="money"
+			{...figureAttrs(figure, original)}
+		>
+			{pair.original}
+		</span>
+	);
+	if (same)
+		return (
+			<span className={className} data-slot="money-pair">
+				{first}
+			</span>
+		);
+	const body = (
 		<span
 			className={cn(
 				inline
@@ -85,15 +114,20 @@ function MoneyPair({
 			)}
 			data-slot="money-pair"
 		>
-			<MoneyAmount value={original} />
-			<MoneyAmount
-				className={cn("text-fg-3", inline ? "text-small" : "text-meta")}
-				missing="noRate"
-				value={home}
-			/>
+			{first}
+			<span
+				className={cn(
+					"whitespace-nowrap text-fg-3 tabular-nums",
+					inline ? "text-small" : "text-meta",
+				)}
+				data-slot="money"
+				{...figureAttrs(homeFigure, home)}
+			>
+				{pair.home ?? t("noRate")}
+			</span>
 		</span>
 	);
-	return tip ? <Tip content={tip}>{pair}</Tip> : pair;
+	return tip ? <Tip content={tip}>{body}</Tip> : body;
 }
 
 /** `<Money value={...} />` and `<Money.pair original={...} home={...} />`. */

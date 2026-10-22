@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useStatusWord } from "~/components/ui/status-dot";
 import { toneOf } from "~/components/ui/status-map";
 import { cn } from "~/lib/cn";
-import { type MoneyValue, signOf } from "./format";
+import { figureAttrs, type MoneyValue, signOf } from "./format";
 import { Money } from "./money";
 
 /**
@@ -30,9 +30,12 @@ const WORDS = {
 export function Balance({
 	amount,
 	subject = "person",
+	figure,
 	className,
 }: {
 	amount: MoneyValue;
+	/** The figures registry key, for the e2e audit. */
+	figure?: string;
 	subject?: BalanceSubject;
 	className?: string;
 }) {
@@ -48,6 +51,7 @@ export function Balance({
 					className,
 				)}
 				data-balance="settled"
+				{...figureAttrs(figure, amount)}
 			>
 				{status("settled")}
 			</span>
@@ -63,7 +67,12 @@ export function Balance({
 			data-balance={dir}
 		>
 			{t(WORDS[subject][dir])}{" "}
-			<Money className="font-semibold" sign="never" value={amount} />
+			<Money
+				className="font-semibold"
+				figure={figure}
+				sign="never"
+				value={amount}
+			/>
 		</span>
 	);
 }

@@ -19,9 +19,12 @@ export type AvailableStatus = "funded" | "underfunded" | "overspent";
 export function AvailablePill({
 	amount,
 	status,
+	figure,
 	className,
 }: {
 	amount: MoneyValue;
+	/** The figures registry key, for the e2e audit. */
+	figure?: string;
 	status: AvailableStatus;
 	className?: string;
 }) {
@@ -40,7 +43,7 @@ export function AvailablePill({
 			)}
 			data-status={status}
 		>
-			<Money sign="never" value={amount} />
+			<Money figure={figure} sign="never" value={amount} />
 			<span aria-hidden="true">·</span>
 			<span>{word(status)}</span>
 		</span>

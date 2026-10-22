@@ -1,5 +1,5 @@
 import { createElement as h } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
 	Face,
 	FaceStack,
@@ -9,12 +9,6 @@ import {
 	splitFaces,
 } from "~/components/ui/avatar-face";
 import { render } from "./render";
-
-vi.mock("~/components/money/format", async (orig) => ({
-	...(await orig<typeof import("~/components/money/format")>()),
-	formatMoney: (m: { minor: number; currency: string }) =>
-		`${m.currency} ${m.minor}`,
-}));
 
 const people = [
 	{ id: "me", name: "Daniel Vega", isSelf: true },

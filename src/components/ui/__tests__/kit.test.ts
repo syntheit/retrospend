@@ -13,6 +13,9 @@ describe("registry: built components", () => {
 			"Toolbar",
 			"Section",
 			"SummaryLine",
+			"Money",
+			"Balance",
+			"AvailablePill",
 		]);
 		for (const p of built)
 			expect(existsSync(join(ROOT, p.target)), p.target).toBe(true);
