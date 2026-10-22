@@ -30,10 +30,15 @@ model User {
   autoAcceptSplits            Boolean                       @default(true)
   fiscalMonthStartDay         Int                           @default(1)
   defaultExpenseDateBehavior  DefaultExpenseDateBehavior    @default(TODAY)
+  /// {currency: accountId}: the account money sheets prefill (MONEY-MOVES §2.1).
+  defaultAccounts             Json?
   accounts                Account[]
   assetAccounts           AssetAccount[]
   assetSnapshots          AssetSnapshot[]
   assetHistories          AssetHistory[]
+  accountLegs             AccountLeg[]
+  transfers               Transfer[]
+  assetRateTypes          AssetRateType[]
   categories              Category[]
   favoriteExchangeRates   ExchangeRateFavorite[]
   expenses                Expense[]
@@ -196,8 +201,16 @@ model Expense {
   inType       InType?
   amortizeMode AmortizeMode     @default(INSTALLMENTS)
 
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // M4 (MONEY-MOVES §2.2): income kept in Wealth stays out of To assign; its
+  // account comes from its AccountLeg. movedInAt: counted in the budget by a
+  // Move in (count only, D4).
+  keepInWealth Boolean   @default(false)
+  movedInAt    DateTime?
+
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountLegs AccountLeg[]
+  feeOf       Transfer?    @relation("TransferFee")
 
   @@index([userId, date])
   @@index([parentId])
@@ -323,9 +336,15 @@ model AssetAccount {
   exchangeRate     Decimal?        @db.Decimal(18, 6)
   exchangeRateType String?         @db.VarChar(32)
   isLiquid         Boolean         @default(false)
-  interestRate     Float?
-  minimumPayment   Decimal?        @db.Decimal(10, 2)
+  interestRate     Decimal?        @db.Decimal(9, 6)
+  minimumPayment   Decimal?        @db.Decimal(19, 8)
   dueDate          Int?
+  /// "Part of my budget" (MONEY-MOVES §2.1). Null = the default for its kind
+  /// and currency (accounts/places.ts defaultInBudget).
+  inBudget         Boolean?
+  /// Units already counted in the budget by a Move in (D4). A later move out
+  /// of the account uses them first, so they never enter the budget twice.
+  countedUnits     Decimal         @default(0) @db.Decimal(19, 8)
   /// Set when the account is closed. A closed account counts 0 from this day
   /// on but keeps its snapshots, so past net worth stays as it was.
   closedAt         DateTime?
@@ -334,6 +353,10 @@ model AssetAccount {
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots        AssetSnapshot[]
   history          AssetHistory[]
+  legs             AccountLeg[]
+  rateTypes        AssetRateType[]
+  transfersOut     Transfer[]      @relation("TransferFrom")
+  transfersIn      Transfer[]      @relation("TransferTo")
 
   @@index([userId])
   @@index([userId, closedAt])
@@ -353,6 +376,9 @@ model AssetSnapshot {
   currency         String?
   type             AssetType?
   exchangeRateType String?      @db.VarChar(32)
+  /// When this balance was last written: legs of the same day created after
+  /// it move the balance on top of it, earlier ones are inside it.
+  recordedAt       DateTime     @default(now())
   account          AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -360,6 +386,84 @@ model AssetSnapshot {
   @@index([userId])
   @@index([userId, date])
   @@map("asset_snapshot")
+}
+
+/// M4: a money move between two of your own places, amounts as typed (I21).
+/// A null account is Not tracked (N75).
+model Transfer {
+  id                String       @id @default(cuid())
+  userId            String
+  kind              TransferKind
+  date              DateTime
+  fromAccountId     String?
+  fromAmount        Decimal      @db.Decimal(19, 8)
+  fromCurrency      String
+  toAccountId       String?
+  toAmount          Decimal      @db.Decimal(19, 8)
+  toCurrency        String
+  referenceRateType String?      @db.VarChar(32)
+  feeExpenseId      String?      @unique
+  /// D4: counted units this move took out of the source and gave the destination.
+  countedFromUnits  Decimal      @default(0) @db.Decimal(19, 8)
+  countedToUnits    Decimal      @default(0) @db.Decimal(19, 8)
+  note              String?      @db.VarChar(500)
+  createdAt         DateTime     @default(now())
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount AssetAccount? @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: SetNull)
+  toAccount   AssetAccount? @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: SetNull)
+  feeExpense  Expense?      @relation("TransferFee", fields: [feeExpenseId], references: [id], onDelete: SetNull)
+  legs        AccountLeg[]
+
+  @@index([userId, date])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@map("transfer")
+}
+
+/// M4: one place a money move changes, signed in what you have (+ = more).
+/// accountId null = Not tracked. homeAmount is the booked home value (I20).
+model AccountLeg {
+  id           String           @id @default(cuid())
+  userId       String
+  accountId    String?
+  currency     String
+  amount       Decimal          @db.Decimal(19, 8)
+  homeAmount   Decimal?         @db.Decimal(19, 8)
+  homeCurrency String?
+  date         DateTime
+  source       AccountLegSource
+  transferId   String?
+  expenseId    String?
+  createdAt    DateTime         @default(now())
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  AssetAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transfer Transfer?     @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  expense  Expense?      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([accountId, date])
+  @@index([transferId])
+  @@index([expenseId])
+  @@map("account_leg")
+}
+
+/// M4 (D3): the rate type an account is valued at from a day on.
+model AssetRateType {
+  id        String       @id @default(cuid())
+  userId    String
+  accountId String
+  from      DateTime
+  type      String?      @db.VarChar(32)
+  createdAt DateTime     @default(now())
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, from])
+  @@index([userId])
+  @@map("asset_rate_type")
 }
 
 model AssetHistory {
@@ -521,6 +625,21 @@ enum AssetType {
   LIABILITY_LOAN
   LIABILITY_CREDIT_CARD
   LIABILITY_MORTGAGE
+}
+
+enum TransferKind {
+  TRANSFER
+  EXCHANGE
+  CARD_PAYMENT
+  WITHDRAWAL
+  DEBT_PAYMENT
+}
+
+enum AccountLegSource {
+  INCOME
+  TRANSFER
+  FEE
+  BALANCE_UPDATE
 }
 
 enum BudgetType {
