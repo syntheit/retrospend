@@ -1,0 +1,63 @@
+{
+	"header": {
+		"title": "Activité",
+		"sub": "{count, plural, one {# opération} other {# opérations}}",
+		"more": "Plus d'actions",
+		"import": "Importer un fichier"
+	},
+	"tabs": {
+		"expenses": "Dépenses",
+		"recurring": "Récurrentes",
+		"insights": "Analyses"
+	},
+	"filters": {
+		"label": "Filtrer l'activité",
+		"search": "Chercher des dépenses ou des montants",
+		"find": "Chercher",
+		"noMatch": "Aucun résultat",
+		"picked": "Choisis",
+		"clear": "Effacer",
+		"selected": "Choisi",
+		"more": "{name} +{count}",
+		"you": "Toi",
+		"dim": {
+			"cats": "Catégorie",
+			"people": "Personne",
+			"projects": "Projet",
+			"paidBy": "Payé par",
+			"kinds": "Type"
+		},
+		"kind": {
+			"expense": "Dépenses",
+			"in": "Rentrées",
+			"refund": "Remboursements",
+			"transfer": "Hors dépenses",
+			"payment": "Paiements"
+		}
+	},
+	"row": {
+		"paidTo": "Tu as payé {name}",
+		"paidYou": "{name} t'a payé"
+	},
+	"actions": {
+		"deleted": "{name} supprimé",
+		"failed": "Impossible d'enregistrer la modification"
+	},
+	"empty": {
+		"first": "Ajoute ta première dépense",
+		"firstHint": "Les dépenses que tu ajoutes ou importes apparaissent ici.",
+		"add": "Ajouter une dépense",
+		"noMatch": "Aucun résultat",
+		"noMatchHint": "Rien ne correspond à ces filtres.",
+		"reset": "Réinitialiser"
+	},
+	"error": {
+		"load": "Impossible de charger ton activité.",
+		"retry": "Réessayer"
+	},
+	"footer": {
+		"yourSpending": "Tes dépenses"
+	},
+	"compareUnavailable": "La comparaison avec la période précédente n'est pas encore disponible.",
+	"more": "Voir plus"
+}

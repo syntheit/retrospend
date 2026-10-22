@@ -1,0 +1,86 @@
+{
+	"title": "Atividade",
+	"metaTitle": "Recorrentes",
+	"sub": "{out, plural, one {# gasto recorrente} other {# gastos recorrentes}}{income, plural, =0 {} one { · # entrada recorrente} other { · # entradas recorrentes}}",
+	"add": "Adicionar gasto recorrente",
+	"other": "Outros",
+	"confirm": "Confirmar",
+	"frequency": {
+		"weekly": "Semanal",
+		"biweekly": "A cada 2 semanas",
+		"monthly": "Mensal",
+		"quarterly": "Trimestral",
+		"yearly": "Anual"
+	},
+	"due": {
+		"paused": "Pausado",
+		"overdueSince": "Atrasado desde {date}",
+		"today": "Vence hoje",
+		"inDays": "em {count, plural, one {# dia} other {# dias}}"
+	},
+	"group": {
+		"due": "Vencendo agora",
+		"next30": "Próximos 30 dias",
+		"later": "Depois",
+		"in": "Entradas"
+	},
+	"table": {
+		"name": "Nome",
+		"due": "Vencimento",
+		"repeats": "Repete",
+		"amount": "Valor",
+		"autoPay": "Débito automático",
+		"autoPayFor": "Débito automático de {name}",
+		"actions": "Ações"
+	},
+	"autoPay": {
+		"on": "Débito automático ligado",
+		"off": "Débito automático desligado"
+	},
+	"toolbar": {
+		"label": "Filtrar recorrentes",
+		"search": "Buscar recorrentes",
+		"autoPayOn": "Débito automático ligado",
+		"autoPayOff": "Débito automático desligado",
+		"foreign": "Moeda estrangeira"
+	},
+	"summary": {
+		"cost": "Seus gastos recorrentes custam <amount></amount> {period}.",
+		"per": {
+			"month": "por mês",
+			"quarter": "por trimestre",
+			"year": "por ano"
+		},
+		"missing": "Fora da conta: {currencies}, ainda sem cotação.",
+		"setRate": "Definir cotação",
+		"income": "Entradas recorrentes: <amount></amount>.",
+		"period": "Período",
+		"monthly": "Mensal",
+		"quarterly": "Trimestral",
+		"yearly": "Anual"
+	},
+	"logged": {
+		"title": "Registrados por débito automático",
+		"see": "Ver em Atividade"
+	},
+	"actions": {
+		"failed": "Não foi possível salvar a alteração",
+		"paused": "{name} pausado",
+		"resumed": "{name} retomado",
+		"autoPayOn": "Débito automático ligado para {name}",
+		"autoPayOff": "Débito automático desligado para {name}",
+		"logged": "{name} registrado",
+		"deleted": "{name} excluído"
+	},
+	"empty": {
+		"title": "Nenhum gasto recorrente",
+		"hint": "Adicione aluguel, assinaturas e outros custos fixos.",
+		"noMatch": "Nenhum resultado",
+		"noMatchHint": "Nada corresponde a esses filtros.",
+		"reset": "Redefinir"
+	},
+	"error": {
+		"load": "Não foi possível carregar seus gastos recorrentes.",
+		"retry": "Tentar de novo"
+	}
+}

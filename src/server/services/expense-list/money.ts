@@ -12,6 +12,7 @@ import {
 } from "@retrospend/domain/money";
 import { type Money, toMinor } from "@retrospend/domain/money-minor";
 import { type CategoryColor, Prisma } from "~prisma";
+import { categoryTone } from "./category-tone";
 import type { CategoryRefDTO } from "./types";
 
 type DecimalLike = Prisma.Decimal | number | string;
@@ -80,37 +81,6 @@ export function homeOf(
 	return v === null ? null : numberMoney(v, rates.home);
 }
 
-/**
- * Stored category colors to the 21 category-n tokens, once (GAPS §3: "map
- * them once"). The order is the CategoryColor enum's.
- */
-const TONES: Record<CategoryColor, number> = {
-	emerald: 1,
-	blue: 2,
-	sky: 3,
-	cyan: 4,
-	teal: 5,
-	orange: 6,
-	amber: 7,
-	violet: 8,
-	pink: 9,
-	fuchsia: 10,
-	indigo: 11,
-	slate: 12,
-	zinc: 13,
-	lime: 14,
-	neutral: 15,
-	gray: 16,
-	purple: 17,
-	yellow: 18,
-	stone: 19,
-	rose: 20,
-	red: 21,
-};
-
-/** The tone of "no category": a neutral slot. */
-export const NO_CATEGORY_TONE = TONES.slate;
-
 export function categoryRef(
 	c: {
 		id: string;
@@ -124,6 +94,6 @@ export function categoryRef(
 		id: c.id,
 		name: c.name,
 		icon: c.icon,
-		tone: TONES[c.color] ?? NO_CATEGORY_TONE,
+		tone: categoryTone(c.color),
 	};
 }

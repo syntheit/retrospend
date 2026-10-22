@@ -1,0 +1,86 @@
+{
+	"title": "Activité",
+	"metaTitle": "Récurrentes",
+	"sub": "{out, plural, one {# dépense récurrente} other {# dépenses récurrentes}}{income, plural, =0 {} one { · # rentrée récurrente} other { · # rentrées récurrentes}}",
+	"add": "Ajouter une dépense récurrente",
+	"other": "Autre",
+	"confirm": "Confirmer",
+	"frequency": {
+		"weekly": "Hebdomadaire",
+		"biweekly": "Toutes les 2 semaines",
+		"monthly": "Mensuel",
+		"quarterly": "Trimestriel",
+		"yearly": "Annuel"
+	},
+	"due": {
+		"paused": "En pause",
+		"overdueSince": "En retard depuis le {date}",
+		"today": "À payer aujourd'hui",
+		"inDays": "dans {count, plural, one {# jour} other {# jours}}"
+	},
+	"group": {
+		"due": "À payer",
+		"next30": "30 prochains jours",
+		"later": "Plus tard",
+		"in": "Rentrées"
+	},
+	"table": {
+		"name": "Nom",
+		"due": "Échéance",
+		"repeats": "Fréquence",
+		"amount": "Montant",
+		"autoPay": "Paiement auto",
+		"autoPayFor": "Paiement auto pour {name}",
+		"actions": "Actions"
+	},
+	"autoPay": {
+		"on": "Paiement auto activé",
+		"off": "Paiement auto désactivé"
+	},
+	"toolbar": {
+		"label": "Filtrer les récurrentes",
+		"search": "Chercher une récurrente",
+		"autoPayOn": "Paiement auto activé",
+		"autoPayOff": "Paiement auto désactivé",
+		"foreign": "Devise étrangère"
+	},
+	"summary": {
+		"cost": "Tes dépenses récurrentes coûtent <amount></amount> {period}.",
+		"per": {
+			"month": "par mois",
+			"quarter": "par trimestre",
+			"year": "par an"
+		},
+		"missing": "Non comptées : {currencies}, pas encore de taux.",
+		"setRate": "Définir le taux",
+		"income": "Rentrées récurrentes : <amount></amount>.",
+		"period": "Période",
+		"monthly": "Mensuel",
+		"quarterly": "Trimestriel",
+		"yearly": "Annuel"
+	},
+	"logged": {
+		"title": "Enregistrées par paiement auto",
+		"see": "Voir dans Activité"
+	},
+	"actions": {
+		"failed": "Impossible d'enregistrer la modification",
+		"paused": "{name} en pause",
+		"resumed": "{name} reprise",
+		"autoPayOn": "Paiement auto activé pour {name}",
+		"autoPayOff": "Paiement auto désactivé pour {name}",
+		"logged": "{name} enregistrée",
+		"deleted": "{name} supprimée"
+	},
+	"empty": {
+		"title": "Aucune dépense récurrente",
+		"hint": "Ajoute le loyer, les abonnements et les autres frais fixes.",
+		"noMatch": "Aucun résultat",
+		"noMatchHint": "Rien ne correspond à ces filtres.",
+		"reset": "Réinitialiser"
+	},
+	"error": {
+		"load": "Impossible de charger tes dépenses récurrentes.",
+		"retry": "Réessayer"
+	}
+}

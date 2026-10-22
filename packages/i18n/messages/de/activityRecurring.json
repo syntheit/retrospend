@@ -1,0 +1,86 @@
+{
+	"title": "Aktivität",
+	"metaTitle": "Wiederkehrend",
+	"sub": "{out, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}{income, plural, =0 {} one { · # wiederkehrende Einnahme} other { · # wiederkehrende Einnahmen}}",
+	"add": "Wiederkehrende Ausgabe hinzufügen",
+	"other": "Sonstiges",
+	"confirm": "Bestätigen",
+	"frequency": {
+		"weekly": "Wöchentlich",
+		"biweekly": "Alle 2 Wochen",
+		"monthly": "Monatlich",
+		"quarterly": "Vierteljährlich",
+		"yearly": "Jährlich"
+	},
+	"due": {
+		"paused": "Pausiert",
+		"overdueSince": "Überfällig seit {date}",
+		"today": "Heute fällig",
+		"inDays": "in {count, plural, one {# Tag} other {# Tagen}}"
+	},
+	"group": {
+		"due": "Jetzt fällig",
+		"next30": "Nächste 30 Tage",
+		"later": "Später",
+		"in": "Einnahmen"
+	},
+	"table": {
+		"name": "Name",
+		"due": "Fällig",
+		"repeats": "Wiederholung",
+		"amount": "Betrag",
+		"autoPay": "Auto-Zahlung",
+		"autoPayFor": "Auto-Zahlung für {name}",
+		"actions": "Aktionen"
+	},
+	"autoPay": {
+		"on": "Auto-Zahlung an",
+		"off": "Auto-Zahlung aus"
+	},
+	"toolbar": {
+		"label": "Wiederkehrende filtern",
+		"search": "Wiederkehrende suchen",
+		"autoPayOn": "Auto-Zahlung an",
+		"autoPayOff": "Auto-Zahlung aus",
+		"foreign": "Fremdwährung"
+	},
+	"summary": {
+		"cost": "Deine wiederkehrenden Ausgaben kosten <amount></amount> {period}.",
+		"per": {
+			"month": "im Monat",
+			"quarter": "im Quartal",
+			"year": "im Jahr"
+		},
+		"missing": "Nicht gezählt: {currencies}, noch kein Kurs.",
+		"setRate": "Kurs festlegen",
+		"income": "Wiederkehrende Einnahmen: <amount></amount>.",
+		"period": "Zeitraum",
+		"monthly": "Monatlich",
+		"quarterly": "Vierteljährlich",
+		"yearly": "Jährlich"
+	},
+	"logged": {
+		"title": "Per Auto-Zahlung erfasst",
+		"see": "In Aktivität ansehen"
+	},
+	"actions": {
+		"failed": "Die Änderung konnte nicht gespeichert werden",
+		"paused": "{name} pausiert",
+		"resumed": "{name} fortgesetzt",
+		"autoPayOn": "Auto-Zahlung an für {name}",
+		"autoPayOff": "Auto-Zahlung aus für {name}",
+		"logged": "{name} erfasst",
+		"deleted": "{name} gelöscht"
+	},
+	"empty": {
+		"title": "Keine wiederkehrenden Ausgaben",
+		"hint": "Füge Miete, Abos und andere Fixkosten hinzu.",
+		"noMatch": "Keine Treffer",
+		"noMatchHint": "Nichts passt zu diesen Filtern.",
+		"reset": "Zurücksetzen"
+	},
+	"error": {
+		"load": "Deine wiederkehrenden Ausgaben konnten nicht geladen werden.",
+		"retry": "Erneut versuchen"
+	}
+}

@@ -95,7 +95,15 @@ beforeAll(async () => {
 			},
 		},
 	});
-	const settle = (id: string, extra: object) => ({
+	const settle = (
+		id: string,
+		extra: {
+			amount: string;
+			status: "FINALIZED" | "REJECTED";
+			isOffset?: boolean;
+			paymentGroupId?: string;
+		},
+	) => ({
 		id,
 		fromParticipantType: "user" as const,
 		fromParticipantId: other.user.id,

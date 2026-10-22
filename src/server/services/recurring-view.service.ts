@@ -17,12 +17,12 @@ import {
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient, RecurringTemplate } from "~prisma";
+import { NO_CATEGORY_TONE } from "./expense-list/category-tone";
 import {
 	categoryRef,
 	decimalMoney,
 	type HomeRates,
 	homeMajor,
-	NO_CATEGORY_TONE,
 	numberMoney,
 } from "./expense-list/money";
 import { shapeRows } from "./expense-list/rows";
@@ -44,6 +44,8 @@ export type RecurringItemDTO = {
 	frequency: RecurringFrequencyDTO;
 	/** ISO date of the next occurrence, in the viewer's zone. */
 	next: string;
+	/** The stored due instant, which a confirm sends back as its guard. */
+	dueAt: string;
 	/** The next date once this one is confirmed or skipped. */
 	nextAfter: string;
 	state: "upcoming" | "due" | "overdue";
@@ -205,6 +207,7 @@ export async function listRecurringView(
 				},
 				frequency: t.frequency.toLowerCase() as RecurringFrequencyDTO,
 				next,
+				dueAt: t.nextDueDate.toISOString(),
 				nextAfter: dayKey(
 					nextRecurringDate(t.nextDueDate, t.frequency, t.anchorDay),
 					timeZone,
