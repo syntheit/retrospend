@@ -17,12 +17,6 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { APP_VERSION } from "~/lib/version";
 import {
-	MENU_CONTENT,
-	MENU_HINT,
-	MENU_ITEM,
-	MENU_SEPARATOR,
-} from "./menu-styles";
-import {
 	type AccountEntry,
 	accountGroups,
 	useAccountEntries,
@@ -37,13 +31,11 @@ function EntryInner({ entry }: { entry: AccountEntry }) {
 			<Icon aria-hidden="true" className="size-4" />
 			{entry.label}
 			{entry.count ? (
-				<DropdownMenuShortcut className="ml-auto font-medium text-attention-text text-meta tracking-normal">
+				<DropdownMenuShortcut className="font-medium text-attention-text">
 					{t("newCount", { count: entry.count })}
 				</DropdownMenuShortcut>
 			) : entry.hint ? (
-				<DropdownMenuShortcut className={MENU_HINT}>
-					{entry.hint}
-				</DropdownMenuShortcut>
+				<DropdownMenuShortcut>{entry.hint}</DropdownMenuShortcut>
 			) : null}
 		</>
 	);
@@ -52,7 +44,7 @@ function EntryInner({ entry }: { entry: AccountEntry }) {
 function MenuEntry({ entry }: { entry: AccountEntry }) {
 	if (entry.href)
 		return (
-			<DropdownMenuItem asChild className={MENU_ITEM}>
+			<DropdownMenuItem asChild>
 				<Link
 					href={entry.href}
 					rel={entry.newTab ? "noopener noreferrer" : undefined}
@@ -63,7 +55,7 @@ function MenuEntry({ entry }: { entry: AccountEntry }) {
 			</DropdownMenuItem>
 		);
 	return (
-		<DropdownMenuItem className={MENU_ITEM} onSelect={entry.onSelect}>
+		<DropdownMenuItem onSelect={entry.onSelect}>
 			<EntryInner entry={entry} />
 		</DropdownMenuItem>
 	);
@@ -115,12 +107,12 @@ export function AccountMenu() {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align="start"
-				className={`${MENU_CONTENT} w-(--radix-dropdown-menu-trigger-width)`}
+				className="w-(--radix-dropdown-menu-trigger-width)"
 				side="top"
 			>
 				{groups.map((group, i) => (
 					<Fragment key={group[0]?.id}>
-						{i > 0 && <DropdownMenuSeparator className={MENU_SEPARATOR} />}
+						{i > 0 && <DropdownMenuSeparator />}
 						{group.map((entry) => (
 							<MenuEntry entry={entry} key={entry.id} />
 						))}

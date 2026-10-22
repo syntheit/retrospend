@@ -13,7 +13,6 @@ import {
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 import { ADD_ACTIONS, type AddEntry } from "~/lib/nav";
-import { MENU_CONTENT, MENU_HINT, MENU_ITEM } from "./menu-styles";
 import { useShellActions } from "./shell-context";
 
 function AddMenuItem({ entry }: { entry: AddEntry }) {
@@ -23,10 +22,7 @@ function AddMenuItem({ entry }: { entry: AddEntry }) {
 	const item = (
 		<DropdownMenuItem
 			aria-disabled={entry.ready ? undefined : true}
-			className={cn(
-				MENU_ITEM,
-				!entry.ready && "opacity-45 focus:bg-transparent",
-			)}
+			className={cn(!entry.ready && "opacity-45 focus:bg-transparent")}
 			onSelect={(e) => {
 				// A sheet that does not exist yet keeps the menu open; the tip says why.
 				if (!entry.ready) e.preventDefault();
@@ -35,9 +31,7 @@ function AddMenuItem({ entry }: { entry: AddEntry }) {
 		>
 			<Icon aria-hidden="true" className="size-4" />
 			{t(entry.id)}
-			<DropdownMenuShortcut className={MENU_HINT}>
-				{entry.key.toUpperCase()}
-			</DropdownMenuShortcut>
+			<DropdownMenuShortcut>{entry.key.toUpperCase()}</DropdownMenuShortcut>
 		</DropdownMenuItem>
 	);
 	return entry.ready ? (
@@ -84,7 +78,7 @@ export function AddSplitButton({ className }: { className?: string }) {
 						</Button>
 					</DropdownMenuTrigger>
 				</Tip>
-				<DropdownMenuContent align="end" className={MENU_CONTENT}>
+				<DropdownMenuContent align="end">
 					{ADD_ACTIONS.map((entry) => (
 						<AddMenuItem entry={entry} key={entry.id} />
 					))}

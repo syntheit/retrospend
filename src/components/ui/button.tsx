@@ -181,14 +181,21 @@ function KindButton({
 			type={asChild ? undefined : (type ?? "button")}
 			{...rest}
 		>
-			{children}
-			{busy && (
+			{asChild ? (
+				// Slot takes exactly one child; a second (even `false`) throws.
+				children
+			) : (
 				<>
-					<LoaderCircle
-						aria-hidden="true"
-						className={cn("absolute size-3.5! animate-spin", SPINNER[kind])}
-					/>
-					<span className="sr-only">{t("loading")}</span>
+					{children}
+					{busy && (
+						<>
+							<LoaderCircle
+								aria-hidden="true"
+								className={cn("absolute size-3.5! animate-spin", SPINNER[kind])}
+							/>
+							<span className="sr-only">{t("loading")}</span>
+						</>
+					)}
 				</>
 			)}
 		</Comp>
