@@ -71,7 +71,14 @@ export function CurrenciesScreen({
 			? initial
 			: firstPriced,
 	);
-	const [sheetOpen, setSheetOpen] = useState(Boolean(initial) && phone);
+	const [sheetOpen, setSheetOpen] = useState(false);
+	// A currency in the link opens its sheet on a phone, once the width is known.
+	const opened = useRef(false);
+	useEffect(() => {
+		if (!phone || opened.current || !initial) return;
+		opened.current = true;
+		setSheetOpen(true);
+	}, [phone, initial]);
 	const [query, setQuery] = useState("");
 	const [favorites, setFavorites] = useState(false);
 	const [kind, setKind] = useState<Kind>(null);
