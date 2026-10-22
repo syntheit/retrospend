@@ -351,3 +351,85 @@ describe("a bad bearer never falls back to a scoped cookie", () => {
 		expect(res.headers.get("set-auth-token")).toBeNull();
 	});
 });
+
+/** The signed cookie value for a token, without the cookie name. */
+async function signedValue(token: string) {
+	const signature = await makeSignature(token, env.BETTER_AUTH_SECRET ?? "");
+	return encodeURIComponent(`${token}.${signature}`);
+}
+
+describe("the guard reads cookies and bearers exactly as better-auth does", () => {
+	let user: { id: string; email: string };
+	let scopedToken: string;
+
+	beforeAll(async () => {
+		user = await passwordUser("ADMIN");
+		scopedToken = await deviceSession(user.id, "read");
+	});
+
+	const cookieForms = (value: string) => [
+		`better-auth.session_token="${value}"`,
+		`better-auth.session_token = ${value}`,
+		`better-auth.session_token= "${value}" `,
+	];
+
+	it("refuses a scoped session in every cookie form better-auth accepts", async () => {
+		for (const cookie of cookieForms(await signedValue(scopedToken))) {
+			// Control: better-auth resolves this form to the scoped session.
+			const session = await authRequest("/get-session", {
+				method: "GET",
+				headers: { cookie },
+			});
+			expect((await session.json())?.session?.token).toBe(scopedToken);
+
+			const list = await authRequest("/list-sessions", {
+				method: "GET",
+				headers: { cookie },
+			});
+			expect(list.status).toBe(403);
+		}
+	});
+
+	it("treats Bearer with a tab as no bearer, as the bearer plugin does", async () => {
+		const alone = await authRequest("/list-sessions", {
+			method: "GET",
+			headers: { authorization: `Bearer\t${scopedToken}` },
+		});
+		expect(alone.status).not.toBe(200);
+		const withCookie = await authRequest("/list-sessions", {
+			method: "GET",
+			headers: {
+				authorization: "Bearer\tjunk",
+				cookie: `better-auth.session_token=${await signedValue(scopedToken)}`,
+			},
+		});
+		expect(withCookie.status).toBe(403);
+	});
+
+	it("never turns a bearer into a web cookie on refresh", async () => {
+		// A web token copied out of a browser and sent as a bearer must not
+		// come back as a fresh signed web cookie.
+		const webToken = await sessionDueForRefresh(user.id);
+		const res = await authRequest("/get-session", {
+			method: "GET",
+			headers: { authorization: `Bearer ${webToken}` },
+		});
+		expect(res.headers.get("set-cookie")).toBeNull();
+		expect(res.headers.get("set-auth-token")).toBeNull();
+	});
+
+	it("keeps a web session working next to a Basic Authorization header", async () => {
+		const webToken = await sessionDueForRefresh(user.id);
+		const headers = {
+			cookie: `better-auth.session_token=${await signedValue(webToken)}`,
+			authorization: "Basic dXNlcjpwYXNz",
+		};
+		const list = await authRequest("/list-sessions", {
+			method: "GET",
+			headers,
+		});
+		expect(list.status).toBe(200);
+		const ctx = await createTRPCContext({ headers: new Headers(headers) });
+		expect(ctx.session?.user.id).toBe(user.id);
+	});
+});
