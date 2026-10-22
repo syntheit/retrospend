@@ -223,7 +223,7 @@ export function EditableCell({
 					{displayValue || placeholder}
 				</span>
 			)}
-			<Pencil className="h-3 w-3 shrink-0 text-muted-foreground md:opacity-0 transition-opacity md:group-hover/edit:opacity-100" />
+			<Pencil className="h-3 w-3 shrink-0 text-muted-foreground can-hover:opacity-0 transition-opacity group-hover/edit:opacity-100" />
 		</Button>
 	);
 }

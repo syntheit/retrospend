@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "~/components/ui/badge";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 
@@ -18,15 +19,20 @@ export function QuickChips({
 	onChipClick,
 	disabled = false,
 }: QuickChipsProps) {
+	const t = useTranslations("budget");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const chips = [
 		{
-			label: `Avg: ${formatCurrency(averageSpend, homeCurrency)}`,
+			label: t("averageChip", {
+				amount: formatCurrency(averageSpend, homeCurrency),
+			}),
 			value: averageSpend,
 		},
 		{
-			label: `Last Mo: ${formatCurrency(lastMonthSpend, homeCurrency)}`,
+			label: t("lastMonthChip", {
+				amount: formatCurrency(lastMonthSpend, homeCurrency),
+			}),
 			value: lastMonthSpend,
 		},
 	];

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useSettings } from "~/hooks/use-settings";
@@ -35,6 +36,7 @@ export function PlaygroundProvider({
 }: {
 	children: React.ReactNode;
 }) {
+	const t = useTranslations("playground");
 	const { data: settings } = useSettings();
 	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
 
@@ -113,7 +115,7 @@ export function PlaygroundProvider({
 		}
 		setSimulatedBudgets(initial);
 		setIsDirty(false);
-		toast.info("Reset to live budget data");
+		toast.info(t("resetToLive"));
 	};
 
 	const handleSetSelectedMonth = (date: Date) => {

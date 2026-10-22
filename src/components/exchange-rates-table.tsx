@@ -348,7 +348,7 @@ function createExchangeRateColumns({
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
-							className="h-7 w-7 md:opacity-0 transition-opacity md:group-hover:opacity-100 data-[state=open]:opacity-100"
+							className="h-7 w-7 can-hover:opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
 							size="icon"
 							variant="ghost"
 							onClick={(e) => e.stopPropagation()}

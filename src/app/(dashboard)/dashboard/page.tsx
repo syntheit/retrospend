@@ -11,6 +11,7 @@ import {
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MonthStepper } from "~/components/date/MonthStepper";
@@ -47,6 +48,7 @@ import {
 import { StatsCards } from "../_components/stats-cards";
 
 export default function Page() {
+	const t = useTranslations("dashboard");
 	const { state, data, isLoading, actions } = useOverviewController();
 	const { formatCurrency } = useCurrencyFormatter();
 	const { openExpense, openSharedExpense } = useExpenseModal();
@@ -58,12 +60,12 @@ export default function Page() {
 
 	const deleteMutation = api.expense.deleteExpense.useMutation({
 		onSuccess: async () => {
-			toast.success("Expense deleted");
+			toast.success(t("expenseDeleted"));
 			await utils.dashboard.getRecentActivity.invalidate();
 			setPendingDeleteItem(null);
 		},
 		onError: () => {
-			toast.error("Failed to delete expense");
+			toast.error(t("expenseDeleteFailed"));
 		},
 	});
 
@@ -93,20 +95,17 @@ export default function Page() {
 		<Card className="border-dashed">
 			<CardHeader>
 				<CardTitle className="font-semibold text-lg">
-					Welcome to Retrospend
+					{t("welcomeTitle")}
 				</CardTitle>
-				<CardDescription>
-					Add your first expense to replace the sample data and unlock real
-					insights.
-				</CardDescription>
+				<CardDescription>{t("welcomeDescription")}</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-wrap items-center gap-2">
-				<Button onClick={actions.handleCreateExpense}>Add expense</Button>
+				<Button onClick={actions.handleCreateExpense}>{t("addExpense")}</Button>
 				<Button asChild variant="outline">
-					<Link href="/transactions">Go to Transactions</Link>
+					<Link href="/transactions">{t("goToTransactions")}</Link>
 				</Button>
 				<span className="text-muted-foreground text-xs">
-					Charts will switch from sample data as soon as you add an expense.
+					{t("chartsSwitchHint")}
 				</span>
 			</CardContent>
 		</Card>
@@ -116,44 +115,42 @@ export default function Page() {
 		<Card className="border-dashed">
 			<CardHeader>
 				<CardTitle className="font-semibold text-lg">
-					Welcome to Retrospend
+					{t("welcomeTitle")}
 				</CardTitle>
-				<CardDescription>
-					Your shared expenses have been linked to your account. You can now access them from any device, and your data is safe with your own secure account.
-				</CardDescription>
+				<CardDescription>{t("upgradeDescription")}</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<p className="text-muted-foreground text-sm">Now that you have a full account, explore everything Retrospend has to offer:</p>
+				<p className="text-muted-foreground text-sm">{t("upgradeExploreText")}</p>
 				<ul className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-muted-foreground text-sm sm:grid-cols-2">
 					<li className="flex items-center gap-2">
 						<Smartphone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-						Access from any device
+						{t("upgradeAccessFromDevice")}
 					</li>
 					<li className="flex items-center gap-2">
 						<BarChart3 className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-						Personal spending tracking
+						{t("upgradeSpendingTracking")}
 					</li>
 					<li className="flex items-center gap-2">
 						<Target className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-						Budgets with real-time pacing
+						{t("upgradeBudgets")}
 					</li>
 					<li className="flex items-center gap-2">
 						<TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-						Net worth and wealth tracking
+						{t("upgradeWealth")}
 					</li>
 					<li className="flex items-center gap-2">
 						<Globe className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-						Multi-currency with live rates
+						{t("upgradeMultiCurrency")}
 					</li>
 					<li className="flex items-center gap-2">
 						<Receipt className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-						Bank imports and receipt scanning
+						{t("upgradeBankImports")}
 					</li>
 				</ul>
 				<div className="flex flex-wrap items-center gap-2 pt-1">
-					<Button onClick={actions.handleCreateExpense}>Add your first expense</Button>
+					<Button onClick={actions.handleCreateExpense}>{t("addFirstExpense")}</Button>
 					<Button asChild variant="outline">
-						<Link href="/transactions">Go to Transactions</Link>
+						<Link href="/transactions">{t("goToTransactions")}</Link>
 					</Button>
 				</div>
 			</CardContent>
@@ -171,7 +168,7 @@ export default function Page() {
 						value={state.selectedMonth}
 					/>
 				}
-				title="Dashboard"
+				title={t("title")}
 			/>
 			<PageContent fill>
 				<div className="flex flex-col gap-4 lg:gap-6 lg:flex-1 lg:min-h-0">
@@ -260,8 +257,8 @@ export default function Page() {
 				</div>
 			</PageContent>
 		<ConfirmationDialog
-			confirmLabel="Delete"
-			description="This action cannot be undone."
+			confirmLabel={t("deleteExpenseConfirm")}
+			description={t("deleteExpenseDescription")}
 			isLoading={deleteMutation.isPending}
 			onConfirm={() => {
 				if (pendingDeleteItem) {
@@ -270,7 +267,7 @@ export default function Page() {
 			}}
 			onOpenChange={(open) => { if (!open) setPendingDeleteItem(null); }}
 			open={pendingDeleteItem !== null}
-			title="Delete expense?"
+			title={t("deleteExpenseTitle")}
 			variant="destructive"
 		/>
 		</>

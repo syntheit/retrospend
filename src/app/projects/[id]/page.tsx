@@ -89,6 +89,7 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 	const inviteLinkId = searchParams.get("invite");
 	const guestResumeToken = searchParams.get("guestResume");
 	const tClaim = useTranslations("claim");
+	const tPage = useTranslations("projectPage");
 
 	// Resume link from the "you already joined" email: trade it for a fresh
 	// guest session token, then reload into the guest view. The ref keeps it to
@@ -146,7 +147,7 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 
 		// Reject invite links that belong to a different project
 		if (linkInfo.projectId !== id) {
-			setInviteErrorMessage("This invite link is for a different project.");
+			setInviteErrorMessage(tPage("inviteForOtherProject"));
 			setAccessMode("invite-error");
 			return;
 		}
@@ -194,7 +195,7 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 
 		// Show join form
 		setAccessMode("invite-join");
-	}, [inviteLinkId, inviteHandled, linkLoading, linkError, linkInfo, session, sessionPending, joinWithAccount, id]);
+	}, [inviteLinkId, inviteHandled, linkLoading, linkError, linkInfo, session, sessionPending, joinWithAccount, id, tPage]);
 
 	// Access resolution (after invite is handled or if no invite)
 	useEffect(() => {
@@ -299,11 +300,12 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 // ── Loading ──────────────────────────────────────────────────────────────────
 
 function LoadingScreen() {
+	const t = useTranslations("projectPage");
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-background">
 			<div className="flex flex-col items-center gap-3">
 				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-				<p className="text-muted-foreground text-sm">Loading project...</p>
+				<p className="text-muted-foreground text-sm">{t("loadingProject")}</p>
 			</div>
 		</div>
 	);
@@ -312,6 +314,7 @@ function LoadingScreen() {
 // ── Invite Error ─────────────────────────────────────────────────────────────
 
 function InviteErrorView({ message }: { message?: string }) {
+	const t = useTranslations("projectPage");
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-background p-4">
 			<Card className="w-full max-w-md">
@@ -319,14 +322,14 @@ function InviteErrorView({ message }: { message?: string }) {
 					<div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
 						<Link2 className="h-8 w-8 text-destructive" />
 					</div>
-					<h1 className="font-bold text-xl">Invalid Invite Link</h1>
+					<h1 className="font-bold text-xl">{t("invalidInviteTitle")}</h1>
 					<p className="text-muted-foreground text-sm">
-						{message ?? "This invite link is invalid or has expired. Ask the project owner for a new invite link."}
+						{message ?? t("invalidInviteDescription")}
 					</p>
 					<Button asChild variant="outline">
 						<Link href="/login">
 							<LogIn className="mr-2 h-4 w-4" />
-							Log In
+							{t("logIn")}
 						</Link>
 					</Button>
 				</CardContent>
@@ -356,6 +359,8 @@ function InviteJoinView({
 	onComplete: () => void;
 }) {
 	const t = useTranslations("claim");
+	const tPage = useTranslations("projectPage");
+	const tProjects = useTranslations("projects");
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [registered, setRegistered] = useState(false);
@@ -543,20 +548,18 @@ function InviteJoinView({
 						<div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
 							<CheckCircle2 className="h-8 w-8 text-emerald-500" />
 						</div>
-						<h1 className="font-bold text-xl">You&apos;re In!</h1>
+						<h1 className="font-bold text-xl">{tPage("youreIn")}</h1>
 						<p className="text-muted-foreground text-sm">
-							You&apos;ve joined{" "}
-							<span className="font-medium text-foreground">
-								{linkInfo.projectName}
-							</span>{" "}
-							as a{" "}
-							<span className="capitalize">
-								{linkInfo.roleGranted.toLowerCase()}
-							</span>
-							.
+							{tPage.rich("joinedAs", {
+								projectName: linkInfo.projectName,
+								role: linkInfo.roleGranted,
+								strong: (chunks) => (
+									<span className="font-medium text-foreground">{chunks}</span>
+								),
+							})}
 						</p>
 						<Button className="mt-2 gap-2" onClick={handleContinue}>
-							View Project
+							{tPage("viewProject")}
 							<ArrowRight className="h-4 w-4" />
 						</Button>
 					</CardContent>
@@ -586,7 +589,7 @@ function InviteJoinView({
 						/>
 						<div>
 							<h1 className="font-bold text-xl">
-								Join {linkInfo.projectName}
+								{tPage("joinProjectTitle", { projectName: linkInfo.projectName })}
 							</h1>
 							{linkInfo.projectDescription && (
 								<p className="mt-1 text-muted-foreground text-sm">
@@ -597,15 +600,18 @@ function InviteJoinView({
 						<div className="flex items-center gap-2 tabular-nums text-muted-foreground text-xs">
 							<Users className="h-3.5 w-3.5" />
 							<span>
-								{linkInfo.participantCount} participant
-								{linkInfo.participantCount !== 1 ? "s" : ""}
+								{tProjects("participantCount", {
+									count: linkInfo.participantCount,
+								})}
 							</span>
 							<span className="text-border">|</span>
 							<span>
-								Joining as{" "}
-								<span className="font-medium capitalize text-foreground">
-									{linkInfo.roleGranted.toLowerCase()}
-								</span>
+								{tPage.rich("joiningAs", {
+									role: roleLabel(tProjects, linkInfo.roleGranted),
+									em: (chunks) => (
+										<span className="font-medium text-foreground">{chunks}</span>
+									),
+								})}
 							</span>
 						</div>
 					</div>
@@ -635,20 +641,20 @@ function InviteJoinView({
 					<form className="space-y-4" onSubmit={handleSubmit}>
 						<div className="space-y-2">
 							<label className="font-medium text-sm" htmlFor="join-name">
-								Your name
+								{tPage("yourName")}
 							</label>
 							<Input
 								autoFocus
 								id="join-name"
 								onChange={(e) => setName(e.target.value)}
-								placeholder="Enter your name"
+								placeholder={tPage("enterYourName")}
 								required
 								value={name}
 							/>
 						</div>
 						<div className="space-y-2">
 							<label className="font-medium text-sm" htmlFor="join-email">
-								Email address
+								{tPage("emailAddress")}
 							</label>
 							<Input
 								id="join-email"
@@ -659,7 +665,7 @@ function InviteJoinView({
 								value={email}
 							/>
 							<p className="text-[11px] text-muted-foreground">
-								Used to identify you in the project. Not shared publicly.
+								{tPage("emailHint")}
 							</p>
 						</div>
 
@@ -678,11 +684,11 @@ function InviteJoinView({
 							{isJoining ? (
 								<>
 									<Loader2 className="h-4 w-4 animate-spin" />
-									Joining...
+									{tPage("joining")}
 								</>
 							) : (
 								<>
-									Join Project
+									{tPage("joinProject")}
 									<ArrowRight className="h-4 w-4" />
 								</>
 							)}
@@ -690,13 +696,16 @@ function InviteJoinView({
 					</form>
 
 					<p className="mt-4 text-center text-[11px] text-muted-foreground">
-						Already have an account?{" "}
-						<a
-							className="text-primary underline underline-offset-2 hover:text-primary/80"
-							href="/login"
-						>
-							Log in instead
-						</a>
+						{tPage.rich("haveAccountLogIn", {
+							link: (chunks) => (
+								<a
+									className="text-primary underline underline-offset-2 hover:text-primary/80"
+									href="/login"
+								>
+									{chunks}
+								</a>
+							),
+						})}
 					</p>
 				</CardContent>
 			</Card>
@@ -707,6 +716,8 @@ function InviteJoinView({
 // ── Authenticated Project View ───────────────────────────────────────────────
 
 function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFallbackToPublic: () => void }) {
+	const t = useTranslations("projectPage");
+	const tProjects = useTranslations("projects");
 	const { data: session } = useSession();
 	const userId = session?.user?.id;
 	const { openNewExpense } = useExpenseModal();
@@ -749,7 +760,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 
 	const closePeriodMutation = api.billingPeriod.closeCurrent.useMutation({
 		onSuccess: () => {
-			toast.success("Period closed: participants will be asked to verify expenses");
+			toast.success(t("periodClosed"));
 			void utils.billingPeriod.list.invalidate({ projectId: id });
 			void utils.project.detail.invalidate({ id });
 			setCloseConfirmOpen(false);
@@ -764,8 +775,8 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 			void utils.dashboard.invalidate();
 			toast.success(
 				data.excludeFromAnalytics
-					? "Project excluded from analytics"
-					: "Project included in analytics",
+					? t("excludedFromAnalytics")
+					: t("includedInAnalytics"),
 			);
 		},
 		onError: (e) => toast.error(e.message),
@@ -782,10 +793,10 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 				format: "csv",
 			});
 			downloadCsv(csv, filename);
-			toast.success("Expenses exported");
+			toast.success(t("expensesExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export",
+				error instanceof Error ? error.message : t("exportFailed"),
 			);
 		}
 	};
@@ -798,10 +809,10 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 				format: "csv",
 			});
 			downloadCsv(csv, filename);
-			toast.success("Settlement plan exported");
+			toast.success(tProjects("settlementPlanExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export",
+				error instanceof Error ? error.message : t("exportFailed"),
 			);
 		}
 	};
@@ -815,10 +826,10 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 				format: "csv",
 			});
 			downloadCsv(csv, filename);
-			toast.success("Period summary exported");
+			toast.success(t("periodSummaryExported"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export",
+				error instanceof Error ? error.message : t("exportFailed"),
 			);
 		}
 	};
@@ -833,10 +844,10 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 					: {}),
 			});
 			downloadPdf(pdf, filename);
-			toast.success("PDF summary downloaded");
+			toast.success(t("pdfDownloaded"));
 		} catch (error: unknown) {
 			toast.error(
-				error instanceof Error ? error.message : "Failed to export PDF",
+				error instanceof Error ? error.message : t("pdfExportFailed"),
 			);
 		}
 	};
@@ -858,7 +869,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 		if (publicLoading) {
 			return (
 				<>
-					<SiteHeader title="Loading..." />
+					<SiteHeader title={tProjects("loading")} />
 					<PageContent>
 						<LoadingScreen />
 					</PageContent>
@@ -872,16 +883,16 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 		// Both detail and publicDetail failed - project is truly inaccessible
 		return (
 			<>
-				<SiteHeader title="Project not found" />
+				<SiteHeader title={t("notFoundTitle")} />
 				<PageContent>
 					<div className="flex h-64 flex-col items-center justify-center gap-3">
 						<p className="text-muted-foreground">
-							This project could not be found.
+							{t("notFoundDescription")}
 						</p>
 						<Button asChild variant="outline">
 							<Link href="/projects">
 								<ArrowLeft className="mr-2 h-4 w-4" />
-								Back to Projects
+								{t("backToProjects")}
 							</Link>
 						</Button>
 					</div>
@@ -933,7 +944,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 					<Breadcrumb>
 						<BreadcrumbList>
 							<BreadcrumbItem>
-								<BreadcrumbLink href="/projects">Projects</BreadcrumbLink>
+								<BreadcrumbLink href="/projects">{tProjects("title")}</BreadcrumbLink>
 							</BreadcrumbItem>
 							<BreadcrumbSeparator />
 							<BreadcrumbItem>
@@ -941,7 +952,7 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 									{isLoading ? (
 										<Skeleton className="h-4 w-36" />
 									) : (
-										(project?.name ?? "Project")
+										(project?.name ?? t("projectFallback"))
 									)}
 								</BreadcrumbPage>
 							</BreadcrumbItem>
@@ -1085,21 +1096,20 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 		<Dialog onOpenChange={setCloseConfirmOpen} open={closeConfirmOpen}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>Close {openPeriod?.label}?</DialogTitle>
-					<DialogDescription>
-						All participants will be asked to verify expenses for this period.
-						New expenses will go into the next period.
-					</DialogDescription>
+					<DialogTitle>
+						{t("closePeriodTitle", { label: openPeriod?.label ?? "" })}
+					</DialogTitle>
+					<DialogDescription>{t("closePeriodDescription")}</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
 					<Button onClick={() => setCloseConfirmOpen(false)} variant="ghost">
-						Cancel
+						{tProjects("cancel")}
 					</Button>
 					<Button
 						disabled={closePeriodMutation.isPending}
 						onClick={() => closePeriodMutation.mutate({ projectId: id })}
 					>
-						{closePeriodMutation.isPending ? "Closing..." : "Close Period"}
+						{closePeriodMutation.isPending ? t("closing") : tProjects("closePeriod")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -1111,6 +1121,8 @@ function AuthenticatedProjectView({ id, onFallbackToPublic }: { id: string; onFa
 // ── Guest Project View ───────────────────────────────────────────────────────
 
 function GuestProjectView({ id }: { id: string }) {
+	const t = useTranslations("projectPage");
+	const tProjects = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
 	const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 
@@ -1157,10 +1169,12 @@ function GuestProjectView({ id }: { id: string }) {
 	const guestExpenseCount = project.categoryStats.reduce((sum, s) => sum + s.count, 0);
 	const guestMetaParts: string[] = [];
 	if (!isSolo && project.participants.length > 0) {
-		guestMetaParts.push(`${project.participants.length} participant${project.participants.length !== 1 ? "s" : ""}`);
+		guestMetaParts.push(
+			tProjects("participantCount", { count: project.participants.length }),
+		);
 	}
 	guestMetaParts.push(project.primaryCurrency);
-	guestMetaParts.push(`${guestExpenseCount} expense${guestExpenseCount !== 1 ? "s" : ""}`);
+	guestMetaParts.push(tProjects("expenseCount", { count: guestExpenseCount }));
 	const guestMetaSubtitle = guestMetaParts.join(" · ");
 
 	return (
@@ -1183,12 +1197,12 @@ function GuestProjectView({ id }: { id: string }) {
 
 				<div className="mb-3 flex items-center justify-between">
 					<h3 className="font-semibold text-muted-foreground text-sm tracking-wide">
-						Expenses
+						{tProjects("tabExpenses")}
 					</h3>
 					{canContribute && (
 						<Button onClick={() => setAddExpenseOpen(true)} size="sm">
 							<Plus className="mr-1 h-4 w-4" />
-							Add Expense
+							{tProjects("addExpense")}
 						</Button>
 					)}
 				</div>
@@ -1218,7 +1232,7 @@ function GuestProjectView({ id }: { id: string }) {
 					projectId={id}
 					isSolo={isSolo}
 					currentParticipant={currentParticipant}
-					title={`Add Expense for ${project.name}`}
+					title={t("addExpenseFor", { projectName: project.name })}
 				/>
 			)}
 		</div>
@@ -1228,6 +1242,7 @@ function GuestProjectView({ id }: { id: string }) {
 // ── Viewer Project View ──────────────────────────────────────────────────────
 
 function ViewerProjectView({ id }: { id: string }) {
+	const tProjects = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const {
@@ -1259,10 +1274,12 @@ function ViewerProjectView({ id }: { id: string }) {
 	const viewerExpenseCount = project.categoryStats.reduce((sum, s) => sum + s.count, 0);
 	const viewerMetaParts: string[] = [];
 	if (!isSolo && project.participants.length > 0) {
-		viewerMetaParts.push(`${project.participants.length} participant${project.participants.length !== 1 ? "s" : ""}`);
+		viewerMetaParts.push(
+			tProjects("participantCount", { count: project.participants.length }),
+		);
 	}
 	viewerMetaParts.push(project.primaryCurrency);
-	viewerMetaParts.push(`${viewerExpenseCount} expense${viewerExpenseCount !== 1 ? "s" : ""}`);
+	viewerMetaParts.push(tProjects("expenseCount", { count: viewerExpenseCount }));
 	const viewerMetaSubtitle = viewerMetaParts.join(" · ");
 
 	return (
@@ -1285,7 +1302,7 @@ function ViewerProjectView({ id }: { id: string }) {
 
 				<div className="mb-3">
 					<h3 className="font-semibold text-muted-foreground text-sm tracking-wide">
-						Expenses
+						{tProjects("tabExpenses")}
 					</h3>
 				</div>
 
@@ -1306,6 +1323,7 @@ function ViewerProjectView({ id }: { id: string }) {
 // ── Public Project View ──────────────────────────────────────────────────────
 
 function PublicProjectView({ id }: { id: string }) {
+	const tProjects = useTranslations("projects");
 	const { formatCurrency } = useCurrencyFormatter();
 
 	const {
@@ -1335,10 +1353,12 @@ function PublicProjectView({ id }: { id: string }) {
 	const publicExpenseCount = project.categoryStats.reduce((sum, s) => sum + s.count, 0);
 	const publicMetaParts: string[] = [];
 	if (!isSolo && project.participants.length > 0) {
-		publicMetaParts.push(`${project.participants.length} participant${project.participants.length !== 1 ? "s" : ""}`);
+		publicMetaParts.push(
+			tProjects("participantCount", { count: project.participants.length }),
+		);
 	}
 	publicMetaParts.push(project.primaryCurrency);
-	publicMetaParts.push(`${publicExpenseCount} expense${publicExpenseCount !== 1 ? "s" : ""}`);
+	publicMetaParts.push(tProjects("expenseCount", { count: publicExpenseCount }));
 	const publicMetaSubtitle = publicMetaParts.join(" · ");
 
 	return (
@@ -1373,7 +1393,7 @@ function PublicProjectView({ id }: { id: string }) {
 
 				<div className="mb-3">
 					<h3 className="font-semibold text-muted-foreground text-sm tracking-wide">
-						Expenses
+						{tProjects("tabExpenses")}
 					</h3>
 				</div>
 
@@ -1394,6 +1414,7 @@ function PublicProjectView({ id }: { id: string }) {
 // ── Private Project View ─────────────────────────────────────────────────────
 
 function PrivateProjectView() {
+	const t = useTranslations("projectPage");
 	return (
 		<div className="flex min-h-screen items-center justify-center bg-background p-4">
 			<Card className="w-full max-w-md">
@@ -1401,15 +1422,14 @@ function PrivateProjectView() {
 					<div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
 						<Lock className="h-8 w-8 text-muted-foreground" />
 					</div>
-					<h1 className="font-bold text-xl">This project is private</h1>
+					<h1 className="font-bold text-xl">{t("privateTitle")}</h1>
 					<p className="text-muted-foreground text-sm">
-						You don&apos;t have access to this project. If you have an invite
-						link, ask the project owner to share it with you.
+						{t("privateDescription")}
 					</p>
 					<Button asChild variant="outline">
 						<Link href="/login">
 							<LogIn className="mr-2 h-4 w-4" />
-							Log In
+							{t("logIn")}
 						</Link>
 					</Button>
 				</CardContent>
@@ -1421,6 +1441,7 @@ function PrivateProjectView() {
 // ── Session Expired View ─────────────────────────────────────────────────────
 
 function SessionExpiredView() {
+	const t = useTranslations("projectPage");
 	const router = useRouter();
 
 	return (
@@ -1430,10 +1451,9 @@ function SessionExpiredView() {
 					<div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
 						<Link2Off className="h-8 w-8 text-destructive" />
 					</div>
-					<h1 className="font-bold text-xl">Cannot Access Project</h1>
+					<h1 className="font-bold text-xl">{t("cannotAccessTitle")}</h1>
 					<p className="text-muted-foreground text-sm">
-						Your guest session may have expired. Try using the invite link
-						again, or log in if you have an account.
+						{t("cannotAccessDescription")}
 					</p>
 					<div className="flex gap-3">
 						<Button
@@ -1446,7 +1466,7 @@ function SessionExpiredView() {
 							variant="outline"
 						>
 							<LogIn className="mr-2 h-4 w-4" />
-							Log In
+							{t("logIn")}
 						</Button>
 					</div>
 				</CardContent>
@@ -1464,12 +1484,20 @@ const ROLE_COLORS: Record<string, string> = {
 	VIEWER: "bg-muted/30 text-muted-foreground",
 };
 
-const ROLE_LABELS: Record<string, string> = {
-	ORGANIZER: "Owner",
-	EDITOR: "Editor",
-	CONTRIBUTOR: "Contributor",
-	VIEWER: "Viewer",
-};
+const ROLE_LABEL_KEYS = {
+	ORGANIZER: "roleOwner",
+	EDITOR: "roleEditor",
+	CONTRIBUTOR: "roleContributor",
+	VIEWER: "roleViewer",
+} as const;
+
+function roleLabel(
+	tProjects: ReturnType<typeof useTranslations<"projects">>,
+	role: string,
+): string {
+	const key = ROLE_LABEL_KEYS[role as keyof typeof ROLE_LABEL_KEYS];
+	return key ? tProjects(key) : role;
+}
 
 function MinimalHeader({
 	projectName,
@@ -1478,6 +1506,8 @@ function MinimalHeader({
 	projectName: string;
 	role?: string | null;
 }) {
+	const t = useTranslations("projectPage");
+	const tProjects = useTranslations("projects");
 	return (
 		<header className="sticky top-0 z-50 border-border border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 			<div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
@@ -1488,11 +1518,11 @@ function MinimalHeader({
 						className={cn("text-[10px]", ROLE_COLORS[role] ?? "")}
 						variant="outline"
 					>
-						{ROLE_LABELS[role] ?? role}
+						{roleLabel(tProjects, role)}
 					</Badge>
 				)}
 				<Button asChild size="sm" variant="outline">
-					<Link href="/signup">Sign up</Link>
+					<Link href="/signup">{t("signUp")}</Link>
 				</Button>
 			</div>
 		</header>
@@ -1541,7 +1571,7 @@ function ReadOnlyExpensesTable({
 	if (transactions.length === 0) {
 		return (
 			<div className="rounded-xl border border-border border-dashed py-12 text-center text-muted-foreground text-sm">
-				No expenses yet.
+				{t("noExpensesAdded")}
 			</div>
 		);
 	}
@@ -1549,11 +1579,11 @@ function ReadOnlyExpensesTable({
 	return (
 		<DataTable
 			columns={columns}
-			countNoun="expenses"
+			countNoun={t("expensesNoun")}
 			data={transactions}
 			initialSorting={[{ id: "date", desc: true }]}
 			pagination={{ defaultPageSize: 20 }}
-			searchPlaceholder="Search expenses..."
+			searchPlaceholder={t("searchExpenses")}
 			totalCount={transactions.length}
 		/>
 	);
@@ -1575,6 +1605,7 @@ function UpgradeBanner({
 	myParticipantType: string;
 	myParticipantId: string;
 }) {
+	const t = useTranslations("projectPage");
 	const me = participants.find(
 		(p) =>
 			p.participantType === myParticipantType &&
@@ -1588,18 +1619,14 @@ function UpgradeBanner({
 		<Card className="border-primary/20 bg-primary/5">
 			<CardContent className="flex flex-col items-center gap-3 p-5 text-center">
 				<h3 className="font-semibold text-sm">
-					{canContribute
-						? "Keep your contributions safe"
-						: "Get full access to your finances"}
+					{canContribute ? t("keepContributionsSafe") : t("getFullAccess")}
 				</h3>
 				<p className="text-muted-foreground text-xs leading-relaxed">
-					Guest access is limited to this browser. Create a free account to
-					access your data anywhere, track budgets, import bank statements,
-					and more.
+					{t("guestAccessLimited")}
 				</p>
 				<Button asChild size="sm">
 					<a href={`/signup?${signupParams.toString()}`}>
-						Create Free Account
+						{t("createFreeAccount")}
 					</a>
 				</Button>
 			</CardContent>
@@ -1608,18 +1635,21 @@ function UpgradeBanner({
 }
 
 function ReadOnlyBanner() {
+	const t = useTranslations("projectPage");
 	return (
 		<Card className="border-muted bg-muted/30">
 			<CardContent className="flex flex-col items-center gap-2 p-4 text-center">
 				<p className="text-muted-foreground text-sm">
-					This is a read-only view.{" "}
-					<a
-						href="/signup"
-						className="text-primary underline underline-offset-2 hover:text-primary/80"
-					>
-						Sign up
-					</a>{" "}
-					to track your own expenses.
+					{t.rich("readOnlyNotice", {
+						link: (chunks) => (
+							<a
+								href="/signup"
+								className="text-primary underline underline-offset-2 hover:text-primary/80"
+							>
+								{chunks}
+							</a>
+						),
+					})}
 				</p>
 			</CardContent>
 		</Card>

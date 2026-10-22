@@ -226,7 +226,7 @@ function createRecurringColumns(
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button
-								className="h-8 w-8 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+								className="h-8 w-8 can-hover:opacity-0 transition-opacity group-hover:opacity-100"
 								size="icon"
 								variant="ghost"
 							>

@@ -240,6 +240,8 @@ export const dashboardRouter = createTRPCRouter({
 					participantCount: number;
 					paidByName: string;
 					paidByAvatarUrl?: string | null;
+					paidByType?: string;
+					paidById?: string;
 					iPayedThis: boolean;
 					transactionId: string;
 					projectId?: string;
@@ -248,6 +250,8 @@ export const dashboardRouter = createTRPCRouter({
 				settlementContext?: {
 					direction: "incoming" | "outgoing";
 					otherParticipantName: string;
+					otherParticipantType?: string;
+					otherParticipantId?: string;
 					status: string;
 					note?: string;
 				};
@@ -337,6 +341,8 @@ export const dashboardRouter = createTRPCRouter({
 					settlementContext: {
 						direction,
 						otherParticipantName: otherName,
+						otherParticipantType: otherType,
+						otherParticipantId: otherId,
 						status: s.status,
 						note: s.note ?? undefined,
 					},

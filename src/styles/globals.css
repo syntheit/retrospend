@@ -3,6 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Hide-until-hover only on devices with a real hover pointer. Touch devices
+   (phones, tablets) always see the controls. */
+@custom-variant can-hover (@media (hover: hover) and (pointer: fine));
+
 @theme {
 	--font-sans:
 		var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
