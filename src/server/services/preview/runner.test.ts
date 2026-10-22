@@ -110,18 +110,21 @@ describe("preview", () => {
 			changes: [
 				{
 					id: "owed.owedToYou",
+					currency: "ARS",
 					before: ars(14_602_500),
 					after: ars(175_000),
 					delta: ars(-14_427_500),
 				},
 				{
 					id: "balance.withPerson",
+					currency: "ARS",
 					before: ars(14_427_500),
 					after: ars(0),
 					delta: ars(-14_427_500),
 				},
 			],
-			unchanged: [{ id: "netWorth", value: ars(90_000_000) }],
+			unchanged: [{ id: "netWorth", value: [ars(90_000_000)] }],
+			unavailable: [],
 		});
 		expect(database.book()).toEqual(START);
 		expect(database.commits()).toBe(0);
@@ -137,6 +140,7 @@ describe("preview", () => {
 
 		expect(changes.find((c) => c.id === "balance.withPerson")).toEqual({
 			id: "balance.withPerson",
+			currency: "ARS",
 			before: ars(175_000),
 			after: ars(-300_000),
 			delta: ars(-475_000),
@@ -207,12 +211,9 @@ describe("apply", () => {
 		const previewed = await runner.preview(settle, input);
 		const applied = await runner.apply(settle, input);
 
-		expect({ changes: applied.changes, unchanged: applied.unchanged }).toEqual({
-			changes: previewed.changes,
-			unchanged: previewed.unchanged,
-		});
-		expect(applied.value).toEqual(previewed.value);
-		expect(applied.undo).toEqual({
+		const { undo, ...appliedDiff } = applied;
+		expect(appliedDiff).toEqual(previewed);
+		expect(undo).toEqual({
 			kind: "revert",
 			mutation: "test.settle",
 			rows: [{ table: "payment", id: "pay1" }],

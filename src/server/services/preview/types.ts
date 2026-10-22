@@ -1,6 +1,7 @@
 import type {
 	FigureDb,
 	FigureNarrowing,
+	FigureReading,
 	Money,
 } from "~/server/figures/registry";
 
@@ -56,23 +57,38 @@ export interface MoneyMutation<Input, Value, Tx = FigureDb> {
 	) => Promise<MutationOutput<Value>>;
 }
 
+/** One currency line of a figure that moved. A side is null when the figure has no amount in that currency. */
 export interface FigureChange {
 	readonly id: string;
+	readonly currency: string;
 	readonly before: Money | null;
 	readonly after: Money | null;
-	/** null when either side is unavailable or the currencies differ: a diff never converts. */
-	readonly delta: Money | null;
+	/** after minus before, counting a missing side as zero. Always in `currency`: a diff never converts. */
+	readonly delta: Money;
 }
 
+/** A figure none of whose currency lines moved, with what it holds. */
 export interface FigureUnchanged {
 	readonly id: string;
-	readonly value: Money | null;
+	readonly value: readonly Money[];
 }
 
-/** R30: exactly what moves, and what was checked and does not. */
+/**
+ * A figure that could not be read on at least one side (for example a missing
+ * rate, R14). It is never reported as a change or as unchanged, because
+ * either claim would be a guess.
+ */
+export interface FigureUnavailable {
+	readonly id: string;
+	readonly before: FigureReading;
+	readonly after: FigureReading;
+}
+
+/** R30: exactly what moves, what was checked and does not, and what could not be checked. */
 export interface FiguresDiff {
 	readonly changes: readonly FigureChange[];
 	readonly unchanged: readonly FigureUnchanged[];
+	readonly unavailable: readonly FigureUnavailable[];
 }
 
 export interface PreviewResult<Value> extends FiguresDiff {

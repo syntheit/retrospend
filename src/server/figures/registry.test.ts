@@ -85,7 +85,7 @@ describe("narrowScope", () => {
 });
 
 describe("readFigure", () => {
-	it("passes the narrowed scope and returns a validated money", async () => {
+	it("passes the narrowed scope and returns one amount as a one-line list", async () => {
 		const compute = vi.fn(async () => ({ minor: 350_000, currency: "ARS" }));
 		const value = await readFigure(
 			constant("balance.withPerson", { scope: ["personId"], compute }),
@@ -93,7 +93,7 @@ describe("readFigure", () => {
 			{ userId: "u1", personId: "p1", accountId: "a1" },
 		);
 
-		expect(value).toEqual({ minor: 350_000, currency: "ARS" });
+		expect(value).toEqual([{ minor: 350_000, currency: "ARS" }]);
 		expect(compute).toHaveBeenCalledWith(null, {
 			userId: "u1",
 			personId: "p1",
@@ -118,6 +118,27 @@ describe("readFigure", () => {
 		);
 		expect(error).toBeInstanceOf(FigureError);
 		expect(error).toMatchObject({ figureId: "netWorth", cause });
+	});
+
+	it("returns a per-currency list as given", async () => {
+		const lines = [
+			{ minor: 350_000, currency: "ARS" },
+			{ minor: 2_000, currency: "USD" },
+		];
+		const both = constant("balance.withPerson", { compute: async () => lines });
+		expect(await readFigure(both, null, { userId: "u1" })).toEqual(lines);
+	});
+
+	it("rejects a list that names a currency twice", async () => {
+		const twice = constant("balance.withPerson", {
+			compute: async () => [
+				{ minor: 1, currency: "ARS" },
+				{ minor: 2, currency: "ARS" },
+			],
+		});
+		await expect(readFigure(twice, null, { userId: "u1" })).rejects.toThrow(
+			"lists ARS twice",
+		);
 	});
 
 	it("rejects a float amount", async () => {

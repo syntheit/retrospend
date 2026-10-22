@@ -16,10 +16,21 @@
 import type { Prisma } from "~prisma";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
+// Moves to @retrospend/domain when that package lands.
 export interface Money {
 	readonly minor: number;
 	readonly currency: string;
 }
+
+/**
+ * What a figure computes: one amount, or a per-currency list (at most one
+ * entry per currency) for numbers that are never netted across currencies,
+ * like a balance with someone in ARS and USD.
+ */
+export type FigureValue = Money | readonly Money[];
+
+/** A figure as read: always a per-currency list, or null when unavailable. */
+export type FigureReading = readonly Money[] | null;
 
 /** The optional narrowings a snapshot can carry on top of its user. */
 export type ScopeKey = "projectId" | "personId" | "accountId";
@@ -47,7 +58,7 @@ export interface FigureDefinition<Db = FigureDb> {
 	/** Checked by every preview, declared or not, so a sheet can say "Your accounts and net worth: no change" (R30). */
 	readonly inEveryPreview?: boolean;
 	/** Returns null when the number is unavailable (for example a missing rate, R14). Throws only on bugs. */
-	readonly compute: (db: Db, scope: FigureScope) => Promise<Money | null>;
+	readonly compute: (db: Db, scope: FigureScope) => Promise<FigureValue | null>;
 }
 
 export interface FiguresRegistry<Db = FigureDb> {
@@ -125,15 +136,28 @@ export function narrowScope(
 }
 
 /** Rejects a float or unsafe minor amount here, before it reaches a diff or a client. */
-function checkMoney(id: string, value: Money | null): Money | null {
-	if (value === null) return null;
-	if (!Number.isSafeInteger(value.minor)) {
-		throw new FigureError(id, `minor ${value.minor} is not a safe integer`);
+function checkMoney(id: string, money: Money): Money {
+	if (!Number.isSafeInteger(money.minor)) {
+		throw new FigureError(id, `minor ${money.minor} is not a safe integer`);
 	}
-	if (value.currency.length === 0) {
+	if (money.currency.length === 0) {
 		throw new FigureError(id, "currency is empty");
 	}
-	return { minor: value.minor, currency: value.currency };
+	return { minor: money.minor, currency: money.currency };
+}
+
+/** One list shape for every figure, so a diff can always pair amounts by currency. */
+function toReading(id: string, value: FigureValue | null): FigureReading {
+	if (value === null) return null;
+	const list = "currency" in value ? [value] : value;
+	const seen = new Set<string>();
+	return list.map((money) => {
+		if (seen.has(money.currency)) {
+			throw new FigureError(id, `lists ${money.currency} twice`);
+		}
+		seen.add(money.currency);
+		return checkMoney(id, money);
+	});
 }
 
 /** The one way to read a figure: narrowed scope, validated output, failures named by id. */
@@ -141,14 +165,14 @@ export async function readFigure<Db>(
 	definition: FigureDefinition<Db>,
 	db: Db,
 	scope: FigureScope,
-): Promise<Money | null> {
-	let value: Money | null;
+): Promise<FigureReading> {
+	let value: FigureValue | null;
 	try {
 		value = await definition.compute(db, narrowScope(scope, definition.scope));
 	} catch (error) {
 		throw new FigureError(definition.id, "compute failed", { cause: error });
 	}
-	return checkMoney(definition.id, value);
+	return toReading(definition.id, value);
 }
 
 /** Every figure in the product. Track 2A and later tracks add their definitions here. */

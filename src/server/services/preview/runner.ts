@@ -1,8 +1,8 @@
 import {
 	type FigureDefinition,
+	type FigureReading,
 	type FigureScope,
 	type FiguresRegistry,
-	type Money,
 	readFigure,
 } from "~/server/figures/registry";
 import { diffSnapshots, type Snapshot } from "./diff";
@@ -61,7 +61,7 @@ async function snapshot<Tx>(
 	definitions: readonly FigureDefinition<Tx>[],
 	scope: FigureScope,
 ): Promise<Snapshot> {
-	const values: [string, Money | null][] = [];
+	const values: [string, FigureReading][] = [];
 	for (const definition of definitions) {
 		values.push([definition.id, await readFigure(definition, tx, scope)]);
 	}

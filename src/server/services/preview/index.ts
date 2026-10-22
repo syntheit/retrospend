@@ -29,7 +29,8 @@
  * 3. Expose the pair from the transport, both calling the same object:
  *      forUser(ctx.userId).preview(recordPayment, input)   // `.../preview`
  *      forUser(ctx.userId).apply(recordPayment, input)     // the write
- *    Both return `{ value, changes[], unchanged[] }`; apply adds the `undo` token.
+ *    Both return `{ value, changes[], unchanged[], unavailable[] }`; apply adds
+ *    the `undo` token. Changes are per currency and never converted.
  */
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
