@@ -1162,7 +1162,7 @@
 		"src/server/api/routers/people.ts": 184,
 		"src/server/api/routers/preferences.ts": 33,
 		"src/server/api/routers/profile.ts": 157,
-		"src/server/api/routers/project.ts": 2167,
+		"src/server/api/routers/project.ts": 114,
 		"src/server/api/routers/recurring.ts": 133,
 		"src/server/api/routers/shared-transaction.ts": 66,
 		"src/server/api/routers/wealth.ts": 338,
