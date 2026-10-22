@@ -3,6 +3,8 @@ import { computeAmountInUSD, isValidRate, USD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
 import { requireExchangeRate } from "../exchange-rates";
 import { AmortizationService } from "./amortization.service";
+import { listActivity } from "./expense-list";
+import type { ListV2Filter } from "./expense-list/types";
 
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = "custom";
@@ -268,6 +270,15 @@ export class ExpenseService {
 			include: { category: true },
 			...(limit ? { take: limit } : {}),
 		});
+	}
+
+	/**
+	 * The Activity list (v2): personal expenses, your shares and payments in
+	 * one cursor-paginated read, with multi-select filters and accent-blind
+	 * search. Shaping lives in ./expense-list.
+	 */
+	async listV2(userId: string, filter: ListV2Filter, timeZone?: string) {
+		return listActivity(this.db, userId, filter, timeZone);
 	}
 
 	async getExpense(userId: string, id: string) {

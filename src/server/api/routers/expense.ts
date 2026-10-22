@@ -4,6 +4,7 @@ import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { CsvService } from "~/server/services/csv.service";
 import { ExpenseService } from "~/server/services/expense.service";
+import { listV2Input } from "~/server/services/expense-list/types";
 import { getExcludedProjectIds, listSharedParticipationsForUser } from "~/server/services/shared-expense-integration";
 
 const expenseInputSchema = z.object({
@@ -59,6 +60,15 @@ export const expenseRouter = createTRPCRouter({
 				exchangeRate: e.exchangeRate !== null ? Number(e.exchangeRate) : null,
 			}));
 		}),
+
+	/** Activity (v2): every entry you are part of, filtered, one page at a time. */
+	listV2: protectedProcedure.input(listV2Input).query(({ ctx, input }) =>
+		new ExpenseService(ctx.db).listV2(
+			ctx.session.user.id,
+			input,
+			ctx.timeZone,
+		),
+	),
 
 	getExpense: protectedProcedure
 		.input(z.object({ id: z.guid() }))
