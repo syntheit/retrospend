@@ -1,6 +1,7 @@
 import { apiKey } from "@better-auth/api-key";
 import { expo } from "@better-auth/expo";
-import { parseScopeList } from "@retrospend/api-contract/common";
+import { MOBILE_SCOPES, parseScopeList } from "@retrospend/api-contract/common";
+import type { BetterAuthPlugin } from "better-auth";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
@@ -10,10 +11,15 @@ import { headers } from "next/headers";
 import { env } from "~/env";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import {
+	capDeviceScopes,
 	DEFAULT_TOKEN_SCOPES,
 	DEVICE_CLIENT_IDS,
 	formatScopeList,
+	isMobileAppRequest,
+	MAX_SCOPE_LIST_LENGTH,
+	MOBILE_CLIENT_ID,
 } from "~/server/api/v1/scopes";
+import { guardScopedSessions } from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
 import { getVerificationEmailTemplate } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
@@ -46,6 +52,12 @@ const DAY_SECONDS = 24 * 60 * 60;
  * `invalid_scope`) before a code is issued.
  */
 function assertKnownScopes(scope: string | undefined) {
+	if (scope && scope.length > MAX_SCOPE_LIST_LENGTH) {
+		throw new APIError("BAD_REQUEST", {
+			error: "invalid_scope",
+			error_description: "Too many scopes",
+		});
+	}
 	const { unknown } = parseScopeList(scope);
 	if (unknown.length > 0) {
 		throw new APIError("BAD_REQUEST", {
@@ -66,31 +78,59 @@ function guardApiKeyRequest(path: string, body: unknown) {
 		throw new APIError("BAD_REQUEST", { message: "API keys always expire" });
 	}
 	if (path === "/api-key/create" && fields.prefix !== undefined) {
-		throw new APIError("BAD_REQUEST", { message: "API keys use the rsk_ prefix" });
+		throw new APIError("BAD_REQUEST", {
+			message: "API keys use the rsk_ prefix",
+		});
 	}
 }
 
 /**
  * The device token endpoint creates a plain session; this stamps it with the
- * scopes the device asked for and its client id before the token leaves the
- * server. If the update fails the request fails, so no unscoped device
- * token is ever handed out.
+ * scopes the device asked for, capped to what the approver's own web session
+ * can use, and its client id, before the token leaves the server. If the
+ * update fails the request fails, so no unscoped device token is handed out.
  */
 const scopeDeviceSession = createAuthMiddleware(async (ctx) => {
 	if (ctx.path !== "/device/token") return;
-	const session = ctx.context.newSession?.session;
-	const returned = ctx.context.returned as { scope?: string } | undefined;
-	if (!session || !returned || returned instanceof Error) return;
-	const requested = parseScopeList(returned.scope).scopes;
-	const scopes = requested.length > 0 ? requested : DEFAULT_TOKEN_SCOPES;
+	const newSession = ctx.context.newSession;
+	const returned = ctx.context.returned as Record<string, unknown> | undefined;
+	if (!newSession || !returned || returned instanceof Error) return;
+	const role = (newSession.user as { role?: string }).role ?? "USER";
+	const scopes = formatScopeList(
+		capDeviceScopes(returned.scope as string | undefined, role),
+	);
 	await db.session.update({
-		where: { id: session.id },
+		where: { id: newSession.session.id },
 		data: {
-			scopes: formatScopeList(scopes),
+			scopes,
 			clientId: (ctx.body as { client_id?: string } | undefined)?.client_id,
 		},
 	});
+	return ctx.json({ ...returned, scope: scopes });
 });
+
+/**
+ * Hands the session token to JavaScript (`set-auth-token`) only for the
+ * Expo app and device clients. The bearer plugin adds it to every response
+ * that sets the session cookie, which would expose the web session's token
+ * to page scripts; this runs after it and takes the header back off.
+ */
+const appOnlyAuthToken = {
+	id: "app-only-auth-token",
+	hooks: {
+		after: [
+			{
+				matcher: () => true,
+				handler: createAuthMiddleware(async (ctx) => {
+					const headers = ctx.request?.headers ?? ctx.headers;
+					if (ctx.path === "/device/token" || isMobileAppRequest(headers))
+						return;
+					ctx.context.responseHeaders?.delete("set-auth-token");
+				}),
+			},
+		],
+	},
+} satisfies BetterAuthPlugin;
 
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
@@ -120,7 +160,10 @@ export const auth = betterAuth({
 		enabled: true,
 	},
 	hooks: {
-		before: async (context) => {
+		before: createAuthMiddleware(async (context) => {
+			const requestHeaders = context.request?.headers ?? context.headers;
+			if (requestHeaders)
+				await guardScopedSessions(context.path, requestHeaders);
 			if (!context.request) return;
 			const path = new URL(context.request.url).pathname.replace(
 				/^\/api\/auth/,
@@ -141,7 +184,7 @@ export const auth = betterAuth({
 				}
 			}
 			guardApiKeyRequest(path, context.body);
-		},
+		}),
 		after: scopeDeviceSession,
 	},
 	onAPIError: {
@@ -388,7 +431,7 @@ export const auth = betterAuth({
 		},
 		session: {
 			create: {
-				before: async (session) => {
+				before: async (session, ctx) => {
 					// Kill Switch Logic: Block sign-in for inactive users
 					const user = await db.user.findUnique({
 						where: { id: session.userId },
@@ -397,6 +440,24 @@ export const auth = betterAuth({
 
 					if (!user?.isActive) {
 						throw new Error("Account is deactivated");
+					}
+
+					// The Expo app gets the mobile scopes (everything but admin,
+					// IMPLEMENTATION §2.3) stamped on its session, so they hold
+					// whether it sends the token as a bearer or as a cookie. Device
+					// sessions are stamped after /device/token instead.
+					const requestHeaders = ctx?.request?.headers ?? ctx?.headers;
+					if (
+						ctx?.path !== "/device/token" &&
+						isMobileAppRequest(requestHeaders)
+					) {
+						return {
+							data: {
+								...session,
+								scopes: formatScopeList(MOBILE_SCOPES),
+								clientId: MOBILE_CLIENT_ID,
+							},
+						};
 					}
 				},
 				after: async (session) => {
@@ -426,6 +487,7 @@ export const auth = betterAuth({
 		// Mobile: `Authorization: Bearer <session token>` (token from the
 		// set-auth-token header at sign-in) and the Expo origin handling.
 		bearer(),
+		appOnlyAuthToken,
 		expo(),
 		// Personal access tokens for scripts and integrations: shown once,
 		// stored hashed, always expiring. Scopes live in `permissions` and can

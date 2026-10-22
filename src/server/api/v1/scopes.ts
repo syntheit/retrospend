@@ -6,8 +6,12 @@ import {
 	type Scope,
 } from "@retrospend/api-contract/common";
 
-/** How the caller authenticated. */
-export type PrincipalKind = "cookie" | "bearer" | "device" | "apiKey";
+/**
+ * What kind of credential the caller holds. It comes from the session row,
+ * not from the transport: a mobile or device token sent as a cookie is
+ * still that token, with its stored scopes.
+ */
+export type PrincipalKind = "web" | "mobile" | "device" | "apiKey";
 
 /**
  * Client ids allowed to start device authorization (RFC 8628). The later
@@ -20,12 +24,33 @@ export const DEVICE_CLIENT_IDS: readonly string[] = [
 	"retrospend-mcp",
 ];
 
+/** The client id stamped on sessions the Expo app signs in. */
+export const MOBILE_CLIENT_ID = "retrospend-mobile";
+
+/** The Expo app's deep-link scheme, also its Origin. */
+export const MOBILE_ORIGIN = "retrospend://";
+
 /** What a device or API key gets when it asks for nothing. */
 export const DEFAULT_TOKEN_SCOPES: readonly Scope[] = ["read"];
+
+/** session.scopes is VARCHAR(255); a longer request is refused, never truncated. */
+export const MAX_SCOPE_LIST_LENGTH = 255;
 
 /** Space-separated, as stored on session.scopes and sent by OAuth clients. */
 export function formatScopeList(scopes: readonly Scope[]): string {
 	return scopes.join(" ");
+}
+
+/**
+ * Whether a request comes from the Expo app: its client sends
+ * `expo-origin`, and the expo plugin copies that into Origin.
+ */
+export function isMobileAppRequest(headers: Headers | undefined): boolean {
+	if (!headers) return false;
+	return (
+		headers.has("expo-origin") ||
+		(headers.get("origin") ?? "").startsWith(MOBILE_ORIGIN)
+	);
 }
 
 /**
@@ -38,14 +63,23 @@ export function apiKeyScopes(
 	return parseScopeList((permissions?.scopes ?? []).join(" ")).scopes;
 }
 
+/** The kind of a session from its row: stamped client id first. */
+export function sessionKind(
+	clientId: string | null,
+	sentAsBearer: boolean,
+): PrincipalKind {
+	if (clientId === MOBILE_CLIENT_ID) return "mobile";
+	if (clientId) return "device";
+	// An unstamped session over Authorization can only be a token handed out
+	// before mobile sessions were stamped; it gets the mobile set.
+	return sentAsBearer ? "mobile" : "web";
+}
+
 /**
  * The scopes a principal can use on this request.
- * - A session with stored scopes (device authorization) gets exactly those,
- *   whatever transport carries it, so a device token sent as a cookie gains
- *   nothing.
- * - Other sessions are full password sign-ins: a cookie gets every scope,
- *   a bearer token (mobile) every scope but admin.
- * - An API key gets its stored scopes.
+ * - Stored scopes (mobile, device, API key) win, whatever the transport.
+ * - An unscoped web session gets every scope; an unscoped mobile one
+ *   everything but admin; anything else nothing.
  * `admin` is dropped unless the user has the admin role today, so a token
  * minted while an admin keeps no admin power after a demotion.
  */
@@ -56,12 +90,26 @@ export function effectiveScopes(input: {
 }): Scope[] {
 	const base =
 		input.granted ??
-		(input.kind === "cookie"
+		(input.kind === "web"
 			? SCOPES
-			: input.kind === "bearer"
+			: input.kind === "mobile"
 				? MOBILE_SCOPES
 				: []);
 	return base.filter((s) => s !== "admin" || input.role === "ADMIN");
+}
+
+/**
+ * What a device may get when this user approves it: the scopes it asked
+ * for (read when it asked for none), never more than the approver's own
+ * web session could use.
+ */
+export function capDeviceScopes(requested: string | undefined, role: string) {
+	const asked = parseScopeList(requested).scopes;
+	const allowed = effectiveScopes({ kind: "web", granted: null, role });
+	const capped = (asked.length > 0 ? asked : DEFAULT_TOKEN_SCOPES).filter((s) =>
+		allowed.includes(s),
+	);
+	return capped.length > 0 ? capped : [...DEFAULT_TOKEN_SCOPES];
 }
 
 /** `public` needs nothing; any other route needs its scope. */

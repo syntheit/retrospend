@@ -8,9 +8,9 @@ import { ExpenseModalProvider } from "~/components/expense-modal-provider";
 import { LocaleSync } from "~/i18n/locale-sync";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
-import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 import { HydrateClient, api } from "~/trpc/server";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 export const metadata: Metadata = {
 	title: {
@@ -24,9 +24,7 @@ export default async function Layout({
 }: {
 	children: ReactNode;
 }) {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
+	const session = await getWebSession(await headers());
 
 	// Disabled accounts are treated as signed out (the login page does the same,
 	// so this cannot loop).

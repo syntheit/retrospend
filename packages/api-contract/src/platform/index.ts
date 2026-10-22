@@ -37,12 +37,12 @@ export const serverInfoSchema = z
 
 export type ServerInfo = z.infer<typeof serverInfoSchema>;
 
-export const PRINCIPAL_KINDS = [
-	"cookie",
-	"bearer",
-	"device",
-	"apiKey",
-] as const;
+/**
+ * The credential behind a request, from the session itself rather than the
+ * transport: the web app, the mobile app, a device-authorized client or an
+ * API key.
+ */
+export const PRINCIPAL_KINDS = ["web", "mobile", "device", "apiKey"] as const;
 
 export const principalSchema = z
 	.object({

@@ -1,10 +1,12 @@
 import { parseScopeList, type Scope } from "@retrospend/api-contract/common";
+import type { PrincipalKind } from "~/server/api/v1/scopes";
 import {
 	apiKeyScopes,
 	effectiveScopes,
-	type PrincipalKind,
+	sessionKind,
 } from "~/server/api/v1/scopes";
 import { auth } from "~/server/better-auth";
+import { sessionTokenOf } from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
 
 /** Prefix of every key the api-key plugin issues (config.ts). */
@@ -30,17 +32,6 @@ function bearerToken(headers: Headers): string | null {
 	const value = headers.get("authorization");
 	if (!value || !/^bearer /i.test(value)) return null;
 	return value.slice(7).trim() || null;
-}
-
-/** The session token inside a bearer value ("<token>" or "<token>.<sig>"). */
-function sessionTokenOf(bearer: string): string {
-	let value = bearer;
-	try {
-		value = decodeURIComponent(bearer);
-	} catch {
-		// Not URL-encoded; use it as sent.
-	}
-	return value.split(".")[0] ?? "";
 }
 
 /** An API key comes in `x-api-key` or as a bearer token with our prefix. */
@@ -78,8 +69,8 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 }
 
 /**
- * Resolves the caller from an API key, a bearer session token (mobile or
- * device authorization) or the web session cookie, in that order. Sent but
+ * Resolves the caller from an API key, then a session token sent as a
+ * bearer or a cookie (web, mobile or device authorization). Sent but
  * unusable credentials are `invalid` (401), never a fall back to another
  * credential on the same request.
  */
@@ -102,11 +93,7 @@ export async function resolvePrincipal(
 
 	const stored = session.session.scopes ?? null;
 	const clientId = session.session.clientId ?? null;
-	const kind: PrincipalKind = clientId
-		? "device"
-		: hasBearer
-			? "bearer"
-			: "cookie";
+	const kind = sessionKind(clientId, hasBearer);
 	return {
 		ok: true,
 		principal: {

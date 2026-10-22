@@ -8,10 +8,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { makeSignature } from "better-auth/crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
 import { createCallerFactory, createTRPCContext } from "~/server/api/trpc";
 import { auth } from "~/server/better-auth";
-import { env } from "~/env";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb } from "~/test/pg-harness";
 import { handleV1Request } from "../handler";
@@ -27,14 +27,20 @@ const createCaller = createCallerFactory(appRouter);
 
 function authRequest(
 	path: string,
-	init: { method?: string; headers?: Record<string, string>; body?: unknown } = {},
+	init: {
+		method?: string;
+		headers?: Record<string, string>;
+		body?: unknown;
+	} = {},
 ) {
 	return auth.handler(
 		new Request(`${BASE}/api/auth${path}`, {
 			method: init.method ?? "POST",
 			headers: {
 				origin: BASE,
-				...(init.body === undefined ? {} : { "content-type": "application/json" }),
+				...(init.body === undefined
+					? {}
+					: { "content-type": "application/json" }),
 				...init.headers,
 			},
 			body: init.body === undefined ? undefined : JSON.stringify(init.body),
@@ -170,7 +176,9 @@ describe("scoped tokens cannot escalate", () => {
 			});
 			expect(res.status).toBe(403);
 		}
-		const user = await adminDb.user.findUniqueOrThrow({ where: { id: admin.id } });
+		const user = await adminDb.user.findUniqueOrThrow({
+			where: { id: admin.id },
+		});
 		expect(user.name).toBe("Escalation");
 	});
 
@@ -220,8 +228,12 @@ describe("scoped tokens cannot escalate", () => {
 			).status,
 		).toBe(200);
 		expect(
-			(await authRequest("/device/approve", { body: { userCode: code.user_code }, headers: web }))
-				.status,
+			(
+				await authRequest("/device/approve", {
+					body: { userCode: code.user_code },
+					headers: web,
+				})
+			).status,
 		).toBe(200);
 
 		const token = await authRequest("/device/token", {

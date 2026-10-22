@@ -397,8 +397,8 @@
 												},
 												"kind": {
 													"enum": [
-														"cookie",
-														"bearer",
+														"web",
+														"mobile",
 														"device",
 														"apiKey"
 													],
