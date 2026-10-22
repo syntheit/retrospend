@@ -158,6 +158,39 @@ function post(ledger: SummaryLedger, accounts: Accounts) {
 }
 
 /**
+ * The order the settlement plan meets people in one currency: payers in
+ * ledger order, then everyone with a share, then anyone only in a payment.
+ * The matcher breaks ties by this order, so the summary and the settlement
+ * plan list equal debts the same way.
+ */
+function ledgerOrder(ledger: SummaryLedger, currency: string): string[] {
+	const txs = ledger.transactions.filter((t) => t.currency === currency);
+	const keys = new Set<string>();
+	for (const t of txs) {
+		keys.add(
+			refKey({ participantType: t.paidByType, participantId: t.paidById }),
+		);
+	}
+	for (const t of txs)
+		for (const sp of t.splitParticipants) keys.add(refKey(sp));
+	for (const s of ledger.settlements.filter((x) => x.currency === currency)) {
+		keys.add(
+			refKey({
+				participantType: s.fromParticipantType,
+				participantId: s.fromParticipantId,
+			}),
+		);
+		keys.add(
+			refKey({
+				participantType: s.toParticipantType,
+				participantId: s.toParticipantId,
+			}),
+		);
+	}
+	return [...keys];
+}
+
+/**
  * @param members The project's members, listed first in this order even with
  *   nothing on their lines; anyone else on the ledger (a former member)
  *   follows, sorted by key.
@@ -193,12 +226,12 @@ export function summarizeLedger(
 	const transfers: Transfer[] = [];
 	const imbalance: Money[] = [];
 	for (const currency of currencies) {
-		const balances = [...ordered]
-			.sort((a, b) => byCode(a.key, b.key))
-			.flatMap((m) => {
-				const line = m.lines.find((l) => l.currency === currency);
-				return line ? [{ ref: m.ref, balance: line.balance }] : [];
-			});
+		const byKey = new Map(ordered.map((m) => [m.key, m]));
+		const balances = ledgerOrder(ledger, currency).flatMap((key) => {
+			const m = byKey.get(key);
+			const line = m?.lines.find((l) => l.currency === currency);
+			return m && line ? [{ ref: m.ref, balance: line.balance }] : [];
+		});
 		const sum = balances.reduce((t, b) => t + b.balance, 0);
 		if (sum !== 0) imbalance.push({ minor: sum, currency });
 		// Integer balances: half a minor unit separates zero from one unit.

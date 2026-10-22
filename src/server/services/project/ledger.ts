@@ -9,6 +9,10 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * (BALANCE_SETTLEMENT_STATUSES), optionally scoped to one billing period,
  * with each person's claim aliases merged into one ref.
  *
+ * With a period, the settlement plan has always set the period's expenses
+ * against every payment in the project; `paymentsOfPeriodOnly` (the
+ * summary) keeps only payments recorded against that period instead.
+ *
  * Payments are filtered by projectId (they are project-scoped), so payments
  * made for other projects or outside any project never bleed in. Every group
  * figure of a project (settlement plan, member balances, the summary) reads
@@ -18,6 +22,7 @@ export async function fetchProjectLedger(
 	db: Db,
 	projectId: string,
 	periodId?: string,
+	options: { paymentsOfPeriodOnly?: boolean } = {},
 ) {
 	const prisma = db as PrismaClient;
 	const transactions = await prisma.sharedTransaction.findMany({
@@ -60,6 +65,9 @@ export async function fetchProjectLedger(
 		where: {
 			projectId,
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
+			...(periodId && options.paymentsOfPeriodOnly
+				? { billingPeriodId: periodId }
+				: {}),
 		},
 		select: {
 			fromParticipantType: true,

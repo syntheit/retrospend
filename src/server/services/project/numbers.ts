@@ -26,6 +26,18 @@ export function paymentsCountedFor<S>(
 	return settlements;
 }
 
+/**
+ * Which expenses a reader's summary includes. Today every project expense
+ * counts, whatever its review state, as in every project view. Seam for the
+ * owner's call at C3 (accepted shares only, and how pending shares show).
+ */
+export function expensesCountedFor<T>(
+	_viewer: ProjectViewer,
+	expenses: T[],
+): T[] {
+	return expenses;
+}
+
 export async function readProjectNumbers(
 	db: Db,
 	projectId: string,
@@ -33,7 +45,7 @@ export async function readProjectNumbers(
 	periodId?: string,
 ): Promise<ProjectNumbers> {
 	const [ledger, members] = await Promise.all([
-		fetchProjectLedger(db, projectId, periodId),
+		fetchProjectLedger(db, projectId, periodId, { paymentsOfPeriodOnly: true }),
 		(db as PrismaClient).projectParticipant.findMany({
 			where: { projectId },
 			select: { participantType: true, participantId: true },
@@ -42,7 +54,7 @@ export async function readProjectNumbers(
 	]);
 	return summarizeLedger(
 		{
-			transactions: ledger.transactions,
+			transactions: expensesCountedFor(viewer, ledger.transactions),
 			settlements: paymentsCountedFor(viewer, ledger.settlements),
 		},
 		members,

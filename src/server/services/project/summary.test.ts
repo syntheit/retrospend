@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
 import { type SummaryLedger, summarizeLedger } from "./summary";
 
 const A = { participantType: "user" as const, participantId: "a" };
@@ -111,8 +112,9 @@ describe("summarizeLedger", () => {
 		}
 	});
 
-	it("settles each currency with the fewest transfers, ties in key order", () => {
-		// Ana is owed 160; Cam owes 100, then Sam and Ben 30 each (shadow:s sorts first).
+	it("settles each currency with the fewest transfers, ties in ledger order", () => {
+		// Ana is owed 160; Cam owes 100, then Ben and Sam 30 each: Ben paid an
+		// expense, so the plan meets him before Sam.
 		expect(
 			n.transfers.map((t) => [
 				t.from.participantId,
@@ -121,10 +123,34 @@ describe("summarizeLedger", () => {
 			]),
 		).toEqual([
 			["c", "a", { minor: 10000, currency: "BRL" }],
-			["s", "a", { minor: 3000, currency: "BRL" }],
 			["b", "a", { minor: 3000, currency: "BRL" }],
+			["s", "a", { minor: 3000, currency: "BRL" }],
 			["a", "c", { minor: 2000, currency: "USD" }],
 		]);
+	});
+
+	it("lists equal debts in the same order as the settlement plan", () => {
+		const plan = computeSettlementPlan(
+			trip.transactions.map((t) => ({
+				...t,
+				splitParticipants: [...t.splitParticipants],
+			})),
+			[...trip.settlements],
+		);
+		const fromPlan = Object.values(plan.byCurrency).flatMap((c) =>
+			c.plan.map((p) => [
+				p.from.participantId,
+				p.to.participantId,
+				p.amount * 100,
+			]),
+		);
+		expect(
+			n.transfers.map((t) => [
+				t.from.participantId,
+				t.to.participantId,
+				t.amount.minor,
+			]),
+		).toEqual(fromPlan);
 	});
 
 	it("lists members first, idle ones too, then anyone else on the ledger", () => {
