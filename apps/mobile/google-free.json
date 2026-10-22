@@ -1,0 +1,61 @@
+{
+	"about": "Android must work 100% without Google services (IMPLEMENTATION §4). test/google-free.test.ts fails on any npm package below in the shipped dependency tree, or imported outside src/optional/google/ (code there loads only when Play services are detected). scripts/check-google-free.sh fails on any Maven group below in the resolved Gradle tree. Each entry says why.",
+	"optionalDir": "src/optional/google",
+	"npm": [
+		{
+			"pattern": "^@react-native-firebase/",
+			"why": "Firebase needs Play services"
+		},
+		{ "pattern": "^(firebase|@firebase/.+)$", "why": "Firebase" },
+		{
+			"pattern": "crashlytics",
+			"why": "Crashlytics; crash reporting is none or self-hosted"
+		},
+		{
+			"pattern": "^(@react-native-google-signin/.+|react-native-google-signin|expo-google-app-auth|expo-google-sign-in)$",
+			"why": "Google Sign-In; sign-in is email and password plus TOTP"
+		},
+		{
+			"pattern": "^expo-notifications$",
+			"why": "its Android push path is FCM (firebase-messaging); push is UnifiedPush plus local notifications"
+		},
+		{
+			"pattern": "^expo-location$",
+			"why": "uses the Play services fused location provider; location goes through LocationManager"
+		},
+		{
+			"pattern": "^(react-native-maps|expo-maps)$",
+			"why": "Google Maps on Android"
+		},
+		{
+			"pattern": "^(expo-store-review|expo-in-app-purchases|react-native-iap)$",
+			"why": "Play review and billing APIs; no in-app purchases"
+		},
+		{
+			"pattern": "^(react-native-google-mobile-ads|expo-ads-admob)$",
+			"why": "Google ads"
+		},
+		{
+			"pattern": "^react-native-play-install-referrer$",
+			"why": "Play install referrer"
+		}
+	],
+	"maven": [
+		{ "group": "com.google.android.gms", "why": "Play services" },
+		{ "group": "com.google.firebase", "why": "Firebase" },
+		{
+			"group": "com.google.android.play",
+			"why": "Play Core (in-app updates and reviews)"
+		},
+		{ "group": "com.android.installreferrer", "why": "Play install referrer" },
+		{ "group": "com.android.billingclient", "why": "Play billing" },
+		{
+			"group": "com.google.android.datatransport",
+			"why": "Google telemetry transport used by Firebase and ML Kit"
+		},
+		{
+			"group": "com.google.mlkit",
+			"why": "ML Kit; review before allowing (bundled models work offline but ship Google telemetry)"
+		}
+	]
+}
