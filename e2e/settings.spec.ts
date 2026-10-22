@@ -16,9 +16,9 @@ test.describe("settings", () => {
 		// The profile form pre-fills the user's name. Its "Display name" label
 		// points at id="name" while the input gets a generated id, so the
 		// field has no accessible name to select it by (see docs/ui/GAPS.md).
-		await expect(
-			page.locator('#profile-form input[name="name"]'),
-		).toHaveValue(TEST_USER.name);
+		await expect(page.locator('#profile-form input[name="name"]')).toHaveValue(
+			TEST_USER.name,
+		);
 	});
 
 	test("settings page shows profile section", async ({ page }) => {
