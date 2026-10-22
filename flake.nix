@@ -56,6 +56,10 @@
             };
 
             shellHook = ''
+              # The glibc biome binary from npm can't run on NixOS; the static musl one can
+              for b in "$PWD"/node_modules/.pnpm/@biomejs+cli-linux-x64-musl@*/node_modules/@biomejs/cli-linux-x64-musl/biome; do
+                [ -x "$b" ] && export BIOME_BINARY="$b"
+              done
               echo "Retrospend dev shell"
               echo "  Node.js $(node --version) · pnpm $(pnpm --version) · Go $(go version | cut -d' ' -f3)"
             '';
