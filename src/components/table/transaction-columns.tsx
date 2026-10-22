@@ -107,7 +107,7 @@ export function useTransactionColumns({
 				id: "project",
 				accessorFn: (tx) => tx.project?.name ?? "",
 				header: t("project"),
-				size: 168,
+				size: 150,
 				cell: ({ row }) =>
 					row.original.project ? (
 						<span className="text-fg-2 block max-w-40 truncate">
@@ -119,7 +119,7 @@ export function useTransactionColumns({
 			{
 				id: "with",
 				header: t("with"),
-				size: 168,
+				size: 150,
 				enableSorting: false,
 				cell: ({ row }) => <TransactionWith tx={row.original} />,
 			},
@@ -127,7 +127,7 @@ export function useTransactionColumns({
 				id: "date",
 				accessorKey: "date",
 				header: t("date"),
-				size: 128,
+				size: 120,
 				meta: { className: "text-fg-2" },
 				cell: ({ row }) => day(row.original.date),
 			},
@@ -135,7 +135,7 @@ export function useTransactionColumns({
 				id: "amount",
 				accessorFn: (tx) => tx.amount.minor,
 				header: t("amount"),
-				size: 160,
+				size: 140,
 				meta: { className: MONEY_CELL, align: "right" },
 				cell: ({ row }) => (
 					<span className="ml-auto">

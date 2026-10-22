@@ -91,8 +91,8 @@ export function NeedsYouItem({
 			className={cn(
 				"min-h-row grid items-center gap-3 py-2",
 				group
-					? "bg-surface grid-cols-[auto_1fr_auto] px-4"
-					: "grid-cols-[auto_1fr_auto_auto]",
+					? "bg-surface grid-cols-[auto_minmax(0,1fr)_auto] px-4"
+					: "grid-cols-[auto_minmax(0,1fr)_auto_auto]",
 			)}
 			data-needs-you={item.kind}
 		>

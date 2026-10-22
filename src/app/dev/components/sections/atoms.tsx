@@ -9,6 +9,7 @@ import { FilterChip, FilterChips, FilterMenu } from "~/components/ui/chip";
 import { Segmented } from "~/components/ui/segmented";
 import { StatusDot } from "~/components/ui/status-dot";
 import { STATUS, type StatusKind } from "~/components/ui/status-map";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { m } from "../fixtures/rows";
 import { Cap, Pair, Spec, States } from "../spec";
@@ -26,6 +27,7 @@ export const S = {
 	zero: "Zero",
 	pair: "Pair, foreign",
 	missing: "Missing rate",
+	unavailable: "Unavailable",
 	owes: "Balance: owes you",
 	owe: "you owe",
 	settled: "settled",
@@ -115,6 +117,7 @@ export function MoneySection() {
 							original={m("63.40", "USD")}
 						/>,
 					],
+					[S.unavailable, <Skeleton className="w-24" key="u" shape="money" />],
 				]}
 			/>
 			<States

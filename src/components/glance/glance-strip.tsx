@@ -105,7 +105,7 @@ export function GlanceStrip({
 		return (
 			<div>
 				{lead}
-				<div className="mt-4 grid auto-cols-fr grid-flow-col">
+				<div className="mt-4 grid auto-cols-fr grid-flow-col overflow-hidden">
 					{glance.rows.map((r, i) => (
 						<Link
 							className={cn(

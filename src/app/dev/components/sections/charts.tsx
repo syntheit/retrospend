@@ -94,7 +94,7 @@ export function ChartSection() {
 					</>
 				}
 			/>
-			<div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+			<div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
 				<div>
 					<Cap>{CAP.ranked}</Cap>
 					<RankedBars items={RANKED} />
@@ -103,7 +103,7 @@ export function ChartSection() {
 					<RankedBars items={RANKED.slice(0, 4)} />
 				</Phone>
 			</div>
-			<div className="mt-6 grid items-start gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+			<div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
 				<div>
 					<Cap>{CAP.balance}</Cap>
 					{balance(false)}

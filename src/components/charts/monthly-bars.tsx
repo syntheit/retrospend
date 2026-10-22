@@ -81,8 +81,11 @@ export function MonthlyBars({
 					<YAxis
 						axisLine={false}
 						domain={[0, top]}
-						tick={{ ...LABEL, textAnchor: "start", dx: -BAR.yAxisWidth + 4 }}
-						tickFormatter={tick}
+						tick={({ y, payload }) => (
+							<text {...LABEL} dy={4} textAnchor="start" x={0} y={y}>
+								{tick(Number(payload.value))}
+							</text>
+						)}
 						tickLine={false}
 						ticks={[0, top / 2, top]}
 						width={BAR.yAxisWidth}

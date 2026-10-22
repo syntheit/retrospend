@@ -21,8 +21,8 @@ export type RankedItem = {
 
 /**
  * Ranked bars: the biggest first, one row each with the label, the amount
- * and a thin bar on a raised track. Categories show their bare glyph in
- * their color; anything else is accent, or a series when it has one.
+ * and a thin accent bar on a raised track. A category shows its bare glyph
+ * in its color; the bars stay one color (no rainbow).
  */
 export function RankedBars({ items }: { items: RankedItem[] }) {
 	const t = useTranslations("charts");
@@ -39,11 +39,10 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 				const Icon = item.category
 					? getCategoryIcon(item.category.name, item.category.icon)
 					: null;
-				const fill = item.category
-					? categoryColor(item.category.tone)
-					: item.series
-						? seriesColor(item.series)
-						: COLOR.accent;
+				// One accent fill for every bar (GUIDELINE §9: no rainbow); a
+				// category's glyph carries its identity in its own color.
+				const fill = item.series ? seriesColor(item.series) : COLOR.accent;
+				const glyph = item.category ? categoryColor(item.category.tone) : fill;
 				return (
 					<li
 						className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5"
@@ -55,7 +54,7 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 									aria-hidden="true"
 									className="size-4 shrink-0"
 									strokeWidth={1.75}
-									style={{ color: fill }}
+									style={{ color: glyph }}
 								/>
 							)}
 							<span className="truncate">{item.label}</span>

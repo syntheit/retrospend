@@ -232,7 +232,7 @@ export function FeedbackSection() {
 					</>
 				}
 			/>
-			<div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+			<div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
 				<div>
 					<Cap>{S.toastCap}</Cap>
 					<Button

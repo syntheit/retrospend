@@ -76,7 +76,7 @@ export function Gallery() {
 	return (
 		<TooltipProvider>
 			<div className="bg-bg text-fg h-dvh overflow-y-auto">
-				<main className="px-gutter mx-auto max-w-290 py-8">
+				<main className="px-gutter mx-auto max-w-302 py-8">
 					<header className="mb-4 flex flex-wrap items-start gap-4">
 						<div className="min-w-0 flex-1">
 							<h1 className="text-title">{t("title")}</h1>

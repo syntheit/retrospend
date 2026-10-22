@@ -51,7 +51,9 @@ describe("NeedsYouList", () => {
 		const html = render(
 			h(NeedsYouList, { items: ITEMS.slice(5), variant: "group" }),
 		);
-		expect(html).toMatch(/is overdue<span class="[^"]*\bblock\b[^"]*" data-slot="money"/);
+		expect(html).toMatch(
+			/is overdue<span class="[^"]*\bblock\b[^"]*" data-slot="money"/,
+		);
 		for (const c of ["rounded-panel", "border-line", "bg-surface"])
 			expect(html).toContain(c);
 	});
