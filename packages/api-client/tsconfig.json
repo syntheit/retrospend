@@ -1,0 +1,20 @@
+{
+	// The client runs in the browser and in React Native: ECMAScript plus
+	// the fetch globals only, no Node types.
+	"compilerOptions": {
+		"target": "es2022",
+		"lib": ["ES2022", "DOM"],
+		"types": [],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"moduleDetection": "force",
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"include": ["src"],
+	"exclude": ["src/**/*.test.ts"]
+}
