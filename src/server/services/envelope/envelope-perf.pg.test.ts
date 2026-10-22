@@ -21,7 +21,7 @@ async function seedThreeYears() {
 	const { user } = await createTestUser();
 	await adminDb.user.update({
 		where: { id: user.id },
-		data: { homeCurrency: "ARS" },
+		data: { homeCurrency: "COP" },
 	});
 	const today = isoDateIn(new Date(), "UTC");
 	const current = budgetMonthOf(today, [{ fromMonth: 0, startDay: 1 }]);
@@ -39,7 +39,7 @@ async function seedThreeYears() {
 	)
 		rates.push({
 			date: new Date(d),
-			currency: "ARS",
+			currency: "COP",
 			type: "blue",
 			rate: new Prisma.Decimal(1_000 + rates.length),
 		});
@@ -56,7 +56,7 @@ async function seedThreeYears() {
 	await adminDb.budgetBook.create({
 		data: {
 			id: bookId,
-			currency: "ARS",
+			currency: "COP",
 			startDate,
 			startMonth: start,
 			createdById: user.id,
@@ -112,7 +112,7 @@ async function seedThreeYears() {
 		userId: user.id,
 		title: `Row ${i}`,
 		amount: new Prisma.Decimal(usd ? amount / 1000 : amount),
-		currency: usd ? "USD" : "ARS",
+		currency: usd ? "USD" : "COP",
 		date: monthDate(m, day),
 		categoryId: cats[i % cats.length]?.id ?? null,
 		amountInUSD: new Prisma.Decimal(amount / 1000),
@@ -157,6 +157,8 @@ async function seedThreeYears() {
 describe("getMonth performance (3 years, 5,000 expenses)", () => {
 	it("p95 under 250 ms", { timeout: 180_000 }, async () => {
 		const userId = await seedThreeYears();
+		// Production tables carry planner statistics; a fresh test database does not until autovacuum gets to it.
+		await adminDb.$executeRawUnsafe("ANALYZE");
 		for (let i = 0; i < 3; i++) await getMonth(userId);
 		const runs: number[] = [];
 		for (let i = 0; i < 30; i++) {
