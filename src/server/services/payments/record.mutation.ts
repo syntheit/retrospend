@@ -64,6 +64,8 @@ export interface RecordPaymentInput {
 	readonly allowOverpay?: boolean;
 	/** "Same payment": confirm this pending claim with these details instead (§1.5). */
 	readonly matchClaimId?: string | null;
+	/** The receiver said this is not the payment the payer already claims (§1.5). */
+	readonly differentPayment?: boolean;
 	/** Extra audit context of a legacy entry point. */
 	readonly auditTags?: Readonly<Record<string, true>>;
 }
@@ -79,7 +81,12 @@ export type RecordPaymentValue =
 	  }
 	| {
 			readonly recorded: false;
-			readonly reason: "overpay" | "nothing_owed";
+			/**
+			 * matches_claim: money received that looks like a pending claim of the
+			 * payer; recording it as well would count it twice. Confirm the claim
+			 * (matchClaimId) or say it is a different payment.
+			 */
+			readonly reason: "overpay" | "nothing_owed" | "matches_claim";
 			readonly allocation: AllocationView;
 			readonly match: ClaimMatch | null;
 	  };
@@ -222,6 +229,17 @@ export const recordPayment: MoneyMutation<
 			rows: [{ table: "payment", id }],
 		};
 
+		if (match && input.differentPayment !== true) {
+			return {
+				value: {
+					recorded: false,
+					reason: "matches_claim",
+					allocation: view,
+					match,
+				},
+				undo,
+			};
+		}
 		const owesNothing =
 			allocation.gross === 0 && allocation.offsets.length === 0;
 		if (allocation.overpay > 0 && input.allowOverpay !== true && !owesNothing) {

@@ -5,6 +5,9 @@
  * still pending, in the same currency (or within 2% after converting it at
  * the payment's quote), within 2% of the amount and within 7 days.
  */
+import { TRPCError } from "@trpc/server";
+import { currencyDecimals } from "~/lib/money";
+import { fromMinor } from "~/server/services/envelope/units";
 import type { IsoDate, Minor } from "./types";
 
 export interface Claim {
@@ -75,4 +78,18 @@ export function findClaimMatch(
 	if (!best) return null;
 	const { gap: _gap, days: _days, ...match } = best;
 	return match;
+}
+
+/**
+ * The refusal when money received matches a pending claim and the caller did
+ * not choose: the claim is the same money, so it is confirmed, not recorded
+ * again. `name` is the payer's display name.
+ */
+export function claimMatchError(match: ClaimMatch, name: string): TRPCError {
+	const { amount, currency, paidOn } = match.claim;
+	const shown = fromMinor(amount, currency).toFixed(currencyDecimals(currency));
+	return new TRPCError({
+		code: "CONFLICT",
+		message: `${name} says they already paid you ${currency} ${shown} on ${paidOn}. Confirm that payment, or record this as a different payment.`,
+	});
 }

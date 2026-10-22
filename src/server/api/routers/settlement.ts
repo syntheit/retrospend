@@ -76,6 +76,8 @@ export const settlementRouter = createTRPCRouter({
 				//              across the pair's per-project and direct debts, one
 				//              row per scope, so every view stays consistent.
 				projectId: z.string().min(1).nullish(),
+				// Money received that is not the payer's pending claim (CONFLICT otherwise).
+				differentPayment: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -101,6 +103,7 @@ export const settlementRouter = createTRPCRouter({
 				note: z.string().max(500).nullish(),
 				// See create.projectId: same scoping and allocation rules.
 				projectId: z.string().min(1).nullish(),
+				differentPayment: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {

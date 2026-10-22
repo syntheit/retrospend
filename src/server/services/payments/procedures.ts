@@ -8,6 +8,8 @@ import type { z } from "zod";
 import { forUser } from "~/server/services/preview";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import type { PrismaClient } from "~prisma";
+import { resolveParticipantName } from "~/server/services/notifications";
+import { claimMatchError } from "./claim-match";
 import { confirmPayment, paymentCounterparty } from "./confirm.mutation";
 import type { confirmPaymentSchema, recordPaymentSchema } from "./input";
 import { recordPayment } from "./record.mutation";
@@ -19,6 +21,7 @@ type ConfirmInput = z.infer<typeof confirmPaymentSchema>;
 const NOT_RECORDED = {
 	overpay: "That is more than is owed. Confirm the overpayment to record it.",
 	nothing_owed: "There is nothing to settle with this person.",
+	matches_claim: "They already say they paid you this. Confirm that payment instead.",
 } as const;
 
 export const previewPayment = (userId: string, input: RecordInput) =>
@@ -30,6 +33,15 @@ export async function applyPayment(
 	input: RecordInput,
 ) {
 	const result = await forUser(userId).apply(recordPayment, input);
+	if (!result.value.recorded && result.value.reason === "matches_claim") {
+		const { match } = result.value;
+		const header = match
+			? await db.payment.findUnique({ where: { id: match.claim.paymentId } })
+			: null;
+		if (match && header) {
+			throw claimMatchError(match, await resolveParticipantName(header.payerType, header.payerId));
+		}
+	}
 	if (!result.value.recorded) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",

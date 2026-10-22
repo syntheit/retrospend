@@ -277,6 +277,43 @@ describe("incoming payments (they paid me)", () => {
 		);
 	});
 
+	it("refuses to credit money bob already claims to have paid, unless it is a different payment", async () => {
+		seedDebt(bobRef, aliceRef, 100);
+		// Bob records that he paid alice 50 (pending for her).
+		await new SettlementService(db as never, "bob").initiateSettlement({
+			toParticipant: aliceRef,
+			amount: 50,
+			currency: "USD",
+		});
+		const claim = headers()[0];
+
+		// Alice records the same 50 from the old dialog: it would count twice.
+		await expect(
+			alice().initiateSettlement({
+				toParticipant: bobRef,
+				direction: "incoming",
+				amount: 50,
+				currency: "USD",
+			}),
+		).rejects.toMatchObject({
+			code: "CONFLICT",
+			message:
+				"Test User says they already paid you USD 50.00 on " +
+				`${claim?.paidOn.toISOString().slice(0, 10)}. Confirm that payment, or record this as a different payment.`,
+		});
+		expect(headers()).toHaveLength(1);
+
+		// Said explicitly: a different payment is recorded.
+		await alice().initiateSettlement({
+			toParticipant: bobRef,
+			direction: "incoming",
+			amount: 50,
+			currency: "USD",
+			differentPayment: true,
+		});
+		expect(headers()).toHaveLength(2);
+	});
+
 	it("refuses when they owe you nothing", async () => {
 		seedDebt(aliceRef, bobRef, 40);
 		await expect(

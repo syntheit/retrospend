@@ -12,6 +12,7 @@ import {
 	lockPair,
 } from "~/server/services/payments/access";
 import { allocatePayment } from "~/server/services/payments/allocate";
+import { claimMatchError } from "~/server/services/payments/claim-match";
 import { confirmClaim } from "~/server/services/payments/confirm.mutation";
 import { confirmationFor } from "~/server/services/payments/confirmation";
 import { ledgerLines, payerLines } from "~/server/services/payments/ledger";
@@ -150,6 +151,8 @@ export interface InitiateSettlementInput {
 	 * converts (payment.record does).
 	 */
 	projectId?: string | null;
+	/** Money received that is not the pending payment the payer already claims (§1.5). */
+	differentPayment?: boolean;
 }
 
 /** Amount in `currency` major units as the decimal string the engine takes. */
@@ -184,6 +187,22 @@ export class SettlementService {
 			: { payer: this.currentUserRef, payee: other, recordedByPayee: false };
 	}
 
+	/**
+	 * Money received that matches a pending claim would count twice: refuse
+	 * with the claim named, so the dialog asks to confirm it instead (§1.5).
+	 */
+	private async refuseClaimMatch(value: RecordPaymentValue): Promise<void> {
+		if (value.recorded || value.reason !== "matches_claim" || !value.match) return;
+		const header = await this.db.payment.findUnique({
+			where: { id: value.match.claim.paymentId },
+			select: { payerType: true, payerId: true },
+		});
+		const name = header
+			? await resolveParticipantName(header.payerType, header.payerId)
+			: "They";
+		throw claimMatchError(value.match, name);
+	}
+
 	/** payment.record inside this service's transaction (the same code the preview runs). */
 	private async record(input: RecordPaymentInput): Promise<RecordPaymentValue> {
 		const { value } = await this.db.$transaction((tx) =>
@@ -208,6 +227,7 @@ export class SettlementService {
 			amount: decimalString(input.amount, input.currency),
 			paymentMethod: input.paymentMethod,
 			note: input.note,
+			differentPayment: input.differentPayment,
 			applyTo: [
 				scoped
 					? { scope: input.projectId ?? null, currency: input.currency }
@@ -215,6 +235,7 @@ export class SettlementService {
 			],
 		});
 		if (!value.recorded) {
+			await this.refuseClaimMatch(value);
 			const owed = value.allocation.full;
 			throw new TRPCError({
 				code: "BAD_REQUEST",
@@ -1058,12 +1079,15 @@ export class SettlementService {
 		paymentMethod?: string | null;
 		note?: string | null;
 		projectId?: string | null;
+		/** See InitiateSettlementInput.differentPayment. */
+		differentPayment?: boolean;
 	}) {
 		const value = await this.record({
 			person: input.toParticipant,
 			direction: input.direction ?? "outgoing",
 			currency: input.paymentCurrency,
 			amount: null,
+			differentPayment: input.differentPayment,
 			paymentMethod: input.paymentMethod,
 			note: input.note,
 			applyTo:
@@ -1077,6 +1101,7 @@ export class SettlementService {
 			reason: "no_exchange_rate",
 		}));
 		if (!value.recorded) {
+			await this.refuseClaimMatch(value);
 			throw new TRPCError({
 				code: "BAD_REQUEST",
 				message:

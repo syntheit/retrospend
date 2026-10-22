@@ -38,6 +38,7 @@ export const recordPaymentSchema = z.object({
 		.optional(),
 	allowOverpay: z.boolean().optional(),
 	matchClaimId: z.string().min(1).nullish(),
+	differentPayment: z.boolean().optional(),
 });
 
 export const confirmPaymentSchema = z.object({
