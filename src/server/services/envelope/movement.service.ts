@@ -7,8 +7,9 @@
  * - is idempotent on client ids: a retry with the same id returns what the
  *   first call wrote, and a reused id with other content is refused;
  * - only touches the current or the next month (D22);
- * - caps moves out of an envelope at max(0, Left); SET never blocks and may
- *   leave an envelope negative (B5);
+ * - caps moves out of an envelope at max(0, Left); SET never blocks this
+ *   month and may leave an envelope negative (B5). Next month, nothing goes
+ *   back to To assign beyond what was assigned there (planning.takeBackCap);
  * - returns every envelope it moved with its Left before and after, and To
  *   assign before and after (RC-5).
  *
@@ -28,6 +29,8 @@ import { addMonths } from "./calendar";
 import { computeBook } from "./engine";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook, type LoadedBook, loadBook } from "./inputs";
+import { forgetMonthViews } from "./month-read";
+import { takeBackCap } from "./planning";
 import type { Minor, MonthKey } from "./types";
 import { fromMinor, toMinor } from "./units";
 
@@ -49,6 +52,8 @@ interface Snapshot {
 	loaded: LoadedBook;
 	left: (envelopeId: string, month: MonthKey) => Minor;
 	assigned: (envelopeId: string, month: MonthKey) => Minor;
+	/** Net movements out of To assign in a month. */
+	poolAssigned: (month: MonthKey) => Minor;
 	toAssign: Minor;
 	current: MonthKey;
 }
@@ -69,9 +74,79 @@ async function snapshot(tx: Tx, userId: string, now: Date): Promise<Snapshot> {
 		loaded,
 		left: (id, month) => row(id, month)?.left ?? 0,
 		assigned: (id, month) => row(id, month)?.assigned ?? 0,
+		poolAssigned: (month) => state.month(month).totals.assigned,
 		toAssign: state.toAssign(c).total,
 		current: c,
 	};
+}
+
+/**
+ * Running Left and Assigned while a write builds its rows, so every row of a
+ * batch is capped against the rows before it.
+ */
+class Tracker {
+	private readonly delta = new Map<string, { left: Minor; assigned: Minor }>();
+	private readonly pool = new Map<MonthKey, Minor>();
+
+	constructor(private readonly s: Snapshot) {}
+
+	private key = (id: string, month: MonthKey) => `${id}:${month}`;
+
+	left(id: string, month: MonthKey) {
+		return (
+			this.s.left(id, month) + (this.delta.get(this.key(id, month))?.left ?? 0)
+		);
+	}
+
+	assigned(id: string, month: MonthKey) {
+		return (
+			this.s.assigned(id, month) +
+			(this.delta.get(this.key(id, month))?.assigned ?? 0)
+		);
+	}
+
+	/** Most that can go from `id` back to To assign (planning.takeBackCap). */
+	takeBackCap(id: string, month: MonthKey) {
+		return takeBackCap({
+			month,
+			currentMonth: this.s.current,
+			left: this.left(id, month),
+			assigned: this.assigned(id, month),
+			poolAssigned: this.s.poolAssigned(month) + (this.pool.get(month) ?? 0),
+		});
+	}
+
+	apply(r: Pick<NewMovement, "from" | "to" | "month" | "minor">) {
+		const bump = (id: string, v: Minor) => {
+			const d = this.delta.get(this.key(id, r.month)) ?? {
+				left: 0,
+				assigned: 0,
+			};
+			this.delta.set(this.key(id, r.month), {
+				left: d.left + v,
+				assigned: d.assigned + v,
+			});
+		};
+		if (r.from) bump(r.from, -r.minor);
+		else this.pool.set(r.month, (this.pool.get(r.month) ?? 0) + r.minor);
+		if (r.to) bump(r.to, r.minor);
+		else this.pool.set(r.month, (this.pool.get(r.month) ?? 0) - r.minor);
+	}
+
+	/** Refuses a row that takes more than the cap out of its source. */
+	check(r: Pick<NewMovement, "from" | "to" | "month" | "minor">) {
+		if (!r.from) return;
+		const cap =
+			r.to === null
+				? this.takeBackCap(r.from, r.month)
+				: Math.max(0, this.left(r.from, r.month));
+		if (r.minor > cap)
+			throw new EnvelopeError(
+				"OVER_CAP",
+				"that is more than the envelope holds",
+				cap,
+			);
+	}
 }
 
 /** Locks the user's book and reads it after the lock, so caps see every committed write. */
@@ -108,6 +183,21 @@ const money = (s: Snapshot, minor: Minor): Money => ({
 	currency: s.loaded.book.currency,
 });
 
+/** A client id that already names another row reads as a reused id, not a crash. */
+async function createRows(tx: Tx, args: Prisma.BudgetMovementCreateManyArgs) {
+	try {
+		await tx.budgetMovement.createMany(args);
+	} catch (error) {
+		if ((error as { code?: string }).code === "P2002")
+			throw new EnvelopeError(
+				"ID_REUSED",
+				"that id was already used for another change",
+			);
+		throw error;
+	}
+	forgetMonthViews(tx);
+}
+
 async function insert(
 	tx: Tx,
 	s: Snapshot,
@@ -115,7 +205,7 @@ async function insert(
 	rows: NewMovement[],
 ) {
 	if (rows.length === 0) return;
-	await tx.budgetMovement.createMany({
+	await createRows(tx, {
 		data: rows.map((r) => ({
 			id: r.id,
 			bookId: s.loaded.row.id,
@@ -185,33 +275,20 @@ async function result(
 }
 
 /** A retry of a write already made: same ids, same content, or a refusal. */
+/** A retry of a write already made: the same ids with the same content, or a refusal. */
 async function replay(
 	tx: Tx,
 	userId: string,
 	now: Date,
 	s: Snapshot,
 	where: Prisma.BudgetMovementWhereInput,
-	expected: NewMovement[] | null,
+	matches: (rows: StoredMovement[]) => boolean,
 ) {
 	const existing = await tx.budgetMovement.findMany({
 		where: { ...where, bookId: s.loaded.row.id },
 	});
 	if (existing.length === 0) return null;
-	const same =
-		!expected ||
-		(existing.length === expected.length &&
-			expected.every((e) =>
-				existing.some(
-					(x) =>
-						x.id === e.id &&
-						x.month === e.month &&
-						x.fromEnvelopeId === e.from &&
-						x.toEnvelopeId === e.to &&
-						x.kind === e.kind &&
-						toMinor(x.amount.toString(), s.loaded.book.currency) === e.minor,
-				),
-			));
-	if (!same)
+	if (!matches(existing))
 		throw new EnvelopeError(
 			"ID_REUSED",
 			"that id was already used for another change",
@@ -225,25 +302,49 @@ async function replay(
 	);
 }
 
+const sameRow = (x: StoredMovement, e: NewMovement, currency: string) =>
+	x.id === e.id &&
+	x.month === e.month &&
+	x.fromEnvelopeId === e.from &&
+	x.toEnvelopeId === e.to &&
+	x.kind === e.kind &&
+	toMinor(x.amount.toString(), currency) === e.minor;
+
+/** Rows a batch wrote match its items: same envelope, month and kind; for add, the same signed amount. */
+function matchesAssign(input: AssignInput, currency: string) {
+	return (rows: StoredMovement[]) =>
+		rows.every((x) => {
+			const item = input.items.find((i) => i.id === x.id);
+			if (!item || x.month !== input.month) return false;
+			if (
+				x.fromEnvelopeId !== item.envelopeId &&
+				x.toEnvelopeId !== item.envelopeId
+			)
+				return false;
+			if (input.mode === "set") return x.kind === "SET";
+			const back = item.amountMinor < 0;
+			return (
+				x.kind === (back ? "UNASSIGN" : "ASSIGN") &&
+				(back ? x.fromEnvelopeId : x.toEnvelopeId) === item.envelopeId &&
+				toMinor(x.amount.toString(), currency) === Math.abs(item.amountMinor)
+			);
+		});
+}
+
 function assignRows(input: AssignInput, s: Snapshot): NewMovement[] {
-	const left = new Map<string, Minor>();
+	const t = new Tracker(s);
+	const next = input.month > s.current;
 	const rows: NewMovement[] = [];
 	for (const item of input.items) {
 		checkEnvelope(item.envelopeId, s);
 		const e = item.envelopeId;
-		const current = left.get(e) ?? s.left(e, input.month);
-		let delta = item.amountMinor;
-		if (input.mode === "set")
-			delta = item.amountMinor - s.assigned(e, input.month);
+		const delta =
+			input.mode === "set"
+				? item.amountMinor - t.assigned(e, input.month)
+				: item.amountMinor;
 		if (delta === 0) continue;
 		const takesBack = delta < 0;
-		if (takesBack && input.mode === "add" && -delta > Math.max(0, current))
-			throw new EnvelopeError(
-				"OVER_CAP",
-				"that is more than the envelope holds",
-				Math.max(0, current),
-			);
-		rows.push({
+		const row: NewMovement = {
 			id: item.id,
 			month: input.month,
 			from: takesBack ? e : null,
@@ -251,8 +352,11 @@ function assignRows(input: AssignInput, s: Snapshot): NewMovement[] {
 			minor: Math.abs(delta),
 			kind: input.mode === "set" ? "SET" : takesBack ? "UNASSIGN" : "ASSIGN",
 			batchId: input.batchId,
-		});
-		left.set(e, current + delta);
+		};
+		// SET never blocks this month (B5); next month it may not hand back carried money.
+		if (takesBack && (input.mode === "add" || next)) t.check(row);
+		t.apply(row);
+		rows.push(row);
 	}
 	return rows;
 }
@@ -270,7 +374,7 @@ export async function assign(
 		now,
 		s,
 		{ batchId: input.batchId },
-		null,
+		matchesAssign(input, s.loaded.book.currency),
 	);
 	if (again) return again;
 	checkMonth(input.month, s);
@@ -298,16 +402,7 @@ function moveRow(input: MoveInput, s: Snapshot): NewMovement {
 	if (input.kind === "MOVE" && (input.from === null || input.to === null))
 		throw new EnvelopeError("INVALID", "move runs between two envelopes");
 	for (const id of [input.from, input.to]) if (id) checkEnvelope(id, s);
-	if (input.from) {
-		const cap = Math.max(0, s.left(input.from, input.month));
-		if (input.amountMinor > cap)
-			throw new EnvelopeError(
-				"OVER_CAP",
-				"that is more than the envelope holds",
-				cap,
-			);
-	}
-	return {
+	const row: NewMovement = {
 		id: input.id,
 		month: input.month,
 		from: input.from,
@@ -316,6 +411,8 @@ function moveRow(input: MoveInput, s: Snapshot): NewMovement {
 		kind: input.kind,
 		batchId: null,
 	};
+	new Tracker(s).check(row);
+	return row;
 }
 
 export async function move(
@@ -325,7 +422,7 @@ export async function move(
 	now: Date,
 ): Promise<MovementResult> {
 	const s = await lockedSnapshot(tx, userId, now);
-	const row = {
+	const row: NewMovement = {
 		id: input.id,
 		month: input.month,
 		from: input.from,
@@ -334,7 +431,10 @@ export async function move(
 		kind: input.kind,
 		batchId: null,
 	};
-	const again = await replay(tx, userId, now, s, { id: input.id }, [row]);
+	const currency = s.loaded.book.currency;
+	const again = await replay(tx, userId, now, s, { id: input.id }, (rows) =>
+		rows.every((x) => sameRow(x, row, currency)),
+	);
 	if (again) return again;
 	checkMonth(input.month, s);
 	const built = moveRow(input, s);
@@ -372,15 +472,6 @@ export async function undo(
 	now: Date,
 ): Promise<MovementResult> {
 	const s = await lockedSnapshot(tx, userId, now);
-	const again = await replay(
-		tx,
-		userId,
-		now,
-		s,
-		{ batchId: input.id, kind: "UNDO" },
-		null,
-	);
-	if (again) return again;
 	const where =
 		"movementId" in input.target
 			? { id: input.target.movementId }
@@ -388,6 +479,20 @@ export async function undo(
 	const originals = await tx.budgetMovement.findMany({
 		where: { ...where, bookId: s.loaded.row.id },
 	});
+	const ids = new Set(originals.map((o) => o.id));
+	const again = await replay(
+		tx,
+		userId,
+		now,
+		s,
+		{ batchId: input.id },
+		(rows) =>
+			rows.every(
+				(x) =>
+					x.kind === "UNDO" && x.revertsId !== null && ids.has(x.revertsId),
+			),
+	);
+	if (again) return again;
 	if (originals.length === 0)
 		throw new EnvelopeError("NOT_FOUND", "nothing to undo");
 	if (originals.some((o) => o.kind === "UNDO"))
@@ -408,6 +513,12 @@ export async function undo(
 		batchId: input.id,
 		revertsId: o.id,
 	}));
+	// An exact mirror, but next month it may not hand carried money back to To assign.
+	const t = new Tracker(s);
+	for (const r of rows) {
+		if (r.to === null && r.month > s.current) t.check(r);
+		t.apply(r);
+	}
 	await insert(tx, s, userId, rows);
 	return result(
 		tx,

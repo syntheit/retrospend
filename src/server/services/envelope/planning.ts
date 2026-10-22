@@ -95,3 +95,23 @@ export function coverSources(
 export function moveCap(row: Pick<EnvelopeRowDto, "left">): Minor {
 	return Math.max(0, row.left.minor);
 }
+
+/**
+ * The most that can go from an envelope back to To assign. This month: what
+ * the envelope holds. Next month: also no more than was assigned to it there,
+ * and no more than To assign gave next month in total. Next month's Left
+ * includes this month's projected carry, which To assign already counts, so
+ * taking that back would show the same money twice.
+ */
+export function takeBackCap(p: {
+	month: number;
+	currentMonth: number;
+	left: Minor;
+	/** Assigned(e, month): net movements into the envelope that month. */
+	assigned: Minor;
+	/** Net movements out of To assign that month. */
+	poolAssigned: Minor;
+}): Minor {
+	if (p.month <= p.currentMonth) return Math.max(0, p.left);
+	return Math.max(0, Math.min(p.left, p.assigned, p.poolAssigned));
+}

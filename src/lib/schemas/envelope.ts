@@ -437,7 +437,15 @@ export const assignInputSchema = z.object({
 			}),
 		)
 		.min(1)
-		.max(200),
+		.max(200)
+		.refine(
+			(items) => new Set(items.map((i) => i.envelopeId)).size === items.length,
+			"an envelope appears once per batch",
+		)
+		.refine(
+			(items) => new Set(items.map((i) => i.id)).size === items.length,
+			"every item has its own id",
+		),
 });
 
 export const moveInputSchema = z.object({
