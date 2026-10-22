@@ -1,8 +1,7 @@
 /**
- * Project procedures: input schemas, access checks, and a call into
- * src/server/services/project. Logic lives in the services.
+ * Project procedures: access checks and a call into src/server/services/project,
+ * where the logic and the input schemas (inputs.ts) live.
  */
-import { z } from "zod";
 import {
 	assertGuestProjectScope,
 	createTRPCRouter,
@@ -20,6 +19,7 @@ import {
 	projectParticipantBalances,
 	projectSettlementPlan,
 } from "~/server/services/project/group.service";
+import { projectInput } from "~/server/services/project/inputs";
 import {
 	assertGrantableByLink,
 	createMagicLink,
@@ -33,7 +33,6 @@ import {
 	transferOwnership,
 	updateParticipantRole,
 } from "~/server/services/project/members.service";
-import { isIsoDate } from "~/server/services/project/membership";
 import {
 	membersOn,
 	setMembershipDates,
@@ -54,139 +53,55 @@ import { rebalanceableExpenses } from "~/server/services/project/rebalance.servi
 import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 
-// ── input schemas ─────────────────────────────────────────────────────────────
-
-const projectRoleSchema = z.enum([
-	"ORGANIZER",
-	"EDITOR",
-	"CONTRIBUTOR",
-	"VIEWER",
-]);
-
-const memberSchema = z.object({
-	projectId: z.string().min(1),
-	participantType: z.enum(["user", "guest", "shadow"]),
-	participantId: z.string().min(1),
-});
-
-/** A calendar day, YYYY-MM-DD, as the client's local date. */
-const isoDateSchema = z
-	.string()
-	.refine(isIsoDate, { message: "Expected a calendar day (YYYY-MM-DD)" });
-
-const cycleLengthSchema = z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"]);
-const closePermissionSchema = z.enum(["ORGANIZER_ONLY", "ANY_PARTICIPANT"]);
-
-const createProjectSchema = z.object({
-	name: z.string().min(1).max(191),
-	description: z.string().max(500).optional(),
-	budgetAmount: z.number().positive().optional(),
-	budgetCurrency: z.string().min(1).max(10).optional(),
-	primaryCurrency: z.string().min(1).max(10).default("USD"),
-	visibility: z.enum(["PRIVATE", "PUBLIC"]).default("PRIVATE"),
-	billingCycleLength: cycleLengthSchema.optional(),
-	billingCycleDays: z.number().int().positive().optional(),
-	billingAutoClose: z.boolean().default(false),
-	billingCloseReminderDays: z.number().int().min(0).default(3),
-	billingClosePermission: closePermissionSchema.default("ORGANIZER_ONLY"),
-});
-
-const updateProjectSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().min(1).max(191).optional(),
-	description: z.string().max(500).nullish(),
-	budgetAmount: z.number().positive().nullish(),
-	budgetCurrency: z.string().min(1).max(10).nullish(),
-	primaryCurrency: z.string().min(1).max(10).optional(),
-	status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
-	visibility: z.enum(["PRIVATE", "PUBLIC"]).optional(),
-	billingCycleLength: cycleLengthSchema.nullish(),
-	billingCycleDays: z.number().int().positive().nullish(),
-	billingAutoClose: z.boolean().optional(),
-	billingCloseReminderDays: z.number().int().min(0).optional(),
-	billingClosePermission: closePermissionSchema.optional(),
-	autoAcceptSplits: z.boolean().optional(),
-});
-
-const pageSchema = {
-	page: z.number().int().positive().default(1),
-	limit: z.number().int().positive().max(500).default(20),
+type Db = Parameters<typeof requireProjectRole>[0];
+type SignedIn = { db: Db; session: { user: { id: string } } };
+type Reader = {
+	db: Db;
+	participant: Parameters<typeof assertGuestProjectScope>[0];
 };
-
-const groupInput = z.object({
-	projectId: z.string().min(1),
-	periodId: z.string().optional(),
-});
+type MinimumRole = Parameters<typeof requireProjectRole>[4];
 
 /** The signed-in user's role in the project, or FORBIDDEN / NOT_FOUND. */
-function roleOf(
-	ctx: {
-		db: Parameters<typeof requireProjectRole>[0];
-		session: { user: { id: string } };
-	},
-	projectId: string,
-	minimum: "VIEWER" | "CONTRIBUTOR" | "EDITOR" | "ORGANIZER",
-) {
-	return requireProjectRole(
-		ctx.db,
-		projectId,
-		"user",
-		ctx.session.user.id,
-		minimum,
-	);
-}
+const roleOf = (ctx: SignedIn, projectId: string, minimum: MinimumRole) =>
+	requireProjectRole(ctx.db, projectId, "user", ctx.session.user.id, minimum);
 
 /** Scope check and membership check for any reader: user, guest or viewer link. */
-async function assertReader(
-	ctx: {
-		db: Parameters<typeof requireProjectRole>[0];
-		participant: Parameters<typeof assertGuestProjectScope>[0];
-	},
-	projectId: string,
-) {
+function assertReader(ctx: Reader, projectId: string) {
 	assertGuestProjectScope(ctx.participant, projectId);
-	const { participantType, participantId } = ctx.participant;
-	return requireProjectRole(
-		ctx.db,
-		projectId,
-		participantType,
-		participantId,
-		"VIEWER",
-	);
+	const { participantType: type, participantId } = ctx.participant;
+	return requireProjectRole(ctx.db, projectId, type, participantId, "VIEWER");
 }
 
-const actor = (ctx: { session: { user: { id: string } } }) => ({
-	userId: ctx.session.user.id,
-});
+const actor = (ctx: SignedIn) => ({ userId: ctx.session.user.id });
 
 // ── router ────────────────────────────────────────────────────────────────────
 
 export const projectRouter = createTRPCRouter({
 	create: protectedProcedure
-		.input(createProjectSchema)
+		.input(projectInput.create)
 		.mutation(({ ctx, input }) => createProject(ctx.db, actor(ctx), input)),
 
 	list: protectedProcedure
-		.input(z.object({ status: z.enum(["ACTIVE", "ARCHIVED"]).optional() }))
+		.input(projectInput.list)
 		.query(({ ctx, input }) =>
 			listProjects(ctx.db, ctx.session.user.id, input.status),
 		),
 
 	detail: guestOrProtectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
+		.input(projectInput.byId)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.id);
 			return getProjectDetail(ctx.db, input.id, ctx.participant);
 		}),
 
 	updateAnalyticsExclusion: protectedProcedure
-		.input(z.object({ projectId: z.string().min(1), exclude: z.boolean() }))
+		.input(projectInput.analyticsExclusion)
 		.mutation(({ ctx, input }) =>
 			setAnalyticsExclusion(ctx.db, actor(ctx), input.projectId, input.exclude),
 		),
 
 	update: protectedProcedure
-		.input(updateProjectSchema)
+		.input(projectInput.update)
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...fields } = input;
 			await roleOf(ctx, id, "EDITOR");
@@ -194,19 +109,14 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	addParticipant: protectedProcedure
-		.input(
-			memberSchema.extend({
-				role: projectRoleSchema.default("CONTRIBUTOR"),
-				joinedOn: isoDateSchema.optional(),
-			}),
-		)
+		.input(projectInput.addParticipant)
 		.mutation(async ({ ctx, input }) => {
 			const caller = await roleOf(ctx, input.projectId, "EDITOR");
 			return addParticipant(ctx.db, actor(ctx), caller.role, input);
 		}),
 
 	rebalanceableExpenses: protectedProcedure
-		.input(memberSchema)
+		.input(projectInput.member)
 		.query(async ({ ctx, input }) => {
 			const { projectId, ...newcomer } = input;
 			await roleOf(ctx, projectId, "EDITOR");
@@ -214,11 +124,7 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	rebalanceExpenses: protectedProcedure
-		.input(
-			memberSchema.extend({
-				expenseIds: z.array(z.string().min(1)).optional(),
-			}),
-		)
+		.input(projectInput.rebalance)
 		.mutation(async ({ ctx, input }) => {
 			await roleOf(ctx, input.projectId, "EDITOR");
 			return userTransaction(ctx.db, ctx.session.user.id, (tx) =>
@@ -227,20 +133,14 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	updateParticipantRole: protectedProcedure
-		.input(memberSchema.extend({ role: projectRoleSchema }))
+		.input(projectInput.role)
 		.mutation(async ({ ctx, input }) => {
 			const caller = await roleOf(ctx, input.projectId, "EDITOR");
 			return updateParticipantRole(ctx.db, actor(ctx), caller.role, input);
 		}),
 
 	transferOwnership: protectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				newOwnerParticipantId: z.string().min(1),
-				confirmProjectName: z.string().min(1),
-			}),
-		)
+		.input(projectInput.transferOwnership)
 		.mutation(async ({ ctx, input }) => {
 			await roleOf(ctx, input.projectId, "ORGANIZER");
 			return transferOwnership(ctx.db, actor(ctx), {
@@ -251,7 +151,7 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	removeParticipant: protectedProcedure
-		.input(memberSchema)
+		.input(projectInput.member)
 		.mutation(async ({ ctx, input }) => {
 			const caller = await roleOf(ctx, input.projectId, "EDITOR");
 			return removeParticipant(ctx.db, actor(ctx), caller.role, input);
@@ -259,12 +159,7 @@ export const projectRouter = createTRPCRouter({
 
 	/** Who was a member on a day: what a new expense on that day includes by default (RC-11). */
 	membersOn: guestOrProtectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				date: isoDateSchema.optional(),
-			}),
-		)
+		.input(projectInput.membersOn)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
 			const reader =
@@ -276,32 +171,21 @@ export const projectRouter = createTRPCRouter({
 
 	/** Join and leave dates. Leaving keeps the person and their past expenses. */
 	setMembershipDates: protectedProcedure
-		.input(
-			memberSchema.extend({
-				joinedOn: isoDateSchema.nullish(),
-				leftOn: isoDateSchema.nullish(),
-			}),
-		)
+		.input(projectInput.membershipDates)
 		.mutation(async ({ ctx, input }) => {
 			const caller = await roleOf(ctx, input.projectId, "EDITOR");
 			return setMembershipDates(ctx.db, actor(ctx), caller.role, input);
 		}),
 
 	listExpenses: guestOrProtectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				billingPeriodId: z.string().optional(),
-				...pageSchema,
-			}),
-		)
+		.input(projectInput.listExpenses)
 		.query(async ({ ctx, input }) => {
 			const caller = await assertReader(ctx, input.projectId);
 			return listProjectExpenses(ctx.db, input, ctx.participant, caller.role);
 		}),
 
 	delete: protectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
+		.input(projectInput.byId)
 		.mutation(async ({ ctx, input }) => {
 			await roleOf(ctx, input.id, "ORGANIZER");
 			return deleteProject(ctx.db, actor(ctx), input.id);
@@ -310,14 +194,7 @@ export const projectRouter = createTRPCRouter({
 	// ── Magic links ─────────────────────────────────────────────────────────
 
 	createMagicLink: protectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				roleGranted: projectRoleSchema.default("CONTRIBUTOR"),
-				expiresAt: z.date().optional(),
-				maxUses: z.number().int().positive().optional(),
-			}),
-		)
+		.input(projectInput.createMagicLink)
 		.mutation(async ({ ctx, input }) => {
 			assertGrantableByLink(input.roleGranted);
 			await roleOf(ctx, input.projectId, "EDITOR");
@@ -325,23 +202,21 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	listMagicLinks: protectedProcedure
-		.input(z.object({ projectId: z.string().min(1) }))
+		.input(projectInput.project)
 		.query(async ({ ctx, input }) => {
 			await roleOf(ctx, input.projectId, "EDITOR");
 			return listMagicLinks(ctx.db, input.projectId);
 		}),
 
 	revokeMagicLink: protectedProcedure
-		.input(
-			z.object({ projectId: z.string().min(1), linkId: z.string().min(1) }),
-		)
+		.input(projectInput.revokeMagicLink)
 		.mutation(async ({ ctx, input }) => {
 			await roleOf(ctx, input.projectId, "EDITOR");
 			return revokeMagicLink(ctx.db, actor(ctx), input.projectId, input.linkId);
 		}),
 
 	resetMagicLink: protectedProcedure
-		.input(z.object({ projectId: z.string().min(1), role: projectRoleSchema }))
+		.input(projectInput.resetMagicLink)
 		.mutation(async ({ ctx, input }) => {
 			assertGrantableByLink(input.role);
 			await roleOf(ctx, input.projectId, "EDITOR");
@@ -351,18 +226,18 @@ export const projectRouter = createTRPCRouter({
 	// ── Public (no sign-in): PUBLIC projects only, no balances or emails ─────
 
 	publicDetail: publicProcedure
-		.input(z.object({ id: z.string().min(1) }))
+		.input(projectInput.byId)
 		.query(({ ctx, input }) => getPublicProjectDetail(ctx.db, input.id)),
 
 	publicListExpenses: publicProcedure
-		.input(z.object({ projectId: z.string().min(1), ...pageSchema }))
+		.input(projectInput.publicListExpenses)
 		.query(({ ctx, input }) => listPublicProjectExpenses(ctx.db, input)),
 
 	// ── Group balances (read-only) ──────────────────────────────────────────
 
 	/** The fewest payments that settle the project (or one billing period), per currency. */
 	settlementPlan: guestOrProtectedProcedure
-		.input(groupInput)
+		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
 			return projectSettlementPlan(ctx.db, input.projectId, input.periodId);
@@ -373,7 +248,7 @@ export const projectRouter = createTRPCRouter({
 	 * per member and currency in minor units, and who pays whom.
 	 */
 	summary: guestOrProtectedProcedure
-		.input(groupInput)
+		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
 			return getProjectSummary(
@@ -386,7 +261,7 @@ export const projectRouter = createTRPCRouter({
 
 	/** Each person's paid, fair share and net balance, one row per currency. */
 	participantBalances: guestOrProtectedProcedure
-		.input(groupInput)
+		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
 			return projectParticipantBalances(
@@ -402,15 +277,7 @@ export const projectRouter = createTRPCRouter({
 	 * members, so one person's view leaks nothing new.
 	 */
 	balancesFromPerspective: guestOrProtectedProcedure
-		.input(
-			z.object({
-				projectId: z.string().min(1),
-				perspective: z.object({
-					participantType: z.enum(["user", "guest", "shadow"]),
-					participantId: z.string().min(1),
-				}),
-			}),
-		)
+		.input(projectInput.perspective)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
 			return projectBalancesFromPerspective(
