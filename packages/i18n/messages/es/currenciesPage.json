@@ -1,0 +1,64 @@
+{
+	"title": "Monedas",
+	"pricesIn": "Precios en {home}.",
+	"updated": "Actualizado el {date}.",
+	"newUse": "Los importes nuevos en otra moneda usan {type}.",
+	"filters": {
+		"label": "Filtrar monedas",
+		"search": "Busca, o escribe 100 usd",
+		"favorites": "Favoritas",
+		"fiat": "Fiat",
+		"crypto": "Cripto"
+	},
+	"empty": {
+		"none": "Ninguna moneda coincide",
+		"noneHint": "Prueba con otro nombre o código.",
+		"clear": "Quitar filtros",
+		"noFavorites": "Aún no tienes favoritas",
+		"noFavoritesHint": "Marca una moneda con la estrella para tenerla primero, aquí y en el selector de monedas.",
+		"showAll": "Ver todas las monedas"
+	},
+	"missing": "Aún no hay tipo de cambio de {codes}. {count, plural, one {{names} queda} other {{names} quedan}} fuera del patrimonio.",
+	"priceOf": "Precio de 1 unidad en {home}",
+	"favorite": "Favorita",
+	"currency": "Moneda",
+	"actions": "Acciones",
+	"noRate": "Sin tipo de cambio",
+	"noType": "Sin tipo de cambio de esta clase",
+	"subNoRate": "{name} · sin tipo de cambio",
+	"subDefault": "{name} · {type} por defecto",
+	"star": {
+		"add": "Añadir {code} a favoritas",
+		"remove": "Quitar {code} de favoritas",
+		"unavailable": "{code} aún no puede ser favorita"
+	},
+	"detail": {
+		"label": "Moneda seleccionada",
+		"sheetTitle": "Tipos de cambio de {code}",
+		"sub": "{code} · 1 {code} en {home}, {date}",
+		"noRate": "No hay tipo de cambio de {code}. Las cuentas y gastos en {code} quedan fuera de los totales.",
+		"usedBy": "La usa {names}",
+		"rates": "Tipos de cambio",
+		"default": "Por defecto",
+		"defaultTitle": "Por defecto para gastos nuevos",
+		"defaultFixed": "Por ahora, el valor predeterminado."
+	},
+	"convert": {
+		"title": "Convertir",
+		"swap": "Invertir",
+		"into": "en {code}",
+		"failed": "No se ha podido convertir. Inténtalo de nuevo.",
+		"quickTitle": "<amount></amount> en {to}"
+	},
+	"toast": {
+		"favorited": "{code} añadida a favoritas",
+		"unfavorited": "{code} quitada de favoritas",
+		"copied": "Copiado {rate}",
+		"failed": "No se ha podido. Inténtalo de nuevo."
+	},
+	"unavailable": {
+		"title": "Los tipos de cambio no están disponibles ahora",
+		"hint": "Inténtalo de nuevo en un momento.",
+		"retry": "Reintentar"
+	}
+}

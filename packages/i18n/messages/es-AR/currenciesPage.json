@@ -1,0 +1,64 @@
+{
+	"title": "Monedas",
+	"pricesIn": "Precios en {home}.",
+	"updated": "Actualizado el {date}.",
+	"newUse": "Los montos nuevos en otra moneda usan {type}.",
+	"filters": {
+		"label": "Filtrar monedas",
+		"search": "Buscá, o escribí 100 usd",
+		"favorites": "Favoritas",
+		"fiat": "Fiat",
+		"crypto": "Cripto"
+	},
+	"empty": {
+		"none": "Ninguna moneda coincide",
+		"noneHint": "Probá con otro nombre o código.",
+		"clear": "Borrar filtros",
+		"noFavorites": "Todavía no tenés favoritas",
+		"noFavoritesHint": "Marcá una moneda con la estrella para tenerla primero, acá y en el selector de monedas.",
+		"showAll": "Ver todas las monedas"
+	},
+	"missing": "Todavía no hay cotización de {codes}. {count, plural, one {{names} queda} other {{names} quedan}} fuera del patrimonio.",
+	"priceOf": "Precio de 1 unidad en {home}",
+	"favorite": "Favorita",
+	"currency": "Moneda",
+	"actions": "Acciones",
+	"noRate": "Sin cotización",
+	"noType": "Sin cotización de este tipo",
+	"subNoRate": "{name} · sin cotización",
+	"subDefault": "{name} · {type} por defecto",
+	"star": {
+		"add": "Agregar {code} a favoritas",
+		"remove": "Quitar {code} de favoritas",
+		"unavailable": "{code} todavía no puede ser favorita"
+	},
+	"detail": {
+		"label": "Moneda elegida",
+		"sheetTitle": "Cotizaciones de {code}",
+		"sub": "{code} · 1 {code} en {home}, {date}",
+		"noRate": "No hay cotización de {code}. Las cuentas y gastos en {code} quedan fuera de los totales.",
+		"usedBy": "La usa {names}",
+		"rates": "Cotizaciones",
+		"default": "Por defecto",
+		"defaultTitle": "Por defecto para gastos nuevos",
+		"defaultFixed": "Por ahora, el valor predeterminado."
+	},
+	"convert": {
+		"title": "Convertir",
+		"swap": "Invertir",
+		"into": "en {code}",
+		"failed": "No se pudo convertir. Probá de nuevo.",
+		"quickTitle": "<amount></amount> en {to}"
+	},
+	"toast": {
+		"favorited": "Agregaste {code} a favoritas",
+		"unfavorited": "Quitaste {code} de favoritas",
+		"copied": "Copiaste {rate}",
+		"failed": "No se pudo. Probá de nuevo."
+	},
+	"unavailable": {
+		"title": "Las cotizaciones no están disponibles ahora",
+		"hint": "Probá de nuevo en un rato.",
+		"retry": "Reintentar"
+	}
+}

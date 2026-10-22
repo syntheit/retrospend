@@ -1,0 +1,64 @@
+{
+	"title": "Moedas",
+	"pricesIn": "Preços em {home}.",
+	"updated": "Atualizado em {date}.",
+	"newUse": "Novos valores em moeda estrangeira usam {type}.",
+	"filters": {
+		"label": "Filtrar moedas",
+		"search": "Busque, ou digite 100 usd",
+		"favorites": "Favoritas",
+		"fiat": "Fiat",
+		"crypto": "Cripto"
+	},
+	"empty": {
+		"none": "Nenhuma moeda encontrada",
+		"noneHint": "Tente outro nome ou código.",
+		"clear": "Limpar filtros",
+		"noFavorites": "Nenhuma favorita ainda",
+		"noFavoritesHint": "Marque uma moeda com a estrela para mantê-la no topo, aqui e no seletor de moedas.",
+		"showAll": "Ver todas as moedas"
+	},
+	"missing": "Ainda não há cotação de {codes}. {count, plural, one {{names} fica} other {{names} ficam}} fora do patrimônio.",
+	"priceOf": "Preço de 1 unidade em {home}",
+	"favorite": "Favorita",
+	"currency": "Moeda",
+	"actions": "Ações",
+	"noRate": "Sem cotação",
+	"noType": "Sem cotação deste tipo",
+	"subNoRate": "{name} · sem cotação",
+	"subDefault": "{name} · {type} por padrão",
+	"star": {
+		"add": "Adicionar {code} às favoritas",
+		"remove": "Remover {code} das favoritas",
+		"unavailable": "{code} ainda não pode ser favorita"
+	},
+	"detail": {
+		"label": "Moeda selecionada",
+		"sheetTitle": "Cotações de {code}",
+		"sub": "{code} · 1 {code} em {home}, {date}",
+		"noRate": "Sem cotação de {code}. Contas e despesas em {code} ficam fora dos totais.",
+		"usedBy": "Usada por {names}",
+		"rates": "Cotações",
+		"default": "Padrão",
+		"defaultTitle": "Padrão para novas despesas",
+		"defaultFixed": "O padrão do sistema, por enquanto."
+	},
+	"convert": {
+		"title": "Converter",
+		"swap": "Inverter",
+		"into": "em {code}",
+		"failed": "Não foi possível converter. Tente de novo.",
+		"quickTitle": "<amount></amount> em {to}"
+	},
+	"toast": {
+		"favorited": "{code} adicionada às favoritas",
+		"unfavorited": "{code} removida das favoritas",
+		"copied": "{rate} copiado",
+		"failed": "Não deu certo. Tente de novo."
+	},
+	"unavailable": {
+		"title": "As cotações não estão disponíveis agora",
+		"hint": "Tente de novo em instantes.",
+		"retry": "Tentar de novo"
+	}
+}

@@ -1,0 +1,64 @@
+{
+	"title": "Currencies",
+	"pricesIn": "Prices in {home}.",
+	"updated": "Updated {date}.",
+	"newUse": "New foreign amounts use {type}.",
+	"filters": {
+		"label": "Filter currencies",
+		"search": "Search, or type 100 usd",
+		"favorites": "Favorites",
+		"fiat": "Fiat",
+		"crypto": "Crypto"
+	},
+	"empty": {
+		"none": "No currencies match",
+		"noneHint": "Try another name or code.",
+		"clear": "Clear filters",
+		"noFavorites": "No favorites yet",
+		"noFavoritesHint": "Star a currency to keep it first, here and in the currency picker.",
+		"showAll": "Show all currencies"
+	},
+	"missing": "No rate yet for {codes}. {count, plural, one {{names} is} other {{names} are}} left out of net worth.",
+	"priceOf": "Price of 1 unit in {home}",
+	"favorite": "Favorite",
+	"currency": "Currency",
+	"actions": "Actions",
+	"noRate": "No rate",
+	"noType": "No rate of this type",
+	"subNoRate": "{name} · no rate",
+	"subDefault": "{name} · {type} by default",
+	"star": {
+		"add": "Add {code} to favorites",
+		"remove": "Remove {code} from favorites",
+		"unavailable": "{code} can't be a favorite yet"
+	},
+	"detail": {
+		"label": "Selected currency",
+		"sheetTitle": "{code} rates",
+		"sub": "{code} · 1 {code} in {home}, {date}",
+		"noRate": "No {code} rate. Accounts and expenses in {code} are left out of totals.",
+		"usedBy": "Used by {names}",
+		"rates": "Rates",
+		"default": "Default",
+		"defaultTitle": "Default for new expenses",
+		"defaultFixed": "The built-in default for now."
+	},
+	"convert": {
+		"title": "Convert",
+		"swap": "Swap direction",
+		"into": "in {code}",
+		"failed": "Couldn't convert. Try again.",
+		"quickTitle": "<amount></amount> in {to}"
+	},
+	"toast": {
+		"favorited": "{code} added to favorites",
+		"unfavorited": "{code} removed from favorites",
+		"copied": "Copied {rate}",
+		"failed": "Couldn't do that. Try again."
+	},
+	"unavailable": {
+		"title": "Rates aren't available right now",
+		"hint": "Try again in a moment.",
+		"retry": "Try again"
+	}
+}
