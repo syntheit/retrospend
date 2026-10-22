@@ -1,6 +1,8 @@
 // Shared by the ratchet test and the ratchet script: walk src/ and messages/,
 // apply allow.json, count hits per rule and file, read and write
-// baseline.json. Limits: see the top of rules.ts.
+// baseline.json, and compare both with the merge base with main (git).
+// Limits: see the top of rules.ts.
+import { execFileSync } from "node:child_process";
 import {
 	existsSync,
 	readdirSync,
@@ -84,6 +86,130 @@ export function formatBaseline(c: Counts): string {
 
 export function writeBaseline(c: Counts) {
 	writeFileSync(BASELINE_PATH, formatBaseline(c));
+}
+
+export function writeAllow(allow: Allow[]) {
+	writeFileSync(ALLOW_PATH, `${JSON.stringify(allow, null, "\t")}\n`);
+}
+
+/** A path, or with a trailing slash every path under that folder, moved from `from` to `to`. */
+function movePath(file: string, from: string, to: string): string | undefined {
+	if (from.endsWith("/"))
+		return file.startsWith(from) ? to + file.slice(from.length) : undefined;
+	return file === from ? to : undefined;
+}
+
+/**
+ * `pnpm ui:ratchet --rename <old> <new>`: carry a moved file's (or folder's,
+ * with trailing slashes) counts and allow.json entries over to its new path.
+ */
+export function renameFile(
+	counts: Counts,
+	allow: Allow[],
+	from: string,
+	to: string,
+): { counts: Counts; allow: Allow[]; moved: number } {
+	let moved = 0;
+	const out: Counts = {};
+	for (const [rule, files] of Object.entries(counts)) {
+		const next: Record<string, number> = {};
+		for (const [file, n] of Object.entries(files)) {
+			const dest = movePath(file, from, to);
+			if (dest) moved++;
+			next[dest ?? file] = (next[dest ?? file] ?? 0) + n;
+		}
+		out[rule] = next;
+	}
+	const nextAllow = allow.map((a) => {
+		const dest = movePath(a.file, from, to);
+		if (dest) moved++;
+		return dest ? { ...a, file: dest } : a;
+	});
+	return { counts: out, allow: nextAllow, moved };
+}
+
+// ---- the guard against raising (compares with the merge base with main) ----
+
+/** Runs git in the repo; undefined when git fails or is missing. */
+export type Git = (args: string[]) => string | undefined;
+
+export const runGit: Git = (args) => {
+	try {
+		return execFileSync("git", args, {
+			cwd: REPO_ROOT,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+			maxBuffer: 64 * 1024 * 1024,
+		});
+	} catch {
+		return undefined;
+	}
+};
+
+/** The commit message line that allows a raise: `ui-ratchet-raise: <reason>`. */
+export const RAISE_LINE = /^\s*ui-ratchet-raise:\s*\S/;
+
+export type Guard =
+	| { skipped: string }
+	| { base: string; raised: string[]; reasons: string[] };
+
+const repoPath = (p: string) => relative(REPO_ROOT, p).split("\\").join("/");
+
+/**
+ * Compare baseline.json and allow.json with their copies at the merge base
+ * with main: every count above it and every new allow entry is `raised`.
+ * Renames git detects (`git diff -M`) carry their counts along. `reasons` are
+ * the `ui-ratchet-raise:` lines of the commits since the merge base; a raise
+ * passes only when there is one. Skipped without git or a merge base (a
+ * shallow clone: CI needs the full history).
+ */
+export function ratchetGuard(
+	git: Git = runGit,
+	work: { baseline: Counts; allow: Allow[] } = {
+		baseline: loadBaseline(),
+		allow: loadAllow(),
+	},
+): Guard {
+	if (git(["rev-parse", "--git-dir"]) === undefined)
+		return { skipped: "git is not available" };
+	const base = (
+		git(["merge-base", "HEAD", "main"]) ??
+		git(["merge-base", "HEAD", "origin/main"])
+	)?.trim();
+	if (!base)
+		return {
+			skipped:
+				"no merge base with main or origin/main (a shallow clone? fetch the full history)",
+		};
+	const renames: [string, string][] = [];
+	for (const l of (
+		git(["diff", "-M", "--name-status", base, "--", "src", "messages"]) ?? ""
+	).split("\n")) {
+		const [status, from, to] = l.split("\t");
+		if (status?.startsWith("R") && from && to) renames.push([from, to]);
+	}
+	const show = (p: string) => git(["show", `${base}:${repoPath(p)}`]);
+	let baseCounts = JSON.parse(show(BASELINE_PATH) ?? "{}") as Counts;
+	let baseAllow = JSON.parse(show(ALLOW_PATH) ?? "[]") as Allow[];
+	for (const [from, to] of renames)
+		({ counts: baseCounts, allow: baseAllow } = renameFile(
+			baseCounts,
+			baseAllow,
+			from,
+			to,
+		));
+	const known = new Set(baseAllow.map((a) => `${a.rule}\0${a.file}`));
+	const raised = [
+		...raisedSince(baseCounts, work.baseline),
+		...work.allow
+			.filter((a) => !known.has(`${a.rule}\0${a.file}`))
+			.map((a) => `allow.json: new entry ${a.rule} ${a.file}`),
+	];
+	const reasons = (git(["log", "--format=%B", `${base}..HEAD`]) ?? "")
+		.split("\n")
+		.filter((l) => RAISE_LINE.test(l))
+		.map((l) => l.trim());
+	return { base, raised, reasons };
 }
 
 /**

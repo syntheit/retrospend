@@ -1,24 +1,55 @@
-// pnpm ui:ratchet                    lower baseline.json to today's counts (never raises, never adds)
-// pnpm ui:ratchet --report           print totals per rule and the top files (for docs/ui/GAPS.md)
-// pnpm ui:ratchet --check-base <f>   fail if baseline.json is higher than, or has entries
-//                                    not in, that base copy (use it on a branch before merging)
-// pnpm ui:ratchet --init             write the full current baseline
+// pnpm ui:ratchet                      lower baseline.json to today's counts (never raises, never adds)
+// pnpm ui:ratchet --rename <old> <new>  carry a moved file's counts and allow.json entries to
+//                                      its new path (folders: end both paths with "/")
+// pnpm ui:ratchet --report             print totals per rule and the top files (for docs/ui/GAPS.md)
+// pnpm ui:ratchet --check-base <f>     fail if baseline.json is higher than, or has entries
+//                                      not in, that base copy
+// pnpm ui:ratchet --init               write the full current baseline
 //
 // --init exists for the first baseline and for re-seeding after a NEW RULE is
-// added (say so in the commit). Never use it to hide a new violation: fix the
-// code instead.
+// added or a rule is fixed. Never use it to hide a new violation: fix the code
+// instead. The ratchet test compares baseline.json and allow.json with the
+// merge base with main and fails on any raise unless a commit message on the
+// branch has a line `ui-ratchet-raise: <reason>`.
 import { readFileSync } from "node:fs";
 import {
 	type Counts,
 	collectHits,
 	countHits,
+	loadAllow,
 	loadBaseline,
 	raisedSince,
+	renameFile,
 	report,
+	writeAllow,
 	writeBaseline,
 } from "./scan";
 
 const args = process.argv.slice(2);
+const renameIdx = args.indexOf("--rename");
+
+if (renameIdx >= 0) {
+	const from = args[renameIdx + 1];
+	const to = args[renameIdx + 2];
+	if (!from || !to || from.endsWith("/") !== to.endsWith("/")) {
+		console.error(
+			"usage: pnpm ui:ratchet --rename <old path> <new path>   (repo-relative; folders end with /)",
+		);
+		process.exit(2);
+	}
+	const base = loadBaseline();
+	const allow = loadAllow();
+	const next = renameFile(base, allow, from, to);
+	if (!next.moved) {
+		console.error(`nothing in baseline.json or allow.json is under ${from}`);
+		process.exit(1);
+	}
+	writeBaseline(next.counts);
+	if (JSON.stringify(next.allow) !== JSON.stringify(allow))
+		writeAllow(next.allow);
+	console.log(`moved ${next.moved} entries from ${from} to ${to}`);
+	process.exit(0);
+}
 const baseIdx = args.indexOf("--check-base");
 
 if (baseIdx >= 0) {
@@ -73,7 +104,9 @@ if (args.includes("--report")) {
 	for (const rule of Object.keys(current)) {
 		for (const [file, now] of Object.entries(current[rule] ?? {})) {
 			if (base[rule]?.[file] === undefined)
-				above.push(`${rule} ${file}: ${now} new`);
+				above.push(
+					`${rule} ${file}: ${now} new (if the file was renamed or moved: pnpm ui:ratchet --rename <old path> ${file})`,
+				);
 		}
 	}
 	if (above.length) {
