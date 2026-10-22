@@ -7,7 +7,7 @@ import { cache, createElement } from "react";
 
 import { type AppRouter, createCaller } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
-import { StableHydrationBoundary } from "./hydrate-client";
+import { HydrateQueries } from "./hydrate-queries";
 import { createQueryClient } from "./query-client";
 
 /**
@@ -32,12 +32,12 @@ export const { trpc: api } = createHydrationHelpers<AppRouter>(
 );
 
 /**
- * Sends the queries prefetched on the server to the client. Used instead of
- * tRPC's HydrateClient so a query still in flight hydrates the same way during
- * SSR and in the browser (see ~/trpc/hydration).
+ * Sends the data prefetched so far to the browser and fills the query cache
+ * with it before the children render (see ~/trpc/hydrate-queries). Await the
+ * prefetches first: only settled queries are sent.
  */
 export function HydrateClient(props: { children: React.ReactNode }) {
-	return createElement(StableHydrationBoundary, {
+	return createElement(HydrateQueries, {
 		state: dehydrate(getQueryClient()),
 		children: props.children,
 	});

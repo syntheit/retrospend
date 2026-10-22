@@ -20,6 +20,7 @@ import {
 	rateFromQuote,
 	USD,
 } from "~/lib/money";
+import { autoRateSelection } from "~/lib/rate-selection";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -135,18 +136,23 @@ export function RateSelector({
 	const onValueChangeRef = useRef(onValueChange);
 	onValueChangeRef.current = onValueChange;
 
-	// Set default rate on mount if no value is present
+	// Select on its own only what the user has not chosen: a saved rate keeps
+	// its saved type, and only a missing rate gets the default one.
 	useEffect(() => {
-		if (rateOptions.length > 0 && !value && !isCustomSet) {
-			const defaultRate = getDefaultRate();
-			if (defaultRate) {
-				setSelectedRateType(defaultRate.type);
-				onValueChangeRef.current(defaultRate.rate, defaultRate.type);
-			}
-		} else if (isCustomSet) {
-			setSelectedRateType("custom");
+		if (rateOptions.length === 0 && !isCustomSet) return;
+		const choice = autoRateSelection({
+			value,
+			activeType,
+			isCustomSet,
+			getRateByType,
+			getDefaultRate,
+		});
+		if (!choice) return;
+		setSelectedRateType(choice.type);
+		if (choice.rate !== undefined) {
+			onValueChangeRef.current(choice.rate, choice.type);
 		}
-	}, [rateOptions, value, isCustomSet, getDefaultRate]);
+	}, [rateOptions, value, activeType, isCustomSet, getRateByType, getDefaultRate]);
 
 	// A saved custom rate shows up in the input once quotes can be built
 	useEffect(() => {

@@ -4,6 +4,7 @@ import { Briefcase, Calendar, Clock, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
+import { budgetStanding, budgetStandingVariant } from "~/lib/budget-standing";
 
 import type { RouterOutputs } from "~/trpc/react";
 
@@ -43,39 +44,13 @@ export function StatsCards({
 	const formatMoney = (value: number) => formatCurrency(value, homeCurrency);
 	const isPositiveChange = changeVsLastMonth !== null && changeVsLastMonth >= 0;
 
-	// Calculate budget usage percentage
-	const budgetUsagePct =
-		overviewStats?.dailyBudgetPace.totalBudget &&
-		overviewStats.dailyBudgetPace.totalBudget > 0
-			? (overviewStats.dailyBudgetPace.totalSpent /
-					overviewStats.dailyBudgetPace.totalBudget) *
-				100
-			: 0;
-
-	// Calculate pace projection: at current rate, where will we end up?
-	const paceProjection =
-		budgetPacing &&
-		budgetPacing.totalBudget > 0 &&
-		budgetPacing.currentDay > 0
-			? (budgetPacing.totalSpent / budgetPacing.currentDay) *
-				budgetPacing.daysInMonth
-			: null;
-
-	const paceVsBudget =
-		paceProjection !== null && budgetPacing
-			? paceProjection - budgetPacing.totalBudget
-			: null;
-
-	// Green: projected < 90%, Amber: 90-100%, Red: > 100%
-	const budgetCardVariant = (() => {
-		if (!paceProjection || !budgetPacing?.totalBudget) {
-			return budgetUsagePct > 80 ? "amber" : "blue";
-		}
-		const ratio = paceProjection / budgetPacing.totalBudget;
-		if (ratio > 1) return "rose";
-		if (ratio > 0.9) return "amber";
-		return "emerald";
-	})();
+	// Actual use of the budget so far; the pace only colors the card
+	const standing = budgetStanding({
+		totalBudget: overviewStats?.dailyBudgetPace.totalBudget ?? 0,
+		totalSpent: overviewStats?.dailyBudgetPace.totalSpent ?? 0,
+		currentDay: budgetPacing?.currentDay ?? 0,
+		daysInMonth: budgetPacing?.daysInMonth ?? 0,
+	});
 
 	return (
 		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -107,7 +82,7 @@ export function StatsCards({
 			{/* Last 24 Hours / Month Total */}
 			{overviewStats?.isCurrentMonth !== false ? (
 				<StatCard
-					formatCurrency={formatCurrency}
+					formatMoney={formatMoney}
 					icon={Clock}
 					loading={expensesLoading}
 					title={t("last24Hours")}
@@ -191,8 +166,7 @@ export function StatsCards({
 			)}
 
 			{/* Budget Used / Projected */}
-			{overviewStats?.dailyBudgetPace.totalBudget &&
-			overviewStats.dailyBudgetPace.totalBudget > 0 ? (
+			{overviewStats && standing ? (
 				<StatCard
 					description={
 						!expensesLoading && (
@@ -204,22 +178,27 @@ export function StatsCards({
 							</>
 						)
 					}
-					formatCurrency={formatMoney}
+					formatMoney={formatMoney}
 					icon={Wallet}
 					loading={expensesLoading}
 					title={t("budgetUsed")}
 					trend={
-						!expensesLoading && paceVsBudget !== null
+						!expensesLoading && standing.difference !== 0
 							? {
-									value: paceVsBudget,
-									label: paceVsBudget > 0 ? t("overBudget") : t("underBudget"),
+									value: standing.difference,
+									label:
+										standing.difference > 0
+											? t("overBudget")
+											: t("underBudget"),
 									isMoney: true,
-									intent: paceVsBudget > 0 ? "negative" : "positive",
+									intent: standing.difference > 0 ? "negative" : "positive",
 								}
 							: undefined
 					}
-					value={expensesLoading ? undefined : `${Math.round(budgetUsagePct)}%`}
-					variant={budgetCardVariant}
+					value={
+						expensesLoading ? undefined : `${Math.round(standing.usedPct)}%`
+					}
+					variant={budgetStandingVariant(standing)}
 				/>
 			) : (
 				<StatCard

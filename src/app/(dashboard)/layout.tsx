@@ -42,8 +42,9 @@ export default async function Layout({
 		select: { language: true },
 	});
 
-	// Prefetch settings used by every dashboard page
-	void api.settings.getGeneral.prefetch();
+	// Settings used by every dashboard page. Awaited so the browser hydrates
+	// with the same settings the server rendered with.
+	await api.settings.getGeneral.prefetch();
 
 	return (
 		<HydrateClient>

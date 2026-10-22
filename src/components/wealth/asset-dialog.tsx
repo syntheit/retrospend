@@ -374,6 +374,7 @@ export function AssetDialog({
 										<RateSelector
 											currency={watchedCurrency}
 											homeCurrency="USD"
+											activeType={exchangeRateType}
 											isCustomSet={isCustomRate}
 											onCustomCleared={() => setIsCustomRate(false)}
 											onCustomSet={() => setIsCustomRate(true)}

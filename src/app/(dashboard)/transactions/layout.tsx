@@ -1,20 +1,37 @@
 import { getTranslations } from "next-intl/server";
-import { api } from "~/trpc/server";
+import { Suspense } from "react";
+import { AfterHydration } from "~/components/after-hydration";
+import { HydrateClient, api } from "~/trpc/server";
+import Loading from "./loading";
 
 export async function generateMetadata() {
 	const t = await getTranslations("sidebar");
 	return { title: t("transactions") };
 }
 
-export default async function Layout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
-	void api.expense.listFinalized.prefetch();
-	void api.expense.listSharedParticipations.prefetch();
-	void api.expense.getFilterOptions.prefetch();
-	void api.categories.getAll.prefetch();
+/**
+ * Sends the page's data with the HTML (only settled queries are sent, see
+ * shouldDehydrateQuery in ~/trpc/query-client). The page itself renders after
+ * hydration because its dates depend on the browser's zone and clock.
+ */
+async function Prefetched({ children }: { children: React.ReactNode }) {
+	await Promise.all([
+		api.expense.listFinalized.prefetch(),
+		api.expense.listSharedParticipations.prefetch(),
+		api.expense.getFilterOptions.prefetch(),
+		api.categories.getAll.prefetch(),
+	]);
+	return (
+		<HydrateClient>
+			<AfterHydration fallback={<Loading />}>{children}</AfterHydration>
+		</HydrateClient>
+	);
+}
 
-	return children;
+export default function Layout({ children }: { children: React.ReactNode }) {
+	return (
+		<Suspense fallback={<Loading />}>
+			<Prefetched>{children}</Prefetched>
+		</Suspense>
+	);
 }

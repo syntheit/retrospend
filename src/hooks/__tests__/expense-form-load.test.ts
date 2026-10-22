@@ -9,6 +9,7 @@ const saved = {
 	currency: "ARS",
 	exchangeRate: 1200,
 	amountInUSD: 0.01,
+	pricingSource: "blue",
 	date: new Date("2026-10-01T15:00:00Z"),
 	location: null,
 	description: null,
@@ -54,6 +55,7 @@ describe("expense form values", () => {
 			currency: "ARS",
 			exchangeRate: 1200,
 			amountInUSD: 0.01,
+			pricingSource: "blue",
 			date: new Date("2026-10-01T15:00:00Z"),
 			location: "",
 			description: "",
@@ -72,5 +74,14 @@ describe("expense form values", () => {
 		});
 		expect(values.spreadOverTime).toBe(true);
 		expect(values.amortizeOver).toBe(6);
+	});
+
+	it("keeps the saved rate type, but not the server's MANUAL placeholder", () => {
+		expect(expenseToFormValues({ ...saved, pricingSource: "custom" }).pricingSource).toBe(
+			"custom",
+		);
+		expect(
+			expenseToFormValues({ ...saved, pricingSource: "MANUAL" }).pricingSource,
+		).toBeUndefined();
 	});
 });
