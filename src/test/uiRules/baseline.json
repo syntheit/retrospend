@@ -1119,7 +1119,7 @@
 		"src/app/(site)/releases/_releases/v0-4-0.tsx": 18,
 		"src/app/(site)/signup/_components/signup-form.tsx": 200,
 		"src/app/(site)/u/[username]/page.tsx": 122,
-		"src/app/projects/[id]/page.tsx": 1357,
+		"src/app/projects/[id]/page.tsx": 1355,
 		"src/components/admin/admin-panel.tsx": 775,
 		"src/components/admin/audit-logs-table.tsx": 167,
 		"src/components/admin/feedback-table.tsx": 7,

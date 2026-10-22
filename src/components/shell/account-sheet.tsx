@@ -5,23 +5,16 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
-import {
-	ResponsiveDialog,
-	ResponsiveDialogContent,
-	ResponsiveDialogHeader,
-	ResponsiveDialogTitle,
-} from "~/components/ui/responsive-dialog";
-import {
-	DESTINATIONS,
-	hrefOf,
-	type NavEntry,
-	PLACES,
-	TOOLS,
-} from "~/lib/nav";
+import { Sheet } from "~/components/ui/sheet";
+import { DESTINATIONS, hrefOf, type NavEntry, PLACES, TOOLS } from "~/lib/nav";
 import { APP_VERSION } from "~/lib/version";
 import { AccountIdentity } from "./account-menu";
 import { useShellActions } from "./shell-context";
-import { type AccountEntry, accountGroups, useAccountEntries } from "./use-account";
+import {
+	type AccountEntry,
+	accountGroups,
+	useAccountEntries,
+} from "./use-account";
 import { useUnreadNotifications } from "./use-notifications";
 
 const ROW =
@@ -95,7 +88,13 @@ function NewCount({ count }: { count: number }) {
 	);
 }
 
-function EntryRow({ entry, close }: { entry: AccountEntry; close: () => void }) {
+function EntryRow({
+	entry,
+	close,
+}: {
+	entry: AccountEntry;
+	close: () => void;
+}) {
 	const Icon = entry.icon;
 	return (
 		<Row
@@ -139,13 +138,14 @@ export function AccountSheet({
 		[e.signOut],
 	]);
 	return (
-		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
-			<ResponsiveDialogContent className="gap-4 rounded-t-panel border-line bg-bg px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-fg">
-				<ResponsiveDialogHeader className="p-0">
-					<ResponsiveDialogTitle className="text-section">
-						{t("account.title")}
-					</ResponsiveDialogTitle>
-				</ResponsiveDialogHeader>
+		<Sheet
+			detent="large"
+			footer={false}
+			onOpenChange={onOpenChange}
+			open={open}
+			title={t("account.title")}
+		>
+			<div className="flex flex-col gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
 				<div className={GROUP}>
 					<Row
 						close={close}
@@ -194,7 +194,7 @@ export function AccountSheet({
 				<p className="text-center text-fg-3 text-meta">
 					{t("account.version", { version: APP_VERSION })}
 				</p>
-			</ResponsiveDialogContent>
-		</ResponsiveDialog>
+			</div>
+		</Sheet>
 	);
 }

@@ -27,7 +27,14 @@ export function goToItems(typed: boolean): GoToItem[] {
 	const places = [...DESTINATIONS, ...TOOLS, ...PLACES].flatMap((entry) => {
 		const href = hrefOf(entry);
 		return href
-			? [{ id: entry.id, icon: entry.icon, href, label: { key: `nav.${entry.id}` } }]
+			? [
+					{
+						id: entry.id,
+						icon: entry.icon,
+						href,
+						label: { key: `nav.${entry.id}` },
+					},
+				]
 			: [];
 	});
 	if (!typed) return places;

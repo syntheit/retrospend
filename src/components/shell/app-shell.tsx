@@ -2,17 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { FeedbackModal } from "~/components/feedback-modal";
 import { PageTransition } from "~/components/page-transition";
-import {
-	ResponsiveDialog,
-	ResponsiveDialogContent,
-	ResponsiveDialogHeader,
-	ResponsiveDialogTitle,
-} from "~/components/ui/responsive-dialog";
+import { Sheet } from "~/components/ui/sheet";
 import { SidebarProvider, useSidebar } from "~/components/ui/sidebar";
+import { useToast } from "~/components/ui/toast";
 import { ADD_ACTIONS, type AddId, type NavBadges } from "~/lib/nav";
 import { AccountSheet } from "./account-sheet";
 import { BottomNav, FloatingAdd } from "./bottom-nav";
@@ -71,6 +66,7 @@ export function AppShell({
 }) {
 	const t = useTranslations("shell");
 	const { openNewExpense } = useExpenseModal();
+	const toast = useToast();
 	const [layer, setLayer] = useState<Layer | null>(null);
 	const layerProps = (l: Layer) => ({
 		open: layer === l,
@@ -82,7 +78,7 @@ export function AppShell({
 			add: (id: AddId) => {
 				const entry = ADD_ACTIONS.find((a) => a.id === id);
 				if (!entry?.ready) {
-					toast(t("add.notYet", { what: t(`add.${id}`) }));
+					toast.info(t("add.notYet", { what: t(`add.${id}`) }));
 					return;
 				}
 				setLayer(null);
@@ -94,7 +90,7 @@ export function AppShell({
 			openNotificationsSheet: () => setLayer("notifications"),
 			openFeedback: () => setLayer("feedback"),
 		}),
-		[openNewExpense, t],
+		[openNewExpense, t, toast],
 	);
 	useShellKeys(actions, setLayer);
 
@@ -121,19 +117,17 @@ export function AppShell({
 			<ShellPalette {...layerProps("palette")} />
 			<ShortcutsSheet {...layerProps("shortcuts")} />
 			<AccountSheet {...layerProps("account")} />
-			<ResponsiveDialog {...layerProps("notifications")}>
-				<ResponsiveDialogContent className="gap-2 rounded-t-panel border-line bg-surface px-0 text-fg">
-					<ResponsiveDialogHeader className="px-4">
-						<ResponsiveDialogTitle className="text-section">
-							{t("notifications.title")}
-						</ResponsiveDialogTitle>
-					</ResponsiveDialogHeader>
-					<NotificationsPanel
-						onNavigate={() => setLayer(null)}
-						open={layer === "notifications"}
-					/>
-				</ResponsiveDialogContent>
-			</ResponsiveDialog>
+			<Sheet
+				detent="large"
+				footer={false}
+				title={t("notifications.title")}
+				{...layerProps("notifications")}
+			>
+				<NotificationsPanel
+					onNavigate={() => setLayer(null)}
+					open={layer === "notifications"}
+				/>
+			</Sheet>
 			<FeedbackModal {...layerProps("feedback")} />
 		</ShellActionsContext>
 	);

@@ -1,0 +1,111 @@
+{
+	"brand": "Retrospend",
+	"skipToContent": "Aller au contenu principal",
+	"sidebar": {
+		"label": "Principal",
+		"destinations": "Rubriques",
+		"tools": "Outils",
+		"pinned": "Épinglés",
+		"pinnedLabel": "Projets épinglés"
+	},
+	"bottomNav": {
+		"label": "Principal"
+	},
+	"nav": {
+		"home": "Accueil",
+		"activity": "Activité",
+		"budget": "Budget",
+		"people": "Personnes",
+		"projects": "Projets",
+		"wealth": "Patrimoine",
+		"import": "Importer",
+		"currencies": "Devises",
+		"settings": "Paramètres",
+		"recurring": "Récurrentes",
+		"insights": "Analyses",
+		"needsYou": "{count, plural, one {# a besoin de vous} other {# ont besoin de vous}}"
+	},
+	"add": {
+		"group": "Ajouter",
+		"expense": "Ajouter une dépense",
+		"income": "Ajouter un revenu",
+		"transfer": "Virement",
+		"short": "Ajouter",
+		"more": "Autres façons d'ajouter",
+		"comingSoon": "Bientôt disponible",
+		"notYet": "{what} arrive bientôt"
+	},
+	"palette": {
+		"trigger": "Recherche et commandes",
+		"title": "Recherche et commandes",
+		"description": "Aller à une page ou lancer une commande",
+		"placeholder": "Rechercher des pages et des commandes",
+		"noResults": "Aucun résultat",
+		"recent": "Récents",
+		"project": "Projet",
+		"goTo": "Aller à",
+		"commands": "Commandes",
+		"settingsSection": "Paramètres : {section}",
+		"addRecurring": "Ajouter une dépense récurrente",
+		"manageCategories": "Gérer les catégories",
+		"move": "Déplacer",
+		"openHint": "Ouvrir"
+	},
+	"settingsSections": {
+		"profile": "Profil",
+		"preferences": "Préférences",
+		"categories": "Catégories",
+		"payment": "Moyens de paiement",
+		"notifications": "Notifications",
+		"security": "Sécurité",
+		"data": "Données et export"
+	},
+	"notifications": {
+		"title": "Notifications",
+		"labelUnread": "Notifications, {count} non lues",
+		"unread": "Non lue",
+		"filterLabel": "Afficher",
+		"filter": {
+			"all": "Toutes",
+			"expenses": "Dépenses",
+			"settlements": "Règlements",
+			"projects": "Projets"
+		},
+		"markAllRead": "Tout marquer comme lu",
+		"empty": "Aucune notification pour l'instant",
+		"noMatches": "Aucun résultat",
+		"loadFailed": "Impossible de charger les notifications",
+		"retry": "Réessayer"
+	},
+	"account": {
+		"title": "Compte",
+		"menu": "Menu du compte",
+		"profile": "Votre profil",
+		"settings": "Paramètres",
+		"admin": "Admin",
+		"inviteCodes": "Codes d'invitation",
+		"feedbackInbox": "Boîte des retours",
+		"sendFeedback": "Envoyer un retour",
+		"docs": "Documentation",
+		"releaseNotes": "Notes de version",
+		"shortcuts": "Raccourcis clavier",
+		"signOut": "Se déconnecter",
+		"signOutFailed": "Impossible de se déconnecter",
+		"newCount": "{count} nouveaux",
+		"version": "Version {version}",
+		"goTo": "Aller à"
+	},
+	"shortcuts": {
+		"title": "Raccourcis clavier",
+		"global": "Partout",
+		"palette": "Recherche et commandes",
+		"close": "Fermer la couche du dessus",
+		"list": "Cette liste",
+		"tables": "Dans les tableaux",
+		"selectAll": "Sélectionner toutes les lignes",
+		"range": "Sélectionner une plage",
+		"edit": "Modifier la ligne sélectionnée",
+		"delete": "Supprimer les lignes sélectionnées",
+		"clear": "Effacer la sélection"
+	}
+}

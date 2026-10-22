@@ -41,15 +41,15 @@ function NotificationRow({
 			onClick={onOpen}
 		>
 			<span
-				aria-label={unread ? t("unread") : undefined}
+				aria-hidden="true"
 				className={cn(
 					"mt-2 size-2 shrink-0 rounded-chip bg-brand",
 					!unread && "invisible",
 				)}
-				role={unread ? "img" : undefined}
 			/>
 			<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 				<span className={cn("text-body", unread && "font-semibold")}>
+					{unread && <span className="sr-only">{t("unread")}: </span>}
 					{n.title}
 				</span>
 				{n.body && (
@@ -172,10 +172,7 @@ export function NotificationsButton() {
 						size="sm"
 					>
 						<Bell aria-hidden="true" />
-						<UnreadCount
-							className="absolute -top-1 -right-1"
-							count={unread}
-						/>
+						<UnreadCount className="absolute -top-1 -right-1" count={unread} />
 					</Button>
 				</PopoverTrigger>
 			</Tip>

@@ -16,9 +16,9 @@ import {
 import { NavBadge } from "./nav-link";
 import { useShellActions } from "./shell-context";
 
-const TABS = PHONE_TABS.map((id) => DESTINATIONS.find((d) => d.id === id)).filter(
-	(d) => d != null,
-);
+const TABS = PHONE_TABS.map((id) =>
+	DESTINATIONS.find((d) => d.id === id),
+).filter((d) => d != null);
 
 /**
  * BottomNav (phone web, IMPLEMENTATION §3): the five tabs of the iPhone

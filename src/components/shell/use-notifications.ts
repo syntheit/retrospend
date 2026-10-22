@@ -47,8 +47,10 @@ export function useNotificationFeed(open: boolean, onNavigate: () => void) {
 	const [filter, setFilterState] = useState<NotificationFilter>("all");
 	useEffect(() => setFilterState(readFilter()), []);
 
-	const { data, isLoading, isError, refetch } =
-		api.notification.list.useQuery(LIST_INPUT, { enabled: open });
+	const { data, isLoading, isError, refetch } = api.notification.list.useQuery(
+		LIST_INPUT,
+		{ enabled: open },
+	);
 	const refresh = () => {
 		void utils.notification.unreadCount.invalidate();
 		void utils.notification.list.invalidate();

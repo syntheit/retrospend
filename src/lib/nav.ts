@@ -82,7 +82,12 @@ export const TOOLS: readonly NavEntry<ToolId>[] = [
 
 /** Places with no nav item of their own; the palette's Go to reaches them (R28). */
 export const PLACES: readonly NavEntry<PlaceId>[] = [
-	{ id: "settings", icon: Settings, href: "/settings", legacyHref: "/settings" },
+	{
+		id: "settings",
+		icon: Settings,
+		href: "/settings",
+		legacyHref: "/settings",
+	},
 	{
 		id: "recurring",
 		icon: Repeat,

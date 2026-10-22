@@ -107,11 +107,9 @@ export function AccountMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button
-					className="h-auto w-full justify-start gap-2 p-2"
-					kind="ghost"
-				>
+				<Button className="h-auto w-full justify-start gap-2 p-2" kind="ghost">
 					<AccountIdentity />
+					<span className="sr-only">{t("menu")}</span>
 					<EllipsisVertical aria-hidden="true" className="text-fg-3" />
 				</Button>
 			</DropdownMenuTrigger>

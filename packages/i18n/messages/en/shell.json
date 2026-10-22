@@ -1,0 +1,111 @@
+{
+	"brand": "Retrospend",
+	"skipToContent": "Skip to main content",
+	"sidebar": {
+		"label": "Main",
+		"destinations": "Destinations",
+		"tools": "Tools",
+		"pinned": "Pinned",
+		"pinnedLabel": "Pinned projects"
+	},
+	"bottomNav": {
+		"label": "Main"
+	},
+	"nav": {
+		"home": "Home",
+		"activity": "Activity",
+		"budget": "Budget",
+		"people": "People",
+		"projects": "Projects",
+		"wealth": "Wealth",
+		"import": "Import",
+		"currencies": "Currencies",
+		"settings": "Settings",
+		"recurring": "Recurring",
+		"insights": "Insights",
+		"needsYou": "{count, plural, one {# needs you} other {# need you}}"
+	},
+	"add": {
+		"group": "Add",
+		"expense": "Add expense",
+		"income": "Add income",
+		"transfer": "Transfer",
+		"short": "Add",
+		"more": "More ways to add",
+		"comingSoon": "Coming soon",
+		"notYet": "{what} is coming soon"
+	},
+	"palette": {
+		"trigger": "Search and commands",
+		"title": "Search and commands",
+		"description": "Go to a page or run a command",
+		"placeholder": "Search pages and commands",
+		"noResults": "No results",
+		"recent": "Recent",
+		"project": "Project",
+		"goTo": "Go to",
+		"commands": "Commands",
+		"settingsSection": "Settings: {section}",
+		"addRecurring": "Add recurring expense",
+		"manageCategories": "Manage categories",
+		"move": "Move",
+		"openHint": "Open"
+	},
+	"settingsSections": {
+		"profile": "Profile",
+		"preferences": "Preferences",
+		"categories": "Categories",
+		"payment": "Payment methods",
+		"notifications": "Notifications",
+		"security": "Security",
+		"data": "Data and export"
+	},
+	"notifications": {
+		"title": "Notifications",
+		"labelUnread": "Notifications, {count} unread",
+		"unread": "Unread",
+		"filterLabel": "Show",
+		"filter": {
+			"all": "All",
+			"expenses": "Expenses",
+			"settlements": "Settlements",
+			"projects": "Projects"
+		},
+		"markAllRead": "Mark all read",
+		"empty": "No notifications yet",
+		"noMatches": "No matches",
+		"loadFailed": "Couldn't load notifications",
+		"retry": "Retry"
+	},
+	"account": {
+		"title": "Account",
+		"menu": "Account menu",
+		"profile": "Your profile",
+		"settings": "Settings",
+		"admin": "Admin",
+		"inviteCodes": "Invite codes",
+		"feedbackInbox": "Feedback inbox",
+		"sendFeedback": "Send feedback",
+		"docs": "Docs",
+		"releaseNotes": "Release notes",
+		"shortcuts": "Keyboard shortcuts",
+		"signOut": "Sign out",
+		"signOutFailed": "Couldn't sign out",
+		"newCount": "{count} new",
+		"version": "Version {version}",
+		"goTo": "Go to"
+	},
+	"shortcuts": {
+		"title": "Keyboard shortcuts",
+		"global": "Everywhere",
+		"palette": "Search and commands",
+		"close": "Close the top layer",
+		"list": "This list",
+		"tables": "In tables",
+		"selectAll": "Select all rows",
+		"range": "Select a range",
+		"edit": "Edit the selected row",
+		"delete": "Delete the selected rows",
+		"clear": "Clear the selection"
+	}
+}

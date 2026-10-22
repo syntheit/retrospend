@@ -1,0 +1,111 @@
+{
+	"brand": "Retrospend",
+	"skipToContent": "Pular para o conteúdo principal",
+	"sidebar": {
+		"label": "Principal",
+		"destinations": "Seções",
+		"tools": "Ferramentas",
+		"pinned": "Fixados",
+		"pinnedLabel": "Projetos fixados"
+	},
+	"bottomNav": {
+		"label": "Principal"
+	},
+	"nav": {
+		"home": "Início",
+		"activity": "Atividade",
+		"budget": "Orçamento",
+		"people": "Pessoas",
+		"projects": "Projetos",
+		"wealth": "Patrimônio",
+		"import": "Importar",
+		"currencies": "Moedas",
+		"settings": "Configurações",
+		"recurring": "Recorrentes",
+		"insights": "Análises",
+		"needsYou": "{count, plural, one {# precisa de você} other {# precisam de você}}"
+	},
+	"add": {
+		"group": "Adicionar",
+		"expense": "Adicionar despesa",
+		"income": "Adicionar receita",
+		"transfer": "Transferência",
+		"short": "Adicionar",
+		"more": "Mais formas de adicionar",
+		"comingSoon": "Em breve",
+		"notYet": "{what} chega em breve"
+	},
+	"palette": {
+		"trigger": "Busca e comandos",
+		"title": "Busca e comandos",
+		"description": "Ir para uma página ou executar um comando",
+		"placeholder": "Buscar páginas e comandos",
+		"noResults": "Nenhum resultado",
+		"recent": "Recentes",
+		"project": "Projeto",
+		"goTo": "Ir para",
+		"commands": "Comandos",
+		"settingsSection": "Configurações: {section}",
+		"addRecurring": "Adicionar despesa recorrente",
+		"manageCategories": "Gerenciar categorias",
+		"move": "Mover",
+		"openHint": "Abrir"
+	},
+	"settingsSections": {
+		"profile": "Perfil",
+		"preferences": "Preferências",
+		"categories": "Categorias",
+		"payment": "Formas de pagamento",
+		"notifications": "Notificações",
+		"security": "Segurança",
+		"data": "Dados e exportação"
+	},
+	"notifications": {
+		"title": "Notificações",
+		"labelUnread": "Notificações, {count} não lidas",
+		"unread": "Não lida",
+		"filterLabel": "Mostrar",
+		"filter": {
+			"all": "Todas",
+			"expenses": "Despesas",
+			"settlements": "Acertos",
+			"projects": "Projetos"
+		},
+		"markAllRead": "Marcar todas como lidas",
+		"empty": "Nenhuma notificação ainda",
+		"noMatches": "Nenhuma correspondência",
+		"loadFailed": "Não foi possível carregar as notificações",
+		"retry": "Tentar de novo"
+	},
+	"account": {
+		"title": "Conta",
+		"menu": "Menu da conta",
+		"profile": "Seu perfil",
+		"settings": "Configurações",
+		"admin": "Admin",
+		"inviteCodes": "Códigos de convite",
+		"feedbackInbox": "Caixa de feedback",
+		"sendFeedback": "Enviar feedback",
+		"docs": "Documentação",
+		"releaseNotes": "Notas da versão",
+		"shortcuts": "Atalhos de teclado",
+		"signOut": "Sair",
+		"signOutFailed": "Não foi possível sair",
+		"newCount": "{count} novos",
+		"version": "Versão {version}",
+		"goTo": "Ir para"
+	},
+	"shortcuts": {
+		"title": "Atalhos de teclado",
+		"global": "Em todo lugar",
+		"palette": "Busca e comandos",
+		"close": "Fechar a camada de cima",
+		"list": "Esta lista",
+		"tables": "Em tabelas",
+		"selectAll": "Selecionar todas as linhas",
+		"range": "Selecionar um intervalo",
+		"edit": "Editar a linha selecionada",
+		"delete": "Excluir as linhas selecionadas",
+		"clear": "Limpar a seleção"
+	}
+}

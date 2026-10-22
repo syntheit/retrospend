@@ -2,12 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import {
-	ResponsiveDialog,
-	ResponsiveDialogContent,
-	ResponsiveDialogHeader,
-	ResponsiveDialogTitle,
-} from "~/components/ui/responsive-dialog";
+import { Sheet } from "~/components/ui/sheet";
 import { ADD_ACTIONS } from "~/lib/nav";
 
 function Keys({ keys }: { keys: string[] }) {
@@ -77,13 +72,15 @@ export function ShortcutsSheet({
 		},
 	];
 	return (
-		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
-			<ResponsiveDialogContent className="gap-4 rounded-panel border-line bg-surface text-fg sm:max-w-md">
-				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle className="text-section">
-						{t("shortcuts.title")}
-					</ResponsiveDialogTitle>
-				</ResponsiveDialogHeader>
+		<Sheet
+			className="md:max-w-md"
+			detent="medium"
+			footer={false}
+			onOpenChange={onOpenChange}
+			open={open}
+			title={t("shortcuts.title")}
+		>
+			<div className="flex flex-col gap-4 pb-4">
 				{groups.map((g) => (
 					<section className="flex flex-col" key={g.id}>
 						<h3 className="mb-1 text-fg-3 text-meta">{g.title}</h3>
@@ -95,7 +92,9 @@ export function ShortcutsSheet({
 								<span className={r.soon ? "text-fg-3" : "text-fg"}>
 									{r.label}
 									{r.soon && (
-										<span className="ml-2 text-meta">{t("add.comingSoon")}</span>
+										<span className="ml-2 text-meta">
+											{t("add.comingSoon")}
+										</span>
 									)}
 								</span>
 								<Keys keys={r.keys} />
@@ -103,7 +102,7 @@ export function ShortcutsSheet({
 						))}
 					</section>
 				))}
-			</ResponsiveDialogContent>
-		</ResponsiveDialog>
+			</div>
+		</Sheet>
 	);
 }

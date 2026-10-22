@@ -23,7 +23,10 @@ function AddMenuItem({ entry }: { entry: AddEntry }) {
 	const item = (
 		<DropdownMenuItem
 			aria-disabled={entry.ready ? undefined : true}
-			className={cn(MENU_ITEM, !entry.ready && "opacity-45 focus:bg-transparent")}
+			className={cn(
+				MENU_ITEM,
+				!entry.ready && "opacity-45 focus:bg-transparent",
+			)}
 			onSelect={(e) => {
 				// A sheet that does not exist yet keeps the menu open; the tip says why.
 				if (!entry.ready) e.preventDefault();
