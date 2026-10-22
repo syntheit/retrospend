@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { getDateFnsLocale } from "~/lib/date-locale";
-import { type IsoDate, localDay, type WeekStart } from "./dates";
+import { digitOrderOf, type IsoDate, localDay, type WeekStart } from "./dates";
 import type { LabelFormat } from "./date-range-model";
 
 /**
@@ -30,6 +30,8 @@ export function useDateFormat() {
 		};
 		return {
 			locale,
+			/** The field's digit order, from the same pattern it is shown in. */
+			order: digitOrderOf(dl.formatLong.date({ width: "short" })),
 			weekStart: (dl.options?.weekStartsOn ?? 0) as WeekStart,
 			label,
 			monthTitle: (iso: IsoDate) => fmt(iso, "LLLL yyyy"),

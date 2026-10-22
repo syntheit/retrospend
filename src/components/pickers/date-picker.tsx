@@ -125,7 +125,7 @@ function DayCalendar(p: {
 				display={f.field}
 				id={id}
 				label={t("typed")}
-				locale={f.locale}
+				order={f.order}
 				onChange={(iso) => iso && p.onPick(iso)}
 				placeholder={t("placeholder")}
 				value={p.value}

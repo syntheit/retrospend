@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getDateFnsLocale } from "~/lib/date-locale";
 import { currencyGroups } from "./currency-picker";
 import { choiceOf } from "./date-picker";
 import {
@@ -16,6 +17,7 @@ import {
 } from "./date-range-model";
 import {
 	addMonths,
+	digitOrderOf,
 	isIsoDate,
 	lastOfMonth,
 	monthCells,
@@ -69,14 +71,28 @@ describe("dates", () => {
 		expect(k("a")).toBeNull();
 	});
 
-	it("reads typed dates in the locale's digit order", () => {
-		expect(parseTypedDate("10/5/2026", "en")).toBe("2026-10-05");
-		expect(parseTypedDate("5/10/2026", "es-AR")).toBe("2026-10-05");
-		expect(parseTypedDate("05.10.26", "de")).toBe("2026-10-05");
-		expect(parseTypedDate("2026-10-05", "fr")).toBe("2026-10-05");
-		expect(parseTypedDate("", "en")).toBe("");
-		expect(parseTypedDate("31/02/2026", "es")).toBeNull();
-		expect(parseTypedDate("tomorrow", "en")).toBeNull();
+	it("each app locale's short date pattern gives its digit order", () => {
+		const order = (l: string) =>
+			digitOrderOf(getDateFnsLocale(l).formatLong.date({ width: "short" }));
+		expect(order("en")).toBe("mdy");
+		for (const l of ["es", "es-AR", "fr", "de", "pt-BR", "ru"])
+			expect(order(l), l).toBe("dmy");
+	});
+
+	it("the digit order comes from the short date pattern the field shows", () => {
+		expect(digitOrderOf("MM/dd/yyyy")).toBe("mdy");
+		expect(digitOrderOf("dd/MM/y")).toBe("dmy");
+		expect(digitOrderOf("dd.MM.y")).toBe("dmy");
+	});
+
+	it("reads typed dates in the field's digit order", () => {
+		expect(parseTypedDate("10/5/2026", "mdy")).toBe("2026-10-05");
+		expect(parseTypedDate("5/10/2026", "dmy")).toBe("2026-10-05");
+		expect(parseTypedDate("05.10.26", "dmy")).toBe("2026-10-05");
+		expect(parseTypedDate("2026-10-05", "dmy")).toBe("2026-10-05");
+		expect(parseTypedDate("", "mdy")).toBe("");
+		expect(parseTypedDate("31/02/2026", "dmy")).toBeNull();
+		expect(parseTypedDate("tomorrow", "mdy")).toBeNull();
 	});
 });
 
@@ -126,6 +142,11 @@ describe("date range", () => {
 			from: "2026-10-10",
 			to: "2026-10-10",
 		});
+		// Typed ends in the wrong order are swapped before Apply.
+		expect(completeRange({ from: "2026-10-18", to: "2026-10-05" })).toEqual({
+			from: "2026-10-05",
+			to: "2026-10-18",
+		});
 	});
 
 	it("compare: the previous month for a month, else the same number of days before", () => {
@@ -139,6 +160,22 @@ describe("date range", () => {
 			to: "2026-10-04",
 		});
 		expect(previousPeriod({ from: null, to: null })).toBeNull();
+	});
+
+	it("compare: a whole year with the year before, a quarter with the quarter before", () => {
+		expect(previousPeriod({ from: "2025-01-01", to: "2025-12-31" })).toEqual({
+			from: "2024-01-01",
+			to: "2024-12-31",
+		});
+		expect(previousPeriod({ from: "2026-07-01", to: "2026-09-30" })).toEqual({
+			from: "2026-04-01",
+			to: "2026-06-30",
+		});
+		// Jan to Feb 2026 (two months) compares with Nov to Dec 2025.
+		expect(previousPeriod({ from: "2026-01-01", to: "2026-02-28" })).toEqual({
+			from: "2025-11-01",
+			to: "2025-12-31",
+		});
 	});
 
 	it("labels: whole month, whole year, preset, else a span", () => {
@@ -197,6 +234,9 @@ describe("DatePicker choice", () => {
 describe("list pickers", () => {
 	it("search ignores case and accents", () => {
 		expect(fold("  Lucía ")).toBe("lucia");
+		expect(fold("Łódź")).toBe("lodz");
+		expect(fold("Straße")).toBe("strasse");
+		expect(fold("Søren Đorđević")).toBe("soren dordevic");
 		expect(pickerFilter("p1", "LUCIA", ["Lucía Pérez"])).toBe(1);
 		expect(pickerFilter("c1", "cafe", ["Café"])).toBe(1);
 		expect(pickerFilter("c1", "uber", ["Café"])).toBe(0);

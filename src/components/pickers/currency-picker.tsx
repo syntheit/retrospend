@@ -1,6 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { currencyName } from "@retrospend/domain/currency-names";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo } from "react";
 
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
@@ -25,8 +27,8 @@ export type CurrencyPickerProps = {
 };
 
 /** Favorites, then recents, then the rest; each code appears once. */
-export function currencyGroups(
-	all: readonly PickerCurrency[],
+export function currencyGroups<C extends PickerCurrency>(
+	all: readonly C[],
 	favorites: readonly string[] = [],
 	recents: readonly string[] = [],
 ) {
@@ -34,7 +36,7 @@ export function currencyGroups(
 	const pick = (ids: readonly string[], taken: Set<string>) =>
 		ids
 			.filter((id) => !taken.has(id) && byId.has(id) && taken.add(id))
-			.map((id) => byId.get(id) as PickerCurrency);
+			.map((id) => byId.get(id) as C);
 	const taken = new Set<string>();
 	const fav = pick(favorites, taken);
 	const recent = pick(recents, taken);
@@ -42,8 +44,9 @@ export function currencyGroups(
 }
 
 /**
- * CurrencyPicker: find a currency by code or name; favorites and recents
- * first, a flag (or the coin glyph) as identity.
+ * CurrencyPicker: find a currency by code or by its name in the reader's
+ * language (or in English); favorites and recents first, a flag (or the
+ * coin glyph) as identity.
  */
 export function CurrencyPicker({
 	value,
@@ -53,11 +56,21 @@ export function CurrencyPicker({
 	currencies = ALL_CURRENCIES,
 }: CurrencyPickerProps) {
 	const t = useTranslations("pickers.currency");
-	const groups = currencyGroups(currencies, favorites, recents);
-	const item = (c: PickerCurrency) => (
+	const locale = useLocale();
+	const named = useMemo(
+		() =>
+			currencies.map((c) => ({
+				...c,
+				english: c.name,
+				name: currencyName(c.id, locale, c.name),
+			})),
+		[currencies, locale],
+	);
+	const groups = currencyGroups(named, favorites, recents);
+	const item = (c: (typeof named)[number]) => (
 		<PickerItem
 			key={c.id}
-			keywords={[c.id, c.name]}
+			keywords={[c.id, c.name, c.english]}
 			lead={<CurrencyFlag className="size-4" currencyCode={c.id} />}
 			onSelect={() => onChange(c.id)}
 			selected={c.id === value}

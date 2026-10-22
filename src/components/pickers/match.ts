@@ -1,9 +1,27 @@
-/** Picker search ignores case and accents: "lucia" finds Lucía, "cafe" finds Café. */
+/** Letters NFD does not split into a base letter and a mark. */
+const SPECIAL: Record<string, string> = {
+	ß: "ss",
+	ł: "l",
+	ø: "o",
+	đ: "d",
+	ð: "d",
+	þ: "th",
+	æ: "ae",
+	œ: "oe",
+	ı: "i",
+	ħ: "h",
+};
+
+/**
+ * Picker search ignores case and accents: "lucia" finds Lucía, "cafe"
+ * finds Café, "lodz" finds Łódź, "strasse" finds Straße.
+ */
 export function fold(s: string): string {
 	return s
+		.toLowerCase()
 		.normalize("NFD")
 		.replace(/\p{Diacritic}/gu, "")
-		.toLowerCase()
+		.replace(/[ßłøđðþæœıħ]/g, (c) => SPECIAL[c] ?? c)
 		.trim();
 }
 

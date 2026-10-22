@@ -53,12 +53,28 @@ const isWholeMonth = (from: IsoDate, to: IsoDate) =>
 const isWholeYear = (from: IsoDate, to: IsoDate) =>
 	from.endsWith("-01-01") && to === `${from.slice(0, 4)}-12-31`;
 
-/** The period before: the previous month for a whole month, else the same number of days just before. */
+/** Whole months from the 1st to a month's last day: their count, else null. */
+function wholeMonths(from: IsoDate, to: IsoDate): number | null {
+	if (!from.endsWith("-01") || to !== lastOfMonth(to)) return null;
+	const months =
+		(Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 +
+		Number(to.slice(5, 7)) -
+		Number(from.slice(5, 7)) +
+		1;
+	return months > 0 ? months : null;
+}
+
+/**
+ * The period before, for Compare: whole months (a month, a quarter, a year)
+ * shift back by as many months, so Q3 compares with Q2 and 2025 with 2024;
+ * any other span compares with the same number of days just before it.
+ */
 export function previousPeriod(r: DateRangeValue): DateRangeValue | null {
 	if (!r.from || !r.to) return null;
-	if (isWholeMonth(r.from, r.to)) {
-		const prev = addMonths(r.from, -1);
-		return { from: prev, to: lastOfMonth(prev) };
+	const months = wholeMonths(r.from, r.to);
+	if (months) {
+		const from = addMonths(r.from, -months);
+		return { from, to: lastOfMonth(addMonths(from, months - 1)) };
 	}
 	const n = daysBetween(r.from, r.to) + 1;
 	return { from: addDays(r.from, -n), to: addDays(r.from, -1) };
@@ -81,9 +97,13 @@ export function drawnRange(
 	return { lo, hi, preview: !r.to };
 }
 
-/** Apply turns a half-picked range into a one-day range. */
+/**
+ * What Apply sends: a half-picked range becomes one day, and typed ends in
+ * the wrong order are swapped, so from is never after to.
+ */
 export function completeRange(r: DateRangeValue): DateRangeValue {
 	if (r.from && !r.to) return { from: r.from, to: r.from };
+	if (r.from && r.to && r.from > r.to) return { from: r.to, to: r.from };
 	return r;
 }
 

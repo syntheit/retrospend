@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { type IsoDate, parseTypedDate } from "./dates";
+import { type DigitOrder, type IsoDate, parseTypedDate } from "./dates";
 
 /**
  * A typed date: shows the day in the locale's short form and reads ISO or
@@ -16,7 +16,7 @@ export function DateField(props: {
 	label: string;
 	placeholder: string;
 	value: IsoDate | null;
-	locale: string;
+	order: DigitOrder;
 	display: (iso: IsoDate) => string;
 	onChange: (iso: IsoDate | null) => void;
 }) {
@@ -31,7 +31,7 @@ export function DateField(props: {
 
 	const commit = () => {
 		if (text === shown) return;
-		const parsed = parseTypedDate(text, props.locale);
+		const parsed = parseTypedDate(text, props.order);
 		if (parsed === null) {
 			setInvalid(true);
 			return;

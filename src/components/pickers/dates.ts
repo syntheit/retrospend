@@ -127,14 +127,26 @@ export function moveDay(
 	}
 }
 
+/** Which comes first in a short numeric date: month ("MM/dd/yyyy") or day ("dd.MM.y"). */
+export type DigitOrder = "mdy" | "dmy";
+
 /**
- * A typed date: ISO, or day, month and year as digits in the locale's order
- * (en-US month first, everyone else day first). Returns "" for an empty field
- * and null when it cannot be read.
+ * The digit order of a date-fns short date pattern, so typing reads dates
+ * the same way the field shows them.
+ */
+export function digitOrderOf(pattern: string): DigitOrder {
+	const m = pattern.indexOf("M");
+	const d = pattern.indexOf("d");
+	return m >= 0 && d >= 0 && m < d ? "mdy" : "dmy";
+}
+
+/**
+ * A typed date: ISO, or day, month and year as digits in the field's order.
+ * Returns "" for an empty field and null when it cannot be read.
  */
 export function parseTypedDate(
 	text: string,
-	locale: string,
+	order: DigitOrder,
 ): IsoDate | "" | null {
 	const s = text.trim();
 	if (!s) return "";
@@ -142,8 +154,7 @@ export function parseTypedDate(
 	const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(s);
 	if (!m) return null;
 	const [a, b] = [Number(m[1]), Number(m[2])];
-	const [month, day] =
-		locale === "en" || locale.startsWith("en-US") ? [a, b] : [b, a];
+	const [month, day] = order === "mdy" ? [a, b] : [b, a];
 	const year = m[3]?.length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
 	const iso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 	return isIsoDate(iso) ? iso : null;
