@@ -11,25 +11,22 @@ import { MoneySection, PicksSection } from "./sections/atoms";
 import { ChartSection } from "./sections/charts";
 import { ButtonsSection, TooltipSection } from "./sections/controls";
 import { EntitySections } from "./sections/entities";
-import {
-	FeedbackSection,
-	MotionSection,
-	RefreshSection,
-} from "./sections/feedback";
+import { FeedbackSection } from "./sections/feedback";
 import {
 	AvatarSection,
 	PageTabsSection,
 	StructureSection,
 } from "./sections/foundations";
 import { GlanceSection, NeedsSection } from "./sections/home";
+import { IdentitySection, MenuSection } from "./sections/menus";
+import { MotionSection } from "./sections/motion";
 import {
 	DateRangeSection,
-	IdentitySection,
-	MenuSection,
 	MoneyInputSection,
 	PickersSection,
-	SheetSection,
 } from "./sections/overlays";
+import { RefreshSection } from "./sections/refresh";
+import { SheetSection } from "./sections/sheets";
 import { TokensSection } from "./sections/tokens";
 import { TransactionsSection } from "./sections/transactions";
 import { Spec } from "./spec";

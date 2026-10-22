@@ -13,20 +13,20 @@ import { CAT, m, P } from "./rows";
 /** Whole pesos to minor units, through the domain's exact conversion. */
 const ars = (whole: number) => toMinor(String(whole), "ARS");
 
-/** Cumulative spending per day: October so far (21 days), all of September. */
+/** Cumulative spending per day (the mockup's ledger): October so far, all of September. */
 export const PACE: PaceSeries = {
 	currency: "ARS",
 	days: 31,
 	current: [
-		90000, 160000, 190000, 195000, 450000, 470000, 480000, 560000, 640000,
-		700000, 760000, 820000, 950000, 1080000, 1200000, 1390000, 1560000, 1720000,
-		1980000, 2240000, 2706602,
+		124300, 306800, 438357, 446757, 1130157, 1139757, 1189157, 1334057, 1497656,
+		1564376, 1613681, 1778796, 1841555, 2035129, 2189800, 2261300, 2424089,
+		2438102, 2543702, 2682602, 2706602,
 	].map(ars),
 	previous: [
-		40000, 90000, 140000, 150000, 520000, 560000, 600000, 680000, 760000,
-		800000, 860000, 950000, 1010000, 1060000, 1130000, 1200000, 1260000,
-		1330000, 1420000, 1500000, 1560000, 1630000, 1700000, 1790000, 1850000,
-		2010000, 2060000, 2090000, 2120000, 3100000,
+		0, 151800, 301200, 317000, 994050, 1330850, 1355350, 1496950, 1539950,
+		1637750, 1637750, 1686350, 1686350, 1708850, 1735000, 1803600, 1866025,
+		2018050, 2057650, 2065650, 2147450, 2202550, 2302450, 2376950, 2458050,
+		2721588, 2721588, 2766588, 2814588, 3834940,
 	].map(ars),
 };
 
@@ -68,51 +68,47 @@ export const NEEDS_YOU: NeedsYouItemVM[] = [
 ];
 
 export const MONTHS: MonthTotal[] = [
-	{ month: "2026-05-01", total: m("2010000") },
-	{ month: "2026-06-01", total: m("2120000") },
-	{ month: "2026-07-01", total: m("2870000") },
-	{ month: "2026-08-01", total: m("2350000") },
-	{ month: "2026-09-01", total: m("3820000") },
+	{ month: "2026-05-01", total: m("2028590") },
+	{ month: "2026-06-01", total: m("2147631") },
+	{ month: "2026-07-01", total: m("2885069") },
+	{ month: "2026-08-01", total: m("2372219") },
+	{ month: "2026-09-01", total: m("3834941") },
 	{ month: "2026-10-01", total: m("2706602") },
 ];
 
 export const NET_WORTH: AreaPoint[] = [
-	{ date: "2026-05-28", value: m("98400000") },
-	{ date: "2026-06-28", value: m("106900000") },
-	{ date: "2026-07-28", value: m("114300000") },
-	{ date: "2026-08-28", value: m("122800000") },
-	{ date: "2026-09-28", value: m("131600000") },
+	{ date: "2026-05-28", value: m("119967291") },
+	{ date: "2026-06-28", value: m("123184978") },
+	{ date: "2026-07-28", value: m("126095421") },
+	{ date: "2026-08-28", value: m("129456371") },
+	{ date: "2026-09-28", value: m("133211431") },
 	{ date: "2026-10-21", value: m("135325483") },
 ];
 
 export const RANKED: RankedItem[] = [
+	{ id: "rent", label: "Rent", value: m("650000"), category: CAT.rent },
 	{
 		id: "groceries",
 		label: "Groceries",
-		value: m("463200"),
+		value: m("486980"),
 		category: CAT.groceries,
 	},
-	{ id: "rent", label: "Rent", value: m("325000"), category: CAT.rent },
 	{
 		id: "restaurants",
 		label: "Restaurants",
-		value: m("268400"),
+		value: m("435421"),
 		category: CAT.restaurants,
 	},
+	{ id: "travel", label: "Travel", value: m("303058"), category: CAT.travel },
+	{ id: "home", label: "Home", value: m("145183"), category: CAT.home },
 	{ id: "health", label: "Health", value: m("112000"), category: CAT.health },
-	{
-		id: "transport",
-		label: "Transport",
-		value: m("94300"),
-		category: CAT.transport,
-	},
-	{
-		id: "utilities",
-		label: "Utilities",
-		value: m("46800"),
-		category: CAT.utilities,
-	},
 ];
+
+/** States the charts must handle (R14): no data at all, and gaps. */
+export const EMPTY_MONTHS: MonthTotal[] = MONTHS.map((x) => ({
+	...x,
+	total: null,
+}));
 
 export const ALLOCATION: AllocationItem[] = [
 	{

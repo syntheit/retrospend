@@ -22,9 +22,9 @@ export function GlanceSection() {
 				}
 				phone={
 					<>
-						<GlanceStrip glance={GLANCE} phone />
+						<GlanceStrip glance={GLANCE} />
 						<Cap className="mt-4">{CAP.glanceB}</Cap>
-						<GlanceStrip glance={GLANCE} phone variant="B" />
+						<GlanceStrip glance={GLANCE} variant="B" />
 					</>
 				}
 			/>

@@ -5,6 +5,7 @@
  * them (IMPLEMENTATION §4, no fake data). Numbers mirror components.html.
  */
 import { toMinor } from "@retrospend/domain/money-minor";
+import { createElement } from "react";
 import type { MoneyValue } from "~/components/money/format";
 import type {
 	AccountVM,
@@ -16,6 +17,10 @@ import type {
 	TransactionVM,
 } from "~/components/rows/types";
 import type { FacePerson } from "~/components/ui/avatar-face";
+import { FixtureCover } from "./covers";
+
+const cover = (scene: string) => createElement(FixtureCover, { scene });
+const PALERMO = { id: "p2", name: "Depto Palermo", cover: cover("city") };
 
 /** Money from a decimal string, through the domain's exact conversion. */
 export const m = (amount: string, currency = "ARS"): MoneyValue => ({
@@ -60,6 +65,10 @@ const tx = (
 	kind: "expense",
 	category: CAT.groceries,
 	reviewed: true,
+	// The server's home-currency sort key; home rows sort on their own amount.
+	sortKey:
+		o.amount.currency === "ARS" ? o.amount.minor : (o.home?.minor ?? null),
+	figure: `expense.${o.id}.amount`,
 	...o,
 });
 
@@ -93,7 +102,7 @@ export const TABLE_ROWS: TransactionVM[] = [
 		amount: m("108600"),
 		share: m("54300"),
 		date: "2026-10-20",
-		project: { id: "p2", name: "Depto Palermo" },
+		project: PALERMO,
 		people: [P.martin, ME],
 		payerId: "martin",
 		payerName: "Martín",
@@ -141,10 +150,26 @@ export const TABLE_ROWS: TransactionVM[] = [
 		share: m("36200"),
 		date: "2026-10-18",
 		waiting: "review",
-		project: { id: "p2", name: "Depto Palermo" },
+		project: PALERMO,
 		people: [P.martin, ME],
 		payerId: "martin",
 		payerName: "Martín",
+	}),
+	tx({
+		id: "t10",
+		title: "Expensas del edificio",
+		category: CAT.utilities,
+		amount: m("1284500"),
+		date: "2026-10-18",
+		project: PALERMO,
+	}),
+	tx({
+		id: "t11",
+		title: "Dominio .com",
+		category: CAT.subscriptions,
+		amount: m("14.20", "USD"),
+		home: null,
+		date: "2026-10-17",
 	}),
 ];
 
@@ -273,6 +298,7 @@ export const PROJECTS: ProjectVM[] = [
 	project({
 		id: "p1",
 		name: "Viaje a Florianópolis",
+		cover: cover("sea"),
 		people: [P.lucia, P.martin, P.paz],
 		peopleCount: 4,
 		start: "2026-10-09",
@@ -283,6 +309,7 @@ export const PROJECTS: ProjectVM[] = [
 	project({
 		id: "p2",
 		name: "Depto Palermo",
+		cover: cover("city"),
 		people: [P.martin],
 		peopleCount: 2,
 		start: null,
@@ -291,6 +318,7 @@ export const PROJECTS: ProjectVM[] = [
 	project({
 		id: "p3",
 		name: "Renovación cocina",
+		cover: cover("tiles"),
 		solo: true,
 		start: "2026-08-12",
 		end: "2026-10-01",
@@ -300,6 +328,7 @@ export const PROJECTS: ProjectVM[] = [
 	project({
 		id: "p4",
 		name: "Asado del Club",
+		cover: cover("grill"),
 		people: [P.tomas, P.camila, P.lucia, P.paz],
 		peopleCount: 5,
 		start: null,
@@ -308,6 +337,7 @@ export const PROJECTS: ProjectVM[] = [
 	project({
 		id: "p5",
 		name: "Escapada a Mendoza",
+		cover: cover("mountain"),
 		people: [P.lucia, P.tomas, P.camila],
 		peopleCount: 4,
 		start: "2026-11-13",

@@ -13,6 +13,7 @@ import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
 import {
 	BALANCE_SEGMENTS,
+	EMPTY_MONTHS,
 	MONTHS,
 	NET_WORTH,
 	PACE,
@@ -20,7 +21,7 @@ import {
 } from "../fixtures/home";
 import { m } from "../fixtures/rows";
 import { CAP } from "../sections";
-import { Cap, Pair, Phone, Spec } from "../spec";
+import { Cap, Pair, Phone, Spec, States } from "../spec";
 
 /** The area with its hero: scrubbing shows that day, letting go shows today. */
 function ScrubbedArea({ height, phone }: { height: number; phone?: boolean }) {
@@ -110,6 +111,28 @@ export function ChartSection() {
 				</div>
 				<Phone>{balance(true)}</Phone>
 			</div>
+			<States
+				className="mt-6"
+				items={[
+					[
+						CAP.emptySeries,
+						<div className="w-80" key="e">
+							<MonthlyBars currency="ARS" height={120} months={EMPTY_MONTHS} />
+						</div>,
+					],
+					[
+						CAP.emptyPace,
+						<div className="w-80" key="p">
+							<PaceLine
+								currentLabel={name}
+								height={72}
+								pace={{ currency: "ARS", days: 31, current: [], previous: [] }}
+								previousLabel={CAP.previous}
+							/>
+						</div>,
+					],
+				]}
+			/>
 			<Cap className="mt-4">{CAP.reduced}</Cap>
 		</Spec>
 	);

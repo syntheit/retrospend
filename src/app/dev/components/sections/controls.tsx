@@ -11,6 +11,19 @@ import { m } from "../fixtures/rows";
 import { Spec, States } from "../spec";
 import { S } from "./atoms";
 
+/** States the browser only shows on interaction, drawn with the same classes. */
+const F = {
+	hover: "Hover",
+	focus: "Focus-visible",
+	inputFocus: "Focus",
+	groceries: "Groceries",
+	error: "Error",
+	errorMsg: "Add a title",
+	switchOff: "Switch off",
+	on: "on",
+	ring: "outline-2 outline-brand outline-offset-2",
+};
+
 export function ButtonsSection() {
 	return (
 		<Spec id="buttons">
@@ -61,6 +74,18 @@ export function ButtonsSection() {
 						</Button>,
 					],
 					[
+						F.hover,
+						<Button className="bg-brand-hover" key="hv" kind="primary">
+							{F.hover}
+						</Button>,
+					],
+					[
+						F.focus,
+						<Button className={F.ring} key="fv" kind="secondary">
+							{F.focus}
+						</Button>,
+					],
+					[
 						S.icon,
 						<Tip content={S.more} key="h">
 							<Button aria-label={S.more} icon kind="ghost">
@@ -83,13 +108,20 @@ export function ButtonsSection() {
 							/>,
 						],
 						[
-							S.error,
+							F.inputFocus,
 							<Input
-								aria-invalid
 								aria-label={S.title}
-								className="w-55"
-								key="b"
+								className={`w-55 ${F.ring}`}
+								defaultValue={F.groceries}
+								key="f"
 							/>,
+						],
+						[
+							F.error,
+							<span className="flex flex-col gap-1" key="b">
+								<Input aria-invalid aria-label={S.title} className="w-55" />
+								<span className="text-danger text-meta">{F.errorMsg}</span>
+							</span>,
 						],
 						[
 							S.disabled,
@@ -105,10 +137,8 @@ export function ButtonsSection() {
 				/>
 				<States
 					items={[
-						[
-							S.switchOn,
-							<Switch aria-label={S.switchOn} defaultChecked key="a" />,
-						],
+						[F.switchOff, <Switch aria-label={F.switchOff} key="o" />],
+						[F.on, <Switch aria-label={S.switchOn} defaultChecked key="a" />],
 						[
 							S.disabled,
 							<Switch

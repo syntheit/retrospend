@@ -96,10 +96,49 @@ function Swatches({ items }: { items: [string, string][] }) {
 	);
 }
 
+/** The color jobs and their share of a screen (R19), as the mockup lists them. */
+const JOBS: [string, string][] = [
+	["Warm neutrals, about 70%", "bg, surface, raised, lines, text"],
+	["Brand, 10 to 15%", "primary button, focus ring, selection, active nav"],
+	[
+		"Accent, about 10%",
+		"chart lines and fills, progress on track, links, selected tab underline, group and avatar color",
+	],
+	["Meaning, only where it exists", "positive, attention, danger, info"],
+];
+
+/** The motion tokens (R24), with what each one moves. */
+const MOTION: [string, string][] = [
+	["--t-state 120ms", "hover, press, color and border"],
+	["--t-menu 160ms", "menus, popovers, dialogs"],
+	["--t-sheet 220ms", "sheets and drawers"],
+	["--t-tab 220ms", "tab indicator and pane"],
+	["--t-row 200ms", "row insert, remove, expand"],
+	["--t-num-in 140ms, --t-num-out 80ms", "a changed number sliding in and out"],
+	["ease-land, ease-leave", "arriving, leaving; never bounce"],
+];
+
+function Pairs({ items, cols }: { items: [string, string][]; cols: string }) {
+	return (
+		<div className={`text-small mb-4 grid gap-x-6 gap-y-2 ${cols}`}>
+			{items.map(([k, v]) => (
+				<div className="flex flex-col gap-0.5" key={k}>
+					<b className="text-fg font-semibold">{k}</b>
+					<span className="text-fg-2">{v}</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
 export function TokensSection() {
 	return (
 		<Spec id="tokens">
 			<Cap>{S.colors}</Cap>
+			<Pairs
+				cols="grid-cols-[repeat(auto-fill,minmax(200px,1fr))]"
+				items={JOBS}
+			/>
 			<Swatches items={COLORS} />
 			<Cap className="mt-4">{S.series}</Cap>
 			<Swatches items={SERIES.map((c, i) => [`series-${i + 1}`, c])} />
@@ -126,6 +165,10 @@ export function TokensSection() {
 				))}
 			</div>
 			<Cap className="mt-4">{S.scale}</Cap>
+			<Pairs
+				cols="grid-cols-[repeat(auto-fill,minmax(220px,1fr))]"
+				items={MOTION}
+			/>
 		</Spec>
 	);
 }

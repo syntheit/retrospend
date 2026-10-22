@@ -303,6 +303,7 @@ export const SECTIONS: GallerySection[] = [
 export const CAP = {
 	desktop: "Desktop",
 	phone: "Phone",
+	iphone: "iPhone",
 	listFlat: "List (flat, hairlines)",
 	listGroup: "List group",
 	glanceA: "A. Glance line and rows (recommended)",
@@ -316,7 +317,9 @@ export const CAP = {
 		"Phone web rows: unreviewed, USD, BRL, split, plain, a pending payment. Three-dot button and long press.",
 	swipe:
 		"Swipe (iPhone idiom, off on phone web): drag a row left or right. Every swipe has a menu twin.",
-	loading: "Loading (skeleton)",
+	loading: "Loading (table)",
+	loadingRows: "Loading (phone rows)",
+	zero: "Zero: nothing yet, the total says 0",
 	noMatch: "Empty (no match)",
 	coverCard:
 		"The cover slot takes the Cover component (photo or illustrated scene) once it is built; until then a flat tile.",
@@ -328,6 +331,8 @@ export const CAP = {
 	balance: "Balance bar: who makes up owed and owe",
 	previous: "Last month",
 	reduced: "Reduced motion turns chart animation off.",
+	emptySeries: "No data: every month a gap",
+	emptyPace: "No data: an empty series",
 	fixtures:
 		"Static fixtures shaped like the server's view models. Not your data.",
 } as const;
