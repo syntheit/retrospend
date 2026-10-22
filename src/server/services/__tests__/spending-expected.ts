@@ -66,6 +66,9 @@ export const EXPECTED_READINGS = {
 		lastMonthSpend: 62_000,
 	},
 	spendingTotalMarch: MARCH_TOTAL,
+	// Figure "spent": the running month (April) per currency, in minor units:
+	// 1,000 + 5,000 + the laptop part 40,000, no shares in April
+	spentFigure: [{ minor: 4_600_000, currency: "ARS" }],
 	shares: [[20_000, "ARS", "2026-03-20T12:00:00.000Z"]],
 	dashboard: {
 		hasExpenses: true,

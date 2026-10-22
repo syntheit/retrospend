@@ -12,7 +12,7 @@ import { convertAmount, periodRateDate, sumIn } from "~/lib/money";
 import type { db as AppDb } from "~/server/db";
 import * as BudgetService from "./budget.service";
 import type { RateCache } from "./rate-cache";
-import { getSpendingItems } from "./spending";
+import { spentItems } from "./figures/spent";
 
 /** Category names treated as "fixed" for budget pacing calculations */
 const FIXED_CATEGORY_NAMES = ["rent", "utilities", "mortgage", "bills", "insurance"];
@@ -56,19 +56,17 @@ export async function getOverviewStats(
 	);
 
 	const [monthItems, last24HoursItems, budgets] = await Promise.all([
-		getSpendingItems(
-			db,
+		spentItems(db, {
 			userId,
-			{ gte: fiscal.start, lte: fiscal.end },
+			date: { gte: fiscal.start, lte: fiscal.end },
 			excludedProjectIds,
-		),
+		}),
 		isCurrentMonth
-			? getSpendingItems(
-					db,
+			? spentItems(db, {
 					userId,
-					{ gte: new Date(now.getTime() - DAY_MS) },
+					date: { gte: new Date(now.getTime() - DAY_MS) },
 					excludedProjectIds,
-				)
+				})
 			: Promise.resolve([]),
 		BudgetService.getBudgets(db, userId, month, {
 			includeGlobal: true,

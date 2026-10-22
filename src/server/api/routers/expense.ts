@@ -5,6 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { CsvService } from "~/server/services/csv.service";
 import { ExpenseService } from "~/server/services/expense.service";
 import { getExcludedProjectIds, listSharedParticipationsForUser } from "~/server/services/shared-expense-integration";
+import { listedEntryWhere } from "~/server/services/spending";
 
 const expenseInputSchema = z.object({
 	id: z.guid(),
@@ -214,7 +215,7 @@ export const expenseRouter = createTRPCRouter({
 
 			const match = await ctx.db.expense.findFirst({
 				where: {
-					userId: ctx.session.user.id,
+					...listedEntryWhere(ctx.session.user.id),
 					title: { equals: input.title, mode: "insensitive" },
 					amount: { equals: input.amount },
 					date: { gte: startOfDay, lte: endOfDay },
@@ -242,7 +243,7 @@ export const expenseRouter = createTRPCRouter({
 				ctx.db.expense.groupBy({
 					by: ["title"],
 					where: {
-						userId,
+						...listedEntryWhere(userId),
 						title: { contains: query, mode: "insensitive" },
 					},
 					_count: { title: true },
@@ -286,7 +287,7 @@ export const expenseRouter = createTRPCRouter({
 			// Get the most recent expense's categoryId for each top title
 			const topTitles = sorted.map(([key]) => canonicalTitle.get(key) ?? key);
 			const recentExpenses = await ctx.db.expense.findMany({
-				where: { userId, title: { in: topTitles } },
+				where: { ...listedEntryWhere(userId), title: { in: topTitles } },
 				orderBy: { date: "desc" },
 				select: { title: true, categoryId: true, amount: true, currency: true },
 				distinct: ["title"],

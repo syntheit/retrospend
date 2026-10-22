@@ -7,6 +7,7 @@ import {
 	getOverviewStats,
 } from "~/server/services/overview.service";
 import { RateCache } from "~/server/services/rate-cache";
+import { listedEntryWhere } from "~/server/services/spending";
 import {
 	getExcludedProjectIds,
 	listSharedParticipationsForUser,
@@ -75,7 +76,11 @@ export const dashboardRouter = createTRPCRouter({
 				trendData,
 			] = await Promise.all([
 				db.expense.count({
-					where: { userId, status: "FINALIZED", isAmortizedChild: false },
+					where: {
+						...listedEntryWhere(userId),
+						status: "FINALIZED",
+						isAmortizedChild: false,
+					},
 					take: 1,
 				}).then((c) => c > 0),
 				db.exchangeRateFavorite
@@ -147,7 +152,7 @@ export const dashboardRouter = createTRPCRouter({
 				await Promise.all([
 					db.expense.findMany({
 						where: {
-							userId,
+							...listedEntryWhere(userId),
 							status: "FINALIZED",
 							isAmortizedChild: false,
 						},

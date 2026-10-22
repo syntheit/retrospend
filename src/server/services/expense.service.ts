@@ -3,6 +3,7 @@ import { computeAmountInUSD, isValidRate, USD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
 import { requireExchangeRate } from "../exchange-rates";
 import { AmortizationService } from "./amortization.service";
+import { listedEntryWhere } from "./spending";
 
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = "custom";
@@ -252,7 +253,7 @@ export class ExpenseService {
 	async listFinalized(userId: string, from?: Date, to?: Date, limit?: number) {
 		return await (this.db as PrismaClient).expense.findMany({
 			where: {
-				userId,
+				...listedEntryWhere(userId),
 				status: "FINALIZED",
 				isAmortizedChild: false,
 				...(from || to
@@ -286,7 +287,7 @@ export class ExpenseService {
 
 		return await (this.db as PrismaClient).expense.findMany({
 			where: {
-				userId,
+				...listedEntryWhere(userId),
 				status: "FINALIZED",
 				isAmortizedChild: false,
 				date: {

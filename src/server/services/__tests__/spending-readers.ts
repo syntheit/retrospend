@@ -12,7 +12,9 @@ import { profileRouter } from "~/server/api/routers/profile";
 import { statsRouter } from "~/server/api/routers/stats";
 import { wealthRouter } from "~/server/api/routers/wealth";
 import { createCallerFactory } from "~/server/api/trpc";
+import { readFigures } from "~/server/figures/read";
 import { getBudgets, getSuggestions } from "~/server/services/budget.service";
+import { spentIn } from "~/server/services/figures/spent";
 import {
 	getOverviewSettings,
 	getOverviewStats,
@@ -22,7 +24,6 @@ import {
 	getExcludedProjectIds,
 	getSharedExpenseShares,
 } from "~/server/services/shared-expense-integration";
-import { getSpendingTotal } from "~/server/services/spending";
 import { StatsService } from "~/server/services/stats.service";
 import { TIME_ZONE_HEADER } from "~/server/time-zone";
 import { adminDb } from "~/test/pg-harness";
@@ -117,17 +118,19 @@ async function serviceReaders(fixture: SpendingFixture) {
 			1,
 			TZ,
 		),
-		spendingTotalMarch: await getSpendingTotal(
+		spendingTotalMarch: await spentIn(
 			db,
-			userId,
 			{
-				gte: new Date("2026-03-01T00:00:00.000Z"),
-				lte: new Date("2026-03-31T23:59:59.999Z"),
+				userId,
+				date: {
+					gte: new Date("2026-03-01T00:00:00.000Z"),
+					lte: new Date("2026-03-31T23:59:59.999Z"),
+				},
 			},
 			HOME,
 			1000,
-			excluded,
 		),
+		spentFigure: (await readFigures(userId, ["spent"])).get("spent"),
 		shares: shares.map((s) => [s.amount, s.currency, iso(s.date)]).sort(),
 	};
 }

@@ -9,6 +9,8 @@ const mockGetSharedExpenseShares = vi.hoisted(() => vi.fn());
 
 vi.mock("~/server/services/shared-expense-integration", () => ({
 	getSharedExpenseShares: mockGetSharedExpenseShares,
+	// spent() looks up hidden projects when a caller does not pass them.
+	getExcludedProjectIds: async () => [],
 }));
 
 // Rate table: ARS blue 1560 (preferred).

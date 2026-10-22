@@ -12,6 +12,7 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { dayKey, startOfDayIn, startOfNextDayIn } from "~/lib/time-zone";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import { AmortizationService } from "./amortization.service";
+import { listedEntryWhere } from "./spending";
 
 /**
  * Stored rate and USD amount of an imported row. A rate in the file wins
@@ -100,7 +101,7 @@ export class CsvService {
 	async exportExpensesAsCsv(userId: string, expenseIds?: string[]) {
 		const expenses = await this.db.expense.findMany({
 			where: {
-				userId: userId,
+				...listedEntryWhere(userId),
 				status: "FINALIZED",
 				isAmortizedChild: false, // Only export parents, not children
 				...(expenseIds ? { id: { in: expenseIds } } : {}),
@@ -210,7 +211,8 @@ export class CsvService {
 				? []
 				: await this.db.expense.findMany({
 						where: {
-							userId: userId,
+							// Money in never blocks an imported expense as a duplicate.
+							...listedEntryWhere(userId),
 							date: {
 								gte: startOfDayIn(new Date(Math.min(...times)), tz),
 								lt: startOfNextDayIn(new Date(Math.max(...times)), tz),

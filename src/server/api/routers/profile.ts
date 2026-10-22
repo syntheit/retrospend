@@ -24,7 +24,8 @@ import {
 	defaultBackgroundSettings,
 	type BackgroundSettings,
 } from "~/lib/background-settings";
-import { sumExpensesForCurrency } from "./shared-currency";
+import { listedEntryWhere } from "~/server/services/spending";
+import { StatsService } from "~/server/services/stats.service";
 
 export type { BackgroundSettings };
 export { defaultBackgroundSettings };
@@ -436,16 +437,12 @@ export const profileRouter = createTRPCRouter({
 			});
 		}
 
-		const totalEntries = await db.expense.count({
-			where: { userId, status: "FINALIZED" },
-		});
-
-		// Amortized purchases count once, through their monthly parts
-		const { total: lifetimeSpend } = await sumExpensesForCurrency(
-			db,
-			{ userId, isAmortizedParent: false },
-			user.homeCurrency,
-		);
+		const [totalEntries, { totalSpent: lifetimeSpend }] = await Promise.all([
+			db.expense.count({
+				where: { ...listedEntryWhere(userId), status: "FINALIZED" },
+			}),
+			new StatsService(db).getLifetimeStats(userId, user.homeCurrency),
+		]);
 
 		return {
 			lifetimeSpend,
