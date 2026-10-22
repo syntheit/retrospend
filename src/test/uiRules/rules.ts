@@ -31,6 +31,10 @@
 //    date helpers (src/lib/date-locale.ts).
 //  * UI-071 sees a symbol written next to an interpolation; a symbol held in a
 //    variable (`${symbol}${amount}`) is not seen.
+//  * UI-131 knows an icon by its import (lucide-react, tabler) or a name like
+//    XIcon; any other expression child ({label}) counts as a label.
+//  * A file that does not parse throws (with its path) instead of being skipped.
+import { posix } from "node:path";
 import { parseSync } from "vite";
 import { REGISTRY } from "../../components/ui/registry";
 
@@ -159,7 +163,10 @@ const toMs = (n: string, unit: string) =>
 	unit === "s" ? Math.round(Number(n) * 1000) : Number(n);
 
 /** U+2014, written as a code so this file has no em dash in it. */
-const EM_DASH = new RegExp(String.fromCharCode(0x2014));
+const EM_DASH = new RegExp(
+	`${String.fromCharCode(0x2014)}|&(?:mdash|#8212|#x2014);`,
+	"i",
+);
 const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}️/u;
 /** Glossary (GUIDELINE §13): the words on the left are replaced. */
 const GLOSSARY =
@@ -375,9 +382,26 @@ function badDurations(value: string): string[] {
 	return out;
 }
 
-/** A focus-visible utility that draws a visible indicator. */
-const VISIBLE_FOCUS =
-	/(?<![\w-])(?:[\w-]+:)*focus-visible:(?:outline-(?!none(?![\w-])|hidden|offset|0(?![\w-]))[\w[\]./-]+|outline(?![\w-])|ring(?:-[\w[\]./-]+)?|border-[\w[\]./-]+|bg-[\w[\]./-]+)/;
+/** A utility that removes the outline (any variant, `focus-visible:` too). */
+const OUTLINE_OFF = /(?:^|:)!?outline-(?:none|hidden)!?$/;
+/** A utility that draws a visible indicator (not ring-0, ring-offset-*, transparent). */
+const VISIBLE_UTIL =
+	/^!?(?:outline(?:-(?!none$|hidden$|0$|offset)[\w[\]./-]+)?|ring(?:-(?!0$|offset|transparent$|inset$)[\w[\]./()-]+)?|border(?:-(?!0$|transparent$|none$)[\w[\]./-]+)?|bg-(?!transparent$)[\w[\]./-]+)!?$/;
+
+/** UI-130: the first outline removal in a class list without a visible focus-visible style. */
+function focusRemoved(classes: string): string | undefined {
+	const tokens = classes.split(/\s+/).filter(Boolean);
+	const off = tokens.find((t) => OUTLINE_OFF.test(t));
+	if (!off) return undefined;
+	const replaced = tokens.some((t) => {
+		const parts = t.split(":");
+		const util = parts.pop() ?? "";
+		return (
+			parts.some((v) => v.includes("focus-visible")) && VISIBLE_UTIL.test(util)
+		);
+	});
+	return replaced ? undefined : off;
+}
 
 // ---- string chunks ---------------------------------------------------------
 
@@ -392,6 +416,8 @@ type Chunk = {
 	console: boolean;
 	/** Visible copy: a text prop (title, label, placeholder...) or a toast message. */
 	isText: boolean;
+	/** A translation key or namespace (`t("key")`, `useTranslations("ns")`): not copy. */
+	key: boolean;
 };
 
 /** Values of these props and keys are visible copy (glossary applies). */
@@ -422,6 +448,7 @@ const CSS_TRANSITION =
 	/(?:^|,\s*)(?:all|opacity|transform|translate|scale|color|background(?:-color)?|border(?:-color)?|height|width|max-height|filter|box-shadow|top|left|right|bottom|margin|padding|stroke-dashoffset|fill)\s+\d*\.?\d+m?s\b|\d*\.?\d+m?s\s+(?:ease|linear|cubic-bezier|steps)/;
 
 function runTokenRules(chunk: Chunk, line: (i: number) => number, out: Raw[]) {
+	if (chunk.key) return;
 	for (const r of TOKEN_RULES) {
 		if (r.classOnly && !chunk.classCtx) continue;
 		const re = new RegExp(r.re.source, r.re.flags);
@@ -452,17 +479,8 @@ function runTokenRules(chunk: Chunk, line: (i: number) => number, out: Raw[]) {
 		}
 	}
 	// UI-130 outline removed in a class list without a visible focus style
-	if (
-		chunk.classCtx &&
-		/(?<![\w-:])outline-(?:none|hidden)(?![\w-])/.test(chunk.text) &&
-		!VISIBLE_FOCUS.test(chunk.text)
-	) {
-		out.push({
-			rule: "UI-130",
-			line: line(chunk.start),
-			match: "outline-none",
-		});
-	}
+	const off = chunk.classCtx ? focusRemoved(chunk.text) : undefined;
+	if (off) out.push({ rule: "UI-130", line: line(chunk.start), match: off });
 	// UI-100 durations in transition/animation strings
 	if (
 		CSS_TRANSITION.test(chunk.text) &&
@@ -575,14 +593,47 @@ const CLASS_FNS = new Set([
 ]);
 const CLASS_NAME = /class(?:es|Name|Names)?$/i;
 
-function context(stack: Node[]): Omit<Chunk, "text" | "start"> {
+/** Functions whose first argument is a message key or namespace. */
+const TRANSLATE_FNS = new Set(["useTranslations", "getTranslations"]);
+const TRANSLATE_METHODS = new Set(["rich", "raw", "markup", "has"]);
+
+function isTranslateCall(call: Node, tNames: Set<string>): boolean {
+	const callee = get(call, "callee");
+	if (callee?.type === "Identifier") {
+		const fn = nameOf(callee) ?? "";
+		return tNames.has(fn) || TRANSLATE_FNS.has(fn);
+	}
+	if (callee?.type === "MemberExpression") {
+		const obj = get(callee, "object");
+		return (
+			obj?.type === "Identifier" &&
+			tNames.has(nameOf(obj) ?? "") &&
+			TRANSLATE_METHODS.has(nameOf(get(callee, "property")) ?? "")
+		);
+	}
+	return false;
+}
+
+function context(
+	stack: Node[],
+	node: Node,
+	tNames: Set<string>,
+): Omit<Chunk, "text" | "start"> {
 	let classCtx = false;
 	let owner: string | undefined;
 	let isConsole = false;
 	let isText = false;
+	let key = false;
 	for (let i = stack.length - 1; i >= 0; i--) {
 		const n = stack[i] as Node;
 		const direct = i === stack.length - 1;
+		if (
+			direct &&
+			n.type === "CallExpression" &&
+			(n.arguments as Node[])?.[0] === node &&
+			isTranslateCall(n, tNames)
+		)
+			key = true;
 		if (n.type === "JSXAttribute") {
 			const name = nameOf(get(n, "name"));
 			if (owner === undefined) owner = name;
@@ -617,7 +668,7 @@ function context(stack: Node[]): Omit<Chunk, "text" | "start"> {
 		if (/Function|Program/.test(n.type)) break;
 	}
 	if (owner && TEXT_PROPS.has(owner)) isText = true;
-	return { classCtx, owner, console: isConsole, isText };
+	return { classCtx, owner, console: isConsole, isText, key };
 }
 
 // ---- TS/TSX ----------------------------------------------------------------
@@ -627,6 +678,8 @@ const BANNED_ICON =
 const ICON_SOURCES = new Set(["lucide-react", "@tabler/icons-react"]);
 const PRIMITIVE = new Map(REGISTRY.map((p) => [p.file, p]));
 const CURRENCY_TAIL = /(?:[$€£¥₹₽₩₺₴₦₱₫฿]|\bR\$|\bUS\$|\bAR\$)\s?$/;
+/** A symbol right after an amount (`${a} €`). A bare "$" needs a space before it (regex `$`). */
+const CURRENCY_HEAD = /^\s?(?:[€£¥₹₽₩₺₴₦₱₫฿]|R\$|US\$|AR\$)|^\s\$(?![{\w])/;
 const RAW_TAGS = new Set(["button", "select", "table", "textarea"]);
 const STYLE_DURATION_KEYS = new Set([
 	"transition",
@@ -654,10 +707,68 @@ function attr(el: Node, name: string): Node | undefined {
 	return undefined;
 }
 
-function hasSpread(el: Node): boolean {
-	return ((el.attributes as Node[]) ?? []).some(
-		(a) => a.type === "JSXSpreadAttribute",
-	);
+/** An expression child that may render text: a string, a value, a t() call. */
+function exprLabel(e: Node | undefined): boolean {
+	if (!e) return false;
+	switch (e.type) {
+		case "Literal":
+			return typeof e.value === "string" && e.value.trim() !== "";
+		case "TemplateLiteral":
+		case "Identifier":
+		case "CallExpression":
+		case "MemberExpression":
+			return true;
+		case "ParenthesizedExpression":
+		case "TSAsExpression":
+		case "TSNonNullExpression":
+			return exprLabel(get(e, "expression"));
+		case "ConditionalExpression":
+			return exprLabel(get(e, "consequent")) || exprLabel(get(e, "alternate"));
+		case "LogicalExpression":
+			return (
+				exprLabel(get(e, "right")) ||
+				(e.operator !== "&&" && exprLabel(get(e, "left")))
+			);
+		default:
+			return false;
+	}
+}
+
+const NAME_ATTRS = new Set(["aria-label", "aria-labelledby", "title"]);
+
+/** The button, or something inside it (an asChild link), has an accessible name prop. */
+function hasNameProp(el: Node): boolean {
+	let found = false;
+	walk(el, [], (n) => {
+		if (n.type === "JSXSpreadAttribute") found = true;
+		if (
+			n.type === "JSXAttribute" &&
+			NAME_ATTRS.has(nameOf(get(n, "name")) ?? "")
+		)
+			found = true;
+	});
+	return found;
+}
+
+/** An icon element anywhere inside: a lucide or tabler import, or a name like XIcon. */
+function hasIcon(el: Node, icons: Set<string>): boolean {
+	let found = false;
+	walk(el, [], (n) => {
+		if (n.type !== "JSXOpeningElement" || n === el.openingElement) return;
+		const tag = nameOf(get(n, "name")) ?? "";
+		if (icons.has(tag) || /^Icon[A-Z]|[a-z]Icon$/.test(tag)) found = true;
+	});
+	return found;
+}
+
+/** Repo-relative path an import specifier points at (no extension), or undefined for packages. */
+export function resolveImport(file: string, src: string): string | undefined {
+	let p: string;
+	if (src.startsWith("~/")) p = `src/${src.slice(2)}`;
+	else if (src.startsWith("./") || src.startsWith("../"))
+		p = posix.normalize(posix.join(posix.dirname(file), src));
+	else return undefined;
+	return p.replace(/\.(?:tsx?|jsx?)$/, "").replace(/\/index$/, "");
 }
 
 /** Visible text or an sr-only label anywhere inside a JSX element. */
@@ -676,16 +787,7 @@ function hasLabel(el: Node): boolean {
 			get(n, "expression") &&
 			get(n, "expression")?.type !== "JSXEmptyExpression"
 		) {
-			const e = get(n, "expression");
-			if (
-				e &&
-				(e.type === "Literal" ||
-					e.type === "TemplateLiteral" ||
-					e.type === "Identifier" ||
-					e.type === "CallExpression" ||
-					e.type === "MemberExpression")
-			)
-				found = true;
+			if (exprLabel(get(n, "expression"))) found = true;
 		}
 		if (
 			n.type === "JSXAttribute" &&
@@ -700,13 +802,56 @@ function hasLabel(el: Node): boolean {
 function scanTs(file: string, text: string, out: Raw[]) {
 	const lang = file.endsWith(".tsx") ? "tsx" : "ts";
 	const parsed = parseSync(file, text, { lang });
+	if (parsed.errors.length)
+		throw new Error(
+			`uiRules: cannot parse ${file}: ${parsed.errors.map((e) => e.message).join("; ")}`,
+		);
 	const program = parsed.program as unknown as Node;
 	const starts = lineStarts(text);
 	const line = (i: number) => lineOf(starts, i);
+	/** Names bound to a translator in this file (`const tX = useTranslations()`). */
+	const tNames = new Set(["t"]);
+	/** Local names of icon components imported from an icon set. */
+	const icons = new Set<string>();
+	const legacyImport = (src: string, at: number) => {
+		const target = resolveImport(file, src);
+		const ui = target ? /^src\/components\/ui\/([\w-]+)$/.exec(target) : null;
+		const p = ui ? PRIMITIVE.get(ui[1] ?? "") : undefined;
+		if (p && p.status !== "core")
+			out.push({
+				rule: "UI-041",
+				line: line(at),
+				match: `${p.file} (${p.status})`,
+			});
+	};
 
 	walk(program, [], (n, stack) => {
 		const parent = stack[stack.length - 1];
 		switch (n.type) {
+			case "VariableDeclarator": {
+				let init = get(n, "init");
+				if (init?.type === "AwaitExpression") init = get(init, "argument");
+				const fn = nameOf(get(init, "callee"));
+				const id = nameOf(get(n, "id"));
+				if (
+					init?.type === "CallExpression" &&
+					TRANSLATE_FNS.has(fn ?? "") &&
+					id
+				)
+					tNames.add(id);
+				break;
+			}
+			case "ExportNamedDeclaration":
+			case "ExportAllDeclaration": {
+				const src = str(get(n, "source"), "value");
+				if (src) legacyImport(src, n.start);
+				break;
+			}
+			case "ImportExpression": {
+				const src = staticString(get(n, "source"));
+				if (src) legacyImport(src, n.start);
+				break;
+			}
 			case "Literal": {
 				if (typeof n.value !== "string") break;
 				if (parent && /Import|Export/.test(parent.type)) break;
@@ -716,7 +861,7 @@ function scanTs(file: string, text: string, out: Raw[]) {
 				)
 					break;
 				runTokenRules(
-					{ text: n.value, start: n.start, ...context(stack) },
+					{ text: n.value, start: n.start, ...context(stack, n, tNames) },
 					line,
 					out,
 				);
@@ -724,7 +869,11 @@ function scanTs(file: string, text: string, out: Raw[]) {
 			}
 			case "TemplateElement": {
 				const text = cooked(n) ?? "";
-				runTokenRules({ text, start: n.start, ...context(stack) }, line, out);
+				runTokenRules(
+					{ text, start: n.start, ...context(stack, n, tNames) },
+					line,
+					out,
+				);
 				break;
 			}
 			case "JSXText": {
@@ -745,6 +894,8 @@ function scanTs(file: string, text: string, out: Raw[]) {
 					if (src === "@tabler/icons-react")
 						out.push({ rule: "UI-034", line: line(n.start), match: src });
 					for (const s of (n.specifiers as Node[]) ?? []) {
+						const local = nameOf(get(s, "local"));
+						if (local) icons.add(local);
 						const imported =
 							nameOf(get(s, "imported")) ?? nameOf(get(s, "local"));
 						if (imported && BANNED_ICON.test(imported))
@@ -755,17 +906,7 @@ function scanTs(file: string, text: string, out: Raw[]) {
 							});
 					}
 				}
-				const ui =
-					/^(?:~\/components\/ui\/|\.\.?\/(?:components\/)?ui\/)([\w-]+)$/.exec(
-						src,
-					);
-				const p = ui ? PRIMITIVE.get(ui[1] ?? "") : undefined;
-				if (p && p.status !== "core")
-					out.push({
-						rule: "UI-041",
-						line: line(n.start),
-						match: `${p.file} (${p.status})`,
-					});
+				legacyImport(src, n.start);
 				break;
 			}
 			case "JSXOpeningElement": {
@@ -780,27 +921,6 @@ function scanTs(file: string, text: string, out: Raw[]) {
 							line: line(n.start),
 							match: `<input type="${type ?? "text"}">`,
 						});
-				}
-				// UI-131 icon-only buttons
-				if (/Button$/.test(tag)) {
-					const size = staticString(get(attr(n, "size"), "value"));
-					const named =
-						attr(n, "aria-label") ||
-						attr(n, "aria-labelledby") ||
-						attr(n, "title") ||
-						hasSpread(n);
-					if (
-						size?.startsWith("icon") &&
-						!named &&
-						parent &&
-						!hasLabel(parent)
-					) {
-						out.push({
-							rule: "UI-131",
-							line: line(n.start),
-							match: `<${tag} size="${size}">`,
-						});
-					}
 				}
 				// style={{ ... }}
 				const style = get(get(attr(n, "style"), "value"), "expression");
@@ -856,35 +976,67 @@ function scanTs(file: string, text: string, out: Raw[]) {
 				break;
 			}
 			case "JSXElement": {
-				// UI-071: <span>${amount}</span>
+				// UI-131 icon-only buttons: size="icon*" or only an icon inside
+				const open = get(n, "openingElement") as Node;
+				const tag = nameOf(get(open, "name")) ?? "";
+				if (/^button$|Button$/.test(tag)) {
+					const size = staticString(get(attr(open, "size"), "value"));
+					const iconOnly =
+						size?.startsWith("icon") || hasIcon(n, icons)
+							? !hasLabel(n)
+							: false;
+					if (iconOnly && !hasNameProp(n))
+						out.push({
+							rule: "UI-131",
+							line: line(n.start),
+							match: size?.startsWith("icon")
+								? `<${tag} size="${size}">`
+								: `<${tag}><Icon /></${tag}>`,
+						});
+				}
+				// UI-071: <span>${amount}</span> and <span>{amount} €</span>
 				const ch = (n.children as Node[]) ?? [];
 				for (let i = 0; i + 1 < ch.length; i++) {
 					const a = ch[i] as Node;
 					const b = ch[i + 1] as Node;
-					if (
+					const before =
 						a.type === "JSXText" &&
 						CURRENCY_TAIL.test(str(a, "value") ?? "") &&
-						b.type === "JSXExpressionContainer"
-					) {
+						b.type === "JSXExpressionContainer";
+					const after =
+						a.type === "JSXExpressionContainer" &&
+						get(a, "expression")?.type !== "JSXEmptyExpression" &&
+						b.type === "JSXText" &&
+						CURRENCY_HEAD.test(str(b, "value") ?? "");
+					if (before)
 						out.push({
 							rule: "UI-071",
 							line: line(a.end - 1),
 							match: `${(str(a, "value") ?? "").trim()}{…}`,
 						});
-					}
+					else if (after)
+						out.push({
+							rule: "UI-071",
+							line: line(b.start),
+							match: `{…}${(str(b, "value") ?? "").trim().slice(0, 4)}`,
+						});
 				}
 				break;
 			}
 			case "TemplateLiteral": {
 				const q = (n.quasis as Node[]) ?? [];
 				const exprs = (n.expressions as Node[]) ?? [];
-				for (let i = 0; i < exprs.length; i++) {
+				for (let i = 0; i < q.length; i++) {
 					const part = cooked(q[i]) ?? "";
-					if (CURRENCY_TAIL.test(part))
+					const before = i < exprs.length && CURRENCY_TAIL.test(part);
+					const after = i > 0 && CURRENCY_HEAD.test(part);
+					if (before || after)
 						out.push({
 							rule: "UI-071",
 							line: line(n.start),
-							match: `\`${part.slice(-4)}\${…}\``,
+							match: before
+								? `\`${part.slice(-4)}\${…}\``
+								: `\`\${…}${part.slice(0, 4)}\``,
 						});
 				}
 				break;
@@ -894,18 +1046,29 @@ function scanTs(file: string, text: string, out: Raw[]) {
 				const left = get(n, "left");
 				const right = get(n, "right");
 				const ls = staticString(left);
+				const rs = staticString(right);
 				if (
 					ls !== undefined &&
 					CURRENCY_TAIL.test(ls) &&
 					right &&
-					staticString(right) === undefined
-				) {
+					rs === undefined
+				)
 					out.push({
 						rule: "UI-071",
 						line: line(n.start),
 						match: `"${ls.slice(-4)}" + …`,
 					});
-				}
+				else if (
+					rs !== undefined &&
+					CURRENCY_HEAD.test(rs) &&
+					left &&
+					ls === undefined
+				)
+					out.push({
+						rule: "UI-071",
+						line: line(n.start),
+						match: `… + "${rs.slice(0, 4)}"`,
+					});
 				break;
 			}
 			case "CallExpression": {
@@ -955,10 +1118,42 @@ function stripCssComments(text: string): string {
 	return text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
 }
 
+/** Font sizes on the scale, in px (12, 13, 14, 16, 22, 32). */
+const TYPE_PX = new Set([12, 13, 14, 16, 22, 32]);
+
+/** A CSS font-size off the scale: px and rem (16px root) are converted; em only 1em. */
+function offScaleFont(value: string): boolean {
+	if (!/\d/.test(value) || /var\(/.test(value)) return false;
+	const m = /(\d*\.?\d+)(px|rem|em)\b/.exec(value);
+	if (!m) return false;
+	const n = Number(m[1]);
+	if (m[2] === "em") return n !== 1;
+	return !TYPE_PX.has(m[2] === "rem" ? n * 16 : n);
+}
+
 function scanCss(file: string, text: string, out: Raw[]) {
-	const css = stripCssComments(text);
-	const starts = lineStarts(css);
+	const starts = lineStarts(text);
 	const line = (i: number) => lineOf(starts, i);
+	// `@apply <classes>` runs the class rules, then is blanked so the
+	// declaration scan below does not read `hover:bg-x` as a declaration.
+	const css = stripCssComments(text).replace(
+		/@apply\s+([^;{}]*)/g,
+		(m, classes: string, at: number) => {
+			runTokenRules(
+				{
+					text: classes,
+					start: at + m.indexOf(classes),
+					classCtx: true,
+					console: false,
+					isText: false,
+					key: false,
+				},
+				line,
+				out,
+			);
+			return m.replace(/[^\n]/g, " ");
+		},
+	);
 	const theme = THEME_FILES.has(file);
 	// Declarations: `prop: value;` inside blocks (selectors never match).
 	const decl = /(?:^|[{;\s])(--?[\w-]+|[a-z-]+)\s*:\s*([^;{}]*)/g;
@@ -977,15 +1172,12 @@ function scanCss(file: string, text: string, out: Raw[]) {
 					out.push({ rule: "UI-001", line: line(at), match: c[0] });
 			}
 		}
-		if (prop === "font-size" && /\d/.test(value) && !/var\(/.test(value)) {
-			const px = /([\d.]+)px/.exec(value);
-			if (px && !["12", "13", "14", "16", "22", "32"].includes(px[1] ?? ""))
-				out.push({
-					rule: "UI-010",
-					line: line(at),
-					match: `font-size: ${value.trim()}`,
-				});
-		}
+		if (prop === "font-size" && offScaleFont(value))
+			out.push({
+				rule: "UI-010",
+				line: line(at),
+				match: `font-size: ${value.trim()}`,
+			});
 		if (
 			prop === "font-weight" &&
 			/^(?:[789]00|bold|bolder|[123]00|lighter)$/.test(value.trim())

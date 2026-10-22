@@ -29,6 +29,11 @@ describe("scope", () => {
 		expect(inScope("messages/en.json")).toBe(true);
 		expect(inScope("docs/ui/design.json")).toBe(false);
 	});
+	it("throws with the file path on a parse error", () => {
+		expect(() => scanFile(TSX, "export const A = () => <div>{ broken")).toThrow(
+			TSX,
+		);
+	});
 	it("runs style rules only on UI code, copy rules everywhere", () => {
 		miss("UI-002", `export const c = "text-red-500";`, "src/server/x.ts");
 		hit("UI-120", `export const c = "a ${EM} b";`, "src/server/x.ts");
@@ -71,6 +76,26 @@ describe("type", () => {
 		hit("UI-010", ".a { font-size: 10px; }", CSS);
 		miss("UI-010", cls("text-sm text-meta text-title text-hero"));
 		miss("UI-010", ".a { font-size: 14px; }", CSS);
+	});
+	it("UI-010 rem and em font sizes in CSS", () => {
+		hit("UI-010", ".a { font-size: 0.625rem; }", CSS);
+		hit("UI-010", ".a { font-size: 1.25rem; }", CSS);
+		hit("UI-010", ".a { font-size: 0.9em; }", CSS);
+		miss("UI-010", ".a { font-size: 0.875rem; }", CSS);
+		miss("UI-010", ".a { font-size: 1rem; }", CSS);
+		miss("UI-010", ".a { font-size: 1em; }", CSS);
+	});
+	it("CSS @apply runs the class rules", () => {
+		hit("UI-002", ".a { @apply bg-white text-sm; }", CSS);
+		hit("UI-010", ".a { @apply text-2xl; }", CSS);
+		hit("UI-021", ".a {\n  @apply rounded-md;\n}", CSS);
+		hit("UI-001", ".a { @apply dark:bg-[#fff]; }", CSS);
+		expect(
+			scanFile(CSS, ".a { @apply dark:bg-[#fff]; }").filter(
+				(h) => h.rule === "UI-001",
+			).length,
+		).toBe(1);
+		miss("UI-002", ".a { @apply bg-surface text-fg; }", CSS);
 	});
 	it("UI-011 weights", () => {
 		hit("UI-011", cls("font-bold"));
@@ -170,6 +195,27 @@ describe("components", () => {
 			"src/components/ui/responsive-dialog.tsx",
 		);
 	});
+	it("UI-041 sees re-exports, dynamic imports and deep relative paths", () => {
+		hit("UI-041", `export { Card } from "~/components/ui/card";`);
+		hit("UI-041", `export * from "~/components/ui/dialog";`);
+		hit("UI-041", `export const L = () => import("~/components/ui/card");`);
+		hit(
+			"UI-041",
+			`import { Card } from "../../../components/ui/card";`,
+			"src/app/(dashboard)/x/page.tsx",
+		);
+		hit(
+			"UI-041",
+			`import { Sheet } from "../ui/sheet";`,
+			"src/components/people/x.tsx",
+		);
+		miss("UI-041", `export { Button } from "~/components/ui/button";`);
+		miss(
+			"UI-041",
+			`import { Card } from "../ui/card";`,
+			"src/app/(dashboard)/x/page.tsx",
+		);
+	});
 	it("UI-042 raw elements", () => {
 		hit("UI-042", `export const A = () => <button onClick={f}>x</button>;`);
 		hit("UI-042", `export const A = () => <input type="checkbox" />;`);
@@ -209,6 +255,17 @@ describe("money", () => {
 			`export const A = ({ x }: { x: string }) => <span>{x}</span>;`,
 		);
 	});
+	it("UI-071 symbol after the amount", () => {
+		hit("UI-071", "export const s = (a: number) => `${a} €`;");
+		hit("UI-071", "export const s = (a: number) => `${a}€`;");
+		hit(
+			"UI-071",
+			`export const A = ({ a }: { a: string }) => <span>{a} €</span>;`,
+		);
+		hit("UI-071", `export const s = (a: string) => a + " €";`);
+		miss("UI-071", "export const r = (x: string) => new RegExp(`^${x}$`);");
+		miss("UI-071", "export const s = (a: number) => `${a} items`;");
+	});
 });
 
 describe("motion", () => {
@@ -247,6 +304,12 @@ describe("wording", () => {
 		miss("UI-120", `// a ${EM} b\nexport const s = "a, b";`);
 		miss("UI-120", `console.log("debug ${EM} x");`);
 	});
+	it("UI-120 HTML entities for the em dash", () => {
+		hit("UI-120", `export const A = () => <p>Paid &mdash; thanks</p>;`);
+		hit("UI-120", `export const A = () => <p>Paid &#8212; thanks</p>;`);
+		hit("UI-120", `export const A = () => <p title="a &mdash; b" />;`);
+		miss("UI-120", `export const A = () => <p>Paid &ndash; thanks</p>;`);
+	});
 	it("UI-121 glossary", () => {
 		hit("UI-121", `{\n  "a": "Log in to continue"\n}`, "messages/en.json");
 		hit("UI-121", `export const A = () => <p>Add a participant</p>;`);
@@ -261,6 +324,21 @@ describe("wording", () => {
 		);
 		miss("UI-121", `export const ROUTE = "/login";`);
 	});
+	it("UI-121 ignores translation keys", () => {
+		miss(
+			"UI-121",
+			`export const A = () => { const t = useTranslations("x"); return <Input placeholder={t("receivable")} />; };`,
+		);
+		miss(
+			"UI-121",
+			`export const A = () => { const tPeople = useTranslations("participants"); return <p title={tPeople("participant")} />; };`,
+		);
+		miss("UI-121", `export const A = () => <p>{t.rich("login", {})}</p>;`);
+		hit(
+			"UI-121",
+			`export const A = () => <p title={t("x", { who: "a participant" })} />;`,
+		);
+	});
 });
 
 describe("accessibility", () => {
@@ -273,6 +351,13 @@ describe("accessibility", () => {
 			".a:focus-visible { outline: none; box-shadow: var(--elev-ctl); }",
 			CSS,
 		);
+	});
+	it("UI-130 focus-visible removals and empty replacements", () => {
+		hit("UI-130", cls("focus-visible:outline-none"));
+		hit("UI-130", cls("outline-none focus-visible:ring-0"));
+		hit("UI-130", cls("outline-none focus-visible:ring-offset-2"));
+		miss("UI-130", cls("focus-visible:outline-none focus-visible:ring-2"));
+		miss("UI-130", cls("outline-none focus-visible:ring-[3px]"));
 	});
 	it("UI-131 icon-only buttons", () => {
 		hit("UI-131", `export const A = () => <Button size="icon"><X /></Button>;`);
@@ -288,5 +373,46 @@ describe("accessibility", () => {
 			"UI-131",
 			`export const A = () => <Button size="icon" onClick={go}>{t("close")}</Button>;`,
 		);
+	});
+	it("UI-131 icon-only buttons of any size", () => {
+		const head = `import { Trash2, X } from "lucide-react";\n`;
+		hit(
+			"UI-131",
+			`${head}export const A = () => <Button variant="ghost"><Trash2 /></Button>;`,
+		);
+		hit(
+			"UI-131",
+			`${head}export const A = () => <Button><X className="size-4" /></Button>;`,
+		);
+		hit("UI-131", `export const A = () => <Button><CloseIcon /></Button>;`);
+		hit(
+			"UI-131",
+			`${head}export const A = () => <button type="button"><X /></button>;`,
+		);
+		hit(
+			"UI-131",
+			`${head}export const A = () => <Button asChild><Link href="/"><X /></Link></Button>;`,
+		);
+		miss(
+			"UI-131",
+			`${head}export const A = () => <Button><Trash2 />Delete</Button>;`,
+		);
+		miss(
+			"UI-131",
+			`${head}export const A = () => <Button><X />{t("close")}</Button>;`,
+		);
+		miss(
+			"UI-131",
+			`${head}export const A = () => <Button><X /><span className="sr-only">{t("close")}</span></Button>;`,
+		);
+		miss(
+			"UI-131",
+			`${head}export const A = () => <Button aria-label={t("close")}><X /></Button>;`,
+		);
+		miss(
+			"UI-131",
+			`${head}export const A = () => <Button asChild><Link aria-label={t("home")} href="/"><X /></Link></Button>;`,
+		);
+		miss("UI-131", `export const A = () => <Button>{label}</Button>;`);
 	});
 });

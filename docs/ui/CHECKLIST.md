@@ -16,7 +16,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-007 [review] The screen keeps the ratio: warm neutrals about 70%, brand 10 to 15%, accent about 10%, meaning colors only where meaning exists. §2.1 R19
 
 ## Type
-- UI-010 [auto] Font sizes from the scale only: no `text-lg` and up, no `text-[Npx]`, no `fontSize` in style props, no off-scale `font-size` in CSS; nothing under 12px. §2.3 R12
+- UI-010 [auto] Font sizes from the scale only: no `text-lg` and up, no `text-[Npx]`, no `fontSize` in style props, no off-scale `font-size` in CSS (px or rem; em only `1em`); nothing under 12px. CSS `@apply` lists get every class rule. §2.3 R12
 - UI-011 [auto] Weights 400, 500, 600 only: no `font-bold`, `font-black`, `font-light`... §2.3 R12
 - UI-012 [auto] No uppercase or letter-spaced eyebrows (`uppercase`, `tracking-wide*`, `text-transform: uppercase`). §2.3 R12
 - UI-013 [review] Mono only for strings you would paste; every number has tabular figures. §2.3
@@ -39,7 +39,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 
 ## Components
 - UI-040 [auto] Every file in `src/components/ui` has an entry in `registry.ts` with its job and status; a new primitive needs the owner's sign-off. §4 R18
-- UI-041 [auto] No import of a legacy primitive (`card`, `stat-card`, `toggle`, `toggle-group`) or an internal one (`dialog`, `drawer`, `sheet`, `alert-dialog`, `avatar`, `calendar`) outside `src/components/ui`. §4 R2 R3 R7 R18
+- UI-041 [auto] No import of a legacy primitive (`card`, `stat-card`, `toggle`, `toggle-group`) or an internal one (`dialog`, `drawer`, `sheet`, `alert-dialog`, `avatar`, `calendar`) outside `src/components/ui`, by import, re-export or dynamic `import()`, through `~/` or a relative path. §4 R2 R3 R7 R18
 - UI-042 [auto] No raw `<button>`, `<input>` (other than file and hidden), `<select>`, `<textarea>`, `<table>` outside `src/components/ui`. §4 R18
 - UI-043 [review] The right component for the job per the decision table; no lookalike built. §4 R18
 - UI-044 [review] Segmented switches views of the same data in place; underline tabs move between sibling pages or panes; never two of the same kind stacked; nothing looks like one and acts like the other. §5 R7 R21
@@ -60,7 +60,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 
 ## Money
 - UI-070 [auto] Numbers, money and dates go through the formatters: no `toFixed`, `toLocaleString`, `toLocaleDateString`, `toLocaleTimeString`, `Intl.NumberFormat`, `Intl.DateTimeFormat` outside the formatter modules in `src/lib`. §7 R10
-- UI-071 [auto] No hand-built money strings: no currency symbol written next to an interpolated value (`` `$${x}` ``, `"€" + x`, `<span>${x}</span>`). §7 R10
+- UI-071 [auto] No hand-built money strings: no currency symbol written next to an interpolated value or after it (`` `$${x}` ``, `` `${x} €` ``, `"€" + x`, `<span>${x}</span>`, `<span>{x} €</span>`). §7 R10
 - UI-072 [review] The client never converts, sums or rounds money; it formats what the server sends; a missing rate is never 1. §7 R9
 - UI-073 [review] Foreign amounts show the ISO code, original first and home second; the rate type shows when it is not the default; a "$" currency always shows its code. §7 R10
 - UI-074 [review] Zero, missing rate, extreme (7+ digit ARS, 0.004 ETH), loading and unavailable states are designed and shown. §7 R14
@@ -92,14 +92,14 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-111 [review] Shared surfaces (balances, Needs you, verifications) refresh after their mutations and on a poll or push. R16
 
 ## Wording
-- UI-120 [auto] No em dashes in UI text: string literals, JSX text, `messages/*.json`. §13 R11
-- UI-121 [auto] No words the glossary replaces in English copy (log in, log out, login, participant, shadow profile, square up, pay off, receivable, payable, portfolio). §13 R11
+- UI-120 [auto] No em dashes in UI text: string literals, JSX text, `messages/*.json`, including the `&mdash;` and `&#8212;` entities. §13 R11
+- UI-121 [auto] No words the glossary replaces in English copy (translation keys such as `t("receivable")` are not copy) (log in, log out, login, participant, shadow profile, square up, pay off, receivable, payable, portfolio). §13 R11
 - UI-122 [review] US English, sentence case, at most one short sentence; the interface shows the rule instead of explaining it. §13 R11
 - UI-123 [review] Nouns and verbs follow the glossary table (Expense, Person, Settle up, Recurring expense, Not planned yet...). §13
 
 ## Accessibility
-- UI-130 [auto] No outline removed without a focus-visible replacement. §14
-- UI-131 [auto] Icon-only buttons (`size="icon*"`) have an accessible name. §14
+- UI-130 [auto] No outline removed (`outline-none`, `outline-hidden`, any variant including `focus-visible:`) without a visible `focus-visible:` replacement (`ring-0`, `ring-offset-*` alone do not count). §14
+- UI-131 [auto] Icon-only buttons (`size="icon*"`, or a `Button` or `<button>` whose only content is an icon, with no text, `t()` or `sr-only` child) have an accessible name (`aria-label`, also on an `asChild` link). §14
 - UI-132 [review] Status is never color alone; focus is visible; everything is reachable by keyboard; sheets trap and return focus. §14 R5
 - UI-133 [review] Targets: 24px on desktop web, 44pt iOS, 48dp Android. §14 §15
 
