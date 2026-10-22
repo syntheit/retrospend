@@ -6,7 +6,10 @@ import {
 	sessionKind,
 } from "~/server/api/v1/scopes";
 import { auth } from "~/server/better-auth";
-import { sessionTokenOf } from "~/server/better-auth/scoped-sessions";
+import {
+	bearerSessionToken,
+	pluginBearer,
+} from "~/server/better-auth/scoped-sessions";
 import { db } from "~/server/db";
 
 /** Prefix of every key the api-key plugin issues (config.ts). */
@@ -28,17 +31,11 @@ export type PrincipalResult =
 	| { ok: true; principal: Principal }
 	| { ok: false; reason: "none" | "invalid" };
 
-function bearerToken(headers: Headers): string | null {
-	const value = headers.get("authorization");
-	if (!value || !/^bearer /i.test(value)) return null;
-	return value.slice(7).trim() || null;
-}
-
 /** An API key comes in `x-api-key` or as a bearer token with our prefix. */
 function apiKeyFrom(headers: Headers): string | null {
 	const header = headers.get("x-api-key")?.trim();
 	if (header) return header;
-	const bearer = bearerToken(headers);
+	const bearer = pluginBearer(headers);
 	return bearer?.startsWith(API_KEY_PREFIX) ? bearer : null;
 }
 
@@ -80,7 +77,9 @@ export async function resolvePrincipal(
 	const key = apiKeyFrom(headers);
 	if (key) return fromApiKey(key);
 
-	const bearer = bearerToken(headers);
+	// Read the bearer exactly as the bearer plugin does, so this check and
+	// getSession agree on which credential is in use.
+	const bearer = pluginBearer(headers);
 	const hasBearer = bearer !== null;
 	const session = await auth.api.getSession({ headers });
 	if (!session) return { ok: false, reason: hasBearer ? "invalid" : "none" };
@@ -88,7 +87,7 @@ export async function resolvePrincipal(
 	// The bearer plugin ignores a token it cannot verify and leaves the
 	// cookie in place; the session must be the one the bearer token names.
 	// A signed token is "<token>.<signature>", maybe URL-encoded.
-	if (bearer && sessionTokenOf(bearer) !== session.session.token)
+	if (bearer && bearerSessionToken(bearer) !== session.session.token)
 		return { ok: false, reason: "invalid" };
 
 	const stored = session.session.scopes ?? null;

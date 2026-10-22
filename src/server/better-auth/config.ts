@@ -121,9 +121,9 @@ function isScopedSessionBody(body: unknown): boolean {
  *   session row stamped as the mobile app's, or a device token response.
  *   Never from request headers, so a web session's token never leaks to a
  *   page script.
- * - no Set-Cookie at all when a scoped session refreshes: scoped tokens
- *   refresh by bearer only, so a device client never gets a signed cookie
- *   it could replay next to some other bearer.
+ * - no Set-Cookie at all on a session refresh asked with an Authorization
+ *   header or by a scoped session: tokens sent as bearers refresh by bearer
+ *   only, so no client turns a bearer into a signed cookie.
  */
 const tokenHandout = {
 	id: "token-handout",
@@ -134,9 +134,14 @@ const tokenHandout = {
 				handler: createAuthMiddleware(async (ctx) => {
 					const responseHeaders = ctx.context.responseHeaders;
 					if (!responseHeaders) return;
+					// A refresh answered to a bearer (any Authorization header at
+					// all) or to a scoped session never sets a cookie: otherwise a
+					// token sent as a bearer comes back as a signed cookie.
+					const requestHeaders = ctx.request?.headers ?? ctx.headers;
 					if (
 						ctx.path === "/get-session" &&
-						isScopedSessionBody(ctx.context.returned)
+						(requestHeaders?.has("authorization") ||
+							isScopedSessionBody(ctx.context.returned))
 					) {
 						responseHeaders.delete("set-cookie");
 						responseHeaders.delete("set-auth-token");
@@ -188,7 +193,7 @@ export const auth = betterAuth({
 				? await guardScopedSessions(
 						context.path,
 						requestHeaders,
-						context.context.secret,
+						context.context.authCookies.sessionToken.name,
 					)
 				: null;
 			// With a bearer, the endpoint sees no session cookie (see guardScopedSessions).
