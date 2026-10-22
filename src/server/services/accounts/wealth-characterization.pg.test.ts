@@ -13,6 +13,7 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { normalizeDate } from "~/lib/date";
+import { readFigures } from "~/server/figures/read";
 import { WealthService } from "~/server/services/wealth.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 
@@ -135,5 +136,21 @@ describe("Wealth dashboard for a user without legs (characterization)", () => {
 			[today.toISOString().slice(0, 10), 2_859_327],
 		]);
 		expect(summary.netWorth30DaysAgo).toBeCloseTo(900_000, 2);
+	});
+
+	it("the netWorth figure is today's Wealth total, to the minor unit", async () => {
+		const readings = await readFigures(sofia.user.id, [
+			"netWorth",
+			"netWorthChange.total",
+			"notTracked",
+		]);
+		expect(readings.get("netWorth")).toEqual([
+			{ minor: 285_932_740, currency: "ARS" },
+		]);
+		expect(readings.get("notTracked")).toEqual([]);
+		// Over the last 30 days: the wallet went from 900,000 to everything today.
+		expect(readings.get("netWorthChange.total")).toEqual([
+			{ minor: 285_932_740 - 90_000_000, currency: "ARS" },
+		]);
 	});
 });
