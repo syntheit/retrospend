@@ -60,9 +60,8 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 				<Button
 					aria-label={s.t("close")}
 					onClick={s.requestClose}
-					size="icon-sm"
-					type="button"
-					variant="ghost"
+					icon
+					kind="ghost"
 				>
 					<XIcon />
 				</Button>
@@ -87,14 +86,15 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 				<div className="flex items-center justify-end gap-2 border-line border-t px-6 py-3 max-md:px-4 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
 					{props.footer ?? (
 						<>
-							<Button onClick={s.requestClose} type="button" variant="outline">
+							<Button kind="secondary" onClick={s.requestClose}>
 								{props.cancelLabel ?? s.t("cancel")}
 							</Button>
 							{props.submitLabel ? (
 								<Button
-									disabled={props.submitDisabled || s.busy}
+									disabled={props.submitDisabled}
+									kind="primary"
+									loading={s.busy}
 									onClick={() => void s.submit()}
-									type="button"
 								>
 									{props.submitLabel}
 								</Button>

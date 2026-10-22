@@ -88,9 +88,8 @@ function SwipeRow<E extends Entity>({
 						setState("closed");
 						actions.run(a);
 					}}
+					kind={a.danger ? "danger" : "secondary"}
 					tabIndex={state === s ? 0 : -1}
-					type="button"
-					variant={a.danger ? "destructive" : "secondary"}
 				>
 					<a.icon aria-hidden="true" />
 					{actions.label(a)}

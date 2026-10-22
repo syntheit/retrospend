@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { Button } from "~/components/ui/button";
-import { Chip } from "~/components/ui/chip";
+import { FilterChip } from "~/components/ui/chip";
 import {
 	Select,
 	SelectContent,
@@ -84,9 +84,9 @@ export function DateRangePanel(p: DateRangePanelProps) {
 					<Button
 						aria-label={t("earlier")}
 						onClick={() => d.page(-1)}
-						size="icon-sm"
-						type="button"
-						variant="ghost"
+						icon
+						kind="ghost"
+						size="sm"
 					>
 						<ChevronLeftIcon />
 					</Button>
@@ -95,9 +95,9 @@ export function DateRangePanel(p: DateRangePanelProps) {
 					<Button
 						aria-label={t("later")}
 						onClick={() => d.page(1)}
-						size="icon-sm"
-						type="button"
-						variant="ghost"
+						icon
+						kind="ghost"
+						size="sm"
 					>
 						<ChevronRightIcon />
 					</Button>
@@ -106,15 +106,14 @@ export function DateRangePanel(p: DateRangePanelProps) {
 				<div className="flex items-center gap-2 border-line border-t pt-3">
 					<CompareRow {...part} />
 					<span className="flex-1" />
-					<Button
-						onClick={p.onCancel}
-						size="sm"
-						type="button"
-						variant="outline"
-					>
+					<Button kind="secondary" onClick={p.onCancel} size="sm">
 						{t("cancel")}
 					</Button>
-					<Button onClick={() => p.onApply?.(d.result)} size="sm" type="button">
+					<Button
+						kind="primary"
+						onClick={() => p.onApply?.(d.result)}
+						size="sm"
+					>
 						{t("apply")}
 					</Button>
 				</div>
@@ -127,13 +126,13 @@ function Presets({ d, today, phone }: Part) {
 	const t = useTranslations("pickers.dateRange");
 	return presets(today).map((pr) =>
 		phone ? (
-			<Chip
-				active={pr.id === d.active}
+			<FilterChip
 				key={pr.id}
 				onClick={() => d.choose(pr)}
+				selected={pr.id === d.active}
 			>
 				{t(`preset.${pr.id}`)}
-			</Chip>
+			</FilterChip>
 		) : (
 			<Button
 				aria-pressed={pr.id === d.active}
@@ -142,10 +141,9 @@ function Presets({ d, today, phone }: Part) {
 					pr.id === d.active && "bg-brand-soft",
 				)}
 				key={pr.id}
+				kind="ghost"
 				onClick={() => d.choose(pr)}
 				size="sm"
-				type="button"
-				variant="ghost"
 			>
 				{t(`preset.${pr.id}`)}
 			</Button>

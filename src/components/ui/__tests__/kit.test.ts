@@ -8,17 +8,21 @@ const ROOT = join(import.meta.dirname, "../../../..");
 describe("registry: built components", () => {
 	it("every built entry exists at its target", () => {
 		const built = PLANNED.filter((p) => p.status === "built");
-		expect(built.map((p) => p.name)).toEqual([
-			"PageHeader",
-			"Toolbar",
-			"Section",
-			"SummaryLine",
-			"Money",
-			"Balance",
-			"AvailablePill",
-		]);
-		for (const p of built)
-			expect(existsSync(join(ROOT, p.target)), p.target).toBe(true);
+		expect(built.length).toBeGreaterThan(0);
+		for (const p of built) {
+			// A target may add a note after the path: "src/x.tsx (with y)".
+			const path = p.target.split(" ")[0] ?? "";
+			expect(path, p.name).toMatch(/^src\/.+\.tsx?$/);
+			expect(existsSync(join(ROOT, path)), `${p.name}: ${path}`).toBe(true);
+		}
+	});
+
+	it("a planned entry does not exist yet (mark it built when it lands)", () => {
+		for (const p of PLANNED.filter((x) => x.status === "planned")) {
+			const path = p.target.split(" ")[0] ?? "";
+			if (/\.tsx?$/.test(path))
+				expect(existsSync(join(ROOT, path)), `${p.name}: ${path}`).toBe(false);
+		}
 	});
 });
 

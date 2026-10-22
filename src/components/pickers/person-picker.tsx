@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { CommandGroup, CommandItem } from "~/components/ui/command";
-import { UserAvatar } from "~/components/ui/user-avatar";
+import { Face } from "~/components/ui/avatar-face";
 import { PickerGroup, PickerItem, PickerList } from "./picker-list";
 
 export type PickerPerson = {
@@ -55,9 +55,7 @@ export function PersonPicker({
 					<PickerItem
 						key={p.id}
 						keywords={[p.name]}
-						lead={
-							<UserAvatar avatarUrl={p.avatarUrl} name={p.name} size="xs" />
-						}
+						lead={<Face imageUrl={p.avatarUrl} name={p.name} size="xs" />}
 						onSelect={() => onChange(togglePerson(value, p.id))}
 						selected={value.includes(p.id)}
 						selectedLabel={t("selected")}

@@ -10,7 +10,7 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "~/components/ui/popover";
-import { SegmentedToggle } from "~/components/ui/segmented-toggle";
+import { Segmented } from "~/components/ui/segmented";
 import { Sheet } from "~/components/ui/sheet";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { DateField } from "./date-field";
@@ -51,7 +51,8 @@ export function DatePicker({ value, today, onChange }: DatePickerProps) {
 	};
 
 	const control = (
-		<SegmentedToggle<Choice>
+		<Segmented<Choice>
+			label={t("title")}
 			onChange={(c) => {
 				if (c === "today") onChange(today);
 				else if (c === "yesterday") onChange(addDays(today, -1));
@@ -134,18 +135,18 @@ function DayCalendar(p: {
 				<Button
 					aria-label={t("earlier")}
 					onClick={() => page("PageUp")}
-					size="icon-sm"
-					type="button"
-					variant="ghost"
+					icon
+					kind="ghost"
+					size="sm"
 				>
 					<ChevronLeftIcon />
 				</Button>
 				<Button
 					aria-label={t("later")}
 					onClick={() => page("PageDown")}
-					size="icon-sm"
-					type="button"
-					variant="ghost"
+					icon
+					kind="ghost"
+					size="sm"
 				>
 					<ChevronRightIcon />
 				</Button>

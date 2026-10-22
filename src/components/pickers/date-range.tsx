@@ -1,10 +1,9 @@
 "use client";
 
-import { ChevronDownIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 
-import { Button } from "~/components/ui/button";
+import { FilterChip } from "~/components/ui/chip";
 import {
 	Popover,
 	PopoverContent,
@@ -51,18 +50,15 @@ export function DateRange({
 	}, []);
 
 	const trigger = (
-		<Button
+		<FilterChip
 			aria-haspopup="dialog"
 			aria-label={t("trigger", { range: label })}
 			className={className}
 			onClick={phone ? () => setOpen(true) : undefined}
-			size="sm"
-			type="button"
-			variant="outline"
+			value
 		>
 			{label}
-			<ChevronDownIcon aria-hidden="true" />
-		</Button>
+		</FilterChip>
 	);
 
 	const apply = (r: DateRangeResult) => {
