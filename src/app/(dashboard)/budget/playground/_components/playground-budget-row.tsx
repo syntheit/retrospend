@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Input } from "~/components/ui/input";
 import { Slider } from "~/components/ui/slider";
 import { useCategoryName } from "~/hooks/use-category-name";
@@ -19,6 +20,7 @@ export function PlaygroundBudgetRow({
 	category,
 	currency,
 }: PlaygroundBudgetRowProps) {
+	const t = useTranslations("playground");
 	const { simulatedBudgets, updateBudget } = usePlayground();
 	const { formatCurrency } = useCurrencyFormatter();
 	const { displayName } = useCategoryName();
@@ -94,7 +96,7 @@ export function PlaygroundBudgetRow({
 				</div>
 
 				<div className="flex items-center justify-between text-muted-foreground text-xs lg:hidden">
-					<span>Quick Tune</span>
+					<span>{t("quickTune")}</span>
 					<span>{formatCurrency(amount, currency)}</span>
 				</div>
 			</div>
