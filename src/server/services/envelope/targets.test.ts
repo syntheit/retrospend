@@ -341,3 +341,26 @@ describe("savingsNeed (SPEC §5.4 savings table)", () => {
 		},
 	);
 });
+
+describe("savingsNeed with a monthly amount of 0", () => {
+	it.each([
+		{
+			// By hand: 1,000 still to go and nothing a month: no need, never reached at this pace.
+			name: "a goal not reached yet is never reached at 0 a month",
+			progress: 5_000,
+			out: { need: 0, projectedMonth: null },
+		},
+		{
+			name: "a goal already reached is reached this month",
+			progress: 6_000,
+			out: { need: 0, projectedMonth: 202611 },
+		},
+	])("$name", ({ progress, out }) => {
+		expect(
+			savingsNeed(
+				{ amount: m(6_000), monthly: 0 },
+				{ month: 202611, progress: m(progress), assigned: 0 },
+			),
+		).toEqual(out);
+	});
+});

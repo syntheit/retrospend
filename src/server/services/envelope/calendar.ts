@@ -12,7 +12,13 @@ const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 function parse(date: IsoDate): { y: number; m: number; d: number } {
 	const match = ISO.exec(date);
 	if (!match) throw new RangeError(`not a YYYY-MM-DD date: ${date}`);
-	return { y: Number(match[1]), m: Number(match[2]), d: Number(match[3]) };
+	const y = Number(match[1]);
+	const m = Number(match[2]);
+	const d = Number(match[3]);
+	if (m < 1 || m > 12 || d < 1 || d > daysInMonth(y, m)) {
+		throw new RangeError(`not a calendar date: ${date}`);
+	}
+	return { y, m, d };
 }
 
 function toUtc(date: IsoDate): number {

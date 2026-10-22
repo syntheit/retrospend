@@ -32,7 +32,16 @@ export function paidEnough(paid: Minor, amount: Minor): boolean {
  * or after the month start; a linked bill still inside its 7-day grace keeps
  * its late due date; a cycle already paid to 90% advances one repeat.
  */
-export function billCycle(b: BillCycleInput): { due: IsoDate; done: boolean } {
+export function billCycle(b: BillCycleInput): {
+	due: IsoDate;
+	done: boolean;
+} {
+	const r = b.repeatMonths;
+	if (r !== null && (!Number.isInteger(r) || r < 1)) {
+		throw new RangeError(
+			`a bill repeats every whole number of months (1 or more), got ${r}`,
+		);
+	}
 	let k = 0;
 	const dueAt = (i: number) =>
 		b.repeatMonths ? addMonthsToDate(b.nextDue, i * b.repeatMonths) : b.nextDue;

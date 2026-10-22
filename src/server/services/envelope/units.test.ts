@@ -97,4 +97,19 @@ describe("calendar", () => {
 		expect(daysBetween("2026-10-21", "2026-10-31")).toBe(10);
 		expect(dayOfWeek("2026-10-05")).toBe(1);
 	});
+
+	it.each([
+		"2026-02-30",
+		"2026-02-29",
+		"2026-13-01",
+		"2026-00-10",
+		"2026-04-31",
+		"2026-1-01",
+	])("rejects the impossible date %s", (date) => {
+		expect(() => addDays(date, 0)).toThrow(RangeError);
+	});
+
+	it("accepts February 29 in a leap year", () => {
+		expect(addDays("2028-02-29", 1)).toBe("2028-03-01");
+	});
 });

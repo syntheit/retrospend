@@ -88,4 +88,8 @@ describe("billCycle (D26 grace, S8, S9 paid early)", () => {
 	])("$name", ({ o, due, done }) => {
 		expect(billCycle({ ...base, ...o })).toEqual({ due, done });
 	});
+
+	it.each([0, -1, 1.5])("rejects a repeat of %s months", (repeatMonths) => {
+		expect(() => billCycle({ ...base, repeatMonths })).toThrow(RangeError);
+	});
 });

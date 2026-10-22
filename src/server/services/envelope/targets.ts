@@ -107,8 +107,8 @@ export function savingsShape(t: SavingsTarget): SavingsShape {
 
 export interface SavingsResult {
 	need: Minor;
-	/** AMOUNT_MONTHLY: the month the goal is reached at this pace. */
-	projectedMonth?: MonthKey;
+	/** AMOUNT_MONTHLY: the month the goal is reached at this pace; null when it never is (0 a month). */
+	projectedMonth?: MonthKey | null;
 	/** MONTHLY_DATE: what the goal holds at its date at this pace. */
 	totalAtDue?: Minor;
 }
@@ -138,9 +138,10 @@ export function savingsNeed(
 	const toGo = (t.amount as Minor) - start;
 	const need = Math.max(0, Math.min(monthly, toGo) - s.assigned);
 	const after = toGo - s.assigned - need;
-	const projectedMonth =
-		after <= 0 ? s.month : addMonths(s.month, ceilDiv(after, monthly));
-	return { need, projectedMonth };
+	if (after <= 0) return { need, projectedMonth: s.month };
+	// Nothing a month never reaches the amount.
+	if (monthly <= 0) return { need, projectedMonth: null };
+	return { need, projectedMonth: addMonths(s.month, ceilDiv(after, monthly)) };
 }
 
 /** History line rule: the goal's A_H moved by more than 5% (SPEC §5.4, B3). */
