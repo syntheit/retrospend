@@ -165,6 +165,12 @@ export const REGISTRY: Primitive[] = [
 		job: "Overflow menu and pickers; items come from the action registry (R8)",
 	},
 	{
+		file: "edge-panel",
+		status: "legacy",
+		job: "Radix dialog drawn as an edge panel: the phone bottom sheet inside ResponsiveDialog and the sidebar's phone panel",
+		use: "responsive-dialog (Sheet)",
+	},
+	{
 		file: "empty-state",
 		status: "core",
 		plan: ["EmptyState"],
@@ -226,12 +232,6 @@ export const REGISTRY: Primitive[] = [
 		job: "Pick one of a list at control height (no native select)",
 	},
 	{ file: "separator", status: "core", job: "Hairline between groups" },
-	{
-		file: "sheet",
-		status: "internal",
-		job: "Radix dialog drawn as an edge panel: the phone bottom sheet inside ResponsiveDialog and the sidebar's phone panel",
-		use: "responsive-dialog (Sheet)",
-	},
 	{
 		file: "sidebar",
 		status: "core",

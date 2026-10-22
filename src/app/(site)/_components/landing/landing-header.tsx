@@ -32,7 +32,7 @@ import {
 	SheetDescription,
 	SheetTitle,
 	SheetTrigger,
-} from "~/components/ui/sheet";
+} from "~/components/ui/edge-panel";
 import { UserAvatar } from "~/components/ui/user-avatar";
 import { useSession } from "~/hooks/use-session";
 import { authClient } from "~/lib/auth-client";
