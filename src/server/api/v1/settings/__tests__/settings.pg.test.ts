@@ -219,7 +219,8 @@ describe("/api/v1/settings", () => {
 		beforeAll(async () => {
 			const date = new Date("2026-10-20T00:00:00Z");
 			rates = await Promise.all(
-				["EUR", "ARS", "BRL"].map((currency) =>
+				// Currencies no other pg test stores rates for (files share one database).
+				["CHF", "SEK", "NOK"].map((currency) =>
 					adminDb.exchangeRate.create({
 						data: { date, currency, type: "official", rate: "1.5" },
 					}),
@@ -236,21 +237,21 @@ describe("/api/v1/settings", () => {
 			});
 
 		it("pins in order, reorders, unpins and replays once", async () => {
-			const [eur, ars, brl] = rates.map((r) => r.id) as [
+			const [chf, sek, nok] = rates.map((r) => r.id) as [
 				string,
 				string,
 				string,
 			];
 			const key = randomUUID();
 			const first = await expectBody(
-				await pin(asAlice, eur, key),
+				await pin(asAlice, chf, key),
 				s.addFavoriteRate,
 			);
-			const again = await pin(asAlice, eur, key);
+			const again = await pin(asAlice, chf, key);
 			expect(again.headers.get("idempotent-replayed")).toBe("true");
 			expect(await again.json()).toEqual(first);
-			await pin(asAlice, ars);
-			await pin(asAlice, brl);
+			await pin(asAlice, sek);
+			await pin(asAlice, nok);
 			await expect(
 				adminDb.exchangeRateFavorite.count({ where: { userId: alice } }),
 			).resolves.toBe(3);
@@ -259,7 +260,7 @@ describe("/api/v1/settings", () => {
 				await call("/settings/favorite-rates/order", {
 					method: "PUT",
 					headers: asAlice,
-					body: { exchangeRateIds: [brl, eur] },
+					body: { exchangeRateIds: [nok, chf] },
 					idempotent: true,
 				}),
 				s.reorderFavoriteRates,
@@ -271,7 +272,7 @@ describe("/api/v1/settings", () => {
 				await call("/settings/favorite-rates?limit=2", { headers: asAlice }),
 				s.listFavoriteRates,
 			);
-			expect(page1.items.map((f) => f.exchangeRateId)).toEqual([brl, eur]);
+			expect(page1.items.map((f) => f.exchangeRateId)).toEqual([nok, chf]);
 			expect(page1.items[0]?.rate.unitsPerUsd).toBe("1.5");
 			const page2 = await expectBody<{ items: { exchangeRateId: string }[] }>(
 				await call(
@@ -282,11 +283,11 @@ describe("/api/v1/settings", () => {
 				),
 				s.listFavoriteRates,
 			);
-			// Left out of the reorder, ARS goes after the listed pins.
-			expect(page2.items.map((f) => f.exchangeRateId)).toEqual([ars]);
+			// Left out of the reorder, SEK goes after the listed pins.
+			expect(page2.items.map((f) => f.exchangeRateId)).toEqual([sek]);
 
 			await expectBody(
-				await call(`/settings/favorite-rates/${eur}`, {
+				await call(`/settings/favorite-rates/${chf}`, {
 					method: "DELETE",
 					headers: asAlice,
 					idempotent: true,
