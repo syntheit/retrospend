@@ -418,6 +418,18 @@ describe("the guard reads cookies and bearers exactly as better-auth does", () =
 		expect(res.headers.get("set-auth-token")).toBeNull();
 	});
 
+	it("never falls back to a web cookie behind a bad-signature bearer", async () => {
+		const webToken = await sessionDueForRefresh(user.id);
+		const list = await authRequest("/list-sessions", {
+			method: "GET",
+			headers: {
+				authorization: "Bearer junk.badsig",
+				cookie: `better-auth.session_token=${await signedValue(webToken)}`,
+			},
+		});
+		expect(list.status).toBe(401);
+	});
+
 	it("keeps a web session working next to a Basic Authorization header", async () => {
 		const webToken = await sessionDueForRefresh(user.id);
 		const headers = {

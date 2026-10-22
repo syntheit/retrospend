@@ -72,8 +72,10 @@ function withoutSessionCookies(cookieName: string, headers: Headers): Headers {
 	const kept = [...parseCookies(headers.get("cookie") ?? "")]
 		.filter(([name]) => !drop.has(name))
 		.map(([name, value]) => `${name}=${encodeURIComponent(value)}`);
-	if (kept.length > 0) next.set("cookie", kept.join("; "));
-	else next.delete("cookie");
+	// Always set, even to "": better-auth merges hook headers into the
+	// request with headers.forEach(set), so a deleted header would leave the
+	// original cookie in place.
+	next.set("cookie", kept.join("; "));
 	return next;
 }
 
