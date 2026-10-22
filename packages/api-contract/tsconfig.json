@@ -1,0 +1,21 @@
+{
+	// The contract runs on the server, in the browser and in React Native,
+	// so its source gets the ECMAScript library only. Tests and the
+	// generator script use Node and are checked by the root tsconfig.
+	"compilerOptions": {
+		"target": "es2022",
+		"lib": ["ES2022"],
+		"types": [],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"moduleDetection": "force",
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"include": ["src"],
+	"exclude": ["src/**/*.test.ts", "src/openapi.ts"]
+}

@@ -1,13 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { env } from "~/env";
-import { auth } from "~/server/better-auth";
 import { SignupForm } from "./_components/signup-form";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 export default async function SignupPage() {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
+	const session = await getWebSession(await headers());
 
 	if (session) {
 		redirect("/dashboard");
