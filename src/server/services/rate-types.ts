@@ -69,8 +69,12 @@ export interface BookedRate {
 
 /** How the rate of an entry is chosen. */
 export type RateChoice =
-	/** Both legs from the rate table, of this type (null: the user's default). */
-	| { kind: "table"; rateType: string | null }
+	/**
+	 * Both legs from the rate table, of this type (null: the user's default).
+	 * `entryType` is the old form's pricingSource: it named the entry leg's
+	 * type only, so it never reaches the home leg.
+	 */
+	| { kind: "table"; rateType: string | null; entryType?: string | null }
 	/** The entry leg is given (a typed or kept rate); the home leg comes from the table. */
 	| { kind: "entryLeg"; exchangeRate: number; rateType: string | null }
 	/** Both legs kept from the saved row. */
@@ -213,11 +217,16 @@ function labelFor(
 	return types.find((t) => t !== "official") ?? types[0] ?? null;
 }
 
+/**
+ * The stored row for a cross rate. The home amount comes from the exact
+ * rate, not its 12-decimal copy: a tiny rate (ARS into a BTC home) keeps too
+ * few digits at 12 decimals for amounts in the millions.
+ */
 function booked(
 	entry: EntryAmount,
 	ctx: RateContext,
 	exchangeRate: number,
-	homeRate: Decimal,
+	exactRate: Decimal,
 	rateType: string | null,
 ): BookedRate {
 	const decimals = currencyDecimals(ctx.homeCurrency);
@@ -226,9 +235,9 @@ function booked(
 		amountInUSD: computeAmountInUSD(entry.amount, entry.currency, exchangeRate),
 		rateType,
 		homeCurrency: ctx.homeCurrency,
-		homeRate: homeRate.toFixed(),
+		homeRate: roundRate(exactRate).toFixed(),
 		homeAmount: new Dec(entry.amount)
-			.mul(homeRate)
+			.mul(exactRate)
 			.toDecimalPlaces(decimals, Decimal.ROUND_HALF_EVEN)
 			.toFixed(decimals),
 	};
@@ -247,10 +256,8 @@ async function homeRateFor(
 		return { homeRate: new Dec(1), legs: [entryLeg] };
 	}
 	const homeLeg = await legOf(db, home, entry.date, rateType ?? ctx.preferred);
-	const homeRate = roundRate(
-		usdPerUnit(entry.currency, entryLeg.rate).div(
-			usdPerUnit(home, homeLeg.rate),
-		),
+	const homeRate = usdPerUnit(entry.currency, entryLeg.rate).div(
+		usdPerUnit(home, homeLeg.rate),
 	);
 	return { homeRate, legs: [homeLeg, entryLeg] };
 }
@@ -285,7 +292,7 @@ async function bookCustom(
 	// The entry leg comes from the typed rate itself, not its rounded copy.
 	const usd = perUnit.mul(usdPerUnit(home, homeLeg.rate));
 	const exchangeRate = rateFromUsdPerUnit(entry.currency, usd.toNumber());
-	return booked(entry, ctx, exchangeRate, roundRate(perUnit), CUSTOM_RATE_TYPE);
+	return booked(entry, ctx, exchangeRate, perUnit, CUSTOM_RATE_TYPE);
 }
 
 /** Books an entry's rate under `choice` (see RateChoice). */
@@ -325,7 +332,8 @@ export async function bookRate(
 		}
 		case "table": {
 			const type = choice.rateType ?? ctx.preferred;
-			const entryLeg = await legOf(db, entry.currency, entry.date, type);
+			const entryType = choice.rateType ?? choice.entryType ?? ctx.preferred;
+			const entryLeg = await legOf(db, entry.currency, entry.date, entryType);
 			const { homeRate, legs } = await homeRateFor(
 				db,
 				ctx,

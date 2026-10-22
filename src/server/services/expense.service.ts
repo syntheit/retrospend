@@ -63,8 +63,10 @@ function untouched(input: RateInput, saved: SavedRate): boolean {
  *   was booked in today's home, else the home leg is booked now);
  * - the old form's custom rate keeps its entry leg;
  * - anything else comes from the table for the entry date, of the picked
- *   type, else the type the old pricingSource named, else the default.
- *   A USD entry's pricingSource named only its own leg, so it picks nothing.
+ *   type on both legs. Without one, the old form's pricingSource picks the
+ *   entry leg only (it sends "official" for EUR and BRL on its own, and
+ *   "official" for USD, whose leg has no type) and the home leg takes the
+ *   user's default.
  */
 export function rateChoice(
 	input: RateInput,
@@ -88,8 +90,8 @@ export function rateChoice(
 			rateType: saved.rateType ?? legacyType,
 		};
 	}
-	const type = input.rateType ?? (input.currency === USD ? null : legacyType);
-	if (type === CUSTOM_RATE_TYPE) {
+	const entryType = input.currency === USD ? null : legacyType;
+	if ((input.rateType ?? entryType) === CUSTOM_RATE_TYPE) {
 		if (input.currency !== USD && isValidRate(input.exchangeRate)) {
 			return {
 				kind: "entryLeg",
@@ -102,7 +104,10 @@ export function rateChoice(
 			message: "Enter the custom rate",
 		});
 	}
-	return { kind: "table", rateType: type };
+	if (input.rateType !== undefined) {
+		return { kind: "table", rateType: input.rateType };
+	}
+	return { kind: "table", rateType: null, entryType };
 }
 
 /**

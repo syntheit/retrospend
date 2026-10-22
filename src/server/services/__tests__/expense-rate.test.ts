@@ -62,6 +62,24 @@ describe("the home leg an expense books", () => {
 			});
 		});
 
+		it("EUR 100 sent as official by the old form books the ARS leg at blue: ARS 177,534.99", async () => {
+			// The old form sends "official" for EUR on its own. It picks the EUR
+			// leg (0.8787); the ARS leg is the user's default, blue 1,560:
+			// 100 x 1,560 / 0.8787 = 177,534.99 (official would be 170,137.70).
+			await service.createExpense("u1", {
+				...BASE,
+				amount: 100,
+				currency: "EUR",
+				pricingSource: "official",
+			});
+			expect(created()).toMatchObject({
+				exchangeRate: 0.8787,
+				amountInUSD: 113.8,
+				rateType: "blue",
+				homeAmount: "177534.99",
+			});
+		});
+
 		it("the picked type wins: official 12.99 x 1,495 = 19,420.05", async () => {
 			await service.createExpense("u1", {
 				...BASE,
@@ -157,6 +175,21 @@ describe("the home leg an expense books", () => {
 			expect(db.exchangeRate.findMany).not.toHaveBeenCalled();
 		});
 
+		it("switching to EUR in the old form books the ARS leg at blue too", async () => {
+			db.expense.findFirst.mockResolvedValue(bookedUsd);
+			await service.updateExpense("u1", {
+				...BASE,
+				amount: 100,
+				currency: "EUR",
+				pricingSource: "official",
+			});
+			expect(updated()).toMatchObject({
+				exchangeRate: 0.8787,
+				rateType: "blue",
+				homeAmount: "177534.99",
+			});
+		});
+
 		it("picking another type books it again", async () => {
 			db.expense.findFirst.mockResolvedValue(bookedUsd);
 			await service.updateExpense("u1", {
@@ -248,10 +281,20 @@ describe("rateChoice", () => {
 		homeRate: "1",
 	};
 
-	it("takes the old form's type for a foreign leg", () => {
+	it("takes the old form's type for the entry leg only", () => {
 		expect(
 			rateChoice({ ...input, pricingSource: "official" }, null, "USD"),
-		).toEqual({ kind: "table", rateType: "official" });
+		).toEqual({ kind: "table", rateType: null, entryType: "official" });
+	});
+
+	it("a picked type applies to both legs", () => {
+		expect(
+			rateChoice(
+				{ ...input, rateType: "mep", pricingSource: "official" },
+				null,
+				"USD",
+			),
+		).toEqual({ kind: "table", rateType: "mep" });
 	});
 
 	it("reads placeholders as no type", () => {
@@ -260,6 +303,7 @@ describe("rateChoice", () => {
 		).toEqual({
 			kind: "table",
 			rateType: null,
+			entryType: null,
 		});
 	});
 
@@ -286,6 +330,7 @@ describe("rateChoice", () => {
 		expect(rateChoice({ ...input, exchangeRate: 1500 }, saved, "ARS")).toEqual({
 			kind: "table",
 			rateType: null,
+			entryType: null,
 		});
 	});
 });

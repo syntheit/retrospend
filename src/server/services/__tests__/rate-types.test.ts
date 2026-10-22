@@ -117,6 +117,17 @@ describe("rate types", () => {
 			});
 		});
 
+		it("a tiny rate keeps its digits: ARS 10,000,000 in a BTC home", async () => {
+			// 1 / 1,560 / 64,545.9 = 9.931...e-9 BTC per ARS, stored as
+			// 0.000000009931. The amount uses the exact rate: 0.09931315 BTC,
+			// where the stored copy would give 0.09931000 (315 sat short).
+			asUser("BTC");
+			await expect(book(10_000_000, "ARS")).resolves.toMatchObject({
+				homeRate: "0.000000009931",
+				homeAmount: "0.09931315",
+			});
+		});
+
 		it("a home-currency expense books itself: rate 1, its own amount", async () => {
 			await expect(book(1000, "ARS")).resolves.toEqual({
 				exchangeRate: 1560,
