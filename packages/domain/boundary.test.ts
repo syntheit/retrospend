@@ -26,11 +26,19 @@ const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
 const dependencies = Object.keys(pkg.dependencies ?? {});
 const devDependencies = Object.keys(pkg.devDependencies ?? {});
 
+// Static imports take a quoted string; only import() and require() calls can
+// take a template literal. Keeping backticks to calls stops prose in comments
+// ("from `month`") from reading as an import.
 const SPECIFIER =
-	/(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']([^"']+)["']/g;
+	/\bfrom\s*["']([^"']+)["']|\bimport\s*["']([^"']+)["']|\b(?:import|require)\s*\(\s*["'`]([^"'`]+)["'`]/g;
+/** Every JS or TS module, so a .js or .mts file cannot slip past the scan. */
+const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
+const TEST_FILE = /\.test\.[cm]?[jt]sx?$/;
 
 function specifiers(source: string): string[] {
-	return [...source.matchAll(SPECIFIER)].map((m) => m[1] as string);
+	return [...source.matchAll(SPECIFIER)].map(
+		(m) => (m[1] ?? m[2] ?? m[3]) as string,
+	);
 }
 
 /** "@scope/name/sub" -> "@scope/name", "name/sub" -> "name". */
@@ -64,8 +72,8 @@ describe("@retrospend/domain boundary", () => {
 			recursive: true,
 			encoding: "utf8",
 		})) {
-			if (!file.endsWith(".ts")) continue;
-			const allowed = file.endsWith(".test.ts")
+			if (!SOURCE_FILE.test(file)) continue;
+			const allowed = TEST_FILE.test(file)
 				? [...dependencies, ...devDependencies]
 				: dependencies;
 			for (const spec of specifiers(readFileSync(join(SRC, file), "utf8"))) {
@@ -85,23 +93,35 @@ describe("@retrospend/domain boundary", () => {
 		expect(violations).toEqual([]);
 	});
 
-	it("finds static, type, re-export and dynamic imports", () => {
+	it("finds static, type, re-export, dynamic and template-literal imports", () => {
 		const source = [
 			'import { db } from "~/server/db";',
 			'import type { Prisma } from "@prisma/client";',
 			'export * from "./money";',
 			'const React = await import("react");',
+			"const fs = await import(`node:fs`);",
+			"// the period starts from `month`, which is not an import",
 		].join("\n");
 		expect(specifiers(source)).toEqual([
 			"~/server/db",
 			"@prisma/client",
 			"./money",
 			"react",
+			"node:fs",
 		]);
 		expect(
 			["~/server/db", "@prisma/client", "react", "fs", "node:fs"].every((s) =>
 				isForbidden(packageName(s)),
 			),
 		).toBe(true);
+	});
+
+	it("scans every JS and TS module, not only .ts", () => {
+		const scanned = ["a.ts", "a.tsx", "a.js", "a.jsx", "a.mjs", "a.cts"];
+		expect(scanned.every((f) => SOURCE_FILE.test(f))).toBe(true);
+		expect(["a.json", "a.md", "a.css"].some((f) => SOURCE_FILE.test(f))).toBe(
+			false,
+		);
+		expect(TEST_FILE.test("money.test.mts")).toBe(true);
 	});
 });
