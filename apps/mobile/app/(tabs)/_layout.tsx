@@ -5,21 +5,36 @@ import { useTheme } from "@/theme";
 
 /**
  * Five destinations on every device (N65): Home, Activity, Budget, People,
- * Projects. iPhone gets a trailing "+" item; iOS 26 sets the search-role
+ * Projects. iPhone gets a trailing "+" item: iOS 26 sets the search-role
  * item apart at the trailing end, so the "+" uses that slot with its own
- * icon and label. Android adds with an extended FAB instead (platform UI
- * layer), so the item is hidden there. iPad turns the bar into a sidebar.
+ * icon, and its accessibility label replaces the system "Search". Android
+ * adds with an extended FAB and iPad with a toolbar button instead (platform
+ * UI layer), so the item is hidden there. iPad turns the bar into a sidebar.
+ * Active nav is brand (GUIDELINE §2.1); the bar itself is a theme surface.
  */
 export default function TabsLayout() {
 	const t = useTranslations("mobile.tabs");
 	const { color } = useTheme();
+	const iPhone = Platform.OS === "ios" && !Platform.isPad;
+	// Android draws an M3 navigation bar in token colors; iOS keeps the
+	// system bar material and takes only the brand tint.
+	const m3 = Platform.OS === "android";
 
 	return (
 		<NativeTabs
 			backBehavior="initialRoute"
-			indicatorColor={color.accentSoft}
+			backgroundColor={m3 ? color.surface : undefined}
+			badgeBackgroundColor={color.attention}
+			iconColor={m3 ? { default: color.fg2, selected: color.brand } : undefined}
+			indicatorColor={color.brandSoft}
+			labelStyle={
+				m3
+					? { default: { color: color.fg2 }, selected: { color: color.brand } }
+					: undefined
+			}
+			rippleColor={color.brandSoft}
 			sidebarAdaptable
-			tintColor={color.accent}
+			tintColor={color.brand}
 		>
 			<NativeTabs.Trigger name="home">
 				<NativeTabs.Trigger.Label>{t("home")}</NativeTabs.Trigger.Label>
@@ -43,10 +58,11 @@ export default function TabsLayout() {
 			</NativeTabs.Trigger>
 			<NativeTabs.Trigger
 				accessibilityLabel={t("add")}
-				hidden={Platform.OS === "android"}
+				hidden={!iPhone}
 				name="add"
 				role="search"
 			>
+				<NativeTabs.Trigger.Label>{t("add")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="add" sf="plus" />
 			</NativeTabs.Trigger>
 		</NativeTabs>
