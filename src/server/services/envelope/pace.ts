@@ -7,11 +7,12 @@
  *   month; days before the first occurrence join week 1, so a month has 4
  *   or 5 weeks (a short transition month may have 1).
  * - LeftThisWeek(e, i) = min(Left(e, m), carry + weekly x i - SpentMonthToDate(e)).
- * - Left to spend = Σ Left of Spending envelopes (Monthly and No target
- *   kinds) minus a negative To assign. Bills show on their own line.
+ * - Left to spend = Σ Left of the Spending group minus a negative To
+ *   assign (D-owner-2026-10-22d, overriding §6.1). Bills show on their own
+ *   line.
  */
 import { addDays, dayOfWeek, daysBetween } from "./calendar";
-import type { EnvelopeKind, IsoDate, Minor } from "./types";
+import type { IsoDate, Minor } from "./types";
 import { mulDiv, sumMinor } from "./units";
 
 export interface BudgetWeek {
@@ -113,48 +114,9 @@ export function weeklyPace(p: {
 	};
 }
 
-/** Spending envelopes for Left to spend: Monthly spending and No target (SPEC §6.1). */
-export function isSpendingKind(kind: EnvelopeKind): boolean {
-	return kind === "MONTHLY" || kind === "NONE";
-}
-
-export interface LeftToSpend {
-	/** The hero: Σ Left of Spending envelopes + min(0, To assign). */
-	left: Minor;
-	/** Σ Left of Spending envelopes alone (overspent ones count negative). */
-	spendingLeft: Minor;
-	/** What a negative To assign took off ("You planned X more than you have"). */
-	plannedTooMuch: Minor;
-	/** To assign when positive: the "Not planned yet" notice, never in the hero. */
-	notPlannedYet: Minor;
-}
-
-/** Left to spend per owner r6 Q1 (D-owner-2026-10-22d). */
-export function leftToSpend(
-	envelopes: ReadonlyArray<{ kind: EnvelopeKind; left: Minor }>,
-	toAssign: Minor,
-): LeftToSpend {
-	const spendingLeft = sumMinor(
-		envelopes.filter((e) => isSpendingKind(e.kind)).map((e) => e.left),
-	);
-	const negative = Math.min(0, toAssign);
-	return {
-		left: spendingLeft + negative,
-		spendingLeft,
-		plannedTooMuch: Math.max(0, -toAssign),
-		notPlannedYet: Math.max(0, toAssign),
-	};
-}
-
-/** "Bills: covered" when 0, else "Bills: X still needed": Σ this month's bill needs. */
-export function billsStillNeeded(billNeeds: Iterable<Minor>): Minor {
-	return sumMinor(billNeeds);
-}
-
 /**
  * Spending faster than planned: the share of the pool spent runs more than
  * 5 points ahead of the share of the month gone (mockup kit threshold).
- * `spent` excludes recurring expenses (SPEC §6.1, Copilot pace).
  */
 export function spendingFasterThanPlanned(p: {
 	pool: Minor;
@@ -166,4 +128,114 @@ export function spendingFasterThanPlanned(p: {
 	const spentShare = BigInt(p.spent) * BigInt(p.daysInMonth) * 100n;
 	const timeShare = BigInt(p.dayOfMonth) * BigInt(p.pool) * 100n;
 	return spentShare - timeShare > 5n * BigInt(p.pool) * BigInt(p.daysInMonth);
+}
+
+/**
+ * The role a group plays in Left to spend: Flex's three rows (owner r5 Q4).
+ * The schema has to mark which group is Spending (the kit's "everyday").
+ */
+export type GroupRole = "BILLS" | "SPENDING" | "SAVINGS" | null;
+
+export interface LeftToSpendEnvelope {
+	groupRole: GroupRole;
+	carryIn: Minor;
+	assigned: Minor;
+	activity: Minor;
+	left: Minor;
+}
+
+export interface LeftToSpend {
+	/** The hero: Σ Left of the Spending group + min(0, To assign). */
+	left: Minor;
+	/** About how much a day: left / daysLeft, half-even, never below 0. */
+	perDay: Minor;
+	daysLeft: number;
+	carry: Minor;
+	assigned: Minor;
+	/** carry + assigned of the Spending group. */
+	pool: Minor;
+	/** -Σ activity of the Spending group. */
+	spent: Minor;
+	/** Σ Left of the Spending group alone (overspent envelopes count negative). */
+	spendingLeft: Minor;
+	/** What a negative To assign took off ("You planned X more than you have"). */
+	plannedTooMuch: Minor;
+	/** Σ overspending inside the Spending group ("Over by X" on its row). */
+	over: Minor;
+	/** max(0, Σ Left of Bills): held for bills, not in the hero. */
+	billsHeld: Minor;
+	/** What Bills still need this month ("Bills: X still needed"). */
+	billsShort: Minor;
+	billsCount: number;
+	/** max(0, Σ Left of Savings). */
+	savings: Minor;
+	/** max(0, To assign): the "Not planned yet" notice, never in the hero. */
+	notPlanned: Minor;
+	fasterThanPlanned: boolean;
+}
+
+function roleSum(
+	envs: readonly LeftToSpendEnvelope[],
+	role: GroupRole,
+	pick: (e: LeftToSpendEnvelope) => Minor,
+) {
+	return sumMinor(envs.filter((e) => e.groupRole === role).map(pick));
+}
+
+/**
+ * Left to spend per D-owner-2026-10-22d, matching the kit's
+ * `BudgetPlan.leftToSpend(ym)`: the Spending group only, minus a negative
+ * To assign; bills and savings on their own lines. `billNeeds` are this
+ * month's bill needs (targets.billNeed); `today` past the month end reads
+ * as the whole month gone.
+ */
+export function leftToSpend(p: {
+	envelopes: readonly LeftToSpendEnvelope[];
+	toAssign: Minor;
+	billNeeds: Iterable<Minor>;
+	month: { from: IsoDate; to: IsoDate };
+	today: IsoDate;
+}): LeftToSpend {
+	const envs = p.envelopes;
+	const spendingLeft = roleSum(envs, "SPENDING", (e) => e.left);
+	const carry = roleSum(envs, "SPENDING", (e) => e.carryIn);
+	const assigned = roleSum(envs, "SPENDING", (e) => e.assigned);
+	const spent = -roleSum(envs, "SPENDING", (e) => e.activity);
+	const left = spendingLeft + Math.min(0, p.toAssign);
+	const daysInMonth = daysBetween(p.month.from, p.month.to) + 1;
+	const dayOfMonth = Math.min(
+		daysInMonth,
+		Math.max(0, daysBetween(p.month.from, p.today) + 1),
+	);
+	const daysLeft = Math.min(
+		daysInMonth,
+		daysLeftIncluding(p.today, p.month.to),
+	);
+	const pool = carry + assigned;
+	return {
+		left,
+		perDay: perDay(left, daysLeft),
+		daysLeft,
+		carry,
+		assigned,
+		pool,
+		spent,
+		spendingLeft,
+		plannedTooMuch: Math.max(0, -p.toAssign),
+		over: roleSum(envs, "SPENDING", (e) => Math.max(0, -e.left)),
+		billsHeld: Math.max(
+			0,
+			roleSum(envs, "BILLS", (e) => e.left),
+		),
+		billsShort: sumMinor(p.billNeeds),
+		billsCount: envs.filter((e) => e.groupRole === "BILLS").length,
+		savings: Math.max(
+			0,
+			roleSum(envs, "SAVINGS", (e) => e.left),
+		),
+		notPlanned: Math.max(0, p.toAssign),
+		fasterThanPlanned:
+			left > 0 &&
+			spendingFasterThanPlanned({ pool, spent, dayOfMonth, daysInMonth }),
+	};
 }

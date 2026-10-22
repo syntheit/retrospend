@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-	billsStillNeeded,
 	daysLeftIncluding,
 	defaultWeekStartDay,
+	type GroupRole,
+	type LeftToSpendEnvelope,
 	leftThisWeek,
 	leftToSpend,
 	perDay,
@@ -10,7 +11,6 @@ import {
 	weeklyPace,
 	weeksOfMonth,
 } from "./pace";
-import type { EnvelopeKind } from "./types";
 
 const m = (n: number) => Math.round(n * 100);
 const MON = 1;
@@ -203,49 +203,107 @@ describe("leftThisWeek (A7: 150 a week, resets Monday)", () => {
 	});
 });
 
-describe("leftToSpend (owner r6 Q1: Spending only, minus a negative To assign)", () => {
-	const envs: Array<{ kind: EnvelopeKind; left: number }> = [
-		{ kind: "MONTHLY", left: m(40_000) },
-		{ kind: "MONTHLY", left: m(-12_000) },
-		{ kind: "NONE", left: m(31_161) },
-		{ kind: "BILL", left: m(68_480) },
-		{ kind: "SAVINGS", left: m(1_450_000) },
+describe("leftToSpend (D-owner-2026-10-22d, kit BudgetPlan.leftToSpend)", () => {
+	const env = (
+		groupRole: GroupRole,
+		carry: number,
+		assigned: number,
+		activity: number,
+	): LeftToSpendEnvelope => ({
+		groupRole,
+		carryIn: m(carry),
+		assigned: m(assigned),
+		activity: m(activity),
+		left: m(carry + assigned + activity),
+	});
+	/** r6 seed on Oct 21: Spending left 59,161, bills held 68,480. */
+	const seed = [
+		env("SPENDING", 0, 400_000, -360_000),
+		env("SPENDING", 10_000, 180_000, -202_000),
+		env("SPENDING", 0, 50_000, -18_839),
+		env("BILLS", 0, 718_480, -650_000),
+		env("SAVINGS", 0, 1_450_000, 0),
 	];
+	const OCT = { from: "2026-10-01", to: "2026-10-31" };
+	const run = (o: {
+		toAssign: number;
+		envelopes?: LeftToSpendEnvelope[];
+		today?: string;
+		billNeeds?: number[];
+	}) =>
+		leftToSpend({
+			envelopes: o.envelopes ?? seed,
+			toAssign: m(o.toAssign),
+			billNeeds: (o.billNeeds ?? []).map(m),
+			month: OCT,
+			today: o.today ?? "2026-10-21",
+		});
 
-	it.each([
-		{
-			name: "r6 Flex seed: bills and savings are not in it, Not planned yet is a notice",
-			toAssign: 850_000,
-			left: 59_161,
-			notPlanned: 850_000,
-			tooMuch: 0,
-		},
-		{
-			name: "D23 a negative To assign comes off the number",
-			toAssign: -576_200,
-			left: 59_161 - 576_200,
-			notPlanned: 0,
-			tooMuch: 576_200,
-		},
-		{
-			name: "To assign at 0",
-			toAssign: 0,
-			left: 59_161,
-			notPlanned: 0,
-			tooMuch: 0,
-		},
-	])("$name", ({ toAssign, left, notPlanned, tooMuch }) => {
-		expect(leftToSpend(envs, m(toAssign))).toEqual({
-			left: m(left),
+	it("D-owner-2026-10-22d the Spending group only: bills, savings and Not planned yet stay out", () => {
+		expect(run({ toAssign: 850_000, billNeeds: [40_000, 0] })).toEqual({
+			left: m(59_161),
+			perDay: m(5_378.27),
+			daysLeft: 11,
+			carry: m(10_000),
+			assigned: m(630_000),
+			pool: m(640_000),
+			spent: m(580_839),
 			spendingLeft: m(59_161),
-			plannedTooMuch: m(tooMuch),
-			notPlannedYet: m(notPlanned),
+			plannedTooMuch: 0,
+			over: m(12_000),
+			billsHeld: m(68_480),
+			billsShort: m(40_000),
+			billsCount: 1,
+			savings: m(1_450_000),
+			notPlanned: m(850_000),
+			fasterThanPlanned: true,
 		});
 	});
 
-	it("bills still needed is the sum of this month's bill needs", () => {
-		expect(billsStillNeeded([m(40_000), 0])).toBe(m(40_000));
-		expect(billsStillNeeded([])).toBe(0);
+	it.each([
+		{
+			name: "D-owner-2026-10-22d a negative To assign comes off the number",
+			toAssign: -576_200,
+			out: {
+				left: m(59_161 - 576_200),
+				plannedTooMuch: m(576_200),
+				notPlanned: 0,
+				perDay: 0,
+				fasterThanPlanned: false,
+			},
+		},
+		{
+			name: "D-owner-2026-10-22d To assign at 0 changes nothing",
+			toAssign: 0,
+			out: { left: m(59_161), plannedTooMuch: 0, notPlanned: 0 },
+		},
+	])("$name", ({ toAssign, out }) => {
+		expect(run({ toAssign })).toMatchObject(out);
+	});
+
+	it("D-owner-2026-10-22d by group, not by kind: what sits in Savings or Bills never counts", () => {
+		const out = run({
+			toAssign: 0,
+			envelopes: [
+				env("SPENDING", 0, 100_000, -20_000),
+				env("SAVINGS", 0, 50_000, 0),
+				env(null, 0, 30_000, 0),
+			],
+		});
+		expect(out.left).toBe(m(80_000));
+	});
+
+	it("D-owner-2026-10-22d on track: spending behind the share of the month gone", () => {
+		const out = run({
+			toAssign: 0,
+			envelopes: [env("SPENDING", 0, 640_000, -300_000)],
+		});
+		expect(out.fasterThanPlanned).toBe(false);
+	});
+
+	it("D-owner-2026-10-22d a closed month reads as the whole month gone", () => {
+		const out = run({ toAssign: 0, today: "2026-11-03" });
+		expect(out).toMatchObject({ daysLeft: 0, perDay: 0, left: m(59_161) });
 	});
 });
 
