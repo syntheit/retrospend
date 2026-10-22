@@ -214,6 +214,12 @@ export function normalizeAssets(assets: RawAsset[]): NormalizedAsset[] {
 	return assets.map(normalizeAsset);
 }
 
+/** What the display helpers read: an expense or a dashboard activity row. */
+type DisplayableExpense = Pick<
+	NormalizedExpense,
+	"amount" | "currency" | "amountInUSD" | "home"
+> & { exchangeRate?: number | null };
+
 /**
  * Gets the exchange rate to convert from USD to the target currency for an expense.
  * If the target currency matches the expense currency, uses the stored expense rate.
@@ -225,7 +231,7 @@ export function normalizeAssets(assets: RawAsset[]): NormalizedAsset[] {
  * @returns The exchange rate to use for conversion
  */
 export function getExpenseDisplayRate(
-	expense: NormalizedExpense,
+	expense: DisplayableExpense,
 	targetCurrency: string,
 	liveRateToTarget: number | null,
 ): number | null {
@@ -252,7 +258,7 @@ export function getExpenseDisplayRate(
  * @returns The amount in the target currency
  */
 export function convertExpenseAmountForDisplay(
-	expense: NormalizedExpense,
+	expense: DisplayableExpense,
 	targetCurrency: string,
 	liveRateToTarget: number | null,
 ): number {
