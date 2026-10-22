@@ -102,3 +102,7 @@ These are review items because a scan cannot judge them reliably: layout order a
 ## 6. Superseded docs
 
 `docs/design-system.md` (gradient hero cards, tinted semantic cards, decorative circles) and `docs/web-experience/design-language.md` (codified the pre-overhaul pages, including StatCard and `duration-300`) now point here. Their old text is in git history.
+
+## 7. Data the server does not have yet
+
+- **Per-user time zone.** Server-side calendar days (project membership dates, which expenses fall before someone joined) come from `userTimeZone()` in `src/server/services/user-time-zone.ts`, which returns `DEFAULT_TIME_ZONE` or Buenos Aires for everyone. When a per-user zone setting exists, that function reads it; no call site changes. The M5 backfill used the same default.

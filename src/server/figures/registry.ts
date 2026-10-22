@@ -19,6 +19,7 @@ import {
 	owedToYouFigure,
 	youOweFigure,
 } from "~/server/services/payments/figures";
+import { projectFigures } from "~/server/services/project/figures";
 import type { Prisma } from "~prisma";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
@@ -209,4 +210,5 @@ export const figures = createFiguresRegistry<FigureDb>([
 	balancePersonFigure,
 	owedToYouFigure,
 	youOweFigure,
+	...projectFigures,
 ]);
