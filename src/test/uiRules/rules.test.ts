@@ -207,7 +207,7 @@ describe("components", () => {
 		);
 		hit(
 			"UI-041",
-			`import { Sheet } from "../ui/sheet";`,
+			`import { Sheet } from "../ui/edge-panel";`,
 			"src/components/people/x.tsx",
 		);
 		miss("UI-041", `export { Button } from "~/components/ui/button";`);

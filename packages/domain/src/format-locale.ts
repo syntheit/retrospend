@@ -88,3 +88,71 @@ export function groupDigits(digits: string, symbols: NumberSymbols): string {
 	}
 	return chunks.join(group);
 }
+
+/** What a locale writes after a short compact number ("1M", "1 Mio.", "1 mil"). */
+export interface CompactAffix {
+	/** Text between the digits and the suffix (a no-break space or nothing). */
+	gap: string;
+	suffix: string;
+}
+
+const compactCache = new Map<string, CompactAffix | null>();
+
+/**
+ * The short compact suffix a locale uses for 10^exponent (3, 6, 9, 12), read
+ * from Intl once. Only the words come from Intl; the digits are built from
+ * minor units by the caller. Null when the locale does not abbreviate that
+ * magnitude (German writes 1000, not "1 Tsd."), so the caller shows it whole.
+ */
+export function compactAffix(
+	locale: string,
+	exponent: number,
+): CompactAffix | null {
+	const key = `${locale}|${exponent}`;
+	const hit = compactCache.get(key);
+	if (hit !== undefined) return hit;
+	const parts = new Intl.NumberFormat(resolveLocale(locale), {
+		notation: "compact",
+		compactDisplay: "short",
+		numberingSystem: "latn",
+	}).formatToParts(10 ** exponent);
+	const at = parts.findIndex((p) => p.type === "compact");
+	const affix =
+		at < 0
+			? null
+			: {
+					gap: parts
+						.slice(0, at)
+						.filter((p) => p.type === "literal")
+						.map((p) => p.value)
+						.join(""),
+					suffix: parts[at]?.value ?? "",
+				};
+	compactCache.set(key, affix);
+	return affix;
+}
+
+/** What a locale writes around a percent: "50%", "50 %". */
+export interface PercentAffix {
+	prefix: string;
+	suffix: string;
+}
+
+const percentCache = new Map<string, PercentAffix>();
+
+export function percentAffix(locale: string): PercentAffix {
+	const hit = percentCache.get(locale);
+	if (hit) return hit;
+	const parts = new Intl.NumberFormat(resolveLocale(locale), {
+		style: "percent",
+		numberingSystem: "latn",
+	}).formatToParts(0.5);
+	const at = parts.findIndex((p) => p.type === "integer");
+	const text = (ps: Intl.NumberFormatPart[]) => ps.map((p) => p.value).join("");
+	const affix = {
+		prefix: text(parts.slice(0, Math.max(0, at))),
+		suffix: text(parts.slice(at + 1)),
+	};
+	percentCache.set(locale, affix);
+	return affix;
+}

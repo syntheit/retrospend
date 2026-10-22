@@ -5,6 +5,7 @@ import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { FontProvider, FontScript } from "~/components/font-provider";
+import { HydrationMarker } from "~/components/hydration-marker";
 import { ThemeProvider, ThemeScript } from "~/components/theme-provider";
 import { Toaster } from "~/components/ui/sonner";
 import { TRPCReactProvider } from "~/trpc/react";
@@ -66,7 +67,6 @@ const jetbrainsMono = JetBrains_Mono({
 	display: "swap",
 });
 
-
 export default async function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -91,6 +91,7 @@ export default async function RootLayout({
 							<FontProvider>
 								{children}
 								<Toaster />
+								<HydrationMarker />
 							</FontProvider>
 						</TRPCReactProvider>
 					</ThemeProvider>

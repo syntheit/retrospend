@@ -8,9 +8,12 @@
 	"exports": {
 		"./currencies": "./src/currencies.ts",
 		"./currency-format": "./src/currency-format.ts",
+		"./currency-names": "./src/currency-names.ts",
 		"./decimal": "./src/decimal.ts",
 		"./fiscal-month": "./src/fiscal-month.ts",
 		"./format": "./src/format.ts",
+		"./format-date": "./src/format-date.ts",
+		"./format-percent": "./src/format-percent.ts",
 		"./money": "./src/money.ts",
 		"./money-minor": "./src/money-minor.ts",
 		"./parse": "./src/parse.ts",

@@ -20,22 +20,19 @@ import {
 } from "~/components/ui/input-otp";
 import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
+import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
 
-/**
- * Resolves a post-login destination from the `redirect` query param. Only
- * same-origin relative paths are honoured to prevent open-redirects; anything
- * else falls back to the dashboard.
- */
-function safeRedirect(raw: string | null): string {
-	if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
-	return "/dashboard";
-}
 
 function LoginFormInner() {
 	const t = useTranslations("auth");
 	const searchParams = useSearchParams();
-	const redirectTo = safeRedirect(searchParams.get("redirect"));
+	// `redirect` comes from in-app links, `callbackUrl` from the proxy when a
+	// signed-out visitor opens a protected page (the device page keeps its
+	// user_code this way). Both are same-site paths only.
+	const redirectTo = safeRedirect(
+		searchParams.get("redirect") ?? searchParams.get("callbackUrl"),
+	);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);

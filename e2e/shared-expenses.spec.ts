@@ -1,56 +1,49 @@
 import { expect, test } from "@playwright/test";
+import { attemptTitle } from "./helpers/attempt";
+import { gotoReady } from "./helpers/navigation";
+import { untilSaved } from "./helpers/trpc";
 
 test.describe("projects", () => {
 	test("projects page loads", async ({ page }) => {
-		await page.goto("/projects");
-		// Page should render heading
+		await gotoReady(page, "/projects");
 		await expect(
-			page.getByRole("heading", { name: /projects/i }),
+			page.getByRole("heading", { name: "Projects", level: 1 }),
 		).toBeVisible();
-		await expect(page.getByText(/error/i)).not.toBeVisible();
+		await expect(page.getByRole("main").getByText(/error/i)).toHaveCount(0);
 	});
 
 	test("create a new project", async ({ page }) => {
-		await page.goto("/projects");
-		await page.waitForLoadState("networkidle");
+		const name = attemptTitle("E2E Test Trip");
+		await gotoReady(page, "/projects");
+		// The toolbar's New Project comes first; an empty list repeats it below.
+		await page
+			.getByRole("main")
+			.getByRole("button", { name: "New Project", exact: true })
+			.first()
+			.click();
 
-		const newProjectButton = page.getByRole("button", {
-			name: /new project|create project|add project/i,
-		});
-		if (!(await newProjectButton.isVisible())) {
-			test.skip();
-			return;
-		}
+		const dialog = page
+			.getByRole("dialog")
+			.filter({ has: page.getByRole("button", { name: "Create Project" }) });
+		await dialog.getByRole("textbox", { name: "Name" }).fill(name);
+		await untilSaved(page, "project.create", () =>
+			dialog.getByRole("button", { name: "Create Project" }).click(),
+		);
+		await expect(dialog).toBeHidden();
 
-		await newProjectButton.click();
-
-		// A dialog or form should appear
-		await expect(page.getByRole("dialog")).toBeVisible();
-
-		// Fill in the project name
-		const nameInput = page
-			.getByRole("textbox", { name: /name/i })
-			.or(page.locator('input[placeholder*="name" i]'))
-			.first();
-		await nameInput.fill("E2E Test Trip");
-
-		// Submit
-		const submitButton = page
-			.getByRole("button", { name: /create|save/i })
-			.last();
-		await submitButton.click();
-
-		// Project should appear in the list
-		await expect(page.getByText("E2E Test Trip")).toBeVisible();
+		await gotoReady(page, "/projects");
+		await expect(
+			page.getByRole("main").getByText(name, { exact: true }),
+		).toBeVisible();
 	});
 });
 
 test.describe("people", () => {
 	test("people page loads", async ({ page }) => {
-		await page.goto("/people");
+		await gotoReady(page, "/people");
 		await expect(
-			page.getByRole("heading", { name: /people/i }),
+			page.getByRole("heading", { name: "People", level: 1 }),
 		).toBeVisible();
-		await expect(page.getByText(/error/i)).not.toBeVisible();
+		await expect(page.getByRole("main").getByText(/error/i)).toHaveCount(0);
 	});
 });

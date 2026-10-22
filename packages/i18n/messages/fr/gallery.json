@@ -1,0 +1,17 @@
+{
+	"title": "Galerie de composants",
+	"sub": "Chaque composant enregistré, ses états et ce qu’il remplace",
+	"intro": "Réutilise un composant enregistré ou propose-en un nouveau. Chaque bloc dit à quoi il sert, à quoi jamais, et ce qu’il remplace. Les variantes téléphone sont à côté des variantes bureau.",
+	"theme": "Thème",
+	"light": "Clair",
+	"dark": "Sombre",
+	"sections": "Sections",
+	"useFor": "Pour",
+	"neverFor": "Jamais pour",
+	"replaces": "Remplace :",
+	"noMatch": "Aucune dépense ne correspond",
+	"noMatchHint": "Retire un filtre.",
+	"clearFilters": "Effacer les filtres",
+	"noExpenses": "Pas encore de dépenses",
+	"addExpense": "Ajouter une dépense"
+}

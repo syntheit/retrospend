@@ -1,0 +1,107 @@
+/** The icon refresh of N66, as data: what changed, and what was kept. */
+import {
+	AlarmClock,
+	ArrowLeftRight,
+	ArrowRightLeft,
+	Banknote,
+	ChartLine,
+	CircleCheck,
+	Coins,
+	Ellipsis,
+	FileUp,
+	Folder,
+	FolderInput,
+	HandCoins,
+	Handshake,
+	House,
+	ListChecks,
+	type LucideIcon,
+	PencilLine,
+	Plus,
+	Receipt,
+	Repeat,
+	Repeat2,
+	Search,
+	Split,
+	Trash2,
+	TriangleAlert,
+	UserPlus,
+	Users,
+	Wallet,
+} from "lucide-react";
+
+export type Glyph = [LucideIcon, string];
+export type IconRow = [
+	where: string,
+	before: Glyph,
+	after: Glyph | "cover" | null,
+	why: string,
+];
+
+export const ICONS: IconRow[] = [
+	[
+		"Settle up, Settle all",
+		[Handshake, "handshake"],
+		[Banknote, "banknote"],
+		"A payment, not an agreement (N66)",
+	],
+	[
+		"Confirm a payment (Needs you)",
+		[Handshake, "handshake"],
+		[CircleCheck, "circle-check"],
+		"Confirming, not settling",
+	],
+	[
+		"Exchange rate chip",
+		[Repeat2, "repeat-2"],
+		[ArrowRightLeft, "arrow-right-left"],
+		"An exchange; repeat means recurring",
+	],
+	[
+		'Rate alternatives ("Blue 1,468")',
+		[ArrowLeftRight, "arrow-left-right"],
+		null,
+		"Label only: two near-identical arrows sat side by side",
+	],
+	[
+		"Pinned projects (sidebar)",
+		[Folder, "folder"],
+		"cover",
+		"The project's cover, its identity (R25)",
+	],
+	[
+		"iPhone trailing glass button",
+		[Search, "search"],
+		[Plus, "plus"],
+		"Adds a plain expense, or the screen's context; never a trip silently (N65)",
+	],
+	[
+		"Sidebar search",
+		[Search, "search"],
+		[Search, "search"],
+		"Was a full-width field; now a small button and Cmd+K",
+	],
+];
+
+export const KEPT: [string, LucideIcon][] = [
+	["house", House],
+	["receipt", Receipt],
+	["wallet", Wallet],
+	["users", Users],
+	["folder", Folder],
+	["chart-line", ChartLine],
+	["file-up", FileUp],
+	["coins", Coins],
+	["repeat", Repeat],
+	["split", Split],
+	["hand-coins", HandCoins],
+	["list-checks", ListChecks],
+	["alarm-clock", AlarmClock],
+	["triangle-alert", TriangleAlert],
+	["pencil-line", PencilLine],
+	["folder-input", FolderInput],
+	["user-plus", UserPlus],
+	["ellipsis", Ellipsis],
+	["plus", Plus],
+	["trash-2", Trash2],
+];

@@ -1,0 +1,117 @@
+{
+	"brand": "Retrospend",
+	"skipToContent": "Ir al contenido principal",
+	"sidebar": {
+		"label": "Principal",
+		"destinations": "Secciones",
+		"tools": "Herramientas",
+		"pinned": "Fijados",
+		"pinnedLabel": "Proyectos fijados"
+	},
+	"bottomNav": {
+		"label": "Principal"
+	},
+	"nav": {
+		"home": "Inicio",
+		"activity": "Actividad",
+		"budget": "Presupuesto",
+		"people": "Personas",
+		"projects": "Proyectos",
+		"wealth": "Patrimonio",
+		"import": "Importar",
+		"currencies": "Monedas",
+		"settings": "Configuración",
+		"recurring": "Recurrentes",
+		"insights": "Análisis",
+		"needsYou": "{count, plural, one {# te necesita} other {# te necesitan}}"
+	},
+	"add": {
+		"group": "Añadir",
+		"expense": "Añadir gasto",
+		"income": "Añadir ingreso",
+		"transfer": "Transferencia",
+		"short": "Añadir",
+		"more": "Más formas de añadir",
+		"comingSoon": "Próximamente",
+		"notYet": "{what} llegará pronto"
+	},
+	"palette": {
+		"trigger": "Búsqueda y comandos",
+		"title": "Búsqueda y comandos",
+		"description": "Ir a una página o ejecutar un comando",
+		"placeholder": "Buscar páginas y comandos",
+		"noResults": "Sin resultados",
+		"recent": "Recientes",
+		"project": "Proyecto",
+		"goTo": "Ir a",
+		"commands": "Comandos",
+		"settingsSection": "Configuración: {section}",
+		"addRecurring": "Añadir gasto recurrente",
+		"manageCategories": "Gestionar categorías",
+		"move": "Mover",
+		"openHint": "Abrir"
+	},
+	"settingsSections": {
+		"profile": "Perfil",
+		"preferences": "Preferencias",
+		"categories": "Categorías",
+		"payment": "Métodos de pago",
+		"notifications": "Notificaciones",
+		"security": "Seguridad",
+		"data": "Datos y exportación"
+	},
+	"notifications": {
+		"title": "Notificaciones",
+		"labelUnread": "{count, plural, one {Notificaciones, # sin leer} other {Notificaciones, # sin leer}}",
+		"unread": "No leída",
+		"filterLabel": "Mostrar",
+		"filter": {
+			"all": "Todas",
+			"expenses": "Gastos",
+			"settlements": "Liquidaciones",
+			"projects": "Proyectos"
+		},
+		"markAllRead": "Marcar todo como leído",
+		"empty": "Aún no hay notificaciones",
+		"noMatches": "Sin coincidencias",
+		"loadFailed": "No se pudieron cargar las notificaciones",
+		"retry": "Reintentar"
+	},
+	"account": {
+		"title": "Cuenta",
+		"menu": "Menú de la cuenta",
+		"profile": "Tu perfil",
+		"settings": "Configuración",
+		"admin": "Administración",
+		"inviteCodes": "Códigos de invitación",
+		"feedbackInbox": "Bandeja de comentarios",
+		"sendFeedback": "Enviar comentarios",
+		"docs": "Documentación",
+		"releaseNotes": "Notas de la versión",
+		"shortcuts": "Atajos de teclado",
+		"signOut": "Cerrar sesión",
+		"signOutFailed": "No se pudo cerrar la sesión",
+		"newCount": "{count, plural, one {# nuevo} other {# nuevos}}",
+		"version": "Versión {version}",
+		"goTo": "Ir a"
+	},
+	"shortcuts": {
+		"title": "Atajos de teclado",
+		"global": "En todas partes",
+		"palette": "Búsqueda y comandos",
+		"close": "Cerrar la capa superior",
+		"list": "Esta lista",
+		"tables": "En tablas",
+		"selectAll": "Seleccionar todas las filas",
+		"range": "Seleccionar un rango",
+		"edit": "Editar la fila seleccionada",
+		"delete": "Eliminar las filas seleccionadas",
+		"clear": "Borrar la selección"
+	},
+	"verifyEmail": {
+		"message": "Verifica tu correo para proteger tu cuenta.",
+		"resend": "Reenviar correo",
+		"sent": "Correo de verificación enviado",
+		"failed": "No se pudo enviar el correo"
+	}
+}

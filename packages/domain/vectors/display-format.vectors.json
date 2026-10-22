@@ -1,0 +1,170 @@
+{
+	"about": "Golden cases for formatPercent (@retrospend/domain/format-percent) and formatDate and daysBetween (@retrospend/domain/format-date). Every client runs this file. A percent arrives as integer hundredths of a percent (1834 is 18.34%). Dates are ISO date-only strings and format in UTC.   is a no-break space.",
+	"percent": [
+		{
+			"name": "one digit by default",
+			"locale": "en-US",
+			"basis": 1834,
+			"expected": "18.3%"
+		},
+		{
+			"name": "whole percent",
+			"locale": "en-US",
+			"basis": 8342,
+			"options": { "digits": 0 },
+			"expected": "83%"
+		},
+		{
+			"name": "negative change",
+			"locale": "en-US",
+			"basis": -220,
+			"options": { "sign": "exceptZero" },
+			"expected": "-2.2%"
+		},
+		{
+			"name": "positive change with a plus",
+			"locale": "en-US",
+			"basis": 60,
+			"options": { "sign": "exceptZero" },
+			"expected": "+0.6%"
+		},
+		{
+			"name": "zero has no sign",
+			"locale": "en-US",
+			"basis": 0,
+			"options": { "sign": "exceptZero" },
+			"expected": "0%"
+		},
+		{
+			"name": "half to even rounds 12.5 down",
+			"locale": "en-US",
+			"basis": 1250,
+			"options": { "digits": 0 },
+			"expected": "12%"
+		},
+		{
+			"name": "half to even rounds 13.5 up",
+			"locale": "en-US",
+			"basis": 1350,
+			"options": { "digits": 0 },
+			"expected": "14%"
+		},
+		{
+			"name": "trailing zero kept when asked",
+			"locale": "en-US",
+			"basis": 1000,
+			"options": { "trim": false },
+			"expected": "10.0%"
+		},
+		{
+			"name": "trailing zero trimmed by default",
+			"locale": "en-US",
+			"basis": 1000,
+			"expected": "10%"
+		},
+		{
+			"name": "es-AR decimal comma, no space",
+			"locale": "es-AR",
+			"basis": 1834,
+			"expected": "18,3%"
+		},
+		{
+			"name": "fr spaced percent sign",
+			"locale": "fr",
+			"basis": 8342,
+			"options": { "digits": 0 },
+			"expected": "83 %"
+		},
+		{
+			"name": "de spaced percent sign and comma",
+			"locale": "de",
+			"basis": 935,
+			"expected": "9,4 %"
+		},
+		{
+			"name": "over a thousand percent groups",
+			"locale": "en-US",
+			"basis": 123400,
+			"options": { "digits": 0 },
+			"expected": "1,234%"
+		}
+	],
+	"date": [
+		{
+			"name": "en-US short",
+			"locale": "en-US",
+			"iso": "2026-10-19",
+			"style": "short",
+			"expected": "Oct 19"
+		},
+		{
+			"name": "en-US weekday",
+			"locale": "en-US",
+			"iso": "2026-10-19",
+			"style": "weekday",
+			"expected": "Mon, Oct 19"
+		},
+		{
+			"name": "en-US month",
+			"locale": "en-US",
+			"iso": "2026-10-01",
+			"style": "month",
+			"expected": "October"
+		},
+		{
+			"name": "en-US month short",
+			"locale": "en-US",
+			"iso": "2026-05-28",
+			"style": "monthShort",
+			"expected": "May"
+		},
+		{
+			"name": "es-AR short",
+			"locale": "es-AR",
+			"iso": "2026-10-19",
+			"style": "short",
+			"expected": "19 oct"
+		},
+		{
+			"name": "es-AR weekday",
+			"locale": "es-AR",
+			"iso": "2026-10-19",
+			"style": "weekday",
+			"expected": "lun, 19 oct"
+		},
+		{
+			"name": "de short",
+			"locale": "de",
+			"iso": "2026-10-19",
+			"style": "short",
+			"expected": "19. Okt."
+		},
+		{
+			"name": "the first of the month never slips to the 31st",
+			"locale": "en-US",
+			"iso": "2026-11-01",
+			"style": "short",
+			"expected": "Nov 1"
+		}
+	],
+	"daysBetween": [
+		{
+			"name": "two days",
+			"from": "2026-10-19",
+			"to": "2026-10-21",
+			"expected": 2
+		},
+		{
+			"name": "across a daylight saving change",
+			"from": "2026-03-07",
+			"to": "2026-03-09",
+			"expected": 2
+		},
+		{
+			"name": "backwards",
+			"from": "2026-10-21",
+			"to": "2026-10-20",
+			"expected": -1
+		}
+	]
+}

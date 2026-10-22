@@ -47,15 +47,14 @@ export const expenseRouter = createTRPCRouter({
 				.object({
 					from: z.date().optional(),
 					to: z.date().optional(),
+					limit: z.number().int().min(1).max(100).optional(), // newest first
 				})
 				.optional(),
 		)
 		.query(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
 			const expenses = await service.listFinalized(
-				ctx.session.user.id,
-				input?.from,
-				input?.to,
+				ctx.session.user.id, input?.from, input?.to, input?.limit,
 			);
 			return expenses.map((e) => ({
 				...e,

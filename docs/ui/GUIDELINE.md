@@ -180,23 +180,25 @@ The registry is `src/components/ui/registry.ts`: every primitive with its one jo
 | Narrow the rows I see | Filter chips (`Chip`) + a "Filter" menu | Tabs, buttons |
 | Switch views of the same data in place | Segmented (`SegmentedToggle`), 2 to 4 options | Tabs, `ToggleGroup` (legacy) |
 | Move between sibling pages or whole panes | Underline tabs (`Tabs`) | Segmented, chips |
-| A task (add, edit, settle, assign) | Sheet (`ResponsiveDialog`): dialog on desktop, bottom sheet with detents on phone. One sheet per task | `Dialog`, `Drawer`, `Sheet` directly (internal) |
+| A task (add, edit, settle, assign) | `Sheet` (`ui/sheet`): dialog on desktop, bottom sheet with medium and large detents on phone. One sheet per task | `ResponsiveDialog` (legacy), `Dialog`, `Drawer`, `EdgePanel` directly (internal or legacy) |
 | Confirm a destructive action | `ConfirmationDialog` | `AlertDialog` directly (internal) |
-| Actions on a row | ⋯ menu (`DropdownMenu`), right-click (`ContextMenu`), long press and swipe on phone: all from one action registry [R8] | A per-page menu list |
+| Actions on a row | `ActionMenu` (⋯), `ActionArea` (right-click and long press), `SwipeActions` (phone): all read the entity's list in `src/components/actions/registry.ts` [R8] | A per-page menu list |
 | Something needs the person now | A Needs you item, or one `Alert` notice (one line + one action), at most one per page | Stacked tinted banners |
-| Confirm a finished action, offer Undo | Toast (`sonner`) | A notice |
+| Confirm a finished action, offer Undo | Toast (`useToast` from `ui/toast`; sonner is its engine) | A notice, `toast()` from sonner directly |
 | Nothing here | `EmptyState`: one line + at most one action | Prose, illustrations |
 | Loading | `Skeleton` rows in place | A spinner page |
 | Show a person | `UserAvatar`; a set of people: `AvatarStack` | Names only (unless the Names setting is on) |
 | Show a category in a row | `CategoryBadge` (tinted tile allowed in rows only) | A tinted tile in a chip or menu |
 | Show a status | A dot or pill plus a word from one status map (`Badge`, `TransactionStatusBadge`) [R5] | Color alone, ad hoc pills |
-| Pick a date | `DatePicker` (with presets) | A native date input |
+| Pick a date | `DatePicker`; filter by dates: `DateRange` (both in `src/components/pickers`) | A native date input, a second date picker |
 | Pick a rate type | `RateSelector` | A local select |
 | Show money | The money formatter (§7) | `toFixed`, `toLocaleString`, a hand-built "$" string |
 
 ### The PLAN components
 
-Every component of the overhaul plan (PLAN §6) is in the registry. These are built today: Table (`table`), Segmented (`segmented-toggle`), FilterChips (`chip`), Tabs (`tabs`), Sheet (`responsive-dialog`), DatePicker (`date-picker`), Chart (`chart`), EmptyState (`empty-state`), Notice (`alert`), Toast (`sonner`), Skeleton (`skeleton`), Sidebar (`sidebar`), Palette (`command`).
+Every component of the overhaul plan (PLAN §6) is in the registry. These are built today in `src/components/ui`: Table (`table`), Segmented (`segmented-toggle`), FilterChips (`chip`), Tabs (`tabs`), Sheet (`sheet`), Chart (`chart`), EmptyState (`empty-state`), Notice (`alert`), Toast (`toast`), Skeleton (`skeleton`), Sidebar (`sidebar`), Palette (`command`). `responsive-dialog` is legacy: the pages that use it keep it until they move, and new code uses `sheet`.
+
+Built outside `src/components/ui` (`built` entries in `PLANNED`): ActionMenu and SwipeActions (`src/components/actions/*`), MoneyInput (`src/components/money/money-input.tsx`), CategoryPicker, PersonPicker and DatePicker (`src/components/pickers/*`, with CurrencyPicker and DateRange). Use them in new code.
 
 The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each replaces). Build one only at its target, in its stream; until then use what the last column names, and never a local lookalike. [R18]
 
@@ -212,10 +214,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 | PersonRow, ProjectRow, AccountRow, EnvelopeRow | Entity rows (face, cover, group dot, progress) | `src/components/rows/*` | The current rows and tables |
 | Money | One amount, and Money.pair (original, then home) | `src/components/money/money.tsx` | `useCurrencyFormatter()` |
 | Balance, AvailablePill, StatusDot | Amount with its words; envelope money; dot plus word | `src/components/money/*` | The formatter plus words; `Badge` |
-| ActionMenu, SwipeActions | ⋯, right-click, long press and swipe from one action registry | `src/components/actions/*` | `DropdownMenu`, `ContextMenu` |
 | AddExpenseSheet, SettleSheet, AssignSheet | The money task sheets, with preview and Undo | `src/features/{entry,settle,budget/sheets}/*` | `expense-modal`, `settle-up-dialog`, the budget row edit |
-| MoneyInput | Amount entry with grouping, locale parse, rate chip | `src/components/money/money-input.tsx` | `CurrencyAmountInput` |
-| CategoryPicker, PersonPicker | One picker each, with identity | `src/components/pickers/*` | The form's existing picker (no new one) |
 | BottomNav | Phone web tab bar plus a separate + | `src/components/shell/bottom-nav.tsx` | `Sidebar` (phone panel) |
 | AccountMenu | The account menu at the sidebar bottom | `src/components/shell/account-menu.tsx` | `nav-user` |
 

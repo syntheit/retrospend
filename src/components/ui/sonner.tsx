@@ -16,6 +16,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
 	return (
 		<Sonner
 			className="toaster group"
+			// The new shell lifts phone toasts above its bottom bar and Add
+			// (AppShell sets the variable); elsewhere it is Sonner's 16px.
+			mobileOffset={{ bottom: "var(--toast-mobile-bottom, 16px)" }}
 			icons={{
 				success: <CircleCheckIcon className="size-4" />,
 				info: <InfoIcon className="size-4" />,

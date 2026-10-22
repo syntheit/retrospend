@@ -1,0 +1,82 @@
+{
+	"category": {
+		"label": "Kategorie",
+		"find": "Kategorie suchen",
+		"recent": "Zuletzt",
+		"all": "Alle Kategorien",
+		"empty": "Keine Treffer",
+		"selected": "Ausgewählt"
+	},
+	"person": {
+		"label": "Personen",
+		"find": "Person suchen",
+		"empty": "Keine Treffer",
+		"selected": "Ausgewählt",
+		"notOnRetrospend": "Nicht bei Retrospend",
+		"add": "Person hinzufügen",
+		"addNamed": "{name} hinzufügen"
+	},
+	"currency": {
+		"label": "Währung",
+		"find": "Währung suchen",
+		"favorites": "Favoriten",
+		"recent": "Zuletzt",
+		"all": "Alle Währungen",
+		"empty": "Keine Treffer",
+		"selected": "Ausgewählt"
+	},
+	"date": {
+		"title": "Datum",
+		"today": "Heute",
+		"yesterday": "Gestern",
+		"pick": "Datum wählen",
+		"typed": "Datum",
+		"placeholder": "Datum eingeben",
+		"earlier": "Früher",
+		"later": "Später"
+	},
+	"dateRange": {
+		"title": "Zeitraum",
+		"trigger": "Zeitraum: {range}",
+		"presets": "Vorgaben",
+		"preset": {
+			"thisMonth": "Dieser Monat",
+			"lastMonth": "Letzter Monat",
+			"last30": "Letzte 30 Tage",
+			"last90": "Letzte 90 Tage",
+			"thisYear": "Dieses Jahr",
+			"lastYear": "Letztes Jahr",
+			"allTime": "Gesamter Zeitraum"
+		},
+		"span": "{from} bis {to}",
+		"start": "Beginn",
+		"today": "heute",
+		"from": "Von",
+		"to": "Bis",
+		"startDate": "Startdatum",
+		"endDate": "Enddatum",
+		"compare": "Mit vorherigem Zeitraum vergleichen",
+		"jump": "Zu Monat springen",
+		"earlier": "Früher",
+		"later": "Später",
+		"cancel": "Abbrechen",
+		"apply": "Anwenden"
+	},
+	"money": {
+		"amount": "Betrag",
+		"currency": "Währung, {code}",
+		"rate": "Wechselkurs: {rate}",
+		"error": {
+			"empty": "Betrag eingeben",
+			"invalidCharacter": "Nur Ziffern und + - × ÷",
+			"syntax": "Rechnung prüfen",
+			"incomplete": "Rechnung vervollständigen",
+			"ambiguous": "{decimal} für Dezimalstellen verwenden",
+			"tooPrecise": "Zu viele Dezimalstellen für {currency}",
+			"divideByZero": "Division durch null nicht möglich",
+			"outOfRange": "Betrag ist zu groß",
+			"zero": "Betrag über null eingeben",
+			"negative": "Der Betrag muss über null liegen"
+		}
+	}
+}

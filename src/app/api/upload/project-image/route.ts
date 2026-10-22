@@ -2,17 +2,15 @@ import { TRPCError } from "@trpc/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { processProjectImage } from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
-import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import { getWebSession } from "~/server/better-auth/web-session";
 
 async function getAuthenticatedUserId(
 	request: NextRequest,
 ): Promise<{ userId: string } | NextResponse> {
-	const session = await auth.api.getSession({
-		headers: request.headers,
-	});
+	const session = await getWebSession(request.headers);
 
 	if (!session?.user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
