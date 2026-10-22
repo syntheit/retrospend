@@ -18,11 +18,16 @@ export interface TestExpenseRow {
 	isAmortizedChild?: boolean;
 	excludeFromAnalytics?: boolean;
 	title?: string | null;
+	direction?: "OUT" | "IN";
+	entryKind?: "STANDARD" | "STARTING_BALANCE" | "ADJUSTMENT" | "NOT_SPENDING";
+	inType?: "INCOME" | "REFUND" | null;
+	amortizeMode?: "INSTALLMENTS" | "REPORTS_ONLY";
 }
 
-type Row = Required<Omit<TestExpenseRow, "title" | "id">> & {
+type Row = Required<Omit<TestExpenseRow, "title" | "id" | "inType">> & {
 	id: string;
 	title: string | null;
+	inType: "INCOME" | "REFUND" | null;
 };
 
 function normalize(rows: TestExpenseRow[]): Row[] {
@@ -35,6 +40,10 @@ function normalize(rows: TestExpenseRow[]): Row[] {
 		isAmortizedChild: r.isAmortizedChild ?? false,
 		excludeFromAnalytics: r.excludeFromAnalytics ?? false,
 		title: r.title ?? null,
+		direction: r.direction ?? "OUT",
+		entryKind: r.entryKind ?? "STANDARD",
+		inType: r.inType ?? null,
+		amortizeMode: r.amortizeMode ?? "INSTALLMENTS",
 		date: r.date,
 		amount: r.amount,
 		currency: r.currency,
