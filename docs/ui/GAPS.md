@@ -72,13 +72,13 @@ UI-001 only: the Open Graph image files (satori has no CSS variables), third-par
 
 ## 3. Switch-over: from the legacy theme to the design tokens
 
-The design tokens (`src/styles/tokens.css`, generated from `design.json`) are loaded next to the legacy shadcn theme in `globals.css`. They add variables and utilities (`bg-surface`, `text-fg-2`, `h-ctl`, `rounded-panel`, `shadow-menu`, `text-title`...) and change nothing on screen. Today the app uses the legacy color utilities about 2,500 times in 235 files.
+The design tokens (`src/styles/tokens.css`, generated from `packages/tokens/src`) are loaded next to the legacy shadcn theme in `globals.css`. They add variables and utilities (`bg-surface`, `text-fg-2`, `h-ctl`, `rounded-panel`, `shadow-menu`, `text-title`...) and change nothing on screen. Today the app uses the legacy color utilities about 2,500 times in 235 files.
 
 Changing the legacy values in place would restyle every page at once (the dark theme is neutral gray today, the design's dark theme is warm; `muted-foreground`, `border` and `card` differ from `fg-3`, `line` and `surface`). So the switch happens page by page:
 
 1. **Primitives first.** Rebuild `src/components/ui` on the design tokens (button, input, select, chip, segmented, tabs, sheet, menus, table). This clears most of UI-021, UI-031 and UI-130 in one place and gives pages the right controls.
 2. **Pages, one at a time,** as each overhaul page is built: new components, design tokens only, the baseline lowered in the same branch.
-3. **Rename the accent.** Replace the remaining `bg-accent` / `text-accent-foreground` hover uses (119 in 37 files, mostly primitives) with `bg-raised` / `text-fg`, then rename `ds-accent` to `accent` in `design.json` (drop its `css` field) and regenerate.
+3. **Rename the accent.** Replace the remaining `bg-accent` / `text-accent-foreground` hover uses (119 in 37 files, mostly primitives) with `bg-raised` / `text-fg`, then drop the `cssName` of `color.accent` in `packages/tokens/src/tokens.json` and regenerate.
 4. **Remove the legacy theme** from `globals.css` (the `:root` and `.dark` blocks, `--chart-*`, `--sidebar-*`, the glass header) once nothing references it. Promote UI-006 to [auto] at that point.
 
 Values that change for people when a page switches (expected, decided):

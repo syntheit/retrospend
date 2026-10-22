@@ -19,7 +19,7 @@ import {
 	toMinorUnits,
 	toUSD,
 	tryConvertAmount,
-} from "../money";
+} from "./money";
 
 // Stored rates: fiat = units per USD, crypto = USD per coin.
 const RATES: Record<string, number> = {

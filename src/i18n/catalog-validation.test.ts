@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
 import {
 	isStructurallySame,
 	parse,
 	TYPE,
 	type MessageFormatElement,
 } from "@formatjs/icu-messageformat-parser";
+import { catalogLocales, loadCatalog } from "@retrospend/i18n/load";
 import { describe, expect, it } from "vitest";
 import { SUPPORTED_LOCALES } from "./locales";
 
@@ -138,11 +138,6 @@ function hasCompatibleIcuVariables(
 	return true;
 }
 
-function readCatalog(locale: string): Record<string, unknown> {
-	const url = new URL(`../../messages/${locale}.json`, import.meta.url);
-	return JSON.parse(readFileSync(url, "utf8")) as Record<string, unknown>;
-}
-
 function flattenCatalog(
 	value: Record<string, unknown>,
 	prefix = "",
@@ -211,13 +206,31 @@ describe("ICU variable compatibility", () => {
 	});
 });
 
+// Loaded the way the app loads them, so feature files
+// (messages/<locale>/<feature>.json) are checked too.
+const catalogs = new Map(
+	await Promise.all(
+		SUPPORTED_LOCALES.map(
+			async (locale) =>
+				[locale, flattenCatalog(await loadCatalog(locale))] as const,
+		),
+	),
+);
+
 describe("localized message catalogs", () => {
-	const english = flattenCatalog(readCatalog("en"));
+	it("only has files for supported locales (catches a misnamed folder)", () => {
+		const supported: readonly string[] = SUPPORTED_LOCALES;
+		expect(
+			catalogLocales().filter((locale) => !supported.includes(locale)),
+		).toEqual([]);
+	});
+
+	const english = catalogs.get("en") ?? {};
 	const englishKeys = Object.keys(english);
 
 	for (const locale of SUPPORTED_LOCALES.filter((value) => value !== "en")) {
 		it(`${locale} matches English keys and ICU variables`, () => {
-			const localized = flattenCatalog(readCatalog(locale));
+			const localized = catalogs.get(locale) ?? {};
 			const localizedKeys = Object.keys(localized);
 			const missing = englishKeys.filter((key) => !(key in localized));
 			const extra = localizedKeys.filter((key) => !(key in english));

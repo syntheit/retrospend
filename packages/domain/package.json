@@ -1,0 +1,28 @@
+{
+	"name": "@retrospend/domain",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Pure money, currency, date and split logic shared by every Retrospend client and the server.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./currencies": "./src/currencies.ts",
+		"./currency-format": "./src/currency-format.ts",
+		"./decimal": "./src/decimal.ts",
+		"./fiscal-month": "./src/fiscal-month.ts",
+		"./money": "./src/money.ts",
+		"./recurring": "./src/recurring.ts",
+		"./shared-split-computation": "./src/shared-split-computation.ts",
+		"./time-zone": "./src/time-zone.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"date-fns": "^4.4.0"
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.5"
+	}
+}

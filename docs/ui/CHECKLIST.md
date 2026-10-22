@@ -9,7 +9,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 ## Tokens and color
 - UI-001 [auto] No raw color literals (hex, `rgb()`, `hsl()`, `oklch()`, `oklab()`, `hwb()`) outside the token files; in `globals.css` only inside custom-property declarations. §2.1 R6
 - UI-002 [auto] No Tailwind palette colors (`text-emerald-600`, `bg-blue-500/10`, `bg-white`, `text-black`...). §2.1 R6
-- UI-003 [auto] `docs/ui/design.json`, its hex values and `src/styles/tokens.css` are in sync (`pnpm ui:tokens`), and `globals.css` imports the token file. §2
+- UI-003 [auto] `src/styles/tokens.css` and `packages/tokens/dist` are generated from `packages/tokens/src` and current (`pnpm ui:tokens`), and `globals.css` imports the token file. §2
 - UI-004 [auto] Contrast floor: text tokens 4.5:1 on bg, surface and raised; text on fills 4.5:1; white initials on avatars 4.5:1; accent and series 3:1 on bg; both themes. §14
 - UI-005 [review] Each color does its one job: brand only primary button, focus, selection, active nav; accent only data and identity; positive only money to you; attention only needs you; danger only destructive and errors; categories only categories. §2.1 R6 R19
 - UI-006 [review] New code uses the design tokens (`bg-surface`, `text-fg-2`, `border-line`...), not the legacy shadcn tokens (`muted-foreground`, `card`, `accent`). §2.1
@@ -92,7 +92,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-111 [review] Shared surfaces (balances, Needs you, verifications) refresh after their mutations and on a poll or push; the mutation's edges are in the one dependency graph. §12 R16
 
 ## Wording
-- UI-120 [auto] No em dashes in UI text: string literals, JSX text, `messages/*.json`, including the `&mdash;` and `&#8212;` entities. §13 R11
+- UI-120 [auto] No em dashes in UI text: string literals, JSX text, `packages/i18n/messages`, including the `&mdash;` and `&#8212;` entities. §13 R11
 - UI-121 [auto] No words the glossary replaces in English copy (translation keys such as `t("receivable")` are not copy) (log in, log out, login, participant, shadow profile, square up, pay off, receivable, payable, portfolio). §13 R11
 - UI-124 [auto] No literal English in JSX: text children, string children (`{"Save"}`, `{ok ? "Yes" : "No"}`) and the copy props `placeholder`, `title`, `aria-label`, `alt`, `label`, `description`, `tooltip`, `heading` go through `t()`. Code samples in `<code>`, `<pre>`, `<kbd>` and words without a lowercase letter (`USD`) are not counted. §13 R11
 - UI-122 [review] US English, sentence case, at most one short sentence; the interface shows the rule instead of explaining it. §13 R11

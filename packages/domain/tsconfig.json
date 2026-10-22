@@ -1,0 +1,20 @@
+{
+	// Domain code runs unchanged on the server, in the browser and in React
+	// Native, so it gets the ECMAScript library only: no DOM and no Node types.
+	// A stray `process`, `window` or `Buffer` fails this typecheck.
+	"compilerOptions": {
+		"target": "es2022",
+		"lib": ["ES2022"],
+		"types": [],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"moduleDetection": "force",
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"noEmit": true
+	},
+	"include": ["src"]
+}

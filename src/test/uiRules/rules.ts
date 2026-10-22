@@ -5,7 +5,7 @@
 // rules.test.ts unit-tests every rule with a hit and a miss.
 //
 // `file` is relative to the repo root with forward slashes, for example
-// "src/components/ui/button.tsx" or "messages/en.json".
+// "src/components/ui/button.tsx" or "packages/i18n/messages/en.json".
 //
 // How it scans:
 //  * TS/TSX is parsed with oxc (vite's parseSync). Comments never match: they
@@ -19,7 +19,7 @@
 //    interpolation, imports) use the AST.
 //  * CSS has its comments blanked first; colors are checked in declarations
 //    only, never in selectors.
-//  * messages/*.json (the UI copy) is checked line by line, values only.
+//  * The message catalogs (the UI copy) are checked line by line, values only.
 //
 // Accepted limits (known, not bugs):
 //  * The ratchet counts per rule and file: a fix and a new violation in the
@@ -90,7 +90,7 @@ export const RULES: Record<string, string> = {
 	"UI-121":
 		"Word the glossary replaces (log in, participant, receivable...); use the glossary word (GUIDELINE §13).",
 	"UI-124":
-		"Literal English in JSX (a text child or a placeholder, title, aria-label, alt or label prop); put the copy in messages/en.json and render it with t() (GUIDELINE §13).",
+		"Literal English in JSX (a text child or a placeholder, title, aria-label, alt or label prop); put the copy in packages/i18n/messages/en.json (or a feature file) and render it with t() (GUIDELINE §13).",
 	"UI-130":
 		"Focus outline removed without a focus-visible replacement; keep a visible focus-visible:ring or outline (GUIDELINE §14).",
 	"UI-131":
@@ -103,9 +103,12 @@ export const RULES: Record<string, string> = {
 
 // ---- scope ----------------------------------------------------------------
 
+/** Message catalogs: shared (messages/<locale>.json) and feature (messages/<locale>/<feature>.json). */
+const MESSAGE_FILE = /^packages\/i18n\/messages\/[\w-]+(?:\/[\w-]+)?\.json$/;
+
 /** Files the scan covers: src/**.{ts,tsx,css} (minus tests and src/test) and the message catalogs. */
 export function inScope(file: string): boolean {
-	if (/^messages\/[\w-]+\.json$/.test(file)) return true;
+	if (MESSAGE_FILE.test(file)) return true;
 	if (!file.startsWith("src/")) return false;
 	if (!/\.(ts|tsx|css)$/.test(file) || file.endsWith(".d.ts")) return false;
 	if (file.startsWith("src/test/")) return false;
@@ -135,13 +138,10 @@ export const THEME_FILES = new Set([
  * toLocaleDateString, Intl.DateTimeFormat...). Number formatting (toFixed,
  * Intl.NumberFormat) is allowed only in packages/domain and src/server/services
  * (IMPLEMENTATION §4), so today's src/lib formatters sit in the baseline until
- * they move into packages/domain.
+ * they move into packages/domain. The scan does not cover packages/domain,
+ * which already holds the money and time zone helpers.
  */
-export const DATE_HELPERS = new Set([
-	"src/lib/date-locale.ts",
-	"src/lib/date.ts",
-	"src/lib/time-zone.ts",
-]);
+export const DATE_HELPERS = new Set(["src/lib/date-locale.ts", "src/lib/date.ts"]);
 
 /** Transport files: they call services, never the database (UI-151). */
 const isTransport = (f: string) =>
@@ -171,7 +171,7 @@ function applies(rule: string, file: string): boolean {
 	if (EXEMPT[rule]?.(file)) return false;
 	const scope = SCOPE[rule];
 	if (scope) return scope(file);
-	if (file.startsWith("messages/")) return true;
+	if (MESSAGE_FILE.test(file)) return true;
 	return COPY_RULES.has(rule) || isUi(file);
 }
 
@@ -1376,7 +1376,7 @@ function scanCss(file: string, text: string, out: Raw[]) {
 // ---- messages ----------------------------------------------------------------
 
 function scanMessages(file: string, text: string, out: Raw[]) {
-	const english = file === "messages/en.json";
+	const english = /^packages\/i18n\/messages\/en(?:\.json|\/)/.test(file);
 	const lines = text.split("\n");
 	lines.forEach((l, i) => {
 		const m = /^\s*"(?:[^"\\]|\\.)*"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(l);

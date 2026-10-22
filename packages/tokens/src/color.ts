@@ -1,6 +1,6 @@
 // Color math for the design tokens: OKLCH and OKLab to sRGB, color-mix in
-// OKLab, WCAG contrast. Used by build-tokens.ts (hex values for the Expo app)
-// and tokens.test.ts (contrast floor, GUIDELINE §14).
+// OKLab, WCAG contrast. Used to generate hex values for native platforms and
+// by the contrast tests (src/test/uiRules/tokens.test.ts, GUIDELINE §14).
 //
 // Numbers follow CSS Color 4: OKLab to linear sRGB with the Ottosson matrices,
 // then the sRGB transfer curve. Out-of-gamut channels are clipped, which is
@@ -57,7 +57,10 @@ function rgbaToLab(c: Rgba): Lab {
 	return linearToLab([decode(c.r), decode(c.g), decode(c.b)], c.a);
 }
 
-/** Parse `oklch(L C h)`, `oklch(L C h / a)` or `rgb(r g b / a)` (0..255). */
+/**
+ * Parse `oklch(L C h)`, `oklch(L C h / a)`, `rgb(r g b / a)` (0..255) or
+ * `color-mix(in oklab, ...)` over any of those.
+ */
 export function parseColor(text: string): Rgba {
 	const s = text.trim();
 	const ok =
@@ -86,7 +89,39 @@ export function parseColor(text: string): Rgba {
 			a: rgb[4] === undefined ? 1 : Number(rgb[4]),
 		};
 	}
+	const mix = /^color-mix\(\s*in oklab\s*,(.*)\)$/.exec(s);
+	if (mix) return parseMix(mix[1] as string);
 	throw new Error(`unsupported color: ${text}`);
+}
+
+/** The arguments of `color-mix(in oklab, a p%, b)`; b may be `transparent`. */
+function parseMix(args: string): Rgba {
+	const [first, second] = splitTopLevel(args);
+	const weighted = /^(.*\S)\s+([\d.]+)%$/.exec(first?.trim() ?? "");
+	if (!weighted || !second) throw new Error(`unsupported color-mix: ${args}`);
+	const b = second.trim();
+	return mixOklab(
+		parseColor(weighted[1] as string),
+		Number(weighted[2]),
+		b === "transparent" ? undefined : parseColor(b),
+	);
+}
+
+/** Split on the commas that are not inside parentheses. */
+function splitTopLevel(text: string): string[] {
+	const parts: string[] = [];
+	let depth = 0;
+	let start = 0;
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === "(") depth++;
+		else if (text[i] === ")") depth--;
+		else if (text[i] === "," && depth === 0) {
+			parts.push(text.slice(start, i));
+			start = i + 1;
+		}
+	}
+	parts.push(text.slice(start));
+	return parts;
 }
 
 /** CSS `color-mix(in oklab, a p%, b)`; `b` undefined means transparent. */
