@@ -22,7 +22,7 @@ describe("v1 contract conventions", () => {
 		expect(checkContractConventions(bad)).toEqual(["thing: no scope"]);
 	});
 
-	it("fails a public write and a write without a registered event", () => {
+	it("fails writes scoped public or read, and unregistered events", () => {
 		const bad = {
 			a: v1
 				.route({ method: "POST", path: "/a", operationId: "a" })
@@ -32,10 +32,17 @@ describe("v1 contract conventions", () => {
 				.route({ method: "POST", path: "/b", operationId: "b" })
 				.meta({ scope: "write:expenses", event: "b.created" })
 				.output(out),
+			c: v1
+				.route({ method: "DELETE", path: "/c", operationId: "c" })
+				.meta({ scope: "read", event: "b.created" })
+				.output(out),
 		};
-		expect(checkContractConventions(bad, [])).toEqual([
-			"a: only GET routes may be public",
+		expect(checkContractConventions(bad, ["b.created"])).toEqual([
+			"a: a write needs a write scope, not public",
 			"a: write without an event",
+			"c: a write needs a write scope, not read",
+		]);
+		expect(checkContractConventions({ b: bad.b }, [])).toEqual([
 			'b: event "b.created" is not registered',
 		]);
 	});
@@ -43,7 +50,7 @@ describe("v1 contract conventions", () => {
 	it("needs a preview twin with the same input on a money write", () => {
 		const write = v1
 			.route({ method: "POST", path: "/payments", operationId: "pay" })
-			.meta({ scope: "write:money", event: "payment.recorded", money: true })
+			.meta({ scope: "write:money", event: "payment.recorded" })
 			.input(input)
 			.output(out);
 		const events = ["payment.recorded"];
@@ -62,6 +69,19 @@ describe("v1 contract conventions", () => {
 			.input(input)
 			.output(previewResultSchema);
 		expect(checkContractConventions({ write, twin }, events)).toEqual([]);
+
+		const otherInput = v1
+			.route({
+				method: "POST",
+				path: "/payments/preview",
+				operationId: "previewPay",
+			})
+			.meta({ scope: "write:money", previewOf: "/payments" })
+			.input(out)
+			.output(previewResultSchema);
+		expect(
+			checkContractConventions({ write, twin: otherInput }, events),
+		).toEqual(["write: preview twin takes a different input"]);
 	});
 
 	it("fails duplicate routes and operation ids", () => {

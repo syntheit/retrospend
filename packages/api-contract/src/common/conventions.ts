@@ -10,7 +10,8 @@ const ROUTE_SCOPES: readonly string[] = [...SCOPES, "public"];
  * Checks the v1 rules a contract must follow and returns one message per
  * violation (empty when it passes). Runs in the contract test against the
  * real contract, so a group that adds a route without a scope, a write
- * without an event or a money write without its preview twin fails CI.
+ * scoped read or public, a write without an event or a write:money write
+ * without its preview twin fails CI.
  */
 export function checkContractConventions(
 	router: AnyContractRouter,
@@ -28,8 +29,8 @@ export function checkContractConventions(
 		if (!scope) problems.push(`${name}: no scope`);
 		else if (!ROUTE_SCOPES.includes(scope))
 			problems.push(`${name}: unknown scope "${scope}"`);
-		if (scope === "public" && r.method !== "GET")
-			problems.push(`${name}: only GET routes may be public`);
+		if (r.method !== "GET" && (scope === "public" || scope === "read"))
+			problems.push(`${name}: a write needs a write scope, not ${scope}`);
 
 		if (!r.path?.startsWith("/")) problems.push(`${name}: no path`);
 		const route = `${r.method} ${r.path}`;
@@ -57,9 +58,16 @@ export function checkContractConventions(
 			problems.push(`${name}: a preview twin must return PreviewResult`);
 	}
 
-	for (const r of routes.filter((x) => x.meta.money)) {
+	// A money write is any write scoped write:money, so a route cannot skip
+	// its preview twin by leaving a flag off.
+	const moneyWrites = routes.filter(
+		(x) =>
+			x.meta.scope === "write:money" &&
+			x.method !== "GET" &&
+			!(x.path?.endsWith(PREVIEW_SUFFIX) ?? false),
+	);
+	for (const r of moneyWrites) {
 		const name = r.key.join(".");
-		if (r.method === "GET") problems.push(`${name}: money on a GET route`);
 		const twin = routes.find(
 			(x) =>
 				x.meta.previewOf === r.path &&

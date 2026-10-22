@@ -11,15 +11,14 @@ import type { RouteScope } from "./scopes";
  * - `scope`: what the caller needs. Required on every route; the contract
  *   test fails on a route without one.
  * - `event`: the event type a write appends to the outbox.
- * - `money`: a money write; it must have a preview twin at `<path>/preview`.
- * - `previewOf`: on the twin, the path of the write it previews.
+ * - `previewOf`: on a preview twin, the path of the write it previews.
+ *   Every write scoped `write:money` must have one at `<path>/preview`.
  * - `secretResponse`: the response holds a secret shown once, so the
  *   idempotency store keeps no copy of it.
  */
 export interface ApiMeta {
 	scope?: RouteScope;
 	event?: string;
-	money?: boolean;
 	previewOf?: string;
 	secretResponse?: boolean;
 }
