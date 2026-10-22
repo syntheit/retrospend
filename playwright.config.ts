@@ -1,29 +1,39 @@
-import { defineConfig, devices } from "@playwright/test";
-import { join } from "node:path";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { defineConfig, devices } from "@playwright/test";
+import {
+	E2E_BASE_URL,
+	E2E_DATABASE_URL,
+	E2E_PORT,
+	USER_STORAGE_STATE,
+} from "./e2e/constants";
+import { assertE2eDatabase } from "./e2e/db-guard";
+import { SEED_TIME_ZONE } from "./e2e/fixtures/personas";
 
-// Test server runs on a different port to avoid conflicts with dev server
-const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:1998";
-
-// Test database — set E2E_DATABASE_URL to use docker-compose.test.yml isolation.
-// Falls back to DATABASE_URL (dev DB) so tests work out of the box.
-const DB_URL =
-	process.env.E2E_DATABASE_URL ??
-	process.env.DATABASE_URL ??
-	"postgresql://postgres:testpassword@localhost:5436/retrospend_test";
+// Before anything starts: `pnpm dev:test` migrates this database and global
+// setup wipes it.
+assertE2eDatabase(E2E_DATABASE_URL);
 
 const UPLOAD_DIR =
 	process.env.E2E_UPLOAD_DIR ??
 	mkdtempSync(join(tmpdir(), "retrospend-e2e-uploads-"));
 
 const AUTH_SECRET =
-	process.env.AUTH_SECRET ??
-	process.env.E2E_AUTH_SECRET ??
-	"e2e-test-secret-value-32-chars-!!";
+	process.env.E2E_AUTH_SECRET ?? "e2e-test-secret-value-32-chars-!!";
 
-export const USER_STORAGE_STATE = "playwright/.auth/user.json";
-export const ADMIN_STORAGE_STATE = "playwright/.auth/admin.json";
+// NixOS cannot run Playwright's downloaded browsers; point this at a Nix
+// Chrome or Chromium instead (docs/ui-overhaul/ops/e2e.sh does).
+const executablePath = process.env.E2E_CHROMIUM_PATH;
+
+const chromium = {
+	...devices["Desktop Chrome"],
+	locale: "en-US",
+	timezoneId: SEED_TIME_ZONE,
+	launchOptions: executablePath
+		? { executablePath, args: ["--no-sandbox"] }
+		: {},
+};
 
 export default defineConfig({
 	testDir: "./e2e",
@@ -31,46 +41,61 @@ export default defineConfig({
 	retries: process.env.CI ? 1 : 0,
 	reporter: [["html", { open: "never" }], ["list"]],
 	use: {
-		baseURL: BASE_URL,
+		baseURL: E2E_BASE_URL,
 		screenshot: "only-on-failure",
 		trace: "on-first-retry",
 	},
 	projects: [
-		// Setup project: logs in and saves auth state
+		// Logs in the blank test accounts and saves their sessions
 		{
 			name: "setup",
 			testMatch: /auth\.setup\.ts/,
+			use: chromium,
 		},
-		// Main project: authenticated tests
+		// Older specs, signed in as the blank test user
 		{
 			name: "chromium",
-			use: {
-				...devices["Desktop Chrome"],
-				storageState: USER_STORAGE_STATE,
-			},
+			use: { ...chromium, storageState: USER_STORAGE_STATE },
 			dependencies: ["setup"],
+			testMatch: /e2e\/[^/]+\.spec\.ts$/,
 			testIgnore: ["**/auth.spec.ts", "**/smoke.spec.ts"],
 		},
-		// Auth/smoke project: tests that need no pre-existing session
+		// Tests that need no pre-existing session
 		{
 			name: "auth-flows",
-			use: devices["Desktop Chrome"],
+			use: chromium,
 			dependencies: ["setup"],
 			testMatch: ["**/auth.spec.ts", "**/smoke.spec.ts"],
 		},
+		// Persona flows on the seeded ledger (fixtures/seed.ts); each signs in itself
+		{
+			name: "flows",
+			testDir: "./e2e/flows",
+			testMatch: "**/*.spec.ts",
+			use: chromium,
+		},
 	],
 	globalSetup: "./e2e/global-setup.ts",
-	webServer: {
-		command: "pnpm dev:test",
-		url: BASE_URL,
-		reuseExistingServer: !process.env.CI,
-		timeout: 120_000,
-		env: {
-			DATABASE_URL: DB_URL,
-			AUTH_SECRET: AUTH_SECRET,
-			PUBLIC_URL: BASE_URL,
-			NEXT_PUBLIC_APP_URL: BASE_URL,
-			UPLOAD_DIR,
-		},
-	},
+	// An external E2E_BASE_URL means the app is already running elsewhere.
+	webServer: process.env.E2E_BASE_URL
+		? undefined
+		: {
+				// The last -p wins, so this overrides dev:test's own port.
+				command: `pnpm dev:test -p ${E2E_PORT}`,
+				url: E2E_BASE_URL,
+				// Reusing a server on the port could mean testing another DB.
+				reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
+				timeout: 180_000,
+				// Playwright started this process group and stops exactly it.
+				gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
+				env: {
+					DATABASE_URL: E2E_DATABASE_URL,
+					AUTH_SECRET,
+					PUBLIC_URL: E2E_BASE_URL,
+					NEXT_PUBLIC_APP_URL: E2E_BASE_URL,
+					UPLOAD_DIR,
+					// No sidecar in e2e: rates come from the seed.
+					SIDECAR_URL: "http://127.0.0.1:9",
+				},
+			},
 });
