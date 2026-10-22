@@ -109,23 +109,45 @@ const scopeDeviceSession = createAuthMiddleware(async (ctx) => {
 	return ctx.json({ ...returned, scope: scopes });
 });
 
+/** Whether a get-session response is for a scoped (mobile or device) session. */
+function isScopedSessionBody(body: unknown): boolean {
+	const session = (body as { session?: { scopes?: unknown } } | null)?.session;
+	return session?.scopes !== undefined && session.scopes !== null;
+}
+
 /**
- * Hands the session token to JavaScript (`set-auth-token`) only for the
- * Expo app and device clients. The bearer plugin adds it to every response
- * that sets the session cookie, which would expose the web session's token
- * to page scripts; this runs after it and takes the header back off.
+ * Runs after the bearer plugin and decides what a response may hand out:
+ * - `set-auth-token` (the session token, readable by scripts) only for a
+ *   session row stamped as the mobile app's, or a device token response.
+ *   Never from request headers, so a web session's token never leaks to a
+ *   page script.
+ * - no Set-Cookie at all when a scoped session refreshes: scoped tokens
+ *   refresh by bearer only, so a device client never gets a signed cookie
+ *   it could replay next to some other bearer.
  */
-const appOnlyAuthToken = {
-	id: "app-only-auth-token",
+const tokenHandout = {
+	id: "token-handout",
 	hooks: {
 		after: [
 			{
 				matcher: () => true,
 				handler: createAuthMiddleware(async (ctx) => {
-					const headers = ctx.request?.headers ?? ctx.headers;
-					if (ctx.path === "/device/token" || isMobileAppRequest(headers))
+					const responseHeaders = ctx.context.responseHeaders;
+					if (!responseHeaders) return;
+					if (
+						ctx.path === "/get-session" &&
+						isScopedSessionBody(ctx.context.returned)
+					) {
+						responseHeaders.delete("set-cookie");
+						responseHeaders.delete("set-auth-token");
 						return;
-					ctx.context.responseHeaders?.delete("set-auth-token");
+					}
+					const clientId = (
+						ctx.context.newSession?.session as { clientId?: string | null }
+					)?.clientId;
+					if (ctx.path === "/device/token" || clientId === MOBILE_CLIENT_ID)
+						return;
+					responseHeaders.delete("set-auth-token");
 				}),
 			},
 		],
@@ -162,9 +184,16 @@ export const auth = betterAuth({
 	hooks: {
 		before: createAuthMiddleware(async (context) => {
 			const requestHeaders = context.request?.headers ?? context.headers;
-			if (requestHeaders)
-				await guardScopedSessions(context.path, requestHeaders);
-			if (!context.request) return;
+			const guarded = requestHeaders
+				? await guardScopedSessions(
+						context.path,
+						requestHeaders,
+						context.context.secret,
+					)
+				: null;
+			// With a bearer, the endpoint sees no session cookie (see guardScopedSessions).
+			const result = guarded ? { context: { headers: guarded } } : undefined;
+			if (!context.request) return result;
 			const path = new URL(context.request.url).pathname.replace(
 				/^\/api\/auth/,
 				"",
@@ -184,6 +213,7 @@ export const auth = betterAuth({
 				}
 			}
 			guardApiKeyRequest(path, context.body);
+			return result;
 		}),
 		after: scopeDeviceSession,
 	},
@@ -487,7 +517,7 @@ export const auth = betterAuth({
 		// Mobile: `Authorization: Bearer <session token>` (token from the
 		// set-auth-token header at sign-in) and the Expo origin handling.
 		bearer(),
-		appOnlyAuthToken,
+		tokenHandout,
 		expo(),
 		// Personal access tokens for scripts and integrations: shown once,
 		// stored hashed, always expiring. Scopes live in `permissions` and can

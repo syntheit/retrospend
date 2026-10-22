@@ -317,7 +317,9 @@ describe("a bad bearer never falls back to a scoped cookie", () => {
 			});
 			expect(update.status).not.toBe(200);
 		}
-		const row = await adminDb.user.findUniqueOrThrow({ where: { id: user.id } });
+		const row = await adminDb.user.findUniqueOrThrow({
+			where: { id: user.id },
+		});
 		expect(row.name).toBe("Escalation");
 	});
 
