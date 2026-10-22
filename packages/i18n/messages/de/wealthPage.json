@@ -1,0 +1,135 @@
+{
+	"title": "Vermögen",
+	"netWorth": "Nettovermögen",
+	"range": "Diagrammzeitraum",
+	"ranges": {
+		"1M": "1M",
+		"3M": "3M",
+		"6M": "6M",
+		"1Y": "1Y"
+	},
+	"emptyTrend": "Füge ein Konto hinzu, um deinen Verlauf zu sehen.",
+	"in30Days": "in 30 Tagen",
+	"assetsByGroup": "Vermögen nach Gruppe",
+	"groups": {
+		"cash": "Bargeld und Bank",
+		"investments": "Anlagen",
+		"crypto": "Krypto",
+		"property": "Sachwerte",
+		"liabilities": "Schulden"
+	},
+	"liquidAssets": "Liquide Mittel",
+	"runway": "Reichweite",
+	"runwayAt": "bei deinen durchschnittlichen Ausgaben von <amount></amount> im Monat",
+	"months": "{months, plural, one {# Monat} other {# Monate}}",
+	"addAccount": "Konto hinzufügen",
+	"empty": {
+		"title": "Noch keine Konten",
+		"hint": "Füge ein Bankkonto, eine Anlage oder einen Kredit hinzu, um dein Vermögen zu verfolgen."
+	},
+	"filters": {
+		"label": "Konten filtern",
+		"search": "Konten suchen",
+		"liquid": "Liquide",
+		"illiquid": "Nicht liquide",
+		"foreign": "Fremdwährung",
+		"clear": "Filter löschen",
+		"none": "Keine passenden Konten",
+		"noneHint": "Entferne einen Filter."
+	},
+	"closed": {
+		"title": "Geschlossene Konten",
+		"notCounted": "Nicht im Vermögen"
+	},
+	"view": "Ansicht",
+	"accounts": "Konten",
+	"breakdown": {
+		"title": "Aufteilung",
+		"empty": "Nichts aufzuteilen",
+		"emptyHint": "Füge zuerst ein Konto hinzu.",
+		"item": "{label} · {share}",
+		"underOne": "<1%",
+		"byType": "Nach Art",
+		"byCurrency": "Nach Währung",
+		"byLiquidity": "Nach Liquidität",
+		"liquid": "Liquide",
+		"illiquid": "Nicht liquide"
+	},
+	"ratesToday": "Kurse von heute",
+	"ratesOn": "Kurse vom {date}",
+	"withoutRate": "{count, plural, one {# Konto ohne Kurs} other {# Konten ohne Kurs}}",
+	"showAmounts": "Beträge zeigen",
+	"hideAmounts": "Beträge verbergen",
+	"more": "Weitere Aktionen",
+	"currencies": "Währungen und Kurse",
+	"importCsv": "Konten importieren (CSV)",
+	"exportCsv": "Konten exportieren (CSV)",
+	"unavailable": {
+		"title": "Vermögen ist gerade nicht verfügbar",
+		"hint": "Deine Konten sind sicher. Versuch es gleich noch einmal.",
+		"retry": "Erneut versuchen"
+	},
+	"toast": {
+		"reopened": "{name} wieder geöffnet",
+		"closed": "{name} geschlossen",
+		"deleted": "{name} gelöscht",
+		"updated": "{name} aktualisiert",
+		"added": "{name} hinzugefügt",
+		"saved": "{name} gespeichert",
+		"failed": "Speichern fehlgeschlagen. Versuch es noch einmal."
+	},
+	"rateTypes": {
+		"official": "Offiziell",
+		"blue": "Blue",
+		"card": "Karte",
+		"mep": "MEP",
+		"crypto": "Krypto",
+		"tourist": "Tourist",
+		"market": "Markt",
+		"custom": "Eigener Kurs"
+	},
+	"types": {
+		"CASH": "Bargeld und Bank",
+		"INVESTMENT": "Anlage",
+		"CRYPTO": "Krypto",
+		"REAL_ESTATE": "Immobilie",
+		"VEHICLE": "Fahrzeug",
+		"LIABILITY_LOAN": "Kredit",
+		"LIABILITY_CREDIT_CARD": "Kreditkarte",
+		"LIABILITY_MORTGAGE": "Hypothek"
+	},
+	"sheets": {
+		"valuedAtLabel": "Bewertet zum",
+		"valuedAt": "Bewertet zum Kurs {type}",
+		"noRate": "Kein {currency}-Kurs, daher zählt dieses Konto nicht zum Vermögen.",
+		"update": {
+			"title": "Saldo aktualisieren",
+			"submit": "Saldo aktualisieren",
+			"now": "Jetzt <amount></amount> · Aktualisiert am {date}",
+			"rateChange": "Ab heute zum Kurs {next} bewertet. Frühere Tage behalten den Kurs {before}."
+		},
+		"account": {
+			"addTitle": "Konto hinzufügen",
+			"editTitle": "Konto bearbeiten",
+			"add": "Konto hinzufügen",
+			"save": "Speichern",
+			"name": "Name",
+			"namePlaceholder": "Sparkonto",
+			"nameMissing": "Gib dem Konto einen Namen",
+			"type": "Art",
+			"balance": "Saldo",
+			"owed": "Geschuldeter Betrag",
+			"noRate": "Noch kein {currency}-Kurs, daher lässt sich das Konto nicht bewerten. Wähle vorerst eine andere Währung.",
+			"liquid": "Liquide",
+			"apr": "Zinssatz (effektiv, %)",
+			"dueDay": "Fälligkeitstag",
+			"minimum": "Mindestzahlung"
+		},
+		"close": {
+			"title": "{name} schließen?",
+			"submit": "Konto schließen",
+			"body": "{name} verlässt ab heute deine Konten und dein Vermögen. Der Saldoverlauf bleibt, und du kannst es unter Geschlossene Konten wieder öffnen.",
+			"left": "Es zeigt noch <amount></amount>. Wenn das Geld woanders hin ist, setz den Saldo zuerst auf null."
+		}
+	}
+}

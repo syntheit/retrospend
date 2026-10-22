@@ -1,0 +1,135 @@
+{
+	"title": "Wealth",
+	"netWorth": "Net worth",
+	"range": "Chart range",
+	"ranges": {
+		"1M": "1M",
+		"3M": "3M",
+		"6M": "6M",
+		"1Y": "1Y"
+	},
+	"emptyTrend": "Add an account to see your trend.",
+	"in30Days": "in 30 days",
+	"assetsByGroup": "Assets by group",
+	"groups": {
+		"cash": "Cash and bank",
+		"investments": "Investments",
+		"crypto": "Crypto",
+		"property": "Property",
+		"liabilities": "Liabilities"
+	},
+	"liquidAssets": "Liquid assets",
+	"runway": "Runway",
+	"runwayAt": "at your average spending of <amount></amount> a month",
+	"months": "{months, plural, one {# month} other {# months}}",
+	"addAccount": "Add account",
+	"empty": {
+		"title": "No accounts yet",
+		"hint": "Add a bank account, an investment or a loan to track your net worth."
+	},
+	"filters": {
+		"label": "Filter accounts",
+		"search": "Search accounts",
+		"liquid": "Liquid",
+		"illiquid": "Illiquid",
+		"foreign": "Foreign currency",
+		"clear": "Clear filters",
+		"none": "No accounts match",
+		"noneHint": "Try removing a filter."
+	},
+	"closed": {
+		"title": "Closed accounts",
+		"notCounted": "Not in net worth"
+	},
+	"view": "View",
+	"accounts": "Accounts",
+	"breakdown": {
+		"title": "Breakdown",
+		"empty": "Nothing to break down",
+		"emptyHint": "Add an account first.",
+		"item": "{label} · {share}",
+		"underOne": "<1%",
+		"byType": "By type",
+		"byCurrency": "By currency",
+		"byLiquidity": "By liquidity",
+		"liquid": "Liquid",
+		"illiquid": "Illiquid"
+	},
+	"ratesToday": "Rates updated today",
+	"ratesOn": "Rates updated {date}",
+	"withoutRate": "{count, plural, one {# account without a rate} other {# accounts without a rate}}",
+	"showAmounts": "Show amounts",
+	"hideAmounts": "Hide amounts",
+	"more": "More actions",
+	"currencies": "Currencies and rates",
+	"importCsv": "Import accounts (CSV)",
+	"exportCsv": "Export accounts (CSV)",
+	"unavailable": {
+		"title": "Wealth isn't available right now",
+		"hint": "Your accounts are safe. Try again in a moment.",
+		"retry": "Try again"
+	},
+	"toast": {
+		"reopened": "Reopened {name}",
+		"closed": "Closed {name}",
+		"deleted": "Deleted {name}",
+		"updated": "{name} updated",
+		"added": "Added {name}",
+		"saved": "{name} saved",
+		"failed": "Couldn't save. Try again."
+	},
+	"rateTypes": {
+		"official": "Official",
+		"blue": "Blue",
+		"card": "Card",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"tourist": "Tourist",
+		"market": "Market",
+		"custom": "Custom"
+	},
+	"types": {
+		"CASH": "Cash and bank",
+		"INVESTMENT": "Investment",
+		"CRYPTO": "Crypto",
+		"REAL_ESTATE": "Real estate",
+		"VEHICLE": "Vehicle",
+		"LIABILITY_LOAN": "Loan",
+		"LIABILITY_CREDIT_CARD": "Credit card",
+		"LIABILITY_MORTGAGE": "Mortgage"
+	},
+	"sheets": {
+		"valuedAtLabel": "Valued at",
+		"valuedAt": "Valued at the {type} rate",
+		"noRate": "No {currency} rate, so this account is left out of net worth.",
+		"update": {
+			"title": "Update balance",
+			"submit": "Update balance",
+			"now": "Now <amount></amount> · Updated {date}",
+			"rateChange": "Valued at {next} from today. Earlier days keep the {before} rate."
+		},
+		"account": {
+			"addTitle": "Add account",
+			"editTitle": "Edit account",
+			"add": "Add account",
+			"save": "Save",
+			"name": "Name",
+			"namePlaceholder": "Savings account",
+			"nameMissing": "Give the account a name",
+			"type": "Type",
+			"balance": "Balance",
+			"owed": "Amount owed",
+			"noRate": "No {currency} rate yet, so the account can't be valued. Pick another currency for now.",
+			"liquid": "Liquid",
+			"apr": "Interest rate (APR, %)",
+			"dueDay": "Due day",
+			"minimum": "Minimum payment"
+		},
+		"close": {
+			"title": "Close {name}?",
+			"submit": "Close account",
+			"body": "{name} leaves your accounts and net worth from today. Its balance history stays, and you can reopen it from Closed accounts.",
+			"left": "It still shows <amount></amount>. Update the balance to zero first if the money moved elsewhere."
+		}
+	}
+}
