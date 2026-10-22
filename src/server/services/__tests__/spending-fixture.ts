@@ -40,7 +40,7 @@ export const TZ = "UTC";
 // Budget periods are keyed by the server-local first of the month, as the app writes them.
 const MARCH_PERIOD = new Date(2026, 2, 1);
 
-const at = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
+export const at = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
 
 export type SpendingFixture = Awaited<ReturnType<typeof seedSpendingFixture>>;
 
@@ -58,7 +58,7 @@ async function seedRates() {
 	});
 }
 
-type Row = {
+export type Row = {
 	title: string;
 	amount: number;
 	currency?: string;
@@ -70,6 +70,11 @@ type Row = {
 	isAmortizedChild?: boolean;
 	parentId?: string;
 	id?: string;
+	// Money in (M1); spending rows leave them at their defaults.
+	direction?: "OUT" | "IN";
+	entryKind?: "STANDARD" | "STARTING_BALANCE" | "ADJUSTMENT" | "NOT_SPENDING";
+	inType?: "INCOME" | "REFUND";
+	amortizeMode?: "INSTALLMENTS" | "REPORTS_ONLY";
 };
 
 export function expenseData(userId: string, row: Row) {
@@ -91,6 +96,10 @@ export function expenseData(userId: string, row: Row) {
 		isAmortizedParent: row.isAmortizedParent ?? false,
 		isAmortizedChild: row.isAmortizedChild ?? false,
 		parentId: row.parentId ?? null,
+		...(row.direction ? { direction: row.direction } : {}),
+		...(row.entryKind ? { entryKind: row.entryKind } : {}),
+		...(row.inType ? { inType: row.inType } : {}),
+		...(row.amortizeMode ? { amortizeMode: row.amortizeMode } : {}),
 	};
 }
 

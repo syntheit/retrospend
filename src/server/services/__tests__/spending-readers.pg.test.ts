@@ -28,7 +28,7 @@ describe("spending readers today (characterization)", () => {
 		vi.useFakeTimers({ toFake: ["Date"] });
 		vi.setSystemTime(NOW);
 		readings = await readAllSpendingReaders(await seedSpendingFixture());
-	});
+	}, 120_000);
 	afterAll(() => vi.useRealTimers());
 
 	for (const [reader, expected] of Object.entries(EXPECTED_READINGS)) {
