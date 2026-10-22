@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MissingRateError } from "~/lib/money";
 import { makeCategory, makeExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
@@ -41,6 +42,10 @@ describe("ExpenseService", () => {
 
 		// Sensible defaults
 		useRateTable(db);
+		db.user.findUnique.mockResolvedValue({
+			homeCurrency: "USD",
+			defaultRateTypes: {},
+		});
 		db.expense.create.mockResolvedValue(makeExpense());
 	});
 
@@ -115,7 +120,7 @@ describe("ExpenseService", () => {
 			);
 		});
 
-		it("fiat without rate AND no rate available: throws BAD_REQUEST", async () => {
+		it("fiat without rate AND no rate available: throws MissingRateError (tRPC answers BAD_REQUEST)", async () => {
 			useRateTable(db, []);
 
 			await expect(
@@ -124,7 +129,7 @@ describe("ExpenseService", () => {
 					amount: 1000,
 					currency: "ARS",
 				}),
-			).rejects.toMatchObject({ code: "BAD_REQUEST" });
+			).rejects.toEqual(new MissingRateError("ARS"));
 			expect(db.expense.create).not.toHaveBeenCalled();
 		});
 

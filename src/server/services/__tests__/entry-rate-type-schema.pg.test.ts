@@ -147,12 +147,12 @@ describe("entry_rate_type migration", () => {
 	});
 
 	it("leaves exactly the pre-check's rows unmapped", async () => {
-		const [{ left }] = await runSql<{ left: number }>(
+		const rows = await runSql<{ left: number }>(
 			`SELECT count(*)::int AS left FROM expense
 			 WHERE "userId" = $1 AND currency <> 'USD' AND "rateType" IS NULL`,
 			[userId],
 		);
-		expect(left).toBe(2);
+		expect(rows).toEqual([{ left: 2 }]);
 	});
 
 	it("refuses a half-booked home leg", async () => {

@@ -84,6 +84,11 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	Object.assign(mockDb, createMockDb());
 	useRateTable(mockDb);
+	// The posted row books its home leg (2A.2); these cases pin the entry leg.
+	mockDb.user.findUnique.mockResolvedValue({
+		homeCurrency: "USD",
+		defaultRateTypes: {},
+	});
 	state.expenses = [];
 	setTemplate();
 

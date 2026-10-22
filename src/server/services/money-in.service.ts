@@ -4,9 +4,8 @@
  * confirm posts.
  */
 import { TRPCError } from "@trpc/server";
-import { computeAmountInUSD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
-import { requireExchangeRate } from "../exchange-rates";
+import { bookRate, loadRateContext } from "./rate-types";
 
 /** Income categories every user gets on first money in (budget SPEC §12.1). */
 export const INCOME_CATEGORIES = [
@@ -61,7 +60,9 @@ export interface DueTemplate {
  * sidecar's auto-post: it copies the template's direction (money in is
  * income), and "Amount varies: ask me" (ASK) books the amount the user
  * confirmed. A FIXED template books its own amount and takes none. The rate
- * is the table rate for the due date; a currency without one fails.
+ * is the table rate for the due date at the user's default type, with the
+ * home leg booked like a saved expense (rate-types.ts); a missing rate
+ * throws MissingRateError.
  */
 export async function recurringEntryData(
 	db: PrismaClient | Prisma.TransactionClient,
@@ -78,10 +79,15 @@ export async function recurringEntryData(
 		});
 	}
 	const amount = confirmedAmount ?? template.amount;
-	const { rate: exchangeRate } = await requireExchangeRate(
+	const rate = await bookRate(
 		db,
-		template.currency,
-		template.nextDueDate,
+		await loadRateContext(db, template.userId),
+		{
+			amount: Number(amount),
+			currency: template.currency,
+			date: template.nextDueDate,
+		},
+		{ kind: "table", rateType: null },
 	);
 	const isIncome = template.direction === "IN";
 	return {
@@ -91,12 +97,7 @@ export async function recurringEntryData(
 		currency: template.currency,
 		date: template.nextDueDate,
 		categoryId: template.categoryId,
-		amountInUSD: computeAmountInUSD(
-			Number(amount),
-			template.currency,
-			exchangeRate,
-		),
-		exchangeRate,
+		...rate,
 		pricingSource: "RECURRING",
 		recurringTemplateId: template.id,
 		status: "FINALIZED",
