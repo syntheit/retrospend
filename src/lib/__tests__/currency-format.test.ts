@@ -99,10 +99,27 @@ describe("formatCurrency", () => {
 			expect(formatCurrency(1234.56, "USD")).toBe("$1,234.56");
 		});
 
-		it("formats negative USD amount (symbol prepended before minus)", () => {
-			// The implementation returns "${symbol}${formattedNumber}", so
-			// Intl.NumberFormat("-45.00") → "$-45.00", not "-$45.00"
-			expect(formatCurrency(-45, "USD")).toBe("$-45.00");
+		it("puts the minus sign before the currency symbol", () => {
+			expect(formatCurrency(-45, "USD")).toBe("-$45.00");
+			expect(formatCurrency(-2236000, "ARS")).toBe("-AR$2,236,000");
+			expect(formatCurrency(-1234.5, "EUR")).toBe("-€1.234,50");
+			expect(formatCurrency(-0.004, "ETH")).toBe("-0.004 ETH");
+		});
+
+		it("drops the sign when the amount rounds to zero", () => {
+			expect(formatCurrency(-0.001, "USD")).toBe("$0.00");
+		});
+
+		it("shows a plus sign with exceptZero", () => {
+			expect(formatCurrency(12, "USD", "standard", true, "exceptZero")).toBe(
+				"+$12.00",
+			);
+			expect(formatCurrency(-12, "USD", "standard", true, "exceptZero")).toBe(
+				"-$12.00",
+			);
+			expect(formatCurrency(0, "USD", "standard", true, "exceptZero")).toBe(
+				"$0.00",
+			);
 		});
 
 		it("formats zero as $0.00 for USD", () => {

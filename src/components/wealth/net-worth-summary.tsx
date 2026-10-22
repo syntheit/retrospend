@@ -59,8 +59,7 @@ export function NetWorthSummary({
 				<span className="text-muted-foreground">••••••</span>
 			) : (
 				<span className={trendColor}>
-					{trendSign}
-					{formatCurrency(Math.abs(absoluteChange), homeCurrency)} ({trendSign}
+					{formatCurrency(absoluteChange, homeCurrency, "exceptZero")} ({trendSign}
 					{formatPercent(percentChange)})
 				</span>
 			)}

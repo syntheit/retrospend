@@ -124,26 +124,70 @@ export function isCrypto(currency: string): boolean {
 }
 
 /**
+ * How the sign of a formatted amount is shown. "auto" shows a minus for
+ * negative amounts only; "exceptZero" also shows a plus for positive ones.
+ */
+export type CurrencySignDisplay = "auto" | "exceptZero";
+
+/**
+ * Formats `amount` with the locale's own sign handling and splits the sign
+ * from the digits, so the currency symbol can sit between them ("-AR$2,000"
+ * rather than "AR$-2,000"). An amount that rounds to zero gets no sign.
+ */
+function formatSignedNumber(
+	amount: number,
+	locale: string,
+	options: Intl.NumberFormatOptions,
+	signDisplay: CurrencySignDisplay,
+): { sign: string; digits: string } {
+	const parts = new Intl.NumberFormat(locale, {
+		...options,
+		signDisplay,
+	}).formatToParts(amount);
+	const isSign = (p: Intl.NumberFormatPart) =>
+		p.type === "minusSign" || p.type === "plusSign";
+	const digits = parts
+		.filter((p) => !isSign(p))
+		.map((p) => p.value)
+		.join("");
+	const isZero = !parts.some(
+		(p) =>
+			(p.type === "integer" || p.type === "fraction") && /[1-9]/.test(p.value),
+	);
+	const sign = isZero
+		? ""
+		: parts
+				.filter(isSign)
+				.map((p) => p.value)
+				.join("");
+	return { sign, digits };
+}
+
+/**
  * Formats a currency amount using proper Intl.NumberFormat.
  * Automatically handles symbols, locale, and decimal digits based on currency.
  * For cryptocurrencies, it uses 8 decimal places and appends the ticker.
+ * The sign follows the locale's pattern and goes before the symbol.
  */
 export function formatCurrency(
 	amount: number,
 	currency = "USD",
 	currencySymbolStyle: "native" | "standard" = "standard",
 	smartFormatting = true,
+	signDisplay: CurrencySignDisplay = "auto",
 ): string {
 	const upperCurrency = currency.toUpperCase();
 	const currencyData = CURRENCIES[upperCurrency as keyof typeof CURRENCIES];
 
 	// Handle Cryptocurrency formatting
 	if (isCrypto(upperCurrency)) {
-		const formattedValue = new Intl.NumberFormat("en-US", {
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 8,
-		}).format(amount);
-		return `${formattedValue} ${upperCurrency}`;
+		const { sign, digits } = formatSignedNumber(
+			amount,
+			"en-US",
+			{ minimumFractionDigits: 2, maximumFractionDigits: 8 },
+			signDisplay,
+		);
+		return `${sign}${digits} ${upperCurrency}`;
 	}
 
 	// Handle Fiat formatting
@@ -177,12 +221,15 @@ export function formatCurrency(
 			? currencyData?.symbol_native || currencyData?.symbol || upperCurrency
 			: currencyData?.symbol || upperCurrency;
 
-	// Format the number part
-	const formattedNumber = new Intl.NumberFormat(locale, {
-		minimumFractionDigits: decimalDigits,
-		maximumFractionDigits: decimalDigits,
-	}).format(amount);
+	const { sign, digits } = formatSignedNumber(
+		amount,
+		locale,
+		{
+			minimumFractionDigits: decimalDigits,
+			maximumFractionDigits: decimalDigits,
+		},
+		signDisplay,
+	);
 
-	// Combine symbol and number
-	return `${symbol}${formattedNumber}`;
+	return `${sign}${symbol}${digits}`;
 }
