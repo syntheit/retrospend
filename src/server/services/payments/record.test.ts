@@ -6,7 +6,11 @@ describe("paidOnDate", () => {
 
 	it("defaults to the user's local day, not the UTC day", () => {
 		expect(
-			paidOnDate(null, lateEvening, "America/Argentina/Buenos_Aires").toISOString(),
+			paidOnDate(
+				null,
+				lateEvening,
+				"America/Argentina/Buenos_Aires",
+			).toISOString(),
 		).toBe("2026-10-21T00:00:00.000Z");
 		expect(paidOnDate(null, lateEvening, "UTC").toISOString()).toBe(
 			"2026-10-22T00:00:00.000Z",
@@ -20,6 +24,8 @@ describe("paidOnDate", () => {
 	});
 
 	it("refuses a malformed date", () => {
-		expect(() => paidOnDate("21/10/2026", lateEvening, "UTC")).toThrow("Pick a valid date");
+		expect(() => paidOnDate("21/10/2026", lateEvening, "UTC")).toThrow(
+			"Pick a valid date",
+		);
 	});
 });

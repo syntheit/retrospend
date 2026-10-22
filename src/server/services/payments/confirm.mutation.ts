@@ -293,14 +293,21 @@ export const unconfirmPayment: MoneyMutation<
 	touches: ["balance.person", "owed.owedToYou", "owed.youOwe"],
 	scope: (input) => ({ personId: personKey(input.person) }),
 	run: async (tx, input, actor) => {
-		const me: ParticipantRef = { participantType: "user", participantId: actor.userId };
+		const me: ParticipantRef = {
+			participantType: "user",
+			participantId: actor.userId,
+		};
 		const { header, rows } = await loadPayment(tx, input.paymentId);
 		const recorder: ParticipantRef = {
 			participantType: header.recordedByType,
 			participantId: header.recordedById,
 		};
 		const isParty = groupRoles(rows, me.participantId).isParty;
-		if (!isParty || header.status !== "FINALIZED" || personKey(recorder) === personKey(me)) {
+		if (
+			!isParty ||
+			header.status !== "FINALIZED" ||
+			personKey(recorder) === personKey(me)
+		) {
 			throw new TRPCError({
 				code: "BAD_REQUEST",
 				message: "Only a payment you confirmed can go back to waiting",
@@ -321,7 +328,10 @@ export const unconfirmPayment: MoneyMutation<
 				},
 			});
 		}
-		await tx.payment.update({ where: { id: header.id }, data: { status: "PROPOSED" } });
+		await tx.payment.update({
+			where: { id: header.id },
+			data: { status: "PROPOSED" },
+		});
 		await logGroupAction(tx, me, rows, {
 			action: "EDITED",
 			context: "settlement_unconfirmed",

@@ -210,7 +210,9 @@ describe("allocatePayment", () => {
 		expect(dustOf("COP")).toBe(1);
 		expect(dustOf("CLP")).toBe(1);
 		const cop = allocatePayment({
-			lines: [{ scope: null, currency: "COP", owed: 1_000_000, oldest: "2026-10-01" }],
+			lines: [
+				{ scope: null, currency: "COP", owed: 1_000_000, oldest: "2026-10-01" },
+			],
 			currency: "COP",
 			amount: 1_000_050,
 			quotes: new Map(),
@@ -225,9 +227,16 @@ describe("allocatePayment", () => {
 			{ scope: "trip", currency: "USD", owed: 5_000, oldest: "2026-10-01" },
 			{ scope: "rent", currency: "USD", owed: -8_000, oldest: "2026-10-02" },
 		];
-		const within = allocatePayment({ lines, currency: "USD", amount: 2_000, quotes: new Map() });
+		const within = allocatePayment({
+			lines,
+			currency: "USD",
+			amount: 2_000,
+			quotes: new Map(),
+		});
 		expect(within.overpay).toBe(0);
-		expect(within.rows.map((r) => [r.scope, r.amount])).toEqual([["trip", 2_000]]);
+		expect(within.rows.map((r) => [r.scope, r.amount])).toEqual([
+			["trip", 2_000],
+		]);
 		const beyond = allocatePayment({
 			lines,
 			currency: "USD",
@@ -236,7 +245,9 @@ describe("allocatePayment", () => {
 			allowOverpay: true,
 		});
 		expect(beyond.overpay).toBe(1_000);
-		expect(beyond.rows.filter((r) => r.excess).map((r) => r.amount)).toEqual([1_000]);
+		expect(beyond.rows.filter((r) => r.excess).map((r) => r.amount)).toEqual([
+			1_000,
+		]);
 	});
 
 	it("rejects a fractional or negative amount", () => {

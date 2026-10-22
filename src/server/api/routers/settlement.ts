@@ -18,11 +18,7 @@ import { SettlementService } from "~/server/services/shared-expenses/settlement.
 const settlementDirectionSchema = z.enum(["outgoing", "incoming"]);
 
 export const settlementRouter = createTRPCRouter({
-	/**
-	 * Settle up sheet (MONEY-MOVES §1, R30): the same mutation as
-	 * paymentRecord, rolled back: allocation ("This pays", remainder,
-	 * overpay), a "Same payment?" match, and what changes and does not.
-	 */
+	/** Settle up sheet (MONEY-MOVES §1, R30): paymentRecord, rolled back. */
 	paymentPreview: protectedProcedure
 		.input(recordPaymentSchema)
 		.query(({ ctx, input }) => previewPayment(ctx.session.user.id, input, ctx.timeZone)),
@@ -35,16 +31,11 @@ export const settlementRouter = createTRPCRouter({
 	/** Preview of confirming a payment that waits for the caller. */
 	paymentConfirmPreview: protectedProcedure
 		.input(confirmPaymentSchema)
-		.query(({ ctx, input }) =>
-			previewConfirm(ctx.db, ctx.session.user.id, input),
-		),
+		.query(({ ctx, input }) => previewConfirm(ctx.db, ctx.session.user.id, input)),
 	/** Confirms a payment that waits for the caller; the receiver's details win. */
 	paymentConfirm: protectedProcedure
 		.input(confirmPaymentSchema)
-		.mutation(({ ctx, input }) =>
-			applyConfirm(ctx.db, ctx.session.user.id, input),
-		),
-
+		.mutation(({ ctx, input }) => applyConfirm(ctx.db, ctx.session.user.id, input)),
 	/** Undo of paymentConfirm: the payment waits for the caller again. */
 	paymentUnconfirm: protectedProcedure
 		.input(z.object({ paymentId: z.string().min(1) }))

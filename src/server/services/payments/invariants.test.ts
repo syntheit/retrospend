@@ -4,7 +4,10 @@
  * through the production allocator, confirmation and counting rules.
  */
 import { describe, expect, it } from "vitest";
+import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
+import { createStatefulDb } from "~/server/services/shared-expenses/test-utils";
+import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { allocatePayment } from "./allocate";
 import { findClaimMatch } from "./claim-match";
 import {
@@ -14,6 +17,10 @@ import {
 	settledSince,
 } from "./ledger";
 import { netInHome, owedTotals } from "./owed";
+import {
+	type RecordPaymentInput,
+	recordPayment as recordMutation,
+} from "./record.mutation";
 import {
 	BLUE,
 	confirmPayment,
@@ -42,49 +49,126 @@ function balanceMap(p: FixturePerson, viewer: Who = "me") {
 	);
 }
 
-/** A handful of payments covering partial, converted, apply-to, everything and pending. */
-function paymentsPlayed() {
-	const people = fixtureLedger();
-	recordPayment(people.martin, {
-		payer: "me",
-		recorder: "me",
-		currency: "ARS",
-		amount: 4_000_000,
+/** An expense on the in-memory DB: `payer` paid `amount`, all of it owed by `debtor`. */
+function seedInMemory(
+	db: ReturnType<typeof createStatefulDb>,
+	payer: ParticipantRef,
+	debtor: ParticipantRef,
+	amount: number,
+	currency: string,
+	projectId: string | null,
+	date: string,
+) {
+	const id = `tx-${db._stores.transactions.size + 1}`;
+	db._stores.transactions.set(id, {
+		id,
+		description: "Fixture",
+		amount,
+		currency,
+		date: new Date(date),
+		paidByType: payer.participantType,
+		paidById: payer.participantId,
+		createdByType: payer.participantType,
+		createdById: payer.participantId,
+		splitMode: "EXACT",
+		projectId,
+		billingPeriodId: null,
+		isLocked: false,
+		notes: null,
+		receiptUrl: null,
+		categoryId: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
 	});
-	recordPayment(people.martin, {
-		payer: "me",
-		recorder: "me",
-		currency: "ARS",
-		amount: 2_000_000,
-		applyTo: [{ scope: FLORIPA }],
-	});
-	recordPayment(people.paz, {
-		payer: "them",
-		recorder: "me",
-		currency: "USD",
-		amount: 10_000,
-		quotes: INTO_USD,
-	});
-	recordPayment(people.valentina, {
-		payer: "me",
-		recorder: "me",
-		currency: "ARS",
-		amount: null,
-	});
-	return people;
+	for (const [ref, share] of [
+		[debtor, amount],
+		[payer, 0],
+	] as const) {
+		const spId = `sp-${db._stores.splits.size + 1}`;
+		db._stores.splits.set(spId, {
+			id: spId,
+			transactionId: id,
+			participantType: ref.participantType,
+			participantId: ref.participantId,
+			shareAmount: share,
+			sharePercentage: null,
+			shareUnits: null,
+			verificationStatus: "ACCEPTED",
+			verifiedAt: new Date(),
+			rejectionReason: null,
+			hasUnseenChanges: false,
+		});
+	}
 }
 
 describe("money moves invariants", () => {
-	it("I1 scopes add up: Σ over scopes of Balance(p, s, c) is Overall(p, c) for every person and currency", () => {
-		for (const person of Object.values(paymentsPlayed())) {
-			for (const viewer of ["me", "them"] as const) {
-				const events = eventsFor(person, viewer);
-				const direct = new Map<string, number>();
-				for (const e of events)
-					direct.set(e.currency, (direct.get(e.currency) ?? 0) + e.minor);
-				for (const [c, v] of direct) if (v === 0) direct.delete(c);
-				expect(overallByCurrency(ledgerLines(events))).toEqual(direct);
+	it("I1 scopes add up: Σ over scopes of Balance(p, s, c) is Overall(p, c), through the real balance queries", async () => {
+		// Martín's fixture ledger on the in-memory DB, then payments through
+		// payment.record: partial, Apply to Florianópolis, and one received.
+		const db = createStatefulDb();
+		const sofia = { participantType: "user" as const, participantId: "sofia" };
+		const martin = {
+			participantType: "user" as const,
+			participantId: "martin",
+		};
+		for (const r of fixtureLedger().martin.records) {
+			if (r.kind !== "share") continue;
+			const [payer, debtor] = r.minor > 0 ? [sofia, martin] : [martin, sofia];
+			seedInMemory(
+				db,
+				payer,
+				debtor,
+				Math.abs(r.minor) / 100,
+				r.currency,
+				r.scope,
+				r.date,
+			);
+		}
+		const pay = (input: Partial<RecordPaymentInput>) =>
+			recordMutation.run(
+				db as never,
+				{
+					person: martin,
+					direction: "outgoing",
+					currency: "ARS",
+					amount: "40000",
+					...input,
+				},
+				{ userId: "sofia" },
+			);
+		await pay({});
+		await pay({ amount: "20000", applyTo: [{ scope: FLORIPA }] });
+		await pay({
+			direction: "incoming",
+			amount: "5000",
+			applyTo: [{ scope: DEPTO }],
+			allowOverpay: true,
+		});
+
+		for (const [me, them] of [
+			[sofia, martin],
+			[martin, sofia],
+		] as const) {
+			const overall = await computeBalance(db as never, me, them);
+			const sums: Record<string, number> = {};
+			for (const projectScope of [null, DEPTO, FLORIPA]) {
+				const scoped = await computeBalance(db as never, me, them, {
+					projectScope,
+				});
+				for (const [c, v] of Object.entries(scoped.byCurrency)) {
+					sums[c] = (sums[c] ?? 0) + Math.round(v * 100);
+				}
 			}
+			const expected = Object.fromEntries(
+				Object.entries(overall.byCurrency).map(([c, v]) => [
+					c,
+					Math.round(v * 100),
+				]),
+			);
+			expect(
+				Object.fromEntries(Object.entries(sums).filter(([, v]) => v !== 0)),
+			).toEqual(expected);
+			expect(Object.keys(expected).length).toBeGreaterThan(0);
 		}
 	});
 
@@ -313,15 +397,19 @@ describe("money moves invariants", () => {
 		expect(netInHome(new Map([["EUR", 100]]), "ARS", BLUE)).toBeNull();
 	});
 
-	it("I9 project group balances: Σ over members of Paid − Share − Received + Sent is zero after a multi-scope payment", () => {
-		const martin = fixtureLedger().martin;
+	it("I9 project group balances: Paid − Share − Received + Sent per member, after a payment, add up to zero", () => {
+		// Florianópolis, BRL: Martín paid 900 for three (300 each), Sofía paid
+		// 375 for herself and Martín (187.50 each). Sofía owes Martín 112.50 and
+		// pays it all; Paz owes Martín 300 and has not paid.
 		const a = allocatePayment({
-			lines: payerLines(linesOf(martin), true),
-			currency: "ARS",
-			amount: 16_598_800,
-			quotes: BLUE,
+			lines: [
+				{ scope: FLORIPA, currency: "BRL", owed: 11_250, oldest: "2026-10-09" },
+			],
+			currency: "BRL",
+			amount: null,
+			quotes: new Map(),
 		});
-		const floripa = a.rows.filter((r) => r.scope === FLORIPA);
+		expect(a.rows.map((r) => r.amount)).toEqual([11_250]);
 		const me = { participantType: "user" as const, participantId: "sofia" };
 		const him = { participantType: "user" as const, participantId: "martin" };
 		const paz = { participantType: "shadow" as const, participantId: "paz" };
@@ -349,7 +437,7 @@ describe("money moves invariants", () => {
 					],
 				},
 			],
-			floripa.map((r) => ({
+			a.rows.map((r) => ({
 				fromParticipantType: "user",
 				fromParticipantId: "sofia",
 				toParticipantType: "user",
@@ -358,12 +446,18 @@ describe("money moves invariants", () => {
 				currency: r.currency,
 			})),
 		);
-		for (const breakdown of Object.values(plan.byCurrency)) {
-			const total = breakdown.balances.reduce(
-				(t, b) => t + Math.round(b.netBalance * 100),
-				0,
-			);
-			expect(total).toBe(0);
-		}
+		const balances = Object.fromEntries(
+			(plan.byCurrency.BRL?.balances ?? []).map((b) => [
+				b.participant.participantId,
+				b.netBalance,
+			]),
+		);
+		// Martín 900 − 487.50 − 112.50 received; Sofía 375 − 487.50 + 112.50 sent; Paz −300.
+		expect(balances).toEqual({ martin: 300, sofia: 0, paz: -300 });
+		expect(Object.values(balances).reduce((t, v) => t + v, 0)).toBe(0);
+		// The plan only asks Paz to pay: Sofía is settled in the group.
+		expect(plan.byCurrency.BRL?.plan).toEqual([
+			{ from: paz, to: him, amount: 300, currency: "BRL" },
+		]);
 	});
 });

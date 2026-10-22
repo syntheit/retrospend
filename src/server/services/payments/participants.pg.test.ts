@@ -22,7 +22,11 @@ const ref = (u: TestUser): ParticipantRef => ({
 });
 
 /** `payer` paid 100 USD; `debtor` owes all of it. */
-async function seedShare(payer: ParticipantRef, debtor: ParticipantRef, projectId?: string) {
+async function seedShare(
+	payer: ParticipantRef,
+	debtor: ParticipantRef,
+	projectId?: string,
+) {
 	await adminDb.sharedTransaction.create({
 		data: {
 			description: "Shared",
@@ -56,7 +60,8 @@ async function received(me: TestUser, them: ParticipantRef) {
 	return result.value.paymentId;
 }
 
-const header = (id: string) => adminDb.payment.findUniqueOrThrow({ where: { id } });
+const header = (id: string) =>
+	adminDb.payment.findUniqueOrThrow({ where: { id } });
 
 let sofia: TestUser;
 
@@ -69,7 +74,10 @@ describe("payment headers follow participant rewrites", () => {
 		const shadow = await adminDb.shadowProfile.create({
 			data: { createdById: sofia.user.id, name: "Paz" },
 		});
-		const paz: ParticipantRef = { participantType: "shadow", participantId: shadow.id };
+		const paz: ParticipantRef = {
+			participantType: "shadow",
+			participantId: shadow.id,
+		};
 		await seedShare(ref(sofia), paz);
 		const paymentId = await received(sofia, paz);
 		const claimer = await createTestUser();
@@ -81,8 +89,12 @@ describe("payment headers follow participant rewrites", () => {
 			payerId: claimer.user.id,
 			payeeId: sofia.user.id,
 		});
-		const rows = await adminDb.settlement.findMany({ where: { paymentGroupId: paymentId } });
-		expect(rows.every((r) => r.fromParticipantId === claimer.user.id)).toBe(true);
+		const rows = await adminDb.settlement.findMany({
+			where: { paymentGroupId: paymentId },
+		});
+		expect(rows.every((r) => r.fromParticipantId === claimer.user.id)).toBe(
+			true,
+		);
 	});
 
 	it("a migrated guest's payments name the user", async () => {
@@ -99,7 +111,10 @@ describe("payment headers follow participant rewrites", () => {
 				sessionToken: randomUUID(),
 			},
 		});
-		const guest: ParticipantRef = { participantType: "guest", participantId: session.id };
+		const guest: ParticipantRef = {
+			participantType: "guest",
+			participantId: session.id,
+		};
 		await adminDb.projectParticipant.create({
 			data: { projectId: project.id, ...guest, role: "CONTRIBUTOR" },
 		});
@@ -128,7 +143,12 @@ describe("payment headers follow participant rewrites", () => {
 		const paymentId = result.value.paymentId;
 		expect((await header(paymentId)).status).toBe("PROPOSED");
 
-		await anonymizeAndDeleteUser(adminDb, martin.user.id, martin.user.email, null);
+		await anonymizeAndDeleteUser(
+			adminDb,
+			martin.user.id,
+			martin.user.email,
+			null,
+		);
 
 		const after = await header(paymentId);
 		expect(after).toMatchObject({
@@ -137,7 +157,9 @@ describe("payment headers follow participant rewrites", () => {
 			payeeId: sofia.user.id,
 			status: "FINALIZED",
 		});
-		const rows = await adminDb.settlement.findMany({ where: { paymentGroupId: paymentId } });
+		const rows = await adminDb.settlement.findMany({
+			where: { paymentGroupId: paymentId },
+		});
 		expect(rows.map((r) => r.status)).toEqual(["FINALIZED"]);
 	});
 });

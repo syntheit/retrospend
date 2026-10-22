@@ -9,7 +9,10 @@ import { groupStatus } from "~/server/services/shared-expenses/settlement-groups
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma, PrismaClient, SettlementStatus } from "~prisma";
 
-type Tx = Pick<Prisma.TransactionClient | PrismaClient, "payment" | "settlement">;
+type Tx = Pick<
+	Prisma.TransactionClient | PrismaClient,
+	"payment" | "settlement"
+>;
 
 /** Re-points every header that names `from` (payer, payee or recorder) to `to`. */
 export async function repointPaymentParty(

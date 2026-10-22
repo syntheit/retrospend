@@ -2,9 +2,11 @@
  * The settle dialog's numbers before and after allocatePayment. Each
  * scenario states what the old allocator (settlement-allocation.ts, removed:
  * smallest debt first, offsets in one currency) wrote, pinned by running it
- * when this file was written, then asserts what allocatePayment writes. A
- * difference is always an owner-decided rule (MONEY-MOVES §1.2): same
- * currency first, oldest first, offsets across currencies, dust, overpay.
+ * when this file was written, then asserts what allocatePayment writes.
+ * Each difference is marked "(changed)" with its reason: the ordering ones
+ * are owner rules (same currency first, oldest first, offsets across
+ * currencies); the dust and overpay ones follow MONEY-MOVES §1.2 rules 5 and
+ * 6, and the old dialog's one-cent tolerance lives in SettlementService.
  */
 import { describe, expect, it } from "vitest";
 import { allocatePayment, quote } from "./allocate";
@@ -132,7 +134,7 @@ describe("settle dialog, today vs allocatePayment", () => {
 		expect(now.overpay).toBe(0);
 	});
 
-	it("a cent over what is owed: today dropped up to 0.01, now it is an overpayment unless dust (changed)", () => {
+	it("a cent over what is owed: the allocator calls it an overpayment unless dust (changed; the old dialog still clamps a cent)", () => {
 		const usd = allocatePayment({
 			lines: [line(null, "USD", 1000, "2026-10-05")],
 			currency: "USD",

@@ -261,11 +261,17 @@ describe("payment.record on Postgres", () => {
 			person: ref(sofia),
 		});
 		expect(
-			(await adminDb.payment.findUniqueOrThrow({ where: { id: header.id } })).status,
+			(await adminDb.payment.findUniqueOrThrow({ where: { id: header.id } }))
+				.status,
 		).toBe("PROPOSED");
-		const rows = await adminDb.settlement.findMany({ where: { paymentGroupId: header.id } });
+		const rows = await adminDb.settlement.findMany({
+			where: { paymentGroupId: header.id },
+		});
 		expect(
-			rows.every((r) => r.status === "PROPOSED" && r.confirmedByPayer && !r.confirmedByPayee),
+			rows.every(
+				(r) =>
+					r.status === "PROPOSED" && r.confirmedByPayer && !r.confirmedByPayee,
+			),
 		).toBe(true);
 		expect(
 			(await computeBalance(adminDb, ref(martin), ref(sofia))).byCurrency,
@@ -320,7 +326,9 @@ describe("payment.record on Postgres", () => {
 		const rows = await adminDb.settlement.findMany({
 			where: { paymentGroupId: claim.value.paymentId },
 		});
-		expect(rows.map((r) => [r.amount.toString(), r.status])).toEqual([["98", "FINALIZED"]]);
+		expect(rows.map((r) => [r.amount.toString(), r.status])).toEqual([
+			["98", "FINALIZED"],
+		]);
 		const audit = await adminDb.auditLogEntry.findFirstOrThrow({
 			where: {
 				action: "SETTLED",
@@ -413,14 +421,19 @@ const INSERT_LEGACY = `INSERT INTO settlement (id, "fromParticipantType", "fromP
 describe("M3 payments_corrections backfill", () => {
 	it("gives every legacy row a group and a header, and running it twice changes nothing", async () => {
 		const migration = readFileSync(
-			join(process.cwd(), "prisma/migrations/20261023200000_payments_corrections/migration.sql"),
+			join(
+				process.cwd(),
+				"prisma/migrations/20261023200000_payments_corrections/migration.sql",
+			),
 			"utf8",
 		);
 		const client = new Client({ connectionString: process.env.DATABASE_URL });
 		await client.connect();
 		const count = async () => {
 			const row = (await client.query(M3_PRECHECK)).rows[0];
-			return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v)]));
+			return Object.fromEntries(
+				Object.entries(row).map(([k, v]) => [k, Number(v)]),
+			);
 		};
 		try {
 			// The pre-check also runs before M3, when there is no payment table.
@@ -433,22 +446,93 @@ describe("M3 payments_corrections backfill", () => {
 			await client.query("ROLLBACK");
 
 			const baseline = await count();
-			await client.query('ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"');
+			await client.query(
+				'ALTER TABLE settlement DROP CONSTRAINT "settlement_paymentGroupId_fkey"',
+			);
 			const a = (await createTestUser()).user.id;
 			const b = martin.user.id;
 			const legacy: LegacyRow[] = [
-				{ id: "legacy-single", from: a, to: b, amount: "10", currency: "USD", status: "FINALIZED", payeeAgreed: true, group: null },
+				{
+					id: "legacy-single",
+					from: a,
+					to: b,
+					amount: "10",
+					currency: "USD",
+					status: "FINALIZED",
+					payeeAgreed: true,
+					group: null,
+				},
 				// convertedAmount without a currency: paid in its own currency, 10.005 is sub-minor.
-				{ id: "legacy-conv", from: a, to: b, amount: "10.005", currency: "USD", convertedAmount: "12", status: "FINALIZED", payeeAgreed: true, group: null },
-				{ id: "legacy-g1", from: a, to: b, amount: "5", currency: "EUR", convertedAmount: "6", convertedCurrency: "USD", status: "PROPOSED", payeeAgreed: false, group: "group-1" },
-				{ id: "legacy-g2", from: a, to: b, amount: "4", currency: "USD", status: "PROPOSED", payeeAgreed: false, group: "group-1" },
-				{ id: "legacy-off", from: b, to: a, amount: "3", currency: "USD", status: "PROPOSED", payeeAgreed: false, group: "group-1", offset: true },
-				{ id: "legacy-recv", from: b, to: a, amount: "7", currency: "USD", status: "FINALIZED", payeeAgreed: true, group: "group-2", reason: "Recorded by the payee as a payment received" },
+				{
+					id: "legacy-conv",
+					from: a,
+					to: b,
+					amount: "10.005",
+					currency: "USD",
+					convertedAmount: "12",
+					status: "FINALIZED",
+					payeeAgreed: true,
+					group: null,
+				},
+				{
+					id: "legacy-g1",
+					from: a,
+					to: b,
+					amount: "5",
+					currency: "EUR",
+					convertedAmount: "6",
+					convertedCurrency: "USD",
+					status: "PROPOSED",
+					payeeAgreed: false,
+					group: "group-1",
+				},
+				{
+					id: "legacy-g2",
+					from: a,
+					to: b,
+					amount: "4",
+					currency: "USD",
+					status: "PROPOSED",
+					payeeAgreed: false,
+					group: "group-1",
+				},
+				{
+					id: "legacy-off",
+					from: b,
+					to: a,
+					amount: "3",
+					currency: "USD",
+					status: "PROPOSED",
+					payeeAgreed: false,
+					group: "group-1",
+					offset: true,
+				},
+				{
+					id: "legacy-recv",
+					from: b,
+					to: a,
+					amount: "7",
+					currency: "USD",
+					status: "FINALIZED",
+					payeeAgreed: true,
+					group: "group-2",
+					reason: "Recorded by the payee as a payment received",
+				},
 			];
 			for (const r of legacy) {
 				await client.query(INSERT_LEGACY, [
-					r.id, r.from, r.to, r.amount, r.currency, r.convertedAmount ?? null, r.convertedCurrency ?? null,
-					r.status, r.payeeAgreed, r.group, r.offset ?? false, r.reason ?? null,
+					r.id,
+					r.from,
+					r.to,
+					r.amount,
+					r.currency,
+					r.convertedAmount ?? null,
+					r.convertedCurrency ?? null,
+					r.status,
+					r.payeeAgreed,
+					r.group,
+					r.offset ?? false,
+					r.reason ?? null,
 				]);
 			}
 
@@ -472,11 +556,20 @@ describe("M3 payments_corrections backfill", () => {
 				sub_minor_amounts: plus("sub_minor_amounts", 1),
 			});
 			const headers = await adminDb.payment.findMany({
-				where: { id: { in: ["legacy-single", "legacy-conv", "group-1", "group-2"] } },
+				where: {
+					id: { in: ["legacy-single", "legacy-conv", "group-1", "group-2"] },
+				},
 				orderBy: { id: "asc" },
 			});
 			expect(
-				headers.map((h) => [h.id, h.payerId, h.amount.toString(), h.currency, h.status, h.recordedById]),
+				headers.map((h) => [
+					h.id,
+					h.payerId,
+					h.amount.toString(),
+					h.currency,
+					h.status,
+					h.recordedById,
+				]),
 			).toEqual([
 				["group-1", a, "10", "USD", "PROPOSED", a],
 				["group-2", b, "7", "USD", "FINALIZED", a],
