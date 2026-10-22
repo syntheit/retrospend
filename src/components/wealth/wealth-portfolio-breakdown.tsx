@@ -13,6 +13,7 @@ import {
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { AllocationSegment } from "~/hooks/use-wealth-dashboard";
 import { maskAmount } from "~/lib/masking";
+import { ASSET_TYPE_LABEL_KEYS } from "~/lib/wealth-constants";
 
 const CURRENCY_COLORS = [
 	"hsl(217, 91%, 60%)", // Blue
@@ -98,6 +99,12 @@ export function WealthPortfolioBreakdown({
 }: WealthPortfolioBreakdownProps) {
 	const t = useTranslations("wealth");
 	const { formatCurrency } = useCurrencyFormatter();
+	// Type segments carry the raw asset type; show its translated label
+	const typeLabel = (segment: AllocationSegment) => {
+		const key =
+			segment.type === "Other" ? "other" : ASSET_TYPE_LABEL_KEYS[segment.type];
+		return key ? t(key) : segment.label;
+	};
 
 	const currencyData = useMemo(() => {
 		const exposure = assets.reduce(
@@ -194,7 +201,7 @@ export function WealthPortfolioBreakdown({
 								getColor={(s: AllocationSegment) => s.fill}
 								renderTooltip={(segment: AllocationSegment) => (
 									<div className="grid gap-1">
-										<div className="font-medium">{segment.label}</div>
+										<div className="font-medium">{typeLabel(segment)}</div>
 										<div className="flex items-stretch gap-2">
 											<div
 												className="my-0.5 w-1 shrink-0 rounded-[2px]"
@@ -224,7 +231,7 @@ export function WealthPortfolioBreakdown({
 											style={{ backgroundColor: item.fill }}
 										/>
 										<span>
-											{item.label} {item.percentage.toFixed(0)}%
+											{typeLabel(item)} {item.percentage.toFixed(0)}%
 										</span>
 									</div>
 								))}

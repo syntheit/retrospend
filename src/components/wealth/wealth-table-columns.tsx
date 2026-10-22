@@ -2,6 +2,7 @@
 
 import {
 	Banknote,
+	Car,
 	Coins,
 	CreditCard,
 	Home,
@@ -17,6 +18,7 @@ import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { AssetType } from "~/lib/db-enums";
 import { maskAmount } from "~/lib/masking";
 import { allocationPercent } from "~/lib/wealth-stats";
+import { ASSET_TYPE_LABEL_KEYS } from "~/lib/wealth-constants";
 
 export interface Asset {
 	id: string;
@@ -34,15 +36,6 @@ export interface Asset {
 
 type TranslationFn = (key: string, values?: Record<string, string | number | Date>) => string;
 
-const ASSET_TYPE_LABEL_KEYS: Record<string, string> = {
-	[AssetType.CASH]: "cash",
-	[AssetType.INVESTMENT]: "investment",
-	[AssetType.CRYPTO]: "crypto",
-	[AssetType.REAL_ESTATE]: "realEstate",
-	LIABILITY_LOAN: "loan",
-	LIABILITY_CREDIT_CARD: "creditCard",
-	LIABILITY_MORTGAGE: "mortgage",
-};
 
 const getAssetConfig = (type: AssetType, t: TranslationFn) => {
 	switch (type) {
@@ -54,6 +47,8 @@ const getAssetConfig = (type: AssetType, t: TranslationFn) => {
 			return { icon: Coins, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
 		case AssetType.REAL_ESTATE:
 			return { icon: Home, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
+		case AssetType.VEHICLE:
+			return { icon: Car, label: t(ASSET_TYPE_LABEL_KEYS[type]!) };
 		default:
 			if (type.startsWith("LIABILITY_")) {
 				const key = ASSET_TYPE_LABEL_KEYS[type];
