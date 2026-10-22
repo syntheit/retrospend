@@ -5,7 +5,7 @@ import {
 	getFiscalMonthProgress,
 	getFiscalMonthRange,
 	shiftMonth,
-} from "../fiscal-month";
+} from "./fiscal-month";
 import {
 	calendarDaysBetween,
 	dayKey,
@@ -14,7 +14,7 @@ import {
 	parseDateOnlyIn,
 	startOfDayIn,
 	wallTime,
-} from "../time-zone";
+} from "./time-zone";
 
 const BA = "America/Argentina/Buenos_Aires"; // UTC-3, no DST
 const BERLIN = "Europe/Berlin"; // UTC+1 / UTC+2

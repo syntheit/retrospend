@@ -59,6 +59,9 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO retrospend_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO retrospend_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO retrospend_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO retrospend_app;
+-- The blanket grant above also reopens tables the app role may only read
+-- (see migrations 20261022130000_ui_flags and 20261022130001_revoke_app_writes).
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON "app_settings", "exchange_rate", "password_reset_token" FROM retrospend_app;
 GRANTS
 
 echo "Done. Dev db now mirrors production."

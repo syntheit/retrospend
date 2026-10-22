@@ -9,7 +9,7 @@ import { SUPPORTED_LOCALES } from "./locales";
  * subline only says there is no account yet.
  */
 function projectsCatalog(locale: string): Record<string, string> {
-	const raw = readFileSync(`messages/${locale}.json`, "utf8");
+	const raw = readFileSync(`packages/i18n/messages/${locale}.json`, "utf8");
 	return (JSON.parse(raw) as { projects: Record<string, string> }).projects;
 }
 

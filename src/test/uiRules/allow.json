@@ -1,0 +1,42 @@
+[
+	{
+		"rule": "UI-001",
+		"file": "src/lib/og/brand.ts",
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/lib/og/components.tsx",
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/app/opengraph-image.tsx",
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/app/(site)/u/[username]/opengraph-image.tsx",
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/app/(site)/pay/[username]/opengraph-image.tsx",
+		"reason": "Open Graph images render with ImageResponse (satori) outside the app stylesheet, so CSS variables do not exist there. Keep the literals equal to the hex values in packages/tokens/dist/tokens.json."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/lib/payment-method-registry.ts",
+		"reason": "Third-party brand colors of payment apps (Venmo, PayPal, Mercado Pago...). They identify someone else's brand and are not ours to tokenize."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/app/(site)/_components/landing/landing-footer.tsx",
+		"reason": "Matrix brand green on the Matrix community link hover; a third-party brand color."
+	},
+	{
+		"rule": "UI-001",
+		"file": "src/components/ui/chart.tsx",
+		"reason": "Attribute selectors such as [stroke='#ccc'] match the default colors Recharts writes into its SVG, so they can be restyled with tokens. They select colors, they do not paint them."
+	}
+]

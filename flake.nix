@@ -65,6 +65,45 @@
             '';
           };
         }
+        # Android builds for the Expo app (stream 5). Google publishes the SDK
+        # tools for x86_64 Linux and macOS only.
+        // nixpkgs.lib.optionalAttrs (system != "aarch64-linux") {
+          android =
+            let
+              androidPkgs = import nixpkgs {
+                inherit system;
+                config = {
+                  allowUnfree = true;
+                  android_sdk.accept_license = true;
+                };
+              };
+              # The versions React Native 0.81+ (Expo SDK 54+) builds with.
+              sdk =
+                (androidPkgs.androidenv.composeAndroidPackages {
+                  platformVersions = [ "36" ];
+                  buildToolsVersions = [ "36.0.0" ];
+                  includeNDK = true;
+                  ndkVersions = [ "27.1.12297006" ];
+                  cmakeVersions = [ "3.22.1" ];
+                }).androidsdk;
+              androidHome = "${sdk}/libexec/android-sdk";
+            in
+            androidPkgs.mkShell {
+              packages = with androidPkgs; [
+                nodejs_24
+                pnpm_10
+                jdk17
+                sdk
+              ];
+              env = {
+                JAVA_HOME = androidPkgs.jdk17.home;
+                ANDROID_HOME = androidHome;
+                ANDROID_NDK_ROOT = "${androidHome}/ndk-bundle";
+                # Gradle's own aapt2 download is a dynamic binary NixOS cannot run.
+                GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidHome}/build-tools/36.0.0/aapt2";
+              };
+            };
+        }
       );
     };
 }

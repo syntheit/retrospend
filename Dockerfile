@@ -7,16 +7,18 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10.25.0 --activate
 
-# Copy package files and Prisma config
-COPY package.json pnpm-lock.yaml ./
+# Copy package files, workspace packages and Prisma config
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
 COPY prisma/ ./prisma/
 # Copy prisma.config.ts
 COPY prisma.config.ts ./
 COPY scripts/ ./scripts/
 
-# Install dependencies
+# Install the web app and the workspace packages it uses; other workspace
+# projects (apps/mobile) stay out of the image.
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter retrospend...
 
 # Rebuild the source code only when needed
 FROM node:24-alpine AS builder
@@ -27,6 +29,7 @@ RUN corepack enable && corepack prepare pnpm@10.25.0 --activate
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
 COPY . .
 
 # Generate Prisma Client
@@ -81,7 +84,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Copy package files and Prisma config for runtime operations
-COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml ./
+COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nextjs:nodejs prisma/ ./prisma/
 COPY --chown=nextjs:nodejs prisma.config.ts ./
 COPY --chown=nextjs:nodejs tsconfig.json ./
@@ -89,8 +92,10 @@ COPY --chown=nextjs:nodejs tsconfig.json ./
 # Copy scripts directory for runtime operations
 COPY --chown=nextjs:nodejs scripts/ ./scripts/
 
-# Copy src for runtime scripts (e.g. tsx scripts/*.ts)
+# Copy src for runtime scripts (e.g. tsx scripts/*.ts), and the workspace
+# packages its re-exports and node_modules links point to
 COPY --from=builder --chown=nextjs:nodejs /app/src ./src
+COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
 
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh

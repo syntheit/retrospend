@@ -17,6 +17,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-used-for-anything
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The UI ratchet compares its baseline with the merge base on main.
+          fetch-depth: 0
 
       # Version comes from packageManager in package.json (pnpm@10.25.0)
       - uses: pnpm/action-setup@v4
@@ -38,5 +41,90 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Also runs the UI ratchet (src/test/uiRules) and the i18n catalog
+      # check (src/i18n/catalog-validation.test.ts), which are vitest files.
       - name: Test
         run: pnpm test
+
+  pg:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: retrospend_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Each run creates and drops its own database next to this one.
+      TEST_DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/retrospend_test
+      # Only satisfies prisma.config.ts for generate; the tests use TEST_DATABASE_URL.
+      DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/retrospend_test
+      BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-used-for-anything
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+
+      - name: Postgres tests
+        run: pnpm test:pg
+
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # The build reads no data; these only satisfy env validation.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      BETTER_AUTH_SECRET: ci-only-placeholder-secret-not-used-for-anything
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+  sidecar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sidecar
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sidecar/go.mod
+          cache-dependency-path: sidecar/go.sum
+
+      # The PDF importer shells out to pdftotext (the image installs it too).
+      - name: Install pdftotext
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Test
+        run: go test ./...
