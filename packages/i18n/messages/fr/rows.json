@@ -1,0 +1,61 @@
+{
+	"date": {
+		"today": "Aujourd'hui",
+		"yesterday": "Hier"
+	},
+	"kind": {
+		"income": "Rentrée",
+		"refund": "Remboursement",
+		"reimbursement": "Pour quelqu'un d'autre",
+		"payment": "Paiement",
+		"paymentPending": "Paiement · En attente",
+		"transfer": "Virement",
+		"exchange": "Change",
+		"balance": "Mise à jour du solde"
+	},
+	"transaction": {
+		"yourShare": "ta part",
+		"paid": "{name} a payé",
+		"waiting": "T'attend",
+		"other": "Autre"
+	},
+	"project": {
+		"range": "du {start} au {end}",
+		"since": "Depuis le {start}",
+		"open": "Ouvert",
+		"solo": "Seul",
+		"people": "{count, plural, one {# personne} other {# personnes}}",
+		"spent": "dépensé",
+		"budgetUsed": "Budget utilisé"
+	},
+	"account": {
+		"updated": "Mis à jour le {date}",
+		"change": "{change} ce mois-ci"
+	},
+	"envelope": {
+		"spent": "Dépensé sur le prévu"
+	},
+	"recurring": {
+		"overdueSince": "En retard depuis le {date}",
+		"next": "Prochain le {date}",
+		"confirm": "Confirmer",
+		"skip": "Passer",
+		"weekly": "Hebdomadaire",
+		"monthly": "Mensuel",
+		"quarterly": "Trimestriel",
+		"yearly": "Annuel"
+	},
+	"table": {
+		"selectAll": "Tout sélectionner",
+		"select": "Sélectionner {title}",
+		"title": "Titre",
+		"category": "Catégorie",
+		"project": "Projet",
+		"with": "Avec",
+		"date": "Date",
+		"amount": "Montant",
+		"actions": "Actions",
+		"yourSpending": "Tes dépenses",
+		"count": "{count, plural, one {# dépense} other {# dépenses}}"
+	}
+}

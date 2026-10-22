@@ -1,0 +1,61 @@
+{
+	"date": {
+		"today": "Сегодня",
+		"yesterday": "Вчера"
+	},
+	"kind": {
+		"income": "Поступление",
+		"refund": "Возврат",
+		"reimbursement": "За другого",
+		"payment": "Платёж",
+		"paymentPending": "Платёж · Ожидает",
+		"transfer": "Перевод",
+		"exchange": "Обмен",
+		"balance": "Обновление баланса"
+	},
+	"transaction": {
+		"yourShare": "ваша доля",
+		"paid": "Оплатил(а) {name}",
+		"waiting": "Ждёт вас",
+		"other": "Другое"
+	},
+	"project": {
+		"range": "с {start} по {end}",
+		"since": "С {start}",
+		"open": "Открыт",
+		"solo": "Один",
+		"people": "{count, plural, one {# человек} few {# человека} many {# человек} other {# человека}}",
+		"spent": "потрачено",
+		"budgetUsed": "Использовано бюджета"
+	},
+	"account": {
+		"updated": "Обновлено {date}",
+		"change": "{change} за месяц"
+	},
+	"envelope": {
+		"spent": "Потрачено из запланированного"
+	},
+	"recurring": {
+		"overdueSince": "Просрочено с {date}",
+		"next": "Следующий {date}",
+		"confirm": "Подтвердить",
+		"skip": "Пропустить",
+		"weekly": "Еженедельно",
+		"monthly": "Ежемесячно",
+		"quarterly": "Ежеквартально",
+		"yearly": "Ежегодно"
+	},
+	"table": {
+		"selectAll": "Выбрать все",
+		"select": "Выбрать {title}",
+		"title": "Название",
+		"category": "Категория",
+		"project": "Проект",
+		"with": "С кем",
+		"date": "Дата",
+		"amount": "Сумма",
+		"actions": "Действия",
+		"yourSpending": "Ваши расходы",
+		"count": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}"
+	}
+}

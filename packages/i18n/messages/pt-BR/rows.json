@@ -1,0 +1,61 @@
+{
+	"date": {
+		"today": "Hoje",
+		"yesterday": "Ontem"
+	},
+	"kind": {
+		"income": "Entrada",
+		"refund": "Reembolso",
+		"reimbursement": "Para outra pessoa",
+		"payment": "Pagamento",
+		"paymentPending": "Pagamento · Pendente",
+		"transfer": "Transferência",
+		"exchange": "Câmbio",
+		"balance": "Ajuste de saldo"
+	},
+	"transaction": {
+		"yourShare": "sua parte",
+		"paid": "{name} pagou",
+		"waiting": "Esperando você",
+		"other": "Outro"
+	},
+	"project": {
+		"range": "{start} a {end}",
+		"since": "Desde {start}",
+		"open": "Aberto",
+		"solo": "Sozinho",
+		"people": "{count, plural, one {# pessoa} other {# pessoas}}",
+		"spent": "gasto",
+		"budgetUsed": "Orçamento usado"
+	},
+	"account": {
+		"updated": "Atualizado {date}",
+		"change": "{change} este mês"
+	},
+	"envelope": {
+		"spent": "Gasto do planejado"
+	},
+	"recurring": {
+		"overdueSince": "Atrasado desde {date}",
+		"next": "Próximo {date}",
+		"confirm": "Confirmar",
+		"skip": "Pular",
+		"weekly": "Semanal",
+		"monthly": "Mensal",
+		"quarterly": "Trimestral",
+		"yearly": "Anual"
+	},
+	"table": {
+		"selectAll": "Selecionar tudo",
+		"select": "Selecionar {title}",
+		"title": "Título",
+		"category": "Categoria",
+		"project": "Projeto",
+		"with": "Com",
+		"date": "Data",
+		"amount": "Valor",
+		"actions": "Ações",
+		"yourSpending": "Seus gastos",
+		"count": "{count, plural, one {# gasto} other {# gastos}}"
+	}
+}
