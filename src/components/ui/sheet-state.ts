@@ -104,6 +104,18 @@ export function useSheetState(props: SheetProps) {
 		ref: contentRef,
 		"data-sheet": "",
 		onKeyDown,
+		// Focus lands on the task (the first field, else the verb), not on
+		// Close: the header button would also pop its tooltip on every open.
+		onOpenAutoFocus: (e: Event) => {
+			const root = contentRef.current;
+			const first =
+				root?.querySelector<HTMLElement>(
+					`[data-sheet-body] :is(${FOCUSABLE})`,
+				) ?? root?.querySelector<HTMLElement>("[data-sheet-submit]");
+			if (!first) return;
+			e.preventDefault();
+			first.focus({ preventScroll: true });
+		},
 		onCloseAutoFocus: (e: Event) => {
 			e.preventDefault();
 			returnFocus(props.returnFocusTo?.current, ...openers.current);
@@ -121,6 +133,9 @@ export function useSheetState(props: SheetProps) {
 	const error = failure ?? (alert ? { text: alert } : null);
 	return { layer, busy, error, submit, requestClose, t };
 }
+
+const FOCUSABLE =
+	"input:not([type=hidden]):not([disabled]), select, textarea, button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])";
 
 type SheetError = { text: string; detail?: string };
 
