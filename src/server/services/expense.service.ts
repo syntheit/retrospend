@@ -99,85 +99,95 @@ export async function ensureIncomeCategories(
 	});
 }
 
+export interface CreateExpenseInput {
+	id: string;
+	title: string;
+	amount: number;
+	currency: string;
+	exchangeRate?: number;
+	amountInUSD?: number;
+	pricingSource?: string;
+	date: Date;
+	location?: string;
+	description?: string;
+	categoryId?: string;
+	amortizeOver?: number;
+	excludeFromAnalytics?: boolean;
+	projectId?: string;
+}
+
+/**
+ * Creates an expense (spending, never money in) with every read and write on
+ * `tx`, so the expense.create money mutation can preview it in a transaction
+ * that rolls back. Callers outside a transaction use ExpenseService.
+ */
+export async function createExpenseIn(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	input: CreateExpenseInput,
+) {
+	let categoryExcludeByDefault = false;
+	if (input.categoryId) {
+		const category = await tx.category.findFirst({
+			where: { id: input.categoryId, userId, kind: "EXPENSE" },
+		});
+		if (!category) {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Category not found",
+			});
+		}
+		categoryExcludeByDefault = category.excludeByDefault;
+	}
+
+	const pricingSource = input.pricingSource ?? "MANUAL";
+	const { exchangeRate, amountInUSD } = await resolveExpenseRate(tx, input);
+
+	// Determine excludeFromAnalytics: explicit input > category default > false
+	// Project expenses always have excludeFromAnalytics: false
+	const excludeFromAnalytics = input.projectId
+		? false
+		: (input.excludeFromAnalytics ?? categoryExcludeByDefault);
+
+	const expense = await tx.expense.create({
+		data: {
+			id: input.id,
+			userId,
+			title: input.title,
+			amount: input.amount,
+			currency: input.currency,
+			exchangeRate: exchangeRate,
+			amountInUSD: amountInUSD,
+			pricingSource: pricingSource,
+			date: input.date,
+			location: input.location,
+			description: input.description,
+			categoryId: input.categoryId,
+			status: "FINALIZED",
+			isAmortizedParent: (input.amortizeOver ?? 0) > 1,
+			excludeFromAnalytics,
+		},
+		include: {
+			category: true,
+		},
+	});
+
+	if (input.amortizeOver && input.amortizeOver > 1) {
+		const amortization = new AmortizationService(tx);
+		await amortization.syncAmortization(expense, input.amortizeOver);
+	}
+
+	return expense;
+}
+
 export class ExpenseService {
 	constructor(private db: PrismaClient | Prisma.TransactionClient) {}
 
-	async createExpense(
-		userId: string,
-		input: {
-			id: string;
-			title: string;
-			amount: number;
-			currency: string;
-			exchangeRate?: number;
-			amountInUSD?: number;
-			pricingSource?: string;
-			date: Date;
-			location?: string;
-			description?: string;
-			categoryId?: string;
-			amortizeOver?: number;
-			excludeFromAnalytics?: boolean;
-			projectId?: string;
-		},
-	) {
-		let categoryExcludeByDefault = false;
-		if (input.categoryId) {
-			const category = await (this.db as PrismaClient).category.findFirst({
-				where: { id: input.categoryId, userId },
-			});
-			if (!category) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Category not found",
-				});
-			}
-			categoryExcludeByDefault = category.excludeByDefault;
-		}
-
-		const pricingSource = input.pricingSource ?? "MANUAL";
-		const { exchangeRate, amountInUSD } = await resolveExpenseRate(
-			this.db,
-			input,
+	async createExpense(userId: string, input: CreateExpenseInput) {
+		return await this.runInTransaction(
+			(tx) => createExpenseIn(tx, userId, input),
+			userId,
 		);
-
-		// Determine excludeFromAnalytics: explicit input > category default > false
-		// Project expenses always have excludeFromAnalytics: false
-		const excludeFromAnalytics = input.projectId
-			? false
-			: (input.excludeFromAnalytics ?? categoryExcludeByDefault);
-
-		return await this.runInTransaction(async (tx) => {
-			const expense = await tx.expense.create({
-				data: {
-					id: input.id,
-					userId,
-					title: input.title,
-					amount: input.amount,
-					currency: input.currency,
-					exchangeRate: exchangeRate,
-					amountInUSD: amountInUSD,
-					pricingSource: pricingSource,
-					date: input.date,
-					location: input.location,
-					description: input.description,
-					categoryId: input.categoryId,
-					status: "FINALIZED",
-					isAmortizedParent: (input.amortizeOver ?? 0) > 1,
-					excludeFromAnalytics,
-				},
-				include: {
-					category: true,
-				},
-			});
-
-			if (input.amortizeOver && input.amortizeOver > 1) {
-				const amortization = new AmortizationService(tx);
-				await amortization.syncAmortization(expense, input.amortizeOver);
-			}
-
-			return expense;
-		}, userId);
 	}
 
 	async updateExpense(
@@ -213,7 +223,7 @@ export class ExpenseService {
 		// unchanged category is left alone so editing never trips on it.
 		if (input.categoryId && input.categoryId !== existingExpense.categoryId) {
 			const newCategory = await (this.db as PrismaClient).category.findFirst({
-				where: { id: input.categoryId, userId },
+				where: { id: input.categoryId, userId, kind: "EXPENSE" },
 				select: { excludeByDefault: true },
 			});
 			if (!newCategory) {
@@ -345,7 +355,7 @@ export class ExpenseService {
 		categoryId: string,
 	) {
 		const category = await (this.db as PrismaClient).category.findFirst({
-			where: { id: categoryId, userId },
+			where: { id: categoryId, userId, kind: "EXPENSE" },
 			select: { id: true, name: true },
 		});
 		if (!category) {
