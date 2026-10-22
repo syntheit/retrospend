@@ -8,8 +8,10 @@ import { ExpenseModalProvider } from "~/components/expense-modal-provider";
 import { LocaleSync } from "~/i18n/locale-sync";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
+import { AppShell } from "~/components/shell/app-shell";
 import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
+import { isFlagEnabled } from "~/server/flags";
 import { HydrateClient, api } from "~/trpc/server";
 
 export const metadata: Metadata = {
@@ -46,6 +48,9 @@ export default async function Layout({
 	// with the same settings the server rendered with.
 	await api.settings.getGeneral.prefetch();
 
+	// uiV2Mode picks the shell per viewer; off renders today's shell as it was.
+	const uiV2 = await isFlagEnabled("uiV2", session.user);
+
 	return (
 		<HydrateClient>
 			<LocaleSync
@@ -55,8 +60,14 @@ export default async function Layout({
 			<ExpenseModalProvider>
 				<RecurringModalProvider>
 					<RevisionHistoryProvider>
-						<DashboardLayout>{children}</DashboardLayout>
-						<CommandPalette />
+						{uiV2 ? (
+							<AppShell>{children}</AppShell>
+						) : (
+							<>
+								<DashboardLayout>{children}</DashboardLayout>
+								<CommandPalette />
+							</>
+						)}
 					</RevisionHistoryProvider>
 				</RecurringModalProvider>
 			</ExpenseModalProvider>
