@@ -107,7 +107,8 @@ function chargeAndPayMinimums(
 	let freed = 0;
 	for (const l of live) {
 		if (l.balance <= 0) {
-			freed += toBook(l, l.debt.minimum, H);
+			// Only a debt this plan paid off frees its minimum; one already at 0 had none to free.
+			if (l.debt.balance > 0) freed += toBook(l, l.debt.minimum, H);
 			continue;
 		}
 		const interest = toMinor(
@@ -148,6 +149,12 @@ function startLive(debts: readonly PayoffDebt[]): Live[] {
 	return debts.map((debt, index) => {
 		if (debt.balance < 0 || debt.minimum < 0)
 			throw new RangeError(`debt ${debt.id}: negative amounts`);
+		const rate = dec(debt.bookPerUnit);
+		if (!rate.isFinite() || rate.lte(0)) {
+			throw new RangeError(
+				`debt ${debt.id}: rate to the book currency must be positive`,
+			);
+		}
 		const out = {
 			id: debt.id,
 			payoffMonth: null,
@@ -161,7 +168,7 @@ function startLive(debts: readonly PayoffDebt[]): Live[] {
 			index,
 			balance: debt.balance,
 			apr: dec(debt.aprPercent),
-			rate: dec(debt.bookPerUnit),
+			rate,
 			out,
 		};
 	});

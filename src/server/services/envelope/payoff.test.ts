@@ -171,12 +171,33 @@ describe("projectPayoff (SPEC §5.11)", () => {
 		});
 	});
 
-	it("a debt already at 0 frees its minimum from month 1", () => {
+	it("a debt already at 0 frees nothing: its minimum was never being paid", () => {
+		// By hand: the loan alone, 100 at 25 a month, no interest, no extra: 4 months, Nov to Feb.
 		const out = run({
 			debts: [debt("done", 0, "10", 50), debt("loan", 100, "0", 25)],
 		});
-		expect(out.debts.map((d) => d.payoffMonth)).toEqual([202610, 202612]);
+		expect(out.debts.map((d) => d.payoffMonth)).toEqual([202610, 202702]);
+		expect(out.months).toBe(4);
 	});
+
+	it("a debt paid off during the projection frees its minimum", () => {
+		// By hand: a = 50 at 50 a month clears in Nov; b = 300 at 50: Nov 250, then 100 a month: Dec 150, Jan 50, Feb 0.
+		const out = run({
+			debts: [debt("a", 50, "0", 50), debt("b", 300, "0", 50)],
+		});
+		expect(out.debts.map((d) => d.payoffMonth)).toEqual([202611, 202702]);
+	});
+
+	it.each(["0", "-1465"])(
+		"rejects a book rate of %s for a foreign debt",
+		(bookPerUnit) => {
+			expect(() =>
+				run({
+					debts: [debt("usd", 100, "0", 10, { currency: "USD", bookPerUnit })],
+				}),
+			).toThrow(/rate to the book currency must be positive/);
+		},
+	);
 
 	it("rejects negative balances", () => {
 		expect(() => run({ debts: [debt("x", -1, "0", 0)] })).toThrow(RangeError);
