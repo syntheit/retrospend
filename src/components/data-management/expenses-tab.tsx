@@ -8,6 +8,7 @@ import { DataTable } from "~/components/data-table";
 import { createExpenseColumns } from "~/components/data-table-columns";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { parseRawCsv } from "~/lib/csv";
+import { formatDateOnly } from "~/lib/date";
 import { ExpenseImportSchema } from "~/lib/schemas/data-importer";
 import { generateId, type NormalizedExpense } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -38,7 +39,7 @@ export function ExpensesTab() {
 			const url = URL.createObjectURL(blob);
 			const link = document.createElement("a");
 			link.href = url;
-			link.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+			link.download = `expenses-${formatDateOnly(new Date())}.csv`;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);

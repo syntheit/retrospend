@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ExpenseForm, type ExpenseFormHandle } from "~/components/expense-form";
 import type { ExpenseInitialValues } from "~/hooks/use-expense-form";
@@ -73,9 +73,12 @@ export function ExpenseModal({
 
 	const handleClose = () => handleOpenChange(false);
 
-	const handleTitleChange = (newTitle: string) => {
-		setDynamicTitle(newTitle || title);
-	};
+	const handleTitleChange = useCallback(
+		(newTitle: string) => {
+			setDynamicTitle(newTitle || title);
+		},
+		[title],
+	);
 
 	return (
 		<Dialog onOpenChange={handleOpenChange} open={open}>

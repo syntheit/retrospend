@@ -184,6 +184,8 @@ export function CategoryChipSelector({
 			<div className="relative min-w-0 flex-1">
 				<div
 					ref={scrollRef}
+					role="group"
+					aria-label={t("category")}
 					className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 					onWheel={handleWheel}
 				>
@@ -193,6 +195,7 @@ export function CategoryChipSelector({
 							<button
 								key={category.id}
 								type="button"
+								aria-pressed={isSelected}
 								title={category.excludeByDefault ? `${displayName(category.name)} (excluded from analytics by default)` : displayName(category.name)}
 								onClick={() =>
 									onValueChange(isSelected ? "" : category.id)
@@ -289,6 +292,7 @@ export function CategoryChipSelector({
 								<button
 									key={category.id}
 									type="button"
+									aria-pressed={isSelected}
 									onClick={() => {
 										onValueChange(isSelected ? "" : category.id);
 										setPopoverOpen(false);

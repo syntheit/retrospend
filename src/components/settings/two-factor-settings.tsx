@@ -1,6 +1,13 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Shield } from "lucide-react";
+import {
+	AlertCircle,
+	CheckCircle,
+	Copy,
+	Download,
+	KeyRound,
+	Shield,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
@@ -13,6 +20,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import {
 	InputOTP,
@@ -34,8 +42,44 @@ export function TwoFactorSettings() {
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [isVerifying, setIsVerifying] = useState(false);
+	const [backupCodes, setBackupCodes] = useState<string[]>([]);
+	const [backupCodesSaved, setBackupCodesSaved] = useState(false);
 
 	const is2FAEnabled = session?.user.twoFactorEnabled;
+
+	const backupCodesText = () =>
+		`${t("backupCodesFileHeader")}\n\n${backupCodes.join("\n")}\n`;
+
+	const handleCopyBackupCodes = async () => {
+		try {
+			await navigator.clipboard.writeText(backupCodes.join("\n"));
+			toast.success(t("backupCodesCopied"));
+		} catch {
+			toast.error(t("backupCodesCopyFailed"));
+		}
+	};
+
+	const handleDownloadBackupCodes = () => {
+		const blob = new Blob([backupCodesText()], {
+			type: "text/plain;charset=utf-8;",
+		});
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = "retrospend-backup-codes.txt";
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	};
+
+	const handleFinishBackupCodes = () => {
+		// The codes are shown once; drop them from memory when done
+		setBackupCodes([]);
+		setBackupCodesSaved(false);
+		setStatus("idle");
+		refetch();
+	};
 
 	const handleEnableInit = async () => {
 		setStatus("generating");
@@ -50,6 +94,7 @@ export function TwoFactorSettings() {
 				return;
 			}
 			setTotpUri(data?.method === "totp" ? data.totpURI : "");
+			setBackupCodes(data?.method === "totp" ? data.backupCodes : []);
 			setStatus("setup");
 			setPassword("");
 		} catch {
@@ -65,17 +110,8 @@ export function TwoFactorSettings() {
 		
 		setIsVerifying(true);
 		try {
-			// First verify TOTP
-			// Wait, the new better-auth does enable with password, then we need to just confirm?
-			// Actually the docs say to call verify or just we configure with TOTP.
-			// Let's call authClient.twoFactor.verifyTotp({ code })
-			// No wait, better-auth docs say you generate it then verify it, wait let me check better auth docs or just use verifyTotp?
-			// The instructions said: "call auth.twoFactor.enable({ code, password }) to finalize it... generate TOTP secret auth.twoFactor.generate()"
-			// Let's use `authClient.twoFactor.enable({ password, totpCode: code })`?
-			// Wait, if generate() doesn't exist, we'll try what's standard or handle error.
-			// Let's just use `authClient.twoFactor.generate()` to get URI, but we need password? Wait, let's just assume we used twoFactor.enable() and it returned the totpURI or we use twoFactor.verify({ code })?
-			// Actually instruction says: "call auth.twoFactor.enable({ code, password }) to finalize it" and "auth.twoFactor.generate()". Wait.
-			// Let's just blindly use authClient.twoFactor.enable({ password }) which returns TOTP URI in many implementations, wait no, standard better-auth uses `authClient.twoFactor.enable({ password, totpCode })` ?
+			// enable() created the secret and backup codes; verifying a TOTP code
+			// from the app is what turns 2FA on.
 			const { error } = await authClient.twoFactor.verifyTotp({
 				code: currentCode,
 			});
@@ -87,12 +123,14 @@ export function TwoFactorSettings() {
 			toast.success(t("twoFactorEnabled"));
 			setPassword("");
 			setCode("");
-			refetch();
-
-			// Generate backup codes
-			// Wait, usually the enable step returns backup codes, let's just see.
-			// I'll call generateBackupCodes if they exist, or just show success.
-			setStatus("idle");
+			setError("");
+			// Show the backup codes once before finishing. The session is
+			// refetched when the user confirms they saved them.
+			if (backupCodes.length > 0) {
+				setStatus("backupCodes");
+			} else {
+				handleFinishBackupCodes();
+			}
 		} catch {
 			setError(t("failedToVerifyCode"));
 		} finally {
@@ -135,7 +173,70 @@ export function TwoFactorSettings() {
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				{is2FAEnabled ? (
+				{status === "backupCodes" ? (
+					<div className="space-y-6">
+						<div className="space-y-1">
+							<h4 className="flex items-center gap-2 font-medium text-sm">
+								<KeyRound className="h-4 w-4 text-primary" />
+								{t("backupCodesTitle")}
+							</h4>
+							<p className="max-w-md text-muted-foreground text-sm">
+								{t("backupCodesDescription")}
+							</p>
+						</div>
+
+						<ul className="grid w-fit grid-cols-2 gap-x-8 gap-y-2 rounded-xl border bg-secondary/20 p-4 font-mono text-sm">
+							{backupCodes.map((backupCode) => (
+								<li className="tabular-nums" key={backupCode}>
+									{backupCode}
+								</li>
+							))}
+						</ul>
+
+						<div className="flex flex-wrap gap-3">
+							<Button
+								onClick={handleCopyBackupCodes}
+								size="sm"
+								type="button"
+								variant="outline"
+							>
+								<Copy className="mr-2 h-4 w-4" />
+								{t("copyBackupCodes")}
+							</Button>
+							<Button
+								onClick={handleDownloadBackupCodes}
+								size="sm"
+								type="button"
+								variant="outline"
+							>
+								<Download className="mr-2 h-4 w-4" />
+								{t("downloadBackupCodes")}
+							</Button>
+						</div>
+
+						<div className="flex items-center gap-2">
+							<Checkbox
+								checked={backupCodesSaved}
+								id="backup-codes-saved"
+								onCheckedChange={(checked) => setBackupCodesSaved(checked === true)}
+							/>
+							<Label className="font-normal text-sm" htmlFor="backup-codes-saved">
+								{t("backupCodesSaved")}
+							</Label>
+						</div>
+
+						<div className="flex justify-end">
+							<Button
+								disabled={!backupCodesSaved}
+								onClick={handleFinishBackupCodes}
+								size="sm"
+								type="button"
+							>
+								{t("done")}
+							</Button>
+						</div>
+					</div>
+				) : is2FAEnabled ? (
 					<div className="space-y-6">
 						<div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
 							<CheckCircle className="h-5 w-5" />
@@ -264,7 +365,10 @@ export function TwoFactorSettings() {
 
 								<div className="mt-6 flex justify-end gap-3">
 									<Button
-										onClick={() => setStatus("idle")}
+										onClick={() => {
+											setBackupCodes([]);
+											setStatus("idle");
+										}}
 										size="sm"
 										type="button"
 										variant="ghost"

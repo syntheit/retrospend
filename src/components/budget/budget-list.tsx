@@ -1,7 +1,10 @@
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "~/components/ui/button";
-import { useBudgetCalculations } from "~/hooks/use-budget-calculations";
+import {
+	budgetTotalsInHome,
+	useBudgetCalculations,
+} from "~/hooks/use-budget-calculations";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import type { Budget, Category } from "~/types/budget-types";
 import { AddBudgetRow } from "./add-budget-row";
@@ -41,26 +44,28 @@ export function BudgetList({
 	);
 
 	const sections = useMemo(() => {
+		// Totals are shown in the home currency, so they add each budget's
+		// home-currency figures, never its own amounts (budgets can differ in
+		// currency).
 		const result = [];
 		if (variableBudgets.length > 0) {
+			const totals = budgetTotalsInHome(variableBudgets);
 			result.push({
 				title: t("variableManaged"),
 				description: t("variableManagedDescription"),
 				budgets: variableBudgets,
-				totalAllocated: variableBudgets.reduce((sum, b) => sum + b.amount, 0),
-				totalSpent: variableBudgets.reduce((sum, b) => sum + b.actualSpend, 0),
+				totalAllocated: totals.allocated,
+				totalSpent: totals.spent,
 			});
 		}
 		if (fixedBudgets.length > 0) {
+			const totals = budgetTotalsInHome(fixedBudgets);
 			result.push({
 				title: t("fixedPegged"),
 				description: t("fixedPeggedDescription"),
 				budgets: fixedBudgets,
-				totalAllocated: fixedBudgets.reduce(
-					(sum, b) => sum + b.effectiveAmount,
-					0,
-				),
-				totalSpent: fixedBudgets.reduce((sum, b) => sum + b.actualSpend, 0),
+				totalAllocated: totals.allocated,
+				totalSpent: totals.spent,
 			});
 		}
 		return result;

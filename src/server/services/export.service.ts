@@ -1,11 +1,13 @@
 import JSZip from "jszip";
 import { generateCsv } from "~/lib/csv";
+import { dayKey } from "~/lib/time-zone";
 import type { PrismaClient } from "~prisma";
 
 export class ExportService {
 	constructor(private db: PrismaClient) {}
 
-	async exportAllData(userId: string) {
+	/** `timeZone` dates the file name in the user's zone (undefined = server zone). */
+	async exportAllData(userId: string, timeZone?: string) {
 		const db = this.db;
 		const zip = new JSZip();
 
@@ -404,7 +406,7 @@ export class ExportService {
 		const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
 		return {
 			zipData: zipBuffer.toString("base64"),
-			filename: `user-data-${new Date().toISOString().slice(0, 10)}.zip`,
+			filename: `user-data-${dayKey(new Date(), timeZone)}.zip`,
 		};
 	}
 }

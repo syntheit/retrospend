@@ -19,6 +19,7 @@ export interface Budget {
 	actualSpendInHome: number;
 	effectiveAmountInHome: number;
 	pegToActual: boolean;
+	isRollover?: boolean;
 	type: "FIXED" | "PEG_TO_ACTUAL" | "PEG_TO_LAST_MONTH";
 	category?: Category | null;
 }

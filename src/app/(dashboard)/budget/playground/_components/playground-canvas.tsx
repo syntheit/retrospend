@@ -7,14 +7,21 @@ import { EmptyState } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useCurrency } from "~/hooks/use-currency";
+import { budgetsByCategory } from "~/lib/budget-playground";
 import { PlaygroundBudgetRow } from "./playground-budget-row";
 import { usePlayground } from "./playground-context";
 
 export function PlaygroundCanvas() {
 	const t = useTranslations("playground");
-	const { categories, simulatedBudgets, isLoading } = usePlayground();
+	const { categories, simulatedBudgets, baseBudgets, isLoading } =
+		usePlayground();
 	const { homeCurrency } = useCurrency();
 	const [searchQuery, setSearchQuery] = useState("");
+	// A budget is edited in its own currency, the one Apply saves it in
+	const baseByCategory = useMemo(
+		() => budgetsByCategory(baseBudgets),
+		[baseBudgets],
+	);
 
 	const filteredCategories = useMemo(() => {
 		return categories
@@ -88,7 +95,9 @@ export function PlaygroundCanvas() {
 							{activeCategories.map((cat) => (
 								<PlaygroundBudgetRow
 									category={cat}
-									currency={homeCurrency}
+									currency={
+										baseByCategory.get(cat.id)?.currency ?? homeCurrency
+									}
 									key={cat.id}
 								/>
 							))}
@@ -110,7 +119,9 @@ export function PlaygroundCanvas() {
 							{otherCategories.map((cat) => (
 								<PlaygroundBudgetRow
 									category={cat}
-									currency={homeCurrency}
+									currency={
+										baseByCategory.get(cat.id)?.currency ?? homeCurrency
+									}
 									key={cat.id}
 								/>
 							))}
