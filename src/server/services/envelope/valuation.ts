@@ -54,7 +54,11 @@ export interface ValuationRow {
 	date: IsoDate;
 	/** Budget month of the row; picks the BookPeriod rate type. */
 	month: MonthKey;
-	/** Rate the row recorded on the Add sheet: `perUnit` units of `to` per 1 unit. */
+	/**
+	 * Rate the row recorded on the Add sheet: `perUnit` units of `to` per 1
+	 * unit. Depends on 2A.2 (rate type per entry), which stores this rate on
+	 * the row; its loader adopts or adapts this shape.
+	 */
 	ownRate?: { to: string; perUnit: DecimalLike } | null;
 	amountInUSD?: DecimalLike | null;
 }
