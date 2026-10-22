@@ -15,6 +15,7 @@ import { Prisma } from "~prisma";
 import { userTimeZone } from "../user-time-zone";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook, monthStartInstant } from "./inputs";
+import { forgetMonthViews } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { type SetupStyle, stylePreset } from "./presets";
 import { RateBook } from "./rate-book";
@@ -225,45 +226,91 @@ async function startingBalance(
 }
 
 /** Creates the user's personal book from a setup the client edited (SPEC §4.3). */
-export async function setupBook(
+interface BookSettings {
+	currency: string;
+	timeZone: string;
+	startDay: number;
+	today: string;
+	startMonth: number;
+	startDate: Date;
+	rateType: string;
+}
+
+/** Currency, zone, month start and rate type the new book starts with (SPEC §5.1). */
+async function bookSettings(
 	tx: Tx,
 	userId: string,
 	input: SetupInput,
 	ctx: SetupContext,
-): Promise<{ bookId: string; startingBalanceExpenseId: string | null }> {
-	if (await findPersonalBook(tx, userId))
-		throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
-	await validate(tx, input);
+): Promise<BookSettings> {
 	const user = await tx.user.findUniqueOrThrow({
 		where: { id: userId },
 		select: { homeCurrency: true, fiscalMonthStartDay: true },
 	});
-	const H = input.currency ?? user.homeCurrency;
+	const currency = input.currency ?? user.homeCurrency;
 	const timeZone = ctx.timeZone ?? (await userTimeZone(userId));
 	const startDay = Math.min(28, Math.max(1, user.fiscalMonthStartDay));
 	const today = isoDateIn(ctx.now, timeZone);
 	const startMonth = budgetMonthOf(today, [{ fromMonth: 0, startDay }]);
-	const startDate = monthStartInstant(startMonth, startDay, timeZone);
-	const rateType = await rateTypeFor(tx, userId, H);
+	return {
+		currency,
+		timeZone,
+		startDay,
+		today,
+		startMonth,
+		startDate: monthStartInstant(startMonth, startDay, timeZone),
+		rateType: await rateTypeFor(tx, userId, currency),
+	};
+}
+
+/** The book, its owner and its first period. A second setup racing this one hits the one-book index. */
+async function createBook(
+	tx: Tx,
+	userId: string,
+	input: SetupInput,
+	b: BookSettings,
+	ctx: SetupContext,
+) {
 	const bookId = randomUUID();
-	await tx.budgetBook.create({
-		data: {
-			id: bookId,
-			currency: H,
-			style: input.style,
-			weekStartDay: input.weekStartDay ?? 1,
-			monthStartDay: startDay,
-			timeZone,
-			timeZoneConfirmed: ctx.timeZone !== null,
-			startDate,
-			startMonth,
-			createdById: userId,
-		},
-	});
+	try {
+		await tx.budgetBook.create({
+			data: {
+				id: bookId,
+				currency: b.currency,
+				style: input.style,
+				weekStartDay: input.weekStartDay ?? 1,
+				monthStartDay: b.startDay,
+				timeZone: b.timeZone,
+				timeZoneConfirmed: ctx.timeZone !== null,
+				startDate: b.startDate,
+				startMonth: b.startMonth,
+				createdById: userId,
+			},
+		});
+	} catch (error) {
+		if ((error as { code?: string }).code === "P2002")
+			throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
+		throw error;
+	}
 	await tx.budgetMember.create({ data: { bookId, userId, role: "OWNER" } });
 	await tx.bookPeriod.create({
-		data: { bookId, fromMonth: startMonth, startDay, rateType },
+		data: {
+			bookId,
+			fromMonth: b.startMonth,
+			startDay: b.startDay,
+			rateType: b.rateType,
+		},
 	});
+	return bookId;
+}
+
+/** Groups, envelopes and category links as the client sent them; returns envelope ids by key. */
+async function createEnvelopes(
+	tx: Tx,
+	bookId: string,
+	input: SetupInput,
+	b: BookSettings,
+) {
 	const groupIds = new Map(input.groups.map((g) => [g.key, randomUUID()]));
 	await tx.envelopeGroup.createMany({
 		data: input.groups.map((g, i) => ({
@@ -286,7 +333,7 @@ export async function setupBook(
 			icon: e.icon ?? null,
 			kind: e.kind,
 			sortOrder: i,
-			...targetColumns(e.target, H, startMonth),
+			...targetColumns(e.target, b.currency, b.startMonth),
 		})),
 	});
 	await tx.envelopeCategory.createMany({
@@ -298,16 +345,32 @@ export async function setupBook(
 			})),
 		),
 	});
+	return envelopeIds;
+}
+
+/** Creates the user's personal book from a setup the client edited (SPEC §4.3). */
+export async function setupBook(
+	tx: Tx,
+	userId: string,
+	input: SetupInput,
+	ctx: SetupContext,
+): Promise<{ bookId: string; startingBalanceExpenseId: string | null }> {
+	if (await findPersonalBook(tx, userId))
+		throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
+	await validate(tx, input);
+	const b = await bookSettings(tx, userId, input, ctx);
+	const bookId = await createBook(tx, userId, input, b, ctx);
+	const envelopeIds = await createEnvelopes(tx, bookId, input, b);
 	const defaultKey = input.envelopes.find((e) => e.isDefault)?.key as string;
 	// "I have nothing right now" is a confirmed answer with no row to write.
 	const money = !input.startingMoneyMinor
 		? null
 		: await startingBalance(tx, userId, {
 				minor: input.startingMoneyMinor,
-				currency: H,
-				rateType,
-				date: startDate,
-				today,
+				currency: b.currency,
+				rateType: b.rateType,
+				date: b.startDate,
+				today: b.today,
 			});
 	await tx.budgetBook.update({
 		where: { id: bookId },
@@ -318,5 +381,6 @@ export async function setupBook(
 				input.startingMoneyMinor === undefined ? null : ctx.now,
 		},
 	});
+	forgetMonthViews(tx);
 	return { bookId, startingBalanceExpenseId: money?.id ?? null };
 }
