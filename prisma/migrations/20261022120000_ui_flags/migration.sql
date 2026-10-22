@@ -4,9 +4,9 @@
 -- 2. app_settings."apiV1Mode": /api/v1 and the API keys UI.
 -- envelopeBudgetMode arrives with the envelope books migration (M6) and
 -- reuses the FeatureFlagMode type created here.
--- app_settings is a global singleton without RLS. retrospend_app keeps its
--- existing SELECT-only grant (20260303000002_rls_hardening), which covers
--- the new columns, so only the admin path can change a flag.
+-- app_settings is a global singleton without RLS, so the only guard on the
+-- flags is the table grant: retrospend_app may read them, and only the
+-- owner connection (settings service, admin procedures) may change them.
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'FeatureFlagMode') THEN
@@ -16,3 +16,9 @@ END $$;
 
 ALTER TABLE "app_settings" ADD COLUMN IF NOT EXISTS "uiV2Mode"  "FeatureFlagMode" NOT NULL DEFAULT 'OFF';
 ALTER TABLE "app_settings" ADD COLUMN IF NOT EXISTS "apiV1Mode" "FeatureFlagMode" NOT NULL DEFAULT 'OFF';
+
+-- 20260303000002_rls_hardening revoked these writes, but the blanket
+-- re-grant in 20260309000000_fix_retrospend_app_schema_usage handed them
+-- back. Revoke again so user-scoped queries cannot flip a flag.
+GRANT SELECT ON "app_settings" TO retrospend_app;
+REVOKE INSERT, UPDATE, DELETE ON "app_settings" FROM retrospend_app;
