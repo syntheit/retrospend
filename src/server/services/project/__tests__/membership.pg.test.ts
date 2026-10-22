@@ -33,6 +33,7 @@ describe("M5 backfill", () => {
 		const ana = await namedUser("Ana");
 		const ben = await namedUser("Ben");
 		const cam = await namedUser("Cam");
+		const dan = await namedUser("Dan");
 		const project = await adminDb.project.create({
 			data: {
 				name: "Backfill",
@@ -53,6 +54,15 @@ describe("M5 backfill", () => {
 		const founder = await row(ana.user.id, "2026-10-01");
 		const inEarlier = await row(ben.user.id, "2026-10-20");
 		const noExpenses = await row(cam.user.id, "2026-10-20");
+		// 01:00 UTC on Oct 21 is 22:00 on Oct 20 in Buenos Aires (UTC-3).
+		const lateEvening = await adminDb.projectParticipant.create({
+			data: {
+				projectId: project.id,
+				participantType: "user",
+				participantId: dan.user.id,
+				joinedAt: new Date("2026-10-21T01:00:00Z"),
+			},
+		});
 		// Ben is in an expense dated before he was added: the expense wins.
 		await seedExpense(project.id, {
 			description: "Hotel",
@@ -80,6 +90,7 @@ describe("M5 backfill", () => {
 			[founder.id]: null,
 			[inEarlier.id]: "2026-10-09",
 			[noExpenses.id]: "2026-10-20",
+			[lateEvening.id]: "2026-10-20",
 		});
 		await adminDb.$executeRawUnsafe(backfill);
 		expect(await dates()).toEqual(first);

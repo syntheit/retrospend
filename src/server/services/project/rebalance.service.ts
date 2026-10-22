@@ -1,22 +1,12 @@
+import { dayKey } from "~/lib/time-zone";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
 import { joinedAfter, toIsoDate } from "./membership";
-import type { MemberRef } from "./types";
+import type { MemberRef, ProjectActor } from "./types";
 
-/**
- * Past expenses a newly added member could be folded into (the choice that
- * follows adding someone). Leaves out settled expenses and ones they are
- * already in; only EQUAL expenses are `eligible`, because other split modes
- * cannot be recomputed without the user. Expenses dated before the person
- * joined are flagged `beforeJoin` and never preselected (RC-11). The caller
- * must be an editor.
- */
-export async function rebalanceableExpenses(
-	db: PrismaClient,
-	projectId: string,
-	newcomer: MemberRef,
-) {
-	const [expenses, members] = await Promise.all([
+function loadProject(db: PrismaClient, projectId: string) {
+	return Promise.all([
 		db.sharedTransaction.findMany({
 			where: { projectId },
 			select: {
@@ -38,16 +28,21 @@ export async function rebalanceableExpenses(
 			select: { participantType: true, participantId: true, joinedOn: true },
 		}),
 	]);
-	const newcomerRow = members.find(
-		(m) =>
-			m.participantType === newcomer.participantType &&
-			m.participantId === newcomer.participantId,
-	);
-	const joined = {
-		joinedOn: newcomerRow?.joinedOn ? toIsoDate(newcomerRow.joinedOn) : null,
-	};
+}
 
-	// A claimed ghost and its user are one person here, as in the rebalance itself.
+type Expenses = Awaited<ReturnType<typeof loadProject>>[0];
+type Members = Awaited<ReturnType<typeof loadProject>>[1];
+
+/**
+ * The newcomer's identity key and the keys of every other member, with a
+ * claimed ghost and its user as one person (as in the rebalance itself).
+ */
+async function memberKeys(
+	db: PrismaClient,
+	newcomer: MemberRef,
+	members: Members,
+	expenses: Expenses,
+) {
 	const { canonicalKey } = await resolveClaimAliases(db, [
 		newcomer,
 		...members.map(({ participantType, participantId }) => ({
@@ -57,9 +52,39 @@ export async function rebalanceableExpenses(
 		...expenses.flatMap((e) => e.splitParticipants),
 	]);
 	const newcomerKey = canonicalKey(newcomer);
-	// An expense is "split with everyone" only if it has every other member.
 	const others = new Set(
 		members.map((m) => canonicalKey(m)).filter((k) => k !== newcomerKey),
+	);
+	return { canonicalKey, newcomerKey, others };
+}
+
+/**
+ * Past expenses a newly added member could be folded into (the choice that
+ * follows adding someone). Leaves out settled expenses and ones they are
+ * already in; only EQUAL expenses are `eligible`, because other split modes
+ * cannot be recomputed without the user. Expenses dated before the person
+ * joined (by the day in the acting user's zone) are flagged `beforeJoin` and
+ * never preselected (RC-11). The caller must be an editor.
+ */
+export async function rebalanceableExpenses(
+	db: PrismaClient,
+	{ userId }: ProjectActor,
+	projectId: string,
+	newcomer: MemberRef,
+) {
+	const [expenses, members] = await loadProject(db, projectId);
+	const row = members.find(
+		(m) =>
+			m.participantType === newcomer.participantType &&
+			m.participantId === newcomer.participantId,
+	);
+	const joined = { joinedOn: row?.joinedOn ? toIsoDate(row.joinedOn) : null };
+	const zone = await userTimeZone(userId);
+	const { canonicalKey, newcomerKey, others } = await memberKeys(
+		db,
+		newcomer,
+		members,
+		expenses,
 	);
 
 	return expenses
@@ -69,11 +94,8 @@ export async function rebalanceableExpenses(
 				!e.splitParticipants.some((sp) => canonicalKey(sp) === newcomerKey),
 		)
 		.map((e) => {
-			const inSplit = new Set(
-				e.splitParticipants.map((sp) => canonicalKey(sp)),
-			);
-			// RC-11: an expense from before they joined is never theirs by default.
-			const beforeJoin = joinedAfter(joined, toIsoDate(e.date));
+			const inSplit = new Set(e.splitParticipants.map(canonicalKey));
+			const beforeJoin = joinedAfter(joined, dayKey(e.date, zone));
 			return {
 				id: e.id,
 				description: e.description,
@@ -84,6 +106,7 @@ export async function rebalanceableExpenses(
 				eligible: e.splitMode === "EQUAL",
 				currentParticipantCount: e.splitParticipants.length,
 				beforeJoin,
+				// "Split with everyone" only if it has every other member.
 				hasAllOtherMembers:
 					!beforeJoin && [...others].every((k) => inSplit.has(k)),
 			};

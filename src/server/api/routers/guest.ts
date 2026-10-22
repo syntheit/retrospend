@@ -14,6 +14,7 @@ import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { InMemoryRateLimiter, getClientIp } from "~/server/lib/rate-limiter";
 import { hashToken } from "~/server/lib/tokens";
 import { sendEmail } from "~/server/mailer";
+import { defaultJoinedOn } from "~/server/services/project/join-date";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import {
 	anonymizeParticipantReferences,
@@ -217,6 +218,7 @@ export const guestRouter = createTRPCRouter({
 						participantType: "guest",
 						participantId: guestSession.id,
 						role: link.roleGranted,
+						joinedOn: await defaultJoinedOn(tx, projectId, null),
 					},
 				});
 
@@ -344,6 +346,7 @@ export const guestRouter = createTRPCRouter({
 								participantType: "guest",
 								participantId: session.id,
 								role: link.roleGranted,
+								joinedOn: await defaultJoinedOn(tx, session.projectId, null),
 							},
 						});
 					}
@@ -410,6 +413,7 @@ export const guestRouter = createTRPCRouter({
 						participantType: "user",
 						participantId: userId,
 						role: link.roleGranted,
+						joinedOn: await defaultJoinedOn(tx, link.projectId, userId),
 					},
 				});
 				await tx.magicLink.update({

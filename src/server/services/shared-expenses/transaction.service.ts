@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { fromMinorUnits, toMinorUnits } from "~/lib/money";
+import { defaultJoinedOn } from "~/server/services/project/join-date";
 import { findExchangeRate } from "~/server/exchange-rates";
 import {
 	createNotification,
@@ -299,10 +300,12 @@ export class SharedTransactionService {
 			// Auto-add shadow participants (split members and a shadow payer) not
 			// yet in the project
 			if (input.projectId) {
-				await this.autoAddShadowParticipants(tx, input.projectId, [
-					paidBy,
-					...input.splitWith,
-				]);
+				await this.autoAddShadowParticipants(
+					tx,
+					input.projectId,
+					[paidBy, ...input.splitWith],
+					transaction.date,
+				);
 			}
 
 			await logAudit(tx, {
@@ -829,12 +832,17 @@ export class SharedTransactionService {
 				effectiveProjectId &&
 				(projectChanged || input.splitWith !== undefined || paidByChanged)
 			) {
-				await this.autoAddShadowParticipants(tx, effectiveProjectId, [
-					effectivePaidBy,
-					...(projectChanged || input.splitWith !== undefined
-						? effectiveSplitRefs
-						: []),
-				]);
+				await this.autoAddShadowParticipants(
+					tx,
+					effectiveProjectId,
+					[
+						effectivePaidBy,
+						...(projectChanged || input.splitWith !== undefined
+							? effectiveSplitRefs
+							: []),
+					],
+					fieldUpdates.date ?? existing.date,
+				);
 			}
 
 			// Mark all participants except the editor as having unseen changes
@@ -1284,12 +1292,14 @@ export class SharedTransactionService {
 	/**
 	 * Auto-adds any shadow participants not yet in the project as CONTRIBUTORs, so
 	 * a shadow added via create or edit shows up in the project roster (balances,
-	 * settlement). Callers must run {@link assertShadowsAddable} first.
+	 * settlement). Callers must run {@link assertShadowsAddable} first. Their
+	 * join date comes from defaultJoinedOn, never after the expense's day.
 	 */
 	private async autoAddShadowParticipants(
 		tx: Prisma.TransactionClient,
 		projectId: string,
 		refs: ParticipantRef[],
+		expenseDate: Date,
 	): Promise<void> {
 		const seen = new Set<string>();
 		for (const p of refs) {
@@ -1312,6 +1322,14 @@ export class SharedTransactionService {
 						participantType: "shadow",
 						participantId: p.participantId,
 						role: "CONTRIBUTOR",
+						joinedOn: await defaultJoinedOn(
+							tx,
+							projectId,
+							this.actor.participantType === "user"
+								? this.actor.participantId
+								: null,
+							{ onDay: expenseDate },
+						),
 					},
 				});
 			}

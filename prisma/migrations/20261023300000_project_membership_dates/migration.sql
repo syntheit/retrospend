@@ -24,13 +24,15 @@ END $$;
 -- People added on the project's first day (always the creator) keep NULL,
 -- "member from the start": trips are often entered after the fact, with
 -- expenses dated before the project existed.
+-- Days are read in Buenos Aires, the same default as userTimeZone() in
+-- src/server/services/user-time-zone.ts (timestamps are stored as UTC).
 -- Only rows still NULL are touched, so running this twice changes nothing.
 UPDATE "project_participant" AS pp
 SET "joinedOn" = LEAST(
-  pp."joinedAt"::date,
+  (pp."joinedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date,
   COALESCE(
     (
-      SELECT MIN(t."date"::date)
+      SELECT MIN((t."date" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)
       FROM "shared_transaction" t
       WHERE t."projectId" = pp."projectId"
         AND (
@@ -43,10 +45,10 @@ SET "joinedOn" = LEAST(
           )
         )
     ),
-    pp."joinedAt"::date
+    (pp."joinedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
   )
 )
 FROM "project" p
 WHERE p."id" = pp."projectId"
   AND pp."joinedOn" IS NULL
-  AND pp."joinedAt"::date > p."createdAt"::date;
+  AND (pp."joinedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date > (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Argentina/Buenos_Aires')::date;

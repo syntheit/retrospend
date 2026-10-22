@@ -7,18 +7,25 @@
  * the result matches a fresh equal split. EXACT, PERCENTAGE and SHARES
  * amounts encode explicit intent and are never silently changed: they are
  * skipped and reported. Locked (settled) expenses are always skipped.
+ *
+ * RC-11: without `expenseIds` ("every eligible expense"), expenses dated
+ * before the person joined (the day in the acting user's zone) are skipped as
+ * `before_join`; they stay as they were saved. Chosen by id, they are
+ * re-split: an editor picking one by hand is a deliberate choice.
  */
 import { TRPCError } from "@trpc/server";
 import {
 	resolveSplits,
 	type SplitParticipantRef,
 } from "~/lib/shared-split-computation";
+import { dayKey } from "~/lib/time-zone";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { sameParticipant } from "~/server/services/shared-expenses/types";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type { ParticipantType, Prisma } from "~prisma";
-import { joinedAfter, membershipOf, toIsoDate } from "./membership";
+import { joinedAfter, membershipOf } from "./membership";
 import type { MemberRef, ProjectActor } from "./types";
 
 export interface RebalanceInput extends MemberRef {
@@ -73,7 +80,7 @@ async function pickExpenses(
 	tx: Prisma.TransactionClient,
 	input: RebalanceInput,
 	candidates: Candidate[],
-	joined: { joinedOn: string | null },
+	beforeJoin: (date: Date) => boolean,
 ) {
 	// Chosen by hand, an earlier expense is the user's call; "all eligible"
 	// never reaches back before the person joined (RC-11).
@@ -99,7 +106,7 @@ async function pickExpenses(
 			skipped.push({ id: e.id, reason: "already_included" });
 		} else if (e.splitMode !== "EQUAL") {
 			skipped.push({ id: e.id, reason: "non_equal_split" });
-		} else if (!byHand && joinedAfter(joined, toIsoDate(e.date))) {
+		} else if (!byHand && beforeJoin(e.date)) {
 			skipped.push({ id: e.id, reason: "before_join" });
 		} else {
 			chosen.push(e);
@@ -183,11 +190,13 @@ export async function rebalanceExpenses(
 	}
 
 	const candidates = await loadCandidates(tx, input);
+	const joined = membershipOf(membership);
+	const zone = await userTimeZone(userId);
 	const { chosen, skipped } = await pickExpenses(
 		tx,
 		input,
 		candidates,
-		membershipOf(membership),
+		(date) => joinedAfter(joined, dayKey(date, zone)),
 	);
 	if (chosen.length === 0) return { rebalancedCount: 0, skipped };
 

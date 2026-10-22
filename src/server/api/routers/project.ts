@@ -210,7 +210,7 @@ export const projectRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			const { projectId, ...newcomer } = input;
 			await roleOf(ctx, projectId, "EDITOR");
-			return rebalanceableExpenses(ctx.db, projectId, newcomer);
+			return rebalanceableExpenses(ctx.db, actor(ctx), projectId, newcomer);
 		}),
 
 	rebalanceExpenses: protectedProcedure
@@ -259,10 +259,19 @@ export const projectRouter = createTRPCRouter({
 
 	/** Who was a member on a day: what a new expense on that day includes by default (RC-11). */
 	membersOn: guestOrProtectedProcedure
-		.input(z.object({ projectId: z.string().min(1), date: isoDateSchema }))
+		.input(
+			z.object({
+				projectId: z.string().min(1),
+				date: isoDateSchema.optional(),
+			}),
+		)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
-			return membersOn(ctx.db, input.projectId, input.date);
+			const reader =
+				ctx.participant.participantType === "user"
+					? ctx.participant.participantId
+					: null;
+			return membersOn(ctx.db, input.projectId, input.date, reader);
 		}),
 
 	/** Join and leave dates. Leaving keeps the person and their past expenses. */
@@ -274,8 +283,8 @@ export const projectRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			await roleOf(ctx, input.projectId, "EDITOR");
-			return setMembershipDates(ctx.db, actor(ctx), input);
+			const caller = await roleOf(ctx, input.projectId, "EDITOR");
+			return setMembershipDates(ctx.db, actor(ctx), caller.role, input);
 		}),
 
 	listExpenses: guestOrProtectedProcedure

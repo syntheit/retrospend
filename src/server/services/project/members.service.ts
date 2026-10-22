@@ -14,6 +14,7 @@ import {
 } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import type { PrismaClient } from "~prisma";
+import { defaultJoinedOn } from "./join-date";
 import { fromIsoDate, type IsoDate } from "./membership";
 import { badDates } from "./membership.service";
 import type { MemberRef, ProjectActor, ProjectRoleName } from "./types";
@@ -97,13 +98,13 @@ export async function addParticipant(
 	input: MemberRef & {
 		projectId: string;
 		role: ProjectRoleName;
-		/** When they join (RC-11); omit for "from the start", as before dates existed. */
+		/** When they join (RC-11); omitted, defaultJoinedOn decides. */
 		joinedOn?: IsoDate;
 	},
 ) {
 	const { projectId, participantType, participantId } = input;
 	const day = input.joinedOn;
-	const joinedOn = day ? badDates(() => fromIsoDate(day)) : null;
+	const typedJoin = day ? badDates(() => fromIsoDate(day)) : null;
 	await assertAddable(db, userId, projectId, {
 		participantType,
 		participantId,
@@ -112,6 +113,8 @@ export async function addParticipant(
 	assertCanGrantRole(callerRole, role);
 
 	const participant = await userTransaction(db, userId, async (tx) => {
+		const joinedOn =
+			typedJoin ?? (await defaultJoinedOn(tx, projectId, userId));
 		const p = await tx.projectParticipant.create({
 			data: { projectId, participantType, participantId, role, joinedOn },
 		});
@@ -303,14 +306,20 @@ export async function updateParticipantRole(
 	});
 }
 
-/** Caller must be an owner and the creator; the old owner becomes an editor. */
-export async function transferOwnership(
+interface TransferInput {
+	projectId: string;
+	newOwnerId: string;
+	confirmProjectName: string;
+}
+
+/** The new owner's membership row, after every check a transfer needs. */
+async function transferTarget(
 	db: PrismaClient,
-	{ userId }: ProjectActor,
-	input: { projectId: string; newOwnerId: string; confirmProjectName: string },
+	userId: string,
+	project: { createdById: string; name: string },
+	input: TransferInput,
 ) {
 	const { projectId, newOwnerId } = input;
-	const project = await creatorOf(db, projectId);
 	if (project.createdById !== userId) {
 		throw new TRPCError({
 			code: "FORBIDDEN",
@@ -340,6 +349,18 @@ export async function transferOwnership(
 			message: "You are already the owner",
 		});
 	}
+	return target;
+}
+
+/** Caller must be an owner and the creator; the old owner becomes an editor. */
+export async function transferOwnership(
+	db: PrismaClient,
+	{ userId }: ProjectActor,
+	input: TransferInput,
+) {
+	const { projectId, newOwnerId } = input;
+	const project = await creatorOf(db, projectId);
+	const target = await transferTarget(db, userId, project, input);
 
 	const result = await userTransaction(db, userId, async (tx) => {
 		await tx.projectParticipant.update({
