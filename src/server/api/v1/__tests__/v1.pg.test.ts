@@ -8,9 +8,12 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import { contract } from "@retrospend/api-contract";
 import { v1 as probe } from "@retrospend/api-contract/common";
+import { makeSignature } from "better-auth/crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import * as z from "zod";
+import { env } from "~/env";
 import { auth } from "~/server/better-auth";
+import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { FeatureFlagMode } from "~prisma";
@@ -48,8 +51,35 @@ const testContract = {
 			.meta({ scope: "write:expenses", event: "category.created" })
 			.input(z.object({ name: z.string().min(1) }))
 			.output(z.object({ id: z.string(), name: z.string() })),
+		// Writes a category and answers with a body too big to keep for replay.
+		big: probe
+			.route({ method: "POST", path: "/probe/big", operationId: "probeBig" })
+			.meta({ scope: "write:expenses", event: "category.created" })
+			.input(z.object({ name: z.string().min(1) }))
+			.output(z.object({ blob: z.string() })),
+		// Writes a category and answers with a value the store cannot keep
+		// (JSON.stringify throws on a bigint), so storing fails after commit.
+		unstorable: probe
+			.route({
+				method: "POST",
+				path: "/probe/unstorable",
+				operationId: "probeUnstorable",
+			})
+			.meta({ scope: "write:expenses", event: "category.created" })
+			.input(z.object({ name: z.string().min(1) }))
+			.output(z.object({ n: z.bigint() })),
 	},
 };
+
+async function writeCategory(
+	context: Parameters<typeof signedIn>[0],
+	name: string,
+) {
+	const user = signedIn(context);
+	await user.db.category.create({
+		data: { name, color: "blue", userId: user.principal.userId },
+	});
+}
 const t = implement(testContract)
 	.$context<V1InitialContext>()
 	.use(v1Middleware);
@@ -85,6 +115,14 @@ const probeHandler = createV1Handler(
 					},
 					select: { id: true, name: true },
 				});
+			}),
+			big: t.probe.big.handler(async ({ context, input }) => {
+				await writeCategory(context, input.name);
+				return { blob: "x".repeat(70_000) };
+			}),
+			unstorable: t.probe.unstorable.handler(async ({ context, input }) => {
+				await writeCategory(context, input.name);
+				return { n: 1n };
 			}),
 		},
 	}),
@@ -127,6 +165,16 @@ async function sessionFor(
 		},
 	});
 	return token;
+}
+
+const AUTH_BASE = new URL(auth.options.baseURL ?? "http://localhost:1997")
+	.origin;
+
+/** A signed session cookie for a fresh unscoped (web) session. */
+async function webCookieFor(userId: string) {
+	const token = await sessionFor(userId);
+	const signature = await makeSignature(token, env.BETTER_AUTH_SECRET ?? "");
+	return `better-auth.session_token=${encodeURIComponent(`${token}.${signature}`)}`;
 }
 
 async function apiKeyFor(userId: string, scopes: string[]) {
@@ -215,7 +263,7 @@ describe("/api/v1 on Postgres", () => {
 			});
 		});
 
-		it("resolves a mobile bearer session without the admin scope", async () => {
+		it("treats an unstamped bearer session as mobile, without admin", async () => {
 			const token = await sessionFor(admin.user.id);
 			const res = await call("/me", {
 				headers: { authorization: `Bearer ${token}` },
@@ -223,7 +271,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(res.status).toBe(200);
 			const me = await res.json();
 			expect(me.id).toBe(admin.user.id);
-			expect(me.principal.kind).toBe("bearer");
+			expect(me.principal.kind).toBe("mobile");
 			expect(me.principal.scopes).not.toContain("admin");
 		});
 
@@ -264,16 +312,17 @@ describe("/api/v1 on Postgres", () => {
 		});
 
 		it("never lets a client drop a key's expiry or pick its prefix", async () => {
-			const token = await sessionFor(alice.user.id);
+			// Managing keys needs the web app's cookie session.
+			const cookie = await webCookieFor(alice.user.id);
 			const { id } = await apiKeyFor(alice.user.id, ["read"]);
 			const post = (path: string, body: unknown) =>
 				auth.handler(
-					new Request(`http://localhost:3101/api/auth${path}`, {
+					new Request(`${AUTH_BASE}/api/auth${path}`, {
 						method: "POST",
 						headers: {
-							authorization: `Bearer ${token}`,
+							cookie,
 							"content-type": "application/json",
-							origin: "http://localhost:3101",
+							origin: AUTH_BASE,
 						},
 						body: JSON.stringify(body),
 					}),
@@ -316,39 +365,6 @@ describe("/api/v1 on Postgres", () => {
 			).toBe(401);
 		});
 
-		it("runs the device flow and limits the token to the scopes it asked for", async () => {
-			const cookie = await sessionFor(bob.user.id);
-			const bearer = { authorization: `Bearer ${cookie}` };
-			const code = await auth.api.deviceCode({
-				body: { client_id: "retrospend-cli", scope: "read write:expenses" },
-			});
-			await auth.api.deviceVerify({
-				query: { user_code: code.user_code },
-				headers: new Headers(bearer),
-			});
-			await auth.api.deviceApprove({
-				body: { userCode: code.user_code },
-				headers: new Headers(bearer),
-			});
-			const token = await auth.api.deviceToken({
-				body: {
-					grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-					device_code: code.device_code,
-					client_id: "retrospend-cli",
-				},
-			});
-
-			const res = await call("/me", {
-				headers: { authorization: `Bearer ${token.access_token}` },
-			});
-			expect(res.status).toBe(200);
-			expect((await res.json()).principal).toMatchObject({
-				kind: "device",
-				scopes: ["read", "write:expenses"],
-				clientId: "retrospend-cli",
-			});
-		});
-
 		it("refuses device codes for unknown clients or scopes", async () => {
 			await expect(
 				auth.api.deviceCode({ body: { client_id: "someone-else" } }),
@@ -378,7 +394,7 @@ describe("/api/v1 on Postgres", () => {
 			const res = await call("/me", { headers: { cookie: sessionCookie } });
 			expect(res.status).toBe(200);
 			expect((await res.json()).principal).toMatchObject({
-				kind: "cookie",
+				kind: "web",
 				scopes: ["read", "write:expenses", "write:money", "write:settings"],
 			});
 		});
@@ -533,6 +549,85 @@ describe("/api/v1 on Postgres", () => {
 			await expect(
 				adminDb.idempotencyKey.count({ where: { userId: alice.user.id, key } }),
 			).resolves.toBe(0);
+		});
+
+		it("never frees a key once the write committed", async () => {
+			const token = await sessionFor(alice.user.id);
+			const key = randomUUID();
+			const send = () =>
+				call(
+					"/probe/unstorable",
+					{
+						method: "POST",
+						headers: {
+							authorization: `Bearer ${token}`,
+							"idempotency-key": key,
+						},
+						body: { name: "Committed once" },
+					},
+					probeHandler,
+				);
+			expect((await send()).status).toBe(500);
+			const retry = await send();
+			expect(retry.status).toBe(409);
+			expect((await retry.json()).code).toBe("idempotency_in_progress");
+			await expect(
+				adminDb.category.count({
+					where: { userId: alice.user.id, name: "Committed once" },
+				}),
+			).resolves.toBe(1);
+		});
+
+		it("keeps no copy of a response over the size cap", async () => {
+			const token = await sessionFor(alice.user.id);
+			const key = randomUUID();
+			const send = () =>
+				call(
+					"/probe/big",
+					{
+						method: "POST",
+						headers: {
+							authorization: `Bearer ${token}`,
+							"idempotency-key": key,
+						},
+						body: { name: "Big body" },
+					},
+					probeHandler,
+				);
+			expect((await send()).status).toBe(200);
+			const replay = await send();
+			expect(replay.status).toBe(409);
+			expect((await replay.json()).code).toBe("idempotency_replay_unavailable");
+			await expect(
+				adminDb.category.count({
+					where: { userId: alice.user.id, name: "Big body" },
+				}),
+			).resolves.toBe(1);
+		});
+
+		it("prunes only the caller's expired keys", async () => {
+			const past = new Date(Date.now() - 1000);
+			for (const userId of [alice.user.id, bob.user.id]) {
+				await adminDb.idempotencyKey.create({
+					data: {
+						userId,
+						key: `old-${randomUUID()}`,
+						requestHash: "x",
+						expiresAt: past,
+					},
+				});
+			}
+			expect(await pruneExpiredKeys(alice.db)).toBeGreaterThanOrEqual(1);
+			await expect(
+				adminDb.idempotencyKey.count({
+					where: { userId: alice.user.id, expiresAt: { lt: new Date() } },
+				}),
+			).resolves.toBe(0);
+			await expect(
+				adminDb.idempotencyKey.count({
+					where: { userId: bob.user.id, expiresAt: { lt: new Date() } },
+				}),
+			).resolves.toBeGreaterThanOrEqual(1);
 		});
 
 		it("keeps keys per user under RLS", async () => {

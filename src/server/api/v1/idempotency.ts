@@ -18,8 +18,10 @@ import type { V1Context } from "./middleware";
 /**
  * Every write needs an Idempotency-Key (conventions in
  * packages/api-contract/src/common/idempotency.ts). The first successful
- * response is stored and replayed; a failure frees the key. The request
- * is fingerprinted by method, route and raw input, so reusing a key for a
+ * response is stored and replayed; a handler failure frees the key. Keys
+ * are per user (RLS on idempotency_key): two users never collide, and one
+ * user's key never replays another user's response. The request is
+ * fingerprinted by method, route and raw input, so reusing a key for a
  * different request is refused instead of replaying the wrong response.
  */
 export const idempotency = os
@@ -56,18 +58,23 @@ export const idempotency = os
 				return output(start.body as never);
 		}
 
+		let result: Awaited<ReturnType<typeof next>>;
 		try {
-			const result = await next();
-			const meta = procedure["~orpc"].meta;
-			await completeIdempotentRequest(
-				user.db,
-				start.id,
-				route.successStatus ?? 200,
-				meta.secretResponse ? undefined : result.output,
-			);
-			return result;
+			result = await next();
 		} catch (error) {
+			// The handler failed, so nothing committed: free the key for a retry.
 			await releaseIdempotentRequest(user.db, start.id).catch(() => undefined);
 			throw error;
 		}
+		// The write committed. If storing the response fails the key stays in
+		// progress until it expires, which refuses retries instead of writing
+		// twice.
+		const meta = procedure["~orpc"].meta;
+		await completeIdempotentRequest(
+			user.db,
+			start.id,
+			route.successStatus ?? 200,
+			meta.secretResponse ? undefined : result.output,
+		);
+		return result;
 	});

@@ -6,6 +6,15 @@ import { Prisma } from "~prisma";
 /** A user-scoped client (createUserScopedDb): RLS keeps keys per user. */
 type UserDb = typeof globalDb;
 
+/**
+ * Largest response kept for replay (serialized JSON). A bigger one keeps
+ * only the fact that the key was used, so a replay is
+ * `idempotency_replay_unavailable` rather than an unbounded row.
+ */
+export const MAX_STORED_RESPONSE_BYTES = 64 * 1024;
+
+const PRUNE_PROBABILITY = 0.01;
+
 export type IdempotencyStart =
 	| { kind: "started"; id: string }
 	| { kind: "replay"; status: number; body: unknown }
@@ -55,6 +64,9 @@ export async function startIdempotentRequest(
 	attempt = 0,
 ): Promise<IdempotencyStart> {
 	const now = input.now ?? new Date();
+	if (attempt === 0 && Math.random() < PRUNE_PROBABILITY) {
+		await pruneExpiredKeys(userDb, now).catch(() => undefined);
+	}
 	try {
 		const row = await userDb.idempotencyKey.create({
 			data: {
@@ -103,17 +115,33 @@ export async function completeIdempotentRequest(
 	status: number,
 	body: unknown,
 ) {
+	const json = body === undefined ? undefined : JSON.stringify(body);
+	const keep =
+		json !== undefined &&
+		Buffer.byteLength(json, "utf8") <= MAX_STORED_RESPONSE_BYTES;
 	await userDb.idempotencyKey.update({
 		where: { id },
 		data: {
 			completedAt: new Date(),
 			status,
 			responseBody:
-				body === undefined
-					? Prisma.DbNull
-					: (JSON.parse(JSON.stringify(body)) as Prisma.InputJsonValue),
+				keep && json !== undefined
+					? (JSON.parse(json) as Prisma.InputJsonValue)
+					: Prisma.DbNull,
 		},
 	});
+}
+
+/**
+ * Deletes this user's expired keys. Runs now and then from
+ * startIdempotentRequest; through the user-scoped client it only ever sees
+ * the caller's own rows.
+ */
+export async function pruneExpiredKeys(userDb: UserDb, now: Date = new Date()) {
+	const { count } = await userDb.idempotencyKey.deleteMany({
+		where: { expiresAt: { lt: now } },
+	});
+	return count;
 }
 
 /** Frees the key after a failed request so the client can retry it. */
