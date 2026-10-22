@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { MonthStepper } from "~/components/date/MonthStepper";
 import { Button } from "~/components/ui/button";
 import { useCurrency } from "~/hooks/use-currency";
+import { playgroundApplyPayload } from "~/lib/budget-playground";
 import { handleError } from "~/lib/handle-error";
 import { api } from "~/trpc/react";
 import { usePlayground } from "./playground-context";
@@ -18,6 +19,7 @@ export function PlaygroundHeaderActions() {
 		selectedMonth,
 		setSelectedMonth,
 		simulatedBudgets,
+		baseBudgets,
 		resetAll,
 		isDirty,
 	} = usePlayground();
@@ -34,16 +36,16 @@ export function PlaygroundHeaderActions() {
 
 	const handleApply = async () => {
 		try {
-			const payload = Object.entries(simulatedBudgets).map(
-				([categoryId, amount]) => ({
-					categoryId,
-					amount,
-					currency: homeCurrency,
-					period: selectedMonth,
-				}),
-			);
-
-			await batchUpsertBudgets.mutateAsync(payload);
+			// Only changed budgets, each in its own currency and type
+			const payload = playgroundApplyPayload({
+				baseBudgets,
+				simulatedBudgets,
+				homeCurrency,
+				period: selectedMonth,
+			});
+			if (payload.length > 0) {
+				await batchUpsertBudgets.mutateAsync(payload);
+			}
 			await utils.budget.getBudgets.invalidate({ month: selectedMonth });
 			toast.success(t("appliedSimulatedBudgets"));
 		} catch (error) {
