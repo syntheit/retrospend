@@ -37,6 +37,14 @@ interface EventBase {
 	notInBudget?: boolean;
 }
 
+interface SettlementLeg {
+	status: SettlementStatus;
+	/** Book value of the settlement leg (cash received or paid). */
+	cash: Minor;
+	/** Offset rows move no cash: a RECV releases at basis. */
+	isOffset?: boolean;
+}
+
 export type ReplayEvent =
 	| (EventBase & {
 			kind: "FRONT";
@@ -46,14 +54,8 @@ export type ReplayEvent =
 			shareStatus?: ShareStatus;
 	  })
 	| (EventBase & { kind: "OWE"; status: ShareStatus })
-	| (EventBase & {
-			kind: "RECV" | "PAY";
-			status: SettlementStatus;
-			/** Book value of the settlement leg (cash received or paid). */
-			cash: Minor;
-			/** Offset rows move no cash: a RECV releases at basis. */
-			isOffset?: boolean;
-	  })
+	| (EventBase & SettlementLeg & { kind: "RECV" })
+	| (EventBase & SettlementLeg & { kind: "PAY" })
 	| (EventBase & {
 			kind: "FORGIVE";
 			status: SettlementStatus;
