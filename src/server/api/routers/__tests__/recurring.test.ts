@@ -18,6 +18,8 @@ type Template = {
 	nextDueDate: Date;
 	anchorDay: number | null;
 	isActive: boolean;
+	direction?: "OUT" | "IN";
+	amountMode?: "FIXED" | "ASK";
 };
 
 const state = vi.hoisted(() => ({
@@ -149,7 +151,9 @@ describe("month stepping", () => {
 		const q = nextRecurringDate(local(2025, 11, 30), "QUARTERLY", 30);
 		expect([q.getMonth() + 1, q.getDate()]).toEqual([2, 28]);
 		const y = nextRecurringDate(local(2028, 2, 29), "YEARLY", 29);
-		expect([y.getFullYear(), y.getMonth() + 1, y.getDate()]).toEqual([2029, 2, 28]);
+		expect([y.getFullYear(), y.getMonth() + 1, y.getDate()]).toEqual([
+			2029, 2, 28,
+		]);
 	});
 
 	it("without an anchor uses the date's own day", () => {
@@ -183,8 +187,14 @@ describe("recurring.confirmAndCreate", () => {
 	it("double confirm creates a single expense", async () => {
 		const results = await callAndFlush(() =>
 			Promise.allSettled([
-				caller().confirmAndCreate({ id: "cltemplate00000000000001", dueDate: local(2026, 1, 31) }),
-				caller().confirmAndCreate({ id: "cltemplate00000000000001", dueDate: local(2026, 1, 31) }),
+				caller().confirmAndCreate({
+					id: "cltemplate00000000000001",
+					dueDate: local(2026, 1, 31),
+				}),
+				caller().confirmAndCreate({
+					id: "cltemplate00000000000001",
+					dueDate: local(2026, 1, 31),
+				}),
 			]),
 		);
 
@@ -203,14 +213,18 @@ describe("recurring.confirmAndCreate", () => {
 				dueDate: local(2026, 1, 31),
 			});
 		await callAndFlush(confirm);
-		await expect(callAndFlush(confirm)).rejects.toMatchObject({ code: "CONFLICT" });
+		await expect(callAndFlush(confirm)).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
 		expect(state.expenses).toHaveLength(1);
 	});
 
 	it("a template that is not due yet cannot be confirmed", async () => {
 		setTemplate({ nextDueDate: new Date(Date.now() + 5 * 86400000) });
 		await expect(
-			callAndFlush(() => caller().confirmAndCreate({ id: "cltemplate00000000000001" })),
+			callAndFlush(() =>
+				caller().confirmAndCreate({ id: "cltemplate00000000000001" }),
+			),
 		).rejects.toMatchObject({ code: "CONFLICT" });
 		expect(state.expenses).toHaveLength(0);
 	});
@@ -242,14 +256,69 @@ describe("recurring.confirmAndCreate", () => {
 		["BRL", 51.178, 10],
 		["BTC", 0.001, 64.55],
 		["USD", 12.5, 12.5],
-	])("%s templates convert with the stored convention", async (currency, amount, usd) => {
-		setTemplate({ currency, amount });
+	])(
+		"%s templates convert with the stored convention",
+		async (currency, amount, usd) => {
+			setTemplate({ currency, amount });
 
-		await callAndFlush(() =>
-			caller().confirmAndCreate({ id: "cltemplate00000000000001" }),
+			await callAndFlush(() =>
+				caller().confirmAndCreate({ id: "cltemplate00000000000001" }),
+			);
+
+			expect(state.expenses[0]).toMatchObject({ amountInUSD: usd });
+		},
+	);
+});
+
+describe("recurring money in and amounts that vary", () => {
+	const id = "cltemplate00000000000001";
+	const confirm = (amount?: number) =>
+		callAndFlush(() => caller().confirmAndCreate({ id, amount }));
+
+	it("posts a recurring expense as spending", async () => {
+		await confirm();
+		expect(state.expenses[0]).toMatchObject({ direction: "OUT", inType: null });
+	});
+
+	it("posts recurring income as money in, never as spending", async () => {
+		setTemplate({ name: "Salary", direction: "IN" });
+		await confirm();
+		expect(state.expenses[0]).toMatchObject({
+			title: "Salary",
+			direction: "IN",
+			inType: "INCOME",
+			amount: 100000,
+		});
+	});
+
+	it("books the confirmed amount when the amount varies", async () => {
+		setTemplate({ direction: "IN", amountMode: "ASK" });
+		await confirm(123_456);
+		// ARS 123,456 at 1,560 per USD
+		expect(state.expenses[0]).toMatchObject({
+			amount: 123_456,
+			amountInUSD: 79.14,
+		});
+	});
+
+	it("needs an amount when it varies and refuses one when it is fixed", async () => {
+		setTemplate({ amountMode: "ASK" });
+		await expect(confirm()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		setTemplate({ amountMode: "FIXED" });
+		await expect(confirm(5)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(state.expenses).toHaveLength(0);
+		expect(state.template!.nextDueDate.getDate()).toBe(31);
+	});
+
+	it("lists templates whose amount varies as pending, whatever autoPay says", async () => {
+		await callAndFlush(() => caller().getPendingConfirmation());
+		expect(mockDb.recurringTemplate.findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: expect.objectContaining({
+					OR: [{ autoPay: false }, { amountMode: "ASK" }],
+				}),
+			}),
 		);
-
-		expect(state.expenses[0]).toMatchObject({ amountInUSD: usd });
 	});
 });
 

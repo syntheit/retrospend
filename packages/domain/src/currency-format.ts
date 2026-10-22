@@ -182,6 +182,10 @@ function formatSignedNumber(
 }
 
 /**
+ * Today's formatter for float major-unit amounts. New UI formats Money
+ * through formatMoney (./format), which shows ISO codes ("ARS 1,234,567")
+ * where this shows symbols ("AR$1,234,567"); call sites move over in S1/S4.
+ *
  * Formats a currency amount using proper Intl.NumberFormat.
  * Automatically handles symbols, locale, and decimal digits based on currency.
  * For cryptocurrencies, it uses 8 decimal places and appends the ticker.
