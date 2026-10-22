@@ -1,0 +1,27 @@
+{
+	"name": "@retrospend/api-contract",
+	"version": "0.0.0",
+	"private": true,
+	"description": "The /api/v1 contract: zod schemas and oRPC routes shared by the server, the typed client and openapi.json.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./src/index.ts",
+		"./common": "./src/common/index.ts",
+		"./openapi": "./src/openapi.ts",
+		"./openapi.json": "./openapi.json"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@orpc/contract": "1.15.7",
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@orpc/openapi": "1.15.7",
+		"@orpc/zod": "1.15.7",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.5"
+	}
+}
