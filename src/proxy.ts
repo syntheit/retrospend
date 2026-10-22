@@ -45,7 +45,11 @@ export function proxy(request: NextRequest) {
 
 	if (!sessionToken) {
 		const loginUrl = new URL("/login", request.url);
-		loginUrl.searchParams.set("callbackUrl", pathname);
+		// Keep the query, so /device?user_code=... survives sign-in.
+		loginUrl.searchParams.set(
+			"callbackUrl",
+			`${pathname}${request.nextUrl.search}`,
+		);
 		return NextResponse.redirect(loginUrl);
 	}
 

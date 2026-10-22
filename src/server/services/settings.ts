@@ -72,12 +72,14 @@ export async function updateAppSettings(updates: {
 		update: {
 			...updates,
 		},
+		// Every update applies on create too: listing a few fields here once
+		// dropped the rest (the rollout flags) when the row did not exist yet.
 		create: {
 			id: SETTINGS_ID,
-			inviteOnlyEnabled: updates.inviteOnlyEnabled ?? false,
-			allowAllUsersToGenerateInvites:
-				updates.allowAllUsersToGenerateInvites ?? false,
-			enableEmail: updates.enableEmail ?? true,
+			inviteOnlyEnabled: false,
+			allowAllUsersToGenerateInvites: false,
+			enableEmail: true,
+			...updates,
 		},
 	});
 
