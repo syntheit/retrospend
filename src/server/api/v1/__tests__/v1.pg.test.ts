@@ -150,9 +150,16 @@ function call(
 	);
 }
 
+/** What sign-in from the Expo app stamps on its session. */
+const MOBILE_STAMP = {
+	scopes: "read write:expenses write:money write:settings",
+	clientId: "retrospend-mobile",
+};
+
+/** A session token to send as a bearer: the mobile app's, by default. */
 async function sessionFor(
 	userId: string,
-	extra: { scopes?: string; clientId?: string } = {},
+	extra: { scopes?: string; clientId?: string } = MOBILE_STAMP,
 ) {
 	const token = randomBytes(24).toString("hex");
 	await adminDb.session.create({
@@ -172,7 +179,7 @@ const AUTH_BASE = new URL(auth.options.baseURL ?? "http://localhost:1997")
 
 /** A signed session cookie for a fresh unscoped (web) session. */
 async function webCookieFor(userId: string) {
-	const token = await sessionFor(userId);
+	const token = await sessionFor(userId, {});
 	const signature = await makeSignature(token, env.BETTER_AUTH_SECRET ?? "");
 	return `better-auth.session_token=${encodeURIComponent(`${token}.${signature}`)}`;
 }
@@ -263,7 +270,7 @@ describe("/api/v1 on Postgres", () => {
 			});
 		});
 
-		it("treats an unstamped bearer session as mobile, without admin", async () => {
+		it("resolves the mobile app's session without the admin scope", async () => {
 			const token = await sessionFor(admin.user.id);
 			const res = await call("/me", {
 				headers: { authorization: `Bearer ${token}` },
@@ -273,6 +280,15 @@ describe("/api/v1 on Postgres", () => {
 			expect(me.id).toBe(admin.user.id);
 			expect(me.principal.kind).toBe("mobile");
 			expect(me.principal.scopes).not.toContain("admin");
+		});
+
+		it("refuses an unscoped web session sent as a bearer", async () => {
+			// A leaked web token must not become an API token.
+			const token = await sessionFor(admin.user.id, {});
+			const res = await call("/me", {
+				headers: { authorization: `Bearer ${token}` },
+			});
+			expect(res.status).toBe(401);
 		});
 
 		it("rejects an unknown bearer token", async () => {
@@ -605,7 +621,7 @@ describe("/api/v1 on Postgres", () => {
 			).resolves.toBe(1);
 		});
 
-		it("prunes only the caller's expired keys", async () => {
+		it("prunes every user's expired keys through the owner connection", async () => {
 			const past = new Date(Date.now() - 1000);
 			for (const userId of [alice.user.id, bob.user.id]) {
 				await adminDb.idempotencyKey.create({
@@ -617,17 +633,12 @@ describe("/api/v1 on Postgres", () => {
 					},
 				});
 			}
-			expect(await pruneExpiredKeys(alice.db)).toBeGreaterThanOrEqual(1);
+			expect(await pruneExpiredKeys()).toBeGreaterThanOrEqual(2);
 			await expect(
 				adminDb.idempotencyKey.count({
-					where: { userId: alice.user.id, expiresAt: { lt: new Date() } },
+					where: { expiresAt: { lt: new Date() } },
 				}),
 			).resolves.toBe(0);
-			await expect(
-				adminDb.idempotencyKey.count({
-					where: { userId: bob.user.id, expiresAt: { lt: new Date() } },
-				}),
-			).resolves.toBeGreaterThanOrEqual(1);
 		});
 
 		it("keeps keys per user under RLS", async () => {

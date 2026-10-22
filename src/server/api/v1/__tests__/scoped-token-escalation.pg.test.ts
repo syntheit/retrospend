@@ -270,3 +270,82 @@ describe("scoped tokens cannot escalate", () => {
 		expect(res.status).toBe(400);
 	});
 });
+
+/** A session whose daily refresh is due (60-day life, refreshed after a day). */
+async function sessionDueForRefresh(
+	userId: string,
+	stamp: { scopes?: string; clientId?: string } = {},
+) {
+	const token = randomBytes(24).toString("hex");
+	await adminDb.session.create({
+		data: {
+			id: randomUUID(),
+			token,
+			userId,
+			expiresAt: new Date(Date.now() + 58 * 86_400_000),
+			...stamp,
+		},
+	});
+	return token;
+}
+
+describe("a bad bearer never falls back to a scoped cookie", () => {
+	let user: { id: string; email: string };
+	let cookie: string;
+
+	beforeAll(async () => {
+		user = await passwordUser("ADMIN");
+		const deviceToken = await deviceSession(user.id, "read");
+		cookie = await cookieFor(deviceToken);
+	});
+
+	it("refuses a bad or foreign Authorization header next to the cookie", async () => {
+		for (const authorization of [
+			"Bearer junk.badsig",
+			"Bearer junk",
+			"Basic dXNlcjpwYXNz",
+		]) {
+			const headers = { authorization, cookie };
+			const sessions = await authRequest("/list-sessions", {
+				method: "GET",
+				headers,
+			});
+			expect(sessions.status).not.toBe(200);
+			const update = await authRequest("/update-user", {
+				body: { name: "Hijacked" },
+				headers,
+			});
+			expect(update.status).not.toBe(200);
+		}
+		const row = await adminDb.user.findUniqueOrThrow({ where: { id: user.id } });
+		expect(row.name).toBe("Escalation");
+	});
+
+	it("never hands a scoped session a cookie on refresh", async () => {
+		const token = await sessionDueForRefresh(user.id, {
+			scopes: "read",
+			clientId: "retrospend-cli",
+		});
+		const res = await authRequest("/get-session", {
+			method: "GET",
+			headers: { authorization: `Bearer ${token}` },
+		});
+		expect(res.status).toBe(200);
+		expect((await res.json())?.session?.token).toBe(token);
+		expect(res.headers.get("set-cookie")).toBeNull();
+		expect(res.headers.get("set-auth-token")).toBeNull();
+	});
+
+	it("hands the token to scripts only for mobile sessions, whatever the headers", async () => {
+		const token = await sessionDueForRefresh(user.id);
+		const res = await authRequest("/get-session", {
+			method: "GET",
+			headers: {
+				cookie: await cookieFor(token),
+				"expo-origin": "retrospend://",
+			},
+		});
+		expect(res.status).toBe(200);
+		expect(res.headers.get("set-auth-token")).toBeNull();
+	});
+});
