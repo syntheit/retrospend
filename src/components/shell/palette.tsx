@@ -161,7 +161,7 @@ export function ShellPalette({
 
 	return (
 		<CommandDialog
-			className="top-[14%] max-w-140 translate-y-0 gap-0 rounded-panel border-line bg-surface p-0 text-fg shadow-menu sm:max-w-140"
+			className="top-[14%] max-w-140 [&_[data-slot=command-input-wrapper]]:border-line translate-y-0 gap-0 rounded-panel border-line bg-surface p-0 text-fg shadow-menu sm:max-w-140"
 			description={t("palette.description")}
 			loop
 			onOpenChange={(next) => (next ? onOpenChange(true) : close())}

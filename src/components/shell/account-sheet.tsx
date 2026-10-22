@@ -19,6 +19,9 @@ import { useUnreadNotifications } from "./use-notifications";
 
 const ROW =
 	"flex h-auto min-h-row w-full items-center justify-start gap-3 rounded-none px-3 py-2 font-normal text-body text-fg";
+// Button asChild cannot wrap a link here (KindButton adds a second child for
+// its spinner, which Slot refuses), so links take the ghost row look directly.
+const LINK_ROW = `${ROW} transition-colors duration-(--t-state) ease-land can-hover:hover:bg-raised focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2`;
 const GROUP =
 	"flex flex-col divide-y divide-line overflow-hidden rounded-panel border border-line bg-surface";
 
@@ -42,7 +45,7 @@ function Row({
 	const body = (
 		<>
 			{icon != null && (
-				<span className="flex size-6 shrink-0 items-center justify-center text-fg-2">
+				<span className="flex size-8 shrink-0 items-center justify-center rounded-ctl bg-raised text-fg-2">
 					{icon}
 				</span>
 			)}
@@ -53,16 +56,15 @@ function Row({
 	);
 	if (href)
 		return (
-			<Button asChild className={ROW} kind="ghost">
-				<Link
-					href={href}
-					onClick={close}
-					rel={newTab ? "noopener noreferrer" : undefined}
-					target={newTab ? "_blank" : undefined}
-				>
-					{body}
-				</Link>
-			</Button>
+			<Link
+				className={LINK_ROW}
+				href={href}
+				onClick={close}
+				rel={newTab ? "noopener noreferrer" : undefined}
+				target={newTab ? "_blank" : undefined}
+			>
+				{body}
+			</Link>
 		);
 	return (
 		<Button
@@ -110,11 +112,11 @@ function EntryRow({
 }
 
 /** Wealth, the tools and Settings: phones have no global search (N65). */
-const GO_TO: NavEntry[] = [
-	...DESTINATIONS.filter((d) => d.id === "wealth"),
-	...TOOLS,
-	...PLACES.filter((p) => p.id === "settings"),
-];
+const GO_TO: NavEntry[] = (
+	["wealth", "currencies", "import", "settings"] as const
+).flatMap((id) =>
+	[...DESTINATIONS, ...TOOLS, ...PLACES].filter((e) => e.id === id),
+);
 
 /**
  * The phone account sheet (account.html): who you are, notifications, Go to
@@ -146,14 +148,14 @@ export function AccountSheet({
 			title={t("account.title")}
 		>
 			<div className="flex flex-col gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-				<div className={GROUP}>
+				<div className="flex flex-col">
 					<Row
 						close={close}
 						href={e.profile?.href}
 						icon={null}
 						label={
 							<span className="flex items-center gap-3">
-								<AccountIdentity />
+								<AccountIdentity size="md" />
 							</span>
 						}
 					/>

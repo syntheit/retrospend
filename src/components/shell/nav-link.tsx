@@ -7,7 +7,7 @@ import { cn } from "~/lib/cn";
 import { badgeText } from "~/lib/nav";
 
 const ROW =
-	"flex h-ctl items-center gap-2 rounded-ctl px-3 font-medium text-body text-fg-2 transition-colors duration-(--t-state) ease-land can-hover:hover:bg-raised can-hover:hover:text-fg focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 aria-[current=page]:bg-raised aria-[current=page]:font-semibold aria-[current=page]:text-brand";
+	"flex h-8.5 items-center gap-2 rounded-ctl px-3 font-medium text-body text-fg-2 transition-colors duration-(--t-state) ease-land can-hover:hover:bg-raised can-hover:hover:text-fg focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 aria-[current=page]:bg-raised aria-[current=page]:font-semibold aria-[current=page]:text-brand";
 
 /** A Needs you count on a nav item: a number in an attention pill, with words for screen readers. */
 export function NavBadge({

@@ -178,7 +178,7 @@ export function NotificationsButton() {
 			</Tip>
 			<PopoverContent
 				align="start"
-				className="w-115 max-w-[calc(100vw-2rem)] rounded-panel border-line bg-surface p-0 text-fg shadow-menu"
+				className="w-120 max-w-[calc(100vw-2rem)] rounded-panel border-line bg-surface p-0 text-fg shadow-menu"
 				side="right"
 				sideOffset={8}
 			>

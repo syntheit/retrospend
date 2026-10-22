@@ -4,7 +4,7 @@ import { EllipsisVertical } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Fragment } from "react";
-import { Face } from "~/components/ui/avatar-face";
+import { Face, type FaceSize } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
 import {
 	DropdownMenu,
@@ -70,11 +70,11 @@ function MenuEntry({ entry }: { entry: AccountEntry }) {
 }
 
 /** The person's face, name and handle: the account button and the sheet's first row. */
-export function AccountIdentity() {
+export function AccountIdentity({ size }: { size?: FaceSize }) {
 	const user = useAccountUser();
 	return (
 		<>
-			<Face imageUrl={user.imageUrl} name={user.name || "?"} />
+			<Face imageUrl={user.imageUrl} name={user.name || "?"} size={size} />
 			<span className="flex min-w-0 flex-1 flex-col text-left">
 				<span className="truncate font-semibold text-body text-fg">
 					{user.name}
