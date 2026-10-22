@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { autoFill } from "./auto-fill";
 import {
 	type GroupMember,
 	groupPlan,
@@ -8,7 +9,6 @@ import {
 	percentBase,
 	typicalIncome,
 } from "./groups";
-import { autoFill } from "./targets";
 
 const m = (n: number) => Math.round(n * 100);
 

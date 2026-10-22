@@ -1,8 +1,9 @@
 /**
- * Targets (SPEC §5.4, 02 §3.5): this month's need per envelope kind, savings
- * progress, bill cycles, auto-fill and plan cost. All amounts are H minor
- * units; a target in another currency is converted at today's rate by the
- * caller first (valuation.convertToBook, D25).
+ * Target needs (SPEC §5.4, 02 §3.5): this month's need per envelope kind and
+ * savings progress. All amounts are H minor units; a target in another
+ * currency is converted at today's rate by the caller first
+ * (valuation.convertToBook, D25). Bill cycles, auto-fill and plan cost live
+ * in bill-cycle.ts, auto-fill.ts and plan-cost.ts.
  *
  * | Kind     | Need this month |
  * |----------|-----------------|
@@ -11,17 +12,15 @@
  * | SAVINGS  | by which two of amount, date, monthly are set (savingsNeed) |
  * | NONE     | 0 |
  */
-import { addDays, addMonths, addMonthsToDate, monthsBetween } from "./calendar";
+import { addMonths, monthsBetween } from "./calendar";
 import {
-	type EnvelopeKind,
-	type IsoDate,
 	type Minor,
 	type MonthKey,
 	type TargetCadence,
 	TargetConfigError,
 	type TargetMode,
 } from "./types";
-import { ceilDiv, sumMinor } from "./units";
+import { ceilDiv } from "./units";
 
 export interface MonthlyTarget {
 	amount: Minor;
@@ -65,47 +64,6 @@ export function billNeed(b: {
 	if (toGo <= 0) return 0;
 	const perMonth = ceilDiv(toGo, monthsLeftInclusive(b.month, b.dueMonth));
 	return Math.max(0, perMonth - b.assigned);
-}
-
-export interface BillCycleInput {
-	amount: Minor;
-	/** The anchor due date: the template's nextDueDate when linked (D26). */
-	nextDue: IsoDate;
-	/** Months between dues; null for a one-off bill. */
-	repeatMonths: number | null;
-	monthStart: IsoDate;
-	today: IsoDate;
-	/** Follows a recurring expense: stays open until it posts or 7 days pass (D26). */
-	linkedToTemplate: boolean;
-	/** Activity in this envelope since the previous due date. */
-	paidThisCycle: Minor;
-}
-
-export const BILL_GRACE_DAYS = 7;
-
-/** True when the cycle's activity reached 90% of the amount (paid early, S9). */
-export function paidEnough(paid: Minor, amount: Minor): boolean {
-	return amount > 0 && paid * 10 >= amount * 9;
-}
-
-/**
- * The due date D' this month's bill need aims at (02 §3.5): the next due on
- * or after the month start; a linked bill still inside its 7-day grace keeps
- * its late due date; a cycle already paid to 90% advances one repeat.
- */
-export function billCycle(b: BillCycleInput): { due: IsoDate; done: boolean } {
-	let k = 0;
-	const dueAt = (i: number) =>
-		b.repeatMonths ? addMonthsToDate(b.nextDue, i * b.repeatMonths) : b.nextDue;
-	const inGrace = (d: IsoDate) =>
-		b.linkedToTemplate && b.today <= addDays(d, BILL_GRACE_DAYS);
-	if (b.repeatMonths) {
-		while (dueAt(k) < b.monthStart && !inGrace(dueAt(k))) k++;
-	}
-	if (!paidEnough(b.paidThisCycle, b.amount))
-		return { due: dueAt(k), done: false };
-	if (!b.repeatMonths) return { due: b.nextDue, done: true };
-	return { due: dueAt(k + 1), done: false };
 }
 
 /** Savings progress counts money moved to Wealth (SPEC §5.4, B12, D47). */
@@ -186,210 +144,4 @@ export function savingsNeed(
 /** History line rule: the goal's A_H moved by more than 5% (SPEC §5.4, B3). */
 export function movedMoreThan5Percent(previous: Minor, next: Minor): boolean {
 	return Math.abs(next - previous) * 20 > Math.abs(previous);
-}
-
-export type FillStep = "OVERSPENT" | "BILL" | "GROUP" | "MONTHLY" | "SAVINGS";
-
-export interface FillCandidate {
-	envelopeId: string;
-	kind: EnvelopeKind;
-	/** Display order within the book (group order, then envelope order). */
-	order: number;
-	left: Minor;
-	need: Minor;
-	/** BILL: the cycle's due date. */
-	dueDate?: IsoDate | null;
-}
-
-/** A group with a target (groups.ts groupPlan): its children fill first, then the main envelope. */
-export interface TargetedGroup {
-	groupOrder: number;
-	envelopeIds: readonly string[];
-	mainEnvelopeId: string | null;
-	/** Group need left after the children's own needs. */
-	mainExtra: Minor;
-}
-
-export interface FillLine {
-	envelopeId: string;
-	amount: Minor;
-	step: FillStep;
-}
-
-type QueueItem = { envelopeId: string; want: Minor; step: FillStep };
-
-function groupSteps(
-	byOrder: readonly FillCandidate[],
-	groups: readonly TargetedGroup[],
-) {
-	const out: QueueItem[] = [];
-	for (const g of [...groups].sort((a, b) => a.groupOrder - b.groupOrder)) {
-		for (const c of byOrder) {
-			if (c.kind === "BILL" || !g.envelopeIds.includes(c.envelopeId)) continue;
-			out.push({ envelopeId: c.envelopeId, want: c.need, step: "GROUP" });
-		}
-		if (g.mainEnvelopeId && g.mainExtra > 0) {
-			out.push({
-				envelopeId: g.mainEnvelopeId,
-				want: g.mainExtra,
-				step: "GROUP",
-			});
-		}
-	}
-	return out;
-}
-
-function fillQueue(
-	cands: readonly FillCandidate[],
-	groups: readonly TargetedGroup[],
-) {
-	const byOrder = [...cands].sort((a, b) => a.order - b.order);
-	const byDue = (a: FillCandidate, b: FillCandidate) =>
-		(a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") ||
-		a.order - b.order;
-	const inGroup = new Set(groups.flatMap((g) => g.envelopeIds));
-	const queue: QueueItem[] = [];
-	for (const c of byOrder) {
-		if (c.left < 0)
-			queue.push({
-				envelopeId: c.envelopeId,
-				want: -c.left,
-				step: "OVERSPENT",
-			});
-	}
-	for (const c of byOrder.filter((x) => x.kind === "BILL").sort(byDue)) {
-		queue.push({ envelopeId: c.envelopeId, want: c.need, step: "BILL" });
-	}
-	queue.push(...groupSteps(byOrder, groups));
-	for (const kind of ["MONTHLY", "SAVINGS"] as const) {
-		for (const c of byOrder) {
-			if (c.kind === kind && !inGroup.has(c.envelopeId)) {
-				queue.push({ envelopeId: c.envelopeId, want: c.need, step: kind });
-			}
-		}
-	}
-	return queue;
-}
-
-/**
- * Auto-fill (SPEC §5.4): overspent envelopes to 0, bills by due date, group
- * targets in group order (children, then the main envelope's extra, §5.9),
- * Monthly, then Savings, until `available` runs out.
- * Money that covers an overspend also counts toward that envelope's need,
- * since every need subtracts what is assigned this month.
- */
-export function autoFill(
-	available: Minor,
-	candidates: readonly FillCandidate[],
-	groups: readonly TargetedGroup[] = [],
-): { lines: FillLine[]; left: Minor } {
-	let left = Math.max(0, available);
-	const covered = new Map<string, Minor>();
-	const lines: FillLine[] = [];
-	for (const item of fillQueue(candidates, groups)) {
-		const cover =
-			item.step === "OVERSPENT" ? 0 : (covered.get(item.envelopeId) ?? 0);
-		const amount = Math.min(left, Math.max(0, item.want - cover));
-		if (amount <= 0) continue;
-		lines.push({ envelopeId: item.envelopeId, amount, step: item.step });
-		if (item.step === "OVERSPENT") covered.set(item.envelopeId, amount);
-		left -= amount;
-	}
-	return { lines, left };
-}
-
-export type PlanCostTarget =
-	| { kind: "MONTHLY"; target: MonthlyTarget; weeksInMonth: number }
-	| {
-			kind: "BILL";
-			amount: Minor;
-			repeatMonths: number | null;
-			needThisMonth: Minor;
-	  }
-	| { kind: "SAVINGS"; monthlyNeed: Minor }
-	| { kind: "NONE" };
-
-/** Monthly equivalent of one target (SPEC §5.13 plan cost). */
-export function monthlyEquivalent(t: PlanCostTarget): Minor {
-	if (t.kind === "MONTHLY") return monthlyTargetFor(t.target, t.weeksInMonth);
-	if (t.kind === "BILL")
-		return t.repeatMonths ? ceilDiv(t.amount, t.repeatMonths) : t.needThisMonth;
-	if (t.kind === "SAVINGS") return t.monthlyNeed;
-	return 0;
-}
-
-/**
- * Plan cost: Σ monthly equivalents, where a group counts its own target
- * when that is larger than its children (SPEC §5.13, E6).
- */
-export function planCost(
-	envelopes: ReadonlyArray<{
-		id: string;
-		groupId: string | null;
-		target: PlanCostTarget;
-	}>,
-	groupTargets: ReadonlyMap<string, Minor>,
-): { total: Minor; byGroup: Map<string | null, Minor> } {
-	const children = new Map<string | null, Minor[]>();
-	for (const e of envelopes) {
-		const list = children.get(e.groupId) ?? [];
-		list.push(monthlyEquivalent(e.target));
-		children.set(e.groupId, list);
-	}
-	for (const g of groupTargets.keys())
-		if (!children.has(g)) children.set(g, []);
-	const byGroup = new Map<string | null, Minor>();
-	for (const [g, list] of children) {
-		const own = sumMinor(list);
-		const target = g === null ? 0 : (groupTargets.get(g) ?? 0);
-		byGroup.set(g, Math.max(own, target));
-	}
-	return { total: sumMinor(byGroup.values()), byGroup };
-}
-
-/**
- * What savings goals hold outside their envelopes: money moved to Wealth
- * (ToWealth - FromWealth), or a dedicated account's value today. Their
- * envelope Left is already in Σ Left, so it is not counted here.
- */
-export function savingsOutsideEnvelopes(
-	goals: ReadonlyArray<{
-		toWealth: Minor;
-		fromWealth: Minor;
-		dedicatedAccountValue?: Minor | null;
-	}>,
-): Minor {
-	return sumMinor(
-		goals.map((g) =>
-			g.dedicatedAccountValue != null
-				? g.dedicatedAccountValue
-				: g.toWealth - g.fromWealth,
-		),
-	);
-}
-
-export interface Runway {
-	/** To assign + Σ Left + savings outside envelopes. */
-	available: Minor;
-	/** Whole tenths of a month, rounded down ("7.5 months" = 75). */
-	tenths: number;
-}
-
-/**
- * Runway (SPEC §5.13, B15, D55): how long the budget and savings last at the
- * essential plan cost. Savings Left counts once, through Σ Left; only money
- * goals hold outside their envelopes is added. Rounded down so it never
- * promises more time than there is. Null when the plan costs nothing.
- */
-export function runway(r: {
-	toAssign: Minor;
-	sumLeft: Minor;
-	savingsOutside: Minor;
-	essentialPlanCost: Minor;
-}): Runway | null {
-	if (r.essentialPlanCost <= 0) return null;
-	const available = r.toAssign + r.sumLeft + r.savingsOutside;
-	if (available <= 0) return { available, tenths: 0 };
-	const tenths = (BigInt(available) * 10n) / BigInt(r.essentialPlanCost);
-	return { available, tenths: Number(tenths) };
 }
