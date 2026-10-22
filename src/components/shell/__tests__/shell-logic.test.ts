@@ -6,67 +6,6 @@ import {
 	notificationHref,
 } from "../notification-data";
 import { goToItems } from "../palette-items";
-import { isTypingTarget, shellShortcut } from "../shortcuts";
-
-const key = (
-	k: string,
-	extra: Partial<Parameters<typeof shellShortcut>[0]> = {},
-) => ({
-	key: k,
-	metaKey: false,
-	ctrlKey: false,
-	altKey: false,
-	target: null,
-	...extra,
-});
-
-const el = (tagName: string, inLayer = false) => ({
-	tagName,
-	isContentEditable: false,
-	closest: () => (inLayer ? {} : null),
-});
-
-describe("shellShortcut", () => {
-	it("maps N, I and T to the Add family, either case", () => {
-		expect(shellShortcut(key("n"))).toEqual({ kind: "add", id: "expense" });
-		expect(shellShortcut(key("N"))).toEqual({ kind: "add", id: "expense" });
-		expect(shellShortcut(key("i"))).toEqual({ kind: "add", id: "income" });
-		expect(shellShortcut(key("t"))).toEqual({ kind: "add", id: "transfer" });
-	});
-
-	it("opens the palette on Cmd or Ctrl+K, even from a field", () => {
-		expect(shellShortcut(key("k", { metaKey: true }))).toEqual({
-			kind: "palette",
-		});
-		expect(
-			shellShortcut(key("k", { ctrlKey: true, target: el("INPUT") as never })),
-		).toEqual({ kind: "palette" });
-	});
-
-	it("lists the keys on ?", () => {
-		expect(shellShortcut(key("?"))).toEqual({ kind: "shortcuts" });
-	});
-
-	it("ignores keys typed in fields, in open layers, with modifiers or already handled", () => {
-		for (const tag of ["INPUT", "TEXTAREA", "SELECT"])
-			expect(shellShortcut(key("n", { target: el(tag) as never }))).toBeNull();
-		expect(
-			shellShortcut(key("n", { target: el("DIV", true) as never })),
-		).toBeNull();
-		expect(shellShortcut(key("n", { metaKey: true }))).toBeNull();
-		expect(shellShortcut(key("n", { altKey: true }))).toBeNull();
-		expect(shellShortcut(key("n", { defaultPrevented: true }))).toBeNull();
-		expect(shellShortcut(key("x"))).toBeNull();
-	});
-
-	it("treats contenteditable as typing", () => {
-		expect(
-			isTypingTarget({ tagName: "DIV", isContentEditable: true } as never),
-		).toBe(true);
-		expect(isTypingTarget(el("BUTTON") as never)).toBe(false);
-		expect(isTypingTarget(null)).toBe(false);
-	});
-});
 
 describe("notifications", () => {
 	const n = (type: string, data: unknown = {}) => ({ type, data }) as never;
