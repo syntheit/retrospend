@@ -8,7 +8,12 @@ import {
 	E2E_PORT,
 	USER_STORAGE_STATE,
 } from "./e2e/constants";
+import { assertE2eDatabase } from "./e2e/db-guard";
 import { SEED_TIME_ZONE } from "./e2e/fixtures/personas";
+
+// Before anything starts: `pnpm dev:test` migrates this database and global
+// setup wipes it.
+assertE2eDatabase(E2E_DATABASE_URL);
 
 const UPLOAD_DIR =
 	process.env.E2E_UPLOAD_DIR ??
