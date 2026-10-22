@@ -5,7 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { adminDb } from "~/test/pg-harness";
-import { callerFor, namedUser, seedTrip } from "./trip-fixture";
+import { addMember, callerFor, namedUser, seedTrip } from "./trip-fixture";
 
 const sendEmail = vi.hoisted(() => vi.fn(async () => {}));
 const createNotification = vi.hoisted(() => vi.fn(async () => {}));
@@ -527,6 +527,11 @@ describe("magic links", () => {
 		const trip = await seedTrip();
 		const pid = trip.project.id;
 		const ben = callerFor(trip.ben.user);
+		// Ben edits a second project too, so a mismatch fails on the link, not the role.
+		const other = await adminDb.project.create({
+			data: { name: "Other", createdById: trip.ana.user.id },
+		});
+		await addMember(other.id, "user", trip.ben.user.id, "EDITOR");
 		const viewer = await ben.createMagicLink({
 			projectId: pid,
 			roleGranted: "VIEWER",
@@ -546,8 +551,14 @@ describe("magic links", () => {
 		});
 		expect(revoked.isActive).toBe(false);
 		await expect(
-			ben.revokeMagicLink({ projectId: "elsewhere", linkId: editor.id }),
-		).rejects.toMatchObject({ code: "NOT_FOUND" });
+			ben.revokeMagicLink({ projectId: other.id, linkId: editor.id }),
+		).rejects.toMatchObject({
+			code: "NOT_FOUND",
+			message: "Magic link not found",
+		});
+		await expect(
+			adminDb.magicLink.findUnique({ where: { id: editor.id } }),
+		).resolves.toMatchObject({ isActive: true });
 
 		const reset = await ben.resetMagicLink({ projectId: pid, role: "EDITOR" });
 		expect(reset.id).not.toBe(editor.id);
