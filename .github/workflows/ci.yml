@@ -129,10 +129,9 @@ jobs:
       - name: Test
         run: go test ./...
 
-  # Persona flows on a seeded database (e2e/fixtures/seed.ts) plus the e2e
-  # helpers' unit tests. Only on pull requests and the integration branches:
-  # a dev server and Chrome cost several runner minutes. The older top-level
-  # specs are not run here yet.
+  # The Playwright suite on a seeded database (e2e/fixtures/seed.ts). Only on
+  # pull requests and the integration branches: a dev server and Chrome cost
+  # several runner minutes. The helpers' unit tests run in the check job.
   e2e:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/segment/')
     runs-on: ubuntu-latest
@@ -171,14 +170,11 @@ jobs:
       - name: Prisma generate
         run: pnpm exec prisma generate
 
-      - name: E2E helper unit tests
-        run: pnpm exec vitest run --config e2e/vitest.config.ts
-
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Persona flows
-        run: pnpm exec playwright test --project=flows
+      - name: E2E suite
+        run: pnpm exec playwright test
 
       - uses: actions/upload-artifact@v4
         if: failure()
