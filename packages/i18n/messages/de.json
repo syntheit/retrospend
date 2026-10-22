@@ -1303,6 +1303,7 @@
   },
   "settleUp": {
     "settleAllSkipped": "Einige Salden konnten nicht ausgeglichen werden, da kein Wechselkurs verfügbar war: {currencies}. Sie bleiben offen.",
+    "recordAsDifferentPayment": "Als andere Zahlung erfassen",
     "title": "Saldo ausgleichen",
     "titleWith": "Saldo mit {name} ausgleichen",
     "description": "Erfassen Sie eine Zahlung, um Ihren Saldo auszugleichen.",

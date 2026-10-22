@@ -1,9 +1,11 @@
+import { toMinor } from "~/server/services/envelope/units";
+import { countsFor, type PairEvent } from "~/server/services/payments/ledger";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { resolveClaimAliases } from "./identity";
 import type { ParticipantRef } from "./types";
 import { sameParticipant } from "./types";
 
-interface BalanceResult {
+export interface BalanceResult {
 	/** Per-currency net balances. Positive means participantB owes participantA. */
 	byCurrency: Record<string, number>;
 }
@@ -21,6 +23,14 @@ interface BalanceResult {
  */
 export interface BalanceOptions {
 	projectScope?: string | null;
+	/**
+	 * Whose view the balance is (MONEY-MOVES rule 2, I5). A pending payment
+	 * counts only for the person who recorded it; the other side sees it as a
+	 * claim until they confirm. Defaults to participantA: "the balance as A
+	 * sees it". Pass the current user when A is someone else (a payment
+	 * received is computed from the payer's side).
+	 */
+	viewer?: ParticipantRef;
 }
 
 /**
@@ -32,31 +42,27 @@ export interface BalanceOptions {
  * filter of the split queries, so a scoped balance sees the same projectId on
  * both sides of the ledger.
  */
-function projectScopeWhere(opts?: BalanceOptions): { projectId?: string | null } {
+export function projectScopeWhere(opts?: BalanceOptions): {
+	projectId?: string | null;
+} {
 	if (!opts || opts.projectScope === undefined) return {};
 	return { projectId: opts.projectScope };
 }
 
 /**
- * Settlement statuses that count toward balances. This is the ONE rule for
- * every balance in the app: pairwise and per-project balances, settle-up
- * plans and caps, project and People views, the billing-period settle check
- * and exports. A settlement counts unless the payee REJECTED it.
+ * Settlement statuses a balance query loads. Pairwise balances here then
+ * apply the viewer rule (countsFor in payments/ledger.ts): FINALIZED counts
+ * for everyone, PROPOSED only for the person who recorded it, so a payer
+ * sees their payment at once and the payee only once they confirm (I5).
  *
- * - FINALIZED: confirmed by the payee, recorded by the payee, or
- *   auto-confirmed because the payee is a ghost/guest who cannot confirm.
- * - PROPOSED: recorded by the payer and waiting for the payee. It counts right
- *   away so every view shows the same number as the over-payment cap (which
- *   must count it, or the same debt could be paid twice). If the payee
- *   rejects it, it turns REJECTED and the debt comes back everywhere at once.
- *
- * Filter settlement queries with `status: { in: [...BALANCE_SETTLEMENT_STATUSES] }`
- * rather than a literal status.
+ * Group views that are nobody's pair (project summaries, billing-period
+ * checks, exports) still count both statuses for everyone; they move to the
+ * viewer rule with their own tracks.
  */
 export const BALANCE_SETTLEMENT_STATUSES = ["FINALIZED", "PROPOSED"] as const;
 
 /** Remove currencies with effectively zero balance (floating point tolerance). */
-function pruneZeroBalances(byCurrency: Record<string, number>) {
+export function pruneZeroBalances(byCurrency: Record<string, number>) {
 	for (const currency of Object.keys(byCurrency)) {
 		if (Math.abs(byCurrency[currency]!) < 0.00000001) {
 			delete byCurrency[currency];
@@ -107,11 +113,13 @@ export async function computeBalanceByProject(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	participantB: ParticipantRef,
+	opts?: Pick<BalanceOptions, "viewer">,
 ): Promise<Map<string | null, Record<string, number>>> {
 	const { byProject } = await computePairBalance(
 		db,
 		participantA,
 		participantB,
+		{ viewer: opts?.viewer },
 	);
 	return byProject;
 }
@@ -124,25 +132,69 @@ export async function computeBalanceWithProjects(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	participantB: ParticipantRef,
-): Promise<{
+	opts?: Pick<BalanceOptions, "viewer">,
+): Promise<PairBalance> {
+	return computePairBalance(db, participantA, participantB, {
+		viewer: opts?.viewer,
+	});
+}
+
+/**
+ * The pair's history as minor-unit events from A's side, for the payments
+ * engine (oldest open debt, "Settled since", allocation). Same rows and
+ * viewer rule as computeBalance.
+ */
+export async function computePairLedger(
+	db: PrismaClient | Prisma.TransactionClient,
+	participantA: ParticipantRef,
+	participantB: ParticipantRef,
+	opts?: BalanceOptions,
+): Promise<PairEvent[]> {
+	const { events } = await computePairBalance(
+		db,
+		participantA,
+		participantB,
+		opts,
+	);
+	return events;
+}
+
+export interface PairBalance {
 	byCurrency: Record<string, number>;
 	byProject: Map<string | null, Record<string, number>>;
-}> {
-	return computePairBalance(db, participantA, participantB);
+	/** The same history in minor units, from A's side (see payments/ledger.ts). */
+	events: PairEvent[];
 }
+
+const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Fields of a settlement row the pair queries load. */
+const SETTLEMENT_SELECT = {
+	id: true,
+	fromParticipantType: true,
+	fromParticipantId: true,
+	toParticipantType: true,
+	toParticipantId: true,
+	amount: true,
+	currency: true,
+	projectId: true,
+	status: true,
+	confirmedByPayer: true,
+	confirmedByPayee: true,
+	initiatedAt: true,
+	payment: { select: { paidOn: true } },
+} as const;
 
 async function computePairBalance(
 	db: PrismaClient | Prisma.TransactionClient,
 	participantA: ParticipantRef,
 	participantB: ParticipantRef,
 	opts?: BalanceOptions,
-): Promise<{
-	byCurrency: Record<string, number>;
-	byProject: Map<string | null, Record<string, number>>;
-}> {
+): Promise<PairBalance> {
 	if (sameParticipant(participantA, participantB)) {
-		return { byCurrency: {}, byProject: new Map() };
+		return { byCurrency: {}, byProject: new Map(), events: [] };
 	}
+	const viewer = opts?.viewer ?? participantA;
 
 	const prisma = db as PrismaClient;
 
@@ -156,6 +208,7 @@ async function computePairBalance(
 	const { aliasesByKey, canonicalKey } = await resolveClaimAliases(prisma, [
 		participantA,
 		participantB,
+		viewer,
 	]);
 	const aRefs = aliasesByKey.get(
 		`${participantA.participantType}:${participantA.participantId}`,
@@ -170,8 +223,9 @@ async function computePairBalance(
 		aRefs.map((r) => `${r.participantType}:${r.participantId}`),
 	);
 	if (bRefs.some((r) => aKeys.has(`${r.participantType}:${r.participantId}`))) {
-		return { byCurrency: {}, byProject: new Map() };
+		return { byCurrency: {}, byProject: new Map(), events: [] };
 	}
+	const viewerKey = canonicalKey(viewer);
 
 	const orConds = (refs: ParticipantRef[]) =>
 		refs.map((r) => ({
@@ -196,7 +250,7 @@ async function computePairBalance(
 			participantId: true,
 			shareAmount: true,
 			transaction: {
-				select: { currency: true, projectId: true },
+				select: { currency: true, projectId: true, date: true },
 			},
 		},
 	});
@@ -213,12 +267,12 @@ async function computePairBalance(
 			participantId: true,
 			shareAmount: true,
 			transaction: {
-				select: { currency: true, projectId: true },
+				select: { currency: true, projectId: true, date: true },
 			},
 		},
 	});
 
-	// Find finalized or proposed (optimistic) settlements from B to A
+	// Settlements from B to A (each then filtered by the viewer rule)
 	const settlementsBA = await prisma.settlement.findMany({
 		where: {
 			OR: bRefs.flatMap((from) =>
@@ -232,19 +286,10 @@ async function computePairBalance(
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 			...projectWhere,
 		},
-		select: {
-			id: true,
-			fromParticipantType: true,
-			fromParticipantId: true,
-			toParticipantType: true,
-			toParticipantId: true,
-			amount: true,
-			currency: true,
-			projectId: true,
-		},
+		select: SETTLEMENT_SELECT,
 	});
 
-	// Find finalized or proposed (optimistic) settlements from A to B
+	// Settlements from A to B (each then filtered by the viewer rule)
 	const settlementsAB = await prisma.settlement.findMany({
 		where: {
 			OR: aRefs.flatMap((from) =>
@@ -258,35 +303,40 @@ async function computePairBalance(
 			status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
 			...projectWhere,
 		},
-		select: {
-			id: true,
-			fromParticipantType: true,
-			fromParticipantId: true,
-			toParticipantType: true,
-			toParticipantId: true,
-			amount: true,
-			currency: true,
-			projectId: true,
-		},
+		select: SETTLEMENT_SELECT,
 	});
 
 	const byCurrency: Record<string, number> = {};
 	const byProject = new Map<string | null, Record<string, number>>();
+	const events: PairEvent[] = [];
 
 	const add = (
 		currency: string,
-		value: number,
+		value: { toString(): string },
+		sign: 1 | -1,
 		projectId: string | null | undefined,
+		event: Pick<PairEvent, "date" | "kind" | "pending">,
 	) => {
-		byCurrency[currency] = (byCurrency[currency] ?? 0) + value;
+		const amount = sign * Number(value);
+		byCurrency[currency] = (byCurrency[currency] ?? 0) + amount;
 		const scope = projectId ?? null;
 		let bucket = byProject.get(scope);
 		if (!bucket) {
 			bucket = {};
 			byProject.set(scope, bucket);
 		}
-		bucket[currency] = (bucket[currency] ?? 0) + value;
+		bucket[currency] = (bucket[currency] ?? 0) + amount;
+		events.push({
+			...event,
+			scope,
+			currency,
+			minor: sign * toMinor(value.toString(), currency),
+		});
 	};
+	const shareEvent = (date: Date) => ({
+		date: isoDate(date),
+		kind: "share" as const,
+	});
 
 	// A person can appear on ONE transaction under multiple alias refs (e.g. both
 	// `shadow:S` and `user:U` where U claimed S). Summing every matching split row
@@ -298,30 +348,41 @@ async function computePairBalance(
 		transactionId: string,
 		participantType: ParticipantType,
 		participantId: string,
-	) =>
-		`${transactionId}|${canonicalKey({ participantType, participantId })}`;
+	) => `${transactionId}|${canonicalKey({ participantType, participantId })}`;
 
 	// A paid, B owes -> positive (B owes A)
 	for (const row of aPayedBOwes) {
-		const k = splitKey(row.transactionId, row.participantType, row.participantId);
+		const k = splitKey(
+			row.transactionId,
+			row.participantType,
+			row.participantId,
+		);
 		if (seenSplits.has(k)) continue;
 		seenSplits.add(k);
 		add(
 			row.transaction.currency,
-			Number(row.shareAmount),
+			row.shareAmount,
+			1,
 			row.transaction.projectId,
+			shareEvent(row.transaction.date),
 		);
 	}
 
 	// B paid, A owes -> negative (A owes B, so B is owed less)
 	for (const row of bPayedAOwes) {
-		const k = splitKey(row.transactionId, row.participantType, row.participantId);
+		const k = splitKey(
+			row.transactionId,
+			row.participantType,
+			row.participantId,
+		);
 		if (seenSplits.has(k)) continue;
 		seenSplits.add(k);
 		add(
 			row.transaction.currency,
-			-Number(row.shareAmount),
+			row.shareAmount,
+			-1,
 			row.transaction.projectId,
+			shareEvent(row.transaction.date),
 		);
 	}
 
@@ -344,20 +405,28 @@ async function computePairBalance(
 			participantId: row.toParticipantId,
 		})}`;
 
+	const counted = (row: (typeof settlementsAB)[number]) =>
+		countsFor(row, settlementSide(row, viewerKey, canonicalKey));
+	const paymentEvent = (row: (typeof settlementsAB)[number]) => ({
+		date: isoDate(row.payment?.paidOn ?? row.initiatedAt),
+		kind: "payment" as const,
+		pending: row.status === "PROPOSED",
+	});
+
 	// Settlements from B to A reduce what B owes A -> subtract
 	for (const row of settlementsBA) {
 		const k = settlementKey(row);
-		if (seenSettlements.has(k)) continue;
+		if (seenSettlements.has(k) || !counted(row)) continue;
 		seenSettlements.add(k);
-		add(row.currency, -Number(row.amount), row.projectId);
+		add(row.currency, row.amount, -1, row.projectId, paymentEvent(row));
 	}
 
 	// Settlements from A to B increase what B owes A -> add
 	for (const row of settlementsAB) {
 		const k = settlementKey(row);
-		if (seenSettlements.has(k)) continue;
+		if (seenSettlements.has(k) || !counted(row)) continue;
 		seenSettlements.add(k);
-		add(row.currency, Number(row.amount), row.projectId);
+		add(row.currency, row.amount, 1, row.projectId, paymentEvent(row));
 	}
 
 	pruneZeroBalances(byCurrency);
@@ -365,257 +434,28 @@ async function computePairBalance(
 		pruneZeroBalances(bucket);
 		if (Object.keys(bucket).length === 0) byProject.delete(scope);
 	}
-	return { byCurrency, byProject };
+	return { byCurrency, byProject, events };
 }
 
-/**
- * Batch-compute balances between participantA and multiple counterparts.
- * Uses 4 queries total instead of 4 per counterpart (4N → 4).
- */
-export async function computeBalanceBatch(
-	db: PrismaClient | Prisma.TransactionClient,
-	participantA: ParticipantRef,
-	counterparts: ParticipantRef[],
-	opts?: BalanceOptions,
-): Promise<BalanceResult[]> {
-	if (counterparts.length === 0) return [];
-
-	const prisma = db as PrismaClient;
-	const key = (type: string, id: string) => `${type}:${id}`;
-
-	// Project scope fragment, applied identically to settlements and to the
-	// nested transaction filter of the split queries (see projectScopeWhere).
-	const projectWhere = projectScopeWhere(opts);
-
-	// Expand A and every counterpart into their claim-alias refs so a claimed
-	// shadow and its claiming user are summed together (edge-case 8 fix).
-	const { aliasesByKey, canonicalKey } = await resolveClaimAliases(prisma, [
-		participantA,
-		...counterparts,
-	]);
-	const aRefs = aliasesByKey.get(
-		key(participantA.participantType, participantA.participantId),
-	) ?? [participantA];
-	const aCanonical = canonicalKey(participantA);
-	const aKeySet = new Set(aRefs.map((r) => key(r.participantType, r.participantId)));
-
-	// Collect the union of all counterpart alias refs (excluding any that
-	// resolve to A itself — those are self, no balance).
-	const counterpartRefs: ParticipantRef[] = [];
-	const seen = new Set<string>();
-	for (const c of counterparts) {
-		if (canonicalKey(c) === aCanonical) continue;
-		const aliases = aliasesByKey.get(key(c.participantType, c.participantId)) ?? [c];
-		for (const r of aliases) {
-			const k = key(r.participantType, r.participantId);
-			if (aKeySet.has(k) || seen.has(k)) continue;
-			seen.add(k);
-			counterpartRefs.push(r);
-		}
-	}
-
-	if (counterpartRefs.length === 0) {
-		return counterparts.map(() => ({ byCurrency: {} }));
-	}
-
-	const counterpartConditions = counterpartRefs.map((c) => ({
-		participantType: c.participantType,
-		participantId: c.participantId,
-	}));
-	const aPaidConds = aRefs.map((r) => ({
-		paidByType: r.participantType,
-		paidById: r.participantId,
-	}));
-	const aSplitConds = aRefs.map((r) => ({
-		participantType: r.participantType,
-		participantId: r.participantId,
-	}));
-
-	// 4 queries total (instead of 4 per counterpart)
-	const [aPayedRows, bPayedRows, settlementsFromB, settlementsFromA] =
-		await Promise.all([
-			// All split participants where A paid and any counterpart owes
-			prisma.splitParticipant.findMany({
-				where: {
-					OR: counterpartConditions,
-					transaction: { OR: aPaidConds, ...projectWhere },
-				},
-				select: {
-					transactionId: true,
-					participantType: true,
-					participantId: true,
-					shareAmount: true,
-					transaction: { select: { currency: true } },
-				},
-			}),
-			// All split participants where any counterpart paid and A owes
-			prisma.splitParticipant.findMany({
-				where: {
-					OR: aSplitConds,
-					transaction: {
-						OR: counterpartConditions.map((c) => ({
-							paidByType: c.participantType,
-							paidById: c.participantId,
-						})),
-						...projectWhere,
-					},
-				},
-				select: {
-					transactionId: true,
-					participantType: true,
-					participantId: true,
-					shareAmount: true,
-					transaction: {
-						select: {
-							currency: true,
-							paidByType: true,
-							paidById: true,
-						},
-					},
-				},
-			}),
-			// All finalized or proposed (optimistic) settlements from any counterpart to A
-			prisma.settlement.findMany({
-				where: {
-					OR: counterpartConditions.flatMap((c) =>
-						aRefs.map((a) => ({
-							fromParticipantType: c.participantType,
-							fromParticipantId: c.participantId,
-							toParticipantType: a.participantType,
-							toParticipantId: a.participantId,
-						})),
-					),
-					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
-					...projectWhere,
-				},
-				select: {
-					id: true,
-					fromParticipantType: true,
-					fromParticipantId: true,
-					toParticipantType: true,
-					toParticipantId: true,
-					amount: true,
-					currency: true,
-				},
-			}),
-			// All finalized or proposed (optimistic) settlements from A to any counterpart
-			prisma.settlement.findMany({
-				where: {
-					OR: counterpartConditions.flatMap((c) =>
-						aRefs.map((a) => ({
-							fromParticipantType: a.participantType,
-							fromParticipantId: a.participantId,
-							toParticipantType: c.participantType,
-							toParticipantId: c.participantId,
-						})),
-					),
-					status: { in: [...BALANCE_SETTLEMENT_STATUSES] },
-					...projectWhere,
-				},
-				select: {
-					id: true,
-					fromParticipantType: true,
-					fromParticipantId: true,
-					toParticipantType: true,
-					toParticipantId: true,
-					amount: true,
-					currency: true,
-				},
-			}),
-		]);
-
-	// Build per-counterpart balance maps, keyed by CANONICAL identity so
-	// pre-claim shadow rows and post-claim user rows accumulate together.
-	const balanceMap = new Map<string, Record<string, number>>();
-
-	const getOrCreate = (k: string) => {
-		let m = balanceMap.get(k);
-		if (!m) {
-			m = {};
-			balanceMap.set(k, m);
-		}
-		return m;
-	};
-
-	const add = (m: Record<string, number>, currency: string, value: number) => {
-		m[currency] = (m[currency] ?? 0) + value;
-	};
-
-	// A person can appear on ONE transaction/settlement under multiple alias refs
-	// (e.g. both `shadow:S` and `user:U` where U claimed S). Summing every
-	// matching row would double-count. Dedupe per (row, canonical identity) so a
-	// person is counted at most once per transaction/settlement — summing is only
-	// valid ACROSS different transactions/settlements.
-	const seenRows = new Set<string>();
-	const once = (k: string): boolean => {
-		if (seenRows.has(k)) return false;
-		seenRows.add(k);
-		return true;
-	};
-
-	// A paid, B owes -> positive. Counterpart (B) is the split participant; dedupe
-	// per (transaction, canonical B).
-	for (const row of aPayedRows) {
-		const cKey = canonicalKey({
-			participantType: row.participantType,
-			participantId: row.participantId,
-		});
-		if (!once(`sp+|${row.transactionId}|${cKey}`)) continue;
-		const m = getOrCreate(cKey);
-		add(m, row.transaction.currency, Number(row.shareAmount));
-	}
-
-	// B paid, A owes -> negative. Bucket by the payer (counterpart); the counted
-	// value is A's own share. Dedupe per (transaction, canonical payer, canonical A).
-	for (const row of bPayedRows) {
-		const payerKey = canonicalKey({
-			participantType: row.transaction.paidByType,
-			participantId: row.transaction.paidById,
-		});
-		const aKey = canonicalKey({
-			participantType: row.participantType,
-			participantId: row.participantId,
-		});
-		if (!once(`sp-|${row.transactionId}|${payerKey}|${aKey}`)) continue;
-		const m = getOrCreate(payerKey);
-		add(m, row.transaction.currency, -Number(row.shareAmount));
-	}
-
-	// Settlements from B to A -> subtract. Dedupe per (settlement, canonical from, to).
-	for (const row of settlementsFromB) {
-		const fromKey = canonicalKey({
-			participantType: row.fromParticipantType,
-			participantId: row.fromParticipantId,
-		});
-		const toKey = canonicalKey({
-			participantType: row.toParticipantType,
-			participantId: row.toParticipantId,
-		});
-		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
-		const m = getOrCreate(fromKey);
-		add(m, row.currency, -Number(row.amount));
-	}
-
-	// Settlements from A to B -> add. Dedupe per (settlement, canonical from, to).
-	for (const row of settlementsFromA) {
-		const fromKey = canonicalKey({
-			participantType: row.fromParticipantType,
-			participantId: row.fromParticipantId,
-		});
-		const toKey = canonicalKey({
-			participantType: row.toParticipantType,
-			participantId: row.toParticipantId,
-		});
-		if (!once(`st|${row.id}|${fromKey}|${toKey}`)) continue;
-		const m = getOrCreate(toKey);
-		add(m, row.currency, Number(row.amount));
-	}
-
-	// Map results back to counterparts in order (via each one's canonical key).
-	return counterparts.map((c) => {
-		if (canonicalKey(c) === aCanonical) return { byCurrency: {} };
-		const byCurrency = { ...(balanceMap.get(canonicalKey(c)) ?? {}) };
-		pruneZeroBalances(byCurrency);
-		return { byCurrency };
+/** Which side of a settlement row the viewer is on (claim aliases count). */
+function settlementSide(
+	row: {
+		fromParticipantType: ParticipantType;
+		fromParticipantId: string;
+		toParticipantType: ParticipantType;
+		toParticipantId: string;
+	},
+	viewerKey: string,
+	canonicalKey: (ref: ParticipantRef) => string,
+): "from" | "to" | null {
+	const from = canonicalKey({
+		participantType: row.fromParticipantType,
+		participantId: row.fromParticipantId,
 	});
+	if (from === viewerKey) return "from";
+	const to = canonicalKey({
+		participantType: row.toParticipantType,
+		participantId: row.toParticipantId,
+	});
+	return to === viewerKey ? "to" : null;
 }
