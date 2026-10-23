@@ -60,7 +60,9 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 	await expect(transfers).toContainText("You pay Martín Acosta");
 	await expect(transfers).toContainText("ARS 41,100");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	expect(await auditFigures(page, "project summary", "project-v2-summary")).toEqual([]);
+	expect(
+		await auditFigures(page, "project summary", "project-v2-summary"),
+	).toEqual([]);
 });
 
 test("Project: Settle all previews, records and undoes", async ({ page }) => {

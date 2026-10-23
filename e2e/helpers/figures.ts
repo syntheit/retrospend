@@ -34,9 +34,10 @@
  *   2. api: data-minor equals the endpoint's value exactly;
  *   3. cross-page: one id carries the same data-minor on every page.
  */
+
+import type { APIRequestContext, Page } from "@playwright/test";
 import { SMART_NO_DECIMAL_CURRENCIES } from "@retrospend/domain/currency-format";
 import { currencyDecimals } from "@retrospend/domain/money";
-import type { APIRequestContext, Page } from "@playwright/test";
 import { parseShownNumber, shownToUnits } from "./numbers";
 import { requiredFiguresFor } from "./required-figures";
 
@@ -61,7 +62,14 @@ export interface FiguresResponse {
 	missing?: string[];
 }
 
-export type FigureFetcher = (ids: string[]) => Promise<FiguresResponse>;
+/**
+ * Reads figures by tag id. `currencies` names the currency each tag shows,
+ * so a per-currency figure can be compared on that line.
+ */
+export type FigureFetcher = (
+	ids: string[],
+	currencies?: ReadonlyMap<string, string>,
+) => Promise<FiguresResponse>;
 
 /** One tagged element as the page renders it, before validation. */
 export interface FigureTag {
@@ -228,7 +236,10 @@ export class FigureAudit {
 
 	private async apiProblems(values: FigureValue[]): Promise<string[]> {
 		const ids = [...new Set(values.map((v) => v.id))];
-		const response = await this.fetchFigures(ids);
+		const currencies = new Map(
+			values.flatMap((v) => (v.currency ? [[v.id, v.currency] as const] : [])),
+		);
+		const response = await this.fetchFigures(ids, currencies);
 		const byId = new Map(response.figures.map((f) => [f.id, fromApi(f)]));
 		const missing = new Set(response.missing ?? []);
 		const problems: string[] = [];
@@ -307,17 +318,85 @@ export async function collectFigureTags(page: Page): Promise<PageFigures> {
 	}));
 }
 
-/** Fetcher for the real endpoint (S3), authenticated by the page's cookies. */
+/**
+ * A tag id with a scope, `<figure id>:<projectId>[:<personId>]` (personId
+ * is "type:id", so it may hold a colon), as the project pages tag. Null for
+ * a bare figure id.
+ */
+export function parseScopedId(
+	tag: string,
+): { id: string; projectId: string; personId?: string } | null {
+	const [id, projectId, ...person] = tag.split(":");
+	if (!id || !projectId) return null;
+	return person.length
+		? { id, projectId, personId: person.join(":") }
+		: { id, projectId };
+}
+
+/**
+ * Fetcher for the real endpoint (S3), authenticated by the page's cookies.
+ * Bare ids go in one request; a scoped tag is asked on its own with its
+ * narrowing as query parameters and compared on the line in its currency.
+ */
 export function httpFigureFetcher(request: APIRequestContext): FigureFetcher {
-	return async (ids) => {
-		const query = ids.map(encodeURIComponent).join(",");
-		const response = await request.get(`/api/v1/figures?ids=${query}`);
+	const get = async (query: string) => {
+		const response = await request.get(`/api/v1/figures?${query}`);
 		if (!response.ok()) {
 			throw new Error(
 				`GET /api/v1/figures answered ${response.status()}: the page tags figures, so the endpoint must exist`,
 			);
 		}
-		return fromV1((await response.json()) as V1Figures);
+		return (await response.json()) as V1Figures;
+	};
+	return async (ids, currencies) => {
+		const figures: ApiFigure[] = [];
+		const missing: string[] = [];
+		const bare = ids.filter((id) => !parseScopedId(id));
+		if (bare.length) {
+			const read = fromV1(
+				await get(`ids=${bare.map(encodeURIComponent).join(",")}`),
+			);
+			figures.push(...read.figures);
+			missing.push(...(read.missing ?? []));
+		}
+		for (const tag of ids) {
+			const scope = parseScopedId(tag);
+			if (!scope) continue;
+			const query = new URLSearchParams({
+				ids: scope.id,
+				projectId: scope.projectId,
+			});
+			if (scope.personId) query.set("personId", scope.personId);
+			const body = await get(query.toString());
+			const read = fromV1Scoped(
+				tag,
+				body.figures[0]?.lines ?? null,
+				currencies?.get(tag),
+			);
+			figures.push(...read.figures);
+			missing.push(...(read.missing ?? []));
+		}
+		return { figures, missing };
+	};
+}
+
+/**
+ * One scoped figure as the audit reads it. With the tag's currency, the
+ * line in that currency, or zero when the figure has no line in it (a
+ * per-currency balance lists only non-zero lines). Without one, fromV1's
+ * rule: exactly one line. Null lines (a missing rate) are missing.
+ */
+export function fromV1Scoped(
+	tag: string,
+	lines: { minor: number; currency: string }[] | null,
+	currency?: string,
+): FiguresResponse {
+	if (!lines) return { figures: [], missing: [tag] };
+	if (!currency) return fromV1({ figures: [{ id: tag, lines }] });
+	const line = lines.find((l) => l.currency === currency);
+	return {
+		figures: [{ id: tag, unit: "money", minor: line?.minor ?? 0, currency }],
+		missing: [],
 	};
 }
 

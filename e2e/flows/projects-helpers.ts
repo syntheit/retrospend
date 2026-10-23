@@ -3,83 +3,26 @@ import { Pool } from "pg";
 import { ADMIN_USER, E2E_BASE_URL, E2E_DATABASE_URL } from "../constants";
 import { SOFIA } from "../fixtures/personas";
 import { loginAs } from "../helpers/auth";
-import {
-	type ApiFigure,
-	collectFigureTags,
-	FigureAudit,
-	type FigureFetcher,
-} from "../helpers/figures";
-import { requiredFiguresFor } from "../helpers/required-figures";
+import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { gotoReady } from "../helpers/navigation";
 
 /**
- * Shared steps of the Projects and Project flows (uiV2).
- *
- * The project pages tag figures as `<figure id>:<projectId>[:<personId>]`
- * (personId is "type:id"). /api/v1/figures takes the bare id with the
- * narrowing as query parameters and answers per-currency lines, so this
- * fetcher asks it once per tag and picks the line in the currency the page
- * shows (a figure with no line in it is zero). httpFigureFetcher speaks an
- * older shape of the endpoint; the S6 audit owner aligns the two.
+ * Shared steps of the Projects and Project flows (uiV2). The pages tag
+ * figures as `<figure id>:<projectId>[:<personId>]`; httpFigureFetcher reads
+ * them back from /api/v1/figures with that narrowing.
  */
-export function projectFigureFetcher(
-	page: Page,
-	currencies: Map<string, string>,
-): FigureFetcher {
-	return async (ids) => {
-		const figures: ApiFigure[] = [];
-		const missing: string[] = [];
-		for (const tag of ids) {
-			const [id, projectId, ...person] = tag.split(":");
-			const query = new URLSearchParams({
-				ids: id ?? "",
-				projectId: projectId ?? "",
-			});
-			if (person.length) query.set("personId", person.join(":"));
-			const res = await page.request.get(`/api/v1/figures?${query}`);
-			if (!res.ok())
-				throw new Error(
-					`GET /api/v1/figures for ${tag} answered ${res.status()}: ${await res.text()}`,
-				);
-			const body = (await res.json()) as {
-				figures: {
-					id: string;
-					lines: { minor: number; currency: string }[] | null;
-				}[];
-			};
-			const lines = body.figures[0]?.lines;
-			const currency = currencies.get(tag) ?? "";
-			if (!lines) {
-				missing.push(tag);
-				continue;
-			}
-			const line = lines.find((l) => l.currency === currency);
-			figures.push({
-				id: tag,
-				unit: "money",
-				minor: line?.minor ?? 0,
-				currency,
-			});
-		}
-		return { figures, missing };
-	};
-}
 
-/**
- * The figure audit for the page as it is now: screen vs /api/v1/figures,
- * with `pageKey`'s required ids (required-figures.ts) on the page.
- */
+/** The figure audit for the page as it is now, with `pageKey`'s required ids. */
 export async function auditFigures(
 	page: Page,
 	label: string,
 	pageKey: string,
 ): Promise<string[]> {
-	const rendered = await collectFigureTags(page);
-	const currencies = new Map(
-		rendered.tags.map((t) => [t.id ?? "", t.currency ?? ""]),
+	return new FigureAudit(httpFigureFetcher(page.request)).checkPage(
+		page,
+		label,
+		pageKey,
 	);
-	const audit = new FigureAudit(projectFigureFetcher(page, currencies));
-	return audit.checkRendered(label, rendered, requiredFiguresFor(pageKey));
 }
 
 /** uiV2 and the v1 API on for everyone in this test database. */
