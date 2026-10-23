@@ -121,6 +121,8 @@ interface State {
 	basis: Minor;
 	/** The part of what you owe that started before the budget did. */
 	oldPayable: Minor;
+	/** The part owed to you from before the budget: never fronted in it. */
+	oldReceivable: Minor;
 	/** What they owe you, by the date each part started, oldest first. */
 	lots: Array<{ date: IsoDate; native: Minor }>;
 }
@@ -156,14 +158,17 @@ function portion(total: Minor, part: Minor, whole: Minor): Minor {
 function clearReceivable(
 	s: State,
 	n: Minor,
-): { cleared: Minor; released: Minor } {
+): { cleared: Minor; released: Minor; oldCleared: Minor } {
 	const cleared = Math.min(n, Math.max(s.native, 0));
-	if (cleared === 0) return { cleared: 0, released: 0 };
+	if (cleared === 0) return { cleared: 0, released: 0, oldCleared: 0 };
 	const released = portion(s.basis, cleared, s.native);
 	s.native -= cleared;
 	s.basis -= released;
 	consumeLots(s, cleared);
-	return { cleared, released };
+	// Oldest first: what was owed from before the start clears first.
+	const oldCleared = Math.min(cleared, s.oldReceivable);
+	s.oldReceivable -= oldCleared;
+	return { cleared, released, oldCleared };
 }
 
 /** Pays down up to `n` of a negative balance; returns what is left of `n`. */
@@ -241,8 +246,11 @@ function applyForgive(
 ) {
 	if (e.status === "REJECTED") return ignore("REJECTED", e.native);
 	if (e.status !== "FINALIZED") return ignore("PENDING_NOT_COUNTED", e.native);
-	const { cleared, released } = clearReceivable(s, e.native);
-	if (cleared > 0) emit("FORGIVEN", released, { envelopeId: e.envelopeId });
+	const { cleared, released, oldCleared } = clearReceivable(s, e.native);
+	// A part owed from before the start was never fronted in the budget:
+	// letting it go moves nothing and charges no envelope.
+	const counted = released - portion(released, oldCleared, cleared);
+	if (counted > 0) emit("FORGIVEN", counted, { envelopeId: e.envelopeId });
 	if (e.native > cleared) ignore("FORGIVE_EXCEEDS_BALANCE", e.native - cleared);
 }
 
@@ -312,6 +320,7 @@ export function replaySplits(
 			native: 0,
 			basis: 0,
 			oldPayable: 0,
+			oldReceivable: 0,
 			lots: [],
 			counterparty: e.counterparty,
 			currency: e.currency,
@@ -341,6 +350,7 @@ export function replaySplits(
 		if (opts.startMonth !== undefined && e.month < opts.startMonth) {
 			// Everything owed at the start is the starting position's.
 			s.oldPayable = Math.max(0, -s.native);
+			s.oldReceivable = Math.max(0, s.native);
 		} else {
 			paidOldDebt(s, e, owedBefore, emit);
 		}

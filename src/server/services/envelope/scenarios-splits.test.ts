@@ -708,3 +708,60 @@ describe("balances from before the budget started are part of the starting posit
 		expectInvariant(r);
 	});
 });
+
+describe("forgiving what was owed to you from before the start (owner 2026-10-23)", () => {
+	const base = {
+		currency: "USD",
+		start: 202610,
+		current: 202610,
+		today: "2026-10-20",
+		envelopes: [{ id: "dining", cats: ["c-din"] }, { id: "everything" }],
+		defaultEnvelope: "everything",
+		moneyIn: [income(202610, 100_000)],
+	};
+	const sept: TxSpec = {
+		id: "t-sept",
+		currency: "USD",
+		date: "2026-09-10",
+		paidBy: "user:me",
+	};
+	const oct: TxSpec = {
+		id: "t-oct",
+		currency: "USD",
+		date: "2026-10-02",
+		paidBy: "user:me",
+	};
+	const forgiveJuan = (amount: string) =>
+		settlement("fg", "user:juan", "user:me", amount, "USD", "2026-10-15", {
+			kind: "FORGIVE",
+			forgiveEnvelopeId: "dining",
+		});
+
+	it("its fronting was never in the budget: forgiving it moves nothing (To assign 1,000, Dining 0)", () => {
+		const r = runSplits({
+			...base,
+			fronts: [front("f-sept", "user:juan", sept, "30")],
+			settlements: [forgiveJuan("30")],
+		});
+		expect(r.view.toAssign.amount.minor).toBe(100_000);
+		expect(r.left("dining")).toBe(0);
+		expect(r.balance("user:juan", "USD")).toBe(0);
+		expectInvariant(r);
+	});
+
+	it("old first: forgiving 40 of 30 old and 20 new releases only 10 of the new (To assign 990, Dining -10)", () => {
+		const r = runSplits({
+			...base,
+			fronts: [
+				front("f-sept", "user:juan", sept, "30"),
+				front("f-oct", "user:juan", oct, "20"),
+			],
+			settlements: [forgiveJuan("40")],
+		});
+		// 1,000 - 20 fronted in October + 10 forgiven back.
+		expect(r.view.toAssign.amount.minor).toBe(99_000);
+		expect(r.left("dining")).toBe(-1_000);
+		expect(r.balance("user:juan", "USD")).toBe(1_000);
+		expectInvariant(r);
+	});
+});
