@@ -1,9 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { PAZ, SOFIA } from "../fixtures/personas";
-import { loginAs } from "../helpers/auth";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { gotoReady } from "../helpers/navigation";
-import { enablePeopleV2 } from "./people-flags";
+import { personaStorageState } from "../../constants";
+import { PAZ, SOFIA } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { gotoReady } from "../../helpers/navigation";
 
 // The redesigned Person page (uiV2) for Paz, who is not on Retrospend: the
 // balance with its currency parts, the projects with her, and Between you
@@ -13,14 +12,12 @@ import { enablePeopleV2 } from "./people-flags";
 // a personId narrowing), which a data-figure id cannot carry yet
 // (docs/ui/GAPS.md, "People: per-person figure ids").
 
-test.beforeAll(async ({ browser }) => {
-	await enablePeopleV2(browser);
-});
+// Sofía's saved session; flows-v2 runs with uiV2 on (ui-v2-on.setup.ts).
+test.use({ storageState: personaStorageState(SOFIA.username) });
 
 test("Person: balance, projects, Between you filters", async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	await loginAs(page, SOFIA.email, SOFIA.password);
 	await gotoReady(page, "/people");
 	await page.getByRole("main").getByRole("link", { name: PAZ.name }).click();
 	await expect(page).toHaveURL(new RegExp(`/people/shadow/${PAZ.id}$`));

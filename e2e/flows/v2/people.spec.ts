@@ -1,27 +1,24 @@
 import { expect, test } from "@playwright/test";
-import { SOFIA } from "../fixtures/personas";
-import { loginAs } from "../helpers/auth";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
-import { gotoReady } from "../helpers/navigation";
-import { untilSaved } from "../helpers/trpc";
-import { enablePeopleV2 } from "./people-flags";
+import { personaStorageState } from "../../constants";
+import { SOFIA } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { FigureAudit, httpFigureFetcher } from "../../helpers/figures";
+import { gotoReady } from "../../helpers/navigation";
+import { untilSaved } from "../../helpers/trpc";
 
 // The redesigned People page (uiV2) on Sofía's seeded ledger: Owed to you
 // and You owe as two figures (D1) that match the figures API, the groups,
 // search, and Needs you (Lucía says she paid ARS 20,000 in cash): Confirm,
 // then Undo puts it back.
 
-test.beforeAll(async ({ browser }) => {
-	await enablePeopleV2(browser);
-});
+// Sofía's saved session; flows-v2 runs with uiV2 on (ui-v2-on.setup.ts).
+test.use({ storageState: personaStorageState(SOFIA.username) });
 
 test("People: standing, groups, search, confirm a payment and undo", async ({
 	page,
 }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	await loginAs(page, SOFIA.email, SOFIA.password);
 	await gotoReady(page, "/people");
 	await expect(
 		page.locator('[data-ui="v2"][data-page="people"]'),
