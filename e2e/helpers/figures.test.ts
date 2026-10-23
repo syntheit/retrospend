@@ -3,6 +3,7 @@ import {
 	checkText,
 	compareValues,
 	FigureAudit,
+	fromV1,
 	type FigureFetcher,
 	type FigureTag,
 	readTag,
@@ -307,5 +308,30 @@ describe("FigureAudit", () => {
 		expect(problems).toEqual([
 			'activity: spent.month: data-minor "abc" is not an integer',
 		]);
+	});
+});
+
+describe("fromV1", () => {
+	it("reads one-line figures and lists the rest as missing", () => {
+		expect(
+			fromV1({
+				figures: [
+					{ id: "owed.owedToYou", lines: [{ minor: 100, currency: "ARS" }] },
+					{ id: "owed.youOwe", lines: null },
+					{
+						id: "balance.person",
+						lines: [
+							{ minor: 1, currency: "ARS" },
+							{ minor: 2, currency: "BRL" },
+						],
+					},
+				],
+			}),
+		).toEqual({
+			figures: [
+				{ id: "owed.owedToYou", unit: "money", minor: 100, currency: "ARS" },
+			],
+			missing: ["owed.youOwe", "balance.person"],
+		});
 	});
 });

@@ -84,6 +84,18 @@ async function resetDatabase(db: Db): Promise<void> {
 	await db.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
 }
 
+/**
+ * /api/v1 on: the figure audit reads every tagged number back from
+ * /api/v1/figures, so a v2 page that tags figures needs it whatever order
+ * the flows run in. uiV2 stays as each flow sets it.
+ */
+async function writeFlags(db: Db): Promise<void> {
+	await db.$executeRaw`
+		INSERT INTO "app_settings" (id, "updatedAt", "apiV1Mode")
+		VALUES ('app_settings_singleton', now(), 'ALL')
+		ON CONFLICT (id) DO UPDATE SET "apiV1Mode" = 'ALL'`;
+}
+
 async function writeUsers(db: Db): Promise<void> {
 	await db.user.createMany({
 		data: SEED_USERS.map((u) => ({
@@ -426,6 +438,7 @@ export async function seedE2eDatabase(
 	});
 	try {
 		await resetDatabase(db);
+		await writeFlags(db);
 		await writeUsers(db);
 		await writeRates(db, anchor);
 		await writeExpenses(db, anchor);

@@ -317,6 +317,36 @@ export function httpFigureFetcher(request: APIRequestContext): FigureFetcher {
 				`GET /api/v1/figures answered ${response.status()}: the page tags figures, so the endpoint must exist`,
 			);
 		}
-		return (await response.json()) as FiguresResponse;
+		return fromV1((await response.json()) as V1Figures);
 	};
+}
+
+/** What GET /api/v1/figures answers: every id with its per-currency lines, or null. */
+interface V1Figures {
+	figures: {
+		id: string;
+		lines: { minor: number; currency: string }[] | null;
+	}[];
+}
+
+/**
+ * The v1 answer as the audit reads it. A tag carries one currency, so only
+ * a figure with exactly one line compares; none, several (a balance in two
+ * currencies) or null (a missing rate) count as missing for the audit.
+ */
+export function fromV1(body: V1Figures): FiguresResponse {
+	const figures: ApiFigure[] = [];
+	const missing: string[] = [];
+	for (const f of body.figures) {
+		const [line] = f.lines ?? [];
+		if (f.lines?.length === 1 && line)
+			figures.push({
+				id: f.id,
+				unit: "money",
+				minor: line.minor,
+				currency: line.currency,
+			});
+		else missing.push(f.id);
+	}
+	return { figures, missing };
 }
