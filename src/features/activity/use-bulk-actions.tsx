@@ -17,6 +17,7 @@ import {
 import { useToast } from "~/components/ui/toast";
 import { formatDateOnly } from "~/lib/date";
 import { categoryTone } from "~/server/services/expense-list/category-tone";
+import type { RestoreToken } from "~/server/services/entry/restore-token";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";
 
@@ -136,7 +137,7 @@ export function useBulkActions(rows: ActivityRowDTO[]) {
 	 */
 	const confirmDelete = async (ids: string[]) => {
 		setDeleting(null);
-		const tokens: string[] = [];
+		const tokens: RestoreToken[] = [];
 		for (const id of entityIds(ids)) {
 			try {
 				const out = await remove.mutateAsync({ id });
