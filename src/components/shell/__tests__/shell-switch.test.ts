@@ -57,6 +57,10 @@ vi.mock("~/i18n/locale-sync", () => ({ LocaleSync: () => null }));
 vi.mock("~/components/expense-modal-provider", () => ({
 	ExpenseModalProvider: pass,
 }));
+// The v2 shell's Add family host (4G), picked by ExpenseSheetsSwitch.
+vi.mock("~/features/entry/provider", () => ({
+	EntrySheetsProvider: pass,
+}));
 vi.mock("~/components/recurring-modal-provider", () => ({
 	RecurringModalProvider: pass,
 }));

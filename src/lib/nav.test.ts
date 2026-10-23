@@ -135,11 +135,11 @@ describe("pinnedProjects", () => {
 });
 
 describe("ADD_ACTIONS", () => {
-	it("is expense, income and transfer on N, I and T; only expense is ready", () => {
+	it("is expense, income and transfer on N, I and T, all ready (4G)", () => {
 		expect(ADD_ACTIONS.map((a) => [a.id, a.key, a.ready])).toEqual([
 			["expense", "n", true],
-			["income", "i", false],
-			["transfer", "t", false],
+			["income", "i", true],
+			["transfer", "t", true],
 		]);
 	});
 });
