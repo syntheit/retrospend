@@ -1,15 +1,12 @@
 "use client";
 
-import { FlaskConical } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { BudgetHeader } from "~/components/budget/budget-header";
 import { BudgetList } from "~/components/budget/budget-list";
 import { PartitionBar } from "~/components/budget/partition-bar";
 import { MonthStepper } from "~/components/date/MonthStepper";
 import { PageContent } from "~/components/page-content";
 import { SiteHeader } from "~/components/site-header";
-import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useBudgetController } from "~/hooks/use-budget-controller";
 
@@ -38,19 +35,11 @@ export default function BudgetPage() {
 			<>
 				<SiteHeader
 					actions={
-						<>
-							<MonthStepper
-								maxDate={budgetMaxDate}
-								onChange={setSelectedMonth}
-								value={selectedMonth}
-							/>
-							<Link href="/budget/playground">
-								<Button size="sm" variant="outline">
-									<FlaskConical className="h-3.5 w-3.5" />
-									<span className="hidden sm:inline">{t("playground")}</span>
-								</Button>
-							</Link>
-						</>
+						<MonthStepper
+							maxDate={budgetMaxDate}
+							onChange={setSelectedMonth}
+							value={selectedMonth}
+						/>
 					}
 					title={t("title")}
 				/>
@@ -76,20 +65,12 @@ export default function BudgetPage() {
 		<>
 			<SiteHeader
 				actions={
-					<>
-						<MonthStepper
-							maxDate={budgetMaxDate}
-							minDate={budgetMinDate}
-							onChange={setSelectedMonth}
-							value={selectedMonth}
-						/>
-						<Link href="/budget/playground">
-							<Button size="sm" variant="outline">
-								<FlaskConical className="h-3.5 w-3.5" />
-								<span className="hidden sm:inline">{t("playground")}</span>
-							</Button>
-						</Link>
-					</>
+					<MonthStepper
+						maxDate={budgetMaxDate}
+						minDate={budgetMinDate}
+						onChange={setSelectedMonth}
+						value={selectedMonth}
+					/>
 				}
 				title={t("title")}
 			/>
