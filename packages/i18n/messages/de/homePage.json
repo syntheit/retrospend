@@ -1,0 +1,42 @@
+{
+	"title": "Start",
+	"missingRates": "Manche Summen lassen {currencies} aus: noch kein Kurs.",
+	"needs": {
+		"title": "Braucht dich",
+		"showMore": "{count} weitere zeigen",
+		"showFewer": "Weniger zeigen",
+		"confirmed": "Zahlung von {name} bestätigt",
+		"emailSent": "Bestätigungs-E-Mail gesendet",
+		"failed": "Nicht gespeichert. Versuch es noch einmal.",
+		"context": {
+			"wasDue": "Fällig seit {date}",
+			"paidOn": "Bezahlt am {date}",
+			"yourShare": "Dein Anteil, {date}",
+			"dueOn": "Fällig am {date}",
+			"arrived": "{title}, {date}",
+			"firstExpense": "Dauert etwa zehn Sekunden",
+			"homeCurrency": "Alle Summen werden darin angezeigt",
+			"importStatement": "CSV oder PDF von deiner Bank"
+		}
+	},
+	"recent": {
+		"title": "Zuletzt",
+		"seeAll": "Alle anzeigen",
+		"empty": "Noch keine Ausgaben",
+		"emptyHint": "Erfasse deine erste Ausgabe, dann erscheint sie hier.",
+		"add": "Ausgabe erfassen"
+	},
+	"rail": {
+		"label": "Auf einen Blick",
+		"people": "Personen",
+		"allPeople": "Alle Personen",
+		"comingUp": "Demnächst",
+		"recurring": "Wiederkehrend",
+		"nothingDue": "In den nächsten 3 Wochen ist nichts fällig"
+	},
+	"unavailable": {
+		"title": "Gerade nicht verfügbar",
+		"hint": "Dieser Teil der Startseite konnte nicht geladen werden.",
+		"retry": "Erneut versuchen"
+	}
+}

@@ -1,0 +1,79 @@
+/**
+ * home.glance to the kit's GlanceVM. Nothing is computed here (R9): every
+ * amount is one the server sent, and the line is picked by comparing the
+ * server's figures, never by subtracting them.
+ */
+import type {
+	GlanceLine,
+	GlanceRow,
+	GlanceVM,
+} from "~/components/glance/glance-strip";
+import type { GlanceDTO } from "~/server/services/figures/glance";
+
+/** Where each glance row leads. */
+export const GLANCE_HREF = {
+	toAssign: "/budget",
+	owedToYou: "/people",
+	youOwe: "/people",
+	netWorth: "/wealth",
+} as const;
+
+/** The line under the hero: the budget's state, or no budget. */
+export function lineOf(dto: GlanceDTO): GlanceLine {
+	const budget = dto.budget;
+	if (!budget) return { kind: "noBudget" };
+	if (budget.state === "incomplete")
+		return { kind: "unavailable", currencies: budget.missingRates };
+	const left = budget.leftToSpend;
+	if (left.over.minor > 0) return { kind: "over", over: left.over };
+	if (left.daysLeft <= 1) return { kind: "leftToday", left: left.left };
+	return { kind: "perDay", perDay: left.perDay, daysLeft: left.daysLeft };
+}
+
+type Figure = GlanceDTO["owedToYou"];
+
+/** A row only when its figure has something to say (a value, not zero). */
+function row(id: GlanceRow["id"], figure: Figure): GlanceRow[] {
+	const value = figure.value;
+	if (!value || value.minor === 0) return [];
+	return [{ id, amount: value, href: GLANCE_HREF[id], figure: figure.id }];
+}
+
+export function toGlanceVM(dto: GlanceDTO): GlanceVM {
+	const budget = dto.budget?.state === "ready" ? dto.budget : null;
+	return {
+		month: dto.period.from,
+		spent: dto.spent.value,
+		spentFigure: dto.spent.id,
+		line: lineOf(dto),
+		fasterThanPlanned: budget?.leftToSpend.fasterThanPlanned ?? false,
+		pace: {
+			currency: dto.home,
+			current: [...(dto.pace.this ?? [])],
+			previous: [...(dto.pace.last ?? [])],
+			days: dto.period.days,
+		},
+		rows: [
+			...(budget ? row("toAssign", budget.notPlannedYet) : []),
+			// Two rows, never netted (D1).
+			...row("owedToYou", dto.owedToYou),
+			...row("youOwe", dto.youOwe),
+			...row("netWorth", dto.netWorth),
+		],
+	};
+}
+
+/**
+ * Currencies the page still has to name: the glance line names them when
+ * the budget is unavailable, and a Needs you item when it asks for a rate,
+ * so a fact appears once.
+ */
+export function unnamedMissingRates(
+	dto: GlanceDTO,
+	namedElsewhere: readonly string[],
+): string[] {
+	const named = new Set(namedElsewhere);
+	if (dto.budget?.state === "incomplete")
+		for (const c of dto.budget.missingRates) named.add(c);
+	return dto.missingRates.filter((c) => !named.has(c));
+}
