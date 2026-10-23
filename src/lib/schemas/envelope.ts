@@ -400,6 +400,8 @@ export const getMonthOutputSchema = z.object({
 		pending: moneySchema,
 	}),
 	incomplete: z.boolean(),
+	/** Some foreign rows were valued at the nearest rate there was, not one of their day: the UI shows "≈". */
+	approximate: z.boolean(),
 	missingRates: z.array(missingRateSchema),
 });
 

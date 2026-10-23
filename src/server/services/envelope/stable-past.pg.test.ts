@@ -33,11 +33,15 @@ import {
 	seedUser,
 	setupInput,
 } from "./__tests__/pg-fixture";
+import { reconcileMutation, welcomeBackMutation } from "./book.mutation";
 import { loadCloseRows } from "./close-rows";
 import { computeBook } from "./engine";
 import { loadBook } from "./inputs";
 import { getMonth, getMonthSummary } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
+
+const row = (m: Awaited<ReturnType<typeof getMonth>>, id: string) =>
+	m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id);
 
 const leftOf = (m: Awaited<ReturnType<typeof getMonth>>, id: string) =>
 	m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id)?.left.minor;
@@ -72,7 +76,7 @@ function usdRow(
 	});
 }
 
-async function mdlBook() {
+async function mdlBook(o: { rateOn?: string; rows?: boolean } = {}) {
 	const s = await seedUser();
 	await adminDb.user.update({
 		where: { id: s.user.id },
@@ -84,7 +88,7 @@ async function mdlBook() {
 	});
 	const rate = await adminDb.exchangeRate.create({
 		data: {
-			date: new Date("2026-08-01T00:00:00Z"),
+			date: new Date(`${o.rateOn ?? "2026-08-01"}T00:00:00Z`),
 			currency: "MDL",
 			type: "official",
 			rate: 40,
@@ -119,6 +123,8 @@ async function mdlBook() {
 			actorUserId: s.user.id,
 		},
 	});
+	if (o.rows === false)
+		return { ...s, bookId: book.id, diningEnv: dining, rateId: rate.id };
 	await usdRow(s.user.id, s.dining, 100, "2026-08-12");
 	await usdRow(s.user.id, s.dining, 10, "2026-10-02", {
 		rate: "39",
@@ -155,9 +161,9 @@ describe("rates moving in place never move the past (finding 1)", () => {
 		});
 	});
 
-	it("a row with no frozen value and no rate dated on or before it is a missing rate, never today's", async () => {
-		const b = await mdlBook();
-		await adminDb.$executeRaw`UPDATE exchange_rate SET rate = 41, date = ${new Date("2026-11-03T00:00:00Z")} WHERE id = ${b.rateId}`;
+	it("a pair with no rate at all stays missing, never 1", async () => {
+		const b = await mdlBook({ rows: false });
+		await adminDb.exchangeRate.delete({ where: { id: b.rateId } });
 		await usdRow(b.user.id, b.dining, 10, "2026-09-05");
 		const m = await getMonth(b.user.id, undefined, at("2026-11-04"));
 		expect(m?.incomplete).toBe(true);
@@ -166,6 +172,104 @@ describe("rates moving in place never move the past (finding 1)", () => {
 			rateType: "official",
 			date: "2026-09-05",
 		});
+	});
+});
+
+/**
+ * Round 2, finding 1: production keeps one rate row per pair, dated today.
+ * A row first read after its day has no rate on or before it: it is valued
+ * once at the nearest rate (40 MDL per USD, dated Nov 3), flagged
+ * approximate, and never revalued. A pre-M2 USD 100 dinner on Aug 12 is
+ * MDL 4,000.00 (400,000); Sam's USD lunch on Aug 12 split 15/15, my share
+ * MDL 600.00 (60,000). After the rate moves to 42 on Nov 4 nothing changes.
+ */
+describe("rows first read after their day are frozen at the nearest rate (round 2)", () => {
+	it("a pre-M2 row and Sam's USD share are valued once, approximate, then never move", async () => {
+		const b = await mdlBook({ rateOn: "2026-11-03", rows: false });
+		await usdRow(b.user.id, b.dining, 100, "2026-08-12");
+		const sam = await seedUser();
+		await adminDb.sharedTransaction.create({
+			data: {
+				description: "Lunch",
+				amount: new Prisma.Decimal(30),
+				currency: "USD",
+				date: at("2026-08-12"),
+				paidByType: "user",
+				paidById: sam.user.id,
+				createdByType: "user",
+				createdById: sam.user.id,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: sam.user.id,
+							shareAmount: new Prisma.Decimal(15),
+							verificationStatus: "ACCEPTED",
+						},
+						{
+							participantType: "user",
+							participantId: b.user.id,
+							shareAmount: new Prisma.Decimal(15),
+							verificationStatus: "ACCEPTED",
+						},
+					],
+				},
+			},
+		});
+		const nov = await getMonth(b.user.id, undefined, at("2026-11-04"));
+		expect(nov?.incomplete).toBe(false);
+		expect(nov?.approximate).toBe(true);
+		const frozen = await adminDb.budgetRowValue.findMany({
+			where: { bookId: b.bookId },
+			orderBy: { minor: "asc" },
+		});
+		expect(
+			frozen.map((f) => [
+				Number(f.minor),
+				f.approximate,
+				f.rateDate?.toISOString().slice(0, 10),
+			]),
+		).toEqual([
+			[60_000, true, "2026-11-03"],
+			[400_000, true, "2026-11-03"],
+		]);
+		const before = row(nov, b.diningEnv);
+		await adminDb.$executeRaw`UPDATE exchange_rate SET rate = 42, date = ${new Date("2026-11-04T00:00:00Z")} WHERE id = ${b.rateId}`;
+		const later = await getMonth(b.user.id, undefined, at("2026-11-05"));
+		expect(row(later, b.diningEnv)).toEqual(before);
+		expect(later?.toAssign).toEqual(nov?.toAssign);
+	});
+
+	it("a changed USD value values the row again (finding 2: it is part of the key)", async () => {
+		const b = await mdlBook({ rows: false });
+		// A BRL 500 dinner booked at USD 100: its book value goes through the USD value.
+		const r = await adminDb.expense.create({
+			data: {
+				userId: b.user.id,
+				title: "Row",
+				amount: new Prisma.Decimal(500),
+				currency: "BRL",
+				date: at("2026-08-12"),
+				categoryId: b.dining,
+				amountInUSD: new Prisma.Decimal(100),
+				exchangeRate: new Prisma.Decimal(5),
+				pricingSource: "MANUAL",
+			},
+		});
+		await getMonth(b.user.id, undefined, at("2026-11-03"));
+		await adminDb.expense.update({
+			where: { id: r.id },
+			data: { amountInUSD: new Prisma.Decimal(200) },
+		});
+		const m = await getMonth(b.user.id, undefined, at("2026-11-03"));
+		// 200 x 40 = 8,000.00, no longer 100 x 40: August overspends 300,000.
+		expect(m?.toAssign.amount.minor).toBe(-800_000);
+		const values = await adminDb.budgetRowValue.findMany({
+			where: { bookId: b.bookId },
+		});
+		expect(values.map((v) => Number(v.minor)).sort()).toEqual([
+			400_000, 800_000,
+		]);
 	});
 });
 
@@ -307,5 +411,87 @@ describe("moving a category keeps closed months as they closed (finding 7)", () 
 			budget: 81_000,
 			ledger: 81_000,
 		});
+	});
+});
+
+describe("round 2: each change is judged against the window, payments mark from paidOn", () => {
+	it("one late entry inside the window and one after it: October is revised", async () => {
+		const b = await augustBook();
+		await getMonth(b.user.id, undefined, at("2026-11-01"));
+		await addRow(
+			b.user.id,
+			{ amount: 30, categoryId: b.dining },
+			at("2026-10-30"),
+		);
+		await adminDb.budgetDirty.updateMany({
+			where: { bookId: b.bookId },
+			data: { createdAt: at("2026-11-03") },
+		});
+		await addRow(
+			b.user.id,
+			{ amount: 20, categoryId: b.dining },
+			at("2026-10-29"),
+		);
+		await adminDb.budgetDirty.updateMany({
+			where: { bookId: b.bookId, createdAt: { not: at("2026-11-03") } },
+			data: { createdAt: at("2026-11-20") },
+		});
+		await getMonth(b.user.id, undefined, at("2026-11-20"));
+		const oct = await getMonthSummary(b.user.id, 202610, at("2026-11-20"));
+		expect(oct?.revision).toBe(2);
+		expect(oct?.change).not.toBeNull();
+	});
+
+	it("deleting a payment marks from the day it was paid on", async () => {
+		const b = await augustBook();
+		const friend = await seedUser();
+		const id = crypto.randomUUID();
+		await adminDb.payment.create({
+			data: {
+				id,
+				payerType: "user",
+				payerId: friend.user.id,
+				payeeType: "user",
+				payeeId: b.user.id,
+				amount: new Prisma.Decimal(10),
+				currency: "USD",
+				paidOn: new Date("2026-08-05T00:00:00Z"),
+				recordedByType: "user",
+				recordedById: friend.user.id,
+			},
+		});
+		await adminDb.budgetDirty.deleteMany({ where: { bookId: b.bookId } });
+		await adminDb.payment.delete({ where: { id } });
+		const marks = await adminDb.budgetDirty.findMany({
+			where: { bookId: b.bookId },
+		});
+		expect(marks.map((m) => m.fromMonth)).toEqual([202608]);
+	});
+});
+
+describe("round 2: reconcile refuses while a rate is missing", () => {
+	it("names the currency and records nothing", async () => {
+		const b = await mdlBook({ rows: false });
+		await adminDb.exchangeRate.delete({ where: { id: b.rateId } });
+		await usdRow(b.user.id, b.dining, 10, "2026-08-12");
+		const before = await adminDb.expense.count({
+			where: { userId: b.user.id },
+		});
+		await expect(
+			forUser(b.user.id).apply(reconcileMutation, {
+				id: crypto.randomUUID(),
+				bankMinor: 0,
+			}),
+		).rejects.toThrow("MDL");
+		await expect(
+			forUser(b.user.id).apply(welcomeBackMutation, {
+				choice: "SET_HAVE_NOW",
+				id: crypto.randomUUID(),
+				amountMinor: 0,
+			}),
+		).rejects.toThrow("MDL");
+		await expect(
+			adminDb.expense.count({ where: { userId: b.user.id } }),
+		).resolves.toBe(before);
 	});
 });

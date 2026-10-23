@@ -153,6 +153,7 @@ function month(o: {
 		owed: { held: zero, pending: zero, people: 0, aging: 0 },
 		shares: { unresolved: 0, pending: zero },
 		incomplete: (o.missing ?? []).length > 0,
+		approximate: false,
 		missingRates: (o.missing ?? []).map((currency) => ({
 			currency,
 			rateType: "blue",

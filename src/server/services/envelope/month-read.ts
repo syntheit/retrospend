@@ -82,6 +82,7 @@ async function computeMonthView(
 		today: loaded.today,
 		missingRates: loaded.missingRates,
 		owed: owedSummary(owedInputOf(loaded)),
+		approximateRows: loaded.approximate.length,
 	});
 	return { ...view, loaded };
 }

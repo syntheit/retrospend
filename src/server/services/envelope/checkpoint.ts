@@ -24,6 +24,7 @@ import type {
 	RunningTotals,
 } from "./engine";
 import type { MissingRate, MonthKey } from "./types";
+import type { ApproximateRow } from "./valuer";
 
 const minor = z.number().int();
 
@@ -49,6 +50,10 @@ export const storedCheckpointSchema = z.object({
 			rowId: z.string().optional(),
 		}),
 	),
+	/** Rows up to the month valued at the nearest rate ("≈"). */
+	approximate: z
+		.array(z.object({ rowId: z.string(), date: z.string() }))
+		.default([]),
 	print: z.string(),
 });
 
@@ -72,7 +77,11 @@ export function toEngineCheckpoint(s: StoredCheckpoint): EngineCheckpoint {
 export function checkpointAt(
 	state: BookState,
 	month: MonthKey,
-	p: { missingRates: readonly MissingRate[]; print: string },
+	p: {
+		missingRates: readonly MissingRate[];
+		approximate?: readonly ApproximateRow[];
+		print: string;
+	},
 ): StoredCheckpoint {
 	const next = state.months.find((s) => s.month > month);
 	if (!next || state.month(month).month !== month)
@@ -86,6 +95,7 @@ export function checkpointAt(
 		carry,
 		totals: state.runningTotals(month),
 		missingRates: [...p.missingRates],
+		approximate: [...(p.approximate ?? [])],
 		print: p.print,
 	};
 }

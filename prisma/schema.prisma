@@ -475,6 +475,8 @@ model Envelope {
   leftoverSweepToId   String?
   wealthAccountId     String?
   wealthDedicated     Boolean             @default(false)
+  // What the last limit edit changed (target and funding); its undo reads this.
+  limitUndo           Json?
   archivedAt          DateTime?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
@@ -650,8 +652,12 @@ model BudgetDirty {
 model BudgetRowValue {
   bookId    String
   // Row id, currency, amount and date: an edited row is valued again.
-  key       String     @db.VarChar(300)
+  key       String     @db.VarChar(400)
   minor     BigInt
+  // The date of the book-currency rate used.
+  rateDate  DateTime?  @db.Date
+  // No rate dated on or before the row at first read: the nearest one, once.
+  approximate Boolean  @default(false)
   createdAt DateTime   @default(now())
   book      BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
 

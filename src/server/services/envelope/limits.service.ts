@@ -10,12 +10,15 @@
  *   envelope's "Set aside" target, so next month funds it. A lower limit can
  *   leave the envelope negative (B5: PLAN_FUND never blocks).
  */
+
+import { z } from "zod";
 import type {
 	RevertLimitInput,
 	RevertLimitResult,
 	SetLimitInput,
 	SetLimitResult,
 } from "~/lib/schemas/envelope-book";
+import { targetSnapshotSchema } from "~/lib/schemas/envelope-book";
 import { Prisma } from "~prisma";
 import { budgetSpendingWhere } from "../spending";
 import { userTimeZone } from "../user-time-zone";
@@ -37,6 +40,12 @@ import { fromMinor } from "./units";
 import { convertToBookOrThrow, valueRow } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
+
+/** envelope.limitUndo: the target and funding before the last limit edit. */
+const limitUndoSchema = z.object({
+	previousTarget: targetSnapshotSchema,
+	fundedMinor: z.number().int(),
+});
 
 const firstOf = (month: number) =>
 	`${Math.floor(month / 100)}-${String(month % 100).padStart(2, "0")}-01`;
@@ -206,21 +215,28 @@ export async function setLimit(
 	});
 	if (rows.length === 0 && input.scope === "THIS_MONTH")
 		throw new EnvelopeError("INVALID", "that is the limit already");
-	if (input.scope === "FROM_NOW_ON")
-		await tx.envelope.update({
-			where: { id: env.id },
-			data: {
-				kind: "MONTHLY",
-				targetAmount: new Prisma.Decimal(
-					fromMinor(input.amountMinor, currency).toString(),
-				),
-				// The currency typed stays, converted each month (owner, D25).
-				targetCurrency: currency === H ? null : currency,
-				targetMode: "SET_ASIDE",
-				targetCadence: "MONTH",
-				targetStartMonth: env.targetStartMonth ?? s.current,
-			},
-		});
+	const target =
+		input.scope === "FROM_NOW_ON"
+			? {
+					kind: "MONTHLY" as const,
+					targetAmount: new Prisma.Decimal(
+						fromMinor(input.amountMinor, currency).toString(),
+					),
+					// The currency typed stays, converted each month (owner, D25).
+					targetCurrency: currency === H ? null : currency,
+					targetMode: "SET_ASIDE" as const,
+					targetCadence: "MONTH" as const,
+					targetStartMonth: env.targetStartMonth ?? s.current,
+				}
+			: {};
+	await tx.envelope.update({
+		where: { id: env.id },
+		data: {
+			...target,
+			// What the undo (revertLimit) puts back, kept server side.
+			limitUndo: { previousTarget, fundedMinor: funded },
+		},
+	});
 	await insert(tx, s, userId, rows);
 	forgetMonthViews(tx);
 	const moved = await result(
@@ -246,16 +262,23 @@ export async function revertLimit(
 		input.envelopeId,
 		now,
 	);
+	// What the last edit changed, as the server stored it (never the client's copy).
+	const undo = limitUndoSchema.safeParse(env.limitUndo);
+	if (!undo.success)
+		throw new EnvelopeError("INVALID", "there is no limit change to undo");
 	await tx.envelope.update({
 		where: { id: env.id },
-		data: restoreData(input.previousTarget),
+		data: {
+			...restoreData(undo.data.previousTarget),
+			limitUndo: Prisma.DbNull,
+		},
 	});
 	const rows = fundDelta({
 		id: input.id,
 		envelopeId: env.id,
 		month: s.current,
 		funded,
-		to: input.fundedMinor,
+		to: undo.data.fundedMinor,
 	});
 	await insert(tx, s, userId, rows);
 	forgetMonthViews(tx);

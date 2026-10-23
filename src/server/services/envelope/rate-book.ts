@@ -89,4 +89,12 @@ export class RateBook {
 		if (!first || first.date > date) return null;
 		return pick(points, date);
 	};
+
+	/** The date of the rate `lookup` gives for `date`, or null when there is none. */
+	readonly rateDate = (currency: string, rateType: string, date: IsoDate) => {
+		const points = this.points.get(`${currency}\0${rateType}`) ?? [];
+		let found: RatePoint | null = points[0] ?? null;
+		for (const p of points) if (p.date <= date) found = p;
+		return found?.date ?? null;
+	};
 }

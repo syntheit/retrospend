@@ -33,6 +33,7 @@ import {
 import type { CloseRow, Recalc } from "./close-rows";
 import { type BookState, computeBook, sumLeft } from "./engine";
 import {
+	approximateThrough,
 	type LoadedBook,
 	loadBook,
 	missingThrough,
@@ -52,8 +53,8 @@ export interface ReviseRequest {
 	reviseFrom: MonthKey | null;
 	/** Months to close, oldest first. */
 	open: readonly MonthKey[];
-	/** When the earliest change was made (its mark); null: now. */
-	changedAt?: Date | null;
+	/** The changes behind the revision (their marks): each is judged against the window on the day it was made. */
+	changes?: ReadonlyArray<{ fromMonth: MonthKey; createdAt: Date }>;
 }
 
 export interface ReviseResult {
@@ -69,8 +70,8 @@ interface Ctx {
 	loaded: LoadedBook;
 	state: BookState;
 	now: Date;
-	/** Book-zone day the change was made: the late window is judged on it. */
-	changedOn: string;
+	/** Each change with the book-zone day it was made (none: a backfill, judged today). */
+	changes: ReadonlyArray<{ fromMonth: MonthKey; day: string }>;
 }
 
 function summaryOf(c: Ctx, month: MonthKey): MonthCloseSummary {
@@ -86,6 +87,7 @@ function summaryOf(c: Ctx, month: MonthKey): MonthCloseSummary {
 function checkpointOf(c: Ctx, month: MonthKey): StoredCheckpoint {
 	return checkpointAt(c.state, month, {
 		missingRates: missingThrough(c.loaded, month),
+		approximate: approximateThrough(c.loaded, month),
 		print: c.loaded.prints.get(month) ?? "",
 	});
 }
@@ -98,6 +100,17 @@ export function inLateWindow(
 ): boolean {
 	const end = monthRange(month, loaded.periods).to;
 	return changedOn <= addDays(end, LATE_WINDOW_DAYS);
+}
+
+/**
+ * Every change that reached `month` was made inside its late window: then
+ * the summary is updated in place. One change after the window means a
+ * revision. With no change on record (a backfill), today decides.
+ */
+function lateOnly(c: Ctx, month: MonthKey): boolean {
+	const reached = c.changes.filter((ch) => ch.fromMonth <= month);
+	if (reached.length === 0) return inLateWindow(c.loaded, month);
+	return reached.every((ch) => inLateWindow(c.loaded, month, ch.day));
 }
 
 /**
@@ -158,9 +171,7 @@ async function revise(
 		const next = summaryOf(c, r.month);
 		return { r, next, moved: summaryDiffers(r.summary, next) };
 	});
-	const after = changed.filter(
-		(x) => x.moved && !inLateWindow(c.loaded, x.r.month, c.changedOn),
-	);
+	const after = changed.filter((x) => x.moved && !lateOnly(c, x.r.month));
 	const recalc =
 		after.length > 0
 			? effectToday(
@@ -173,7 +184,7 @@ async function revise(
 	for (const { r, next, moved } of changed) {
 		const checkpoint = checkpointOf(c, r.month);
 		const data: Prisma.MonthCloseUpdateInput = { checkpoint };
-		if (moved && inLateWindow(c.loaded, r.month, c.changedOn)) {
+		if (moved && lateOnly(c, r.month)) {
 			data.summary = next;
 			data.lateEntries = await lateCount(c, r);
 			out.late.push(r.month);
@@ -211,7 +222,10 @@ export async function closeAndRevise(
 		loaded,
 		state: computeBook(loaded.input),
 		now,
-		changedOn: isoDateIn(req.changedAt ?? now, loaded.row.timeZone),
+		changes: (req.changes ?? []).map((ch) => ({
+			fromMonth: ch.fromMonth,
+			day: isoDateIn(ch.createdAt, loaded.row.timeZone),
+		})),
 	};
 	const changed =
 		req.reviseFrom === null
