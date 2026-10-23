@@ -225,7 +225,6 @@ export function useTransactionColumns({
 				id: "title",
 				accessorKey: "title",
 				header: t("title"),
-				// The title takes the room left and truncates, so long titles never widen the table.
 				meta: { flex: true, className: "w-full max-w-0" },
 				cell: ({ row }) => (
 					<span className="flex min-w-0 items-center gap-2">
