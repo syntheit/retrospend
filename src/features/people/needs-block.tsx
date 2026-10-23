@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button";
 import { useToast } from "~/components/ui/toast";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
+import { firstName } from "./filter";
 import { ReviewSheet } from "./review-sheet";
 import type { NeedsItemDTO } from "./types";
 
@@ -22,13 +23,13 @@ function toItem(n: NeedsItemDTO): NeedsYouItemVM {
 		? {
 				kind: "confirmPayment",
 				id: n.id,
-				person: n.person.name,
+				person: firstName(n.person.name),
 				amount: n.amount,
 			}
 		: {
 				kind: "verify",
 				id: n.id,
-				person: n.person.name,
+				person: firstName(n.person.name),
 				title: n.title,
 				amount: n.amount,
 			};
@@ -61,7 +62,7 @@ export function NeedsBlock({ needs }: { needs: readonly NeedsItemDTO[] }) {
 			.mutateAsync({ paymentId: n.id })
 			.then(() => {
 				router.refresh();
-				toast.saved(t("confirmed", { name: n.person.name }), {
+				toast.saved(t("confirmed", { name: firstName(n.person.name) }), {
 					undo: async () => {
 						await unconfirm.mutateAsync({ paymentId: n.id });
 						router.refresh();
@@ -74,7 +75,12 @@ export function NeedsBlock({ needs }: { needs: readonly NeedsItemDTO[] }) {
 	};
 
 	return (
-		<Section className="mb-8" count={needs.length} title={t("title")}>
+		<Section
+			className="mb-8"
+			count={needs.length}
+			id="needs-you"
+			title={t("title")}
+		>
 			<NeedsYouList
 				items={shown.map(toItem)}
 				onAction={onAction}

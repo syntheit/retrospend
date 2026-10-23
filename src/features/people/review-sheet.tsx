@@ -11,6 +11,7 @@ import { Sheet } from "~/components/ui/sheet";
 import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
+import { firstName } from "./filter";
 import type { NeedsItemDTO } from "./types";
 
 type Verify = Extract<NeedsItemDTO, { kind: "verify" }>;
@@ -54,7 +55,10 @@ function ReviewBody({ item }: { item: Verify }) {
 	return (
 		<div className="flex flex-col gap-3 pb-2">
 			<p className="text-body text-fg">
-				{t("sentence", { name: item.person.name, title: item.title })}
+				{t("sentence", {
+					name: firstName(item.person.name),
+					title: item.title,
+				})}
 			</p>
 			<div className="border-line flex items-center justify-between border-t pt-3">
 				<span className="text-fg-2 text-body">{t("yourShare")}</span>

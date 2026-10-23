@@ -29,7 +29,7 @@ export function Scopes({
 	const t = useTranslations("personPage.scopes");
 	if (page.scopes.length < 2) return null;
 	return (
-		<Section title={t("title")}>
+		<Section id="person-projects" title={t("title")}>
 			<RowList label={t("title")}>
 				{page.scopes.map((s) => {
 					const key = scopeKey(s);

@@ -10,6 +10,9 @@ import type {
 	PersonSummary,
 } from "./types";
 
+/** How the page names someone in a sentence: "Lucía" for "Lucía Fernández". */
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
+
 /** Lowercase without accents, so "lucia" finds Lucía. */
 export const fold = (s: string) =>
 	s

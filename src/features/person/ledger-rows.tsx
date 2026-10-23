@@ -10,6 +10,7 @@ import { FaceStack } from "~/components/ui/avatar-face";
 import { CategoryTile } from "~/components/ui/category-badge";
 import { getPaymentMethodName } from "~/components/ui/payment-method-icon";
 import { StatusDot } from "~/components/ui/status-dot";
+import { firstName } from "~/features/people/filter";
 import type {
 	LedgerRowDTO,
 	PaymentDTO,
@@ -47,7 +48,9 @@ export function ExpenseRow({
 	const t = useTranslations("personPage.ledger");
 	const { short } = useRowDates();
 	const payer =
-		row.paidBy === "me" ? t("paidByYou") : t("paidBy", { name: row.payerName });
+		row.paidBy === "me"
+			? t("paidByYou")
+			: t("paidBy", { name: firstName(row.payerName) });
 	return (
 		<Row
 			data-row-kind="expense"

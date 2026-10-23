@@ -9,6 +9,7 @@ import { Empty } from "~/components/ui/empty-state";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
+import { firstName } from "~/features/people/filter";
 import type { PersonIdentityDTO } from "~/features/people/types";
 import { useSession } from "~/hooks/use-session";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -53,7 +54,7 @@ export function SettleSheet({
 }
 
 function SettleSheetFor({
-	person,
+	person: full,
 	scope,
 	open,
 	onClose,
@@ -63,6 +64,8 @@ function SettleSheetFor({
 	open: boolean;
 	onClose: () => void;
 }) {
+	// Sentences use the first name; the face keeps the full name (its color and initials).
+	const person = { ...full, name: firstName(full.name) };
 	const t = useTranslations("settleSheet");
 	const locale = useLocale();
 	const toast = useToast();
@@ -152,6 +155,7 @@ function SettleSheetFor({
 			) : (
 				<div className="flex flex-col gap-6 pb-4">
 					<SettleForm
+						face={full}
 						me={me}
 						methods={(methods.data?.compatible ?? []).map((m) => m.type)}
 						person={person}

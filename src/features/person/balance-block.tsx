@@ -22,6 +22,7 @@ function PartLine({ part, mixed }: { part: BalancePart; mixed: boolean }) {
 	const t = useTranslations("personPage.balance");
 	const typeName = useRateTypeName();
 	const owed = part.amount.minor > 0;
+	const rate = part.rate;
 	return (
 		<div className="border-line grid grid-cols-[48px_auto_1fr] items-baseline gap-3 border-t py-2">
 			<span className="text-fg-3 text-meta font-medium">
@@ -42,14 +43,14 @@ function PartLine({ part, mixed }: { part: BalancePart; mixed: boolean }) {
 				)}
 			</span>
 			<span className="text-fg-3 text-meta text-right">
-				{part.rate && part.home ? (
+				{rate && part.home ? (
 					<>
 						{t.rich("worth", {
 							amount: () => <Money sign="never" value={part.home} />,
 						})}{" "}
 						{t.rich("at", {
-							type: typeName(part.rate.type),
-							rate: () => <Money value={part.rate!.value} />,
+							type: typeName(rate.type),
+							rate: () => <Money value={rate.value} />,
 						})}
 					</>
 				) : part.home ? null : (
@@ -146,7 +147,7 @@ export function BalanceBlock({
 				(p.onRetrospend ? (
 					onRemind && (
 						<Button
-							className="mt-3 px-0"
+							className="text-accent-strong mt-3 px-0 max-md:hidden"
 							disabled={reminding}
 							kind="ghost"
 							onClick={onRemind}

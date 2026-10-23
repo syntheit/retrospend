@@ -7,6 +7,7 @@ import { useExpenseModal } from "~/components/expense-modal-provider";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { useToast } from "~/components/ui/toast";
+import { firstName } from "~/features/people/filter";
 import { NeedsBlock } from "~/features/people/needs-block";
 import type { PersonPage } from "~/features/people/types";
 import { SettleSheet } from "~/features/settle/settle-sheet";
@@ -37,11 +38,13 @@ export function PersonScreen({
 	const [settling, setSettling] = useState(false);
 	const remind = api.settlement.requestPayment.useMutation();
 	const p = page.person;
+	// Sentences name them by first name; the header keeps the full name.
+	const named = { ...page, person: { ...p, name: firstName(p.name) } };
 	const open = directionOf(page) !== null;
 	const onRemind = () =>
 		remind
 			.mutateAsync({ participantType: p.type, participantId: p.id })
-			.then(() => toast.saved(t("toast.reminded", { name: p.name })))
+			.then(() => toast.saved(t("toast.reminded", { name: named.person.name })))
 			.catch((e: unknown) =>
 				toast.failed(e instanceof Error ? e.message : t("toast.failed")),
 			);
@@ -58,22 +61,22 @@ export function PersonScreen({
 					action={
 						<Button kind="primary" onClick={() => openNewExpense()} size="sm">
 							<Plus aria-hidden="true" />
-							{t("addExpense", { name: p.name })}
+							{t("addExpense", { name: named.person.name })}
 						</Button>
 					}
 					icon={Receipt}
-					title={t("nothingYet", { name: p.name })}
+					title={t("nothingYet", { name: named.person.name })}
 				/>
 			) : (
 				<>
 					<div className="mb-8 grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-12 max-md:grid-cols-1 max-md:gap-6">
 						<BalanceBlock
 							onRemind={canRemind ? () => void onRemind() : undefined}
-							page={page}
+							page={named}
 							reminding={remind.isPending}
 						/>
 						<div className="max-md:hidden">
-							<LatestPayments page={page} payments={page.payments} />
+							<LatestPayments page={named} payments={page.payments} />
 						</div>
 					</div>
 					<div className="mb-6 grid grid-cols-3 gap-2 md:hidden">
@@ -107,14 +110,14 @@ export function PersonScreen({
 					<Ledger
 						filters={filters}
 						onFilters={setFilters}
-						page={page}
+						page={named}
 						today={today}
 					/>
 				</>
 			)}
 			<SettleSheet
 				onClose={() => setSettling(false)}
-				person={settling ? p : null}
+				person={settling ? named.person : null}
 				scope={settleScope(filters.scope)}
 			/>
 		</PageFrame>

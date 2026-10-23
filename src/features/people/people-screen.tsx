@@ -92,6 +92,8 @@ export function PeopleScreen({
 		setFilters((f) => ({ ...f, ...patch }));
 	const filtered = filters !== NO_PEOPLE_FILTERS;
 	const count = Object.values(shown).reduce((n, g) => n + g.length, 0);
+	// Phones keep the sort in the chips row (one row of controls, R7).
+	const sortMenu = <SortMenu onChange={setSort} value={sort} />;
 	const add = phone ? (
 		<Tip content={t("addPerson.title")}>
 			<Button
@@ -128,7 +130,7 @@ export function PeopleScreen({
 					/>
 					<NeedsBlock needs={view.needs} />
 					<Toolbar
-						end={<SortMenu onChange={setSort} value={sort} />}
+						end={phone ? undefined : sortMenu}
 						label={t("toolbar.label")}
 						search={
 							<Input
@@ -167,6 +169,7 @@ export function PeopleScreen({
 							>
 								{t("toolbar.notOnRetrospend")}
 							</FilterChip>
+							{phone && sortMenu}
 						</FilterChips>
 					</Toolbar>
 					{count === 0 && filtered ? (

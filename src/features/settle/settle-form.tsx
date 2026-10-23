@@ -18,19 +18,24 @@ import type { SettleState } from "./use-settle";
 const GENERIC = ["bank_transfer", "cash"];
 
 /** Who pays whom: both faces, an arrow, and the direction switch. */
+type FaceRef = { name: string; imageUrl: string | null };
+
 function Head({
 	s,
 	person,
+	face,
 	me,
 }: {
 	s: SettleState;
 	person: PersonIdentityDTO;
-	me: { name: string; imageUrl: string | null };
+	/** The person's face: the full name keeps its color and initials. */
+	face: FaceRef;
+	me: FaceRef;
 }) {
 	const t = useTranslations("settleSheet");
 	const c = s.ctx;
 	if (!c) return null;
-	const them = <Face imageUrl={person.imageUrl} name={person.name} size="md" />;
+	const them = <Face imageUrl={face.imageUrl} name={face.name} size="md" />;
 	const you = <Face imageUrl={me.imageUrl} name={me.name} size="md" />;
 	const incoming = c.direction === "incoming";
 	return (
@@ -58,6 +63,7 @@ function Amount({ s }: { s: SettleState }) {
 	const t = useTranslations("settleSheet");
 	const c = s.ctx;
 	if (!c) return null;
+	const all = c.everything;
 	return (
 		<div className="flex flex-col gap-2">
 			<Label htmlFor="settle-amount">{t("amount")}</Label>
@@ -69,14 +75,14 @@ function Amount({ s }: { s: SettleState }) {
 				onCurrencyChange={s.setCurrency}
 				value={s.text}
 			/>
-			{(c.everything || c.parts.length > 0) && (
+			{(all || c.parts.length > 0) && (
 				<FilterChips>
-					{c.everything && (
+					{all && (
 						<FilterChip
-							onClick={() => s.fill(c.everything!, true)}
+							onClick={() => s.fill(all, true)}
 							selected={s.everything}
 						>
-							{t("everything")} <Money value={c.everything} />
+							{t("everything")} <Money value={all} />
 						</FilterChip>
 					)}
 					{c.parts.map((p) => (
@@ -152,17 +158,19 @@ function Details({ s, methods }: { s: SettleState; methods: string[] }) {
 export function SettleForm({
 	s,
 	person,
+	face,
 	me,
 	methods,
 }: {
 	s: SettleState;
 	person: PersonIdentityDTO;
-	me: { name: string; imageUrl: string | null };
+	face: FaceRef;
+	me: FaceRef;
 	methods: string[];
 }) {
 	return (
 		<div className="flex flex-col gap-4">
-			<Head me={me} person={person} s={s} />
+			<Head face={face} me={me} person={person} s={s} />
 			<OwesLine person={person} s={s} />
 			<Amount s={s} />
 			<Details methods={methods} s={s} />

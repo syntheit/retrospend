@@ -25,6 +25,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useToast } from "~/components/ui/toast";
 import { Tip } from "~/components/ui/tooltip";
+import { firstName } from "~/features/people/filter";
 import type { PersonPage } from "~/features/people/types";
 import { BackButton, HeaderSub, PhoneSub } from "~/features/wealth/page-frame";
 import { downloadCsv, downloadPdf } from "~/lib/format";
@@ -82,7 +83,7 @@ export function PersonHeader({
 			<DropdownMenuContent align="end">
 				<DropdownMenuItem onSelect={() => openNewExpense()}>
 					<Plus aria-hidden="true" />
-					{t("addExpense", { name: p.name })}
+					{t("addExpense", { name: firstName(p.name) })}
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem

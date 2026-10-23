@@ -62,7 +62,7 @@ export function Ledger({
 		</FilterChip>
 	);
 	return (
-		<Section title={t("title")}>
+		<Section id="between-you" title={t("title")}>
 			<Toolbar
 				label={t("filters")}
 				search={
