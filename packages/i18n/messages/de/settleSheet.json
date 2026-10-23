@@ -50,14 +50,12 @@
 		"final": "Endgültig: {name} nutzt Retrospend nicht."
 	},
 	"changes": {
-		"title": "Was sich ändert",
-		"doneTitle": "Was sich geändert hat",
 		"balance": "Dein Saldo mit {name} ({currency})",
 		"owedToYou": "Dir geschuldet, alle Personen",
 		"youOwe": "Du schuldest, alle Personen",
 		"yourBalance": "dein Saldo mit {name}",
-		"nothingElse": "Geprüft und unverändert: {list}.",
-		"unavailable": "Nicht prüfbar: {list}."
+		"owedToYouInline": "was dir geschuldet wird",
+		"youOweInline": "was du schuldest"
 	},
 	"toast": {
 		"confirmed": "Zahlung von {name} bestätigt. Nichts doppelt gezählt",
@@ -68,5 +66,6 @@
 		"title": "Zahlung erfasst",
 		"pending": "Ausstehend, bis {name} bestätigt. Dein Saldo zeigt es schon.",
 		"final": "Endgültig."
-	}
+	},
+	"amountShortcuts": "Schnellbeträge"
 }

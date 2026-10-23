@@ -3,11 +3,11 @@
 import { CloudOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
-import { PageFrame } from "~/features/wealth/page-frame";
 
 /** Loading (R14): the rows in place. */
 export function CurrenciesSkeleton() {

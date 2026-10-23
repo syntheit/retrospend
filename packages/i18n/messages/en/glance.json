@@ -6,7 +6,9 @@
 		"toAssign": "Not planned yet",
 		"owedToYou": "Owed to you",
 		"youOwe": "You owe",
-		"netWorth": "Net worth"
+		"netWorth": "Net worth",
+		"moneyIn": "Money in",
+		"dollarToday": "Dollar today, {type}"
 	},
 	"line": {
 		"perDay": "<amount></amount> a day left for {days, plural, one {# day} other {# days}}",
@@ -14,6 +16,8 @@
 		"over": "<amount></amount> over plan this month",
 		"noBudget": "No budget set for this month",
 		"unavailable": "Budget not available: no rate for {currencies} yet",
-		"unavailableRate": "Budget not available: a rate is missing"
+		"unavailableRate": "Budget not available: a rate is missing",
+		"paceFaster": "Faster than {month} by this day",
+		"paceSlower": "At {month}’s pace or slower"
 	}
 }

@@ -3,6 +3,7 @@
 import { Plus, Repeat, Search, SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Section } from "~/components/layout/section";
 import { Toolbar } from "~/components/layout/toolbar";
@@ -18,7 +19,6 @@ import { SkeletonRows } from "~/components/ui/skeleton";
 import { useIsMobile } from "~/hooks/use-mobile";
 import type { RecurringView } from "~/server/services/recurring-view.service";
 import { ActivityTabs } from "../activity/activity-tabs";
-import { PageFrame } from "../activity/page-frame";
 import { toTransactionVM } from "../activity/to-vm";
 import { ConfirmSheet } from "./confirm-sheet";
 import { groupsOf, matches, type RecurringChips } from "./groups";
@@ -173,7 +173,7 @@ export function RecurringPage() {
 						</div>
 					}
 				>
-					<FilterChips>
+					<FilterChips label={t("toolbar.label")}>
 						{chip("autoPayOn", t("toolbar.autoPayOn"))}
 						{chip("autoPayOff", t("toolbar.autoPayOff"))}
 						{chip("foreign", t("toolbar.foreign"))}
@@ -222,7 +222,7 @@ export function RecurringPage() {
 		);
 	}
 	return (
-		<PageFrame data-page="recurring" data-ui="v2">
+		<PageFrame label="recurring">
 			<PageHeader
 				primary={headerAdd}
 				sub={data ? t("sub", { out, income }) : undefined}

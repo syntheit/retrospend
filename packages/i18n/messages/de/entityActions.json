@@ -227,5 +227,73 @@
 			"confirmBody": "Die Zahlung wird als nicht erhalten markiert und dein Saldo bleibt, wie er war.",
 			"confirmButton": "Nicht erhalten"
 		}
+	},
+	"needsYou": {
+		"open": {
+			"label": "Öffnen"
+		},
+		"later": {
+			"label": "Später"
+		}
+	},
+	"budget": {
+		"fund": {
+			"label": "Auffüllen"
+		},
+		"cover": {
+			"label": "Ausgleichen"
+		},
+		"takeBack": {
+			"label": "Zurückholen"
+		},
+		"usePlan": {
+			"label": "Meinen Plan nutzen"
+		},
+		"assign": {
+			"label": "Zuweisen"
+		},
+		"setRate": {
+			"label": "Kurs festlegen"
+		},
+		"confirmStartingMoney": {
+			"label": "Bestätigen"
+		},
+		"recordPayment": {
+			"label": "Zahlung erfassen"
+		},
+		"pickEnvelope": {
+			"label": "Umschlag wählen"
+		},
+		"openSummary": {
+			"label": "Übersicht öffnen"
+		},
+		"seeChanges": {
+			"label": "Änderungen ansehen"
+		},
+		"reviewHidden": {
+			"label": "Prüfen"
+		},
+		"reconcile": {
+			"label": "Abgleichen"
+		}
+	},
+	"import": {
+		"review": {
+			"label": "Prüfen"
+		}
+	},
+	"setup": {
+		"addExpense": {
+			"label": "Ausgabe erfassen"
+		},
+		"chooseCurrency": {
+			"label": "Wählen"
+		},
+		"resendEmail": {
+			"label": "Erneut senden"
+		},
+		"import": {
+			"label": "Importieren"
+		}
 	}
 }

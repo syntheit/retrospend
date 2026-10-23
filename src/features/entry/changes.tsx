@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
+import { ChangeValue, SheetChanges } from "~/components/ui/sheet-changes";
 import type { MoneyDTO } from "./shared-ui";
 
 export interface FigureChange {
@@ -82,95 +83,72 @@ export function ChangesBlock({
 		const key = `figuresInline.${id.replaceAll(".", "_")}`;
 		return t.has(key) ? t(key as "figuresInline.spent") : name(id);
 	};
-	const body = () => {
-		if (cannot)
-			return (
-				<p className="text-fg-3 text-small">
-					{t("cannot", { reason: cannot })}
-				</p>
-			);
-		if (!diff)
-			return (
-				<p className="text-fg-3 text-small">{loading ? t("loading") : empty}</p>
-			);
-		const changes = diff.changes
-			.filter((c) => !HIDDEN.test(c.id) && !hide.includes(c.id))
-			.slice()
-			.sort((a, b) => rank(a.id) - rank(b.id));
-		const moved = new Set(changes.map((c) => c.id));
-		const stays = [
-			...byDesign.filter(
-				(id) =>
-					!(
-						id === "accounts" &&
-						(moved.has("accounts.balance") || moved.has("netWorth"))
-					),
-			),
-			...diff.unchanged.map((u) =>
-				u.id === "accounts.balance" ? "accounts" : u.id,
-			),
-		].filter((id) => !HIDDEN.test(id) && !moved.has(id) && !hide.includes(id));
-		const unknown = diff.unavailable.filter(
-			(u) =>
-				!HIDDEN.test(u.id) &&
-				!(BUDGET.test(u.id) && u.before == null && u.after == null),
-		);
-		// Names inside a sentence come from their own keys: a language decides its case (German nouns).
-		const list = [...new Set(stays)].map(inline);
-		const anyLine = changes.length > 0 || !!rows;
-		return (
-			<>
-				{rows}
-				{changes.map((c) => (
-					<div
-						className="flex min-h-6 items-baseline justify-between gap-3 text-small"
-						key={`${c.id}-${c.currency}`}
-					>
-						<span className="text-fg-2">{name(c.id)}</span>
-						<span className="flex items-baseline gap-2 text-right">
+	const changes = diff
+		? diff.changes
+				.filter((c) => !HIDDEN.test(c.id) && !hide.includes(c.id))
+				.slice()
+				.sort((a, b) => rank(a.id) - rank(b.id))
+		: [];
+	const moved = new Set(changes.map((c) => c.id));
+	const stays = diff
+		? [
+				...byDesign.filter(
+					(id) =>
+						!(
+							id === "accounts" &&
+							(moved.has("accounts.balance") || moved.has("netWorth"))
+						),
+				),
+				...diff.unchanged.map((u) =>
+					u.id === "accounts.balance" ? "accounts" : u.id,
+				),
+			].filter((id) => !HIDDEN.test(id) && !moved.has(id) && !hide.includes(id))
+		: [];
+	const unknown = diff
+		? diff.unavailable.filter(
+				(u) =>
+					!HIDDEN.test(u.id) &&
+					!(BUDGET.test(u.id) && u.before == null && u.after == null),
+			)
+		: [];
+	return (
+		<SheetChanges
+			lines={changes.map((c) => ({
+				key: `${c.id}-${c.currency}`,
+				label: name(c.id),
+				value: (
+					<ChangeValue
+						delta={
 							<Money
 								figure={`preview.${c.id}.delta`}
 								sign="exceptZero"
 								value={c.delta}
 							/>
-							{c.after ? (
-								<span className="text-fg-3">
-									{"→ "}
-									<Money figure={`preview.${c.id}.after`} value={c.after} />
-								</span>
-							) : null}
-						</span>
-					</div>
-				))}
-				{list.length > 0 ? (
-					<p className="text-fg-3 text-small">
-						{!anyLine
-							? t("noneChange", { list: list.join(", ") })
-							: list.length === 1
-								? t("nothingElseOne", { item: list[0] ?? "" })
-								: t("nothingElse", { list: list.join(", ") })}
-					</p>
-				) : null}
-				{unknown.length > 0 ? (
-					<p className="text-fg-3 text-meta">
-						{t("unavailable", {
-							list: unknown.map((u) => inline(u.id)).join(", "),
-						})}
-					</p>
-				) : null}
-			</>
-		);
-	};
-	return (
-		<section
-			aria-live="polite"
-			className="flex flex-col gap-1 border-line border-t pt-3"
-			data-testid="entry-changes"
+						}
+						to={
+							c.after ? (
+								<Money figure={`preview.${c.id}.after`} value={c.after} />
+							) : undefined
+						}
+					/>
+				),
+			}))}
+			status={
+				cannot
+					? t("cannot", { reason: cannot })
+					: !diff
+						? loading
+							? t("loading")
+							: empty
+						: undefined
+			}
+			// Names inside a sentence come from their own keys: a language decides its case (German nouns).
+			stays={[...new Set(stays)].map(inline)}
+			testId="entry-changes"
+			title={edit ? t("titleEdit") : undefined}
+			unavailable={unknown.map((u) => inline(u.id))}
 		>
-			<h3 className="font-semibold text-body text-fg">
-				{edit ? t("titleEdit") : t("title")}
-			</h3>
-			{body()}
-		</section>
+			{rows}
+		</SheetChanges>
 	);
 }

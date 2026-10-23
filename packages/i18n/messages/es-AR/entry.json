@@ -92,7 +92,8 @@
 			"body": "Cambia los saldos de otras personas.",
 			"confirm": "Eliminar gasto"
 		},
-		"projectAria": "Proyecto, {project}"
+		"projectAria": "Proyecto, {project}",
+		"addShort": "Agregar"
 	},
 	"rate": {
 		"default": "Tu cotización predeterminada para {currency}",
@@ -119,15 +120,11 @@
 		"youSpent": "Gastaste"
 	},
 	"changes": {
-		"title": "Qué cambia",
 		"titleEdit": "Qué cambia con esta edición",
 		"empty": "Escribí un monto y elegí una categoría para ver qué cambia.",
 		"emptyAmount": "Escribí un monto para ver qué cambia.",
 		"loading": "Revisando qué cambia",
 		"cannot": "Todavía no se puede guardar: {reason}",
-		"nothingElse": "Nada más cambia: {list} quedan como están.",
-		"nothingElseOne": "Nada más cambia: {item} queda como está.",
-		"unavailable": "No se pudo revisar {list}.",
 		"figures": {
 			"spent": "Tus gastos",
 			"owed_owedToYou": "Te deben",
@@ -153,8 +150,7 @@
 			"budget_leftToSpend": "lo disponible para gastar",
 			"project_total": "el total del proyecto",
 			"envelope_left": "el sobre"
-		},
-		"noneChange": "Sin cambios en {list}."
+		}
 	},
 	"income": {
 		"title": "Agregar ingreso",

@@ -54,9 +54,28 @@ function ready(left: Partial<Ready["leftToSpend"]>, notPlanned = 85000000) {
 }
 
 describe("toGlanceVM", () => {
-	it("no book: the no-budget line and the rows with a value, zero left out", () => {
+	it("no book: the pace in words, money in, and no pace yet says No budget", () => {
+		expect(toGlanceVM(BASE).line).toEqual({
+			kind: "pace",
+			faster: true,
+			lastMonth: "2026-09-01",
+		});
+		const noPace = { ...BASE, pace: { ...BASE.pace, fasterThanLast: null } };
+		expect(toGlanceVM(noPace).line).toEqual({ kind: "noBudget" });
+		const track = toGlanceVM({
+			...BASE,
+			moneyIn: fig("glance.moneyIn", 50000000),
+		});
+		expect(track.rows.at(-1)).toEqual({
+			id: "moneyIn",
+			amount: ars(50000000),
+			href: "/activity?kind=in",
+			figure: "glance.moneyIn",
+		});
+	});
+
+	it("no book: the rows with a value, zero left out", () => {
 		const vm = toGlanceVM(BASE);
-		expect(vm.line).toEqual({ kind: "noBudget" });
 		expect(vm.spent).toEqual(ars(270660200));
 		expect(vm.spentFigure).toBe("glance.spent");
 		expect(vm.month).toBe("2026-10-01");

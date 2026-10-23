@@ -3,13 +3,13 @@
 import { CloudOff, FolderPlus, SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Toolbar } from "~/components/layout/toolbar";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Skeleton, SkeletonRows } from "~/components/ui/skeleton";
-import { PageFrame } from "~/features/wealth/page-frame";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 import { NewProjectSheet } from "./new-project-sheet";

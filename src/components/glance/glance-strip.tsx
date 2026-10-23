@@ -18,13 +18,30 @@ export type GlanceLine =
 	| { kind: "over"; over: MoneyValue }
 	| { kind: "noBudget" }
 	/**
+	 * No budget: the pace in words against last month by the same day, from
+	 * the server's verdict (`glance.pace.fasterThanLast`). `lastMonth` is an
+	 * ISO date in that month.
+	 */
+	| { kind: "pace"; faster: boolean; lastMonth: string }
+	/**
 	 * A budget exists but rates are missing, so it cannot be worked out (R14).
 	 * Empty currencies: another part of the page names them already.
 	 */
 	| { kind: "unavailable"; currencies: string[] };
 
 export type GlanceRow = {
-	id: "toAssign" | "owedToYou" | "youOwe" | "netWorth";
+	/**
+	 * moneyIn: Just track's money in this month. dollarToday: one rate of the
+	 * dollar in the home currency (amount is the price of USD 1), named by
+	 * `rateLabel` ("Blue"); it opens Currencies.
+	 */
+	id:
+		| "toAssign"
+		| "owedToYou"
+		| "youOwe"
+		| "netWorth"
+		| "moneyIn"
+		| "dollarToday";
 	/** Null when a rate is missing: the row stays and says "No rate yet" (R14). */
 	amount: MoneyValue | null;
 	href: string;
@@ -32,6 +49,8 @@ export type GlanceRow = {
 	figure?: string;
 	/** The people behind the amount (Owed to you, You owe), as faces (rule 8). */
 	faces?: FacePerson[];
+	/** dollarToday: the rate type's name, already in the viewer's words. */
+	rateLabel?: string;
 };
 
 export type GlanceVM = {
@@ -51,11 +70,13 @@ export type GlanceVM = {
 const TONE: Partial<Record<GlanceRow["id"], string>> = {
 	toAssign: "text-attention-text",
 	owedToYou: "text-positive",
+	moneyIn: "text-positive",
 };
 
 /** The glance line under the hero, never fixed copy. */
 function useLine() {
 	const t = useTranslations("glance.line");
+	const { month } = useRowDates();
 	return (line: GlanceLine) => {
 		switch (line.kind) {
 			case "perDay":
@@ -71,6 +92,10 @@ function useLine() {
 				return t.rich("over", { amount: () => <Money value={line.over} /> });
 			case "noBudget":
 				return t("noBudget");
+			case "pace":
+				return t(line.faster ? "paceFaster" : "paceSlower", {
+					month: month(line.lastMonth),
+				});
 			case "unavailable":
 				return line.currencies.length
 					? t("unavailable", { currencies: line.currencies.join(", ") })
@@ -103,6 +128,10 @@ export function GlanceStrip({
 	const t = useTranslations("glance");
 	const { month } = useRowDates();
 	const line = useLine()(glance.line);
+	const rowLabel = (r: GlanceRow) =>
+		r.id === "dollarToday"
+			? t("row.dollarToday", { type: r.rateLabel ?? "" })
+			: t(`row.${r.id}`);
 	const name = month(glance.month);
 	const lead = (
 		<div>
@@ -138,7 +167,7 @@ export function GlanceStrip({
 							key={r.id}
 						>
 							<span className="text-fg-2 text-small truncate">
-								{t(`row.${r.id}`)}
+								{rowLabel(r)}
 							</span>
 							<Money
 								className="text-body @xl:text-section font-semibold"
@@ -195,7 +224,7 @@ export function GlanceStrip({
 								className="min-h-row text-fg-2 focus-visible:outline-brand flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2"
 								href={r.href}
 							>
-								<span className="flex-1">{t(`row.${r.id}`)}</span>
+								<span className="flex-1">{rowLabel(r)}</span>
 								{r.faces && r.faces.length > 0 && (
 									<FaceStack max={4} people={r.faces} size="xs" />
 								)}

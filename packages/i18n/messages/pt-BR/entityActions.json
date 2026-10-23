@@ -227,5 +227,73 @@
 			"confirmBody": "O pagamento fica como não recebido e seu saldo continua igual.",
 			"confirmButton": "Não recebi"
 		}
+	},
+	"needsYou": {
+		"open": {
+			"label": "Abrir"
+		},
+		"later": {
+			"label": "Mais tarde"
+		}
+	},
+	"budget": {
+		"fund": {
+			"label": "Cobrir"
+		},
+		"cover": {
+			"label": "Cobrir"
+		},
+		"takeBack": {
+			"label": "Recuperar"
+		},
+		"usePlan": {
+			"label": "Usar meu plano"
+		},
+		"assign": {
+			"label": "Atribuir"
+		},
+		"setRate": {
+			"label": "Definir cotação"
+		},
+		"confirmStartingMoney": {
+			"label": "Confirmar"
+		},
+		"recordPayment": {
+			"label": "Registrar pagamento"
+		},
+		"pickEnvelope": {
+			"label": "Escolher um envelope"
+		},
+		"openSummary": {
+			"label": "Abrir resumo"
+		},
+		"seeChanges": {
+			"label": "Ver mudanças"
+		},
+		"reviewHidden": {
+			"label": "Revisar"
+		},
+		"reconcile": {
+			"label": "Conciliar"
+		}
+	},
+	"import": {
+		"review": {
+			"label": "Revisar"
+		}
+	},
+	"setup": {
+		"addExpense": {
+			"label": "Adicionar despesa"
+		},
+		"chooseCurrency": {
+			"label": "Escolher"
+		},
+		"resendEmail": {
+			"label": "Reenviar"
+		},
+		"import": {
+			"label": "Importar"
+		}
 	}
 }

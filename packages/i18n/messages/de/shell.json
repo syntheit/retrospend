@@ -39,7 +39,7 @@
 		"trigger": "Suche und Befehle",
 		"title": "Suche und Befehle",
 		"description": "Zu einer Seite gehen oder einen Befehl ausführen",
-		"placeholder": "Seiten und Befehle suchen",
+		"placeholder": "Suchen oder Seite öffnen",
 		"noResults": "Keine Ergebnisse",
 		"recent": "Zuletzt",
 		"project": "Projekt",
@@ -49,7 +49,20 @@
 		"addRecurring": "Wiederkehrende Ausgabe hinzufügen",
 		"manageCategories": "Kategorien verwalten",
 		"move": "Bewegen",
-		"openHint": "Öffnen"
+		"openHint": "Öffnen",
+		"groups": {
+			"people": "Personen",
+			"projects": "Projekte",
+			"categories": "Kategorien",
+			"expenses": "Ausgaben",
+			"none": "Keine Treffer",
+			"searchActivity": "„{q}“ in Aktivität suchen",
+			"allExpenses": "Alle passenden Ausgaben",
+			"activity": "Aktivität"
+		},
+		"archived": "Archiviert",
+		"suggestions": "Vorschläge",
+		"confirmRecurring": "{title} bestätigen"
 	},
 	"settingsSections": {
 		"profile": "Profil",
@@ -107,11 +120,5 @@
 		"edit": "Ausgewählte Zeile bearbeiten",
 		"delete": "Ausgewählte Zeilen löschen",
 		"clear": "Auswahl aufheben"
-	},
-	"verifyEmail": {
-		"message": "Bestätige deine E-Mail-Adresse, um dein Konto zu schützen.",
-		"resend": "E-Mail erneut senden",
-		"sent": "Bestätigungs-E-Mail gesendet",
-		"failed": "E-Mail konnte nicht gesendet werden"
 	}
 }
