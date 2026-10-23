@@ -36,6 +36,13 @@ import { needsYou, needsYouIn } from "./index";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 const DAY = 86_400_000;
+/**
+ * Splits fall today (noon UTC, the budget's UTC zone): inside the budget's
+ * first month whatever the run date, never before its start.
+ */
+const SPLIT_DAY = new Date(
+	`${new Date().toISOString().slice(0, 10)}T12:00:00.000Z`,
+);
 const ref = (id: string): ParticipantRef => ({
 	participantType: "user",
 	participantId: id,
@@ -79,7 +86,7 @@ function shared(
 			description: title,
 			amount: share,
 			currency: "USD",
-			date: new Date("2026-10-08T12:00:00.000Z"),
+			date: SPLIT_DAY,
 			paidByType: "user",
 			paidById: payer,
 			createdByType: "user",
@@ -223,7 +230,7 @@ describe("needsYou on Postgres", () => {
 			people: [key(martin.user.id)],
 			amount: usd(1_500),
 			title: "Asado",
-			date: "2026-10-08",
+			date: SPLIT_DAY.toISOString().slice(0, 10),
 		});
 		expect(by["split.rejected"]).toMatchObject({
 			people: [key(martin.user.id)],
