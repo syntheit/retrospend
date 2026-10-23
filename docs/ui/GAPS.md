@@ -170,6 +170,12 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Currencies: custom rate for a missing currency | A mutation to save a typed rate | The missing-rate row and notice name the accounts left out; no Save rate field | 2D |
 | Currencies: USD as a favorite | Favorites are exchange rate rows; USD is the table's base and has none | The USD star is disabled with a tip | 2A.2 (rate prefs) |
 | Currencies: prices under one minor unit | A rate formatter (significant digits, or the price of 1,000 units) | With a USD home, 1 ARS reads 0.00 | domain |
+| Budget side of money moves (`transfers/budget-side.ts`) | `WealthTransfer` (M8): a transfer that crosses the budget line, and a Move in, have no To assign or envelope to move yet | `recordBudgetSide` writes nothing and says `no_envelope_budget`; `transfer.create` and `income.moveIn` still return the effect they computed (leaves, enters, counted and the amount), so previews can show it. Income kept in Wealth stays out of To assign (`budgetMoneyInWhere`), so a Move in counts it only once this lands | 2B P4 |
+| Income's booked value (`income/add.mutation.ts`) | The stored home rate on the row (M2, 2A.2) and a custom rate | The booked value is read from the rate table at the chosen rate type and stored on the income's leg; an income with no account stores none. `income.add` takes rate types only, no typed rate | 2A.2, then 2D |
+| Net worth change, Owed part (`accounts/net-worth-change.ts`) | A history of balances with people | `netWorthChange.*` holds Owed to you and You owe at today's value (as the Wealth chart does), so a payment or a split moves no part; `netWorth` itself includes them today | 2C |
+| Paying someone back from an account | `payment.record` takes no account | Payments move no account; net worth moves by Owed only | 2C |
+| Today's Wealth dashboard (`wealth.getDashboard`) | The page reading the figures | It keeps its own float valuation; it adds legs and dated rate type switches to its history, but a USD account's rate type (D3) values the home side only in the figures | S4 Wealth |
+| Editing an income or a transfer fee from Activity (`expense.updateExpense`) | An income edit mutation that rewrites the row's leg | Amount, currency and date edits on a row with a leg are refused (delete it and add it again); title, category and notes stay editable | 2D follow-up |
 
 ## 8. Behavior gaps found by the e2e suite
 
@@ -186,3 +192,10 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 - **Envelope valuation ignores the booked value (I20, 2B).** `src/server/services/envelope/valuation.ts` reads `ownRate: { to, perUnit }` but its loader does not fill it from `expense.homeCurrency` and `expense.homeRate`, and nothing reads `homeAmount`. Until it does, budget books value every row at the book rate type. Fix: when `homeCurrency` is the book currency, use `homeAmount` as the row's value (it is already rounded to that currency's minor units).
 - **Rate type picker and default rate type have no endpoint yet (2A.2).** The service exists (`src/server/services/rate-types.ts`: `rateOptions`, `defaultRateType`, `setDefaultRateType`) and `createExpense`/`updateExpense` accept `rateType` and `customRate`, but the expense router's input schema and the settings router do not pass them. The Add sheet (S4) and Settings need them wired.
 - **Card rate for ARS.** ADD-EXPENSE-R2 shows Official, Blue, Card and MEP; the rate source has official, blue, mep and crypto for ARS, so the strip offers what the table has and no Card. Owner question.
+
+## 10. Push delivery (M12)
+
+Registration (`src/server/services/push-device.service.ts`) is built; the sender is not. What the sender must do:
+
+- **Resolve and pin the endpoint's IP.** Registration refuses IP literals, `localhost` and `*.localhost` (unless listed in `PUSH_ENDPOINT_ALLOW_HOSTS`), but a public name can resolve to a private address, or change between check and send. The sender resolves the host once, refuses loopback, private (RFC 1918, `fc00::/7`), link-local (`169.254.0.0/16`, `fe80::/10`), CGNAT, unspecified and multicast addresses (and IPv4-mapped forms of them), connects to the address it checked, and never follows redirects. Allowlisted hosts skip the range check only.
+- **Skip devices whose credential lapsed.** A row goes when its session or API key is deleted (sign out, session revoke, admin deactivation, token revoke) or its key is disabled. An expired session or key keeps its row until the session cleanup removes it, so the sender joins `session` or `apikey` and skips rows whose credential has expired, and skips users who are not active.

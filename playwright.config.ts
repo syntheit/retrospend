@@ -35,6 +35,33 @@ const chromium = {
 		: {},
 };
 
+// Visual regression (e2e/visual). Only defined when E2E_VISUAL=1, so the
+// plain e2e run never compares screenshots taken by another renderer: the
+// baselines come from the pinned Playwright image, which the browser joins
+// through PW_TEST_CONNECT_WS_ENDPOINT. Run it with e2e/visual/run.sh.
+const visual = {
+	name: "visual",
+	testDir: "./e2e/visual",
+	testMatch: "**/*.spec.ts",
+	// A retry would hide a screenshot that differs on one run in two.
+	retries: 0,
+	snapshotPathTemplate: "{testDir}/__screenshots__/{arg}{ext}",
+	use: {
+		...devices["Desktop Chrome"],
+		locale: "en-US",
+		timezoneId: SEED_TIME_ZONE,
+		reducedMotion: "reduce" as const,
+	},
+	expect: {
+		toHaveScreenshot: {
+			animations: "disabled" as const,
+			caret: "hide" as const,
+			scale: "css" as const,
+			stylePath: "./e2e/visual/screenshot.css",
+		},
+	},
+};
+
 export default defineConfig({
 	testDir: "./e2e",
 	timeout: 30_000,
@@ -101,6 +128,7 @@ export default defineConfig({
 			use: chromium,
 			dependencies: ["ui-v2-on"],
 		},
+		...(process.env.E2E_VISUAL === "1" ? [visual] : []),
 	],
 	globalSetup: "./e2e/global-setup.ts",
 	// An external E2E_BASE_URL means the app is already running elsewhere.

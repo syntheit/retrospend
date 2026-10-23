@@ -20,6 +20,7 @@ import type { FeatureFlagMode } from "~prisma";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
 import { RATE_LIMITS } from "../rate-limit";
+import { v1Router } from "../router";
 
 // better-auth's database hooks read request headers through next/headers,
 // which only exists inside a Next request.
@@ -85,19 +86,8 @@ const t = implement(testContract)
 	.use(v1Middleware);
 const probeHandler = createV1Handler(
 	t.router({
-		figures: {
-			read: t.figures.read.handler(() => {
-				throw new Error("unused");
-			}),
-		},
-		platform: {
-			serverInfo: t.platform.serverInfo.handler(() => {
-				throw new Error("unused");
-			}),
-			me: t.platform.me.handler(() => {
-				throw new Error("unused");
-			}),
-		},
+		// The real groups; the probe routes below are what these tests call.
+		...v1Router,
 		probe: {
 			list: t.probe.list.handler(async ({ context }) => {
 				const rows = await signedIn(context).db.category.findMany({

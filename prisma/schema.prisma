@@ -30,13 +30,18 @@ model User {
   autoAcceptSplits            Boolean                       @default(true)
   fiscalMonthStartDay         Int                           @default(1)
   defaultExpenseDateBehavior  DefaultExpenseDateBehavior    @default(TODAY)
+  /// {currency: accountId}: the account money sheets prefill (MONEY-MOVES §2.1).
+  defaultAccounts             Json?
   // Default rate type per home currency, {"ARS": "blue"} (M2, N73).
   // Empty uses the built-in default (~/lib/rate-selection).
   defaultRateTypes            Json                          @default("{}")
-  accounts               Account[]
+  accounts                Account[]
   assetAccounts           AssetAccount[]
   assetSnapshots          AssetSnapshot[]
   assetHistories          AssetHistory[]
+  accountLegs             AccountLeg[]
+  transfers               Transfer[]
+  assetRateTypes          AssetRateType[]
   categories              Category[]
   favoriteExchangeRates   ExchangeRateFavorite[]
   expenses                Expense[]
@@ -86,6 +91,7 @@ model User {
   apiKeys                 Apikey[]
   deviceCodes             DeviceCode[]
   idempotencyKeys         IdempotencyKey[]
+  pushDevices             PushDevice[]
 
   @@map("user")
 }
@@ -104,6 +110,7 @@ model Session {
   // device authorization. Null on web and mobile sign-in sessions.
   scopes    String?  @db.VarChar(255)
   clientId  String?  @db.VarChar(64)
+  pushDevices PushDevice[]
 
   @@index([expiresAt])
   @@index([userId])
@@ -201,6 +208,14 @@ model Expense {
   inType       InType?
   amortizeMode AmortizeMode     @default(INSTALLMENTS)
 
+  // M4 (MONEY-MOVES §2.2): income kept in Wealth stays out of To assign; its
+  // account comes from its AccountLeg. movedInAt: counted in the budget by a
+  // Move in (count only, D4).
+  keepInWealth Boolean   @default(false)
+  movedInAt    DateTime?
+  /// The Use my plan batch a recurring confirm assigned; its undo takes it back.
+  planBatchId  String?
+
   // Rate type per entry (M2, N73). rateType names the conversion: an
   // exchange_rate type or "custom". The home leg is booked once, at save, so
   // it never drifts: homeRate is units of homeCurrency per 1 unit of
@@ -213,8 +228,10 @@ model Expense {
   homeRate     Decimal? @db.Decimal(28, 12)
   homeAmount   Decimal? @db.Decimal(19, 8)
 
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountLegs AccountLeg[]
+  feeOf       Transfer?    @relation("TransferFee")
   // Envelope budget (M6): the starting balance row of a book, and rule movements it fed.
   startingBalanceOf BudgetBook?      @relation("BookStartingBalance")
   budgetMovements   BudgetMovement[] @relation("MovementSourceExpense")
@@ -618,9 +635,15 @@ model AssetAccount {
   exchangeRate     Decimal?        @db.Decimal(18, 6)
   exchangeRateType String?         @db.VarChar(32)
   isLiquid         Boolean         @default(false)
-  interestRate     Float?
-  minimumPayment   Decimal?        @db.Decimal(10, 2)
+  interestRate     Decimal?        @db.Decimal(9, 6)
+  minimumPayment   Decimal?        @db.Decimal(19, 8)
   dueDate          Int?
+  /// "Part of my budget" (MONEY-MOVES §2.1). Null = the default for its kind
+  /// and currency (accounts/places.ts defaultInBudget).
+  inBudget         Boolean?
+  /// Units already counted in the budget by a Move in (D4). A later move out
+  /// of the account uses them first, so they never enter the budget twice.
+  countedUnits     Decimal         @default(0) @db.Decimal(19, 8)
   /// Set when the account is closed. A closed account counts 0 from this day
   /// on but keeps its snapshots, so past net worth stays as it was.
   closedAt         DateTime?
@@ -629,6 +652,10 @@ model AssetAccount {
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots        AssetSnapshot[]
   history          AssetHistory[]
+  legs             AccountLeg[]
+  rateTypes        AssetRateType[]
+  transfersOut     Transfer[]      @relation("TransferFrom")
+  transfersIn      Transfer[]      @relation("TransferTo")
   liabilityEnvelopes Envelope[]  @relation("EnvelopeLiability")
   goalEnvelopes      Envelope[]  @relation("EnvelopeWealthAccount")
 
@@ -650,6 +677,9 @@ model AssetSnapshot {
   currency         String?
   type             AssetType?
   exchangeRateType String?      @db.VarChar(32)
+  /// When this balance was last written: legs of the same day created after
+  /// it move the balance on top of it, earlier ones are inside it.
+  recordedAt       DateTime     @default(now())
   account          AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -657,6 +687,90 @@ model AssetSnapshot {
   @@index([userId])
   @@index([userId, date])
   @@map("asset_snapshot")
+}
+
+/// M4: a money move between two of your own places, amounts as typed (I21).
+/// A null account is Not tracked (N75).
+model Transfer {
+  id                String       @id @default(cuid())
+  userId            String
+  kind              TransferKind
+  date              DateTime
+  fromAccountId     String?
+  fromAmount        Decimal      @db.Decimal(19, 8)
+  fromCurrency      String
+  toAccountId       String?
+  toAmount          Decimal      @db.Decimal(19, 8)
+  toCurrency        String
+  referenceRateType String?      @db.VarChar(32)
+  feeExpenseId      String?      @unique
+  /// D4: counted units this move took out of the source and gave the destination.
+  countedFromUnits  Decimal      @default(0) @db.Decimal(19, 8)
+  countedToUnits    Decimal      @default(0) @db.Decimal(19, 8)
+  note              String?      @db.VarChar(500)
+  createdAt         DateTime     @default(now())
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccount AssetAccount? @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: SetNull)
+  toAccount   AssetAccount? @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: SetNull)
+  feeExpense  Expense?      @relation("TransferFee", fields: [feeExpenseId], references: [id], onDelete: SetNull)
+  legs        AccountLeg[]
+
+  @@index([userId, date])
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@map("transfer")
+}
+
+/// M4: one place a money move changes, signed in what you have (+ = more).
+/// accountId null = Not tracked. homeAmount is the booked home value (I20).
+model AccountLeg {
+  id           String           @id @default(cuid())
+  userId       String
+  accountId    String?
+  currency     String
+  amount       Decimal          @db.Decimal(19, 8)
+  homeAmount   Decimal?         @db.Decimal(19, 8)
+  homeCurrency String?
+  date         DateTime
+  source       AccountLegSource
+  transferId   String?
+  expenseId    String?
+  /// Units of this leg the budget already counts (D4); the trigger keeps
+  /// the account's countedUnits in step with it.
+  countedUnits Decimal          @default(0) @db.Decimal(19, 8)
+  createdAt    DateTime         @default(now())
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  AssetAccount? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transfer Transfer?     @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  expense  Expense?      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([accountId, date])
+  @@index([transferId])
+  @@index([expenseId])
+  @@map("account_leg")
+}
+
+/// M4 (D3): the rate type an account is valued at from a day on.
+model AssetRateType {
+  id        String       @id @default(cuid())
+  userId    String
+  accountId String
+  from         DateTime
+  type         String?      @db.VarChar(32)
+  /// The account's type before this switch; undo restores it.
+  previousType String?      @db.VarChar(32)
+  createdAt    DateTime     @default(now())
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  /// Several switches can share a day; createdAt orders them.
+  @@index([accountId, from])
+  @@index([userId])
+  @@map("asset_rate_type")
 }
 
 model AssetHistory {
@@ -820,6 +934,21 @@ enum AssetType {
   LIABILITY_LOAN
   LIABILITY_CREDIT_CARD
   LIABILITY_MORTGAGE
+}
+
+enum TransferKind {
+  TRANSFER
+  EXCHANGE
+  CARD_PAYMENT
+  WITHDRAWAL
+  DEBT_PAYMENT
+}
+
+enum AccountLegSource {
+  INCOME
+  TRANSFER
+  FEE
+  BALANCE_UPDATE
 }
 
 enum BudgetType {
@@ -1569,6 +1698,7 @@ model Apikey {
   permissions         String?
   metadata            String?
   user                User      @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  pushDevices         PushDevice[]
 
   @@index([key])
   @@index([referenceId])
@@ -1625,4 +1755,48 @@ model ApiRateLimit {
 
   @@index([windowStart])
   @@map("api_rate_limit")
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+enum PushTransport {
+  APNS
+  FCM
+  UNIFIEDPUSH
+}
+
+// Push devices (M12): one row per user and address. APNs and FCM rows
+// hold a token; UnifiedPush rows an endpoint URL plus the Web Push keys.
+// `addressHash` is the SHA-256 of the token or endpoint.
+model PushDevice {
+  id          String        @id @default(cuid())
+  userId      String
+  platform    PushPlatform
+  transport   PushTransport
+  token       String?       @db.VarChar(4096)
+  endpoint    String?       @db.VarChar(2048)
+  p256dh      String?       @db.VarChar(255)
+  auth        String?       @db.VarChar(255)
+  addressHash String        @db.VarChar(64)
+  apnsSandbox Boolean       @default(false)
+  appVersion  String?       @db.VarChar(32)
+  deviceName  String?       @db.VarChar(100)
+  /// The credential that registered the device; deleting it deletes the row.
+  sessionId   String?
+  apiKeyId    String?
+  lastSeenAt  DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session     Session?      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  apiKey      Apikey?       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transport, addressHash])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([apiKeyId])
+  @@map("push_device")
 }
