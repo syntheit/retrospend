@@ -1,0 +1,52 @@
+import { expect, test } from "@playwright/test";
+import { personaStorageState } from "../../constants";
+import { SOFIA } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { openV2 } from "./viewer";
+
+// Someone else's shared expense opens as a read view (owner Q1, RC11):
+// Lucía added "Cena en La Esquina", so Sofía sees it, her share and its
+// state, and Ask Lucía to fix, which waits for the server's ask state
+// (docs/ui/GAPS.md) and says so. Her own expense opens in the edit sheet.
+
+test.use({ storageState: personaStorageState(SOFIA.username) });
+
+test("Entry: read view of someone else's expense, edit sheet for your own", async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openV2(page, "/activity?range=all");
+	const main = page.getByRole("main");
+
+	await main.getByText("Cena en La Esquina").first().click();
+	const read = page.getByRole("dialog", { name: "Cena en La Esquina" });
+	await expect(read).toBeVisible();
+	await expect(
+		read.getByText("Lucía added this. Only Lucía can edit it"),
+	).toBeVisible();
+	await expect(read).toContainText("ARS 64,000");
+	await expect(read).toContainText("ARS 32,000");
+	const ask = read.getByRole("button", { name: "Ask Lucía to fix" });
+	await expect(ask).toHaveAttribute("aria-disabled", "true");
+	await ask.hover();
+	await expect(
+		page.getByRole("tooltip", { name: "Not available yet" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await read.getByRole("button", { name: "Close" }).last().click();
+	await expect(read).toBeHidden();
+
+	// Her own personal expense opens the edit sheet, loaded and formatted.
+	await main.getByText("Monotributo").first().click();
+	const edit = page.getByRole("dialog", { name: "Edit expense" });
+	await expect(edit).toBeVisible();
+	await expect(edit.getByRole("textbox", { name: "Amount" })).toHaveValue(
+		"42,000",
+	);
+	await expect(
+		edit.getByRole("button", { name: "Undo changes" }),
+	).toBeDisabled();
+	await edit.getByRole("button", { name: "Cancel" }).click();
+	await expect(edit).toBeHidden();
+});

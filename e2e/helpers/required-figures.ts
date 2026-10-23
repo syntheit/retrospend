@@ -17,6 +17,9 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	activity: ["entry.amount:shared:e2e_tx_dp_calefon"],
 	activityMonth: ["spent"],
 	recurring: ["recurring.cost.out.month"],
+	// S4G: the Add expense sheet with a foreign amount, audited inside the
+	// sheet: the booked home value and the preview's spending line.
+	addExpense: ["entry.home", "preview.spent.delta"],
 };
 
 export function requiredFiguresFor(page: string): readonly string[] {
