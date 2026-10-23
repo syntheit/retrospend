@@ -186,6 +186,12 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Add mode row (Expense, Income, Transfer) | Desktop Add option A (one Add with a mode row) | Desktop ships option B (§3): the split button with N, I, T; each sheet has its own title and no mode row | owner (option bar) |
 | Expense edit by id (`expense.getExpense`) | Today's router takes uuids only, so imported (cuid) expenses and the e2e seed's rows cannot load in today's modal | The v2 sheet loads through `entry.expense.get`, which takes any id | S6 cut-over |
 | Income date on Activity | `income.add` and `transfer.create` store the day as UTC midnight (`accounts/dates.ts moveDay`) while Activity reads a row's day in the viewer's zone (`expense-list/rows.ts`), so west of UTC an income shows the day before | Expenses from the v2 sheet store the day at the viewer's local midnight, as today's form does | 2D / 4B |
+| Use my plan: what to do with the rest | `applyPlanFor` taking a rest choice (Leave it, Save it, Next month; owner Q2) | The plan block lists every line and "Not planned yet stays X"; the rest stays Not planned yet | 2B |
+| Add a person to a project from Add expense | Add someone outside the project, then the add-to-project and rebalance prompts (today's `split-with-picker`) | In a project, With offers its members only; Add a person happens on the project page | 4E / 4G follow-up |
+| Spread over: per month and custom months | A server read of the per-month amount (no client division) and custom months | Spread over offers 2, 3, 6, 12 and 24 months and shows no "/mo" amount | 4G follow-up |
+| Operators row on phone web | A MoneyInput slot for the + - x / keys under the field (ADD-EXPENSE-R2) | Typed math works in the field; no key row | S1 kit |
+| One tab stop per chip group | FilterChips as a roving group (arrows inside) | Each chip is its own tab stop; Segmented groups already rove | S1 kit |
+| MoneyInput home row | The kit amount group's second row (home currency, booked amount, rate chip, "In budget as") | The home line and the rate chip sit under the MoneyInput, with the rate line under them | S1 kit |
 
 ## 8. Behavior gaps found by the e2e suite
 
