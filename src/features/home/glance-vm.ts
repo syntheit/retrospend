@@ -39,8 +39,15 @@ function row(id: GlanceRow["id"], figure: Figure): GlanceRow[] {
 	return [{ id, amount: value, href: GLANCE_HREF[id], figure: figure.id }];
 }
 
+/** A series with nothing spent yet: the chart says "no data", never a flat zero. */
+const series = (values: readonly number[] | null) =>
+	values?.some((v) => v !== 0) ? [...values] : [];
+
 export function toGlanceVM(dto: GlanceDTO): GlanceVM {
 	const budget = dto.budget?.state === "ready" ? dto.budget : null;
+	const current = series(dto.pace.this);
+	const previous = series(dto.pace.last);
+	const empty = !current.length && !previous.length;
 	return {
 		month: dto.period.from,
 		spent: dto.spent.value,
@@ -49,8 +56,9 @@ export function toGlanceVM(dto: GlanceDTO): GlanceVM {
 		fasterThanPlanned: budget?.leftToSpend.fasterThanPlanned ?? false,
 		pace: {
 			currency: dto.home,
-			current: [...(dto.pace.this ?? [])],
-			previous: [...(dto.pace.last ?? [])],
+			// Last month alone still draws (this month at zero so far).
+			current: empty ? [] : [...(dto.pace.this ?? [])],
+			previous,
 			days: dto.period.days,
 		},
 		rows: [

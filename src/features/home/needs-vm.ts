@@ -30,16 +30,15 @@ export type Words = {
 	email: string | null;
 };
 
-/** Audit id of an item's amount (scope = the item id). */
-export const needsFigure = (id: string) => `needsYou.amount:${id}`;
-
 const SETTINGS_CURRENCY = "/settings#preferences";
 
+/**
+ * Item amounts carry no figure tag: the figures registry has no id for
+ * them yet (People's Needs you is the same). Give it a job is the pool,
+ * budget.notPlannedYet, and carries that id.
+ */
 function base(item: NeedsYouItem) {
-	return {
-		id: item.id,
-		...(item.amount ? { figure: needsFigure(item.id) } : {}),
-	};
+	return { id: item.id };
 }
 
 const firstPerson = (item: NeedsYouItem, w: Words) =>

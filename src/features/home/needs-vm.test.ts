@@ -53,7 +53,6 @@ describe("toNeedsVM", () => {
 			),
 		).toEqual({
 			id: "payment.confirm:x",
-			figure: "needsYou.amount:payment.confirm:x",
 			kind: "confirmPayment",
 			person: "Lucía",
 			amount: ars(2000000),

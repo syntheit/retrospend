@@ -17,7 +17,10 @@ import type {
 	PeopleOverview,
 	PersonSummary,
 } from "~/server/services/people/types";
-import type { RecurringView } from "~/server/services/recurring-view.service";
+import type {
+	RecurringItemDTO,
+	RecurringView,
+} from "~/server/services/recurring-view.service";
 
 /** How far ahead Coming up looks, and how many rows each block shows (mockup). */
 const AHEAD_DAYS = 21;
@@ -53,10 +56,14 @@ export function upcoming(view: RecurringView) {
 		.slice(0, MAX_UPCOMING);
 }
 
-function PeopleBlock({ view }: { view: PeopleOverview }) {
+function PeopleBlock({
+	people,
+	home,
+}: {
+	people: PersonSummary[];
+	home: string;
+}) {
 	const t = useTranslations("homePage.rail");
-	const locale = useLocale();
-	const people = useMemo(() => railPeople(view, locale), [view, locale]);
 	if (!people.length) return null;
 	return (
 		<Section
@@ -74,9 +81,9 @@ function PeopleBlock({ view }: { view: PeopleOverview }) {
 							name: p.person.name,
 							imageUrl: p.person.imageUrl,
 							onRetrospend: p.person.onRetrospend,
-							lastShared: "",
+							lastShared: p.lastShared?.title ?? "",
 							// railPeople keeps only people with a net.
-							balance: p.net ?? { minor: 0, currency: view.home },
+							balance: p.net ?? { minor: 0, currency: home },
 							href: personHrefOf(p.person),
 						}}
 					/>
@@ -86,12 +93,17 @@ function PeopleBlock({ view }: { view: PeopleOverview }) {
 	);
 }
 
-function ComingUpBlock({ view }: { view: RecurringView }) {
+function ComingUpBlock({
+	items,
+	today,
+}: {
+	items: RecurringItemDTO[];
+	today: string;
+}) {
 	const t = useTranslations("homePage.rail");
 	const other = useTranslations("activityRecurring");
 	const router = useRouter();
-	const { short } = useRowDates(view.today);
-	const items = useMemo(() => upcoming(view), [view]);
+	const { short } = useRowDates(today);
 	return (
 		<Section
 			action={{ label: t("recurring"), href: "/activity/recurring" }}
@@ -126,7 +138,8 @@ function ComingUpBlock({ view }: { view: RecurringView }) {
 /**
  * The desktop rail (R26): glanceable context that opens its page. People
  * with balances and what is coming up. The trip card and Envelopes to watch
- * wait for their sources (docs/ui/GAPS.md, Home).
+ * wait for their sources (docs/ui/GAPS.md, Home). With nothing to show (a
+ * new user) the rail steps aside and the main column takes the width.
  */
 export function HomeRail({
 	people,
@@ -136,11 +149,23 @@ export function HomeRail({
 	recurring: RecurringView | undefined;
 }) {
 	const t = useTranslations("homePage.rail");
-	if (!people && !recurring) return null;
+	const locale = useLocale();
+	const who = useMemo(
+		() => (people ? railPeople(people, locale) : []),
+		[people, locale],
+	);
+	const soon = useMemo(
+		() => (recurring ? upcoming(recurring) : []),
+		[recurring],
+	);
+	if (!who.length && !soon.length) return null;
 	return (
-		<aside aria-label={t("label")} className="flex min-w-0 flex-col">
-			{people && <PeopleBlock view={people} />}
-			{recurring && <ComingUpBlock view={recurring} />}
+		<aside
+			aria-label={t("label")}
+			className="flex min-w-0 shrink-0 flex-col max-lg:hidden lg:w-80"
+		>
+			<PeopleBlock home={people?.home ?? ""} people={who} />
+			{recurring && <ComingUpBlock items={soon} today={recurring.today} />}
 		</aside>
 	);
 }

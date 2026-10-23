@@ -91,9 +91,7 @@ export function HomeScreen() {
 						today={recent.data?.today ?? today}
 					/>
 				</div>
-				<div className="shrink-0 max-lg:hidden lg:w-80">
-					<HomeRail people={people.data} recurring={recurring.data} />
-				</div>
+				<HomeRail people={people.data} recurring={recurring.data} />
 			</div>
 		</PageFrame>
 	);

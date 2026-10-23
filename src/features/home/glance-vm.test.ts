@@ -120,12 +120,22 @@ describe("toGlanceVM", () => {
 		const vm = toGlanceVM({
 			...BASE,
 			spent: fig("glance.spent", 0),
-			pace: { this: null, last: null, fasterThanLast: null },
+			pace: { this: [0, 0, 0], last: [0, 0, 0, 0], fasterThanLast: false },
 			owedToYou: fig("owed.owedToYou", 0),
 			netWorth: fig("netWorth", 0),
 		});
 		expect(vm.spent).toEqual(ars(0));
 		expect(vm.pace.current).toEqual([]);
+		expect(vm.pace.previous).toEqual([]);
 		expect(vm.rows).toEqual([]);
+	});
+
+	it("nothing yet this month but spending last month: both lines draw", () => {
+		const vm = toGlanceVM({
+			...BASE,
+			pace: { this: [0, 0], last: [0, 500, 900], fasterThanLast: false },
+		});
+		expect(vm.pace.current).toEqual([0, 0]);
+		expect(vm.pace.previous).toEqual([0, 500, 900]);
 	});
 });
