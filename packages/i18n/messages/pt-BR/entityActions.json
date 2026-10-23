@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Arquivar"
+		},
+		"restore": {
+			"label": "Restaurar"
+		},
+		"delete": {
+			"label": "Excluir",
+			"confirmTitle": "Excluir {name}?",
+			"confirmBody": "O projeto some. Suas despesas ficam, fora de qualquer projeto. Não dá para desfazer.",
+			"confirmButton": "Excluir projeto"
+		},
+		"addPerson": {
+			"label": "Adicionar pessoa"
+		},
+		"exportCsv": {
+			"label": "Exportar despesas (CSV)"
+		},
+		"exportPlan": {
+			"label": "Exportar quem paga a quem (CSV)"
+		},
+		"exportPdf": {
+			"label": "Exportar PDF"
+		},
+		"settings": {
+			"label": "Ajustes"
 		}
 	},
 	"account": {

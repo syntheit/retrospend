@@ -4,6 +4,12 @@
  * missing, so deleting a tag cannot hide a mismatch. Today's pages carry no
  * figures yet; S4 adds each page's ids here as it tags them.
  */
+import { MARTIN, PROJECT_IDS, SOFIA } from "../fixtures/personas";
+
+const DEPTO = PROJECT_IDS.depto;
+const FLORIPA = PROJECT_IDS.floripa;
+const ME = `user:${SOFIA.id}`;
+
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
 	transactions: [],
@@ -14,6 +20,22 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	wealth: [],
 	budget: [],
 	settings: [],
+	// The redesigned project pages (uiV2) on the seed: Sofía's balance in
+	// each project on the list; the group total and her share on Depto
+	// Palermo; her balance with Martín on its Summary. Their own keys, so
+	// the smoke walk of today's pages (no figures) never requires them.
+	"projects-v2": [
+		`project.member.balance:${DEPTO}:${ME}`,
+		`project.member.balance:${FLORIPA}:${ME}`,
+	],
+	"project-v2": [
+		`project.total:${DEPTO}`,
+		`project.member.share:${DEPTO}:${ME}`,
+	],
+	"project-v2-summary": [
+		`project.total:${DEPTO}`,
+		`balance.person:${DEPTO}:user:${MARTIN.id}`,
+	],
 	// S4B, as the flows open them: Martín's rows with Sofía, every month, and
 	// his month view, whose footer is spent() for the month.
 	activity: ["entry.amount:shared:e2e_tx_dp_calefon"],

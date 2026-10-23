@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Archiver"
+		},
+		"restore": {
+			"label": "Restaurer"
+		},
+		"delete": {
+			"label": "Supprimer",
+			"confirmTitle": "Supprimer {name} ?",
+			"confirmBody": "Le projet disparaît. Ses dépenses restent, hors de tout projet. Impossible d'annuler.",
+			"confirmButton": "Supprimer le projet"
+		},
+		"addPerson": {
+			"label": "Ajouter une personne"
+		},
+		"exportCsv": {
+			"label": "Exporter les dépenses (CSV)"
+		},
+		"exportPlan": {
+			"label": "Exporter qui paie qui (CSV)"
+		},
+		"exportPdf": {
+			"label": "Exporter en PDF"
+		},
+		"settings": {
+			"label": "Paramètres"
 		}
 	},
 	"account": {

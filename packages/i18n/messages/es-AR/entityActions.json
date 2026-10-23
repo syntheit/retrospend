@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Archivar"
+		},
+		"restore": {
+			"label": "Restaurar"
+		},
+		"delete": {
+			"label": "Borrar",
+			"confirmTitle": "¿Borrar {name}?",
+			"confirmBody": "El proyecto desaparece. Sus gastos quedan, fuera de cualquier proyecto. No se puede deshacer.",
+			"confirmButton": "Borrar proyecto"
+		},
+		"addPerson": {
+			"label": "Agregar persona"
+		},
+		"exportCsv": {
+			"label": "Exportar gastos (CSV)"
+		},
+		"exportPlan": {
+			"label": "Exportar quién le paga a quién (CSV)"
+		},
+		"exportPdf": {
+			"label": "Exportar PDF"
+		},
+		"settings": {
+			"label": "Ajustes"
 		}
 	},
 	"account": {

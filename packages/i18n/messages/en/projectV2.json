@@ -1,0 +1,199 @@
+{
+	"solo": "Solo",
+	"addExpense": "Add expense",
+	"tabs": {
+		"expenses": "Expenses",
+		"summary": "Summary",
+		"people": "People"
+	},
+	"unavailable": {
+		"title": "This project could not load",
+		"hint": "Check your connection and try again.",
+		"retry": "Try again"
+	},
+	"hero": {
+		"spent": "Spent",
+		"groupTotal": "Group total",
+		"count": "{count, plural, one {# expense} other {# expenses}}",
+		"yourShare": "Your share",
+		"left": "<amount></amount> left",
+		"over": "<amount></amount> over budget",
+		"ofBudget": "of <amount></amount>",
+		"budgetUsed": "Budget used"
+	},
+	"expenses": {
+		"label": "Expenses",
+		"filters": "Filter expenses",
+		"search": "Search expenses",
+		"toReview": "To review · {count}",
+		"paidBy": "Paid by {name}",
+		"paidByYou": "Paid by you",
+		"paidByGroup": "Paid by",
+		"you": "You",
+		"clear": "Clear filters",
+		"noMatch": "No expenses match",
+		"empty": "No expenses yet",
+		"emptySolo": "Add the first expense to start tracking this project.",
+		"emptyShared": "Add the first expense, then add the people you share it with.",
+		"add": "Add expense",
+		"count": "{count, plural, one {# expense} other {# expenses}}",
+		"shownOf": "{shown} of {count, plural, one {# expense} other {# expenses}}"
+	},
+	"summary": {
+		"you": "You",
+		"youObject": "you",
+		"empty": "Nothing to summarize yet",
+		"emptyHint": "Spending by person and by category shows up after the first expense.",
+		"whoPaidWhat": "Who paid what",
+		"paid": "Paid",
+		"share": "Share",
+		"addsUp": "Both add up to the group total, <amount></amount>.",
+		"doesNotAddUp": "Some shares do not add up to their expense, so paid and share differ from the group total.",
+		"settleUp": "Settle up",
+		"whoPaysWhom": "Who pays whom",
+		"even": "Everyone is even in this project.",
+		"betweenYou": "between you",
+		"betweenThem": "between them",
+		"pays": "{from} pays {to}",
+		"youPay": "You pay {to}",
+		"youAndEach": "You and each person",
+		"settleAll": "Settle all",
+		"roles": {
+			"ORGANIZER": "Owner",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Member",
+			"VIEWER": "Viewer"
+		},
+		"byCategory": "By category",
+		"byCategoryGroup": "What we spent, by category",
+		"group": "Group",
+		"yours": "Yours",
+		"uncategorized": "Other",
+		"payments": "Payments in this project",
+		"noPayments": "No payments yet.",
+		"paidTo": "{from} paid {to}"
+	},
+	"people": {
+		"title": "People",
+		"add": "Add person",
+		"you": "You",
+		"membersAndSettings": "Members and settings",
+		"since": "since {date}",
+		"left": "left {date}",
+		"roles": {
+			"ORGANIZER": "Owner",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Member",
+			"VIEWER": "Viewer"
+		}
+	},
+	"toast": {
+		"exportFailed": "Could not export",
+		"accepted": "Accepted your share of {name}"
+	},
+	"preview": {
+		"checking": "Checking what this changes",
+		"changes": "What changes",
+		"nothing": "Nothing",
+		"stays": "What stays the same",
+		"noChange": "no change",
+		"unavailable": "not checked, a rate is missing",
+		"figures": {
+			"project_total": "Group total",
+			"project_member_balance": "{name} in the group",
+			"project_member_share": "{name}'s share",
+			"project_member_paid": "{name} paid",
+			"owed_owedToYou": "Owed to you",
+			"owed_youOwe": "You owe",
+			"balance_person": "You and {name}"
+		}
+	},
+	"settleAll": {
+		"title": "Settle all",
+		"submit": "{count, plural, =0 {Record payments} one {Record # payment} other {Record # payments}}",
+		"done": "{count, plural, one {Recorded # payment} other {Recorded # payments}}",
+		"even": "Everyone is even with you in this project.",
+		"payments": "Payments to record",
+		"someone": "Someone",
+		"paysYou": "{name} pays you",
+		"youPay": "You pay {name}",
+		"recordedAsPaid": "Recorded as paid to you",
+		"theyConfirm": "{name} confirms it",
+		"finalNow": "Final right away",
+		"claimed": "{name} says they paid you. Confirm it on their page.",
+		"skippedOther": "Left out: settle it on their page."
+	},
+	"addPerson": {
+		"title": "Add person to {project}",
+		"submit": "Add to project",
+		"name": "Name",
+		"namePlaceholder": "Sol García",
+		"nameMissing": "Enter a name",
+		"known": "People you share with",
+		"email": "Email (optional)",
+		"emailPlaceholder": "sol@example.com",
+		"emailHint": "If they are on Retrospend this links them, otherwise they get an invitation.",
+		"joins": "Joins {project} on",
+		"joinsHint": "Expenses before this day stay as they are. New ones can include them.",
+		"added": "{name} joins {project} on {date}"
+	},
+	"settings": {
+		"title": "Project settings",
+		"submit": "Save",
+		"name": "Name",
+		"note": "Note (optional)",
+		"budget": "Currency and budget",
+		"budgetHint": "The budget is optional. Expenses in other currencies do not count against it.",
+		"autoAccept": "New shares count without a review",
+		"exclude": "Leave this project out of my insights",
+		"members": "Members",
+		"dates": "Dates",
+		"since": "Since {date}",
+		"fromStart": "From the start",
+		"left": "Left {date}",
+		"you": "{name} (you)",
+		"datesHint": "Dates choose who new expenses include. Saved expenses keep their splits.",
+		"saved": "Project settings saved"
+	},
+	"dates": {
+		"title": "Dates for {name}",
+		"submit": "Save dates",
+		"joined": "Joined",
+		"left": "Left",
+		"fromStart": "From the start",
+		"stillHere": "Still here",
+		"onADay": "On a day",
+		"order": "The leave day must be after the join day.",
+		"leaves": "From {date}, new expenses leave {name} out by default.",
+		"joins": "From {date}, new expenses include {name} by default.",
+		"always": "New expenses include {name} by default.",
+		"saved": "Saved the dates for {name}",
+		"you": "You"
+	},
+	"share": {
+		"title": "Share",
+		"links": "Invite links",
+		"copy": "Copy",
+		"newLink": "New link",
+		"turnOff": "Turn off",
+		"create": "Create link",
+		"on": "Anyone with the link can join",
+		"off": "Off",
+		"roles": {
+			"CONTRIBUTOR": "Can add expenses",
+			"VIEWER": "Can view"
+		},
+		"public": "Public page",
+		"publicHint": "Anyone with the address sees the totals and the expenses, never balances or emails.",
+		"copyPublic": "Copy page address",
+		"copied": "Link copied",
+		"nowPublic": "The project page is public",
+		"nowPrivate": "The project page is private"
+	},
+	"errors": {
+		"failed": "That did not save. Try again.",
+		"changed": "The balances changed meanwhile. Check the new amounts and record again.",
+		"previewFailed": "Could not check what this changes. Try again.",
+		"undoConflict": "A payment was confirmed meanwhile, so nothing was undone."
+	}
+}
