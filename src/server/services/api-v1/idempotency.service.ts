@@ -41,9 +41,9 @@ function canonicalJson(value: unknown): string {
 
 /**
  * Replaces every Blob or File, at any depth, with its name, type, size and
- * a hash of its bytes, and every Date with its ISO string. JSON sees a File as `{}`, so without this two
- * uploads with one key would look equal and the second would replay the
- * first response.
+ * a hash of its bytes, and every Date with its ISO string. JSON sees a File
+ * as `{}`, so without this two uploads with one key would look equal and
+ * the second would replay the first response.
  */
 async function describeFiles(value: unknown): Promise<unknown> {
 	if (value instanceof Blob) {
