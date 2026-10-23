@@ -72,7 +72,14 @@ async function seedProject() {
 			{ ...S, share: "3000" },
 		],
 	});
-	return { pid, A, B, S, benKey: `user:${ben.user.id}`, samKey: `shadow:${sam.id}` };
+	return {
+		pid,
+		A,
+		B,
+		S,
+		benKey: `user:${ben.user.id}`,
+		samKey: `shadow:${sam.id}`,
+	};
 }
 
 const paymentsIn = (projectId: string) =>

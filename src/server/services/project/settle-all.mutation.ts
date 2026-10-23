@@ -130,7 +130,8 @@ export const settleAllInProject: MoneyMutation<SettleAllInput, SettleAllValue> =
 			if (input.expect && !samePlan(planned, input.expect)) {
 				throw new TRPCError({
 					code: "CONFLICT",
-					message: "The balances in this project changed. Check the new amounts.",
+					message:
+						"The balances in this project changed. Check the new amounts.",
 				});
 			}
 			const lines: SettleAllLine[] = [];
@@ -149,7 +150,12 @@ export const settleAllInProject: MoneyMutation<SettleAllInput, SettleAllValue> =
 				const person = refKey(l.ref);
 				const { value } = await recordPayment.run(tx, payment, actor);
 				if (!value.recorded) {
-					skipped.push({ person, direction: payment.direction, amount, reason: value.reason });
+					skipped.push({
+						person,
+						direction: payment.direction,
+						amount,
+						reason: value.reason,
+					});
 					continue;
 				}
 				rows.push({ table: "payment", id: value.paymentId });
