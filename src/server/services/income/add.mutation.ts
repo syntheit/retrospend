@@ -16,7 +16,7 @@ import { TRPCError } from "@trpc/server";
 import { computeAmountInUSD } from "~/lib/money";
 import { requireExchangeRate } from "~/server/exchange-rates";
 import type { Money } from "~/server/figures/registry";
-import { toMinor } from "~/server/services/envelope/units";
+import { dec, toMinor } from "~/server/services/envelope/units";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma, RecurringFrequency } from "~prisma";
@@ -29,7 +29,7 @@ import {
 	ratePickFor,
 	writeLeg,
 } from "../accounts/ledger";
-import { inBudget } from "../accounts/places";
+import { countedOnArrival, inBudget } from "../accounts/places";
 import { endOfDay } from "../accounts/series";
 import { homePerUnit, homeValue } from "../accounts/valuation";
 import { typedAmount } from "../transfers/plan";
@@ -63,7 +63,19 @@ export interface AddIncomeInput {
 		/** YYYY-MM-DD of the next one; one period after `date` when omitted. */
 		readonly next?: string | null;
 	} | null;
+	/** Set only by the undo of a delete: the rates and units it was booked at. */
+	readonly restore?: IncomeRestore | null;
 	readonly timeZone?: string;
+}
+
+/** What income.delete read off the row and its leg, so its undo books nothing anew. */
+export interface IncomeRestore {
+	readonly exchangeRate: string;
+	readonly amountInUSD: string;
+	/** The units the leg put in the account; null without an account. */
+	readonly units: string | null;
+	readonly homeAmount: string | null;
+	readonly homeCurrency: string | null;
 }
 
 export interface IncomeValue {
@@ -157,6 +169,80 @@ async function createTemplate(
 	return template.id;
 }
 
+/** How the income is valued, and the units that land in the account. */
+interface Priced {
+	readonly exchangeRate: string;
+	readonly amountInUSD: string;
+	/** Booked home value (I20); null when no rate exists. */
+	readonly booked: Decimal | null;
+	readonly units: Decimal | null;
+}
+
+/** The income's rate, booked value and units at its own day's rates. */
+async function priceIncome(
+	tx: Tx,
+	input: AddIncomeInput,
+	ctx: {
+		amount: Decimal;
+		date: Date;
+		home: string;
+		account: AccountRow | null;
+	},
+): Promise<Priced> {
+	const { amount, date, home, account } = ctx;
+	const rate = await requireExchangeRate(
+		tx,
+		input.currency,
+		date,
+		input.rateType,
+	);
+	const pick = await ratePickFor(tx, [
+		home,
+		input.currency,
+		...(account ? [account.currency] : []),
+	]);
+	const booked =
+		homeValue(
+			pick,
+			{
+				currency: input.currency,
+				rateType: input.rateType ?? null,
+				storedRate: rate.rate,
+			},
+			amount,
+			home,
+			endOfDay(date.toISOString().slice(0, 10)),
+		)?.toDecimalPlaces(8) ?? null;
+	return {
+		exchangeRate: String(rate.rate),
+		amountInUSD: String(
+			computeAmountInUSD(amount.toNumber(), input.currency, rate.rate),
+		),
+		booked,
+		units:
+			account &&
+			unitsInAccount(
+				account,
+				{ amount, currency: input.currency, booked, home },
+				pick,
+				date,
+			),
+	};
+}
+
+/** An undo brings the income back with the rates it was booked at, never today's. */
+function restoredPrice(restore: IncomeRestore, home: string): Priced {
+	return {
+		exchangeRate: restore.exchangeRate,
+		amountInUSD: restore.amountInUSD,
+		booked:
+			restore.homeAmount !== null && restore.homeCurrency === home
+				? dec(restore.homeAmount)
+				: null,
+		units: restore.units === null ? null : dec(restore.units),
+	};
+}
+
 export async function addIncomeIn(
 	tx: Tx,
 	userId: string,
@@ -182,29 +268,10 @@ export async function addIncomeIn(
 		});
 	}
 	const categoryId = await incomeCategory(tx, userId, input.categoryId);
-	const rate = await requireExchangeRate(
-		tx,
-		input.currency,
-		date,
-		input.rateType,
-	);
-	const pick = await ratePickFor(tx, [
-		home,
-		input.currency,
-		...(account ? [account.currency] : []),
-	]);
-	const booked =
-		homeValue(
-			pick,
-			{
-				currency: input.currency,
-				rateType: input.rateType ?? null,
-				storedRate: rate.rate,
-			},
-			amount,
-			home,
-			endOfDay(date.toISOString().slice(0, 10)),
-		)?.toDecimalPlaces(8) ?? null;
+	const priced = input.restore
+		? restoredPrice(input.restore, home)
+		: await priceIncome(tx, input, { amount, date, home, account });
+	const { booked } = priced;
 
 	const expenseId = input.id ?? randomUUID();
 	const templateId = await createTemplate(tx, userId, input, {
@@ -222,12 +289,8 @@ export async function addIncomeIn(
 			date,
 			categoryId,
 			description: input.description ?? null,
-			exchangeRate: rate.rate,
-			amountInUSD: computeAmountInUSD(
-				amount.toNumber(),
-				input.currency,
-				rate.rate,
-			),
+			exchangeRate: priced.exchangeRate,
+			amountInUSD: priced.amountInUSD,
 			pricingSource: input.rateType ?? "MANUAL",
 			status: "FINALIZED",
 			direction: "IN",
@@ -236,20 +299,17 @@ export async function addIncomeIn(
 			recurringTemplateId: templateId,
 		},
 	});
+	const units = priced.units ?? amount;
 	const into = account
 		? await writeLeg(tx, userId, {
 				account,
 				currency: account.currency,
-				amount: unitsInAccount(
-					account,
-					{ amount, currency: input.currency, booked, home },
-					pick,
-					date,
-				),
+				amount: units,
 				date,
 				source: "INCOME",
 				expenseId,
 				home: booked && { amount: booked, currency: home },
+				countedUnits: countedOnArrival(account, kept, home) ? units : undefined,
 			})
 		: null;
 	return {

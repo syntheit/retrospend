@@ -27,7 +27,18 @@ export interface DeletedIncome {
 export async function incomeRow(tx: Tx, userId: string, expenseId: string) {
 	const row = await tx.expense.findFirst({
 		where: { id: expenseId, userId, direction: "IN", inType: "INCOME" },
-		include: { accountLegs: { select: { accountId: true }, take: 1 } },
+		include: {
+			accountLegs: {
+				where: { source: "INCOME" },
+				select: {
+					accountId: true,
+					amount: true,
+					homeAmount: true,
+					homeCurrency: true,
+				},
+				take: 1,
+			},
+		},
 	});
 	if (!row) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Income not found" });
@@ -54,6 +65,7 @@ export async function deleteIncomeIn(
 					where: { id: input.templateId, userId },
 				})
 			: null;
+	const leg = row.accountLegs[0];
 	const recreate: AddIncomeInput = {
 		id: row.id,
 		title: row.title,
@@ -63,8 +75,15 @@ export async function deleteIncomeIn(
 		categoryId: row.categoryId,
 		description: row.description,
 		date: row.date.toISOString().slice(0, 10),
-		into: row.accountLegs[0]?.accountId ?? null,
+		into: leg?.accountId ?? null,
 		keep: row.keepInWealth,
+		restore: {
+			exchangeRate: row.exchangeRate.toString(),
+			amountInUSD: row.amountInUSD.toString(),
+			units: leg ? leg.amount.toString() : null,
+			homeAmount: leg?.homeAmount?.toString() ?? null,
+			homeCurrency: leg?.homeCurrency ?? null,
+		},
 		repeats: template
 			? {
 					frequency: template.frequency,

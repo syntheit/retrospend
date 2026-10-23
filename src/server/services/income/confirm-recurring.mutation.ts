@@ -2,14 +2,21 @@
  * income.confirmRecurring (INCOME.md §4, 2D.2): recurring income arrived.
  * One action posts the Money in row for the due date (the real amount for a
  * template whose amount varies), lands it in the account picked, advances
- * the template, and, with `usePlan`, assigns it by the plan (seam until 2B
- * P2). The row comes from money-in.service's recurringEntryData, the same
+ * the template, and, with `usePlan`, assigns it by the envelope budget's
+ * plan (plan-seam.ts). The row comes from money-in.service's recurringEntryData, the same
  * one the recurring confirm and the sidecar post. Undo
- * (income.unconfirmRecurring) removes the row and rewinds the template.
+ * (income.unconfirmRecurring) removes the row, takes the plan's batch back
+ * and rewinds the template.
  */
 import { TRPCError } from "@trpc/server";
+import { dayKey } from "~/lib/time-zone";
 import type { Money } from "~/server/figures/registry";
+import { forgetMonthViews } from "~/server/services/envelope/month-read";
 import { dec, toMinor } from "~/server/services/envelope/units";
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "~/server/services/envelope/verdict";
 import { recurringEntryData } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
@@ -21,13 +28,18 @@ import {
 	reverseLegs,
 	writeLeg,
 } from "../accounts/ledger";
-import { inBudget } from "../accounts/places";
-import { endOfDay } from "../accounts/series";
+import { countedOnArrival, inBudget } from "../accounts/places";
+import { dayOf, endOfDay } from "../accounts/series";
 import { homePerUnit, homeValue } from "../accounts/valuation";
 import { INCOME_FIGURES } from "./add.mutation";
 import { incomeRow } from "./delete.mutation";
 import { nextDueDay } from "./due-day";
-import { applyPlanFor, type PlanResult } from "./plan-seam";
+import {
+	applyPlanFor,
+	PLAN_NOT_REQUESTED,
+	type PlanResult,
+	undoPlan,
+} from "./plan-seam";
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,12 +47,13 @@ export interface ConfirmRecurringIncomeInput {
 	readonly templateId: string;
 	/** The due date being confirmed; a repeat of the same confirm is refused. */
 	readonly dueDate?: Date | null;
-	/** The real amount, required when the template's amount varies. */
-	readonly amount?: number | null;
+	/** The real amount as typed (a decimal string), required when the template's amount varies. */
+	readonly amount?: string | null;
 	readonly into?: string | null;
 	readonly keep?: boolean | null;
 	/** Use my plan (N72): assign the money by the plan in the same action. */
 	readonly usePlan?: boolean;
+	readonly timeZone?: string;
 }
 
 export interface ConfirmedIncome {
@@ -66,10 +79,11 @@ async function dueTemplate(
 			message: "Recurring income not found",
 		});
 	}
+	// Due once its day has come in the user's zone, the day every leg is dated by.
 	if (
 		(input.dueDate &&
 			input.dueDate.getTime() !== template.nextDueDate.getTime()) ||
-		template.nextDueDate > new Date()
+		dayOf(template.nextDueDate) > dayKey(new Date(), input.timeZone)
 	) {
 		throw new TRPCError({
 			code: "CONFLICT",
@@ -122,6 +136,8 @@ export async function confirmRecurringIncomeIn(
 	const row = await tx.expense.create({
 		data: { ...entry, keepInWealth: kept },
 	});
+	// The budget read before this write (a preview's before side) is stale now.
+	forgetMonthViews(tx);
 	const amount = dec(row.amount.toString());
 	const day = row.date.toISOString().slice(0, 10);
 	const pick = await ratePickFor(tx, [
@@ -158,15 +174,17 @@ export async function confirmRecurringIncomeIn(
 				message: `No exchange rate to put ${row.currency} into ${account.currency}`,
 			});
 		}
+		const units =
+			perUnit && booked ? booked.div(perUnit).toDecimalPlaces(8) : amount;
 		into = await writeLeg(tx, userId, {
 			account,
 			currency: account.currency,
-			amount:
-				perUnit && booked ? booked.div(perUnit).toDecimalPlaces(8) : amount,
+			amount: units,
 			date: row.date,
 			source: "INCOME",
 			expenseId: row.id,
 			home: booked && { amount: booked, currency: home },
+			countedUnits: countedOnArrival(account, kept, home) ? units : undefined,
 		});
 	}
 	const bookedMoney = booked && {
@@ -179,7 +197,7 @@ export async function confirmRecurringIncomeIn(
 				incomeExpenseId: row.id,
 				amount: kept ? null : bookedMoney,
 			})
-		: { applied: false, reason: "not_requested" };
+		: PLAN_NOT_REQUESTED;
 	return {
 		expenseId: row.id,
 		templateId: template.id,
@@ -195,7 +213,12 @@ export const confirmRecurringIncome: MoneyMutation<
 	ConfirmedIncome
 > = {
 	id: "income.confirmRecurring",
-	touches: [...INCOME_FIGURES, "spent"],
+	touches: [
+		...INCOME_FIGURES,
+		"spent",
+		FIGURE_NOT_PLANNED_YET,
+		FIGURE_LEFT_TO_SPEND,
+	],
 	scope: (input) => (input.into ? { accountId: input.into } : {}),
 	run: async (tx, input, actor) => {
 		const value = await confirmRecurringIncomeIn(tx, actor.userId, input);
@@ -215,6 +238,8 @@ export const confirmRecurringIncome: MoneyMutation<
 
 export interface UnconfirmRecurringIncomeInput {
 	readonly expenseId: string;
+	/** The confirm's plan batch (its value's plan.batchId), taken back with it. */
+	readonly planBatchId?: string | null;
 }
 
 /** Removes the posted row (its leg goes back) and puts the template back on that due date. */
@@ -236,8 +261,10 @@ export async function unconfirmRecurringIncomeIn(
 			message: "Undo the Move in first",
 		});
 	}
+	if (input.planBatchId) await undoPlan(tx, userId, input.planBatchId);
 	const accounts = await reverseLegs(tx, { expenseId: row.id });
 	await tx.expense.delete({ where: { id: row.id } });
+	forgetMonthViews(tx);
 	await tx.recurringTemplate.updateMany({
 		where: {
 			id: row.recurringTemplateId,
@@ -254,7 +281,12 @@ export const unconfirmRecurringIncome: MoneyMutation<
 	Awaited<ReturnType<typeof unconfirmRecurringIncomeIn>>
 > = {
 	id: "income.unconfirmRecurring",
-	touches: [...INCOME_FIGURES, "spent"],
+	touches: [
+		...INCOME_FIGURES,
+		"spent",
+		FIGURE_NOT_PLANNED_YET,
+		FIGURE_LEFT_TO_SPEND,
+	],
 	run: async (tx, input, actor) => {
 		const value = await unconfirmRecurringIncomeIn(tx, actor.userId, input);
 		return {

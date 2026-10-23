@@ -52,3 +52,19 @@ export function placeInBudget(
 ): boolean {
 	return account ? inBudget(account, homeCurrency) : currency === homeCurrency;
 }
+
+/**
+ * Income the budget counts (not kept in Wealth) that lands in an account
+ * outside the budget (D4): its units are counted there, so moving them into
+ * the budget later never counts them a second time. A liability holds no
+ * units of yours to count.
+ */
+export function countedOnArrival(
+	account: BudgetFacts,
+	kept: boolean,
+	homeCurrency: string,
+): boolean {
+	return (
+		!kept && !inBudget(account, homeCurrency) && !isLiability(account.type)
+	);
+}

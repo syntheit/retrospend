@@ -4,7 +4,10 @@
  * in Wise. The budget gets the kept income's booked value (one value per
  * transaction, I20), or today's value of the units for Wealth money that is
  * not tied to an income. The units are marked as counted on the account so
- * a later sale never counts them a second time.
+ * a later sale never counts them a second time. A kept income's units are
+ * marked on its leg (the trigger counts them on the account), capped at
+ * what the account still holds outside the budget, so deleting the income
+ * takes its counted units with it.
  *
  * Undo is income.undoMoveIn with the same input.
  */
@@ -59,7 +62,29 @@ export interface MovedIn {
 	readonly budgetSide: BudgetSideResult;
 }
 
-async function incomeSide(tx: Tx, userId: string, expenseId: string) {
+interface Side {
+	readonly accountId: string;
+	readonly units: Decimal;
+	readonly home: Decimal;
+	/** The kept income's leg, when the units are an income's. */
+	readonly legId: string | null;
+}
+
+/** The part of a leg's booked value that `units` of it carry. */
+const homeOfPart = (
+	leg: { amount: { toString(): string }; homeAmount: { toString(): string } },
+	units: Decimal,
+) =>
+	dec(leg.homeAmount.toString())
+		.mul(units)
+		.div(leg.amount.toString())
+		.toDecimalPlaces(8);
+
+async function incomeSide(
+	tx: Tx,
+	userId: string,
+	expenseId: string,
+): Promise<Side> {
 	const row = await incomeRow(tx, userId, expenseId);
 	if (!row.keepInWealth) {
 		throw new TRPCError({
@@ -82,10 +107,24 @@ async function incomeSide(tx: Tx, userId: string, expenseId: string) {
 			message: "This income has no account to move from",
 		});
 	}
+	// Some of it may have left the account since: count only what is still there.
+	const account = await lockOpenAccount(tx, userId, leg.accountId);
+	const free = worthOf(account.type, dec(account.balance.toString())).sub(
+		account.countedUnits.toString(),
+	);
+	const amount = dec(leg.amount.toString());
+	const units = amount.lt(free) ? amount : free;
+	if (!units.gt(0)) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "None of this income is left in the account outside your budget",
+		});
+	}
 	return {
 		accountId: leg.accountId,
-		units: dec(leg.amount.toString()),
-		home: dec(leg.homeAmount.toString()),
+		units,
+		home: homeOfPart({ amount, homeAmount: leg.homeAmount }, units),
+		legId: leg.id,
 	};
 }
 
@@ -122,7 +161,7 @@ async function accountSide(
 			message: `No exchange rate for ${account.currency}`,
 		});
 	}
-	return { accountId, units, home: value.amount };
+	return { accountId, units, home: value.amount, legId: null };
 }
 
 export async function moveInIn(
@@ -132,7 +171,7 @@ export async function moveInIn(
 ): Promise<MovedIn> {
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	const homeCurrency = await homeCurrencyOf(tx, userId);
-	const side: { accountId: string; units: Decimal; home: Decimal } =
+	const side: Side =
 		"expenseId" in input
 			? await incomeSide(tx, userId, input.expenseId)
 			: await accountSide(tx, userId, input.accountId, input.units, date);
@@ -143,10 +182,7 @@ export async function moveInIn(
 			message: "This account is already part of your budget",
 		});
 	}
-	await tx.assetAccount.update({
-		where: { id: account.id },
-		data: { countedUnits: { increment: side.units.toString() } },
-	});
+	await markCounted(tx, side, true);
 	const expenseId = "expenseId" in input ? input.expenseId : null;
 	if (expenseId)
 		await tx.expense.update({
@@ -177,8 +213,30 @@ export async function moveInIn(
 	};
 }
 
+/** Counts the side's units (or takes them back): on the income's leg when there is one (the trigger follows), else on the account itself. */
+async function markCounted(tx: Tx, side: Side, counted: boolean) {
+	if (side.legId) {
+		await tx.accountLeg.update({
+			where: { id: side.legId },
+			data: { countedUnits: counted ? side.units.toString() : "0" },
+		});
+		return;
+	}
+	const by = side.units.toString();
+	await tx.assetAccount.update({
+		where: { id: side.accountId },
+		data: {
+			countedUnits: counted ? { increment: by } : { decrement: by },
+		},
+	});
+}
+
 /** The units a Move in of this income counted, from its leg. */
-async function movedInSide(tx: Tx, userId: string, expenseId: string) {
+async function movedInSide(
+	tx: Tx,
+	userId: string,
+	expenseId: string,
+): Promise<Side> {
 	const row = await incomeRow(tx, userId, expenseId);
 	if (!row.movedInAt) {
 		throw new TRPCError({
@@ -195,10 +253,15 @@ async function movedInSide(tx: Tx, userId: string, expenseId: string) {
 			message: "This income has no account",
 		});
 	}
+	const units = dec(leg.countedUnits.toString());
 	return {
 		accountId: leg.accountId,
-		units: dec(leg.amount.toString()),
-		home: dec(leg.homeAmount?.toString() ?? "0"),
+		units,
+		home:
+			leg.homeAmount === null
+				? dec(0)
+				: homeOfPart({ amount: leg.amount, homeAmount: leg.homeAmount }, units),
+		legId: leg.id,
 	};
 }
 
@@ -207,10 +270,15 @@ export async function undoMoveInIn(
 	userId: string,
 	input: MoveInInput,
 ): Promise<MovedIn> {
-	const side =
+	const side: Side =
 		"expenseId" in input
 			? await movedInSide(tx, userId, input.expenseId)
-			: { accountId: input.accountId, units: dec(input.units), home: dec(0) };
+			: {
+					accountId: input.accountId,
+					units: dec(input.units),
+					home: dec(0),
+					legId: null,
+				};
 	const account = await lockOpenAccount(tx, userId, side.accountId);
 	if (dec(account.countedUnits.toString()).lt(side.units)) {
 		throw new TRPCError({
@@ -219,10 +287,7 @@ export async function undoMoveInIn(
 				"Some of this money has left the account since. Move it out of your budget instead.",
 		});
 	}
-	await tx.assetAccount.update({
-		where: { id: account.id },
-		data: { countedUnits: { decrement: side.units.toString() } },
-	});
+	await markCounted(tx, side, false);
 	const expenseId = "expenseId" in input ? input.expenseId : null;
 	if (expenseId)
 		await tx.expense.update({

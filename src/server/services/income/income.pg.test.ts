@@ -389,8 +389,8 @@ describe("income.confirmRecurring", () => {
 			kept: false,
 			booked: ARS(85_000_000),
 		});
-		// Use my plan needs the envelope engine (2B P2): reported, never faked.
-		expect(result.value.plan).toEqual({
+		// Use my plan needs an envelope budget; without one it says so.
+		expect(result.value.plan).toMatchObject({
 			applied: false,
 			reason: "no_envelope_budget",
 		});
@@ -448,7 +448,7 @@ describe("income.confirmRecurring", () => {
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 		const { value } = await forUser(p.userId).apply(confirmRecurringIncome, {
 			templateId: template.id,
-			amount: 910000,
+			amount: "910000",
 		});
 		expect(value.booked).toEqual(ARS(91_000_000));
 	});
