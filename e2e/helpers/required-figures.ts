@@ -28,6 +28,11 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 		"project.total:e2e_project_depto",
 		"balance.person:e2e_project_depto:user:e2e_user_martin",
 	],
+	// S4B, as the flows open them: Martín's rows with Sofía, every month, and
+	// his month view, whose footer is spent() for the month.
+	activity: ["entry.amount:shared:e2e_tx_dp_calefon"],
+	activityMonth: ["spent"],
+	recurring: ["recurring.cost.out.month"],
 };
 
 export function requiredFiguresFor(page: string): readonly string[] {

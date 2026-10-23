@@ -236,3 +236,56 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Visual regression (e2e/visual): the gallery and the shell against the
+  # committed baselines. The browser runs in the pinned Playwright image,
+  # the same renderer that drew the baselines (e2e/visual/run.sh).
+  visual:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/segment/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: retrospend_test_e2e
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_e2e
+      E2E_DATABASE_URL: postgresql://postgres:testpassword@127.0.0.1:5436/retrospend_test_e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm exec prisma generate
+
+      - name: Visual regression
+        run: bash e2e/visual/run.sh --workers=2
+
+      # Holds the expected, actual and diff images of every mismatch.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

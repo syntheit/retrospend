@@ -1,7 +1,7 @@
+import { TRPCError } from "@trpc/server";
 import { type NextRequest, NextResponse } from "next/server";
-import { processAvatar } from "~/server/image-processing";
-import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
 import { db } from "~/server/db";
+import { removeAvatar, replaceAvatar } from "~/server/services/avatar.service";
 import { getWebSession } from "~/server/better-auth/web-session";
 
 async function getAuthenticatedUserId(
@@ -39,83 +39,28 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "No file provided" }, { status: 400 });
 	}
 
-	if (file.size > 5 * 1024 * 1024) {
-		return NextResponse.json(
-			{ error: "File too large. Maximum 5MB." },
-			{ status: 400 },
+	try {
+		const result = await replaceAvatar(
+			db,
+			userId,
+			Buffer.from(await file.arrayBuffer()),
 		);
-	}
-
-	const buffer = Buffer.from(await file.arrayBuffer());
-
-	let processed: Buffer;
-	try {
-		processed = await processAvatar(buffer);
+		return NextResponse.json(result);
 	} catch (err) {
-		const message = err instanceof Error ? err.message : "Invalid image format";
-		return NextResponse.json({ error: message }, { status: 400 });
-	}
-
-	const filePath = `avatars/${userId}-${Date.now()}.webp`;
-
-	try {
-		await uploadFile(filePath, processed, "image/webp");
-	} catch (err) {
+		if (err instanceof TRPCError && err.code === "BAD_REQUEST") {
+			return NextResponse.json({ error: err.message }, { status: 400 });
+		}
 		console.error("Avatar upload failed:", err);
 		return NextResponse.json(
 			{ error: "Failed to upload image. Please try again." },
 			{ status: 500 },
 		);
 	}
-
-	// Read old avatar path before updating so we can delete it after
-	const user = await db.user.findUnique({
-		where: { id: userId },
-		select: { avatarPath: true },
-	});
-
-	// TODO: if DB update fails after upload, the new file becomes orphaned on disk.
-	// A periodic cleanup job could remove unreferenced files.
-	await db.user.update({
-		where: { id: userId },
-		data: { avatarPath: filePath },
-	});
-
-	if (user?.avatarPath) {
-		try {
-			await deleteFile(user.avatarPath);
-		} catch (err) {
-			console.warn("Failed to delete old avatar (may already be gone):", err);
-		}
-	}
-
-	return NextResponse.json({ avatarUrl: getImageUrl(filePath) });
 }
 
 export async function DELETE(request: NextRequest) {
 	const auth_result = await getAuthenticatedUserId(request);
 	if (auth_result instanceof NextResponse) return auth_result;
-	const { userId } = auth_result;
-
-	const user = await db.user.findUnique({
-		where: { id: userId },
-		select: { avatarPath: true },
-	});
-
-	if (!user?.avatarPath) {
-		return NextResponse.json({ success: true });
-	}
-
-	try {
-		await deleteFile(user.avatarPath);
-	} catch (err) {
-		console.warn("Failed to delete avatar from storage:", err);
-	}
-
-	await db.user.update({
-		where: { id: userId },
-		data: { avatarPath: null },
-	});
-
+	await removeAvatar(db, auth_result.userId);
 	return NextResponse.json({ success: true });
 }

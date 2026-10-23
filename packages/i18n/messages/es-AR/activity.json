@@ -1,0 +1,82 @@
+{
+	"header": {
+		"title": "Actividad",
+		"sub": "{count, plural, one {# movimiento} other {# movimientos}}",
+		"more": "Más acciones",
+		"import": "Importar un archivo"
+	},
+	"tabs": {
+		"expenses": "Gastos",
+		"recurring": "Recurrentes",
+		"insights": "Análisis"
+	},
+	"filters": {
+		"label": "Filtrar actividad",
+		"search": "Buscá gastos o montos",
+		"find": "Buscar",
+		"noMatch": "Sin resultados",
+		"picked": "Elegidos",
+		"clear": "Sacar",
+		"selected": "Elegido",
+		"more": "{name} +{count}",
+		"you": "Vos",
+		"dim": {
+			"cats": "Categoría",
+			"people": "Persona",
+			"projects": "Proyecto",
+			"paidBy": "Pagó",
+			"kinds": "Tipo"
+		},
+		"kind": {
+			"expense": "Gastos",
+			"in": "Ingresos",
+			"refund": "Reintegros",
+			"transfer": "No es gasto",
+			"payment": "Pagos"
+		}
+	},
+	"row": {
+		"paidTo": "Le pagaste a {name}",
+		"paidYou": "{name} te pagó",
+		"rate": "Tipo {type}"
+	},
+	"actions": {
+		"deleted": "Borraste {name}",
+		"error": {
+			"conflict": "Alguien lo cambió antes. Probá de nuevo.",
+			"gone": "Esta entrada ya no existe.",
+			"forbidden": "No podés cambiar esta entrada.",
+			"other": "No se pudo guardar el cambio"
+		}
+	},
+	"empty": {
+		"first": "Agregá tu primer gasto",
+		"firstHint": "Los gastos que agregues o importes aparecen acá.",
+		"add": "Agregar gasto",
+		"noMatch": "Sin resultados",
+		"noMatchHint": "Nada coincide con estos filtros.",
+		"reset": "Restablecer",
+		"quiet": "Nada este mes",
+		"quietHint": "Las entradas anteriores siguen acá.",
+		"allTime": "Ver todo"
+	},
+	"error": {
+		"load": "No se pudo cargar tu actividad.",
+		"retry": "Probá de nuevo"
+	},
+	"footer": {
+		"yourSpending": "Tu gasto"
+	},
+	"compareUnavailable": "La comparación con el período anterior todavía no está disponible.",
+	"more": "Ver más",
+	"rateTypes": {
+		"official": "Oficial",
+		"blue": "Blue",
+		"card": "Tarjeta",
+		"mep": "MEP",
+		"crypto": "Cripto",
+		"tourist": "Turista",
+		"market": "Mercado",
+		"custom": "Personalizado"
+	}
+}

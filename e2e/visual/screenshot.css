@@ -1,0 +1,5 @@
+/* Applied while toHaveScreenshot captures (playwright.config.ts, visual).
+   The e2e app runs under `next dev`, whose devtools badge is not the app. */
+nextjs-portal {
+	display: none;
+}

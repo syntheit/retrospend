@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";
@@ -279,6 +280,26 @@ export async function updateAnalyticsCategoryPreference(
 			isFlexible,
 		},
 	});
+}
+
+/**
+ * Marks one of the caller's categories flexible or fixed; NOT_FOUND when
+ * the category is not theirs.
+ */
+export async function setAnalyticsCategoryPreference(
+	db: AppDb,
+	userId: string,
+	categoryId: string,
+	isFlexible: boolean,
+) {
+	const category = await db.category.findFirst({
+		where: { id: categoryId, userId },
+		select: { id: true },
+	});
+	if (!category) {
+		throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+	}
+	return updateAnalyticsCategoryPreference(db, userId, categoryId, isFlexible);
 }
 
 export async function deleteAnalyticsCategoryPreference(

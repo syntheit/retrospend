@@ -4,7 +4,7 @@
  *
  * Tagging contract (S1/S4 render it, this reads it):
  *   data-figure="<id>"     registry id with its scope, e.g. "owed.net" or
- *                          "project.total:e2e_project_floripa". No commas.
+ *                          "project.total:ce2eproject0floripa". No commas.
  *   data-minor="<int>"     the signed value. Money: ISO minor units of
  *                          data-currency (centavos for ARS, even though ARS
  *                          shows whole pesos). Percent: hundredths of a

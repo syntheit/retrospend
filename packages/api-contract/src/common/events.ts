@@ -11,7 +11,33 @@ import * as z from "zod";
  */
 export const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/;
 
-export const EVENT_TYPES = [] as const satisfies readonly string[];
+export const EVENT_TYPES = [
+	// G1 core (S3b)
+	"category.created",
+	"category.deleted",
+	"category.merged",
+	"category.updated",
+	"category_preference.deleted",
+	"category_preference.updated",
+	"favorite_rate.added",
+	"favorite_rate.removed",
+	"favorite_rates.reordered",
+	"notification.all_marked_read",
+	"notification.marked_read",
+	"notification_preferences.updated",
+	"page_settings.updated",
+	"profile.avatar_removed",
+	"profile.avatar_updated",
+	"profile.background_updated",
+	"profile.email_change_cancelled",
+	"profile.updated",
+	"push_device.registered",
+	"push_device.removed",
+	"rates.sync_requested",
+	"settings.updated",
+	"token.created",
+	"token.revoked",
+] as const satisfies readonly string[];
 
 export type EventType = (typeof EVENT_TYPES)[number];
 

@@ -1,0 +1,102 @@
+{
+	"title": "Activity",
+	"metaTitle": "Recurring",
+	"sub": "{out, plural, one {# recurring expense} other {# recurring expenses}}{income, plural, =0 {} one { · # recurring income} other { · # recurring income}}",
+	"add": "Add recurring expense",
+	"other": "Other",
+	"confirm": "Confirm",
+	"frequency": {
+		"weekly": "Weekly",
+		"biweekly": "Every 2 weeks",
+		"monthly": "Monthly",
+		"quarterly": "Quarterly",
+		"yearly": "Yearly"
+	},
+	"due": {
+		"paused": "Paused",
+		"overdueSince": "Overdue since {date}",
+		"today": "Due today",
+		"inDays": "in {count, plural, one {# day} other {# days}}"
+	},
+	"group": {
+		"due": "Due now",
+		"next30": "Next 30 days",
+		"later": "Later",
+		"in": "Money in"
+	},
+	"table": {
+		"name": "Name",
+		"due": "Due",
+		"repeats": "Repeats",
+		"amount": "Amount",
+		"autoPay": "Auto-pay",
+		"autoPayFor": "Auto-pay for {name}",
+		"actions": "Actions"
+	},
+	"autoPay": {
+		"on": "Auto-pay on",
+		"off": "Auto-pay off"
+	},
+	"toolbar": {
+		"label": "Filter recurring",
+		"search": "Search recurring",
+		"autoPayOn": "Auto-pay on",
+		"autoPayOff": "Auto-pay off",
+		"foreign": "Foreign currency"
+	},
+	"summary": {
+		"cost": "Your recurring expenses cost <amount></amount> {period}.",
+		"per": {
+			"month": "a month",
+			"quarter": "a quarter",
+			"year": "a year"
+		},
+		"missing": "Not counted: {currencies}, no rate yet.",
+		"setRate": "Set rate",
+		"income": "Recurring income: <amount></amount>.",
+		"period": "Period",
+		"monthly": "Monthly",
+		"quarterly": "Quarterly",
+		"yearly": "Yearly",
+		"shared": "Shared bills count your share."
+	},
+	"logged": {
+		"title": "Logged this month",
+		"see": "See in Activity"
+	},
+	"actions": {
+		"paused": "Paused {name}",
+		"resumed": "Resumed {name}",
+		"autoPayOn": "Auto-pay on for {name}",
+		"autoPayOff": "Auto-pay off for {name}",
+		"logged": "Logged {name}",
+		"deleted": "Deleted {name}",
+		"error": {
+			"conflict": "Already logged for this date.",
+			"gone": "This recurring expense no longer exists.",
+			"forbidden": "You can't change this recurring expense.",
+			"other": "Couldn't save that change"
+		}
+	},
+	"empty": {
+		"title": "No recurring expenses",
+		"hint": "Add rent, subscriptions and other fixed costs.",
+		"noMatch": "No matches",
+		"noMatchHint": "Nothing fits these filters.",
+		"reset": "Reset"
+	},
+	"error": {
+		"load": "Couldn't load your recurring expenses.",
+		"retry": "Try again"
+	},
+	"confirmSheet": {
+		"title": "Confirm {name}",
+		"description": "Logs it as paid on {date}.",
+		"submit": "Confirm",
+		"changes": "What this changes",
+		"entry": "New expense on {date}",
+		"next": "Next due",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nothing else changes: the amount stays the same next time."
+	}
+}
