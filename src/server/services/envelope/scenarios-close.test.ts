@@ -10,9 +10,9 @@ import {
 	type ClosedRule,
 	computeBook,
 	type EngineInput,
-	invariantSides,
 	type MovementEntry,
 } from "./engine";
+import { invariantSides } from "./invariant";
 import { closeSummary } from "./month-close";
 import { buildMonthView, type ViewBook } from "./month-view";
 import type { EnvelopeTarget } from "./needs";
@@ -237,6 +237,64 @@ describe("S11 month rollover with the rule each month closed under (Lucía)", ()
 			left: -m(12_000),
 			overspent: m(12_000),
 		});
+	});
+
+	it("receivables at the close: Juan owes 30,000 and Paz 20,000; Paz's PROPOSED transfer counts only when confirmed (D8, D9)", () => {
+		const r = run(base);
+		const front = (id: string, who: string, n: number) => ({
+			id,
+			kind: "FRONT" as const,
+			counterparty: who,
+			currency: "ARS",
+			date: "2026-10-15",
+			month: 202610,
+			native: m(n),
+			value: m(n),
+		});
+		const paz = {
+			id: "paz-pays",
+			kind: "RECV" as const,
+			counterparty: "user:paz",
+			currency: "ARS",
+			date: "2026-10-30",
+			month: 202610,
+			native: m(20_000),
+			cash: m(20_000),
+		};
+		const held = (status: "PROPOSED" | "FINALIZED") =>
+			closeSummary({
+				input: r.input,
+				state: r.state,
+				month: 202610,
+				currency: "ARS",
+				events: [
+					front("f1", "user:juan", 30_000),
+					front("f2", "user:paz", 20_000),
+					{ ...paz, status },
+				],
+			}).held;
+		expect(held("PROPOSED")).toEqual([
+			{
+				counterparty: "user:juan",
+				currency: "ARS",
+				native: m(30_000),
+				held: m(30_000),
+			},
+			{
+				counterparty: "user:paz",
+				currency: "ARS",
+				native: m(20_000),
+				held: m(20_000),
+			},
+		]);
+		expect(held("FINALIZED")).toEqual([
+			{
+				counterparty: "user:juan",
+				currency: "ARS",
+				native: m(30_000),
+				held: m(30_000),
+			},
+		]);
 	});
 
 	it("a sweep into an envelope archived since keeps the leftover where it was", () => {

@@ -5,7 +5,6 @@
  * the caller's transaction (RLS set), so `setup.mutation.ts` previews it.
  */
 import { randomUUID } from "node:crypto";
-import { MissingRateError, USD } from "~/lib/money";
 import type {
 	SetupInput,
 	SetupPresetOutput,
@@ -13,16 +12,18 @@ import type {
 } from "~/lib/schemas/envelope";
 import { Prisma } from "~prisma";
 import { userTimeZone } from "../user-time-zone";
+import { writeEntryRow } from "./adjustment";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook, monthStartInstant } from "./inputs";
+import { recentSpending } from "./limits.service";
+import { planFund } from "./month-close.service";
 import { forgetMonthViews } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { type SetupStyle, stylePreset } from "./presets";
-import { RateBook } from "./rate-book";
 import { REPEAT_MONTHS } from "./target-input";
 import { savingsShape } from "./targets";
 import { TargetConfigError } from "./types";
-import { fromMinor } from "./units";
+import { fromMinor, toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
@@ -45,11 +46,24 @@ export async function setupPreset(
 		orderBy: { name: "asc" },
 		select: { id: true, name: true, isFixed: true },
 	});
+	const recent =
+		style === "LIMITS"
+			? await recentSpending(
+					tx,
+					userId,
+					user.homeCurrency,
+					await rateTypeFor(tx, userId, user.homeCurrency),
+					new Date(),
+				)
+			: null;
 	return stylePreset({
 		style,
 		currency: user.homeCurrency,
 		templates,
 		categories,
+		spent: recent?.spent,
+		unit: toMinor("1", user.homeCurrency),
+		missingRates: recent?.missingRates ?? [],
 	});
 }
 
@@ -169,7 +183,7 @@ function targetColumns(
 	};
 }
 
-async function rateTypeFor(tx: Tx, userId: string, currency: string) {
+export async function rateTypeFor(tx: Tx, userId: string, currency: string) {
 	const favorite = await tx.exchangeRateFavorite.findFirst({
 		where: { userId, exchangeRate: { currency } },
 		orderBy: { order: "asc" },
@@ -178,54 +192,16 @@ async function rateTypeFor(tx: Tx, userId: string, currency: string) {
 	return favorite?.exchangeRate.type ?? "official";
 }
 
-/** The STARTING_BALANCE money-in row (D34), valued like any row: in H, with its USD value at the book rate. */
-async function startingBalance(
-	tx: Tx,
-	userId: string,
-	p: {
-		minor: number;
-		currency: string;
-		rateType: string;
-		date: Date;
-		today: string;
-	},
-) {
-	const amount = fromMinor(p.minor, p.currency);
-	let rate = new Prisma.Decimal(1);
-	if (p.currency !== USD) {
-		const rates = await RateBook.load(tx, {
-			bookCurrency: p.currency,
-			rateTypes: [p.rateType, "official"],
-			since: "1970-01-01",
-		});
-		const found =
-			rates.lookup(p.currency, p.rateType, p.today) ??
-			rates.lookup(p.currency, "official", p.today);
-		if (!found) throw new MissingRateError(p.currency);
-		rate = new Prisma.Decimal(found.toString());
-	}
-	return tx.expense.create({
-		data: {
-			userId,
-			// Labeled by entryKind wherever it shows; no stored copy.
-			title: "",
-			amount: amount.toString(),
-			currency: p.currency,
-			date: p.date,
-			amountInUSD: new Prisma.Decimal(amount.toString())
-				.div(rate)
-				.toDecimalPlaces(2),
-			exchangeRate: rate.toDecimalPlaces(6),
-			pricingSource: p.rateType,
-			status: "FINALIZED",
-			direction: "IN",
-			entryKind: "STARTING_BALANCE",
-		},
-		select: { id: true },
-	});
+/** Limits is plan-funded (SPEC §5.6); every other style is funded from money in. */
+export function fundingSourceFor(style: string): "INCOME" | "TARGETS" {
+	return style === "LIMITS" ? "TARGETS" : "INCOME";
 }
 
-/** Creates the user's personal book from a setup the client edited (SPEC §4.3). */
+/** A style's leftover rule for Monthly envelopes (SPEC §5.7): Limits starts fresh each month. */
+export function leftoverDefault(style: string): "CARRY" | "RETURN" {
+	return style === "LIMITS" ? "RETURN" : "CARRY";
+}
+
 interface BookSettings {
 	currency: string;
 	timeZone: string;
@@ -278,6 +254,7 @@ async function createBook(
 				id: bookId,
 				currency: b.currency,
 				style: input.style,
+				fundingSource: fundingSourceFor(input.style),
 				weekStartDay: input.weekStartDay ?? 1,
 				monthStartDay: b.startDay,
 				timeZone: b.timeZone,
@@ -332,6 +309,7 @@ async function createEnvelopes(
 			name: e.name,
 			icon: e.icon ?? null,
 			kind: e.kind,
+			leftoverRule: leftoverDefault(input.style),
 			sortOrder: i,
 			...targetColumns(e.target, b.currency, b.startMonth),
 		})),
@@ -365,12 +343,14 @@ export async function setupBook(
 	// "I have nothing right now" is a confirmed answer with no row to write.
 	const money = !input.startingMoneyMinor
 		? null
-		: await startingBalance(tx, userId, {
+		: await writeEntryRow(tx, userId, {
 				minor: input.startingMoneyMinor,
 				currency: b.currency,
 				rateType: b.rateType,
 				date: b.startDate,
 				today: b.today,
+				direction: "IN",
+				entryKind: "STARTING_BALANCE",
 			});
 	await tx.budgetBook.update({
 		where: { id: bookId },
@@ -382,5 +362,8 @@ export async function setupBook(
 		},
 	});
 	forgetMonthViews(tx);
+	// "Your limits start now" (SPEC §4.3 step 5): this month is funded at setup.
+	if (fundingSourceFor(input.style) === "TARGETS")
+		await planFund(tx, userId, ctx.now);
 	return { bookId, startingBalanceExpenseId: money?.id ?? null };
 }

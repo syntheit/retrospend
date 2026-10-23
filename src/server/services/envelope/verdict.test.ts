@@ -133,3 +133,47 @@ describe("verdict states, first that applies (SYNTHESIS-r6 §4)", () => {
 		expect(run({}, { style: "WEEKLY" }).lead.kind).toBe("LEFT_TO_SPEND");
 	});
 });
+
+describe("Limits verdict (SPEC §6.1, A2)", () => {
+	// Limits 62,000 (Dining 20,000, Groceries 42,000), 15,000 spent, 11 days left.
+	const limits = (
+		p: Partial<{ left: number; spent: number; ahead: boolean }>,
+	) =>
+		verdict({
+			style: "LIMITS",
+			month: 202610,
+			toAssign: -62_000,
+			leftToSpend: base,
+			overspent: [],
+			week: null,
+			limits: {
+				limit: 62_000,
+				spent: p.spent ?? 15_000,
+				left: p.left ?? 47_000,
+				aheadOfPace: p.ahead ?? false,
+			},
+		});
+
+	it("Left in your limits leads; To assign stays hidden (no notice); 47,000 / 11 days = 4,272 a day", () => {
+		const v = limits({});
+		expect(v.lead).toEqual({
+			kind: "LEFT_IN_LIMITS",
+			figureId: "budget.leftInLimits",
+			amount: 47_000,
+		});
+		expect(v.state).toBe("ON_TRACK");
+		expect(v.notice).toBeNull();
+		expect(v.perDay).toBe(4_272);
+		expect(v.limits).toEqual({ limit: 62_000, spent: 15_000 });
+	});
+
+	it("ahead of pace, used up and over read in that order", () => {
+		expect(limits({ ahead: true }).state).toBe("FASTER_THAN_PLANNED");
+		expect(limits({ left: 0 }).state).toBe("USED_UP");
+		expect(limits({ left: -3_000 })).toMatchObject({
+			state: "OVER_BUDGET",
+			action: "COVER",
+			perDay: 0,
+		});
+	});
+});

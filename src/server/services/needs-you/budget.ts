@@ -4,8 +4,10 @@
  * (monthViewIn, memoized per transaction) and passes the facts in.
  *
  * A month with a missing rate yields only the missing-rate item (and the
- * starting money prompt): every other amount would include the rateless
- * rows, and a guessed number never reaches the list (R14).
+ * starting money prompt and the month summary, which has no amount): every
+ * other amount would include the rateless rows, and a guessed number never
+ * reaches the list (R14). A Limits book hides To assign, so it has no pool
+ * or starting money items (SPEC §5.6).
  */
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { item } from "./catalog";
@@ -19,6 +21,63 @@ export interface BudgetFacts {
 	readonly startingMoneyUnconfirmed: boolean;
 	/** Money in the engine counted (valued in the book), with each row's title and day. */
 	readonly moneyIn: readonly MoneyInFact[];
+	/** Closed months waiting to be read, and the latest change after a late window. */
+	readonly closes?: CloseFacts;
+	/** Reconciled before, not yet this month (SPEC §5.11). */
+	readonly reconcileDue?: boolean;
+}
+
+export interface CloseFacts {
+	/** Summaries closed in the last 7 days and not acknowledged, oldest first. */
+	readonly waiting: readonly { month: number; from: IsoDate }[];
+	/** The newest change after a late window not acknowledged yet (C16). */
+	readonly changed: {
+		readonly earliestMonth: number;
+		readonly earliestFrom: IsoDate;
+		/** Book currency minor units, signed. */
+		readonly toAssign: number;
+		readonly envelopes: readonly { id: string; delta: number }[];
+	} | null;
+}
+
+/** "Month summary": one item for every close waiting (SPEC §5.14). */
+function summaryItem(dto: GetMonthOutput, c: CloseFacts): NeedsYouItem[] {
+	const newest = c.waiting.at(-1);
+	if (!newest) return [];
+	return [
+		item("budget.monthSummary", {
+			entity: { kind: "book", id: dto.book.id },
+			entityIds: c.waiting.map((w) => String(w.month)),
+			count: c.waiting.length,
+			date: newest.from,
+		}),
+	];
+}
+
+/** "Month changed after it closed": the change and its largest effect today (C16). */
+function changedItem(dto: GetMonthOutput, c: CloseFacts): NeedsYouItem[] {
+	const ch = c.changed;
+	if (!ch) return [];
+	const H = dto.book.currency;
+	const biggest = [...ch.envelopes].sort(
+		(a, b) => Math.abs(b.delta) - Math.abs(a.delta) || (a.id < b.id ? -1 : 1),
+	)[0];
+	const names = new Map(envelopesOf(dto).map((e) => [e.id, e.name]));
+	return [
+		item("budget.monthChanged", {
+			entity: biggest
+				? { kind: "envelope", id: biggest.id }
+				: { kind: "book", id: dto.book.id },
+			entityIds: ch.envelopes.map((e) => e.id),
+			amount: { minor: biggest?.delta ?? ch.toAssign, currency: H },
+			count: ch.envelopes.length,
+			date: ch.earliestFrom,
+			title:
+				ch.envelopes.length === 1 && biggest
+					? (names.get(biggest.id) ?? null)
+					: null,
+		}),
+	];
 }
 
 export interface MoneyInFact {
@@ -169,19 +228,35 @@ function billDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	if (facts.paused) return [];
 	const { dto } = facts;
-	const starting = facts.startingMoneyUnconfirmed
-		? [
-				item("budget.startingMoney", {
-					entity: { kind: "book", id: dto.book.id },
-				}),
-			]
+	// A Limits book hides To assign and asks for no money now (SPEC §5.6, §4.3).
+	const limits = dto.book.fundingSource === "TARGETS";
+	const starting =
+		facts.startingMoneyUnconfirmed && !limits
+			? [
+					item("budget.startingMoney", {
+						entity: { kind: "book", id: dto.book.id },
+					}),
+				]
+			: [];
+	const closes = facts.closes
+		? [...summaryItem(dto, facts.closes), ...changedItem(dto, facts.closes)]
 		: [];
 	if (dto.incomplete || dto.missingRates.length > 0)
-		return [...missingRateItem(dto), ...starting];
+		return [
+			...missingRateItem(dto),
+			...starting,
+			// The summary item carries no amount; a change does, so it waits.
+			...(facts.closes ? summaryItem(dto, facts.closes) : []),
+		];
+	const reconcile = facts.reconcileDue
+		? [item("budget.reconcile", { entity: { kind: "book", id: dto.book.id } })]
+		: [];
 	return [
-		...poolItems(dto, facts.moneyIn),
+		...(limits ? [] : poolItems(dto, facts.moneyIn)),
 		...overspentItem(dto),
 		...billDueItem(dto),
 		...starting,
+		...closes,
+		...reconcile,
 	];
 }

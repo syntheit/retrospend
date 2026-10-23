@@ -78,6 +78,7 @@ function month(o: {
 			startMonth: 202610,
 			weekStartDay: 1,
 			defaultEnvelopeId: "env-default",
+			paused: false,
 		},
 		month: { key: 202610, from: "2026-10-01", to: "2026-10-31", state: "OPEN" },
 		today: "2026-10-21",
@@ -146,11 +147,13 @@ function month(o: {
 			action: null,
 			notice: null,
 			poolName: "NOT_PLANNED_YET",
+			limits: null,
 			incomplete: (o.missing ?? []).length > 0,
 		},
 		owed: { held: zero, pending: zero, people: 0, aging: 0 },
 		shares: { unresolved: 0, pending: zero },
 		incomplete: (o.missing ?? []).length > 0,
+		approximate: false,
 		missingRates: (o.missing ?? []).map((currency) => ({
 			currency,
 			rateType: "blue",
@@ -342,6 +345,71 @@ describe("budget Needs you items (SPEC §5.14)", () => {
 				facts(month({ toAssign: 100 }), { paused: true, starting: true }),
 			),
 		).toEqual([]);
+	});
+
+	it("Limits: To assign is hidden, so no pool and no starting money item", () => {
+		const dto = month({ toAssign: -62_000 });
+		const limits = {
+			...dto,
+			book: { ...dto.book, fundingSource: "TARGETS" as const },
+		};
+		expect(budgetItems(facts(limits, { starting: true }))).toEqual([]);
+	});
+
+	it("two summaries waiting: one item with both months, dated by the newest", () => {
+		const items = budgetItems({
+			...facts(month({})),
+			closes: {
+				waiting: [
+					{ month: 202609, from: "2026-09-01" },
+					{ month: 202610, from: "2026-10-01" },
+				],
+				changed: null,
+			},
+		});
+		expect(items).toMatchObject([
+			{
+				type: "budget.monthSummary",
+				entityIds: ["202609", "202610"],
+				count: 2,
+				date: "2026-10-01",
+				amount: null,
+			},
+		]);
+	});
+
+	it("a change after the window: one item on the envelope that moved most (Restaurants +12,000)", () => {
+		const dto = month({ envelopes: [envelope("rest", "Restaurants")] });
+		const items = budgetItems({
+			...facts(dto),
+			closes: {
+				waiting: [],
+				changed: {
+					earliestMonth: 202503,
+					earliestFrom: "2025-03-01",
+					toAssign: 0,
+					envelopes: [{ id: "rest", delta: 12_000 }],
+				},
+			},
+		});
+		expect(items).toMatchObject([
+			{
+				type: "budget.monthChanged",
+				entity: { kind: "envelope", id: "rest" },
+				amount: ars(12_000),
+				date: "2025-03-01",
+				title: "Restaurants",
+				count: 1,
+			},
+		]);
+	});
+
+	it("reconciled before and not this month: the monthly check", () => {
+		expect(
+			budgetItems({ ...facts(month({})), reconcileDue: true }).map(
+				(i) => i.type,
+			),
+		).toEqual(["budget.reconcile"]);
 	});
 
 	it("addDays crosses months and years", () => {

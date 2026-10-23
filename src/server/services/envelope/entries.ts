@@ -8,16 +8,19 @@ import { isCrypto } from "~/lib/currency-format";
 import { USD } from "~/lib/money";
 import type { Prisma } from "~prisma";
 import type { ActivityEntry, MoneyInEntry, MovementEntry } from "./engine";
-import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
-import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import { dec, toMinor } from "./units";
-import { type ValuationContext, valueRow } from "./valuation";
+import type { Valuer } from "./valuer";
 
-interface ValuedRow {
+export { frozenKey, Valuer } from "./valuer";
+
+export interface ValuedRow {
 	id: string;
 	amount: Prisma.Decimal;
 	currency: string;
 	amountInUSD: Prisma.Decimal | string | null;
+	/** The home value booked at save (M2): frozen, used when it is in H. */
+	homeCurrency?: string | null;
+	homeAmount?: Prisma.Decimal | null;
 }
 
 export interface ExpenseRow extends ValuedRow {
@@ -53,44 +56,6 @@ export interface GroupedMovement {
 	fromEnvelopeId: string | null;
 	toEnvelopeId: string | null;
 	_sum: { amount: Prisma.Decimal | null };
-}
-
-/** Dates rows in the book zone and values them in H, collecting missing rates. */
-export class Valuer {
-	readonly missingRates: MissingRate[] = [];
-
-	constructor(
-		private readonly ctx: ValuationContext,
-		private readonly tz: string,
-		private readonly periods: readonly MonthBoundary[],
-	) {}
-
-	dated(d: Date): { date: IsoDate; month: MonthKey } {
-		const date = isoDateIn(d, this.tz);
-		return { date, month: budgetMonthOf(date, this.periods) };
-	}
-
-	/** The budget month of a calendar date (a @db.Date column, read as stored). */
-	monthOf(date: IsoDate): MonthKey {
-		return budgetMonthOf(date, this.periods);
-	}
-
-	value(r: ValuedRow, date: IsoDate, month: MonthKey): Minor | null {
-		const v = valueRow(
-			{
-				id: r.id,
-				amount: r.amount.toString(),
-				currency: r.currency,
-				date,
-				month,
-				amountInUSD: r.amountInUSD?.toString() ?? null,
-			},
-			this.ctx,
-		);
-		if (v.ok) return v.minor;
-		this.missingRates.push(v.missing);
-		return null;
-	}
 }
 
 const SOURCE = {

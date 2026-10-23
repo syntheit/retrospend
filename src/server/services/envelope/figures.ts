@@ -9,6 +9,9 @@
  *   (D-owner-2026-10-22d).
  * - budget.leftThisWeek: Σ Left this week of weekly envelopes (SPEC §6.1).
  * - envelope.left: one envelope's Left, narrowed by `envelopeId`.
+ * - budget.leftInLimits: Limits, Σ Left of the envelopes with a limit.
+ * - budget.holds: To assign + Σ Left + next month's assigned, what the
+ *   bank should hold (reconcile).
  * - budget.heldForOthers: what the budget holds for money people owe you
  *   (the splits replay's open basis, SPEC §5.8): it is out of To assign
  *   until they pay or you forgive.
@@ -22,14 +25,17 @@ import type {
 	FigurePass,
 	Money,
 } from "~/server/figures/registry";
+import { budgetHolds } from "./bank";
 import { forgetMonthViews, monthViewIn } from "./month-read";
 import {
+	FIGURE_LEFT_IN_LIMITS,
 	FIGURE_LEFT_THIS_WEEK,
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
 } from "./verdict";
 
 export const FIGURE_HELD_FOR_OTHERS = "budget.heldForOthers";
+export const FIGURE_BUDGET_HOLDS = "budget.holds";
 
 /**
  * The current month, read once per figure pass. Each pass reads anew: a
@@ -110,10 +116,33 @@ export const heldForOthersFigure: FigureDefinition = {
 	},
 };
 
+/** Limits (SPEC §6.1): Σ Left of the envelopes with a limit; null in other styles. */
+export const leftInLimitsFigure: FigureDefinition = {
+	id: FIGURE_LEFT_IN_LIMITS,
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const v = await current(db, scope.userId, pass);
+		const lead = v?.dto.verdict.lead;
+		return lead?.kind === "LEFT_IN_LIMITS" ? lead.amount : null;
+	},
+};
+
+/** What the budget holds: To assign + Σ Left + next month's assigned (reconcile, SPEC §5.11). */
+export const budgetHoldsFigure: FigureDefinition = {
+	id: FIGURE_BUDGET_HOLDS,
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const v = await current(db, scope.userId, pass);
+		return v ? inBook(budgetHolds(v), v.dto.book.currency) : null;
+	},
+};
+
 export const budgetFigures = [
 	notPlannedYetFigure,
 	leftToSpendFigure,
 	leftThisWeekFigure,
+	leftInLimitsFigure,
 	envelopeLeftFigure,
 	heldForOthersFigure,
+	budgetHoldsFigure,
 ];

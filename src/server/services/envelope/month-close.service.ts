@@ -1,24 +1,26 @@
 /**
  * Lazy month close (SPEC §5.5, D36): no cron. On the first read on or after
  * day 1 of a month, every open month before it closes, oldest first, under
- * the book's advisory lock, each with its summary (month-close.ts). A Limits
- * book (funding source TARGETS, SPEC §5.6) then opens the month with one
- * PLAN_FUND batch that gives every targeted envelope its need.
+ * the book's advisory lock, each with its summary (month-close.ts) and
+ * checkpoint. Closed months whose rows changed since (budget_dirty marks)
+ * are recomputed: updated in place inside the late window, revised after
+ * it (month-revise.ts). A Limits book (funding source TARGETS, SPEC §5.6)
+ * then opens the month with one PLAN_FUND batch that gives every targeted
+ * envelope its need.
  *
- * Both steps start with a cheap existence check and check again under the
+ * Every step starts with a cheap existence check and checks again under the
  * lock, so concurrent first reads close each month once and fund it once
  * (`month_close` is also unique per book and month). Reads that run it:
  * read.service (READ COMMITTED). Previews and mutations compute the same
- * numbers without it: an unclosed month already uses today's rules.
+ * numbers without it: an unclosed month already uses today's rules, and a
+ * dirty mark sends their pass back to an earlier checkpoint.
  */
 import { randomUUID } from "node:crypto";
-import type { MonthCloseSummary } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
-import { computeBook } from "./engine";
-import { loadBook } from "./inputs";
-import { closeSummary } from "./month-close";
+import { loadCloseRows, loadDirtyMarks } from "./close-rows";
 import { forgetMonthViews, monthViewIn } from "./month-read";
+import { closeAndRevise } from "./month-revise";
 import { budgetMonthOf, isoDateIn, monthsFrom } from "./months";
 import { lockBook } from "./movement-state";
 import { fromMinor } from "./units";
@@ -29,6 +31,7 @@ interface BookHead {
 	id: string;
 	startMonth: number;
 	fundingSource: "INCOME" | "TARGETS";
+	planFundFrom: number | null;
 	currency: string;
 	current: number;
 }
@@ -44,6 +47,7 @@ async function headOf(
 			id: true,
 			startMonth: true,
 			fundingSource: true,
+			planFundFrom: true,
 			currency: true,
 			timeZone: true,
 			defaultEnvelopeId: true,
@@ -69,94 +73,109 @@ async function openMonths(tx: Tx, b: BookHead): Promise<number[]> {
 
 async function needsFunding(tx: Tx, b: BookHead): Promise<boolean> {
 	if (b.fundingSource !== "TARGETS") return false;
+	// A switch to Limits funds from the next month on (SPEC §4.4).
+	if (b.planFundFrom !== null && b.current < b.planFundFrom) return false;
 	const funded = await tx.budgetMovement.count({
 		where: { bookId: b.id, month: b.current, kind: "PLAN_FUND" },
 	});
 	return funded === 0;
 }
 
-async function writeCloses(
-	tx: Tx,
-	userId: string,
-	b: BookHead,
-	months: number[],
-	now: Date,
-): Promise<MonthCloseSummary[]> {
-	const loaded = await loadBook(tx, userId, { now });
-	if (!loaded) return [];
-	const state = computeBook(loaded.input);
-	const summaries = months.map((month) =>
-		closeSummary({
-			input: loaded.input,
-			state,
-			month,
-			currency: b.currency,
-			events: loaded.splits.events,
-		}),
-	);
-	await tx.monthClose.createMany({
-		data: summaries.map((summary) => ({
-			bookId: b.id,
-			month: summary.month,
-			mode: "AUTO" as const,
-			summary,
-		})),
-		skipDuplicates: true,
-	});
-	return summaries;
-}
-
 /** A Limits month opens with each targeted envelope's need assigned (PLAN_FUND), whatever To assign holds. */
-async function planFund(tx: Tx, userId: string, b: BookHead, now: Date) {
+export async function planFund(tx: Tx, userId: string, now: Date) {
 	forgetMonthViews(tx);
 	const view = await monthViewIn(tx, userId, now);
 	if (!view) return 0;
+	const H = view.dto.book.currency;
+	const month = view.dto.month.key;
 	const batchId = randomUUID();
 	const rows = view.dto.groups
 		.flatMap((g) => g.envelopes)
 		.filter((e) => (e.target?.need.minor ?? 0) > 0)
 		.map((e) => ({
 			id: randomUUID(),
-			bookId: b.id,
-			month: b.current,
+			bookId: view.dto.book.id,
+			month,
 			fromEnvelopeId: null,
 			toEnvelopeId: e.id,
-			amount: fromMinor(e.target?.need.minor ?? 0, b.currency).toString(),
+			amount: fromMinor(e.target?.need.minor ?? 0, H).toString(),
 			kind: "PLAN_FUND" as const,
 			batchId,
 			actorUserId: userId,
 		}));
 	if (rows.length > 0) await tx.budgetMovement.createMany({ data: rows });
+	forgetMonthViews(tx);
 	return rows.length;
 }
 
 export interface CloseRun {
 	closed: number[];
+	/** Closes updated in place inside their late window (C17). */
+	late: number[];
+	/** Closes given a new revision (C16). */
+	revised: number[];
 	/** Envelopes a PLAN_FUND batch funded this month (Limits). */
 	funded: number;
 }
 
-/** Closes every open month before today's and funds a Limits month; a no-op when done. */
+/**
+ * The month to recompute closes from: the earliest dirty mark at or before
+ * the last close, or the first close without a checkpoint (closes written
+ * before checkpoints existed). Null when every close is current.
+ */
+function reviseFrom(
+	closes: Awaited<ReturnType<typeof loadCloseRows>>,
+	dirty: Awaited<ReturnType<typeof loadDirtyMarks>>,
+): number | null {
+	const last = closes.at(-1)?.month;
+	if (last === undefined) return null;
+	const marks = dirty.map((d) => d.fromMonth).filter((m) => m <= last);
+	const bare = closes.filter((c) => !c.checkpoint).map((c) => c.month);
+	const all = [...marks, ...bare];
+	return all.length ? Math.min(...all) : null;
+}
+
+/** Closes every open month before today's, revises changed ones and funds a Limits month; a no-op when done. */
 export async function ensureMonthsClosed(
 	tx: Tx,
 	userId: string,
 	now: Date,
 ): Promise<CloseRun> {
-	const none: CloseRun = { closed: [], funded: 0 };
+	const none: CloseRun = { closed: [], late: [], revised: [], funded: 0 };
 	const b = await headOf(tx, userId, now);
 	if (!b) return none;
 	const quick =
-		(await openMonths(tx, b)).length > 0 || (await needsFunding(tx, b));
+		(await loadDirtyMarks(tx, b.id)).length > 0 ||
+		(await openMonths(tx, b)).length > 0 ||
+		(await needsFunding(tx, b));
 	if (!quick) return none;
 	await lockBook(tx, b.id);
 	// Again under the lock: a concurrent first read may have done it.
-	const months = await openMonths(tx, b);
-	const closed = months.length
-		? (await writeCloses(tx, userId, b, months, now)).map((s) => s.month)
-		: [];
-	const funded = (await needsFunding(tx, b))
-		? await planFund(tx, userId, b, now)
-		: 0;
+	const dirty = await loadDirtyMarks(tx, b.id);
+	const open = await openMonths(tx, b);
+	const closes = await loadCloseRows(tx, b.id);
+	const from = reviseFrom(closes, dirty);
+	// The late window is judged per change, on when it was made, not when it is read.
+	const last = closes.at(-1)?.month ?? 0;
+	const changes = dirty.filter((d) => d.fromMonth <= last);
+	const run =
+		open.length > 0 || from !== null
+			? await closeAndRevise(
+					tx,
+					userId,
+					now,
+					{ reviseFrom: from, open, changes },
+					closes,
+				)
+			: { closed: [], late: [], revised: [] };
+	// Only marks this read saw: one written since covers rows it did not read.
+	if (dirty.length > 0)
+		await tx.budgetDirty.deleteMany({
+			where: { id: { in: dirty.map((d) => d.id) } },
+		});
 	forgetMonthViews(tx);
-	return { closed, funded };
+	const funded = (await needsFunding(tx, b))
+		? await planFund(tx, userId, now)
+		: 0;
+	return { ...run, funded };
 }

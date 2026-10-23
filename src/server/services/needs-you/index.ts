@@ -7,11 +7,13 @@
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
+import type { LoadedBook } from "~/server/services/envelope/inputs";
 import { monthViewIn } from "~/server/services/envelope/month-read";
+import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
 import { activityItems, setupItems } from "./activity";
-import { budgetItems, type MoneyInFact } from "./budget";
+import { budgetItems, type CloseFacts, type MoneyInFact } from "./budget";
 import { compareItems, countByGroup } from "./catalog";
 import { loadFaces } from "./faces";
 import { peopleItems } from "./people";
@@ -44,6 +46,10 @@ async function budgetSource(
 		dto: view.dto,
 		paused: row.pausedAt !== null,
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
+		closes: closeFacts(view.loaded, now),
+		reconcileDue:
+			row.reconciledAt !== null &&
+			isoDateIn(row.reconciledAt, row.timeZone) < view.dto.month.from,
 		// Moves from Wealth are not money that arrived: no title to show.
 		moneyIn: await moneyInFacts(
 			tx,
@@ -53,6 +59,33 @@ async function budgetSource(
 			row.timeZone,
 		),
 	});
+}
+
+/** A summary waits this long after its close unless acknowledged (SPEC §5.14). */
+const SUMMARY_DAYS = 7;
+
+/** Closes waiting to be read and the newest change after a late window, from the closes the view loaded. */
+export function closeFacts(loaded: LoadedBook, now: Date): CloseFacts {
+	const since = now.getTime() - SUMMARY_DAYS * 86_400_000;
+	const from = (m: number) => monthRange(m, loaded.periods).from;
+	const waiting = loaded.closes
+		.filter((c) => c.acknowledgedAt === null && c.closedAt.getTime() >= since)
+		.map((c) => ({ month: c.month, from: from(c.month) }));
+	const unread = loaded.closes.filter(
+		(c) => c.revision > 1 && c.recalc && (c.ackRevision ?? 0) < c.revision,
+	);
+	const newest = unread
+		.map((c) => c.recalc)
+		.sort((a, b) => ((a?.at ?? "") < (b?.at ?? "") ? 1 : -1))[0];
+	const changed = newest
+		? {
+				earliestMonth: newest.earliestMonth,
+				earliestFrom: from(newest.earliestMonth),
+				toAssign: newest.toAssign,
+				envelopes: newest.envelopes,
+			}
+		: null;
+	return { waiting, changed };
 }
 
 /** The engine's money in with each row's title and day (one query), for Give it a job. */

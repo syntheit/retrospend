@@ -44,8 +44,13 @@ export const budgetStyleSchema = z.enum([
 	"WEEKLY",
 	"DEBT_PAYOFF",
 ]);
-/** Styles whose features have landed (02 §8: P2 completes these). */
-export const SETUP_STYLES = ["FLEX", "EVERY_DOLLAR", "WEEKLY"] as const;
+/** Styles whose features have landed (02 §8: P2 completes these, P4 Limits). */
+export const SETUP_STYLES = [
+	"FLEX",
+	"EVERY_DOLLAR",
+	"WEEKLY",
+	"LIMITS",
+] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
 
 export const envelopeKindSchema = z.enum([
@@ -222,7 +227,12 @@ export const verdictSchema = z.object({
 	style: budgetStyleSchema,
 	month: monthKeySchema,
 	lead: z.object({
-		kind: z.enum(["LEFT_TO_SPEND", "TO_ASSIGN", "LEFT_THIS_WEEK"]),
+		kind: z.enum([
+			"LEFT_TO_SPEND",
+			"TO_ASSIGN",
+			"LEFT_THIS_WEEK",
+			"LEFT_IN_LIMITS",
+		]),
 		/** Figure id the UI tags the number with (display audit). */
 		figureId: z.string(),
 		amount: moneySchema,
@@ -244,6 +254,8 @@ export const verdictSchema = z.object({
 		})
 		.nullable(),
 	poolName: poolNameSchema,
+	/** Limits (SPEC §6.1): the month's limits and what they have spent; null in other styles. */
+	limits: z.object({ limit: moneySchema, spent: moneySchema }).nullable(),
 	incomplete: z.boolean(),
 });
 
@@ -288,6 +300,12 @@ export const monthCloseSummarySchema = z.object({
 		}),
 	),
 	envelopes: z.array(monthCloseEnvelopeSchema),
+	/**
+	 * Category to envelope routing the month closed with: moving a category
+	 * later routes only the open months there (B7). Absent on closes made
+	 * before routing was kept.
+	 */
+	links: z.record(z.string(), z.string()).optional(),
 });
 
 // ── Splits and money owed (P3, SPEC §5.8) ───────────────────────────────────
@@ -360,6 +378,8 @@ export const getMonthOutputSchema = z.object({
 		startMonth: monthKeySchema,
 		weekStartDay: z.number().int(),
 		defaultEnvelopeId: idSchema,
+		/** Switched to Just track (SPEC §4.4): Budget shows tracking, no items. */
+		paused: z.boolean(),
 	}),
 	month: z.object({
 		key: monthKeySchema,
@@ -380,6 +400,8 @@ export const getMonthOutputSchema = z.object({
 		pending: moneySchema,
 	}),
 	incomplete: z.boolean(),
+	/** Some foreign rows were valued at the nearest rate there was, not one of their day: the UI shows "≈". */
+	approximate: z.boolean(),
 	missingRates: z.array(missingRateSchema),
 });
 
@@ -453,6 +475,8 @@ export const movementResultSchema = z.object({
 export const setupPresetOutputSchema = z.object({
 	style: setupStyleSchema,
 	currency: z.string(),
+	/** Limits: spending rows without a rate were left out of the proposed limits (R14). */
+	missingRates: z.array(missingRateSchema).default([]),
 	/** Names are message keys the client translates and sends back to setup. */
 	groups: z.array(
 		z.object({ key: z.string(), nameKey: z.string(), role: groupRoleSchema }),
@@ -546,6 +570,10 @@ export const setupInputSchema = z
 	.refine(
 		(s) => s.envelopes.filter((e) => e.isDefault).length === 1,
 		"exactly one envelope is the default (Everything else)",
+	)
+	.refine(
+		(s) => s.style !== "LIMITS" || s.startingMoneyMinor === undefined,
+		"Limits does not ask for money now (SPEC §4.3)",
 	);
 
 export const assignInputSchema = z.object({

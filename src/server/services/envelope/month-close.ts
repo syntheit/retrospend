@@ -62,5 +62,15 @@ export function closeSummary(p: CloseInput): MonthCloseSummary {
 		returned: s.totals.returned,
 		held: heldAt(p.events, p.month),
 		envelopes,
+		links: linksAt(p.input, p.month),
 	};
+}
+
+/** The routing a month closes with: the one it already closed with, else today's links. */
+function linksAt(input: EngineInput, month: MonthKey): Record<string, string> {
+	const kept = input.closedLinks?.get(month);
+	if (kept) return Object.fromEntries(kept);
+	const out: Record<string, string> = {};
+	for (const e of input.envelopes) for (const c of e.categoryIds) out[c] = e.id;
+	return out;
 }

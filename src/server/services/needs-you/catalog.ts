@@ -156,10 +156,7 @@ export const SEAMS: Readonly<Partial<Record<NeedsYouType, string>>> = {
 	"budget.debtDue": "P5 payoff: liability minimums and due days",
 	"budget.sharesNeedEnvelope":
 		"D19 share routing: splits-replay does not flag unresolved shares yet",
-	"budget.monthSummary": "P4 month close and its summary",
-	"budget.monthChanged": "P4 recalculation after close",
 	"budget.hiddenReview": "P7 migration of hidden legacy rows",
-	"budget.reconcile": "P4 reconcile (monthly, after a first reconcile)",
 	"people.owedAging":
 		"per-person age of the oldest open balance (SPEC §5.8) is not read anywhere yet",
 };

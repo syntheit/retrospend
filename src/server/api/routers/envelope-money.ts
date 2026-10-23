@@ -11,7 +11,6 @@ import {
 	carryOverspendInputSchema,
 	forgiveInputSchema,
 	forgiveResultSchema,
-	monthCloseSummarySchema,
 	monthSummaryInputSchema,
 	owedSchema,
 	previewOutputSchema,
@@ -21,6 +20,7 @@ import {
 	shareCategoryResultSchema,
 	unforgiveInputSchema,
 } from "~/lib/schemas/envelope";
+import { monthSummaryOutputSchema } from "~/lib/schemas/envelope-book";
 import {
 	carryOverspendMutation,
 	fixNegativeMutation,
@@ -90,7 +90,7 @@ export const envelopeMoneyProcedures = {
 	/** A closed month's summary (SPEC §6.6); null until it closes. */
 	monthSummary: envelopeProcedure
 		.input(monthSummaryInputSchema)
-		.output(monthCloseSummarySchema.nullable())
+		.output(monthSummaryOutputSchema.nullable())
 		.query(({ ctx, input }) =>
 			getMonthSummary(ctx.session.user.id, input.month),
 		),
