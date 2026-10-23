@@ -55,6 +55,8 @@ export interface ViewEnvelope {
 	foreign: Money | null;
 	/** The foreign target had no rate today: left out, flagged. */
 	targetIncomplete: boolean;
+	/** A goal's "Only for this goal" Wealth account, valued today in H (B12). */
+	dedicatedValue?: Minor | null;
 }
 
 export interface ViewGroup {
@@ -171,6 +173,7 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 							assigned: m.assigned,
 							left: m.left,
 							movedToWealth: moved.get(env.id) ?? 0,
+							dedicatedValue: env.dedicatedValue ?? null,
 							monthOf,
 							spentSince: (from) => spentSince(env.id, from),
 						});

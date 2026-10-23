@@ -16,6 +16,7 @@ import {
 	monthlyTargetFor,
 	monthsLeftInclusive,
 	savingsNeed,
+	savingsProgress,
 } from "./targets";
 import type {
 	IsoDate,
@@ -58,6 +59,8 @@ export interface TargetContext {
 	left: Minor;
 	/** Σ moved from this envelope to Wealth minus Σ moved back into it, through this month (B12). */
 	movedToWealth?: Minor;
+	/** Value today in H of a Wealth account marked "Only for this goal": replaces the moves (B12). */
+	dedicatedValue?: Minor | null;
 	/** Budget month of a date (BookPeriod boundaries). */
 	monthOf: (date: IsoDate) => MonthKey;
 	/** Spending in this envelope after `fromExclusive` through today (positive). */
@@ -140,7 +143,12 @@ function savingsResult(
 ): TargetResult {
 	if (t.amount == null && t.monthly == null) return EMPTY;
 	// Money moved to Wealth for the goal still counts as saved (B12, D47).
-	const progress = c.left + (c.movedToWealth ?? 0);
+	const progress = savingsProgress({
+		left: c.left,
+		toWealth: c.movedToWealth ?? 0,
+		fromWealth: 0,
+		dedicatedAccountValue: c.dedicatedValue,
+	});
 	const s = savingsNeed(
 		{ amount: t.amount, dueMonth: t.dueMonth, monthly: t.monthly },
 		{ month: c.month, progress, assigned: c.assigned },

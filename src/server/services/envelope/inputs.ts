@@ -34,6 +34,11 @@ import {
 	loadDirtyMarks,
 	pickCheckpoint,
 } from "./close-rows";
+import {
+	type DedicatedAccount,
+	dedicatedValues,
+	loadDedicatedAccounts,
+} from "./dedicated-goal";
 import type { ClosedRule, EngineInput } from "./engine";
 import {
 	activityEntries,
@@ -53,7 +58,7 @@ import {
 import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
-import type { IsoDate, MissingRate, MonthKey } from "./types";
+import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
@@ -176,22 +181,33 @@ function loadWealthRows(tx: Tx, bookId: string) {
 	});
 }
 
-function viewEnvelopes(row: BookRow, ctx: TargetContext): ViewEnvelope[] {
+function viewEnvelopes(
+	row: BookRow,
+	ctx: TargetContext,
+	dedicated: ReadonlyMap<string, Minor | null>,
+): ViewEnvelope[] {
 	return [...row.envelopes]
 		.sort((a, b) => a.sortOrder - b.sortOrder)
-		.map((e) => ({
-			id: e.id,
-			name: e.name,
-			icon: e.icon,
-			color: e.color,
-			kind: e.kind,
-			groupId: e.groupId,
-			order: e.sortOrder,
-			categoryIds: e.categories.map((c) => c.categoryId),
-			archived: e.archivedAt !== null,
-			targetStartMonth: e.targetStartMonth,
-			...targetOf(e, ctx),
-		}));
+		.map((e) => {
+			const target = targetOf(e, ctx);
+			const value = dedicated.get(e.id);
+			return {
+				id: e.id,
+				name: e.name,
+				icon: e.icon,
+				color: e.color,
+				kind: e.kind,
+				groupId: e.groupId,
+				order: e.sortOrder,
+				categoryIds: e.categories.map((c) => c.categoryId),
+				archived: e.archivedAt !== null,
+				targetStartMonth: e.targetStartMonth,
+				...target,
+				// A dedicated account without a rate today leaves the goal incomplete.
+				targetIncomplete: target.targetIncomplete || value === null,
+				dedicatedValue: value ?? null,
+			};
+		});
 }
 
 function viewBook(
@@ -224,6 +240,7 @@ function loadRates(
 	tx: Tx,
 	row: BookRow,
 	templates: readonly RecurringTemplate[],
+	accounts: readonly DedicatedAccount[],
 ) {
 	return RateBook.load(tx, {
 		bookCurrency: row.currency,
@@ -236,6 +253,7 @@ function loadRates(
 				e.targetCurrency ? [e.targetCurrency] : [],
 			),
 			...templates.map((t) => t.currency),
+			...accounts.map((a) => a.currency),
 		],
 	});
 }
@@ -315,6 +333,7 @@ interface Setting {
 	valuation: ValuationContext;
 	valuer: Valuer;
 	templates: RecurringTemplate[];
+	accounts: DedicatedAccount[];
 }
 
 async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
@@ -328,7 +347,8 @@ async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 				where: { id: { in: templateIds } },
 			})
 		: [];
-	const rates = await loadRates(tx, row, templates);
+	const accounts = await loadDedicatedAccounts(tx, row);
+	const rates = await loadRates(tx, row, templates, accounts);
 	const valuation: ValuationContext = {
 		bookCurrency: row.currency,
 		periods: row.periods.map((p) => ({
@@ -347,6 +367,7 @@ async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 		valuation,
 		valuer: new Valuer(valuation, row.timeZone, periods),
 		templates,
+		accounts,
 	};
 }
 
@@ -393,15 +414,25 @@ function finishLoad(
 		"input" | "splits" | "closes" | "dirty" | "checkpoint" | "prints"
 	>,
 ): LoadedBook {
-	const envelopes = viewEnvelopes(s.row, {
-		valuation: s.valuation,
-		today: s.today,
-		month: s.currentMonth,
-		tz: s.row.timeZone,
-		periods: s.periods,
-		templates: new Map(s.templates.map((t) => [t.id, t])),
-		missingRates: s.valuer.missingRates,
-	});
+	const dedicated = dedicatedValues(
+		s.row,
+		s.accounts,
+		{ today: s.today, month: s.currentMonth, valuation: s.valuation },
+		s.valuer.missingRates,
+	);
+	const envelopes = viewEnvelopes(
+		s.row,
+		{
+			valuation: s.valuation,
+			today: s.today,
+			month: s.currentMonth,
+			tz: s.row.timeZone,
+			periods: s.periods,
+			templates: new Map(s.templates.map((t) => [t.id, t])),
+			missingRates: s.valuer.missingRates,
+		},
+		dedicated,
+	);
 	return {
 		...p,
 		row: s.row,

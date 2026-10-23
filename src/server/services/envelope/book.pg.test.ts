@@ -96,20 +96,20 @@ async function limitsBook() {
 						...e,
 						name: "Groceries",
 						target: {
-							kind: "MONTHLY",
+							kind: "MONTHLY" as const,
 							amountMinor: 42_000,
-							mode: "SET_ASIDE",
-							cadence: "MONTH",
+							mode: "SET_ASIDE" as const,
+							cadence: "MONTH" as const,
 						},
 					}
 				: e.key === "dining"
 					? {
 							...e,
 							target: {
-								kind: "MONTHLY",
+								kind: "MONTHLY" as const,
 								amountMinor: 20_000,
-								mode: "SET_ASIDE",
-								cadence: "MONTH",
+								mode: "SET_ASIDE" as const,
+								cadence: "MONTH" as const,
 							},
 						}
 					: e,
