@@ -73,7 +73,8 @@
 			"category": "Pick a category",
 			"rate": "Enter a rate for {currency}",
 			"splitAmount": "The split does not add up to the amount",
-			"splitPct": "The percentages do not add up to 100%"
+			"splitPct": "The percentages do not add up to 100%",
+			"save": "Couldn't save. Check the fields and try again."
 		},
 		"toast": {
 			"added": "Added {title}",

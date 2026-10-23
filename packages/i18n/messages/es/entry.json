@@ -73,7 +73,8 @@
 			"category": "Elige una categoría",
 			"rate": "Introduce un tipo de cambio para {currency}",
 			"splitAmount": "La división no suma el importe",
-			"splitPct": "Los porcentajes no suman 100%"
+			"splitPct": "Los porcentajes no suman 100%",
+			"save": "No se pudo guardar. Revisa los campos e inténtalo de nuevo."
 		},
 		"toast": {
 			"added": "Has añadido {title}",

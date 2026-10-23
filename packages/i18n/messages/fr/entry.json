@@ -73,7 +73,8 @@
 			"category": "Choisis une catégorie",
 			"rate": "Saisis un taux pour {currency}",
 			"splitAmount": "Le partage ne correspond pas au montant",
-			"splitPct": "Les pourcentages ne font pas 100 %"
+			"splitPct": "Les pourcentages ne font pas 100 %",
+			"save": "Impossible d'enregistrer. Vérifie les champs et réessaie."
 		},
 		"toast": {
 			"added": "{title} ajoutée",

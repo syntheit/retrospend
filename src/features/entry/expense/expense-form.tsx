@@ -2,13 +2,14 @@
 
 import { dayKey } from "@retrospend/domain/time-zone";
 import { fromMinor } from "@retrospend/domain/money-minor";
-import { useTranslations } from "next-intl";
+import { draftFromMinor } from "@retrospend/domain/parse";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Sheet } from "~/components/ui/sheet";
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
-import { useSettled } from "../shared-ui";
+import { FieldError, useSettled } from "../shared-ui";
 import { api } from "~/trpc/react";
 import { ChangesBlock } from "../changes";
 import type { EntryCatalog } from "../shared-ui";
@@ -60,11 +61,15 @@ export function ExpenseForm(p: {
 	const t = useTranslations("entry.expense");
 	const tc = useTranslations("entry.changes");
 	const home = p.catalog.homeCurrency;
+	// The sheet's starting point, kept once: Undo changes and the unsaved check compare to it.
+	const locale = useLocale();
+	const [initial] = useState(() => withAmountText(p.initial, locale));
+	const [failed, setFailed] = useState(false);
 	const youRef = {
 		participantType: p.you.participantType,
 		participantId: p.you.participantId,
 	};
-	const x = useExpenseDraft(p.initial.draft, {
+	const x = useExpenseDraft(initial.draft, {
 		you: youRef,
 		home,
 		categories: p.catalog.categories,
@@ -87,7 +92,7 @@ export function ExpenseForm(p: {
 		categoryName: category?.name ?? "",
 		valid,
 	});
-	const dirty = JSON.stringify(d) !== JSON.stringify(p.initial.draft);
+	const dirty = JSON.stringify(d) !== JSON.stringify(initial.draft);
 	const dup = useDuplicate(d);
 	const editing = d.editing;
 
@@ -109,8 +114,14 @@ export function ExpenseForm(p: {
 		dirty && !closing.current ? setConfirm("discard") : close();
 	const submit = async (again?: boolean) => {
 		setTried(true);
+		setFailed(false);
 		if (!valid) return false;
-		await s.save(again);
+		try {
+			await s.save(again);
+		} catch {
+			setFailed(true);
+			return false;
+		}
 		if (again) {
 			p.onOpen({
 				kind: "expense",
@@ -135,7 +146,7 @@ export function ExpenseForm(p: {
 								onClick={() =>
 									editing.source === "shared"
 										? setConfirm("delete")
-										: void s.remove().then(close)
+										: void s.remove().then(close, () => setFailed(true))
 								}
 							>
 								{t("delete")}
@@ -143,7 +154,7 @@ export function ExpenseForm(p: {
 							<Button
 								disabled={!dirty}
 								kind="ghost"
-								onClick={() => x.set(p.initial.draft)}
+								onClick={() => x.set(initial.draft)}
 							>
 								{t("undoChanges")}
 							</Button>
@@ -195,21 +206,24 @@ export function ExpenseForm(p: {
 				title={title}
 			>
 				<ExpenseFields
-					bookedHome={p.initial.bookedHome}
+					bookedHome={initial.bookedHome}
 					catalog={p.catalog}
 					changes={
-						<ChangesBlock
-							byDesign={
-								shared
-									? ["accounts", "netWorth"]
-									: ["accounts", "netWorth", "owed.owedToYou", "owed.youOwe"]
-							}
-							cannot={valid ? s.previewError : null}
-							diff={valid ? s.preview : null}
-							edit={!!editing}
-							empty={tc("empty")}
-							loading={s.previewLoading}
-						/>
+						<>
+							<ChangesBlock
+								byDesign={
+									shared
+										? ["accounts", "netWorth"]
+										: ["accounts", "netWorth", "owed.owedToYou", "owed.youOwe"]
+								}
+								cannot={valid ? s.previewError : null}
+								diff={valid ? s.preview : null}
+								edit={!!editing}
+								empty={tc("empty")}
+								loading={s.previewLoading}
+							/>
+							{failed ? <FieldError text={t("error.save")} /> : null}
+						</>
 					}
 					duplicate={dup}
 					errors={errors}
@@ -219,7 +233,7 @@ export function ExpenseForm(p: {
 					shares={shares}
 					today={dayKey(new Date())}
 					tried={tried}
-					verified={p.initial.verified}
+					verified={initial.verified}
 					x={x}
 					you={p.you}
 				/>
@@ -236,7 +250,7 @@ export function ExpenseForm(p: {
 				confirmLabel={t("deleteShared.confirm")}
 				description={t("deleteShared.body")}
 				isLoading={s.busy}
-				onConfirm={() => void s.remove().then(close)}
+				onConfirm={() => void s.remove().then(close, () => setFailed(true))}
 				onOpenChange={(o) => !o && setConfirm(null)}
 				open={confirm === "delete"}
 				title={t("deleteShared.title", { title: d.title })}
@@ -263,4 +277,14 @@ function useDuplicate(d: ReturnType<typeof useExpenseDraft>["d"]) {
 		{ enabled: !!q },
 	);
 	return !!q && !!data?.isDuplicate;
+}
+
+/** A saved or prefilled amount starts formatted in the reader's locale. */
+function withAmountText(loaded: LoadedDraft, locale: string): LoadedDraft {
+	const d = loaded.draft;
+	if (!d.minor || d.amountText) return loaded;
+	return {
+		...loaded,
+		draft: { ...d, amountText: draftFromMinor(d.minor, locale, d.currency) },
+	};
 }

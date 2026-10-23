@@ -78,7 +78,7 @@ export function useExpenseLoad(
 ): { loaded: LoadedDraft | null; failed: boolean } {
 	const personalId = request.mode === "edit" ? request.id : null;
 	const sharedId = request.mode === "editShared" ? request.id : null;
-	const personal = api.expense.getExpense.useQuery(
+	const personal = api.entry.expense.get.useQuery(
 		{ id: personalId ?? "" },
 		{ enabled: !!personalId },
 	);

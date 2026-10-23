@@ -5,7 +5,22 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { PrismaClient } from "~prisma";
+import { ExpenseService } from "../expense.service";
+import { expenseDto, listHomeCurrency } from "../expense-dto";
 import { resolveParticipantNames } from "../project/identities";
+
+/** A personal expense for the edit sheet, as expense.getExpense sends it, by any id. */
+export async function expenseForEdit(
+	db: PrismaClient,
+	userId: string,
+	id: string,
+) {
+	const expense = await new ExpenseService(db).getExpense(userId, id);
+	if (!expense) {
+		throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
+	}
+	return expenseDto(expense, await listHomeCurrency(db, userId));
+}
 
 export interface SharedAuthor {
 	readonly participantType: string;

@@ -2,6 +2,7 @@
 
 import { keepPreviousData } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import type { SplitRef } from "~/lib/shared-split-input";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
@@ -35,10 +36,14 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 	const split = sharedInput(d, o);
 	const sharedFull = split ? { ...split, projectId: d.projectId } : null;
 
-	const key = useSettled(
+	// Once a save starts the previews stop: the write's own invalidation
+	// would otherwise rerun a create preview against the row it just made.
+	const [saving, setSaving] = useState(false);
+	const settled = useSettled(
 		o.valid ? { shared, editing, personal, sharedFull } : null,
 		350,
 	);
+	const key = saving ? null : settled;
 	const live = {
 		placeholderData: keepPreviousData,
 		staleTime: 5_000,
@@ -103,6 +108,16 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 
 	/** Saves and shows the Undo toast; `quiet` when Add and new says it instead. */
 	async function save(quiet?: boolean) {
+		setSaving(true);
+		try {
+			await write(quiet);
+		} catch (error) {
+			setSaving(false);
+			throw error;
+		}
+	}
+
+	async function write(quiet?: boolean) {
 		if (shared && sharedFull) {
 			if (editing) {
 				const r = await m.sUpdate.mutateAsync({

@@ -12,7 +12,10 @@ import {
 	deleteSharedExpense,
 	updateSharedExpense,
 } from "~/server/services/entry/shared.mutation";
-import { sharedAuthor } from "~/server/services/entry/shared-read";
+import {
+	expenseForEdit,
+	sharedAuthor,
+} from "~/server/services/entry/shared-read";
 import { rateOptionsView, transferView } from "~/server/services/entry/views";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { forUser } from "~/server/services/preview";
@@ -111,6 +114,12 @@ export const entryRouter = createTRPCRouter({
 		),
 
 	expense: createTRPCRouter({
+		/** One of your expenses to edit, by any id (imports and the sidecar write cuids, the forms uuids). */
+		get: protectedProcedure
+			.input(z.object({ id: z.string().min(1).max(64) }))
+			.query(({ ctx, input }) =>
+				expenseForEdit(ctx.db, ctx.session.user.id, input.id),
+			),
 		create: money(schema.expenseFormSchema, createExpense, (v, c) =>
 			schema.toExpenseInput(v, c.timeZone),
 		),
