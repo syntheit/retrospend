@@ -4,7 +4,12 @@ import { GlanceStrip } from "~/components/glance/glance-strip";
 import { NeedsYouItem } from "~/components/needs-you/needs-you-item";
 import { NeedsYouList } from "~/components/needs-you/needs-you-list";
 import { useToast } from "~/components/ui/toast";
-import { GLANCE, NEEDS_YOU } from "../fixtures/home";
+import {
+	GLANCE,
+	GLANCE_NO_RATE,
+	NEEDS_YOU,
+	NEEDS_YOU_MORE,
+} from "../fixtures/home";
 import { CAP } from "../sections";
 import { Cap, Pair, Spec, States } from "../spec";
 
@@ -28,6 +33,17 @@ export function GlanceSection() {
 					</>
 				}
 			/>
+			<States
+				className="mt-4"
+				items={[
+					[
+						CAP.glanceNoRate,
+						<div className="w-105 max-w-full" key="n">
+							<GlanceStrip glance={GLANCE_NO_RATE} />
+						</div>,
+					],
+				]}
+			/>
 		</Spec>
 	);
 }
@@ -35,8 +51,8 @@ export function GlanceSection() {
 export function NeedsSection() {
 	const toast = useToast();
 	const act = () => toast.info(CAP.fixtures);
-	const one = (i: number) => {
-		const item = NEEDS_YOU[i];
+	const one = (i: number, list = NEEDS_YOU) => {
+		const item = list[i];
 		return item ? (
 			<ul className="w-105 max-w-full">
 				<NeedsYouItem item={item} onAction={act} />
@@ -68,6 +84,9 @@ export function NeedsSection() {
 				items={[
 					[CAP.itemDefault, one(2)],
 					[CAP.itemOverdue, one(0)],
+					[CAP.itemSetup, one(0, NEEDS_YOU_MORE)],
+					[CAP.itemRejected, one(1, NEEDS_YOU_MORE)],
+					[CAP.itemBudget, one(2, NEEDS_YOU_MORE)],
 					[
 						CAP.allClear,
 						<div className="w-105 max-w-full" key="e">

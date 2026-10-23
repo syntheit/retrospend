@@ -9,12 +9,31 @@
 		"verify": "{person} adicionou você a {title}",
 		"due": "{title} vence hoje",
 		"overdue": "{title} está atrasado",
-		"overspent": "{envelope} estourou"
+		"overspent": "{envelope} estourou",
+		"firstExpense": "Adicione sua primeira despesa",
+		"homeCurrency": "Escolha sua moeda principal",
+		"verifyEmail": "Confirme seu e-mail",
+		"importStatement": "Importe um extrato",
+		"rejected": "{person} recusou {title}",
+		"overspentMany": "{count, plural, one {# envelope estourou} other {# envelopes estouraram}}",
+		"overAssigned": "Você planejou <amount></amount> a mais do que tem",
+		"billDue": "{title} vence em breve",
+		"billsDue": "{count, plural, one {# conta vence} other {# contas vencem}} em breve",
+		"missingRate": "Ainda não há cotação para {currencies}",
+		"startingMoney": "Confirme seu dinheiro inicial"
 	},
 	"action": {
 		"assign": "Atribuir",
 		"review": "Revisar",
 		"confirm": "Confirmar",
-		"cover": "Cobrir"
+		"cover": "Cobrir",
+		"addExpense": "Adicionar despesa",
+		"choose": "Escolher",
+		"resend": "Reenviar",
+		"import": "Importar",
+		"edit": "Editar",
+		"takeBack": "Recuperar",
+		"fund": "Cobrir",
+		"setRate": "Definir cotação"
 	}
 }

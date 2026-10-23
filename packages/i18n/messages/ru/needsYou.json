@@ -9,12 +9,31 @@
 		"verify": "{person} добавил(а) вас в {title}",
 		"due": "{title}: срок сегодня",
 		"overdue": "{title}: просрочено",
-		"overspent": "{envelope}: перерасход"
+		"overspent": "{envelope}: перерасход",
+		"firstExpense": "Добавьте первый расход",
+		"homeCurrency": "Выберите основную валюту",
+		"verifyEmail": "Подтвердите email",
+		"importStatement": "Импортируйте выписку",
+		"rejected": "{person} отклонил(а) {title}",
+		"overspentMany": "Перерасход в конвертах: {count}",
+		"overAssigned": "Запланировано на <amount></amount> больше, чем есть",
+		"billDue": "{title}: скоро срок оплаты",
+		"billsDue": "Скоро срок оплаты счетов: {count}",
+		"missingRate": "Пока нет курса для {currencies}",
+		"startingMoney": "Подтвердите начальную сумму"
 	},
 	"action": {
 		"assign": "Распределить",
 		"review": "Проверить",
 		"confirm": "Подтвердить",
-		"cover": "Покрыть"
+		"cover": "Покрыть",
+		"addExpense": "Добавить расход",
+		"choose": "Выбрать",
+		"resend": "Отправить снова",
+		"import": "Импортировать",
+		"edit": "Изменить",
+		"takeBack": "Вернуть",
+		"fund": "Пополнить",
+		"setRate": "Указать курс"
 	}
 }

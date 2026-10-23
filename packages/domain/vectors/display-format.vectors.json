@@ -105,6 +105,20 @@
 			"expected": "Mon, Oct 19"
 		},
 		{
+			"name": "en-US long",
+			"locale": "en-US",
+			"iso": "2026-10-21",
+			"style": "long",
+			"expected": "Wednesday, October 21"
+		},
+		{
+			"name": "es-AR long",
+			"locale": "es-AR",
+			"iso": "2026-10-21",
+			"style": "long",
+			"expected": "miércoles, 21 de octubre"
+		},
+		{
 			"name": "en-US month",
 			"locale": "en-US",
 			"iso": "2026-10-01",

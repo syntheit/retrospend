@@ -214,7 +214,11 @@ export function RowSub({
 	parts: (ReactNode | Shrinkable | Kept)[];
 	className?: string;
 }) {
-	const shown = parts.filter((p) => p != null && p !== false && p !== "");
+	const empty = (p: unknown) => p == null || p === false || p === "";
+	// A shrinkable part with nothing in it is left out too (no stray separator).
+	const shown = parts.filter(
+		(p) => !empty(p) && !(isShrinkable(p) && empty(p.shrink)),
+	);
 	const last = shown.length - 1;
 	return (
 		<div

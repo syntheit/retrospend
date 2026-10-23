@@ -311,8 +311,13 @@ export const CAP = {
 	listGroup: "List group",
 	glanceA: "A. Glance line and rows (recommended)",
 	glanceB: "B. Compact 3-number strip",
+	glanceNoRate:
+		"Missing rate: no spent figure, a row that says No rate yet, the budget line names the currency; faces on You owe",
 	itemDefault: "Item default",
 	itemOverdue: "Overdue (amber icon, word in the sentence)",
+	itemSetup: "Setup prompt with a context line (new user)",
+	itemRejected: "Rejected split",
+	itemBudget: "Budget prompt (missing rate, named)",
 	allClear: "Empty, nothing needs you",
 	table:
 		"Desktop table. Hover a row, select with the checkbox or a click (shift-click for a range), right-click or use the three-dot button.",

@@ -27,7 +27,7 @@ describe("BottomNav", () => {
 		const html = render(h(BottomNav, { badges: { people: 2 } }));
 		const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
 		expect(hrefs).toEqual([
-			"/dashboard",
+			"/home",
 			"/activity",
 			"/budget",
 			"/people",

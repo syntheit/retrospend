@@ -117,9 +117,9 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Sidebar pinned projects | A pin per person and project | The Pinned group lists active projects, most recently updated first, at most 5 (the kit's fallback) | S4F projects |
 | Sidebar pinned projects | A light read of names and covers | The sidebar reuses `project.list({ status: "ACTIVE" })`, which also computes balances | S2 |
 | Add income, Transfer (split Add menu, palette, I and T keys) | Their sheets (4G) | Shown disabled with "Coming soon"; the keys show a "coming soon" toast | S4G |
-| New routes (`/home`, `/activity`, `/activity/recurring`, `/activity/insights`) | The pages | `SHIPPED_ROUTES` in `src/lib/nav.ts` is empty, so the new shell links today's routes; Insights is hidden. Each page agent adds its route there when it ships | S4 |
+| New routes (`/activity/insights`) | The page | `SHIPPED_ROUTES` in `src/lib/nav.ts` lists `/home`, `/activity` and `/activity/recurring`; Insights is hidden until its page ships | S4 |
 | Phone account entry on today's pages | The new PageHeader with the account avatar | Today's SiteHeader menu button opens the account sheet in the new shell (`LegacyMenuBridge` in `app-shell.tsx`); the button is hidden on desktop | S4 pages |
-| Verify your email (today's sidebar banner) | Its mockup home is a Home Needs you item | A single attention Notice at the top of the content in the new shell (`verify-email-notice.tsx`) | 2E + S4 Home |
+| Verify your email (today's sidebar banner) | Its mockup home is a Home Needs you item (shown only when the instance can send email) | On Home it is that item and the shell's Notice stays off; elsewhere it is a single attention Notice at the top of the content (`verify-email-notice.tsx`) | S1c (other pages) |
 | Public profile (`/u/{username}`) | Done in Settings v2: Profile > Public profile has Copy link and View. Today's page keeps its links in Payment methods | Settings v2 only (uiV2) | S4H settings (done) |
 | Settings > Developer, token scopes | A server path that sets an API key's scopes (`POST /api/v1/tokens`): the api-key plugin only lets the server set `permissions` | New keys are read-only. The sheet lists every scope and shows the write ones disabled with "Not available yet"; `createToken` in `src/features/settings/developer/tokens.ts` already takes scopes, so the route swaps in there | S3 platform |
 | Settings > Preferences, Default rate type | The per-user default rate type (M2, `UserSettings`) on this branch | Row left out | 2A.2, then S4H |
@@ -244,6 +244,18 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Operators row on phone web | A MoneyInput slot for the + - x / keys under the field (ADD-EXPENSE-R2) | Typed math works in the field; no key row | S1 kit |
 | One tab stop per chip group | FilterChips as a roving group (arrows inside) | Each chip is its own tab stop; Segmented groups already rove | S1 kit |
 | MoneyInput home row | The kit amount group's second row (home currency, booked amount, rate chip, "In budget as") | The home line and the rate chip sit under the MoneyInput, with the rate line under them | S1 kit |
+| Home: Dollar today row | A rate row in GlanceStrip (`GlanceRow` has no rate id) fed by `rate()` (blue, official, MEP, card) | Left out; the rate lives on Currencies | S1 kit |
+| Home: budget verdict under the hero | GlanceStrip room for the verdict's label, sentence and notice (`VerdictDto`, SYNTHESIS-r6 §4) and Can I afford something | The line under the hero is the kit's: a day left, left today, over plan, no budget, or unavailable with the currencies named | S1 kit + 4C |
+| Home: phone summary cards (phone Home A) | A kit card for Left to spend and the doorway tiles; AGENTS.md bans tile rows of numbers, so this needs an owner call | Phones show GlanceStrip (hero, line, pace, rows) | Owner + S1 kit |
+| Home: pace in words without a budget | A glance line "faster than last month by the same day" from `glance.pace.fasterThanLast`, and "Money in" for Just track (`glance.moneyIn`) | No budget reads "No budget set for this month"; the pace line shows both months | S1 kit |
+| Home: trip card and Envelopes to watch (rail) | An active trip (Project has no kind or dates, see Projects above) and a budget read of envelopes over or underfunded | The rail shows People and Coming up only | 2E schema + 4C |
+| Home: Needs you Later, swipe and the ⋯ menu | A needs-you entity in the action registry (Later, snooze state on the server) and SwipeActions on the item | Each item has its one action; links open their page | S1 kit + 2E |
+| Home: Needs you actions for budget, import and setup | Budget, import and setup entities in the action registry (catalog.ts lists their ids) | Budget items link to Budget, import to its review, home currency to Settings, Set rate to Currencies; recurring with a varying amount opens the recurring form | S1 kit |
+| Home: "≈" on the owed rows | Money's approximate mark for converted totals (the kit has none) | Owed to you and You owe show their faces and the amount without "≈" | S1 kit |
+| Home: net worth sparkline | A net worth series read in Money (`netWorthSeries`, 6 months) | The Net worth row shows the number only | 2D |
+| Home: Coming up total | A server total of the next 3 weeks of recurring items (`due({days: 21})` with its sum) | Coming up lists the items with no total line | 2E |
+| Home: Needs you amounts as figures | Registry ids for item amounts | Item amounts carry no `data-figure`; Give it a job carries `budget.notPlannedYet` | 2E figures |
+| Home: notifications bell | The notification center (bell, filters, Mark all read) | Not on Home; today's bell stays in the shell | S1c |
 
 ## 8. Behavior gaps found by the e2e suite
 

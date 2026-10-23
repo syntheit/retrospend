@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import { Notice } from "~/components/ui/notice";
@@ -8,20 +9,26 @@ import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 
 /**
- * Verify your email (today's sidebar banner). Its home in the mockup is a
- * Home Needs you item, which waits on 2E; until then it is the one Notice
- * at the top of the content (docs/ui/GAPS.md §7).
+ * Verify your email (today's sidebar banner). On Home it is a Needs you
+ * item, so the notice stays off there (a fact appears once); elsewhere it
+ * is the one Notice at the top of the content (docs/ui/GAPS.md §7).
  */
 export function VerifyEmailNotice() {
 	const t = useTranslations("shell.verifyEmail");
 	const toast = useToast();
 	const { data: session } = useSession();
 	const { data: features } = api.auth.getAppFeatures.useQuery();
+	const onHome = usePathname() === "/home";
 	const resend = api.auth.resendVerificationEmail.useMutation({
 		onSuccess: () => toast.saved(t("sent")),
 		onError: (err) => toast.failed(err.message || t("failed")),
 	});
-	if (!features?.isEmailEnabled || !session?.user || session.user.emailVerified)
+	if (
+		onHome ||
+		!features?.isEmailEnabled ||
+		!session?.user ||
+		session.user.emailVerified
+	)
 		return null;
 	return (
 		<Notice

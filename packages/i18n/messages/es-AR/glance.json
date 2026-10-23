@@ -12,6 +12,8 @@
 		"perDay": "<amount></amount> por día para {days, plural, one {# día} other {# días}}",
 		"leftToday": "<amount></amount> disponibles hoy",
 		"over": "<amount></amount> por encima del plan este mes",
-		"noBudget": "Sin presupuesto para este mes"
+		"noBudget": "Sin presupuesto para este mes",
+		"unavailable": "Presupuesto no disponible: todavía no hay cotización para {currencies}",
+		"unavailableRate": "Presupuesto no disponible: falta una cotización"
 	}
 }

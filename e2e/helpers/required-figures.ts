@@ -12,6 +12,9 @@ const ME = `user:${SOFIA.id}`;
 
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
+	// S4A: the redesigned Home on Sofía's seed. The pool (budget.notPlannedYet)
+	// shows only with an envelope book, which the seed does not have.
+	home: ["glance.spent", "owed.owedToYou", "owed.youOwe", "netWorth"],
 	transactions: [],
 	people: [],
 	// S4D: the redesigned People page (the smoke walk opens the old one).
