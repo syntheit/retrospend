@@ -66,6 +66,14 @@ export function useActivity() {
 	const pages = query.data?.pages ?? [];
 	const first = pages[0];
 	const rows = useMemo(() => pages.flatMap((p) => p.items), [pages]);
+	// Each page carries whole-day totals for its own days; null on any page means none.
+	const dayTotals = useMemo(
+		() =>
+			pages.every((p) => p.dayTotals)
+				? Object.assign({}, ...pages.map((p) => p.dayTotals))
+				: null,
+		[pages],
+	);
 
 	return {
 		today: first?.today ?? today,
@@ -76,6 +84,8 @@ export function useActivity() {
 		rows,
 		count: first?.count ?? null,
 		total: first?.total ?? null,
+		dayTotals,
+		elsewhere: first?.elsewhere ?? false,
 		query,
 	};
 }

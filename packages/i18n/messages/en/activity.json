@@ -37,11 +37,17 @@
 	},
 	"row": {
 		"paidTo": "You paid {name}",
-		"paidYou": "{name} paid you"
+		"paidYou": "{name} paid you",
+		"rate": "{type} rate"
 	},
 	"actions": {
 		"deleted": "Deleted {name}",
-		"failed": "Couldn't save that change"
+		"error": {
+			"conflict": "Someone changed this first. Try again.",
+			"gone": "This entry no longer exists.",
+			"forbidden": "You can't change this entry.",
+			"other": "Couldn't save that change"
+		}
 	},
 	"empty": {
 		"first": "Add your first expense",
@@ -49,7 +55,10 @@
 		"add": "Add expense",
 		"noMatch": "No matches",
 		"noMatchHint": "Nothing fits these filters.",
-		"reset": "Reset"
+		"reset": "Reset",
+		"quiet": "Nothing this month",
+		"quietHint": "Older entries are still here.",
+		"allTime": "Show all time"
 	},
 	"error": {
 		"load": "Couldn't load your activity.",
@@ -59,5 +68,15 @@
 		"yourSpending": "Your spending"
 	},
 	"compareUnavailable": "Comparing with the period before is not available yet.",
-	"more": "Show more"
+	"more": "Show more",
+	"rateTypes": {
+		"official": "Official",
+		"blue": "Blue",
+		"card": "Card",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"tourist": "Tourist",
+		"market": "Market",
+		"custom": "Custom"
+	}
 }

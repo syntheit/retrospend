@@ -7,6 +7,12 @@ import { enableV2ForViewer, openV2, realCategory } from "./v2-viewer";
 
 type Money = { minor: number; currency: string };
 type Row = { id: string; amount: Money; home?: Money | null; share?: Money };
+type ListPage = {
+	items: Row[];
+	today: string;
+	total: { figure: string; value: Money } | null;
+	dayTotals: Record<string, Money> | null;
+};
 
 /** One tRPC query as the app's client sends it (superjson, GET). */
 async function trpcQuery<T>(
@@ -26,7 +32,7 @@ async function trpcQuery<T>(
  */
 function listFetcher(page: Page, input: object) {
 	return async (ids: string[]): Promise<FiguresResponse> => {
-		const { items } = await trpcQuery<{ items: Row[] }>(
+		const { items, total, dayTotals } = await trpcQuery<ListPage>(
 			page,
 			"expense.listV2",
 			{
@@ -39,6 +45,10 @@ function listFetcher(page: Page, input: object) {
 			byId.set(`entry.amount:${r.id}`, r.amount);
 			if (r.share) byId.set(`entry.share:${r.id}`, r.share);
 		}
+		// The footer and day totals are spent() for the same filter.
+		if (total) byId.set(total.figure, total.value);
+		for (const [day, m] of Object.entries(dayTotals ?? {}))
+			byId.set(`spent.day:${day}`, m);
 		const figures = ids.flatMap((id) => {
 			const m = byId.get(id);
 			return m
@@ -75,6 +85,20 @@ test("Activity: shared rows, payments, accent search and Add expense", async ({
 	const audit = new FigureAudit(listFetcher(page, { people: [sofia] }));
 	expect(await audit.checkPage(page, "activity")).toEqual([]);
 	expect(audit.figureCount).toBeGreaterThan(5);
+
+	// The month view's footer is spent() for this month, from the server.
+	await page.goto("/activity");
+	await expect(main.locator("tfoot")).toBeVisible();
+	const { today } = await trpcQuery<ListPage>(page, "expense.listV2", {
+		limit: 1,
+	});
+	const [y, m] = today.split("-").map(Number) as [number, number];
+	const month = {
+		from: `${today.slice(0, 8)}01`,
+		to: `${today.slice(0, 8)}${new Date(Date.UTC(y, m, 0)).getUTCDate()}`,
+	};
+	const monthAudit = new FigureAudit(listFetcher(page, month));
+	expect(await monthAudit.checkPage(page, "activityMonth")).toEqual([]);
 
 	// RC-10: no accent, any month.
 	await openV2Search(page, "calefon");

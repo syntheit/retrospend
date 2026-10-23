@@ -5,6 +5,8 @@ import { type ReactElement, type ReactNode, useCallback, useMemo } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
+import type { MoneyValue } from "~/components/money/format";
+import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
 import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
@@ -17,13 +19,15 @@ import {
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useIsMobile } from "~/hooks/use-mobile";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
-import { toExpenseTarget, toTransactionVM } from "./to-vm";
+import { dayFigure, opens, toExpenseTarget, toTransactionVM } from "./to-vm";
 
 type Props = {
 	rows: ActivityRowDTO[];
 	today: string;
 	loading: boolean;
 	total?: TableTotal;
+	/** Your spending per day from spent(), for the phone day headers. */
+	dayTotals?: Record<string, MoneyValue> | null;
 	/** EmptyState for no rows or no matches. */
 	empty: ReactNode;
 	handlersFor: (row: ActivityRowDTO) => ActionHandlers<ExpenseTarget>;
@@ -33,13 +37,17 @@ type Props = {
 /** One row's view model, registry target and handlers, built once per row. */
 function useEntries(rows: ActivityRowDTO[], props: Props) {
 	const t = useTranslations("activity.row");
+	const types = useTranslations("activity.rateTypes");
 	return useMemo(
 		() =>
 			rows.map((row) => {
-				const vm = toTransactionVM(row, (p) =>
-					t(p.direction === "sent" ? "paidTo" : "paidYou", {
-						name: p.counterparty,
-					}),
+				const vm = toTransactionVM(
+					row,
+					(p) =>
+						t(p.direction === "sent" ? "paidTo" : "paidYou", {
+							name: p.counterparty,
+						}),
+					(type) => t("rate", { type: types.has(type) ? types(type) : type }),
 				);
 				return {
 					row,
@@ -48,7 +56,7 @@ function useEntries(rows: ActivityRowDTO[], props: Props) {
 					handlers: props.handlersFor(row),
 				};
 			}),
-		[rows, props.handlersFor, t],
+		[rows, props.handlersFor, t, types],
 	);
 }
 
@@ -65,15 +73,25 @@ function byDay(entries: Entry[]): [string, Entry[]][] {
 	return groups;
 }
 
+/** A day header: the day, and your spending that day when spent() has it. */
+function DayHeader({ date, props }: { date: string; props: Props }) {
+	const { day } = useRowDates(props.today);
+	const total = props.dayTotals?.[date];
+	return (
+		<h2 className="text-fg-2 text-small mb-2 flex items-baseline justify-between gap-3 px-1 font-medium">
+			<span>{day(date)}</span>
+			{total && <Money figure={dayFigure(date)} value={total} />}
+		</h2>
+	);
+}
+
 function PhoneList({ entries, props }: { entries: Entry[]; props: Props }) {
 	const { day } = useRowDates(props.today);
 	return (
 		<div className="flex flex-col gap-4">
 			{byDay(entries).map(([date, list]) => (
 				<section aria-label={day(date)} data-day={date} key={date}>
-					<h2 className="text-fg-2 text-small mb-2 px-1 font-medium">
-						{day(date)}
-					</h2>
+					<DayHeader date={date} props={props} />
 					<RowList label={day(date)} variant="group">
 						{list.map((e) => (
 							<ActionArea
@@ -91,11 +109,7 @@ function PhoneList({ entries, props }: { entries: Entry[]; props: Props }) {
 										/>
 									}
 									data-id={e.row.id}
-									onOpen={
-										e.row.source === "payment"
-											? undefined
-											: () => props.onOpen(e.row)
-									}
+									onOpen={opens(e.row) ? () => props.onOpen(e.row) : undefined}
 									today={props.today}
 									tx={e.vm}
 								/>
@@ -148,7 +162,7 @@ export function ActivityList(props: Props) {
 	const onOpen = useCallback(
 		(tx: TransactionVM) => {
 			const e = byId.get(tx.id);
-			if (e && e.row.source !== "payment") props.onOpen(e.row);
+			if (e && opens(e.row)) props.onOpen(e.row);
 		},
 		[byId, props.onOpen],
 	);

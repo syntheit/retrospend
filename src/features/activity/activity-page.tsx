@@ -1,6 +1,13 @@
 "use client";
 
-import { EllipsisIcon, FileUp, Plus, Receipt, SearchX } from "lucide-react";
+import {
+	CalendarX,
+	EllipsisIcon,
+	FileUp,
+	Plus,
+	Receipt,
+	SearchX,
+} from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -23,6 +30,8 @@ import { isFiltered, readFilter } from "./filters";
 import { PageFrame } from "./page-frame";
 import { useActivity } from "./use-activity";
 import { useRowActions } from "./use-row-actions";
+
+const ALL_TIME = { from: null, to: null };
 
 function Overflow() {
 	const t = useTranslations("activity.header");
@@ -59,6 +68,7 @@ export function ActivityPage() {
 	// this list through the router invalidation map (src/lib/query-invalidation).
 	const [compare, setCompare] = useState(false);
 	const filtered = isFiltered(a.filter, a.today);
+	const allTime = () => a.setFilter({ ...a.filter, range: ALL_TIME });
 	const empty = filtered ? (
 		<Empty
 			action={
@@ -76,6 +86,17 @@ export function ActivityPage() {
 			hint={t("empty.noMatchHint")}
 			icon={SearchX}
 			title={t("empty.noMatch")}
+		/>
+	) : a.elsewhere ? (
+		<Empty
+			action={
+				<Button kind="secondary" onClick={allTime} size="sm">
+					{t("empty.allTime")}
+				</Button>
+			}
+			hint={t("empty.quietHint")}
+			icon={CalendarX}
+			title={t("empty.quiet")}
 		/>
 	) : (
 		<Empty
@@ -127,6 +148,7 @@ export function ActivityPage() {
 				</Notice>
 			) : (
 				<ActivityList
+					dayTotals={a.dayTotals}
 					empty={empty}
 					handlersFor={actions.handlersFor}
 					loading={a.query.isPending}

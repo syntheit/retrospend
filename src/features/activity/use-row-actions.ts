@@ -9,12 +9,15 @@ import { useExpenseModal } from "~/components/expense-modal-provider";
 import { useToast } from "~/components/ui/toast";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";
+import { saveError } from "./error-code";
+import { opens } from "./to-vm";
 
 /**
  * The expense registry's handlers for Activity rows (R8). Edit and Add go
  * through today's expense modal until the Add family sheets land (4G);
  * an action with no handler here is not shown. Payments have no actions
- * yet (their read view comes with People, 4D).
+ * yet (their read view comes with People, 4D); money in, refunds and
+ * transfers only Delete until their own sheets land (4G).
  */
 export function useRowActions(rows: ActivityRowDTO[]) {
 	const t = useTranslations("activity.actions");
@@ -28,6 +31,7 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 
 	const open = useCallback(
 		(row: ActivityRowDTO) => {
+			if (!opens(row)) return;
 			if (row.source === "personal") modal.openExpense(row.entityId);
 			else if (row.source === "shared") modal.openSharedExpense(row.entityId);
 		},
@@ -60,18 +64,23 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 					else await deleteShared.mutateAsync({ id: r.entityId });
 					toast.saved(t("deleted", { name: target.name }));
 				} catch (error) {
-					toast.failed(error instanceof Error ? error.message : t("failed"));
+					toast.failed(t(`error.${saveError(error)}`));
 				}
 				await refresh();
 			},
 		};
 	}, [byId, open, modal, deletePersonal, deleteShared, refresh, toast, t]);
 
+	const deleteOnly = useMemo(
+		() => ({ delete: handlers.delete }),
+		[handlers.delete],
+	);
+
 	/** Rows whose menu has these actions; payments get none. */
 	const handlersFor = useCallback(
 		(r: ActivityRowDTO): ActionHandlers<ExpenseTarget> =>
-			r.source === "payment" ? {} : handlers,
-		[handlers],
+			r.source === "payment" ? {} : opens(r) ? handlers : deleteOnly,
+		[handlers, deleteOnly],
 	);
 
 	return { handlersFor, open };

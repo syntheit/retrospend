@@ -128,9 +128,11 @@ export function ActivityToolbar({
 		{
 			id: "paidBy",
 			label: t("dim.paidBy"),
-			items: items.paidBy
-				.slice(0, 6)
-				.map((i) => ({ ...i, checked: filter.paidBy.includes(i.id) })),
+			// Everyone: the menu scrolls, so nobody is hidden behind a cut-off.
+			items: items.paidBy.map((i) => ({
+				...i,
+				checked: filter.paidBy.includes(i.id),
+			})),
 		},
 	];
 	return (

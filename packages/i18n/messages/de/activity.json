@@ -37,11 +37,17 @@
 	},
 	"row": {
 		"paidTo": "Du hast {name} bezahlt",
-		"paidYou": "{name} hat dich bezahlt"
+		"paidYou": "{name} hat dich bezahlt",
+		"rate": "Kurs: {type}"
 	},
 	"actions": {
 		"deleted": "{name} gelöscht",
-		"failed": "Die Änderung konnte nicht gespeichert werden"
+		"error": {
+			"conflict": "Jemand hat das zuerst geändert. Versuch es noch einmal.",
+			"gone": "Diesen Eintrag gibt es nicht mehr.",
+			"forbidden": "Du kannst diesen Eintrag nicht ändern.",
+			"other": "Änderung konnte nicht gespeichert werden"
+		}
 	},
 	"empty": {
 		"first": "Füge deine erste Ausgabe hinzu",
@@ -49,7 +55,10 @@
 		"add": "Ausgabe hinzufügen",
 		"noMatch": "Keine Treffer",
 		"noMatchHint": "Nichts passt zu diesen Filtern.",
-		"reset": "Zurücksetzen"
+		"reset": "Zurücksetzen",
+		"quiet": "Nichts in diesem Monat",
+		"quietHint": "Ältere Einträge sind weiterhin da.",
+		"allTime": "Gesamten Zeitraum zeigen"
 	},
 	"error": {
 		"load": "Deine Aktivität konnte nicht geladen werden.",
@@ -59,5 +68,15 @@
 		"yourSpending": "Deine Ausgaben"
 	},
 	"compareUnavailable": "Der Vergleich mit dem vorherigen Zeitraum ist noch nicht verfügbar.",
-	"more": "Mehr anzeigen"
+	"more": "Mehr anzeigen",
+	"rateTypes": {
+		"official": "Offiziell",
+		"blue": "Blue",
+		"card": "Karte",
+		"mep": "MEP",
+		"crypto": "Krypto",
+		"tourist": "Tourist",
+		"market": "Markt",
+		"custom": "Eigener"
+	}
 }

@@ -37,11 +37,17 @@
 	},
 	"row": {
 		"paidTo": "Tu as payé {name}",
-		"paidYou": "{name} t'a payé"
+		"paidYou": "{name} t'a payé",
+		"rate": "Taux {type}"
 	},
 	"actions": {
 		"deleted": "{name} supprimé",
-		"failed": "Impossible d'enregistrer la modification"
+		"error": {
+			"conflict": "Quelqu'un l'a modifié avant toi. Réessaie.",
+			"gone": "Cette entrée n'existe plus.",
+			"forbidden": "Tu ne peux pas modifier cette entrée.",
+			"other": "Impossible d'enregistrer la modification"
+		}
 	},
 	"empty": {
 		"first": "Ajoute ta première dépense",
@@ -49,7 +55,10 @@
 		"add": "Ajouter une dépense",
 		"noMatch": "Aucun résultat",
 		"noMatchHint": "Rien ne correspond à ces filtres.",
-		"reset": "Réinitialiser"
+		"reset": "Réinitialiser",
+		"quiet": "Rien ce mois-ci",
+		"quietHint": "Les entrées plus anciennes sont toujours là.",
+		"allTime": "Tout afficher"
 	},
 	"error": {
 		"load": "Impossible de charger ton activité.",
@@ -59,5 +68,15 @@
 		"yourSpending": "Tes dépenses"
 	},
 	"compareUnavailable": "La comparaison avec la période précédente n'est pas encore disponible.",
-	"more": "Voir plus"
+	"more": "Voir plus",
+	"rateTypes": {
+		"official": "Officiel",
+		"blue": "Blue",
+		"card": "Carte",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"tourist": "Touriste",
+		"market": "Marché",
+		"custom": "Personnalisé"
+	}
 }

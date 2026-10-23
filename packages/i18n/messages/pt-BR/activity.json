@@ -37,11 +37,17 @@
 	},
 	"row": {
 		"paidTo": "Você pagou {name}",
-		"paidYou": "{name} pagou você"
+		"paidYou": "{name} pagou você",
+		"rate": "Câmbio {type}"
 	},
 	"actions": {
 		"deleted": "{name} excluído",
-		"failed": "Não foi possível salvar a alteração"
+		"error": {
+			"conflict": "Alguém alterou isso antes. Tente de novo.",
+			"gone": "Este lançamento não existe mais.",
+			"forbidden": "Você não pode alterar este lançamento.",
+			"other": "Não foi possível salvar a alteração"
+		}
 	},
 	"empty": {
 		"first": "Adicione seu primeiro gasto",
@@ -49,7 +55,10 @@
 		"add": "Adicionar gasto",
 		"noMatch": "Nenhum resultado",
 		"noMatchHint": "Nada corresponde a esses filtros.",
-		"reset": "Redefinir"
+		"reset": "Redefinir",
+		"quiet": "Nada este mês",
+		"quietHint": "Os lançamentos anteriores continuam aqui.",
+		"allTime": "Ver tudo"
 	},
 	"error": {
 		"load": "Não foi possível carregar sua atividade.",
@@ -59,5 +68,15 @@
 		"yourSpending": "Seus gastos"
 	},
 	"compareUnavailable": "A comparação com o período anterior ainda não está disponível.",
-	"more": "Ver mais"
+	"more": "Ver mais",
+	"rateTypes": {
+		"official": "Oficial",
+		"blue": "Blue",
+		"card": "Cartão",
+		"mep": "MEP",
+		"crypto": "Cripto",
+		"tourist": "Turismo",
+		"market": "Mercado",
+		"custom": "Personalizado"
+	}
 }
