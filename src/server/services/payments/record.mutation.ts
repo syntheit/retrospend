@@ -34,10 +34,13 @@ import type { ApplyTo, Quote } from "./types";
 import { type AllocationView, personKey, viewAllocation } from "./view";
 import { writePayment } from "./write";
 
+/** A payment to you returns held money to To assign (D18, D8): the budget figures show it. */
 export const PAYMENT_FIGURES = [
 	"balance.person",
 	"owed.owedToYou",
 	"owed.youOwe",
+	"budget.notPlannedYet",
+	"budget.heldForOthers",
 ];
 
 export interface RecordPaymentInput {

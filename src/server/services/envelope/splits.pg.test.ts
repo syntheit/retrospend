@@ -14,6 +14,7 @@ import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
+import { deleteSharedExpense } from "~/server/services/entry/shared.mutation";
 import { applyPlanFor, undoPlan } from "~/server/services/income/plan-seam";
 import { forUser } from "~/server/services/preview";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
@@ -459,6 +460,58 @@ describe("splits in the envelope budget on Postgres", () => {
 		expect(all.length).toBe(before + 2 * rows.length);
 		const mirrored = new Set(all.map((r) => r.revertsId));
 		expect(rows.every((r) => mirrored.has(r.id))).toBe(true);
+	});
+});
+
+describe("D12 deleting a split previews its budget change", () => {
+	it("sharedExpense.delete preview: 10 held for Paz comes back to To assign; nothing is written", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			timeZone: "UTC",
+		});
+		const meRef: Party = { type: "user", id: s.user.id };
+		const shadow: Party = {
+			type: "shadow",
+			id: (
+				await adminDb.shadowProfile.create({
+					data: { createdById: s.user.id, name: "Paz" },
+				})
+			).id,
+		};
+		const t = await split({
+			paidBy: meRef,
+			createdBy: meRef,
+			amount: 20,
+			categoryId: s.dining,
+			shares: [
+				[meRef, 10],
+				[shadow, 10],
+			],
+		});
+		const preview = await forUser(s.user.id).preview(deleteSharedExpense, {
+			id: t.id,
+			confirmUnsettled: true,
+		});
+		expect(preview.changes).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: "budget.notPlannedYet",
+					delta: usd(1_000),
+				}),
+				expect.objectContaining({
+					id: "budget.heldForOthers",
+					delta: usd(-1_000),
+				}),
+				expect.objectContaining({
+					id: "budget.leftToSpend",
+					delta: usd(1_000),
+				}),
+			]),
+		);
+		await expect(
+			adminDb.sharedTransaction.count({ where: { id: t.id } }),
+		).resolves.toBe(1);
 	});
 });
 

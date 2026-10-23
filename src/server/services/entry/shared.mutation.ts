@@ -28,7 +28,15 @@ export interface Deferred {
 	readonly notify?: (() => Promise<void>)[];
 }
 
-export const SHARED_FIGURES = ["owed.owedToYou", "owed.youOwe", "spent"];
+/** With the envelope budget: a split moves To assign, Left to spend and what is held for others (D12). */
+export const SHARED_FIGURES = [
+	"owed.owedToYou",
+	"owed.youOwe",
+	"spent",
+	"budget.notPlannedYet",
+	"budget.leftToSpend",
+	"budget.heldForOthers",
+];
 
 function serviceFor(tx: Tx, userId: string, input: Deferred): Service {
 	return new SharedTransactionService(
