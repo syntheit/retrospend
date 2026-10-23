@@ -1,15 +1,16 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { env } from "~/env";
-
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { IntegrationService } from "~/server/services/integration.service";
+import {
+	getRateSyncStatus,
+	requestRateSync,
+} from "~/server/services/exchange-rate.service";
 
 export const exchangeRateRouter = createTRPCRouter({
 	getRate: publicProcedure
@@ -23,20 +24,9 @@ export const exchangeRateRouter = createTRPCRouter({
 			return rate ?? null;
 		}),
 
-	getLastSync: protectedProcedure.query(async ({ ctx }) => {
-		const { db } = ctx;
-
-		const lastSync = await db.exchangeRate.findFirst({
-			orderBy: {
-				date: "desc",
-			},
-			select: {
-				date: true,
-			},
-		});
-
-		return lastSync?.date || null;
-	}),
+	getLastSync: protectedProcedure.query(
+		async ({ ctx }) => (await getRateSyncStatus(ctx.db)).latestRateDate,
+	),
 
 	getRatesForCurrency: protectedProcedure
 		.input(
@@ -98,13 +88,9 @@ export const exchangeRateRouter = createTRPCRouter({
 			return rates;
 		}),
 
-	syncNow: adminProcedure.mutation(async ({ ctx }) => {
+	syncNow: adminProcedure.mutation(async () => {
 		try {
-			// Trigger sync on worker
-			await IntegrationService.requestWorker(`${env.SIDECAR_URL}/sync-rates`, {
-				method: "POST",
-			});
-
+			await requestRateSync();
 			return {
 				success: true,
 				message: "Successfully triggered exchange rate sync",

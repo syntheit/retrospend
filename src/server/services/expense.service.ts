@@ -5,9 +5,8 @@ import {
 	rateTypeFromPricingSource,
 } from "~/lib/rate-selection";
 import type { Prisma, PrismaClient } from "~prisma";
+import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
-import { listActivity } from "./expense-list";
-import type { ListV2Filter } from "./expense-list/types";
 import {
 	type BookedRate,
 	bookRate,
@@ -25,7 +24,7 @@ function sameRate(a: number, b: number): boolean {
 
 /** What the form sends about an entry's rate. */
 export interface RateInput {
-	amount: number;
+	amount: number | string;
 	currency: string;
 	date: Date;
 	/** Entry leg in the stored convention: kept when custom or unchanged on edit. */
@@ -154,7 +153,7 @@ function savedRateOf(row: {
 export interface CreateExpenseInput {
 	id: string;
 	title: string;
-	amount: number;
+	amount: number | string;
 	currency: string;
 	exchangeRate?: number;
 	amountInUSD?: number;
@@ -265,11 +264,13 @@ export class ExpenseService {
 	) {
 		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
 			where: { id: input.id, userId },
+			include: { _count: { select: { accountLegs: true } } },
 		});
 
 		if (!existingExpense) {
 			throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
 		}
+		refuseLegMoneyEdit(existingExpense, input);
 
 		// Determine excludeFromAnalytics for the update
 		let excludeFromAnalytics: boolean | undefined = input.excludeFromAnalytics;
@@ -366,15 +367,6 @@ export class ExpenseService {
 			include: { category: true },
 			...(limit ? { take: limit } : {}),
 		});
-	}
-
-	/**
-	 * The Activity list (v2): personal expenses, your shares and payments in
-	 * one cursor-paginated read, with multi-select filters and accent-blind
-	 * search. Shaping lives in ./expense-list.
-	 */
-	async listV2(userId: string, filter: ListV2Filter, timeZone?: string) {
-		return listActivity(this.db, userId, filter, timeZone);
 	}
 
 	async getExpense(userId: string, id: string) {

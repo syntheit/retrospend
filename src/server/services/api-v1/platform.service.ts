@@ -2,6 +2,7 @@ import type { Me, ServerInfo } from "@retrospend/api-contract";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
 import { isFlagEnabled } from "~/server/flags";
+import { getImageUrl } from "~/server/storage";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
 import type { Principal } from "./principal.service";
 
@@ -54,14 +55,22 @@ export async function getMe(
 			username: true,
 			name: true,
 			image: true,
+			avatarPath: true,
 			role: true,
 			homeCurrency: true,
+			defaultCurrency: true,
+			fiscalMonthStartDay: true,
 			language: true,
+			emailVerified: true,
 			twoFactorEnabled: true,
+			createdAt: true,
 		},
 	});
+	const { avatarPath, createdAt, ...rest } = user;
 	return {
-		...user,
+		...rest,
+		avatarUrl: getImageUrl(avatarPath) ?? user.image,
+		createdAt: createdAt.toISOString(),
 		twoFactorEnabled: user.twoFactorEnabled ?? false,
 		principal: {
 			kind: principal.kind,

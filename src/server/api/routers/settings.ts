@@ -6,6 +6,10 @@ import {
 } from "~/server/api/trpc";
 import { resolveAiAccess } from "~/server/services/ai-access.service";
 import {
+	getGeneralSettings,
+	updateGeneralSettings,
+} from "~/server/services/general-settings.service";
+import {
 	getAppSettings,
 	isInviteOnlyEnabled,
 } from "~/server/services/settings";
@@ -13,45 +17,14 @@ import { SUPPORTED_LOCALES } from "~/i18n/locales";
 
 export const settingsRouter = createTRPCRouter({
 	getGeneral: protectedProcedure.query(async ({ ctx }) => {
-		const { session, db } = ctx;
-
-		const user = await db.user.findUnique({
-			where: { id: session.user.id },
-			select: {
-				homeCurrency: true,
-				defaultCurrency: true,
-				categoryClickBehavior: true,
-				currencySymbolStyle: true,
-				monthlyIncome: true,
-				monthlyIncomeCurrency: true,
-				smartCurrencyFormatting: true,
-				defaultPrivacyMode: true,
-				fiscalMonthStartDay: true,
-				defaultExpenseDateBehavior: true,
-				aiMode: true,
-				language: true,
-			},
-		});
-
-		if (!user) {
-			throw new Error("User not found");
-		}
-
-		const appSettings = await getAppSettings();
-
+		const [user, appSettings] = await Promise.all([
+			getGeneralSettings(ctx.db, ctx.session.user.id),
+			getAppSettings(),
+		]);
+		const { autoAcceptSplits: _autoAccept, ...general } = user;
 		return {
-			homeCurrency: user.homeCurrency,
-			defaultCurrency: user.defaultCurrency,
-			categoryClickBehavior: user.categoryClickBehavior,
-			currencySymbolStyle: user.currencySymbolStyle,
+			...general,
 			monthlyIncome: Number(user.monthlyIncome),
-			monthlyIncomeCurrency: user.monthlyIncomeCurrency,
-			smartCurrencyFormatting: user.smartCurrencyFormatting,
-			defaultPrivacyMode: user.defaultPrivacyMode,
-			fiscalMonthStartDay: user.fiscalMonthStartDay,
-			defaultExpenseDateBehavior: user.defaultExpenseDateBehavior,
-			aiMode: user.aiMode,
-			language: user.language,
 			allowAllUsersToGenerateInvites:
 				appSettings.allowAllUsersToGenerateInvites,
 		};
@@ -87,56 +60,17 @@ export const settingsRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			return await db.user.update({
-				where: { id: session.user.id },
-				data: {
-					...(input.homeCurrency !== undefined && {
-						homeCurrency: input.homeCurrency,
-					}),
-					...(input.categoryClickBehavior && {
-						categoryClickBehavior: input.categoryClickBehavior,
-					}),
-
-					...(input.currencySymbolStyle && {
-						currencySymbolStyle: input.currencySymbolStyle,
-					}),
-					...(input.defaultCurrency && {
-						defaultCurrency: input.defaultCurrency,
-					}),
-					...(input.monthlyIncome !== undefined && {
-						monthlyIncome: input.monthlyIncome,
-					}),
-					...(input.monthlyIncomeCurrency !== undefined && {
-						monthlyIncomeCurrency: input.monthlyIncomeCurrency,
-					}),
-					...(input.smartCurrencyFormatting !== undefined && {
-						smartCurrencyFormatting: input.smartCurrencyFormatting,
-					}),
-					...(input.defaultPrivacyMode !== undefined && {
-						defaultPrivacyMode: input.defaultPrivacyMode,
-					}),
-					...(input.fiscalMonthStartDay !== undefined && {
-						fiscalMonthStartDay: input.fiscalMonthStartDay,
-					}),
-					...(input.defaultExpenseDateBehavior !== undefined && {
-						defaultExpenseDateBehavior: input.defaultExpenseDateBehavior,
-					}),
-					...(input.aiMode !== undefined && {
-						aiMode: input.aiMode,
-					}),
-					...(input.language !== undefined && {
-						language: input.language,
-					}),
-				},
-				select: {
-					homeCurrency: true,
-					defaultCurrency: true,
-					categoryClickBehavior: true,
-					currencySymbolStyle: true,
-				},
-			});
+			const updated = await updateGeneralSettings(
+				ctx.db,
+				ctx.session.user.id,
+				input,
+			);
+			return {
+				homeCurrency: updated.homeCurrency,
+				defaultCurrency: updated.defaultCurrency,
+				categoryClickBehavior: updated.categoryClickBehavior,
+				currencySymbolStyle: updated.currencySymbolStyle,
+			};
 		}),
 
 	getAiStatus: protectedProcedure.query(async ({ ctx }) => {
