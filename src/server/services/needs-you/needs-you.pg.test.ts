@@ -2,17 +2,18 @@
  * Needs you on a real Postgres (RLS on), every item worked out by hand.
  *
  * Sofía (USD home, Flex book with USD 1,000 not planned yet):
- * - Lucía owes Sofía ARS 20,000 and says she paid ARS 5,000 (pending):
+ * - Lucía owes Sofía USD 200 and says she paid USD 50 (pending):
  *   Confirm. A claim Sofía recorded herself and a confirmed one stay out.
- * - Martín added Sofía to "Asado", her share ARS 1,500 (pending): Review.
- * - Martín rejected his ARS 3,000 share of Sofía's "Cabaña": Fix the split.
+ * - Martín added Sofía to "Asado", her share USD 15 (pending): Review.
+ * - Martín rejected his USD 30 share of Sofía's "Cabaña": Fix the split.
  * - Rent was due 3 days ago (overdue); Salary (money in, amount asked) is
  *   due today; Gym is due in 2 days; a paused overdue item stays out.
  * - Two imports wait (12 + 3 rows); a finished one stays out.
  * - Dining spent USD 30 with nothing planned, and her pending Asado share
  *   lands in Spending: two envelopes over.
  * - Her email is not verified.
- * ARS is priced (Blue 1,355 per USD), so the USD book values every share.
+ * Everything is in USD, so no rate is seeded: other pg files price ARS
+ * and BRL in the same run database, and this file never moves their numbers.
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -40,7 +41,7 @@ const ref = (id: string): ParticipantRef => ({
 	participantId: id,
 });
 const key = (id: string) => `user:${id}`;
-const ars = (minor: number) => ({ minor, currency: "ARS" });
+const usd = (minor: number) => ({ minor, currency: "USD" });
 
 async function claim(
 	payer: string,
@@ -55,8 +56,8 @@ async function claim(
 			payerId: payer,
 			payeeType: "user",
 			payeeId: payee,
-			amount: "5000",
-			currency: "ARS",
+			amount: "50",
+			currency: "USD",
 			paidOn: new Date("2026-10-18"),
 			recordedByType: "user",
 			recordedById: recordedBy,
@@ -77,7 +78,7 @@ function shared(
 		data: {
 			description: title,
 			amount: share,
-			currency: "ARS",
+			currency: "USD",
 			date: new Date("2026-10-08T12:00:00.000Z"),
 			paidByType: "user",
 			paidById: payer,
@@ -151,17 +152,7 @@ let lucia: TestUser;
 let martin: TestUser;
 const ids: Record<string, string> = {};
 
-async function seedArsRate() {
-	const date = new Date("2026-10-01T00:00:00.000Z");
-	await adminDb.exchangeRate.upsert({
-		where: { date_currency_type: { date, currency: "ARS", type: "blue" } },
-		create: { date, currency: "ARS", type: "blue", rate: "1355" },
-		update: {},
-	});
-}
-
 beforeAll(async () => {
-	await seedArsRate();
 	sofia = await seedUser();
 	lucia = await createTestUser();
 	martin = await createTestUser();
@@ -174,13 +165,13 @@ beforeAll(async () => {
 		data: { name: "Martín" },
 	});
 	const me = sofia.user.id;
-	await shared("Cena", me, lucia.user.id, "20000", "ACCEPTED");
+	await shared("Cena", me, lucia.user.id, "200", "ACCEPTED");
 	ids.claim = (await claim(lucia.user.id, me, "PROPOSED")).id;
 	await claim(lucia.user.id, me, "PROPOSED", me);
 	await claim(lucia.user.id, me, "CONFIRMED");
-	ids.asado = (await shared("Asado", martin.user.id, me, "1500", "PENDING")).id;
+	ids.asado = (await shared("Asado", martin.user.id, me, "15", "PENDING")).id;
 	ids.cabana = (
-		await shared("Cabaña", me, martin.user.id, "3000", "REJECTED")
+		await shared("Cabaña", me, martin.user.id, "30", "REJECTED")
 	).id;
 	ids.rent = (
 		await recurring(me, "Rent", new Date(now.getTime() - 3 * DAY))
@@ -221,7 +212,7 @@ describe("needsYou on Postgres", () => {
 		expect(by["payment.confirm"]).toMatchObject({
 			entity: { kind: "payment", id: ids.claim },
 			people: [key(lucia.user.id)],
-			amount: ars(500_000),
+			amount: usd(5_000),
 			date: "2026-10-18",
 			actions: [
 				{ entity: "payment", id: "confirm" },
@@ -230,13 +221,13 @@ describe("needsYou on Postgres", () => {
 		});
 		expect(by["split.review"]).toMatchObject({
 			people: [key(martin.user.id)],
-			amount: ars(150_000),
+			amount: usd(1_500),
 			title: "Asado",
 			date: "2026-10-08",
 		});
 		expect(by["split.rejected"]).toMatchObject({
 			people: [key(martin.user.id)],
-			amount: ars(300_000),
+			amount: usd(3_000),
 			title: "Cabaña",
 		});
 		expect(by["recurring.overdue"]).toMatchObject({
@@ -254,13 +245,13 @@ describe("needsYou on Postgres", () => {
 			count: 15,
 		});
 		// Setup put USD 1,000 in the pool. Dining has nothing and spent USD 30;
-		// the Asado share (ARS 1,500 / 1,355 = USD 1.107, so 111 cents) lands
+		// the USD 15 Asado share lands
 		// in Spending, the default envelope, which has nothing either.
 		expect(by["budget.giveJob"]).toMatchObject({
 			amount: { minor: 100_000, currency: "USD" },
 		});
 		expect(by["budget.overspent"]).toMatchObject({
-			amount: { minor: 3_111, currency: "USD" },
+			amount: { minor: 4_500, currency: "USD" },
 			title: null,
 			count: 2,
 		});

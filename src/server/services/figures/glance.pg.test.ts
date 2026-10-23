@@ -1,15 +1,18 @@
 /**
  * Home's glance and the glance.* figures on a real Postgres, by hand.
  *
- * Sofía (ARS home, fiscal month from the 1st, days in the server's zone
- * for her) this period: ARS 1,000 on day 1; USD 10 today booked at ARS
- * 1,355 (ARS 13,550, it never moves with later rates); a refund of ARS 200
- * today; her ARS 1,500 share of Martín's dinner today; ARS 500,000 salary
- * (money in, never spending). Spent = 1,000 + 13,550 - 200 + 1,500 = ARS
- * 15,850. Last period: ARS 5,000 on day 1 and ARS 7,000 on its last day
- * (ARS 12,000); ARS 9,999 the day before it started stays out.
- * People: she owes Martín ARS 1,500; Paz (not on Retrospend) owes her ARS
- * 2,000. No accounts, so net worth = 2,000 - 1,500 = ARS 500.
+ * MXN home, a currency no other pg file prices, so this file's rate never
+ * moves another file's numbers in the shared run database.
+ *
+ * Sofía (fiscal month from the 1st, days in the server's zone for her) this
+ * period: MXN 1,000 on day 1; USD 1,000 today booked at MXN 18.5 (MXN
+ * 18,500, it never moves with later rates); a refund of MXN 200 today; her
+ * MXN 1,500 share of Martín's dinner today; MXN 500,000 salary (money in,
+ * never spending). Spent = 1,000 + 18,500 - 200 + 1,500 = MXN 20,800.
+ * Last period: MXN 5,000 on day 1 and MXN 7,000 on its last day (MXN
+ * 12,000); MXN 9,999 the day before it started stays out.
+ * People: she owes Martín MXN 1,500; Paz (not on Retrospend) owes her MXN
+ * 2,000. No accounts, so net worth = 2,000 - 1,500 = MXN 500.
  */
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -32,7 +35,7 @@ import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { glance } from "./glance";
 
-const ars = (minor: number) => ({ minor, currency: "ARS" });
+const mxn = (minor: number) => ({ minor, currency: "MXN" });
 const HOUR = 3_600_000;
 
 let tz: string;
@@ -56,7 +59,7 @@ function row(
 		booked: string;
 	}> = {},
 ) {
-	const currency = o.currency ?? "ARS";
+	const currency = o.currency ?? "MXN";
 	return adminDb.expense.create({
 		data: {
 			userId,
@@ -65,15 +68,15 @@ function row(
 			currency,
 			date: new Date(parseDateOnlyIn(day, tz).getTime() + 12 * HOUR),
 			amountInUSD: new Prisma.Decimal(o.usd ?? "0"),
-			exchangeRate: new Prisma.Decimal(currency === "USD" ? 1 : 1355),
+			exchangeRate: new Prisma.Decimal(currency === "USD" ? 1 : 18.5),
 			pricingSource: "MANUAL",
 			direction: o.dir ?? "OUT",
 			inType: o.inType ?? null,
 			...(o.booked
 				? {
 						rateType: "blue",
-						homeCurrency: "ARS",
-						homeRate: "1355",
+						homeCurrency: "MXN",
+						homeRate: "18.5",
 						homeAmount: o.booked,
 					}
 				: {}),
@@ -92,7 +95,7 @@ function share(
 		data: {
 			description: "Shared",
 			amount,
-			currency: "ARS",
+			currency: "MXN",
 			date: new Date(parseDateOnlyIn(day, tz).getTime() + 12 * HOUR),
 			paidByType: payer.type,
 			paidById: payer.id,
@@ -122,9 +125,9 @@ beforeAll(async () => {
 	const rateDay = new Date("2026-10-01T00:00:00.000Z");
 	await adminDb.exchangeRate.upsert({
 		where: {
-			date_currency_type: { date: rateDay, currency: "ARS", type: "blue" },
+			date_currency_type: { date: rateDay, currency: "MXN", type: "official" },
 		},
-		create: { date: rateDay, currency: "ARS", type: "blue", rate: "1355" },
+		create: { date: rateDay, currency: "MXN", type: "official", rate: "18.5" },
 		update: {},
 	});
 	tz = await userTimeZone(null);
@@ -145,21 +148,21 @@ beforeAll(async () => {
 	martin = m.user.id;
 	await adminDb.user.update({
 		where: { id: sofia },
-		data: { homeCurrency: "ARS" },
+		data: { homeCurrency: "MXN" },
 	});
 	await adminDb.user.update({
 		where: { id: martin },
-		data: { homeCurrency: "ARS" },
+		data: { homeCurrency: "MXN" },
 	});
 	const paz = await adminDb.shadowProfile.create({
 		data: { createdById: sofia, name: "Paz" },
 	});
 
 	await row(sofia, thisFirst, "1000", { usd: "0.74" });
-	await row(sofia, today, "10", {
+	await row(sofia, today, "1000", {
 		currency: "USD",
-		usd: "10",
-		booked: "13550",
+		usd: "1000",
+		booked: "18500",
 	});
 	await row(sofia, today, "200", { usd: "0.15", dir: "IN", inType: "REFUND" });
 	await row(sofia, today, "500000", {
@@ -179,9 +182,9 @@ beforeAll(async () => {
 const expectedLastToDate = () => (dayIndex >= lastDays ? 1_200_000 : 500_000);
 
 describe("figure glance.spent", () => {
-	it("this period's spending in the home currency: ARS 15,850", async () => {
+	it("this period's spending in the home currency: MXN 20,800", async () => {
 		const r = await readFigures(sofia, ["glance.spent"]);
-		expect(r.get("glance.spent")).toEqual([ars(1_585_000)]);
+		expect(r.get("glance.spent")).toEqual([mxn(2_080_000)]);
 	});
 
 	it("a foreign row with no home rate is unavailable and named, never 0 or 1", async () => {
@@ -207,7 +210,7 @@ describe("figure glance.spent", () => {
 		const { user } = await createTestUser();
 		await adminDb.user.update({
 			where: { id: user.id },
-			data: { homeCurrency: "ARS" },
+			data: { homeCurrency: "MXN" },
 		});
 		const t = await share(
 			{ type: "user", id: martin },
@@ -227,9 +230,9 @@ describe("figure glance.spent", () => {
 });
 
 describe("figure glance.spentLast", () => {
-	it("last period's total: ARS 5,000 + 7,000", async () => {
+	it("last period's total: MXN 5,000 + 7,000", async () => {
 		const r = await readFigures(sofia, ["glance.spentLast"]);
-		expect(r.get("glance.spentLast")).toEqual([ars(1_200_000)]);
+		expect(r.get("glance.spentLast")).toEqual([mxn(1_200_000)]);
 	});
 });
 
@@ -237,7 +240,7 @@ describe("figure glance.spentLastToDate", () => {
 	it("last period up to this period's day", async () => {
 		const r = await readFigures(sofia, ["glance.spentLastToDate"]);
 		expect(r.get("glance.spentLastToDate")).toEqual([
-			ars(expectedLastToDate()),
+			mxn(expectedLastToDate()),
 		]);
 	});
 });
@@ -262,10 +265,10 @@ describe("glance()", () => {
 			g.netWorth,
 		])
 			expect([f.value], f.id).toEqual(r.get(f.id));
-		expect(g.spent.value).toEqual(ars(1_585_000));
-		expect(g.owedToYou.value).toEqual(ars(200_000));
-		expect(g.youOwe.value).toEqual(ars(150_000));
-		expect(g.netWorth.value).toEqual(ars(50_000));
+		expect(g.spent.value).toEqual(mxn(2_080_000));
+		expect(g.owedToYou.value).toEqual(mxn(200_000));
+		expect(g.youOwe.value).toEqual(mxn(150_000));
+		expect(g.netWorth.value).toEqual(mxn(50_000));
 		expect(g.missingRates).toEqual([]);
 		// No book: the budget part is absent, not zero.
 		expect(g.budget).toBeNull();
@@ -281,13 +284,13 @@ describe("glance()", () => {
 		});
 		const mine = g.pace.this ?? [];
 		expect(mine).toHaveLength(dayIndex);
-		expect(mine[0]).toBe(dayIndex === 1 ? 1_585_000 : 100_000);
-		expect(mine.at(-1)).toBe(1_585_000);
+		expect(mine[0]).toBe(dayIndex === 1 ? 2_080_000 : 100_000);
+		expect(mine.at(-1)).toBe(2_080_000);
 		const last = g.pace.last ?? [];
 		expect(last).toHaveLength(lastDays);
 		expect(last[0]).toBe(500_000);
 		expect(last.at(-1)).toBe(1_200_000);
-		// 15,850 against 5,000 or 12,000: more than 3% ahead either way.
+		// 20,800 against 5,000 or 12,000: more than 3% ahead either way.
 		expect(g.pace.fasterThanLast).toBe(true);
 	});
 
@@ -323,7 +326,7 @@ describe("glance()", () => {
 			headers: new Headers(),
 		} as never);
 		const g = await c.glance();
-		expect(g.spent).toEqual({ id: "glance.spent", value: ars(1_585_000) });
+		expect(g.spent).toEqual({ id: "glance.spent", value: mxn(2_080_000) });
 		expect(g.budget).toBeNull();
 	});
 });
