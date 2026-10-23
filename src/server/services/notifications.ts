@@ -1,8 +1,9 @@
 import { env } from "~/env";
+import { signUnsubscribeToken } from "~/lib/unsubscribe-token";
 import { db } from "~/server/db";
 import { notificationEmail } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
-import { signUnsubscribeToken } from "~/lib/unsubscribe-token";
+import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import type { NotificationType } from "~prisma";
 
 // Default email-on preferences for types that should email by default
@@ -85,7 +86,13 @@ export async function createNotification(
 				}
 
 				const html = notificationEmail({ title, body, unsubscribeUrl });
-				await sendEmail(user.email, `Retrospend: ${title}`, html, false, extraHeaders);
+				await sendEmail(
+					user.email,
+					`Retrospend: ${title}`,
+					html,
+					false,
+					extraHeaders,
+				);
 			}
 		}
 	} catch (err) {
@@ -158,8 +165,9 @@ const PREFERENCE_EMAIL_DEFAULTS = new Set<NotificationType>([
 
 /**
  * A page of notifications, newest first (ties by id). `afterId` is the
- * last notification of the previous page; one the caller cannot see starts
- * from the top.
+ * last notification of the previous page; one that is gone or not the
+ * caller's is an InvalidCursorError, never a restart from the top (which
+ * would hand the client rows it already has).
  */
 export async function listNotifications(
 	userDb: UserDb,
@@ -172,6 +180,7 @@ export async function listNotifications(
 				select: { id: true, createdAt: true },
 			})
 		: null;
+	if (page.afterId && !after) throw new InvalidCursorError();
 	return userDb.notification.findMany({
 		where: {
 			userId,

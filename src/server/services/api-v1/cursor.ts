@@ -1,9 +1,17 @@
+import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 
-/** A cursor that did not come from this server, or no longer parses. */
-export class InvalidCursorError extends Error {
+/**
+ * A cursor that did not come from this server, no longer parses, or names
+ * a row that is gone. A TRPCError so the shared services can throw it to
+ * tRPC callers too, where it is a BAD_REQUEST.
+ */
+export class InvalidCursorError extends TRPCError {
 	constructor() {
-		super("The cursor is not valid for this list");
+		super({
+			code: "BAD_REQUEST",
+			message: "The cursor is not valid for this list",
+		});
 		this.name = "InvalidCursorError";
 	}
 }

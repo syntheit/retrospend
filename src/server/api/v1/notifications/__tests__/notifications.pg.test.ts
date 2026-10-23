@@ -98,6 +98,46 @@ describe("/api/v1/notifications", () => {
 		expect(new Set(seen).size).toBe(5);
 	});
 
+	it("refuses a cursor whose notification is gone, or is someone else's", async () => {
+		const user = (await createTestUser()).user.id;
+		const as = await asMobile(user);
+		const gone = await notify(user, "gone", new Date("2026-10-12T10:00:00Z"));
+		await notify(user, "older", new Date("2026-10-08T10:00:00Z"));
+		const page = await expectBody<Page>(
+			await call("/notifications?limit=1", { headers: as }),
+			n.list,
+		);
+		expect(page.items[0]?.id).toBe(gone.id);
+		await adminDb.notification.delete({ where: { id: gone.id } });
+		await expectProblem(
+			await call(`/notifications?limit=1&cursor=${page.nextCursor}`, {
+				headers: as,
+			}),
+			400,
+			"bad_request",
+		);
+		// Alice's cursor names a row this caller cannot see.
+		const alices = await expectBody<Page>(
+			await call("/notifications?limit=1", { headers: asAlice }),
+			n.list,
+		);
+		await expectProblem(
+			await call(`/notifications?limit=1&cursor=${alices.nextCursor}`, {
+				headers: as,
+			}),
+			400,
+			"bad_request",
+		);
+		const caller = createCallerFactory(notificationRouter)({
+			session: makeSession({ id: user }),
+			db: adminDb,
+			headers: new Headers(),
+		} as never);
+		await expect(
+			caller.list({ limit: 1, cursor: gone.id }),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
 	it("marks one read, then all, and counts unread", async () => {
 		const unread = async () =>
 			(
