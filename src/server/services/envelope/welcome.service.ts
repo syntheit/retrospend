@@ -180,12 +180,12 @@ export async function reconcile(
 	if (!book?.defaultEnvelopeId)
 		throw new EnvelopeError("NO_BOOK", "start a budget first");
 	await lockBook(tx, book.id);
+	// Read after the lock: the difference is the server's, from what the bank says.
+	forgetMonthViews(tx);
 	const view = await requireView(tx, userId, now);
-	const signed =
-		input.direction === "IN" ? input.amountMinor : -input.amountMinor;
 	const adjustment = await writeAdjustment(tx, userId, {
 		id: input.id,
-		signedMinor: signed,
+		signedMinor: input.bankMinor - budgetHolds(view),
 		currency: book.currency,
 		rateType: view.loaded.valuation.defaultRateType,
 		date: now,

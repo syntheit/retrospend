@@ -111,10 +111,8 @@ export const setStyleResultSchema = z.object({
 	previous: stylePreviousSchema,
 });
 
-export const revertStyleInputSchema = z.object({
-	previous: stylePreviousSchema,
-	adjustmentId: idSchema.nullable(),
-});
+/** The undo of the last style switch: what it changed is stored server side (budget_book.styleUndo). */
+export const revertStyleInputSchema = z.object({});
 
 export const revertStyleResultSchema = z.object({
 	bookId: idSchema,
@@ -175,7 +173,8 @@ export const welcomeBackInputSchema = z.discriminatedUnion("choice", [
 		choice: z.literal("SET_HAVE_NOW"),
 		/** Client id of the Adjustment. */
 		id: clientIdSchema,
-		amountMinor: nonNegativeMinor,
+		/** Money now in the book currency; below 0 when debts outweigh cash. */
+		amountMinor: minorSchema,
 	}),
 	z.object({ choice: z.literal("START_FRESH"), batchId: clientIdSchema }),
 ]);
@@ -198,9 +197,8 @@ export const welcomeBackResultSchema = z.object({
 export const reconcileInputSchema = z.object({
 	/** Client id of the Adjustment row. */
 	id: clientIdSchema,
-	/** The difference to record; 0 records that it matched. */
-	amountMinor: nonNegativeMinor,
-	direction: z.enum(["IN", "OUT"]),
+	/** What the bank says now (signed: a card owing more than the cash is below 0). The server records the difference from what the budget holds, under the book lock; equal records that it matched. */
+	bankMinor: minorSchema,
 });
 
 export const removeAdjustmentInputSchema = z.object({ expenseId: idSchema });

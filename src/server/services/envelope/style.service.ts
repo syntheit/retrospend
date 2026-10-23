@@ -15,14 +15,16 @@
  * track") keeps the book and hides its Needs you items; resume opens Welcome
  * back.
  */
-import type {
-	PauseResult,
-	RevertStyleInput,
-	RevertStyleResult,
-	SetStyleInput,
-	SetStyleResult,
+import { z } from "zod";
+import {
+	type PauseResult,
+	type RevertStyleInput,
+	type RevertStyleResult,
+	type SetStyleInput,
+	type SetStyleResult,
+	stylePreviousSchema,
 } from "~/lib/schemas/envelope-book";
-import type { Prisma } from "~prisma";
+import { Prisma } from "~prisma";
 import { removeAdjustment, writeAdjustment } from "./adjustment";
 import { budgetHolds } from "./bank";
 import { fundingSourceFor, leftoverDefault } from "./book.service";
@@ -33,6 +35,14 @@ import { forgetMonthViews, monthViewIn } from "./month-read";
 import { lockBook } from "./movement-state";
 
 type Tx = Prisma.TransactionClient;
+
+/** budget_book.styleUndo: the last switch's previous settings and its Adjustment. */
+const styleUndoSchema = z.object({
+	previous: stylePreviousSchema.extend({
+		startingMoneyConfirmedAt: z.coerce.date().nullable(),
+	}),
+	adjustmentId: z.string().nullable(),
+});
 
 async function lockedBook(tx: Tx, userId: string) {
 	const book = await findPersonalBook(tx, userId);
@@ -106,6 +116,15 @@ export async function setStyle(
 			...(leavingLimits && !book.startingMoneyConfirmedAt
 				? { startingMoneyConfirmedAt: now }
 				: {}),
+			// What the undo puts back, kept here so the undo never trusts a client.
+			styleUndo: {
+				previous: {
+					...previous,
+					startingMoneyConfirmedAt:
+						previous.startingMoneyConfirmedAt?.toISOString() ?? null,
+				},
+				adjustmentId: adjustment?.expenseId ?? null,
+			},
 		},
 	});
 	for (const r of ruleChanges)
@@ -132,15 +151,18 @@ export async function setStyle(
 export async function revertStyle(
 	tx: Tx,
 	userId: string,
-	input: RevertStyleInput,
+	_input: RevertStyleInput,
 ): Promise<RevertStyleResult> {
 	const book = await lockedBook(tx, userId);
-	const p = input.previous;
+	// What the last switch changed, as the server stored it (never the client's copy).
+	const stored = styleUndoSchema.safeParse(book.styleUndo);
+	if (!stored.success)
+		throw new EnvelopeError("INVALID", "there is no style change to undo");
+	const { previous: p, adjustmentId } = stored.data;
 	const own = new Set(book.envelopes.map((e) => e.id));
 	if (p.rules.some((r) => !own.has(r.envelopeId)))
 		throw new EnvelopeError("NOT_FOUND", "no such envelope");
-	if (input.adjustmentId)
-		await removeAdjustment(tx, userId, input.adjustmentId);
+	if (adjustmentId) await removeAdjustment(tx, userId, adjustmentId);
 	await tx.budgetBook.update({
 		where: { id: book.id },
 		data: {
@@ -148,6 +170,7 @@ export async function revertStyle(
 			fundingSource: p.fundingSource,
 			planFundFrom: p.planFundFrom,
 			startingMoneyConfirmedAt: p.startingMoneyConfirmedAt,
+			styleUndo: Prisma.DbNull,
 		},
 	});
 	for (const r of p.rules)

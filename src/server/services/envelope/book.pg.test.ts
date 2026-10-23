@@ -154,10 +154,11 @@ describe("style switching (SPEC §4.4)", () => {
 			budget: 100_000,
 			ledger: 100_000,
 		});
-		await forUser(s.user.id).apply(revertStyleMutation, {
-			previous: r.value.previous,
-			adjustmentId: r.value.adjustment?.id ?? null,
-		});
+		// The undo reads what the switch stored, never what the client sends.
+		await forUser(s.user.id).apply(revertStyleMutation, {});
+		await expect(
+			forUser(s.user.id).apply(revertStyleMutation, {}),
+		).rejects.toThrow("no style change to undo");
 		const back = await getMonth(s.user.id);
 		expect(back?.toAssign.amount.minor).toBe(-62_000);
 		expect(back?.book).toMatchObject({
@@ -278,6 +279,13 @@ describe("S26 Welcome back after four months away", () => {
 	});
 
 	it("Set what I have now (500.00): an Adjustment of -23,000; envelopes keep what they hold", async () => {
+		// Debts can outweigh cash: -10.00 now is an Adjustment of -74,000 (preview only).
+		const owing = await forUser(s.user.id).preview(welcomeBackMutation, {
+			choice: "SET_HAVE_NOW",
+			id: randomUUID(),
+			amountMinor: -1_000,
+		});
+		expect(owing.value.adjustment?.amount).toEqual(usd(-74_000));
 		const r = await forUser(s.user.id).apply(welcomeBackMutation, {
 			choice: "SET_HAVE_NOW",
 			id: randomUUID(),
@@ -351,8 +359,8 @@ describe("figure budget.holds", () => {
 		expect(check.accounts.map((a) => a.name)).toEqual(["Visa", "Wallet"]);
 		const r = await forUser(s.user.id).apply(reconcileMutation, {
 			id: randomUUID(),
-			amountMinor: 8_000,
-			direction: "OUT",
+			// What the bank says; the server works out the difference under the lock.
+			bankMinor: 92_000,
 		});
 		expect(r.value.amount).toEqual(usd(-8_000));
 		const after = await readFigures(s.user.id, ["budget.holds"]);
