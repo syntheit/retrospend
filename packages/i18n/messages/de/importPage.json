@@ -1,0 +1,200 @@
+{
+	"title": "Import",
+	"sub": "Ausgaben aus einem Kontoauszug oder einer CSV",
+	"back": "Aktivität",
+	"more": "Weitere Aktionen",
+	"menu": {
+		"template": "CSV-Vorlage herunterladen",
+		"export": "Alle Daten exportieren",
+		"ai": "KI-Einstellungen"
+	},
+	"steps": {
+		"label": "Schritte",
+		"choose": "Datei wählen",
+		"read": "Einlesen",
+		"review": "Prüfen",
+		"done": "Fertig",
+		"of": "Schritt {n} von 4"
+	},
+	"type": {
+		"label": "Was importieren",
+		"expenses": "Ausgaben",
+		"accounts": "Konten",
+		"budgets": "Budgets"
+	},
+	"drop": {
+		"label": "Zu importierende Datei",
+		"title": "Datei hier ablegen",
+		"titlePhone": "Datei wählen",
+		"hint": "CSV, Excel oder PDF, bis 10 MB",
+		"choose": "Datei wählen",
+		"tooBig": "{name} ist größer als 10 MB.",
+		"wrongType": "{name} ist keine CSV-, Excel- oder PDF-Datei."
+	},
+	"recent": {
+		"title": "Letzte Importe",
+		"reading": "Wird gelesen, {percent} %",
+		"readingNoPercent": "Wird gelesen",
+		"queued": "Wartet aufs Einlesen",
+		"review": "{count, plural, one {# Zeile} other {# Zeilen}} zu prüfen",
+		"failed": "Diese Datei konnte nicht gelesen werden",
+		"imported": "{count} importiert · {date}",
+		"importedNoDate": "{count} importiert",
+		"cancel": "Abbrechen",
+		"reviewAction": "{count} prüfen",
+		"delete": "Löschen",
+		"view": "Ansehen",
+		"cancelled": "{name} abgebrochen",
+		"deleted": "{name} gelöscht",
+		"couldNotLoad": "Letzte Importe konnten nicht geladen werden"
+	},
+	"read": {
+		"label": "Wie die Datei gelesen wird",
+		"csv": "Retrospend-CSV",
+		"csvHint": "Datum, Titel, Betrag, Währung, Kategorie",
+		"csvMissing": "Braucht Spalten für Datum, Titel, Betrag und Währung",
+		"csvPdf": "Ein PDF braucht KI zum Einlesen",
+		"ai": "Von KI lesen lassen",
+		"aiExternal": "Liest mit deinem OpenRouter-Zugang",
+		"aiLocal": "Liest mit der KI dieses Servers",
+		"aiOff": "Einlesen per KI ist auf diesem Server aus",
+		"aiSettings": "KI-Einstellungen",
+		"pdfBlocked": "PDFs brauchen KI zum Einlesen, und die ist hier aus. Nimm eine CSV oder schalte KI ein.",
+		"columns": "Spalten",
+		"column": {
+			"date": "Datum",
+			"title": "Titel",
+			"amount": "Betrag",
+			"currency": "Währung",
+			"category": "Kategorie",
+			"kind": "Art"
+		},
+		"notInFile": "Nicht in der Datei",
+		"back": "Zurück",
+		"continue": "Weiter",
+		"readWithAi": "Mit KI lesen",
+		"failed": "{name} konnte nicht eingelesen werden. {reason}",
+		"fastPath": "Als Retrospend-CSV lesen"
+	},
+	"reading": {
+		"title": "{name} wird gelesen",
+		"progress": "Wird gelesen, {percent} %",
+		"reading": "Wird gelesen",
+		"waiting": "Wartet aufs Einlesen",
+		"leave": "Du kannst diese Seite verlassen. Das Einlesen läuft weiter und erscheint unter Letzte Importe.",
+		"cancel": "Abbrechen",
+		"back": "Zurück zu den Dateien",
+		"failed": "{name} konnte nicht gelesen werden."
+	},
+	"review": {
+		"summary": "{rows, plural, one {# Zeile} other {# Zeilen}} in der Datei: {toImport} zum Import",
+		"dups": "{count} schon in Aktivität",
+		"skipped": "{count} übersprungen",
+		"unmatched": "{count, plural, one {# Kategorie braucht} other {# Kategorien brauchen}} eine Zuordnung: {list}",
+		"unmatchedShort": "{count, plural, one {# Kategorie braucht} other {# Kategorien brauchen}} eine Zuordnung",
+		"match": "Kategorien zuordnen",
+		"dismiss": "Ausblenden",
+		"unreadable": "{count, plural, one {# Zeile ist nicht lesbar und wird übersprungen.} other {# Zeilen sind nicht lesbar und werden übersprungen.}}",
+		"toolbar": "Zeilen prüfen",
+		"view": {
+			"label": "Ansicht",
+			"table": "Tabelle",
+			"cards": "Karten",
+			"list": "Liste"
+		},
+		"currency": "Währung {code}",
+		"currencyFile": "Währung wie in der Datei",
+		"asInFile": "Wie in der Datei",
+		"showDups": "{count} schon in Aktivität anzeigen",
+		"reread": "Einlesen ändern",
+		"bar": "{count} werden importiert",
+		"barDups": "{count} schon in Aktivität werden übersprungen",
+		"back": "Zurück",
+		"import": "{count, plural, one {# Zeile} other {# Zeilen}} importieren",
+		"retry": "Erneut versuchen",
+		"loadError": "Die Zeilen konnten nicht geladen werden",
+		"empty": "Nichts zu importieren in dieser Datei",
+		"col": {
+			"select": "Alle auswählen",
+			"date": "Datum",
+			"title": "Titel",
+			"kind": "Art",
+			"category": "Kategorie",
+			"amount": "Betrag",
+			"status": "Status",
+			"include": "{title} importieren"
+		},
+		"already": "Schon in Aktivität",
+		"noCategory": "Keine Kategorie",
+		"categoryPicker": "Kategorie für {title}",
+		"kindMenu": "{title} importieren als"
+	},
+	"kind": {
+		"expense": "Ausgabe",
+		"income": "Einnahme",
+		"refund": "Erstattung",
+		"notSpending": "Keine Ausgabe"
+	},
+	"kindCount": {
+		"expense": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"income": "{count, plural, one {# Einnahme} other {# Einnahmen}}",
+		"refund": "{count, plural, one {# Erstattung} other {# Erstattungen}}",
+		"notSpending": "{count} keine Ausgaben"
+	},
+	"rateType": {
+		"official": "Offiziell",
+		"blue": "Blue",
+		"mep": "MEP",
+		"crypto": "Krypto",
+		"card": "Karte",
+		"market": "Markt",
+		"custom": "Eigener"
+	},
+	"cards": {
+		"progress": "{n} von {total}",
+		"kept": "{count} behalten",
+		"keep": "Behalten",
+		"skip": "Überspringen",
+		"hint": "Nach rechts wischen zum Behalten, nach links zum Überspringen",
+		"ready": "{count} bereit zum Import",
+		"readyHint": "{skipped} übersprungen",
+		"backToCards": "Zurück zu den Karten",
+		"from": "aus {file}",
+		"about": "Info"
+	},
+	"match": {
+		"title": "Kategorien zuordnen",
+		"hint": "Ein Schritt für jede Kategorie ohne Treffer.",
+		"rows": "{count, plural, one {# Zeile} other {# Zeilen}}",
+		"suggested": "vorgeschlagen aus deinem Verlauf",
+		"create": "„{name}“ erstellen",
+		"apply": "Übernehmen",
+		"pick": "Kategorie für {name}",
+		"done": "{count, plural, one {# Kategorie zugeordnet} other {# Kategorien zugeordnet}}",
+		"doneCreated": "{count, plural, one {# Kategorie zugeordnet} other {# Kategorien zugeordnet}}, erstellt: {names}"
+	},
+	"sheet": {
+		"title": "{file} importieren",
+		"submit": "{count, plural, one {# Zeile} other {# Zeilen}} importieren",
+		"loading": "Prüfe, was importiert wird",
+		"skipped": "Überspringt {list}",
+		"skipDups": "{count} schon in Aktivität",
+		"skipUnchecked": "{count}, die du abgewählt hast",
+		"skipUnreadable": "{count}, die nicht lesbar sind",
+		"skipNoRate": "{count} ohne Kurs",
+		"withoutRate": "{count} ohne Kurs",
+		"reconcile": "{rows, plural, one {# Zeile} other {# Zeilen}} in der Datei: {created} importiert, {skipped} übersprungen"
+	},
+	"done": {
+		"title": "{count, plural, one {# Zeile} other {# Zeilen}} importiert",
+		"dups": "{count, plural, one {# schon in Aktivität wurde übersprungen.} other {# schon in Aktivität wurden übersprungen.}}",
+		"reconcile": "{rows, plural, one {# Zeile} other {# Zeilen}} in der Datei, {created} importiert.",
+		"view": "In Aktivität ansehen",
+		"undo": "Import rückgängig machen",
+		"again": "Weitere Datei importieren",
+		"toast": "{count, plural, one {# Zeile} other {# Zeilen}} importiert",
+		"undone": "Import rückgängig gemacht",
+		"undoFailed": "Der Import konnte nicht rückgängig gemacht werden",
+		"undoFailedWhy": "Der Import konnte nicht rückgängig gemacht werden. {reason}"
+	}
+}

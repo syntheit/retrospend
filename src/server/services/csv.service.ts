@@ -58,6 +58,21 @@ export function resolveImportRate(
 	};
 }
 
+/**
+ * What makes an imported row "already in Activity": the same calendar day in
+ * the user's zone (an expense saved at any time of that day counts), title,
+ * amount and currency. The import review and both import writers use it.
+ */
+export function importFingerprint(
+	date: Date,
+	title: string,
+	amount: number,
+	currency: string,
+	timeZone?: string,
+): string {
+	return `${dayKey(date, timeZone)}|${title.trim()}|${Math.abs(amount)}|${currency.toUpperCase()}`;
+}
+
 type ExportExpensePayload = Prisma.ExpenseGetPayload<{
 	include: {
 		category: {
@@ -195,15 +210,12 @@ export class CsvService {
 			}
 		}
 
-		// Duplicates are matched by calendar day in the user's zone, so an
-		// existing expense saved at any time of that day counts.
 		const fingerprint = (
 			date: Date,
 			title: string,
 			amount: number,
 			currency: string,
-		) =>
-			`${dayKey(date, tz)}|${title.trim()}|${Math.abs(amount)}|${currency.toUpperCase()}`;
+		) => importFingerprint(date, title, amount, currency, tz);
 
 		const times = rows.map((row) => row.date.getTime());
 		const existingExpenses =
