@@ -13,6 +13,7 @@ import type { Prisma } from "~prisma";
 import { inBudget, worthOf } from "../accounts/places";
 import { addDays, addMonths } from "./calendar";
 import { computeBook, sumLeft } from "./engine";
+import { EnvelopeError } from "./errors";
 import type { MonthRead } from "./month-read";
 import { RateBook } from "./rate-book";
 import type { Minor, MissingRate } from "./types";
@@ -20,6 +21,28 @@ import { toMinor } from "./units";
 import { convertToBook } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
+
+/**
+ * An Adjustment that makes the budget hold an amount would absorb rows left
+ * out for a missing rate (R14): refused until the rates are set, naming the
+ * currencies.
+ */
+export function requireComplete(view: MonthRead) {
+	const currencies = [
+		...new Set(view.loaded.missingRates.map((r) => r.currency)),
+	].sort();
+	if (currencies.length > 0)
+		throw new EnvelopeError(
+			"INVALID",
+			`a rate is missing for ${currencies.join(", ")}: set it first, so the budget counts every row`,
+		);
+}
+
+/** What the budget holds, for an Adjustment to measure against: refused while a rate is missing. */
+export function holdsForAdjustment(view: MonthRead): Minor {
+	requireComplete(view);
+	return budgetHolds(view);
+}
 
 /** To assign + Σ Left + Assigned(next month): everything the budget holds today. */
 export function budgetHolds(view: MonthRead): Minor {

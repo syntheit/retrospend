@@ -22,7 +22,7 @@ import type {
 } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
 import { writeAdjustment } from "./adjustment";
-import { bankSide, budgetHolds } from "./bank";
+import { bankSide, holdsForAdjustment } from "./bank";
 import { EnvelopeError } from "./errors";
 import { resetEnvelopes } from "./fix.service";
 import { findPersonalBook } from "./inputs";
@@ -113,7 +113,7 @@ async function adjustTo(
 ): Promise<Adjustment> {
 	return writeAdjustment(tx, userId, {
 		id: p.id,
-		signedMinor: p.haveNow - budgetHolds(view),
+		signedMinor: p.haveNow - holdsForAdjustment(view),
 		currency: view.loaded.book.currency,
 		rateType: view.loaded.valuation.defaultRateType,
 		date: p.now,
@@ -185,7 +185,7 @@ export async function reconcile(
 	const view = await requireView(tx, userId, now);
 	const adjustment = await writeAdjustment(tx, userId, {
 		id: input.id,
-		signedMinor: input.bankMinor - budgetHolds(view),
+		signedMinor: input.bankMinor - holdsForAdjustment(view),
 		currency: book.currency,
 		rateType: view.loaded.valuation.defaultRateType,
 		date: now,

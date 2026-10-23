@@ -98,6 +98,8 @@ export interface MonthViewInput {
 	month: MonthKey;
 	today: IsoDate;
 	missingRates: readonly MissingRate[];
+	/** Rows valued at the nearest rate ("≈"). */
+	approximateRows?: number;
 	/** The Owed line (owed.ts); nothing owed when omitted. */
 	owed?: OwedSummaryDto;
 	/** The base for % group targets (group-view.ts); none when omitted. */
@@ -487,6 +489,7 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 			},
 			shares: sharesOf(p, rows),
 			incomplete,
+			approximate: (p.approximateRows ?? 0) > 0,
 			missingRates: p.missingRates.map(({ currency, rateType, date }) => ({
 				currency,
 				rateType,

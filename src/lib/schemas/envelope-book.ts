@@ -286,10 +286,8 @@ export const setLimitResultSchema = movementResultSchema.extend({
 export const revertLimitInputSchema = z.object({
 	/** Client id of the PLAN_FUND delta back. */
 	id: clientIdSchema,
+	/** The envelope whose last limit edit to undo; what it changed is stored server side (envelope.limitUndo). */
 	envelopeId: idSchema,
-	previousTarget: targetSnapshotSchema,
-	/** What the month was funded to before (setLimit's `previous`). */
-	fundedMinor: nonNegativeMinor,
 });
 
 export const revertLimitResultSchema = movementResultSchema.extend({

@@ -21,8 +21,10 @@
 --    Moving a category to another envelope marks nothing: closed months
 --    keep the routing they closed with (summary "links").
 -- 3. budget_row_value: a foreign row's book value, frozen the first time
---    the budget values it at a rate dated on or before the row (rates are
---    updated in place every day, so a later lookup would use today's rate).
+--    the budget values it (rates are updated in place every day, so a later
+--    lookup would use today's rate): at a rate dated on or before the row,
+--    else at the nearest rate there is, flagged approximate. envelope.
+--    "limitUndo": what the last limit edit changed, read by its undo.
 -- 4. budget_book: "lastOpenedAt" and "welcomeBackFrom" (Welcome back after
 --    35 days away, S26), "reconciledAt" (monthly reconcile reminder after
 --    the first one, SPEC §5.11), "planFundFrom" (a switch to Limits funds
@@ -57,13 +59,24 @@ CREATE INDEX IF NOT EXISTS "budget_dirty_bookId_idx" ON "budget_dirty" ("bookId"
 
 CREATE TABLE IF NOT EXISTS "budget_row_value" (
   "bookId"    TEXT         NOT NULL,
-  -- Row id, currency, amount and date: an edited row is valued again.
-  "key"       VARCHAR(300) NOT NULL,
+  -- Everything the value depends on (row id, currency, amount, USD value,
+  -- date, rate type): an edited row is valued again.
+  "key"       VARCHAR(400) NOT NULL,
   -- Book currency minor units.
   "minor"     BIGINT       NOT NULL,
+  -- The date of the book-currency rate used.
+  "rateDate"  DATE,
+  -- No rate was dated on or before the row when it was first read (the sync
+  -- keeps one row per pair, dated today): valued at the nearest rate, once.
+  "approximate" BOOLEAN    NOT NULL DEFAULT false,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "budget_row_value_pkey" PRIMARY KEY ("bookId", "key")
 );
+ALTER TABLE "budget_row_value" ADD COLUMN IF NOT EXISTS "rateDate" DATE;
+ALTER TABLE "budget_row_value" ADD COLUMN IF NOT EXISTS "approximate" BOOLEAN NOT NULL DEFAULT false;
+
+-- What the last limit edit on an envelope changed: its undo reads this.
+ALTER TABLE "envelope" ADD COLUMN IF NOT EXISTS "limitUndo" JSONB;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'budget_dirty_bookId_fkey') THEN
@@ -478,8 +491,14 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  at TIMESTAMP := LEAST(OLD."paidOn", NEW."paidOn")::timestamp;
+  at TIMESTAMP := CASE
+    WHEN TG_OP = 'DELETE' THEN OLD."paidOn"::timestamp
+    ELSE LEAST(OLD."paidOn", NEW."paidOn")::timestamp
+  END;
 BEGIN
+  PERFORM budget_dirty_user(budget_party_user(OLD."payerType"::text, OLD."payerId"), at);
+  PERFORM budget_dirty_user(budget_party_user(OLD."payeeType"::text, OLD."payeeId"), at);
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
   PERFORM budget_dirty_user(budget_party_user(NEW."payerType"::text, NEW."payerId"), at);
   PERFORM budget_dirty_user(budget_party_user(NEW."payeeType"::text, NEW."payeeId"), at);
   RETURN NULL;
@@ -489,6 +508,14 @@ $$;
 DROP TRIGGER IF EXISTS budget_dirty_payment ON "payment";
 CREATE TRIGGER budget_dirty_payment
   AFTER UPDATE ON "payment"
+  FOR EACH ROW EXECUTE FUNCTION budget_dirty_payment();
+
+-- Before a delete (undoing a forgive or a payment): from the day it was paid
+-- on, while the row is still there; the cascade to its settlements would
+-- only know when they were entered.
+DROP TRIGGER IF EXISTS budget_dirty_payment_delete ON "payment";
+CREATE TRIGGER budget_dirty_payment_delete
+  BEFORE DELETE ON "payment"
   FOR EACH ROW EXECUTE FUNCTION budget_dirty_payment();
 
 -- Project routing ("Count my share in", D31) applies to the whole history.

@@ -8,7 +8,10 @@ import type { Prisma } from "~prisma";
 import type { CloseRow, DirtyMark } from "./close-rows";
 import type { ClosedRule } from "./engine";
 import type { Valuer } from "./entries";
+import type { LoadedBook } from "./inputs";
+import { budgetMonthOf } from "./months";
 import type { MissingRate, MonthKey } from "./types";
+import type { ApproximateRow, FrozenValue } from "./valuer";
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,12 +38,20 @@ export async function markStale(
 }
 
 /** Foreign rows' values frozen by earlier loads (budget_row_value). */
-export async function frozenValues(tx: Tx, bookId: string) {
+export async function frozenValues(
+	tx: Tx,
+	bookId: string,
+): Promise<Map<string, FrozenValue>> {
 	const rows = await tx.budgetRowValue.findMany({
 		where: { bookId },
-		select: { key: true, minor: true },
+		select: { key: true, minor: true, approximate: true },
 	});
-	return new Map(rows.map((r) => [r.key, Number(r.minor)]));
+	return new Map(
+		rows.map((r) => [
+			r.key,
+			{ minor: Number(r.minor), approximate: r.approximate },
+		]),
+	);
 }
 
 /** Freezes what this load valued for the first time; a concurrent load writing the same key is a no-op. */
@@ -51,9 +62,18 @@ export async function freeze(tx: Tx, bookId: string, valuer: Valuer) {
 			bookId,
 			key: f.key,
 			minor: BigInt(f.minor),
+			approximate: f.approximate,
+			rateDate: f.rateDate ? new Date(`${f.rateDate}T00:00:00Z`) : null,
 		})),
 		skipDuplicates: true,
 	});
+}
+
+/** One entry per approximate row (a checkpoint and the full share load can both name it). */
+export function uniqueApproximate(
+	rows: readonly ApproximateRow[],
+): ApproximateRow[] {
+	return [...new Map(rows.map((r) => [r.rowId, r])).values()];
 }
 
 /** Same rate, same row: listed once (a checkpoint and the full share load can both name it). */
@@ -80,4 +100,23 @@ export function closedRulesOf(
 			),
 		);
 	return out;
+}
+/** Approximate rows of months up to `month`: what a checkpoint there carries. */
+export function approximateThrough(
+	loaded: LoadedBook,
+	month: MonthKey,
+): ApproximateRow[] {
+	return loaded.approximate.filter(
+		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
+	);
+}
+
+/** Own missing rates of months up to `month`: what a checkpoint there carries. */
+export function missingThrough(
+	loaded: LoadedBook,
+	month: MonthKey,
+): MissingRate[] {
+	return loaded.missingRates.filter(
+		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
+	);
 }

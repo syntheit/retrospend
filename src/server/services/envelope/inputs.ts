@@ -52,6 +52,7 @@ import {
 	freeze,
 	frozenValues,
 	markStale,
+	uniqueApproximate,
 	uniqueMissing,
 } from "./load-state";
 import type { ViewBook, ViewEnvelope } from "./month-view";
@@ -68,6 +69,7 @@ import { type TargetContext, targetOf } from "./target-input";
 import { groupTargetOf } from "./group-view";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
+import type { ApproximateRow } from "./valuer";
 
 type Tx = Prisma.TransactionClient;
 
@@ -97,6 +99,8 @@ export interface LoadedBook {
 	input: EngineInput;
 	today: IsoDate;
 	missingRates: MissingRate[];
+	/** Foreign rows valued at the nearest rate, not one dated on or before them ("≈"). */
+	approximate: ApproximateRow[];
 	splits: LoadedSplits;
 	/** Every close of the book, oldest first. */
 	closes: CloseRow[];
@@ -391,12 +395,14 @@ async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 		today,
 		currentMonth: budgetMonthOf(today, periods),
 		valuation,
-		// Rows are valued once, at a rate dated on or before them, then frozen.
+		// Rows are valued once, at a rate dated on or before them, else at the
+		// nearest one (flagged approximate), then frozen.
 		valuer: new Valuer(
 			{ ...valuation, usdRate: rates.onOrBefore },
 			row.timeZone,
 			periods,
 			await frozenValues(tx, row.id),
+			{ usdRate: rates.lookup, rateDate: rates.rateDate },
 		),
 		templates,
 		accounts,
@@ -466,20 +472,14 @@ function finishLoad(
 			...(p.checkpoint?.missingRates ?? []),
 			...s.valuer.missingRates,
 		]),
+		approximate: uniqueApproximate([
+			...(p.checkpoint?.approximate ?? []),
+			...s.valuer.approximate,
+		]),
 		periods: s.periods,
 		valuation: s.valuation,
 		valuer: s.valuer,
 	};
-}
-
-/** Own missing rates of months up to `month`: what a checkpoint there carries. */
-export function missingThrough(
-	loaded: LoadedBook,
-	month: MonthKey,
-): MissingRate[] {
-	return loaded.missingRates.filter(
-		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
-	);
 }
 
 /** Midnight at the start of budget month `month` in the book zone: the book's startDate. */

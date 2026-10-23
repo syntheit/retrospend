@@ -252,8 +252,6 @@ describe("From now on and its undo put the target back exactly (findings 4 and 6
 		await forUser(s.user.id).apply(revertLimitMutation, {
 			id: randomUUID(),
 			envelopeId: env.id,
-			previousTarget: r.value.previousTarget,
-			fundedMinor: r.value.previous.minor,
 		});
 		const after = await adminDb.envelope.findUniqueOrThrow({
 			where: { id: env.id },
@@ -296,8 +294,6 @@ describe("From now on and its undo put the target back exactly (findings 4 and 6
 		await forUser(s.user.id).apply(revertLimitMutation, {
 			id: randomUUID(),
 			envelopeId: env.id,
-			previousTarget: r.value.previousTarget,
-			fundedMinor: r.value.previous.minor,
 		});
 		const back = await adminDb.envelope.findUniqueOrThrow({
 			where: { id: env.id },

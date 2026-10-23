@@ -26,7 +26,7 @@ import {
 } from "~/lib/schemas/envelope-book";
 import { Prisma } from "~prisma";
 import { removeAdjustment, writeAdjustment } from "./adjustment";
-import { budgetHolds } from "./bank";
+import { holdsForAdjustment } from "./bank";
 import { fundingSourceFor, leftoverDefault } from "./book.service";
 import { addMonths } from "./calendar";
 import { EnvelopeError } from "./errors";
@@ -98,7 +98,7 @@ export async function setStyle(
 	const adjustment = leavingLimits
 		? await writeAdjustment(tx, userId, {
 				id: input.id,
-				signedMinor: (input.haveNowMinor ?? 0) - budgetHolds(view),
+				signedMinor: (input.haveNowMinor ?? 0) - holdsForAdjustment(view),
 				currency: H,
 				rateType: view.loaded.valuation.defaultRateType,
 				date: now,
