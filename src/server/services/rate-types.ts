@@ -89,7 +89,8 @@ export type RateChoice =
 	| { kind: "custom"; base: string; value: number };
 
 export interface EntryAmount {
-	amount: number;
+	/** A decimal string keeps a typed amount exact (a transfer fee). */
+	amount: number | string;
 	currency: string;
 	date: Date;
 }
@@ -233,7 +234,12 @@ function booked(
 	const decimals = currencyDecimals(ctx.homeCurrency);
 	return {
 		exchangeRate,
-		amountInUSD: computeAmountInUSD(entry.amount, entry.currency, exchangeRate),
+		// The legacy USD column is a rounded float either way.
+		amountInUSD: computeAmountInUSD(
+			Number(entry.amount),
+			entry.currency,
+			exchangeRate,
+		),
 		rateType,
 		homeCurrency: ctx.homeCurrency,
 		homeRate: roundRate(exactRate).toFixed(),

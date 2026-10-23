@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MissingRateError } from "~/lib/money";
 import { createMockDb } from "~/test/mock-db";
 import { DEFAULT_RATES, RATE_DATE, type TestRateRow, useRateTable } from "~/test/rate-table";
@@ -92,6 +92,11 @@ describe("WealthService.getDashboardSummary", () => {
 	beforeEach(() => {
 		db = createMockDb();
 		useRateTable(db);
+		// No money moves and no rate type switches: today's history (M4).
+		Object.assign(db, {
+			accountLeg: { findMany: vi.fn().mockResolvedValue([]) },
+			assetRateType: { findMany: vi.fn().mockResolvedValue([]) },
+		});
 		service = new WealthService(db as never);
 		db.assetSnapshot.findMany.mockResolvedValue([]);
 		db.assetSnapshot.findFirst.mockResolvedValue(null);

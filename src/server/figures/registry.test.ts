@@ -6,6 +6,7 @@ import {
 	createFiguresRegistry,
 	type FigureDefinition,
 	FigureError,
+	FigurePass,
 	FigureRegistryError,
 	figures,
 	narrowScope,
@@ -106,10 +107,11 @@ describe("readFigure", () => {
 		);
 
 		expect(value).toEqual([{ minor: 350_000, currency: "ARS" }]);
-		expect(compute).toHaveBeenCalledWith(null, {
-			userId: "u1",
-			personId: "p1",
-		});
+		expect(compute).toHaveBeenCalledWith(
+			null,
+			{ userId: "u1", personId: "p1" },
+			expect.any(FigurePass),
+		);
 	});
 
 	it("passes null through as unavailable", async () => {
