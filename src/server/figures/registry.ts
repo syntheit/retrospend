@@ -15,6 +15,7 @@
  */
 import { accountFigures } from "~/server/services/accounts/figures";
 import { budgetFigures } from "~/server/services/envelope/figures";
+import { glanceFigures } from "~/server/services/figures/spend-pace";
 import { spentFigure } from "~/server/services/figures/spent";
 import {
 	balancePersonFigure,
@@ -245,4 +246,5 @@ export const figures = createFiguresRegistry<FigureDb>([
 	...projectFigures,
 	...accountFigures,
 	...budgetFigures,
+	...glanceFigures,
 ]);
