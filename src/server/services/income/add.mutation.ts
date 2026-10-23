@@ -206,11 +206,7 @@ interface Priced {
 /** The rate as Add expense books it: a typed rate, else the table at the picked type. */
 function rateChoiceOf(input: AddIncomeInput): RateChoice {
 	if (input.customRate)
-		return {
-			kind: "custom",
-			base: input.currency,
-			value: Number(input.customRate),
-		};
+		return { kind: "custom", base: input.currency, value: input.customRate };
 	return { kind: "table", rateType: input.rateType ?? null };
 }
 

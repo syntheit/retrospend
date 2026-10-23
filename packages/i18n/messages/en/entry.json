@@ -187,7 +187,6 @@
 		"save": "Add income",
 		"error": {
 			"amount": "Enter an amount above zero",
-			"rate": "No rate for {currency} today",
 			"category": "Pick what it is",
 			"source": "Who paid you?"
 		},

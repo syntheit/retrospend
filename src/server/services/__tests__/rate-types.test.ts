@@ -163,7 +163,7 @@ describe("rate types", () => {
 	describe("booking a typed or kept rate", () => {
 		it("a custom rate for a USD expense: 1 USD = 1,500 ARS (T7)", async () => {
 			await expect(
-				book(12.99, "USD", { kind: "custom", base: "USD", value: 1500 }),
+				book(12.99, "USD", { kind: "custom", base: "USD", value: "1500" }),
 			).resolves.toEqual({
 				exchangeRate: 1,
 				amountInUSD: 12.99,
@@ -179,7 +179,7 @@ describe("rate types", () => {
 			const rate = await book(15_000, "ARS", {
 				kind: "custom",
 				base: "USD",
-				value: 1500,
+				value: "1500",
 			});
 			// 1 / 1,500 = 0.000666666667; 15,000 x that = 10.000000005 -> 10.00
 			expect(rate).toMatchObject({
@@ -195,7 +195,7 @@ describe("rate types", () => {
 			const rate = await book(100, "EUR", {
 				kind: "custom",
 				base: "EUR",
-				value: 1800,
+				value: "1800",
 			});
 			expect(rate).toMatchObject({
 				amountInUSD: 115.38,
@@ -207,11 +207,16 @@ describe("rate types", () => {
 
 		it("refuses a custom rate within one currency or of zero", async () => {
 			await expect(
-				book(10, "ARS", { kind: "custom", base: "ARS", value: 1 }),
+				book(10, "ARS", { kind: "custom", base: "ARS", value: "1" }),
 			).rejects.toBeInstanceOf(TRPCError);
 			await expect(
-				book(10, "USD", { kind: "custom", base: "USD", value: 0 }),
+				book(10, "USD", { kind: "custom", base: "USD", value: "0" }),
 			).rejects.toBeInstanceOf(TRPCError);
+			for (const value of ["-5", "NaN", "Infinity", "1e3", ""]) {
+				await expect(
+					book(10, "USD", { kind: "custom", base: "USD", value }),
+				).rejects.toBeInstanceOf(TRPCError);
+			}
 		});
 
 		it("keeps a typed entry leg and books the home leg at the default", async () => {
@@ -267,7 +272,7 @@ describe("rate types", () => {
 			const options = await rateOptions(db as never, "u1", {
 				currency: "USD",
 				date: DATE,
-				amount: 12.99,
+				amount: "12.99",
 			});
 			// 12.99 x 1,495 / 1,560 / 1,594.68
 			expect(options).toEqual({
@@ -291,8 +296,8 @@ describe("rate types", () => {
 			const options = await rateOptions(db as never, "u1", {
 				currency: "USD",
 				date: DATE,
-				amount: 12.99,
-				customRate: 1500,
+				amount: "12.99",
+				customRate: "1500",
 			});
 			expect(options.custom).toEqual({
 				rateType: "custom",

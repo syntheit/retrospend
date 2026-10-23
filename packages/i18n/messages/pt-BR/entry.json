@@ -187,7 +187,6 @@
 		"save": "Adicionar receita",
 		"error": {
 			"amount": "Digite um valor maior que zero",
-			"rate": "Sem cotação para {currency} hoje",
 			"category": "Escolha o que é",
 			"source": "Quem pagou você?"
 		},

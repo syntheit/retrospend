@@ -187,7 +187,6 @@
 		"save": "Añadir ingreso",
 		"error": {
 			"amount": "Introduce un importe mayor que cero",
-			"rate": "Hoy no hay tipo de cambio para {currency}",
 			"category": "Elige qué es",
 			"source": "¿Quién te pagó?"
 		},

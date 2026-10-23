@@ -187,7 +187,6 @@
 		"save": "Agregar ingreso",
 		"error": {
 			"amount": "Ingresá un monto mayor a cero",
-			"rate": "Hoy no hay cotización para {currency}",
 			"category": "Elegí qué es",
 			"source": "¿Quién te pagó?"
 		},

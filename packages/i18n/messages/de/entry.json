@@ -187,7 +187,6 @@
 		"save": "Einnahme hinzufügen",
 		"error": {
 			"amount": "Gib einen Betrag über null ein",
-			"rate": "Heute kein Kurs für {currency}",
 			"category": "Wähle, was es ist",
 			"source": "Wer hat dich bezahlt?"
 		},

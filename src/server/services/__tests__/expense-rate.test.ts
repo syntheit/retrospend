@@ -109,7 +109,7 @@ describe("the home leg an expense books", () => {
 				amount: 12.99,
 				currency: "USD",
 				rateType: "custom",
-				customRate: { base: "USD", value: 1500 },
+				customRate: { base: "USD", value: "1500" },
 			});
 			expect(created()).toMatchObject({
 				exchangeRate: 1,

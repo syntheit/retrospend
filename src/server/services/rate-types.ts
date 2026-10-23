@@ -85,8 +85,8 @@ export type RateChoice =
 			homeRate: string;
 			rateType: string | null;
 	  }
-	/** A typed rate between the two currencies: 1 `base` = `value` of the other. */
-	| { kind: "custom"; base: string; value: number };
+	/** A typed rate as decimal text: 1 `base` = `value` of the other currency. */
+	| { kind: "custom"; base: string; value: string };
 
 export interface EntryAmount {
 	/** A decimal string keeps a typed amount exact (a transfer fee). */
@@ -274,7 +274,7 @@ async function bookCustom(
 	db: RateDb,
 	ctx: RateContext,
 	entry: EntryAmount,
-	choice: { base: string; value: number },
+	choice: { base: string; value: string },
 ): Promise<BookedRate> {
 	const home = ctx.homeCurrency;
 	if (
@@ -286,7 +286,7 @@ async function bookCustom(
 			message: `A custom rate converts ${entry.currency} to ${home}`,
 		});
 	}
-	if (!(choice.value > 0) || !Number.isFinite(choice.value)) {
+	if (!/^(?=.*[1-9])\d+(\.\d+)?$/.test(choice.value)) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: "Enter a rate above 0",
@@ -412,7 +412,7 @@ export interface RateOptions {
 export async function rateOptions(
 	db: RateDb,
 	userId: string,
-	input: { currency: string; date: Date; amount?: number; customRate?: number },
+	input: { currency: string; date: Date; amount?: string; customRate?: string },
 ): Promise<RateOptions> {
 	const ctx = await loadRateContext(db, userId);
 	const empty: RateOptions = {

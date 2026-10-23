@@ -187,7 +187,6 @@
 		"save": "Ajouter le revenu",
 		"error": {
 			"amount": "Saisis un montant supérieur à zéro",
-			"rate": "Aucun taux pour {currency} aujourd'hui",
 			"category": "Choisis ce que c'est",
 			"source": "Qui t'a payé ?"
 		},
