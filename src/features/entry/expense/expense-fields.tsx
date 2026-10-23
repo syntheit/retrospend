@@ -22,6 +22,8 @@ export type Project = {
 	/** The cover photo's URL, or null for the flat tile. */
 	coverUrl: string | null;
 	primaryCurrency: string;
+	/** Everyone in it, you included (the server's count). */
+	peopleCount: number;
 	/** The project list's first few members: faces only, never the split. */
 	members: EntryPerson[];
 };

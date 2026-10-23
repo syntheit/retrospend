@@ -253,7 +253,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "select",
 		status: "core",
-		job: "Pick one of a list at control height (no native select)",
+		job: "Pick one of a list at control height (no native select). New code opts into the kit look with `<Select kit>` (tokens, h-ctl, surface menu); today's pages keep the old look until the switch-over",
 	},
 	{ file: "separator", status: "core", job: "Hairline between groups" },
 	{
@@ -398,6 +398,7 @@ export const PLAN_COMPONENTS: string[] = [
 	"MoneyInput",
 	"CategoryPicker",
 	"PersonPicker",
+	"ProjectPicker",
 	"DatePicker",
 	"Chart",
 	"EmptyState",
@@ -434,7 +435,8 @@ const BALANCE = "Balance, AvailablePill, StatusDot";
 const ACTIONS =
 	"ActionMenu (registry-driven ⋯, right-click, long press) and SwipeActions (phone)";
 const SHEETS = "AddExpenseSheet, SettleSheet, AssignSheet";
-const INPUTS = "MoneyInput, CategoryPicker, PersonPicker, DatePicker";
+const INPUTS =
+	"MoneyInput, CategoryPicker, PersonPicker, ProjectPicker, DatePicker";
 const SHELL = "Sidebar, BottomNav, AccountMenu, Palette";
 
 export const PLANNED: Planned[] = [
@@ -508,7 +510,8 @@ export const PLANNED: Planned[] = [
 		job: "One expense, payment or transfer row: lead, title, subline, money right (§6)",
 		replaces: "4 table stacks and 5 activity renderers",
 		planRow: "TransactionRow / Table",
-		target: "src/components/rows/transaction-row.tsx (desktop table: src/components/table/transaction-table.tsx)",
+		target:
+			"src/components/rows/transaction-row.tsx (desktop table: src/components/table/transaction-table.tsx)",
 		use: "TransactionRow in a RowList on phone, TransactionTable on desktop",
 	},
 	{
@@ -599,7 +602,8 @@ export const PLANNED: Planned[] = [
 		job: "Add or edit an expense in one Sheet with its preview (R30)",
 		replaces: "The expense modal",
 		planRow: SHEETS,
-		target: "src/features/entry/expense/expense-sheet.tsx (with Add income, Transfer and the read view in src/features/entry)",
+		target:
+			"src/features/entry/expense/expense-sheet.tsx (with Add income, Transfer and the read view in src/features/entry)",
 		use: "Open it through useEntrySheets (src/features/entry/context) or the expense modal context, which the v2 shell routes to it",
 	},
 	{
@@ -623,7 +627,7 @@ export const PLANNED: Planned[] = [
 	{
 		name: "MoneyInput",
 		status: "built",
-		job: "Amount entry: groups while typing, parses the page locale, + - × ÷ math, currency and rate chips (R22)",
+		job: "Amount entry: groups while typing, parses the page locale, + - × ÷ math. The currency chip shows flag and code; a foreign amount keeps its rate types side by side and the server's home amount inside the field (R22)",
 		replaces: "CurrencyAmountInput and local amount inputs",
 		planRow: INPUTS,
 		target: "src/components/money/money-input.tsx",
@@ -646,6 +650,16 @@ export const PLANNED: Planned[] = [
 		planRow: INPUTS,
 		target: "src/components/pickers/person-picker.tsx",
 		use: "PersonPicker in a PickerPopover",
+	},
+	{
+		name: "ProjectPicker",
+		status: "built",
+		job: "Pick a project (or None): cover, name, head count and currency on one line (R25)",
+		replaces:
+			"The plain project select and the project pills of today's expense form",
+		planRow: INPUTS,
+		target: "src/components/pickers/project-picker.tsx",
+		use: "ProjectPicker in a PickerPopover; the split reads entry.projectMembers, never the list's faces",
 	},
 	{
 		name: "DatePicker",

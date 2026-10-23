@@ -11,18 +11,14 @@ import {
 import { FilterChip } from "~/components/ui/chip";
 import type { Project } from "./expense-fields";
 
-/** The sheet's projects as the picker shows them: cover, faces, currency. */
+/** The sheet's projects as the picker shows them: cover, head count, currency. */
 function pickerProjects(projects: readonly Project[]): PickerProject[] {
 	return projects.map((p) => ({
 		id: p.id,
 		name: p.name,
 		coverUrl: p.coverUrl,
 		currency: p.primaryCurrency,
-		people: p.members.map((m) => ({
-			id: `${m.participantType}:${m.participantId}`,
-			name: m.name,
-			imageUrl: m.avatarUrl,
-		})),
+		peopleCount: p.peopleCount,
 	}));
 }
 

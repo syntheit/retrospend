@@ -84,6 +84,7 @@
 		"empty": "Aucun résultat",
 		"selected": "Sélectionné",
 		"none": "Aucun",
-		"solo": "Solo"
+		"solo": "Solo",
+		"people": "{count, plural, one {# personne} other {# personnes}}"
 	}
 }

@@ -173,9 +173,8 @@ test("Add expense: the project picker shows each project with its people", async
 	const sheet = page.getByRole("dialog", { name: "New expense" });
 	await sheet.getByRole("button", { name: "Project, None" }).click();
 	const depto = page.getByRole("option", { name: /Depto Palermo/ });
-	// Identity in the picker: the members' faces and the project's currency.
-	await expect(depto).toContainText("ARS");
-	await expect(depto.locator('[data-slot="avatar"]').first()).toBeVisible();
+	// The server's head count (you and Martín) and the project's currency.
+	await expect(depto).toContainText("2 people · ARS");
 	await depto.click();
 	// The project brings its currency and its people into the sheet.
 	await expect(

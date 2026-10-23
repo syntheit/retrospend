@@ -4,7 +4,6 @@ import { FolderIcon } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
-import { type FacePerson, FaceStack } from "~/components/ui/avatar-face";
 import { cn } from "~/lib/cn";
 import { PickerGroup, PickerItem, PickerList } from "./picker-list";
 
@@ -14,8 +13,8 @@ export type PickerProject = {
 	/** The cover photo's URL; without one the slot stays a flat tile (N41). */
 	coverUrl?: string | null;
 	currency: string;
-	/** The other members, for their faces; empty for a solo project. */
-	people: readonly FacePerson[];
+	/** Everyone in it, you included (the server's count, not the faces it loaded). */
+	peopleCount: number;
 };
 
 export type ProjectPickerProps = {
@@ -57,8 +56,8 @@ export function ProjectThumb({
 }
 
 /**
- * ProjectPicker: None, then every project with its cover, its name, the
- * members' faces (or Solo) and its currency, on one line. Put it in a
+ * ProjectPicker: None, then every project with its cover, its name, how
+ * many people are in it (or Solo) and its currency, on one line. Put it in a
  * PickerPopover; it is the content, not the trigger.
  */
 export function ProjectPicker({
@@ -92,12 +91,12 @@ export function ProjectPicker({
 					>
 						<span className="flex items-center gap-2">
 							<span className="min-w-0 flex-1 truncate">{p.name}</span>
-							{p.people.length > 0 ? (
-								<FaceStack on="surface" people={[...p.people]} size="xs" />
-							) : (
-								<span className="text-fg-3 text-meta">{t("solo")}</span>
-							)}
-							<span className="text-fg-3 text-meta">{p.currency}</span>
+							<span className="shrink-0 text-fg-3 text-meta">
+								{p.peopleCount > 1
+									? t("people", { count: p.peopleCount })
+									: t("solo")}
+								{` · ${p.currency}`}
+							</span>
 						</span>
 					</PickerItem>
 				))}

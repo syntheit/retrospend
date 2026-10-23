@@ -61,19 +61,10 @@ const PROJECTS: PickerProject[] = [
 		id: "floripa",
 		name: "Viaje a Florianópolis",
 		currency: "BRL",
-		people: [
-			{ id: "lucia", name: "Lucía Fernández" },
-			{ id: "martin", name: "Martín Acosta" },
-			{ id: "paz", name: "Paz Ibarra" },
-		],
+		peopleCount: 7,
 	},
-	{
-		id: "depto",
-		name: "Depto Palermo",
-		currency: "ARS",
-		people: [{ id: "martin", name: "Martín Acosta" }],
-	},
-	{ id: "obra", name: "Obra del baño", currency: "ARS", people: [] },
+	{ id: "depto", name: "Depto Palermo", currency: "ARS", peopleCount: 2 },
+	{ id: "obra", name: "Obra del baño", currency: "ARS", peopleCount: 1 },
 ];
 
 const CATEGORIES: PickerCategory[] = Object.entries(CAT).map(([id, c]) => ({
