@@ -104,5 +104,61 @@
 			"confirmBody": "Future ones stop; past expenses stay.",
 			"confirmButton": "Delete recurring expense"
 		}
+	},
+	"category": {
+		"edit": {
+			"label": "Rename, icon and color"
+		},
+		"exclude": {
+			"label": "Leave new expenses out of totals"
+		},
+		"include": {
+			"label": "Count new expenses in totals"
+		},
+		"delete": {
+			"label": "Delete"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Edit"
+		},
+		"makePrimary": {
+			"label": "Make primary"
+		},
+		"showPublic": {
+			"label": "Make it public"
+		},
+		"showContacts": {
+			"label": "Show to contacts only"
+		},
+		"showSettlement": {
+			"label": "Show only when settling up"
+		},
+		"moveUp": {
+			"label": "Move up"
+		},
+		"moveDown": {
+			"label": "Move down"
+		},
+		"remove": {
+			"label": "Remove"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Revoke key",
+			"confirmTitle": "Revoke {name}?",
+			"confirmBody": "Anything using this key stops working at once.",
+			"confirmButton": "Revoke key"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Disconnect",
+			"confirmTitle": "Disconnect {name}?",
+			"confirmBody": "It is signed out at once and needs a new code to connect again.",
+			"confirmButton": "Disconnect device"
+		}
 	}
 }

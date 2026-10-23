@@ -22,6 +22,19 @@ export const ACTION_IDS = {
 	project: ["addExpense", "pin", "share", "settleAll", "archive"],
 	account: ["updateBalance", "history", "edit", "archive"],
 	recurring: ["confirm", "editAmount", "pause", "resume", "skip", "delete"],
+	category: ["edit", "exclude", "include", "delete"],
+	paymentMethod: [
+		"edit",
+		"makePrimary",
+		"showPublic",
+		"showContacts",
+		"showSettlement",
+		"moveUp",
+		"moveDown",
+		"remove",
+	],
+	apiKey: ["revoke"],
+	device: ["disconnect"],
 } as const;
 
 /**
