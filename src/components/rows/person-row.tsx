@@ -2,7 +2,7 @@
 
 import { Banknote } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Balance } from "~/components/money/balance";
 import { signOf } from "~/components/money/format";
 import { Money } from "~/components/money/money";
@@ -77,11 +77,13 @@ function Parts({ parts }: { parts: PersonVM["parts"] }) {
 		<>
 			<span className={cn(muted, "flex flex-wrap justify-end gap-x-2", wide)}>
 				{parts.map((p, i) => (
-					<span key={p.currency}>
-						{i > 0 && <span aria-hidden="true">· </span>}
-						{part(p)}
-						{mixed && ` ${words(signOf(p) > 0 ? "owedToYou" : "youOwe")}`}
-					</span>
+					<Fragment key={p.currency}>
+						{i > 0 && <span aria-hidden="true">·</span>}
+						<span>
+							{part(p)}
+							{mixed && ` ${words(signOf(p) > 0 ? "owedToYou" : "youOwe")}`}
+						</span>
+					</Fragment>
 				))}
 			</span>
 			<span className={cn(muted, narrow)}>
