@@ -45,7 +45,12 @@ export const budgetStyleSchema = z.enum([
 	"DEBT_PAYOFF",
 ]);
 /** Styles whose features have landed (02 §8: P2 completes these, P4 Limits). */
-export const SETUP_STYLES = ["FLEX", "EVERY_DOLLAR", "WEEKLY", "LIMITS"] as const;
+export const SETUP_STYLES = [
+	"FLEX",
+	"EVERY_DOLLAR",
+	"WEEKLY",
+	"LIMITS",
+] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
 
 export const envelopeKindSchema = z.enum([

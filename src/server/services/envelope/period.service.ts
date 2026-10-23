@@ -89,7 +89,9 @@ export async function setBookPeriod(
 				select: { id: true },
 			});
 	forgetMonthViews(tx);
-	const after = same ? settled : [...settled, { fromMonth, startDay, rateType }];
+	const after = same
+		? settled
+		: [...settled, { fromMonth, startDay, rateType }];
 	return {
 		periodId: row?.id ?? null,
 		fromMonth,

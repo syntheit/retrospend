@@ -50,7 +50,8 @@ export async function touchOpened(tx: Tx, userId: string, now: Date) {
 	if (!book) return;
 	const last = book.lastOpenedAt;
 	if (last && now.getTime() - last.getTime() < TOUCH_MS) return;
-	const away = last !== null && now.getTime() - last.getTime() >= AWAY_DAYS * DAY_MS;
+	const away =
+		last !== null && now.getTime() - last.getTime() >= AWAY_DAYS * DAY_MS;
 	const unread =
 		away &&
 		(await tx.monthClose.count({
@@ -80,7 +81,11 @@ async function waitingMonths(tx: Tx, bookId: string) {
 	});
 	return rows
 		.filter((r) => (r.ackRevision ?? 0) < r.revision)
-		.map((r) => ({ month: r.month, revision: r.revision, acknowledged: false }));
+		.map((r) => ({
+			month: r.month,
+			revision: r.revision,
+			acknowledged: false,
+		}));
 }
 
 export async function welcomeBackState(
@@ -134,11 +139,16 @@ export async function welcomeBack(
 		months,
 	};
 	if (input.choice === "SET_HAVE_NOW")
-		out.adjustment = await adjustTo(tx, userId, await requireView(tx, userId, now), {
-			id: input.id,
-			haveNow: input.amountMinor,
-			now,
-		});
+		out.adjustment = await adjustTo(
+			tx,
+			userId,
+			await requireView(tx, userId, now),
+			{
+				id: input.id,
+				haveNow: input.amountMinor,
+				now,
+			},
+		);
 	if (input.choice === "START_FRESH")
 		out.movements = await resetEnvelopes(
 			tx,
@@ -147,7 +157,8 @@ export async function welcomeBack(
 			now,
 		).catch((error) => {
 			// Every envelope already at 0: starting fresh moves nothing.
-			if (error instanceof EnvelopeError && error.code === "INVALID") return null;
+			if (error instanceof EnvelopeError && error.code === "INVALID")
+				return null;
 			throw error;
 		});
 	await tx.budgetBook.update({
@@ -170,7 +181,8 @@ export async function reconcile(
 		throw new EnvelopeError("NO_BOOK", "start a budget first");
 	await lockBook(tx, book.id);
 	const view = await requireView(tx, userId, now);
-	const signed = input.direction === "IN" ? input.amountMinor : -input.amountMinor;
+	const signed =
+		input.direction === "IN" ? input.amountMinor : -input.amountMinor;
 	const adjustment = await writeAdjustment(tx, userId, {
 		id: input.id,
 		signedMinor: signed,

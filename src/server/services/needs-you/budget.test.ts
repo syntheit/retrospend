@@ -405,7 +405,9 @@ describe("budget Needs you items (SPEC §5.14)", () => {
 
 	it("reconciled before and not this month: the monthly check", () => {
 		expect(
-			budgetItems({ ...facts(month({})), reconcileDue: true }).map((i) => i.type),
+			budgetItems({ ...facts(month({})), reconcileDue: true }).map(
+				(i) => i.type,
+			),
 		).toEqual(["budget.reconcile"]);
 	});
 

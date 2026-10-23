@@ -37,7 +37,10 @@ export function getWelcomeBack(
 }
 
 /** "Does this match your bank?": what the budget holds against the accounts in it. */
-export function getBankCheck(userId: string, now = new Date()): Promise<BankSide> {
+export function getBankCheck(
+	userId: string,
+	now = new Date(),
+): Promise<BankSide> {
 	return run(userId, async (tx) => {
 		await ensureMonthsClosed(tx, userId, now);
 		const view = await monthViewIn(tx, userId, now);

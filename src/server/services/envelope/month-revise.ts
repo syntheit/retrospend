@@ -154,7 +154,11 @@ async function revise(
 	);
 	const recalc =
 		after.length > 0
-			? effectToday(c, rows.at(-1)?.checkpoint ?? null, after[0]?.r.month ?? from)
+			? effectToday(
+					c,
+					rows.at(-1)?.checkpoint ?? null,
+					after[0]?.r.month ?? from,
+				)
 			: null;
 	const out = { late: [] as MonthKey[], revised: [] as MonthKey[] };
 	for (const { r, next, moved } of changed) {
@@ -184,7 +188,10 @@ export async function closeAndRevise(
 	rows: readonly CloseRow[],
 ): Promise<ReviseResult> {
 	const firstOpen = req.open[0] ?? Number.POSITIVE_INFINITY;
-	const needFrom = Math.min(req.reviseFrom ?? Number.POSITIVE_INFINITY, firstOpen);
+	const needFrom = Math.min(
+		req.reviseFrom ?? Number.POSITIVE_INFINITY,
+		firstOpen,
+	);
 	const loaded = await loadBook(tx, userId, {
 		now,
 		needFrom: Math.max(needFrom, 0),
@@ -194,7 +201,11 @@ export async function closeAndRevise(
 	const changed =
 		req.reviseFrom === null
 			? { late: [], revised: [] }
-			: await revise(c, rows, Math.max(req.reviseFrom, loaded.input.startMonth));
+			: await revise(
+					c,
+					rows,
+					Math.max(req.reviseFrom, loaded.input.startMonth),
+				);
 	if (req.open.length > 0)
 		await tx.monthClose.createMany({
 			data: req.open.map((month) => ({

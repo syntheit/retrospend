@@ -157,7 +157,13 @@ export async function ensureMonthsClosed(
 	const from = reviseFrom(closes, dirty);
 	const run =
 		open.length > 0 || from !== null
-			? await closeAndRevise(tx, userId, now, { reviseFrom: from, open }, closes)
+			? await closeAndRevise(
+					tx,
+					userId,
+					now,
+					{ reviseFrom: from, open },
+					closes,
+				)
 			: { closed: [], late: [], revised: [] };
 	// Only marks this read saw: one written since covers rows it did not read.
 	if (dirty.length > 0)

@@ -301,7 +301,10 @@ export async function loadBook(
 			sweepToId: e.leftoverSweepToId,
 			categoryIds: e.categories.map((c) => c.categoryId),
 		})),
-		moneyIn: [...moneyInEntries(own.moneyIn, s.valuer), ...full.entries.moneyIn],
+		moneyIn: [
+			...moneyInEntries(own.moneyIn, s.valuer),
+			...full.entries.moneyIn,
+		],
 		activity: [
 			...activityEntries(
 				{ ...own, shares: [], shareRate: full.splits.shareRate },

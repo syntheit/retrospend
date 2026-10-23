@@ -79,7 +79,11 @@ async function augustBook() {
 		{ amount: 100, categoryId: s.dining },
 		at("2026-08-12"),
 	);
-	await addRow(s.user.id, { amount: 50, categoryId: s.dining }, at("2026-09-12"));
+	await addRow(
+		s.user.id,
+		{ amount: 50, categoryId: s.dining },
+		at("2026-09-12"),
+	);
 	return { ...s, bookId: book.id, diningEnv: ids.Dining as string, aug };
 }
 
@@ -174,7 +178,9 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 		expect(aug?.change).toMatchObject({
 			earliestMonth: 202608,
 			toAssign: { minor: 0, currency: "USD" },
-			envelopes: [{ id: b.diningEnv, delta: { minor: 10_000, currency: "USD" } }],
+			envelopes: [
+				{ id: b.diningEnv, delta: { minor: 10_000, currency: "USD" } },
+			],
 		});
 		const nov = await getMonth(b.user.id, undefined, now);
 		expect(leftOf(nov, b.diningEnv)).toBe(22_000);
@@ -227,10 +233,20 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 			},
 		});
 		await adminDb.exchangeRate.create({
-			data: { date: at("2026-09-10"), currency: "XAF", type: "official", rate: 600 },
+			data: {
+				date: at("2026-09-10"),
+				currency: "XAF",
+				type: "official",
+				rate: 600,
+			},
 		});
 		await adminDb.exchangeRate.create({
-			data: { date: at("2026-10-10"), currency: "XAF", type: "official", rate: 601 },
+			data: {
+				date: at("2026-10-10"),
+				currency: "XAF",
+				type: "official",
+				rate: 601,
+			},
 		});
 		const marks = await adminDb.budgetDirty.findMany({ where: { bookId } });
 		expect(marks.map((m) => m.fromMonth).sort()).toEqual([0, 202610]);

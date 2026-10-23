@@ -33,7 +33,11 @@ import {
 } from "./verdict";
 import { reconcile, welcomeBack } from "./welcome.service";
 
-const POOL = [FIGURE_NOT_PLANNED_YET, FIGURE_LEFT_TO_SPEND, FIGURE_LEFT_IN_LIMITS];
+const POOL = [
+	FIGURE_NOT_PLANNED_YET,
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_LEFT_IN_LIMITS,
+];
 
 function movementUndo(value: MovementResult): UndoToken {
 	const rows = value.movements.map((m) => ({
@@ -172,7 +176,9 @@ export const setBookPeriodMutation: MoneyMutation<
 			undo: {
 				kind: "revert",
 				mutation: "envelope.setBookPeriod",
-				rows: value.periodId ? [{ table: "book_period", id: value.periodId }] : [],
+				rows: value.periodId
+					? [{ table: "book_period", id: value.periodId }]
+					: [],
 			},
 		};
 	},

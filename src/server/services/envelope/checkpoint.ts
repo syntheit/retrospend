@@ -150,10 +150,7 @@ function summaryKey(s: MonthCloseSummary): string {
 	const envelopes = s.envelopes
 		.filter(
 			(e) =>
-				e.carryIn !== 0 ||
-				e.assigned !== 0 ||
-				e.activity !== 0 ||
-				e.left !== 0,
+				e.carryIn !== 0 || e.assigned !== 0 || e.activity !== 0 || e.left !== 0,
 		)
 		.map(
 			(e) =>

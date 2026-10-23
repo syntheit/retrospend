@@ -22,7 +22,11 @@ import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { isoDateIn } from "./months";
 import { insert, replay, result } from "./movement.service";
-import { checkEnvelope, lockedSnapshot, type NewMovement } from "./movement-state";
+import {
+	checkEnvelope,
+	lockedSnapshot,
+	type NewMovement,
+} from "./movement-state";
 import { RateBook } from "./rate-book";
 import type { MissingRate } from "./types";
 import { fromMinor, toMinor } from "./units";
@@ -48,7 +52,9 @@ export async function recentSpending(
 		where: {
 			...budgetSpendingWhere(userId, {
 				gte: new Date(`${from}T00:00:00Z`),
-				lte: new Date(new Date(`${firstOf(thisMonth)}T00:00:00Z`).getTime() - 1),
+				lte: new Date(
+					new Date(`${firstOf(thisMonth)}T00:00:00Z`).getTime() - 1,
+				),
 			}),
 			categoryId: { not: null },
 		},
@@ -142,8 +148,17 @@ export async function setLimit(
 	checkEnvelope(input.envelopeId, s);
 	const env = s.loaded.row.envelopes.find((e) => e.id === input.envelopeId);
 	if (!env || (env.kind !== "MONTHLY" && env.kind !== "NONE"))
-		throw new EnvelopeError("INVALID", "bills and goals keep their own targets");
-	const funded = await fundedThisMonth(tx, s.loaded.row.id, env.id, s.current, H);
+		throw new EnvelopeError(
+			"INVALID",
+			"bills and goals keep their own targets",
+		);
+	const funded = await fundedThisMonth(
+		tx,
+		s.loaded.row.id,
+		env.id,
+		s.current,
+		H,
+	);
 	const money = (minor: number) => ({ minor, currency: H });
 	const retry = await replay(tx, userId, now, s, { id: input.id }, (rows) =>
 		rows.every(
@@ -204,7 +219,13 @@ export async function setLimit(
 		});
 	await insert(tx, s, userId, rows);
 	forgetMonthViews(tx);
-	const moved = await result(tx, userId, now, s, rows.map((r) => r.id));
+	const moved = await result(
+		tx,
+		userId,
+		now,
+		s,
+		rows.map((r) => r.id),
+	);
 	return {
 		...moved,
 		envelopeId: env.id,

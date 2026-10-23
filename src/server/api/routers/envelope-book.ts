@@ -4,10 +4,7 @@
  * ~/lib/schemas/envelope-book, logic in the services; every money write is a
  * preview and apply pair of one mutation (R30) whose undo is listed in it.
  */
-import {
-	applyOutputSchema,
-	previewOutputSchema,
-} from "~/lib/schemas/envelope";
+import { applyOutputSchema, previewOutputSchema } from "~/lib/schemas/envelope";
 import {
 	acknowledgeMonthInputSchema,
 	acknowledgeMonthResultSchema,

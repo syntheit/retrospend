@@ -48,7 +48,10 @@ export function dedicatedValues(
 	const byId = new Map(accounts.map((a) => [a.id, a]));
 	const out = new Map<string, Minor | null>();
 	for (const e of row.envelopes) {
-		const a = e.wealthDedicated && e.wealthAccountId ? byId.get(e.wealthAccountId) : null;
+		const a =
+			e.wealthDedicated && e.wealthAccountId
+				? byId.get(e.wealthAccountId)
+				: null;
 		if (!a || e.kind !== "SAVINGS") continue;
 		const v = convertToBook(
 			worthOf(a.type, a.balance).toString(),

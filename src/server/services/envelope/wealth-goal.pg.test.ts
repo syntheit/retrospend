@@ -43,7 +43,8 @@ describe("S12 Wealth moves both ways and goal progress", () => {
 			where: { createdById: s.user.id },
 			include: { envelopes: true },
 		});
-		const dining = book.envelopes.find((e) => e.name === "Dining")?.id as string;
+		const dining = book.envelopes.find((e) => e.name === "Dining")
+			?.id as string;
 		const vacation = await adminDb.envelope.create({
 			data: {
 				bookId: book.id,

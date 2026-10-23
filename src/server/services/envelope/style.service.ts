@@ -61,7 +61,10 @@ export async function setStyle(
 	if (leavingLimits && input.haveNowMinor === undefined)
 		throw new EnvelopeError("INVALID", "how much do you have right now?");
 	if (!leavingLimits && input.haveNowMinor !== undefined)
-		throw new EnvelopeError("INVALID", "only leaving Limits asks for money now");
+		throw new EnvelopeError(
+			"INVALID",
+			"only leaving Limits asks for money now",
+		);
 	const oldRule = leftoverDefault(book.style);
 	const newRule = leftoverDefault(input.style);
 	const ruleChanges =
@@ -92,7 +95,8 @@ export async function setStyle(
 				today: view.loaded.today,
 			})
 		: null;
-	const fundedFrom = to === "TARGETS" && from !== "TARGETS" ? addMonths(c, 1) : null;
+	const fundedFrom =
+		to === "TARGETS" && from !== "TARGETS" ? addMonths(c, 1) : null;
 	await tx.budgetBook.update({
 		where: { id: book.id },
 		data: {
@@ -135,7 +139,8 @@ export async function revertStyle(
 	const own = new Set(book.envelopes.map((e) => e.id));
 	if (p.rules.some((r) => !own.has(r.envelopeId)))
 		throw new EnvelopeError("NOT_FOUND", "no such envelope");
-	if (input.adjustmentId) await removeAdjustment(tx, userId, input.adjustmentId);
+	if (input.adjustmentId)
+		await removeAdjustment(tx, userId, input.adjustmentId);
 	await tx.budgetBook.update({
 		where: { id: book.id },
 		data: {

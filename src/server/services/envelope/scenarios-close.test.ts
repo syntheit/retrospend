@@ -274,11 +274,26 @@ describe("S11 month rollover with the rule each month closed under (Lucía)", ()
 				],
 			}).held;
 		expect(held("PROPOSED")).toEqual([
-			{ counterparty: "user:juan", currency: "ARS", native: m(30_000), held: m(30_000) },
-			{ counterparty: "user:paz", currency: "ARS", native: m(20_000), held: m(20_000) },
+			{
+				counterparty: "user:juan",
+				currency: "ARS",
+				native: m(30_000),
+				held: m(30_000),
+			},
+			{
+				counterparty: "user:paz",
+				currency: "ARS",
+				native: m(20_000),
+				held: m(20_000),
+			},
 		]);
 		expect(held("FINALIZED")).toEqual([
-			{ counterparty: "user:juan", currency: "ARS", native: m(30_000), held: m(30_000) },
+			{
+				counterparty: "user:juan",
+				currency: "ARS",
+				native: m(30_000),
+				held: m(30_000),
+			},
 		]);
 	});
 

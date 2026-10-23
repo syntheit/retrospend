@@ -135,7 +135,9 @@ describe("style switching (SPEC §4.4)", () => {
 			haveNowMinor: 100_000,
 			leftovers: "STYLE_DEFAULT" as const,
 		};
-		const before = await adminDb.expense.count({ where: { userId: s.user.id } });
+		const before = await adminDb.expense.count({
+			where: { userId: s.user.id },
+		});
 		const p = await forUser(s.user.id).preview(setStyleMutation, input);
 		expect(p.value.adjustment?.amount).toEqual(usd(100_000));
 		await expect(
@@ -158,7 +160,10 @@ describe("style switching (SPEC §4.4)", () => {
 		});
 		const back = await getMonth(s.user.id);
 		expect(back?.toAssign.amount.minor).toBe(-62_000);
-		expect(back?.book).toMatchObject({ style: "LIMITS", fundingSource: "TARGETS" });
+		expect(back?.book).toMatchObject({
+			style: "LIMITS",
+			fundingSource: "TARGETS",
+		});
 		const rules = await adminDb.envelope.findMany({
 			where: { book: { createdById: s.user.id } },
 		});
@@ -180,7 +185,11 @@ describe("style switching (SPEC §4.4)", () => {
 				where: { kind: "PLAN_FUND", bookId: s.book.id },
 			}),
 		).resolves.toBe(0);
-		const next = await getMonth(s.user.id, undefined, day(addMonths(current, 1), 2));
+		const next = await getMonth(
+			s.user.id,
+			undefined,
+			day(addMonths(current, 1), 2),
+		);
 		expect(next?.toAssign.amount.minor).toBe(30_000);
 		expect(next?.verdict.lead.kind).toBe("LEFT_IN_LIMITS");
 	});
@@ -219,7 +228,11 @@ describe("S26 Welcome back after four months away", () => {
 				actorUserId: s.user.id,
 			},
 		});
-		await addRow(s.user.id, { amount: 100, categoryId: s.dining }, day(start, 12));
+		await addRow(
+			s.user.id,
+			{ amount: 100, categoryId: s.dining },
+			day(start, 12),
+		);
 		await addRow(s.user.id, { amount: 150 }, day(addMonths(start, 1), 12));
 		await addRow(s.user.id, { amount: 20 }, day(addMonths(current, -1), 5));
 	});

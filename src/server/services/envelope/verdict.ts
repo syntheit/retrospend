@@ -162,7 +162,8 @@ export function verdict(p: {
 				amount: lim.left,
 			},
 			...limitsState(lim, overTotal),
-			perDay: l.daysLeft > 0 ? Math.floor(Math.max(0, lim.left) / l.daysLeft) : 0,
+			perDay:
+				l.daysLeft > 0 ? Math.floor(Math.max(0, lim.left) / l.daysLeft) : 0,
 			// To assign is hidden in a Limits book (SPEC §5.6): no pool notice.
 			notice: null,
 			limits: { limit: lim.limit, spent: lim.spent },
