@@ -83,6 +83,41 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"expense.importExpenses": EXPENSE_DEPS,
 	"expense.bulkUpdateCategory": ["dashboard", "stats", "budget"],
 
+	// ── Add family (4G): the same writes through the entry router ─────────
+	"entry.expense.create.save": [...EXPENSE_DEPS, "expense"],
+	"entry.expense.update.save": [...EXPENSE_DEPS, "expense"],
+	"entry.expense.delete.save": [...EXPENSE_DEPS, "expense"],
+	"entry.expense.restore.save": [...EXPENSE_DEPS, "expense"],
+	"entry.expense.revert.save": [...EXPENSE_DEPS, "expense"],
+	"entry.shared.create.save": [...SHARED_TX_DEPS, "sharedTransaction"],
+	"entry.shared.update.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+	],
+	"entry.shared.revert.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+	],
+	"entry.shared.delete.save": [...SHARED_TX_DEPS, "sharedTransaction"],
+	"entry.transfer.save": ["wealth", "expense", "envelope", "dashboard"],
+	"wealth.income.add.save": [
+		"expense",
+		"envelope",
+		"dashboard",
+		"budget",
+		"recurring",
+	],
+	"wealth.income.delete.save": [
+		"expense",
+		"envelope",
+		"dashboard",
+		"budget",
+		"recurring",
+	],
+	"wealth.transfers.delete.save": ["expense", "envelope", "dashboard", "entry"],
+
 	// ── Settlements ─────────────────────────────────────────────────────
 	"settlement.create": SETTLEMENT_DEPS,
 	"settlement.settleAll": SETTLEMENT_DEPS,
@@ -102,12 +137,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"people",
 		"stats",
 	],
-	"billingPeriod.settlePeriod": [
-		"project",
-		"settlement",
-		"people",
-		"stats",
-	],
+	"billingPeriod.settlePeriod": ["project", "settlement", "people", "stats"],
 	"billingPeriod.updateLabel": ["project"],
 
 	// ── Budgets ─────────────────────────────────────────────────────────
@@ -133,12 +163,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	],
 
 	// ── Verification ────────────────────────────────────────────────────
-	"verification.accept": [
-		"project",
-		"people",
-		"sharedTransaction",
-		"expense",
-	],
+	"verification.accept": ["project", "people", "sharedTransaction", "expense"],
 	"verification.reject": ["project", "people", "sharedTransaction"],
 
 	// ── Import ──────────────────────────────────────────────────────────
@@ -153,13 +178,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"project.removeParticipant": ["people"],
 
 	// ── Exchange rates ──────────────────────────────────────────────────
-	"exchangeRate.syncNow": [
-		"dashboard",
-		"wealth",
-		"project",
-		"people",
-		"stats",
-	],
+	"exchangeRate.syncNow": ["dashboard", "wealth", "project", "people", "stats"],
 
 	// ── Guest ───────────────────────────────────────────────────────────
 	"guest.joinWithAccount": ["project", "people"],

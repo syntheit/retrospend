@@ -9,6 +9,9 @@
  * - `keep`: stays in Wealth, out of To assign. Default: kept when the account
  *   is outside the budget (§2.1). Keeping needs an account to stay in.
  * - `repeats`: also creates the recurring income template and links it.
+ * - `usePlan`: Use my plan (owner N72): the plan assigns the booked value in
+ *   the same action (plan-seam), so the preview lists every line and the
+ *   undo (income.delete) takes the batch back with the row.
  */
 import { randomUUID } from "node:crypto";
 import type { Decimal } from "@prisma/client/runtime/index-browser";
@@ -16,11 +19,16 @@ import { TRPCError } from "@trpc/server";
 import { computeAmountInUSD } from "~/lib/money";
 import { requireExchangeRate } from "~/server/exchange-rates";
 import type { Money } from "~/server/figures/registry";
+import { forgetMonthViews } from "~/server/services/envelope/month-read";
 import { dec, toMinor } from "~/server/services/envelope/units";
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "~/server/services/envelope/verdict";
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma, RecurringFrequency } from "~prisma";
-import { moveDay } from "../accounts/dates";
+import { moveDay, rowDateOf } from "../accounts/dates";
 import {
 	type AccountChange,
 	type AccountRow,
@@ -34,6 +42,7 @@ import { endOfDay } from "../accounts/series";
 import { homePerUnit, homeValue } from "../accounts/valuation";
 import { typedAmount } from "../transfers/plan";
 import { nextDueDay } from "./due-day";
+import { applyPlanFor, PLAN_NOT_REQUESTED, type PlanResult } from "./plan-seam";
 
 type Tx = Prisma.TransactionClient;
 
@@ -63,6 +72,8 @@ export interface AddIncomeInput {
 		/** YYYY-MM-DD of the next one; one period after `date` when omitted. */
 		readonly next?: string | null;
 	} | null;
+	/** Use my plan: assign the booked value by the envelope plan now. */
+	readonly usePlan?: boolean | null;
 	/** Set only by the undo of a delete: the rates and units it was booked at. */
 	readonly restore?: IncomeRestore | null;
 	readonly timeZone?: string;
@@ -90,6 +101,8 @@ export interface IncomeValue {
 	/** Kept in Wealth (out of To assign) or in the budget. */
 	readonly kept: boolean;
 	readonly templateId: string | null;
+	/** What Use my plan assigned; not requested unless `usePlan`. */
+	readonly plan: PlanResult;
 }
 
 async function incomeCategory(
@@ -303,7 +316,8 @@ export async function addIncomeIn(
 			title: input.title,
 			amount: amount.toString(),
 			currency: input.currency,
-			date,
+			// The leg keeps the ledger's UTC-midnight day; the row is read in the viewer's zone.
+			date: rowDateOf(date, input.timeZone),
 			categoryId,
 			description: input.description ?? null,
 			exchangeRate: priced.exchangeRate,
@@ -329,20 +343,41 @@ export async function addIncomeIn(
 				countedUnits: countedUnitsOf(input, account, kept, home, units),
 			})
 		: null;
+	// The budget read before this write (a preview's before side) is stale now.
+	forgetMonthViews(tx);
+	const bookedMoney = booked && {
+		minor: toMinor(booked, home),
+		currency: home,
+	};
+	const plan = input.usePlan
+		? await applyPlanFor(tx, {
+				userId,
+				incomeExpenseId: expenseId,
+				amount: kept ? null : bookedMoney,
+			})
+		: PLAN_NOT_REQUESTED;
+	// On the row, so income.delete takes the batch back with it.
+	if (plan.batchId) {
+		await tx.expense.update({
+			where: { id: expenseId },
+			data: { planBatchId: plan.batchId },
+		});
+	}
 	return {
 		expenseId,
 		amount: amount.toString(),
 		currency: input.currency,
-		booked: booked && { minor: toMinor(booked, home), currency: home },
+		booked: bookedMoney,
 		into,
 		kept,
 		templateId,
+		plan,
 	};
 }
 
 export const addIncome: MoneyMutation<AddIncomeInput, IncomeValue> = {
 	id: "income.add",
-	touches: INCOME_FIGURES,
+	touches: [...INCOME_FIGURES, FIGURE_NOT_PLANNED_YET, FIGURE_LEFT_TO_SPEND],
 	scope: (input) => (input.into ? { accountId: input.into } : {}),
 	run: async (tx, input, actor) => {
 		const value = await addIncomeIn(tx, actor.userId, input);

@@ -8,6 +8,7 @@ import {
 } from "~/server/services/notifications";
 import type { Prisma, PrismaClient, SplitMode } from "~prisma";
 import { logAudit } from "./audit-log";
+import { serializeDecimal, serializeTransaction } from "./serialize";
 import {
 	effectOfRemovingShare,
 	type ShareRemovalEffect,
@@ -36,6 +37,7 @@ interface SplitParticipantInput {
 type SplitModeType = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
 
 interface CreateSharedTransactionInput {
+	/** A client id: a repeated create (a double click) writes nothing twice. */ id?: string;
 	amount: number;
 	currency: string;
 	description: string;
@@ -139,34 +141,24 @@ function buildChangeSummary(
 	return parts.join(", ");
 }
 
-function serializeDecimal(val: unknown): number {
-	if (val && typeof val === "object" && "toNumber" in val) {
-		return (val as { toNumber(): number }).toNumber();
-	}
-	return Number(val);
-}
-
-function serializeTransaction(tx: Record<string, unknown>) {
-	return {
-		...tx,
-		amount: serializeDecimal(tx.amount),
-		splitParticipants: Array.isArray(tx.splitParticipants)
-			? tx.splitParticipants.map((sp: Record<string, unknown>) => ({
-					...sp,
-					shareAmount: serializeDecimal(sp.shareAmount),
-					sharePercentage: sp.sharePercentage
-						? serializeDecimal(sp.sharePercentage)
-						: null,
-				}))
-			: undefined,
-	};
-}
-
 export class SharedTransactionService {
+	/**
+	 * `db` may be an open transaction (a money preview or apply): writes then
+	 * run in it. `defer` collects notifications for the caller to send after
+	 * its commit, since a preview must send none.
+	 */
 	constructor(
-		private db: AppDb,
+		private db: AppDb | Prisma.TransactionClient,
 		private actor: ParticipantRef,
+		private options: { defer?: (() => Promise<void>)[] } = {},
 	) {}
+
+	private notify(kind: string, send: () => Promise<void>) {
+		const run = () =>
+			send().catch((err) => console.error(`[Notification Error] ${kind}:`, err));
+		if (this.options.defer) this.options.defer.push(run);
+		else void run();
+	}
 
 	async create(input: CreateSharedTransactionInput) {
 		const { amount, splitWith, splitMode, paidBy } = input;
@@ -198,7 +190,6 @@ export class SharedTransactionService {
 		);
 
 		const actor = this.actor;
-
 		// Freeze the rate of the expense's own date, so shares keep converting
 		// at it later. Null only when the currency has no rate at all; readers
 		// then fall back to a lookup by date.
@@ -260,7 +251,7 @@ export class SharedTransactionService {
 
 			const transaction = await tx.sharedTransaction.create({
 				data: {
-					description: input.description,
+					id: input.id, description: input.description,
 					amount: input.amount,
 					currency: input.currency,
 					exchangeRate: capturedRate?.rate ?? null,
@@ -321,8 +312,8 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type split participants (excluding the creator)
-		this.notifyExpenseSplit(result.transaction).catch((err) =>
-			console.error("[Notification Error] EXPENSE_SPLIT:", err),
+		this.notify("EXPENSE_SPLIT", () =>
+			this.notifyExpenseSplit(result.transaction),
 		);
 
 		return result;
@@ -873,9 +864,10 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type participants (excluding the actor) that the expense changed
-		if (existingSnapshot) {
-			this.notifyExpenseEdited(updated, existingSnapshot, capturedDiff).catch((err) =>
-				console.error("[Notification Error] EXPENSE_EDITED:", err),
+		const snapshot = existingSnapshot;
+		if (snapshot) {
+			this.notify("EXPENSE_EDITED", () =>
+				this.notifyExpenseEdited(updated, snapshot, capturedDiff),
 			);
 		}
 
@@ -1007,11 +999,8 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type participants (excluding actor) that the expense was deleted
-		if (deletedSnapshot) {
-			this.notifyExpenseDeleted(deletedSnapshot).catch((err) =>
-				console.error("[Notification Error] EXPENSE_DELETED:", err),
-			);
-		}
+		const gone = deletedSnapshot;
+		if (gone) this.notify("EXPENSE_DELETED", () => this.notifyExpenseDeleted(gone));
 	}
 
 	private async notifyExpenseDeleted(existing: {
@@ -1387,6 +1376,7 @@ export class SharedTransactionService {
 	private async runInTransaction<T>(
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {
+		if (!("$transaction" in this.db)) return await callback(this.db);
 		return await this.db.$transaction(async (tx) => {
 			await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true),
 			                            set_config('role', 'retrospend_app', true)`;

@@ -17,7 +17,7 @@ import type { Money } from "~/server/figures/registry";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
-import { moveDay } from "../accounts/dates";
+import { moveDay, rowDateOf } from "../accounts/dates";
 import {
 	bookHome,
 	homeCurrencyOf,
@@ -187,7 +187,8 @@ export async function moveInIn(
 	if (expenseId)
 		await tx.expense.update({
 			where: { id: expenseId },
-			data: { movedInAt: date },
+			// A moment on the expense row, read in the viewer's zone like its date.
+			data: { movedInAt: rowDateOf(date, input.timeZone) },
 		});
 	const amount = {
 		minor: toMinor(side.home, homeCurrency),

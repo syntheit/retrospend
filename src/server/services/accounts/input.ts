@@ -91,6 +91,8 @@ export const setDefaultAccountSchema = z.object({
 });
 
 export const createTransferSchema = z.object({
+	/** A client id: a repeated save (a double click) writes one move. */
+	id: z.uuid().optional(),
 	fromAccountId: id.nullable(),
 	toAccountId: id.nullable(),
 	fromCurrency: currency.nullish(),
@@ -111,6 +113,8 @@ export const recreateTransferSchema = createTransferSchema.extend({ id });
 export const transferIdSchema = z.object({ transferId: id });
 
 export const addIncomeSchema = z.object({
+	/** A client id: a repeated save (a double click) writes one income. */
+	id: z.uuid().optional(),
 	title: z.string().min(1).max(191),
 	amount: positive,
 	currency,
@@ -123,6 +127,7 @@ export const addIncomeSchema = z.object({
 	repeats: z
 		.object({ frequency: z.enum(RecurringFrequency), next: isoDay.nullish() })
 		.nullish(),
+	usePlan: z.boolean().optional(),
 });
 
 const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);

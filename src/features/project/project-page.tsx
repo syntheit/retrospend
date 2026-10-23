@@ -1,6 +1,6 @@
 "use client";
 
-import { ExpenseModalProvider } from "~/components/expense-modal-provider";
+import { ExpenseSheetsSwitch } from "~/features/entry/sheets-switch";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
 import { ShellSwitch } from "~/components/shell/shell-switch";
@@ -13,7 +13,7 @@ import { ProjectScreen } from "./project-screen";
  */
 export function ProjectPage({ id }: { id: string }) {
 	return (
-		<ExpenseModalProvider>
+		<ExpenseSheetsSwitch>
 			<RecurringModalProvider>
 				<RevisionHistoryProvider>
 					<ShellSwitch>
@@ -21,6 +21,6 @@ export function ProjectPage({ id }: { id: string }) {
 					</ShellSwitch>
 				</RevisionHistoryProvider>
 			</RecurringModalProvider>
-		</ExpenseModalProvider>
+		</ExpenseSheetsSwitch>
 	);
 }
