@@ -122,6 +122,7 @@
 			"noRate": "Noch kein {currency}-Kurs, daher lässt sich das Konto nicht bewerten. Wähle vorerst eine andere Währung.",
 			"liquid": "Liquide",
 			"apr": "Zinssatz (effektiv, %)",
+			"aprInvalid": "Gib eine Zahl ein, etwa 45 oder 45,5",
 			"dueDay": "Fälligkeitstag",
 			"minimum": "Mindestzahlung"
 		},

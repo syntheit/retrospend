@@ -122,6 +122,7 @@
 			"noRate": "Todavía no hay cotización de {currency}, así que la cuenta no se puede valuar. Por ahora elegí otra moneda.",
 			"liquid": "Líquida",
 			"apr": "Tasa de interés (TNA, %)",
+			"aprInvalid": "Ingresá un número, como 45 o 45,5",
 			"dueDay": "Día de vencimiento",
 			"minimum": "Pago mínimo"
 		},

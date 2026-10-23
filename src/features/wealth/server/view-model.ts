@@ -2,6 +2,7 @@ import "server-only";
 
 import { type Money, subtractMoney } from "@retrospend/domain/money-minor";
 import type { AccountKind } from "~/components/rows/types";
+import { CUSTOM_RATE_TYPE } from "~/server/services/wealth.service";
 import {
 	type AssetTypeKey,
 	type GroupKey,
@@ -28,6 +29,8 @@ export type DashboardInput = {
 		currency: string;
 		balance: number;
 		balanceInTargetCurrency: number;
+		/** The stored rate (a Prisma Decimal); only a custom one is sent back. */
+		exchangeRate: { toString(): string } | null;
 		exchangeRateType: string | null;
 		isLiquid: boolean;
 		interestRate: number | null;
@@ -82,6 +85,9 @@ const DAYS: Record<WealthRange, number> = {
 	"1Y": 365,
 };
 
+/** Days between points: daily, weekly for a year (53 points, not 366). */
+const STEP: Record<WealthRange, number> = { "1M": 1, "3M": 1, "6M": 1, "1Y": 7 };
+
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 function daysBefore(iso: string, days: number): string {
@@ -120,6 +126,13 @@ function account(
 		liquid: a.isLiquid && !liability,
 		rateType: types.length > 1 ? a.exchangeRateType : null,
 		rateTypes: types,
+		valuation: {
+			type: a.exchangeRateType,
+			customRate:
+				a.exchangeRateType === CUSTOM_RATE_TYPE && a.exchangeRate != null
+					? a.exchangeRate.toString()
+					: null,
+		},
 		apr: liability ? a.interestRate : null,
 		updated: isoDay(a.updatedAt),
 		closedOn: null,
@@ -168,28 +181,31 @@ function shares(
 }
 
 /**
- * The points inside each range. The value at the range's first day is the
- * last snapshot before it (balances hold until the next update), so a range
- * with one update inside still draws a line.
+ * Evenly spaced points for each range, ending today, so the chart's spacing
+ * is time and not the number of updates. Each point is the last snapshot on
+ * or before its day (balances hold until the next update); a day before the
+ * first snapshot is a gap, never zero.
  */
 function series(
 	history: DashboardInput["history"],
 	today: string,
 	home: string,
 ): Record<WealthRange, WealthPoint[]> {
-	const points = history.map((h) => ({
-		date: h.date,
-		value: moneyFromMajor(h.amount, home),
-	}));
+	const points = [...history]
+		.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0))
+		.map((h) => ({ date: h.date, value: moneyFromMajor(h.amount, home) }));
+	const heldOn = (day: string) =>
+		points.filter((p) => p.date <= day).at(-1)?.value ?? null;
 	const out = {} as Record<WealthRange, WealthPoint[]>;
 	for (const range of RANGES) {
 		const from = daysBefore(today, DAYS[range]);
-		const inside = points.filter((p) => p.date >= from);
-		const before = points.filter((p) => p.date < from).at(-1);
-		out[range] =
-			before && inside[0]?.date !== from
-				? [{ date: from, value: before.value }, ...inside]
-				: inside;
+		const days: string[] = [];
+		for (let k = 0; ; k += STEP[range]) {
+			const day = daysBefore(today, k);
+			if (day < from) break;
+			days.unshift(day);
+		}
+		out[range] = days.map((date) => ({ date, value: heldOn(date) }));
 	}
 	return out;
 }
@@ -247,6 +263,7 @@ export function buildWealthView(input: WealthInput): WealthView {
 				liquid: false,
 				rateType: null,
 				rateTypes: input.rateTypes[c.currency] ?? [],
+				valuation: { type: null, customRate: null },
 				apr: null,
 				updated: isoDay(c.closedAt),
 				closedOn: isoDay(c.closedAt),

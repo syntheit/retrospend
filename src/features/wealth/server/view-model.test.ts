@@ -13,6 +13,7 @@ const asset = (
 	name: a.id,
 	balance: 0,
 	balanceInTargetCurrency: 0,
+	exchangeRate: null,
 	exchangeRateType: null,
 	isLiquid: false,
 	interestRate: null,
@@ -144,13 +145,47 @@ describe("buildWealthView", () => {
 		]);
 	});
 
-	it("starts a range at the balance held on its first day", () => {
-		expect(view.series["1M"].map((p) => [p.date, p.value.minor])).toEqual([
-			["2026-09-22", 850000000],
+	it("one point per day, the balance held that day", () => {
+		const m = view.series["1M"].map((p) => [p.date, p.value?.minor ?? null]);
+		// 2026-09-22 to 2026-10-22, both ends in: 31 days.
+		expect(m).toHaveLength(31);
+		expect(m[0]).toEqual(["2026-09-22", 850000000]);
+		expect(m[8]).toEqual(["2026-09-30", 850000000]);
+		expect(m[9]).toEqual(["2026-10-01", 870000000]);
+		expect(m[29]).toEqual(["2026-10-21", 870000000]);
+		expect(m[30]).toEqual(["2026-10-22", 896150000]);
+	});
+
+	it("days before the first balance are gaps, so the axis keeps its length", () => {
+		const q = view.series["3M"];
+		// 91 days back is 2026-07-23: 92 days in all, 9 of them before 2026-08-01.
+		expect(q).toHaveLength(92);
+		expect(q[0]).toEqual({ date: "2026-07-23", value: null });
+		expect(q[8]?.value).toBeNull();
+		expect(q[9]).toEqual({ date: "2026-08-01", value: ars(800000000) });
+		expect(view.series["6M"]).toHaveLength(183);
+	});
+
+	it("1Y: one point a week, ending today", () => {
+		const y = view.series["1Y"];
+		// 2025-10-22 back to 2026-10-22 is 365 days: 53 weekly points.
+		expect(y).toHaveLength(53);
+		expect(y.at(-1)).toEqual({ date: "2026-10-22", value: ars(896150000) });
+		const filled = y.flatMap((p) => (p.value ? [[p.date, p.value.minor]] : []));
+		expect(filled).toEqual([
+			["2026-08-06", 800000000],
+			["2026-08-13", 800000000],
+			["2026-08-20", 800000000],
+			["2026-08-27", 800000000],
+			["2026-09-03", 850000000],
+			["2026-09-10", 850000000],
+			["2026-09-17", 850000000],
+			["2026-09-24", 850000000],
 			["2026-10-01", 870000000],
+			["2026-10-08", 870000000],
+			["2026-10-15", 870000000],
 			["2026-10-22", 896150000],
 		]);
-		expect(view.series["3M"]).toHaveLength(4);
 	});
 
 	it("runway: liquid assets over the average month, one decimal", () => {
@@ -161,6 +196,39 @@ describe("buildWealthView", () => {
 		const galicia = view.groups[0]?.accounts[0];
 		expect(galicia?.rateType).toBeNull();
 		expect(galicia?.rateTypes).toEqual([]);
+	});
+
+	it("carries the stored rate type and a custom rate as typed", () => {
+		const v = buildWealthView({
+			...input,
+			dashboard: {
+				...input.dashboard,
+				assets: [
+					asset({
+						id: "eur",
+						type: "CASH",
+						currency: "EUR",
+						balance: 100,
+						balanceInTargetCurrency: 150000,
+						exchangeRate: { toString: () => "0.92" },
+						exchangeRateType: "custom",
+					}),
+					asset({
+						id: "usd",
+						type: "CASH",
+						currency: "USD",
+						balance: 5,
+						balanceInTargetCurrency: 7250,
+						exchangeRate: { toString: () => "1" },
+						exchangeRateType: "official",
+					}),
+				],
+			},
+		});
+		const [eur, usd] = v.groups[0]?.accounts ?? [];
+		expect(eur?.valuation).toEqual({ type: "custom", customRate: "0.92" });
+		// A table rate is looked up again on save, so only its type travels.
+		expect(usd?.valuation).toEqual({ type: "official", customRate: null });
 	});
 
 	it("no 30-day baseline: no change", () => {

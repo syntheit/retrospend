@@ -122,6 +122,7 @@
 			"noRate": "Aún no hay tipo de cambio de {currency}, así que la cuenta no se puede valorar. Por ahora elige otra moneda.",
 			"liquid": "Líquida",
 			"apr": "Tipo de interés (TAE, %)",
+			"aprInvalid": "Introduce un número, como 45 o 45,5",
 			"dueDay": "Día de vencimiento",
 			"minimum": "Pago mínimo"
 		},

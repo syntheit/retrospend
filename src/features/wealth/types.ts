@@ -40,6 +40,12 @@ export type WealthAccount = {
 	rateType: string | null;
 	/** Every rate type the server has for the account's currency. */
 	rateTypes: string[];
+	/**
+	 * How the account is valued as stored: its rate type and, for a custom
+	 * rate, the rate as typed (exact decimal text). Sent back on save, so an
+	 * edit that leaves the rate alone never revalues the account.
+	 */
+	valuation: { type: string | null; customRate: string | null };
 	/** Interest rate of a liability, as typed (118 is 118%). */
 	apr: number | null;
 	/** ISO date of the last change. */
@@ -67,7 +73,8 @@ export type WealthShare = {
 export const RANGES = ["1M", "3M", "6M", "1Y"] as const;
 export type WealthRange = (typeof RANGES)[number];
 
-export type WealthPoint = { date: string; value: MoneyValue };
+/** A day's net worth; null before the first snapshot (a gap, never zero). */
+export type WealthPoint = { date: string; value: MoneyValue | null };
 
 export type WealthView = {
 	home: string;

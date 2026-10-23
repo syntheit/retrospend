@@ -122,6 +122,7 @@
 			"noRate": "Pas encore de taux pour {currency} : le compte ne peut pas être évalué. Choisissez une autre devise pour l'instant.",
 			"liquid": "Liquide",
 			"apr": "Taux d'intérêt (TAEG, %)",
+			"aprInvalid": "Saisissez un nombre, comme 45 ou 45,5",
 			"dueDay": "Jour d'échéance",
 			"minimum": "Paiement minimum"
 		},

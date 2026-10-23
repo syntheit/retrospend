@@ -9,6 +9,7 @@ import type { ActionHandlers } from "~/components/actions/types";
 import type { MoneyValue } from "~/components/money/format";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
+import { rateInput } from "./rate-input";
 import type { AssetTypeKey, WealthAccount, WealthView } from "./types";
 
 export type SheetState =
@@ -119,7 +120,8 @@ export function useAccountActions(
 					update.mutateAsync({
 						assetId: a.id,
 						newBalance: major(stored(a, a.amount)),
-						exchangeRateType: changed ? (a.rateType ?? undefined) : undefined,
+						// Back to the stored valuation (a custom rate with its rate).
+						...(changed ? rateInput(a, a.amount.currency, null) : {}),
 					}),
 			});
 		},
@@ -135,7 +137,7 @@ export function useAccountActions(
 				type: d.type,
 				currency: d.balance.currency,
 				balance: major(a ? stored(a, d.balance) : d.balance),
-				exchangeRateType: d.rateType ?? undefined,
+				...rateInput(a, d.balance.currency, d.rateType),
 				isLiquid: d.liquid,
 				interestRate: d.apr ?? undefined,
 				minimumPayment: d.minimumPayment ? major(d.minimumPayment) : undefined,
@@ -157,7 +159,7 @@ export function useAccountActions(
 						type: a.type,
 						currency: a.amount.currency,
 						balance: major(stored(a, a.amount)),
-						exchangeRateType: a.rateType ?? undefined,
+						...rateInput(a, a.amount.currency, null),
 						isLiquid: a.liquid,
 						interestRate: a.apr ?? undefined,
 					}),

@@ -28,6 +28,10 @@ function readNumber(text: string): number | null {
 	return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+/** A typed APR the save can't read: an error on the field, never dropped. */
+export const aprInvalid = (s: LiabilityState) =>
+	s.apr.trim() !== "" && readNumber(s.apr) == null;
+
 /**
  * The liability terms for the save. Minimum payment and due day are only
  * asked when adding: today's dashboard read does not return them, so an
@@ -61,22 +65,36 @@ export function LiabilityFields({
 	state,
 	currency,
 	isNew,
+	showErrors,
 }: {
 	state: LiabilityState;
 	currency: string;
 	isNew: boolean;
+	showErrors: boolean;
 }) {
 	const t = useTranslations("wealthPage.sheets.account");
+	const badApr = showErrors && aprInvalid(state);
 	return (
 		<div className="grid grid-cols-2 gap-3">
 			<div className="flex flex-col gap-1">
 				<Label htmlFor="acct-apr">{t("apr")}</Label>
 				<Input
+					aria-describedby={badApr ? "acct-apr-error" : undefined}
+					aria-invalid={badApr ? true : undefined}
 					id="acct-apr"
 					inputMode="decimal"
 					onChange={(e) => state.setApr(e.target.value)}
 					value={state.apr}
 				/>
+				{badApr ? (
+					<span
+						className="text-danger text-meta"
+						id="acct-apr-error"
+						role="alert"
+					>
+						{t("aprInvalid")}
+					</span>
+				) : null}
 			</div>
 			{isNew ? (
 				<div className="flex flex-col gap-1">

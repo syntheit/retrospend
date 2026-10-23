@@ -122,6 +122,7 @@
 			"noRate": "No {currency} rate yet, so the account can't be valued. Pick another currency for now.",
 			"liquid": "Liquid",
 			"apr": "Interest rate (APR, %)",
+			"aprInvalid": "Enter a number, like 45 or 45.5",
 			"dueDay": "Due day",
 			"minimum": "Minimum payment"
 		},

@@ -19,6 +19,7 @@ import type { AssetTypeKey, WealthAccount } from "../types";
 import type { AccountDraft } from "../use-account-actions";
 import { balanceMinor } from "./balance";
 import {
+	aprInvalid,
 	LiabilityFields,
 	readLiability,
 	useLiability,
@@ -80,13 +81,18 @@ export function AccountSheet({
 	const liability = useLiability(account);
 	const [tried, setTried] = useState(false);
 	const result = parseMoneyInput(text, locale, currency);
-	const rated = hasRate(currency, rateTypes);
+	// A custom rate counts as a rate while the currency stays the same.
+	const rated =
+		hasRate(currency, rateTypes) ||
+		(account?.valuation.customRate != null &&
+			currency === account.amount.currency);
 	const debt = isLiability(type);
 
 	const submit = async () => {
 		setTried(true);
 		const minor = balanceMinor(result, !account);
 		if (!name.trim() || minor == null || !rated) return false;
+		if (debt && aprInvalid(liability)) return false;
 		await onSave({
 			name: name.trim(),
 			type,
@@ -172,6 +178,7 @@ export function AccountSheet({
 					<LiabilityFields
 						currency={currency}
 						isNew={!account}
+						showErrors={tried}
 						state={liability}
 					/>
 				) : (

@@ -122,6 +122,7 @@
 			"noRate": "Ainda não há cotação de {currency}, então a conta não pode ser avaliada. Escolha outra moeda por enquanto.",
 			"liquid": "Líquida",
 			"apr": "Taxa de juros (CET, %)",
+			"aprInvalid": "Digite um número, como 45 ou 45,5",
 			"dueDay": "Dia de vencimento",
 			"minimum": "Pagamento mínimo"
 		},
