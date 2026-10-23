@@ -206,6 +206,7 @@ function viewBook(
 		weekStartDay: row.weekStartDay,
 		periods: periodsOf(row),
 		defaultEnvelopeId,
+		paused: row.pausedAt !== null,
 		groups: row.groups.map((g) => ({
 			id: g.id,
 			name: g.name,

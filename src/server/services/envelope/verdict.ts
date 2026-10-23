@@ -46,7 +46,7 @@ export interface Verdict {
 	style: BudgetStyle;
 	month: MonthKey;
 	lead: {
-		kind: "LEFT_TO_SPEND" | "TO_ASSIGN" | "LEFT_THIS_WEEK";
+		kind: "LEFT_TO_SPEND" | "TO_ASSIGN" | "LEFT_THIS_WEEK" | "LEFT_IN_LIMITS";
 		figureId: string;
 		amount: Minor;
 	};
@@ -65,6 +65,18 @@ export interface Verdict {
 		action: VerdictAction;
 	} | null;
 	poolName: PoolName;
+	/** Limits: the month's limits and their spending; null in other styles. */
+	limits: { limit: Minor; spent: Minor } | null;
+}
+
+/** Envelopes with a limit in a Limits book, this month (SPEC §6.1). */
+export interface LimitTotals {
+	limit: Minor;
+	spent: Minor;
+	/** Σ Left of the limited envelopes: "Left in your limits". */
+	left: Minor;
+	/** Spent a larger share of the limits than of the month (pace). */
+	aheadOfPace: boolean;
 }
 
 export interface WeekTotals {
@@ -82,6 +94,17 @@ export function poolNameFor(style: BudgetStyle): PoolName {
 export const FIGURE_LEFT_TO_SPEND = "budget.leftToSpend";
 export const FIGURE_NOT_PLANNED_YET = "budget.notPlannedYet";
 export const FIGURE_LEFT_THIS_WEEK = "budget.leftThisWeek";
+export const FIGURE_LEFT_IN_LIMITS = "budget.leftInLimits";
+
+/** Limits: To assign stays hidden, so the state reads the limits only (SPEC §5.6). */
+function limitsState(l: LimitTotals, overTotal: Minor) {
+	if (l.left < 0) return { state: "OVER_BUDGET", action: "COVER" } as const;
+	if (l.left === 0) return { state: "USED_UP", action: null } as const;
+	if (l.aheadOfPace)
+		return { state: "FASTER_THAN_PLANNED", action: null } as const;
+	if (overTotal > 0) return { state: "SOME_OVER", action: null } as const;
+	return { state: "ON_TRACK", action: null } as const;
+}
 
 function flexState(l: LeftToSpend, overTotal: Minor) {
 	if (l.plannedTooMuch > 0)
@@ -111,6 +134,8 @@ export function verdict(p: {
 	overspent: ReadonlyArray<{ id: string; over: Minor }>;
 	/** Weekly envelopes this week, or null when the book has none. */
 	week: WeekTotals | null;
+	/** Limits books: their limited envelopes this month. */
+	limits?: LimitTotals | null;
 }): Verdict {
 	const l = p.leftToSpend;
 	const overTotal = p.overspent.reduce((t, e) => t + e.over, 0);
@@ -125,7 +150,24 @@ export function verdict(p: {
 		plannedTooMuch: l.plannedTooMuch,
 		resetsOn: null,
 		poolName: poolNameFor(p.style),
+		limits: null,
 	};
+	if (p.style === "LIMITS" && p.limits) {
+		const lim = p.limits;
+		return {
+			...base,
+			lead: {
+				kind: "LEFT_IN_LIMITS",
+				figureId: FIGURE_LEFT_IN_LIMITS,
+				amount: lim.left,
+			},
+			...limitsState(lim, overTotal),
+			perDay: l.daysLeft > 0 ? Math.floor(Math.max(0, lim.left) / l.daysLeft) : 0,
+			// To assign is hidden in a Limits book (SPEC §5.6): no pool notice.
+			notice: null,
+			limits: { limit: lim.limit, spent: lim.spent },
+		};
+	}
 	const notPlanned =
 		l.notPlanned > 0
 			? {

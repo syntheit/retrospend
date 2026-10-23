@@ -13,7 +13,7 @@ import type {
 	Money,
 	OwedSummaryDto,
 } from "~/lib/schemas/envelope";
-import { addMonths } from "./calendar";
+import { addMonths, daysBetween } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
 import {
@@ -32,6 +32,7 @@ import {
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import {
 	type BudgetStyle,
+	type LimitTotals,
 	poolNameFor,
 	type Verdict,
 	verdict,
@@ -72,6 +73,8 @@ export interface ViewBook {
 	weekStartDay: number;
 	periods: readonly MonthBoundary[];
 	defaultEnvelopeId: string;
+	/** Switched to Just track; absent reads as not paused. */
+	paused?: boolean;
 	groups: readonly ViewGroup[];
 	envelopes: readonly ViewEnvelope[];
 }
@@ -305,6 +308,37 @@ function groupsDto(
 		.filter((g) => g.id !== null || g.envelopes.length > 0);
 }
 
+/**
+ * Limits (SPEC §6.1): envelopes with a limit or money this month. A limit is
+ * what the envelope got this month (carried in plus assigned, which plan
+ * funding makes the target), so Left = limit - spent. Ahead of pace when a
+ * larger share of the limits is spent than of the month has passed.
+ */
+function limitTotals(
+	rows: Row[],
+	p: MonthViewInput,
+): LimitTotals | null {
+	if (p.book.style !== "LIMITS") return null;
+	const limited = rows.filter(
+		(r) => r.env.target !== null || r.m.assigned !== 0 || r.m.carryIn !== 0,
+	);
+	const limit = limited.reduce((t, r) => t + r.m.carryIn + r.m.assigned, 0);
+	const spent = -limited.reduce((t, r) => t + (r.m.activity - r.m.wealth), 0);
+	const left = limited.reduce((t, r) => t + r.m.left, 0);
+	const range = monthRange(p.month, p.book.periods);
+	const days = daysBetween(range.from, range.to) + 1;
+	const passed = Math.min(
+		days,
+		Math.max(0, daysBetween(range.from, p.today) + 1),
+	);
+	return {
+		limit,
+		spent,
+		left,
+		aheadOfPace: limit > 0 && spent * days > limit * passed,
+	};
+}
+
 function weekTotals(rows: Row[]) {
 	const weekly = rows.filter((r) => r.week);
 	if (weekly.length === 0) return null;
@@ -374,6 +408,7 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 			.filter((r) => r.m.left < 0)
 			.map((r) => ({ id: r.env.id, over: -r.m.left })),
 		week: weekTotals(rows),
+		limits: limitTotals(rows, p),
 	});
 	const incomplete =
 		p.missingRates.length > 0 ||
@@ -390,6 +425,7 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 				startMonth: p.book.startMonth,
 				weekStartDay: p.book.weekStartDay,
 				defaultEnvelopeId: p.book.defaultEnvelopeId,
+				paused: p.book.paused ?? false,
 			},
 			month: {
 				key: p.month,
@@ -446,6 +482,9 @@ export function verdictDto(
 		billsShort: money(v.billsShort),
 		plannedTooMuch: money(v.plannedTooMuch),
 		notice: v.notice ? { ...v.notice, amount: money(v.notice.amount) } : null,
+		limits: v.limits
+			? { limit: money(v.limits.limit), spent: money(v.limits.spent) }
+			: null,
 		incomplete,
 	};
 }

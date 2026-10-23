@@ -147,16 +147,85 @@ function everyDollar(
 	];
 }
 
+/** At most this many limits are proposed (SPEC §4.2: 3 to 6 top categories). */
+export const MAX_LIMITS = 6;
+
+/**
+ * Limits: the top categories by spending over the last 3 months, each with
+ * a "Set aside" limit of its monthly average rounded up to whole units
+ * (`unit` minor units), plus Everything else without a limit. Leftovers
+ * return (SPEC §4.2), so each month starts at the limit.
+ */
+function limits(
+	categories: readonly PresetCategory[],
+	spent: ReadonlyMap<string, number>,
+	unit: number,
+): PresetEnvelope[] {
+	const top = categories
+		.map((c) => ({ c, total: spent.get(c.id) ?? 0 }))
+		.filter((x) => x.total > 0)
+		.sort((a, b) => b.total - a.total || (a.c.name < b.c.name ? -1 : 1))
+		.slice(0, MAX_LIMITS);
+	return [
+		...top.map(
+			({ c, total }): PresetEnvelope => ({
+				key: `cat-${c.id}`,
+				nameKey: null,
+				name: c.name,
+				groupKey: "limits",
+				kind: "MONTHLY",
+				isDefault: false,
+				categoryIds: [c.id],
+				templateId: null,
+				target: {
+					kind: "MONTHLY",
+					amountMinor: Math.ceil(total / 3 / unit) * unit,
+					mode: "SET_ASIDE",
+					cadence: "MONTH",
+				},
+			}),
+		),
+		{
+			key: "else",
+			nameKey: "envelope.envelopes.everythingElse",
+			name: null,
+			groupKey: "limits",
+			kind: "MONTHLY",
+			isDefault: true,
+			categoryIds: [],
+			templateId: null,
+			target: null,
+		},
+	];
+}
+
 export function stylePreset(p: {
 	style: SetupStyle;
 	currency: string;
 	templates: readonly PresetTemplate[];
 	categories: readonly PresetCategory[];
+	/** Limits: spending per category over the last 3 months, in minor units. */
+	spent?: ReadonlyMap<string, number>;
+	/** Limits: one whole currency unit in minor units (limits round up to it). */
+	unit?: number;
+	/** Limits: spending rows left out for a missing rate (R14). */
+	missingRates?: SetupPresetOutput["missingRates"];
 }): SetupPresetOutput {
+	if (p.style === "LIMITS")
+		return {
+			style: p.style,
+			currency: p.currency,
+			missingRates: p.missingRates ?? [],
+			groups: [
+				{ key: "limits", nameKey: "envelope.groups.limits", role: "SPENDING" },
+			],
+			envelopes: limits(p.categories, p.spent ?? new Map(), p.unit ?? 1),
+		};
 	const dollar = p.style === "EVERY_DOLLAR";
 	return {
 		style: p.style,
 		currency: p.currency,
+		missingRates: p.missingRates ?? [],
 		groups: [...(dollar ? GROUPS.EVERY_DOLLAR : GROUPS.FLEX)],
 		envelopes: dollar
 			? everyDollar(p.templates, p.categories)
