@@ -94,6 +94,8 @@ export interface LoadedBook {
 	/** Fingerprints of the fully loaded rows per month up to last month (checkpoint.ts). */
 	prints: ReadonlyMap<MonthKey, string>;
 	periods: MonthBoundary[];
+	/** The book currency, periods and rates this load valued rows with. */
+	valuation: ValuationContext;
 }
 
 export interface LoadContext {
@@ -410,6 +412,7 @@ function finishLoad(
 			...s.valuer.missingRates,
 		]),
 		periods: s.periods,
+		valuation: s.valuation,
 	};
 }
 

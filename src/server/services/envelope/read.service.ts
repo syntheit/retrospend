@@ -29,6 +29,7 @@ import {
 import type { SetupStyle } from "./presets";
 import { owedIn, saveShareDefaults } from "./splits.service";
 import { monthSummaryIn } from "./summary.service";
+import { touchOpened } from "./welcome.service";
 import type { Minor, MonthKey } from "./types";
 
 function read<T>(
@@ -63,6 +64,8 @@ export async function getMonth(
 		const v = await closedView(tx, userId, now, month);
 		if (v?.loaded.splits.unsaved.length)
 			await saveShareDefaults(tx, v.loaded.splits.unsaved);
+		// Opening the budget is what Welcome back measures time away from.
+		if (v) await touchOpened(tx, userId, now);
 		return v;
 	});
 	return view?.dto ?? null;

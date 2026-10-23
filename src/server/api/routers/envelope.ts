@@ -50,6 +50,7 @@ import {
 } from "~/server/services/envelope/read.service";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
+import { envelopeBookProcedures } from "./envelope-book";
 import { envelopeMoneyProcedures } from "./envelope-money";
 import {
 	apply,
@@ -165,4 +166,5 @@ export const envelopeRouter = createTRPCRouter({
 		.mutation(apply(undoMovements)),
 
 	...envelopeMoneyProcedures,
+	...envelopeBookProcedures,
 });
