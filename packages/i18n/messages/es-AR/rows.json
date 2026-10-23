@@ -5,7 +5,7 @@
 	},
 	"kind": {
 		"income": "Ingreso",
-		"refund": "Reembolso",
+		"refund": "Reintegro",
 		"reimbursement": "Para otra persona",
 		"payment": "Pago",
 		"paymentPending": "Pago · Pendiente",

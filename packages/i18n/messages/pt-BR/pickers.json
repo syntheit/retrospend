@@ -65,7 +65,6 @@
 	"money": {
 		"amount": "Valor",
 		"currency": "Moeda, {code}",
-		"rate": "Câmbio: {rate}",
 		"error": {
 			"empty": "Digite um valor",
 			"invalidCharacter": "Use só dígitos e + - × ÷",
@@ -78,5 +77,14 @@
 			"zero": "Digite um valor acima de zero",
 			"negative": "O valor deve ser maior que zero"
 		}
+	},
+	"project": {
+		"label": "Projetos",
+		"find": "Buscar um projeto",
+		"empty": "Nenhum resultado",
+		"selected": "Selecionado",
+		"none": "Nenhum",
+		"solo": "Só você",
+		"people": "{count, plural, one {# pessoa} other {# pessoas}}"
 	}
 }

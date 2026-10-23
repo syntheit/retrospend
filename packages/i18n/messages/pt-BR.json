@@ -370,7 +370,8 @@
     "lastSynced": "Última sincronização:",
     "never": "Nunca",
     "syncing": "Sincronizando...",
-    "syncNow": "Sincronizar agora"
+    "syncNow": "Sincronizar agora",
+    "syncUnavailable": "A sincronização de câmbio não está disponível neste servidor."
   },
   "import": {
     "title": "Importar",

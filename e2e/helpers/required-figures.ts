@@ -44,6 +44,9 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	// S4G: the Add expense sheet with a foreign amount, audited inside the
 	// sheet: the booked home value and the preview's spending line.
 	addExpense: ["entry.home", "preview.spent.delta"],
+	// S4B part 2: the Import review of the flow's CSV, whose first row is a
+	// foreign amount: the original and the home value the import saves.
+	import: ["import.amount:0", "import.home:0"],
 };
 
 export function requiredFiguresFor(page: string): readonly string[] {

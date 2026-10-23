@@ -109,9 +109,13 @@ export async function deleteIncomeIn(
 		restore: {
 			exchangeRate: row.exchangeRate.toString(),
 			amountInUSD: row.amountInUSD.toString(),
+			rateType: row.rateType,
+			homeRate: row.homeRate?.toString() ?? null,
 			units: leg ? leg.amount.toString() : null,
-			homeAmount: leg?.homeAmount?.toString() ?? null,
-			homeCurrency: leg?.homeCurrency ?? null,
+			// The row's booked home leg; rows from before it was booked keep the leg's.
+			homeAmount:
+				row.homeAmount?.toString() ?? leg?.homeAmount?.toString() ?? null,
+			homeCurrency: row.homeCurrency ?? leg?.homeCurrency ?? null,
 			countedUnits: leg ? stillCounted(leg).toString() : null,
 		},
 		repeats: template

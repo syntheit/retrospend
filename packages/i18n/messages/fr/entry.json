@@ -73,7 +73,8 @@
 			"rate": "Saisis un taux pour {currency}",
 			"splitAmount": "Le partage ne correspond pas au montant",
 			"splitPct": "Les pourcentages ne font pas 100 %",
-			"save": "Impossible d'enregistrer. Vérifie les champs et réessaie."
+			"save": "Impossible d'enregistrer. Vérifie les champs et réessaie.",
+			"projectMembers": "Impossible de charger les personnes du projet. Réessayez."
 		},
 		"toast": {
 			"added": "{title} ajoutée",
@@ -90,7 +91,8 @@
 			"title": "Supprimer {title} ?",
 			"body": "Cela change les soldes d'autres personnes.",
 			"confirm": "Supprimer la dépense"
-		}
+		},
+		"projectAria": "Projet, {project}"
 	},
 	"rate": {
 		"default": "Ton taux par défaut pour {currency}",
@@ -112,7 +114,9 @@
 			"crypto": "Crypto",
 			"market": "Marché",
 			"custom": "Personnalisé"
-		}
+		},
+		"label": "Taux",
+		"youSpent": "Vous avez dépensé"
 	},
 	"changes": {
 		"title": "Ce que ça change",
@@ -193,7 +197,9 @@
 			"kept": "{amount} ajouté sur {account}. Gardé dans Patrimoine",
 			"planned": "{amount} ajouté. {count, plural, one {# enveloppe remplie} other {# enveloppes remplies}}"
 		},
-		"someoneElse": "Quelqu'un d'autre"
+		"someoneElse": "Quelqu'un d'autre",
+		"received": "Vous avez reçu",
+		"countsAs": "Équivaut à"
 	},
 	"transfer": {
 		"titleTransfer": "Virement",

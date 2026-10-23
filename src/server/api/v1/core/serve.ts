@@ -19,6 +19,8 @@ const TRPC_TO_PROBLEM: Partial<Record<TRPCError["code"], ProblemCode>> = {
 	// Services use it for cooldowns (one username change per 30 days), not
 	// request rates: a 429 would invite a retry that cannot succeed.
 	TOO_MANY_REQUESTS: "conflict",
+	// The server lacks a part this needs (rate sync without its sidecar).
+	NOT_IMPLEMENTED: "not_implemented",
 };
 
 export function toProblem(error: unknown): unknown {

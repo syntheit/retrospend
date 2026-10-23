@@ -1,0 +1,202 @@
+{
+	"title": "Import",
+	"sub": "Expenses from a bank statement or CSV",
+	"back": "Activity",
+	"more": "More actions",
+	"menu": {
+		"template": "Download CSV template",
+		"export": "Export all data",
+		"ai": "AI settings"
+	},
+	"steps": {
+		"label": "Steps",
+		"choose": "Choose file",
+		"read": "Read it",
+		"review": "Review",
+		"done": "Done",
+		"of": "Step {n} of 4"
+	},
+	"type": {
+		"label": "What to import",
+		"expenses": "Expenses",
+		"accounts": "Accounts",
+		"budgets": "Budgets"
+	},
+	"drop": {
+		"label": "File to import",
+		"title": "Drop a file here",
+		"titlePhone": "Choose a file",
+		"hint": "CSV, Excel or PDF, up to 10 MB",
+		"choose": "Choose file",
+		"tooBig": "{name} is larger than 10 MB.",
+		"wrongType": "{name} is not a CSV, Excel or PDF file."
+	},
+	"recent": {
+		"title": "Recent imports",
+		"reading": "Reading, {percent}%",
+		"readingNoPercent": "Reading",
+		"queued": "Waiting to be read",
+		"review": "{count, plural, one {# row} other {# rows}} to review",
+		"failed": "Could not read this file",
+		"imported": "Imported {count} · {date}",
+		"importedNoDate": "Imported {count}",
+		"cancel": "Cancel",
+		"reviewAction": "Review {count}",
+		"delete": "Delete",
+		"view": "View",
+		"cancelled": "Cancelled {name}",
+		"deleted": "Deleted {name}",
+		"couldNotLoad": "Couldn't load recent imports"
+	},
+	"read": {
+		"label": "How to read the file",
+		"csv": "Retrospend CSV",
+		"csvHint": "Date, title, amount, currency, category",
+		"csvMissing": "Needs date, title, amount and currency columns",
+		"csvPdf": "A PDF needs AI reading",
+		"ai": "Let AI read it",
+		"aiExternal": "Reads it with your OpenRouter access",
+		"aiLocal": "Reads it with this server's AI",
+		"aiOff": "AI reading is off on this server",
+		"aiSettings": "AI settings",
+		"pdfBlocked": "PDFs need AI reading, and it is off here. Use a CSV, or turn on AI.",
+		"columns": "Columns",
+		"column": {
+			"date": "Date",
+			"title": "Title",
+			"amount": "Amount",
+			"currency": "Currency",
+			"category": "Category",
+			"kind": "Kind"
+		},
+		"notInFile": "Not in the file",
+		"back": "Back",
+		"continue": "Continue",
+		"readWithAi": "Read with AI",
+		"failed": "Couldn't start reading {name}. {reason}",
+		"fastPath": "Read as a Retrospend CSV"
+	},
+	"reading": {
+		"title": "Reading {name}",
+		"progress": "Reading, {percent}%",
+		"reading": "Reading",
+		"waiting": "Waiting to be read",
+		"leave": "You can leave this page. It keeps reading and shows up under Recent imports.",
+		"cancel": "Cancel",
+		"back": "Back to files",
+		"failed": "Couldn't read {name}."
+	},
+	"review": {
+		"summary": "{rows, plural, one {# row} other {# rows}} in the file: {toImport} to import",
+		"dups": "{count} already in Activity",
+		"skipped": "{count} skipped",
+		"unmatched": "{count, plural, one {# category needs} other {# categories need}} a match: {list}",
+		"unmatchedShort": "{count, plural, one {# category needs} other {# categories need}} a match",
+		"match": "Match categories",
+		"dismiss": "Dismiss",
+		"unreadable": "{count, plural, one {# row can't be read, so it is skipped.} other {# rows can't be read, so they are skipped.}}",
+		"toolbar": "Review rows",
+		"view": {
+			"label": "View",
+			"table": "Table",
+			"cards": "Cards",
+			"list": "List"
+		},
+		"currency": "Currency {code}",
+		"currencyFile": "Currency as in the file",
+		"asInFile": "As in the file",
+		"showDups": "Show {count} already in Activity",
+		"reread": "Change how it is read",
+		"bar": "{count} will be imported",
+		"barDups": "{count} already in Activity are skipped",
+		"back": "Back",
+		"import": "Import {count, plural, one {# row} other {# rows}}",
+		"retry": "Retry",
+		"loadError": "Couldn't load the rows",
+		"empty": "Nothing to import in this file",
+		"col": {
+			"select": "Select all",
+			"date": "Date",
+			"title": "Title",
+			"kind": "Kind",
+			"category": "Category",
+			"amount": "Amount",
+			"status": "Status",
+			"include": "Import {title}"
+		},
+		"already": "Already in Activity",
+		"noCategory": "No category",
+		"categoryPicker": "Category for {title}",
+		"kindMenu": "Import {title} as",
+		"possible": "Possibly already in Activity: {title}, {date}",
+		"skipOne": "Skip"
+	},
+	"kind": {
+		"expense": "Expense",
+		"income": "Income",
+		"refund": "Refund",
+		"notSpending": "Not spending"
+	},
+	"kindCount": {
+		"expense": "{count, plural, one {# expense} other {# expenses}}",
+		"income": "{count, plural, one {# income} other {# income}}",
+		"refund": "{count, plural, one {# refund} other {# refunds}}",
+		"notSpending": "{count} not spending"
+	},
+	"rateType": {
+		"official": "Official",
+		"blue": "Blue",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"card": "Card",
+		"market": "Market",
+		"custom": "Custom"
+	},
+	"cards": {
+		"progress": "{n} of {total}",
+		"kept": "{count} kept",
+		"keep": "Keep",
+		"skip": "Skip",
+		"hint": "Swipe right to keep, left to skip",
+		"ready": "{count} ready to import",
+		"readyHint": "{skipped} skipped",
+		"backToCards": "Back to cards",
+		"from": "from {file}",
+		"about": "About"
+	},
+	"match": {
+		"title": "Match categories",
+		"hint": "One step for every category that did not match.",
+		"rows": "{count, plural, one {# row} other {# rows}}",
+		"suggested": "suggested from your history",
+		"create": "Create \"{name}\"",
+		"apply": "Apply",
+		"pick": "Category for {name}",
+		"done": "Matched {count, plural, one {# category} other {# categories}}",
+		"doneCreated": "Matched {count, plural, one {# category} other {# categories}}, created {names}"
+	},
+	"sheet": {
+		"title": "Import {file}",
+		"submit": "Import {count, plural, one {# row} other {# rows}}",
+		"loading": "Checking what this imports",
+		"skipped": "Skips {list}",
+		"skipDups": "{count} already in Activity",
+		"skipUnchecked": "{count} you unchecked",
+		"skipUnreadable": "{count} that can't be read",
+		"skipNoRate": "{count} without a rate",
+		"withoutRate": "{count} without a rate",
+		"reconcile": "{rows, plural, one {# row} other {# rows}} in the file: {created} imported, {skipped} skipped"
+	},
+	"done": {
+		"title": "Imported {count, plural, one {# row} other {# rows}}",
+		"dups": "{count, plural, one {# already in Activity was skipped.} other {# already in Activity were skipped.}}",
+		"reconcile": "{rows, plural, one {# row} other {# rows}} in the file, {created} imported.",
+		"view": "View in Activity",
+		"undo": "Undo import",
+		"again": "Import another file",
+		"toast": "Imported {count, plural, one {# row} other {# rows}}",
+		"undone": "Import undone",
+		"undoFailed": "Couldn't undo the import",
+		"undoFailedWhy": "Couldn't undo the import. {reason}"
+	}
+}

@@ -156,6 +156,14 @@ export const rateOptionsSchema = z.object({
 	date: isoDay,
 	/** The amount to book at each type, as typed. */
 	amount: decimal.optional(),
+	/** A typed rate: 1 unit of `currency` = this much home. */
+	customRate: decimal.optional(),
+});
+
+/** Who a project expense on that day includes: the project and the expense's day. */
+export const projectMembersSchema = z.object({
+	projectId: z.string().min(1).max(191),
+	date: isoDay,
 });
 
 export const defaultRateTypeSchema = z.object({
