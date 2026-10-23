@@ -1,4 +1,4 @@
-import { dayKey, normalizeTimeZone } from "~/lib/time-zone";
+import { normalizeTimeZone } from "~/lib/time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
 
 /** The zone when a user has none stored and DEFAULT_TIME_ZONE is unset. */
@@ -74,13 +74,4 @@ export async function claimTimeZone(
 		where: { id: userId, timeZone: null },
 		data: { timeZone: zone },
 	});
-}
-
-/**
- * Today in `timeZone` as a recurring template due date (UTC midnight of that
- * day): a template is due once its day has come where the user is, not when
- * UTC reaches it.
- */
-export function todayAsDueDate(timeZone: string, now = new Date()): Date {
-	return new Date(`${dayKey(now, timeZone)}T00:00:00.000Z`);
 }

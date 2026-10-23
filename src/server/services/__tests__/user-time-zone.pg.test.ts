@@ -8,7 +8,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { makeSignature } from "better-auth/crypto";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { env } from "~/env";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey, fromWallTime } from "~/lib/time-zone";
 import { appRouter } from "~/server/api/root";
 import { createCallerFactory, createTRPCContext } from "~/server/api/trpc";
 import { spentFigure } from "~/server/services/figures/spent";
@@ -185,5 +185,63 @@ describe("two users, same instant, their own calendar days", () => {
 		vi.setSystemTime(new Date("2026-10-20T12:00:00Z"));
 		expect(await spent(tokyo)).toEqual([]);
 		expect(await spent(ba)).toEqual(dinner);
+	});
+});
+
+describe("recurring templates are due on the user's own day", () => {
+	let tokyo: TestUser;
+	let ba: TestUser;
+	const templateFor = (who: TestUser, zone: string) =>
+		adminDb.recurringTemplate.create({
+			data: {
+				userId: who.user.id,
+				name: "Rent",
+				amount: "10",
+				currency: "USD",
+				frequency: "MONTHLY",
+				// The recurring modal saves the due day at local midnight.
+				nextDueDate: fromWallTime({ year: 2026, month: 10, day: 1 }, zone),
+				autoPay: false,
+			},
+		});
+	const pendingIds = async (who: TestUser) => {
+		const caller = await callerFor(who.user.id);
+		return (await caller.recurring.getPendingConfirmation()).map((t) => t.id);
+	};
+
+	beforeAll(async () => {
+		tokyo = await createTestUser();
+		ba = await createTestUser();
+		await adminDb.user.update({
+			where: { id: tokyo.user.id },
+			data: { timeZone: TOKYO },
+		});
+		await adminDb.user.update({
+			where: { id: ba.user.id },
+			data: { timeZone: BUENOS_AIRES },
+		});
+	});
+
+	it("lists and confirms a Nov 1 template from Nov 1 in each zone", async () => {
+		const forTokyo = await templateFor(tokyo, TOKYO);
+		const forBa = await templateFor(ba, BUENOS_AIRES);
+
+		// Nov 1, 05:00 in Tokyo; still Oct 31, 17:00 in Buenos Aires.
+		vi.useFakeTimers({ toFake: ["Date"], now: INSTANT });
+		expect(await pendingIds(tokyo)).toEqual([forTokyo.id]);
+		expect(await pendingIds(ba)).toEqual([]);
+		const baCaller = await callerFor(ba.user.id);
+		await expect(
+			baCaller.recurring.confirmAndCreate({ id: forBa.id }),
+		).rejects.toThrow("already confirmed");
+
+		// Nov 1, 00:30 in Buenos Aires (03:30 UTC): due there now.
+		vi.setSystemTime(new Date("2026-11-01T03:30:00Z"));
+		expect(await pendingIds(ba)).toEqual([forBa.id]);
+		await baCaller.recurring.confirmAndCreate({
+			id: forBa.id,
+			dueDate: forBa.nextDueDate,
+		});
+		expect(await pendingIds(ba)).toEqual([]);
 	});
 });

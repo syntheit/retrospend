@@ -2,10 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { convertAmount } from "~/lib/money";
 import { nextRecurringDate } from "~/lib/recurring";
+import { startOfNextDayIn } from "~/lib/time-zone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { recurringEntryData } from "~/server/services/money-in.service";
 import { RateCache } from "~/server/services/rate-cache";
-import { todayAsDueDate } from "~/server/services/user-time-zone";
 
 export const recurringRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -325,9 +325,8 @@ export const recurringRouter = createTRPCRouter({
 				userId: session.user.id,
 				isActive: true,
 				OR: [{ autoPay: false }, { amountMode: "ASK" }],
-				nextDueDate: {
-					lte: todayAsDueDate(ctx.timeZone),
-				},
+				// Due once its day has come in the user's zone, whatever hour it holds.
+				nextDueDate: { lt: startOfNextDayIn(new Date(), ctx.timeZone) },
 			},
 			include: {
 				category: {
@@ -382,7 +381,7 @@ export const recurringRouter = createTRPCRouter({
 			if (
 				(input.dueDate &&
 					input.dueDate.getTime() !== template.nextDueDate.getTime()) ||
-				template.nextDueDate > todayAsDueDate(ctx.timeZone)
+				template.nextDueDate >= startOfNextDayIn(new Date(), ctx.timeZone)
 			) {
 				throw new TRPCError({
 					code: "CONFLICT",

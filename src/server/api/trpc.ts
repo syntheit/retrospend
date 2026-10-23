@@ -207,7 +207,13 @@ export const protectedProcedure = t.procedure
 		const userDb = createUserScopedDb(ctx.session.user.id);
 		const requestZone = requestTimeZone(ctx.headers);
 		const storedZone = ctx.session.user.timeZone;
-		await claimTimeZone(userDb, ctx.session.user.id, storedZone, requestZone);
+		// A failed claim only means the next request tries again; it must
+		// never fail the request it rides on.
+		try {
+			await claimTimeZone(userDb, ctx.session.user.id, storedZone, requestZone);
+		} catch (error) {
+			console.error("[time-zone] could not store the browser's zone", error);
+		}
 
 		return next({
 			ctx: {

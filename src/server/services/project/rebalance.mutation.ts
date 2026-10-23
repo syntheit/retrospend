@@ -165,7 +165,7 @@ async function resplit(
  */
 export async function rebalanceExpenses(
 	tx: Prisma.TransactionClient,
-	{ userId }: ProjectActor,
+	{ userId, timeZone }: ProjectActor,
 	input: RebalanceInput,
 ): Promise<RebalanceResult> {
 	const actor = { participantType: "user" as const, participantId: userId };
@@ -191,7 +191,7 @@ export async function rebalanceExpenses(
 
 	const candidates = await loadCandidates(tx, input);
 	const joined = membershipOf(membership);
-	const zone = await userTimeZone(tx, userId);
+	const zone = await userTimeZone(tx, userId, timeZone);
 	const { chosen, skipped } = await pickExpenses(
 		tx,
 		input,
