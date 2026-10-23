@@ -99,7 +99,14 @@ export function budgetMoneyInWhere(
 		status: "FINALIZED",
 		date: { gte: from },
 		OR: [
-			{ direction: "IN", entryKind: "STANDARD", inType: "INCOME" },
+			// Income kept in Wealth stays out of To assign (MONEY-MOVES §2.2); a
+			// Move in counts it through the budget side (transfers/budget-side.ts).
+			{
+				direction: "IN",
+				entryKind: "STANDARD",
+				inType: "INCOME",
+				keepInWealth: false,
+			},
 			{ entryKind: { in: ["STARTING_BALANCE", "ADJUSTMENT"] } },
 		],
 	};

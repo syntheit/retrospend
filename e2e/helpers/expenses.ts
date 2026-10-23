@@ -25,10 +25,17 @@ export async function addExpense(
 	await dialog
 		.getByRole("textbox", { name: "Expense Title" })
 		.fill(expense.title);
-	await dialog
+	// The title can pick the category itself ("Grocery" predicts Groceries)
+	// once the categories have loaded, and a click on a picked chip unpicks
+	// it, so click only when it is not picked yet.
+	const chip = dialog
 		.getByRole("group", { name: "Category" })
-		.getByRole("button", { name: expense.category ?? "Groceries", exact: true })
-		.click();
+		.getByRole("button", {
+			name: expense.category ?? "Groceries",
+			exact: true,
+		});
+	if ((await chip.getAttribute("aria-pressed")) !== "true") await chip.click();
+	await expect(chip).toHaveAttribute("aria-pressed", "true");
 	await untilSaved(page, "expense.createExpense", () =>
 		dialog.getByRole("button", { name: "Create Expense" }).click(),
 	);

@@ -4,7 +4,7 @@
  *
  * Tagging contract (S1/S4 render it, this reads it):
  *   data-figure="<id>"     registry id with its scope, e.g. "owed.net" or
- *                          "project.total:e2e_project_floripa". No commas.
+ *                          "project.total:ce2eproject0floripa". No commas.
  *   data-minor="<int>"     the signed value. Money: ISO minor units of
  *                          data-currency (centavos for ARS, even though ARS
  *                          shows whole pesos). Percent: hundredths of a
@@ -34,9 +34,10 @@
  *   2. api: data-minor equals the endpoint's value exactly;
  *   3. cross-page: one id carries the same data-minor on every page.
  */
+
+import type { APIRequestContext, Page } from "@playwright/test";
 import { SMART_NO_DECIMAL_CURRENCIES } from "@retrospend/domain/currency-format";
 import { currencyDecimals } from "@retrospend/domain/money";
-import type { APIRequestContext, Page } from "@playwright/test";
 import { parseShownNumber, shownToUnits } from "./numbers";
 import { requiredFiguresFor } from "./required-figures";
 

@@ -141,7 +141,10 @@ export function settingsHref(section: SettingsSection): string {
  * New routes that exist. Until a page agent ships its route and adds it here,
  * the shell links today's page, so the new shell never links a 404.
  */
-export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([]);
+export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([
+	"/activity",
+	"/activity/recurring",
+]);
 
 /** Where an entry links now; null when it has no page yet. */
 export function hrefOf(

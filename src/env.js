@@ -28,6 +28,10 @@ export const env = createEnv({
 
 		// Used to sign one-click unsubscribe tokens in notification emails
 		UNSUBSCRIBE_SECRET: z.string().optional(),
+
+		// Push endpoint hosts allowed although they are IP literals or
+		// localhost names (a LAN ntfy server), comma-separated.
+		PUSH_ENDPOINT_ALLOW_HOSTS: z.string().optional(),
 	},
 
 	/**
@@ -71,6 +75,7 @@ export const env = createEnv({
 
 		UPLOAD_DIR: process.env.UPLOAD_DIR,
 		UNSUBSCRIBE_SECRET: process.env.UNSUBSCRIBE_SECRET,
+		PUSH_ENDPOINT_ALLOW_HOSTS: process.env.PUSH_ENDPOINT_ALLOW_HOSTS,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
