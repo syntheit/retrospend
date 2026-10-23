@@ -699,6 +699,8 @@ export const setProjectRoutingInputSchema = z
 
 export const projectRoutingResultSchema = z.object({
 	projectId: idSchema,
+	/** Your project_participant row: what the undo sets back. */
+	participantId: idSchema,
 	routing: projectBudgetRoutingSchema,
 	envelopeId: idSchema.nullable(),
 	previous: z.object({

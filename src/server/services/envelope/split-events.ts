@@ -247,6 +247,7 @@ function settlementEvent(
 			status: settled(s),
 			cash: 0,
 			isOffset: true,
+			forgiven: true,
 		};
 	}
 	const paid =

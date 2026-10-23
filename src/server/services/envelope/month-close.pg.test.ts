@@ -367,7 +367,7 @@ describe("month_close_wealth migration", () => {
 		const sql = readFileSync(
 			join(
 				process.cwd(),
-				"prisma/migrations/20261024600000_month_close_wealth/migration.sql",
+				"prisma/migrations/20261024900000_month_close_wealth/migration.sql",
 			),
 			"utf8",
 		);

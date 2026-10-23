@@ -56,7 +56,12 @@ export type ReplayEvent =
 	  })
 	| (EventBase & { kind: "OWE"; status: ShareStatus })
 	| (EventBase & SettlementLeg & { kind: "RECV" })
-	| (EventBase & SettlementLeg & { kind: "PAY" })
+	| (EventBase &
+			SettlementLeg & {
+				kind: "PAY";
+				/** They let your debt go: it clears what you owe, never more. */
+				forgiven?: boolean;
+			})
 	| (EventBase & {
 			kind: "FORGIVE";
 			status: SettlementStatus;
@@ -211,12 +216,13 @@ function applyPay(
 	if (e.status === "REJECTED") return ignore("REJECTED", e.native);
 	const excess = payDownPayable(s, e.native);
 	if (excess === 0) return;
+	// Forgiving more than you owed creates nothing they owe you: dropped.
+	if (e.forgiven) return ignore("FORGIVE_EXCEEDS_BALANCE", excess);
 	const value = portion(e.cash, excess, e.native);
 	s.native += excess;
 	s.basis += value;
 	addLot(s, e.date, excess);
-	// A forgive of your debt that was larger than the debt moves no cash.
-	if (value > 0) emit("FRONTED", value);
+	emit("FRONTED", value);
 }
 
 function applyForgive(

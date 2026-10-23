@@ -537,7 +537,7 @@ describe("splits_budget migration", () => {
 		const sql = readFileSync(
 			join(
 				process.cwd(),
-				"prisma/migrations/20261024500000_splits_budget/migration.sql",
+				"prisma/migrations/20261024800000_splits_budget/migration.sql",
 			),
 			"utf8",
 		);

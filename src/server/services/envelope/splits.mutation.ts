@@ -63,7 +63,7 @@ export const setProjectRoutingMutation: MoneyMutation<
 			undo: {
 				kind: "revert",
 				mutation: "envelope.setProjectRouting",
-				rows: [{ table: "project_participant", id: input.projectId }],
+				rows: [{ table: "project_participant", id: value.participantId }],
 			},
 		};
 	},

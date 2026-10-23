@@ -33,9 +33,11 @@ import { allocatePayment } from "../payments/allocate";
 import { ledgerLines, payerLines } from "../payments/ledger";
 import { computePairLedger } from "../shared-expenses/balance";
 import type { ParticipantRef } from "../shared-expenses/types";
+import { userTimeZone } from "../user-time-zone";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook, loadBook } from "./inputs";
 import { forgetMonthViews, owedInputOf } from "./month-read";
+import { isoDateIn } from "./months";
 import { lockedSnapshot } from "./movement-state";
 import { owedDto } from "./owed";
 import type { UnsavedChoice } from "./splits-input";
@@ -110,6 +112,7 @@ export async function setProjectRouting(
 	forgetMonthViews(tx);
 	return {
 		projectId: input.projectId,
+		participantId: member.id,
 		routing: input.routing,
 		envelopeId: input.envelopeId,
 		previous: {
@@ -179,6 +182,15 @@ async function checkForgiveEnvelope(
 	if (!envelope || envelope.archived)
 		throw new EnvelopeError("NOT_FOUND", "no such envelope");
 	return snap.loaded.today;
+}
+
+/** Today in the book's zone, else the user's: the day the balance was let go. */
+async function forgiveDay(tx: Tx, userId: string, now: Date) {
+	const book = await tx.budgetBook.findFirst({
+		where: { createdById: userId, isPersonal: true },
+		select: { timeZone: true },
+	});
+	return isoDateIn(now, book?.timeZone ?? (await userTimeZone(userId)));
 }
 
 /** The forgive over the pair's open debts in its currency, oldest first, one row per scope. */
@@ -257,7 +269,7 @@ export async function forgive(
 	await lockPair(tx, me, them);
 	const today =
 		(await checkForgiveEnvelope(tx, userId, input, now)) ??
-		now.toISOString().slice(0, 10);
+		(await forgiveDay(tx, userId, now));
 	const again = await existingForgive(tx, userId, input);
 	if (again) return again;
 	const rows = (await forgiveRows(tx, me, them, input)).map((r) => ({

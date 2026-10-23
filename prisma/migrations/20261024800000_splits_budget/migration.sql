@@ -8,9 +8,12 @@
 -- 2. project_participant."budgetRouting" and "budgetEnvelopeId" (D31, D11
 --    revised): "Count my share in" by category (default), one envelope, or
 --    not in the budget. Backfill, once, when the column is created: a
---    participant who hid the project from analytics gets NOT_IN_BUDGET, so
---    nobody's budget changes on deploy. excludeFromAnalytics stays a
---    reports flag. An envelope can only be named with ENVELOPE routing.
+--    participant who hid the project from analytics gets NOT_IN_BUDGET.
+--    Release note: the P2 budget counted every share, hidden projects
+--    included, so for people who hid a project its shares (and money they
+--    fronted in it) leave their envelope budget on deploy and those
+--    envelopes and To assign change. excludeFromAnalytics stays a reports
+--    flag. An envelope can only be named with ENVELOPE routing.
 -- 3. settlement."forgiveEnvelopeId" (added by M3) now references the
 --    envelope it charges (SET NULL: a forgive whose envelope was deleted is
 --    charged to "Everything else").
