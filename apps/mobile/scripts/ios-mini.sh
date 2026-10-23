@@ -61,7 +61,6 @@ pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
 cd "$app"
 # ios/ is generated (continuous native generation) and never committed.
 CI=1 pnpm exec expo prebuild --platform ios --clean --no-install
-bash "$app/scripts/ios-scene-lifecycle.sh" ios
 # EX_UPDATES_NATIVE_DEBUG makes pod install write ios/.xcode.env.updates,
 # which embeds a production JS bundle (DEV off) in the Debug build. Expo's
 # bundle phase otherwise skips bundling in Debug, and a dev bundle without

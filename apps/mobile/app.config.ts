@@ -39,6 +39,8 @@ const config: ExpoConfig = {
 		"expo-secure-store",
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",
+		// iOS 27 SDK apps must use the UIScene life cycle.
+		"./plugins/with-ios-scene-lifecycle",
 	],
 };
 

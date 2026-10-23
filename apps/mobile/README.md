@@ -25,11 +25,10 @@ bash apps/mobile/scripts/ios-build.sh simulator
 What it does:
 
 1. Copies the checkout to `mini:~/rs-ios/retrospend` with rsync. Git data, `node_modules`, env files, keys and build output stay behind.
-2. On the mini (`scripts/ios-mini.sh`): takes Node from the nixpkgs pinned in `flake.lock` (the mini's own Node 24.16 breaks Expo's bundle write with EBADF), installs the app's workspace with the repo's pinned pnpm through corepack, runs `expo prebuild -p ios --clean`, then `pod install`.
-3. Moves the generated project to the UIScene life cycle (`scripts/ios-scene-lifecycle.sh`). Apps built with the iOS 27 SDK do not launch without it, and the Expo SDK 57 template does not do it yet. This belongs in a config plugin; see the script.
-4. Builds Debug with `xcodebuild`. A production JS bundle is embedded (`EX_UPDATES_NATIVE_DEBUG=1` at pod install), so the app starts without Metro; a dev bundle without Metro fails at startup.
-5. Device: signs for the iPhone, installs it with `xcrun devicectl device install app` and launches it once.
-6. Simulator: builds for a "Retrospend iPhone 17" simulator on the newest iOS runtime that has an iPhone 17 (created if missing; today iOS 27.0, since the iOS 27.1 runtime only runs iPhone Duo), boots it, takes a screenshot and shuts it down. The screenshot lands in `docs/ui-overhaul/impl/shots/ios/` on harbor.
+2. On the mini (`scripts/ios-mini.sh`): takes Node from the nixpkgs pinned in `flake.lock` (the mini's own Node 24.16 breaks Expo's bundle write with EBADF), installs the app's workspace with the repo's pinned pnpm through corepack, runs `expo prebuild -p ios --clean`, then `pod install`. Prebuild moves the app to the UIScene life cycle (`plugins/with-ios-scene-lifecycle.js`), which apps built with the iOS 27 SDK need to launch.
+3. Builds Debug with `xcodebuild`. A production JS bundle is embedded (`EX_UPDATES_NATIVE_DEBUG=1` at pod install), so the app starts without Metro; a dev bundle without Metro fails at startup.
+4. Device: signs for the iPhone, installs it with `xcrun devicectl device install app` and launches it once.
+5. Simulator: builds for a "Retrospend iPhone 17" simulator on the newest iOS runtime that has an iPhone 17 (created if missing; today iOS 27.0, since the iOS 27.1 runtime only runs iPhone Duo), boots it, takes a screenshot and shuts it down. The screenshot lands in `docs/ui-overhaul/impl/shots/ios/` on harbor.
 
 Logs stay on the mini in `~/rs-ios/logs/`, with the API key's values scrubbed. DerivedData is in `~/rs-ios/DerivedData`.
 
