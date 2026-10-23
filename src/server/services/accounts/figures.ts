@@ -141,11 +141,13 @@ export async function netWorthChangeFor(
 	days = CHANGE_DAYS,
 ): Promise<NetWorthChange | null> {
 	const ledger = await loadAccountsLedger(db, userId);
-	const to = dayOf(normalizeDate(new Date()));
+	const today = dayOf(normalizeDate(new Date()));
+	// A move is dated in the user's zone, which can be a day ahead of UTC, so
+	// the span ends a day later: no move dated today is ever left out.
 	return netWorthChange(
 		ledger.histories,
 		ledger.notTracked,
-		{ from: addDays(to, -days), to },
+		{ from: addDays(today, -days), to: addDays(today, 1) },
 		ledger.homeCurrency,
 		ledger.pick,
 	);

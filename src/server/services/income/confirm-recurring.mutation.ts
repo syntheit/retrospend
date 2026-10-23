@@ -8,7 +8,6 @@
  * (income.unconfirmRecurring) removes the row and rewinds the template.
  */
 import { TRPCError } from "@trpc/server";
-import { nextRecurringDate } from "~/lib/recurring";
 import type { Money } from "~/server/figures/registry";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import { recurringEntryData } from "~/server/services/money-in.service";
@@ -27,6 +26,7 @@ import { endOfDay } from "../accounts/series";
 import { homePerUnit, homeValue } from "../accounts/valuation";
 import { INCOME_FIGURES } from "./add.mutation";
 import { incomeRow } from "./delete.mutation";
+import { nextDueDay } from "./due-day";
 import { applyPlanFor, type PlanResult } from "./plan-seam";
 
 type Tx = Prisma.TransactionClient;
@@ -105,12 +105,12 @@ export async function confirmRecurringIncomeIn(
 	const advanced = await tx.recurringTemplate.updateMany({
 		where: { id: template.id, userId, nextDueDate: template.nextDueDate },
 		data: {
-			nextDueDate: nextRecurringDate(
+			nextDueDate: nextDueDay(
 				template.nextDueDate,
 				template.frequency,
 				template.anchorDay,
 			),
-			anchorDay: template.anchorDay ?? template.nextDueDate.getDate(),
+			anchorDay: template.anchorDay ?? template.nextDueDate.getUTCDate(),
 		},
 	});
 	if (advanced.count === 0) {

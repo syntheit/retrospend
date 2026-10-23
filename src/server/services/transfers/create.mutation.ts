@@ -225,11 +225,8 @@ async function writeFee(
 	return { expenseId: expense.id, change, home: home?.amount ?? null };
 }
 
-export async function createTransferIn(
-	tx: Tx,
-	userId: string,
-	input: CreateTransferInput,
-): Promise<TransferValue> {
+/** Everything a move needs before it writes: its places, amounts, plan and booked legs. */
+async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	const home = await homeCurrencyOf(tx, userId);
 	const from = await sideOf(
@@ -257,10 +254,39 @@ export async function createTransferIn(
 		requestedKind: input.kind,
 		homeCurrency: home,
 	};
-	const plan = planTransfer(planInput);
 	const fromHome = bookHome(pick, from, fromAmount.neg(), home, date);
 	const toHome = bookHome(pick, to, toAmount, home, date);
+	const booked = fromHome &&
+		toHome && { fromHome: fromHome.amount, toHome: toHome.amount };
+	return {
+		date,
+		home,
+		from,
+		to,
+		pick,
+		planInput,
+		plan: planTransfer(planInput),
+		legs: [
+			[from, fromAmount.neg(), fromHome],
+			[to, toAmount, toHome],
+		] as const,
+		booked,
+		ref: booked
+			? reference(pick, planInput, booked, date)
+			: { vsReference: null, referenceRateType: null },
+	};
+}
 
+type Move = Awaited<ReturnType<typeof resolveMove>>;
+
+/** Writes the Transfer, its two legs and the counted units it moves (D4). */
+async function writeMove(
+	tx: Tx,
+	userId: string,
+	move: Move,
+	input: CreateTransferInput,
+): Promise<{ transferId: string; changes: AccountChange[] }> {
+	const { planInput, plan, date } = move;
 	const transferId = input.id ?? randomUUID();
 	await tx.transfer.create({
 		data: {
@@ -268,40 +294,42 @@ export async function createTransferIn(
 			userId,
 			kind: plan.kind,
 			date,
-			fromAccountId: from.account?.id ?? null,
-			fromAmount: fromAmount.toString(),
-			fromCurrency: from.currency,
-			toAccountId: to.account?.id ?? null,
-			toAmount: toAmount.toString(),
-			toCurrency: to.currency,
+			fromAccountId: move.from.account?.id ?? null,
+			fromAmount: planInput.fromAmount.toString(),
+			fromCurrency: planInput.fromCurrency,
+			toAccountId: move.to.account?.id ?? null,
+			toAmount: planInput.toAmount.toString(),
+			toCurrency: planInput.toCurrency,
+			referenceRateType: move.ref.referenceRateType,
 			countedFromUnits: plan.countedFromUnits.toString(),
 			countedToUnits: plan.countedToUnits.toString(),
 			note: input.note ?? null,
 		},
 	});
 	const changes: AccountChange[] = [];
-	for (const [side, amount, booked] of [
-		[from, fromAmount.neg(), fromHome],
-		[to, toAmount, toHome],
-	] as const) {
+	for (const [side, amount, home] of move.legs) {
 		const change = await writeLeg(tx, userId, {
 			...side,
 			amount,
 			date,
 			source: "TRANSFER",
 			transferId,
-			home: booked,
+			home,
 		});
 		if (change) changes.push(change);
 	}
-	await moveCounted(tx, from, to, plan);
-	const fee = await writeFee(tx, userId, input, {
-		transferId,
-		from,
-		date,
-		home,
-		pick,
-	});
+	await moveCounted(tx, move.from, move.to, plan);
+	return { transferId, changes };
+}
+
+export async function createTransferIn(
+	tx: Tx,
+	userId: string,
+	input: CreateTransferInput,
+): Promise<TransferValue> {
+	const move = await resolveMove(tx, userId, input);
+	const { transferId, changes } = await writeMove(tx, userId, move, input);
+	const fee = await writeFee(tx, userId, input, { ...move, transferId });
 	if (fee) {
 		await tx.transfer.update({
 			where: { id: transferId },
@@ -309,44 +337,31 @@ export async function createTransferIn(
 		});
 		if (fee.change) changes.push(fee.change);
 	}
-
-	const booked = fromHome &&
-		toHome && { fromHome: fromHome.amount, toHome: toHome.amount };
-	const ref = booked
-		? reference(pick, planInput, booked, date)
-		: { vsReference: null, referenceRateType: null };
-	if (ref.referenceRateType) {
-		await tx.transfer.update({
-			where: { id: transferId },
-			data: { referenceRateType: ref.referenceRateType },
-		});
-	}
-	const effect: BudgetEffect = booked
-		? budgetEffect(planInput, plan, booked)
+	const effect: BudgetEffect = move.booked
+		? budgetEffect(move.planInput, move.plan, move.booked)
 		: { effect: "none" };
+	const leaves = effect.effect === "leaves";
 	const side = await budgetSideOf(tx, userId, effect, {
 		transferId,
-		date,
-		envelopeId:
-			effect.effect === "leaves"
-				? (input.envelopeId ?? null)
-				: (input.putIn ?? null),
-		accountId: (effect.effect === "leaves" ? to : from).account?.id ?? null,
+		date: move.date,
+		envelopeId: (leaves ? input.envelopeId : input.putIn) ?? null,
+		accountId: (leaves ? move.to : move.from).account?.id ?? null,
 	});
-	const netWorth =
-		booked && booked.fromHome.add(booked.toHome).add(fee?.home ?? dec(0));
+	const netWorth = move.booked?.fromHome
+		.add(move.booked.toHome)
+		.add(fee?.home ?? dec(0));
 	return {
 		transferId,
-		kind: plan.kind,
-		fromAmount: fromAmount.toString(),
-		fromCurrency: from.currency,
-		toAmount: toAmount.toString(),
-		toCurrency: to.currency,
-		rate: derivedRate(planInput),
-		...ref,
+		kind: move.plan.kind,
+		fromAmount: move.planInput.fromAmount.toString(),
+		fromCurrency: move.planInput.fromCurrency,
+		toAmount: move.planInput.toAmount.toString(),
+		toCurrency: move.planInput.toCurrency,
+		rate: derivedRate(move.planInput),
+		...move.ref,
 		accounts: changes,
 		netWorthEffect: netWorth
-			? { minor: toMinor(netWorth, home), currency: home }
+			? { minor: toMinor(netWorth, move.home), currency: move.home }
 			: null,
 		budget: { ...effect, side },
 		feeExpenseId: fee?.expenseId ?? null,

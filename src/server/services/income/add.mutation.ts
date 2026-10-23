@@ -14,7 +14,6 @@ import { randomUUID } from "node:crypto";
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
 import { computeAmountInUSD } from "~/lib/money";
-import { nextRecurringDate } from "~/lib/recurring";
 import { requireExchangeRate } from "~/server/exchange-rates";
 import type { Money } from "~/server/figures/registry";
 import { toMinor } from "~/server/services/envelope/units";
@@ -34,6 +33,7 @@ import { inBudget } from "../accounts/places";
 import { endOfDay } from "../accounts/series";
 import { homePerUnit, homeValue } from "../accounts/valuation";
 import { typedAmount } from "../transfers/plan";
+import { nextDueDay } from "./due-day";
 
 type Tx = Prisma.TransactionClient;
 
@@ -139,11 +139,7 @@ async function createTemplate(
 	if (!input.repeats) return null;
 	const next = input.repeats.next
 		? new Date(`${input.repeats.next}T00:00:00.000Z`)
-		: nextRecurringDate(
-				row.date,
-				input.repeats.frequency,
-				row.date.getUTCDate(),
-			);
+		: nextDueDay(row.date, input.repeats.frequency);
 	const template = await tx.recurringTemplate.create({
 		data: {
 			userId,
