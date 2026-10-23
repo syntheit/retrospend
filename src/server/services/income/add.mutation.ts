@@ -76,6 +76,8 @@ export interface IncomeRestore {
 	readonly units: string | null;
 	readonly homeAmount: string | null;
 	readonly homeCurrency: string | null;
+	/** The leg's units still counted on the account when it was deleted. */
+	readonly countedUnits?: string | null;
 }
 
 export interface IncomeValue {
@@ -243,6 +245,21 @@ function restoredPrice(restore: IncomeRestore, home: string): Priced {
 	};
 }
 
+/** Units the budget already counts: what the deleted leg still counted on an undo, else the arrival rule (D4). */
+function countedUnitsOf(
+	input: AddIncomeInput,
+	account: AccountRow,
+	kept: boolean,
+	home: string,
+	units: Decimal,
+): Decimal | undefined {
+	if (input.restore) {
+		const counted = input.restore.countedUnits;
+		return counted ? dec(counted) : undefined;
+	}
+	return countedOnArrival(account, kept, home) ? units : undefined;
+}
+
 export async function addIncomeIn(
 	tx: Tx,
 	userId: string,
@@ -309,7 +326,7 @@ export async function addIncomeIn(
 				source: "INCOME",
 				expenseId,
 				home: booked && { amount: booked, currency: home },
-				countedUnits: countedOnArrival(account, kept, home) ? units : undefined,
+				countedUnits: countedUnitsOf(input, account, kept, home, units),
 			})
 		: null;
 	return {

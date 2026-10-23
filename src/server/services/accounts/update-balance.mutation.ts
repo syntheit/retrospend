@@ -12,7 +12,7 @@ import type { Prisma } from "~prisma";
 import { type Checkpoint, writeCheckpoint } from "./checkpoint";
 import { moveDay } from "./dates";
 import { homeCurrencyOf, lockOpenAccount } from "./ledger";
-import { balanceEffect } from "./places";
+import { balanceEffect, cappedCounted } from "./places";
 import {
 	type RateTypeSwitch,
 	revertRateTypeIn,
@@ -184,6 +184,11 @@ export async function revertBalanceUpdateIn(
 		where: { id: account.id },
 		data: {
 			balance: balance.toString(),
+			countedUnits: cappedCounted(
+				account.type,
+				dec(account.countedUnits.toString()),
+				balance,
+			).toString(),
 			...(input.previousRate !== undefined
 				? { exchangeRate: input.previousRate }
 				: {}),

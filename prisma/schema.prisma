@@ -211,6 +211,8 @@ model Expense {
   // Move in (count only, D4).
   keepInWealth Boolean   @default(false)
   movedInAt    DateTime?
+  /// The Use my plan batch a recurring confirm assigned; its undo takes it back.
+  planBatchId  String?
 
   // Rate type per entry (M2, N73). rateType names the conversion: an
   // exchange_rate type or "custom". The home leg is booked once, at save, so

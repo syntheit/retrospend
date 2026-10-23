@@ -4,6 +4,7 @@
  * Its own undo is income.add with `recreate` (the same id).
  */
 import { TRPCError } from "@trpc/server";
+import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";
@@ -23,6 +24,20 @@ export interface DeletedIncome {
 	readonly recreate: AddIncomeInput;
 }
 
+/**
+ * The leg's units still counted on its account: counted units that moved on
+ * with a transfer are counted where they went, so an undo never counts them
+ * here again.
+ */
+function stillCounted(leg: {
+	countedUnits: { toString(): string };
+	account: { countedUnits: { toString(): string } } | null;
+}) {
+	const own = dec(leg.countedUnits.toString());
+	const held = dec(leg.account?.countedUnits.toString() ?? "0");
+	return own.lt(held) ? own : held;
+}
+
 /** A Money in row of the user's, of kind Income; throws otherwise. */
 export async function incomeRow(tx: Tx, userId: string, expenseId: string) {
 	const row = await tx.expense.findFirst({
@@ -35,6 +50,8 @@ export async function incomeRow(tx: Tx, userId: string, expenseId: string) {
 					amount: true,
 					homeAmount: true,
 					homeCurrency: true,
+					countedUnits: true,
+					account: { select: { countedUnits: true } },
 				},
 				take: 1,
 			},
@@ -83,6 +100,7 @@ export async function deleteIncomeIn(
 			units: leg ? leg.amount.toString() : null,
 			homeAmount: leg?.homeAmount?.toString() ?? null,
 			homeCurrency: leg?.homeCurrency ?? null,
+			countedUnits: leg ? stillCounted(leg).toString() : null,
 		},
 		repeats: template
 			? {

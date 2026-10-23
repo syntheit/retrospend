@@ -198,6 +198,13 @@ export async function confirmRecurringIncomeIn(
 				amount: kept ? null : bookedMoney,
 			})
 		: PLAN_NOT_REQUESTED;
+	// Recorded on the row, so the undo takes the batch back by itself.
+	if (plan.batchId) {
+		await tx.expense.update({
+			where: { id: row.id },
+			data: { planBatchId: plan.batchId },
+		});
+	}
 	return {
 		expenseId: row.id,
 		templateId: template.id,
@@ -238,8 +245,6 @@ export const confirmRecurringIncome: MoneyMutation<
 
 export interface UnconfirmRecurringIncomeInput {
 	readonly expenseId: string;
-	/** The confirm's plan batch (its value's plan.batchId), taken back with it. */
-	readonly planBatchId?: string | null;
 }
 
 /** Removes the posted row (its leg goes back) and puts the template back on that due date. */
@@ -261,7 +266,7 @@ export async function unconfirmRecurringIncomeIn(
 			message: "Undo the Move in first",
 		});
 	}
-	if (input.planBatchId) await undoPlan(tx, userId, input.planBatchId);
+	if (row.planBatchId) await undoPlan(tx, userId, row.planBatchId);
 	const accounts = await reverseLegs(tx, { expenseId: row.id });
 	await tx.expense.delete({ where: { id: row.id } });
 	forgetMonthViews(tx);

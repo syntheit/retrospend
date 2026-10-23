@@ -316,6 +316,9 @@ async function writeMove(
 			note: input.note ?? null,
 		},
 	});
+	// Counted units move first: the legs' trigger then caps them at what each
+	// account holds once the money has moved.
+	await moveCounted(tx, move.from, move.to, plan);
 	const changes: AccountChange[] = [];
 	for (const [side, amount, home] of move.legs) {
 		const change = await writeLeg(tx, userId, {
@@ -328,7 +331,6 @@ async function writeMove(
 		});
 		if (change) changes.push(change);
 	}
-	await moveCounted(tx, move.from, move.to, plan);
 	return { transferId, changes };
 }
 
@@ -345,7 +347,7 @@ export async function createTransferIn(
 			where: { id: transferId },
 			data: { feeExpenseId: fee.expenseId },
 		});
-		if (fee.change) changes.push(fee.change);
+		if (fee.change) mergeChange(changes, fee.change);
 	}
 	const effect = budgetEffect(move.planInput, move.plan, move.homes);
 	const leaves = effect.effect === "leaves";
@@ -374,6 +376,14 @@ export async function createTransferIn(
 		budget: { ...effect, side },
 		feeExpenseId: fee?.expenseId ?? null,
 	};
+}
+
+/** A fee from an account the move already changed joins its row: before the move, after the fee. */
+function mergeChange(changes: AccountChange[], change: AccountChange) {
+	const i = changes.findIndex((c) => c.accountId === change.accountId);
+	const first = changes[i];
+	if (first) changes[i] = { ...first, after: change.after };
+	else changes.push(change);
 }
 
 /** D4: counted units leave the source first and follow the money to a place outside the budget. */

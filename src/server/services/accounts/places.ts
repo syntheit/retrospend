@@ -68,3 +68,17 @@ export function countedOnArrival(
 		!kept && !inBudget(account, homeCurrency) && !isLiability(account.type)
 	);
 }
+
+/**
+ * Counted units after a balance is set by hand (D4): never more than the
+ * account holds, none on a liability. The account_leg trigger applies the
+ * same cap after every leg.
+ */
+export function cappedCounted(
+	type: AssetType,
+	counted: Decimal,
+	balance: Decimal,
+): Decimal {
+	if (isLiability(type) || !balance.gt(0)) return balance.mul(0);
+	return counted.lt(balance) ? counted : balance;
+}

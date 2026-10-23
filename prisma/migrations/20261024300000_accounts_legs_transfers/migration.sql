@@ -16,7 +16,8 @@
 -- 5. asset_snapshot."recordedAt": orders a balance update against legs of
 --    the same day. Existing snapshots get the start of their own day, so
 --    each one still comes after the days before it.
--- 6. expense."keepInWealth" and "movedInAt" (kept income, Move in);
+-- 6. expense."keepInWealth" and "movedInAt" (kept income, Move in),
+--    "planBatchId" (the Use my plan batch a recurring confirm assigned);
 --    user."defaultAccounts" ({currency: accountId}).
 -- 7. A trigger that moves an account's balance, the balance updates that
 --    already include a leg, and its counted units with its legs.
@@ -58,6 +59,7 @@ ALTER TABLE "asset_snapshot" ALTER COLUMN "recordedAt" SET NOT NULL;
 
 ALTER TABLE "expense" ADD COLUMN IF NOT EXISTS "keepInWealth" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "expense" ADD COLUMN IF NOT EXISTS "movedInAt" TIMESTAMP(3);
+ALTER TABLE "expense" ADD COLUMN IF NOT EXISTS "planBatchId" TEXT;
 
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "defaultAccounts" JSONB;
 
@@ -227,6 +229,46 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON "asset_rate_type" TO retrospend_app;
 --
 -- The leg's counted units (D4) are counted on its account; when the leg
 -- goes they go too, never below zero (they may have left the account).
+-- After any change an account never counts more than it holds, and a
+-- liability (money owed) counts nothing.
+
+-- USD per unit of an account for a snapshot whose own balance is 0: the
+-- nearest other snapshot that held something, else the stored rate (USD per
+-- coin on a crypto account, units per USD otherwise). Null when neither exists.
+CREATE OR REPLACE FUNCTION account_usd_per_unit(account_id TEXT, snapshot_id TEXT)
+RETURNS DECIMAL AS $$
+DECLARE
+  per_unit DECIMAL;
+  snap_date TIMESTAMP(3);
+BEGIN
+  SELECT "date" INTO snap_date FROM "asset_snapshot" WHERE "id" = snapshot_id;
+  SELECT "balanceInUSD" / "balance" INTO per_unit FROM "asset_snapshot"
+    WHERE "accountId" = account_id AND "id" <> snapshot_id AND "balance" <> 0
+    ORDER BY ABS(EXTRACT(EPOCH FROM ("date" - snap_date))), "date" DESC
+    LIMIT 1;
+  IF per_unit IS NOT NULL THEN
+    RETURN per_unit;
+  END IF;
+  SELECT CASE
+      WHEN "exchangeRate" IS NULL OR "exchangeRate" <= 0 THEN NULL
+      WHEN "type" = 'CRYPTO' THEN "exchangeRate"
+      ELSE 1 / "exchangeRate"
+    END
+    INTO per_unit FROM "asset_account" WHERE "id" = account_id;
+  RETURN per_unit;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION account_cap_counted(account_id TEXT) RETURNS void AS $$
+BEGIN
+  UPDATE "asset_account" SET "countedUnits" = CASE
+      WHEN "type"::text LIKE 'LIABILITY_%' THEN 0
+      ELSE LEAST("countedUnits", GREATEST(0, "balance"))
+    END
+    WHERE "id" = account_id;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION account_leg_apply(leg "account_leg", direction INTEGER, moves_money BOOLEAN)
 RETURNS void AS $$
 DECLARE
@@ -247,7 +289,7 @@ BEGIN
       "balanceInUSD" = CASE
         WHEN COALESCE(s."currency", a."currency") = 'USD' THEN s."balance" + effect
         WHEN s."balance" <> 0 THEN ROUND(s."balanceInUSD" * (s."balance" + effect) / s."balance", 2)
-        ELSE s."balanceInUSD"
+        ELSE COALESCE(ROUND(effect * account_usd_per_unit(s."accountId", s."id"), 2), s."balanceInUSD")
       END,
       "balance" = s."balance" + effect
     FROM "asset_account" a
@@ -279,6 +321,13 @@ BEGIN
   END IF;
   IF TG_OP IN ('INSERT', 'UPDATE') THEN
     PERFORM account_leg_apply(NEW, 1, moves_money);
+  END IF;
+  -- Capped once both sides are applied, so an update never loses units midway.
+  IF TG_OP IN ('DELETE', 'UPDATE') AND OLD."accountId" IS NOT NULL THEN
+    PERFORM account_cap_counted(OLD."accountId");
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW."accountId" IS NOT NULL THEN
+    PERFORM account_cap_counted(NEW."accountId");
   END IF;
   RETURN NULL;
 END;

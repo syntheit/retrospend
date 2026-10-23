@@ -137,6 +137,7 @@ export const recreateIncomeSchema = addIncomeSchema.extend({
 			units: storedDecimal.nullable(),
 			homeAmount: storedDecimal.nullable(),
 			homeCurrency: currency.nullable(),
+			countedUnits: storedDecimal.nullish(),
 		})
 		.nullish(),
 });
@@ -166,8 +167,4 @@ export const confirmRecurringIncomeSchema = z.object({
 	usePlan: z.boolean().optional(),
 });
 
-export const unconfirmRecurringIncomeSchema = z.object({
-	expenseId: id,
-	/** The confirm's plan batch, undone with it. */
-	planBatchId: z.string().uuid().nullish(),
-});
+export const unconfirmRecurringIncomeSchema = z.object({ expenseId: id });

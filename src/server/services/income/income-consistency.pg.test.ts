@@ -7,6 +7,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { confirmRecurringIncomeSchema } from "~/server/services/accounts/input";
+import { updateBalance } from "~/server/services/accounts/update-balance.mutation";
 import {
 	seedUser,
 	setupInput,
@@ -136,6 +137,68 @@ describe("counted units follow what the account holds (D4)", () => {
 			keep: false,
 		});
 		expect(await countedOn(p.wise)).toBe("2100");
+	});
+});
+
+describe("counted units never exceed what an account holds", () => {
+	async function outOfBudget(start: number) {
+		const { user } = await arsUser();
+		return {
+			userId: user.id,
+			a: await openAccount(user.id, "Wise", "INVESTMENT", "USD", start),
+			b: await openAccount(user.id, "USD cash", "CASH", "USD", 0),
+		};
+	}
+
+	const repro = async (start: number) => {
+		const p = await outOfBudget(start);
+		const income = await forUser(p.userId).apply(addIncome, {
+			...freelance(p.a),
+			amount: "100",
+			keep: false,
+		});
+		expect(await countedOn(p.a)).toBe("100");
+		// The counted units follow the money to B.
+		await forUser(p.userId).apply(createTransfer, {
+			fromAccountId: p.a,
+			toAccountId: p.b,
+			fromAmount: "100",
+		});
+		const deleted = await forUser(p.userId).apply(deleteIncome, {
+			expenseId: income.value.expenseId,
+		});
+		await forUser(p.userId).apply(addIncome, deleted.value.recreate);
+		return p;
+	};
+
+	it("an undone delete does not count again units that moved on (from an empty account)", async () => {
+		const p = await repro(0);
+		expect(await balanceOf(p.a)).toBe("0");
+		expect(await countedOn(p.a)).toBe("0");
+		expect(await countedOn(p.b)).toBe("100");
+	});
+
+	it("an undone delete does not count again units that moved on (with other money there)", async () => {
+		const p = await repro(500);
+		expect(await balanceOf(p.a)).toBe("500");
+		expect(await countedOn(p.a)).toBe("0");
+		expect(await countedOn(p.b)).toBe("100");
+	});
+
+	it("Update balance downward counts at most the new balance", async () => {
+		const p = await withWise();
+		await forUser(p.userId).apply(addIncome, {
+			...freelance(p.wise),
+			keep: false,
+		});
+		expect(await countedOn(p.wise)).toBe("2000");
+
+		await forUser(p.userId).apply(updateBalance, {
+			accountId: p.wise,
+			balance: "1500",
+		});
+
+		expect(await countedOn(p.wise)).toBe("1500");
 	});
 });
 
@@ -318,7 +381,6 @@ describe("Use my plan on a recurring income confirm", () => {
 
 		await forUser(s.user.id).apply(unconfirmRecurringIncome, {
 			expenseId: result.value.expenseId,
-			planBatchId: plan.batchId,
 		});
 		expect((await assignedNow()).every((m) => m === 0)).toBe(true);
 		expect((await getMonth(s.user.id))?.toAssign.amount.minor).toBe(poolBefore);

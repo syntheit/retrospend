@@ -15,7 +15,7 @@ import {
 	bookHome,
 	ratePickFor,
 } from "./ledger";
-import { worthOf } from "./places";
+import { cappedCounted, worthOf } from "./places";
 
 type Tx = Prisma.TransactionClient;
 
@@ -81,6 +81,11 @@ export async function writeCheckpoint(
 		where: { id: account.id },
 		data: {
 			balance: next.balance.toString(),
+			countedUnits: cappedCounted(
+				account.type,
+				dec(account.countedUnits.toString()),
+				next.balance,
+			).toString(),
 			exchangeRate: next.rate.rate,
 			exchangeRateType: next.rate.rateType,
 		},

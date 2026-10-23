@@ -74,6 +74,10 @@ export async function deleteTransferIn(
 			SET "countedUnits" = GREATEST(0, "countedUnits" - ${transfer.countedToUnits})
 			WHERE "id" = ${transfer.toAccountId}`;
 	}
+	// Never more counted than an account holds (the cap the leg trigger applies).
+	for (const id of [transfer.fromAccountId, transfer.toAccountId]) {
+		if (id) await tx.$executeRaw`SELECT account_cap_counted(${id})`;
+	}
 	await tx.transfer.delete({ where: { id: transfer.id } });
 	if (transfer.feeExpenseId) {
 		await tx.expense.deleteMany({
