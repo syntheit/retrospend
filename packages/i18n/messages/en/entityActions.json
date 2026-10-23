@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Archive"
+		},
+		"restore": {
+			"label": "Restore"
+		},
+		"delete": {
+			"label": "Delete",
+			"confirmTitle": "Delete {name}?",
+			"confirmBody": "The project goes away. Its expenses stay, outside any project. This cannot be undone.",
+			"confirmButton": "Delete project"
+		},
+		"addPerson": {
+			"label": "Add person"
+		},
+		"exportCsv": {
+			"label": "Export expenses (CSV)"
+		},
+		"exportPlan": {
+			"label": "Export who pays whom (CSV)"
+		},
+		"exportPdf": {
+			"label": "Export PDF"
+		},
+		"settings": {
+			"label": "Settings"
 		}
 	},
 	"account": {
