@@ -296,18 +296,27 @@ export async function runOne(
 	};
 }
 
-async function headOf(tx: Tx, userId: string): Promise<BookHead | null> {
-	const b = await tx.budgetBook.findFirst({
-		where: { createdById: userId, isPersonal: true },
-		select: {
-			id: true,
-			startDate: true,
-			currency: true,
-			defaultEnvelopeId: true,
-		},
-	});
-	if (!b?.defaultEnvelopeId) return null;
-	return { id: b.id, userId, startDate: b.startDate };
+/**
+ * The book and whether any rule could be waiting, in one query: an active
+ * rule exists, or a run has a standing batch its row may have changed.
+ */
+async function headOf(
+	tx: Tx,
+	userId: string,
+): Promise<(BookHead & { currency: string; idle: boolean }) | null> {
+	const [b] = await tx.$queryRaw<
+		Array<{ id: string; startDate: Date; currency: string; idle: boolean }>
+	>`
+		SELECT b.id, b."startDate", b.currency,
+		       NOT EXISTS (SELECT 1 FROM income_rule r
+		                    WHERE r."bookId" = b.id AND r.active AND r."archivedAt" IS NULL)
+		   AND NOT EXISTS (SELECT 1 FROM income_rule_run x
+		                    WHERE x."bookId" = b.id AND NOT x.skipped AND x."batchId" IS NOT NULL)
+		       AS idle
+		  FROM budget_book b
+		 WHERE b."createdById" = ${userId} AND b."isPersonal" AND b."defaultEnvelopeId" IS NOT NULL
+		 LIMIT 1`;
+	return b ? { ...b, userId } : null;
 }
 
 async function previousOf(tx: Tx, expenseId: string) {
@@ -325,11 +334,8 @@ export async function runPendingRules(
 	now: Date,
 ): Promise<RuleRunDto[]> {
 	const b = await headOf(tx, userId);
-	if (!b) return [];
-	const book = await tx.budgetBook.findUniqueOrThrow({
-		where: { id: b.id },
-		select: { currency: true },
-	});
+	if (!b || b.idle) return [];
+	const book = b;
 	const quick = await pendingFor(
 		tx,
 		b,

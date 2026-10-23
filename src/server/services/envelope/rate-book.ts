@@ -54,21 +54,25 @@ export class RateBook {
 		const points = new Map<string, RatePoint[]>();
 		if (currencies.length === 0) return new RateBook(points);
 		const since = new Date(`${p.since}T00:00:00Z`);
-		const select = { currency: true, type: true, rate: true, date: true };
-		// The latest rate before `since` per pair: a row dated near `since`
-		// whose only earlier rate is older is still valued on or before it.
-		const anchors = await tx.exchangeRate.findMany({
-			where: { currency: { in: currencies }, date: { lt: since } },
-			distinct: ["currency", "type"],
-			orderBy: [{ currency: "asc" }, { type: "asc" }, { date: "desc" }],
-			select,
-		});
-		const rows = await tx.exchangeRate.findMany({
-			where: { currency: { in: currencies }, date: { gte: since } },
-			orderBy: { date: "asc" },
-			select,
-		});
-		for (const r of [...anchors, ...rows]) {
+		// One query: every rate from `since` on, plus the latest before it per
+		// pair, so a row dated near `since` whose only earlier rate is older is
+		// still valued on or before it. Anchors sort first (older dates).
+		const rows = await tx.$queryRaw<
+			Array<{ currency: string; type: string; rate: string; date: Date }>
+		>`
+			SELECT currency, type,
+			       trim(trailing '.' from trim(trailing '0' from rate::text)) AS rate, date FROM (
+				(SELECT DISTINCT ON (currency, type) currency, type, rate, date
+				   FROM exchange_rate
+				  WHERE currency = ANY(${currencies}) AND date < ${since}
+				  ORDER BY currency, type, date DESC)
+				UNION ALL
+				(SELECT currency, type, rate, date
+				   FROM exchange_rate
+				  WHERE currency = ANY(${currencies}) AND date >= ${since})
+			) r
+			ORDER BY date ASC`;
+		for (const r of rows) {
 			if (r.currency === p.bookCurrency && !p.rateTypes.includes(r.type))
 				continue;
 			const key = `${r.currency}\0${r.type}`;
