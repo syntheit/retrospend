@@ -838,25 +838,6 @@ export function createStatefulDb() {
 			audits.push(entry);
 			return entry;
 		}),
-		// The newest entry for one of the targets with the action (payment.unconfirm reads it).
-		findFirst: vi.fn(
-			(args: {
-				where: {
-					targetType?: string;
-					targetId?: { in: string[] };
-					action?: string;
-				};
-			}) => {
-				const w = args.where;
-				const hits = audits.filter(
-					(a) =>
-						(!w.targetType || a.targetType === w.targetType) &&
-						(!w.action || a.action === w.action) &&
-						(!w.targetId || w.targetId.in.includes(a.targetId as string)),
-				);
-				return hits.at(-1) ?? null;
-			},
-		),
 	};
 
 	// ── shadowProfile model ──────────────────────────────────────────────────
