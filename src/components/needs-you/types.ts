@@ -5,6 +5,7 @@
  * server computed (R9).
  */
 import type { MoneyValue } from "~/components/money/format";
+import type { FacePerson } from "~/components/ui/avatar-face";
 
 type Base = {
 	id: string;
@@ -18,6 +19,16 @@ type Base = {
 	 * word in `needsYou.action`; otherwise the kind's own action is shown.
 	 */
 	action?: string;
+	/**
+	 * The person asking (a payment to confirm, a split to review): the item
+	 * leads with their face instead of the kind's icon (People mockup).
+	 */
+	face?: FacePerson;
+	/**
+	 * A second action id with a word in `needsYou.action` ("notReceived"),
+	 * offered as a quiet link after the context line.
+	 */
+	secondary?: string;
 };
 
 export type NeedsYouItemVM =

@@ -34,6 +34,7 @@
 		"edit": "Editar",
 		"takeBack": "Recuperar",
 		"fund": "Cubrir",
-		"setRate": "Fijar cotización"
+		"setRate": "Fijar cotización",
+		"notReceived": "¿No lo recibiste?"
 	}
 }
