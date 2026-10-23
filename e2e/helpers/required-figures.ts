@@ -14,6 +14,8 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
 	transactions: [],
 	people: [],
+	// S4D: the redesigned People page (the smoke walk opens the old one).
+	peoplePage: ["owed.owedToYou", "owed.youOwe"],
 	projects: [],
 	wealth: [],
 	budget: [],

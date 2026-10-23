@@ -216,5 +216,16 @@
 		"history": {
 			"label": "Voir l'historique du taux"
 		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Confirmer"
+		},
+		"notReceived": {
+			"label": "Pas reçu",
+			"confirmTitle": "Paiement de {name} pas reçu ?",
+			"confirmBody": "Le paiement est marqué comme non reçu et votre solde reste inchangé.",
+			"confirmButton": "Pas reçu"
+		}
 	}
 }

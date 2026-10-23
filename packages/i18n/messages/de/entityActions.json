@@ -216,5 +216,16 @@
 		"history": {
 			"label": "Kursverlauf ansehen"
 		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Bestätigen"
+		},
+		"notReceived": {
+			"label": "Nicht erhalten",
+			"confirmTitle": "Zahlung von {name} nicht erhalten?",
+			"confirmBody": "Die Zahlung wird als nicht erhalten markiert und dein Saldo bleibt, wie er war.",
+			"confirmButton": "Nicht erhalten"
+		}
 	}
 }

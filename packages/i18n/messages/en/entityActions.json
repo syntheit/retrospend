@@ -216,5 +216,16 @@
 		"history": {
 			"label": "View rate history"
 		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Confirm"
+		},
+		"notReceived": {
+			"label": "Not received",
+			"confirmTitle": "Not received from {name}?",
+			"confirmBody": "The payment is marked as not received and your balance stays as it was.",
+			"confirmButton": "Not received"
+		}
 	}
 }

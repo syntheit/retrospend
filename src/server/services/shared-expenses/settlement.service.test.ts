@@ -400,6 +400,14 @@ describe("undo a confirm (payment.unconfirm)", () => {
 		person: ParticipantRef,
 	) => unconfirmPayment.run(db as never, { paymentId, person }, { userId });
 
+	// No confirm audit to restore from: the in-memory db keeps none to read
+	// (restoring the payer's details is covered on Postgres, settle-safety.pg).
+	beforeEach(() => {
+		(
+			db as unknown as { auditLogEntry: Record<string, unknown> }
+		).auditLogEntry.findFirst = vi.fn(() => null);
+	});
+
 	it("only the payee undoes a confirm of a payment the payer recorded", async () => {
 		seedDebt(aliceRef, bobRef, 30);
 		const { settlement } = await alice().initiateSettlement({
