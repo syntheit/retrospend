@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATEGORY_COLORS } from "~/lib/constants";
-import { CATEGORY_TONE, categoryTone } from "../categories/category-tone";
+import { CATEGORY_TONE, categoryTone } from "./category-tone";
 
 describe("categoryTone", () => {
 	it("gives every stored color its own token, 1 to 21", () => {

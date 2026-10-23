@@ -4,12 +4,15 @@ import { useTranslations } from "next-intl";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Segmented } from "~/components/ui/segmented";
 import { Switch } from "~/components/ui/switch";
-import { useAutosave } from "../autosave";
 import { SelectField } from "../select-field";
 import { SettingRow, SettingRows } from "../setting-row";
 import { CurrencyField } from "./currency-field";
 import { monthSpan } from "./month-span";
-import type { GeneralPatch, GeneralSettings } from "./use-general-settings";
+import {
+	type GeneralSettings,
+	type GeneralSettingsApi,
+	useSaveSetting,
+} from "./use-general-settings";
 
 const DAYS = Array.from({ length: 28 }, (_, i) => String(i + 1));
 
@@ -21,13 +24,13 @@ const DAYS = Array.from({ length: 28 }, (_, i) => String(i + 1));
  */
 export function MoneyRows({
 	settings,
-	update,
+	writer,
 }: {
 	settings: GeneralSettings;
-	update: (patch: GeneralPatch) => Promise<void>;
+	writer: GeneralSettingsApi;
 }) {
 	const t = useTranslations("settingsV2.preferences");
-	const save = useAutosave();
+	const save = useSaveSetting(writer);
 	const dates = useDateFormat();
 	const startDay = settings.fiscalMonthStartDay ?? 1;
 	const span = monthSpan(new Date(), startDay);
@@ -45,10 +48,7 @@ export function MoneyRows({
 					id="pf-home"
 					label={t("homeCurrency")}
 					onChange={(code) =>
-						void save({
-							apply: (homeCurrency) => update({ homeCurrency }),
-							next: code,
-							prev: settings.homeCurrency,
+						void save("homeCurrency", code, {
 							message: t("homeCurrencySaved", { code }),
 						})
 					}
@@ -60,11 +60,9 @@ export function MoneyRows({
 					id="pf-default"
 					label={t("defaultCurrency")}
 					onChange={(code) =>
-						void save({
-							apply: (v) => update({ defaultCurrency: v }),
-							next: code,
-							prev: defaultCurrency,
+						void save("defaultCurrency", code, {
 							message: t("defaultCurrencySaved", { code }),
+							fallback: settings.homeCurrency,
 						})
 					}
 					value={defaultCurrency}
@@ -74,11 +72,7 @@ export function MoneyRows({
 				<Segmented
 					label={t("symbol")}
 					onChange={(v) =>
-						void save({
-							apply: (currencySymbolStyle) => update({ currencySymbolStyle }),
-							next: v,
-							prev: symbol,
-						})
+						void save("currencySymbolStyle", v, { fallback: "standard" })
 					}
 					options={[
 						{ value: "standard", label: t("symbolStandard") },
@@ -92,12 +86,7 @@ export function MoneyRows({
 					checked={settings.smartCurrencyFormatting ?? true}
 					id="pf-smart"
 					onCheckedChange={(on) =>
-						void save({
-							apply: (smartCurrencyFormatting) =>
-								update({ smartCurrencyFormatting }),
-							next: on,
-							prev: !on,
-						})
+						void save("smartCurrencyFormatting", on, { fallback: true })
 					}
 				/>
 			</SettingRow>
@@ -112,11 +101,7 @@ export function MoneyRows({
 				<SelectField
 					id="pf-start"
 					onChange={(v) =>
-						void save({
-							apply: (day) => update({ fiscalMonthStartDay: Number(day) }),
-							next: v,
-							prev: String(startDay),
-						})
+						void save("fiscalMonthStartDay", Number(v), { fallback: 1 })
 					}
 					options={DAYS.map((d) => ({ value: d, label: d }))}
 					value={String(startDay)}

@@ -19,7 +19,7 @@ import {
 	resolveMethodTypeId,
 } from "~/lib/payment-method-registry";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { useAutosave } from "../autosave";
+import { useAutosave, useSaveGuard } from "../autosave";
 import { SectionShell, SectionUnavailable } from "../section-shell";
 import {
 	makePrimary,
@@ -54,6 +54,7 @@ function fromServer(rows: RouterOutputs["paymentMethod"]["list"]): Method[] {
 export function PaymentSection() {
 	const t = useTranslations("settingsV2.payment");
 	const save = useAutosave();
+	const guard = useSaveGuard();
 	const utils = api.useUtils();
 	const { settings } = useUserSettings();
 	const query = api.paymentMethod.list.useQuery();
@@ -78,8 +79,14 @@ export function PaymentSection() {
 		await upsert.mutateAsync({ methods: toUpsertInput(rows) });
 		await utils.paymentMethod.list.invalidate();
 	};
+	// The whole list is one field: a change while one is saving is dropped.
 	const change = (next: Method[], message?: string) =>
-		void save({ apply: write, next, prev: methods, message }, sameMethods);
+		void guard("methods", () =>
+			save(
+				{ apply: write, next, prev: methods, message, restore: setMethods },
+				sameMethods,
+			),
+		);
 
 	const nameOf = (m: Method) =>
 		m.label ||

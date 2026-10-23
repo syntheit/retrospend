@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useToast } from "~/components/ui/toast";
 
 /** One field's change: how to write a value, and the value before and after. */
@@ -13,6 +13,13 @@ export type FieldChange<T> = {
 	message?: string;
 	/** False when the old value cannot come back (nothing to undo). */
 	undoable?: boolean;
+	/**
+	 * Puts the screen back to `prev` when the write fails (a list or switch
+	 * that showed the change before the server had it). Writes nothing.
+	 */
+	restore?: (prev: T) => void;
+	/** The toast for a failure this field can name ("That username is taken"). */
+	failedMessage?: (err: unknown) => string | undefined;
 };
 
 export type AutosaveReport = {
@@ -24,7 +31,8 @@ export type AutosaveReport = {
  * Writes one field (the autosave model, IMPLEMENTATION §1.1): an unchanged
  * value writes nothing and says nothing (never "Saved" when nothing changed),
  * a change says so with Undo that writes the old value back, a failure says
- * it could not save. Returns whether the value was saved.
+ * it could not save (in the user's language, never the server's English)
+ * and puts the screen back. Returns whether the value was saved.
  */
 export async function saveField<T>(
 	change: FieldChange<T>,
@@ -36,9 +44,8 @@ export async function saveField<T>(
 	try {
 		await change.apply(change.next);
 	} catch (err) {
-		report.failed(
-			err instanceof Error && err.message ? err.message : copy.failed,
-		);
+		change.restore?.(change.prev);
+		report.failed(change.failedMessage?.(err) ?? copy.failed);
 		return false;
 	}
 	const undo =
@@ -65,4 +72,29 @@ export function useAutosave() {
 			),
 		[toast, t],
 	);
+}
+
+/**
+ * One save per key at a time: a change made while the same field is still
+ * saving is dropped, so a double click makes one write and one toast.
+ */
+export function makeSaveGuard() {
+	const busy = new Set<string>();
+	return async <R>(
+		key: string,
+		run: () => Promise<R>,
+	): Promise<R | undefined> => {
+		if (busy.has(key)) return undefined;
+		busy.add(key);
+		try {
+			return await run();
+		} finally {
+			busy.delete(key);
+		}
+	};
+}
+
+/** makeSaveGuard for one component's lifetime. */
+export function useSaveGuard() {
+	return useRef(makeSaveGuard()).current;
 }

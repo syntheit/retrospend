@@ -1,24 +1,21 @@
 "use client";
 
-import { ChevronDown, Eye, EyeOff, Palette, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { CategoryManagerDialog } from "~/components/settings/category-manager-dialog";
 import { Button } from "~/components/ui/button";
 import { CategoryTile } from "~/components/ui/category-badge";
-import {
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-} from "~/components/ui/dropdown-menu";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useCategoryName } from "~/hooks/use-category-name";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useAutosave } from "../autosave";
-import { MoreMenu } from "../more-menu";
 import { SectionShell, SectionUnavailable } from "../section-shell";
-import { categoryTone } from "./category-tone";
+import { categoryTone } from "~/lib/category-tone";
 
 type Category = RouterOutputs["categories"]["getAll"][number];
 type Manager = { id: string | null; intent: "add" | "delete" | null } | null;
@@ -31,7 +28,8 @@ const FIRST = 8;
  * expenses use it and whether new ones are left out of totals. A row opens
  * the manager on it (name, icon, color, delete with a move); its menu
  * toggles the default with Undo. Add category opens the manager's add form;
- * so does arriving with ?add=category (the palette command).
+ * so does arriving with ?add=category (the palette command), once: the
+ * param is dropped from the URL, so a reload does not add again.
  */
 export function CategoriesSection() {
 	const t = useTranslations("settingsV2.categories");
@@ -39,11 +37,20 @@ export function CategoriesSection() {
 		api.categories.getAll.useQuery();
 	const [all, setAll] = useState(false);
 	const [manager, setManager] = useState<Manager>(null);
+	const router = useRouter();
+	const pathname = usePathname();
 
 	useEffect(() => {
 		const qs = new URLSearchParams(window.location.search);
-		if (qs.get("add") === "category") setManager({ id: null, intent: "add" });
-	}, []);
+		if (qs.get("add") !== "category") return;
+		setManager({ id: null, intent: "add" });
+		qs.delete("add");
+		const rest = qs.toString();
+		router.replace(
+			`${pathname}${rest ? `?${rest}` : ""}${window.location.hash}`,
+			{ scroll: false },
+		);
+	}, [router, pathname]);
 
 	const list = data ?? [];
 	const shown = all ? list : list.slice(0, FIRST);
@@ -136,31 +143,18 @@ function CategoryRow({
 				: t("includedSaved", { name }),
 		});
 
+	const target = { id: c.id, name, excluded: c.excludeByDefault };
+	const handlers = {
+		edit: () => onOpen(null),
+		exclude: () => setExcluded(true),
+		include: () => setExcluded(false),
+		delete: () => onOpen("delete"),
+	};
+
 	return (
 		<Row
 			actions={
-				<MoreMenu label={t("actions", { name })}>
-					<DropdownMenuItem onSelect={() => onOpen(null)}>
-						<Palette aria-hidden="true" />
-						{t("edit")}
-					</DropdownMenuItem>
-					<DropdownMenuItem onSelect={() => setExcluded(!c.excludeByDefault)}>
-						{c.excludeByDefault ? (
-							<Eye aria-hidden="true" />
-						) : (
-							<EyeOff aria-hidden="true" />
-						)}
-						{c.excludeByDefault ? t("include") : t("exclude")}
-					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem
-						onSelect={() => onOpen("delete")}
-						variant="destructive"
-					>
-						<Trash2 aria-hidden="true" />
-						{t("delete")}
-					</DropdownMenuItem>
-				</MoreMenu>
+				<ActionMenu entity="category" handlers={handlers} target={target} />
 			}
 			lead={
 				<CategoryTile

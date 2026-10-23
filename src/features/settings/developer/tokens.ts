@@ -1,10 +1,10 @@
 import {
-	DEVICE_CLIENT_IDS,
 	parseScopeList,
 	SCOPES,
 	type Scope,
 } from "@retrospend/api-contract/common";
 import { authClient } from "~/lib/auth-client";
+import type { RouterOutputs } from "~/trpc/react";
 
 /**
  * The Developer section's one seam to the server (IMPLEMENTATION §2.3).
@@ -74,7 +74,7 @@ export function scopeKey(scope: Scope): string {
 
 export async function listTokens(): Promise<ApiToken[]> {
 	const { data, error } = await authClient.apiKey.list();
-	if (error) throw new Error(error.message || "list failed");
+	if (error) throw new Error(error.message);
 	const rows = (data as { apiKeys?: KeyRow[] } | KeyRow[] | null) ?? [];
 	const list = Array.isArray(rows) ? rows : (rows.apiKeys ?? []);
 	return list
@@ -94,64 +94,24 @@ export async function createToken(
 ): Promise<{ key: string; token: ApiToken }> {
 	const unavailable = input.scopes.filter((s) => !CREATABLE_SCOPES.includes(s));
 	if (unavailable.length > 0)
-		throw new Error(`Scopes not available yet: ${unavailable.join(", ")}`);
+		throw new Error(unavailable.join(" "));
 	const { data, error } = await authClient.apiKey.create({
 		name: input.name,
 		expiresIn: input.expiresInDays * 24 * 60 * 60,
 	});
-	if (error || !data) throw new Error(error?.message || "create failed");
+	if (error || !data) throw new Error(error?.message);
 	return { key: data.key, token: toToken(data as KeyRow) };
 }
 
 export async function revokeToken(id: string): Promise<void> {
 	const { error } = await authClient.apiKey.delete({ keyId: id });
-	if (error) throw new Error(error.message || "revoke failed");
+	if (error) throw new Error(error.message);
 }
 
-// ---- approved devices (RFC 8628 sessions) ------------------------------------
-
-export type ApprovedDevice = {
-	token: string;
-	clientId: string;
-	scopes: Scope[];
-	approvedAt: Date;
-	lastUsedAt: Date;
-};
-
-type SessionRow = {
-	token: string;
-	clientId?: string | null;
-	scopes?: string | null;
-	createdAt: Date | string;
-	updatedAt: Date | string;
-};
-
-/**
- * The user's sessions that a device client signed in through /device:
- * better-auth's own session list, read for the client id it stamps on them
- * (scopeDeviceSession in better-auth/config.ts).
- */
-export function devicesFrom(rows: readonly SessionRow[]): ApprovedDevice[] {
-	return rows
-		.filter((s) => !!s.clientId && DEVICE_CLIENT_IDS.includes(s.clientId))
-		.map((s) => ({
-			token: s.token,
-			clientId: s.clientId as string,
-			scopes: parseScopeList(s.scopes).scopes,
-			approvedAt: new Date(s.createdAt),
-			lastUsedAt: new Date(s.updatedAt),
-		}))
-		.sort((a, b) => b.approvedAt.getTime() - a.approvedAt.getTime());
+/** Whether a key has passed its expiry (the plugin refuses it from then on). */
+export function isExpired(token: ApiToken, now: Date = new Date()): boolean {
+	return token.expiresAt != null && token.expiresAt.getTime() <= now.getTime();
 }
 
-export async function listDevices(): Promise<ApprovedDevice[]> {
-	const { data, error } = await authClient.listSessions();
-	if (error) throw new Error(error.message || "list failed");
-	return devicesFrom((data ?? []) as unknown as SessionRow[]);
-}
-
-/** Signs the device out: its session (and token) stops working at once. */
-export async function disconnectDevice(token: string): Promise<void> {
-	const { error } = await authClient.revokeSession({ token });
-	if (error) throw new Error(error.message || "revoke failed");
-}
+/** An approved device as deviceSession.list returns it (no token, ever). */
+export type ApprovedDevice = RouterOutputs["deviceSession"]["list"][number];

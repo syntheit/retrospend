@@ -14,7 +14,7 @@ import {
 } from "~/components/ui/table";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { api } from "~/trpc/react";
-import { useAutosave } from "../autosave";
+import { useAutosave, useSaveGuard } from "../autosave";
 import {
 	SectionShell,
 	SectionUnavailable,
@@ -41,6 +41,7 @@ type Prefs = Partial<Record<NotificationType, Pref>>;
 export function NotificationsSection() {
 	const t = useTranslations("settingsV2.notifications");
 	const save = useAutosave();
+	const guard = useSaveGuard();
 	const phone = useIsMobile();
 	const query = api.notification.getPreferences.useQuery();
 	const update = api.notification.updatePreferences.useMutation();
@@ -59,18 +60,23 @@ export function NotificationsSection() {
 	}, [query.data]);
 
 	const prefOf = (type: NotificationType) => prefs[type] ?? DEFAULT_PREF;
+	const show = (type: NotificationType, pref: Pref) =>
+		setPrefs((p) => ({ ...p, [type]: pref }));
 	const set = (type: NotificationType, channel: Channel, on: boolean) => {
 		const prev = prefOf(type);
-		void save(
-			{
-				apply: async (pref: Pref) => {
-					setPrefs((p) => ({ ...p, [type]: pref }));
-					await update.mutateAsync({ preferences: [{ type, ...pref }] });
+		void guard(type, () =>
+			save(
+				{
+					apply: async (pref: Pref) => {
+						show(type, pref);
+						await update.mutateAsync({ preferences: [{ type, ...pref }] });
+					},
+					next: flip(prev, channel, on),
+					prev,
+					restore: (pref) => show(type, pref),
 				},
-				next: flip(prev, channel, on),
-				prev,
-			},
-			samePref,
+				samePref,
+			),
 		);
 	};
 

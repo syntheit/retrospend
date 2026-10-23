@@ -64,8 +64,8 @@ export function DataSection() {
 				save(zip(zipData), filename);
 			}
 			toast.saved(t(`done.${kind}`));
-		} catch (err) {
-			toast.failed(err instanceof Error ? err.message : t("failed"));
+		} catch {
+			toast.failed(t("failed"));
 		} finally {
 			setBusy(null);
 		}

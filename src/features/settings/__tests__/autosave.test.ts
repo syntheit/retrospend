@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { type AutosaveReport, saveField } from "../autosave";
+import { type AutosaveReport, makeSaveGuard, saveField } from "../autosave";
 
 const copy = { saved: "Saved", failed: "Couldn't save" };
 
@@ -60,38 +60,42 @@ describe("saveField", () => {
 		expect(apply).not.toHaveBeenCalled();
 	});
 
-	it("reports the server message when the write fails, and no Saved", async () => {
+	it("says it could not save in the page's words, not the server's, and puts the screen back", async () => {
 		const r = reporter();
+		const restore = vi.fn();
 		const ok = await saveField(
+			{
+				apply: async () => {
+					throw new Error("Internal server error");
+				},
+				next: true,
+				prev: false,
+				restore,
+			},
+			r.report,
+			copy,
+		);
+		expect(ok).toBe(false);
+		expect(r.calls.failed).toEqual(["Couldn't save"]);
+		expect(r.calls.saved).toEqual([]);
+		expect(restore).toHaveBeenCalledWith(false);
+	});
+
+	it("lets a field name its own failure", async () => {
+		const r = reporter();
+		await saveField(
 			{
 				apply: async () => {
 					throw new Error("Username is already taken");
 				},
 				next: "sofia",
 				prev: "sofi",
+				failedMessage: () => "That username is taken",
 			},
 			r.report,
 			copy,
 		);
-		expect(ok).toBe(false);
-		expect(r.calls.failed).toEqual(["Username is already taken"]);
-		expect(r.calls.saved).toEqual([]);
-	});
-
-	it("falls back to the page copy for an error without a message", async () => {
-		const r = reporter();
-		await saveField(
-			{
-				apply: async () => {
-					throw new Error("");
-				},
-				next: true,
-				prev: false,
-			},
-			r.report,
-			copy,
-		);
-		expect(r.calls.failed).toEqual(["Couldn't save"]);
+		expect(r.calls.failed).toEqual(["That username is taken"]);
 	});
 
 	it("offers no Undo for a change that cannot be reversed", async () => {
@@ -102,5 +106,37 @@ describe("saveField", () => {
 			copy,
 		);
 		expect(r.calls.saved).toEqual([["Saved", false]]);
+	});
+});
+
+describe("makeSaveGuard", () => {
+	it("drops a second change to a field while the first is saving", async () => {
+		const guard = makeSaveGuard();
+		let finish: () => void = () => {};
+		const write = vi.fn(
+			() =>
+				new Promise<string>((resolve) => {
+					finish = () => resolve("first");
+				}),
+		);
+		const first = guard("homeCurrency", write);
+		const second = await guard("homeCurrency", write);
+		expect(second).toBeUndefined();
+		expect(write).toHaveBeenCalledTimes(1);
+		finish();
+		expect(await first).toBe("first");
+		// Free again once the first write is done, and other fields never wait.
+		await guard("homeCurrency", async () => "again");
+		expect(await guard("language", async () => "other")).toBe("other");
+	});
+
+	it("frees the field after a failed write", async () => {
+		const guard = makeSaveGuard();
+		await expect(
+			guard("theme", async () => {
+				throw new Error("x");
+			}),
+		).rejects.toThrow("x");
+		expect(await guard("theme", async () => 1)).toBe(1);
 	});
 });

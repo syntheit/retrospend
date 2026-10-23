@@ -8,23 +8,29 @@ import { Switch } from "~/components/ui/switch";
 import { setLocaleCookie } from "~/i18n/actions";
 import { type AppLocale, LOCALE_OPTIONS } from "~/i18n/locales";
 import { api } from "~/trpc/react";
-import { useAutosave } from "../autosave";
+import { useAutosave, useSaveGuard } from "../autosave";
 import { SelectField } from "../select-field";
 import { SettingRow, SettingRows } from "../setting-row";
-import type { GeneralPatch, GeneralSettings } from "./use-general-settings";
+import {
+	type GeneralSettings,
+	type GeneralSettingsApi,
+	useSaveSetting,
+} from "./use-general-settings";
 
 type Theme = "light" | "dark" | "auto";
 
 /** Display: theme, language (no reload), hidden Wealth balances, chart taps. */
 export function DisplayRows({
 	settings,
-	update,
+	writer,
 }: {
 	settings: GeneralSettings;
-	update: (patch: GeneralPatch) => Promise<void>;
+	writer: GeneralSettingsApi;
 }) {
 	const t = useTranslations("settingsV2.preferences");
-	const save = useAutosave();
+	const autosave = useAutosave();
+	const guard = useSaveGuard();
+	const save = useSaveSetting(writer);
 	const router = useRouter();
 	const { preference, setTheme } = useThemeContext();
 	const language = (settings.language ?? "en") as AppLocale;
@@ -33,7 +39,7 @@ export function DisplayRows({
 	// The cookie picks the locale next-intl renders; a refresh re-renders the
 	// server parts in it without reloading the page.
 	const setLanguage = async (value: AppLocale) => {
-		await update({ language: value });
+		await writer.update({ language: value });
 		await setLocaleCookie(value);
 		router.refresh();
 	};
@@ -44,11 +50,13 @@ export function DisplayRows({
 				<Segmented<Theme>
 					label={t("theme")}
 					onChange={(v) =>
-						void save({
-							apply: async (theme: Theme) => setTheme(theme),
-							next: v,
-							prev: preference as Theme,
-						})
+						void guard("theme", () =>
+							autosave({
+								apply: async (theme: Theme) => setTheme(theme),
+								next: v,
+								prev: preference as Theme,
+							}),
+						)
 					}
 					options={[
 						{ value: "light", label: t("themeLight") },
@@ -62,7 +70,13 @@ export function DisplayRows({
 				<SelectField
 					id="pf-lang"
 					onChange={(v) =>
-						void save({ apply: setLanguage, next: v, prev: language })
+						void guard("language", () =>
+							autosave({
+								apply: setLanguage,
+								next: v,
+								prev: (writer.current("language") ?? "en") as AppLocale,
+							}),
+						)
 					}
 					options={LOCALE_OPTIONS.map((o) => ({
 						value: o.value,
@@ -80,11 +94,7 @@ export function DisplayRows({
 					checked={settings.defaultPrivacyMode ?? false}
 					id="pf-privacy"
 					onCheckedChange={(on) =>
-						void save({
-							apply: (defaultPrivacyMode) => update({ defaultPrivacyMode }),
-							next: on,
-							prev: !on,
-						})
+						void save("defaultPrivacyMode", on, { fallback: false })
 					}
 				/>
 			</SettingRow>
@@ -92,12 +102,7 @@ export function DisplayRows({
 				<SelectField
 					id="pf-click"
 					onChange={(v) =>
-						void save({
-							apply: (categoryClickBehavior) =>
-								update({ categoryClickBehavior }),
-							next: v,
-							prev: click,
-						})
+						void save("categoryClickBehavior", v, { fallback: "toggle" })
 					}
 					options={[
 						{ value: "navigate", label: t("chartTapOpen") },
@@ -113,19 +118,19 @@ export function DisplayRows({
 /** Defaults: the date a new expense starts on, and who reads statements. */
 export function DefaultRows({
 	settings,
-	update,
+	writer,
 }: {
 	settings: GeneralSettings;
-	update: (patch: GeneralPatch) => Promise<void>;
+	writer: GeneralSettingsApi;
 }) {
 	const t = useTranslations("settingsV2.preferences");
-	const save = useAutosave();
+	const save = useSaveSetting(writer);
 	const utils = api.useUtils();
 	const { data: ai } = api.settings.getAiStatus.useQuery();
 	const date = settings.defaultExpenseDateBehavior ?? "TODAY";
 	const mode = settings.aiMode ?? "LOCAL";
 	const setMode = async (aiMode: "LOCAL" | "EXTERNAL") => {
-		await update({ aiMode });
+		await save("aiMode", aiMode, { fallback: "LOCAL" });
 		await utils.settings.getAiStatus.invalidate();
 	};
 	const meta =
@@ -141,12 +146,7 @@ export function DefaultRows({
 				<Segmented
 					label={t("expenseDate")}
 					onChange={(v) =>
-						void save({
-							apply: (defaultExpenseDateBehavior) =>
-								update({ defaultExpenseDateBehavior }),
-							next: v,
-							prev: date,
-						})
+						void save("defaultExpenseDateBehavior", v, { fallback: "TODAY" })
 					}
 					options={[
 						{ value: "TODAY", label: t("expenseDateToday") },
@@ -158,7 +158,7 @@ export function DefaultRows({
 			<SettingRow label={t("import")} meta={meta}>
 				<Segmented
 					label={t("import")}
-					onChange={(v) => void save({ apply: setMode, next: v, prev: mode })}
+					onChange={(v) => void setMode(v)}
 					options={[
 						{ value: "LOCAL", label: t("importLocal") },
 						{

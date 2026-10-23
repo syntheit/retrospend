@@ -49,20 +49,15 @@ export function useAvatarUpload() {
 				method: "POST",
 				body: formData,
 			});
-			if (!res.ok) {
-				let message = t("photoUploadFailed");
-				try {
-					const json = (await res.json()) as { error?: string };
-					message = json.error ?? message;
-				} catch {
-					if (res.status === 413) message = t("photoTooLarge");
-				}
-				throw new Error(message);
+			// The route answers in English; the toast says it in the user's words.
+			if (res.status === 413) toast.failed(t("photoTooLarge"));
+			else if (!res.ok) toast.failed(t("photoUploadFailed"));
+			else {
+				void utils.profile.getMyAvatar.invalidate();
+				toast.saved(t("photoUpdated"));
 			}
-			void utils.profile.getMyAvatar.invalidate();
-			toast.saved(t("photoUpdated"));
-		} catch (err) {
-			toast.failed(err instanceof Error ? err.message : t("photoUploadFailed"));
+		} catch {
+			toast.failed(t("photoUploadFailed"));
 		} finally {
 			URL.revokeObjectURL(previewUrl);
 			setLocalPreview(null);
@@ -78,14 +73,11 @@ export function useAvatarUpload() {
 		setIsRemoving(true);
 		try {
 			const res = await fetch("/api/upload/avatar", { method: "DELETE" });
-			if (!res.ok) {
-				const json = (await res.json()) as { error?: string };
-				throw new Error(json.error ?? t("photoRemoveFailed"));
-			}
+			if (!res.ok) throw new Error(String(res.status));
 			void utils.profile.getMyAvatar.invalidate();
 			toast.saved(t("photoRemoved"));
-		} catch (err) {
-			toast.failed(err instanceof Error ? err.message : t("photoRemoveFailed"));
+		} catch {
+			toast.failed(t("photoRemoveFailed"));
 		} finally {
 			setIsRemoving(false);
 		}

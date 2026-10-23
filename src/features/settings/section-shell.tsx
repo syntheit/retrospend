@@ -33,7 +33,12 @@ export function SectionShell({
 			id={id}
 		>
 			<div className="mb-2 flex min-h-ctl items-center gap-3">
-				<h2 className="flex-1 text-fg text-section" id={`${id}-title`}>
+				{/* The section nav moves focus here (tabIndex -1: focusable by script, not by Tab). */}
+				<h2
+					className="flex-1 rounded-ctl text-fg text-section outline-none focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2"
+					id={`${id}-title`}
+					tabIndex={-1}
+				>
 					{title}
 				</h2>
 				{action}

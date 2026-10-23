@@ -2,15 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const client = vi.hoisted(() => ({
 	apiKey: { create: vi.fn(), list: vi.fn(), delete: vi.fn() },
-	listSessions: vi.fn(),
-	revokeSession: vi.fn(),
 }));
 vi.mock("~/lib/auth-client", () => ({ authClient: client }));
 
 import {
 	CREATABLE_SCOPES,
 	createToken,
-	devicesFrom,
+	isExpired,
 	listTokens,
 	orderScopes,
 	scopeKey,
@@ -107,39 +105,16 @@ describe("API tokens seam", () => {
 	});
 });
 
-describe("approved devices", () => {
-	it("keeps only device client sessions, newest first", () => {
-		const rows = [
-			{
-				token: "web",
-				clientId: null,
-				createdAt: "2026-10-01",
-				updatedAt: "2026-10-02",
-			},
-			{
-				token: "mob",
-				clientId: "retrospend-mobile",
-				scopes: "read",
-				createdAt: "2026-10-01",
-				updatedAt: "2026-10-02",
-			},
-			{
-				token: "cli",
-				clientId: "retrospend-cli",
-				scopes: "read write:expenses",
-				createdAt: "2026-10-05",
-				updatedAt: "2026-10-06",
-			},
-			{
-				token: "mcp",
-				clientId: "retrospend-mcp",
-				scopes: "read",
-				createdAt: "2026-10-09",
-				updatedAt: "2026-10-09",
-			},
-		];
-		const devices = devicesFrom(rows);
-		expect(devices.map((d) => d.token)).toEqual(["mcp", "cli"]);
-		expect(devices[1]?.scopes).toEqual(["read", "write:expenses"]);
+describe("key expiry", () => {
+	it("is expired from its expiry time on, never without one", () => {
+		const now = new Date("2026-10-22T12:00:00Z");
+		const key = toToken({ id: "k", createdAt: "2026-09-01" });
+		expect(isExpired(key, now)).toBe(false);
+		expect(
+			isExpired({ ...key, expiresAt: new Date("2026-10-22T12:00:00Z") }, now),
+		).toBe(true);
+		expect(
+			isExpired({ ...key, expiresAt: new Date("2026-10-23T00:00:00Z") }, now),
+		).toBe(false);
 	});
 });

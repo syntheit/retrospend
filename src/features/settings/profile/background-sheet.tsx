@@ -12,7 +12,7 @@ import {
 	defaultBackgroundSettings,
 } from "~/lib/background-settings";
 import { api } from "~/trpc/react";
-import { useAutosave } from "../autosave";
+import { useAutosave, useSaveGuard } from "../autosave";
 import { SelectField } from "../select-field";
 
 type SymbolSet = BackgroundSettings["symbolSets"][number];
@@ -46,6 +46,7 @@ export function BackgroundSheet({
 }) {
 	const t = useTranslations("settingsV2.background");
 	const save = useAutosave();
+	const guard = useSaveGuard();
 	const utils = api.useUtils();
 	const { data: saved } = api.profile.getBackgroundSettings.useQuery(
 		undefined,
@@ -70,7 +71,17 @@ export function BackgroundSheet({
 		await utils.profile.getBackgroundSettings.invalidate();
 	};
 	const change = (patch: Partial<BackgroundSettings>) =>
-		void save({ apply, next: { ...settings, ...patch }, prev: settings }, same);
+		void guard("background", () =>
+			save(
+				{
+					apply,
+					next: { ...settings, ...patch },
+					prev: settings,
+					restore: setSettings,
+				},
+				same,
+			),
+		);
 	const toggleSet = (set: SymbolSet) => {
 		const has = settings.symbolSets.includes(set);
 		// At least one set stays on (the server requires one).

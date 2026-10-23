@@ -5,69 +5,53 @@ import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
-import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { useToast } from "~/components/ui/toast";
 import { useSession } from "~/hooks/use-session";
+import { api } from "~/trpc/react";
 import { SectionShell } from "../section-shell";
 import { CreateTokenSheet } from "./create-token-sheet";
 import { DeviceRow, KeyRow, TokenBlock, useTokenWords } from "./token-rows";
-import {
-	type ApiToken,
-	type ApprovedDevice,
-	disconnectDevice,
-	listDevices,
-	listTokens,
-	revokeToken,
-} from "./tokens";
+import { type ApiToken, listTokens, revokeToken } from "./tokens";
 
 const KEYS = ["settings", "apiKeys"] as const;
-const DEVICES = ["settings", "devices"] as const;
-
-type Pending =
-	| { kind: "key"; token: ApiToken }
-	| { kind: "device"; device: ApprovedDevice }
-	| null;
 
 /**
  * Developer (IMPLEMENTATION §2.3): personal API keys (list, create shown
- * once, revoke) and the devices approved at /device. Revoking either one
- * cannot be undone, so both ask first with a named button.
+ * once, revoke) and the devices approved at /device, read by session id
+ * from deviceSession (no token reaches the page). Revoking either one
+ * cannot be undone, so the menu asks first with a named button.
  */
 export function DeveloperSection() {
 	const t = useTranslations("settingsV2.developer");
 	const words = useTokenWords();
 	const toast = useToast();
 	const client = useQueryClient();
+	const utils = api.useUtils();
 	const { data: session } = useSession();
 	const keys = useQuery({ queryKey: KEYS, queryFn: listTokens });
-	const devices = useQuery({ queryKey: DEVICES, queryFn: listDevices });
+	const devices = api.deviceSession.list.useQuery();
+	const disconnect = api.deviceSession.disconnect.useMutation();
 	const [creating, setCreating] = useState(false);
-	const [pending, setPending] = useState<Pending>(null);
-	const [busy, setBusy] = useState(false);
 	const isAdmin =
 		(session?.user as { role?: string } | undefined)?.role === "ADMIN";
-	const device = pending?.kind === "device";
-	const pendingName =
-		pending?.kind === "device"
-			? words.client(pending.device.clientId)
-			: (pending?.token.name ?? "");
 
-	const confirm = async () => {
-		if (!pending) return;
-		setBusy(true);
+	const revoke = async (k: ApiToken) => {
 		try {
-			if (pending.kind === "key") await revokeToken(pending.token.id);
-			else await disconnectDevice(pending.device.token);
-			toast.saved(
-				t(device ? "disconnected" : "revoked", { name: pendingName }),
-			);
-			await client.invalidateQueries({ queryKey: device ? DEVICES : KEYS });
-			setPending(null);
-		} catch (err) {
-			toast.failed(err instanceof Error ? err.message : t("failed"));
-		} finally {
-			setBusy(false);
+			await revokeToken(k.id);
+			toast.saved(t("revoked", { name: k.name }));
+		} catch {
+			toast.failed(t("failed"));
 		}
+		await client.invalidateQueries({ queryKey: KEYS });
+	};
+	const unplug = async (id: string, name: string) => {
+		try {
+			await disconnect.mutateAsync({ id });
+			toast.saved(t("disconnected", { name }));
+		} catch {
+			toast.failed(t("failed"));
+		}
+		await utils.deviceSession.list.invalidate();
 	};
 
 	const add = (
@@ -93,7 +77,7 @@ export function DeveloperSection() {
 				{keys.data?.map((k) => (
 					<KeyRow
 						key={k.id}
-						onRevoke={() => setPending({ kind: "key", token: k })}
+						onRevoke={() => void revoke(k)}
 						token={k}
 					/>
 				))}
@@ -111,8 +95,8 @@ export function DeveloperSection() {
 				{devices.data?.map((d) => (
 					<DeviceRow
 						device={d}
-						key={d.token}
-						onDisconnect={() => setPending({ kind: "device", device: d })}
+						key={d.id}
+						onDisconnect={() => void unplug(d.id, words.client(d.clientId))}
 					/>
 				))}
 			</TokenBlock>
@@ -121,20 +105,6 @@ export function DeveloperSection() {
 				onCreated={() => client.invalidateQueries({ queryKey: KEYS })}
 				onOpenChange={setCreating}
 				open={creating}
-			/>
-			<ConfirmationDialog
-				confirmLabel={device ? t("disconnect") : t("revoke")}
-				description={device ? t("disconnectBody") : t("revokeBody")}
-				isLoading={busy}
-				onConfirm={() => void confirm()}
-				onOpenChange={(o) => {
-					if (!o) setPending(null);
-				}}
-				open={pending != null}
-				title={t(device ? "disconnectTitle" : "revokeTitle", {
-					name: pendingName,
-				})}
-				variant="destructive"
 			/>
 		</SectionShell>
 	);

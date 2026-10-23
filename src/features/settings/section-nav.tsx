@@ -21,9 +21,21 @@ function scrollBehavior(): ScrollBehavior {
 }
 
 /**
+ * Brings a section to the top and moves focus to its heading (without a
+ * second scroll), so keyboard and screen reader users land where they
+ * asked to go.
+ */
+function reveal(id: SectionId, behavior: ScrollBehavior) {
+	document.getElementById(id)?.scrollIntoView({ behavior, block: "start" });
+	document
+		.getElementById(`${id}-title`)
+		?.focus({ preventScroll: true });
+}
+
+/**
  * The scroll spy and the jump: which section is in view inside `scroller`,
  * and a function that brings one to the top. Arriving with `#<section>`
- * scrolls there once.
+ * goes there, and so does a later hash change (a link, Back, the palette).
  */
 export function useSectionSpy(
 	scroller: RefObject<HTMLElement | null>,
@@ -60,22 +72,31 @@ export function useSectionSpy(
 	}, [scroller, ids]);
 
 	const go = useCallback((id: SectionId) => {
-		document
-			.getElementById(id)
-			?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+		reveal(id, scrollBehavior());
 		history.replaceState(null, "", `#${id}`);
 		setCurrent(id);
 	}, []);
 
-	// Arriving from the palette or a link: /settings#security.
+	// Arriving from the palette or a link (/settings#security), or the hash
+	// changing while the page is open.
 	useEffect(() => {
-		const id = sectionFromHash(window.location.hash);
-		if (!id) return;
-		const timer = setTimeout(
-			() => document.getElementById(id)?.scrollIntoView({ block: "start" }),
-			60,
-		);
-		return () => clearTimeout(timer);
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const follow = (delay: number) => {
+			const id = sectionFromHash(window.location.hash);
+			if (!id) return;
+			clearTimeout(timer);
+			timer = setTimeout(() => {
+				reveal(id, delay ? "auto" : scrollBehavior());
+				setCurrent(id);
+			}, delay);
+		};
+		const onHash = () => follow(0);
+		follow(60);
+		window.addEventListener("hashchange", onHash);
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener("hashchange", onHash);
+		};
 	}, []);
 
 	return { current, go };

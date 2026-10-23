@@ -1,5 +1,6 @@
 "use client";
 
+import { TRPCClientError } from "@trpc/client";
 import { useTranslations } from "next-intl";
 import { type KeyboardEvent, useEffect, useState } from "react";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
@@ -10,6 +11,20 @@ import { api } from "~/trpc/react";
 import { useAutosave } from "../autosave";
 
 export type ProfileIdentity = { name: string; username: string; email: string };
+
+/** The toast for a refused username, by the server's error code. */
+function usernameError(
+	err: unknown,
+	t: (key: "usernameTaken" | "usernameTooSoon") => string,
+): string | undefined {
+	const code =
+		err instanceof TRPCClientError
+			? (err.data as { code?: string } | undefined)?.code
+			: undefined;
+	if (code === "CONFLICT") return t("usernameTaken");
+	if (code === "TOO_MANY_REQUESTS") return t("usernameTooSoon");
+	return undefined;
+}
 
 const USERNAME = /^[a-zA-Z0-9]+$/;
 
@@ -45,13 +60,11 @@ export function NameFields({
 	useEffect(() => setName(identity.name), [identity.name]);
 	useEffect(() => setUsername(identity.username), [identity.username]);
 
-	const write = async (patch: Partial<ProfileIdentity>) => {
-		await update.mutateAsync({
-			name: identity.name,
-			username: identity.username,
-			email: identity.email,
-			...patch,
-		});
+	// Only the field being saved goes to the server: a late Undo of the name
+	// must never send the username this render knew (profile.update writes
+	// only what it is given).
+	const write = async (patch: { name: string } | { username: string }) => {
+		await update.mutateAsync(patch);
 		await onSaved();
 	};
 
@@ -89,6 +102,7 @@ export function NameFields({
 			prev: identity.username,
 			message: t("usernameSaved", { username: nextUsername }),
 			undoable: false,
+			failedMessage: (err) => usernameError(err, t),
 		});
 		if (!ok) setUsername(identity.username);
 	};

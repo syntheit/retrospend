@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { SettingGroup } from "../setting-row";
 import {
 	SectionShell,
@@ -14,19 +15,20 @@ import { useGeneralSettings } from "./use-general-settings";
 /** Preferences: Money, Display and Defaults, each row saving on change. */
 export function PreferencesSection() {
 	const t = useTranslations("settingsV2");
-	const { settings, isError, refetch, update } = useGeneralSettings();
+	const { settings, isError, refetch, update, current } = useGeneralSettings();
+	const writer = useMemo(() => ({ update, current }), [update, current]);
 	return (
 		<SectionShell id="preferences" title={t("sections.preferences")}>
 			{settings ? (
 				<>
 					<SettingGroup first title={t("preferences.money")}>
-						<MoneyRows settings={settings} update={update} />
+						<MoneyRows settings={settings} writer={writer} />
 					</SettingGroup>
 					<SettingGroup title={t("preferences.display")}>
-						<DisplayRows settings={settings} update={update} />
+						<DisplayRows settings={settings} writer={writer} />
 					</SettingGroup>
 					<SettingGroup title={t("preferences.defaults")}>
-						<DefaultRows settings={settings} update={update} />
+						<DefaultRows settings={settings} writer={writer} />
 					</SettingGroup>
 				</>
 			) : isError ? (

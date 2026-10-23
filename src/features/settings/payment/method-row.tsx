@@ -1,23 +1,18 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, Pencil, Star, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowSub } from "~/components/rows/row";
 import type {
 	Method,
 	Visibility,
 } from "~/components/settings/payment-methods-card";
-import {
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from "~/components/ui/dropdown-menu";
 import { PaymentMethodIcon } from "~/components/ui/payment-method-icon";
-import { MoreMenu } from "../more-menu";
 
-const VISIBILITIES: Visibility[] = ["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"];
-
-/** One payment method with its one menu (mockup): edit, primary, who sees it, order, remove. */
+/**
+ * One payment method with its one menu (mockup): edit, primary, who sees
+ * it, order, remove. The items come from the paymentMethod action registry.
+ */
 export function MethodRow({
 	method: m,
 	name,
@@ -40,47 +35,31 @@ export function MethodRow({
 	onRemove: () => void;
 }) {
 	const t = useTranslations("settingsV2.payment");
+	const target = {
+		id: m.localId,
+		name,
+		first,
+		last,
+		visibility: m.visibility,
+	};
+	const handlers = {
+		edit: onEdit,
+		makePrimary: onPrimary,
+		showPublic: () => onVisibility("PUBLIC"),
+		showContacts: () => onVisibility("FRIENDS_ONLY"),
+		showSettlement: () => onVisibility("PAYMENT_ONLY"),
+		moveUp: () => onMove(-1),
+		moveDown: () => onMove(1),
+		remove: onRemove,
+	};
 	return (
 		<Row
 			actions={
-				<MoreMenu label={t("actions", { name })}>
-					<DropdownMenuItem onSelect={onEdit}>
-						<Pencil aria-hidden="true" />
-						{t("edit")}
-					</DropdownMenuItem>
-					{!first && (
-						<DropdownMenuItem onSelect={onPrimary}>
-							<Star aria-hidden="true" />
-							{t("makePrimary")}
-						</DropdownMenuItem>
-					)}
-					<DropdownMenuSeparator />
-					<DropdownMenuLabel>{t("visibleTo")}</DropdownMenuLabel>
-					{VISIBILITIES.map((v) => (
-						<DropdownMenuItem key={v} onSelect={() => onVisibility(v)}>
-							{m.visibility === v ? (
-								<Check aria-hidden="true" />
-							) : (
-								<span className="size-4" />
-							)}
-							{t(`visibility.${v}`)}
-						</DropdownMenuItem>
-					))}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem disabled={first} onSelect={() => onMove(-1)}>
-						<ArrowUp aria-hidden="true" />
-						{t("moveUp")}
-					</DropdownMenuItem>
-					<DropdownMenuItem disabled={last} onSelect={() => onMove(1)}>
-						<ArrowDown aria-hidden="true" />
-						{t("moveDown")}
-					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem onSelect={onRemove} variant="destructive">
-						<Trash2 aria-hidden="true" />
-						{t("remove")}
-					</DropdownMenuItem>
-				</MoreMenu>
+				<ActionMenu
+					entity="paymentMethod"
+					handlers={handlers}
+					target={target}
+				/>
 			}
 			lead={
 				<PaymentMethodIcon currency={m.currency} size="md" typeId={m.type} />

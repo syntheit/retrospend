@@ -32,8 +32,10 @@ export function PasswordSheet({
 	const [next, setNext] = useState("");
 	const [confirm, setConfirm] = useState("");
 
+	// Cleared on close (Cancel, Escape, Save), so no password waits in a
+	// closed sheet.
 	useEffect(() => {
-		if (!open) return;
+		if (open) return;
 		setCurrent("");
 		setNext("");
 		setConfirm("");

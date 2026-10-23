@@ -5,7 +5,7 @@ import type { CategoryColor } from "~/lib/constants";
  * once"). Each name takes the token nearest its hue (Tailwind 500 in OKLCH
  * against the token hues in tokens.css), one token per name. The design has
  * no neutral category token, so the three grays take the last free tokens.
- * Belongs in a shared module once a second page needs it.
+ * Every page that draws a stored category reads its tone from here.
  */
 export const CATEGORY_TONE: Record<CategoryColor, number> = {
 	emerald: 1,

@@ -34,11 +34,11 @@ export function EmailSheet({
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 
+	// Cleared on close, so the password never waits in a closed sheet.
 	useEffect(() => {
-		if (open) {
-			setEmail("");
-			setPassword("");
-		}
+		if (open) return;
+		setEmail("");
+		setPassword("");
 	}, [open]);
 
 	const next = email.trim().toLowerCase();
@@ -47,8 +47,6 @@ export function EmailSheet({
 
 	const submit = async () => {
 		const result = await update.mutateAsync({
-			name: current.name,
-			username: current.username,
 			email: next,
 			currentPassword: password,
 		});
