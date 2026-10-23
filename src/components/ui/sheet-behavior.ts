@@ -21,6 +21,25 @@ export function detentOf(snap: number | string | null): SheetDetent {
 	return snap === DETENT_SNAP.medium ? "medium" : "large";
 }
 
+/** Under this, a visual viewport change is a browser toolbar, not a keyboard. */
+const KEYBOARD_MIN_PX = 80;
+
+/**
+ * How much of the screen the on-screen keyboard covers, in px. The keyboard
+ * shrinks the visual viewport but not window.innerHeight (iOS Safari, and
+ * Chrome's default resizes-visual), and iOS may pan the page up as well, so
+ * this is the part of the layout viewport below the visible area. Pinch zoom
+ * also shrinks the visual viewport and counts as no keyboard.
+ */
+export function keyboardInset(
+	innerHeight: number,
+	vv: { height: number; offsetTop: number; scale: number } | null | undefined,
+): number {
+	if (!vv || Math.abs(vv.scale - 1) > 0.01) return 0;
+	const covered = Math.round(innerHeight - vv.offsetTop - vv.height);
+	return covered >= KEYBOARD_MIN_PX ? covered : 0;
+}
+
 type KeyLike = {
 	key: string;
 	metaKey: boolean;
