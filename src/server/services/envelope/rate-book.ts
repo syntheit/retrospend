@@ -77,4 +77,16 @@ export class RateBook {
 
 	readonly lookup: UsdRateLookup = (currency, rateType, date) =>
 		pick(this.points.get(`${currency}\0${rateType}`), date);
+
+	/**
+	 * A rate dated on or before `date`, never a later one: what values a row
+	 * once (entries.ts Valuer). The daily sync moves its row forward in place,
+	 * so "the earliest after" would be today's rate.
+	 */
+	readonly onOrBefore: UsdRateLookup = (currency, rateType, date) => {
+		const points = this.points.get(`${currency}\0${rateType}`);
+		const first = points?.[0];
+		if (!first || first.date > date) return null;
+		return pick(points, date);
+	};
 }

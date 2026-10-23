@@ -41,8 +41,8 @@ export const monthSummaryOutputSchema = z.object({
 	revision: z.number().int().min(1),
 	/** The revision the person acknowledged; null until they do. */
 	acknowledgedRevision: z.number().int().nullable(),
-	/** Rows added or edited inside the late window ("Includes 3 late expenses"). */
-	lateEntries: z.number().int().min(0),
+	/** Rows added inside the late window ("Includes 3 late expenses"); null for none, never 0. */
+	lateEntries: z.number().int().min(1).nullable(),
 	/** The latest change after the window, when there is one. */
 	change: monthChangeSchema.nullable(),
 });

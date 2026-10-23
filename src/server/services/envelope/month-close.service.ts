@@ -155,13 +155,18 @@ export async function ensureMonthsClosed(
 	const open = await openMonths(tx, b);
 	const closes = await loadCloseRows(tx, b.id);
 	const from = reviseFrom(closes, dirty);
+	// The late window is judged on when the change was made, not when it is read.
+	const marked = dirty
+		.filter((d) => from !== null && d.fromMonth <= (closes.at(-1)?.month ?? 0))
+		.map((d) => d.createdAt.getTime());
+	const changedAt = marked.length ? new Date(Math.min(...marked)) : null;
 	const run =
 		open.length > 0 || from !== null
 			? await closeAndRevise(
 					tx,
 					userId,
 					now,
-					{ reviseFrom: from, open },
+					{ reviseFrom: from, open, changedAt },
 					closes,
 				)
 			: { closed: [], late: [], revised: [] };

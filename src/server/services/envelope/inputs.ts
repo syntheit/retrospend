@@ -140,6 +140,8 @@ async function loadOwnRows(
 		recurringTemplateId: true,
 		direction: true,
 		entryKind: true,
+		homeCurrency: true,
+		homeAmount: true,
 	} as const;
 	const moneyIn = await tx.expense.findMany({
 		where: budgetMoneyInWhere(userId, from),
@@ -318,7 +320,7 @@ export async function loadBook(
 		closedRules: closedRulesOf(closes),
 		checkpoint: checkpoint ? toEngineCheckpoint(checkpoint) : null,
 	};
-	return finishLoad(s, {
+	const loaded = finishLoad(s, {
 		input,
 		splits: full.splits,
 		closes,
@@ -326,6 +328,31 @@ export async function loadBook(
 		checkpoint,
 		prints,
 	});
+	await freeze(tx, row.id, s.valuer);
+	await markStale(tx, row.id, closes, prints, dirty);
+	return loaded;
+}
+
+/**
+ * A closed month whose fully loaded rows no longer match its checkpoint, with
+ * no mark to say so (a change no trigger saw, a claimed shadow's share): one
+ * mark from it, so the next read revises it under the book lock.
+ */
+async function markStale(
+	tx: Tx,
+	bookId: string,
+	closes: readonly CloseRow[],
+	prints: ReadonlyMap<MonthKey, string>,
+	dirty: readonly DirtyMark[],
+) {
+	const stale = closes.find(
+		(c) =>
+			c.checkpoint &&
+			prints.has(c.month) &&
+			prints.get(c.month) !== c.checkpoint.print,
+	);
+	if (!stale || dirty.some((d) => d.fromMonth <= stale.month)) return;
+	await tx.budgetDirty.create({ data: { bookId, fromMonth: stale.month } });
 }
 
 interface Setting {
@@ -368,7 +395,13 @@ async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 		today,
 		currentMonth: budgetMonthOf(today, periods),
 		valuation,
-		valuer: new Valuer(valuation, row.timeZone, periods),
+		// Rows are valued once, at a rate dated on or before them, then frozen.
+		valuer: new Valuer(
+			{ ...valuation, usdRate: rates.onOrBefore },
+			row.timeZone,
+			periods,
+			await frozenValues(tx, row.id),
+		),
 		templates,
 		accounts,
 	};
@@ -400,6 +433,28 @@ async function loadFull(tx: Tx, userId: string, s: Setting) {
 			splits: splits.replay.effects,
 		},
 	};
+}
+
+/** Foreign rows' values frozen by earlier loads (budget_row_value). */
+async function frozenValues(tx: Tx, bookId: string) {
+	const rows = await tx.budgetRowValue.findMany({
+		where: { bookId },
+		select: { key: true, minor: true },
+	});
+	return new Map(rows.map((r) => [r.key, Number(r.minor)]));
+}
+
+/** Freezes what this load valued for the first time; a concurrent load writing the same key is a no-op. */
+async function freeze(tx: Tx, bookId: string, valuer: Valuer) {
+	if (valuer.fresh.length === 0) return;
+	await tx.budgetRowValue.createMany({
+		data: valuer.fresh.map((f) => ({
+			bookId,
+			key: f.key,
+			minor: BigInt(f.minor),
+		})),
+		skipDuplicates: true,
+	});
 }
 
 /** Same rate, same row: listed once (a checkpoint and the full share load can both name it). */

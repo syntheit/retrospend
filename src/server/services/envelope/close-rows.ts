@@ -42,6 +42,8 @@ export interface CloseRow {
 export interface DirtyMark {
 	id: bigint;
 	fromMonth: number;
+	/** When the change was made: the late window counts from here (C17). */
+	createdAt: Date;
 }
 
 export async function loadCloseRows(
@@ -72,7 +74,7 @@ export async function loadCloseRows(
 export function loadDirtyMarks(tx: Tx, bookId: string): Promise<DirtyMark[]> {
 	return tx.budgetDirty.findMany({
 		where: { bookId },
-		select: { id: true, fromMonth: true },
+		select: { id: true, fromMonth: true, createdAt: true },
 	});
 }
 

@@ -25,7 +25,7 @@ export function summaryDto(
 		closedAt: row.closedAt,
 		revision: row.revision,
 		acknowledgedRevision: row.ackRevision,
-		lateEntries: row.lateEntries,
+		lateEntries: row.lateEntries > 0 ? row.lateEntries : null,
 		change: row.recalc
 			? {
 					earliestMonth: row.recalc.earliestMonth,

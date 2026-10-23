@@ -18,6 +18,9 @@ interface ValuedRow {
 	amount: Prisma.Decimal;
 	currency: string;
 	amountInUSD: Prisma.Decimal | string | null;
+	/** The home value booked at save (M2): frozen, used when it is in H. */
+	homeCurrency?: string | null;
+	homeAmount?: Prisma.Decimal | null;
 }
 
 export interface ExpenseRow extends ValuedRow {
@@ -55,14 +58,29 @@ export interface GroupedMovement {
 	_sum: { amount: Prisma.Decimal | null };
 }
 
-/** Dates rows in the book zone and values them in H, collecting missing rates. */
+/** A foreign row's frozen value is keyed by what it was valued from: an edit values it again. */
+export const frozenKey = (r: ValuedRow, date: IsoDate) =>
+	`${r.id}|${r.currency}|${r.amount.toString()}|${date}`;
+
+/**
+ * Dates rows in the book zone and values them in H, collecting missing
+ * rates. A row's value never changes after entry (02 §3.4): a row in H
+ * counts as entered, a home value booked at save in H is used as booked, and
+ * any other row is valued once at a rate dated on or before it and then
+ * frozen (`frozen`, persisted from `fresh` by the loader). Rates are updated
+ * in place every day, so valuing again later would use today's rate; a row
+ * with no frozen value and no rate dated on or before it is a missing rate.
+ */
 export class Valuer {
 	readonly missingRates: MissingRate[] = [];
+	/** Values made by this load, to freeze. */
+	readonly fresh: Array<{ key: string; minor: Minor }> = [];
 
 	constructor(
 		private readonly ctx: ValuationContext,
 		private readonly tz: string,
 		private readonly periods: readonly MonthBoundary[],
+		private readonly frozen: ReadonlyMap<string, Minor> = new Map(),
 	) {}
 
 	dated(d: Date): { date: IsoDate; month: MonthKey } {
@@ -76,6 +94,12 @@ export class Valuer {
 	}
 
 	value(r: ValuedRow, date: IsoDate, month: MonthKey): Minor | null {
+		const H = this.ctx.bookCurrency;
+		if (r.currency !== H && r.homeCurrency === H && r.homeAmount != null)
+			return toMinor(r.homeAmount.toString(), H);
+		const key = frozenKey(r, date);
+		const kept = r.currency === H ? undefined : this.frozen.get(key);
+		if (kept !== undefined) return kept;
 		const v = valueRow(
 			{
 				id: r.id,
@@ -87,9 +111,12 @@ export class Valuer {
 			},
 			this.ctx,
 		);
-		if (v.ok) return v.minor;
-		this.missingRates.push(v.missing);
-		return null;
+		if (!v.ok) {
+			this.missingRates.push(v.missing);
+			return null;
+		}
+		if (v.source === "BOOK_RATE") this.fresh.push({ key, minor: v.minor });
+		return v.minor;
 	}
 }
 

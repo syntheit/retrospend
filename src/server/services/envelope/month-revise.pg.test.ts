@@ -28,6 +28,8 @@ import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import {
 	addRow,
+	at,
+	augustBook,
 	invariantAt,
 	seedUser,
 	setupInput,
@@ -37,55 +39,6 @@ import { computeBook, sumLeft } from "./engine";
 import { loadBook } from "./inputs";
 import { getMonth, getMonthSummary } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
-
-const at = (iso: string) => new Date(`${iso}T15:00:00Z`);
-
-async function augustBook() {
-	const s = await seedUser();
-	await forUser(s.user.id).apply(setupEnvelopeBook, {
-		...setupInput(s),
-		timeZone: "UTC",
-	});
-	const book = await adminDb.budgetBook.findFirstOrThrow({
-		where: { createdById: s.user.id },
-		include: { envelopes: true },
-	});
-	await adminDb.budgetBook.update({
-		where: { id: book.id },
-		data: { startMonth: 202608, startDate: new Date("2026-08-01T00:00:00Z") },
-	});
-	await adminDb.bookPeriod.updateMany({
-		where: { bookId: book.id },
-		data: { fromMonth: 202608 },
-	});
-	await adminDb.expense.update({
-		where: { id: book.startingBalanceExpenseId as string },
-		data: { date: new Date("2026-08-01T00:00:00Z") },
-	});
-	const ids = Object.fromEntries(book.envelopes.map((e) => [e.name, e.id]));
-	await adminDb.budgetMovement.create({
-		data: {
-			id: randomUUID(),
-			bookId: book.id,
-			month: 202608,
-			toEnvelopeId: ids.Dining,
-			amount: 300,
-			kind: "ASSIGN",
-			actorUserId: s.user.id,
-		},
-	});
-	const aug = await addRow(
-		s.user.id,
-		{ amount: 100, categoryId: s.dining },
-		at("2026-08-12"),
-	);
-	await addRow(
-		s.user.id,
-		{ amount: 50, categoryId: s.dining },
-		at("2026-09-12"),
-	);
-	return { ...s, bookId: book.id, diningEnv: ids.Dining as string, aug };
-}
 
 const leftOf = (m: Awaited<ReturnType<typeof getMonth>>, id: string) =>
 	m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id)?.left.minor;
@@ -160,6 +113,11 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 	it("C16: after the window, deleting the August dinner revises every closed month once, with today's effect", async () => {
 		await adminDb.expense.delete({ where: { id: b.aug.id } });
 		const now = at("2026-11-20");
+		// The delete happened on Nov 20, after October's window closed.
+		await adminDb.budgetDirty.updateMany({
+			where: { bookId: b.bookId },
+			data: { createdAt: now },
+		});
 		// Two first reads at once revise once (the book lock).
 		await Promise.all([
 			getMonth(b.user.id, undefined, now),
@@ -216,7 +174,7 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 		).resolves.toBe(1);
 	});
 
-	it("a rate for the book currency with none before it marks the whole book", async () => {
+	it("a rate appearing for a date marks from its month; the daily sync moving it forward marks nothing", async () => {
 		const s = await seedUser();
 		await adminDb.user.update({
 			where: { id: s.user.id },
@@ -240,16 +198,17 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 				rate: 600,
 			},
 		});
-		await adminDb.exchangeRate.create({
-			data: {
-				date: at("2026-10-10"),
-				currency: "XAF",
-				type: "official",
-				rate: 601,
-			},
-		});
-		const marks = await adminDb.budgetDirty.findMany({ where: { bookId } });
-		expect(marks.map((m) => m.fromMonth).sort()).toEqual([0, 202610]);
+		const first = await adminDb.budgetDirty.findMany({ where: { bookId } });
+		expect(first.map((m) => m.fromMonth)).toEqual([202609]);
+		await adminDb.budgetDirty.deleteMany({ where: { bookId } });
+		await adminDb.$executeRaw`UPDATE exchange_rate SET rate = 601, date = ${at("2026-10-10")} WHERE currency = 'XAF'`;
+		await expect(
+			adminDb.budgetDirty.count({ where: { bookId } }),
+		).resolves.toBe(0);
+		// Moved back in time, it can value rows that had no rate: marked.
+		await adminDb.$executeRaw`UPDATE exchange_rate SET date = ${at("2026-08-20")} WHERE currency = 'XAF'`;
+		const back = await adminDb.budgetDirty.findMany({ where: { bookId } });
+		expect(back.map((m) => m.fromMonth)).toEqual([202608]);
 	});
 });
 

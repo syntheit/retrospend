@@ -373,6 +373,8 @@ model BudgetBook {
   reconciledAt             DateTime?
   // A switch to Limits funds months from this one on (SPEC §4.4); null = every month.
   planFundFrom             Int?
+  // What the last style switch changed; its undo reads this, never the client.
+  styleUndo                Json?
   createdById              String
   createdAt                DateTime      @default(now())
   updatedAt                DateTime      @updatedAt
@@ -389,8 +391,10 @@ model BudgetBook {
   closes    MonthClose[]
   wealthTransfers WealthTransfer[]
   dirtyMarks      BudgetDirty[]
+  rowValues       BudgetRowValue[]
 
   @@index([createdById])
+  @@index([currency])
   @@map("budget_book")
 }
 
@@ -638,6 +642,21 @@ model BudgetDirty {
 
   @@index([bookId])
   @@map("budget_dirty")
+}
+
+// A foreign row's book value, frozen the first time the budget values it at
+// a rate dated on or before the row: rates are updated in place daily, so a
+// later lookup would use today's rate (02 §3.4: values never change).
+model BudgetRowValue {
+  bookId    String
+  // Row id, currency, amount and date: an edited row is valued again.
+  key       String     @db.VarChar(300)
+  minor     BigInt
+  createdAt DateTime   @default(now())
+  book      BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@id([bookId, key])
+  @@map("budget_row_value")
 }
 
 enum MonthCloseMode {

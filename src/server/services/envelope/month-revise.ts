@@ -39,7 +39,7 @@ import {
 	monthStartInstant,
 } from "./inputs";
 import { closeSummary } from "./month-close";
-import { monthRange, startDayFor } from "./months";
+import { isoDateIn, monthRange, startDayFor } from "./months";
 import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
@@ -52,6 +52,8 @@ export interface ReviseRequest {
 	reviseFrom: MonthKey | null;
 	/** Months to close, oldest first. */
 	open: readonly MonthKey[];
+	/** When the earliest change was made (its mark); null: now. */
+	changedAt?: Date | null;
 }
 
 export interface ReviseResult {
@@ -67,6 +69,8 @@ interface Ctx {
 	loaded: LoadedBook;
 	state: BookState;
 	now: Date;
+	/** Book-zone day the change was made: the late window is judged on it. */
+	changedOn: string;
 }
 
 function summaryOf(c: Ctx, month: MonthKey): MonthCloseSummary {
@@ -86,12 +90,20 @@ function checkpointOf(c: Ctx, month: MonthKey): StoredCheckpoint {
 	});
 }
 
-export function inLateWindow(loaded: LoadedBook, month: MonthKey): boolean {
+/** Whether a change made on `changedOn` (book-zone day) falls in `month`'s late window. */
+export function inLateWindow(
+	loaded: LoadedBook,
+	month: MonthKey,
+	changedOn: string = loaded.today,
+): boolean {
 	const end = monthRange(month, loaded.periods).to;
-	return loaded.today <= addDays(end, LATE_WINDOW_DAYS);
+	return changedOn <= addDays(end, LATE_WINDOW_DAYS);
 }
 
-/** Own rows dated in `month` added or edited after it closed ("Includes 3 late expenses"). */
+/**
+ * Own rows dated in `month` added after it closed ("Includes 3 late
+ * expenses"). Edits are not entries, so a renamed row never counts.
+ */
 async function lateCount(c: Ctx, row: CloseRow): Promise<number> {
 	const zone = c.loaded.row.timeZone;
 	const at = (m: MonthKey) =>
@@ -100,10 +112,7 @@ async function lateCount(c: Ctx, row: CloseRow): Promise<number> {
 		where: {
 			userId: c.loaded.row.createdById,
 			date: { gte: at(row.month), lt: at(addMonths(row.month, 1)) },
-			OR: [
-				{ createdAt: { gt: row.closedAt } },
-				{ updatedAt: { gt: row.closedAt } },
-			],
+			createdAt: { gt: row.closedAt },
 		},
 	});
 }
@@ -150,7 +159,7 @@ async function revise(
 		return { r, next, moved: summaryDiffers(r.summary, next) };
 	});
 	const after = changed.filter(
-		(x) => x.moved && !inLateWindow(c.loaded, x.r.month),
+		(x) => x.moved && !inLateWindow(c.loaded, x.r.month, c.changedOn),
 	);
 	const recalc =
 		after.length > 0
@@ -164,7 +173,7 @@ async function revise(
 	for (const { r, next, moved } of changed) {
 		const checkpoint = checkpointOf(c, r.month);
 		const data: Prisma.MonthCloseUpdateInput = { checkpoint };
-		if (moved && inLateWindow(c.loaded, r.month)) {
+		if (moved && inLateWindow(c.loaded, r.month, c.changedOn)) {
 			data.summary = next;
 			data.lateEntries = await lateCount(c, r);
 			out.late.push(r.month);
@@ -197,7 +206,13 @@ export async function closeAndRevise(
 		needFrom: Math.max(needFrom, 0),
 	});
 	if (!loaded) return { closed: [], late: [], revised: [] };
-	const c: Ctx = { tx, loaded, state: computeBook(loaded.input), now };
+	const c: Ctx = {
+		tx,
+		loaded,
+		state: computeBook(loaded.input),
+		now,
+		changedOn: isoDateIn(req.changedAt ?? now, loaded.row.timeZone),
+	};
 	const changed =
 		req.reviseFrom === null
 			? { late: [], revised: [] }
