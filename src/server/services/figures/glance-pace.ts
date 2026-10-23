@@ -10,9 +10,8 @@
  */
 import {
 	amountIn,
-	isValidRate,
 	type MoneyItem,
-	USD,
+	missingRatesIn,
 } from "@retrospend/domain/money";
 import { toMinor } from "@retrospend/domain/money-minor";
 
@@ -44,10 +43,30 @@ export interface DatedItem {
 	readonly item: MoneyItem;
 }
 
+const inSpan = (rows: readonly DatedItem[], span: PeriodSpan) =>
+	rows.filter(({ day }) => day >= span.from && day <= span.to);
+
+/**
+ * Every currency that keeps `span` from totaling in `home`: the home rate
+ * when a foreign row needs it, and unpriced shares in another currency.
+ */
+export function missingIn(
+	rows: readonly DatedItem[],
+	span: PeriodSpan,
+	home: string,
+	rate: number | null,
+): string[] {
+	return missingRatesIn(
+		inSpan(rows, span).map((r) => r.item),
+		home,
+		rate,
+	);
+}
+
 /**
  * Spending per day of `span` (index 0 = day 1) in `home`, unrounded; rows
- * outside the span are ignored. Null when a row needs the home rate and
- * there is none: a missing rate is never 1 (R14).
+ * outside the span are ignored. Null when missingIn names anything: a
+ * missing rate is never 1 (R14).
  */
 export function dailyHome(
 	rows: readonly DatedItem[],
@@ -55,12 +74,9 @@ export function dailyHome(
 	home: string,
 	rate: number | null,
 ): number[] | null {
-	const rateless = home !== USD && !isValidRate(rate);
+	if (missingIn(rows, span, home, rate).length) return null;
 	const daily = new Array<number>(span.days).fill(0);
-	for (const { day, item } of rows) {
-		if (day < span.from || day > span.to) continue;
-		const own = item.currency === home || item.booked?.currency === home;
-		if (rateless && !own) return null;
+	for (const { day, item } of inSpan(rows, span)) {
 		const i = daysBetween(span.from, day);
 		daily[i] = (daily[i] ?? 0) + amountIn(item, home, rate);
 	}

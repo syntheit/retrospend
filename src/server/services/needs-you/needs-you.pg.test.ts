@@ -249,6 +249,14 @@ describe("needsYou on Postgres", () => {
 		// in Spending, the default envelope, which has nothing either.
 		expect(by["budget.giveJob"]).toMatchObject({
 			amount: { minor: 100_000, currency: "USD" },
+			// All of it is the starting money setup wrote.
+			sources: [
+				{
+					kind: "STARTING_BALANCE",
+					amount: { minor: 100_000, currency: "USD" },
+					part: { minor: 100_000, currency: "USD" },
+				},
+			],
 		});
 		expect(by["budget.overspent"]).toMatchObject({
 			amount: { minor: 4_500, currency: "USD" },
@@ -323,6 +331,43 @@ describe("needsYou on Postgres", () => {
 		expect(budget).toMatchObject([
 			{ type: "budget.missingRate", currencies: ["ISK"], amount: null },
 		]);
+	});
+
+	it("Fix the split offers Edit only where the creator may still edit", async () => {
+		const { user } = await createTestUser();
+		const me = user.id;
+		const project = await adminDb.project.create({
+			data: {
+				name: "Depto",
+				createdById: martin.user.id,
+				primaryCurrency: "USD",
+			},
+		});
+		await adminDb.projectParticipant.create({
+			data: { projectId: project.id, ...ref(me), role: "VIEWER" },
+		});
+		const open = await shared("Open", me, martin.user.id, "10", "REJECTED");
+		const locked = await shared("Locked", me, martin.user.id, "10", "REJECTED");
+		await adminDb.sharedTransaction.update({
+			where: { id: locked.id },
+			data: { isLocked: true },
+		});
+		const viewer = await shared("Viewer", me, martin.user.id, "10", "REJECTED");
+		await adminDb.sharedTransaction.update({
+			where: { id: viewer.id },
+			data: { projectId: project.id },
+		});
+		const list = await needsYou(adminDb, me, opts);
+		const actions = Object.fromEntries(
+			list.items
+				.filter((i) => i.type === "split.rejected")
+				.map((i) => [i.title, i.actions.map((a) => `${a.entity}.${a.id}`)]),
+		);
+		expect(actions).toEqual({
+			Open: ["expense.edit"],
+			Locked: ["expense.correct", "expense.open"],
+			Viewer: ["expense.open"],
+		});
 	});
 
 	it("a verified user with nothing waiting reads an empty list", async () => {

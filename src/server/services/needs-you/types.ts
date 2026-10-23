@@ -107,6 +107,20 @@ export interface NeedsYouItem {
 	readonly askAmount: boolean;
 	/** budget.missingRate: the currencies without a rate, named (R14). */
 	readonly currencies: readonly string[];
+	/** budget.giveJob: the money that arrived and has no job yet, newest first (RC-2). */
+	readonly sources: readonly NeedsYouSource[];
+}
+
+/** One money-in row behind Give it a job: its own title and day, its value in the book. */
+export interface NeedsYouSource {
+	readonly entryId: string;
+	readonly kind: "INCOME" | "STARTING_BALANCE";
+	readonly title: string;
+	readonly date: IsoDate;
+	/** The row's value in the book currency. */
+	readonly amount: Money;
+	/** How much of it is still without a job (the oldest source covers the rest). */
+	readonly part: Money;
 }
 
 export interface NeedsYouFace {

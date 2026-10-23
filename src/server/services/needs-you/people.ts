@@ -10,10 +10,14 @@
 import { dayKey } from "@retrospend/domain/time-zone";
 import { decimalMoney } from "~/server/services/expense-list/money";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import {
+	buildCallerRoleMap,
+	deriveCanModify,
+} from "~/server/services/shared-expenses/project-permissions";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma } from "~prisma";
 import { item } from "./catalog";
-import type { NeedsYouItem, PersonKey } from "./types";
+import type { NeedsYouAction, NeedsYouItem, PersonKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 
@@ -32,6 +36,8 @@ const SHARED_TX = {
 	paidById: true,
 	createdByType: true,
 	createdById: true,
+	isLocked: true,
+	projectId: true,
 } as const;
 
 function readRows(tx: Tx, me: ParticipantRef) {
@@ -117,10 +123,14 @@ export async function peopleItems(
 		},
 		day: (d) => dayKey(d, timeZone),
 	};
+	const projectIds = [
+		...new Set(rows[2].flatMap((r) => r.transaction.projectId ?? [])),
+	];
+	const roles = await buildCallerRoleMap(tx, [me], projectIds);
 	const items = [
 		...confirmItems(rows[0], who),
 		...reviewItems(rows[1], who),
-		...rejectedItems(rows[2], who),
+		...rejectedItems(rows[2], who, roles),
 	];
 	return { items, faces };
 }
@@ -173,8 +183,36 @@ function reviewItems(pending: Rows[1], who: Who): NeedsYouItem[] {
 
 type RejectedRow = Rows[2][number];
 
+/**
+ * What the creator can do about a rejected split, by the same rule the ⋯
+ * menu and the write path use (deriveCanModify): Edit while they may, Correct
+ * once a payment locked it, otherwise only Open (a VIEWER in its project).
+ */
+function fixActions(
+	t: RejectedRow["transaction"],
+	roles: Map<string, string>,
+): NeedsYouAction[] {
+	const canModify = deriveCanModify({
+		isLocked: t.isLocked,
+		projectId: t.projectId,
+		isCreator: true,
+		roleMap: roles,
+	});
+	if (canModify) return [{ entity: "expense", id: "edit" }];
+	if (t.isLocked)
+		return [
+			{ entity: "expense", id: "correct" },
+			{ entity: "expense", id: "open" },
+		];
+	return [{ entity: "expense", id: "open" }];
+}
+
 /** One item per rejected expense, with everyone who rejected it and their shares. */
-function rejectedItems(rows: Rows[2], who: Who): NeedsYouItem[] {
+function rejectedItems(
+	rows: Rows[2],
+	who: Who,
+	roles: Map<string, string>,
+): NeedsYouItem[] {
 	const byTx = new Map<string, RejectedRow[]>();
 	for (const r of rows) {
 		const rejecter = refOf(r.participantType, r.participantId);
@@ -198,6 +236,7 @@ function rejectedItems(rows: Rows[2], who: Who): NeedsYouItem[] {
 			},
 			date: who.day(t.date),
 			title: t.description,
+			actions: fixActions(t, roles),
 		});
 	});
 }

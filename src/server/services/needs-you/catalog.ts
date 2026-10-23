@@ -188,11 +188,14 @@ export function countByGroup(
 	return counts;
 }
 
-type ItemFacts = Partial<
-	Omit<NeedsYouItem, "type" | "group" | "actions" | "id">
-> & { readonly key?: string };
+type ItemFacts = Partial<Omit<NeedsYouItem, "type" | "group" | "id">> & {
+	readonly key?: string;
+};
 
-/** Builds an item with its catalog group and actions; `key` makes the id unique per entity. */
+/**
+ * Builds an item with its catalog group and actions; `key` makes the id
+ * unique per entity, and `actions` narrows them for this one item.
+ */
 export function item(type: NeedsYouType, facts: ItemFacts): NeedsYouItem {
 	const spec = CATALOG[type];
 	const { key, ...rest } = facts;
@@ -211,7 +214,8 @@ export function item(type: NeedsYouType, facts: ItemFacts): NeedsYouItem {
 		direction: null,
 		askAmount: false,
 		currencies: [],
-		...rest,
+		sources: [],
 		actions: spec.actions,
+		...rest,
 	};
 }

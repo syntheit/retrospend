@@ -29,6 +29,8 @@ import {
 	setupInput,
 } from "~/server/services/envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
+import { listActivity } from "~/server/services/expense-list";
+import { listV2Input } from "~/server/services/expense-list/types";
 import { forUser } from "~/server/services/preview";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { adminDb, createTestUser } from "~/test/pg-harness";
@@ -130,7 +132,7 @@ beforeAll(async () => {
 		create: { date: rateDay, currency: "MXN", type: "official", rate: "18.5" },
 		update: {},
 	});
-	tz = await userTimeZone(null);
+	tz = await userTimeZone(adminDb, null);
 	const now = new Date();
 	const today = dayKey(now, tz);
 	const label = getCurrentFiscalMonth(now, 1, tz);
@@ -207,7 +209,7 @@ describe("figure glance.spent", () => {
 	});
 
 	it("a share in a currency with no rate at all: unavailable and named, not a crash", async () => {
-		const { user } = await createTestUser();
+		const { user, db: userDb } = await createTestUser();
 		await adminDb.user.update({
 			where: { id: user.id },
 			data: { homeCurrency: "MXN" },
@@ -224,8 +226,33 @@ describe("figure glance.spent", () => {
 		});
 		const g = await glance(adminDb, user.id, { budget: false });
 		expect(g.spent.value).toBeNull();
-		expect(g.spentLast.value).toBeNull();
+		// Last period has no ISK row, so it still totals.
+		expect(g.spentLast.value).toEqual(mxn(0));
+		// She owes Martín ISK 900: owed and net worth are out too, named.
+		expect(g.youOwe.value).toBeNull();
+		expect(g.netWorth.value).toBeNull();
 		expect(g.missingRates).toEqual(["ISK"]);
+
+		// The per-currency figure needs no rate; every reader degrades, none throws.
+		const r = await readFigures(user.id, ["spent", "glance.spent", "netWorth"]);
+		expect(r.get("spent")).toEqual([{ minor: 900, currency: "ISK" }]);
+		expect(r.get("glance.spent")).toBeNull();
+		expect(r.get("netWorth")).toBeNull();
+		const list = await listActivity(
+			userDb,
+			user.id,
+			listV2Input.parse({}),
+			tz,
+		);
+		expect(list.total).toBeNull();
+		expect(list.missingRates).toEqual(["ISK"]);
+	});
+});
+
+describe("figure glance.moneyIn", () => {
+	it("income this period: MXN 500,000; refunds and last period's rows are not money in", async () => {
+		const r = await readFigures(sofia, ["glance.moneyIn"]);
+		expect(r.get("glance.moneyIn")).toEqual([mxn(50_000_000)]);
 	});
 });
 
@@ -270,8 +297,10 @@ describe("glance()", () => {
 		expect(g.youOwe.value).toEqual(mxn(150_000));
 		expect(g.netWorth.value).toEqual(mxn(50_000));
 		expect(g.missingRates).toEqual([]);
-		// No book: the budget part is absent, not zero.
+		// No book: the budget part is absent, not zero; Just track's row is
+		// money in beside spent (SPEC §6.11).
 		expect(g.budget).toBeNull();
+		expect(g.moneyIn).toEqual({ id: "glance.moneyIn", value: mxn(50_000_000) });
 	});
 
 	it("the pace line: day by day this period to today, the last in full", async () => {
@@ -315,6 +344,8 @@ describe("glance()", () => {
 		const r = await readFigures(s.user.id, ["budget.leftToSpend"]);
 		if (g.budget?.state !== "ready") throw new Error("budget not ready");
 		expect([g.budget.leftToSpend.left]).toEqual(r.get("budget.leftToSpend"));
+		// With a book, the budget row stands in for money in.
+		expect(g.moneyIn).toBeNull();
 		const off = await glance(adminDb, s.user.id, { budget: false });
 		expect(off.budget).toBeNull();
 	});

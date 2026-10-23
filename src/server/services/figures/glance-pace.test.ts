@@ -4,6 +4,7 @@ import {
 	dailyHome,
 	daysBetween,
 	fasterThanLast,
+	missingIn,
 	spanOf,
 } from "./glance-pace";
 
@@ -56,6 +57,30 @@ describe("glance pace", () => {
 			1355,
 		);
 		expect(daily?.[1]).toBe(12_000);
+	});
+
+	it("names every currency that keeps a period out: the home rate and unpriced shares", () => {
+		const rows = [
+			{ day: "2026-10-02", item: usd(10) },
+			{
+				day: "2026-10-03",
+				item: { currency: "ISK", amount: 900, amountInUSD: Number.NaN },
+			},
+			{
+				day: "2026-10-04",
+				item: { currency: "CLF", amount: 1, amountInUSD: Number.NaN },
+			},
+			{
+				day: "2026-09-04",
+				item: { currency: "PYG", amount: 1, amountInUSD: Number.NaN },
+			},
+		];
+		expect(missingIn(rows, oct, "ARS", null)).toEqual(["ARS", "CLF", "ISK"]);
+		expect(missingIn(rows, oct, "ARS", 1355)).toEqual(["CLF", "ISK"]);
+		expect(dailyHome(rows, oct, "ARS", 1355)).toBeNull();
+		// An unpriced share in the home currency itself still counts as entered.
+		expect(missingIn(rows.slice(1, 2), oct, "ISK", null)).toEqual([]);
+		expect(dailyHome(rows.slice(1, 2), oct, "ISK", null)?.[2]).toBe(900);
 	});
 
 	it("a foreign row with no home rate makes the whole period unavailable, never 1", () => {

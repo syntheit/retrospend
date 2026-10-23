@@ -9,7 +9,7 @@
  */
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { item } from "./catalog";
-import type { IsoDate, NeedsYouItem } from "./types";
+import type { IsoDate, NeedsYouItem, NeedsYouSource } from "./types";
 
 export interface BudgetFacts {
 	readonly dto: GetMonthOutput;
@@ -17,6 +17,50 @@ export interface BudgetFacts {
 	readonly paused: boolean;
 	/** Setup left the starting money unanswered (SPEC §5.14 Starting money). */
 	readonly startingMoneyUnconfirmed: boolean;
+	/** Money in the engine counted (valued in the book), with each row's title and day. */
+	readonly moneyIn: readonly MoneyInFact[];
+}
+
+export interface MoneyInFact {
+	readonly id: string;
+	readonly source: "INCOME" | "STARTING_BALANCE" | "ADJUSTMENT";
+	readonly title: string;
+	readonly date: IsoDate;
+	/** Book currency minor units, signed as the engine counts it. */
+	readonly minor: number;
+}
+
+/**
+ * Where today's unplanned money came from (kit `unplannedSources`, RC-2):
+ * the newest money in first, each taking what is left of the pool, until
+ * the pool is covered. Adjustments are corrections, not money that arrived.
+ */
+export function unplannedSources(
+	moneyIn: readonly MoneyInFact[],
+	pool: number,
+	currency: string,
+): NeedsYouSource[] {
+	const out: NeedsYouSource[] = [];
+	let left = pool;
+	const newest = moneyIn
+		.filter((m) => m.minor > 0 && m.source !== "ADJUSTMENT")
+		.sort((a, b) =>
+			a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? 1 : -1,
+		);
+	for (const m of newest) {
+		if (left <= 0) break;
+		const part = Math.min(m.minor, left);
+		left -= part;
+		out.push({
+			entryId: m.id,
+			kind: m.source as NeedsYouSource["kind"],
+			title: m.title,
+			date: m.date,
+			amount: { minor: m.minor, currency },
+			part: { minor: part, currency },
+		});
+	}
+	return out;
 }
 
 /** A bill shows this many days before it is due (SPEC §5.14). */
@@ -44,10 +88,25 @@ function missingRateItem(dto: GetMonthOutput): NeedsYouItem[] {
 	];
 }
 
-function poolItems(dto: GetMonthOutput): NeedsYouItem[] {
+function poolItems(
+	dto: GetMonthOutput,
+	moneyIn: readonly MoneyInFact[],
+): NeedsYouItem[] {
 	const pool = dto.toAssign.amount;
 	const entity = { kind: "book" as const, id: dto.book.id };
-	if (pool.minor > 0) return [item("budget.giveJob", { entity, amount: pool })];
+	if (pool.minor > 0) {
+		const sources = unplannedSources(moneyIn, pool.minor, pool.currency);
+		const newest = sources[0];
+		return [
+			item("budget.giveJob", {
+				entity,
+				amount: pool,
+				sources,
+				date: newest?.date ?? null,
+				title: newest?.title ?? null,
+			}),
+		];
+	}
 	if (pool.minor < 0)
 		return [
 			item("budget.overAssigned", {
@@ -120,7 +179,7 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	if (dto.incomplete || dto.missingRates.length > 0)
 		return [...missingRateItem(dto), ...starting];
 	return [
-		...poolItems(dto),
+		...poolItems(dto, facts.moneyIn),
 		...overspentItem(dto),
 		...billDueItem(dto),
 		...starting,

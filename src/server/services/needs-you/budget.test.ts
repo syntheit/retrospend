@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EnvelopeRowDto, GetMonthOutput } from "~/lib/schemas/envelope";
-import { addDays, budgetItems } from "./budget";
+import { addDays, type BudgetFacts, budgetItems } from "./budget";
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 
@@ -159,11 +159,16 @@ function month(o: {
 
 const facts = (
 	dto: GetMonthOutput,
-	o: Partial<{ paused: boolean; starting: boolean }> = {},
-) => ({
+	o: Partial<{
+		paused: boolean;
+		starting: boolean;
+		moneyIn: BudgetFacts["moneyIn"];
+	}> = {},
+): BudgetFacts => ({
 	dto,
 	paused: o.paused ?? false,
 	startingMoneyUnconfirmed: o.starting ?? false,
+	moneyIn: o.moneyIn ?? [],
 });
 
 describe("budget Needs you items (SPEC §5.14)", () => {
@@ -182,6 +187,58 @@ describe("budget Needs you items (SPEC §5.14)", () => {
 				{ entity: "budget", id: "assign" },
 			],
 		});
+	});
+
+	it("Give it a job names where the money came from, newest first, until it is covered (RC-2)", () => {
+		// ARS 850,000 not planned: the salary (ARS 800,000, Oct 20) and ARS
+		// 50,000 of the freelance job (ARS 120,000, Oct 12). Starting money
+		// from Oct 1 is already planned, so it is not listed.
+		const [only] = budgetItems(
+			facts(month({ toAssign: 85_000_000 }), {
+				moneyIn: [
+					{
+						id: "start",
+						source: "STARTING_BALANCE",
+						title: "Starting money",
+						date: "2026-10-01",
+						minor: 30_000_000,
+					},
+					{
+						id: "salary",
+						source: "INCOME",
+						title: "Acme salary",
+						date: "2026-10-20",
+						minor: 80_000_000,
+					},
+					{
+						id: "gig",
+						source: "INCOME",
+						title: "Freelance",
+						date: "2026-10-12",
+						minor: 12_000_000,
+					},
+				],
+			}),
+		);
+		expect(only?.sources).toEqual([
+			{
+				entryId: "salary",
+				kind: "INCOME",
+				title: "Acme salary",
+				date: "2026-10-20",
+				amount: ars(80_000_000),
+				part: ars(80_000_000),
+			},
+			{
+				entryId: "gig",
+				kind: "INCOME",
+				title: "Freelance",
+				date: "2026-10-12",
+				amount: ars(12_000_000),
+				part: ars(5_000_000),
+			},
+		]);
+		expect(only).toMatchObject({ date: "2026-10-20", title: "Acme salary" });
 	});
 
 	it("more planned than there is: Take it back, the amount as a positive number", () => {

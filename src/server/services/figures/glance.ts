@@ -8,11 +8,11 @@
  * glance.* (spend-pace.ts), owed.*, netWorth and budget.* are read, never
  * recomputed here.
  */
-import { normalizeTimeZone } from "@retrospend/domain/time-zone";
 import type { LeftToSpendDto, VerdictDto } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import {
 	type FigureDb,
+	FigurePass,
 	figures,
 	readFiguresIn,
 } from "~/server/figures/registry";
@@ -21,6 +21,7 @@ import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
 import { fasterThanLast, type IsoDate, type PeriodSpan } from "./glance-pace";
 import {
+	GLANCE_MONEY_IN,
 	GLANCE_SPENT,
 	GLANCE_SPENT_LAST,
 	GLANCE_SPENT_LAST_TO_DATE,
@@ -58,6 +59,11 @@ export interface GlanceDTO {
 	readonly netWorth: GlanceFigure;
 	/** Null without a book, with the book paused (Just track) or the budget flag off. */
 	readonly budget: GlanceBudget | null;
+	/**
+	 * Just track's budget row (SPEC §6.11): money in this period beside
+	 * `spent`. Only without a budget part, and only when income exists.
+	 */
+	readonly moneyIn: GlanceFigure | null;
 	/** Currencies whose missing rate keeps a glance number out, named (R14). */
 	readonly missingRates: readonly string[];
 }
@@ -99,13 +105,14 @@ export async function glanceIn(
 	options: GlanceOptions,
 ): Promise<GlanceDTO> {
 	const now = options.now ?? new Date();
-	const timeZone =
-		normalizeTimeZone(options.timeZone) ?? (await userTimeZone(userId));
+	const timeZone = await userTimeZone(db, userId, options.timeZone);
 	const pace = await loadSpendPace(db, userId, now, timeZone);
+	const pass = new FigurePass();
 	const readings = await readFiguresIn(
 		db,
 		OTHER_FIGURES.map((id) => figures.get(id)),
 		{ userId },
+		pass,
 	);
 	const reading = (id: string): GlanceFigure => ({
 		id,
@@ -113,7 +120,7 @@ export async function glanceIn(
 	});
 	const budget = options.budget ? await budgetPart(db, userId, now) : null;
 	const then = lastToDate(pace);
-	const missing = new Set(pace.missingRates);
+	const missing = new Set([...pace.missingRates, ...pass.missingRates()]);
 	if (budget?.state === "incomplete")
 		for (const c of budget.missingRates) missing.add(c);
 	const money = (minor: number | null) =>
@@ -138,6 +145,10 @@ export async function glanceIn(
 		youOwe: reading("owed.youOwe"),
 		netWorth: reading("netWorth"),
 		budget,
+		moneyIn:
+			budget === null && pace.moneyIn !== 0
+				? { id: GLANCE_MONEY_IN, value: money(pace.moneyIn) }
+				: null,
 		missingRates: [...missing].sort(),
 	};
 }
