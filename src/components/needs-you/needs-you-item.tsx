@@ -163,7 +163,7 @@ export function NeedsYouItem({
 			key: "secondary",
 			node: (
 				<Button
-					className="text-fg-3 text-meta can-hover:hover:bg-transparent h-auto px-0 underline underline-offset-2"
+					className="text-fg-3 text-meta can-hover:hover:bg-transparent inline h-auto px-0 whitespace-nowrap underline underline-offset-2"
 					kind="ghost"
 					onClick={() => onSecondary(item)}
 				>
