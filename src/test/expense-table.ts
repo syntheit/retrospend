@@ -22,12 +22,22 @@ export interface TestExpenseRow {
 	entryKind?: "STANDARD" | "STARTING_BALANCE" | "ADJUSTMENT" | "NOT_SPENDING";
 	inType?: "INCOME" | "REFUND" | null;
 	amortizeMode?: "INSTALLMENTS" | "REPORTS_ONLY";
+	/** The booked home leg (M2); both or neither. */
+	homeCurrency?: string | null;
+	homeAmount?: number | null;
 }
 
-type Row = Required<Omit<TestExpenseRow, "title" | "id" | "inType">> & {
+type Row = Required<
+	Omit<
+		TestExpenseRow,
+		"title" | "id" | "inType" | "homeCurrency" | "homeAmount"
+	>
+> & {
 	id: string;
 	title: string | null;
 	inType: "INCOME" | "REFUND" | null;
+	homeCurrency: string | null;
+	homeAmount: number | null;
 };
 
 function normalize(rows: TestExpenseRow[]): Row[] {
@@ -48,6 +58,8 @@ function normalize(rows: TestExpenseRow[]): Row[] {
 		amount: r.amount,
 		currency: r.currency,
 		amountInUSD: r.amountInUSD,
+		homeCurrency: r.homeCurrency ?? null,
+		homeAmount: r.homeAmount ?? null,
 	}));
 }
 
@@ -118,6 +130,10 @@ export function useExpenseTable(
 				out._sum = {
 					amount: list.reduce((s, r) => s + r.amount, 0),
 					amountInUSD: list.reduce((s, r) => s + r.amountInUSD, 0),
+					// SUM over nulls is null, as in SQL.
+					homeAmount: list.some((r) => r.homeAmount !== null)
+						? list.reduce((s, r) => s + (r.homeAmount ?? 0), 0)
+						: null,
 				};
 				out._count = { _all: list.length };
 				return out;

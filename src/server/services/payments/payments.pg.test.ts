@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
+import { dayKey } from "~/lib/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { figures, readFiguresIn } from "~/server/figures/registry";
 import { forUser, userTransactionRunner } from "~/server/services/preview";
@@ -26,9 +27,11 @@ import { personKey } from "./view";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 
-const today = new Date(
-	`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`,
-);
+// The day payment.record dates a payment with no paidOn: today in the server's
+// zone, not the UTC day. Rates seeded on the UTC day landed a day after the
+// payment whenever the two days differed, so an older ARS rate seeded by
+// another file won the lookup.
+const today = new Date(`${dayKey(new Date())}T00:00:00.000Z`);
 const ref = (u: TestUser): ParticipantRef => ({
 	participantType: "user",
 	participantId: u.user.id,

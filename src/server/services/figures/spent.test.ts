@@ -84,6 +84,7 @@ describe("figure spent", () => {
 				currency: "ARS",
 				amount: 12_000,
 				amountInUSD: 12,
+				booked: null,
 				categoryId: "groceries",
 				date: null,
 				count: 1,
@@ -92,11 +93,50 @@ describe("figure spent", () => {
 				currency: "ARS",
 				amount: -2_000,
 				amountInUSD: -2,
+				booked: null,
 				categoryId: "groceries",
 				date: null,
 				count: 0,
 			},
 		]);
+	});
+
+	it("counts a booked row at its booked value, never today's rate (M2)", async () => {
+		// USD 20 booked at ARS 1,200 (24,000) and a refund of USD 5 booked at
+		// 1,250 (6,250), next to USD 10 with no booked value: at today's
+		// 1,300 that one is 13,000. 24,000 - 6,250 + 13,000 = 30,750.
+		useExpenseTable(db, [
+			{
+				date: day(5),
+				amount: 20,
+				currency: "USD",
+				amountInUSD: 20,
+				homeCurrency: "ARS",
+				homeAmount: 24_000,
+			},
+			{
+				date: day(6),
+				amount: 5,
+				currency: "USD",
+				amountInUSD: 5,
+				homeCurrency: "ARS",
+				homeAmount: 6_250,
+				direction: "IN",
+				inType: "REFUND",
+			},
+			{ date: day(7), amount: 10, currency: "USD", amountInUSD: 10 },
+		]);
+		await expect(
+			spentIn(db as never, { userId: USER, date: MARCH }, "ARS", 1300),
+		).resolves.toBe(30_750);
+		// In USD every row counts its USD value: 20 - 5 + 10.
+		await expect(
+			spentIn(db as never, { userId: USER, date: MARCH }, "USD", 1),
+		).resolves.toBe(25);
+		// Per currency it never converts: USD 25.00.
+		await expect(
+			spentByCurrency(db as never, { userId: USER, date: MARCH }),
+		).resolves.toEqual([{ minor: 2500, currency: "USD" }]);
 	});
 
 	it("adds your shares and leaves hidden projects to the share lookup", async () => {

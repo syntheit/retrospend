@@ -1,7 +1,9 @@
+import type { Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import { personalActivityItem } from "~/server/services/expense-dto";
 import {
 	getOverviewSettings,
 	getOverviewStats,
@@ -228,6 +230,7 @@ export const dashboardRouter = createTRPCRouter({
 				amount: number;
 				currency: string;
 				amountInUSD: number | null;
+				home?: Money | null;
 				date: Date;
 				category: {
 					id: string;
@@ -261,23 +264,7 @@ export const dashboardRouter = createTRPCRouter({
 
 			// Personal expenses
 			for (const e of recentPersonal) {
-				items.push({
-					type: "personal",
-					id: e.id,
-					title: e.title ?? "Untitled expense",
-					amount: Number(e.amount),
-					currency: e.currency,
-					amountInUSD: e.amountInUSD ? Number(e.amountInUSD) : null,
-					date: e.date,
-					category: e.category
-						? {
-								id: e.category.id,
-								name: e.category.name,
-								color: e.category.color,
-								icon: e.category.icon,
-							}
-						: null,
-				});
+				items.push(personalActivityItem(e, homeCurrency));
 			}
 
 			// Shared expenses

@@ -11,9 +11,9 @@ const FLAG_COLUMNS = {
 	apiV1: "apiV1Mode",
 } as const satisfies Record<FeatureFlag, string>;
 
-// Every column is optional because envelopeBudgetMode only exists once the
-// envelope books migration lands. A missing column reads as OFF, so the
-// helper picks the flag up without a code change when it does.
+// All three columns exist (M13 and M6's envelopeBudgetMode). They stay
+// optional here so settings cached or mocked without a column read as OFF:
+// a flag never turns on by accident.
 type FlagColumns = Partial<
 	Record<(typeof FLAG_COLUMNS)[FeatureFlag], FeatureFlagMode>
 >;
