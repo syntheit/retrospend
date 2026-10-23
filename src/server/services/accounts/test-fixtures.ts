@@ -4,13 +4,20 @@
  * 1,449 MEP per USD. Accounts are created through the real service and
  * dated ten days ago, so moves today land after their first balance.
  */
-import { normalizeDate } from "~/lib/date";
+import { dayKey } from "~/lib/time-zone";
 import { readFigures } from "~/server/figures/read";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { AssetType } from "~prisma";
 import { type AccountFields, createAccount } from "./manage";
 
-export const TODAY = normalizeDate(new Date());
+/**
+ * Today as the services date a move made without a zone: the process's own
+ * calendar day (accounts/dates.ts), not the UTC one, so the tests pass at
+ * any hour in any TZ.
+ */
+export const TODAY = new Date(`${dayKey(new Date())}T00:00:00.000Z`);
+/** A day as the YYYY-MM-DD a money move takes. */
+export const isoDay = (date: Date) => date.toISOString().slice(0, 10);
 export const daysAgo = (n: number) =>
 	new Date(TODAY.getTime() - n * 86_400_000);
 export const ars = (major: number) => ({

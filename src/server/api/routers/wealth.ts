@@ -89,7 +89,7 @@ export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
 		.input(schema.createAccountSchema)
 		.mutation(({ ctx, input }) =>
-			createAccount(ctx.db, ctx.session.user.id, input),
+			createAccount(ctx.db, ctx.session.user.id, input, ctx.timeZone),
 		),
 
 	/** The old Update balance dialog; the same mutation as accounts.updateBalance. */
@@ -105,6 +105,7 @@ export const wealthRouter = createTRPCRouter({
 						? { rateType: input.exchangeRateType }
 						: {}),
 					exchangeRate: input.exchangeRate ?? null,
+					timeZone: ctx.timeZone,
 				},
 			);
 			return value;
@@ -113,7 +114,7 @@ export const wealthRouter = createTRPCRouter({
 	updateAsset: protectedProcedure
 		.input(schema.editAccountSchema)
 		.mutation(({ ctx, input: { id, ...fields } }) =>
-			editAccount(ctx.db, ctx.session.user.id, id, fields),
+			editAccount(ctx.db, ctx.session.user.id, id, fields, ctx.timeZone),
 		),
 
 	getDashboard: protectedProcedure
@@ -160,7 +161,7 @@ export const wealthRouter = createTRPCRouter({
 	importAssets: protectedProcedure
 		.input(schema.importAccountsSchema)
 		.mutation(({ ctx, input }) =>
-			importAccounts(ctx.db, ctx.session.user.id, input.rows),
+			importAccounts(ctx.db, ctx.session.user.id, input.rows, ctx.timeZone),
 		),
 
 	/** Net worth, its 30-day breakdown, account balances and Not tracked, from the figures registry. */

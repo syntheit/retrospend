@@ -57,7 +57,7 @@ export interface AccountHistory {
 	/** Ascending by date. */
 	readonly checkpoints: readonly CheckpointRow[];
 	readonly legs: readonly LegFacts[];
-	/** Ascending by `from`. */
+	/** Ascending by `from`, then by when each was written (several can share a day). */
 	readonly rateTypes: readonly RateTypeRow[];
 }
 

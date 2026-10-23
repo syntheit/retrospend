@@ -54,6 +54,20 @@ async function valueOnDay(
 	return value ? { value, home: ledger.homeCurrency } : null;
 }
 
+/**
+ * The account's switches in force order: by day, then by when each was
+ * written (a second switch on the same day replaces the first from then on).
+ * Each row's previousType is the type the row before it set, and the first
+ * row's is the type the account had before any switch, so removing any one
+ * row leaves the others exact.
+ */
+function switchesOf(tx: Tx, accountId: string) {
+	return tx.assetRateType.findMany({
+		where: { accountId },
+		orderBy: [{ from: "asc" }, { createdAt: "asc" }],
+	});
+}
+
 /** Writes the dated switch and, when it is the latest, the account's type. */
 export async function switchRateType(
 	tx: Tx,
@@ -64,23 +78,27 @@ export async function switchRateType(
 	const from = moveDay(input.from, new Date(), input.timeZone);
 	const day = dayOf(from);
 	const before = await valueOnDay(tx, userId, account.id, day);
-	const later = await tx.assetRateType.findFirst({
-		where: { accountId: account.id, from: { gt: from } },
-		select: { id: true },
-	});
-	const row = await tx.assetRateType.upsert({
-		where: { accountId_from: { accountId: account.id, from } },
-		create: {
+	const rows = await switchesOf(tx, account.id);
+	const base = rows[0] ? rows[0].previousType : account.exchangeRateType;
+	const earlier = rows.filter((r) => r.from <= from).at(-1);
+	const next = rows.find((r) => r.from > from);
+	const row = await tx.assetRateType.create({
+		data: {
 			userId,
 			accountId: account.id,
 			from,
 			type: input.rateType,
-			previousType: account.exchangeRateType,
+			previousType: earlier ? earlier.type : base,
+			createdAt: new Date(),
 		},
-		update: { type: input.rateType },
 	});
-	// moveDay never returns a future day, so the latest switch is in force today.
-	if (!later) {
+	if (next) {
+		await tx.assetRateType.update({
+			where: { id: next.id },
+			data: { previousType: input.rateType },
+		});
+	} else {
+		// moveDay never returns a future day, so the latest switch is in force today.
 		await tx.assetAccount.update({
 			where: { id: account.id },
 			data: { exchangeRateType: input.rateType },
@@ -123,7 +141,7 @@ export interface RevertRateTypeInput {
 	readonly rateTypeId: string;
 }
 
-/** Removes a switch; the account goes back to the type it had before it when the switch was the latest. */
+/** Removes one switch; the account goes back to the type it had before it when the switch was the latest. */
 export async function revertRateTypeIn(
 	tx: Tx,
 	userId: string,
@@ -139,11 +157,17 @@ export async function revertRateTypeIn(
 		});
 	}
 	const account = await lockOpenAccount(tx, userId, row.accountId);
+	const rows = await switchesOf(tx, account.id);
+	const next = rows[rows.findIndex((r) => r.id === row.id) + 1];
+	// Only this switch goes: the one after it now replaces what this one did.
+	if (next) {
+		await tx.assetRateType.update({
+			where: { id: next.id },
+			data: { previousType: row.previousType },
+		});
+	}
 	await tx.assetRateType.delete({ where: { id: row.id } });
-	const latest = await tx.assetRateType.findFirst({
-		where: { accountId: account.id },
-		orderBy: { from: "desc" },
-	});
+	const latest = rows.filter((r) => r.id !== row.id).at(-1);
 	const rateType = latest ? latest.type : row.previousType;
 	await tx.assetAccount.update({
 		where: { id: account.id },

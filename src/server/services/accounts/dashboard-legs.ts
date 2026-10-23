@@ -48,7 +48,7 @@ export async function loadDashboardLegs(
 		db.assetRateType.findMany({
 			where: { userId },
 			select: { accountId: true, from: true, type: true },
-			orderBy: { from: "asc" },
+			orderBy: [{ from: "asc" }, { createdAt: "asc" }],
 		}),
 	]);
 	const sinceDay = dayOf(since);

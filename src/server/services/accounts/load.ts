@@ -73,7 +73,7 @@ export async function loadAccountsLedger(
 	});
 	const rateTypes = await db.assetRateType.findMany({
 		where: { userId },
-		orderBy: { from: "asc" },
+		orderBy: [{ from: "asc" }, { createdAt: "asc" }],
 	});
 	const snapshotsOf = groupBy(snapshots, (s) => s.accountId);
 	const legsOf = groupBy(legs, (l) => l.accountId);

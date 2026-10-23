@@ -14,7 +14,9 @@ import { dec } from "~/server/services/envelope/units";
 import { WealthService } from "~/server/services/wealth.service";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { writeCheckpoint } from "./checkpoint";
+import { moveDay } from "./dates";
 import { homeCurrencyOf, lockOpenAccount } from "./ledger";
+import { isLiability } from "./places";
 import { switchRateType } from "./rate-type.mutation";
 
 type Db = PrismaClient;
@@ -60,12 +62,17 @@ const otherFields = (input: AccountFields) => ({
 	...(input.inBudget !== undefined ? { inBudget: input.inBudget } : {}),
 });
 
+/** A balance typed by hand is dated by the user's day, like every leg. */
+const checkpointDay = (timeZone?: string) =>
+	moveDay(null, new Date(), timeZone);
+
 export async function createAccount(
 	db: Db,
 	userId: string,
 	input: AccountFields,
+	timeZone?: string,
 ) {
-	const today = normalizeDate(new Date());
+	const today = checkpointDay(timeZone);
 	const service = new WealthService(db);
 	const { rate, rateType } = await accountRate(service, input, today);
 	const balanceInUSD = service.calculateBalanceInUSD(
@@ -101,30 +108,47 @@ export async function createAccount(
 }
 
 /** Edits an open account. A new rate type is a dated switch (D3); a new balance a checkpoint. */
+/**
+ * Legs are signed in what you have and an account's history reads them by
+ * its type, so once money moved through it neither its currency nor which
+ * side of net worth it is on (something you have or something you owe) can
+ * change.
+ */
+async function refuseLegChanges(
+	tx: Prisma.TransactionClient,
+	existing: { id: string; currency: string; type: AssetType },
+	input: Pick<AccountFields, "currency" | "type">,
+) {
+	const currency = existing.currency !== input.currency;
+	const side = isLiability(existing.type) !== isLiability(input.type);
+	if (!currency && !side) return;
+	const legs = await tx.accountLeg.count({ where: { accountId: existing.id } });
+	if (legs === 0) return;
+	throw new TRPCError({
+		code: "BAD_REQUEST",
+		message: currency
+			? "Money moved through this account in its currency. Add a new account instead."
+			: "Money moved through this account as something you have or owe. Add a new account instead.",
+	});
+}
+
 export async function editAccountIn(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	id: string,
 	input: AccountFields,
+	timeZone?: string,
 ) {
-	const today = normalizeDate(new Date());
+	const today = checkpointDay(timeZone);
 	const existing = await lockOpenAccount(tx, userId, id);
-	if (existing.currency !== input.currency) {
-		const legs = await tx.accountLeg.count({ where: { accountId: id } });
-		if (legs > 0) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message:
-					"Money moved through this account in its currency. Add a new account instead.",
-			});
-		}
-	}
+	await refuseLegChanges(tx, existing, input);
 	await tx.assetAccount.update({ where: { id }, data: otherFields(input) });
 	const rate = await accountRate(new WealthService(tx), input, today);
 	if (rate.rateType !== existing.exchangeRateType) {
 		await switchRateType(tx, userId, {
 			accountId: id,
 			rateType: rate.rateType,
+			timeZone,
 		});
 	}
 	const account = await lockOpenAccount(tx, userId, id);
@@ -142,7 +166,11 @@ export const editAccount = (
 	userId: string,
 	id: string,
 	input: AccountFields,
-) => userTransaction(db, userId, (tx) => editAccountIn(tx, userId, id, input));
+	timeZone?: string,
+) =>
+	userTransaction(db, userId, (tx) =>
+		editAccountIn(tx, userId, id, input, timeZone),
+	);
 
 async function ownAccount(db: Db, userId: string, id: string) {
 	const asset = await db.assetAccount.findFirst({ where: { id, userId } });
@@ -315,6 +343,7 @@ export async function importAccounts(
 	db: Db,
 	userId: string,
 	rows: readonly ImportRow[],
+	timeZone?: string,
 ) {
 	let successCount = 0;
 	let errorCount = 0;
@@ -323,8 +352,8 @@ export async function importAccounts(
 			const existing = await db.assetAccount.findFirst({
 				where: { userId, name: row.name, closedAt: null },
 			});
-			if (existing) await editAccount(db, userId, existing.id, row);
-			else await createAccount(db, userId, row);
+			if (existing) await editAccount(db, userId, existing.id, row, timeZone);
+			else await createAccount(db, userId, row, timeZone);
 			successCount++;
 		} catch (error) {
 			console.error(`Failed to import wealth row ${row.name}:`, error);

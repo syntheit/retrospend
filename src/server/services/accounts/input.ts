@@ -72,6 +72,11 @@ export const revertBalanceUpdateSchema = z.object({
 	accountId: id,
 	legId: id.nullable(),
 	rateTypeId: id.nullable(),
+	/** The update's previousRate, put back as stored. */
+	previousRate: z
+		.string()
+		.regex(/^\d{1,16}(\.\d{1,12})?$/, "Enter a rate like 1412.5")
+		.nullish(),
 });
 
 export const setRateTypeSchema = z.object({
@@ -120,7 +125,21 @@ export const addIncomeSchema = z.object({
 		.nullish(),
 });
 
-export const recreateIncomeSchema = addIncomeSchema.extend({ id });
+const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
+
+/** income.delete's recreate input: the same row, at the rates it was booked at. */
+export const recreateIncomeSchema = addIncomeSchema.extend({
+	id,
+	restore: z
+		.object({
+			exchangeRate: storedDecimal,
+			amountInUSD: storedDecimal,
+			units: storedDecimal.nullable(),
+			homeAmount: storedDecimal.nullable(),
+			homeCurrency: currency.nullable(),
+		})
+		.nullish(),
+});
 
 export const deleteIncomeSchema = z.object({
 	expenseId: id,
@@ -140,10 +159,15 @@ export const moveInSchema = z.union([
 export const confirmRecurringIncomeSchema = z.object({
 	templateId: z.cuid(),
 	dueDate: z.date().nullish(),
-	amount: z.number().positive().nullish(),
+	/** The real amount as typed, when the template's amount varies. */
+	amount: positive.nullish(),
 	into: id.nullish(),
 	keep: z.boolean().nullish(),
 	usePlan: z.boolean().optional(),
 });
 
-export const unconfirmRecurringIncomeSchema = z.object({ expenseId: id });
+export const unconfirmRecurringIncomeSchema = z.object({
+	expenseId: id,
+	/** The confirm's plan batch, undone with it. */
+	planBatchId: z.string().uuid().nullish(),
+});

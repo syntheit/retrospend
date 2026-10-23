@@ -4,13 +4,13 @@
  * Undo (account.revertBalanceUpdate) puts today's balance and type back.
  */
 import { TRPCError } from "@trpc/server";
-import { normalizeDate } from "~/lib/date";
-import { USD } from "~/lib/money";
+import { isValidRate, USD } from "~/lib/money";
 import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { WealthService } from "~/server/services/wealth.service";
 import type { Prisma } from "~prisma";
 import { type Checkpoint, writeCheckpoint } from "./checkpoint";
+import { moveDay } from "./dates";
 import { homeCurrencyOf, lockOpenAccount } from "./ledger";
 import { balanceEffect } from "./places";
 import {
@@ -36,10 +36,13 @@ export interface UpdateBalanceInput {
 	readonly rateType?: string | null;
 	/** The rate as typed, for the custom type. */
 	readonly exchangeRate?: number | null;
+	readonly timeZone?: string;
 }
 
 export interface BalanceUpdate extends Checkpoint {
 	readonly rateSwitch: RateTypeSwitch | null;
+	/** The account's stored rate before the update, which the undo puts back. */
+	readonly previousRate: string | null;
 }
 
 export async function updateBalanceIn(
@@ -48,16 +51,9 @@ export async function updateBalanceIn(
 	input: UpdateBalanceInput,
 ): Promise<BalanceUpdate> {
 	const account = await lockOpenAccount(tx, userId, input.accountId);
-	const today = normalizeDate(new Date());
-	const switching =
-		input.rateType !== undefined && input.rateType !== account.exchangeRateType;
-	const rateSwitch = switching
-		? await switchRateType(tx, userId, {
-				accountId: account.id,
-				rateType: input.rateType ?? null,
-				from: today.toISOString().slice(0, 10),
-			})
-		: null;
+	// The user's day, like every leg (accounts/dates.ts), so a checkpoint and
+	// a move made the same morning share a day.
+	const today = moveDay(null, new Date(), input.timeZone);
 	// Today's rate of the account's (new) type; a custom rate stays as typed.
 	const wanted =
 		input.rateType !== undefined ? input.rateType : account.exchangeRateType;
@@ -74,6 +70,17 @@ export async function updateBalanceIn(
 	// A USD account has no rate of its own; its type values the home side (D3).
 	const rate =
 		account.currency === USD ? { ...resolved, rateType: wanted } : resolved;
+	// The switch records the type the account ends up with, which is the
+	// resolved one (a type with no rate today falls back), never the request.
+	const rateSwitch =
+		rate.rateType !== account.exchangeRateType
+			? await switchRateType(tx, userId, {
+					accountId: account.id,
+					rateType: rate.rateType,
+					from: today.toISOString().slice(0, 10),
+					timeZone: input.timeZone,
+				})
+			: null;
 	const checkpoint = await writeCheckpoint(
 		tx,
 		userId,
@@ -85,7 +92,11 @@ export async function updateBalanceIn(
 			homeCurrency: await homeCurrencyOf(tx, userId),
 		},
 	);
-	return { ...checkpoint, rateSwitch };
+	return {
+		...checkpoint,
+		rateSwitch,
+		previousRate: account.exchangeRate?.toString() ?? null,
+	};
 }
 
 export const updateBalance: MoneyMutation<UpdateBalanceInput, BalanceUpdate> = {
@@ -115,6 +126,27 @@ export interface RevertBalanceUpdateInput {
 	readonly accountId: string;
 	readonly legId: string | null;
 	readonly rateTypeId: string | null;
+	/** The update's previousRate; omitted keeps the stored rate. */
+	readonly previousRate?: string | null;
+	readonly timeZone?: string;
+}
+
+/** A snapshot's USD value at a stored rate; a missing rate is never 1. */
+function usdAt(
+	service: WealthService,
+	balance: number,
+	currency: string,
+	rate: { toString(): string } | null,
+): number {
+	if (currency === USD) return balance;
+	const value = rate === null ? null : Number(rate.toString());
+	if (!isValidRate(value)) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `No exchange rate for ${currency}. Update the balance again.`,
+		});
+	}
+	return service.calculateBalanceInUSD(balance, value, currency);
 }
 
 /** Takes back today's Not logged leg and rate switch. An earlier day's update stays: update the balance again instead. */
@@ -124,7 +156,7 @@ export async function revertBalanceUpdateIn(
 	input: RevertBalanceUpdateInput,
 ) {
 	const account = await lockOpenAccount(tx, userId, input.accountId);
-	const today = normalizeDate(new Date());
+	const today = moveDay(null, new Date(), input.timeZone);
 	let balance = dec(account.balance.toString());
 	if (input.legId) {
 		const leg = await tx.accountLeg.findFirst({
@@ -150,16 +182,20 @@ export async function revertBalanceUpdateIn(
 		await revertRateTypeIn(tx, userId, { rateTypeId: input.rateTypeId });
 	const reverted = await tx.assetAccount.update({
 		where: { id: account.id },
-		data: { balance: balance.toString() },
+		data: {
+			balance: balance.toString(),
+			...(input.previousRate !== undefined
+				? { exchangeRate: input.previousRate }
+				: {}),
+		},
 	});
 	const service = new WealthService(tx);
-	const rate = Number(reverted.exchangeRate ?? 1);
 	await service.recordAssetSnapshot(
 		tx,
 		account.id,
 		today,
 		balance.toNumber(),
-		service.calculateBalanceInUSD(balance.toNumber(), rate, account.currency),
+		usdAt(service, balance.toNumber(), account.currency, reverted.exchangeRate),
 		userId,
 		{
 			currency: account.currency,
