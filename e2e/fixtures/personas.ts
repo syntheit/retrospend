@@ -8,6 +8,16 @@
  * Ids are fixed so tests and figure ids can name rows directly.
  */
 
+/**
+ * A fixed id that passes the routers' `z.cuid()` check (a "c", then
+ * lowercase letters and digits), so mutations accept seeded rows:
+ * seedId("asset", "visa") is "ce2easset0visa". Parts lose everything but
+ * letters and digits and join with "0"; a clash fails the insert.
+ */
+export function seedId(...parts: string[]): string {
+	return `ce2e${parts.map((p) => p.toLowerCase().replace(/[^a-z0-9]/g, "")).join("0")}`;
+}
+
 export const SEED_TIME_ZONE = "America/Argentina/Buenos_Aires";
 
 export interface SeedUser {
@@ -56,8 +66,8 @@ export const PAZ = {
 } as const;
 
 export const PROJECT_IDS = {
-	floripa: "e2e_project_floripa",
-	depto: "e2e_project_depto",
+	floripa: seedId("project", "floripa"),
+	depto: seedId("project", "depto"),
 } as const;
 
 export type ParticipantRef = {
