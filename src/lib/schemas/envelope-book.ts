@@ -232,6 +232,13 @@ export const bookPeriodResultSchema = z.object({
 		from: isoDateSchema,
 		to: isoDateSchema,
 	}),
+	/** The month that straddles the change, longer or shorter, with its dates and length (the preview says so). */
+	transition: z.object({
+		key: monthKeySchema,
+		from: isoDateSchema,
+		to: isoDateSchema,
+		days: z.number().int(),
+	}),
 });
 
 // ── Limits (SPEC §5.6, A2) ──────────────────────────────────────────────────

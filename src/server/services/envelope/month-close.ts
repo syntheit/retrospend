@@ -71,7 +71,6 @@ function linksAt(input: EngineInput, month: MonthKey): Record<string, string> {
 	const kept = input.closedLinks?.get(month);
 	if (kept) return Object.fromEntries(kept);
 	const out: Record<string, string> = {};
-	for (const e of input.envelopes)
-		for (const c of e.categoryIds) out[c] = e.id;
+	for (const e of input.envelopes) for (const c of e.categoryIds) out[c] = e.id;
 	return out;
 }

@@ -270,7 +270,8 @@ function router(input: EngineInput) {
 	};
 	// A closed month routes by the links it closed with (B7); open months by today's.
 	const linksAt = (month: MonthKey | undefined) => {
-		const closed = month === undefined ? undefined : input.closedLinks?.get(month);
+		const closed =
+			month === undefined ? undefined : input.closedLinks?.get(month);
 		return closed ?? byCategory;
 	};
 	const envelopeOf = (

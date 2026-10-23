@@ -9,6 +9,7 @@
  * P2 covers Flex (default), Every dollar and Weekly.
  */
 import type { SetupPresetOutput } from "~/lib/schemas/envelope";
+import { ceilDiv } from "./units";
 
 export type SetupStyle = SetupPresetOutput["style"];
 
@@ -179,7 +180,7 @@ function limits(
 				templateId: null,
 				target: {
 					kind: "MONTHLY",
-					amountMinor: Math.ceil(total / 3 / unit) * unit,
+					amountMinor: ceilDiv(total, 3 * unit) * unit,
 					mode: "SET_ASIDE",
 					cadence: "MONTH",
 				},

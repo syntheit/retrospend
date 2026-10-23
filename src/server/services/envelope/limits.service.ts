@@ -33,7 +33,7 @@ import { insert, replay, result } from "./movement.service";
 import { checkEnvelope, lockedSnapshot } from "./movement-state";
 import { RateBook } from "./rate-book";
 import type { MissingRate } from "./types";
-import { fromMinor, toMinor } from "./units";
+import { fromMinor } from "./units";
 import { convertToBookOrThrow, valueRow } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
@@ -191,7 +191,11 @@ export async function setLimit(
 			(t, m) => t + (m.to === env.id ? m.amount.minor : -m.amount.minor),
 			0,
 		);
-		return { ...retry, ...base, previous: { minor: funded - signed, currency: H } };
+		return {
+			...retry,
+			...base,
+			previous: { minor: funded - signed, currency: H },
+		};
 	}
 	const rows = fundDelta({
 		id: input.id,
@@ -264,4 +268,3 @@ export async function revertLimit(
 	);
 	return { ...moved, envelopeId: env.id };
 }
-

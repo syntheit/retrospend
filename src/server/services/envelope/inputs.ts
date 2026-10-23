@@ -39,7 +39,7 @@ import {
 	dedicatedValues,
 	loadDedicatedAccounts,
 } from "./dedicated-goal";
-import type { ClosedRule, EngineInput } from "./engine";
+import type { EngineInput } from "./engine";
 import {
 	activityEntries,
 	moneyInEntries,
@@ -47,6 +47,13 @@ import {
 	Valuer,
 	wealthEntries,
 } from "./entries";
+import {
+	closedRulesOf,
+	freeze,
+	frozenValues,
+	markStale,
+	uniqueMissing,
+} from "./load-state";
 import type { ViewBook, ViewEnvelope } from "./month-view";
 import {
 	budgetMonthOf,
@@ -340,28 +347,6 @@ export async function loadBook(
 	return loaded;
 }
 
-/**
- * A closed month whose fully loaded rows no longer match its checkpoint, with
- * no mark to say so (a change no trigger saw, a claimed shadow's share): one
- * mark from it, so the next read revises it under the book lock.
- */
-async function markStale(
-	tx: Tx,
-	bookId: string,
-	closes: readonly CloseRow[],
-	prints: ReadonlyMap<MonthKey, string>,
-	dirty: readonly DirtyMark[],
-) {
-	const stale = closes.find(
-		(c) =>
-			c.checkpoint &&
-			prints.has(c.month) &&
-			prints.get(c.month) !== c.checkpoint.print,
-	);
-	if (!stale || dirty.some((d) => d.fromMonth <= stale.month)) return;
-	await tx.budgetDirty.create({ data: { bookId, fromMonth: stale.month } });
-}
-
 interface Setting {
 	row: BookRow;
 	periods: MonthBoundary[];
@@ -442,36 +427,6 @@ async function loadFull(tx: Tx, userId: string, s: Setting) {
 	};
 }
 
-/** Foreign rows' values frozen by earlier loads (budget_row_value). */
-async function frozenValues(tx: Tx, bookId: string) {
-	const rows = await tx.budgetRowValue.findMany({
-		where: { bookId },
-		select: { key: true, minor: true },
-	});
-	return new Map(rows.map((r) => [r.key, Number(r.minor)]));
-}
-
-/** Freezes what this load valued for the first time; a concurrent load writing the same key is a no-op. */
-async function freeze(tx: Tx, bookId: string, valuer: Valuer) {
-	if (valuer.fresh.length === 0) return;
-	await tx.budgetRowValue.createMany({
-		data: valuer.fresh.map((f) => ({
-			bookId,
-			key: f.key,
-			minor: BigInt(f.minor),
-		})),
-		skipDuplicates: true,
-	});
-}
-
-/** Same rate, same row: listed once (a checkpoint and the full share load can both name it). */
-function uniqueMissing(rates: readonly MissingRate[]): MissingRate[] {
-	const seen = new Map<string, MissingRate>();
-	for (const r of rates)
-		seen.set(`${r.rowId ?? ""}|${r.currency}|${r.rateType}|${r.date}`, r);
-	return [...seen.values()];
-}
-
 function finishLoad(
 	s: Setting,
 	p: Pick<
@@ -510,24 +465,6 @@ function finishLoad(
 		periods: s.periods,
 		valuation: s.valuation,
 	};
-}
-
-/** The leftover rules each closed month closed under (MonthClose snapshots, B7). */
-function closedRulesOf(
-	closes: readonly CloseRow[],
-): Map<MonthKey, Map<string, ClosedRule>> {
-	const out = new Map<MonthKey, Map<string, ClosedRule>>();
-	for (const c of closes)
-		out.set(
-			c.month,
-			new Map(
-				c.summary.envelopes.map((e) => [
-					e.id,
-					{ rule: e.rule, sweepToId: e.sweepToId },
-				]),
-			),
-		);
-	return out;
 }
 
 /** Own missing rates of months up to `month`: what a checkpoint there carries. */

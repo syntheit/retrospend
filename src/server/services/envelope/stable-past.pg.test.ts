@@ -246,9 +246,9 @@ describe("the late window counts from when the change was made (finding 3)", () 
 		expect(oct?.revision).toBe(1);
 		expect(oct?.lateEntries).toBe(1);
 		expect(oct?.change).toBeNull();
-		expect(
-			oct?.summary.envelopes.find((e) => e.id === b.diningEnv)?.left,
-		).toBe(12_000);
+		expect(oct?.summary.envelopes.find((e) => e.id === b.diningEnv)?.left).toBe(
+			12_000,
+		);
 	});
 
 	it("a month with no late entry says none (null, never 0)", async () => {

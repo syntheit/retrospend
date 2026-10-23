@@ -10,7 +10,7 @@ import type { Prisma } from "~prisma";
 import { worthOf } from "../accounts/places";
 import type { BookRow } from "./inputs";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
-import { type ValuationContext, convertToBook } from "./valuation";
+import { convertToBook, type ValuationContext } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 

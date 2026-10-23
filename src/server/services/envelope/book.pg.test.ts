@@ -41,13 +41,6 @@ import {
 	setupInput,
 } from "./__tests__/pg-fixture";
 import {
-	getBankCheck,
-	getWelcomeBack,
-	pause,
-	resume,
-	acknowledge,
-} from "./book-read.service";
-import {
 	reconcileMutation,
 	removeAdjustmentMutation,
 	revertStyleMutation,
@@ -55,6 +48,13 @@ import {
 	setStyleMutation,
 	welcomeBackMutation,
 } from "./book.mutation";
+import {
+	acknowledge,
+	getBankCheck,
+	getWelcomeBack,
+	pause,
+	resume,
+} from "./book-read.service";
 import { addMonths } from "./calendar";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { undoMovements } from "./movement.mutation";
@@ -390,6 +390,7 @@ describe("C20 changing the month start day", () => {
 			startDay: 25,
 			previous: { startDay: 1 },
 			currentMonth: { key: current, from: iso(current, 1), to: iso(next, 24) },
+			transition: { key: current, from: iso(current, 1), to: iso(next, 24) },
 		});
 		const after = await getMonth(s.user.id);
 		expect(after?.month.to).toBe(iso(next, 24));

@@ -10,17 +10,24 @@
  * Writing a change again replaces a pending one; a change that puts back
  * what was in force removes the pending row instead (that is the undo).
  */
+
+import { USD } from "~/lib/money";
 import type {
 	BookPeriodResult,
 	SetBookPeriodInput,
 } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
-import { USD } from "~/lib/money";
-import { addMonths } from "./calendar";
+import { addMonths, daysBetween } from "./calendar";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
-import { budgetMonthOf, isoDateIn, monthRange, monthStart } from "./months";
+import {
+	budgetMonthOf,
+	isoDateIn,
+	type MonthBoundary,
+	monthRange,
+	monthStart,
+} from "./months";
 import { lockBook } from "./movement-state";
 import { periodForMonth } from "./valuation";
 
@@ -43,6 +50,12 @@ export function firstFreeMonth(
 		const trial = [...settled, { fromMonth: k, startDay, rateType: "" }];
 		if (monthStart(k, trial) > today) return k;
 	}
+}
+
+/** The month before the change: its dates and length under the new periods. */
+function transitionOf(month: number, periods: readonly MonthBoundary[]) {
+	const range = monthRange(month, periods);
+	return { key: month, ...range, days: daysBetween(range.from, range.to) + 1 };
 }
 
 async function checkRateType(tx: Tx, currency: string, rateType: string) {
@@ -100,5 +113,6 @@ export async function setBookPeriod(
 		rateType,
 		previous: { startDay: inForce.startDay, rateType: inForce.rateType },
 		currentMonth: { key: current, ...monthRange(current, after) },
+		transition: transitionOf(addMonths(fromMonth, -1), after),
 	};
 }

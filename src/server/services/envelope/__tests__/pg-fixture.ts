@@ -156,4 +156,3 @@ export async function augustBook() {
 	);
 	return { ...s, bookId: book.id, diningEnv: ids.Dining as string, aug };
 }
-

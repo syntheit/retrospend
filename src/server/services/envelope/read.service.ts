@@ -29,8 +29,8 @@ import {
 import type { SetupStyle } from "./presets";
 import { owedIn, saveShareDefaults } from "./splits.service";
 import { monthSummaryIn } from "./summary.service";
-import { touchOpened } from "./welcome.service";
 import type { Minor, MonthKey } from "./types";
+import { touchOpened } from "./welcome.service";
 
 function read<T>(
 	userId: string,
