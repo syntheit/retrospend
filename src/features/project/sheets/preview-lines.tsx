@@ -20,15 +20,19 @@ export type Preview = {
 /**
  * The project sheets' R30 preview on the kit's SheetChanges: each figure
  * that moves, before → after, then the figures checked that stay, then the
- * ones a missing rate kept from being checked. `label` names a figure id.
+ * ones a missing rate kept from being checked. `label` names a figure id
+ * on its own line, `inline` inside the closing sentences.
  */
 export function PreviewLines({
 	preview,
 	label,
+	inline,
 	loading,
 }: {
 	preview: Preview | undefined;
 	label: (id: string) => string;
+	/** The same name inside a sentence ("the group total"): a language decides its case. */
+	inline: (id: string) => string;
 	loading?: boolean;
 }) {
 	const t = useTranslations("projectV2.preview");
@@ -45,8 +49,8 @@ export function PreviewLines({
 					/>
 				),
 			}))}
-			stays={preview.unchanged.map((u) => label(u.id))}
-			unavailable={preview.unavailable.map((u) => label(u.id))}
+			stays={preview.unchanged.map((u) => inline(u.id))}
+			unavailable={preview.unavailable.map((u) => inline(u.id))}
 		/>
 	);
 }

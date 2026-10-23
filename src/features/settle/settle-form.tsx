@@ -76,7 +76,7 @@ function Amount({ s }: { s: SettleState }) {
 				value={s.text}
 			/>
 			{(all || c.parts.length > 0) && (
-				<FilterChips>
+				<FilterChips label={t("amountShortcuts")}>
 					{all && (
 						<FilterChip
 							onClick={() => s.fill(all, true)}
@@ -117,7 +117,7 @@ function Details({ s, methods }: { s: SettleState; methods: string[] }) {
 		<>
 			<div className="flex flex-col gap-2">
 				<span className="text-fg text-small font-medium">{t("method")}</span>
-				<FilterChips>
+				<FilterChips label={t("method")}>
 					{all.map((m) => (
 						<FilterChip
 							key={m}
@@ -131,7 +131,7 @@ function Details({ s, methods }: { s: SettleState; methods: string[] }) {
 			</div>
 			<div className="flex flex-col gap-2">
 				<span className="text-fg text-small font-medium">{t("date")}</span>
-				<FilterChips>
+				<FilterChips label={t("date")}>
 					{[
 						{ day: c.today, label: t("today") },
 						{ day: c.yesterday, label: t("yesterday") },

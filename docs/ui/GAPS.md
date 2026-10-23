@@ -110,6 +110,7 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Where | What is missing | Until then | Owner |
 |---|---|---|---|
 | Shell palette (`src/components/shell/palette.tsx`) | Accounts in the search read (`GET /api/v1/search` has expenses, people, projects and categories) | Typed text shows People, Projects, Categories and Expenses from the search read after Go to and Commands; no Accounts group | S2 search |
+| Shell palette, category hits | The category's icon name in the search read (`searchCategories` selects id, name and color; the API v1 hit has no icon) | Category hits show `CategoryGlyph` with the glyph the name suggests, in the category's color | S2 search |
 | Shell palette | The inline currency converter ("100 usd", "50000 ars to brl") with every rate type | No converter row; Currencies is in Go to | S1c part 2 (rates read from the server) |
 | Shell palette, Suggestions | Settle up with the person you owe most: the palette has no read of who you owe most | Suggestions lists the imports to review and the next recurring expense due, from `home.needsYou` | 2E (owed per person) |
 | Shell palette, Recent | A recent-items read model (people and projects you opened, expenses) with Money DTOs | Recent shows the two most recently updated active projects and the last three expenses from `expense.listFinalized`, whose amounts arrive as numbers and are turned into minor units by `toMinor` | S2 |

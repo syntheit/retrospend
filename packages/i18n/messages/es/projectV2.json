@@ -101,6 +101,15 @@
 			"owed_owedToYou": "Te deben",
 			"owed_youOwe": "Debes",
 			"balance_person": "Tú y {name}"
+		},
+		"figuresInline": {
+			"project_total": "el total del grupo",
+			"project_member_balance": "el saldo de {name} en el grupo",
+			"project_member_share": "la parte de {name}",
+			"project_member_paid": "lo que pagó {name}",
+			"owed_owedToYou": "lo que te deben",
+			"owed_youOwe": "lo que debes",
+			"balance_person": "tu saldo con {name}"
 		}
 	},
 	"settleAll": {

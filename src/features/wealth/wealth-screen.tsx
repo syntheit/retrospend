@@ -75,7 +75,7 @@ export function WealthScreen({ view }: { view: WealthView }) {
 					}
 				>
 					{accounts ? (
-						<FilterChips>
+						<FilterChips label={t("filters.label")}>
 							<FilterChip
 								onClick={() =>
 									set({ liquid: filters.liquid === "liquid" ? null : "liquid" })

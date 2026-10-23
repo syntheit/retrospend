@@ -53,7 +53,9 @@
 		"balance": "Seu saldo com {name} ({currency})",
 		"owedToYou": "Devem a você, todas as pessoas",
 		"youOwe": "Você deve, todas as pessoas",
-		"yourBalance": "seu saldo com {name}"
+		"yourBalance": "seu saldo com {name}",
+		"owedToYouInline": "o que devem a você",
+		"youOweInline": "o que você deve"
 	},
 	"toast": {
 		"confirmed": "Pagamento de {name} confirmado. Nada contado duas vezes",
@@ -64,5 +66,6 @@
 		"title": "Pagamento registrado",
 		"pending": "Pendente até {name} confirmar. Seu saldo já mostra.",
 		"final": "Definitivo."
-	}
+	},
+	"amountShortcuts": "Valores rápidos"
 }

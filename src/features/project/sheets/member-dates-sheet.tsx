@@ -69,6 +69,7 @@ export function MemberDatesSheet({
 }) {
 	const t = useTranslations("projectV2.dates");
 	const tp = useTranslations("projectV2.preview.figures");
+	const ti = useTranslations("projectV2.preview.figuresInline");
 	const te = useTranslations("projectV2.errors");
 	const toast = useToast();
 	const { short } = useRowDates();
@@ -89,8 +90,9 @@ export function MemberDatesSheet({
 	const set = api.project.setMembershipDates.useMutation({
 		onSuccess: () => utils.project.invalidate(),
 	});
-	const label = (id: string) =>
-		tp(id.replaceAll(".", "_"), { name: member.isMe ? t("you") : member.name });
+	const name = { name: member.isMe ? t("you") : member.name };
+	const label = (id: string) => tp(id.replaceAll(".", "_"), name);
+	const inline = (id: string) => ti(id.replaceAll(".", "_"), name);
 
 	return (
 		<Sheet
@@ -142,6 +144,7 @@ export function MemberDatesSheet({
 				</p>
 				{changed && !bad ? (
 					<PreviewLines
+						inline={inline}
 						label={label}
 						loading={preview.isPending}
 						preview={preview.data}

@@ -116,7 +116,7 @@ describe("FilterChips", () => {
 		const html = render(
 			h(
 				FilterChips,
-				null,
+				{ label: "Filter expenses", children: null },
 				h(FilterChip, { selected: true }, "Unreviewed"),
 				h(FilterMenu, {
 					groups: [

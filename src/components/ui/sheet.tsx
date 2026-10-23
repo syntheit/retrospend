@@ -88,6 +88,7 @@ function SheetBody(
 						kind="primary"
 						loading={s.busy}
 						onClick={() => void s.submit()}
+						size="sm"
 					>
 						{props.headerSubmit}
 					</Button>

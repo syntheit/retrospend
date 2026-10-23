@@ -18,6 +18,6 @@
 		"unavailable": "Budget nicht verfügbar: noch kein Kurs für {currencies}",
 		"unavailableRate": "Budget nicht verfügbar: ein Kurs fehlt",
 		"paceFaster": "Schneller als im {month} bis zu diesem Tag",
-		"paceSlower": "Nicht schneller als im {month} bis zu diesem Tag"
+		"paceSlower": "Im Tempo vom {month} oder langsamer"
 	}
 }

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useStatusWord } from "~/components/ui/status-dot";
 import { toneOf } from "~/components/ui/status-map";
 import { cn } from "~/lib/cn";
-import { type MoneyValue, signOf } from "./format";
+import { figureAttrs, type MoneyValue, signOf } from "./format";
 import { Money } from "./money";
 
 /**
@@ -46,26 +46,21 @@ export function Balance({
 		return (
 			<span
 				className={cn(
-					"text-small whitespace-nowrap",
+					"whitespace-nowrap text-small",
 					toneOf("settled").text,
 					className,
 				)}
 				data-balance="settled"
+				{...figureAttrs(figure, amount)}
 			>
 				{status("settled")}
-				{/* The word is not a number: the audit reads the zero from a hidden twin. */}
-				{figure ? (
-					<span hidden>
-						<Money figure={figure} value={amount} />
-					</span>
-				) : null}
 			</span>
 		);
 	const dir = sign > 0 ? "owed" : "owe";
 	return (
 		<span
 			className={cn(
-				"text-small whitespace-nowrap",
+				"whitespace-nowrap text-small",
 				toneOf(dir).text,
 				className,
 			)}

@@ -18,6 +18,6 @@
 		"unavailable": "Budget indisponible : pas encore de taux pour {currencies}",
 		"unavailableRate": "Budget indisponible : il manque un taux",
 		"paceFaster": "Plus vite qu’en {month} à la même date",
-		"paceSlower": "Pas plus vite qu’en {month} à la même date"
+		"paceSlower": "Au rythme de {month} ou plus lent"
 	}
 }

@@ -173,7 +173,7 @@ export function RecurringPage() {
 						</div>
 					}
 				>
-					<FilterChips>
+					<FilterChips label={t("toolbar.label")}>
 						{chip("autoPayOn", t("toolbar.autoPayOn"))}
 						{chip("autoPayOff", t("toolbar.autoPayOff"))}
 						{chip("foreign", t("toolbar.foreign"))}

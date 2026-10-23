@@ -145,9 +145,6 @@ describe("Balance", () => {
 		expect(html).toContain(kit.status?.settled);
 		expect(html).toContain("text-fg-3");
 		expect(html).toContain('data-minor="0"');
-		// The tag sits on a hidden zero the audit can read, not on the word.
-		expect(html).toMatch(/<span hidden="">.*data-figure="b".*ARS/);
-		expect(html).not.toMatch(/data-figure="b"[^>]*>Settled/);
 	});
 
 	it("picks the words for people and for you", () => {

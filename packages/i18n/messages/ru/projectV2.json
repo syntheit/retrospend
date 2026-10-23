@@ -101,6 +101,15 @@
 			"owed_owedToYou": "Вам должны",
 			"owed_youOwe": "Вы должны",
 			"balance_person": "Вы и {name}"
+		},
+		"figuresInline": {
+			"project_total": "итог группы",
+			"project_member_balance": "баланс в группе ({name})",
+			"project_member_share": "доля ({name})",
+			"project_member_paid": "оплачено ({name})",
+			"owed_owedToYou": "долги вам",
+			"owed_youOwe": "ваши долги",
+			"balance_person": "ваш баланс с {name}"
 		}
 	},
 	"settleAll": {

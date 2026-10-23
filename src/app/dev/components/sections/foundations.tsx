@@ -80,7 +80,7 @@ function Structure({ phone }: { phone?: boolean }) {
 					/>
 				}
 			>
-				<FilterChips>
+				<FilterChips label={S.filter}>
 					<FilterChip selected>{S.active}</FilterChip>
 					{!phone && <FilterChip>{S.archived}</FilterChip>}
 				</FilterChips>

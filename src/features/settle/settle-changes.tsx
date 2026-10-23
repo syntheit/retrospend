@@ -23,16 +23,19 @@ export function Changes({
 	done?: boolean;
 }) {
 	const t = useTranslations("settleSheet.changes");
-	const name = (id: string) =>
+	// Inside a sentence: "Nothing else changes: what people owe you stays as it is."
+	const inline = (id: string) =>
 		id === "owed.owedToYou"
-			? t("owedToYou")
+			? t("owedToYouInline")
 			: id === "owed.youOwe"
-				? t("youOwe")
+				? t("youOweInline")
 				: t("yourBalance", { name: person.name });
 	const label = (c: Change) =>
 		c.id === "balance.person"
 			? t("balance", { name: person.name, currency: c.currency })
-			: name(c.id);
+			: c.id === "owed.owedToYou"
+				? t("owedToYou")
+				: t("youOwe");
 	const show = (c: Change, m: { minor: number; currency: string }) =>
 		c.id === "balance.person" ? <Balance amount={m} /> : <Money value={m} />;
 	return (
@@ -48,8 +51,8 @@ export function Changes({
 					/>
 				),
 			}))}
-			stays={preview.unchanged.map((u) => name(u.id))}
-			unavailable={preview.unavailable.map((u) => name(u.id))}
+			stays={preview.unchanged.map((u) => inline(u.id))}
+			unavailable={preview.unavailable.map((u) => inline(u.id))}
 		/>
 	);
 }

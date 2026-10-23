@@ -18,6 +18,6 @@
 		"unavailable": "Бюджет недоступен: пока нет курса для {currencies}",
 		"unavailableRate": "Бюджет недоступен: не хватает курса",
 		"paceFaster": "Быстрее, чем за {month}, к этому дню",
-		"paceSlower": "Не быстрее, чем за {month}, к этому дню"
+		"paceSlower": "Как за {month} или медленнее"
 	}
 }

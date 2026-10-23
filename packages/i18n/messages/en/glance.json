@@ -18,6 +18,6 @@
 		"unavailable": "Budget not available: no rate for {currencies} yet",
 		"unavailableRate": "Budget not available: a rate is missing",
 		"paceFaster": "Faster than {month} by this day",
-		"paceSlower": "No faster than {month} by this day"
+		"paceSlower": "At {month}’s pace or slower"
 	}
 }

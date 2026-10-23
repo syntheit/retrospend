@@ -53,7 +53,9 @@
 		"balance": "Your balance with {name} ({currency})",
 		"owedToYou": "Owed to you, all people",
 		"youOwe": "You owe, all people",
-		"yourBalance": "your balance with {name}"
+		"yourBalance": "your balance with {name}",
+		"owedToYouInline": "what people owe you",
+		"youOweInline": "what you owe people"
 	},
 	"toast": {
 		"confirmed": "Confirmed {name}'s payment. Nothing counted twice",
@@ -64,5 +66,6 @@
 		"title": "Payment recorded",
 		"pending": "Pending until {name} confirms. Your balance already shows it.",
 		"final": "Final."
-	}
+	},
+	"amountShortcuts": "Quick amounts"
 }

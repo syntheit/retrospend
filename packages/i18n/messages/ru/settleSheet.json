@@ -53,7 +53,9 @@
 		"balance": "Ваш баланс с {name} ({currency})",
 		"owedToYou": "Вам должны, все люди",
 		"youOwe": "Вы должны, все люди",
-		"yourBalance": "ваш баланс с {name}"
+		"yourBalance": "ваш баланс с {name}",
+		"owedToYouInline": "долги вам",
+		"youOweInline": "ваши долги"
 	},
 	"toast": {
 		"confirmed": "Платёж от {name} подтверждён. Ничего не посчитано дважды",
@@ -64,5 +66,6 @@
 		"title": "Платёж записан",
 		"pending": "Ожидает подтверждения от {name}. Ваш баланс уже это учитывает.",
 		"final": "Окончательно."
-	}
+	},
+	"amountShortcuts": "Быстрые суммы"
 }

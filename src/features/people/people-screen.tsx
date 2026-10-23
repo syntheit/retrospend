@@ -144,7 +144,7 @@ export function PeopleScreen({
 							/>
 						}
 					>
-						<FilterChips>
+						<FilterChips label={t("toolbar.label")}>
 							<FilterChip
 								onClick={() =>
 									set({ dir: filters.dir === "owed" ? null : "owed" })

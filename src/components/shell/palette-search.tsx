@@ -5,13 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { List, Receipt, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { categoryColor } from "~/components/charts/spec";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { Money } from "~/components/money/money";
+import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { Face } from "~/components/ui/avatar-face";
 import { CommandGroup } from "~/components/ui/command";
-import { getCategoryIcon } from "~/lib/category-icons";
 import { categoryTone } from "~/lib/category-tone";
 import { projectHref } from "~/lib/nav";
 import { PALETTE_GROUP, PaletteItem } from "./palette";
@@ -94,23 +93,24 @@ function HitItem({
 					value={value}
 				/>
 			);
-		case "category": {
-			const Icon = getCategoryIcon(hit.name);
+		case "category":
+			// The hit has no icon name (GAPS: search category icon): the glyph follows the name.
 			return (
 				<PaletteItem
 					label={hit.name}
 					lead={
-						<Icon
-							aria-hidden="true"
-							strokeWidth={1.75}
-							style={{ color: categoryColor(categoryTone(hit.color)) }}
+						<CategoryGlyph
+							category={{
+								id: hit.id,
+								name: hit.name,
+								tone: categoryTone(hit.color),
+							}}
 						/>
 					}
 					onSelect={() => go(`/activity?cat=${encodeURIComponent(hit.id)}`)}
 					value={value}
 				/>
 			);
-		}
 	}
 }
 

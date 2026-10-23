@@ -18,6 +18,6 @@
 		"unavailable": "Presupuesto no disponible: aún no hay cotización para {currencies}",
 		"unavailableRate": "Presupuesto no disponible: falta una cotización",
 		"paceFaster": "Más rápido que en {month} a estas alturas",
-		"paceSlower": "No más rápido que en {month} a estas alturas"
+		"paceSlower": "Al ritmo de {month} o más lento"
 	}
 }

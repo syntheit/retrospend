@@ -179,7 +179,7 @@ export function CurrenciesScreen({
 					/>
 				}
 			>
-				<FilterChips>
+				<FilterChips label={t("filters.label")}>
 					<FilterChip
 						onClick={() => setFavorites((f) => !f)}
 						selected={favorites}

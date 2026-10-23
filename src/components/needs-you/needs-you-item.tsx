@@ -163,7 +163,8 @@ export function NeedsYouItem({
 			key: "secondary",
 			node: (
 				<Button
-					className="text-fg-3 text-meta can-hover:hover:bg-transparent inline h-auto px-0 whitespace-nowrap underline underline-offset-2"
+					// 24px on desktop, 44pt on touch (UI-133), still a quiet link.
+					className="text-fg-3 text-meta can-hover:hover:bg-transparent h-auto min-h-6 px-0 whitespace-nowrap underline underline-offset-2 max-md:min-h-row"
 					kind="ghost"
 					onClick={() => onSecondary(item)}
 				>

@@ -76,7 +76,7 @@ export function Ledger({
 					/>
 				}
 			>
-				<FilterChips>
+				<FilterChips label={t("filters")}>
 					{chip(
 						filters.outstanding,
 						{ outstanding: !filters.outstanding },

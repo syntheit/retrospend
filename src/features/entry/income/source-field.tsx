@@ -26,7 +26,7 @@ export function SourceField({
 	const [other, setOther] = useState(!!value && !known);
 	return (
 		<div className="flex flex-col gap-2">
-			<FilterChips className="max-md:flex-wrap">
+			<FilterChips className="max-md:flex-wrap" label={t("from")}>
 				{people.map((p) => (
 					<FilterChip
 						key={`${p.participantType}:${p.participantId}`}

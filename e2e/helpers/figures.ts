@@ -10,7 +10,8 @@
  *                          shows whole pesos). Percent: hundredths of a
  *                          percent (12.5% is 1250). Count: the count.
  *   data-currency="<ISO>"  for money; otherwise data-unit="percent" | "count".
- *   The element's text is the formatted value (sign, symbol, digits).
+ *   The element's text is the formatted value (sign, symbol, digits), or
+ *   the word Settled on a zero Balance (data-balance="settled"), read as 0.
  *   data-ui="v2"           on the root of every overhauled page. A v2 page
  *                          with no figures fails the audit, and each page's
  *                          required ids live in required-figures.ts.
@@ -312,7 +313,11 @@ export async function collectFigureTags(page: Page): Promise<PageFigures> {
 				minor: el.dataset.minor ?? null,
 				currency: el.dataset.currency ?? null,
 				unit: el.dataset.unit ?? null,
-				text: (el.innerText || el.textContent || "").trim(),
+				// A zero Balance says the word Settled (R5); it stands for 0.
+				text:
+					el.dataset.balance === "settled"
+						? "0"
+						: (el.innerText || el.textContent || "").trim(),
 			}),
 		),
 	}));
