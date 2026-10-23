@@ -151,7 +151,9 @@ export async function paymentsBetween(
 		},
 		include: {
 			settlements: {
+				orderBy: { initiatedAt: "asc" },
 				select: {
+					id: true,
 					amount: true,
 					currency: true,
 					isOffset: true,
@@ -164,6 +166,7 @@ export async function paymentsBetween(
 	const myKeys = new Set(mine.map(keyOf));
 	return rows.map((p) => ({
 		id: p.id,
+		rowId: p.settlements[0]?.id ?? null,
 		direction: myKeys.has(
 			keyOf({ participantType: p.payerType, participantId: p.payerId }),
 		)

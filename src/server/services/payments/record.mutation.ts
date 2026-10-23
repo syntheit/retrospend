@@ -174,6 +174,44 @@ async function claimMatch(
 	);
 }
 
+/**
+ * "Same payment" confirms the claim as the payer recorded it; only what the
+ * receiver really changed goes through: an amount in the claim's own
+ * currency that differs, a different date, a different method. A payment
+ * in another currency is not the same record (it would be read in the
+ * claim's currency), so it is refused.
+ */
+async function claimOverrides(
+	tx: Parameters<typeof assertRelationship>[0],
+	claimId: string,
+	input: RecordPaymentInput,
+) {
+	const claim = await tx.payment.findUnique({ where: { id: claimId } });
+	if (!claim) return { paymentId: claimId };
+	if (claim.currency !== input.currency) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `That payment was recorded in ${claim.currency}. Settle in ${claim.currency} to confirm it.`,
+		});
+	}
+	const amount =
+		input.amount !== null &&
+		toMinor(input.amount, claim.currency) !==
+			toMinor(claim.amount.toString(), claim.currency)
+			? input.amount
+			: null;
+	const day = claim.paidOn.toISOString().slice(0, 10);
+	return {
+		paymentId: claimId,
+		amount,
+		paidOn: input.paidOn && input.paidOn !== day ? input.paidOn : null,
+		paymentMethod:
+			input.paymentMethod && input.paymentMethod !== claim.paymentMethod
+				? input.paymentMethod
+				: null,
+	};
+}
+
 export const recordPayment: MoneyMutation<
 	RecordPaymentInput,
 	RecordPaymentValue
@@ -186,12 +224,11 @@ export const recordPayment: MoneyMutation<
 		await checkAccess(tx, me, input);
 		await lockPair(tx, me, input.person);
 		if (input.matchClaimId) {
-			const confirmed = await confirmClaim(tx, me, {
-				paymentId: input.matchClaimId,
-				paymentMethod: input.paymentMethod,
-				paidOn: input.paidOn,
-				amount: input.amount,
-			});
+			const confirmed = await confirmClaim(
+				tx,
+				me,
+				await claimOverrides(tx, input.matchClaimId, input),
+			);
 			return {
 				value: {
 					recorded: true,

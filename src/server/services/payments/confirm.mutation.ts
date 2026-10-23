@@ -19,6 +19,7 @@ import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma } from "~prisma";
 import { lockPair } from "./access";
 import { type Allocation, allocatePayment } from "./allocate";
+import { previousOf, readPrevious, restoreClaim } from "./confirm-restore";
 import type { Confirmation } from "./confirmation";
 import { ledgerLines, payerLines } from "./ledger";
 import { loadQuotes } from "./quotes";
@@ -245,7 +246,10 @@ export async function confirmClaim(
 	await logGroupAction(tx, me, written, {
 		action: "SETTLED",
 		context: "settlement_confirmed",
-		...(changed ? { changes: { confirmedAmount: input.amount } } : {}),
+		changes: {
+			previous: previousOf(header),
+			...(changed ? { confirmedAmount: input.amount } : {}),
+		},
 	});
 	return {
 		paymentId: header.id,
@@ -318,7 +322,8 @@ export const confirmPayment: MoneyMutation<
  * payment.unconfirm, the undo of payment.confirm: the payment waits for the
  * same person again, every row with only the recorder's flag set, and the
  * receiver's view goes back to showing it as a claim. Details the receiver
- * changed while confirming (method, date, amount) stay as confirmed.
+ * changed while confirming (method, date, amount) go back to the payer's,
+ * read from the confirm's audit entry (confirm-restore.ts).
  */
 export const unconfirmPayment: MoneyMutation<
 	{ readonly paymentId: string; readonly person: ParticipantRef },
@@ -359,25 +364,35 @@ export const unconfirmPayment: MoneyMutation<
 			});
 		}
 		await lockPair(tx, me, input.person);
-		for (const row of rows) {
-			const fromRecorder =
-				row.fromParticipantType === recorder.participantType &&
-				row.fromParticipantId === recorder.participantId;
-			await tx.settlement.update({
-				where: { id: row.id },
-				data: {
-					status: "PROPOSED",
-					settledAt: null,
-					confirmedByPayer: fromRecorder,
-					confirmedByPayee: !fromRecorder,
-				},
-			});
+		// The claim goes back as the payer recorded it: amount, date, method.
+		const previous = await readPrevious(
+			tx,
+			rows.map((r) => r.id),
+		);
+		const restored = previous
+			? await restoreClaim(tx, header, rows, previous)
+			: null;
+		if (!restored?.rewritten) {
+			for (const row of rows) {
+				const fromRecorder =
+					row.fromParticipantType === recorder.participantType &&
+					row.fromParticipantId === recorder.participantId;
+				await tx.settlement.update({
+					where: { id: row.id },
+					data: {
+						status: "PROPOSED",
+						settledAt: null,
+						confirmedByPayer: fromRecorder,
+						confirmedByPayee: !fromRecorder,
+					},
+				});
+			}
 		}
 		await tx.payment.update({
 			where: { id: header.id },
 			data: { status: "PROPOSED" },
 		});
-		await logGroupAction(tx, me, rows, {
+		await logGroupAction(tx, me, restored?.rows ?? rows, {
 			action: "EDITED",
 			context: "settlement_unconfirmed",
 		});

@@ -113,6 +113,8 @@ export interface ScopeDTO {
 
 export interface PaymentDTO {
 	readonly id: string;
+	/** One of its settlement rows, for the row-based calls (reject). */
+	readonly rowId: string | null;
 	/** "in": they paid you. "out": you paid them. */
 	readonly direction: "in" | "out";
 	readonly amount: Money;
