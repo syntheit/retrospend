@@ -151,9 +151,9 @@ export async function getRateSyncStatus(db: AppDb) {
 }
 
 /**
- * The sidecar is not set up on this server (no worker key) or does not
- * answer (refused, unknown host, timeout): a sync cannot start here. A
- * sidecar that answers with an error is a failure, not this.
+ * The sidecar is not set up on this server (no worker key) or never
+ * answered (refused, unknown host): a sync cannot start here. A sidecar that
+ * answers with an error, or is too slow, is a failure, not this.
  */
 export class RateSyncUnavailable extends Error {
 	constructor() {
@@ -162,19 +162,20 @@ export class RateSyncUnavailable extends Error {
 	}
 }
 
+/** /sync-rates fetches before it answers: well past the 5 s default. */
+const SYNC_TIMEOUT_MS = 120_000;
+
 /** Asks the sidecar to fetch rates now. Throws when the worker refuses. */
 export async function requestRateSync(): Promise<void> {
 	if (!env.WORKER_API_KEY) throw new RateSyncUnavailable();
 	try {
 		await IntegrationService.requestWorker(`${env.SIDECAR_URL}/sync-rates`, {
 			method: "POST",
+			timeout: SYNC_TIMEOUT_MS,
 		});
 	} catch (error) {
-		// IntegrationService turns a fetch that never got an answer into these two.
-		if (
-			error instanceof TRPCError &&
-			(error.code === "TIMEOUT" || error.code === "INTERNAL_SERVER_ERROR")
-		)
+		// IntegrationService turns a fetch that got no answer at all into this one.
+		if (error instanceof TRPCError && error.code === "INTERNAL_SERVER_ERROR")
 			throw new RateSyncUnavailable();
 		throw error;
 	}

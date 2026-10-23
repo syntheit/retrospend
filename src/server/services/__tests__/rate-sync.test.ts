@@ -27,9 +27,8 @@ describe("requestRateSync", () => {
 		await requestRateSync();
 		expect(requestWorker).toHaveBeenCalledWith(
 			"http://sidecar:8080/sync-rates",
-			{
-				method: "POST",
-			},
+			// /sync-rates answers after it fetched: a long timeout, not the 5 s default.
+			{ method: "POST", timeout: 120_000 },
 		);
 	});
 
@@ -40,14 +39,16 @@ describe("requestRateSync", () => {
 	});
 
 	it("is unavailable when the sidecar does not answer", async () => {
-		for (const code of ["INTERNAL_SERVER_ERROR", "TIMEOUT"] as const) {
-			requestWorker.mockRejectedValueOnce(
-				new TRPCError({ code, message: "fetch failed" }),
-			);
-			await expect(requestRateSync()).rejects.toBeInstanceOf(
-				RateSyncUnavailable,
-			);
-		}
+		requestWorker.mockRejectedValueOnce(
+			new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "fetch failed" }),
+		);
+		await expect(requestRateSync()).rejects.toBeInstanceOf(RateSyncUnavailable);
+	});
+
+	it("fails when the sidecar is too slow", async () => {
+		const slow = new TRPCError({ code: "TIMEOUT", message: "timed out" });
+		requestWorker.mockRejectedValueOnce(slow);
+		await expect(requestRateSync()).rejects.toBe(slow);
 	});
 
 	it("fails when the sidecar answers with an error", async () => {
