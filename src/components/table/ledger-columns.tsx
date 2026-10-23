@@ -95,7 +95,7 @@ export function useLedgerColumns({
 	onOpen?: (tx: TransactionVM) => void;
 }) {
 	const t = useTranslations("rows.table");
-	const date = useDateColumn(today);
+	const date = useDateColumn(today, set === "between" ? "short" : "day");
 	return useMemo(() => {
 		const shared = set === "between" || !solo;
 		const cols: DataTableColumnDef<TransactionVM>[] = [];
@@ -104,7 +104,8 @@ export function useLedgerColumns({
 			id: "title",
 			accessorKey: "title",
 			header: t("title"),
-			meta: { flex: true },
+			// The title takes the room left and truncates, so long titles never widen the table.
+			meta: { flex: true, className: "w-full max-w-0" },
 			cell: ({ row }) => {
 				const tx = row.original;
 				return (
@@ -112,7 +113,7 @@ export function useLedgerColumns({
 						<TransactionLead size="sm" tx={tx} />
 						<Title onOpen={onOpen} tx={tx} />
 						{set === "between" && tx.project && (
-							<span className="text-fg-3 text-meta truncate">
+							<span className="text-fg-3 text-meta max-w-40 shrink-0 truncate">
 								{tx.project.name}
 							</span>
 						)}

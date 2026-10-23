@@ -132,29 +132,25 @@ export function PersonRow({
 	const variant = useRowVariant();
 	const { wide, narrow } = sides(variant);
 	const settled = signOf(person.balance) === 0;
-	const statuses = [
-		(person.unseen ?? 0) > 0 && {
-			keep: (
-				<StatusDot
-					kind="review"
-					label={t("new", { count: person.unseen ?? 0 })}
-					size="sm"
-				/>
-			),
-		},
-		(person.needsYou ?? 0) > 0 && {
-			keep: (
-				<StatusDot
-					kind="review"
-					label={t("needYou", { count: person.needsYou ?? 0 })}
-					size="sm"
-				/>
-			),
-		},
-		!person.onRetrospend && {
-			keep: <StatusDot kind="notOnRetrospend" size="sm" />,
-		},
-	];
+	// Statuses never cut: on a desktop line they keep their width; on a
+	// phone's own line they wrap between words rather than lose one.
+	const status = (kind: "review" | "notOnRetrospend", label?: string) => (
+		<StatusDot
+			className="whitespace-normal"
+			key={label ?? kind}
+			kind={kind}
+			label={label}
+			size="sm"
+		/>
+	);
+	const statusList = [
+		(person.unseen ?? 0) > 0 &&
+			status("review", t("new", { count: person.unseen ?? 0 })),
+		(person.needsYou ?? 0) > 0 &&
+			status("review", t("needYou", { count: person.needsYou ?? 0 })),
+		!person.onRetrospend && status("notOnRetrospend"),
+	].filter((s) => s !== false);
+	const statuses = statusList.map((s) => ({ keep: s }));
 	const shared = [
 		{ shrink: person.lastShared },
 		person.when && { keep: person.when },
@@ -213,8 +209,15 @@ export function PersonRow({
 				<>
 					<RowSub className={wide} parts={[...statuses, ...shared]} />
 					<RowSub className={narrow} parts={shared} />
-					{statuses.some(Boolean) && (
-						<RowSub className={narrow} parts={statuses} />
+					{statusList.length > 0 && (
+						<div
+							className={cn(
+								"text-meta mt-px flex flex-wrap gap-x-2 gap-y-0.5",
+								narrow,
+							)}
+						>
+							{statusList}
+						</div>
 					)}
 				</>
 			}

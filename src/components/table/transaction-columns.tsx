@@ -168,20 +168,24 @@ export function ProjectCell({
 	);
 }
 
-/** The Date column; left out when day rows carry the date (layout A). */
-export function useDateColumn(today?: string) {
+/**
+ * The Date column; left out when day rows carry the date (layout A). A
+ * ledger under month rows says the short day ("Oct 21", person.html).
+ */
+export function useDateColumn(today?: string, style: "day" | "short" = "day") {
 	const t = useTranslations("rows.table");
-	const { day } = useRowDates(today);
+	const { day, short } = useRowDates(today);
 	return useMemo(
 		(): DataTableColumnDef<TransactionVM> => ({
 			id: "date",
 			accessorKey: "date",
 			header: t("date"),
-			size: 120,
+			size: style === "short" ? 80 : 120,
 			meta: { className: "text-fg-2" },
-			cell: ({ row }) => day(row.original.date),
+			cell: ({ row }) =>
+				style === "short" ? short(row.original.date) : day(row.original.date),
 		}),
-		[t, day],
+		[t, day, short, style],
 	);
 }
 
@@ -221,7 +225,8 @@ export function useTransactionColumns({
 				id: "title",
 				accessorKey: "title",
 				header: t("title"),
-				meta: { flex: true },
+				// The title takes the room left and truncates, so long titles never widen the table.
+				meta: { flex: true, className: "w-full max-w-0" },
 				cell: ({ row }) => (
 					<span className="flex min-w-0 items-center gap-2">
 						<Title onOpen={onOpen} tx={row.original} />
