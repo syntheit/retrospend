@@ -5,6 +5,7 @@
  * planned in one action. ARS home; ARS 1,468 Blue, 1,412 Official, 1,449 MEP.
  */
 import { beforeAll, describe, expect, it } from "vitest";
+import { ExpenseService } from "~/server/services/expense.service";
 import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { adminDb } from "~/test/pg-harness";
@@ -35,9 +36,10 @@ const unchanged = (result: { unchanged: readonly { id: string }[] }) =>
 	result.unchanged.map((u) => u.id);
 
 async function places() {
-	const { user } = await arsUser();
+	const { user, db } = await arsUser();
 	return {
 		userId: user.id,
+		db,
 		savings: await openAccount(user.id, "Savings", "CASH", "ARS", 5_000_000),
 		wallet: await openAccount(
 			user.id,
@@ -206,6 +208,40 @@ describe("legs and balances stay in step", () => {
 		// As Activity's delete does: the row goes, its leg cascades.
 		await adminDb.expense.delete({ where: { id: value.expenseId } });
 		expect(await balanceOf(p.savings)).toBe("5000000");
+	});
+
+	it("Activity's delete, under the user's own access, takes the balance back", async () => {
+		const p = await places();
+		const { value } = await forUser(p.userId).apply(addIncome, {
+			title: "Salary",
+			amount: "2950000",
+			currency: "ARS",
+			into: p.savings,
+		});
+		await new ExpenseService(p.db).deleteExpense(p.userId, value.expenseId);
+		expect(await balanceOf(p.savings)).toBe("5000000");
+		expect(
+			await adminDb.accountLeg.count({ where: { userId: p.userId } }),
+		).toBe(0);
+	});
+
+	it("a preview moves the balance once, as saving does, and writes nothing", async () => {
+		const p = await places();
+		const input = { ...freelance(p.wise), id: "income-preview-equals-apply" };
+		const preview = await forUser(p.userId).preview(addIncome, input);
+		expect(preview.value.into).toMatchObject({
+			before: "1840.55",
+			after: "3840.55",
+		});
+		expect(await balanceOf(p.wise)).toBe("1840.55");
+		expect(
+			await adminDb.accountLeg.count({ where: { userId: p.userId } }),
+		).toBe(0);
+
+		const applied = await forUser(p.userId).apply(addIncome, input);
+		expect(applied.value).toEqual(preview.value);
+		expect(applied.changes).toEqual(preview.changes);
+		expect(await balanceOf(p.wise)).toBe("3840.55");
 	});
 });
 

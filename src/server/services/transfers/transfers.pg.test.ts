@@ -11,7 +11,8 @@ import { readFigures } from "~/server/figures/read";
 import { dec } from "~/server/services/envelope/units";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
-import { closeAccount } from "../accounts/manage";
+import { ExpenseService } from "~/server/services/expense.service";
+import { closeAccount, deleteAccount } from "../accounts/manage";
 import {
 	arsUser,
 	balanceOf,
@@ -384,6 +385,39 @@ describe("preview and undo (R30)", () => {
 		expect(
 			await adminDb.transfer.findUnique({ where: { id: value.transferId } }),
 		).not.toBeNull();
+	});
+});
+
+describe("legs and balances stay in step", () => {
+	it("deleting an account keeps the other side of its moves", async () => {
+		const p = await places();
+		await move(p, {
+			fromAccountId: p.savings,
+			toAccountId: p.wallet,
+			fromAmount: "250000",
+		});
+		await deleteAccount(p.db, p.userId, p.savings);
+		expect(await balanceOf(p.wallet)).toBe("1250000");
+		expect(
+			await adminDb.accountLeg.count({ where: { userId: p.userId } }),
+		).toBe(1);
+	});
+
+	it("a fee deleted from Activity goes back to the account it came from", async () => {
+		const p = await places();
+		const { value } = await move(p, {
+			fromAccountId: p.wallet,
+			toAccountId: p.card,
+			fromAmount: "842600",
+			fee: { amount: "1500" },
+		});
+		expect(await balanceOf(p.wallet)).toBe("155900");
+		await new ExpenseService(p.db).deleteExpense(
+			p.userId,
+			value.feeExpenseId ?? "",
+		);
+		expect(await balanceOf(p.wallet)).toBe("157400");
+		expect(await balanceOf(p.card)).toBe("0");
 	});
 });
 
