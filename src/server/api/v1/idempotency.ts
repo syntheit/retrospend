@@ -44,7 +44,7 @@ export const idempotency = os
 		const start = await startIdempotentRequest(user.db, {
 			userId: user.principal.userId,
 			key,
-			requestHash: hashRequest(method, route.path ?? "", input),
+			requestHash: await hashRequest(method, route.path ?? "", input),
 		});
 		switch (start.kind) {
 			case "reused":

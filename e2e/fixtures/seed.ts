@@ -51,13 +51,14 @@ import {
 	LUCIA,
 	MARTIN,
 	PAZ,
-	PROJECT_IDS,
 	type PersonKey,
+	PROJECT_IDS,
 	ref,
 	SEED_TIME_ZONE,
 	SEED_USERS,
-	SOFIA,
 	type SeedUser,
+	SOFIA,
+	seedId,
 } from "./personas";
 
 type Db = PrismaClient;
@@ -68,9 +69,8 @@ const USER_BY_KEY: Record<Exclude<PersonKey, "paz">, SeedUser> = {
 	martin: MARTIN,
 };
 
-const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
 const categoryId = (user: SeedUser, name: string) =>
-	`e2e_cat_${user.username}_${slug(name)}`;
+	seedId("cat", user.username, name);
 const money = (amount: number, currency: string) =>
 	toAmountString(amount, currency);
 const usd = (amount: number, currency: string) =>
@@ -130,7 +130,7 @@ async function writeRates(db: Db, anchor: Anchor): Promise<void> {
 	const date = new Date(Date.UTC(anchor.year - 1, anchor.month, 1));
 	await db.exchangeRate.createMany({
 		data: SEED_RATES.map((r) => ({
-			id: `e2e_rate_${r.currency}_${r.type}`,
+			id: seedId("rate", r.currency, r.type),
 			date,
 			currency: r.currency,
 			type: r.type,
@@ -317,7 +317,7 @@ async function writeRecurringAndBudgets(db: Db, anchor: Anchor): Promise<void> {
 					? nextDayOfMonth(anchor, r.due.dayOfMonth)
 					: daysAgo(anchor, r.due.overdueDays);
 			return {
-				id: `e2e_rec_${r.key}`,
+				id: seedId("rec", r.key),
 				userId: SOFIA.id,
 				name: r.name,
 				amount: money(r.amount, r.currency),
@@ -338,7 +338,7 @@ async function writeRecurringAndBudgets(db: Db, anchor: Anchor): Promise<void> {
 		);
 		const period = budgetPeriod(inMonth, SEED_TIME_ZONE);
 		rows.push({
-			id: `e2e_budget_total_${back}`,
+			id: seedId("budget", "total", String(back)),
 			userId: SOFIA.id,
 			categoryId: null,
 			amount: money(GLOBAL_BUDGET_ARS, "ARS"),
@@ -347,7 +347,7 @@ async function writeRecurringAndBudgets(db: Db, anchor: Anchor): Promise<void> {
 		});
 		for (const [name, amount] of Object.entries(BUDGETS)) {
 			rows.push({
-				id: `e2e_budget_${slug(name)}_${back}`,
+				id: seedId("budget", name, String(back)),
 				userId: SOFIA.id,
 				categoryId: categoryId(SOFIA, name),
 				amount: money(amount, "ARS"),
@@ -364,7 +364,7 @@ async function writeWealth(db: Db, anchor: Anchor): Promise<void> {
 	for (const [index, a] of ACCOUNTS.entries()) {
 		const rate = seedRate(a.currency);
 		const rateType = a.currency === "USD" ? null : "official";
-		const id = `e2e_asset_${a.key}`;
+		const id = seedId("asset", a.key);
 		await db.assetAccount.create({
 			data: {
 				id,
@@ -388,7 +388,7 @@ async function writeWealth(db: Db, anchor: Anchor): Promise<void> {
 			const balance =
 				monthsBack === 0 ? a.balance : historicBalance(a, monthsBack, index);
 			return {
-				id: `${id}_snap_${monthsBack}`,
+				id: seedId("snap", a.key, String(monthsBack)),
 				accountId: id,
 				userId: SOFIA.id,
 				date:
@@ -405,7 +405,7 @@ async function writeWealth(db: Db, anchor: Anchor): Promise<void> {
 		await db.assetSnapshot.createMany({ data: snapshots });
 		await db.assetHistory.create({
 			data: {
-				id: `${id}_history`,
+				id: seedId("history", a.key),
 				assetId: id,
 				userId: SOFIA.id,
 				balance: money(a.balance, a.currency),
@@ -415,10 +415,34 @@ async function writeWealth(db: Db, anchor: Anchor): Promise<void> {
 	}
 }
 
+const UI_V2_MODES = ["OFF", "ADMINS", "ALL"] as const;
+type UiV2Mode = (typeof UI_V2_MODES)[number];
+
+/** The new shell's rollout for this database: E2E_UI_V2_MODE, else OFF. */
+function uiV2ModeFromEnv(): UiV2Mode {
+	const mode = process.env.E2E_UI_V2_MODE ?? "OFF";
+	if (!UI_V2_MODES.includes(mode as UiV2Mode)) {
+		throw new Error(`E2E_UI_V2_MODE must be one of ${UI_V2_MODES.join(", ")}`);
+	}
+	return mode as UiV2Mode;
+}
+
+/**
+ * The settings row, written with the reset. Global setup's sign-ups are the
+ * server's first settings read after the seed, so its 60 second cache holds
+ * this row from the start and no test waits for the flag.
+ */
+async function writeAppSettings(db: Db, uiV2Mode: UiV2Mode): Promise<void> {
+	await db.appSettings.create({
+		data: { id: "app_settings_singleton", uiV2Mode },
+	});
+}
+
 /** Wipes the e2e DB and writes the personas. Same input, same rows. */
 export async function seedE2eDatabase(
 	databaseUrl: string,
 	anchor: Anchor = seedAnchor(),
+	uiV2Mode: UiV2Mode = uiV2ModeFromEnv(),
 ): Promise<void> {
 	assertE2eDatabase(databaseUrl);
 	const db = new PrismaClient({
@@ -426,6 +450,7 @@ export async function seedE2eDatabase(
 	});
 	try {
 		await resetDatabase(db);
+		await writeAppSettings(db, uiV2Mode);
 		await writeUsers(db);
 		await writeRates(db, anchor);
 		await writeExpenses(db, anchor);
