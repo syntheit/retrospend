@@ -16,6 +16,7 @@ import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { guestRouter } from "~/server/api/routers/guest";
 import { importQueueRouter } from "~/server/api/routers/import-queue";
+import { importV2Router } from "~/server/api/routers/import-v2";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { notificationRouter } from "~/server/api/routers/notification";
 import { paymentMethodRouter } from "~/server/api/routers/paymentMethod";
@@ -42,6 +43,7 @@ import {
 // The v2 reads sit in their own files and join the namespaces here.
 const expenseAllRouter = mergeRouters(expenseRouter, expenseV2Router);
 const recurringAllRouter = mergeRouters(recurringRouter, recurringViewRouter);
+const importAllRouter = mergeRouters(importQueueRouter, importV2Router);
 
 export const appRouter = createTRPCRouter({
 	admin: adminRouter,
@@ -61,7 +63,7 @@ export const appRouter = createTRPCRouter({
 	feedback: feedbackRouter,
 	exchangeRate: exchangeRateRouter,
 	exportData: exportRouter,
-	importQueue: importQueueRouter,
+	importQueue: importAllRouter,
 	invite: inviteRouter,
 	recurring: recurringAllRouter,
 	settings: settingsRouter,

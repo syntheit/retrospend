@@ -34,6 +34,8 @@ export interface ImporterTransaction {
 	categoryId?: string;
 	/** From an "excludeFromAnalytics" CSV column; unset means the category default. */
 	excludeFromAnalytics?: boolean;
+	/** From a "kind" CSV column (expense, income, refund, not spending); the import review proposes it. */
+	kind?: string;
 }
 
 export interface CreateJobInput {
@@ -342,6 +344,7 @@ export class ImportQueueService {
 				const description = row.description?.trim() || "";
 				const category = row.category?.trim() || "";
 				const pricingSource = row.pricingsource?.trim() || "IMPORT";
+				const kind = row.kind?.trim() || undefined;
 				const excludeCell = row.excludefromanalytics?.trim().toLowerCase();
 				const excludeFromAnalytics =
 					excludeCell === undefined || excludeCell === ""
@@ -399,6 +402,7 @@ export class ImportQueueService {
 					pricingSource,
 					category,
 					...(excludeFromAnalytics === undefined ? {} : { excludeFromAnalytics }),
+					...(kind ? { kind } : {}),
 				});
 			} catch (error) {
 				warnings.push(
