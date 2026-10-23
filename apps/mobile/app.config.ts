@@ -14,6 +14,9 @@ const config: ExpoConfig = {
 	userInterfaceStyle: "automatic",
 	ios: {
 		bundleIdentifier: "app.retrospend",
+		// Daniel Miller's team. Prebuild writes it as DEVELOPMENT_TEAM, so
+		// Xcode's automatic signing knows whose profiles to create.
+		appleTeamId: "6NHZWHQX37",
 		supportsTablet: true,
 		// Stage Manager, Split View and Slide Over stay available on iPad.
 		requireFullScreen: false,
@@ -36,6 +39,8 @@ const config: ExpoConfig = {
 		"expo-secure-store",
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",
+		// iOS 27 SDK apps must use the UIScene life cycle.
+		"./plugins/with-ios-scene-lifecycle",
 	],
 };
 
