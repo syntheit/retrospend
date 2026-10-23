@@ -210,14 +210,16 @@ export function PersonRow({
 			sub={
 				<>
 					<RowSub className={wide} parts={[...statuses, ...shared]} />
-					<RowSub className={narrow} parts={shared} />
-					{statusList.length > 0 && (
+					{/* Phones: the title has its line; when and the statuses wrap under it. */}
+					<RowSub className={narrow} parts={[person.lastShared]} />
+					{(person.when || statusList.length > 0) && (
 						<div
 							className={cn(
-								"text-meta mt-px flex flex-wrap gap-x-2 gap-y-0.5",
+								"text-fg-3 text-meta mt-px flex flex-wrap items-center gap-x-2 gap-y-0.5",
 								narrow,
 							)}
 						>
+							{person.when && <span>{person.when}</span>}
 							{statusList}
 						</div>
 					)}

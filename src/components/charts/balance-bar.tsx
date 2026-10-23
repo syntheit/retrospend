@@ -109,16 +109,25 @@ export function BalanceBar({
 			amount: text(s.amount),
 		});
 	const seg = (s: BalanceSegment) => {
-		const fill = (
-			<>
-				{s.direction === "owe" && (
-					<svg aria-hidden="true" className="absolute inset-0 size-full">
+		// The hatch clips to its own rounded box, so a button's taller hit area
+		// (below) is not clipped with it.
+		const fill =
+			s.direction === "owe" ? (
+				<span
+					aria-hidden="true"
+					className="rounded-chip absolute inset-0 overflow-hidden"
+				>
+					<svg aria-hidden="true" className="size-full">
 						<rect fill={`url(#${hatch})`} height="100%" width="100%" />
 					</svg>
-				)}
-			</>
-		);
-		const look = "rounded-chip relative block h-full min-w-1 overflow-hidden";
+				</span>
+			) : null;
+		const look = "rounded-chip relative block h-full min-w-1";
+		// The bar is 12px; its buttons reach 44px on phones and 28px on
+		// desktop (§14 targets) through an invisible area above and below.
+		const hit = phone
+			? "after:absolute after:-inset-y-4 after:inset-x-0 after:content-['']"
+			: "after:absolute after:-inset-y-2 after:inset-x-0 after:content-['']";
 		const style = {
 			flex: `${s.share} 1 0`,
 			background:
@@ -129,7 +138,7 @@ export function BalanceBar({
 				{onSegment ? (
 					<Button
 						aria-label={label(s)}
-						className={cn(look, "rounded-chip h-full border-0 p-0")}
+						className={cn(look, hit, "h-full border-0 p-0")}
 						kind="ghost"
 						onClick={() => onSegment(s.person)}
 						ref={track(keyOf(s))}

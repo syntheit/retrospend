@@ -88,7 +88,8 @@
 		"deleted": "{count, plural, one {# Ausgabe} other {# Ausgaben}} gelöscht",
 		"failed": "Die ausgewählten Ausgaben konnten nicht geändert werden",
 		"confirmTitle": "{count, plural, one {# Ausgabe} other {# Ausgaben}} löschen?",
-		"confirmBody": "Sie fallen aus deinen Ausgaben und allen Summen heraus.",
-		"confirmButton": "Ausgaben löschen"
+		"confirmBody": "Sie fallen aus deinen Ausgaben und allen Summen heraus. Du kannst es rückgängig machen.",
+		"confirmButton": "Ausgaben löschen",
+		"deletedSome": "{count, plural, one {# Ausgabe} other {# Ausgaben}} gelöscht. {left, plural, one {# konnte nicht gelöscht werden} other {# konnten nicht gelöscht werden}}"
 	}
 }

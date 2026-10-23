@@ -20,9 +20,6 @@ import { categoryTone } from "~/server/services/expense-list/category-tone";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";
 
-/** Today's expense router takes uuids; imported rows (cuid) wait for API v1 (GAPS). */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function save(text: string, filename: string) {
 	const url = URL.createObjectURL(
 		new Blob([text], { type: "text/csv;charset=utf-8;" }),
@@ -57,7 +54,8 @@ export function useBulkActions(rows: ActivityRowDTO[]) {
 	});
 	const recategorize = api.expense.bulkUpdateCategory.useMutation();
 	const exportCsv = api.expense.exportCsv.useMutation();
-	const remove = api.expense.deleteExpense.useMutation();
+	const remove = api.entry.expense.delete.save.useMutation();
+	const restore = api.entry.expense.restore.save.useMutation();
 	const refresh = useCallback(() => utils.expense.listV2.invalidate(), [utils]);
 
 	const canSelect = useCallback(
@@ -68,8 +66,7 @@ export function useBulkActions(rows: ActivityRowDTO[]) {
 				r.source === "personal" &&
 				r.kind === "expense" &&
 				r.mine &&
-				r.canEdit &&
-				UUID.test(r.entityId)
+				r.canEdit
 			);
 		},
 		[byId],
@@ -132,16 +129,39 @@ export function useBulkActions(rows: ActivityRowDTO[]) {
 		}
 	};
 
+	/**
+	 * One delete per row, each with its own restore token. A row that cannot
+	 * go (a transfer's fee) does not stop the others; the toast says how many
+	 * went, and Undo brings back every one that did.
+	 */
 	const confirmDelete = async (ids: string[]) => {
 		setDeleting(null);
-		try {
-			for (const id of entityIds(ids)) await remove.mutateAsync({ id });
-			setSelected(new Set());
-			toast.saved(t("deleted", { count: ids.length }));
-		} catch {
-			toast.failed(t("failed"));
+		const tokens: string[] = [];
+		for (const id of entityIds(ids)) {
+			try {
+				const out = await remove.mutateAsync({ id });
+				tokens.push(out.value.restore);
+			} catch {
+				// Counted below: the toast names how many could not be deleted.
+			}
 		}
+		setSelected(new Set());
 		await refresh();
+		if (!tokens.length) {
+			toast.failed(t("failed"));
+			return;
+		}
+		const undo = async () => {
+			for (const token of tokens) await restore.mutateAsync({ token });
+			await refresh();
+		};
+		const left = ids.length - tokens.length;
+		toast.saved(
+			left
+				? t("deletedSome", { count: tokens.length, left })
+				: t("deleted", { count: tokens.length }),
+			{ undo },
+		);
 	};
 
 	const bulk = (ids: string[]): ReactNode => (

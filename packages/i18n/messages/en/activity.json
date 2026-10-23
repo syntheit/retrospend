@@ -88,7 +88,8 @@
 		"deleted": "Deleted {count, plural, one {# expense} other {# expenses}}",
 		"failed": "Couldn't change the selected expenses",
 		"confirmTitle": "Delete {count, plural, one {# expense} other {# expenses}}?",
-		"confirmBody": "They leave your spending and every total they were in.",
-		"confirmButton": "Delete expenses"
+		"confirmBody": "They leave your spending and every total they were in. You can undo it.",
+		"confirmButton": "Delete expenses",
+		"deletedSome": "Deleted {count, plural, one {# expense} other {# expenses}}. {left, plural, one {# couldn't be deleted} other {# couldn't be deleted}}"
 	}
 }

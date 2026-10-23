@@ -88,7 +88,8 @@
 		"deleted": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}",
 		"failed": "No se pudieron cambiar los gastos seleccionados",
 		"confirmTitle": "¿Eliminar {count, plural, one {# gasto} other {# gastos}}?",
-		"confirmBody": "Salen de tus gastos y de cada total en el que estaban.",
-		"confirmButton": "Eliminar gastos"
+		"confirmBody": "Salen de tus gastos y de cada total en el que estaban. Podés deshacerlo.",
+		"confirmButton": "Eliminar gastos",
+		"deletedSome": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}. {left, plural, one {# no se pudo eliminar} other {# no se pudieron eliminar}}"
 	}
 }

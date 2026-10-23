@@ -12,6 +12,12 @@ import {
 } from "~/server/services/shared-expense-integration";
 import { titleSuggestions } from "~/server/services/title-suggestions.service";
 
+/**
+ * An existing expense's id: forms write uuids, imports and the sidecar
+ * cuids (Expense.id defaults to cuid()). Every query filters by userId.
+ */
+const expenseId = z.string().min(1).max(64);
+
 const expenseInputSchema = z.object({
 	id: z.guid(),
 	title: z.string().min(1).max(500),
@@ -100,14 +106,14 @@ export const expenseRouter = createTRPCRouter({
 		}),
 
 	deleteExpense: protectedProcedure
-		.input(z.object({ id: z.guid() }))
+		.input(z.object({ id: expenseId }))
 		.mutation(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
 			return await service.deleteExpense(ctx.session.user.id, input.id);
 		}),
 
 	exportCsv: protectedProcedure
-		.input(z.object({ expenseIds: z.array(z.guid()).optional() }).optional())
+		.input(z.object({ expenseIds: z.array(expenseId).optional() }).optional())
 		.mutation(async ({ ctx, input }) => {
 			const service = new CsvService(ctx.db);
 			const csv = await service.exportExpensesAsCsv(
@@ -164,7 +170,7 @@ export const expenseRouter = createTRPCRouter({
 	bulkUpdateCategory: protectedProcedure
 		.input(
 			z.object({
-				expenseIds: z.array(z.guid()).min(1).max(500),
+				expenseIds: z.array(expenseId).min(1).max(500),
 				categoryId: z.cuid(),
 			}),
 		)

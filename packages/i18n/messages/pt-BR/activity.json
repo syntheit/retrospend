@@ -88,7 +88,8 @@
 		"deleted": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}",
 		"failed": "Não foi possível alterar as despesas selecionadas",
 		"confirmTitle": "Excluir {count, plural, one {# despesa} other {# despesas}}?",
-		"confirmBody": "Elas saem dos seus gastos e de todo total em que estavam.",
-		"confirmButton": "Excluir despesas"
+		"confirmBody": "Elas saem dos seus gastos e de todo total em que estavam. Você pode desfazer.",
+		"confirmButton": "Excluir despesas",
+		"deletedSome": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}. {left, plural, one {# não pôde ser excluída} other {# não puderam ser excluídas}}"
 	}
 }

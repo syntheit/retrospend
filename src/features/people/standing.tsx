@@ -78,17 +78,19 @@ export function Standing({
 			: [];
 	});
 	const zero = { minor: 0, currency: view.home };
-	// The totals convert other currencies at today's rates: they read "≈".
-	const approx = view.people.some((p) =>
-		p.parts.some((part) => part.amount.currency !== view.home),
-	);
+	// A total converts other currencies at today's rates when its people
+	// hold any: then it reads "≈". Each side on its own.
+	const converts = (people: PersonSummary[]) =>
+		people.some((p) =>
+			p.parts.some((part) => part.amount.currency !== view.home),
+		);
 	return (
 		<section aria-label={t("label")} className="mb-8">
 			<div className="flex items-end justify-between gap-4 max-md:flex-col max-md:items-stretch max-md:gap-2">
 				<div>
 					<div className="text-fg-2 text-small">{t("owedToYou")}</div>
 					<Money
-						approx={approx}
+						approx={converts(owed)}
 						className="text-positive text-hero max-md:text-title"
 						figure="owed.owedToYou"
 						missing="noRate"
@@ -98,7 +100,7 @@ export function Standing({
 				<div className="text-right max-md:flex max-md:items-baseline max-md:justify-between max-md:text-left">
 					<div className="text-fg-2 text-small">{t("youOwe")}</div>
 					<Money
-						approx={approx}
+						approx={converts(owe)}
 						className="text-owe text-title max-md:text-section"
 						figure="owed.youOwe"
 						missing="noRate"
