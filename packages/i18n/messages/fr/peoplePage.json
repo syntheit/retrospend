@@ -1,0 +1,99 @@
+{
+	"title": "Personnes",
+	"standing": {
+		"label": "Où vous en êtes",
+		"owedToYou": "On vous doit",
+		"youOwe": "Vous devez",
+		"peopleOweYou": "{count, plural, =0 {Personne ne vous doit rien} one {# personne vous doit} other {# personnes vous doivent}}",
+		"youOwePeople": "{count, plural, one {Vous devez à # personne} other {Vous devez à # personnes}}",
+		"allSettled": "À jour avec tout le monde",
+		"noRate": "{currencies} : pas encore de taux, hors des totaux"
+	},
+	"groups": {
+		"owed": "Vous doivent",
+		"owe": "Vous devez",
+		"pending": "En attente",
+		"settled": "À jour"
+	},
+	"settledWho": "{first}, {second} et {count} de plus",
+	"ago": {
+		"today": "aujourd'hui",
+		"yesterday": "hier",
+		"days": "{count, plural, one {il y a # jour} other {il y a # jours}}",
+		"weeks": "{count, plural, one {il y a # semaine} other {il y a # semaines}}",
+		"months": "{count, plural, one {il y a # mois} other {il y a # mois}}"
+	},
+	"row": {
+		"needYou": "{count} à traiter",
+		"pendingOut": "En attente : vous avez payé {amount}, en attente de {name}",
+		"pendingIn": "En attente : on vous a payé {amount}"
+	},
+	"needs": {
+		"title": "À traiter",
+		"confirmed": "Paiement de {name} confirmé",
+		"failed": "Impossible pour le moment. Réessayez.",
+		"showMore": "Afficher {count} de plus"
+	},
+	"review": {
+		"title": "Vérifier la dépense",
+		"sentence": "{name} vous a ajouté à {title}",
+		"yourShare": "Votre part",
+		"date": "Date",
+		"reason": "Motif (facultatif)",
+		"back": "Retour",
+		"reject": "Refuser",
+		"accept": "Accepter",
+		"accepted": "{title} accepté",
+		"rejected": "{title} refusé",
+		"failed": "Enregistrement impossible. Réessayez."
+	},
+	"addPerson": {
+		"title": "Ajouter une personne",
+		"submit": "Ajouter la personne",
+		"name": "Nom",
+		"email": "E-mail (facultatif)",
+		"emailHint": "Une personne déjà sur Retrospend est reliée par son e-mail.",
+		"added": "{name} ajouté"
+	},
+	"actions": {
+		"reminded": "Rappel envoyé à {name}",
+		"failed": "Impossible pour le moment. Réessayez."
+	},
+	"toolbar": {
+		"label": "Filtrer les personnes",
+		"search": "Rechercher des personnes",
+		"owesYou": "Vous doit",
+		"youOwe": "Vous lui devez",
+		"notOnRetrospend": "Pas sur Retrospend",
+		"clear": "Effacer les filtres"
+	},
+	"noMatch": {
+		"title": "Aucune personne ne correspond",
+		"hint": "Essayez un autre nom ou retirez un filtre."
+	},
+	"sort": {
+		"button": "Tri : {sort}",
+		"label": "Trier les personnes par",
+		"balance": "Solde",
+		"recent": "Récent",
+		"name": "Nom"
+	},
+	"empty": {
+		"title": "Partagez une dépense pour voir les soldes ici",
+		"addExpense": "Ajouter une dépense",
+		"addPerson": "Ajouter une personne"
+	},
+	"unavailable": {
+		"title": "Impossible de charger les personnes",
+		"hint": "Vos soldes sont en sécurité. Réessayez dans un instant.",
+		"retry": "Réessayer"
+	},
+	"rateTypes": {
+		"official": "Officiel",
+		"blue": "Blue",
+		"mep": "MEP",
+		"card": "Carte",
+		"custom": "Personnalisé",
+		"crypto": "Crypto"
+	}
+}

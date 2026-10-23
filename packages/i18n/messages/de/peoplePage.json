@@ -1,0 +1,99 @@
+{
+	"title": "Personen",
+	"standing": {
+		"label": "Dein Stand",
+		"owedToYou": "Dir geschuldet",
+		"youOwe": "Du schuldest",
+		"peopleOweYou": "{count, plural, =0 {Niemand schuldet dir etwas} one {# Person schuldet dir etwas} other {# Personen schulden dir etwas}}",
+		"youOwePeople": "{count, plural, one {Du schuldest # Person etwas} other {Du schuldest # Personen etwas}}",
+		"allSettled": "Mit allen ausgeglichen",
+		"noRate": "{currencies}: noch kein Kurs, nicht in den Summen"
+	},
+	"groups": {
+		"owed": "Schulden dir",
+		"owe": "Du schuldest",
+		"pending": "Ausstehend",
+		"settled": "Ausgeglichen"
+	},
+	"settledWho": "{first}, {second} und {count} weitere",
+	"ago": {
+		"today": "heute",
+		"yesterday": "gestern",
+		"days": "{count, plural, one {vor # Tag} other {vor # Tagen}}",
+		"weeks": "{count, plural, one {vor # Woche} other {vor # Wochen}}",
+		"months": "{count, plural, one {vor # Monat} other {vor # Monaten}}"
+	},
+	"row": {
+		"needYou": "{count} brauchen dich",
+		"pendingOut": "Ausstehend: du hast {amount} gezahlt, wartet auf {name}",
+		"pendingIn": "Ausstehend: dir wurden {amount} gezahlt"
+	},
+	"needs": {
+		"title": "Braucht dich",
+		"confirmed": "Zahlung von {name} bestätigt",
+		"failed": "Das hat nicht geklappt. Versuch es noch einmal.",
+		"showMore": "{count} weitere anzeigen"
+	},
+	"review": {
+		"title": "Ausgabe prüfen",
+		"sentence": "{name} hat dich zu {title} hinzugefügt",
+		"yourShare": "Dein Anteil",
+		"date": "Datum",
+		"reason": "Grund (optional)",
+		"back": "Zurück",
+		"reject": "Ablehnen",
+		"accept": "Annehmen",
+		"accepted": "{title} angenommen",
+		"rejected": "{title} abgelehnt",
+		"failed": "Speichern hat nicht geklappt. Versuch es noch einmal."
+	},
+	"addPerson": {
+		"title": "Person hinzufügen",
+		"submit": "Person hinzufügen",
+		"name": "Name",
+		"email": "E-Mail (optional)",
+		"emailHint": "Wer schon Retrospend nutzt, wird über die E-Mail verknüpft.",
+		"added": "{name} hinzugefügt"
+	},
+	"actions": {
+		"reminded": "Erinnerung an {name} gesendet",
+		"failed": "Das hat nicht geklappt. Versuch es noch einmal."
+	},
+	"toolbar": {
+		"label": "Personen filtern",
+		"search": "Personen suchen",
+		"owesYou": "Schuldet dir",
+		"youOwe": "Du schuldest",
+		"notOnRetrospend": "Nicht bei Retrospend",
+		"clear": "Filter entfernen"
+	},
+	"noMatch": {
+		"title": "Keine Person passt",
+		"hint": "Versuch einen anderen Namen oder entferne einen Filter."
+	},
+	"sort": {
+		"button": "Sortierung: {sort}",
+		"label": "Personen sortieren nach",
+		"balance": "Saldo",
+		"recent": "Neueste",
+		"name": "Name"
+	},
+	"empty": {
+		"title": "Teile eine Ausgabe, um hier Salden zu sehen",
+		"addExpense": "Ausgabe hinzufügen",
+		"addPerson": "Person hinzufügen"
+	},
+	"unavailable": {
+		"title": "Personen konnten nicht geladen werden",
+		"hint": "Deine Salden sind sicher. Versuch es gleich noch einmal.",
+		"retry": "Erneut versuchen"
+	},
+	"rateTypes": {
+		"official": "Offiziell",
+		"blue": "Blue",
+		"mep": "MEP",
+		"card": "Karte",
+		"custom": "Eigener",
+		"crypto": "Krypto"
+	}
+}

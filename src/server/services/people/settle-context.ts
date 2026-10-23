@@ -6,7 +6,9 @@
  * fills exactly what Record then pays. Nothing is written; the preview and
  * the record are payment.record (settlement.paymentPreview / paymentRecord).
  */
+
 import { z } from "zod";
+import { dayKey } from "~/lib/time-zone";
 import { assertRelationship } from "~/server/services/payments/access";
 import { allocatePayment } from "~/server/services/payments/allocate";
 import { participantRefSchema } from "~/server/services/payments/input";
@@ -24,6 +26,8 @@ import { balanceParts, netOf, rateOf } from "./balances";
 import type { RateDTO } from "./types";
 
 type Db = PrismaClient | Prisma.TransactionClient;
+
+const DAY_MS = 86_400_000;
 
 export const settleContextSchema = z.object({
 	person: participantRefSchema,
@@ -68,6 +72,9 @@ export interface SettleContext {
 	readonly rateTypes: readonly string[];
 	/** Currencies owed that way with no rate: left out of Everything. */
 	readonly unpriced: readonly string[];
+	/** The days the Date chips offer, in the user's zone (payment.record dates the same way). */
+	readonly today: string;
+	readonly yesterday: string;
 }
 
 /**
@@ -103,6 +110,7 @@ export async function settleContext(
 	db: Db,
 	userId: string,
 	input: SettleContextInput,
+	timeZone?: string,
 	now = new Date(),
 ): Promise<SettleContext> {
 	const me: ParticipantRef = { participantType: "user", participantId: userId };
@@ -177,5 +185,7 @@ export async function settleContext(
 		})),
 		rateTypes: types.map((t) => t.type).sort(),
 		unpriced: owedCurrencies.filter((c) => c !== currency && !quotes.has(c)),
+		today: dayKey(now, timeZone),
+		yesterday: dayKey(new Date(now.getTime() - DAY_MS), timeZone),
 	};
 }

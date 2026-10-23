@@ -1,0 +1,99 @@
+{
+	"title": "Personas",
+	"standing": {
+		"label": "Cómo estás",
+		"owedToYou": "Te deben",
+		"youOwe": "Debés",
+		"peopleOweYou": "{count, plural, =0 {Nadie te debe} one {# persona te debe} other {# personas te deben}}",
+		"youOwePeople": "{count, plural, one {Le debés a # persona} other {Les debés a # personas}}",
+		"allSettled": "Estás al día con todos",
+		"noRate": "{currencies}: todavía sin cotización, fuera de los totales"
+	},
+	"groups": {
+		"owed": "Te deben",
+		"owe": "Debés",
+		"pending": "Pendientes",
+		"settled": "Al día"
+	},
+	"settledWho": "{first}, {second} y {count} más",
+	"ago": {
+		"today": "hoy",
+		"yesterday": "ayer",
+		"days": "{count, plural, one {hace # día} other {hace # días}}",
+		"weeks": "{count, plural, one {hace # semana} other {hace # semanas}}",
+		"months": "{count, plural, one {hace # mes} other {hace # meses}}"
+	},
+	"row": {
+		"needYou": "{count} te necesitan",
+		"pendingOut": "Pendiente: pagaste {amount}, esperando a {name}",
+		"pendingIn": "Pendiente: te pagaron {amount}"
+	},
+	"needs": {
+		"title": "Te necesita",
+		"confirmed": "Confirmaste el pago de {name}",
+		"failed": "No se pudo. Probá de nuevo.",
+		"showMore": "Ver {count} más"
+	},
+	"review": {
+		"title": "Revisar gasto",
+		"sentence": "{name} te sumó a {title}",
+		"yourShare": "Tu parte",
+		"date": "Fecha",
+		"reason": "Motivo (opcional)",
+		"back": "Volver",
+		"reject": "Rechazar",
+		"accept": "Aceptar",
+		"accepted": "Aceptaste {title}",
+		"rejected": "Rechazaste {title}",
+		"failed": "No se pudo guardar. Probá de nuevo."
+	},
+	"addPerson": {
+		"title": "Agregar persona",
+		"submit": "Agregar persona",
+		"name": "Nombre",
+		"email": "Email (opcional)",
+		"emailHint": "Si ya usa Retrospend, se vincula por su email.",
+		"added": "Agregaste a {name}"
+	},
+	"actions": {
+		"reminded": "Le mandaste un recordatorio a {name}",
+		"failed": "No se pudo. Probá de nuevo."
+	},
+	"toolbar": {
+		"label": "Filtrar personas",
+		"search": "Buscar personas",
+		"owesYou": "Te debe",
+		"youOwe": "Le debés",
+		"notOnRetrospend": "Sin Retrospend",
+		"clear": "Quitar filtros"
+	},
+	"noMatch": {
+		"title": "Ninguna persona coincide",
+		"hint": "Probá con otro nombre o quitá un filtro."
+	},
+	"sort": {
+		"button": "Orden: {sort}",
+		"label": "Ordenar personas por",
+		"balance": "Saldo",
+		"recent": "Reciente",
+		"name": "Nombre"
+	},
+	"empty": {
+		"title": "Dividí algo para ver saldos acá",
+		"addExpense": "Agregar gasto",
+		"addPerson": "Agregar persona"
+	},
+	"unavailable": {
+		"title": "No se pudieron cargar las personas",
+		"hint": "Tus saldos están a salvo. Probá de nuevo en un rato.",
+		"retry": "Reintentar"
+	},
+	"rateTypes": {
+		"official": "Oficial",
+		"blue": "Blue",
+		"mep": "MEP",
+		"card": "Tarjeta",
+		"custom": "Personalizada",
+		"crypto": "Cripto"
+	}
+}

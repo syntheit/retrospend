@@ -26,7 +26,7 @@ export const peopleV2Procedures = {
 	settleContext: protectedProcedure
 		.input(settleContextSchema)
 		.query(({ ctx, input }) =>
-			settleContext(ctx.db, ctx.session.user.id, input),
+			settleContext(ctx.db, ctx.session.user.id, input, ctx.timeZone),
 		),
 	/** The Undo of a payment recorded from the sheet. */
 	undoPayment: protectedProcedure
