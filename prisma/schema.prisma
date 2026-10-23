@@ -235,6 +235,7 @@ model Expense {
   // Envelope budget (M6): the starting balance row of a book, and rule movements it fed.
   startingBalanceOf BudgetBook?      @relation("BookStartingBalance")
   budgetMovements   BudgetMovement[] @relation("MovementSourceExpense")
+  budgetMoveIn      WealthTransfer?  @relation("WealthTransferSource")
 
   @@index([userId, date])
   @@index([parentId])
@@ -370,6 +371,8 @@ model BudgetBook {
   envelopes Envelope[]       @relation("BookEnvelopes")
   links     EnvelopeCategory[]
   movements BudgetMovement[]
+  closes    MonthClose[]
+  wealthTransfers WealthTransfer[]
 
   @@index([createdById])
   @@map("budget_book")
@@ -468,6 +471,7 @@ model Envelope {
   movementsOut        BudgetMovement[]    @relation("MovementFrom")
   movementsIn         BudgetMovement[]    @relation("MovementTo")
   projectRoutes       ProjectParticipant[] @relation("ProjectBudgetEnvelope")
+  wealthTransfers     WealthTransfer[]
   forgives            Settlement[]        @relation("ForgiveEnvelope")
 
   @@unique([id, bookId])
@@ -581,6 +585,65 @@ enum BudgetMemberRole {
   VIEWER
 }
 
+// One closed budget month (SPEC §5.5): what it ended with and the leftover
+// rules it closed under, so a later rule change applies from the next close.
+model MonthClose {
+  id             String         @id @default(cuid())
+  bookId         String
+  month          Int
+  mode           MonthCloseMode @default(AUTO)
+  closedAt       DateTime       @default(now())
+  revision       Int            @default(1)
+  // zod: monthCloseSummarySchema
+  summary        Json
+  acknowledgedAt DateTime?
+  ackRevision    Int?
+  book           BudgetBook     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, month])
+  @@map("month_close")
+}
+
+enum MonthCloseMode {
+  AUTO
+  USER
+}
+
+// The budget's half of a money move (D24, SPEC §5.11). Goes with the transfer
+// or the kept income that made it (CASCADE). Amount in the book currency.
+model WealthTransfer {
+  id              String                  @id
+  bookId          String
+  direction       WealthTransferDirection
+  // TO_WEALTH: the envelope it leaves; FROM_WEALTH: the one it enters. Null = To assign.
+  envelopeId      String?
+  transferId      String?                 @unique
+  // A Move in of income kept in Wealth (countOnly).
+  sourceExpenseId String?                 @unique
+  assetAccountId  String?
+  countOnly       Boolean                 @default(false)
+  date            DateTime                @db.Date
+  amount          Decimal                 @db.Decimal(19, 8)
+  note            String?                 @db.VarChar(200)
+  actorUserId     String
+  createdAt       DateTime                @default(now())
+  book            BudgetBook              @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  envelope        Envelope?               @relation(fields: [envelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+  transfer        Transfer?               @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  sourceExpense   Expense?                @relation("WealthTransferSource", fields: [sourceExpenseId], references: [id], onDelete: Cascade)
+  assetAccount    AssetAccount?           @relation(fields: [assetAccountId], references: [id], onDelete: SetNull)
+
+  @@index([bookId, date])
+  @@index([envelopeId])
+  @@index([assetAccountId])
+  @@map("wealth_transfer")
+}
+
+enum WealthTransferDirection {
+  TO_WEALTH
+  FROM_WEALTH
+}
+
 enum MovementKind {
   ASSIGN
   SET
@@ -660,6 +723,7 @@ model AssetAccount {
   transfersOut     Transfer[]      @relation("TransferFrom")
   transfersIn      Transfer[]      @relation("TransferTo")
   liabilityEnvelopes Envelope[]  @relation("EnvelopeLiability")
+  wealthTransfers    WealthTransfer[]
   goalEnvelopes      Envelope[]  @relation("EnvelopeWealthAccount")
 
   @@index([userId])
@@ -718,6 +782,7 @@ model Transfer {
   toAccount   AssetAccount? @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: SetNull)
   feeExpense  Expense?      @relation("TransferFee", fields: [feeExpenseId], references: [id], onDelete: SetNull)
   legs        AccountLeg[]
+  budgetSide  WealthTransfer?
 
   @@index([userId, date])
   @@index([fromAccountId])
