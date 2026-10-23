@@ -134,10 +134,22 @@ interface Row {
 	open: boolean;
 }
 
+/** Per envelope, Σ moved to Wealth minus Σ moved back, through the viewed month (goal progress, B12). */
+function wealthIndex(p: MonthViewInput) {
+	const moved = new Map<string, Minor>();
+	for (const a of p.input.activity) {
+		if (a.source !== "WEALTH" || a.month > p.month) continue;
+		const id = p.state.envelopeOf(a);
+		moved.set(id, (moved.get(id) ?? 0) - a.minor);
+	}
+	return moved;
+}
+
 function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 	const range = monthRange(p.month, p.book.periods);
 	const weeks = weeksOfMonth({ ...range, weekStartDay: p.book.weekStartDay });
 	const spentSince = spendingIndex(p);
+	const moved = wealthIndex(p);
 	const monthOf = (d: IsoDate) => budgetMonthOf(d, p.book.periods);
 	const s = p.state.month(p.month);
 	return p.book.envelopes
@@ -155,6 +167,7 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 							carryIn: m.carryIn,
 							assigned: m.assigned,
 							left: m.left,
+							movedToWealth: moved.get(env.id) ?? 0,
 							monthOf,
 							spentSince: (from) => spentSince(env.id, from),
 						});

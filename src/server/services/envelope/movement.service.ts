@@ -61,7 +61,7 @@ async function createRows(tx: Tx, args: Prisma.BudgetMovementCreateManyArgs) {
 	forgetMonthViews(tx);
 }
 
-async function insert(
+export async function insert(
 	tx: Tx,
 	s: Snapshot,
 	userId: string,
@@ -106,7 +106,7 @@ function toResultRows(
 }
 
 /** Reads back what was written and how it moved each envelope and To assign. */
-async function result(
+export async function result(
 	tx: Tx,
 	userId: string,
 	now: Date,
@@ -138,7 +138,7 @@ async function result(
 }
 
 /** A retry of a write already made: the same ids with the same content, or a refusal. */
-async function replay(
+export async function replay(
 	tx: Tx,
 	userId: string,
 	now: Date,

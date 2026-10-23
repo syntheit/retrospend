@@ -10,9 +10,10 @@
  *   Carry(e, k) = max(0, Left(e, k)) under CARRY, 0 under RETURN or SWEEP,
  *                 plus what envelopes sweeping into e leave
  *
- * Months before the viewed one count as closed with today's leftover rules:
- * month close with rule snapshots (MonthClose) arrives in P4. Viewing next
- * month projects the current month's close the same way.
+ * A month that has closed (MonthClose) carries, returns and sweeps by the
+ * leftover rules it closed under (`closedRules`, B7); a month not closed yet
+ * uses today's rules, and viewing next month projects the current month's
+ * close the same way.
  *
  * Invariant (SPEC §5.3, asserted by every scenario):
  *   ToAssign(c) + Σ Left(e, c) + Assigned(c+1) = MoneyIn - Σ outflows - SplitsNet
@@ -34,7 +35,12 @@ export interface EngineEnvelope {
 	categoryIds: readonly string[];
 }
 
-export type MoneyInSource = "INCOME" | "STARTING_BALANCE" | "ADJUSTMENT";
+export type MoneyInSource =
+	| "INCOME"
+	| "STARTING_BALANCE"
+	| "ADJUSTMENT"
+	/** Wealth to To assign (positive) or To assign to Wealth (negative). */
+	| "WEALTH";
 
 /** A row that raises (or, for an OUT adjustment, lowers) To assign. Signed. */
 export interface MoneyInEntry {
@@ -44,7 +50,13 @@ export interface MoneyInEntry {
 	source: MoneyInSource;
 }
 
-export type ActivitySource = "SPENT" | "REFUND" | "SHARE" | "FORGIVEN";
+export type ActivitySource =
+	| "SPENT"
+	| "REFUND"
+	| "SHARE"
+	| "FORGIVEN"
+	/** Out of the envelope to Wealth (negative) or from Wealth into it (positive). */
+	| "WEALTH";
 
 /** A row that moves an envelope's Activity. Signed: spending is negative, refunds positive. */
 export interface ActivityEntry {
@@ -81,8 +93,22 @@ export interface EngineInput {
 	moneyIn: readonly MoneyInEntry[];
 	activity: readonly ActivityEntry[];
 	movements: readonly MovementEntry[];
-	/** Splits replay effects (P3 wires the loader; empty until then). */
+	/** Splits replay effects. */
 	splits: readonly ReplayEffect[];
+	/** Leftover rules each closed month closed under (MonthClose snapshots). */
+	closedRules?: ReadonlyMap<MonthKey, ReadonlyMap<string, ClosedRule>>;
+}
+
+export interface ClosedRule {
+	rule: LeftoverRule;
+	sweepToId: string | null;
+}
+
+/** The rule an envelope closes under: Monthly envelopes follow theirs; bills, goals and No target carry. */
+export function ruleAtClose(e: EngineEnvelope): ClosedRule {
+	return e.kind === "MONTHLY"
+		? { rule: e.leftoverRule, sweepToId: e.sweepToId }
+		: { rule: "CARRY", sweepToId: null };
 }
 
 export interface EnvelopeMonth {
@@ -270,20 +296,26 @@ function monthState(
 	return { month, envelopes: rows, totals };
 }
 
-/** Leftovers after month k: carry, return or sweep (SPEC §5.5 step 1); bills, goals and No target always carry. */
+/**
+ * Leftovers after month k: carry, return or sweep (SPEC §5.5 step 1), by the
+ * rules month k closed under when it has closed (B7), else today's.
+ */
 function close(
 	state: MonthState,
 	envelopes: readonly EngineEnvelope[],
 	totals: MonthTotals,
+	snapshot: ReadonlyMap<string, ClosedRule> | undefined,
 ): Map<string, Minor> {
 	const next = new Map<string, Minor>();
 	const add = (id: string, v: Minor) => next.set(id, (next.get(id) ?? 0) + v);
+	const known = new Set(envelopes.map((e) => e.id));
 	for (const e of envelopes) {
 		const pos = Math.max(0, state.envelopes.get(e.id)?.left ?? 0);
-		const rule = e.kind === "MONTHLY" ? e.leftoverRule : "CARRY";
+		const { rule, sweepToId } = snapshot?.get(e.id) ?? ruleAtClose(e);
 		if (rule === "CARRY") add(e.id, pos);
 		else if (rule === "RETURN") totals.returned += pos;
-		else add(e.sweepToId ?? e.id, pos);
+		// A sweep target archived since keeps the money where it was.
+		else add(sweepToId && known.has(sweepToId) ? sweepToId : e.id, pos);
 	}
 	return next;
 }
@@ -314,7 +346,12 @@ export function computeBook(
 	let carry = new Map<string, Minor>();
 	for (const key of monthsFrom(first, last)) {
 		const state = monthState(key, carry, input, b, route);
-		carry = close(state, input.envelopes, state.totals);
+		carry = close(
+			state,
+			input.envelopes,
+			state.totals,
+			input.closedRules?.get(key),
+		);
 		months.push(state);
 	}
 	const index = new Map(months.map((s) => [s.month, s]));

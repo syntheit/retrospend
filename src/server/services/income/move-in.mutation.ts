@@ -28,6 +28,7 @@ import { inBudget, worthOf } from "../accounts/places";
 import {
 	type BudgetSideResult,
 	recordBudgetSide,
+	removeBudgetSide,
 } from "../transfers/budget-side";
 import { incomeRow } from "./delete.mutation";
 
@@ -290,11 +291,15 @@ export async function undoMoveInIn(
 	}
 	await markCounted(tx, side, false);
 	const expenseId = "expenseId" in input ? input.expenseId : null;
-	if (expenseId)
+	if (expenseId) {
 		await tx.expense.update({
 			where: { id: expenseId },
 			data: { movedInAt: null },
 		});
+		await removeBudgetSide(tx, { sourceExpenseId: expenseId });
+	} else {
+		await removeBudgetSide(tx, { assetAccountId: account.id });
+	}
 	const home = await homeCurrencyOf(tx, userId);
 	return {
 		accountId: account.id,

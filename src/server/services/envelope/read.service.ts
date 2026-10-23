@@ -9,15 +9,18 @@ import type {
 	GetMonthOutput,
 	HistoryInput,
 	HistoryOutput,
+	MonthCloseSummary,
 	OwedDto,
 	SetupPresetOutput,
 	VerdictDto,
 } from "~/lib/schemas/envelope";
+import { monthCloseSummarySchema } from "~/lib/schemas/envelope";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import { setupPreset } from "./book.service";
 import { EnvelopeError } from "./errors";
+import { ensureMonthsClosed } from "./month-close.service";
 import {
 	coverSourcesIn,
 	fillFromTargetsIn,
@@ -35,6 +38,17 @@ function read<T>(
 	return userTransaction(db, userId, work);
 }
 
+/** A month read after the lazy close (SPEC §5.5): months before today's close on first read. */
+async function closedView(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	now: Date,
+	month?: MonthKey,
+) {
+	await ensureMonthsClosed(tx, userId, now);
+	return monthViewIn(tx, userId, now, month);
+}
+
 /**
  * Null when the user has no budget yet ("Just track"). Stores the share
  * categories the smart default picked (D19), so they stay put; the view
@@ -46,12 +60,28 @@ export async function getMonth(
 	now = new Date(),
 ): Promise<GetMonthOutput | null> {
 	const view = await read(userId, async (tx) => {
-		const v = await monthViewIn(tx, userId, now, month);
+		const v = await closedView(tx, userId, now, month);
 		if (v?.loaded.splits.unsaved.length)
 			await saveShareDefaults(tx, v.loaded.splits.unsaved);
 		return v;
 	});
 	return view?.dto ?? null;
+}
+
+/** What a closed month ended with (SPEC §6.6); null when it has not closed. */
+export function getMonthSummary(
+	userId: string,
+	month: MonthKey,
+	now = new Date(),
+): Promise<MonthCloseSummary | null> {
+	return read(userId, async (tx) => {
+		await ensureMonthsClosed(tx, userId, now);
+		const row = await tx.monthClose.findFirst({
+			where: { month, book: { createdById: userId, isPersonal: true } },
+			select: { summary: true },
+		});
+		return row ? monthCloseSummarySchema.parse(row.summary) : null;
+	});
 }
 
 /** Money owed, per person and currency, with names; null without a budget. */
@@ -68,7 +98,7 @@ export async function getVerdict(
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<VerdictDto | null> {
-	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
+	const view = await read(userId, (tx) => closedView(tx, userId, now, month));
 	return view?.dto.verdict ?? null;
 }
 
@@ -77,7 +107,7 @@ export async function getLeftToSpend(
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<GetMonthOutput["leftToSpend"] | null> {
-	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
+	const view = await read(userId, (tx) => closedView(tx, userId, now, month));
 	return view?.dto.leftToSpend ?? null;
 }
 

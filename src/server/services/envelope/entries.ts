@@ -133,6 +133,47 @@ export function shareUsd(
 	return (isCrypto(currency) ? a.mul(r) : a.div(r)).toString();
 }
 
+export interface WealthRow {
+	id: string;
+	direction: "TO_WEALTH" | "FROM_WEALTH";
+	envelopeId: string | null;
+	/** A calendar date (@db.Date), read as stored. */
+	date: Date;
+	/** Book currency. */
+	amount: Prisma.Decimal;
+}
+
+/**
+ * Money moved between the budget and Wealth (D24, SPEC §5.11): into or out
+ * of an envelope's Activity, or To assign when no envelope is named.
+ */
+export function wealthEntries(
+	rows: readonly WealthRow[],
+	v: Valuer,
+	currency: string,
+): { moneyIn: MoneyInEntry[]; activity: ActivityEntry[] } {
+	const moneyIn: MoneyInEntry[] = [];
+	const activity: ActivityEntry[] = [];
+	for (const r of rows) {
+		const date = r.date.toISOString().slice(0, 10);
+		const month = v.monthOf(date);
+		const sign = r.direction === "FROM_WEALTH" ? 1 : -1;
+		const minor = sign * toMinor(r.amount.toString(), currency);
+		if (r.envelopeId)
+			activity.push({
+				id: r.id,
+				month,
+				date,
+				minor,
+				source: "WEALTH",
+				categoryId: null,
+				envelopeId: r.envelopeId,
+			});
+		else moneyIn.push({ id: r.id, month, minor, source: "WEALTH" });
+	}
+	return { moneyIn, activity };
+}
+
 /**
  * Spending (negative), refunds (positive) and your shares of splits
  * (negative, pending flagged, D20), each share in your own category (D19)

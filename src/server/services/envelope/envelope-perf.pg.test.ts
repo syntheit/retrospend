@@ -3,7 +3,8 @@
  * 5,000 expenses (a tenth in USD, valued at the book's blue rate), monthly
  * salary, 15 envelopes assigned every month, and splits (P3): 720 shared
  * expenses (half paid by you for three, half paid by a friend), a payment
- * each month and a project. No checkpoints yet, so this is the full pass.
+ * each month and a project. Months before this one are closed by the first
+ * read (P4); there are no checkpoints yet, so each read is the full pass.
  * Target p95 under 250 ms on harbor; the measured numbers are printed for
  * the report.
  */
@@ -263,6 +264,10 @@ describe("getMonth performance (3 years, 5,000 expenses, 720 splits)", () => {
 		// Production tables carry planner statistics; a fresh test database does not until autovacuum gets to it.
 		await adminDb.$executeRawUnsafe("ANALYZE");
 		for (let i = 0; i < 3; i++) await getMonth(userId);
+		// The first read closed every month before this one (P4): timed reads use the snapshots.
+		await expect(
+			adminDb.monthClose.count({ where: { book: { createdById: userId } } }),
+		).resolves.toBe(MONTHS - 1);
 		const runs: number[] = [];
 		for (let i = 0; i < 30; i++) {
 			const t = performance.now();

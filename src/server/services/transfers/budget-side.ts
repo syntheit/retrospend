@@ -1,17 +1,14 @@
 /**
  * The budget's half of a money move (MONEY-MOVES §5.2): a crossing transfer
  * becomes a TO_WEALTH or FROM_WEALTH movement, and a Move in a count-only
- * FROM_WEALTH, in the envelope budget's `WealthTransfer` (M8, track 2B P4).
- *
- * Seam: M6 and M8 are not on this branch, so there is no To assign or
- * envelope to move yet and this writes nothing. Every caller already passes
- * exactly what 2B needs to write (amount as the in-budget leg in book
- * currency, envelope, transfer or income), and reports the effect it
- * computed, so previews can show it. 2B replaces the body of `recordBudgetSide`
- * when WealthTransfer lands (docs/ui/GAPS.md, "Budget side of money moves").
+ * FROM_WEALTH, in the envelope budget's `WealthTransfer` (M8, track 2B P4,
+ * envelope/wealth.service.ts). Without an envelope budget nothing is
+ * written and the result says so; callers still report the effect they
+ * computed, so previews can show it.
  */
 import type { Money } from "~/server/figures/registry";
 import type { Prisma } from "~prisma";
+import { recordWealthMove, removeMoveIn } from "../envelope/wealth.service";
 
 export interface BudgetMovement {
 	readonly userId: string;
@@ -32,12 +29,26 @@ export interface BudgetMovement {
 
 export interface BudgetSideResult {
 	readonly recorded: boolean;
-	readonly reason: "no_envelope_budget" | null;
+	/** Why nothing was written: no budget, or a budget kept in another currency (02 §9.1 Q5). */
+	readonly reason: "no_envelope_budget" | "other_currency" | null;
 }
 
 export async function recordBudgetSide(
-	_tx: Prisma.TransactionClient,
-	_movement: BudgetMovement,
+	tx: Prisma.TransactionClient,
+	movement: BudgetMovement,
 ): Promise<BudgetSideResult> {
-	return { recorded: false, reason: "no_envelope_budget" };
+	const r = await recordWealthMove(tx, movement);
+	if (r.recorded) return { recorded: true, reason: null };
+	return {
+		recorded: false,
+		reason: r.reason === "nothing_to_move" ? null : r.reason,
+	};
+}
+
+/** The undo of a Move in takes its budget side with it. */
+export function removeBudgetSide(
+	tx: Prisma.TransactionClient,
+	of: { sourceExpenseId: string } | { assetAccountId: string },
+): Promise<void> {
+	return removeMoveIn(tx, of);
 }

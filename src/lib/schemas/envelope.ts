@@ -249,6 +249,47 @@ export const verdictSchema = z.object({
 
 export const monthStateSchema = z.enum(["CLOSED", "OPEN", "NEXT"]);
 
+// ── Month close (P4, SPEC §5.5) ─────────────────────────────────────────────
+
+export const leftoverRuleSchema = z.enum(["CARRY", "RETURN", "SWEEP"]);
+
+/** One envelope at the end of a closed month, in book-currency minor units. */
+export const monthCloseEnvelopeSchema = z.object({
+	id: idSchema,
+	carryIn: minorSchema,
+	assigned: minorSchema,
+	activity: minorSchema,
+	left: minorSchema,
+	/** The rule it closed under (B7: a later change applies from the next close). */
+	rule: leftoverRuleSchema,
+	sweepToId: idSchema.nullable(),
+	carried: minorSchema,
+	returned: minorSchema,
+	swept: minorSchema,
+	/** max(0, -Left): taken from next month's To assign (D4). */
+	overspent: minorSchema,
+});
+
+/** What `month_close.summary` stores (book-currency minor units). */
+export const monthCloseSummarySchema = z.object({
+	month: monthKeySchema,
+	currency: z.string(),
+	moneyIn: minorSchema,
+	assigned: minorSchema,
+	overspent: minorSchema,
+	returned: minorSchema,
+	/** Held for others at the end of the month, per person and currency (D9). */
+	held: z.array(
+		z.object({
+			counterparty: z.string(),
+			currency: z.string(),
+			native: minorSchema,
+			held: minorSchema,
+		}),
+	),
+	envelopes: z.array(monthCloseEnvelopeSchema),
+});
+
 // ── Splits and money owed (P3, SPEC §5.8) ───────────────────────────────────
 
 export const participantRefSchema = z.object({
@@ -688,6 +729,19 @@ export const forgiveResultSchema = z.object({
 
 export const unforgiveInputSchema = z.object({ paymentId: idSchema });
 
+export const carryOverspendInputSchema = z.object({
+	/** Client id of the movement: retries are idempotent. */
+	id: clientIdSchema,
+	/** The envelope that went over last month; it takes the overspend this month instead. */
+	envelopeId: idSchema,
+	amountMinor: positiveMinor,
+});
+
+/** Fix a negative To assign, or start fresh (reset): one batch this month. */
+export const batchInputSchema = z.object({ batchId: clientIdSchema });
+
+export const monthSummaryInputSchema = z.object({ month: monthKeySchema });
+
 export const fillFromTargetsInputSchema = z
 	.object({
 		month: monthKeySchema.optional(),
@@ -732,3 +786,6 @@ export type ProjectRoutingResult = z.infer<typeof projectRoutingResultSchema>;
 export type ForgiveInput = z.infer<typeof forgiveInputSchema>;
 export type ForgiveResult = z.infer<typeof forgiveResultSchema>;
 export type UnforgiveInput = z.infer<typeof unforgiveInputSchema>;
+export type MonthCloseSummary = z.infer<typeof monthCloseSummarySchema>;
+export type CarryOverspendInput = z.infer<typeof carryOverspendInputSchema>;
+export type BatchInput = z.infer<typeof batchInputSchema>;

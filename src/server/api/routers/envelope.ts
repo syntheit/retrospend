@@ -13,6 +13,8 @@ import { z } from "zod";
 import {
 	applyOutputSchema,
 	assignInputSchema,
+	batchInputSchema,
+	carryOverspendInputSchema,
 	coverInputSchema,
 	coverSourceSchema,
 	coverSourcesInputSchema,
@@ -24,7 +26,9 @@ import {
 	historyInputSchema,
 	historyOutputSchema,
 	leftToSpendSchema,
+	monthCloseSummarySchema,
 	monthInputSchema,
+	monthSummaryInputSchema,
 	moveInputSchema,
 	movementResultSchema,
 	owedSchema,
@@ -44,6 +48,11 @@ import {
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { isFlagEnabled } from "~/server/flags";
 import {
+	carryOverspendMutation,
+	fixNegativeMutation,
+	resetEnvelopesMutation,
+} from "~/server/services/envelope/close.mutation";
+import {
 	EnvelopeError,
 	type EnvelopeErrorCode,
 } from "~/server/services/envelope/errors";
@@ -59,6 +68,7 @@ import {
 	getHistory,
 	getLeftToSpend,
 	getMonth,
+	getMonthSummary,
 	getOwed,
 	getSetupPreset,
 	getVerdict,
@@ -274,6 +284,39 @@ export const envelopeRouter = createTRPCRouter({
 		.input(forgiveInputSchema)
 		.output(applyOutputSchema(forgiveResultSchema))
 		.mutation(apply(forgiveMutation)),
+	/** A closed month's summary (SPEC §6.6); null until it closes. */
+	monthSummary: envelopeProcedure
+		.input(monthSummaryInputSchema)
+		.output(monthCloseSummarySchema.nullable())
+		.query(({ ctx, input }) =>
+			getMonthSummary(ctx.session.user.id, input.month),
+		),
+
+	carryOverspendPreview: envelopeProcedure
+		.input(carryOverspendInputSchema)
+		.output(movementPreview)
+		.mutation(preview(carryOverspendMutation)),
+	carryOverspend: envelopeProcedure
+		.input(carryOverspendInputSchema)
+		.output(movementApply)
+		.mutation(apply(carryOverspendMutation)),
+	fixNegativePreview: envelopeProcedure
+		.input(batchInputSchema)
+		.output(movementPreview)
+		.mutation(preview(fixNegativeMutation)),
+	fixNegative: envelopeProcedure
+		.input(batchInputSchema)
+		.output(movementApply)
+		.mutation(apply(fixNegativeMutation)),
+	resetPreview: envelopeProcedure
+		.input(batchInputSchema)
+		.output(movementPreview)
+		.mutation(preview(resetEnvelopesMutation)),
+	reset: envelopeProcedure
+		.input(batchInputSchema)
+		.output(movementApply)
+		.mutation(apply(resetEnvelopesMutation)),
+
 	unforgivePreview: envelopeProcedure
 		.input(unforgiveInputSchema)
 		.output(previewOutputSchema(unforgiveResult))
