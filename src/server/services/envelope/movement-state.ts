@@ -20,6 +20,7 @@ export type Kind =
 	| "UNASSIGN"
 	| "UNDO"
 	| "PLAN_FUND"
+	| "PLAN_APPLY"
 	| "CARRY_OVERSPEND"
 	| "FIX_NEGATIVE"
 	| "RESET";

@@ -6,9 +6,11 @@
  * (namespace `envelope`) so the client sends them back translated; an
  * envelope that follows a recurring expense or a category keeps that name.
  *
- * P2 covers Flex (default), Every dollar and Weekly.
+ * P2 covers Flex (default), Every dollar and Weekly; P4 Limits; P5 Save
+ * first and 50/30/20 (presets-p5.ts).
  */
 import type { SetupPresetOutput } from "~/lib/schemas/envelope";
+import { fiftyThirtyTwenty, saveFirst } from "./presets-p5";
 import { ceilDiv } from "./units";
 
 export type SetupStyle = SetupPresetOutput["style"];
@@ -44,7 +46,9 @@ const GROUPS = {
 
 type PresetEnvelope = SetupPresetOutput["envelopes"][number];
 
-function billEnvelopes(templates: readonly PresetTemplate[]): PresetEnvelope[] {
+export function billEnvelopes(
+	templates: readonly PresetTemplate[],
+): PresetEnvelope[] {
 	const linked = new Set<string>();
 	return templates
 		.filter((t) => MONTHLY_FREQUENCIES.has(t.frequency))
@@ -67,7 +71,7 @@ function billEnvelopes(templates: readonly PresetTemplate[]): PresetEnvelope[] {
 		});
 }
 
-const savingsGoal: PresetEnvelope = {
+export const savingsGoal: PresetEnvelope = {
 	key: "savings",
 	nameKey: "envelope.envelopes.savings",
 	name: null,
@@ -222,6 +226,14 @@ export function stylePreset(p: {
 			],
 			envelopes: limits(p.categories, p.spent ?? new Map(), p.unit ?? 1),
 		};
+	const head = {
+		style: p.style,
+		currency: p.currency,
+		missingRates: p.missingRates ?? [],
+	};
+	if (p.style === "SAVE_FIRST") return { ...head, ...saveFirst(p.templates) };
+	if (p.style === "FIFTY_THIRTY_TWENTY")
+		return { ...head, ...fiftyThirtyTwenty(p.categories) };
 	const dollar = p.style === "EVERY_DOLLAR";
 	return {
 		style: p.style,

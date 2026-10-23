@@ -47,6 +47,7 @@ import {
 	Valuer,
 	wealthEntries,
 } from "./entries";
+import { groupTargetOf } from "./group-view";
 import {
 	closedRulesOf,
 	freeze,
@@ -112,6 +113,8 @@ export interface LoadedBook {
 	periods: MonthBoundary[];
 	/** The book currency, periods and rates this load valued rows with. */
 	valuation: ValuationContext;
+	/** Values further rows the same way (rules, typical income); freeze what it values. */
+	valuer: Valuer;
 }
 
 export interface LoadContext {
@@ -243,6 +246,7 @@ function viewBook(
 			name: g.name,
 			role: g.role,
 			order: g.sortOrder,
+			...groupTargetOf(g, row.currency),
 		})),
 		envelopes,
 	};
@@ -474,6 +478,7 @@ function finishLoad(
 		]),
 		periods: s.periods,
 		valuation: s.valuation,
+		valuer: s.valuer,
 	};
 }
 

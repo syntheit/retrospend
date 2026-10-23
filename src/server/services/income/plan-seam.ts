@@ -73,6 +73,8 @@ export async function applyPlanFor(
 	const plan = await applyPlan(tx, request.userId, now, {
 		amount: request.amount.minor,
 		rest: request.rest ?? "LEAVE",
+		// Income rules take their part of this money in first (SPEC §5.4).
+		sourceExpenseId: request.incomeExpenseId,
 	});
 	if (!plan) return notApplied("no_envelope_budget");
 	if (!plan.batchId) return notApplied("nothing_to_assign");

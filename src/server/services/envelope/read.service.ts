@@ -27,6 +27,7 @@ import {
 	monthViewIn,
 } from "./month-read";
 import type { SetupStyle } from "./presets";
+import { runPendingRules } from "./rule.service";
 import { owedIn, saveShareDefaults } from "./splits.service";
 import { monthSummaryIn } from "./summary.service";
 import type { Minor, MonthKey } from "./types";
@@ -46,8 +47,23 @@ async function closedView(
 	now: Date,
 	month?: MonthKey,
 ) {
-	await ensureMonthsClosed(tx, userId, now);
+	await prepareRead(tx, userId, now);
 	return monthViewIn(tx, userId, now, month);
+}
+
+/**
+ * The lazy steps before any budget read (02 §5.3), each a cheap check when
+ * nothing waits: close finished months, then run income rules on money in
+ * nobody ran them on (sidecar rows, edits, deletes). Needs you and other
+ * readers of the month view call this first too.
+ */
+export async function prepareRead(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	now: Date,
+) {
+	await ensureMonthsClosed(tx, userId, now);
+	await runPendingRules(tx, userId, now);
 }
 
 /**
@@ -116,9 +132,10 @@ export function getFillFromTargets(
 	amount?: Minor,
 	now = new Date(),
 ): Promise<FillFromTargetsOutput> {
-	return read(userId, (tx) =>
-		fillFromTargetsIn(tx, userId, now, month, amount),
-	);
+	return read(userId, async (tx) => {
+		await prepareRead(tx, userId, now);
+		return fillFromTargetsIn(tx, userId, now, month, amount);
+	});
 }
 
 export function getCoverSources(

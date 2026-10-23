@@ -38,7 +38,7 @@ function pick(
 export class RateBook {
 	private constructor(private readonly points: Map<string, RatePoint[]>) {}
 
-	/** Rows of the book currency (its rate types) and of `extraCurrencies` (every type), from `since` on (rows the engine reads start later). */
+	/** Rows of the book currency (its rate types) and of `extraCurrencies` (every type), from the latest before `since` on (rows the engine reads start later). */
 	static async load(
 		tx: Tx,
 		p: {
@@ -53,14 +53,25 @@ export class RateBook {
 		].filter((c) => c !== USD);
 		const points = new Map<string, RatePoint[]>();
 		if (currencies.length === 0) return new RateBook(points);
-		const rows = await tx.exchangeRate.findMany({
-			where: {
-				currency: { in: currencies },
-				date: { gte: new Date(`${p.since}T00:00:00Z`) },
-			},
-			orderBy: { date: "asc" },
-			select: { currency: true, type: true, rate: true, date: true },
-		});
+		const since = new Date(`${p.since}T00:00:00Z`);
+		// One query: every rate from `since` on, plus the latest before it per
+		// pair, so a row dated near `since` whose only earlier rate is older is
+		// still valued on or before it. Anchors sort first (older dates).
+		const rows = await tx.$queryRaw<
+			Array<{ currency: string; type: string; rate: string; date: Date }>
+		>`
+			SELECT currency, type,
+			       trim(trailing '.' from trim(trailing '0' from rate::text)) AS rate, date FROM (
+				(SELECT DISTINCT ON (currency, type) currency, type, rate, date
+				   FROM exchange_rate
+				  WHERE currency = ANY(${currencies}) AND date < ${since}
+				  ORDER BY currency, type, date DESC)
+				UNION ALL
+				(SELECT currency, type, rate, date
+				   FROM exchange_rate
+				  WHERE currency = ANY(${currencies}) AND date >= ${since})
+			) r
+			ORDER BY date ASC`;
 		for (const r of rows) {
 			if (r.currency === p.bookCurrency && !p.rateTypes.includes(r.type))
 				continue;

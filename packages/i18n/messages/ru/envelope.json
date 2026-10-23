@@ -4,11 +4,19 @@
 		"spending": "Расходы",
 		"everyday": "Расходы",
 		"limits": "Лимиты",
-		"savings": "Сбережения"
+		"savings": "Сбережения",
+		"needs": "Необходимое",
+		"wants": "Желания"
 	},
 	"envelopes": {
 		"spending": "Расходы",
 		"savings": "Сбережения",
-		"everythingElse": "Всё остальное"
+		"everythingElse": "Всё остальное",
+		"needs": "Необходимое",
+		"wants": "Желания"
+	},
+	"rules": {
+		"saveFirst": "Сначала сбережения",
+		"rest": "Остальное"
 	}
 }

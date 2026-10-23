@@ -13,9 +13,16 @@ import type {
 	Money,
 	OwedSummaryDto,
 } from "~/lib/schemas/envelope";
-import { addMonths, daysBetween } from "./calendar";
+import { addMonths } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
+import {
+	type GroupBase,
+	type GroupMemberView,
+	groupTargetDto,
+} from "./group-view";
+import type { GroupTarget } from "./groups";
 import { leftToSpendDto, verdictDto } from "./month-dto";
+import { leftToSpendFor, limitTotals, weekTotals } from "./month-totals";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
 import {
 	type EnvelopeTarget,
@@ -25,15 +32,12 @@ import {
 import {
 	type GroupRole,
 	type LeftToSpend,
-	leftToSpend,
-	perDay,
 	weeklyPace,
 	weeksOfMonth,
 } from "./pace";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import {
 	type BudgetStyle,
-	type LimitTotals,
 	poolNameFor,
 	type Verdict,
 	verdict,
@@ -65,6 +69,9 @@ export interface ViewGroup {
 	name: string;
 	role: GroupRole;
 	order: number;
+	/** SPEC §5.9; absent or null: no target. */
+	target?: GroupTarget | null;
+	mainEnvelopeId?: string | null;
 }
 
 export interface ViewBook {
@@ -93,6 +100,8 @@ export interface MonthViewInput {
 	approximateRows?: number;
 	/** The Owed line (owed.ts); nothing owed when omitted. */
 	owed?: OwedSummaryDto;
+	/** The base for % group targets (group-view.ts); none when omitted. */
+	groupBase?: GroupBase | null;
 }
 
 /** Your shares in the month: how many found no category (D19) and what waits for your OK (D20). */
@@ -133,7 +142,7 @@ function spendingIndex(p: MonthViewInput) {
 	};
 }
 
-interface Row {
+export interface Row {
 	env: ViewEnvelope;
 	m: EnvelopeMonth;
 	target: TargetResult | null;
@@ -198,6 +207,19 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 				: null;
 			return { env, m, target, week, open: p.month >= c };
 		});
+}
+
+/** A row as its group's target reads it (SPEC §5.9). */
+function memberOf(r: Row): GroupMemberView {
+	return {
+		envelopeId: r.env.id,
+		order: r.env.order,
+		hasTarget: r.env.target !== null,
+		assigned: r.m.assigned,
+		need: r.target?.need ?? 0,
+		// Spent and shares minus refunds; moves to Wealth are not spending.
+		spending: -(r.m.activity - r.m.wealth),
+	};
 }
 
 function statusOf(r: Row): EnvelopeRowDto["status"] {
@@ -299,6 +321,12 @@ function groupsDto(
 				name: g.name,
 				role: g.role,
 				sortOrder: g.order === Number.MAX_SAFE_INTEGER ? 9999 : g.order,
+				target: groupTargetDto(
+					"target" in g ? g : null,
+					mine.map((r) => memberOf(r)),
+					p.month >= p.state.currentMonth ? (p.groupBase ?? null) : undefined,
+					money,
+				),
 				totals: {
 					carryIn: sum((r) => r.m.carryIn),
 					assigned: sum((r) => r.m.assigned),
@@ -312,78 +340,6 @@ function groupsDto(
 			};
 		})
 		.filter((g) => g.id !== null || g.envelopes.length > 0);
-}
-
-/**
- * Limits (SPEC §6.1): envelopes with a limit or money this month. A limit is
- * what the envelope got this month (carried in plus assigned, which plan
- * funding makes the target), so Left = limit - spent. Ahead of pace when a
- * larger share of the limits is spent than of the month has passed.
- */
-function limitTotals(rows: Row[], p: MonthViewInput): LimitTotals | null {
-	if (p.book.style !== "LIMITS") return null;
-	const limited = rows.filter(
-		(r) => r.env.target !== null || r.m.assigned !== 0 || r.m.carryIn !== 0,
-	);
-	const limit = limited.reduce((t, r) => t + r.m.carryIn + r.m.assigned, 0);
-	const spent = -limited.reduce((t, r) => t + (r.m.activity - r.m.wealth), 0);
-	const left = limited.reduce((t, r) => t + r.m.left, 0);
-	const range = monthRange(p.month, p.book.periods);
-	const days = daysBetween(range.from, range.to) + 1;
-	const passed = Math.min(
-		days,
-		Math.max(0, daysBetween(range.from, p.today) + 1),
-	);
-	return {
-		limit,
-		spent,
-		left,
-		aheadOfPace: limit > 0 && spent * days > limit * passed,
-	};
-}
-
-function weekTotals(rows: Row[]) {
-	const weekly = rows.filter((r) => r.week);
-	if (weekly.length === 0) return null;
-	const first = weekly[0]?.week as NonNullable<Row["week"]>;
-	const left = weekly.reduce((t, r) => t + (r.week?.leftThisWeek ?? 0), 0);
-	return {
-		left,
-		perDay: perDay(left, first.daysLeftInWeek),
-		daysLeftInWeek: first.daysLeftInWeek,
-		resetsOn: first.resetsOn,
-	};
-}
-
-/** Left to spend for the month (D-owner-2026-10-22d) with the recurring part of Spending for the pace line (D60). */
-function leftToSpendFor(
-	rows: Row[],
-	p: MonthViewInput,
-	toAssign: Minor,
-): LeftToSpend {
-	const role = new Map(p.book.groups.map((g) => [g.id, g.role]));
-	const roleOf = (r: Row) =>
-		r.env.groupId ? (role.get(r.env.groupId) ?? null) : null;
-	const range = monthRange(p.month, p.book.periods);
-	return leftToSpend({
-		envelopes: rows.map((r) => ({
-			groupRole: roleOf(r),
-			carryIn: r.m.carryIn,
-			assigned: r.m.assigned,
-			activity: r.m.activity,
-			left: r.m.left,
-			wealth: r.m.wealth,
-		})),
-		toAssign,
-		billNeeds: rows
-			.filter((r) => roleOf(r) === "BILLS")
-			.map((r) => r.target?.need ?? 0),
-		month: range,
-		today: p.today,
-		recurringSpent: -rows
-			.filter((r) => roleOf(r) === "SPENDING")
-			.reduce((t, r) => t + r.m.recurring, 0),
-	});
 }
 
 export interface MonthView {

@@ -465,9 +465,9 @@ describe("needsYou query budget", () => {
 		const three = await queries(busy.user.id);
 		expect(three).toBe(one);
 		// The budget source reads its book in a fixed set of queries, splits
-		// included (budget P3) and frozen row values (P4): the count never
-		// grows with the items.
-		expect(one).toBeLessThanOrEqual(25);
+		// included (budget P3), frozen row values (P4) and the income rules'
+		// idle check (P5): the count never grows with the items.
+		expect(one).toBeLessThanOrEqual(26);
 	});
 
 	it("p95 under 150 ms", async () => {

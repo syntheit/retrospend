@@ -60,12 +60,14 @@ export const acknowledgeMonthResultSchema = z.object({
 
 // ── Styles (SPEC §4.4) ──────────────────────────────────────────────────────
 
-/** Styles whose features have landed (02 §8: P2 and P4). */
+/** Styles whose features have landed (02 §8: P2, P4 and P5). Between income styles a switch writes nothing beyond the style; the new style's rules and group targets are offered, not written (SPEC §4.4). */
 export const SWITCH_STYLES = [
 	"LIMITS",
 	"FLEX",
 	"EVERY_DOLLAR",
 	"WEEKLY",
+	"SAVE_FIRST",
+	"FIFTY_THIRTY_TWENTY",
 ] as const;
 export const switchStyleSchema = z.enum(SWITCH_STYLES);
 

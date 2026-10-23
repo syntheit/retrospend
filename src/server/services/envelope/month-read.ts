@@ -12,8 +12,10 @@ import type {
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
+import { savedPlanLines } from "./draft-store";
 import { computeBook } from "./engine";
 import { EnvelopeError } from "./errors";
+import { groupBaseFor, hasPercentGroup } from "./income-history";
 import { type LoadedBook, loadBook } from "./inputs";
 import { buildMonthView, type MonthView } from "./month-view";
 import { owedSummary } from "./owed";
@@ -74,6 +76,10 @@ async function computeMonthView(
 	)
 		throw new EnvelopeError("INVALID", "that month is outside your budget");
 	const state = computeBook(loaded.input, key);
+	const groupBase =
+		key >= loaded.input.currentMonth && hasPercentGroup(loaded)
+			? await groupBaseFor(tx, loaded, key)
+			: null;
 	const view = buildMonthView({
 		book: loaded.book,
 		input: loaded.input,
@@ -82,6 +88,7 @@ async function computeMonthView(
 		today: loaded.today,
 		missingRates: loaded.missingRates,
 		owed: owedSummary(owedInputOf(loaded)),
+		groupBase,
 		approximateRows: loaded.approximate.length,
 	});
 	return { ...view, loaded };
@@ -121,7 +128,8 @@ export async function fillFromTargetsIn(
 	const view = await requireView(tx, userId, now, month);
 	if (view.dto.month.state === "CLOSED")
 		throw new EnvelopeError("MONTH_CLOSED", "that month has closed");
-	return fillFromTargets(view.dto, amount);
+	const plan = await savedPlanLines(tx, view.dto.book.id, view.dto.month.key);
+	return fillFromTargets(view.dto, amount, plan);
 }
 
 export async function coverSourcesIn(

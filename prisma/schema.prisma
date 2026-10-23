@@ -392,6 +392,9 @@ model BudgetBook {
   wealthTransfers WealthTransfer[]
   dirtyMarks      BudgetDirty[]
   rowValues       BudgetRowValue[]
+  drafts          BudgetDraft[]
+  incomeRules     IncomeRule[]
+  incomeRuleRuns  IncomeRuleRun[]
 
   @@index([createdById])
   @@index([currency])
@@ -491,6 +494,7 @@ model Envelope {
   defaultOf           BudgetBook[]        @relation("BookDefaultEnvelope")
   mainOfGroups        EnvelopeGroup[]     @relation("GroupMainEnvelope")
   movementsOut        BudgetMovement[]    @relation("MovementFrom")
+  incomeRules         IncomeRule[]
   movementsIn         BudgetMovement[]    @relation("MovementTo")
   projectRoutes       ProjectParticipant[] @relation("ProjectBudgetEnvelope")
   wealthTransfers     WealthTransfer[]
@@ -663,6 +667,105 @@ model BudgetRowValue {
 
   @@id([bookId, key])
   @@map("budget_row_value")
+}
+
+// Plan next month (PLAN) and What if (WHAT_IF), SPEC §5.13. A draft is never
+// money: expected money in and pretend rows are never written. JSON columns
+// carry ids and amounts only (E2EE rule 10); zod: envelope-plan schemas.
+model BudgetDraft {
+  id            String      @id
+  bookId        String
+  // PLAN: next month; WHAT_IF: the current or next month.
+  month         Int
+  kind          DraftKind   @default(PLAN)
+  status        DraftStatus @default(OPEN)
+  lines         Json        @default("[]")
+  moves         Json        @default("[]")
+  expectedIn    Json        @default("[]")
+  pretend       Json        @default("[]")
+  appliedAt     DateTime?
+  // The saved plan this one replaced; its undo puts that one back.
+  supersedesId  String?
+  // "Fund it now": the PLAN_APPLY batch, while it stands.
+  fundedBatchId String?
+  createdById   String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  book          BudgetBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId, month, status])
+  @@map("budget_draft")
+}
+
+enum DraftKind {
+  PLAN
+  WHAT_IF
+}
+
+enum DraftStatus {
+  OPEN
+  APPLIED
+  DISCARDED
+}
+
+// What each money in shares out to envelopes (SPEC §5.10, D71).
+model IncomeRule {
+  id         String           @id
+  bookId     String
+  sortOrder  Int
+  name       String
+  matchKind  IncomeRuleMatch  @default(ANY)
+  // CATEGORY: category id; TEMPLATE: template id; CURRENCY: ISO code.
+  matchValue String?          @db.VarChar(64)
+  // TITLE: the text a title contains (user text, own column).
+  matchTitle String?
+  action     IncomeRuleAction
+  // PERCENT: percent (20.0); AMOUNT: book currency; REMAINDER: null.
+  value      Decimal?         @db.Decimal(19, 8)
+  envelopeId String
+  active     Boolean          @default(true)
+  archivedAt DateTime?
+  // Rules apply to income rows created after this.
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  book       BudgetBook       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  envelope   Envelope         @relation(fields: [envelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+
+  @@index([bookId, sortOrder])
+  @@map("income_rule")
+}
+
+enum IncomeRuleMatch {
+  ANY
+  CATEGORY
+  TEMPLATE
+  TITLE
+  CURRENCY
+}
+
+enum IncomeRuleAction {
+  PERCENT
+  AMOUNT
+  REMAINDER
+}
+
+// One row per income row the rules processed: exactly-once runs (SPEC §5.10).
+// No relation to expense on purpose: a deleted row's run stays so the next
+// read reverts its batch (S16).
+model IncomeRuleRun {
+  expenseId   String     @id
+  bookId      String
+  batchId     String?
+  skipped     Boolean    @default(false)
+  // rules.ts RecordedRun without match text.
+  record      Json
+  fingerprint String     @db.VarChar(200)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  book        BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@map("income_rule_run")
 }
 
 enum MonthCloseMode {

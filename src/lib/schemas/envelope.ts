@@ -8,6 +8,7 @@
  * integer minor units, computed on the server (R9), formatted by the one
  * formatter. Months are YYYYMM numbers, dates YYYY-MM-DD calendar dates.
  */
+import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 
 export const minorSchema = z
@@ -44,12 +45,14 @@ export const budgetStyleSchema = z.enum([
 	"WEEKLY",
 	"DEBT_PAYOFF",
 ]);
-/** Styles whose features have landed (02 §8: P2 completes these, P4 Limits). */
+/** Styles whose features have landed (02 §8: P2 completes these, P4 Limits, P5 Save first and 50/30/20). */
 export const SETUP_STYLES = [
 	"FLEX",
 	"EVERY_DOLLAR",
 	"WEEKLY",
 	"LIMITS",
+	"SAVE_FIRST",
+	"FIFTY_THIRTY_TWENTY",
 ] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
 
@@ -159,6 +162,38 @@ export const groupTotalsSchema = z.object({
 	count: z.number().int(),
 });
 
+export const groupTargetKindSchema = z.enum([
+	"NONE",
+	"AMOUNT",
+	"PERCENT_OF_INCOME",
+]);
+
+/**
+ * A group's target this month (SPEC §5.9): "Wants · planned 30% · spent
+ * 31%". Percentages are basis points (3000 = 30%), the base is this month's
+ * budget income or, before any arrives, typical income ("of your usual
+ * income"). Null base: no income yet and no closed month to judge by.
+ */
+export const groupTargetSchema = z.object({
+	kind: z.enum(["AMOUNT", "PERCENT_OF_INCOME"]),
+	/** T_g in the book currency; null for a % target without a base yet. */
+	amount: moneySchema.nullable(),
+	basisPoints: z.number().int().nullable(),
+	base: moneySchema.nullable(),
+	baseSource: z.enum(["THIS_MONTH", "TYPICAL"]).nullable(),
+	plannedBp: z.number().int().nullable(),
+	spentBp: z.number().int().nullable(),
+	/** max(0, T_g - Σ assigned in the group). */
+	need: moneySchema,
+	mainEnvelopeId: idSchema.nullable(),
+	/** What goes to the main envelope after the children's own needs. */
+	mainExtra: moneySchema,
+	/** Guidance only: "Envelope targets need X more than Wants' 30%". */
+	childrenOverBy: moneySchema,
+	/** A rate is missing in the base: the percentages are not shown as fact. */
+	incomplete: z.boolean(),
+});
+
 export const envelopeGroupSchema = z.object({
 	/** null: envelopes without a group. */
 	id: idSchema.nullable(),
@@ -166,6 +201,8 @@ export const envelopeGroupSchema = z.object({
 	role: groupRoleSchema.nullable(),
 	sortOrder: z.number().int(),
 	totals: groupTotalsSchema,
+	/** Null without a target, or for a closed month. */
+	target: groupTargetSchema.nullable().optional(),
 	envelopes: z.array(envelopeRowSchema),
 });
 
@@ -410,8 +447,16 @@ export const fillLineSchema = z.object({
 	/** The month it is assigned in: the viewed month, or the next one for "Next month". */
 	month: monthKeySchema,
 	amount: moneySchema,
-	/** REST: the rest after the targets, where you chose to put it. */
-	step: z.enum(["OVERSPENT", "BILL", "GROUP", "MONTHLY", "SAVINGS", "REST"]),
+	/** PLAN: the saved plan for the month (owner r5 Q1). REST: the rest after the targets, where you chose to put it. */
+	step: z.enum([
+		"PLAN",
+		"OVERSPENT",
+		"BILL",
+		"GROUP",
+		"MONTHLY",
+		"SAVINGS",
+		"REST",
+	]),
 });
 
 /** Where the rest goes after Use my plan (D-owner-2026-10-22e): nothing moves unseen. */
@@ -479,11 +524,20 @@ export const setupPresetOutputSchema = z.object({
 	missingRates: z.array(missingRateSchema).default([]),
 	/** Names are message keys the client translates and sends back to setup. */
 	groups: z.array(
-		z.object({ key: z.string(), nameKey: z.string(), role: groupRoleSchema }),
+		z.object({
+			key: z.string(),
+			nameKey: z.string(),
+			role: groupRoleSchema,
+			target: z.lazy(() => groupTargetInputSchema).optional(),
+		}),
 	),
+	/** Save first: "20% of money in to Savings", "The rest to Spending" (the percentage is asked). */
+	rules: z.array(z.lazy(() => presetRuleSchema)).optional(),
 	envelopes: z.array(
 		z.object({
 			key: z.string(),
+			/** Save first asks whether this envelope's leftovers sweep to the savings goal. */
+			sweepToKey: z.string().optional(),
 			nameKey: z.string().nullable(),
 			/** A recurring template's or category's own name, when the envelope follows one. */
 			name: z.string().nullable(),
@@ -531,6 +585,52 @@ export const targetInputSchema = z.discriminatedUnion("kind", [
 	}),
 ]);
 
+/** A group's target (SPEC §5.9): a fixed amount or a percent of money in (basis points). */
+export const groupTargetInputSchema = z.discriminatedUnion("kind", [
+	z.object({ kind: z.literal("NONE") }),
+	z.object({ kind: z.literal("AMOUNT"), amountMinor: positiveMinor }),
+	z.object({
+		kind: z.literal("PERCENT_OF_INCOME"),
+		basisPoints: z.number().int().min(1).max(10_000),
+	}),
+]);
+
+/** What an income rule matches (SPEC §5.10). TITLE is the one rule that reads titles (E2EE known exception). */
+export const ruleMatchSchema = z.discriminatedUnion("kind", [
+	z.object({ kind: z.literal("ANY") }),
+	z.object({ kind: z.literal("CATEGORY"), categoryId: idSchema }),
+	z.object({ kind: z.literal("TEMPLATE"), templateId: idSchema }),
+	z.object({
+		kind: z.literal("TITLE"),
+		contains: userText("incomeRule.matchTitle", 128),
+	}),
+	z.object({
+		kind: z.literal("CURRENCY"),
+		currency: z.string().min(3).max(10),
+	}),
+]);
+
+export const ruleActionInputSchema = z.discriminatedUnion("kind", [
+	z.object({
+		kind: z.literal("PERCENT"),
+		basisPoints: z.number().int().min(1).max(10_000),
+	}),
+	z.object({ kind: z.literal("AMOUNT"), amountMinor: positiveMinor }),
+	z.object({ kind: z.literal("REMAINDER") }),
+]);
+
+export const setupRuleSchema = z.object({
+	name: userText("incomeRule.name", 64),
+	match: ruleMatchSchema,
+	action: ruleActionInputSchema,
+	envelopeKey: z.string().min(1).max(32),
+});
+
+/** A rule a style proposes: the name is a message key the client translates and sends back. */
+export const presetRuleSchema = setupRuleSchema
+	.omit({ name: true })
+	.extend({ nameKey: z.string() });
+
 export const monthInputSchema = z
 	.object({ month: monthKeySchema.optional() })
 	.default({});
@@ -548,9 +648,12 @@ export const setupInputSchema = z
 					key: z.string().min(1).max(32),
 					name: z.string().trim().min(1).max(64),
 					role: groupRoleSchema.nullable(),
+					target: groupTargetInputSchema.optional(),
 				}),
 			)
 			.max(20),
+		/** Income rules the style starts with (Save first), in order. */
+		rules: z.array(setupRuleSchema).max(20).optional(),
 		envelopes: z
 			.array(
 				z.object({
@@ -562,6 +665,8 @@ export const setupInputSchema = z
 					icon: z.string().max(32).optional(),
 					categoryIds: z.array(idSchema).max(200).default([]),
 					target: targetInputSchema.optional(),
+					/** Leftovers sweep to this envelope at close (SPEC §5.7, asked in Save first). */
+					sweepToKey: z.string().min(1).max(32).optional(),
 				}),
 			)
 			.min(1)
@@ -831,3 +936,8 @@ export type MonthCloseSummary = z.infer<typeof monthCloseSummarySchema>;
 export type CarryOverspendInput = z.infer<typeof carryOverspendInputSchema>;
 export type BatchInput = z.infer<typeof batchInputSchema>;
 export type SetupResult = z.infer<typeof setupResultSchema>;
+export type GroupTargetDto = z.infer<typeof groupTargetSchema>;
+export type GroupTargetInput = z.infer<typeof groupTargetInputSchema>;
+export type RuleMatchInput = z.infer<typeof ruleMatchSchema>;
+export type RuleActionInput = z.infer<typeof ruleActionInputSchema>;
+export type SetupRule = z.infer<typeof setupRuleSchema>;

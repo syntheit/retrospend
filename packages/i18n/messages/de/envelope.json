@@ -4,11 +4,19 @@
 		"spending": "Ausgaben",
 		"everyday": "Ausgaben",
 		"limits": "Ausgabenlimits",
-		"savings": "Sparen"
+		"savings": "Sparen",
+		"needs": "Bedarf",
+		"wants": "Wünsche"
 	},
 	"envelopes": {
 		"spending": "Ausgaben",
 		"savings": "Sparen",
-		"everythingElse": "Alles andere"
+		"everythingElse": "Alles andere",
+		"needs": "Bedarf",
+		"wants": "Wünsche"
+	},
+	"rules": {
+		"saveFirst": "Zuerst sparen",
+		"rest": "Der Rest"
 	}
 }

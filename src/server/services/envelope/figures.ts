@@ -16,6 +16,9 @@
  *   (the splits replay's open basis, SPEC §5.8): it is out of To assign
  *   until they pay or you forgive.
  *
+ * - budget.planCost, budget.typicalIncome: plan cost and the usual income
+ *   it is judged against (SPEC §5.13, §12.3).
+ *
  * Every one is unavailable (null) without a book or while a rate is
  * missing (R14: "Incomplete", never a guess).
  */
@@ -27,6 +30,7 @@ import type {
 } from "~/server/figures/registry";
 import { budgetHolds } from "./bank";
 import { forgetMonthViews, monthViewIn } from "./month-read";
+import { planCostIn } from "./plan-read";
 import {
 	FIGURE_LEFT_IN_LIMITS,
 	FIGURE_LEFT_THIS_WEEK,
@@ -36,6 +40,8 @@ import {
 
 export const FIGURE_HELD_FOR_OTHERS = "budget.heldForOthers";
 export const FIGURE_BUDGET_HOLDS = "budget.holds";
+export const FIGURE_PLAN_COST = "budget.planCost";
+export const FIGURE_TYPICAL_INCOME = "budget.typicalIncome";
 
 /**
  * The current month, read once per figure pass. Each pass reads anew: a
@@ -137,6 +143,36 @@ export const budgetHoldsFigure: FigureDefinition = {
 	},
 };
 
+/** This month's plan cost read once per pass; null without a book or with a rate missing. */
+async function plan(db: FigureDb, userId: string, pass?: FigurePass) {
+	const read = async () => {
+		if (!(await monthViewIn(db, userId, new Date()))) return null;
+		return planCostIn(db, userId, {}, new Date());
+	};
+	const v = await (pass ? pass.once(`budget.plan:${userId}`, read) : read());
+	return v && !v.incomplete ? v : null;
+}
+
+/** Plan cost (SPEC §5.13, E6): Σ monthly-equivalent targets this month; null with a rate missing. */
+export const planCostFigure: FigureDefinition = {
+	id: FIGURE_PLAN_COST,
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const v = await plan(db, scope.userId, pass);
+		return v ? v.cost : null;
+	},
+};
+
+/** Typical income (SPEC §12.3): median budget income of the last 3 closed months; null with none. */
+export const typicalIncomeFigure: FigureDefinition = {
+	id: FIGURE_TYPICAL_INCOME,
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const v = await plan(db, scope.userId, pass);
+		return v ? v.typicalIncome : null;
+	},
+};
+
 export const budgetFigures = [
 	notPlannedYetFigure,
 	leftToSpendFigure,
@@ -145,4 +181,6 @@ export const budgetFigures = [
 	envelopeLeftFigure,
 	heldForOthersFigure,
 	budgetHoldsFigure,
+	planCostFigure,
+	typicalIncomeFigure,
 ];

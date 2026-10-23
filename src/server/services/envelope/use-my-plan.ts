@@ -20,11 +20,13 @@ import type {
 	RestOption,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
+import { savedPlanLines } from "./draft-store";
 import { computeBook, type MovementEntry } from "./engine";
 import { type MonthRead, monthViewIn } from "./month-read";
 import { buildMonthView } from "./month-view";
 import { assignPlan } from "./movement.service";
-import { fillFromTargets, saveHome } from "./planning";
+import { fillFromTargets, type SavedPlanLine, saveHome } from "./planning";
+import { ruleTotalFor, runPendingRules } from "./rule.service";
 import type { Minor, MonthKey } from "./types";
 
 type Line = FillFromTargetsOutput["lines"][number];
@@ -80,9 +82,10 @@ export function proposePlan(
 	read: MonthRead,
 	amount: Minor,
 	rest: RestChoice = "LEAVE",
+	plan: readonly SavedPlanLine[] = [],
 ): PlanProposal {
 	const view = read.dto;
-	const fill = fillFromTargets(view, amount);
+	const fill = fillFromTargets(view, amount, plan);
 	const lines = fill.lines.filter((l) => l.amount.minor > 0);
 	let left = fill.rest.minor;
 	const option = fill.restOptions.find((o) => o.choice === rest);
@@ -108,16 +111,31 @@ export function proposePlan(
 	};
 }
 
-/** Proposes and writes the plan as one batch; null without a budget. */
+/**
+ * Proposes and writes the plan as one batch; null without a budget. Income
+ * rules run first (SPEC §5.4): with `sourceExpenseId`, the plan assigns only
+ * what the rules left of that money in. The month's saved plan, when there
+ * is one, comes before the targets (owner r5 Q1).
+ */
 export async function applyPlan(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	now: Date,
-	choice: { amount: Minor; rest: RestChoice },
+	choice: { amount: Minor; rest: RestChoice; sourceExpenseId?: string },
 ): Promise<(PlanProposal & { batchId: string | null }) | null> {
+	let ruled = 0;
+	if (choice.sourceExpenseId)
+		ruled = await ruleTotalFor(tx, userId, choice.sourceExpenseId, now);
+	else await runPendingRules(tx, userId, now);
 	const read = await monthViewIn(tx, userId, now);
 	if (!read) return null;
-	const plan = proposePlan(read, choice.amount, choice.rest);
+	const saved = await savedPlanLines(tx, read.dto.book.id, read.dto.month.key);
+	const plan = proposePlan(
+		read,
+		Math.max(0, choice.amount - ruled),
+		choice.rest,
+		saved,
+	);
 	if (plan.lines.length === 0) return { ...plan, batchId: null };
 	const batchId = randomUUID();
 	await assignPlan(
