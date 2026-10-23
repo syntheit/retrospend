@@ -2,7 +2,8 @@
  * Splits replay (02 §3.3, SPEC §5.8, D18, D8, D10, D12, D20): what money is
  * out with other people, and when it leaves or returns to To assign.
  *
- * Per counterparty and native currency, events run in (date, id) order over
+ * Per counterparty and native currency, events run in date order (on one
+ * day, splits before the payments that settle them; then by id) over
  * a state `native` (positive = they owe you, negative = you owe them) and
  * `basis` (book value of the positive part, H minor). Each event may emit an
  * effect on SplitsNet = Fronted - Returned - Forgiven:
@@ -55,17 +56,30 @@ export type ReplayEvent =
 	  })
 	| (EventBase & { kind: "OWE"; status: ShareStatus })
 	| (EventBase & SettlementLeg & { kind: "RECV" })
-	| (EventBase & SettlementLeg & { kind: "PAY" })
+	| (EventBase &
+			SettlementLeg & {
+				kind: "PAY";
+				/** They let your debt go: it clears what you owe, never more. */
+				forgiven?: boolean;
+			})
 	| (EventBase & {
 			kind: "FORGIVE";
 			status: SettlementStatus;
-			envelopeId: string;
+			/** Null: charged to "Everything else" (the envelope was deleted). */
+			envelopeId: string | null;
 	  });
 
-export type SplitsTerm = "FRONTED" | "RETURNED" | "FORGIVEN";
+/**
+ * OLD_DEBT_PAID: cash you paid, after the budget started, toward a debt you
+ * owed from before it (owner decision 2026-10-23): it leaves To assign like
+ * any payment. A pre-start receivable needs no term: what you receive for it
+ * counts when it arrives (RETURNED), since its fronting was never counted.
+ */
+export type SplitsTerm = "FRONTED" | "RETURNED" | "FORGIVEN" | "OLD_DEBT_PAID";
 
 export interface ReplayEffect {
 	eventId: string;
+	date: IsoDate;
 	month: MonthKey;
 	counterparty: string;
 	currency: string;
@@ -75,7 +89,7 @@ export interface ReplayEffect {
 	/** RETURNED only: cash value minus basis released (D10 note). */
 	fx: Minor;
 	/** FORGIVEN only: the envelope charged in the forgive month. */
-	envelopeId?: string;
+	envelopeId?: string | null;
 }
 
 export interface ReplayBalance {
@@ -85,6 +99,8 @@ export interface ReplayBalance {
 	native: Minor;
 	/** Book value of what they owe you (0 when native <= 0). */
 	basis: Minor;
+	/** Date of the oldest part still owed to you, first in first out (aging, C15). */
+	oldestOpen: IsoDate | null;
 }
 
 export type IgnoredReason =
@@ -103,6 +119,27 @@ export interface ReplayResult {
 interface State {
 	native: Minor;
 	basis: Minor;
+	/** The part of what you owe that started before the budget did. */
+	oldPayable: Minor;
+	/** The part owed to you from before the budget: never fronted in it. */
+	oldReceivable: Minor;
+	/** What they owe you, by the date each part started, oldest first. */
+	lots: Array<{ date: IsoDate; native: Minor }>;
+}
+
+function addLot(s: State, date: IsoDate, native: Minor) {
+	s.lots.push({ date, native });
+}
+
+function consumeLots(s: State, native: Minor) {
+	let left = native;
+	while (left > 0 && s.lots.length > 0) {
+		const lot = s.lots[0] as { date: IsoDate; native: Minor };
+		const take = Math.min(left, lot.native);
+		lot.native -= take;
+		left -= take;
+		if (lot.native === 0) s.lots.shift();
+	}
 }
 
 type Emit = (
@@ -121,13 +158,17 @@ function portion(total: Minor, part: Minor, whole: Minor): Minor {
 function clearReceivable(
 	s: State,
 	n: Minor,
-): { cleared: Minor; released: Minor } {
+): { cleared: Minor; released: Minor; oldCleared: Minor } {
 	const cleared = Math.min(n, Math.max(s.native, 0));
-	if (cleared === 0) return { cleared: 0, released: 0 };
+	if (cleared === 0) return { cleared: 0, released: 0, oldCleared: 0 };
 	const released = portion(s.basis, cleared, s.native);
 	s.native -= cleared;
 	s.basis -= released;
-	return { cleared, released };
+	consumeLots(s, cleared);
+	// Oldest first: what was owed from before the start clears first.
+	const oldCleared = Math.min(cleared, s.oldReceivable);
+	s.oldReceivable -= oldCleared;
+	return { cleared, released, oldCleared };
 }
 
 /** Pays down up to `n` of a negative balance; returns what is left of `n`. */
@@ -147,6 +188,7 @@ function applyFront(
 	const value = portion(e.value, rest, e.native);
 	s.native += rest;
 	s.basis += value;
+	addLot(s, e.date, rest);
 	emit("FRONTED", value);
 }
 
@@ -187,9 +229,12 @@ function applyPay(
 	if (e.status === "REJECTED") return ignore("REJECTED", e.native);
 	const excess = payDownPayable(s, e.native);
 	if (excess === 0) return;
+	// Forgiving more than you owed creates nothing they owe you: dropped.
+	if (e.forgiven) return ignore("FORGIVE_EXCEEDS_BALANCE", excess);
 	const value = portion(e.cash, excess, e.native);
 	s.native += excess;
 	s.basis += value;
+	addLot(s, e.date, excess);
 	emit("FRONTED", value);
 }
 
@@ -201,13 +246,42 @@ function applyForgive(
 ) {
 	if (e.status === "REJECTED") return ignore("REJECTED", e.native);
 	if (e.status !== "FINALIZED") return ignore("PENDING_NOT_COUNTED", e.native);
-	const { cleared, released } = clearReceivable(s, e.native);
-	if (cleared > 0) emit("FORGIVEN", released, { envelopeId: e.envelopeId });
+	const { cleared, released, oldCleared } = clearReceivable(s, e.native);
+	// A part owed from before the start was never fronted in the budget:
+	// letting it go moves nothing and charges no envelope.
+	const counted = released - portion(released, oldCleared, cleared);
+	if (counted > 0) emit("FORGIVEN", counted, { envelopeId: e.envelopeId });
 	if (e.native > cleared) ignore("FORGIVE_EXCEEDS_BALANCE", e.native - cleared);
+}
+
+/** On one day, splits come before the payments and forgives that settle them. */
+const PHASE: Record<ReplayEvent["kind"], number> = {
+	FRONT: 0,
+	OWE: 0,
+	RECV: 1,
+	PAY: 1,
+	FORGIVE: 1,
+};
+
+/**
+ * After a FRONT or PAY in the budget: the part that paid down a debt from
+ * before the start left your cash, so it leaves To assign (OLD_DEBT_PAID) at
+ * the event's value. A forgive or an offset moves no cash: nothing leaves.
+ */
+function paidOldDebt(s: State, e: ReplayEvent, owedBefore: Minor, emit: Emit) {
+	if (s.oldPayable === 0 || (e.kind !== "FRONT" && e.kind !== "PAY")) return;
+	const down = Math.min(e.native, owedBefore);
+	const old = Math.min(down, s.oldPayable);
+	if (old <= 0) return;
+	s.oldPayable -= old;
+	const total = e.kind === "FRONT" ? e.value : e.isOffset ? 0 : e.cash;
+	const value = portion(total, old, e.native);
+	if (value > 0) emit("OLD_DEBT_PAID", value);
 }
 
 function byDateThenId(a: ReplayEvent, b: ReplayEvent): number {
 	if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+	if (PHASE[a.kind] !== PHASE[b.kind]) return PHASE[a.kind] - PHASE[b.kind];
 	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
@@ -223,7 +297,10 @@ function applyEvent(s: State, e: ReplayEvent, emit: Emit, ignore: Ignore) {
 }
 
 /** Replays every split and settlement event into SplitsNet effects (02 §3.3). */
-export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
+export function replaySplits(
+	events: readonly ReplayEvent[],
+	opts: { startMonth?: MonthKey } = {},
+): ReplayResult {
 	const states = new Map<
 		string,
 		State & { counterparty: string; currency: string }
@@ -242,6 +319,9 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const s = states.get(key) ?? {
 			native: 0,
 			basis: 0,
+			oldPayable: 0,
+			oldReceivable: 0,
+			lots: [],
 			counterparty: e.counterparty,
 			currency: e.currency,
 		};
@@ -249,6 +329,7 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const emit: Emit = (term, minor, extra) => {
 			const base = {
 				eventId: e.id,
+				date: e.date,
 				month: e.month,
 				counterparty: e.counterparty,
 			};
@@ -264,7 +345,15 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const ignore: Ignore = (reason, native) => {
 			result.ignored.push({ eventId: e.id, reason, native });
 		};
+		const owedBefore = Math.max(0, -s.native);
 		applyEvent(s, e, emit, ignore);
+		if (opts.startMonth !== undefined && e.month < opts.startMonth) {
+			// Everything owed at the start is the starting position's.
+			s.oldPayable = Math.max(0, -s.native);
+			s.oldReceivable = Math.max(0, s.native);
+		} else {
+			paidOldDebt(s, e, owedBefore, emit);
+		}
 	}
 	for (const s of states.values()) {
 		result.balances.push({
@@ -272,6 +361,7 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 			currency: s.currency,
 			native: s.native,
 			basis: s.basis,
+			oldestOpen: s.native > 0 ? (s.lots[0]?.date ?? null) : null,
 		});
 	}
 	return result;
@@ -281,7 +371,9 @@ export interface SplitsTotals {
 	fronted: Minor;
 	returned: Minor;
 	forgiven: Minor;
-	/** SplitsNet = fronted - returned - forgiven; it lowers To assign. */
+	/** Paid toward debts from before the budget started. */
+	oldDebtsPaid: Minor;
+	/** SplitsNet = fronted - returned - forgiven + oldDebtsPaid; it lowers To assign. */
 	net: Minor;
 	/** Σ FX notes on returned cash (informational). */
 	fx: Minor;
@@ -292,14 +384,22 @@ export function splitsTotals(
 	effects: readonly ReplayEffect[],
 	through?: MonthKey,
 ): SplitsTotals {
-	const t = { fronted: 0, returned: 0, forgiven: 0, net: 0, fx: 0 };
+	const t = {
+		fronted: 0,
+		returned: 0,
+		forgiven: 0,
+		oldDebtsPaid: 0,
+		net: 0,
+		fx: 0,
+	};
 	for (const e of effects) {
 		if (through !== undefined && e.month > through) continue;
 		if (e.term === "FRONTED") t.fronted += e.minor;
 		else if (e.term === "RETURNED") t.returned += e.minor;
+		else if (e.term === "OLD_DEBT_PAID") t.oldDebtsPaid += e.minor;
 		else t.forgiven += e.minor;
 		t.fx += e.fx;
 	}
-	t.net = t.fronted - t.returned - t.forgiven;
+	t.net = t.fronted - t.returned - t.forgiven + t.oldDebtsPaid;
 	return t;
 }

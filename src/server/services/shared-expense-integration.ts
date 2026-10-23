@@ -120,15 +120,24 @@ export function shareParticipations(
 		},
 		select: {
 			id: true,
+			participantType: true,
+			participantId: true,
 			shareAmount: true,
 			verificationStatus: true,
+			// The participant's own category for the share (budget D19).
+			categoryId: true,
+			categorySource: true,
 			transaction: {
 				select: {
+					id: true,
 					currency: true,
 					date: true,
 					categoryId: true,
 					exchangeRate: true,
-					category: { select: { userId: true } },
+					projectId: true,
+					paidByType: true,
+					paidById: true,
+					category: { select: { userId: true, name: true } },
 				},
 			},
 		},

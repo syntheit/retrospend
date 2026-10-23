@@ -12,7 +12,17 @@ import { takeBackCap } from "./planning";
 import type { Minor, MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
-export type Kind = "ASSIGN" | "SET" | "MOVE" | "COVER" | "UNASSIGN" | "UNDO";
+export type Kind =
+	| "ASSIGN"
+	| "SET"
+	| "MOVE"
+	| "COVER"
+	| "UNASSIGN"
+	| "UNDO"
+	| "PLAN_FUND"
+	| "CARRY_OVERSPEND"
+	| "FIX_NEGATIVE"
+	| "RESET";
 
 export interface NewMovement {
 	id: string;
@@ -35,8 +45,8 @@ export interface Snapshot {
 	current: MonthKey;
 }
 
-/** One writer per book at a time (02 §2; month close takes the same lock in P4). */
-async function lockBook(tx: Tx, bookId: string) {
+/** One writer per book at a time (02 §2): movements and the month close. */
+export async function lockBook(tx: Tx, bookId: string) {
 	await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`budget_book:${bookId}`}))`;
 }
 

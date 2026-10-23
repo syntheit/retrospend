@@ -10,10 +10,6 @@ import type { Prisma, PrismaClient, SplitMode } from "~prisma";
 import { logAudit } from "./audit-log";
 import { serializeDecimal, serializeTransaction } from "./serialize";
 import {
-	effectOfRemovingShare,
-	type ShareRemovalEffect,
-} from "./balance-change";
-import {
 	assertCanModifyTransaction,
 	requireProjectRole,
 } from "./project-permissions";
@@ -23,6 +19,7 @@ import {
 	resolveSplits,
 	SplitComputationError,
 } from "~/lib/shared-split-computation";
+import { type DeleteOptions, guardDelete } from "./delete-guard";
 
 type AppDb = PrismaClient;
 
@@ -923,7 +920,8 @@ export class SharedTransactionService {
 		}
 	}
 
-	async delete(id: string, confirmUnsettled = false) {
+	/** Deletes a split; a change to who owes whom needs a choice (delete-guard.ts). */
+	async delete(id: string, options: DeleteOptions = false) {
 		const actor = this.actor;
 		let deletedSnapshot: {
 			id: string;
@@ -944,32 +942,7 @@ export class SharedTransactionService {
 				this.actor.participantId,
 			);
 
-			// Guard against silently changing who owes whom. Deleting an expense
-			// cascades its split rows away, so any balance it created disappears
-			// from computeBalance (only the audit log retains a trace). Require an
-			// explicit acknowledgement when that erases an unpaid debt, or when
-			// payments already recorded for it would turn into a debt the other
-			// way round.
-			if (!confirmUnsettled) {
-				const effect = await this.deletionEffect(
-					tx as unknown as PrismaClient,
-					existing,
-				);
-				if (effect === "flips_balance") {
-					throw new TRPCError({
-						code: "PRECONDITION_FAILED",
-						message:
-							"Payments or other expenses already cover this expense, so deleting it would leave the payer owing money. Confirm to delete anyway.",
-					});
-				}
-				if (effect === "erases_debt") {
-					throw new TRPCError({
-						code: "PRECONDITION_FAILED",
-						message:
-							"This expense still has an unsettled balance between participants. Deleting it removes that debt. Confirm to delete anyway.",
-					});
-				}
-			}
+			await guardDelete(tx, existing, actor, options);
 
 			// Capture snapshot for notification before deleting
 				deletedSnapshot = {
@@ -1041,63 +1014,6 @@ export class SharedTransactionService {
 				},
 			});
 		}
-	}
-
-	/**
-	 * The strongest effect deleting this expense has on the balance between
-	 * its payer and any participant they covered (see
-	 * {@link effectOfRemovingShare}): "flips_balance" when a recorded payment
-	 * would become a debt the other way round, else "erases_debt" when someone
-	 * still owes the payer, else "none".
-	 */
-	private async deletionEffect(
-		db: PrismaClient,
-		existing: {
-			projectId: string | null;
-			currency: string;
-			paidByType: string;
-			paidById: string;
-			splitParticipants: Array<{
-				participantType: string;
-				participantId: string;
-				shareAmount: Prisma.Decimal | number;
-			}>;
-		},
-	): Promise<ShareRemovalEffect> {
-		const payer: ParticipantRef = {
-			participantType: existing.paidByType as "user" | "guest" | "shadow",
-			participantId: existing.paidById,
-		};
-		const TOLERANCE = 0.005;
-		let strongest: ShareRemovalEffect = "none";
-
-		for (const sp of existing.splitParticipants) {
-			// The payer's own share is not a debt.
-			if (
-				sp.participantType === payer.participantType &&
-				sp.participantId === payer.participantId
-			) {
-				continue;
-			}
-			// This participant contributes debt only if they were charged a share.
-			const share = Number(sp.shareAmount);
-			if (share <= TOLERANCE) continue;
-
-			const effect = await effectOfRemovingShare(db, {
-				payer,
-				participant: {
-					participantType: sp.participantType as "user" | "guest" | "shadow",
-					participantId: sp.participantId,
-				},
-				share,
-				currency: existing.currency,
-				projectId: existing.projectId,
-			});
-			if (effect === "flips_balance") return effect;
-			if (effect === "erases_debt") strongest = effect;
-		}
-
-		return strongest;
 	}
 
 	/**

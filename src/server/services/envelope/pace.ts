@@ -142,6 +142,8 @@ export interface LeftToSpendEnvelope {
 	assigned: Minor;
 	activity: Minor;
 	left: Minor;
+	/** The part of `activity` that moved to or from Wealth: not spending (D24). */
+	wealth?: Minor;
 }
 
 export interface LeftToSpend {
@@ -151,6 +153,7 @@ export interface LeftToSpend {
 	perDay: Minor;
 	daysLeft: number;
 	carry: Minor;
+	/** Assigned to the Spending group, net of what it moved to or from Wealth. */
 	assigned: Minor;
 	/** carry + assigned of the Spending group. */
 	pool: Minor;
@@ -205,8 +208,15 @@ export function leftToSpend(p: {
 	const envs = p.envelopes;
 	const spendingLeft = roleSum(envs, "SPENDING", (e) => e.left);
 	const carry = roleSum(envs, "SPENDING", (e) => e.carryIn);
-	const assigned = roleSum(envs, "SPENDING", (e) => e.assigned);
-	const spent = -roleSum(envs, "SPENDING", (e) => e.activity);
+	// A move to Wealth takes money out of the plan, it is not spending (D24):
+	// it lowers the pool, never the spent side or the pace.
+	const assigned = roleSum(
+		envs,
+		"SPENDING",
+		(e) => e.assigned + (e.wealth ?? 0),
+	);
+	const spent =
+		0 - roleSum(envs, "SPENDING", (e) => e.activity - (e.wealth ?? 0));
 	const left = spendingLeft + Math.min(0, p.toAssign);
 	const daysInMonth = daysBetween(p.month.from, p.month.to) + 1;
 	const dayOfMonth = Math.min(
