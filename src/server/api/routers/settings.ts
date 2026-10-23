@@ -60,7 +60,12 @@ export const settingsRouter = createTRPCRouter({
 	updateGeneral: protectedProcedure
 		.input(
 			z.object({
-				homeCurrency: z.string().length(3, "Currency must be 3 characters"),
+				// Optional like every field here: a write names only what changed,
+				// so a late Undo of another field can never put an old currency back.
+				homeCurrency: z
+					.string()
+					.length(3, "Currency must be 3 characters")
+					.optional(),
 				defaultCurrency: z
 					.string()
 					.length(3, "Currency must be 3 characters")
@@ -87,7 +92,9 @@ export const settingsRouter = createTRPCRouter({
 			return await db.user.update({
 				where: { id: session.user.id },
 				data: {
-					homeCurrency: input.homeCurrency,
+					...(input.homeCurrency !== undefined && {
+						homeCurrency: input.homeCurrency,
+					}),
 					...(input.categoryClickBehavior && {
 						categoryClickBehavior: input.categoryClickBehavior,
 					}),

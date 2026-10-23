@@ -104,5 +104,61 @@
 			"confirmBody": "Os próximos param; as despesas passadas ficam.",
 			"confirmButton": "Excluir despesa recorrente"
 		}
+	},
+	"category": {
+		"edit": {
+			"label": "Nome, ícone e cor"
+		},
+		"exclude": {
+			"label": "Deixar novas despesas fora dos totais"
+		},
+		"include": {
+			"label": "Contar novas despesas nos totais"
+		},
+		"delete": {
+			"label": "Excluir"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Editar"
+		},
+		"makePrimary": {
+			"label": "Tornar principal"
+		},
+		"showPublic": {
+			"label": "Tornar público"
+		},
+		"showContacts": {
+			"label": "Mostrar só para contatos"
+		},
+		"showSettlement": {
+			"label": "Mostrar só ao quitar"
+		},
+		"moveUp": {
+			"label": "Mover para cima"
+		},
+		"moveDown": {
+			"label": "Mover para baixo"
+		},
+		"remove": {
+			"label": "Remover"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Revogar chave",
+			"confirmTitle": "Revogar {name}?",
+			"confirmBody": "Tudo que usa esta chave para de funcionar na hora.",
+			"confirmButton": "Revogar chave"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Desconectar",
+			"confirmTitle": "Desconectar {name}?",
+			"confirmBody": "Ele é desconectado na hora e precisa de um novo código para se conectar de novo.",
+			"confirmButton": "Desconectar dispositivo"
+		}
 	}
 }

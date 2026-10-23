@@ -104,5 +104,61 @@
 			"confirmBody": "Les prochaines s'arrêtent, les dépenses passées restent.",
 			"confirmButton": "Supprimer la dépense récurrente"
 		}
+	},
+	"category": {
+		"edit": {
+			"label": "Nom, icône et couleur"
+		},
+		"exclude": {
+			"label": "Exclure les nouvelles dépenses des totaux"
+		},
+		"include": {
+			"label": "Inclure les nouvelles dépenses dans les totaux"
+		},
+		"delete": {
+			"label": "Supprimer"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Modifier"
+		},
+		"makePrimary": {
+			"label": "Définir comme principal"
+		},
+		"showPublic": {
+			"label": "Rendre public"
+		},
+		"showContacts": {
+			"label": "Montrer aux contacts seulement"
+		},
+		"showSettlement": {
+			"label": "Montrer seulement au règlement"
+		},
+		"moveUp": {
+			"label": "Monter"
+		},
+		"moveDown": {
+			"label": "Descendre"
+		},
+		"remove": {
+			"label": "Retirer"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Révoquer la clé",
+			"confirmTitle": "Révoquer {name} ?",
+			"confirmBody": "Tout ce qui utilise cette clé cesse de fonctionner immédiatement.",
+			"confirmButton": "Révoquer la clé"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Déconnecter",
+			"confirmTitle": "Déconnecter {name} ?",
+			"confirmBody": "Il est déconnecté immédiatement et aura besoin d’un nouveau code pour se reconnecter.",
+			"confirmButton": "Déconnecter l’appareil"
+		}
 	}
 }

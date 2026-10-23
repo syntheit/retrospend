@@ -104,5 +104,61 @@
 			"confirmBody": "Künftige entfallen, vergangene Ausgaben bleiben.",
 			"confirmButton": "Wiederkehrende Ausgabe löschen"
 		}
+	},
+	"category": {
+		"edit": {
+			"label": "Name, Symbol und Farbe"
+		},
+		"exclude": {
+			"label": "Neue Ausgaben aus Summen ausschließen"
+		},
+		"include": {
+			"label": "Neue Ausgaben in Summen einrechnen"
+		},
+		"delete": {
+			"label": "Löschen"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Bearbeiten"
+		},
+		"makePrimary": {
+			"label": "Als primär festlegen"
+		},
+		"showPublic": {
+			"label": "Öffentlich machen"
+		},
+		"showContacts": {
+			"label": "Nur Kontakten zeigen"
+		},
+		"showSettlement": {
+			"label": "Nur beim Ausgleichen zeigen"
+		},
+		"moveUp": {
+			"label": "Nach oben"
+		},
+		"moveDown": {
+			"label": "Nach unten"
+		},
+		"remove": {
+			"label": "Entfernen"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Schlüssel widerrufen",
+			"confirmTitle": "{name} widerrufen?",
+			"confirmBody": "Alles, was diesen Schlüssel nutzt, funktioniert sofort nicht mehr.",
+			"confirmButton": "Schlüssel widerrufen"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Trennen",
+			"confirmTitle": "{name} trennen?",
+			"confirmBody": "Es wird sofort abgemeldet und braucht einen neuen Code, um sich wieder zu verbinden.",
+			"confirmButton": "Gerät trennen"
+		}
 	}
 }
