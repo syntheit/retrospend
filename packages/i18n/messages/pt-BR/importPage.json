@@ -1,0 +1,198 @@
+{
+	"title": "Importar",
+	"sub": "Gastos de um extrato bancário ou CSV",
+	"back": "Atividade",
+	"more": "Mais ações",
+	"menu": {
+		"template": "Baixar modelo CSV",
+		"export": "Exportar todos os dados",
+		"ai": "Configurações de IA"
+	},
+	"steps": {
+		"label": "Etapas",
+		"choose": "Escolher arquivo",
+		"read": "Ler",
+		"review": "Revisar",
+		"done": "Concluído",
+		"of": "Etapa {n} de 4"
+	},
+	"type": {
+		"label": "O que importar",
+		"expenses": "Gastos",
+		"accounts": "Contas",
+		"budgets": "Orçamentos"
+	},
+	"drop": {
+		"label": "Arquivo para importar",
+		"title": "Solte um arquivo aqui",
+		"titlePhone": "Escolha um arquivo",
+		"hint": "CSV, Excel ou PDF, até 10 MB",
+		"choose": "Escolher arquivo",
+		"tooBig": "{name} tem mais de 10 MB.",
+		"wrongType": "{name} não é um arquivo CSV, Excel ou PDF."
+	},
+	"recent": {
+		"title": "Importações recentes",
+		"reading": "Lendo, {percent}%",
+		"readingNoPercent": "Lendo",
+		"queued": "Aguardando leitura",
+		"review": "{count, plural, one {# linha} other {# linhas}} para revisar",
+		"failed": "Não foi possível ler este arquivo",
+		"imported": "{count} importadas · {date}",
+		"importedNoDate": "{count} importadas",
+		"cancel": "Cancelar",
+		"reviewAction": "Revisar {count}",
+		"delete": "Excluir",
+		"view": "Ver",
+		"cancelled": "{name} cancelado",
+		"deleted": "{name} excluído",
+		"couldNotLoad": "Não foi possível carregar as importações recentes"
+	},
+	"read": {
+		"label": "Como ler o arquivo",
+		"csv": "CSV do Retrospend",
+		"csvHint": "Data, título, valor, moeda, categoria",
+		"csvMissing": "Precisa das colunas de data, título, valor e moeda",
+		"csvPdf": "Um PDF precisa de leitura por IA",
+		"ai": "Deixar a IA ler",
+		"aiExternal": "Lê com o seu acesso ao OpenRouter",
+		"aiLocal": "Lê com a IA deste servidor",
+		"aiOff": "A leitura por IA está desativada neste servidor",
+		"aiSettings": "Configurações de IA",
+		"pdfBlocked": "PDFs precisam de leitura por IA, que está desativada aqui. Use um CSV ou ative a IA.",
+		"columns": "Colunas",
+		"column": {
+			"date": "Data",
+			"title": "Título",
+			"amount": "Valor",
+			"currency": "Moeda",
+			"category": "Categoria",
+			"kind": "Tipo"
+		},
+		"notInFile": "Não está no arquivo",
+		"back": "Voltar",
+		"continue": "Continuar",
+		"readWithAi": "Ler com IA",
+		"failed": "Não foi possível começar a ler {name}. {reason}",
+		"fastPath": "Ler como CSV do Retrospend"
+	},
+	"reading": {
+		"title": "Lendo {name}",
+		"progress": "Lendo, {percent}%",
+		"reading": "Lendo",
+		"waiting": "Aguardando leitura",
+		"leave": "Você pode sair desta página. A leitura continua e aparece em Importações recentes.",
+		"cancel": "Cancelar",
+		"back": "Voltar aos arquivos",
+		"failed": "Não foi possível ler {name}."
+	},
+	"review": {
+		"summary": "{rows, plural, one {# linha} other {# linhas}} no arquivo: {toImport} para importar",
+		"dups": "{count} já em Atividade",
+		"skipped": "{count} ignoradas",
+		"unmatched": "{count, plural, one {# categoria precisa} other {# categorias precisam}} de correspondência: {list}",
+		"unmatchedShort": "{count, plural, one {# categoria precisa} other {# categorias precisam}} de correspondência",
+		"match": "Associar categorias",
+		"dismiss": "Dispensar",
+		"unreadable": "{count, plural, one {# linha não pode ser lida, então é ignorada.} other {# linhas não podem ser lidas, então são ignoradas.}}",
+		"toolbar": "Revisar linhas",
+		"view": {
+			"label": "Visualização",
+			"table": "Tabela",
+			"cards": "Cartões",
+			"list": "Lista"
+		},
+		"currency": "Moeda {code}",
+		"currencyFile": "Moeda como no arquivo",
+		"asInFile": "Como no arquivo",
+		"showDups": "Mostrar {count} já em Atividade",
+		"reread": "Mudar como é lido",
+		"bar": "{count} serão importadas",
+		"barDups": "{count} já em Atividade são ignoradas",
+		"back": "Voltar",
+		"import": "Importar {count, plural, one {# linha} other {# linhas}}",
+		"retry": "Tentar de novo",
+		"loadError": "Não foi possível carregar as linhas",
+		"empty": "Nada para importar neste arquivo",
+		"col": {
+			"select": "Selecionar tudo",
+			"date": "Data",
+			"title": "Título",
+			"kind": "Tipo",
+			"category": "Categoria",
+			"amount": "Valor",
+			"status": "Status",
+			"include": "Importar {title}"
+		},
+		"already": "Já em Atividade",
+		"noCategory": "Sem categoria",
+		"categoryPicker": "Categoria de {title}",
+		"kindMenu": "Importar {title} como"
+	},
+	"kind": {
+		"expense": "Gasto",
+		"income": "Entrada",
+		"refund": "Reembolso",
+		"notSpending": "Não é gasto"
+	},
+	"kindCount": {
+		"expense": "{count, plural, one {# gasto} other {# gastos}}",
+		"income": "{count, plural, one {# entrada} other {# entradas}}",
+		"refund": "{count, plural, one {# reembolso} other {# reembolsos}}",
+		"notSpending": "{count} não são gasto"
+	},
+	"rateType": {
+		"official": "Oficial",
+		"blue": "Blue",
+		"mep": "MEP",
+		"crypto": "Cripto",
+		"card": "Cartão",
+		"market": "Mercado",
+		"custom": "Personalizado"
+	},
+	"cards": {
+		"progress": "{n} de {total}",
+		"kept": "{count} mantidas",
+		"keep": "Manter",
+		"skip": "Ignorar",
+		"hint": "Deslize para a direita para manter, para a esquerda para ignorar",
+		"ready": "{count} prontas para importar",
+		"readyHint": "{skipped} ignoradas",
+		"backToCards": "Voltar aos cartões",
+		"from": "de {file}",
+		"about": "Sobre"
+	},
+	"match": {
+		"title": "Associar categorias",
+		"hint": "Uma etapa para cada categoria que não teve correspondência.",
+		"rows": "{count, plural, one {# linha} other {# linhas}}",
+		"suggested": "sugerida pelo seu histórico",
+		"create": "Criar \"{name}\"",
+		"apply": "Aplicar",
+		"pick": "Categoria para {name}",
+		"done": "{count, plural, one {# categoria associada} other {# categorias associadas}}",
+		"doneCreated": "{count, plural, one {# categoria associada} other {# categorias associadas}}, criadas: {names}"
+	},
+	"sheet": {
+		"title": "Importar {file}",
+		"submit": "Importar {count, plural, one {# linha} other {# linhas}}",
+		"loading": "Verificando o que será importado",
+		"skipped": "Ignora {list}",
+		"skipDups": "{count} já em Atividade",
+		"skipUnchecked": "{count} que você desmarcou",
+		"skipUnreadable": "{count} que não podem ser lidas",
+		"skipNoRate": "{count} sem cotação",
+		"withoutRate": "{count} sem cotação",
+		"reconcile": "{rows, plural, one {# linha} other {# linhas}} no arquivo: {created} importadas, {skipped} ignoradas"
+	},
+	"done": {
+		"title": "{count, plural, one {# linha importada} other {# linhas importadas}}",
+		"dups": "{count, plural, one {# já em Atividade foi ignorada.} other {# já em Atividade foram ignoradas.}}",
+		"reconcile": "{rows, plural, one {# linha} other {# linhas}} no arquivo, {created} importadas.",
+		"view": "Ver em Atividade",
+		"undo": "Desfazer importação",
+		"again": "Importar outro arquivo",
+		"toast": "{count, plural, one {# linha importada} other {# linhas importadas}}",
+		"undone": "Importação desfeita"
+	}
+}
