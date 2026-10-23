@@ -44,6 +44,7 @@ export const ACTION_IDS = {
 	apiKey: ["revoke"],
 	device: ["disconnect"],
 	currency: ["convert", "favorite", "unfavorite", "copy", "history"],
+	payment: ["confirm", "notReceived"],
 } as const;
 
 /**

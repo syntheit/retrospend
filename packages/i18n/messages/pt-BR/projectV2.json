@@ -1,0 +1,199 @@
+{
+	"solo": "Sozinho",
+	"addExpense": "Adicionar despesa",
+	"tabs": {
+		"expenses": "Despesas",
+		"summary": "Resumo",
+		"people": "Pessoas"
+	},
+	"unavailable": {
+		"title": "Não foi possível carregar este projeto",
+		"hint": "Verifique sua conexão e tente de novo.",
+		"retry": "Tentar de novo"
+	},
+	"hero": {
+		"spent": "Gasto",
+		"groupTotal": "Total do grupo",
+		"count": "{count, plural, one {# despesa} other {# despesas}}",
+		"yourShare": "Sua parte",
+		"left": "Restam <amount></amount>",
+		"over": "<amount></amount> acima do orçamento",
+		"ofBudget": "de <amount></amount>",
+		"budgetUsed": "Orçamento usado"
+	},
+	"expenses": {
+		"label": "Despesas",
+		"filters": "Filtrar despesas",
+		"search": "Buscar despesas",
+		"toReview": "Para revisar · {count}",
+		"paidBy": "Pago por {name}",
+		"paidByYou": "Pago por você",
+		"paidByGroup": "Pago por",
+		"you": "Você",
+		"clear": "Limpar filtros",
+		"noMatch": "Nenhuma despesa corresponde",
+		"empty": "Ainda não há despesas",
+		"emptySolo": "Adicione a primeira despesa para acompanhar este projeto.",
+		"emptyShared": "Adicione a primeira despesa e depois as pessoas com quem você a divide.",
+		"add": "Adicionar despesa",
+		"count": "{count, plural, one {# despesa} other {# despesas}}",
+		"shownOf": "{shown} de {count, plural, one {# despesa} other {# despesas}}"
+	},
+	"summary": {
+		"you": "Você",
+		"youObject": "você",
+		"empty": "Ainda não há nada para resumir",
+		"emptyHint": "Os gastos por pessoa e por categoria aparecem depois da primeira despesa.",
+		"whoPaidWhat": "Quem pagou o quê",
+		"paid": "Pagou",
+		"share": "Parte",
+		"addsUp": "Os dois somam o total do grupo, <amount></amount>.",
+		"doesNotAddUp": "Algumas partes não somam sua despesa, então o pago e as partes diferem do total do grupo.",
+		"settleUp": "Acertar",
+		"whoPaysWhom": "Quem paga a quem",
+		"even": "Todos estão quites neste projeto.",
+		"betweenYou": "entre vocês",
+		"betweenThem": "entre eles",
+		"pays": "{from} paga a {to}",
+		"youPay": "Você paga a {to}",
+		"youAndEach": "Você e cada pessoa",
+		"settleAll": "Acertar tudo",
+		"roles": {
+			"ORGANIZER": "Dono",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Membro",
+			"VIEWER": "Leitor"
+		},
+		"byCategory": "Por categoria",
+		"byCategoryGroup": "O que gastamos, por categoria",
+		"group": "Grupo",
+		"yours": "Seu",
+		"uncategorized": "Outros",
+		"payments": "Pagamentos neste projeto",
+		"noPayments": "Ainda não há pagamentos.",
+		"paidTo": "{from} pagou a {to}"
+	},
+	"people": {
+		"title": "Pessoas",
+		"add": "Adicionar pessoa",
+		"you": "Você",
+		"membersAndSettings": "Membros e ajustes",
+		"since": "desde {date}",
+		"left": "saiu em {date}",
+		"roles": {
+			"ORGANIZER": "Dono",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Membro",
+			"VIEWER": "Leitor"
+		}
+	},
+	"toast": {
+		"exportFailed": "Não foi possível exportar",
+		"accepted": "Você aceitou sua parte de {name}"
+	},
+	"preview": {
+		"checking": "Verificando o que muda",
+		"changes": "O que muda",
+		"nothing": "Nada",
+		"stays": "O que continua igual",
+		"noChange": "sem mudança",
+		"unavailable": "não verificado, falta uma cotação",
+		"figures": {
+			"project_total": "Total do grupo",
+			"project_member_balance": "{name} no grupo",
+			"project_member_share": "Parte de {name}",
+			"project_member_paid": "{name} pagou",
+			"owed_owedToYou": "Devem a você",
+			"owed_youOwe": "Você deve",
+			"balance_person": "Você e {name}"
+		}
+	},
+	"settleAll": {
+		"title": "Acertar tudo",
+		"submit": "{count, plural, =0 {Registrar pagamentos} one {Registrar # pagamento} other {Registrar # pagamentos}}",
+		"done": "{count, plural, one {# pagamento registrado} other {# pagamentos registrados}}",
+		"even": "Você está quite com todos neste projeto.",
+		"payments": "Pagamentos a registrar",
+		"someone": "Alguém",
+		"paysYou": "{name} paga a você",
+		"youPay": "Você paga a {name}",
+		"recordedAsPaid": "Registrado como pago a você",
+		"theyConfirm": "{name} confirma",
+		"finalNow": "Definitivo na hora",
+		"claimed": "{name} diz que pagou a você. Confirme na página da pessoa.",
+		"skippedOther": "Ficou de fora: acerte na página da pessoa."
+	},
+	"addPerson": {
+		"title": "Adicionar pessoa a {project}",
+		"submit": "Adicionar ao projeto",
+		"name": "Nome",
+		"namePlaceholder": "Sol García",
+		"nameMissing": "Digite um nome",
+		"known": "Pessoas com quem você divide",
+		"email": "E-mail (opcional)",
+		"emailPlaceholder": "sol@exemplo.com",
+		"emailHint": "Se a pessoa estiver no Retrospend, ela é vinculada; se não, recebe um convite.",
+		"joins": "Entra em {project} em",
+		"joinsHint": "Despesas antes deste dia ficam como estão. As novas podem incluí-la.",
+		"added": "{name} entra em {project} em {date}"
+	},
+	"settings": {
+		"title": "Ajustes do projeto",
+		"submit": "Salvar",
+		"name": "Nome",
+		"note": "Nota (opcional)",
+		"budget": "Moeda e orçamento",
+		"budgetHint": "O orçamento é opcional. Despesas em outras moedas não contam para ele.",
+		"autoAccept": "Partes novas contam sem revisão",
+		"exclude": "Deixar este projeto fora das minhas análises",
+		"members": "Membros",
+		"dates": "Datas",
+		"since": "Desde {date}",
+		"fromStart": "Desde o início",
+		"left": "Saiu em {date}",
+		"you": "{name} (você)",
+		"datesHint": "As datas escolhem quem as novas despesas incluem. Despesas salvas mantêm sua divisão.",
+		"saved": "Ajustes do projeto salvos"
+	},
+	"dates": {
+		"title": "Datas de {name}",
+		"submit": "Salvar datas",
+		"joined": "Entrou",
+		"left": "Saiu",
+		"fromStart": "Desde o início",
+		"stillHere": "Ainda está",
+		"onADay": "Em um dia",
+		"order": "A saída precisa ser depois da entrada.",
+		"leaves": "A partir de {date}, novas despesas deixam {name} de fora por padrão.",
+		"joins": "A partir de {date}, novas despesas incluem {name} por padrão.",
+		"always": "Novas despesas incluem {name} por padrão.",
+		"saved": "Datas de {name} salvas",
+		"you": "Você"
+	},
+	"share": {
+		"title": "Compartilhar",
+		"links": "Links de convite",
+		"copy": "Copiar",
+		"newLink": "Novo link",
+		"turnOff": "Desativar",
+		"create": "Criar link",
+		"on": "Qualquer pessoa com o link pode entrar",
+		"off": "Desativado",
+		"roles": {
+			"CONTRIBUTOR": "Pode adicionar despesas",
+			"VIEWER": "Pode ver"
+		},
+		"public": "Página pública",
+		"publicHint": "Quem tiver o endereço vê os totais e as despesas, nunca saldos ou e-mails.",
+		"copyPublic": "Copiar endereço da página",
+		"copied": "Link copiado",
+		"nowPublic": "A página do projeto está pública",
+		"nowPrivate": "A página do projeto está privada"
+	},
+	"errors": {
+		"failed": "Não foi salvo. Tente de novo.",
+		"changed": "Os saldos mudaram enquanto isso. Confira os novos valores e registre de novo.",
+		"previewFailed": "Não foi possível verificar o que muda. Tente de novo.",
+		"undoConflict": "Um pagamento foi confirmado enquanto isso, então nada foi desfeito."
+	}
+}

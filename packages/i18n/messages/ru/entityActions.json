@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Архивировать"
+		},
+		"restore": {
+			"label": "Восстановить"
+		},
+		"delete": {
+			"label": "Удалить",
+			"confirmTitle": "Удалить {name}?",
+			"confirmBody": "Проект исчезнет. Его расходы останутся, вне проектов. Это нельзя отменить.",
+			"confirmButton": "Удалить проект"
+		},
+		"addPerson": {
+			"label": "Добавить человека"
+		},
+		"exportCsv": {
+			"label": "Экспорт расходов (CSV)"
+		},
+		"exportPlan": {
+			"label": "Экспорт: кто кому платит (CSV)"
+		},
+		"exportPdf": {
+			"label": "Экспорт в PDF"
+		},
+		"settings": {
+			"label": "Настройки"
 		}
 	},
 	"account": {
@@ -191,6 +215,17 @@
 		},
 		"history": {
 			"label": "История курса"
+		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Подтвердить"
+		},
+		"notReceived": {
+			"label": "Не получено",
+			"confirmTitle": "Платёж от {name} не получен?",
+			"confirmBody": "Платёж будет отмечен как не полученный, а ваш баланс не изменится.",
+			"confirmButton": "Не получено"
 		}
 	}
 }

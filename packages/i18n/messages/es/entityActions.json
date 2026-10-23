@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Archivar"
+		},
+		"restore": {
+			"label": "Restaurar"
+		},
+		"delete": {
+			"label": "Eliminar",
+			"confirmTitle": "¿Eliminar {name}?",
+			"confirmBody": "El proyecto desaparece. Sus gastos quedan, fuera de cualquier proyecto. No se puede deshacer.",
+			"confirmButton": "Eliminar proyecto"
+		},
+		"addPerson": {
+			"label": "Agregar persona"
+		},
+		"exportCsv": {
+			"label": "Exportar gastos (CSV)"
+		},
+		"exportPlan": {
+			"label": "Exportar quién le paga a quién (CSV)"
+		},
+		"exportPdf": {
+			"label": "Exportar PDF"
+		},
+		"settings": {
+			"label": "Ajustes"
 		}
 	},
 	"account": {
@@ -191,6 +215,17 @@
 		},
 		"history": {
 			"label": "Ver historial del tipo de cambio"
+		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Confirmar"
+		},
+		"notReceived": {
+			"label": "No lo recibí",
+			"confirmTitle": "¿No recibiste el pago de {name}?",
+			"confirmBody": "El pago queda como no recibido y tu saldo sigue igual.",
+			"confirmButton": "No lo recibí"
 		}
 	}
 }

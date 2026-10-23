@@ -126,6 +126,9 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"settlement.deletePending": SETTLEMENT_DEPS,
 	"settlement.void": SETTLEMENT_DEPS,
 	"settlement.squareUp": SETTLEMENT_DEPS,
+	// Settle all in one project (and its Undo) records or removes payments.
+	"project.settleAll": SETTLEMENT_DEPS,
+	"project.settleAllUndo": SETTLEMENT_DEPS,
 
 	// ── Billing periods ─────────────────────────────────────────────────
 	"billingPeriod.closeCurrent": [
