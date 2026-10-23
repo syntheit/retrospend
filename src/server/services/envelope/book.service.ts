@@ -20,6 +20,11 @@ import { planFund } from "./month-close.service";
 import { forgetMonthViews } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { type SetupStyle, stylePreset } from "./presets";
+import {
+	groupTargetColumns,
+	validateSetupExtras,
+	writeSetupExtras,
+} from "./setup-p5";
 import { REPEAT_MONTHS } from "./target-input";
 import { savingsShape } from "./targets";
 import { TargetConfigError } from "./types";
@@ -296,6 +301,7 @@ async function createEnvelopes(
 			name: g.name,
 			role: g.role,
 			sortOrder: i,
+			...groupTargetColumns(g.target, b.currency),
 		})),
 	});
 	const envelopeIds = new Map(
@@ -336,9 +342,17 @@ export async function setupBook(
 	if (await findPersonalBook(tx, userId))
 		throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
 	await validate(tx, input);
+	await validateSetupExtras(tx, input);
 	const b = await bookSettings(tx, userId, input, ctx);
 	const bookId = await createBook(tx, userId, input, b, ctx);
 	const envelopeIds = await createEnvelopes(tx, bookId, input, b);
+	await writeSetupExtras(tx, {
+		bookId,
+		input,
+		envelopeIds,
+		currency: b.currency,
+		now: ctx.now,
+	});
 	const defaultKey = input.envelopes.find((e) => e.isDefault)?.key as string;
 	// "I have nothing right now" is a confirmed answer with no row to write.
 	const money = !input.startingMoneyMinor

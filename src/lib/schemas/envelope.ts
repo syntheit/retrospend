@@ -532,7 +532,7 @@ export const setupPresetOutputSchema = z.object({
 		}),
 	),
 	/** Save first: "20% of money in to Savings", "The rest to Spending" (the percentage is asked). */
-	rules: z.array(z.lazy(() => setupRuleSchema)).optional(),
+	rules: z.array(z.lazy(() => presetRuleSchema)).optional(),
 	envelopes: z.array(
 		z.object({
 			key: z.string(),
@@ -622,6 +622,11 @@ export const setupRuleSchema = z.object({
 	action: ruleActionInputSchema,
 	envelopeKey: z.string().min(1).max(32),
 });
+
+/** A rule a style proposes: the name is a message key the client translates and sends back. */
+export const presetRuleSchema = setupRuleSchema
+	.omit({ name: true })
+	.extend({ nameKey: z.string() });
 
 export const monthInputSchema = z
 	.object({ month: monthKeySchema.optional() })
