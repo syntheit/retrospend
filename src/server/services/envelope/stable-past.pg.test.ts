@@ -183,6 +183,39 @@ describe("rates moving in place never move the past (finding 1)", () => {
  * MDL 4,000.00 (400,000); Sam's USD lunch on Aug 12 split 15/15, my share
  * MDL 600.00 (60,000). After the rate moves to 42 on Nov 4 nothing changes.
  */
+/**
+ * P4 finding (low): rates loaded only from 31 days before the book start.
+ * The MDL rate is 40 dated Jun 1 (two months before the Aug 1 start) and 41
+ * dated Nov 3. A USD 100 dinner on Aug 12 has a rate on or before it (Jun 1):
+ * MDL 4,000.00 (400,000), exact, never the later 41 (410,000, approximate).
+ */
+describe("a start-month row whose only earlier rate is older than 31 days", () => {
+	it("is valued at the latest rate on or before it, not flagged approximate", async () => {
+		const b = await mdlBook({ rateOn: "2026-06-01", rows: false });
+		await adminDb.exchangeRate.create({
+			data: {
+				date: new Date("2026-11-03T00:00:00Z"),
+				currency: "MDL",
+				type: "official",
+				rate: 41,
+			},
+		});
+		await usdRow(b.user.id, b.dining, 100, "2026-08-12");
+		const nov = await getMonth(b.user.id, undefined, at("2026-11-04"));
+		expect(nov?.approximate).toBe(false);
+		const frozen = await adminDb.budgetRowValue.findMany({
+			where: { bookId: b.bookId },
+		});
+		expect(
+			frozen.map((f) => [
+				Number(f.minor),
+				f.approximate,
+				f.rateDate?.toISOString().slice(0, 10),
+			]),
+		).toEqual([[400_000, false, "2026-06-01"]]);
+	});
+});
+
 describe("rows first read after their day are frozen at the nearest rate (round 2)", () => {
 	it("a pre-M2 row and Sam's USD share are valued once, approximate, then never move", async () => {
 		const b = await mdlBook({ rateOn: "2026-11-03", rows: false });

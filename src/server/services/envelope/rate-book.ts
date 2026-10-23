@@ -38,7 +38,7 @@ function pick(
 export class RateBook {
 	private constructor(private readonly points: Map<string, RatePoint[]>) {}
 
-	/** Rows of the book currency (its rate types) and of `extraCurrencies` (every type), from `since` on (rows the engine reads start later). */
+	/** Rows of the book currency (its rate types) and of `extraCurrencies` (every type), from the latest before `since` on (rows the engine reads start later). */
 	static async load(
 		tx: Tx,
 		p: {
@@ -53,15 +53,22 @@ export class RateBook {
 		].filter((c) => c !== USD);
 		const points = new Map<string, RatePoint[]>();
 		if (currencies.length === 0) return new RateBook(points);
-		const rows = await tx.exchangeRate.findMany({
-			where: {
-				currency: { in: currencies },
-				date: { gte: new Date(`${p.since}T00:00:00Z`) },
-			},
-			orderBy: { date: "asc" },
-			select: { currency: true, type: true, rate: true, date: true },
+		const since = new Date(`${p.since}T00:00:00Z`);
+		const select = { currency: true, type: true, rate: true, date: true };
+		// The latest rate before `since` per pair: a row dated near `since`
+		// whose only earlier rate is older is still valued on or before it.
+		const anchors = await tx.exchangeRate.findMany({
+			where: { currency: { in: currencies }, date: { lt: since } },
+			distinct: ["currency", "type"],
+			orderBy: [{ currency: "asc" }, { type: "asc" }, { date: "desc" }],
+			select,
 		});
-		for (const r of rows) {
+		const rows = await tx.exchangeRate.findMany({
+			where: { currency: { in: currencies }, date: { gte: since } },
+			orderBy: { date: "asc" },
+			select,
+		});
+		for (const r of [...anchors, ...rows]) {
 			if (r.currency === p.bookCurrency && !p.rateTypes.includes(r.type))
 				continue;
 			const key = `${r.currency}\0${r.type}`;
