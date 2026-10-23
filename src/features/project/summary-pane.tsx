@@ -4,6 +4,7 @@ import { ChartPie } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { RankedBars, type RankedItem } from "~/components/charts/ranked-bars";
+import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
 import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
@@ -11,7 +12,6 @@ import { Empty } from "~/components/ui/empty-state";
 import { Segmented } from "~/components/ui/segmented";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { categoryTone } from "~/lib/category-tone";
-import { SectionHead } from "./section-head";
 import { SettleSection } from "./settle-section";
 import { figureFor, type PageView, type Summary } from "./types";
 
@@ -40,11 +40,12 @@ function WhoPaidWhat({
 	const people: RankedItem[] = s.members.flatMap((m) => {
 		const line = inCur(m.lines, cur);
 		const label = m.key === me ? t("you") : m.name;
-		return line ? [{ id: m.key, label, value: line[who] }] : [];
+		const figure = figureFor(`project.member.${who}`, view.id, m.key);
+		return line ? [{ id: m.key, label, value: line[who], figure }] : [];
 	});
 	const total = inCur(view.total, cur);
 	return (
-		<SectionHead
+		<Section
 			end={
 				<Segmented
 					label={t("whoPaidWhat")}
@@ -76,7 +77,7 @@ function WhoPaidWhat({
 						: t("doesNotAddUp")}
 				</p>
 			) : null}
-		</SectionHead>
+		</Section>
 	);
 }
 
@@ -93,7 +94,7 @@ function ByCategory({ view }: { view: PageView }) {
 		return [{ id: c.id ?? "none", label: name, value, category }];
 	});
 	return (
-		<SectionHead
+		<Section
 			end={
 				view.solo ? (
 					<span className="text-fg-3 text-small">{cur}</span>
@@ -115,7 +116,7 @@ function ByCategory({ view }: { view: PageView }) {
 			<div className="max-w-180">
 				<RankedBars items={[...items].sort(biggestFirst)} />
 			</div>
-		</SectionHead>
+		</Section>
 	);
 }
 
@@ -123,11 +124,7 @@ function ByCategory({ view }: { view: PageView }) {
 function Payments({ view, me }: { view: PageView; me: string }) {
 	const t = useTranslations("projectV2.summary");
 	return (
-		<SectionHead
-			count={view.payments.length}
-			id="payments"
-			title={t("payments")}
-		>
+		<Section count={view.payments.length} id="payments" title={t("payments")}>
 			{view.payments.length === 0 ? (
 				<p className="text-fg-2 text-small">{t("noPayments")}</p>
 			) : (
@@ -154,7 +151,7 @@ function Payments({ view, me }: { view: PageView; me: string }) {
 					))}
 				</RowList>
 			)}
-		</SectionHead>
+		</Section>
 	);
 }
 

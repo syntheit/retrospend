@@ -8,7 +8,7 @@ import { useLocale } from "next-intl";
 import { useState } from "react";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
-import { parseRateText } from "../rate-text";
+import { readRateText } from "../rate-text";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 
 export type IncomeDraft = {
@@ -158,8 +158,10 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 		rateType,
 		pickRate: (type: string) => set({ rateType: type, custom: false }),
 		pickCustom: () => set({ custom: true }),
-		setCustomText: (text: string) =>
-			set({ customText: text, customRate: parseRateText(text, locale) }),
+		setCustomText: (text: string) => {
+			const read = readRateText(text, locale);
+			set({ customText: read.text, customRate: read.rate });
+		},
 		usePlan,
 		hasBudget: !!book.data,
 		errors,

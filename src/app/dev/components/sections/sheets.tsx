@@ -1,10 +1,13 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
+import { Money } from "~/components/money/money";
 import { MoneyInput, useMoneyText } from "~/components/money/money-input";
 import { Button } from "~/components/ui/button";
 import { Sheet, type SheetDetent } from "~/components/ui/sheet";
+import { ChangeValue, SheetChanges } from "~/components/ui/sheet-changes";
 import { useToast } from "~/components/ui/toast";
+import { m } from "../fixtures/rows";
 import { Cap, Spec, States } from "../spec";
 
 /** Sample copy inside the samples: fixtures, like the numbers. */
@@ -16,7 +19,15 @@ const S = {
 	recorded: "Payment recorded",
 	dialog: "Dialog (desktop): Esc closes, focus returns, Cmd+Enter saves",
 	medium: "Medium detent (phone): drag the grabber",
-	large: "Large detent (phone)",
+	large:
+		"Large detent (phone): the verb in the header, math keys under the amount",
+	addShort: "Add",
+	changes:
+		"What this changes (R30): what moves, then one sentence for what stays",
+	spent: "Spent this month",
+	envelope: "Groceries envelope",
+	stays: "your accounts",
+	stays2: "net worth",
 	nested: "Nested: Cancel returns to the parent",
 	open: "Open",
 	inner: "Pick a category",
@@ -31,12 +42,15 @@ export function SheetDemo({
 	verb,
 	done,
 	detent,
+	headerVerb,
 	children,
 }: {
 	title: string;
 	verb: string;
 	done: string;
 	detent?: SheetDetent;
+	/** Phone web: the short verb in the header (the Add sheet). */
+	headerVerb?: string;
 	children?: ReactNode;
 }) {
 	const [open, setOpen] = useState(false);
@@ -49,6 +63,7 @@ export function SheetDemo({
 			</Button>
 			<Sheet
 				detent={detent}
+				headerSubmit={headerVerb}
 				onOpenChange={setOpen}
 				onSubmit={() => {
 					toast.saved(done, { undo: () => undefined });
@@ -61,6 +76,7 @@ export function SheetDemo({
 				<MoneyInput
 					currency="ARS"
 					onChange={amount.onChange}
+					operators={!!headerVerb}
 					value={amount.text}
 				/>
 				{children}
@@ -115,12 +131,43 @@ export function SheetSection() {
 						<SheetDemo
 							detent="large"
 							done={S.saved}
+							headerVerb={S.addShort}
 							key="l"
 							title={S.add}
 							verb={S.add}
 						/>,
 					],
 					[S.nested, <NestedDemo key="n" />],
+					[
+						S.changes,
+						<div className="w-105 max-w-full" key="c">
+							<SheetChanges
+								lines={[
+									{
+										key: "spent",
+										label: S.spent,
+										value: (
+											<ChangeValue
+												delta={<Money sign="exceptZero" value={m("25000")} />}
+												to={<Money value={m("2731602")} />}
+											/>
+										),
+									},
+									{
+										key: "envelope",
+										label: S.envelope,
+										value: (
+											<ChangeValue
+												delta={<Money sign="exceptZero" value={m("-25000")} />}
+												to={<Money value={m("118400")} />}
+											/>
+										),
+									},
+								]}
+								stays={[S.stays, S.stays2]}
+							/>
+						</div>,
+					],
 				]}
 			/>
 		</Spec>

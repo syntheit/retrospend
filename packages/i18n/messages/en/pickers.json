@@ -76,6 +76,13 @@
 			"outOfRange": "That amount is too large",
 			"zero": "Enter an amount above zero",
 			"negative": "The amount must be above zero"
+		},
+		"operators": "Math keys",
+		"operator": {
+			"plus": "Plus",
+			"minus": "Minus",
+			"times": "Times",
+			"divide": "Divided by"
 		}
 	},
 	"project": {

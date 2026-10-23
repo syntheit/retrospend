@@ -51,7 +51,7 @@ export function ExpenseFilters({
 				type="search"
 				value={f.query}
 			/>
-			<FilterChips>
+			<FilterChips label={t("filters")}>
 				{toReview > 0 ? (
 					<FilterChip
 						onClick={() => onChange({ ...f, review: !f.review })}

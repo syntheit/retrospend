@@ -43,5 +43,14 @@
 	},
 	"button": {
 		"loading": "Wird geladen"
+	},
+	"changes": {
+		"title": "Was sich ändert",
+		"titleDone": "Was sich geändert hat",
+		"loading": "Prüfe, was sich ändert",
+		"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
+		"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
+		"noneChange": "Keine Änderung: {list}.",
+		"unavailable": "{list} ließ sich nicht prüfen."
 	}
 }

@@ -1,13 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
+import { customRateSchema } from "~/lib/schemas/rate";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { CsvService } from "~/server/services/csv.service";
-import {
-	expenseDto,
-	listHomeCurrency,
-} from "~/server/services/expense-dto";
 import { ExpenseService } from "~/server/services/expense.service";
+import { expenseDto, listHomeCurrency } from "~/server/services/expense-dto";
 import {
 	getExcludedProjectIds,
 	listSharedParticipationsForUser,
@@ -25,7 +23,7 @@ const expenseInputSchema = z.object({
 	/** The pair's rate type (official, blue...) or "custom" with customRate. */
 	rateType: z.string().min(1).max(32).optional(),
 	customRate: z
-		.object({ base: z.string().min(3).max(10), value: z.number().positive() })
+		.object({ base: z.string().min(3).max(10), value: customRateSchema })
 		.optional(),
 	date: z.date(),
 	location: z.string().max(500).optional(),
@@ -64,7 +62,10 @@ export const expenseRouter = createTRPCRouter({
 			const service = new ExpenseService(ctx.db);
 			const [expenses, home] = await Promise.all([
 				service.listFinalized(
-					ctx.session.user.id, input?.from, input?.to, input?.limit,
+					ctx.session.user.id,
+					input?.from,
+					input?.to,
+					input?.limit,
 				),
 				listHomeCurrency(ctx.db, ctx.session.user.id),
 			]);

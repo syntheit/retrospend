@@ -39,7 +39,7 @@
 		"trigger": "Busca e comandos",
 		"title": "Busca e comandos",
 		"description": "Ir para uma página ou executar um comando",
-		"placeholder": "Buscar páginas e comandos",
+		"placeholder": "Busque ou vá para uma página",
 		"noResults": "Nenhum resultado",
 		"recent": "Recentes",
 		"project": "Projeto",
@@ -49,7 +49,20 @@
 		"addRecurring": "Adicionar despesa recorrente",
 		"manageCategories": "Gerenciar categorias",
 		"move": "Mover",
-		"openHint": "Abrir"
+		"openHint": "Abrir",
+		"groups": {
+			"people": "Pessoas",
+			"projects": "Projetos",
+			"categories": "Categorias",
+			"expenses": "Despesas",
+			"none": "Nenhum resultado",
+			"searchActivity": "Buscar “{q}” em Atividade",
+			"allExpenses": "Todas as despesas encontradas",
+			"activity": "Atividade"
+		},
+		"archived": "Arquivado",
+		"suggestions": "Sugestões",
+		"confirmRecurring": "Confirmar {title}"
 	},
 	"settingsSections": {
 		"profile": "Perfil",
@@ -107,11 +120,5 @@
 		"edit": "Editar a linha selecionada",
 		"delete": "Excluir as linhas selecionadas",
 		"clear": "Limpar a seleção"
-	},
-	"verifyEmail": {
-		"message": "Verifique seu e-mail para proteger sua conta.",
-		"resend": "Reenviar e-mail",
-		"sent": "E-mail de verificação enviado",
-		"failed": "Não foi possível enviar o e-mail"
 	}
 }

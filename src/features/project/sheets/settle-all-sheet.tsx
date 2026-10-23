@@ -73,6 +73,7 @@ export function SettleAllSheet({
 	const t = useTranslations("projectV2.settleAll");
 	const te = useTranslations("projectV2.errors");
 	const tp = useTranslations("projectV2.preview.figures");
+	const ti = useTranslations("projectV2.preview.figuresInline");
 	const toast = useToast();
 	const utils = api.useUtils();
 	const preview = api.project.settleAllPreview.useQuery(
@@ -128,6 +129,7 @@ export function SettleAllSheet({
 					<PlanRows plan={plan} view={view} />
 				)}
 				<PreviewLines
+					inline={(id) => ti(id.replaceAll(".", "_"))}
 					label={(id) => tp(id.replaceAll(".", "_"))}
 					loading={preview.isPending}
 					preview={preview.data}

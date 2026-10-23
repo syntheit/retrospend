@@ -186,7 +186,7 @@ function Picks() {
 				value={view}
 			/>
 			<Cap className="mt-6">{S.chips}</Cap>
-			<FilterChips>
+			<FilterChips label={S.chips}>
 				<FilterChip value>
 					<Calendar />
 					{S.oct}

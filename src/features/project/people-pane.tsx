@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { PersonTarget } from "~/components/actions/registry";
+import { Section } from "~/components/layout/section";
 import { useRowDates } from "~/components/rows/dates";
 import { PersonRow } from "~/components/rows/person-row";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Face } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
-import { SectionHead } from "./section-head";
 import { figureFor, lineIn, type Member, type PageView } from "./types";
 
 /** "Member · since Oct 9 · left Oct 20": the role and the membership dates (RC-11). */
@@ -52,7 +52,7 @@ export function PeoplePane({
 		},
 	};
 	return (
-		<SectionHead
+		<Section
 			count={view.members.length}
 			end={
 				editor ? (
@@ -118,6 +118,6 @@ export function PeoplePane({
 					{t("membersAndSettings")}
 				</Button>
 			) : null}
-		</SectionHead>
+		</Section>
 	);
 }

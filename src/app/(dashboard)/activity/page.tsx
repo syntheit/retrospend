@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { AfterHydration } from "~/components/after-hydration";
+import { PageFrame } from "~/components/layout/page-frame";
 import { ActivitySkeleton } from "~/features/activity/activity-list";
 import { ActivityPage } from "~/features/activity/activity-page";
-import { PageFrame } from "~/features/activity/page-frame";
 
 /**
  * Renders after hydration: the filter reads the URL and the dates ("Today",

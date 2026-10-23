@@ -239,5 +239,73 @@
 			"confirmBody": "The payment is marked as not received and your balance stays as it was.",
 			"confirmButton": "Not received"
 		}
+	},
+	"needsYou": {
+		"open": {
+			"label": "Open"
+		},
+		"later": {
+			"label": "Later"
+		}
+	},
+	"budget": {
+		"fund": {
+			"label": "Fund"
+		},
+		"cover": {
+			"label": "Cover"
+		},
+		"takeBack": {
+			"label": "Take back"
+		},
+		"usePlan": {
+			"label": "Use my plan"
+		},
+		"assign": {
+			"label": "Assign"
+		},
+		"setRate": {
+			"label": "Set rate"
+		},
+		"confirmStartingMoney": {
+			"label": "Confirm"
+		},
+		"recordPayment": {
+			"label": "Record payment"
+		},
+		"pickEnvelope": {
+			"label": "Pick an envelope"
+		},
+		"openSummary": {
+			"label": "Open summary"
+		},
+		"seeChanges": {
+			"label": "See changes"
+		},
+		"reviewHidden": {
+			"label": "Review"
+		},
+		"reconcile": {
+			"label": "Reconcile"
+		}
+	},
+	"import": {
+		"review": {
+			"label": "Review"
+		}
+	},
+	"setup": {
+		"addExpense": {
+			"label": "Add expense"
+		},
+		"chooseCurrency": {
+			"label": "Choose"
+		},
+		"resendEmail": {
+			"label": "Resend"
+		},
+		"import": {
+			"label": "Import"
+		}
 	}
 }

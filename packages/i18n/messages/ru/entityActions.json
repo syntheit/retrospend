@@ -239,5 +239,73 @@
 			"confirmBody": "Платёж будет отмечен как не полученный, а ваш баланс не изменится.",
 			"confirmButton": "Не получено"
 		}
+	},
+	"needsYou": {
+		"open": {
+			"label": "Открыть"
+		},
+		"later": {
+			"label": "Позже"
+		}
+	},
+	"budget": {
+		"fund": {
+			"label": "Пополнить"
+		},
+		"cover": {
+			"label": "Покрыть"
+		},
+		"takeBack": {
+			"label": "Вернуть"
+		},
+		"usePlan": {
+			"label": "Использовать мой план"
+		},
+		"assign": {
+			"label": "Распределить"
+		},
+		"setRate": {
+			"label": "Указать курс"
+		},
+		"confirmStartingMoney": {
+			"label": "Подтвердить"
+		},
+		"recordPayment": {
+			"label": "Записать платёж"
+		},
+		"pickEnvelope": {
+			"label": "Выбрать конверт"
+		},
+		"openSummary": {
+			"label": "Открыть итоги"
+		},
+		"seeChanges": {
+			"label": "Посмотреть изменения"
+		},
+		"reviewHidden": {
+			"label": "Проверить"
+		},
+		"reconcile": {
+			"label": "Сверить"
+		}
+	},
+	"import": {
+		"review": {
+			"label": "Проверить"
+		}
+	},
+	"setup": {
+		"addExpense": {
+			"label": "Добавить расход"
+		},
+		"chooseCurrency": {
+			"label": "Выбрать"
+		},
+		"resendEmail": {
+			"label": "Отправить снова"
+		},
+		"import": {
+			"label": "Импортировать"
+		}
 	}
 }

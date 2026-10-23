@@ -118,7 +118,7 @@ function IncomeForm({
 					error={err("category") ? t("error.category") : null}
 					label={t("whatItIs")}
 				>
-					<FilterChips className="max-md:flex-wrap">
+					<FilterChips className="max-md:flex-wrap" label={t("whatItIs")}>
 						{cats.map((c) => (
 							<FilterChip
 								key={c.id}

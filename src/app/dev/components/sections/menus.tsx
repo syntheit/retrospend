@@ -138,7 +138,7 @@ export function IdentitySection() {
 							))}
 						</RowList>
 						<Cap className="mt-4">{S.chips}</Cap>
-						<FilterChips>
+						<FilterChips label={S.chips}>
 							<FilterChip selected>{CAT.groceries.name}</FilterChip>
 							<FilterChip>{CAT.restaurants.name}</FilterChip>
 							<FilterChip>{CAT.transport.name}</FilterChip>

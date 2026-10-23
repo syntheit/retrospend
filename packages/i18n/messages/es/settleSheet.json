@@ -50,14 +50,12 @@
 		"final": "Definitivo: {name} no usa Retrospend."
 	},
 	"changes": {
-		"title": "Qué cambia",
-		"doneTitle": "Qué cambió",
 		"balance": "Tu saldo con {name} ({currency})",
 		"owedToYou": "Te deben, todas las personas",
 		"youOwe": "Debes, todas las personas",
 		"yourBalance": "tu saldo con {name}",
-		"nothingElse": "Revisado y sin cambios: {list}.",
-		"unavailable": "No se pudo revisar: {list}."
+		"owedToYouInline": "lo que te deben",
+		"youOweInline": "lo que debes"
 	},
 	"toast": {
 		"confirmed": "Confirmaste el pago de {name}. Nada contó dos veces",
@@ -68,5 +66,6 @@
 		"title": "Pago registrado",
 		"pending": "Pendiente hasta que {name} confirme. Tu saldo ya lo muestra.",
 		"final": "Definitivo."
-	}
+	},
+	"amountShortcuts": "Importes rápidos"
 }

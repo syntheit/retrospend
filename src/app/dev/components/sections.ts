@@ -319,6 +319,12 @@ export const CAP = {
 	itemRejected: "Rejected split",
 	itemBudget: "Budget prompt (missing rate, named)",
 	allClear: "Empty, nothing needs you",
+	itemFace:
+		"People: the face of the person asking, Not received as a quiet second action",
+	itemMenu:
+		"Home: the three-dot menu (Open, Later) from the needs-you actions; long press opens it too",
+	glanceTrack:
+		"No budget: the pace in words against last month, Money in, and the dollar today",
 	table:
 		"Desktop table. Hover a row, select with the checkbox or a click (shift-click for a range), right-click or use the three-dot button.",
 	phoneRows:

@@ -76,6 +76,13 @@
 			"outOfRange": "El monto es demasiado grande",
 			"zero": "Ingresá un monto mayor a cero",
 			"negative": "El monto debe ser mayor a cero"
+		},
+		"operators": "Teclas de cálculo",
+		"operator": {
+			"plus": "Más",
+			"minus": "Menos",
+			"times": "Por",
+			"divide": "Dividido"
 		}
 	},
 	"project": {

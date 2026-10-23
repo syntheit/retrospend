@@ -34,6 +34,7 @@
 		"edit": "Modifier",
 		"takeBack": "Reprendre",
 		"fund": "Financer",
-		"setRate": "Définir le taux"
+		"setRate": "Définir le taux",
+		"notReceived": "Pas reçu ?"
 	}
 }

@@ -3,9 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { GlanceStrip } from "~/components/glance/glance-strip";
+import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useRowDates } from "~/components/rows/dates";
-import { PageFrame } from "~/features/wealth/page-frame";
 import type { GlanceDTO } from "~/server/services/figures/glance";
 import type { PeopleOverview } from "~/server/services/people/types";
 import { api } from "~/trpc/react";

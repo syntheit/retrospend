@@ -2,13 +2,13 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createTransferSchema } from "~/server/services/accounts/input";
 import { entryCatalog } from "~/server/services/entry/catalog";
-import { entryProjectMembers } from "~/server/services/entry/project-members";
 import {
 	deleteExpenseEntry,
 	restoreExpenseEntry,
 	updateExpenseEntry,
 } from "~/server/services/entry/expense.mutation";
 import * as schema from "~/server/services/entry/input";
+import { entryProjectMembers } from "~/server/services/entry/project-members";
 import {
 	createSharedExpense,
 	deleteSharedExpense,
@@ -107,11 +107,8 @@ export const entryRouter = createTRPCRouter({
 				await rateOptions(ctx.db, ctx.session.user.id, {
 					currency: input.currency,
 					date: new Date(`${input.date}T12:00:00.000Z`),
-					amount: input.amount === undefined ? undefined : Number(input.amount),
-					customRate:
-						input.customRate === undefined
-							? undefined
-							: Number(input.customRate),
+					amount: input.amount,
+					customRate: input.customRate,
 				}),
 			),
 		),
