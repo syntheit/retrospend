@@ -128,6 +128,7 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Net worth change, Owed part (`accounts/net-worth-change.ts`) | A history of balances with people | `netWorthChange.*` holds Owed to you and You owe at today's value (as the Wealth chart does), so a payment or a split moves no part; `netWorth` itself includes them today | 2C |
 | Paying someone back from an account | `payment.record` takes no account | Payments move no account; net worth moves by Owed only | 2C |
 | Today's Wealth dashboard (`wealth.getDashboard`) | The page reading the figures | It keeps its own float valuation; it adds legs and dated rate type switches to its history, but a USD account's rate type (D3) values the home side only in the figures | S4 Wealth |
+| Editing an income or a transfer fee from Activity (`expense.updateExpense`) | An edit that rewrites the row's leg, or a refusal for rows with legs | The edit changes the row but not its leg, so the account keeps the old amount until the row is deleted (deleting takes the leg and its balance back) | 2D follow-up in `expense.service.ts` |
 
 ## 8. Behavior gaps found by the e2e suite
 

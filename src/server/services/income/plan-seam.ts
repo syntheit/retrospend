@@ -5,7 +5,7 @@
  * this branch, so there is no plan to apply yet and this writes nothing.
  * Callers pass what the plan needs (the income row and its booked value) and
  * show the result, so 2B swaps the body for `plan.apply` inside the same
- * transaction when P2 lands (docs/ui/GAPS.md, "Use my plan on confirm").
+ * transaction when P2 lands (docs/ui/GAPS.md, "Use my plan on recurring income confirm").
  */
 import type { Money } from "~/server/figures/registry";
 import type { Prisma } from "~prisma";
