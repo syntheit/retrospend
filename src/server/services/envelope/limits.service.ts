@@ -11,6 +11,8 @@
  *   leave the envelope negative (B5: PLAN_FUND never blocks).
  */
 import type {
+	RevertLimitInput,
+	RevertLimitResult,
 	SetLimitInput,
 	SetLimitResult,
 } from "~/lib/schemas/envelope-book";
@@ -19,18 +21,20 @@ import { budgetSpendingWhere } from "../spending";
 import { userTimeZone } from "../user-time-zone";
 import { addMonths, calendarMonthOf } from "./calendar";
 import { EnvelopeError } from "./errors";
+import {
+	fundDelta,
+	fundedThisMonth,
+	restoreData,
+	snapshotOf,
+} from "./limit-target";
 import { forgetMonthViews } from "./month-read";
 import { isoDateIn } from "./months";
 import { insert, replay, result } from "./movement.service";
-import {
-	checkEnvelope,
-	lockedSnapshot,
-	type NewMovement,
-} from "./movement-state";
+import { checkEnvelope, lockedSnapshot } from "./movement-state";
 import { RateBook } from "./rate-book";
 import type { MissingRate } from "./types";
 import { fromMinor, toMinor } from "./units";
-import { valueRow } from "./valuation";
+import { convertToBookOrThrow, valueRow } from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 
@@ -102,37 +106,53 @@ export async function recentSpending(
 	return { spent, missingRates };
 }
 
-/** What this month's plan funding gave the envelope, net of later deltas and undos. */
-async function fundedThisMonth(
+/** The Limits envelope a limit edit acts on, under the book lock. */
+async function limitEnvelope(
 	tx: Tx,
-	bookId: string,
+	userId: string,
 	envelopeId: string,
-	month: number,
+	now: Date,
+) {
+	const s = await lockedSnapshot(tx, userId, now);
+	if (s.loaded.book.fundingSource !== "TARGETS")
+		throw new EnvelopeError("INVALID", "limits belong to a Limits budget");
+	checkEnvelope(envelopeId, s);
+	const env = s.loaded.row.envelopes.find((e) => e.id === envelopeId);
+	if (!env || (env.kind !== "MONTHLY" && env.kind !== "NONE"))
+		throw new EnvelopeError(
+			"INVALID",
+			"bills and goals keep their own targets",
+		);
+	const funded = await fundedThisMonth(tx, {
+		bookId: s.loaded.row.id,
+		envelopeId,
+		month: s.current,
+		currency: s.loaded.book.currency,
+	});
+	return { s, env, funded };
+}
+
+/** A limit typed in another currency, in the book currency at today's rate (D25); no rate refuses. */
+async function inBook(
+	tx: Tx,
+	s: Awaited<ReturnType<typeof limitEnvelope>>["s"],
+	amountMinor: number,
 	currency: string,
 ) {
-	const rows = await tx.budgetMovement.findMany({
-		where: {
-			bookId,
-			month,
-			kind: "PLAN_FUND",
-			OR: [{ toEnvelopeId: envelopeId }, { fromEnvelopeId: envelopeId }],
-		},
-		select: { id: true, amount: true, toEnvelopeId: true },
+	const H = s.loaded.book.currency;
+	if (currency === H) return amountMinor;
+	const rates = await RateBook.load(tx, {
+		bookCurrency: H,
+		rateTypes: [s.loaded.valuation.defaultRateType, "official"],
+		since: "1970-01-01",
+		extraCurrencies: [currency],
 	});
-	const undone = new Set(
-		(
-			await tx.budgetMovement.findMany({
-				where: { revertsId: { in: rows.map((r) => r.id) } },
-				select: { revertsId: true },
-			})
-		).map((r) => r.revertsId),
+	return convertToBookOrThrow(
+		fromMinor(amountMinor, currency).toString(),
+		currency,
+		{ date: s.loaded.today, month: s.current, foreignRateType: "official" },
+		{ ...s.loaded.valuation, usdRate: rates.lookup },
 	);
-	return rows
-		.filter((r) => !undone.has(r.id))
-		.reduce((t, r) => {
-			const v = toMinor(r.amount.toString(), currency);
-			return t + (r.toEnvelopeId === envelopeId ? v : -v);
-		}, 0);
 }
 
 export async function setLimit(
@@ -141,77 +161,57 @@ export async function setLimit(
 	input: SetLimitInput,
 	now: Date,
 ): Promise<SetLimitResult> {
-	const s = await lockedSnapshot(tx, userId, now);
-	const H = s.loaded.book.currency;
-	if (s.loaded.book.fundingSource !== "TARGETS")
-		throw new EnvelopeError("INVALID", "limits belong to a Limits budget");
-	checkEnvelope(input.envelopeId, s);
-	const env = s.loaded.row.envelopes.find((e) => e.id === input.envelopeId);
-	if (!env || (env.kind !== "MONTHLY" && env.kind !== "NONE"))
-		throw new EnvelopeError(
-			"INVALID",
-			"bills and goals keep their own targets",
-		);
-	const funded = await fundedThisMonth(
+	const { s, env, funded } = await limitEnvelope(
 		tx,
-		s.loaded.row.id,
-		env.id,
-		s.current,
-		H,
+		userId,
+		input.envelopeId,
+		now,
 	);
-	const money = (minor: number) => ({ minor, currency: H });
-	const retry = await replay(tx, userId, now, s, { id: input.id }, (rows) =>
-		rows.every(
+	const H = s.loaded.book.currency;
+	const currency = input.currency ?? H;
+	const toBook = await inBook(tx, s, input.amountMinor, currency);
+	const previousTarget = snapshotOf(env);
+	const base = {
+		envelopeId: env.id,
+		limit: { minor: input.amountMinor, currency },
+		limitInBook: { minor: toBook, currency: H },
+		scope: input.scope,
+		previousTarget,
+	};
+	// A retry returns what the first call wrote (the target is already stored).
+	const retry = await replay(tx, userId, now, s, { id: input.id }, (stored) =>
+		stored.every(
 			(r) =>
 				r.kind === "PLAN_FUND" &&
 				(r.toEnvelopeId === env.id || r.fromEnvelopeId === env.id),
 		),
 	);
-	if (retry)
-		return {
-			...retry,
-			envelopeId: env.id,
-			limit: money(input.amountMinor),
-			previous: money(
-				funded -
-					retry.movements.reduce(
-						(t, m) => t + (m.to === env.id ? m.amount.minor : -m.amount.minor),
-						0,
-					),
-			),
-			scope: input.scope,
-			previousTarget: null,
-		};
-	const delta = input.amountMinor - funded;
-	if (delta === 0 && input.scope === "THIS_MONTH")
+	if (retry) {
+		const signed = retry.movements.reduce(
+			(t, m) => t + (m.to === env.id ? m.amount.minor : -m.amount.minor),
+			0,
+		);
+		return { ...retry, ...base, previous: { minor: funded - signed, currency: H } };
+	}
+	const rows = fundDelta({
+		id: input.id,
+		envelopeId: env.id,
+		month: s.current,
+		funded,
+		to: toBook,
+	});
+	if (rows.length === 0 && input.scope === "THIS_MONTH")
 		throw new EnvelopeError("INVALID", "that is the limit already");
-	const rows: NewMovement[] =
-		delta === 0
-			? []
-			: [
-					{
-						id: input.id,
-						month: s.current,
-						from: delta > 0 ? null : env.id,
-						to: delta > 0 ? env.id : null,
-						minor: Math.abs(delta),
-						kind: "PLAN_FUND",
-						batchId: null,
-					},
-				];
-	const previousTarget =
-		env.targetAmount && env.targetCurrency === null
-			? money(toMinor(env.targetAmount.toString(), H))
-			: null;
 	if (input.scope === "FROM_NOW_ON")
 		await tx.envelope.update({
 			where: { id: env.id },
 			data: {
 				kind: "MONTHLY",
 				targetAmount: new Prisma.Decimal(
-					fromMinor(input.amountMinor, H).toString(),
+					fromMinor(input.amountMinor, currency).toString(),
 				),
-				targetCurrency: null,
+				// The currency typed stays, converted each month (owner, D25).
+				targetCurrency: currency === H ? null : currency,
 				targetMode: "SET_ASIDE",
 				targetCadence: "MONTH",
 				targetStartMonth: env.targetStartMonth ?? s.current,
@@ -226,12 +226,42 @@ export async function setLimit(
 		s,
 		rows.map((r) => r.id),
 	);
-	return {
-		...moved,
-		envelopeId: env.id,
-		limit: money(input.amountMinor),
-		previous: money(funded),
-		scope: input.scope,
-		previousTarget,
-	};
+	return { ...moved, ...base, previous: { minor: funded, currency: H } };
 }
+
+/** The undo of a limit edit: the target exactly as it was, this month funded back to what it was. */
+export async function revertLimit(
+	tx: Tx,
+	userId: string,
+	input: RevertLimitInput,
+	now: Date,
+): Promise<RevertLimitResult> {
+	const { s, env, funded } = await limitEnvelope(
+		tx,
+		userId,
+		input.envelopeId,
+		now,
+	);
+	await tx.envelope.update({
+		where: { id: env.id },
+		data: restoreData(input.previousTarget),
+	});
+	const rows = fundDelta({
+		id: input.id,
+		envelopeId: env.id,
+		month: s.current,
+		funded,
+		to: input.fundedMinor,
+	});
+	await insert(tx, s, userId, rows);
+	forgetMonthViews(tx);
+	const moved = await result(
+		tx,
+		userId,
+		now,
+		s,
+		rows.map((r) => r.id),
+	);
+	return { ...moved, envelopeId: env.id };
+}
+

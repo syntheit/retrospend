@@ -10,6 +10,8 @@ import type {
 	BookPeriodResult,
 	ReconcileInput,
 	RemoveAdjustmentInput,
+	RevertLimitInput,
+	RevertLimitResult,
 	RevertStyleInput,
 	RevertStyleResult,
 	SetBookPeriodInput,
@@ -23,7 +25,7 @@ import type {
 import type { MoneyMutation, UndoToken } from "../preview/types";
 import { removeAdjustment } from "./adjustment";
 import { FIGURE_BUDGET_HOLDS } from "./figures";
-import { setLimit } from "./limits.service";
+import { revertLimit, setLimit } from "./limits.service";
 import { setBookPeriod } from "./period.service";
 import { revertStyle, setStyle } from "./style.service";
 import {
@@ -63,12 +65,12 @@ export const setLimitMutation: MoneyMutation<SetLimitInput, SetLimitResult> = {
 	scope: (input) => ({ envelopeId: input.envelopeId }),
 	run: async (tx, input, actor) => {
 		const value = await setLimit(tx, actor.userId, input, new Date());
-		// "From now on" stored a new target too: undo sets the old limit again.
+		// "From now on" stored a new target too: revertLimit writes back previousTarget and the funding.
 		const undo: UndoToken =
 			input.scope === "FROM_NOW_ON"
 				? {
 						kind: "revert",
-						mutation: "envelope.setLimit",
+						mutation: "envelope.revertLimit",
 						rows: [
 							{ table: "envelope", id: value.envelopeId },
 							...value.movements.map((m) => ({
@@ -79,6 +81,19 @@ export const setLimitMutation: MoneyMutation<SetLimitInput, SetLimitResult> = {
 					}
 				: movementUndo(value);
 		return { value, undo };
+	},
+};
+
+export const revertLimitMutation: MoneyMutation<
+	RevertLimitInput,
+	RevertLimitResult
+> = {
+	id: "envelope.revertLimit",
+	touches: [...POOL, "envelope.left"],
+	scope: (input) => ({ envelopeId: input.envelopeId }),
+	run: async (tx, input, actor) => {
+		const value = await revertLimit(tx, actor.userId, input, new Date());
+		return { value, undo: movementUndo(value) };
 	},
 };
 

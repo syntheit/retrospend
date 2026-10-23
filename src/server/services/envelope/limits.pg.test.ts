@@ -21,7 +21,7 @@ import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { addRow, invariantAt, seedUser } from "./__tests__/pg-fixture";
-import { setLimitMutation } from "./book.mutation";
+import { revertLimitMutation, setLimitMutation } from "./book.mutation";
 import { addMonths } from "./calendar";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { getMonth } from "./read.service";
@@ -161,7 +161,7 @@ describe("A2 a Limits user on Postgres", () => {
 			amountMinor: 40_000,
 			scope: "FROM_NOW_ON",
 		});
-		expect(r.value.previousTarget).toEqual(usd(42_000));
+		expect(r.value.previousTarget).toMatchObject({ targetAmount: "420" });
 		expect(r.value.toAssign).toEqual({
 			before: usd(-67_000),
 			after: usd(-65_000),
@@ -203,6 +203,107 @@ describe("A2 a Limits user on Postgres", () => {
 				scope: "THIS_MONTH",
 			}),
 		).rejects.toThrow("Limits budget");
+	});
+});
+
+describe("From now on and its undo put the target back exactly (findings 4 and 6)", () => {
+	async function limitsUser() {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...limitsInput(s),
+			timeZone: "UTC",
+		});
+		const env = await adminDb.envelope.findFirstOrThrow({
+			where: { book: { createdById: s.user.id }, name: "Dining" },
+		});
+		return { s, env };
+	}
+	const snapshot = (e: Awaited<ReturnType<typeof limitsUser>>["env"]) => ({
+		kind: e.kind,
+		targetAmount: e.targetAmount?.toString() ?? null,
+		targetCurrency: e.targetCurrency,
+		targetMode: e.targetMode,
+		targetCadence: e.targetCadence,
+		targetStartMonth: e.targetStartMonth,
+	});
+
+	it("a weekly Refill target survives a From now on and its undo; funding returns to 20,000", async () => {
+		const { s, env } = await limitsUser();
+		const before = await adminDb.envelope.update({
+			where: { id: env.id },
+			data: {
+				targetMode: "REFILL",
+				targetCadence: "WEEK",
+				targetAmount: 50,
+			},
+		});
+		const r = await forUser(s.user.id).apply(setLimitMutation, {
+			id: randomUUID(),
+			envelopeId: env.id,
+			amountMinor: 25_000,
+			scope: "FROM_NOW_ON",
+		});
+		expect(r.value.previousTarget).toMatchObject({
+			targetMode: "REFILL",
+			targetCadence: "WEEK",
+			targetAmount: "50",
+		});
+		expect(r.value.previous).toEqual(usd(20_000));
+		await forUser(s.user.id).apply(revertLimitMutation, {
+			id: randomUUID(),
+			envelopeId: env.id,
+			previousTarget: r.value.previousTarget,
+			fundedMinor: r.value.previous.minor,
+		});
+		const after = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: env.id },
+		});
+		expect(snapshot(after)).toEqual(snapshot(before));
+		const m = await getMonth(s.user.id);
+		expect(row(m, env.id)?.assigned.minor).toBe(20_000);
+	});
+
+	it("EUR 200 from now on stays EUR 200: this month funds its value today (200 / 0.9 = 222.22)", async () => {
+		const { s, env } = await limitsUser();
+		await adminDb.exchangeRate.deleteMany({
+			where: { currency: "EUR", type: "official" },
+		});
+		await adminDb.exchangeRate.create({
+			data: {
+				date: new Date(Date.UTC(2020, 0, 1)),
+				currency: "EUR",
+				type: "official",
+				rate: 0.9,
+			},
+		});
+		const r = await forUser(s.user.id).apply(setLimitMutation, {
+			id: randomUUID(),
+			envelopeId: env.id,
+			amountMinor: 20_000,
+			currency: "EUR",
+			scope: "FROM_NOW_ON",
+		});
+		expect(r.value.limit).toEqual({ minor: 20_000, currency: "EUR" });
+		expect(r.value.limitInBook).toEqual(usd(22_222));
+		expect(r.value.envelopes).toEqual([
+			{ id: env.id, before: usd(20_000), after: usd(22_222) },
+		]);
+		const stored = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: env.id },
+		});
+		expect(stored.targetCurrency).toBe("EUR");
+		expect(stored.targetAmount?.toString()).toBe("200");
+		await forUser(s.user.id).apply(revertLimitMutation, {
+			id: randomUUID(),
+			envelopeId: env.id,
+			previousTarget: r.value.previousTarget,
+			fundedMinor: r.value.previous.minor,
+		});
+		const back = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: env.id },
+		});
+		expect(back.targetCurrency).toBeNull();
+		expect(back.targetAmount?.toString()).toBe("200");
 	});
 });
 

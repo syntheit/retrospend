@@ -14,6 +14,8 @@ import {
 	pauseResultSchema,
 	reconcileInputSchema,
 	removeAdjustmentInputSchema,
+	revertLimitInputSchema,
+	revertLimitResultSchema,
 	revertStyleInputSchema,
 	revertStyleResultSchema,
 	setBookPeriodInputSchema,
@@ -35,6 +37,7 @@ import {
 import {
 	reconcileMutation,
 	removeAdjustmentMutation,
+	revertLimitMutation,
 	revertStyleMutation,
 	setBookPeriodMutation,
 	setLimitMutation,
@@ -58,6 +61,15 @@ export const envelopeBookProcedures = {
 		.input(setLimitInputSchema)
 		.output(applyOutputSchema(setLimitResultSchema))
 		.mutation(apply(setLimitMutation)),
+
+	revertLimitPreview: envelopeProcedure
+		.input(revertLimitInputSchema)
+		.output(previewOutputSchema(revertLimitResultSchema))
+		.mutation(preview(revertLimitMutation)),
+	revertLimit: envelopeProcedure
+		.input(revertLimitInputSchema)
+		.output(applyOutputSchema(revertLimitResultSchema))
+		.mutation(apply(revertLimitMutation)),
 
 	setStylePreview: envelopeProcedure
 		.input(setStyleInputSchema)

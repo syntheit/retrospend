@@ -242,20 +242,53 @@ export const setLimitInputSchema = z.object({
 	/** Client id of the PLAN_FUND delta. */
 	id: clientIdSchema,
 	envelopeId: idSchema,
-	/** The new limit in the book currency. */
+	/** The new limit in minor units of `currency`. */
 	amountMinor: nonNegativeMinor,
+	/** The currency the person typed (default: the book's); kept and converted each month (D25). */
+	currency: z.string().min(3).max(10).optional(),
 	/** "Only this month" or "From now on". */
 	scope: z.enum(["THIS_MONTH", "FROM_NOW_ON"]),
 });
 
+/** Every stored target column of an envelope, as they were: what an undo writes back exactly. */
+export const targetSnapshotSchema = z.object({
+	kind: z.enum(["MONTHLY", "BILL", "SAVINGS", "NONE"]),
+	targetAmount: z.string().nullable(),
+	targetCurrency: z.string().nullable(),
+	targetMode: z.enum(["REFILL", "SET_ASIDE"]),
+	targetCadence: z.enum(["MONTH", "WEEK"]),
+	targetMonthlyAmount: z.string().nullable(),
+	targetDueDate: isoDateSchema.nullable(),
+	targetRepeat: z.string().nullable(),
+	targetTemplateId: idSchema.nullable(),
+	targetLiabilityId: idSchema.nullable(),
+	targetStartMonth: monthKeySchema.nullable(),
+});
+
 export const setLimitResultSchema = movementResultSchema.extend({
 	envelopeId: idSchema,
+	/** As typed, in its currency. */
 	limit: moneySchema,
-	/** The limit this month before the change (what PLAN_FUND gave it). */
+	/** The same limit in the book currency at today's rate: what this month is funded to. */
+	limitInBook: moneySchema,
+	/** What this month's plan funding gave the envelope before (the undo funds it back to this). */
 	previous: moneySchema,
 	scope: z.enum(["THIS_MONTH", "FROM_NOW_ON"]),
-	/** FROM_NOW_ON: the stored target before; the undo writes it back. */
-	previousTarget: moneySchema.nullable(),
+	/** The stored target before the change; the undo (revertLimit) writes it back. */
+	previousTarget: targetSnapshotSchema,
+});
+
+export const revertLimitInputSchema = z.object({
+	/** Client id of the PLAN_FUND delta back. */
+	id: clientIdSchema,
+	envelopeId: idSchema,
+	previousTarget: targetSnapshotSchema,
+	/** What the month was funded to before (setLimit's `previous`). */
+	fundedMinor: nonNegativeMinor,
+});
+
+export const revertLimitResultSchema = movementResultSchema.extend({
+	envelopeId: idSchema,
 });
 
 export type MonthSummaryOutput = z.infer<typeof monthSummaryOutputSchema>;
@@ -277,3 +310,6 @@ export type SetBookPeriodInput = z.infer<typeof setBookPeriodInputSchema>;
 export type BookPeriodResult = z.infer<typeof bookPeriodResultSchema>;
 export type SetLimitInput = z.infer<typeof setLimitInputSchema>;
 export type SetLimitResult = z.infer<typeof setLimitResultSchema>;
+export type TargetSnapshot = z.infer<typeof targetSnapshotSchema>;
+export type RevertLimitInput = z.infer<typeof revertLimitInputSchema>;
+export type RevertLimitResult = z.infer<typeof revertLimitResultSchema>;
