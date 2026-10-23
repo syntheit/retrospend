@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Archivar"
+		},
+		"addIncome": {
+			"label": "Añadir un ingreso aquí"
+		},
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Cerrar cuenta"
+		},
+		"delete": {
+			"label": "Eliminar definitivamente",
+			"confirmTitle": "¿Eliminar {name} definitivamente?",
+			"confirmBody": "Se eliminan la cuenta y todo su historial de saldos, y también cambia tu patrimonio pasado. Para conservar el historial, cierra la cuenta.",
+			"confirmButton": "Eliminar definitivamente"
 		}
 	},
 	"recurring": {
@@ -159,6 +174,23 @@
 			"confirmTitle": "¿Desconectar {name}?",
 			"confirmBody": "Su sesión se cierra al instante y necesitará un código nuevo para volver a conectarse.",
 			"confirmButton": "Desconectar dispositivo"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convertir"
+		},
+		"favorite": {
+			"label": "Añadir a favoritas"
+		},
+		"unfavorite": {
+			"label": "Quitar de favoritas"
+		},
+		"copy": {
+			"label": "Copiar tipo de cambio"
+		},
+		"history": {
+			"label": "Ver historial del tipo de cambio"
 		}
 	}
 }

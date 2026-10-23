@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Arquivar"
+		},
+		"addIncome": {
+			"label": "Adicionar receita aqui"
+		},
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Encerrar conta"
+		},
+		"delete": {
+			"label": "Excluir definitivamente",
+			"confirmTitle": "Excluir {name} definitivamente?",
+			"confirmBody": "A conta e todo o histórico de saldos são excluídos, e seu patrimônio passado também muda. Para manter o histórico, encerre a conta.",
+			"confirmButton": "Excluir definitivamente"
 		}
 	},
 	"recurring": {
@@ -159,6 +174,23 @@
 			"confirmTitle": "Desconectar {name}?",
 			"confirmBody": "Ele é desconectado na hora e precisa de um novo código para se conectar de novo.",
 			"confirmButton": "Desconectar dispositivo"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Converter"
+		},
+		"favorite": {
+			"label": "Adicionar aos favoritos"
+		},
+		"unfavorite": {
+			"label": "Remover dos favoritos"
+		},
+		"copy": {
+			"label": "Copiar cotação"
+		},
+		"history": {
+			"label": "Ver histórico da cotação"
 		}
 	}
 }

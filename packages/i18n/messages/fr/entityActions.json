@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Archiver"
+		},
+		"addIncome": {
+			"label": "Ajouter un revenu ici"
+		},
+		"reopen": {
+			"label": "Rouvrir"
+		},
+		"close": {
+			"label": "Clôturer le compte"
+		},
+		"delete": {
+			"label": "Supprimer définitivement",
+			"confirmTitle": "Supprimer {name} définitivement ?",
+			"confirmBody": "Le compte et tout son historique de soldes sont supprimés, et votre patrimoine passé change aussi. Pour garder l'historique, clôturez plutôt le compte.",
+			"confirmButton": "Supprimer définitivement"
 		}
 	},
 	"recurring": {
@@ -159,6 +174,23 @@
 			"confirmTitle": "Déconnecter {name} ?",
 			"confirmBody": "Il est déconnecté immédiatement et aura besoin d’un nouveau code pour se reconnecter.",
 			"confirmButton": "Déconnecter l’appareil"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convertir"
+		},
+		"favorite": {
+			"label": "Ajouter aux favoris"
+		},
+		"unfavorite": {
+			"label": "Retirer des favoris"
+		},
+		"copy": {
+			"label": "Copier le taux"
+		},
+		"history": {
+			"label": "Voir l'historique du taux"
 		}
 	}
 }

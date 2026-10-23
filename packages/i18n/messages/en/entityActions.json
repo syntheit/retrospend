@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Archive"
+		},
+		"addIncome": {
+			"label": "Add income here"
+		},
+		"reopen": {
+			"label": "Reopen"
+		},
+		"close": {
+			"label": "Close account"
+		},
+		"delete": {
+			"label": "Delete permanently",
+			"confirmTitle": "Delete {name} permanently?",
+			"confirmBody": "This removes the account and its whole balance history, and past net worth changes too. To keep the history, close the account instead.",
+			"confirmButton": "Delete permanently"
 		}
 	},
 	"recurring": {
@@ -159,6 +174,23 @@
 			"confirmTitle": "Disconnect {name}?",
 			"confirmBody": "It is signed out at once and needs a new code to connect again.",
 			"confirmButton": "Disconnect device"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convert"
+		},
+		"favorite": {
+			"label": "Add to favorites"
+		},
+		"unfavorite": {
+			"label": "Remove from favorites"
+		},
+		"copy": {
+			"label": "Copy rate"
+		},
+		"history": {
+			"label": "View rate history"
 		}
 	}
 }

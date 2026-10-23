@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Archivieren"
+		},
+		"addIncome": {
+			"label": "Einnahme hier erfassen"
+		},
+		"reopen": {
+			"label": "Wieder öffnen"
+		},
+		"close": {
+			"label": "Konto schließen"
+		},
+		"delete": {
+			"label": "Endgültig löschen",
+			"confirmTitle": "{name} endgültig löschen?",
+			"confirmBody": "Das Konto und sein gesamter Saldoverlauf werden gelöscht, und auch dein früheres Vermögen ändert sich. Um den Verlauf zu behalten, schließe das Konto stattdessen.",
+			"confirmButton": "Endgültig löschen"
 		}
 	},
 	"recurring": {
@@ -159,6 +174,23 @@
 			"confirmTitle": "{name} trennen?",
 			"confirmBody": "Es wird sofort abgemeldet und braucht einen neuen Code, um sich wieder zu verbinden.",
 			"confirmButton": "Gerät trennen"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Umrechnen"
+		},
+		"favorite": {
+			"label": "Zu Favoriten hinzufügen"
+		},
+		"unfavorite": {
+			"label": "Aus Favoriten entfernen"
+		},
+		"copy": {
+			"label": "Kurs kopieren"
+		},
+		"history": {
+			"label": "Kursverlauf ansehen"
 		}
 	}
 }
