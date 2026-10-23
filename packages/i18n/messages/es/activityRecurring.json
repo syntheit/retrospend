@@ -1,0 +1,102 @@
+{
+	"title": "Actividad",
+	"metaTitle": "Recurrentes",
+	"sub": "{out, plural, one {# gasto recurrente} other {# gastos recurrentes}}{income, plural, =0 {} one { · # ingreso recurrente} other { · # ingresos recurrentes}}",
+	"add": "Añadir gasto recurrente",
+	"other": "Otros",
+	"confirm": "Confirmar",
+	"frequency": {
+		"weekly": "Semanal",
+		"biweekly": "Cada 2 semanas",
+		"monthly": "Mensual",
+		"quarterly": "Trimestral",
+		"yearly": "Anual"
+	},
+	"due": {
+		"paused": "En pausa",
+		"overdueSince": "Vencido desde {date}",
+		"today": "Vence hoy",
+		"inDays": "en {count, plural, one {# día} other {# días}}"
+	},
+	"group": {
+		"due": "Vencen ahora",
+		"next30": "Próximos 30 días",
+		"later": "Más adelante",
+		"in": "Ingresos"
+	},
+	"table": {
+		"name": "Nombre",
+		"due": "Vence",
+		"repeats": "Repite",
+		"amount": "Importe",
+		"autoPay": "Pago automático",
+		"autoPayFor": "Pago automático de {name}",
+		"actions": "Acciones"
+	},
+	"autoPay": {
+		"on": "Pago automático activado",
+		"off": "Pago automático desactivado"
+	},
+	"toolbar": {
+		"label": "Filtrar recurrentes",
+		"search": "Buscar recurrentes",
+		"autoPayOn": "Pago automático activado",
+		"autoPayOff": "Pago automático desactivado",
+		"foreign": "Moneda extranjera"
+	},
+	"summary": {
+		"cost": "Tus gastos recurrentes cuestan <amount></amount> {period}.",
+		"per": {
+			"month": "al mes",
+			"quarter": "al trimestre",
+			"year": "al año"
+		},
+		"missing": "Sin contar: {currencies}, aún sin tipo de cambio.",
+		"setRate": "Fijar tipo de cambio",
+		"income": "Ingresos recurrentes: <amount></amount>.",
+		"period": "Período",
+		"monthly": "Mensual",
+		"quarterly": "Trimestral",
+		"yearly": "Anual",
+		"shared": "En las cuentas compartidas cuenta tu parte."
+	},
+	"logged": {
+		"title": "Registrado este mes",
+		"see": "Ver en Actividad"
+	},
+	"actions": {
+		"paused": "{name} en pausa",
+		"resumed": "{name} reanudado",
+		"autoPayOn": "Pago automático activado para {name}",
+		"autoPayOff": "Pago automático desactivado para {name}",
+		"logged": "{name} registrado",
+		"deleted": "{name} eliminado",
+		"error": {
+			"conflict": "Ya está registrado para esta fecha.",
+			"gone": "Este gasto recurrente ya no existe.",
+			"forbidden": "No puedes cambiar este gasto recurrente.",
+			"other": "No se pudo guardar el cambio"
+		}
+	},
+	"empty": {
+		"title": "No hay gastos recurrentes",
+		"hint": "Añade el alquiler, las suscripciones y otros gastos fijos.",
+		"noMatch": "Sin resultados",
+		"noMatchHint": "Nada coincide con estos filtros.",
+		"reset": "Restablecer"
+	},
+	"error": {
+		"load": "No se pudieron cargar tus gastos recurrentes.",
+		"retry": "Reintentar"
+	},
+	"confirmSheet": {
+		"title": "Confirmar {name}",
+		"description": "Se registra como pagado el {date}.",
+		"submit": "Confirmar",
+		"changes": "Qué cambia",
+		"entry": "Nuevo gasto el {date}",
+		"next": "Próximo vencimiento",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nada más cambia: el importe sigue igual la próxima vez."
+	}
+}

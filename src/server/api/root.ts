@@ -10,6 +10,7 @@ import { deviceSessionRouter } from "~/server/api/routers/device-session";
 import { envelopeRouter } from "~/server/api/routers/envelope";
 import { exchangeRateRouter } from "~/server/api/routers/exchange-rate";
 import { expenseRouter } from "~/server/api/routers/expense";
+import { expenseV2Router } from "~/server/api/routers/expense-v2";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { guestRouter } from "~/server/api/routers/guest";
@@ -22,6 +23,7 @@ import { preferencesRouter } from "~/server/api/routers/preferences";
 import { profileRouter } from "~/server/api/routers/profile";
 import { projectRouter } from "~/server/api/routers/project";
 import { recurringRouter } from "~/server/api/routers/recurring";
+import { recurringViewRouter } from "~/server/api/routers/recurring-view";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { settlementRouter } from "~/server/api/routers/settlement";
 import { sharedTransactionRouter } from "~/server/api/routers/shared-transaction";
@@ -30,7 +32,15 @@ import { systemRouter } from "~/server/api/routers/system";
 import { userRouter } from "~/server/api/routers/user";
 import { verificationRouter } from "~/server/api/routers/verification";
 import { wealthRouter } from "~/server/api/routers/wealth";
-import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import {
+	createCallerFactory,
+	createTRPCRouter,
+	mergeRouters,
+} from "~/server/api/trpc";
+
+// The v2 reads sit in their own files and join the namespaces here.
+const expenseAllRouter = mergeRouters(expenseRouter, expenseV2Router);
+const recurringAllRouter = mergeRouters(recurringRouter, recurringViewRouter);
 
 export const appRouter = createTRPCRouter({
 	admin: adminRouter,
@@ -45,13 +55,13 @@ export const appRouter = createTRPCRouter({
 	deviceSession: deviceSessionRouter,
 	envelope: envelopeRouter,
 	user: userRouter,
-	expense: expenseRouter,
+	expense: expenseAllRouter,
 	feedback: feedbackRouter,
 	exchangeRate: exchangeRateRouter,
 	exportData: exportRouter,
 	importQueue: importQueueRouter,
 	invite: inviteRouter,
-	recurring: recurringRouter,
+	recurring: recurringAllRouter,
 	settings: settingsRouter,
 	people: peopleRouter,
 	project: projectRouter,

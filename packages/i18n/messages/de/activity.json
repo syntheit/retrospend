@@ -1,0 +1,82 @@
+{
+	"header": {
+		"title": "Aktivität",
+		"sub": "{count, plural, one {# Eintrag} other {# Einträge}}",
+		"more": "Weitere Aktionen",
+		"import": "Datei importieren"
+	},
+	"tabs": {
+		"expenses": "Ausgaben",
+		"recurring": "Wiederkehrend",
+		"insights": "Auswertungen"
+	},
+	"filters": {
+		"label": "Aktivität filtern",
+		"search": "Ausgaben oder Beträge suchen",
+		"find": "Suchen",
+		"noMatch": "Keine Treffer",
+		"picked": "Ausgewählt",
+		"clear": "Zurücksetzen",
+		"selected": "Ausgewählt",
+		"more": "{name} +{count}",
+		"you": "Du",
+		"dim": {
+			"cats": "Kategorie",
+			"people": "Person",
+			"projects": "Projekt",
+			"paidBy": "Bezahlt von",
+			"kinds": "Art"
+		},
+		"kind": {
+			"expense": "Ausgaben",
+			"in": "Einnahmen",
+			"refund": "Erstattungen",
+			"transfer": "Keine Ausgaben",
+			"payment": "Zahlungen"
+		}
+	},
+	"row": {
+		"paidTo": "Du hast {name} bezahlt",
+		"paidYou": "{name} hat dich bezahlt",
+		"rate": "Kurs: {type}"
+	},
+	"actions": {
+		"deleted": "{name} gelöscht",
+		"error": {
+			"conflict": "Jemand hat das zuerst geändert. Versuch es noch einmal.",
+			"gone": "Diesen Eintrag gibt es nicht mehr.",
+			"forbidden": "Du kannst diesen Eintrag nicht ändern.",
+			"other": "Änderung konnte nicht gespeichert werden"
+		}
+	},
+	"empty": {
+		"first": "Füge deine erste Ausgabe hinzu",
+		"firstHint": "Ausgaben, die du hinzufügst oder importierst, erscheinen hier.",
+		"add": "Ausgabe hinzufügen",
+		"noMatch": "Keine Treffer",
+		"noMatchHint": "Nichts passt zu diesen Filtern.",
+		"reset": "Zurücksetzen",
+		"quiet": "Nichts in diesem Monat",
+		"quietHint": "Ältere Einträge sind weiterhin da.",
+		"allTime": "Gesamten Zeitraum zeigen"
+	},
+	"error": {
+		"load": "Deine Aktivität konnte nicht geladen werden.",
+		"retry": "Erneut versuchen"
+	},
+	"footer": {
+		"yourSpending": "Deine Ausgaben"
+	},
+	"compareUnavailable": "Der Vergleich mit dem vorherigen Zeitraum ist noch nicht verfügbar.",
+	"more": "Mehr anzeigen",
+	"rateTypes": {
+		"official": "Offiziell",
+		"blue": "Blue",
+		"card": "Karte",
+		"mep": "MEP",
+		"crypto": "Krypto",
+		"tourist": "Tourist",
+		"market": "Markt",
+		"custom": "Eigener"
+	}
+}

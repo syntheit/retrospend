@@ -1,0 +1,82 @@
+{
+	"header": {
+		"title": "Activity",
+		"sub": "{count, plural, one {# entry} other {# entries}}",
+		"more": "More actions",
+		"import": "Import a file"
+	},
+	"tabs": {
+		"expenses": "Expenses",
+		"recurring": "Recurring",
+		"insights": "Insights"
+	},
+	"filters": {
+		"label": "Filter activity",
+		"search": "Search expenses or amounts",
+		"find": "Find",
+		"noMatch": "No matches",
+		"picked": "Picked",
+		"clear": "Clear",
+		"selected": "Selected",
+		"more": "{name} +{count}",
+		"you": "You",
+		"dim": {
+			"cats": "Category",
+			"people": "Person",
+			"projects": "Project",
+			"paidBy": "Paid by",
+			"kinds": "Type"
+		},
+		"kind": {
+			"expense": "Spending",
+			"in": "Money in",
+			"refund": "Refunds",
+			"transfer": "Not spending",
+			"payment": "Payments"
+		}
+	},
+	"row": {
+		"paidTo": "You paid {name}",
+		"paidYou": "{name} paid you",
+		"rate": "{type} rate"
+	},
+	"actions": {
+		"deleted": "Deleted {name}",
+		"error": {
+			"conflict": "Someone changed this first. Try again.",
+			"gone": "This entry no longer exists.",
+			"forbidden": "You can't change this entry.",
+			"other": "Couldn't save that change"
+		}
+	},
+	"empty": {
+		"first": "Add your first expense",
+		"firstHint": "Expenses you add or import show up here.",
+		"add": "Add expense",
+		"noMatch": "No matches",
+		"noMatchHint": "Nothing fits these filters.",
+		"reset": "Reset",
+		"quiet": "Nothing this month",
+		"quietHint": "Older entries are still here.",
+		"allTime": "Show all time"
+	},
+	"error": {
+		"load": "Couldn't load your activity.",
+		"retry": "Try again"
+	},
+	"footer": {
+		"yourSpending": "Your spending"
+	},
+	"compareUnavailable": "Comparing with the period before is not available yet.",
+	"more": "Show more",
+	"rateTypes": {
+		"official": "Official",
+		"blue": "Blue",
+		"card": "Card",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"tourist": "Tourist",
+		"market": "Market",
+		"custom": "Custom"
+	}
+}

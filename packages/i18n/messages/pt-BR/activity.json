@@ -1,0 +1,82 @@
+{
+	"header": {
+		"title": "Atividade",
+		"sub": "{count, plural, one {# lançamento} other {# lançamentos}}",
+		"more": "Mais ações",
+		"import": "Importar um arquivo"
+	},
+	"tabs": {
+		"expenses": "Gastos",
+		"recurring": "Recorrentes",
+		"insights": "Análises"
+	},
+	"filters": {
+		"label": "Filtrar atividade",
+		"search": "Buscar gastos ou valores",
+		"find": "Buscar",
+		"noMatch": "Nenhum resultado",
+		"picked": "Escolhidos",
+		"clear": "Limpar",
+		"selected": "Escolhido",
+		"more": "{name} +{count}",
+		"you": "Você",
+		"dim": {
+			"cats": "Categoria",
+			"people": "Pessoa",
+			"projects": "Projeto",
+			"paidBy": "Pago por",
+			"kinds": "Tipo"
+		},
+		"kind": {
+			"expense": "Gastos",
+			"in": "Entradas",
+			"refund": "Reembolsos",
+			"transfer": "Não é gasto",
+			"payment": "Pagamentos"
+		}
+	},
+	"row": {
+		"paidTo": "Você pagou {name}",
+		"paidYou": "{name} pagou você",
+		"rate": "Câmbio {type}"
+	},
+	"actions": {
+		"deleted": "{name} excluído",
+		"error": {
+			"conflict": "Alguém alterou isso antes. Tente de novo.",
+			"gone": "Este lançamento não existe mais.",
+			"forbidden": "Você não pode alterar este lançamento.",
+			"other": "Não foi possível salvar a alteração"
+		}
+	},
+	"empty": {
+		"first": "Adicione seu primeiro gasto",
+		"firstHint": "Os gastos que você adicionar ou importar aparecem aqui.",
+		"add": "Adicionar gasto",
+		"noMatch": "Nenhum resultado",
+		"noMatchHint": "Nada corresponde a esses filtros.",
+		"reset": "Redefinir",
+		"quiet": "Nada este mês",
+		"quietHint": "Os lançamentos anteriores continuam aqui.",
+		"allTime": "Ver tudo"
+	},
+	"error": {
+		"load": "Não foi possível carregar sua atividade.",
+		"retry": "Tentar de novo"
+	},
+	"footer": {
+		"yourSpending": "Seus gastos"
+	},
+	"compareUnavailable": "A comparação com o período anterior ainda não está disponível.",
+	"more": "Ver mais",
+	"rateTypes": {
+		"official": "Oficial",
+		"blue": "Blue",
+		"card": "Cartão",
+		"mep": "MEP",
+		"crypto": "Cripto",
+		"tourist": "Turismo",
+		"market": "Mercado",
+		"custom": "Personalizado"
+	}
+}

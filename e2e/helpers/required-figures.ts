@@ -12,6 +12,11 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	wealth: [],
 	budget: [],
 	settings: [],
+	// S4B, as the flows open them: Martín's rows with Sofía, every month, and
+	// his month view, whose footer is spent() for the month.
+	activity: ["entry.amount:shared:e2e_tx_dp_calefon"],
+	activityMonth: ["spent"],
+	recurring: ["recurring.cost.out.month"],
 };
 
 export function requiredFiguresFor(page: string): readonly string[] {
