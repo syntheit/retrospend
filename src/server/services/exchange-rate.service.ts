@@ -1,4 +1,5 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
+import { TRPCError } from "@trpc/server";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { env } from "~/env";
 import type { db as globalDb } from "~/server/db";
@@ -149,11 +150,34 @@ export async function getRateSyncStatus(db: AppDb) {
 	};
 }
 
+/**
+ * The sidecar is not set up on this server (no worker key) or does not
+ * answer (refused, unknown host, timeout): a sync cannot start here. A
+ * sidecar that answers with an error is a failure, not this.
+ */
+export class RateSyncUnavailable extends Error {
+	constructor() {
+		super("Rate sync is not available on this server");
+		this.name = "RateSyncUnavailable";
+	}
+}
+
 /** Asks the sidecar to fetch rates now. Throws when the worker refuses. */
 export async function requestRateSync(): Promise<void> {
-	await IntegrationService.requestWorker(`${env.SIDECAR_URL}/sync-rates`, {
-		method: "POST",
-	});
+	if (!env.WORKER_API_KEY) throw new RateSyncUnavailable();
+	try {
+		await IntegrationService.requestWorker(`${env.SIDECAR_URL}/sync-rates`, {
+			method: "POST",
+		});
+	} catch (error) {
+		// IntegrationService turns a fetch that never got an answer into these two.
+		if (
+			error instanceof TRPCError &&
+			(error.code === "TIMEOUT" || error.code === "INTERNAL_SERVER_ERROR")
+		)
+			throw new RateSyncUnavailable();
+		throw error;
+	}
 }
 
 export type CurrencyInfo = {

@@ -9,6 +9,7 @@ import {
 } from "~/server/api/trpc";
 import {
 	getRateSyncStatus,
+	RateSyncUnavailable,
 	requestRateSync,
 } from "~/server/services/exchange-rate.service";
 
@@ -93,9 +94,13 @@ export const exchangeRateRouter = createTRPCRouter({
 			await requestRateSync();
 			return {
 				success: true,
+				unavailable: false,
 				message: "Successfully triggered exchange rate sync",
 			};
 		} catch (error) {
+			// No sidecar here (staging): a state to show, not a failure.
+			if (error instanceof RateSyncUnavailable)
+				return { success: false, unavailable: true, message: error.message };
 			throw new TRPCError({
 				code: "INTERNAL_SERVER_ERROR",
 				message: `Sync failed: ${error instanceof Error ? error.message : "Unknown error"}`,

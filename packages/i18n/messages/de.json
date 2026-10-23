@@ -370,7 +370,8 @@
     "lastSynced": "Zuletzt synchronisiert:",
     "never": "Nie",
     "syncing": "Wird synchronisiert …",
-    "syncNow": "Jetzt synchronisieren"
+    "syncNow": "Jetzt synchronisieren",
+    "syncUnavailable": "Die Kurssynchronisierung ist auf diesem Server nicht verfügbar."
   },
   "import": {
     "title": "Import",
