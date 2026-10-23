@@ -241,15 +241,19 @@ describe("Settle all (R30, R15)", () => {
 			await adminDb.payment.count({ where: { payeeId: ana.user.id } }),
 		).toBe(0);
 
-		const applied = await caller.settleAll({ projectId: pid });
+		const applied = await caller.settleAll({
+			projectId: pid,
+			expect: [...preview.value.planned],
+		});
 		const after = await caller.summary({ projectId: pid });
 		expect(after.transfers).toEqual([]);
 		expect(after.total).toEqual([ars(655800)]);
 
-		await caller.settleAllUndo({
+		const undone = await caller.settleAllUndo({
 			projectId: pid,
 			paymentIds: applied.value.lines.map((l) => l.paymentId),
 		});
+		expect(undone.value.undone).toBe(2);
 		const back = await caller.summary({ projectId: pid });
 		expect(back.transfers.map((t) => t.amount.minor)).toEqual([
 			17960000, 300000,

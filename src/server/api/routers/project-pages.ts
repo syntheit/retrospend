@@ -62,20 +62,27 @@ export const projectPageProcedures = {
 			);
 		}),
 
-	/** Records every payment the preview showed. */
+	/** Records the payments the preview showed; CONFLICT when the balances moved. */
 	settleAll: protectedProcedure
-		.input(project)
+		.input(
+			project.extend({
+				expect: z
+					.array(
+						z.object({
+							person: z.string().min(1),
+							currency: z.string().min(1).max(10),
+							minor: z.number().int(),
+						}),
+					)
+					.max(200),
+			}),
+		)
 		.mutation(async ({ ctx, input }) => {
 			await roleOf(ctx, input.projectId, "CONTRIBUTOR");
-			return applySettleAll(
-				ctx.db,
-				ctx.session.user.id,
-				input.projectId,
-				ctx.timeZone,
-			);
+			return applySettleAll(ctx.db, ctx.session.user.id, input, ctx.timeZone);
 		}),
 
-	/** Undo of settleAll: takes back the payments it wrote. */
+	/** Undo of settleAll: takes back the payments it wrote, all or none. */
 	settleAllUndo: protectedProcedure
 		.input(
 			project.extend({
@@ -84,6 +91,6 @@ export const projectPageProcedures = {
 		)
 		.mutation(async ({ ctx, input }) => {
 			await roleOf(ctx, input.projectId, "CONTRIBUTOR");
-			return undoSettleAll(ctx.db, ctx.session.user.id, input.paymentIds);
+			return undoSettleAll(ctx.session.user.id, input);
 		}),
 };

@@ -1,16 +1,14 @@
 /**
  * What the Settle all procedures do: preview and apply project.settleAll
  * through the preview runner (one code path, R30), the notifications a
- * preview cannot send, and Undo. Undo takes back each payment the apply
- * wrote: a payment still waiting for the other person is deleted, one that
- * was final at once (they paid you, or a person not on Retrospend) is
- * voided, the same two ways the payment's own menu offers.
+ * preview cannot send, and Undo (project.settleAllUndo, all or none).
  */
 import { TRPCError } from "@trpc/server";
 import { forUser } from "~/server/services/preview";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import type { PrismaClient } from "~prisma";
-import { settleAllInProject } from "./settle-all.mutation";
+import { type PlannedLine, settleAllInProject } from "./settle-all.mutation";
+import { undoSettleAllInProject } from "./settle-all-undo.mutation";
 
 export const previewSettleAll = (
 	userId: string,
@@ -18,20 +16,21 @@ export const previewSettleAll = (
 	timeZone?: string,
 ) => forUser(userId).preview(settleAllInProject, { projectId, timeZone });
 
+/** Records the lines the preview showed (`expect`); CONFLICT when they moved. */
 export async function applySettleAll(
 	db: PrismaClient,
 	userId: string,
-	projectId: string,
+	input: { projectId: string; expect: readonly PlannedLine[] },
 	timeZone?: string,
 ) {
 	const result = await forUser(userId).apply(settleAllInProject, {
-		projectId,
+		...input,
 		timeZone,
 	});
 	if (result.value.lines.length === 0) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: "Everyone is even with you in this project.",
+			message: "There is nothing to record in this project.",
 		});
 	}
 	const service = new SettlementService(db, userId);
@@ -40,22 +39,8 @@ export async function applySettleAll(
 	return result;
 }
 
-/** Takes back the payments one Settle all wrote. Only their recorder may. */
-export async function undoSettleAll(
-	db: PrismaClient,
+/** Takes back the payments one Settle all wrote, all or none, in this project only. */
+export const undoSettleAll = (
 	userId: string,
-	paymentIds: readonly string[],
-) {
-	const service = new SettlementService(db, userId);
-	for (const paymentId of paymentIds) {
-		const row = await db.settlement.findFirst({
-			where: { paymentGroupId: paymentId },
-			select: { id: true, status: true },
-		});
-		if (!row) continue;
-		if (row.status === "PROPOSED")
-			await service.deletePendingSettlement(row.id);
-		else await service.voidAutoFinalizedSettlement(row.id);
-	}
-	return { undone: paymentIds.length };
-}
+	input: { projectId: string; paymentIds: readonly string[] },
+) => forUser(userId).apply(undoSettleAllInProject, input);
