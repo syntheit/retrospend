@@ -4,10 +4,11 @@
  * through multipart, the public page background, replays, and each caller
  * only ever changing themselves.
  */
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import sharp from "sharp";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { uploadFile } from "~/server/storage";
 import {
@@ -34,6 +35,20 @@ vi.mock("~/server/storage", async (importOriginal) => ({
 
 const p = contract.profile;
 const PASSWORD = "correct horse battery";
+
+async function pngOf(background: string) {
+	const png = await sharp({
+		create: { width: 8, height: 8, channels: 3, background },
+	})
+		.png()
+		.toBuffer();
+	const form = new FormData();
+	form.append(
+		"file",
+		new File([new Uint8Array(png)], "me.png", { type: "image/png" }),
+	);
+	return form;
+}
 
 async function passwordUser() {
 	const email = `${randomUUID()}@pg-test.invalid`;
@@ -179,6 +194,56 @@ describe("/api/v1/profile", () => {
 			where: { id: lucia.id },
 		});
 		expect(row.avatarPath).toBeNull();
+	});
+
+	it("refuses one key for two different images, and replays the same one", async () => {
+		const key = randomUUID();
+		const put = async (color: string) =>
+			call("/profile/avatar", {
+				method: "PUT",
+				headers: asLucia,
+				form: await pngOf(color),
+				idempotent: key,
+			});
+		const first = await expectBody<{ avatarUrl: string }>(
+			await put("#1e90ff"),
+			p.setAvatar,
+		);
+		const calls = vi.mocked(uploadFile).mock.calls.length;
+		await expectProblem(await put("#ff4500"), 422, "idempotency_key_reused");
+		const replay = await put("#1e90ff");
+		expect(replay.headers.get("idempotent-replayed")).toBe("true");
+		expect(await expectBody(replay, p.setAvatar)).toEqual(first);
+		expect(vi.mocked(uploadFile).mock.calls.length).toBe(calls);
+	});
+
+	it("keys the request fingerprint, so a password never sits in a plain hash", async () => {
+		const sam = await passwordUser();
+		const asSam = await asMobile(sam.id);
+		const body = {
+			email: `${randomUUID()}@pg-test.invalid`,
+			currentPassword: PASSWORD,
+		};
+		const key = randomUUID();
+		await expectBody(await patch(asSam, body, key), p.update);
+		const row = await adminDb.idempotencyKey.findFirstOrThrow({
+			where: { userId: sam.id, key },
+		});
+		const message = `PATCH /profile\n${JSON.stringify({
+			currentPassword: body.currentPassword,
+			email: body.email,
+		})}`;
+		const plain = createHash("sha256").update(message).digest("hex");
+		const subkey = createHmac("sha256", env.BETTER_AUTH_SECRET)
+			.update("idempotency-fingerprint")
+			.digest();
+		expect(row.requestHash).not.toBe(plain);
+		expect(row.requestHash).toBe(
+			createHmac("sha256", subkey).update(message).digest("hex"),
+		);
+		const replay = await patch(asSam, body, key);
+		expect(replay.headers.get("idempotent-replayed")).toBe("true");
+		await expectBody(replay, p.update);
 	});
 
 	it("refuses a file that is not an image", async () => {
