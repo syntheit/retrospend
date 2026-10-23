@@ -46,3 +46,16 @@ func TestAmountToUSDUsesCurrencyNotRateType(t *testing.T) {
 		t.Fatalf("USD: got %v", got)
 	}
 }
+
+func TestPostingForCopiesDirection(t *testing.T) {
+	in := postingFor(RecurringTemplate{Direction: "IN"})
+	if in.Direction != "IN" || in.InType == nil || *in.InType != "INCOME" {
+		t.Fatalf("IN template: got %+v", in)
+	}
+	for _, direction := range []string{"OUT", ""} {
+		out := postingFor(RecurringTemplate{Direction: direction})
+		if out.Direction != "OUT" || out.InType != nil {
+			t.Fatalf("%q template: got %+v", direction, out)
+		}
+	}
+}

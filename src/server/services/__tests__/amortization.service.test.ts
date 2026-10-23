@@ -8,6 +8,10 @@ type Child = {
 	date: Date;
 	excludeFromAnalytics: boolean;
 	exchangeRate: number;
+	rateType: string | null;
+	homeCurrency?: string;
+	homeRate?: string;
+	homeAmount?: number;
 };
 
 describe("AmortizationService", () => {
@@ -54,6 +58,40 @@ describe("AmortizationService", () => {
 		);
 		expect(children().map((c) => c.exchangeRate)).toEqual([1560, 1560, 1560]);
 		expect(children().reduce((s, c) => s + c.amountInUSD, 0)).toBeCloseTo(192.31, 8);
+	});
+
+	it("children split the booked home value and keep its rate (2A.2)", async () => {
+		// USD 100 booked at ARS 1,480: ARS 148,000.00 over 3 parts is
+		// 49,333.34 + 49,333.33 + 49,333.33 (the first part takes the cent).
+		await service.syncAmortization(
+			parent({
+				amount: 100,
+				amountInUSD: 100,
+				rateType: "blue",
+				homeCurrency: "ARS",
+				homeRate: "1480",
+				homeAmount: "148000.00",
+			}),
+			3,
+		);
+		expect(
+			children().map((c) => [
+				c.rateType,
+				c.homeCurrency,
+				c.homeRate,
+				c.homeAmount,
+			]),
+		).toEqual([
+			["blue", "ARS", "1480", 49333.34],
+			["blue", "ARS", "1480", 49333.33],
+			["blue", "ARS", "1480", 49333.33],
+		]);
+	});
+
+	it("children of a row with no booked home value book none", async () => {
+		await service.syncAmortization(parent({ rateType: "official" }), 2);
+		expect(children().every((c) => c.homeCurrency === undefined)).toBe(true);
+		expect(children().every((c) => c.rateType === "official")).toBe(true);
 	});
 
 	it("splits crypto in satoshis: 0.003 BTC over 3 months is 0.001 each", () => {

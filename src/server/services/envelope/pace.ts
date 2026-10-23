@@ -195,6 +195,12 @@ export function leftToSpend(p: {
 	billNeeds: Iterable<Minor>;
 	month: { from: IsoDate; to: IsoDate };
 	today: IsoDate;
+	/**
+	 * Spending in the Spending group posted by recurring templates (positive).
+	 * The pace line leaves it out of both the pool and the spent side, so a
+	 * subscription on the 1st never reads as spending too fast (D60).
+	 */
+	recurringSpent?: Minor;
 }): LeftToSpend {
 	const envs = p.envelopes;
 	const spendingLeft = roleSum(envs, "SPENDING", (e) => e.left);
@@ -212,6 +218,7 @@ export function leftToSpend(p: {
 		daysLeftIncluding(p.today, p.month.to),
 	);
 	const pool = carry + assigned;
+	const recurring = p.recurringSpent ?? 0;
 	return {
 		left,
 		perDay: perDay(left, daysLeft),
@@ -236,6 +243,11 @@ export function leftToSpend(p: {
 		notPlanned: Math.max(0, p.toAssign),
 		fasterThanPlanned:
 			left > 0 &&
-			spendingFasterThanPlanned({ pool, spent, dayOfMonth, daysInMonth }),
+			spendingFasterThanPlanned({
+				pool: pool - recurring,
+				spent: spent - recurring,
+				dayOfMonth,
+				daysInMonth,
+			}),
 	};
 }

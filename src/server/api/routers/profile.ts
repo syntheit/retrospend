@@ -24,7 +24,8 @@ import {
 	defaultBackgroundSettings,
 	type BackgroundSettings,
 } from "~/lib/background-settings";
-import { sumExpensesForCurrency } from "./shared-currency";
+import { listedEntryWhere } from "~/server/services/spending";
+import { StatsService } from "~/server/services/stats.service";
 
 export type { BackgroundSettings };
 export { defaultBackgroundSettings };
@@ -221,10 +222,7 @@ export const profileRouter = createTRPCRouter({
 				// Check if email is already taken (by another user's primary or pending email)
 				const existingEmail = await db.user.findFirst({
 					where: {
-						OR: [
-							{ email: input.email },
-							{ pendingEmail: input.email },
-						],
+						OR: [{ email: input.email }, { pendingEmail: input.email }],
 						id: { not: session.user.id },
 					},
 				});
@@ -244,9 +242,7 @@ export const profileRouter = createTRPCRouter({
 				const hashedToken = hashToken(token);
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
 				const appUrl =
-					env.PUBLIC_URL ||
-					env.NEXT_PUBLIC_APP_URL ||
-					"http://localhost:1997";
+					env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997";
 
 				const updated = await db.user.update({
 					where: { id: session.user.id },
@@ -281,10 +277,7 @@ export const profileRouter = createTRPCRouter({
 
 				// Send security alert to the OLD address
 				const revertUrl = `${appUrl}/auth/revert-email?token=${token}`;
-				const alertHtml = getEmailChangeAlertTemplate(
-					revertUrl,
-					input.email,
-				);
+				const alertHtml = getEmailChangeAlertTemplate(revertUrl, input.email);
 				sendEmail(
 					session.user.email,
 					"Security Alert: Email Change Requested",
@@ -436,16 +429,12 @@ export const profileRouter = createTRPCRouter({
 			});
 		}
 
-		const totalEntries = await db.expense.count({
-			where: { userId, status: "FINALIZED" },
-		});
-
-		// Amortized purchases count once, through their monthly parts
-		const { total: lifetimeSpend } = await sumExpensesForCurrency(
-			db,
-			{ userId, isAmortizedParent: false },
-			user.homeCurrency,
-		);
+		const [totalEntries, { totalSpent: lifetimeSpend }] = await Promise.all([
+			db.expense.count({
+				where: { ...listedEntryWhere(userId), status: "FINALIZED" },
+			}),
+			new StatsService(db).getLifetimeStats(userId, user.homeCurrency),
+		]);
 
 		return {
 			lifetimeSpend,

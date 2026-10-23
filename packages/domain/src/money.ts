@@ -22,10 +22,11 @@
  *
  * TOTALS RULE (dashboard, budget page, stats, runway): a total shown in some
  * currency (home or budget currency) counts amounts already in that currency
- * as entered, and converts every other amount from its stored amountInUSD at
- * that currency's rate for the period (sumIn). The period's rate is the one
- * for its last day, or today while the period is still running
- * (periodRateDate).
+ * as entered, amounts booked in that currency when they were saved at their
+ * booked value (expense.homeAmount, M2: it never drifts), and converts every
+ * other amount from its stored amountInUSD at that currency's rate for the
+ * period (sumIn). The period's rate is the one for its last day, or today
+ * while the period is still running (periodRateDate).
  */
 import { getDecimalDigits, isCrypto } from "./currency-format";
 
@@ -169,11 +170,17 @@ export interface MoneyItem {
 	amount: number;
 	currency: string;
 	amountInUSD: number;
+	/**
+	 * The home value booked when the entry was saved (expense.homeAmount,
+	 * M2). It never moves with later rates, so it wins in its own currency.
+	 */
+	booked?: { currency: string; amount: number } | null;
 }
 
 /**
  * One item in `currency` under the totals rule: its own amount when it is
- * already in `currency`, else its USD value converted at `rate`.
+ * already in `currency`, its booked value when it was booked in `currency`,
+ * else its USD value converted at `rate`.
  */
 export function amountIn(
 	item: MoneyItem,
@@ -181,6 +188,7 @@ export function amountIn(
 	rate: number | null | undefined,
 ): number {
 	if (item.currency === currency) return item.amount;
+	if (item.booked?.currency === currency) return item.booked.amount;
 	return fromUSD(item.amountInUSD, currency, rate);
 }
 
