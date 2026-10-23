@@ -387,6 +387,23 @@ describe("replaySplits", () => {
 		expect(replaySplits([b, a]).effects).toEqual(replaySplits([a, b]).effects);
 	});
 
+	it("on one day, the split comes before the payment that settles it, whatever their ids", () => {
+		const a = {
+			...front("sam", ars(100), ars(100), "2026-10-05"),
+			id: "z-split",
+		};
+		const b = {
+			...recv("sam", ars(100), ars(100), { date: "2026-10-05" }),
+			id: "a-pay",
+		};
+		const r = replaySplits([b, a]);
+		expect(r.effects.map((e) => [e.eventId, e.term])).toEqual([
+			["z-split", "FRONTED"],
+			["a-pay", "RETURNED"],
+		]);
+		expect(r.balances[0]?.native).toBe(0);
+	});
+
 	it("rejects non-positive or fractional native amounts", () => {
 		expect(() => replaySplits([front("sam", 0, 0)])).toThrow(RangeError);
 		expect(() => replaySplits([front("sam", 1.5, 2)])).toThrow(RangeError);

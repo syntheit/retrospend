@@ -9,6 +9,7 @@ import type {
 	GetMonthOutput,
 	HistoryInput,
 	HistoryOutput,
+	OwedDto,
 	SetupPresetOutput,
 	VerdictDto,
 } from "~/lib/schemas/envelope";
@@ -24,6 +25,7 @@ import {
 	monthViewIn,
 } from "./month-read";
 import type { SetupStyle } from "./presets";
+import { owedIn, saveShareDefaults } from "./splits.service";
 import type { Minor, MonthKey } from "./types";
 
 function read<T>(
@@ -33,14 +35,31 @@ function read<T>(
 	return userTransaction(db, userId, work);
 }
 
-/** Null when the user has no budget yet ("Just track"). */
+/**
+ * Null when the user has no budget yet ("Just track"). Stores the share
+ * categories the smart default picked (D19), so they stay put; the view
+ * already counts them, so storing changes no number.
+ */
 export async function getMonth(
 	userId: string,
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<GetMonthOutput | null> {
-	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
+	const view = await read(userId, async (tx) => {
+		const v = await monthViewIn(tx, userId, now, month);
+		if (v?.loaded.splits.unsaved.length)
+			await saveShareDefaults(tx, v.loaded.splits.unsaved);
+		return v;
+	});
 	return view?.dto ?? null;
+}
+
+/** Money owed, per person and currency, with names; null without a budget. */
+export function getOwed(
+	userId: string,
+	now = new Date(),
+): Promise<OwedDto | null> {
+	return read(userId, (tx) => owedIn(tx, userId, now));
 }
 
 /** The top of Budget and Home's card (`BudgetPlan.verdict(ym)`), null without a budget. */

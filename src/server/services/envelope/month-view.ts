@@ -11,6 +11,7 @@ import type {
 	EnvelopeTargetDto,
 	GetMonthOutput,
 	Money,
+	OwedSummaryDto,
 } from "~/lib/schemas/envelope";
 import { addMonths } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
@@ -82,6 +83,28 @@ export interface MonthViewInput {
 	month: MonthKey;
 	today: IsoDate;
 	missingRates: readonly MissingRate[];
+	/** The Owed line (owed.ts); nothing owed when omitted. */
+	owed?: OwedSummaryDto;
+}
+
+/** Your shares in the month: how many found no category (D19) and what waits for your OK (D20). */
+function sharesOf(p: MonthViewInput, rows: Row[]) {
+	let unresolved = 0;
+	for (const a of p.input.activity)
+		if (
+			a.source === "SHARE" &&
+			a.month === p.month &&
+			!a.categoryId &&
+			!a.envelopeId
+		)
+			unresolved++;
+	return {
+		unresolved,
+		pending: {
+			minor: rows.reduce((t, r) => t + r.m.pending, 0),
+			currency: p.book.currency,
+		},
+	};
 }
 
 /** Net spending per envelope by date, for the bill paid-early rule. */
@@ -374,6 +397,13 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 			groups: groupsDto(rows, p, money),
 			leftToSpend: leftToSpendDto(lts, money),
 			verdict: verdictDto(v, money, incomplete),
+			owed: p.owed ?? {
+				held: money(0),
+				pending: money(0),
+				people: 0,
+				aging: 0,
+			},
+			shares: sharesOf(p, rows),
 			incomplete,
 			missingRates: p.missingRates.map(({ currency, rateType, date }) => ({
 				currency,

@@ -2,7 +2,8 @@
  * Splits replay (02 §3.3, SPEC §5.8, D18, D8, D10, D12, D20): what money is
  * out with other people, and when it leaves or returns to To assign.
  *
- * Per counterparty and native currency, events run in (date, id) order over
+ * Per counterparty and native currency, events run in date order (on one
+ * day, splits before the payments that settle them; then by id) over
  * a state `native` (positive = they owe you, negative = you owe them) and
  * `basis` (book value of the positive part, H minor). Each event may emit an
  * effect on SplitsNet = Fronted - Returned - Forgiven:
@@ -59,13 +60,15 @@ export type ReplayEvent =
 	| (EventBase & {
 			kind: "FORGIVE";
 			status: SettlementStatus;
-			envelopeId: string;
+			/** Null: charged to "Everything else" (the envelope was deleted). */
+			envelopeId: string | null;
 	  });
 
 export type SplitsTerm = "FRONTED" | "RETURNED" | "FORGIVEN";
 
 export interface ReplayEffect {
 	eventId: string;
+	date: IsoDate;
 	month: MonthKey;
 	counterparty: string;
 	currency: string;
@@ -75,7 +78,7 @@ export interface ReplayEffect {
 	/** RETURNED only: cash value minus basis released (D10 note). */
 	fx: Minor;
 	/** FORGIVEN only: the envelope charged in the forgive month. */
-	envelopeId?: string;
+	envelopeId?: string | null;
 }
 
 export interface ReplayBalance {
@@ -85,6 +88,8 @@ export interface ReplayBalance {
 	native: Minor;
 	/** Book value of what they owe you (0 when native <= 0). */
 	basis: Minor;
+	/** Date of the oldest part still owed to you, first in first out (aging, C15). */
+	oldestOpen: IsoDate | null;
 }
 
 export type IgnoredReason =
@@ -103,6 +108,23 @@ export interface ReplayResult {
 interface State {
 	native: Minor;
 	basis: Minor;
+	/** What they owe you, by the date each part started, oldest first. */
+	lots: Array<{ date: IsoDate; native: Minor }>;
+}
+
+function addLot(s: State, date: IsoDate, native: Minor) {
+	s.lots.push({ date, native });
+}
+
+function consumeLots(s: State, native: Minor) {
+	let left = native;
+	while (left > 0 && s.lots.length > 0) {
+		const lot = s.lots[0] as { date: IsoDate; native: Minor };
+		const take = Math.min(left, lot.native);
+		lot.native -= take;
+		left -= take;
+		if (lot.native === 0) s.lots.shift();
+	}
 }
 
 type Emit = (
@@ -127,6 +149,7 @@ function clearReceivable(
 	const released = portion(s.basis, cleared, s.native);
 	s.native -= cleared;
 	s.basis -= released;
+	consumeLots(s, cleared);
 	return { cleared, released };
 }
 
@@ -147,6 +170,7 @@ function applyFront(
 	const value = portion(e.value, rest, e.native);
 	s.native += rest;
 	s.basis += value;
+	addLot(s, e.date, rest);
 	emit("FRONTED", value);
 }
 
@@ -190,7 +214,9 @@ function applyPay(
 	const value = portion(e.cash, excess, e.native);
 	s.native += excess;
 	s.basis += value;
-	emit("FRONTED", value);
+	addLot(s, e.date, excess);
+	// A forgive of your debt that was larger than the debt moves no cash.
+	if (value > 0) emit("FRONTED", value);
 }
 
 function applyForgive(
@@ -206,8 +232,18 @@ function applyForgive(
 	if (e.native > cleared) ignore("FORGIVE_EXCEEDS_BALANCE", e.native - cleared);
 }
 
+/** On one day, splits come before the payments and forgives that settle them. */
+const PHASE: Record<ReplayEvent["kind"], number> = {
+	FRONT: 0,
+	OWE: 0,
+	RECV: 1,
+	PAY: 1,
+	FORGIVE: 1,
+};
+
 function byDateThenId(a: ReplayEvent, b: ReplayEvent): number {
 	if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+	if (PHASE[a.kind] !== PHASE[b.kind]) return PHASE[a.kind] - PHASE[b.kind];
 	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
@@ -242,6 +278,7 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const s = states.get(key) ?? {
 			native: 0,
 			basis: 0,
+			lots: [],
 			counterparty: e.counterparty,
 			currency: e.currency,
 		};
@@ -249,6 +286,7 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const emit: Emit = (term, minor, extra) => {
 			const base = {
 				eventId: e.id,
+				date: e.date,
 				month: e.month,
 				counterparty: e.counterparty,
 			};
@@ -272,6 +310,7 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 			currency: s.currency,
 			native: s.native,
 			basis: s.basis,
+			oldestOpen: s.native > 0 ? (s.lots[0]?.date ?? null) : null,
 		});
 	}
 	return result;

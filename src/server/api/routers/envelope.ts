@@ -18,6 +18,8 @@ import {
 	coverSourcesInputSchema,
 	fillFromTargetsInputSchema,
 	fillFromTargetsOutputSchema,
+	forgiveInputSchema,
+	forgiveResultSchema,
 	getMonthOutputSchema,
 	historyInputSchema,
 	historyOutputSchema,
@@ -25,12 +27,18 @@ import {
 	monthInputSchema,
 	moveInputSchema,
 	movementResultSchema,
+	owedSchema,
 	previewOutputSchema,
+	projectRoutingResultSchema,
+	setProjectRoutingInputSchema,
+	setShareCategoryInputSchema,
 	setupInputSchema,
 	setupPresetInputSchema,
 	setupPresetOutputSchema,
 	setupResultSchema,
+	shareCategoryResultSchema,
 	undoInputSchema,
+	unforgiveInputSchema,
 	verdictSchema,
 } from "~/lib/schemas/envelope";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -51,11 +59,18 @@ import {
 	getHistory,
 	getLeftToSpend,
 	getMonth,
+	getOwed,
 	getSetupPreset,
 	getVerdict,
 } from "~/server/services/envelope/read.service";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
-import { forUser } from "~/server/services/preview";
+import {
+	forgiveMutation,
+	setProjectRoutingMutation,
+	setShareCategoryMutation,
+	unforgiveMutation,
+} from "~/server/services/envelope/splits.mutation";
+import { forUser, type MoneyMutation } from "~/server/services/preview";
 
 const CODES: Record<EnvelopeErrorCode, TRPC_ERROR_CODE_KEY> = {
 	NO_BOOK: "NOT_FOUND",
@@ -88,6 +103,22 @@ const envelopeProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 const movementPreview = previewOutputSchema(movementResultSchema);
 const movementApply = applyOutputSchema(movementResultSchema);
+
+type Ctx = { ctx: { session: { user: { id: string } } } };
+
+/** A money write rolled back (R30): what it would change. */
+const preview =
+	<I, V>(mutation: MoneyMutation<I, V>) =>
+	({ ctx, input }: Ctx & { input: I }) =>
+		forUser(ctx.session.user.id).preview(mutation, input);
+
+/** The same write committed, with its undo token. */
+const apply =
+	<I, V>(mutation: MoneyMutation<I, V>) =>
+	({ ctx, input }: Ctx & { input: I }) =>
+		forUser(ctx.session.user.id).apply(mutation, input);
+
+const unforgiveResult = z.object({ paymentId: z.string() });
 
 export const envelopeRouter = createTRPCRouter({
 	enabled: protectedProcedure
@@ -213,4 +244,42 @@ export const envelopeRouter = createTRPCRouter({
 		.mutation(({ ctx, input }) =>
 			forUser(ctx.session.user.id).apply(undoMovements, input),
 		),
+
+	/** Money owed per person and currency (SPEC §6.9); null without a budget. */
+	owed: envelopeProcedure
+		.output(owedSchema.nullable())
+		.query(({ ctx }) => getOwed(ctx.session.user.id)),
+
+	setShareCategoryPreview: envelopeProcedure
+		.input(setShareCategoryInputSchema)
+		.output(previewOutputSchema(shareCategoryResultSchema))
+		.mutation(preview(setShareCategoryMutation)),
+	setShareCategory: envelopeProcedure
+		.input(setShareCategoryInputSchema)
+		.output(applyOutputSchema(shareCategoryResultSchema))
+		.mutation(apply(setShareCategoryMutation)),
+	setProjectRoutingPreview: envelopeProcedure
+		.input(setProjectRoutingInputSchema)
+		.output(previewOutputSchema(projectRoutingResultSchema))
+		.mutation(preview(setProjectRoutingMutation)),
+	setProjectRouting: envelopeProcedure
+		.input(setProjectRoutingInputSchema)
+		.output(applyOutputSchema(projectRoutingResultSchema))
+		.mutation(apply(setProjectRoutingMutation)),
+	forgivePreview: envelopeProcedure
+		.input(forgiveInputSchema)
+		.output(previewOutputSchema(forgiveResultSchema))
+		.mutation(preview(forgiveMutation)),
+	forgive: envelopeProcedure
+		.input(forgiveInputSchema)
+		.output(applyOutputSchema(forgiveResultSchema))
+		.mutation(apply(forgiveMutation)),
+	unforgivePreview: envelopeProcedure
+		.input(unforgiveInputSchema)
+		.output(previewOutputSchema(unforgiveResult))
+		.mutation(preview(unforgiveMutation)),
+	unforgive: envelopeProcedure
+		.input(unforgiveInputSchema)
+		.output(applyOutputSchema(unforgiveResult))
+		.mutation(apply(unforgiveMutation)),
 });

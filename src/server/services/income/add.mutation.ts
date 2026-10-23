@@ -13,10 +13,12 @@
  *   the same action (plan-seam), so the preview lists every line and the
  *   undo (income.delete) takes the batch back with the row.
  */
+
 import { randomUUID } from "node:crypto";
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
 import { computeAmountInUSD } from "~/lib/money";
+import type { RestChoice } from "~/lib/schemas/envelope";
 import { requireExchangeRate } from "~/server/exchange-rates";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
@@ -74,6 +76,8 @@ export interface AddIncomeInput {
 	} | null;
 	/** Use my plan: assign the booked value by the envelope plan now. */
 	readonly usePlan?: boolean | null;
+	/** Where Use my plan puts the rest; Leave it when omitted. */
+	readonly planRest?: RestChoice | null;
 	/** Set only by the undo of a delete: the rates and units it was booked at. */
 	readonly restore?: IncomeRestore | null;
 	readonly timeZone?: string;
@@ -354,6 +358,7 @@ export async function addIncomeIn(
 				userId,
 				incomeExpenseId: expenseId,
 				amount: kept ? null : bookedMoney,
+				rest: input.planRest ?? undefined,
 			})
 		: PLAN_NOT_REQUESTED;
 	// On the row, so income.delete takes the batch back with it.

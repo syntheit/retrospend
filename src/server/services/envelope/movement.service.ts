@@ -251,6 +251,62 @@ export async function assign(
 	);
 }
 
+export interface PlanItem {
+	id: string;
+	envelopeId: string;
+	month: MonthKey;
+	/** Positive: a plan only adds. */
+	amountMinor: Minor;
+}
+
+/**
+ * One plan as one batch across the current and the next month (Use my plan
+ * with "Next month", D22), so a single undo takes all of it back. Adds only:
+ * nothing is capped.
+ */
+export async function assignPlan(
+	tx: Tx,
+	userId: string,
+	input: { batchId: string; items: readonly PlanItem[] },
+	now: Date,
+): Promise<MovementResult> {
+	const s = await lockedSnapshot(tx, userId, now);
+	const currency = s.loaded.book.currency;
+	const rows: NewMovement[] = input.items.map((i) => ({
+		id: i.id,
+		month: i.month,
+		from: null,
+		to: i.envelopeId,
+		minor: i.amountMinor,
+		kind: "ASSIGN",
+		batchId: input.batchId,
+	}));
+	const again = await replay(
+		tx,
+		userId,
+		now,
+		s,
+		{ batchId: input.batchId },
+		(stored) =>
+			stored.length === rows.length &&
+			stored.every((x) => rows.some((r) => sameRow(x, r, currency))),
+	);
+	if (again) return again;
+	for (const r of rows) {
+		if (r.minor <= 0) throw new EnvelopeError("INVALID", "a plan only adds");
+		checkMonth(r.month, s);
+		checkEnvelope(r.to as string, s);
+	}
+	await insert(tx, s, userId, rows);
+	return result(
+		tx,
+		userId,
+		now,
+		s,
+		rows.map((r) => r.id),
+	);
+}
+
 function moveRow(input: MoveInput, s: Snapshot): NewMovement {
 	if (input.from === input.to)
 		throw new EnvelopeError("INVALID", "pick two different places");

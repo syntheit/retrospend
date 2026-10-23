@@ -1,9 +1,11 @@
 /**
  * getMonth on a 3-year book (SPEC §5.13, build plan 02 §5.3): 36 months,
  * 5,000 expenses (a tenth in USD, valued at the book's blue rate), monthly
- * salary, 15 envelopes assigned every month. P2 has no checkpoints, so this
- * is the full pass. Target p95 under 250 ms on harbor; the measured numbers
- * are printed for the report.
+ * salary, 15 envelopes assigned every month, and splits (P3): 720 shared
+ * expenses (half paid by you for three, half paid by a friend), a payment
+ * each month and a project. No checkpoints yet, so this is the full pass.
+ * Target p95 under 250 ms on harbor; the measured numbers are printed for
+ * the report.
  */
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -151,10 +153,111 @@ async function seedThreeYears() {
 			})),
 		),
 	});
+	await seedSplits(user.id, months, monthDate, cats[0]?.id ?? null);
 	return user.id;
 }
 
-describe("getMonth performance (3 years, 5,000 expenses)", () => {
+const SPLITS_PER_MONTH = 20;
+const share = (participantType: "user" | "shadow", participantId: string) => ({
+	participantType,
+	participantId,
+	shareAmount: new Prisma.Decimal(10_000),
+	verificationStatus: "ACCEPTED" as const,
+});
+
+/** A friend pays you back part of what you fronted, once a month. */
+async function monthlyPayment(
+	from: string,
+	to: string,
+	paidOn: Date,
+): Promise<void> {
+	const paymentId = randomUUID();
+	await adminDb.payment.create({
+		data: {
+			id: paymentId,
+			payerType: "user",
+			payerId: from,
+			payeeType: "user",
+			payeeId: to,
+			amount: new Prisma.Decimal(50_000),
+			currency: "COP",
+			paidOn,
+			recordedByType: "user",
+			recordedById: to,
+			status: "FINALIZED",
+		},
+	});
+	await adminDb.settlement.create({
+		data: {
+			fromParticipantType: "user",
+			fromParticipantId: from,
+			toParticipantType: "user",
+			toParticipantId: to,
+			amount: new Prisma.Decimal(50_000),
+			currency: "COP",
+			status: "FINALIZED",
+			confirmedByPayer: true,
+			confirmedByPayee: true,
+			settledAt: paidOn,
+			paymentGroupId: paymentId,
+		},
+	});
+}
+
+/** Splits over the three years: you paid half of them for three people, a friend paid the rest. */
+async function seedSplits(
+	userId: string,
+	months: number[],
+	monthDate: (m: number, day: number) => Date,
+	categoryId: string | null,
+) {
+	const { user: friend } = await createTestUser();
+	const shadow = await adminDb.shadowProfile.create({
+		data: { createdById: userId, name: "Perf friend" },
+	});
+	const project = await adminDb.project.create({
+		data: {
+			name: "Perf trip",
+			createdById: userId,
+			participants: {
+				create: [
+					{ participantType: "user", participantId: userId, role: "ORGANIZER" },
+					{ participantType: "user", participantId: friend.id },
+				],
+			},
+		},
+	});
+	for (const m of months) {
+		for (let i = 0; i < SPLITS_PER_MONTH; i++) {
+			const payer = i % 2 === 0 ? userId : friend.id;
+			await adminDb.sharedTransaction.create({
+				data: {
+					description: `Split ${m} ${i}`,
+					amount: new Prisma.Decimal(30_000),
+					currency: "COP",
+					exchangeRate: new Prisma.Decimal(1_000),
+					date: monthDate(m, 1 + (i % 27)),
+					categoryId: payer === userId ? categoryId : null,
+					projectId: i % 5 === 0 ? project.id : null,
+					paidByType: "user",
+					paidById: payer,
+					createdByType: "user",
+					createdById: payer,
+					splitParticipants: {
+						create: [
+							share("user", userId),
+							share("user", friend.id),
+							share("shadow", shadow.id),
+						],
+					},
+				},
+			});
+		}
+		await monthlyPayment(friend.id, userId, monthDate(m, 20));
+	}
+}
+
+describe("getMonth performance (3 years, 5,000 expenses, 720 splits)", () => {
 	it("p95 under 250 ms", { timeout: 180_000 }, async () => {
 		const userId = await seedThreeYears();
 		// Production tables carry planner statistics; a fresh test database does not until autovacuum gets to it.
@@ -171,7 +274,7 @@ describe("getMonth performance (3 years, 5,000 expenses)", () => {
 		const p50 = runs[Math.floor(runs.length / 2)] as number;
 		const p95 = runs[Math.ceil(runs.length * 0.95) - 1] as number;
 		console.log(
-			`getMonth 3y/5000: p50 ${p50.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, max ${runs.at(-1)?.toFixed(1)} ms`,
+			`getMonth 3y/5000+720 splits: p50 ${p50.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, max ${runs.at(-1)?.toFixed(1)} ms`,
 		);
 		expect(p95).toBeLessThan(250);
 	});

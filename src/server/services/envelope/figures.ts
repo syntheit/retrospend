@@ -9,6 +9,9 @@
  *   (D-owner-2026-10-22d).
  * - budget.leftThisWeek: Σ Left this week of weekly envelopes (SPEC §6.1).
  * - envelope.left: one envelope's Left, narrowed by `envelopeId`.
+ * - budget.heldForOthers: what the budget holds for money people owe you
+ *   (the splits replay's open basis, SPEC §5.8): it is out of To assign
+ *   until they pay or you forgive.
  *
  * Every one is unavailable (null) without a book or while a rate is
  * missing (R14: "Incomplete", never a guess).
@@ -24,6 +27,8 @@ import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
 } from "./verdict";
+
+export const FIGURE_HELD_FOR_OTHERS = "budget.heldForOthers";
 
 async function current(db: FigureDb, userId: string) {
 	const view = await monthViewIn(db, userId, new Date());
@@ -83,9 +88,19 @@ export const envelopeLeftFigure: FigureDefinition = {
 	},
 };
 
+export const heldForOthersFigure: FigureDefinition = {
+	id: FIGURE_HELD_FOR_OTHERS,
+	scope: [],
+	compute: async (db, scope) => {
+		const v = await current(db, scope.userId);
+		return v ? v.dto.owed.held : null;
+	},
+};
+
 export const budgetFigures = [
 	notPlannedYetFigure,
 	leftToSpendFigure,
 	leftThisWeekFigure,
 	envelopeLeftFigure,
+	heldForOthersFigure,
 ];

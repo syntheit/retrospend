@@ -206,7 +206,7 @@ function forgiveCharges(splits: readonly ReplayEffect[]): ActivityEntry[] {
 		.map((s) => ({
 			id: `forgive:${s.eventId}`,
 			month: s.month,
-			date: "",
+			date: s.date,
 			minor: -s.minor,
 			source: "FORGIVEN" as const,
 			categoryId: null,

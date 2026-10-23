@@ -12,10 +12,6 @@
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { Prisma, RecurringTemplate } from "~prisma";
 import {
-	shareParticipations,
-	shareRateResolver,
-} from "../shared-expense-integration";
-import {
 	budgetMoneyInWhere,
 	budgetRefundWhere,
 	budgetSpendingWhere,
@@ -26,12 +22,12 @@ import {
 	activityEntries,
 	moneyInEntries,
 	movementEntries,
-	type ShareRow,
 	Valuer,
 } from "./entries";
 import type { ViewBook, ViewEnvelope } from "./month-view";
 import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
 import { RateBook } from "./rate-book";
+import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
 import type { IsoDate, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
@@ -64,6 +60,7 @@ export interface LoadedBook {
 	input: EngineInput;
 	today: IsoDate;
 	missingRates: MissingRate[];
+	splits: LoadedSplits;
 }
 
 export interface LoadContext {
@@ -109,24 +106,12 @@ async function loadRows(tx: Tx, row: BookRow, userId: string) {
 		},
 		select,
 	});
-	// Which shares count and at which rate: the spending readers' own rule.
-	// Every share counts until project budget routing lands (M7).
-	const shares = await shareParticipations(tx, userId, { gte: from });
-	const rateFor = await shareRateResolver(
-		tx,
-		shares.map((p) => p.transaction),
-	);
 	const movements = await tx.budgetMovement.groupBy({
 		by: ["month", "fromEnvelopeId", "toEnvelopeId"],
 		where: { bookId: row.id },
 		_sum: { amount: true },
 	});
-	// Decimal(18,6) rates round-trip exactly through a JS number's shortest form.
-	const shareRate = (p: ShareRow) => {
-		const rate = rateFor(p.transaction);
-		return rate === null ? null : String(rate);
-	};
-	return { moneyIn, spending, refunds, shares, shareRate, movements };
+	return { moneyIn, spending, refunds, movements };
 }
 
 function viewEnvelopes(row: BookRow, ctx: TargetContext): ViewEnvelope[] {
@@ -224,6 +209,7 @@ export async function loadBook(
 		usdRate: rates.lookup,
 	};
 	const valuer = new Valuer(valuation, row.timeZone, periods);
+	const splits = await loadSplits(tx, userId, valuer);
 	const input: EngineInput = {
 		startMonth: row.startMonth,
 		currentMonth,
@@ -236,9 +222,13 @@ export async function loadBook(
 			categoryIds: e.categories.map((c) => c.categoryId),
 		})),
 		moneyIn: moneyInEntries(rows.moneyIn, valuer),
-		activity: activityEntries(rows, valuer, userId),
+		activity: activityEntries(
+			{ ...rows, shares: splits.shares, shareRate: splits.shareRate },
+			valuer,
+			splits.routing,
+		),
 		movements: movementEntries(rows.movements, row.currency),
-		splits: [],
+		splits: splits.replay.effects,
 	};
 	const envelopes = viewEnvelopes(row, {
 		valuation,
@@ -255,6 +245,7 @@ export async function loadBook(
 		input,
 		today,
 		missingRates: valuer.missingRates,
+		splits,
 	};
 }
 

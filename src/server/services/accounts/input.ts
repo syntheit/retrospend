@@ -5,6 +5,7 @@
  * their number fields until stream 4 rebuilds them.
  */
 import { z } from "zod";
+import { restChoiceSchema } from "~/lib/schemas/envelope";
 import { AssetType, RecurringFrequency, TransferKind } from "~prisma";
 
 const decimal = z
@@ -128,6 +129,8 @@ export const addIncomeSchema = z.object({
 		.object({ frequency: z.enum(RecurringFrequency), next: isoDay.nullish() })
 		.nullish(),
 	usePlan: z.boolean().optional(),
+	/** Where Use my plan puts the rest; Leave it when omitted. */
+	planRest: restChoiceSchema.optional(),
 });
 
 const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
@@ -170,6 +173,8 @@ export const confirmRecurringIncomeSchema = z.object({
 	into: id.nullish(),
 	keep: z.boolean().nullish(),
 	usePlan: z.boolean().optional(),
+	/** Where Use my plan puts the rest; Leave it when omitted. */
+	planRest: restChoiceSchema.optional(),
 });
 
 export const unconfirmRecurringIncomeSchema = z.object({ expenseId: id });
