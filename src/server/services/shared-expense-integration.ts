@@ -130,7 +130,6 @@ export function shareParticipations(
 			transaction: {
 				select: {
 					id: true,
-					description: true,
 					currency: true,
 					date: true,
 					categoryId: true,

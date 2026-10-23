@@ -40,7 +40,6 @@ export interface TxSpec {
 	/** "user:me", "user:sam", "guest:mateo"... */
 	paidBy: string;
 	projectId?: string | null;
-	title?: string;
 	/** The creator's category. */
 	category?: { id: string; name: string; owner: string } | null;
 }
@@ -49,7 +48,6 @@ function txOf(t: TxSpec) {
 	const payer = party(t.paidBy);
 	return {
 		id: t.id,
-		description: t.title ?? t.id,
 		currency: t.currency,
 		date: at(t.date),
 		categoryId: t.category?.id ?? null,

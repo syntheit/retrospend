@@ -7,8 +7,8 @@
  *   1. NAME_MATCH: you have a category with the creator's category's name.
  *   2. PROJECT: the category you last picked for a share in the same project.
  *   3. PERSON: the category you last picked for a share someone paid.
- *   4. TITLE: the title suggests a category (the Add sheet's matcher) and
- *      you have one with that name.
+ *   The server never reads the split's title to guess (E2EE rule 2): a
+ *   suggestion from the title is the client's, from its own data.
  * - With none, the share is unresolved: it lands in "Everything else" and
  *   raises one Needs you item (UNCATEGORIZED_SHARES).
  *
@@ -16,7 +16,6 @@
  * another. Pure: the loader passes the rows; share-category.service.ts
  * stores what this decides so the choice stays put.
  */
-import { predictCategory } from "~/lib/category-matcher";
 import type { IsoDate } from "./types";
 
 export type ShareCategorySource =
@@ -35,7 +34,6 @@ export interface ShareForCategory {
 	projectId: string | null;
 	/** Canonical key of who paid. */
 	payer: string;
-	title: string;
 	/** The creator's category name when you may read it, and whose it is. */
 	creatorCategory: { id: string; name: string; isMine: boolean } | null;
 }
@@ -119,8 +117,5 @@ function choose(
 	if (project) return { categoryId: project, source: "PROJECT" };
 	const person = ctx.byPayer.get(s.payer);
 	if (person) return { categoryId: person, source: "PERSON" };
-	const predicted = predictCategory(s.title);
-	const titled = predicted ? ctx.byName.get(norm(predicted)) : undefined;
-	if (titled) return { categoryId: titled, source: "TITLE" };
 	return { categoryId: null, source: null };
 }

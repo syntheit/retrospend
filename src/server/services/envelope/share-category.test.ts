@@ -22,7 +22,6 @@ const share = (
 	date: "2026-10-10",
 	projectId: null,
 	payer: "user:sam",
-	title: "Things",
 	creatorCategory: null,
 	...extra,
 });
@@ -89,11 +88,10 @@ describe("share categories (D19)", () => {
 		});
 	});
 
-	it("TITLE: the Add sheet's matcher, when you have a category of that name", () => {
-		expect(pick([share("a", { title: "Whole Foods run" })], "a")).toEqual({
-			categoryId: "c-groc",
-			source: "TITLE",
-		});
+	it("never guesses from the split's title on the server (E2EE rule 2)", () => {
+		expect(
+			pick([share("a", { title: "Whole Foods run" } as never)], "a"),
+		).toEqual({ categoryId: null, source: null });
 	});
 
 	it("a guess never seeds another guess: only your own picks feed PROJECT and PERSON", () => {
@@ -115,8 +113,11 @@ describe("share categories (D19)", () => {
 		const s = share("a", {
 			categoryId: "deleted",
 			categorySource: "USER",
-			title: "Whole Foods run",
+			creatorCategory: { id: "x", name: "Groceries", isMine: false },
 		});
-		expect(pick([s], "a")).toEqual({ categoryId: "c-groc", source: "TITLE" });
+		expect(pick([s], "a")).toEqual({
+			categoryId: "c-groc",
+			source: "NAME_MATCH",
+		});
 	});
 });

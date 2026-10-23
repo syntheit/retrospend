@@ -177,7 +177,6 @@ function forCategory(
 		date: date(t.date),
 		projectId: t.projectId,
 		payer: key({ participantType: t.paidByType, participantId: t.paidById }),
-		title: t.description,
 		creatorCategory:
 			t.category && t.categoryId
 				? {
