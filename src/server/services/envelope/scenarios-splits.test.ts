@@ -587,3 +587,124 @@ describe("C8 for someone else: a work flight the employer repays", () => {
 		expectInvariant(r);
 	});
 });
+
+// ── Open balances when the budget starts (owner decision 2026-10-23) ───────
+
+describe("balances from before the budget started are part of the starting position", () => {
+	const usdBook = {
+		currency: "USD",
+		start: 202610,
+		current: 202610,
+		today: "2026-10-20",
+		envelopes: [{ id: "groceries", cats: ["c-groc"] }, { id: "everything" }],
+		defaultEnvelope: "everything",
+		moneyIn: [income(202610, 100_000)],
+		categories: [{ id: "c-groc", name: "Groceries" }],
+	};
+	const septGroceries: TxSpec = {
+		id: "t-sept",
+		currency: "USD",
+		date: "2026-09-20",
+		paidBy: "user:sam",
+	};
+
+	it("a debt from before the start, paid after it: To assign drops by the 70 paid (1,000 to 930)", () => {
+		const r = runSplits({
+			...usdBook,
+			mine: [mine("s-sept", septGroceries, "70", { categoryId: "c-groc" })],
+			settlements: [
+				settlement("p-sam", "user:me", "user:sam", "70", "USD", "2026-10-05"),
+			],
+		});
+		expect(r.view.toAssign.terms.splitsNet.minor).toBe(7_000);
+		expect(r.view.toAssign.amount.minor).toBe(93_000);
+		// September's share is in the starting position, not in October's envelopes.
+		expect(r.left("groceries")).toBe(0);
+		expect(r.balance("user:sam", "USD")).toBe(0);
+		expectInvariant(r);
+	});
+
+	it("paying old and new debts together: the old part leaves To assign, the new part was already in the envelope", () => {
+		const oct: TxSpec = { ...septGroceries, id: "t-oct", date: "2026-10-03" };
+		const r = runSplits({
+			...usdBook,
+			mine: [
+				mine("s-sept", septGroceries, "70", { categoryId: "c-groc" }),
+				mine("s-oct", oct, "20", { categoryId: "c-groc" }),
+			],
+			settlements: [
+				settlement("p-sam", "user:me", "user:sam", "90", "USD", "2026-10-10"),
+			],
+		});
+		expect(r.view.toAssign.amount.minor).toBe(93_000);
+		expect(r.left("groceries")).toBe(-2_000);
+		expectInvariant(r);
+	});
+
+	it("money owed to you from before the start counts when it arrives: To assign rises by the 30 (1,000 to 1,030)", () => {
+		const septDinner: TxSpec = {
+			id: "t-dinner",
+			currency: "USD",
+			date: "2026-09-10",
+			paidBy: "user:me",
+		};
+		const r = runSplits({
+			...usdBook,
+			fronts: [front("f-juan", "user:juan", septDinner, "30")],
+			settlements: [
+				settlement("p-juan", "user:juan", "user:me", "30", "USD", "2026-10-08"),
+			],
+		});
+		expect(r.view.toAssign.amount.minor).toBe(103_000);
+		expectInvariant(r);
+	});
+
+	it("not yet received, it is held by no one: To assign stays 1,000", () => {
+		const septDinner: TxSpec = {
+			id: "t-dinner",
+			currency: "USD",
+			date: "2026-09-10",
+			paidBy: "user:me",
+		};
+		const r = runSplits({
+			...usdBook,
+			fronts: [front("f-juan", "user:juan", septDinner, "30")],
+		});
+		expect(r.view.toAssign.amount.minor).toBe(100_000);
+		expect(r.balance("user:juan", "USD")).toBe(3_000);
+		expectInvariant(r);
+	});
+
+	it("cross-currency: a BRL 400 debt from September paid in October with ARS 108,000 takes the 108,000 paid", () => {
+		const r = runSplits({
+			...NICO,
+			start: 202610,
+			current: 202610,
+			today: "2026-10-20",
+			envelopes: [{ id: "lodging", cats: ["c-lodging"] }, { id: "everything" }],
+			moneyIn: [income(202610, 50_000_000)],
+			mine: [
+				mine("s-hostel", { ...hostel, date: "2026-09-08" }, "400", {
+					categoryId: "c-lodging",
+				}),
+			],
+			settlements: [
+				settlement(
+					"p-mateo",
+					"user:me",
+					"guest:mateo",
+					"400",
+					"BRL",
+					"2026-10-12",
+					{
+						converted: ["108000", "ARS"],
+					},
+				),
+			],
+		});
+		expect(r.view.toAssign.amount.minor).toBe(50_000_000 - 10_800_000);
+		expect(r.left("lodging")).toBe(0);
+		expect(r.balance("guest:mateo", "BRL")).toBe(0);
+		expectInvariant(r);
+	});
+});

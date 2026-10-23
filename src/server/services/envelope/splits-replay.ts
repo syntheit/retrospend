@@ -69,7 +69,13 @@ export type ReplayEvent =
 			envelopeId: string | null;
 	  });
 
-export type SplitsTerm = "FRONTED" | "RETURNED" | "FORGIVEN";
+/**
+ * OLD_DEBT_PAID: cash you paid, after the budget started, toward a debt you
+ * owed from before it (owner decision 2026-10-23): it leaves To assign like
+ * any payment. A pre-start receivable needs no term: what you receive for it
+ * counts when it arrives (RETURNED), since its fronting was never counted.
+ */
+export type SplitsTerm = "FRONTED" | "RETURNED" | "FORGIVEN" | "OLD_DEBT_PAID";
 
 export interface ReplayEffect {
 	eventId: string;
@@ -113,6 +119,8 @@ export interface ReplayResult {
 interface State {
 	native: Minor;
 	basis: Minor;
+	/** The part of what you owe that started before the budget did. */
+	oldPayable: Minor;
 	/** What they owe you, by the date each part started, oldest first. */
 	lots: Array<{ date: IsoDate; native: Minor }>;
 }
@@ -247,6 +255,22 @@ const PHASE: Record<ReplayEvent["kind"], number> = {
 	FORGIVE: 1,
 };
 
+/**
+ * After a FRONT or PAY in the budget: the part that paid down a debt from
+ * before the start left your cash, so it leaves To assign (OLD_DEBT_PAID) at
+ * the event's value. A forgive or an offset moves no cash: nothing leaves.
+ */
+function paidOldDebt(s: State, e: ReplayEvent, owedBefore: Minor, emit: Emit) {
+	if (s.oldPayable === 0 || (e.kind !== "FRONT" && e.kind !== "PAY")) return;
+	const down = Math.min(e.native, owedBefore);
+	const old = Math.min(down, s.oldPayable);
+	if (old <= 0) return;
+	s.oldPayable -= old;
+	const total = e.kind === "FRONT" ? e.value : e.isOffset ? 0 : e.cash;
+	const value = portion(total, old, e.native);
+	if (value > 0) emit("OLD_DEBT_PAID", value);
+}
+
 function byDateThenId(a: ReplayEvent, b: ReplayEvent): number {
 	if (a.date !== b.date) return a.date < b.date ? -1 : 1;
 	if (PHASE[a.kind] !== PHASE[b.kind]) return PHASE[a.kind] - PHASE[b.kind];
@@ -265,7 +289,10 @@ function applyEvent(s: State, e: ReplayEvent, emit: Emit, ignore: Ignore) {
 }
 
 /** Replays every split and settlement event into SplitsNet effects (02 §3.3). */
-export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
+export function replaySplits(
+	events: readonly ReplayEvent[],
+	opts: { startMonth?: MonthKey } = {},
+): ReplayResult {
 	const states = new Map<
 		string,
 		State & { counterparty: string; currency: string }
@@ -284,6 +311,7 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const s = states.get(key) ?? {
 			native: 0,
 			basis: 0,
+			oldPayable: 0,
 			lots: [],
 			counterparty: e.counterparty,
 			currency: e.currency,
@@ -308,7 +336,14 @@ export function replaySplits(events: readonly ReplayEvent[]): ReplayResult {
 		const ignore: Ignore = (reason, native) => {
 			result.ignored.push({ eventId: e.id, reason, native });
 		};
+		const owedBefore = Math.max(0, -s.native);
 		applyEvent(s, e, emit, ignore);
+		if (opts.startMonth !== undefined && e.month < opts.startMonth) {
+			// Everything owed at the start is the starting position's.
+			s.oldPayable = Math.max(0, -s.native);
+		} else {
+			paidOldDebt(s, e, owedBefore, emit);
+		}
 	}
 	for (const s of states.values()) {
 		result.balances.push({
@@ -326,7 +361,9 @@ export interface SplitsTotals {
 	fronted: Minor;
 	returned: Minor;
 	forgiven: Minor;
-	/** SplitsNet = fronted - returned - forgiven; it lowers To assign. */
+	/** Paid toward debts from before the budget started. */
+	oldDebtsPaid: Minor;
+	/** SplitsNet = fronted - returned - forgiven + oldDebtsPaid; it lowers To assign. */
 	net: Minor;
 	/** Σ FX notes on returned cash (informational). */
 	fx: Minor;
@@ -337,14 +374,22 @@ export function splitsTotals(
 	effects: readonly ReplayEffect[],
 	through?: MonthKey,
 ): SplitsTotals {
-	const t = { fronted: 0, returned: 0, forgiven: 0, net: 0, fx: 0 };
+	const t = {
+		fronted: 0,
+		returned: 0,
+		forgiven: 0,
+		oldDebtsPaid: 0,
+		net: 0,
+		fx: 0,
+	};
 	for (const e of effects) {
 		if (through !== undefined && e.month > through) continue;
 		if (e.term === "FRONTED") t.fronted += e.minor;
 		else if (e.term === "RETURNED") t.returned += e.minor;
+		else if (e.term === "OLD_DEBT_PAID") t.oldDebtsPaid += e.minor;
 		else t.forgiven += e.minor;
 		t.fx += e.fx;
 	}
-	t.net = t.fronted - t.returned - t.forgiven;
+	t.net = t.fronted - t.returned - t.forgiven + t.oldDebtsPaid;
 	return t;
 }

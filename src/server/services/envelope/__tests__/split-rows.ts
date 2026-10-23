@@ -173,6 +173,7 @@ export function runSplits(s: SplitScenario) {
 		{
 			userId: "me",
 			valuer,
+			startMonth: s.start,
 			key: (r) => `${r.participantType}:${r.participantId}`,
 			// The share's own rate, else the official table rate on its date.
 			rate: (row) =>

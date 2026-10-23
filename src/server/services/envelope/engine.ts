@@ -137,6 +137,8 @@ export interface MonthTotals {
 	fronted: Minor;
 	returnedByPeople: Minor;
 	forgiven: Minor;
+	/** Paid after the start toward debts from before it (owner 2026-10-23). */
+	oldDebtsPaid: Minor;
 }
 
 export interface MonthState {
@@ -156,6 +158,8 @@ export interface ToAssignTerms {
 	fronted: Minor;
 	returnedByPeople: Minor;
 	forgiven: Minor;
+	/** Paid after the start toward debts from before it (owner 2026-10-23). */
+	oldDebtsPaid: Minor;
 	splitsNet: Minor;
 	total: Minor;
 }
@@ -188,6 +192,7 @@ function emptyTotals(): MonthTotals {
 		fronted: 0,
 		returnedByPeople: 0,
 		forgiven: 0,
+		oldDebtsPaid: 0,
 	};
 }
 
@@ -291,6 +296,7 @@ function monthState(
 	for (const s of b.splits.get(month) ?? []) {
 		if (s.term === "FRONTED") totals.fronted += s.minor;
 		else if (s.term === "RETURNED") totals.returnedByPeople += s.minor;
+		else if (s.term === "OLD_DEBT_PAID") totals.oldDebtsPaid += s.minor;
 		else totals.forgiven += s.minor;
 	}
 	for (const r of rows.values()) {
@@ -389,6 +395,7 @@ function toAssignAt(
 		fronted: 0,
 		returnedByPeople: 0,
 		forgiven: 0,
+		oldDebtsPaid: 0,
 		splitsNet: 0,
 		total: 0,
 	};
@@ -402,12 +409,13 @@ function toAssignAt(
 		t.fronted += s.totals.fronted;
 		t.returnedByPeople += s.totals.returnedByPeople;
 		t.forgiven += s.totals.forgiven;
+		t.oldDebtsPaid += s.totals.oldDebtsPaid;
 		if (s.month < m) {
 			t.overspendTaken += s.totals.overspent;
 			t.returned += s.totals.returned;
 		}
 	}
-	t.splitsNet = t.fronted - t.returnedByPeople - t.forgiven;
+	t.splitsNet = t.fronted - t.returnedByPeople - t.forgiven + t.oldDebtsPaid;
 	t.total =
 		t.moneyIn - t.assigned - t.overspendTaken + t.returned - t.splitsNet;
 	return t;
@@ -444,9 +452,9 @@ export function invariantSides(
 		input.activity.filter((r) => inBook(r.month)).map((r) => r.minor),
 	);
 	const splits = input.splits.filter((s) => inBook(s.month));
-	const splitsNet =
-		sum(splits.filter((s) => s.term === "FRONTED").map((s) => s.minor)) -
-		sum(splits.filter((s) => s.term === "RETURNED").map((s) => s.minor));
+	const term = (t: string) =>
+		sum(splits.filter((s) => s.term === t).map((s) => s.minor));
+	const splitsNet = term("FRONTED") - term("RETURNED") + term("OLD_DEBT_PAID");
 	// Forgiven leaves SplitsNet and lands in Activity: both cancel in the ledger.
 	const nextAssigned = sum(
 		input.movements

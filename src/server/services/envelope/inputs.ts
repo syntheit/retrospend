@@ -225,7 +225,7 @@ export async function loadBook(
 		usdRate: rates.lookup,
 	};
 	const valuer = new Valuer(valuation, row.timeZone, periods);
-	const splits = await loadSplits(tx, userId, valuer);
+	const splits = await loadSplits(tx, userId, valuer, row.startMonth);
 	const wealth = wealthEntries(rows.wealth, valuer, row.currency);
 	const input: EngineInput = {
 		startMonth: row.startMonth,

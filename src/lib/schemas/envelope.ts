@@ -664,7 +664,18 @@ export function applyOutputSchema<T extends z.ZodType>(value: T) {
 	return previewOutputSchema(value).extend({ undo: undoTokenSchema });
 }
 
-export const setupResultSchema = z.object({ bookId: idSchema });
+export const setupResultSchema = z.object({
+	bookId: idSchema,
+	/**
+	 * What you and each person owe each other as the budget starts, per
+	 * person and currency, never netted (owner 2026-10-23): part of the
+	 * starting position. Positive: they owe you (counts when it arrives);
+	 * negative: you owe them (leaves To assign when you pay).
+	 */
+	openBalances: z.array(
+		z.object({ participant: participantRefSchema, amount: moneySchema }),
+	),
+});
 
 export const setShareCategoryInputSchema = z.object({
 	transactionId: idSchema,
@@ -791,3 +802,4 @@ export type UnforgiveInput = z.infer<typeof unforgiveInputSchema>;
 export type MonthCloseSummary = z.infer<typeof monthCloseSummarySchema>;
 export type CarryOverspendInput = z.infer<typeof carryOverspendInputSchema>;
 export type BatchInput = z.infer<typeof batchInputSchema>;
+export type SetupResult = z.infer<typeof setupResultSchema>;

@@ -261,6 +261,40 @@ describe("payment.confirm previews its budget change (R30)", () => {
 	});
 });
 
+describe("open balances at the start (owner 2026-10-23)", () => {
+	it("the setup preview lists what each person and you owe each other, per currency, never netted", async () => {
+		const s = await seedUser();
+		const meP: Party = { type: "user", id: s.user.id };
+		const paz: Party = {
+			type: "shadow",
+			id: (
+				await adminDb.shadowProfile.create({
+					data: { createdById: s.user.id, name: "Paz" },
+				})
+			).id,
+		};
+		// A dinner I paid 40 days ago (before this month, so before the budget starts).
+		const t = await split(meP, [
+			[meP, 10],
+			[paz, 10],
+		]);
+		await adminDb.sharedTransaction.update({
+			where: { id: t.id },
+			data: { date: new Date(Date.now() - 40 * 86_400_000) },
+		});
+		const preview = await forUser(s.user.id).preview(setupEnvelopeBook, {
+			...setupInput(s),
+			timeZone: "UTC",
+		});
+		expect(preview.value.openBalances).toEqual([
+			{ participant: { type: "shadow", id: paz.id }, amount: usd(1_000) },
+		]);
+		await expect(
+			adminDb.budgetBook.count({ where: { createdById: s.user.id } }),
+		).resolves.toBe(0);
+	});
+});
+
 describe("forgive and routing details", () => {
 	it("a forgive with no envelope (and no budget) is dated in the user's zone", async () => {
 		const s = await seedUser();

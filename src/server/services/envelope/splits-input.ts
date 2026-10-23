@@ -38,6 +38,7 @@ import {
 	type ReplayResult,
 	replaySplits,
 } from "./splits-replay";
+import type { MonthKey } from "./types";
 
 type Tx = Prisma.TransactionClient;
 
@@ -210,6 +211,8 @@ export interface SplitInputContext {
 	key: (ref: PartyRef) => string;
 	/** A stored rate (units per USD; crypto USD per coin) for a currency on a date, or null. */
 	rate: SplitContext["rate"];
+	/** The book's first month: debts owed before it are the starting position's. */
+	startMonth?: MonthKey;
 }
 
 function shareChoices(rows: SplitInputRows, ctx: SplitInputContext) {
@@ -274,7 +277,7 @@ export function buildSplits(
 		shares: mine,
 		shareRate: (share) => ctx.rate(share.transaction),
 		routing,
-		replay: replaySplits(events),
+		replay: replaySplits(events, { startMonth: ctx.startMonth }),
 		events,
 		pending,
 		unresolved,
@@ -304,6 +307,7 @@ export async function loadSplits(
 	tx: Tx,
 	userId: string,
 	valuer: Valuer,
+	startMonth?: MonthKey,
 ): Promise<LoadedSplits> {
 	const routes = await tx.projectParticipant.findMany({
 		where: { participantType: "user", participantId: userId },
@@ -329,6 +333,7 @@ export async function loadSplits(
 		{
 			userId,
 			valuer,
+			startMonth,
 			key: (ref) => canonicalKey(ref),
 			rate: (row) => {
 				const r = rateFor(row);
