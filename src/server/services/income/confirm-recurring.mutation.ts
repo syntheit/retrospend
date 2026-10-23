@@ -32,7 +32,7 @@ import {
 } from "../accounts/ledger";
 import { countedOnArrival, inBudget } from "../accounts/places";
 import { dayOf, endOfDay } from "../accounts/series";
-import { homePerUnit, homeValue } from "../accounts/valuation";
+import { homePerUnit } from "../accounts/valuation";
 import { INCOME_FIGURES } from "./add.mutation";
 import { incomeRow } from "./delete.mutation";
 import { nextDueDay } from "./due-day";
@@ -51,6 +51,10 @@ export interface ConfirmRecurringIncomeInput {
 	readonly dueDate?: Date | null;
 	/** The real amount as typed (a decimal string), required when the template's amount varies. */
 	readonly amount?: string | null;
+	/** Rate type for a foreign amount; null = the default (as income.add). */
+	readonly rateType?: string | null;
+	/** A typed rate: 1 unit of the template's currency = this much home. */
+	readonly customRate?: string | null;
 	readonly into?: string | null;
 	readonly keep?: boolean | null;
 	/** Use my plan (N72): assign the money by the plan in the same action. */
@@ -107,6 +111,13 @@ export async function confirmRecurringIncomeIn(
 		tx,
 		template,
 		input.amount ?? undefined,
+		input.customRate
+			? {
+					kind: "custom",
+					base: template.currency,
+					value: Number(input.customRate),
+				}
+			: { kind: "table", rateType: input.rateType ?? null },
 	);
 	const home = await homeCurrencyOf(tx, userId);
 	const account = input.into
@@ -149,14 +160,11 @@ export async function confirmRecurringIncomeIn(
 		row.currency,
 		...(account ? [account.currency] : []),
 	]);
-	const valued = {
-		currency: row.currency,
-		rateType: null,
-		storedRate: row.exchangeRate,
-	};
+	// The home leg the row booked (bookRate, as income.add): the plan and the leg use it.
 	const booked =
-		homeValue(pick, valued, amount, home, endOfDay(day))?.toDecimalPlaces(8) ??
-		null;
+		row.homeAmount && row.homeCurrency === home
+			? dec(row.homeAmount.toString())
+			: null;
 	let into: AccountChange | null = null;
 	if (account) {
 		const perUnit =

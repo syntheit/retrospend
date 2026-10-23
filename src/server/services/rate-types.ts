@@ -400,6 +400,8 @@ export interface RateOptions {
 	options: RateOption[];
 	/** Set when the pair has no rate at all: the sheet shows "No rate yet" and blocks saving. */
 	missing: { currency: string } | null;
+	/** A typed rate (1 entry unit = `customRate` home), booked as Save books it; null when none was typed. */
+	custom: RateOption | null;
 }
 
 /**
@@ -410,20 +412,42 @@ export interface RateOptions {
 export async function rateOptions(
 	db: RateDb,
 	userId: string,
-	input: { currency: string; date: Date; amount?: number },
+	input: { currency: string; date: Date; amount?: number; customRate?: number },
 ): Promise<RateOptions> {
 	const ctx = await loadRateContext(db, userId);
-	const none: RateOptions = {
+	const empty: RateOptions = {
 		homeCurrency: ctx.homeCurrency,
 		defaultType: null,
 		options: [],
 		missing: null,
+		custom: null,
 	};
-	if (input.currency === ctx.homeCurrency) return none;
+	if (input.currency === ctx.homeCurrency) return empty;
 	const entry = {
 		amount: input.amount ?? 0,
 		currency: input.currency,
 		date: input.date,
+	};
+	// A typed rate needs no table rate: it is offered even when the pair has none.
+	const custom =
+		input.customRate === undefined
+			? null
+			: await bookRate(db, ctx, entry, {
+					kind: "custom",
+					base: input.currency,
+					value: input.customRate,
+				}).catch((error) => {
+					// No home leg either: Save will say so; the strip shows no figure.
+					if (error instanceof MissingRateError) return null;
+					throw error;
+				});
+	const none: RateOptions = {
+		...empty,
+		custom: custom && {
+			rateType: CUSTOM_RATE_TYPE,
+			homeRate: custom.homeRate,
+			homeAmount: input.amount === undefined ? null : custom.homeAmount,
+		},
 	};
 	const offered = pairRateTypes(
 		await typesOf(db, input.currency),

@@ -14,6 +14,7 @@ import {
 	listCurrencies,
 	listLatestRates,
 	listRateHistory,
+	RateSyncUnavailable,
 	requestRateSync,
 } from "~/server/services/exchange-rate.service";
 import { Prisma } from "~prisma";
@@ -146,6 +147,13 @@ export async function readSyncStatus(db: AppDb) {
 }
 
 export async function startRateSync() {
-	await requestRateSync();
+	try {
+		await requestRateSync();
+	} catch (error) {
+		// No sidecar here: a stable problem code, not a bare 500.
+		if (error instanceof RateSyncUnavailable)
+			throw new TRPCError({ code: "NOT_IMPLEMENTED", message: error.message });
+		throw error;
+	}
 	return { ok: true as const };
 }

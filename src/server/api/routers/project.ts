@@ -52,10 +52,12 @@ import { rebalanceExpenses } from "~/server/services/project/rebalance.mutation"
 import { rebalanceableExpenses } from "~/server/services/project/rebalance.service";
 import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import { requestTimeZone } from "~/server/time-zone";
 import { projectPageProcedures } from "./project-pages";
 
 type Db = Parameters<typeof requireProjectRole>[0];
-type SignedIn = { db: Db; session: { user: { id: string } } };
+type Zoned = { timeZone?: string };
+type SignedIn = { db: Db; session: { user: { id: string } } } & Zoned;
 type Reader = {
 	db: Db;
 	participant: Parameters<typeof assertGuestProjectScope>[0];
@@ -73,7 +75,10 @@ function assertReader(ctx: Reader, projectId: string) {
 	return requireProjectRole(ctx.db, projectId, type, participantId, "VIEWER");
 }
 
-const actor = (ctx: SignedIn) => ({ userId: ctx.session.user.id });
+const actor = (ctx: SignedIn) => ({
+	userId: ctx.session.user.id,
+	timeZone: ctx.timeZone,
+});
 
 // ── router ────────────────────────────────────────────────────────────────────
 
@@ -165,11 +170,10 @@ export const projectRouter = createTRPCRouter({
 		.input(projectInput.membersOn)
 		.query(async ({ ctx, input }) => {
 			await assertReader(ctx, input.projectId);
-			const reader =
-				ctx.participant.participantType === "user"
-					? ctx.participant.participantId
-					: null;
-			return membersOn(ctx.db, input.projectId, input.date, reader);
+			const zone = requestTimeZone(ctx.headers);
+			const user = ctx.participant.participantType === "user";
+			const reader = user ? ctx.participant.participantId : null;
+			return membersOn(ctx.db, input.projectId, input.date, reader, zone);
 		}),
 
 	/** Join and leave dates. Leaving keeps the person and their past expenses. */

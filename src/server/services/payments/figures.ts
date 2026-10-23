@@ -12,9 +12,11 @@
 import type {
 	FigureDb,
 	FigureDefinition,
+	FigurePass,
 	FigureScope,
 	Money,
 } from "~/server/figures/registry";
+import { FigureUnavailable } from "~/server/figures/unavailable";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
@@ -105,11 +107,16 @@ async function counterparts(
 	});
 }
 
-/** Owed to you and You owe in the home currency, or null when a rate is missing. */
-export async function owedFor(
+export type OwedRead = OwedTotals & { readonly currency: string };
+
+/**
+ * Owed to you and You owe in the home currency, or the currencies someone
+ * owes in that have no reference rate (named, R14).
+ */
+export async function owedRead(
 	db: FigureDb,
 	userId: string,
-): Promise<(OwedTotals & { currency: string }) | null> {
+): Promise<OwedRead | FigureUnavailable> {
 	const me: ParticipantRef = { participantType: "user", participantId: userId };
 	const user = await db.user.findUnique({
 		where: { id: userId },
@@ -127,12 +134,35 @@ export async function owedFor(
 		date: new Date(),
 	});
 	const nets: number[] = [];
+	const missing = new Set<string>();
 	for (const byCurrency of overall) {
 		const net = netInHome(byCurrency, home, quotes);
-		if (net === null) return null;
-		nets.push(net);
+		if (net !== null) nets.push(net);
+		else
+			for (const currency of byCurrency.keys())
+				if (currency !== home && !quotes.has(currency)) missing.add(currency);
 	}
+	if (missing.size) return new FigureUnavailable([...missing]);
 	return { ...owedTotals(nets), currency: home };
+}
+
+/** owedRead, or null when a rate is missing (People's overview names them itself). */
+export async function owedFor(
+	db: FigureDb,
+	userId: string,
+): Promise<OwedRead | null> {
+	const owed = await owedRead(db, userId);
+	return owed instanceof FigureUnavailable ? null : owed;
+}
+
+/** One owed load per read pass: Owed to you, You owe and net worth share it. */
+export function owedOnce(
+	db: FigureDb,
+	userId: string,
+	pass?: FigurePass,
+): Promise<OwedRead | FigureUnavailable> {
+	const load = () => owedRead(db, userId);
+	return pass ? pass.once(`owed:${userId}`, load) : load();
 }
 
 export const balancePersonFigure: FigureDefinition = {
@@ -144,17 +174,19 @@ export const balancePersonFigure: FigureDefinition = {
 export const owedToYouFigure: FigureDefinition = {
 	id: "owed.owedToYou",
 	scope: [],
-	compute: async (db, scope) => {
-		const owed = await owedFor(db, scope.userId);
-		return owed && { minor: owed.owedToYou, currency: owed.currency };
+	compute: async (db, scope, pass) => {
+		const owed = await owedOnce(db, scope.userId, pass);
+		if (owed instanceof FigureUnavailable) return owed;
+		return { minor: owed.owedToYou, currency: owed.currency };
 	},
 };
 
 export const youOweFigure: FigureDefinition = {
 	id: "owed.youOwe",
 	scope: [],
-	compute: async (db, scope) => {
-		const owed = await owedFor(db, scope.userId);
-		return owed && { minor: owed.youOwe, currency: owed.currency };
+	compute: async (db, scope, pass) => {
+		const owed = await owedOnce(db, scope.userId, pass);
+		if (owed instanceof FigureUnavailable) return owed;
+		return { minor: owed.youOwe, currency: owed.currency };
 	},
 };

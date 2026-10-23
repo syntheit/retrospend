@@ -130,6 +130,8 @@
 		"themeDark": "Escuro",
 		"themeSystem": "Sistema",
 		"language": "Idioma",
+		"timeZone": "Fuso horário",
+		"timeZoneMeta": "Usado quando seu dispositivo não informa o dele",
 		"hideBalances": "Ocultar saldos em Patrimônio",
 		"hideBalancesMeta": "Até você tocar no olho",
 		"chartTap": "Ao tocar em uma categoria em um gráfico",

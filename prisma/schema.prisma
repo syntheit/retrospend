@@ -35,6 +35,8 @@ model User {
   // Default rate type per home currency, {"ARS": "blue"} (M2, N73).
   // Empty uses the built-in default (~/lib/rate-selection).
   defaultRateTypes            Json                          @default("{}")
+  /// IANA zone for the user's calendar days; null falls back to DEFAULT_TIME_ZONE.
+  timeZone                    String?                       @db.VarChar(64)
   accounts                Account[]
   assetAccounts           AssetAccount[]
   assetSnapshots          AssetSnapshot[]
@@ -228,6 +230,10 @@ model Expense {
   homeRate     Decimal? @db.Decimal(28, 12)
   homeAmount   Decimal? @db.Decimal(19, 8)
 
+  /// The Import page: a hash of the file row this came from (import/match.ts),
+  /// so a re-import finds it after edits. Null for rows not imported there.
+  importFingerprint String? @db.VarChar(64)
+
   category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountLegs AccountLeg[]
@@ -245,6 +251,7 @@ model Expense {
   @@index([userId, excludeFromAnalytics, date])
   @@index([userId, isAmortizedParent, date])
   @@index([userId, direction, date])
+  @@index([userId, importFingerprint])
   @@map("expense")
 }
 

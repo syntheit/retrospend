@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError, missingRatesIn, sumIn } from "~/lib/money";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
 import {
 	createStatefulDb,
@@ -86,14 +86,16 @@ describe("getSharedExpenseShares", () => {
 		expect(shares.map((s) => s.amountInUSD)).toEqual([60, 958.31]);
 	});
 
-	it("a currency with no rate at all raises MissingRateError, never 0 or 1", async () => {
+	it("a currency with no rate at all is unpriced: it counts as entered, and a total elsewhere names it, never 0 or 1", async () => {
 		db.splitParticipant.findMany.mockResolvedValue([
 			participation(1000, "XAU", null),
 			participation(25, "USD", null),
 		]);
-		await expect(
-			getSharedExpenseShares(db as never, "user-1"),
-		).rejects.toBeInstanceOf(MissingRateError);
+		const shares = await getSharedExpenseShares(db as never, "user-1");
+		expect(shares[0]?.amountInUSD).toBeNaN();
+		expect(sumIn(shares.slice(0, 1), "XAU", null)).toBe(1000);
+		expect(() => sumIn(shares, "USD", 1)).toThrow(MissingRateError);
+		expect(missingRatesIn(shares, "USD", 1)).toEqual(["XAU"]);
 	});
 
 	it("keeps the category only when it is the participant's own", async () => {

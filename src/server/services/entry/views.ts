@@ -7,7 +7,7 @@
 import type { Money } from "~/server/figures/registry";
 import type { AccountChange } from "../accounts/ledger";
 import { dec, toMinor } from "../envelope/units";
-import type { RateOptions } from "../rate-types";
+import type { RateOption, RateOptions } from "../rate-types";
 import type { TransferValue } from "../transfers/create.mutation";
 
 export interface RatePair {
@@ -37,6 +37,8 @@ export interface RateOptionsView {
 	readonly options: readonly RateOptionView[];
 	/** No rate at all for the pair: saving is blocked (a missing rate is never 1). */
 	readonly missing: { currency: string } | null;
+	/** The typed rate, booked as Save books it; null when none was typed. */
+	readonly custom: RateOptionView | null;
 }
 
 export function rateOptionsView(
@@ -44,15 +46,17 @@ export function rateOptionsView(
 	o: RateOptions,
 ): RateOptionsView {
 	const home = o.homeCurrency;
+	const view = (x: RateOption): RateOptionView => ({
+		rateType: x.rateType,
+		rate: ratePair(currency, home, x.homeRate),
+		home: x.homeAmount === null ? null : money(x.homeAmount, home),
+	});
 	return {
 		homeCurrency: home,
 		defaultType: o.defaultType,
 		missing: o.missing,
-		options: o.options.map((x) => ({
-			rateType: x.rateType,
-			rate: ratePair(currency, home, x.homeRate),
-			home: x.homeAmount === null ? null : money(x.homeAmount, home),
-		})),
+		options: o.options.map(view),
+		custom: o.custom && view(o.custom),
 	};
 }
 

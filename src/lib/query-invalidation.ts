@@ -168,6 +168,9 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 
 	// ── Import ──────────────────────────────────────────────────────────
 	"importQueue.finalizeImport": ["expense", "dashboard", "budget", "stats"],
+	// The Import page (uiV2): one batch in, or the batch out again.
+	"importQueue.commit": [...EXPENSE_DEPS, "expense", "entry"],
+	"importQueue.undo": [...EXPENSE_DEPS, "expense", "entry"],
 
 	// ── Project ─────────────────────────────────────────────────────────
 	"project.create": ["dashboard"],

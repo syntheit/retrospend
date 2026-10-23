@@ -73,7 +73,8 @@
 			"rate": "Introduce un tipo de cambio para {currency}",
 			"splitAmount": "La división no suma el importe",
 			"splitPct": "Los porcentajes no suman 100%",
-			"save": "No se pudo guardar. Revisa los campos e inténtalo de nuevo."
+			"save": "No se pudo guardar. Revisa los campos e inténtalo de nuevo.",
+			"projectMembers": "No se pudieron cargar las personas del proyecto. Inténtalo de nuevo."
 		},
 		"toast": {
 			"added": "Has añadido {title}",
@@ -90,7 +91,8 @@
 			"title": "¿Eliminar {title}?",
 			"body": "Cambia los saldos de otras personas.",
 			"confirm": "Eliminar gasto"
-		}
+		},
+		"projectAria": "Proyecto, {project}"
 	},
 	"rate": {
 		"default": "Tu tipo de cambio predeterminado para {currency}",
@@ -112,7 +114,9 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizado"
-		}
+		},
+		"label": "Tipo de cambio",
+		"youSpent": "Gastaste"
 	},
 	"changes": {
 		"title": "Qué cambia",
@@ -193,7 +197,9 @@
 			"kept": "Has añadido {amount} a {account}. Queda en Patrimonio",
 			"planned": "Has añadido {amount}. {count, plural, one {# sobre con fondos} other {# sobres con fondos}}"
 		},
-		"someoneElse": "Otra persona"
+		"someoneElse": "Otra persona",
+		"received": "Recibiste",
+		"countsAs": "Equivale a"
 	},
 	"transfer": {
 		"titleTransfer": "Transferencia",

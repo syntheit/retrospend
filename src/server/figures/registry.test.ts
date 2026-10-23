@@ -2,12 +2,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { MissingRateError } from "~/lib/money";
 import {
 	createFiguresRegistry,
 	type FigureDefinition,
 	FigureError,
 	FigurePass,
 	FigureRegistryError,
+	FigureUnavailable,
 	figures,
 	narrowScope,
 	readFigure,
@@ -117,6 +119,23 @@ describe("readFigure", () => {
 	it("passes null through as unavailable", async () => {
 		const unavailable = constant("netWorth", { compute: async () => null });
 		expect(await readFigure(unavailable, null, { userId: "u1" })).toBeNull();
+	});
+
+	it("a missing rate is the figure's unavailable state, its currencies named on the pass", async () => {
+		const pass = new FigurePass();
+		const thrown = constant("spent", {
+			compute: async () => {
+				throw new MissingRateError("ISK", ["ISK", "CLF"]);
+			},
+		});
+		const told = constant("netWorth", {
+			compute: async () => new FigureUnavailable(["BRL"]),
+		});
+		expect(await readFigure(thrown, null, { userId: "u1" }, pass)).toBeNull();
+		expect(await readFigure(told, null, { userId: "u1" }, pass)).toBeNull();
+		expect(pass.missingRates("spent")).toEqual(["CLF", "ISK"]);
+		expect(pass.missingRates("netWorth")).toEqual(["BRL"]);
+		expect(pass.missingRates()).toEqual(["BRL", "CLF", "ISK"]);
 	});
 
 	it("names the figure when it throws, keeping the cause", async () => {

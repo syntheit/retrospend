@@ -17,9 +17,7 @@
 import { randomUUID } from "node:crypto";
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
-import { computeAmountInUSD } from "~/lib/money";
 import type { RestChoice } from "~/lib/schemas/envelope";
-import { requireExchangeRate } from "~/server/exchange-rates";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
 import { dec, toMinor } from "~/server/services/envelope/units";
@@ -41,7 +39,8 @@ import {
 } from "../accounts/ledger";
 import { countedOnArrival, inBudget } from "../accounts/places";
 import { endOfDay } from "../accounts/series";
-import { homePerUnit, homeValue } from "../accounts/valuation";
+import { homePerUnit } from "../accounts/valuation";
+import { bookRate, loadRateContext, type RateChoice } from "../rate-types";
 import { typedAmount } from "../transfers/plan";
 import { nextDueDay } from "./due-day";
 import { applyPlanFor, PLAN_NOT_REQUESTED, type PlanResult } from "./plan-seam";
@@ -63,6 +62,8 @@ export interface AddIncomeInput {
 	readonly currency: string;
 	/** Rate type for a foreign amount (official, blue, mep...); null = the default. */
 	readonly rateType?: string | null;
+	/** A typed rate for a foreign amount: 1 unit of `currency` = this much home (as Add expense). */
+	readonly customRate?: string | null;
 	readonly categoryId?: string | null;
 	readonly description?: string | null;
 	/** YYYY-MM-DD; today when omitted. */
@@ -87,6 +88,9 @@ export interface AddIncomeInput {
 export interface IncomeRestore {
 	readonly exchangeRate: string;
 	readonly amountInUSD: string;
+	/** The row's booked home leg (rate type, units of home per unit); null on rows from before it was booked. */
+	readonly rateType?: string | null;
+	readonly homeRate?: string | null;
 	/** The units the leg put in the account; null without an account. */
 	readonly units: string | null;
 	readonly homeAmount: string | null;
@@ -192,14 +196,33 @@ async function createTemplate(
 interface Priced {
 	readonly exchangeRate: string;
 	readonly amountInUSD: string;
-	/** Booked home value (I20); null when no rate exists. */
+	readonly rateType: string | null;
+	readonly homeRate: string | null;
+	/** Booked home value (I20); null only on a restored row booked before it existed. */
 	readonly booked: Decimal | null;
 	readonly units: Decimal | null;
 }
 
-/** The income's rate, booked value and units at its own day's rates. */
+/** The rate as Add expense books it: a typed rate, else the table at the picked type. */
+function rateChoiceOf(input: AddIncomeInput): RateChoice {
+	if (input.customRate)
+		return {
+			kind: "custom",
+			base: input.currency,
+			value: Number(input.customRate),
+		};
+	return { kind: "table", rateType: input.rateType ?? null };
+}
+
+/**
+ * The income's rate through bookRate, exactly as an expense books it: both
+ * legs from the day's table at the picked type, or a typed rate; a missing
+ * rate throws MissingRateError (saving is blocked, never at 1). The units
+ * that land in a foreign account follow from the booked home value.
+ */
 async function priceIncome(
 	tx: Tx,
+	userId: string,
 	input: AddIncomeInput,
 	ctx: {
 		amount: Decimal;
@@ -209,37 +232,25 @@ async function priceIncome(
 	},
 ): Promise<Priced> {
 	const { amount, date, home, account } = ctx;
-	const rate = await requireExchangeRate(
+	const rate = await bookRate(
 		tx,
-		input.currency,
-		date,
-		input.rateType,
+		await loadRateContext(tx, userId),
+		{ amount: amount.toString(), currency: input.currency, date },
+		rateChoiceOf(input),
 	);
-	const pick = await ratePickFor(tx, [
-		home,
-		input.currency,
-		...(account ? [account.currency] : []),
-	]);
-	const booked =
-		homeValue(
-			pick,
-			{
-				currency: input.currency,
-				rateType: input.rateType ?? null,
-				storedRate: rate.rate,
-			},
-			amount,
-			home,
-			endOfDay(date.toISOString().slice(0, 10)),
-		)?.toDecimalPlaces(8) ?? null;
+	const booked = dec(rate.homeAmount);
+	const pick = account
+		? await ratePickFor(tx, [home, input.currency, account.currency])
+		: null;
 	return {
-		exchangeRate: String(rate.rate),
-		amountInUSD: String(
-			computeAmountInUSD(amount.toNumber(), input.currency, rate.rate),
-		),
+		exchangeRate: String(rate.exchangeRate),
+		amountInUSD: String(rate.amountInUSD),
+		rateType: rate.rateType,
+		homeRate: rate.homeRate,
 		booked,
 		units:
 			account &&
+			pick &&
 			unitsInAccount(
 				account,
 				{ amount, currency: input.currency, booked, home },
@@ -254,6 +265,8 @@ function restoredPrice(restore: IncomeRestore, home: string): Priced {
 	return {
 		exchangeRate: restore.exchangeRate,
 		amountInUSD: restore.amountInUSD,
+		rateType: restore.rateType ?? null,
+		homeRate: restore.homeCurrency === home ? (restore.homeRate ?? null) : null,
 		booked:
 			restore.homeAmount !== null && restore.homeCurrency === home
 				? dec(restore.homeAmount)
@@ -304,7 +317,7 @@ export async function addIncomeIn(
 	const categoryId = await incomeCategory(tx, userId, input.categoryId);
 	const priced = input.restore
 		? restoredPrice(input.restore, home)
-		: await priceIncome(tx, input, { amount, date, home, account });
+		: await priceIncome(tx, userId, input, { amount, date, home, account });
 	const { booked } = priced;
 
 	const expenseId = input.id ?? randomUUID();
@@ -327,6 +340,15 @@ export async function addIncomeIn(
 			exchangeRate: priced.exchangeRate,
 			amountInUSD: priced.amountInUSD,
 			pricingSource: input.rateType ?? "MANUAL",
+			// The home leg booked once, as an expense row keeps it (all set or all null).
+			...(booked && priced.homeRate
+				? {
+						rateType: priced.rateType,
+						homeCurrency: home,
+						homeRate: priced.homeRate,
+						homeAmount: booked.toString(),
+					}
+				: {}),
 			status: "FINALIZED",
 			direction: "IN",
 			inType: "INCOME",

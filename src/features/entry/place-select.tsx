@@ -1,6 +1,7 @@
 "use client";
 
 import { Money } from "~/components/money/money";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import {
 	Select,
 	SelectContent,
@@ -16,7 +17,7 @@ type Place = EntryCatalog["places"][number];
 const NONE = "__none";
 
 /**
- * Pick an account (with its currency and balance), or no account when
+ * Pick an account (its currency's flag, its name and balance), or no account when
  * `none` is given: the move then touches no account (N75).
  */
 export function PlaceSelect({
@@ -34,6 +35,7 @@ export function PlaceSelect({
 }) {
 	return (
 		<Select
+			kit
 			onValueChange={(v) => onChange(v === NONE ? null : v)}
 			value={value ?? NONE}
 		>
@@ -49,6 +51,9 @@ export function PlaceSelect({
 				) : null}
 				{places.map((p) => (
 					<SelectItem key={p.id} value={p.id}>
+						<span aria-hidden="true" className="inline-flex shrink-0">
+							<CurrencyFlag className="size-4" currencyCode={p.currency} />
+						</span>
 						<span className="truncate">{p.name}</span>
 						<span className="text-fg-3 text-meta">
 							<Money value={p.balance} />

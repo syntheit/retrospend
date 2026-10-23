@@ -370,7 +370,8 @@
     "lastSynced": "Dernière synchronisation :",
     "never": "Jamais",
     "syncing": "Synchronisation...",
-    "syncNow": "Synchroniser maintenant"
+    "syncNow": "Synchroniser maintenant",
+    "syncUnavailable": "La synchronisation des taux n'est pas disponible sur ce serveur."
   },
   "import": {
     "title": "Importer",
