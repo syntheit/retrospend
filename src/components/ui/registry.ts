@@ -483,7 +483,7 @@ export const PLANNED: Planned[] = [
 		replaces: "4 dashboard StatCards",
 		planRow: "GlanceStrip (Home)",
 		target: "src/components/glance/glance-strip.tsx",
-		use: "GlanceStrip from src/components/glance/glance-strip (view model GlanceVM)",
+		use: "GlanceStrip from src/components/glance/glance-strip (view model GlanceVM). A missing rate: spent null (No rate yet) and the unavailable line naming the currencies",
 	},
 	{
 		name: "NeedsYouList",

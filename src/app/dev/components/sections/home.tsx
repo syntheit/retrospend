@@ -4,7 +4,12 @@ import { GlanceStrip } from "~/components/glance/glance-strip";
 import { NeedsYouItem } from "~/components/needs-you/needs-you-item";
 import { NeedsYouList } from "~/components/needs-you/needs-you-list";
 import { useToast } from "~/components/ui/toast";
-import { GLANCE, NEEDS_YOU, NEEDS_YOU_MORE } from "../fixtures/home";
+import {
+	GLANCE,
+	GLANCE_NO_RATE,
+	NEEDS_YOU,
+	NEEDS_YOU_MORE,
+} from "../fixtures/home";
 import { CAP } from "../sections";
 import { Cap, Pair, Spec, States } from "../spec";
 
@@ -27,6 +32,17 @@ export function GlanceSection() {
 						<GlanceStrip glance={GLANCE} variant="B" />
 					</>
 				}
+			/>
+			<States
+				className="mt-4"
+				items={[
+					[
+						CAP.glanceNoRate,
+						<div className="w-105 max-w-full" key="n">
+							<GlanceStrip glance={GLANCE_NO_RATE} />
+						</div>,
+					],
+				]}
 			/>
 		</Spec>
 	);

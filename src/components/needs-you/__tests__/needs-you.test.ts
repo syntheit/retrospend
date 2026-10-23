@@ -95,6 +95,24 @@ describe("GlanceStrip", () => {
 		expect(t).toContain("You owe ARS 229,770");
 	});
 
+	it("a missing rate says so in the hero and names the currencies (R14)", () => {
+		const html = render(
+			h(GlanceStrip, {
+				glance: {
+					...GLANCE,
+					spent: null,
+					spentFigure: "glance.spent",
+					line: { kind: "unavailable", currencies: ["BRL", "CLP"] },
+					fasterThanPlanned: false,
+				},
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("No rate yet");
+		expect(t).toContain("Budget not available: no rate for BRL, CLP yet");
+		expect(html).toMatch(/data-figure="glance.spent"(?![^>]*data-minor)/);
+	});
+
 	it("variant B is the compact strip without the pace line", () => {
 		const html = render(h(GlanceStrip, { glance: GLANCE, variant: "B" }));
 		expect(html).not.toContain('role="img"');

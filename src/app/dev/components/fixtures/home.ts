@@ -44,6 +44,15 @@ export const GLANCE: GlanceVM = {
 	],
 };
 
+/** A missing rate: no spent figure, the budget line names the currency. */
+export const GLANCE_NO_RATE: GlanceVM = {
+	...GLANCE,
+	spent: null,
+	line: { kind: "unavailable", currencies: ["BRL"] },
+	fasterThanPlanned: false,
+	rows: GLANCE.rows.filter((r) => r.id === "netWorth"),
+};
+
 export const NEEDS_YOU: NeedsYouItemVM[] = [
 	{ id: "ny5", kind: "overdue", title: "Fibra e internet", amount: m("38900") },
 	{ id: "ny3", kind: "confirmPayment", person: "Lucía", amount: m("20000") },

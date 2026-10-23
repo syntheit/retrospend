@@ -15,7 +15,9 @@ export type GlanceLine =
 	| { kind: "perDay"; perDay: MoneyValue; daysLeft: number }
 	| { kind: "leftToday"; left: MoneyValue }
 	| { kind: "over"; over: MoneyValue }
-	| { kind: "noBudget" };
+	| { kind: "noBudget" }
+	/** A budget exists but rates are missing, so it cannot be worked out (R14). */
+	| { kind: "unavailable"; currencies: string[] };
 
 export type GlanceRow = {
 	id: "toAssign" | "owedToYou" | "youOwe" | "netWorth";
@@ -28,7 +30,8 @@ export type GlanceRow = {
 export type GlanceVM = {
 	/** ISO date in the month ("2026-10-01"). */
 	month: string;
-	spent: MoneyValue;
+	/** Null when a rate is missing: the hero says "No rate yet", never a guess. */
+	spent: MoneyValue | null;
 	spentFigure?: string;
 	line: GlanceLine;
 	/** The server's pace verdict; shows the word when true. */
@@ -61,6 +64,8 @@ function useLine() {
 				return t.rich("over", { amount: () => <Money value={line.over} /> });
 			case "noBudget":
 				return t("noBudget");
+			case "unavailable":
+				return t("unavailable", { currencies: line.currencies.join(", ") });
 		}
 	};
 }
@@ -94,6 +99,7 @@ export function GlanceStrip({
 			<Money
 				className={cn("text-fg mt-0.5 mb-1 block font-semibold", "text-hero")}
 				figure={glance.spentFigure}
+				missing="noRate"
 				value={glance.spent}
 			/>
 			<div className="text-fg-2 text-small">{line}</div>

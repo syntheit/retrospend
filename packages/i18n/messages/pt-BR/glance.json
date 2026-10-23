@@ -12,6 +12,7 @@
 		"perDay": "<amount></amount> por dia por {days, plural, one {# dia} other {# dias}}",
 		"leftToday": "<amount></amount> restantes hoje",
 		"over": "<amount></amount> acima do plano este mês",
-		"noBudget": "Sem orçamento para este mês"
+		"noBudget": "Sem orçamento para este mês",
+		"unavailable": "Orçamento indisponível: ainda não há cotação para {currencies}"
 	}
 }
