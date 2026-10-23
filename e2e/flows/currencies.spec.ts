@@ -73,9 +73,10 @@ test("Currencies: prices in ARS, convert, search converter, favorite", async ({
 	await expect(table.getByRole("row").filter({ hasText: "USD" })).toContainText(
 		"1,450",
 	);
-	await expect(table.getByRole("row").filter({ hasText: "BRL" })).toContainText(
-		"268.52",
-	);
+	// Whole units from ARS 100 up; the server's price keeps its cents.
+	const brl = table.getByRole("row").filter({ hasText: "BRL" });
+	await expect(brl).toContainText("269");
+	await expect(brl.locator("[data-minor='26852']").first()).toBeVisible();
 
 	// The detail panel converts USD 100 on the server, one result per type.
 	await table.getByRole("row").filter({ hasText: "USD" }).first().click();
@@ -99,7 +100,7 @@ test("Currencies: prices in ARS, convert, search converter, favorite", async ({
 
 	// Favorite EUR through today's favorites; it sorts first.
 	await expect(table.getByRole("row").filter({ hasText: "EUR" })).toContainText(
-		"1,611.11",
+		"1,611",
 	);
 	await untilSaved(page, "preferences.toggleFavoriteExchangeRate", () =>
 		table.getByRole("button", { name: "Add EUR to favorites" }).click(),
