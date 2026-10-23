@@ -30,7 +30,11 @@ import { deleteIncome } from "../income/delete.mutation";
 import { rateOptions } from "../rate-types";
 import { createTransfer } from "../transfers/create.mutation";
 import { entryCatalog } from "./catalog";
-import { deleteExpenseEntry, updateExpenseEntry } from "./expense.mutation";
+import {
+	deleteExpenseEntry,
+	restoreExpenseEntry,
+	updateExpenseEntry,
+} from "./expense.mutation";
 import { toExpenseInput } from "./input";
 import { createSharedExpense } from "./shared.mutation";
 import { rateOptionsView, transferView } from "./views";
@@ -154,7 +158,9 @@ describe("Add expense: rate per entry", () => {
 
 		const gone = await forUser(user.id).apply(deleteExpenseEntry, { id });
 		expect(await adminDb.expense.count({ where: { id } })).toBe(0);
-		await forUser(user.id).apply(createExpense, gone.value.restore);
+		await forUser(user.id).apply(restoreExpenseEntry, {
+			token: gone.value.restore,
+		});
 		const back = await adminDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(back.homeAmount?.toString()).toBe("147500");
 		expect(back.homeRate?.toString()).toBe(saved.homeRate?.toString());

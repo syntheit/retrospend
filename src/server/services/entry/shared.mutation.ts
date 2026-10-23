@@ -4,7 +4,8 @@
  * transaction. Notifications go into `notify` and the transport sends them
  * after apply commits; a preview drops them, so it never tells anyone.
  *
- * - sharedExpense.create: its undo is sharedExpense.delete of the new row.
+ * - sharedExpense.create: its undo is sharedExpense.delete of the new row
+ *   with `retract`, so the people on it are not told twice.
  * - sharedExpense.update: its undo is another update with the values, payer
  *   and split it had (the people on it verify again, as after any edit).
  * - sharedExpense.delete: confirmed with a named button and no undo, since it
@@ -14,6 +15,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import type { MoneyMutation } from "../preview/types";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
+import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
 
 type Tx = Prisma.TransactionClient;
 type Service = SharedTransactionService;
@@ -150,6 +152,12 @@ export const updateSharedExpense: MoneyMutation<
 export interface DeleteSharedInput extends Deferred {
 	readonly id: string;
 	readonly confirmUnsettled?: boolean;
+	/**
+	 * The Undo of a create, right after it: the "split with you" notices are
+	 * taken back and no "deleted" notice goes out (one non-event, not two).
+	 * Honored only for your own expense within RETRACT_WINDOW_MS of creating it.
+	 */
+	readonly retract?: boolean;
 }
 
 export const deleteSharedExpense: MoneyMutation<
@@ -159,10 +167,22 @@ export const deleteSharedExpense: MoneyMutation<
 	id: "sharedExpense.delete",
 	touches: SHARED_FIGURES,
 	run: async (tx, input, actor) => {
-		await serviceFor(tx, actor.userId, input).delete(
+		const row = await tx.sharedTransaction.findUnique({
+			where: { id: input.id },
+			select: { createdAt: true, createdByType: true, createdById: true },
+		});
+		const retract =
+			!!input.retract &&
+			!!row &&
+			row.createdByType === "user" &&
+			row.createdById === actor.userId &&
+			Date.now() - row.createdAt.getTime() < RETRACT_WINDOW_MS;
+		// Retracting: the service's own notices are dropped, the retraction queued instead.
+		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
 			input.id,
 			input.confirmUnsettled ?? false,
 		);
+		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
 		return {
 			value: { id: input.id },
 			undo: {

@@ -28,7 +28,7 @@ import {
 import { ensureIncomeCategories } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma, RecurringFrequency } from "~prisma";
-import { moveDay } from "../accounts/dates";
+import { moveDay, rowDateOf } from "../accounts/dates";
 import {
 	type AccountChange,
 	type AccountRow,
@@ -316,7 +316,8 @@ export async function addIncomeIn(
 			title: input.title,
 			amount: amount.toString(),
 			currency: input.currency,
-			date,
+			// The leg keeps the ledger's UTC-midnight day; the row is read in the viewer's zone.
+			date: rowDateOf(date, input.timeZone),
 			categoryId,
 			description: input.description ?? null,
 			exchangeRate: priced.exchangeRate,
@@ -344,7 +345,10 @@ export async function addIncomeIn(
 		: null;
 	// The budget read before this write (a preview's before side) is stale now.
 	forgetMonthViews(tx);
-	const bookedMoney = booked && { minor: toMinor(booked, home), currency: home };
+	const bookedMoney = booked && {
+		minor: toMinor(booked, home),
+		currency: home,
+	};
 	const plan = input.usePlan
 		? await applyPlanFor(tx, {
 				userId,

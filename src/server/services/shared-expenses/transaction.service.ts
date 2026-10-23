@@ -37,6 +37,7 @@ interface SplitParticipantInput {
 type SplitModeType = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
 
 interface CreateSharedTransactionInput {
+	/** A client id: a repeated create (a double click) writes nothing twice. */ id?: string;
 	amount: number;
 	currency: string;
 	description: string;
@@ -189,7 +190,6 @@ export class SharedTransactionService {
 		);
 
 		const actor = this.actor;
-
 		// Freeze the rate of the expense's own date, so shares keep converting
 		// at it later. Null only when the currency has no rate at all; readers
 		// then fall back to a lookup by date.
@@ -251,7 +251,7 @@ export class SharedTransactionService {
 
 			const transaction = await tx.sharedTransaction.create({
 				data: {
-					description: input.description,
+					id: input.id, description: input.description,
 					amount: input.amount,
 					currency: input.currency,
 					exchangeRate: capturedRate?.rate ?? null,

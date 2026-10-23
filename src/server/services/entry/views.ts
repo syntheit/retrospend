@@ -80,6 +80,8 @@ export interface TransferView {
 	/** Against the reference rate in home: negative = less than the reference. */
 	readonly vsReference: Money | null;
 	readonly referenceRateType: string | null;
+	/** The reference rate the result is measured against. */
+	readonly reference: RatePair | null;
 	readonly accounts: readonly AccountChangeView[];
 	readonly budget: TransferValue["budget"];
 	readonly feeExpenseId: string | null;
@@ -94,6 +96,9 @@ export function transferView(v: TransferValue): TransferView {
 		rate: v.rate && ratePair(v.rate.base, v.rate.quote, v.rate.value),
 		vsReference: v.vsReference,
 		referenceRateType: v.referenceRateType,
+		reference:
+			v.referenceRate &&
+			ratePair(v.referenceRate.base, v.referenceRate.quote, v.referenceRate.value),
 		accounts: v.accounts.map(accountView),
 		budget: v.budget,
 		feeExpenseId: v.feeExpenseId,

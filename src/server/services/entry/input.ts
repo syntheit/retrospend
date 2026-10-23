@@ -99,18 +99,22 @@ const sharedFields = {
 };
 
 export const sharedCreateSchema = z.object({
+	/** A client id: a repeated create (a double click) writes one row. */
+	id: z.uuid().optional(),
 	...sharedFields,
 	projectId: z.cuid().optional(),
 });
 export const sharedUpdateSchema = z.object({
 	id,
 	...sharedFields,
+	// Sent on every edit, so an emptied note clears it.
+	notes: z.string().max(5000).nullable(),
 	projectId: z.cuid().nullable(),
 });
 
 /** Days and amounts in the shared service's shape. */
 export function toSharedInput<
-	T extends { amount: string; date: string; notes?: string },
+	T extends { amount: string; date: string; notes?: string | null },
 >(form: T, timeZone?: string) {
 	return {
 		...form,
@@ -135,6 +139,16 @@ export const sharedRestoreSchema = z.object({
 export const sharedDeleteSchema = z.object({
 	id,
 	confirmUnsettled: z.boolean().optional(),
+	// The Undo of a create (see deleteSharedExpense).
+	retract: z.boolean().optional(),
+});
+
+/** A signed undo payload (restore-token.ts). */
+export const restoreTokenSchema = z.object({
+	token: z.object({
+		data: z.string().min(2).max(200_000),
+		sig: z.string().regex(/^[0-9a-f]{64}$/),
+	}),
 });
 
 export const rateOptionsSchema = z.object({

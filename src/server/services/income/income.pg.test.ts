@@ -4,6 +4,7 @@
  * counting without selling (I16, D4); recurring income confirmed and
  * planned in one action. ARS home; ARS 1,468 Blue, 1,412 Official, 1,449 MEP.
  */
+import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ExpenseService } from "~/server/services/expense.service";
 import { forUser } from "~/server/services/preview";
@@ -154,11 +155,8 @@ describe("income.add", () => {
 		const row = await adminDb.expense.findUniqueOrThrow({
 			where: { id: value.expenseId },
 		});
-		const [y, m, d] = row.date
-			.toISOString()
-			.slice(0, 10)
-			.split("-")
-			.map(Number);
+		// The row sits at the zone's midnight (rowDateOf); its calendar day is read there.
+		const [y, m, d] = dayKey(row.date).split("-").map(Number);
 		// One month after the income's own day, whatever the server's zone.
 		expect(template.nextDueDate.toISOString().slice(0, 10)).toBe(
 			new Date(Date.UTC(y ?? 0, m ?? 0, d)).toISOString().slice(0, 10),

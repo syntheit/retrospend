@@ -4,6 +4,7 @@ import { createTransferSchema } from "~/server/services/accounts/input";
 import { entryCatalog } from "~/server/services/entry/catalog";
 import {
 	deleteExpenseEntry,
+	restoreExpenseEntry,
 	updateExpenseEntry,
 } from "~/server/services/entry/expense.mutation";
 import * as schema from "~/server/services/entry/input";
@@ -133,7 +134,7 @@ export const entryRouter = createTRPCRouter({
 			asIs,
 		),
 		/** Undo of a delete: the same expense back, same id. */
-		restore: money(schema.expenseRestoreSchema, createExpense, asIs),
+		restore: money(schema.restoreTokenSchema, restoreExpenseEntry, asIs),
 		/** Undo of an edit: the values it had. */
 		revert: money(schema.expenseRestoreSchema, updateExpenseEntry, (v) => ({
 			...v,

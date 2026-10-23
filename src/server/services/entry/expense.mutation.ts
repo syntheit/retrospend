@@ -6,17 +6,24 @@
  * - expense.update: ExpenseService.updateExpense on the preview's
  *   transaction; its undo is another expense.update with the values it had.
  * - expense.delete: the row and its spread parts go; its undo is
- *   expense.create with the same id (createExpense in expense-create.mutation).
+ *   expense.restore, which puts the stored rows back verbatim from a signed
+ *   snapshot (expense-snapshot.ts): nothing is booked again.
  *
- * The undo re-books the rate it had: a custom rate as the same cross rate,
- * a table type as that type on the entry's date (the day's rate does not
- * move), an untouched rate as both of its saved legs.
+ * An edit's undo re-books the rate it had: a custom rate as the same cross
+ * rate, a table type as that type on the entry's date (the day's rate does
+ * not move), an untouched rate as both of its saved legs.
  */
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_RATE_TYPE } from "~/lib/rate-selection";
 import type { Prisma } from "~prisma";
 import { type CreateExpenseInput, ExpenseService } from "../expense.service";
 import type { MoneyMutation } from "../preview/types";
+import {
+	type ExpenseSnapshot,
+	restoreExpense,
+	snapshotExpense,
+} from "./expense-snapshot";
+import { type RestoreToken, readRestore, signRestore } from "./restore-token";
 
 type Tx = Prisma.TransactionClient;
 
@@ -73,7 +80,10 @@ function fieldsOf(row: ExpenseRow) {
 async function ownExpense(tx: Tx, userId: string, id: string) {
 	const row = await tx.expense.findFirst({
 		where: { id, userId, direction: "OUT", isAmortizedChild: false },
-		include: { children: { select: { id: true } } },
+		include: {
+			children: { select: { id: true } },
+			_count: { select: { accountLegs: true } },
+		},
 	});
 	if (!row) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
@@ -109,8 +119,8 @@ export const updateExpenseEntry: MoneyMutation<
 
 export interface DeletedExpense {
 	readonly id: string;
-	/** expense.create with this input brings the same expense back. */
-	readonly restore: CreateExpenseInput;
+	/** expense.restore with this token brings the same rows back, verbatim. */
+	readonly restore: RestoreToken;
 }
 
 export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
@@ -119,14 +129,43 @@ export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
 		touches: EXPENSE_FIGURES,
 		run: async (tx, input, actor) => {
 			const before = await ownExpense(tx, actor.userId, input.id);
+			if (before._count.accountLegs > 0) {
+				// A transfer's fee: it goes with its transfer.
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "This expense moved money in an account. Undo it from its transfer.",
+				});
+			}
+			const snapshot = await snapshotExpense(tx, actor.userId, input.id);
 			await new ExpenseService(tx).deleteExpense(actor.userId, input.id);
 			return {
-				value: { id: input.id, restore: { id: input.id, ...fieldsOf(before) } },
+				value: { id: input.id, restore: signRestore(snapshot) },
 				undo: {
 					kind: "revert",
-					mutation: "expense.create",
+					mutation: "expense.restore",
 					rows: [{ table: "expense", id: input.id }],
 				},
 			};
 		},
 	};
+
+/** The undo of expense.delete: the signed rows back as they were stored. */
+export const restoreExpenseEntry: MoneyMutation<
+	{ token: RestoreToken },
+	{ id: string }
+> = {
+	id: "expense.restore",
+	touches: EXPENSE_FIGURES,
+	run: async (tx, input, actor) => {
+		const snapshot = readRestore<ExpenseSnapshot>(input.token);
+		const id = await restoreExpense(tx, actor.userId, snapshot);
+		return {
+			value: { id },
+			undo: {
+				kind: "revert",
+				mutation: "expense.delete",
+				rows: [{ table: "expense", id }],
+			},
+		};
+	},
+};

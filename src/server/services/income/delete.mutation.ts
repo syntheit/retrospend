@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
+import { rowDayOf } from "../accounts/dates";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";
 import { forgetMonthViews } from "../envelope/month-read";
 import {
@@ -22,6 +23,7 @@ export interface DeleteIncomeInput {
 	readonly expenseId: string;
 	/** The template income.add created with it (Repeats), removed with it. */
 	readonly templateId?: string | null;
+	readonly timeZone?: string;
 }
 
 export interface DeletedIncome {
@@ -53,6 +55,7 @@ export async function incomeRow(tx: Tx, userId: string, expenseId: string) {
 				where: { source: "INCOME" },
 				select: {
 					accountId: true,
+					date: true,
 					amount: true,
 					homeAmount: true,
 					homeCurrency: true,
@@ -97,7 +100,10 @@ export async function deleteIncomeIn(
 		rateType: row.pricingSource === "MANUAL" ? null : row.pricingSource,
 		categoryId: row.categoryId,
 		description: row.description,
-		date: row.date.toISOString().slice(0, 10),
+		// The leg keeps the ledger's UTC-midnight day; a row without one is read in the zone.
+		date: leg
+			? leg.date.toISOString().slice(0, 10)
+			: rowDayOf(row.date, input.timeZone),
 		into: leg?.accountId ?? null,
 		keep: row.keepInWealth,
 		restore: {

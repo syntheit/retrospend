@@ -15,7 +15,7 @@ import { dec, toMinor } from "~/server/services/envelope/units";
 import { createExpenseIn } from "~/server/services/expense.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma, TransferKind } from "~prisma";
-import { moveDay } from "../accounts/dates";
+import { moveDay, rowDateOf } from "../accounts/dates";
 import {
 	type AccountChange,
 	type AccountRow,
@@ -85,6 +85,8 @@ export interface TransferValue {
 	/** The typed home leg against the reference rate: negative = you got less than the reference. */
 	readonly vsReference: Money | null;
 	readonly referenceRateType: string | null;
+	/** The reference rate itself (home per unit), for "Official 1,450". */
+	readonly referenceRate: ReturnType<typeof derivedRate>;
 	readonly accounts: readonly AccountChange[];
 	/** What the legs did to net worth: the exchange result, and the fee. */
 	readonly netWorthEffect: Money | null;
@@ -161,7 +163,7 @@ function reference(
 		input.fromCurrency === input.toCurrency ||
 		(!homeIsFrom && input.toCurrency !== home)
 	) {
-		return { vsReference: null, referenceRateType: null };
+		return { vsReference: null, referenceRateType: null, referenceRate: null };
 	}
 	const foreign = homeIsFrom ? input.toCurrency : input.fromCurrency;
 	const units = homeIsFrom ? input.toAmount : input.fromAmount.neg();
@@ -171,7 +173,8 @@ function reference(
 		home,
 		date,
 	);
-	if (!perUnit) return { vsReference: null, referenceRateType: null };
+	if (!perUnit)
+		return { vsReference: null, referenceRateType: null, referenceRate: null };
 	const typedHome = homeIsFrom ? booked.fromHome : booked.toHome;
 	const ref = pick(foreign === "USD" ? home : foreign, date, null);
 	return {
@@ -180,6 +183,7 @@ function reference(
 			currency: home,
 		},
 		referenceRateType: ref?.type ?? null,
+		referenceRate: { base: foreign, quote: home, value: perUnit.toFixed(6) },
 	};
 }
 
@@ -210,7 +214,8 @@ async function writeFee(
 		title: "Fee",
 		amount: amount.toString(),
 		currency: side.currency,
-		date: ctx.date,
+		// An expense row, read in the viewer's zone (rowDateOf).
+		date: rowDateOf(ctx.date, input.timeZone),
 		description: "Fee for a transfer",
 	});
 	const home = bookHome(ctx.pick, side, amount.neg(), ctx.home, ctx.date);
@@ -283,7 +288,7 @@ async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 		},
 		ref: booked
 			? reference(pick, planInput, booked, date)
-			: { vsReference: null, referenceRateType: null },
+			: { vsReference: null, referenceRateType: null, referenceRate: null },
 	};
 }
 
