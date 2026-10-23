@@ -97,8 +97,13 @@ describe("cross-router invalidation map", () => {
 
 		for (const mutation of Object.keys(CROSS_ROUTER_INVALIDATIONS)) {
 			const procedure = mutation.split(".")[1]!;
+			// Money mutations nest their preview and save under a sub-router
+			// ("entry.expense.create.save"), declared at any depth.
+			const nested = mutation.split(".").length > 2;
 			expect(source, mutation).toMatch(
-				new RegExp(`^\\t${procedure}: \\w*[Pp]rocedure`, "m"),
+				nested
+					? new RegExp(`^\\t+${procedure}: (createTRPCRouter|money)\\(`, "m")
+					: new RegExp(`^\\t${procedure}: \\w*[Pp]rocedure`, "m"),
 			);
 		}
 	});

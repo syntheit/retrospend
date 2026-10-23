@@ -228,6 +228,6 @@ export type AddEntry = {
 /** The Add family: the split button, the palette, the floating Add and N / I / T. */
 export const ADD_ACTIONS: readonly AddEntry[] = [
 	{ id: "expense", icon: Plus, key: "n", ready: true },
-	{ id: "income", icon: ArrowDownLeft, key: "i", ready: false },
-	{ id: "transfer", icon: ArrowRightLeft, key: "t", ready: false },
+	{ id: "income", icon: ArrowDownLeft, key: "i", ready: true },
+	{ id: "transfer", icon: ArrowRightLeft, key: "t", ready: true },
 ];

@@ -8,12 +8,12 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
 import { FeedbackModal } from "~/components/feedback-modal";
 import { PageTransition } from "~/components/page-transition";
 import { Sheet } from "~/components/ui/sheet";
 import { SidebarProvider, useSidebar } from "~/components/ui/sidebar";
 import { useToast } from "~/components/ui/toast";
+import { useEntrySheets } from "~/features/entry/context";
 import { ADD_ACTIONS, type AddId, type NavBadges } from "~/lib/nav";
 import { AccountSheet } from "./account-sheet";
 import { BottomNav, FloatingAdd } from "./bottom-nav";
@@ -116,7 +116,7 @@ export function AppShell({
 	badges?: NavBadges;
 }) {
 	const t = useTranslations("shell");
-	const { openNewExpense } = useExpenseModal();
+	const sheets = useEntrySheets();
 	const toast = useToast();
 	const [layer, setLayer] = useState<Layer | null>(null);
 	const layerProps = (l: Layer) => ({
@@ -133,7 +133,8 @@ export function AppShell({
 					return;
 				}
 				setLayer(null);
-				openNewExpense();
+				if (id === "expense") sheets.open({ kind: "expense", mode: "create" });
+				else sheets.open({ kind: id });
 			},
 			openPalette: () => setLayer("palette"),
 			openShortcuts: () => setLayer("shortcuts"),
@@ -141,7 +142,7 @@ export function AppShell({
 			openNotificationsSheet: () => setLayer("notifications"),
 			openFeedback: () => setLayer("feedback"),
 		}),
-		[openNewExpense, t, toast],
+		[sheets, t, toast],
 	);
 	useShellKeys(actions, setLayer);
 	useToastOffset();

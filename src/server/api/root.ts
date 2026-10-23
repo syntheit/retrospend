@@ -7,6 +7,7 @@ import { categoriesRouter } from "~/server/api/routers/categories";
 import { claimRouter } from "~/server/api/routers/claim";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { deviceSessionRouter } from "~/server/api/routers/device-session";
+import { entryRouter } from "~/server/api/routers/entry";
 import { envelopeRouter } from "~/server/api/routers/envelope";
 import { exchangeRateRouter } from "~/server/api/routers/exchange-rate";
 import { expenseRouter } from "~/server/api/routers/expense";
@@ -53,6 +54,7 @@ export const appRouter = createTRPCRouter({
 	categories: categoriesRouter,
 	dashboard: dashboardRouter,
 	deviceSession: deviceSessionRouter,
+	entry: entryRouter,
 	envelope: envelopeRouter,
 	user: userRouter,
 	expense: expenseAllRouter,

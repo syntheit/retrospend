@@ -18,7 +18,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-
 import { usePageTitle } from "~/hooks/use-page-title";
 import { BillingPeriodTabs } from "~/components/project/billing-period-tabs";
 import { BudgetCard } from "~/components/project/budget-card";
@@ -28,7 +27,8 @@ import { ProjectTabs } from "~/components/project/project-tabs";
 import { ProjectSettingsDialog } from "~/components/project/project-settings-dialog";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { ShellSwitch } from "~/components/shell/shell-switch";
-import { ExpenseModalProvider, useExpenseModal } from "~/components/expense-modal-provider";
+import { useExpenseModal } from "~/components/expense-modal-provider";
+import { ExpenseSheetsSwitch } from "~/features/entry/sheets-switch";
 import { ExpenseModal } from "~/components/expense-modal";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
@@ -265,7 +265,7 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 
 	if (accessMode === "authenticated") {
 		return (
-			<ExpenseModalProvider>
+			<ExpenseSheetsSwitch>
 				<RecurringModalProvider>
 					<RevisionHistoryProvider>
 						<ShellSwitch>
@@ -276,7 +276,7 @@ export default function UnifiedProjectPage({ params }: { params: PageParams }) {
 						</ShellSwitch>
 					</RevisionHistoryProvider>
 				</RecurringModalProvider>
-			</ExpenseModalProvider>
+			</ExpenseSheetsSwitch>
 		);
 	}
 
