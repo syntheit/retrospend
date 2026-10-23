@@ -9,7 +9,9 @@ import { db } from "~/server/db";
 /** How long after creating an expense its Undo may take the notices back. */
 export const RETRACT_WINDOW_MS = 15 * 60_000;
 
-export async function retractSplitNotices(transactionId: string): Promise<void> {
+export async function retractSplitNotices(
+	transactionId: string,
+): Promise<void> {
 	await db.notification.deleteMany({
 		where: {
 			type: "EXPENSE_SPLIT",

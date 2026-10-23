@@ -100,72 +100,82 @@ describe("typed rates are rates, not home money", () => {
 	});
 });
 
-describe.each([
-	"America/Argentina/Buenos_Aires",
-	"Asia/Tokyo",
-])("calendar days in %s", (timeZone) => {
-	const day = "2026-10-01";
+describe.each(["America/Argentina/Buenos_Aires", "Asia/Tokyo"])(
+	"calendar days in %s",
+	(timeZone) => {
+		const day = "2026-10-01";
 
-	it("an income row sits on its day in the viewer's zone; its leg keeps the ledger day", async () => {
-		const { user } = await createTestUser();
-		const wallet = await openAccount(user.id, "Wallet", "CASH", "USD", 100, {}, 60);
-		const r = await forUser(user.id).apply(addIncome, {
-			title: "Salary",
-			amount: "500",
-			currency: "USD",
-			date: day,
-			into: wallet,
-			timeZone,
-		});
-		const row = await adminDb.expense.findUniqueOrThrow({
-			where: { id: r.value.expenseId },
-			include: { accountLegs: true },
-		});
-		expect(row.date).toEqual(parseDateOnlyIn(day, timeZone));
-		expect(dayKey(row.date, timeZone)).toBe(day);
-		expect(row.accountLegs[0]?.date.toISOString()).toBe(`${day}T00:00:00.000Z`);
+		it("an income row sits on its day in the viewer's zone; its leg keeps the ledger day", async () => {
+			const { user } = await createTestUser();
+			const wallet = await openAccount(
+				user.id,
+				"Wallet",
+				"CASH",
+				"USD",
+				100,
+				{},
+				60,
+			);
+			const r = await forUser(user.id).apply(addIncome, {
+				title: "Salary",
+				amount: "500",
+				currency: "USD",
+				date: day,
+				into: wallet,
+				timeZone,
+			});
+			const row = await adminDb.expense.findUniqueOrThrow({
+				where: { id: r.value.expenseId },
+				include: { accountLegs: true },
+			});
+			expect(row.date).toEqual(parseDateOnlyIn(day, timeZone));
+			expect(dayKey(row.date, timeZone)).toBe(day);
+			expect(row.accountLegs[0]?.date.toISOString()).toBe(
+				`${day}T00:00:00.000Z`,
+			);
 
-		const gone = await forUser(user.id).apply(deleteIncome, {
-			expenseId: r.value.expenseId,
-			timeZone,
+			const gone = await forUser(user.id).apply(deleteIncome, {
+				expenseId: r.value.expenseId,
+				timeZone,
+			});
+			expect(gone.value.recreate.date).toBe(day);
 		});
-		expect(gone.value.recreate.date).toBe(day);
-	});
 
-	it("an income without an account keeps its day through delete and recreate", async () => {
-		const { user } = await createTestUser();
-		const r = await forUser(user.id).apply(addIncome, {
-			title: "Gift",
-			amount: "50",
-			currency: "USD",
-			date: day,
-			timeZone,
+		it("an income without an account keeps its day through delete and recreate", async () => {
+			const { user } = await createTestUser();
+			const r = await forUser(user.id).apply(addIncome, {
+				title: "Gift",
+				amount: "50",
+				currency: "USD",
+				date: day,
+				timeZone,
+			});
+			const gone = await forUser(user.id).apply(deleteIncome, {
+				expenseId: r.value.expenseId,
+				timeZone,
+			});
+			expect(gone.value.recreate.date).toBe(day);
 		});
-		const gone = await forUser(user.id).apply(deleteIncome, {
-			expenseId: r.value.expenseId,
-			timeZone,
-		});
-		expect(gone.value.recreate.date).toBe(day);
-	});
 
-	it("a transfer's fee is an expense on the viewer's day", async () => {
-		const { user } = await createTestUser();
-		const a = await openAccount(user.id, "A", "CASH", "USD", 1000, {}, 60);
-		const b = await openAccount(user.id, "B", "CASH", "USD", 0, {}, 60);
-		const r = await forUser(user.id).apply(createTransfer, {
-			fromAccountId: a,
-			toAccountId: b,
-			fromAmount: "100",
-			fee: { amount: "2" },
-			date: day,
-			timeZone,
+		it("a transfer's fee is an expense on the viewer's day", async () => {
+			const { user } = await createTestUser();
+			const a = await openAccount(user.id, "A", "CASH", "USD", 1000, {}, 60);
+			const b = await openAccount(user.id, "B", "CASH", "USD", 0, {}, 60);
+			const r = await forUser(user.id).apply(createTransfer, {
+				fromAccountId: a,
+				toAccountId: b,
+				fromAmount: "100",
+				fee: { amount: "2" },
+				date: day,
+				timeZone,
+			});
+			const fee = await adminDb.expense.findUniqueOrThrow({
+				where: { id: r.value.feeExpenseId ?? "" },
+			});
+			expect(dayKey(fee.date, timeZone)).toBe(day);
 		});
-		const fee = await adminDb.expense.findUniqueOrThrow({
-			where: { id: r.value.feeExpenseId ?? "" },
-		});
-		expect(dayKey(fee.date, timeZone)).toBe(day);
-	});
-});
+	},
+);
 
 async function pair() {
 	const { user } = await arsUser();
@@ -181,7 +191,8 @@ async function pair() {
 		splitWith: [me, them],
 		splitMode: "EQUAL" as const,
 	};
-	const told = () => adminDb.notification.findMany({ where: { userId: other.id } });
+	const told = () =>
+		adminDb.notification.findMany({ where: { userId: other.id } });
 	return { user, other, me, them, input, told };
 }
 
@@ -212,9 +223,17 @@ describe("shared expenses", () => {
 		const id = crypto.randomUUID();
 		const first: (() => Promise<void>)[] = [];
 		const second: (() => Promise<void>)[] = [];
-		await forUser(p.user.id).apply(createSharedExpense, { ...p.input, id, notify: first });
+		await forUser(p.user.id).apply(createSharedExpense, {
+			...p.input,
+			id,
+			notify: first,
+		});
 		await expect(
-			forUser(p.user.id).apply(createSharedExpense, { ...p.input, id, notify: second }),
+			forUser(p.user.id).apply(createSharedExpense, {
+				...p.input,
+				id,
+				notify: second,
+			}),
 		).rejects.toThrow();
 		await send(first);
 		expect(second).toEqual([]);
@@ -225,7 +244,10 @@ describe("shared expenses", () => {
 	it("the Undo of a create takes back its notice and tells nothing new", async () => {
 		const p = await pair();
 		const made: (() => Promise<void>)[] = [];
-		const r = await forUser(p.user.id).apply(createSharedExpense, { ...p.input, notify: made });
+		const r = await forUser(p.user.id).apply(createSharedExpense, {
+			...p.input,
+			notify: made,
+		});
 		await send(made);
 		expect((await p.told()).map((n) => n.type)).toEqual(["EXPENSE_SPLIT"]);
 
@@ -268,7 +290,9 @@ describe("repeated saves with a client id", () => {
 		const tid = crypto.randomUUID();
 		const move = { id: tid, fromAccountId: a, toAccountId: b, fromAmount: "5" };
 		await forUser(user.id).apply(createTransfer, move);
-		await expect(forUser(user.id).apply(createTransfer, move)).rejects.toThrow();
+		await expect(
+			forUser(user.id).apply(createTransfer, move),
+		).rejects.toThrow();
 		expect(await adminDb.transfer.count({ where: { id: tid } })).toBe(1);
 	});
 });
@@ -309,7 +333,9 @@ describe("the undo of a delete", () => {
 		expect(before.rateType).toBeNull();
 
 		const gone = await forUser(user.id).apply(deleteExpenseEntry, { id });
-		await forUser(user.id).apply(restoreExpenseEntry, { token: gone.value.restore });
+		await forUser(user.id).apply(restoreExpenseEntry, {
+			token: gone.value.restore,
+		});
 		const back = await adminDb.expense.findUniqueOrThrow({ where: { id } });
 		expect(back).toEqual(before);
 	});
@@ -321,7 +347,9 @@ describe("the undo of a delete", () => {
 			createExpense,
 			typed(cat.id, "USD", "10", "1500"),
 		);
-		const gone = await forUser(user.id).apply(deleteExpenseEntry, { id: r.value.id });
+		const gone = await forUser(user.id).apply(deleteExpenseEntry, {
+			id: r.value.id,
+		});
 		const forged = {
 			...gone.value.restore,
 			data: gone.value.restore.data.replace('"1500"', '"9999"'),

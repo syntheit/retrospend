@@ -98,7 +98,11 @@ export function transferView(v: TransferValue): TransferView {
 		referenceRateType: v.referenceRateType,
 		reference:
 			v.referenceRate &&
-			ratePair(v.referenceRate.base, v.referenceRate.quote, v.referenceRate.value),
+			ratePair(
+				v.referenceRate.base,
+				v.referenceRate.quote,
+				v.referenceRate.value,
+			),
 		accounts: v.accounts.map(accountView),
 		budget: v.budget,
 		feeExpenseId: v.feeExpenseId,
