@@ -65,7 +65,6 @@
 	"money": {
 		"amount": "Betrag",
 		"currency": "Währung, {code}",
-		"rate": "Wechselkurs: {rate}",
 		"error": {
 			"empty": "Betrag eingeben",
 			"invalidCharacter": "Nur Ziffern und + - × ÷",
@@ -78,5 +77,13 @@
 			"zero": "Betrag über null eingeben",
 			"negative": "Der Betrag muss über null liegen"
 		}
+	},
+	"project": {
+		"label": "Projekte",
+		"find": "Projekt suchen",
+		"empty": "Keine Treffer",
+		"selected": "Ausgewählt",
+		"none": "Keins",
+		"solo": "Allein"
 	}
 }

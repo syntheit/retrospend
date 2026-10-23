@@ -65,7 +65,6 @@
 	"money": {
 		"amount": "Amount",
 		"currency": "Currency, {code}",
-		"rate": "Exchange rate: {rate}",
 		"error": {
 			"empty": "Enter an amount",
 			"invalidCharacter": "Use digits and + - × ÷ only",
@@ -78,5 +77,13 @@
 			"zero": "Enter an amount above zero",
 			"negative": "The amount must be above zero"
 		}
+	},
+	"project": {
+		"label": "Projects",
+		"find": "Find a project",
+		"empty": "No matches",
+		"selected": "Selected",
+		"none": "None",
+		"solo": "Solo"
 	}
 }

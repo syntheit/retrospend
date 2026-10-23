@@ -15,9 +15,20 @@ import * as React from "react";
 
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
-import { CurrencyChip, RateChip } from "./money-input-chips";
+import {
+	CurrencyChip,
+	HomeRow,
+	type MoneyHome,
+	type MoneyRates,
+	RateStrip,
+} from "./money-input-chips";
 
 export type { MoneyInputError, MoneyInputResult };
+export type {
+	MoneyHome,
+	MoneyRateOption,
+	MoneyRates,
+} from "./money-input-chips";
 
 /**
  * The caret after the draft: if the draft kept the text as typed (a typed
@@ -109,11 +120,14 @@ export type MoneyInputProps = {
 	onChange: (text: string, result: MoneyInputResult) => void;
 	onCurrencyChange?: (code: string) => void;
 	favoriteCurrencies?: readonly string[];
-	/**
-	 * Foreign amounts: the server's rate line and home amount, already
-	 * formatted ("USD 1 = ARS 1,468 · Blue", "About ARS 93,071.20").
-	 */
-	rate?: { label: string; home?: string; onClick?: () => void };
+	/** Words on the amount row, wide screens only ("You spent"). */
+	label?: string;
+	/** A foreign amount's rate types, side by side under the amount. */
+	rates?: MoneyRates;
+	/** Rows inside the field under the rates: a custom rate, a missing rate, a fixed rate line. */
+	rows?: React.ReactNode;
+	/** The converted amount in the home currency (the server's figure). */
+	home?: MoneyHome;
 	/** Show errors now (after a Save attempt). */
 	showErrors?: boolean;
 	disabled?: boolean;
@@ -124,7 +138,8 @@ export type MoneyInputProps = {
 /**
  * MoneyInput (R22): the amount at input height, 16px medium. Groups
  * thousands while typing, reads the page locale, does + - × ÷ math with a
- * live result, and shows the rate chip for a foreign currency.
+ * live result. A foreign amount keeps its conversion in the same field:
+ * the rate types side by side, then the home amount (kit .aex-amtg).
  */
 export function MoneyInput(p: MoneyInputProps) {
 	const t = useTranslations("pickers.money");
@@ -141,29 +156,39 @@ export function MoneyInput(p: MoneyInputProps) {
 
 	return (
 		<div className="flex flex-col gap-1">
-			{/* kit .moneyinput: the currency chip inside the field, the amount on the right */}
 			<div
 				className={cn(
-					"flex h-money items-center gap-2 rounded-ctl border border-line-strong bg-surface p-1 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand",
-					error && "border-danger",
+					"overflow-hidden rounded-ctl border border-line-strong bg-surface transition-colors duration-(--t-state) ease-land focus-within:border-brand focus-within:ring-1 focus-within:ring-brand",
+					error && "border-danger ring-1 ring-danger",
 					p.disabled && "opacity-50",
 				)}
 			>
-				<CurrencyChip {...p} />
-				<Input
-					aria-describedby={error ? `${id}-error` : undefined}
-					aria-invalid={error ? true : undefined}
-					aria-label={t("amount")}
-					autoComplete="off"
-					autoFocus={p.autoFocus}
-					className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 pr-2 text-right font-medium text-base text-fg tabular-nums shadow-none placeholder:text-fg-3 focus-visible:ring-0 dark:bg-transparent"
-					disabled={p.disabled}
-					id={id}
-					inputMode="decimal"
-					placeholder="0"
-					value={p.value}
-					{...field.handlers}
-				/>
+				{/* kit .moneyinput: the currency chip inside the field, the amount on the right */}
+				<div className="flex h-money items-center gap-2 p-1">
+					<CurrencyChip {...p} />
+					{p.label ? (
+						<span className="shrink-0 text-fg-3 text-small max-md:hidden">
+							{p.label}
+						</span>
+					) : null}
+					<Input
+						aria-describedby={error ? `${id}-error` : undefined}
+						aria-invalid={error ? true : undefined}
+						aria-label={t("amount")}
+						autoComplete="off"
+						autoFocus={p.autoFocus}
+						className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 pr-2 text-right font-medium text-base text-fg tabular-nums shadow-none placeholder:text-fg-3 focus-visible:ring-0 dark:bg-transparent"
+						disabled={p.disabled}
+						id={id}
+						inputMode="decimal"
+						placeholder="0"
+						value={p.value}
+						{...field.handlers}
+					/>
+				</div>
+				{p.rates ? <RateStrip rates={p.rates} /> : null}
+				{p.rows}
+				{p.home ? <HomeRow home={p.home} /> : null}
 			</div>
 			{error ? (
 				<span className="text-danger text-meta" id={`${id}-error`} role="alert">
@@ -173,15 +198,32 @@ export function MoneyInput(p: MoneyInputProps) {
 					})}
 				</span>
 			) : null}
-			{p.rate || preview ? (
-				<div className="flex flex-wrap items-center gap-2 text-fg-2 text-small">
-					{p.rate ? <RateChip {...p.rate} /> : null}
-					{p.rate?.home ? (
-						<span className="tabular-nums">{p.rate.home}</span>
-					) : null}
-					{preview ? <span className="tabular-nums">{preview}</span> : null}
-				</div>
+			{preview ? (
+				<span className="text-right text-fg-2 text-small tabular-nums">
+					{preview}
+				</span>
 			) : null}
+		</div>
+	);
+}
+
+/** A row inside the MoneyInput field, under a hairline (custom rate, notices). */
+export function MoneyInputRow({
+	tone = "plain",
+	children,
+}: {
+	tone?: "plain" | "attention";
+	children: React.ReactNode;
+}) {
+	return (
+		<div
+			className={cn(
+				"flex min-h-ctl flex-wrap items-center gap-2 border-line-strong border-t px-3 py-2 text-fg-2 text-small",
+				tone === "attention" && "bg-attention-bg text-fg",
+			)}
+			role={tone === "attention" ? "status" : undefined}
+		>
+			{children}
 		</div>
 	);
 }
