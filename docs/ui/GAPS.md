@@ -109,9 +109,9 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 
 | Where | What is missing | Until then | Owner |
 |---|---|---|---|
-| Shell palette (`src/components/shell/palette.tsx`) | Typed results for people, projects, accounts, categories and expenses (RC14): one search read model that matches accent-insensitively | Typing filters Go to and Commands only | S2 search + S1c part 2 |
+| Shell palette (`src/components/shell/palette.tsx`) | Accounts in the search read (`GET /api/v1/search` has expenses, people, projects and categories) | Typed text shows People, Projects, Categories and Expenses from the search read after Go to and Commands; no Accounts group | S2 search |
 | Shell palette | The inline currency converter ("100 usd", "50000 ars to brl") with every rate type | No converter row; Currencies is in Go to | S1c part 2 (rates read from the server) |
-| Shell palette | Suggestions from Needs you (imports to review, the person you owe most, the next recurring item due) | No Suggestions group | 2E `needsYou()` |
+| Shell palette, Suggestions | Settle up with the person you owe most: the palette has no read of who you owe most | Suggestions lists the imports to review and the next recurring expense due, from `home.needsYou` | 2E (owed per person) |
 | Shell palette, Recent | A recent-items read model (people and projects you opened, expenses) with Money DTOs | Recent shows the two most recently updated active projects and the last three expenses from `expense.listFinalized`, whose amounts arrive as numbers and are turned into minor units by `toMinor` | S2 |
 | Shell nav badges (`src/lib/nav.ts` `NavBadges`) | Needs you counts per destination (Activity: imports to review; People; Budget) | `AppShell` takes `badges` as an optional prop; no badge shows | 2E |
 | Sidebar pinned projects | A pin per person and project | The Pinned group lists active projects, most recently updated first, at most 5 (the kit's fallback) | S4F projects |
@@ -119,7 +119,6 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Add income, Transfer (split Add menu, palette, I and T keys) | Their sheets (4G) | Shown disabled with "Coming soon"; the keys show a "coming soon" toast | S4G |
 | New routes (`/activity/insights`) | The page | `SHIPPED_ROUTES` in `src/lib/nav.ts` lists `/home`, `/activity` and `/activity/recurring`; Insights is hidden until its page ships | S4 |
 | Phone account entry on today's pages | The new PageHeader with the account avatar | Today's SiteHeader menu button opens the account sheet in the new shell (`LegacyMenuBridge` in `app-shell.tsx`); the button is hidden on desktop | S4 pages |
-| Verify your email (today's sidebar banner) | Its mockup home is a Home Needs you item (shown only when the instance can send email) | On Home it is that item and the shell's Notice stays off; elsewhere it is a single attention Notice at the top of the content (`verify-email-notice.tsx`) | S1c (other pages) |
 | Public profile (`/u/{username}`) | Done in Settings v2: Profile > Public profile has Copy link and View. Today's page keeps its links in Payment methods | Settings v2 only (uiV2) | S4H settings (done) |
 | Settings > Developer, token scopes | A server path that sets an API key's scopes (`POST /api/v1/tokens`): the api-key plugin only lets the server set `permissions` | New keys are read-only. The sheet lists every scope and shows the write ones disabled with "Not available yet"; `createToken` in `src/features/settings/developer/tokens.ts` already takes scopes, so the route swaps in there | S3 platform |
 | Settings > Preferences, Default rate type | The per-user default rate type (M2, `UserSettings`) on this branch | Row left out | 2A.2, then S4H |
@@ -245,7 +244,6 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Home: net worth sparkline | A net worth series read in Money (`netWorthSeries`, 6 months) | The Net worth row shows the number only | 2D |
 | Home: Coming up total | A server total of the next 3 weeks of recurring items (`due({days: 21})` with its sum) | Coming up lists the items with no total line | 2E |
 | Home: Needs you amounts as figures | Registry ids for item amounts | Item amounts carry no `data-figure`; Give it a job carries `budget.notPlannedYet` | 2E figures |
-| Home: notifications bell | The notification center (bell, filters, Mark all read) | Not on Home; today's bell stays in the shell | S1c |
 
 ## 8. Behavior gaps found by the e2e suite
 
