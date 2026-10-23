@@ -22,6 +22,7 @@ const row = (index: number, extra: Partial<ReviewRow> = {}): ReviewRow => ({
 	categoryId: null,
 	kind: "expense",
 	duplicate: false,
+	possible: null,
 	noRate: false,
 	...extra,
 });

@@ -127,7 +127,9 @@
 		"already": "Уже в Операциях",
 		"noCategory": "Без категории",
 		"categoryPicker": "Категория для {title}",
-		"kindMenu": "Импортировать {title} как"
+		"kindMenu": "Импортировать {title} как",
+		"possible": "Возможно, уже в Операциях: {title}, {date}",
+		"skipOne": "Пропустить"
 	},
 	"kind": {
 		"expense": "Расход",

@@ -18,6 +18,11 @@ const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date");
 const currency = z.string().min(3).max(10);
 const id = z.string().min(1);
 const rateType = z.string().min(1).max(32);
+/** A typed rate, as Add expense takes it: up to 12 decimals, above 0. */
+const customRate = z
+	.string()
+	.regex(/^\d{1,13}(\.\d{1,12})?$/, "Enter a rate like 1.0834")
+	.refine((v) => Number(v) > 0, "Enter a rate above 0");
 
 const accountFields = {
 	name: z.string().min(1).max(191),
@@ -119,6 +124,8 @@ export const addIncomeSchema = z.object({
 	amount: positive,
 	currency,
 	rateType: rateType.nullish(),
+	/** A typed rate: 1 unit of `currency` = this much home (up to 12 decimals). */
+	customRate: customRate.nullish(),
 	categoryId: id.nullish(),
 	description: z.string().max(1000).nullish(),
 	date: isoDay.nullish(),
@@ -139,6 +146,8 @@ export const recreateIncomeSchema = addIncomeSchema.extend({
 		.object({
 			exchangeRate: storedDecimal,
 			amountInUSD: storedDecimal,
+			rateType: rateType.nullish(),
+			homeRate: storedDecimal.nullish(),
 			units: storedDecimal.nullable(),
 			homeAmount: storedDecimal.nullable(),
 			homeCurrency: currency.nullable(),
@@ -167,6 +176,8 @@ export const confirmRecurringIncomeSchema = z.object({
 	dueDate: z.date().nullish(),
 	/** The real amount as typed, when the template's amount varies. */
 	amount: positive.nullish(),
+	rateType: rateType.nullish(),
+	customRate: customRate.nullish(),
 	into: id.nullish(),
 	keep: z.boolean().nullish(),
 	usePlan: z.boolean().optional(),

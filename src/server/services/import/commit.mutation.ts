@@ -25,12 +25,8 @@ import { INCOME_FIGURES } from "../income/add.mutation";
 import type { MoneyMutation } from "../preview/types";
 import { loadRateContext } from "../rate-types";
 import { bookImportRow, type ImportRate } from "./book";
-import {
-	existingKeys,
-	isDuplicate,
-	type PreparedRow,
-	prepareRows,
-} from "./prepare";
+import { fileFingerprint, matchFile } from "./match";
+import { type PreparedRow, prepareRows } from "./prepare";
 import { cachedRates } from "./rate-cache";
 import { loadReviewableJob } from "./review";
 import {
@@ -197,6 +193,7 @@ function rowData(
 		// The file's column, else the category's default, else counted.
 		excludeFromAnalytics: s.excludeFromAnalytics ?? excludeByDefault ?? false,
 		status: "FINALIZED",
+		importFingerprint: fileFingerprint(c.row),
 		...kindColumns(c.kind),
 	};
 }
@@ -212,10 +209,16 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 		const stored = storedRows(job.transactions);
 		const { rows, badDates } = prepareRows(stored, input);
 		const choices = choicesOf(input, stored.length);
-		const [ctx, categories, keys] = await Promise.all([
+		const [ctx, categories, matches] = await Promise.all([
 			loadRateContext(rates, userId),
 			checkedCategories(tx, userId, choices.values()),
-			existingKeys(tx, userId, rows, input.timeZone),
+			matchFile(
+				tx,
+				userId,
+				rows,
+				(r) => choices.get(r.index)?.kind ?? r.proposed,
+				input.timeZone,
+			),
 		]);
 
 		let duplicates = 0;
@@ -227,7 +230,8 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 		for (const row of rows) {
 			const choice = choices.get(row.index);
 			const kind = choice?.kind ?? row.proposed;
-			if (isDuplicate(keys, row, kind, input.timeZone)) duplicates++;
+			// Exact matches are skipped; likely ones import unless you skipped them.
+			if (matches.get(row.index)?.exact) duplicates++;
 			else if (!choice?.keep) unchecked++;
 			else {
 				const rate = await bookImportRow(rates, ctx, row.rate);

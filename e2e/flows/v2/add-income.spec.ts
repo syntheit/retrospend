@@ -56,3 +56,26 @@ test("Add income: no account, no plan without a budget, save and Undo", async ({
 			.click(),
 	);
 });
+
+test("Add income: a pair with no rate asks for one, never 1", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openV2(page, "/activity");
+	await page.keyboard.press("i");
+	const sheet = page.getByRole("dialog", { name: "Add income" });
+	// UYU has no rate in the seed: the home row needs one, and Enter rate opens it.
+	await sheet.getByRole("button", { name: "Currency, ARS" }).click();
+	await page.keyboard.type("UYU");
+	await page.getByRole("option", { name: /^UYU/ }).first().click();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("1000");
+	await expect(sheet.getByText("Needs a rate")).toBeVisible();
+	await sheet.getByRole("button", { name: "Enter rate" }).click();
+	// 1 UYU = 40 ARS: UYU 1,000 counts as ARS 40,000, booked by the server.
+	await sheet.getByRole("textbox", { name: "Custom rate in ARS" }).fill("40");
+	await expect(sheet.locator('[data-figure="entry.income.home"]')).toHaveText(
+		"ARS 40,000",
+	);
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await sheet.getByRole("button", { name: "Cancel" }).click();
+});
