@@ -25,6 +25,11 @@ export interface NeedsYouOptions {
 	/** The request's zone; else the user's stored zone, else the server default (userTimeZone). */
 	readonly timeZone?: string;
 	readonly now?: Date;
+	/**
+	 * Whether this instance can send email (`isEmailDeliveryEnabled`); without
+	 * it there is no Verify your email item. The router passes the real value.
+	 */
+	readonly emailEnabled?: boolean;
 }
 
 async function budgetSource(
@@ -88,7 +93,7 @@ export async function needsYouIn(
 		...people.items,
 		...(await activityItems(tx, userId, now, timeZone)),
 		...(options.budget ? await budgetSource(tx, userId, now) : []),
-		...(await setupItems(tx, user)),
+		...(await setupItems(tx, user, options.emailEnabled ?? true)),
 	].sort(compareItems);
 	return {
 		today: dayKey(now, timeZone),

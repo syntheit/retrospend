@@ -108,11 +108,13 @@ export async function activityItems(
 /**
  * New-user prompts (Home mockup, state "new"): with no expense at all, add
  * one, pick the home currency, import a statement (unless one was started).
- * Verify your email shows until the address is verified.
+ * Verify your email shows until the address is verified, and only when the
+ * instance can send email (otherwise Resend could never work).
  */
 export async function setupItems(
 	tx: Tx,
 	user: { id: string; emailVerified: boolean },
+	emailEnabled: boolean,
 ): Promise<NeedsYouItem[]> {
 	const userEntity = { kind: "user" as const, id: user.id };
 	const out: NeedsYouItem[] = [];
@@ -130,7 +132,7 @@ export async function setupItems(
 		if (!anyImport)
 			out.push(item("setup.importStatement", { entity: userEntity }));
 	}
-	if (!user.emailVerified)
+	if (emailEnabled && !user.emailVerified)
 		out.push(item("setup.verifyEmail", { entity: userEntity }));
 	return out;
 }
