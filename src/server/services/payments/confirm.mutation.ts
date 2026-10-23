@@ -297,12 +297,21 @@ export interface ConfirmPaymentValue {
  * The mutation reads the payment to know which person's figures to narrow
  * to, so the transport passes the counterparty it already resolved.
  */
+/** A confirmed payment to you returns held money to To assign (D8): the budget figures move. */
+const CONFIRM_FIGURES = [
+	"balance.person",
+	"owed.owedToYou",
+	"owed.youOwe",
+	"budget.notPlannedYet",
+	"budget.heldForOthers",
+];
+
 export const confirmPayment: MoneyMutation<
 	ConfirmPaymentInput & { readonly person: ParticipantRef },
 	ConfirmPaymentValue
 > = {
 	id: "payment.confirm",
-	touches: ["balance.person", "owed.owedToYou", "owed.youOwe"],
+	touches: CONFIRM_FIGURES,
 	scope: (input) => ({ personId: personKey(input.person) }),
 	run: async (tx, input, actor) => {
 		const me: ParticipantRef = {
@@ -340,7 +349,7 @@ export const unconfirmPayment: MoneyMutation<
 	{ readonly paymentId: string }
 > = {
 	id: "payment.unconfirm",
-	touches: ["balance.person", "owed.owedToYou", "owed.youOwe"],
+	touches: CONFIRM_FIGURES,
 	scope: (input) => ({ personId: personKey(input.person) }),
 	run: async (tx, input, actor) => {
 		const me: ParticipantRef = {

@@ -8,7 +8,9 @@
  * (income.unconfirmRecurring) removes the row, takes the plan's batch back
  * and rewinds the template.
  */
+
 import { TRPCError } from "@trpc/server";
+import type { RestChoice } from "~/lib/schemas/envelope";
 import { dayKey } from "~/lib/time-zone";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
@@ -57,6 +59,8 @@ export interface ConfirmRecurringIncomeInput {
 	readonly keep?: boolean | null;
 	/** Use my plan (N72): assign the money by the plan in the same action. */
 	readonly usePlan?: boolean;
+	/** Where Use my plan puts the rest; Leave it when omitted. */
+	readonly planRest?: RestChoice | null;
 	readonly timeZone?: string;
 }
 
@@ -204,6 +208,7 @@ export async function confirmRecurringIncomeIn(
 				userId,
 				incomeExpenseId: row.id,
 				amount: kept ? null : bookedMoney,
+				rest: input.planRest ?? undefined,
 			})
 		: PLAN_NOT_REQUESTED;
 	// Recorded on the row, so the undo takes the batch back by itself.

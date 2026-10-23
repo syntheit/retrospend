@@ -27,14 +27,26 @@ import {
 import { inBudget, worthOf } from "../accounts/places";
 import {
 	type BudgetSideResult,
+	hasEnvelopeBudget,
 	recordBudgetSide,
+	recordedMoveIn,
+	removeBudgetSide,
 } from "../transfers/budget-side";
 import { incomeRow } from "./delete.mutation";
 
 type Tx = Prisma.TransactionClient;
 
 /** Moves no account and changes no net worth: these are what a preview must show unchanged. */
-export const MOVE_IN_FIGURES = ["netWorth", "accounts.balance", "notTracked"];
+export const MOVE_IN_FIGURES = [
+	"netWorth",
+	"accounts.balance",
+	"notTracked",
+	// The budget side (envelope/wealth.service.ts) moves these (R30).
+	"budget.notPlannedYet",
+	"budget.leftToSpend",
+	"budget.heldForOthers",
+	"envelope.left",
+];
 
 export type MoveInInput =
 	| {
@@ -45,6 +57,8 @@ export type MoveInInput =
 			readonly timeZone?: string;
 	  }
 	| {
+			/** Client id of this Move in (and its budget side): its undo removes exactly it. */
+			readonly id: string;
 			/** Wealth money not tied to an income: these units at today's value. */
 			readonly accountId: string;
 			readonly units: string;
@@ -171,6 +185,19 @@ export async function moveInIn(
 ): Promise<MovedIn> {
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	const homeCurrency = await homeCurrencyOf(tx, userId);
+	// A retry of a Move in already recorded: what it did, nothing counted twice.
+	const prior = "id" in input ? await recordedMoveIn(tx, input.id) : null;
+	if (prior && "accountId" in input)
+		return {
+			accountId: prior.assetAccountId ?? input.accountId,
+			expenseId: null,
+			amount: {
+				minor: toMinor(prior.amount.toString(), homeCurrency),
+				currency: homeCurrency,
+			},
+			countedUnits: input.units,
+			budgetSide: { recorded: true, reason: null },
+		};
 	const side: Side =
 		"expenseId" in input
 			? await incomeSide(tx, userId, input.expenseId)
@@ -195,6 +222,7 @@ export async function moveInIn(
 		currency: homeCurrency,
 	};
 	const budgetSide = await recordBudgetSide(tx, {
+		id: "id" in input ? input.id : null,
 		userId,
 		direction: "FROM_WEALTH",
 		amount,
@@ -290,11 +318,22 @@ export async function undoMoveInIn(
 	}
 	await markCounted(tx, side, false);
 	const expenseId = "expenseId" in input ? input.expenseId : null;
-	if (expenseId)
+	if (expenseId) {
 		await tx.expense.update({
 			where: { id: expenseId },
 			data: { movedInAt: null },
 		});
+		await removeBudgetSide(tx, { sourceExpenseId: expenseId });
+	} else if (
+		"id" in input &&
+		(await removeBudgetSide(tx, { id: input.id })) === 0 &&
+		(await hasEnvelopeBudget(tx, userId))
+	) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "That Move in is not in your budget. Nothing was changed.",
+		});
+	}
 	const home = await homeCurrencyOf(tx, userId);
 	return {
 		accountId: account.id,
@@ -308,6 +347,7 @@ export async function undoMoveInIn(
 export const moveIn: MoneyMutation<MoveInInput, MovedIn> = {
 	id: "income.moveIn",
 	touches: MOVE_IN_FIGURES,
+	scope: (input) => (input.putIn ? { envelopeId: input.putIn } : {}),
 	run: async (tx, input, actor) => {
 		const value = await moveInIn(tx, actor.userId, input);
 		return {
@@ -329,6 +369,7 @@ export const moveIn: MoneyMutation<MoveInInput, MovedIn> = {
 export const undoMoveIn: MoneyMutation<MoveInInput, MovedIn> = {
 	id: "income.undoMoveIn",
 	touches: MOVE_IN_FIGURES,
+	scope: (input) => (input.putIn ? { envelopeId: input.putIn } : {}),
 	run: async (tx, input, actor) => {
 		const value = await undoMoveInIn(tx, actor.userId, input);
 		return {

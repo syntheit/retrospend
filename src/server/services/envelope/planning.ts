@@ -15,8 +15,10 @@ import type {
 	EnvelopeRowDto,
 	FillFromTargetsOutput,
 	GetMonthOutput,
+	RestOption,
 } from "~/lib/schemas/envelope";
 import { autoFill, type FillCandidate } from "./auto-fill";
+import { addMonths } from "./calendar";
 import type { Minor } from "./types";
 
 function rowsOf(
@@ -48,11 +50,47 @@ export function fillFromTargets(
 		available: { minor: available, currency },
 		lines: lines.map((l) => ({
 			envelopeId: l.envelopeId,
+			month: view.month.key,
 			amount: { minor: l.amount, currency },
 			step: l.step,
 		})),
 		rest: { minor: left, currency },
+		restOptions: restOptions(view),
 	};
+}
+
+/**
+ * Where "Save it" puts the rest (kit budget-plan.js saveHome): the first
+ * savings goal in the Savings group whose date is still ahead, else the
+ * group's first envelope. Null without a Savings group.
+ */
+export function saveHome(view: GetMonthOutput): string | null {
+	const ahead = rowsOf(view).filter(
+		(e) =>
+			view.groups.some(
+				(g) => g.role === "SAVINGS" && g.envelopes.some((x) => x.id === e.id),
+			) && !(e.target?.dueDate && e.target.dueDate < view.today),
+	);
+	return (ahead.find((e) => e.kind === "SAVINGS") ?? ahead[0])?.id ?? null;
+}
+
+/**
+ * The rest's choices after Use my plan (D-owner-2026-10-22e): Save it (when
+ * there is a savings home), Next month (from the current month only, D22)
+ * and Leave it, the default.
+ */
+export function restOptions(view: GetMonthOutput): RestOption[] {
+	const home = saveHome(view);
+	const options: RestOption[] = [];
+	if (home) options.push({ choice: "SAVE", envelopeId: home, month: null });
+	if (view.month.state === "OPEN")
+		options.push({
+			choice: "NEXT_MONTH",
+			envelopeId: null,
+			month: addMonths(view.month.key, 1),
+		});
+	options.push({ choice: "LEAVE", envelopeId: null, month: null });
+	return options;
 }
 
 const KIND_RANK = { MONTHLY: 0, NONE: 0, SAVINGS: 1, BILL: 2 } as const;

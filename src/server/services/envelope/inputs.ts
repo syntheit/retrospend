@@ -10,28 +10,26 @@
  * A row without a rate is left out and listed (C18), never valued at 1.
  */
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
+import { monthCloseSummarySchema } from "~/lib/schemas/envelope";
 import type { Prisma, RecurringTemplate } from "~prisma";
-import {
-	shareParticipations,
-	shareRateResolver,
-} from "../shared-expense-integration";
 import {
 	budgetMoneyInWhere,
 	budgetRefundWhere,
 	budgetSpendingWhere,
 } from "../spending";
 import { addDays } from "./calendar";
-import type { EngineInput } from "./engine";
+import type { ClosedRule, EngineInput } from "./engine";
 import {
 	activityEntries,
 	moneyInEntries,
 	movementEntries,
-	type ShareRow,
 	Valuer,
+	wealthEntries,
 } from "./entries";
 import type { ViewBook, ViewEnvelope } from "./month-view";
 import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
 import { RateBook } from "./rate-book";
+import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
 import type { IsoDate, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
@@ -64,6 +62,7 @@ export interface LoadedBook {
 	input: EngineInput;
 	today: IsoDate;
 	missingRates: MissingRate[];
+	splits: LoadedSplits;
 }
 
 export interface LoadContext {
@@ -109,24 +108,26 @@ async function loadRows(tx: Tx, row: BookRow, userId: string) {
 		},
 		select,
 	});
-	// Which shares count and at which rate: the spending readers' own rule.
-	// Every share counts until project budget routing lands (M7).
-	const shares = await shareParticipations(tx, userId, { gte: from });
-	const rateFor = await shareRateResolver(
-		tx,
-		shares.map((p) => p.transaction),
-	);
+	const wealth = await tx.wealthTransfer.findMany({
+		where: { bookId: row.id },
+		select: {
+			id: true,
+			direction: true,
+			envelopeId: true,
+			date: true,
+			amount: true,
+		},
+	});
+	const closes = await tx.monthClose.findMany({
+		where: { bookId: row.id },
+		select: { month: true, summary: true },
+	});
 	const movements = await tx.budgetMovement.groupBy({
 		by: ["month", "fromEnvelopeId", "toEnvelopeId"],
 		where: { bookId: row.id },
 		_sum: { amount: true },
 	});
-	// Decimal(18,6) rates round-trip exactly through a JS number's shortest form.
-	const shareRate = (p: ShareRow) => {
-		const rate = rateFor(p.transaction);
-		return rate === null ? null : String(rate);
-	};
-	return { moneyIn, spending, refunds, shares, shareRate, movements };
+	return { moneyIn, spending, refunds, movements, wealth, closes };
 }
 
 function viewEnvelopes(row: BookRow, ctx: TargetContext): ViewEnvelope[] {
@@ -224,6 +225,8 @@ export async function loadBook(
 		usdRate: rates.lookup,
 	};
 	const valuer = new Valuer(valuation, row.timeZone, periods);
+	const splits = await loadSplits(tx, userId, valuer, row.startMonth);
+	const wealth = wealthEntries(rows.wealth, valuer, row.currency);
 	const input: EngineInput = {
 		startMonth: row.startMonth,
 		currentMonth,
@@ -235,10 +238,18 @@ export async function loadBook(
 			sweepToId: e.leftoverSweepToId,
 			categoryIds: e.categories.map((c) => c.categoryId),
 		})),
-		moneyIn: moneyInEntries(rows.moneyIn, valuer),
-		activity: activityEntries(rows, valuer, userId),
+		moneyIn: [...moneyInEntries(rows.moneyIn, valuer), ...wealth.moneyIn],
+		activity: [
+			...activityEntries(
+				{ ...rows, shares: splits.shares, shareRate: splits.shareRate },
+				valuer,
+				splits.routing,
+			),
+			...wealth.activity,
+		],
 		movements: movementEntries(rows.movements, row.currency),
-		splits: [],
+		splits: splits.replay.effects,
+		closedRules: closedRulesOf(rows.closes),
 	};
 	const envelopes = viewEnvelopes(row, {
 		valuation,
@@ -255,7 +266,28 @@ export async function loadBook(
 		input,
 		today,
 		missingRates: valuer.missingRates,
+		splits,
 	};
+}
+
+/** The leftover rules each closed month closed under (MonthClose snapshots, B7). */
+function closedRulesOf(
+	closes: ReadonlyArray<{ month: number; summary: Prisma.JsonValue }>,
+): Map<MonthKey, Map<string, ClosedRule>> {
+	const out = new Map<MonthKey, Map<string, ClosedRule>>();
+	for (const c of closes) {
+		const summary = monthCloseSummarySchema.parse(c.summary);
+		out.set(
+			c.month,
+			new Map(
+				summary.envelopes.map((e) => [
+					e.id,
+					{ rule: e.rule, sweepToId: e.sweepToId },
+				]),
+			),
+		);
+	}
+	return out;
 }
 
 /** Midnight at the start of budget month `month` in the book zone: the book's startDate. */
