@@ -1303,6 +1303,7 @@
   },
   "settleUp": {
     "settleAllSkipped": "Some balances couldn't be settled because no exchange rate was available: {currencies}. They were left unsettled.",
+    "recordAsDifferentPayment": "Record as a different payment",
     "title": "Settle Up",
     "titleWith": "Settle Up with {name}",
     "description": "Record a payment to zero out your balance.",

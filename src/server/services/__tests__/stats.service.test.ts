@@ -11,6 +11,8 @@ const mockGetSharedExpenseShares = vi.hoisted(() => vi.fn());
 
 vi.mock("~/server/services/shared-expense-integration", () => ({
 	getSharedExpenseShares: mockGetSharedExpenseShares,
+	// spent() looks up hidden projects when a caller does not pass them.
+	getExcludedProjectIds: async () => [],
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -66,7 +68,15 @@ describe("StatsService", () => {
 			mockGetSharedExpenseShares.mockImplementation(
 				async (_db: unknown, _u: unknown, range: { gte: Date }) =>
 					range.gte.getMonth() === 0
-						? [{ amount: 50, currency: "USD", amountInUSD: 50, categoryId: null, date: new Date(2023, 0, 5) }]
+						? [
+								{
+									amount: 50,
+									currency: "USD",
+									amountInUSD: 50,
+									categoryId: null,
+									date: new Date(2023, 0, 5),
+								},
+							]
 						: [],
 			);
 
@@ -114,7 +124,12 @@ describe("StatsService", () => {
 
 		it("a home currency with no rate still works when nothing needs converting", async () => {
 			useExpenseTable(db, [
-				{ date: new Date(2023, 0, 10), amount: 70, currency: "XYZ", amountInUSD: 0 },
+				{
+					date: new Date(2023, 0, 10),
+					amount: 70,
+					currency: "XYZ",
+					amountInUSD: 0,
+				},
 			]);
 
 			const result = await service.getSummaryStats("user-1", PAST_MONTH, "XYZ");
@@ -239,7 +254,10 @@ describe("StatsService", () => {
 
 			const result = await service.getCategoryBreakdown("user-1", MONTH, "USD");
 
-			expect(result[0]).toMatchObject({ id: "uncategorized", name: "Uncategorized" });
+			expect(result[0]).toMatchObject({
+				id: "uncategorized",
+				name: "Uncategorized",
+			});
 		});
 
 		it("ARS home: mixes native ARS and converted USD per category", async () => {
@@ -251,7 +269,13 @@ describe("StatsService", () => {
 				{ id: "cat-1", name: "Food", color: "blue", icon: null },
 			]);
 			mockGetSharedExpenseShares.mockResolvedValue([
-				{ amount: 2000, currency: "ARS", amountInUSD: 1.28, categoryId: "cat-1", date: new Date(2023, 0, 5) },
+				{
+					amount: 2000,
+					currency: "ARS",
+					amountInUSD: 1.28,
+					categoryId: "cat-1",
+					date: new Date(2023, 0, 5),
+				},
 			]);
 
 			const result = await service.getCategoryBreakdown("user-1", MONTH, "ARS");
@@ -321,7 +345,9 @@ describe("StatsService", () => {
 
 			const result = await service.getDailyTrend("user-1", MONTH, "ARS");
 
-			expect(result.find((d) => d.day === "Jan 2")!.total).toBeCloseTo(9000 + ARS);
+			expect(result.find((d) => d.day === "Jan 2")!.total).toBeCloseTo(
+				9000 + ARS,
+			);
 		});
 
 		it("puts a late-evening expense on its local day", async () => {
@@ -349,7 +375,13 @@ describe("StatsService", () => {
 			useExpenseTable(db, []);
 			db.category.findMany.mockResolvedValue([]);
 			mockGetSharedExpenseShares.mockResolvedValue([
-				{ amount: 40, currency: "USD", amountInUSD: 40, categoryId: null, date: new Date(2023, 0, 15) },
+				{
+					amount: 40,
+					currency: "USD",
+					amountInUSD: 40,
+					categoryId: null,
+					date: new Date(2023, 0, 15),
+				},
 			]);
 
 			const result = await service.getDailyTrend("user-1", MONTH, "USD");

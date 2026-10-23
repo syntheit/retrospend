@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Must be mocked before importing SharedTransactionService because the service
 // module imports notifications at the top level, which transitively imports
 // src/env.js (t3-env), which requires DATABASE_URL/BETTER_AUTH_SECRET to be set.
+// Join dates are tested on Postgres (services/project/__tests__); the mock
+// db here has no project createdAt to read.
+vi.mock("~/server/services/project/join-date", () => ({
+	defaultJoinedOn: vi.fn(async () => null),
+}));
+
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),
 	resolveParticipantName: vi.fn().mockResolvedValue("Test User"),
@@ -2523,7 +2529,7 @@ describe("SharedTransactionService", () => {
 				expect.anything(),
 				{ participantType: "user", participantId: "alice" },
 				{ participantType: "user", participantId: "bob" },
-				{ projectScope: "proj-1" },
+				expect.objectContaining({ projectScope: "proj-1" }),
 			);
 			expect(txClient.sharedTransaction.delete).not.toHaveBeenCalled();
 		});

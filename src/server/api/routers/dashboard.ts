@@ -1,12 +1,15 @@
+import type { Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import { personalActivityItem } from "~/server/services/expense-dto";
 import {
 	getOverviewSettings,
 	getOverviewStats,
 } from "~/server/services/overview.service";
 import { RateCache } from "~/server/services/rate-cache";
+import { listedEntryWhere } from "~/server/services/spending";
 import {
 	getExcludedProjectIds,
 	listSharedParticipationsForUser,
@@ -74,10 +77,16 @@ export const dashboardRouter = createTRPCRouter({
 				categoryData,
 				trendData,
 			] = await Promise.all([
-				db.expense.count({
-					where: { userId, status: "FINALIZED", isAmortizedChild: false },
-					take: 1,
-				}).then((c) => c > 0),
+				db.expense
+					.count({
+						where: {
+							...listedEntryWhere(userId),
+							status: "FINALIZED",
+							isAmortizedChild: false,
+						},
+						take: 1,
+					})
+					.then((c) => c > 0),
 				db.exchangeRateFavorite
 					.findMany({
 						where: { userId },
@@ -147,7 +156,7 @@ export const dashboardRouter = createTRPCRouter({
 				await Promise.all([
 					db.expense.findMany({
 						where: {
-							userId,
+							...listedEntryWhere(userId),
 							status: "FINALIZED",
 							isAmortizedChild: false,
 						},
@@ -181,17 +190,11 @@ export const dashboardRouter = createTRPCRouter({
 			const settlementShadowIds = new Set<string>();
 			for (const s of settlements) {
 				const isFrom =
-					s.fromParticipantType === "user" &&
-					s.fromParticipantId === userId;
-				const otherType = isFrom
-					? s.toParticipantType
-					: s.fromParticipantType;
-				const otherId = isFrom
-					? s.toParticipantId
-					: s.fromParticipantId;
+					s.fromParticipantType === "user" && s.fromParticipantId === userId;
+				const otherType = isFrom ? s.toParticipantType : s.fromParticipantType;
+				const otherId = isFrom ? s.toParticipantId : s.fromParticipantId;
 				if (otherType === "user") settlementUserIds.add(otherId);
-				else if (otherType === "shadow")
-					settlementShadowIds.add(otherId);
+				else if (otherType === "shadow") settlementShadowIds.add(otherId);
 			}
 
 			const [sUsers, sShadows] = await Promise.all([
@@ -210,8 +213,7 @@ export const dashboardRouter = createTRPCRouter({
 			]);
 
 			const nameMap = new Map<string, string>();
-			for (const u of sUsers)
-				nameMap.set(`user:${u.id}`, u.name ?? "Unknown");
+			for (const u of sUsers) nameMap.set(`user:${u.id}`, u.name ?? "Unknown");
 			for (const s of sShadows) nameMap.set(`shadow:${s.id}`, s.name);
 
 			// USD value of each settlement at the rate for its own date
@@ -228,6 +230,7 @@ export const dashboardRouter = createTRPCRouter({
 				amount: number;
 				currency: string;
 				amountInUSD: number | null;
+				home?: Money | null;
 				date: Date;
 				category: {
 					id: string;
@@ -261,23 +264,7 @@ export const dashboardRouter = createTRPCRouter({
 
 			// Personal expenses
 			for (const e of recentPersonal) {
-				items.push({
-					type: "personal",
-					id: e.id,
-					title: e.title ?? "Untitled expense",
-					amount: Number(e.amount),
-					currency: e.currency,
-					amountInUSD: e.amountInUSD ? Number(e.amountInUSD) : null,
-					date: e.date,
-					category: e.category
-						? {
-								id: e.category.id,
-								name: e.category.name,
-								color: e.category.color,
-								icon: e.category.icon,
-							}
-						: null,
-				});
+				items.push(personalActivityItem(e, homeCurrency));
 			}
 
 			// Shared expenses
@@ -311,16 +298,10 @@ export const dashboardRouter = createTRPCRouter({
 			}
 			for (const s of payments.values()) {
 				const isFrom =
-					s.fromParticipantType === "user" &&
-					s.fromParticipantId === userId;
-				const otherType = isFrom
-					? s.toParticipantType
-					: s.fromParticipantType;
-				const otherId = isFrom
-					? s.toParticipantId
-					: s.fromParticipantId;
-				const otherName =
-					nameMap.get(`${otherType}:${otherId}`) ?? "Unknown";
+					s.fromParticipantType === "user" && s.fromParticipantId === userId;
+				const otherType = isFrom ? s.toParticipantType : s.fromParticipantType;
+				const otherId = isFrom ? s.toParticipantId : s.fromParticipantId;
+				const otherName = nameMap.get(`${otherType}:${otherId}`) ?? "Unknown";
 				const direction = isFrom ? "outgoing" : "incoming";
 				const amount = s.total;
 
@@ -351,8 +332,7 @@ export const dashboardRouter = createTRPCRouter({
 
 			// Sort by date descending, take 20
 			items.sort(
-				(a, b) =>
-					new Date(b.date).getTime() - new Date(a.date).getTime(),
+				(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 			);
 
 			return items.slice(0, 20);

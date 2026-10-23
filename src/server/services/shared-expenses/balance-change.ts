@@ -40,13 +40,19 @@ export async function effectOfRemovingShare(
 ): Promise<ShareRemovalEffect> {
 	if (args.share <= TOLERANCE) return "none";
 	// computeBalance(payer, participant): positive = participant owes payer.
-	const balance = await computeBalance(
-		db,
-		args.payer,
-		args.participant,
-		args.projectId ? { projectScope: args.projectId } : undefined,
+	// A payment still pending counts for one side only (I5); for this warning
+	// it counts if either side recorded it, so a payment is never missed.
+	const views = await Promise.all(
+		[args.payer, args.participant].map((viewer) =>
+			computeBalance(db, args.payer, args.participant, {
+				viewer,
+				...(args.projectId ? { projectScope: args.projectId } : {}),
+			}),
+		),
 	);
-	const owed = balance.byCurrency[args.currency] ?? 0;
+	const owed = Math.min(
+		...views.map((balance) => balance.byCurrency[args.currency] ?? 0),
+	);
 	if (owed - args.share < -TOLERANCE) return "flips_balance";
 	if (owed > TOLERANCE) return "erases_debt";
 	return "none";

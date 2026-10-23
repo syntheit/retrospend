@@ -15,6 +15,8 @@ const mockGetSharedExpenseShares = vi.hoisted(() => vi.fn());
 
 vi.mock("~/server/services/shared-expense-integration", () => ({
 	getSharedExpenseShares: mockGetSharedExpenseShares,
+	// spent() looks up hidden projects when a caller does not pass them.
+	getExcludedProjectIds: async () => [],
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -91,7 +93,9 @@ describe("BudgetService", () => {
 
 	describe("getBudgets", () => {
 		it("FIXED budget: effectiveAmount = budget.amount regardless of actual spend", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "FIXED", amount: 500 })]);
+			db.budget.findMany.mockResolvedValue([
+				makeDbBudget({ type: "FIXED", amount: 500 }),
+			]);
 			useExpenseTable(db, [usd(new Date(2024, 5, 3), 200)]);
 
 			const [budget] = await getBudgets(db as never, "user-1", JUNE);
@@ -101,7 +105,9 @@ describe("BudgetService", () => {
 		});
 
 		it("PEG_TO_ACTUAL: effectiveAmount = actualSpend", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_ACTUAL" })]);
+			db.budget.findMany.mockResolvedValue([
+				makeDbBudget({ type: "PEG_TO_ACTUAL" }),
+			]);
 			useExpenseTable(db, [
 				usd(new Date(2024, 5, 3), 150),
 				usd(new Date(2024, 5, 4), 50),
@@ -124,7 +130,9 @@ describe("BudgetService", () => {
 		});
 
 		it("PEG_TO_LAST_MONTH with current spend: last month's spending, shared included", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_LAST_MONTH" })]);
+			db.budget.findMany.mockResolvedValue([
+				makeDbBudget({ type: "PEG_TO_LAST_MONTH" }),
+			]);
 			useExpenseTable(db, [
 				usd(new Date(2024, 5, 3), 100),
 				usd(new Date(2024, 4, 10), 300),
@@ -132,7 +140,15 @@ describe("BudgetService", () => {
 			mockGetSharedExpenseShares.mockImplementation(
 				async (_db: unknown, _u: unknown, range: { gte: Date }) =>
 					range.gte.getMonth() === 4
-						? [{ amount: 40, currency: "USD", amountInUSD: 40, categoryId: "cat-1", date: new Date(2024, 4, 12) }]
+						? [
+								{
+									amount: 40,
+									currency: "USD",
+									amountInUSD: 40,
+									categoryId: "cat-1",
+									date: new Date(2024, 4, 12),
+								},
+							]
 						: [],
 			);
 
@@ -143,7 +159,9 @@ describe("BudgetService", () => {
 		});
 
 		it("PEG_TO_LAST_MONTH with no spend yet: effectiveAmount = 0", async () => {
-			db.budget.findMany.mockResolvedValue([makeDbBudget({ type: "PEG_TO_LAST_MONTH" })]);
+			db.budget.findMany.mockResolvedValue([
+				makeDbBudget({ type: "PEG_TO_LAST_MONTH" }),
+			]);
 			useExpenseTable(db, [usd(new Date(2024, 4, 10), 300)]);
 
 			const [budget] = await getBudgets(db as never, "user-1", JUNE);
@@ -201,15 +219,21 @@ describe("BudgetService", () => {
 		it("a budget currency with no rate is an error, never 1:1", async () => {
 			db.budget.findMany.mockResolvedValue([makeDbBudget({ currency: "XYZ" })]);
 
-			await expect(getBudgets(db as never, "user-1", JUNE)).rejects.toBeInstanceOf(
-				MissingRateError,
-			);
+			await expect(
+				getBudgets(db as never, "user-1", JUNE),
+			).rejects.toBeInstanceOf(MissingRateError);
 		});
 
 		it("shared expense shares count toward budget", async () => {
 			db.budget.findMany.mockResolvedValue([makeDbBudget()]);
 			mockGetSharedExpenseShares.mockResolvedValue([
-				{ amount: 75, currency: "USD", amountInUSD: 75, categoryId: "cat-1", date: new Date(2024, 5, 9) },
+				{
+					amount: 75,
+					currency: "USD",
+					amountInUSD: 75,
+					categoryId: "cat-1",
+					date: new Date(2024, 5, 9),
+				},
 			]);
 
 			const [budget] = await getBudgets(db as never, "user-1", JUNE);
@@ -274,7 +298,10 @@ describe("BudgetService", () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ toFake: ["Date"] });
 			vi.setSystemTime(new Date(2024, 6, 10, 12)); // July 10
-			db.category.findFirst.mockResolvedValue({ id: "cat-1", userId: "user-1" });
+			db.category.findFirst.mockResolvedValue({
+				id: "cat-1",
+				userId: "user-1",
+			});
 		});
 		afterEach(() => {
 			vi.useRealTimers();
@@ -291,7 +318,11 @@ describe("BudgetService", () => {
 		it("returns all zeros when no spending history", async () => {
 			const result = await getSuggestions(db as never, "user-1", "cat-1");
 
-			expect(result).toEqual({ suggestedAmount: 0, averageSpend: 0, lastMonthSpend: 0 });
+			expect(result).toEqual({
+				suggestedAmount: 0,
+				averageSpend: 0,
+				lastMonthSpend: 0,
+			});
 		});
 
 		it("uses the 3 complete months before the running one", async () => {
@@ -319,7 +350,13 @@ describe("BudgetService", () => {
 				usd(new Date(2024, 4, 1), 100), // Apr 15 to May 14
 			]);
 
-			const result = await getSuggestions(db as never, "user-1", "cat-1", "USD", 15);
+			const result = await getSuggestions(
+				db as never,
+				"user-1",
+				"cat-1",
+				"USD",
+				15,
+			);
 
 			expect(result.lastMonthSpend).toBe(300);
 			expect(result.averageSpend).toBe(200);
@@ -342,7 +379,12 @@ describe("BudgetService", () => {
 				usd(new Date(2024, 5, 11), 10),
 			]);
 
-			const result = await getSuggestions(db as never, "user-1", "cat-1", "ARS");
+			const result = await getSuggestions(
+				db as never,
+				"user-1",
+				"cat-1",
+				"ARS",
+			);
 
 			expect(result.lastMonthSpend).toBe(120000 + 10 * ARS);
 		});
@@ -354,7 +396,12 @@ describe("BudgetService", () => {
 			]);
 
 			const usdResult = await getSuggestions(db as never, "user-1", "cat-1");
-			const jpyResult = await getSuggestions(db as never, "user-1", "cat-1", "JPY");
+			const jpyResult = await getSuggestions(
+				db as never,
+				"user-1",
+				"cat-1",
+				"JPY",
+			);
 
 			expect(usdResult.averageSpend).toBe(150.01);
 			expect(Number.isInteger(jpyResult.averageSpend)).toBe(true);
@@ -400,7 +447,11 @@ describe("BudgetService", () => {
 				...args.data,
 			}));
 
-			const result = await copyFromLastMonth(db as never, "user-1", new Date(2024, 5, 1));
+			const result = await copyFromLastMonth(
+				db as never,
+				"user-1",
+				new Date(2024, 5, 1),
+			);
 
 			expect(db.budget.groupBy.mock.calls[0]![0].where.period).toEqual({
 				lt: new Date(2024, 5, 1),

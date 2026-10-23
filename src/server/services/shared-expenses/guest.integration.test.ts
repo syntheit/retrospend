@@ -17,6 +17,12 @@ const mockEnv = vi.hoisted(() => ({
 }));
 const mockSendEmail = vi.hoisted(() => vi.fn());
 
+// Join dates are tested on Postgres (services/project/__tests__); the mock
+// db here has no project createdAt to read.
+vi.mock("~/server/services/project/join-date", () => ({
+	defaultJoinedOn: vi.fn(async () => null),
+}));
+
 vi.mock("~/env", () => ({ env: mockEnv }));
 // The router's global db (and the user-scoped one) point at whichever
 // stateful db the current call uses.

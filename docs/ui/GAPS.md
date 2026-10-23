@@ -128,7 +128,18 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 - **Clicks before hydration do nothing (S4).** Buttons rendered on the server (Add Expense, New Project, the user menu) ignore a click that lands before React hydrates; the user has to click again, and nothing says the page is not ready yet. The e2e suite waits for `html[data-hydrated="true"]` (`src/components/hydration-marker.tsx`) before it clicks. The v2 pages should either work without JavaScript for their primary action or show it as not ready until hydration.
 - **Profile form labels point nowhere (S4).** In `src/components/settings/profile-section.tsx` the labels use `htmlFor="name"` (and `username`, `email`) while `FormControl` gives each input a generated id, so screen readers announce the fields without their labels. The e2e spec selects the name field by `input[name="name"]` until the form is rebuilt.
 
-## 9. Push delivery (M12)
+## 9. Data the server does not have yet
+
+- **Per-user time zone.** Server-side calendar days (project membership dates, which expenses fall before someone joined) come from `userTimeZone()` in `src/server/services/user-time-zone.ts`, which returns `DEFAULT_TIME_ZONE` or Buenos Aires for everyone. When a per-user zone setting exists, that function reads it; no call site changes. The M5 backfill used the same default.
+- **Writers that skip the booked home value (M2, 2A.2).** The expense form, recurring confirm and amortized parts store `rateType`, `homeCurrency`, `homeRate` and `homeAmount`. These writers still leave the home leg empty, so their rows follow the totals rule (the period's rate) and drift with later rates:
+  - the sidecar's recurring auto-post (`sidecar/tasks/recurring.go`, raw INSERT): 2A sidecar follow-up, book the home leg like `bookRate` (same rate type default, cross rate to 12 decimals, home amount half-even from the exact rate);
+  - CSV import (`src/server/services/csv.service.ts`) and the import queue (`src/server/services/import-queue.service.ts`): 2E.4 import, call `bookRate` per row;
+  - shares of shared expenses (`getSharedExpenseShares`): no home leg on `SharedTransaction` yet (2C).
+- **Envelope valuation ignores the booked value (I20, 2B).** `src/server/services/envelope/valuation.ts` reads `ownRate: { to, perUnit }` but its loader does not fill it from `expense.homeCurrency` and `expense.homeRate`, and nothing reads `homeAmount`. Until it does, budget books value every row at the book rate type. Fix: when `homeCurrency` is the book currency, use `homeAmount` as the row's value (it is already rounded to that currency's minor units).
+- **Rate type picker and default rate type have no endpoint yet (2A.2).** The service exists (`src/server/services/rate-types.ts`: `rateOptions`, `defaultRateType`, `setDefaultRateType`) and `createExpense`/`updateExpense` accept `rateType` and `customRate`, but the expense router's input schema and the settings router do not pass them. The Add sheet (S4) and Settings need them wired.
+- **Card rate for ARS.** ADD-EXPENSE-R2 shows Official, Blue, Card and MEP; the rate source has official, blue, mep and crypto for ARS, so the strip offers what the table has and no Card. Owner question.
+
+## 10. Push delivery (M12)
 
 Registration (`src/server/services/push-device.service.ts`) is built; the sender is not. What the sender must do:
 

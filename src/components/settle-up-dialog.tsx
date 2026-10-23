@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { buildRateMap, computeHomeCurrencyTotal } from "~/lib/balance-utils";
 import { toAmountString } from "~/lib/money";
-import { oppositeCurrencyBalances } from "~/lib/settlement-display";
+import { claimConflictAction, oppositeCurrencyBalances } from "~/lib/settlement-display";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -245,7 +245,7 @@ export function SettleUpDialog({
 			});
 			setPaymentStep("success");
 		},
-		onError: (e) => toast.error(e.message),
+		onError: (e, v) => toast.error(e.message, claimConflictAction(e, t("recordAsDifferentPayment"), () => createSettlement.mutate({ ...v, differentPayment: true }))),
 	});
 
 	const settleAllMutation = api.settlement.settleAll.useMutation({
@@ -269,7 +269,7 @@ export function SettleUpDialog({
 			});
 			setPaymentStep("success");
 		},
-		onError: (e) => toast.error(e.message),
+		onError: (e, v) => toast.error(e.message, claimConflictAction(e, t("recordAsDifferentPayment"), () => settleAllMutation.mutate({ ...v, differentPayment: true }))),
 	});
 
 	const isMutating = createSettlement.isPending || settleAllMutation.isPending;

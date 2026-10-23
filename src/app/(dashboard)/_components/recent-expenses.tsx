@@ -27,7 +27,7 @@ import {
 import { Skeleton } from "~/components/ui/skeleton";
 import { getCategoryIcon } from "~/lib/category-icons";
 import type { CATEGORY_COLOR_MAP } from "~/lib/constants";
-import { isCrypto } from "~/lib/currency-format";
+import { convertExpenseAmountForDisplay } from "~/lib/normalize";
 import { BRAND_ICON_MAP } from "~/lib/icons";
 import { formatExpenseAsText } from "~/lib/format";
 import { cn } from "~/lib/utils";
@@ -270,17 +270,12 @@ const ActivityRow = memo(function ActivityRow({
 	const colorKey = item.category?.color as keyof typeof CATEGORY_COLOR_MAP;
 	const Icon = getExpenseIcon(item.title, categoryName, categoryIcon);
 
-	// Convert amount for display (same rubric as convertExpenseAmountForDisplay)
-	let displayAmount = item.amount;
-	if (item.amountInUSD && item.currency !== homeCurrency) {
-		if (liveRateToBaseCurrency) {
-			displayAmount = isCrypto(homeCurrency)
-				? item.amountInUSD / liveRateToBaseCurrency
-				: item.amountInUSD * liveRateToBaseCurrency;
-		} else {
-			displayAmount = item.amountInUSD;
-		}
-	}
+	// A booked home value (M2) shows as is; the rest converts at today's rate.
+	const displayAmount = convertExpenseAmountForDisplay(
+		item,
+		homeCurrency,
+		liveRateToBaseCurrency ?? null,
+	);
 
 	const showOriginal =
 		item.currency !== homeCurrency && item.amountInUSD !== null;

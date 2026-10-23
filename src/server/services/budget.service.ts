@@ -16,13 +16,9 @@ import {
 } from "~/lib/money";
 import { toNumberWithDefault as toNumber } from "~/lib/utils";
 import type { db as PrismaClient } from "~/server/db";
-import {
-	getBestExchangeRate,
-	sumExpensesForCurrency,
-} from "../api/routers/shared-currency";
+import { getBestExchangeRate } from "../api/routers/shared-currency";
+import { spentIn, spentItems } from "./figures/spent";
 import type { RateCache } from "./rate-cache";
-import { getSharedExpenseShares } from "./shared-expense-integration";
-import { spendingWhere } from "./spending";
 
 export interface BudgetWithStats {
 	id: string;
@@ -65,35 +61,18 @@ function groupByCategory(items: CategoryItem[]) {
 	return map;
 }
 
-/** Personal expenses plus shared shares in a fiscal range. */
+/** Your spending per category in a fiscal range (figures/spent.ts). */
 async function spendingInRange(
 	db: typeof PrismaClient,
 	userId: string,
 	range: { start: Date; end: Date },
 	excludedProjectIds?: string[],
 ): Promise<CategoryItem[]> {
-	const date = { gte: range.start, lte: range.end };
-	const [personal, shared] = await Promise.all([
-		db.expense.findMany({
-			where: spendingWhere(userId, date),
-			select: {
-				amount: true,
-				currency: true,
-				amountInUSD: true,
-				categoryId: true,
-			},
-		}),
-		getSharedExpenseShares(db, userId, date, undefined, excludedProjectIds),
-	]);
-	return [
-		...personal.map((e) => ({
-			amount: Number(e.amount),
-			currency: e.currency,
-			amountInUSD: Number(e.amountInUSD),
-			categoryId: e.categoryId,
-		})),
-		...shared,
-	];
+	return spentItems(
+		db,
+		{ userId, date: { gte: range.start, lte: range.end }, excludedProjectIds },
+		"category",
+	);
 }
 
 /**
@@ -298,25 +277,25 @@ export async function getSuggestions(
 			timeZone,
 		),
 	);
+	// Suggestions have always used personal rows only (no shares).
 	const results = await Promise.all(
-		ranges.map((fiscal) =>
-			sumExpensesForCurrency(
+		ranges.map(async (fiscal) =>
+			spentIn(
 				db,
 				{
 					userId,
-					categoryId,
-					isAmortizedParent: false,
+					categoryIds: [categoryId],
 					date: { gte: fiscal.start, lte: fiscal.end },
+					personalOnly: true,
 				},
 				currency,
-				periodRateDate(fiscal.end),
+				(await getBestExchangeRate(db, currency, periodRateDate(fiscal.end)))
+					?.rate,
 			),
 		),
 	);
-	const lastMonthSpend = results[results.length - 1]?.total ?? 0;
-	const monthlySpends = results
-		.map((r) => r.total)
-		.filter((amount) => amount > 0);
+	const lastMonthSpend = results[results.length - 1] ?? 0;
+	const monthlySpends = results.filter((amount) => amount > 0);
 
 	if (monthlySpends.length === 0) {
 		return { suggestedAmount: 0, averageSpend: 0, lastMonthSpend: 0 };

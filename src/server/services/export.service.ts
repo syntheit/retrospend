@@ -72,11 +72,12 @@ export class ExportService {
 		});
 
 		if (categories.length > 0) {
-			const categoryHeader = ["id", "name", "color"];
+			const categoryHeader = ["id", "name", "color", "kind"];
 			const categoryRows = categories.map((category) => [
 				category.id,
 				category.name,
 				category.color,
+				category.kind,
 			]);
 			zip.file("categories.csv", generateCsv(categoryHeader, categoryRows));
 		}
@@ -100,6 +101,11 @@ export class ExportService {
 			"excludeFromAnalytics",
 			"createdAt",
 			"updatedAt",
+			// Money in (M1): without these an income row reads as spending.
+			"direction",
+			"entryKind",
+			"inType",
+			"amortizeMode",
 		];
 		const EXPENSE_BATCH_SIZE = 2000;
 		const expenseRows: unknown[][] = [];
@@ -116,9 +122,7 @@ export class ExportService {
 					},
 				},
 				take: EXPENSE_BATCH_SIZE,
-				...(expenseCursor
-					? { skip: 1, cursor: { id: expenseCursor } }
-					: {}),
+				...(expenseCursor ? { skip: 1, cursor: { id: expenseCursor } } : {}),
 			});
 
 			for (const expense of batch) {
@@ -140,6 +144,10 @@ export class ExportService {
 					expense.excludeFromAnalytics,
 					expense.createdAt,
 					expense.updatedAt,
+					expense.direction,
+					expense.entryKind,
+					expense.inType,
+					expense.amortizeMode,
 				]);
 			}
 
