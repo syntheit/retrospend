@@ -5,16 +5,14 @@ import {
 	rateTypeFromPricingSource,
 } from "~/lib/rate-selection";
 import type { Prisma, PrismaClient } from "~prisma";
+import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
-import { listActivity } from "./expense-list";
-import type { ListV2Filter } from "./expense-list/types";
 import {
 	type BookedRate,
 	bookRate,
 	loadRateContext,
 	type RateChoice,
 } from "./rate-types";
-import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { listedEntryWhere } from "./spending";
 
 /** pricingSource of a rate the user typed in by hand. */
@@ -369,15 +367,6 @@ export class ExpenseService {
 			include: { category: true },
 			...(limit ? { take: limit } : {}),
 		});
-	}
-
-	/**
-	 * The Activity list (v2): personal expenses, your shares and payments in
-	 * one cursor-paginated read, with multi-select filters and accent-blind
-	 * search. Shaping lives in ./expense-list.
-	 */
-	async listV2(userId: string, filter: ListV2Filter, timeZone?: string) {
-		return listActivity(this.db, userId, filter, timeZone);
 	}
 
 	async getExpense(userId: string, id: string) {

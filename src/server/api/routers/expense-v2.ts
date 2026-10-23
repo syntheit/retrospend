@@ -1,5 +1,5 @@
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { ExpenseService } from "~/server/services/expense.service";
+import { listActivity } from "~/server/services/expense-list";
 import { listV2Input } from "~/server/services/expense-list/types";
 
 /**
@@ -10,11 +10,10 @@ export const expenseV2Router = createTRPCRouter({
 	/** Activity (v2): every entry you are part of, filtered, one page at a time. */
 	listV2: protectedProcedure
 		.input(listV2Input)
+		// Personal expenses, your shares and payments in one cursor-paginated
+		// read; the shaping lives in services/expense-list, not in the
+		// already full expense.service.ts (UI-150).
 		.query(({ ctx, input }) =>
-			new ExpenseService(ctx.db).listV2(
-				ctx.session.user.id,
-				input,
-				ctx.timeZone,
-			),
+			listActivity(ctx.db, ctx.session.user.id, input, ctx.timeZone),
 		),
 });
