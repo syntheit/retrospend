@@ -73,7 +73,8 @@
 			"rate": "Digite uma cotação para {currency}",
 			"splitAmount": "A divisão não soma o valor",
 			"splitPct": "As porcentagens não somam 100%",
-			"save": "Não foi possível salvar. Confira os campos e tente de novo."
+			"save": "Não foi possível salvar. Confira os campos e tente de novo.",
+			"projectMembers": "Não foi possível carregar as pessoas do projeto. Tente de novo."
 		},
 		"toast": {
 			"added": "{title} adicionado",

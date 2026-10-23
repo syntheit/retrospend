@@ -108,6 +108,10 @@ export const entryRouter = createTRPCRouter({
 					currency: input.currency,
 					date: new Date(`${input.date}T12:00:00.000Z`),
 					amount: input.amount === undefined ? undefined : Number(input.amount),
+					customRate:
+						input.customRate === undefined
+							? undefined
+							: Number(input.customRate),
 				}),
 			),
 		),

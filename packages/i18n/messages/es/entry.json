@@ -73,7 +73,8 @@
 			"rate": "Introduce un tipo de cambio para {currency}",
 			"splitAmount": "La división no suma el importe",
 			"splitPct": "Los porcentajes no suman 100%",
-			"save": "No se pudo guardar. Revisa los campos e inténtalo de nuevo."
+			"save": "No se pudo guardar. Revisa los campos e inténtalo de nuevo.",
+			"projectMembers": "No se pudieron cargar las personas del proyecto. Inténtalo de nuevo."
 		},
 		"toast": {
 			"added": "Has añadido {title}",

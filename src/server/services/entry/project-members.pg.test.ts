@@ -85,6 +85,20 @@ describe("entry.projectMembers", () => {
 		expect(on5.some((m) => m.name === "Eva")).toBe(true);
 	});
 
+	it("works through the viewer's RLS-scoped client, as the router calls it", async () => {
+		const { you, project } = await sevenPersonProject();
+		const scoped = await entryProjectMembers(
+			you.db as unknown as Parameters<typeof entryProjectMembers>[0],
+			you.user.id,
+			project.id,
+			"2026-10-20",
+		);
+		expect(scoped).toHaveLength(6);
+		expect(scoped.filter((m) => m.participantType === "shadow")).toHaveLength(
+			4,
+		);
+	});
+
 	it("is closed to people outside the project", async () => {
 		const { project } = await sevenPersonProject();
 		const stranger = await createTestUser();

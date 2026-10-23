@@ -274,6 +274,7 @@ describe("rate types", () => {
 				homeCurrency: "ARS",
 				defaultType: "blue",
 				missing: null,
+				custom: null,
 				options: [
 					{ rateType: "official", homeRate: "1495", homeAmount: "19420.05" },
 					{ rateType: "blue", homeRate: "1560", homeAmount: "20264.40" },
@@ -283,6 +284,20 @@ describe("rate types", () => {
 						homeAmount: "20714.89",
 					},
 				],
+			});
+		});
+
+		it("books a typed rate as Save does: USD 12.99 at 1,500 is ARS 19,485", async () => {
+			const options = await rateOptions(db as never, "u1", {
+				currency: "USD",
+				date: DATE,
+				amount: 12.99,
+				customRate: 1500,
+			});
+			expect(options.custom).toEqual({
+				rateType: "custom",
+				homeRate: "1500",
+				homeAmount: "19485.00",
 			});
 		});
 

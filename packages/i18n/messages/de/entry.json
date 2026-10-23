@@ -73,7 +73,8 @@
 			"rate": "Gib einen Kurs für {currency} ein",
 			"splitAmount": "Die Aufteilung ergibt nicht den Betrag",
 			"splitPct": "Die Prozente ergeben nicht 100 %",
-			"save": "Konnte nicht speichern. Prüf die Felder und versuch es noch einmal."
+			"save": "Konnte nicht speichern. Prüf die Felder und versuch es noch einmal.",
+			"projectMembers": "Die Personen des Projekts konnten nicht geladen werden. Versuch es noch einmal."
 		},
 		"toast": {
 			"added": "{title} hinzugefügt",

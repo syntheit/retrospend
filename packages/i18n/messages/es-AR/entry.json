@@ -73,7 +73,8 @@
 			"rate": "Ingresá una cotización para {currency}",
 			"splitAmount": "La división no suma el monto",
 			"splitPct": "Los porcentajes no suman 100%",
-			"save": "No se pudo guardar. Revisá los campos y probá de nuevo."
+			"save": "No se pudo guardar. Revisá los campos y probá de nuevo.",
+			"projectMembers": "No se pudieron cargar las personas del proyecto. Probá de nuevo."
 		},
 		"toast": {
 			"added": "Agregaste {title}",

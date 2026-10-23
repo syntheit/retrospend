@@ -5,7 +5,7 @@ import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import { MoneyInput, MoneyInputRow } from "~/components/money/money-input";
 import { useDateFormat } from "~/components/pickers/use-date-format";
-import { FieldError, useRateTypeName } from "../shared-ui";
+import { FieldError, RateLine, useRateTypeName } from "../shared-ui";
 import type { useIncome } from "./use-income";
 
 /**
@@ -53,7 +53,7 @@ export function IncomeAmount({
 				onChange={x.setAmount}
 				onCurrencyChange={x.setCurrency}
 				rates={
-					x.foreign && rates && !missing
+					x.foreign && rates && !missing && rates.options.length > 1
 						? {
 								label: t("rate.label"),
 								value: x.rateType,
@@ -75,6 +75,11 @@ export function IncomeAmount({
 								currency: d.currency,
 								date: dates.short(d.date),
 							})}
+						</MoneyInputRow>
+					) : picked && rates?.options.length === 1 ? (
+						// One type: nothing to choose, so the rate is stated.
+						<MoneyInputRow>
+							<RateLine rate={picked.rate} type={picked.rateType} />
 						</MoneyInputRow>
 					) : null
 				}

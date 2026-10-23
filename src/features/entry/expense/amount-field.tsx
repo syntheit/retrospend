@@ -50,6 +50,8 @@ export function useRateState(
 			amount: askedMinor
 				? fromMinor({ minor: askedMinor, currency: d.currency })
 				: undefined,
+			// A typed rate is booked by the server too, so the home row shows it.
+			customRate: d.custom && d.customRate ? d.customRate : undefined,
 		},
 		250,
 	);
@@ -64,7 +66,9 @@ export function useRateState(
 		opts,
 		missing: foreign && !!opts?.missing && !d.custom && !keptCustom,
 		type,
-		picked: opts?.options.find((o) => o.rateType === type) ?? null,
+		picked: d.custom
+			? (opts?.custom ?? null)
+			: (opts?.options.find((o) => o.rateType === type) ?? null),
 		keptCustom,
 	};
 }
