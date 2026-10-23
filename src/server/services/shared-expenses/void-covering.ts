@@ -7,14 +7,18 @@
  * share is gone, the payments from them to the payer in the split's
  * currency and project are voided newest first, until the balance no longer
  * flips. A payment group is voided whole (MONEY-MOVES §1.1: its rows go
- * together), and only when you may void it: a pending one, or one
- * auto-finalized without the other side's agreement (groupRoles.canVoid).
- * Otherwise the delete is refused and "Keep the credit" stays the choice.
+ * together), and only when you may void it: a pending one you recorded,
+ * or one auto-finalized without the other side's agreement
+ * (groupRoles.canVoid). Otherwise the delete is refused and "Keep the
+ * credit" stays the choice. Like voidAutoFinalizedSettlement, each void is
+ * logged on the group and reopens the billing periods it had settled.
  */
 import { TRPCError } from "@trpc/server";
 import { toMinor } from "~/server/services/envelope/units";
 import type { Prisma, PrismaClient } from "~prisma";
+import { logGroupAction } from "../payments/write";
 import { computeBalance } from "./balance";
+import { reopenUnsettledPeriods } from "./billing-period-settle";
 import { groupRoles } from "./settlement-groups";
 import type { ParticipantRef } from "./types";
 import { sameParticipant } from "./types";
@@ -101,7 +105,8 @@ export async function voidCoveringPayments(
 			rows.filter((r) => r.paymentGroupId === id),
 			actorUserId,
 		);
-		if (!(roles.isParty && (roles.status === "PROPOSED" || roles.canVoid)))
+		const mine = roles.status === "PROPOSED" && roles.recordedByMe;
+		if (!(roles.isParty && (mine || roles.canVoid)))
 			throw new TRPCError({
 				code: "PRECONDITION_FAILED",
 				message:
@@ -110,5 +115,24 @@ export async function voidCoveringPayments(
 	}
 	await tx.settlement.deleteMany({ where: { paymentGroupId: { in: groups } } });
 	await tx.payment.deleteMany({ where: { id: { in: groups } } });
+	const actor = refOf("user", actorUserId);
+	for (const id of groups) {
+		const group = rows.filter((r) => r.paymentGroupId === id);
+		await logGroupAction(tx, actor, group, {
+			action: "DELETED",
+			context: "settlement_voided",
+			changes: {
+				status: groupRoles(group, actorUserId).status,
+				autoConfirmedReason: group[0]?.autoConfirmedReason,
+				initiatedAt: group[0]?.initiatedAt.toISOString(),
+			},
+		});
+	}
+	await reopenUnsettledPeriods(
+		tx,
+		rows.map((r) => r.projectId),
+		actor,
+		{ reason: "settlement_voided", settlementIds: rows.map((r) => r.id) },
+	);
 	return groups;
 }

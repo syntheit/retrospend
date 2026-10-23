@@ -228,6 +228,57 @@ describe("D12 deleting a split that payments covered (S17 on Postgres)", () => {
 	});
 });
 
+describe("D12 void never removes the other side's pending payment", () => {
+	it("Sam's newer pending payment covers the flip: voiding is refused and nothing is deleted", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			timeZone: "UTC",
+		});
+		const { user: sam } = await createTestUser();
+		const meP: Party = { type: "user", id: s.user.id };
+		const samP: Party = { type: "user", id: sam.id };
+		await split(meP, [
+			[meP, 5],
+			[samP, 5],
+		]);
+		const dup = await split(meP, [
+			[meP, 5],
+			[samP, 5],
+		]);
+		// Two payments I recorded as received (voidable), then one Sam recorded, still pending.
+		for (let i = 0; i < 2; i++)
+			await pay(samP, meP, 5, {
+				status: "FINALIZED",
+				byPayer: false,
+				byPayee: true,
+				auto: true,
+			});
+		const pending = await pay(samP, meP, 5, {
+			status: "PROPOSED",
+			byPayer: true,
+			byPayee: false,
+			auto: false,
+		});
+		await adminDb.settlement.updateMany({
+			where: { paymentGroupId: pending },
+			data: { initiatedAt: new Date(Date.now() + 60_000) },
+		});
+		await expect(
+			forUser(s.user.id).apply(deleteSharedExpense, {
+				id: dup.id,
+				settled: "VOID_PAYMENT",
+			}),
+		).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+		await expect(
+			adminDb.payment.count({ where: { id: pending } }),
+		).resolves.toBe(1);
+		await expect(
+			adminDb.sharedTransaction.count({ where: { id: dup.id } }),
+		).resolves.toBe(1);
+	});
+});
+
 describe("payment.confirm previews its budget change (R30)", () => {
 	it("confirming Sam's 30 returns it to To assign: Not planned yet +30, held -30", async () => {
 		const s = await seedUser();
