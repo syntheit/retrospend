@@ -19,7 +19,7 @@ const item = (
 	autoPay: false,
 	direction: "out",
 	amount: { minor: 100, currency: "ARS" },
-	websiteUrl: null,
+	amountMode: "fixed",
 	...over,
 });
 

@@ -201,7 +201,11 @@ export function RecurringPage() {
 				) : phone ? (
 					<RecurringList {...list} />
 				) : (
-					<RecurringTable {...list} onAutoPay={r.setAutoPay} />
+					<RecurringTable
+						{...list}
+						busy={r.busy}
+						onAutoPay={(x, on) => void r.setAutoPay(x, on)}
+					/>
 				)}
 				<Logged view={data} />
 				{confirming && (
