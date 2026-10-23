@@ -109,10 +109,15 @@ test("Activity: shared rows, payments, accent search and Add expense", async ({
 });
 
 async function openV2Search(page: Page, q: string) {
-	const search = page
-		.getByRole("main")
-		.getByRole("searchbox", { name: "Search expenses or amounts" });
+	const main = page.getByRole("main");
+	const search = main.getByRole("searchbox", {
+		name: "Search expenses or amounts",
+	});
 	await page.goto("/activity");
-	await search.fill(q);
+	// "/" focuses the search from anywhere on the page.
+	await main.getByRole("heading", { name: "Activity", level: 1 }).click();
+	await page.keyboard.press("/");
+	await expect(search).toBeFocused();
+	await page.keyboard.type(q);
 	await expect(page).toHaveURL(new RegExp(`q=${q}`));
 }

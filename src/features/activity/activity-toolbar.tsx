@@ -2,10 +2,11 @@
 
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { Toolbar } from "~/components/layout/toolbar";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { DateRange } from "~/components/pickers/date-range";
+import { isTypingTarget } from "~/components/shell/shortcuts";
 import { Face } from "~/components/ui/avatar-face";
 import {
 	FilterChips,
@@ -65,6 +66,20 @@ function useDimItems() {
 	}, [categories.data, people.data, projects.data, t]);
 }
 
+/** "/" focuses the search, outside fields and open layers (the mockup's key). */
+function useSlashFocus(input: RefObject<HTMLInputElement | null>) {
+	useEffect(() => {
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+			if (e.defaultPrevented || isTypingTarget(e.target)) return;
+			e.preventDefault();
+			input.current?.focus();
+		};
+		document.addEventListener("keydown", onKey);
+		return () => document.removeEventListener("keydown", onKey);
+	}, [input]);
+}
+
 /**
  * Search, the date range, the dimension chips and the Filter menu (R1, R7):
  * one row. Paid by and Type get a chip only once set; the Filter menu adds
@@ -89,6 +104,8 @@ export function ActivityToolbar({
 }) {
 	const t = useTranslations("activity.filters");
 	const items = useDimItems();
+	const searchRef = useRef<HTMLInputElement>(null);
+	useSlashFocus(searchRef);
 	const set = (dim: Dim) => (value: string[]) =>
 		setFilter({ ...filter, [dim]: value });
 	const chip = (dim: Dim) => (
@@ -130,6 +147,7 @@ export function ActivityToolbar({
 						className="h-ctl w-64 pr-2 pl-8 max-md:w-full"
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder={t("search")}
+						ref={searchRef}
 						type="search"
 						value={search}
 					/>
