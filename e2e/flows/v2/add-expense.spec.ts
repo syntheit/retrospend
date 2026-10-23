@@ -37,7 +37,10 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	await expect(sheet.locator('[data-figure="entry.home"]')).toHaveText(
 		"ARS 17,400",
 	);
-	await expect(sheet.getByText("USD 1 = ARS 1,450 · Official")).toBeVisible();
+	// The rate is stated once, on its chip.
+	await expect(
+		sheet.getByRole("button", { name: /Official ARS 1,450/ }),
+	).toBeVisible();
 	await sheet
 		.getByRole("button", { name: "Subscriptions", exact: true })
 		.click();
@@ -71,12 +74,13 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 		}),
 	).toEqual([]);
 
+	// A double click saves once.
 	await untilSaved(page, "entry.expense.create.save", () =>
-		sheet.getByRole("button", { name: "Add expense" }).click(),
+		sheet.getByRole("button", { name: "Add expense" }).dblclick(),
 	);
 	await expect(sheet).toBeHidden();
 	const main = page.getByRole("main");
-	await expect(main.getByText("E2E Streamly")).toBeVisible();
+	await expect(main.getByText("E2E Streamly")).toHaveCount(1);
 	await untilSaved(page, "entry.expense.delete.save", () =>
 		page
 			.locator("[data-sonner-toast]")

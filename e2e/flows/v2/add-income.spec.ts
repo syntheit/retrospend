@@ -7,12 +7,12 @@ import { openV2 } from "./viewer";
 
 // Add income (owner N71: its own sheet, I) as Sofía. No account picked:
 // accounts and net worth do not change (N75). She has no envelope budget,
-// so Use my plan says it needs one and the money stays Not planned yet.
+// so Use my plan is not preselected and the money stays Not planned yet.
 // The toast's Undo takes the income back.
 
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
-test("Add income: no account, Use my plan without a budget, save and Undo", async ({
+test("Add income: no account, no plan without a budget, save and Undo", async ({
 	page,
 }) => {
 	test.setTimeout(180_000);
@@ -27,17 +27,20 @@ test("Add income: no account, Use my plan without a budget, save and Undo", asyn
 	await expect(sheet.getByText("Pick what it is")).toBeVisible();
 
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("850000");
+	await sheet.getByRole("button", { name: "Someone else" }).click();
 	await sheet.getByRole("textbox", { name: "Who paid you" }).fill("E2E Andino");
 	await sheet.getByRole("button", { name: "Salary", exact: true }).click();
 	await expect(
 		sheet.getByText("No account: it goes to your budget as Not planned yet."),
 	).toBeVisible();
-	await expect(sheet.getByRole("radio", { name: "Use my plan" })).toBeChecked();
-	await expect(sheet.getByTestId("entry-plan")).toContainText(
-		"Use my plan needs an envelope budget.",
-	);
+	// No envelope budget: Use my plan is not preselected.
+	await expect(
+		sheet.getByRole("radio", { name: "Keep as Not planned yet" }),
+	).toBeChecked();
+	await expect(sheet.getByTestId("entry-plan")).toHaveCount(0);
+	// Nothing moves here, so no "Nothing else changes" line.
 	await expect(sheet.getByTestId("entry-changes")).toContainText(
-		"your accounts",
+		"No change to your accounts",
 	);
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 

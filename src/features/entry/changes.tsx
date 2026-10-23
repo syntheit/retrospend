@@ -78,6 +78,10 @@ export function ChangesBlock({
 		const key = `figures.${id.replaceAll(".", "_")}`;
 		return t.has(key) ? t(key as "figures.spent") : id;
 	};
+	const inline = (id: string) => {
+		const key = `figuresInline.${id.replaceAll(".", "_")}`;
+		return t.has(key) ? t(key as "figuresInline.spent") : name(id);
+	};
 	const body = () => {
 		if (cannot)
 			return (
@@ -111,7 +115,9 @@ export function ChangesBlock({
 				!HIDDEN.test(u.id) &&
 				!(BUDGET.test(u.id) && u.before == null && u.after == null),
 		);
-		const list = [...new Set(stays)].map((id) => name(id).toLowerCase());
+		// Names inside a sentence come from their own keys: a language decides its case (German nouns).
+		const list = [...new Set(stays)].map(inline);
+		const anyLine = changes.length > 0 || !!rows;
 		return (
 			<>
 				{rows}
@@ -138,15 +144,17 @@ export function ChangesBlock({
 				))}
 				{list.length > 0 ? (
 					<p className="text-fg-3 text-small">
-						{list.length === 1
-							? t("nothingElseOne", { item: list[0] ?? "" })
-							: t("nothingElse", { list: list.join(", ") })}
+						{!anyLine
+							? t("noneChange", { list: list.join(", ") })
+							: list.length === 1
+								? t("nothingElseOne", { item: list[0] ?? "" })
+								: t("nothingElse", { list: list.join(", ") })}
 					</p>
 				) : null}
 				{unknown.length > 0 ? (
 					<p className="text-fg-3 text-meta">
 						{t("unavailable", {
-							list: unknown.map((u) => name(u.id).toLowerCase()).join(", "),
+							list: unknown.map((u) => inline(u.id)).join(", "),
 						})}
 					</p>
 				) : null}

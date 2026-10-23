@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { lineIds } from "./category-line";
-import { type ExpenseDraft, personalInput, sharedInput, validate } from "./draft";
+import {
+	type ExpenseDraft,
+	personalInput,
+	sharedInput,
+	validate,
+} from "./draft";
 
 const you = { participantType: "user" as const, participantId: "me" };
 const martin = {
@@ -57,12 +62,16 @@ describe("Add expense draft", () => {
 
 	it("a foreign amount sends the picked type, or the typed rate; the server books it", () => {
 		const usd = { ...base, currency: "USD", minor: 1200, rateType: "blue" };
-		expect(personalInput(usd, { home: "ARS", categoryName: "x" })).toMatchObject({
+		expect(
+			personalInput(usd, { home: "ARS", categoryName: "x" }),
+		).toMatchObject({
 			amount: "12.00",
 			rateType: "blue",
 		});
 		const custom = { ...usd, custom: true, customRate: "1475" };
-		expect(personalInput(custom, { home: "ARS", categoryName: "x" })).toMatchObject({
+		expect(
+			personalInput(custom, { home: "ARS", categoryName: "x" }),
+		).toMatchObject({
 			customRate: "1475",
 		});
 		expect(
@@ -72,9 +81,13 @@ describe("Add expense draft", () => {
 
 	it("a missing rate blocks saving, never converted at 1", () => {
 		const usd = { ...base, currency: "USD", minor: 1200 };
-		expect(validate(usd, { ...ctx, rateMissing: true })).toEqual({ rate: true });
+		expect(validate(usd, { ...ctx, rateMissing: true })).toEqual({
+			rate: true,
+		});
 		expect(validate({ ...usd, custom: true }, ctx)).toEqual({ rate: true });
-		expect(validate({ ...usd, custom: true, customRate: "1475" }, ctx)).toEqual({});
+		expect(validate({ ...usd, custom: true, customRate: "1475" }, ctx)).toEqual(
+			{},
+		);
 	});
 
 	it("amount and category are required; a custom split must add up", () => {
@@ -91,7 +104,10 @@ describe("Add expense draft", () => {
 		};
 		expect(validate(custom, ctx)).toEqual({ split: true });
 		expect(
-			validate({ ...custom, exact: { "user:me": 150_000, "user:martin": 200_000 } }, ctx),
+			validate(
+				{ ...custom, exact: { "user:me": 150_000, "user:martin": 200_000 } },
+				ctx,
+			),
 		).toEqual({});
 	});
 

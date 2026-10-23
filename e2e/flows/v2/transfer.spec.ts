@@ -49,7 +49,7 @@ test("Exchange: both amounts typed, rate derived, preview, save and Undo", async
 		await amounts.nth(0).fill("442500");
 		await amounts.nth(1).fill("300");
 		await expect(sheet.getByTestId("transfer-rate")).toHaveText(
-			"USD 1 = ARS 1,475 · ARS 7,500 more than Official",
+			"USD 1 = ARS 1,475 · Official ARS 1,450 · ARS 7,500 more",
 		);
 		const changes = sheet.getByTestId("entry-changes");
 		await expect(changes).toContainText("E2E pesos");

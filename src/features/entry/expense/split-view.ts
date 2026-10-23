@@ -1,6 +1,9 @@
 /**
  * The split rows' amounts while you type, from the one split path the
  * server also uses (resolveSplits), so a row shows what Save stores.
+ * Display only (R9 holds): nothing computed here is sent. The server
+ * resolves the split again from the rows and mode it receives, and the
+ * preview's figures come from that.
  */
 import { toMinorUnits } from "@retrospend/domain/money";
 import {

@@ -1,7 +1,6 @@
 "use client";
 
 import { toMinorUnits } from "@retrospend/domain/money";
-import { fromMinor } from "@retrospend/domain/money-minor";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { useLocale } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,6 +11,7 @@ import {
 	splitMembers,
 } from "~/lib/shared-split-input";
 import { api } from "~/trpc/react";
+import { parseRateText } from "../rate-text";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import type { CustomBy, ExpenseDraft, SplitChoice } from "./draft";
@@ -95,13 +95,8 @@ export function useExpenseDraft(
 		pickRate: (type: string) => set({ rateType: type, custom: false }),
 		pickCustom: () => set({ custom: true }),
 		setCustomText: (text: string) => {
-			const r = parseMoneyInput(text, locale, o.home);
-			set({
-				customText: text,
-				customRate: r.ok
-					? fromMinor({ minor: r.minor, currency: o.home })
-					: null,
-			});
+			// A rate, not home money: up to 12 decimals (EUR 1.0834 into USD, anything into JPY).
+			set({ customText: text, customRate: parseRateText(text, locale) });
 		},
 		toggleYou: () => set({ youIncluded: !d.youIncluded, ...resetSplit }),
 		togglePerson: (p: EntryPerson) => {

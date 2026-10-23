@@ -94,11 +94,7 @@ export function CategoryLine({
 				onOpenChange={setOpen}
 				open={open}
 				title={t("pickCategory")}
-				trigger={
-					<FilterChip value>
-						{phone ? t("moreCategories") : t("allCategories")}
-					</FilterChip>
-				}
+				trigger={<FilterChip value>{t("allCategories")}</FilterChip>}
 			>
 				<CategoryPicker
 					categories={mine}

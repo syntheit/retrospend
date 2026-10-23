@@ -6,6 +6,7 @@ import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
 import { useState } from "react";
+import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 
@@ -34,6 +35,8 @@ export function useTransfer(catalog: EntryCatalog, fromAccountId?: string) {
 	const [envelopeId, setEnvelopeId] = useState<string | null>(null);
 	const [date, setDate] = useState(dayKey(new Date()));
 	const [note, setNote] = useState("");
+	// The sheet's own id: a second click cannot write a second move.
+	const [id] = useState(generateId);
 	const fromPlace = places.find((p) => p.id === from) ?? null;
 	const toPlace = places.find((p) => p.id === to) ?? null;
 	const fromCur = fromPlace?.currency ?? catalog.homeCurrency;
@@ -120,7 +123,7 @@ export function useTransfer(catalog: EntryCatalog, fromAccountId?: string) {
 		previewError: preview.error?.message ?? null,
 		save: () =>
 			input
-				? save.mutateAsync(input)
+				? save.mutateAsync({ ...input, id })
 				: Promise.reject(new Error("Nothing to save")),
 		undo: (transferId: string) => undo.mutateAsync({ transferId }),
 		busy: save.isPending,

@@ -13,7 +13,6 @@
 		"lastTime": "В прошлый раз <amount></amount>",
 		"category": "Категория",
 		"allCategories": "Все",
-		"moreCategories": "Ещё",
 		"pickCategory": "Выберите категорию",
 		"notCounted": "Не учитывается в расходах",
 		"date": "Дата",
@@ -137,7 +136,21 @@
 			"budget_leftToSpend": "Можно потратить",
 			"project_total": "Итого по проекту",
 			"envelope_left": "Конверт"
-		}
+		},
+		"figuresInline": {
+			"spent": "ваши расходы",
+			"owed_owedToYou": "долги вам",
+			"owed_youOwe": "ваши долги",
+			"netWorth": "ваш капитал",
+			"accounts_balance": "баланс счёта",
+			"accounts": "ваши счета",
+			"notTracked": "без учёта",
+			"budget_notPlannedYet": "Ещё не запланировано",
+			"budget_leftToSpend": "доступно к тратам",
+			"project_total": "итог по проекту",
+			"envelope_left": "конверт"
+		},
+		"noneChange": "Без изменений: {list}."
 	},
 	"income": {
 		"title": "Добавить доход",
@@ -179,7 +192,8 @@
 			"addedInto": "Добавлено {amount} на {account}",
 			"kept": "Добавлено {amount} на {account}. Остаётся в Капитале",
 			"planned": "Добавлено {amount}. {count, plural, one {Наполнен # конверт} few {Наполнены # конверта} many {Наполнено # конвертов} other {Наполнено # конверта}}"
-		}
+		},
+		"someoneElse": "Кто-то другой"
 	},
 	"transfer": {
 		"titleTransfer": "Перевод",
@@ -189,9 +203,9 @@
 		"sameAmount": "Та же сумма, та же валюта",
 		"notTracked": "Без учёта",
 		"rateHint": "Введите, сколько ушло и сколько пришло; курс получится из этого.",
-		"vsSame": "как {type}",
-		"vsMore": "на <amount></amount> больше, чем {type}",
-		"vsLess": "на <amount></amount> меньше, чем {type}",
+		"vsSame": "тот же курс",
+		"vsMore": "на <amount></amount> больше",
+		"vsLess": "на <amount></amount> меньше",
 		"fee": "Комиссия",
 		"feeHint": "расход «Комиссии» со счёта {account}",
 		"feeAdd": "Добавить комиссию",

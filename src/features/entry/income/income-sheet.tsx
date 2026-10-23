@@ -19,11 +19,11 @@ import { PlaceSelect } from "../place-select";
 import {
 	type EntryCatalog,
 	Field,
-	RateLine,
 	useEntryCatalog,
 	useRateTypeName,
 } from "../shared-ui";
 import { PlanBlock } from "./plan-block";
+import { SourceField } from "./source-field";
 import { useIncome } from "./use-income";
 
 /** Add income: its own sheet (owner N71), Use my plan as the primary path (N72). */
@@ -142,23 +142,19 @@ function IncomeForm({
 							{t("error.rate", { currency: d.currency })}
 						</span>
 					) : null}
+					{/* The rate is stated once, on the chips; this is what it books. */}
 					{picked?.home ? (
 						<span className="text-fg-2 text-small">
-							<Money figure="entry.income.home" value={picked.home} /> ·{" "}
-							<RateLine rate={picked.rate} type={picked.rateType} />
+							<Money figure="entry.income.home" value={picked.home} />
 						</span>
 					) : null}
 				</Field>
 				<Field
 					error={err("source") ? t("error.source") : null}
-					htmlFor="income-source"
 					label={t("from")}
 				>
-					<Input
-						aria-label={t("sourceAria")}
-						id="income-source"
-						onChange={(e) => x.set({ source: e.target.value })}
-						placeholder={t("sourcePlaceholder")}
+					<SourceField
+						onChange={(source) => x.set({ source })}
 						value={d.source}
 					/>
 				</Field>
@@ -247,7 +243,7 @@ function IncomeForm({
 								{ value: "plan", label: t("usePlan") },
 								{ value: "later", label: t("keepNotPlanned") },
 							]}
-							value={d.usePlan ? "plan" : "later"}
+							value={x.usePlan ? "plan" : "later"}
 						/>
 					</Field>
 				) : null}
@@ -258,7 +254,7 @@ function IncomeForm({
 					empty={tc("emptyAmount")}
 					loading={x.previewLoading}
 				/>
-				{x.preview && !x.kept && d.usePlan ? (
+				{x.preview && !x.kept && x.usePlan ? (
 					<PlanBlock plan={x.preview.value.plan} />
 				) : null}
 			</div>

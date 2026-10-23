@@ -176,8 +176,10 @@ function TransferForm({
 						{v?.rate ? (
 							<>
 								<RateLine rate={v.rate} />
-								{vs && ref ? (
+								{vs && ref && v.reference ? (
 									<>
+										{" · "}
+										{ref} <Money value={v.reference.value} />
 										{" · "}
 										{vs.minor === 0
 											? t("vsSame", { type: ref })

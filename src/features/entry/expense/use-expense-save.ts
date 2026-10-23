@@ -34,7 +34,14 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 	const editing = d.editing;
 	const personal = personalInput(d, o);
 	const split = sharedInput(d, o);
-	const sharedFull = split ? { ...split, projectId: d.projectId } : null;
+	const sharedFull = split
+		? {
+				...split,
+				projectId: d.projectId,
+				// An edit always sends the note, so emptying it clears it.
+				notes: split.notes ?? null,
+			}
+		: null;
 
 	// Once a save starts the previews stop: the write's own invalidation
 	// would otherwise rerun a create preview against the row it just made.
@@ -67,6 +74,7 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 	const sc = api.entry.shared.create.preview.useQuery(
 		{
 			...(key?.sharedFull ?? EMPTY_S),
+			notes: key?.sharedFull?.notes ?? undefined,
 			projectId: key?.sharedFull?.projectId ?? undefined,
 		},
 		{ ...live, enabled: !!key?.sharedFull && key.shared && !key.editing },
@@ -75,6 +83,7 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 		{
 			...(key?.sharedFull ?? EMPTY_S),
 			id: editing?.id ?? "",
+			notes: key?.sharedFull?.notes ?? null,
 			projectId: key?.sharedFull?.projectId ?? null,
 		},
 		{
@@ -131,11 +140,19 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 			}
 			const r = await m.sCreate.mutateAsync({
 				...sharedFull,
+				// The sheet's own id: a second click cannot write a second row.
+				id: d.newId,
+				notes: sharedFull.notes ?? undefined,
 				projectId: sharedFull.projectId ?? undefined,
 			});
 			toast.saved(t(quiet ? "ready" : "added", { title }), {
+				// Undo right away takes back the "split with you" notices too.
 				undo: () =>
-					m.sDelete.mutateAsync({ id: r.value.id, confirmUnsettled: true }),
+					m.sDelete.mutateAsync({
+						id: r.value.id,
+						confirmUnsettled: true,
+						retract: true,
+					}),
 			});
 			return;
 		}
@@ -163,7 +180,7 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 		}
 		const r = await m.remove.mutateAsync({ id: editing.id });
 		toast.saved(t("deleted", { title }), {
-			undo: () => m.restore.mutateAsync(r.value.restore),
+			undo: () => m.restore.mutateAsync({ token: r.value.restore }),
 		});
 	}
 

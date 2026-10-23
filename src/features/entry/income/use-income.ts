@@ -6,6 +6,7 @@ import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
 import { useState } from "react";
+import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 
@@ -23,7 +24,8 @@ export type IncomeDraft = {
 	date: string;
 	repeats: boolean;
 	note: string;
-	usePlan: boolean;
+	/** Use my plan; null until picked: on when you have an envelope budget (N72). */
+	usePlan: boolean | null;
 };
 
 /**
@@ -48,8 +50,8 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 			date: dayKey(new Date()),
 			repeats: false,
 			note: "",
-			// Use my plan is the primary path (N72); Keep as Not planned yet is the other choice.
-			usePlan: true,
+			// Use my plan is the primary path (N72), but only with an envelope budget to fill.
+			usePlan: null,
 		};
 	});
 	const set = (patch: Partial<IncomeDraft>) =>
@@ -58,6 +60,11 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 	const kept = d.into ? (d.keep ?? !account?.inBudget) : false;
 	const category = catalog.categories.find((c) => c.id === d.categoryId);
 	const foreign = d.currency !== home;
+	// Null: no envelope budget, so Use my plan has nothing to fill.
+	const book = api.envelope.getMonth.useQuery({}, { retry: false });
+	const usePlan = d.usePlan ?? !!book.data;
+	// The sheet's own id: a second click on Add income cannot write a second row.
+	const [id] = useState(generateId);
 
 	const rates = api.entry.rateOptions.useQuery(
 		useSettled({
@@ -92,7 +99,7 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 				into: d.into,
 				...(d.into ? { keep: kept } : {}),
 				...(d.repeats ? { repeats: { frequency: "MONTHLY" as const } } : {}),
-				usePlan: !kept && d.usePlan,
+				usePlan: !kept && usePlan,
 			}
 		: null;
 	const settled = useSettled(input, 350);
@@ -124,6 +131,8 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 		foreign,
 		rates: rates.data,
 		rateType,
+		usePlan,
+		hasBudget: !!book.data,
 		errors,
 		valid,
 		input,
@@ -132,7 +141,7 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 		previewError: preview.error?.message ?? null,
 		save: () =>
 			input
-				? save.mutateAsync(input)
+				? save.mutateAsync({ ...input, id })
 				: Promise.reject(new Error("Nothing to save")),
 		undo: (expenseId: string, templateId: string | null) =>
 			undo.mutateAsync({ expenseId, templateId }),

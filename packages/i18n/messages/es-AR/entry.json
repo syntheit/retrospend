@@ -13,7 +13,6 @@
 		"lastTime": "La última vez <amount></amount>",
 		"category": "Categoría",
 		"allCategories": "Todas",
-		"moreCategories": "Más",
 		"pickCategory": "Elegí una categoría",
 		"notCounted": "No cuenta en los gastos",
 		"date": "Fecha",
@@ -137,7 +136,21 @@
 			"budget_leftToSpend": "Disponible para gastar",
 			"project_total": "Total del proyecto",
 			"envelope_left": "Sobre"
-		}
+		},
+		"figuresInline": {
+			"spent": "tus gastos",
+			"owed_owedToYou": "lo que te deben",
+			"owed_youOwe": "lo que debés",
+			"netWorth": "el patrimonio",
+			"accounts_balance": "el saldo de la cuenta",
+			"accounts": "tus cuentas",
+			"notTracked": "sin seguimiento",
+			"budget_notPlannedYet": "Sin planear aún",
+			"budget_leftToSpend": "lo disponible para gastar",
+			"project_total": "el total del proyecto",
+			"envelope_left": "el sobre"
+		},
+		"noneChange": "Sin cambios en {list}."
 	},
 	"income": {
 		"title": "Agregar ingreso",
@@ -179,7 +192,8 @@
 			"addedInto": "Agregaste {amount} a {account}",
 			"kept": "Agregaste {amount} a {account}. Queda en Patrimonio",
 			"planned": "Agregaste {amount}. {count, plural, one {# sobre con fondos} other {# sobres con fondos}}"
-		}
+		},
+		"someoneElse": "Otra persona"
 	},
 	"transfer": {
 		"titleTransfer": "Transferencia",
@@ -189,9 +203,9 @@
 		"sameAmount": "Mismo monto, misma moneda",
 		"notTracked": "Sin seguimiento",
 		"rateHint": "Escribí lo que salió y lo que llegó; la cotización sale de ahí.",
-		"vsSame": "igual que {type}",
-		"vsMore": "<amount></amount> más que {type}",
-		"vsLess": "<amount></amount> menos que {type}",
+		"vsSame": "misma cotización",
+		"vsMore": "<amount></amount> más",
+		"vsLess": "<amount></amount> menos",
 		"fee": "Comisión",
 		"feeHint": "un gasto de Comisiones desde {account}",
 		"feeAdd": "Agregar una comisión",

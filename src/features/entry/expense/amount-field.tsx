@@ -195,7 +195,8 @@ export function AmountField(p: {
 					) : null}
 				</div>
 			) : null}
-			{picked && !d.custom ? (
+			{/* The rate is stated once: on the chip, or here for a shared expense (no chip). */}
+			{picked && p.shared ? (
 				<span className="text-fg-3 text-meta">
 					<RateLine rate={picked.rate} type={picked.rateType} />
 					{` · ${dates.short(d.date)}`}

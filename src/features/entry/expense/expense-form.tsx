@@ -85,6 +85,7 @@ export function ExpenseForm(p: {
 	const [tried, setTried] = useState(false);
 	const [confirm, setConfirm] = useState<"discard" | "delete" | null>(null);
 	const closing = useRef(false);
+	const submitting = useRef(false);
 	const category = p.catalog.categories.find((c) => c.id === d.categoryId);
 	const s = useExpenseSave(d, {
 		home,
@@ -115,12 +116,16 @@ export function ExpenseForm(p: {
 	const submit = async (again?: boolean) => {
 		setTried(true);
 		setFailed(false);
-		if (!valid) return false;
+		// One save at a time: a double click or Enter during a save does nothing.
+		if (!valid || submitting.current) return false;
+		submitting.current = true;
 		try {
 			await s.save(again);
 		} catch {
 			setFailed(true);
 			return false;
+		} finally {
+			submitting.current = false;
 		}
 		if (again) {
 			p.onOpen({
@@ -184,6 +189,7 @@ export function ExpenseForm(p: {
 							<Button
 								className="max-md:flex-1"
 								kind="secondary"
+								loading={s.busy}
 								onClick={() => void submit(true)}
 							>
 								{t("addAndNew")}

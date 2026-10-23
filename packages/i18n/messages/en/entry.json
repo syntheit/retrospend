@@ -13,7 +13,6 @@
 		"lastTime": "Last time <amount></amount>",
 		"category": "Category",
 		"allCategories": "All",
-		"moreCategories": "More",
 		"pickCategory": "Pick a category",
 		"notCounted": "Not counted in spending",
 		"date": "Date",
@@ -137,7 +136,21 @@
 			"budget_leftToSpend": "Left to spend",
 			"project_total": "Project total",
 			"envelope_left": "Envelope"
-		}
+		},
+		"figuresInline": {
+			"spent": "your spending",
+			"owed_owedToYou": "owed to you",
+			"owed_youOwe": "what you owe",
+			"netWorth": "net worth",
+			"accounts_balance": "account balance",
+			"accounts": "your accounts",
+			"notTracked": "not tracked",
+			"budget_notPlannedYet": "Not planned yet",
+			"budget_leftToSpend": "left to spend",
+			"project_total": "the project total",
+			"envelope_left": "the envelope"
+		},
+		"noneChange": "No change to {list}."
 	},
 	"income": {
 		"title": "Add income",
@@ -179,7 +192,8 @@
 			"addedInto": "Added {amount} into {account}",
 			"kept": "Added {amount} into {account}. Kept in Wealth",
 			"planned": "Added {amount}. {count, plural, one {# envelope} other {# envelopes}} funded"
-		}
+		},
+		"someoneElse": "Someone else"
 	},
 	"transfer": {
 		"titleTransfer": "Transfer",
@@ -189,9 +203,9 @@
 		"sameAmount": "Same amount, same currency",
 		"notTracked": "Not tracked",
 		"rateHint": "Type what left and what arrived; the rate comes from them.",
-		"vsSame": "same as {type}",
-		"vsMore": "<amount></amount> more than {type}",
-		"vsLess": "<amount></amount> less than {type}",
+		"vsSame": "same rate",
+		"vsMore": "<amount></amount> more",
+		"vsLess": "<amount></amount> less",
 		"fee": "Fee",
 		"feeHint": "a Fees expense from {account}",
 		"feeAdd": "Add a fee",

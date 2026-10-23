@@ -13,7 +13,6 @@
 		"lastTime": "Da última vez <amount></amount>",
 		"category": "Categoria",
 		"allCategories": "Todas",
-		"moreCategories": "Mais",
 		"pickCategory": "Escolha uma categoria",
 		"notCounted": "Não conta nos gastos",
 		"date": "Data",
@@ -137,7 +136,21 @@
 			"budget_leftToSpend": "Disponível para gastar",
 			"project_total": "Total do projeto",
 			"envelope_left": "Envelope"
-		}
+		},
+		"figuresInline": {
+			"spent": "seus gastos",
+			"owed_owedToYou": "o que devem a você",
+			"owed_youOwe": "o que você deve",
+			"netWorth": "seu patrimônio",
+			"accounts_balance": "o saldo da conta",
+			"accounts": "suas contas",
+			"notTracked": "sem acompanhamento",
+			"budget_notPlannedYet": "Ainda não planejado",
+			"budget_leftToSpend": "o disponível para gastar",
+			"project_total": "o total do projeto",
+			"envelope_left": "o envelope"
+		},
+		"noneChange": "Sem mudança em {list}."
 	},
 	"income": {
 		"title": "Adicionar receita",
@@ -179,7 +192,8 @@
 			"addedInto": "{amount} adicionado em {account}",
 			"kept": "{amount} adicionado em {account}. Mantido no Patrimônio",
 			"planned": "{amount} adicionado. {count, plural, one {# envelope com fundos} other {# envelopes com fundos}}"
-		}
+		},
+		"someoneElse": "Outra pessoa"
 	},
 	"transfer": {
 		"titleTransfer": "Transferência",
@@ -189,9 +203,9 @@
 		"sameAmount": "Mesmo valor, mesma moeda",
 		"notTracked": "Sem acompanhamento",
 		"rateHint": "Digite o que saiu e o que chegou; a cotação vem daí.",
-		"vsSame": "igual a {type}",
-		"vsMore": "<amount></amount> a mais que {type}",
-		"vsLess": "<amount></amount> a menos que {type}",
+		"vsSame": "mesma cotação",
+		"vsMore": "<amount></amount> a mais",
+		"vsLess": "<amount></amount> a menos",
 		"fee": "Tarifa",
 		"feeHint": "um gasto de Tarifas de {account}",
 		"feeAdd": "Adicionar uma tarifa",

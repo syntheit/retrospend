@@ -13,7 +13,6 @@
 		"lastTime": "La dernière fois <amount></amount>",
 		"category": "Catégorie",
 		"allCategories": "Toutes",
-		"moreCategories": "Plus",
 		"pickCategory": "Choisis une catégorie",
 		"notCounted": "Non comptée dans les dépenses",
 		"date": "Date",
@@ -137,7 +136,21 @@
 			"budget_leftToSpend": "Reste à dépenser",
 			"project_total": "Total du projet",
 			"envelope_left": "Enveloppe"
-		}
+		},
+		"figuresInline": {
+			"spent": "tes dépenses",
+			"owed_owedToYou": "ce qu'on te doit",
+			"owed_youOwe": "ce que tu dois",
+			"netWorth": "ton patrimoine",
+			"accounts_balance": "le solde du compte",
+			"accounts": "tes comptes",
+			"notTracked": "non suivi",
+			"budget_notPlannedYet": "Pas encore prévu",
+			"budget_leftToSpend": "le reste à dépenser",
+			"project_total": "le total du projet",
+			"envelope_left": "l'enveloppe"
+		},
+		"noneChange": "Aucun changement : {list}."
 	},
 	"income": {
 		"title": "Ajouter un revenu",
@@ -179,7 +192,8 @@
 			"addedInto": "{amount} ajouté sur {account}",
 			"kept": "{amount} ajouté sur {account}. Gardé dans Patrimoine",
 			"planned": "{amount} ajouté. {count, plural, one {# enveloppe remplie} other {# enveloppes remplies}}"
-		}
+		},
+		"someoneElse": "Quelqu'un d'autre"
 	},
 	"transfer": {
 		"titleTransfer": "Virement",
@@ -189,9 +203,9 @@
 		"sameAmount": "Même montant, même devise",
 		"notTracked": "Non suivi",
 		"rateHint": "Saisis ce qui est parti et ce qui est arrivé ; le taux en découle.",
-		"vsSame": "identique à {type}",
-		"vsMore": "<amount></amount> de plus que {type}",
-		"vsLess": "<amount></amount> de moins que {type}",
+		"vsSame": "même taux",
+		"vsMore": "<amount></amount> de plus",
+		"vsLess": "<amount></amount> de moins",
 		"fee": "Frais",
 		"feeHint": "une dépense Frais depuis {account}",
 		"feeAdd": "Ajouter des frais",

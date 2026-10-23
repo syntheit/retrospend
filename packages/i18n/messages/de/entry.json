@@ -13,7 +13,6 @@
 		"lastTime": "Letztes Mal <amount></amount>",
 		"category": "Kategorie",
 		"allCategories": "Alle",
-		"moreCategories": "Mehr",
 		"pickCategory": "Wähle eine Kategorie",
 		"notCounted": "Zählt nicht zu den Ausgaben",
 		"date": "Datum",
@@ -137,7 +136,21 @@
 			"budget_leftToSpend": "Noch verfügbar",
 			"project_total": "Projektsumme",
 			"envelope_left": "Umschlag"
-		}
+		},
+		"figuresInline": {
+			"spent": "deine Ausgaben",
+			"owed_owedToYou": "was dir geschuldet wird",
+			"owed_youOwe": "was du schuldest",
+			"netWorth": "dein Vermögen",
+			"accounts_balance": "der Kontostand",
+			"accounts": "deine Konten",
+			"notTracked": "nicht erfasst",
+			"budget_notPlannedYet": "Noch nicht verplant",
+			"budget_leftToSpend": "was noch verfügbar ist",
+			"project_total": "die Projektsumme",
+			"envelope_left": "der Umschlag"
+		},
+		"noneChange": "Keine Änderung: {list}."
 	},
 	"income": {
 		"title": "Einnahme hinzufügen",
@@ -179,7 +192,8 @@
 			"addedInto": "{amount} auf {account} hinzugefügt",
 			"kept": "{amount} auf {account} hinzugefügt. Bleibt im Vermögen",
 			"planned": "{amount} hinzugefügt. {count, plural, one {# Umschlag gefüllt} other {# Umschläge gefüllt}}"
-		}
+		},
+		"someoneElse": "Jemand anderes"
 	},
 	"transfer": {
 		"titleTransfer": "Überweisung",
@@ -189,9 +203,9 @@
 		"sameAmount": "Gleicher Betrag, gleiche Währung",
 		"notTracked": "Nicht erfasst",
 		"rateHint": "Gib ein, was abging und was ankam; der Kurs ergibt sich daraus.",
-		"vsSame": "gleich wie {type}",
-		"vsMore": "<amount></amount> mehr als {type}",
-		"vsLess": "<amount></amount> weniger als {type}",
+		"vsSame": "gleicher Kurs",
+		"vsMore": "<amount></amount> mehr",
+		"vsLess": "<amount></amount> weniger",
 		"fee": "Gebühr",
 		"feeHint": "eine Gebühren-Ausgabe von {account}",
 		"feeAdd": "Gebühr hinzufügen",
