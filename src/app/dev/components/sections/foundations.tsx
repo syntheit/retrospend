@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
 import { PageTabs } from "~/components/ui/page-tabs";
+import { Segmented } from "~/components/ui/segmented";
 import { ME, m, P } from "../fixtures/rows";
 import { Pair, Spec, States } from "../spec";
 
@@ -45,6 +46,10 @@ export const S = {
 	names: "Names mode",
 	expenses: "Expenses",
 	recurring: "Recurring",
+	whoPaid: "Who paid what",
+	paid: "Paid",
+	share: "Share",
+	endSlot: "A control at the end of the heading row instead of the link.",
 };
 function Structure({ phone }: { phone?: boolean }) {
 	return (
@@ -91,6 +96,22 @@ function Structure({ phone }: { phone?: boolean }) {
 				title={S.active}
 			>
 				<div className="text-fg-2 text-small">{S.content}</div>
+			</Section>
+			<Section
+				end={
+					<Segmented
+						label={S.whoPaid}
+						onChange={() => undefined}
+						options={[
+							{ value: "paid", label: S.paid },
+							{ value: "share", label: S.share },
+						]}
+						value="paid"
+					/>
+				}
+				title={S.whoPaid}
+			>
+				<div className="text-fg-2 text-small">{S.endSlot}</div>
 			</Section>
 		</>
 	);

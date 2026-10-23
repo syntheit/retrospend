@@ -7,8 +7,10 @@ import { useToast } from "~/components/ui/toast";
 import {
 	GLANCE,
 	GLANCE_NO_RATE,
+	GLANCE_TRACK,
 	NEEDS_YOU,
 	NEEDS_YOU_MORE,
+	NEEDS_YOU_PEOPLE,
 } from "../fixtures/home";
 import { CAP } from "../sections";
 import { Cap, Pair, Spec, States } from "../spec";
@@ -40,6 +42,12 @@ export function GlanceSection() {
 						CAP.glanceNoRate,
 						<div className="w-105 max-w-full" key="n">
 							<GlanceStrip glance={GLANCE_NO_RATE} />
+						</div>,
+					],
+					[
+						CAP.glanceTrack,
+						<div className="w-105 max-w-full" key="t">
+							<GlanceStrip glance={GLANCE_TRACK} />
 						</div>,
 					],
 				]}
@@ -87,6 +95,26 @@ export function NeedsSection() {
 					[CAP.itemSetup, one(0, NEEDS_YOU_MORE)],
 					[CAP.itemRejected, one(1, NEEDS_YOU_MORE)],
 					[CAP.itemBudget, one(2, NEEDS_YOU_MORE)],
+					[
+						CAP.itemFace,
+						<div className="w-105 max-w-full" key="f">
+							<NeedsYouList
+								items={NEEDS_YOU_PEOPLE}
+								onAction={act}
+								onSecondary={act}
+							/>
+						</div>,
+					],
+					[
+						CAP.itemMenu,
+						<div className="w-105 max-w-full" key="m">
+							<NeedsYouList
+								items={NEEDS_YOU.slice(1, 3)}
+								menu={{ open: act, later: act }}
+								onAction={act}
+							/>
+						</div>,
+					],
 					[
 						CAP.allClear,
 						<div className="w-105 max-w-full" key="e">

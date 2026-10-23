@@ -44,7 +44,7 @@ const S = {
 		["p1", "Viaje a Florianópolis", "sea"],
 		["p2", "Depto Palermo", "city"],
 	] as const,
-	search: "Search pages and commands",
+	search: "Search or go to a page",
 	goTo: "Go to",
 	recent: "Recent",
 	commands: "Commands",
