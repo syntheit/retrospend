@@ -5,6 +5,7 @@ import {
 	rateTypeFromPricingSource,
 } from "~/lib/rate-selection";
 import type { Prisma, PrismaClient } from "~prisma";
+import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
 import {
 	type BookedRate,
@@ -12,7 +13,6 @@ import {
 	loadRateContext,
 	type RateChoice,
 } from "./rate-types";
-import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { listedEntryWhere } from "./spending";
 
 /** pricingSource of a rate the user typed in by hand. */

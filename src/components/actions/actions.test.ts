@@ -47,7 +47,7 @@ describe("action registry", () => {
 			for (const a of defs) {
 				const m = copy[entity]?.[a.id];
 				expect(m?.label, `${entity}.${a.id}.label`).toBeTruthy();
-				if (a.danger) {
+				if (a.danger && (a.safety ?? "confirm") === "confirm") {
 					expect(m?.confirmTitle).toContain("{name}");
 					expect(m?.confirmButton, `${entity}.${a.id}`).toBeTruthy();
 					// A named button, never a bare OK or the same word as the title verb alone.

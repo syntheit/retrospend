@@ -132,6 +132,9 @@ export const createCallerFactory = t.createCallerFactory;
  */
 export const createTRPCRouter = t.router;
 
+/** One namespace from several routers (a v2 read beside today's router). */
+export const mergeRouters = t.mergeRouters;
+
 /**
  * Middleware for timing procedure execution and adding an artificial delay in development.
  *

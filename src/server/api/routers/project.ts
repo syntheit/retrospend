@@ -52,6 +52,7 @@ import { rebalanceExpenses } from "~/server/services/project/rebalance.mutation"
 import { rebalanceableExpenses } from "~/server/services/project/rebalance.service";
 import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
+import { projectPageProcedures } from "./project-pages";
 
 type Db = Parameters<typeof requireProjectRole>[0];
 type SignedIn = { db: Db; session: { user: { id: string } } };
@@ -77,6 +78,8 @@ const actor = (ctx: SignedIn) => ({ userId: ctx.session.user.id });
 // ── router ────────────────────────────────────────────────────────────────────
 
 export const projectRouter = createTRPCRouter({
+	...projectPageProcedures,
+
 	create: protectedProcedure
 		.input(projectInput.create)
 		.mutation(({ ctx, input }) => createProject(ctx.db, actor(ctx), input)),

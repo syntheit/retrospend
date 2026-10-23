@@ -134,8 +134,10 @@ export const profileRouter = createTRPCRouter({
 
 	update: protectedProcedure
 		.input(
+			// Each field is optional: Settings saves one at a time, so a write
+			// (or an Undo) never carries another field's older value.
 			z.object({
-				name: z.string().min(1, "Name is required").max(100),
+				name: z.string().min(1, "Name is required").max(100).optional(),
 				username: z
 					.string()
 					.min(1, "Username is required")
@@ -143,8 +145,9 @@ export const profileRouter = createTRPCRouter({
 					.regex(
 						/^[a-zA-Z0-9]+$/,
 						"Username can only contain letters and numbers",
-					),
-				email: z.email("Invalid email address").max(254),
+					)
+					.optional(),
+				email: z.email("Invalid email address").max(254).optional(),
 				currentPassword: z.string().min(1).optional(),
 			}),
 		)

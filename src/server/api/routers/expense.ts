@@ -22,6 +22,11 @@ const expenseInputSchema = z.object({
 	exchangeRate: z.number().positive().optional(),
 	amountInUSD: z.number().positive().optional(),
 	pricingSource: z.string().max(200).optional(),
+	/** The pair's rate type (official, blue...) or "custom" with customRate. */
+	rateType: z.string().min(1).max(32).optional(),
+	customRate: z
+		.object({ base: z.string().min(3).max(10), value: z.number().positive() })
+		.optional(),
 	date: z.date(),
 	location: z.string().max(500).optional(),
 	description: z.string().max(2000).optional(),

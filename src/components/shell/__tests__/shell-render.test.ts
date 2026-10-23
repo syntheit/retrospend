@@ -22,19 +22,19 @@ const withActions = (node: ReactNode) =>
 	render(h(ShellActionsContext, { value: actions }, node));
 
 describe("BottomNav", () => {
-	it("has the five tabs on today's routes, the current one marked", () => {
+	it("has the five tabs, shipped pages on their new routes, the current one marked", () => {
 		pathname = "/recurring";
 		const html = render(h(BottomNav, { badges: { people: 2 } }));
 		const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
 		expect(hrefs).toEqual([
 			"/dashboard",
-			"/transactions",
+			"/activity",
 			"/budget",
 			"/people",
 			"/projects",
 		]);
 		expect(html.match(/aria-current="page"/g)).toHaveLength(1);
-		expect(html).toMatch(/aria-current="page"[^>]*href="\/transactions"/);
+		expect(html).toMatch(/aria-current="page"[^>]*href="\/activity"/);
 		expect(html).toContain("2 need you");
 		expect(html).not.toContain("Wealth");
 	});

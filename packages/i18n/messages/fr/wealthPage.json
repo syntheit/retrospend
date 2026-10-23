@@ -1,0 +1,136 @@
+{
+	"title": "Patrimoine",
+	"netWorth": "Patrimoine net",
+	"range": "Période du graphique",
+	"ranges": {
+		"1M": "1M",
+		"3M": "3M",
+		"6M": "6M",
+		"1Y": "1Y"
+	},
+	"emptyTrend": "Ajoutez un compte pour voir votre évolution.",
+	"in30Days": "en 30 jours",
+	"assetsByGroup": "Actifs par groupe",
+	"groups": {
+		"cash": "Espèces et banque",
+		"investments": "Placements",
+		"crypto": "Crypto",
+		"property": "Biens",
+		"liabilities": "Dettes"
+	},
+	"liquidAssets": "Actifs liquides",
+	"runway": "Autonomie",
+	"runwayAt": "à vos dépenses moyennes de <amount></amount> par mois",
+	"months": "{months, plural, one {# mois} other {# mois}}",
+	"addAccount": "Ajouter un compte",
+	"empty": {
+		"title": "Aucun compte pour l'instant",
+		"hint": "Ajoutez un compte bancaire, un placement ou un prêt pour suivre votre patrimoine."
+	},
+	"filters": {
+		"label": "Filtrer les comptes",
+		"search": "Rechercher des comptes",
+		"liquid": "Liquides",
+		"illiquid": "Non liquides",
+		"foreign": "Devise étrangère",
+		"clear": "Effacer les filtres",
+		"none": "Aucun compte ne correspond",
+		"noneHint": "Essayez de retirer un filtre."
+	},
+	"closed": {
+		"title": "Comptes clôturés",
+		"notCounted": "Hors patrimoine"
+	},
+	"view": "Vue",
+	"accounts": "Comptes",
+	"breakdown": {
+		"title": "Répartition",
+		"empty": "Rien à répartir",
+		"emptyHint": "Ajoutez d'abord un compte.",
+		"item": "{label} · {share}",
+		"underOne": "<1%",
+		"byType": "Par type",
+		"byCurrency": "Par devise",
+		"byLiquidity": "Par liquidité",
+		"liquid": "Liquide",
+		"illiquid": "Non liquide"
+	},
+	"ratesToday": "Taux du jour",
+	"ratesOn": "Taux du {date}",
+	"withoutRate": "{count, plural, one {# compte sans taux} other {# comptes sans taux}}",
+	"showAmounts": "Afficher les montants",
+	"hideAmounts": "Masquer les montants",
+	"more": "Plus d'actions",
+	"currencies": "Devises et taux",
+	"importCsv": "Importer des comptes (CSV)",
+	"exportCsv": "Exporter les comptes (CSV)",
+	"unavailable": {
+		"title": "Patrimoine n'est pas disponible pour le moment",
+		"hint": "Vos comptes sont en sécurité. Réessayez dans un instant.",
+		"retry": "Réessayer"
+	},
+	"toast": {
+		"reopened": "{name} rouvert",
+		"closed": "{name} clôturé",
+		"deleted": "{name} supprimé",
+		"updated": "{name} mis à jour",
+		"added": "{name} ajouté",
+		"saved": "{name} enregistré",
+		"failed": "Enregistrement impossible. Réessayez."
+	},
+	"rateTypes": {
+		"official": "Officiel",
+		"blue": "Blue",
+		"card": "Carte",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"tourist": "Touriste",
+		"market": "Marché",
+		"custom": "Personnalisé"
+	},
+	"types": {
+		"CASH": "Espèces et banque",
+		"INVESTMENT": "Placement",
+		"CRYPTO": "Crypto",
+		"REAL_ESTATE": "Immobilier",
+		"VEHICLE": "Véhicule",
+		"LIABILITY_LOAN": "Prêt",
+		"LIABILITY_CREDIT_CARD": "Carte de crédit",
+		"LIABILITY_MORTGAGE": "Prêt immobilier"
+	},
+	"sheets": {
+		"valuedAtLabel": "Évalué au",
+		"valuedAt": "Évalué au taux {type}",
+		"noRate": "Pas de taux pour {currency} : ce compte est exclu du patrimoine.",
+		"update": {
+			"title": "Mettre à jour le solde",
+			"submit": "Mettre à jour le solde",
+			"now": "Actuellement <amount></amount> · Mis à jour le {date}",
+			"rateChange": "Évalué au taux {next} à partir d'aujourd'hui. Les jours précédents gardent le taux {before}."
+		},
+		"account": {
+			"addTitle": "Ajouter un compte",
+			"editTitle": "Modifier le compte",
+			"add": "Ajouter le compte",
+			"save": "Enregistrer",
+			"name": "Nom",
+			"namePlaceholder": "Compte épargne",
+			"nameMissing": "Donnez un nom au compte",
+			"type": "Type",
+			"balance": "Solde",
+			"owed": "Montant dû",
+			"noRate": "Pas encore de taux pour {currency} : le compte ne peut pas être évalué. Choisissez une autre devise pour l'instant.",
+			"liquid": "Liquide",
+			"apr": "Taux d'intérêt (TAEG, %)",
+			"aprInvalid": "Saisissez un nombre, comme 45 ou 45,5",
+			"dueDay": "Jour d'échéance",
+			"minimum": "Paiement minimum"
+		},
+		"close": {
+			"title": "Clôturer {name} ?",
+			"submit": "Clôturer le compte",
+			"body": "{name} quitte vos comptes et votre patrimoine à partir d'aujourd'hui. Son historique de soldes est conservé et vous pouvez le rouvrir depuis Comptes clôturés.",
+			"left": "Il affiche encore <amount></amount>. Si l'argent est parti ailleurs, mettez d'abord le solde à zéro."
+		}
+	}
+}

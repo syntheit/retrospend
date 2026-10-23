@@ -1,0 +1,378 @@
+{
+	"title": "Settings",
+	"autosaveNote": "Changes save automatically",
+	"back": "Home",
+	"sections": {
+		"label": "Settings sections",
+		"profile": "Profile",
+		"preferences": "Preferences",
+		"categories": "Categories",
+		"payment": "Payment methods",
+		"notifications": "Notifications",
+		"security": "Security",
+		"developer": "Developer",
+		"data": "Data",
+		"danger": "Danger zone"
+	},
+	"autosave": {
+		"saved": "Saved",
+		"failed": "Couldn't save the change"
+	},
+	"states": {
+		"unavailable": "Couldn't load this section",
+		"retry": "Retry"
+	},
+	"profile": {
+		"title": "Profile",
+		"uploadPhoto": "Upload photo",
+		"removePhoto": "Remove",
+		"photoHint": "JPEG, PNG, WebP or GIF, up to 5 MB",
+		"cropTitle": "Crop your photo",
+		"removePhotoTitle": "Remove your photo?",
+		"removePhotoBody": "People will see your initials instead.",
+		"removePhotoConfirm": "Remove photo",
+		"photoUpdated": "Photo updated",
+		"photoRemoved": "Photo removed",
+		"photoTooLarge": "That file is over 5 MB",
+		"photoUploadFailed": "Couldn't upload the photo",
+		"photoRemoveFailed": "Couldn't remove the photo",
+		"displayName": "Display name",
+		"username": "Username",
+		"usernameHint": "One change every 30 days",
+		"nameRequired": "Your name can't be empty",
+		"nameSaved": "Name saved",
+		"usernameInvalid": "Use letters and numbers only",
+		"changeUsernameTitle": "Change your username to @{username}?",
+		"changeUsernameBody": "You can change it again in 30 days. @{old} stays reserved for you for 90 days.",
+		"changeUsername": "Change username",
+		"keepUsername": "Keep it",
+		"usernameSaved": "Username is now @{username}",
+		"usernameTaken": "That username is taken",
+		"usernameTooSoon": "You can change your username once every 30 days",
+		"email": "Email",
+		"unverified": "Unverified",
+		"changeEmail": "Change email",
+		"publicProfile": "Public profile",
+		"copyLink": "Copy link",
+		"viewProfile": "View",
+		"background": "Background",
+		"linkCopied": "Link copied",
+		"copyFailed": "Couldn't copy the link",
+		"pendingEmail": "Waiting for you to confirm {email}. We sent a link.",
+		"cancelChange": "Cancel change",
+		"emailChangeCanceled": "Email change canceled",
+		"emailCancelFailed": "Couldn't cancel the email change"
+	},
+	"email": {
+		"title": "Change email",
+		"newEmail": "New email",
+		"placeholder": "name@example.com",
+		"password": "Current password",
+		"send": "Send confirmation",
+		"sent": "Confirmation sent to {email}",
+		"changed": "Email is now {email}"
+	},
+	"background": {
+		"title": "Profile background",
+		"symbols": "Symbols",
+		"symbol": {
+			"currency": "Currencies",
+			"math": "Math",
+			"finance": "Finance"
+		},
+		"color": "Color",
+		"colors": {
+			"gray": "Gray",
+			"green": "Green",
+			"blue": "Blue",
+			"purple": "Purple",
+			"orange": "Orange",
+			"gold": "Gold"
+		},
+		"density": "Density",
+		"densities": {
+			"sparse": "Low",
+			"medium": "Medium",
+			"dense": "High"
+		},
+		"motion": "Motion",
+		"motions": {
+			"static": "Still",
+			"float": "Float",
+			"pulse": "Pulse"
+		},
+		"opacity": "Opacity",
+		"opacities": {
+			"subtle": "Faint",
+			"medium": "Medium",
+			"bold": "Strong"
+		}
+	},
+	"preferences": {
+		"money": "Money",
+		"display": "Display",
+		"defaults": "Defaults",
+		"homeCurrency": "Home currency",
+		"homeCurrencyMeta": "Totals and reports use this",
+		"homeCurrencySaved": "Home currency is now {code}",
+		"defaultCurrency": "Default for new expenses",
+		"defaultCurrencySaved": "New expenses start in {code}",
+		"symbol": "Currency symbol",
+		"symbolMeta": "How foreign currencies show",
+		"symbolStandard": "Standard",
+		"symbolNative": "Native",
+		"smart": "Smart formatting",
+		"smartMeta": "Hide cents on large amounts",
+		"monthStart": "Month starts on day",
+		"monthStartMeta": "This month runs {start} to {end}",
+		"theme": "Theme",
+		"themeLight": "Light",
+		"themeDark": "Dark",
+		"themeSystem": "System",
+		"language": "Language",
+		"hideBalances": "Hide balances on Wealth",
+		"hideBalancesMeta": "Until you tap the eye",
+		"chartTap": "Tapping a category in a chart",
+		"chartTapOpen": "Opens its expenses",
+		"chartTapHide": "Hides it from the chart",
+		"expenseDate": "Date for new expenses",
+		"expenseDateToday": "Today",
+		"expenseDateLast": "Last used",
+		"import": "Statement import",
+		"importMeta": "Who reads your bank statements",
+		"importLocal": "Local",
+		"importExternal": "External",
+		"importExternalLeft": "External has {count, number} tokens left this month"
+	},
+	"categories": {
+		"title": "Categories",
+		"add": "Add category",
+		"empty": "No categories yet",
+		"entries": "{count, plural, one {# expense} other {# expenses}}",
+		"noEntries": "No expenses",
+		"excluded": "New expenses left out of totals",
+		"showAll": "Show all {count} categories",
+		"open": "Edit {name}",
+		"excludedSaved": "New {name} expenses are left out of totals",
+		"includedSaved": "New {name} expenses count in totals"
+	},
+	"payment": {
+		"title": "Payment methods",
+		"add": "Add payment method",
+		"empty": "No payment methods",
+		"emptyHint": "Add one so people can pay you back.",
+		"primary": "Primary",
+		"visibility": {
+			"PUBLIC": "Public",
+			"FRIENDS_ONLY": "Contacts",
+			"PAYMENT_ONLY": "Settlement"
+		},
+		"added": "{name} added",
+		"removed": "Removed {name}",
+		"copyLink": "Copy link",
+		"copyPayLink": "Copy pay link",
+		"copyProfileLink": "Copy profile link",
+		"copyDonationLink": "Copy donation link",
+		"linkCopied": "Link copied",
+		"copyFailed": "Couldn't copy the link"
+	},
+	"notifications": {
+		"title": "Notifications",
+		"event": "Event",
+		"channels": {
+			"inApp": "In app",
+			"email": "Email",
+			"digestMode": "Digest"
+		},
+		"switchLabel": "{channel}: {event}",
+		"digestHint": "Digest sends one email a day instead of one each time. It needs Email.",
+		"events": {
+			"EXPENSE_SPLIT": "Someone adds you to a split",
+			"VERIFICATION_REQUEST": "A split needs your check",
+			"EXPENSE_EDITED": "A shared expense changes",
+			"EXPENSE_DELETED": "A shared expense is deleted",
+			"SETTLEMENT_RECEIVED": "A payment waits for you to confirm",
+			"SETTLEMENT_CONFIRMED": "A payment is confirmed",
+			"SETTLEMENT_REJECTED": "A payment is declined",
+			"PERIOD_CLOSED": "A billing period closes",
+			"PARTICIPANT_ADDED": "You are added to a project",
+			"PAYMENT_REMINDER": "Someone reminds you to pay"
+		}
+	},
+	"security": {
+		"title": "Security",
+		"password": "Password",
+		"passwordMeta": "Changing it signs out your other devices",
+		"changePassword": "Change password",
+		"twoFactor": "Two-factor authentication",
+		"twoFactorOn": "On, authenticator app",
+		"twoFactorOff": "Off",
+		"turnOn": "Turn on",
+		"turnOff": "Turn off",
+		"backupCodes": "Backup codes"
+	},
+	"password": {
+		"title": "Change password",
+		"current": "Current password",
+		"new": "New password",
+		"confirm": "Confirm new password",
+		"rules": "Password rules",
+		"check": {
+			"length": "8 or more characters",
+			"case": "A lowercase and an uppercase letter",
+			"number": "A number"
+		},
+		"met": "done",
+		"notMet": "not yet",
+		"mismatch": "The new passwords don't match",
+		"submit": "Update password",
+		"changed": "Password changed. Your other devices are signed out."
+	},
+	"twoFactor": {
+		"onTitle": "Turn on two-factor",
+		"offTitle": "Turn off two-factor",
+		"offBody": "Signing in will only need your password.",
+		"password": "Password",
+		"continue": "Continue",
+		"scan": "Scan with your authenticator app, or enter",
+		"code": "6-digit code",
+		"verify": "Verify",
+		"saveCodes": "Save these codes. Each one works once if you lose your phone.",
+		"saved": "I saved them",
+		"turnedOn": "Two-factor is on",
+		"turnedOff": "Two-factor is off",
+		"turnOff": "Turn off",
+		"cancel": "Cancel",
+		"wrongCode": "That code didn't work",
+		"failed": "Couldn't finish. Try again.",
+		"codesTitle": "Backup codes",
+		"codesBody": "Your codes are shown once, when they are made. Make a new set to see codes again; the old ones stop working.",
+		"makeCodes": "Make new codes",
+		"newCodesMade": "New codes made. The old ones no longer work.",
+		"done": "Done",
+		"codesLabel": "Backup codes",
+		"codesHint": "Each code works once. Use one at sign in if you lose your phone.",
+		"copy": "Copy",
+		"download": "Download",
+		"codesCopied": "Codes copied",
+		"copyFailed": "Couldn't copy the codes",
+		"fileHeader": "Retrospend backup codes. Each code works once."
+	},
+	"developer": {
+		"title": "Developer",
+		"newKey": "New API key",
+		"keys": "API keys",
+		"noKeys": "No API keys",
+		"noKeysHint": "Scripts and integrations use a key to reach your data.",
+		"revoked": "Revoked {name}",
+		"expiresOn": "Expires {date}",
+		"expired": "Expired",
+		"lastUsed": "Last used {date}",
+		"neverUsed": "Never used",
+		"noScopes": "No access",
+		"scope": {
+			"read": "Read",
+			"write_expenses": "Expenses",
+			"write_money": "Money",
+			"write_settings": "Settings",
+			"admin": "Admin"
+		},
+		"devices": "Approved devices",
+		"noDevices": "No approved devices",
+		"noDevicesHint": "Apps you connect with a code at /device show here.",
+		"approvedOn": "Approved {date}",
+		"disconnected": "Disconnected {name}",
+		"failed": "Couldn't finish. Try again.",
+		"newTitle": "New API key",
+		"name": "Name",
+		"namePlaceholder": "Home Assistant, backup script",
+		"expires": "Expires after",
+		"expiry": {
+			"30": "30 days",
+			"90": "90 days",
+			"365": "1 year"
+		},
+		"access": "Access",
+		"scopeLater": "Not available yet. Keys can read for now.",
+		"create": "Create key",
+		"created": "Created {name}",
+		"keyTitle": "Your new key",
+		"onceOnly": "Copy it now. You won't see it again.",
+		"keyLabel": "API key",
+		"copy": "Copy",
+		"keyCopied": "Key copied",
+		"copyFailed": "Couldn't copy the key",
+		"done": "Done"
+	},
+	"data": {
+		"title": "Data",
+		"kinds": {
+			"expenses": "Expenses",
+			"budgets": "Budgets",
+			"wealth": "Wealth",
+			"all": "Everything"
+		},
+		"formats": {
+			"csv": "CSV",
+			"zip": "ZIP of every table"
+		},
+		"download": "Download",
+		"done": {
+			"expenses": "Expenses downloaded",
+			"budgets": "Budgets downloaded",
+			"wealth": "Wealth downloaded",
+			"all": "Everything downloaded"
+		},
+		"failed": "Couldn't make the export",
+		"import": "Import",
+		"importMeta": "Bank statements and CSV files",
+		"openImport": "Open Import"
+	},
+	"delete": {
+		"section": "Danger zone",
+		"title": "Delete account",
+		"rowMeta": "Pending payments and splits are resolved first",
+		"passwordBody": "Enter your password to see what happens next.",
+		"password": "Password",
+		"cancel": "Cancel",
+		"continue": "Continue",
+		"confirm": "Delete my account",
+		"loading": "Loading what happens",
+		"previewFailed": "Couldn't load what happens. Try again.",
+		"projectTransfer": "Moves to {owner}",
+		"projectDelete": "Deleted, you are its only member",
+		"settlementsConfirm": {
+			"title": "{count, plural, one {# pending payment} other {# pending payments}}",
+			"meta": "Confirmed for you"
+		},
+		"settlementsCancel": {
+			"title": "{count, plural, one {# unconfirmed payment} other {# unconfirmed payments}}",
+			"meta": "Canceled"
+		},
+		"verificationsAccept": {
+			"title": "{count, plural, one {# split waiting for a check} other {# splits waiting for a check}}",
+			"meta": "Accepted as they are"
+		},
+		"sharedAnonymize": {
+			"title": "{count, plural, one {# shared expense} other {# shared expenses}}",
+			"meta": "Kept for the others, without your name"
+		},
+		"own": {
+			"title": "Your expenses, accounts and budgets",
+			"meta": "Deleted for good"
+		},
+		"deleted": "Account deleted",
+		"failed": "Couldn't delete the account"
+	},
+	"about": {
+		"version": "Retrospend {version}",
+		"license": "GPL v3",
+		"privacy": "Privacy",
+		"terms": "Terms",
+		"website": "Website",
+		"github": "GitHub",
+		"matrix": "Matrix",
+		"donate": "Donate",
+		"madeBy": "Made by <name>Daniel Miller</name>"
+	}
+}

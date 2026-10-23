@@ -1,0 +1,199 @@
+{
+	"solo": "Allein",
+	"addExpense": "Ausgabe hinzufügen",
+	"tabs": {
+		"expenses": "Ausgaben",
+		"summary": "Übersicht",
+		"people": "Personen"
+	},
+	"unavailable": {
+		"title": "Dieses Projekt konnte nicht geladen werden",
+		"hint": "Prüf deine Verbindung und versuch es noch einmal.",
+		"retry": "Erneut versuchen"
+	},
+	"hero": {
+		"spent": "Ausgegeben",
+		"groupTotal": "Gruppensumme",
+		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"yourShare": "Dein Anteil",
+		"left": "<amount></amount> übrig",
+		"over": "<amount></amount> über dem Budget",
+		"ofBudget": "von <amount></amount>",
+		"budgetUsed": "Budget genutzt"
+	},
+	"expenses": {
+		"label": "Ausgaben",
+		"filters": "Ausgaben filtern",
+		"search": "Ausgaben suchen",
+		"toReview": "Zu prüfen · {count}",
+		"paidBy": "Bezahlt von {name}",
+		"paidByYou": "Von dir bezahlt",
+		"paidByGroup": "Bezahlt von",
+		"you": "Du",
+		"clear": "Filter löschen",
+		"noMatch": "Keine Ausgabe passt",
+		"empty": "Noch keine Ausgaben",
+		"emptySolo": "Füg die erste Ausgabe hinzu, um dieses Projekt zu verfolgen.",
+		"emptyShared": "Füg die erste Ausgabe hinzu und dann die Personen, mit denen du sie teilst.",
+		"add": "Ausgabe hinzufügen",
+		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"shownOf": "{shown} von {count, plural, one {# Ausgabe} other {# Ausgaben}}"
+	},
+	"summary": {
+		"you": "Du",
+		"youObject": "dir",
+		"empty": "Noch nichts zusammenzufassen",
+		"emptyHint": "Ausgaben nach Person und Kategorie erscheinen nach der ersten Ausgabe.",
+		"whoPaidWhat": "Wer hat was bezahlt",
+		"paid": "Bezahlt",
+		"share": "Anteil",
+		"addsUp": "Beides ergibt die Gruppensumme, <amount></amount>.",
+		"doesNotAddUp": "Einige Anteile ergeben nicht ihre Ausgabe, daher weichen Bezahlt und Anteil von der Gruppensumme ab.",
+		"settleUp": "Ausgleichen",
+		"whoPaysWhom": "Wer zahlt wem",
+		"even": "In diesem Projekt sind alle quitt.",
+		"betweenYou": "zwischen euch",
+		"betweenThem": "zwischen ihnen",
+		"pays": "{from} zahlt {to}",
+		"youPay": "Du zahlst {to}",
+		"youAndEach": "Du und jede Person",
+		"settleAll": "Alle ausgleichen",
+		"roles": {
+			"ORGANIZER": "Inhaber",
+			"EDITOR": "Bearbeiter",
+			"CONTRIBUTOR": "Mitglied",
+			"VIEWER": "Leser"
+		},
+		"byCategory": "Nach Kategorie",
+		"byCategoryGroup": "Was wir ausgegeben haben, nach Kategorie",
+		"group": "Gruppe",
+		"yours": "Deins",
+		"uncategorized": "Sonstiges",
+		"payments": "Zahlungen in diesem Projekt",
+		"noPayments": "Noch keine Zahlungen.",
+		"paidTo": "{from} hat {to} bezahlt"
+	},
+	"people": {
+		"title": "Personen",
+		"add": "Person hinzufügen",
+		"you": "Du",
+		"membersAndSettings": "Mitglieder und Einstellungen",
+		"since": "seit {date}",
+		"left": "ausgetreten am {date}",
+		"roles": {
+			"ORGANIZER": "Inhaber",
+			"EDITOR": "Bearbeiter",
+			"CONTRIBUTOR": "Mitglied",
+			"VIEWER": "Leser"
+		}
+	},
+	"toast": {
+		"exportFailed": "Export fehlgeschlagen",
+		"accepted": "Deinen Anteil an {name} angenommen"
+	},
+	"preview": {
+		"checking": "Prüfe, was sich ändert",
+		"changes": "Was sich ändert",
+		"nothing": "Nichts",
+		"stays": "Was gleich bleibt",
+		"noChange": "keine Änderung",
+		"unavailable": "nicht geprüft, ein Kurs fehlt",
+		"figures": {
+			"project_total": "Gruppensumme",
+			"project_member_balance": "{name} in der Gruppe",
+			"project_member_share": "Anteil von {name}",
+			"project_member_paid": "{name} hat bezahlt",
+			"owed_owedToYou": "Dir geschuldet",
+			"owed_youOwe": "Du schuldest",
+			"balance_person": "Du und {name}"
+		}
+	},
+	"settleAll": {
+		"title": "Alle ausgleichen",
+		"submit": "{count, plural, =0 {Zahlungen erfassen} one {# Zahlung erfassen} other {# Zahlungen erfassen}}",
+		"done": "{count, plural, one {# Zahlung erfasst} other {# Zahlungen erfasst}}",
+		"even": "In diesem Projekt bist du mit allen quitt.",
+		"payments": "Zu erfassende Zahlungen",
+		"someone": "Jemand",
+		"paysYou": "{name} zahlt dir",
+		"youPay": "Du zahlst {name}",
+		"recordedAsPaid": "Als an dich bezahlt erfasst",
+		"theyConfirm": "{name} bestätigt es",
+		"finalNow": "Sofort endgültig",
+		"claimed": "{name} sagt, die Zahlung ist erfolgt. Bestätige sie auf der Seite der Person.",
+		"skippedOther": "Ausgelassen: gleiche es auf der Seite der Person aus."
+	},
+	"addPerson": {
+		"title": "Person zu {project} hinzufügen",
+		"submit": "Zum Projekt hinzufügen",
+		"name": "Name",
+		"namePlaceholder": "Sol García",
+		"nameMissing": "Gib einen Namen ein",
+		"known": "Personen, mit denen du teilst",
+		"email": "E-Mail (optional)",
+		"emailPlaceholder": "sol@beispiel.de",
+		"emailHint": "Ist die Person bei Retrospend, wird sie verknüpft, sonst bekommt sie eine Einladung.",
+		"joins": "Tritt {project} bei am",
+		"joinsHint": "Ausgaben vor diesem Tag bleiben, wie sie sind. Neue können die Person einschließen.",
+		"added": "{name} tritt {project} am {date} bei"
+	},
+	"settings": {
+		"title": "Projekteinstellungen",
+		"submit": "Speichern",
+		"name": "Name",
+		"note": "Notiz (optional)",
+		"budget": "Währung und Budget",
+		"budgetHint": "Das Budget ist optional. Ausgaben in anderen Währungen zählen nicht dazu.",
+		"autoAccept": "Neue Anteile zählen ohne Prüfung",
+		"exclude": "Dieses Projekt aus meinen Auswertungen herauslassen",
+		"members": "Mitglieder",
+		"dates": "Daten",
+		"since": "Seit {date}",
+		"fromStart": "Von Anfang an",
+		"left": "Ausgetreten am {date}",
+		"you": "{name} (du)",
+		"datesHint": "Die Daten bestimmen, wen neue Ausgaben einschließen. Gespeicherte Ausgaben behalten ihre Aufteilung.",
+		"saved": "Projekteinstellungen gespeichert"
+	},
+	"dates": {
+		"title": "Daten für {name}",
+		"submit": "Daten speichern",
+		"joined": "Beigetreten",
+		"left": "Ausgetreten",
+		"fromStart": "Von Anfang an",
+		"stillHere": "Noch dabei",
+		"onADay": "An einem Tag",
+		"order": "Der Austritt muss nach dem Beitritt liegen.",
+		"leaves": "Ab dem {date} lassen neue Ausgaben {name} standardmäßig aus.",
+		"joins": "Ab dem {date} schließen neue Ausgaben {name} standardmäßig ein.",
+		"always": "Neue Ausgaben schließen {name} standardmäßig ein.",
+		"saved": "Daten für {name} gespeichert",
+		"you": "Du"
+	},
+	"share": {
+		"title": "Teilen",
+		"links": "Einladungslinks",
+		"copy": "Kopieren",
+		"newLink": "Neuer Link",
+		"turnOff": "Ausschalten",
+		"create": "Link erstellen",
+		"on": "Jeder mit dem Link kann beitreten",
+		"off": "Aus",
+		"roles": {
+			"CONTRIBUTOR": "Kann Ausgaben hinzufügen",
+			"VIEWER": "Kann ansehen"
+		},
+		"public": "Öffentliche Seite",
+		"publicHint": "Wer die Adresse hat, sieht die Summen und die Ausgaben, nie Salden oder E-Mails.",
+		"copyPublic": "Seitenadresse kopieren",
+		"copied": "Link kopiert",
+		"nowPublic": "Die Projektseite ist öffentlich",
+		"nowPrivate": "Die Projektseite ist privat"
+	},
+	"errors": {
+		"failed": "Das wurde nicht gespeichert. Versuch es noch einmal.",
+		"changed": "Die Salden haben sich inzwischen geändert. Prüf die neuen Beträge und erfasse erneut.",
+		"previewFailed": "Konnte nicht prüfen, was sich ändert. Versuch es noch einmal.",
+		"undoConflict": "Eine Zahlung wurde inzwischen bestätigt, daher wurde nichts rückgängig gemacht."
+	}
+}

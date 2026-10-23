@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Arquivar"
+		},
+		"restore": {
+			"label": "Restaurar"
+		},
+		"delete": {
+			"label": "Excluir",
+			"confirmTitle": "Excluir {name}?",
+			"confirmBody": "O projeto some. Suas despesas ficam, fora de qualquer projeto. Não dá para desfazer.",
+			"confirmButton": "Excluir projeto"
+		},
+		"addPerson": {
+			"label": "Adicionar pessoa"
+		},
+		"exportCsv": {
+			"label": "Exportar despesas (CSV)"
+		},
+		"exportPlan": {
+			"label": "Exportar quem paga a quem (CSV)"
+		},
+		"exportPdf": {
+			"label": "Exportar PDF"
+		},
+		"settings": {
+			"label": "Ajustes"
 		}
 	},
 	"account": {
@@ -80,6 +104,21 @@
 		},
 		"archive": {
 			"label": "Arquivar"
+		},
+		"addIncome": {
+			"label": "Adicionar receita aqui"
+		},
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Encerrar conta"
+		},
+		"delete": {
+			"label": "Excluir definitivamente",
+			"confirmTitle": "Excluir {name} definitivamente?",
+			"confirmBody": "A conta e todo o histórico de saldos são excluídos, e seu patrimônio passado também muda. Para manter o histórico, encerre a conta.",
+			"confirmButton": "Excluir definitivamente"
 		}
 	},
 	"recurring": {
@@ -103,6 +142,90 @@
 			"confirmTitle": "Excluir {name}?",
 			"confirmBody": "Os próximos param; as despesas passadas ficam.",
 			"confirmButton": "Excluir despesa recorrente"
+		}
+	},
+	"category": {
+		"edit": {
+			"label": "Nome, ícone e cor"
+		},
+		"exclude": {
+			"label": "Deixar novas despesas fora dos totais"
+		},
+		"include": {
+			"label": "Contar novas despesas nos totais"
+		},
+		"delete": {
+			"label": "Excluir"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Editar"
+		},
+		"makePrimary": {
+			"label": "Tornar principal"
+		},
+		"showPublic": {
+			"label": "Tornar público"
+		},
+		"showContacts": {
+			"label": "Mostrar só para contatos"
+		},
+		"showSettlement": {
+			"label": "Mostrar só ao quitar"
+		},
+		"moveUp": {
+			"label": "Mover para cima"
+		},
+		"moveDown": {
+			"label": "Mover para baixo"
+		},
+		"remove": {
+			"label": "Remover"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Revogar chave",
+			"confirmTitle": "Revogar {name}?",
+			"confirmBody": "Tudo que usa esta chave para de funcionar na hora.",
+			"confirmButton": "Revogar chave"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Desconectar",
+			"confirmTitle": "Desconectar {name}?",
+			"confirmBody": "Ele é desconectado na hora e precisa de um novo código para se conectar de novo.",
+			"confirmButton": "Desconectar dispositivo"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Converter"
+		},
+		"favorite": {
+			"label": "Adicionar aos favoritos"
+		},
+		"unfavorite": {
+			"label": "Remover dos favoritos"
+		},
+		"copy": {
+			"label": "Copiar cotação"
+		},
+		"history": {
+			"label": "Ver histórico da cotação"
+		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Confirmar"
+		},
+		"notReceived": {
+			"label": "Não recebi",
+			"confirmTitle": "Não recebeu o pagamento de {name}?",
+			"confirmBody": "O pagamento fica como não recebido e seu saldo continua igual.",
+			"confirmButton": "Não recebi"
 		}
 	}
 }

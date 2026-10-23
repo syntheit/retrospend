@@ -13,14 +13,14 @@ import { ExpenseModal } from "~/components/expense-modal";
 import type { ExpenseInitialValues } from "~/hooks/use-expense-form";
 import { generateId } from "~/lib/utils";
 
-type OpenNewExpenseOptions = {
+export type OpenNewExpenseOptions = {
 	projectId?: string;
 	projectName?: string;
 	projectDefaultCurrency?: string;
 	isSolo?: boolean;
 };
 
-type ExpenseModalContextValue = {
+export type ExpenseModalContextValue = {
 	openNewExpense: (options?: OpenNewExpenseOptions) => void;
 	openExpense: (id: string) => void;
 	openSharedExpense: (sharedTransactionId: string) => void;
@@ -29,7 +29,7 @@ type ExpenseModalContextValue = {
 	isOpen: boolean;
 };
 
-const ExpenseModalContext = createContext<ExpenseModalContextValue | undefined>(
+export const ExpenseModalContext = createContext<ExpenseModalContextValue | undefined>(
 	undefined,
 );
 
