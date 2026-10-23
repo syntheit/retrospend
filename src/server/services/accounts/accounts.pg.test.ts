@@ -228,7 +228,7 @@ describe("account.setRateType (D3)", () => {
 				r.type,
 				r.previousType,
 			]),
-		).toEqual([[TODAY.toISOString().slice(0, 10), "blue", "official"]]);
+		).toEqual([[result.value.from, "blue", "official"]]);
 
 		await forUser(user.id).apply(revertRateType, {
 			rateTypeId: result.value.rateTypeId,

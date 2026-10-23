@@ -17,6 +17,7 @@
 --    the same day.
 -- 6. expense."keepInWealth" and "movedInAt" (kept income, Move in);
 --    user."defaultAccounts" ({currency: accountId}).
+-- 7. A trigger that moves an account's balance with its legs.
 --
 -- Additive and idempotent. Nothing is backfilled: no account has a leg, so
 -- every balance and every history point stays what it is today. The only
@@ -195,3 +196,30 @@ CREATE POLICY asset_rate_type_isolation ON "asset_rate_type"
 GRANT SELECT, INSERT, UPDATE, DELETE ON "transfer" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "account_leg" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "asset_rate_type" TO retrospend_app;
+
+-- An account's stored balance moves with its legs, whatever writes or
+-- removes them: a transfer, an income deleted from Activity, an expense
+-- cascade. A leg is signed in what you have, so on a liability (which
+-- stores what you owe) it moves the balance the other way. A balance
+-- update's own leg is the record of its Not logged difference; the update
+-- sets the balance itself, so that leg never moves it.
+CREATE OR REPLACE FUNCTION account_leg_moves_balance() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP IN ('DELETE', 'UPDATE') AND OLD."accountId" IS NOT NULL AND OLD."source" <> 'BALANCE_UPDATE' THEN
+    UPDATE "asset_account"
+      SET "balance" = "balance" - CASE WHEN "type"::text LIKE 'LIABILITY_%' THEN -OLD."amount" ELSE OLD."amount" END
+      WHERE "id" = OLD."accountId";
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW."accountId" IS NOT NULL AND NEW."source" <> 'BALANCE_UPDATE' THEN
+    UPDATE "asset_account"
+      SET "balance" = "balance" + CASE WHEN "type"::text LIKE 'LIABILITY_%' THEN -NEW."amount" ELSE NEW."amount" END
+      WHERE "id" = NEW."accountId";
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS "account_leg_moves_balance" ON "account_leg";
+CREATE TRIGGER "account_leg_moves_balance"
+  AFTER INSERT OR UPDATE OR DELETE ON "account_leg"
+  FOR EACH ROW EXECUTE FUNCTION account_leg_moves_balance();

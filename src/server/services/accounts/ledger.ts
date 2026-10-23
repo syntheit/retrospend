@@ -1,8 +1,10 @@
 /**
  * Writes legs (MONEY-MOVES §2.1, I12): every money move that names a place
  * writes one leg per place, and an account's stored balance moves with its
- * leg in the same transaction. Everything goes through the caller's `tx`, so
- * a preview rolls it back.
+ * leg in the same statement (the account_leg trigger in M4, so a leg that
+ * goes away by any path, such as an income deleted from Activity, takes its
+ * balance with it). Everything goes through the caller's `tx`, so a preview
+ * rolls it back.
  *
  * `asset_account.balance` stays the current balance every Wealth reader
  * already uses; legs explain how it got there (accounts/series.ts).
@@ -129,7 +131,10 @@ export function bookHome(
 const endOfDayOf = (date: Date) =>
 	new Date(`${date.toISOString().slice(0, 10)}T23:59:59.999Z`);
 
-/** Writes one leg and moves its account's stored balance by it. Returns the account's change. */
+/**
+ * Writes one leg; the account_leg trigger (M4) moves its account's stored
+ * balance in the same statement. Returns the account's change.
+ */
 export async function writeLeg(
 	tx: Tx,
 	userId: string,
@@ -158,20 +163,20 @@ export async function writeLeg(
 		},
 	});
 	if (!account) return null;
-	return moveBalance(tx, account, balanceEffect(account.type, leg.amount));
+	return changeOf(tx, account, balanceEffect(account.type, leg.amount));
 }
 
-async function moveBalance(
+/** The account's balance now, and before a change of `by`. */
+async function changeOf(
 	tx: Tx,
 	account: Pick<AccountRow, "id" | "name" | "currency">,
 	by: Decimal,
 ): Promise<AccountChange> {
-	const updated = await tx.assetAccount.update({
+	const now = await tx.assetAccount.findUniqueOrThrow({
 		where: { id: account.id },
-		data: { balance: { increment: by.toString() } },
 		select: { balance: true },
 	});
-	const after = dec(updated.balance.toString());
+	const after = dec(now.balance.toString());
 	return {
 		accountId: account.id,
 		name: account.name,
@@ -182,8 +187,8 @@ async function moveBalance(
 }
 
 /**
- * Takes back every leg `where` names (a transfer's or an income's), moving
- * each account back, then deletes the legs. Used by deletes and undos.
+ * Takes back every leg `where` names (a transfer's or an income's): deleting
+ * them moves each account back (the trigger). Used by deletes and undos.
  */
 export async function reverseLegs(
 	tx: Tx,
@@ -194,23 +199,20 @@ export async function reverseLegs(
 		select: {
 			id: true,
 			amount: true,
-			accountId: true,
 			account: { select: { id: true, name: true, currency: true, type: true } },
 		},
 	});
-	const changes: AccountChange[] = [];
-	for (const leg of legs) {
-		if (leg.account) {
-			await tx.$executeRaw`SELECT 1 FROM "asset_account" WHERE "id" = ${leg.account.id} FOR UPDATE`;
-			const by = balanceEffect(
-				leg.account.type as AssetType,
-				dec(leg.amount.toString()),
-			).neg();
-			changes.push(await moveBalance(tx, leg.account, by));
-		}
-	}
 	await tx.accountLeg.deleteMany({
 		where: { id: { in: legs.map((l) => l.id) } },
 	});
+	const changes: AccountChange[] = [];
+	for (const leg of legs) {
+		if (!leg.account) continue;
+		const by = balanceEffect(
+			leg.account.type as AssetType,
+			dec(leg.amount.toString()),
+		).neg();
+		changes.push(await changeOf(tx, leg.account, by));
+	}
 	return changes;
 }

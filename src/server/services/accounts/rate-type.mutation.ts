@@ -5,7 +5,6 @@
  * past. Undo (account.revertRateType) removes the switch.
  */
 import { TRPCError } from "@trpc/server";
-import { normalizeDate } from "~/lib/date";
 import type { Money } from "~/server/figures/registry";
 import { toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
@@ -55,7 +54,7 @@ async function valueOnDay(
 	return value ? { value, home: ledger.homeCurrency } : null;
 }
 
-/** Writes the dated switch and, when it is in force today, the account's type. */
+/** Writes the dated switch and, when it is the latest, the account's type. */
 export async function switchRateType(
 	tx: Tx,
 	userId: string,
@@ -80,7 +79,8 @@ export async function switchRateType(
 		},
 		update: { type: input.rateType },
 	});
-	if (!later && from <= normalizeDate(new Date())) {
+	// moveDay never returns a future day, so the latest switch is in force today.
+	if (!later) {
 		await tx.assetAccount.update({
 			where: { id: account.id },
 			data: { exchangeRateType: input.rateType },
@@ -141,7 +141,7 @@ export async function revertRateTypeIn(
 	const account = await lockOpenAccount(tx, userId, row.accountId);
 	await tx.assetRateType.delete({ where: { id: row.id } });
 	const latest = await tx.assetRateType.findFirst({
-		where: { accountId: account.id, from: { lte: normalizeDate(new Date()) } },
+		where: { accountId: account.id },
 		orderBy: { from: "desc" },
 	});
 	const rateType = latest ? latest.type : row.previousType;

@@ -194,6 +194,21 @@ describe("income.add", () => {
 	});
 });
 
+describe("legs and balances stay in step", () => {
+	it("an income deleted outside these services takes its balance with it", async () => {
+		const p = await places();
+		const { value } = await forUser(p.userId).apply(addIncome, {
+			title: "Salary",
+			amount: "2950000",
+			currency: "ARS",
+			into: p.savings,
+		});
+		// As Activity's delete does: the row goes, its leg cascades.
+		await adminDb.expense.delete({ where: { id: value.expenseId } });
+		expect(await balanceOf(p.savings)).toBe("5000000");
+	});
+});
+
 describe("income.moveIn (count only)", () => {
 	it("I16 count-only moves change no account: Move in and its undo leave every balance", async () => {
 		const p = await places();
@@ -241,9 +256,8 @@ describe("income.moveIn (count only)", () => {
 		const row = await adminDb.expense.findUniqueOrThrow({
 			where: { id: income.expenseId },
 		});
-		expect(row.movedInAt?.toISOString().slice(0, 10)).toBe(
-			TODAY.toISOString().slice(0, 10),
-		);
+		// Dated today, in the same zone as the income itself.
+		expect(row.movedInAt?.getTime()).toBe(row.date.getTime());
 		await expect(
 			forUser(p.userId).apply(moveIn, { expenseId: income.expenseId }),
 		).rejects.toMatchObject({
