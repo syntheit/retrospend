@@ -15,7 +15,10 @@ import type { LimitTotals } from "./verdict";
  * funding makes the target), so Left = limit - spent. Ahead of pace when a
  * larger share of the limits is spent than of the month has passed.
  */
-export function limitTotals(rows: Row[], p: MonthViewInput): LimitTotals | null {
+export function limitTotals(
+	rows: Row[],
+	p: MonthViewInput,
+): LimitTotals | null {
 	if (p.book.style !== "LIMITS") return null;
 	const limited = rows.filter(
 		(r) => r.env.target !== null || r.m.assigned !== 0 || r.m.carryIn !== 0,

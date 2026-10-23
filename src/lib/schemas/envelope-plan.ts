@@ -8,6 +8,8 @@
  * expected money in is named by its recurring template or category, a
  * pretend row by its category or envelope.
  */
+
+import { userText } from "@retrospend/api-contract/common";
 import { z } from "zod";
 import {
 	groupTargetInputSchema,
@@ -18,7 +20,6 @@ import {
 	ruleActionInputSchema,
 	ruleMatchSchema,
 } from "./envelope";
-import { userText } from "@retrospend/api-contract/common";
 
 const idSchema = z.string().min(1).max(64);
 const clientIdSchema = z.string().uuid();
@@ -139,12 +140,12 @@ export const saveDraftInputSchema = z
 		pretend: z.array(pretendRowSchema).max(100).default([]),
 	})
 	.refine(
-		(d) =>
-			new Set(d.lines.map((l) => l.envelopeId)).size === d.lines.length,
+		(d) => new Set(d.lines.map((l) => l.envelopeId)).size === d.lines.length,
 		"an envelope appears once in a plan",
 	)
 	.refine(
-		(d) => d.kind === "WHAT_IF" || (d.moves.length === 0 && d.pretend.length === 0),
+		(d) =>
+			d.kind === "WHAT_IF" || (d.moves.length === 0 && d.pretend.length === 0),
 		"pretend rows and moves belong to What if",
 	);
 
@@ -222,7 +223,9 @@ export const draftPreviewSchema = z.object({
 		z.object({
 			envelopeId: idSchema,
 			short: moneySchema,
-			cover: z.array(z.object({ from: idSchema.nullable(), amount: moneySchema })),
+			cover: z.array(
+				z.object({ from: idSchema.nullable(), amount: moneySchema }),
+			),
 			/** Part of the shortfall nothing can cover. */
 			uncovered: moneySchema,
 		}),
@@ -267,7 +270,9 @@ export const planCostSchema = z.object({
 	month: monthKeySchema,
 	/** Σ monthly-equivalent targets; a group counts its target when larger than its children. */
 	cost: moneySchema,
-	byGroup: z.array(z.object({ groupId: idSchema.nullable(), cost: moneySchema })),
+	byGroup: z.array(
+		z.object({ groupId: idSchema.nullable(), cost: moneySchema }),
+	),
 	/** Median budget income of the last 3 closed months; null with none. */
 	typicalIncome: moneySchema.nullable(),
 	closedMonths: z.number().int().min(0).max(3),

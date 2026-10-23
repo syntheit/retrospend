@@ -8,10 +8,10 @@
 import { describe, expect, it } from "vitest";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { DraftDto } from "~/lib/schemas/envelope-plan";
-import { previewDraft, draftInput, fundNowLines } from "./draft-preview";
+import { draftInput, fundNowLines, previewDraft } from "./draft-preview";
 import {
-	computeBook,
 	type ActivityEntry,
+	computeBook,
 	type EngineInput,
 	type MovementEntry,
 } from "./engine";
@@ -48,21 +48,25 @@ interface Book {
 
 let seq = 0;
 function setup(b: Book) {
-	const movements: MovementEntry[] = (b.moves ?? []).map(([month, from, to, units]) => ({
-		id: `mv${++seq}`,
-		month,
-		from,
-		to,
-		minor: m(units),
-	}));
-	const activity: ActivityEntry[] = (b.spent ?? []).map(([date, cat, units]) => ({
-		id: `a${++seq}`,
-		month: NOV,
-		date,
-		minor: -m(units),
-		source: "SPENT",
-		categoryId: cat,
-	}));
+	const movements: MovementEntry[] = (b.moves ?? []).map(
+		([month, from, to, units]) => ({
+			id: `mv${++seq}`,
+			month,
+			from,
+			to,
+			minor: m(units),
+		}),
+	);
+	const activity: ActivityEntry[] = (b.spent ?? []).map(
+		([date, cat, units]) => ({
+			id: `a${++seq}`,
+			month: NOV,
+			date,
+			minor: -m(units),
+			source: "SPENT",
+			categoryId: cat,
+		}),
+	);
 	const input: EngineInput = {
 		startMonth: NOV,
 		currentMonth: NOV,
@@ -117,8 +121,16 @@ function setup(b: Book) {
 			targetIncomplete: false,
 		})),
 	};
-	const loaded = { book, input, today: TODAY, missingRates: [] } as unknown as LoadedBook;
-	const view = (month: MonthKey, base?: { base: number; source: "THIS_MONTH" | "TYPICAL" }): GetMonthOutput =>
+	const loaded = {
+		book,
+		input,
+		today: TODAY,
+		missingRates: [],
+	} as unknown as LoadedBook;
+	const view = (
+		month: MonthKey,
+		base?: { base: number; source: "THIS_MONTH" | "TYPICAL" },
+	): GetMonthOutput =>
 		buildMonthView({
 			book,
 			input,
@@ -156,7 +168,10 @@ describe("D10 what if I buy a 1,200,000 laptop this month (05 D10, SPEC §5.13)"
 	// assign 100,000, then Monthly by Left (Dining 150,000), then Savings
 	// 650,000; nothing uncovered.
 	const b = setup({
-		groups: [{ id: "spend", role: "SPENDING" }, { id: "save", role: "SAVINGS" }],
+		groups: [
+			{ id: "spend", role: "SPENDING" },
+			{ id: "save", role: "SAVINGS" },
+		],
 		envs: [
 			{ id: "tech", group: "spend", cats: ["c-tech"] },
 			{ id: "dining", group: "spend", cats: ["c-dining"] },
@@ -173,11 +188,24 @@ describe("D10 what if I buy a 1,200,000 laptop this month (05 D10, SPEC §5.13)"
 	});
 	const d = draft({
 		pretend: [
-			{ id: "00000000-0000-4000-8000-000000000001", kind: "OUT", categoryId: "c-tech", envelopeId: null, amountMinor: m(1_200_000) },
+			{
+				id: "00000000-0000-4000-8000-000000000001",
+				kind: "OUT",
+				categoryId: "c-tech",
+				envelopeId: null,
+				amountMinor: m(1_200_000),
+			},
 		],
 	});
 	const base = b.view(NOV);
-	const p = previewDraft({ loaded: b.loaded, base, current: base, draft: d, rules: [], nowMs: 0 });
+	const p = previewDraft({
+		loaded: b.loaded,
+		base,
+		current: base,
+		draft: d,
+		rules: [],
+		nowMs: 0,
+	});
 
 	it("shows Tech going short by 900,000 and To assign unchanged", () => {
 		expect(p.toAssign).toEqual({ before: ars(100_000), after: ars(100_000) });
@@ -224,7 +252,11 @@ describe("A4 plan next month with expected money in and a Save first rule (SPEC 
 	// After: 300,000 + 2,400,000 - 480,000 - 500,000 - 1,400,000 = 320,000.
 	// Fund it now takes this month's 300,000 in plan order: Rent 300,000.
 	const b = setup({
-		groups: [{ id: "bills", role: "BILLS" }, { id: "spend", role: "SPENDING" }, { id: "save", role: "SAVINGS" }],
+		groups: [
+			{ id: "bills", role: "BILLS" },
+			{ id: "spend", role: "SPENDING" },
+			{ id: "save", role: "SAVINGS" },
+		],
 		envs: [
 			{ id: "rent", group: "bills", cats: ["c-rent"] },
 			{ id: "savings", group: "save", kind: "SAVINGS" },
@@ -255,20 +287,39 @@ describe("A4 plan next month with expected money in and a Save first rule (SPEC 
 			{ envelopeId: "spending", amountMinor: m(1_400_000) },
 		],
 		expectedIn: [
-			{ id: "00000000-0000-4000-8000-000000000002", templateId: "salary", categoryId: null, amountMinor: m(2_400_000) },
+			{
+				id: "00000000-0000-4000-8000-000000000002",
+				templateId: "salary",
+				categoryId: null,
+				amountMinor: m(2_400_000),
+			},
 		],
 	});
 	const current = b.view(NOV);
 	const dec = b.view(DEC);
-	const p = previewDraft({ loaded: b.loaded, base: dec, current, draft: d, rules, nowMs: 1 });
+	const p = previewDraft({
+		loaded: b.loaded,
+		base: dec,
+		current,
+		draft: d,
+		rules,
+		nowMs: 1,
+	});
 
 	it("previews the rule on the expected money in and next month's To assign", () => {
 		expect(dec.toAssign.amount).toEqual(ars(300_000));
 		expect(p.ruleLines).toEqual([
-			{ sourceId: "00000000-0000-4000-8000-000000000002", ruleId: "save", envelopeId: "savings", amount: ars(480_000) },
+			{
+				sourceId: "00000000-0000-4000-8000-000000000002",
+				ruleId: "save",
+				envelopeId: "savings",
+				amount: ars(480_000),
+			},
 		]);
 		expect(p.toAssign.after).toEqual(ars(320_000));
-		expect(p.envelopes.map((e) => [e.envelopeId, e.assigned.after.minor])).toEqual([
+		expect(
+			p.envelopes.map((e) => [e.envelopeId, e.assigned.after.minor]),
+		).toEqual([
 			["rent", m(500_000)],
 			["spending", m(1_400_000)],
 			["savings", m(480_000)],
@@ -290,14 +341,18 @@ describe("A4 plan next month with expected money in and a Save first rule (SPEC 
 		// 1,000,000 arrives: Rent 500,000 and Spending 500,000 in plan order.
 		const plan = d.lines;
 		const one = fillFromTargets(dec, m(1_000_000), plan);
-		expect(one.lines.map((l) => [l.envelopeId, l.amount.minor, l.step])).toEqual([
+		expect(
+			one.lines.map((l) => [l.envelopeId, l.amount.minor, l.step]),
+		).toEqual([
 			["rent", m(500_000), "PLAN"],
 			["spending", m(500_000), "PLAN"],
 		]);
 		expect(one.rest).toEqual(ars(0));
 		// 2,000,000 arrives: the whole plan (1,900,000) and 100,000 stays Not planned yet.
 		const two = fillFromTargets(dec, m(2_000_000), plan);
-		expect(two.lines.reduce((s, l) => s + l.amount.minor, 0)).toBe(m(1_900_000));
+		expect(two.lines.reduce((s, l) => s + l.amount.minor, 0)).toBe(
+			m(1_900_000),
+		);
 		expect(two.rest).toEqual(ars(100_000));
 	});
 });
@@ -317,7 +372,12 @@ describe("A3 50/30/20 group targets (SPEC §5.9, 05 A3)", () => {
 				id: "rent",
 				group: "needs",
 				cats: ["c-rent"],
-				target: { kind: "MONTHLY", amount: m(700_000), mode: "SET_ASIDE", cadence: "MONTH" },
+				target: {
+					kind: "MONTHLY",
+					amount: m(700_000),
+					mode: "SET_ASIDE",
+					cadence: "MONTH",
+				},
 			},
 			{ id: "needs", group: "needs" },
 			{ id: "savings", group: "save", kind: "SAVINGS" },
@@ -340,13 +400,22 @@ describe("A3 50/30/20 group targets (SPEC §5.9, 05 A3)", () => {
 			childrenOverBy: ars(0),
 			baseSource: "THIS_MONTH",
 		});
-		expect(target("wants")).toMatchObject({ amount: ars(600_000), plannedBp: 3_000, spentBp: 1_550 });
-		expect(target("save")).toMatchObject({ amount: ars(400_000), mainExtra: ars(400_000) });
+		expect(target("wants")).toMatchObject({
+			amount: ars(600_000),
+			plannedBp: 3_000,
+			spentBp: 1_550,
+		});
+		expect(target("save")).toMatchObject({
+			amount: ars(400_000),
+			mainExtra: ars(400_000),
+		});
 	});
 
 	it("Use my plan fills the overspend, then the groups in order", () => {
 		const fill = fillFromTargets(v);
-		expect(fill.lines.map((l) => [l.envelopeId, l.amount.minor, l.step])).toEqual([
+		expect(
+			fill.lines.map((l) => [l.envelopeId, l.amount.minor, l.step]),
+		).toEqual([
 			["wants", m(310_000), "OVERSPENT"],
 			["rent", m(700_000), "GROUP"],
 			["needs", m(300_000), "GROUP"],
@@ -358,14 +427,26 @@ describe("A3 50/30/20 group targets (SPEC §5.9, 05 A3)", () => {
 
 	it("before payday the base is typical income, labeled as such", () => {
 		const dto = groupTargetDto(
-			{ target: { kind: "PERCENT_OF_INCOME", value: 3_000 }, mainEnvelopeId: null },
+			{
+				target: { kind: "PERCENT_OF_INCOME", value: 3_000 },
+				mainEnvelopeId: null,
+			},
 			[],
 			{ base: m(1_800_000), source: "TYPICAL", incomplete: false },
 			(minor) => ({ minor, currency: "ARS" }),
 		);
-		expect(dto).toMatchObject({ amount: ars(540_000), baseSource: "TYPICAL", need: ars(540_000) });
+		expect(dto).toMatchObject({
+			amount: ars(540_000),
+			baseSource: "TYPICAL",
+			need: ars(540_000),
+		});
 		expect(
-			groupTargetDto({ target: { kind: "PERCENT_OF_INCOME", value: 3_000 } }, [], null, (minor) => ({ minor, currency: "ARS" })),
+			groupTargetDto(
+				{ target: { kind: "PERCENT_OF_INCOME", value: 3_000 } },
+				[],
+				null,
+				(minor) => ({ minor, currency: "ARS" }),
+			),
 		).toMatchObject({ amount: null, need: ars(0), plannedBp: null });
 	});
 

@@ -6,10 +6,7 @@
  * changes (SPEC §5.10), so a recorded rule is stored without its match.
  */
 import { z } from "zod";
-import type {
-	RuleActionInput,
-	RuleMatchInput,
-} from "~/lib/schemas/envelope";
+import type { RuleActionInput, RuleMatchInput } from "~/lib/schemas/envelope";
 import type { IncomeRuleDto } from "~/lib/schemas/envelope-plan";
 import { Prisma, type IncomeRule as RuleRow } from "~prisma";
 import type { IncomeRule, RecordedRun, RuleAction, RuleMatch } from "./rules";

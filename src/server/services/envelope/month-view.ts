@@ -15,12 +15,12 @@ import type {
 } from "~/lib/schemas/envelope";
 import { addMonths } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
-import type { GroupTarget } from "./groups";
 import {
 	type GroupBase,
 	type GroupMemberView,
 	groupTargetDto,
 } from "./group-view";
+import type { GroupTarget } from "./groups";
 import { leftToSpendDto, verdictDto } from "./month-dto";
 import { leftToSpendFor, limitTotals, weekTotals } from "./month-totals";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";

@@ -37,7 +37,11 @@ export function saveFirst(templates: readonly PresetTemplate[]): Preset {
 		groups: [
 			{ key: "savings", nameKey: "envelope.groups.savings", role: "SAVINGS" },
 			{ key: "bills", nameKey: "envelope.groups.bills", role: "BILLS" },
-			{ key: "spending", nameKey: "envelope.groups.spending", role: "SPENDING" },
+			{
+				key: "spending",
+				nameKey: "envelope.groups.spending",
+				role: "SPENDING",
+			},
 		],
 		envelopes: [savingsGoal, ...billEnvelopes(templates), spending],
 		rules: [
@@ -81,14 +85,37 @@ export function fiftyThirtyTwenty(
 	});
 	return {
 		groups: [
-			{ key: "needs", nameKey: "envelope.groups.needs", role: "BILLS", target: pct(5_000) },
-			{ key: "wants", nameKey: "envelope.groups.wants", role: "SPENDING", target: pct(3_000) },
-			{ key: "savings", nameKey: "envelope.groups.savings", role: "SAVINGS", target: pct(2_000) },
+			{
+				key: "needs",
+				nameKey: "envelope.groups.needs",
+				role: "BILLS",
+				target: pct(5_000),
+			},
+			{
+				key: "wants",
+				nameKey: "envelope.groups.wants",
+				role: "SPENDING",
+				target: pct(3_000),
+			},
+			{
+				key: "savings",
+				nameKey: "envelope.groups.savings",
+				role: "SAVINGS",
+				target: pct(2_000),
+			},
 		],
 		envelopes: [
-			env("needs", categories.filter((c) => c.isFixed).map((c) => c.id), false),
+			env(
+				"needs",
+				categories.filter((c) => c.isFixed).map((c) => c.id),
+				false,
+			),
 			// Wants covers every other category, so it is the default envelope.
-			env("wants", categories.filter((c) => !c.isFixed).map((c) => c.id), true),
+			env(
+				"wants",
+				categories.filter((c) => !c.isFixed).map((c) => c.id),
+				true,
+			),
 			savingsGoal,
 		],
 		rules: [],

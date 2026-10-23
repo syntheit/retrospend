@@ -38,7 +38,10 @@ function batchUndo(m: MovementResult | null): UndoToken {
 	return {
 		kind: "revert",
 		mutation: "envelope.undo",
-		rows: (m?.movements ?? []).map((x) => ({ table: "budget_movement", id: x.id })),
+		rows: (m?.movements ?? []).map((x) => ({
+			table: "budget_movement",
+			id: x.id,
+		})),
 	};
 }
 
@@ -78,7 +81,12 @@ export const unapplyDraftMutation: MoneyMutation<
 	id: "envelope.unapplyDraft",
 	touches: [...POOL],
 	run: async (tx, input, actor) => {
-		const value = await unapplyDraft(tx, actor.userId, input.draftId, new Date());
+		const value = await unapplyDraft(
+			tx,
+			actor.userId,
+			input.draftId,
+			new Date(),
+		);
 		return {
 			value,
 			undo: {

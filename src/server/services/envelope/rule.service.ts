@@ -111,7 +111,11 @@ async function pendingFor(
 		: [];
 	const byId = new Map(openRows.map((r) => [r.id, r]));
 	const changed = open
-		.map((r) => ({ expenseId: r.expenseId, row: byId.get(r.expenseId) ?? null, print: r.fingerprint }))
+		.map((r) => ({
+			expenseId: r.expenseId,
+			row: byId.get(r.expenseId) ?? null,
+			print: r.fingerprint,
+		}))
 		.filter((r) => fingerprintOf(r.row) !== r.print)
 		.map(({ expenseId, row }) => ({ expenseId, row }));
 	if (rules.length === 0) return { fresh: [], changed };
@@ -140,10 +144,7 @@ async function pendingFor(
 }
 
 /** A row as the allocator reads it: valued and dated by the load's valuer. */
-export function moneyInRow(
-	loaded: LoadedBook,
-	r: IncomeRow,
-): MoneyInWithMonth {
+export function moneyInRow(loaded: LoadedBook, r: IncomeRow): MoneyInWithMonth {
 	const { date, month } = loaded.valuer.dated(r.date);
 	return {
 		id: r.id,
@@ -208,7 +209,10 @@ function liveOnly(loaded: LoadedBook, batches: readonly RuleBatch[]) {
 		loaded.book.envelopes.filter((e) => !e.archived).map((e) => e.id),
 	);
 	return batches
-		.map((b) => ({ ...b, lines: b.lines.filter((l) => live.has(l.envelopeId)) }))
+		.map((b) => ({
+			...b,
+			lines: b.lines.filter((l) => live.has(l.envelopeId)),
+		}))
 		.filter((b) => b.lines.length > 0);
 }
 
@@ -245,7 +249,14 @@ export async function runOne(
 	if (!base) return null;
 	const batches = liveOnly(loaded, plan.batches);
 	const batchId = p.batchId ?? randomUUID();
-	await writeBatches(tx, loaded, userId, p.row ? p.expenseId : null, batches, batchId);
+	await writeBatches(
+		tx,
+		loaded,
+		userId,
+		p.row ? p.expenseId : null,
+		batches,
+		batchId,
+	);
 	// The net is what was written, so a revert never takes back more than went out.
 	const net = addLines(
 		p.previous?.net ?? [],
@@ -288,7 +299,12 @@ export async function runOne(
 async function headOf(tx: Tx, userId: string): Promise<BookHead | null> {
 	const b = await tx.budgetBook.findFirst({
 		where: { createdById: userId, isPersonal: true },
-		select: { id: true, startDate: true, currency: true, defaultEnvelopeId: true },
+		select: {
+			id: true,
+			startDate: true,
+			currency: true,
+			defaultEnvelopeId: true,
+		},
 	});
 	if (!b?.defaultEnvelopeId) return null;
 	return { id: b.id, userId, startDate: b.startDate };
@@ -314,7 +330,11 @@ export async function runPendingRules(
 		where: { id: b.id },
 		select: { currency: true },
 	});
-	const quick = await pendingFor(tx, b, await activeRules(tx, b.id, book.currency));
+	const quick = await pendingFor(
+		tx,
+		b,
+		await activeRules(tx, b.id, book.currency),
+	);
 	if (quick.fresh.length === 0 && quick.changed.length === 0) return [];
 	await lockBook(tx, b.id);
 	// Again under the lock: a concurrent read may have run them.

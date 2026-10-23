@@ -104,9 +104,18 @@ describe("style presets (SPEC §4.2)", () => {
 
 describe("P5 presets (SPEC §4.2)", () => {
 	it("Save first: Savings first, Bills, one Spending envelope; 20% to Savings and the rest to Spending", () => {
-		const p = stylePreset({ style: "SAVE_FIRST", currency: "ARS", templates, categories });
+		const p = stylePreset({
+			style: "SAVE_FIRST",
+			currency: "ARS",
+			templates,
+			categories,
+		});
 		expect(setupPresetOutputSchema.parse(p)).toEqual(p);
-		expect(p.groups.map((g) => g.key)).toEqual(["savings", "bills", "spending"]);
+		expect(p.groups.map((g) => g.key)).toEqual([
+			"savings",
+			"bills",
+			"spending",
+		]);
 		expect(p.envelopes.map((e) => [e.key, e.isDefault])).toEqual([
 			["savings", false],
 			["bill-t-rent", false],
@@ -121,18 +130,25 @@ describe("P5 presets (SPEC §4.2)", () => {
 	});
 
 	it("50/30/20: Needs 50%, Wants 30%, Savings 20%; fixed categories start in Needs", () => {
-		const p = stylePreset({ style: "FIFTY_THIRTY_TWENTY", currency: "ARS", templates, categories });
+		const p = stylePreset({
+			style: "FIFTY_THIRTY_TWENTY",
+			currency: "ARS",
+			templates,
+			categories,
+		});
 		expect(setupPresetOutputSchema.parse(p)).toEqual(p);
 		expect(p.groups.map((g) => [g.key, g.target])).toEqual([
 			["needs", { kind: "PERCENT_OF_INCOME", basisPoints: 5_000 }],
 			["wants", { kind: "PERCENT_OF_INCOME", basisPoints: 3_000 }],
 			["savings", { kind: "PERCENT_OF_INCOME", basisPoints: 2_000 }],
 		]);
-		expect(p.envelopes.map((e) => [e.key, e.isDefault, e.categoryIds])).toEqual([
-			["needs", false, ["c-housing", "c-utilities", "c-insurance"]],
-			["wants", true, ["c-groceries", "c-dining"]],
-			["savings", false, []],
-		]);
+		expect(p.envelopes.map((e) => [e.key, e.isDefault, e.categoryIds])).toEqual(
+			[
+				["needs", false, ["c-housing", "c-utilities", "c-insurance"]],
+				["wants", true, ["c-groceries", "c-dining"]],
+				["savings", false, []],
+			],
+		);
 	});
 });
 

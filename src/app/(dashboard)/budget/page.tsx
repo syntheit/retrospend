@@ -95,7 +95,9 @@ export default function BudgetPage() {
 					{hasContent && (
 						<div className="space-y-4">
 							<div>
-								<h2 className="font-semibold text-lg">{t("categoryBudgets")}</h2>
+								<h2 className="text-lg font-semibold">
+									{t("categoryBudgets")}
+								</h2>
 								<p className="text-muted-foreground text-sm">
 									{t("categoryBudgetsDescription")}
 								</p>

@@ -604,7 +604,10 @@ export const ruleMatchSchema = z.discriminatedUnion("kind", [
 		kind: z.literal("TITLE"),
 		contains: userText("incomeRule.matchTitle", 128),
 	}),
-	z.object({ kind: z.literal("CURRENCY"), currency: z.string().min(3).max(10) }),
+	z.object({
+		kind: z.literal("CURRENCY"),
+		currency: z.string().min(3).max(10),
+	}),
 ]);
 
 export const ruleActionInputSchema = z.discriminatedUnion("kind", [

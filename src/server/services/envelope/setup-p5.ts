@@ -19,7 +19,8 @@ function invalid(message: string): never {
 
 /** Columns for a group's target: an amount in H, or a percent (30.0). */
 export function groupTargetColumns(t: GroupTargetInput | undefined, H: string) {
-	if (!t || t.kind === "NONE") return { targetKind: "NONE" as const, targetValue: null };
+	if (!t || t.kind === "NONE")
+		return { targetKind: "NONE" as const, targetValue: null };
 	return {
 		targetKind: t.kind,
 		targetValue:

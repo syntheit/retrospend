@@ -25,7 +25,12 @@ import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { addRow, invariantAt, seedUser, setupInput } from "./__tests__/pg-fixture";
+import {
+	addRow,
+	invariantAt,
+	seedUser,
+	setupInput,
+} from "./__tests__/pg-fixture";
 import { assignEnvelopes, undoMovements } from "./movement.mutation";
 import { applyRuleToMonthMutation } from "./plan.mutation";
 import { getMonth } from "./read.service";
@@ -36,21 +41,36 @@ import { applyPlan } from "./use-my-plan";
 type Seeded = Awaited<ReturnType<typeof seedUser>>;
 
 async function book(s: Seeded) {
-	await forUser(s.user.id).apply(setupEnvelopeBook, { ...setupInput(s), timeZone: "UTC" });
+	await forUser(s.user.id).apply(setupEnvelopeBook, {
+		...setupInput(s),
+		timeZone: "UTC",
+	});
 	const b = await adminDb.budgetBook.findFirstOrThrow({
 		where: { createdById: s.user.id },
 		include: { envelopes: true },
 	});
-	const id = (name: string) => b.envelopes.find((e) => e.name === name)?.id as string;
+	const id = (name: string) =>
+		b.envelopes.find((e) => e.name === name)?.id as string;
 	return { bookId: b.id, id };
 }
 
-function rule(s: Seeded, envelopeId: string, bp: number, at = new Date(Date.now() - 60_000)) {
+function rule(
+	s: Seeded,
+	envelopeId: string,
+	bp: number,
+	at = new Date(Date.now() - 60_000),
+) {
 	return userTransaction(adminDb, s.user.id, (tx) =>
 		createRule(
 			tx,
 			s.user.id,
-			{ id: randomUUID(), name: "Save", match: { kind: "ANY" }, action: { kind: "PERCENT", basisPoints: bp }, envelopeId },
+			{
+				id: randomUUID(),
+				name: "Save",
+				match: { kind: "ANY" },
+				action: { kind: "PERCENT", basisPoints: bp },
+				envelopeId,
+			},
 			at,
 		),
 	);
@@ -61,7 +81,10 @@ const income = (s: Seeded, amount: number) =>
 	addRow(s.user.id, { amount, direction: "IN", inType: "INCOME" });
 
 const ruleRows = (bookId: string) =>
-	adminDb.budgetMovement.findMany({ where: { bookId, kind: "RULE" }, orderBy: { createdAt: "asc" } });
+	adminDb.budgetMovement.findMany({
+		where: { bookId, kind: "RULE" },
+		orderBy: { createdAt: "asc" },
+	});
 
 const rowOf = (m: Awaited<ReturnType<typeof getMonth>>, id: string) =>
 	m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id);
@@ -79,26 +102,37 @@ describe("rules on sidecar income run exactly once (rules-sidecar)", () => {
 	});
 
 	it("five concurrent reads write one run and one batch of 40,000 to Rent", async () => {
-		const reads = await Promise.all(Array.from({ length: 5 }, () => getMonth(s.user.id)));
-		expect(reads.map((m) => m?.toAssign.amount.minor)).toEqual(Array(5).fill(260_000));
-		await expect(adminDb.incomeRuleRun.count({ where: { bookId: b.bookId } })).resolves.toBe(1);
+		const reads = await Promise.all(
+			Array.from({ length: 5 }, () => getMonth(s.user.id)),
+		);
+		expect(reads.map((m) => m?.toAssign.amount.minor)).toEqual(
+			Array(5).fill(260_000),
+		);
+		await expect(
+			adminDb.incomeRuleRun.count({ where: { bookId: b.bookId } }),
+		).resolves.toBe(1);
 		const rows = await ruleRows(b.bookId);
-		expect(rows.map((r) => [r.toEnvelopeId, Number(r.amount), r.sourceExpenseId])).toEqual([
-			[b.id("Rent"), 400, salary.id],
-		]);
+		expect(
+			rows.map((r) => [r.toEnvelopeId, Number(r.amount), r.sourceExpenseId]),
+		).toEqual([[b.id("Rent"), 400, salary.id]]);
 		expect(new Set(rows.map((r) => r.batchId)).size).toBe(1);
 	});
 
 	it("an edit to 2,500.00 writes a +10,000 delta; reading again writes nothing", async () => {
 		await adminDb.expense.update({
 			where: { id: salary.id },
-			data: { amount: new Prisma.Decimal(2_500), amountInUSD: new Prisma.Decimal(2_500) },
+			data: {
+				amount: new Prisma.Decimal(2_500),
+				amountInUSD: new Prisma.Decimal(2_500),
+			},
 		});
 		const m = await getMonth(s.user.id);
 		await getMonth(s.user.id);
 		expect(m?.toAssign.amount.minor).toBe(300_000);
 		expect(rowOf(m, b.id("Rent"))?.assigned.minor).toBe(50_000);
-		expect((await ruleRows(b.bookId)).map((r) => Number(r.amount))).toEqual([400, 100]);
+		expect((await ruleRows(b.bookId)).map((r) => Number(r.amount))).toEqual([
+			400, 100,
+		]);
 	});
 
 	it("S16: deleting the income after assigning reverts its rule batch; To assign -200,000", async () => {
@@ -106,14 +140,20 @@ describe("rules on sidecar income run exactly once (rules-sidecar)", () => {
 			batchId: randomUUID(),
 			month: (await getMonth(s.user.id))?.month.key as number,
 			mode: "add",
-			items: [{ id: randomUUID(), envelopeId: b.id("Dining"), amountMinor: 300_000 }],
+			items: [
+				{ id: randomUUID(), envelopeId: b.id("Dining"), amountMinor: 300_000 },
+			],
 		});
 		await adminDb.expense.delete({ where: { id: salary.id } });
 		const m = await getMonth(s.user.id);
 		expect(m?.toAssign.amount.minor).toBe(-200_000);
 		expect(rowOf(m, b.id("Rent"))?.assigned.minor).toBe(0);
 		const last = (await ruleRows(b.bookId)).at(-1);
-		expect([last?.fromEnvelopeId, Number(last?.amount), last?.sourceExpenseId]).toEqual([b.id("Rent"), 500, null]);
+		expect([
+			last?.fromEnvelopeId,
+			Number(last?.amount),
+			last?.sourceExpenseId,
+		]).toEqual([b.id("Rent"), 500, null]);
 		const sides = await invariantAt(s.user.id);
 		expect(sides.budget).toBe(sides.ledger);
 	});
@@ -133,23 +173,41 @@ describe("undo, Use my plan and Also apply", () => {
 		const row = await income(s, 1_000);
 		await getMonth(s.user.id);
 		const [batch] = await ruleRows(b.bookId);
-		await forUser(s.user.id).apply(undoMovements, { id: randomUUID(), target: { batchId: batch?.batchId as string } });
-		await expect(adminDb.incomeRuleRun.findUniqueOrThrow({ where: { expenseId: row.id } })).resolves.toMatchObject({
+		await forUser(s.user.id).apply(undoMovements, {
+			id: randomUUID(),
+			target: { batchId: batch?.batchId as string },
+		});
+		await expect(
+			adminDb.incomeRuleRun.findUniqueOrThrow({ where: { expenseId: row.id } }),
+		).resolves.toMatchObject({
 			skipped: true,
 		});
-		await adminDb.expense.update({ where: { id: row.id }, data: { amount: new Prisma.Decimal(1_500) } });
+		await adminDb.expense.update({
+			where: { id: row.id },
+			data: { amount: new Prisma.Decimal(1_500) },
+		});
 		await getMonth(s.user.id);
-		await expect(adminDb.budgetMovement.count({ where: { bookId: b.bookId, kind: "RULE" } })).resolves.toBe(1);
+		await expect(
+			adminDb.budgetMovement.count({
+				where: { bookId: b.bookId, kind: "RULE" },
+			}),
+		).resolves.toBe(1);
 	});
 
 	it("Use my plan plans what the rules left: 80,000 of a 1,000.00 money in", async () => {
 		const row = await income(s, 1_000);
 		const plan = await userTransaction(adminDb, s.user.id, (tx) =>
-			applyPlan(tx, s.user.id, new Date(), { amount: 100_000, rest: "LEAVE", sourceExpenseId: row.id }),
+			applyPlan(tx, s.user.id, new Date(), {
+				amount: 100_000,
+				rest: "LEAVE",
+				sourceExpenseId: row.id,
+			}),
 		);
 		const planned = (plan?.lines ?? []).reduce((t, l) => t + l.amount.minor, 0);
 		expect(planned + (plan?.rest.minor ?? 0)).toBe(80_000);
-		const ran = await adminDb.budgetMovement.findMany({ where: { sourceExpenseId: row.id, kind: "RULE" } });
+		const ran = await adminDb.budgetMovement.findMany({
+			where: { sourceExpenseId: row.id, kind: "RULE" },
+		});
 		expect(ran.map((r) => Number(r.amount))).toEqual([200]);
 	});
 
@@ -158,14 +216,20 @@ describe("undo, Use my plan and Also apply", () => {
 		const input = { batchId: randomUUID(), ruleId: dining.id };
 		const before = await adminDb.budgetMovement.count();
 		const p = await forUser(s.user.id).preview(applyRuleToMonthMutation, input);
-		expect(p.value.runs.map((r) => r.lines.map((l) => [l.envelopeId, l.amount.minor]))).toEqual([
-			[[b.id("Dining"), 10_000]],
-		]);
+		expect(
+			p.value.runs.map((r) =>
+				r.lines.map((l) => [l.envelopeId, l.amount.minor]),
+			),
+		).toEqual([[[b.id("Dining"), 10_000]]]);
 		await expect(adminDb.budgetMovement.count()).resolves.toBe(before);
 		await forUser(s.user.id).apply(applyRuleToMonthMutation, input);
 		await forUser(s.user.id).apply(applyRuleToMonthMutation, input);
-		const rows = await adminDb.budgetMovement.findMany({ where: { batchId: input.batchId } });
-		expect(rows.map((r) => [r.toEnvelopeId, Number(r.amount)])).toEqual([[b.id("Dining"), 100]]);
+		const rows = await adminDb.budgetMovement.findMany({
+			where: { batchId: input.batchId },
+		});
+		expect(rows.map((r) => [r.toEnvelopeId, Number(r.amount)])).toEqual([
+			[b.id("Dining"), 100],
+		]);
 		const sides = await invariantAt(s.user.id);
 		expect(sides.budget).toBe(sides.ledger);
 	});
@@ -180,7 +244,12 @@ describe("P5 tables are book tables (RLS)", () => {
 		await income(alice, 100);
 		await getMonth(alice.user.id);
 		await adminDb.budgetDraft.create({
-			data: { id: randomUUID(), bookId: a.bookId, month: 209901, createdById: alice.user.id },
+			data: {
+				id: randomUUID(),
+				bookId: a.bookId,
+				month: 209901,
+				createdById: alice.user.id,
+			},
 		});
 		const where = { bookId: a.bookId };
 		await expect(alice.db.incomeRule.count({ where })).resolves.toBe(1);
@@ -190,7 +259,14 @@ describe("P5 tables are book tables (RLS)", () => {
 		await expect(bob.db.budgetDraft.findMany({ where })).resolves.toEqual([]);
 		await expect(
 			bob.db.incomeRule.create({
-				data: { id: randomUUID(), bookId: a.bookId, sortOrder: 9, name: "x", action: "REMAINDER", envelopeId: a.id("Rent") },
+				data: {
+					id: randomUUID(),
+					bookId: a.bookId,
+					sortOrder: 9,
+					name: "x",
+					action: "REMAINDER",
+					envelopeId: a.id("Rent"),
+				},
 			}),
 		).rejects.toThrow();
 	});

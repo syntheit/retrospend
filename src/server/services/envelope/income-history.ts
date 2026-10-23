@@ -57,8 +57,7 @@ export async function closedIncomes(
 		),
 	);
 	const to = new Date(
-		new Date(`${monthStart(c, loaded.periods)}T00:00:00Z`).getTime() +
-			SLACK_MS,
+		new Date(`${monthStart(c, loaded.periods)}T00:00:00Z`).getTime() + SLACK_MS,
 	);
 	const rows = await tx.expense.findMany({
 		where: {
@@ -100,9 +99,7 @@ export async function closedIncomes(
 
 /** Does any group of the book size itself as a percent of income? */
 export function hasPercentGroup(loaded: LoadedBook): boolean {
-	return loaded.book.groups.some(
-		(g) => g.target?.kind === "PERCENT_OF_INCOME",
-	);
+	return loaded.book.groups.some((g) => g.target?.kind === "PERCENT_OF_INCOME");
 }
 
 /** The % base for `month` (SPEC §5.9): its own income, else typical income. */
@@ -124,4 +121,3 @@ export async function groupBaseFor(
 		? { ...base, incomplete: incompleteNow || closed.incomplete }
 		: null;
 }
-

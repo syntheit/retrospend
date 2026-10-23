@@ -47,6 +47,7 @@ import {
 	Valuer,
 	wealthEntries,
 } from "./entries";
+import { groupTargetOf } from "./group-view";
 import {
 	closedRulesOf,
 	freeze,
@@ -66,7 +67,6 @@ import {
 import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
-import { groupTargetOf } from "./group-view";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
 import type { ApproximateRow } from "./valuer";

@@ -31,7 +31,8 @@ import type { Minor, MonthKey } from "./types";
 
 type Row = GetMonthOutput["groups"][number]["envelopes"][number];
 
-const rowsOf = (v: GetMonthOutput): Row[] => v.groups.flatMap((g) => g.envelopes);
+const rowsOf = (v: GetMonthOutput): Row[] =>
+	v.groups.flatMap((g) => g.envelopes);
 
 export interface DraftRun {
 	input: EngineInput;
@@ -54,10 +55,17 @@ export function draftInput(
 	const ruleLines: DraftRun["ruleLines"] = [];
 	const ins = [
 		...draft.expectedIn.map((x) => ({ ...x, envelopeId: null })),
-		...draft.pretend.filter((p) => p.kind === "IN").map((p) => ({ ...p, templateId: null })),
+		...draft.pretend
+			.filter((p) => p.kind === "IN")
+			.map((p) => ({ ...p, templateId: null })),
 	];
 	for (const x of ins) {
-		moneyIn.push({ id: `draft:${x.id}`, month: m, minor: x.amountMinor, source: "INCOME" });
+		moneyIn.push({
+			id: `draft:${x.id}`,
+			month: m,
+			minor: x.amountMinor,
+			source: "INCOME",
+		});
 		const lines = allocateRules(
 			{
 				id: x.id,
@@ -75,8 +83,19 @@ export function draftInput(
 			rules,
 		);
 		for (const [i, l] of lines.entries()) {
-			movements.push({ id: `draft-rule:${x.id}:${i}`, month: m, from: null, to: l.envelopeId, minor: l.amount });
-			ruleLines.push({ sourceId: x.id, ruleId: l.ruleId, envelopeId: l.envelopeId, amount: { minor: l.amount, currency: H } });
+			movements.push({
+				id: `draft-rule:${x.id}:${i}`,
+				month: m,
+				from: null,
+				to: l.envelopeId,
+				minor: l.amount,
+			});
+			ruleLines.push({
+				sourceId: x.id,
+				ruleId: l.ruleId,
+				envelopeId: l.envelopeId,
+				amount: { minor: l.amount, currency: H },
+			});
 		}
 	}
 	const assigned = new Map(rowsOf(base).map((r) => [r.id, r.assigned.minor]));
@@ -92,7 +111,13 @@ export function draftInput(
 		});
 	}
 	for (const mv of draft.moves)
-		movements.push({ id: `draft-move:${mv.id}`, month: m, from: mv.from, to: mv.to, minor: mv.amountMinor });
+		movements.push({
+			id: `draft-move:${mv.id}`,
+			month: m,
+			from: mv.from,
+			to: mv.to,
+			minor: mv.amountMinor,
+		});
 	const date = m === loaded.input.currentMonth ? loaded.today : base.month.from;
 	for (const p of draft.pretend.filter((x) => x.kind === "OUT"))
 		activity.push({
@@ -164,7 +189,10 @@ export function fundNowLines(
 	const out: Array<{ envelopeId: string; amount: Minor }> = [];
 	for (const l of lines) {
 		if (!assigned.has(l.envelopeId)) continue;
-		const amount = Math.min(left, Math.max(0, l.amountMinor - (assigned.get(l.envelopeId) ?? 0)));
+		const amount = Math.min(
+			left,
+			Math.max(0, l.amountMinor - (assigned.get(l.envelopeId) ?? 0)),
+		);
 		if (amount <= 0) continue;
 		out.push({ envelopeId: l.envelopeId, amount });
 		left -= amount;
@@ -216,10 +244,11 @@ export function previewDraft(p: {
 	const H = p.loaded.book.currency;
 	const fund =
 		p.draft.kind === "PLAN"
-			? fundNowLines(p.draft.lines, p.base, p.current.toAssign.amount.minor).reduce(
-					(s, l) => s + l.amount,
-					0,
-				)
+			? fundNowLines(
+					p.draft.lines,
+					p.base,
+					p.current.toAssign.amount.minor,
+				).reduce((s, l) => s + l.amount, 0)
 			: null;
 	return {
 		draftId: p.draft.id,

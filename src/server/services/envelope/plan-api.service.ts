@@ -6,9 +6,9 @@
  */
 import type {
 	CreateRuleInput,
+	DraftDto,
 	DraftKind,
 	DraftPreview,
-	DraftDto,
 	DraftsOutput,
 	GroupTargetResult,
 	IncomeRuleDto,
@@ -80,13 +80,25 @@ export const draftsApi = {
 		now = new Date(),
 	): Promise<DraftsOutput> =>
 		prepared(userId, now, (tx) => getDrafts(tx, userId, p, now)),
-	save: (userId: string, input: SaveDraftInput, now = new Date()): Promise<DraftDto> =>
+	save: (
+		userId: string,
+		input: SaveDraftInput,
+		now = new Date(),
+	): Promise<DraftDto> =>
 		prepared(userId, now, (tx) => saveDraft(tx, userId, input, now)),
 	discard: (userId: string, draftId: string, now = new Date()) =>
 		run(userId, (tx) => discardDraft(tx, userId, draftId, now)),
-	preview: (userId: string, draftId: string, now = new Date()): Promise<DraftPreview> =>
+	preview: (
+		userId: string,
+		draftId: string,
+		now = new Date(),
+	): Promise<DraftPreview> =>
 		prepared(userId, now, (tx) => previewDraftIn(tx, userId, draftId, now)),
-	fill: (userId: string, input: PlanFillInput, now = new Date()): Promise<PlanFillOutput> =>
+	fill: (
+		userId: string,
+		input: PlanFillInput,
+		now = new Date(),
+	): Promise<PlanFillOutput> =>
 		prepared(userId, now, (tx) => planFill(tx, userId, input, now)),
 };
 

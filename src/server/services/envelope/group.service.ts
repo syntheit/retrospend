@@ -41,14 +41,19 @@ export async function setGroupTarget(
 	const group = book.groups.find((g) => g.id === input.groupId);
 	if (!group) throw new EnvelopeError("NOT_FOUND", "no such group");
 	const main =
-		input.mainEnvelopeId === undefined ? group.mainEnvelopeId : input.mainEnvelopeId;
+		input.mainEnvelopeId === undefined
+			? group.mainEnvelopeId
+			: input.mainEnvelopeId;
 	if (
 		main &&
 		!book.envelopes.some(
 			(e) => e.id === main && e.groupId === group.id && e.archivedAt === null,
 		)
 	)
-		throw new EnvelopeError("INVALID", "the main envelope belongs to the group");
+		throw new EnvelopeError(
+			"INVALID",
+			"the main envelope belongs to the group",
+		);
 	const previous = {
 		target: asInput(group, book.currency),
 		mainEnvelopeId: group.mainEnvelopeId,

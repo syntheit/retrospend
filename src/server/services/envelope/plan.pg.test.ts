@@ -27,19 +27,31 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { readFigures } from "~/server/figures/read";
 import { userTransaction } from "~/server/db-tx";
+import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
-import { addRow, at, augustBook, invariantAt, seedUser, setupInput } from "./__tests__/pg-fixture";
+import {
+	addRow,
+	at,
+	augustBook,
+	invariantAt,
+	seedUser,
+	setupInput,
+} from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
 import { undoMovements } from "./movement.mutation";
-import { draftsApi, getPlanCost, getYearView, putGroupTarget } from "./plan-api.service";
 import {
 	applyDraftMutation,
 	fundPlanNowMutation,
 	unapplyDraftMutation,
 } from "./plan.mutation";
+import {
+	draftsApi,
+	getPlanCost,
+	getYearView,
+	putGroupTarget,
+} from "./plan-api.service";
 import { planCostIn } from "./plan-read";
 import { getFillFromTargets, getMonth } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
@@ -48,13 +60,18 @@ type Seeded = Awaited<ReturnType<typeof seedUser>>;
 const usd = (minor: number) => ({ minor, currency: "USD" });
 
 async function book(s: Seeded) {
-	await forUser(s.user.id).apply(setupEnvelopeBook, { ...setupInput(s), timeZone: "UTC" });
+	await forUser(s.user.id).apply(setupEnvelopeBook, {
+		...setupInput(s),
+		timeZone: "UTC",
+	});
 	const b = await adminDb.budgetBook.findFirstOrThrow({
 		where: { createdById: s.user.id },
 		include: { envelopes: true, groups: true },
 	});
-	const id = (name: string) => b.envelopes.find((e) => e.name === name)?.id as string;
-	const group = (name: string) => b.groups.find((g) => g.name === name)?.id as string;
+	const id = (name: string) =>
+		b.envelopes.find((e) => e.name === name)?.id as string;
+	const group = (name: string) =>
+		b.groups.find((g) => g.name === name)?.id as string;
 	const c = (await getMonth(s.user.id))?.month.key as number;
 	return { bookId: b.id, id, group, c, next: addMonths(c, 1) };
 }
@@ -76,19 +93,34 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 				{ envelopeId: b.id("Dining"), amountMinor: 20_000 },
 			],
 			moves: [],
-			expectedIn: [{ id: randomUUID(), templateId: null, categoryId: null, amountMinor: 300_000 }],
+			expectedIn: [
+				{
+					id: randomUUID(),
+					templateId: null,
+					categoryId: null,
+					amountMinor: 300_000,
+				},
+			],
 			pretend: [],
 		});
 	});
 
 	it("previews next month: 100,000 before, 330,000 after; Fund it now would take 70,000; nothing written", async () => {
-		const before = await adminDb.budgetMovement.count({ where: { bookId: b.bookId } });
+		const before = await adminDb.budgetMovement.count({
+			where: { bookId: b.bookId },
+		});
 		const p = await draftsApi.preview(s.user.id, draftId);
 		expect(p.toAssign).toEqual({ before: usd(100_000), after: usd(330_000) });
 		expect(p.fundNow).toEqual(usd(70_000));
 		expect(p.stale).toBe(false);
-		await expect(adminDb.budgetMovement.count({ where: { bookId: b.bookId } })).resolves.toBe(before);
-		await expect(adminDb.expense.count({ where: { userId: s.user.id, direction: "IN", entryKind: "STANDARD" } })).resolves.toBe(0);
+		await expect(
+			adminDb.budgetMovement.count({ where: { bookId: b.bookId } }),
+		).resolves.toBe(before);
+		await expect(
+			adminDb.expense.count({
+				where: { userId: s.user.id, direction: "IN", entryKind: "STANDARD" },
+			}),
+		).resolves.toBe(0);
 	});
 
 	it("Apply saves the plan and changes nothing this month", async () => {
@@ -98,9 +130,13 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 		const r = await forUser(s.user.id).apply(applyDraftMutation, { draftId });
 		expect(r.value.draft.status).toBe("APPLIED");
 		expect(r.undo).toMatchObject({ mutation: "envelope.unapplyDraft" });
-		await expect(adminDb.budgetMovement.count({ where: { bookId: b.bookId } })).resolves.toBe(0);
+		await expect(
+			adminDb.budgetMovement.count({ where: { bookId: b.bookId } }),
+		).resolves.toBe(0);
 		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(100_000));
-		await expect(draftsApi.get(s.user.id, { kind: "PLAN" })).resolves.toMatchObject({
+		await expect(
+			draftsApi.get(s.user.id, { kind: "PLAN" }),
+		).resolves.toMatchObject({
 			open: null,
 			saved: { id: draftId },
 		});
@@ -108,7 +144,9 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 
 	it("Use my plan next month starts from the saved plan", async () => {
 		const fill = await getFillFromTargets(s.user.id, b.next);
-		expect(fill.lines.map((l) => [l.envelopeId, l.amount.minor, l.step])).toEqual([
+		expect(
+			fill.lines.map((l) => [l.envelopeId, l.amount.minor, l.step]),
+		).toEqual([
 			[b.id("Rent"), 50_000, "PLAN"],
 			[b.id("Dining"), 20_000, "PLAN"],
 		]);
@@ -123,10 +161,18 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 
 	it("Fund it now writes one PLAN_APPLY batch of 70,000; its undo gives it back", async () => {
 		const batchId = randomUUID();
-		const r = await forUser(s.user.id).apply(fundPlanNowMutation, { draftId, batchId });
-		expect(r.value.movement?.toAssign).toEqual({ before: usd(100_000), after: usd(30_000) });
+		const r = await forUser(s.user.id).apply(fundPlanNowMutation, {
+			draftId,
+			batchId,
+		});
+		expect(r.value.movement?.toAssign).toEqual({
+			before: usd(100_000),
+			after: usd(30_000),
+		});
 		const rows = await adminDb.budgetMovement.findMany({ where: { batchId } });
-		expect(rows.map((x) => [x.kind, x.month, x.toEnvelopeId, Number(x.amount)])).toEqual(
+		expect(
+			rows.map((x) => [x.kind, x.month, x.toEnvelopeId, Number(x.amount)]),
+		).toEqual(
 			expect.arrayContaining([
 				["PLAN_APPLY", b.next, b.id("Rent"), 500],
 				["PLAN_APPLY", b.next, b.id("Dining"), 200],
@@ -134,17 +180,31 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 		);
 		const sides = await invariantAt(s.user.id);
 		expect(sides.budget).toBe(sides.ledger);
-		await forUser(s.user.id).apply(undoMovements, { id: randomUUID(), target: { batchId } });
+		await forUser(s.user.id).apply(undoMovements, {
+			id: randomUUID(),
+			target: { batchId },
+		});
 		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(100_000));
 	});
 
 	it("a draft whose month passed previews as stale and cannot be applied", async () => {
 		const old = randomUUID();
 		await adminDb.budgetDraft.create({
-			data: { id: old, bookId: b.bookId, month: b.c, kind: "PLAN", createdById: s.user.id },
+			data: {
+				id: old,
+				bookId: b.bookId,
+				month: b.c,
+				kind: "PLAN",
+				createdById: s.user.id,
+			},
 		});
-		await expect(draftsApi.preview(s.user.id, old)).resolves.toMatchObject({ stale: true, envelopes: [] });
-		await expect(forUser(s.user.id).apply(applyDraftMutation, { draftId: old })).rejects.toThrow(/passed/);
+		await expect(draftsApi.preview(s.user.id, old)).resolves.toMatchObject({
+			stale: true,
+			envelopes: [],
+		});
+		await expect(
+			forUser(s.user.id).apply(applyDraftMutation, { draftId: old }),
+		).rejects.toThrow(/passed/);
 	});
 });
 
@@ -152,7 +212,13 @@ describe("What if writes only its moves (D54)", () => {
 	it("refuses a move beyond what Dining holds; writes a 5,000 move, never the pretend expense", async () => {
 		const s = await seedUser();
 		const b = await book(s);
-		const save = (moves: Array<{ from: string | null; to: string | null; amountMinor: number }>) =>
+		const save = (
+			moves: Array<{
+				from: string | null;
+				to: string | null;
+				amountMinor: number;
+			}>,
+		) =>
 			draftsApi.save(s.user.id, {
 				id: randomUUID(),
 				kind: "WHAT_IF",
@@ -160,20 +226,44 @@ describe("What if writes only its moves (D54)", () => {
 				lines: [],
 				moves: moves.map((m) => ({ id: randomUUID(), ...m })),
 				expectedIn: [],
-				pretend: [{ id: randomUUID(), kind: "OUT", categoryId: s.dining, envelopeId: null, amountMinor: 5_000 }],
+				pretend: [
+					{
+						id: randomUUID(),
+						kind: "OUT",
+						categoryId: s.dining,
+						envelopeId: null,
+						amountMinor: 5_000,
+					},
+				],
 			});
-		const big = await save([{ from: b.id("Dining"), to: b.id("Rent"), amountMinor: 30_000 }]);
+		const big = await save([
+			{ from: b.id("Dining"), to: b.id("Rent"), amountMinor: 30_000 },
+		]);
 		await expect(
-			forUser(s.user.id).apply(applyDraftMutation, { draftId: big.id, batchId: randomUUID() }),
+			forUser(s.user.id).apply(applyDraftMutation, {
+				draftId: big.id,
+				batchId: randomUUID(),
+			}),
 		).rejects.toThrow(/more than the envelope holds/);
-		const ok = await save([{ from: null, to: b.id("Dining"), amountMinor: 5_000 }]);
+		const ok = await save([
+			{ from: null, to: b.id("Dining"), amountMinor: 5_000 },
+		]);
 		const p = await draftsApi.preview(s.user.id, ok.id);
-		expect(p.envelopes.map((e) => [e.envelopeId, e.left.after.minor])).toEqual([[b.id("Dining"), 0]]);
+		expect(p.envelopes.map((e) => [e.envelopeId, e.left.after.minor])).toEqual([
+			[b.id("Dining"), 0],
+		]);
 		const batchId = randomUUID();
-		await forUser(s.user.id).apply(applyDraftMutation, { draftId: ok.id, batchId });
+		await forUser(s.user.id).apply(applyDraftMutation, {
+			draftId: ok.id,
+			batchId,
+		});
 		const rows = await adminDb.budgetMovement.findMany({ where: { batchId } });
-		expect(rows.map((r) => [r.kind, Number(r.amount)])).toEqual([["PLAN_APPLY", 50]]);
-		await expect(adminDb.expense.count({ where: { userId: s.user.id, direction: "OUT" } })).resolves.toBe(0);
+		expect(rows.map((r) => [r.kind, Number(r.amount)])).toEqual([
+			["PLAN_APPLY", 50],
+		]);
+		await expect(
+			adminDb.expense.count({ where: { userId: s.user.id, direction: "OUT" } }),
+		).resolves.toBe(0);
 	});
 });
 
@@ -189,7 +279,10 @@ describe("figure budget.planCost", () => {
 			typicalIncome: null,
 			closedMonths: 0,
 		});
-		const f = await readFigures(s.user.id, ["budget.planCost", "budget.typicalIncome"]);
+		const f = await readFigures(s.user.id, [
+			"budget.planCost",
+			"budget.typicalIncome",
+		]);
 		expect(f.get("budget.planCost")).toEqual([usd(70_000)]);
 		expect(f.get("budget.typicalIncome")).toBeNull();
 	});
@@ -198,11 +291,21 @@ describe("figure budget.planCost", () => {
 describe("figure budget.typicalIncome", () => {
 	it("is the median budget income of the last 3 closed months: 200,000", async () => {
 		const s = await augustBook();
-		for (const [amount, day] of [[1_000, "2026-08-05"], [3_000, "2026-09-05"], [2_000, "2026-10-05"]] as const)
-			await addRow(s.user.id, { amount, direction: "IN", inType: "INCOME" }, at(day));
+		for (const [amount, day] of [
+			[1_000, "2026-08-05"],
+			[3_000, "2026-09-05"],
+			[2_000, "2026-10-05"],
+		] as const)
+			await addRow(
+				s.user.id,
+				{ amount, direction: "IN", inType: "INCOME" },
+				at(day),
+			);
 		const now = at("2026-11-04");
 		await getMonth(s.user.id, undefined, now);
-		const pc = await userTransaction(adminDb, s.user.id, (tx) => planCostIn(tx, s.user.id, {}, now));
+		const pc = await userTransaction(adminDb, s.user.id, (tx) =>
+			planCostIn(tx, s.user.id, {}, now),
+		);
 		expect(pc).toMatchObject({ typicalIncome: usd(200_000), closedMonths: 3 });
 	});
 });
@@ -216,14 +319,22 @@ describe("group targets (SPEC §5.9)", () => {
 			target: { kind: "AMOUNT", amountMinor: 30_000 },
 			mainEnvelopeId: b.id("Spending"),
 		});
-		expect(r.previous).toEqual({ target: { kind: "NONE" }, mainEnvelopeId: null });
+		expect(r.previous).toEqual({
+			target: { kind: "NONE" },
+			mainEnvelopeId: null,
+		});
 		await putGroupTarget(s.user.id, {
 			groupId: b.group("Bills"),
 			target: { kind: "PERCENT_OF_INCOME", basisPoints: 5_000 },
 		});
-		await addRow(s.user.id, { amount: 2_000, direction: "IN", inType: "INCOME" });
+		await addRow(s.user.id, {
+			amount: 2_000,
+			direction: "IN",
+			inType: "INCOME",
+		});
 		const m = await getMonth(s.user.id);
-		const g = (name: string) => m?.groups.find((x) => x.id === b.group(name))?.target;
+		const g = (name: string) =>
+			m?.groups.find((x) => x.id === b.group(name))?.target;
 		expect(g("Spending")).toMatchObject({
 			amount: usd(30_000),
 			need: usd(30_000),
@@ -243,7 +354,11 @@ describe("group targets (SPEC §5.9)", () => {
 describe("year view (D9, D66)", () => {
 	it("months before the start show spending only; closed months come from the engine", async () => {
 		const s = await augustBook();
-		await addRow(s.user.id, { amount: 40, categoryId: s.dining }, at("2026-07-10"));
+		await addRow(
+			s.user.id,
+			{ amount: 40, categoryId: s.dining },
+			at("2026-07-10"),
+		);
 		const y = await getYearView(s.user.id, 2026, at("2026-10-23"));
 		expect(y.months.map((x) => x.state)).toEqual([
 			...Array(7).fill("BEFORE_START"),
@@ -256,7 +371,12 @@ describe("year view (D9, D66)", () => {
 		const dining = y.envelopes.find((e) => e.id === s.diningEnv);
 		expect(dining?.cells.slice(6, 9)).toEqual([
 			{ month: 202607, assigned: null, spent: usd(4_000), left: null },
-			{ month: 202608, assigned: usd(30_000), spent: usd(10_000), left: usd(20_000) },
+			{
+				month: 202608,
+				assigned: usd(30_000),
+				spent: usd(10_000),
+				left: usd(20_000),
+			},
 			{ month: 202609, assigned: usd(0), spent: usd(5_000), left: usd(15_000) },
 		]);
 	});
@@ -274,21 +394,62 @@ describe("setup with the P5 styles", () => {
 				{ key: "spending", name: "Spending", role: "SPENDING" },
 			],
 			envelopes: [
-				{ key: "savings", name: "Savings", groupKey: "savings", kind: "SAVINGS", isDefault: false, categoryIds: [] },
-				{ key: "spending", name: "Spending", groupKey: "spending", kind: "MONTHLY", isDefault: true, categoryIds: [], sweepToKey: "savings" },
+				{
+					key: "savings",
+					name: "Savings",
+					groupKey: "savings",
+					kind: "SAVINGS",
+					isDefault: false,
+					categoryIds: [],
+				},
+				{
+					key: "spending",
+					name: "Spending",
+					groupKey: "spending",
+					kind: "MONTHLY",
+					isDefault: true,
+					categoryIds: [],
+					sweepToKey: "savings",
+				},
 			],
 			rules: [
-				{ name: "Savings first", match: { kind: "ANY" }, action: { kind: "PERCENT", basisPoints: 2_000 }, envelopeKey: "savings" },
-				{ name: "The rest", match: { kind: "ANY" }, action: { kind: "REMAINDER" }, envelopeKey: "spending" },
+				{
+					name: "Savings first",
+					match: { kind: "ANY" },
+					action: { kind: "PERCENT", basisPoints: 2_000 },
+					envelopeKey: "savings",
+				},
+				{
+					name: "The rest",
+					match: { kind: "ANY" },
+					action: { kind: "REMAINDER" },
+					envelopeKey: "spending",
+				},
 			],
 		});
-		const bk = await adminDb.budgetBook.findFirstOrThrow({ where: { createdById: s.user.id }, include: { envelopes: true } });
+		const bk = await adminDb.budgetBook.findFirstOrThrow({
+			where: { createdById: s.user.id },
+			include: { envelopes: true },
+		});
 		const id = (n: string) => bk.envelopes.find((e) => e.name === n)?.id;
-		expect(bk.envelopes.find((e) => e.name === "Spending")).toMatchObject({ leftoverRule: "SWEEP", leftoverSweepToId: id("Savings") });
-		await addRow(s.user.id, { amount: 1_000, direction: "IN", inType: "INCOME" });
+		expect(bk.envelopes.find((e) => e.name === "Spending")).toMatchObject({
+			leftoverRule: "SWEEP",
+			leftoverSweepToId: id("Savings"),
+		});
+		await addRow(s.user.id, {
+			amount: 1_000,
+			direction: "IN",
+			inType: "INCOME",
+		});
 		const m = await getMonth(s.user.id);
-		const assigned = (n: string) => m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id(n))?.assigned.minor;
-		expect([assigned("Savings"), assigned("Spending"), m?.toAssign.amount.minor]).toEqual([20_000, 80_000, 0]);
+		const assigned = (n: string) =>
+			m?.groups.flatMap((g) => g.envelopes).find((e) => e.id === id(n))
+				?.assigned.minor;
+		expect([
+			assigned("Savings"),
+			assigned("Spending"),
+			m?.toAssign.amount.minor,
+		]).toEqual([20_000, 80_000, 0]);
 	});
 
 	it("50/30/20 stores percent group targets", async () => {
@@ -297,12 +458,36 @@ describe("setup with the P5 styles", () => {
 			style: "FIFTY_THIRTY_TWENTY",
 			timeZone: "UTC",
 			groups: [
-				{ key: "needs", name: "Needs", role: "BILLS", target: { kind: "PERCENT_OF_INCOME", basisPoints: 5_000 } },
-				{ key: "wants", name: "Wants", role: "SPENDING", target: { kind: "PERCENT_OF_INCOME", basisPoints: 3_000 } },
+				{
+					key: "needs",
+					name: "Needs",
+					role: "BILLS",
+					target: { kind: "PERCENT_OF_INCOME", basisPoints: 5_000 },
+				},
+				{
+					key: "wants",
+					name: "Wants",
+					role: "SPENDING",
+					target: { kind: "PERCENT_OF_INCOME", basisPoints: 3_000 },
+				},
 			],
 			envelopes: [
-				{ key: "needs", name: "Needs", groupKey: "needs", kind: "MONTHLY", isDefault: false, categoryIds: [s.rent] },
-				{ key: "wants", name: "Wants", groupKey: "wants", kind: "MONTHLY", isDefault: true, categoryIds: [] },
+				{
+					key: "needs",
+					name: "Needs",
+					groupKey: "needs",
+					kind: "MONTHLY",
+					isDefault: false,
+					categoryIds: [s.rent],
+				},
+				{
+					key: "wants",
+					name: "Wants",
+					groupKey: "wants",
+					kind: "MONTHLY",
+					isDefault: true,
+					categoryIds: [],
+				},
 			],
 		});
 		const groups = await adminDb.envelopeGroup.findMany({

@@ -5,6 +5,8 @@
  * rules it ran with. Applying a rule to this month's money in does move
  * money, so it runs as a previewed mutation (rule.mutation.ts).
  */
+
+import type { RuleMatchInput } from "~/lib/schemas/envelope";
 import type {
 	ApplyRuleResult,
 	ApplyRuleToMonthInput,
@@ -12,15 +14,12 @@ import type {
 	IncomeRuleDto,
 	UpdateRuleInput,
 } from "~/lib/schemas/envelope-plan";
-import type { RuleMatchInput } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { EnvelopeError } from "./errors";
 import { forgetMonthViews } from "./month-read";
 import { monthRange } from "./months";
-import { lockedSnapshot } from "./movement-state";
 import { result } from "./movement.service";
-import { ruleColumns, toRule, toRuleDto, loadRecord } from "./rule-store";
-import { ruleMatches } from "./rules";
+import { lockedSnapshot } from "./movement-state";
 import {
 	type IncomeRow,
 	moneyInRow,
@@ -29,6 +28,8 @@ import {
 	runOne,
 	runPendingRules,
 } from "./rule.service";
+import { loadRecord, ruleColumns, toRule, toRuleDto } from "./rule-store";
+import { ruleMatches } from "./rules";
 
 type Tx = Prisma.TransactionClient;
 type Book = Awaited<ReturnType<typeof requireBook>>;
@@ -149,7 +150,10 @@ export async function reorderRules(
 	const known = new Set(rules.map((r) => r.id));
 	if (ids.some((id) => !known.has(id)) || new Set(ids).size !== ids.length)
 		invalid("reorder names each of your rules once");
-	const order = [...ids, ...rules.map((r) => r.id).filter((id) => !ids.includes(id))];
+	const order = [
+		...ids,
+		...rules.map((r) => r.id).filter((id) => !ids.includes(id)),
+	];
 	for (const [i, id] of order.entries())
 		await tx.incomeRule.update({ where: { id }, data: { sortOrder: i } });
 	return listRules(tx, userId);
@@ -190,8 +194,12 @@ async function thisMonthEarlierRows(
 			status: "FINALIZED",
 			createdAt: { lte: before },
 			date: {
-				gte: new Date(new Date(`${range.from}T00:00:00Z`).getTime() - 2 * 86_400_000),
-				lte: new Date(new Date(`${range.to}T00:00:00Z`).getTime() + 2 * 86_400_000),
+				gte: new Date(
+					new Date(`${range.from}T00:00:00Z`).getTime() - 2 * 86_400_000,
+				),
+				lte: new Date(
+					new Date(`${range.to}T00:00:00Z`).getTime() + 2 * 86_400_000,
+				),
 			},
 		},
 		select: ROW_SELECT,
@@ -225,7 +233,13 @@ export async function applyRuleToMonth(
 	if (again.length)
 		return {
 			runs: [],
-			movement: await result(tx, userId, now, s, again.map((m) => m.id)),
+			movement: await result(
+				tx,
+				userId,
+				now,
+				s,
+				again.map((m) => m.id),
+			),
 		};
 	const ruleRow = await tx.incomeRule.findFirst({
 		where: { id: input.ruleId, bookId: s.loaded.row.id, archivedAt: null },
@@ -234,8 +248,15 @@ export async function applyRuleToMonth(
 	if (!ruleRow.active) invalid("resume the rule first");
 	const rule = toRule(ruleRow, s.loaded.book.currency);
 	const runs = [];
-	for (const row of await thisMonthEarlierRows(tx, userId, s, ruleRow.createdAt)) {
-		const stored = await tx.incomeRuleRun.findUnique({ where: { expenseId: row.id } });
+	for (const row of await thisMonthEarlierRows(
+		tx,
+		userId,
+		s,
+		ruleRow.createdAt,
+	)) {
+		const stored = await tx.incomeRuleRun.findUnique({
+			where: { expenseId: row.id },
+		});
 		const prev = stored ? loadRecord(stored.record, stored.skipped) : null;
 		if (prev?.skipped || prev?.rules.some((r) => r.id === rule.id)) continue;
 		// A recorded run reruns without matching again, so the new rule must match now.
@@ -246,7 +267,10 @@ export async function applyRuleToMonth(
 			previous: prev
 				? {
 						...prev,
-						rules: [...prev.rules, { ...rule, match: { kind: "ANY" as const } }].sort(
+						rules: [
+							...prev.rules,
+							{ ...rule, match: { kind: "ANY" as const } },
+						].sort(
 							(a, b) => a.sortOrder - b.sortOrder || (a.id < b.id ? -1 : 1),
 						),
 					}
@@ -265,7 +289,13 @@ export async function applyRuleToMonth(
 	return {
 		runs,
 		movement: ids.length
-			? await result(tx, userId, now, s, ids.map((m) => m.id))
+			? await result(
+					tx,
+					userId,
+					now,
+					s,
+					ids.map((m) => m.id),
+				)
 			: null,
 	};
 }

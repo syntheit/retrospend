@@ -46,7 +46,9 @@ const GROUPS = {
 
 type PresetEnvelope = SetupPresetOutput["envelopes"][number];
 
-export function billEnvelopes(templates: readonly PresetTemplate[]): PresetEnvelope[] {
+export function billEnvelopes(
+	templates: readonly PresetTemplate[],
+): PresetEnvelope[] {
 	const linked = new Set<string>();
 	return templates
 		.filter((t) => MONTHLY_FREQUENCIES.has(t.frequency))
