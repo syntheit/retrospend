@@ -8,6 +8,10 @@ type Db = Prisma.TransactionClient;
 
 export type Who = { name: string; imageUrl: string | null };
 
+/** The name rows use for a payer or the other side of a payment ("Martín paid"). */
+export const firstName = (who: Who | undefined) =>
+	who?.name.trim().split(/\s+/)[0] ?? "";
+
 export const personKeyOf = (type: string, id: string) => `${type}:${id}`;
 
 export async function resolvePeople(

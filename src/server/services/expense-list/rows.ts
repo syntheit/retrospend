@@ -19,7 +19,7 @@ import {
 	homeFromUSD,
 	homeOf,
 } from "./money";
-import { personKeyOf, resolvePeople, type Who } from "./people";
+import { firstName, personKeyOf, resolvePeople, type Who } from "./people";
 import type { RowKey } from "./query";
 import type { ActivityRowDTO, PersonDTO } from "./types";
 
@@ -186,7 +186,7 @@ async function sharedRows(db: Db, ids: string[], c: ShapeContext) {
 				project: t.project,
 				people: peopleOf(t, payerId).map(face),
 				payerId,
-				...(payerId === me ? {} : { payerName: who.get(payerId)?.name ?? "" }),
+				...(payerId === me ? {} : { payerName: firstName(who.get(payerId)) }),
 				date: dayKey(t.date, c.timeZone),
 				mine,
 				locked: t.isLocked,
@@ -309,7 +309,7 @@ function paymentRow(
 		canDelete: false,
 		payment: {
 			direction: sent ? "sent" : "received",
-			counterparty: x.who.get(sent ? to : from)?.name ?? "",
+			counterparty: firstName(x.who.get(sent ? to : from)),
 		},
 	};
 }

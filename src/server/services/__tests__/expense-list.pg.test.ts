@@ -164,7 +164,10 @@ describe("expense.listV2", () => {
 			kind: "payment",
 			amount: { minor: 1500000, currency: "ARS" },
 			date: "2026-10-06",
-			payment: { direction: "received", counterparty: other.user.name },
+			payment: {
+				direction: "received",
+				counterparty: other.user.name?.split(" ")[0],
+			},
 		});
 		expect(almacen?.amount).toEqual({ minor: 6400000, currency: "ARS" });
 		expect(almacen).not.toHaveProperty("home");
@@ -180,7 +183,7 @@ describe("expense.listV2", () => {
 			amount: { minor: 3000000, currency: "ARS" },
 			share: { minor: 1500000, currency: "ARS" },
 			waiting: "review",
-			payerName: other.user.name,
+			payerName: other.user.name?.split(" ")[0],
 			mine: false,
 		});
 		expect(cena?.people).toHaveLength(2);

@@ -16,13 +16,12 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Empty } from "~/components/ui/empty-state";
 import { Notice } from "~/components/ui/notice";
-import { api } from "~/trpc/react";
 import { ActivityList } from "./activity-list";
 import { ActivityTabs } from "./activity-tabs";
 import { ActivityToolbar } from "./activity-toolbar";
 import { isFiltered, readFilter } from "./filters";
+import { PageFrame } from "./page-frame";
 import { useActivity } from "./use-activity";
-import { useRefreshOnSave } from "./use-refresh-on-save";
 import { useRowActions } from "./use-row-actions";
 
 function Overflow() {
@@ -56,12 +55,9 @@ export function ActivityPage() {
 	const a = useActivity();
 	const actions = useRowActions(a.rows);
 	const modal = useExpenseModal();
-	const utils = api.useUtils();
+	// Saves elsewhere (today's expense modal, shared expense actions) refresh
+	// this list through the router invalidation map (src/lib/query-invalidation).
 	const [compare, setCompare] = useState(false);
-	useRefreshOnSave(
-		["expense", "sharedTransaction", "verification", "recurring"],
-		() => utils.expense.listV2.invalidate(),
-	);
 	const filtered = isFiltered(a.filter, a.today);
 	const empty = filtered ? (
 		<Empty
@@ -95,7 +91,7 @@ export function ActivityPage() {
 		/>
 	);
 	return (
-		<div data-page="activity" data-ui="v2">
+		<PageFrame data-page="activity" data-ui="v2">
 			<PageHeader
 				overflow={<Overflow />}
 				sub={a.count != null ? t("header.sub", { count: a.count }) : undefined}
@@ -165,6 +161,6 @@ export function ActivityPage() {
 					</Button>
 				</div>
 			)}
-		</div>
+		</PageFrame>
 	);
 }

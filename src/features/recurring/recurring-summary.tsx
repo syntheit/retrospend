@@ -37,7 +37,7 @@ export function RecurringSummary({
 	);
 	return (
 		<div className="mb-4 flex flex-wrap items-center gap-3">
-			<p className="text-body text-fg-2 flex-1" data-summary>
+			<p className="text-body text-fg-2 flex-1 max-md:basis-full" data-summary>
 				{t.rich("cost", {
 					amount: () => amount(out, "out"),
 					period: t(`per.${period}`),

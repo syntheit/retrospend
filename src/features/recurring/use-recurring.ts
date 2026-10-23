@@ -8,7 +8,6 @@ import { useRecurringModal } from "~/components/recurring-modal-provider";
 import { useToast } from "~/components/ui/toast";
 import type { RecurringItemDTO } from "~/server/services/recurring-view.service";
 import { api } from "~/trpc/react";
-import { useRefreshOnSave } from "../activity/use-refresh-on-save";
 import { isDue } from "./groups";
 
 /**
@@ -30,7 +29,6 @@ export function useRecurring() {
 			]),
 		[utils],
 	);
-	useRefreshOnSave(["recurring"], () => utils.recurring.listView.invalidate());
 	const update = api.recurring.update.useMutation();
 	const confirm = api.recurring.confirmAndCreate.useMutation();
 	const remove = api.recurring.delete.useMutation();

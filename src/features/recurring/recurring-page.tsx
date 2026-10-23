@@ -18,6 +18,7 @@ import { SkeletonRows } from "~/components/ui/skeleton";
 import { useIsMobile } from "~/hooks/use-mobile";
 import type { RecurringView } from "~/server/services/recurring-view.service";
 import { ActivityTabs } from "../activity/activity-tabs";
+import { PageFrame } from "../activity/page-frame";
 import { toTransactionVM } from "../activity/to-vm";
 import { groupsOf, matches, type RecurringChips } from "./groups";
 import { RecurringList } from "./recurring-list";
@@ -101,6 +102,14 @@ export function RecurringPage() {
 			<Plus aria-hidden="true" />
 			{t("add")}
 		</Button>
+	);
+	// Phones keep the header to the title: the primary is a + (recurring.html phone).
+	const headerAdd = phone ? (
+		<Button aria-label={t("add")} icon kind="ghost" onClick={r.openNew}>
+			<Plus aria-hidden="true" />
+		</Button>
+	) : (
+		add
 	);
 	let body: React.ReactNode;
 	if (r.view.isPending) body = <RecurringSkeleton />;
@@ -194,14 +203,14 @@ export function RecurringPage() {
 		);
 	}
 	return (
-		<div data-page="recurring" data-ui="v2">
+		<PageFrame data-page="recurring" data-ui="v2">
 			<PageHeader
-				primary={add}
+				primary={headerAdd}
 				sub={data ? t("sub", { out, income }) : undefined}
 				tabs={<ActivityTabs current="recurring" />}
 				title={t("title")}
 			/>
 			{body}
-		</div>
+		</PageFrame>
 	);
 }

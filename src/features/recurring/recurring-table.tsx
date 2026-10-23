@@ -60,7 +60,14 @@ function Due({ r, today }: { r: RecurringItemDTO; today: string }) {
 }
 
 /** Money in reads positive with a plus; a foreign amount pairs with its home value. */
-export function RecurringMoney({ r }: { r: RecurringItemDTO }) {
+export function RecurringMoney({
+	r,
+	inline = false,
+}: {
+	r: RecurringItemDTO;
+	/** One line (the desktop table) or the home value under it (phone rows). */
+	inline?: boolean;
+}) {
 	const tone = r.direction === "in" ? "text-positive" : undefined;
 	const sign = r.direction === "in" ? "exceptZero" : "auto";
 	if (r.home !== undefined)
@@ -69,6 +76,7 @@ export function RecurringMoney({ r }: { r: RecurringItemDTO }) {
 				className={tone}
 				figure={amountFigure(r)}
 				home={r.home}
+				inline={inline}
 				original={r.amount}
 				sign={sign}
 			/>
@@ -115,7 +123,7 @@ function Row({ r, p }: { r: RecurringItemDTO; p: Props }) {
 					{t(`frequency.${r.frequency}`)}
 				</TableCell>
 				<TableCell className="text-right">
-					<RecurringMoney r={r} />
+					<RecurringMoney inline r={r} />
 				</TableCell>
 				<TableCell className="text-center">
 					<Switch
