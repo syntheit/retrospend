@@ -29,6 +29,18 @@ export const MOBILE_SCOPES: readonly Scope[] = SCOPES.filter(
 );
 
 /**
+ * Client ids allowed to start device authorization (RFC 8628). The later
+ * CLI, desktop (libadwaita) and MCP clients use these; an unknown id is
+ * `invalid_client`. Sessions they sign in carry the id, so Settings lists
+ * them as approved devices.
+ */
+export const DEVICE_CLIENT_IDS: readonly string[] = [
+	"retrospend-cli",
+	"retrospend-desktop",
+	"retrospend-mcp",
+];
+
+/**
  * What a route needs. `public` routes skip authentication, the apiV1 flag
  * and the scope check; only `GET /server-info` is public today.
  */

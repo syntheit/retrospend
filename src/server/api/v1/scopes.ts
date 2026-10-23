@@ -13,17 +13,6 @@ import {
  */
 export type PrincipalKind = "web" | "mobile" | "device" | "apiKey";
 
-/**
- * Client ids allowed to start device authorization (RFC 8628). The later
- * CLI, desktop (libadwaita) and MCP clients use these; an unknown id is
- * `invalid_client`.
- */
-export const DEVICE_CLIENT_IDS: readonly string[] = [
-	"retrospend-cli",
-	"retrospend-desktop",
-	"retrospend-mcp",
-];
-
 /** The client id stamped on sessions the Expo app signs in. */
 export const MOBILE_CLIENT_ID = "retrospend-mobile";
 

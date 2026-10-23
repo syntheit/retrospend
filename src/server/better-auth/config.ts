@@ -1,6 +1,10 @@
 import { apiKey } from "@better-auth/api-key";
 import { expo } from "@better-auth/expo";
-import { MOBILE_SCOPES, parseScopeList } from "@retrospend/api-contract/common";
+import {
+	DEVICE_CLIENT_IDS,
+	MOBILE_SCOPES,
+	parseScopeList,
+} from "@retrospend/api-contract/common";
 import type { BetterAuthPlugin } from "better-auth";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
@@ -13,7 +17,6 @@ import { DEFAULT_CATEGORIES } from "~/lib/constants";
 import {
 	capDeviceScopes,
 	DEFAULT_TOKEN_SCOPES,
-	DEVICE_CLIENT_IDS,
 	formatScopeList,
 	isMobileAppRequest,
 	MAX_SCOPE_LIST_LENGTH,

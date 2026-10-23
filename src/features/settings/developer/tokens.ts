@@ -1,10 +1,10 @@
 import {
+	DEVICE_CLIENT_IDS,
 	parseScopeList,
 	SCOPES,
 	type Scope,
 } from "@retrospend/api-contract/common";
 import { authClient } from "~/lib/auth-client";
-import { DEVICE_CLIENT_IDS } from "~/server/api/v1/scopes";
 
 /**
  * The Developer section's one seam to the server (IMPLEMENTATION §2.3).
