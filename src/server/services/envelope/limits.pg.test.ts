@@ -263,15 +263,15 @@ describe("From now on and its undo put the target back exactly (findings 4 and 6
 		expect(row(m, env.id)?.assigned.minor).toBe(20_000);
 	});
 
-	it("EUR 200 from now on stays EUR 200: this month funds its value today (200 / 0.9 = 222.22)", async () => {
+	it("GEL 200 from now on stays GEL 200: this month funds its value today (200 / 0.9 = 222.22)", async () => {
 		const { s, env } = await limitsUser();
 		await adminDb.exchangeRate.deleteMany({
-			where: { currency: "EUR", type: "official" },
+			where: { currency: "GEL", type: "official" },
 		});
 		await adminDb.exchangeRate.create({
 			data: {
 				date: new Date(Date.UTC(2020, 0, 1)),
-				currency: "EUR",
+				currency: "GEL",
 				type: "official",
 				rate: 0.9,
 			},
@@ -280,10 +280,10 @@ describe("From now on and its undo put the target back exactly (findings 4 and 6
 			id: randomUUID(),
 			envelopeId: env.id,
 			amountMinor: 20_000,
-			currency: "EUR",
+			currency: "GEL",
 			scope: "FROM_NOW_ON",
 		});
-		expect(r.value.limit).toEqual({ minor: 20_000, currency: "EUR" });
+		expect(r.value.limit).toEqual({ minor: 20_000, currency: "GEL" });
 		expect(r.value.limitInBook).toEqual(usd(22_222));
 		expect(r.value.envelopes).toEqual([
 			{ id: env.id, before: usd(20_000), after: usd(22_222) },
@@ -291,7 +291,7 @@ describe("From now on and its undo put the target back exactly (findings 4 and 6
 		const stored = await adminDb.envelope.findUniqueOrThrow({
 			where: { id: env.id },
 		});
-		expect(stored.targetCurrency).toBe("EUR");
+		expect(stored.targetCurrency).toBe("GEL");
 		expect(stored.targetAmount?.toString()).toBe("200");
 		await forUser(s.user.id).apply(revertLimitMutation, {
 			id: randomUUID(),

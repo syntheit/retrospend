@@ -2,10 +2,10 @@
  * The past stays put on Postgres (B7, 02 §3.4, review findings 1 to 3).
  * Expected values by hand:
  *
- * Rate drift. A UYU book from August, rate 40 UYU per USD dated Aug 1.
- * Dining gets UYU 5,000.00 in August; a USD 100 dinner on Aug 12 (no booked
- * home value) is UYU 4,000.00, so Dining carries 100,000 minor. A USD 10
- * lunch on Oct 2 booked at 39 is UYU 390.00 whatever the rates do: Dining
+ * Rate drift. A MDL book from August, rate 40 MDL per USD dated Aug 1.
+ * Dining gets MDL 5,000.00 in August; a USD 100 dinner on Aug 12 (no booked
+ * home value) is MDL 4,000.00, so Dining carries 100,000 minor. A USD 10
+ * lunch on Oct 2 booked at 39 is MDL 390.00 whatever the rates do: Dining
  * 61,000 from October on. The daily sync then moves the one rate row to
  * Nov 3 at 41 (in place): no closed month changes, no revision, no item,
  * and the checkpoint still serves the read. A USD 10 row dated Sep 5 added
@@ -63,7 +63,7 @@ function usdRow(
 			...(booked
 				? {
 						rateType: "official",
-						homeCurrency: "UYU",
+						homeCurrency: "MDL",
 						homeRate: new Prisma.Decimal(booked.rate),
 						homeAmount: new Prisma.Decimal(booked.amount),
 					}
@@ -72,20 +72,20 @@ function usdRow(
 	});
 }
 
-async function uyuBook() {
+async function mdlBook() {
 	const s = await seedUser();
 	await adminDb.user.update({
 		where: { id: s.user.id },
-		data: { homeCurrency: "UYU" },
+		data: { homeCurrency: "MDL" },
 	});
 	// One rate row per pair, as the sync keeps it.
 	await adminDb.exchangeRate.deleteMany({
-		where: { currency: "UYU", type: "official" },
+		where: { currency: "MDL", type: "official" },
 	});
 	const rate = await adminDb.exchangeRate.create({
 		data: {
 			date: new Date("2026-08-01T00:00:00Z"),
-			currency: "UYU",
+			currency: "MDL",
 			type: "official",
 			rate: 40,
 		},
@@ -129,7 +129,7 @@ async function uyuBook() {
 
 describe("rates moving in place never move the past (finding 1)", () => {
 	it("a sidecar-style rate update changes no closed month, adds no revision or item, and the checkpoint stays valid", async () => {
-		const b = await uyuBook();
+		const b = await mdlBook();
 		const nov3 = await getMonth(b.user.id, undefined, at("2026-11-03"));
 		expect(leftOf(nov3, b.diningEnv)).toBe(61_000);
 		// The sidecar's daily sync: one row per pair, moved forward in place.
@@ -156,13 +156,13 @@ describe("rates moving in place never move the past (finding 1)", () => {
 	});
 
 	it("a row with no frozen value and no rate dated on or before it is a missing rate, never today's", async () => {
-		const b = await uyuBook();
+		const b = await mdlBook();
 		await adminDb.$executeRaw`UPDATE exchange_rate SET rate = 41, date = ${new Date("2026-11-03T00:00:00Z")} WHERE id = ${b.rateId}`;
 		await usdRow(b.user.id, b.dining, 10, "2026-09-05");
 		const m = await getMonth(b.user.id, undefined, at("2026-11-04"));
 		expect(m?.incomplete).toBe(true);
 		expect(m?.missingRates).toContainEqual({
-			currency: "UYU",
+			currency: "MDL",
 			rateType: "official",
 			date: "2026-09-05",
 		});
