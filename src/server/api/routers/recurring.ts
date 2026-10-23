@@ -2,9 +2,18 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { convertAmount } from "~/lib/money";
 import { nextRecurringDate } from "~/lib/recurring";
+import { dayKey } from "~/lib/time-zone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { recurringEntryData } from "~/server/services/money-in.service";
 import { RateCache } from "~/server/services/rate-cache";
+
+/**
+ * Today in the user's zone as a template due date (UTC midnight of that
+ * day): a template is due once its day has come where the user is, not
+ * when UTC reaches it.
+ */
+const todayAsDueDate = (timeZone: string) =>
+	new Date(`${dayKey(new Date(), timeZone)}T00:00:00.000Z`);
 
 export const recurringRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -318,7 +327,6 @@ export const recurringRouter = createTRPCRouter({
 	 */
 	getPendingConfirmation: protectedProcedure.query(async ({ ctx }) => {
 		const { session, db } = ctx;
-		const now = new Date();
 
 		const pending = await db.recurringTemplate.findMany({
 			where: {
@@ -326,7 +334,7 @@ export const recurringRouter = createTRPCRouter({
 				isActive: true,
 				OR: [{ autoPay: false }, { amountMode: "ASK" }],
 				nextDueDate: {
-					lte: now,
+					lte: todayAsDueDate(ctx.timeZone),
 				},
 			},
 			include: {
@@ -382,7 +390,7 @@ export const recurringRouter = createTRPCRouter({
 			if (
 				(input.dueDate &&
 					input.dueDate.getTime() !== template.nextDueDate.getTime()) ||
-				template.nextDueDate > new Date()
+				template.nextDueDate > todayAsDueDate(ctx.timeZone)
 			) {
 				throw new TRPCError({
 					code: "CONFLICT",

@@ -219,7 +219,7 @@ export async function readProjectPage(
 		excludeFromAnalytics: meRow?.excludeFromAnalytics ?? false,
 		solo: others.length === 0,
 		/** Today in the user's zone, for "Today" and the date pickers. */
-		today: dayKey(new Date(), await userTimeZone(userId)),
+		today: dayKey(new Date(), await userTimeZone(db, userId)),
 		expenseCount: expenses.length,
 		firstExpense: expenses.length
 			? day((expenses.at(-1) as Expense).date)

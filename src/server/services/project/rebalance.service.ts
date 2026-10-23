@@ -79,7 +79,7 @@ export async function rebalanceableExpenses(
 			m.participantId === newcomer.participantId,
 	);
 	const joined = { joinedOn: row?.joinedOn ? toIsoDate(row.joinedOn) : null };
-	const zone = await userTimeZone(userId);
+	const zone = await userTimeZone(db, userId);
 	const { canonicalKey, newcomerKey, others } = await memberKeys(
 		db,
 		newcomer,

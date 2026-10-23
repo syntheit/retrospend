@@ -35,6 +35,8 @@ model User {
   // Default rate type per home currency, {"ARS": "blue"} (M2, N73).
   // Empty uses the built-in default (~/lib/rate-selection).
   defaultRateTypes            Json                          @default("{}")
+  /// IANA zone for the user's calendar days; null falls back to DEFAULT_TIME_ZONE.
+  timeZone                    String?                       @db.VarChar(64)
   accounts                Account[]
   assetAccounts           AssetAccount[]
   assetSnapshots          AssetSnapshot[]

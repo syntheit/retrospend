@@ -191,7 +191,7 @@ export async function rebalanceExpenses(
 
 	const candidates = await loadCandidates(tx, input);
 	const joined = membershipOf(membership);
-	const zone = await userTimeZone(userId);
+	const zone = await userTimeZone(tx, userId);
 	const { chosen, skipped } = await pickExpenses(
 		tx,
 		input,

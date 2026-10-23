@@ -27,7 +27,7 @@ export async function membersOn(
 	day: IsoDate | undefined,
 	readerUserId: string | null,
 ) {
-	const onDay = day ?? dayKey(new Date(), await userTimeZone(readerUserId));
+	const onDay = day ?? dayKey(new Date(), await userTimeZone(db, readerUserId));
 	const rows = await db.projectParticipant.findMany({
 		where: { projectId },
 		select: {
