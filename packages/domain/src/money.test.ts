@@ -76,16 +76,19 @@ describe("convertAmount and crossRate for any home currency", () => {
 
 	it("100 EUR is about 177,535 ARS", () => {
 		expect(convertAmount(100, "EUR", RATES.EUR, "ARS", RATES.ARS)).toBeCloseTo(
-			177535.0, 0,
+			177535.0,
+			0,
 		);
 	});
 
 	it("1 BTC in ARS and in ETH", () => {
 		expect(crossRate("BTC", RATES.BTC, "ARS", RATES.ARS)).toBeCloseTo(
-			64545.9 * 1560, 4,
+			64545.9 * 1560,
+			4,
 		);
 		expect(crossRate("BTC", RATES.BTC, "ETH", RATES.ETH)).toBeCloseTo(
-			64545.9 / 1916.61, 8,
+			64545.9 / 1916.61,
+			8,
 		);
 	});
 });
@@ -160,9 +163,12 @@ describe("pickBestRate", () => {
 		];
 		expect(pickBestRate(rows, { date: d("2026-08-01") })?.type).toBe("blue");
 		expect(
-			pickBestRate(rows.filter((r) => r.type !== "blue"), {
-				date: d("2026-08-01"),
-			})?.type,
+			pickBestRate(
+				rows.filter((r) => r.type !== "blue"),
+				{
+					date: d("2026-08-01"),
+				},
+			)?.type,
 		).toBe("official");
 	});
 
@@ -256,6 +262,38 @@ describe("totals rule (sumIn)", () => {
 		expect(() => sumIn(items, "ARS", undefined)).toThrow(MissingRateError);
 		expect(sumIn([items[0]!], "ARS", undefined)).toBe(100000);
 		expect(amountIn(items[1]!, "USD", null)).toBe(20);
+	});
+
+	it("an unpriced item (no rate when loaded) counts only in its own currency", () => {
+		const isk = { amount: 900, currency: "ISK", amountInUSD: Number.NaN };
+		expect(sumIn([isk], "ISK", undefined)).toBe(900);
+		expect(() => amountIn(isk, "USD", 1)).toThrow(MissingRateError);
+	});
+
+	it("a missing rate names every currency that cannot convert", () => {
+		const unpriced = [
+			{ amount: 900, currency: "ISK", amountInUSD: Number.NaN },
+			{ amount: 5, currency: "CLF", amountInUSD: Number.NaN },
+			{ amount: 7, currency: "ISK", amountInUSD: Number.NaN },
+		];
+		try {
+			sumIn([...unpriced, items[1]!], "USD", 1);
+			expect.unreachable();
+		} catch (error) {
+			expect(error).toBeInstanceOf(MissingRateError);
+			expect((error as MissingRateError).currencies).toEqual(["CLF", "ISK"]);
+		}
+		// The total's own rate missing too: it is named with the rest.
+		try {
+			sumIn([...unpriced, items[1]!], "ARS", undefined);
+			expect.unreachable();
+		} catch (error) {
+			expect((error as MissingRateError).currencies).toEqual([
+				"ARS",
+				"CLF",
+				"ISK",
+			]);
+		}
 	});
 
 	it("an item booked in the total's currency counts its booked value (M2)", () => {

@@ -13,8 +13,11 @@
  * registry.test.ts scans test sources for that literal and fails for any
  * registered id without one, so keep the title a literal, not a template.
  */
+
+import { MissingRateError } from "~/lib/money";
 import { accountFigures } from "~/server/services/accounts/figures";
 import { budgetFigures } from "~/server/services/envelope/figures";
+import { glanceFigures } from "~/server/services/figures/spend-pace";
 import { spentFigure } from "~/server/services/figures/spent";
 import {
 	balancePersonFigure,
@@ -23,6 +26,7 @@ import {
 } from "~/server/services/payments/figures";
 import { projectFigures } from "~/server/services/project/figures";
 import type { Prisma } from "~prisma";
+import { FigureUnavailable } from "./unavailable";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
 // Moves to @retrospend/domain when that package lands.
@@ -74,8 +78,10 @@ export interface FigureDefinition<Db = FigureDb> {
 		scope: FigureScope,
 		/** The read pass; readFigure always passes one. */
 		pass?: FigurePass,
-	) => Promise<FigureValue | null>;
+	) => Promise<FigureValue | FigureUnavailable | null>;
 }
+
+export { FigureUnavailable };
 
 /**
  * One read pass (one `readFiguresIn` call): figures computed from the same
@@ -85,6 +91,20 @@ export interface FigureDefinition<Db = FigureDb> {
  */
 export class FigurePass {
 	private readonly loads = new Map<string, Promise<unknown>>();
+	private readonly missing = new Map<string, readonly string[]>();
+
+	/** Notes the currencies that kept figure `id` unavailable. */
+	noteMissing(id: string, currencies: readonly string[]) {
+		this.missing.set(id, [...new Set(currencies)].sort());
+	}
+
+	/** Currencies whose missing rate kept figure `id` (or any figure) out. */
+	missingRates(id?: string): string[] {
+		const lists = id
+			? [this.missing.get(id) ?? []]
+			: [...this.missing.values()];
+		return [...new Set(lists.flat())].sort();
+	}
 
 	once<T>(key: string, load: () => Promise<T>): Promise<T> {
 		let pending = this.loads.get(key) as Promise<T> | undefined;
@@ -209,7 +229,7 @@ export async function readFigure<Db>(
 	scope: FigureScope,
 	pass: FigurePass = new FigurePass(),
 ): Promise<FigureReading> {
-	let value: FigureValue | null;
+	let value: FigureValue | FigureUnavailable | null;
 	try {
 		value = await definition.compute(
 			db,
@@ -217,7 +237,13 @@ export async function readFigure<Db>(
 			pass,
 		);
 	} catch (error) {
-		throw new FigureError(definition.id, "compute failed", { cause: error });
+		if (!(error instanceof MissingRateError))
+			throw new FigureError(definition.id, "compute failed", { cause: error });
+		value = new FigureUnavailable(error.currencies);
+	}
+	if (value instanceof FigureUnavailable) {
+		pass.noteMissing(definition.id, value.missingRates);
+		return null;
 	}
 	return toReading(definition.id, value);
 }
@@ -227,9 +253,10 @@ export async function readFiguresIn<Db>(
 	db: Db,
 	definitions: readonly FigureDefinition<Db>[],
 	scope: FigureScope,
+	/** Pass one to read back which currencies kept a figure out. */
+	pass: FigurePass = new FigurePass(),
 ): Promise<ReadonlyMap<string, FigureReading>> {
 	const readings = new Map<string, FigureReading>();
-	const pass = new FigurePass();
 	for (const definition of definitions) {
 		readings.set(definition.id, await readFigure(definition, db, scope, pass));
 	}
@@ -245,4 +272,5 @@ export const figures = createFiguresRegistry<FigureDb>([
 	...projectFigures,
 	...accountFigures,
 	...budgetFigures,
+	...glanceFigures,
 ]);

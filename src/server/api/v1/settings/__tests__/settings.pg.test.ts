@@ -78,6 +78,29 @@ describe("/api/v1/settings", () => {
 			expect(row.monthlyIncomeCurrency).toBe("ARS");
 		});
 
+		it("sets the time zone and refuses one off the list", async () => {
+			const patched = await expectBody(
+				await call("/settings", {
+					method: "PATCH",
+					headers: asAlice,
+					body: { timeZone: "Asia/Tokyo" },
+					idempotent: true,
+				}),
+				s.update,
+			);
+			expect(patched).toMatchObject({ timeZone: "Asia/Tokyo" });
+			await expectProblem(
+				await call("/settings", {
+					method: "PATCH",
+					headers: asAlice,
+					body: { timeZone: "Mars/Olympus_Mons" },
+					idempotent: true,
+				}),
+				400,
+				"bad_request",
+			);
+		});
+
 		it("refuses income more precise than the column keeps", async () => {
 			// 0.12345678 BTC needs 8 decimals; monthlyIncome keeps 2.
 			await expectProblem(

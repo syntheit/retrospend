@@ -130,6 +130,8 @@
 		"themeDark": "Dark",
 		"themeSystem": "System",
 		"language": "Language",
+		"timeZone": "Time zone",
+		"timeZoneMeta": "Used when your device does not share its own",
 		"hideBalances": "Hide balances on Wealth",
 		"hideBalancesMeta": "Until you tap the eye",
 		"chartTap": "Tapping a category in a chart",

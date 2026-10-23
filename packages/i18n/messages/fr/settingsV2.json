@@ -130,6 +130,8 @@
 		"themeDark": "Sombre",
 		"themeSystem": "Système",
 		"language": "Langue",
+		"timeZone": "Fuseau horaire",
+		"timeZoneMeta": "Utilisé quand votre appareil n'indique pas le sien",
 		"hideBalances": "Masquer les soldes dans Patrimoine",
 		"hideBalancesMeta": "Jusqu’à ce que vous touchiez l’œil",
 		"chartTap": "Toucher une catégorie dans un graphique",

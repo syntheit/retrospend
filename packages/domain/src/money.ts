@@ -33,9 +33,17 @@ import { getDecimalDigits, isCrypto } from "./currency-format";
 export const USD = "USD";
 
 export class MissingRateError extends Error {
-	constructor(public readonly currency: string) {
-		super(`No exchange rate available for ${currency}`);
+	/** Every currency that could not convert, sorted; `currency` is the first. */
+	public readonly currencies: readonly string[];
+
+	constructor(
+		public readonly currency: string,
+		currencies: readonly string[] = [currency],
+	) {
+		const all = [...new Set([currency, ...currencies])].sort();
+		super(`No exchange rate available for ${all.join(", ")}`);
 		this.name = "MissingRateError";
+		this.currencies = all;
 	}
 }
 
@@ -169,6 +177,7 @@ export function expenseAmounts(args: {
 export interface MoneyItem {
 	amount: number;
 	currency: string;
+	/** NaN for an unpriced item (no rate at all when loaded): it counts only in its own currency. */
 	amountInUSD: number;
 	/**
 	 * The home value booked when the entry was saved (expense.homeAmount,
@@ -189,17 +198,46 @@ export function amountIn(
 ): number {
 	if (item.currency === currency) return item.amount;
 	if (item.booked?.currency === currency) return item.booked.amount;
+	if (!Number.isFinite(item.amountInUSD))
+		throw new MissingRateError(item.currency);
 	return fromUSD(item.amountInUSD, currency, rate);
 }
 
-/** Sum of `items` in `currency` under the totals rule (unrounded). */
+/**
+ * The currencies that keep `items` from totaling in `currency`: unpriced
+ * items (no rate when loaded) in another currency, and `currency` itself
+ * when something needs its missing rate. Empty when the total can be made.
+ */
+export function missingRatesIn(
+	items: Iterable<MoneyItem>,
+	currency: string,
+	rate: number | null | undefined,
+): string[] {
+	const missing = new Set<string>();
+	const rateless = currency !== USD && !isValidRate(rate);
+	for (const item of items) {
+		if (item.currency === currency || item.booked?.currency === currency)
+			continue;
+		if (!Number.isFinite(item.amountInUSD)) missing.add(item.currency);
+		if (rateless) missing.add(currency);
+	}
+	return [...missing].sort();
+}
+
+/**
+ * Sum of `items` in `currency` under the totals rule (unrounded). Throws
+ * one MissingRateError naming every currency that cannot convert.
+ */
 export function sumIn(
 	items: Iterable<MoneyItem>,
 	currency: string,
 	rate: number | null | undefined,
 ): number {
+	const list = [...items];
+	const missing = missingRatesIn(list, currency, rate);
+	if (missing[0]) throw new MissingRateError(missing[0], missing);
 	let total = 0;
-	for (const item of items) total += amountIn(item, currency, rate);
+	for (const item of list) total += amountIn(item, currency, rate);
 	return total;
 }
 
@@ -247,8 +285,7 @@ export function rateFromQuote(
 ): number {
 	const value = assertRate(foreign, quote.value);
 	const homeUsd = usdPerUnit(home, homeRate);
-	const foreignUsd =
-		quote.base === foreign ? value * homeUsd : homeUsd / value;
+	const foreignUsd = quote.base === foreign ? value * homeUsd : homeUsd / value;
 	return rateFromUsdPerUnit(foreign, foreignUsd);
 }
 
@@ -256,11 +293,32 @@ export function rateFromQuote(
 
 // ISO 4217 minor units that differ from the default of 2.
 const ZERO_DECIMAL = new Set([
-	"BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF",
-	"UGX", "UYI", "VND", "VUV", "XAF", "XOF", "XPF",
+	"BIF",
+	"CLP",
+	"DJF",
+	"GNF",
+	"ISK",
+	"JPY",
+	"KMF",
+	"KRW",
+	"PYG",
+	"RWF",
+	"UGX",
+	"UYI",
+	"VND",
+	"VUV",
+	"XAF",
+	"XOF",
+	"XPF",
 ]);
 const THREE_DECIMAL = new Set([
-	"BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND",
+	"BHD",
+	"IQD",
+	"JOD",
+	"KWD",
+	"LYD",
+	"OMR",
+	"TND",
 ]);
 // Unidad de Fomento and Unidad Previsional, indexed units of account.
 const FOUR_DECIMAL = new Set(["CLF", "UYW"]);
@@ -358,9 +416,7 @@ export function pickBestRate(
 		const better =
 			!current ||
 			(onOrBefore && !current.onOrBefore) ||
-			(onOrBefore &&
-				current.onOrBefore &&
-				time > current.date.getTime()) ||
+			(onOrBefore && current.onOrBefore && time > current.date.getTime()) ||
 			(!onOrBefore && !current.onOrBefore && time < current.date.getTime());
 		if (better) {
 			byType.set(row.type, {
