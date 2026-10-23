@@ -76,7 +76,61 @@ test.describe("Settings v2", () => {
 			.getByRole("link", { name: "Security" })
 			.click();
 		await expect(page).toHaveURL(/#security$/);
+		// Focus lands on the section heading, so keyboard users are there too.
+		await expect(
+			main.getByRole("heading", { level: 2, name: "Security" }),
+		).toBeFocused();
 		expect(errors, "uncaught page errors").toEqual([]);
+	});
+
+	test("?add=category opens the add form once and leaves the URL", async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await loginAs(page, SOFIA.email, SOFIA.password);
+		await openSettings(page);
+		await gotoReady(page, "/settings?add=category");
+		await expect(page.getByRole("dialog")).toBeVisible();
+		await expect(page).not.toHaveURL(/add=category/);
+		// A reload does not open it again.
+		await page.keyboard.press("Escape");
+		await expect(page.getByRole("dialog")).toHaveCount(0);
+		await gotoReady(page, page.url());
+		await expect(page.locator(V2)).toBeVisible();
+		await page.waitForTimeout(1_000);
+		await expect(page.getByRole("dialog")).toHaveCount(0);
+	});
+
+	test("approved devices list and disconnect by name", async ({ page }) => {
+		test.setTimeout(120_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await loginAs(page, SOFIA.email, SOFIA.password);
+		const pool = new Pool({ connectionString: E2E_DATABASE_URL });
+		try {
+			await pool.query(
+				`INSERT INTO "session" (id, token, "userId", "expiresAt", "createdAt", "updatedAt", scopes, "clientId")
+				 SELECT 'e2e-device-session', 'e2e-device-token-not-a-secret', id, now() + interval '1 day', now(), now(), 'read', 'retrospend-cli'
+				 FROM "user" WHERE email = $1
+				 ON CONFLICT (id) DO NOTHING`,
+				[SOFIA.email],
+			);
+		} finally {
+			await pool.end();
+		}
+		await openSettings(page);
+		const devices = page.getByRole("list", { name: "Approved devices" });
+		await expect(devices.getByText("Retrospend CLI")).toBeVisible();
+		await devices
+			.getByRole("button", { name: "More actions for Retrospend CLI" })
+			.click();
+		await page.getByRole("menuitem", { name: "Disconnect" }).click();
+		await page
+			.getByRole("alertdialog", { name: "Disconnect Retrospend CLI?" })
+			.getByRole("button", { name: "Disconnect device" })
+			.click();
+		await expect(devices).toHaveCount(0);
+		await expect(page.getByText("No approved devices")).toBeVisible();
 	});
 
 	test("a switch saves on change, Undo puts it back, and it sticks", async ({
@@ -131,7 +185,9 @@ test.describe("Settings v2", () => {
 		await expect(keys.getByText("e2e script")).toBeVisible();
 		await expect(keys.getByText("Read").first()).toBeVisible();
 
-		await keys.getByRole("button", { name: "Actions for e2e script" }).click();
+		await keys
+			.getByRole("button", { name: "More actions for e2e script" })
+			.click();
 		await page.getByRole("menuitem", { name: "Revoke key" }).click();
 		const confirm = page.getByRole("alertdialog", {
 			name: "Revoke e2e script?",
