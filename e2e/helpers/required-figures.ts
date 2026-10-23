@@ -4,6 +4,12 @@
  * missing, so deleting a tag cannot hide a mismatch. Today's pages carry no
  * figures yet; S4 adds each page's ids here as it tags them.
  */
+import { MARTIN, PROJECT_IDS, SOFIA } from "../fixtures/personas";
+
+const DEPTO = PROJECT_IDS.depto;
+const FLORIPA = PROJECT_IDS.floripa;
+const ME = `user:${SOFIA.id}`;
+
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
 	transactions: [],
@@ -17,16 +23,16 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	// Palermo; her balance with Martín on its Summary. Their own keys, so
 	// the smoke walk of today's pages (no figures) never requires them.
 	"projects-v2": [
-		"project.member.balance:e2e_project_depto:user:e2e_user_sofia",
-		"project.member.balance:e2e_project_floripa:user:e2e_user_sofia",
+		`project.member.balance:${DEPTO}:${ME}`,
+		`project.member.balance:${FLORIPA}:${ME}`,
 	],
 	"project-v2": [
-		"project.total:e2e_project_depto",
-		"project.member.share:e2e_project_depto:user:e2e_user_sofia",
+		`project.total:${DEPTO}`,
+		`project.member.share:${DEPTO}:${ME}`,
 	],
 	"project-v2-summary": [
-		"project.total:e2e_project_depto",
-		"balance.person:e2e_project_depto:user:e2e_user_martin",
+		`project.total:${DEPTO}`,
+		`balance.person:${DEPTO}:user:${MARTIN.id}`,
 	],
 	// S4B, as the flows open them: Martín's rows with Sofía, every month, and
 	// his month view, whose footer is spent() for the month.
