@@ -264,6 +264,7 @@ model Category {
   analyticsPreferences AnalyticsCategoryPreference[]
   sharedTransactions   SharedTransaction[]
   envelopeLinks        EnvelopeCategory[]
+  shareCategories      SplitParticipant[]   @relation("ShareCategory")
 
   @@unique([name, userId])
   @@index([userId])
@@ -466,6 +467,8 @@ model Envelope {
   mainOfGroups        EnvelopeGroup[]     @relation("GroupMainEnvelope")
   movementsOut        BudgetMovement[]    @relation("MovementFrom")
   movementsIn         BudgetMovement[]    @relation("MovementTo")
+  projectRoutes       ProjectParticipant[] @relation("ProjectBudgetEnvelope")
+  forgives            Settlement[]        @relation("ForgiveEnvelope")
 
   @@unique([id, bookId])
   @@index([bookId, archivedAt])
@@ -1242,17 +1245,33 @@ model SplitParticipant {
   verifiedAt         DateTime?
   rejectionReason    String?            @db.VarChar(500)
   hasUnseenChanges   Boolean            @default(false)
+  // The participant's own category for their share (D19): set by them
+  // (USER) or by the budget's smart default. The creator's category belongs
+  // to the creator and never counts for anyone else.
+  categoryId         String?
+  categorySource     ShareCategorySource?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @default(now()) @updatedAt
 
   transaction SharedTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category    Category?         @relation("ShareCategory", fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@unique([transactionId, participantType, participantId])
   @@index([transactionId])
   @@index([participantType, participantId])
   @@index([verificationStatus])
   @@index([participantType, participantId, transactionId])
+  @@index([categoryId])
   @@map("split_participant")
+}
+
+// Where a share's category came from (D19).
+enum ShareCategorySource {
+  USER
+  NAME_MATCH
+  PROJECT
+  PERSON
+  TITLE
 }
 
 model Settlement {
@@ -1297,10 +1316,11 @@ model Settlement {
   // exchangeRateUsed is payment-currency units per 1 unit of `currency`.
   // NULL on same-currency rows and on rows written before payments_corrections.
   rateType             String?          @db.VarChar(32)
-  // The envelope a FORGIVE row is charged to (M6 adds the envelope table).
+  // The envelope a FORGIVE row is charged to, in the creditor's budget.
   forgiveEnvelopeId    String?
 
   project              Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  forgiveEnvelope      Envelope?        @relation("ForgiveEnvelope", fields: [forgiveEnvelopeId], references: [id], onDelete: SetNull)
   payment              Payment?         @relation(fields: [paymentGroupId], references: [id], onDelete: Cascade)
 
   @@index([fromParticipantType, fromParticipantId])
@@ -1312,6 +1332,7 @@ model Settlement {
   @@index([projectId], map: "settlement_projectId_idx")
   @@index([projectId, fromParticipantType, fromParticipantId, toParticipantType, toParticipantId], map: "settlement_project_pair_idx")
   @@index([paymentGroupId])
+  @@index([forgiveEnvelopeId])
   @@map("settlement")
 }
 
@@ -1508,14 +1529,27 @@ model ProjectParticipant {
   // default; past splits are never changed by them.
   joinedOn              DateTime?       @db.Date
   leftOn                DateTime?       @db.Date
+  // A reports flag only ("Hide from reports"); the budget reads budgetRouting.
   excludeFromAnalytics  Boolean         @default(false)
+  // "Count my share in" (D31, D11 revised): by category, one envelope, or
+  // not in the budget at all. Only the participant's own budget reads it.
+  budgetRouting         ProjectBudgetRouting @default(CATEGORY)
+  budgetEnvelopeId      String?
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  budgetEnvelope Envelope? @relation("ProjectBudgetEnvelope", fields: [budgetEnvelopeId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, participantType, participantId])
   @@index([projectId])
   @@index([participantType, participantId])
+  @@index([budgetEnvelopeId])
   @@map("project_participant")
+}
+
+enum ProjectBudgetRouting {
+  CATEGORY
+  ENVELOPE
+  NOT_IN_BUDGET
 }
 
 model BillingPeriod {
