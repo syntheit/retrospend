@@ -159,7 +159,7 @@ export function RecurringPage() {
 							/>
 							<Input
 								aria-label={t("toolbar.search")}
-								className="h-ctl w-60 pl-9 max-md:w-full"
+								className="h-ctl w-60 pr-2 pl-8 max-md:w-full"
 								onChange={(e) => setQ(e.target.value)}
 								placeholder={t("toolbar.search")}
 								type="search"

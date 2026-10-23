@@ -127,7 +127,7 @@ export function ActivityToolbar({
 					/>
 					<Input
 						aria-label={t("search")}
-						className="h-ctl w-60 pl-9 max-md:w-full"
+						className="h-ctl w-64 pr-2 pl-8 max-md:w-full"
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder={t("search")}
 						type="search"
