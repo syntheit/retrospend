@@ -19,6 +19,9 @@
  *   +100.00 today, To assign +0".
  */
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
@@ -189,5 +192,67 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 			where: { bookId: b.bookId },
 		});
 		expect(rows.every((r) => r.revision === 2)).toBe(true);
+	});
+
+	it("RLS: another user sees none of this book's marks and cannot write one", async () => {
+		await addRow(b.user.id, { amount: 1 }, at("2026-10-05"));
+		const other = await seedUser();
+		await expect(
+			other.db.budgetDirty.count({ where: { bookId: b.bookId } }),
+		).resolves.toBe(0);
+		await expect(
+			other.db.budgetDirty.create({
+				data: { bookId: b.bookId, fromMonth: 202608 },
+			}),
+		).rejects.toThrow();
+		await expect(
+			adminDb.budgetDirty.count({ where: { bookId: b.bookId } }),
+		).resolves.toBe(1);
+	});
+
+	it("a rate for the book currency with none before it marks the whole book", async () => {
+		const s = await seedUser();
+		await adminDb.user.update({
+			where: { id: s.user.id },
+			data: { homeCurrency: "XAF" },
+		});
+		const bookId = randomUUID();
+		await adminDb.budgetBook.create({
+			data: {
+				id: bookId,
+				currency: "XAF",
+				startDate: new Date("2026-08-01T00:00:00Z"),
+				startMonth: 202608,
+				createdById: s.user.id,
+			},
+		});
+		await adminDb.exchangeRate.create({
+			data: { date: at("2026-09-10"), currency: "XAF", type: "official", rate: 600 },
+		});
+		await adminDb.exchangeRate.create({
+			data: { date: at("2026-10-10"), currency: "XAF", type: "official", rate: 601 },
+		});
+		const marks = await adminDb.budgetDirty.findMany({ where: { bookId } });
+		expect(marks.map((m) => m.fromMonth).sort()).toEqual([0, 202610]);
+	});
+});
+
+describe("budget_checkpoints migration", () => {
+	it("applies twice without error (idempotent)", async () => {
+		const sql = readFileSync(
+			join(
+				process.cwd(),
+				"prisma/migrations/20261025100000_budget_checkpoints/migration.sql",
+			),
+			"utf8",
+		);
+		const client = new Client({ connectionString: process.env.DATABASE_URL });
+		await client.connect();
+		try {
+			await client.query(sql);
+			await client.query(sql);
+		} finally {
+			await client.end();
+		}
 	});
 });
