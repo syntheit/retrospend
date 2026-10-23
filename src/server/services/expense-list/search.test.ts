@@ -19,6 +19,17 @@ describe("Activity search", () => {
 		});
 	});
 
+	it("keeps Cyrillic letters SQL translate keeps, only lowercasing them", () => {
+		expect(foldText("Чай")).toBe("чай");
+		expect(foldText("Йогурт")).toBe("йогурт");
+		expect(foldText("Ёлка")).toBe("ёлка");
+		expect(foldText("ЧАЙ и кофе")).toBe("чай и кофе");
+	});
+
+	it("folds a decomposed accent typed in the query like the precomposed one", () => {
+		expect(foldText("Almace\u0301n")).toBe("almacen");
+	});
+
 	it("escapes LIKE wildcards", () => {
 		expect(likePattern(" 100%_ok ")).toBe("%100\\%\\_ok%");
 	});

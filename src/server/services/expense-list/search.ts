@@ -10,11 +10,18 @@
 export const FOLD_FROM = "áàâäãåéèêëíìîïóòôöõúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇ";
 export const FOLD_TO = "aaaaaaeeeeiiiiooooouuuuncaaaaaaeeeeiiiiooooouuuunc";
 
-/** Lowercase without diacritics, as the SQL side folds a column. */
+const FOLD = new Map([...FOLD_FROM].map((c, i) => [c, [...FOLD_TO][i]]));
+
+/**
+ * The query folded exactly as SQL folds a column: `lower(translate(col,
+ * FOLD_FROM, FOLD_TO))`. Only the table's letters lose their accents, so
+ * Cyrillic й and ё stay as they are on both sides. NFC first, so an accent
+ * typed as a combining mark meets the table's precomposed letter.
+ */
 export function foldText(text: string): string {
-	return text
-		.normalize("NFD")
-		.replace(/\p{Mn}/gu, "")
+	return [...text.normalize("NFC")]
+		.map((c) => FOLD.get(c) ?? c)
+		.join("")
 		.toLowerCase();
 }
 
