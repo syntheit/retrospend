@@ -190,7 +190,7 @@ async function forgiveDay(tx: Tx, userId: string, now: Date) {
 		where: { createdById: userId, isPersonal: true },
 		select: { timeZone: true },
 	});
-	return isoDateIn(now, book?.timeZone ?? (await userTimeZone(userId)));
+	return isoDateIn(now, book?.timeZone ?? (await userTimeZone(tx, userId)));
 }
 
 /** The forgive over the pair's open debts in its currency, oldest first, one row per scope. */

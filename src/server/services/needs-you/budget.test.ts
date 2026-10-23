@@ -148,6 +148,8 @@ function month(o: {
 			poolName: "NOT_PLANNED_YET",
 			incomplete: (o.missing ?? []).length > 0,
 		},
+		owed: { held: zero, pending: zero, people: 0, aging: 0 },
+		shares: { unresolved: 0, pending: zero },
 		incomplete: (o.missing ?? []).length > 0,
 		missingRates: (o.missing ?? []).map((currency) => ({
 			currency,

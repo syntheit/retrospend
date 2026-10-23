@@ -39,7 +39,14 @@ async function budgetSource(
 		dto: view.dto,
 		paused: row.pausedAt !== null,
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
-		moneyIn: await moneyInFacts(tx, view.loaded.input.moneyIn, row.timeZone),
+		// Moves from Wealth are not money that arrived: no title to show.
+		moneyIn: await moneyInFacts(
+			tx,
+			view.loaded.input.moneyIn.flatMap((e) =>
+				e.source === "WEALTH" ? [] : [{ ...e, source: e.source }],
+			),
+			row.timeZone,
+		),
 	});
 }
 
