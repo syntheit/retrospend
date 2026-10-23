@@ -36,25 +36,36 @@ export function lineIds(
 const LINE_MAX = 5;
 
 /**
- * How many of the line's chips fit beside All in one row: each chip leads
- * with its glyph, so the count follows the width, not a fixed number.
- * Chips that do not fit stay measurable but invisible.
+ * How many recents fit beside All in one row: each chip leads with its
+ * glyph, so the count follows the width. `line(n)` is the line of n chips
+ * (the picked one first when it is not a recent); every candidate chip stays
+ * rendered, the extra ones invisible, so each can be measured. Measures
+ * again when the candidates or the pick change.
  */
-function useFitCount(total: number) {
+function useFit(line: (n: number) => string[], key: string, max: number) {
 	const ref = useRef<HTMLDivElement>(null);
-	const [fit, setFit] = useState(total);
+	const [fit, setFit] = useState(max);
+	const lineRef = useRef(line);
+	lineRef.current = line;
 	useLayoutEffect(() => {
 		const el = ref.current;
 		if (!el) return;
 		const measure = () => {
 			const gap = Number.parseFloat(getComputedStyle(el).columnGap) || 0;
+			const width = new Map<string, number>();
+			for (const chip of el.querySelectorAll<HTMLElement>("[data-fit]"))
+				width.set(chip.dataset.fit ?? "", chip.offsetWidth);
 			const all = el.querySelector<HTMLElement>("[data-fit-all]");
-			let used = all?.offsetWidth ?? 0;
 			let n = 0;
-			for (const chip of el.querySelectorAll<HTMLElement>("[data-fit]")) {
-				used += chip.offsetWidth + gap;
+			for (let k = 1; k <= max; k++) {
+				const used = lineRef
+					.current(k)
+					.reduce(
+						(sum, id) => sum + (width.get(id) ?? 0) + gap,
+						all?.offsetWidth ?? 0,
+					);
 				if (used > el.clientWidth) break;
-				n++;
+				n = k;
 			}
 			setFit(n);
 		};
@@ -62,7 +73,7 @@ function useFitCount(total: number) {
 		const ro = new ResizeObserver(measure);
 		ro.observe(el);
 		return () => ro.disconnect();
-	}, [total]);
+	}, [key, max]);
 	return { ref, fit };
 }
 
@@ -90,9 +101,13 @@ export function CategoryLine({
 	const t = useTranslations("entry.expense");
 	const [open, setOpen] = useState(false);
 	const mine = categories.filter((c) => c.kind === kind);
-	const ids = lineIds(recents, mine, value, LINE_MAX);
+	const line = (n: number) => lineIds(recents, mine, value, n);
+	const pool = line(LINE_MAX);
+	const { ref, fit } = useFit(line, `${pool.join()}|${value}`, pool.length);
+	// The picked category always shows: it takes the first slot when it is not a recent.
+	const shown = line(fit);
+	const ids = [...shown, ...pool.filter((id) => !shown.includes(id))];
 	const byId = new Map(mine.map((c) => [c.id, c]));
-	const { ref, fit } = useFitCount(ids.length);
 	return (
 		<div
 			aria-label={t("category")}
@@ -108,9 +123,9 @@ export function CategoryLine({
 					<FilterChip
 						className={cn(
 							on && ring && "outline-2 outline-brand outline-offset-2",
-							i >= fit && "invisible absolute",
+							i >= shown.length && "invisible absolute",
 						)}
-						data-fit=""
+						data-fit={id}
 						key={id}
 						lead={<CategoryGlyph category={c} />}
 						onClick={() => onPick(id)}
