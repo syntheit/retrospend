@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useRowDates } from "~/components/rows/dates";
 import { Row, RowList } from "~/components/rows/row";
 import { TABLE_LOOK } from "~/components/table/table-style";
+import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { StatusDot } from "~/components/ui/status-dot";
 import {
@@ -38,13 +39,58 @@ export interface ReviewBodyProps {
 	onKind: (index: number, kind: ImportKind) => void;
 }
 
+/**
+ * A likely match (queue-import-dupes.md): an Activity row with the same
+ * amount within 3 days. The row stays in; Skip leaves it out in one tap.
+ */
+export function PossibleFlag({
+	r,
+	kept,
+	onSkip,
+}: {
+	r: ReviewRow;
+	kept: boolean;
+	onSkip: () => void;
+}) {
+	const t = useTranslations("importPage.review");
+	const { short } = useRowDates();
+	if (!r.possible) return null;
+	return (
+		<span className="inline-flex flex-wrap items-center gap-2" data-possible="">
+			<span data-user-text="">
+				<StatusDot
+					kind="review"
+					label={t("possible", {
+						title: r.possible.title,
+						date: short(r.possible.date),
+					})}
+					size="sm"
+				/>
+			</span>
+			{kept ? (
+				<Button kind="ghost" onClick={onSkip} size="sm">
+					{t("skipOne")}
+				</Button>
+			) : null}
+		</span>
+	);
+}
+
 /** The status a row shows instead of its controls. */
-function RowStatus({ r }: { r: ReviewRow }) {
+function RowStatus({
+	r,
+	kept,
+	onSkip,
+}: {
+	r: ReviewRow;
+	kept: boolean;
+	onSkip: () => void;
+}) {
 	const t = useTranslations("importPage.review");
 	if (r.duplicate)
 		return <StatusDot kind="settled" label={t("already")} size="sm" />;
 	if (r.noRate) return <StatusDot kind="noRate" size="sm" />;
-	return null;
+	return <PossibleFlag kept={kept} onSkip={onSkip} r={r} />;
 }
 
 /**
@@ -133,7 +179,11 @@ export function ReviewTable({
 								<RowMoney r={r} />
 							</TableCell>
 							<TableCell>
-								<RowStatus r={r} />
+								<RowStatus
+									kept={kept}
+									onSkip={() => onChoice(r.index, { keep: false })}
+									r={r}
+								/>
 							</TableCell>
 						</TableRow>
 					);
@@ -191,9 +241,12 @@ export function ReviewList({
 											value={c.categoryId}
 										/>
 									</>
-								) : (
-									<RowStatus r={r} />
-								)}
+								) : null}
+								<RowStatus
+									kept={kept}
+									onSkip={() => onChoice(r.index, { keep: false })}
+									r={r}
+								/>
 							</div>
 						}
 						title={r.title}
