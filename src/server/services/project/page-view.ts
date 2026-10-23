@@ -7,11 +7,13 @@
  * the user is a member first.
  */
 import { getImageUrl } from "~/lib/image-url";
+import { dayKey } from "~/lib/time-zone";
 import type { Money } from "~/server/figures/registry";
 import { toMinor } from "~/server/services/envelope/units";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
 import { batchResolveIdentities, type Identity } from "./identities";
 import { membershipOf } from "./membership";
@@ -216,7 +218,8 @@ export async function readProjectPage(
 		myRole: meRow?.role ?? null,
 		excludeFromAnalytics: meRow?.excludeFromAnalytics ?? false,
 		solo: others.length === 0,
-		today: day(new Date()),
+		/** Today in the user's zone, for "Today" and the date pickers. */
+		today: dayKey(new Date(), await userTimeZone(userId)),
 		expenseCount: expenses.length,
 		firstExpense: expenses.length
 			? day((expenses.at(-1) as Expense).date)
