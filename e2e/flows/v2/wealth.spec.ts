@@ -11,11 +11,11 @@ import { untilSaved } from "../../helpers/trpc";
 // No figure audit yet: the figures registry has no netWorth or account
 // figures until track 2D registers them, so the page tags none and the audit
 // would only report them missing (docs/ui/GAPS.md, "Wealth and Currencies:
-// figure ids"). Add `audit.checkPage(page, "wealth")` when 2D lands.
+// figure ids"). 2D registered netWorth; add `audit.checkPage(page,
+// "wealth")` once the page tags it.
 //
-// The wealth mutations take cuid ids and the seed's account ids are
-// readable strings, so the write steps run on an account this flow adds
-// through the page (the server gives it a cuid).
+// The write steps run on an account this flow adds through the page, so
+// the seeded balances other flows read stay as the seed wrote them.
 
 test.use({ storageState: personaStorageState(SOFIA.username) });
 

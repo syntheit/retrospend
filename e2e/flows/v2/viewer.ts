@@ -13,8 +13,8 @@ export const V2_VIEWER = MARTIN;
 export const V2_VIEWER_SESSION = personaStorageState(MARTIN.username);
 
 /**
- * A category made through the app, for today's modals: they validate ids as
- * cuids, and the seed's readable ids are not. Returns its name.
+ * A category made through the app, so the rows these flows add land in a
+ * category no other flow counts. Returns its name.
  */
 export async function realCategory(page: Page, name: string): Promise<string> {
 	const origin = new URL(page.url()).origin;

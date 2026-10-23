@@ -14,9 +14,9 @@ import { untilSaved } from "../../helpers/trpc";
 // No figure audit yet: rates are not in the figures registry (GAPS,
 // "Wealth and Currencies: figure ids").
 //
-// Favorites go through preferences.toggleFavoriteExchangeRate, which takes
-// a cuid; the seed's rate ids are readable strings, so this flow adds one
-// EUR rate with a cuid-shaped id (0.9 per USD: 1 EUR is ARS 1,611.11).
+// The favorite step needs a currency the seed has no rate for, so this flow
+// adds one EUR rate with a cuid-shaped id (0.9 per USD: 1 EUR is
+// ARS 1,611.11).
 
 /** The EUR rate the favorite step needs. */
 async function addEurRate(): Promise<void> {
