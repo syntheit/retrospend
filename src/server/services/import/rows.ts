@@ -95,6 +95,17 @@ export function categoryKindFor(kind: ImportKind): "INCOME" | "EXPENSE" {
 }
 
 const ROW_SKIP = /^Row (\d+): .*skipping$/;
+const NO_RATE = /^Row \d+: No exchange rate /;
+
+function skippedRows(warnings: unknown, noRate: boolean): number {
+	if (!Array.isArray(warnings)) return 0;
+	const rows = new Set<string>();
+	for (const w of warnings) {
+		const m = typeof w === "string" ? ROW_SKIP.exec(w) : null;
+		if (m?.[1] && NO_RATE.test(m[0]) === noRate) rows.add(m[1]);
+	}
+	return rows.size;
+}
 
 /**
  * Rows of the file the reader could not read (no date, no amount...). The
@@ -102,11 +113,13 @@ const ROW_SKIP = /^Row (\d+): .*skipping$/;
  * file's rows and are never imported.
  */
 export function unreadableCount(warnings: unknown): number {
-	if (!Array.isArray(warnings)) return 0;
-	const rows = new Set<string>();
-	for (const w of warnings) {
-		const m = typeof w === "string" ? ROW_SKIP.exec(w) : null;
-		if (m?.[1]) rows.add(m[1]);
-	}
-	return rows.size;
+	return skippedRows(warnings, false);
+}
+
+/**
+ * Rows the reader read but found no rate for (no rate in the file and none
+ * in the table): readable, so they count as "without a rate", not unreadable.
+ */
+export function noRateCount(warnings: unknown): number {
+	return skippedRows(warnings, true);
 }

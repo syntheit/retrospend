@@ -15,7 +15,13 @@ import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
 import type { Prisma } from "~prisma";
+import { forgetMonthViews } from "../envelope/month-read";
 import { dec, toMinor } from "../envelope/units";
+import {
+	FIGURE_LEFT_TO_SPEND,
+	FIGURE_NOT_PLANNED_YET,
+} from "../envelope/verdict";
+import { INCOME_FIGURES } from "../income/add.mutation";
 import type { MoneyMutation } from "../preview/types";
 import { loadRateContext } from "../rate-types";
 import { bookImportRow, type ImportRate } from "./book";
@@ -25,18 +31,53 @@ import {
 	type PreparedRow,
 	prepareRows,
 } from "./prepare";
+import { cachedRates } from "./rate-cache";
 import { loadReviewableJob } from "./review";
 import {
 	categoryKindFor,
 	IMPORT_KINDS,
 	type ImportKind,
 	kindColumns,
+	noRateCount,
 	type StoredRow,
 	storedRows,
 	unreadableCount,
 } from "./rows";
 
 type Tx = Prisma.TransactionClient;
+
+/**
+ * What an import can move: spending (expenses, refunds), money in and the
+ * budget (income), and the every-preview accounts and net worth.
+ */
+export const IMPORT_FIGURES = [
+	"spent",
+	...INCOME_FIGURES,
+	FIGURE_NOT_PLANNED_YET,
+	FIGURE_LEFT_TO_SPEND,
+];
+
+/**
+ * Claims a reviewable job for this commit, so two commits of one file (two
+ * tabs, a double click) cannot both write: the second finds it claimed. The
+ * row lock holds the other transaction until this one ends.
+ */
+async function claimJob(tx: Tx, userId: string, jobId: string) {
+	const { count } = await tx.importJob.updateMany({
+		where: {
+			id: jobId,
+			userId,
+			status: { in: ["READY_FOR_REVIEW", "REVIEWING"] },
+		},
+		data: { status: "COMPLETED", completedAt: new Date() },
+	});
+	if (count === 0) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "This file was already imported",
+		});
+	}
+}
 
 export interface ImportChoice {
 	readonly index: number;
@@ -162,15 +203,17 @@ function rowData(
 
 export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 	id: "import.commit",
-	touches: ["spent"],
+	touches: IMPORT_FIGURES,
 	run: async (tx, input, actor) => {
 		const userId = actor.userId;
 		const job = await loadReviewableJob(tx, userId, input.jobId);
+		await claimJob(tx, userId, job.id);
+		const rates = cachedRates(tx);
 		const stored = storedRows(job.transactions);
 		const { rows, badDates } = prepareRows(stored, input);
 		const choices = choicesOf(input, stored.length);
 		const [ctx, categories, keys] = await Promise.all([
-			loadRateContext(tx, userId),
+			loadRateContext(rates, userId),
 			checkedCategories(tx, userId, choices.values()),
 			existingKeys(tx, userId, rows, input.timeZone),
 		]);
@@ -187,7 +230,7 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 			if (isDuplicate(keys, row, kind, input.timeZone)) duplicates++;
 			else if (!choice?.keep) unchecked++;
 			else {
-				const rate = await bookImportRow(tx, ctx, row.rate);
+				const rate = await bookImportRow(rates, ctx, row.rate);
 				if (!rate) noRate++;
 				else {
 					const c = { row, kind, rate };
@@ -206,6 +249,8 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 			}
 		}
 		if (data.length > 0) await tx.expense.createMany({ data });
+		// Budget figures memoize the month per transaction; income moved it.
+		forgetMonthViews(tx);
 
 		const transactions = stored.map((s, i) => {
 			const { expenseId: _old, ...rest } = s;
@@ -215,8 +260,6 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 		await tx.importJob.update({
 			where: { id: job.id },
 			data: {
-				status: "COMPLETED",
-				completedAt: new Date(),
 				importedCount: data.length,
 				skippedDuplicates: duplicates,
 				transactions: transactions as unknown as Prisma.InputJsonValue,
@@ -228,13 +271,16 @@ export const commitImport: MoneyMutation<CommitImportInput, ImportSummary> = {
 			value: {
 				jobId: job.id,
 				fileName: job.fileName,
-				fileRows: stored.length + unreadableCount(job.warnings),
+				fileRows:
+					stored.length +
+					unreadableCount(job.warnings) +
+					noRateCount(job.warnings),
 				created: data.length,
 				byKind: totals(created),
 				duplicates,
 				unchecked,
 				unreadable: unreadableCount(job.warnings) + badDates,
-				noRate,
+				noRate: noRate + noRateCount(job.warnings),
 				from: days[0] ?? null,
 				to: days.at(-1) ?? null,
 			},

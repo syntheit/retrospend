@@ -193,6 +193,8 @@
 		"undo": "Deshacer importación",
 		"again": "Importar otro archivo",
 		"toast": "{count, plural, one {# fila importada} other {# filas importadas}}",
-		"undone": "Importación deshecha"
+		"undone": "Importación deshecha",
+		"undoFailed": "No se pudo deshacer la importación",
+		"undoFailedWhy": "No se pudo deshacer la importación. {reason}"
 	}
 }

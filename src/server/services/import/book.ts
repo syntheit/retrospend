@@ -29,6 +29,8 @@ export interface ImportRateInput {
 	date: Date;
 	exchangeRate?: number;
 	amountInUSD?: number;
+	/** "table": the reader filled the rate in itself, so it is not the file's. */
+	rateSource?: "table";
 }
 
 export interface HomeLeg {
@@ -49,7 +51,9 @@ export interface ImportRate {
 /** The entry leg the file brings: its rate, or one derived from its USD amount. */
 export function fileRateOf(row: ImportRateInput): number | null {
 	const currency = row.currency.toUpperCase();
-	if (currency === USD) return null;
+	// A rate the reader looked up (at no rate type) is not the file's: the
+	// table books it again at the user's default type.
+	if (currency === USD || row.rateSource === "table") return null;
 	if (isValidRate(row.exchangeRate)) return row.exchangeRate;
 	if (isValidRate(row.amountInUSD) && row.amount > 0)
 		return rateFromUsdPerUnit(currency, row.amountInUSD / row.amount);

@@ -13,9 +13,11 @@ import { toMinor } from "../envelope/units";
 import { loadRateContext } from "../rate-types";
 import { bookImportRow, type ImportRate } from "./book";
 import { existingKeys, isDuplicate, prepareRows } from "./prepare";
+import { cachedRates } from "./rate-cache";
 import {
 	categoryKindFor,
 	type ImportKind,
+	noRateCount,
 	storedRows,
 	unreadableCount,
 } from "./rows";
@@ -148,8 +150,9 @@ export async function importReview(
 	const job = await loadReviewableJob(db, userId, jobId);
 	const stored = storedRows(job.transactions);
 	const { rows, badDates } = prepareRows(stored, options);
+	const rates = cachedRates(db);
 	const [ctx, categories, keys] = await Promise.all([
-		loadRateContext(db, userId),
+		loadRateContext(rates, userId),
 		db.category.findMany({
 			where: { userId },
 			select: { id: true, name: true, kind: true },
@@ -174,7 +177,7 @@ export async function importReview(
 			(fileCategory ? byName.get(fileCategory.toLowerCase()) : undefined);
 		const categoryId = match && match.kind === want ? match.id : null;
 		const duplicate = isDuplicate(keys, row, kind, options.timeZone);
-		const rate = await bookImportRow(db, ctx, row.rate);
+		const rate = await bookImportRow(rates, ctx, row.rate);
 		const currency = row.rate.currency;
 		if (!categoryId && fileCategory && !duplicate) {
 			const titles = unmatched.get(fileCategory) ?? [];
@@ -210,10 +213,15 @@ export async function importReview(
 		homeCurrency: home,
 		rows: out,
 		counts: {
-			fileRows: stored.length + unreadableCount(job.warnings),
+			fileRows:
+				stored.length +
+				unreadableCount(job.warnings) +
+				noRateCount(job.warnings),
 			unreadable,
 			duplicates: out.filter((r) => r.duplicate).length,
-			noRate: out.filter((r) => r.noRate && !r.duplicate).length,
+			noRate:
+				out.filter((r) => r.noRate && !r.duplicate).length +
+				noRateCount(job.warnings),
 		},
 		unmatched: [...unmatched].map(([name, titles]) => ({
 			name,

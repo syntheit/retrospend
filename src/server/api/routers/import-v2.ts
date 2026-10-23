@@ -7,8 +7,8 @@ import {
 import { recentImports } from "~/server/services/import/recent";
 import { importReview } from "~/server/services/import/review";
 import { IMPORT_KINDS } from "~/server/services/import/rows";
+import { importRunner } from "~/server/services/import/runner";
 import { undoImport } from "~/server/services/import/undo.mutation";
-import { forUser } from "~/server/services/preview";
 
 const currency = z
 	.string()
@@ -61,7 +61,7 @@ export const importV2Router = createTRPCRouter({
 	commitPreview: protectedProcedure
 		.input(commitSchema)
 		.query(({ ctx, input }) =>
-			forUser(ctx.session.user.id).preview(
+			importRunner(ctx.session.user.id).preview(
 				commitImport,
 				commitInput(input, ctx),
 			),
@@ -70,13 +70,19 @@ export const importV2Router = createTRPCRouter({
 	commit: protectedProcedure
 		.input(commitSchema)
 		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).apply(commitImport, commitInput(input, ctx)),
+			importRunner(ctx.session.user.id).apply(
+				commitImport,
+				commitInput(input, ctx),
+			),
 		),
 
 	/** Undo import: deletes the batch and makes the file reviewable again. */
 	undo: protectedProcedure
 		.input(z.object({ jobId: z.string().min(1).max(64) }))
 		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).apply(undoImport, input),
+			importRunner(ctx.session.user.id).apply(undoImport, {
+				...input,
+				timeZone: ctx.timeZone,
+			}),
 		),
 });

@@ -70,7 +70,11 @@ export function prepareRows(
 				date,
 				...(override
 					? {}
-					: { exchangeRate: row.exchangeRate, amountInUSD: row.amountInUSD }),
+					: {
+							exchangeRate: row.exchangeRate,
+							amountInUSD: row.amountInUSD,
+							rateSource: row.rateSource,
+						}),
 			},
 			proposed: proposeKind(row),
 		});

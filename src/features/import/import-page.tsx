@@ -162,8 +162,14 @@ export function ImportPage() {
 			<DoneStep
 				onAgain={() => setFlow({ step: "choose" })}
 				onUndo={() =>
-					void undoImport(flow.summary.jobId).then(() =>
-						toast.info(t("done.undone")),
+					void undoImport(flow.summary.jobId).then(
+						() => toast.info(t("done.undone")),
+						(e: unknown) =>
+							toast.failed(
+								e instanceof Error
+									? t("done.undoFailedWhy", { reason: e.message })
+									: t("done.undoFailed"),
+							),
 					)
 				}
 				summary={flow.summary}

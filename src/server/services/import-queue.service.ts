@@ -34,8 +34,9 @@ export interface ImporterTransaction {
 	categoryId?: string;
 	/** From an "excludeFromAnalytics" CSV column; unset means the category default. */
 	excludeFromAnalytics?: boolean;
-	/** From a "kind" CSV column (expense, income, refund, not spending); the import review proposes it. */
+	/** kind: a "kind" CSV column (the review proposes it). rateSource "table": the reader filled the rate in, at no rate type. */
 	kind?: string;
+	rateSource?: "table";
 }
 
 export interface CreateJobInput {
@@ -66,7 +67,6 @@ export class ImportQueueService {
 	 * Creates a new import job and triggers queue processing.
 	 */
 	async createJob(userId: string, input: CreateJobInput) {
-		// Validate file size
 		if (input.fileSize > MAX_FILE_SIZE) {
 			throw new TRPCError({
 				code: "BAD_REQUEST",
@@ -74,7 +74,6 @@ export class ImportQueueService {
 			});
 		}
 
-		// Check pending job limit
 		const pendingCount = await this.db.importJob.count({
 			where: {
 				userId,
@@ -89,7 +88,6 @@ export class ImportQueueService {
 			});
 		}
 
-		// Create the job
 		const job = await this.db.importJob.create({
 			data: {
 				id: generateId(),
@@ -228,7 +226,6 @@ export class ImportQueueService {
 			throw new Error("No file data found for CSV job");
 		}
 
-		// Decode base64 fileData
 		const fileBuffer = Buffer.from(job.fileData, "base64");
 
 		let csvContent: string;
@@ -354,7 +351,7 @@ export class ImportQueueService {
 				// convention (fiat: units per USD, crypto: USD per coin).
 				let exchangeRate: number;
 				let amountInUSD: number;
-
+				let fromTable = false;
 				if (currency === USD) {
 					exchangeRate = 1;
 					amountInUSD = roundUSD(amount);
@@ -387,6 +384,7 @@ export class ImportQueueService {
 					}
 					exchangeRate = picked.rate;
 					amountInUSD = computeAmountInUSD(amount, currency, exchangeRate);
+					fromTable = true;
 				}
 
 				transactions.push({
@@ -402,6 +400,7 @@ export class ImportQueueService {
 					category,
 					...(excludeFromAnalytics === undefined ? {} : { excludeFromAnalytics }),
 					...(row.kind?.trim() ? { kind: row.kind.trim() } : {}),
+					...(fromTable ? { rateSource: "table" as const } : {}),
 				});
 			} catch (error) {
 				warnings.push(

@@ -193,6 +193,8 @@
 		"undo": "Desfazer importação",
 		"again": "Importar outro arquivo",
 		"toast": "{count, plural, one {# linha importada} other {# linhas importadas}}",
-		"undone": "Importação desfeita"
+		"undone": "Importação desfeita",
+		"undoFailed": "Não foi possível desfazer a importação",
+		"undoFailedWhy": "Não foi possível desfazer a importação. {reason}"
 	}
 }

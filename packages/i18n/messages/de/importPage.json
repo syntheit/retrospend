@@ -193,6 +193,8 @@
 		"undo": "Import rückgängig machen",
 		"again": "Weitere Datei importieren",
 		"toast": "{count, plural, one {# Zeile} other {# Zeilen}} importiert",
-		"undone": "Import rückgängig gemacht"
+		"undone": "Import rückgängig gemacht",
+		"undoFailed": "Der Import konnte nicht rückgängig gemacht werden",
+		"undoFailedWhy": "Der Import konnte nicht rückgängig gemacht werden. {reason}"
 	}
 }

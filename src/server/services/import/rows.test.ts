@@ -3,6 +3,7 @@ import {
 	IMPORT_KINDS,
 	kindColumns,
 	kindOfColumns,
+	noRateCount,
 	proposeKind,
 	storedRows,
 	unreadableCount,
@@ -59,6 +60,15 @@ describe("unreadableCount", () => {
 			]),
 		).toBe(2);
 		expect(unreadableCount(null)).toBe(0);
+	});
+
+	it("counts a row with no rate as no rate, not unreadable", () => {
+		const warnings = [
+			"Row 2: No exchange rate or USD amount for XYZ, skipping",
+			"Row 3: Missing date, skipping",
+		];
+		expect(unreadableCount(warnings)).toBe(1);
+		expect(noRateCount(warnings)).toBe(1);
 	});
 });
 

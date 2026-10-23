@@ -35,6 +35,7 @@ import {
 	ReviewNotice,
 	ReviewToolbar,
 	type ReviewView,
+	ViewSwitch,
 } from "./review-parts";
 import { ReviewList, ReviewTable } from "./review-table";
 import type { CategoryPick } from "./row-controls";
@@ -157,6 +158,7 @@ export function ReviewStep({
 		<div data-testid="import-review">
 			<div className="mb-2 flex flex-wrap items-center gap-2">
 				<CountsLine counts={counts} review={data} />
+				<ViewSwitch onView={setView} phone={phone} view={view} />
 			</div>
 			<ReviewNotice
 				dismissed={dismissed}
@@ -166,20 +168,16 @@ export function ReviewStep({
 				unmatched={unmatched}
 				unreadable={data.counts.unreadable}
 			/>
-			{view === "cards" ? null : (
-				<ReviewToolbar
-					currency={currency}
-					dups={counts.duplicates}
-					onCurrency={setCurrency}
-					onReread={onReread}
-					onShowDups={setShowDups}
-					onView={setView}
-					phone={phone}
-					review={data}
-					showDups={showDups}
-					view={view}
-				/>
-			)}
+			<ReviewToolbar
+				currency={currency}
+				dups={counts.duplicates}
+				onCurrency={setCurrency}
+				onReread={onReread}
+				onShowDups={setShowDups}
+				phone={phone}
+				review={data}
+				showDups={showDups}
+			/>
 			{view === "cards" ? (
 				<ReviewCards
 					{...body}

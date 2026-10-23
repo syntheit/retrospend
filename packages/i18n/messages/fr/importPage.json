@@ -193,6 +193,8 @@
 		"undo": "Annuler l'import",
 		"again": "Importer un autre fichier",
 		"toast": "{count, plural, one {# ligne importée} other {# lignes importées}}",
-		"undone": "Import annulé"
+		"undone": "Import annulé",
+		"undoFailed": "Impossible d'annuler l'importation",
+		"undoFailedWhy": "Impossible d'annuler l'importation. {reason}"
 	}
 }

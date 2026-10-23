@@ -193,6 +193,8 @@
 		"undo": "Undo import",
 		"again": "Import another file",
 		"toast": "Imported {count, plural, one {# row} other {# rows}}",
-		"undone": "Import undone"
+		"undone": "Import undone",
+		"undoFailed": "Couldn't undo the import",
+		"undoFailedWhy": "Couldn't undo the import. {reason}"
 	}
 }

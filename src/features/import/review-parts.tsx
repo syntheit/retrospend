@@ -111,7 +111,41 @@ export function ReviewNotice({
 	return null;
 }
 
-/** Currency for every row, Show already in Activity, Change how it is read; the view switch at the end. */
+/**
+ * The views of the rows (import.html: on the counts line): Table or Cards on
+ * desktop, Cards or List on phones.
+ */
+export function ViewSwitch({
+	view,
+	onView,
+	phone,
+}: {
+	view: ReviewView;
+	onView: (v: ReviewView) => void;
+	phone: boolean;
+}) {
+	const t = useTranslations("importPage.review");
+	return (
+		<Segmented
+			label={t("view.label")}
+			onChange={onView}
+			options={
+				phone
+					? [
+							{ value: "cards", label: t("view.cards") },
+							{ value: "list", label: t("view.list") },
+						]
+					: [
+							{ value: "table", label: t("view.table") },
+							{ value: "cards", label: t("view.cards") },
+						]
+			}
+			value={view}
+		/>
+	);
+}
+
+/** Currency for every row, Show already in Activity, Change how it is read: every view has them. */
 export function ReviewToolbar({
 	review,
 	currency,
@@ -120,8 +154,6 @@ export function ReviewToolbar({
 	onShowDups,
 	dups,
 	onReread,
-	view,
-	onView,
 	phone,
 }: {
 	review: ImportReview;
@@ -131,8 +163,6 @@ export function ReviewToolbar({
 	onShowDups: (on: boolean) => void;
 	dups: number;
 	onReread: (() => void) | null;
-	view: ReviewView;
-	onView: (v: ReviewView) => void;
 	phone: boolean;
 }) {
 	const t = useTranslations("importPage.review");
@@ -140,27 +170,7 @@ export function ReviewToolbar({
 		...new Set([review.homeCurrency, ...review.currencies]),
 	].sort();
 	return (
-		<Toolbar
-			end={
-				<Segmented
-					label={t("view.label")}
-					onChange={onView}
-					options={
-						phone
-							? [
-									{ value: "cards", label: t("view.cards") },
-									{ value: "list", label: t("view.list") },
-								]
-							: [
-									{ value: "table", label: t("view.table") },
-									{ value: "cards", label: t("view.cards") },
-								]
-					}
-					value={view}
-				/>
-			}
-			label={t("toolbar")}
-		>
+		<Toolbar label={t("toolbar")}>
 			<FilterChips className={phone ? "overflow-x-auto" : undefined}>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
