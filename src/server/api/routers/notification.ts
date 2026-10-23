@@ -4,26 +4,20 @@ import { env } from "~/env";
 import { verifyUnsubscribeToken } from "~/lib/unsubscribe-token";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import { db as globalDb } from "~/server/db";
+import {
+	countUnreadNotifications,
+	getNotificationPreferences,
+	listNotifications,
+	markAllNotificationsRead,
+	markNotificationRead,
+	NOTIFICATION_TYPES,
+	updateNotificationPreferences,
+} from "~/server/services/notifications";
 import type { NotificationType } from "~prisma";
 
-// All NotificationType values with their default email preference
-const ALL_TYPES: NotificationType[] = [
-	"EXPENSE_SPLIT",
-	"VERIFICATION_REQUEST",
-	"EXPENSE_EDITED",
-	"EXPENSE_DELETED",
-	"SETTLEMENT_RECEIVED",
-	"SETTLEMENT_CONFIRMED",
-	"SETTLEMENT_REJECTED",
-	"PERIOD_CLOSED",
-	"PARTICIPANT_ADDED",
-	"PAYMENT_REMINDER",
-];
-
-const EMAIL_ON_BY_DEFAULT = new Set<NotificationType>([
-	"VERIFICATION_REQUEST",
-	"PERIOD_CLOSED",
-]);
+const notificationTypeSchema = z.enum(
+	NOTIFICATION_TYPES as [NotificationType, ...NotificationType[]],
+);
 
 export const notificationRouter = createTRPCRouter({
 	/**
@@ -39,115 +33,46 @@ export const notificationRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			const { unreadOnly, limit, cursor } = input;
-
-			const items = await ctx.db.notification.findMany({
-				where: {
-					userId,
-					...(unreadOnly ? { isRead: false } : {}),
-				},
-				orderBy: { createdAt: "desc" },
-				...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-				take: limit + 1,
+			const items = await listNotifications(ctx.db, ctx.session.user.id, {
+				unreadOnly: input.unreadOnly,
+				take: input.limit + 1,
+				afterId: input.cursor,
 			});
-
-			let nextCursor: string | undefined;
-			if (items.length > limit) {
-				const last = items.pop();
-				nextCursor = last?.id;
-			}
-
-			return { items, nextCursor };
+			const nextCursor =
+				items.length > input.limit ? items[input.limit - 1]?.id : undefined;
+			return { items: items.slice(0, input.limit), nextCursor };
 		}),
 
 	/**
 	 * Count unread notifications. Polled frequently: kept fast with indexed query.
 	 */
-	unreadCount: protectedProcedure.query(async ({ ctx }) => {
-		const count = await ctx.db.notification.count({
-			where: { userId: ctx.session.user.id, isRead: false },
-		});
-		return { count };
-	}),
+	unreadCount: protectedProcedure.query(async ({ ctx }) => ({
+		count: await countUnreadNotifications(ctx.db, ctx.session.user.id),
+	})),
 
-	/**
-	 * Mark a single notification as read.
-	 */
 	markRead: protectedProcedure
 		.input(z.object({ id: z.string().min(1) }))
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.notification.updateMany({
-				where: { id: input.id, userId: ctx.session.user.id },
-				data: { isRead: true },
-			});
+			await markNotificationRead(ctx.db, ctx.session.user.id, input.id);
 			return { success: true };
 		}),
 
-	/**
-	 * Mark all notifications as read for the current user.
-	 */
 	markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
-		await ctx.db.notification.updateMany({
-			where: { userId: ctx.session.user.id, isRead: false },
-			data: { isRead: true },
-		});
+		await markAllNotificationsRead(ctx.db, ctx.session.user.id);
 		return { success: true };
 	}),
 
-	/**
-	 * Get notification preferences for the current user.
-	 * Creates default preferences if none exist yet.
-	 */
-	getPreferences: protectedProcedure.query(async ({ ctx }) => {
-		const userId = ctx.session.user.id;
+	/** Preferences per type, creating the defaults the first time. */
+	getPreferences: protectedProcedure.query(({ ctx }) =>
+		getNotificationPreferences(ctx.db, ctx.session.user.id),
+	),
 
-		const existing = await ctx.db.notificationPreference.findMany({
-			where: { userId },
-		});
-
-		const existingTypes = new Set(existing.map((p) => p.type));
-		const missing = ALL_TYPES.filter((t) => !existingTypes.has(t));
-
-		if (missing.length > 0) {
-			await ctx.db.notificationPreference.createMany({
-				data: missing.map((type) => ({
-					userId,
-					type,
-					inApp: true,
-					email: EMAIL_ON_BY_DEFAULT.has(type),
-					digestMode: false,
-				})),
-				skipDuplicates: true,
-			});
-		}
-
-		return ctx.db.notificationPreference.findMany({
-			where: { userId },
-			orderBy: { type: "asc" },
-		});
-	}),
-
-	/**
-	 * Upsert notification preferences for the current user.
-	 */
 	updatePreferences: protectedProcedure
 		.input(
 			z.object({
 				preferences: z.array(
 					z.object({
-						type: z.enum([
-							"EXPENSE_SPLIT",
-							"VERIFICATION_REQUEST",
-							"EXPENSE_EDITED",
-							"EXPENSE_DELETED",
-							"SETTLEMENT_RECEIVED",
-							"SETTLEMENT_CONFIRMED",
-							"SETTLEMENT_REJECTED",
-							"PERIOD_CLOSED",
-							"PARTICIPANT_ADDED",
-							"PAYMENT_REMINDER",
-						]),
+						type: notificationTypeSchema,
 						inApp: z.boolean(),
 						email: z.boolean(),
 						digestMode: z.boolean(),
@@ -156,22 +81,11 @@ export const notificationRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-
-			await Promise.all(
-				input.preferences.map((pref) =>
-					ctx.db.notificationPreference.upsert({
-						where: { userId_type: { userId, type: pref.type } },
-						create: { userId, ...pref },
-						update: {
-							inApp: pref.inApp,
-							email: pref.email,
-							digestMode: pref.digestMode,
-						},
-					}),
-				),
+			await updateNotificationPreferences(
+				ctx.db,
+				ctx.session.user.id,
+				input.preferences,
 			);
-
 			return { success: true };
 		}),
 
@@ -269,7 +183,7 @@ export const notificationRouter = createTRPCRouter({
 			}
 
 			await Promise.all(
-				ALL_TYPES.map((type) =>
+				NOTIFICATION_TYPES.map((type) =>
 					globalDb.notificationPreference.upsert({
 						where: { userId_type: { userId: input.userId, type } },
 						create: {

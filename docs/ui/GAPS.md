@@ -127,3 +127,10 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 
 - **Clicks before hydration do nothing (S4).** Buttons rendered on the server (Add Expense, New Project, the user menu) ignore a click that lands before React hydrates; the user has to click again, and nothing says the page is not ready yet. The e2e suite waits for `html[data-hydrated="true"]` (`src/components/hydration-marker.tsx`) before it clicks. The v2 pages should either work without JavaScript for their primary action or show it as not ready until hydration.
 - **Profile form labels point nowhere (S4).** In `src/components/settings/profile-section.tsx` the labels use `htmlFor="name"` (and `username`, `email`) while `FormControl` gives each input a generated id, so screen readers announce the fields without their labels. The e2e spec selects the name field by `input[name="name"]` until the form is rebuilt.
+
+## 9. Push delivery (M12)
+
+Registration (`src/server/services/push-device.service.ts`) is built; the sender is not. What the sender must do:
+
+- **Resolve and pin the endpoint's IP.** Registration refuses IP literals, `localhost` and `*.localhost` (unless listed in `PUSH_ENDPOINT_ALLOW_HOSTS`), but a public name can resolve to a private address, or change between check and send. The sender resolves the host once, refuses loopback, private (RFC 1918, `fc00::/7`), link-local (`169.254.0.0/16`, `fe80::/10`), CGNAT, unspecified and multicast addresses (and IPv4-mapped forms of them), connects to the address it checked, and never follows redirects. Allowlisted hosts skip the range check only.
+- **Skip devices whose credential lapsed.** A row goes when its session or API key is deleted (sign out, session revoke, admin deactivation, token revoke) or its key is disabled. An expired session or key keeps its row until the session cleanup removes it, so the sender joins `session` or `apikey` and skips rows whose credential has expired, and skips users who are not active.

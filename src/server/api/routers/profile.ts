@@ -1,24 +1,19 @@
 import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
-import crypto from "crypto";
 import { z } from "zod";
-import { env } from "~/env";
 import {
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { db, db as globalDb } from "~/server/db";
-import {
-	getEmailChangeAlertTemplate,
-	getEmailChangeVerificationTemplate,
-} from "~/server/email-templates";
-import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
-import { hashToken } from "~/server/lib/tokens";
+import { db } from "~/server/db";
 import { getImageUrl } from "~/server/storage";
-import { sendEmail } from "~/server/mailer";
-import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
-import { validateAndProcessUsernameChange } from "~/server/services/username.service";
+import {
+	cancelPendingEmailChange,
+	getBackgroundSettings,
+	saveBackgroundSettings,
+	updateProfile,
+} from "~/server/services/profile.service";
 import {
 	backgroundSettingsSchema,
 	defaultBackgroundSettings,
@@ -30,32 +25,14 @@ export type { BackgroundSettings };
 export { defaultBackgroundSettings };
 
 export const profileRouter = createTRPCRouter({
-	getBackgroundSettings: protectedProcedure.query(async ({ ctx }) => {
-		const setting = await ctx.db.userPageSetting.findUnique({
-			where: {
-				userId_page: { userId: ctx.session.user.id, page: "PROFILE" },
-			},
-			select: { settings: true },
-		});
-		if (!setting) return defaultBackgroundSettings;
-		const parsed = backgroundSettingsSchema.safeParse(setting.settings);
-		return parsed.success ? parsed.data : defaultBackgroundSettings;
-	}),
+	getBackgroundSettings: protectedProcedure.query(({ ctx }) =>
+		getBackgroundSettings(ctx.db, ctx.session.user.id),
+	),
 
 	saveBackgroundSettings: protectedProcedure
 		.input(backgroundSettingsSchema)
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.userPageSetting.upsert({
-				where: {
-					userId_page: { userId: ctx.session.user.id, page: "PROFILE" },
-				},
-				create: {
-					userId: ctx.session.user.id,
-					page: "PROFILE",
-					settings: input,
-				},
-				update: { settings: input },
-			});
+			await saveBackgroundSettings(ctx.db, ctx.session.user.id, input);
 			return { success: true };
 		}),
 
@@ -165,162 +142,18 @@ export const profileRouter = createTRPCRouter({
 					.regex(
 						/^[a-zA-Z0-9]+$/,
 						"Username can only contain letters and numbers",
-					)
-					.transform((v) => v.toLowerCase()),
-				email: z
-					.email("Invalid email address")
-					.max(254)
-					.transform((v) => v.toLowerCase().trim()),
+					),
+				email: z.email("Invalid email address").max(254),
 				currentPassword: z.string().min(1).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			if (input.username !== session.user.username) {
-				await validateAndProcessUsernameChange(
-					db,
-					session.user.id,
-					session.user.username,
-					input.username,
-				);
-			}
-
-			const isEmailChange = input.email !== session.user.email;
-
-			if (isEmailChange) {
-				// Require password verification for email changes
-				if (!input.currentPassword) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: "Current password is required to change email",
-					});
-				}
-
-				const credentialAccount = await db.account.findFirst({
-					where: { userId: session.user.id, providerId: "credential" },
-				});
-				if (!credentialAccount?.password) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: "Password verification is not available for this account",
-					});
-				}
-
-				const isValid = await verifyPassword({
-					password: input.currentPassword,
-					hash: credentialAccount.password,
-				});
-				if (!isValid) {
-					throw new TRPCError({
-						code: "BAD_REQUEST",
-						message: "Current password is incorrect",
-					});
-				}
-
-				// Check if email is already taken (by another user's primary or pending email)
-				const existingEmail = await db.user.findFirst({
-					where: {
-						OR: [
-							{ email: input.email },
-							{ pendingEmail: input.email },
-						],
-						id: { not: session.user.id },
-					},
-				});
-				if (existingEmail) {
-					throw new TRPCError({
-						code: "CONFLICT",
-						message: "Email is already in use",
-					});
-				}
-			}
-
-			const canSendEmail = await isEmailDeliveryEnabled();
-
-			// If email is changing and we can send verification emails, use the pending flow
-			if (isEmailChange && canSendEmail) {
-				const token = crypto.randomBytes(32).toString("hex");
-				const hashedToken = hashToken(token);
-				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
-				const appUrl =
-					env.PUBLIC_URL ||
-					env.NEXT_PUBLIC_APP_URL ||
-					"http://localhost:1997";
-
-				const updated = await db.user.update({
-					where: { id: session.user.id },
-					data: {
-						name: input.name,
-						username: input.username,
-						pendingEmail: input.email,
-						pendingEmailToken: hashedToken,
-						pendingEmailExpiresAt: expiresAt,
-					},
-					select: {
-						id: true,
-						name: true,
-						username: true,
-						email: true,
-					},
-				});
-
-				// Send verification email to the NEW address
-				const confirmUrl = `${appUrl}/auth/confirm-email?token=${token}`;
-				const verificationHtml = getEmailChangeVerificationTemplate(
-					confirmUrl,
-					input.email,
-				);
-				sendEmail(
-					input.email,
-					"Confirm Your New Email Address",
-					verificationHtml,
-				).catch((err) =>
-					console.error("Failed to send email change verification:", err),
-				);
-
-				// Send security alert to the OLD address
-				const revertUrl = `${appUrl}/auth/revert-email?token=${token}`;
-				const alertHtml = getEmailChangeAlertTemplate(
-					revertUrl,
-					input.email,
-				);
-				sendEmail(
-					session.user.email,
-					"Security Alert: Email Change Requested",
-					alertHtml,
-				).catch((err) =>
-					console.error("Failed to send email change alert:", err),
-				);
-
-				return { ...updated, emailChangePending: true };
-			}
-
-			// No email change, or email is disabled - update directly
-			const updated = await db.user.update({
-				where: { id: session.user.id },
-				data: {
-					name: input.name,
-					username: input.username,
-					...(isEmailChange ? { email: input.email } : {}),
-				},
-				select: {
-					id: true,
-					name: true,
-					username: true,
-					email: true,
-				},
-			});
-
-			// With email off, addresses are trusted like at signup: if the account
-			// is verified, pick up guest sessions and ghosts for the new address,
-			// same as a confirmed email change. Needs the global db (RLS bypass);
-			// the helper re-checks emailVerified and never throws.
-			if (isEmailChange) {
-				await migrateGuestDataForVerifiedUser(globalDb, session.user.id);
-			}
-
-			return updated;
+			const { emailChangePending, user } = await updateProfile(
+				ctx.db,
+				ctx.session.user,
+				input,
+			);
+			return emailChangePending ? { ...user, emailChangePending: true } : user;
 		}),
 
 	getPendingEmail: protectedProcedure.query(async ({ ctx }) => {
@@ -338,14 +171,7 @@ export const profileRouter = createTRPCRouter({
 	}),
 
 	cancelPendingEmailChange: protectedProcedure.mutation(async ({ ctx }) => {
-		await ctx.db.user.update({
-			where: { id: ctx.session.user.id },
-			data: {
-				pendingEmail: null,
-				pendingEmailToken: null,
-				pendingEmailExpiresAt: null,
-			},
-		});
+		await cancelPendingEmailChange(ctx.db, ctx.session.user.id);
 		return { success: true };
 	}),
 
