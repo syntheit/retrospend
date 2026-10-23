@@ -349,7 +349,13 @@ describe("import.undo", () => {
 
 		expect(undone.value).toEqual({ jobId: s.jobId, removed: 5 });
 		expect(await importedCount(s.userId)).toBe(0);
-		const spentOf = (r: typeof applied) =>
+		const spentOf = (r: {
+			changes: readonly {
+				id: string;
+				currency: string;
+				delta: { minor: number };
+			}[];
+		}) =>
 			r.changes
 				.filter((c) => c.id === "spent")
 				.map((c) => `${c.currency} ${c.delta.minor}`);

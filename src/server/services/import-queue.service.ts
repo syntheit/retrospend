@@ -344,7 +344,6 @@ export class ImportQueueService {
 				const description = row.description?.trim() || "";
 				const category = row.category?.trim() || "";
 				const pricingSource = row.pricingsource?.trim() || "IMPORT";
-				const kind = row.kind?.trim() || undefined;
 				const excludeCell = row.excludefromanalytics?.trim().toLowerCase();
 				const excludeFromAnalytics =
 					excludeCell === undefined || excludeCell === ""
@@ -402,7 +401,7 @@ export class ImportQueueService {
 					pricingSource,
 					category,
 					...(excludeFromAnalytics === undefined ? {} : { excludeFromAnalytics }),
-					...(kind ? { kind } : {}),
+					...(row.kind?.trim() ? { kind: row.kind.trim() } : {}),
 				});
 			} catch (error) {
 				warnings.push(
@@ -806,9 +805,6 @@ export class ImportQueueService {
 		return job;
 	}
 
-	/**
-	 * Lists jobs for a user with optional filtering.
-	 */
 	/**
 	 * Deletes old completed/failed/cancelled jobs for a user.
 	 * Keeps at most MAX_COMPLETED_JOBS and removes any older than COMPLETED_JOB_TTL_MS.
