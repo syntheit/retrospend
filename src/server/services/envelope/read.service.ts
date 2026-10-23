@@ -9,12 +9,11 @@ import type {
 	GetMonthOutput,
 	HistoryInput,
 	HistoryOutput,
-	MonthCloseSummary,
 	OwedDto,
 	SetupPresetOutput,
 	VerdictDto,
 } from "~/lib/schemas/envelope";
-import { monthCloseSummarySchema } from "~/lib/schemas/envelope";
+import type { MonthSummaryOutput } from "~/lib/schemas/envelope-book";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
@@ -29,6 +28,7 @@ import {
 } from "./month-read";
 import type { SetupStyle } from "./presets";
 import { owedIn, saveShareDefaults } from "./splits.service";
+import { monthSummaryIn } from "./summary.service";
 import type { Minor, MonthKey } from "./types";
 
 function read<T>(
@@ -73,14 +73,10 @@ export function getMonthSummary(
 	userId: string,
 	month: MonthKey,
 	now = new Date(),
-): Promise<MonthCloseSummary | null> {
+): Promise<MonthSummaryOutput | null> {
 	return read(userId, async (tx) => {
 		await ensureMonthsClosed(tx, userId, now);
-		const row = await tx.monthClose.findFirst({
-			where: { month, book: { createdById: userId, isPersonal: true } },
-			select: { summary: true },
-		});
-		return row ? monthCloseSummarySchema.parse(row.summary) : null;
+		return monthSummaryIn(tx, userId, month);
 	});
 }
 

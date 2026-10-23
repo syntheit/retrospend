@@ -114,7 +114,7 @@ describe("lazy month close on Postgres", () => {
 
 	it("each summary says what the month ended with and the rule it closed under", async () => {
 		const first = await getMonthSummary(b.user.id, addMonths(current, -2));
-		expect(first?.envelopes.find((e) => e.id === b.ids.Dining)).toMatchObject({
+		expect(first?.summary.envelopes.find((e) => e.id === b.ids.Dining)).toMatchObject({
 			assigned: 30_000,
 			activity: -10_000,
 			left: 20_000,
@@ -122,7 +122,7 @@ describe("lazy month close on Postgres", () => {
 			carried: 20_000,
 		});
 		const last = await getMonthSummary(b.user.id, addMonths(current, -1));
-		expect(last?.overspent).toBe(5_000);
+		expect(last?.summary.overspent).toBe(5_000);
 		await expect(getMonthSummary(b.user.id, current)).resolves.toBeNull();
 	});
 
