@@ -270,6 +270,7 @@ export interface SeedAccount {
 	name: string;
 	type: "CASH" | "INVESTMENT" | "LIABILITY_CREDIT_CARD";
 	currency: "ARS" | "USD";
+	/** A liability holds what is owed, positive: WealthService subtracts it. */
 	balance: number;
 	isLiquid: boolean;
 	card?: { interestRate: number; minimumPayment: number; dueDate: number };
@@ -282,7 +283,7 @@ export const ACCOUNTS: readonly SeedAccount[] = [
 	{ key: "wise", name: "Wise (USD)", type: "CASH", currency: "USD", balance: 2350, isLiquid: true },
 	{ key: "cash_usd", name: "Cash (USD)", type: "CASH", currency: "USD", balance: 800, isLiquid: true },
 	{ key: "fci", name: "FCI Balanz Ahorro", type: "INVESTMENT", currency: "ARS", balance: 4200000, isLiquid: false },
-	{ key: "visa", name: "Tarjeta Visa Galicia", type: "LIABILITY_CREDIT_CARD", currency: "ARS", balance: -486000, isLiquid: false, card: { interestRate: 118, minimumPayment: 40000, dueDate: 5 } },
+	{ key: "visa", name: "Tarjeta Visa Galicia", type: "LIABILITY_CREDIT_CARD", currency: "ARS", balance: 486000, isLiquid: false, card: { interestRate: 118, minimumPayment: 40000, dueDate: 5 } },
 ];
 
 /**
@@ -296,10 +297,9 @@ export function historicBalance(
 	index: number,
 ): number {
 	const wobble = ((index * 7 + monthsBack * 3) % 7) * 0.004;
-	const factor =
-		account.balance < 0
-			? 1 + monthsBack * 0.035 + wobble
-			: 1 - monthsBack * 0.045 + wobble;
+	const factor = account.type.startsWith("LIABILITY_")
+		? 1 + monthsBack * 0.035 + wobble
+		: 1 - monthsBack * 0.045 + wobble;
 	return account.balance * factor;
 }
 
