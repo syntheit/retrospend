@@ -18,6 +18,7 @@ import {
 	type PrefillPerson,
 } from "~/lib/shared-expense-prefill";
 
+import { buildSplitInput, type SplitState } from "~/lib/shared-split-input";
 import { api } from "~/trpc/react";
 
 export const expenseSchema = z.object({
@@ -118,32 +119,6 @@ export type ExpenseInitialValues = {
 	description?: string | null;
 	location?: string | null;
 };
-
-type SplitRef = {
-	participantType: "user" | "guest" | "shadow";
-	participantId: string;
-};
-
-/**
- * Builds the split rows for a single-person "full amount" expense, where one of
- * the two people covers the entire cost. The non-payer bears the full share; the
- * payer gets no split row (they already fronted the money, so a share for them
- * would net to zero). This makes "You owe all" / "They owe all" resolve to the
- * correct debtor no matter who actually paid.
- */
-function fullAmountSplit(
-	you: SplitRef,
-	other: SplitRef,
-	paidBy: { participantType: string; participantId: string },
-	amount: number,
-): Array<SplitRef & { shareAmount: number }> {
-	const payerIsYou =
-		paidBy.participantType === you.participantType &&
-		paidBy.participantId === you.participantId;
-	// The non-payer owes the whole amount.
-	const debtor = payerIsYou ? other : you;
-	return [{ ...debtor, shareAmount: amount }];
-}
 
 interface UseExpenseFormOptions {
 	expenseId?: string;
@@ -808,84 +783,26 @@ export function useExpenseForm({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [autoPopulateProjectId, selectedProjectDetail, currentUser.id]);
 
+	// The form's split state, shaped once for create and update.
+	const splitState = (amount: number): SplitState => ({
+		mode: splitMode,
+		you: resolvedParticipant,
+		youIncluded,
+		others: splitWith,
+		paidBy: paidBy as SplitState["paidBy"],
+		fullAmount: theyOweFullAmount,
+		amount,
+		exact: exactAmounts,
+		percentages,
+		shares,
+	});
+
 	const onSubmit = async (data: ExpenseFormData) => {
 		try {
 			if (isSharedTransactionEdit && sharedTransactionId) {
 				// --- Shared transaction update path ---
-				// One unified list: the current user (when included) plus every
-				// member of `splitWith` (users, guests, shadows). DEDUPE by identity
-				// as a safety net so the same person can never be sent twice (the
-				// server rejects "Duplicate participant in split").
-				const seenParticipants = new Set<string>();
-				const allParticipants = [
-					...(youIncluded ? [resolvedParticipant] : []),
-					...splitWith.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-					})),
-				].filter((p) => {
-					const key = `${p.participantType}:${p.participantId}`;
-					if (seenParticipants.has(key)) return false;
-					seenParticipants.add(key);
-					return true;
-				});
-
-				type SplitInput = {
-					participantType: "user" | "guest" | "shadow";
-					participantId: string;
-					shareAmount?: number;
-					sharePercentage?: number;
-					shareUnits?: number;
-				};
-				let splitWithInput: SplitInput[];
-
-				if (splitMode === "EXACT") {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareAmount:
-							exactAmounts[`${p.participantType}:${p.participantId}`] ?? 0,
-					}));
-				} else if (splitMode === "PERCENTAGE") {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						sharePercentage:
-							percentages[`${p.participantType}:${p.participantId}`] ??
-							100 / allParticipants.length,
-					}));
-				} else if (splitMode === "SHARES") {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareUnits: shares[`${p.participantType}:${p.participantId}`] ?? 1,
-					}));
-				} else if (splitWith.length === 1 && youIncluded && theyOweFullAmount) {
-					// "Full amount" single-person split: the NON-payer bears the whole
-					// cost. The payer already fronted the money, so charging them a
-					// share would be a wash; instead we omit the payer's row and give
-					// the other person the full amount. This keeps the saved split in
-					// step with the label and the summary regardless of who paid.
-					splitWithInput = fullAmountSplit(
-						resolvedParticipant,
-						{
-							participantType: splitWith[0]!.participantType,
-							participantId: splitWith[0]!.participantId,
-						},
-						paidBy,
-						data.amount,
-					);
-				} else {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-					}));
-				}
-
-				const effectiveSplitMode =
-					theyOweFullAmount && youIncluded && splitWith.length === 1
-						? ("EXACT" as const)
-						: splitMode;
+				const { splitWith: splitWithInput, splitMode: effectiveSplitMode } =
+					buildSplitInput(splitState(data.amount));
 
 				await updateSharedTransactionMutation.mutateAsync({
 					id: sharedTransactionId,
@@ -917,82 +834,8 @@ export function useExpenseForm({
 				toast.success("Expense updated!");
 			} else if (isSharedExpense || selectedProjectId) {
 				// --- Shared expense create path ---
-				// One unified list: the current user (when included) plus every
-				// member of `splitWith`. DEDUPE by identity as a safety net so a
-				// re-picked member can't appear twice (the server rejects "Duplicate
-				// participant in split").
-				const seenCreateParticipants = new Set<string>();
-				const allParticipants = [
-					...(youIncluded ? [resolvedParticipant] : []),
-					...splitWith.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-					})),
-				].filter((p) => {
-					const key = `${p.participantType}:${p.participantId}`;
-					if (seenCreateParticipants.has(key)) return false;
-					seenCreateParticipants.add(key);
-					return true;
-				});
-
-				let splitWithInput: Array<{
-					participantType: "user" | "guest" | "shadow";
-					participantId: string;
-					shareAmount?: number;
-					sharePercentage?: number;
-					shareUnits?: number;
-				}>;
-
-				if (splitMode === "EXACT") {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareAmount:
-							exactAmounts[`${p.participantType}:${p.participantId}`] ?? 0,
-					}));
-				} else if (splitMode === "PERCENTAGE") {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						sharePercentage:
-							percentages[`${p.participantType}:${p.participantId}`] ??
-							100 / allParticipants.length,
-					}));
-				} else if (splitMode === "SHARES") {
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-						shareUnits: shares[`${p.participantType}:${p.participantId}`] ?? 1,
-					}));
-				} else if (splitWith.length === 1 && youIncluded && theyOweFullAmount) {
-					// "Full amount" single-person split: the NON-payer bears the whole
-					// cost. The payer already fronted the money, so charging them a
-					// share would be a wash; instead we omit the payer's row and give
-					// the other person the full amount. This keeps the saved split in
-					// step with the label and the summary regardless of who paid.
-					splitWithInput = fullAmountSplit(
-						resolvedParticipant,
-						{
-							participantType: splitWith[0]!.participantType,
-							participantId: splitWith[0]!.participantId,
-						},
-						paidBy,
-						data.amount,
-					);
-				} else {
-					// Equal split: let the server compute
-					splitWithInput = allParticipants.map((p) => ({
-						participantType: p.participantType,
-						participantId: p.participantId,
-					}));
-				}
-
-				// When "they owe full amount" is active, we send EXACT with the full
-				// amount on the non-payer (and no row for the payer).
-				const effectiveSplitMode =
-					theyOweFullAmount && youIncluded && splitWith.length === 1
-						? ("EXACT" as const)
-						: splitMode;
+				const { splitWith: splitWithInput, splitMode: effectiveSplitMode } =
+					buildSplitInput(splitState(data.amount));
 
 				await createSharedTransactionMutation.mutateAsync({
 					amount: data.amount,
