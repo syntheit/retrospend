@@ -365,6 +365,14 @@ model BudgetBook {
   startingMoneyConfirmedAt DateTime?
   legacyMigrationRunId     String?       @db.VarChar(64)
   legacyMigratedAt         DateTime?
+  // Last budget read; 35 days away with closes waiting opens Welcome back (S26).
+  lastOpenedAt             DateTime?
+  // Welcome back waits from this instant until the person picks a choice.
+  welcomeBackFrom          DateTime?
+  // Last reconcile; from then on a monthly reminder (SPEC §5.11).
+  reconciledAt             DateTime?
+  // A switch to Limits funds months from this one on (SPEC §4.4); null = every month.
+  planFundFrom             Int?
   createdById              String
   createdAt                DateTime      @default(now())
   updatedAt                DateTime      @updatedAt
@@ -380,6 +388,7 @@ model BudgetBook {
   movements BudgetMovement[]
   closes    MonthClose[]
   wealthTransfers WealthTransfer[]
+  dirtyMarks      BudgetDirty[]
 
   @@index([createdById])
   @@map("budget_book")
@@ -605,10 +614,30 @@ model MonthClose {
   summary        Json
   acknowledgedAt DateTime?
   ackRevision    Int?
+  // Engine state at the end of the month (checkpoint.ts); null until written.
+  checkpoint     Json?
+  // What a change after the late window did to today's numbers (C16).
+  recalc         Json?
+  // Rows added or edited inside the 7-day late window (C17).
+  lateEntries    Int            @default(0)
   book           BudgetBook     @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([bookId, month])
   @@map("month_close")
+}
+
+// A budget month whose inputs changed (written by triggers): checkpoints from
+// it on are stale until the next read recomputes them (SPEC §5.13).
+model BudgetDirty {
+  id        BigInt     @id @default(autoincrement())
+  bookId    String
+  // YYYYMM; 0 = from the book's start.
+  fromMonth Int
+  createdAt DateTime   @default(now())
+  book      BudgetBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@map("budget_dirty")
 }
 
 enum MonthCloseMode {

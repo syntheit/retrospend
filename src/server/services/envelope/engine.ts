@@ -97,6 +97,21 @@ export interface EngineInput {
 	splits: readonly ReplayEffect[];
 	/** Leftover rules each closed month closed under (MonthClose snapshots). */
 	closedRules?: ReadonlyMap<MonthKey, ReadonlyMap<string, ClosedRule>>;
+	/**
+	 * Where the pass starts (SPEC §5.13): the state at the end of a closed
+	 * month. Months up to it are not computed; rows dated in them are ignored.
+	 */
+	checkpoint?: EngineCheckpoint | null;
+}
+
+/** Running totals of every month up to and including a checkpoint month. */
+export type RunningTotals = Omit<MonthTotals, "activity">;
+
+export interface EngineCheckpoint {
+	month: MonthKey;
+	/** What each envelope carries into the next month (after its close rule). */
+	carry: ReadonlyMap<string, Minor>;
+	totals: RunningTotals;
 }
 
 export interface ClosedRule {
@@ -167,10 +182,14 @@ export interface ToAssignTerms {
 export interface BookState {
 	startMonth: MonthKey;
 	currentMonth: MonthKey;
-	/** Oldest first, startMonth to max(through, c + 1). */
+	/** The first month computed: the book start, or the month after the checkpoint. */
+	firstMonth: MonthKey;
+	/** Oldest first, firstMonth to max(through, c + 1). */
 	months: readonly MonthState[];
 	month(key: MonthKey): MonthState;
 	toAssign(key: MonthKey): ToAssignTerms;
+	/** Running totals through month `key` (checkpoint included). */
+	runningTotals(key: MonthKey): RunningTotals;
 	envelopeOf(entry: Pick<ActivityEntry, "categoryId" | "envelopeId">): string;
 }
 
@@ -194,6 +213,26 @@ function emptyTotals(): MonthTotals {
 		forgiven: 0,
 		oldDebtsPaid: 0,
 	};
+}
+
+const RUNNING_KEYS = [
+	"moneyIn",
+	"assigned",
+	"overspent",
+	"returned",
+	"fronted",
+	"returnedByPeople",
+	"forgiven",
+	"oldDebtsPaid",
+] as const satisfies readonly (keyof RunningTotals)[];
+
+export function emptyRunningTotals(): RunningTotals {
+	const { activity: _a, ...rest } = emptyTotals();
+	return rest;
+}
+
+function addRunning(into: RunningTotals, t: RunningTotals) {
+	for (const k of RUNNING_KEYS) into[k] += t[k];
 }
 
 function bucket<T extends { month: MonthKey }>(
@@ -336,7 +375,10 @@ export function computeBook(
 	through: MonthKey = input.currentMonth,
 ): BookState {
 	const last = Math.max(through, addMonths(input.currentMonth, 1));
-	const first = input.startMonth;
+	const cp = input.checkpoint ?? null;
+	if (cp && cp.month >= input.currentMonth)
+		throw new EngineInputError("a checkpoint is for a closed month");
+	const first = cp ? addMonths(cp.month, 1) : input.startMonth;
 	const route = router(input);
 	const b: MonthBuckets = {
 		moneyIn: bucket(input.moneyIn, first, last),
@@ -349,11 +391,11 @@ export function computeBook(
 		splits: bucket(input.splits, first, last),
 	};
 	for (const mv of input.movements) {
-		if (mv.month < first)
+		if (mv.month < input.startMonth)
 			throw new EngineInputError(`movement ${mv.id} is before the book start`);
 	}
 	const months: MonthState[] = [];
-	let carry = new Map<string, Minor>();
+	let carry = new Map<string, Minor>(cp?.carry ?? []);
 	for (const key of monthsFrom(first, last)) {
 		const state = monthState(key, carry, input, b, route);
 		carry = close(
@@ -370,12 +412,20 @@ export function computeBook(
 		if (!s) throw new RangeError(`month ${key} is outside the book`);
 		return s;
 	};
+	const base = cp?.totals ?? emptyRunningTotals();
 	return {
-		startMonth: first,
+		startMonth: input.startMonth,
 		currentMonth: input.currentMonth,
+		firstMonth: first,
 		months,
 		month,
-		toAssign: (key) => toAssignAt(months, input.currentMonth, month(key).month),
+		toAssign: (key) =>
+			toAssignAt(months, input.currentMonth, month(key).month, base),
+		runningTotals: (key) => {
+			const out = { ...base };
+			for (const s of months) if (s.month <= key) addRunning(out, s.totals);
+			return out;
+		},
 		envelopeOf: route.envelopeOf,
 	};
 }
@@ -384,18 +434,20 @@ function toAssignAt(
 	months: readonly MonthState[],
 	c: MonthKey,
 	m: MonthKey,
+	base: RunningTotals,
 ): ToAssignTerms {
 	const a = m < c ? m : addMonths(c, 1);
+	// Months up to the checkpoint are all before m (it is a closed month).
 	const t: ToAssignTerms = {
-		moneyIn: 0,
-		assigned: 0,
+		moneyIn: base.moneyIn,
+		assigned: base.assigned,
 		assignedAhead: 0,
-		overspendTaken: 0,
-		returned: 0,
-		fronted: 0,
-		returnedByPeople: 0,
-		forgiven: 0,
-		oldDebtsPaid: 0,
+		overspendTaken: base.overspent,
+		returned: base.returned,
+		fronted: base.fronted,
+		returnedByPeople: base.returnedByPeople,
+		forgiven: base.forgiven,
+		oldDebtsPaid: base.oldDebtsPaid,
 		splitsNet: 0,
 		total: 0,
 	};
