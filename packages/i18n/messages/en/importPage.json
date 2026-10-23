@@ -127,7 +127,9 @@
 		"already": "Already in Activity",
 		"noCategory": "No category",
 		"categoryPicker": "Category for {title}",
-		"kindMenu": "Import {title} as"
+		"kindMenu": "Import {title} as",
+		"possible": "Possibly already in Activity: {title}, {date}",
+		"skipOne": "Skip"
 	},
 	"kind": {
 		"expense": "Expense",

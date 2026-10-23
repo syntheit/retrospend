@@ -12,7 +12,8 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { toMinor } from "../envelope/units";
 import { loadRateContext } from "../rate-types";
 import { bookImportRow, type ImportRate } from "./book";
-import { existingKeys, isDuplicate, prepareRows } from "./prepare";
+import { matchFile } from "./match";
+import { prepareRows } from "./prepare";
 import { cachedRates } from "./rate-cache";
 import {
 	categoryKindFor,
@@ -41,7 +42,10 @@ export interface ImportReviewRow {
 	readonly fileCategory: string;
 	readonly categoryId: string | null;
 	readonly kind: ImportKind;
+	/** Exact: this row is already in Activity; the import skips it. */
 	readonly duplicate: boolean;
+	/** Likely: an Activity row with the same amount within 3 days; kept unless you skip it. */
+	readonly possible: { readonly title: string; readonly date: string } | null;
 	/** No rate at all for its currency: it cannot be saved and is skipped. */
 	readonly noRate: boolean;
 }
@@ -151,13 +155,13 @@ export async function importReview(
 	const stored = storedRows(job.transactions);
 	const { rows, badDates } = prepareRows(stored, options);
 	const rates = cachedRates(db);
-	const [ctx, categories, keys] = await Promise.all([
+	const [ctx, categories, matches] = await Promise.all([
 		loadRateContext(rates, userId),
 		db.category.findMany({
 			where: { userId },
 			select: { id: true, name: true, kind: true },
 		}),
-		existingKeys(db, userId, rows, options.timeZone),
+		matchFile(db, userId, rows, (r) => r.proposed, options.timeZone),
 	]);
 	const home = ctx.homeCurrency;
 	const byName = new Map(categories.map((c) => [c.name.toLowerCase(), c]));
@@ -172,11 +176,12 @@ export async function importReview(
 		const given = row.stored.categoryId
 			? byId.get(row.stored.categoryId)
 			: undefined;
-		const match =
+		const named =
 			given ??
 			(fileCategory ? byName.get(fileCategory.toLowerCase()) : undefined);
-		const categoryId = match && match.kind === want ? match.id : null;
-		const duplicate = isDuplicate(keys, row, kind, options.timeZone);
+		const categoryId = named && named.kind === want ? named.id : null;
+		const match = matches.get(row.index);
+		const duplicate = match?.exact != null;
 		const rate = await bookImportRow(rates, ctx, row.rate);
 		const currency = row.rate.currency;
 		if (!categoryId && fileCategory && !duplicate) {
@@ -197,6 +202,10 @@ export async function importReview(
 			categoryId,
 			kind,
 			duplicate,
+			possible:
+				!duplicate && match?.likely
+					? { title: match.likely.title, date: match.likely.day }
+					: null,
 			noRate: rate === null,
 		});
 	}

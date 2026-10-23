@@ -10,7 +10,7 @@ import { Empty } from "~/components/ui/empty-state";
 import { Progress } from "~/components/ui/progress";
 import { cn } from "~/lib/cn";
 import { importable, isKept } from "./choices";
-import type { ReviewBodyProps } from "./review-table";
+import { PossibleFlag, type ReviewBodyProps } from "./review-table";
 import {
 	amountFigure,
 	CategoryCell,
@@ -134,6 +134,9 @@ export function ReviewCards({
 					<p className="text-fg-2 text-small">
 						{t("about")} <Money figure={homeFigure(r)} value={r.home} />
 					</p>
+				) : null}
+				{r.possible ? (
+					<PossibleFlag kept={false} onSkip={() => {}} r={r} />
 				) : null}
 				{c ? (
 					<div className="flex flex-wrap gap-2">
