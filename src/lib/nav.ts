@@ -142,6 +142,7 @@ export function settingsHref(section: SettingsSection): string {
  * the shell links today's page, so the new shell never links a 404.
  */
 export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([
+	"/home",
 	"/activity",
 	"/activity/recurring",
 ]);

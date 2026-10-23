@@ -328,6 +328,19 @@ describe("needsYou on Postgres", () => {
 		]);
 	});
 
+	it("no Verify your email when the instance cannot send email", async () => {
+		const own = await needsYou(adminDb, martin.user.id, {
+			...opts,
+			emailEnabled: false,
+		});
+		expect(own.items.map((i) => i.type)).toEqual([
+			"setup.firstExpense",
+			"setup.homeCurrency",
+			"setup.importStatement",
+		]);
+		expect(own.counts.setup).toBe(3);
+	});
+
 	it("a share in a currency with no rate: the budget names it and shows no amounts (R14)", async () => {
 		const s = await seedUser();
 		await shared("Hverir", martin.user.id, s.user.id, "9000", "ACCEPTED");

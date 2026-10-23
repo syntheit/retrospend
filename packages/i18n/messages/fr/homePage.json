@@ -1,0 +1,42 @@
+{
+	"title": "Accueil",
+	"missingRates": "Certains totaux laissent de côté {currencies} : pas encore de taux.",
+	"needs": {
+		"title": "T'attend",
+		"showMore": "Afficher {count} de plus",
+		"showFewer": "Afficher moins",
+		"confirmed": "Paiement de {name} confirmé",
+		"emailSent": "E-mail de vérification envoyé",
+		"failed": "Ce n'est pas enregistré. Réessaie.",
+		"context": {
+			"wasDue": "Dû le {date}",
+			"paidOn": "Payé le {date}",
+			"yourShare": "Ta part, {date}",
+			"dueOn": "Échéance le {date}",
+			"arrived": "{title}, {date}",
+			"firstExpense": "Ça prend une dizaine de secondes",
+			"homeCurrency": "Tous les totaux s'affichent dans cette devise",
+			"importStatement": "CSV ou PDF de ta banque"
+		}
+	},
+	"recent": {
+		"title": "Récent",
+		"seeAll": "Tout voir",
+		"empty": "Pas encore de dépenses",
+		"emptyHint": "Ajoute ta première dépense et elle s'affichera ici.",
+		"add": "Ajouter une dépense"
+	},
+	"rail": {
+		"label": "En un coup d'œil",
+		"people": "Personnes",
+		"allPeople": "Toutes les personnes",
+		"comingUp": "À venir",
+		"recurring": "Récurrentes",
+		"nothingDue": "Rien à payer dans les 3 prochaines semaines"
+	},
+	"unavailable": {
+		"title": "Indisponible pour le moment",
+		"hint": "Cette partie de l'accueil n'a pas pu se charger.",
+		"retry": "Réessayer"
+	}
+}

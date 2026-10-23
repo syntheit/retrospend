@@ -2,12 +2,20 @@
 
 import {
 	AlarmClock,
+	CalendarClock,
 	CircleAlert,
 	CircleCheck,
+	Coins,
+	FileUp,
+	Landmark,
 	ListChecks,
 	type LucideIcon,
+	Mail,
+	Plus,
 	Repeat,
+	Scale,
 	UserCheck,
+	UserX,
 	Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +35,16 @@ const ICON: Record<NeedsYouKind, LucideIcon> = {
 	due: Repeat,
 	overdue: AlarmClock,
 	overspent: CircleAlert,
+	overspentMany: CircleAlert,
+	rejected: UserX,
+	overAssigned: Scale,
+	billDue: CalendarClock,
+	missingRate: Coins,
+	startingMoney: Landmark,
+	firstExpense: Plus,
+	homeCurrency: Coins,
+	verifyEmail: Mail,
+	importStatement: FileUp,
 };
 
 /** The one action per kind. */
@@ -38,6 +56,16 @@ const ACTION: Record<NeedsYouKind, string> = {
 	due: "confirm",
 	overdue: "confirm",
 	overspent: "cover",
+	overspentMany: "cover",
+	rejected: "edit",
+	overAssigned: "takeBack",
+	billDue: "fund",
+	missingRate: "setRate",
+	startingMoney: "confirm",
+	firstExpense: "addExpense",
+	homeCurrency: "choose",
+	verifyEmail: "resend",
+	importStatement: "import",
 };
 
 /** The one sentence of an item, from its kind. */
@@ -61,6 +89,26 @@ function useSentence() {
 				return t("overdue", { title: item.title });
 			case "overspent":
 				return t("overspent", { envelope: item.envelope });
+			case "overspentMany":
+				return t("overspentMany", { count: item.count });
+			case "rejected":
+				return t("rejected", { person: item.person, title: item.title });
+			case "overAssigned":
+				return t.rich("overAssigned", {
+					amount: () => <Money value={item.amount} />,
+				});
+			case "billDue":
+				return item.title
+					? t("billDue", { title: item.title })
+					: t("billsDue", { count: item.count });
+			case "missingRate":
+				return t("missingRate", { currencies: item.currencies.join(", ") });
+			case "startingMoney":
+			case "firstExpense":
+			case "homeCurrency":
+			case "verifyEmail":
+			case "importStatement":
+				return t(item.kind);
 		}
 	};
 }
@@ -83,7 +131,9 @@ export function NeedsYouItem({
 	const t = useTranslations("needsYou.action");
 	const sentence = useSentence()(item);
 	const amount = "amount" in item ? item.amount : null;
-	const label = t(ACTION[item.kind]);
+	const label = t(
+		item.action && t.has(item.action) ? item.action : ACTION[item.kind],
+	);
 	const group = variant === "group";
 	return (
 		<li
@@ -101,12 +151,23 @@ export function NeedsYouItem({
 			/>
 			<div className="text-body text-fg min-w-0 leading-snug">
 				{sentence}
-				{group && amount && (
+				{group && amount && !item.context && (
 					<Money
 						className="text-fg-3 text-meta block"
 						figure={item.figure}
 						value={amount}
 					/>
+				)}
+				{item.context && (
+					<span className="text-fg-3 text-meta block">
+						{group && amount && (
+							<>
+								<Money figure={item.figure} value={amount} />
+								{" · "}
+							</>
+						)}
+						{item.context}
+					</span>
 				)}
 			</div>
 			{!group && (
