@@ -238,7 +238,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 | Input | `h-ctl`, surface fill, line-strong border, 2px brand focus outline, danger border when invalid |
 | Money input | `h-money`, 16px medium, groups thousands while typing, parses in the page locale. Never hero size inside an input [R22] |
 | Select | No native browser chrome: our chevron, `h-ctl`, one fixed width per settings column |
-| Chip | `h-ctl`, `rounded-chip`, line-strong border, text only. Selected: brand-soft fill + brand border. A chip that shows a value (a date range) is neutral with a chevron. People chips keep their face [R25 amended] |
+| Chip | `h-ctl`, `rounded-chip`, line-strong border. A chip may lead with its identity mark in the 16px lead slot: a face (people), a bare category glyph in its category color (no tile), a project cover, or a currency flag. No other icons. Selected: brand-soft fill + brand border. A chip that shows a value (a date range) is neutral with a chevron. [R25 amended by owner 2026-10-23] |
 | Segmented | raised track, 2px inset, selected segment surface + `shadow-ctl`, 8px radius, no icons, the same selected state for every option |
 | Tabs | 40 high, 24 gap, fg-2 labels, selected fg 600 with a 2px accent indicator element that slides (§11). Counts in fg-3 |
 | Switch | Settings that apply at once (autosave + toast) |
@@ -405,7 +405,7 @@ Build these; do not build the alternates.
 | Desktop Add | Split button "Add expense ▾" with Add income and Transfer; keys N, I, T (§14) |
 | Income | Its own Add income sheet (N71) |
 | Pick-one control | Segmented in place; underline tabs between sibling pages (R21) |
-| Category identity | Tinted tile in rows; bare colored glyph in menus and pickers; chips text only (R25 amended by R31) |
+| Category identity | Tinted tile in rows; bare colored glyph in menus, pickers and chips (R25 amended by owner 2026-10-23) |
 | Default rate type | Per home currency; ARS home → Blue (N73) |
 | Owed to you / You owe | Two lines, never netted (D1) |
 | Budget | Flex style by default; Left to spend = everyday spending only; "Not planned yet" replaces To assign except in Every peso (N72, N77) |
