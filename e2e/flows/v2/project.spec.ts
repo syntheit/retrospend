@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { PROJECT_IDS } from "../fixtures/personas";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { gotoReady } from "../helpers/navigation";
-import { untilSaved } from "../helpers/trpc";
-import { auditFigures, enableFlags, openAsSofia } from "./projects-helpers";
+import { PROJECT_IDS } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { gotoReady } from "../../helpers/navigation";
+import { untilSaved } from "../../helpers/trpc";
+import { auditFigures, openPage, SOFIA_SESSION } from "./projects-helpers";
 
 // The redesigned project page (uiV2) on Depto Palermo, by hand from the seed
 // (e2e/fixtures/ledger.ts): seven ARS expenses split in half between Sofía
@@ -14,9 +14,7 @@ import { auditFigures, enableFlags, openAsSofia } from "./projects-helpers";
 
 const DEPTO = `/projects/${PROJECT_IDS.depto}`;
 
-test.beforeAll(async () => {
-	await enableFlags();
-});
+test.use({ storageState: SOFIA_SESSION });
 
 test.describe.configure({ mode: "serial" });
 
@@ -25,7 +23,7 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	await openAsSofia(page, DEPTO, "project");
+	await openPage(page, DEPTO, "project");
 	const main = page.getByRole("main");
 
 	await expect(
@@ -68,7 +66,7 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 test("Project: Settle all previews, records and undoes", async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	await openAsSofia(page, `${DEPTO}?tab=summary`, "project");
+	await openPage(page, `${DEPTO}?tab=summary`, "project");
 	const main = page.getByRole("main");
 	await main.getByRole("button", { name: "Settle all" }).click();
 	const sheet = page.getByRole("dialog", { name: "Settle all" });
@@ -97,7 +95,7 @@ test("Project: Settle all previews, records and undoes", async ({ page }) => {
 test("Project: add a person from a day, then Undo", async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	await openAsSofia(page, `${DEPTO}?tab=people`, "project");
+	await openPage(page, `${DEPTO}?tab=people`, "project");
 	const main = page.getByRole("main");
 	await main.getByRole("button", { name: "Add person" }).click();
 	const sheet = page.getByRole("dialog", {

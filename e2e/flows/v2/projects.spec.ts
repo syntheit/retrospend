@@ -1,23 +1,21 @@
 import { expect, test } from "@playwright/test";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { untilSaved } from "../helpers/trpc";
-import { auditFigures, enableFlags, openAsSofia } from "./projects-helpers";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { untilSaved } from "../../helpers/trpc";
+import { auditFigures, openPage, SOFIA_SESSION } from "./projects-helpers";
 
 // The redesigned Projects list (uiV2) on Sofía's seeded projects: Viaje a
 // Florianópolis (BRL, four people) and Depto Palermo (ARS, with Martín).
 // In Depto she paid ARS 279,600 of ARS 615,000, her share is ARS 307,500 and
 // Martín paid her ARS 13,200, so she owes ARS 41,100 there.
 
-test.beforeAll(async () => {
-	await enableFlags();
-});
+test.use({ storageState: SOFIA_SESSION });
 
 test("Projects: rows with balances, search, new project and archive with Undo", async ({
 	page,
 }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	await openAsSofia(page, "/projects", "projects");
+	await openPage(page, "/projects", "projects");
 	const main = page.getByRole("main");
 
 	await expect(main.getByRole("heading", { name: "Projects" })).toBeVisible();
