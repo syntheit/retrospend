@@ -34,7 +34,12 @@ import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
+import {
+	addRow,
+	invariantAt,
+	seedUser,
+	setupInput,
+} from "./__tests__/pg-fixture";
 import {
 	getBankCheck,
 	getWelcomeBack,
@@ -143,6 +148,10 @@ describe("style switching (SPEC §4.4)", () => {
 		const m = await getMonth(s.user.id);
 		expect(m?.toAssign.amount.minor).toBe(38_000);
 		expect(m?.verdict.lead.kind).toBe("LEFT_TO_SPEND");
+		await expect(invariantAt(s.user.id)).resolves.toEqual({
+			budget: 100_000,
+			ledger: 100_000,
+		});
 		await forUser(s.user.id).apply(revertStyleMutation, {
 			previous: r.value.previous,
 			adjustmentId: r.value.adjustment?.id ?? null,
@@ -227,6 +236,10 @@ describe("S26 Welcome back after four months away", () => {
 			addMonths(start, 3),
 		]);
 		expect(w.bank.holds).toEqual(usd(73_000));
+		await expect(invariantAt(s.user.id)).resolves.toEqual({
+			budget: 73_000,
+			ledger: 73_000,
+		});
 	});
 
 	it("Start fresh: one RESET batch returns Dining's 80,000; preview writes nothing; undo puts it back", async () => {

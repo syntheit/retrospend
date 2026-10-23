@@ -23,7 +23,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
-import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
+import {
+	addRow,
+	invariantAt,
+	seedUser,
+	setupInput,
+} from "./__tests__/pg-fixture";
 import { loadCloseRows } from "./close-rows";
 import { computeBook, sumLeft } from "./engine";
 import { loadBook } from "./inputs";
@@ -171,6 +176,11 @@ describe("checkpoints, the late window and recalculation on Postgres", () => {
 		const nov = await getMonth(b.user.id, undefined, now);
 		expect(leftOf(nov, b.diningEnv)).toBe(22_000);
 		expect(nov?.toAssign.amount.minor).toBe(70_000);
+		// 70,000 + 22,000 held = 100,000 in - 5,000 - 3,000 spent.
+		await expect(invariantAt(b.user.id, now)).resolves.toEqual({
+			budget: 92_000,
+			ledger: 92_000,
+		});
 	});
 
 	it("a read with nothing changed revises nothing", async () => {

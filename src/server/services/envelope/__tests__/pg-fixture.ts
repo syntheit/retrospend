@@ -1,7 +1,22 @@
 /** Shared seed for the envelope pg tests: a USD user with Rent and Dining, a Flex setup, plain rows. */
 import type { SetupInput } from "~/lib/schemas/envelope";
+import { userTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
+import { computeBook, invariantSides } from "../engine";
+import { loadBook } from "../inputs";
+
+/**
+ * Both sides of the SPEC §5.3 invariant for a user's book at `now`, from a
+ * full pass (no checkpoint): the ledger side needs every row.
+ */
+export function invariantAt(userId: string, now = new Date()) {
+	return userTransaction(adminDb, userId, async (tx) => {
+		const loaded = await loadBook(tx, userId, { now, needFrom: 0 });
+		if (!loaded) throw new Error("no book");
+		return invariantSides(loaded.input, computeBook(loaded.input));
+	});
+}
 
 export async function seedUser() {
 	const { user, db } = await createTestUser();

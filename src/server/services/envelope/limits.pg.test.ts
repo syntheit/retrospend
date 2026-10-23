@@ -20,7 +20,7 @@ import type { SetupInput } from "~/lib/schemas/envelope";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
-import { addRow, seedUser } from "./__tests__/pg-fixture";
+import { addRow, invariantAt, seedUser } from "./__tests__/pg-fixture";
 import { setLimitMutation } from "./book.mutation";
 import { addMonths } from "./calendar";
 import { budgetMonthOf, isoDateIn } from "./months";
@@ -178,6 +178,10 @@ describe("A2 a Limits user on Postgres", () => {
 		expect(row(m, ids.Groceries as string)?.left.minor).toBe(40_000);
 		expect(m?.toAssign.amount.minor).toBe(-75_000);
 		expect(m?.toAssign.terms.returned.minor).toBe(50_000);
+		await expect(invariantAt(s.user.id, nextNoon)).resolves.toEqual({
+			budget: -15_000,
+			ledger: -15_000,
+		});
 	});
 
 	it("an Every dollar book cannot set limits", async () => {
