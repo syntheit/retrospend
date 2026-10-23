@@ -86,7 +86,12 @@ const DAYS: Record<WealthRange, number> = {
 };
 
 /** Days between points: daily, weekly for a year (53 points, not 366). */
-const STEP: Record<WealthRange, number> = { "1M": 1, "3M": 1, "6M": 1, "1Y": 7 };
+const STEP: Record<WealthRange, number> = {
+	"1M": 1,
+	"3M": 1,
+	"6M": 1,
+	"1Y": 7,
+};
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 

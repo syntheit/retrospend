@@ -48,7 +48,9 @@ describe("rateInput", () => {
 	});
 
 	it("a new account sends only the picked type", () => {
-		expect(rateInput(null, "EUR", "blue")).toEqual({ exchangeRateType: "blue" });
+		expect(rateInput(null, "EUR", "blue")).toEqual({
+			exchangeRateType: "blue",
+		});
 		expect(rateInput(null, "EUR", null)).toEqual({});
 	});
 });
