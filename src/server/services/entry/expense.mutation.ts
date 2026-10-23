@@ -41,7 +41,7 @@ export function rateInputOf(row: {
 	exchangeRate: { toString(): string };
 	pricingSource: string;
 	rateType: string | null;
-	homeRate: { toString(): string } | null;
+	homeRate: { toFixed(): string } | null;
 }): Pick<
 	CreateExpenseInput,
 	"exchangeRate" | "pricingSource" | "rateType" | "customRate"
@@ -50,7 +50,8 @@ export function rateInputOf(row: {
 		return {
 			customRate: {
 				base: row.currency,
-				value: Number(row.homeRate.toString()),
+				// Plain decimal text (toFixed never writes an exponent), every stored digit.
+				value: row.homeRate.toFixed(),
 			},
 		};
 	}

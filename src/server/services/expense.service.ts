@@ -34,7 +34,7 @@ export interface RateInput {
 	/** The pair's rate type picked on the Add sheet (a table type or "custom"). */
 	rateType?: string;
 	/** A typed rate between entry and home: 1 `base` = `value` of the other. */
-	customRate?: { base: string; value: number };
+	customRate?: { base: string; value: string };
 }
 
 /** The rate an expense was saved with. */
@@ -159,7 +159,7 @@ export interface CreateExpenseInput {
 	amountInUSD?: number;
 	pricingSource?: string;
 	rateType?: string;
-	customRate?: { base: string; value: number };
+	customRate?: { base: string; value: string };
 	date: Date;
 	location?: string;
 	description?: string;
@@ -253,7 +253,7 @@ export class ExpenseService {
 			amountInUSD?: number;
 			pricingSource?: string;
 			rateType?: string;
-			customRate?: { base: string; value: number };
+			customRate?: { base: string; value: string };
 			date: Date;
 			location?: string;
 			description?: string;

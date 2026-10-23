@@ -7,6 +7,7 @@
  */
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
+import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
 
 const decimal = z
@@ -27,7 +28,7 @@ const expenseFields = {
 	/** A rate type of the pair (official, blue...); omitted: the default. */
 	rateType: rateType.optional(),
 	/** A typed rate: 1 unit of `currency` = this many of the home currency. */
-	customRate: decimal.optional(),
+	customRate: customRateSchema.optional(),
 	location: z.string().max(191).optional(),
 	description: z.string().max(1000).optional(),
 	amortizeOver: z.number().int().min(2).max(24).optional(),
@@ -46,7 +47,7 @@ export function toExpenseInput(
 		...rest,
 		date: parseDateOnlyIn(date, timeZone),
 		...(customRate
-			? { customRate: { base: form.currency, value: Number(customRate) } }
+			? { customRate: { base: form.currency, value: customRate } }
 			: type
 				? { rateType: type }
 				: {}),
@@ -63,9 +64,7 @@ export const expenseRestoreSchema = z.object({
 	exchangeRate: z.number().positive().optional(),
 	pricingSource: z.string().max(200).optional(),
 	rateType: rateType.optional(),
-	customRate: z
-		.object({ base: currency, value: z.number().positive() })
-		.optional(),
+	customRate: z.object({ base: currency, value: customRateSchema }).optional(),
 	location: z.string().max(191).optional(),
 	description: z.string().max(1000).optional(),
 	categoryId: z.string().min(1).optional(),
@@ -157,7 +156,7 @@ export const rateOptionsSchema = z.object({
 	/** The amount to book at each type, as typed. */
 	amount: decimal.optional(),
 	/** A typed rate: 1 unit of `currency` = this much home. */
-	customRate: decimal.optional(),
+	customRate: customRateSchema.optional(),
 });
 
 /** Who a project expense on that day includes: the project and the expense's day. */

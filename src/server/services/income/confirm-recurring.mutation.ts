@@ -115,7 +115,7 @@ export async function confirmRecurringIncomeIn(
 			? {
 					kind: "custom",
 					base: template.currency,
-					value: Number(input.customRate),
+					value: input.customRate,
 				}
 			: { kind: "table", rateType: input.rateType ?? null },
 	);
