@@ -29,6 +29,9 @@ import { sumExpensesForCurrency } from "./shared-currency";
 export type { BackgroundSettings };
 export { defaultBackgroundSettings };
 
+/** What profile.update returns about the user. */
+const IDENTITY = { id: true, name: true, username: true, email: true } as const;
+
 export const profileRouter = createTRPCRouter({
 	getBackgroundSettings: protectedProcedure.query(async ({ ctx }) => {
 		const setting = await ctx.db.userPageSetting.findUnique({
@@ -252,9 +255,7 @@ export const profileRouter = createTRPCRouter({
 				const hashedToken = hashToken(token);
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
 				const appUrl =
-					env.PUBLIC_URL ||
-					env.NEXT_PUBLIC_APP_URL ||
-					"http://localhost:1997";
+					env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997";
 
 				const updated = await db.user.update({
 					where: { id: session.user.id },
@@ -265,12 +266,7 @@ export const profileRouter = createTRPCRouter({
 						pendingEmailToken: hashedToken,
 						pendingEmailExpiresAt: expiresAt,
 					},
-					select: {
-						id: true,
-						name: true,
-						username: true,
-						email: true,
-					},
+					select: IDENTITY,
 				});
 
 				// Send verification email to the NEW address
@@ -289,10 +285,7 @@ export const profileRouter = createTRPCRouter({
 
 				// Send security alert to the OLD address
 				const revertUrl = `${appUrl}/auth/revert-email?token=${token}`;
-				const alertHtml = getEmailChangeAlertTemplate(
-					revertUrl,
-					newEmail,
-				);
+				const alertHtml = getEmailChangeAlertTemplate(revertUrl, newEmail);
 				sendEmail(
 					session.user.email,
 					"Security Alert: Email Change Requested",
@@ -312,12 +305,7 @@ export const profileRouter = createTRPCRouter({
 					username: input.username,
 					...(newEmail !== null ? { email: newEmail } : {}),
 				},
-				select: {
-					id: true,
-					name: true,
-					username: true,
-					email: true,
-				},
+				select: IDENTITY,
 			});
 
 			// With email off, addresses are trusted like at signup: if the account
