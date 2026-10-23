@@ -1,35 +1,87 @@
 /**
- * What a confirm overwrote on a claim (the payer's amount, date and method),
- * kept in the confirm's audit entry so payment.unconfirm can put the claim
- * back exactly as the payer recorded it: same header, and, when the amount
- * had changed, the payer's own allocation again. Takes the open transaction
- * (mutation files may not reach the global db).
+ * What a confirm overwrote on a claim, kept in the confirm's audit entry so
+ * payment.unconfirm can put the claim back exactly as the payer recorded
+ * it: the header (amount, date, method, rate) and every settlement row
+ * verbatim, never re-allocated. If the confirm had rewritten the rows and
+ * anything between the two people changed since, the undo is refused rather
+ * than guessed. Takes the open transaction (mutation files may not reach the
+ * global db).
  */
-import { toMinor } from "~/server/services/envelope/units";
+import { TRPCError } from "@trpc/server";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Payment, Prisma, Settlement } from "~prisma";
-import { allocatePayment } from "./allocate";
-import { confirmationFor } from "./confirmation";
-import { ledgerLines, payerLines } from "./ledger";
-import { loadQuotes } from "./quotes";
-import { writeRows } from "./write";
+import { ledgerLines } from "./ledger";
 
 type Tx = Prisma.TransactionClient;
+
+/** A settlement row as JSON: Decimals as strings, dates as ISO strings. */
+type RowSnapshot = Record<string, string | number | boolean | null>;
 
 export interface ConfirmedOver {
 	readonly amount: string;
 	/** YYYY-MM-DD. */
 	readonly paidOn: string;
 	readonly paymentMethod: string | null;
+	readonly rateType: string | null;
+	readonly rate: string | null;
+	readonly rateCurrency: string | null;
+	/** Every row of the payment before the confirm. */
+	readonly rows: readonly RowSnapshot[];
+	/** The pair's ledger right after the confirm, from the confirmer's side. */
+	readonly ledger: string;
 }
 
-/** The claim's details before the confirm, for its audit entry. */
-export function previousOf(header: Payment): ConfirmedOver {
+const DATES = ["initiatedAt", "settledAt", "rejectedAt", "reminderSentAt"];
+
+function snapshotRow(row: Settlement): RowSnapshot {
+	const out: RowSnapshot = {};
+	for (const [key, value] of Object.entries(row)) {
+		if (value instanceof Date) out[key] = value.toISOString();
+		else if (
+			value === null ||
+			["string", "number", "boolean"].includes(typeof value)
+		)
+			out[key] = value as string | number | boolean | null;
+		else out[key] = String(value); // Decimal
+	}
+	return out;
+}
+
+function rowData(snapshot: RowSnapshot) {
+	const data: Record<string, unknown> = { ...snapshot };
+	for (const key of DATES)
+		if (typeof data[key] === "string")
+			data[key] = new Date(data[key] as string);
+	return data as Prisma.SettlementCreateManyInput;
+}
+
+/** The pair's ledger lines as one comparable string. */
+export async function ledgerFingerprint(
+	tx: Tx,
+	me: ParticipantRef,
+	other: ParticipantRef,
+): Promise<string> {
+	return JSON.stringify(
+		ledgerLines(await computePairLedger(tx, me, other, { viewer: me })),
+	);
+}
+
+/** The claim before the confirm, plus the ledger after it, for the confirm's audit entry. */
+export function previousOf(
+	header: Payment,
+	rows: readonly Settlement[],
+	ledger: string,
+): ConfirmedOver {
 	return {
 		amount: header.amount.toString(),
 		paidOn: header.paidOn.toISOString().slice(0, 10),
 		paymentMethod: header.paymentMethod,
+		rateType: header.rateType,
+		rate: header.rate?.toString() ?? null,
+		rateCurrency: header.rateCurrency,
+		rows: rows.map(snapshotRow),
+		ledger,
 	};
 }
 
@@ -40,7 +92,9 @@ function isOver(v: unknown): v is ConfirmedOver {
 		typeof o.amount === "string" &&
 		typeof o.paidOn === "string" &&
 		/^\d{4}-\d{2}-\d{2}$/.test(o.paidOn) &&
-		(o.paymentMethod === null || typeof o.paymentMethod === "string")
+		Array.isArray(o.rows) &&
+		o.rows.length > 0 &&
+		typeof o.ledger === "string"
 	);
 }
 
@@ -63,70 +117,47 @@ export async function readPrevious(
 }
 
 /**
- * Puts a confirmed claim back to waiting with the payer's details. Same
- * amount: the rows keep their split and only the flags go back. Changed
- * amount: the receiver's rows are replaced by the payer's allocation of the
- * original amount, as payment.record wrote it from the payer's side.
+ * Puts a confirmed claim back verbatim: its header and its rows as they
+ * stood before the confirm. When the confirm rewrote the rows (a changed
+ * amount), the pair's ledger must be as the confirm left it; otherwise the
+ * old rows could pay debts that are no longer there, so the undo refuses.
  */
 export async function restoreClaim(
 	tx: Tx,
 	header: Payment,
 	rows: readonly Settlement[],
 	previous: ConfirmedOver,
-): Promise<{ rewritten: boolean; rows: Settlement[] }> {
-	const payer: ParticipantRef = {
-		participantType: header.payerType,
-		participantId: header.payerId,
-	};
-	const payee: ParticipantRef = {
-		participantType: header.payeeType,
-		participantId: header.payeeId,
-	};
-	const paidOn = new Date(`${previous.paidOn}T00:00:00.000Z`);
-	const before = toMinor(previous.amount, header.currency);
-	const now = toMinor(header.amount.toString(), header.currency);
+	sides: { me: ParticipantRef; other: ParticipantRef },
+): Promise<Settlement[]> {
+	const before = new Set(previous.rows.map((r) => r.id));
+	const rewritten =
+		rows.length !== before.size || rows.some((r) => !before.has(r.id));
+	if (
+		rewritten &&
+		(await ledgerFingerprint(tx, sides.me, sides.other)) !== previous.ledger
+	) {
+		throw new TRPCError({
+			code: "CONFLICT",
+			message:
+				"Something changed between you since this was confirmed, so it cannot be undone exactly.",
+		});
+	}
+	await tx.settlement.deleteMany({ where: { paymentGroupId: header.id } });
+	await tx.settlement.createMany({ data: previous.rows.map(rowData) });
 	await tx.payment.update({
 		where: { id: header.id },
 		data: {
 			status: "PROPOSED",
 			amount: previous.amount,
-			paidOn,
+			paidOn: new Date(`${previous.paidOn}T00:00:00.000Z`),
 			paymentMethod: previous.paymentMethod,
+			rateType: previous.rateType,
+			rate: previous.rate,
+			rateCurrency: previous.rateCurrency,
 		},
 	});
-	if (before === now) {
-		await tx.settlement.updateMany({
-			where: { paymentGroupId: header.id, isOffset: false },
-			data: { paymentMethod: previous.paymentMethod },
-		});
-		return { rewritten: false, rows: [...rows] };
-	}
-	// Her ledger without this payment's confirmed rows, as at record time.
-	await tx.settlement.deleteMany({ where: { paymentGroupId: header.id } });
-	const events = await computePairLedger(tx, payer, payee, { viewer: payer });
-	const lines = payerLines(ledgerLines(events), true);
-	const quotes = await loadQuotes(tx, {
-		into: header.currency,
-		currencies: lines.map((l) => l.currency),
-		date: paidOn,
-		rateType: header.rateType,
+	return tx.settlement.findMany({
+		where: { paymentGroupId: header.id },
+		orderBy: { initiatedAt: "asc" },
 	});
-	const allocation = allocatePayment({
-		lines,
-		currency: header.currency,
-		amount: before,
-		quotes,
-		allowOverpay: true,
-	});
-	const written = await writeRows(tx, {
-		id: header.id,
-		parties: { payer, payee, recorder: payer },
-		allocation,
-		confirmation: confirmationFor(false, payee.participantType),
-		paidOn,
-		now: new Date(),
-		paymentMethod: previous.paymentMethod,
-		note: header.note,
-	});
-	return { rewritten: true, rows: written };
 }

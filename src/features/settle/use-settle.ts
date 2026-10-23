@@ -110,6 +110,8 @@ export function useSettle(
 					? {}
 					: { applyTo: [{ scope }] }),
 			allowOverpay,
+			// The server refuses it if Everything moved since (then we reload it).
+			...(everything && !confirming ? { everything: true } : {}),
 			...(confirming ? { matchClaimId: confirming.paymentId } : {}),
 			...(different ? { differentPayment: true } : {}),
 		};
@@ -138,6 +140,14 @@ export function useSettle(
 		},
 	);
 	const value = settled && preview.data ? preview.data.value : null;
+
+	// Everything moved (a new expense, a payment): read the context again; the
+	// refill below then puts the new figure in the amount.
+	const stale = preview.error?.data?.code === "CONFLICT";
+	const reload = ctx.refetch;
+	useEffect(() => {
+		if (stale) void reload();
+	}, [stale, reload]);
 
 	// "Same payment?": the receiver's amount matches a claim; confirm it by default.
 	useEffect(() => {

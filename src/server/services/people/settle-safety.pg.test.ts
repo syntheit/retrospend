@@ -303,3 +303,108 @@ describe("Same payment and Undo", () => {
 		).toBe(true);
 	});
 });
+
+/** A payment's header and rows as stored, for exact before and after checks. */
+async function stored(id: string) {
+	const header = await adminDb.payment.findUniqueOrThrow({ where: { id } });
+	const rows = await adminDb.settlement.findMany({
+		where: { paymentGroupId: id },
+		orderBy: { id: "asc" },
+	});
+	const plain = (o: object) =>
+		JSON.parse(JSON.stringify(o, (_k, v) => (v === undefined ? null : v)));
+	const { updatedAt: _u, ...h } = header;
+	return { header: plain(h), rows: rows.map(plain) };
+}
+
+describe("exact undo, stale Everything, row ids", () => {
+	let claimId: string;
+
+	beforeAll(async () => {
+		// Lucía pays BRL 20 toward her ARS debt at her own rate (1 ARS = 0.004
+		// BRL, so BRL 20 = ARS 5,000), applied to ARS only.
+		const claim = await forUser(lucia.user.id).apply(recordPayment, {
+			person: ref(sofia),
+			direction: "outgoing",
+			currency: "BRL",
+			amount: "20",
+			customRate: { rate: "0.004", currency: "ARS" },
+			applyTo: [{ currency: "ARS" }],
+			paymentMethod: "Pix",
+			paidOn: "2026-10-14",
+		});
+		if (!claim.value.recorded) throw new Error("claim not recorded");
+		claimId = claim.value.paymentId;
+	});
+
+	it("a row id of the claim confirms the claim, and Undo restores it verbatim (rate, applied rows)", async () => {
+		const before = await stored(claimId);
+		expect(before.header.rateType).toBe("custom");
+		const rowId = before.rows[0]?.id as string;
+		const applied = await applyPayment(sofia.db, sofia.user.id, {
+			person: ref(lucia),
+			direction: "incoming",
+			currency: "BRL",
+			amount: "15",
+			matchClaimId: rowId,
+		});
+		expect(applied.value).toMatchObject({ recorded: true, paymentId: claimId });
+		expect((await stored(claimId)).header.amount).toBe("15");
+
+		await forUser(sofia.user.id).apply(unconfirmPayment, {
+			paymentId: claimId,
+			person: ref(lucia),
+		});
+		expect(await stored(claimId)).toEqual(before);
+	});
+
+	it("refuses an exact undo once the ledger between them changed", async () => {
+		await applyPayment(sofia.db, sofia.user.id, {
+			person: ref(lucia),
+			direction: "incoming",
+			currency: "BRL",
+			amount: "16",
+			matchClaimId: claimId,
+		});
+		await seedShare(ref(sofia), ref(lucia), "1000", "ARS");
+		await expect(
+			forUser(sofia.user.id).apply(unconfirmPayment, {
+				paymentId: claimId,
+				person: ref(lucia),
+			}),
+		).rejects.toThrow(/cannot be undone exactly/);
+	});
+
+	it("refuses Everything once the balance went up since it was shown", async () => {
+		const shown = await settleContext(sofia.db, sofia.user.id, {
+			person: ref(martin),
+		});
+		if (!shown.everything) throw new Error("nothing owed");
+		await seedShare(ref(sofia), ref(martin), "500", "ARS");
+		const input = {
+			person: ref(martin),
+			direction: "incoming" as const,
+			currency: "ARS",
+			amount: String(shown.everything.minor / 100),
+			everything: true,
+		};
+		await expect(previewPayment(sofia.user.id, input)).rejects.toThrow(
+			/balance changed/,
+		);
+		await expect(applyPayment(sofia.db, sofia.user.id, input)).rejects.toThrow(
+			/balance changed/,
+		);
+		// The new Everything goes through.
+		const now = await settleContext(sofia.db, sofia.user.id, {
+			person: ref(martin),
+		});
+		expect(now.everything?.minor).toBe(
+			(shown.everything.minor as number) + 50_000,
+		);
+		const ok = await previewPayment(sofia.user.id, {
+			...input,
+			amount: String((now.everything?.minor ?? 0) / 100),
+		});
+		expect(ok.value.recorded).toBe(true);
+	});
+});

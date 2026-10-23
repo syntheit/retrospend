@@ -63,6 +63,12 @@ export interface RecordPaymentInput {
 	readonly applyTo?: readonly ApplyTo[];
 	/** The user confirmed paying more than everything owed (owner Q2). */
 	readonly allowOverpay?: boolean;
+	/**
+	 * The amount is the Everything the payer was shown. If the balance moved
+	 * since, the amount no longer settles everything (offsets included), so
+	 * the payment is refused rather than recorded as a partial one.
+	 */
+	readonly everything?: boolean;
 	/** "Same payment": confirm this pending claim with these details instead (§1.5). */
 	readonly matchClaimId?: string | null;
 	/** The receiver said this is not the payment the payer already claims (§1.5). */
@@ -186,8 +192,16 @@ async function claimOverrides(
 	claimId: string,
 	input: RecordPaymentInput,
 ) {
-	const claim = await tx.payment.findUnique({ where: { id: claimId } });
-	if (!claim) return { paymentId: claimId };
+	// The id may name the payment or one of its rows.
+	const row = await tx.settlement.findUnique({
+		where: { id: claimId },
+		select: { paymentGroupId: true },
+	});
+	const claim = await tx.payment.findUnique({
+		where: { id: row?.paymentGroupId ?? claimId },
+	});
+	if (!claim)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
 	if (claim.currency !== input.currency) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
@@ -202,7 +216,7 @@ async function claimOverrides(
 			: null;
 	const day = claim.paidOn.toISOString().slice(0, 10);
 	return {
-		paymentId: claimId,
+		paymentId: claim.id,
 		amount,
 		paidOn: input.paidOn && input.paidOn !== day ? input.paidOn : null,
 		paymentMethod:
@@ -273,6 +287,13 @@ export const recordPayment: MoneyMutation<
 			allocation.overpay <= (input.clampOverpayUpTo ?? 0)
 		) {
 			allocation = allocate(allocation.amount - allocation.overpay);
+		}
+		if (input.everything === true && allocation.amount !== allocation.full) {
+			throw new TRPCError({
+				code: "CONFLICT",
+				message:
+					"The balance changed since you opened this. Check the new Everything and record again.",
+			});
 		}
 		const view = viewAllocation(allocation);
 		const match = outgoing

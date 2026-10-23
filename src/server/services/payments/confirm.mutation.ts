@@ -19,7 +19,12 @@ import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma } from "~prisma";
 import { lockPair } from "./access";
 import { type Allocation, allocatePayment } from "./allocate";
-import { previousOf, readPrevious, restoreClaim } from "./confirm-restore";
+import {
+	ledgerFingerprint,
+	previousOf,
+	readPrevious,
+	restoreClaim,
+} from "./confirm-restore";
 import type { Confirmation } from "./confirmation";
 import { ledgerLines, payerLines } from "./ledger";
 import { loadQuotes } from "./quotes";
@@ -243,11 +248,16 @@ export async function confirmClaim(
 		},
 	});
 	// The rows as they now stand: after an amount change, the ones just written.
+	// The entry keeps the claim as it was, for an exact undo.
 	await logGroupAction(tx, me, written, {
 		action: "SETTLED",
 		context: "settlement_confirmed",
 		changes: {
-			previous: previousOf(header),
+			previous: previousOf(
+				header,
+				rows,
+				await ledgerFingerprint(tx, me, counterparty),
+			),
 			...(changed ? { confirmedAmount: input.amount } : {}),
 		},
 	});
@@ -337,6 +347,8 @@ export const unconfirmPayment: MoneyMutation<
 			participantType: "user",
 			participantId: actor.userId,
 		};
+		// Locked before the read, so the rows checked are the rows restored.
+		await lockPair(tx, me, input.person);
 		const { header, rows } = await loadPayment(tx, input.paymentId);
 		const recorder: ParticipantRef = {
 			participantType: header.recordedByType,
@@ -363,16 +375,18 @@ export const unconfirmPayment: MoneyMutation<
 				message: "Only the person who confirmed this payment can undo it",
 			});
 		}
-		await lockPair(tx, me, input.person);
-		// The claim goes back as the payer recorded it: amount, date, method.
+		// The claim goes back verbatim: header and rows as the payer left them.
 		const previous = await readPrevious(
 			tx,
 			rows.map((r) => r.id),
 		);
 		const restored = previous
-			? await restoreClaim(tx, header, rows, previous)
+			? await restoreClaim(tx, header, rows, previous, {
+					me,
+					other: input.person,
+				})
 			: null;
-		if (!restored?.rewritten) {
+		if (!restored) {
 			for (const row of rows) {
 				const fromRecorder =
 					row.fromParticipantType === recorder.participantType &&
@@ -387,12 +401,12 @@ export const unconfirmPayment: MoneyMutation<
 					},
 				});
 			}
+			await tx.payment.update({
+				where: { id: header.id },
+				data: { status: "PROPOSED" },
+			});
 		}
-		await tx.payment.update({
-			where: { id: header.id },
-			data: { status: "PROPOSED" },
-		});
-		await logGroupAction(tx, me, restored?.rows ?? rows, {
+		await logGroupAction(tx, me, restored ?? rows, {
 			action: "EDITED",
 			context: "settlement_unconfirmed",
 		});
