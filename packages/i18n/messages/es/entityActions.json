@@ -32,6 +32,18 @@
 			"confirmTitle": "¿Eliminar {name}?",
 			"confirmBody": "Los saldos afectados se actualizan para todos.",
 			"confirmButton": "Eliminar gasto"
+		},
+		"accept": {
+			"label": "Aceptar la división"
+		},
+		"reject": {
+			"label": "Rechazar la división"
+		},
+		"recur": {
+			"label": "Convertir en gasto recurrente"
+		},
+		"copy": {
+			"label": "Copiar como texto"
 		}
 	},
 	"person": {

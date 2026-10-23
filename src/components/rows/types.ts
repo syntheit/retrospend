@@ -39,8 +39,20 @@ export type TransactionVM = {
 	amount: MoneyValue;
 	/** The home amount when the currency is foreign; null means no rate yet. */
 	home?: MoneyValue | null;
-	/** Your share of a split, in the home currency. */
+	/** Your share of a split, as the server sends it (Activity: home; a project: its currency). */
 	share?: MoneyValue;
+	/**
+	 * In a ledger with one person (person.html): what this row does to your
+	 * balance with them (positive: they owe you), or why it does nothing.
+	 * A payment says who paid whom instead.
+	 */
+	between?: {
+		amount: MoneyValue | null;
+		state: "ok" | "review" | "rejected" | "settled";
+		/** A payment: "in" they paid you, "out" you paid them. */
+		paid?: "in" | "out";
+		figure?: string;
+	};
 	/** The other side of an exchange. */
 	counter?: MoneyValue;
 	/** The rate behind a foreign amount, as the server words it. */
@@ -75,10 +87,25 @@ export type PersonVM = {
 	name: string;
 	imageUrl?: string | null;
 	onRetrospend: boolean;
-	/** What you last shared and when, as the server words it. */
+	/** What you last shared, as the server words it. It gives way when narrow. */
 	lastShared: string;
+	/** When that was ("3 days ago"); kept whole after it. */
+	when?: string;
 	/** Positive: they owe you. Negative: you owe them. Zero: settled. */
 	balance: MoneyValue;
+	/** The balance is a net converted across currencies: it reads "≈". */
+	approx?: boolean;
+	/**
+	 * The balance in each currency as it is held (signed like the balance),
+	 * shown under the net when it is not one amount in the home currency.
+	 */
+	parts?: MoneyValue[];
+	/** A payment waiting for one side; it takes the balance's place. */
+	pending?: { direction: "in" | "out"; amount: MoneyValue } | null;
+	/** Changes since you last looked: the attention dot on the face. */
+	unseen?: number;
+	/** Splits and payments from them that wait for you. */
+	needsYou?: number;
 	/** Figures registry key of the balance. */
 	figure?: string;
 	href: string;
@@ -106,6 +133,18 @@ export type ProjectVM = {
 	figure?: string;
 	/** How much of the budget is used, when there is one. */
 	budgetUsed?: { basis: Basis; over: boolean } | null;
+	/**
+	 * The desktop columns of projects.html: what the group spent with your
+	 * share under it, and the budget left (negative: over). Set `total` to
+	 * get them; phones keep one end figure.
+	 */
+	columns?: {
+		total: MoneyValue | null;
+		totalFigure?: string;
+		share?: MoneyValue | null;
+		shareFigure?: string;
+		budgetLeft?: MoneyValue | null;
+	};
 };
 
 export type AccountKind =
@@ -131,6 +170,20 @@ export type AccountVM = {
 	/** Figures registry keys of the native and home amounts. */
 	figure?: string;
 	homeFigure?: string;
+	/**
+	 * The Wealth page's sub line (wealth.html): the currency code first, then
+	 * one fact about how it counts. Without it the row says when it changed.
+	 */
+	detail?: {
+		/** The rate type it is valued at, worded ("Blue"), when there are several. */
+		valuedAt?: string | null;
+		/** A liability's interest rate, in hundredths of a percent. */
+		apr?: Basis | null;
+		/** No rate for its currency: left out of net worth (attention). */
+		noRate?: boolean;
+		/** ISO date it was closed. */
+		closedOn?: string | null;
+	};
 };
 
 export type EnvelopeVM = {
@@ -145,7 +198,12 @@ export type EnvelopeVM = {
 	figure?: string;
 };
 
-export type RecurringFrequency = "weekly" | "monthly" | "quarterly" | "yearly";
+export type RecurringFrequency =
+	| "weekly"
+	| "biweekly"
+	| "monthly"
+	| "quarterly"
+	| "yearly";
 
 export type RecurringVM = {
 	id: string;
@@ -161,4 +219,8 @@ export type RecurringVM = {
 	home?: MoneyValue | null;
 	/** Figures registry key of the amount. */
 	figure?: string;
+	/** Whether auto-pay books it on the day; set it to show the auto-pay line. */
+	autoPay?: boolean;
+	/** A paused template: muted, "Paused" instead of the next date. */
+	paused?: boolean;
 };

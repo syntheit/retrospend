@@ -201,6 +201,7 @@ export function PeopleScreen({
 										label={t(`groups.${g}`)}
 										people={shown[g]}
 										today={today}
+										words={g === "pending"}
 									/>
 								</PeopleGroup>
 							))}

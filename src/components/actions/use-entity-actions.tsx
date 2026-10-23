@@ -6,6 +6,7 @@ import * as React from "react";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { ACTIONS, type Entity, type EntityTargets } from "./registry";
 import {
+	type ActionChoices,
 	type ActionDef,
 	type ActionHandlers,
 	type ActionTarget,
@@ -20,6 +21,8 @@ export type EntityActionProps<E extends Entity> = {
 	target: EntityTargets[E];
 	/** One handler per action id; actions without one are not shown. */
 	handlers: ActionHandlers<EntityTargets[E]>;
+	/** The choices of each pick action (categories, projects); none: not shown. */
+	choices?: ActionChoices;
 };
 
 /**
@@ -41,8 +44,14 @@ export function useEntityActions<E extends Entity>(
 	const [pending, setPending] = React.useState<ActionDef<T> | null>(null);
 
 	const entries: MenuEntry<T>[] = React.useMemo(
-		() => menuEntries(defs, target, handlers),
-		[defs, target, handlers],
+		() => menuEntries(defs, target, handlers, props.choices),
+		[defs, target, handlers, props.choices],
+	);
+
+	/** A pick action's handler with the chosen id. */
+	const pick = React.useCallback(
+		(a: ActionDef<T>, choice: string) => void handlers[a.id]?.(target, choice),
+		[handlers, target],
 	);
 
 	const label = React.useCallback(
@@ -90,5 +99,13 @@ export function useEntityActions<E extends Entity>(
 		/>
 	) : null;
 
-	return { entries, label, run, onRowKeyDown, confirm };
+	return {
+		entries,
+		label,
+		run,
+		pick,
+		choices: props.choices,
+		onRowKeyDown,
+		confirm,
+	};
 }

@@ -78,5 +78,18 @@
 		"tourist": "Turista",
 		"market": "Mercado",
 		"custom": "Personalizado"
+	},
+	"bulk": {
+		"categorize": "Categorizar",
+		"export": "Exportar CSV",
+		"delete": "Eliminar",
+		"moved": "{count, plural, one {# gasto movido} other {# gastos movidos}} a {name}",
+		"exported": "{count, plural, one {# fila exportada} other {# filas exportadas}} a CSV",
+		"deleted": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}",
+		"failed": "No se pudieron cambiar los gastos seleccionados",
+		"confirmTitle": "¿Eliminar {count, plural, one {# gasto} other {# gastos}}?",
+		"confirmBody": "Salen de tus gastos y de cada total en el que estaban. Puedes deshacerlo.",
+		"confirmButton": "Eliminar gastos",
+		"deletedSome": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}. {left, plural, one {# no se pudo eliminar} other {# no se pudieron eliminar}}"
 	}
 }

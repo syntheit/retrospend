@@ -36,9 +36,11 @@ function RecurringAmount({ item }: { item: RecurringVM }) {
 }
 
 /**
- * Recurring row: next date, status in words, and on desktop Confirm and Skip
- * when it is due or overdue. Phone keeps those in the menu and swipes, so the
- * row stays one tap target (R13).
+ * Recurring row (recurring.html): the due state in words, then how often
+ * (left out when monthly, the usual case), and the auto-pay line when the
+ * view model has it. Desktop lists show Confirm and Skip when it is due or
+ * overdue; phone keeps those in the menu and swipes, so the row stays one
+ * tap target (R13). A paused template is muted and says so.
  */
 export function RecurringRow({
 	item,
@@ -46,6 +48,7 @@ export function RecurringRow({
 	onSkip,
 	onOpen,
 	actions,
+	className,
 	...rest
 }: {
 	item: RecurringVM;
@@ -61,27 +64,30 @@ export function RecurringRow({
 		variant === "flat" ? "" : variant === "group" ? "hidden" : "max-md:hidden";
 	const narrow =
 		variant === "flat" ? "hidden" : variant === "group" ? "" : "md:hidden";
-	const when =
-		item.state === "overdue" ? (
-			<>
-				<StatusDot
-					className={wide}
-					kind="overdue"
-					label={t("overdueSince", { date: short(item.next) })}
-					size="sm"
-				/>
-				<StatusDot className={narrow} kind="overdue" size="sm" />
-			</>
-		) : item.state === "due" ? (
-			<StatusDot kind="due" size="sm" />
-		) : (
-			t("next", { date: short(item.next) })
-		);
-	const due = item.state !== "upcoming" && (onConfirm || onSkip);
+	const when = item.paused ? (
+		t("paused")
+	) : item.state === "overdue" ? (
+		<>
+			<StatusDot
+				className={wide}
+				kind="overdue"
+				label={t("overdueSince", { date: short(item.next) })}
+				size="sm"
+			/>
+			<StatusDot className={narrow} kind="overdue" size="sm" />
+		</>
+	) : item.state === "due" ? (
+		<StatusDot kind="due" size="sm" />
+	) : (
+		t("next", { date: short(item.next) })
+	);
+	const due =
+		!item.paused && item.state !== "upcoming" && (onConfirm || onSkip);
 	return (
 		<Row
 			{...rest}
 			actions={actions}
+			className={cn(item.paused && "text-fg-3", className)}
 			end={
 				<div className="flex items-center gap-4">
 					<span className="flex flex-col items-end">
@@ -105,7 +111,16 @@ export function RecurringRow({
 			}
 			lead={<CategoryTile category={item.category} />}
 			open={onOpen ? { onOpen, label: item.title } : undefined}
-			sub={<RowSub parts={[t(item.frequency), when]} />}
+			sub={
+				<>
+					<RowSub
+						parts={[when, item.frequency !== "monthly" && t(item.frequency)]}
+					/>
+					{item.autoPay !== undefined && (
+						<RowSub parts={[t(item.autoPay ? "autoPayOn" : "autoPayOff")]} />
+					)}
+				</>
+			}
 			title={item.title}
 		/>
 	);

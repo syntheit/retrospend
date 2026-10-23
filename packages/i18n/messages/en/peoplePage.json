@@ -23,12 +23,6 @@
 		"weeks": "{count, plural, one {# week ago} other {# weeks ago}}",
 		"months": "{count, plural, one {# month ago} other {# months ago}}"
 	},
-	"row": {
-		"needYou": "{count} need you",
-		"pendingOut": "Pending: you paid {amount}, waiting for {name}",
-		"pendingIn": "Pending: they paid you {amount}",
-		"new": "{count} new"
-	},
 	"needs": {
 		"title": "Needs you",
 		"confirmed": "Confirmed {name}'s payment",

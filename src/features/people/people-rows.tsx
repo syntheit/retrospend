@@ -2,12 +2,11 @@
 
 import { daysBetween } from "@retrospend/domain/format-date";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { PersonTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { formatMoney } from "~/components/money/format";
 import { PersonRow } from "~/components/rows/person-row";
 import { RowList } from "~/components/rows/row";
 import { FaceStack } from "~/components/ui/avatar-face";
@@ -35,32 +34,6 @@ function useAgo(today: string) {
 }
 
 /**
- * The row's subline: what waits for you, a pending payment, then the last
- * thing shared and when. Amounts go through the one formatter.
- */
-function useSubline(today: string) {
-	const t = useTranslations("peoplePage.row");
-	const locale = useLocale();
-	const ago = useAgo(today);
-	return (p: PersonSummary) => {
-		const parts: string[] = [];
-		if (p.unseen) parts.push(t("new", { count: p.unseen }));
-		if (p.needsYou) parts.push(t("needYou", { count: p.needsYou }));
-		if (p.group === "pending" && p.pending) {
-			const amount = formatMoney(p.pending.amount, { locale });
-			parts.push(
-				p.pending.direction === "out"
-					? t("pendingOut", { amount, name: p.person.name })
-					: t("pendingIn", { amount }),
-			);
-		}
-		if (p.lastShared)
-			parts.push(`${p.lastShared.title} · ${ago(p.lastShared.date)}`);
-		return parts.join(" · ");
-	};
-}
-
-/**
  * The balance the row shows: the net in the home currency. Without a net (a
  * currency has no rate) it shows the first currency as it is, never a
  * converted guess.
@@ -68,23 +41,53 @@ function useSubline(today: string) {
 const balanceOf = (p: PersonSummary) =>
 	p.net ?? p.parts[0]?.amount ?? { minor: 0, currency: "USD" };
 
+/**
+ * The kit row's view model. The net reads "≈" when it converts other
+ * currencies, and then the row lists the parts as they are held (people.html).
+ */
+function toPersonVM(p: PersonSummary, ago: (date: string) => string) {
+	const balance = balanceOf(p);
+	const exact =
+		p.parts.length <= 1 &&
+		(p.parts[0]?.amount.currency ?? balance.currency) === balance.currency;
+	return {
+		id: p.person.key,
+		name: p.person.name,
+		imageUrl: p.person.imageUrl,
+		onRetrospend: p.person.onRetrospend,
+		lastShared: p.lastShared?.title ?? "",
+		...(p.lastShared ? { when: ago(p.lastShared.date) } : {}),
+		balance,
+		approx: p.net != null && !exact,
+		...(exact ? {} : { parts: p.parts.map((part) => part.amount) }),
+		pending: p.group === "pending" ? p.pending : null,
+		unseen: p.unseen,
+		needsYou: p.needsYou,
+		href: personHrefOf(p.person),
+	};
+}
+
 export function PeopleRows({
 	people,
 	handlersFor,
 	today,
 	label,
+	words = true,
 }: {
 	people: PersonSummary[];
 	handlersFor: (p: PersonSummary) => ActionHandlers<PersonTarget>;
 	today: string;
 	label: string;
+	/** False in the Owe you and You owe groups: their heading says it. */
+	words?: boolean;
 }) {
-	const sub = useSubline(today);
+	const ago = useAgo(today);
 	return (
 		<RowList label={label}>
 			{people.map((p) => {
 				const target = targetOf(p);
 				const handlers = handlersFor(p);
+				const settle = handlers.settle;
 				return (
 					<ActionArea
 						entity="person"
@@ -101,15 +104,9 @@ export function PeopleRows({
 								/>
 							}
 							data-person={p.person.key}
-							person={{
-								id: p.person.key,
-								name: p.person.name,
-								imageUrl: p.person.imageUrl,
-								onRetrospend: p.person.onRetrospend,
-								lastShared: sub(p),
-								balance: balanceOf(p),
-								href: personHrefOf(p.person),
-							}}
+							onSettle={settle ? () => settle(target) : undefined}
+							person={toPersonVM(p, ago)}
+							words={words}
 						/>
 					</ActionArea>
 				);

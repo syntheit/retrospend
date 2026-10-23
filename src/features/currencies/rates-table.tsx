@@ -5,7 +5,6 @@ import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { CurrencyTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { Money } from "~/components/money/money";
-import { TABLE_LOOK } from "~/components/table/table-style";
 import {
 	Table,
 	TableBody,
@@ -85,71 +84,69 @@ export function RatesTable({
 	return (
 		<div>
 			<div className="text-fg-3 text-meta mb-2">{t("priceOf", { home })}</div>
-			<div className={cn(TABLE_LOOK, "border-line overflow-x-auto border")}>
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead className="w-12">
-								<span className="sr-only">{t("favorite")}</span>
+			<Table look="panel">
+				<TableHeader>
+					<TableRow>
+						<TableHead className="w-12">
+							<span className="sr-only">{t("favorite")}</span>
+						</TableHead>
+						<TableHead>{t("currency")}</TableHead>
+						{columns.map((c) => (
+							<TableHead className="text-right" key={c}>
+								{label(c)}
 							</TableHead>
-							<TableHead>{t("currency")}</TableHead>
-							{columns.map((c) => (
-								<TableHead className="text-right" key={c}>
-									{label(c)}
-								</TableHead>
-							))}
-							<TableHead className="w-12">
-								<span className="sr-only">{t("actions")}</span>
-							</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{rows.map((row) => (
-							<ActionArea
-								entity="currency"
-								handlers={handlers}
-								key={row.code}
-								target={targetOf(row)}
-							>
-								<TableRow
-									aria-current={row.code === selected ? "true" : undefined}
-									className="cursor-pointer"
-									data-state={row.code === selected ? "selected" : undefined}
-									onClick={() => onSelect(row.code)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && e.target === e.currentTarget)
-											onSelect(row.code);
-									}}
-									tabIndex={0}
-								>
-									<TableCell>
-										<StarButton
-											busy={favoriteBusy}
-											onToggle={(on) => onFavorite(row, on)}
-											row={row}
-										/>
-									</TableCell>
-									<TableCell className="max-w-52">
-										<CurrencyName row={row} />
-									</TableCell>
-									{columns.map((c) => (
-										<TableCell className="text-right tabular-nums" key={c}>
-											<RateCell columns={columns} row={row} type={c} />
-										</TableCell>
-									))}
-									<TableCell onClick={(e) => e.stopPropagation()}>
-										<ActionMenu
-											entity="currency"
-											handlers={handlers}
-											target={targetOf(row)}
-										/>
-									</TableCell>
-								</TableRow>
-							</ActionArea>
 						))}
-					</TableBody>
-				</Table>
-			</div>
+						<TableHead className="w-12">
+							<span className="sr-only">{t("actions")}</span>
+						</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					{rows.map((row) => (
+						<ActionArea
+							entity="currency"
+							handlers={handlers}
+							key={row.code}
+							target={targetOf(row)}
+						>
+							<TableRow
+								aria-current={row.code === selected ? "true" : undefined}
+								className="cursor-pointer"
+								data-state={row.code === selected ? "selected" : undefined}
+								onClick={() => onSelect(row.code)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && e.target === e.currentTarget)
+										onSelect(row.code);
+								}}
+								tabIndex={0}
+							>
+								<TableCell>
+									<StarButton
+										busy={favoriteBusy}
+										onToggle={(on) => onFavorite(row, on)}
+										row={row}
+									/>
+								</TableCell>
+								<TableCell className="max-w-52">
+									<CurrencyName row={row} />
+								</TableCell>
+								{columns.map((c) => (
+									<TableCell className="text-right tabular-nums" key={c}>
+										<RateCell columns={columns} row={row} type={c} />
+									</TableCell>
+								))}
+								<TableCell onClick={(e) => e.stopPropagation()}>
+									<ActionMenu
+										entity="currency"
+										handlers={handlers}
+										target={targetOf(row)}
+									/>
+								</TableCell>
+							</TableRow>
+						</ActionArea>
+					))}
+				</TableBody>
+			</Table>
 		</div>
 	);
 }

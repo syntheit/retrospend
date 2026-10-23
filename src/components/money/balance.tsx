@@ -31,9 +31,18 @@ export function Balance({
 	amount,
 	subject = "person",
 	figure,
+	approx = false,
+	words = true,
 	className,
 }: {
 	amount: MoneyValue;
+	/** A net converted across currencies: "≈" before the amount. */
+	approx?: boolean;
+	/**
+	 * False inside a group whose heading already says it ("Owe you"): the
+	 * amount keeps its color and drops the words (GUIDELINE §6).
+	 */
+	words?: boolean;
 	/** The figures registry key, for the e2e audit. */
 	figure?: string;
 	subject?: BalanceSubject;
@@ -66,8 +75,9 @@ export function Balance({
 			)}
 			data-balance={dir}
 		>
-			{t(WORDS[subject][dir])}{" "}
+			{words && `${t(WORDS[subject][dir])} `}
 			<Money
+				approx={approx}
 				className="font-semibold"
 				figure={figure}
 				sign="never"

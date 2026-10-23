@@ -26,11 +26,19 @@
 		"solo": "Solo",
 		"people": "{count, plural, one {# persona} other {# personas}}",
 		"spent": "gastado",
-		"budgetUsed": "Presupuesto usado"
+		"budgetUsed": "Presupuesto usado",
+		"yourShare": "tu parte",
+		"left": "quedan <amount></amount>",
+		"over": "<amount></amount> de más",
+		"justYou": "Solo tú"
 	},
 	"account": {
 		"updated": "Actualizado {date}",
-		"change": "{change} este mes"
+		"change": "{change} este mes",
+		"closed": "Cerrada el {date}. El historial se conserva.",
+		"noRate": "Sin cotización de {currency}. Queda fuera del patrimonio.",
+		"apr": "TNA {apr}",
+		"valuedAt": "Valuada a {type}"
 	},
 	"envelope": {
 		"spent": "Gastado de lo planeado"
@@ -43,7 +51,11 @@
 		"weekly": "Semanal",
 		"monthly": "Mensual",
 		"quarterly": "Trimestral",
-		"yearly": "Anual"
+		"yearly": "Anual",
+		"biweekly": "Cada 2 semanas",
+		"paused": "En pausa",
+		"autoPayOn": "Pago automático activado",
+		"autoPayOff": "Pago automático desactivado"
 	},
 	"table": {
 		"selectAll": "Seleccionar todo",
@@ -57,6 +69,30 @@
 		"actions": "Acciones",
 		"yourSpending": "Tu gasto",
 		"count": "{count, plural, one {# gasto} other {# gastos}}",
-		"withoutRate": "{count, plural, one {# sin cotización} other {# sin cotización}}"
+		"withoutRate": "{count, plural, one {# sin cotización} other {# sin cotización}}",
+		"selection": "Selección",
+		"selected": "{count, plural, one {# seleccionado} other {# seleccionados}}",
+		"clear": "Quitar",
+		"total": "Total",
+		"yourShare": "Tu parte",
+		"paidBy": "Pagado por",
+		"split": "División",
+		"between": "Entre ustedes",
+		"you": "Tú",
+		"waitsForYou": "Te espera",
+		"none": "Ninguna",
+		"rejected": "Rechazado",
+		"noChange": "Sin cambio",
+		"wasSettled": "era <amount></amount> · saldado",
+		"paidYou": "te pagó",
+		"youPaid": "pagaste"
+	},
+	"person": {
+		"new": "{count} nuevos",
+		"needYou": "{count} te necesitan",
+		"currencies": "{count} monedas",
+		"youPaid": "pagaste",
+		"paidYou": "te pagó",
+		"settleUp": "Saldar"
 	}
 }

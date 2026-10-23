@@ -32,6 +32,18 @@
 			"confirmTitle": "Excluir {name}?",
 			"confirmBody": "Os saldos afetados são atualizados para todos.",
 			"confirmButton": "Excluir despesa"
+		},
+		"accept": {
+			"label": "Aceitar divisão"
+		},
+		"reject": {
+			"label": "Recusar divisão"
+		},
+		"recur": {
+			"label": "Tornar despesa recorrente"
+		},
+		"copy": {
+			"label": "Copiar como texto"
 		}
 	},
 	"person": {

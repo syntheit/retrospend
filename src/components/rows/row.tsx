@@ -220,6 +220,7 @@ export function RowSub({
 		(p) => !empty(p) && !(isShrinkable(p) && empty(p.shrink)),
 	);
 	const last = shown.length - 1;
+	if (!shown.length) return null;
 	return (
 		<div
 			className={cn(

@@ -71,6 +71,8 @@
 		"of": "из <amount></amount>",
 		"paidYou": "{name} заплатил(а) вам",
 		"youPaid": "Вы заплатили {name}",
-		"waitingFor": "Ожидает {name}"
+		"waitingFor": "Ожидает {name}",
+		"categoryGroup": "Категория",
+		"projectGroup": "Проект"
 	}
 }

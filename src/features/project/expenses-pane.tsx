@@ -136,11 +136,12 @@ export function ExpensesPane({ view, me }: { view: PageView; me: string }) {
 		) : (
 			<TransactionTable
 				actions={menu}
-				hideProject
+				ledger="project"
 				onOpen={open}
 				rowArea={area}
 				rows={txs}
 				selectable={false}
+				solo={view.solo}
 				sort={[{ id: "date", desc: true }]}
 				today={view.today}
 			/>

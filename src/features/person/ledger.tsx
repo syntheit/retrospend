@@ -10,6 +10,7 @@ import { useRowDates } from "~/components/rows/dates";
 import { RowList } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { Empty } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import type { PersonPage } from "~/features/people/types";
@@ -21,6 +22,8 @@ import {
 	NO_LEDGER_FILTERS,
 } from "./ledger-filter";
 import { ExpenseRow, PaymentRow } from "./ledger-rows";
+import { LedgerMenu } from "./ledger-menu";
+import { LedgerTable } from "./ledger-table";
 
 /**
  * Between you: the shared expenses and the payments, by month, with what
@@ -49,6 +52,7 @@ export function Ledger({
 		[items, filters],
 	);
 	const groups = byMonth(shown);
+	const phone = useIsMobile();
 	const set = (patch: Partial<LedgerFilters>) =>
 		onFilters({ ...filters, ...patch });
 	const name = page.person.name;
@@ -98,6 +102,7 @@ export function Ledger({
 						{ paidBy: filters.paidBy === "them" ? null : "them" },
 						t("paidBy", { name }),
 					)}
+					<LedgerMenu filters={filters} items={items} onFilters={onFilters} />
 				</FilterChips>
 			</Toolbar>
 			{groups.length === 0 ? (
@@ -114,6 +119,13 @@ export function Ledger({
 					hint={t("noMatchHint")}
 					icon={SearchX}
 					title={t("noMatch")}
+				/>
+			) : !phone ? (
+				<LedgerTable
+					groups={groups}
+					heading={heading}
+					onOpen={openSharedExpense}
+					person={page.person}
 				/>
 			) : (
 				groups.map((g) => (

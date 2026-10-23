@@ -114,4 +114,13 @@ describe("matchesItem", () => {
 		expect(matchesItem(exp(ASADO), { ...f, scope: "none" })).toBe(true);
 		expect(matchesItem(exp(ASADO), { ...f, query: "restaurantes" })).toBe(true);
 	});
+	it("a category from the Filter menu keeps its expenses and no payments", () => {
+		expect(matchesItem(exp(ASADO), { ...f, category: "Restaurantes" })).toBe(
+			true,
+		);
+		expect(matchesItem(exp(ASADO), { ...f, category: "Viajes" })).toBe(false);
+		expect(matchesItem(pay(PAID), { ...f, category: "Restaurantes" })).toBe(
+			false,
+		);
+	});
 });

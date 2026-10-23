@@ -32,6 +32,18 @@
 			"confirmTitle": "Delete {name}?",
 			"confirmBody": "Balances it touched update for everyone on it.",
 			"confirmButton": "Delete expense"
+		},
+		"accept": {
+			"label": "Accept split"
+		},
+		"reject": {
+			"label": "Reject split"
+		},
+		"recur": {
+			"label": "Make recurring expense"
+		},
+		"copy": {
+			"label": "Copy as text"
 		}
 	},
 	"person": {

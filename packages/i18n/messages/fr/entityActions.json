@@ -32,6 +32,18 @@
 			"confirmTitle": "Supprimer {name} ?",
 			"confirmBody": "Les soldes concernés sont mis à jour pour tous.",
 			"confirmButton": "Supprimer la dépense"
+		},
+		"accept": {
+			"label": "Accepter le partage"
+		},
+		"reject": {
+			"label": "Refuser le partage"
+		},
+		"recur": {
+			"label": "En faire une dépense récurrente"
+		},
+		"copy": {
+			"label": "Copier en texte"
 		}
 	},
 	"person": {

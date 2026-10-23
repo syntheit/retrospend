@@ -26,11 +26,19 @@
 		"solo": "Solo",
 		"people": "{count, plural, one {# person} other {# people}}",
 		"spent": "spent",
-		"budgetUsed": "Budget used"
+		"budgetUsed": "Budget used",
+		"yourShare": "your share",
+		"left": "<amount></amount> left",
+		"over": "<amount></amount> over",
+		"justYou": "Just you"
 	},
 	"account": {
 		"updated": "Updated {date}",
-		"change": "{change} this month"
+		"change": "{change} this month",
+		"closed": "Closed {date}. History kept.",
+		"noRate": "No {currency} rate. Left out of net worth.",
+		"apr": "APR {apr}",
+		"valuedAt": "Valued at {type}"
 	},
 	"envelope": {
 		"spent": "Spent of what you planned"
@@ -43,7 +51,11 @@
 		"weekly": "Weekly",
 		"monthly": "Monthly",
 		"quarterly": "Quarterly",
-		"yearly": "Yearly"
+		"yearly": "Yearly",
+		"biweekly": "Every 2 weeks",
+		"paused": "Paused",
+		"autoPayOn": "Auto-pay on",
+		"autoPayOff": "Auto-pay off"
 	},
 	"table": {
 		"selectAll": "Select all",
@@ -57,6 +69,30 @@
 		"actions": "Actions",
 		"yourSpending": "Your spending",
 		"count": "{count, plural, one {# expense} other {# expenses}}",
-		"withoutRate": "{count, plural, one {# without a rate} other {# without a rate}}"
+		"withoutRate": "{count, plural, one {# without a rate} other {# without a rate}}",
+		"selection": "Selection",
+		"selected": "{count} selected",
+		"clear": "Clear",
+		"total": "Total",
+		"yourShare": "Your share",
+		"paidBy": "Paid by",
+		"split": "Split",
+		"between": "Between you",
+		"you": "You",
+		"waitsForYou": "Waits for you",
+		"none": "None",
+		"rejected": "Rejected",
+		"noChange": "No change",
+		"wasSettled": "was <amount></amount> · settled",
+		"paidYou": "paid you",
+		"youPaid": "you paid"
+	},
+	"person": {
+		"new": "{count} new",
+		"needYou": "{count} need you",
+		"currencies": "{count} currencies",
+		"youPaid": "you paid",
+		"paidYou": "paid you",
+		"settleUp": "Settle up"
 	}
 }
