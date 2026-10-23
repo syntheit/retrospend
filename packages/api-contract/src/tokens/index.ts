@@ -54,6 +54,8 @@ export const tokensContract = {
 			operationId: "listAccessTokens",
 			tags: TAG,
 			summary: "The caller's personal access tokens, newest first",
+			description:
+				"Only from the web app's own session (Settings > Developer); any other credential gets forbidden.",
 		})
 		.meta({ scope: "read" })
 		.input(cursorQuerySchema)

@@ -104,6 +104,21 @@ describe("/api/v1/tokens", () => {
 		);
 	});
 
+	it("lists tokens only for the web app's session", async () => {
+		const mobile = await asMobile(alice);
+		await expectProblem(
+			await call("/tokens", { headers: mobile }),
+			403,
+			"forbidden",
+		);
+		const key = await asKey(alice, ["read"]);
+		await expectProblem(
+			await call("/tokens", { headers: key }),
+			403,
+			"forbidden",
+		);
+	});
+
 	it("never grants a scope the creator lacks", async () => {
 		await expectProblem(
 			await create(web, { name: "a", scopes: ["admin"] }),

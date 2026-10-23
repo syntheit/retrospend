@@ -7887,6 +7887,7 @@
 		},
 		"/tokens": {
 			"get": {
+				"description": "Only from the web app's own session (Settings > Developer); any other credential gets forbidden.",
 				"operationId": "listAccessTokens",
 				"parameters": [
 					{

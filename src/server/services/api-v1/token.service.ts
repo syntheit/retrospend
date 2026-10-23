@@ -72,6 +72,16 @@ export function listAccessTokens(
 }
 
 /**
+ * Token management belongs to the web app's own session. Any other
+ * credential (a read token included) may not see which tokens exist.
+ */
+function assertWebSession(principal: Principal, message: string) {
+	if (principal.kind !== "web") {
+		throw new TRPCError({ code: "FORBIDDEN", message });
+	}
+}
+
+/**
  * Creates a token for the caller. Only the web app's own session may: a
  * token minting tokens would let any scoped credential outlive itself
  * (the escalation the auth endpoints already refuse). A token never gets a
@@ -82,12 +92,7 @@ export async function createAccessToken(
 	principal: Principal,
 	input: { name: string; scopes: Scope[]; expiresInDays: number },
 ): Promise<{ token: AccessTokenDto; key: string }> {
-	if (principal.kind !== "web") {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "Access tokens are created from the web app",
-		});
-	}
+	assertWebSession(principal, "Access tokens are created from the web app");
 	const scopes = [...new Set(input.scopes)];
 	const missing = scopes.filter((s) => !principal.scopes.includes(s));
 	if (missing.length > 0) {
@@ -125,6 +130,10 @@ const createdCursor = z.object({ createdAt: z.iso.datetime(), id: z.string() });
 
 /** GET /tokens: a page of the caller's tokens as contract DTOs. */
 export async function listAccessTokenPage(caller: Caller, q: CursorQuery) {
+	assertWebSession(
+		caller.principal,
+		"Access tokens are listed from the web app",
+	);
 	const after = decodeCursor(q.cursor, createdCursor);
 	const rows = await listAccessTokens(caller.db, caller.principal.userId, {
 		after: after
