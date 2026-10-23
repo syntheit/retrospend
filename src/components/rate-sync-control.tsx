@@ -18,6 +18,7 @@ export function RateSyncControl() {
 	const t = useTranslations("currencies");
 	const [syncResult, setSyncResult] = useState<{
 		success: boolean;
+		unavailable?: boolean;
 		message: string;
 	} | null>(null);
 
@@ -58,9 +59,7 @@ export function RateSyncControl() {
 					<RefreshCw className="h-5 w-5" />
 					{t("exchangeRateSync")}
 				</CardTitle>
-				<CardDescription>
-					{t("exchangeRateSyncDescription")}
-				</CardDescription>
+				<CardDescription>{t("exchangeRateSyncDescription")}</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-grow flex-col space-y-4">
 				{/* Last Sync Status */}
@@ -97,8 +96,14 @@ export function RateSyncControl() {
 						)}
 					</Button>
 
+					{/* No sidecar on this server: a plain sentence, not a failure. */}
+					{syncResult?.unavailable ? (
+						<span className="text-fg-2 text-small" role="status">
+							{t("syncUnavailable")}
+						</span>
+					) : null}
 					{/* Sync Result */}
-					{syncResult && (
+					{syncResult && !syncResult.unavailable && (
 						<div
 							className={`flex items-center gap-2 text-sm ${
 								syncResult.success

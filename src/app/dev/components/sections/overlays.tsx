@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Money } from "~/components/money/money";
 import { MoneyInput, useMoneyText } from "~/components/money/money-input";
 import {
 	CategoryPicker,
@@ -13,6 +14,10 @@ import {
 } from "~/components/pickers/date-range";
 import { DateRangePanel } from "~/components/pickers/date-range-panel";
 import { PersonPicker } from "~/components/pickers/person-picker";
+import {
+	type PickerProject,
+	ProjectPicker,
+} from "~/components/pickers/project-picker";
 import { CAT, TODAY } from "../fixtures/rows";
 import { Cap, Pair, Spec, States } from "../spec";
 
@@ -29,14 +34,38 @@ const S = {
 	save: "Add expense",
 	saved: "Expense added",
 	empty: "Empty",
-	filled: "Filled, foreign (rate chip)",
+	filled: "Foreign: flag chip, rate types, home amount",
+	spent: "You spent",
+	inBudget: "In budget as",
+	rateLabel: "Rate",
+	project: "ProjectPicker",
 	disabled: "Disabled",
-	rate: "USD 1 = ARS 1,412 · Official · Oct 21",
 	category: "CategoryPicker",
 	person: "PersonPicker",
 	date: "DatePicker",
 	expense: "Super Norte",
 };
+
+/** Fixture rate types for USD in ARS, with what USD 63.40 books at each. */
+const RATES = [
+	{ type: "official", label: "Official", minor: 141200, home: 8952080 },
+	{ type: "blue", label: "Blue", minor: 146800, home: 9307120 },
+	{ type: "mep", label: "MEP", minor: 144200, home: 9142280 },
+	{ type: "card", label: "Card", minor: 232000, home: 14708800 },
+];
+const rateHome = (type: string) =>
+	RATES.find((r) => r.type === type)?.home ?? 0;
+
+const PROJECTS: PickerProject[] = [
+	{
+		id: "floripa",
+		name: "Viaje a Florianópolis",
+		currency: "BRL",
+		peopleCount: 7,
+	},
+	{ id: "depto", name: "Depto Palermo", currency: "ARS", peopleCount: 2 },
+	{ id: "obra", name: "Obra del baño", currency: "ARS", peopleCount: 1 },
+];
 
 const CATEGORIES: PickerCategory[] = Object.entries(CAT).map(([id, c]) => ({
 	id,
@@ -76,6 +105,7 @@ export function DateRangeSection() {
 export function MoneyInputSection() {
 	const empty = useMoneyText(null, "ARS");
 	const usd = useMoneyText(6340, "USD");
+	const [rate, setRate] = useState("blue");
 	const brl = useMoneyText(12000, "BRL");
 	return (
 		<Spec id="moneyinput">
@@ -96,8 +126,26 @@ export function MoneyInputSection() {
 						<div className="w-85 max-w-full" key="b">
 							<MoneyInput
 								currency="USD"
+								home={{
+									currency: "ARS",
+									label: S.inBudget,
+									value: (
+										<Money value={{ minor: rateHome(rate), currency: "ARS" }} />
+									),
+								}}
+								label={S.spent}
 								onChange={usd.onChange}
-								rate={{ label: S.rate }}
+								onCurrencyChange={() => {}}
+								rates={{
+									label: S.rateLabel,
+									value: rate,
+									onChange: setRate,
+									options: RATES.map((r) => ({
+										value: r.type,
+										label: r.label,
+										rate: <Money value={{ minor: r.minor, currency: "ARS" }} />,
+									})),
+								}}
 								value={usd.text}
 							/>
 						</div>,
@@ -123,6 +171,7 @@ export function PickersSection() {
 	const [cat, setCat] = useState<string | null>("groceries");
 	const [people, setPeople] = useState<string[]>(["lucia"]);
 	const [day, setDay] = useState(TODAY);
+	const [project, setProject] = useState<string | null>("floripa");
 	return (
 		<Spec id="catpick">
 			<Pair
@@ -135,6 +184,14 @@ export function PickersSection() {
 								onChange={setCat}
 								recentIds={["groceries"]}
 								value={cat}
+							/>
+						</div>
+						<Cap className="mt-4">{S.project}</Cap>
+						<div className="rounded-panel border-line bg-surface shadow-menu w-80 border">
+							<ProjectPicker
+								onChange={setProject}
+								projects={PROJECTS}
+								value={project}
 							/>
 						</div>
 					</>

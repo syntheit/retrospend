@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { createTransferSchema } from "~/server/services/accounts/input";
 import { entryCatalog } from "~/server/services/entry/catalog";
+import { entryProjectMembers } from "~/server/services/entry/project-members";
 import {
 	deleteExpenseEntry,
 	restoreExpenseEntry,
@@ -85,6 +86,18 @@ export const entryRouter = createTRPCRouter({
 			sharedAuthor(ctx.db, ctx.session.user.id, input.id),
 		),
 
+	/** A project's members on the expense's day, all of them: who the split includes. */
+	projectMembers: protectedProcedure
+		.input(schema.projectMembersSchema)
+		.query(({ ctx, input }) =>
+			entryProjectMembers(
+				ctx.db,
+				ctx.session.user.id,
+				input.projectId,
+				input.date,
+			),
+		),
+
 	/** The rate strip: every type the pair offers, booked as saving would book it. */
 	rateOptions: protectedProcedure
 		.input(schema.rateOptionsSchema)
@@ -95,6 +108,10 @@ export const entryRouter = createTRPCRouter({
 					currency: input.currency,
 					date: new Date(`${input.date}T12:00:00.000Z`),
 					amount: input.amount === undefined ? undefined : Number(input.amount),
+					customRate:
+						input.customRate === undefined
+							? undefined
+							: Number(input.customRate),
 				}),
 			),
 		),

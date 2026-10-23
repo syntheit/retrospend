@@ -1,14 +1,17 @@
 "use client";
 
 import { fromMinor } from "@retrospend/domain/money-minor";
+import { PencilIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
 import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
-import { MoneyInput } from "~/components/money/money-input";
+import {
+	MoneyInput,
+	MoneyInputRow,
+	type MoneyRates,
+} from "~/components/money/money-input";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Button } from "~/components/ui/button";
-import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
 import { api, type RouterOutputs } from "~/trpc/react";
 import {
@@ -47,6 +50,8 @@ export function useRateState(
 			amount: askedMinor
 				? fromMinor({ minor: askedMinor, currency: d.currency })
 				: undefined,
+			// A typed rate is booked by the server too, so the home row shows it.
+			customRate: d.custom && d.customRate ? d.customRate : undefined,
 		},
 		250,
 	);
@@ -61,16 +66,19 @@ export function useRateState(
 		opts,
 		missing: foreign && !!opts?.missing && !d.custom && !keptCustom,
 		type,
-		picked: opts?.options.find((o) => o.rateType === type) ?? null,
+		picked: d.custom
+			? (opts?.custom ?? null)
+			: (opts?.options.find((o) => o.rateType === type) ?? null),
 		keptCustom,
 	};
 }
 
 /**
- * Amount (R22) and, for a foreign amount, its rate: the chip ("Blue ARS
- * 1,468") opens the strip of the pair's types plus Custom; the home line
- * says what it counts as in your budget. A pair with no rate says so and
- * offers Enter rate; it never converts at 1.
+ * Amount (R22) and, for a foreign amount, its conversion in the same field
+ * (the flag-off form's strengths, owner 4G review): every rate type the
+ * pair offers side by side with its rate, Custom last, then what it counts
+ * as in your budget. A pair with no rate says so and offers Enter rate; it
+ * never converts at 1.
  */
 export function AmountField(p: {
 	d: ExpenseDraft;
@@ -89,19 +97,11 @@ export function AmountField(p: {
 	onCustomText: (text: string) => void;
 }) {
 	const t = useTranslations("entry");
-	const locale = useLocale();
-	const name = useRateTypeName();
-	const { label: dates } = useDateFormat();
 	const { d, home, rate } = p;
 	const foreign = d.currency !== home;
-	const [open, setOpen] = useState(false);
-	const { opts, picked } = rate;
-	const noRate = foreign && !!opts?.missing;
-	const chip = picked
-		? `${name(picked.rateType)} ${formatMoney(picked.rate.value, { locale })}`
-		: t("rate.custom");
-	const home$ = picked?.home ?? (rate.keptCustom ? p.bookedHome : null);
-	const canPick = foreign && !noRate && !p.shared;
+	const noRate = foreign && !!rate.opts?.missing;
+	const home$ = rate.picked?.home ?? (rate.keptCustom ? p.bookedHome : null);
+	const rates = useRateStrip(p, foreign && !noRate && !p.shared);
 
 	return (
 		<div className="flex flex-col gap-2">
@@ -109,26 +109,89 @@ export function AmountField(p: {
 				autoFocus={!d.editing}
 				currency={d.currency}
 				favoriteCurrencies={p.favorites}
+				home={
+					foreign
+						? {
+								currency: home,
+								label: p.shared ? t("rate.shareInBudget") : t("rate.inBudget"),
+								value: home$ ? (
+									<Money figure="entry.home" value={home$} />
+								) : noRate && !d.custom ? (
+									<span className="text-attention-text">
+										{t("rate.needsRate")}
+									</span>
+								) : null,
+							}
+						: undefined
+				}
+				label={foreign && !p.shared ? t("rate.youSpent") : undefined}
 				onChange={(text) => p.onAmount(text)}
 				onCurrencyChange={
 					d.editing?.source === "shared" ? undefined : p.onCurrency
 				}
-				rate={
-					canPick
-						? { label: chip, onClick: () => setOpen((x) => !x) }
-						: undefined
-				}
+				rates={rates}
+				rows={<RateRows {...p} noRate={noRate} />}
 				showErrors={p.showErrors}
 				value={d.amountText}
 			/>
 			{p.showErrors && p.errors.amount && !d.amountText ? (
 				<FieldError text={t("expense.error.amount")} />
 			) : null}
-			{noRate && !d.custom ? (
-				<div
-					className="flex items-center gap-3 rounded-ctl bg-attention-bg p-3 text-body"
-					role="status"
-				>
+			{p.showErrors && p.errors.rate ? (
+				<FieldError text={t("expense.error.rate", { currency: d.currency })} />
+			) : null}
+		</div>
+	);
+}
+
+/** The strip's options: the server's types with their rates and bookings, then Custom. */
+function useRateStrip(
+	p: Parameters<typeof AmountField>[0],
+	show: boolean,
+): MoneyRates | undefined {
+	const t = useTranslations("entry");
+	const locale = useLocale();
+	const name = useRateTypeName();
+	const opts = p.rate.opts;
+	if (!show || !opts) return undefined;
+	return {
+		label: t("rate.label"),
+		value: p.d.custom ? "custom" : p.rate.type,
+		options: [
+			...opts.options.map((o) => ({
+				value: o.rateType,
+				label: name(o.rateType),
+				rate: <Money value={o.rate.value} />,
+				home: o.home ? <Money value={o.home} /> : undefined,
+				ariaLabel: [
+					`${name(o.rateType)} ${formatMoney(o.rate.value, { locale })}`,
+					opts.defaultType === o.rateType
+						? t("rate.default", { currency: p.d.currency })
+						: null,
+				]
+					.filter(Boolean)
+					.join(", "),
+			})),
+			{
+				value: "custom",
+				label: t("rate.custom"),
+				rate: <PencilIcon aria-hidden="true" className="size-4" />,
+			},
+		],
+		onChange: (v) => (v === "custom" ? p.onCustom() : p.onRate(v)),
+	};
+}
+
+/** Inside the field under the strip: no rate, the custom rate, a shared expense's fixed rate. */
+function RateRows(p: Parameters<typeof AmountField>[0] & { noRate: boolean }) {
+	const t = useTranslations("entry");
+	const { label: dates } = useDateFormat();
+	const { d, home, rate } = p;
+	if (d.currency === home) return null;
+	return (
+		<>
+			{p.noRate && !d.custom ? (
+				<MoneyInputRow tone="attention">
 					<span className="min-w-0 flex-1">
 						{t("rate.missing", {
 							currency: d.currency,
@@ -138,73 +201,33 @@ export function AmountField(p: {
 					<Button kind="secondary" onClick={p.onCustom} size="sm">
 						{t("rate.enterRate")}
 					</Button>
-				</div>
+				</MoneyInputRow>
 			) : null}
-			{canPick && (open || d.custom) && opts ? (
-				<FilterChips className="max-md:flex-wrap">
-					{opts.options.map((o) => (
-						<FilterChip
-							aria-label={
-								opts.defaultType === o.rateType
-									? `${name(o.rateType)}, ${t("rate.default", { currency: d.currency })}`
-									: undefined
-							}
-							key={o.rateType}
-							onClick={() => p.onRate(o.rateType)}
-							selected={rate.type === o.rateType}
-						>
-							{name(o.rateType)} <Money value={o.rate.value} />
-						</FilterChip>
-					))}
-					<FilterChip onClick={p.onCustom} selected={d.custom}>
-						{t("rate.custom")}
-					</FilterChip>
-				</FilterChips>
-			) : null}
-			{foreign && d.custom ? (
-				<div className="flex flex-wrap items-center gap-2 text-fg-2 text-small">
+			{d.custom ? (
+				<MoneyInputRow>
 					<span>{t("rate.customRate", { currency: d.currency })}</span>
 					<Input
 						aria-label={t("rate.customAria", { home })}
 						autoFocus
-						className="w-32 text-right tabular-nums"
+						className="h-ctl-sm w-32 text-right tabular-nums"
 						inputMode="decimal"
 						onChange={(e) => p.onCustomText(e.target.value)}
 						placeholder={t("rate.enterRate")}
 						value={d.customText}
 					/>
 					<span>{home}</span>
-				</div>
+				</MoneyInputRow>
 			) : null}
-			{p.showErrors && p.errors.rate ? (
-				<FieldError text={t("expense.error.rate", { currency: d.currency })} />
-			) : null}
-			{foreign ? (
-				<div className="flex flex-wrap items-baseline justify-between gap-2 text-small">
+			{/* A shared expense books at your default type: the rate is stated, not picked. */}
+			{rate.picked && p.shared ? (
+				<MoneyInputRow>
 					<span className="text-fg-2">
-						{p.shared ? t("rate.shareInBudget") : t("rate.inBudget")}
+						<RateLine rate={rate.picked.rate} type={rate.picked.rateType} />
+						{` · ${dates.short(d.date)}`}
 					</span>
-					{home$ ? (
-						<Money
-							className="font-medium text-fg"
-							figure="entry.home"
-							value={home$}
-						/>
-					) : noRate && !d.custom ? (
-						<span className="text-attention-text">{t("rate.needsRate")}</span>
-					) : null}
-				</div>
+					<span className="text-fg-3 text-meta">{t("rate.sharedFixed")}</span>
+				</MoneyInputRow>
 			) : null}
-			{/* The rate is stated once: on the chip, or here for a shared expense (no chip). */}
-			{picked && p.shared ? (
-				<span className="text-fg-3 text-meta">
-					<RateLine rate={picked.rate} type={picked.rateType} />
-					{` · ${dates.short(d.date)}`}
-				</span>
-			) : null}
-			{foreign && p.shared ? (
-				<span className="text-fg-3 text-meta">{t("rate.sharedFixed")}</span>
-			) : null}
-		</div>
+		</>
 	);
 }

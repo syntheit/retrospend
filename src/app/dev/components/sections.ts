@@ -242,8 +242,13 @@ export const SECTIONS: GallerySection[] = [
 	{
 		id: "catpick",
 		nav: "Pickers",
-		title: "CategoryPicker, PersonPicker, DatePicker",
-		components: ["CategoryPicker", "PersonPicker", "DatePicker"],
+		title: "CategoryPicker, PersonPicker, ProjectPicker, DatePicker",
+		components: [
+			"CategoryPicker",
+			"PersonPicker",
+			"ProjectPicker",
+			"DatePicker",
+		],
 		use: "choosing a category (recents first), people (with their status) and a date (presets first).",
 		never: "a fourth category picker.",
 		replaces: "4 category pickers, 4 date pickers.",
