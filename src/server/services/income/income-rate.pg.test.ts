@@ -4,8 +4,8 @@
  *
  * - EUR 1,000 at a typed 1 EUR = 1.0834 USD books USD 1,083.40
  *   (1,000 x 1.0834), rate type Custom, home rate 1.0834 kept to 12 decimals.
- * - UYU has no rate: income in UYU is refused (never booked at 1) until a
- *   rate is typed; UYU 5,000 at 0.025 books USD 125.00.
+ * - MNT has no rate (no other pg test stores MNT rates; rates are global in the test DB): income in MNT is refused (never booked at 1) until a
+ *   rate is typed; MNT 5,000 at 0.025 books USD 125.00.
  * - Deleting it and taking the delete back restores the same booked leg.
  */
 import { describe, expect, it } from "vitest";
@@ -58,18 +58,18 @@ describe("income.add with a typed rate", () => {
 
 	it("a pair with no rate is refused until a rate is typed", async () => {
 		const userId = await usdUser();
-		const uyu: AddIncomeInput = {
+		const mnt: AddIncomeInput = {
 			title: "Feria",
 			amount: "5000",
-			currency: "UYU",
+			currency: "MNT",
 		};
-		await expect(forUser(userId).apply(addIncome, uyu)).rejects.toThrow();
+		await expect(forUser(userId).apply(addIncome, mnt)).rejects.toThrow();
 		expect(
 			await adminDb.expense.count({ where: { userId, title: "Feria" } }),
 		).toBe(0);
 
 		const typed = await forUser(userId).apply(addIncome, {
-			...uyu,
+			...mnt,
 			customRate: "0.025",
 		});
 		expect(typed.value.booked).toEqual({ minor: 12_500, currency: "USD" });
