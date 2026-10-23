@@ -164,7 +164,7 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Kit: preview block | A shared "What changes / What stays the same" block for R30 sheets | `src/features/project/sheets/preview-lines.tsx` until the kit has one | S1 (kit) |
 | Kit: Balance zero carries a figure tag on the word Settled | The audit cannot read "Settled" as a number | The figure audit fails on a settled `Balance` with a figure; the seed has none on these pages | S1 (kit) |
 | Kit: RankedBars figure ids | A `figure` per RankedItem | Who paid what and By category amounts render untagged | S1 (kit) |
-| E2E: figure fetcher | `httpFigureFetcher` (`e2e/helpers/figures.ts`) speaks an older response shape and sends scoped ids the v1 contract rejects | The project flows use an adapter (`e2e/flows/projects-helpers.ts`); pages-smoke fails at /projects when uiV2 is on | S6 |
+| E2E: pages-smoke with uiV2 on | The Wealth v2 page tags no figures (row above), and the audit fails a v2 page with none | Once a flow turns uiV2 on before pages-smoke (currencies.spec does), the smoke walk fails at /wealth ("is a v2 page but renders no figures"); /projects passes | 2D, or the audit skips pages listed in GAPS |
 
 ## 8. Behavior gaps found by the e2e suite
 
