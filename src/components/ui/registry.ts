@@ -595,12 +595,12 @@ export const PLANNED: Planned[] = [
 	},
 	{
 		name: "AddExpenseSheet",
-		status: "planned",
+		status: "built",
 		job: "Add or edit an expense in one Sheet with its preview (R30)",
 		replaces: "The expense modal",
 		planRow: SHEETS,
-		target: "src/features/entry/* (IMPLEMENTATION §1.2, 4G)",
-		use: "expense-modal",
+		target: "src/features/entry/expense/expense-sheet.tsx (with Add income, Transfer and the read view in src/features/entry)",
+		use: "Open it through useEntrySheets (src/features/entry/context) or the expense modal context, which the v2 shell routes to it",
 	},
 	{
 		name: "SettleSheet",
