@@ -1,55 +1,27 @@
 "use client";
 
-import { dayKey } from "@retrospend/domain/time-zone";
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor } from "@retrospend/domain/parse";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Sheet } from "~/components/ui/sheet";
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
-import { getImageUrl } from "~/lib/image-url";
-import { FieldError, useSettled } from "../shared-ui";
 import { api } from "~/trpc/react";
 import { ChangesBlock } from "../changes";
 import type { EntryCatalog } from "../shared-ui";
+import { FieldError, useSettled } from "../shared-ui";
 import type { EntryPerson, EntryRequest } from "../types";
 import { useRateState } from "./amount-field";
 import { isShared, validate } from "./draft";
-import { ExpenseFields, type Project } from "./expense-fields";
+import { ExpenseFields } from "./expense-fields";
 import { sharesOf } from "./split-view";
 import { useExpenseDraft } from "./use-expense-draft";
 import type { ExpenseRequest, LoadedDraft } from "./use-expense-load";
 import { useExpenseSave } from "./use-expense-save";
-
-/** Projects you can add into, with their people (you left out). */
-function useProjects(youId: string): Project[] {
-	const { data } = api.project.list.useQuery({ status: "ACTIVE" });
-	return useMemo(
-		() =>
-			(data ?? [])
-				.filter((p) => p.myRole !== "VIEWER")
-				.map((p) => ({
-					id: p.id,
-					name: p.name,
-					coverUrl: getImageUrl(p.imagePath),
-					primaryCurrency: p.primaryCurrency,
-					members: p.participants
-						.filter(
-							(m) =>
-								!(m.participantType === "user" && m.participantId === youId),
-						)
-						.map((m) => ({
-							participantType: m.participantType,
-							participantId: m.participantId,
-							name: m.name,
-							avatarUrl: m.avatarUrl ?? null,
-						})),
-				})),
-		[data, youId],
-	);
-}
+import { useProjectMembers, useProjects } from "./use-project-members";
 
 export function ExpenseForm(p: {
 	request: ExpenseRequest;
@@ -78,6 +50,7 @@ export function ExpenseForm(p: {
 	});
 	const { d } = x;
 	const projects = useProjects(p.you.participantId);
+	const project = useProjectMembers(x);
 	const shared = isShared(d);
 	const shares = shared ? sharesOf(d, youRef) : null;
 	const myShare = shares?.get(`user:${p.you.participantId}`) ?? null;
@@ -236,6 +209,8 @@ export function ExpenseForm(p: {
 					duplicate={dup}
 					errors={errors}
 					favorites={p.favorites}
+					onProject={project.pick}
+					projectMembers={project.members}
 					projects={projects}
 					rate={rate}
 					shares={shares}

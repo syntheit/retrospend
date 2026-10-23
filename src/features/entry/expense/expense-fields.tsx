@@ -22,6 +22,7 @@ export type Project = {
 	/** The cover photo's URL, or null for the flat tile. */
 	coverUrl: string | null;
 	primaryCurrency: string;
+	/** The project list's first few members: faces only, never the split. */
 	members: EntryPerson[];
 };
 
@@ -38,6 +39,9 @@ export function ExpenseFields(p: {
 	bookedHome: { minor: number; currency: string } | null;
 	favorites?: readonly string[];
 	projects: readonly Project[];
+	/** The picked project's members on the expense's day, all of them (null while loading). */
+	projectMembers: readonly EntryPerson[] | null;
+	onProject: (project: Project | null) => void;
 	shares: ReadonlyMap<string, number> | null;
 	errors: DraftErrors;
 	tried: boolean;
@@ -51,8 +55,10 @@ export function ExpenseFields(p: {
 	const home = catalog.homeCurrency;
 	const shared = isShared(d);
 	const project = p.projects.find((pr) => pr.id === d.projectId) ?? null;
-	const solo = !!project && project.members.length === 0;
-	const people = usePeople(project ? project.members : null);
+	// The list's members are only the first few: the full read wins once loaded.
+	const members = project ? (p.projectMembers ?? project.members) : null;
+	const solo = !!members && members.length === 0;
+	const people = usePeople(members);
 	const editingShared = d.editing?.source === "shared";
 	const canProject = d.editing === null || editingShared;
 	const err = (k: keyof DraftErrors) =>
@@ -114,13 +120,7 @@ export function ExpenseFields(p: {
 				{canProject ? (
 					<Field label={t("project")}>
 						<ProjectField
-							onChange={(next) =>
-								x.setProject(
-									next?.id ?? null,
-									next?.members ?? [],
-									next?.primaryCurrency,
-								)
-							}
+							onChange={p.onProject}
 							projects={p.projects}
 							value={d.projectId}
 						/>
@@ -132,8 +132,8 @@ export function ExpenseFields(p: {
 							chips={people.chips}
 							inProject={!!project}
 							known={
-								project
-									? project.members.map((m) => ({
+								members
+									? members.map((m) => ({
 											...m,
 											onRetrospend: m.participantType === "user",
 										}))

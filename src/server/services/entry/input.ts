@@ -158,6 +158,12 @@ export const rateOptionsSchema = z.object({
 	amount: decimal.optional(),
 });
 
+/** Who a project expense on that day includes: the project and the expense's day. */
+export const projectMembersSchema = z.object({
+	projectId: z.string().min(1).max(191),
+	date: isoDay,
+});
+
 export const defaultRateTypeSchema = z.object({
 	homeCurrency: currency,
 	rateType: rateType.nullable(),
