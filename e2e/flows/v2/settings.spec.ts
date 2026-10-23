@@ -1,36 +1,21 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
-import { E2E_DATABASE_URL } from "../constants";
-import { SOFIA } from "../fixtures/personas";
-import { loginAs } from "../helpers/auth";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
-import { gotoReady } from "../helpers/navigation";
-import { untilSaved } from "../helpers/trpc";
+import { E2E_DATABASE_URL, personaStorageState } from "../../constants";
+import { SOFIA } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { FigureAudit, httpFigureFetcher } from "../../helpers/figures";
+import { gotoReady } from "../../helpers/navigation";
+import { untilSaved } from "../../helpers/trpc";
 
-// The redesigned Settings page (S4H) with uiV2 on for everyone. The flag is
-// read through a 60 s settings cache, so the page is polled until the new
-// one shows.
+// The redesigned Settings page (S4H), in Sofía's saved session. The
+// flows-v2 project runs with uiV2 on for everyone (ui-v2-on.setup.ts).
 const V2 = '[data-page="settings-v2"]';
 
-test.beforeAll(async () => {
-	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
-	try {
-		await pool.query(
-			`INSERT INTO "app_settings" (id, "uiV2Mode", "updatedAt")
-			 VALUES ('app_settings_singleton', 'ALL', now())
-			 ON CONFLICT (id) DO UPDATE SET "uiV2Mode" = 'ALL'`,
-		);
-	} finally {
-		await pool.end();
-	}
-});
+test.use({ storageState: personaStorageState(SOFIA.username) });
 
 async function openSettings(page: Page) {
-	await expect(async () => {
-		await gotoReady(page, "/settings");
-		await expect(page.locator(V2)).toBeVisible({ timeout: 2_000 });
-	}).toPass({ timeout: 90_000, intervals: [3_000] });
+	await gotoReady(page, "/settings");
+	await expect(page.locator(V2)).toBeVisible();
 }
 
 test.describe("Settings v2", () => {
@@ -43,7 +28,6 @@ test.describe("Settings v2", () => {
 		const errors: string[] = [];
 		page.on("pageerror", (e) => errors.push(e.message));
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await loginAs(page, SOFIA.email, SOFIA.password);
 		await openSettings(page);
 
 		const main = page.getByRole("main");
@@ -88,7 +72,6 @@ test.describe("Settings v2", () => {
 	}) => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await loginAs(page, SOFIA.email, SOFIA.password);
 		await openSettings(page);
 		await gotoReady(page, "/settings?add=category");
 		await expect(page.getByRole("dialog")).toBeVisible();
@@ -105,7 +88,6 @@ test.describe("Settings v2", () => {
 	test("approved devices list and disconnect by name", async ({ page }) => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await loginAs(page, SOFIA.email, SOFIA.password);
 		const pool = new Pool({ connectionString: E2E_DATABASE_URL });
 		try {
 			await pool.query(
@@ -138,7 +120,6 @@ test.describe("Settings v2", () => {
 	}) => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await loginAs(page, SOFIA.email, SOFIA.password);
 		await openSettings(page);
 
 		const smart = page.getByRole("switch", { name: "Smart formatting" });
@@ -166,7 +147,6 @@ test.describe("Settings v2", () => {
 	}) => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
-		await loginAs(page, SOFIA.email, SOFIA.password);
 		await openSettings(page);
 
 		await page.getByRole("button", { name: "New API key" }).click();
@@ -199,7 +179,6 @@ test.describe("Settings v2", () => {
 	test("phone: section tabs and grouped rows at 390", async ({ page }) => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 390, height: 844 });
-		await loginAs(page, SOFIA.email, SOFIA.password);
 		await openSettings(page);
 		const tabs = page.getByRole("navigation", { name: "Settings sections" });
 		await expect(tabs.getByRole("link", { name: "Profile" })).toBeVisible();

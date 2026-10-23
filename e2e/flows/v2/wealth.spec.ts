@@ -1,13 +1,12 @@
-import { type Browser, expect, type Page, test } from "@playwright/test";
-import { Pool } from "pg";
-import { ADMIN_USER, E2E_BASE_URL, E2E_DATABASE_URL } from "../constants";
-import { SOFIA } from "../fixtures/personas";
-import { loginAs } from "../helpers/auth";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { gotoReady } from "../helpers/navigation";
-import { untilSaved } from "../helpers/trpc";
+import { expect, type Page, test } from "@playwright/test";
+import { personaStorageState } from "../../constants";
+import { SOFIA } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { gotoReady } from "../../helpers/navigation";
+import { untilSaved } from "../../helpers/trpc";
 
-// The redesigned Wealth page (uiV2) on Sofía's seeded accounts.
+// The redesigned Wealth page on Sofía's seeded accounts, in her saved
+// session. The flows-v2 project runs with uiV2 on (ui-v2-on.setup.ts).
 //
 // No figure audit yet: the figures registry has no netWorth or account
 // figures until track 2D registers them, so the page tags none and the audit
@@ -18,46 +17,14 @@ import { untilSaved } from "../helpers/trpc";
 // readable strings, so the write steps run on an account this flow adds
 // through the page (the server gives it a cuid).
 
-/**
- * uiV2 on for everyone in this test database, then any admin settings
- * write, which re-reads the row into the server's 60-second cache.
- */
-async function enableUiV2(browser: Browser): Promise<void> {
-	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
-	try {
-		await pool.query(
-			`INSERT INTO "app_settings" (id, "updatedAt", "uiV2Mode") VALUES ('app_settings_singleton', now(), 'ALL')
-			 ON CONFLICT (id) DO UPDATE SET "uiV2Mode" = 'ALL'`,
-		);
-	} finally {
-		await pool.end();
-	}
-	const context = await browser.newContext({ baseURL: E2E_BASE_URL });
-	const origin = { Origin: E2E_BASE_URL };
-	const signIn = await context.request.post("/api/auth/sign-in/email", {
-		data: { email: ADMIN_USER.email, password: ADMIN_USER.password },
-		headers: origin,
-	});
-	expect(signIn.ok(), "admin sign-in").toBe(true);
-	const refresh = await context.request.post(
-		"/api/trpc/admin.updateSettings?batch=1",
-		{ data: { 0: { json: {} } }, headers: origin },
-	);
-	expect(refresh.ok(), "settings cache refresh").toBe(true);
-	await context.close();
-}
+test.use({ storageState: personaStorageState(SOFIA.username) });
 
 async function openWealth(page: Page): Promise<void> {
-	await loginAs(page, SOFIA.email, SOFIA.password);
 	await gotoReady(page, "/wealth");
 	await expect(
 		page.locator('[data-ui="v2"][data-page="wealth"]'),
 	).toBeVisible();
 }
-
-test.beforeAll(async ({ browser }) => {
-	await enableUiV2(browser);
-});
 
 test("Wealth: net worth, the accounts by group, update a balance and undo", async ({
 	page,

@@ -14,6 +14,16 @@ export const E2E_DATABASE_URL =
 export const USER_STORAGE_STATE = "playwright/.auth/user.json";
 export const ADMIN_STORAGE_STATE = "playwright/.auth/admin.json";
 
+/**
+ * A seeded persona's session, saved once per run by auth.setup.ts. The
+ * server takes 10 sign-ins a minute from one client (better-auth config) and
+ * every test comes from the same address, so specs reuse these sessions
+ * instead of signing in again.
+ */
+export function personaStorageState(username: string): string {
+	return `playwright/.auth/${username}.json`;
+}
+
 // Test user credentials, signed up by global-setup.ts
 export const TEST_USER = {
 	email: "e2e-test@retrospend.app",

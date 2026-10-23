@@ -45,8 +45,12 @@ export default defineConfig({
 		screenshot: "only-on-failure",
 		trace: "on-first-retry",
 	},
+	// uiV2Mode is one app-wide row, so the run has two phases: every project
+	// up to "flows" sees the old pages (the seed leaves the flag OFF), then
+	// "ui-v2-on" turns it on for "flows-v2" alone and its teardown turns it
+	// off. Nothing else runs while the flag is on.
 	projects: [
-		// Logs in the blank test accounts and saves their sessions
+		// Logs in the blank test accounts and the personas and saves their sessions
 		{
 			name: "setup",
 			testMatch: /auth\.setup\.ts/,
@@ -67,12 +71,35 @@ export default defineConfig({
 			dependencies: ["setup"],
 			testMatch: ["**/auth.spec.ts", "**/smoke.spec.ts"],
 		},
-		// Persona flows on the seeded ledger (fixtures/seed.ts); each signs in itself
+		// Persona flows on the seeded ledger (fixtures/seed.ts), on the old pages
 		{
 			name: "flows",
 			testDir: "./e2e/flows",
 			testMatch: "**/*.spec.ts",
+			testIgnore: "**/v2/**",
 			use: chromium,
+			dependencies: ["setup"],
+		},
+		// Runs once the old-page projects are done (see above)
+		{
+			name: "ui-v2-on",
+			testMatch: /ui-v2-on\.setup\.ts/,
+			use: chromium,
+			dependencies: ["chromium", "auth-flows", "flows"],
+			teardown: "ui-v2-off",
+		},
+		{
+			name: "ui-v2-off",
+			testMatch: /ui-v2-off\.teardown\.ts/,
+			use: chromium,
+		},
+		// Persona flows on the redesigned pages, with uiV2 on for everyone
+		{
+			name: "flows-v2",
+			testDir: "./e2e/flows/v2",
+			testMatch: "**/*.spec.ts",
+			use: chromium,
+			dependencies: ["ui-v2-on"],
 		},
 	],
 	globalSetup: "./e2e/global-setup.ts",

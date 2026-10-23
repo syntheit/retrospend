@@ -1,15 +1,15 @@
-import { type Browser, expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
-import { ADMIN_USER, E2E_BASE_URL, E2E_DATABASE_URL } from "../constants";
-import { SOFIA } from "../fixtures/personas";
-import { loginAs } from "../helpers/auth";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { gotoReady } from "../helpers/navigation";
-import { untilSaved } from "../helpers/trpc";
+import { E2E_DATABASE_URL, personaStorageState } from "../../constants";
+import { SOFIA } from "../../fixtures/personas";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { gotoReady } from "../../helpers/navigation";
+import { untilSaved } from "../../helpers/trpc";
 
-// The redesigned Currencies page (uiV2). The seed has ARS at 1,450 per USD
-// (official) and BRL at 5.4, so 1 USD is ARS 1,450, 1 BRL is ARS 268.52 and
-// USD 100 converts to ARS 145,000.
+// The redesigned Currencies page, in Sofía's saved session. The flows-v2
+// project runs with uiV2 on (ui-v2-on.setup.ts). The seed has ARS at 1,450
+// per USD (official) and BRL at 5.4, so 1 USD is ARS 1,450, 1 BRL is
+// ARS 268.52 and USD 100 converts to ARS 145,000.
 //
 // No figure audit yet: rates are not in the figures registry (GAPS,
 // "Wealth and Currencies: figure ids").
@@ -18,14 +18,10 @@ import { untilSaved } from "../helpers/trpc";
 // a cuid; the seed's rate ids are readable strings, so this flow adds one
 // EUR rate with a cuid-shaped id (0.9 per USD: 1 EUR is ARS 1,611.11).
 
-/** uiV2 on in this test database, then an admin write refreshes the server's settings cache. */
-async function enableUiV2(browser: Browser): Promise<void> {
+/** The EUR rate the favorite step needs. */
+async function addEurRate(): Promise<void> {
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
 	try {
-		await pool.query(
-			`INSERT INTO "app_settings" (id, "updatedAt", "uiV2Mode") VALUES ('app_settings_singleton', now(), 'ALL')
-			 ON CONFLICT (id) DO UPDATE SET "uiV2Mode" = 'ALL'`,
-		);
 		await pool.query(
 			`INSERT INTO "exchange_rate" (id, date, currency, type, rate, "createdAt", "updatedAt")
 			 VALUES ('cle2e4feur00000000000000', '2025-01-01', 'EUR', 'official', 0.9, now(), now())
@@ -34,31 +30,19 @@ async function enableUiV2(browser: Browser): Promise<void> {
 	} finally {
 		await pool.end();
 	}
-	const context = await browser.newContext({ baseURL: E2E_BASE_URL });
-	const origin = { Origin: E2E_BASE_URL };
-	const signIn = await context.request.post("/api/auth/sign-in/email", {
-		data: { email: ADMIN_USER.email, password: ADMIN_USER.password },
-		headers: origin,
-	});
-	expect(signIn.ok(), "admin sign-in").toBe(true);
-	const refresh = await context.request.post(
-		"/api/trpc/admin.updateSettings?batch=1",
-		{ data: { 0: { json: {} } }, headers: origin },
-	);
-	expect(refresh.ok(), "settings cache refresh").toBe(true);
-	await context.close();
 }
 
+test.use({ storageState: personaStorageState(SOFIA.username) });
+
 async function openCurrencies(page: Page, query = ""): Promise<void> {
-	await loginAs(page, SOFIA.email, SOFIA.password);
 	await gotoReady(page, `/currencies${query}`);
 	await expect(
 		page.locator('[data-ui="v2"][data-page="currencies"]'),
 	).toBeVisible();
 }
 
-test.beforeAll(async ({ browser }) => {
-	await enableUiV2(browser);
+test.beforeAll(async () => {
+	await addEurRate();
 });
 
 test("Currencies: prices in ARS, convert, search converter, favorite", async ({
