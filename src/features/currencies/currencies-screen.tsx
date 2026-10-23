@@ -12,7 +12,12 @@ import { Empty } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
 import { Sheet } from "~/components/ui/sheet";
-import { BackButton, PageFrame } from "~/features/wealth/page-frame";
+import {
+	BackButton,
+	HeaderSub,
+	PageFrame,
+	PhoneSub,
+} from "~/features/wealth/page-frame";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { CurrencyDetail, useCurrencyName } from "./currency-detail";
@@ -87,7 +92,10 @@ export function CurrenciesScreen({
 		setSelected(code);
 		if (phone) setSheetOpen(true);
 	};
-	const { handlers, setFavorite } = useCurrencyActions(view, select);
+	const { handlers, setFavorite, favoriteBusy } = useCurrencyActions(
+		view,
+		select,
+	);
 	const conv = readConvQuery(query, view.home, view.rows, locale);
 
 	const rows = view.rows.filter((r) => {
@@ -128,6 +136,7 @@ export function CurrenciesScreen({
 		/>
 	) : phone ? (
 		<RatesList
+			favoriteBusy={favoriteBusy}
 			handlers={handlers}
 			onFavorite={setFavorite}
 			onSelect={select}
@@ -136,6 +145,7 @@ export function CurrenciesScreen({
 	) : (
 		<RatesTable
 			columns={view.columns}
+			favoriteBusy={favoriteBusy}
 			handlers={handlers}
 			home={view.home}
 			onFavorite={setFavorite}
@@ -146,6 +156,7 @@ export function CurrenciesScreen({
 	);
 	const detail = row ? (
 		<CurrencyDetail
+			favoriteBusy={favoriteBusy}
 			onFavorite={(on) => setFavorite(row, on)}
 			row={row}
 			view={view}
@@ -156,9 +167,10 @@ export function CurrenciesScreen({
 		<PageFrame label="currencies">
 			<PageHeader
 				lead={<BackButton href="/wealth" label={nav("wealth")} />}
-				sub={sub}
+				sub={<HeaderSub text={sub} />}
 				title={t("title")}
 			/>
+			<PhoneSub text={sub} />
 			<Toolbar
 				label={t("filters.label")}
 				search={

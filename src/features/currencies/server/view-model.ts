@@ -37,6 +37,7 @@ function row(p: Priced, input: CurrenciesInput): CurrencyRow {
 		prices: Object.fromEntries(
 			[...p.prices].map(([type, v]) => [type, toMoney(v, input.home)]),
 		),
+		derived: p.types.filter((type) => p.derived.has(type)),
 		defaultType: p.crypto ? (p.types[0] ?? null) : defaultRateType(p.types),
 		favorite: favs.length > 0,
 		rateId:
@@ -58,6 +59,7 @@ function missingRow(code: string, input: CurrenciesInput): CurrencyRow {
 		crypto: isCrypto(code),
 		types: [],
 		prices: {},
+		derived: [],
 		defaultType: null,
 		favorite: false,
 		rateId: null,
@@ -117,5 +119,6 @@ export function convert(
 			direction === "toHome" ? amount.mul(price) : amount.div(price),
 			to,
 		),
+		derived: p.derived.has(type),
 	}));
 }

@@ -25,6 +25,7 @@
 	"actions": "Acciones",
 	"noRate": "Sin cotización",
 	"noType": "Sin cotización de este tipo",
+	"derived": "Derivado a través de {home}",
 	"subNoRate": "{name} · sin cotización",
 	"subDefault": "{name} · {type} por defecto",
 	"star": {

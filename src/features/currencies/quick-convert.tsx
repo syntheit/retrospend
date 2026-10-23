@@ -50,8 +50,10 @@ export function readConvQuery(
 /** The search field's converter card: every rate type, from the server. */
 export function QuickConvert({ query }: { query: ConvQuery }) {
 	const t = useTranslations("currenciesPage.convert");
+	const tp = useTranslations("currenciesPage");
 	const label = useRateLabel();
 	const { result } = useConvert(query.code, query.minor, query.direction);
+	const home = query.direction === "fromHome" ? query.from : query.to;
 	return (
 		<section aria-live="polite" className="mb-4 max-w-130">
 			<h2 className="text-body text-fg mb-1 font-semibold">
@@ -67,7 +69,14 @@ export function QuickConvert({ query }: { query: ConvQuery }) {
 					className="border-line flex items-baseline justify-between gap-3 border-t py-2"
 					key={r.type}
 				>
-					<span className="text-body text-fg-2">{label(r.type)}</span>
+					<span className="text-body text-fg-2">
+						{label(r.type)}
+						{r.derived ? (
+							<span className="text-fg-3 text-meta block">
+								{tp("derived", { home })}
+							</span>
+						) : null}
+					</span>
 					<span className="text-body text-fg font-semibold">
 						<Money value={r.value} />
 					</span>

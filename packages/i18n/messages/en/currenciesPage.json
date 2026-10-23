@@ -25,6 +25,7 @@
 	"actions": "Actions",
 	"noRate": "No rate",
 	"noType": "No rate of this type",
+	"derived": "Derived through {home}",
 	"subNoRate": "{name} · no rate",
 	"subDefault": "{name} · {type} by default",
 	"star": {

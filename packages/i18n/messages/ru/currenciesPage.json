@@ -25,6 +25,7 @@
 	"actions": "Действия",
 	"noRate": "Нет курса",
 	"noType": "Нет курса этого типа",
+	"derived": "Рассчитан через {home}",
 	"subNoRate": "{name} · нет курса",
 	"subDefault": "{name} · по умолчанию {type}",
 	"star": {

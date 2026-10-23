@@ -46,6 +46,37 @@ describe("priceAll", () => {
 		});
 	});
 
+	it("marks a price derived when either side lacks that type", () => {
+		const derived = Object.fromEntries(
+			priceAll(ROWS, "ARS").map((p) => [p.code, [...p.derived]]),
+		);
+		// USD is the table's base: every ARS type is a real USD rate.
+		expect(derived.USD).toEqual([]);
+		// BRL has only official: blue and card go through its official rate.
+		expect(derived.BRL).toEqual(["blue", "card"]);
+		expect(derived.BTC).toEqual([]);
+		// UYU has only mep and ARS has no mep: every price is derived, mep
+		// through the home's default (blue): 1468 / 40 = 36.70.
+		const uyu = priceAll([...ROWS, r("UYU", "mep", "40")], "ARS").find(
+			(p) => p.code === "UYU",
+		);
+		expect([...(uyu?.derived ?? [])]).toEqual([
+			"official",
+			"blue",
+			"card",
+			"mep",
+		]);
+		const mep = uyu?.prices.get("mep");
+		expect(mep && toMoney(mep, "ARS").minor).toBe(3670);
+	});
+
+	it("a currency with no rate of any type is never priced", () => {
+		const priced = priceAll(ROWS, "ARS");
+		expect(priced.find((p) => p.code === "GBP")).toBeUndefined();
+		// No ARS rate at all: nothing is derived through it.
+		expect(priceAll([r("BRL", "official", "3")], "ARS")).toEqual([]);
+	});
+
 	it("orders the columns, coins last", () => {
 		expect(columnsOf(priceAll(ROWS, "ARS"))).toEqual([
 			"official",

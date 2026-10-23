@@ -8,12 +8,27 @@ import { useRowDates } from "~/components/rows/dates";
 import { Notice } from "~/components/ui/notice";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { ConvertBlock } from "./convert-block";
+import { priceCents } from "./price-cents";
+import { sentenceName } from "./sentence-name";
 import { StarButton } from "./star-button";
 import type { CurrenciesView, CurrencyRow } from "./types";
 
+function PriceText({
+	value,
+}: {
+	value: CurrencyRow["prices"][string] | undefined;
+}) {
+	return value ? (
+		<Money cents={priceCents(value)} value={value} />
+	) : (
+		<Money missing="noRate" value={null} />
+	);
+}
+
 export function useCurrencyName() {
 	const locale = useLocale();
-	return (code: string) => currencyName(code, locale, getCurrencyName(code));
+	return (code: string) =>
+		sentenceName(currencyName(code, locale, getCurrencyName(code)), locale);
 }
 
 /**
@@ -25,10 +40,12 @@ export function CurrencyDetail({
 	view,
 	row,
 	onFavorite,
+	favoriteBusy,
 }: {
 	view: CurrenciesView;
 	row: CurrencyRow;
 	onFavorite: (on: boolean) => void;
+	favoriteBusy: boolean;
 }) {
 	const t = useTranslations("currenciesPage");
 	const name = useCurrencyName();
@@ -52,7 +69,7 @@ export function CurrencyDetail({
 							: row.code}
 					</div>
 				</div>
-				<StarButton onToggle={onFavorite} row={row} />
+				<StarButton busy={favoriteBusy} onToggle={onFavorite} row={row} />
 			</div>
 			{priced ? null : (
 				<div className="flex flex-col gap-2">
@@ -84,9 +101,14 @@ export function CurrencyDetail({
 											{t("detail.default")}
 										</span>
 									) : null}
+									{row.derived.includes(type) ? (
+										<span className="text-fg-3 text-meta block">
+											{t("derived", { home: view.home })}
+										</span>
+									) : null}
 								</dt>
 								<dd className="text-body">
-									<Money missing="noRate" value={row.prices[type] ?? null} />
+									<PriceText value={row.prices[type]} />
 								</dd>
 							</div>
 						))}

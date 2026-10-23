@@ -3,7 +3,7 @@
 import { formatMoney } from "@retrospend/domain/format";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, useRef, useTransition } from "react";
 import type { CurrencyTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { useToast } from "~/components/ui/toast";
@@ -37,12 +37,18 @@ export function useCurrencyActions(
 		[view.rows],
 	);
 
+	// One toggle at a time: a double click would flip the favorite twice.
+	// Until the refreshed view arrives the row still shows the old state, so
+	// the refresh counts as busy too.
+	const busy = useRef(false);
+	const [refreshing, startRefresh] = useTransition();
 	const setFavorite = async (row: CurrencyRow, on: boolean) => {
 		const ids = on ? (row.rateId ? [row.rateId] : []) : row.favoriteIds;
-		if (!ids.length) return;
+		if (!ids.length || busy.current || refreshing) return;
+		busy.current = true;
 		try {
 			for (const id of ids) await toggle.mutateAsync({ exchangeRateId: id });
-			router.refresh();
+			startRefresh(() => router.refresh());
 			toast.saved(
 				on
 					? t("toast.favorited", { code: row.code })
@@ -50,6 +56,8 @@ export function useCurrencyActions(
 			);
 		} catch {
 			toast.failed(t("toast.failed"));
+		} finally {
+			busy.current = false;
 		}
 	};
 
@@ -82,5 +90,9 @@ export function useCurrencyActions(
 		},
 	};
 
-	return { handlers, setFavorite };
+	return {
+		handlers,
+		setFavorite,
+		favoriteBusy: toggle.isPending || refreshing,
+	};
 }

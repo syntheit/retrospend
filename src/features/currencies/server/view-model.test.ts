@@ -53,6 +53,13 @@ describe("buildCurrenciesView", () => {
 		});
 	});
 
+	it("names the prices derived through another type's rate", () => {
+		const brl = view.rows.find((x) => x.code === "BRL");
+		// BRL has only official: its blue price is ARS blue over BRL official.
+		expect(brl?.derived).toEqual(["blue"]);
+		expect(view.rows.find((x) => x.code === "USD")?.derived).toEqual([]);
+	});
+
 	it("unfavoriting removes every favorite row of the currency", () => {
 		const brl = view.rows.find((x) => x.code === "BRL");
 		expect(brl).toMatchObject({
@@ -66,16 +73,25 @@ describe("buildCurrenciesView", () => {
 describe("convert", () => {
 	it("USD 100 into ARS at each type", () => {
 		expect(convert(RATES, "ARS", "USD", 10000, "toHome")).toEqual([
-			{ type: "official", value: { minor: 14120000, currency: "ARS" } },
-			{ type: "blue", value: { minor: 14680000, currency: "ARS" } },
+			{
+				type: "official",
+				value: { minor: 14120000, currency: "ARS" },
+				derived: false,
+			},
+			{
+				type: "blue",
+				value: { minor: 14680000, currency: "ARS" },
+				derived: false,
+			},
 		]);
 	});
 
 	it("ARS 1,000 into BRL: 1000 / (1468 / 3) = 2.0436 -> BRL 2.04 at blue", () => {
 		const out = convert(RATES, "ARS", "BRL", 100000, "fromHome");
-		expect(out.find((x) => x.type === "blue")?.value).toEqual({
-			minor: 204,
-			currency: "BRL",
+		expect(out.find((x) => x.type === "blue")).toEqual({
+			type: "blue",
+			value: { minor: 204, currency: "BRL" },
+			derived: true,
 		});
 	});
 

@@ -25,6 +25,7 @@
 	"actions": "Actions",
 	"noRate": "Pas de taux",
 	"noType": "Pas de taux de ce type",
+	"derived": "Dérivé via {home}",
 	"subNoRate": "{name} · pas de taux",
 	"subDefault": "{name} · {type} par défaut",
 	"star": {

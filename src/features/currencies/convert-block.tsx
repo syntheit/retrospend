@@ -25,6 +25,7 @@ export function ConvertBlock({
 }) {
 	const t = useTranslations("currenciesPage.convert");
 	const locale = useLocale();
+	const tp = useTranslations("currenciesPage");
 	const label = useRateLabel();
 	const [direction, setDirection] = useState<ConvertDirection>("toHome");
 	const [text, setText] = useState("100");
@@ -74,7 +75,14 @@ export function ConvertBlock({
 							className="border-line flex items-baseline justify-between gap-3 border-t py-2 first:border-t-0"
 							key={r.type}
 						>
-							<span className="text-body text-fg">{label(r.type)}</span>
+							<span className="text-body text-fg">
+								{label(r.type)}
+								{r.derived ? (
+									<span className="text-fg-3 text-meta block">
+										{tp("derived", { home })}
+									</span>
+								) : null}
+							</span>
 							<span className="text-body text-fg font-semibold">
 								<Money value={r.value} />
 							</span>

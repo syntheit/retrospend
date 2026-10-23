@@ -14,9 +14,12 @@ import type { CurrencyRow } from "./types";
 export function StarButton({
 	row,
 	onToggle,
+	busy = false,
 }: {
 	row: CurrencyRow;
 	onToggle: (on: boolean) => void;
+	/** A favorite change is saving: the star waits for it. */
+	busy?: boolean;
 }) {
 	const t = useTranslations("currenciesPage");
 	const blocked = !row.favorite && !row.rateId;
@@ -32,6 +35,7 @@ export function StarButton({
 				aria-label={label}
 				aria-pressed={row.favorite}
 				className={cn("relative z-10", row.favorite ? "text-fg" : "text-fg-3")}
+				disabled={busy}
 				icon
 				kind="ghost"
 				onClick={(e) => {

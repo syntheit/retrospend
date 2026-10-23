@@ -25,6 +25,7 @@
 	"actions": "Acciones",
 	"noRate": "Sin tipo de cambio",
 	"noType": "Sin tipo de cambio de esta clase",
+	"derived": "Derivado a través de {home}",
 	"subNoRate": "{name} · sin tipo de cambio",
 	"subDefault": "{name} · {type} por defecto",
 	"star": {

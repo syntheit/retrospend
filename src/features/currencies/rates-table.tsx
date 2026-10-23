@@ -17,6 +17,7 @@ import {
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { cn } from "~/lib/cn";
 import { CurrencyName } from "./currency-name";
+import { priceCents } from "./price-cents";
 import { StarButton } from "./star-button";
 import { type CurrencyRow, MARKET } from "./types";
 import { targetOf } from "./use-currency-actions";
@@ -47,6 +48,7 @@ function RateCell({
 		);
 	return (
 		<Money
+			cents={priceCents(price)}
 			className={cn(type === row.defaultType && "font-semibold")}
 			display="none"
 			value={price}
@@ -67,6 +69,7 @@ export function RatesTable({
 	handlers,
 	onSelect,
 	onFavorite,
+	favoriteBusy,
 }: {
 	rows: CurrencyRow[];
 	columns: string[];
@@ -75,6 +78,7 @@ export function RatesTable({
 	handlers: ActionHandlers<CurrencyTarget>;
 	onSelect: (code: string) => void;
 	onFavorite: (row: CurrencyRow, on: boolean) => void;
+	favoriteBusy: boolean;
 }) {
 	const t = useTranslations("currenciesPage");
 	const label = useRateLabel();
@@ -108,7 +112,7 @@ export function RatesTable({
 								target={targetOf(row)}
 							>
 								<TableRow
-									aria-selected={row.code === selected}
+									aria-current={row.code === selected ? "true" : undefined}
 									className="cursor-pointer"
 									data-state={row.code === selected ? "selected" : undefined}
 									onClick={() => onSelect(row.code)}
@@ -120,6 +124,7 @@ export function RatesTable({
 								>
 									<TableCell>
 										<StarButton
+											busy={favoriteBusy}
 											onToggle={(on) => onFavorite(row, on)}
 											row={row}
 										/>

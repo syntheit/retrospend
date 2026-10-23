@@ -25,6 +25,7 @@
 	"actions": "Aktionen",
 	"noRate": "Kein Kurs",
 	"noType": "Kein Kurs dieser Art",
+	"derived": "Über {home} abgeleitet",
 	"subNoRate": "{name} · kein Kurs",
 	"subDefault": "{name} · standardmäßig {type}",
 	"star": {

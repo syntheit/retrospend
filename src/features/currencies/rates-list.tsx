@@ -9,6 +9,7 @@ import { Row, RowList, RowSub } from "~/components/rows/row";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { useCurrencyName } from "./currency-detail";
 import { useCurrencySub } from "./currency-name";
+import { priceCents } from "./price-cents";
 import { StarButton } from "./star-button";
 import type { CurrencyRow } from "./types";
 import { targetOf } from "./use-currency-actions";
@@ -19,11 +20,13 @@ export function RatesList({
 	handlers,
 	onSelect,
 	onFavorite,
+	favoriteBusy,
 }: {
 	rows: CurrencyRow[];
 	handlers: ActionHandlers<CurrencyTarget>;
 	onSelect: (code: string) => void;
 	onFavorite: (row: CurrencyRow, on: boolean) => void;
+	favoriteBusy: boolean;
 }) {
 	const t = useTranslations("currenciesPage");
 	const label = useRateLabel();
@@ -51,7 +54,7 @@ export function RatesList({
 							end={
 								price && row.defaultType ? (
 									<>
-										<Money value={price} />
+										<Money cents={priceCents(price)} value={price} />
 										<span className="text-fg-3 text-meta">
 											{label(row.defaultType)}
 										</span>
@@ -61,7 +64,11 @@ export function RatesList({
 								)
 							}
 							lead={
-								<StarButton onToggle={(on) => onFavorite(row, on)} row={row} />
+								<StarButton
+									busy={favoriteBusy}
+									onToggle={(on) => onFavorite(row, on)}
+									row={row}
+								/>
 							}
 							open={{ onOpen: () => onSelect(row.code), label: row.code }}
 							sub={

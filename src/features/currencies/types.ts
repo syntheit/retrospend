@@ -15,6 +15,8 @@ export type CurrencyRow = {
 	types: string[];
 	/** Price of 1 unit in the home currency, per rate type. */
 	prices: Record<string, MoneyValue>;
+	/** Types priced through another type's rate (one side lacks the type). */
+	derived: string[];
 	/** The type new amounts use; null with no rate. */
 	defaultType: string | null;
 	favorite: boolean;
@@ -40,4 +42,9 @@ export type CurrenciesView = {
 
 export type ConvertDirection = "toHome" | "fromHome";
 
-export type ConvertResult = { type: string; value: MoneyValue }[];
+export type ConvertResult = {
+	type: string;
+	value: MoneyValue;
+	/** Converted through another type's rate (one side lacks the type). */
+	derived: boolean;
+}[];

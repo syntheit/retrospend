@@ -28,6 +28,11 @@ export type Priced = {
 	types: string[];
 	/** Units of home per 1 unit of the currency, unrounded. */
 	prices: Map<string, Dec>;
+	/**
+	 * Types priced through another type's rate because one side has no rate
+	 * of that type (BRL at Blue is ARS blue over BRL official).
+	 */
+	derived: Set<string>;
 };
 
 function byType(rows: readonly RateRow[]) {
@@ -54,8 +59,9 @@ const order = (types: Iterable<string>) =>
  * Prices every currency in the home currency, per rate type. A fiat pair
  * offers every type either side has; each side uses that type when it has
  * it, else its own default (so "Blue" for EUR reads ARS blue over EUR
- * official). A coin is priced at its market price over the home's default
- * type. Nothing is ever priced at 1 for want of a rate.
+ * official); such a price is marked derived. A coin is priced at its
+ * market price over the home's default type. A side with no rate at all
+ * prices nothing: nothing is ever priced at 1 for want of a rate.
  */
 export function priceAll(rows: readonly RateRow[], home: string): Priced[] {
 	const table = byType(rows);
@@ -82,6 +88,7 @@ export function priceAll(rows: readonly RateRow[], home: string): Priced[] {
 					crypto: true,
 					types: [MARKET],
 					prices: new Map([[MARKET, usd.mul(h)]]),
+					derived: new Set<string>(),
 				},
 			];
 		}
@@ -90,12 +97,16 @@ export function priceAll(rows: readonly RateRow[], home: string): Priced[] {
 		const ownDefault = own.get(defaultRateType([...own.keys()]) ?? "");
 		const types = order([...own.keys(), ...homeTypes]);
 		const prices = new Map<string, Dec>();
+		const derived = new Set<string>();
 		for (const type of types) {
 			const h = homeAt(type);
 			const c = code === USD ? new Dec(1) : (own.get(type) ?? ownDefault);
-			if (h && c) prices.set(type, h.div(c));
+			if (!h || !c) continue;
+			prices.set(type, h.div(c));
+			const homeHas = home === USD || homeRates.has(type);
+			if (!homeHas || (code !== USD && !own.has(type))) derived.add(type);
 		}
-		return prices.size ? [{ code, crypto: false, types, prices }] : [];
+		return prices.size ? [{ code, crypto: false, types, prices, derived }] : [];
 	});
 }
 
