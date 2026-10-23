@@ -243,3 +243,22 @@ describe("narrow rows (390)", () => {
 		expect(html).toContain('data-figure="expense.t1.amount"');
 	});
 });
+
+describe("RowSub", () => {
+	it("leaves out an empty shrinkable part, so no separator leads the line", () => {
+		const html = list(
+			h(PersonRow, {
+				person: {
+					id: "p",
+					name: "Paz Ibarra",
+					onRetrospend: false,
+					lastShared: "",
+					balance: ars(94693469),
+					href: "/people/guest/p",
+				},
+			}),
+		);
+		const sub = html.match(/text-meta mt-px[^"]*">(.*?)<\/div>/)?.[1] ?? "";
+		expect(sub.match(/<span class="flex items-center gap-2/g)).toHaveLength(1);
+	});
+});

@@ -28,7 +28,6 @@ export function PersonRow({
 			end={
 				<Balance
 					amount={person.balance}
-					figure={person.figure}
 					className={
 						variant === "group"
 							? "flex flex-col items-end"
@@ -36,6 +35,7 @@ export function PersonRow({
 								? "max-md:flex max-md:flex-col max-md:items-end"
 								: undefined
 					}
+					figure={person.figure}
 				/>
 			}
 			lead={<Face imageUrl={person.imageUrl} name={person.name} size="md" />}
