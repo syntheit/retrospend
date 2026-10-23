@@ -36,7 +36,7 @@ import {
 	snapshot,
 	Tracker,
 } from "./movement-state";
-import { markRulesSkipped } from "./rule.service";
+import { markRulesSkipped, standingRuleRows } from "./rule.service";
 import type { Minor, MonthKey } from "./types";
 import { fromMinor, toMinor } from "./units";
 
@@ -405,11 +405,10 @@ export async function undo(
 		now,
 		s,
 		{ batchId: input.id },
+		// A rule batch's undo also reverts the money in's other rule batches.
 		(rows) =>
-			rows.every(
-				(x) =>
-					x.kind === "UNDO" && x.revertsId !== null && ids.has(x.revertsId),
-			),
+			rows.some((x) => x.revertsId !== null && ids.has(x.revertsId)) &&
+			rows.every((x) => x.kind === "UNDO" && x.revertsId !== null),
 	);
 	if (again) return again;
 	if (originals.length === 0)
@@ -438,15 +437,25 @@ export async function undo(
 		if (r.to === null && r.month > s.current) t.check(r);
 		t.apply(r);
 	}
-	await insert(tx, s, userId, rows);
-	// An undone rule batch marks its money in "rules skipped" (SPEC §5.10).
-	await markRulesSkipped(
-		tx,
-		s.loaded.row.id,
-		originals.flatMap((o) =>
-			o.kind === "RULE" && o.sourceExpenseId ? [o.sourceExpenseId] : [],
-		),
+	// Undoing a rule batch takes back the money in's other rule batches too,
+	// so no rule money is left once the row is skipped (SPEC §5.10). A batch
+	// from a closed month is taken back in the current month (D22).
+	const ruled = originals.flatMap((o) =>
+		o.kind === "RULE" && o.sourceExpenseId ? [o.sourceExpenseId] : [],
 	);
+	for (const o of await standingRuleRows(tx, s.loaded.row.id, ruled, ids))
+		rows.push({
+			id: randomUUID(),
+			month: Math.max(o.month, s.current),
+			from: o.toEnvelopeId,
+			to: o.fromEnvelopeId,
+			minor: toMinor(o.amount.toString(), s.loaded.book.currency),
+			kind: "UNDO",
+			batchId: input.id,
+			revertsId: o.id,
+		});
+	await insert(tx, s, userId, rows);
+	await markRulesSkipped(tx, s.loaded.row.id, ruled);
 	return result(
 		tx,
 		userId,

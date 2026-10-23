@@ -235,6 +235,74 @@ describe("undo, Use my plan and Also apply", () => {
 	});
 });
 
+/**
+ * Review round 1. Starting money 100,000, rule 20% to Rent, a 1,000.00
+ * money in: Rent 20,000, To assign 100,000 + 100,000 - 20,000 = 180,000.
+ *   Finding 1: the money in goes away (deleted, or kept in Wealth) and
+ *   comes back (Undo of the delete restores the same id and createdAt, or
+ *   keep in Wealth is turned off): its rules run again, Rent 20,000 and To
+ *   assign 180,000 (not Rent 0 and 200,000).
+ *   Finding 2: edited to 1,500.00 (delta +10,000), then the delta batch is
+ *   undone: every rule batch of that money in is taken back (Rent 0, To
+ *   assign 250,000) and the row is skipped; deleting it then leaves To
+ *   assign at the starting 100,000 with nothing stranded in Rent.
+ */
+describe("a money in that goes away and comes back (review round 1)", () => {
+	const state = async (s: Seeded, rent: string) => {
+		const m = await getMonth(s.user.id);
+		return [rowOf(m, rent)?.assigned.minor, m?.toAssign.amount.minor];
+	};
+
+	it("Undo of a delete (same id and createdAt) runs the rules again", async () => {
+		const s = await seedUser();
+		const b = await book(s);
+		await rule(s, b.id("Rent"), 2_000);
+		const row = await income(s, 1_000);
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
+		const { id, createdAt, updatedAt, ...data } = await adminDb.expense.delete({ where: { id: row.id } });
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
+		await adminDb.expense.create({ data: { ...data, id, createdAt } as never });
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
+		const sides = await invariantAt(s.user.id);
+		expect(sides.budget).toBe(sides.ledger);
+	});
+
+	it("keep in Wealth on, then off, runs the rules again", async () => {
+		const s = await seedUser();
+		const b = await book(s);
+		await rule(s, b.id("Rent"), 2_000);
+		const row = await income(s, 1_000);
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
+		await adminDb.expense.update({ where: { id: row.id }, data: { keepInWealth: true } });
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
+		await adminDb.expense.update({ where: { id: row.id }, data: { keepInWealth: false } });
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
+	});
+
+	it("undoing a later rule batch takes back every rule batch of that money in", async () => {
+		const s = await seedUser();
+		const b = await book(s);
+		await rule(s, b.id("Rent"), 2_000);
+		const row = await income(s, 1_000);
+		await getMonth(s.user.id);
+		await adminDb.expense.update({
+			where: { id: row.id },
+			data: { amount: new Prisma.Decimal(1_500), amountInUSD: new Prisma.Decimal(1_500) },
+		});
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([30_000, 220_000]);
+		const delta = (await ruleRows(b.bookId)).at(-1);
+		await forUser(s.user.id).apply(undoMovements, {
+			id: randomUUID(),
+			target: { batchId: delta?.batchId as string },
+		});
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 250_000]);
+		await adminDb.expense.delete({ where: { id: row.id } });
+		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
+		const sides = await invariantAt(s.user.id);
+		expect(sides.budget).toBe(sides.ledger);
+	});
+});
+
 describe("P5 tables are book tables (RLS)", () => {
 	it("a non-member sees no rules, runs or drafts of another book", async () => {
 		const alice = await seedUser();

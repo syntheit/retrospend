@@ -3,15 +3,16 @@
  * in exactly once.
  *
  * - Rules run on every income row that enters To assign, created after the
- *   rule. The money-in service may run them right away (runRulesFor); rows
- *   the Go sidecar posts run lazily on the next budget read
- *   (runPendingRules). Either way under the book lock, and the
+ *   rule. Use my plan runs them right away for its money in (ruleTotalFor);
+ *   rows the Go sidecar posts and edits run lazily on the next budget read
+ *   or Needs you (runPendingRules). Either way under the book lock, and the
  *   income_rule_run primary key makes the run exactly-once.
  * - A row changes (amount, date, deleted, no longer budget income): the
  *   next read writes a delta with the rules recorded on the first run, a
  *   delete reverts. A row whose value is missing a rate waits: its rules
  *   run once a rate values it (R14: never at 1).
- * - Undoing a rule batch marks the row "rules skipped" (movement undo).
+ * - Undoing any rule batch of a row takes back all of that row's rule
+ *   money and marks it "rules skipped" (movement undo, standingRuleRows).
  *
  * Title matching happens here only (E2EE known exception, TITLE rules).
  */
@@ -136,11 +137,21 @@ async function pendingFor(
 	const ran = candidates.length
 		? await tx.incomeRuleRun.findMany({
 				where: { expenseId: { in: candidates.map((c) => c.id) } },
-				select: { expenseId: true },
+				select: { expenseId: true, fingerprint: true, skipped: true },
 			})
 		: [];
-	const done = new Set(ran.map((r) => r.expenseId));
-	return { fresh: candidates.filter((c) => !done.has(c.id)), changed };
+	const runOf = new Map(ran.map((r) => [r.expenseId, r]));
+	// A run reverted to zero (the row was deleted or kept in Wealth) has no
+	// standing batch, so the open pass skips it: when the row comes back it
+	// is budget income again with another fingerprint, and reruns here.
+	const watched = new Set(changed.map((c) => c.expenseId));
+	for (const c of candidates) {
+		const run = runOf.get(c.id);
+		if (!run || run.skipped || watched.has(c.id)) continue;
+		if (fingerprintOf(c) !== run.fingerprint)
+			changed.push({ expenseId: c.id, row: c });
+	}
+	return { fresh: candidates.filter((c) => !runOf.has(c.id)), changed };
 }
 
 /** A row as the allocator reads it: valued and dated by the load's valuer. */
@@ -388,6 +399,26 @@ export async function ruleTotalFor(
 	const run = await tx.incomeRuleRun.findUnique({ where: { expenseId } });
 	if (!run || run.skipped) return 0;
 	return loadRecord(run.record, false).net.reduce((s, l) => s + l.amount, 0);
+}
+
+/** A money in's RULE movements not undone yet, other than `except` (the batch being undone). */
+export function standingRuleRows(
+	tx: Tx,
+	bookId: string,
+	expenseIds: readonly string[],
+	except: ReadonlySet<string>,
+) {
+	if (expenseIds.length === 0) return Promise.resolve([]);
+	return tx.budgetMovement.findMany({
+		where: {
+			bookId,
+			kind: "RULE",
+			sourceExpenseId: { in: [...expenseIds] },
+			id: { notIn: [...except] },
+			undoneBy: { none: {} },
+		},
+		orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+	});
 }
 
 /** Undoing a RULE batch marks its rows "rules skipped": they never run again (SPEC §5.10). */
