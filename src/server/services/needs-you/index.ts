@@ -9,6 +9,7 @@ import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import type { LoadedBook } from "~/server/services/envelope/inputs";
 import { monthViewIn } from "~/server/services/envelope/month-read";
+import { runPendingRules } from "~/server/services/envelope/rule.service";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -39,6 +40,8 @@ async function budgetSource(
 	userId: string,
 	now: Date,
 ): Promise<NeedsYouItem[]> {
+	// Rules take their part of new money in first (sidecar rows), so Give it a job shows what is left (S24).
+	await runPendingRules(tx, userId, now);
 	const view = await monthViewIn(tx, userId, now);
 	if (!view) return [];
 	const row = view.loaded.row;
