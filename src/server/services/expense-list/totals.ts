@@ -4,7 +4,7 @@
  * sums rows of its own: the list only picks the filter and the currency.
  * Money in and transfers add nothing; refunds subtract; shares count yours.
  */
-import { amountIn, isValidRate, USD } from "@retrospend/domain/money";
+import { missingRatesIn, sumIn } from "@retrospend/domain/money";
 import {
 	dayKey,
 	parseDateOnlyIn,
@@ -25,6 +25,8 @@ export type TotalsContext = {
 	homeRate: number | null;
 	excludedProjectIds: string[];
 	timeZone: string | undefined;
+	/** Filled with every currency whose missing rate kept a total out (named, R14). */
+	missingRates: Set<string>;
 };
 
 /**
@@ -64,18 +66,14 @@ function spentFilter(
 }
 
 /**
- * Items in the home currency, or null when one needs a home rate that is
- * missing: a missing rate is never 1 (GUIDELINE §7), so no total shows.
+ * Items in the home currency, or null when a rate is missing: the home
+ * rate for a foreign row, or any rate for an unpriced share. A missing rate
+ * is never 1 (GUIDELINE §7): no total shows and the currencies are named.
  */
 function homeSum(items: SpentItem[], c: TotalsContext): number | null {
-	const rateless = c.home !== USD && !isValidRate(c.homeRate);
-	let total = 0;
-	for (const item of items) {
-		const own = item.currency === c.home || item.booked?.currency === c.home;
-		if (rateless && !own) return null;
-		total += amountIn(item, c.home, c.homeRate);
-	}
-	return total;
+	const missing = missingRatesIn(items, c.home, c.homeRate);
+	for (const currency of missing) c.missingRates.add(currency);
+	return missing.length ? null : sumIn(items, c.home, c.homeRate);
 }
 
 /** Your spending for the filter's dates and categories, in the home currency. */

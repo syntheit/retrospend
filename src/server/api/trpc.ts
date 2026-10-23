@@ -14,10 +14,14 @@ import superjson from "superjson";
 import { MissingRateError } from "~/lib/money";
 import { errorFormatter } from "~/server/api/error-formatter";
 import type { Session } from "~/server/better-auth/config";
+import { getWebSession } from "~/server/better-auth/web-session";
 import { createUserScopedDb, db } from "~/server/db";
+import {
+	claimTimeZone,
+	resolveTimeZone,
+} from "~/server/services/user-time-zone";
 import { requestTimeZone } from "~/server/time-zone";
 import type { ParticipantType } from "~prisma";
-import { getWebSession } from "~/server/better-auth/web-session";
 
 export type GuestParticipant = {
 	participantType: Extract<ParticipantType, "guest">;
@@ -40,7 +44,10 @@ export type ViewerLinkParticipant = {
 	projectScope: string; // MagicLink.projectId
 };
 
-export type Participant = UserParticipant | GuestParticipant | ViewerLinkParticipant;
+export type Participant =
+	| UserParticipant
+	| GuestParticipant
+	| ViewerLinkParticipant;
 
 /** Participants that can perform write operations (CONTRIBUTOR+). */
 export type WritableParticipant = UserParticipant | GuestParticipant;
@@ -198,14 +205,23 @@ export const protectedProcedure = t.procedure
 		}
 
 		const userDb = createUserScopedDb(ctx.session.user.id);
+		const requestZone = requestTimeZone(ctx.headers);
+		const storedZone = ctx.session.user.timeZone;
+		// A failed claim only means the next request tries again; it must
+		// never fail the request it rides on.
+		try {
+			await claimTimeZone(userDb, ctx.session.user.id, storedZone, requestZone);
+		} catch (error) {
+			console.error("[time-zone] could not store the browser's zone", error);
+		}
 
 		return next({
 			ctx: {
 				// infers the `session` as non-nullable with additional user fields
 				session: ctx.session as Session,
 				db: userDb,
-				// The user's IANA zone for day and month bucketing (undefined = server zone)
-				timeZone: requestTimeZone(ctx.headers),
+				// The user's IANA zone for day and month bucketing
+				timeZone: resolveTimeZone(storedZone, requestZone),
 			},
 		});
 	});
@@ -262,9 +278,7 @@ export const guestOrProtectedProcedure = t.procedure
 		// No valid user session; check for guest token
 		const guestToken = ctx.headers.get("x-guest-token");
 		if (guestToken) {
-			const hashedToken = createHash("sha256")
-				.update(guestToken)
-				.digest("hex");
+			const hashedToken = createHash("sha256").update(guestToken).digest("hex");
 
 			const guestSession = await ctx.db.guestSession.findUnique({
 				where: { sessionToken: hashedToken },

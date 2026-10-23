@@ -5930,6 +5930,16 @@
 										},
 										"smartCurrencyFormatting": {
 											"type": "boolean"
+										},
+										"timeZone": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
 										}
 									},
 									"required": [
@@ -5944,7 +5954,8 @@
 										"fiscalMonthStartDay",
 										"defaultExpenseDateBehavior",
 										"aiMode",
-										"language"
+										"language",
+										"timeZone"
 									],
 									"type": "object"
 								}
@@ -6136,6 +6147,11 @@
 									},
 									"smartCurrencyFormatting": {
 										"type": "boolean"
+									},
+									"timeZone": {
+										"maxLength": 64,
+										"minLength": 1,
+										"type": "string"
 									}
 								},
 								"type": "object"
@@ -6233,6 +6249,16 @@
 										},
 										"smartCurrencyFormatting": {
 											"type": "boolean"
+										},
+										"timeZone": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
 										}
 									},
 									"required": [
@@ -6247,7 +6273,8 @@
 										"fiscalMonthStartDay",
 										"defaultExpenseDateBehavior",
 										"aiMode",
-										"language"
+										"language",
+										"timeZone"
 									],
 									"type": "object"
 								}

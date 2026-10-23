@@ -9,6 +9,7 @@ import {
 	resolvePrincipal,
 } from "~/server/services/api-v1/principal.service";
 import { scopedDbFor } from "~/server/services/api-v1/scoped-db";
+import { userTimeZone } from "~/server/services/user-time-zone";
 import { requestTimeZone } from "~/server/time-zone";
 import { problem } from "./errors";
 import { idempotency } from "./idempotency";
@@ -27,8 +28,8 @@ export type V1InitialContext = ResponseHeadersPluginContext & {
 export type V1User = {
 	principal: Principal;
 	db: typeof globalDb;
-	/** The caller's IANA zone for day and month bucketing (undefined = server zone). */
-	timeZone: string | undefined;
+	/** The caller's IANA zone for day and month bucketing (resolveTimeZone). */
+	timeZone: string;
 };
 
 export type V1Context = V1InitialContext & { user: V1User | null };
@@ -58,13 +59,16 @@ const authenticate = os
 				});
 		}
 
-		const user: V1User | null = principal
-			? {
-					principal,
-					db: scopedDbFor(principal.userId),
-					timeZone: requestTimeZone(context.headers),
-				}
-			: null;
+		let user: V1User | null = null;
+		if (principal) {
+			const db = scopedDbFor(principal.userId);
+			const zone = requestTimeZone(context.headers);
+			user = {
+				principal,
+				db,
+				timeZone: await userTimeZone(db, principal.userId, zone),
+			};
+		}
 		return next({ context: { user } });
 	});
 

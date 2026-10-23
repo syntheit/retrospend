@@ -130,6 +130,8 @@
 		"themeDark": "Oscuro",
 		"themeSystem": "Sistema",
 		"language": "Idioma",
+		"timeZone": "Zona horaria",
+		"timeZoneMeta": "Se usa cuando tu dispositivo no indica la suya",
 		"hideBalances": "Ocultar saldos en Patrimonio",
 		"hideBalancesMeta": "Hasta que toques el ojo",
 		"chartTap": "Al tocar una categoría en un gráfico",
