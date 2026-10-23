@@ -35,6 +35,26 @@ function viewFetcher(page: Page) {
 	};
 }
 
+/** An overdue template made through the app's own create call. */
+async function dueTemplate(page: Page, name: string): Promise<void> {
+	const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString();
+	const res = await page.request.post("/api/trpc/recurring.create", {
+		data: {
+			json: {
+				name,
+				amount: 9000,
+				currency: "ARS",
+				frequency: "MONTHLY",
+				nextDueDate: tenDaysAgo,
+				autoPay: false,
+			},
+			meta: { values: { nextDueDate: ["Date"] } },
+		},
+		headers: { Origin: new URL(page.url()).origin },
+	});
+	expect(res.ok(), `recurring.create answered ${res.status()}`).toBe(true);
+}
+
 test.beforeAll(enableV2ForViewer);
 
 test("Recurring: add one, see it grouped and summed, confirm it", async ({
@@ -83,11 +103,17 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 	const audit = new FigureAudit(viewFetcher(page));
 	expect(await audit.checkPage(page, "recurring")).toEqual([]);
 
-	// A due one has Confirm on the row; confirming moves it out of Due now.
-	const confirm = row.getByRole("button", { name: "Confirm" });
-	if (await confirm.isVisible()) {
-		await untilSaved(page, "recurring.confirmAndCreate", () => confirm.click());
-		await expect(main.locator('tr[data-group="due"]')).toHaveCount(0);
-	}
+	// A due one has Confirm on the row; confirming books it and moves it on.
+	await dueTemplate(page, "Seguro de la bici");
+	await page.reload();
+	const due = main
+		.locator("tr[data-id]")
+		.filter({ hasText: "Seguro de la bici" });
+	await expect(due).toContainText("Overdue since");
+	await untilSaved(page, "recurring.confirmAndCreate", () =>
+		due.getByRole("button", { name: "Confirm" }).click(),
+	);
+	await expect(due).not.toContainText("Overdue since");
+	await expect(due.getByRole("button", { name: "Confirm" })).toHaveCount(0);
 	expect(errors, "uncaught page errors").toEqual([]);
 });
