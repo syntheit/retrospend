@@ -300,6 +300,12 @@ export const monthCloseSummarySchema = z.object({
 		}),
 	),
 	envelopes: z.array(monthCloseEnvelopeSchema),
+	/**
+	 * Category to envelope routing the month closed with: moving a category
+	 * later routes only the open months there (B7). Absent on closes made
+	 * before routing was kept.
+	 */
+	links: z.record(z.string(), z.string()).optional(),
 });
 
 // ── Splits and money owed (P3, SPEC §5.8) ───────────────────────────────────

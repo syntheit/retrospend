@@ -318,6 +318,13 @@ export async function loadBook(
 		movements: movementEntries(own.movements, row.currency),
 		splits: full.entries.splits,
 		closedRules: closedRulesOf(closes),
+		closedLinks: new Map(
+			closes.flatMap((c) =>
+				c.summary.links
+					? [[c.month, new Map(Object.entries(c.summary.links))] as const]
+					: [],
+			),
+		),
 		checkpoint: checkpoint ? toEngineCheckpoint(checkpoint) : null,
 	};
 	const loaded = finishLoad(s, {

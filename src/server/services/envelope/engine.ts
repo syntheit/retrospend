@@ -97,6 +97,8 @@ export interface EngineInput {
 	splits: readonly ReplayEffect[];
 	/** Leftover rules each closed month closed under (MonthClose snapshots). */
 	closedRules?: ReadonlyMap<MonthKey, ReadonlyMap<string, ClosedRule>>;
+	/** Category to envelope links each closed month closed with (MonthClose snapshots). */
+	closedLinks?: ReadonlyMap<MonthKey, ReadonlyMap<string, string>>;
 	/**
 	 * Where the pass starts (SPEC §5.13): the state at the end of a closed
 	 * month. Months up to it are not computed; rows dated in them are ignored.
@@ -190,7 +192,12 @@ export interface BookState {
 	toAssign(key: MonthKey): ToAssignTerms;
 	/** Running totals through month `key` (checkpoint included). */
 	runningTotals(key: MonthKey): RunningTotals;
-	envelopeOf(entry: Pick<ActivityEntry, "categoryId" | "envelopeId">): string;
+	/** With `month`, a closed month routes by the links it closed with. */
+	envelopeOf(
+		entry: Pick<ActivityEntry, "categoryId" | "envelopeId"> & {
+			month?: MonthKey;
+		},
+	): string;
 }
 
 /** A movement or link that names an envelope the book does not have: a loader bug. */
@@ -261,14 +268,23 @@ function router(input: EngineInput) {
 		if (!ids.has(id)) throw new EngineInputError(`unknown envelope ${id}`);
 		return id;
 	};
+	// A closed month routes by the links it closed with (B7); open months by today's.
+	const linksAt = (month: MonthKey | undefined) => {
+		const closed = month === undefined ? undefined : input.closedLinks?.get(month);
+		return closed ?? byCategory;
+	};
 	const envelopeOf = (
-		entry: Pick<ActivityEntry, "categoryId" | "envelopeId">,
-	) =>
-		entry.envelopeId && ids.has(entry.envelopeId)
-			? entry.envelopeId
-			: ((entry.categoryId && byCategory.get(entry.categoryId)) ??
-				input.defaultEnvelopeId);
-	return { known, envelopeOf };
+		entry: Pick<ActivityEntry, "categoryId" | "envelopeId"> & {
+			month?: MonthKey;
+		},
+	) => {
+		if (entry.envelopeId && ids.has(entry.envelopeId)) return entry.envelopeId;
+		const linked = entry.categoryId
+			? linksAt(entry.month).get(entry.categoryId)
+			: undefined;
+		return linked && ids.has(linked) ? linked : input.defaultEnvelopeId;
+	};
+	return { known, envelopeOf, byCategory };
 }
 
 /** Forgiven balances are charged to their envelope in the forgive month (§5.8). */

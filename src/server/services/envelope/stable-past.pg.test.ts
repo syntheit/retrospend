@@ -34,6 +34,7 @@ import {
 	setupInput,
 } from "./__tests__/pg-fixture";
 import { loadCloseRows } from "./close-rows";
+import { computeBook } from "./engine";
 import { loadBook } from "./inputs";
 import { getMonth, getMonthSummary } from "./read.service";
 import { setupEnvelopeBook } from "./setup.mutation";
@@ -255,5 +256,56 @@ describe("the late window counts from when the change was made (finding 3)", () 
 		await getMonth(b.user.id, undefined, at("2026-11-01"));
 		const sep = await getMonthSummary(b.user.id, 202609, at("2026-11-01"));
 		expect(sep?.lateEntries).toBeNull();
+	});
+});
+
+describe("moving a category keeps closed months as they closed (finding 7)", () => {
+	// Dining's category moves to Spending on Nov 20: August to October keep
+	// Dining 20,000 / 15,000 / 15,000, November still opens with Dining's
+	// 15,000 carried, and a Nov 21 dinner (40.00) lands in Spending.
+	it("no revision, no change item; new spending follows the new link", async () => {
+		const b = await augustBook();
+		const now = at("2026-11-20");
+		await getMonth(b.user.id, undefined, now);
+		const spending = await adminDb.envelope.findFirstOrThrow({
+			where: { bookId: b.bookId, name: "Spending" },
+		});
+		await adminDb.envelopeCategory.updateMany({
+			where: { bookId: b.bookId, categoryId: b.dining },
+			data: { envelopeId: spending.id },
+		});
+		await addRow(
+			b.user.id,
+			{ amount: 40, categoryId: b.dining },
+			at("2026-11-21"),
+		);
+		const nov = await getMonth(b.user.id, undefined, at("2026-11-21"));
+		expect(leftOf(nov, b.diningEnv)).toBe(15_000);
+		expect(leftOf(nov, spending.id)).toBe(-4_000);
+		const rows = await userTransaction(adminDb, b.user.id, (tx) =>
+			loadCloseRows(tx, b.bookId),
+		);
+		expect(rows.map((r) => [r.revision, r.recalc])).toEqual([
+			[1, null],
+			[1, null],
+			[1, null],
+		]);
+		expect(
+			rows.map(
+				(r) => r.summary.envelopes.find((e) => e.id === b.diningEnv)?.left,
+			),
+		).toEqual([20_000, 15_000, 15_000]);
+		// A full pass from the start reads the same today.
+		const full = await userTransaction(adminDb, b.user.id, (tx) =>
+			loadBook(tx, b.user.id, { now: at("2026-11-21"), needFrom: 0 }),
+		);
+		expect(full?.checkpoint).toBeNull();
+		const state = computeBook(full?.input as never);
+		expect(state.month(202610).envelopes.get(b.diningEnv)?.left).toBe(15_000);
+		expect(state.month(202611).envelopes.get(b.diningEnv)?.left).toBe(15_000);
+		await expect(invariantAt(b.user.id, at("2026-11-21"))).resolves.toEqual({
+			budget: 81_000,
+			ledger: 81_000,
+		});
 	});
 });
