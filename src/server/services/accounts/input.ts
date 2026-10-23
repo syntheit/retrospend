@@ -123,6 +123,7 @@ export const addIncomeSchema = z.object({
 	repeats: z
 		.object({ frequency: z.enum(RecurringFrequency), next: isoDay.nullish() })
 		.nullish(),
+	usePlan: z.boolean().optional(),
 });
 
 const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
