@@ -21,6 +21,7 @@ import {
 	type AccountRow,
 	bookHome,
 	homeCurrencyOf,
+	lockAccounts,
 	lockOpenAccount,
 	ratePickFor,
 	writeLeg,
@@ -207,7 +208,7 @@ async function writeFee(
 	const expense = await createExpenseIn(tx, userId, {
 		id: randomUUID(),
 		title: "Fee",
-		amount: amount.toNumber(),
+		amount: amount.toString(),
 		currency: side.currency,
 		date: ctx.date,
 		description: "Fee for a transfer",
@@ -228,6 +229,11 @@ async function writeFee(
 /** Everything a move needs before it writes: its places, amounts, plan and booked legs. */
 async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 	const date = moveDay(input.date, new Date(), input.timeZone);
+	await lockAccounts(tx, [
+		input.fromAccountId,
+		input.toAccountId,
+		input.fee?.accountId,
+	]);
 	const home = await homeCurrencyOf(tx, userId);
 	const from = await sideOf(
 		tx,
@@ -271,6 +277,10 @@ async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 			[to, toAmount, toHome],
 		] as const,
 		booked,
+		homes: {
+			fromHome: fromHome?.amount ?? null,
+			toHome: toHome?.amount ?? null,
+		},
 		ref: booked
 			? reference(pick, planInput, booked, date)
 			: { vsReference: null, referenceRateType: null },
@@ -337,9 +347,7 @@ export async function createTransferIn(
 		});
 		if (fee.change) changes.push(fee.change);
 	}
-	const effect: BudgetEffect = move.booked
-		? budgetEffect(move.planInput, move.plan, move.booked)
-		: { effect: "none" };
+	const effect = budgetEffect(move.planInput, move.plan, move.homes);
 	const leaves = effect.effect === "leaves";
 	const side = await budgetSideOf(tx, userId, effect, {
 		transferId,

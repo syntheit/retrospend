@@ -178,6 +178,31 @@ describe("budget line", () => {
 			effect: "none",
 		});
 	});
+
+	it("a move across the line with no rate for its in-budget leg is unavailable, never none", () => {
+		const leaves = move(savings, usdCash, "146800", "100");
+		expect(
+			budgetEffect(leaves, planTransfer(leaves), {
+				fromHome: null,
+				toHome: dec("141200"),
+			}),
+		).toEqual({ effect: "unavailable" });
+		const enters = move(usdCash, savings, "100", "146800");
+		expect(
+			budgetEffect(enters, planTransfer(enters), {
+				fromHome: dec("-141200"),
+				toHome: null,
+			}),
+		).toEqual({ effect: "unavailable" });
+		// Inside the budget nothing crosses, rate or not.
+		const inside = move(savings, wallet, "1000");
+		expect(
+			budgetEffect(inside, planTransfer(inside), {
+				fromHome: null,
+				toHome: null,
+			}),
+		).toEqual({ effect: "none" });
+	});
 });
 
 describe("typed amounts (I21)", () => {

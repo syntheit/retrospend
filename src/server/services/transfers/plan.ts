@@ -53,7 +53,9 @@ export type BudgetEffect =
 			readonly currency: string;
 	  }
 	/** Out of Wealth, but all of it was counted by a Move in already. */
-	| { readonly effect: "counted" };
+	| { readonly effect: "counted" }
+	/** It crosses the budget's line, but no rate values the in-budget leg (R14). */
+	| { readonly effect: "unavailable" };
 
 export interface TransferPlan {
 	readonly kind: TransferKind;
@@ -142,18 +144,24 @@ const Decimal8 = (d: Decimal) => d.toDecimalPlaces(8);
 
 /**
  * The budget's half (I14, I15): the in-budget leg's booked home value when
- * the move crosses the line, the fresh part only when it enters.
+ * the move crosses the line, the fresh part only when it enters. A booked
+ * side is null when no rate values it: the effect is then unavailable,
+ * never none.
  */
 export function budgetEffect(
 	input: TransferPlanInput,
 	plan: TransferPlan,
-	booked: { readonly fromHome: Decimal; readonly toHome: Decimal },
+	booked: {
+		readonly fromHome: Decimal | null;
+		readonly toHome: Decimal | null;
+	},
 ): BudgetEffect {
 	const fromIn = inBudgetOf(input, "from");
 	const toIn = inBudgetOf(input, "to");
 	const home = input.homeCurrency;
 	if (fromIn === toIn) return { effect: "none" };
 	if (fromIn) {
+		if (!booked.fromHome) return { effect: "unavailable" };
 		return {
 			effect: "leaves",
 			minor: toMinor(booked.fromHome.abs(), home),
@@ -161,6 +169,7 @@ export function budgetEffect(
 		};
 	}
 	if (plan.freshUnits.isZero()) return { effect: "counted" };
+	if (!booked.toHome) return { effect: "unavailable" };
 	const fresh = booked.toHome.abs().mul(plan.freshUnits).div(input.fromAmount);
 	return { effect: "enters", minor: toMinor(fresh, home), currency: home };
 }
