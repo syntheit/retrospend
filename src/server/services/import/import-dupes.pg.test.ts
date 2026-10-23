@@ -16,7 +16,10 @@ import {
 	seedArsRates,
 } from "../accounts/test-fixtures";
 import { commitImport } from "./commit.mutation";
+import { matchFile } from "./match";
+import { prepareRows } from "./prepare";
 import { importReview } from "./review";
+import type { StoredRow } from "./rows";
 
 beforeAll(seedArsRates);
 
@@ -207,4 +210,48 @@ describe("import duplicates", () => {
 		const again = await importReview(adminDb, u, await job(u, rows));
 		expect(again.rows[0]).toMatchObject({ duplicate: true });
 	});
+});
+
+describe("a large ledger", () => {
+	it("matches 5,000 file rows against 20,000 Activity rows within budget", async () => {
+		const u = await user();
+		// 20 days, 40 amounts: every amount bucket holds hundreds of rows.
+		const day = (i: number) => isoDay(daysAgo(5 + (i % 20)));
+		await adminDb.expense.createMany({
+			data: Array.from({ length: 20_000 }, (_, i) => ({
+				userId: u,
+				title: `Ledger ${i}`,
+				amount: 1000 + (i % 40) * 100,
+				currency: "ARS",
+				date: new Date(`${day(i)}T15:00:00.000Z`),
+				exchangeRate: 1468,
+				amountInUSD: 1,
+				pricingSource: "MANUAL",
+			})),
+		});
+		// Every 10th row is a ledger row typed in (exact); the rest only share amounts.
+		const rows = Array.from({ length: 5000 }, (_, i) => ({
+			title: i % 10 === 0 ? `Ledger ${i}` : `Bank ${i}`,
+			amount: 1000 + (i % 40) * 100,
+			day: day(i),
+		}));
+		const prepared = prepareRows(
+			rows.map(fileRow) as unknown as StoredRow[],
+			{},
+		).rows;
+
+		const started = performance.now();
+		const matches = await matchFile(adminDb, u, prepared, (r) => r.proposed);
+		const ms = performance.now() - started;
+		process.stderr.write(`match 5,000 x 20,000: ${Math.round(ms)} ms\n`);
+		expect(ms).toBeLessThan(2000);
+
+		const all = [...matches.values()];
+		expect(all.filter((m) => m.exact).length).toBe(500);
+		// 1:1: no Activity row explains two file rows.
+		const ids = all
+			.flatMap((m) => [m.exact?.id, m.likely?.id])
+			.filter((id): id is string => id != null);
+		expect(new Set(ids).size).toBe(ids.length);
+	}, 120_000);
 });

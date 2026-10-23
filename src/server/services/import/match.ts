@@ -105,47 +105,111 @@ export function matchRowOf(row: PreparedRow, kind: ImportKind): MatchRow {
 	};
 }
 
-const daysApart = (a: string, b: string) =>
-	Math.abs(Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) /
-	DAY_MS;
+const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / DAY_MS;
 
-const sameMoney = (r: MatchRow, e: ExistingRow) =>
-	r.kind === e.kind && r.currency === e.currency && r.minor === e.minor;
+const moneyKey = (x: { kind: string; currency: string; minor: string }) =>
+	`${x.kind}|${x.currency}|${x.minor}`;
 
-/** Pairs every file row with at most one existing row, and the reverse. */
+/** Rows grouped by a key, in the order given. */
+function groupBy<T>(items: readonly T[], key: (item: T) => string | null) {
+	const groups = new Map<string, T[]>();
+	for (const item of items) {
+		const k = key(item);
+		if (k === null) continue;
+		const list = groups.get(k);
+		if (list) list.push(item);
+		else groups.set(k, [item]);
+	}
+	return groups;
+}
+
+/** Hands out each group's rows in order, each at most once (rows only ever become used). */
+function takeFirst(
+	groups: Map<string, ExistingRow[]>,
+	used: Set<string>,
+): (key: string) => ExistingRow | null {
+	const cursor = new Map<string, number>();
+	return (key) => {
+		const list = groups.get(key);
+		if (!list) return null;
+		let at = cursor.get(key) ?? 0;
+		while (at < list.length && used.has(list[at]?.id ?? "")) at++;
+		cursor.set(key, at);
+		const e = list[at];
+		if (!e) return null;
+		used.add(e.id);
+		return e;
+	};
+}
+
+/** The first index in `days` (sorted) at or above `min`. */
+function lowerBound(days: readonly number[], min: number): number {
+	let lo = 0;
+	let hi = days.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if ((days[mid] ?? 0) < min) lo = mid + 1;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/**
+ * Pairs every file row with at most one existing row, and the reverse.
+ * Indexed (by fingerprint, by day and description, by amount and day), so a
+ * 5,000-row file against a large ledger stays fast inside the commit's
+ * transaction.
+ */
 export function matchRows(
 	rows: readonly MatchRow[],
 	existing: readonly ExistingRow[],
 ): Map<number, Match> {
 	const used = new Set<string>();
 	const exact = new Map<number, ExistingRow>();
-	const take = (r: MatchRow, pick: (e: ExistingRow) => boolean) => {
-		if (exact.has(r.index)) return;
-		const e = existing.find((x) => !used.has(x.id) && pick(x));
-		if (!e) return;
-		used.add(e.id);
-		exact.set(r.index, e);
+	const pass = (
+		groups: Map<string, ExistingRow[]>,
+		key: (r: MatchRow) => string,
+	) => {
+		const take = takeFirst(groups, used);
+		for (const r of rows) {
+			if (exact.has(r.index)) continue;
+			const e = take(key(r));
+			if (e) exact.set(r.index, e);
+		}
 	};
 	// Exact: a previous import of this row first, then the same row typed in.
-	for (const r of rows) take(r, (e) => e.fingerprint === r.fingerprint);
-	const norm = new Map(rows.map((r) => [r.index, normalizeTitle(r.title)]));
-	for (const r of rows)
-		take(
-			r,
-			(e) =>
-				sameMoney(r, e) &&
-				e.day === r.day &&
-				normalizeTitle(e.title) === norm.get(r.index),
-		);
+	pass(
+		groupBy(existing, (e) => e.fingerprint),
+		(r) => r.fingerprint,
+	);
+	const sameRow = (x: ExistingRow | MatchRow) =>
+		`${moneyKey(x)}|${x.day}|${normalizeTitle(x.title)}`;
+	pass(groupBy(existing, sameRow), sameRow);
 
 	// Likely: same money within LIKELY_DAYS, closest pair first.
+	const buckets = new Map(
+		[...groupBy(existing, moneyKey)].map(([k, list]) => {
+			const sorted = list
+				.filter((e) => !used.has(e.id))
+				.map((e) => ({ e, day: dayNumber(e.day) }))
+				.sort((a, b) => a.day - b.day);
+			return [k, { sorted, days: sorted.map((x) => x.day) }] as const;
+		}),
+	);
 	const pairs: { r: MatchRow; e: ExistingRow; d: number }[] = [];
 	for (const r of rows) {
 		if (exact.has(r.index)) continue;
-		for (const e of existing) {
-			if (used.has(e.id) || !sameMoney(r, e)) continue;
-			const d = daysApart(r.day, e.day);
-			if (d <= LIKELY_DAYS) pairs.push({ r, e, d });
+		const bucket = buckets.get(moneyKey(r));
+		if (!bucket) continue;
+		const day = dayNumber(r.day);
+		for (
+			let at = lowerBound(bucket.days, day - LIKELY_DAYS);
+			at < bucket.sorted.length;
+			at++
+		) {
+			const c = bucket.sorted[at];
+			if (!c || c.day > day + LIKELY_DAYS) break;
+			pairs.push({ r, e: c.e, d: Math.abs(c.day - day) });
 		}
 	}
 	pairs.sort((a, b) => a.d - b.d || a.r.index - b.r.index);
