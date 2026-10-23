@@ -26,11 +26,19 @@
 		"solo": "Solo",
 		"people": "{count, plural, one {# person} other {# people}}",
 		"spent": "spent",
-		"budgetUsed": "Budget used"
+		"budgetUsed": "Budget used",
+		"yourShare": "your share",
+		"left": "<amount></amount> left",
+		"over": "<amount></amount> over",
+		"justYou": "Just you"
 	},
 	"account": {
 		"updated": "Updated {date}",
-		"change": "{change} this month"
+		"change": "{change} this month",
+		"closed": "Closed {date}. History kept.",
+		"noRate": "No {currency} rate. Left out of net worth.",
+		"apr": "APR {apr}",
+		"valuedAt": "Valued at {type}"
 	},
 	"envelope": {
 		"spent": "Spent of what you planned"

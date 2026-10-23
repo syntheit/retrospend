@@ -133,6 +133,18 @@ export type ProjectVM = {
 	figure?: string;
 	/** How much of the budget is used, when there is one. */
 	budgetUsed?: { basis: Basis; over: boolean } | null;
+	/**
+	 * The desktop columns of projects.html: what the group spent with your
+	 * share under it, and the budget left (negative: over). Set `total` to
+	 * get them; phones keep one end figure.
+	 */
+	columns?: {
+		total: MoneyValue | null;
+		totalFigure?: string;
+		share?: MoneyValue | null;
+		shareFigure?: string;
+		budgetLeft?: MoneyValue | null;
+	};
 };
 
 export type AccountKind =
@@ -158,6 +170,20 @@ export type AccountVM = {
 	/** Figures registry keys of the native and home amounts. */
 	figure?: string;
 	homeFigure?: string;
+	/**
+	 * The Wealth page's sub line (wealth.html): the currency code first, then
+	 * one fact about how it counts. Without it the row says when it changed.
+	 */
+	detail?: {
+		/** The rate type it is valued at, worded ("Blue"), when there are several. */
+		valuedAt?: string | null;
+		/** A liability's interest rate, in hundredths of a percent. */
+		apr?: Basis | null;
+		/** No rate for its currency: left out of net worth (attention). */
+		noRate?: boolean;
+		/** ISO date it was closed. */
+		closedOn?: string | null;
+	};
 };
 
 export type EnvelopeVM = {

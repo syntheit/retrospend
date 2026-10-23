@@ -26,11 +26,19 @@
 		"solo": "Seul",
 		"people": "{count, plural, one {# personne} other {# personnes}}",
 		"spent": "dépensé",
-		"budgetUsed": "Budget utilisé"
+		"budgetUsed": "Budget utilisé",
+		"yourShare": "votre part",
+		"left": "reste <amount></amount>",
+		"over": "<amount></amount> de dépassement",
+		"justYou": "Vous seul"
 	},
 	"account": {
 		"updated": "Mis à jour le {date}",
-		"change": "{change} ce mois-ci"
+		"change": "{change} ce mois-ci",
+		"closed": "Fermé le {date}. Historique conservé.",
+		"noRate": "Pas de taux {currency}. Exclu du patrimoine.",
+		"apr": "TAEG {apr}",
+		"valuedAt": "Évalué au {type}"
 	},
 	"envelope": {
 		"spent": "Dépensé sur le prévu"

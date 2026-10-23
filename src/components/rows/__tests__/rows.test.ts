@@ -171,6 +171,33 @@ describe("entity rows", () => {
 		expect(html).toContain('aria-label="Budget used"');
 	});
 
+	it("ProjectRow columns: total with your share, budget left, your balance", () => {
+		const html = list(
+			h(ProjectRow, {
+				project: {
+					id: "p2",
+					name: "Depto Palermo",
+					href: "/projects/p2",
+					solo: false,
+					people: [{ id: "martin", name: "Martín Acosta" }],
+					peopleCount: 2,
+					balance: ars(-4110000),
+					budgetUsed: { basis: 10000, over: true },
+					columns: {
+						total: ars(61500000),
+						share: ars(30750000),
+						budgetLeft: ars(-1500000),
+					},
+				},
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("ARS 615,000 your share ARS 307,500");
+		expect(t).toContain("ARS 15,000 over");
+		expect(t).toContain("you owe ARS 41,100");
+		expect(html).toContain("*:bg-attention");
+	});
+
 	it("AccountRow: native first, home under it, the month's change", () => {
 		const html = list(
 			h(AccountRow, {
@@ -189,6 +216,50 @@ describe("entity rows", () => {
 		expect(t).toContain("BTC 0.01834217");
 		expect(t).toContain("Updated Oct 12");
 		expect(t).toContain("-2.2% this month");
+	});
+
+	it("AccountRow on Wealth: the code, then how it counts, then the day", () => {
+		const account = {
+			id: "a2",
+			name: "Caja USD",
+			kind: "cash" as const,
+			amount: { minor: 120000, currency: "USD" },
+			home: ars(176160000),
+			updated: "2026-10-18",
+		};
+		const valued = text(
+			list(
+				h(AccountRow, {
+					account: { ...account, detail: { valuedAt: "Blue" } },
+				}),
+			),
+		);
+		expect(valued).toContain("USD · Valued at Blue · Updated Oct 18");
+		const card = text(
+			list(
+				h(AccountRow, {
+					account: {
+						...account,
+						kind: "liability",
+						detail: { apr: 11800, valuedAt: "Blue" },
+					},
+				}),
+			),
+		);
+		expect(card).toContain("APR 118");
+		expect(card).not.toContain("Valued at");
+		const norate = list(
+			h(AccountRow, {
+				account: {
+					...account,
+					amount: { minor: 5000000, currency: "CLP" },
+					home: null,
+					detail: { noRate: true },
+				},
+			}),
+		);
+		expect(text(norate)).toContain("No CLP rate. Left out of net worth.");
+		expect(norate).toContain("text-attention-text");
 	});
 
 	it("EnvelopeRow: one Available pill with its word", () => {

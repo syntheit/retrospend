@@ -28,6 +28,50 @@ const KIND_ICON: Record<AccountKind, LucideIcon> = {
 };
 
 /**
+ * The sub line. With the Wealth page's detail: the currency code, then how
+ * it counts (closed, no rate, a liability's APR, the rate type it is valued
+ * at), then the day it changed. Without: when it changed and this month's
+ * change (the gallery's anatomy).
+ */
+function useAccountSub(account: AccountVM) {
+	const t = useTranslations("rows.account");
+	const { short } = useRowDates();
+	const percent = usePercent();
+	const updated = t("updated", { date: short(account.updated) });
+	const d = account.detail;
+	if (!d)
+		return [
+			updated,
+			account.change
+				? t("change", { change: percent(account.change, { signed: true }) })
+				: null,
+		];
+	const code = account.amount.currency;
+	if (d.closedOn)
+		return [code, { shrink: t("closed", { date: short(d.closedOn) }) }];
+	if (d.noRate)
+		return [
+			code,
+			{
+				shrink: (
+					<span className="text-attention-text">
+						{t("noRate", { currency: code })}
+					</span>
+				),
+			},
+		];
+	return [
+		code,
+		d.apr != null
+			? t("apr", { apr: percent(d.apr) })
+			: d.valuedAt
+				? t("valuedAt", { type: d.valuedAt })
+				: null,
+		updated,
+	];
+}
+
+/**
  * AccountRow: a wealth account, its native amount first and the home value
  * under it when the currency differs (Money.pair). Liabilities arrive
  * negative and stay neutral: no meaning color on owing.
@@ -42,9 +86,7 @@ export function AccountRow({
 	onOpen?: () => void;
 	actions?: ReactNode;
 } & RowPassThrough) {
-	const t = useTranslations("rows.account");
-	const { short } = useRowDates();
-	const percent = usePercent();
+	const sub = useAccountSub(account);
 	const foreign =
 		account.home !== undefined &&
 		account.home?.currency !== account.amount.currency;
@@ -77,18 +119,7 @@ export function AccountRow({
 				)
 			}
 			open={onOpen ? { onOpen, label: account.name } : undefined}
-			sub={
-				<RowSub
-					parts={[
-						t("updated", { date: short(account.updated) }),
-						account.change
-							? t("change", {
-									change: percent(account.change, { signed: true }),
-								})
-							: null,
-					]}
-				/>
-			}
+			sub={<RowSub parts={sub} />}
 			title={account.name}
 		/>
 	);

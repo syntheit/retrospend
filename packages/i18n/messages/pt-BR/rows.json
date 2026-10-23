@@ -26,11 +26,19 @@
 		"solo": "Sozinho",
 		"people": "{count, plural, one {# pessoa} other {# pessoas}}",
 		"spent": "gasto",
-		"budgetUsed": "Orçamento usado"
+		"budgetUsed": "Orçamento usado",
+		"yourShare": "sua parte",
+		"left": "restam <amount></amount>",
+		"over": "<amount></amount> acima",
+		"justYou": "Só você"
 	},
 	"account": {
 		"updated": "Atualizado {date}",
-		"change": "{change} este mês"
+		"change": "{change} este mês",
+		"closed": "Encerrada em {date}. Histórico mantido.",
+		"noRate": "Sem cotação de {currency}. Fora do patrimônio.",
+		"apr": "Juros {apr}",
+		"valuedAt": "Avaliada a {type}"
 	},
 	"envelope": {
 		"spent": "Gasto do planejado"

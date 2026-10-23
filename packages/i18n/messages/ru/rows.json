@@ -26,11 +26,19 @@
 		"solo": "Один",
 		"people": "{count, plural, one {# человек} few {# человека} many {# человек} other {# человека}}",
 		"spent": "потрачено",
-		"budgetUsed": "Использовано бюджета"
+		"budgetUsed": "Использовано бюджета",
+		"yourShare": "ваша доля",
+		"left": "осталось <amount></amount>",
+		"over": "перерасход <amount></amount>",
+		"justYou": "Только вы"
 	},
 	"account": {
 		"updated": "Обновлено {date}",
-		"change": "{change} за месяц"
+		"change": "{change} за месяц",
+		"closed": "Закрыт {date}. История сохранена.",
+		"noRate": "Нет курса {currency}. Не входит в капитал.",
+		"apr": "Ставка {apr}",
+		"valuedAt": "По курсу {type}"
 	},
 	"envelope": {
 		"spent": "Потрачено из запланированного"

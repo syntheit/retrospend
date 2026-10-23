@@ -26,11 +26,19 @@
 		"solo": "Allein",
 		"people": "{count, plural, one {# Person} other {# Personen}}",
 		"spent": "ausgegeben",
-		"budgetUsed": "Budget genutzt"
+		"budgetUsed": "Budget genutzt",
+		"yourShare": "dein Anteil",
+		"left": "<amount></amount> übrig",
+		"over": "<amount></amount> drüber",
+		"justYou": "Nur du"
 	},
 	"account": {
 		"updated": "Aktualisiert {date}",
-		"change": "{change} diesen Monat"
+		"change": "{change} diesen Monat",
+		"closed": "Geschlossen am {date}. Verlauf bleibt.",
+		"noRate": "Kein {currency}-Kurs. Nicht im Vermögen.",
+		"apr": "Effektivzins {apr}",
+		"valuedAt": "Bewertet zu {type}"
 	},
 	"envelope": {
 		"spent": "Ausgegeben vom Geplanten"
