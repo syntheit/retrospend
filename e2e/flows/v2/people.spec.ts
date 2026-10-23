@@ -38,7 +38,7 @@ test("People: standing, groups, search, confirm a payment and undo", async ({
 		await expect(main.getByRole("link", { name })).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	const audit = new FigureAudit(httpFigureFetcher(page.request));
-	expect(await audit.checkPage(page, "people", "people")).toEqual([]);
+	expect(await audit.checkPage(page, "people", "peoplePage")).toEqual([]);
 
 	// Search folds accents; Clear filters brings everyone back.
 	const search = main.getByRole("searchbox", { name: "Search people" });
