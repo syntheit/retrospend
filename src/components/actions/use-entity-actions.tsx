@@ -52,7 +52,7 @@ export function useEntityActions<E extends Entity>(
 
 	const run = React.useCallback(
 		(a: ActionDef<T>) => {
-			if (a.danger) {
+			if (a.danger && (a.safety ?? "confirm") === "confirm") {
 				setPending(a);
 				return;
 			}

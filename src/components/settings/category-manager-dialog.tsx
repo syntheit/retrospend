@@ -1,13 +1,7 @@
 "use client";
 
 import { ArrowLeft, Check, Circle, Plus, Trash2, X } from "lucide-react";
-import {
-	createElement,
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
@@ -38,8 +32,16 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { useCategoryName } from "~/hooks/use-category-name";
-import { CATEGORY_ICON_REGISTRY, getCategoryIcon, getCategoryIconName } from "~/lib/category-icons";
-import { getCategoryColorClasses, COLOR_TO_HEX, type CategoryColor } from "~/lib/constants";
+import {
+	CATEGORY_ICON_REGISTRY,
+	getCategoryIcon,
+	getCategoryIconName,
+} from "~/lib/category-icons";
+import {
+	getCategoryColorClasses,
+	COLOR_TO_HEX,
+	type CategoryColor,
+} from "~/lib/constants";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -64,6 +66,10 @@ const PICKER_COLORS: CategoryColor[] = [
 interface CategoryManagerDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	/** Open on this category instead of the first (the new Settings rows). */
+	initialCategoryId?: string | null;
+	/** What to do once open: add a new category, or ask to delete the initial one. */
+	intent?: "add" | "delete" | null;
 }
 
 interface CategoryData {
@@ -76,6 +82,8 @@ interface CategoryData {
 export function CategoryManagerDialog({
 	open,
 	onOpenChange,
+	initialCategoryId = null,
+	intent = null,
 }: CategoryManagerDialogProps) {
 	const t = useTranslations("settingsPage");
 	const { displayName, toDbName } = useCategoryName();
@@ -127,12 +135,15 @@ export function CategoryManagerDialog({
 	const selectedCategory = categories?.find((c) => c.id === selectedId);
 
 	// Populate editor fields from a category object
-	const syncEditor = useCallback((cat: CategoryData) => {
-		setEditName(displayName(cat.name));
-		setEditIcon(cat.icon || getCategoryIconName(cat.name));
-		setEditColor(cat.color as CategoryColor);
-		setEditExclude(cat.excludeByDefault);
-	}, [displayName]);
+	const syncEditor = useCallback(
+		(cat: CategoryData) => {
+			setEditName(displayName(cat.name));
+			setEditIcon(cat.icon || getCategoryIconName(cat.name));
+			setEditColor(cat.color as CategoryColor);
+			setEditExclude(cat.excludeByDefault);
+		},
+		[displayName],
+	);
 
 	const flashSaved = useCallback(() => {
 		setSaveStatus("saved");
@@ -171,9 +182,7 @@ export function CategoryManagerDialog({
 				flashSaved();
 			} catch (err) {
 				setSaveStatus("idle");
-				toast.error(
-					err instanceof Error ? err.message : t("failedToSave"),
-				);
+				toast.error(err instanceof Error ? err.message : t("failedToSave"));
 			}
 		},
 		[updateMutation, refetchCategories, flashSaved, categories, toDbName],
@@ -182,19 +191,20 @@ export function CategoryManagerDialog({
 	const saveFnRef = useRef(saveCategory);
 	saveFnRef.current = saveCategory;
 
-	// Auto-select first category when dialog opens
+	// Auto-select the initial category (else the first) when dialog opens
 	useEffect(() => {
 		if (!open || selectedId || !categories?.length) return;
-		const first = categories[0];
+		const first =
+			categories.find((c) => c.id === initialCategoryId) ?? categories[0];
 		if (!first) return;
 		setSelectedId(first.id);
 		syncEditor(first);
-	}, [open, categories, selectedId, syncEditor]);
+	}, [open, categories, selectedId, syncEditor, initialCategoryId]);
 
-	// Reset mobile view when dialog opens
+	// Reset mobile view when dialog opens (the detail when opened on a category)
 	useEffect(() => {
-		if (open) setMobileView("list");
-	}, [open]);
+		if (open) setMobileView(initialCategoryId ? "detail" : "list");
+	}, [open, initialCategoryId]);
 
 	// Clear delete confirm when switching categories
 	useEffect(() => {
@@ -356,9 +366,7 @@ export function CategoryManagerDialog({
 			}, 100);
 		} catch (err) {
 			toast.error(
-				err instanceof Error
-					? err.message
-					: t("failedToCreateCategory"),
+				err instanceof Error ? err.message : t("failedToCreateCategory"),
 			);
 		}
 	}, [
@@ -367,6 +375,30 @@ export function CategoryManagerDialog({
 		createMutation,
 		refetchCategories,
 		syncEditor,
+	]);
+
+	// The opening intent runs once per open, after the selection settles.
+	const intentDone = useRef(false);
+	useEffect(() => {
+		if (!open) {
+			intentDone.current = false;
+			return;
+		}
+		if (intentDone.current || !intent || !categories) return;
+		if (intent === "add") {
+			intentDone.current = true;
+			void handleAddCategory();
+		} else if (selectedId && selectedId === initialCategoryId) {
+			intentDone.current = true;
+			setShowDeleteConfirm(true);
+		}
+	}, [
+		open,
+		intent,
+		categories,
+		selectedId,
+		initialCategoryId,
+		handleAddCategory,
 	]);
 
 	// --- Delete category ---
@@ -385,8 +417,7 @@ export function CategoryManagerDialog({
 			setMobileView("list");
 			toast.success(t("categoryDeleted"));
 		} catch (err) {
-			const errMsg =
-				err instanceof Error ? err.message : t("failedToDelete");
+			const errMsg = err instanceof Error ? err.message : t("failedToDelete");
 			const match = errMsg.match(/has (\d+) expense/);
 			if (match?.[1]) {
 				setShowDeleteConfirm(false);
@@ -421,9 +452,7 @@ export function CategoryManagerDialog({
 			setMobileView("list");
 			toast.success(t("categoryDeletedReassigned"));
 		} catch (err) {
-			toast.error(
-				err instanceof Error ? err.message : t("failedToDelete"),
-			);
+			toast.error(err instanceof Error ? err.message : t("failedToDelete"));
 		}
 	}, [
 		selectedId,
@@ -448,7 +477,9 @@ export function CategoryManagerDialog({
 					{/* Header */}
 					<ResponsiveDialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
 						<div>
-							<ResponsiveDialogTitle>{t("categoryManager")}</ResponsiveDialogTitle>
+							<ResponsiveDialogTitle>
+								{t("categoryManager")}
+							</ResponsiveDialogTitle>
 							<ResponsiveDialogDescription className="sr-only">
 								{t("categoryManagerDescription")}
 							</ResponsiveDialogDescription>
@@ -475,9 +506,7 @@ export function CategoryManagerDialog({
 								disabled={createMutation.isPending}
 							>
 								<Plus className="h-4 w-4" />
-								<span className="hidden sm:inline">
-									{t("addCategory")}
-								</span>
+								<span className="hidden sm:inline">{t("addCategory")}</span>
 								<span className="sm:hidden">{t("addShort")}</span>
 							</Button>
 							<Button
@@ -505,21 +534,13 @@ export function CategoryManagerDialog({
 							<ScrollArea className="h-full">
 								<div className="flex flex-col py-1">
 									{categories?.map((category) => {
-										const Icon = getCategoryIcon(
-											category.name,
-											category.icon,
-										);
-										const isSelected =
-											category.id === selectedId;
+										const Icon = getCategoryIcon(category.name, category.icon);
+										const isSelected = category.id === selectedId;
 										return (
 											<Button
 												key={category.id}
 												type="button"
-												onClick={() =>
-													handleSelectCategory(
-														category.id,
-													)
-												}
+												onClick={() => handleSelectCategory(category.id)}
 												variant="ghost"
 												className={cn(
 													"flex h-auto w-full items-center justify-start gap-3 rounded-none px-4 py-2.5",
@@ -570,18 +591,12 @@ export function CategoryManagerDialog({
 
 										{/* Name */}
 										<div className="space-y-2">
-											<Label htmlFor="category-name">
-												{t("nameLabel")}
-											</Label>
+											<Label htmlFor="category-name">{t("nameLabel")}</Label>
 											<Input
 												id="category-name"
 												ref={nameInputRef}
 												value={editName}
-												onChange={(e) =>
-													handleNameChange(
-														e.target.value,
-													)
-												}
+												onChange={(e) => handleNameChange(e.target.value)}
 												placeholder={t("categoryNamePlaceholder")}
 												maxLength={64}
 											/>
@@ -591,52 +606,41 @@ export function CategoryManagerDialog({
 										<div className="space-y-2">
 											<Label>{t("iconLabel")}</Label>
 											<div className="flex flex-wrap items-center gap-2">
-												{ICON_OPTIONS.map(
-													(iconName) => {
-														const IconComp =
-															CATEGORY_ICON_REGISTRY[iconName] ||
-															Circle;
-														const isSelected =
-															editIcon ===
-															iconName;
-														const hex =
-															COLOR_TO_HEX[
-																editColor as keyof typeof COLOR_TO_HEX
-															] || "#ccc";
-														return (
-															<Button
-																key={iconName}
-																type="button"
-																onClick={() =>
-																	handleIconChange(
-																		iconName,
-																	)
-																}
-																variant="outline"
-																size="icon"
-																className={cn(
-																	"h-9 w-9 shrink-0 transition-all",
-																	"hover:border-primary hover:text-primary",
-																	isSelected
-																		? "border-2 text-white"
-																		: "text-muted-foreground",
-																)}
-																style={
-																	isSelected
-																		? {
-																				backgroundColor:
-																					hex,
-																				borderColor:
-																					hex,
-																			}
-																		: undefined
-																}
-															>
-																<IconComp className="h-4 w-4" />
-															</Button>
-														);
-													},
-												)}
+												{ICON_OPTIONS.map((iconName) => {
+													const IconComp =
+														CATEGORY_ICON_REGISTRY[iconName] || Circle;
+													const isSelected = editIcon === iconName;
+													const hex =
+														COLOR_TO_HEX[
+															editColor as keyof typeof COLOR_TO_HEX
+														] || "#ccc";
+													return (
+														<Button
+															key={iconName}
+															type="button"
+															onClick={() => handleIconChange(iconName)}
+															variant="outline"
+															size="icon"
+															className={cn(
+																"h-9 w-9 shrink-0 transition-all",
+																"hover:border-primary hover:text-primary",
+																isSelected
+																	? "border-2 text-white"
+																	: "text-muted-foreground",
+															)}
+															style={
+																isSelected
+																	? {
+																			backgroundColor: hex,
+																			borderColor: hex,
+																		}
+																	: undefined
+															}
+														>
+															<IconComp className="h-4 w-4" />
+														</Button>
+													);
+												})}
 											</div>
 										</div>
 
@@ -645,31 +649,23 @@ export function CategoryManagerDialog({
 											<Label>{t("colorLabel")}</Label>
 											<div className="flex flex-wrap items-center gap-2">
 												{displayColors.map((color) => {
-													const isSelected =
-														editColor === color;
+													const isSelected = editColor === color;
 													const hex =
-														COLOR_TO_HEX[
-															color as keyof typeof COLOR_TO_HEX
-														] || "#ccc";
+														COLOR_TO_HEX[color as keyof typeof COLOR_TO_HEX] ||
+														"#ccc";
 													return (
 														<Button
 															key={color}
 															type="button"
-															onClick={() =>
-																handleColorChange(
-																	color,
-																)
-															}
+															onClick={() => handleColorChange(color)}
 															variant="ghost"
 															size="icon"
 															className={cn(
 																"relative h-9 w-9 shrink-0 rounded-full ring-offset-2 ring-offset-background transition-all hover:scale-110 hover:bg-transparent",
-																isSelected &&
-																	"ring-2 ring-primary shadow-sm",
+																isSelected && "ring-2 ring-primary shadow-sm",
 															)}
 															style={{
-																backgroundColor:
-																	hex,
+																backgroundColor: hex,
 															}}
 															title={color}
 														>
@@ -694,67 +690,54 @@ export function CategoryManagerDialog({
 											</div>
 											<Switch
 												checked={editExclude}
-												onCheckedChange={
-													handleExcludeChange
-												}
+												onCheckedChange={handleExcludeChange}
 											/>
 										</div>
 
 										{/* Delete */}
-										{categories &&
-											categories.length > 1 && (
-												<div className="mt-6 border-t pt-6">
-													{!showDeleteConfirm ? (
-														<Button
-															type="button"
-															onClick={() =>
-																setShowDeleteConfirm(
-																	true,
-																)
-															}
-															variant="ghost"
-															size="sm"
-															className="gap-1.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
-														>
-															<Trash2 className="h-4 w-4" />
-															{t("deleteCategory")}
-														</Button>
-													) : (
-														<div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/20">
-															<p className="mb-3 text-sm">
-																{t("deleteCategoryConfirm", { name: displayName(selectedCategory.name) })}
-															</p>
-															<div className="flex gap-2">
-																<Button
-																	size="sm"
-																	variant="ghost"
-																	onClick={() =>
-																		setShowDeleteConfirm(
-																			false,
-																		)
-																	}
-																>
-																	{t("cancel")}
-																</Button>
-																<Button
-																	size="sm"
-																	variant="destructive"
-																	onClick={
-																		confirmDelete
-																	}
-																	disabled={
-																		deleteMutation.isPending
-																	}
-																>
-																	{deleteMutation.isPending
-																		? t("deleting")
-																		: t("deleteButton")}
-																</Button>
-															</div>
+										{categories && categories.length > 1 && (
+											<div className="mt-6 border-t pt-6">
+												{!showDeleteConfirm ? (
+													<Button
+														type="button"
+														onClick={() => setShowDeleteConfirm(true)}
+														variant="ghost"
+														size="sm"
+														className="gap-1.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+													>
+														<Trash2 className="h-4 w-4" />
+														{t("deleteCategory")}
+													</Button>
+												) : (
+													<div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/20">
+														<p className="mb-3 text-sm">
+															{t("deleteCategoryConfirm", {
+																name: displayName(selectedCategory.name),
+															})}
+														</p>
+														<div className="flex gap-2">
+															<Button
+																size="sm"
+																variant="ghost"
+																onClick={() => setShowDeleteConfirm(false)}
+															>
+																{t("cancel")}
+															</Button>
+															<Button
+																size="sm"
+																variant="destructive"
+																onClick={confirmDelete}
+																disabled={deleteMutation.isPending}
+															>
+																{deleteMutation.isPending
+																	? t("deleting")
+																	: t("deleteButton")}
+															</Button>
 														</div>
-													)}
-												</div>
-											)}
+													</div>
+												)}
+											</div>
+										)}
 									</div>
 								</ScrollArea>
 							) : (
@@ -784,17 +767,12 @@ export function CategoryManagerDialog({
 						</DialogDescription>
 					</DialogHeader>
 					<div className="py-4">
-						<Label htmlFor="replacement-category">
-							{t("reassignTo")}
-						</Label>
+						<Label htmlFor="replacement-category">{t("reassignTo")}</Label>
 						<Select
 							onValueChange={setReplacementCategoryId}
 							value={replacementCategoryId}
 						>
-							<SelectTrigger
-								className="mt-2"
-								id="replacement-category"
-							>
+							<SelectTrigger className="mt-2" id="replacement-category">
 								<SelectValue placeholder={t("selectCategoryPlaceholder")} />
 							</SelectTrigger>
 							<SelectContent>

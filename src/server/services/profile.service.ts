@@ -63,14 +63,22 @@ export type UpdatedIdentity = {
 	email: string;
 };
 
+/**
+ * The fields to change. A field left out keeps its stored value and is not
+ * written, so a one-field save (or its Undo) never writes another field's
+ * older value back.
+ */
 export interface ProfileChanges {
-	name: string;
+	name?: string;
 	/** Lowercased before it is stored. */
-	username: string;
+	username?: string;
 	/** Lowercased and trimmed before it is compared or stored. */
-	email: string;
+	email?: string;
 	currentPassword?: string;
 }
+
+/** The identity columns a change writes besides the email. */
+type IdentityWrite = { name?: string; username?: string };
 
 async function assertPassword(db: AppDb, userId: string, password?: string) {
 	if (!password) {
@@ -120,7 +128,8 @@ async function assertEmailFree(db: AppDb, userId: string, email: string) {
 async function startEmailChange(
 	db: AppDb,
 	user: { id: string; email: string },
-	changes: ProfileChanges,
+	write: IdentityWrite,
+	newEmail: string,
 ): Promise<UpdatedIdentity> {
 	const token = crypto.randomBytes(32).toString("hex");
 	const appUrl =
@@ -129,19 +138,18 @@ async function startEmailChange(
 		select: IDENTITY_SELECT,
 		where: { id: user.id },
 		data: {
-			name: changes.name,
-			username: changes.username,
-			pendingEmail: changes.email,
+			...write,
+			pendingEmail: newEmail,
 			pendingEmailToken: hashToken(token),
 			pendingEmailExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
 		},
 	});
 	sendEmail(
-		changes.email,
+		newEmail,
 		"Confirm Your New Email Address",
 		getEmailChangeVerificationTemplate(
 			`${appUrl}/auth/confirm-email?token=${token}`,
-			changes.email,
+			newEmail,
 		),
 	).catch((err) =>
 		console.error("Failed to send email change verification:", err),
@@ -151,17 +159,17 @@ async function startEmailChange(
 		"Security Alert: Email Change Requested",
 		getEmailChangeAlertTemplate(
 			`${appUrl}/auth/revert-email?token=${token}`,
-			changes.email,
+			newEmail,
 		),
 	).catch((err) => console.error("Failed to send email change alert:", err));
 	return updated;
 }
 
 /**
- * Changes name, username and email. A new email needs the current
- * password; when the server can send email the change waits for the new
- * address to confirm it (`emailChangePending`), otherwise it applies at
- * once and picks up guest data for the address, as at sign-up.
+ * Changes the given name, username and email. A new email needs the
+ * current password; when the server can send email the change waits for
+ * the new address to confirm it (`emailChangePending`), otherwise it
+ * applies at once and picks up guest data for the address, as at sign-up.
  */
 export async function updateProfile(
 	db: AppDb,
@@ -169,40 +177,38 @@ export async function updateProfile(
 	input: ProfileChanges,
 ): Promise<{ emailChangePending: boolean; user: UpdatedIdentity }> {
 	const userId = current.id;
-	const changes = {
-		...input,
-		username: input.username.toLowerCase(),
-		email: input.email.toLowerCase().trim(),
+	const write: IdentityWrite = {
+		...(input.name !== undefined ? { name: input.name } : {}),
+		...(input.username !== undefined
+			? { username: input.username.toLowerCase() }
+			: {}),
 	};
-	if (changes.username !== current.username) {
+	if (write.username !== undefined && write.username !== current.username) {
 		await validateAndProcessUsernameChange(
 			db,
 			userId,
 			current.username,
-			changes.username,
+			write.username,
 		);
 	}
-	const isEmailChange = changes.email !== current.email;
-	if (isEmailChange) {
-		await assertPassword(db, userId, changes.currentPassword);
-		await assertEmailFree(db, userId, changes.email);
+	const email = input.email?.toLowerCase().trim();
+	const newEmail = email !== undefined && email !== current.email ? email : null;
+	if (newEmail !== null) {
+		await assertPassword(db, userId, input.currentPassword);
+		await assertEmailFree(db, userId, newEmail);
 	}
-	if (isEmailChange && (await isEmailDeliveryEnabled())) {
-		const user = await startEmailChange(db, current, changes);
+	if (newEmail !== null && (await isEmailDeliveryEnabled())) {
+		const user = await startEmailChange(db, current, write, newEmail);
 		return { emailChangePending: true, user };
 	}
 	const user = await db.user.update({
 		where: { id: userId },
-		data: {
-			name: changes.name,
-			username: changes.username,
-			...(isEmailChange ? { email: changes.email } : {}),
-		},
+		data: { ...write, ...(newEmail !== null ? { email: newEmail } : {}) },
 		select: IDENTITY_SELECT,
 	});
 	// Needs the owner connection (guest rows are not the user's yet); the
 	// helper re-checks emailVerified and never throws.
-	if (isEmailChange) await migrateGuestDataForVerifiedUser(globalDb, userId);
+	if (newEmail !== null) await migrateGuestDataForVerifiedUser(globalDb, userId);
 	return { emailChangePending: false, user };
 }
 

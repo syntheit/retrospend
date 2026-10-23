@@ -1,0 +1,136 @@
+{
+	"title": "Patrimonio",
+	"netWorth": "Patrimonio neto",
+	"range": "Rango del gráfico",
+	"ranges": {
+		"1M": "1M",
+		"3M": "3M",
+		"6M": "6M",
+		"1Y": "1Y"
+	},
+	"emptyTrend": "Agregá una cuenta para ver tu evolución.",
+	"in30Days": "en 30 días",
+	"assetsByGroup": "Activos por grupo",
+	"groups": {
+		"cash": "Efectivo y bancos",
+		"investments": "Inversiones",
+		"crypto": "Cripto",
+		"property": "Bienes",
+		"liabilities": "Deudas"
+	},
+	"liquidAssets": "Activos líquidos",
+	"runway": "Autonomía",
+	"runwayAt": "con tu gasto promedio de <amount></amount> por mes",
+	"months": "{months, plural, one {# mes} other {# meses}}",
+	"addAccount": "Agregar cuenta",
+	"empty": {
+		"title": "Todavía no tenés cuentas",
+		"hint": "Agregá una cuenta bancaria, una inversión o un préstamo para seguir tu patrimonio."
+	},
+	"filters": {
+		"label": "Filtrar cuentas",
+		"search": "Buscar cuentas",
+		"liquid": "Líquidas",
+		"illiquid": "No líquidas",
+		"foreign": "Moneda extranjera",
+		"clear": "Borrar filtros",
+		"none": "Ninguna cuenta coincide",
+		"noneHint": "Probá sacar un filtro."
+	},
+	"closed": {
+		"title": "Cuentas cerradas",
+		"notCounted": "Fuera del patrimonio"
+	},
+	"view": "Vista",
+	"accounts": "Cuentas",
+	"breakdown": {
+		"title": "Desglose",
+		"empty": "No hay nada para desglosar",
+		"emptyHint": "Primero agregá una cuenta.",
+		"item": "{label} · {share}",
+		"underOne": "<1%",
+		"byType": "Por tipo",
+		"byCurrency": "Por moneda",
+		"byLiquidity": "Por liquidez",
+		"liquid": "Líquido",
+		"illiquid": "No líquido"
+	},
+	"ratesToday": "Cotizaciones de hoy",
+	"ratesOn": "Cotizaciones del {date}",
+	"withoutRate": "{count, plural, one {# cuenta sin cotización} other {# cuentas sin cotización}}",
+	"showAmounts": "Mostrar montos",
+	"hideAmounts": "Ocultar montos",
+	"more": "Más acciones",
+	"currencies": "Monedas y cotizaciones",
+	"importCsv": "Importar cuentas (CSV)",
+	"exportCsv": "Exportar cuentas (CSV)",
+	"unavailable": {
+		"title": "Patrimonio no está disponible ahora",
+		"hint": "Tus cuentas están a salvo. Probá de nuevo en un rato.",
+		"retry": "Reintentar"
+	},
+	"toast": {
+		"reopened": "Reabriste {name}",
+		"closed": "Cerraste {name}",
+		"deleted": "Borraste {name}",
+		"updated": "{name} actualizada",
+		"added": "Agregaste {name}",
+		"saved": "{name} guardada",
+		"failed": "No se pudo guardar. Probá de nuevo."
+	},
+	"rateTypes": {
+		"official": "Oficial",
+		"blue": "Blue",
+		"card": "Tarjeta",
+		"mep": "MEP",
+		"crypto": "Cripto",
+		"tourist": "Turista",
+		"market": "Mercado",
+		"custom": "Personalizada"
+	},
+	"types": {
+		"CASH": "Efectivo y bancos",
+		"INVESTMENT": "Inversión",
+		"CRYPTO": "Cripto",
+		"REAL_ESTATE": "Inmueble",
+		"VEHICLE": "Vehículo",
+		"LIABILITY_LOAN": "Préstamo",
+		"LIABILITY_CREDIT_CARD": "Tarjeta de crédito",
+		"LIABILITY_MORTGAGE": "Hipoteca"
+	},
+	"sheets": {
+		"valuedAtLabel": "Valuada a",
+		"valuedAt": "Valuada a la cotización {type}",
+		"noRate": "No hay cotización de {currency}, así que esta cuenta queda fuera del patrimonio.",
+		"update": {
+			"title": "Actualizar saldo",
+			"submit": "Actualizar saldo",
+			"now": "Ahora <amount></amount> · Actualizada el {date}",
+			"rateChange": "Valuada a {next} desde hoy. Los días anteriores mantienen la cotización {before}."
+		},
+		"account": {
+			"addTitle": "Agregar cuenta",
+			"editTitle": "Editar cuenta",
+			"add": "Agregar cuenta",
+			"save": "Guardar",
+			"name": "Nombre",
+			"namePlaceholder": "Caja de ahorro",
+			"nameMissing": "Ponele un nombre a la cuenta",
+			"type": "Tipo",
+			"balance": "Saldo",
+			"owed": "Monto adeudado",
+			"noRate": "Todavía no hay cotización de {currency}, así que la cuenta no se puede valuar. Por ahora elegí otra moneda.",
+			"liquid": "Líquida",
+			"apr": "Tasa de interés (TNA, %)",
+			"aprInvalid": "Ingresá un número, como 45 o 45,5",
+			"dueDay": "Día de vencimiento",
+			"minimum": "Pago mínimo"
+		},
+		"close": {
+			"title": "¿Cerrar {name}?",
+			"submit": "Cerrar cuenta",
+			"body": "{name} sale de tus cuentas y de tu patrimonio desde hoy. Su historial de saldos se mantiene y podés reabrirla desde Cuentas cerradas.",
+			"left": "Todavía muestra <amount></amount>. Si la plata se movió a otro lado, primero actualizá el saldo a cero."
+		}
+	}
+}
