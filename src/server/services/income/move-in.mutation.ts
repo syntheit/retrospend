@@ -46,6 +46,8 @@ export type MoveInInput =
 			readonly timeZone?: string;
 	  }
 	| {
+			/** Client id of this Move in (and its budget side): its undo removes exactly it. */
+			readonly id: string;
 			/** Wealth money not tied to an income: these units at today's value. */
 			readonly accountId: string;
 			readonly units: string;
@@ -196,6 +198,7 @@ export async function moveInIn(
 		currency: homeCurrency,
 	};
 	const budgetSide = await recordBudgetSide(tx, {
+		id: "id" in input ? input.id : null,
 		userId,
 		direction: "FROM_WEALTH",
 		amount,
@@ -297,8 +300,8 @@ export async function undoMoveInIn(
 			data: { movedInAt: null },
 		});
 		await removeBudgetSide(tx, { sourceExpenseId: expenseId });
-	} else {
-		await removeBudgetSide(tx, { assetAccountId: account.id });
+	} else if ("id" in input) {
+		await removeBudgetSide(tx, { id: input.id });
 	}
 	const home = await homeCurrencyOf(tx, userId);
 	return {

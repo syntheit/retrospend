@@ -11,6 +11,8 @@ import type { Prisma } from "~prisma";
 import { recordWealthMove, removeMoveIn } from "../envelope/wealth.service";
 
 export interface BudgetMovement {
+	/** The budget side's id when the caller names it (a Move in without income); else one is made. */
+	readonly id?: string | null;
 	readonly userId: string;
 	readonly direction: "TO_WEALTH" | "FROM_WEALTH";
 	/** The in-budget leg in the home (book) currency, as typed or booked. */
@@ -48,7 +50,7 @@ export async function recordBudgetSide(
 /** The undo of a Move in takes its budget side with it. */
 export function removeBudgetSide(
 	tx: Prisma.TransactionClient,
-	of: { sourceExpenseId: string } | { assetAccountId: string },
+	of: { sourceExpenseId: string } | { id: string },
 ): Promise<void> {
 	return removeMoveIn(tx, of);
 }

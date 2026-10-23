@@ -158,6 +158,8 @@ export const deleteIncomeSchema = z.object({
 export const moveInSchema = z.union([
 	z.object({ expenseId: id, putIn: id.nullish(), date: isoDay.nullish() }),
 	z.object({
+		/** Client id of the move: its undo removes exactly this one. */
+		id: z.string().uuid(),
 		accountId: id,
 		units: positive,
 		putIn: id.nullish(),

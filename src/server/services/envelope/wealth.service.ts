@@ -22,6 +22,8 @@ import { fromMinor } from "./units";
 type Tx = Prisma.TransactionClient;
 
 export interface WealthMove {
+	/** Named by the caller when nothing else keys the move (a Move in without income). */
+	id?: string | null;
 	userId: string;
 	direction: "TO_WEALTH" | "FROM_WEALTH";
 	/** In the book currency. */
@@ -57,7 +59,7 @@ export async function recordWealthMove(
 	const envelope = book.envelopes.find(
 		(e) => e.id === move.envelopeId && e.archivedAt === null,
 	);
-	const id = randomUUID();
+	const id = move.id ?? randomUUID();
 	const day = isoDateIn(move.date, book.timeZone);
 	await tx.wealthTransfer.create({
 		data: {
@@ -79,30 +81,18 @@ export async function recordWealthMove(
 }
 
 /**
- * The undo of a Move in: its budget side goes too. A kept income's is keyed
- * on the income; a Move in of an account's money has no key, so its undo
- * takes the newest count-only move of that account (undo runs right after).
+ * The undo of a Move in: its budget side goes too, keyed on the kept income,
+ * or on the Move in's own id when no income stands behind it.
  */
 export async function removeMoveIn(
 	tx: Tx,
-	of: { sourceExpenseId: string } | { assetAccountId: string },
+	of: { sourceExpenseId: string } | { id: string },
 ): Promise<void> {
-	if ("sourceExpenseId" in of) {
-		await tx.wealthTransfer.deleteMany({
-			where: { sourceExpenseId: of.sourceExpenseId },
-		});
-	} else {
-		const newest = await tx.wealthTransfer.findFirst({
-			where: {
-				assetAccountId: of.assetAccountId,
-				countOnly: true,
-				sourceExpenseId: null,
-				transferId: null,
-			},
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			select: { id: true },
-		});
-		if (newest) await tx.wealthTransfer.delete({ where: { id: newest.id } });
-	}
+	await tx.wealthTransfer.deleteMany({
+		where:
+			"sourceExpenseId" in of
+				? { sourceExpenseId: of.sourceExpenseId }
+				: { id: of.id, countOnly: true },
+	});
 	forgetMonthViews(tx);
 }

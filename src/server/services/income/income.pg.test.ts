@@ -4,8 +4,12 @@
  * counting without selling (I16, D4); recurring income confirmed and
  * planned in one action. ARS home; ARS 1,468 Blue, 1,412 Official, 1,449 MEP.
  */
+
+import { randomUUID } from "node:crypto";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it } from "vitest";
+import { setupInput } from "~/server/services/envelope/__tests__/pg-fixture";
+import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { ExpenseService } from "~/server/services/expense.service";
 import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
@@ -341,13 +345,45 @@ describe("income.moveIn (count only)", () => {
 	it("Wealth money not tied to an income counts at today's value", async () => {
 		const p = await places();
 		const moved = await forUser(p.userId).apply(moveIn, {
+			id: randomUUID(),
 			accountId: p.wise,
 			units: "100",
 		});
 		expect(moved.value.amount).toEqual(ARS(14_120_000));
 		await expect(
-			forUser(p.userId).apply(moveIn, { accountId: p.wise, units: "1800" }),
+			forUser(p.userId).apply(moveIn, {
+				id: randomUUID(),
+				accountId: p.wise,
+				units: "1800",
+			}),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
+	it("with an envelope budget, undoing one of two Move ins of the same account removes exactly that one", async () => {
+		const p = await places();
+		const cat = (name: string) =>
+			adminDb.category
+				.create({ data: { name, color: "blue", userId: p.userId } })
+				.then((c) => c.id);
+		await forUser(p.userId).apply(setupEnvelopeBook, {
+			...setupInput({ rent: await cat("Rent"), dining: await cat("Dining") }),
+			timeZone: "UTC",
+		});
+		const first = { id: randomUUID(), accountId: p.wise, units: "100" };
+		const second = { id: randomUUID(), accountId: p.wise, units: "50" };
+		const a = await forUser(p.userId).apply(moveIn, first);
+		await forUser(p.userId).apply(moveIn, second);
+		expect(a.value.budgetSide).toEqual({ recorded: true, reason: null });
+		const sides = () =>
+			adminDb.wealthTransfer.findMany({
+				where: { id: { in: [first.id, second.id] } },
+				select: { id: true },
+			});
+		expect((await sides()).map((r) => r.id).sort()).toEqual(
+			[first.id, second.id].sort(),
+		);
+		await forUser(p.userId).apply(undoMoveIn, first);
+		expect(await sides()).toEqual([{ id: second.id }]);
 	});
 });
 
