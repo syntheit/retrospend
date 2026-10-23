@@ -4,6 +4,11 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import {
+	type BackgroundSettings,
+	backgroundSettingsSchema,
+	defaultBackgroundSettings,
+} from "~/lib/background-settings";
+import {
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
@@ -15,17 +20,16 @@ import {
 } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
-import { getImageUrl } from "~/server/storage";
 import { sendEmail } from "~/server/mailer";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
-import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 import {
-	backgroundSettingsSchema,
-	defaultBackgroundSettings,
-	type BackgroundSettings,
-} from "~/lib/background-settings";
+	getProfileBackground,
+	saveProfileBackground,
+} from "~/server/services/profile-background.service";
 import { listedEntryWhere } from "~/server/services/spending";
 import { StatsService } from "~/server/services/stats.service";
+import { validateAndProcessUsernameChange } from "~/server/services/username.service";
+import { getImageUrl } from "~/server/storage";
 
 export type { BackgroundSettings };
 export { defaultBackgroundSettings };
@@ -34,32 +38,14 @@ export { defaultBackgroundSettings };
 const IDENTITY = { id: true, name: true, username: true, email: true } as const;
 
 export const profileRouter = createTRPCRouter({
-	getBackgroundSettings: protectedProcedure.query(async ({ ctx }) => {
-		const setting = await ctx.db.userPageSetting.findUnique({
-			where: {
-				userId_page: { userId: ctx.session.user.id, page: "PROFILE" },
-			},
-			select: { settings: true },
-		});
-		if (!setting) return defaultBackgroundSettings;
-		const parsed = backgroundSettingsSchema.safeParse(setting.settings);
-		return parsed.success ? parsed.data : defaultBackgroundSettings;
-	}),
+	getBackgroundSettings: protectedProcedure.query(({ ctx }) =>
+		getProfileBackground(ctx.db, ctx.session.user.id),
+	),
 
 	saveBackgroundSettings: protectedProcedure
 		.input(backgroundSettingsSchema)
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.userPageSetting.upsert({
-				where: {
-					userId_page: { userId: ctx.session.user.id, page: "PROFILE" },
-				},
-				create: {
-					userId: ctx.session.user.id,
-					page: "PROFILE",
-					settings: input,
-				},
-				update: { settings: input },
-			});
+			await saveProfileBackground(ctx.db, ctx.session.user.id, input);
 			return { success: true };
 		}),
 

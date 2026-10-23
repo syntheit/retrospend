@@ -1173,7 +1173,7 @@
 		"src/server/api/routers/invite.ts": 25,
 		"src/server/api/routers/people.ts": 184,
 		"src/server/api/routers/preferences.ts": 33,
-		"src/server/api/routers/profile.ts": 142,
+		"src/server/api/routers/profile.ts": 136,
 		"src/server/api/routers/recurring.ts": 131,
 		"src/server/api/routers/shared-transaction.ts": 66,
 		"src/server/api/routers/wealth.ts": 338,
