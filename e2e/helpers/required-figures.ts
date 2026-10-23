@@ -7,7 +7,7 @@
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
 	transactions: [],
-	people: [],
+	people: ["owed.owedToYou", "owed.youOwe"],
 	projects: [],
 	wealth: [],
 	budget: [],
