@@ -4,26 +4,20 @@ import { normalizeDate } from "~/lib/date";
 import { fromUSD, isValidRate, toUSD, USD } from "~/lib/money";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
+import { findExchangeRate, findExchangeRatesForDates } from "../exchange-rates";
+import { loadDashboardLegs } from "./accounts/dashboard-legs";
 import {
-	findExchangeRate,
-	findExchangeRatesForDates,
-} from "../exchange-rates";
+	dashboardRates,
+	type HeldSnapshot,
+	type SnapshotMeta,
+	usdWithoutRate,
+} from "./accounts/dashboard-rates";
 
+import { CUSTOM_RATE_TYPE } from "./accounts/valuation";
+
+export type { SnapshotMeta };
 /** Rate type of a rate the user typed in; it is kept as is, never looked up. */
-export const CUSTOM_RATE_TYPE = "custom";
-
-/** What an account was when a snapshot of it was taken. */
-export interface SnapshotMeta {
-	currency: string;
-	type: AssetType;
-	exchangeRateType: string | null;
-}
-
-/** An account's latest snapshot while history is rebuilt, as recorded. */
-interface HeldSnapshot extends SnapshotMeta {
-	balance: number;
-	balanceInUSD: number;
-}
+export { CUSTOM_RATE_TYPE };
 
 /** UTC day of a date, as YYYY-MM-DD. */
 function dayString(date: Date): string {
@@ -88,7 +82,11 @@ export class WealthService {
 	}
 
 	/** Balance in USD (unrounded). Negative balances convert like any other. */
-	calculateBalanceInUSD(balance: number, rate: number, currency: string): number {
+	calculateBalanceInUSD(
+		balance: number,
+		rate: number,
+		currency: string,
+	): number {
 		if (currency !== USD && !isValidRate(rate)) {
 			throw new TRPCError({
 				code: "INTERNAL_SERVER_ERROR",
@@ -115,10 +113,12 @@ export class WealthService {
 		userId: string,
 		meta: SnapshotMeta,
 	): Promise<void> {
+		// recordedAt orders this balance against legs of the same day (accounts/series.ts).
 		const snapshotMeta = {
 			currency: meta.currency,
 			type: meta.type,
 			exchangeRateType: meta.exchangeRateType ?? null,
+			recordedAt: new Date(),
 		};
 
 		// Upsert snapshot (one per asset per day)
@@ -201,6 +201,7 @@ export class WealthService {
 			},
 			orderBy: { date: "asc" },
 		});
+		const legs = await loadDashboardLegs(db, userId, oneYearAgo);
 
 		// Latest point before one year ago for each account that still counts
 		// in that window (an account closed before it never shows).
@@ -218,6 +219,8 @@ export class WealthService {
 							currency: true,
 							type: true,
 							exchangeRateType: true,
+							date: true,
+							recordedAt: true,
 						},
 					}),
 				),
@@ -231,56 +234,7 @@ export class WealthService {
 			targetCurrency,
 		]);
 
-		/**
-		 * The rate for `currency` on `date`: a custom rate as stored, else the
-		 * table rate of the rate type, else the stored rate when the currency
-		 * has no table rate at all. Null when there is none.
-		 */
-		const rateOf = (
-			currency: string,
-			rateType: string | null,
-			stored: number | null,
-			date: Date,
-		) => {
-			if (currency === USD) return 1;
-			if (rateType === CUSTOM_RATE_TYPE && isValidRate(stored)) {
-				return stored;
-			}
-			const picked = rateFor(currency, date, rateType);
-			if (picked) return picked.rate;
-			return isValidRate(stored) ? stored : null;
-		};
-
-		/** The rate that values `asset` on `date`, with its own stored rate. */
-		const assetRate = (asset: (typeof allAssets)[number], date: Date) =>
-			rateOf(
-				asset.currency,
-				asset.exchangeRateType,
-				toNumberOrNull(asset.exchangeRate),
-				date,
-			);
-
-		/**
-		 * The rate that values a snapshot on `date`. A snapshot taken when the
-		 * account had another currency or rate type uses its own, never the
-		 * account's current one. A custom rate typed back then only survives
-		 * in the recorded USD value, so that case returns null.
-		 */
-		const snapshotRate = (
-			snap: HeldSnapshot,
-			asset: (typeof allAssets)[number],
-			date: Date,
-		) => {
-			if (
-				snap.currency === asset.currency &&
-				snap.exchangeRateType === asset.exchangeRateType
-			) {
-				return assetRate(asset, date);
-			}
-			if (snap.currency === USD) return 1;
-			if (snap.exchangeRateType === CUSTOM_RATE_TYPE) return null;
-			return rateOf(snap.currency, snap.exchangeRateType, null, date);
-		};
+		const { rateOf, assetRate, snapshotRate } = dashboardRates(rateFor);
 
 		const targetRateAt = (date: Date) =>
 			rateFor(targetCurrency, date)?.rate ?? null;
@@ -305,6 +259,7 @@ export class WealthService {
 				missingRateCurrencies.add(asset.currency);
 				return {
 					...asset,
+					interestRate: toNumberOrNull(asset.interestRate),
 					balance,
 					balanceInUSD: 0,
 					balanceInTargetCurrency: 0,
@@ -316,13 +271,13 @@ export class WealthService {
 
 			if (asset.type.startsWith("LIABILITY_")) {
 				totalLiabilityBalanceUSD += balanceInUSD;
-				if (asset.interestRate && balanceInUSD > 0) {
-					weightedAPR += asset.interestRate * balanceInUSD;
-				}
+				const apr = toNumberOrNull(asset.interestRate);
+				if (apr && balanceInUSD > 0) weightedAPR += apr * balanceInUSD;
 			}
 
 			return {
 				...asset,
+				interestRate: toNumberOrNull(asset.interestRate),
 				balance,
 				balanceInUSD,
 				balanceInTargetCurrency:
@@ -346,6 +301,8 @@ export class WealthService {
 			currency: string | null;
 			type: AssetType | null;
 			exchangeRateType: string | null;
+			date: Date;
+			recordedAt: Date;
 		}) => {
 			const asset = assetMap.get(snap.accountId);
 			if (!asset) return;
@@ -359,6 +316,8 @@ export class WealthService {
 				exchangeRateType: recorded
 					? snap.exchangeRateType
 					: asset.exchangeRateType,
+				date: snap.date,
+				recordedAt: snap.recordedAt,
 			});
 		};
 		for (const initial of initialPoints) {
@@ -366,16 +325,13 @@ export class WealthService {
 		}
 
 		const snapshotsByDate = new Map<string, typeof snapshots>();
-		snapshots.forEach((s) => {
-			const dateStr = s.date?.toISOString().split("T")[0];
-			if (!dateStr) return;
-			const existing = snapshotsByDate.get(dateStr);
-			if (!existing) {
-				snapshotsByDate.set(dateStr, [s]);
-			} else {
-				existing.push(s);
-			}
-		});
+		for (const s of snapshots) {
+			const dateStr = dayString(s.date);
+			snapshotsByDate.set(dateStr, [
+				...(snapshotsByDate.get(dateStr) ?? []),
+				s,
+			]);
+		}
 
 		const history: {
 			date: string;
@@ -383,13 +339,13 @@ export class WealthService {
 			assets: number;
 			liabilities: number;
 		}[] = [];
-		const sortedDates = [...snapshotsByDate.keys()].sort();
+		// Days with a money move get a point too (accounts/dashboard-legs.ts).
+		const sortedDates = [
+			...new Set([...snapshotsByDate.keys(), ...legs.days]),
+		].sort();
 
 		for (const dateStr of sortedDates) {
-			const daysSnapshots = snapshotsByDate.get(dateStr);
-			if (!daysSnapshots) continue;
-
-			daysSnapshots.forEach(hold);
+			snapshotsByDate.get(dateStr)?.forEach(hold);
 
 			// Every value on this date uses the rates for this date, both the
 			// asset's own and the target currency's.
@@ -407,16 +363,35 @@ export class WealthService {
 				const closedDay = closedFrom.get(assetId);
 				if (closedDay && dateStr >= closedDay) continue;
 
-				const rate = snapshotRate(snap, asset, day);
-				// No rate for the asset: the USD value recorded with the snapshot.
-				const balInUSD =
-					rate === null
-						? snap.balanceInUSD
-						: toUSD(snap.balance, snap.currency, rate);
+				// A dated rate type switch (D3) wins over the snapshot's own type.
+				const switched = legs.typeOn(assetId, dateStr);
+				const rate =
+					switched === undefined
+						? snapshotRate(snap, asset, day)
+						: rateOf(
+								snap.currency,
+								switched,
+								toNumberOrNull(asset.exchangeRate),
+								day,
+							);
+				const balance =
+					snap.balance + legs.onTop(assetId, snap.type, snap, dateStr);
+				// No rate for the asset: the recorded USD value, with the legs on top.
+				let balInUSD: number;
+				if (rate !== null) balInUSD = toUSD(balance, snap.currency, rate);
+				else {
+					const usd = usdWithoutRate(
+						snap,
+						balance,
+						toNumberOrNull(asset.exchangeRate),
+					);
+					if (usd === null) missingRateCurrencies.add(snap.currency);
+					balInUSD = usd ?? snap.balanceInUSD;
+				}
 
 				const value =
 					snap.currency === targetCurrency && rate !== null
-						? snap.balance
+						? balance
 						: fromUSD(balInUSD, targetCurrency, dayTargetRate);
 
 				if (snap.type.startsWith("LIABILITY_")) {

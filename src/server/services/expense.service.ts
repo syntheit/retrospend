@@ -12,6 +12,7 @@ import {
 	loadRateContext,
 	type RateChoice,
 } from "./rate-types";
+import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { listedEntryWhere } from "./spending";
 
 /** pricingSource of a rate the user typed in by hand. */
@@ -23,7 +24,7 @@ function sameRate(a: number, b: number): boolean {
 
 /** What the form sends about an entry's rate. */
 export interface RateInput {
-	amount: number;
+	amount: number | string;
 	currency: string;
 	date: Date;
 	/** Entry leg in the stored convention: kept when custom or unchanged on edit. */
@@ -152,7 +153,7 @@ function savedRateOf(row: {
 export interface CreateExpenseInput {
 	id: string;
 	title: string;
-	amount: number;
+	amount: number | string;
 	currency: string;
 	exchangeRate?: number;
 	amountInUSD?: number;
@@ -263,11 +264,13 @@ export class ExpenseService {
 	) {
 		const existingExpense = await (this.db as PrismaClient).expense.findFirst({
 			where: { id: input.id, userId },
+			include: { _count: { select: { accountLegs: true } } },
 		});
 
 		if (!existingExpense) {
 			throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
 		}
+		refuseLegMoneyEdit(existingExpense, input);
 
 		// Determine excludeFromAnalytics for the update
 		let excludeFromAnalytics: boolean | undefined = input.excludeFromAnalytics;

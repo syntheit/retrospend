@@ -1176,7 +1176,6 @@
 		"src/server/api/routers/profile.ts": 146,
 		"src/server/api/routers/recurring.ts": 131,
 		"src/server/api/routers/shared-transaction.ts": 66,
-		"src/server/api/routers/wealth.ts": 338,
 		"src/server/services/import-queue.service.ts": 517,
 		"src/server/services/pdf.service.ts": 91,
 		"src/server/services/shared-expenses/audit-log-formatter.ts": 339,
@@ -1186,8 +1185,7 @@
 		"src/server/services/shared-expenses/test-utils.ts": 1046,
 		"src/server/services/shared-expenses/transaction.service.ts": 896,
 		"src/server/services/shared-expenses/verification.service.ts": 332,
-		"src/server/services/user-deletion.service.ts": 70,
-		"src/server/services/wealth.service.ts": 1
+		"src/server/services/user-deletion.service.ts": 70
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,

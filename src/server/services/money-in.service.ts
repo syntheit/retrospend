@@ -67,7 +67,8 @@ export interface DueTemplate {
 export async function recurringEntryData(
 	db: PrismaClient | Prisma.TransactionClient,
 	template: DueTemplate,
-	confirmedAmount?: number,
+	/** A decimal string is stored exactly as typed. */
+	confirmedAmount?: number | string,
 ): Promise<Prisma.ExpenseUncheckedCreateInput> {
 	const asks = template.amountMode === "ASK";
 	if (asks !== (confirmedAmount !== undefined)) {

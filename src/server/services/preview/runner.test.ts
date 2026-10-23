@@ -210,10 +210,11 @@ describe("preview", () => {
 
 		await runner.preview(sneaky, { personId: "martin", minor: 1 });
 
-		expect(seen).toHaveBeenCalledWith(expect.anything(), {
-			userId: "me",
-			personId: "martin",
-		});
+		expect(seen).toHaveBeenCalledWith(
+			expect.anything(),
+			{ userId: "me", personId: "martin" },
+			expect.anything(),
+		);
 	});
 });
 
