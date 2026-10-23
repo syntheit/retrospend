@@ -1,11 +1,11 @@
 /**
  * The Recurring tab read (recurring.listView): every template with its due
  * state, Money amounts, the next date after a confirm, the summary line
- * ("cost ARS X a month", per period) and this month's auto-pay entries. The
+ * ("cost ARS X a month", per period) and this month's logged entries. The
  * server computes every number (R9); a template whose currency has no rate
  * is named in the summary and left out of it, never counted as zero (B16).
  */
-import { USD } from "@retrospend/domain/money";
+import { isValidRate, USD } from "@retrospend/domain/money";
 import type { Money } from "@retrospend/domain/money-minor";
 import { nextRecurringDate } from "@retrospend/domain/recurring";
 import {
@@ -46,18 +46,17 @@ export type RecurringItemDTO = {
 	next: string;
 	/** The stored due instant, which a confirm sends back as its guard. */
 	dueAt: string;
-	/** The next date once this one is confirmed or skipped. */
+	/** The next date once this one is confirmed (the confirm step shows it). */
 	nextAfter: string;
 	state: "upcoming" | "due" | "overdue";
 	paused: boolean;
 	autoPay: boolean;
 	direction: "out" | "in";
-	/** "fixed" or "ask" once templates carry it (2A); absent until then. */
-	amountMode?: string;
+	/** "ask": the amount varies, so a confirm needs the amount (the Confirm sheet, 2E). */
+	amountMode: "fixed" | "ask";
 	amount: Money;
 	/** In the home currency when foreign; null: no rate yet. Absent: same currency. */
 	home?: Money | null;
-	websiteUrl: string | null;
 };
 
 /** One direction's cost per period, at today's rates. */
@@ -65,7 +64,10 @@ export type RecurringCost = {
 	month: Money;
 	quarter: Money;
 	year: Money;
-	/** Currencies of active templates with no rate, left out of the cost. */
+	/**
+	 * Currencies with no rate that leave active templates out of the cost:
+	 * the template's own, or the home currency when its rate is missing.
+	 */
 	missingRate: string[];
 };
 
@@ -76,7 +78,10 @@ export type RecurringView = {
 	out: RecurringCost;
 	/** Null when no active template brings money in. */
 	in: RecurringCost | null;
-	/** This month's entries that auto-pay logged. */
+	/**
+	 * This month's entries logged from a template, by auto-pay or a Confirm:
+	 * rows do not record which, so the section says "Logged this month".
+	 */
 	logged: ActivityRowDTO[];
 };
 
@@ -89,26 +94,18 @@ const PER_MONTH: Record<RecurringTemplate["frequency"], number> = {
 	YEARLY: 1 / 12,
 };
 
-// Direction and amount mode arrive with M1 (segment/money-engine); read them
-// when the columns exist so this view needs no change at the merge.
-function optional(t: RecurringTemplate, field: string): string | undefined {
-	const v = (t as unknown as Record<string, unknown>)[field];
-	return typeof v === "string" ? v : undefined;
-}
-
 function stateOf(next: string, today: string): RecurringItemDTO["state"] {
 	if (next < today) return "overdue";
 	return next === today ? "due" : "upcoming";
 }
 
-function costOf(
-	list: { perMonth: number | null; currency: string }[],
-	home: string,
-): RecurringCost {
+type CostLine = { perMonth: number | null; missing: string[] };
+
+function costOf(list: CostLine[], home: string): RecurringCost {
 	let month = 0;
 	const missing = new Set<string>();
 	for (const x of list) {
-		if (x.perMonth === null) missing.add(x.currency);
+		if (x.perMonth === null) for (const c of x.missing) missing.add(c);
 		else month += x.perMonth;
 	}
 	return {
@@ -119,20 +116,31 @@ function costOf(
 	};
 }
 
+/** The currencies whose missing rate keeps an amount out of the home total. */
+function missingRates(
+	currency: string,
+	rate: number | null,
+	rates: HomeRates,
+): string[] {
+	if (currency === rates.home) return [];
+	const out: string[] = [];
+	if (currency !== USD && !isValidRate(rate)) out.push(currency);
+	if (rates.home !== USD && !isValidRate(rates.homeRate)) out.push(rates.home);
+	return out;
+}
+
 async function loggedThisMonth(
 	tx: Prisma.TransactionClient,
 	userId: string,
-	autoPayIds: string[],
 	rates: HomeRates,
 	timeZone: string | undefined,
 	now: Date,
 ): Promise<ActivityRowDTO[]> {
-	if (!autoPayIds.length) return [];
 	const { year, month } = wallTime(now, timeZone);
 	const rows = await tx.expense.findMany({
 		where: {
 			userId,
-			recurringTemplateId: { in: autoPayIds },
+			recurringTemplateId: { not: null },
 			date: { gte: fromWallTime({ year, month, day: 1 }, timeZone), lte: now },
 		},
 		orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -179,23 +187,19 @@ export async function listRecurringView(
 			home,
 			homeRate: lookup(home, now)?.rate ?? null,
 		};
-		const costs: Record<
-			"out" | "in",
-			{ perMonth: number | null; currency: string }[]
-		> = { out: [], in: [] };
+		const costs: Record<"out" | "in", CostLine[]> = { out: [], in: [] };
 		const items = templates.map((t): RecurringItemDTO => {
 			const amount = decimalMoney(t.amount, t.currency);
 			const rate = lookup(t.currency, now)?.rate ?? null;
 			const major = homeMajor(Number(t.amount), t.currency, rate, rates);
 			const homeValue = major === null ? null : numberMoney(major, home);
-			const direction = optional(t, "direction") === "IN" ? "in" : "out";
+			const direction = t.direction === "IN" ? "in" : "out";
 			const next = dayKey(t.nextDueDate, timeZone);
 			if (t.isActive)
 				costs[direction].push({
-					currency: t.currency,
+					missing: missingRates(t.currency, rate, rates),
 					perMonth: major === null ? null : major * PER_MONTH[t.frequency],
 				});
-			const amountMode = optional(t, "amountMode");
 			return {
 				id: t.id,
 				title: t.name,
@@ -216,27 +220,18 @@ export async function listRecurringView(
 				paused: !t.isActive,
 				autoPay: t.autoPay,
 				direction,
-				...(amountMode ? { amountMode } : {}),
+				amountMode: t.amountMode === "ASK" ? "ask" : "fixed",
 				amount,
 				...(t.currency === home ? {} : { home: homeValue }),
-				websiteUrl: t.websiteUrl,
 			};
 		});
-		const autoPayIds = templates.filter((t) => t.autoPay).map((t) => t.id);
 		return {
 			today,
 			homeCurrency: home,
 			items,
 			out: costOf(costs.out, home),
 			in: costs.in.length ? costOf(costs.in, home) : null,
-			logged: await loggedThisMonth(
-				tx,
-				userId,
-				autoPayIds,
-				rates,
-				timeZone,
-				now,
-			),
+			logged: await loggedThisMonth(tx, userId, rates, timeZone, now),
 		};
 	});
 }

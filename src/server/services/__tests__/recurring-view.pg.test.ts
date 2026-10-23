@@ -16,6 +16,7 @@ const day = (d: number, m = 10) =>
 const NOW = new Date("2026-10-21T15:00:00Z");
 
 let me: Awaited<ReturnType<typeof createTestUser>>;
+let chile: Awaited<ReturnType<typeof createTestUser>>;
 
 beforeAll(async () => {
 	me = await createTestUser();
@@ -56,6 +57,10 @@ beforeAll(async () => {
 				isActive: false,
 			}),
 			t("rv_xyz", "Token", "10", "XYZ", "MONTHLY", day(25)),
+			t("rv_ask", "Luz", "5000", "ARS", "MONTHLY", day(30), {
+				amountMode: "ASK",
+				isActive: false,
+			}),
 		],
 	});
 	const e = (title: string, recurringTemplateId: string, date: Date) => ({
@@ -76,10 +81,30 @@ beforeAll(async () => {
 			e("Gym", "rv_gym", day(5)),
 		],
 	});
+	// A CLP home with no CLP rate: a USD template cannot reach CLP.
+	chile = await createTestUser();
+	await adminDb.user.update({
+		where: { id: chile.user.id },
+		data: { homeCurrency: "CLP" },
+	});
+	await adminDb.recurringTemplate.createMany({
+		data: [
+			{
+				...t("rv_cl_usd", "Spotify", "5", "USD", "MONTHLY", day(25)),
+				userId: chile.user.id,
+			},
+			{
+				...t("rv_cl_clp", "Agua", "5000", "CLP", "MONTHLY", day(25)),
+				userId: chile.user.id,
+			},
+		],
+	});
 });
 
 afterAll(async () => {
-	await adminDb.user.deleteMany({ where: { id: me.user.id } });
+	await adminDb.user.deleteMany({
+		where: { id: { in: [me.user.id, chile.user.id] } },
+	});
 	await adminDb.exchangeRate.deleteMany({
 		where: { date: day(2), currency: "ARS" },
 	});
@@ -109,6 +134,8 @@ describe("recurring.listView", () => {
 		});
 		expect(by.rv_paused?.paused).toBe(true);
 		expect(by.rv_xyz?.home).toBeNull();
+		expect(by.rv_gym?.amountMode).toBe("fixed");
+		expect(by.rv_ask?.amountMode).toBe("ask");
 	});
 
 	it("sums the active cost per period and names currencies without a rate", async () => {
@@ -122,10 +149,19 @@ describe("recurring.listView", () => {
 		expect(v.in).toBeNull();
 	});
 
-	it("lists this month's entries logged by auto-pay templates only", async () => {
+	it("names the home currency when its own rate is missing", async () => {
+		const v = await listRecurringView(chile.db, chile.user.id, TZ, NOW);
+		expect(v.out).toMatchObject({
+			month: { minor: 5000, currency: "CLP" },
+			missingRate: ["CLP"],
+		});
+	});
+
+	it("lists this month's entries logged from any template, newest first", async () => {
 		const v = await listRecurringView(me.db, me.user.id, TZ, NOW);
 		expect(v.logged.map((r) => [r.title, r.date])).toEqual([
 			["Netflix", "2026-10-15"],
+			["Gym", "2026-10-05"],
 		]);
 	});
 });
