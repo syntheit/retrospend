@@ -26,13 +26,16 @@
 	"row": {
 		"needYou": "{count} need you",
 		"pendingOut": "Pending: you paid {amount}, waiting for {name}",
-		"pendingIn": "Pending: they paid you {amount}"
+		"pendingIn": "Pending: they paid you {amount}",
+		"new": "{count} new"
 	},
 	"needs": {
 		"title": "Needs you",
 		"confirmed": "Confirmed {name}'s payment",
 		"failed": "Couldn't do that. Try again.",
-		"showMore": "Show {count} more"
+		"showMore": "Show {count} more",
+		"summary": "{count} need you",
+		"summaryMore": "{first} and {count} more"
 	},
 	"review": {
 		"title": "Review split",
@@ -95,5 +98,9 @@
 		"card": "Card",
 		"custom": "Custom",
 		"crypto": "Crypto"
+	},
+	"methods": {
+		"bank_transfer": "Bank transfer",
+		"cash": "Cash"
 	}
 }

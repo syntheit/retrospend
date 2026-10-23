@@ -39,6 +39,7 @@ function payment(
 ): PaymentDTO {
 	return {
 		id,
+		rowId: null,
 		direction: "in",
 		amount: ars(500),
 		paidOn,

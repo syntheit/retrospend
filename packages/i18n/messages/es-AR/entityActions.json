@@ -192,5 +192,16 @@
 		"history": {
 			"label": "Ver historial de cotización"
 		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Confirmar"
+		},
+		"notReceived": {
+			"label": "No lo recibí",
+			"confirmTitle": "¿No recibiste el pago de {name}?",
+			"confirmBody": "El pago queda como no recibido y tu saldo sigue igual.",
+			"confirmButton": "No lo recibí"
+		}
 	}
 }

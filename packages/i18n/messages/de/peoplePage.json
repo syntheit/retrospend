@@ -26,13 +26,16 @@
 	"row": {
 		"needYou": "{count} brauchen dich",
 		"pendingOut": "Ausstehend: du hast {amount} gezahlt, wartet auf {name}",
-		"pendingIn": "Ausstehend: dir wurden {amount} gezahlt"
+		"pendingIn": "Ausstehend: dir wurden {amount} gezahlt",
+		"new": "{count} neu"
 	},
 	"needs": {
 		"title": "Braucht dich",
 		"confirmed": "Zahlung von {name} bestätigt",
 		"failed": "Das hat nicht geklappt. Versuch es noch einmal.",
-		"showMore": "{count} weitere anzeigen"
+		"showMore": "{count} weitere anzeigen",
+		"summary": "{count} brauchen dich",
+		"summaryMore": "{first} und {count} weitere"
 	},
 	"review": {
 		"title": "Ausgabe prüfen",
@@ -95,5 +98,9 @@
 		"card": "Karte",
 		"custom": "Eigener",
 		"crypto": "Krypto"
+	},
+	"methods": {
+		"bank_transfer": "Überweisung",
+		"cash": "Bargeld"
 	}
 }

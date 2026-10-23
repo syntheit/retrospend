@@ -69,7 +69,7 @@ export function PersonScreen({
 				/>
 			) : (
 				<>
-					<div className="mb-8 grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-12 max-md:grid-cols-1 max-md:gap-6">
+					<div className="mb-8 grid grid-cols-2 items-start gap-12 max-md:grid-cols-1 max-md:gap-6">
 						<BalanceBlock
 							onRemind={canRemind ? () => void onRemind() : undefined}
 							page={named}

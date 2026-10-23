@@ -15,21 +15,36 @@ import type { SettleState } from "./use-settle";
 type Preview = NonNullable<SettleState["preview"]>;
 type Allocation = NonNullable<Preview["value"]["allocation"]>;
 
-/** Rate types the conversion can use, and the rate it uses now. */
+/**
+ * Rate types the conversion can use, and the rate each converting currency
+ * uses now: cash that converts and offsets across currencies alike. A new
+ * type moves Everything too, so the chips show whenever anything converts.
+ */
 function Rates({ s, allocation }: { s: SettleState; allocation: Allocation }) {
 	const t = useTranslations("settleSheet");
 	const name = useRateTypeName();
 	const c = s.ctx;
-	const converting = allocation.rows.find((r) => r.rate && !r.excess);
-	if (!c || !converting) return null;
-	const used = c.rates.find(
-		(r) => r.currency === converting.pays.currency,
-	)?.rate;
-	const current = s.rateType ?? converting.rate?.rateType ?? null;
+	const pay = allocation.amount.currency;
+	const currencies = [
+		...new Set([
+			...allocation.rows
+				.filter((r) => !r.excess && r.pays.currency !== pay)
+				.map((r) => r.pays.currency),
+			...allocation.offsets
+				.filter((o) => o.cancels.currency !== pay)
+				.map((o) => o.cancels.currency),
+		]),
+	];
+	if (!c || currencies.length === 0) return null;
+	const rates = currencies.flatMap((cur) => {
+		const rate = c.rates.find((r) => r.currency === cur)?.rate;
+		return rate ? [{ cur, rate }] : [];
+	});
+	const current = s.rateType ?? rates[0]?.rate.type ?? null;
 	return (
 		<div className="flex flex-col gap-2">
 			<span className="text-fg text-small font-medium">
-				{t("rate", { currency: converting.pays.currency })}
+				{t("rate", { currency: currencies.join(", ") })}
 			</span>
 			{c.rateTypes.length > 1 && (
 				<FilterChips>
@@ -44,12 +59,12 @@ function Rates({ s, allocation }: { s: SettleState; allocation: Allocation }) {
 					))}
 				</FilterChips>
 			)}
-			{used && (
-				<span className="text-fg-2 text-small">
-					<Money value={used.unit} /> = <Money value={used.value} /> ·{" "}
-					{name(used.type)}
+			{rates.map(({ cur, rate }) => (
+				<span className="text-fg-2 text-small" key={cur}>
+					<Money value={rate.unit} /> = <Money value={rate.value} /> ·{" "}
+					{name(rate.type)}
 				</span>
-			)}
+			))}
 		</div>
 	);
 }
@@ -127,7 +142,15 @@ function Pays({
 						</span>
 						<span className="text-fg-3 text-meta">{t("offset")}</span>
 					</span>
-					<Money className="text-fg-2 text-body" value={o.cancels} />
+					<span className="text-fg-2 text-body tabular-nums">
+						<Money value={o.cancels} />
+						{o.cancels.currency !== o.value.currency && (
+							<span className="text-fg-3">
+								{" = "}
+								<Money value={o.value} />
+							</span>
+						)}
+					</span>
 				</div>
 			))}
 		</section>

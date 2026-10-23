@@ -604,12 +604,12 @@ export const PLANNED: Planned[] = [
 	},
 	{
 		name: "SettleSheet",
-		status: "planned",
+		status: "built",
 		job: "Settle up with a person: amount, account, what changes, Undo",
 		replaces: "The settle-up dialog",
 		planRow: SHEETS,
-		target: "src/features/settle/* (IMPLEMENTATION §1.2, 4D)",
-		use: "settle-up-dialog",
+		target: "src/features/settle/settle-sheet.tsx (IMPLEMENTATION §1.2, 4D)",
+		use: "SettleSheet from src/features/settle/settle-sheet (uiV2 pages); settle-up-dialog stays on today's pages",
 	},
 	{
 		name: "AssignSheet",

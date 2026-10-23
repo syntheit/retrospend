@@ -3,7 +3,7 @@
 import { CircleCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatMoney } from "~/components/money/format";
 import { Empty } from "~/components/ui/empty-state";
 import { Sheet } from "~/components/ui/sheet";
@@ -65,7 +65,10 @@ function SettleSheetFor({
 	onClose: () => void;
 }) {
 	// Sentences use the first name; the face keeps the full name (its color and initials).
-	const person = { ...full, name: firstName(full.name) };
+	const person = useMemo(
+		() => ({ ...full, name: firstName(full.name) }),
+		[full],
+	);
 	const t = useTranslations("settleSheet");
 	const locale = useLocale();
 	const toast = useToast();

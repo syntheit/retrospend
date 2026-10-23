@@ -2,20 +2,22 @@
 
 import { Banknote, Lock, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import { Balance } from "~/components/money/balance";
 import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
 import { IconTile, Row, RowSub } from "~/components/rows/row";
 import { FaceStack } from "~/components/ui/avatar-face";
 import { CategoryTile } from "~/components/ui/category-badge";
-import { getPaymentMethodName } from "~/components/ui/payment-method-icon";
 import { StatusDot } from "~/components/ui/status-dot";
 import { firstName } from "~/features/people/filter";
+import { useMethodName } from "~/features/people/method-name";
 import type {
 	LedgerRowDTO,
 	PaymentDTO,
 	PersonIdentityDTO,
 } from "~/features/people/types";
+import { paymentTargetOf, usePaymentActions } from "./use-payment-actions";
 
 /** What an expense does between you: the effect, or why there is none. */
 function Effect({ row }: { row: LedgerRowDTO }) {
@@ -101,37 +103,45 @@ export function PaymentRow({
 }) {
 	const t = useTranslations("personPage.ledger");
 	const { short } = useRowDates();
+	const methodName = useMethodName();
+	const handlers = usePaymentActions(person.name)(payment);
+	const target = paymentTargetOf(payment, person.name);
 	const pending = payment.status === "pending";
-	const waitsForMe = pending && !payment.recordedByMe;
+	const waitsForMe = target.waitsForMe;
 	return (
-		<Row
-			data-row-kind="payment"
-			end={<Money className="text-fg font-semibold" value={payment.amount} />}
-			lead={<IconTile icon={Banknote} />}
-			sub={
-				<RowSub
-					parts={[
-						payment.method && getPaymentMethodName(payment.method),
-						short(payment.paidOn),
-						pending && (
-							<StatusDot
-								kind="pending"
-								label={
-									waitsForMe
-										? t("waitsForYou")
-										: t("waitingFor", { name: person.name })
-								}
-								size="sm"
-							/>
-						),
-					]}
-				/>
-			}
-			title={
-				payment.direction === "in"
-					? t("paidYou", { name: person.name })
-					: t("youPaid", { name: person.name })
-			}
-		/>
+		<ActionArea entity="payment" handlers={handlers} target={target}>
+			<Row
+				actions={
+					<ActionMenu entity="payment" handlers={handlers} target={target} />
+				}
+				data-row-kind="payment"
+				end={<Money className="text-fg font-semibold" value={payment.amount} />}
+				lead={<IconTile icon={Banknote} />}
+				sub={
+					<RowSub
+						parts={[
+							payment.method && methodName(payment.method),
+							short(payment.paidOn),
+							pending && (
+								<StatusDot
+									kind="pending"
+									label={
+										waitsForMe
+											? t("waitsForYou")
+											: t("waitingFor", { name: person.name })
+									}
+									size="sm"
+								/>
+							),
+						]}
+					/>
+				}
+				title={
+					payment.direction === "in"
+						? t("paidYou", { name: person.name })
+						: t("youPaid", { name: person.name })
+				}
+			/>
+		</ActionArea>
 	);
 }

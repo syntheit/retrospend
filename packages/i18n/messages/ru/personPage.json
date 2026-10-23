@@ -15,7 +15,9 @@
 	"toast": {
 		"failed": "Не получилось. Попробуйте ещё раз.",
 		"reminded": "Напоминание отправлено: {name}",
-		"inviteCopied": "Ссылка-приглашение для {name} скопирована"
+		"inviteCopied": "Ссылка-приглашение для {name} скопирована",
+		"confirmed": "Платёж от {name} подтверждён",
+		"notReceived": "Платёж от {name} отмечен как не полученный"
 	},
 	"sub": {
 		"notOnRetrospend": "Не в Retrospend",

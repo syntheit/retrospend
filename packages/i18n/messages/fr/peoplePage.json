@@ -26,13 +26,16 @@
 	"row": {
 		"needYou": "{count} à traiter",
 		"pendingOut": "En attente : vous avez payé {amount}, en attente de {name}",
-		"pendingIn": "En attente : on vous a payé {amount}"
+		"pendingIn": "En attente : on vous a payé {amount}",
+		"new": "{count} nouveaux"
 	},
 	"needs": {
 		"title": "À traiter",
 		"confirmed": "Paiement de {name} confirmé",
 		"failed": "Impossible pour le moment. Réessayez.",
-		"showMore": "Afficher {count} de plus"
+		"showMore": "Afficher {count} de plus",
+		"summary": "{count} à traiter",
+		"summaryMore": "{first} et {count} de plus"
 	},
 	"review": {
 		"title": "Vérifier la dépense",
@@ -95,5 +98,9 @@
 		"card": "Carte",
 		"custom": "Personnalisé",
 		"crypto": "Crypto"
+	},
+	"methods": {
+		"bank_transfer": "Virement",
+		"cash": "Espèces"
 	}
 }

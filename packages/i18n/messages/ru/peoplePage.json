@@ -26,13 +26,16 @@
 	"row": {
 		"needYou": "Ждут вас: {count}",
 		"pendingOut": "Ожидает: вы заплатили {amount}, ждём {name}",
-		"pendingIn": "Ожидает: вам заплатили {amount}"
+		"pendingIn": "Ожидает: вам заплатили {amount}",
+		"new": "Новых: {count}"
 	},
 	"needs": {
 		"title": "Ждут вас",
 		"confirmed": "Платёж от {name} подтверждён",
 		"failed": "Не получилось. Попробуйте ещё раз.",
-		"showMore": "Показать ещё {count}"
+		"showMore": "Показать ещё {count}",
+		"summary": "Ждут вас: {count}",
+		"summaryMore": "{first} и ещё {count}"
 	},
 	"review": {
 		"title": "Проверить расход",
@@ -95,5 +98,9 @@
 		"card": "Карточный",
 		"custom": "Свой",
 		"crypto": "Крипто"
+	},
+	"methods": {
+		"bank_transfer": "Перевод",
+		"cash": "Наличные"
 	}
 }

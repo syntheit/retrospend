@@ -26,13 +26,16 @@
 	"row": {
 		"needYou": "{count} te necesitan",
 		"pendingOut": "Pendiente: pagaste {amount}, esperando a {name}",
-		"pendingIn": "Pendiente: te pagaron {amount}"
+		"pendingIn": "Pendiente: te pagaron {amount}",
+		"new": "{count} nuevos"
 	},
 	"needs": {
 		"title": "Te necesita",
 		"confirmed": "Confirmaste el pago de {name}",
 		"failed": "No se pudo. Probá de nuevo.",
-		"showMore": "Ver {count} más"
+		"showMore": "Ver {count} más",
+		"summary": "{count} te necesitan",
+		"summaryMore": "{first} y {count} más"
 	},
 	"review": {
 		"title": "Revisar gasto",
@@ -95,5 +98,9 @@
 		"card": "Tarjeta",
 		"custom": "Personalizada",
 		"crypto": "Cripto"
+	},
+	"methods": {
+		"bank_transfer": "Transferencia",
+		"cash": "Efectivo"
 	}
 }

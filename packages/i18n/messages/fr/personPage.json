@@ -15,7 +15,9 @@
 	"toast": {
 		"failed": "Impossible pour le moment. Réessayez.",
 		"reminded": "Rappel envoyé à {name}",
-		"inviteCopied": "Lien d'invitation pour {name} copié"
+		"inviteCopied": "Lien d'invitation pour {name} copié",
+		"confirmed": "Paiement de {name} confirmé",
+		"notReceived": "Paiement de {name} marqué comme non reçu"
 	},
 	"sub": {
 		"notOnRetrospend": "Pas sur Retrospend",

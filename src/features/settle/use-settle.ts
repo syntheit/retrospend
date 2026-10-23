@@ -35,8 +35,9 @@ const EMPTY: MoneyInputResult = { ok: false, error: "empty" };
 /**
  * The Settle up sheet's state (MONEY-MOVES §1, R30): the context read, the
  * choices, and the preview, which is payment.record run as a dry run. The
- * amount starts empty; Everything sends no amount (the server pays exactly
- * everything, offsets included). Nothing here adds, converts or rounds.
+ * amount starts empty; Everything and the currency parts fill the server's
+ * figure, and a part also limits the payment to that currency (Apply to).
+ * A new rate type refills them. Nothing here adds, converts or rounds.
  */
 export function useSettle(
 	person: PersonIdentityDTO | null,
@@ -48,6 +49,8 @@ export function useSettle(
 	const [text, setText] = useState("");
 	const [result, setResult] = useState<MoneyInputResult>(EMPTY);
 	const [everything, setEverything] = useState(false);
+	/** The currency part a fill chip chose: the payment applies to it only. */
+	const [part, setPart] = useState<string | null>(null);
 	const [rateType, setRateType] = useState<string | null>(null);
 	const [method, setMethod] = useState<string | null>(null);
 	const [paidOn, setPaidOn] = useState<string | null>(null);
@@ -57,12 +60,13 @@ export function useSettle(
 	const [claim, setClaim] = useState<Claim | null>(null);
 	const claimId = claim?.paymentId ?? null;
 
+	// Keyed on the identity, not the object: a caller may pass a fresh object
+	// each render, and a new ref would restart the preview forever.
+	const type = person?.type;
+	const id = person?.id;
 	const ref = useMemo(
-		() =>
-			person
-				? { participantType: person.type, participantId: person.id }
-				: null,
-		[person],
+		() => (type && id ? { participantType: type, participantId: id } : null),
+		[type, id],
 	);
 	const ctx = api.people.settleContext.useQuery(
 		{
@@ -79,22 +83,34 @@ export function useSettle(
 	const hasAmount = everything || (minor !== null && minor > 0);
 
 	const input: RecordInput | null = useMemo(() => {
-		if (!ref || !c || !hasAmount) return null;
+		if (!ref || !c || !hasAmount || minor === null) return null;
+		// Same payment: confirm their record as they made it; only what you
+		// picked yourself (a date, a method) or a different amount in their
+		// currency changes it (the server checks again).
+		const confirming = claim && !different ? claim : null;
+		const sameCurrency = !confirming || confirming.currency === c.currency;
 		return {
 			person: ref,
 			direction: c.direction,
-			currency: c.currency,
-			amount:
-				everything || minor === null
-					? null
-					: fromMinor({ minor, currency: c.currency }),
+			currency: confirming ? confirming.currency : c.currency,
+			// Everything sends the amount the sheet showed, so Record writes
+			// exactly what the preview said even if a rate moves meanwhile.
+			amount: sameCurrency ? fromMinor({ minor, currency: c.currency }) : null,
 			rateType,
 			paymentMethod: method,
-			paidOn: paidOn ?? c.today,
+			paidOn: paidOn ?? (confirming ? null : c.today),
 			note: note.trim() || null,
-			...(scope === undefined ? {} : { applyTo: [{ scope }] }),
+			...(part
+				? {
+						applyTo: [
+							{ ...(scope === undefined ? {} : { scope }), currency: part },
+						],
+					}
+				: scope === undefined
+					? {}
+					: { applyTo: [{ scope }] }),
 			allowOverpay,
-			...(claimId && !different ? { matchClaimId: claimId } : {}),
+			...(confirming ? { matchClaimId: confirming.paymentId } : {}),
 			...(different ? { differentPayment: true } : {}),
 		};
 	}, [
@@ -109,8 +125,9 @@ export function useSettle(
 		note,
 		scope,
 		allowOverpay,
-		claimId,
+		claim,
 		different,
+		part,
 	]);
 	const settled = useSettled(input);
 	const preview = api.settlement.paymentPreview.useQuery(
@@ -133,6 +150,19 @@ export function useSettle(
 			setClaim(value.match.claim);
 	}, [value]);
 
+	// A new rate type (or fresh balances) moves Everything and the parts: the
+	// filled amount follows the server's figure, never a stale one.
+	const refill = everything
+		? c?.everything
+		: part
+			? c?.parts.find((p) => p.currency === part)?.full
+			: null;
+	useEffect(() => {
+		if (!refill) return;
+		setText(draftFromMinor(refill.minor, locale, refill.currency));
+		setResult({ ok: true, minor: refill.minor, expression: false });
+	}, [refill?.minor, refill?.currency, locale]);
+
 	/** Every change of what is paid starts the questions over. */
 	const reset = () => {
 		setAllowOverpay(false);
@@ -146,6 +176,7 @@ export function useSettle(
 		loading: ctx.isLoading,
 		text,
 		everything,
+		part,
 		rateType,
 		method,
 		paidOn: paidOn ?? c?.today ?? null,
@@ -160,19 +191,26 @@ export function useSettle(
 		previewError: preview.error,
 		setText: (next: string, parsed: MoneyInputResult) => {
 			setText(next);
+			setPart(null);
 			setResult(parsed);
 			setEverything(false);
 			reset();
 		},
-		/** Fills a server amount: Everything (sends no amount) or one currency part. */
-		fill: (amount: { minor: number; currency: string }, all: boolean) => {
+		/** Fills a server amount: Everything, one currency part, or a plain amount. */
+		fill: (
+			amount: { minor: number; currency: string },
+			all: boolean,
+			partCurrency: string | null = null,
+		) => {
 			setText(draftFromMinor(amount.minor, locale, amount.currency));
 			setResult({ ok: true, minor: amount.minor, expression: false });
 			setEverything(all);
+			setPart(partCurrency);
 			reset();
 		},
 		setDirection: (d: Direction) => {
 			setDirection(d);
+			setPart(null);
 			setText("");
 			setResult(EMPTY);
 			setEverything(false);
@@ -180,6 +218,7 @@ export function useSettle(
 		},
 		setCurrency: (code: string) => {
 			setCurrency(code);
+			setPart(null);
 			setText("");
 			setResult(EMPTY);
 			setEverything(false);

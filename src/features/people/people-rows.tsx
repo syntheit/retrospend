@@ -44,6 +44,7 @@ function useSubline(today: string) {
 	const ago = useAgo(today);
 	return (p: PersonSummary) => {
 		const parts: string[] = [];
+		if (p.unseen) parts.push(t("new", { count: p.unseen }));
 		if (p.needsYou) parts.push(t("needYou", { count: p.needsYou }));
 		if (p.group === "pending" && p.pending) {
 			const amount = formatMoney(p.pending.amount, { locale });

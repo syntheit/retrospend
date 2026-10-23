@@ -9,8 +9,8 @@ import { Face } from "~/components/ui/avatar-face";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { getPaymentMethodName } from "~/components/ui/payment-method-icon";
 import { Segmented } from "~/components/ui/segmented";
+import { useMethodName } from "~/features/people/method-name";
 import type { PersonIdentityDTO } from "~/features/people/types";
 import type { SettleState } from "./use-settle";
 
@@ -86,7 +86,11 @@ function Amount({ s }: { s: SettleState }) {
 						</FilterChip>
 					)}
 					{c.parts.map((p) => (
-						<FilterChip key={p.currency} onClick={() => s.fill(p.full, false)}>
+						<FilterChip
+							key={p.currency}
+							onClick={() => s.fill(p.full, false, p.currency)}
+							selected={s.part === p.currency}
+						>
 							{t("part", { currency: p.currency })} <Money value={p.full} />
 						</FilterChip>
 					))}
@@ -103,6 +107,7 @@ function Amount({ s }: { s: SettleState }) {
 
 /** Method, date and note: details of the record, they change no money. */
 function Details({ s, methods }: { s: SettleState; methods: string[] }) {
+	const methodName = useMethodName();
 	const t = useTranslations("settleSheet");
 	const { short } = useRowDates();
 	const c = s.ctx;
@@ -119,7 +124,7 @@ function Details({ s, methods }: { s: SettleState; methods: string[] }) {
 							onClick={() => s.setMethod(s.method === m ? null : m)}
 							selected={s.method === m}
 						>
-							{getPaymentMethodName(m)}
+							{methodName(m)}
 						</FilterChip>
 					))}
 				</FilterChips>
