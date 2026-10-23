@@ -46,11 +46,12 @@ export function SettingsPage() {
 
 	return (
 		<div
-			className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-4 pt-4 pb-12 md:px-8 lg:px-12"
+			className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pt-6 pb-12"
 			data-page="settings-v2"
 			ref={scroller}
 		>
-			<div className="w-full max-w-222">
+			{/* The page column (mockup .page): 1120 wide with the gutter inside, centered; nav and sections sit at its start. */}
+			<div className="mx-auto w-full max-w-280 px-gutter">
 				<PageHeader
 					lead={
 						phone ? (

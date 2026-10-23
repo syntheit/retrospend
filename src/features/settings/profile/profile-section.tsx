@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -58,6 +57,7 @@ export function ProfileSection() {
 		email: user.email,
 	};
 	const link = profileUrl(origin, identity.username);
+	const shownLink = link.replace(/^https?:\/\//, "");
 	const pendingEmail = pending.data?.pendingEmail ?? null;
 	const unverified = features?.isEmailEnabled && !user.emailVerified;
 
@@ -104,18 +104,24 @@ export function ProfileSection() {
 						{t("changeEmail")}
 					</Button>
 				</SettingRow>
+				{/* One line on phones too (mockup): the address itself opens the profile. */}
 				<SettingRow
+					className="max-md:flex-nowrap"
 					label={t("publicProfile")}
-					meta={link.replace(/^https?:\/\//, "")}
+					meta={
+						<a
+							aria-label={`${t("viewProfile")} ${shownLink}`}
+							className="block max-w-full truncate rounded-ctl font-medium text-accent-strong text-meta focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 can-hover:hover:underline"
+							href={`/u/${identity.username}`}
+							rel="noopener"
+							target="_blank"
+						>
+							{shownLink}
+						</a>
+					}
 				>
 					<Button kind="secondary" onClick={() => void copyLink()} size="sm">
 						{t("copyLink")}
-					</Button>
-					<Button asChild kind="secondary" size="sm">
-						<a href={`/u/${identity.username}`} rel="noopener" target="_blank">
-							{t("viewProfile")}
-							<ExternalLink aria-hidden="true" />
-						</a>
 					</Button>
 					<Button
 						kind="secondary"

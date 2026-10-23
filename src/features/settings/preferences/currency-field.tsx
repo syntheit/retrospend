@@ -9,9 +9,13 @@ import { PickerPopover } from "~/components/pickers/picker-popover";
 import { Button } from "~/components/ui/button";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { cn } from "~/lib/cn";
-import { CONTROL_WIDTH } from "../setting-row";
+import { CONTROL_MIN_WIDTH } from "../setting-row";
 
-/** A settings column currency control: the code with its flag, opening the CurrencyPicker. */
+/**
+ * A settings column currency control: the flag, the code and its name,
+ * opening the CurrencyPicker. It is at least the column's select width and
+ * grows to fit the name, so nothing is cut off; phones show the code only.
+ */
 export function CurrencyField({
 	id,
 	label,
@@ -32,7 +36,7 @@ export function CurrencyField({
 	const trigger = (
 		<Button
 			aria-label={`${label}: ${value}`}
-			className={cn(CONTROL_WIDTH, "justify-between")}
+			className={cn(CONTROL_MIN_WIDTH, "max-w-full justify-between")}
 			disabled={disabled}
 			id={id}
 			kind="secondary"
@@ -41,7 +45,7 @@ export function CurrencyField({
 				<CurrencyFlag className="size-4" currencyCode={value} />
 				<span className="truncate">
 					{value}
-					{name && <span className="text-fg-2"> · {name}</span>}
+					{name && <span className="text-fg-2 max-md:hidden"> · {name}</span>}
 				</span>
 			</span>
 			<ChevronDown aria-hidden="true" className="text-fg-3" />

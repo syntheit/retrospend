@@ -24,9 +24,16 @@ export function AvatarRow({ fallbackName }: { fallbackName: string }) {
 	return (
 		<div className="flex items-center gap-4">
 			{avatar.isLoading ? (
-				<Skeleton className="size-12 rounded-full" shape="face" />
+				<Skeleton className="size-20 rounded-full md:size-16" shape="face" />
 			) : (
-				<Face imageUrl={avatar.avatarUrl} name={name} size="lg" />
+				// The profile picture is the largest face in the app (mockup):
+				// 64 on desktop, 80 on phones.
+				<Face
+					className="size-20 text-title md:size-16"
+					imageUrl={avatar.avatarUrl}
+					name={name}
+					size="lg"
+				/>
 			)}
 			<div className="min-w-0">
 				<div className="flex flex-wrap gap-2">

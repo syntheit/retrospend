@@ -90,3 +90,13 @@ export function SettingGroup({
 
 /** One width for every select-like control in a settings column (GUIDELINE §5). */
 export const CONTROL_WIDTH = "w-50 max-w-full max-md:w-37.5";
+
+/** The same width as a floor, for a control whose text must not be cut (currency). */
+export const CONTROL_MIN_WIDTH = "min-w-50 max-md:min-w-37.5";
+
+/**
+ * A link in a settings row (mockup .link, GUIDELINE §2.1 accent-strong as
+ * text), drawn like the kit Section's "See all" link.
+ */
+export const TEXT_LINK =
+	"inline-flex items-center gap-1 rounded-ctl font-medium text-accent-strong text-small focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2 can-hover:hover:underline";

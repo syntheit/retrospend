@@ -9,7 +9,7 @@ import { useToast } from "~/components/ui/toast";
 import { formatDateOnly } from "~/lib/date";
 import { api } from "~/trpc/react";
 import { SectionShell } from "../section-shell";
-import { SettingRow, SettingRows } from "../setting-row";
+import { SettingRow, SettingRows, TEXT_LINK } from "../setting-row";
 
 type Kind = "expenses" | "budgets" | "wealth" | "all";
 
@@ -98,12 +98,10 @@ export function DataSection() {
 				{row("wealth", "csv")}
 				{row("all", "zip")}
 				<SettingRow label={t("import")} meta={t("importMeta")}>
-					<Button asChild kind="secondary" size="sm">
-						<Link href="/import">
-							{t("openImport")}
-							<ChevronRight aria-hidden="true" />
-						</Link>
-					</Button>
+					<Link className={TEXT_LINK} href="/import">
+						{t("openImport")}
+						<ChevronRight aria-hidden="true" className="size-4" />
+					</Link>
 				</SettingRow>
 			</SettingRows>
 		</SectionShell>
