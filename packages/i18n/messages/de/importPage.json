@@ -127,7 +127,9 @@
 		"already": "Schon in Aktivität",
 		"noCategory": "Keine Kategorie",
 		"categoryPicker": "Kategorie für {title}",
-		"kindMenu": "{title} importieren als"
+		"kindMenu": "{title} importieren als",
+		"possible": "Vielleicht schon in Aktivität: {title}, {date}",
+		"skipOne": "Überspringen"
 	},
 	"kind": {
 		"expense": "Ausgabe",

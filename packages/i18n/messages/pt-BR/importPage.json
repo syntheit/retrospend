@@ -127,7 +127,9 @@
 		"already": "Já em Atividade",
 		"noCategory": "Sem categoria",
 		"categoryPicker": "Categoria de {title}",
-		"kindMenu": "Importar {title} como"
+		"kindMenu": "Importar {title} como",
+		"possible": "Talvez já esteja em Atividade: {title}, {date}",
+		"skipOne": "Ignorar"
 	},
 	"kind": {
 		"expense": "Gasto",
