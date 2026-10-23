@@ -1,0 +1,45 @@
+{
+	"title": "Projects",
+	"newProject": "New project",
+	"search": "Search projects",
+	"active": "Active",
+	"pastIn": "Past projects from {year}",
+	"unavailable": {
+		"title": "Projects could not load",
+		"hint": "Check your connection and try again.",
+		"retry": "Try again"
+	},
+	"empty": {
+		"title": "No projects yet",
+		"hint": "A project groups the expenses of a trip, a home or a renovation."
+	},
+	"noMatch": {
+		"title": "No projects match",
+		"hint": "Try another name.",
+		"clear": "Clear search"
+	},
+	"toast": {
+		"archived": "Archived {name}",
+		"restored": "Restored {name}",
+		"linkCopied": "Link copied",
+		"deleted": "Deleted {name}",
+		"created": "Created {name}",
+		"failed": "That did not save. Try again."
+	},
+	"new": {
+		"title": "New project",
+		"submit": "Create project",
+		"name": "Name",
+		"namePlaceholder": "Trip, apartment, renovation",
+		"nameMissing": "Enter a name",
+		"note": "Note (optional)",
+		"budget": "Currency and budget",
+		"budgetHint": "The budget is optional. Expenses in other currencies do not count against it.",
+		"people": "People",
+		"justMe": "Just me",
+		"withOthers": "With others"
+	},
+	"errors": {
+		"failed": "That did not save. Try again."
+	}
+}

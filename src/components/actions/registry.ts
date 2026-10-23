@@ -10,6 +10,7 @@ import { CATEGORY_ACTIONS, type CategoryTarget } from "./category";
 import { CURRENCY_ACTIONS, type CurrencyTarget } from "./currency";
 import { DEVICE_ACTIONS, type DeviceTarget } from "./device";
 import { EXPENSE_ACTIONS, type ExpenseTarget } from "./expense";
+import { PAYMENT_ACTIONS, type PaymentTarget } from "./payment";
 import {
 	PAYMENT_METHOD_ACTIONS,
 	type PaymentMethodTarget,
@@ -30,6 +31,7 @@ export type EntityTargets = {
 	apiKey: ApiKeyTarget;
 	device: DeviceTarget;
 	currency: CurrencyTarget;
+	payment: PaymentTarget;
 };
 
 export type Entity = keyof EntityTargets;
@@ -47,6 +49,7 @@ export const ACTIONS: {
 	apiKey: API_KEY_ACTIONS,
 	device: DEVICE_ACTIONS,
 	currency: CURRENCY_ACTIONS,
+	payment: PAYMENT_ACTIONS,
 };
 
 export type {
@@ -55,8 +58,9 @@ export type {
 	CategoryTarget,
 	CurrencyTarget,
 	DeviceTarget,
-	PaymentMethodTarget,
 	ExpenseTarget,
+	PaymentMethodTarget,
+	PaymentTarget,
 	PersonTarget,
 	ProjectTarget,
 	RecurringTarget,

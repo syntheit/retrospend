@@ -5,6 +5,9 @@ import {
 	FigureAudit,
 	type FigureFetcher,
 	type FigureTag,
+	fromV1,
+	fromV1Scoped,
+	parseScopedId,
 	readTag,
 	toleranceFor,
 } from "./figures";
@@ -307,5 +310,60 @@ describe("FigureAudit", () => {
 		expect(problems).toEqual([
 			'activity: spent.month: data-minor "abc" is not an integer',
 		]);
+	});
+});
+
+describe("fromV1", () => {
+	it("reads one-line figures and lists the rest as missing", () => {
+		expect(
+			fromV1({
+				figures: [
+					{ id: "owed.owedToYou", lines: [{ minor: 100, currency: "ARS" }] },
+					{ id: "owed.youOwe", lines: null },
+					{
+						id: "balance.person",
+						lines: [
+							{ minor: 1, currency: "ARS" },
+							{ minor: 2, currency: "BRL" },
+						],
+					},
+				],
+			}),
+		).toEqual({
+			figures: [
+				{ id: "owed.owedToYou", unit: "money", minor: 100, currency: "ARS" },
+			],
+			missing: ["owed.youOwe", "balance.person"],
+		});
+	});
+});
+
+describe("scoped figure tags", () => {
+	it("splits a tag into the figure id and its narrowing", () => {
+		expect(parseScopedId("owed.owedToYou")).toBeNull();
+		expect(parseScopedId("project.total:p1")).toEqual({
+			id: "project.total",
+			projectId: "p1",
+		});
+		expect(parseScopedId("balance.person:p1:user:u9")).toEqual({
+			id: "balance.person",
+			projectId: "p1",
+			personId: "user:u9",
+		});
+	});
+
+	it("compares on the tag's currency, zero when the figure has no line in it", () => {
+		const lines = [
+			{ minor: 1, currency: "ARS" },
+			{ minor: 2, currency: "BRL" },
+		];
+		expect(fromV1Scoped("t", lines, "BRL").figures).toEqual([
+			{ id: "t", unit: "money", minor: 2, currency: "BRL" },
+		]);
+		expect(fromV1Scoped("t", [], "ARS").figures).toEqual([
+			{ id: "t", unit: "money", minor: 0, currency: "ARS" },
+		]);
+		expect(fromV1Scoped("t", null, "ARS").missing).toEqual(["t"]);
+		expect(fromV1Scoped("t", lines).missing).toEqual(["t"]);
 	});
 });

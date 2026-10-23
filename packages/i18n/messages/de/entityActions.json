@@ -66,6 +66,30 @@
 		},
 		"archive": {
 			"label": "Archivieren"
+		},
+		"restore": {
+			"label": "Wiederherstellen"
+		},
+		"delete": {
+			"label": "Löschen",
+			"confirmTitle": "{name} löschen?",
+			"confirmBody": "Das Projekt verschwindet. Seine Ausgaben bleiben, außerhalb jedes Projekts. Das lässt sich nicht rückgängig machen.",
+			"confirmButton": "Projekt löschen"
+		},
+		"addPerson": {
+			"label": "Person hinzufügen"
+		},
+		"exportCsv": {
+			"label": "Ausgaben exportieren (CSV)"
+		},
+		"exportPlan": {
+			"label": "Wer zahlt wem exportieren (CSV)"
+		},
+		"exportPdf": {
+			"label": "PDF exportieren"
+		},
+		"settings": {
+			"label": "Einstellungen"
 		}
 	},
 	"account": {
@@ -191,6 +215,17 @@
 		},
 		"history": {
 			"label": "Kursverlauf ansehen"
+		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Bestätigen"
+		},
+		"notReceived": {
+			"label": "Nicht erhalten",
+			"confirmTitle": "Zahlung von {name} nicht erhalten?",
+			"confirmBody": "Die Zahlung wird als nicht erhalten markiert und dein Saldo bleibt, wie er war.",
+			"confirmButton": "Nicht erhalten"
 		}
 	}
 }
