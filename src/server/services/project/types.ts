@@ -9,6 +9,8 @@ export interface ProjectViewer {
 /** A signed-in user acting on a project. */
 export interface ProjectActor {
 	userId: string;
+	/** The request's zone; it wins over the stored one (resolveTimeZone). */
+	timeZone?: string;
 }
 
 export type ProjectRoleName = "ORGANIZER" | "EDITOR" | "CONTRIBUTOR" | "VIEWER";

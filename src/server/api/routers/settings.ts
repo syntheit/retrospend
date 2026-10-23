@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SUPPORTED_LOCALES } from "~/i18n/locales";
 import {
 	createTRPCRouter,
 	protectedProcedure,
@@ -13,7 +14,6 @@ import {
 	getAppSettings,
 	isInviteOnlyEnabled,
 } from "~/server/services/settings";
-import { SUPPORTED_LOCALES } from "~/i18n/locales";
 
 export const settingsRouter = createTRPCRouter({
 	getGeneral: protectedProcedure.query(async ({ ctx }) => {
@@ -57,6 +57,8 @@ export const settingsRouter = createTRPCRouter({
 				defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]).optional(),
 				aiMode: z.enum(["LOCAL", "EXTERNAL"]).optional(),
 				language: z.enum(SUPPORTED_LOCALES).optional(),
+				// Checked against the runtime's zone list by the service.
+				timeZone: z.string().min(1).max(64).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -70,6 +72,7 @@ export const settingsRouter = createTRPCRouter({
 				defaultCurrency: updated.defaultCurrency,
 				categoryClickBehavior: updated.categoryClickBehavior,
 				currencySymbolStyle: updated.currencySymbolStyle,
+				timeZone: updated.timeZone,
 			};
 		}),
 

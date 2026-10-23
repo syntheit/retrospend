@@ -36,6 +36,7 @@ import {
 	reportRefundWhere,
 	reportSpendingWhere,
 } from "../spending";
+import { resolveTimeZone } from "../user-time-zone";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
 
@@ -247,8 +248,8 @@ export async function spentByCurrency(
 
 /**
  * Figure `spent`: this fiscal month's spending per currency. The month uses
- * the user's start day in the server zone, the app's default when a request
- * carries no zone; the user's own zone is not stored yet.
+ * the user's start day in their stored zone (resolveTimeZone): a figure read
+ * has no request, so the device's zone is not known here.
  */
 export const spentFigure: FigureDefinition<FigureDb> = {
 	id: "spent",
@@ -256,12 +257,14 @@ export const spentFigure: FigureDefinition<FigureDb> = {
 	compute: async (db, scope) => {
 		const user = await db.user.findUnique({
 			where: { id: scope.userId },
-			select: { fiscalMonthStartDay: true },
+			select: { fiscalMonthStartDay: true, timeZone: true },
 		});
 		const startDay = user?.fiscalMonthStartDay ?? 1;
+		const zone = resolveTimeZone(user?.timeZone);
 		const month = getFiscalMonthRange(
-			getCurrentFiscalMonth(new Date(), startDay),
+			getCurrentFiscalMonth(new Date(), startDay, zone),
 			startDay,
+			zone,
 		);
 		return spentByCurrency(db, {
 			userId: scope.userId,

@@ -130,6 +130,8 @@
 		"themeDark": "Dunkel",
 		"themeSystem": "System",
 		"language": "Sprache",
+		"timeZone": "Zeitzone",
+		"timeZoneMeta": "Gilt, wenn dein Gerät keine eigene mitteilt",
 		"hideBalances": "Salden unter Vermögen ausblenden",
 		"hideBalancesMeta": "Bis du auf das Auge tippst",
 		"chartTap": "Tippen auf eine Kategorie im Diagramm",

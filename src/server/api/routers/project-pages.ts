@@ -39,7 +39,12 @@ export const projectPageProcedures = {
 		.input(projectInput.byId)
 		.query(async ({ ctx, input }) => {
 			await roleOf(ctx, input.id, "VIEWER");
-			return readProjectPage(ctx.db, input.id, ctx.session.user.id);
+			return readProjectPage(
+				ctx.db,
+				input.id,
+				ctx.session.user.id,
+				ctx.timeZone,
+			);
 		}),
 
 	/** What a membership date change moves (nothing already saved) before Save. */
