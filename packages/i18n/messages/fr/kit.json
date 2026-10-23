@@ -43,5 +43,14 @@
 	},
 	"button": {
 		"loading": "Chargement"
+	},
+	"changes": {
+		"title": "Ce que ça change",
+		"titleDone": "Ce qui a changé",
+		"loading": "Vérification de ce qui change",
+		"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
+		"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
+		"noneChange": "Aucun changement : {list}.",
+		"unavailable": "Impossible de vérifier {list}."
 	}
 }

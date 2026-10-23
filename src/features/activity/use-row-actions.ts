@@ -26,7 +26,10 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	const modal = useExpenseModal();
 	const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 	const refresh = useCallback(() => utils.expense.listV2.invalidate(), [utils]);
-	const deletePersonal = api.expense.deleteExpense.useMutation();
+	// Personal rows go through the money mutation, which returns a signed
+	// restore token, so the toast's Undo brings back the same row (R15).
+	const deletePersonal = api.entry.expense.delete.save.useMutation();
+	const restorePersonal = api.entry.expense.restore.save.useMutation();
 	const deleteShared = api.sharedTransaction.delete.useMutation();
 
 	const open = useCallback(
@@ -59,17 +62,35 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 				const r = row(target);
 				if (!r) return;
 				try {
-					if (r.source === "personal")
-						await deletePersonal.mutateAsync({ id: r.entityId });
-					else await deleteShared.mutateAsync({ id: r.entityId });
-					toast.saved(t("deleted", { name: target.name }));
+					if (r.source === "personal") {
+						const out = await deletePersonal.mutateAsync({ id: r.entityId });
+						toast.saved(t("deleted", { name: target.name }), {
+							undo: async () => {
+								await restorePersonal.mutateAsync({ token: out.value.restore });
+								await refresh();
+							},
+						});
+					} else {
+						await deleteShared.mutateAsync({ id: r.entityId });
+						toast.saved(t("deleted", { name: target.name }));
+					}
 				} catch (error) {
 					toast.failed(t(`error.${saveError(error)}`));
 				}
 				await refresh();
 			},
 		};
-	}, [byId, open, modal, deletePersonal, deleteShared, refresh, toast, t]);
+	}, [
+		byId,
+		open,
+		modal,
+		deletePersonal,
+		restorePersonal,
+		deleteShared,
+		refresh,
+		toast,
+		t,
+	]);
 
 	const deleteOnly = useMemo(
 		() => ({ delete: handlers.delete }),

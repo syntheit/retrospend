@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { PersonPicker } from "~/components/pickers/person-picker";
 import { PickerPopover } from "~/components/pickers/picker-popover";
 import { Face } from "~/components/ui/avatar-face";
-import { FilterChip } from "~/components/ui/chip";
+import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { splitKey } from "~/lib/shared-split-input";
 import { api } from "~/trpc/react";
 import type { EntryPerson } from "../types";
@@ -96,11 +96,7 @@ export function WithField(p: {
 		</FilterChip>
 	);
 	return (
-		<div
-			aria-label={t("with")}
-			className="flex flex-wrap items-center gap-2"
-			role="group"
-		>
+		<FilterChips className="max-md:flex-wrap" label={t("with")}>
 			{chip(
 				{
 					participantType: "user",
@@ -159,6 +155,6 @@ export function WithField(p: {
 					value={p.others.map(splitKey)}
 				/>
 			</PickerPopover>
-		</div>
+		</FilterChips>
 	);
 }

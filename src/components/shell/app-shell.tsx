@@ -23,7 +23,6 @@ import { type ShellActions, ShellActionsContext } from "./shell-context";
 import { shellShortcut } from "./shortcuts";
 import { ShortcutsSheet } from "./shortcuts-sheet";
 import { ShellSidebar } from "./sidebar";
-import { VerifyEmailNotice } from "./verify-email-notice";
 
 type Layer = "palette" | "shortcuts" | "account" | "notifications" | "feedback";
 
@@ -151,22 +150,21 @@ export function AppShell({
 	return (
 		<ShellActionsContext value={actions}>
 			<SidebarProvider
-				className="h-svh overflow-hidden bg-bg text-fg"
+				className="bg-bg text-fg h-svh overflow-hidden"
 				style={PROVIDER_STYLE}
 			>
 				<LegacyMenuBridge onOpen={actions.openAccountSheet} />
 				<a
-					className="sr-only rounded-ctl bg-surface px-4 py-2 font-medium text-body focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:outline-2 focus:outline-brand"
+					className="rounded-ctl bg-surface text-body focus:outline-brand sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:outline-2"
 					href="#main-content"
 				>
 					{t("skipToContent")}
 				</a>
 				{desktop && <ShellSidebar badges={badges} className="hidden md:flex" />}
 				<main
-					className="flex min-w-0 flex-1 flex-col overflow-hidden bg-bg pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:[&_[data-sidebar=trigger]]:hidden md:[&_[data-sidebar=trigger]+[data-orientation=vertical]]:hidden"
+					className="bg-bg flex min-w-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:[&_[data-sidebar=trigger]]:hidden md:[&_[data-sidebar=trigger]+[data-orientation=vertical]]:hidden"
 					id="main-content"
 				>
-					<VerifyEmailNotice />
 					<PageTransition>{children}</PageTransition>
 				</main>
 				<BottomNav badges={badges} className="md:hidden" />

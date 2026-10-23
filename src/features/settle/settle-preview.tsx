@@ -47,7 +47,7 @@ function Rates({ s, allocation }: { s: SettleState; allocation: Allocation }) {
 				{t("rate", { currency: currencies.join(", ") })}
 			</span>
 			{c.rateTypes.length > 1 && (
-				<FilterChips>
+				<FilterChips label={t("rate", { currency: currencies.join(", ") })}>
 					{c.rateTypes.map((type) => (
 						<FilterChip
 							key={type}

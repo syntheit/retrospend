@@ -7,7 +7,6 @@ import type { RecurringTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
-import { TABLE_LOOK } from "~/components/table/table-style";
 import { Button } from "~/components/ui/button";
 import { CategoryTile } from "~/components/ui/category-badge";
 import { StatusDot } from "~/components/ui/status-dot";
@@ -177,48 +176,44 @@ function Row({ r, p }: { r: RecurringItemDTO; p: Props }) {
 export function RecurringTable(p: Props) {
 	const t = useTranslations("activityRecurring");
 	return (
-		<div className={cn(TABLE_LOOK, "border-line overflow-x-auto border")}>
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>{t("table.name")}</TableHead>
-						<TableHead className="w-44">{t("table.due")}</TableHead>
-						<TableHead className="w-28">{t("table.repeats")}</TableHead>
-						<TableHead className="w-44 text-right">
-							{t("table.amount")}
-						</TableHead>
-						<TableHead className="w-20 text-center">
-							{t("table.autoPay")}
-						</TableHead>
-						<TableHead className="w-36">
-							<span className="sr-only">{t("table.actions")}</span>
-						</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{p.groups.map((g) => (
-						<Fragment key={g.id}>
-							<TableRow
-								className="can-hover:hover:bg-transparent"
-								data-group={g.id}
+		<Table look="panel">
+			<TableHeader>
+				<TableRow>
+					<TableHead>{t("table.name")}</TableHead>
+					<TableHead className="w-44">{t("table.due")}</TableHead>
+					<TableHead className="w-28">{t("table.repeats")}</TableHead>
+					<TableHead className="w-44 text-right">{t("table.amount")}</TableHead>
+					<TableHead className="w-20 text-center">
+						{t("table.autoPay")}
+					</TableHead>
+					<TableHead className="w-36">
+						<span className="sr-only">{t("table.actions")}</span>
+					</TableHead>
+				</TableRow>
+			</TableHeader>
+			<TableBody>
+				{p.groups.map((g) => (
+					<Fragment key={g.id}>
+						<TableRow
+							className="can-hover:hover:bg-transparent"
+							data-group={g.id}
+						>
+							<TableCell
+								className="bg-bg text-fg-2 text-small font-medium"
+								colSpan={6}
 							>
-								<TableCell
-									className="bg-bg text-fg-2 text-small font-medium"
-									colSpan={6}
-								>
-									{t(`group.${g.id}`)}
-									<span className="text-fg-3 ml-2 tabular-nums">
-										{g.items.length}
-									</span>
-								</TableCell>
-							</TableRow>
-							{g.items.map((r) => (
-								<Row key={r.id} p={p} r={r} />
-							))}
-						</Fragment>
-					))}
-				</TableBody>
-			</Table>
-		</div>
+								{t(`group.${g.id}`)}
+								<span className="text-fg-3 ml-2 tabular-nums">
+									{g.items.length}
+								</span>
+							</TableCell>
+						</TableRow>
+						{g.items.map((r) => (
+							<Row key={r.id} p={p} r={r} />
+						))}
+					</Fragment>
+				))}
+			</TableBody>
+		</Table>
 	);
 }

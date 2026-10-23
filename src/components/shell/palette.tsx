@@ -10,8 +10,8 @@ import {
 	Repeat,
 	Tags,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { useExpenseModal } from "~/components/expense-modal-provider";
 import { Money } from "~/components/money/money";
@@ -28,6 +28,8 @@ import {
 import { ADD_ACTIONS, projectHref, settingsHref } from "~/lib/nav";
 import { api } from "~/trpc/react";
 import { goToItems, RECENT_EXPENSES, RECENT_PROJECTS } from "./palette-items";
+import { SearchGroups } from "./palette-search";
+import { SuggestionsGroup } from "./palette-suggestions";
 import { useShellActions } from "./shell-context";
 import { usePinnedProjects } from "./sidebar";
 
@@ -58,11 +60,11 @@ export function PaletteItem({
 			onSelect={onSelect}
 			value={value}
 		>
-			<span className="flex size-6 shrink-0 items-center justify-center text-fg-2 [&_svg]:size-4!">
+			<span className="text-fg-2 flex size-6 shrink-0 items-center justify-center [&_svg]:size-4!">
 				{lead}
 			</span>
 			<span className="min-w-0 flex-1 truncate">{label}</span>
-			{small && <span className="shrink-0 text-fg-3 text-meta">{small}</span>}
+			{small && <span className="text-fg-3 text-meta shrink-0">{small}</span>}
 		</CommandItem>
 	);
 }
@@ -101,7 +103,7 @@ function RecentGroup({
 					label={p.name}
 					lead={
 						<ProjectVisual
-							className="size-5 rounded-ctl"
+							className="rounded-ctl size-5"
 							imagePath={p.imagePath}
 							projectName={p.name}
 							size="xs"
@@ -128,9 +130,10 @@ function RecentGroup({
 
 /**
  * The command palette (Cmd+K, account.html): Go to, Recent and Commands
- * from the one nav definition. Typed results for people, projects, accounts
- * and expenses, and the inline currency converter, are not built yet
- * (docs/ui/GAPS.md); the palette shows nothing in their place.
+ * from the one nav definition, then typed results for people, projects,
+ * categories and expenses from the one search read, and Suggestions from
+ * Needs you. Accounts and the inline currency converter wait for their
+ * reads (docs/ui/GAPS.md).
  */
 export function ShellPalette({
 	open,
@@ -161,7 +164,7 @@ export function ShellPalette({
 
 	return (
 		<CommandDialog
-			className="top-[14%] max-w-140 [&_[data-slot=command-input-wrapper]]:border-line translate-y-0 gap-0 rounded-panel border-line bg-surface p-0 text-fg shadow-menu sm:max-w-140"
+			className="[&_[data-slot=command-input-wrapper]]:border-line rounded-panel border-line bg-surface text-fg shadow-menu top-[14%] max-w-140 translate-y-0 gap-0 p-0 sm:max-w-140"
 			description={t("palette.description")}
 			loop
 			onOpenChange={(next) => (next ? onOpenChange(true) : close())}
@@ -171,17 +174,17 @@ export function ShellPalette({
 		>
 			<div className="relative">
 				<CommandInput
-					className="h-12 pr-12 text-body placeholder:text-fg-3"
+					className="text-body placeholder:text-fg-3 h-12 pr-12"
 					onValueChange={setSearch}
 					placeholder={t("palette.placeholder")}
 					value={search}
 				/>
-				<kbd className="absolute top-1/2 right-4 -translate-y-1/2 rounded-ctl border border-line-strong px-1 font-mono text-fg-3 text-meta">
+				<kbd className="rounded-ctl border-line-strong text-fg-3 text-meta absolute top-1/2 right-4 -translate-y-1/2 border px-1 font-mono">
 					Esc
 				</kbd>
 			</div>
 			<CommandList className="max-h-[min(60vh,28rem)] p-1">
-				<CommandEmpty className="py-6 text-center text-fg-3 text-small">
+				<CommandEmpty className="text-fg-3 text-small py-6 text-center">
 					{t("palette.noResults")}
 				</CommandEmpty>
 				<CommandGroup className={PALETTE_GROUP} heading={t("palette.goTo")}>
@@ -204,6 +207,7 @@ export function ShellPalette({
 					})}
 				</CommandGroup>
 				{!typed && <RecentGroup go={go} open={open} run={run} />}
+				{!typed && <SuggestionsGroup go={go} open={open} />}
 				<CommandGroup className={PALETTE_GROUP} heading={t("palette.commands")}>
 					{ADD_ACTIONS.map((a) => {
 						const Icon = a.icon;
@@ -247,8 +251,11 @@ export function ShellPalette({
 						value={`command shortcuts ${t("account.shortcuts")}`}
 					/>
 				</CommandGroup>
+				{typed && (
+					<SearchGroups go={go} open={open} run={run} search={search} />
+				)}
 			</CommandList>
-			<div className="flex gap-4 border-line border-t px-4 py-2 text-fg-3 text-meta">
+			<div className="border-line text-fg-3 text-meta flex gap-4 border-t px-4 py-2">
 				<span className="flex items-center gap-1">
 					<ArrowUpDown aria-hidden="true" className="size-3.5" />
 					{t("palette.move")}

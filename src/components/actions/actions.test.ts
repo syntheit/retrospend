@@ -29,6 +29,12 @@ const all = Object.fromEntries(
 	ACTIONS.expense.map((a) => [a.id, vi.fn()]),
 ) as ActionHandlers<ExpenseTarget>;
 
+/** Choices for the pick actions (a category, a project). */
+const PICKS = {
+	category: [{ id: "c1", label: "Groceries" }],
+	project: [{ id: "p1", label: "Viaje a Florianópolis" }],
+};
+
 const ids = (entries: ReturnType<typeof menuEntries<ExpenseTarget>>) =>
 	entries.map((e) => (e.kind === "item" ? e.action.id : "|"));
 
@@ -59,16 +65,40 @@ describe("action registry", () => {
 
 describe("menu entries", () => {
 	it("your own unsettled expense: edit, split, category, project, delete after a separator", () => {
-		expect(ids(menuEntries(ACTIONS.expense, expense(), all))).toEqual([
+		expect(ids(menuEntries(ACTIONS.expense, expense(), all, PICKS))).toEqual([
 			"open",
 			"edit",
 			"split",
 			"category",
 			"project",
 			"duplicate",
+			"recur",
+			"copy",
 			"|",
 			"delete",
 		]);
+	});
+
+	it("a pick shows only with its choices, and never runs on a letter", () => {
+		const out = ids(menuEntries(ACTIONS.expense, expense(), all));
+		expect(out).not.toContain("category");
+		expect(out).not.toContain("project");
+		const category = ACTIONS.expense.find((a) => a.id === "category");
+		expect(category?.pick).toBe(true);
+		expect(category?.kbd).toBeUndefined();
+	});
+
+	it("someone else's split waiting for you: Accept split and Reject split", () => {
+		const out = ids(
+			menuEntries(
+				ACTIONS.expense,
+				expense({ mine: false, shared: true, waiting: true }),
+				all,
+			),
+		);
+		expect(out).toContain("accept");
+		expect(out).toContain("reject");
+		expect(out).not.toContain("recur");
 	});
 
 	it("someone else's expense: Ask to fix instead of Edit, no Delete", () => {

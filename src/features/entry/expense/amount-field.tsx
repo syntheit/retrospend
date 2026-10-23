@@ -129,6 +129,7 @@ export function AmountField(p: {
 				onCurrencyChange={
 					d.editing?.source === "shared" ? undefined : p.onCurrency
 				}
+				operators
 				rates={rates}
 				rows={<RateRows {...p} noRate={noRate} />}
 				showErrors={p.showErrors}

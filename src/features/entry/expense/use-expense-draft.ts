@@ -11,7 +11,7 @@ import {
 	splitMembers,
 } from "~/lib/shared-split-input";
 import { api } from "~/trpc/react";
-import { parseRateText } from "../rate-text";
+import { readRateText } from "../rate-text";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import type { CustomBy, ExpenseDraft, SplitChoice } from "./draft";
@@ -96,7 +96,8 @@ export function useExpenseDraft(
 		pickCustom: () => set({ custom: true }),
 		setCustomText: (text: string) => {
 			// A rate, not home money: up to 12 decimals (EUR 1.0834 into USD, anything into JPY).
-			set({ customText: text, customRate: parseRateText(text, locale) });
+			const read = readRateText(text, locale);
+			set({ customText: read.text, customRate: read.rate });
 		},
 		toggleYou: () => set({ youIncluded: !d.youIncluded, ...resetSplit }),
 		togglePerson: (p: EntryPerson) => {

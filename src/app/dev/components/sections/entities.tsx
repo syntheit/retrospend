@@ -42,13 +42,20 @@ function WithActions<E extends Entity>({
 }
 
 function People({ variant }: { variant: RowVariant }) {
+	const toast = useToast();
 	return (
 		<RowList variant={variant}>
 			{PEOPLE.map((p) => (
 				<WithActions
 					entity="person"
 					key={p.id}
-					row={(a) => <PersonRow actions={a} person={p} />}
+					row={(a) => (
+						<PersonRow
+							actions={a}
+							onSettle={() => toast.info(`settle: ${p.name}`)}
+							person={p}
+						/>
+					)}
 					target={{ id: p.id, name: p.name }}
 				/>
 			))}

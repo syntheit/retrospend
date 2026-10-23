@@ -6,20 +6,20 @@ import * as React from "react";
 import { Drawer } from "vaul";
 
 import { Button } from "~/components/ui/button";
-import { Tip } from "~/components/ui/tooltip";
 import {
 	DETENT_SNAP,
 	detentOf,
 	keyboardInset,
-	SNAP_POINTS,
 	type SheetDetent,
 	type SheetSubmitResult,
+	SNAP_POINTS,
 } from "~/components/ui/sheet-behavior";
 import {
 	type SheetProps,
 	type SheetState,
 	useSheetState,
 } from "~/components/ui/sheet-state";
+import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/utils";
 
@@ -39,7 +39,7 @@ export function Sheet(props: SheetProps) {
 	const phone = useIsMobile();
 	const depth = React.useContext(SheetDepth);
 	const s = useSheetState(props);
-	const body = <SheetBody {...props} depth={depth} state={s} />;
+	const body = <SheetBody {...props} depth={depth} phone={phone} state={s} />;
 	return phone ? (
 		<PhoneSheet {...props} nested={depth > 0} state={s}>
 			{body}
@@ -51,27 +51,53 @@ export function Sheet(props: SheetProps) {
 	);
 }
 
-function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
+function SheetBody(
+	props: SheetProps & { depth: number; phone: boolean; state: SheetState },
+) {
 	const { state: s } = props;
+	const close = (
+		<Tip content={s.t("close")}>
+			<Button
+				aria-label={s.t("close")}
+				icon
+				kind="ghost"
+				onClick={s.requestClose}
+			>
+				<XIcon />
+			</Button>
+		</Tip>
+	);
+	// Phone web, ADD-EXPENSE-R2: close, the title centered, the verb in the header.
+	const verb = props.phone && props.headerSubmit;
 	return (
 		<SheetDepth.Provider value={props.depth + 1}>
 			<div className="flex items-center gap-2 px-6 pt-4 pb-2 max-md:px-4 max-md:pt-2">
-				<DialogPrimitive.Title className="min-w-0 flex-1 truncate text-fg text-section">
+				{verb ? close : null}
+				<DialogPrimitive.Title
+					className={cn(
+						"text-fg text-section min-w-0 flex-1 truncate",
+						verb && "text-center",
+					)}
+				>
 					{props.title}
 				</DialogPrimitive.Title>
-				<Tip content={s.t("close")}>
+				{verb ? (
 					<Button
-						aria-label={s.t("close")}
-						onClick={s.requestClose}
-						icon
-						kind="ghost"
+						data-sheet-submit=""
+						disabled={props.submitDisabled}
+						kind="primary"
+						loading={s.busy}
+						onClick={() => void s.submit()}
+						size="sm"
 					>
-						<XIcon />
+						{props.headerSubmit}
 					</Button>
-				</Tip>
+				) : (
+					close
+				)}
 			</div>
 			{props.description ? (
-				<DialogPrimitive.Description className="px-6 pb-2 text-fg-2 text-small max-md:px-4">
+				<DialogPrimitive.Description className="text-fg-2 text-small px-6 pb-2 max-md:px-4">
 					{props.description}
 				</DialogPrimitive.Description>
 			) : null}
@@ -82,15 +108,15 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 				{props.children}
 			</div>
 			{s.error ? (
-				<div className="px-6 py-2 text-small max-md:px-4" role="alert">
+				<div className="text-small px-6 py-2 max-md:px-4" role="alert">
 					<p className="text-danger">{s.error.text}</p>
 					{s.error.detail ? (
 						<p className="text-fg-3">{s.error.detail}</p>
 					) : null}
 				</div>
 			) : null}
-			{props.footer === false ? null : (
-				<div className="flex items-center justify-end gap-2 border-line border-t px-6 py-3 max-md:px-4 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+			{props.footer === false || (verb && props.footer === undefined) ? null : (
+				<div className="border-line flex items-center justify-end gap-2 border-t px-6 py-3 max-md:px-4 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
 					{props.footer ?? (
 						<>
 							<Button kind="secondary" onClick={s.requestClose}>
@@ -98,8 +124,8 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 							</Button>
 							{props.submitLabel ? (
 								<Button
-									disabled={props.submitDisabled}
 									data-sheet-submit=""
+									disabled={props.submitDisabled}
 									kind="primary"
 									loading={s.busy}
 									onClick={() => void s.submit()}
@@ -184,17 +210,17 @@ function PhoneSheet(props: FrameProps & { nested: boolean }) {
 			snapPoints={SNAP_POINTS}
 		>
 			<Drawer.Portal>
-				<Drawer.Overlay className="fixed inset-0 z-50 bg-scrim" />
+				<Drawer.Overlay className="bg-scrim fixed inset-0 z-50" />
 				<Drawer.Content
 					{...s.layer}
 					className={cn(
-						"fixed inset-x-0 bottom-0 z-50 flex h-dvh flex-col rounded-t-panel border-line-strong border-t bg-surface text-fg shadow-menu outline-none focus-visible:ring-2 focus-visible:ring-brand",
+						"rounded-t-panel border-line-strong bg-surface text-fg shadow-menu focus-visible:ring-brand fixed inset-x-0 bottom-0 z-50 flex h-dvh flex-col border-t outline-none focus-visible:ring-2",
 						props.className,
 					)}
 					data-detent={detentOf(snap)}
 				>
 					<div
-						className="flex h-[calc(100%-var(--snap-point-height,0px)-var(--sheet-keyboard,0px))] flex-col transition-[height] duration-(--t-sheet) ease-land"
+						className="ease-land flex h-[calc(100%-var(--snap-point-height,0px)-var(--sheet-keyboard,0px))] flex-col transition-[height] duration-(--t-sheet)"
 						onTransitionEnd={() => {
 							if (keyboard > 0) revealFocused(column.current);
 						}}
@@ -203,7 +229,7 @@ function PhoneSheet(props: FrameProps & { nested: boolean }) {
 							{ "--sheet-keyboard": `${keyboard}px` } as React.CSSProperties
 						}
 					>
-						<Drawer.Handle className="my-2 h-1 w-10 shrink-0 rounded-chip bg-line-strong" />
+						<Drawer.Handle className="rounded-chip bg-line-strong my-2 h-1 w-10 shrink-0" />
 						{props.children}
 					</div>
 				</Drawer.Content>
@@ -220,11 +246,11 @@ function DesktopSheet(props: FrameProps) {
 			open={props.open}
 		>
 			<DialogPrimitive.Portal>
-				<DialogPrimitive.Overlay className="data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-scrim duration-(--t-menu) data-[state=closed]:animate-out data-[state=open]:animate-in" />
+				<DialogPrimitive.Overlay className="data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 bg-scrim data-[state=closed]:animate-out data-[state=open]:animate-in fixed inset-0 z-50 duration-(--t-menu)" />
 				<DialogPrimitive.Content
 					{...s.layer}
 					className={cn(
-						"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-48px)] w-[calc(100%-32px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-panel border border-line bg-surface text-fg shadow-menu outline-none duration-(--t-menu) ease-land focus-visible:ring-2 focus-visible:ring-brand data-[state=closed]:animate-out data-[state=open]:animate-in",
+						"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-panel border-line bg-surface text-fg shadow-menu ease-land focus-visible:ring-brand data-[state=closed]:animate-out data-[state=open]:animate-in fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-48px)] w-[calc(100%-32px)] -translate-x-1/2 -translate-y-1/2 flex-col border duration-(--t-menu) outline-none focus-visible:ring-2",
 						props.wide ? "max-w-3xl" : "max-w-xl",
 						props.className,
 					)}

@@ -78,5 +78,18 @@
 		"tourist": "Tourist",
 		"market": "Market",
 		"custom": "Custom"
+	},
+	"bulk": {
+		"categorize": "Categorize",
+		"export": "Export CSV",
+		"delete": "Delete",
+		"moved": "Moved {count, plural, one {# expense} other {# expenses}} to {name}",
+		"exported": "Exported {count, plural, one {# row} other {# rows}} to CSV",
+		"deleted": "Deleted {count, plural, one {# expense} other {# expenses}}",
+		"failed": "Couldn't change the selected expenses",
+		"confirmTitle": "Delete {count, plural, one {# expense} other {# expenses}}?",
+		"confirmBody": "They leave your spending and every total they were in. You can undo it.",
+		"confirmButton": "Delete expenses",
+		"deletedSome": "Deleted {count, plural, one {# expense} other {# expenses}}. {left, plural, one {# couldn't be deleted} other {# couldn't be deleted}}"
 	}
 }

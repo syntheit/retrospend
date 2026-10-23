@@ -2,11 +2,11 @@
 
 import { CloudOff } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { Skeleton, SkeletonRows } from "~/components/ui/skeleton";
-import { PageFrame } from "~/features/wealth/page-frame";
 
 /** The glance in place while it loads: label, hero, line. */
 export function GlanceSkeleton() {

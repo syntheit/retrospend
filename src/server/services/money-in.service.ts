@@ -86,7 +86,8 @@ export async function recurringEntryData(
 		db,
 		await loadRateContext(db, template.userId),
 		{
-			amount: Number(amount),
+			// Decimal text keeps the home amount exact (a Decimal's toString never rounds).
+			amount: typeof amount === "object" ? amount.toFixed() : amount,
 			currency: template.currency,
 			date: template.nextDueDate,
 		},

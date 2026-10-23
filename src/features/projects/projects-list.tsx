@@ -40,6 +40,15 @@ function toRow(p: ListItem, me: string): ProjectVM {
 			? figureFor("project.member.balance", p.id, me)
 			: figureFor("project.total", p.id),
 		budgetUsed: p.budget ? { basis: p.budget.used, over: p.budget.over } : null,
+		// Desktop columns (projects.html), each in the project's currency.
+		// Other currencies wait for a project-currency read (GAPS).
+		columns: {
+			total: lineIn(p.total, p.currency),
+			totalFigure: figureFor("project.total", p.id),
+			share: p.solo ? null : lineIn(p.myShare, p.currency),
+			shareFigure: figureFor("project.member.share", p.id, me),
+			budgetLeft: p.budget?.left ?? null,
+		},
 	};
 }
 

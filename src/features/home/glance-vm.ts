@@ -17,18 +17,29 @@ export const GLANCE_HREF = {
 	owedToYou: "/people",
 	youOwe: "/people",
 	netWorth: "/wealth",
+	moneyIn: "/activity?kind=in",
+	dollarToday: "/currencies",
 } as const;
 
 /**
- * The line under the hero: the budget's state, or no budget. Currencies a
- * Needs you item already names are not named again (a fact appears once).
+ * The line under the hero: the budget's state, or without a budget the pace
+ * in words against last month by the same day (the server's verdict), or
+ * "No budget" while there is no pace yet. Currencies a Needs you item
+ * already names are not named again (a fact appears once).
  */
 export function lineOf(
 	dto: GlanceDTO,
 	namedElsewhere: readonly string[] = [],
 ): GlanceLine {
 	const budget = dto.budget;
-	if (!budget) return { kind: "noBudget" };
+	if (!budget)
+		return dto.pace.fasterThanLast === null
+			? { kind: "noBudget" }
+			: {
+					kind: "pace",
+					faster: dto.pace.fasterThanLast,
+					lastMonth: dto.lastPeriod.from,
+				};
 	if (budget.state === "incomplete")
 		return {
 			kind: "unavailable",
@@ -104,6 +115,8 @@ export function toGlanceVM(
 			...row("owedToYou", dto.owedToYou, options.faces?.owedToYou),
 			...row("youOwe", dto.youOwe, options.faces?.youOwe),
 			...row("netWorth", dto.netWorth),
+			// Just track: money in beside spent (only sent without a budget part).
+			...(dto.moneyIn ? row("moneyIn", dto.moneyIn) : []),
 		],
 	};
 }

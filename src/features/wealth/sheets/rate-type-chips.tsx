@@ -24,7 +24,7 @@ export function RateTypeChips({
 	return (
 		<div className="flex flex-col gap-2">
 			<span className="text-fg-2 text-small">{t("valuedAtLabel")}</span>
-			<FilterChips>
+			<FilterChips label={t("valuedAtLabel")}>
 				{types.map((type) => (
 					<FilterChip
 						key={type}

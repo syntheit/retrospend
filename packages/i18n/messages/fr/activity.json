@@ -78,5 +78,18 @@
 		"tourist": "Touriste",
 		"market": "Marché",
 		"custom": "Personnalisé"
+	},
+	"bulk": {
+		"categorize": "Catégoriser",
+		"export": "Exporter en CSV",
+		"delete": "Supprimer",
+		"moved": "{count, plural, one {# dépense déplacée} other {# dépenses déplacées}} vers {name}",
+		"exported": "{count, plural, one {# ligne exportée} other {# lignes exportées}} en CSV",
+		"deleted": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}",
+		"failed": "Impossible de modifier les dépenses sélectionnées",
+		"confirmTitle": "Supprimer {count, plural, one {# dépense} other {# dépenses}} ?",
+		"confirmBody": "Elles sortent de vos dépenses et de chaque total où elles comptaient. Vous pouvez annuler.",
+		"confirmButton": "Supprimer les dépenses",
+		"deletedSome": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}. {left, plural, one {# n'a pas pu être supprimée} other {# n'ont pas pu être supprimées}}"
 	}
 }

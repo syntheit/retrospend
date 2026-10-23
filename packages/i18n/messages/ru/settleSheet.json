@@ -50,14 +50,12 @@
 		"final": "Окончательно: {name} не в Retrospend."
 	},
 	"changes": {
-		"title": "Что изменится",
-		"doneTitle": "Что изменилось",
 		"balance": "Ваш баланс с {name} ({currency})",
 		"owedToYou": "Вам должны, все люди",
 		"youOwe": "Вы должны, все люди",
 		"yourBalance": "ваш баланс с {name}",
-		"nothingElse": "Проверено, без изменений: {list}.",
-		"unavailable": "Не удалось проверить: {list}."
+		"owedToYouInline": "долги вам",
+		"youOweInline": "ваши долги"
 	},
 	"toast": {
 		"confirmed": "Платёж от {name} подтверждён. Ничего не посчитано дважды",
@@ -68,5 +66,6 @@
 		"title": "Платёж записан",
 		"pending": "Ожидает подтверждения от {name}. Ваш баланс уже это учитывает.",
 		"final": "Окончательно."
-	}
+	},
+	"amountShortcuts": "Быстрые суммы"
 }

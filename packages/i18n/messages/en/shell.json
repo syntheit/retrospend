@@ -39,7 +39,7 @@
 		"trigger": "Search and commands",
 		"title": "Search and commands",
 		"description": "Go to a page or run a command",
-		"placeholder": "Search pages and commands",
+		"placeholder": "Search or go to a page",
 		"noResults": "No results",
 		"recent": "Recent",
 		"project": "Project",
@@ -49,7 +49,20 @@
 		"addRecurring": "Add recurring expense",
 		"manageCategories": "Manage categories",
 		"move": "Move",
-		"openHint": "Open"
+		"openHint": "Open",
+		"groups": {
+			"people": "People",
+			"projects": "Projects",
+			"categories": "Categories",
+			"expenses": "Expenses",
+			"none": "No matches",
+			"searchActivity": "Search Activity for “{q}”",
+			"allExpenses": "All matching expenses",
+			"activity": "Activity"
+		},
+		"archived": "Archived",
+		"suggestions": "Suggestions",
+		"confirmRecurring": "Confirm {title}"
 	},
 	"settingsSections": {
 		"profile": "Profile",
@@ -107,11 +120,5 @@
 		"edit": "Edit the selected row",
 		"delete": "Delete the selected rows",
 		"clear": "Clear the selection"
-	},
-	"verifyEmail": {
-		"message": "Verify your email to keep your account secure.",
-		"resend": "Resend email",
-		"sent": "Verification email sent",
-		"failed": "Couldn't send the email"
 	}
 }

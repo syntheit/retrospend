@@ -16,6 +16,10 @@ export const ACTION_IDS = {
 		"category",
 		"project",
 		"duplicate",
+		"accept",
+		"reject",
+		"recur",
+		"copy",
 		"delete",
 	],
 	person: ["settle", "request", "remind", "addExpense", "profile"],
@@ -45,6 +49,18 @@ export const ACTION_IDS = {
 	device: ["disconnect"],
 	currency: ["convert", "favorite", "unfavorite", "copy", "history"],
 	payment: ["confirm", "notReceived"],
+	needsYou: ["open", "later"],
+	budget: [
+		"fund",
+		"cover",
+		"takeBack",
+		"usePlan",
+		"assign",
+		"setRate",
+		"confirmStartingMoney",
+	],
+	import: ["review"],
+	setup: ["addExpense", "chooseCurrency", "resendEmail", "import"],
 } as const;
 
 /**

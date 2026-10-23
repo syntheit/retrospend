@@ -93,11 +93,6 @@
 	},
 	"preview": {
 		"checking": "Vérification de ce qui change",
-		"changes": "Ce qui change",
-		"nothing": "Rien",
-		"stays": "Ce qui reste pareil",
-		"noChange": "aucun changement",
-		"unavailable": "non vérifié, un taux manque",
 		"figures": {
 			"project_total": "Total du groupe",
 			"project_member_balance": "{name} dans le groupe",
@@ -106,6 +101,15 @@
 			"owed_owedToYou": "On vous doit",
 			"owed_youOwe": "Vous devez",
 			"balance_person": "Vous et {name}"
+		},
+		"figuresInline": {
+			"project_total": "le total du groupe",
+			"project_member_balance": "le solde de {name} dans le groupe",
+			"project_member_share": "la part de {name}",
+			"project_member_paid": "ce que {name} a payé",
+			"owed_owedToYou": "ce qu'on vous doit",
+			"owed_youOwe": "ce que vous devez",
+			"balance_person": "votre solde avec {name}"
 		}
 	},
 	"settleAll": {

@@ -171,7 +171,10 @@ export function ReviewToolbar({
 	].sort();
 	return (
 		<Toolbar label={t("toolbar")}>
-			<FilterChips className={phone ? "overflow-x-auto" : undefined}>
+			<FilterChips
+				className={phone ? "overflow-x-auto" : undefined}
+				label={t("toolbar")}
+			>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<FilterChip value>

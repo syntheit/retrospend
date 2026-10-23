@@ -95,7 +95,7 @@ describe("Add expense: rate per entry", () => {
 			await rateOptions(adminDb, user.id, {
 				currency: "USD",
 				date: TODAY,
-				amount: 100,
+				amount: "100",
 			}),
 		);
 		expect(view.defaultType).toBe("blue");

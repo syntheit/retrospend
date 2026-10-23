@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useExpenseModal } from "~/components/expense-modal-provider";
+import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Money } from "~/components/money/money";
 import { Button } from "~/components/ui/button";
@@ -27,7 +28,6 @@ import { ActivityList } from "./activity-list";
 import { ActivityTabs } from "./activity-tabs";
 import { ActivityToolbar } from "./activity-toolbar";
 import { isFiltered, readFilter } from "./filters";
-import { PageFrame } from "./page-frame";
 import { useActivity } from "./use-activity";
 import { useRowActions } from "./use-row-actions";
 
@@ -112,7 +112,7 @@ export function ActivityPage() {
 		/>
 	);
 	return (
-		<PageFrame data-page="activity" data-ui="v2">
+		<PageFrame label="activity">
 			<PageHeader
 				overflow={<Overflow />}
 				sub={a.count != null ? t("header.sub", { count: a.count }) : undefined}

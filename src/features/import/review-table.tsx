@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import { useRowDates } from "~/components/rows/dates";
 import { Row, RowList } from "~/components/rows/row";
-import { TABLE_LOOK } from "~/components/table/table-style";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { StatusDot } from "~/components/ui/status-dot";
@@ -110,7 +109,7 @@ export function ReviewTable({
 	const t = useTranslations("importPage.review");
 	const { short } = useRowDates();
 	return (
-		<Table className={TABLE_LOOK} data-testid="import-table">
+		<Table data-testid="import-table" look="panel">
 			<TableHeader>
 				<TableRow>
 					<TableHead className="w-10">

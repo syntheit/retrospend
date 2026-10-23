@@ -76,6 +76,13 @@
 			"outOfRange": "Valor grande demais",
 			"zero": "Digite um valor acima de zero",
 			"negative": "O valor deve ser maior que zero"
+		},
+		"operators": "Teclas de cálculo",
+		"operator": {
+			"plus": "Mais",
+			"minus": "Menos",
+			"times": "Vezes",
+			"divide": "Dividido por"
 		}
 	},
 	"project": {

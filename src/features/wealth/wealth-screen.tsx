@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { PageFrame } from "~/components/layout/page-frame";
 import { Toolbar } from "~/components/layout/toolbar";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
@@ -10,7 +11,6 @@ import { cn } from "~/lib/cn";
 import { type AccountFilters, AccountList, NO_FILTERS } from "./account-list";
 import { Breakdown } from "./breakdown";
 import { NetWorthHero } from "./net-worth-hero";
-import { PageFrame } from "./page-frame";
 import { AccountSheet } from "./sheets/account-sheet";
 import { CloseAccountSheet } from "./sheets/close-account-sheet";
 import { UpdateBalanceSheet } from "./sheets/update-balance-sheet";
@@ -75,7 +75,7 @@ export function WealthScreen({ view }: { view: WealthView }) {
 					}
 				>
 					{accounts ? (
-						<FilterChips>
+						<FilterChips label={t("filters.label")}>
 							<FilterChip
 								onClick={() =>
 									set({ liquid: filters.liquid === "liquid" ? null : "liquid" })

@@ -26,11 +26,19 @@
 		"solo": "Один",
 		"people": "{count, plural, one {# человек} few {# человека} many {# человек} other {# человека}}",
 		"spent": "потрачено",
-		"budgetUsed": "Использовано бюджета"
+		"budgetUsed": "Использовано бюджета",
+		"yourShare": "ваша доля",
+		"left": "осталось <amount></amount>",
+		"over": "перерасход <amount></amount>",
+		"justYou": "Только вы"
 	},
 	"account": {
 		"updated": "Обновлено {date}",
-		"change": "{change} за месяц"
+		"change": "{change} за месяц",
+		"closed": "Закрыт {date}. История сохранена.",
+		"noRate": "Нет курса {currency}. Не входит в капитал.",
+		"apr": "Ставка {apr}",
+		"valuedAt": "По курсу {type}"
 	},
 	"envelope": {
 		"spent": "Потрачено из запланированного"
@@ -43,7 +51,11 @@
 		"weekly": "Еженедельно",
 		"monthly": "Ежемесячно",
 		"quarterly": "Ежеквартально",
-		"yearly": "Ежегодно"
+		"yearly": "Ежегодно",
+		"biweekly": "Раз в 2 недели",
+		"paused": "На паузе",
+		"autoPayOn": "Автоплатёж включён",
+		"autoPayOff": "Автоплатёж выключен"
 	},
 	"table": {
 		"selectAll": "Выбрать все",
@@ -57,6 +69,30 @@
 		"actions": "Действия",
 		"yourSpending": "Ваши расходы",
 		"count": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}",
-		"withoutRate": "{count, plural, one {# без курса} few {# без курса} many {# без курса} other {# без курса}}"
+		"withoutRate": "{count, plural, one {# без курса} few {# без курса} many {# без курса} other {# без курса}}",
+		"selection": "Выбранное",
+		"selected": "Выбрано: {count}",
+		"clear": "Сбросить",
+		"total": "Сумма",
+		"yourShare": "Ваша доля",
+		"paidBy": "Платил",
+		"split": "Разделено",
+		"between": "Между вами",
+		"you": "Вы",
+		"waitsForYou": "Ждёт вас",
+		"none": "Нет",
+		"rejected": "Отклонено",
+		"noChange": "Без изменений",
+		"wasSettled": "было <amount></amount> · рассчитано",
+		"paidYou": "заплатил вам",
+		"youPaid": "вы заплатили"
+	},
+	"person": {
+		"new": "Новых: {count}",
+		"needYou": "Ждут вас: {count}",
+		"currencies": "Валют: {count}",
+		"youPaid": "вы заплатили",
+		"paidYou": "заплатил вам",
+		"settleUp": "Рассчитаться"
 	}
 }

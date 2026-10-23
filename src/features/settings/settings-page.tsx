@@ -1,12 +1,9 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef } from "react";
+import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
-import { Button } from "~/components/ui/button";
-import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useSession } from "~/hooks/use-session";
 import { entryOf, hrefOf } from "~/lib/nav";
@@ -46,24 +43,14 @@ export function SettingsPage() {
 
 	return (
 		<div
-			className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pt-6 pb-12"
+			className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pt-6 pb-12"
 			data-page="settings-v2"
 			ref={scroller}
 		>
 			{/* The page column (mockup .page): 1120 wide with the gutter inside, centered; nav and sections sit at its start. */}
-			<div className="mx-auto w-full max-w-280 px-gutter">
+			<div className="px-gutter mx-auto w-full max-w-280">
 				<PageHeader
-					lead={
-						phone ? (
-							<Tip content={t("back")}>
-								<Button aria-label={t("back")} asChild icon kind="ghost">
-									<Link href={home}>
-										<ChevronLeft />
-									</Link>
-								</Button>
-							</Tip>
-						) : undefined
-					}
+					lead={<BackButton href={home} label={t("back")} />}
 					sub={t("autosaveNote")}
 					title={t("title")}
 				/>
@@ -74,7 +61,7 @@ export function SettingsPage() {
 							<SectionList current={current} ids={ids} onGo={go} />
 						</div>
 					)}
-					<div className="min-w-0 max-w-160 flex-1">
+					<div className="max-w-160 min-w-0 flex-1">
 						<ProfileSection />
 						<PreferencesSection />
 						<CategoriesSection />

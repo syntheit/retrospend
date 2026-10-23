@@ -6,7 +6,9 @@
 		"toAssign": "Noch nicht verplant",
 		"owedToYou": "Dir geschuldet",
 		"youOwe": "Du schuldest",
-		"netWorth": "Vermögen"
+		"netWorth": "Vermögen",
+		"moneyIn": "Einnahme",
+		"dollarToday": "Dollar heute, {type}"
 	},
 	"line": {
 		"perDay": "<amount></amount> pro Tag für {days, plural, one {# Tag} other {# Tage}}",
@@ -14,6 +16,8 @@
 		"over": "<amount></amount> über Plan diesen Monat",
 		"noBudget": "Kein Budget für diesen Monat",
 		"unavailable": "Budget nicht verfügbar: noch kein Kurs für {currencies}",
-		"unavailableRate": "Budget nicht verfügbar: ein Kurs fehlt"
+		"unavailableRate": "Budget nicht verfügbar: ein Kurs fehlt",
+		"paceFaster": "Schneller als im {month} bis zu diesem Tag",
+		"paceSlower": "Im Tempo vom {month} oder langsamer"
 	}
 }

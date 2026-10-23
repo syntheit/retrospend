@@ -12,6 +12,9 @@ import {
 	ContextMenuItem,
 	ContextMenuSeparator,
 	ContextMenuShortcut,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
 	ContextMenuTrigger,
 } from "~/components/ui/context-menu";
 import {
@@ -20,6 +23,9 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import type { Entity } from "./registry";
@@ -29,12 +35,37 @@ type MenuParts = {
 	Item: typeof DropdownMenuItem | typeof ContextMenuItem;
 	Separator: typeof DropdownMenuSeparator | typeof ContextMenuSeparator;
 	Shortcut: typeof DropdownMenuShortcut | typeof ContextMenuShortcut;
+	Sub: typeof DropdownMenuSub | typeof ContextMenuSub;
+	SubTrigger: typeof DropdownMenuSubTrigger | typeof ContextMenuSubTrigger;
+	SubContent: typeof DropdownMenuSubContent | typeof ContextMenuSubContent;
 };
 
-/** The same items for the ⋯ menu and the context menu: one list, two triggers. */
+const DROPDOWN: MenuParts = {
+	Item: DropdownMenuItem,
+	Separator: DropdownMenuSeparator,
+	Shortcut: DropdownMenuShortcut,
+	Sub: DropdownMenuSub,
+	SubTrigger: DropdownMenuSubTrigger,
+	SubContent: DropdownMenuSubContent,
+};
+
+const CONTEXT: MenuParts = {
+	Item: ContextMenuItem,
+	Separator: ContextMenuSeparator,
+	Shortcut: ContextMenuShortcut,
+	Sub: ContextMenuSub,
+	SubTrigger: ContextMenuSubTrigger,
+	SubContent: ContextMenuSubContent,
+};
+
+/**
+ * The same items for the ⋯ menu and the context menu: one list, two
+ * triggers. A pick action opens its choices as a submenu, each with its
+ * identity in the one 24px lead slot (R25).
+ */
 function Items({
 	actions,
-	parts: { Item, Separator, Shortcut },
+	parts: { Item, Separator, Shortcut, Sub, SubTrigger, SubContent },
 }: {
 	actions: ReturnType<typeof useEntityActions>;
 	parts: MenuParts;
@@ -42,6 +73,28 @@ function Items({
 	return actions.entries.map((entry) =>
 		entry.kind === "separator" ? (
 			<Separator key={entry.key} />
+		) : entry.action.pick ? (
+			<Sub key={entry.action.id}>
+				<SubTrigger>
+					<entry.action.icon aria-hidden="true" />
+					{actions.label(entry.action)}
+				</SubTrigger>
+				<SubContent>
+					{actions.choices?.[entry.action.id]?.map((c) => (
+						<Item key={c.id} onSelect={() => actions.pick(entry.action, c.id)}>
+							{c.lead != null && (
+								<span
+									aria-hidden="true"
+									className="inline-flex size-6 shrink-0 items-center justify-center"
+								>
+									{c.lead}
+								</span>
+							)}
+							{c.label}
+						</Item>
+					))}
+				</SubContent>
+			</Sub>
 		) : (
 			<Item
 				key={entry.action.id}
@@ -81,14 +134,7 @@ export function ActionMenu<E extends Entity>(
 					</DropdownMenuTrigger>
 				</Tip>
 				<DropdownMenuContent align={props.align ?? "end"}>
-					<Items
-						actions={actions}
-						parts={{
-							Item: DropdownMenuItem,
-							Separator: DropdownMenuSeparator,
-							Shortcut: DropdownMenuShortcut,
-						}}
-					/>
+					<Items actions={actions} parts={DROPDOWN} />
 				</DropdownMenuContent>
 			</DropdownMenu>
 			{actions.confirm}
@@ -114,14 +160,7 @@ export function ActionArea<E extends Entity>({
 					{children}
 				</ContextMenuTrigger>
 				<ContextMenuContent>
-					<Items
-						actions={actions}
-						parts={{
-							Item: ContextMenuItem,
-							Separator: ContextMenuSeparator,
-							Shortcut: ContextMenuShortcut,
-						}}
-					/>
+					<Items actions={actions} parts={CONTEXT} />
 				</ContextMenuContent>
 			</ContextMenu>
 			{actions.confirm}

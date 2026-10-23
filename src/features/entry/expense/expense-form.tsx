@@ -139,10 +139,16 @@ export function ExpenseForm(p: {
 								{t("undoChanges")}
 							</Button>
 							<span className="flex-1" />
-							<Button kind="secondary" onClick={requestClose}>
+							{/* Phones save from the header (headerSubmit). */}
+							<Button
+								className="max-md:hidden"
+								kind="secondary"
+								onClick={requestClose}
+							>
 								{t("cancel")}
 							</Button>
 							<Button
+								className="max-md:hidden"
 								data-sheet-submit=""
 								kind="primary"
 								loading={s.busy}
@@ -170,7 +176,7 @@ export function ExpenseForm(p: {
 								{t("addAndNew")}
 							</Button>
 							<Button
-								className="max-md:flex-1"
+								className="max-md:hidden"
 								data-sheet-submit=""
 								kind="primary"
 								loading={s.busy}
@@ -181,6 +187,7 @@ export function ExpenseForm(p: {
 						</>
 					)
 				}
+				headerSubmit={editing ? t("save") : t("addShort")}
 				onOpenChange={(open) => (open ? undefined : requestClose())}
 				onSubmit={() => submit()}
 				open

@@ -32,6 +32,18 @@
 			"confirmTitle": "¿Eliminar {name}?",
 			"confirmBody": "Los saldos afectados se actualizan para todos.",
 			"confirmButton": "Eliminar gasto"
+		},
+		"accept": {
+			"label": "Aceptar la división"
+		},
+		"reject": {
+			"label": "Rechazar la división"
+		},
+		"recur": {
+			"label": "Convertir en gasto recurrente"
+		},
+		"copy": {
+			"label": "Copiar como texto"
 		}
 	},
 	"person": {
@@ -226,6 +238,74 @@
 			"confirmTitle": "¿No recibiste el pago de {name}?",
 			"confirmBody": "El pago queda como no recibido y tu saldo sigue igual.",
 			"confirmButton": "No lo recibí"
+		}
+	},
+	"needsYou": {
+		"open": {
+			"label": "Abrir"
+		},
+		"later": {
+			"label": "Más tarde"
+		}
+	},
+	"budget": {
+		"fund": {
+			"label": "Cubrir"
+		},
+		"cover": {
+			"label": "Cubrir"
+		},
+		"takeBack": {
+			"label": "Recuperar"
+		},
+		"usePlan": {
+			"label": "Usar mi plan"
+		},
+		"assign": {
+			"label": "Asignar"
+		},
+		"setRate": {
+			"label": "Fijar cotización"
+		},
+		"confirmStartingMoney": {
+			"label": "Confirmar"
+		},
+		"recordPayment": {
+			"label": "Registrar pago"
+		},
+		"pickEnvelope": {
+			"label": "Elegir un sobre"
+		},
+		"openSummary": {
+			"label": "Abrir resumen"
+		},
+		"seeChanges": {
+			"label": "Ver cambios"
+		},
+		"reviewHidden": {
+			"label": "Revisar"
+		},
+		"reconcile": {
+			"label": "Conciliar"
+		}
+	},
+	"import": {
+		"review": {
+			"label": "Revisar"
+		}
+	},
+	"setup": {
+		"addExpense": {
+			"label": "Agregar gasto"
+		},
+		"chooseCurrency": {
+			"label": "Elegir"
+		},
+		"resendEmail": {
+			"label": "Reenviar"
+		},
+		"import": {
+			"label": "Importar"
 		}
 	}
 }

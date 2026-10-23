@@ -8,7 +8,7 @@ import {
 	CategoryPicker,
 } from "~/components/pickers/category-picker";
 import { PickerPopover } from "~/components/pickers/picker-popover";
-import { FilterChip } from "~/components/ui/chip";
+import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 import type { EntryCatalog } from "../shared-ui";
@@ -109,11 +109,10 @@ export function CategoryLine({
 	const ids = [...shown, ...pool.filter((id) => !shown.includes(id))];
 	const byId = new Map(mine.map((c) => [c.id, c]));
 	return (
-		<div
-			aria-label={t("category")}
-			className="relative flex items-center gap-2"
+		<FilterChips
+			className="relative flex-nowrap max-md:overflow-x-visible"
+			label={t("category")}
 			ref={ref}
-			role="group"
 		>
 			{ids.map((id, i) => {
 				const c = byId.get(id);
@@ -122,7 +121,7 @@ export function CategoryLine({
 				const chip = (
 					<FilterChip
 						className={cn(
-							on && ring && "outline-2 outline-brand outline-offset-2",
+							on && ring && "outline-brand outline-2 outline-offset-2",
 							i >= shown.length && "invisible absolute",
 						)}
 						data-fit={id}
@@ -165,6 +164,6 @@ export function CategoryLine({
 					value={value}
 				/>
 			</PickerPopover>
-		</div>
+		</FilterChips>
 	);
 }

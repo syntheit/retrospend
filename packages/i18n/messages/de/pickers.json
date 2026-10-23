@@ -76,6 +76,13 @@
 			"outOfRange": "Betrag ist zu groß",
 			"zero": "Betrag über null eingeben",
 			"negative": "Der Betrag muss über null liegen"
+		},
+		"operators": "Rechentasten",
+		"operator": {
+			"plus": "Plus",
+			"minus": "Minus",
+			"times": "Mal",
+			"divide": "Geteilt durch"
 		}
 	},
 	"project": {

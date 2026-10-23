@@ -23,12 +23,6 @@
 		"weeks": "{count, plural, one {vor # Woche} other {vor # Wochen}}",
 		"months": "{count, plural, one {vor # Monat} other {vor # Monaten}}"
 	},
-	"row": {
-		"needYou": "{count} brauchen dich",
-		"pendingOut": "Ausstehend: du hast {amount} gezahlt, wartet auf {name}",
-		"pendingIn": "Ausstehend: dir wurden {amount} gezahlt",
-		"new": "{count} neu"
-	},
 	"needs": {
 		"title": "Braucht dich",
 		"confirmed": "Zahlung von {name} bestätigt",

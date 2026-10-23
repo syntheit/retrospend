@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { AfterHydration } from "~/components/after-hydration";
-import { PageFrame } from "~/features/activity/page-frame";
+import { PageFrame } from "~/components/layout/page-frame";
 import {
 	RecurringPage,
 	RecurringSkeleton,

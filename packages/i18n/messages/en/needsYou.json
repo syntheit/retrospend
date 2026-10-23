@@ -34,6 +34,7 @@
 		"edit": "Edit",
 		"takeBack": "Take back",
 		"fund": "Fund",
-		"setRate": "Set rate"
+		"setRate": "Set rate",
+		"notReceived": "Not received?"
 	}
 }

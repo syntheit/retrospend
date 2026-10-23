@@ -113,6 +113,8 @@ export function BalanceBlock({
 				{page.parts.length > 1 ? t("net") : ""}
 			</div>
 			<Money
+				// A net across currencies is converted at today's rates (person.html).
+				approx={!!foreign}
 				className={cn(
 					"text-hero mt-1 block",
 					dir === "owed" ? "text-positive" : "text-owe",
