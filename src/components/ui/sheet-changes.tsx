@@ -23,8 +23,8 @@ export function SheetChanges({
 	title,
 	done = false,
 	lines = [],
-	stays = [],
-	unavailable = [],
+	stays: staysIn = [],
+	unavailable: unavailableIn = [],
 	status,
 	children,
 	className,
@@ -50,6 +50,9 @@ export function SheetChanges({
 	const t = useTranslations("kit.changes");
 	const headingId = useId();
 	const anyLine = lines.length > 0 || !!children;
+	// One name per place, even when it moves in two currencies.
+	const stays = [...new Set(staysIn)];
+	const unavailable = [...new Set(unavailableIn)];
 	return (
 		<section
 			aria-labelledby={headingId}

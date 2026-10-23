@@ -100,7 +100,7 @@ function stopsOf(row: HTMLElement): HTMLButtonElement[] {
 /**
  * One row of filter chips. Wraps on desktop, scrolls sideways on phones.
  * The row is one tab stop (kit `data-rove`): Tab enters at the last chip
- * used (else the first selected, else the first), the arrow keys, Home and
+ * used (else the first selected, else the first), Left and Right, Home and
  * End move between chips, and Tab leaves the row.
  */
 export function FilterChips({
@@ -140,14 +140,16 @@ export function FilterChips({
 	const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
 		const row = ref.current;
 		// Keys typed inside a picker a chip opened (a portal) are not for the row.
-		if (!row || !(e.target instanceof HTMLButtonElement)) return;
+		// A menu trigger's own keys (ArrowDown opens it) come first.
+		if (!row || e.defaultPrevented || !(e.target instanceof HTMLButtonElement))
+			return;
 		const stops = stopsOf(row);
 		const at = stops.indexOf(e.target);
 		if (at < 0) return;
 		const to =
-			e.key === "ArrowRight" || e.key === "ArrowDown"
+			e.key === "ArrowRight"
 				? (at + 1) % stops.length
-				: e.key === "ArrowLeft" || e.key === "ArrowUp"
+				: e.key === "ArrowLeft"
 					? (at - 1 + stops.length) % stops.length
 					: e.key === "Home"
 						? 0
