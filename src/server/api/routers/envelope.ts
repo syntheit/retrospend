@@ -1,61 +1,38 @@
 /**
- * The envelope budget over tRPC (build plan 02 §5.2, P2). Thin: every
+ * The envelope budget over tRPC (build plan 02 §5.2). Thin: every
  * procedure declares its contract from ~/lib/schemas/envelope and calls a
  * service. Money writes go through the preview runner, so `xPreview` is the
- * same write rolled back and `x` commits it (R30).
+ * same write rolled back and `x` commits it (R30). Splits and month close
+ * procedures live in envelope-money.ts and merge in flat.
  *
  * Behind `envelopeBudgetMode` (OFF by default): with the flag off every
  * procedure except `enabled` answers FORBIDDEN.
  */
-import { TRPCError } from "@trpc/server";
-import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
 import { z } from "zod";
 import {
 	applyOutputSchema,
 	assignInputSchema,
-	batchInputSchema,
-	carryOverspendInputSchema,
 	coverInputSchema,
 	coverSourceSchema,
 	coverSourcesInputSchema,
 	fillFromTargetsInputSchema,
 	fillFromTargetsOutputSchema,
-	forgiveInputSchema,
-	forgiveResultSchema,
 	getMonthOutputSchema,
 	historyInputSchema,
 	historyOutputSchema,
 	leftToSpendSchema,
-	monthCloseSummarySchema,
 	monthInputSchema,
-	monthSummaryInputSchema,
 	moveInputSchema,
-	movementResultSchema,
-	owedSchema,
 	previewOutputSchema,
-	projectRoutingResultSchema,
-	setProjectRoutingInputSchema,
-	setShareCategoryInputSchema,
 	setupInputSchema,
 	setupPresetInputSchema,
 	setupPresetOutputSchema,
 	setupResultSchema,
-	shareCategoryResultSchema,
 	undoInputSchema,
-	unforgiveInputSchema,
 	verdictSchema,
 } from "~/lib/schemas/envelope";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { isFlagEnabled } from "~/server/flags";
-import {
-	carryOverspendMutation,
-	fixNegativeMutation,
-	resetEnvelopesMutation,
-} from "~/server/services/envelope/close.mutation";
-import {
-	EnvelopeError,
-	type EnvelopeErrorCode,
-} from "~/server/services/envelope/errors";
 import {
 	assignEnvelopes,
 	coverEnvelope,
@@ -68,67 +45,19 @@ import {
 	getHistory,
 	getLeftToSpend,
 	getMonth,
-	getMonthSummary,
-	getOwed,
 	getSetupPreset,
 	getVerdict,
 } from "~/server/services/envelope/read.service";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
+import { forUser } from "~/server/services/preview";
+import { envelopeMoneyProcedures } from "./envelope-money";
 import {
-	forgiveMutation,
-	setProjectRoutingMutation,
-	setShareCategoryMutation,
-	unforgiveMutation,
-} from "~/server/services/envelope/splits.mutation";
-import { forUser, type MoneyMutation } from "~/server/services/preview";
-
-const CODES: Record<EnvelopeErrorCode, TRPC_ERROR_CODE_KEY> = {
-	NO_BOOK: "NOT_FOUND",
-	BOOK_EXISTS: "CONFLICT",
-	MONTH_CLOSED: "BAD_REQUEST",
-	OVER_CAP: "BAD_REQUEST",
-	INVALID: "BAD_REQUEST",
-	NOT_FOUND: "NOT_FOUND",
-	ID_REUSED: "CONFLICT",
-	ALREADY_UNDONE: "CONFLICT",
-};
-
-/** Signed in, flag on; domain errors leave as tRPC codes in one place. */
-const envelopeProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-	if (!(await isFlagEnabled("envelopeBudget", ctx.session.user)))
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "The new budget is not available yet",
-		});
-	const result = await next();
-	if (!result.ok && result.error.cause instanceof EnvelopeError) {
-		throw new TRPCError({
-			code: CODES[result.error.cause.code],
-			message: result.error.cause.message,
-			cause: result.error.cause,
-		});
-	}
-	return result;
-});
-
-const movementPreview = previewOutputSchema(movementResultSchema);
-const movementApply = applyOutputSchema(movementResultSchema);
-
-type Ctx = { ctx: { session: { user: { id: string } } } };
-
-/** A money write rolled back (R30): what it would change. */
-const preview =
-	<I, V>(mutation: MoneyMutation<I, V>) =>
-	({ ctx, input }: Ctx & { input: I }) =>
-		forUser(ctx.session.user.id).preview(mutation, input);
-
-/** The same write committed, with its undo token. */
-const apply =
-	<I, V>(mutation: MoneyMutation<I, V>) =>
-	({ ctx, input }: Ctx & { input: I }) =>
-		forUser(ctx.session.user.id).apply(mutation, input);
-
-const unforgiveResult = z.object({ paymentId: z.string() });
+	apply,
+	envelopeProcedure,
+	movementApply,
+	movementPreview,
+	preview,
+} from "./envelope-procedure";
 
 export const envelopeRouter = createTRPCRouter({
 	enabled: protectedProcedure
@@ -202,127 +131,38 @@ export const envelopeRouter = createTRPCRouter({
 	assignPreview: envelopeProcedure
 		.input(assignInputSchema)
 		.output(movementPreview)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).preview(assignEnvelopes, input),
-		),
-
+		.mutation(preview(assignEnvelopes)),
 	assign: envelopeProcedure
 		.input(assignInputSchema)
 		.output(movementApply)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).apply(assignEnvelopes, input),
-		),
+		.mutation(apply(assignEnvelopes)),
 
 	movePreview: envelopeProcedure
 		.input(moveInputSchema)
 		.output(movementPreview)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).preview(moveMoney, input),
-		),
-
+		.mutation(preview(moveMoney)),
 	move: envelopeProcedure
 		.input(moveInputSchema)
 		.output(movementApply)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).apply(moveMoney, input),
-		),
+		.mutation(apply(moveMoney)),
 
 	coverPreview: envelopeProcedure
 		.input(coverInputSchema)
 		.output(movementPreview)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).preview(coverEnvelope, input),
-		),
-
+		.mutation(preview(coverEnvelope)),
 	cover: envelopeProcedure
 		.input(coverInputSchema)
 		.output(movementApply)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).apply(coverEnvelope, input),
-		),
+		.mutation(apply(coverEnvelope)),
 
 	undoPreview: envelopeProcedure
 		.input(undoInputSchema)
 		.output(movementPreview)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).preview(undoMovements, input),
-		),
-
+		.mutation(preview(undoMovements)),
 	undo: envelopeProcedure
 		.input(undoInputSchema)
 		.output(movementApply)
-		.mutation(({ ctx, input }) =>
-			forUser(ctx.session.user.id).apply(undoMovements, input),
-		),
+		.mutation(apply(undoMovements)),
 
-	/** Money owed per person and currency (SPEC §6.9); null without a budget. */
-	owed: envelopeProcedure
-		.output(owedSchema.nullable())
-		.query(({ ctx }) => getOwed(ctx.session.user.id)),
-
-	setShareCategoryPreview: envelopeProcedure
-		.input(setShareCategoryInputSchema)
-		.output(previewOutputSchema(shareCategoryResultSchema))
-		.mutation(preview(setShareCategoryMutation)),
-	setShareCategory: envelopeProcedure
-		.input(setShareCategoryInputSchema)
-		.output(applyOutputSchema(shareCategoryResultSchema))
-		.mutation(apply(setShareCategoryMutation)),
-	setProjectRoutingPreview: envelopeProcedure
-		.input(setProjectRoutingInputSchema)
-		.output(previewOutputSchema(projectRoutingResultSchema))
-		.mutation(preview(setProjectRoutingMutation)),
-	setProjectRouting: envelopeProcedure
-		.input(setProjectRoutingInputSchema)
-		.output(applyOutputSchema(projectRoutingResultSchema))
-		.mutation(apply(setProjectRoutingMutation)),
-	forgivePreview: envelopeProcedure
-		.input(forgiveInputSchema)
-		.output(previewOutputSchema(forgiveResultSchema))
-		.mutation(preview(forgiveMutation)),
-	forgive: envelopeProcedure
-		.input(forgiveInputSchema)
-		.output(applyOutputSchema(forgiveResultSchema))
-		.mutation(apply(forgiveMutation)),
-	/** A closed month's summary (SPEC §6.6); null until it closes. */
-	monthSummary: envelopeProcedure
-		.input(monthSummaryInputSchema)
-		.output(monthCloseSummarySchema.nullable())
-		.query(({ ctx, input }) =>
-			getMonthSummary(ctx.session.user.id, input.month),
-		),
-
-	carryOverspendPreview: envelopeProcedure
-		.input(carryOverspendInputSchema)
-		.output(movementPreview)
-		.mutation(preview(carryOverspendMutation)),
-	carryOverspend: envelopeProcedure
-		.input(carryOverspendInputSchema)
-		.output(movementApply)
-		.mutation(apply(carryOverspendMutation)),
-	fixNegativePreview: envelopeProcedure
-		.input(batchInputSchema)
-		.output(movementPreview)
-		.mutation(preview(fixNegativeMutation)),
-	fixNegative: envelopeProcedure
-		.input(batchInputSchema)
-		.output(movementApply)
-		.mutation(apply(fixNegativeMutation)),
-	resetPreview: envelopeProcedure
-		.input(batchInputSchema)
-		.output(movementPreview)
-		.mutation(preview(resetEnvelopesMutation)),
-	reset: envelopeProcedure
-		.input(batchInputSchema)
-		.output(movementApply)
-		.mutation(apply(resetEnvelopesMutation)),
-
-	unforgivePreview: envelopeProcedure
-		.input(unforgiveInputSchema)
-		.output(previewOutputSchema(unforgiveResult))
-		.mutation(preview(unforgiveMutation)),
-	unforgive: envelopeProcedure
-		.input(unforgiveInputSchema)
-		.output(applyOutputSchema(unforgiveResult))
-		.mutation(apply(unforgiveMutation)),
+	...envelopeMoneyProcedures,
 });
