@@ -60,9 +60,10 @@ export function ReviewStep({
 	const t = useTranslations("importPage.review");
 	const phone = useIsMobile();
 	const [currency, setCurrency] = useState<string | null>(null);
+	const [committing, setCommitting] = useState(false);
 	const review = api.importQueue.review.useQuery(
 		{ jobId, currency },
-		{ placeholderData: keepPreviousData },
+		{ placeholderData: keepPreviousData, enabled: !committing },
 	);
 	const catalog = useEntryCatalog();
 	const [choices, setChoices] = useState<Choices>({});
@@ -210,6 +211,7 @@ export function ReviewStep({
 				count={counts.kept}
 				fileName={data.fileName}
 				input={{ jobId, currency, rows: commitRows(data.rows, choices) }}
+				onCommitting={setCommitting}
 				onImported={(s) => {
 					setSheet(null);
 					onImported(s);

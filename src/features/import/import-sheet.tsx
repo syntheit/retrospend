@@ -72,6 +72,7 @@ export function ImportSheet({
 	fileName,
 	count,
 	onImported,
+	onCommitting,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -79,22 +80,32 @@ export function ImportSheet({
 	fileName: string;
 	count: number;
 	onImported: (summary: ImportSummary) => void;
+	/** The review stops refetching while the job turns imported. */
+	onCommitting: (on: boolean) => void;
 }) {
 	const t = useTranslations("importPage.sheet");
+	const commit = api.importQueue.commit.useMutation();
 	const preview = api.importQueue.commitPreview.useQuery(input, {
-		enabled: open,
+		// After the write the job is imported: a refetch would only fail.
+		enabled: open && commit.isIdle,
 		staleTime: 0,
 		gcTime: 0,
 	});
-	const commit = api.importQueue.commit.useMutation();
 	const data = preview.data;
 	return (
 		<Sheet
 			detent="large"
 			onOpenChange={onOpenChange}
 			onSubmit={async () => {
-				const res = await commit.mutateAsync(input);
-				onImported(res.value);
+				onCommitting(true);
+				try {
+					const res = await commit.mutateAsync(input);
+					onImported(res.value);
+				} catch (error) {
+					onCommitting(false);
+					commit.reset();
+					throw error;
+				}
 			}}
 			open={open}
 			submitDisabled={!data || data.value.created === 0}
