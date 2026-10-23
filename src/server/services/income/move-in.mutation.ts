@@ -27,7 +27,9 @@ import {
 import { inBudget, worthOf } from "../accounts/places";
 import {
 	type BudgetSideResult,
+	hasEnvelopeBudget,
 	recordBudgetSide,
+	recordedMoveIn,
 	removeBudgetSide,
 } from "../transfers/budget-side";
 import { incomeRow } from "./delete.mutation";
@@ -35,7 +37,16 @@ import { incomeRow } from "./delete.mutation";
 type Tx = Prisma.TransactionClient;
 
 /** Moves no account and changes no net worth: these are what a preview must show unchanged. */
-export const MOVE_IN_FIGURES = ["netWorth", "accounts.balance", "notTracked"];
+export const MOVE_IN_FIGURES = [
+	"netWorth",
+	"accounts.balance",
+	"notTracked",
+	// The budget side (envelope/wealth.service.ts) moves these (R30).
+	"budget.notPlannedYet",
+	"budget.leftToSpend",
+	"budget.heldForOthers",
+	"envelope.left",
+];
 
 export type MoveInInput =
 	| {
@@ -174,6 +185,19 @@ export async function moveInIn(
 ): Promise<MovedIn> {
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	const homeCurrency = await homeCurrencyOf(tx, userId);
+	// A retry of a Move in already recorded: what it did, nothing counted twice.
+	const prior = "id" in input ? await recordedMoveIn(tx, input.id) : null;
+	if (prior && "accountId" in input)
+		return {
+			accountId: prior.assetAccountId ?? input.accountId,
+			expenseId: null,
+			amount: {
+				minor: toMinor(prior.amount.toString(), homeCurrency),
+				currency: homeCurrency,
+			},
+			countedUnits: input.units,
+			budgetSide: { recorded: true, reason: null },
+		};
 	const side: Side =
 		"expenseId" in input
 			? await incomeSide(tx, userId, input.expenseId)
@@ -300,8 +324,15 @@ export async function undoMoveInIn(
 			data: { movedInAt: null },
 		});
 		await removeBudgetSide(tx, { sourceExpenseId: expenseId });
-	} else if ("id" in input) {
-		await removeBudgetSide(tx, { id: input.id });
+	} else if (
+		"id" in input &&
+		(await removeBudgetSide(tx, { id: input.id })) === 0 &&
+		(await hasEnvelopeBudget(tx, userId))
+	) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "That Move in is not in your budget. Nothing was changed.",
+		});
 	}
 	const home = await homeCurrencyOf(tx, userId);
 	return {
@@ -316,6 +347,7 @@ export async function undoMoveInIn(
 export const moveIn: MoneyMutation<MoveInInput, MovedIn> = {
 	id: "income.moveIn",
 	touches: MOVE_IN_FIGURES,
+	scope: (input) => (input.putIn ? { envelopeId: input.putIn } : {}),
 	run: async (tx, input, actor) => {
 		const value = await moveInIn(tx, actor.userId, input);
 		return {
@@ -337,6 +369,7 @@ export const moveIn: MoneyMutation<MoveInInput, MovedIn> = {
 export const undoMoveIn: MoneyMutation<MoveInInput, MovedIn> = {
 	id: "income.undoMoveIn",
 	touches: MOVE_IN_FIGURES,
+	scope: (input) => (input.putIn ? { envelopeId: input.putIn } : {}),
 	run: async (tx, input, actor) => {
 		const value = await undoMoveInIn(tx, actor.userId, input);
 		return {

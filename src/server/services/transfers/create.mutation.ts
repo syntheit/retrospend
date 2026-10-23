@@ -45,6 +45,11 @@ export const TRANSFER_FIGURES = [
 	"notTracked",
 	"netWorthChange.exchange",
 	"spent",
+	// The budget side (envelope/wealth.service.ts) moves these (R30).
+	"budget.notPlannedYet",
+	"budget.leftToSpend",
+	"budget.heldForOthers",
+	"envelope.left",
 ];
 
 export interface CreateTransferInput {
@@ -445,7 +450,11 @@ export const createTransfer: MoneyMutation<CreateTransferInput, TransferValue> =
 		touches: TRANSFER_FIGURES,
 		scope: (input) => {
 			const accountId = input.fromAccountId ?? input.toAccountId;
-			return accountId ? { accountId } : {};
+			const envelopeId = input.envelopeId ?? input.putIn;
+			return {
+				...(accountId ? { accountId } : {}),
+				...(envelopeId ? { envelopeId } : {}),
+			};
 		},
 		run: async (tx, input, actor) => {
 			const value = await createTransferIn(tx, actor.userId, input);

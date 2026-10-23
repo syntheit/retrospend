@@ -6,6 +6,7 @@
  * written and the result says so; callers still report the effect they
  * computed, so previews can show it.
  */
+import { TRPCError } from "@trpc/server";
 import type { Money } from "~/server/figures/registry";
 import type { Prisma } from "~prisma";
 import { recordWealthMove, removeMoveIn } from "../envelope/wealth.service";
@@ -41,16 +42,26 @@ export async function recordBudgetSide(
 ): Promise<BudgetSideResult> {
 	const r = await recordWealthMove(tx, movement);
 	if (r.recorded) return { recorded: true, reason: null };
+	if (r.reason === "id_reused")
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: "That id was already used for another change",
+		});
 	return {
 		recorded: false,
 		reason: r.reason === "nothing_to_move" ? null : r.reason,
 	};
 }
 
-/** The undo of a Move in takes its budget side with it. */
+/** The undo of a Move in takes its budget side with it; returns how many it removed. */
 export function removeBudgetSide(
 	tx: Prisma.TransactionClient,
 	of: { sourceExpenseId: string } | { id: string },
-): Promise<void> {
+): Promise<number> {
 	return removeMoveIn(tx, of);
 }
+
+export {
+	hasEnvelopeBudget,
+	recordedMoveIn,
+} from "../envelope/wealth.service";

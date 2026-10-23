@@ -384,6 +384,53 @@ describe("income.moveIn (count only)", () => {
 		);
 		await forUser(p.userId).apply(undoMoveIn, first);
 		expect(await sides()).toEqual([{ id: second.id }]);
+
+		// A retry of the second Move in replays it: nothing counted twice.
+		const counted = async () =>
+			(
+				await adminDb.assetAccount.findUniqueOrThrow({ where: { id: p.wise } })
+			).countedUnits.toString();
+		const before = await counted();
+		const again = await forUser(p.userId).apply(moveIn, second);
+		expect(again.value.budgetSide).toEqual({ recorded: true, reason: null });
+		expect(await counted()).toBe(before);
+		expect(await sides()).toEqual([{ id: second.id }]);
+
+		// An undo with an id that names no Move in changes nothing.
+		await expect(
+			forUser(p.userId).apply(undoMoveIn, { ...second, id: randomUUID() }),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(await counted()).toBe(before);
+	});
+
+	it("with an envelope budget, Move in and a transfer out of the budget preview their budget change (R30)", async () => {
+		const p = await places();
+		const cat = (name: string) =>
+			adminDb.category
+				.create({ data: { name, color: "blue", userId: p.userId } })
+				.then((c) => c.id);
+		await forUser(p.userId).apply(setupEnvelopeBook, {
+			...setupInput({ rent: await cat("Rent"), dining: await cat("Dining") }),
+			timeZone: "UTC",
+		});
+		const moved = await forUser(p.userId).preview(moveIn, {
+			id: randomUUID(),
+			accountId: p.wise,
+			units: "100",
+		});
+		expect(
+			moved.changes.find((c) => c.id === "budget.notPlannedYet")?.delta,
+		).toEqual(ARS(14_120_000));
+		const out = await forUser(p.userId).preview(createTransfer, {
+			fromAccountId: p.savings,
+			toAccountId: p.wise,
+			fromAmount: "146000",
+			toAmount: "100",
+		});
+		expect(out.value.budget).toMatchObject({ effect: "leaves" });
+		expect(
+			out.changes.find((c) => c.id === "budget.notPlannedYet")?.delta,
+		).toEqual(ARS(-14_600_000));
 	});
 });
 
