@@ -31,7 +31,7 @@ test("Projects: rows with balances, search, new project and archive with Undo", 
 		active.getByRole("listitem").filter({ hasText: "Viaje a Florianópolis" }),
 	).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	expect(await auditFigures(page, "projects")).toEqual([]);
+	expect(await auditFigures(page, "projects", "projects-v2")).toEqual([]);
 
 	// Search ignores accents.
 	const search = main.getByRole("searchbox", { name: "Search projects" });

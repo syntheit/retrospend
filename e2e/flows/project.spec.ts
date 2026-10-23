@@ -39,7 +39,7 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 		main.getByRole("row").filter({ hasText: "Arreglo del calefón" }),
 	).toContainText("ARS 108,600");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	expect(await auditFigures(page, "project")).toEqual([]);
+	expect(await auditFigures(page, "project", "project-v2")).toEqual([]);
 
 	await main
 		.getByRole("searchbox", { name: "Search expenses" })
@@ -60,7 +60,7 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 	await expect(transfers).toContainText("You pay Martín Acosta");
 	await expect(transfers).toContainText("ARS 41,100");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	expect(await auditFigures(page, "project summary")).toEqual([]);
+	expect(await auditFigures(page, "project summary", "project-v2-summary")).toEqual([]);
 });
 
 test("Project: Settle all previews, records and undoes", async ({ page }) => {

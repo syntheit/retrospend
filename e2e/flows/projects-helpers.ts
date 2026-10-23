@@ -9,6 +9,7 @@ import {
 	FigureAudit,
 	type FigureFetcher,
 } from "../helpers/figures";
+import { requiredFiguresFor } from "../helpers/required-figures";
 import { gotoReady } from "../helpers/navigation";
 
 /**
@@ -64,17 +65,21 @@ export function projectFigureFetcher(
 	};
 }
 
-/** The figure audit for the page as it is now: screen vs /api/v1/figures. */
+/**
+ * The figure audit for the page as it is now: screen vs /api/v1/figures,
+ * with `pageKey`'s required ids (required-figures.ts) on the page.
+ */
 export async function auditFigures(
 	page: Page,
 	label: string,
+	pageKey: string,
 ): Promise<string[]> {
 	const rendered = await collectFigureTags(page);
 	const currencies = new Map(
 		rendered.tags.map((t) => [t.id ?? "", t.currency ?? ""]),
 	);
 	const audit = new FigureAudit(projectFigureFetcher(page, currencies));
-	return audit.checkRendered(label, rendered, []);
+	return audit.checkRendered(label, rendered, requiredFiguresFor(pageKey));
 }
 
 /** uiV2 and the v1 API on for everyone in this test database. */
