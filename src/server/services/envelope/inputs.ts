@@ -477,26 +477,6 @@ function finishLoad(
 	};
 }
 
-/** Approximate rows of months up to `month`: what a checkpoint there carries. */
-export function approximateThrough(
-	loaded: LoadedBook,
-	month: MonthKey,
-): ApproximateRow[] {
-	return loaded.approximate.filter(
-		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
-	);
-}
-
-/** Own missing rates of months up to `month`: what a checkpoint there carries. */
-export function missingThrough(
-	loaded: LoadedBook,
-	month: MonthKey,
-): MissingRate[] {
-	return loaded.missingRates.filter(
-		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
-	);
-}
-
 /** Midnight at the start of budget month `month` in the book zone: the book's startDate. */
 export function monthStartInstant(
 	month: MonthKey,

@@ -8,6 +8,8 @@ import type { Prisma } from "~prisma";
 import type { CloseRow, DirtyMark } from "./close-rows";
 import type { ClosedRule } from "./engine";
 import type { Valuer } from "./entries";
+import type { LoadedBook } from "./inputs";
+import { budgetMonthOf } from "./months";
 import type { MissingRate, MonthKey } from "./types";
 import type { ApproximateRow, FrozenValue } from "./valuer";
 
@@ -98,4 +100,23 @@ export function closedRulesOf(
 			),
 		);
 	return out;
+}
+/** Approximate rows of months up to `month`: what a checkpoint there carries. */
+export function approximateThrough(
+	loaded: LoadedBook,
+	month: MonthKey,
+): ApproximateRow[] {
+	return loaded.approximate.filter(
+		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
+	);
+}
+
+/** Own missing rates of months up to `month`: what a checkpoint there carries. */
+export function missingThrough(
+	loaded: LoadedBook,
+	month: MonthKey,
+): MissingRate[] {
+	return loaded.missingRates.filter(
+		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
+	);
 }

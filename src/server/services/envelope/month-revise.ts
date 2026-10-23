@@ -32,13 +32,8 @@ import {
 } from "./checkpoint";
 import type { CloseRow, Recalc } from "./close-rows";
 import { type BookState, computeBook, sumLeft } from "./engine";
-import {
-	approximateThrough,
-	type LoadedBook,
-	loadBook,
-	missingThrough,
-	monthStartInstant,
-} from "./inputs";
+import { type LoadedBook, loadBook, monthStartInstant } from "./inputs";
+import { approximateThrough, missingThrough } from "./load-state";
 import { closeSummary } from "./month-close";
 import { isoDateIn, monthRange, startDayFor } from "./months";
 import type { MonthKey } from "./types";
