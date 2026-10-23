@@ -75,7 +75,7 @@ test("Project: Settle all previews, records and undoes", async ({ page }) => {
 	await expect(
 		sheet.getByRole("region", { name: "What this changes" }),
 	).toBeVisible();
-	await expect(sheet).toContainText("Group total");
+	await expect(sheet).toContainText("the group total stays as it is");
 	await untilSaved(page, "project.settleAll", () =>
 		sheet.getByRole("button", { name: "Record 1 payment" }).click(),
 	);
