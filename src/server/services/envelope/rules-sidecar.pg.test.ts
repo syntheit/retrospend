@@ -259,7 +259,9 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 		await rule(s, b.id("Rent"), 2_000);
 		const row = await income(s, 1_000);
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
-		const { id, createdAt, updatedAt, ...data } = await adminDb.expense.delete({ where: { id: row.id } });
+		const { id, createdAt, updatedAt, ...data } = await adminDb.expense.delete({
+			where: { id: row.id },
+		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
 		await adminDb.expense.create({ data: { ...data, id, createdAt } as never });
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
@@ -273,9 +275,15 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 		await rule(s, b.id("Rent"), 2_000);
 		const row = await income(s, 1_000);
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
-		await adminDb.expense.update({ where: { id: row.id }, data: { keepInWealth: true } });
+		await adminDb.expense.update({
+			where: { id: row.id },
+			data: { keepInWealth: true },
+		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
-		await adminDb.expense.update({ where: { id: row.id }, data: { keepInWealth: false } });
+		await adminDb.expense.update({
+			where: { id: row.id },
+			data: { keepInWealth: false },
+		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([20_000, 180_000]);
 	});
 
@@ -287,7 +295,10 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 		await getMonth(s.user.id);
 		await adminDb.expense.update({
 			where: { id: row.id },
-			data: { amount: new Prisma.Decimal(1_500), amountInUSD: new Prisma.Decimal(1_500) },
+			data: {
+				amount: new Prisma.Decimal(1_500),
+				amountInUSD: new Prisma.Decimal(1_500),
+			},
 		});
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([30_000, 220_000]);
 		const delta = (await ruleRows(b.bookId)).at(-1);

@@ -245,6 +245,16 @@ describe("What if writes only its moves (D54)", () => {
 				batchId: randomUUID(),
 			}),
 		).rejects.toThrow(/more than the envelope holds/);
+		// To assign really holds 100,000: pretend money in never funds a real move.
+		const rich = await save([
+			{ from: null, to: b.id("Dining"), amountMinor: 150_000 },
+		]);
+		await expect(
+			forUser(s.user.id).apply(applyDraftMutation, {
+				draftId: rich.id,
+				batchId: randomUUID(),
+			}),
+		).rejects.toThrow(/Not planned yet holds/);
 		const ok = await save([
 			{ from: null, to: b.id("Dining"), amountMinor: 5_000 },
 		]);

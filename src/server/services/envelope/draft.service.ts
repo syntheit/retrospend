@@ -327,8 +327,20 @@ async function applyWhatIf(
 	now: Date,
 ): Promise<DraftResult> {
 	const t = new Tracker(s);
+	// Pretend money in never funds a real move: out of To assign, at most what it really holds.
+	let pool = Math.max(0, s.toAssign);
 	const rows: NewMovement[] = d.moves.map((m) => {
 		for (const id of [m.from, m.to]) if (id) checkEnvelope(id, s);
+		if (m.from === null) {
+			if (m.amountMinor > pool)
+				throw new EnvelopeError(
+					"OVER_CAP",
+					"that is more than Not planned yet holds",
+					pool,
+				);
+			pool -= m.amountMinor;
+		}
+		if (m.to === null) pool += m.amountMinor;
 		const row: NewMovement = {
 			id: m.id,
 			month: d.month,

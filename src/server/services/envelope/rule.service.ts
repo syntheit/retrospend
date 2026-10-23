@@ -308,6 +308,9 @@ export async function runOne(
 }
 
 /**
+ * TODO(P7): fold this idle check into the loader's book query, so a budget
+ * read without rules costs no extra query.
+ *
  * The book and whether any rule could be waiting, in one query: an active
  * rule exists, or a run has a standing batch its row may have changed.
  */
