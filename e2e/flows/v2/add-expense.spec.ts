@@ -37,13 +37,25 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	await expect(sheet.locator('[data-figure="entry.home"]')).toHaveText(
 		"ARS 17,400",
 	);
-	// The rate is stated once, on its chip.
+	// The currency chip carries its flag; the home row carries the home one.
 	await expect(
-		sheet.getByRole("button", { name: /Official ARS 1,450/ }),
+		sheet
+			.getByRole("button", { name: "Currency, USD" })
+			.locator('img[alt="USD flag"]'),
 	).toBeVisible();
+	await expect(sheet.locator('img[alt="ARS flag"]')).toBeVisible();
+	// Every rate type the pair offers sits beside the amount, the default pressed.
+	const rates = sheet.getByRole("group", { name: "Rate" });
+	await expect(
+		rates.getByRole("button", { name: /Official ARS 1,450/ }),
+	).toHaveAttribute("aria-pressed", "true");
+	await expect(rates.getByRole("button", { name: "Custom" })).toBeVisible();
+	// The recents line fits the width; All reaches every category.
 	await sheet
-		.getByRole("button", { name: "Subscriptions", exact: true })
+		.getByRole("group", { name: "Category" })
+		.getByRole("button", { name: "All" })
 		.click();
+	await page.getByRole("option", { name: "Subscriptions" }).click();
 
 	// What this changes: spending moves in USD; accounts and net worth do not.
 	const changes = sheet.getByTestId("entry-changes");
@@ -100,7 +112,11 @@ test("Add expense: split evenly with Martín, then Undo", async ({ page }) => {
 	const sheet = page.getByRole("dialog", { name: "New expense" });
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("6000");
 	await sheet.getByRole("textbox", { name: "Title" }).fill("E2E dinner");
-	await sheet.getByRole("button", { name: "Restaurants", exact: true }).click();
+	await sheet
+		.getByRole("group", { name: "Category" })
+		.getByRole("button", { name: "All" })
+		.click();
+	await page.getByRole("option", { name: "Restaurants" }).click();
 	await sheet
 		.getByRole("group", { name: "With" })
 		.getByRole("button", { name: /Martín/ })
@@ -146,4 +162,33 @@ test("Add expense: errors before saving, and nothing is saved", async ({
 	).toBeVisible();
 	await sheet.getByRole("button", { name: "Cancel" }).click();
 	await expect(sheet).toBeHidden();
+});
+
+test("Add expense: the project picker shows each project with its people", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openV2(page, "/activity");
+	await page.keyboard.press("n");
+	const sheet = page.getByRole("dialog", { name: "New expense" });
+	await sheet.getByRole("button", { name: "Project, None" }).click();
+	const depto = page.getByRole("option", { name: /Depto Palermo/ });
+	// Identity in the picker: the members' faces and the project's currency.
+	await expect(depto).toContainText("ARS");
+	await expect(depto.locator('[data-slot="avatar"]').first()).toBeVisible();
+	await depto.click();
+	// The project brings its currency and its people into the sheet.
+	await expect(
+		sheet.getByRole("button", { name: "Project, Depto Palermo" }),
+	).toBeVisible();
+	await expect(
+		sheet.getByRole("button", { name: "Currency, ARS" }),
+	).toBeVisible();
+	await expect(
+		sheet
+			.getByRole("group", { name: "With" })
+			.getByRole("button", { name: /Martín/ }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await sheet.getByRole("button", { name: "Cancel" }).click();
 });

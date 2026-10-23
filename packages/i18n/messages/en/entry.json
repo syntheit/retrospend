@@ -90,7 +90,8 @@
 			"title": "Delete {title}?",
 			"body": "It changes other people's balances.",
 			"confirm": "Delete expense"
-		}
+		},
+		"projectAria": "Project, {project}"
 	},
 	"rate": {
 		"default": "Your default rate for {currency}",
@@ -112,7 +113,9 @@
 			"crypto": "Crypto",
 			"market": "Market",
 			"custom": "Custom"
-		}
+		},
+		"label": "Rate",
+		"youSpent": "You spent"
 	},
 	"changes": {
 		"title": "What this changes",
@@ -193,7 +196,9 @@
 			"kept": "Added {amount} into {account}. Kept in Wealth",
 			"planned": "Added {amount}. {count, plural, one {# envelope} other {# envelopes}} funded"
 		},
-		"someoneElse": "Someone else"
+		"someoneElse": "Someone else",
+		"received": "You received",
+		"countsAs": "Counts as"
 	},
 	"transfer": {
 		"titleTransfer": "Transfer",

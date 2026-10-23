@@ -90,7 +90,8 @@
 			"title": "Excluir {title}?",
 			"body": "Isso muda os saldos de outras pessoas.",
 			"confirm": "Excluir gasto"
-		}
+		},
+		"projectAria": "Projeto, {project}"
 	},
 	"rate": {
 		"default": "Sua cotação padrão para {currency}",
@@ -112,7 +113,9 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"label": "Câmbio",
+		"youSpent": "Você gastou"
 	},
 	"changes": {
 		"title": "O que isso muda",
@@ -193,7 +196,9 @@
 			"kept": "{amount} adicionado em {account}. Mantido no Patrimônio",
 			"planned": "{amount} adicionado. {count, plural, one {# envelope com fundos} other {# envelopes com fundos}}"
 		},
-		"someoneElse": "Outra pessoa"
+		"someoneElse": "Outra pessoa",
+		"received": "Você recebeu",
+		"countsAs": "Equivale a"
 	},
 	"transfer": {
 		"titleTransfer": "Transferência",

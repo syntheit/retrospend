@@ -90,7 +90,8 @@
 			"title": "Supprimer {title} ?",
 			"body": "Cela change les soldes d'autres personnes.",
 			"confirm": "Supprimer la dépense"
-		}
+		},
+		"projectAria": "Projet, {project}"
 	},
 	"rate": {
 		"default": "Ton taux par défaut pour {currency}",
@@ -112,7 +113,9 @@
 			"crypto": "Crypto",
 			"market": "Marché",
 			"custom": "Personnalisé"
-		}
+		},
+		"label": "Taux",
+		"youSpent": "Vous avez dépensé"
 	},
 	"changes": {
 		"title": "Ce que ça change",
@@ -193,7 +196,9 @@
 			"kept": "{amount} ajouté sur {account}. Gardé dans Patrimoine",
 			"planned": "{amount} ajouté. {count, plural, one {# enveloppe remplie} other {# enveloppes remplies}}"
 		},
-		"someoneElse": "Quelqu'un d'autre"
+		"someoneElse": "Quelqu'un d'autre",
+		"received": "Vous avez reçu",
+		"countsAs": "Équivaut à"
 	},
 	"transfer": {
 		"titleTransfer": "Virement",

@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Sheet } from "~/components/ui/sheet";
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
+import { getImageUrl } from "~/lib/image-url";
 import { FieldError, useSettled } from "../shared-ui";
 import { api } from "~/trpc/react";
 import { ChangesBlock } from "../changes";
@@ -32,6 +33,7 @@ function useProjects(youId: string): Project[] {
 				.map((p) => ({
 					id: p.id,
 					name: p.name,
+					coverUrl: getImageUrl(p.imagePath),
 					primaryCurrency: p.primaryCurrency,
 					members: p.participants
 						.filter(

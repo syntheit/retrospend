@@ -90,7 +90,8 @@
 			"title": "¿Eliminar {title}?",
 			"body": "Cambia los saldos de otras personas.",
 			"confirm": "Eliminar gasto"
-		}
+		},
+		"projectAria": "Proyecto, {project}"
 	},
 	"rate": {
 		"default": "Tu tipo de cambio predeterminado para {currency}",
@@ -112,7 +113,9 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizado"
-		}
+		},
+		"label": "Tipo de cambio",
+		"youSpent": "Gastaste"
 	},
 	"changes": {
 		"title": "Qué cambia",
@@ -193,7 +196,9 @@
 			"kept": "Has añadido {amount} a {account}. Queda en Patrimonio",
 			"planned": "Has añadido {amount}. {count, plural, one {# sobre con fondos} other {# sobres con fondos}}"
 		},
-		"someoneElse": "Otra persona"
+		"someoneElse": "Otra persona",
+		"received": "Recibiste",
+		"countsAs": "Equivale a"
 	},
 	"transfer": {
 		"titleTransfer": "Transferencia",

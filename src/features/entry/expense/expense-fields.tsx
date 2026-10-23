@@ -5,13 +5,6 @@ import { Money } from "~/components/money/money";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
 import { Field, type EntryCatalog } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import { AmountField, type RateState } from "./amount-field";
@@ -19,12 +12,15 @@ import { CategoryLine } from "./category-line";
 import { type DraftErrors, isShared } from "./draft";
 import { OptionsSection } from "./options-section";
 import { usePeople, WithField } from "./people-field";
+import { ProjectField } from "./project-field";
 import { SplitSection } from "./split-section";
 import type { useExpenseDraft } from "./use-expense-draft";
 
 export type Project = {
 	id: string;
 	name: string;
+	/** The cover photo's URL, or null for the flat tile. */
+	coverUrl: string | null;
 	primaryCurrency: string;
 	members: EntryPerson[];
 };
@@ -117,29 +113,17 @@ export function ExpenseFields(p: {
 			<div className="grid gap-4 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
 				{canProject ? (
 					<Field label={t("project")}>
-						<Select
-							onValueChange={(id) => {
-								const next = p.projects.find((pr) => pr.id === id) ?? null;
+						<ProjectField
+							onChange={(next) =>
 								x.setProject(
 									next?.id ?? null,
 									next?.members ?? [],
 									next?.primaryCurrency,
-								);
-							}}
-							value={d.projectId ?? "none"}
-						>
-							<SelectTrigger aria-label={t("project")} className="w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="none">{t("noProject")}</SelectItem>
-								{p.projects.map((pr) => (
-									<SelectItem key={pr.id} value={pr.id}>
-										{pr.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+								)
+							}
+							projects={p.projects}
+							value={d.projectId}
+						/>
 					</Field>
 				) : null}
 				{(d.editing === null || editingShared) && !solo ? (

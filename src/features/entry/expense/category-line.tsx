@@ -2,12 +2,14 @@
 
 import { EyeOff } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { CategoryPicker } from "~/components/pickers/category-picker";
+import { useLayoutEffect, useRef, useState } from "react";
+import {
+	CategoryGlyph,
+	CategoryPicker,
+} from "~/components/pickers/category-picker";
 import { PickerPopover } from "~/components/pickers/picker-popover";
 import { FilterChip } from "~/components/ui/chip";
 import { Tip } from "~/components/ui/tooltip";
-import { useIsMobile } from "~/hooks/use-mobile";
 import { cn } from "~/lib/cn";
 import type { EntryCatalog } from "../shared-ui";
 
@@ -30,11 +32,45 @@ export function lineIds(
 	return ids;
 }
 
+/** Up to this many recents; as many as fit beside All are shown. */
+const LINE_MAX = 5;
+
 /**
- * Category: one fixed line of recents (4 on desktop, 3 on a phone) and All,
- * which opens the one CategoryPicker. Text-only chips, selected by fill;
- * the auto-picked one gets a short ring. A category not counted in spending
- * says so.
+ * How many of the line's chips fit beside All in one row: each chip leads
+ * with its glyph, so the count follows the width, not a fixed number.
+ * Chips that do not fit stay measurable but invisible.
+ */
+function useFitCount(total: number) {
+	const ref = useRef<HTMLDivElement>(null);
+	const [fit, setFit] = useState(total);
+	useLayoutEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const measure = () => {
+			const gap = Number.parseFloat(getComputedStyle(el).columnGap) || 0;
+			const all = el.querySelector<HTMLElement>("[data-fit-all]");
+			let used = all?.offsetWidth ?? 0;
+			let n = 0;
+			for (const chip of el.querySelectorAll<HTMLElement>("[data-fit]")) {
+				used += chip.offsetWidth + gap;
+				if (used > el.clientWidth) break;
+				n++;
+			}
+			setFit(n);
+		};
+		measure();
+		const ro = new ResizeObserver(measure);
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, [total]);
+	return { ref, fit };
+}
+
+/**
+ * Category: one line of recents (as many as fit) and All, which opens the
+ * one CategoryPicker. Each chip leads with the bare glyph in its category
+ * color (R25: identity, no tile), selected by fill; the auto-picked one
+ * gets a short ring. A category not counted in spending says so.
  */
 export function CategoryLine({
 	categories,
@@ -52,18 +88,19 @@ export function CategoryLine({
 	kind?: "EXPENSE" | "INCOME";
 }) {
 	const t = useTranslations("entry.expense");
-	const phone = useIsMobile();
 	const [open, setOpen] = useState(false);
 	const mine = categories.filter((c) => c.kind === kind);
-	const ids = lineIds(recents, mine, value, phone ? 3 : 4);
+	const ids = lineIds(recents, mine, value, LINE_MAX);
 	const byId = new Map(mine.map((c) => [c.id, c]));
+	const { ref, fit } = useFitCount(ids.length);
 	return (
 		<div
 			aria-label={t("category")}
-			className="flex flex-wrap items-center gap-2"
+			className="relative flex items-center gap-2"
+			ref={ref}
 			role="group"
 		>
-			{ids.map((id) => {
+			{ids.map((id, i) => {
 				const c = byId.get(id);
 				if (!c) return null;
 				const on = value === id;
@@ -71,8 +108,11 @@ export function CategoryLine({
 					<FilterChip
 						className={cn(
 							on && ring && "outline-2 outline-brand outline-offset-2",
+							i >= fit && "invisible absolute",
 						)}
+						data-fit=""
 						key={id}
+						lead={<CategoryGlyph category={c} />}
 						onClick={() => onPick(id)}
 						selected={on}
 					>
@@ -94,7 +134,11 @@ export function CategoryLine({
 				onOpenChange={setOpen}
 				open={open}
 				title={t("pickCategory")}
-				trigger={<FilterChip value>{t("allCategories")}</FilterChip>}
+				trigger={
+					<FilterChip data-fit-all="" value>
+						{t("allCategories")}
+					</FilterChip>
+				}
 			>
 				<CategoryPicker
 					categories={mine}

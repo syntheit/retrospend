@@ -1,17 +1,18 @@
 "use client";
 
 import { Calendar } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { AvailablePill } from "~/components/money/available-pill";
 import { Balance } from "~/components/money/balance";
 import { Money } from "~/components/money/money";
+import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { FilterChip, FilterChips, FilterMenu } from "~/components/ui/chip";
 import { Segmented } from "~/components/ui/segmented";
 import { StatusDot } from "~/components/ui/status-dot";
 import { STATUS, type StatusKind } from "~/components/ui/status-map";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { m } from "../fixtures/rows";
+import { CAT, m } from "../fixtures/rows";
 import { Cap, Pair, Spec, States } from "../spec";
 
 /** Sample labels inside the samples: fixtures, like the numbers. */
@@ -48,7 +49,8 @@ export const S = {
 	overdue: "Overdue",
 	paused: "Paused",
 	segmented: "Segmented",
-	chips: "FilterChips (toggle). Selected is filled brand.",
+	chips:
+		"FilterChips (toggle). Selected is filled brand. A category chip leads with its bare glyph.",
 	tabs: "Tabs (panes inside one page; accent underline)",
 	primary: "Primary",
 	secondary: "Secondary",
@@ -161,8 +163,9 @@ export function MoneySection() {
 function Picks() {
 	const [view, setView] = useState<"e" | "s" | "p">("e");
 	const [on, setOn] = useState<Record<string, boolean>>({ oct: true });
-	const chip = (id: string, label: string) => (
+	const chip = (id: string, label: string, lead?: ReactNode) => (
 		<FilterChip
+			lead={lead}
 			onClick={() => setOn((o) => ({ ...o, [id]: !o[id] }))}
 			selected={!!on[id]}
 		>
@@ -188,7 +191,11 @@ function Picks() {
 					<Calendar />
 					{S.oct}
 				</FilterChip>
-				{chip("groceries", S.groceries)}
+				{chip(
+					"groceries",
+					S.groceries,
+					<CategoryGlyph category={{ id: "groceries", ...CAT.groceries }} />,
+				)}
 				{chip("palermo", S.palermo)}
 				<FilterChip disabled>{S.disabled}</FilterChip>
 				<FilterMenu
