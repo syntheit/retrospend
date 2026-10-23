@@ -162,8 +162,12 @@ export const netWorthFigure: FigureDefinition = {
 const changeFigure = (part: ChangePart | "total"): FigureDefinition => ({
 	id: `netWorthChange.${part}`,
 	scope: [],
-	compute: async (db, scope) => {
-		const change = await netWorthChangeFor(db, scope.userId);
+	// The total and the seven parts are one breakdown: loaded once per read pass.
+	compute: async (db, scope, pass) => {
+		const load = () => netWorthChangeFor(db, scope.userId);
+		const change = await (pass
+			? pass.once(`netWorthChange:${scope.userId}`, load)
+			: load());
 		if (!change) return null;
 		const minor = part === "total" ? change.total : change.parts[part];
 		return { minor, currency: change.currency };

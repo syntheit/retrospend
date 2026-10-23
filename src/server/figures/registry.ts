@@ -69,7 +69,31 @@ export interface FigureDefinition<Db = FigureDb> {
 	/** Checked by every preview, declared or not, so a sheet can say "Your accounts and net worth: no change" (R30). */
 	readonly inEveryPreview?: boolean;
 	/** Returns null when the number is unavailable (for example a missing rate, R14). Throws only on bugs. */
-	readonly compute: (db: Db, scope: FigureScope) => Promise<FigureValue | null>;
+	readonly compute: (
+		db: Db,
+		scope: FigureScope,
+		/** The read pass; readFigure always passes one. */
+		pass?: FigurePass,
+	) => Promise<FigureValue | null>;
+}
+
+/**
+ * One read pass (one `readFiguresIn` call): figures computed from the same
+ * load share it through `once`, so eight parts of one breakdown load their
+ * rows once. It never outlives the pass, so a preview's before and after
+ * (two passes around a write) never share a load.
+ */
+export class FigurePass {
+	private readonly loads = new Map<string, Promise<unknown>>();
+
+	once<T>(key: string, load: () => Promise<T>): Promise<T> {
+		let pending = this.loads.get(key) as Promise<T> | undefined;
+		if (!pending) {
+			pending = load();
+			this.loads.set(key, pending);
+		}
+		return pending;
+	}
 }
 
 export interface FiguresRegistry<Db = FigureDb> {
@@ -183,10 +207,15 @@ export async function readFigure<Db>(
 	definition: FigureDefinition<Db>,
 	db: Db,
 	scope: FigureScope,
+	pass: FigurePass = new FigurePass(),
 ): Promise<FigureReading> {
 	let value: FigureValue | null;
 	try {
-		value = await definition.compute(db, narrowScope(scope, definition.scope));
+		value = await definition.compute(
+			db,
+			narrowScope(scope, definition.scope),
+			pass,
+		);
 	} catch (error) {
 		throw new FigureError(definition.id, "compute failed", { cause: error });
 	}
@@ -200,8 +229,9 @@ export async function readFiguresIn<Db>(
 	scope: FigureScope,
 ): Promise<ReadonlyMap<string, FigureReading>> {
 	const readings = new Map<string, FigureReading>();
+	const pass = new FigurePass();
 	for (const definition of definitions) {
-		readings.set(definition.id, await readFigure(definition, db, scope));
+		readings.set(definition.id, await readFigure(definition, db, scope, pass));
 	}
 	return readings;
 }
