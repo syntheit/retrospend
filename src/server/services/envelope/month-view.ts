@@ -15,6 +15,12 @@ import type {
 } from "~/lib/schemas/envelope";
 import { addMonths, daysBetween } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
+import type { GroupTarget } from "./groups";
+import {
+	type GroupBase,
+	type GroupMemberView,
+	groupTargetDto,
+} from "./group-view";
 import { leftToSpendDto, verdictDto } from "./month-dto";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
 import {
@@ -65,6 +71,9 @@ export interface ViewGroup {
 	name: string;
 	role: GroupRole;
 	order: number;
+	/** SPEC §5.9; absent or null: no target. */
+	target?: GroupTarget | null;
+	mainEnvelopeId?: string | null;
 }
 
 export interface ViewBook {
@@ -91,6 +100,8 @@ export interface MonthViewInput {
 	missingRates: readonly MissingRate[];
 	/** The Owed line (owed.ts); nothing owed when omitted. */
 	owed?: OwedSummaryDto;
+	/** The base for % group targets (group-view.ts); none when omitted. */
+	groupBase?: GroupBase | null;
 }
 
 /** Your shares in the month: how many found no category (D19) and what waits for your OK (D20). */
@@ -198,6 +209,19 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 		});
 }
 
+/** A row as its group's target reads it (SPEC §5.9). */
+function memberOf(r: Row): GroupMemberView {
+	return {
+		envelopeId: r.env.id,
+		order: r.env.order,
+		hasTarget: r.env.target !== null,
+		assigned: r.m.assigned,
+		need: r.target?.need ?? 0,
+		// Spent and shares minus refunds; moves to Wealth are not spending.
+		spending: -(r.m.activity - r.m.wealth),
+	};
+}
+
 function statusOf(r: Row): EnvelopeRowDto["status"] {
 	if (r.m.left < 0) return "OVERSPENT";
 	if (!r.target && !(r.env.targetIncomplete && r.open)) return "NO_TARGET";
@@ -297,6 +321,12 @@ function groupsDto(
 				name: g.name,
 				role: g.role,
 				sortOrder: g.order === Number.MAX_SAFE_INTEGER ? 9999 : g.order,
+				target: groupTargetDto(
+					"target" in g ? g : null,
+					mine.map((r) => memberOf(r)),
+					p.month >= p.state.currentMonth ? (p.groupBase ?? null) : undefined,
+					money,
+				),
 				totals: {
 					carryIn: sum((r) => r.m.carryIn),
 					assigned: sum((r) => r.m.assigned),

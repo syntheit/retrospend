@@ -65,6 +65,7 @@ import {
 import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
+import { groupTargetOf } from "./group-view";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
 
@@ -108,6 +109,8 @@ export interface LoadedBook {
 	periods: MonthBoundary[];
 	/** The book currency, periods and rates this load valued rows with. */
 	valuation: ValuationContext;
+	/** Values further rows the same way (rules, typical income); freeze what it values. */
+	valuer: Valuer;
 }
 
 export interface LoadContext {
@@ -239,6 +242,7 @@ function viewBook(
 			name: g.name,
 			role: g.role,
 			order: g.sortOrder,
+			...groupTargetOf(g, row.currency),
 		})),
 		envelopes,
 	};
@@ -464,6 +468,7 @@ function finishLoad(
 		]),
 		periods: s.periods,
 		valuation: s.valuation,
+		valuer: s.valuer,
 	};
 }
 

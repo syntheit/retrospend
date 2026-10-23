@@ -36,6 +36,7 @@ import {
 	snapshot,
 	Tracker,
 } from "./movement-state";
+import { markRulesSkipped } from "./rule.service";
 import type { Minor, MonthKey } from "./types";
 import { fromMinor, toMinor } from "./units";
 
@@ -438,6 +439,14 @@ export async function undo(
 		t.apply(r);
 	}
 	await insert(tx, s, userId, rows);
+	// An undone rule batch marks its money in "rules skipped" (SPEC §5.10).
+	await markRulesSkipped(
+		tx,
+		s.loaded.row.id,
+		originals.flatMap((o) =>
+			o.kind === "RULE" && o.sourceExpenseId ? [o.sourceExpenseId] : [],
+		),
+	);
 	return result(
 		tx,
 		userId,
