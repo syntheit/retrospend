@@ -137,6 +137,9 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Figure ids of rows and recurring costs | `entry.amount:<row>`, `entry.share:<row>`, `recurring.amount:<id>`, `recurring.cost.<dir>.<period>` are not in the figures registry or `/api/v1/figures` | The flows audit them against the tRPC reads (`expense.listV2`, `recurring.listView`) | S2 figures + S3 |
 | Shared expense faces for a participant who did not create it | RLS on `split_participant` shows a participant only their own row of a standalone shared expense | listV2 adds the payer to the faces and the Person filter matches the payer too; other participants stay hidden | S2 (RLS helper `is_split_participant` in the policy) |
 | Saves elsewhere refreshing Activity | `settlement.*` and `recurring.confirmAndCreate` do not list `expense` in `src/lib/query-invalidation.ts` | Payment rows refresh on the next visit; the Recurring tab invalidates listV2 itself after Confirm | shared map owner |
+| Recurring delete Undo | A restore for a deleted recurring template | Delete asks first with the template's name (registry confirm); the toast has no Undo. Pause, Resume and Auto-pay do have Undo | 2E |
+| Recurring add and edit sheet | The one Recurring expense sheet (next due a month out, More details for pay from and website) | Today's modal ("New subscription", 8 fields, next due today, auto-pay on) opens from the header, the empty state and Edit | S4G Add family |
+| Recurring "Logged by auto-pay" | A read of this month's rows booked by auto-pay templates | Not shown | 2E |
 
 ## 8. Behavior gaps found by the e2e suite
 
