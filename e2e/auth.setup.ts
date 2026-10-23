@@ -4,7 +4,7 @@ import {
 	personaStorageState,
 	USER_STORAGE_STATE,
 } from "./constants";
-import { LUCIA, SOFIA } from "./fixtures/personas";
+import { LUCIA, MARTIN, SOFIA } from "./fixtures/personas";
 import { loginAs, loginAsAdmin, loginAsTestUser } from "./helpers/auth";
 
 setup("save test user auth state", async ({ page }) => {
@@ -17,7 +17,7 @@ setup("save admin auth state", async ({ page }) => {
 	await page.context().storageState({ path: ADMIN_STORAGE_STATE });
 });
 
-for (const persona of [SOFIA, LUCIA]) {
+for (const persona of [SOFIA, LUCIA, MARTIN]) {
 	setup(`save ${persona.username} auth state`, async ({ page }) => {
 		await loginAs(page, persona.email, persona.password);
 		await page

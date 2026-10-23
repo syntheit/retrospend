@@ -18,7 +18,8 @@ export const ADMIN_STORAGE_STATE = "playwright/.auth/admin.json";
  * A seeded persona's session, saved once per run by auth.setup.ts. The
  * server takes 10 sign-ins a minute from one client (better-auth config) and
  * every test comes from the same address, so specs reuse these sessions
- * instead of signing in again.
+ * instead of signing in again. A run signs in 9 times today (auth.setup.ts
+ * and auth.spec.ts); a new spec that signs in pushes it toward the limit.
  */
 export function personaStorageState(username: string): string {
 	return `playwright/.auth/${username}.json`;

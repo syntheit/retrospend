@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { bannedOutputOn } from "../helpers/banned-output";
-import { FigureAudit, type FiguresResponse } from "../helpers/figures";
-import { untilSaved } from "../helpers/trpc";
-import { enableV2ForViewer, openV2, realCategory } from "./v2-viewer";
+import { bannedOutputOn } from "../../helpers/banned-output";
+import { FigureAudit, type FiguresResponse } from "../../helpers/figures";
+import { untilSaved } from "../../helpers/trpc";
+import { openV2, realCategory, V2_VIEWER_SESSION } from "./viewer";
 
 type Money = { minor: number; currency: string };
 type Cost = { month: Money; quarter: Money; year: Money };
@@ -55,7 +55,7 @@ async function dueTemplate(page: Page, name: string): Promise<void> {
 	expect(res.ok(), `recurring.create answered ${res.status()}`).toBe(true);
 }
 
-test.beforeAll(enableV2ForViewer);
+test.use({ storageState: V2_VIEWER_SESSION });
 
 test("Recurring: add one, see it grouped and summed, confirm it", async ({
 	page,
