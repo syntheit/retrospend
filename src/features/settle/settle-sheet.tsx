@@ -74,8 +74,11 @@ function SettleSheetFor({
 	const toast = useToast();
 	const router = useRouter();
 	const session = useSession();
-	const s = useSettle(person, scope);
 	const [done, setDone] = useState<Recorded | null>(null);
+	// Frozen from the moment Record is pressed: the write invalidates the
+	// settlement reads, and a preview of the old input would only be refused.
+	const [recording, setRecording] = useState(false);
+	const s = useSettle(person, scope, recording || done !== null);
 	const record = api.settlement.paymentRecord.useMutation();
 	const undoRecord = api.people.undoPayment.useMutation();
 	const unconfirm = api.settlement.paymentUnconfirm.useMutation();
@@ -99,7 +102,10 @@ function SettleSheetFor({
 	const onSubmit = async () => {
 		if (!s.input) return false;
 		const input = s.input;
-		const result = await record.mutateAsync(input);
+		setRecording(true);
+		const result = await record
+			.mutateAsync(input)
+			.finally(() => setRecording(false));
 		setDone(result);
 		router.refresh();
 		const paid = result.value.recorded ? result.value.allocation?.amount : null;

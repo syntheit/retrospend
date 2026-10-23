@@ -7,7 +7,7 @@ import {
 } from "@retrospend/domain/parse";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PersonIdentityDTO } from "~/features/people/types";
 import { api, type RouterInputs } from "~/trpc/react";
 
@@ -42,6 +42,8 @@ const EMPTY: MoneyInputResult = { ok: false, error: "empty" };
 export function useSettle(
 	person: PersonIdentityDTO | null,
 	scope?: string | null,
+	/** After Record: nothing reads or previews again (the sheet shows what changed). */
+	frozen = false,
 ) {
 	const locale = useLocale();
 	const [direction, setDirection] = useState<Direction | null>(null);
@@ -76,7 +78,7 @@ export function useSettle(
 			rateType,
 			...(scope === undefined ? {} : { scope }),
 		},
-		{ enabled: ref !== null, placeholderData: keepPreviousData },
+		{ enabled: ref !== null && !frozen, placeholderData: keepPreviousData },
 	);
 	const c = ctx.data;
 	const minor = result.ok ? result.minor : null;
@@ -135,7 +137,9 @@ export function useSettle(
 	const preview = api.settlement.paymentPreview.useQuery(
 		settled as RecordInput,
 		{
-			enabled: settled !== null,
+			enabled: settled !== null && !frozen,
+			// A refusal (the balance moved) is an answer, not a network blip.
+			retry: false,
 			placeholderData: keepPreviousData,
 		},
 	);
@@ -143,11 +147,14 @@ export function useSettle(
 
 	// Everything moved (a new expense, a payment): read the context again; the
 	// refill below then puts the new figure in the amount.
-	const stale = preview.error?.data?.code === "CONFLICT";
-	const reload = ctx.refetch;
+	// Once per refused input, never in a loop: refetch is not a stable function.
+	const stale =
+		!frozen && preview.error?.data?.code === "CONFLICT" ? settled : null;
+	const reload = useRef(ctx.refetch);
+	reload.current = ctx.refetch;
 	useEffect(() => {
-		if (stale) void reload();
-	}, [stale, reload]);
+		if (stale) void reload.current();
+	}, [stale]);
 
 	// "Same payment?": the receiver's amount matches a claim; confirm it by default.
 	useEffect(() => {
