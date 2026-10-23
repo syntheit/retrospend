@@ -111,9 +111,38 @@ describe("toGlanceVM", () => {
 		const vm = toGlanceVM(dto);
 		expect(vm.spent).toBeNull();
 		expect(vm.line).toEqual({ kind: "unavailable", currencies: ["BRL"] });
-		expect(vm.rows.map((r) => r.id)).toEqual(["netWorth"]);
+		// The row stays and says "No rate yet" (R14); zero rows still go.
+		expect(vm.rows.map((r) => [r.id, r.amount])).toEqual([
+			["owedToYou", null],
+			["netWorth", ars(13532548300)],
+		]);
 		expect(unnamedMissingRates(dto, [])).toEqual(["CLP"]);
 		expect(unnamedMissingRates(dto, ["CLP"])).toEqual([]);
+	});
+
+	it("a currency a Needs you item names is not named again on the line", () => {
+		const dto: GlanceDTO = {
+			...BASE,
+			budget: { state: "incomplete", missingRates: ["BRL", "CLP"] },
+		};
+		expect(toGlanceVM(dto, { named: ["BRL"] }).line).toEqual({
+			kind: "unavailable",
+			currencies: ["CLP"],
+		});
+		expect(lineOf(dto, ["BRL", "CLP"])).toEqual({
+			kind: "unavailable",
+			currencies: [],
+		});
+	});
+
+	it("owed rows carry the faces behind them", () => {
+		const lucia = { id: "user:lucia", name: "Lucía Fernández" };
+		const vm = toGlanceVM(
+			{ ...BASE, youOwe: fig("owed.youOwe", 1796981) },
+			{ faces: { owedToYou: [lucia], youOwe: [] } },
+		);
+		expect(vm.rows.find((r) => r.id === "owedToYou")?.faces).toEqual([lucia]);
+		expect(vm.rows.find((r) => r.id === "youOwe")?.faces).toBeUndefined();
 	});
 
 	it("a new user: no pace yet, zero spent, no rows", () => {

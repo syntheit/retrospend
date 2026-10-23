@@ -122,6 +122,28 @@ describe("toNeedsVM", () => {
 		});
 	});
 
+	it("a rejected split takes its action from the server's first action", () => {
+		expect(
+			toNeedsVM(
+				item("split.rejected", {
+					people: ["user:lucia"],
+					title: "Pizza night",
+					amount: ars(1800000),
+					actions: [
+						{ entity: "expense", id: "edit" },
+						{ entity: "expense", id: "correct" },
+					],
+				}),
+				W,
+			),
+		).toMatchObject({
+			kind: "rejected",
+			person: "Lucía",
+			title: "Pizza night",
+			action: "edit",
+		});
+	});
+
 	it("one envelope over is named; several are counted", () => {
 		expect(
 			toNeedsVM(

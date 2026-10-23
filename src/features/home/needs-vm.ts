@@ -99,6 +99,8 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						person: firstPerson(item, w),
 						title: item.title ?? "",
 						amount,
+						// The server's primary action (catalog: expense edit).
+						...(item.actions[0] ? { action: item.actions[0].id } : {}),
 					}
 				: null;
 		case "import.review":

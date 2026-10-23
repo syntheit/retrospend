@@ -8,6 +8,7 @@ import type {
 	GlanceRow,
 	GlanceVM,
 } from "~/components/glance/glance-strip";
+import type { FacePerson } from "~/components/ui/avatar-face";
 import type { GlanceDTO } from "~/server/services/figures/glance";
 
 /** Where each glance row leads. */
@@ -18,12 +19,23 @@ export const GLANCE_HREF = {
 	netWorth: "/wealth",
 } as const;
 
-/** The line under the hero: the budget's state, or no budget. */
-export function lineOf(dto: GlanceDTO): GlanceLine {
+/**
+ * The line under the hero: the budget's state, or no budget. Currencies a
+ * Needs you item already names are not named again (a fact appears once).
+ */
+export function lineOf(
+	dto: GlanceDTO,
+	namedElsewhere: readonly string[] = [],
+): GlanceLine {
 	const budget = dto.budget;
 	if (!budget) return { kind: "noBudget" };
 	if (budget.state === "incomplete")
-		return { kind: "unavailable", currencies: budget.missingRates };
+		return {
+			kind: "unavailable",
+			currencies: budget.missingRates.filter(
+				(c) => !namedElsewhere.includes(c),
+			),
+		};
 	const left = budget.leftToSpend;
 	if (left.over.minor > 0) return { kind: "over", over: left.over };
 	if (left.daysLeft <= 1) return { kind: "leftToday", left: left.left };
@@ -32,18 +44,43 @@ export function lineOf(dto: GlanceDTO): GlanceLine {
 
 type Figure = GlanceDTO["owedToYou"];
 
-/** A row only when its figure has something to say (a value, not zero). */
-function row(id: GlanceRow["id"], figure: Figure): GlanceRow[] {
+/**
+ * A row when its figure has something to say: a value that is not zero, or
+ * no value at all (a missing rate), which the row says rather than hiding
+ * the number (R14).
+ */
+function row(
+	id: GlanceRow["id"],
+	figure: Figure,
+	faces?: FacePerson[],
+): GlanceRow[] {
 	const value = figure.value;
-	if (!value || value.minor === 0) return [];
-	return [{ id, amount: value, href: GLANCE_HREF[id], figure: figure.id }];
+	if (value && value.minor === 0) return [];
+	return [
+		{
+			id,
+			amount: value,
+			href: GLANCE_HREF[id],
+			figure: figure.id,
+			...(faces?.length ? { faces } : {}),
+		},
+	];
 }
+
+/** The faces behind the owed rows (rule 8), from People's read. */
+export type OwedFaces = {
+	owedToYou: FacePerson[];
+	youOwe: FacePerson[];
+};
 
 /** A series with nothing spent yet: the chart says "no data", never a flat zero. */
 const series = (values: readonly number[] | null) =>
 	values?.some((v) => v !== 0) ? [...values] : [];
 
-export function toGlanceVM(dto: GlanceDTO): GlanceVM {
+export function toGlanceVM(
+	dto: GlanceDTO,
+	options: { named?: readonly string[]; faces?: OwedFaces } = {},
+): GlanceVM {
 	const budget = dto.budget?.state === "ready" ? dto.budget : null;
 	const current = series(dto.pace.this);
 	const previous = series(dto.pace.last);
@@ -52,7 +89,7 @@ export function toGlanceVM(dto: GlanceDTO): GlanceVM {
 		month: dto.period.from,
 		spent: dto.spent.value,
 		spentFigure: dto.spent.id,
-		line: lineOf(dto),
+		line: lineOf(dto, options.named),
 		fasterThanPlanned: budget?.leftToSpend.fasterThanPlanned ?? false,
 		pace: {
 			currency: dto.home,
@@ -64,8 +101,8 @@ export function toGlanceVM(dto: GlanceDTO): GlanceVM {
 		rows: [
 			...(budget ? row("toAssign", budget.notPlannedYet) : []),
 			// Two rows, never netted (D1).
-			...row("owedToYou", dto.owedToYou),
-			...row("youOwe", dto.youOwe),
+			...row("owedToYou", dto.owedToYou, options.faces?.owedToYou),
+			...row("youOwe", dto.youOwe, options.faces?.youOwe),
 			...row("netWorth", dto.netWorth),
 		],
 	};

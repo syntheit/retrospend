@@ -11,7 +11,7 @@ import {
 import { gotoReady } from "../../helpers/navigation";
 import { untilSaved } from "../../helpers/trpc";
 
-// The redesigned Home (uiV2, today's /dashboard) on Sofía's seeded ledger:
+// The redesigned Home (uiV2, /home; /dashboard redirects there) on Sofía's seeded ledger:
 // the glance (one hero, Owed to you and You owe as two rows), Needs you
 // with Lucía's cash payment, Recent and the rail. Every figure matches the
 // figures API and People shows the same owed figures. Confirm, then Undo.
@@ -87,7 +87,7 @@ function homeFetcher(page: Page): FigureFetcher {
 }
 
 async function openHome(page: Page): Promise<void> {
-	await gotoReady(page, "/dashboard");
+	await gotoReady(page, "/home");
 	await expect(page.locator('[data-ui="v2"][data-page="home"]')).toBeVisible();
 	// Every part has loaded: no skeletons left.
 	await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
@@ -156,6 +156,9 @@ test("Home on a phone: one column, no rail, nothing wider than the screen", asyn
 }) => {
 	test.setTimeout(120_000);
 	await page.setViewportSize({ width: 390, height: 844 });
+	// Today's route sends uiV2 viewers to Home.
+	await gotoReady(page, "/dashboard");
+	await expect(page).toHaveURL(/\/home$/);
 	await openHome(page);
 	const main = page.getByRole("main");
 	await expect(main.getByText(/^Spent in /)).toBeVisible();

@@ -1,5 +1,6 @@
 "use client";
 
+import type { Money } from "@retrospend/domain/money-minor";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
@@ -27,10 +28,28 @@ const AHEAD_DAYS = 21;
 const MAX_UPCOMING = 5;
 const MAX_OWED = 3;
 
-/** Who owes you most, then who you owe most (People's balance sort). */
+/** The glance's owed totals, so the rail never repeats one (R26). */
+export type OwedTotals = {
+	owedToYou: Money | null;
+	youOwe: Money | null;
+};
+
+/** A person's balance is the whole glance total (they are the only one). */
+const isTotal = (p: PersonSummary, total: Money | null) =>
+	!!p.net &&
+	!!total &&
+	p.net.currency === total.currency &&
+	Math.abs(p.net.minor) === total.minor;
+
+/**
+ * Who owes you most, then who you owe most (People's balance sort). A
+ * person whose balance is the glance's whole total is left out: the glance
+ * row says that number already (a fact appears once).
+ */
 export function railPeople(
 	view: PeopleOverview,
 	locale: string,
+	totals: OwedTotals,
 ): PersonSummary[] {
 	const withNet = sortPeople(
 		view.people.filter((p) => p.net),
@@ -38,8 +57,12 @@ export function railPeople(
 		locale,
 	);
 	return [
-		...withNet.filter((p) => p.group === "owed").slice(0, MAX_OWED),
-		...withNet.filter((p) => p.group === "owe").slice(0, 1),
+		...withNet
+			.filter((p) => p.group === "owed" && !isTotal(p, totals.owedToYou))
+			.slice(0, MAX_OWED),
+		...withNet
+			.filter((p) => p.group === "owe" && !isTotal(p, totals.youOwe))
+			.slice(0, 1),
 	];
 }
 
@@ -144,15 +167,17 @@ function ComingUpBlock({
 export function HomeRail({
 	people,
 	recurring,
+	totals,
 }: {
 	people: PeopleOverview | undefined;
 	recurring: RecurringView | undefined;
+	totals: OwedTotals;
 }) {
 	const t = useTranslations("homePage.rail");
 	const locale = useLocale();
 	const who = useMemo(
-		() => (people ? railPeople(people, locale) : []),
-		[people, locale],
+		() => (people ? railPeople(people, locale, totals) : []),
+		[people, locale, totals],
 	);
 	const soon = useMemo(
 		() => (recurring ? upcoming(recurring) : []),
@@ -162,7 +187,7 @@ export function HomeRail({
 	return (
 		<aside
 			aria-label={t("label")}
-			className="flex min-w-0 shrink-0 flex-col max-lg:hidden lg:w-80"
+			className="flex min-w-0 shrink-0 flex-col max-lg:hidden lg:w-96"
 		>
 			<PeopleBlock home={people?.home ?? ""} people={who} />
 			{recurring && <ComingUpBlock items={soon} today={recurring.today} />}
