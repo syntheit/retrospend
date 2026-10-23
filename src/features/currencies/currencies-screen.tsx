@@ -3,6 +3,7 @@
 import { SearchX, Star } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { BackButton, PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Toolbar } from "~/components/layout/toolbar";
 import { useRowDates } from "~/components/rows/dates";
@@ -12,12 +13,6 @@ import { Empty } from "~/components/ui/empty-state";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
 import { Sheet } from "~/components/ui/sheet";
-import {
-	BackButton,
-	HeaderSub,
-	PageFrame,
-	PhoneSub,
-} from "~/features/wealth/page-frame";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { CurrencyDetail, useCurrencyName } from "./currency-detail";
@@ -167,10 +162,9 @@ export function CurrenciesScreen({
 		<PageFrame label="currencies">
 			<PageHeader
 				lead={<BackButton href="/wealth" label={nav("wealth")} />}
-				sub={<HeaderSub text={sub} />}
+				sub={sub || undefined}
 				title={t("title")}
 			/>
-			<PhoneSub text={sub} />
 			<Toolbar
 				label={t("filters.label")}
 				search={

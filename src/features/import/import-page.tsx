@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { BudgetsImporterTab } from "~/components/data-management/budgets-importer-tab";
 import { WealthImporterTab } from "~/components/data-management/wealth-importer-tab";
+import { BackButton, PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Button } from "~/components/ui/button";
 import {
@@ -17,7 +18,6 @@ import {
 import { Notice } from "~/components/ui/notice";
 import { Segmented } from "~/components/ui/segmented";
 import { useToast } from "~/components/ui/toast";
-import { BackButton, PageFrame } from "~/features/wealth/page-frame";
 import { settingsHref } from "~/lib/nav";
 import type { ImportSummary } from "~/server/services/import/commit.mutation";
 import { api } from "~/trpc/react";

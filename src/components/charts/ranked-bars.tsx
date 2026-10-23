@@ -17,6 +17,8 @@ export type RankedItem = {
 	category?: CategoryRef;
 	/** A series slot for non-category rankings. */
 	series?: number;
+	/** The amount's figures registry key (with its scope), for the e2e audit. */
+	figure?: string;
 };
 
 /**
@@ -60,7 +62,7 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 							)}
 							<span className="truncate">{item.label}</span>
 						</span>
-						<Money value={item.value} />
+						<Money figure={item.figure} value={item.value} />
 						<span
 							aria-hidden="true"
 							className="rounded-chip bg-raised col-span-2 block overflow-hidden"
