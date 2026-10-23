@@ -63,6 +63,12 @@ export interface RecordPaymentInput {
 	readonly applyTo?: readonly ApplyTo[];
 	/** The user confirmed paying more than everything owed (owner Q2). */
 	readonly allowOverpay?: boolean;
+	/**
+	 * The amount is the Everything the payer was shown. If the balance moved
+	 * since, the amount no longer settles everything (offsets included), so
+	 * the payment is refused rather than recorded as a partial one.
+	 */
+	readonly everything?: boolean;
 	/** "Same payment": confirm this pending claim with these details instead (§1.5). */
 	readonly matchClaimId?: string | null;
 	/** The receiver said this is not the payment the payer already claims (§1.5). */
@@ -174,6 +180,52 @@ async function claimMatch(
 	);
 }
 
+/**
+ * "Same payment" confirms the claim as the payer recorded it; only what the
+ * receiver really changed goes through: an amount in the claim's own
+ * currency that differs, a different date, a different method. A payment
+ * in another currency is not the same record (it would be read in the
+ * claim's currency), so it is refused.
+ */
+async function claimOverrides(
+	tx: Parameters<typeof assertRelationship>[0],
+	claimId: string,
+	input: RecordPaymentInput,
+) {
+	// The id may name the payment or one of its rows.
+	const row = await tx.settlement.findUnique({
+		where: { id: claimId },
+		select: { paymentGroupId: true },
+	});
+	const claim = await tx.payment.findUnique({
+		where: { id: row?.paymentGroupId ?? claimId },
+	});
+	if (!claim)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+	if (claim.currency !== input.currency) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `That payment was recorded in ${claim.currency}. Settle in ${claim.currency} to confirm it.`,
+		});
+	}
+	const amount =
+		input.amount !== null &&
+		toMinor(input.amount, claim.currency) !==
+			toMinor(claim.amount.toString(), claim.currency)
+			? input.amount
+			: null;
+	const day = claim.paidOn.toISOString().slice(0, 10);
+	return {
+		paymentId: claim.id,
+		amount,
+		paidOn: input.paidOn && input.paidOn !== day ? input.paidOn : null,
+		paymentMethod:
+			input.paymentMethod && input.paymentMethod !== claim.paymentMethod
+				? input.paymentMethod
+				: null,
+	};
+}
+
 export const recordPayment: MoneyMutation<
 	RecordPaymentInput,
 	RecordPaymentValue
@@ -186,12 +238,11 @@ export const recordPayment: MoneyMutation<
 		await checkAccess(tx, me, input);
 		await lockPair(tx, me, input.person);
 		if (input.matchClaimId) {
-			const confirmed = await confirmClaim(tx, me, {
-				paymentId: input.matchClaimId,
-				paymentMethod: input.paymentMethod,
-				paidOn: input.paidOn,
-				amount: input.amount,
-			});
+			const confirmed = await confirmClaim(
+				tx,
+				me,
+				await claimOverrides(tx, input.matchClaimId, input),
+			);
 			return {
 				value: {
 					recorded: true,
@@ -236,6 +287,13 @@ export const recordPayment: MoneyMutation<
 			allocation.overpay <= (input.clampOverpayUpTo ?? 0)
 		) {
 			allocation = allocate(allocation.amount - allocation.overpay);
+		}
+		if (input.everything === true && allocation.amount !== allocation.full) {
+			throw new TRPCError({
+				code: "CONFLICT",
+				message:
+					"The balance changed since you opened this. Check the new Everything and record again.",
+			});
 		}
 		const view = viewAllocation(allocation);
 		const match = outgoing

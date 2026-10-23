@@ -12,8 +12,10 @@ import { db as globalDb } from "~/server/db";
 import { getShadowInviteEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import { getImageUrl } from "~/server/storage";
+import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
 import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
+import { peopleV2Procedures } from "./people-v2";
 
 const participantRefSchema = z.object({
 	participantType: z.enum(["user", "guest", "shadow"]),
@@ -371,95 +373,10 @@ export const peopleRouter = createTRPCRouter({
 	 * Returns the top 5 people the current user splits expenses with most frequently.
 	 * Excludes the current user and guest participants.
 	 */
-	frequentSplitPartners: protectedProcedure.query(async ({ ctx }) => {
-		const userId = ctx.session.user.id;
-
-		const userParticipations = await ctx.db.splitParticipant.findMany({
-			where: { participantType: "user", participantId: userId },
-			select: { transactionId: true },
-		});
-
-		if (userParticipations.length === 0) return [];
-		const txIds = userParticipations.map((p) => p.transactionId);
-
-		// Group co-participants by frequency (take extra to filter out self in JS)
-		const allPartnerGroups = await ctx.db.splitParticipant.groupBy({
-			by: ["participantType", "participantId"],
-			where: {
-				transactionId: { in: txIds },
-				participantType: { in: ["user", "shadow"] },
-			},
-			_count: { transactionId: true },
-			orderBy: { _count: { transactionId: "desc" } },
-			take: 10,
-		});
-
-		const partnerGroups = allPartnerGroups
-			.filter(
-				(g) => !(g.participantType === "user" && g.participantId === userId),
-			)
-			.slice(0, 5);
-
-		if (partnerGroups.length === 0) return [];
-
-		const userIds = partnerGroups
-			.filter((g) => g.participantType === "user")
-			.map((g) => g.participantId);
-		const shadowIds = partnerGroups
-			.filter((g) => g.participantType === "shadow")
-			.map((g) => g.participantId);
-
-		const [users, shadows] = await Promise.all([
-			userIds.length > 0
-				? ctx.db.user.findMany({
-						where: { id: { in: userIds } },
-						select: {
-							id: true,
-							name: true,
-							username: true,
-							image: true,
-							avatarPath: true,
-						},
-					})
-				: Promise.resolve([]),
-			shadowIds.length > 0
-				? ctx.db.shadowProfile.findMany({
-						where: { id: { in: shadowIds }, createdById: userId },
-						select: { id: true, name: true, email: true },
-					})
-				: Promise.resolve([]),
-		]);
-
-		const userMap = new Map(users.map((u) => [u.id, u]));
-		const shadowMap = new Map(shadows.map((s) => [s.id, s]));
-
-		return partnerGroups
-			.map((g) => {
-				if (g.participantType === "user") {
-					const u = userMap.get(g.participantId);
-					if (!u) return null;
-					return {
-						participantType: "user" as const,
-						participantId: g.participantId,
-						name: u.name ?? "Unknown",
-						email: null as string | null,
-						username: u.username ?? null,
-						avatarUrl: getImageUrl(u.avatarPath) ?? u.image ?? null,
-					};
-				}
-				const s = shadowMap.get(g.participantId);
-				if (!s) return null;
-				return {
-					participantType: "shadow" as const,
-					participantId: g.participantId,
-					name: s.name,
-					email: s.email,
-					username: null as string | null,
-					avatarUrl: null as string | null,
-				};
-			})
-			.filter((p): p is NonNullable<typeof p> => p !== null);
-	}),
+	frequentSplitPartners: protectedProcedure.query(({ ctx }) =>
+		frequentSplitPartners(ctx.db, ctx.session.user.id),
+	),
+	...peopleV2Procedures,
 
 	/**
 	 * Lightweight endpoint returning only the net balance between the current

@@ -24,6 +24,14 @@ export type ActionDef<T extends ActionTarget> = {
 	 * (entityActions.<entity>.<id>.confirmTitle and .confirmButton).
 	 */
 	danger?: boolean;
+	/**
+	 * How a destructive action is kept safe. "confirm" (the default): the
+	 * menu asks first with a named button. "undo": it runs at once and its
+	 * toast offers Undo (a removed row comes back, GUIDELINE §11). "handler":
+	 * the handler opens its own confirm step, one that holds a choice (move
+	 * a category's expenses before deleting it).
+	 */
+	safety?: "confirm" | "undo" | "handler";
 	/** Which phone swipe side shows it, if any (each swipe has this menu twin). */
 	swipe?: SwipeSide | ((target: T) => SwipeSide | null);
 	/** Shown only when true for this target (ownership, lock, state). */

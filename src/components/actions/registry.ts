@@ -5,7 +5,16 @@
  * entityActions message namespace under <entity>.<id>.
  */
 import { ACCOUNT_ACTIONS, type AccountTarget } from "./account";
+import { API_KEY_ACTIONS, type ApiKeyTarget } from "./api-key";
+import { CATEGORY_ACTIONS, type CategoryTarget } from "./category";
+import { CURRENCY_ACTIONS, type CurrencyTarget } from "./currency";
+import { DEVICE_ACTIONS, type DeviceTarget } from "./device";
 import { EXPENSE_ACTIONS, type ExpenseTarget } from "./expense";
+import { PAYMENT_ACTIONS, type PaymentTarget } from "./payment";
+import {
+	PAYMENT_METHOD_ACTIONS,
+	type PaymentMethodTarget,
+} from "./payment-method";
 import { PERSON_ACTIONS, type PersonTarget } from "./person";
 import { PROJECT_ACTIONS, type ProjectTarget } from "./project";
 import { RECURRING_ACTIONS, type RecurringTarget } from "./recurring";
@@ -17,6 +26,12 @@ export type EntityTargets = {
 	project: ProjectTarget;
 	account: AccountTarget;
 	recurring: RecurringTarget;
+	category: CategoryTarget;
+	paymentMethod: PaymentMethodTarget;
+	apiKey: ApiKeyTarget;
+	device: DeviceTarget;
+	currency: CurrencyTarget;
+	payment: PaymentTarget;
 };
 
 export type Entity = keyof EntityTargets;
@@ -29,11 +44,23 @@ export const ACTIONS: {
 	project: PROJECT_ACTIONS,
 	account: ACCOUNT_ACTIONS,
 	recurring: RECURRING_ACTIONS,
+	category: CATEGORY_ACTIONS,
+	paymentMethod: PAYMENT_METHOD_ACTIONS,
+	apiKey: API_KEY_ACTIONS,
+	device: DEVICE_ACTIONS,
+	currency: CURRENCY_ACTIONS,
+	payment: PAYMENT_ACTIONS,
 };
 
 export type {
 	AccountTarget,
+	ApiKeyTarget,
+	CategoryTarget,
+	CurrencyTarget,
+	DeviceTarget,
 	ExpenseTarget,
+	PaymentMethodTarget,
+	PaymentTarget,
 	PersonTarget,
 	ProjectTarget,
 	RecurringTarget,

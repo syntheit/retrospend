@@ -4,6 +4,7 @@ import {
 	detentOf,
 	isSingleLineField,
 	isToastTarget,
+	keyboardInset,
 	menuTriggerOf,
 	returnFocus,
 	SNAP_POINTS,
@@ -205,6 +206,29 @@ describe("Sheet detents (phone)", () => {
 		expect(detentOf(0.52)).toBe("medium");
 		expect(detentOf(0.94)).toBe("large");
 		expect(detentOf(null)).toBe("large");
+	});
+});
+
+describe("Sheet and the phone keyboard", () => {
+	const vv = (height: number, offsetTop = 0, scale = 1) => ({
+		height,
+		offsetTop,
+		scale,
+	});
+
+	it("is the part of the screen below the visual viewport", () => {
+		// 844 tall, a 336px keyboard leaves 508 visible.
+		expect(keyboardInset(844, vv(508))).toBe(336);
+		// iOS pans the page up 100px: the visible part ends at 608.
+		expect(keyboardInset(844, vv(508, 100))).toBe(236);
+	});
+
+	it("ignores toolbar changes, pinch zoom and a missing visual viewport", () => {
+		expect(keyboardInset(844, vv(844))).toBe(0);
+		expect(keyboardInset(844, vv(800))).toBe(0);
+		expect(keyboardInset(844, vv(422, 0, 2))).toBe(0);
+		expect(keyboardInset(844, vv(900))).toBe(0);
+		expect(keyboardInset(844, null)).toBe(0);
 	});
 });
 

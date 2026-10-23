@@ -37,6 +37,8 @@ export const recordPaymentSchema = z.object({
 		.max(50)
 		.optional(),
 	allowOverpay: z.boolean().optional(),
+	/** The amount is the Everything the sheet showed; refused if that moved. */
+	everything: z.boolean().optional(),
 	matchClaimId: z.string().min(1).nullish(),
 	differentPayment: z.boolean().optional(),
 });

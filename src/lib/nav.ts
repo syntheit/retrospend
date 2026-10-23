@@ -141,7 +141,10 @@ export function settingsHref(section: SettingsSection): string {
  * New routes that exist. Until a page agent ships its route and adds it here,
  * the shell links today's page, so the new shell never links a 404.
  */
-export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([]);
+export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([
+	"/activity",
+	"/activity/recurring",
+]);
 
 /** Where an entry links now; null when it has no page yet. */
 export function hrefOf(
@@ -225,6 +228,6 @@ export type AddEntry = {
 /** The Add family: the split button, the palette, the floating Add and N / I / T. */
 export const ADD_ACTIONS: readonly AddEntry[] = [
 	{ id: "expense", icon: Plus, key: "n", ready: true },
-	{ id: "income", icon: ArrowDownLeft, key: "i", ready: false },
-	{ id: "transfer", icon: ArrowRightLeft, key: "t", ready: false },
+	{ id: "income", icon: ArrowDownLeft, key: "i", ready: true },
+	{ id: "transfer", icon: ArrowRightLeft, key: "t", ready: true },
 ];

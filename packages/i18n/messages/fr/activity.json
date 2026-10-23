@@ -1,0 +1,82 @@
+{
+	"header": {
+		"title": "Activité",
+		"sub": "{count, plural, one {# opération} other {# opérations}}",
+		"more": "Plus d'actions",
+		"import": "Importer un fichier"
+	},
+	"tabs": {
+		"expenses": "Dépenses",
+		"recurring": "Récurrentes",
+		"insights": "Analyses"
+	},
+	"filters": {
+		"label": "Filtrer l'activité",
+		"search": "Chercher des dépenses ou des montants",
+		"find": "Chercher",
+		"noMatch": "Aucun résultat",
+		"picked": "Choisis",
+		"clear": "Effacer",
+		"selected": "Choisi",
+		"more": "{name} +{count}",
+		"you": "Toi",
+		"dim": {
+			"cats": "Catégorie",
+			"people": "Personne",
+			"projects": "Projet",
+			"paidBy": "Payé par",
+			"kinds": "Type"
+		},
+		"kind": {
+			"expense": "Dépenses",
+			"in": "Rentrées",
+			"refund": "Remboursements",
+			"transfer": "Hors dépenses",
+			"payment": "Paiements"
+		}
+	},
+	"row": {
+		"paidTo": "Tu as payé {name}",
+		"paidYou": "{name} t'a payé",
+		"rate": "Taux {type}"
+	},
+	"actions": {
+		"deleted": "{name} supprimé",
+		"error": {
+			"conflict": "Quelqu'un l'a modifié avant toi. Réessaie.",
+			"gone": "Cette entrée n'existe plus.",
+			"forbidden": "Tu ne peux pas modifier cette entrée.",
+			"other": "Impossible d'enregistrer la modification"
+		}
+	},
+	"empty": {
+		"first": "Ajoute ta première dépense",
+		"firstHint": "Les dépenses que tu ajoutes ou importes apparaissent ici.",
+		"add": "Ajouter une dépense",
+		"noMatch": "Aucun résultat",
+		"noMatchHint": "Rien ne correspond à ces filtres.",
+		"reset": "Réinitialiser",
+		"quiet": "Rien ce mois-ci",
+		"quietHint": "Les entrées plus anciennes sont toujours là.",
+		"allTime": "Tout afficher"
+	},
+	"error": {
+		"load": "Impossible de charger ton activité.",
+		"retry": "Réessayer"
+	},
+	"footer": {
+		"yourSpending": "Tes dépenses"
+	},
+	"compareUnavailable": "La comparaison avec la période précédente n'est pas encore disponible.",
+	"more": "Voir plus",
+	"rateTypes": {
+		"official": "Officiel",
+		"blue": "Blue",
+		"card": "Carte",
+		"mep": "MEP",
+		"crypto": "Crypto",
+		"tourist": "Touriste",
+		"market": "Marché",
+		"custom": "Personnalisé"
+	}
+}

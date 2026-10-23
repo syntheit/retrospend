@@ -10,6 +10,7 @@ import { Tip } from "~/components/ui/tooltip";
 import {
 	DETENT_SNAP,
 	detentOf,
+	keyboardInset,
 	SNAP_POINTS,
 	type SheetDetent,
 	type SheetSubmitResult,
@@ -117,10 +118,45 @@ function SheetBody(props: SheetProps & { depth: number; state: SheetState }) {
 type FrameProps = SheetProps & { state: SheetState; children: React.ReactNode };
 
 /**
+ * The on-screen keyboard's height while the sheet is open, read from the
+ * visual viewport (window.innerHeight does not change when it opens).
+ */
+function useKeyboardInset(open: boolean): number {
+	const [inset, setInset] = React.useState(0);
+	React.useEffect(() => {
+		const vv = window.visualViewport;
+		if (!open || !vv) return;
+		const update = () => setInset(keyboardInset(window.innerHeight, vv));
+		update();
+		vv.addEventListener("resize", update);
+		vv.addEventListener("scroll", update);
+		return () => {
+			vv.removeEventListener("resize", update);
+			vv.removeEventListener("scroll", update);
+			setInset(0);
+		};
+	}, [open]);
+	return inset;
+}
+
+/** Scrolls the focused field inside `column` into view. */
+function revealFocused(column: HTMLElement | null) {
+	const el = document.activeElement;
+	if (el instanceof HTMLElement && column?.contains(el)) {
+		el.scrollIntoView({ block: "nearest" });
+	}
+}
+
+/**
  * Phone: vaul snap points at the kit's 52% and 94%. A flick moves between
- * detents and only closes from the lowest. The content is the large height;
- * at the medium detent the inner column shrinks to the visible part so the
- * footer stays on screen.
+ * detents and only closes from the lowest. vaul moves the full-screen
+ * content down by the part of the screen above the detent and publishes
+ * that offset as --snap-point-height, so the column is the content's height
+ * less the offset: it ends at the bottom of the screen at every detent and
+ * the footer stays on screen. An open keyboard raises the sheet to large and
+ * shortens the column by the keyboard's height, and the focused field
+ * scrolls into view above the footer. vaul's own input handling is off: it
+ * miscounts the offset at the medium detent and pushes the sheet down.
  */
 function PhoneSheet(props: FrameProps & { nested: boolean }) {
 	const { state: s } = props;
@@ -129,14 +165,21 @@ function PhoneSheet(props: FrameProps & { nested: boolean }) {
 	React.useLayoutEffect(() => {
 		if (props.open) setSnap(start);
 	}, [props.open, start]);
+	const keyboard = useKeyboardInset(props.open);
+	const column = React.useRef<HTMLDivElement>(null);
+	React.useEffect(() => {
+		if (keyboard === 0) return;
+		setSnap(DETENT_SNAP.large);
+		revealFocused(column.current);
+	}, [keyboard]);
 	const Root = props.nested ? Drawer.NestedRoot : Drawer.Root;
-	const detent = detentOf(snap);
 	return (
 		<Root
 			activeSnapPoint={snap}
 			fadeFromIndex={0}
 			onOpenChange={(o) => (o ? props.onOpenChange(true) : s.requestClose())}
 			open={props.open}
+			repositionInputs={false}
 			setActiveSnapPoint={setSnap}
 			snapPoints={SNAP_POINTS}
 		>
@@ -145,16 +188,20 @@ function PhoneSheet(props: FrameProps & { nested: boolean }) {
 				<Drawer.Content
 					{...s.layer}
 					className={cn(
-						"fixed inset-x-0 bottom-0 z-50 flex h-[94dvh] flex-col rounded-t-panel border-line-strong border-t bg-surface text-fg shadow-menu outline-none focus-visible:ring-2 focus-visible:ring-brand",
+						"fixed inset-x-0 bottom-0 z-50 flex h-dvh flex-col rounded-t-panel border-line-strong border-t bg-surface text-fg shadow-menu outline-none focus-visible:ring-2 focus-visible:ring-brand",
 						props.className,
 					)}
-					data-detent={detent}
+					data-detent={detentOf(snap)}
 				>
 					<div
-						className={cn(
-							"flex flex-col transition-[height] duration-(--t-sheet) ease-land",
-							detent === "medium" ? "h-[52dvh]" : "h-[94dvh]",
-						)}
+						className="flex h-[calc(100%-var(--snap-point-height,0px)-var(--sheet-keyboard,0px))] flex-col transition-[height] duration-(--t-sheet) ease-land"
+						onTransitionEnd={() => {
+							if (keyboard > 0) revealFocused(column.current);
+						}}
+						ref={column}
+						style={
+							{ "--sheet-keyboard": `${keyboard}px` } as React.CSSProperties
+						}
 					>
 						<Drawer.Handle className="my-2 h-1 w-10 shrink-0 rounded-chip bg-line-strong" />
 						{props.children}

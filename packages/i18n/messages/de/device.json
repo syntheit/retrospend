@@ -1,15 +1,15 @@
 {
 	"title": "Gerät verbinden",
-	"description": "Geben Sie den Code ein, den das Gerät anzeigt, damit es Ihr Konto verwenden kann.",
+	"description": "Gib den Code ein, den das Gerät anzeigt, damit es dein Konto verwenden kann.",
 	"codeLabel": "Code",
 	"continue": "Weiter",
-	"reviewTitle": "{client} erlauben, Ihr Konto zu verwenden?",
+	"reviewTitle": "{client} erlauben, dein Konto zu verwenden?",
 	"scopesIntro": "Es kann dann:",
 	"scopes": {
-		"read": "Ihre Ausgaben, Personen, Ihr Budget und Ihre Konten sehen",
+		"read": "Deine Ausgaben, Personen, dein Budget und deine Konten sehen",
 		"writeExpenses": "Ausgaben hinzufügen und ändern",
 		"writeMoney": "Zahlungen, Überweisungen, Einnahmen und Budgetbewegungen erfassen",
-		"writeSettings": "Ihre Einstellungen ändern",
+		"writeSettings": "Deine Einstellungen ändern",
 		"admin": "Diesen Server verwalten"
 	},
 	"clients": {
@@ -19,11 +19,11 @@
 	},
 	"approve": "Erlauben",
 	"deny": "Ablehnen",
-	"approved": "Gerät verbunden. Sie können jetzt zu ihm zurückkehren.",
+	"approved": "Gerät verbunden. Du kannst jetzt zu ihm zurückkehren.",
 	"denied": "Anfrage abgelehnt. Das Gerät wurde nicht verbunden.",
 	"errors": {
 		"invalid": "Dieser Code ist ungültig oder abgelaufen.",
 		"used": "Dieser Code wurde bereits verwendet.",
-		"generic": "Das hat nicht geklappt. Versuchen Sie es erneut."
+		"generic": "Das hat nicht geklappt. Versuch es noch einmal."
 	}
 }

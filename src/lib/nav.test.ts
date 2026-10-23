@@ -43,10 +43,14 @@ describe("nav definition", () => {
 	});
 
 	it("links today's page until the new route ships", () => {
-		expect(hrefOf(byId("home"))).toBe("/dashboard");
-		expect(hrefOf(byId("activity"))).toBe("/transactions");
-		expect(hrefOf(byId("recurring"))).toBe("/recurring");
-		expect(hrefOf(byId("budget"))).toBe("/budget");
+		const none = new Set<string>();
+		expect(hrefOf(byId("home"), none)).toBe("/dashboard");
+		expect(hrefOf(byId("activity"), none)).toBe("/transactions");
+		expect(hrefOf(byId("recurring"), none)).toBe("/recurring");
+		expect(hrefOf(byId("budget"), none)).toBe("/budget");
+		// Shipped (S4B): Activity and its Recurring tab.
+		expect(hrefOf(byId("activity"))).toBe("/activity");
+		expect(hrefOf(byId("recurring"))).toBe("/activity/recurring");
 		expect(hrefOf(byId("home"), new Set(["/home"]))).toBe("/home");
 		expect(hrefOf(byId("recurring"), new Set(["/activity/recurring"]))).toBe(
 			"/activity/recurring",
@@ -131,11 +135,11 @@ describe("pinnedProjects", () => {
 });
 
 describe("ADD_ACTIONS", () => {
-	it("is expense, income and transfer on N, I and T; only expense is ready", () => {
+	it("is expense, income and transfer on N, I and T, all ready (4G)", () => {
 		expect(ADD_ACTIONS.map((a) => [a.id, a.key, a.ready])).toEqual([
 			["expense", "n", true],
-			["income", "i", false],
-			["transfer", "t", false],
+			["income", "i", true],
+			["transfer", "t", true],
 		]);
 	});
 });
@@ -146,7 +150,7 @@ describe("phone Go to", () => {
 			"/wealth",
 			"/currencies",
 			"/import",
-			"/recurring",
+			"/activity/recurring",
 			"/settings",
 		]);
 	});

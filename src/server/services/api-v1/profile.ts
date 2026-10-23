@@ -34,16 +34,16 @@ async function profileOf(caller: Caller): Promise<ProfileDto> {
 
 export const readProfile = profileOf;
 
-/** Fields left out keep their current value. */
+/** Fields left out keep their current value and are not written. */
 export async function patchProfile(
 	caller: Caller,
 	patch: z.infer<typeof updateProfileSchema>,
 ) {
 	const current = await getProfile(caller.db, caller.principal.userId);
 	const { emailChangePending } = await updateProfile(caller.db, current, {
-		name: patch.name ?? current.name,
-		username: patch.username ?? current.username,
-		email: patch.email ?? current.email,
+		name: patch.name,
+		username: patch.username,
+		email: patch.email,
 		currentPassword: patch.currentPassword,
 	});
 	return { ...(await profileOf(caller)), emailChangePending };

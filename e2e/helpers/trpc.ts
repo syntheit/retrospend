@@ -12,6 +12,12 @@ function proceduresOf(url: string): string[] {
  * Runs `action` and waits until the server has answered `procedure`. Forms
  * close before their mutation returns, so a test that navigates right after
  * a save would otherwise cancel the request.
+ *
+ * The client batches with httpBatchStreamLink: the 200 and its headers go
+ * out before the procedure has run, and the result follows in the streamed
+ * body. A navigation between the two aborts the request and the server
+ * drops the mutation (a project or expense that never lands). So this waits
+ * until the whole body has arrived.
  */
 export async function untilSaved(
 	page: Page,
@@ -28,4 +34,15 @@ export async function untilSaved(
 	expect(response.ok(), `${procedure} answered ${response.status()}`).toBe(
 		true,
 	);
+	// The whole streamed body, not just the headers. Once the client has its
+	// result it may cancel the rest of the stream (Chromium then reports
+	// ERR_ABORTED or never reports an end), so the wait is capped and a
+	// cancelled stream is not an error here.
+	await Promise.race([
+		response.finished(),
+		new Promise((resolve) => setTimeout(resolve, STREAM_END_MS)),
+	]);
 }
+
+/** How long untilSaved waits for a streamed answer to end. */
+const STREAM_END_MS = 5_000;
