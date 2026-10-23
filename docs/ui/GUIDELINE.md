@@ -275,7 +275,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 
 **Multi-currency pairs:** a foreign amount shows the original first and the home amount second: "BRL 51.90" on the line, "ARS 13,407" muted below or after it. Totals are in the home currency and say how many rows had no rate ("2 without a rate").
 
-**Rate types:** official, blue, card, MEP, market, custom. The default rate type is a per-home-currency preference (ARS home: Blue; Official where a currency has no Blue; Market for crypto), changeable in Settings and per currency. The rate chip (`arrow-right-left` icon) shows the type only when it is not the default; rate alternatives are labels only. Each account is valued at its own rate type, with dated switches.
+**Rate types:** official, blue, card, MEP, market, custom. The default rate type is a per-home-currency preference (ARS home: Blue; Official where a currency has no Blue; Market for crypto), changeable in Settings and per currency. The rate chip (`arrow-right-left` icon) shows the type only when it is not the default, in entry sheets and detail views; on list rows the type shows in the amount's tooltip, never as a chip (owner, 2026-10-23). Rate alternatives are labels only. Each account is valued at its own rate type, with dated switches.
 
 **Signs and colors** [R5]: owed to you is positive with the words; you owe is plain fg (`owe`) with the words "you owe"; settled is fg-3. Owed to you and You owe are two lines, never netted into one figure. [D1]
 
