@@ -2,24 +2,25 @@ import { TRPCError } from "@trpc/server";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
 import {
+	type BackgroundSettings,
+	backgroundSettingsSchema,
+	defaultBackgroundSettings,
+} from "~/lib/background-settings";
+import {
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
-import { getImageUrl } from "~/server/storage";
 import {
 	cancelPendingEmailChange,
 	getBackgroundSettings,
 	saveBackgroundSettings,
 	updateProfile,
 } from "~/server/services/profile.service";
-import {
-	backgroundSettingsSchema,
-	defaultBackgroundSettings,
-	type BackgroundSettings,
-} from "~/lib/background-settings";
-import { sumExpensesForCurrency } from "./shared-currency";
+import { listedEntryWhere } from "~/server/services/spending";
+import { StatsService } from "~/server/services/stats.service";
+import { getImageUrl } from "~/server/storage";
 
 export type { BackgroundSettings };
 export { defaultBackgroundSettings };
@@ -262,16 +263,12 @@ export const profileRouter = createTRPCRouter({
 			});
 		}
 
-		const totalEntries = await db.expense.count({
-			where: { userId, status: "FINALIZED" },
-		});
-
-		// Amortized purchases count once, through their monthly parts
-		const { total: lifetimeSpend } = await sumExpensesForCurrency(
-			db,
-			{ userId, isAmortizedParent: false },
-			user.homeCurrency,
-		);
+		const [totalEntries, { totalSpent: lifetimeSpend }] = await Promise.all([
+			db.expense.count({
+				where: { ...listedEntryWhere(userId), status: "FINALIZED" },
+			}),
+			new StatsService(db).getLifetimeStats(userId, user.homeCurrency),
+		]);
 
 		return {
 			lifetimeSpend,
