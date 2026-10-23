@@ -864,9 +864,10 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type participants (excluding the actor) that the expense changed
-		if (existingSnapshot) {
+		const snapshot = existingSnapshot;
+		if (snapshot) {
 			this.notify("EXPENSE_EDITED", () =>
-				this.notifyExpenseEdited(updated, existingSnapshot, capturedDiff),
+				this.notifyExpenseEdited(updated, snapshot, capturedDiff),
 			);
 		}
 
@@ -998,11 +999,8 @@ export class SharedTransactionService {
 		});
 
 		// Notify user-type participants (excluding actor) that the expense was deleted
-		if (deletedSnapshot) {
-			this.notify("EXPENSE_DELETED", () =>
-				this.notifyExpenseDeleted(deletedSnapshot),
-			);
-		}
+		const gone = deletedSnapshot;
+		if (gone) this.notify("EXPENSE_DELETED", () => this.notifyExpenseDeleted(gone));
 	}
 
 	private async notifyExpenseDeleted(existing: {

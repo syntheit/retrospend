@@ -36,8 +36,27 @@ function serviceFor(tx: Tx, userId: string, input: Deferred): Service {
 	);
 }
 
+/** An update with every field set: what `id` holds now. */
+export type SharedRestore = Required<
+	Pick<
+		UpdateSharedInput,
+		| "amount"
+		| "currency"
+		| "description"
+		| "date"
+		| "paidBy"
+		| "splitWith"
+		| "splitMode"
+	>
+> & {
+	readonly id: string;
+	readonly categoryId: string | null;
+	readonly notes: string | null;
+	readonly projectId: string | null;
+};
+
 /** The update that puts `id` back as it is now. */
-async function restoreOf(tx: Tx, id: string): Promise<UpdateSharedInput> {
+async function restoreOf(tx: Tx, id: string): Promise<SharedRestore> {
 	const row = await tx.sharedTransaction.findUnique({
 		where: { id },
 		include: { splitParticipants: true },
@@ -105,7 +124,7 @@ export const createSharedExpense: MoneyMutation<
 
 export interface UpdatedShared {
 	readonly id: string;
-	readonly restore: UpdateSharedInput;
+	readonly restore: SharedRestore;
 }
 
 export const updateSharedExpense: MoneyMutation<

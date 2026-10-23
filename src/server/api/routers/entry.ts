@@ -12,6 +12,7 @@ import {
 	deleteSharedExpense,
 	updateSharedExpense,
 } from "~/server/services/entry/shared.mutation";
+import { sharedAuthor } from "~/server/services/entry/shared-read";
 import { rateOptionsView, transferView } from "~/server/services/entry/views";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { forUser } from "~/server/services/preview";
@@ -53,10 +54,10 @@ function money<S extends z.ZodType, I, V, O = V>(
 	return createTRPCRouter({
 		preview: protectedProcedure
 			.input(input)
-			.query(({ ctx, input: value }) => run(ctx, value, false)),
+			.query(({ ctx, input: value }) => run(ctx, value as z.infer<S>, false)),
 		save: protectedProcedure
 			.input(input)
-			.mutation(({ ctx, input: value }) => run(ctx, value, true)),
+			.mutation(({ ctx, input: value }) => run(ctx, value as z.infer<S>, true)),
 	});
 }
 
@@ -72,6 +73,13 @@ export const entryRouter = createTRPCRouter({
 	catalog: protectedProcedure.query(({ ctx }) =>
 		entryCatalog(ctx.db, ctx.session.user.id),
 	),
+
+	/** Who added a shared expense, for its read view. */
+	sharedAuthor: protectedProcedure
+		.input(z.object({ id: z.string().min(1) }))
+		.query(({ ctx, input }) =>
+			sharedAuthor(ctx.db, ctx.session.user.id, input.id),
+		),
 
 	/** The rate strip: every type the pair offers, booked as saving would book it. */
 	rateOptions: protectedProcedure
@@ -106,10 +114,15 @@ export const entryRouter = createTRPCRouter({
 		create: money(schema.expenseFormSchema, createExpense, (v, c) =>
 			schema.toExpenseInput(v, c.timeZone),
 		),
-		update: money(schema.expenseFormSchema, updateExpenseEntry, (v, c) =>
-			schema.toExpenseInput(v, c.timeZone),
+		update: money(schema.expenseFormSchema, updateExpenseEntry, (v, c) => ({
+			...schema.toExpenseInput(v, c.timeZone),
+			amount: Number(v.amount),
+		})),
+		delete: money(
+			z.object({ id: z.string().min(1) }),
+			deleteExpenseEntry,
+			asIs,
 		),
-		delete: money(z.object({ id: z.string().min(1) }), deleteExpenseEntry, asIs),
 		/** Undo of a delete: the same expense back, same id. */
 		restore: money(schema.expenseRestoreSchema, createExpense, asIs),
 		/** Undo of an edit: the values it had. */
@@ -120,22 +133,38 @@ export const entryRouter = createTRPCRouter({
 	}),
 
 	shared: createTRPCRouter({
-		create: money(schema.sharedCreateSchema, createSharedExpense, (v, c, n) => ({
-			...schema.toSharedInput(v, c.timeZone),
-			notify: n,
-		})),
-		update: money(schema.sharedUpdateSchema, updateSharedExpense, (v, c, n) => ({
-			...schema.toSharedInput(v, c.timeZone),
-			notify: n,
-		})),
-		revert: money(schema.sharedRestoreSchema, updateSharedExpense, (v, _c, n) => ({
-			...v,
-			notify: n,
-		})),
-		delete: money(schema.sharedDeleteSchema, deleteSharedExpense, (v, _c, n) => ({
-			...v,
-			notify: n,
-		})),
+		create: money(
+			schema.sharedCreateSchema,
+			createSharedExpense,
+			(v, c, n) => ({
+				...schema.toSharedInput(v, c.timeZone),
+				notify: n,
+			}),
+		),
+		update: money(
+			schema.sharedUpdateSchema,
+			updateSharedExpense,
+			(v, c, n) => ({
+				...schema.toSharedInput(v, c.timeZone),
+				notify: n,
+			}),
+		),
+		revert: money(
+			schema.sharedRestoreSchema,
+			updateSharedExpense,
+			(v, _c, n) => ({
+				...v,
+				notify: n,
+			}),
+		),
+		delete: money(
+			schema.sharedDeleteSchema,
+			deleteSharedExpense,
+			(v, _c, n) => ({
+				...v,
+				notify: n,
+			}),
+		),
 	}),
 
 	/** Transfer and Exchange, with amounts and rates as Money for the sheet. */

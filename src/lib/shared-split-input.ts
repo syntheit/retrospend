@@ -37,13 +37,19 @@ export interface SplitState {
 	shares: Readonly<Record<string, number>>;
 }
 
-export const splitKey = (p: SplitRef) => `${p.participantType}:${p.participantId}`;
+export const splitKey = (p: SplitRef) =>
+	`${p.participantType}:${p.participantId}`;
 
 /** You (when included) and the others, each once. */
-export function splitMembers(s: Pick<SplitState, "you" | "youIncluded" | "others">) {
+export function splitMembers(
+	s: Pick<SplitState, "you" | "youIncluded" | "others">,
+) {
 	const seen = new Set<string>();
 	return [...(s.youIncluded ? [s.you] : []), ...s.others]
-		.map((p) => ({ participantType: p.participantType, participantId: p.participantId }))
+		.map((p) => ({
+			participantType: p.participantType,
+			participantId: p.participantId,
+		}))
 		.filter((p) => {
 			const key = splitKey(p);
 			if (seen.has(key)) return false;

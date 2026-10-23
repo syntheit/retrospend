@@ -93,7 +93,11 @@ export async function entryCatalog(
 		}),
 		recentCategoryIds(db, userId),
 		db.assetAccount.findMany({
-			where: { userId, closedAt: null, type: { notIn: ["REAL_ESTATE", "VEHICLE"] } },
+			where: {
+				userId,
+				closedAt: null,
+				type: { notIn: ["REAL_ESTATE", "VEHICLE"] },
+			},
 			orderBy: [{ type: "asc" }, { name: "asc" }],
 			select: {
 				id: true,

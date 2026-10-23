@@ -22,9 +22,7 @@ type Tx = Prisma.TransactionClient;
 
 export const EXPENSE_FIGURES = ["spent"];
 
-export type UpdateExpenseInput = Parameters<
-	ExpenseService["updateExpense"]
->[1];
+export type UpdateExpenseInput = Parameters<ExpenseService["updateExpense"]>[1];
 
 type ExpenseRow = Prisma.ExpenseGetPayload<{
 	include: { children: { select: { id: true } } };
@@ -43,7 +41,10 @@ export function rateInputOf(row: {
 > {
 	if (row.rateType === CUSTOM_RATE_TYPE && row.homeRate) {
 		return {
-			customRate: { base: row.currency, value: Number(row.homeRate.toString()) },
+			customRate: {
+				base: row.currency,
+				value: Number(row.homeRate.toString()),
+			},
 		};
 	}
 	return {
@@ -112,22 +113,20 @@ export interface DeletedExpense {
 	readonly restore: CreateExpenseInput;
 }
 
-export const deleteExpenseEntry: MoneyMutation<
-	{ id: string },
-	DeletedExpense
-> = {
-	id: "expense.delete",
-	touches: EXPENSE_FIGURES,
-	run: async (tx, input, actor) => {
-		const before = await ownExpense(tx, actor.userId, input.id);
-		await new ExpenseService(tx).deleteExpense(actor.userId, input.id);
-		return {
-			value: { id: input.id, restore: { id: input.id, ...fieldsOf(before) } },
-			undo: {
-				kind: "revert",
-				mutation: "expense.create",
-				rows: [{ table: "expense", id: input.id }],
-			},
-		};
-	},
-};
+export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
+	{
+		id: "expense.delete",
+		touches: EXPENSE_FIGURES,
+		run: async (tx, input, actor) => {
+			const before = await ownExpense(tx, actor.userId, input.id);
+			await new ExpenseService(tx).deleteExpense(actor.userId, input.id);
+			return {
+				value: { id: input.id, restore: { id: input.id, ...fieldsOf(before) } },
+				undo: {
+					kind: "revert",
+					mutation: "expense.create",
+					rows: [{ table: "expense", id: input.id }],
+				},
+			};
+		},
+	};

@@ -21,10 +21,7 @@ import {
 	seedArsRates,
 	TODAY,
 } from "../accounts/test-fixtures";
-import {
-	seedUser,
-	setupInput,
-} from "../envelope/__tests__/pg-fixture";
+import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
 import { getMonth } from "../envelope/read.service";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
 import { createExpense } from "../expense-create.mutation";
@@ -201,7 +198,8 @@ describe("Add expense: shared", () => {
 			],
 			splitMode: "EQUAL" as const,
 		};
-		const told = () => adminDb.notification.count({ where: { userId: other.id } });
+		const told = () =>
+			adminDb.notification.count({ where: { userId: other.id } });
 		const notify: (() => Promise<void>)[] = [];
 
 		const preview = await forUser(user.id).preview(createSharedExpense, {
@@ -231,7 +229,13 @@ describe("Add expense: shared", () => {
 describe("Transfer: Exchange", () => {
 	it("ARS 442,500 for USD 300: 1,475 per USD, ARS 2,100 more than Blue", async () => {
 		const { user } = await arsUser();
-		const wallet = await openAccount(user.id, "Wallet", "CASH", "ARS", 1_000_000);
+		const wallet = await openAccount(
+			user.id,
+			"Wallet",
+			"CASH",
+			"ARS",
+			1_000_000,
+		);
 		const usd = await openAccount(user.id, "USD cash", "CASH", "USD", 0);
 		const r = await forUser(user.id).preview(createTransfer, {
 			fromAccountId: wallet,
