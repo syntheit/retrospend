@@ -10,9 +10,9 @@ import {
 	type ActivityEntry,
 	computeBook,
 	type EngineInput,
-	invariantSides,
 	type MovementEntry,
 } from "./engine";
+import { invariantSides } from "./invariant";
 import { takeBackCap } from "./planning";
 
 const C = 202610;

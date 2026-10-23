@@ -10,9 +10,9 @@ import {
 	type ClosedRule,
 	computeBook,
 	type EngineInput,
-	invariantSides,
 	type MovementEntry,
 } from "./engine";
+import { invariantSides } from "./invariant";
 import { closeSummary } from "./month-close";
 import { buildMonthView, type ViewBook } from "./month-view";
 import type { EnvelopeTarget } from "./needs";

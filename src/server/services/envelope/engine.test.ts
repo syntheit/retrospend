@@ -3,9 +3,9 @@ import {
 	computeBook,
 	type EngineInput,
 	EngineInputError,
-	invariantSides,
 	sumLeft,
 } from "./engine";
+import { invariantSides } from "./invariant";
 
 const m = (n: number) => n * 100;
 

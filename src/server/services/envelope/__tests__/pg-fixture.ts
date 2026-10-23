@@ -3,8 +3,9 @@ import type { SetupInput } from "~/lib/schemas/envelope";
 import { userTransaction } from "~/server/db-tx";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { computeBook, invariantSides } from "../engine";
+import { computeBook } from "../engine";
 import { loadBook } from "../inputs";
+import { invariantSides } from "../invariant";
 
 /**
  * Both sides of the SPEC §5.3 invariant for a user's book at `now`, from a

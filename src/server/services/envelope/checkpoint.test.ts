@@ -28,9 +28,9 @@ import {
 	type ActivityEntry,
 	computeBook,
 	type EngineInput,
-	invariantSides,
 	sumLeft,
 } from "./engine";
+import { invariantSides } from "./invariant";
 import { monthsFrom } from "./months";
 
 const env = (id: string, rule: "CARRY" | "RETURN" = "CARRY") => ({

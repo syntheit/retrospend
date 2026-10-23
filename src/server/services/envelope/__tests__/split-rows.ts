@@ -9,10 +9,10 @@ import {
 	type ActivityEntry,
 	computeBook,
 	type EngineInput,
-	invariantSides,
 	type MoneyInEntry,
 } from "../engine";
 import { activityEntries, Valuer } from "../entries";
+import { invariantSides } from "../invariant";
 import { buildMonthView, type ViewBook } from "../month-view";
 import { owedSummary } from "../owed";
 import type { SettlementRowIn, SplitPart } from "../split-events";
