@@ -1,0 +1,41 @@
+{
+	"title": "Projetos",
+	"newProject": "Novo projeto",
+	"search": "Buscar projetos",
+	"active": "Ativos",
+	"pastIn": "Projetos passados de {year}",
+	"unavailable": {
+		"title": "Não foi possível carregar os projetos",
+		"hint": "Verifique sua conexão e tente de novo.",
+		"retry": "Tentar de novo"
+	},
+	"empty": {
+		"title": "Ainda não há projetos",
+		"hint": "Um projeto reúne as despesas de uma viagem, uma casa ou uma reforma."
+	},
+	"noMatch": {
+		"title": "Nenhum projeto corresponde",
+		"hint": "Tente outro nome.",
+		"clear": "Limpar busca"
+	},
+	"toast": {
+		"archived": "{name} arquivado",
+		"restored": "{name} restaurado",
+		"linkCopied": "Link copiado",
+		"deleted": "{name} excluído",
+		"created": "{name} criado"
+	},
+	"new": {
+		"title": "Novo projeto",
+		"submit": "Criar projeto",
+		"name": "Nome",
+		"namePlaceholder": "Viagem, apartamento, reforma",
+		"nameMissing": "Digite um nome",
+		"note": "Nota (opcional)",
+		"budget": "Moeda e orçamento",
+		"budgetHint": "O orçamento é opcional. Despesas em outras moedas não contam para ele.",
+		"people": "Pessoas",
+		"justMe": "Só eu",
+		"withOthers": "Com outras pessoas"
+	}
+}

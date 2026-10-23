@@ -1,0 +1,41 @@
+{
+	"title": "Projekte",
+	"newProject": "Neues Projekt",
+	"search": "Projekte suchen",
+	"active": "Aktiv",
+	"pastIn": "Frühere Projekte aus {year}",
+	"unavailable": {
+		"title": "Projekte konnten nicht geladen werden",
+		"hint": "Prüf deine Verbindung und versuch es noch einmal.",
+		"retry": "Erneut versuchen"
+	},
+	"empty": {
+		"title": "Noch keine Projekte",
+		"hint": "Ein Projekt bündelt die Ausgaben einer Reise, einer Wohnung oder einer Renovierung."
+	},
+	"noMatch": {
+		"title": "Kein Projekt passt",
+		"hint": "Versuch einen anderen Namen.",
+		"clear": "Suche löschen"
+	},
+	"toast": {
+		"archived": "{name} archiviert",
+		"restored": "{name} wiederhergestellt",
+		"linkCopied": "Link kopiert",
+		"deleted": "{name} gelöscht",
+		"created": "{name} erstellt"
+	},
+	"new": {
+		"title": "Neues Projekt",
+		"submit": "Projekt erstellen",
+		"name": "Name",
+		"namePlaceholder": "Reise, Wohnung, Renovierung",
+		"nameMissing": "Gib einen Namen ein",
+		"note": "Notiz (optional)",
+		"budget": "Währung und Budget",
+		"budgetHint": "Das Budget ist optional. Ausgaben in anderen Währungen zählen nicht dazu.",
+		"people": "Personen",
+		"justMe": "Nur ich",
+		"withOthers": "Mit anderen"
+	}
+}

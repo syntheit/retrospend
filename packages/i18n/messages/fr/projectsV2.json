@@ -1,0 +1,41 @@
+{
+	"title": "Projets",
+	"newProject": "Nouveau projet",
+	"search": "Rechercher des projets",
+	"active": "Actifs",
+	"pastIn": "Projets passés de {year}",
+	"unavailable": {
+		"title": "Impossible de charger les projets",
+		"hint": "Vérifiez votre connexion et réessayez.",
+		"retry": "Réessayer"
+	},
+	"empty": {
+		"title": "Aucun projet pour l'instant",
+		"hint": "Un projet regroupe les dépenses d'un voyage, d'un logement ou de travaux."
+	},
+	"noMatch": {
+		"title": "Aucun projet ne correspond",
+		"hint": "Essayez un autre nom.",
+		"clear": "Effacer la recherche"
+	},
+	"toast": {
+		"archived": "{name} archivé",
+		"restored": "{name} restauré",
+		"linkCopied": "Lien copié",
+		"deleted": "{name} supprimé",
+		"created": "{name} créé"
+	},
+	"new": {
+		"title": "Nouveau projet",
+		"submit": "Créer le projet",
+		"name": "Nom",
+		"namePlaceholder": "Voyage, appartement, travaux",
+		"nameMissing": "Saisissez un nom",
+		"note": "Note (facultatif)",
+		"budget": "Devise et budget",
+		"budgetHint": "Le budget est facultatif. Les dépenses dans d'autres devises n'y comptent pas.",
+		"people": "Personnes",
+		"justMe": "Moi seul",
+		"withOthers": "Avec d'autres"
+	}
+}
