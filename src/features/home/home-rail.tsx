@@ -104,7 +104,8 @@ function PeopleBlock({
 							name: p.person.name,
 							imageUrl: p.person.imageUrl,
 							onRetrospend: p.person.onRetrospend,
-							lastShared: p.lastShared?.title ?? "",
+							// The rail shows who and how much (mockup); the last thing shared is on People.
+							lastShared: "",
 							// railPeople keeps only people with a net.
 							balance: p.net ?? { minor: 0, currency: home },
 							href: personHrefOf(p.person),
