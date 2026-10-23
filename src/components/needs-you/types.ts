@@ -11,6 +11,8 @@ type Base = {
 	href?: string;
 	/** Figures registry key of the item's amount, for the audit. */
 	figure?: string;
+	/** One fact under the sentence ("Was due Oct 8", "Your share BRL 155.00"). */
+	context?: string;
 };
 
 export type NeedsYouItemVM =
@@ -32,6 +34,33 @@ export type NeedsYouItemVM =
 	/** A recurring expense past its date. */
 	| (Base & { kind: "overdue"; title: string; amount: MoneyValue })
 	/** An envelope that spent more than it had. */
-	| (Base & { kind: "overspent"; envelope: string; amount: MoneyValue });
+	| (Base & { kind: "overspent"; envelope: string; amount: MoneyValue })
+	/** Several envelopes over; the amount is what they are over in total. */
+	| (Base & { kind: "overspentMany"; count: number; amount: MoneyValue })
+	/** Someone rejected a split you made; the amount is their share. */
+	| (Base & {
+			kind: "rejected";
+			person: string;
+			title: string;
+			amount: MoneyValue;
+	  })
+	/** More is planned than there is. */
+	| (Base & { kind: "overAssigned"; amount: MoneyValue })
+	/** Bills due soon that are not fully funded; a title when there is one. */
+	| (Base & {
+			kind: "billDue";
+			title: string | null;
+			count: number;
+			amount: MoneyValue;
+	  })
+	/** Currencies without a rate keep totals out, named (R14). */
+	| (Base & { kind: "missingRate"; currencies: string[] })
+	/** The budget's starting money waits for a confirm. */
+	| (Base & { kind: "startingMoney" })
+	/** New-user setup prompts (no amount). */
+	| (Base & { kind: "firstExpense" })
+	| (Base & { kind: "homeCurrency" })
+	| (Base & { kind: "verifyEmail" })
+	| (Base & { kind: "importStatement" });
 
 export type NeedsYouKind = NeedsYouItemVM["kind"];

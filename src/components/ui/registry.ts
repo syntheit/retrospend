@@ -502,7 +502,7 @@ export const PLANNED: Planned[] = [
 		replaces: "Stacked tinted banners",
 		planRow: NEEDS_YOU,
 		target: "src/components/needs-you/needs-you-item.tsx",
-		use: "NeedsYouItem inside NeedsYouList; add a kind to NeedsYouItemVM, never a banner",
+		use: "NeedsYouItem inside NeedsYouList; add a kind to NeedsYouItemVM, never a banner. Kinds: assign, review, confirmPayment, verify, due, overdue, overspent, overspentMany, rejected, overAssigned, billDue, missingRate, startingMoney and the setup prompts (firstExpense, homeCurrency, verifyEmail, importStatement); an optional context line under the sentence",
 	},
 	{
 		name: "TransactionRow",

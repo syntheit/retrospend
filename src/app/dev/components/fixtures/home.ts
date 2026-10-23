@@ -67,6 +67,19 @@ export const NEEDS_YOU: NeedsYouItemVM[] = [
 	{ id: "ny1", kind: "assign", amount: m("850000") },
 ];
 
+/** One per new kind group: setup, rejected split, budget. */
+export const NEEDS_YOU_MORE: NeedsYouItemVM[] = [
+	{ id: "nys1", kind: "firstExpense", context: "Takes about ten seconds" },
+	{
+		id: "nyr1",
+		kind: "rejected",
+		person: "Martín",
+		title: "Pizza night",
+		amount: m("18000"),
+	},
+	{ id: "nyb1", kind: "missingRate", currencies: ["BRL"] },
+];
+
 export const MONTHS: MonthTotal[] = [
 	{ month: "2026-05-01", total: m("2028590") },
 	{ month: "2026-06-01", total: m("2147631") },

@@ -129,3 +129,87 @@ describe("narrow layouts", () => {
 		expect(html.match(/data-figure="budget.notPlannedYet"/g)).toHaveLength(1);
 	});
 });
+
+describe("NeedsYouList: setup, rejected and budget kinds", () => {
+	const MORE: NeedsYouItemVM[] = [
+		{ id: "s1", kind: "firstExpense", context: "Takes about ten seconds" },
+		{ id: "s2", kind: "homeCurrency" },
+		{ id: "s3", kind: "verifyEmail", context: "sofia@example.com" },
+		{ id: "s4", kind: "importStatement" },
+		{
+			id: "r1",
+			kind: "rejected",
+			person: "Martín",
+			title: "Pizza night",
+			amount: ars(1800000),
+		},
+		{ id: "b1", kind: "overspentMany", count: 2, amount: ars(8040000) },
+		{ id: "b2", kind: "overAssigned", amount: ars(1200000) },
+		{
+			id: "b3",
+			kind: "billDue",
+			title: "Rent",
+			count: 1,
+			amount: ars(65000000),
+		},
+		{ id: "b4", kind: "billDue", title: null, count: 3, amount: ars(9000000) },
+		{ id: "b5", kind: "missingRate", currencies: ["BRL", "CLP"] },
+		{ id: "b6", kind: "startingMoney" },
+	];
+
+	it("writes one sentence and one action per new kind", () => {
+		const t = text(render(h(NeedsYouList, { items: MORE })));
+		for (const s of [
+			"Add your first expense",
+			"Set your home currency",
+			"Verify your email",
+			"Import a statement",
+			"Martín rejected Pizza night",
+			"2 envelopes are over",
+			"You planned ARS 12,000 more than you have",
+			"Rent is due soon",
+			"3 bills are due soon",
+			"No rate for BRL, CLP yet",
+			"Confirm your starting money",
+		])
+			expect(t).toContain(s);
+		for (const a of [
+			"Add expense",
+			"Choose",
+			"Resend",
+			"Import",
+			"Edit",
+			"Take back",
+			"Fund",
+			"Set rate",
+		])
+			expect(t).toContain(a);
+	});
+
+	it("puts the context line under the sentence", () => {
+		const t = text(render(h(NeedsYouList, { items: MORE.slice(0, 1) })));
+		expect(t).toContain("Add your first expense Takes about ten seconds");
+	});
+
+	it("a phone group joins the amount and the context in one line", () => {
+		const html = render(
+			h(NeedsYouList, {
+				items: [
+					{
+						id: "o",
+						kind: "overdue",
+						title: "Fibra",
+						amount: ars(3890000),
+						context: "Was due Oct 8",
+						figure: "x",
+					},
+				],
+				variant: "group",
+			}),
+		);
+		expect(text(html)).toContain(
+			"Fibra is overdue ARS 38,900 · Was due Oct 8",
+		);
+		expect(html.match(/data-figure="x"/g)).toHaveLength(1);
+	});
+});
