@@ -56,6 +56,8 @@ export interface TargetContext {
 	carryIn: Minor;
 	assigned: Minor;
 	left: Minor;
+	/** Σ moved from this envelope to Wealth minus Σ moved back into it, through this month (B12). */
+	movedToWealth?: Minor;
 	/** Budget month of a date (BookPeriod boundaries). */
 	monthOf: (date: IsoDate) => MonthKey;
 	/** Spending in this envelope after `fromExclusive` through today (positive). */
@@ -137,7 +139,8 @@ function savingsResult(
 	c: TargetContext,
 ): TargetResult {
 	if (t.amount == null && t.monthly == null) return EMPTY;
-	const progress = c.left;
+	// Money moved to Wealth for the goal still counts as saved (B12, D47).
+	const progress = c.left + (c.movedToWealth ?? 0);
 	const s = savingsNeed(
 		{ amount: t.amount, dueMonth: t.dueMonth, monthly: t.monthly },
 		{ month: c.month, progress, assigned: c.assigned },

@@ -387,6 +387,57 @@ describe("replaySplits", () => {
 		expect(replaySplits([b, a]).effects).toEqual(replaySplits([a, b]).effects);
 	});
 
+	it("on one day, the split comes before the payment that settles it, whatever their ids", () => {
+		const a = {
+			...front("sam", ars(100), ars(100), "2026-10-05"),
+			id: "z-split",
+		};
+		const b = {
+			...recv("sam", ars(100), ars(100), { date: "2026-10-05" }),
+			id: "a-pay",
+		};
+		const r = replaySplits([b, a]);
+		expect(r.effects.map((e) => [e.eventId, e.term])).toEqual([
+			["z-split", "FRONTED"],
+			["a-pay", "RETURNED"],
+		]);
+		expect(r.balances[0]?.native).toBe(0);
+	});
+
+	it("a forgive of your debt larger than the debt clears it and drops the rest (nothing owed back)", () => {
+		const owe = {
+			kind: "OWE" as const,
+			id: "o1",
+			counterparty: "sam",
+			currency: "ARS",
+			date: "2026-10-01",
+			month: 202610,
+			native: ars(100),
+			status: "ACCEPTED" as const,
+		};
+		const fg = {
+			kind: "PAY" as const,
+			id: "fg",
+			counterparty: "sam",
+			currency: "ARS",
+			date: "2026-10-05",
+			month: 202610,
+			native: ars(150),
+			status: "FINALIZED" as const,
+			cash: 0,
+			isOffset: true,
+			forgiven: true,
+		};
+		const r = replaySplits([owe, fg]);
+		expect(r.balances[0]?.native).toBe(0);
+		expect(r.effects).toEqual([]);
+		expect(r.ignored).toContainEqual({
+			eventId: "fg",
+			reason: "FORGIVE_EXCEEDS_BALANCE",
+			native: ars(50),
+		});
+	});
+
 	it("rejects non-positive or fractional native amounts", () => {
 		expect(() => replaySplits([front("sam", 0, 0)])).toThrow(RangeError);
 		expect(() => replaySplits([front("sam", 1.5, 2)])).toThrow(RangeError);

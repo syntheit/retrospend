@@ -16,6 +16,7 @@ import { computeBook } from "./engine";
 import { EnvelopeError } from "./errors";
 import { type LoadedBook, loadBook } from "./inputs";
 import { buildMonthView, type MonthView } from "./month-view";
+import { owedSummary } from "./owed";
 import { coverSources, fillFromTargets } from "./planning";
 import type { Minor, MonthKey } from "./types";
 import { toMinor } from "./units";
@@ -80,8 +81,22 @@ async function computeMonthView(
 		month: key,
 		today: loaded.today,
 		missingRates: loaded.missingRates,
+		owed: owedSummary(owedInputOf(loaded)),
 	});
 	return { ...view, loaded };
+}
+
+/** What the owed reads need from a loaded book. */
+export function owedInputOf(loaded: LoadedBook) {
+	return {
+		replay: loaded.splits.replay,
+		events: loaded.splits.events,
+		pending: loaded.splits.pending,
+		notInBudget: loaded.splits.notInBudget,
+		currency: loaded.book.currency,
+		today: loaded.today,
+		incomplete: loaded.missingRates.length > 0,
+	};
 }
 
 async function requireView(

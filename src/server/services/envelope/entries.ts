@@ -37,8 +37,15 @@ export interface ShareRow {
 		date: Date;
 		categoryId: string | null;
 		exchangeRate: Prisma.Decimal | null;
+		projectId: string | null;
 		category: { userId: string } | null;
 	};
+}
+
+/** Where a share lands: your own category (D19) or the envelope its project routes to (D31). */
+export interface ShareRouting {
+	categoryOf: (share: ShareRow) => string | null;
+	envelopeOf: (share: ShareRow) => string | null;
 }
 
 export interface GroupedMovement {
@@ -61,6 +68,11 @@ export class Valuer {
 	dated(d: Date): { date: IsoDate; month: MonthKey } {
 		const date = isoDateIn(d, this.tz);
 		return { date, month: budgetMonthOf(date, this.periods) };
+	}
+
+	/** The budget month of a calendar date (a @db.Date column, read as stored). */
+	monthOf(date: IsoDate): MonthKey {
+		return budgetMonthOf(date, this.periods);
 	}
 
 	value(r: ValuedRow, date: IsoDate, month: MonthKey): Minor | null {
@@ -109,7 +121,7 @@ export function moneyInEntries(
 }
 
 /** The USD value of a share at the rate its expense captured, else the table rate (units per USD; crypto USD per coin). */
-function shareUsd(
+export function shareUsd(
 	amount: Prisma.Decimal,
 	rate: string | null,
 	currency: string,
@@ -121,7 +133,52 @@ function shareUsd(
 	return (isCrypto(currency) ? a.mul(r) : a.div(r)).toString();
 }
 
-/** Spending (negative), refunds (positive) and your shares of others' splits (negative, pending flagged, D20). */
+export interface WealthRow {
+	id: string;
+	direction: "TO_WEALTH" | "FROM_WEALTH";
+	envelopeId: string | null;
+	/** A calendar date (@db.Date), read as stored. */
+	date: Date;
+	/** Book currency. */
+	amount: Prisma.Decimal;
+}
+
+/**
+ * Money moved between the budget and Wealth (D24, SPEC §5.11): into or out
+ * of an envelope's Activity, or To assign when no envelope is named.
+ */
+export function wealthEntries(
+	rows: readonly WealthRow[],
+	v: Valuer,
+	currency: string,
+): { moneyIn: MoneyInEntry[]; activity: ActivityEntry[] } {
+	const moneyIn: MoneyInEntry[] = [];
+	const activity: ActivityEntry[] = [];
+	for (const r of rows) {
+		const date = r.date.toISOString().slice(0, 10);
+		const month = v.monthOf(date);
+		const sign = r.direction === "FROM_WEALTH" ? 1 : -1;
+		const minor = sign * toMinor(r.amount.toString(), currency);
+		if (r.envelopeId)
+			activity.push({
+				id: r.id,
+				month,
+				date,
+				minor,
+				source: "WEALTH",
+				categoryId: null,
+				envelopeId: r.envelopeId,
+			});
+		else moneyIn.push({ id: r.id, month, minor, source: "WEALTH" });
+	}
+	return { moneyIn, activity };
+}
+
+/**
+ * Spending (negative), refunds (positive) and your shares of splits
+ * (negative, pending flagged, D20), each share in your own category (D19)
+ * or the envelope its project routes to (D31).
+ */
 export function activityEntries(
 	rows: {
 		spending: readonly ExpenseRow[];
@@ -130,7 +187,7 @@ export function activityEntries(
 		shareRate: (s: ShareRow) => string | null;
 	},
 	v: Valuer,
-	userId: string,
+	routing: ShareRouting,
 ): ActivityEntry[] {
 	const out: ActivityEntry[] = [];
 	const push = (r: ExpenseRow, sign: 1 | -1, source: "SPENT" | "REFUND") => {
@@ -170,8 +227,8 @@ export function activityEntries(
 			date,
 			minor: -minor,
 			source: "SHARE",
-			// Today's rule (D19 lands in P3): the creator's category only counts when it is yours.
-			categoryId: t.category?.userId === userId ? t.categoryId : null,
+			categoryId: routing.categoryOf(s),
+			envelopeId: routing.envelopeOf(s),
 			pending: s.verificationStatus === "PENDING",
 		});
 	}
