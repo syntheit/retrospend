@@ -39,24 +39,26 @@ describe("/api/v1 currencies and rates", () => {
 
 	beforeAll(async () => {
 		as = await asMobile((await createTestUser()).user.id);
-		// ARS has two rate types; the 18th is newer than the 15th.
+		// Rates are global and the pg files share one database, so this file
+		// uses UYU, which no other pg test stores rates for. UYU gets two rate
+		// types here; the 18th is newer than the 15th.
 		await adminDb.exchangeRate.createMany({
 			data: [
 				{
 					date: day("2025-03-15"),
-					currency: "ARS",
+					currency: "UYU",
 					type: "official",
 					rate: "1050.25",
 				},
 				{
 					date: day("2025-03-18"),
-					currency: "ARS",
+					currency: "UYU",
 					type: "official",
 					rate: "1061.5",
 				},
 				{
 					date: day("2025-03-18"),
-					currency: "ARS",
+					currency: "UYU",
 					type: "blue",
 					rate: "1225",
 				},
@@ -80,8 +82,8 @@ describe("/api/v1 currencies and rates", () => {
 			}[];
 			nextCursor: string | null;
 		}>(await call("/currencies?limit=200", { headers: as }), c.list);
-		const ars = page.items.find((x) => x.code === "ARS");
-		expect(ars).toMatchObject({
+		const uyu = page.items.find((x) => x.code === "UYU");
+		expect(uyu).toMatchObject({
 			decimals: 2,
 			kind: "fiat",
 			rateTypes: ["blue", "official"],
@@ -97,7 +99,7 @@ describe("/api/v1 currencies and rates", () => {
 
 	it("gives the newest rate per type on a day, exactly", async () => {
 		const onThe16th = await expectBody<{ items: Rate[] }>(
-			await call("/rates?currency=ARS&date=2025-03-16", { headers: as }),
+			await call("/rates?currency=UYU&date=2025-03-16", { headers: as }),
 			c.listRates,
 		);
 		expect(onThe16th.items).toEqual([
@@ -108,7 +110,7 @@ describe("/api/v1 currencies and rates", () => {
 			}),
 		]);
 		const latest = await expectBody<{ items: Rate[] }>(
-			await call("/rates?currency=ARS", { headers: as }),
+			await call("/rates?currency=UYU", { headers: as }),
 			c.listRates,
 		);
 		expect(latest.items.map((r) => [r.type, r.unitsPerUsd])).toEqual([
@@ -127,7 +129,7 @@ describe("/api/v1 currencies and rates", () => {
 			items: Rate[];
 			nextCursor: string | null;
 		}>(
-			await call("/rates/ARS/history?limit=2", { headers: as }),
+			await call("/rates/UYU/history?limit=2", { headers: as }),
 			c.rateHistory,
 		);
 		expect(first.items.map((r) => `${r.date} ${r.type}`)).toEqual([
@@ -138,7 +140,7 @@ describe("/api/v1 currencies and rates", () => {
 			items: Rate[];
 			nextCursor: string | null;
 		}>(
-			await call(`/rates/ARS/history?limit=2&cursor=${first.nextCursor}`, {
+			await call(`/rates/UYU/history?limit=2&cursor=${first.nextCursor}`, {
 				headers: as,
 			}),
 			c.rateHistory,
@@ -149,7 +151,7 @@ describe("/api/v1 currencies and rates", () => {
 
 	it("picks the best rate like an expense save does", async () => {
 		const best = await expectBody(
-			await call("/rates/ARS/best?date=2025-03-18", { headers: as }),
+			await call("/rates/UYU/best?date=2025-03-18", { headers: as }),
 			c.bestRate,
 		);
 		// Blue wins when nothing is preferred.
@@ -159,7 +161,7 @@ describe("/api/v1 currencies and rates", () => {
 			onOrBefore: true,
 		});
 		const official = await expectBody(
-			await call("/rates/ARS/best?date=2025-03-18&type=official", {
+			await call("/rates/UYU/best?date=2025-03-18&type=official", {
 				headers: as,
 			}),
 			c.bestRate,
