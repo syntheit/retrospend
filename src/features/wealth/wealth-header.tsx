@@ -26,7 +26,7 @@ import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { entryOf, hrefOf } from "~/lib/nav";
 import { api } from "~/trpc/react";
-import { BackButton } from "./page-frame";
+import { BackButton, HeaderSub, PhoneSub } from "./page-frame";
 import type { WealthView } from "./types";
 
 /** Saves the server's CSV as a file. */
@@ -144,19 +144,25 @@ export function WealthHeader({
 		</Button>
 	);
 	return (
-		<PageHeader
-			lead={
-				<BackButton href={hrefOf(entryOf("home")) ?? "/"} label={nav("home")} />
-			}
-			overflow={menu}
-			primary={
-				<>
-					{eye}
-					{add}
-				</>
-			}
-			sub={sub || undefined}
-			title={t("title")}
-		/>
+		<>
+			<PageHeader
+				lead={
+					<BackButton
+						href={hrefOf(entryOf("home")) ?? "/"}
+						label={nav("home")}
+					/>
+				}
+				overflow={menu}
+				primary={
+					<>
+						{eye}
+						{add}
+					</>
+				}
+				sub={sub ? <HeaderSub text={sub} /> : undefined}
+				title={t("title")}
+			/>
+			<PhoneSub text={sub} />
+		</>
 	);
 }

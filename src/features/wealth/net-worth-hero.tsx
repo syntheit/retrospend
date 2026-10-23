@@ -1,5 +1,6 @@
 "use client";
 
+import { getDecimalDigits } from "@retrospend/domain/currency-format";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AllocationBar } from "~/components/charts/allocation-bar";
@@ -15,6 +16,14 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { RANGES, type WealthRange, type WealthView } from "./types";
 
 /**
+ * The hero's precision, shared by every figure in it: whole units for a
+ * currency the formatter shows without cents (ARS, CLP...), else the
+ * formatter's default. The formatter rounds; the page never does.
+ */
+const heroCents = (home: string) =>
+	getDecimalDigits(home) === 0 ? false : ("auto" as const);
+
+/**
  * The one hero (R3): net worth, its 30-day change, the area chart with
  * range chips and scrub, the assets by group bar, then liquid assets and
  * runway as key-value rows. Every number comes from the server view.
@@ -27,6 +36,7 @@ export function NetWorthHero({ view }: { view: WealthView }) {
 	const [scrub, setScrub] = useState<AreaPoint | null>(null);
 	const empty = view.groups.length === 0;
 	const points = view.series[range];
+	const cents = heroCents(view.home);
 	return (
 		<section aria-labelledby="nw-label">
 			<div className="flex flex-wrap items-end gap-4">
@@ -36,9 +46,9 @@ export function NetWorthHero({ view }: { view: WealthView }) {
 					</div>
 					<div className="text-fg text-hero my-1">
 						{scrub?.value ? (
-							<Money value={scrub.value} />
+							<Money cents={cents} value={scrub.value} />
 						) : (
-							<Money value={view.netWorth} />
+							<Money cents={cents} value={view.netWorth} />
 						)}
 					</div>
 					<div className="text-fg-2 text-small min-h-5">
@@ -86,7 +96,7 @@ function Change({ view }: { view: WealthView }) {
 	const { amount, basis } = view.change30;
 	return (
 		<span>
-			<Money sign="exceptZero" value={amount} />
+			<Money cents={heroCents(view.home)} sign="exceptZero" value={amount} />
 			{basis != null ? (
 				<span className="tabular-nums">
 					{" "}
@@ -120,12 +130,13 @@ function Allocation({ view }: { view: WealthView }) {
 
 function KeyValues({ view }: { view: WealthView }) {
 	const t = useTranslations("wealthPage");
+	const cents = heroCents(view.home);
 	return (
 		<dl className="mt-3 flex flex-col">
 			<div className="min-h-row border-line text-fg-2 text-body flex items-center gap-2 border-t">
 				<dt className="flex-1">{t("liquidAssets")}</dt>
 				<dd className="text-fg font-semibold">
-					<Money value={view.liquid} />
+					<Money cents={cents} value={view.liquid} />
 				</dd>
 			</div>
 			{view.runway ? (
@@ -134,7 +145,9 @@ function KeyValues({ view }: { view: WealthView }) {
 						{t("runway")}{" "}
 						<span className="text-fg-3 text-meta">
 							{t.rich("runwayAt", {
-								amount: () => <Money value={view.runway?.monthly ?? null} />,
+								amount: () => (
+									<Money cents={cents} value={view.runway?.monthly ?? null} />
+								),
 							})}
 						</span>
 					</dt>

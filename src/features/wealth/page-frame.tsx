@@ -54,3 +54,17 @@ export function BackButton({ href, label }: { href: string; label: string }) {
 		</Tip>
 	);
 }
+
+/**
+ * The header's sub line. Beside the back button a phone's title column is
+ * too narrow and the line wraps, so from md up it sits under the title and
+ * on phones under the whole header row, full width (the mockups).
+ */
+export function HeaderSub({ text }: { text: string }) {
+	return <span className="max-md:hidden">{text}</span>;
+}
+
+export function PhoneSub({ text }: { text: string }) {
+	if (!text) return null;
+	return <p className="text-fg-3 text-small -mt-2 mb-4 md:hidden">{text}</p>;
+}
