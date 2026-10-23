@@ -10,11 +10,11 @@
 import { computeAmountInUSD, USD } from "~/lib/money";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
-import type { RateCache } from "./rate-cache";
 import {
 	buildCallerRoleMap,
 	deriveCanModify,
 } from "./shared-expenses/project-permissions";
+import type { RateCache } from "./rate-cache";
 
 type AppDb = PrismaClient | Prisma.TransactionClient;
 
@@ -42,7 +42,10 @@ function excludedProjectFilter(
 ): Prisma.SharedTransactionWhereInput | undefined {
 	if (!excludedProjectIds || excludedProjectIds.length === 0) return undefined;
 	return {
-		OR: [{ projectId: null }, { projectId: { notIn: excludedProjectIds } }],
+		OR: [
+			{ projectId: null },
+			{ projectId: { notIn: excludedProjectIds } },
+		],
 	};
 }
 
@@ -201,13 +204,7 @@ export async function getSharedExpenseTotalInUSD(
 	rateCache?: RateCache,
 	excludedProjectIds?: string[],
 ): Promise<number> {
-	const shares = await getSharedExpenseShares(
-		db,
-		userId,
-		dateFilter,
-		rateCache,
-		excludedProjectIds,
-	);
+	const shares = await getSharedExpenseShares(db, userId, dateFilter, rateCache, excludedProjectIds);
 	return shares.reduce((sum, s) => sum + s.amountInUSD, 0);
 }
 
@@ -285,8 +282,7 @@ export async function listSharedParticipationsForUser(
 			if (!allParticipantKeys.has(spKey)) {
 				allParticipantKeys.add(spKey);
 				if (sp.participantType === "user") userIds.add(sp.participantId);
-				else if (sp.participantType === "shadow")
-					shadowIds.add(sp.participantId);
+				else if (sp.participantType === "shadow") shadowIds.add(sp.participantId);
 				else if (sp.participantType === "guest") guestIds.add(sp.participantId);
 			}
 		}
@@ -317,10 +313,7 @@ export async function listSharedParticipationsForUser(
 	const avatarMap = new Map<string, string | null>();
 	for (const u of resolvedUsers) {
 		nameMap.set(`user:${u.id}`, u.name ?? "Unknown");
-		avatarMap.set(
-			`user:${u.id}`,
-			u.avatarPath ? `/api/images/${u.avatarPath}` : null,
-		);
+		avatarMap.set(`user:${u.id}`, u.avatarPath ? `/api/images/${u.avatarPath}` : null);
 	}
 	for (const s of resolvedShadows) nameMap.set(`shadow:${s.id}`, s.name);
 	for (const g of resolvedGuests) nameMap.set(`guest:${g.id}`, g.name);
