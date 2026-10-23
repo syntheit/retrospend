@@ -50,14 +50,10 @@
 		"final": "Definitivo: {name} não usa o Retrospend."
 	},
 	"changes": {
-		"title": "O que muda",
-		"doneTitle": "O que mudou",
 		"balance": "Seu saldo com {name} ({currency})",
 		"owedToYou": "Devem a você, todas as pessoas",
 		"youOwe": "Você deve, todas as pessoas",
-		"yourBalance": "seu saldo com {name}",
-		"nothingElse": "Verificado e sem mudança: {list}.",
-		"unavailable": "Não foi possível verificar: {list}."
+		"yourBalance": "seu saldo com {name}"
 	},
 	"toast": {
 		"confirmed": "Pagamento de {name} confirmado. Nada contado duas vezes",

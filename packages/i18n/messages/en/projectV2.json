@@ -93,11 +93,6 @@
 	},
 	"preview": {
 		"checking": "Checking what this changes",
-		"changes": "What changes",
-		"nothing": "Nothing",
-		"stays": "What stays the same",
-		"noChange": "no change",
-		"unavailable": "not checked, a rate is missing",
 		"figures": {
 			"project_total": "Group total",
 			"project_member_balance": "{name} in the group",

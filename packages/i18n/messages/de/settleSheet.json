@@ -50,14 +50,10 @@
 		"final": "Endgültig: {name} nutzt Retrospend nicht."
 	},
 	"changes": {
-		"title": "Was sich ändert",
-		"doneTitle": "Was sich geändert hat",
 		"balance": "Dein Saldo mit {name} ({currency})",
 		"owedToYou": "Dir geschuldet, alle Personen",
 		"youOwe": "Du schuldest, alle Personen",
-		"yourBalance": "dein Saldo mit {name}",
-		"nothingElse": "Geprüft und unverändert: {list}.",
-		"unavailable": "Nicht prüfbar: {list}."
+		"yourBalance": "dein Saldo mit {name}"
 	},
 	"toast": {
 		"confirmed": "Zahlung von {name} bestätigt. Nichts doppelt gezählt",

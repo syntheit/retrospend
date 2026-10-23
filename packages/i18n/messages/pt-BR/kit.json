@@ -43,5 +43,14 @@
 	},
 	"button": {
 		"loading": "Carregando"
+	},
+	"changes": {
+		"title": "O que isso muda",
+		"titleDone": "O que mudou",
+		"loading": "Verificando o que muda",
+		"nothingElse": "Nada mais muda: {list} continuam como estão.",
+		"nothingElseOne": "Nada mais muda: {item} continua como está.",
+		"noneChange": "Sem mudança em {list}.",
+		"unavailable": "Não foi possível verificar {list}."
 	}
 }

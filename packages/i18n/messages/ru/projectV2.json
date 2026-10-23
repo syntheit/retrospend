@@ -93,11 +93,6 @@
 	},
 	"preview": {
 		"checking": "Проверяем, что изменится",
-		"changes": "Что изменится",
-		"nothing": "Ничего",
-		"stays": "Что останется прежним",
-		"noChange": "без изменений",
-		"unavailable": "не проверено, нет курса",
 		"figures": {
 			"project_total": "Итог группы",
 			"project_member_balance": "{name} в группе",

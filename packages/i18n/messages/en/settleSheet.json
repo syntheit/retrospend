@@ -50,14 +50,10 @@
 		"final": "Final: {name} is not on Retrospend."
 	},
 	"changes": {
-		"title": "What this changes",
-		"doneTitle": "What changed",
 		"balance": "Your balance with {name} ({currency})",
 		"owedToYou": "Owed to you, all people",
 		"youOwe": "You owe, all people",
-		"yourBalance": "your balance with {name}",
-		"nothingElse": "Checked and unchanged: {list}.",
-		"unavailable": "Could not check: {list}."
+		"yourBalance": "your balance with {name}"
 	},
 	"toast": {
 		"confirmed": "Confirmed {name}'s payment. Nothing counted twice",

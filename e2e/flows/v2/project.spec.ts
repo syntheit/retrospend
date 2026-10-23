@@ -72,7 +72,9 @@ test("Project: Settle all previews, records and undoes", async ({ page }) => {
 	const sheet = page.getByRole("dialog", { name: "Settle all" });
 	await expect(sheet).toContainText("You pay Martín Acosta");
 	await expect(sheet).toContainText("ARS 41,100");
-	await expect(sheet.getByText("What stays the same")).toBeVisible();
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
 	await expect(sheet).toContainText("Group total");
 	await untilSaved(page, "project.settleAll", () =>
 		sheet.getByRole("button", { name: "Record 1 payment" }).click(),

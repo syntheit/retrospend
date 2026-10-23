@@ -93,11 +93,6 @@
 	},
 	"preview": {
 		"checking": "Prüfe, was sich ändert",
-		"changes": "Was sich ändert",
-		"nothing": "Nichts",
-		"stays": "Was gleich bleibt",
-		"noChange": "keine Änderung",
-		"unavailable": "nicht geprüft, ein Kurs fehlt",
 		"figures": {
 			"project_total": "Gruppensumme",
 			"project_member_balance": "{name} in der Gruppe",

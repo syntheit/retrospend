@@ -70,7 +70,7 @@ export function CurrencyChip(p: MoneyInputProps) {
 	const button = (
 		<FilterChip
 			aria-label={t("currency", { code: p.currency })}
-			className="bg-transparent font-medium text-fg"
+			className="text-fg bg-transparent font-medium"
 			disabled={p.disabled}
 			value
 		>
@@ -105,7 +105,7 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 	return (
 		<div
 			aria-label={rates.label}
-			className="flex overflow-x-auto border-line-strong border-t"
+			className="border-line-strong flex overflow-x-auto border-t"
 			role="group"
 		>
 			{rates.options.map((o, i) => {
@@ -124,7 +124,7 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 						kind="ghost"
 						onClick={() => rates.onChange(o.value)}
 					>
-						<span className="font-medium text-meta">{o.label}</span>
+						<span className="text-meta font-medium">{o.label}</span>
 						{o.rate ? (
 							<span className="text-small tabular-nums">{o.rate}</span>
 						) : null}
@@ -143,16 +143,76 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 /** The home row (kit .aex-hr): what the amount counts as, in the home currency. */
 export function HomeRow({ home }: { home: MoneyHome }) {
 	return (
-		<div className="flex h-money items-center gap-2 border-line-strong border-t bg-bg p-1">
+		<div className="h-money border-line-strong bg-bg flex items-center gap-2 border-t p-1">
 			<span className={cn(fixedChip, "border-transparent")}>
 				<CurrencyMark code={home.currency} />
 			</span>
-			<span className="min-w-0 flex-1 truncate text-fg-3 text-small">
+			<span className="text-fg-3 text-small min-w-0 flex-1 truncate">
 				{home.label}
 			</span>
-			<span className="pr-2 font-medium text-body text-fg tabular-nums">
+			<span className="text-body text-fg pr-2 font-medium tabular-nums">
 				{home.value}
 			</span>
+		</div>
+	);
+}
+
+/** The four keys of the operators row, as typed into the field. */
+export const OPERATORS = ["+", "−", "×", "÷"] as const;
+
+/**
+ * The operators row (ADD-EXPENSE-R2 `.aex-ops`): phone web's decimal pad
+ * has no + − × ÷, so while the amount has focus four keys sit under the
+ * field. A press keeps the focus in the field (no keyboard flicker).
+ */
+export function OperatorRow({ onKey }: { onKey: (op: string) => void }) {
+	const t = useTranslations("pickers.money");
+	return (
+		<div
+			aria-label={t("operators")}
+			className="flex gap-2 md:hidden"
+			role="group"
+		>
+			{OPERATORS.map((op) => (
+				<Button
+					aria-label={t(`operator.${OPERATOR_KEY[op]}`)}
+					className="h-money bg-raised text-fg text-section flex-1 font-semibold"
+					key={op}
+					kind="ghost"
+					onClick={() => onKey(op)}
+					onPointerDown={(e) => e.preventDefault()}
+				>
+					{op}
+				</Button>
+			))}
+		</div>
+	);
+}
+
+const OPERATOR_KEY = {
+	"+": "plus",
+	"−": "minus",
+	"×": "times",
+	"÷": "divide",
+} as const;
+
+/** A row inside the MoneyInput field, under a hairline (custom rate, notices). */
+export function MoneyInputRow({
+	tone = "plain",
+	children,
+}: {
+	tone?: "plain" | "attention";
+	children: React.ReactNode;
+}) {
+	return (
+		<div
+			className={cn(
+				"min-h-ctl border-line-strong text-fg-2 text-small flex flex-wrap items-center gap-2 border-t px-3 py-2",
+				tone === "attention" && "bg-attention-bg text-fg",
+			)}
+			role={tone === "attention" ? "status" : undefined}
+		>
+			{children}
 		</div>
 	);
 }

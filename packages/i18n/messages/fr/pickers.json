@@ -76,6 +76,13 @@
 			"outOfRange": "Montant trop élevé",
 			"zero": "Saisissez un montant supérieur à zéro",
 			"negative": "Le montant doit être supérieur à zéro"
+		},
+		"operators": "Touches de calcul",
+		"operator": {
+			"plus": "Plus",
+			"minus": "Moins",
+			"times": "Fois",
+			"divide": "Divisé par"
 		}
 	},
 	"project": {

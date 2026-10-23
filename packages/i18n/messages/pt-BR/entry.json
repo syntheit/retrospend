@@ -92,7 +92,8 @@
 			"body": "Isso muda os saldos de outras pessoas.",
 			"confirm": "Excluir gasto"
 		},
-		"projectAria": "Projeto, {project}"
+		"projectAria": "Projeto, {project}",
+		"addShort": "Adicionar"
 	},
 	"rate": {
 		"default": "Sua cotação padrão para {currency}",
@@ -119,15 +120,11 @@
 		"youSpent": "Você gastou"
 	},
 	"changes": {
-		"title": "O que isso muda",
 		"titleEdit": "O que esta edição muda",
 		"empty": "Digite um valor e escolha uma categoria para ver o que muda.",
 		"emptyAmount": "Digite um valor para ver o que muda.",
 		"loading": "Verificando o que muda",
 		"cannot": "Ainda não dá para salvar: {reason}",
-		"nothingElse": "Nada mais muda: {list} continuam como estão.",
-		"nothingElseOne": "Nada mais muda: {item} continua como está.",
-		"unavailable": "Não foi possível verificar {list}.",
 		"figures": {
 			"spent": "Seus gastos",
 			"owed_owedToYou": "Devem a você",
@@ -153,8 +150,7 @@
 			"budget_leftToSpend": "o disponível para gastar",
 			"project_total": "o total do projeto",
 			"envelope_left": "o envelope"
-		},
-		"noneChange": "Sem mudança em {list}."
+		}
 	},
 	"income": {
 		"title": "Adicionar receita",

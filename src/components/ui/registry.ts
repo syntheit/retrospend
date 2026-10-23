@@ -263,6 +263,11 @@ export const REGISTRY: Primitive[] = [
 		job: "Sheet: one task that finishes in place. Dialog on desktop, medium and large detent sheet on phone; focus return, Cmd+Enter, nested Cancel returns to the parent",
 	},
 	{
+		file: "sheet-changes",
+		status: "core",
+		job: "SheetChanges: a money sheet's What this changes block (R30): each place that moves (ChangeValue: delta → after, or before → after), then what was checked and stays, then what could not be checked",
+	},
+	{
 		file: "sheet-behavior",
 		status: "internal",
 		job: "The Sheet's key, submit, focus and detent rules as plain functions",
@@ -447,7 +452,7 @@ export const PLANNED: Planned[] = [
 		replaces: "SiteHeader variations and hero cards",
 		planRow: LAYOUT,
 		target: "src/components/layout/page-header.tsx",
-		use: "Import it from src/components/layout/page-header",
+		use: "Import it from src/components/layout/page-header; the page sits in PageFrame and a pushed page leads with BackButton (src/components/layout/page-frame)",
 	},
 	{
 		name: "Toolbar",
@@ -465,7 +470,7 @@ export const PLANNED: Planned[] = [
 		replaces: "Card around sections",
 		planRow: LAYOUT,
 		target: "src/components/layout/section.tsx",
-		use: "Import it from src/components/layout/section",
+		use: "Import it from src/components/layout/section; `end` puts one control at the end of the heading row (a Segmented, Add person)",
 	},
 	{
 		name: "SummaryLine",
@@ -502,7 +507,7 @@ export const PLANNED: Planned[] = [
 		replaces: "Stacked tinted banners",
 		planRow: NEEDS_YOU,
 		target: "src/components/needs-you/needs-you-item.tsx",
-		use: "NeedsYouItem inside NeedsYouList; add a kind to NeedsYouItemVM, never a banner. Kinds: assign, review, confirmPayment, verify, due, overdue, overspent, overspentMany, rejected, overAssigned, billDue, missingRate, startingMoney and the setup prompts (firstExpense, homeCurrency, verifyEmail, importStatement); an optional context line under the sentence",
+		use: "NeedsYouItem inside NeedsYouList; add a kind to NeedsYouItemVM, never a banner. A person's item leads with their `face` and may offer a `secondary` action; `menu` handlers add the ⋯ menu (needsYou entity: Open, Later). Kinds: assign, review, confirmPayment, verify, due, overdue, overspent, overspentMany, rejected, overAssigned, billDue, missingRate, startingMoney and the setup prompts (firstExpense, homeCurrency, verifyEmail, importStatement); an optional context line under the sentence",
 	},
 	{
 		name: "TransactionRow",

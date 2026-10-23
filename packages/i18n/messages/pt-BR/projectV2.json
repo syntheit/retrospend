@@ -93,11 +93,6 @@
 	},
 	"preview": {
 		"checking": "Verificando o que muda",
-		"changes": "O que muda",
-		"nothing": "Nada",
-		"stays": "O que continua igual",
-		"noChange": "sem mudança",
-		"unavailable": "não verificado, falta uma cotação",
 		"figures": {
 			"project_total": "Total do grupo",
 			"project_member_balance": "{name} no grupo",
