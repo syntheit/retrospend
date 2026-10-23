@@ -201,6 +201,19 @@ describe("engine checkpoints", () => {
 });
 
 describe("summaryDiffers", () => {
+	const fun = {
+		id: "fun",
+		carryIn: 0,
+		assigned: 200,
+		activity: -100,
+		left: 100,
+		rule: "RETURN" as const,
+		sweepToId: null,
+		carried: 0,
+		returned: 100,
+		swept: 0,
+		overspent: 0,
+	};
 	const base = {
 		month: 202609,
 		currency: "USD",
@@ -232,7 +245,7 @@ describe("summaryDiffers", () => {
 			envelopes: [
 				...base.envelopes,
 				{
-					...base.envelopes[0],
+					...fun,
 					id: "new",
 					assigned: 0,
 					activity: 0,
@@ -249,7 +262,7 @@ describe("summaryDiffers", () => {
 		const changed = {
 			...base,
 			returned: 90,
-			envelopes: [{ ...base.envelopes[0], activity: -110, left: 90 }],
+			envelopes: [{ ...fun, activity: -110, left: 90 }],
 		};
 		expect(summaryDiffers(base, changed)).toBe(true);
 	});

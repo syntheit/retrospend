@@ -8,16 +8,32 @@
  * Every row is valued once in the book currency H (valuation.ts) and dated
  * by the calendar date the person saw in the book's zone (SPEC §5.1, C21).
  * A row without a rate is left out and listed (C18), never valued at 1.
+ *
+ * With a valid checkpoint (checkpoint.ts, SPEC §5.13) own rows and
+ * movements are read only after it; shares, payments and Wealth moves are
+ * always read in full, since the splits replay needs every debt from its
+ * start and their fingerprint is what keeps the checkpoint honest.
  */
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
-import { monthCloseSummarySchema } from "~/lib/schemas/envelope";
 import type { Prisma, RecurringTemplate } from "~prisma";
 import {
 	budgetMoneyInWhere,
 	budgetRefundWhere,
 	budgetSpendingWhere,
 } from "../spending";
-import { addDays } from "./calendar";
+import { addDays, addMonths } from "./calendar";
+import {
+	fingerprints,
+	type StoredCheckpoint,
+	toEngineCheckpoint,
+} from "./checkpoint";
+import {
+	type CloseRow,
+	type DirtyMark,
+	loadCloseRows,
+	loadDirtyMarks,
+	pickCheckpoint,
+} from "./close-rows";
 import type { ClosedRule, EngineInput } from "./engine";
 import {
 	activityEntries,
@@ -27,7 +43,13 @@ import {
 	wealthEntries,
 } from "./entries";
 import type { ViewBook, ViewEnvelope } from "./month-view";
-import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
+import {
+	budgetMonthOf,
+	isoDateIn,
+	type MonthBoundary,
+	monthStart,
+	monthsFrom,
+} from "./months";
 import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
 import { type TargetContext, targetOf } from "./target-input";
@@ -63,10 +85,24 @@ export interface LoadedBook {
 	today: IsoDate;
 	missingRates: MissingRate[];
 	splits: LoadedSplits;
+	/** Every close of the book, oldest first. */
+	closes: CloseRow[];
+	/** budget_dirty marks seen by this load. */
+	dirty: DirtyMark[];
+	/** The checkpoint the pass starts at, or null for a pass from the start. */
+	checkpoint: StoredCheckpoint | null;
+	/** Fingerprints of the fully loaded rows per month up to last month (checkpoint.ts). */
+	prints: ReadonlyMap<MonthKey, string>;
+	periods: MonthBoundary[];
 }
 
 export interface LoadContext {
 	now: Date;
+	/**
+	 * The first month the caller reads (default: last month, which carry an
+	 * overspend and the close need). Older months are not computed.
+	 */
+	needFrom?: MonthKey;
 }
 
 function periodsOf(row: BookRow): MonthBoundary[] {
@@ -76,9 +112,17 @@ function periodsOf(row: BookRow): MonthBoundary[] {
 	}));
 }
 
-async function loadRows(tx: Tx, row: BookRow, userId: string) {
-	// Two days of slack around the start: the month mapping in the book zone decides.
-	const from = new Date(row.startDate.getTime() - 2 * 86_400_000);
+/** Two days of slack: the month mapping in the book zone decides. */
+const SLACK_MS = 2 * 86_400_000;
+
+/** Own rows from `from` on and movements after `afterMonth` (the checkpoint). */
+async function loadOwnRows(
+	tx: Tx,
+	row: BookRow,
+	userId: string,
+	from: Date,
+	afterMonth: MonthKey,
+) {
 	const select = {
 		id: true,
 		amount: true,
@@ -108,8 +152,18 @@ async function loadRows(tx: Tx, row: BookRow, userId: string) {
 		},
 		select,
 	});
-	const wealth = await tx.wealthTransfer.findMany({
-		where: { bookId: row.id },
+	const movements = await tx.budgetMovement.groupBy({
+		by: ["month", "fromEnvelopeId", "toEnvelopeId"],
+		where: { bookId: row.id, month: { gt: afterMonth } },
+		_sum: { amount: true },
+	});
+	return { moneyIn, spending, refunds, movements };
+}
+
+/** Every Wealth move of the book: goal progress needs them all, and they are few. */
+function loadWealthRows(tx: Tx, bookId: string) {
+	return tx.wealthTransfer.findMany({
+		where: { bookId },
 		select: {
 			id: true,
 			direction: true,
@@ -118,16 +172,6 @@ async function loadRows(tx: Tx, row: BookRow, userId: string) {
 			amount: true,
 		},
 	});
-	const closes = await tx.monthClose.findMany({
-		where: { bookId: row.id },
-		select: { month: true, summary: true },
-	});
-	const movements = await tx.budgetMovement.groupBy({
-		by: ["month", "fromEnvelopeId", "toEnvelopeId"],
-		where: { bookId: row.id },
-		_sum: { amount: true },
-	});
-	return { moneyIn, spending, refunds, movements, wealth, closes };
 }
 
 function viewEnvelopes(row: BookRow, ctx: TargetContext): ViewEnvelope[] {
@@ -201,10 +245,78 @@ export async function loadBook(
 ): Promise<LoadedBook | null> {
 	const row = await findPersonalBook(tx, userId);
 	if (!row?.defaultEnvelopeId) return null;
+	const s = await settingOf(tx, row, ctx.now);
+	const closes = await loadCloseRows(tx, row.id);
+	const dirty = await loadDirtyMarks(tx, row.id);
+	const full = await loadFull(tx, userId, s);
+	const lastClosed = addMonths(s.currentMonth, -1);
+	const prints =
+		lastClosed >= row.startMonth
+			? fingerprints(full.entries, monthsFrom(row.startMonth, lastClosed))
+			: new Map<MonthKey, string>();
+	const checkpoint = pickCheckpoint(closes, {
+		needFrom: ctx.needFrom ?? lastClosed,
+		currentMonth: s.currentMonth,
+		dirty,
+		prints,
+	});
+	const after = checkpoint?.month ?? addMonths(row.startMonth, -1);
+	const fromDay = monthStart(addMonths(after, 1), s.periods);
+	const from = new Date(
+		Math.max(
+			new Date(`${fromDay}T00:00:00Z`).getTime(),
+			row.startDate.getTime(),
+		) - SLACK_MS,
+	);
+	const own = await loadOwnRows(tx, row, userId, from, after);
+	const input: EngineInput = {
+		startMonth: row.startMonth,
+		currentMonth: s.currentMonth,
+		defaultEnvelopeId: row.defaultEnvelopeId,
+		envelopes: row.envelopes.map((e) => ({
+			id: e.id,
+			kind: e.kind,
+			leftoverRule: e.leftoverRule,
+			sweepToId: e.leftoverSweepToId,
+			categoryIds: e.categories.map((c) => c.categoryId),
+		})),
+		moneyIn: [...moneyInEntries(own.moneyIn, s.valuer), ...full.entries.moneyIn],
+		activity: [
+			...activityEntries(
+				{ ...own, shares: [], shareRate: full.splits.shareRate },
+				s.valuer,
+				full.splits.routing,
+			),
+			...full.entries.activity,
+		],
+		movements: movementEntries(own.movements, row.currency),
+		splits: full.entries.splits,
+		closedRules: closedRulesOf(closes),
+		checkpoint: checkpoint ? toEngineCheckpoint(checkpoint) : null,
+	};
+	return finishLoad(s, {
+		input,
+		splits: full.splits,
+		closes,
+		dirty,
+		checkpoint,
+		prints,
+	});
+}
+
+interface Setting {
+	row: BookRow;
+	periods: MonthBoundary[];
+	today: IsoDate;
+	currentMonth: MonthKey;
+	valuation: ValuationContext;
+	valuer: Valuer;
+	templates: RecurringTemplate[];
+}
+
+async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 	const periods = periodsOf(row);
-	const today = isoDateIn(ctx.now, row.timeZone);
-	const currentMonth = budgetMonthOf(today, periods);
-	const rows = await loadRows(tx, row, userId);
+	const today = isoDateIn(now, row.timeZone);
 	const templateIds = row.envelopes.flatMap((e) =>
 		e.targetTemplateId ? [e.targetTemplateId] : [],
 	);
@@ -224,70 +336,108 @@ export async function loadBook(
 		defaultRateType: row.periods[0]?.rateType ?? "official",
 		usdRate: rates.lookup,
 	};
-	const valuer = new Valuer(valuation, row.timeZone, periods);
-	const splits = await loadSplits(tx, userId, valuer, row.startMonth);
-	const wealth = wealthEntries(rows.wealth, valuer, row.currency);
-	const input: EngineInput = {
-		startMonth: row.startMonth,
-		currentMonth,
-		defaultEnvelopeId: row.defaultEnvelopeId,
-		envelopes: row.envelopes.map((e) => ({
-			id: e.id,
-			kind: e.kind,
-			leftoverRule: e.leftoverRule,
-			sweepToId: e.leftoverSweepToId,
-			categoryIds: e.categories.map((c) => c.categoryId),
-		})),
-		moneyIn: [...moneyInEntries(rows.moneyIn, valuer), ...wealth.moneyIn],
-		activity: [
-			...activityEntries(
-				{ ...rows, shares: splits.shares, shareRate: splits.shareRate },
-				valuer,
-				splits.routing,
-			),
-			...wealth.activity,
-		],
-		movements: movementEntries(rows.movements, row.currency),
-		splits: splits.replay.effects,
-		closedRules: closedRulesOf(rows.closes),
-	};
-	const envelopes = viewEnvelopes(row, {
-		valuation,
-		today,
-		month: currentMonth,
-		tz: row.timeZone,
-		periods,
-		templates: new Map(templates.map((t) => [t.id, t])),
-		missingRates: valuer.missingRates,
-	});
 	return {
 		row,
-		book: viewBook(row, row.defaultEnvelopeId, envelopes),
-		input,
+		periods,
 		today,
-		missingRates: valuer.missingRates,
+		currentMonth: budgetMonthOf(today, periods),
+		valuation,
+		valuer: new Valuer(valuation, row.timeZone, periods),
+		templates,
+	};
+}
+
+/** Shares, payments and Wealth moves, read in full on every load. */
+async function loadFull(tx: Tx, userId: string, s: Setting) {
+	const splits = await loadSplits(tx, userId, s.valuer, s.row.startMonth);
+	const wealth = wealthEntries(
+		await loadWealthRows(tx, s.row.id),
+		s.valuer,
+		s.row.currency,
+	);
+	const shares = activityEntries(
+		{
+			spending: [],
+			refunds: [],
+			shares: splits.shares,
+			shareRate: splits.shareRate,
+		},
+		s.valuer,
+		splits.routing,
+	);
+	return {
 		splits,
+		entries: {
+			activity: [...shares, ...wealth.activity],
+			moneyIn: wealth.moneyIn,
+			splits: splits.replay.effects,
+		},
+	};
+}
+
+/** Same rate, same row: listed once (a checkpoint and the full share load can both name it). */
+function uniqueMissing(rates: readonly MissingRate[]): MissingRate[] {
+	const seen = new Map<string, MissingRate>();
+	for (const r of rates)
+		seen.set(`${r.rowId ?? ""}|${r.currency}|${r.rateType}|${r.date}`, r);
+	return [...seen.values()];
+}
+
+function finishLoad(
+	s: Setting,
+	p: Pick<
+		LoadedBook,
+		"input" | "splits" | "closes" | "dirty" | "checkpoint" | "prints"
+	>,
+): LoadedBook {
+	const envelopes = viewEnvelopes(s.row, {
+		valuation: s.valuation,
+		today: s.today,
+		month: s.currentMonth,
+		tz: s.row.timeZone,
+		periods: s.periods,
+		templates: new Map(s.templates.map((t) => [t.id, t])),
+		missingRates: s.valuer.missingRates,
+	});
+	return {
+		...p,
+		row: s.row,
+		book: viewBook(s.row, p.input.defaultEnvelopeId, envelopes),
+		today: s.today,
+		missingRates: uniqueMissing([
+			...(p.checkpoint?.missingRates ?? []),
+			...s.valuer.missingRates,
+		]),
+		periods: s.periods,
 	};
 }
 
 /** The leftover rules each closed month closed under (MonthClose snapshots, B7). */
 function closedRulesOf(
-	closes: ReadonlyArray<{ month: number; summary: Prisma.JsonValue }>,
+	closes: readonly CloseRow[],
 ): Map<MonthKey, Map<string, ClosedRule>> {
 	const out = new Map<MonthKey, Map<string, ClosedRule>>();
-	for (const c of closes) {
-		const summary = monthCloseSummarySchema.parse(c.summary);
+	for (const c of closes)
 		out.set(
 			c.month,
 			new Map(
-				summary.envelopes.map((e) => [
+				c.summary.envelopes.map((e) => [
 					e.id,
 					{ rule: e.rule, sweepToId: e.sweepToId },
 				]),
 			),
 		);
-	}
 	return out;
+}
+
+/** Own missing rates of months up to `month`: what a checkpoint there carries. */
+export function missingThrough(
+	loaded: LoadedBook,
+	month: MonthKey,
+): MissingRate[] {
+	return loaded.missingRates.filter(
+		(r) => budgetMonthOf(r.date, loaded.periods) <= month,
+	);
 }
 
 /** Midnight at the start of budget month `month` in the book zone: the book's startDate. */
