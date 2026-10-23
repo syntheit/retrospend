@@ -258,6 +258,24 @@ describe("totals rule (sumIn)", () => {
 		expect(amountIn(items[1]!, "USD", null)).toBe(20);
 	});
 
+	it("an item booked in the total's currency counts its booked value (M2)", () => {
+		// USD 20 booked at ARS 1,200 when it was saved: ARS 24,000 whatever
+		// today's rate is; in USD it still counts its USD value.
+		const booked = {
+			amount: 20,
+			currency: "USD",
+			amountInUSD: 20,
+			booked: { currency: "ARS", amount: 24_000 },
+		};
+		expect(amountIn(booked, "ARS", 1300)).toBe(24_000);
+		expect(amountIn(booked, "ARS", undefined)).toBe(24_000);
+		expect(amountIn(booked, "USD", 1)).toBe(20);
+		expect(amountIn(booked, "EUR", 0.9)).toBeCloseTo(18, 8);
+		// A row with no booked value keeps the period rate: 5 x 1,300.
+		const legacy = { amount: 5, currency: "USD", amountInUSD: 5, booked: null };
+		expect(sumIn([booked, legacy], "ARS", 1300)).toBe(24_000 + 6_500);
+	});
+
 	it("periodRateDate is the period end, or now while it runs", () => {
 		const now = new Date("2026-10-21T12:00:00Z");
 		const pastEnd = new Date("2026-09-30T23:59:59Z");

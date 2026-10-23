@@ -23,9 +23,11 @@ const SHARED_TX_DEPS = [
 	"stats",
 	"billingPeriod",
 	"expense",
+	"envelope",
 ] as const;
 
-const EXPENSE_DEPS = ["dashboard", "budget", "stats"] as const;
+// The envelope budget reads every expense, share and settlement (build plan 02 §5.4).
+const EXPENSE_DEPS = ["dashboard", "budget", "stats", "envelope"] as const;
 
 const SETTLEMENT_DEPS = [
 	"people",
@@ -33,6 +35,7 @@ const SETTLEMENT_DEPS = [
 	"billingPeriod",
 	"dashboard",
 	"stats",
+	"envelope",
 ] as const;
 
 const CATEGORY_DEPS = [
@@ -41,6 +44,7 @@ const CATEGORY_DEPS = [
 	"project",
 	"dashboard",
 	"budget",
+	"envelope",
 ] as const;
 
 // Budgets feed the dashboard overview (budget totals, remaining).
@@ -52,13 +56,25 @@ const GENERAL_SETTINGS_DEPS = [
 	"budget",
 	"stats",
 	"expense",
+	"envelope",
 ] as const;
+
+// Envelope writes move the budget figures the dashboard shows.
+const ENVELOPE_DEPS = ["dashboard"] as const;
 
 export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Shared transactions (project expenses) ──────────────────────────
 	"sharedTransaction.create": SHARED_TX_DEPS,
 	"sharedTransaction.update": [...SHARED_TX_DEPS, "verification"],
 	"sharedTransaction.delete": SHARED_TX_DEPS,
+
+	// ── Envelope budget ─────────────────────────────────────────────────
+	// Setup writes the starting balance row.
+	"envelope.setup": ["dashboard", "expense"],
+	"envelope.assign": ENVELOPE_DEPS,
+	"envelope.move": ENVELOPE_DEPS,
+	"envelope.cover": ENVELOPE_DEPS,
+	"envelope.undo": ENVELOPE_DEPS,
 
 	// ── Personal expenses ───────────────────────────────────────────────
 	"expense.createExpense": EXPENSE_DEPS,

@@ -1096,7 +1096,7 @@
 		"src/components/table-search.tsx": 3
 	},
 	"UI-150": {
-		"src/app/(dashboard)/_components/recent-expenses.tsx": 197,
+		"src/app/(dashboard)/_components/recent-expenses.tsx": 192,
 		"src/app/(dashboard)/people/[type]/[id]/page.tsx": 1079,
 		"src/app/(dashboard)/people/page.tsx": 528,
 		"src/app/(dashboard)/projects/page.tsx": 488,
@@ -1167,7 +1167,7 @@
 		"src/server/api/routers/billingPeriod.ts": 433,
 		"src/server/api/routers/budget.ts": 252,
 		"src/server/api/routers/claim.ts": 88,
-		"src/server/api/routers/dashboard.ts": 53,
+		"src/server/api/routers/dashboard.ts": 40,
 		"src/server/api/routers/export.ts": 1080,
 		"src/server/api/routers/guest.ts": 146,
 		"src/server/api/routers/invite.ts": 25,

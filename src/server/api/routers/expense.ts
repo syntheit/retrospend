@@ -3,6 +3,10 @@ import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { CsvService } from "~/server/services/csv.service";
+import {
+	expenseDto,
+	listHomeCurrency,
+} from "~/server/services/expense-dto";
 import { ExpenseService } from "~/server/services/expense.service";
 import {
 	getExcludedProjectIds,
@@ -53,15 +57,13 @@ export const expenseRouter = createTRPCRouter({
 		)
 		.query(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
-			const expenses = await service.listFinalized(
-				ctx.session.user.id, input?.from, input?.to, input?.limit,
-			);
-			return expenses.map((e) => ({
-				...e,
-				amount: Number(e.amount),
-				amountInUSD: e.amountInUSD !== null ? Number(e.amountInUSD) : null,
-				exchangeRate: e.exchangeRate !== null ? Number(e.exchangeRate) : null,
-			}));
+			const [expenses, home] = await Promise.all([
+				service.listFinalized(
+					ctx.session.user.id, input?.from, input?.to, input?.limit,
+				),
+				listHomeCurrency(ctx.db, ctx.session.user.id),
+			]);
+			return expenses.map((e) => expenseDto(e, home));
 		}),
 
 	getExpense: protectedProcedure
@@ -74,30 +76,21 @@ export const expenseRouter = createTRPCRouter({
 					code: "NOT_FOUND",
 					message: "Expense not found",
 				});
-			return {
-				...expense,
-				amount: Number(expense.amount),
-				amountInUSD:
-					expense.amountInUSD !== null ? Number(expense.amountInUSD) : null,
-				exchangeRate:
-					expense.exchangeRate !== null ? Number(expense.exchangeRate) : null,
-			};
+			return expenseDto(
+				expense,
+				await listHomeCurrency(ctx.db, ctx.session.user.id),
+			);
 		}),
 
 	getExpensesByDate: protectedProcedure
 		.input(z.object({ date: z.date() }))
 		.query(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
-			const expenses = await service.getExpensesByDate(
-				ctx.session.user.id,
-				input.date,
-			);
-			return expenses.map((e) => ({
-				...e,
-				amount: Number(e.amount),
-				amountInUSD: e.amountInUSD !== null ? Number(e.amountInUSD) : null,
-				exchangeRate: e.exchangeRate !== null ? Number(e.exchangeRate) : null,
-			}));
+			const [expenses, home] = await Promise.all([
+				service.getExpensesByDate(ctx.session.user.id, input.date),
+				listHomeCurrency(ctx.db, ctx.session.user.id),
+			]);
+			return expenses.map((e) => expenseDto(e, home));
 		}),
 
 	deleteExpense: protectedProcedure
