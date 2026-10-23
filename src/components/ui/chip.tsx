@@ -41,7 +41,8 @@ const chipBase =
  * A filter chip (FilterChips, R7, R25 amended by R31): text only, selected by
  * fill (brand-soft with a brand border), never by a tint or an icon tile.
  * `value` is a chip that shows a value (a date range): neutral, with a
- * chevron, opening a picker. People chips may lead with a face.
+ * chevron, opening a picker. A chip may lead with identity, never a tile:
+ * a face, a bare category glyph in its color, a project cover, a flag.
  */
 export function FilterChip({
 	selected = false,
@@ -53,7 +54,7 @@ export function FilterChip({
 }: Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "value"> & {
 	selected?: boolean;
 	value?: boolean;
-	/** A person's face only (R25 amended). */
+	/** Identity only (R25 amended): a person's face, a bare category glyph, a project cover. */
 	lead?: ReactNode;
 }) {
 	return (

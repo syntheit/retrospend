@@ -370,7 +370,8 @@
     "lastSynced": "Last Synced:",
     "never": "Never",
     "syncing": "Syncing...",
-    "syncNow": "Sync Now"
+    "syncNow": "Sync Now",
+    "syncUnavailable": "Rate sync is not available on this server."
   },
   "import": {
     "title": "Import",

@@ -370,7 +370,8 @@
     "lastSynced": "Última Sincronización:",
     "never": "Nunca",
     "syncing": "Sincronizando...",
-    "syncNow": "Sincronizar Ahora"
+    "syncNow": "Sincronizar Ahora",
+    "syncUnavailable": "La sincronización de cotizaciones no está disponible en este servidor."
   },
   "import": {
     "title": "Importar",

@@ -65,7 +65,6 @@
 	"money": {
 		"amount": "Monto",
 		"currency": "Moneda, {code}",
-		"rate": "Cotización: {rate}",
 		"error": {
 			"empty": "Ingresá un monto",
 			"invalidCharacter": "Usá solo dígitos y + - × ÷",
@@ -78,5 +77,14 @@
 			"zero": "Ingresá un monto mayor a cero",
 			"negative": "El monto debe ser mayor a cero"
 		}
+	},
+	"project": {
+		"label": "Proyectos",
+		"find": "Buscá un proyecto",
+		"empty": "Sin resultados",
+		"selected": "Seleccionado",
+		"none": "Ninguno",
+		"solo": "Solo vos",
+		"people": "{count, plural, one {# persona} other {# personas}}"
 	}
 }

@@ -3,8 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { formatMoney } from "~/components/money/format";
 import { useState } from "react";
-import { Money } from "~/components/money/money";
-import { MoneyInput } from "~/components/money/money-input";
+import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
@@ -16,12 +15,8 @@ import { useToast } from "~/components/ui/toast";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { ChangesBlock } from "../changes";
 import { PlaceSelect } from "../place-select";
-import {
-	type EntryCatalog,
-	Field,
-	useEntryCatalog,
-	useRateTypeName,
-} from "../shared-ui";
+import { type EntryCatalog, Field, useEntryCatalog } from "../shared-ui";
+import { IncomeAmount } from "./income-amount";
 import { PlanBlock } from "./plan-block";
 import { SourceField } from "./source-field";
 import { useIncome } from "./use-income";
@@ -68,7 +63,6 @@ function IncomeForm({
 }) {
 	const t = useTranslations("entry.income");
 	const tc = useTranslations("entry.changes");
-	const name = useRateTypeName();
 	const toast = useToast();
 	const locale = useLocale();
 	const x = useIncome(catalog, accountId);
@@ -76,8 +70,6 @@ function IncomeForm({
 	const [tried, setTried] = useState(false);
 	const cats = catalog.categories.filter((c) => c.kind === "INCOME");
 	const err = (k: keyof typeof x.errors) => tried && x.errors[k];
-	const picked =
-		x.rates?.options.find((o) => o.rateType === x.rateType) ?? null;
 
 	const submit = async () => {
 		setTried(true);
@@ -111,43 +103,7 @@ function IncomeForm({
 		>
 			<div className="flex flex-col gap-4">
 				<Field label={t("amount")}>
-					<MoneyInput
-						autoFocus
-						currency={d.currency}
-						onChange={x.setAmount}
-						onCurrencyChange={x.setCurrency}
-						showErrors={tried}
-						value={d.amountText}
-					/>
-					{err("amount") && !d.amountText ? (
-						<span className="text-danger text-meta" role="alert">
-							{t("error.amount")}
-						</span>
-					) : null}
-					{x.foreign && x.rates && x.rates.options.length > 1 ? (
-						<FilterChips className="max-md:flex-wrap">
-							{x.rates.options.map((o) => (
-								<FilterChip
-									key={o.rateType}
-									onClick={() => x.set({ rateType: o.rateType })}
-									selected={x.rateType === o.rateType}
-								>
-									{name(o.rateType)} <Money value={o.rate.value} />
-								</FilterChip>
-							))}
-						</FilterChips>
-					) : null}
-					{err("rate") ? (
-						<span className="text-danger text-meta" role="alert">
-							{t("error.rate", { currency: d.currency })}
-						</span>
-					) : null}
-					{/* The rate is stated once, on the chips; this is what it books. */}
-					{picked?.home ? (
-						<span className="text-fg-2 text-small">
-							<Money figure="entry.income.home" value={picked.home} />
-						</span>
-					) : null}
+					<IncomeAmount home={catalog.homeCurrency} tried={tried} x={x} />
 				</Field>
 				<Field
 					error={err("source") ? t("error.source") : null}
@@ -166,6 +122,7 @@ function IncomeForm({
 						{cats.map((c) => (
 							<FilterChip
 								key={c.id}
+								lead={<CategoryGlyph category={c} />}
 								onClick={() => x.set({ categoryId: c.id })}
 								selected={d.categoryId === c.id}
 							>

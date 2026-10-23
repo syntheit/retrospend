@@ -73,7 +73,8 @@
 			"rate": "Ingresá una cotización para {currency}",
 			"splitAmount": "La división no suma el monto",
 			"splitPct": "Los porcentajes no suman 100%",
-			"save": "No se pudo guardar. Revisá los campos y probá de nuevo."
+			"save": "No se pudo guardar. Revisá los campos y probá de nuevo.",
+			"projectMembers": "No se pudieron cargar las personas del proyecto. Probá de nuevo."
 		},
 		"toast": {
 			"added": "Agregaste {title}",
@@ -90,7 +91,8 @@
 			"title": "¿Eliminar {title}?",
 			"body": "Cambia los saldos de otras personas.",
 			"confirm": "Eliminar gasto"
-		}
+		},
+		"projectAria": "Proyecto, {project}"
 	},
 	"rate": {
 		"default": "Tu cotización predeterminada para {currency}",
@@ -112,7 +114,9 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"label": "Cotización",
+		"youSpent": "Gastaste"
 	},
 	"changes": {
 		"title": "Qué cambia",
@@ -193,7 +197,9 @@
 			"kept": "Agregaste {amount} a {account}. Queda en Patrimonio",
 			"planned": "Agregaste {amount}. {count, plural, one {# sobre con fondos} other {# sobres con fondos}}"
 		},
-		"someoneElse": "Otra persona"
+		"someoneElse": "Otra persona",
+		"received": "Recibiste",
+		"countsAs": "Equivale a"
 	},
 	"transfer": {
 		"titleTransfer": "Transferencia",
