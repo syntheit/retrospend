@@ -95,16 +95,16 @@ export const sharedTransactionRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string().min(1),
-				// Set true to delete an expense whose removal changes who owes whom:
-				// it erases an unsettled debt, or turns payments already recorded
-				// for it into a balance the other way round.
+				// A removal that changes who owes whom needs confirmUnsettled, or
+				// for payments that covered it `settled` (D12, delete-guard.ts).
 				confirmUnsettled: z.boolean().optional(),
+				settled: z.enum(["KEEP_CREDIT", "VOID_PAYMENT"]).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
 			const service = new SharedTransactionService(ctx.db, actor);
-			await service.delete(input.id, input.confirmUnsettled ?? false);
+			await service.delete(input.id, input);
 			return { success: true };
 		}),
 

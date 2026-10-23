@@ -160,6 +160,8 @@ export const updateSharedExpense: MoneyMutation<
 export interface DeleteSharedInput extends Deferred {
 	readonly id: string;
 	readonly confirmUnsettled?: boolean;
+	/** Payments already covered it (D12): keep them as a credit or void them. */
+	readonly settled?: "KEEP_CREDIT" | "VOID_PAYMENT";
 	/**
 	 * The Undo of a create, right after it: the "split with you" notices are
 	 * taken back and no "deleted" notice goes out (one non-event, not two).
@@ -188,7 +190,10 @@ export const deleteSharedExpense: MoneyMutation<
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
 		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
 			input.id,
-			input.confirmUnsettled ?? false,
+			{
+				confirmUnsettled: input.confirmUnsettled ?? false,
+				settled: input.settled,
+			},
 		);
 		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
 		return {
