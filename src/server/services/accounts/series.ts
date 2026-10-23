@@ -50,6 +50,8 @@ export interface LegFacts {
 export interface RateTypeRow {
 	readonly from: Date;
 	readonly type: string | null;
+	/** The type before this switch; on the first one, the type before any. */
+	readonly previousType: string | null;
 }
 
 export interface AccountHistory {
@@ -128,6 +130,11 @@ export function typeOn(
 	}
 	if (switched) {
 		return { rateType: switched.type, storedRate: account.exchangeRate };
+	}
+	// Before the first switch: the type it replaced, not today's.
+	const first = history.rateTypes[0];
+	if (first) {
+		return { rateType: first.previousType, storedRate: account.exchangeRate };
 	}
 	const base = lastCheckpointOn(history, day);
 	const recorded = base?.currency

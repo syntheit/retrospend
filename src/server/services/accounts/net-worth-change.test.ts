@@ -70,9 +70,11 @@ function account(
 			homeAmount: home === null ? null : dec(home),
 			homeCurrency: home === null ? null : "ARS",
 		})),
-		rateTypes: (opts.rateTypes ?? []).map(([day, type]) => ({
+		rateTypes: (opts.rateTypes ?? []).map(([day, type], i, all) => ({
 			from: at(day),
 			type,
+			previousType:
+				i === 0 ? (opts.rateType ?? null) : (all[i - 1]?.[1] ?? null),
 		})),
 	};
 }
@@ -152,6 +154,25 @@ describe("account balance on a day", () => {
 		expect(typeOn(usd, "2026-10-15").rateType).toBe("blue");
 		expect(valueOn(usd, "2026-10-14", "ARS", pick)?.toString()).toBe("2824000");
 		expect(valueOn(usd, "2026-10-15", "ARS", pick)?.toString()).toBe("2936000");
+	});
+
+	it("before the first switch an old balance keeps the type the switch replaced, not today's", () => {
+		const legacy = account({
+			currency: "USD",
+			rateType: "official",
+			checkpoints: [["2026-09-01", "2000"]],
+			rateTypes: [["2026-10-15", "blue"]],
+		});
+		// Today's type is the switch's; the old snapshot recorded no type.
+		const today = {
+			...legacy,
+			account: { ...legacy.account, exchangeRateType: "blue" },
+			checkpoints: legacy.checkpoints.map((c) => ({ ...c, currency: null })),
+		};
+		expect(typeOn(today, "2026-10-14").rateType).toBe("official");
+		expect(valueOn(today, "2026-10-14", "ARS", pick)?.toString()).toBe(
+			"2824000",
+		);
 	});
 });
 

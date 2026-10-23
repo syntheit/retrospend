@@ -26,7 +26,7 @@ export interface DashboardLegs {
 		held: Held | null,
 		day: string,
 	): number;
-	/** The switched rate type in force on `day`; undefined before any switch. */
+	/** The switched rate type in force on `day` (before the first, the type it replaced); undefined without switches. */
 	typeOn(accountId: string, day: string): string | null | undefined;
 }
 
@@ -47,7 +47,7 @@ export async function loadDashboardLegs(
 		}),
 		db.assetRateType.findMany({
 			where: { userId },
-			select: { accountId: true, from: true, type: true },
+			select: { accountId: true, from: true, type: true, previousType: true },
 			orderBy: [{ from: "asc" }, { createdAt: "asc" }],
 		}),
 	]);
@@ -72,11 +72,13 @@ export async function loadDashboardLegs(
 			return sum.toNumber();
 		},
 		typeOn(accountId, day) {
+			const own = switches.filter((s) => s.accountId === accountId);
 			let found: string | null | undefined;
-			for (const s of switches) {
-				if (s.accountId === accountId && dayOf(s.from) <= day) found = s.type;
+			for (const s of own) {
+				if (dayOf(s.from) <= day) found = s.type;
 			}
-			return found;
+			// Before the first switch: the type it replaced (accounts/series.ts typeOn).
+			return found === undefined && own[0] ? own[0].previousType : found;
 		},
 	};
 }

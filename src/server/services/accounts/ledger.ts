@@ -228,14 +228,27 @@ export async function reverseLegs(
 	await tx.accountLeg.deleteMany({
 		where: { id: { in: legs.map((l) => l.id) } },
 	});
-	const changes: AccountChange[] = [];
+	// One row per account: a transfer and its fee from one account read as
+	// one change, from before both to after both.
+	const byAccount = new Map<
+		string,
+		{ account: NonNullable<(typeof legs)[number]["account"]>; by: Decimal }
+	>();
 	for (const leg of legs) {
 		if (!leg.account) continue;
 		const by = balanceEffect(
 			leg.account.type as AssetType,
 			dec(leg.amount.toString()),
 		).neg();
-		changes.push(await changeOf(tx, leg.account, by));
+		const seen = byAccount.get(leg.account.id);
+		byAccount.set(leg.account.id, {
+			account: leg.account,
+			by: seen ? seen.by.add(by) : by,
+		});
+	}
+	const changes: AccountChange[] = [];
+	for (const { account, by } of byAccount.values()) {
+		changes.push(await changeOf(tx, account, by));
 	}
 	return changes;
 }

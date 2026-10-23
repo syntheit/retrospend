@@ -100,6 +100,7 @@ export async function loadAccountsLedger(
 		rateTypes: (typesOf.get(a.id) ?? []).map((r) => ({
 			from: r.from,
 			type: r.type,
+			previousType: r.previousType,
 		})),
 	}));
 	const untracked = groupBy(legsOf.get(null) ?? [], (l) => l.currency);

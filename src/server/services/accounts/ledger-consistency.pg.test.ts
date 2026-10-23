@@ -18,6 +18,7 @@ import { deleteIncome } from "~/server/services/income/delete.mutation";
 import { forUser } from "~/server/services/preview";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
+import { WealthService } from "~/server/services/wealth.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { editAccount } from "./manage";
 import { revertRateType, setRateType } from "./rate-type.mutation";
@@ -197,6 +198,113 @@ describe("a leg deleted after a later balance update included it", () => {
 			income: 0,
 		});
 		expect(await balanceOf(savings)).toBe("500");
+	});
+});
+
+describe("USD values follow the legs", () => {
+	it("a zero snapshot that included a deleted leg gets a USD value at the account's rate", async () => {
+		const { user } = await arsUser();
+		const wallet = await openAccount(user.id, "Wallet", "CASH", "ARS", 1000);
+		const income = await forUser(user.id).apply(addIncome, {
+			title: "Refund",
+			amount: "500",
+			currency: "ARS",
+			into: wallet,
+			date: isoDay(daysAgo(3)),
+		});
+		await forUser(user.id).apply(updateBalance, {
+			accountId: wallet,
+			balance: "0",
+		});
+
+		await forUser(user.id).apply(deleteIncome, {
+			expenseId: income.value.expenseId,
+		});
+
+		const opening = await snapshotOn(wallet, daysAgo(10));
+		const today = await snapshotOn(wallet, TODAY);
+		expect(today.balance.toString()).toBe("-500");
+		// ARS -500 at the opening snapshot's USD per peso.
+		expect(Number(today.balanceInUSD)).toBeCloseTo(
+			(-500 * Number(opening.balanceInUSD)) / 1000,
+			2,
+		);
+		expect(Number(today.balanceInUSD)).not.toBe(0);
+	});
+
+	it("the Wealth history counts legs on an account no rate values", async () => {
+		const { user } = await createTestUser();
+		const account = await adminDb.assetAccount.create({
+			data: {
+				userId: user.id,
+				name: "Tokens",
+				type: "CASH",
+				currency: "ZZQ",
+				balance: 100,
+			},
+		});
+		await adminDb.assetSnapshot.create({
+			data: {
+				accountId: account.id,
+				userId: user.id,
+				date: daysAgo(10),
+				recordedAt: daysAgo(10),
+				balance: 100,
+				balanceInUSD: 50,
+				currency: "ZZQ",
+				type: "CASH",
+			},
+		});
+		await forUser(user.id).apply(createTransfer, {
+			fromAccountId: null,
+			fromCurrency: "ZZQ",
+			toAccountId: account.id,
+			fromAmount: "100",
+			date: isoDay(daysAgo(3)),
+		});
+
+		const summary = await new WealthService(adminDb).getDashboardSummary(
+			user.id,
+			"USD",
+		);
+
+		// 200 units at the 0.50 USD the snapshot recorded per unit.
+		const point = summary.history.find((h) => h.date === isoDay(daysAgo(3)));
+		expect(point?.amount).toBeCloseTo(100, 2);
+	});
+});
+
+describe("a transfer with a fee from one account", () => {
+	it("shows that account once, from before both to after both, on create and delete", async () => {
+		const { user } = await createTestUser();
+		const checking = await openAccount(
+			user.id,
+			"Checking",
+			"CASH",
+			"USD",
+			1000,
+		);
+		const savings = await openAccount(user.id, "Savings", "CASH", "USD", 0);
+		const created = await forUser(user.id).apply(createTransfer, {
+			fromAccountId: checking,
+			toAccountId: savings,
+			fromAmount: "100",
+			fee: { amount: "2" },
+		});
+		const row = (rows: readonly { accountId: string }[], id: string) =>
+			rows.filter((r) => r.accountId === id);
+		expect(row(created.value.accounts, checking)).toEqual([
+			expect.objectContaining({ before: "1000", after: "898" }),
+		]);
+
+		const deleted = await forUser(user.id).apply(deleteTransfer, {
+			transferId: created.value.transferId,
+		});
+
+		expect(row(deleted.value.accounts, checking)).toEqual([
+			expect.objectContaining({ before: "898", after: "1000" }),
+		]);
+		expect(deleted.value.accounts).toHaveLength(2);
 	});
 });
 

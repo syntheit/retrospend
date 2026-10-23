@@ -4,7 +4,7 @@
  * rates in the stored convention (fiat per USD, USD per coin); the new
  * figures use accounts/valuation.ts, which follows the same rule in Decimal.
  */
-import { isValidRate, USD } from "~/lib/money";
+import { isValidRate, toUSD, USD } from "~/lib/money";
 import { toNumberOrNull } from "~/lib/utils";
 import type { AssetType } from "~prisma";
 import { CUSTOM_RATE_TYPE, type RatePick } from "./valuation";
@@ -79,4 +79,22 @@ export function dashboardRates(rateFor: RatePick) {
 	};
 
 	return { rateOf, assetRate, snapshotRate };
+}
+
+/**
+ * The USD value of a snapshot's account with no rate, at `balance` (the
+ * snapshot plus the legs on top of it). The legs count: the recorded USD
+ * value scaled by the balance, else the account's stored rate. Null when
+ * nothing values the legs; the caller keeps the recorded value and reports
+ * the currency as missing a rate.
+ */
+export function usdWithoutRate(
+	snap: HeldSnapshot,
+	balance: number,
+	storedRate: number | null,
+): number | null {
+	if (balance === snap.balance) return snap.balanceInUSD;
+	if (snap.balance !== 0) return (snap.balanceInUSD * balance) / snap.balance;
+	if (isValidRate(storedRate)) return toUSD(balance, snap.currency, storedRate);
+	return null;
 }

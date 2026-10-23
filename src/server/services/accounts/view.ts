@@ -19,7 +19,7 @@ export async function accountView(
 			where: { id: accountId, userId },
 			include: {
 				legs: { orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 200 },
-				rateTypes: { orderBy: { from: "asc" } },
+				rateTypes: { orderBy: [{ from: "asc" }, { createdAt: "asc" }] },
 			},
 		});
 		if (!account) {

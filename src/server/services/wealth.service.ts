@@ -10,6 +10,7 @@ import {
 	dashboardRates,
 	type HeldSnapshot,
 	type SnapshotMeta,
+	usdWithoutRate,
 } from "./accounts/dashboard-rates";
 
 import { CUSTOM_RATE_TYPE } from "./accounts/valuation";
@@ -375,11 +376,18 @@ export class WealthService {
 							);
 				const balance =
 					snap.balance + legs.onTop(assetId, snap.type, snap, dateStr);
-				// No rate for the asset: the USD value recorded with the snapshot.
-				const balInUSD =
-					rate === null
-						? snap.balanceInUSD
-						: toUSD(balance, snap.currency, rate);
+				// No rate for the asset: the recorded USD value, with the legs on top.
+				let balInUSD: number;
+				if (rate !== null) balInUSD = toUSD(balance, snap.currency, rate);
+				else {
+					const usd = usdWithoutRate(
+						snap,
+						balance,
+						toNumberOrNull(asset.exchangeRate),
+					);
+					if (usd === null) missingRateCurrencies.add(snap.currency);
+					balInUSD = usd ?? snap.balanceInUSD;
+				}
 
 				const value =
 					snap.currency === targetCurrency && rate !== null
