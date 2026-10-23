@@ -44,14 +44,15 @@ export function useProjectPageActions(
 
 	return useMemo(() => {
 		const editor = view?.myRole === "ORGANIZER" || view?.myRole === "EDITOR";
-		const fail = (e: unknown) =>
-			toast.failed(e instanceof Error ? e.message : t("exportFailed"));
+		const viewer = view?.myRole === "VIEWER" || view?.myRole == null;
+		const fail = () => toast.failed(t("exportFailed"));
 		return {
 			archive: base.archive,
 			restore: base.restore,
 			delete: base.delete,
 			share: () => open({ kind: "share" }),
-			settleAll: () => open({ kind: "settleAll" }),
+			// Viewers record nothing: no Settle all for them.
+			...(viewer ? {} : { settleAll: () => open({ kind: "settleAll" }) }),
 			...(editor
 				? {
 						addPerson: () => open({ kind: "addPerson" }),

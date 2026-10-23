@@ -11,7 +11,6 @@ import { useProjectDates } from "~/components/rows/project-row";
 import { FaceStack } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
 import { PageTabs } from "~/components/ui/page-tabs";
-import { Tip } from "~/components/ui/tooltip";
 import { ProjectCover } from "~/features/projects/project-cover";
 import { BackButton } from "~/features/wealth/page-frame";
 import type { PageView, ProjectTab } from "./types";
@@ -102,23 +101,11 @@ export function ProjectHeader({
 			}
 			primary={
 				archived ? undefined : (
-					<>
-						<Button className="max-md:hidden" kind="primary" onClick={add}>
-							<Plus aria-hidden="true" />
-							{t("addExpense")}
-						</Button>
-						<Tip content={t("addExpense")}>
-							<Button
-								aria-label={t("addExpense")}
-								className="md:hidden"
-								icon
-								kind="primary"
-								onClick={add}
-							>
-								<Plus aria-hidden="true" />
-							</Button>
-						</Tip>
-					</>
+					// Phones add with the shell's floating Add (one Add per screen).
+					<Button className="max-md:hidden" kind="primary" onClick={add}>
+						<Plus aria-hidden="true" />
+						{t("addExpense")}
+					</Button>
 				)
 			}
 			sub={sub}

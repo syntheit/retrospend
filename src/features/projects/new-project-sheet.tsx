@@ -12,6 +12,7 @@ import { Segmented } from "~/components/ui/segmented";
 import { Sheet } from "~/components/ui/sheet";
 import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/components/ui/toast";
+import { inOurWords } from "~/features/project/errors";
 import { api } from "~/trpc/react";
 
 /**
@@ -30,6 +31,7 @@ export function NewProjectSheet({
 }) {
 	const t = useTranslations("projectsV2.new");
 	const tt = useTranslations("projectsV2.toast");
+	const te = useTranslations("projectsV2.errors");
 	const locale = useLocale();
 	const router = useRouter();
 	const toast = useToast();
@@ -78,7 +80,7 @@ export function NewProjectSheet({
 		<Sheet
 			detent="large"
 			onOpenChange={onOpenChange}
-			onSubmit={submit}
+			onSubmit={() => inOurWords(submit, te("failed"))}
 			open
 			submitLabel={t("submit")}
 			title={t("title")}

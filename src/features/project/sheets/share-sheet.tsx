@@ -25,14 +25,26 @@ export function ShareSheet({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const t = useTranslations("projectV2.share");
+	const te = useTranslations("projectV2.errors");
 	const toast = useToast();
 	const utils = api.useUtils();
 	const links = api.project.listMagicLinks.useQuery({ projectId: view.id });
 	const again = () =>
 		utils.project.listMagicLinks.invalidate({ projectId: view.id });
-	const create = api.project.createMagicLink.useMutation({ onSuccess: again });
-	const reset = api.project.resetMagicLink.useMutation({ onSuccess: again });
-	const revoke = api.project.revokeMagicLink.useMutation({ onSuccess: again });
+	// Failures say so in our words, never the server's text.
+	const onError = () => toast.failed(te("failed"));
+	const create = api.project.createMagicLink.useMutation({
+		onSuccess: again,
+		onError,
+	});
+	const reset = api.project.resetMagicLink.useMutation({
+		onSuccess: again,
+		onError,
+	});
+	const revoke = api.project.revokeMagicLink.useMutation({
+		onSuccess: again,
+		onError,
+	});
 	const update = api.project.update.useMutation({
 		onSuccess: () => utils.project.invalidate(),
 	});
@@ -45,7 +57,12 @@ export function ShareSheet({
 	const setPublic = async (on: boolean) => {
 		const to = on ? "PUBLIC" : "PRIVATE";
 		const back = on ? "PRIVATE" : "PUBLIC";
-		await update.mutateAsync({ id: view.id, visibility: to });
+		try {
+			await update.mutateAsync({ id: view.id, visibility: to });
+		} catch {
+			toast.failed(te("failed"));
+			return;
+		}
 		toast.saved(on ? t("nowPublic") : t("nowPrivate"), {
 			undo: () => update.mutateAsync({ id: view.id, visibility: back }),
 		});

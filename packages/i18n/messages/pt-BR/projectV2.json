@@ -119,7 +119,9 @@
 		"youPay": "Você paga a {name}",
 		"recordedAsPaid": "Registrado como pago a você",
 		"theyConfirm": "{name} confirma",
-		"finalNow": "Definitivo na hora"
+		"finalNow": "Definitivo na hora",
+		"claimed": "{name} diz que pagou a você. Confirme na página da pessoa.",
+		"skippedOther": "Ficou de fora: acerte na página da pessoa."
 	},
 	"addPerson": {
 		"title": "Adicionar pessoa a {project}",
@@ -187,5 +189,11 @@
 		"copied": "Link copiado",
 		"nowPublic": "A página do projeto está pública",
 		"nowPrivate": "A página do projeto está privada"
+	},
+	"errors": {
+		"failed": "Não foi salvo. Tente de novo.",
+		"changed": "Os saldos mudaram enquanto isso. Confira os novos valores e registre de novo.",
+		"previewFailed": "Não foi possível verificar o que muda. Tente de novo.",
+		"undoConflict": "Um pagamento foi confirmado enquanto isso, então nada foi desfeito."
 	}
 }

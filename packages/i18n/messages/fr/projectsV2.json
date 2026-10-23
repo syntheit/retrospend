@@ -23,7 +23,8 @@
 		"restored": "{name} restauré",
 		"linkCopied": "Lien copié",
 		"deleted": "{name} supprimé",
-		"created": "{name} créé"
+		"created": "{name} créé",
+		"failed": "L'enregistrement a échoué. Réessayez."
 	},
 	"new": {
 		"title": "Nouveau projet",
@@ -37,5 +38,8 @@
 		"people": "Personnes",
 		"justMe": "Moi seul",
 		"withOthers": "Avec d'autres"
+	},
+	"errors": {
+		"failed": "L'enregistrement a échoué. Réessayez."
 	}
 }

@@ -119,7 +119,9 @@
 		"youPay": "Vous payez {name}",
 		"recordedAsPaid": "Enregistré comme payé à vous",
 		"theyConfirm": "{name} le confirme",
-		"finalNow": "Définitif tout de suite"
+		"finalNow": "Définitif tout de suite",
+		"claimed": "{name} dit vous avoir payé. Confirmez-le sur sa page.",
+		"skippedOther": "Laissé de côté : réglez-le sur sa page."
 	},
 	"addPerson": {
 		"title": "Ajouter une personne à {project}",
@@ -187,5 +189,11 @@
 		"copied": "Lien copié",
 		"nowPublic": "La page du projet est publique",
 		"nowPrivate": "La page du projet est privée"
+	},
+	"errors": {
+		"failed": "L'enregistrement a échoué. Réessayez.",
+		"changed": "Les soldes ont changé entre-temps. Vérifiez les nouveaux montants et enregistrez à nouveau.",
+		"previewFailed": "Impossible de vérifier ce qui change. Réessayez.",
+		"undoConflict": "Un paiement a été confirmé entre-temps, donc rien n'a été annulé."
 	}
 }

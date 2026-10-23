@@ -22,8 +22,9 @@
 		"archived": "{name} archivado",
 		"restored": "{name} restaurado",
 		"linkCopied": "Enlace copiado",
-		"deleted": "{name} eliminado",
-		"created": "{name} creado"
+		"deleted": "{name} borrado",
+		"created": "{name} creado",
+		"failed": "No se guardó. Probá de nuevo."
 	},
 	"new": {
 		"title": "Nuevo proyecto",
@@ -37,5 +38,8 @@
 		"people": "Personas",
 		"justMe": "Solo yo",
 		"withOthers": "Con otras personas"
+	},
+	"errors": {
+		"failed": "No se guardó. Probá de nuevo."
 	}
 }

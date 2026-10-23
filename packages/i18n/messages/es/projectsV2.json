@@ -23,7 +23,8 @@
 		"restored": "{name} restaurado",
 		"linkCopied": "Enlace copiado",
 		"deleted": "{name} eliminado",
-		"created": "{name} creado"
+		"created": "{name} creado",
+		"failed": "No se guardó. Inténtalo de nuevo."
 	},
 	"new": {
 		"title": "Nuevo proyecto",
@@ -37,5 +38,8 @@
 		"people": "Personas",
 		"justMe": "Solo yo",
 		"withOthers": "Con otras personas"
+	},
+	"errors": {
+		"failed": "No se guardó. Inténtalo de nuevo."
 	}
 }

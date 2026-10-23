@@ -23,7 +23,8 @@
 		"restored": "Restored {name}",
 		"linkCopied": "Link copied",
 		"deleted": "Deleted {name}",
-		"created": "Created {name}"
+		"created": "Created {name}",
+		"failed": "That did not save. Try again."
 	},
 	"new": {
 		"title": "New project",
@@ -37,5 +38,8 @@
 		"people": "People",
 		"justMe": "Just me",
 		"withOthers": "With others"
+	},
+	"errors": {
+		"failed": "That did not save. Try again."
 	}
 }

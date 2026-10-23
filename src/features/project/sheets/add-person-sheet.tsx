@@ -10,6 +10,7 @@ import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
+import { inOurWords } from "../errors";
 import type { PageView } from "../types";
 
 type Ref = {
@@ -32,6 +33,7 @@ export function AddPersonSheet({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const t = useTranslations("projectV2.addPerson");
+	const te = useTranslations("projectV2.errors");
 	const toast = useToast();
 	const { short } = useRowDates();
 	const utils = api.useUtils();
@@ -114,7 +116,7 @@ export function AddPersonSheet({
 		<Sheet
 			detent="large"
 			onOpenChange={onOpenChange}
-			onSubmit={submit}
+			onSubmit={() => inOurWords(submit, te("failed"))}
 			open
 			submitLabel={t("submit")}
 			title={t("title", { project: view.name })}

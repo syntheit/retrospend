@@ -119,7 +119,9 @@
 		"youPay": "You pay {name}",
 		"recordedAsPaid": "Recorded as paid to you",
 		"theyConfirm": "{name} confirms it",
-		"finalNow": "Final right away"
+		"finalNow": "Final right away",
+		"claimed": "{name} says they paid you. Confirm it on their page.",
+		"skippedOther": "Left out: settle it on their page."
 	},
 	"addPerson": {
 		"title": "Add person to {project}",
@@ -187,5 +189,11 @@
 		"copied": "Link copied",
 		"nowPublic": "The project page is public",
 		"nowPrivate": "The project page is private"
+	},
+	"errors": {
+		"failed": "That did not save. Try again.",
+		"changed": "The balances changed meanwhile. Check the new amounts and record again.",
+		"previewFailed": "Could not check what this changes. Try again.",
+		"undoConflict": "A payment was confirmed meanwhile, so nothing was undone."
 	}
 }

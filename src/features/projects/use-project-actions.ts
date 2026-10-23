@@ -50,7 +50,12 @@ export function useProjectActions(
 		const setStatus = async (x: ProjectTarget, archived: boolean) => {
 			const status = archived ? "ARCHIVED" : "ACTIVE";
 			const back = archived ? "ACTIVE" : "ARCHIVED";
-			await update.mutateAsync({ id: x.id, status });
+			try {
+				await update.mutateAsync({ id: x.id, status });
+			} catch {
+				toast.failed(t("failed"));
+				return;
+			}
 			toast.saved(t(archived ? "archived" : "restored", { name: x.name }), {
 				undo: () => update.mutateAsync({ id: x.id, status: back }),
 			});
@@ -75,7 +80,12 @@ export function useProjectActions(
 			archive: (x) => setStatus(x, true),
 			restore: (x) => setStatus(x, false),
 			delete: async (x) => {
-				await remove.mutateAsync({ id: x.id });
+				try {
+					await remove.mutateAsync({ id: x.id });
+				} catch {
+					toast.failed(t("failed"));
+					return;
+				}
 				toast.saved(t("deleted", { name: x.name }));
 				onDeleted?.();
 			},

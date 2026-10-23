@@ -119,7 +119,9 @@
 		"youPay": "Du zahlst {name}",
 		"recordedAsPaid": "Als an dich bezahlt erfasst",
 		"theyConfirm": "{name} bestätigt es",
-		"finalNow": "Sofort endgültig"
+		"finalNow": "Sofort endgültig",
+		"claimed": "{name} sagt, die Zahlung ist erfolgt. Bestätige sie auf der Seite der Person.",
+		"skippedOther": "Ausgelassen: gleiche es auf der Seite der Person aus."
 	},
 	"addPerson": {
 		"title": "Person zu {project} hinzufügen",
@@ -187,5 +189,11 @@
 		"copied": "Link kopiert",
 		"nowPublic": "Die Projektseite ist öffentlich",
 		"nowPrivate": "Die Projektseite ist privat"
+	},
+	"errors": {
+		"failed": "Das wurde nicht gespeichert. Versuch es noch einmal.",
+		"changed": "Die Salden haben sich inzwischen geändert. Prüf die neuen Beträge und erfasse erneut.",
+		"previewFailed": "Konnte nicht prüfen, was sich ändert. Versuch es noch einmal.",
+		"undoConflict": "Eine Zahlung wurde inzwischen bestätigt, daher wurde nichts rückgängig gemacht."
 	}
 }

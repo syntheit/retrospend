@@ -9,6 +9,7 @@ import { Segmented } from "~/components/ui/segmented";
 import { Sheet } from "~/components/ui/sheet";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
+import { inOurWords } from "../errors";
 import type { Member, PageView } from "../types";
 import { PreviewLines } from "./preview-lines";
 
@@ -68,6 +69,7 @@ export function MemberDatesSheet({
 }) {
 	const t = useTranslations("projectV2.dates");
 	const tp = useTranslations("projectV2.preview.figures");
+	const te = useTranslations("projectV2.errors");
 	const toast = useToast();
 	const { short } = useRowDates();
 	const utils = api.useUtils();
@@ -95,7 +97,7 @@ export function MemberDatesSheet({
 			onOpenChange={onOpenChange}
 			onSubmit={async () => {
 				if (bad || !changed) return false;
-				await set.mutateAsync(input);
+				await inOurWords(() => set.mutateAsync(input), te("failed"));
 				toast.saved(t("saved", { name: member.name }), {
 					undo: () =>
 						set.mutateAsync({

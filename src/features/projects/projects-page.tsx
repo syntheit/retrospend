@@ -66,7 +66,6 @@ export function ProjectsPage() {
 
 	const newProject = (
 		<Button kind="primary" onClick={() => setCreating(true)}>
-			<FolderPlus aria-hidden="true" />
 			{t("newProject")}
 		</Button>
 	);
