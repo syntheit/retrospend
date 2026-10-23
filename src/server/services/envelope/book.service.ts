@@ -248,7 +248,7 @@ async function bookSettings(
 		select: { homeCurrency: true, fiscalMonthStartDay: true },
 	});
 	const currency = input.currency ?? user.homeCurrency;
-	const timeZone = ctx.timeZone ?? (await userTimeZone(userId));
+	const timeZone = ctx.timeZone ?? (await userTimeZone(tx, userId));
 	const startDay = Math.min(28, Math.max(1, user.fiscalMonthStartDay));
 	const today = isoDateIn(ctx.now, timeZone);
 	const startMonth = budgetMonthOf(today, [{ fromMonth: 0, startDay }]);

@@ -24,7 +24,7 @@ export async function defaultJoinedOn(
 		select: { createdAt: true },
 	});
 	if (!project) return null;
-	const zone = await userTimeZone(actorUserId);
+	const zone = await userTimeZone(db, actorUserId);
 	const today = dayKey(options.now ?? new Date(), zone);
 	if (today === dayKey(project.createdAt, zone)) return null;
 	const expenseDay = options.onDay ? dayKey(options.onDay, zone) : today;

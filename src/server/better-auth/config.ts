@@ -262,6 +262,13 @@ export const auth = betterAuth({
 				required: true,
 				defaultValue: true,
 			},
+			// Read on every session so tRPC resolves the zone without a query.
+			// Set by the first browser request and Settings, never by sign-up.
+			timeZone: {
+				type: "string",
+				required: false,
+				input: false,
+			},
 		},
 	},
 	databaseHooks: {

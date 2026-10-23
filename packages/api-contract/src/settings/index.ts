@@ -31,6 +31,8 @@ export const generalSettingsSchema = z
 		defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]),
 		aiMode: z.enum(["LOCAL", "EXTERNAL"]),
 		language: languageSchema,
+		/** IANA zone the user's calendar days are read in; null until set. */
+		timeZone: z.string().nullable(),
 	})
 	.meta({ id: "GeneralSettings" });
 
@@ -54,6 +56,8 @@ export const generalSettingsPatchSchema = z
 		defaultExpenseDateBehavior: z.enum(["TODAY", "LAST_USED"]),
 		aiMode: z.enum(["LOCAL", "EXTERNAL"]),
 		language: languageSchema,
+		/** An IANA zone from the server's list, such as "Asia/Tokyo". */
+		timeZone: z.string().min(1).max(64),
 	})
 	.partial()
 	.refine((v) => Object.keys(v).length > 0, "Send at least one field")

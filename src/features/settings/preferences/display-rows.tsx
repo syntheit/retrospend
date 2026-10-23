@@ -11,6 +11,7 @@ import { api } from "~/trpc/react";
 import { useAutosave, useSaveGuard } from "../autosave";
 import { SelectField } from "../select-field";
 import { SettingRow, SettingRows } from "../setting-row";
+import { TimeZoneRow } from "./time-zone-row";
 import {
 	type GeneralSettings,
 	type GeneralSettingsApi,
@@ -85,6 +86,7 @@ export function DisplayRows({
 					value={language}
 				/>
 			</SettingRow>
+			<TimeZoneRow timeZone={settings.timeZone} writer={writer} />
 			<SettingRow
 				label={t("hideBalances")}
 				labelFor="pf-privacy"

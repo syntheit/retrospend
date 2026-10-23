@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import type { db as globalDb } from "~/server/db";
+import { supportedTimeZone } from "~/server/services/user-time-zone";
 import type {
 	AiMode,
 	CategoryClickBehavior,
@@ -29,6 +30,7 @@ export const GENERAL_SETTINGS_SELECT = {
 	defaultExpenseDateBehavior: true,
 	aiMode: true,
 	language: true,
+	timeZone: true,
 } as const satisfies Prisma.UserSelect;
 
 export type GeneralSettingsRow = Prisma.UserGetPayload<{
@@ -51,6 +53,8 @@ export interface GeneralSettingsChanges {
 	defaultExpenseDateBehavior?: DefaultExpenseDateBehavior;
 	aiMode?: AiMode;
 	language?: string;
+	/** An IANA zone; stored in its canonical spelling (supportedTimeZone). */
+	timeZone?: string;
 }
 
 export async function getGeneralSettings(
@@ -74,6 +78,16 @@ export async function updateGeneralSettings(
 	const data = Object.fromEntries(
 		Object.entries(changes).filter(([, v]) => v !== undefined),
 	) as Prisma.UserUpdateInput;
+	if (changes.timeZone !== undefined) {
+		const zone = supportedTimeZone(changes.timeZone);
+		if (!zone) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message: "Pick a time zone from the list",
+			});
+		}
+		data.timeZone = zone;
+	}
 	return db.user.update({
 		where: { id: userId },
 		data,

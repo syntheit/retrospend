@@ -160,6 +160,8 @@ export async function readProjectPage(
 	db: PrismaClient,
 	projectId: string,
 	userId: string,
+	/** The request's zone, for today. */
+	timeZone?: string,
 ) {
 	const [project, expenses, payments, isMe, numbers] = await Promise.all([
 		loadProject(db, projectId),
@@ -219,7 +221,7 @@ export async function readProjectPage(
 		excludeFromAnalytics: meRow?.excludeFromAnalytics ?? false,
 		solo: others.length === 0,
 		/** Today in the user's zone, for "Today" and the date pickers. */
-		today: dayKey(new Date(), await userTimeZone(userId)),
+		today: dayKey(new Date(), await userTimeZone(db, userId, timeZone)),
 		expenseCount: expenses.length,
 		firstExpense: expenses.length
 			? day((expenses.at(-1) as Expense).date)
