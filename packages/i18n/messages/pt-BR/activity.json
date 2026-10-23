@@ -78,5 +78,17 @@
 		"tourist": "Turismo",
 		"market": "Mercado",
 		"custom": "Personalizado"
+	},
+	"bulk": {
+		"categorize": "Categorizar",
+		"export": "Exportar CSV",
+		"delete": "Excluir",
+		"moved": "{count, plural, one {# despesa movida} other {# despesas movidas}} para {name}",
+		"exported": "{count, plural, one {# linha exportada} other {# linhas exportadas}} para CSV",
+		"deleted": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}",
+		"failed": "Não foi possível alterar as despesas selecionadas",
+		"confirmTitle": "Excluir {count, plural, one {# despesa} other {# despesas}}?",
+		"confirmBody": "Elas saem dos seus gastos e de todo total em que estavam.",
+		"confirmButton": "Excluir despesas"
 	}
 }

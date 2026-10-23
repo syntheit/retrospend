@@ -39,8 +39,20 @@ export type TransactionVM = {
 	amount: MoneyValue;
 	/** The home amount when the currency is foreign; null means no rate yet. */
 	home?: MoneyValue | null;
-	/** Your share of a split, in the home currency. */
+	/** Your share of a split, as the server sends it (Activity: home; a project: its currency). */
 	share?: MoneyValue;
+	/**
+	 * In a ledger with one person (person.html): what this row does to your
+	 * balance with them (positive: they owe you), or why it does nothing.
+	 * A payment says who paid whom instead.
+	 */
+	between?: {
+		amount: MoneyValue | null;
+		state: "ok" | "review" | "rejected" | "settled";
+		/** A payment: "in" they paid you, "out" you paid them. */
+		paid?: "in" | "out";
+		figure?: string;
+	};
 	/** The other side of an exchange. */
 	counter?: MoneyValue;
 	/** The rate behind a foreign amount, as the server words it. */

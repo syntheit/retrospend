@@ -78,5 +78,17 @@
 		"tourist": "Tourist",
 		"market": "Markt",
 		"custom": "Eigener"
+	},
+	"bulk": {
+		"categorize": "Kategorisieren",
+		"export": "CSV exportieren",
+		"delete": "Löschen",
+		"moved": "{count, plural, one {# Ausgabe} other {# Ausgaben}} nach {name} verschoben",
+		"exported": "{count, plural, one {# Zeile} other {# Zeilen}} als CSV exportiert",
+		"deleted": "{count, plural, one {# Ausgabe} other {# Ausgaben}} gelöscht",
+		"failed": "Die ausgewählten Ausgaben konnten nicht geändert werden",
+		"confirmTitle": "{count, plural, one {# Ausgabe} other {# Ausgaben}} löschen?",
+		"confirmBody": "Sie fallen aus deinen Ausgaben und allen Summen heraus.",
+		"confirmButton": "Ausgaben löschen"
 	}
 }

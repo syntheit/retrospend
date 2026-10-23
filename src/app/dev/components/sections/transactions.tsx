@@ -1,24 +1,52 @@
 "use client";
 
-import { Receipt, SearchX } from "lucide-react";
+import { Receipt, SearchX, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactElement, useCallback } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
+import type { ActionChoices } from "~/components/actions/types";
+import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { SwipeActions } from "~/components/actions/swipe-actions";
 import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
 import type { TransactionVM } from "~/components/rows/types";
+import { BulkAction } from "~/components/table/bulk-bar";
 import { TableSkeleton } from "~/components/table/table-skeleton";
 import { TransactionTable } from "~/components/table/transaction-table";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
-import { m, PHONE_ROWS, TABLE_ROWS, TODAY } from "../fixtures/rows";
+import {
+	CAT,
+	m,
+	PHONE_ROWS,
+	PROJECTS,
+	TABLE_ROWS,
+	TODAY,
+} from "../fixtures/rows";
 import { CAP } from "../sections";
 import { Cap, Phone, Spec, States } from "../spec";
 import { ACTION_IDS, useDemoHandlers } from "./demo";
+
+/** The pick actions' choices: categories by their glyph, projects by cover (R25). */
+export const EXPENSE_CHOICES: ActionChoices = {
+	category: Object.entries(CAT).map(([id, c]) => ({
+		id,
+		label: c.name,
+		lead: <CategoryGlyph category={{ id, ...c }} />,
+	})),
+	project: PROJECTS.map((p) => ({
+		id: p.id,
+		label: p.name,
+		lead: (
+			<span className="rounded-ctl bg-raised flex size-6 overflow-hidden *:size-full">
+				{p.cover}
+			</span>
+		),
+	})),
+};
 
 const target = (tx: TransactionVM): ExpenseTarget => ({
 	id: tx.id,
@@ -38,7 +66,12 @@ function PhoneTx({ tx, swipe }: { tx: TransactionVM; swipe?: boolean }) {
 			<TransactionRow
 				actions={
 					swipe ? undefined : (
-						<ActionMenu entity="expense" handlers={handlers} target={t} />
+						<ActionMenu
+							choices={EXPENSE_CHOICES}
+							entity="expense"
+							handlers={handlers}
+							target={t}
+						/>
 					)
 				}
 				tx={tx}
@@ -49,18 +82,29 @@ function PhoneTx({ tx, swipe }: { tx: TransactionVM; swipe?: boolean }) {
 
 export function TransactionsSection() {
 	const g = useTranslations("gallery");
+	const b = useTranslations("activity.bulk");
 	const handlers = useDemoHandlers<ExpenseTarget>(ACTION_IDS.expense);
 	const toast = useToast();
 	const actions = useCallback(
 		(tx: TransactionVM) => (
-			<ActionMenu entity="expense" handlers={handlers} target={target(tx)} />
+			<ActionMenu
+				choices={EXPENSE_CHOICES}
+				entity="expense"
+				handlers={handlers}
+				target={target(tx)}
+			/>
 		),
 		[handlers],
 	);
 	// Right-click and long press on a table row open the same registry menu.
 	const rowArea = useCallback(
 		(tx: TransactionVM, tr: ReactElement) => (
-			<ActionArea entity="expense" handlers={handlers} target={target(tx)}>
+			<ActionArea
+				choices={EXPENSE_CHOICES}
+				entity="expense"
+				handlers={handlers}
+				target={target(tx)}
+			>
 				{tr}
 			</ActionArea>
 		),
@@ -75,6 +119,20 @@ export function TransactionsSection() {
 			<Cap>{CAP.table}</Cap>
 			<TransactionTable
 				actions={actions}
+				bulk={(ids) => (
+					<>
+						<BulkAction
+							icon={Tag}
+							label={b("categorize")}
+							onClick={() => toast.info(`categorize: ${ids.length}`)}
+						/>
+						<BulkAction
+							icon={Trash2}
+							label={b("delete")}
+							onClick={() => toast.info(`delete: ${ids.length}`)}
+						/>
+					</>
+				)}
 				onOpen={onOpen}
 				rowArea={rowArea}
 				rows={TABLE_ROWS}

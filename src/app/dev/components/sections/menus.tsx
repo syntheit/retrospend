@@ -27,6 +27,7 @@ import { CAT, P, PHONE_ROWS } from "../fixtures/rows";
 import { CAP } from "../sections";
 import { Cap, Pair, Spec, States } from "../spec";
 import { ACTION_IDS, useDemoHandlers } from "./demo";
+import { EXPENSE_CHOICES } from "./transactions";
 import { StaticMenu, type StaticMenuEntry } from "./static-menu";
 
 /** Sample copy inside the samples: fixtures, like the numbers. */
@@ -189,6 +190,7 @@ export function MenuSection() {
 						<Cap className="mt-2">{S.live}</Cap>
 						<ActionMenu
 							align="start"
+							choices={EXPENSE_CHOICES}
 							entity="expense"
 							handlers={handlers}
 							target={target}

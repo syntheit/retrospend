@@ -32,6 +32,18 @@
 			"confirmTitle": "{name} löschen?",
 			"confirmBody": "Betroffene Salden werden für alle Beteiligten aktualisiert.",
 			"confirmButton": "Ausgabe löschen"
+		},
+		"accept": {
+			"label": "Aufteilung annehmen"
+		},
+		"reject": {
+			"label": "Aufteilung ablehnen"
+		},
+		"recur": {
+			"label": "Als wiederkehrende Ausgabe anlegen"
+		},
+		"copy": {
+			"label": "Als Text kopieren"
 		}
 	},
 	"person": {

@@ -19,6 +19,7 @@ export const TABLE_CELLS = [
 	"[&_tbody_tr]:border-line",
 	"can-hover:[&_tbody_tr:hover]:bg-raised",
 	"[&_tbody_tr[data-state=selected]]:bg-brand-soft",
+	"[&_tbody_tr[data-group]_td]:h-8 [&_tbody_tr[data-group]_td]:bg-bg",
 	"[&_tfoot_td]:h-11 [&_tfoot_td]:border-line-strong [&_tfoot_td]:border-t [&_tfoot_td]:bg-surface [&_tfoot_td]:px-3 [&_tfoot_td]:font-semibold",
 ].join(" ");
 

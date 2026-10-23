@@ -14,12 +14,15 @@ import {
 import type { TransactionVM } from "~/components/rows/types";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
+import { StatusDot } from "~/components/ui/status-dot";
 import { MONEY_CELL } from "./table-style";
 
 export type Selection = {
-	selected: Set<string>;
-	onToggle: (id: string, checked: boolean) => void;
-	onToggleAll: (checked: boolean) => void;
+	selected: ReadonlySet<string>;
+	/** Rows that can be selected; the others keep a disabled box (§5). */
+	canSelect: (tx: TransactionVM) => boolean;
+	onToggle: (id: string, checked: boolean, range?: string[]) => void;
+	onToggleAll: (ids: string[], checked: boolean) => void;
 };
 
 /**
@@ -29,21 +32,31 @@ export type Selection = {
  */
 export const SelectionContext = createContext<Selection | null>(null);
 
-function SelectAll({ ids }: { ids: string[] }) {
+/** The table's rows in the order shown (sorting applied). */
+type Shown = { getRowModel: () => { rows: { original: TransactionVM }[] } };
+const shownRows = (table: Shown) =>
+	table.getRowModel().rows.map((r) => r.original);
+
+function SelectAll({ table }: { table: Shown }) {
 	const t = useTranslations("rows.table");
 	const s = useContext(SelectionContext);
 	if (!s) return null;
+	const ids = shownRows(table)
+		.filter(s.canSelect)
+		.map((r) => r.id);
 	const all = ids.length > 0 && ids.every((id) => s.selected.has(id));
 	return (
 		<Checkbox
 			aria-label={t("selectAll")}
 			checked={all}
-			onCheckedChange={(v) => s.onToggleAll(v === true)}
+			disabled={ids.length === 0}
+			onCheckedChange={(v) => s.onToggleAll(ids, v === true)}
 		/>
 	);
 }
 
-function SelectOne({ tx }: { tx: TransactionVM }) {
+/** A row's box. Shift-click selects the run from the last box clicked (R13 desktop). */
+function SelectOne({ tx, table }: { tx: TransactionVM; table: Shown }) {
 	const t = useTranslations("rows.table");
 	const s = useContext(SelectionContext);
 	if (!s) return null;
@@ -51,13 +64,56 @@ function SelectOne({ tx }: { tx: TransactionVM }) {
 		<Checkbox
 			aria-label={t("select", { title: tx.title })}
 			checked={s.selected.has(tx.id)}
+			disabled={!s.canSelect(tx)}
+			onClick={(e) => {
+				if (!e.shiftKey) return;
+				e.preventDefault();
+				s.onToggle(
+					tx.id,
+					true,
+					shownRows(table)
+						.filter(s.canSelect)
+						.map((r) => r.id),
+				);
+			}}
 			onCheckedChange={(v) => s.onToggle(tx.id, v === true)}
 		/>
 	);
 }
 
+/** The select column, present whenever the list can select (disabled rows keep it). */
+export function selectColumn(): DataTableColumnDef<TransactionVM> {
+	return {
+		id: "select",
+		size: 40,
+		enableSorting: false,
+		meta: { className: "w-10 pr-0" },
+		header: ({ table }) => <SelectAll table={table} />,
+		cell: ({ row, table }) => <SelectOne table={table} tx={row.original} />,
+	};
+}
+
+/** The trailing ⋯ column: hover-revealed on fine pointers, always there for focus. */
+export function actionsColumn(
+	actions: (tx: TransactionVM) => ReactNode,
+	label: string,
+): DataTableColumnDef<TransactionVM> {
+	return {
+		id: "actions",
+		size: 40,
+		enableSorting: false,
+		header: () => <span className="sr-only">{label}</span>,
+		meta: { className: "w-trail" },
+		cell: ({ row }) => (
+			<span className="can-hover:opacity-0 can-hover:group-hover:opacity-100 can-hover:group-focus-visible:opacity-100 can-hover:focus-within:opacity-100 ml-auto">
+				{actions(row.original)}
+			</span>
+		),
+	};
+}
+
 /** The title as the row's open button (keyboard and screen readers), or plain text. */
-function Title({
+export function Title({
 	tx,
 	onOpen,
 }: {
@@ -76,8 +132,25 @@ function Title({
 	);
 }
 
+/**
+ * What the title cell says after the title: the review statuses, then the
+ * kind word. When the category column already names the kind (a payment,
+ * a transfer), only "Pending" is left to say, so nothing shows twice.
+ */
+export function TitleWords({ tx }: { tx: TransactionVM }) {
+	const kindWord = useKindWord();
+	const word = tx.category ? kindWord(tx) : null;
+	return (
+		<>
+			<TransactionStatus tx={tx} />
+			{word && <span className="text-fg-3 text-meta">{word}</span>}
+			{!tx.category && tx.pending && <StatusDot kind="pending" size="sm" />}
+		</>
+	);
+}
+
 /** A small project cover in its slot, a flat tile until the project has one. */
-function ProjectCell({
+export function ProjectCell({
 	project,
 }: {
 	project: NonNullable<TransactionVM["project"]>;
@@ -95,6 +168,23 @@ function ProjectCell({
 	);
 }
 
+/** The Date column; left out when day rows carry the date (layout A). */
+export function useDateColumn(today?: string) {
+	const t = useTranslations("rows.table");
+	const { day } = useRowDates(today);
+	return useMemo(
+		(): DataTableColumnDef<TransactionVM> => ({
+			id: "date",
+			accessorKey: "date",
+			header: t("date"),
+			size: 120,
+			meta: { className: "text-fg-2" },
+			cell: ({ row }) => day(row.original.date),
+		}),
+		[t, day],
+	);
+}
+
 /**
  * The Activity columns (desktop): select, Title, Category, Project, With,
  * Date, Amount and the ⋯ column. Cells are the TransactionRow pieces, so the
@@ -107,60 +197,53 @@ export function useTransactionColumns({
 	selectable,
 	today,
 	hideProject = false,
+	hideDate = false,
+	sortable = true,
 	actions,
 	onOpen,
 }: {
 	selectable: boolean;
 	today?: string;
 	hideProject?: boolean;
+	hideDate?: boolean;
+	sortable?: boolean;
 	actions?: (tx: TransactionVM) => ReactNode;
 	onOpen?: (tx: TransactionVM) => void;
 }) {
 	const t = useTranslations("rows.table");
-	const kindWord = useKindWord();
-	const { day } = useRowDates(today);
+	const kinds = useTranslations("rows.kind");
+	const date = useDateColumn(today);
 	return useMemo(() => {
 		const cols: DataTableColumnDef<TransactionVM>[] = [];
-		if (selectable)
-			cols.push({
-				id: "select",
-				size: 40,
-				enableSorting: false,
-				meta: { className: "w-10 pr-0" },
-				header: ({ table }) => (
-					<SelectAll ids={table.getRowModel().rows.map((r) => r.original.id)} />
-				),
-				cell: ({ row }) => <SelectOne tx={row.original} />,
-			});
+		if (selectable) cols.push(selectColumn());
 		cols.push(
 			{
 				id: "title",
 				accessorKey: "title",
 				header: t("title"),
 				meta: { flex: true },
-				cell: ({ row }) => {
-					const tx = row.original;
-					const word = kindWord(tx);
-					return (
-						<span className="flex min-w-0 items-center gap-2">
-							<Title onOpen={onOpen} tx={tx} />
-							<TransactionStatus tx={tx} />
-							{word && <span className="text-fg-3 text-meta">{word}</span>}
-						</span>
-					);
-				},
+				cell: ({ row }) => (
+					<span className="flex min-w-0 items-center gap-2">
+						<Title onOpen={onOpen} tx={row.original} />
+						<TitleWords tx={row.original} />
+					</span>
+				),
 			},
 			{
 				id: "category",
 				accessorFn: (tx) => tx.category?.name ?? "",
 				header: t("category"),
 				size: 148,
-				cell: ({ row }) => (
-					<span className="text-fg-2 flex items-center gap-2">
-						<TransactionLead size="sm" tx={row.original} />
-						{row.original.category?.name ?? kindWord(row.original)}
-					</span>
-				),
+				cell: ({ row }) => {
+					const tx = row.original;
+					return (
+						<span className="text-fg-2 flex items-center gap-2">
+							<TransactionLead size="sm" tx={tx} />
+							{tx.category?.name ??
+								(tx.kind === "expense" ? null : kinds(tx.kind))}
+						</span>
+					);
+				},
 			},
 		);
 		if (!hideProject)
@@ -174,50 +257,40 @@ export function useTransactionColumns({
 						<ProjectCell project={row.original.project} />
 					) : null,
 			});
-		cols.push(
-			{
-				id: "with",
-				header: t("with"),
-				size: 150,
-				enableSorting: false,
-				cell: ({ row }) => <TransactionWith tx={row.original} />,
-			},
-			{
-				id: "date",
-				accessorKey: "date",
-				header: t("date"),
-				size: 120,
-				meta: { className: "text-fg-2" },
-				cell: ({ row }) => day(row.original.date),
-			},
-			{
-				id: "amount",
-				accessorFn: (tx) => tx.sortKey ?? undefined,
-				sortFn: "basic",
-				sortUndefined: "last",
-				header: t("amount"),
-				size: 140,
-				meta: { className: MONEY_CELL, align: "right" },
-				cell: ({ row }) => (
-					<span className="ml-auto">
-						<TransactionAmount tx={row.original} />
-					</span>
-				),
-			},
-		);
-		if (actions)
-			cols.push({
-				id: "actions",
-				size: 40,
-				enableSorting: false,
-				header: () => <span className="sr-only">{t("actions")}</span>,
-				meta: { className: "w-trail" },
-				cell: ({ row }) => (
-					<span className="can-hover:opacity-0 can-hover:group-hover:opacity-100 can-hover:group-focus-visible:opacity-100 can-hover:focus-within:opacity-100 ml-auto">
-						{actions(row.original)}
-					</span>
-				),
-			});
+		cols.push({
+			id: "with",
+			header: t("with"),
+			size: 150,
+			enableSorting: false,
+			cell: ({ row }) => <TransactionWith tx={row.original} />,
+		});
+		if (!hideDate) cols.push(date);
+		cols.push({
+			id: "amount",
+			accessorFn: (tx) => tx.sortKey ?? undefined,
+			sortFn: "basic",
+			sortUndefined: "last",
+			header: t("amount"),
+			size: 140,
+			meta: { className: MONEY_CELL, align: "right" },
+			cell: ({ row }) => (
+				<span className="ml-auto">
+					<TransactionAmount tx={row.original} />
+				</span>
+			),
+		});
+		if (actions) cols.push(actionsColumn(actions, t("actions")));
+		if (!sortable) for (const c of cols) c.enableSorting = false;
 		return cols;
-	}, [selectable, hideProject, actions, onOpen, t, kindWord, day]);
+	}, [
+		selectable,
+		hideProject,
+		hideDate,
+		sortable,
+		actions,
+		onOpen,
+		t,
+		kinds,
+		date,
+	]);
 }
