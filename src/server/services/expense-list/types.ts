@@ -121,6 +121,8 @@ export type ListV2Result = {
 	total: ActivityTotalDTO | null;
 	/** Your spending per ISO day for the days on this page; null like `total`. */
 	dayTotals: Record<string, Money> | null;
+	/** Currencies whose missing rate kept `total` or `dayTotals` out ("Not available"). */
+	missingRates: string[];
 	/** First page with no rows only: whether rows match outside the dates. */
 	elsewhere: boolean | null;
 };
