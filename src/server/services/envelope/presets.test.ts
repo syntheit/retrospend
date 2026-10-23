@@ -101,3 +101,62 @@ describe("style presets (SPEC §4.2)", () => {
 		]);
 	});
 });
+
+describe("Limits preset (SPEC §4.2, A2)", () => {
+	const cats = ["a", "b", "c", "d", "e", "f", "g", "h"].map((id) => ({
+		id,
+		name: id.toUpperCase(),
+		isFixed: false,
+	}));
+	// 3-month totals in cents; h spent nothing.
+	const spent = new Map([
+		["a", 60_000],
+		["b", 126_001],
+		["c", 30_000],
+		["d", 9_000],
+		["e", 3_000],
+		["f", 300],
+		["g", 150],
+	]);
+	const p = stylePreset({
+		style: "LIMITS",
+		currency: "USD",
+		templates,
+		categories: cats,
+		spent,
+		unit: 100,
+	});
+
+	it("the top 6 categories by spending, each a Set aside limit of its average rounded up to whole dollars", () => {
+		expect(setupPresetOutputSchema.parse(p)).toBeTruthy();
+		const limited = p.envelopes.filter((e) => !e.isDefault);
+		expect(limited.map((e) => e.categoryIds[0])).toEqual([
+			"b",
+			"a",
+			"c",
+			"d",
+			"e",
+			"f",
+		]);
+		// 126,001 / 3 = 42,000.33 -> 42,100; 60,000 / 3 = 20,000; 300 / 3 = 100.
+		expect(limited.map((e) => e.target)).toMatchObject([
+			{ kind: "MONTHLY", mode: "SET_ASIDE", amountMinor: 42_100 },
+			{ amountMinor: 20_000 },
+			{ amountMinor: 10_000 },
+			{ amountMinor: 3_000 },
+			{ amountMinor: 1_000 },
+			{ amountMinor: 100 },
+		]);
+	});
+
+	it("Everything else covers the rest with no limit; one Limits group", () => {
+		expect(p.envelopes.find((e) => e.isDefault)).toMatchObject({
+			key: "else",
+			target: null,
+			groupKey: "limits",
+		});
+		expect(p.groups).toEqual([
+			{ key: "limits", nameKey: "envelope.groups.limits", role: "SPENDING" },
+		]);
+	});
+});
