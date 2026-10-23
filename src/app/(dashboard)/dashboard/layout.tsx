@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
 import { requestTimeZone } from "~/server/time-zone";
 import { AfterHydration } from "~/components/after-hydration";
+import { getWebSession } from "~/server/better-auth/web-session";
+import { isFlagEnabled } from "~/server/flags";
 import { HydrateClient, api } from "~/trpc/server";
 import Loading from "./loading";
 
@@ -36,7 +38,14 @@ async function Prefetched({ children }: { children: React.ReactNode }) {
 	);
 }
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+/** The redesigned Home (uiV2) reads its own data; only today's page prefetches here. */
+export default async function Layout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	const session = await getWebSession(await headers());
+	if (await isFlagEnabled("uiV2", session?.user)) return children;
 	return (
 		<Suspense fallback={<Loading />}>
 			<Prefetched>{children}</Prefetched>
