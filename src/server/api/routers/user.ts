@@ -165,6 +165,16 @@ export const userRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
+			// An admin cannot delete their own account: the server could be left
+			// with no admin. Settings hides the Danger zone for admins; this is
+			// the check that holds.
+			if (session.user.role === "ADMIN") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Admins cannot delete their own account",
+				});
+			}
+
 			const credentialAccount = await db.account.findFirst({
 				where: {
 					userId: session.user.id,

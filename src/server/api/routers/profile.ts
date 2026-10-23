@@ -156,8 +156,10 @@ export const profileRouter = createTRPCRouter({
 
 	update: protectedProcedure
 		.input(
+			// Each field is optional: Settings saves one at a time, so a write
+			// (or an Undo) never carries another field's older value.
 			z.object({
-				name: z.string().min(1, "Name is required").max(100),
+				name: z.string().min(1, "Name is required").max(100).optional(),
 				username: z
 					.string()
 					.min(1, "Username is required")
@@ -166,18 +168,23 @@ export const profileRouter = createTRPCRouter({
 						/^[a-zA-Z0-9]+$/,
 						"Username can only contain letters and numbers",
 					)
-					.transform((v) => v.toLowerCase()),
+					.transform((v) => v.toLowerCase())
+					.optional(),
 				email: z
 					.email("Invalid email address")
 					.max(254)
-					.transform((v) => v.toLowerCase().trim()),
+					.transform((v) => v.toLowerCase().trim())
+					.optional(),
 				currentPassword: z.string().min(1).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			if (input.username !== session.user.username) {
+			if (
+				input.username !== undefined &&
+				input.username !== session.user.username
+			) {
 				await validateAndProcessUsernameChange(
 					db,
 					session.user.id,
@@ -186,7 +193,11 @@ export const profileRouter = createTRPCRouter({
 				);
 			}
 
-			const isEmailChange = input.email !== session.user.email;
+			const newEmail =
+				input.email !== undefined && input.email !== session.user.email
+					? input.email
+					: null;
+			const isEmailChange = newEmail !== null;
 
 			if (isEmailChange) {
 				// Require password verification for email changes
@@ -221,10 +232,7 @@ export const profileRouter = createTRPCRouter({
 				// Check if email is already taken (by another user's primary or pending email)
 				const existingEmail = await db.user.findFirst({
 					where: {
-						OR: [
-							{ email: input.email },
-							{ pendingEmail: input.email },
-						],
+						OR: [{ email: newEmail }, { pendingEmail: newEmail }],
 						id: { not: session.user.id },
 					},
 				});
@@ -239,7 +247,7 @@ export const profileRouter = createTRPCRouter({
 			const canSendEmail = await isEmailDeliveryEnabled();
 
 			// If email is changing and we can send verification emails, use the pending flow
-			if (isEmailChange && canSendEmail) {
+			if (newEmail !== null && canSendEmail) {
 				const token = crypto.randomBytes(32).toString("hex");
 				const hashedToken = hashToken(token);
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
@@ -253,7 +261,7 @@ export const profileRouter = createTRPCRouter({
 					data: {
 						name: input.name,
 						username: input.username,
-						pendingEmail: input.email,
+						pendingEmail: newEmail,
 						pendingEmailToken: hashedToken,
 						pendingEmailExpiresAt: expiresAt,
 					},
@@ -269,10 +277,10 @@ export const profileRouter = createTRPCRouter({
 				const confirmUrl = `${appUrl}/auth/confirm-email?token=${token}`;
 				const verificationHtml = getEmailChangeVerificationTemplate(
 					confirmUrl,
-					input.email,
+					newEmail,
 				);
 				sendEmail(
-					input.email,
+					newEmail,
 					"Confirm Your New Email Address",
 					verificationHtml,
 				).catch((err) =>
@@ -283,7 +291,7 @@ export const profileRouter = createTRPCRouter({
 				const revertUrl = `${appUrl}/auth/revert-email?token=${token}`;
 				const alertHtml = getEmailChangeAlertTemplate(
 					revertUrl,
-					input.email,
+					newEmail,
 				);
 				sendEmail(
 					session.user.email,
@@ -302,7 +310,7 @@ export const profileRouter = createTRPCRouter({
 				data: {
 					name: input.name,
 					username: input.username,
-					...(isEmailChange ? { email: input.email } : {}),
+					...(newEmail !== null ? { email: newEmail } : {}),
 				},
 				select: {
 					id: true,
