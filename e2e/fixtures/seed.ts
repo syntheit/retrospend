@@ -434,7 +434,9 @@ function uiV2ModeFromEnv(): UiV2Mode {
  */
 async function writeAppSettings(db: Db, uiV2Mode: UiV2Mode): Promise<void> {
 	await db.appSettings.create({
-		data: { id: "app_settings_singleton", uiV2Mode },
+		// apiV1 on: the figure audit reads every tagged number back from
+		// /api/v1/figures, whatever order the flows run in.
+		data: { id: "app_settings_singleton", uiV2Mode, apiV1Mode: "ALL" },
 	});
 }
 

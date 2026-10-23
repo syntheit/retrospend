@@ -192,5 +192,16 @@
 		"history": {
 			"label": "Ver histórico da cotação"
 		}
+	},
+	"payment": {
+		"confirm": {
+			"label": "Confirmar"
+		},
+		"notReceived": {
+			"label": "Não recebi",
+			"confirmTitle": "Não recebeu o pagamento de {name}?",
+			"confirmBody": "O pagamento fica como não recebido e seu saldo continua igual.",
+			"confirmButton": "Não recebi"
+		}
 	}
 }
