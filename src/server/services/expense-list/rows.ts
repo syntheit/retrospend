@@ -29,6 +29,8 @@ export type ShapeContext = {
 	userId: string;
 	timeZone: string | undefined;
 	rates: HomeRates;
+	/** The user's default rate type into their home currency; rows name any other. */
+	defaultRateType?: string | null;
 };
 
 const categorySelect = {
@@ -44,6 +46,19 @@ function homeField(
 	return currency === rates.home ? {} : { home };
 }
 
+type PersonalRow = {
+	direction: "OUT" | "IN";
+	entryKind: string;
+	inType: string | null;
+};
+
+/** How a personal row reads: money in, a refund, an own transfer or spending. */
+function personalKind(e: PersonalRow): ActivityRowDTO["kind"] {
+	if (e.entryKind === "NOT_SPENDING") return "transfer";
+	if (e.direction === "IN") return e.inType === "REFUND" ? "refund" : "income";
+	return "expense";
+}
+
 async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 	if (!ids.length) return [];
 	const rows = await db.expense.findMany({
@@ -52,26 +67,31 @@ async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 	});
 	return rows.map((e): ActivityRowDTO => {
 		const amount = decimalMoney(e.amount, e.currency);
-		const home =
-			e.currency === c.rates.home
-				? amount
+		const foreign = e.currency !== c.rates.home;
+		// A home value booked at save (M2) never moves; others use today's rate.
+		const home = !foreign
+			? amount
+			: e.homeCurrency === c.rates.home && e.homeAmount !== null
+				? decimalMoney(e.homeAmount, c.rates.home)
 				: homeFromUSD(Number(e.amountInUSD), c.rates);
+		const named =
+			foreign && e.rateType !== null && e.rateType !== c.defaultRateType;
 		return {
 			id: e.id,
 			source: "personal",
 			entityId: e.id,
-			kind: "expense",
+			kind: personalKind(e),
 			title: e.title,
 			category: categoryRef(e.category),
 			amount,
 			...homeField(e.currency, home, c.rates),
+			...(named && e.rateType ? { rateType: e.rateType } : {}),
 			sortKey: home?.minor ?? null,
 			project: null,
 			date: dayKey(e.date, c.timeZone),
 			mine: true,
 			locked: false,
 			canEdit: true,
-			canDelete: true,
 		};
 	});
 }
@@ -94,8 +114,8 @@ function peopleOf(
 	return keys.includes(payerId) ? keys : [payerId, ...keys];
 }
 
-async function sharedRows(db: Db, ids: string[], c: ShapeContext) {
-	if (!ids.length) return [];
+/** Your split rows of the page's shared expenses, with what shaping needs. */
+async function loadShares(db: Db, ids: string[], c: ShapeContext) {
 	const parts = await db.splitParticipant.findMany({
 		where: {
 			participantType: "user",
@@ -138,63 +158,72 @@ async function sharedRows(db: Db, ids: string[], c: ShapeContext) {
 			txs.filter((t) => t.exchangeRate === null).map((t) => t.currency),
 		),
 	]);
-	const me = personKeyOf("user", c.userId);
-	return parts.map(
-		({ transaction: t, shareAmount, verificationStatus }): ActivityRowDTO => {
-			const rate =
-				t.currency === USD
-					? 1
-					: t.exchangeRate !== null
-						? Number(t.exchangeRate)
-						: (lookup(t.currency, t.date)?.rate ?? null);
-			const amount = decimalMoney(t.amount, t.currency);
-			const home = homeOf(Number(t.amount), t.currency, rate, c.rates);
-			const share =
-				homeOf(Number(shareAmount), t.currency, rate, c.rates) ??
-				decimalMoney(shareAmount, t.currency);
-			const payerId = personKeyOf(t.paidByType, t.paidById);
-			const mine = t.createdByType === "user" && t.createdById === c.userId;
-			const canModify = deriveCanModify({
-				isLocked: t.isLocked,
-				projectId: t.projectId,
-				isCreator: mine,
-				roleMap: roles,
-			});
-			const face = (key: string): PersonDTO => ({
-				id: key,
-				name: who.get(key)?.name ?? "",
-				imageUrl: who.get(key)?.imageUrl ?? null,
-				isSelf: key === me,
-			});
-			return {
-				id: `shared:${t.id}`,
-				source: "shared",
-				entityId: t.id,
-				kind: "expense",
-				title: t.description,
-				category: categoryRef(t.category),
-				amount,
-				...homeField(t.currency, home, c.rates),
-				share,
-				sortKey: home?.minor ?? null,
-				...(verificationStatus === "PENDING" && !mine
-					? { waiting: "review" as const }
-					: {}),
-				...(verificationStatus === "REJECTED"
-					? { waiting: "rejected" as const }
-					: {}),
-				project: t.project,
-				people: peopleOf(t, payerId).map(face),
-				payerId,
-				...(payerId === me ? {} : { payerName: firstName(who.get(payerId)) }),
-				date: dayKey(t.date, c.timeZone),
-				mine,
-				locked: t.isLocked,
-				canEdit: canModify,
-				canDelete: canModify,
-			};
-		},
-	);
+	return { parts, who, roles, lookup };
+}
+
+type Shares = Awaited<ReturnType<typeof loadShares>>;
+
+function sharedRow(
+	{ transaction: t, shareAmount, verificationStatus }: Shares["parts"][number],
+	x: Omit<Shares, "parts"> & { c: ShapeContext },
+): ActivityRowDTO {
+	const me = personKeyOf("user", x.c.userId);
+	const rate =
+		t.currency === USD
+			? 1
+			: t.exchangeRate !== null
+				? Number(t.exchangeRate)
+				: (x.lookup(t.currency, t.date)?.rate ?? null);
+	const home = homeOf(Number(t.amount), t.currency, rate, x.c.rates);
+	const share =
+		homeOf(Number(shareAmount), t.currency, rate, x.c.rates) ??
+		decimalMoney(shareAmount, t.currency);
+	const payerId = personKeyOf(t.paidByType, t.paidById);
+	const mine = t.createdByType === "user" && t.createdById === x.c.userId;
+	const face = (key: string): PersonDTO => ({
+		id: key,
+		name: x.who.get(key)?.name ?? "",
+		imageUrl: x.who.get(key)?.imageUrl ?? null,
+		isSelf: key === me,
+	});
+	const waiting =
+		verificationStatus === "REJECTED"
+			? "rejected"
+			: verificationStatus === "PENDING" && !mine
+				? "review"
+				: null;
+	return {
+		id: `shared:${t.id}`,
+		source: "shared",
+		entityId: t.id,
+		kind: "expense",
+		title: t.description,
+		category: categoryRef(t.category),
+		amount: decimalMoney(t.amount, t.currency),
+		...homeField(t.currency, home, x.c.rates),
+		share,
+		sortKey: home?.minor ?? null,
+		...(waiting ? { waiting } : {}),
+		project: t.project,
+		people: peopleOf(t, payerId).map(face),
+		payerId,
+		...(payerId === me ? {} : { payerName: firstName(x.who.get(payerId)) }),
+		date: dayKey(t.date, x.c.timeZone),
+		mine,
+		locked: t.isLocked,
+		canEdit: deriveCanModify({
+			isLocked: t.isLocked,
+			projectId: t.projectId,
+			isCreator: mine,
+			roleMap: x.roles,
+		}),
+	};
+}
+
+async function sharedRows(db: Db, ids: string[], c: ShapeContext) {
+	if (!ids.length) return [];
+	const { parts, ...rest } = await loadShares(db, ids, c);
+	return parts.map((p) => sharedRow(p, { ...rest, c }));
 }
 
 /** Splits a payment key `<group or settlement id>|<currency>`. */
@@ -209,6 +238,7 @@ async function paymentRows(db: Db, keys: string[], c: ShapeContext) {
 	const rows = await db.settlement.findMany({
 		where: {
 			isOffset: false,
+			kind: "PAYMENT",
 			status: { not: "REJECTED" },
 			OR: [
 				{ paymentGroupId: { in: groups } },
@@ -306,7 +336,6 @@ function paymentRow(
 		mine: sent,
 		locked: true,
 		canEdit: false,
-		canDelete: false,
 		payment: {
 			direction: sent ? "sent" : "received",
 			counterparty: firstName(x.who.get(sent ? to : from)),

@@ -1,8 +1,9 @@
 /**
  * listActivity: the Activity read (expense.listV2). Keys come from one SQL
- * union (query.ts), rows are shaped for the page only (rows.ts), and the
- * first page also carries the count and the footer total from spent().
- * Everything runs in one userTransaction, so the raw SQL is under RLS too.
+ * union (query.ts), rows are shaped for the page only (rows.ts), every page
+ * carries its days' totals and the first page the count and the footer
+ * total, both from spent() (totals.ts). Everything runs in one
+ * userTransaction, so the raw SQL is under RLS too.
  */
 
 import {
@@ -12,14 +13,21 @@ import {
 	startOfNextDayIn,
 } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
+import { preferredRateType } from "~/lib/rate-selection";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
+import { getDefaultRateTypes } from "../rate-types";
 import { getExcludedProjectIds } from "../shared-expense-integration";
 import { countKeys, type KeyQuery, type ListBounds, pageKeys } from "./query";
 import { shapeRows } from "./rows";
 import { decodeCursor, encodeCursor } from "./search";
-import { activitySpent, spentFilterOf } from "./spent-seam";
+import {
+	activityDayTotals,
+	activitySpent,
+	spentExpresses,
+	type TotalsContext,
+} from "./totals";
 import type { ListV2Filter, ListV2Result } from "./types";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -55,29 +63,48 @@ export async function listActivity(
 			select: { homeCurrency: true },
 		});
 		const home = user?.homeCurrency ?? "USD";
-		const [homeRate, excludedProjectIds] = await Promise.all([
+		const [homeRate, excludedProjectIds, defaults] = await Promise.all([
 			findExchangeRate(tx, home, now),
 			getExcludedProjectIds(tx, userId),
+			getDefaultRateTypes(tx, userId),
 		]);
 		const k: KeyQuery = { userId, filter, bounds, excludedProjectIds };
 		const keys = await pageKeys(tx, k, after, filter.limit + 1);
 		const page = keys.slice(0, filter.limit);
 		const last = page[page.length - 1];
+		const more = keys.length > filter.limit;
+		const rates = { home, homeRate: homeRate?.rate ?? null };
 		const items = await shapeRows(tx, page, {
 			userId,
 			timeZone,
-			rates: { home, homeRate: homeRate?.rate ?? null },
+			rates,
+			defaultRateType: preferredRateType(home, defaults),
 		});
+		const totals: TotalsContext = {
+			userId,
+			home,
+			homeRate: rates.homeRate,
+			excludedProjectIds,
+			timeZone,
+		};
 		const first = !after;
-		const spentFilter = first ? spentFilterOf(userId, filter, bounds) : null;
+		const spent = spentExpresses(filter);
 		return {
 			items,
-			nextCursor:
-				keys.length > filter.limit && last ? encodeCursor(last) : null,
+			nextCursor: more && last ? encodeCursor(last) : null,
 			today: dayKey(now, timeZone),
 			homeCurrency: home,
-			count: first ? await countKeys(tx, k) : null,
-			total: spentFilter ? await activitySpent(tx, spentFilter, home) : null,
+			// A first page that holds everything is its own count.
+			count: first ? (more ? await countKeys(tx, k) : page.length) : null,
+			total:
+				first && spent ? await activitySpent(tx, totals, filter, bounds) : null,
+			dayTotals: spent
+				? await activityDayTotals(tx, totals, filter, bounds, page)
+				: null,
+			elsewhere:
+				first && !page.length && (bounds.gte || bounds.lt)
+					? (await pageKeys(tx, { ...k, bounds: {} }, null, 1)).length > 0
+					: null,
 		};
 	});
 }

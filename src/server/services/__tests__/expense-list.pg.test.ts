@@ -18,6 +18,7 @@ const OCT = { from: "2026-10-01", to: "2026-10-31" };
 
 let me: Awaited<ReturnType<typeof createTestUser>>;
 let other: Awaited<ReturnType<typeof createTestUser>>;
+let mover: Awaited<ReturnType<typeof createTestUser>>;
 let subs: string;
 
 const list = (
@@ -28,8 +29,9 @@ const list = (
 beforeAll(async () => {
 	me = await createTestUser();
 	other = await createTestUser();
-	await adminDb.user.update({
-		where: { id: me.user.id },
+	mover = await createTestUser();
+	await adminDb.user.updateMany({
+		where: { id: { in: [me.user.id, mover.user.id] } },
 		data: { homeCurrency: "ARS" },
 	});
 	await adminDb.exchangeRate.create({
@@ -95,6 +97,25 @@ beforeAll(async () => {
 			},
 		},
 	});
+	const header = (id: string, amount: string) => ({
+		id,
+		payerType: "user" as const,
+		payerId: other.user.id,
+		payeeType: "user" as const,
+		payeeId: me.user.id,
+		amount,
+		currency: "ARS",
+		paidOn: day(6),
+		recordedByType: "user" as const,
+		recordedById: other.user.id,
+	});
+	await adminDb.payment.createMany({
+		data: [
+			header("pgl_group", "15000"),
+			header("pgl_rejected", "777"),
+			header("pgl_forgive", "0"),
+		],
+	});
 	const settle = (
 		id: string,
 		extra: {
@@ -102,6 +123,7 @@ beforeAll(async () => {
 			status: "FINALIZED" | "REJECTED";
 			isOffset?: boolean;
 			paymentGroupId?: string;
+			kind?: "PAYMENT" | "FORGIVE";
 		},
 	) => ({
 		id,
@@ -125,17 +147,115 @@ beforeAll(async () => {
 				status: "REJECTED",
 				paymentGroupId: "pgl_rejected",
 			}),
+			// A forgiven balance moves no cash: not a payment row.
+			settle("pgl_s5", {
+				amount: "4000",
+				status: "FINALIZED",
+				kind: "FORGIVE",
+				paymentGroupId: "pgl_forgive",
+			}),
 		],
 	});
+	await seedMover();
 });
+
+/**
+ * The mover's August: money in, a refund, an own transfer, a starting
+ * balance, two foreign rows booked at Official and Blue, a Cyrillic title,
+ * and a payment inside a project the mover hides from analytics.
+ */
+async function seedMover() {
+	const aug = (d: number) => day(d, 8);
+	const row = (title: string, amount: string, date: Date, extra = {}) => ({
+		userId: mover.user.id,
+		title,
+		amount,
+		currency: "ARS",
+		amountInUSD: (Number(amount) / 1000).toFixed(2),
+		exchangeRate: "1000",
+		pricingSource: "MANUAL",
+		date,
+		...extra,
+	});
+	const booked = (rateType: string) => ({
+		currency: "USD",
+		amountInUSD: "100",
+		exchangeRate: "1",
+		rateType,
+		homeCurrency: "ARS",
+		homeRate: "1000",
+		homeAmount: "100000",
+	});
+	await adminDb.expense.createMany({
+		data: [
+			row("Saldo inicial", "900000", aug(1), {
+				direction: "IN",
+				entryKind: "STARTING_BALANCE",
+			}),
+			row("Sueldo", "500000", aug(2), { direction: "IN", inType: "INCOME" }),
+			row("Devolución", "2000", aug(3), { direction: "IN", inType: "REFUND" }),
+			row("Super", "10000", aug(4)),
+			row("A mi caja", "3000", aug(5), { entryKind: "NOT_SPENDING" }),
+			row("Чай", "500", aug(6)),
+			row("Hotel", "100", aug(7), booked("official")),
+			row("Hotel azul", "100", aug(8), booked("blue")),
+		],
+	});
+	await adminDb.project.create({
+		data: {
+			id: "pgl_hidden",
+			name: "Hidden trip",
+			createdById: mover.user.id,
+			participants: {
+				create: {
+					participantType: "user",
+					participantId: mover.user.id,
+					excludeFromAnalytics: true,
+				},
+			},
+		},
+	});
+	await adminDb.payment.create({
+		data: {
+			id: "pgl_hidden_pay",
+			payerType: "user",
+			payerId: other.user.id,
+			payeeType: "user",
+			payeeId: mover.user.id,
+			amount: "7000",
+			currency: "ARS",
+			paidOn: aug(9),
+			recordedByType: "user",
+			recordedById: other.user.id,
+			status: "FINALIZED",
+		},
+	});
+	await adminDb.settlement.create({
+		data: {
+			id: "pgl_s_hidden",
+			fromParticipantType: "user",
+			fromParticipantId: other.user.id,
+			toParticipantType: "user",
+			toParticipantId: mover.user.id,
+			amount: "7000",
+			currency: "ARS",
+			status: "FINALIZED",
+			initiatedAt: aug(9),
+			projectId: "pgl_hidden",
+			paymentGroupId: "pgl_hidden_pay",
+		},
+	});
+}
 
 afterAll(async () => {
 	await adminDb.settlement.deleteMany({
 		where: { id: { startsWith: "pgl_" } },
 	});
+	await adminDb.payment.deleteMany({ where: { id: { startsWith: "pgl_" } } });
+	await adminDb.project.deleteMany({ where: { id: "pgl_hidden" } });
 	await adminDb.sharedTransaction.deleteMany({ where: { id: "pgl_tx_cena" } });
 	await adminDb.user.deleteMany({
-		where: { id: { in: [me.user.id, other.user.id] } },
+		where: { id: { in: [me.user.id, other.user.id, mover.user.id] } },
 	});
 	await adminDb.exchangeRate.deleteMany({
 		where: { date: day(1), currency: "ARS" },
@@ -154,8 +274,19 @@ describe("expense.listV2", () => {
 		expect(r.count).toBe(4);
 		expect(r.today).toBe("2026-10-21");
 		expect(r.homeCurrency).toBe("ARS");
-		// Spent() is not on this branch yet: no footer total, never a sum of our own.
-		expect(r.total).toBeNull();
+		// spent(): Almacén 64,000 + Netflix 12.99 USD at 1000 (12,990) + the
+		// pending share 15,000 = ARS 91,990. The payment is not spending.
+		expect(r.total).toEqual({
+			figure: "spent",
+			value: { minor: 9199000, currency: "ARS" },
+		});
+		expect(r.dayTotals).toEqual({
+			"2026-10-06": { minor: 0, currency: "ARS" },
+			"2026-10-05": { minor: 6400000, currency: "ARS" },
+			"2026-10-04": { minor: 1500000, currency: "ARS" },
+			"2026-10-03": { minor: 1299000, currency: "ARS" },
+		});
+		expect(r.elsewhere).toBeNull();
 	});
 
 	it("shapes every source in minor units", async () => {
@@ -225,8 +356,9 @@ describe("expense.listV2", () => {
 			"Cena en La Esquina",
 		]);
 		expect(await titles({ kinds: ["payment"] })).toEqual(["payment"]);
-		// Money in has no rows until its table lands.
 		expect(await titles({ kinds: ["in"] })).toEqual([]);
+		// A filter spent() cannot express has no total.
+		expect((await list(me, { ...OCT, paidBy: ["me"] })).total).toBeNull();
 	});
 
 	it("pages with a cursor that never repeats or skips a row", async () => {
@@ -253,5 +385,90 @@ describe("expense.listV2", () => {
 		]);
 		expect(r.items[0]?.payment?.direction).toBe("sent");
 		expect(r.items[1]).toMatchObject({ mine: true, canEdit: true });
+	});
+});
+
+describe("expense.listV2 entry kinds (M1, M2)", () => {
+	const AUG = { from: "2026-08-01", to: "2026-08-31" };
+	const titles = async (f: object = {}) =>
+		(await list(mover, { ...AUG, ...f })).items.map((i) => i.title || i.kind);
+
+	it("lists every entry but starting balances, and payments in hidden projects", async () => {
+		expect(await titles()).toEqual([
+			"Hotel azul",
+			"Hotel",
+			"Чай",
+			"A mi caja",
+			"Super",
+			"Devolución",
+			"Sueldo",
+		]);
+		const kinds = (await list(mover, AUG)).items.map((i) => i.kind);
+		expect(kinds).toEqual([
+			"expense",
+			"expense",
+			"expense",
+			"transfer",
+			"expense",
+			"refund",
+			"income",
+		]);
+	});
+
+	it("maps each Type to its rows", async () => {
+		expect(await titles({ kinds: ["expense"] })).toEqual([
+			"Hotel azul",
+			"Hotel",
+			"Чай",
+			"Super",
+		]);
+		expect(await titles({ kinds: ["in"] })).toEqual(["Sueldo"]);
+		expect(await titles({ kinds: ["refund"] })).toEqual(["Devolución"]);
+		expect(await titles({ kinds: ["transfer"] })).toEqual(["A mi caja"]);
+		expect(await titles({ kinds: ["reimbursement"] })).toEqual([]);
+	});
+
+	it("totals with spent(): booked home values, refunds subtract, money in adds nothing", async () => {
+		const r = await list(mover, AUG);
+		// 100,000 + 100,000 (both booked) + 500 + 10,000 - 2,000 = ARS 208,500
+		expect(r.total?.value).toEqual({ minor: 20850000, currency: "ARS" });
+		expect(r.dayTotals?.["2026-08-04"]).toEqual({
+			minor: 1000000,
+			currency: "ARS",
+		});
+		expect(r.dayTotals?.["2026-08-03"]).toEqual({
+			minor: -200000,
+			currency: "ARS",
+		});
+		expect(r.dayTotals?.["2026-08-02"]).toEqual({ minor: 0, currency: "ARS" });
+		expect(r.dayTotals?.["2026-08-05"]).toEqual({ minor: 0, currency: "ARS" });
+		expect(r.count).toBe(7);
+	});
+
+	it("names the rate type only when it is not the default (ARS: Blue)", async () => {
+		const [azul, hotel] = (await list(mover, AUG)).items;
+		expect(hotel).toMatchObject({
+			amount: { minor: 10000, currency: "USD" },
+			home: { minor: 10000000, currency: "ARS" },
+			rateType: "official",
+		});
+		expect(azul).not.toHaveProperty("rateType");
+	});
+
+	it("finds Cyrillic titles in any case (SQL and JS fold alike)", async () => {
+		for (const q of ["чай", "Чай", "ЧАЙ"])
+			expect(
+				(await list(mover, { q })).items.map((i) => i.title),
+				q,
+			).toEqual(["Чай"]);
+	});
+
+	it("says when an empty month has rows elsewhere", async () => {
+		const empty = await list(mover, OCT);
+		expect(empty.items).toEqual([]);
+		expect(empty.elsewhere).toBe(true);
+		const fresh = await createTestUser();
+		expect((await list(fresh, OCT)).elsewhere).toBe(false);
+		await adminDb.user.delete({ where: { id: fresh.user.id } });
 	});
 });

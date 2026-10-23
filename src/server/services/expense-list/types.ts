@@ -1,9 +1,9 @@
 /**
  * The Activity read (expense.listV2): one cursor-paginated list of every
  * entry you are part of, newest first. Personal expenses, your shares of
- * shared expenses and payments (one row per payment, MONEY-MOVES I4). Money
- * in, refunds, transfers and reimbursements are kinds the filter already
- * takes; they have no rows until their tables land (2A, 2D).
+ * shared expenses and payments (one row per payment, MONEY-MOVES I4), money
+ * in, refunds and own transfers (M1 direction and entry kind). Reimbursements
+ * are a kind the filter takes with no rows until their table lands (2D).
  */
 
 import type { Money } from "@retrospend/domain/money-minor";
@@ -69,7 +69,8 @@ export type ActivityRowDTO = {
 	source: "personal" | "shared" | "payment";
 	/** The id the edit, delete and open actions take. */
 	entityId: string;
-	kind: "expense" | "payment";
+	/** Money in reads "income"; a refund "refund"; own transfers (Not spending) "transfer". */
+	kind: "expense" | "income" | "refund" | "transfer" | "payment";
 	/** Empty for payments; the client words them from `payment`. */
 	title: string;
 	category: CategoryRefDTO | null;
@@ -79,6 +80,11 @@ export type ActivityRowDTO = {
 	home?: Money | null;
 	/** Your share of a split, in the home currency when a rate exists. */
 	share?: Money;
+	/**
+	 * The rate type a foreign personal row was booked at, set only when it is
+	 * not the user's default for their home currency (GUIDELINE §7).
+	 */
+	rateType?: string;
 	/** Home minor units for the amount column's sort; null without a rate. */
 	sortKey: number | null;
 	waiting?: "review" | "rejected";
@@ -94,7 +100,6 @@ export type ActivityRowDTO = {
 	mine: boolean;
 	locked: boolean;
 	canEdit: boolean;
-	canDelete: boolean;
 	payment?: { direction: "sent" | "received"; counterparty: string };
 };
 
@@ -112,6 +117,10 @@ export type ListV2Result = {
 	homeCurrency: string;
 	/** First page only: rows the filter matches in all pages. */
 	count: number | null;
-	/** First page only; null when spent() cannot express the filter or is unavailable. */
+	/** First page only; null when spent() cannot express the filter or a rate is missing. */
 	total: ActivityTotalDTO | null;
+	/** Your spending per ISO day for the days on this page; null like `total`. */
+	dayTotals: Record<string, Money> | null;
+	/** First page with no rows only: whether rows match outside the dates. */
+	elsewhere: boolean | null;
 };

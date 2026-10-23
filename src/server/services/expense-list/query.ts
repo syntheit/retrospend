@@ -12,7 +12,7 @@ import {
 	FOLD_TO,
 	likePattern,
 } from "./search";
-import type { ListV2Filter } from "./types";
+import type { ActivityKind, ListV2Filter } from "./types";
 
 type Db = Prisma.TransactionClient;
 
@@ -59,13 +59,36 @@ function searchPart(
 
 const has = (list?: readonly unknown[]) => !!list && list.length > 0;
 
+/** Personal entry kinds a Type pick lists; reimbursements have no rows yet (2D). */
+const PERSONAL_KIND_SQL: Partial<Record<ActivityKind, Prisma.Sql>> = {
+	expense: Prisma.sql`(e.direction = 'OUT' AND e."entryKind" = 'STANDARD')`,
+	in: Prisma.sql`(e.direction = 'IN' AND e."entryKind" = 'STANDARD' AND e."inType" IS DISTINCT FROM 'REFUND')`,
+	refund: Prisma.sql`(e.direction = 'IN' AND e."entryKind" = 'STANDARD' AND e."inType" = 'REFUND')`,
+	transfer: Prisma.sql`e."entryKind" = 'NOT_SPENDING'`,
+};
+
+/**
+ * Which personal rows a Type filter lists. No pick lists every kind a person
+ * reads as an entry; starting balances and adjustments are budget
+ * bookkeeping and never show (budget SPEC §5.2).
+ */
+export function personalKinds(
+	kinds: readonly ActivityKind[],
+): Prisma.Sql | null {
+	const picked = kinds.length
+		? kinds
+		: (Object.keys(PERSONAL_KIND_SQL) as ActivityKind[]);
+	const parts = picked.flatMap((k) => PERSONAL_KIND_SQL[k] ?? []);
+	return parts.length ? Prisma.sql`(${Prisma.join(parts, " OR ")})` : null;
+}
+
 function wants(f: ListV2Filter) {
 	const kinds = f.kinds ?? [];
 	const expense = !kinds.length || kinds.includes("expense");
 	const payment = !kinds.length || kinds.includes("payment");
 	return {
 		personal:
-			expense &&
+			personalKinds(kinds) !== null &&
 			!has(f.people) &&
 			!has(f.projectIds) &&
 			(!has(f.paidBy) || !!f.paidBy?.includes("me")),
@@ -74,7 +97,27 @@ function wants(f: ListV2Filter) {
 	};
 }
 
-function personal(k: KeyQuery): Prisma.Sql {
+/** One branch's page: its cursor test and its own ORDER BY and LIMIT. */
+export type Page = { after: CursorKey | null; take: number };
+
+function pageOf(
+	src: RowKey["src"],
+	date: Prisma.Sql,
+	id: Prisma.Sql,
+	page: Page | undefined,
+) {
+	if (!page) return { where: null, tail: Prisma.empty };
+	const a = page.after;
+	return {
+		// Same key order as the outer query; src is constant per branch.
+		where: a
+			? Prisma.sql`(${date}, ${src}::text, ${id}) < (${a.date}, ${a.src}, ${a.id})`
+			: null,
+		tail: Prisma.sql`ORDER BY ${date} DESC, ${id} DESC LIMIT ${page.take}`,
+	};
+}
+
+function personal(k: KeyQuery, page?: Page): Prisma.Sql {
 	const f = k.filter;
 	const parts = [
 		Prisma.sql`e."userId" = ${k.userId}`,
@@ -82,6 +125,8 @@ function personal(k: KeyQuery): Prisma.Sql {
 		Prisma.sql`e."isAmortizedChild" = false`,
 		...dateParts(Prisma.sql`e.date`, k.bounds),
 	];
+	const kinds = personalKinds(f.kinds ?? []);
+	if (kinds) parts.push(kinds);
 	if (has(f.categoryIds))
 		parts.push(Prisma.sql`e."categoryId" = ANY(${f.categoryIds}::text[])`);
 	const s = searchPart(
@@ -94,7 +139,9 @@ function personal(k: KeyQuery): Prisma.Sql {
 		[Prisma.sql`e.amount`],
 	);
 	if (s) parts.push(s);
-	return Prisma.sql`SELECT 'p'::text AS src, e.id AS id, e.date AS date FROM expense e WHERE ${all(parts)}`;
+	const pg = pageOf("p", Prisma.sql`e.date`, Prisma.sql`e.id`, page);
+	if (pg.where) parts.push(pg.where);
+	return Prisma.sql`(SELECT 'p'::text AS src, e.id AS id, e.date AS date FROM expense e WHERE ${all(parts)} ${pg.tail})`;
 }
 
 const keyOf = (type: Prisma.Sql, id: Prisma.Sql) =>
@@ -106,7 +153,7 @@ function payerKeys(k: KeyQuery): string[] {
 	);
 }
 
-function shared(k: KeyQuery): Prisma.Sql {
+function shared(k: KeyQuery, page?: Page): Prisma.Sql {
 	const f = k.filter;
 	const parts = [
 		Prisma.sql`(st."projectId" IS NULL OR NOT (st."projectId" = ANY(${k.excludedProjectIds}::text[])))`,
@@ -132,18 +179,25 @@ function shared(k: KeyQuery): Prisma.Sql {
 		[Prisma.sql`st.amount`, Prisma.sql`sp."shareAmount"`],
 	);
 	if (s) parts.push(s);
-	return Prisma.sql`SELECT 's'::text AS src, st.id AS id, st.date AS date
+	const pg = pageOf("s", Prisma.sql`st.date`, Prisma.sql`st.id`, page);
+	if (pg.where) parts.push(pg.where);
+	return Prisma.sql`(SELECT 's'::text AS src, st.id AS id, st.date AS date
 		FROM shared_transaction st
 		JOIN split_participant sp ON sp."transactionId" = st.id
 			AND sp."participantType" = 'user' AND sp."participantId" = ${k.userId}
-		WHERE ${all(parts)}`;
+		WHERE ${all(parts)} ${pg.tail})`;
 }
+
+/** Settlement rows that are cash moving: no offsets, forgives or rejected ones. */
+const PAYMENT_ROW = Prisma.sql`s."isOffset" = false AND s.kind = 'PAYMENT' AND s.status <> 'REJECTED'`;
 
 /**
  * One row per payment (MONEY-MOVES I4): the settlement rows of a payment
- * group in one currency, offsets left out (they move no cash).
+ * group in one currency. Offsets and forgiven balances move no cash, so they
+ * are left out; a payment wholly inside projects you hide is left out like
+ * their expenses.
  */
-function payments(k: KeyQuery): Prisma.Sql {
+function payments(k: KeyQuery, page?: Page): Prisma.Sql {
 	const f = k.filter;
 	const me = `user:${k.userId}`;
 	const from = keyOf(
@@ -161,7 +215,9 @@ function payments(k: KeyQuery): Prisma.Sql {
 		parts.push(Prisma.sql`g.payer = ANY(${payerKeys(k)}::text[])`);
 	const s = searchPart(f.q, [Prisma.sql`g.words`], [Prisma.sql`g.amount`]);
 	if (s) parts.push(s);
-	return Prisma.sql`SELECT 'g'::text AS src, g.key AS id, g.date AS date FROM (
+	const pg = pageOf("g", Prisma.sql`g.date`, Prisma.sql`g.key`, page);
+	if (pg.where) parts.push(pg.where);
+	return Prisma.sql`(SELECT 'g'::text AS src, g.key AS id, g.date AS date FROM (
 		SELECT coalesce(s."paymentGroupId", s.id) || '|' || s.currency AS key,
 			min(s."initiatedAt") AS date,
 			sum(s.amount) AS amount,
@@ -170,36 +226,37 @@ function payments(k: KeyQuery): Prisma.Sql {
 			min(${from}) AS payer,
 			coalesce(min(s.note), '') || ' ' || coalesce(min(s."paymentMethod"), '') AS words
 		FROM settlement s
-		WHERE s."isOffset" = false AND s.status <> 'REJECTED'
+		WHERE ${PAYMENT_ROW}
 			AND (${from} = ${me} OR ${to} = ${me})
 		GROUP BY 1
-	) g WHERE ${all(parts)}`;
+		HAVING NOT bool_and(coalesce(s."projectId" = ANY(${k.excludedProjectIds}::text[]), false))
+	) g WHERE ${all(parts)} ${pg.tail})`;
 }
 
-function union(k: KeyQuery): Prisma.Sql | null {
+/** The branches, each already cut to the page when `page` is given. */
+function union(k: KeyQuery, page?: Page): Prisma.Sql | null {
 	const w = wants(k.filter);
 	const parts: Prisma.Sql[] = [];
-	if (w.personal) parts.push(personal(k));
-	if (w.shared) parts.push(shared(k));
-	if (w.payment) parts.push(payments(k));
+	if (w.personal) parts.push(personal(k, page));
+	if (w.shared) parts.push(shared(k, page));
+	if (w.payment) parts.push(payments(k, page));
 	return parts.length ? Prisma.join(parts, " UNION ALL ") : null;
 }
 
-/** One page of row keys after `after`, newest first. */
+/**
+ * One page of row keys after `after`, newest first. Each branch applies the
+ * cursor and the limit itself, so Postgres never sorts more than `take` rows
+ * per source; the outer sort merges them.
+ */
 export async function pageKeys(
 	db: Db,
 	k: KeyQuery,
 	after: CursorKey | null,
 	take: number,
 ): Promise<RowKey[]> {
-	const u = union(k);
+	const u = union(k, { after, take });
 	if (!u) return [];
-	const cursor = after
-		? Prisma.sql`WHERE (u.date, u.src, u.id) < (${after.date}, ${after.src}, ${after.id})`
-		: Prisma.empty;
-	return db.$queryRaw<
-		RowKey[]
-	>`SELECT u.src, u.id, u.date FROM (${u}) u ${cursor}
+	return db.$queryRaw<RowKey[]>`SELECT u.src, u.id, u.date FROM (${u}) u
 		ORDER BY u.date DESC, u.src DESC, u.id DESC LIMIT ${take}`;
 }
 
