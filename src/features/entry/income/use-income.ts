@@ -61,7 +61,11 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 	const category = catalog.categories.find((c) => c.id === d.categoryId);
 	const foreign = d.currency !== home;
 	// Null: no envelope budget, so Use my plan has nothing to fill.
-	const book = api.envelope.getMonth.useQuery({}, { retry: false });
+	const budgets = api.envelope.enabled.useQuery();
+	const book = api.envelope.getMonth.useQuery(
+		{},
+		{ retry: false, enabled: budgets.data === true },
+	);
 	const usePlan = d.usePlan ?? !!book.data;
 	// The sheet's own id: a second click on Add income cannot write a second row.
 	const [id] = useState(generateId);

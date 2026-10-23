@@ -105,27 +105,25 @@ test("Activity: shared rows, payments, accent search and Add expense", async ({
 	await expect(main.getByText("Arreglo del calefón").first()).toBeVisible();
 	await expect(main.getByText("Expensas")).toHaveCount(0);
 
-	// The main action: Add goes through today's expense modal and the row shows up.
+	// The main action: Add opens the v2 Add expense sheet (4G) and the row shows up.
 	const category = await realCategory(page, "Prueba e2e");
 	await page.goto("/activity");
-	const dialog = page
-		.getByRole("dialog")
-		.filter({ has: page.getByRole("button", { name: "Create Expense" }) });
+	const dialog = page.getByRole("dialog", { name: "New expense" });
 	await page
 		.getByRole("button", { name: "Add expense", exact: true })
 		.first()
 		.click();
 	await expect(dialog).toBeVisible();
 	await dialog.getByRole("textbox", { name: "Amount" }).fill("4321");
-	await dialog
-		.getByRole("textbox", { name: "Expense Title" })
-		.fill("Café de prueba");
+	await dialog.getByRole("textbox", { name: "Title" }).fill("Café de prueba");
+	// A new category is not in the recents line yet: All opens the picker.
 	await dialog
 		.getByRole("group", { name: "Category" })
-		.getByRole("button", { name: category, exact: true })
+		.getByRole("button", { name: "All" })
 		.click();
-	await untilSaved(page, "expense.createExpense", () =>
-		dialog.getByRole("button", { name: "Create Expense" }).click(),
+	await page.getByRole("option", { name: category }).click();
+	await untilSaved(page, "entry.expense.create.save", () =>
+		dialog.getByRole("button", { name: "Add expense" }).click(),
 	);
 	await expect(dialog).toBeHidden();
 	await expect(main.getByText("Café de prueba").first()).toBeVisible();
