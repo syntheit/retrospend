@@ -247,14 +247,18 @@ describe("needsYou on Postgres", () => {
 		// Setup put USD 1,000 in the pool. Dining has nothing and spent USD 30;
 		// the USD 15 Asado share lands
 		// in Spending, the default envelope, which has nothing either.
+		// Money fronted leaves the pool (budget P3, D18): Lucia's 200 (Cena)
+		// and Martin's 30 (Cabaña: rejected, but the cash left), less the 15
+		// Asado share that nets against what Martin owes: 1,000 - 215 = 785.
+		// Proposed payments do not count yet (D8).
 		expect(by["budget.giveJob"]).toMatchObject({
-			amount: { minor: 100_000, currency: "USD" },
+			amount: { minor: 78_500, currency: "USD" },
 			// All of it is the starting money setup wrote.
 			sources: [
 				{
 					kind: "STARTING_BALANCE",
 					amount: { minor: 100_000, currency: "USD" },
-					part: { minor: 100_000, currency: "USD" },
+					part: { minor: 78_500, currency: "USD" },
 				},
 			],
 		});
@@ -440,7 +444,9 @@ describe("needsYou query budget", () => {
 		const one = await queries(sofia.user.id);
 		const three = await queries(busy.user.id);
 		expect(three).toBe(one);
-		expect(one).toBeLessThanOrEqual(20);
+		// The budget source reads its book in a fixed set of queries, splits
+		// included (budget P3): the count never grows with the items.
+		expect(one).toBeLessThanOrEqual(24);
 	});
 
 	it("p95 under 150 ms", async () => {
