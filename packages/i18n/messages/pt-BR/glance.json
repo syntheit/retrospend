@@ -13,6 +13,7 @@
 		"leftToday": "<amount></amount> restantes hoje",
 		"over": "<amount></amount> acima do plano este mês",
 		"noBudget": "Sem orçamento para este mês",
-		"unavailable": "Orçamento indisponível: ainda não há cotação para {currencies}"
+		"unavailable": "Orçamento indisponível: ainda não há cotação para {currencies}",
+		"unavailableRate": "Orçamento indisponível: falta uma cotação"
 	}
 }

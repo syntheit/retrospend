@@ -9,6 +9,8 @@ export type DateStyle =
 	| "short"
 	/** "Mon, Oct 19" */
 	| "weekday"
+	/** "Monday, October 19" (a page's date line) */
+	| "long"
 	/** "October" */
 	| "month"
 	/** "Oct" */
@@ -17,6 +19,7 @@ export type DateStyle =
 const OPTIONS: Record<DateStyle, Intl.DateTimeFormatOptions> = {
 	short: { month: "short", day: "numeric" },
 	weekday: { weekday: "short", month: "short", day: "numeric" },
+	long: { weekday: "long", month: "long", day: "numeric" },
 	month: { month: "long" },
 	monthShort: { month: "short" },
 };

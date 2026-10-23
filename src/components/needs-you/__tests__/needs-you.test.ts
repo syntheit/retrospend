@@ -113,6 +113,44 @@ describe("GlanceStrip", () => {
 		expect(html).toMatch(/data-figure="glance.spent"(?![^>]*data-minor)/);
 	});
 
+	it("a row with no rate stays and says so; faces sit beside the amount", () => {
+		const html = render(
+			h(GlanceStrip, {
+				glance: {
+					...GLANCE,
+					line: { kind: "unavailable", currencies: [] },
+					rows: [
+						{
+							id: "owedToYou",
+							amount: null,
+							href: "/people",
+							figure: "owed.owedToYou",
+						},
+						{
+							id: "youOwe",
+							amount: ars(22977000),
+							href: "/people",
+							faces: [{ id: "m", name: "Martín Acosta" }],
+						},
+					],
+				},
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("Owed to you No rate yet");
+		expect(t).toContain("Budget not available: a rate is missing");
+		expect(html).toContain('aria-label="Martín Acosta"');
+	});
+
+	it("rowsBeside puts the rows in a column beside the chart from 1024px", () => {
+		const beside = render(h(GlanceStrip, { glance: GLANCE, rowsBeside: true }));
+		expect(beside).toContain("@5xl:grid-cols-5");
+		expect(beside).toContain("@5xl:col-span-2");
+		expect(render(h(GlanceStrip, { glance: GLANCE }))).not.toContain(
+			"@5xl:grid-cols-5",
+		);
+	});
+
 	it("variant B is the compact strip without the pace line", () => {
 		const html = render(h(GlanceStrip, { glance: GLANCE, variant: "B" }));
 		expect(html).not.toContain('role="img"');
@@ -204,6 +242,21 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 			expect(t).toContain(a);
 	});
 
+	it("the server's action id picks the button word; an unknown id keeps the kind's", () => {
+		const t = text(
+			render(
+				h(NeedsYouList, {
+					items: [
+						{ ...MORE[4], id: "x1", action: "correct" },
+						{ ...MORE[4], id: "x2", action: "review" },
+					] as NeedsYouItemVM[],
+				}),
+			),
+		);
+		expect(t).toContain("Edit");
+		expect(t).toContain("Review");
+	});
+
 	it("puts the context line under the sentence", () => {
 		const t = text(render(h(NeedsYouList, { items: MORE.slice(0, 1) })));
 		expect(t).toContain("Add your first expense Takes about ten seconds");
@@ -225,9 +278,7 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 				variant: "group",
 			}),
 		);
-		expect(text(html)).toContain(
-			"Fibra is overdue ARS 38,900 · Was due Oct 8",
-		);
+		expect(text(html)).toContain("Fibra is overdue ARS 38,900 · Was due Oct 8");
 		expect(html.match(/data-figure="x"/g)).toHaveLength(1);
 	});
 });

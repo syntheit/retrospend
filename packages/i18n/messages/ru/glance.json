@@ -13,6 +13,7 @@
 		"leftToday": "На сегодня осталось <amount></amount>",
 		"over": "<amount></amount> сверх плана в этом месяце",
 		"noBudget": "Нет бюджета на этот месяц",
-		"unavailable": "Бюджет недоступен: пока нет курса для {currencies}"
+		"unavailable": "Бюджет недоступен: пока нет курса для {currencies}",
+		"unavailableRate": "Бюджет недоступен: не хватает курса"
 	}
 }

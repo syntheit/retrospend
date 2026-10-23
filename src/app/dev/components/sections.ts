@@ -311,7 +311,8 @@ export const CAP = {
 	listGroup: "List group",
 	glanceA: "A. Glance line and rows (recommended)",
 	glanceB: "B. Compact 3-number strip",
-	glanceNoRate: "Missing rate: no spent figure, the budget line names the currency",
+	glanceNoRate:
+		"Missing rate: no spent figure, a row that says No rate yet, the budget line names the currency; faces on You owe",
 	itemDefault: "Item default",
 	itemOverdue: "Overdue (amber icon, word in the sentence)",
 	itemSetup: "Setup prompt with a context line (new user)",

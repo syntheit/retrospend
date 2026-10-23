@@ -131,7 +131,9 @@ export function NeedsYouItem({
 	const t = useTranslations("needsYou.action");
 	const sentence = useSentence()(item);
 	const amount = "amount" in item ? item.amount : null;
-	const label = t(ACTION[item.kind]);
+	const label = t(
+		item.action && t.has(item.action) ? item.action : ACTION[item.kind],
+	);
 	const group = variant === "group";
 	return (
 		<li

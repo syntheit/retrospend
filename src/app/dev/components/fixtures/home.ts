@@ -50,7 +50,16 @@ export const GLANCE_NO_RATE: GlanceVM = {
 	spent: null,
 	line: { kind: "unavailable", currencies: ["BRL"] },
 	fasterThanPlanned: false,
-	rows: GLANCE.rows.filter((r) => r.id === "netWorth"),
+	rows: [
+		{ id: "owedToYou", amount: null, href: "#people" },
+		{
+			id: "youOwe",
+			amount: m("229770"),
+			href: "#people",
+			faces: [P.martin, P.paz],
+		},
+		...GLANCE.rows.filter((r) => r.id === "netWorth"),
+	],
 };
 
 export const NEEDS_YOU: NeedsYouItemVM[] = [

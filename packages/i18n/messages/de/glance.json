@@ -13,6 +13,7 @@
 		"leftToday": "<amount></amount> heute übrig",
 		"over": "<amount></amount> über Plan diesen Monat",
 		"noBudget": "Kein Budget für diesen Monat",
-		"unavailable": "Budget nicht verfügbar: noch kein Kurs für {currencies}"
+		"unavailable": "Budget nicht verfügbar: noch kein Kurs für {currencies}",
+		"unavailableRate": "Budget nicht verfügbar: ein Kurs fehlt"
 	}
 }

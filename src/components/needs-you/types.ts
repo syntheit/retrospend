@@ -13,6 +13,11 @@ type Base = {
 	figure?: string;
 	/** One fact under the sentence ("Was due Oct 8", "Your share BRL 155.00"). */
 	context?: string;
+	/**
+	 * The primary action id the server sent (`actions[0].id`), when it has a
+	 * word in `needsYou.action`; otherwise the kind's own action is shown.
+	 */
+	action?: string;
 };
 
 export type NeedsYouItemVM =
