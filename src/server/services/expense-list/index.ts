@@ -86,6 +86,7 @@ export async function listActivity(
 			homeRate: rates.homeRate,
 			excludedProjectIds,
 			timeZone,
+			missingRates: new Set(),
 		};
 		const first = !after;
 		const spent = spentExpresses(filter);
@@ -101,6 +102,7 @@ export async function listActivity(
 			dayTotals: spent
 				? await activityDayTotals(tx, totals, filter, bounds, page)
 				: null,
+			missingRates: [...totals.missingRates].sort(),
 			elsewhere:
 				first && !page.length && (bounds.gte || bounds.lt)
 					? (await pageKeys(tx, { ...k, bounds: {} }, null, 1)).length > 0

@@ -15,6 +15,7 @@ import { expenseV2Router } from "~/server/api/routers/expense-v2";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { guestRouter } from "~/server/api/routers/guest";
+import { homeRouter } from "~/server/api/routers/home";
 import { importQueueRouter } from "~/server/api/routers/import-queue";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { notificationRouter } from "~/server/api/routers/notification";
@@ -60,6 +61,7 @@ export const appRouter = createTRPCRouter({
 	expense: expenseAllRouter,
 	feedback: feedbackRouter,
 	exchangeRate: exchangeRateRouter,
+	home: homeRouter,
 	exportData: exportRouter,
 	importQueue: importQueueRouter,
 	invite: inviteRouter,
