@@ -1,0 +1,191 @@
+{
+	"solo": "Solo",
+	"addExpense": "Agregar gasto",
+	"tabs": {
+		"expenses": "Gastos",
+		"summary": "Resumen",
+		"people": "Personas"
+	},
+	"unavailable": {
+		"title": "No se pudo cargar este proyecto",
+		"hint": "Revisa tu conexión e inténtalo de nuevo.",
+		"retry": "Reintentar"
+	},
+	"hero": {
+		"spent": "Gastado",
+		"groupTotal": "Total del grupo",
+		"count": "{count, plural, one {# gasto} other {# gastos}}",
+		"yourShare": "Tu parte",
+		"left": "Quedan <amount></amount>",
+		"over": "<amount></amount> por encima del presupuesto",
+		"ofBudget": "de <amount></amount>",
+		"budgetUsed": "Presupuesto usado"
+	},
+	"expenses": {
+		"label": "Gastos",
+		"filters": "Filtrar gastos",
+		"search": "Buscar gastos",
+		"toReview": "Para revisar · {count}",
+		"paidBy": "Pagó {name}",
+		"paidByYou": "Pagaste tú",
+		"paidByGroup": "Pagado por",
+		"you": "Tú",
+		"clear": "Borrar filtros",
+		"noMatch": "Ningún gasto coincide",
+		"empty": "Todavía no hay gastos",
+		"emptySolo": "Agrega el primer gasto para empezar a seguir este proyecto.",
+		"emptyShared": "Agrega el primer gasto y luego a las personas con quienes lo compartes.",
+		"add": "Agregar gasto",
+		"count": "{count, plural, one {# gasto} other {# gastos}}",
+		"shownOf": "{shown} de {count, plural, one {# gasto} other {# gastos}}"
+	},
+	"summary": {
+		"you": "Tú",
+		"youObject": "ti",
+		"empty": "Todavía no hay nada que resumir",
+		"emptyHint": "Lo que gastó cada persona y cada categoría aparece después del primer gasto.",
+		"whoPaidWhat": "Quién pagó qué",
+		"paid": "Pagó",
+		"share": "Parte",
+		"addsUp": "Ambos suman el total del grupo, <amount></amount>.",
+		"doesNotAddUp": "Algunas partes no suman su gasto, así que lo pagado y las partes difieren del total del grupo.",
+		"settleUp": "Saldar",
+		"whoPaysWhom": "Quién le paga a quién",
+		"even": "Todos están a mano en este proyecto.",
+		"betweenYou": "entre ustedes",
+		"betweenThem": "entre ellos",
+		"pays": "{from} le paga a {to}",
+		"youPay": "Tú le pagas a {to}",
+		"youAndEach": "Tú y cada persona",
+		"settleAll": "Saldar todo",
+		"roles": {
+			"ORGANIZER": "Dueño",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Miembro",
+			"VIEWER": "Lector"
+		},
+		"byCategory": "Por categoría",
+		"byCategoryGroup": "Lo que gastamos, por categoría",
+		"group": "Grupo",
+		"yours": "Lo tuyo",
+		"uncategorized": "Otros",
+		"payments": "Pagos en este proyecto",
+		"noPayments": "Todavía no hay pagos.",
+		"paidTo": "{from} le pagó a {to}"
+	},
+	"people": {
+		"title": "Personas",
+		"add": "Agregar persona",
+		"you": "Tú",
+		"membersAndSettings": "Miembros y ajustes",
+		"since": "desde {date}",
+		"left": "se fue el {date}",
+		"roles": {
+			"ORGANIZER": "Dueño",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Miembro",
+			"VIEWER": "Lector"
+		}
+	},
+	"toast": {
+		"exportFailed": "No se pudo exportar",
+		"accepted": "Aceptaste tu parte de {name}"
+	},
+	"preview": {
+		"checking": "Revisando qué cambia",
+		"changes": "Qué cambia",
+		"nothing": "Nada",
+		"stays": "Qué queda igual",
+		"noChange": "sin cambios",
+		"unavailable": "sin revisar, falta una cotización",
+		"figures": {
+			"project_total": "Total del grupo",
+			"project_member_balance": "{name} en el grupo",
+			"project_member_share": "Parte de {name}",
+			"project_member_paid": "{name} pagó",
+			"owed_owedToYou": "Te deben",
+			"owed_youOwe": "Debes",
+			"balance_person": "Tú y {name}"
+		}
+	},
+	"settleAll": {
+		"title": "Saldar todo",
+		"submit": "{count, plural, =0 {Registrar pagos} one {Registrar # pago} other {Registrar # pagos}}",
+		"done": "{count, plural, one {# pago registrado} other {# pagos registrados}}",
+		"even": "Todos están a mano contigo en este proyecto.",
+		"payments": "Pagos a registrar",
+		"someone": "Alguien",
+		"paysYou": "{name} te paga",
+		"youPay": "Le pagas a {name}",
+		"recordedAsPaid": "Queda registrado como pagado a ti",
+		"theyConfirm": "{name} lo confirma",
+		"finalNow": "Queda firme en el acto"
+	},
+	"addPerson": {
+		"title": "Agregar persona a {project}",
+		"submit": "Agregar al proyecto",
+		"name": "Nombre",
+		"namePlaceholder": "Sol García",
+		"nameMissing": "Escribe un nombre",
+		"known": "Personas con quienes compartes",
+		"email": "Correo (opcional)",
+		"emailPlaceholder": "sol@ejemplo.com",
+		"emailHint": "Si está en Retrospend, se vincula; si no, recibe una invitación.",
+		"joins": "Se suma a {project} el",
+		"joinsHint": "Los gastos anteriores a este día quedan como están. Los nuevos pueden incluirle.",
+		"added": "{name} se suma a {project} el {date}"
+	},
+	"settings": {
+		"title": "Ajustes del proyecto",
+		"submit": "Guardar",
+		"name": "Nombre",
+		"note": "Nota (opcional)",
+		"budget": "Moneda y presupuesto",
+		"budgetHint": "El presupuesto es opcional. Los gastos en otras monedas no cuentan para él.",
+		"autoAccept": "Las partes nuevas cuentan sin revisión",
+		"exclude": "Dejar este proyecto fuera de mis estadísticas",
+		"members": "Miembros",
+		"dates": "Fechas",
+		"since": "Desde {date}",
+		"fromStart": "Desde el inicio",
+		"left": "Se fue el {date}",
+		"you": "{name} (tú)",
+		"datesHint": "Las fechas eligen a quién incluyen los gastos nuevos. Los gastos guardados mantienen su reparto.",
+		"saved": "Ajustes del proyecto guardados"
+	},
+	"dates": {
+		"title": "Fechas de {name}",
+		"submit": "Guardar fechas",
+		"joined": "Se sumó",
+		"left": "Se fue",
+		"fromStart": "Desde el inicio",
+		"stillHere": "Sigue",
+		"onADay": "Un día",
+		"order": "El día de salida tiene que ser posterior al de entrada.",
+		"leaves": "Desde el {date}, los gastos nuevos dejan fuera a {name} por defecto.",
+		"joins": "Desde el {date}, los gastos nuevos incluyen a {name} por defecto.",
+		"always": "Los gastos nuevos incluyen a {name} por defecto.",
+		"saved": "Fechas de {name} guardadas",
+		"you": "Tú"
+	},
+	"share": {
+		"title": "Compartir",
+		"links": "Enlaces de invitación",
+		"copy": "Copiar",
+		"newLink": "Enlace nuevo",
+		"turnOff": "Desactivar",
+		"create": "Crear enlace",
+		"on": "Cualquiera con el enlace puede sumarse",
+		"off": "Desactivado",
+		"roles": {
+			"CONTRIBUTOR": "Puede agregar gastos",
+			"VIEWER": "Puede ver"
+		},
+		"public": "Página pública",
+		"publicHint": "Quien tenga la dirección ve los totales y los gastos, nunca saldos ni correos.",
+		"copyPublic": "Copiar dirección de la página",
+		"copied": "Enlace copiado",
+		"nowPublic": "La página del proyecto es pública",
+		"nowPrivate": "La página del proyecto es privada"
+	}
+}
