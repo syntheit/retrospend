@@ -20,6 +20,7 @@ import type { RecurringView } from "~/server/services/recurring-view.service";
 import { ActivityTabs } from "../activity/activity-tabs";
 import { PageFrame } from "../activity/page-frame";
 import { toTransactionVM } from "../activity/to-vm";
+import { ConfirmSheet } from "./confirm-sheet";
 import { groupsOf, matches, type RecurringChips } from "./groups";
 import { RecurringList } from "./recurring-list";
 import { RecurringSummary } from "./recurring-summary";
@@ -32,7 +33,10 @@ const NO_CHIPS: RecurringChips = {
 	foreign: false,
 };
 
-/** This month's entries logged by auto-pay, linking to Activity. */
+/**
+ * This month's entries logged from recurring expenses, by auto-pay or by a
+ * Confirm (rows do not record which), linking to Activity.
+ */
 function Logged({ view }: { view: RecurringView }) {
 	const t = useTranslations("activityRecurring");
 	if (!view.logged.length) return null;
@@ -80,6 +84,7 @@ export function RecurringPage() {
 	const [q, setQ] = useState("");
 	const [chips, setChips] = useState<RecurringChips>(NO_CHIPS);
 	const data = r.view.data;
+	const confirming = r.confirming;
 	const groups = useMemo(() => {
 		if (!data) return [];
 		const shown = data.items.filter((x) =>
@@ -144,7 +149,7 @@ export function RecurringPage() {
 			groups,
 			today: data.today,
 			handlersFor: r.handlersFor,
-			onConfirm: r.confirmOne,
+			onConfirm: r.askConfirm,
 			onOpen: (x: { id: string }) => r.edit(x.id),
 		};
 		body = (
@@ -199,6 +204,16 @@ export function RecurringPage() {
 					<RecurringTable {...list} onAutoPay={r.setAutoPay} />
 				)}
 				<Logged view={data} />
+				{confirming && (
+					<ConfirmSheet
+						item={confirming}
+						onConfirm={() => r.book(confirming)}
+						onOpenChange={(open) => {
+							if (!open) r.closeConfirm();
+						}}
+						today={data.today}
+					/>
+				)}
 			</>
 		);
 	}

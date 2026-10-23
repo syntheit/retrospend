@@ -11,15 +11,16 @@ import { CategoryTile } from "~/components/ui/category-badge";
 import { StatusDot } from "~/components/ui/status-dot";
 import { cn } from "~/lib/cn";
 import type { RecurringItemDTO } from "~/server/services/recurring-view.service";
-import { isDue, type RecurringGroup } from "./groups";
+import type { RecurringGroup } from "./groups";
 import { categoryOf } from "./item-vm";
 import { RecurringMoney } from "./recurring-table";
-import { targetOf } from "./use-recurring";
+import { canConfirm, targetOf } from "./use-recurring";
 
 type Props = {
 	groups: RecurringGroup[];
 	today: string;
 	handlersFor: (r: RecurringItemDTO) => ActionHandlers<RecurringTarget>;
+	/** Opens the confirm step. */
 	onConfirm: (r: RecurringItemDTO) => void;
 	onOpen: (r: RecurringItemDTO) => void;
 };
@@ -28,7 +29,8 @@ type Props = {
  * Phone: one section per group, the Row anatomy with the due state in
  * words and the auto-pay line (recurring.html phone rows). Confirm, Skip
  * and the rest live in the registry menu and long press (R13); a tap on a
- * due item confirms, otherwise it edits.
+ * due item opens the confirm step (amount and date first, R30), otherwise
+ * it edits.
  */
 export function RecurringList(p: Props) {
 	const t = useTranslations("activityRecurring");
@@ -76,7 +78,8 @@ export function RecurringList(p: Props) {
 										lead={<CategoryTile category={categoryOf(r, t("other"))} />}
 										open={{
 											label: r.title,
-											onOpen: () => (isDue(r) ? p.onConfirm(r) : p.onOpen(r)),
+											onOpen: () =>
+												canConfirm(r) ? p.onConfirm(r) : p.onOpen(r),
 										}}
 										sub={
 											<>

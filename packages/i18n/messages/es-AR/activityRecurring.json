@@ -57,20 +57,26 @@
 		"period": "Período",
 		"monthly": "Mensual",
 		"quarterly": "Trimestral",
-		"yearly": "Anual"
+		"yearly": "Anual",
+		"shared": "En las cuentas compartidas cuenta tu parte."
 	},
 	"logged": {
-		"title": "Registrados por débito automático",
+		"title": "Registrado este mes",
 		"see": "Ver en Actividad"
 	},
 	"actions": {
-		"failed": "No se pudo guardar el cambio",
 		"paused": "Pausaste {name}",
 		"resumed": "Reanudaste {name}",
 		"autoPayOn": "Débito automático activado para {name}",
 		"autoPayOff": "Débito automático desactivado para {name}",
 		"logged": "Registraste {name}",
-		"deleted": "Borraste {name}"
+		"deleted": "Borraste {name}",
+		"error": {
+			"conflict": "Ya está registrado para esta fecha.",
+			"gone": "Este gasto recurrente ya no existe.",
+			"forbidden": "No podés cambiar este gasto recurrente.",
+			"other": "No se pudo guardar el cambio"
+		}
 	},
 	"empty": {
 		"title": "No tenés gastos recurrentes",
@@ -82,5 +88,15 @@
 	"error": {
 		"load": "No se pudieron cargar tus gastos recurrentes.",
 		"retry": "Probá de nuevo"
+	},
+	"confirmSheet": {
+		"title": "Confirmar {name}",
+		"description": "Se registra como pagado el {date}.",
+		"submit": "Confirmar",
+		"changes": "Qué cambia",
+		"entry": "Nuevo gasto el {date}",
+		"next": "Próximo vencimiento",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nada más cambia: el monto sigue igual la próxima vez."
 	}
 }

@@ -57,20 +57,26 @@
 		"period": "Période",
 		"monthly": "Mensuel",
 		"quarterly": "Trimestriel",
-		"yearly": "Annuel"
+		"yearly": "Annuel",
+		"shared": "Pour les factures partagées, ta part compte."
 	},
 	"logged": {
-		"title": "Enregistrées par paiement auto",
+		"title": "Enregistré ce mois-ci",
 		"see": "Voir dans Activité"
 	},
 	"actions": {
-		"failed": "Impossible d'enregistrer la modification",
 		"paused": "{name} en pause",
 		"resumed": "{name} reprise",
 		"autoPayOn": "Paiement auto activé pour {name}",
 		"autoPayOff": "Paiement auto désactivé pour {name}",
 		"logged": "{name} enregistrée",
-		"deleted": "{name} supprimée"
+		"deleted": "{name} supprimée",
+		"error": {
+			"conflict": "Déjà enregistré pour cette date.",
+			"gone": "Cette dépense récurrente n'existe plus.",
+			"forbidden": "Tu ne peux pas modifier cette dépense récurrente.",
+			"other": "Impossible d'enregistrer la modification"
+		}
 	},
 	"empty": {
 		"title": "Aucune dépense récurrente",
@@ -82,5 +88,15 @@
 	"error": {
 		"load": "Impossible de charger tes dépenses récurrentes.",
 		"retry": "Réessayer"
+	},
+	"confirmSheet": {
+		"title": "Confirmer {name}",
+		"description": "Enregistrée comme payée le {date}.",
+		"submit": "Confirmer",
+		"changes": "Ce qui change",
+		"entry": "Nouvelle dépense le {date}",
+		"next": "Prochaine échéance",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Rien d'autre ne change : le montant reste le même la prochaine fois."
 	}
 }

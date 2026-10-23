@@ -57,20 +57,26 @@
 		"period": "Period",
 		"monthly": "Monthly",
 		"quarterly": "Quarterly",
-		"yearly": "Yearly"
+		"yearly": "Yearly",
+		"shared": "Shared bills count your share."
 	},
 	"logged": {
-		"title": "Logged by auto-pay",
+		"title": "Logged this month",
 		"see": "See in Activity"
 	},
 	"actions": {
-		"failed": "Couldn't save that change",
 		"paused": "Paused {name}",
 		"resumed": "Resumed {name}",
 		"autoPayOn": "Auto-pay on for {name}",
 		"autoPayOff": "Auto-pay off for {name}",
 		"logged": "Logged {name}",
-		"deleted": "Deleted {name}"
+		"deleted": "Deleted {name}",
+		"error": {
+			"conflict": "Already logged for this date.",
+			"gone": "This recurring expense no longer exists.",
+			"forbidden": "You can't change this recurring expense.",
+			"other": "Couldn't save that change"
+		}
 	},
 	"empty": {
 		"title": "No recurring expenses",
@@ -82,5 +88,15 @@
 	"error": {
 		"load": "Couldn't load your recurring expenses.",
 		"retry": "Try again"
+	},
+	"confirmSheet": {
+		"title": "Confirm {name}",
+		"description": "Logs it as paid on {date}.",
+		"submit": "Confirm",
+		"changes": "What this changes",
+		"entry": "New expense on {date}",
+		"next": "Next due",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nothing else changes: the amount stays the same next time."
 	}
 }

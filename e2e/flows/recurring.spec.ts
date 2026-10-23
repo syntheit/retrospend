@@ -103,16 +103,32 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 	const audit = new FigureAudit(viewFetcher(page));
 	expect(await audit.checkPage(page, "recurring")).toEqual([]);
 
-	// A due one has Confirm on the row; confirming books it and moves it on.
+	// Enter on a focused row opens it like a click (today's edit modal).
+	await row.focus();
+	await page.keyboard.press("Enter");
+	await expect(page.getByRole("dialog")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("dialog")).toBeHidden();
+
+	// A due one has Confirm on the row. It names the amount and date first,
+	// then books it and moves it on.
 	await dueTemplate(page, "Seguro de la bici");
 	await page.reload();
 	const due = main
 		.locator("tr[data-id]")
 		.filter({ hasText: "Seguro de la bici" });
 	await expect(due).toContainText("Overdue since");
+	await due.getByRole("button", { name: "Confirm" }).click();
+	const sheet = page.getByRole("dialog", {
+		name: "Confirm Seguro de la bici",
+	});
+	await expect(sheet).toBeVisible();
+	await expect(sheet.locator("[data-confirm=entry]")).toContainText("9,000");
+	await expect(sheet.locator("[data-confirm=next]")).toBeVisible();
 	await untilSaved(page, "recurring.confirmAndCreate", () =>
-		due.getByRole("button", { name: "Confirm" }).click(),
+		sheet.getByRole("button", { name: "Confirm", exact: true }).click(),
 	);
+	await expect(sheet).toBeHidden();
 	await expect(due).not.toContainText("Overdue since");
 	await expect(due.getByRole("button", { name: "Confirm" })).toHaveCount(0);
 	expect(errors, "uncaught page errors").toEqual([]);

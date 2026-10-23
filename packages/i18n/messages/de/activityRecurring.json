@@ -57,20 +57,26 @@
 		"period": "Zeitraum",
 		"monthly": "Monatlich",
 		"quarterly": "Vierteljährlich",
-		"yearly": "Jährlich"
+		"yearly": "Jährlich",
+		"shared": "Bei geteilten Rechnungen zählt dein Anteil."
 	},
 	"logged": {
-		"title": "Per Auto-Zahlung erfasst",
+		"title": "Diesen Monat erfasst",
 		"see": "In Aktivität ansehen"
 	},
 	"actions": {
-		"failed": "Die Änderung konnte nicht gespeichert werden",
 		"paused": "{name} pausiert",
 		"resumed": "{name} fortgesetzt",
 		"autoPayOn": "Auto-Zahlung an für {name}",
 		"autoPayOff": "Auto-Zahlung aus für {name}",
 		"logged": "{name} erfasst",
-		"deleted": "{name} gelöscht"
+		"deleted": "{name} gelöscht",
+		"error": {
+			"conflict": "Für dieses Datum schon erfasst.",
+			"gone": "Diese wiederkehrende Ausgabe gibt es nicht mehr.",
+			"forbidden": "Du kannst diese wiederkehrende Ausgabe nicht ändern.",
+			"other": "Änderung konnte nicht gespeichert werden"
+		}
 	},
 	"empty": {
 		"title": "Keine wiederkehrenden Ausgaben",
@@ -82,5 +88,15 @@
 	"error": {
 		"load": "Deine wiederkehrenden Ausgaben konnten nicht geladen werden.",
 		"retry": "Erneut versuchen"
+	},
+	"confirmSheet": {
+		"title": "{name} bestätigen",
+		"description": "Wird als am {date} bezahlt erfasst.",
+		"submit": "Bestätigen",
+		"changes": "Was sich ändert",
+		"entry": "Neue Ausgabe am {date}",
+		"next": "Nächste Fälligkeit",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Sonst ändert sich nichts: Der Betrag bleibt beim nächsten Mal gleich."
 	}
 }

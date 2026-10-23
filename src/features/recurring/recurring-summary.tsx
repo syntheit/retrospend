@@ -56,7 +56,8 @@ export function RecurringSummary({
 				)}
 				{income && (
 					<> {t.rich("income", { amount: () => amount(income, "in") })}</>
-				)}
+				)}{" "}
+				<span className="text-fg-3 text-meta">{t("shared")}</span>
 			</p>
 			<Segmented
 				label={t("period")}
