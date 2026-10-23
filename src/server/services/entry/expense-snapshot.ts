@@ -9,7 +9,13 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 
 type Tx = Prisma.TransactionClient;
-type Cell = string | number | boolean | null | { $dec: string } | { $date: string };
+type Cell =
+	| string
+	| number
+	| boolean
+	| null
+	| { $dec: string }
+	| { $date: string };
 export type Row = Record<string, Cell>;
 
 export interface ExpenseSnapshot {
@@ -53,7 +59,10 @@ export async function snapshotExpense(
 		where: { userId, OR: [{ id }, { parentId: id }] },
 		orderBy: { isAmortizedChild: "asc" },
 	});
-	return { userId, rows: rows.map((r) => pack(r as unknown as Record<string, unknown>)) };
+	return {
+		userId,
+		rows: rows.map((r) => pack(r as unknown as Record<string, unknown>)),
+	};
 }
 
 /** Puts the rows back. A category or template deleted since is dropped, not invented. */
@@ -64,13 +73,21 @@ export async function restoreExpense(
 ): Promise<string> {
 	const rows = snapshot.rows.map(unpack);
 	const first = rows[0];
-	if (snapshot.userId !== userId || !first || rows.some((r) => r.userId !== userId)) {
+	if (
+		snapshot.userId !== userId ||
+		!first ||
+		rows.some((r) => r.userId !== userId)
+	) {
 		throw new TRPCError({ code: "FORBIDDEN", message: "Expense not found" });
 	}
-	const ids = (key: "categoryId" | "recurringTemplateId") =>
-		[...new Set(rows.map((r) => r[key]).filter((v): v is string => !!v))];
+	const ids = (key: "categoryId" | "recurringTemplateId") => [
+		...new Set(rows.map((r) => r[key]).filter((v): v is string => !!v)),
+	];
 	const [cats, templates] = await Promise.all([
-		tx.category.findMany({ where: { userId, id: { in: ids("categoryId") } }, select: { id: true } }),
+		tx.category.findMany({
+			where: { userId, id: { in: ids("categoryId") } },
+			select: { id: true },
+		}),
 		tx.recurringTemplate.findMany({
 			where: { userId, id: { in: ids("recurringTemplateId") } },
 			select: { id: true },

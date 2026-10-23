@@ -133,7 +133,8 @@ export const deleteExpenseEntry: MoneyMutation<{ id: string }, DeletedExpense> =
 				// A transfer's fee: it goes with its transfer.
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "This expense moved money in an account. Undo it from its transfer.",
+					message:
+						"This expense moved money in an account. Undo it from its transfer.",
 				});
 			}
 			const snapshot = await snapshotExpense(tx, actor.userId, input.id);
