@@ -23,15 +23,22 @@ export interface AppSettings {
 	updatedAt: Date;
 }
 
-let cachedSettings: { data: AppSettings; expiry: number } | null = null;
+// Next bundles route handlers and pages separately, each with its own copy
+// of this module, so a module-level cache let an admin write refresh only
+// the copy that served it: pages kept the old flags for up to a minute. The
+// cache lives on globalThis, one per server process, like the Prisma client.
+const cache = globalThis as unknown as {
+	retrospendAppSettings?: { data: AppSettings; expiry: number };
+};
 
 /**
  * Get the current app settings, creating default settings if none exist.
  * Results are cached in-memory for 60 seconds.
  */
 export async function getAppSettings(): Promise<AppSettings> {
-	if (cachedSettings && Date.now() < cachedSettings.expiry) {
-		return cachedSettings.data;
+	const cached = cache.retrospendAppSettings;
+	if (cached && Date.now() < cached.expiry) {
+		return cached.data;
 	}
 
 	const settings = await db.appSettings.upsert({
@@ -45,7 +52,10 @@ export async function getAppSettings(): Promise<AppSettings> {
 		},
 	});
 
-	cachedSettings = { data: settings, expiry: Date.now() + CACHE_TTL_MS };
+	cache.retrospendAppSettings = {
+		data: settings,
+		expiry: Date.now() + CACHE_TTL_MS,
+	};
 	return settings;
 }
 
@@ -83,7 +93,10 @@ export async function updateAppSettings(updates: {
 		},
 	});
 
-	cachedSettings = { data: settings, expiry: Date.now() + CACHE_TTL_MS };
+	cache.retrospendAppSettings = {
+		data: settings,
+		expiry: Date.now() + CACHE_TTL_MS,
+	};
 	return settings;
 }
 
