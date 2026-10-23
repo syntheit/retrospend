@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Archivar"
+		},
+		"addIncome": {
+			"label": "Añadir un ingreso aquí"
+		},
+		"reopen": {
+			"label": "Reabrir"
+		},
+		"close": {
+			"label": "Cerrar cuenta"
+		},
+		"delete": {
+			"label": "Eliminar definitivamente",
+			"confirmTitle": "¿Eliminar {name} definitivamente?",
+			"confirmBody": "Se eliminan la cuenta y todo su historial de saldos, y también cambia tu patrimonio pasado. Para conservar el historial, cierra la cuenta.",
+			"confirmButton": "Eliminar definitivamente"
 		}
 	},
 	"recurring": {
@@ -103,6 +118,79 @@
 			"confirmTitle": "¿Eliminar {name}?",
 			"confirmBody": "Los próximos se detienen; los gastos pasados quedan.",
 			"confirmButton": "Eliminar gasto recurrente"
+		}
+	},
+	"category": {
+		"edit": {
+			"label": "Nombre, icono y color"
+		},
+		"exclude": {
+			"label": "Dejar los gastos nuevos fuera de los totales"
+		},
+		"include": {
+			"label": "Contar los gastos nuevos en los totales"
+		},
+		"delete": {
+			"label": "Eliminar"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Editar"
+		},
+		"makePrimary": {
+			"label": "Hacer principal"
+		},
+		"showPublic": {
+			"label": "Hacer público"
+		},
+		"showContacts": {
+			"label": "Mostrar solo a contactos"
+		},
+		"showSettlement": {
+			"label": "Mostrar solo al liquidar"
+		},
+		"moveUp": {
+			"label": "Subir"
+		},
+		"moveDown": {
+			"label": "Bajar"
+		},
+		"remove": {
+			"label": "Quitar"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Revocar clave",
+			"confirmTitle": "¿Revocar {name}?",
+			"confirmBody": "Todo lo que use esta clave dejará de funcionar al instante.",
+			"confirmButton": "Revocar clave"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Desconectar",
+			"confirmTitle": "¿Desconectar {name}?",
+			"confirmBody": "Su sesión se cierra al instante y necesitará un código nuevo para volver a conectarse.",
+			"confirmButton": "Desconectar dispositivo"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convertir"
+		},
+		"favorite": {
+			"label": "Añadir a favoritas"
+		},
+		"unfavorite": {
+			"label": "Quitar de favoritas"
+		},
+		"copy": {
+			"label": "Copiar tipo de cambio"
+		},
+		"history": {
+			"label": "Ver historial del tipo de cambio"
 		}
 	}
 }

@@ -12,6 +12,7 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { dayKey, startOfDayIn, startOfNextDayIn } from "~/lib/time-zone";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import { AmortizationService } from "./amortization.service";
+import { listedEntryWhere } from "./spending";
 
 /**
  * Stored rate and USD amount of an imported row. A rate in the file wins
@@ -100,7 +101,7 @@ export class CsvService {
 	async exportExpensesAsCsv(userId: string, expenseIds?: string[]) {
 		const expenses = await this.db.expense.findMany({
 			where: {
-				userId: userId,
+				...listedEntryWhere(userId),
 				status: "FINALIZED",
 				isAmortizedChild: false, // Only export parents, not children
 				...(expenseIds ? { id: { in: expenseIds } } : {}),
@@ -210,7 +211,8 @@ export class CsvService {
 				? []
 				: await this.db.expense.findMany({
 						where: {
-							userId: userId,
+							// Money in never blocks an imported expense as a duplicate.
+							...listedEntryWhere(userId),
 							date: {
 								gte: startOfDayIn(new Date(Math.min(...times)), tz),
 								lt: startOfNextDayIn(new Date(Math.max(...times)), tz),
@@ -234,7 +236,9 @@ export class CsvService {
 		const rateFor = await findExchangeRatesForDates(
 			this.db,
 			rows
-				.filter((r) => !isValidRate(r.exchangeRate) && !isValidRate(r.amountInUSD))
+				.filter(
+					(r) => !isValidRate(r.exchangeRate) && !isValidRate(r.amountInUSD),
+				)
 				.map((r) => r.currency.toUpperCase()),
 		);
 
@@ -280,10 +284,7 @@ export class CsvService {
 				continue;
 			}
 
-			const { exchangeRate, amountInUSD } = resolveImportRate(
-				row,
-				rateFor,
-			);
+			const { exchangeRate, amountInUSD } = resolveImportRate(row, rateFor);
 
 			const categoryId =
 				row.categoryId && categoryExcludes.has(row.categoryId)
@@ -314,29 +315,35 @@ export class CsvService {
 
 		// Batch create all non-amortized rows in one call
 		if (batchRows.length > 0) {
-			await this.runInTransaction(userId, async (tx: Prisma.TransactionClient) => {
-				await tx.expense.createMany({
-					data: batchRows.map((r) => buildExpenseData(r)),
-				});
-			});
+			await this.runInTransaction(
+				userId,
+				async (tx: Prisma.TransactionClient) => {
+					await tx.expense.createMany({
+						data: batchRows.map((r) => buildExpenseData(r)),
+					});
+				},
+			);
 			totalCreated += batchRows.length;
 		}
 
 		// Process amortized rows in a single transaction (each is independent)
 		if (amortizedRows.length > 0) {
-			await this.runInTransaction(userId, async (tx: Prisma.TransactionClient) => {
-				const amortizationService = new AmortizationService(tx);
-				for (const r of amortizedRows) {
-					const duration = r.data.amortizeDuration!;
-					const expense = await tx.expense.create({
-						data: {
-							...buildExpenseData(r),
-							isAmortizedParent: true,
-						},
-					});
-					await amortizationService.syncAmortization(expense, duration);
-				}
-			});
+			await this.runInTransaction(
+				userId,
+				async (tx: Prisma.TransactionClient) => {
+					const amortizationService = new AmortizationService(tx);
+					for (const r of amortizedRows) {
+						const duration = r.data.amortizeDuration!;
+						const expense = await tx.expense.create({
+							data: {
+								...buildExpenseData(r),
+								isAmortizedParent: true,
+							},
+						});
+						await amortizationService.syncAmortization(expense, duration);
+					}
+				},
+			);
 			totalCreated += amortizedRows.reduce(
 				(sum, r) => sum + 1 + r.data.amortizeDuration!,
 				0,

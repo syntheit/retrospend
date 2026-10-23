@@ -1,0 +1,378 @@
+{
+	"title": "Configuración",
+	"autosaveNote": "Los cambios se guardan automáticamente",
+	"back": "Inicio",
+	"sections": {
+		"label": "Secciones de configuración",
+		"profile": "Perfil",
+		"preferences": "Preferencias",
+		"categories": "Categorías",
+		"payment": "Medios de pago",
+		"notifications": "Notificaciones",
+		"security": "Seguridad",
+		"developer": "Desarrollador",
+		"data": "Datos",
+		"danger": "Zona de peligro"
+	},
+	"autosave": {
+		"saved": "Guardado",
+		"failed": "No se pudo guardar el cambio"
+	},
+	"states": {
+		"unavailable": "No se pudo cargar esta sección",
+		"retry": "Reintentar"
+	},
+	"profile": {
+		"title": "Perfil",
+		"uploadPhoto": "Subir foto",
+		"removePhoto": "Quitar",
+		"photoHint": "JPEG, PNG, WebP o GIF, hasta 5 MB",
+		"cropTitle": "Recortá tu foto",
+		"removePhotoTitle": "¿Querés quitar tu foto?",
+		"removePhotoBody": "Los demás van a ver tus iniciales en su lugar.",
+		"removePhotoConfirm": "Quitar foto",
+		"photoUpdated": "Foto actualizada",
+		"photoRemoved": "Foto quitada",
+		"photoTooLarge": "Ese archivo pesa más de 5 MB",
+		"photoUploadFailed": "No se pudo subir la foto",
+		"photoRemoveFailed": "No se pudo quitar la foto",
+		"displayName": "Nombre para mostrar",
+		"username": "Nombre de usuario",
+		"usernameHint": "Un cambio cada 30 días",
+		"nameRequired": "Tu nombre no puede estar vacío",
+		"nameSaved": "Nombre guardado",
+		"usernameInvalid": "Usá solo letras y números",
+		"changeUsernameTitle": "¿Querés cambiar tu nombre de usuario a @{username}?",
+		"changeUsernameBody": "Vas a poder cambiarlo de nuevo en 30 días. @{old} queda reservado para vos durante 90 días.",
+		"changeUsername": "Cambiar nombre de usuario",
+		"keepUsername": "Dejarlo así",
+		"usernameSaved": "Tu nombre de usuario ahora es @{username}",
+		"usernameTaken": "Ese nombre de usuario ya está en uso",
+		"usernameTooSoon": "Podés cambiar tu nombre de usuario una vez cada 30 días",
+		"email": "Email",
+		"unverified": "Sin verificar",
+		"changeEmail": "Cambiar email",
+		"publicProfile": "Perfil público",
+		"copyLink": "Copiar enlace",
+		"viewProfile": "Ver",
+		"background": "Fondo",
+		"linkCopied": "Enlace copiado",
+		"copyFailed": "No se pudo copiar el enlace",
+		"pendingEmail": "Esperando que confirmes {email}. Te mandamos un enlace.",
+		"cancelChange": "Cancelar cambio",
+		"emailChangeCanceled": "Cambio de email cancelado",
+		"emailCancelFailed": "No se pudo cancelar el cambio de email"
+	},
+	"email": {
+		"title": "Cambiar email",
+		"newEmail": "Nuevo email",
+		"placeholder": "nombre@ejemplo.com",
+		"password": "Contraseña actual",
+		"send": "Enviar confirmación",
+		"sent": "Confirmación enviada a {email}",
+		"changed": "Tu email ahora es {email}"
+	},
+	"background": {
+		"title": "Fondo del perfil",
+		"symbols": "Símbolos",
+		"symbol": {
+			"currency": "Monedas",
+			"math": "Matemática",
+			"finance": "Finanzas"
+		},
+		"color": "Color",
+		"colors": {
+			"gray": "Gris",
+			"green": "Verde",
+			"blue": "Azul",
+			"purple": "Violeta",
+			"orange": "Naranja",
+			"gold": "Dorado"
+		},
+		"density": "Densidad",
+		"densities": {
+			"sparse": "Baja",
+			"medium": "Media",
+			"dense": "Alta"
+		},
+		"motion": "Movimiento",
+		"motions": {
+			"static": "Quieto",
+			"float": "Flotar",
+			"pulse": "Pulso"
+		},
+		"opacity": "Opacidad",
+		"opacities": {
+			"subtle": "Tenue",
+			"medium": "Media",
+			"bold": "Intensa"
+		}
+	},
+	"preferences": {
+		"money": "Dinero",
+		"display": "Visualización",
+		"defaults": "Valores predeterminados",
+		"homeCurrency": "Moneda principal",
+		"homeCurrencyMeta": "Los totales y los informes la usan",
+		"homeCurrencySaved": "Tu moneda principal ahora es {code}",
+		"defaultCurrency": "Predeterminada para gastos nuevos",
+		"defaultCurrencySaved": "Los gastos nuevos arrancan en {code}",
+		"symbol": "Símbolo de moneda",
+		"symbolMeta": "Cómo se muestran las monedas extranjeras",
+		"symbolStandard": "Estándar",
+		"symbolNative": "Nativo",
+		"smart": "Formato inteligente",
+		"smartMeta": "Oculta los centavos en montos grandes",
+		"monthStart": "El mes empieza el día",
+		"monthStartMeta": "Este mes va del {start} al {end}",
+		"theme": "Tema",
+		"themeLight": "Claro",
+		"themeDark": "Oscuro",
+		"themeSystem": "Sistema",
+		"language": "Idioma",
+		"hideBalances": "Ocultar saldos en Patrimonio",
+		"hideBalancesMeta": "Hasta que toques el ojo",
+		"chartTap": "Al tocar una categoría en un gráfico",
+		"chartTapOpen": "Abre sus gastos",
+		"chartTapHide": "La oculta del gráfico",
+		"expenseDate": "Fecha para gastos nuevos",
+		"expenseDateToday": "Hoy",
+		"expenseDateLast": "La última usada",
+		"import": "Importación de resúmenes",
+		"importMeta": "Quién lee tus resúmenes bancarios",
+		"importLocal": "Local",
+		"importExternal": "Externa",
+		"importExternalLeft": "A la externa le quedan {count, number} tokens este mes"
+	},
+	"categories": {
+		"title": "Categorías",
+		"add": "Agregar categoría",
+		"empty": "Todavía no hay categorías",
+		"entries": "{count, plural, one {# gasto} other {# gastos}}",
+		"noEntries": "Sin gastos",
+		"excluded": "Los gastos nuevos quedan fuera de los totales",
+		"showAll": "Mostrar las {count} categorías",
+		"open": "Editar {name}",
+		"excludedSaved": "Los gastos nuevos de {name} quedan fuera de los totales",
+		"includedSaved": "Los gastos nuevos de {name} cuentan en los totales"
+	},
+	"payment": {
+		"title": "Medios de pago",
+		"add": "Agregar medio de pago",
+		"empty": "No hay medios de pago",
+		"emptyHint": "Agregá uno para que te puedan devolver la plata.",
+		"primary": "Principal",
+		"visibility": {
+			"PUBLIC": "Público",
+			"FRIENDS_ONLY": "Contactos",
+			"PAYMENT_ONLY": "Liquidación"
+		},
+		"added": "Se agregó {name}",
+		"removed": "Se quitó {name}",
+		"copyLink": "Copiar enlace",
+		"copyPayLink": "Copiar enlace de pago",
+		"copyProfileLink": "Copiar enlace del perfil",
+		"copyDonationLink": "Copiar enlace de donación",
+		"linkCopied": "Enlace copiado",
+		"copyFailed": "No se pudo copiar el enlace"
+	},
+	"notifications": {
+		"title": "Notificaciones",
+		"event": "Evento",
+		"channels": {
+			"inApp": "En la app",
+			"email": "Email",
+			"digestMode": "Resumen"
+		},
+		"switchLabel": "{channel}: {event}",
+		"digestHint": "El resumen manda un email por día en lugar de uno cada vez. Necesita Email.",
+		"events": {
+			"EXPENSE_SPLIT": "Alguien te agrega a una división",
+			"VERIFICATION_REQUEST": "Una división necesita que la revises",
+			"EXPENSE_EDITED": "Cambia un gasto compartido",
+			"EXPENSE_DELETED": "Se elimina un gasto compartido",
+			"SETTLEMENT_RECEIVED": "Un pago espera que lo confirmes",
+			"SETTLEMENT_CONFIRMED": "Se confirma un pago",
+			"SETTLEMENT_REJECTED": "Se rechaza un pago",
+			"PERIOD_CLOSED": "Se cierra un período de facturación",
+			"PARTICIPANT_ADDED": "Te agregan a un proyecto",
+			"PAYMENT_REMINDER": "Alguien te recuerda que pagues"
+		}
+	},
+	"security": {
+		"title": "Seguridad",
+		"password": "Contraseña",
+		"passwordMeta": "Si la cambiás, se cierra la sesión en tus otros dispositivos",
+		"changePassword": "Cambiar contraseña",
+		"twoFactor": "Autenticación de dos factores",
+		"twoFactorOn": "Activada, app de autenticación",
+		"twoFactorOff": "Desactivada",
+		"turnOn": "Activar",
+		"turnOff": "Desactivar",
+		"backupCodes": "Códigos de respaldo"
+	},
+	"password": {
+		"title": "Cambiar contraseña",
+		"current": "Contraseña actual",
+		"new": "Nueva contraseña",
+		"confirm": "Confirmá la nueva contraseña",
+		"rules": "Requisitos de la contraseña",
+		"check": {
+			"length": "8 caracteres o más",
+			"case": "Una letra minúscula y una mayúscula",
+			"number": "Un número"
+		},
+		"met": "listo",
+		"notMet": "todavía no",
+		"mismatch": "Las contraseñas nuevas no coinciden",
+		"submit": "Actualizar contraseña",
+		"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos."
+	},
+	"twoFactor": {
+		"onTitle": "Activar la autenticación de dos factores",
+		"offTitle": "Desactivar la autenticación de dos factores",
+		"offBody": "Para iniciar sesión solo vas a necesitar tu contraseña.",
+		"password": "Contraseña",
+		"continue": "Continuar",
+		"scan": "Escaneá con tu app de autenticación o ingresá",
+		"code": "Código de 6 dígitos",
+		"verify": "Verificar",
+		"saveCodes": "Guardá estos códigos. Cada uno funciona una vez si perdés el celular.",
+		"saved": "Ya los guardé",
+		"turnedOn": "Autenticación de dos factores activada",
+		"turnedOff": "Autenticación de dos factores desactivada",
+		"turnOff": "Desactivar",
+		"cancel": "Cancelar",
+		"wrongCode": "Ese código no funcionó",
+		"failed": "No se pudo completar. Intentá de nuevo.",
+		"codesTitle": "Códigos de respaldo",
+		"codesBody": "Tus códigos se muestran una sola vez, cuando se crean. Creá un juego nuevo para volver a verlos; los anteriores dejan de funcionar.",
+		"makeCodes": "Crear códigos nuevos",
+		"newCodesMade": "Códigos nuevos creados. Los anteriores ya no funcionan.",
+		"done": "Listo",
+		"codesLabel": "Códigos de respaldo",
+		"codesHint": "Cada código funciona una vez. Usá uno al iniciar sesión si perdés el celular.",
+		"copy": "Copiar",
+		"download": "Descargar",
+		"codesCopied": "Códigos copiados",
+		"copyFailed": "No se pudieron copiar los códigos",
+		"fileHeader": "Códigos de respaldo de Retrospend. Cada código funciona una vez."
+	},
+	"developer": {
+		"title": "Desarrollador",
+		"newKey": "Nueva clave de API",
+		"keys": "Claves de API",
+		"noKeys": "No hay claves de API",
+		"noKeysHint": "Los scripts y las integraciones usan una clave para acceder a tus datos.",
+		"revoked": "Se revocó {name}",
+		"expiresOn": "Vence el {date}",
+		"expired": "Vencida",
+		"lastUsed": "Último uso: {date}",
+		"neverUsed": "Nunca usada",
+		"noScopes": "Sin acceso",
+		"scope": {
+			"read": "Lectura",
+			"write_expenses": "Gastos",
+			"write_money": "Dinero",
+			"write_settings": "Configuración",
+			"admin": "Administración"
+		},
+		"devices": "Dispositivos aprobados",
+		"noDevices": "No hay dispositivos aprobados",
+		"noDevicesHint": "Acá aparecen las apps que conectás con un código en /device.",
+		"approvedOn": "Aprobado el {date}",
+		"disconnected": "Se desconectó {name}",
+		"failed": "No se pudo completar. Intentá de nuevo.",
+		"newTitle": "Nueva clave de API",
+		"name": "Nombre",
+		"namePlaceholder": "Home Assistant, script de respaldo",
+		"expires": "Vence después de",
+		"expiry": {
+			"30": "30 días",
+			"90": "90 días",
+			"365": "1 año"
+		},
+		"access": "Acceso",
+		"scopeLater": "Todavía no está disponible. Por ahora las claves solo pueden leer.",
+		"create": "Crear clave",
+		"created": "Se creó {name}",
+		"keyTitle": "Tu nueva clave",
+		"onceOnly": "Copiala ahora. No la vas a volver a ver.",
+		"keyLabel": "Clave de API",
+		"copy": "Copiar",
+		"keyCopied": "Clave copiada",
+		"copyFailed": "No se pudo copiar la clave",
+		"done": "Listo"
+	},
+	"data": {
+		"title": "Datos",
+		"kinds": {
+			"expenses": "Gastos",
+			"budgets": "Presupuestos",
+			"wealth": "Patrimonio",
+			"all": "Todo"
+		},
+		"formats": {
+			"csv": "CSV",
+			"zip": "ZIP con todas las tablas"
+		},
+		"download": "Descargar",
+		"done": {
+			"expenses": "Gastos descargados",
+			"budgets": "Presupuestos descargados",
+			"wealth": "Patrimonio descargado",
+			"all": "Todo descargado"
+		},
+		"failed": "No se pudo crear la exportación",
+		"import": "Importar",
+		"importMeta": "Resúmenes bancarios y archivos CSV",
+		"openImport": "Abrir Importar"
+	},
+	"delete": {
+		"section": "Zona de peligro",
+		"title": "Eliminar cuenta",
+		"rowMeta": "Primero se resuelven los pagos y las divisiones pendientes",
+		"passwordBody": "Ingresá tu contraseña para ver qué va a pasar.",
+		"password": "Contraseña",
+		"cancel": "Cancelar",
+		"continue": "Continuar",
+		"confirm": "Eliminar mi cuenta",
+		"loading": "Cargando lo que va a pasar",
+		"previewFailed": "No se pudo cargar lo que va a pasar. Intentá de nuevo.",
+		"projectTransfer": "Pasa a {owner}",
+		"projectDelete": "Se elimina, sos su único miembro",
+		"settlementsConfirm": {
+			"title": "{count, plural, one {# pago pendiente} other {# pagos pendientes}}",
+			"meta": "Se confirman en tu nombre"
+		},
+		"settlementsCancel": {
+			"title": "{count, plural, one {# pago sin confirmar} other {# pagos sin confirmar}}",
+			"meta": "Se cancelan"
+		},
+		"verificationsAccept": {
+			"title": "{count, plural, one {# división pendiente de revisión} other {# divisiones pendientes de revisión}}",
+			"meta": "Se aceptan tal como están"
+		},
+		"sharedAnonymize": {
+			"title": "{count, plural, one {# gasto compartido} other {# gastos compartidos}}",
+			"meta": "Se conservan para los demás, sin tu nombre"
+		},
+		"own": {
+			"title": "Tus gastos, cuentas y presupuestos",
+			"meta": "Se eliminan para siempre"
+		},
+		"deleted": "Cuenta eliminada",
+		"failed": "No se pudo eliminar la cuenta"
+	},
+	"about": {
+		"version": "Retrospend {version}",
+		"license": "GPL v3",
+		"privacy": "Privacidad",
+		"terms": "Términos",
+		"website": "Sitio web",
+		"github": "GitHub",
+		"matrix": "Matrix",
+		"donate": "Donar",
+		"madeBy": "Hecho por <name>Daniel Miller</name>"
+	}
+}

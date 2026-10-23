@@ -60,7 +60,7 @@ type ShareRateSource = {
  * nearest table rate for its own date (never today's rate for a past month,
  * never 1). Null only for a currency with no rate at all.
  */
-async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
+export async function shareRateResolver(db: AppDb, rows: ShareRateSource[]) {
 	const lookup = await findExchangeRatesForDates(
 		db,
 		rows
@@ -96,6 +96,46 @@ export interface SharedExpenseShare {
 }
 
 /**
+ * The participations that are the user's share of shared expenses: every
+ * share except ones they rejected (pending shares count until answered),
+ * in the date range, outside the excluded projects. The one definition both
+ * the spending readers and the envelope budget read.
+ */
+export function shareParticipations(
+	db: AppDb,
+	userId: string,
+	dateFilter?: { gte?: Date; lte?: Date },
+	excludedProjectIds?: string[],
+) {
+	const whereTransaction: Prisma.SharedTransactionWhereInput = {
+		...(dateFilter ? { date: dateFilter } : {}),
+		...excludedProjectFilter(excludedProjectIds),
+	};
+	return (db as PrismaClient).splitParticipant.findMany({
+		where: {
+			participantType: "user",
+			participantId: userId,
+			verificationStatus: { not: "REJECTED" },
+			transaction: whereTransaction,
+		},
+		select: {
+			id: true,
+			shareAmount: true,
+			verificationStatus: true,
+			transaction: {
+				select: {
+					currency: true,
+					date: true,
+					categoryId: true,
+					exchangeRate: true,
+					category: { select: { userId: true } },
+				},
+			},
+		},
+	});
+}
+
+/**
  * Fetches the current user's shares of shared expenses for a date range.
  * Returns data in a format compatible with personal expense aggregation.
  *
@@ -110,33 +150,12 @@ export async function getSharedExpenseShares(
 	_rateCache?: RateCache,
 	excludedProjectIds?: string[],
 ): Promise<SharedExpenseShare[]> {
-	const whereTransaction: Prisma.SharedTransactionWhereInput = {
-		...(dateFilter ? { date: dateFilter } : {}),
-		...excludedProjectFilter(excludedProjectIds),
-	};
-
-	const participations = await (db as PrismaClient).splitParticipant.findMany({
-		where: {
-			participantType: "user",
-			participantId: userId,
-			// A share the user rejected is not their spending. Pending shares
-			// still count until they are accepted or rejected.
-			verificationStatus: { not: "REJECTED" },
-			transaction: whereTransaction,
-		},
-		select: {
-			shareAmount: true,
-			transaction: {
-				select: {
-					currency: true,
-					date: true,
-					categoryId: true,
-					exchangeRate: true,
-					category: { select: { userId: true } },
-				},
-			},
-		},
-	});
+	const participations = await shareParticipations(
+		db,
+		userId,
+		dateFilter,
+		excludedProjectIds,
+	);
 
 	if (participations.length === 0) return [];
 

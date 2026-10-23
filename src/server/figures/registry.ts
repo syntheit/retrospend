@@ -13,6 +13,14 @@
  * registry.test.ts scans test sources for that literal and fails for any
  * registered id without one, so keep the title a literal, not a template.
  */
+import { budgetFigures } from "~/server/services/envelope/figures";
+import { spentFigure } from "~/server/services/figures/spent";
+import {
+	balancePersonFigure,
+	owedToYouFigure,
+	youOweFigure,
+} from "~/server/services/payments/figures";
+import { projectFigures } from "~/server/services/project/figures";
 import type { Prisma } from "~prisma";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
@@ -33,11 +41,11 @@ export type FigureValue = Money | readonly Money[];
 export type FigureReading = readonly Money[] | null;
 
 /** The optional narrowings a snapshot can carry on top of its user. */
-export type ScopeKey = "projectId" | "personId" | "accountId";
+export type ScopeKey = "projectId" | "personId" | "accountId" | "envelopeId";
 
 export type FigureNarrowing = Partial<Record<ScopeKey, string>>;
 
-/** A figure is always read for one user, optionally narrowed to one project, person or account. */
+/** A figure is always read for one user, optionally narrowed to one project, person, account or envelope. */
 export type FigureScope = FigureNarrowing & { readonly userId: string };
 
 /**
@@ -198,4 +206,11 @@ export async function readFiguresIn<Db>(
 }
 
 /** Every figure in the product. Track 2A and later tracks add their definitions here. */
-export const figures = createFiguresRegistry<FigureDb>([]);
+export const figures = createFiguresRegistry<FigureDb>([
+	spentFigure,
+	balancePersonFigure,
+	owedToYouFigure,
+	youOweFigure,
+	...projectFigures,
+	...budgetFigures,
+]);

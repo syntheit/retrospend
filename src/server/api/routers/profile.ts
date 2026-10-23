@@ -4,6 +4,11 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import {
+	type BackgroundSettings,
+	backgroundSettingsSchema,
+	defaultBackgroundSettings,
+} from "~/lib/background-settings";
+import {
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
@@ -15,47 +20,32 @@ import {
 } from "~/server/email-templates";
 import { isEmailDeliveryEnabled } from "~/server/lib/email-delivery";
 import { hashToken } from "~/server/lib/tokens";
-import { getImageUrl } from "~/server/storage";
 import { sendEmail } from "~/server/mailer";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
-import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 import {
-	backgroundSettingsSchema,
-	defaultBackgroundSettings,
-	type BackgroundSettings,
-} from "~/lib/background-settings";
-import { sumExpensesForCurrency } from "./shared-currency";
+	getProfileBackground,
+	saveProfileBackground,
+} from "~/server/services/profile-background.service";
+import { listedEntryWhere } from "~/server/services/spending";
+import { StatsService } from "~/server/services/stats.service";
+import { validateAndProcessUsernameChange } from "~/server/services/username.service";
+import { getImageUrl } from "~/server/storage";
 
 export type { BackgroundSettings };
 export { defaultBackgroundSettings };
 
+/** What profile.update returns about the user. */
+const IDENTITY = { id: true, name: true, username: true, email: true } as const;
+
 export const profileRouter = createTRPCRouter({
-	getBackgroundSettings: protectedProcedure.query(async ({ ctx }) => {
-		const setting = await ctx.db.userPageSetting.findUnique({
-			where: {
-				userId_page: { userId: ctx.session.user.id, page: "PROFILE" },
-			},
-			select: { settings: true },
-		});
-		if (!setting) return defaultBackgroundSettings;
-		const parsed = backgroundSettingsSchema.safeParse(setting.settings);
-		return parsed.success ? parsed.data : defaultBackgroundSettings;
-	}),
+	getBackgroundSettings: protectedProcedure.query(({ ctx }) =>
+		getProfileBackground(ctx.db, ctx.session.user.id),
+	),
 
 	saveBackgroundSettings: protectedProcedure
 		.input(backgroundSettingsSchema)
 		.mutation(async ({ ctx, input }) => {
-			await ctx.db.userPageSetting.upsert({
-				where: {
-					userId_page: { userId: ctx.session.user.id, page: "PROFILE" },
-				},
-				create: {
-					userId: ctx.session.user.id,
-					page: "PROFILE",
-					settings: input,
-				},
-				update: { settings: input },
-			});
+			await saveProfileBackground(ctx.db, ctx.session.user.id, input);
 			return { success: true };
 		}),
 
@@ -156,8 +146,10 @@ export const profileRouter = createTRPCRouter({
 
 	update: protectedProcedure
 		.input(
+			// Each field is optional: Settings saves one at a time, so a write
+			// (or an Undo) never carries another field's older value.
 			z.object({
-				name: z.string().min(1, "Name is required").max(100),
+				name: z.string().min(1, "Name is required").max(100).optional(),
 				username: z
 					.string()
 					.min(1, "Username is required")
@@ -166,18 +158,23 @@ export const profileRouter = createTRPCRouter({
 						/^[a-zA-Z0-9]+$/,
 						"Username can only contain letters and numbers",
 					)
-					.transform((v) => v.toLowerCase()),
+					.transform((v) => v.toLowerCase())
+					.optional(),
 				email: z
 					.email("Invalid email address")
 					.max(254)
-					.transform((v) => v.toLowerCase().trim()),
+					.transform((v) => v.toLowerCase().trim())
+					.optional(),
 				currentPassword: z.string().min(1).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const { session, db } = ctx;
 
-			if (input.username !== session.user.username) {
+			if (
+				input.username !== undefined &&
+				input.username !== session.user.username
+			) {
 				await validateAndProcessUsernameChange(
 					db,
 					session.user.id,
@@ -186,7 +183,11 @@ export const profileRouter = createTRPCRouter({
 				);
 			}
 
-			const isEmailChange = input.email !== session.user.email;
+			const newEmail =
+				input.email !== undefined && input.email !== session.user.email
+					? input.email
+					: null;
+			const isEmailChange = newEmail !== null;
 
 			if (isEmailChange) {
 				// Require password verification for email changes
@@ -221,10 +222,7 @@ export const profileRouter = createTRPCRouter({
 				// Check if email is already taken (by another user's primary or pending email)
 				const existingEmail = await db.user.findFirst({
 					where: {
-						OR: [
-							{ email: input.email },
-							{ pendingEmail: input.email },
-						],
+						OR: [{ email: newEmail }, { pendingEmail: newEmail }],
 						id: { not: session.user.id },
 					},
 				});
@@ -239,40 +237,33 @@ export const profileRouter = createTRPCRouter({
 			const canSendEmail = await isEmailDeliveryEnabled();
 
 			// If email is changing and we can send verification emails, use the pending flow
-			if (isEmailChange && canSendEmail) {
+			if (newEmail !== null && canSendEmail) {
 				const token = crypto.randomBytes(32).toString("hex");
 				const hashedToken = hashToken(token);
 				const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 hours
 				const appUrl =
-					env.PUBLIC_URL ||
-					env.NEXT_PUBLIC_APP_URL ||
-					"http://localhost:1997";
+					env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997";
 
 				const updated = await db.user.update({
 					where: { id: session.user.id },
 					data: {
 						name: input.name,
 						username: input.username,
-						pendingEmail: input.email,
+						pendingEmail: newEmail,
 						pendingEmailToken: hashedToken,
 						pendingEmailExpiresAt: expiresAt,
 					},
-					select: {
-						id: true,
-						name: true,
-						username: true,
-						email: true,
-					},
+					select: IDENTITY,
 				});
 
 				// Send verification email to the NEW address
 				const confirmUrl = `${appUrl}/auth/confirm-email?token=${token}`;
 				const verificationHtml = getEmailChangeVerificationTemplate(
 					confirmUrl,
-					input.email,
+					newEmail,
 				);
 				sendEmail(
-					input.email,
+					newEmail,
 					"Confirm Your New Email Address",
 					verificationHtml,
 				).catch((err) =>
@@ -281,10 +272,7 @@ export const profileRouter = createTRPCRouter({
 
 				// Send security alert to the OLD address
 				const revertUrl = `${appUrl}/auth/revert-email?token=${token}`;
-				const alertHtml = getEmailChangeAlertTemplate(
-					revertUrl,
-					input.email,
-				);
+				const alertHtml = getEmailChangeAlertTemplate(revertUrl, newEmail);
 				sendEmail(
 					session.user.email,
 					"Security Alert: Email Change Requested",
@@ -302,14 +290,9 @@ export const profileRouter = createTRPCRouter({
 				data: {
 					name: input.name,
 					username: input.username,
-					...(isEmailChange ? { email: input.email } : {}),
+					...(newEmail !== null ? { email: newEmail } : {}),
 				},
-				select: {
-					id: true,
-					name: true,
-					username: true,
-					email: true,
-				},
+				select: IDENTITY,
 			});
 
 			// With email off, addresses are trusted like at signup: if the account
@@ -436,16 +419,12 @@ export const profileRouter = createTRPCRouter({
 			});
 		}
 
-		const totalEntries = await db.expense.count({
-			where: { userId, status: "FINALIZED" },
-		});
-
-		// Amortized purchases count once, through their monthly parts
-		const { total: lifetimeSpend } = await sumExpensesForCurrency(
-			db,
-			{ userId, isAmortizedParent: false },
-			user.homeCurrency,
-		);
+		const [totalEntries, { totalSpent: lifetimeSpend }] = await Promise.all([
+			db.expense.count({
+				where: { ...listedEntryWhere(userId), status: "FINALIZED" },
+			}),
+			new StatsService(db).getLifetimeStats(userId, user.homeCurrency),
+		]);
 
 		return {
 			lifetimeSpend,

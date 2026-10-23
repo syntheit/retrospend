@@ -78,7 +78,7 @@ function sideOf(row: GroupRow, userId: string): "from" | "to" | null {
  * mix can only come from legacy data, and then a rejected row wins (the
  * payee refused the payment) over a pending one.
  */
-export function groupStatus(rows: GroupRow[]): string {
+export function groupStatus(rows: ReadonlyArray<{ status: string }>): string {
 	if (rows.some((r) => r.status === "REJECTED")) return "REJECTED";
 	if (rows.some((r) => r.status === "PROPOSED")) return "PROPOSED";
 	return rows[0]?.status ?? "PROPOSED";

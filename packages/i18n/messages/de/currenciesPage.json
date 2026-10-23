@@ -1,0 +1,65 @@
+{
+	"title": "Währungen",
+	"pricesIn": "Preise in {home}.",
+	"updated": "Aktualisiert am {date}.",
+	"newUse": "Neue Fremdwährungsbeträge nutzen {type}.",
+	"filters": {
+		"label": "Währungen filtern",
+		"search": "Suchen oder 100 usd eingeben",
+		"favorites": "Favoriten",
+		"fiat": "Fiat",
+		"crypto": "Krypto"
+	},
+	"empty": {
+		"none": "Keine passenden Währungen",
+		"noneHint": "Versuch einen anderen Namen oder Code.",
+		"clear": "Filter löschen",
+		"noFavorites": "Noch keine Favoriten",
+		"noFavoritesHint": "Markiere eine Währung mit dem Stern, damit sie hier und in der Währungsauswahl oben steht.",
+		"showAll": "Alle Währungen zeigen"
+	},
+	"missing": "Noch kein Kurs für {codes}. {count, plural, one {{names} zählt} other {{names} zählen}} nicht zum Vermögen.",
+	"priceOf": "Preis für 1 Einheit in {home}",
+	"favorite": "Favorit",
+	"currency": "Währung",
+	"actions": "Aktionen",
+	"noRate": "Kein Kurs",
+	"noType": "Kein Kurs dieser Art",
+	"derived": "Über {home} abgeleitet",
+	"subNoRate": "{name} · kein Kurs",
+	"subDefault": "{name} · standardmäßig {type}",
+	"star": {
+		"add": "{code} zu Favoriten hinzufügen",
+		"remove": "{code} aus Favoriten entfernen",
+		"unavailable": "{code} kann noch kein Favorit sein"
+	},
+	"detail": {
+		"label": "Gewählte Währung",
+		"sheetTitle": "Kurse für {code}",
+		"sub": "{code} · 1 {code} in {home}, {date}",
+		"noRate": "Kein {code}-Kurs. Konten und Ausgaben in {code} zählen nicht zu den Summen.",
+		"usedBy": "Verwendet von {names}",
+		"rates": "Kurse",
+		"default": "Standard",
+		"defaultTitle": "Standard für neue Ausgaben",
+		"defaultFixed": "Vorerst der eingebaute Standard."
+	},
+	"convert": {
+		"title": "Umrechnen",
+		"swap": "Richtung tauschen",
+		"into": "in {code}",
+		"failed": "Umrechnung fehlgeschlagen. Versuch es noch einmal.",
+		"quickTitle": "<amount></amount> in {to}"
+	},
+	"toast": {
+		"favorited": "{code} zu Favoriten hinzugefügt",
+		"unfavorited": "{code} aus Favoriten entfernt",
+		"copied": "{rate} kopiert",
+		"failed": "Das hat nicht geklappt. Versuch es noch einmal."
+	},
+	"unavailable": {
+		"title": "Kurse sind gerade nicht verfügbar",
+		"hint": "Versuch es gleich noch einmal.",
+		"retry": "Erneut versuchen"
+	}
+}

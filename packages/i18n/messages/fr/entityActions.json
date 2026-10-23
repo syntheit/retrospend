@@ -80,6 +80,21 @@
 		},
 		"archive": {
 			"label": "Archiver"
+		},
+		"addIncome": {
+			"label": "Ajouter un revenu ici"
+		},
+		"reopen": {
+			"label": "Rouvrir"
+		},
+		"close": {
+			"label": "Clôturer le compte"
+		},
+		"delete": {
+			"label": "Supprimer définitivement",
+			"confirmTitle": "Supprimer {name} définitivement ?",
+			"confirmBody": "Le compte et tout son historique de soldes sont supprimés, et votre patrimoine passé change aussi. Pour garder l'historique, clôturez plutôt le compte.",
+			"confirmButton": "Supprimer définitivement"
 		}
 	},
 	"recurring": {
@@ -103,6 +118,79 @@
 			"confirmTitle": "Supprimer {name} ?",
 			"confirmBody": "Les prochaines s'arrêtent, les dépenses passées restent.",
 			"confirmButton": "Supprimer la dépense récurrente"
+		}
+	},
+	"category": {
+		"edit": {
+			"label": "Nom, icône et couleur"
+		},
+		"exclude": {
+			"label": "Exclure les nouvelles dépenses des totaux"
+		},
+		"include": {
+			"label": "Inclure les nouvelles dépenses dans les totaux"
+		},
+		"delete": {
+			"label": "Supprimer"
+		}
+	},
+	"paymentMethod": {
+		"edit": {
+			"label": "Modifier"
+		},
+		"makePrimary": {
+			"label": "Définir comme principal"
+		},
+		"showPublic": {
+			"label": "Rendre public"
+		},
+		"showContacts": {
+			"label": "Montrer aux contacts seulement"
+		},
+		"showSettlement": {
+			"label": "Montrer seulement au règlement"
+		},
+		"moveUp": {
+			"label": "Monter"
+		},
+		"moveDown": {
+			"label": "Descendre"
+		},
+		"remove": {
+			"label": "Retirer"
+		}
+	},
+	"apiKey": {
+		"revoke": {
+			"label": "Révoquer la clé",
+			"confirmTitle": "Révoquer {name} ?",
+			"confirmBody": "Tout ce qui utilise cette clé cesse de fonctionner immédiatement.",
+			"confirmButton": "Révoquer la clé"
+		}
+	},
+	"device": {
+		"disconnect": {
+			"label": "Déconnecter",
+			"confirmTitle": "Déconnecter {name} ?",
+			"confirmBody": "Il est déconnecté immédiatement et aura besoin d’un nouveau code pour se reconnecter.",
+			"confirmButton": "Déconnecter l’appareil"
+		}
+	},
+	"currency": {
+		"convert": {
+			"label": "Convertir"
+		},
+		"favorite": {
+			"label": "Ajouter aux favoris"
+		},
+		"unfavorite": {
+			"label": "Retirer des favoris"
+		},
+		"copy": {
+			"label": "Copier le taux"
+		},
+		"history": {
+			"label": "Voir l'historique du taux"
 		}
 	}
 }

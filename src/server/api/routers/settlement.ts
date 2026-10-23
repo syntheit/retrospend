@@ -1,16 +1,49 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+	confirmPaymentSchema,
+	participantRefSchema,
+	recordPaymentSchema,
+} from "~/server/services/payments/input";
+import {
+	applyConfirm,
+	applyPayment,
+	previewConfirm,
+	previewPayment,
+	unconfirm,
+} from "~/server/services/payments/procedures";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
-
-const participantRefSchema = z.object({
-	participantType: z.enum(["user", "guest", "shadow"]),
-	participantId: z.string().min(1),
-});
 
 /** Which way the money moved, from the caller's side. */
 const settlementDirectionSchema = z.enum(["outgoing", "incoming"]);
 
 export const settlementRouter = createTRPCRouter({
+	/** Settle up sheet (MONEY-MOVES §1, R30): paymentRecord, rolled back. */
+	paymentPreview: protectedProcedure
+		.input(recordPaymentSchema)
+		.query(({ ctx, input }) => previewPayment(ctx.session.user.id, input, ctx.timeZone)),
+	/** Records the payment the preview showed; refuses an unconfirmed overpayment. */
+	paymentRecord: protectedProcedure
+		.input(recordPaymentSchema)
+		.mutation(({ ctx, input }) =>
+			applyPayment(ctx.db, ctx.session.user.id, input, ctx.timeZone),
+		),
+	/** Preview of confirming a payment that waits for the caller. */
+	paymentConfirmPreview: protectedProcedure
+		.input(confirmPaymentSchema)
+		.query(({ ctx, input }) => previewConfirm(ctx.db, ctx.session.user.id, input)),
+	/** Confirms a payment that waits for the caller; the receiver's details win. */
+	paymentConfirm: protectedProcedure
+		.input(confirmPaymentSchema)
+		.mutation(({ ctx, input }) => applyConfirm(ctx.db, ctx.session.user.id, input)),
+	/** Undo of paymentConfirm: the payment waits for the caller again. */
+	paymentUnconfirmPreview: protectedProcedure
+		.input(z.object({ paymentId: z.string().min(1) }))
+		.query(({ ctx, input }) => unconfirm(ctx.db, ctx.session.user.id, input.paymentId, "preview")),
+	paymentUnconfirm: protectedProcedure
+		.input(z.object({ paymentId: z.string().min(1) }))
+		.mutation(({ ctx, input }) => unconfirm(ctx.db, ctx.session.user.id, input.paymentId, "apply")),
+
 	/**
 	 * POST /api/settlements
 	 *
@@ -33,9 +66,6 @@ export const settlementRouter = createTRPCRouter({
 				direction: settlementDirectionSchema.optional(),
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
-				convertedAmount: z.number().positive().nullish(),
-				convertedCurrency: z.string().min(1).max(10).nullish(),
-				exchangeRateUsed: z.number().positive().nullish(),
 				paymentMethod: z.string().max(191).nullish(),
 				note: z.string().max(500).nullish(),
 				// Scope of the settle-up:
@@ -46,11 +76,13 @@ export const settlementRouter = createTRPCRouter({
 				//              across the pair's per-project and direct debts, one
 				//              row per scope, so every view stays consistent.
 				projectId: z.string().min(1).nullish(),
+				// Money received that is not the payer's pending claim (CONFLICT otherwise).
+				differentPayment: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.initiateSettlement(input);
+			return service.initiateSettlement({ ...input, timeZone: ctx.timeZone });
 		}),
 
 	/**
@@ -71,11 +103,12 @@ export const settlementRouter = createTRPCRouter({
 				note: z.string().max(500).nullish(),
 				// See create.projectId: same scoping and allocation rules.
 				projectId: z.string().min(1).nullish(),
+				differentPayment: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.settleAll(input);
+			return service.settleAll({ ...input, timeZone: ctx.timeZone });
 		}),
 
 	/**

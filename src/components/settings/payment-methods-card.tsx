@@ -92,9 +92,9 @@ import { api } from "~/trpc/react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Visibility = "PUBLIC" | "FRIENDS_ONLY" | "PAYMENT_ONLY";
+export type Visibility = "PUBLIC" | "FRIENDS_ONLY" | "PAYMENT_ONLY";
 
-interface Method {
+export interface Method {
 	id?: string;
 	localId: string;
 	type: string;
@@ -109,7 +109,7 @@ interface Method {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 let _localIdCounter = 0;
-function newLocalId() {
+export function newLocalId() {
 	return `local_${++_localIdCounter}`;
 }
 
@@ -361,7 +361,7 @@ interface MethodModalProps {
 	userCurrency: string;
 }
 
-function MethodModal({
+export function MethodModal({
 	open,
 	onClose,
 	onSave,

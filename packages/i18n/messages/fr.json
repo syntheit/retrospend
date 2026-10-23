@@ -1303,6 +1303,7 @@
   },
   "settleUp": {
     "settleAllSkipped": "Certains soldes n’ont pas pu être réglés, car aucun taux de change n’était disponible pour : {currencies}. Ils restent donc en attente.",
+    "recordAsDifferentPayment": "Enregistrer comme un autre paiement",
     "title": "Régler le solde",
     "titleWith": "Régler le solde avec {name}",
     "description": "Enregistrez un paiement pour ramener votre solde à zéro.",
