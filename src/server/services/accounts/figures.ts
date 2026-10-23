@@ -15,10 +15,12 @@ import { normalizeDate } from "~/lib/date";
 import type {
 	FigureDb,
 	FigureDefinition,
+	FigurePass,
 	Money,
 } from "~/server/figures/registry";
+import { FigureUnavailable } from "~/server/figures/unavailable";
 import { dec, toMinor } from "~/server/services/envelope/units";
-import { owedFor } from "~/server/services/payments/figures";
+import { owedOnce } from "~/server/services/payments/figures";
 import { homeCurrencyOf, ratePickFor } from "./ledger";
 import { loadAccountsLedger } from "./load";
 import {
@@ -75,11 +77,15 @@ async function openAccountMoney(
 	}));
 }
 
-/** Net worth today in the home currency, or null when a rate is missing. */
+/**
+ * Net worth today in the home currency, or every currency whose missing
+ * rate keeps it out (accounts, Not tracked and people, named, R14).
+ */
 export async function netWorthFor(
 	db: FigureDb,
 	userId: string,
-): Promise<Money | null> {
+	pass?: FigurePass,
+): Promise<Money | FigureUnavailable> {
 	const home = await homeCurrencyOf(db, userId);
 	const accounts = await db.assetAccount.findMany({
 		where: { userId, closedAt: null },
@@ -99,6 +105,7 @@ export async function netWorthFor(
 	]);
 	const now = new Date();
 	let total = dec(0);
+	const missing: string[] = [];
 	for (const a of accounts) {
 		const value = homeValue(
 			pick,
@@ -111,8 +118,8 @@ export async function netWorthFor(
 			home,
 			now,
 		);
-		if (value === null) return null;
-		total = total.add(value);
+		if (value === null) missing.push(a.currency);
+		else total = total.add(value);
 	}
 	for (const u of untracked) {
 		const value = homeValue(
@@ -122,12 +129,14 @@ export async function netWorthFor(
 			home,
 			now,
 		);
-		if (value === null) return null;
-		total = total.add(value);
+		if (value === null) missing.push(u.currency);
+		else total = total.add(value);
 	}
-	// Owed in the same home currency (owedFor reads the same user row).
-	const owed = await owedFor(db, userId);
-	if (owed === null) return null;
+	// Owed in the same home currency, loaded once per pass with owed.*.
+	const owed = await owedOnce(db, userId, pass);
+	if (owed instanceof FigureUnavailable) missing.push(...owed.missingRates);
+	if (missing.length || owed instanceof FigureUnavailable)
+		return new FigureUnavailable(missing);
 	return {
 		minor: toMinor(total, home) + owed.owedToYou - owed.youOwe,
 		currency: home,
@@ -156,7 +165,7 @@ export async function netWorthChangeFor(
 export const netWorthFigure: FigureDefinition = {
 	id: "netWorth",
 	scope: [],
-	compute: (db, scope) => netWorthFor(db, scope.userId),
+	compute: (db, scope, pass) => netWorthFor(db, scope.userId, pass),
 };
 
 const changeFigure = (part: ChangePart | "total"): FigureDefinition => ({
