@@ -58,6 +58,24 @@ export interface LegInput {
 	readonly expenseId?: string;
 	/** Booked home value (I20); null when no rate exists to book it. */
 	readonly home: { readonly amount: Decimal; readonly currency: string } | null;
+	/** Units of the leg the budget already counts (D4); the trigger counts them on the account. */
+	readonly countedUnits?: Decimal;
+}
+
+/**
+ * Locks these accounts in id order before anything reads or moves them, so
+ * two moves over the same accounts in opposite directions queue instead of
+ * deadlocking. Locking an account again later in the transaction is free.
+ */
+export async function lockAccounts(
+	tx: Tx,
+	accountIds: Iterable<string | null | undefined>,
+): Promise<void> {
+	const ids = [
+		...new Set([...accountIds].filter((id): id is string => !!id)),
+	].sort();
+	if (ids.length === 0) return;
+	await tx.$executeRaw`SELECT 1 FROM "asset_account" WHERE "id" = ANY(${ids}) ORDER BY "id" FOR UPDATE`;
 }
 
 /**
@@ -158,6 +176,7 @@ export async function writeLeg(
 			source: leg.source,
 			transferId: leg.transferId ?? null,
 			expenseId: leg.expenseId ?? null,
+			countedUnits: leg.countedUnits?.toString() ?? "0",
 			// The app clock, like asset_snapshot.recordedAt, so the two order the same way.
 			createdAt: new Date(),
 		},
@@ -202,6 +221,10 @@ export async function reverseLegs(
 			account: { select: { id: true, name: true, currency: true, type: true } },
 		},
 	});
+	await lockAccounts(
+		tx,
+		legs.map((l) => l.account?.id),
+	);
 	await tx.accountLeg.deleteMany({
 		where: { id: { in: legs.map((l) => l.id) } },
 	});

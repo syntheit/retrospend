@@ -14,15 +14,18 @@
 --    currency), "countedUnits" (D4), "interestRate" DECIMAL(9,6),
 --    "minimumPayment" DECIMAL(19,8).
 -- 5. asset_snapshot."recordedAt": orders a balance update against legs of
---    the same day.
+--    the same day. Existing snapshots get the start of their own day, so
+--    each one still comes after the days before it.
 -- 6. expense."keepInWealth" and "movedInAt" (kept income, Move in);
 --    user."defaultAccounts" ({currency: accountId}).
--- 7. A trigger that moves an account's balance with its legs.
+-- 7. A trigger that moves an account's balance, the balance updates that
+--    already include a leg, and its counted units with its legs.
 --
--- Additive and idempotent. Nothing is backfilled: no account has a leg, so
--- every balance and every history point stays what it is today. The only
--- rewrite is the interestRate type change, which keeps every value with
--- |rate| < 1000 to 6 decimals (deploy pre-check in the 2D.1 report).
+-- Additive and idempotent. No account has a leg yet, so every balance and
+-- every history point stays what it is today. The only backfill is
+-- recordedAt (point 5); the only rewrite is the interestRate type change,
+-- which keeps every value with |rate| < 1000 to 6 decimals (deploy
+-- pre-check in the 2D.1 report).
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TransferKind') THEN
@@ -45,7 +48,13 @@ DO $$ BEGIN
   END IF;
 END $$;
 
-ALTER TABLE "asset_snapshot" ADD COLUMN IF NOT EXISTS "recordedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+-- Backfilled before the default applies: a migration-time recordedAt would
+-- put every old balance update after all the others, and Wealth would read
+-- each one as Not logged from zero.
+ALTER TABLE "asset_snapshot" ADD COLUMN IF NOT EXISTS "recordedAt" TIMESTAMP(3);
+UPDATE "asset_snapshot" SET "recordedAt" = "date" WHERE "recordedAt" IS NULL;
+ALTER TABLE "asset_snapshot" ALTER COLUMN "recordedAt" SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "asset_snapshot" ALTER COLUMN "recordedAt" SET NOT NULL;
 
 ALTER TABLE "expense" ADD COLUMN IF NOT EXISTS "keepInWealth" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "expense" ADD COLUMN IF NOT EXISTS "movedInAt" TIMESTAMP(3);
@@ -92,8 +101,12 @@ CREATE TABLE IF NOT EXISTS "account_leg" (
   "source"       "AccountLegSource" NOT NULL,
   "transferId"   TEXT,
   "expenseId"    TEXT,
+  -- Units of this leg the budget already counts (D4): an income kept in
+  -- Wealth and moved in, or one into an account outside the budget.
+  "countedUnits" DECIMAL(19,8) NOT NULL DEFAULT 0,
   "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "account_leg_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "account_leg_counted_check" CHECK ("countedUnits" >= 0),
   -- Every leg names what wrote it; a balance update and an income always land in an account.
   CONSTRAINT "account_leg_source_check" CHECK (
     ("source" = 'TRANSFER' AND "transferId" IS NOT NULL AND "expenseId" IS NULL)
@@ -121,7 +134,8 @@ CREATE TABLE IF NOT EXISTS "asset_rate_type" (
   CONSTRAINT "asset_rate_type_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "asset_rate_type_accountId_from_key" ON "asset_rate_type" ("accountId", "from");
+-- Several switches can share a day; createdAt orders them.
+CREATE INDEX IF NOT EXISTS "asset_rate_type_accountId_from_idx" ON "asset_rate_type" ("accountId", "from");
 CREATE INDEX IF NOT EXISTS "asset_rate_type_userId_idx" ON "asset_rate_type" ("userId");
 
 DO $$ BEGIN
@@ -203,17 +217,68 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON "asset_rate_type" TO retrospend_app;
 -- stores what you owe) it moves the balance the other way. A balance
 -- update's own leg is the record of its Not logged difference; the update
 -- sets the balance itself, so that leg never moves it.
-CREATE OR REPLACE FUNCTION account_leg_moves_balance() RETURNS trigger AS $$
+--
+-- A balance update written after a leg, dated on the leg's day or later,
+-- already includes it (accounts/series.ts, includedIn). It moves with the
+-- leg too, so the balance, the history and the net worth change always
+-- agree: deleting an income that a later update counted takes it out of
+-- both. Its USD value scales with it (that value is only read when a rate
+-- is missing).
+--
+-- The leg's counted units (D4) are counted on its account; when the leg
+-- goes they go too, never below zero (they may have left the account).
+CREATE OR REPLACE FUNCTION account_leg_apply(leg "account_leg", direction INTEGER, moves_money BOOLEAN)
+RETURNS void AS $$
+DECLARE
+  effect DECIMAL;
 BEGIN
-  IF TG_OP IN ('DELETE', 'UPDATE') AND OLD."accountId" IS NOT NULL AND OLD."source" <> 'BALANCE_UPDATE' THEN
-    UPDATE "asset_account"
-      SET "balance" = "balance" - CASE WHEN "type"::text LIKE 'LIABILITY_%' THEN -OLD."amount" ELSE OLD."amount" END
-      WHERE "id" = OLD."accountId";
+  IF leg."accountId" IS NULL THEN
+    RETURN;
   END IF;
-  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW."accountId" IS NOT NULL AND NEW."source" <> 'BALANCE_UPDATE' THEN
+  IF moves_money AND leg."source" <> 'BALANCE_UPDATE' THEN
+    SELECT direction * CASE WHEN "type"::text LIKE 'LIABILITY_%' THEN -leg."amount" ELSE leg."amount" END
+      INTO effect FROM "asset_account" WHERE "id" = leg."accountId";
+    -- The account itself is being deleted (a cascade): nothing to move.
+    IF effect IS NULL THEN
+      RETURN;
+    END IF;
+    UPDATE "asset_account" SET "balance" = "balance" + effect WHERE "id" = leg."accountId";
+    UPDATE "asset_snapshot" s SET
+      "balanceInUSD" = CASE
+        WHEN COALESCE(s."currency", a."currency") = 'USD' THEN s."balance" + effect
+        WHEN s."balance" <> 0 THEN ROUND(s."balanceInUSD" * (s."balance" + effect) / s."balance", 2)
+        ELSE s."balanceInUSD"
+      END,
+      "balance" = s."balance" + effect
+    FROM "asset_account" a
+    WHERE a."id" = s."accountId"
+      AND s."accountId" = leg."accountId"
+      AND s."date" >= leg."date"
+      AND s."recordedAt" >= leg."createdAt";
+  END IF;
+  IF leg."countedUnits" > 0 THEN
     UPDATE "asset_account"
-      SET "balance" = "balance" + CASE WHEN "type"::text LIKE 'LIABILITY_%' THEN -NEW."amount" ELSE NEW."amount" END
-      WHERE "id" = NEW."accountId";
+      SET "countedUnits" = GREATEST(0, "countedUnits" + direction * leg."countedUnits")
+      WHERE "id" = leg."accountId";
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION account_leg_moves_balance() RETURNS trigger AS $$
+DECLARE
+  moves_money BOOLEAN := TRUE;
+BEGIN
+  -- An update that keeps where, when and how much (a Move in marking units
+  -- counted) moves no money, only counted units.
+  IF TG_OP = 'UPDATE' THEN
+    moves_money := (OLD."accountId", OLD."amount", OLD."date", OLD."createdAt", OLD."source")
+      IS DISTINCT FROM (NEW."accountId", NEW."amount", NEW."date", NEW."createdAt", NEW."source");
+  END IF;
+  IF TG_OP IN ('DELETE', 'UPDATE') THEN
+    PERFORM account_leg_apply(OLD, -1, moves_money);
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    PERFORM account_leg_apply(NEW, 1, moves_money);
   END IF;
   RETURN NULL;
 END;

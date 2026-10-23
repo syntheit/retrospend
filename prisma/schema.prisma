@@ -732,6 +732,9 @@ model AccountLeg {
   source       AccountLegSource
   transferId   String?
   expenseId    String?
+  /// Units of this leg the budget already counts (D4); the trigger keeps
+  /// the account's countedUnits in step with it.
+  countedUnits Decimal          @default(0) @db.Decimal(19, 8)
   createdAt    DateTime         @default(now())
 
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -760,7 +763,8 @@ model AssetRateType {
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   account AssetAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@unique([accountId, from])
+  /// Several switches can share a day; createdAt orders them.
+  @@index([accountId, from])
   @@index([userId])
   @@map("asset_rate_type")
 }
