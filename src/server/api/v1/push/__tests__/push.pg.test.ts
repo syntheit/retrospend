@@ -6,13 +6,16 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { auth } from "~/server/better-auth";
 import {
 	adminDb,
+	apiKeyFor,
 	asMobile,
 	call,
 	createTestUser,
 	expectBody,
 	expectProblem,
+	sessionFor,
 	useApiV1,
 } from "../../core/__tests__/harness";
 
@@ -223,5 +226,146 @@ describe("/api/v1/push-devices", () => {
 		await expect(
 			adminDb.pushDevice.count({ where: { id: target } }),
 		).resolves.toBe(0);
+	});
+
+	it("refuses an endpoint on an IP address or a localhost name", async () => {
+		for (const endpoint of [
+			"https://127.0.0.1/up",
+			"https://192.168.1.20:8080/up",
+			"https://[::1]/up",
+			"https://[fe80::1]/up",
+			"https://2130706433/up",
+			"https://localhost/up",
+			"https://ntfy.localhost/up",
+		]) {
+			await expectProblem(
+				await register(asAlice, { ...UNIFIED, endpoint }),
+				400,
+				"bad_request",
+			);
+		}
+		await expect(
+			adminDb.pushDevice.count({
+				where: { userId: alice, endpoint: { not: UNIFIED.endpoint } },
+			}),
+		).resolves.toBe(0);
+	});
+
+	it("keeps at most 20 devices, dropping the least recently seen", async () => {
+		const user = (await createTestUser()).user.id;
+		const as = await asMobile(user);
+		const fcm = (n: number) => ({
+			transport: "fcm",
+			platform: "android",
+			token: `fcm:cap:${n}`,
+		});
+		for (let n = 0; n < 20; n++)
+			await expectBody(await register(as, fcm(n)), p.register);
+		// Device 7 has not been seen for a while; device 0 is the oldest row.
+		const stale = await adminDb.pushDevice.findFirstOrThrow({
+			where: { userId: user, token: "fcm:cap:7" },
+		});
+		await adminDb.pushDevice.update({
+			where: { id: stale.id },
+			data: { lastSeenAt: new Date(Date.now() - 86_400_000) },
+		});
+		await expectBody(await register(as, fcm(20)), p.register);
+		const tokens = (
+			await adminDb.pushDevice.findMany({
+				where: { userId: user },
+				select: { token: true },
+			})
+		).map((d) => d.token);
+		expect(tokens).toHaveLength(20);
+		expect(tokens).not.toContain("fcm:cap:7");
+		expect(tokens).toContain("fcm:cap:0");
+		expect(tokens).toContain("fcm:cap:20");
+		// Refreshing a known device never drops another.
+		await expectBody(await register(as, fcm(0)), p.register);
+		await expect(
+			adminDb.pushDevice.count({ where: { userId: user } }),
+		).resolves.toBe(20);
+	});
+
+	describe("a device lives as long as the credential that registered it", () => {
+		const fcm = { transport: "fcm", platform: "android" };
+		const deviceOf = (userId: string, token: string) =>
+			adminDb.pushDevice.findFirst({ where: { userId, token } });
+
+		it("goes on sign out", async () => {
+			const user = (await createTestUser()).user.id;
+			const token = await sessionFor(user);
+			const headers = { authorization: `Bearer ${token}` };
+			await expectBody(
+				await register(headers, { ...fcm, token: "fcm:signout" }),
+				p.register,
+			);
+			const session = await adminDb.session.findUniqueOrThrow({
+				where: { token },
+			});
+			expect(await deviceOf(user, "fcm:signout")).toMatchObject({
+				sessionId: session.id,
+				apiKeyId: null,
+			});
+			await auth.api.signOut({ headers: new Headers(headers) });
+			await expect(
+				adminDb.session.count({ where: { id: session.id } }),
+			).resolves.toBe(0);
+			expect(await deviceOf(user, "fcm:signout")).toBeNull();
+		});
+
+		it("goes when the session is revoked, and others stay", async () => {
+			const user = (await createTestUser()).user.id;
+			const kept = await asMobile(user);
+			const token = await sessionFor(user);
+			await expectBody(
+				await register(
+					{ authorization: `Bearer ${token}` },
+					{ ...fcm, token: "fcm:revoked" },
+				),
+				p.register,
+			);
+			await expectBody(
+				await register(kept, { ...fcm, token: "fcm:kept" }),
+				p.register,
+			);
+			await adminDb.session.deleteMany({ where: { token } });
+			expect(await deviceOf(user, "fcm:revoked")).toBeNull();
+			expect(await deviceOf(user, "fcm:kept")).not.toBeNull();
+		});
+
+		it("goes when the access token is revoked or disabled", async () => {
+			const user = (await createTestUser()).user.id;
+			const revoked = await apiKeyFor(user, ["read", "write:settings"]);
+			const disabled = await apiKeyFor(user, ["read", "write:settings"]);
+			for (const [key, token] of [
+				[revoked, "fcm:key-revoked"],
+				[disabled, "fcm:key-disabled"],
+			] as const) {
+				await expectBody(
+					await register({ "x-api-key": key }, { ...fcm, token }),
+					p.register,
+				);
+			}
+			const revokedRow = await deviceOf(user, "fcm:key-revoked");
+			expect(revokedRow?.apiKeyId).toBeTruthy();
+			expect(revokedRow?.sessionId).toBeNull();
+			await expectBody(
+				await call(`/tokens/${revokedRow?.apiKeyId}`, {
+					method: "DELETE",
+					headers: { "x-api-key": revoked },
+					idempotent: true,
+				}),
+				contract.tokens.revoke,
+			);
+			expect(await deviceOf(user, "fcm:key-revoked")).toBeNull();
+
+			const disabledRow = await deviceOf(user, "fcm:key-disabled");
+			await adminDb.apikey.update({
+				where: { id: disabledRow?.apiKeyId ?? "" },
+				data: { enabled: false },
+			});
+			expect(await deviceOf(user, "fcm:key-disabled")).toBeNull();
+		});
 	});
 });

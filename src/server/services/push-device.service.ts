@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
+import { env } from "~/env";
 import type { db as globalDb } from "~/server/db";
-import type { PushDevice, PushPlatform, PushTransport } from "~prisma";
+import { userTransaction } from "~/server/db-tx";
+import type {
+	PrismaClient,
+	PushDevice,
+	PushPlatform,
+	PushTransport,
+} from "~prisma";
+import { isAllowedPushEndpoint, parseAllowHosts } from "./push-endpoint";
 
 type AppDb = typeof globalDb;
 
@@ -14,7 +22,17 @@ type AppDb = typeof globalDb;
  * The same address registered by two users (one phone, two accounts in
  * turn) gives two rows; the fan-out should send only to the row seen most
  * recently for an address.
+ *
+ * Each row records the session or API key that registered it, and the
+ * database deletes the row with that credential (sign out, revoke), so a
+ * signed-out phone stops getting pushes.
  */
+
+/** Most devices one user keeps; a new one beyond this drops the least recently seen. */
+export const MAX_PUSH_DEVICES = 20;
+
+/** The credential a registration came with. */
+export type PushCredential = { sessionId: string } | { apiKeyId: string };
 
 export type PushAddress =
 	| { transport: "APNS" | "FCM"; token: string }
@@ -45,17 +63,40 @@ const PLATFORMS: Record<PushTransport, PushPlatform[]> = {
 	UNIFIEDPUSH: ["ANDROID"],
 };
 
-export async function registerPushDevice(
-	db: AppDb,
-	userId: string,
-	input: PushRegistration,
-): Promise<PushDevice> {
+function assertRegistrable(input: PushRegistration) {
 	if (!PLATFORMS[input.transport].includes(input.platform)) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: `${input.transport} does not serve ${input.platform}`,
 		});
 	}
+	if (
+		input.transport === "UNIFIEDPUSH" &&
+		!isAllowedPushEndpoint(
+			input.endpoint,
+			parseAllowHosts(env.PUSH_ENDPOINT_ALLOW_HOSTS),
+		)
+	) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "The push endpoint must use a public host name",
+		});
+	}
+}
+
+/**
+ * Registers or refreshes a device in one transaction with RLS for
+ * `userId`, then trims the user's devices to MAX_PUSH_DEVICES. `client` is
+ * the root client: a user-scoped one runs each query in its own
+ * transaction, which would split the cap check from the write.
+ */
+export async function registerPushDevice(
+	client: Pick<PrismaClient, "$transaction">,
+	userId: string,
+	input: PushRegistration,
+	credential: PushCredential,
+): Promise<PushDevice> {
+	assertRegistrable(input);
 	const hash = addressHash(input);
 	const fields = {
 		platform: input.platform,
@@ -66,23 +107,41 @@ export async function registerPushDevice(
 		apnsSandbox: input.transport === "APNS" && (input.apnsSandbox ?? false),
 		appVersion: input.appVersion ?? null,
 		deviceName: input.deviceName ?? null,
+		sessionId: "sessionId" in credential ? credential.sessionId : null,
+		apiKeyId: "apiKeyId" in credential ? credential.apiKeyId : null,
 		lastSeenAt: new Date(),
 	};
-	return db.pushDevice.upsert({
-		where: {
-			userId_transport_addressHash: {
+	return userTransaction(client, userId, async (tx) => {
+		// Two registrations at once must not both see room for one more.
+		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`push_device:${userId}`}, 0))`;
+		const device = await tx.pushDevice.upsert({
+			where: {
+				userId_transport_addressHash: {
+					userId,
+					transport: input.transport,
+					addressHash: hash,
+				},
+			},
+			create: {
 				userId,
 				transport: input.transport,
 				addressHash: hash,
+				...fields,
 			},
-		},
-		create: {
-			userId,
-			transport: input.transport,
-			addressHash: hash,
-			...fields,
-		},
-		update: fields,
+			update: fields,
+		});
+		const beyondCap = await tx.pushDevice.findMany({
+			where: { userId },
+			orderBy: [{ lastSeenAt: "desc" }, { id: "desc" }],
+			skip: MAX_PUSH_DEVICES,
+			select: { id: true },
+		});
+		if (beyondCap.length > 0) {
+			await tx.pushDevice.deleteMany({
+				where: { id: { in: beyondCap.map((d) => d.id) } },
+			});
+		}
+		return device;
 	});
 }
 

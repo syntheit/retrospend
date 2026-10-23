@@ -5,6 +5,7 @@ import type {
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
+import { db } from "~/server/db";
 import {
 	listPushDevices,
 	type PushRegistration,
@@ -64,11 +65,13 @@ function toRegistration(input: RegisterPushDevice): PushRegistration {
 }
 
 export async function register(caller: Caller, input: RegisterPushDevice) {
+	const { kind, tokenId, userId } = caller.principal;
 	return toDto(
 		await registerPushDevice(
-			caller.db,
-			caller.principal.userId,
+			db,
+			userId,
 			toRegistration(input),
+			kind === "apiKey" ? { apiKeyId: tokenId } : { sessionId: tokenId },
 		),
 	);
 }
