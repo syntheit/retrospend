@@ -64,7 +64,13 @@ export const expenseRestoreSchema = z.object({
 	exchangeRate: z.number().positive().optional(),
 	pricingSource: z.string().max(200).optional(),
 	rateType: rateType.optional(),
-	customRate: z.object({ base: currency, value: customRateSchema }).optional(),
+	customRate: z
+		.object({
+			base: currency,
+			value: customRateSchema,
+			home: currency.optional(),
+		})
+		.optional(),
 	location: z.string().max(191).optional(),
 	description: z.string().max(1000).optional(),
 	categoryId: z.string().min(1).optional(),

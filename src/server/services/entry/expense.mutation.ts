@@ -42,6 +42,7 @@ export function rateInputOf(row: {
 	pricingSource: string;
 	rateType: string | null;
 	homeRate: { toFixed(): string } | null;
+	homeCurrency: string | null;
 }): Pick<
 	CreateExpenseInput,
 	"exchangeRate" | "pricingSource" | "rateType" | "customRate"
@@ -52,6 +53,7 @@ export function rateInputOf(row: {
 				base: row.currency,
 				// Plain decimal text (toFixed never writes an exponent), every stored digit.
 				value: row.homeRate.toFixed(),
+				...(row.homeCurrency ? { home: row.homeCurrency } : {}),
 			},
 		};
 	}
@@ -66,7 +68,8 @@ export function rateInputOf(row: {
 function fieldsOf(row: ExpenseRow) {
 	return {
 		title: row.title,
-		amount: Number(row.amount.toString()),
+		// Decimal text: every stored digit comes back.
+		amount: row.amount.toFixed(),
 		currency: row.currency,
 		date: row.date,
 		location: row.location ?? undefined,
@@ -92,6 +95,27 @@ async function ownExpense(tx: Tx, userId: string, id: string) {
 	return row;
 }
 
+/**
+ * A typed rate pinned to the home it was booked into (an edit's undo) is
+ * refused once the home changed: it would read as a rate into the new home.
+ */
+async function refuseOtherHome(
+	tx: Tx,
+	userId: string,
+	home: string | undefined,
+) {
+	if (!home) return;
+	const user = await tx.user.findUnique({
+		where: { id: userId },
+		select: { homeCurrency: true },
+	});
+	if (user?.homeCurrency === home) return;
+	throw new TRPCError({
+		code: "BAD_REQUEST",
+		message: `This rate was into ${home}, your old home currency. Edit the rate instead.`,
+	});
+}
+
 export interface UpdatedExpense {
 	readonly id: string;
 	/** expense.update with this input puts the expense back. */
@@ -106,6 +130,7 @@ export const updateExpenseEntry: MoneyMutation<
 	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
 		const before = await ownExpense(tx, actor.userId, input.id);
+		await refuseOtherHome(tx, actor.userId, input.customRate?.home);
 		await new ExpenseService(tx).updateExpense(actor.userId, input);
 		return {
 			value: { id: input.id, restore: { id: input.id, ...fieldsOf(before) } },
