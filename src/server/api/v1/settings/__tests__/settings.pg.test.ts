@@ -88,7 +88,7 @@ describe("/api/v1/settings", () => {
 				}),
 				s.update,
 			);
-			expect(patched.timeZone).toBe("Asia/Tokyo");
+			expect(patched).toMatchObject({ timeZone: "Asia/Tokyo" });
 			await expectProblem(
 				await call("/settings", {
 					method: "PATCH",
