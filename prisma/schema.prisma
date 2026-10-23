@@ -86,6 +86,7 @@ model User {
   apiKeys                 Apikey[]
   deviceCodes             DeviceCode[]
   idempotencyKeys         IdempotencyKey[]
+  pushDevices             PushDevice[]
 
   @@map("user")
 }
@@ -104,6 +105,7 @@ model Session {
   // device authorization. Null on web and mobile sign-in sessions.
   scopes    String?  @db.VarChar(255)
   clientId  String?  @db.VarChar(64)
+  pushDevices PushDevice[]
 
   @@index([expiresAt])
   @@index([userId])
@@ -1569,6 +1571,7 @@ model Apikey {
   permissions         String?
   metadata            String?
   user                User      @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+  pushDevices         PushDevice[]
 
   @@index([key])
   @@index([referenceId])
@@ -1625,4 +1628,48 @@ model ApiRateLimit {
 
   @@index([windowStart])
   @@map("api_rate_limit")
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+enum PushTransport {
+  APNS
+  FCM
+  UNIFIEDPUSH
+}
+
+// Push devices (M12): one row per user and address. APNs and FCM rows
+// hold a token; UnifiedPush rows an endpoint URL plus the Web Push keys.
+// `addressHash` is the SHA-256 of the token or endpoint.
+model PushDevice {
+  id          String        @id @default(cuid())
+  userId      String
+  platform    PushPlatform
+  transport   PushTransport
+  token       String?       @db.VarChar(4096)
+  endpoint    String?       @db.VarChar(2048)
+  p256dh      String?       @db.VarChar(255)
+  auth        String?       @db.VarChar(255)
+  addressHash String        @db.VarChar(64)
+  apnsSandbox Boolean       @default(false)
+  appVersion  String?       @db.VarChar(32)
+  deviceName  String?       @db.VarChar(100)
+  /// The credential that registered the device; deleting it deletes the row.
+  sessionId   String?
+  apiKeyId    String?
+  lastSeenAt  DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session     Session?      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  apiKey      Apikey?       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transport, addressHash])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([apiKeyId])
+  @@map("push_device")
 }

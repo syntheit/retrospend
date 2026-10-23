@@ -60,10 +60,16 @@ export const meSchema = z
 		username: z.string(),
 		name: z.string(),
 		image: z.string().nullable(),
+		/** The uploaded picture, else the sign-in provider's (image), else null. */
+		avatarUrl: z.string().nullable(),
 		role: z.enum(["USER", "ADMIN"]),
 		homeCurrency: z.string(),
+		defaultCurrency: z.string(),
+		fiscalMonthStartDay: z.int().min(1).max(28),
 		language: z.string(),
+		emailVerified: z.boolean(),
 		twoFactorEnabled: z.boolean(),
+		createdAt: z.iso.datetime({ offset: true }),
 		principal: principalSchema,
 	})
 	.meta({ id: "Me" });

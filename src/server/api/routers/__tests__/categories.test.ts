@@ -45,6 +45,8 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	Object.assign(mockDb, createMockDb());
 	mockDb.category.delete.mockResolvedValue({ id: CATEGORY });
+	// The category being deleted belongs to the caller.
+	mockDb.category.findFirst.mockResolvedValue({ id: CATEGORY });
 });
 
 afterEach(() => {

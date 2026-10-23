@@ -6,6 +6,9 @@
  * Home currency ARS, one blue rate of ARS 1,000 per USD for every date,
  * fiscal months start on the 1st, all dates in UTC. "Now" is 2026-04-10
  * 12:00 UTC, so March is a closed month and April is running.
+ * Rates are global and the pg files share one database: another file that
+ * stores an ARS rate dated before "now" moves the USD row's conversion, so
+ * other files use their own currencies (UYU, ZZB and so on).
  *
  * Counted rows (your spending):
  *   Jan 20   Groceries      ARS  30,000
