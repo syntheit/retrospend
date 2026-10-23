@@ -43,7 +43,11 @@
 		"weekly": "Semanal",
 		"monthly": "Mensal",
 		"quarterly": "Trimestral",
-		"yearly": "Anual"
+		"yearly": "Anual",
+		"biweekly": "A cada 2 semanas",
+		"paused": "Pausado",
+		"autoPayOn": "Débito automático ligado",
+		"autoPayOff": "Débito automático desligado"
 	},
 	"table": {
 		"selectAll": "Selecionar tudo",
@@ -58,5 +62,13 @@
 		"yourSpending": "Seus gastos",
 		"count": "{count, plural, one {# gasto} other {# gastos}}",
 		"withoutRate": "{count, plural, one {# sem cotação} other {# sem cotação}}"
+	},
+	"person": {
+		"new": "{count} novos",
+		"needYou": "{count} precisam de você",
+		"currencies": "{count} moedas",
+		"youPaid": "você pagou",
+		"paidYou": "pagou a você",
+		"settleUp": "Acertar"
 	}
 }

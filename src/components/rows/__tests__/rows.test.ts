@@ -77,6 +77,24 @@ describe("TransactionRow", () => {
 		expect(text(html)).toContain("Lucía paid");
 	});
 
+	it("keeps only the faces on a phone row, so the category keeps its room", () => {
+		const html = list(
+			h(TransactionRow, {
+				tx: {
+					...base,
+					people: [
+						{ id: "lucia", name: "Lucía Fernández" },
+						{ id: "me", name: "Sofía", isSelf: true },
+					],
+					payerId: "lucia",
+					payerName: "Lucía",
+				},
+			}),
+			"group",
+		);
+		expect(html).toMatch(/class="text-fg-2 hidden">Lucía paid/);
+	});
+
 	it("mutes a money move and names its kind; marks unreviewed rows", () => {
 		const html = list(
 			h(TransactionRow, {
@@ -208,10 +226,83 @@ describe("entity rows", () => {
 			}),
 		);
 		const t = text(html);
-		expect(t).toContain("Monthly");
+		// Monthly is the usual case, so the row leaves the word out (recurring.html).
+		expect(t).not.toContain("Monthly");
 		expect(t).toContain("Overdue since Oct 8");
 		expect(t).toContain("Confirm");
 		expect(t).toContain("Skip");
+	});
+
+	it("RecurringRow: every 2 weeks, the auto-pay line, and a paused template", () => {
+		const item = {
+			id: "r9",
+			title: "Limpieza",
+			category: { name: "Home", tone: 4 },
+			frequency: "biweekly" as const,
+			next: "2026-10-30",
+			state: "upcoming" as const,
+			direction: "out" as const,
+			amount: ars(2500000),
+			autoPay: true,
+		};
+		const t = text(list(h(RecurringRow, { item }), "group"));
+		expect(t).toContain("Next Oct 30");
+		expect(t).toContain("Every 2 weeks");
+		expect(t).toContain("Auto-pay on");
+		const paused = list(
+			h(RecurringRow, {
+				item: { ...item, paused: true, state: "due" },
+				onConfirm: () => undefined,
+			}),
+		);
+		expect(text(paused)).toContain("Paused");
+		expect(text(paused)).not.toContain("Confirm");
+	});
+
+	it("PersonRow: a converted net reads ≈ and lists its parts as held", () => {
+		const html = list(
+			h(PersonRow, {
+				person: {
+					id: "lu",
+					name: "Lucía Fernández",
+					onRetrospend: true,
+					lastShared: "Asado",
+					when: "3 days ago",
+					balance: ars(130300000),
+					approx: true,
+					parts: [ars(80235200), { minor: 40250, currency: "BRL" }],
+					unseen: 2,
+					href: "/people/lu",
+				},
+				words: false,
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("≈ ARS 1,303,000");
+		expect(t).not.toContain("owes you");
+		expect(t).toContain("ARS 802,352 · BRL 402.50");
+		expect(t).toContain("2 new");
+		expect(html).toContain('data-slot="unseen-dot"');
+	});
+
+	it("PersonRow: a pending payment takes the balance's place", () => {
+		const t = text(
+			list(
+				h(PersonRow, {
+					person: {
+						id: "ju",
+						name: "Juan",
+						onRetrospend: true,
+						lastShared: "",
+						balance: ars(0),
+						pending: { direction: "out", amount: ars(3620000) },
+						href: "/people/ju",
+					},
+				}),
+			),
+		);
+		expect(t).toContain("Pending you paid ARS 36,200");
+		expect(t).not.toContain("Settled");
 	});
 });
 
@@ -245,6 +336,27 @@ describe("narrow rows (390)", () => {
 });
 
 describe("RowSub", () => {
+	it("keeps Not on Retrospend whole at 390: the last thing shared gives way", () => {
+		const html = list(
+			h(PersonRow, {
+				person: {
+					id: "p",
+					name: "Paz Ibarra",
+					onRetrospend: false,
+					lastShared: "Churrasco de despedida en la quinta",
+					when: "3 days ago",
+					balance: ars(94693469),
+					href: "/people/guest/p",
+				},
+			}),
+			"group",
+		);
+		expect(html).toMatch(
+			/class="flex items-center gap-2 shrink-0"><span class="[^"]*" data-status="notOnRetrospend"/,
+		);
+		expect(html).toMatch(/shrink truncate"><span class="truncate">Churrasco/);
+	});
+
 	it("leaves out an empty shrinkable part, so no separator leads the line", () => {
 		const html = list(
 			h(PersonRow, {

@@ -75,10 +75,25 @@ export type PersonVM = {
 	name: string;
 	imageUrl?: string | null;
 	onRetrospend: boolean;
-	/** What you last shared and when, as the server words it. */
+	/** What you last shared, as the server words it. It gives way when narrow. */
 	lastShared: string;
+	/** When that was ("3 days ago"); kept whole after it. */
+	when?: string;
 	/** Positive: they owe you. Negative: you owe them. Zero: settled. */
 	balance: MoneyValue;
+	/** The balance is a net converted across currencies: it reads "≈". */
+	approx?: boolean;
+	/**
+	 * The balance in each currency as it is held (signed like the balance),
+	 * shown under the net when it is not one amount in the home currency.
+	 */
+	parts?: MoneyValue[];
+	/** A payment waiting for one side; it takes the balance's place. */
+	pending?: { direction: "in" | "out"; amount: MoneyValue } | null;
+	/** Changes since you last looked: the attention dot on the face. */
+	unseen?: number;
+	/** Splits and payments from them that wait for you. */
+	needsYou?: number;
 	/** Figures registry key of the balance. */
 	figure?: string;
 	href: string;
@@ -145,7 +160,12 @@ export type EnvelopeVM = {
 	figure?: string;
 };
 
-export type RecurringFrequency = "weekly" | "monthly" | "quarterly" | "yearly";
+export type RecurringFrequency =
+	| "weekly"
+	| "biweekly"
+	| "monthly"
+	| "quarterly"
+	| "yearly";
 
 export type RecurringVM = {
 	id: string;
@@ -161,4 +181,8 @@ export type RecurringVM = {
 	home?: MoneyValue | null;
 	/** Figures registry key of the amount. */
 	figure?: string;
+	/** Whether auto-pay books it on the day; set it to show the auto-pay line. */
+	autoPay?: boolean;
+	/** A paused template: muted, "Paused" instead of the next date. */
+	paused?: boolean;
 };

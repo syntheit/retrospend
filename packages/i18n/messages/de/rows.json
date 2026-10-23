@@ -43,7 +43,11 @@
 		"weekly": "Wöchentlich",
 		"monthly": "Monatlich",
 		"quarterly": "Vierteljährlich",
-		"yearly": "Jährlich"
+		"yearly": "Jährlich",
+		"biweekly": "Alle 2 Wochen",
+		"paused": "Pausiert",
+		"autoPayOn": "Auto-Zahlung an",
+		"autoPayOff": "Auto-Zahlung aus"
 	},
 	"table": {
 		"selectAll": "Alle auswählen",
@@ -58,5 +62,13 @@
 		"yourSpending": "Deine Ausgaben",
 		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
 		"withoutRate": "{count, plural, one {# ohne Kurs} other {# ohne Kurs}}"
+	},
+	"person": {
+		"new": "{count} neu",
+		"needYou": "{count} brauchen dich",
+		"currencies": "{count} Währungen",
+		"youPaid": "du hast gezahlt",
+		"paidYou": "hat dir gezahlt",
+		"settleUp": "Ausgleichen"
 	}
 }

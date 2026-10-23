@@ -19,6 +19,19 @@ export const faceOf = (p: PersonSummary["person"]) => ({
 });
 
 /**
+ * A bar segment takes you to the person's row: it scrolls into view and
+ * its link takes the focus, so Enter opens the person.
+ */
+function toRow(person: { id: string }) {
+	const row = document.querySelector<HTMLElement>(
+		`[data-person="${CSS.escape(person.id)}"]`,
+	);
+	if (!row) return;
+	row.scrollIntoView({ block: "center", behavior: "smooth" });
+	row.querySelector<HTMLElement>("a")?.focus({ preventScroll: true });
+}
+
+/**
  * Where you stand (Direction A, D1): Owed to you and You owe as two figures,
  * never netted, then the bar of the people who make them up and how many
  * there are. A currency without a rate is named as not in the totals.
@@ -65,12 +78,17 @@ export function Standing({
 			: [];
 	});
 	const zero = { minor: 0, currency: view.home };
+	// The totals convert other currencies at today's rates: they read "≈".
+	const approx = view.people.some((p) =>
+		p.parts.some((part) => part.amount.currency !== view.home),
+	);
 	return (
 		<section aria-label={t("label")} className="mb-8">
 			<div className="flex items-end justify-between gap-4 max-md:flex-col max-md:items-stretch max-md:gap-2">
 				<div>
 					<div className="text-fg-2 text-small">{t("owedToYou")}</div>
 					<Money
+						approx={approx}
 						className="text-positive text-hero max-md:text-title"
 						figure="owed.owedToYou"
 						missing="noRate"
@@ -80,6 +98,7 @@ export function Standing({
 				<div className="text-right max-md:flex max-md:items-baseline max-md:justify-between max-md:text-left">
 					<div className="text-fg-2 text-small">{t("youOwe")}</div>
 					<Money
+						approx={approx}
 						className="text-owe text-title max-md:text-section"
 						figure="owed.youOwe"
 						missing="noRate"
@@ -90,6 +109,7 @@ export function Standing({
 			{segments.length > 0 && (
 				<div className="mt-3">
 					<BalanceBar
+						onSegment={toRow}
 						owedToYou={view.owedToYou ?? zero}
 						phone={phone}
 						segments={segments}

@@ -108,6 +108,8 @@ function PeopleBlock({
 							lastShared: "",
 							// railPeople keeps only people with a net.
 							balance: p.net ?? { minor: 0, currency: home },
+							// A net across currencies is converted at today's rates: "≈" (home.html).
+							approx: p.parts.some((part) => part.amount.currency !== home),
 							href: personHrefOf(p.person),
 						}}
 					/>
@@ -137,7 +139,8 @@ function ComingUpBlock({
 			{items.length ? (
 				<RowList label={t("comingUp")} variant="flat">
 					{items.map((r) => (
-						// Recurring's own row anatomy (RecurringRow has no biweekly yet).
+						// Coming up is home.html's due list (date and amount only), not
+						// the Recurring page's row with its frequency and auto-pay lines.
 						<Row
 							data-id={r.id}
 							end={<RecurringMoney r={r} />}

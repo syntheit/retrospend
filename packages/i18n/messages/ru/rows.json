@@ -43,7 +43,11 @@
 		"weekly": "Еженедельно",
 		"monthly": "Ежемесячно",
 		"quarterly": "Ежеквартально",
-		"yearly": "Ежегодно"
+		"yearly": "Ежегодно",
+		"biweekly": "Раз в 2 недели",
+		"paused": "На паузе",
+		"autoPayOn": "Автоплатёж включён",
+		"autoPayOff": "Автоплатёж выключен"
 	},
 	"table": {
 		"selectAll": "Выбрать все",
@@ -58,5 +62,13 @@
 		"yourSpending": "Ваши расходы",
 		"count": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}",
 		"withoutRate": "{count, plural, one {# без курса} few {# без курса} many {# без курса} other {# без курса}}"
+	},
+	"person": {
+		"new": "Новых: {count}",
+		"needYou": "Ждут вас: {count}",
+		"currencies": "Валют: {count}",
+		"youPaid": "вы заплатили",
+		"paidYou": "заплатил вам",
+		"settleUp": "Рассчитаться"
 	}
 }

@@ -110,7 +110,11 @@ export function TransactionAmount({ tx }: { tx: TransactionVM }) {
 	return top;
 }
 
-/** Who was in it: faces with the payer first, and "Martín paid". */
+/**
+ * Who was in it: faces with the payer first, and "Martín paid". Phones keep
+ * the faces only (the payer leads the stack): the words would crowd the
+ * category out of a 390 subline.
+ */
 export function TransactionWith({ tx }: { tx: TransactionVM }) {
 	const t = useTranslations("rows.transaction");
 	const variant = useRowVariant();
@@ -123,7 +127,15 @@ export function TransactionWith({ tx }: { tx: TransactionVM }) {
 				people={tx.people ?? []}
 			/>
 			{tx.payerName && (
-				<span className="text-fg-2">{t("paid", { name: tx.payerName })}</span>
+				<span
+					className={cn(
+						"text-fg-2",
+						variant === "group" && "hidden",
+						variant === "auto" && "max-md:hidden",
+					)}
+				>
+					{t("paid", { name: tx.payerName })}
+				</span>
 			)}
 		</span>
 	);
