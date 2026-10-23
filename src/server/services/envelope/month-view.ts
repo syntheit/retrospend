@@ -183,7 +183,8 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 						carryIn: m.carryIn,
 						weekly: (env.target as Extract<EnvelopeTarget, { kind: "MONTHLY" }>)
 							.amount,
-						spentMonthToDate: -m.activity,
+						// Moves to Wealth are not spending (D24).
+						spentMonthToDate: -(m.activity - m.wealth),
 					})
 				: null;
 			return { env, m, target, week, open: p.month >= c };
@@ -334,6 +335,7 @@ function leftToSpendFor(
 			assigned: r.m.assigned,
 			activity: r.m.activity,
 			left: r.m.left,
+			wealth: r.m.wealth,
 		})),
 		toAssign,
 		billNeeds: rows

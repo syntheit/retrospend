@@ -378,3 +378,66 @@ describe("S12 buying USD 300 into Wealth from Savings (Lucía)", () => {
 		expectInvariant(r);
 	});
 });
+
+describe("a move to Wealth is not spending (D24)", () => {
+	// Fun: 3,000 assigned on Oct 1. On Oct 2, 2,900 moves to a Wealth account.
+	const moved: ActivityEntry = {
+		id: "w-fun",
+		month: 202610,
+		date: "2026-10-02",
+		minor: -m(2_900),
+		source: "WEALTH",
+		categoryId: null,
+		envelopeId: "fun",
+	};
+	const base = {
+		current: 202610,
+		today: "2026-10-02",
+		envelopes: [{ id: "fun", cats: ["c-fun"] }],
+		moneyIn: [[202610, 3_000, "INCOME"]] as Array<[MonthKey, number, "INCOME"]>,
+		movements: [mv("f1", 202610, "fun", 3_000)],
+	};
+
+	it("Left to spend: the move lowers the pool (100), not the spent side (0); 100 left", () => {
+		const r = run({ ...base, activity: [moved] });
+		const lts = r.view().leftToSpend;
+		expect(lts.spent.minor).toBe(0);
+		expect(lts.assigned.minor).toBe(m(100));
+		expect(lts.left.minor).toBe(m(100));
+		expectInvariant(r);
+	});
+
+	it("the pace line does not read 2,900 moved on day 2 as spending too fast", () => {
+		const r = run({ ...base, activity: [moved] });
+		expect(r.view().leftToSpend.fasterThanPlanned).toBe(false);
+		// The same 2,900 spent instead is fast.
+		const spent = run({
+			...base,
+			activity: [spend("2026-10-02", 2_900, "c-fun")],
+		});
+		expect(spent.view().leftToSpend.fasterThanPlanned).toBe(true);
+	});
+
+	it("weekly pace: Left this week counts only spending, capped at what the envelope holds", () => {
+		const r = run({
+			...base,
+			envelopes: [
+				{
+					id: "fun",
+					cats: ["c-fun"],
+					target: {
+						kind: "MONTHLY",
+						amount: m(700),
+						mode: "REFILL",
+						cadence: "WEEK",
+					},
+				},
+			],
+			activity: [moved, spend("2026-10-02", 30, "c-fun")],
+		});
+		const fun = r.view().groups.flatMap((g) => g.envelopes)[0];
+		// Week 1 allows 700; 30 spent leaves 670, but Fun holds only 70.
+		expect(fun?.leftThisWeek?.amount.minor).toBe(m(70));
+		expectInvariant(r);
+	});
+});

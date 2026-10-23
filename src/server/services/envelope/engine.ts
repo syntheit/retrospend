@@ -121,6 +121,8 @@ export interface EnvelopeMonth {
 	pending: Minor;
 	/** Σ outflows posted by recurring templates (negative or 0). */
 	recurring: Minor;
+	/** Σ moves to (negative) and from (positive) Wealth: in Activity, never spending. */
+	wealth: Minor;
 }
 
 export interface MonthTotals {
@@ -266,6 +268,7 @@ function monthState(
 			left: 0,
 			pending: 0,
 			recurring: 0,
+			wealth: 0,
 		});
 	}
 	const row = (id: string) => rows.get(id) as EnvelopeMonth;
@@ -282,6 +285,7 @@ function monthState(
 		r.activity += assertMinor(a.minor);
 		if (a.pending) r.pending += a.minor;
 		if (a.recurring && a.minor < 0) r.recurring += a.minor;
+		if (a.source === "WEALTH") r.wealth += a.minor;
 		totals.activity += a.minor;
 	}
 	for (const s of b.splits.get(month) ?? []) {
