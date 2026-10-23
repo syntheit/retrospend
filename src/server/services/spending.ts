@@ -1,68 +1,115 @@
 /**
- * The user's spending for totals: personal expenses that count toward
- * analytics plus their shares of shared expenses. Totals follow the totals
- * rule in ~/lib/money (sumIn).
+ * The named row filters behind every spending number (budget build plan §5.5).
+ * The numbers themselves come from `figures/spent.ts`; nothing else builds a
+ * spending where clause, so money in can never reach a total by accident.
+ *
+ * - Reports (stats, dashboard, Insights, exports): your OUT STANDARD rows,
+ *   honoring "Hide from reports" (`excludeFromAnalytics`); amortized
+ *   purchases count through their monthly parts. Refunds net against them.
+ * - Budget (the envelope engine only): the same rows including hidden ones,
+ *   by amortization mode. The cash left, so the budget always sees it.
+ * - Income (`inType = INCOME`), NOT_SPENDING, STARTING_BALANCE and
+ *   ADJUSTMENT rows are in neither.
  */
-import type { MoneyItem } from "~/lib/money";
-import { sumIn } from "~/lib/money";
-import type { Prisma, PrismaClient } from "~prisma";
-import { getSharedExpenseShares } from "./shared-expense-integration";
-
-type AppDb = PrismaClient | Prisma.TransactionClient;
+import type { Prisma } from "~prisma";
 
 export type DateRange = { gte?: Date; lte?: Date };
 
-/** Personal expenses that count as spending. */
-export function spendingWhere(
+const outflows = (userId: string, date?: DateRange) => ({
+	userId,
+	status: "FINALIZED" as const,
+	direction: "OUT" as const,
+	entryKind: "STANDARD" as const,
+	...(date ? { date } : {}),
+});
+
+/** Personal rows that count as spending in reports. */
+export function reportSpendingWhere(
+	userId: string,
+	date?: DateRange,
+): Prisma.ExpenseWhereInput {
+	return {
+		...outflows(userId, date),
+		isAmortizedParent: false,
+		excludeFromAnalytics: false,
+	};
+}
+
+/** Refunds that net against report spending, in the refund's own month (D27). */
+export function reportRefundWhere(
 	userId: string,
 	date?: DateRange,
 ): Prisma.ExpenseWhereInput {
 	return {
 		userId,
 		status: "FINALIZED",
-		isAmortizedParent: false,
+		direction: "IN",
+		entryKind: "STANDARD",
+		inType: "REFUND",
 		excludeFromAnalytics: false,
 		...(date ? { date } : {}),
 	};
 }
 
 /**
- * Spending in a date range as money items, personal expenses summed per
- * currency and shared shares one by one.
+ * Personal rows the budget counts: hidden-from-reports rows included.
+ * INSTALLMENTS purchases count each monthly part; REPORTS_ONLY purchases
+ * count in full at purchase, so their parts are skipped.
  */
-export async function getSpendingItems(
-	db: AppDb,
+export function budgetSpendingWhere(
 	userId: string,
-	date: DateRange,
-	excludedProjectIds?: string[],
-): Promise<MoneyItem[]> {
-	const [personal, shared] = await Promise.all([
-		(db as PrismaClient).expense.groupBy({
-			by: ["currency"],
-			where: spendingWhere(userId, date),
-			_sum: { amount: true, amountInUSD: true },
-		}),
-		getSharedExpenseShares(db, userId, date, undefined, excludedProjectIds),
-	]);
-	return [
-		...personal.map((p) => ({
-			currency: p.currency,
-			amount: Number(p._sum.amount ?? 0),
-			amountInUSD: Number(p._sum.amountInUSD ?? 0),
-		})),
-		...shared,
-	];
+	date?: DateRange,
+): Prisma.ExpenseWhereInput {
+	return {
+		...outflows(userId, date),
+		OR: [
+			{ isAmortizedParent: false, isAmortizedChild: false },
+			{
+				isAmortizedChild: true,
+				parent: { is: { amortizeMode: "INSTALLMENTS" } },
+			},
+			{ isAmortizedParent: true, amortizeMode: "REPORTS_ONLY" },
+		],
+	};
 }
 
-/** Total spending in a date range, in `currency` at `rate`. */
-export async function getSpendingTotal(
-	db: AppDb,
+/** Refunds the budget counts: like budget spending, hidden ones included. */
+export function budgetRefundWhere(
 	userId: string,
-	date: DateRange,
-	currency: string,
-	rate: number | null | undefined,
-	excludedProjectIds?: string[],
-): Promise<number> {
-	const items = await getSpendingItems(db, userId, date, excludedProjectIds);
-	return sumIn(items, currency, rate);
+	date?: DateRange,
+): Prisma.ExpenseWhereInput {
+	const { excludeFromAnalytics: _hidden, ...refunds } = reportRefundWhere(
+		userId,
+		date,
+	);
+	return refunds;
+}
+
+/**
+ * Money in the budget counts (budget SPEC §5.2, §12.3): income entering To
+ * assign, the starting balance and adjustments. Refunds are envelope
+ * Activity (budgetRefundWhere); own transfers (NOT_SPENDING) are nothing.
+ */
+export function budgetMoneyInWhere(
+	userId: string,
+	from: Date,
+): Prisma.ExpenseWhereInput {
+	return {
+		userId,
+		status: "FINALIZED",
+		date: { gte: from },
+		OR: [
+			{ direction: "IN", entryKind: "STANDARD", inType: "INCOME" },
+			{ entryKind: { in: ["STARTING_BALANCE", "ADJUSTMENT"] } },
+		],
+	};
+}
+
+/**
+ * Rows today's expense lists, duplicate checks and title suggestions know how
+ * to show: spending entries only. Money in, own transfers and adjustments
+ * wait for the Activity rebuild, which labels them.
+ */
+export function listedEntryWhere(userId: string): Prisma.ExpenseWhereInput {
+	return { userId, direction: "OUT", entryKind: "STANDARD" };
 }

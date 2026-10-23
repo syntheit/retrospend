@@ -1,3 +1,4 @@
+import { fromMinor, type Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 import { isCrypto } from "./currency-format";
 import type { AssetType } from "./db-enums";
@@ -10,6 +11,8 @@ export type NormalizedExpense = {
 	currency: string;
 	exchangeRate: number | null;
 	amountInUSD: number | null;
+	/** The home value booked when it was saved (M2); shown as is in its currency. */
+	home?: Money | null;
 	pricingSource?: string;
 	date: Date;
 	location: string | null;
@@ -67,6 +70,10 @@ const RawExpenseSchema = z.object({
 	currency: z.string().optional(),
 	exchangeRate: z.unknown().nullable().optional(),
 	amountInUSD: z.unknown().nullable().optional(),
+	home: z
+		.object({ minor: z.number(), currency: z.string() })
+		.nullable()
+		.optional(),
 	pricingSource: z.string().nullable().optional(),
 	date: z.union([z.string(), z.date()]),
 	location: z.string().nullable().optional(),
@@ -98,6 +105,7 @@ export function normalizeExpense(expense: RawExpense): NormalizedExpense {
 			expense.amountInUSD !== undefined && expense.amountInUSD !== null
 				? Number(expense.amountInUSD)
 				: null,
+		home: expense.home ?? null,
 		pricingSource: expense.pricingSource ?? undefined,
 		date: expense.date instanceof Date ? expense.date : new Date(expense.date),
 		location: expense.location ?? null,
@@ -206,6 +214,12 @@ export function normalizeAssets(assets: RawAsset[]): NormalizedAsset[] {
 	return assets.map(normalizeAsset);
 }
 
+/** What the display helpers read: an expense or a dashboard activity row. */
+type DisplayableExpense = Pick<
+	NormalizedExpense,
+	"amount" | "currency" | "amountInUSD" | "home"
+> & { exchangeRate?: number | null };
+
 /**
  * Gets the exchange rate to convert from USD to the target currency for an expense.
  * If the target currency matches the expense currency, uses the stored expense rate.
@@ -217,7 +231,7 @@ export function normalizeAssets(assets: RawAsset[]): NormalizedAsset[] {
  * @returns The exchange rate to use for conversion
  */
 export function getExpenseDisplayRate(
-	expense: NormalizedExpense,
+	expense: DisplayableExpense,
 	targetCurrency: string,
 	liveRateToTarget: number | null,
 ): number | null {
@@ -244,7 +258,7 @@ export function getExpenseDisplayRate(
  * @returns The amount in the target currency
  */
 export function convertExpenseAmountForDisplay(
-	expense: NormalizedExpense,
+	expense: DisplayableExpense,
 	targetCurrency: string,
 	liveRateToTarget: number | null,
 ): number {
@@ -256,6 +270,12 @@ export function convertExpenseAmountForDisplay(
 	// Check if target currency matches expense currency first to avoid floating point errors
 	if (targetCurrency === expense.currency) {
 		return expense.amount;
+	}
+
+	// A value booked in the target currency when it was saved never drifts:
+	// the server computed it, so it is shown as is.
+	if (expense.home && expense.home.currency === targetCurrency) {
+		return Number(fromMinor(expense.home));
 	}
 
 	const rate = getExpenseDisplayRate(expense, targetCurrency, liveRateToTarget);

@@ -169,3 +169,17 @@ export function oppositeCurrencyBalances<
 			p.direction !== selected.direction,
 	);
 }
+
+/**
+ * Toast options for a failed settle-up: money received that matches a
+ * pending claim comes back as a CONFLICT naming it, and the toast offers to
+ * record it as a different payment (`retry`). Anything else: no action.
+ */
+export function claimConflictAction(
+	error: { data?: { code?: string } | null },
+	label: string,
+	retry: () => void,
+): { action: { label: string; onClick: () => void } } | undefined {
+	if (error.data?.code !== "CONFLICT") return undefined;
+	return { action: { label, onClick: retry } };
+}

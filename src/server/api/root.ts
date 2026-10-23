@@ -3,13 +3,14 @@ import { auditLogRouter } from "~/server/api/routers/audit-log";
 import { authRouter } from "~/server/api/routers/auth";
 import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { budgetRouter } from "~/server/api/routers/budget";
-import { claimRouter } from "~/server/api/routers/claim";
 import { categoriesRouter } from "~/server/api/routers/categories";
+import { claimRouter } from "~/server/api/routers/claim";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
+import { envelopeRouter } from "~/server/api/routers/envelope";
 import { exchangeRateRouter } from "~/server/api/routers/exchange-rate";
 import { expenseRouter } from "~/server/api/routers/expense";
-import { feedbackRouter } from "~/server/api/routers/feedback";
 import { exportRouter } from "~/server/api/routers/export";
+import { feedbackRouter } from "~/server/api/routers/feedback";
 import { guestRouter } from "~/server/api/routers/guest";
 import { importQueueRouter } from "~/server/api/routers/import-queue";
 import { inviteRouter } from "~/server/api/routers/invite";
@@ -40,6 +41,7 @@ export const appRouter = createTRPCRouter({
 	budget: budgetRouter,
 	categories: categoriesRouter,
 	dashboard: dashboardRouter,
+	envelope: envelopeRouter,
 	user: userRouter,
 	expense: expenseRouter,
 	feedback: feedbackRouter,

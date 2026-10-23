@@ -1,0 +1,13 @@
+{
+	"groups": {
+		"bills": "Счета",
+		"spending": "Расходы",
+		"everyday": "Расходы",
+		"savings": "Сбережения"
+	},
+	"envelopes": {
+		"spending": "Расходы",
+		"savings": "Сбережения",
+		"everythingElse": "Всё остальное"
+	}
+}

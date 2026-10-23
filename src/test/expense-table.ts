@@ -18,11 +18,26 @@ export interface TestExpenseRow {
 	isAmortizedChild?: boolean;
 	excludeFromAnalytics?: boolean;
 	title?: string | null;
+	direction?: "OUT" | "IN";
+	entryKind?: "STANDARD" | "STARTING_BALANCE" | "ADJUSTMENT" | "NOT_SPENDING";
+	inType?: "INCOME" | "REFUND" | null;
+	amortizeMode?: "INSTALLMENTS" | "REPORTS_ONLY";
+	/** The booked home leg (M2); both or neither. */
+	homeCurrency?: string | null;
+	homeAmount?: number | null;
 }
 
-type Row = Required<Omit<TestExpenseRow, "title" | "id">> & {
+type Row = Required<
+	Omit<
+		TestExpenseRow,
+		"title" | "id" | "inType" | "homeCurrency" | "homeAmount"
+	>
+> & {
 	id: string;
 	title: string | null;
+	inType: "INCOME" | "REFUND" | null;
+	homeCurrency: string | null;
+	homeAmount: number | null;
 };
 
 function normalize(rows: TestExpenseRow[]): Row[] {
@@ -35,25 +50,39 @@ function normalize(rows: TestExpenseRow[]): Row[] {
 		isAmortizedChild: r.isAmortizedChild ?? false,
 		excludeFromAnalytics: r.excludeFromAnalytics ?? false,
 		title: r.title ?? null,
+		direction: r.direction ?? "OUT",
+		entryKind: r.entryKind ?? "STANDARD",
+		inType: r.inType ?? null,
+		amortizeMode: r.amortizeMode ?? "INSTALLMENTS",
 		date: r.date,
 		amount: r.amount,
 		currency: r.currency,
 		amountInUSD: r.amountInUSD,
+		homeCurrency: r.homeCurrency ?? null,
+		homeAmount: r.homeAmount ?? null,
 	}));
 }
 
 function matchesValue(value: unknown, condition: unknown): boolean {
-	if (condition === null || typeof condition !== "object" || condition instanceof Date) {
+	if (
+		condition === null ||
+		typeof condition !== "object" ||
+		condition instanceof Date
+	) {
 		if (condition instanceof Date && value instanceof Date)
 			return value.getTime() === condition.getTime();
 		return value === condition;
 	}
 	const c = condition as Record<string, unknown>;
 	const cmp = (v: unknown) => (v instanceof Date ? v.getTime() : (v as number));
-	if ("gte" in c && c.gte !== undefined && !(cmp(value) >= cmp(c.gte))) return false;
-	if ("lte" in c && c.lte !== undefined && !(cmp(value) <= cmp(c.lte))) return false;
-	if ("gt" in c && c.gt !== undefined && !(cmp(value) > cmp(c.gt))) return false;
-	if ("lt" in c && c.lt !== undefined && !(cmp(value) < cmp(c.lt))) return false;
+	if ("gte" in c && c.gte !== undefined && !(cmp(value) >= cmp(c.gte)))
+		return false;
+	if ("lte" in c && c.lte !== undefined && !(cmp(value) <= cmp(c.lte)))
+		return false;
+	if ("gt" in c && c.gt !== undefined && !(cmp(value) > cmp(c.gt)))
+		return false;
+	if ("lt" in c && c.lt !== undefined && !(cmp(value) < cmp(c.lt)))
+		return false;
 	if ("in" in c && Array.isArray(c.in) && !c.in.includes(value)) return false;
 	if ("not" in c && matchesValue(value, c.not)) return false;
 	return true;
@@ -101,6 +130,10 @@ export function useExpenseTable(
 				out._sum = {
 					amount: list.reduce((s, r) => s + r.amount, 0),
 					amountInUSD: list.reduce((s, r) => s + r.amountInUSD, 0),
+					// SUM over nulls is null, as in SQL.
+					homeAmount: list.some((r) => r.homeAmount !== null)
+						? list.reduce((s, r) => s + (r.homeAmount ?? 0), 0)
+						: null,
 				};
 				out._count = { _all: list.length };
 				return out;

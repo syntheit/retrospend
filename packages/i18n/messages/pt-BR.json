@@ -1303,6 +1303,7 @@
   },
   "settleUp": {
     "settleAllSkipped": "Some balances couldn't be settled because no exchange rate was available: {currencies}. They were left unsettled.",
+    "recordAsDifferentPayment": "Registrar como outro pagamento",
     "title": "Quitar",
     "titleWith": "Quitar com {name}",
     "description": "Registre um pagamento para zerar seu saldo.",

@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	convertAmount,
 	expenseAmounts,
+	MissingRateError,
 	quoteRate,
 	rateFromQuote,
 } from "~/lib/money";
@@ -130,6 +131,11 @@ describe("ExpenseService money (server side)", () => {
 		vi.clearAllMocks();
 		db = createMockDb();
 		useRateTable(db);
+		// The entry leg (what this file pins) does not depend on the home.
+		db.user.findUnique.mockResolvedValue({
+			homeCurrency: "USD",
+			defaultRateTypes: {},
+		});
 		service = new ExpenseService(db as never);
 		db.expense.create.mockResolvedValue(makeExpense());
 		db.expense.update.mockResolvedValue(makeExpense());
@@ -358,7 +364,7 @@ describe("ExpenseService money (server side)", () => {
 		it("a currency without any rate fails instead of using 1", async () => {
 			await expect(
 				service.createExpense("user-1", { ...BASE, amount: 10, currency: "XAU" }),
-			).rejects.toMatchObject({ code: "BAD_REQUEST" });
+			).rejects.toEqual(new MissingRateError("XAU"));
 			expect(db.expense.create).not.toHaveBeenCalled();
 		});
 	});

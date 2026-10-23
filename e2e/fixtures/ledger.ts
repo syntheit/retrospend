@@ -251,7 +251,7 @@ export interface SeedSettlement {
 	back: number;
 	project: "floripa" | "depto" | null;
 	method: string;
-	/** PROPOSED: recorded by the payer, waiting for the payee. */
+	/** FINALIZED: recorded by the payee. PROPOSED: recorded by the payer, waiting for the payee. */
 	status: "FINALIZED" | "PROPOSED";
 }
 
