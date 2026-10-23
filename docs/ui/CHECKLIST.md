@@ -34,7 +34,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-033 [auto] No sparkle, magic wand or stars icons (`Sparkles`, `WandSparkles`, `Wand2`, `Stars`, tabler equivalents). §2.7 R31
 - UI-034 [auto] One icon set: lucide-react only. §2.7
 - UI-035 [auto] No emoji in UI text (JSX, string literals, message catalogs). §2.7
-- UI-036 [review] No icon that adds nothing next to a clear label; no colored icon before a sheet title; chips are text only; category tiles only in list and table rows, bare glyphs in menus and pickers. §2.7 §5 R25 R31
+- UI-036 [review] No icon that adds nothing next to a clear label; no colored icon before a sheet title; chips carry only an identity lead (face, bare category glyph, project cover, currency flag), never a decorative icon; category tiles only in list and table rows, bare glyphs in menus and pickers. §2.7 §5 R25 R31
 - UI-037 [review] No decorative illustrations, blobs, dashed pills or rings, or dotted underlines on values; the project cover is the only artwork. §17 R31
 
 ## Components
