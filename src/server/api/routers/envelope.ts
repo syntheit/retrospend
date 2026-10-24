@@ -51,6 +51,7 @@ import {
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import { envelopeBookProcedures } from "./envelope-book";
+import { envelopeDebtProcedures } from "./envelope-debt";
 import { envelopeMoneyProcedures } from "./envelope-money";
 import { envelopePlanProcedures } from "./envelope-plan";
 import {
@@ -169,4 +170,5 @@ export const envelopeRouter = createTRPCRouter({
 	...envelopeMoneyProcedures,
 	...envelopeBookProcedures,
 	...envelopePlanProcedures,
+	...envelopeDebtProcedures,
 });

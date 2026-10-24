@@ -62,6 +62,8 @@ export interface ViewEnvelope {
 	targetIncomplete: boolean;
 	/** A goal's "Only for this goal" Wealth account, valued today in H (B12). */
 	dedicatedValue?: Minor | null;
+	/** A bill that follows this liability's minimum (SPEC §5.4). */
+	liabilityId?: string | null;
 }
 
 export interface ViewGroup {
@@ -257,6 +259,8 @@ function targetDto(
 		paid: res?.paid ?? false,
 		foreign: r.env.foreign,
 		incomplete: r.env.targetIncomplete,
+		liabilityId: r.env.liabilityId ?? null,
+		debtPaid: t?.kind === "BILL" ? (t.debtPaid ?? false) : false,
 	};
 }
 
