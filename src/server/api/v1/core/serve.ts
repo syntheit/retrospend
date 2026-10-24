@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
+import { Prisma } from "~prisma";
 import { problem } from "../errors";
 
 /**
@@ -31,6 +32,12 @@ export function toProblem(error: unknown): unknown {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
 	}
+	// A client-made id (or another unique key) that is already taken.
+	if (
+		error instanceof Prisma.PrismaClientKnownRequestError &&
+		error.code === "P2002"
+	)
+		return problem("conflict", "That id or name is already used");
 	return error;
 }
 
