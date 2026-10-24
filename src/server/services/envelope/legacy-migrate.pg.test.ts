@@ -28,7 +28,7 @@ import { needsYouIn } from "~/server/services/needs-you";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
-import { addRow, at } from "./__tests__/pg-fixture";
+import { addRow, at, invariantAt } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
 import { envelopeExportFiles } from "./envelope-export";
 import { migrateUsers, rollbackRun } from "./legacy-migrate.batch";
@@ -418,6 +418,86 @@ describe("Beto: a home currency with a blue rate", () => {
 			currency: "XTH",
 		});
 		expect(row(m, "Groceries")?.assigned.minor).toBe(15_000_000);
+	});
+});
+
+/**
+ * Dara (USD home, no global budget): Groceries 400.00 fixed, Dining pegged to
+ * actual, Gifts has no budget. This month Dining 87.50, Gifts 40.00 and
+ * Groceries 500.00 (really 100.00 over). Next month Dining 80.00 and Gifts
+ * 25.00.
+ *   A pegged or unlimited envelope has no limit to exceed: Dining and
+ *   Everything else show their spending as negative Left but are never
+ *   "over", in month 1 or month 2. Only Groceries is over (-100.00), and only
+ *   in month 1; month 2 funds it 400.00 again and it is untouched.
+ */
+describe("Dara: pegged and unlimited envelopes are never overspent", () => {
+	const nextMonth = addMonths(current, 1);
+	const nextNoon = new Date(
+		Date.UTC(Math.floor(nextMonth / 100), (nextMonth % 100) - 1, 5, 12),
+	);
+	let dara: Awaited<ReturnType<typeof person>>;
+	let ids: Record<string, string>;
+
+	beforeAll(async () => {
+		dara = await person();
+		const [groc, dine, gift] = await Promise.all([
+			dara.cat("Groceries"),
+			dara.cat("Dining"),
+			dara.cat("Gifts"),
+		]);
+		await budget(dara.user.id, { categoryId: groc, amount: "400.00" });
+		await budget(dara.user.id, { categoryId: dine, type: "PEG_TO_ACTUAL" });
+		await addRow(dara.user.id, { amount: 87.5, categoryId: dine });
+		await addRow(dara.user.id, { amount: 40, categoryId: gift });
+		await addRow(dara.user.id, { amount: 500, categoryId: groc });
+		await addRow(dara.user.id, { amount: 80, categoryId: dine }, nextNoon);
+		await addRow(dara.user.id, { amount: 25, categoryId: gift }, nextNoon);
+		await apply(dara.user.id);
+		const book = await bookOf(dara.user.id);
+		ids = Object.fromEntries(book.envelopes.map((e) => [e.name, e.id]));
+		expect(book.envelopes.find((e) => e.name === "Everything else")?.kind).toBe(
+			"NONE",
+		);
+	});
+
+	const items = (now: Date) =>
+		userTransaction(adminDb, dara.user.id, (tx) =>
+			needsYouIn(tx, dara.user.id, { budget: true, timeZone: "UTC", now }),
+		).then((l) => l.items.filter((i) => i.type === "budget.overspent"));
+
+	it("month 1: only Groceries is over", async () => {
+		const m = await getMonth(dara.user.id, undefined, new Date(), "UTC");
+		expect(m?.verdict.overEnvelopes).toEqual([
+			{ id: ids.Groceries, over: { minor: 10_000, currency: "USD" } },
+		]);
+		expect(row(m, "Everything else")).toMatchObject({
+			left: { minor: -4_000, currency: "USD" },
+			status: "NO_TARGET",
+		});
+		const over = await items(new Date());
+		expect(over).toHaveLength(1);
+		expect(over[0]?.entityIds).toEqual([ids.Groceries]);
+	});
+
+	it("month 2: spending in a pegged envelope and Everything else raises nothing", async () => {
+		const m = await getMonth(dara.user.id, undefined, nextNoon, "UTC");
+		expect(row(m, "Dining")).toMatchObject({
+			left: { minor: -8_000, currency: "USD" },
+			status: "NO_TARGET",
+		});
+		expect(row(m, "Everything else")?.left.minor).toBe(-2_500);
+		expect(row(m, "Groceries")?.left.minor).toBe(40_000);
+		expect(m?.verdict.overEnvelopes).toEqual([]);
+		expect(m?.verdict.state).not.toBe("SOME_OVER");
+		expect(await items(nextNoon)).toEqual([]);
+	});
+
+	it("the invariant holds in both months", async () => {
+		for (const now of [new Date(), nextNoon]) {
+			const s = await invariantAt(dara.user.id, now);
+			expect(s.budget).toBe(s.ledger);
+		}
 	});
 });
 

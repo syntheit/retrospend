@@ -370,7 +370,9 @@ export function planLegacyMigration(input: LegacyPlanInput): LegacyPlanResult {
 		key: "else",
 		name: DEFAULT_NAME,
 		groupKey: "everyday",
-		kind: fallback.planned.pegged ? "NONE" : "MONTHLY",
+		// No limit of its own (no global budget, a pegged one, or the category
+		// limits used it all): spending here is tracked, never "over" (month-view.ts).
+		kind: fallback.target ? "MONTHLY" : "NONE",
 		isDefault: true,
 		categoryIds: rest,
 		...(fallback.target ? { target: fallback.target } : {}),

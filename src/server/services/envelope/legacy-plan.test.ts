@@ -166,6 +166,8 @@ describe("planLegacyMigration", () => {
 		});
 		const other = plan.setup.envelopes.find((e) => e.isDefault);
 		expect(other?.target).toBeUndefined();
+		// No limit of its own: tracked, never over.
+		expect(other?.kind).toBe("NONE");
 		// The old budget said 1,000.00; the categories alone now fund 1,200.00.
 		expect(plan.report.beforeMinor).toBe(100_000);
 		expect(plan.report.plannedMinor).toBe(120_000);
@@ -178,6 +180,8 @@ describe("planLegacyMigration", () => {
 		});
 		const other = plan.setup.envelopes.find((e) => e.isDefault);
 		expect(other?.target).toBeUndefined();
+		// No limit of its own: tracked, never over.
+		expect(other?.kind).toBe("NONE");
 		expect(other?.categoryIds).toEqual(["rent", "dine", "tran", "fun", "gift"]);
 		expect(plan.setup.groups.map((g) => g.key)).toEqual(["everyday"]);
 		expect(plan.report.beforeMinor).toBe(40_000);
