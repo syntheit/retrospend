@@ -10,6 +10,7 @@ import {
 	useServerConnection,
 } from "@/auth/server-connection";
 import { SessionProvider, useSession } from "@/auth/session";
+import { DevAutoSignIn } from "@/dev/DevAutoSignIn";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
 import { navigationTheme, themeFor } from "@/theme";
@@ -59,6 +60,7 @@ export default function RootLayout() {
 						<ServerConnectionProvider>
 							<SessionProvider>
 								<ToastProvider>
+									<DevAutoSignIn />
 									<Routes />
 								</ToastProvider>
 							</SessionProvider>
