@@ -7,6 +7,7 @@
  * are the append-only ledger with its undo rows, so the files rebuild every
  * figure the budget showed.
  */
+import JSZip from "jszip";
 import { generateCsv } from "~/lib/csv";
 import type { EnvelopeExport } from "~/lib/schemas/envelope-migration";
 import type { PrismaClient } from "~prisma";
@@ -52,6 +53,15 @@ const MOVEMENT_HEADER = [
 	"note",
 	"createdAt",
 ];
+
+/** The files in one ZIP, base64 encoded like the account export. */
+export async function zipExport(
+	files: EnvelopeExport["files"],
+): Promise<string> {
+	const zip = new JSZip();
+	for (const f of files) zip.file(f.name, f.content);
+	return zip.generateAsync({ type: "base64" });
+}
 
 /** The files of the person's personal book; none without one. */
 export async function envelopeExportFiles(

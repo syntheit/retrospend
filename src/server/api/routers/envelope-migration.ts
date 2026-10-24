@@ -63,7 +63,9 @@ export const envelopeMigrationProcedures = {
 	/** Envelopes, movements, rules and months as files. */
 	exportBudget: envelopeProcedure
 		.output(envelopeExportSchema)
-		.query(({ ctx }) => getEnvelopeExport(ctx.session.user.id)),
+		.query(({ ctx }) =>
+			getEnvelopeExport(ctx.session.user.id, ctx.timeZone ?? undefined),
+		),
 
 	/** The dashboard's pace line; null without a book. */
 	pacing: envelopeProcedure

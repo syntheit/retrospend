@@ -62,6 +62,9 @@ export const envelopeExportFileSchema = z.object({
 
 export const envelopeExportSchema = z.object({
 	files: z.array(envelopeExportFileSchema),
+	/** The same files as one base64 ZIP for a Download button; null without a budget. */
+	zipData: z.string().nullable(),
+	filename: z.string(),
 });
 
 // ── Dashboard pacing from envelope totals ───────────────────────────────────

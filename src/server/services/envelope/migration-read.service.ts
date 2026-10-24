@@ -10,13 +10,14 @@ import type {
 	HiddenRowsOutput,
 	MigrationState,
 } from "~/lib/schemas/envelope-migration";
+import { dayKey } from "~/lib/time-zone";
 import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { isFlagEnabled } from "~/server/flags";
 import type { Prisma } from "~prisma";
 import { pacingOf } from "./dashboard-pacing";
-import { envelopeExportFiles } from "./envelope-export";
+import { envelopeExportFiles, zipExport } from "./envelope-export";
 import { hiddenRowCount, hiddenRowsIn } from "./hidden-rows";
 import { closedView } from "./read.service";
 
@@ -70,11 +71,21 @@ export function getHiddenRows(userId: string): Promise<HiddenRowsOutput> {
 	return run(userId, (tx) => hiddenRowsIn(tx, userId));
 }
 
-/** The envelope budget as files; none without a book. */
-export function getEnvelopeExport(userId: string): Promise<EnvelopeExport> {
-	return run(userId, async (tx) => ({
-		files: await envelopeExportFiles(tx, userId),
-	}));
+/** The envelope budget as files and one ZIP; none without a book. `timeZone` dates the file name. */
+export function getEnvelopeExport(
+	userId: string,
+	timeZone?: string,
+	now = new Date(),
+): Promise<EnvelopeExport> {
+	return run(userId, async (tx) => {
+		const files = await envelopeExportFiles(tx, userId);
+		const day = dayKey(now, timeZone);
+		return {
+			files,
+			zipData: files.length > 0 ? await zipExport(files) : null,
+			filename: `retrospend-budget-${day}.zip`,
+		};
+	});
 }
 
 /**

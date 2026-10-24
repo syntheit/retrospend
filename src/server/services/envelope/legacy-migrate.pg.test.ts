@@ -21,6 +21,7 @@
  *   Dining left 200 - 210 = -10.00; Not spending on the hidden row: 50.00.
  */
 import { randomUUID } from "node:crypto";
+import JSZip from "jszip";
 import { beforeAll, describe, expect, it } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import { needsYouIn } from "~/server/services/needs-you";
@@ -38,6 +39,7 @@ import {
 } from "./migration.mutation";
 import {
 	dismissMigrationNotice,
+	getEnvelopeExport,
 	getHiddenRows,
 	getMigrationState,
 	getPacing,
@@ -319,6 +321,25 @@ describe("Ana: five category budgets, a global one and a foreign one", () => {
 			JSON.parse(files.find((f) => f.name === "rules.json")?.content ?? "{}")
 				.rules,
 		).toEqual([]);
+	});
+
+	it("serves the same files as one ZIP named by the day, and nothing without a book", async () => {
+		const out = await getEnvelopeExport(
+			ana.user.id,
+			"UTC",
+			new Date("2026-10-24T12:00:00Z"),
+		);
+		expect(out.filename).toBe("retrospend-budget-2026-10-24.zip");
+		const zip = await JSZip.loadAsync(out.zipData ?? "", { base64: true });
+		expect(Object.keys(zip.files).sort()).toEqual([
+			"envelopes.csv",
+			"months.json",
+			"movements.csv",
+			"rules.json",
+		]);
+		const none = await person();
+		const empty = await getEnvelopeExport(none.user.id, "UTC");
+		expect(empty).toMatchObject({ files: [], zipData: null });
 	});
 });
 
