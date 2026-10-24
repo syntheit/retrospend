@@ -61,6 +61,7 @@ import {
 	movementPreview,
 	preview,
 } from "./envelope-procedure";
+import { envelopeUsePlanProcedures } from "./envelope-use-plan";
 
 export const envelopeRouter = createTRPCRouter({
 	enabled: protectedProcedure
@@ -171,4 +172,5 @@ export const envelopeRouter = createTRPCRouter({
 	...envelopeBookProcedures,
 	...envelopePlanProcedures,
 	...envelopeDebtProcedures,
+	...envelopeUsePlanProcedures,
 });

@@ -14,20 +14,29 @@ import type { BudgetSheetArgs, BudgetSheetId } from "../sheet-ids";
 import type { BudgetSheetProps, BudgetSheets } from "../sheet-registry";
 import { AssignSheet } from "./assign-sheet";
 import { CloseSheet } from "./close-sheet";
+import { ConfirmPaymentSheet } from "./confirm-payment-sheet";
 import { CoverAllSheet } from "./cover-all-sheet";
 import { CoverSheet } from "./cover-sheet";
+import { DebtSheet } from "./debt-sheet";
 import { ExplainSheet } from "./explain-sheet";
+import { FromWealthSheet } from "./from-wealth-sheet";
 import { FundNowSheet } from "./fund-now-sheet";
 import { HelpSheet } from "./help-sheet";
+import { IncomeSheet } from "./income-sheet";
 import { RaiseLimitSheet, SetLimitSheet } from "./limit-sheet";
 import { MoveSheet } from "./move-sheet";
 import { OwedSheet } from "./owed-sheet";
+import { PayDebtSheet } from "./pay-debt-sheet";
+import { PlanApplySheet } from "./plan-apply-sheet";
+import { PlanEditSheet } from "./plan-edit-sheet";
 import { PlanSheet } from "./plan-sheet";
 import { ReconcileSheet } from "./reconcile-sheet";
 import { RulesSheet } from "./rules-sheet";
 import { SetupSheet } from "./setup-sheet";
+import { SplitsSheet } from "./splits-sheet";
 import { StyleSheet } from "./style-sheet";
 import { TakeBackSheet } from "./take-back-sheet";
+import { ToWealthSheet } from "./to-wealth-sheet";
 import type { SheetProps } from "./types";
 import { WelcomeBackSheet } from "./welcome-back-sheet";
 import { WhatIfSheet } from "./what-if-sheet";
@@ -132,4 +141,24 @@ export const SHEET_ADAPTERS: BudgetSheets = {
 	reconcile: adapt(ReconcileSheet),
 	setup: adapt(SetupSheet),
 	coverAll: adapt(CoverAllSheet),
+	debt: adapt(DebtSheet),
+	payDebt: adapt(PayDebtSheet, (a: BudgetSheetArgs["payDebt"]) => ({
+		envelopeId: a.envelopeId,
+	})),
+	toWealth: adapt(ToWealthSheet, (a: BudgetSheetArgs["toWealth"]) => ({
+		envelopeId: a.envelopeId,
+	})),
+	fromWealth: adapt(FromWealthSheet, (a: BudgetSheetArgs["fromWealth"]) => ({
+		envelopeId: a.envelopeId,
+	})),
+	planEdit: adapt(PlanEditSheet, (a: BudgetSheetArgs["planEdit"]) => ({
+		envelopeId: a.envelopeId,
+	})),
+	planApply: adapt(PlanApplySheet),
+	confirmPayment: adapt(
+		ConfirmPaymentSheet,
+		(a: BudgetSheetArgs["confirmPayment"]) => ({ paymentId: a.paymentId }),
+	),
+	splits: adapt(SplitsSheet),
+	income: adapt(IncomeSheet),
 };

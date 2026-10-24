@@ -49,6 +49,7 @@ export function FigureChanges<P extends Diff>({
 	done = false,
 	idle,
 	hide = [],
+	envelopeName,
 }: {
 	dry: DryRun<P>;
 	/** Lines for what the write moved besides the figures, from the preview. */
@@ -59,6 +60,8 @@ export function FigureChanges<P extends Diff>({
 	idle?: ReactNode;
 	/** Figure ids this sheet leaves out of the block. */
 	hide?: readonly string[];
+	/** One envelope this write moves with no per-envelope result: its Left line shows under this name. */
+	envelopeName?: string;
 }) {
 	const t = useTranslations("budgetSheets.changes");
 	const label = useFigureLabel(poolName);
@@ -66,14 +69,17 @@ export function FigureChanges<P extends Diff>({
 	if (dry.status === "error") return <SheetChanges status={t("cannot")} />;
 	const p = dry.preview;
 	if (!p) return <SheetChanges status={t("loading")} />;
-	const skip = new Set([...OWN, ...hide]);
+	const skip = new Set([...(envelopeName ? [] : OWN), ...hide]);
 	const lines: ChangeLine[] = [
 		...(own ? own(p) : []),
 		...p.changes
 			.filter((c) => !skip.has(c.id))
 			.map((c) => ({
 				key: `${c.id}-${c.currency}`,
-				label: label(c.id).name,
+				label:
+					c.id === "envelope.left" && envelopeName
+						? envelopeName
+						: label(c.id).name,
 				value: (
 					<ChangeValue
 						from={<Money figure={c.id} value={c.before ?? zero(c.currency)} />}

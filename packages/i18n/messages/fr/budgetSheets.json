@@ -23,7 +23,11 @@
 		"owed_owedToYou": "On te doit",
 		"owed_youOwe": "Tu dois",
 		"balance_person": "Solde avec cette personne",
-		"other": "Un autre chiffre"
+		"other": "Un autre chiffre",
+		"spent": "Tes dépenses",
+		"notTracked": "Non suivi",
+		"netWorthChange_exchange": "Résultat du change",
+		"budget_totalDebt": "Dette totale"
 	},
 	"figuresInline": {
 		"budget_notPlannedYet": "Pas encore prévu",
@@ -40,7 +44,11 @@
 		"owed_owedToYou": "ce qu'on te doit",
 		"owed_youOwe": "ce que tu dois",
 		"balance_person": "ton solde avec cette personne",
-		"other": "un autre chiffre"
+		"other": "un autre chiffre",
+		"spent": "tes dépenses",
+		"notTracked": "le non suivi",
+		"netWorthChange_exchange": "le résultat du change",
+		"budget_totalDebt": "la dette totale"
 	},
 	"assign": {
 		"title": "Attribuer {amount}",
@@ -114,7 +122,10 @@
 		"saveIt": "Le mettre dans {name}",
 		"change": "Modifier les montants",
 		"toast": "Plan utilisé : {amount} pour {count, plural, one {# enveloppe} other {# enveloppes}}",
-		"toastShort": "Plan utilisé pour {count, plural, one {# enveloppe} other {# enveloppes}}"
+		"toastShort": "Plan utilisé pour {count, plural, one {# enveloppe} other {# enveloppes}}",
+		"nextMonth": "Mois suivant ({month})",
+		"nextMonthGroup": "Attribué d'avance à {month}",
+		"restStays": "<amount></amount> reste {pool}."
 	},
 	"limit": {
 		"raiseTitle": "Augmenter cette limite",
@@ -368,17 +379,9 @@
 		"lead": "Ce qui se passe quand de l'argent arrive, dans l'ordre des règles. Chaque mouvement apparaît dans l'historique avec Annuler.",
 		"none": "Pas encore de règles. L'argent qui arrive reste Pas encore prévu jusqu'à ce que tu l'attribues.",
 		"done": "Terminé",
-		"up": "Monter",
-		"down": "Descendre",
 		"active": "La règle {name} est active",
 		"paused": "En pause",
 		"add": "Ajouter une règle",
-		"more": "Plus pour {name}",
-		"applyTo": "Appliquer aussi aux entrées de ce mois",
-		"remove": "Retirer",
-		"removeTitle": "Retirer {name} ?",
-		"removeBody": "Elle ne s'applique plus à l'argent nouveau. Ce qu'elle a déjà attribué reste tel quel.",
-		"removeConfirm": "Retirer la règle",
 		"envelopeFallback": "Enveloppe",
 		"sentence": {
 			"percent": "{percent} des entrées vers {name}",
@@ -444,6 +447,121 @@
 		"followsRecurring": "Suit ta dépense récurrente",
 		"moneyNow": "Argent à planifier",
 		"start": "Démarrer mon budget",
-		"toast": "Ton budget est prêt"
+		"toast": "Ton budget est prêt",
+		"ok": "Terminé",
+		"exists": "Tu as déjà un budget. Change son style depuis le menu."
+	},
+	"debt": {
+		"title": "Plan de remboursement",
+		"none": "Tu n'as pas de dettes dans Patrimoine. Ajoute d'abord une carte ou un prêt.",
+		"debts": "Tes dettes",
+		"debtFallback": "Dette",
+		"terms": "{apr} % par an · minimum <minimum></minimum>",
+		"freeBy": "soldée en {month}",
+		"monthYear": "{month} {year}",
+		"first": "Payer en premier",
+		"avalanche": "Taux le plus élevé",
+		"snowball": "Plus petit solde",
+		"about": {
+			"AVALANCHE": "Le taux le plus élevé économise le plus d'intérêts.",
+			"SNOWBALL": "Le plus petit solde solde une dette plus tôt."
+		},
+		"extra": "Extra chaque mois, en plus des minimums",
+		"result": "Résultat",
+		"debtFree": "Sans dette en",
+		"never": "Pas à ce rythme",
+		"interest": "Intérêts que tu paies",
+		"incomplete": "Une dette n'a pas de taux aujourd'hui et est laissée de côté.",
+		"note": "Les minimums sont des factures. L'extra est un objectif dans son enveloppe. Enregistrer le plan ne déplace pas d'argent.",
+		"save": "Enregistrer le plan",
+		"toast": "Plan de remboursement enregistré"
+	},
+	"payDebt": {
+		"title": "Rembourser une dette",
+		"none": "Il n'y a pas de dette à rembourser ici.",
+		"debt": "Dette",
+		"from": "Payé depuis",
+		"notTracked": "Non suivi",
+		"envelope": "Depuis l'enveloppe",
+		"principal": "Sur le solde",
+		"interest": "Intérêts dans ce paiement",
+		"card": "Les nouvelles dépenses par carte sont déjà sorties de tes enveloppes. Saisis seulement l'ancienne dette.",
+		"balance": "Solde de {name}",
+		"pay": "Payer",
+		"toast": "{amount} payés sur {name}"
+	},
+	"toWealth": {
+		"title": "Déplacer {name} vers Patrimoine",
+		"lead": "L'argent quitte {name} pour un compte hors budget. La progression de son objectif ne change pas.",
+		"noAccount": "Tu n'as pas encore de compte Patrimoine hors budget. Ajoutes-en un dans Patrimoine.",
+		"from": "Part de",
+		"notTracked": "Non suivi",
+		"into": "Vers",
+		"amount": "Montant",
+		"got": "Tu reçois (facultatif)",
+		"move": "Déplacer",
+		"toast": "{amount} déplacé de {name} vers {account}"
+	},
+	"fromWealth": {
+		"title": "Déplacer depuis Patrimoine",
+		"none": "Tu n'as aucun compte Patrimoine hors budget d'où déplacer.",
+		"mode": "As-tu déplacé l'argent ?",
+		"moved": "Oui, déplacé",
+		"count": "Non, juste le compter",
+		"about": {
+			"moved": "L'argent va de ce compte vers un compte que ton budget compte. Les deux comptes changent.",
+			"count": "Le compte garde son argent et le budget compte ce montant. Rien ne bouge dans Patrimoine."
+		},
+		"from": "De",
+		"into": "Vers",
+		"notTracked": "Non suivi",
+		"amount": "Tu as déplacé",
+		"units": "Compter ce montant",
+		"got": "Tu as reçu (facultatif)",
+		"putIn": "Mettre dans",
+		"move": "Faire entrer",
+		"toastMoved": "{amount} ajouté",
+		"toastCounted": "Argent de {name} compté. {name} n'a pas changé"
+	},
+	"planEdit": {
+		"title": "Planifier {name}",
+		"lead": "Ce que cette enveloppe reçoit dans le plan. C'est un brouillon jusqu'à la paie ; rien ne bouge.",
+		"planned": "Prévu",
+		"target": "Son objectif demande <amount></amount>.",
+		"save": "Enregistrer",
+		"toast": "{name} planifié"
+	},
+	"planApply": {
+		"title": "Appliquer le plan de {month}",
+		"lead": "Le plan est enregistré et se finance quand l'argent de {month} arrive. Rien ne bouge aujourd'hui.",
+		"none": "Il n'y a pas de plan à appliquer pour ce mois.",
+		"lines": "Prévu",
+		"apply": "Appliquer le plan",
+		"toast": "Plan de {month} enregistré",
+		"envelopeFallback": "Enveloppe"
+	},
+	"confirmPayment": {
+		"title": "Confirmer le paiement de {name}",
+		"none": "Aucun paiement n'attend ta réponse.",
+		"says": "{name} dit t'avoir payé <amount></amount> le {date}.",
+		"confirm": "Confirmer",
+		"toast": "Paiement de {name} confirmé"
+	},
+	"splits": {
+		"title": "Partages en attente de ta réponse",
+		"done": "Terminé",
+		"none": "Aucun partage n'attend ta réponse.",
+		"addedBy": "{name} t'a ajouté"
+	},
+	"income": {
+		"title": "Entrées de {month}",
+		"done": "Terminé",
+		"received": "Reçu",
+		"moneyIn": "Entrées",
+		"expected": "Attendu",
+		"next": "Prochain {date}",
+		"planCost": "Ton plan coûte <cost></cost> par mois. Tu reçois d'habitude <income></income>.",
+		"planCostOnly": "Ton plan coûte <cost></cost> par mois.",
+		"incomplete": "Certains montants n'ont pas de taux aujourd'hui et sont laissés de côté."
 	}
 }

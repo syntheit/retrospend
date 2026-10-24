@@ -1,21 +1,13 @@
 "use client";
 
-import { ArrowDown, ArrowUp, EllipsisIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
-import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
-import { Tip } from "~/components/ui/tooltip";
 import { api } from "~/trpc/react";
 import { usePoolName } from "./pool";
 import { RuleApply } from "./rule-apply";
@@ -26,9 +18,10 @@ import { useMonth } from "./use-month";
 
 /**
  * Income rules (SPEC §5.10, §6.10): what happens when money arrives, in the
- * order the rules run. Each is one sentence you can pause, move or remove;
- * pausing, moving or removing never touches money already assigned. A rule
- * can also be applied once to this month's money in (previewed first).
+ * order the rules run. Each is one sentence you can pause, move or remove
+ * (its ⋯ menu is the action registry's incomeRule entity); pausing, moving or
+ * removing never touches money already assigned. A rule can also be applied
+ * once to this month's money in (previewed first).
  */
 export function RulesSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.rules");
@@ -42,7 +35,6 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 	const archive = api.envelope.archiveRule.useMutation();
 	const [adding, setAdding] = useState(false);
 	const [applying, setApplying] = useState<Rule | null>(null);
-	const [removing, setRemoving] = useState<Rule | null>(null);
 	const list = rules.data ?? [];
 	const name = (id: string) => m.byId.get(id)?.name ?? t("envelopeFallback");
 	const refresh = () => utils.envelope.rules.invalidate();
@@ -76,68 +68,34 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 							{list.map((r, i) => (
 								<Row
 									actions={
-										<DropdownMenu>
-											<Tip content={t("more", { name: r.name })}>
-												<DropdownMenuTrigger asChild>
-													<Button
-														aria-label={t("more", { name: r.name })}
-														icon
-														kind="ghost"
-														size="sm"
-													>
-														<EllipsisIcon />
-													</Button>
-												</DropdownMenuTrigger>
-											</Tip>
-											<DropdownMenuContent align="end">
-												<DropdownMenuItem
-													disabled={!r.active}
-													onSelect={() => setApplying(r)}
-												>
-													{t("applyTo")}
-												</DropdownMenuItem>
-												<DropdownMenuItem onSelect={() => setRemoving(r)}>
-													{t("remove")}
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
+										<ActionMenu
+											entity="incomeRule"
+											handlers={{
+												moveUp: () => move(i, -1),
+												moveDown: () => move(i, 1),
+												applyToMonth: () => setApplying(r),
+												remove: () =>
+													archive.mutateAsync({ id: r.id }).then(refresh),
+											}}
+											target={{
+												id: r.id,
+												name: r.name,
+												first: i === 0,
+												last: i === list.length - 1,
+												active: r.active,
+											}}
+										/>
 									}
 									end={
-										<span className="flex items-center gap-2">
-											<Tip content={t("up")}>
-												<Button
-													aria-label={t("up")}
-													disabled={i === 0}
-													icon
-													kind="ghost"
-													onClick={() => void move(i, -1)}
-													size="sm"
-												>
-													<ArrowUp />
-												</Button>
-											</Tip>
-											<Tip content={t("down")}>
-												<Button
-													aria-label={t("down")}
-													disabled={i === list.length - 1}
-													icon
-													kind="ghost"
-													onClick={() => void move(i, 1)}
-													size="sm"
-												>
-													<ArrowDown />
-												</Button>
-											</Tip>
-											<Switch
-												aria-label={t("active", { name: r.name })}
-												checked={r.active}
-												onCheckedChange={(active) =>
-													void update
-														.mutateAsync({ id: r.id, active })
-														.then(refresh)
-												}
-											/>
-										</span>
+										<Switch
+											aria-label={t("active", { name: r.name })}
+											checked={r.active}
+											onCheckedChange={(active) =>
+												void update
+													.mutateAsync({ id: r.id, active })
+													.then(refresh)
+											}
+										/>
 									}
 									key={r.id}
 									sub={
@@ -178,19 +136,6 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 					ruleName={applying.name}
 				/>
 			) : null}
-			<ConfirmationDialog
-				confirmLabel={t("removeConfirm")}
-				description={t("removeBody")}
-				onConfirm={() => {
-					const r = removing;
-					setRemoving(null);
-					if (r) void archive.mutateAsync({ id: r.id }).then(refresh);
-				}}
-				onOpenChange={(o) => !o && setRemoving(null)}
-				open={removing !== null}
-				title={t("removeTitle", { name: removing?.name ?? "" })}
-				variant="destructive"
-			/>
 		</Sheet>
 	);
 }

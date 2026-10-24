@@ -23,6 +23,12 @@ const SIMPLE = [
 	"fundNow",
 	"setup",
 	"coverAll",
+	"debt",
+	"payDebt",
+	"fromWealth",
+	"planApply",
+	"income",
+	"splits",
 ] as const;
 
 function Harness() {
@@ -93,6 +99,18 @@ function Harness() {
 									Raise {e.name}
 								</Button>
 							) : null}
+							<Button
+								onClick={() => open("toWealth", { month, envelopeId: e.id })}
+								size="sm"
+							>
+								To Wealth {e.name}
+							</Button>
+							<Button
+								onClick={() => open("planEdit", { month, envelopeId: e.id })}
+								size="sm"
+							>
+								Plan {e.name}
+							</Button>
 							<Button
 								onClick={() =>
 									open("explain", {

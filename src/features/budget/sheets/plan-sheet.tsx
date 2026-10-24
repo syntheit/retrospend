@@ -12,47 +12,26 @@ import { SkeletonRows } from "~/components/ui/skeleton";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
 import { AssignSheet } from "./assign-sheet";
 import { EnvelopeTile } from "./envelope-tile";
-import { MovementChanges } from "./movement-changes";
+import { FigureChanges } from "./figure-changes";
 import { usePoolName } from "./pool";
 import type { SheetProps } from "./types";
-import { useDryRun } from "./use-dry-run";
+import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import { newId, useBudgetWrite } from "./use-write";
+import { useMonthName } from "./use-month-name";
+import { useBudgetWrite } from "./use-write";
 
-type AssignInput = RouterInputs["envelope"]["assign"];
+type UsePlan = RouterInputs["envelope"]["usePlan"];
 type Fill = RouterOutputs["envelope"]["fillFromTargets"];
-type Choice = "LEAVE" | "SAVE";
-
-/**
- * The write Use my plan makes: the server's fill lines, plus the rest in the
- * savings home when you chose Save it. One envelope appears once per batch,
- * so a rest that lands on an envelope the plan already funds joins its line.
- */
-function itemsOf(fill: Fill, choice: Choice, ids: Map<string, string>) {
-	const sums = new Map<string, number>();
-	const add = (envelopeId: string, minor: number) =>
-		sums.set(envelopeId, (sums.get(envelopeId) ?? 0) + minor);
-	for (const l of fill.lines)
-		if (l.amount.minor > 0) add(l.envelopeId, l.amount.minor);
-	const save = fill.restOptions.find((o) => o.choice === "SAVE");
-	if (choice === "SAVE" && save?.envelopeId && fill.rest.minor > 0)
-		add(save.envelopeId, fill.rest.minor);
-	return [...sums].map(([envelopeId, amountMinor]) => {
-		let id = ids.get(envelopeId);
-		if (!id) {
-			id = newId();
-			ids.set(envelopeId, id);
-		}
-		return { id, envelopeId, amountMinor };
-	});
-}
+type Choice = UsePlan["rest"];
+type Line = Fill["lines"][number];
 
 /**
  * Use my plan (owner N72, RC-5): money with no job gets its jobs from your
  * targets in one tap. Every line is listed, then where the rest goes (Leave
- * it, or Save it in the savings home), then what the server's dry run says
- * changes. "Change amounts" opens the assign sheet instead. One Undo takes
- * the whole plan back.
+ * it, Save it in the savings home, or Next month, assigned ahead by next
+ * month's own targets), then what the server's dry run says changes. The
+ * lines and the rest are the server's, for the choice you made; one Undo
+ * takes the whole plan back. "Change amounts" opens the assign sheet.
  */
 export function PlanSheet({
 	open,
@@ -61,10 +40,11 @@ export function PlanSheet({
 	amountMinor,
 }: SheetProps<{ amountMinor?: number }>) {
 	const t = useTranslations("budgetSheets.plan");
+	const monthName = useMonthName();
 	const [changing, setChanging] = useState(false);
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
-	const { refresh, saved, undoOf, money } = useBudgetWrite();
+	const { undoOf, money } = useBudgetWrite();
 	const currency = m.data?.book.currency ?? "";
 	const fill = api.envelope.fillFromTargets.useQuery(
 		{
@@ -74,60 +54,64 @@ export function PlanSheet({
 		{ enabled: m.data !== null, placeholderData: keepPreviousData },
 	);
 	const [choice, setChoice] = useState<Choice>("LEAVE");
-	const [batchId] = useState(newId);
-	const ids = useState(() => new Map<string, string>())[0];
 	const data = fill.data ?? null;
+	const input: UsePlan | null = data
+		? { rest: choice, ...(amountMinor ? { amountMinor } : {}) }
+		: null;
+	const preview = api.envelope.usePlanPreview.useMutation();
+	const commit = api.envelope.usePlan.useMutation();
+	const w = useMoneyWrite({
+		input,
+		preview: preview.mutateAsync,
+		commit: commit.mutateAsync,
+		toast: (res) => {
+			const given = res.changes.find((c) => c.id === "budget.notPlannedYet");
+			const count = res.value.lines.length;
+			return given
+				? t("toast", {
+						amount: money({ minor: Math.abs(given.delta.minor), currency }),
+						count,
+					})
+				: t("toastShort", { count });
+		},
+		undo: (res) => {
+			const batchId = res.value.batchId;
+			return batchId ? undoOf({ batchId }) : undefined;
+		},
+	});
 
-	const input: AssignInput | null = useMemo(() => {
-		if (!data || !m.monthKey) return null;
-		const items = itemsOf(data, choice, ids);
-		return items.length
-			? { batchId, month: m.monthKey, mode: "add", items }
-			: null;
-	}, [data, choice, m.monthKey, batchId, ids]);
-
-	const previewMutation = api.envelope.assignPreview.useMutation();
-	const commit = api.envelope.assign.useMutation();
-	const dry = useDryRun(previewMutation.mutateAsync, input);
-
+	// The lines are the server's for this choice; before it answers, the fill's own.
+	const lines: Line[] = w.dry.preview?.value.lines ?? data?.lines ?? [];
 	const groups = useMemo(() => {
-		const out = new Map<string, Fill["lines"]>();
-		for (const l of data?.lines ?? []) {
+		const out = new Map<string, Line[]>();
+		for (const l of lines) {
 			if (l.amount.minor <= 0) continue;
-			const g = m.byId.get(l.envelopeId)?.groupName ?? "";
-			out.set(g, [...(out.get(g) ?? []), l]);
+			const key =
+				l.month !== m.monthKey
+					? `month:${l.month}`
+					: (m.byId.get(l.envelopeId)?.groupName ?? "");
+			out.set(key, [...(out.get(key) ?? []), l]);
 		}
 		return [...out];
-	}, [data, m.byId]);
+	}, [lines, m.byId, m.monthKey]);
 
 	const save = data?.restOptions.find((o) => o.choice === "SAVE") ?? null;
+	const next = data?.restOptions.find((o) => o.choice === "NEXT_MONTH") ?? null;
 	const saveName = save?.envelopeId
 		? (m.byId.get(save.envelopeId)?.name ?? "")
 		: "";
-
-	const onSubmit = async () => {
-		if (!input) return false;
-		const res = await commit.mutateAsync(input);
-		await refresh();
-		const given = res.changes.find((c) => c.id === "budget.notPlannedYet");
-		saved(
-			given
-				? t("toast", {
-						amount: money({ minor: Math.abs(given.delta.minor), currency }),
-						count: input.items.length,
-					})
-				: t("toastShort", { count: input.items.length }),
-			undoOf({ batchId: input.batchId }),
-		);
-	};
-
+	const rest = w.dry.preview?.value.rest ?? data?.rest ?? null;
+	const heading = (key: string) =>
+		key.startsWith("month:")
+			? t("nextMonthGroup", { month: monthName(Number(key.slice(6))) })
+			: key || t("noGroup");
 	return (
 		<Sheet
 			detent="large"
 			onOpenChange={(o) => !o && onClose()}
-			onSubmit={onSubmit}
+			onSubmit={w.submit}
 			open={open}
-			submitDisabled={dry.status !== "ready"}
+			submitDisabled={!w.ready}
 			submitLabel={t("use")}
 			title={t("title")}
 		>
@@ -145,18 +129,18 @@ export function PlanSheet({
 					{groups.length === 0 ? (
 						<p className="text-fg-3 text-small">{t("met")}</p>
 					) : (
-						groups.map(([group, lines]) => (
-							<section aria-label={group || t("noGroup")} key={group}>
+						groups.map(([key, group]) => (
+							<section aria-label={heading(key)} key={key}>
 								<h3 className="text-fg text-small mb-1 font-semibold">
-									{group || t("noGroup")}
+									{heading(key)}
 								</h3>
 								<RowList variant="flat">
-									{lines.map((l) => {
+									{group.map((l) => {
 										const e = m.byId.get(l.envelopeId);
 										return (
 											<Row
 												end={<Money value={l.amount} />}
-												key={l.envelopeId}
+												key={`${l.month}-${l.envelopeId}-${l.step}`}
 												lead={e ? <EnvelopeTile envelope={e} /> : undefined}
 												sub={<RowSub parts={[t(`why.${l.step}`)]} />}
 												title={e?.name ?? t("envelopeFallback")}
@@ -192,15 +176,26 @@ export function PlanSheet({
 										{t("saveIt", { name: saveName })}
 									</FilterChip>
 								) : null}
+								{next?.month ? (
+									<FilterChip
+										onClick={() => setChoice("NEXT_MONTH")}
+										selected={choice === "NEXT_MONTH"}
+									>
+										{t("nextMonth", { month: monthName(next.month) })}
+									</FilterChip>
+								) : null}
 							</FilterChips>
+							{choice !== "LEAVE" && rest ? (
+								<p className="text-fg-3 text-small">
+									{t.rich("restStays", {
+										pool,
+										amount: () => <Money value={rest} />,
+									})}
+								</p>
+							) : null}
 						</section>
 					) : null}
-					<MovementChanges
-						byId={m.byId}
-						dry={dry}
-						fallbackName={t("envelopeFallback")}
-						poolName={pool}
-					/>
+					<FigureChanges dry={w.dry} poolName={pool} />
 					<div>
 						<Button kind="ghost" onClick={() => setChanging(true)} size="sm">
 							{t("change")}

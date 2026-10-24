@@ -23,7 +23,11 @@
 		"owed_owedToYou": "Dir geschuldet",
 		"owed_youOwe": "Du schuldest",
 		"balance_person": "Saldo mit dieser Person",
-		"other": "Eine andere Zahl"
+		"other": "Eine andere Zahl",
+		"spent": "Deine Ausgaben",
+		"notTracked": "Nicht erfasst",
+		"netWorthChange_exchange": "Wechselergebnis",
+		"budget_totalDebt": "Gesamtschulden"
 	},
 	"figuresInline": {
 		"budget_notPlannedYet": "Noch nicht verplant",
@@ -40,7 +44,11 @@
 		"owed_owedToYou": "was dir geschuldet wird",
 		"owed_youOwe": "was du schuldest",
 		"balance_person": "dein Saldo mit dieser Person",
-		"other": "eine andere Zahl"
+		"other": "eine andere Zahl",
+		"spent": "deine Ausgaben",
+		"notTracked": "nicht Erfasstes",
+		"netWorthChange_exchange": "das Wechselergebnis",
+		"budget_totalDebt": "die Gesamtschulden"
 	},
 	"assign": {
 		"title": "{amount} zuweisen",
@@ -114,7 +122,10 @@
 		"saveIt": "In {name} sparen",
 		"change": "Beträge ändern",
 		"toast": "Plan verwendet: {amount} für {count, plural, one {# Umschlag} other {# Umschläge}}",
-		"toastShort": "Plan für {count, plural, one {# Umschlag} other {# Umschläge}} verwendet"
+		"toastShort": "Plan für {count, plural, one {# Umschlag} other {# Umschläge}} verwendet",
+		"nextMonth": "Nächster Monat ({month})",
+		"nextMonthGroup": "Im Voraus {month} zugewiesen",
+		"restStays": "<amount></amount> bleibt {pool}."
 	},
 	"limit": {
 		"raiseTitle": "Dieses Limit erhöhen",
@@ -368,17 +379,9 @@
 		"lead": "Was passiert, wenn Geld eintrifft, in der Reihenfolge der Regeln. Jede Bewegung steht im Verlauf mit Rückgängig.",
 		"none": "Noch keine Regeln. Eingehendes Geld bleibt Noch nicht verplant, bis du es zuweist.",
 		"done": "Fertig",
-		"up": "Nach oben",
-		"down": "Nach unten",
 		"active": "Regel {name} ist an",
 		"paused": "Pausiert",
 		"add": "Regel hinzufügen",
-		"more": "Mehr zu {name}",
-		"applyTo": "Auch auf die Einnahmen dieses Monats anwenden",
-		"remove": "Entfernen",
-		"removeTitle": "{name} entfernen?",
-		"removeBody": "Sie läuft nicht mehr auf neues Geld. Was sie schon zugewiesen hat, bleibt, wie es ist.",
-		"removeConfirm": "Regel entfernen",
 		"envelopeFallback": "Umschlag",
 		"sentence": {
 			"percent": "{percent} der Einnahmen an {name}",
@@ -444,6 +447,121 @@
 		"followsRecurring": "Folgt deiner wiederkehrenden Ausgabe",
 		"moneyNow": "Geld zum Verplanen",
 		"start": "Mein Budget starten",
-		"toast": "Dein Budget ist bereit"
+		"toast": "Dein Budget ist bereit",
+		"ok": "Fertig",
+		"exists": "Du hast schon ein Budget. Ändere den Stil im Menü."
+	},
+	"debt": {
+		"title": "Schuldentilgungsplan",
+		"none": "Du hast keine Schulden in Vermögen. Füge dort zuerst eine Karte oder einen Kredit hinzu.",
+		"debts": "Deine Schulden",
+		"debtFallback": "Schuld",
+		"terms": "{apr} % im Jahr · Minimum <minimum></minimum>",
+		"freeBy": "schuldenfrei {month}",
+		"monthYear": "{month} {year}",
+		"first": "Zuerst zahlen",
+		"avalanche": "Höchster Zins",
+		"snowball": "Kleinster Saldo",
+		"about": {
+			"AVALANCHE": "Der höchste Zins spart am meisten Zinsen.",
+			"SNOWBALL": "Der kleinste Saldo tilgt eine Schuld früher."
+		},
+		"extra": "Extra pro Monat zusätzlich zu den Minimums",
+		"result": "Ergebnis",
+		"debtFree": "Schuldenfrei bis",
+		"never": "Nicht in diesem Tempo",
+		"interest": "Zinsen, die du zahlst",
+		"incomplete": "Für eine Schuld gibt es heute keinen Kurs; sie bleibt außen vor.",
+		"note": "Minimums sind Rechnungen. Der Extrabetrag ist ein Ziel in seinem Umschlag. Das Speichern des Plans bewegt kein Geld.",
+		"save": "Plan speichern",
+		"toast": "Tilgungsplan gespeichert"
+	},
+	"payDebt": {
+		"title": "Schuld abbezahlen",
+		"none": "Hier gibt es keine Schuld zu tilgen.",
+		"debt": "Schuld",
+		"from": "Bezahlt von",
+		"notTracked": "Nicht erfasst",
+		"envelope": "Aus Umschlag",
+		"principal": "Auf den Saldo",
+		"interest": "Zinsen in dieser Zahlung",
+		"card": "Neue Kartenausgaben sind schon aus deinen Umschlägen gekommen. Gib nur die alte Schuld an.",
+		"balance": "Saldo von {name}",
+		"pay": "Zahlen",
+		"toast": "{amount} auf {name} gezahlt"
+	},
+	"toWealth": {
+		"title": "{name} nach Vermögen verschieben",
+		"lead": "Geld verlässt {name} für ein Konto außerhalb des Budgets. Der Zielfortschritt ändert sich nicht.",
+		"noAccount": "Du hast noch kein Vermögenskonto außerhalb deines Budgets. Füge eines in Vermögen hinzu.",
+		"from": "Verlässt",
+		"notTracked": "Nicht erfasst",
+		"into": "In",
+		"amount": "Betrag",
+		"got": "Du erhältst (optional)",
+		"move": "Verschieben",
+		"toast": "{amount} von {name} nach {account} verschoben"
+	},
+	"fromWealth": {
+		"title": "Aus Vermögen verschieben",
+		"none": "Du hast kein Vermögenskonto außerhalb deines Budgets, aus dem du verschieben könntest.",
+		"mode": "Hast du das Geld verschoben?",
+		"moved": "Ja, verschoben",
+		"count": "Nein, nur mitzählen",
+		"about": {
+			"moved": "Das Geld geht von diesem Konto auf eines, das dein Budget zählt. Beide Konten ändern sich.",
+			"count": "Das Konto behält sein Geld und das Budget zählt diesen Betrag. In Vermögen bewegt sich nichts."
+		},
+		"from": "Von",
+		"into": "In",
+		"notTracked": "Nicht erfasst",
+		"amount": "Du hast verschoben",
+		"units": "Diesen Betrag zählen",
+		"got": "Du hast erhalten (optional)",
+		"putIn": "Hineinlegen in",
+		"move": "Hereinholen",
+		"toastMoved": "{amount} hereingeholt",
+		"toastCounted": "Geld von {name} mitgezählt. {name} hat sich nicht geändert"
+	},
+	"planEdit": {
+		"title": "{name} planen",
+		"lead": "Was dieser Umschlag im Plan bekommt. Bis zum Zahltag ein Entwurf; nichts bewegt sich.",
+		"planned": "Geplant",
+		"target": "Sein Ziel braucht <amount></amount>.",
+		"save": "Speichern",
+		"toast": "{name} geplant"
+	},
+	"planApply": {
+		"title": "Plan für {month} anwenden",
+		"lead": "Der Plan wird gespeichert und finanziert sich, wenn das Geld für {month} eintrifft. Heute bewegt sich nichts.",
+		"none": "Für diesen Monat gibt es keinen Plan zum Anwenden.",
+		"lines": "Geplant",
+		"apply": "Plan anwenden",
+		"toast": "Plan für {month} gespeichert",
+		"envelopeFallback": "Umschlag"
+	},
+	"confirmPayment": {
+		"title": "Zahlung von {name} bestätigen",
+		"none": "Es wartet keine Zahlung auf dich.",
+		"says": "{name} sagt, dass er dir am {date} <amount></amount> gezahlt hat.",
+		"confirm": "Bestätigen",
+		"toast": "Zahlung von {name} bestätigt"
+	},
+	"splits": {
+		"title": "Aufgeteilte Ausgaben, die auf dich warten",
+		"done": "Fertig",
+		"none": "Es wartet keine aufgeteilte Ausgabe auf dich.",
+		"addedBy": "{name} hat dich hinzugefügt"
+	},
+	"income": {
+		"title": "Einnahmen {month}",
+		"done": "Fertig",
+		"received": "Erhalten",
+		"moneyIn": "Einnahmen",
+		"expected": "Erwartet",
+		"next": "Nächste {date}",
+		"planCost": "Dein Plan kostet <cost></cost> im Monat. Üblicherweise erhältst du <income></income>.",
+		"planCostOnly": "Dein Plan kostet <cost></cost> im Monat.",
+		"incomplete": "Für einige Beträge gibt es heute keinen Kurs; sie bleiben außen vor."
 	}
 }

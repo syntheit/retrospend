@@ -307,5 +307,22 @@
 		"import": {
 			"label": "Importer"
 		}
+	},
+	"incomeRule": {
+		"moveUp": {
+			"label": "Monter"
+		},
+		"moveDown": {
+			"label": "Descendre"
+		},
+		"applyToMonth": {
+			"label": "Appliquer aussi aux entrées de ce mois"
+		},
+		"remove": {
+			"label": "Retirer",
+			"confirmTitle": "Retirer {name} ?",
+			"confirmBody": "Elle ne s'applique plus à l'argent nouveau. Ce qu'elle a déjà attribué reste tel quel.",
+			"confirmButton": "Retirer la règle"
+		}
 	}
 }

@@ -23,7 +23,11 @@
 		"owed_owedToYou": "Owed to you",
 		"owed_youOwe": "You owe",
 		"balance_person": "Balance with this person",
-		"other": "Another figure"
+		"other": "Another figure",
+		"spent": "Your spending",
+		"notTracked": "Not tracked",
+		"netWorthChange_exchange": "Exchange result",
+		"budget_totalDebt": "Total debt"
 	},
 	"figuresInline": {
 		"budget_notPlannedYet": "Not planned yet",
@@ -40,7 +44,11 @@
 		"owed_owedToYou": "what people owe you",
 		"owed_youOwe": "what you owe",
 		"balance_person": "your balance with this person",
-		"other": "another figure"
+		"other": "another figure",
+		"spent": "your spending",
+		"notTracked": "not tracked",
+		"netWorthChange_exchange": "the exchange result",
+		"budget_totalDebt": "total debt"
 	},
 	"assign": {
 		"title": "Assign {amount}",
@@ -114,7 +122,10 @@
 		"saveIt": "Save it in {name}",
 		"change": "Change amounts",
 		"toast": "Plan used: {amount} to {count, plural, one {# envelope} other {# envelopes}}",
-		"toastShort": "Plan used for {count, plural, one {# envelope} other {# envelopes}}"
+		"toastShort": "Plan used for {count, plural, one {# envelope} other {# envelopes}}",
+		"nextMonth": "Next month ({month})",
+		"nextMonthGroup": "Assigned ahead to {month}",
+		"restStays": "<amount></amount> stays {pool}."
 	},
 	"limit": {
 		"raiseTitle": "Raise this limit",
@@ -368,17 +379,9 @@
 		"lead": "What happens when money arrives, in the order the rules run. Every move shows in history with Undo.",
 		"none": "No rules yet. Money that arrives stays Not planned yet until you assign it.",
 		"done": "Done",
-		"up": "Move up",
-		"down": "Move down",
 		"active": "Rule {name} is on",
 		"paused": "Paused",
 		"add": "Add rule",
-		"more": "More for {name}",
-		"applyTo": "Also apply to this month's money in",
-		"remove": "Remove",
-		"removeTitle": "Remove {name}?",
-		"removeBody": "It stops running on new money. What it already assigned stays as it is.",
-		"removeConfirm": "Remove rule",
 		"envelopeFallback": "Envelope",
 		"sentence": {
 			"percent": "{percent} of money in to {name}",
@@ -444,6 +447,121 @@
 		"followsRecurring": "Follows your recurring expense",
 		"moneyNow": "Money to plan",
 		"start": "Start my budget",
-		"toast": "Your budget is ready"
+		"toast": "Your budget is ready",
+		"ok": "Done",
+		"exists": "You already have a budget. Change its style from the menu."
+	},
+	"debt": {
+		"title": "Debt payoff plan",
+		"none": "You have no debts in Wealth. Add a card or a loan there first.",
+		"debts": "Your debts",
+		"debtFallback": "Debt",
+		"terms": "{apr}% a year · minimum <minimum></minimum>",
+		"freeBy": "clear by {month}",
+		"monthYear": "{month} {year}",
+		"first": "Pay first",
+		"avalanche": "Highest rate",
+		"snowball": "Smallest balance",
+		"about": {
+			"AVALANCHE": "Highest rate saves the most interest.",
+			"SNOWBALL": "Smallest balance clears one debt sooner."
+		},
+		"extra": "Extra each month, on top of minimums",
+		"result": "Result",
+		"debtFree": "Debt-free by",
+		"never": "Not at this pace",
+		"interest": "Interest you pay",
+		"incomplete": "A debt has no rate today and is left out.",
+		"note": "Minimums are bills. The extra is a target on its envelope. Saving the plan moves no money.",
+		"save": "Save plan",
+		"toast": "Payoff plan saved"
+	},
+	"payDebt": {
+		"title": "Pay down a debt",
+		"none": "You have no debt in your home currency to pay down here.",
+		"debt": "Debt",
+		"from": "Paid from",
+		"notTracked": "Not tracked",
+		"envelope": "Out of envelope",
+		"principal": "Toward the balance",
+		"interest": "Interest in this payment",
+		"card": "New card spending already came out of your envelopes. Enter only the old debt.",
+		"balance": "{name} balance",
+		"pay": "Pay",
+		"toast": "Paid {amount} toward {name}"
+	},
+	"toWealth": {
+		"title": "Move {name} to Wealth",
+		"lead": "Money leaves {name} for an account outside the budget. Its goal progress does not change.",
+		"noAccount": "You have no Wealth account outside your budget yet. Add one in Wealth.",
+		"from": "Leaves from",
+		"notTracked": "Not tracked",
+		"into": "Into",
+		"amount": "Amount",
+		"got": "You get (optional)",
+		"move": "Move",
+		"toast": "Moved {amount} from {name} to {account}"
+	},
+	"fromWealth": {
+		"title": "Move from Wealth",
+		"none": "You have no Wealth account outside your budget to move from.",
+		"mode": "Did you move the money?",
+		"moved": "Yes, I moved it",
+		"count": "No, just count it",
+		"about": {
+			"moved": "The money goes from that account to one your budget counts. Both accounts change.",
+			"count": "The account keeps its money and the budget counts that much. Nothing moves in Wealth."
+		},
+		"from": "From",
+		"into": "Into",
+		"notTracked": "Not tracked",
+		"amount": "You moved",
+		"units": "Count this much",
+		"got": "You got (optional)",
+		"putIn": "Put it in",
+		"move": "Move in",
+		"toastMoved": "Moved {amount} in",
+		"toastCounted": "Counted money from {name}. {name} did not change"
+	},
+	"planEdit": {
+		"title": "Plan {name}",
+		"lead": "What this envelope gets in the plan. It is a draft until payday; nothing moves.",
+		"planned": "Planned",
+		"target": "Its target needs <amount></amount>.",
+		"save": "Save",
+		"toast": "Planned {name}"
+	},
+	"planApply": {
+		"title": "Apply the {month} plan",
+		"lead": "The plan is saved and funds itself when {month}'s money arrives. Nothing moves today.",
+		"none": "There is no plan to apply for this month.",
+		"lines": "Planned",
+		"apply": "Apply plan",
+		"toast": "{month} plan saved",
+		"envelopeFallback": "Envelope"
+	},
+	"confirmPayment": {
+		"title": "Confirm {name}'s payment",
+		"none": "There is no payment waiting for you.",
+		"says": "{name} says they paid you <amount></amount> on {date}.",
+		"confirm": "Confirm",
+		"toast": "Confirmed {name}'s payment"
+	},
+	"splits": {
+		"title": "Splits waiting for you",
+		"done": "Done",
+		"none": "No split is waiting for you.",
+		"addedBy": "{name} added you"
+	},
+	"income": {
+		"title": "Money in, {month}",
+		"done": "Done",
+		"received": "Received",
+		"moneyIn": "Money in",
+		"expected": "Expected",
+		"next": "Next {date}",
+		"planCost": "Your plan costs <cost></cost> a month. You usually get <income></income>.",
+		"planCostOnly": "Your plan costs <cost></cost> a month.",
+		"incomplete": "Some amounts have no rate today and are left out."
 	}
 }

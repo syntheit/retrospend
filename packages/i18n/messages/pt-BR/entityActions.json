@@ -307,5 +307,22 @@
 		"import": {
 			"label": "Importar"
 		}
+	},
+	"incomeRule": {
+		"moveUp": {
+			"label": "Subir"
+		},
+		"moveDown": {
+			"label": "Descer"
+		},
+		"applyToMonth": {
+			"label": "Aplicar também às entradas deste mês"
+		},
+		"remove": {
+			"label": "Remover",
+			"confirmTitle": "Remover {name}?",
+			"confirmBody": "Ela deixa de rodar no dinheiro novo. O que já atribuiu fica como está.",
+			"confirmButton": "Remover regra"
+		}
 	}
 }

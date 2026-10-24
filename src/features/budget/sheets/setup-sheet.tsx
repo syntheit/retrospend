@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useRef } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
 import { Row, RowList, RowSub } from "~/components/rows/row";
@@ -20,6 +21,7 @@ import { AmountCell } from "./amount-cell";
 import { FigureChanges } from "./figure-changes";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
+import { useMonth } from "./use-month";
 import { type SetupStyle, useSetup } from "./use-setup";
 
 const STYLES: SetupStyle[] = [
@@ -37,7 +39,7 @@ const STYLES: SetupStyle[] = [
  * amounts. The server previews exactly what is created and Save writes it.
  * Limits asks no money now: its limits fund themselves.
  */
-export function SetupSheet({ open, onClose }: SheetProps) {
+function SetupForm({ open, onClose }: SheetProps) {
 	const t = useTranslations("budgetSheets.setup");
 	const ts = useTranslations("budgetSheets.style");
 	const locale = useLocale();
@@ -181,4 +183,29 @@ export function SetupSheet({ open, onClose }: SheetProps) {
 			</div>
 		</Sheet>
 	);
+}
+
+/**
+ * Set up your budget only when there is none: setup refuses a second book,
+ * so with one the sheet says so instead of offering a form that cannot save.
+ */
+export function SetupSheet(props: SheetProps) {
+	const t = useTranslations("budgetSheets.setup");
+	const book = useMonth(props.month);
+	// Read once: the budget this sheet creates must not turn it into the message.
+	const had = useRef<boolean | null>(null);
+	if (had.current === null && !book.loading) had.current = book.data !== null;
+	if (had.current)
+		return (
+			<Sheet
+				cancelLabel={t("ok")}
+				detent="medium"
+				onOpenChange={(o) => !o && props.onClose()}
+				open={props.open}
+				title={t("title")}
+			>
+				<p className="text-fg-2 text-small">{t("exists")}</p>
+			</Sheet>
+		);
+	return <SetupForm {...props} />;
 }
