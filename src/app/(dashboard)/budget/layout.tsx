@@ -1,10 +1,11 @@
-import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
+import { AfterHydration } from "~/components/after-hydration";
+import { newBudgetEnabled } from "~/features/budget/page/enabled";
 import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
 import { requestTimeZone } from "~/server/time-zone";
-import { AfterHydration } from "~/components/after-hydration";
-import { HydrateClient, api } from "~/trpc/server";
+import { api, HydrateClient } from "~/trpc/server";
 import Loading from "./loading";
 
 export async function generateMetadata() {
@@ -37,7 +38,13 @@ async function Prefetched({ children }: { children: React.ReactNode }) {
 	);
 }
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	// The redesigned page reads the envelope budget on its own (no legacy prefetch).
+	if (await newBudgetEnabled()) return children;
 	return (
 		<Suspense fallback={<Loading />}>
 			<Prefetched>{children}</Prefetched>

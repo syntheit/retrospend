@@ -49,7 +49,13 @@ export function BudgetSheetsProvider({
 	return (
 		<Context.Provider value={api}>
 			{children}
-			{current && <Mounted current={current} onClose={() => setCurrent(null)} sheets={sheets} />}
+			{current && (
+				<Mounted
+					current={current}
+					onClose={() => setCurrent(null)}
+					sheets={sheets}
+				/>
+			)}
 		</Context.Provider>
 	);
 }

@@ -10,7 +10,7 @@ import { SiteHeader } from "~/components/site-header";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useBudgetController } from "~/hooks/use-budget-controller";
 
-export default function BudgetPage() {
+export default function LegacyBudgetPage() {
 	const t = useTranslations("budget");
 	const {
 		selectedMonth,

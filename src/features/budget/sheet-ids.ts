@@ -134,7 +134,11 @@ export type BudgetSheetArgs = {
 	 * `figure` is the registry id of the number tapped ("budget.notPlannedYet",
 	 * "budget.leftToSpend", "envelope.left"); `envelopeId` narrows it.
 	 */
-	explain: WithMonth & { figure: string; envelopeId?: string; groupId?: string };
+	explain: WithMonth & {
+		figure: string;
+		envelopeId?: string;
+		groupId?: string;
+	};
 	planEdit: ForEnvelope;
 	planApply: WithMonth;
 	fundNow: WithMonth;

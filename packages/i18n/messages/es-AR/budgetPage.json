@@ -1,0 +1,192 @@
+{
+	"title": "Presupuesto",
+	"menu": {
+		"more": "Más acciones del presupuesto",
+		"addIncome": "Agregar ingreso",
+		"usePlan": "Usar mi plan",
+		"planNext": "Planificar el mes siguiente",
+		"summary": "Resumen del mes",
+		"whatIf": "¿Y si gasto…?",
+		"addEnvelope": "Agregar sobre",
+		"combine": "Combinar sobres",
+		"rules": "Reglas de ingresos",
+		"style": "Estilo de presupuesto",
+		"help": "Qué significan las palabras"
+	},
+	"month": {
+		"label": "{month} {year}",
+		"previous": "Mes anterior",
+		"next": "Mes siguiente",
+		"pick": "Elegir un mes",
+		"closedItem": "{month}, cerrado",
+		"planItem": "Planificar {month}"
+	},
+	"toolbar": {
+		"label": "Filtrar sobres",
+		"search": "Buscar sobres",
+		"searchLimits": "Buscar límites",
+		"chips": "Filtrar por estado",
+		"overspent": "Excedidos {count}",
+		"underfunded": "Sin fondos suficientes {count}",
+		"plan": "Planificar {month}"
+	},
+	"hero": {
+		"why": "Cómo se calcula",
+		"afford": "¿Me alcanza para algo?",
+		"incomplete": "Todavía no hay cotización para {currencies}, así que no se puede calcular."
+	},
+	"verdict": {
+		"label": {
+			"toAssign": "Por asignar",
+			"week": "Queda esta semana",
+			"limits": "Queda en tus límites",
+			"overLimits": "Pasaste tus límites",
+			"overBudget": "Pasado de presupuesto en {month}",
+			"saveFirst": "Queda para gastar después de ahorrar",
+			"leftToSpend": "Queda para gastar en {month}"
+		},
+		"plannedTooMuch": "Planificaste <amount></amount> más de lo que tenés, así que lo sacamos de este número.",
+		"overBudget": "Gastaste <amount></amount> más de lo que planificaste para {month}. Cubrilo con plata que no planificaste, o sale de {next}.",
+		"billsShort": "A las facturas todavía les faltan <amount></amount>. Planificá eso primero; este número no lo incluye.",
+		"usedUp": "Usaste todo el presupuesto de Gastos de {month}. Cualquier gasto más sale de {next}.",
+		"faster": "Estás gastando más rápido de lo planificado. Para terminar dentro del presupuesto, mantenete en unos <amount></amount> por día.",
+		"someOver": "Unos <amount></amount> por día durante {days, plural, one {# día} other {# días}}, después de que {names} se pasara por <over></over>.",
+		"onTrack": "Vas bien: unos <amount></amount> por día durante {days, plural, one {# día} other {# días}}.",
+		"allAssigned": "Todo tu dinero tiene un destino.",
+		"needsJob": "A <amount></amount> todavía le falta un destino.",
+		"overAssigned": "Repartiste <amount></amount> más de lo que tenés.",
+		"weekLeft": "Unos <amount></amount> por día. Se reinicia el {resets}.",
+		"weekUsed": "Usaste lo de esta semana. Se reinicia el {resets}.",
+		"limitsOver": "Pasaste tus límites por <amount></amount>.",
+		"limitsUsedUp": "Usaste todos tus límites de {month}.",
+		"limitsFaster": "Estás usando tus límites más rápido que el mes. Unos <amount></amount> por día te mantienen adentro.",
+		"limitsSomeOver": "{names} se pasó por <over></over>. Quedan unos <amount></amount> por día en tus límites.",
+		"limitsOnTrack": "Vas bien: unos <amount></amount> por día en tus límites.",
+		"action": {
+			"FIX_PLAN": "Arreglar mi plan",
+			"COVER": "Cubrir",
+			"PLAN_BILLS": "Planificar facturas",
+			"USE_PLAN": "Usar mi plan",
+			"TAKE_BACK": "Recuperarlo",
+			"raiseLimit": "Subir este límite"
+		}
+	},
+	"notice": {
+		"welcomeBack": "Te damos la bienvenida de nuevo. Ponete al día con los meses que te perdiste.",
+		"welcomeBackAction": "Ponerme al día",
+		"summary": "{month} se cerró. Mirá qué pasó.",
+		"summaryAction": "Resumen del mes",
+		"usePlan": "Usar mi plan",
+		"notPlanned": "Entraron <amount></amount> que todavía no están planificados. No cuentan en lo que queda para gastar hasta que los planifiques.",
+		"cover": "Cubrir",
+		"overspent": "{count, plural, one {{name} se pasó por <amount></amount>.} other {# sobres se pasaron por <amount></amount>.}}"
+	},
+	"target": {
+		"none": "Sin objetivo",
+		"noRate": "Todavía no hay cotización de {currency}",
+		"perWeek": "<amount></amount> por semana",
+		"perMonth": "<amount></amount> por mes",
+		"billDue": "<amount></amount> hasta el {date}",
+		"goal": "Meta de <amount></amount>",
+		"goalProgress": "<saved></saved> de <amount></amount>",
+		"goalBy": "para el {date}",
+		"moreNeeded": "faltan <amount></amount>",
+		"leftThisWeek": "quedan <amount></amount> esta semana"
+	},
+	"group": {
+		"role": {
+			"BILLS": "Facturas",
+			"SPENDING": "Gastos",
+			"SAVINGS": "Ahorros"
+		},
+		"ungrouped": "Otros sobres",
+		"percents": "Planificado {planned} · gastado {spent}",
+		"overBy": "{name} se pasó por <amount></amount>",
+		"needed": "{name}: faltan <amount></amount>",
+		"covered": "{name}: cubiertas"
+	},
+	"table": {
+		"label": "Sobres",
+		"envelope": "Sobre",
+		"assigned": "Asignado",
+		"limit": "Límite",
+		"spent": "Gastado",
+		"left": "Queda",
+		"endOfMonth": "Fin de mes",
+		"actions": "Acciones",
+		"paid": "Pagado",
+		"noMatch": "Ningún sobre coincide."
+	},
+	"rail": {
+		"label": "De un vistazo",
+		"owed": {
+			"title": "Te deben",
+			"open": "Quién te debe",
+			"hint": "Plata que adelantaste. Vuelve a {pool, select, TO_ASSIGN {Por asignar} other {Sin planificar}} cuando te paguen.",
+			"pending": "<amount></amount> esperan tu OK",
+			"people": "{count, plural, =0 {Plata que adelantaste} one {Te debe # persona} other {Te deben # personas}}"
+		},
+		"moneyIn": {
+			"title": "Ingresos",
+			"open": "Ingresos y reglas",
+			"hint": "Las reglas de ingresos deciden adónde va",
+			"thisMonth": "Este mes"
+		},
+		"shares": {
+			"title": "Partes",
+			"open": "Revisar partes",
+			"line": "Hay partes que te esperan",
+			"unresolved": "{count, plural, one {# parte no tiene sobre} other {# partes no tienen sobre}}",
+			"pending": "Esperando tu OK"
+		}
+	},
+	"unavailable": {
+		"title": "No disponible por ahora",
+		"hint": "No se pudo cargar tu presupuesto.",
+		"retry": "Reintentar"
+	},
+	"empty": {
+		"title": "Todavía no hay sobres",
+		"hint": "Los sobres guardan dinero para lo que te importa. Configurarlo lleva unos cinco minutos.",
+		"setup": "Configurar tu presupuesto"
+	},
+	"paused": {
+		"title": "Tu presupuesto está en pausa",
+		"hint": "No se cuenta nada mientras esté en pausa.",
+		"resume": "Reanudar presupuesto"
+	},
+	"closed": {
+		"label": "{month}, cerrado",
+		"cameIn": "Entró",
+		"line": "Asignado <assigned></assigned>{hasOver, select, yes { · Pasado por <over></over>} other {}}",
+		"none": "No se presupuestó nada este mes.",
+		"open": "Cómo se calcula"
+	},
+	"plan": {
+		"discarded": "Plan descartado",
+		"emptyHint": "Un plan es un borrador. Nada se mueve hasta que lo apliques.",
+		"emptyTitle": "Planificar {month}",
+		"fill": {
+			"TARGETS": "Empezar desde mis objetivos",
+			"SAME_AS_THIS_MONTH": "Igual que este mes",
+			"THIS_MONTH_SPENT": "Lo que gasté este mes"
+		},
+		"banner": "Planificando {month}. No cambia nada hasta que lo apliques.",
+		"discard": "Descartar",
+		"apply": "Aplicar plan",
+		"after": "Sin planificar después de este plan",
+		"fillFrom": "Rellenar desde…",
+		"table": "Plan",
+		"envelope": "Sobre",
+		"planned": "Planificado",
+		"left": "Queda",
+		"edit": "Planificar {name}"
+	},
+	"planRail": {
+		"label": "Costo del plan",
+		"title": "Plan",
+		"cost": "Costo del plan",
+		"typical": "Ingresos habituales",
+		"runway": "Tu presupuesto y tus ahorros duran {months} meses con este costo."
+	}
+}
