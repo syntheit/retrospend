@@ -233,6 +233,14 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Home: net worth sparkline | A net worth series read in Money (`netWorthSeries`, 6 months) | The Net worth row shows the number only | 2D |
 | Home: Coming up total | A server total of the next 3 weeks of recurring items (`due({days: 21})` with its sum) | Coming up lists the items with no total line | 2E |
 | Home: Needs you amounts as figures | Registry ids for item amounts | Item amounts carry no `data-figure`; Give it a job carries `budget.notPlannedYet` | 2E figures |
+| Budget sheets: Edit target, Add envelope, Edit envelope, Combine envelopes | `envelope.*` writes for a target, an envelope's name, categories and group, and a merge (previewed, with undo). The engine writes targets only through setup, `setLimit` and group targets | The sheets are not built; the Budget page's `target`, `editEnvelope`, `newEnvelope` and `mergeEnvelopes` buttons stay hidden (`has` is false) | 4C2 follow-up |
+| Budget sheets: Can I afford it? | A read `envelope.afford({ amountMinor, envelopeId? })` with the verdict, per day and one suggested move | The sheet is not built; the client may not compute it (R9) | 4C2 follow-up |
+| Budget sheets: Use my plan, Next month | A procedure that runs `applyPlan` with the rest choice (Leave it, Save it, Next month) as one batch across two months. Today only Leave it and Save it (same month) are offered, written as one `assign` batch | The Next month chip is left out | 4C2 follow-up |
+| Budget sheets: Assign, share of money in per row | A server percent of this month's money in per proposed amount, and the "Rules assigned X. Undo" line when rules already ran | Rows show amounts and target need only | 4C2 follow-up |
+| Budget sheets: Month summary, Spent and Not planned yet at close | `monthSummary` has money in, assigned, overspent, returned and per-envelope close values, but no month Spent total and no To assign at close | The summary lists money in, assigned, what went over (with "Take it from next month instead") and each leftover rule's result | 4C2 follow-up |
+| Budget sheets: Move to Wealth, Move from Wealth | Move to Wealth is the Transfer sheet with an envelope (`entry.transfer`), which has no envelope prefill prop. Move from Wealth is `wealth.income.moveIn` (count or sell) with no sheet yet | Not built; the page's `toWealth` and `fromWealth` stay hidden | 4C2 follow-up |
+| Budget sheets: Set up, Undo | `envelope.setup` returns an undo token but no `envelope.undoSetup` exists | Save ends with a toast without Undo | 4C2 follow-up |
+| Budget sheets: Money in block, What moved, Starting money (migrated budget) | Reads for expected recurring income, kept-in-Wealth entries and the migration's old-to-new list (P7 `envelope-migration`) | Not built | 4C2 follow-up, after P7 merges |
 
 ## 8. Behavior gaps found by the e2e suite
 
