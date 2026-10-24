@@ -1,19 +1,19 @@
 import type { plannedLineSchema } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import { forUser } from "~/server/services/preview";
 import { batchResolveIdentities } from "~/server/services/project/identities";
 import { readProjectList } from "~/server/services/project/list-view";
 import { membersOn } from "~/server/services/project/membership.service";
 import { readProjectPage } from "~/server/services/project/page-view";
+import { settleAllInProject } from "~/server/services/project/settle-all.mutation";
 import {
 	applySettleAll,
 	previewSettleAll,
 	undoSettleAll,
 } from "~/server/services/project/settle-all.service";
-import { settleAllInProject } from "~/server/services/project/settle-all.mutation";
 import { undoSettleAllInProject } from "~/server/services/project/settle-all-undo.mutation";
 import { getProjectSummary } from "~/server/services/project/summary.service";
-import { forUser } from "~/server/services/preview";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { Caller } from "./caller";
 import { toPreviewDto, undoFor } from "./money-write";
@@ -174,9 +174,8 @@ export async function settleAllWrite(
 	await asMember(caller, id, "CONTRIBUTOR");
 	const seen =
 		expect ??
-		(
-			await previewSettleAll(caller.principal.userId, id, caller.timeZone)
-		).value.planned;
+		(await previewSettleAll(caller.principal.userId, id, caller.timeZone)).value
+			.planned;
 	const { value } = await applySettleAll(
 		caller.db,
 		caller.principal.userId,
@@ -229,6 +228,9 @@ export async function previewUndoSettleAllWrite(
 	const args = undoInputOf(caller, id, token);
 	await asMember(caller, id, "CONTRIBUTOR");
 	return toPreviewDto(
-		await forUser(caller.principal.userId).preview(undoSettleAllInProject, args),
+		await forUser(caller.principal.userId).preview(
+			undoSettleAllInProject,
+			args,
+		),
 	);
 }

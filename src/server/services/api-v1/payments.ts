@@ -1,11 +1,15 @@
 import type {
-	PreviewResult as PreviewDto,
 	confirmPaymentSchema,
 	notReceivedSchema,
+	PreviewResult as PreviewDto,
 	recordPaymentSchema,
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import {
+	createNotification,
+	resolveParticipantName,
+} from "~/server/services/notifications";
 import { claimMatchError } from "~/server/services/payments/claim-match";
 import {
 	type ConfirmPaymentValue,
@@ -21,16 +25,12 @@ import {
 import type { RecordPaymentValue } from "~/server/services/payments/record.mutation";
 import type { AllocationView } from "~/server/services/payments/view";
 import { forUser } from "~/server/services/preview";
-import {
-	createNotification,
-	resolveParticipantName,
-} from "~/server/services/notifications";
+import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import {
 	describeGroupAmount,
 	type GroupRow,
 	groupCounterparty,
 } from "~/server/services/shared-expenses/settlement-groups";
-import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import type { Caller } from "./caller";
 import { applyWrite, previewWrite, toPreviewDto, undoFor } from "./money-write";
 import {
@@ -55,7 +55,10 @@ const FAMILY = "payment" as const;
 
 function recordInput(body: RecordBody) {
 	return {
-		person: { participantType: body.person.type, participantId: body.person.id },
+		person: {
+			participantType: body.person.type,
+			participantId: body.person.id,
+		},
 		direction: body.direction,
 		currency: body.currency,
 		amount: body.amount,
@@ -127,7 +130,10 @@ export async function previewRecordPayment(
 	return toPreviewDto(preview);
 }
 
-export async function recordPaymentWrite(caller: LedgerCaller, body: RecordBody) {
+export async function recordPaymentWrite(
+	caller: LedgerCaller,
+	body: RecordBody,
+) {
 	const { value } = await applyPayment(
 		caller.db,
 		caller.principal.userId,
@@ -207,7 +213,10 @@ export async function previewNotReceived(
 	});
 }
 
-export async function paymentNotReceived(caller: Caller, body: NotReceivedBody) {
+export async function paymentNotReceived(
+	caller: Caller,
+	body: NotReceivedBody,
+) {
 	const person = await counterparty(caller, body.id);
 	const value = await applyWrite(caller, rejectPayment, {
 		paymentId: body.id,
@@ -260,10 +269,9 @@ export async function remindPayment(caller: Caller, paymentId: string) {
 	if (!lead) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
 	}
-	await new SettlementService(
-		caller.db,
-		caller.principal.userId,
-	).sendReminder(lead.id);
+	await new SettlementService(caller.db, caller.principal.userId).sendReminder(
+		lead.id,
+	);
 	return { ok: true as const };
 }
 

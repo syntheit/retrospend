@@ -86,7 +86,8 @@ export const recordPaymentSchema = z
 			.array(
 				z.object({
 					scope: scopeIdSchema.optional().meta({
-						description: "A project id, null for Outside projects, omitted for every scope.",
+						description:
+							"A project id, null for Outside projects, omitted for every scope.",
 					}),
 					currency: currencyCodeSchema.optional(),
 				}),

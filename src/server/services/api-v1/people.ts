@@ -1,7 +1,4 @@
-import type {
-	CursorQuery,
-	renamePersonSchema,
-} from "@retrospend/api-contract";
+import type { CursorQuery, renamePersonSchema } from "@retrospend/api-contract";
 import { OUTSIDE_PROJECTS } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
@@ -15,7 +12,7 @@ import { ledgerRows } from "~/server/services/people/ledger-rows";
 import { peopleOverview } from "~/server/services/people/overview";
 import {
 	settleContext,
-	settleContextSchema,
+	type settleContextSchema,
 } from "~/server/services/people/settle-context";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
@@ -103,7 +100,12 @@ export async function readSettleContext(
 		currency: q.currency,
 		rateType: q.rateType,
 		// Omitted is every scope; the word is Outside projects (null).
-		scope: q.scope === undefined ? undefined : q.scope === OUTSIDE_PROJECTS ? null : q.scope,
+		scope:
+			q.scope === undefined
+				? undefined
+				: q.scope === OUTSIDE_PROJECTS
+					? null
+					: q.scope,
 	};
 	return thaw(
 		await settleContext(

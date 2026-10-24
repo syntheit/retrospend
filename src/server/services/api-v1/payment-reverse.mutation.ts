@@ -65,7 +65,8 @@ async function deleteGroup(
 	rows: readonly GroupRow[],
 	fromStatus: "PROPOSED" | "FINALIZED",
 ) {
-	const statuses = fromStatus === "PROPOSED" ? ["PROPOSED", "REJECTED"] : [fromStatus];
+	const statuses =
+		fromStatus === "PROPOSED" ? ["PROPOSED", "REJECTED"] : [fromStatus];
 	const { count } = await tx.settlement.deleteMany({
 		where: {
 			id: { in: rows.map((r) => r.id) },

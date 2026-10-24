@@ -274,14 +274,10 @@ export const settleAllPlanSchema = z
 export const settleAllSchema = z
 	.object({
 		id: idSchema,
-		expect: z
-			.array(plannedLineSchema)
-			.max(200)
-			.optional()
-			.meta({
-				description:
-					"The planned lines you were shown. Refused with a conflict when the balances moved since. Left out: records what is open now.",
-			}),
+		expect: z.array(plannedLineSchema).max(200).optional().meta({
+			description:
+				"The planned lines you were shown. Refused with a conflict when the balances moved since. Left out: records what is open now.",
+		}),
 	})
 	.meta({ id: "SettleAll" });
 
@@ -336,7 +332,8 @@ export const projectsContract = {
 			path: "/projects/{id}",
 			operationId: "getProject",
 			tags: TAG,
-			summary: "The project page: header, people, categories, payments and expenses",
+			summary:
+				"The project page: header, people, categories, payments and expenses",
 		})
 		.meta({ scope: "read" })
 		.input(projectIdParamsSchema)
@@ -360,7 +357,8 @@ export const projectsContract = {
 			path: "/projects/{id}/summary",
 			operationId: "getProjectSummary",
 			tags: TAG,
-			summary: "Paid, Share, Received, Sent and Balance per member and currency",
+			summary:
+				"Paid, Share, Received, Sent and Balance per member and currency",
 		})
 		.meta({ scope: "read" })
 		.input(projectSummaryQuerySchema)

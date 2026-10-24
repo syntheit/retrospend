@@ -1,7 +1,7 @@
 import type {
-	PreviewResult as PreviewDto,
 	createSharedExpenseSchema,
 	deleteSharedExpenseSchema,
+	PreviewResult as PreviewDto,
 	updateSharedExpenseSchema,
 } from "@retrospend/api-contract";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
@@ -53,7 +53,10 @@ function splitOf(body: CreateBody | UpdateBody) {
 	}));
 }
 
-function createInput(caller: LedgerCaller, body: CreateBody): CreateSharedInput {
+function createInput(
+	caller: LedgerCaller,
+	body: CreateBody,
+): CreateSharedInput {
 	return {
 		id: body.id,
 		amount: Number(body.amount),
@@ -69,7 +72,10 @@ function createInput(caller: LedgerCaller, body: CreateBody): CreateSharedInput 
 	};
 }
 
-function updateInput(caller: LedgerCaller, body: UpdateBody): UpdateSharedInput {
+function updateInput(
+	caller: LedgerCaller,
+	body: UpdateBody,
+): UpdateSharedInput {
 	return {
 		id: body.id,
 		amount: Number(body.amount),
@@ -92,7 +98,10 @@ async function save<I extends Deferred, V>(
 	input: Omit<I, "notify">,
 ): Promise<V> {
 	const notify: Notify = [];
-	const value = await applyWrite(caller, mutation, { ...input, notify } as unknown as I);
+	const value = await applyWrite(caller, mutation, {
+		...input,
+		notify,
+	} as unknown as I);
 	for (const send of notify) void send();
 	return value;
 }
@@ -104,26 +113,38 @@ const dryRun = <I extends Deferred, V>(
 ) => previewWrite(caller, mutation, { ...input, notify: [] } as unknown as I);
 
 export async function addSharedExpense(caller: LedgerCaller, body: CreateBody) {
-	const value = await save(caller, createSharedExpense, createInput(caller, body));
+	const value = await save(
+		caller,
+		createSharedExpense,
+		createInput(caller, body),
+	);
 	return {
 		id: value.id,
 		backdatedPeriod: value.backdatedPeriod,
-		// Undoing right away is a retraction: the people on it see nothing happen.
+		// Undoing right away is a retraction, like the web's: the debt it made goes
+		// with it (confirmUnsettled) and the people on it see nothing happen.
 		undo: undoFor(caller, FAMILY, "shared.delete", {
 			id: value.id,
+			confirmUnsettled: true,
 			retract: true,
 		}),
 	};
 }
 
-export const previewAddSharedExpense = (caller: LedgerCaller, body: CreateBody) =>
-	dryRun(caller, createSharedExpense, createInput(caller, body));
+export const previewAddSharedExpense = (
+	caller: LedgerCaller,
+	body: CreateBody,
+) => dryRun(caller, createSharedExpense, createInput(caller, body));
 
 export async function replaceSharedExpense(
 	caller: LedgerCaller,
 	body: UpdateBody,
 ) {
-	const value = await save(caller, updateSharedExpense, updateInput(caller, body));
+	const value = await save(
+		caller,
+		updateSharedExpense,
+		updateInput(caller, body),
+	);
 	return {
 		id: value.id,
 		backdatedPeriod: null,
@@ -174,7 +195,11 @@ type Inverse = {
 /** The inverse call a token names, ready to preview or to apply. */
 function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 	if (op === "shared.delete") {
-		const args = input as { id: string; retract?: boolean };
+		const args = input as {
+			id: string;
+			confirmUnsettled?: boolean;
+			retract?: boolean;
+		};
 		return {
 			preview: () => dryRun(caller, deleteSharedExpense, args),
 			apply: async () => {

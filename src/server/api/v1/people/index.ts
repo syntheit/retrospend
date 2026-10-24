@@ -5,7 +5,9 @@ import { signedIn, v1 } from "../middleware";
 const p = v1.people;
 
 export const peopleRouter = {
-	list: p.list.handler(serve(({ context }) => people.listPeople(signedIn(context)))),
+	list: p.list.handler(
+		serve(({ context }) => people.listPeople(signedIn(context))),
+	),
 	get: p.get.handler(
 		serve(({ context, input }) => people.readPerson(signedIn(context), input)),
 	),
@@ -25,7 +27,9 @@ export const peopleRouter = {
 		serve(({ context, input }) => people.addPerson(signedIn(context), input)),
 	),
 	rename: p.rename.handler(
-		serve(({ context, input }) => people.renamePerson(signedIn(context), input)),
+		serve(({ context, input }) =>
+			people.renamePerson(signedIn(context), input),
+		),
 	),
 	claimLink: p.claimLink.handler(
 		serve(({ context, input }) =>
@@ -33,6 +37,8 @@ export const peopleRouter = {
 		),
 	),
 	remind: p.remind.handler(
-		serve(({ context, input }) => people.remindPerson(signedIn(context), input)),
+		serve(({ context, input }) =>
+			people.remindPerson(signedIn(context), input),
+		),
 	),
 };

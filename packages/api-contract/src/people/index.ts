@@ -91,7 +91,8 @@ export const peopleContract = {
 			path: "/people/{type}/{id}",
 			operationId: "getPerson",
 			tags: TAG,
-			summary: "One person: balance, projects, payments and the newest shared expenses",
+			summary:
+				"One person: balance, projects, payments and the newest shared expenses",
 		})
 		.meta({ scope: "read" })
 		.input(personParamsSchema)

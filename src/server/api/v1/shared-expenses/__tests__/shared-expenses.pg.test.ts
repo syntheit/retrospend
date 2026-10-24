@@ -1,0 +1,376 @@
+/**
+ * /api/v1/shared-expenses on Postgres: add, edit and delete a split through
+ * the web's own mutations, previews that equal the result, undo and redo,
+ * idempotent replay, accept and reject, and who may touch what. Sofia adds
+ * ARS 90 split equally with Martin, so Martin owes her ARS 45. Lucia is not
+ * on it and gets a 404; Martin is on it but is not its creator, so he gets
+ * what the web gives him: accept, reject, a 403 on edit and delete.
+ */
+import { randomUUID } from "node:crypto";
+import { contract } from "@retrospend/api-contract";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { adminDb } from "~/test/pg-harness";
+import {
+	ars,
+	arsUser,
+	seedRates,
+	type TestUser,
+} from "../../__tests__/g3-fixtures";
+import {
+	asKey,
+	asMobile,
+	call,
+	expectBody,
+	expectProblem,
+	useApiV1,
+} from "../../core/__tests__/harness";
+
+vi.mock("next/headers", () => ({
+	headers: async () => new Headers(),
+	cookies: async () => ({ get: () => undefined }),
+}));
+
+const c = contract["shared-expenses"];
+type Money = { minor: number; currency: string };
+type Write = { id: string; backdatedPeriod: string | null; undo: string };
+type Preview = {
+	changes: { id: string; delta: Money }[];
+	unchanged: { id: string }[];
+};
+type Verification = {
+	id: string;
+	status: string;
+	participants: { id: string; status: string }[];
+};
+
+describe("/api/v1/shared-expenses", () => {
+	useApiV1();
+	let sofia: TestUser;
+	let martin: TestUser;
+	let lucia: TestUser;
+	let as: Record<string, string>;
+	let asMartin: Record<string, string>;
+	let asLucia: Record<string, string>;
+
+	const post = (path: string, body: unknown, headers = as, key?: string) =>
+		call(path, { method: "POST", headers, body, idempotent: key ?? true });
+	const put = (path: string, body: unknown, headers = as) =>
+		call(path, { method: "PUT", headers, body, idempotent: true });
+	const del = (path: string, body: unknown = {}, headers = as) =>
+		call(path, { method: "DELETE", headers, body, idempotent: true });
+
+	const body = (over: Record<string, unknown> = {}) => ({
+		amount: "90",
+		currency: "ARS",
+		description: "Dinner",
+		date: "2026-10-10",
+		paidBy: { type: "user", id: sofia.user.id },
+		splitWith: [
+			{ type: "user", id: sofia.user.id },
+			{ type: "user", id: martin.user.id },
+		],
+		splitMode: "EQUAL",
+		...over,
+	});
+	const add = async (over: Record<string, unknown> = {}) =>
+		expectBody<Write>(
+			await post("/shared-expenses", body(over)),
+			c.create,
+			201,
+		);
+	const owedToYou = async (headers = as) => {
+		const list = await expectBody<{ owedToYou: Money | null }>(
+			await call("/people", { headers }),
+			contract.people.list,
+		);
+		return list.owedToYou?.minor ?? 0;
+	};
+	const row = (id: string) =>
+		adminDb.sharedTransaction.findUnique({
+			where: { id },
+			include: { splitParticipants: true },
+		});
+
+	/** A split starts auto-accepted for a person on Retrospend; put it back to waiting. */
+	const waiting = (id: string) =>
+		adminDb.splitParticipant.updateMany({
+			where: { transactionId: id, participantId: martin.user.id },
+			data: { verificationStatus: "PENDING" },
+		});
+
+	beforeAll(async () => {
+		await seedRates();
+		sofia = await arsUser();
+		martin = await arsUser();
+		lucia = await arsUser();
+		as = await asMobile(sofia.user.id);
+		asMartin = await asMobile(martin.user.id);
+		asLucia = await asMobile(lucia.user.id);
+	});
+
+	it("previews an add, then adds it with the same effect", async () => {
+		const before = await owedToYou();
+		const preview = await expectBody<Preview>(
+			await post("/shared-expenses/preview", body()),
+			c.previewCreate,
+		);
+		const owed = preview.changes.find((x) => x.id === "owed.owedToYou");
+		expect(owed?.delta).toEqual(ars(4500));
+		expect(await owedToYou()).toBe(before);
+		await expect(
+			adminDb.sharedTransaction.count({
+				where: { createdById: sofia.user.id },
+			}),
+		).resolves.toBe(0);
+
+		const written = await add({ description: "Dinner out" });
+		expect(await owedToYou()).toBe(before + (owed?.delta.minor ?? 0));
+		const saved = await row(written.id);
+		expect(saved).toMatchObject({
+			description: "Dinner out",
+			currency: "ARS",
+			paidById: sofia.user.id,
+		});
+		expect(Number(saved?.amount)).toBe(90);
+		expect(
+			saved?.splitParticipants
+				.map((p) => [p.participantId, Number(p.shareAmount)])
+				.sort(),
+		).toEqual(
+			[
+				[martin.user.id, 45],
+				[sofia.user.id, 45],
+			].sort(),
+		);
+	});
+
+	it("adds once per idempotency key and once per client id", async () => {
+		const key = randomUUID();
+		const id = randomUUID();
+		const first = await post("/shared-expenses", body({ id }), as, key);
+		const again = await post("/shared-expenses", body({ id }), as, key);
+		expect(again.headers.get("idempotent-replayed")).toBe("true");
+		expect(await again.json()).toEqual(await first.json());
+		await expect(
+			adminDb.sharedTransaction.count({ where: { id } }),
+		).resolves.toBe(1);
+		await expectProblem(
+			await post("/shared-expenses", body({ id })),
+			409,
+			"conflict",
+		);
+	});
+
+	it("refuses money as a number and a share that does not add up", async () => {
+		await expectProblem(
+			await post("/shared-expenses", body({ amount: 90 })),
+			400,
+			"validation_failed",
+		);
+		await expectProblem(
+			await post(
+				"/shared-expenses",
+				body({
+					splitMode: "EXACT",
+					splitWith: [
+						{ type: "user", id: sofia.user.id, shareAmount: "10" },
+						{ type: "user", id: martin.user.id, shareAmount: "10" },
+					],
+				}),
+			),
+			400,
+			"bad_request",
+		);
+	});
+
+	it("lets the other person accept or reject their share", async () => {
+		const accepted = await add({ description: "To accept" });
+		await waiting(accepted.id);
+		const ok = await expectBody<Verification>(
+			await post(`/shared-expenses/${accepted.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		expect(ok.participants.find((p) => p.id === martin.user.id)?.status).toBe(
+			"ACCEPTED",
+		);
+		const again = await post(
+			`/shared-expenses/${accepted.id}/accept`,
+			{},
+			asMartin,
+		);
+		expect(again.status).toBe(200);
+
+		const rejected = await add({ description: "To reject" });
+		await waiting(rejected.id);
+		const no = await expectBody<Verification>(
+			await post(
+				`/shared-expenses/${rejected.id}/reject`,
+				{ reason: "Not mine" },
+				asMartin,
+			),
+			c.reject,
+		);
+		expect(no.status).toBe("disputed");
+		await expect(
+			adminDb.splitParticipant.findFirst({
+				where: { transactionId: rejected.id, participantId: martin.user.id },
+			}),
+		).resolves.toMatchObject({
+			verificationStatus: "REJECTED",
+			rejectionReason: "Not mine",
+		});
+
+		await expectProblem(
+			await post(`/shared-expenses/${accepted.id}/accept`, {}, asLucia),
+			404,
+			"not_found",
+		);
+	});
+
+	it("gives a participant who is not the creator what the web gives", async () => {
+		const made = await add({ description: "Sofia's" });
+		const edit = {
+			...body({ description: "Martin's edit", amount: "10" }),
+			id: made.id,
+		};
+		await expectProblem(
+			await put(`/shared-expenses/${made.id}`, edit, asMartin),
+			403,
+			"forbidden",
+		);
+		await expectProblem(
+			await del(`/shared-expenses/${made.id}`, {}, asMartin),
+			403,
+			"forbidden",
+		);
+		expect((await row(made.id))?.description).toBe("Sofia's");
+	});
+
+	it("keeps a split to the people on it", async () => {
+		const made = await add({ description: "Private" });
+		const edit = { ...body({ description: "Lucia's edit" }), id: made.id };
+		await expectProblem(
+			await post(`/shared-expenses/${made.id}/preview`, edit, asLucia),
+			404,
+			"not_found",
+		);
+		await expectProblem(
+			await put(`/shared-expenses/${made.id}`, edit, asLucia),
+			404,
+			"not_found",
+		);
+		await expectProblem(
+			await del(`/shared-expenses/${made.id}`, {}, asLucia),
+			404,
+			"not_found",
+		);
+		await expectProblem(
+			await post(`/shared-expenses/${made.id}/reject`, {}, asLucia),
+			404,
+			"not_found",
+		);
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: made.undo }, asLucia),
+			400,
+			"bad_request",
+		);
+		expect((await row(made.id))?.description).toBe("Private");
+	});
+
+	it("edits a split, previews it, and undoes and redoes the edit", async () => {
+		const made = await add({ description: "Edit me" });
+		const before = await owedToYou();
+		const edit = {
+			...body({ amount: "120", description: "Edited" }),
+			id: made.id,
+		};
+		const preview = await expectBody<Preview>(
+			await post(`/shared-expenses/${made.id}/preview`, edit),
+			c.previewUpdate,
+		);
+		const delta = preview.changes.find((x) => x.id === "owed.owedToYou")?.delta;
+		expect(delta).toEqual(ars(1500));
+		expect((await row(made.id))?.description).toBe("Edit me");
+
+		const edited = await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, edit),
+			c.update,
+		);
+		expect(await owedToYou()).toBe(before + 1500);
+		expect(Number((await row(made.id))?.amount)).toBe(120);
+
+		const undone = await expectBody<{ id: string; redo: string | null }>(
+			await post("/shared-expenses/undo", { token: edited.undo }),
+			c.undo,
+		);
+		expect(Number((await row(made.id))?.amount)).toBe(90);
+		expect((await row(made.id))?.description).toBe("Edit me");
+		expect(await owedToYou()).toBe(before);
+
+		await expectBody(
+			await post("/shared-expenses/undo", { token: undone.redo }),
+			c.undo,
+		);
+		expect(Number((await row(made.id))?.amount)).toBe(120);
+	});
+
+	it("takes an add back and tells nobody, with a preview that matches", async () => {
+		const before = await owedToYou();
+		const made = await add({ description: "Oops" });
+		expect(await owedToYou()).toBe(before + 4500);
+		const preview = await expectBody<Preview>(
+			await post("/shared-expenses/undo/preview", { token: made.undo }),
+			c.previewUndo,
+		);
+		expect(
+			preview.changes.find((x) => x.id === "owed.owedToYou")?.delta,
+		).toEqual(ars(-4500));
+		expect(await row(made.id)).not.toBeNull();
+		const undone = await expectBody<{ redo: string | null }>(
+			await post("/shared-expenses/undo", { token: made.undo }),
+			c.undo,
+		);
+		expect(undone.redo).toBeNull();
+		expect(await row(made.id)).toBeNull();
+		expect(await owedToYou()).toBe(before);
+	});
+
+	it("asks to confirm a delete that erases a debt, and previews both ways", async () => {
+		const made = await add({ description: "Delete me" });
+		const before = await owedToYou();
+		const path = `/shared-expenses/${made.id}`;
+		await expectProblem(await del(path), 409, "conflict");
+		await expectProblem(
+			await post(`${path}/delete/preview`, {}),
+			409,
+			"conflict",
+		);
+		expect(await row(made.id)).not.toBeNull();
+
+		const preview = await expectBody<Preview>(
+			await post(`${path}/delete/preview`, { confirmUnsettled: true }),
+			c.previewDelete,
+		);
+		expect(
+			preview.changes.find((x) => x.id === "owed.owedToYou")?.delta,
+		).toEqual(ars(-4500));
+		expect(await row(made.id)).not.toBeNull();
+
+		const deleted = await expectBody<{ id: string }>(
+			await del(path, { confirmUnsettled: true }),
+			c.delete,
+		);
+		expect(deleted.id).toBe(made.id);
+		expect(await row(made.id)).toBeNull();
+		expect(await owedToYou()).toBe(before - 4500);
+	});
+
+	it("needs write:expenses to write", async () => {
+		const readOnly = await asKey(sofia.user.id, ["read"]);
+		await expectProblem(
+			await post("/shared-expenses", body(), readOnly),
+			403,
+			"missing_scope",
+		);
+	});
+});

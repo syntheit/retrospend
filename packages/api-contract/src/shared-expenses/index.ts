@@ -4,7 +4,13 @@ import { currencyCodeSchema } from "../common/money";
 import { undoTokenSchema } from "../common/preview";
 import { userText } from "../common/user-text";
 import { idSchema } from "../core";
-import { amountTextSchema, daySchema, previewTwin, undoField, undoInputSchema } from "../ledger";
+import {
+	amountTextSchema,
+	daySchema,
+	previewTwin,
+	undoField,
+	undoInputSchema,
+} from "../ledger";
 import { personRefSchema } from "../people/schemas";
 
 const TAG = ["Shared expenses"];
