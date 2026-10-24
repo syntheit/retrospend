@@ -16,6 +16,7 @@
  *   (the splits replay's open basis, SPEC §5.8): it is out of To assign
  *   until they pay or you forgive.
  *
+ * - budget.totalDebt: Σ liabilities today in H (SPEC §5.11).
  * - budget.planCost, budget.typicalIncome: plan cost and the usual income
  *   it is judged against (SPEC §5.13, §12.3).
  *
@@ -30,6 +31,7 @@ import type {
 } from "~/server/figures/registry";
 import { budgetHolds } from "./bank";
 import { forgetMonthViews, monthViewIn } from "./month-read";
+import { projectIn } from "./debt.service";
 import { planCostIn } from "./plan-read";
 import {
 	FIGURE_LEFT_IN_LIMITS,
@@ -42,6 +44,7 @@ export const FIGURE_HELD_FOR_OTHERS = "budget.heldForOthers";
 export const FIGURE_BUDGET_HOLDS = "budget.holds";
 export const FIGURE_PLAN_COST = "budget.planCost";
 export const FIGURE_TYPICAL_INCOME = "budget.typicalIncome";
+export const FIGURE_TOTAL_DEBT = "budget.totalDebt";
 
 /**
  * The current month, read once per figure pass. Each pass reads anew: a
@@ -173,6 +176,20 @@ export const typicalIncomeFigure: FigureDefinition = {
 	},
 };
 
+/** Total debt today in the book currency (SPEC §5.11 debt hero); null with a rate missing. */
+export const totalDebtFigure: FigureDefinition = {
+	id: FIGURE_TOTAL_DEBT,
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const read = async () => {
+			if (!(await monthViewIn(db, scope.userId, new Date()))) return null;
+			return projectIn(db, scope.userId, {}, new Date());
+		};
+		const v = await (pass ? pass.once(`budget.debt:${scope.userId}`, read) : read());
+		return v && !v.incomplete ? v.totalDebt : null;
+	},
+};
+
 export const budgetFigures = [
 	notPlannedYetFigure,
 	leftToSpendFigure,
@@ -183,4 +200,5 @@ export const budgetFigures = [
 	budgetHoldsFigure,
 	planCostFigure,
 	typicalIncomeFigure,
+	totalDebtFigure,
 ];
