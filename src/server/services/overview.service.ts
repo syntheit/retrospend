@@ -193,6 +193,16 @@ export async function getOverviewStats(
 	};
 }
 
+/** The month of the oldest old budget row, for the month picker's lower bound. */
+export async function getEarliestBudgetMonth(db: typeof AppDb, userId: string) {
+	const first = await db.budget.findFirst({
+		where: { userId },
+		orderBy: { period: "asc" },
+		select: { period: true },
+	});
+	return first?.period ?? null;
+}
+
 /** The envelope totals in the legacy pace shape (major units); zeros without a book. */
 function envelopePace(p: EnvelopePacing | null, daysRemaining: number) {
 	const major = (minor: number | undefined) =>
