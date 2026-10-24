@@ -54,6 +54,24 @@ export const EVENT_TYPES = [
 	"transfer.created",
 	"transfer.deleted",
 	"transfer.undone",
+	// G3 people and projects (S3c)
+	"payment.confirmed",
+	"payment.not_received",
+	"payment.recorded",
+	"payment.reminded",
+	"payment.undone",
+	"person.claim_link_created",
+	"person.created",
+	"person.reminded",
+	"person.updated",
+	"project.settle_all_undone",
+	"project.settled_all",
+	"shared_expense.accepted",
+	"shared_expense.created",
+	"shared_expense.deleted",
+	"shared_expense.rejected",
+	"shared_expense.undone",
+	"shared_expense.updated",
 ] as const satisfies readonly string[];
 
 export type EventType = (typeof EVENT_TYPES)[number];

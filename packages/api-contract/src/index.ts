@@ -5,12 +5,16 @@ import { figuresContract } from "./figures";
 import { incomeContract } from "./income";
 import { needsYouContract } from "./needs-you";
 import { notificationsContract } from "./notifications";
+import { paymentsContract } from "./payments";
+import { peopleContract } from "./people";
 import { platformContract } from "./platform";
 import { profileContract } from "./profile";
+import { projectsContract } from "./projects";
 import { pushContract } from "./push";
 import { recurringContract } from "./recurring";
 import { searchContract } from "./search";
 import { settingsContract } from "./settings";
+import { sharedExpensesContract } from "./shared-expenses";
 import { tokensContract } from "./tokens";
 import { transfersContract } from "./transfers";
 
@@ -24,12 +28,16 @@ export * from "./income";
 export * from "./ledger";
 export * from "./needs-you";
 export * from "./notifications";
+export * from "./payments";
+export * from "./people";
 export * from "./platform";
 export * from "./profile";
+export * from "./projects";
 export * from "./push";
 export * from "./recurring";
 export * from "./search";
 export * from "./settings";
+export * from "./shared-expenses";
 export * from "./tokens";
 export * from "./transfers";
 
@@ -45,12 +53,16 @@ export const contract = {
 	income: incomeContract,
 	"needs-you": needsYouContract,
 	notifications: notificationsContract,
+	payments: paymentsContract,
+	people: peopleContract,
 	platform: platformContract,
 	profile: profileContract,
 	recurring: recurringContract,
+	projects: projectsContract,
 	push: pushContract,
 	search: searchContract,
 	settings: settingsContract,
+	"shared-expenses": sharedExpensesContract,
 	tokens: tokensContract,
 	transfers: transfersContract,
 };

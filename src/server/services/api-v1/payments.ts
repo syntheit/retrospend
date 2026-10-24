@@ -1,0 +1,365 @@
+import type {
+	PreviewResult as PreviewDto,
+	confirmPaymentSchema,
+	notReceivedSchema,
+	recordPaymentSchema,
+} from "@retrospend/api-contract";
+import { TRPCError } from "@trpc/server";
+import type * as z from "zod";
+import { claimMatchError } from "~/server/services/payments/claim-match";
+import {
+	type ConfirmPaymentValue,
+	paymentCounterparty,
+	unconfirmPayment,
+} from "~/server/services/payments/confirm.mutation";
+import {
+	applyConfirm,
+	applyPayment,
+	previewConfirm,
+	previewPayment,
+} from "~/server/services/payments/procedures";
+import type { RecordPaymentValue } from "~/server/services/payments/record.mutation";
+import type { AllocationView } from "~/server/services/payments/view";
+import { forUser } from "~/server/services/preview";
+import {
+	createNotification,
+	resolveParticipantName,
+} from "~/server/services/notifications";
+import {
+	describeGroupAmount,
+	type GroupRow,
+	groupCounterparty,
+} from "~/server/services/shared-expenses/settlement-groups";
+import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
+import type { Caller } from "./caller";
+import { applyWrite, previewWrite, toPreviewDto, undoFor } from "./money-write";
+import {
+	rejectPayment,
+	removeRecordedPayment,
+} from "./payment-reverse.mutation";
+import { thaw } from "./thaw";
+import { readUndo } from "./undo";
+
+/**
+ * v1 adapters for /payments. Record and confirm are the web's own procedures
+ * (payments/procedures.ts); taking back and "not received" run the
+ * mutations in payment-reverse.mutation.ts so they can be previewed.
+ */
+
+type LedgerCaller = Caller & { timeZone: string };
+type RecordBody = z.infer<typeof recordPaymentSchema>;
+type ConfirmBody = z.infer<typeof confirmPaymentSchema>;
+type NotReceivedBody = z.infer<typeof notReceivedSchema>;
+
+const FAMILY = "payment" as const;
+
+function recordInput(body: RecordBody) {
+	return {
+		person: { participantType: body.person.type, participantId: body.person.id },
+		direction: body.direction,
+		currency: body.currency,
+		amount: body.amount,
+		rateType: body.rateType,
+		customRate: body.customRate ?? null,
+		paymentMethod: body.paymentMethod,
+		paidOn: body.paidOn,
+		note: body.note,
+		applyTo: body.applyTo,
+		allowOverpay: body.allowOverpay,
+		everything: body.everything,
+		matchClaimId: body.matchClaimId,
+		differentPayment: body.differentPayment,
+	};
+}
+
+const confirmInput = (body: ConfirmBody) => ({
+	paymentId: body.id,
+	paymentMethod: body.paymentMethod,
+	paidOn: body.paidOn,
+	amount: body.amount,
+});
+
+// ── Record ──────────────────────────────────────────────────────────────────
+
+/** Why payment.record wrote nothing, as the error the web shows (procedures.ts). */
+const NOT_RECORDED = {
+	overpay: "That is more than is owed. Confirm the overpayment to record it.",
+	nothing_owed: "There is nothing to settle with this person.",
+} as const;
+
+/**
+ * A preview must fail where the write fails: payment.record answers instead
+ * of throwing when it would write nothing, and the transport turns that into
+ * an error.
+ */
+async function assertRecorded(caller: Caller, value: RecordPaymentValue) {
+	if (value.recorded) return;
+	if (value.reason === "matches_claim" && value.match) {
+		const header = await caller.db.payment.findUnique({
+			where: { id: value.match.claim.paymentId },
+		});
+		if (header) {
+			throw claimMatchError(
+				value.match,
+				await resolveParticipantName(header.payerType, header.payerId),
+			);
+		}
+	}
+	throw new TRPCError({
+		code: "BAD_REQUEST",
+		message:
+			value.reason === "matches_claim"
+				? "They already say they paid you this. Confirm that payment instead."
+				: NOT_RECORDED[value.reason],
+	});
+}
+
+export async function previewRecordPayment(
+	caller: LedgerCaller,
+	body: RecordBody,
+) {
+	const preview = await previewPayment(
+		caller.principal.userId,
+		recordInput(body),
+		caller.timeZone,
+	);
+	await assertRecorded(caller, preview.value);
+	return toPreviewDto(preview);
+}
+
+export async function recordPaymentWrite(caller: LedgerCaller, body: RecordBody) {
+	const { value } = await applyPayment(
+		caller.db,
+		caller.principal.userId,
+		recordInput(body),
+		caller.timeZone,
+	);
+	if (!value.recorded) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+	return {
+		id: value.paymentId,
+		status: value.status,
+		allocation: allocationOf(value.allocation),
+		// A confirmed claim goes back to waiting; anything else is deleted or voided.
+		undo: body.matchClaimId
+			? undoFor(caller, FAMILY, "payment.unconfirm", {
+					paymentId: value.paymentId,
+				})
+			: undoFor(caller, FAMILY, "payment.remove", {
+					paymentId: value.paymentId,
+				}),
+	};
+}
+
+const allocationOf = (a: AllocationView | null) => (a ? thaw(a) : null);
+
+// ── Confirm ─────────────────────────────────────────────────────────────────
+
+export async function confirmPaymentWrite(caller: Caller, body: ConfirmBody) {
+	const input = confirmInput(body);
+	const { value } = await applyConfirm(
+		caller.db,
+		caller.principal.userId,
+		input,
+	);
+	return confirmed(caller, value, input);
+}
+
+function confirmed(
+	caller: Caller,
+	value: ConfirmPaymentValue,
+	input: ReturnType<typeof confirmInput>,
+) {
+	return {
+		id: value.paymentId,
+		allocation: allocationOf(value.allocation),
+		undo: undoFor(caller, FAMILY, "payment.unconfirm", {
+			paymentId: value.paymentId,
+			confirm: input,
+		}),
+	};
+}
+
+export async function previewConfirmPayment(caller: Caller, body: ConfirmBody) {
+	return toPreviewDto(
+		await previewConfirm(
+			caller.db,
+			caller.principal.userId,
+			confirmInput(body),
+		),
+	);
+}
+
+// ── Not received ────────────────────────────────────────────────────────────
+
+async function counterparty(caller: Caller, paymentId: string) {
+	return paymentCounterparty(caller.db, paymentId, caller.principal.userId);
+}
+
+export async function previewNotReceived(
+	caller: Caller,
+	body: NotReceivedBody,
+) {
+	const person = await counterparty(caller, body.id);
+	return previewWrite(caller, rejectPayment, {
+		paymentId: body.id,
+		reason: body.reason,
+		person,
+	});
+}
+
+export async function paymentNotReceived(caller: Caller, body: NotReceivedBody) {
+	const person = await counterparty(caller, body.id);
+	const value = await applyWrite(caller, rejectPayment, {
+		paymentId: body.id,
+		reason: body.reason,
+		person,
+	});
+	await tellPayer(caller, value.rows, value.leadId, value.paymentId);
+	return { id: value.paymentId, status: "REJECTED" as const };
+}
+
+/**
+ * Tells the person who recorded it. The text is built from the person's name
+ * and the amount only, never from the reason they typed (it is user text).
+ */
+async function tellPayer(
+	caller: Caller,
+	rows: readonly GroupRow[],
+	leadId: string,
+	paymentId: string,
+) {
+	const group = [...rows];
+	const other = groupCounterparty(group, caller.principal.userId);
+	if (other?.participantType !== "user") return;
+	const myName = await resolveParticipantName("user", caller.principal.userId);
+	createNotification({
+		userId: other.participantId,
+		type: "SETTLEMENT_REJECTED",
+		title: "Settlement rejected",
+		body: `${myName} rejected your settlement of ${describeGroupAmount(group, other.participantId)}`,
+		data: {
+			settlementId: leadId,
+			paymentGroupId: paymentId,
+			toParticipantType: "user",
+			toParticipantId: caller.principal.userId,
+		},
+	}).catch((err) =>
+		console.error("[Notification Error] SETTLEMENT_REJECTED:", err),
+	);
+}
+
+// ── Remind ──────────────────────────────────────────────────────────────────
+
+/** The service wants a settlement row id; the payment's lead row stands for it. */
+export async function remindPayment(caller: Caller, paymentId: string) {
+	const lead = await caller.db.settlement.findFirst({
+		where: { paymentGroupId: paymentId },
+		orderBy: { initiatedAt: "asc" },
+		select: { id: true },
+	});
+	if (!lead) {
+		throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+	}
+	await new SettlementService(
+		caller.db,
+		caller.principal.userId,
+	).sendReminder(lead.id);
+	return { ok: true as const };
+}
+
+// ── Undo ────────────────────────────────────────────────────────────────────
+
+const invalidUndo = () =>
+	new TRPCError({
+		code: "BAD_REQUEST",
+		message: "This undo is not valid anymore",
+	});
+
+type Unconfirm = {
+	paymentId: string;
+	confirm?: ReturnType<typeof confirmInput>;
+};
+
+type Inverse = {
+	preview: () => Promise<PreviewDto>;
+	apply: () => Promise<{ id: string; redo: string | null }>;
+};
+
+/** The inverse call a token names, ready to preview or to apply. */
+function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
+	const userId = caller.principal.userId;
+	if (op === "payment.remove") {
+		const { paymentId } = input as { paymentId: string };
+		const args = async () => ({
+			paymentId,
+			person: await counterparty(caller, paymentId),
+		});
+		return {
+			preview: async () =>
+				previewWrite(caller, removeRecordedPayment, await args()),
+			apply: async () => {
+				const value = await applyWrite(
+					caller,
+					removeRecordedPayment,
+					await args(),
+				);
+				return { id: value.paymentId, redo: null };
+			},
+		};
+	}
+	if (op === "payment.unconfirm") {
+		const { paymentId, confirm } = input as Unconfirm;
+		const person = () => counterparty(caller, paymentId);
+		return {
+			preview: async () =>
+				toPreviewDto(
+					await forUser(userId).preview(unconfirmPayment, {
+						paymentId,
+						person: await person(),
+					}),
+				),
+			apply: async () => {
+				const { value } = await forUser(userId).apply(unconfirmPayment, {
+					paymentId,
+					person: await person(),
+				});
+				return {
+					id: value.paymentId,
+					redo: undoFor(caller, FAMILY, "payment.confirm", {
+						paymentId,
+						confirm: confirm ?? { paymentId },
+					}),
+				};
+			},
+		};
+	}
+	if (op === "payment.confirm") {
+		const { paymentId, confirm } = input as Unconfirm;
+		const args = confirm ?? { paymentId };
+		return {
+			preview: async () =>
+				toPreviewDto(await previewConfirm(caller.db, userId, args)),
+			apply: async () => {
+				const { value } = await applyConfirm(caller.db, userId, args);
+				return {
+					id: value.paymentId,
+					redo: undoFor(caller, FAMILY, "payment.unconfirm", {
+						paymentId,
+						confirm: args,
+					}),
+				};
+			},
+		};
+	}
+	throw invalidUndo();
+}
+
+export function undoPaymentWrite(caller: Caller, token: string) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	return inverseOf(caller, op, input).apply();
+}
+
+export function previewUndoPaymentWrite(caller: Caller, token: string) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	return inverseOf(caller, op, input).preview();
+}
