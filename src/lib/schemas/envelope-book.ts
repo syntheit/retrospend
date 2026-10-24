@@ -68,6 +68,7 @@ export const SWITCH_STYLES = [
 	"WEEKLY",
 	"SAVE_FIRST",
 	"FIFTY_THIRTY_TWENTY",
+	"DEBT_PAYOFF",
 ] as const;
 export const switchStyleSchema = z.enum(SWITCH_STYLES);
 

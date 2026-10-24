@@ -32,12 +32,19 @@ export async function loadTargetSources(
 		e.targetLiabilityId ? [e.targetLiabilityId] : [],
 	);
 	const templates = templateIds.length
-		? await tx.recurringTemplate.findMany({ where: { id: { in: templateIds } } })
+		? await tx.recurringTemplate.findMany({
+				where: { id: { in: templateIds } },
+			})
 		: [];
 	const liabilities = liabilityIds.length
 		? await tx.assetAccount.findMany({
 				where: { id: { in: liabilityIds } },
-				select: { id: true, currency: true, minimumPayment: true, dueDate: true },
+				select: {
+					id: true,
+					currency: true,
+					minimumPayment: true,
+					dueDate: true,
+				},
 			})
 		: [];
 	return { templates, liabilities };

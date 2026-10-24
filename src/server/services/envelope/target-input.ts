@@ -126,8 +126,12 @@ function billFromLiability(l: LiabilityTerms, ctx: TargetContext): TargetOf {
 	const foreign =
 		l.currency === ctx.valuation.bookCurrency
 			? null
-			: { minor: toMinor(l.minimumPayment.toString(), l.currency), currency: l.currency };
-	if (amount == null) return { target: null, foreign, targetIncomplete: c.incomplete() };
+			: {
+					minor: toMinor(l.minimumPayment.toString(), l.currency),
+					currency: l.currency,
+				};
+	if (amount == null)
+		return { target: null, foreign, targetIncomplete: c.incomplete() };
 	return {
 		target: {
 			kind: "BILL",

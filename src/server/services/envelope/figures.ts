@@ -30,8 +30,8 @@ import type {
 	Money,
 } from "~/server/figures/registry";
 import { budgetHolds } from "./bank";
-import { forgetMonthViews, monthViewIn } from "./month-read";
 import { projectIn } from "./debt.service";
+import { forgetMonthViews, monthViewIn } from "./month-read";
 import { planCostIn } from "./plan-read";
 import {
 	FIGURE_LEFT_IN_LIMITS,
@@ -185,7 +185,9 @@ export const totalDebtFigure: FigureDefinition = {
 			if (!(await monthViewIn(db, scope.userId, new Date()))) return null;
 			return projectIn(db, scope.userId, {}, new Date());
 		};
-		const v = await (pass ? pass.once(`budget.debt:${scope.userId}`, read) : read());
+		const v = await (pass
+			? pass.once(`budget.debt:${scope.userId}`, read)
+			: read());
 		return v && !v.incomplete ? v.totalDebt : null;
 	},
 };

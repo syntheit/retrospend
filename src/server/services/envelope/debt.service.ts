@@ -12,6 +12,9 @@
  *
  * Pay down a debt is in debt-payment.service.ts.
  */
+
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import type {
 	DebtTerms,
 	DebtTermsResult,
@@ -22,11 +25,9 @@ import type {
 	SavePayoffPlanInput,
 	SetDebtTermsInput,
 } from "~/lib/schemas/envelope-debt";
-import { randomUUID } from "node:crypto";
-import { z } from "zod";
 import { Prisma } from "~prisma";
-import { addDays } from "./calendar";
 import { LIABILITY_TYPES } from "./book.service";
+import { addDays } from "./calendar";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
@@ -81,7 +82,9 @@ export async function setDebtTerms(
 			minimumPayment:
 				input.minimumMinor === null
 					? null
-					: new Prisma.Decimal(fromMinor(input.minimumMinor, a.currency).toString()),
+					: new Prisma.Decimal(
+							fromMinor(input.minimumMinor, a.currency).toString(),
+						),
 			dueDate: input.dueDay,
 		},
 	});
@@ -97,7 +100,12 @@ async function requireBook(tx: Tx, userId: string) {
 }
 
 function planDto(
-	p: { strategy: PayoffPlanDto["strategy"]; extraMonthly: Prisma.Decimal; customOrder: unknown; envelopeId: string | null },
+	p: {
+		strategy: PayoffPlanDto["strategy"];
+		extraMonthly: Prisma.Decimal;
+		customOrder: unknown;
+		envelopeId: string | null;
+	},
 	H: string,
 ): PayoffPlanDto {
 	return {
@@ -109,12 +117,20 @@ function planDto(
 }
 
 /** The book's plan; with none yet, Avalanche with no extra (the default). */
-export async function getPayoffPlan(tx: Tx, userId: string): Promise<PayoffPlanDto> {
+export async function getPayoffPlan(
+	tx: Tx,
+	userId: string,
+): Promise<PayoffPlanDto> {
 	const book = await requireBook(tx, userId);
 	const p = await tx.payoffPlan.findUnique({ where: { bookId: book.id } });
 	return p
 		? planDto(p, book.currency)
-		: { strategy: "AVALANCHE", extraMonthly: { minor: 0, currency: book.currency }, customOrder: [], envelopeId: null };
+		: {
+				strategy: "AVALANCHE",
+				extraMonthly: { minor: 0, currency: book.currency },
+				customOrder: [],
+				envelopeId: null,
+			};
 }
 
 export async function savePayoffPlan(
@@ -125,16 +141,23 @@ export async function savePayoffPlan(
 	const book = await requireBook(tx, userId);
 	const H = book.currency;
 	const env = input.envelopeId
-		? book.envelopes.find((e) => e.id === input.envelopeId && e.archivedAt === null)
+		? book.envelopes.find(
+				(e) => e.id === input.envelopeId && e.archivedAt === null,
+			)
 		: null;
 	if (input.envelopeId && (!env || env.kind !== "MONTHLY"))
 		invalid("the extra goes to a Monthly envelope of your budget");
-	const known = new Set((await liabilitiesOf(tx, input.customOrder)).map((a) => a.id));
-	if (input.customOrder.some((id) => !known.has(id))) invalid("your order names one of your debts");
+	const known = new Set(
+		(await liabilitiesOf(tx, input.customOrder)).map((a) => a.id),
+	);
+	if (input.customOrder.some((id) => !known.has(id)))
+		invalid("your order names one of your debts");
 	const before = await tx.payoffPlan.findUnique({ where: { bookId: book.id } });
 	const data = {
 		strategy: input.strategy,
-		extraMonthly: new Prisma.Decimal(fromMinor(input.extraMonthlyMinor, H).toString()),
+		extraMonthly: new Prisma.Decimal(
+			fromMinor(input.extraMonthlyMinor, H).toString(),
+		),
 		customOrder: input.customOrder,
 		envelopeId: input.envelopeId,
 	};
@@ -155,7 +178,10 @@ export async function savePayoffPlan(
 			},
 		});
 	forgetMonthViews(tx);
-	return { plan: planDto(saved, H), previous: before ? planDto(before, H) : null };
+	return {
+		plan: planDto(saved, H),
+		previous: before ? planDto(before, H) : null,
+	};
 }
 
 /** Book currency per 1 unit of `currency` today, from a million units (display only). */
@@ -164,7 +190,11 @@ function bookPerUnit(currency: string, ctx: ValuationContext, today: string) {
 	const v = convertToBook(
 		"1000000",
 		currency,
-		{ date: today, month: budgetMonthOf(today, ctx.periods), foreignRateType: "official" },
+		{
+			date: today,
+			month: budgetMonthOf(today, ctx.periods),
+			foreignRateType: "official",
+		},
 		ctx,
 	);
 	if (!v.ok) return null;
@@ -179,13 +209,19 @@ async function valuationFor(
 ): Promise<ValuationContext> {
 	const rates = await RateBook.load(tx, {
 		bookCurrency: book.currency,
-		rateTypes: [...new Set(["official", ...book.periods.map((p) => p.rateType)])],
+		rateTypes: [
+			...new Set(["official", ...book.periods.map((p) => p.rateType)]),
+		],
 		since: addDays(today, -31),
 		extraCurrencies: currencies,
 	});
 	return {
 		bookCurrency: book.currency,
-		periods: book.periods.map((p) => ({ fromMonth: p.fromMonth, startDay: p.startDay, rateType: p.rateType })),
+		periods: book.periods.map((p) => ({
+			fromMonth: p.fromMonth,
+			startDay: p.startDay,
+			rateType: p.rateType,
+		})),
 		defaultRateType: book.periods[0]?.rateType ?? "official",
 		usdRate: rates.lookup,
 	};
@@ -204,12 +240,20 @@ export async function projectIn(
 	const plan: PayoffPlanDto = {
 		...saved,
 		strategy: input.strategy ?? saved.strategy,
-		extraMonthly: input.extraMonthlyMinor === undefined ? saved.extraMonthly : { minor: input.extraMonthlyMinor, currency: H },
+		extraMonthly:
+			input.extraMonthlyMinor === undefined
+				? saved.extraMonthly
+				: { minor: input.extraMonthlyMinor, currency: H },
 		customOrder: input.customOrder ?? saved.customOrder,
 	};
 	const today = isoDateIn(now, book.timeZone);
 	const all = (await liabilitiesOf(tx)).filter((a) => dec(a.balance).gt(0));
-	const ctx = await valuationFor(tx, book, [...new Set(all.map((a) => a.currency))], today);
+	const ctx = await valuationFor(
+		tx,
+		book,
+		[...new Set(all.map((a) => a.currency))],
+		today,
+	);
 	const missing: PayoffProjection["missingRates"] = [];
 	const debts: Array<PayoffDebt & { dueDay: number | null }> = [];
 	for (const a of all) {
@@ -238,7 +282,8 @@ export async function projectIn(
 	});
 	const own = (minor: number, currency: string) => ({ minor, currency });
 	const total = debts.reduce(
-		(t, d) => t + toMinor(fromMinor(d.balance, d.currency).mul(dec(d.bookPerUnit)), H),
+		(t, d) =>
+			t + toMinor(fromMinor(d.balance, d.currency).mul(dec(d.bookPerUnit)), H),
 		0,
 	);
 	return {

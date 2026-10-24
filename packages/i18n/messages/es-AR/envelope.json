@@ -6,14 +6,16 @@
 		"limits": "Límites",
 		"savings": "Ahorros",
 		"needs": "Necesidades",
-		"wants": "Gustos"
+		"wants": "Gustos",
+		"debts": "Deudas"
 	},
 	"envelopes": {
 		"spending": "Gastos",
 		"savings": "Ahorros",
 		"everythingElse": "Todo lo demás",
 		"needs": "Necesidades",
-		"wants": "Gustos"
+		"wants": "Gustos",
+		"extraDebt": "Pago extra de deudas"
 	},
 	"rules": {
 		"saveFirst": "Ahorro primero",

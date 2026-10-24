@@ -53,6 +53,7 @@ export const SETUP_STYLES = [
 	"LIMITS",
 	"SAVE_FIRST",
 	"FIFTY_THIRTY_TWENTY",
+	"DEBT_PAYOFF",
 ] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
 

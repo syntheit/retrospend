@@ -67,11 +67,24 @@ export async function setupPreset(
 					new Date(),
 				)
 			: null;
+	const liabilities =
+		style === "DEBT_PAYOFF"
+			? await tx.assetAccount.findMany({
+					where: {
+						type: { in: [...LIABILITY_TYPES] },
+						closedAt: null,
+						minimumPayment: { gt: 0 },
+					},
+					orderBy: { createdAt: "asc" },
+					select: { id: true, name: true },
+				})
+			: [];
 	return stylePreset({
 		style,
 		currency: user.homeCurrency,
 		templates,
 		categories,
+		liabilities,
 		spent: recent?.spent,
 		unit: toMinor("1", user.homeCurrency),
 		missingRates: recent?.missingRates ?? [],

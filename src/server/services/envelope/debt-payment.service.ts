@@ -23,9 +23,9 @@ import type {
 } from "~/lib/schemas/envelope-debt";
 import type { Prisma } from "~prisma";
 import { createTransferIn } from "../transfers/create.mutation";
+import { liabilitiesOf, projectIn } from "./debt.service";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
-import { liabilitiesOf, projectIn } from "./debt.service";
 import { isoDateIn } from "./months";
 import { dec, fromMinor, toMinor } from "./units";
 import { recordWealthMove } from "./wealth.service";
@@ -39,7 +39,9 @@ function invalid(message: string): never {
 /** The interest category: the one given, else the user's Fees category (a default category). */
 async function interestCategory(tx: Tx, given: string | null | undefined) {
 	if (given) {
-		const ok = await tx.category.count({ where: { id: given, kind: "EXPENSE" } });
+		const ok = await tx.category.count({
+			where: { id: given, kind: "EXPENSE" },
+		});
 		if (!ok) invalid("pick one of your spending categories");
 		return given;
 	}
@@ -53,12 +55,19 @@ async function interestCategory(tx: Tx, given: string | null | undefined) {
 async function existing(tx: Tx, input: RecordDebtPaymentInput, H: string) {
 	const t = await tx.transfer.findUnique({ where: { id: input.id } });
 	if (!t) return null;
-	const side = await tx.wealthTransfer.findFirst({ where: { transferId: t.id } });
+	const side = await tx.wealthTransfer.findFirst({
+		where: { transferId: t.id },
+	});
 	const fee = t.feeExpenseId
 		? await tx.expense.findUnique({ where: { id: t.feeExpenseId } })
 		: null;
-	const account = await tx.assetAccount.findUniqueOrThrow({ where: { id: input.liabilityId } });
-	const balance = { minor: toMinor(account.balance, account.currency), currency: account.currency };
+	const account = await tx.assetAccount.findUniqueOrThrow({
+		where: { id: input.liabilityId },
+	});
+	const balance = {
+		minor: toMinor(account.balance, account.currency),
+		currency: account.currency,
+	};
 	return {
 		transferId: t.id,
 		interestExpenseId: fee?.id ?? null,
@@ -76,17 +85,22 @@ export async function recordDebtPayment(
 	now: Date,
 ): Promise<DebtPaymentResult> {
 	const book = await findPersonalBook(tx, userId);
-	if (!book?.defaultEnvelopeId) throw new EnvelopeError("NO_BOOK", "start a budget first");
+	if (!book?.defaultEnvelopeId)
+		throw new EnvelopeError("NO_BOOK", "start a budget first");
 	const H = book.currency;
 	const again = await existing(tx, input, H);
 	if (again) return again;
 	const [debt] = await liabilitiesOf(tx, [input.liabilityId]);
 	if (!debt) throw new EnvelopeError("NOT_FOUND", "no such debt");
-	if (debt.currency !== H) invalid("pay a debt in another currency with a transfer");
+	if (debt.currency !== H)
+		invalid("pay a debt in another currency with a transfer");
 	if (input.fromAccountId) {
-		const from = await tx.assetAccount.findFirst({ where: { id: input.fromAccountId, closedAt: null } });
+		const from = await tx.assetAccount.findFirst({
+			where: { id: input.fromAccountId, closedAt: null },
+		});
 		if (!from) throw new EnvelopeError("NOT_FOUND", "no such account");
-		if (from.currency !== H) invalid("pay from an account in your budget's currency");
+		if (from.currency !== H)
+			invalid("pay from an account in your budget's currency");
 	}
 	const categoryId = await interestCategory(tx, input.interestCategoryId);
 	const before = { minor: toMinor(debt.balance, H), currency: H };
@@ -97,17 +111,24 @@ export async function recordDebtPayment(
 		fromCurrency: H,
 		toAccountId: debt.id,
 		fromAmount: fromMinor(input.principalMinor, H).toString(),
-		kind: debt.type === "LIABILITY_CREDIT_CARD" ? "CARD_PAYMENT" : "DEBT_PAYMENT",
+		kind:
+			debt.type === "LIABILITY_CREDIT_CARD" ? "CARD_PAYMENT" : "DEBT_PAYMENT",
 		date,
 		fee:
 			input.interestMinor > 0
-				? { amount: fromMinor(input.interestMinor, H).toString(), accountId: input.fromAccountId }
+				? {
+						amount: fromMinor(input.interestMinor, H).toString(),
+						accountId: input.fromAccountId,
+					}
 				: null,
 		envelopeId: input.envelopeId,
 		timeZone: book.timeZone,
 	});
 	if (moved.feeExpenseId && categoryId)
-		await tx.expense.update({ where: { id: moved.feeExpenseId }, data: { categoryId } });
+		await tx.expense.update({
+			where: { id: moved.feeExpenseId },
+			data: { categoryId },
+		});
 	if (!moved.budget.side.recorded) {
 		const side = await recordWealthMove(tx, {
 			userId,
@@ -126,13 +147,18 @@ export async function recordDebtPayment(
 		where: { transferId: moved.transferId },
 		select: { id: true },
 	});
-	const after = await tx.assetAccount.findUniqueOrThrow({ where: { id: debt.id } });
+	const after = await tx.assetAccount.findUniqueOrThrow({
+		where: { id: debt.id },
+	});
 	return {
 		transferId: moved.transferId,
 		interestExpenseId: moved.feeExpenseId,
 		principal: { minor: input.principalMinor, currency: H },
 		interest: { minor: input.interestMinor, currency: H },
-		balance: { before, after: { minor: toMinor(after.balance, H), currency: H } },
+		balance: {
+			before,
+			after: { minor: toMinor(after.balance, H), currency: H },
+		},
 		wealthTransferId: side?.id ?? null,
 	};
 }
@@ -152,7 +178,12 @@ export async function interestEstimate(
 	if (!debt) throw new EnvelopeError("NOT_FOUND", "no such debt");
 	const own = (minor: number) => ({ minor, currency: debt.currency });
 	const interest = debt.interestRate
-		? own(toMinor(dec(debt.balance).mul(dec(debt.interestRate)).div(1200), debt.currency))
+		? own(
+				toMinor(
+					dec(debt.balance).mul(dec(debt.interestRate)).div(1200),
+					debt.currency,
+				),
+			)
 		: null;
 	const p = await projectIn(tx, userId, {}, now);
 	const line = p.debts.find((d) => d.assetAccountId === liabilityId);

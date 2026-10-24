@@ -15,23 +15,39 @@ import type {
 } from "~/lib/schemas/envelope-debt";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import { interestEstimate } from "./debt-payment.service";
 import {
 	getPayoffPlan,
 	projectIn,
 	savePayoffPlan,
 	setDebtTerms,
 } from "./debt.service";
+import { interestEstimate } from "./debt-payment.service";
 
 export const debtsApi = {
-	setTerms: (userId: string, input: SetDebtTermsInput): Promise<DebtTermsResult> =>
+	setTerms: (
+		userId: string,
+		input: SetDebtTermsInput,
+	): Promise<DebtTermsResult> =>
 		userTransaction(db, userId, (tx) => setDebtTerms(tx, input)),
 	plan: (userId: string): Promise<PayoffPlanDto> =>
 		userTransaction(db, userId, (tx) => getPayoffPlan(tx, userId)),
-	savePlan: (userId: string, input: SavePayoffPlanInput): Promise<PayoffPlanResult> =>
+	savePlan: (
+		userId: string,
+		input: SavePayoffPlanInput,
+	): Promise<PayoffPlanResult> =>
 		userTransaction(db, userId, (tx) => savePayoffPlan(tx, userId, input)),
-	project: (userId: string, input: PayoffProjectInput, now = new Date()): Promise<PayoffProjection> =>
+	project: (
+		userId: string,
+		input: PayoffProjectInput,
+		now = new Date(),
+	): Promise<PayoffProjection> =>
 		userTransaction(db, userId, (tx) => projectIn(tx, userId, input, now)),
-	interest: (userId: string, liabilityId: string, now = new Date()): Promise<InterestEstimate> =>
-		userTransaction(db, userId, (tx) => interestEstimate(tx, userId, liabilityId, now)),
+	interest: (
+		userId: string,
+		liabilityId: string,
+		now = new Date(),
+	): Promise<InterestEstimate> =>
+		userTransaction(db, userId, (tx) =>
+			interestEstimate(tx, userId, liabilityId, now),
+		),
 };

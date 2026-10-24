@@ -7,10 +7,10 @@
  */
 import { z } from "zod";
 import {
+	isoDateSchema,
 	minorSchema,
 	moneySchema,
 	monthKeySchema,
-	isoDateSchema,
 } from "./envelope";
 
 const idSchema = z.string().min(1).max(64);
@@ -110,7 +110,9 @@ export const payoffProjectionSchema = z.object({
 		z.object({ month: monthKeySchema, balances: z.array(minorSchema) }),
 	),
 	/** Liabilities left out: no rate today to the book currency (R14, never 1). */
-	missingRates: z.array(z.object({ assetAccountId: idSchema, currency: z.string() })),
+	missingRates: z.array(
+		z.object({ assetAccountId: idSchema, currency: z.string() }),
+	),
 	incomplete: z.boolean(),
 });
 
@@ -163,6 +165,8 @@ export type PayoffPlanDto = z.infer<typeof payoffPlanSchema>;
 export type PayoffPlanResult = z.infer<typeof payoffPlanResultSchema>;
 export type PayoffProjectInput = z.infer<typeof payoffProjectInputSchema>;
 export type PayoffProjection = z.infer<typeof payoffProjectionSchema>;
-export type RecordDebtPaymentInput = z.infer<typeof recordDebtPaymentInputSchema>;
+export type RecordDebtPaymentInput = z.infer<
+	typeof recordDebtPaymentInputSchema
+>;
 export type DebtPaymentResult = z.infer<typeof debtPaymentResultSchema>;
 export type InterestEstimate = z.infer<typeof interestEstimateSchema>;

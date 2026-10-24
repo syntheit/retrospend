@@ -66,8 +66,8 @@ import {
 } from "./months";
 import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
-import { type LiabilityTerms, loadTargetSources } from "./target-sources";
 import { type TargetContext, targetOf } from "./target-input";
+import { type LiabilityTerms, loadTargetSources } from "./target-sources";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
 import type { ApproximateRow } from "./valuer";

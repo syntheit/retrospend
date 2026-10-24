@@ -102,6 +102,45 @@ describe("style presets (SPEC §4.2)", () => {
 	});
 });
 
+describe("Pay off debt preset (SPEC §4.2)", () => {
+	it("as Flex, plus a Debts group: a bill per liability that follows its minimum and Extra debt payment", () => {
+		const p = stylePreset({
+			style: "DEBT_PAYOFF",
+			currency: "USD",
+			templates: [],
+			categories,
+			liabilities: [{ id: "visa", name: "Visa" }],
+		});
+		expect(setupPresetOutputSchema.parse(p)).toEqual(p);
+		expect(p.groups.map((g) => g.key)).toEqual([
+			"bills",
+			"debts",
+			"spending",
+			"savings",
+		]);
+		expect(
+			p.envelopes
+				.filter((e) => e.groupKey === "debts")
+				.map((e) => [e.key, e.kind, e.target]),
+		).toEqual([
+			["debt-visa", "BILL", { kind: "BILL_LIABILITY", liabilityId: "visa" }],
+			[
+				"extra-debt",
+				"MONTHLY",
+				{
+					kind: "MONTHLY",
+					amountMinor: 0,
+					mode: "SET_ASIDE",
+					cadence: "MONTH",
+				},
+			],
+		]);
+		expect(p.envelopes.filter((e) => e.isDefault).map((e) => e.key)).toEqual([
+			"spending",
+		]);
+	});
+});
+
 describe("P5 presets (SPEC §4.2)", () => {
 	it("Save first: Savings first, Bills, one Spending envelope; 20% to Savings and the rest to Spending", () => {
 		const p = stylePreset({
