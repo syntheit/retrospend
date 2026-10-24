@@ -370,6 +370,8 @@ model BudgetBook {
   legacyMigratedAt         DateTime?
   // The "your limits moved" notice was dismissed.
   legacyNoticeSeenAt       DateTime?
+  // The hidden expenses found at the move, ids only: the review answers stay inside this set and a rollback hides them again.
+  legacyHiddenIds          String[]      @default([])
   // Last budget read; 35 days away with closes waiting opens Welcome back (S26).
   lastOpenedAt             DateTime?
   // Welcome back waits from this instant until the person picks a choice.

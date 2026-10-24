@@ -19,12 +19,11 @@ import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import { setupPreset } from "./book.service";
 import { EnvelopeError } from "./errors";
-import { ensureLegacyBook } from "./legacy-migrate.service";
+import { ensureLegacyBook } from "./legacy-lazy";
 import { ensureMonthsClosed } from "./month-close.service";
 import {
 	coverSourcesIn,
 	fillFromTargetsIn,
-	forgetMonthViews,
 	historyIn,
 	monthViewIn,
 } from "./month-read";
@@ -42,27 +41,35 @@ function read<T>(
 	return userTransaction(db, userId, work);
 }
 
-/**
- * A month read after the lazy close (SPEC §5.5): months before today's close
- * on first read. A person with no book but old limits moves into Limits here
- * (02 §6) and reads their new month; everyone else pays nothing extra.
- */
+/** A month read after the lazy close (SPEC §5.5): months before today's close on first read. */
 export async function closedView(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	now: Date,
 	month?: MonthKey,
-	timeZone: string | null = null,
 ) {
 	await prepareRead(tx, userId, now);
-	const view = await monthViewIn(tx, userId, now, month);
-	if (view) return view;
-	const moved = await ensureLegacyBook(tx, userId, now, timeZone);
-	// HAS_BOOK: a read at the same moment moved them first.
-	if (moved?.status !== "MIGRATED" && moved?.status !== "HAS_BOOK") return null;
-	forgetMonthViews(tx);
-	await prepareRead(tx, userId, now);
 	return monthViewIn(tx, userId, now, month);
+}
+
+/**
+ * A read that finds no book first tries the lazy move from the old budget
+ * (02 §6), outside the read's transaction and without ever failing it, then
+ * reads again. Everyone with a book reads once and pays nothing extra.
+ */
+export async function movedFirst<T>(
+	userId: string,
+	now: Date,
+	timeZone: string | null,
+	load: () => Promise<T | null>,
+): Promise<T | null> {
+	const first = await load();
+	if (first !== null) return first;
+	const moved = await ensureLegacyBook(db, userId, now, timeZone);
+	// HAS_BOOK: a read at the same moment moved them first.
+	return moved?.status === "MIGRATED" || moved?.status === "HAS_BOOK"
+		? load()
+		: null;
 }
 
 /**
@@ -91,15 +98,16 @@ export async function getMonth(
 	now = new Date(),
 	timeZone: string | null = null,
 ): Promise<GetMonthOutput | null> {
-	const view = await read(userId, async (tx) => {
-		const v = await closedView(tx, userId, now, month, timeZone);
-		if (v?.loaded.splits.unsaved.length)
-			await saveShareDefaults(tx, v.loaded.splits.unsaved);
-		// Opening the budget is what Welcome back measures time away from.
-		if (v) await touchOpened(tx, userId, now);
-		return v;
-	});
-	return view?.dto ?? null;
+	return movedFirst(userId, now, timeZone, () =>
+		read(userId, async (tx) => {
+			const v = await closedView(tx, userId, now, month);
+			if (v?.loaded.splits.unsaved.length)
+				await saveShareDefaults(tx, v.loaded.splits.unsaved);
+			// Opening the budget is what Welcome back measures time away from.
+			if (v) await touchOpened(tx, userId, now);
+			return v?.dto ?? null;
+		}),
+	);
 }
 
 /** What a closed month ended with (SPEC §6.6); null when it has not closed. */
@@ -128,8 +136,13 @@ export async function getVerdict(
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<VerdictDto | null> {
-	const view = await read(userId, (tx) => closedView(tx, userId, now, month));
-	return view?.dto.verdict ?? null;
+	return movedFirst(userId, now, null, () =>
+		read(
+			userId,
+			async (tx) =>
+				(await closedView(tx, userId, now, month))?.dto.verdict ?? null,
+		),
+	);
 }
 
 export async function getLeftToSpend(
@@ -137,8 +150,13 @@ export async function getLeftToSpend(
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<GetMonthOutput["leftToSpend"] | null> {
-	const view = await read(userId, (tx) => closedView(tx, userId, now, month));
-	return view?.dto.leftToSpend ?? null;
+	return movedFirst(userId, now, null, () =>
+		read(
+			userId,
+			async (tx) =>
+				(await closedView(tx, userId, now, month))?.dto.leftToSpend ?? null,
+		),
+	);
 }
 
 export function getFillFromTargets(

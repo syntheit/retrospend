@@ -9,11 +9,8 @@ import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { hiddenRowCount } from "~/server/services/envelope/hidden-rows";
 import type { LoadedBook } from "~/server/services/envelope/inputs";
-import { ensureLegacyBook } from "~/server/services/envelope/legacy-migrate.service";
-import {
-	forgetMonthViews,
-	monthViewIn,
-} from "~/server/services/envelope/month-read";
+import { ensureLegacyBook } from "~/server/services/envelope/legacy-lazy";
+import { monthViewIn } from "~/server/services/envelope/month-read";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
 import { userTimeZone } from "~/server/services/user-time-zone";
@@ -44,20 +41,10 @@ async function budgetSource(
 	tx: Tx,
 	userId: string,
 	now: Date,
-	timeZone: string,
 ): Promise<NeedsYouItem[]> {
 	// Rules take their part of new money in first (sidecar rows), so Give it a job shows what is left (S24).
 	await runPendingRules(tx, userId, now);
-	let view = await monthViewIn(tx, userId, now);
-	// A person with old limits and no book moves in on this first read (02 §6).
-	if (!view) {
-		const moved = await ensureLegacyBook(tx, userId, now, timeZone);
-		// HAS_BOOK: a read at the same moment moved them first.
-		if (moved?.status === "MIGRATED" || moved?.status === "HAS_BOOK") {
-			forgetMonthViews(tx);
-			view = await monthViewIn(tx, userId, now);
-		}
-	}
+	const view = await monthViewIn(tx, userId, now);
 	if (!view) return [];
 	const row = view.loaded.row;
 	return budgetItems({
@@ -151,7 +138,7 @@ export async function needsYouIn(
 	const items = [
 		...people.items,
 		...(await activityItems(tx, userId, now, timeZone)),
-		...(options.budget ? await budgetSource(tx, userId, now, timeZone) : []),
+		...(options.budget ? await budgetSource(tx, userId, now) : []),
 		...(await setupItems(tx, user, options.emailEnabled ?? true)),
 	].sort(compareItems);
 	return {
@@ -162,10 +149,19 @@ export async function needsYouIn(
 	};
 }
 
-export function needsYou(
+export async function needsYou(
 	db: PrismaClient,
 	userId: string,
 	options: NeedsYouOptions,
 ): Promise<NeedsYouList> {
+	// A person with old limits and no book moves in on this first read (02 §6),
+	// before the read's own transaction opens and without ever failing it.
+	if (options.budget)
+		await ensureLegacyBook(
+			db,
+			userId,
+			options.now ?? new Date(),
+			options.timeZone ?? null,
+		);
 	return userTransaction(db, userId, (tx) => needsYouIn(tx, userId, options));
 }

@@ -14,7 +14,21 @@ import {
 	migrateLegacyBudget,
 } from "./legacy-migrate.service";
 
-type Client = Pick<PrismaClient, "$transaction" | "user" | "budgetBook">;
+type Client = Pick<
+	PrismaClient,
+	| "$transaction"
+	| "user"
+	| "appSettings"
+	| "budgetBook"
+	| "budgetMovement"
+	| "envelope"
+	| "envelopeGroup"
+	| "incomeRule"
+	| "budgetDraft"
+	| "wealthTransfer"
+	| "payoffPlan"
+	| "monthClose"
+>;
 
 export interface BatchOptions {
 	/** False (the default of the script): every person's transaction rolls back. */
@@ -92,47 +106,142 @@ export async function migrateUsers(
 	return { runId, reports };
 }
 
+/** True when a run needs a person's eyes: an error, a skipped person, or a book that is not funded or balanced. */
+export function needsAttention(reports: readonly MigrationReport[]): number {
+	return reports.filter(
+		(r) =>
+			r.status === "ERROR" ||
+			r.status === "MISSING_RATE" ||
+			(r.status === "MIGRATED" &&
+				(!r.invariantOk || r.warnings.length > 0 || !r.funded)),
+	).length;
+}
+
 export interface RollbackReport {
-	runId: string;
+	/** The run id, or "lazy" for every first-read move. */
+	target: string;
+	/** The envelope flag was on and nothing was done (the next read would move them again). */
+	blockedByFlag: string | null;
 	removed: string[];
-	/** Books with money the person moved since: left alone unless forced. */
-	refused: { userId: string; movements: number }[];
+	/** Books left alone: what the person did since, which force would lose. */
+	refused: { userId: string; changes: string[] }[];
+	/** Books removed by force, with what that lost. */
+	lost: { userId: string; changes: string[] }[];
+}
+
+/** Leeway for the writes of the move itself (colors, funding) after it stamped the book. */
+const GRACE_MS = 60_000;
+
+type BookRow = {
+	id: string;
+	createdById: string;
+	legacyMigratedAt: Date | null;
+	legacyHiddenIds: string[];
+};
+
+/**
+ * What the person did in a migrated book since the move, in words: the
+ * things a rollback would lose. System writes (plan funding of each month,
+ * month closes) are not changes.
+ */
+async function changesSince(client: Client, b: BookRow): Promise<string[]> {
+	const after = new Date((b.legacyMigratedAt?.getTime() ?? 0) + GRACE_MS);
+	const book = { bookId: b.id };
+	const edited = {
+		OR: [{ createdAt: { gt: after } }, { updatedAt: { gt: after } }],
+	};
+	const counts = {
+		moves: await client.budgetMovement.count({
+			where: {
+				...book,
+				OR: [{ kind: { not: "PLAN_FUND" } }, { batchId: null }],
+			},
+		}),
+		envelopes: await client.envelope.count({ where: { ...book, ...edited } }),
+		groups: await client.envelopeGroup.count({ where: { ...book, ...edited } }),
+		rules: await client.incomeRule.count({ where: book }),
+		drafts: await client.budgetDraft.count({ where: book }),
+		wealth: await client.wealthTransfer.count({ where: book }),
+		plan: await client.payoffPlan.count({ where: book }),
+		months: await client.monthClose.count({
+			where: { ...book, acknowledgedAt: { not: null } },
+		}),
+	};
+	const line = (n: number, what: string) => (n > 0 ? [`${n} ${what}`] : []);
+	return [
+		...line(
+			counts.moves,
+			"money movements the person made (assign, move, cover, limit changes)",
+		),
+		...line(counts.envelopes, "envelopes added or edited"),
+		...line(counts.groups, "groups added or edited"),
+		...line(counts.rules, "income rules"),
+		...line(counts.drafts, "plan drafts"),
+		...line(counts.wealth, "moves to or from Wealth"),
+		...line(counts.plan, "debt payoff plans"),
+		...line(counts.months, "months acknowledged"),
+	];
 }
 
 /**
- * Deletes the books a run made (envelopes, links, movements and closes go
- * with them). The old `budget` rows were never touched, so the person is
- * back on the old budget when the flag allows it. A book with movements the
- * person made since (anything but plan funding) stays unless `force`.
+ * Deletes the books of a run (envelopes, links, movements and closes go with
+ * them), or of every first-read move with target "lazy". The old `budget`
+ * rows were never touched, and the hidden expenses the review answered are
+ * hidden again, so the person is back where the old budget left them.
+ *
+ * Refused (nothing done) while the envelope flag is on: the next read would
+ * move the person again. A book the person changed since stays unless
+ * `force`, and the report lists what force would lose.
  */
 export async function rollbackRun(
 	client: Client,
-	runId: string,
-	force: boolean,
+	target: string,
+	opts: { force: boolean },
 ): Promise<RollbackReport> {
-	const books = await client.budgetBook.findMany({
-		where: { legacyMigrationRunId: runId },
+	const out: RollbackReport = {
+		target,
+		blockedByFlag: null,
+		removed: [],
+		refused: [],
+		lost: [],
+	};
+	const settings = await client.appSettings.findFirst({
+		select: { envelopeBudgetMode: true },
+	});
+	const mode = settings?.envelopeBudgetMode ?? "OFF";
+	if (mode !== "OFF" && !opts.force) {
+		out.blockedByFlag = mode;
+		return out;
+	}
+	const books: BookRow[] = await client.budgetBook.findMany({
+		where:
+			target === "lazy"
+				? { legacyMigrationRunId: { startsWith: "lazy-" } }
+				: { legacyMigrationRunId: target },
 		select: {
 			id: true,
 			createdById: true,
-			_count: {
-				select: { movements: { where: { kind: { not: "PLAN_FUND" } } } },
-			},
+			legacyMigratedAt: true,
+			legacyHiddenIds: true,
 		},
+		orderBy: { id: "asc" },
 	});
-	const out: RollbackReport = { runId, removed: [], refused: [] };
 	for (const b of books) {
-		if (b._count.movements > 0 && !force) {
-			out.refused.push({
-				userId: b.createdById,
-				movements: b._count.movements,
-			});
+		const changes = await changesSince(client, b);
+		if (changes.length > 0 && !opts.force) {
+			out.refused.push({ userId: b.createdById, changes });
 			continue;
 		}
-		await userTransaction(client, b.createdById, (tx) =>
-			tx.budgetBook.delete({ where: { id: b.id } }),
-		);
+		await userTransaction(client, b.createdById, async (tx) => {
+			if (b.legacyHiddenIds.length > 0)
+				await tx.expense.updateMany({
+					where: { id: { in: b.legacyHiddenIds } },
+					data: { excludeFromAnalytics: true, entryKind: "STANDARD" },
+				});
+			await tx.budgetBook.delete({ where: { id: b.id } });
+		});
 		out.removed.push(b.createdById);
+		if (changes.length > 0) out.lost.push({ userId: b.createdById, changes });
 	}
 	return out;
 }

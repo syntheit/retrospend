@@ -168,12 +168,14 @@ export async function revertHidden(
 	rows: { spending: readonly string[]; notSpending: readonly string[] },
 ): Promise<ResolveHiddenResult> {
 	const all = [...rows.spending, ...rows.notSpending];
-	// RLS shows only the user's own rows, so a count below the ids means foreign or missing ids.
-	const own = await tx.expense.count({
-		where: { id: { in: all }, userId, direction: "OUT" },
+	// Only rows the move found hidden in the review month can go back to hidden.
+	const book = await tx.budgetBook.findFirst({
+		where: { createdById: userId, isPersonal: true },
+		select: { legacyHiddenIds: true },
 	});
-	if (own !== new Set(all).size)
-		throw new EnvelopeError("NOT_FOUND", "unknown row");
+	const found = new Set(book?.legacyHiddenIds ?? []);
+	if (all.length === 0 || all.some((id) => !found.has(id)))
+		throw new EnvelopeError("NOT_FOUND", "that row was not up for review");
 	await tx.expense.updateMany({
 		where: { id: { in: all } },
 		data: { entryKind: "STANDARD", excludeFromAnalytics: true },

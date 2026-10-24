@@ -44,7 +44,9 @@ const MOVEMENT_HEADER = [
 	"kind",
 	"amount",
 	"currency",
+	"fromEnvelopeId",
 	"fromEnvelope",
+	"toEnvelopeId",
 	"toEnvelope",
 	"batchId",
 	"revertsId",
@@ -132,12 +134,10 @@ export async function envelopeExportFiles(
 			m.kind,
 			text(m.amount),
 			book.currency,
-			m.fromEnvelopeId
-				? (name.get(m.fromEnvelopeId) ?? m.fromEnvelopeId)
-				: "To assign",
-			m.toEnvelopeId
-				? (name.get(m.toEnvelopeId) ?? m.toEnvelopeId)
-				: "To assign",
+			m.fromEnvelopeId,
+			m.fromEnvelopeId ? name.get(m.fromEnvelopeId) : "To assign",
+			m.toEnvelopeId,
+			m.toEnvelopeId ? name.get(m.toEnvelopeId) : "To assign",
 			m.batchId,
 			m.revertsId,
 			m.ruleId,
@@ -155,7 +155,8 @@ export async function envelopeExportFiles(
 			match: { kind: r.matchKind, value: r.matchValue, title: r.matchTitle },
 			action: r.action,
 			value: text(r.value),
-			envelope: name.get(r.envelopeId) ?? r.envelopeId,
+			envelopeId: r.envelopeId,
+			envelope: name.get(r.envelopeId) ?? null,
 			active: r.active,
 			archivedAt: iso(r.archivedAt),
 			createdAt: iso(r.createdAt),

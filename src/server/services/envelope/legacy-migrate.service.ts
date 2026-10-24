@@ -17,7 +17,7 @@ import { userTimeZone } from "../user-time-zone";
 import { rateTypeFor, setupBook } from "./book.service";
 import { addMonths } from "./calendar";
 import { computeBook } from "./engine";
-import { hiddenRowCount } from "./hidden-rows";
+import { hiddenRowsIn } from "./hidden-rows";
 import { loadBook, monthStartInstant } from "./inputs";
 import { invariantSides } from "./invariant";
 import {
@@ -102,9 +102,15 @@ export const emptyReport = (
 	warnings: [],
 });
 
-/** The month a legacy `period` stands for: the 1st, in the zone the server wrote it in. */
-function monthOfPeriod(period: Date): MonthKey {
-	return period.getFullYear() * 100 + period.getMonth() + 1;
+/**
+ * The month a legacy `period` stands for. It was written as midnight on the
+ * 1st in the server's own zone, so as an instant it can fall on the last day
+ * of the month before (east of UTC); 15 days later is mid-month in any zone
+ * and the process zone never matters.
+ */
+export function monthOfPeriod(period: Date): MonthKey {
+	const mid = new Date(period.getTime() + 15 * 86_400_000);
+	return mid.getUTCFullYear() * 100 + mid.getUTCMonth() + 1;
 }
 
 /** The source month: this one if it has rows, else the latest before it, else the latest there is. */
@@ -383,6 +389,13 @@ export async function migrateLegacyBudget(
 		where: { id: made.bookId },
 		data: { legacyMigrationRunId: ctx.runId, legacyMigratedAt: ctx.now },
 	});
+	// The review only answers these rows, and a rollback hides them again.
+	const hidden = (await hiddenRowsIn(tx, userId)).rows.map((row) => row.id);
+	if (hidden.length > 0)
+		await tx.budgetBook.update({
+			where: { id: made.bookId },
+			data: { legacyHiddenIds: hidden },
+		});
 	const check = await verify(tx, userId, made.bookId, ctx.now);
 	const r = result.plan.report;
 	const warnings: string[] = [];
@@ -401,44 +414,9 @@ export async function migrateLegacyBudget(
 		beforeMinor: r.beforeMinor,
 		fundedMinor: check.fundedMinor,
 		left: r.left,
-		hiddenRows: await hiddenRowCount(tx, userId),
+		hiddenRows: hidden.length,
 		funded: check.funded,
 		invariantOk: check.invariantOk,
 		warnings,
 	};
-}
-
-/** People it did not move are not tried again on every read: a rate arrives with the daily sync. */
-const RETRY_AFTER_MS = 10 * 60_000;
-const refusedAt = new Map<string, number>();
-
-/**
- * The lazy entry point: the first budget read of a person with old limits and
- * no book moves them in, in the read's own transaction. A cheap no-op for
- * everyone else (one lookup once a book exists).
- */
-export async function ensureLegacyBook(
-	tx: Tx,
-	userId: string,
-	now: Date,
-	timeZone: string | null,
-): Promise<MigrationReport | null> {
-	const book = await tx.budgetBook.findFirst({
-		where: { createdById: userId, isPersonal: true },
-		select: { id: true },
-	});
-	if (book) return null;
-	const tried = refusedAt.get(userId);
-	if (tried !== undefined && now.getTime() - tried < RETRY_AFTER_MS)
-		return null;
-	if (!(await tx.budget.findFirst({ where: { userId }, select: { id: true } })))
-		return null;
-	const report = await migrateLegacyBudget(tx, userId, {
-		now,
-		timeZone,
-		runId: `lazy-${randomUUID()}`,
-	});
-	if (report.status === "MIGRATED") refusedAt.delete(userId);
-	else refusedAt.set(userId, now.getTime());
-	return report;
 }

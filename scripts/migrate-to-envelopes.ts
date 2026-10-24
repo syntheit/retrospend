@@ -9,7 +9,17 @@
  *   DATABASE_URL=... pnpm tsx scripts/migrate-to-envelopes.ts --user <id>     # one person (repeatable)
  *   DATABASE_URL=... pnpm tsx scripts/migrate-to-envelopes.ts --apply         # write
  *   DATABASE_URL=... pnpm tsx scripts/migrate-to-envelopes.ts --json          # report as JSON
- *   DATABASE_URL=... pnpm tsx scripts/migrate-to-envelopes.ts --rollback <runId> [--force]
+ *   DATABASE_URL=... pnpm tsx scripts/migrate-to-envelopes.ts --rollback <runId|lazy> [--force]
+ *
+ * Exit code: 0 when every person was moved or needs nothing, 2 when anyone
+ * was skipped (no rate), failed or ended up unfunded (also with --json), 1
+ * when the script itself failed.
+ *
+ * --rollback deletes the books of a run (or of every first-read move, "lazy")
+ * and hides the answered review expenses again. It does nothing while the
+ * envelope flag is on (the next read would move the person again), and it
+ * keeps a book the person changed since; --force removes both and prints
+ * what that loses.
  *
  * Dry run is the default and writes nothing: each person's move runs in its
  * own transaction and rolls back, so the report is exactly what --apply
@@ -23,6 +33,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import { currencyDecimals } from "../src/lib/money";
 import {
 	migrateUsers,
+	needsAttention,
 	rollbackRun,
 } from "../src/server/services/envelope/legacy-migrate.batch";
 import type { MigrationReport } from "../src/server/services/envelope/legacy-migrate.service";
@@ -101,23 +112,35 @@ function summarize(reports: readonly MigrationReport[], apply: boolean) {
 			);
 		for (const w of r.warnings) console.log(`  ${r.userId}: warning: ${w}`);
 	}
-	return by("ERROR").length + by("MISSING_RATE").length + bad.length;
+}
+
+async function rollBack(target: string) {
+	const out = await rollbackRun(db, target, { force: flag("--force") });
+	if (out.blockedByFlag) {
+		console.log(
+			`Nothing rolled back: the envelope budget flag is ${out.blockedByFlag}, so the next read would move people in again. Turn it off first, or use --force.`,
+		);
+		return 2;
+	}
+	console.log(`Rolled back ${target}: removed ${out.removed.length} books`);
+	for (const r of out.refused) {
+		console.log(
+			`  kept ${r.userId}: changed since the move (use --force to remove):`,
+		);
+		for (const c of r.changes) console.log(`    ${c}`);
+	}
+	for (const r of out.lost) {
+		console.log(`  forced ${r.userId}, lost:`);
+		for (const c of r.changes) console.log(`    ${c}`);
+	}
+	return out.refused.length > 0 ? 2 : 0;
 }
 
 async function main() {
-	console.log(`Database: ${maskUrl(connectionString as string)}`);
+	// stderr, so --json output stays parseable.
+	console.error(`Database: ${maskUrl(connectionString as string)}`);
 	const rollback = values("--rollback")[0];
-	if (rollback) {
-		const out = await rollbackRun(db, rollback, flag("--force"));
-		console.log(
-			`Rolled back run ${rollback}: removed ${out.removed.length} books`,
-		);
-		for (const r of out.refused)
-			console.log(
-				`  kept ${r.userId}: ${r.movements} movements since (use --force to remove)`,
-			);
-		return 0;
-	}
+	if (rollback) return rollBack(rollback);
 	const apply = flag("--apply");
 	const users = values("--user");
 	const json = flag("--json");
@@ -126,12 +149,14 @@ async function main() {
 		{ apply, userIds: users.length ? users : undefined },
 		json ? undefined : (r) => console.log(line(r)),
 	);
+	const attention = needsAttention(reports);
 	if (json) {
-		console.log(JSON.stringify({ runId, apply, reports }, null, 2));
-		return 0;
+		console.log(JSON.stringify({ runId, apply, attention, reports }, null, 2));
+	} else {
+		summarize(reports, apply);
+		if (apply) console.log(`\nRun id (for --rollback): ${runId}`);
 	}
-	if (apply) console.log(`\nRun id (for --rollback): ${runId}`);
-	return summarize(reports, apply) > 0 ? 2 : 0;
+	return attention > 0 ? 2 : 0;
 }
 
 main()

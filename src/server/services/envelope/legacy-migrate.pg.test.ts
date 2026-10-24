@@ -22,17 +22,18 @@
  */
 import { randomUUID } from "node:crypto";
 import JSZip from "jszip";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
-import { needsYouIn } from "~/server/services/needs-you";
+import { needsYou, needsYouIn } from "~/server/services/needs-you";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import { addRow, at, invariantAt } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
 import { envelopeExportFiles } from "./envelope-export";
+import { ensureLegacyBook, forgetLegacyAttempts } from "./legacy-lazy";
 import { migrateUsers, rollbackRun } from "./legacy-migrate.batch";
-import { ensureLegacyBook } from "./legacy-migrate.service";
+import * as plan from "./legacy-plan";
 import {
 	resolveHiddenMutation,
 	revertHiddenMutation,
@@ -276,9 +277,7 @@ describe("Ana: five category budgets, a global one and a foreign one", () => {
 		});
 		expect(again.reports.map((r) => r.status)).toEqual(["HAS_BOOK"]);
 		await getMonth(ana.user.id);
-		await userTransaction(adminDb, ana.user.id, (tx) =>
-			ensureLegacyBook(tx, ana.user.id, new Date(), null),
-		);
+		await ensureLegacyBook(adminDb, ana.user.id, new Date(), null);
 		expect(await snapshot()).toEqual(first);
 		expect(first.budgets).toBe(before.budgets);
 		expect(await adminDb.budgetBook.count()).toBe(before.books + 1);
@@ -309,7 +308,15 @@ describe("Ana: five category budgets, a global one and a foreign one", () => {
 			files.find((f) => f.name === n)?.content.split("\n") ?? [];
 		expect(lines("envelopes.csv")).toHaveLength(7);
 		expect(lines("movements.csv")).toHaveLength(7);
-		expect(lines("movements.csv")[0]).toContain("fromEnvelope");
+		// Ids and names in their own columns, so a name with a comma or a rename cannot confuse an import.
+		expect(lines("movements.csv")[0]).toContain(
+			"fromEnvelopeId,fromEnvelope,toEnvelopeId,toEnvelope",
+		);
+		const first = lines("movements.csv")[1]?.split(",") ?? [];
+		const header = lines("movements.csv")[0]?.split(",") ?? [];
+		expect(first[header.indexOf("fromEnvelopeId")]).toBe("");
+		expect(first[header.indexOf("fromEnvelope")]).toBe("To assign");
+		expect(first[header.indexOf("toEnvelopeId")]).not.toBe("");
 		expect(lines("envelopes.csv").find((l) => l.includes("Fun"))).toContain(
 			"XTF",
 		);
@@ -505,6 +512,7 @@ describe("Cris: rows the old budget hid", () => {
 	let cris: Awaited<ReturnType<typeof person>>;
 	let hidden: string;
 	let dining: string;
+	let older: string;
 
 	beforeAll(async () => {
 		cris = await person();
@@ -520,11 +528,13 @@ describe("Cris: rows the old budget hid", () => {
 				excludeFromAnalytics: true,
 			})
 		).id;
-		await addRow(
-			cris.user.id,
-			{ amount: 40, categoryId: dining, excludeFromAnalytics: true },
-			mid(last),
-		);
+		older = (
+			await addRow(
+				cris.user.id,
+				{ amount: 40, categoryId: dining, excludeFromAnalytics: true },
+				mid(last),
+			)
+		).id;
 		await apply(cris.user.id);
 	});
 
@@ -588,6 +598,19 @@ describe("Cris: rows the old budget hid", () => {
 				answers: [{ id: hidden, answer: "SPENDING" }],
 			}),
 		).rejects.toThrow();
+	});
+
+	it("an undo only reaches rows that were up for review in the first month", async () => {
+		await expect(
+			forUser(cris.user.id).apply(revertHiddenMutation, {
+				spending: [],
+				notSpending: [older],
+			}),
+		).rejects.toThrow();
+		// The older row was never touched.
+		expect(
+			await adminDb.expense.findUniqueOrThrow({ where: { id: older } }),
+		).toMatchObject({ excludeFromAnalytics: true, entryKind: "STANDARD" });
 	});
 
 	it("the notice shows once", async () => {
@@ -659,9 +682,7 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		const n = await person();
 		const rent = await n.cat("Rent", true);
 		await budget(n.user.id, { categoryId: rent, amount: "250.00" });
-		await userTransaction(adminDb, n.user.id, (tx) =>
-			needsYouIn(tx, n.user.id, { budget: true, timeZone: "UTC" }),
-		);
+		await needsYou(adminDb, n.user.id, { budget: true, timeZone: "UTC" });
 		expect(
 			await adminDb.budgetBook.count({ where: { createdById: n.user.id } }),
 		).toBe(1);
@@ -681,19 +702,107 @@ describe("the first read moves a person in, once, even when reads race", () => {
 	});
 });
 
-describe("rolling a run back", () => {
-	it("deletes the books of the run, leaves the old rows, and refuses a book with money moved since unless forced", async () => {
-		const [a, b] = [await person(), await person()];
-		for (const p of [a, b]) {
-			const rent = await p.cat("Rent", true);
-			await budget(p.user.id, { categoryId: rent, amount: "300.00" });
-		}
-		const runId = `test-${randomUUID()}`;
-		await migrateUsers(adminDb, {
-			apply: true,
-			userIds: [a.user.id, b.user.id],
-			runId,
+const SETTINGS_ID = "app_settings_singleton";
+const setFlag = (mode: "OFF" | "ALL") =>
+	adminDb.appSettings.upsert({
+		where: { id: SETTINGS_ID },
+		update: { envelopeBudgetMode: mode },
+		create: { id: SETTINGS_ID, envelopeBudgetMode: mode },
+	});
+
+async function moved(n: number, runId = `test-${randomUUID()}`) {
+	const people = [];
+	for (let i = 0; i < n; i++) {
+		const p = await person();
+		const rent = await p.cat("Rent", true);
+		await budget(p.user.id, { categoryId: rent, amount: "300.00" });
+		people.push(p);
+	}
+	await migrateUsers(adminDb, {
+		apply: true,
+		userIds: people.map((p) => p.user.id),
+		runId,
+	});
+	return { people, runId };
+}
+
+describe("a move that fails never fails the read", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		forgetLegacyAttempts();
+	});
+
+	async function withBudget() {
+		const p = await person();
+		const rent = await p.cat("Rent", true);
+		await budget(p.user.id, { categoryId: rent, amount: "120.00" });
+		return p;
+	}
+	const books = (id: string) =>
+		adminDb.budgetBook.count({ where: { createdById: id } });
+
+	it("the read goes on as Just track, the error waits 30 minutes, then the move is tried again", async () => {
+		const p = await withBudget();
+		const spy = vi.spyOn(plan, "planLegacyMigration").mockImplementation(() => {
+			throw new Error("boom");
 		});
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const t0 = new Date();
+		expect(await getMonth(p.user.id, undefined, t0, "UTC")).toBeNull();
+		expect(await getPacing(p.user.id, t0, "UTC")).toBeNull();
+		expect(
+			await getMonth(
+				p.user.id,
+				undefined,
+				new Date(t0.getTime() + 60_000),
+				"UTC",
+			),
+		).toBeNull();
+		// One try, not one per read.
+		expect(spy).toHaveBeenCalledTimes(1);
+		expect(await books(p.user.id)).toBe(0);
+		spy.mockRestore();
+		const later = new Date(t0.getTime() + 31 * 60_000);
+		const m = await getMonth(p.user.id, undefined, later, "UTC");
+		expect(row(m, "Rent")?.assigned.minor).toBe(12_000);
+	});
+
+	it("Needs you and the dashboard pace go on too", async () => {
+		const p = await withBudget();
+		vi.spyOn(plan, "planLegacyMigration").mockImplementation(() => {
+			throw new Error("boom");
+		});
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		const list = await needsYou(adminDb, p.user.id, {
+			budget: true,
+			timeZone: "UTC",
+		});
+		expect(list.items.filter((i) => i.group === "budget")).toEqual([]);
+		expect(await books(p.user.id)).toBe(0);
+	});
+});
+
+describe("rolling a run back", () => {
+	it("deletes the books of the run and leaves the old rows, which can move again", async () => {
+		const { people, runId } = await moved(2);
+		const [a, b] = people as [(typeof people)[number], (typeof people)[number]];
+		const out = await rollbackRun(adminDb, runId, { force: false });
+		expect(out.removed.sort()).toEqual([a.user.id, b.user.id].sort());
+		expect(out.refused).toEqual([]);
+		expect(
+			await adminDb.budgetBook.count({
+				where: { legacyMigrationRunId: runId },
+			}),
+		).toBe(0);
+		expect(await adminDb.budget.count({ where: { userId: a.user.id } })).toBe(
+			1,
+		);
+		expect((await apply(a.user.id)).reports[0]?.status).toBe("MIGRATED");
+	});
+
+	it("refuses a book the person changed since, lists what force would lose, and force removes it", async () => {
+		const { people, runId } = await moved(2);
+		const [a, b] = people as [(typeof people)[number], (typeof people)[number]];
 		const book = await bookOf(b.user.id);
 		await adminDb.budgetMovement.create({
 			data: {
@@ -706,22 +815,111 @@ describe("rolling a run back", () => {
 				actorUserId: b.user.id,
 			},
 		});
-		const soft = await rollbackRun(adminDb, runId, false);
+		// A limit edit is a plan-funding row with no batch: also the person's own.
+		const rent = book.envelopes.find((e) => e.name === "Rent");
+		await adminDb.budgetMovement.create({
+			data: {
+				id: randomUUID(),
+				bookId: book.id,
+				month: current,
+				toEnvelopeId: rent?.id,
+				amount: D(5),
+				kind: "PLAN_FUND",
+				actorUserId: b.user.id,
+			},
+		});
+		const soft = await rollbackRun(adminDb, runId, { force: false });
 		expect(soft.removed).toEqual([a.user.id]);
-		expect(soft.refused).toEqual([{ userId: b.user.id, movements: 1 }]);
-		const forced = await rollbackRun(adminDb, runId, true);
+		expect(soft.refused).toHaveLength(1);
+		expect(soft.refused[0]?.userId).toBe(b.user.id);
+		expect(soft.refused[0]?.changes).toEqual([
+			"2 money movements the person made (assign, move, cover, limit changes)",
+		]);
+		const forced = await rollbackRun(adminDb, runId, { force: true });
 		expect(forced.removed).toEqual([b.user.id]);
+		expect(forced.lost).toEqual([
+			{
+				userId: b.user.id,
+				changes: [
+					"2 money movements the person made (assign, move, cover, limit changes)",
+				],
+			},
+		]);
+	});
+
+	it("hides the answered review rows again, exactly as the old budget saw them", async () => {
+		const p = await person();
+		const dine = await p.cat("Dining");
+		await budget(p.user.id, { categoryId: dine, amount: "200.00" });
+		const keep = (
+			await addRow(p.user.id, {
+				amount: 60,
+				categoryId: dine,
+				excludeFromAnalytics: true,
+			})
+		).id;
+		const drop = (
+			await addRow(p.user.id, {
+				amount: 30,
+				categoryId: dine,
+				excludeFromAnalytics: true,
+			})
+		).id;
+		const runId = `test-${randomUUID()}`;
+		await migrateUsers(adminDb, { apply: true, userIds: [p.user.id], runId });
+		await forUser(p.user.id).apply(resolveHiddenMutation, {
+			answers: [
+				{ id: keep, answer: "SPENDING" },
+				{ id: drop, answer: "NOT_SPENDING" },
+			],
+		});
+		const out = await rollbackRun(adminDb, runId, { force: false });
+		expect(out.removed).toEqual([p.user.id]);
+		for (const id of [keep, drop]) {
+			expect(
+				await adminDb.expense.findUniqueOrThrow({ where: { id } }),
+			).toMatchObject({
+				excludeFromAnalytics: true,
+				entryKind: "STANDARD",
+			});
+		}
+	});
+
+	it('rollback "lazy" removes every lazy run and none from the script', async () => {
+		const lazy = await person();
+		const rent = await lazy.cat("Rent", true);
+		await budget(lazy.user.id, { categoryId: rent, amount: "100.00" });
+		await getMonth(lazy.user.id, undefined, new Date(), "UTC");
+		const { people } = await moved(1);
+		const out = await rollbackRun(adminDb, "lazy", { force: false });
+		expect(out.removed).toContain(lazy.user.id);
+		expect(out.removed).not.toContain(people[0]?.user.id);
+		expect(
+			await adminDb.budgetBook.count({ where: { createdById: lazy.user.id } }),
+		).toBe(0);
 		expect(
 			await adminDb.budgetBook.count({
-				where: { legacyMigrationRunId: runId },
+				where: { createdById: people[0]?.user.id },
 			}),
-		).toBe(0);
-		expect(await adminDb.budget.count({ where: { userId: a.user.id } })).toBe(
-			1,
-		);
-		// And they can be moved again.
-		const again = await apply(a.user.id);
-		expect(again.reports[0]?.status).toBe("MIGRATED");
+		).toBe(1);
+	});
+
+	it("refuses while the envelope flag is on: the next read would move them again", async () => {
+		const { people, runId } = await moved(1);
+		await setFlag("ALL");
+		try {
+			const out = await rollbackRun(adminDb, runId, { force: false });
+			expect(out).toMatchObject({ blockedByFlag: "ALL", removed: [] });
+			expect(
+				await adminDb.budgetBook.count({
+					where: { createdById: people[0]?.user.id },
+				}),
+			).toBe(1);
+			const forced = await rollbackRun(adminDb, runId, { force: true });
+			expect(forced.removed).toEqual([people[0]?.user.id]);
+		} finally {
+			await setFlag("OFF");
+		}
 	});
 });
 
