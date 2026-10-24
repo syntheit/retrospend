@@ -576,6 +576,11 @@ export const targetInputSchema = z.discriminatedUnion("kind", [
 		kind: z.literal("BILL_TEMPLATE"),
 		templateId: idSchema,
 	}),
+	/** A bill that follows a liability's minimum and due day (SPEC §5.4, §5.11). */
+	z.object({
+		kind: z.literal("BILL_LIABILITY"),
+		liabilityId: idSchema,
+	}),
 	z.object({
 		kind: z.literal("SAVINGS"),
 		amountMinor: positiveMinor.optional(),

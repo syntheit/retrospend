@@ -66,6 +66,7 @@ import {
 } from "./months";
 import { RateBook } from "./rate-book";
 import { type LoadedSplits, loadSplits } from "./splits-input";
+import { type LiabilityTerms, loadTargetSources } from "./target-sources";
 import { type TargetContext, targetOf } from "./target-input";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import type { ValuationContext } from "./valuation";
@@ -256,8 +257,8 @@ function viewBook(
 function loadRates(
 	tx: Tx,
 	row: BookRow,
-	templates: readonly RecurringTemplate[],
-	accounts: readonly DedicatedAccount[],
+	/** Currencies templates, dedicated accounts and followed liabilities are in. */
+	sources: readonly string[],
 ) {
 	return RateBook.load(tx, {
 		bookCurrency: row.currency,
@@ -269,8 +270,7 @@ function loadRates(
 			...row.envelopes.flatMap((e) =>
 				e.targetCurrency ? [e.targetCurrency] : [],
 			),
-			...templates.map((t) => t.currency),
-			...accounts.map((a) => a.currency),
+			...sources,
 		],
 	});
 }
@@ -363,22 +363,20 @@ interface Setting {
 	valuation: ValuationContext;
 	valuer: Valuer;
 	templates: RecurringTemplate[];
+	liabilities: LiabilityTerms[];
 	accounts: DedicatedAccount[];
 }
 
 async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 	const periods = periodsOf(row);
 	const today = isoDateIn(now, row.timeZone);
-	const templateIds = row.envelopes.flatMap((e) =>
-		e.targetTemplateId ? [e.targetTemplateId] : [],
-	);
-	const templates = templateIds.length
-		? await tx.recurringTemplate.findMany({
-				where: { id: { in: templateIds } },
-			})
-		: [];
+	const { templates, liabilities } = await loadTargetSources(tx, row);
 	const accounts = await loadDedicatedAccounts(tx, row);
-	const rates = await loadRates(tx, row, templates, accounts);
+	const rates = await loadRates(tx, row, [
+		...templates.map((t) => t.currency),
+		...accounts.map((a) => a.currency),
+		...liabilities.map((l) => l.currency),
+	]);
 	const valuation: ValuationContext = {
 		bookCurrency: row.currency,
 		periods: row.periods.map((p) => ({
@@ -405,6 +403,7 @@ async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 			{ usdRate: rates.lookup, rateDate: rates.rateDate },
 		),
 		templates,
+		liabilities,
 		accounts,
 	};
 }
@@ -459,6 +458,7 @@ function finishLoad(
 			tz: s.row.timeZone,
 			periods: s.periods,
 			templates: new Map(s.templates.map((t) => [t.id, t])),
+			liabilities: new Map(s.liabilities.map((l) => [l.id, l])),
 			missingRates: s.valuer.missingRates,
 		},
 		dedicated,

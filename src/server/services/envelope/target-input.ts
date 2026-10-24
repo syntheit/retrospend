@@ -10,6 +10,7 @@ import type { Money } from "~/lib/schemas/envelope";
 import type { Prisma, RecurringTemplate } from "~prisma";
 import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
 import type { EnvelopeTarget } from "./needs";
+import type { LiabilityTerms } from "./target-sources";
 import type { IsoDate, Minor, MissingRate, MonthKey } from "./types";
 import { toMinor } from "./units";
 import { convertToBook, type ValuationContext } from "./valuation";
@@ -33,6 +34,7 @@ export interface StoredTarget {
 	targetDueDate: Date | null;
 	targetRepeat: Frequency | null;
 	targetTemplateId: string | null;
+	targetLiabilityId?: string | null;
 }
 
 export interface TargetContext {
@@ -42,6 +44,8 @@ export interface TargetContext {
 	tz: string;
 	periods: readonly MonthBoundary[];
 	templates: ReadonlyMap<string, RecurringTemplate>;
+	/** Liabilities a bill follows (SPEC §5.4); none when omitted. */
+	liabilities?: ReadonlyMap<string, LiabilityTerms>;
 	missingRates: MissingRate[];
 }
 
@@ -102,6 +106,41 @@ function billFromTemplate(t: RecurringTemplate, ctx: TargetContext): TargetOf {
 	};
 }
 
+/** The due date with `day` in the month of `today`, on a short month's last day. */
+function dueIn(today: IsoDate, day: number): IsoDate {
+	const [y, m] = today.split("-").map(Number) as [number, number];
+	const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+	return `${today.slice(0, 7)}-${String(Math.min(day, last)).padStart(2, "0")}`;
+}
+
+/**
+ * A bill that follows a liability (SPEC §5.4, §5.11): its minimum each
+ * month, due on its due day, at today's rate when the debt is in another
+ * currency. No minimum or no due day: no target.
+ */
+function billFromLiability(l: LiabilityTerms, ctx: TargetContext): TargetOf {
+	if (!l.minimumPayment || l.minimumPayment.lte(0) || !l.dueDate)
+		return { target: null, foreign: null, targetIncomplete: false };
+	const c = converter(ctx, l.currency);
+	const amount = c.toH(l.minimumPayment);
+	const foreign =
+		l.currency === ctx.valuation.bookCurrency
+			? null
+			: { minor: toMinor(l.minimumPayment.toString(), l.currency), currency: l.currency };
+	if (amount == null) return { target: null, foreign, targetIncomplete: c.incomplete() };
+	return {
+		target: {
+			kind: "BILL",
+			amount,
+			dueDate: dueIn(ctx.today, l.dueDate),
+			repeatMonths: 1,
+			linkedToTemplate: false,
+		},
+		foreign,
+		targetIncomplete: false,
+	};
+}
+
 export function targetOf(e: StoredTarget, ctx: TargetContext): TargetOf {
 	const none: TargetOf = {
 		target: null,
@@ -109,6 +148,10 @@ export function targetOf(e: StoredTarget, ctx: TargetContext): TargetOf {
 		targetIncomplete: false,
 	};
 	if (e.kind === "NONE") return none;
+	if (e.kind === "BILL" && e.targetLiabilityId) {
+		const l = ctx.liabilities?.get(e.targetLiabilityId);
+		return l ? billFromLiability(l, ctx) : none;
+	}
 	if (e.kind === "BILL" && e.targetTemplateId) {
 		const t = ctx.templates.get(e.targetTemplateId);
 		return t ? billFromTemplate(t, ctx) : none;

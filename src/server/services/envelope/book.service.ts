@@ -32,6 +32,12 @@ import { fromMinor, toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
+export const LIABILITY_TYPES = [
+	"LIABILITY_LOAN",
+	"LIABILITY_CREDIT_CARD",
+	"LIABILITY_MORTGAGE",
+] as const;
+
 export async function setupPreset(
 	tx: Tx,
 	userId: string,
@@ -82,6 +88,7 @@ const KIND_FOR: Record<TargetInput["kind"], string> = {
 	MONTHLY: "MONTHLY",
 	BILL: "BILL",
 	BILL_TEMPLATE: "BILL",
+	BILL_LIABILITY: "BILL",
 	SAVINGS: "SAVINGS",
 };
 
@@ -98,6 +105,7 @@ async function validate(tx: Tx, input: SetupInput) {
 	const keys = new Set<string>();
 	const categories = new Set<string>();
 	const templateIds: string[] = [];
+	const liabilityIds: string[] = [];
 	for (const e of input.envelopes) {
 		if (keys.has(e.key)) invalid(`envelope key ${e.key} is used twice`);
 		keys.add(e.key);
@@ -117,6 +125,8 @@ async function validate(tx: Tx, input: SetupInput) {
 			);
 		if (e.target.kind === "BILL_TEMPLATE")
 			templateIds.push(e.target.templateId);
+		if (e.target.kind === "BILL_LIABILITY")
+			liabilityIds.push(e.target.liabilityId);
 		if (e.target.kind === "SAVINGS") {
 			try {
 				savingsShape({
@@ -136,6 +146,12 @@ async function validate(tx: Tx, input: SetupInput) {
 		where: { id: { in: [...categories] }, kind: "EXPENSE" },
 	});
 	if (ownCategories !== categories.size) invalid("unknown or income category");
+	// RLS shows only the user's own accounts.
+	const liabilities = await tx.assetAccount.count({
+		where: { id: { in: liabilityIds }, type: { in: [...LIABILITY_TYPES] } },
+	});
+	if (liabilities !== new Set(liabilityIds).size)
+		invalid("a bill follows one of your debts");
 	const templates = await tx.recurringTemplate.findMany({
 		where: { id: { in: templateIds }, direction: "OUT" },
 		select: { id: true, frequency: true },
@@ -157,6 +173,8 @@ function targetColumns(
 	if (!t) return {};
 	if (t.kind === "BILL_TEMPLATE")
 		return { targetTemplateId: t.templateId, targetStartMonth: startMonth };
+	if (t.kind === "BILL_LIABILITY")
+		return { targetLiabilityId: t.liabilityId, targetStartMonth: startMonth };
 	const currency = t.currency ?? H;
 	const foreign = currency === H ? null : currency;
 	const amount = (minor: number | undefined) =>
