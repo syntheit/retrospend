@@ -124,7 +124,7 @@ function BudgetBody({
 					<div className="min-w-0 flex-1">
 						<PlanView actions={actions} data={data} />
 					</div>
-					<div className="mt-8 lg:mt-0 lg:w-72 lg:shrink-0">
+					<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
 						<PlanRail month={key} />
 					</div>
 				</div>
@@ -175,7 +175,7 @@ function BudgetBody({
 								<GroupsTable {...common} columns={columns} />
 							)}
 						</div>
-						<div className="mt-8 lg:mt-0 lg:w-72 lg:shrink-0">
+						<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
 							<BudgetRail actions={actions} data={data} readOnly={closed} />
 						</div>
 					</div>

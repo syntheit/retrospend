@@ -192,7 +192,7 @@ export function PlanView({
 			<Table aria-label={t("table")} look="panel">
 				<TableHeader>
 					<TableRow>
-						<TableHead className="w-2/5">{t("envelope")}</TableHead>
+						<TableHead className="w-1/3">{t("envelope")}</TableHead>
 						<TableHead className="text-right">{t("planned")}</TableHead>
 						<TableHead className="text-right">{t("left")}</TableHead>
 					</TableRow>

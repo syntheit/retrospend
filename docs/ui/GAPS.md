@@ -233,6 +233,17 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Home: net worth sparkline | A net worth series read in Money (`netWorthSeries`, 6 months) | The Net worth row shows the number only | 2D |
 | Home: Coming up total | A server total of the next 3 weeks of recurring items (`due({days: 21})` with its sum) | Coming up lists the items with no total line | 2E |
 | Home: Needs you amounts as figures | Registry ids for item amounts | Item amounts carry no `data-figure`; Give it a job carries `budget.notPlannedYet` | 2E figures |
+| Budget: spent share on an envelope row | A `spentBasis` (hundredths of a percent, capped at 10000) on each envelope in `envelope.getMonth`; the DTO has none and the page never divides | The row has no thin bar (`EnvelopeRow` takes `spent` as optional now) | 2B |
+| Budget: per-envelope figures | `envelopeId` narrowing on `GET /api/v1/figures` (registry has `envelope.left`, the endpoint takes project, person and account only) | Row amounts carry no `data-figure`; only the lead number (`budget.leftToSpend`, `notPlannedYet`, `leftThisWeek`, `leftInLimits`) and `budget.heldForOthers`, `planCost`, `typicalIncome` are tagged | 2B |
+| Budget: table totals and group figures | Server totals for the month (Assigned, Activity, Left) and registry ids for a group's totals; only `toAssign.terms.assigned` exists | No footer row; each group row shows the server's group totals without a figure id | 2B |
+| Budget: Spending expands per category (Flex) | Activity per category inside an envelope that covers many (SPEC §6.1) | Spending is one envelope row with its target line | 2B |
+| Budget: "October plan" allocation by group | Shares of the month by group in basis points (`AllocationBar` needs the server's shares) | The rail shows Owed to you, Money in and Shares only | 2B |
+| Budget: closed month hero | A "saved or spent more than came in" verdict for a closed month (`closedVerdict`); `monthSummary` has money in, assigned and overspent | The closed month leads with Money in, then Assigned and Over by, and "How it adds up" | 2B |
+| Budget: Archive and Hide envelope | `envelope.archive` (D65): its leftover goes back to Not planned yet | The envelope menu has Move, Cover, Edit target, View activity, Rename or edit categories, What if; no Archive | 2B |
+| Budget: assigned in place | Inline edit of Assigned goes through the Assign sheet (it has the preview and Undo, R30), not the table | The Assigned column is read only | 4C sheets |
+| Budget: envelope detail panel and page | The panel (desktop) and pushed page (phone) with How it adds up, history and Often over (SPEC §6.3) | A row's View activity opens Activity filtered to the envelope's categories | 4C follow-up |
+| Budget: Import from YNAB and Export CSV | Their flows (SPEC §8.4) | Not in the header menu | S6 |
+| Budget: Welcome back and month summary sheets | The sheets behind `welcomeBack`, `monthSummary`, `setup`, `assign` and every other id in `src/features/budget/sheet-ids.ts` | The page shows the notice and the button; a sheet with no renderer in `sheet-registry.tsx` does nothing yet | 4C sheets |
 
 ## 8. Behavior gaps found by the e2e suite
 

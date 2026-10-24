@@ -99,7 +99,7 @@ function EnvelopeTableRow({
 					<LeftCell e={e} />
 				</div>
 			</TableCell>
-			<TableCell className="w-ctl">
+			<TableCell className="w-14">
 				{!readOnly && (
 					<ActionMenu
 						entity="envelope"
@@ -140,7 +140,7 @@ export function GroupsTable({
 		<Table aria-label={t("label")} look="panel">
 			<TableHeader>
 				<TableRow>
-					<TableHead className="w-2/5">{t("envelope")}</TableHead>
+					<TableHead className="w-1/3">{t("envelope")}</TableHead>
 					<TableHead className={NUM}>
 						{columns === "limits" ? t("limit") : t("assigned")}
 					</TableHead>
@@ -148,7 +148,7 @@ export function GroupsTable({
 					<TableHead className={NUM}>
 						{columns === "closed" ? t("endOfMonth") : t("left")}
 					</TableHead>
-					<TableHead className="w-ctl">
+					<TableHead className="w-14">
 						<span className="sr-only">{t("actions")}</span>
 					</TableHead>
 				</TableRow>
@@ -188,7 +188,7 @@ export function GroupsTable({
 										<GroupLeft group={g} />
 									</div>
 								</TableCell>
-								<TableCell className="w-ctl" />
+								<TableCell className="w-14" />
 							</TableRow>
 							{open &&
 								g.envelopes.map((e) => (
