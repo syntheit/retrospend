@@ -395,6 +395,7 @@ model BudgetBook {
   drafts          BudgetDraft[]
   incomeRules     IncomeRule[]
   incomeRuleRuns  IncomeRuleRun[]
+  payoffPlan      PayoffPlan?
 
   @@index([createdById])
   @@index([currency])
@@ -495,6 +496,7 @@ model Envelope {
   mainOfGroups        EnvelopeGroup[]     @relation("GroupMainEnvelope")
   movementsOut        BudgetMovement[]    @relation("MovementFrom")
   incomeRules         IncomeRule[]
+  payoffPlans         PayoffPlan[]
   movementsIn         BudgetMovement[]    @relation("MovementTo")
   projectRoutes       ProjectParticipant[] @relation("ProjectBudgetEnvelope")
   wealthTransfers     WealthTransfer[]
@@ -766,6 +768,31 @@ model IncomeRuleRun {
 
   @@index([bookId])
   @@map("income_rule_run")
+}
+
+// The payoff plan (SPEC §5.11, D72): a projection input, never a ledger.
+model PayoffPlan {
+  id           String         @id
+  bookId       String         @unique
+  strategy     PayoffStrategy @default(AVALANCHE)
+  // Book currency.
+  extraMonthly Decimal        @default(0) @db.Decimal(19, 8)
+  // CUSTOM: [assetAccountId] in payoff order.
+  customOrder  Json           @default("[]")
+  // "Extra debt payment": gets a Set aside target equal to the extra.
+  envelopeId   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  book         BudgetBook     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  envelope     Envelope?      @relation(fields: [envelopeId, bookId], references: [id, bookId], onDelete: NoAction)
+
+  @@map("payoff_plan")
+}
+
+enum PayoffStrategy {
+  SNOWBALL
+  AVALANCHE
+  CUSTOM
 }
 
 enum MonthCloseMode {
