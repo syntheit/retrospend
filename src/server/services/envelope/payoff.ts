@@ -61,6 +61,8 @@ export interface PayoffResult {
 	/** Σ interest in H at today's rate. */
 	totalInterest: Minor;
 	debts: DebtOutcome[];
+	/** Each month's closing balances, in debt order (the schedule a person can check). */
+	schedule: Array<{ month: MonthKey; balances: Minor[] }>;
 }
 
 interface Live {
@@ -179,10 +181,15 @@ export function projectPayoff(p: PayoffInput): PayoffResult {
 	const H = p.bookCurrency;
 	const live = startLive(p.debts);
 	let month = 0;
+	const schedule: PayoffResult["schedule"] = [];
 	while (live.some((l) => l.balance > 0) && month < PAYOFF_MAX_MONTHS) {
 		month++;
 		const freed = chargeAndPayMinimums(live, month, H);
 		payFromPool(payOrder(live, p), p.extraMonthly + freed, month, H);
+		schedule.push({
+			month: addMonths(p.startMonth, month),
+			balances: live.map((l) => l.balance),
+		});
 		for (const l of live) {
 			if (l.balance === 0 && l.out.payoffMonth === null)
 				l.out.payoffMonth = addMonths(p.startMonth, month);
@@ -198,5 +205,6 @@ export function projectPayoff(p: PayoffInput): PayoffResult {
 		capped,
 		totalInterest: sumMinor(live.map((l) => toBook(l, l.out.interest, H))),
 		debts: live.map((l) => l.out),
+		schedule,
 	};
 }
