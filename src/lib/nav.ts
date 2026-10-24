@@ -145,6 +145,7 @@ export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([
 	"/home",
 	"/activity",
 	"/activity/recurring",
+	"/budget",
 ]);
 
 /** Where an entry links now; null when it has no page yet. */
