@@ -298,7 +298,7 @@ function rowDto(
 		assigned: money(r.m.assigned),
 		activity: money(r.m.activity),
 		// The same spending the group targets read: Wealth moves are not spending.
-		spent: money(-(r.m.activity - r.m.wealth)),
+		spent: money(r.m.wealth - r.m.activity),
 		spentBasis: spentBasis(r),
 		left: money(r.m.left),
 		pending: money(r.m.pending),
@@ -353,7 +353,7 @@ function groupsDto(
 					carryIn: sum((r) => r.m.carryIn),
 					assigned: sum((r) => r.m.assigned),
 					activity: sum((r) => r.m.activity),
-					spent: sum((r) => -(r.m.activity - r.m.wealth)),
+					spent: sum((r) => r.m.wealth - r.m.activity),
 					left: sum((r) => r.m.left),
 					over: sum((r) => Math.max(0, -r.m.left)),
 					need: sum((r) => r.target?.need ?? 0),
