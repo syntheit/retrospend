@@ -61,6 +61,68 @@ export function saveFirst(templates: readonly PresetTemplate[]): Preset {
 	};
 }
 
+/** A liability with a minimum: Pay off debt gives it a bill that follows it. */
+export interface PresetLiability {
+	id: string;
+	name: string;
+}
+
+/**
+ * Pay off debt (SPEC §4.2): as Flex, plus a Debts group with a bill per
+ * liability that has a minimum (it follows the minimum and due day) and an
+ * "Extra debt payment" envelope the payoff plan funds. Sweeping Spending
+ * into it is asked, so it is not preset.
+ */
+export function debtPayoff(
+	flexEnvelopes: SetupPresetOutput["envelopes"],
+	liabilities: readonly PresetLiability[],
+): Preset {
+	const debts: PresetEnvelope[] = liabilities.map((l) => ({
+		key: `debt-${l.id}`,
+		nameKey: null,
+		name: l.name,
+		groupKey: "debts",
+		kind: "BILL",
+		isDefault: false,
+		categoryIds: [],
+		templateId: null,
+		target: { kind: "BILL_LIABILITY", liabilityId: l.id },
+	}));
+	return {
+		groups: [
+			{ key: "bills", nameKey: "envelope.groups.bills", role: "BILLS" },
+			{ key: "debts", nameKey: "envelope.groups.debts", role: "BILLS" },
+			{
+				key: "spending",
+				nameKey: "envelope.groups.spending",
+				role: "SPENDING",
+			},
+			{ key: "savings", nameKey: "envelope.groups.savings", role: "SAVINGS" },
+		],
+		envelopes: [
+			...flexEnvelopes,
+			...debts,
+			{
+				key: "extra-debt",
+				nameKey: "envelope.envelopes.extraDebt",
+				name: null,
+				groupKey: "debts",
+				kind: "MONTHLY",
+				isDefault: false,
+				categoryIds: [],
+				templateId: null,
+				target: {
+					kind: "MONTHLY",
+					amountMinor: 0,
+					mode: "SET_ASIDE",
+					cadence: "MONTH",
+				},
+			},
+		],
+		rules: [],
+	};
+}
+
 export function fiftyThirtyTwenty(
 	categories: readonly PresetCategory[],
 ): Preset {

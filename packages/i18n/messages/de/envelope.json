@@ -6,14 +6,16 @@
 		"limits": "Ausgabenlimits",
 		"savings": "Sparen",
 		"needs": "Bedarf",
-		"wants": "Wünsche"
+		"wants": "Wünsche",
+		"debts": "Schulden"
 	},
 	"envelopes": {
 		"spending": "Ausgaben",
 		"savings": "Sparen",
 		"everythingElse": "Alles andere",
 		"needs": "Bedarf",
-		"wants": "Wünsche"
+		"wants": "Wünsche",
+		"extraDebt": "Extra-Tilgung"
 	},
 	"rules": {
 		"saveFirst": "Zuerst sparen",

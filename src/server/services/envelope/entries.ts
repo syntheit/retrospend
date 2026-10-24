@@ -29,6 +29,8 @@ export interface ExpenseRow extends ValuedRow {
 	recurringTemplateId: string | null;
 	direction: "IN" | "OUT";
 	entryKind: "STANDARD" | "STARTING_BALANCE" | "ADJUSTMENT" | "NOT_SPENDING";
+	/** Charged to this envelope whatever its category (a debt payment's interest). */
+	budgetEnvelopeId?: string | null;
 }
 
 export interface ShareRow {
@@ -166,6 +168,7 @@ export function activityEntries(
 			minor: sign * minor,
 			source,
 			categoryId: r.categoryId,
+			envelopeId: r.budgetEnvelopeId ?? null,
 			recurring: r.recurringTemplateId !== null,
 		});
 	};

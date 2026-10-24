@@ -53,6 +53,7 @@ export const SETUP_STYLES = [
 	"LIMITS",
 	"SAVE_FIRST",
 	"FIFTY_THIRTY_TWENTY",
+	"DEBT_PAYOFF",
 ] as const;
 export const setupStyleSchema = z.enum(SETUP_STYLES);
 
@@ -112,6 +113,10 @@ export const envelopeTargetSchema = z.object({
 	foreign: moneySchema.nullable(),
 	/** The foreign target has no rate today: need and amount are 0 and flagged. */
 	incomplete: z.boolean(),
+	/** BILL: the liability whose minimum it follows (SPEC §5.4); paid through Pay down a debt. */
+	liabilityId: idSchema.nullable().optional(),
+	/** A bill that follows a liability: payments to it cover this cycle's minimum. */
+	debtPaid: z.boolean().optional(),
 });
 
 export const leftThisWeekSchema = z.object({
@@ -575,6 +580,11 @@ export const targetInputSchema = z.discriminatedUnion("kind", [
 	z.object({
 		kind: z.literal("BILL_TEMPLATE"),
 		templateId: idSchema,
+	}),
+	/** A bill that follows a liability's minimum and due day (SPEC §5.4, §5.11). */
+	z.object({
+		kind: z.literal("BILL_LIABILITY"),
+		liabilityId: idSchema,
 	}),
 	z.object({
 		kind: z.literal("SAVINGS"),

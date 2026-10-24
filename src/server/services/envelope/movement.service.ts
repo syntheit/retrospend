@@ -431,12 +431,6 @@ export async function undo(
 		batchId: input.id,
 		revertsId: o.id,
 	}));
-	// An exact mirror, but next month it may not hand carried money back to To assign.
-	const t = new Tracker(s);
-	for (const r of rows) {
-		if (r.to === null && r.month > s.current) t.check(r);
-		t.apply(r);
-	}
 	// Undoing a rule batch takes back the money in's other rule batches too,
 	// so no rule money is left once the row is skipped (SPEC §5.10). A batch
 	// from a closed month is taken back in the current month (D22).
@@ -454,6 +448,12 @@ export async function undo(
 			batchId: input.id,
 			revertsId: o.id,
 		});
+	// An exact mirror, but next month it may not hand carried money back to To assign.
+	const t = new Tracker(s);
+	for (const r of rows) {
+		if (r.to === null && r.month > s.current) t.check(r);
+		t.apply(r);
+	}
 	await insert(tx, s, userId, rows);
 	await markRulesSkipped(tx, s.loaded.row.id, ruled);
 	return result(

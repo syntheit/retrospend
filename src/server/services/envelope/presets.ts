@@ -10,7 +10,12 @@
  * first and 50/30/20 (presets-p5.ts).
  */
 import type { SetupPresetOutput } from "~/lib/schemas/envelope";
-import { fiftyThirtyTwenty, saveFirst } from "./presets-p5";
+import {
+	debtPayoff,
+	fiftyThirtyTwenty,
+	type PresetLiability,
+	saveFirst,
+} from "./presets-p5";
 import { ceilDiv } from "./units";
 
 export type SetupStyle = SetupPresetOutput["style"];
@@ -215,6 +220,8 @@ export function stylePreset(p: {
 	unit?: number;
 	/** Limits: spending rows left out for a missing rate (R14). */
 	missingRates?: SetupPresetOutput["missingRates"];
+	/** Pay off debt: liabilities with a minimum. */
+	liabilities?: readonly PresetLiability[];
 }): SetupPresetOutput {
 	if (p.style === "LIMITS")
 		return {
@@ -234,6 +241,11 @@ export function stylePreset(p: {
 	if (p.style === "SAVE_FIRST") return { ...head, ...saveFirst(p.templates) };
 	if (p.style === "FIFTY_THIRTY_TWENTY")
 		return { ...head, ...fiftyThirtyTwenty(p.categories) };
+	if (p.style === "DEBT_PAYOFF")
+		return {
+			...head,
+			...debtPayoff(flex("FLEX", p.templates), p.liabilities ?? []),
+		};
 	const dollar = p.style === "EVERY_DOLLAR";
 	return {
 		style: p.style,
