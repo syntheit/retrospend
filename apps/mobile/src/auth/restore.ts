@@ -11,7 +11,13 @@ export const ME_CACHE = { name: "me", schema: 1 } as const;
 
 export type Restored =
 	| { status: "signedOut"; expired: boolean }
-	| { status: "signedIn"; me: Me | null; offline: boolean };
+	| {
+			status: "signedIn";
+			me: Me | null;
+			offline: boolean;
+			/** When the cached profile was fetched; set while offline. */
+			offlineSince: string | null;
+	  };
 
 export type FetchMe =
 	| { ok: true; me: Me }
@@ -29,7 +35,12 @@ export async function restoreSession(deps: {
 	const result = await deps.fetchMe();
 	if (result.ok) {
 		await deps.profileCache.write(ME_CACHE.name, ME_CACHE.schema, result.me);
-		return { status: "signedIn", me: result.me, offline: false };
+		return {
+			status: "signedIn",
+			me: result.me,
+			offline: false,
+			offlineSince: null,
+		};
 	}
 	if (result.reason === "unauthorized") {
 		await deps.tokens.clear();
@@ -40,5 +51,10 @@ export async function restoreSession(deps: {
 		ME_CACHE.name,
 		ME_CACHE.schema,
 	);
-	return { status: "signedIn", me: cached?.data ?? null, offline: true };
+	return {
+		status: "signedIn",
+		me: cached?.data ?? null,
+		offline: true,
+		offlineSince: cached?.fetchedAt ?? null,
+	};
 }

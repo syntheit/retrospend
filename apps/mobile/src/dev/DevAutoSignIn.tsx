@@ -62,3 +62,7 @@ export function DevAutoSignIn() {
 
 	return null;
 }
+
+// The release bundle check (scripts/check-release-bundle.sh) greps for this
+// name: it must not appear in a release bundle.
+DevAutoSignIn.displayName = "RetrospendDevAutoSignIn";

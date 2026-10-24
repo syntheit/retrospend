@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, View } from "react-native";
-import { useTranslations } from "use-intl";
+import { FlatList, Text, View } from "react-native";
+import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
@@ -17,7 +17,8 @@ import { Screen } from "@/ui/Screen";
 export default function ActivityScreen() {
 	const t = useTranslations("mobile.activity");
 	const { api, local } = useSession();
-	const { color } = useTheme();
+	const { color, space, type } = useTheme();
+	const format = useFormatter();
 	const [state, setState] = useState<ActivityState>({ status: "loading" });
 	const source = useMemo(() => (api ? createActivitySource(api) : null), [api]);
 
@@ -40,6 +41,24 @@ export default function ActivityScreen() {
 				contentInsetAdjustmentBehavior="automatic"
 				data={state.items}
 				keyExtractor={(item) => item.id}
+				ListHeaderComponent={
+					state.staleSince ? (
+						<Text
+							style={{
+								color: color.fg2,
+								fontSize: type.small.size,
+								padding: space[4],
+							}}
+						>
+							{t("offlineSince", {
+								time: format.dateTime(new Date(state.staleSince), {
+									dateStyle: "medium",
+									timeStyle: "short",
+								}),
+							})}
+						</Text>
+					) : null
+				}
 				renderItem={({ item }) => <ActivityRow item={item} />}
 				style={{ backgroundColor: color.bg }}
 			/>

@@ -1,6 +1,6 @@
 import { Button } from "@expo/ui";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useTheme } from "@/theme";
@@ -24,10 +24,29 @@ function initialsOf(name: string): string {
  */
 export function AccountTopBar({ title }: { title: string }) {
 	const t = useTranslations("mobile.account");
-	const { state, signOut } = useSession();
+	const tc = useTranslations("mobile.common");
+	const { state, signOut, unsyncedCount } = useSession();
 	const { color, space, type } = useTheme();
 	const [open, setOpen] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
+
+	// Signing out drops what is waiting to sync, so it asks first.
+	async function confirmSignOut() {
+		setOpen(false);
+		const count = await unsyncedCount();
+		if (count === 0) {
+			signOut();
+			return;
+		}
+		Alert.alert(t("signOut"), t("unsynced", { count }), [
+			{ text: tc("cancel"), style: "cancel" },
+			{
+				text: t("signOutDiscard"),
+				style: "destructive",
+				onPress: () => signOut({ discardUnsynced: true }),
+			},
+		]);
+	}
 
 	return (
 		<>
@@ -51,10 +70,7 @@ export function AccountTopBar({ title }: { title: string }) {
 				<NativeHost>
 					<Button
 						label={t("signOut")}
-						onPress={() => {
-							setOpen(false);
-							signOut();
-						}}
+						onPress={confirmSignOut}
 						variant="outlined"
 					/>
 				</NativeHost>

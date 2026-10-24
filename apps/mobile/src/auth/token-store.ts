@@ -1,8 +1,10 @@
-import * as SecureStore from "expo-secure-store";
+import { serverKey } from "@/lib/origin-key";
+import { secureStore } from "@/lib/secure-store";
 
 // The bearer token for API v1 lives in the platform keystore (iOS Keychain,
-// Android Keystore), never in the SQLite cache and never in logs.
-const TOKEN_KEY = "retrospend.bearer";
+// Android Keystore), never in the SQLite cache and never in logs. The key
+// carries a hash of the server's origin, so a token made for one server is
+// never read back for, or sent to, another.
 
 export interface TokenStore {
 	get(): Promise<string | null>;
@@ -10,8 +12,15 @@ export interface TokenStore {
 	clear(): Promise<void>;
 }
 
-export const tokenStore: TokenStore = {
-	get: () => SecureStore.getItemAsync(TOKEN_KEY).catch(() => null),
-	set: (token) => SecureStore.setItemAsync(TOKEN_KEY, token),
-	clear: () => SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => undefined),
-};
+export function tokenKey(baseUrl: string): string {
+	return `retrospend.bearer.${serverKey(baseUrl)}`;
+}
+
+export function createTokenStore(baseUrl: string): TokenStore {
+	const key = tokenKey(baseUrl);
+	return {
+		get: () => secureStore.getItemAsync(key).catch(() => null),
+		set: (token) => secureStore.setItemAsync(key, token),
+		clear: () => secureStore.deleteItemAsync(key).catch(() => undefined),
+	};
+}

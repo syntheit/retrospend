@@ -7,7 +7,8 @@
 import { expoClient } from "@better-auth/expo/client";
 import { createAuthClient } from "better-auth/client";
 import { twoFactorClient } from "better-auth/client/plugins";
-import * as SecureStore from "expo-secure-store";
+import { serverKey } from "@/lib/origin-key";
+import { secureStore } from "@/lib/secure-store";
 import { type AuthFailure, authFailureOf } from "./errors";
 import type { TokenStore } from "./token-store";
 
@@ -21,16 +22,20 @@ export interface AuthApi {
 	/** The 6-digit authenticator code, or a backup code. */
 	verifyCode(code: string): Promise<SignInStep>;
 	signOut(): Promise<void>;
+	/** Forget the Expo client's cookie and session data on this phone. */
+	clearLocal(): Promise<void>;
 }
 
 export function createAuthApi(baseUrl: string, tokens: TokenStore): AuthApi {
+	// The cookie and session data are stored under this prefix, per server.
+	const storagePrefix = `retrospend_${serverKey(baseUrl)}`;
 	const client = createAuthClient({
 		baseURL: baseUrl,
 		plugins: [
 			expoClient({
 				scheme: "retrospend",
-				storagePrefix: "retrospend",
-				storage: SecureStore,
+				storagePrefix,
+				storage: secureStore,
 			}),
 			twoFactorClient(),
 		],
@@ -81,6 +86,11 @@ export function createAuthApi(baseUrl: string, tokens: TokenStore): AuthApi {
 			} catch {
 				// Offline sign out still forgets the token on this phone.
 			}
+		},
+		async clearLocal() {
+			// The same "empty" value the Expo client writes itself on sign out.
+			await secureStore.setItemAsync(`${storagePrefix}_cookie`, "{}");
+			await secureStore.setItemAsync(`${storagePrefix}_session_data`, "{}");
 		},
 	};
 }

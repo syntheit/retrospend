@@ -16,6 +16,15 @@ interface AuthErrorShape {
 	message?: string;
 }
 
+/**
+ * Whether an API v1 error means this phone's session is over: 401 (no valid
+ * token) or 403 (the account or the token is no longer allowed in).
+ */
+export function isSessionEnded(error: unknown): boolean {
+	const status = (error as { status?: number } | null)?.status;
+	return status === 401 || status === 403;
+}
+
 export function authFailureOf(error: AuthErrorShape | null | undefined) {
 	const code = (error?.code ?? "").toUpperCase();
 	if (error?.status === 429) return "rateLimited" as const;

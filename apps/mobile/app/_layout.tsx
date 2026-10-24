@@ -1,7 +1,7 @@
 import { Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
-import { useEffect } from "react";
+import { type ComponentType, useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -10,15 +10,16 @@ import {
 	useServerConnection,
 } from "@/auth/server-connection";
 import { SessionProvider, useSession } from "@/auth/session";
-import { DevAutoSignIn } from "@/dev/DevAutoSignIn";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
-import { installNumberFormatToParts } from "@/lib/intl-polyfill";
 import { navigationTheme, themeFor } from "@/theme";
 import { ToastProvider } from "@/ui/Toast";
 
-// Before any money is formatted: Hermes on iOS has no formatToParts.
-installNumberFormatToParts();
+// Metro folds the inlined env var, so a build without it leaves the dev
+// sign-in out of the bundle entirely (scripts/check-release-bundle.sh).
+const DevAutoSignIn: ComponentType | null = process.env.EXPO_PUBLIC_DEV_SERVER
+	? require("@/dev/DevAutoSignIn").DevAutoSignIn
+	: null;
 
 function Routes() {
 	const { connection } = useServerConnection();
@@ -64,7 +65,7 @@ export default function RootLayout() {
 						<ServerConnectionProvider>
 							<SessionProvider>
 								<ToastProvider>
-									<DevAutoSignIn />
+									{DevAutoSignIn ? <DevAutoSignIn /> : null}
 									<Routes />
 								</ToastProvider>
 							</SessionProvider>

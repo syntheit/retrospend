@@ -36,7 +36,11 @@ export function createActivitySource(_api: RetrospendClient): ActivitySource {
 
 export type ActivityState =
 	| { status: "loading" }
-	| { status: "ready"; items: ActivityItem[]; stale: boolean }
+	| {
+			status: "ready";
+			items: ActivityItem[] /** When the rows were fetched, if they are from the cache. */;
+			staleSince: string | null;
+	  }
 	| { status: "unavailable" }
 	| { status: "error" };
 
@@ -53,15 +57,20 @@ export async function loadActivity(
 		ACTIVITY_CACHE.name,
 		ACTIVITY_CACHE.schema,
 	);
-	if (cached) onCached({ status: "ready", items: cached.data, stale: true });
+	if (cached)
+		onCached({
+			status: "ready",
+			items: cached.data,
+			staleSince: cached.fetchedAt,
+		});
 	try {
 		const page = await source.list();
 		if (page.status === "unavailable") return { status: "unavailable" };
 		await cache.write(ACTIVITY_CACHE.name, ACTIVITY_CACHE.schema, page.items);
-		return { status: "ready", items: page.items, stale: false };
+		return { status: "ready", items: page.items, staleSince: null };
 	} catch {
 		return cached
-			? { status: "ready", items: cached.data, stale: true }
+			? { status: "ready", items: cached.data, staleSince: cached.fetchedAt }
 			: { status: "error" };
 	}
 }

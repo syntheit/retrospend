@@ -40,11 +40,17 @@ describe("loadActivity", () => {
 		expect(await loadActivity(fresh, cache, () => {})).toEqual({
 			status: "ready",
 			items: [item],
-			stale: false,
+			staleSince: null,
 		});
 		const early: unknown[] = [];
 		await loadActivity(fresh, cache, (s) => early.push(s));
-		expect(early).toEqual([{ status: "ready", items: [item], stale: true }]);
+		expect(early).toEqual([
+			{
+				status: "ready",
+				items: [item],
+				staleSince: expect.stringMatching(/^\d{4}-/),
+			},
+		]);
 	});
 
 	it("keeps the cache, marked stale, when the refresh fails", async () => {
@@ -56,7 +62,7 @@ describe("loadActivity", () => {
 		expect(await loadActivity(offline, cache, () => {})).toEqual({
 			status: "ready",
 			items: [item],
-			stale: true,
+			staleSince: expect.stringMatching(/^\d{4}-/),
 		});
 	});
 

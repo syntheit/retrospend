@@ -17,6 +17,7 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 
 export interface ToastOptions {
@@ -45,13 +46,28 @@ const TAB_BAR_CLEARANCE = 64;
 export function ToastProvider({ children }: { children: ReactNode }) {
 	const { color, duration, radius, size, space, type } = useTheme();
 	const insets = useSafeAreaInsets();
+	const t = useTranslations("mobile.common");
 	const [current, setCurrent] = useState<ToastOptions | null>(null);
 	const progress = useRef(new Animated.Value(0)).current;
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [reduceMotion, setReduceMotion] = useState(false);
+	// A screen reader needs time to read the toast and reach Undo, so with one
+	// on, a toast that carries Undo stays until it is used, replaced or
+	// dismissed (the escape gesture or the "Dismiss" action).
+	const screenReader = useRef(false);
 
 	useEffect(() => {
 		AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+		AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+			screenReader.current = on;
+		});
+		const subscription = AccessibilityInfo.addEventListener(
+			"screenReaderChanged",
+			(on) => {
+				screenReader.current = on;
+			},
+		);
+		return () => subscription.remove();
 	}, []);
 
 	const dismiss = useCallback(() => {
@@ -75,6 +91,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 				easing: Easing.bezier(0.22, 1, 0.36, 1),
 				useNativeDriver: true,
 			}).start();
+			if (options.undo && screenReader.current) return;
 			timer.current = setTimeout(dismiss, options.undo ? UNDO_MS : PLAIN_MS);
 		},
 		[dismiss, duration.sheet, progress],
@@ -107,7 +124,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 					}}
 				>
 					<View
+						accessibilityActions={[{ name: "dismiss", label: t("dismiss") }]}
 						accessibilityLiveRegion="polite"
+						onAccessibilityAction={(event) => {
+							if (event.nativeEvent.actionName === "dismiss") dismiss();
+						}}
+						onAccessibilityEscape={dismiss}
 						style={{
 							minHeight: size.touchMin.phone,
 							flexDirection: "row",

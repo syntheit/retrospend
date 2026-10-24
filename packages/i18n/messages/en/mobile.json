@@ -9,7 +9,8 @@
 	},
 	"common": {
 		"cancel": "Cancel",
-		"undo": "Undo"
+		"undo": "Undo",
+		"dismiss": "Dismiss"
 	},
 	"keypad": {
 		"delete": "Delete",
@@ -51,7 +52,9 @@
 	},
 	"account": {
 		"open": "Account",
-		"signOut": "Sign out"
+		"signOut": "Sign out",
+		"signOutDiscard": "Sign out and discard",
+		"unsynced": "{count, plural, one {# change isn't synced yet. Signing out discards it.} other {# changes aren't synced yet. Signing out discards them.}}"
 	},
 	"activity": {
 		"title": "Activity",
@@ -61,6 +64,7 @@
 		"unavailableDetail": "Update the server to see your expenses here.",
 		"error": "Couldn't load activity",
 		"errorDetail": "Check your connection and try again.",
-		"pick": "Pick an expense"
+		"pick": "Pick an expense",
+		"offlineSince": "Offline since {time}"
 	}
 }
