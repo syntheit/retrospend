@@ -26,7 +26,7 @@ import { setupEnvelopeBook } from "./setup.mutation";
 
 const usd = (minor: number) => ({ minor, currency: "USD" });
 
-describe("envelope spent this month", () => {
+describe("figure envelope.spent", () => {
 	let s: Awaited<ReturnType<typeof seedUser>>;
 	let ids: Record<string, string>;
 

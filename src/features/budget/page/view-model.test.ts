@@ -91,8 +91,11 @@ describe("toEnvelopeVM", () => {
 		const vm = toEnvelopeVM(envelope("net", "Netflix", "OVERSPENT", -8500));
 		expect(vm.available).toEqual(ars(-8500));
 		expect(vm.status).toBe("overspent");
-		// No spent share from the server yet: no bar.
-		expect(vm.spent).toBeUndefined();
+		// The bar is the server's share spent (0 here); a savings goal has none.
+		expect(vm.spent).toBe(0);
+		expect(
+			toEnvelopeVM({ ...envelope("g", "G", "FUNDED"), spentBasis: null }).spent,
+		).toBeUndefined();
 	});
 
 	it("reads a no-target envelope as fine", () => {
