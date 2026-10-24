@@ -271,6 +271,23 @@ export const settleAllPlanSchema = z
 	})
 	.meta({ id: "SettleAllPlan" });
 
+/** The `detail` of the Settle all preview: the plan, and the payments it would record. */
+export const settleAllPreviewDetailSchema = z
+	.object({
+		kind: z.literal("project.settleAll"),
+		planned: z.array(plannedLineSchema),
+		willRecord: z.array(
+			z.object({
+				person: z.string(),
+				direction: z.enum(["outgoing", "incoming"]),
+				amount: moneySchema,
+				status: z.enum(["PROPOSED", "FINALIZED"]),
+			}),
+		),
+		skipped: z.array(skippedLineSchema),
+	})
+	.meta({ id: "SettleAllPreviewDetail" });
+
 export const settleAllSchema = z
 	.object({
 		id: idSchema,

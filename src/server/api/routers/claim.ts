@@ -8,9 +8,10 @@ import {
 } from "~/server/api/trpc";
 import type { PrismaClient } from "~prisma";
 import { db as globalDb } from "~/server/db";
-import { signClaimToken, verifyClaimToken } from "~/lib/claim-token";
+import { verifyClaimToken } from "~/lib/claim-token";
 import { validateLinkOrThrow } from "~/server/lib/magic-link";
 import { createNotification } from "~/server/services/notifications";
+import { mintClaimLink } from "~/server/services/shadow-profile.service";
 import {
 	AlreadyClaimedError,
 	canMintClaimLink,
@@ -126,55 +127,9 @@ export const claimRouter = createTRPCRouter({
 	 */
 	generateLink: protectedProcedure
 		.input(z.object({ shadowId: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-
-			const shadow = await ctx.db.shadowProfile.findUnique({
-				where: { id: input.shadowId },
-				select: {
-					id: true,
-					name: true,
-					claimedById: true,
-					createdById: true,
-					updatedAt: true,
-				},
-			});
-			if (!shadow) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Person not found",
-				});
-			}
-			if (shadow.claimedById) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "This person has already been linked to an account",
-				});
-			}
-
-			if (!(await canMintClaimLink(ctx.db, userId, shadow))) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message:
-						"Only an editor or organizer of every project this person is in can generate a claim link",
-				});
-			}
-
-			const token = signClaimToken(
-				{
-					shadowId: shadow.id,
-					version: shadow.updatedAt.getTime(),
-					issuerId: userId,
-				},
-				env.BETTER_AUTH_SECRET,
-			);
-			// Build an ABSOLUTE URL the recipient can open from anywhere. On the
-			// server the canonical base is PUBLIC_URL; fall back to the client var
-			// (which also maps to PUBLIC_URL at runtime). Mirrors email-templates.ts.
-			const baseUrl = env.PUBLIC_URL ?? env.NEXT_PUBLIC_APP_URL;
-			const url = `${baseUrl}/claim/${token}`;
-			return { url, token, name: shadow.name };
-		}),
+		.mutation(({ ctx, input }) =>
+			mintClaimLink(ctx.db, ctx.session.user.id, input.shadowId),
+		),
 
 	/**
 	 * Public preview for the /claim/[token] page: "Is this you, {name}?". Uses

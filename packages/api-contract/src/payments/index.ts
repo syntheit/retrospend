@@ -62,8 +62,23 @@ export const allocationSchema = z
 	})
 	.meta({ id: "PaymentAllocation" });
 
+/**
+ * The `detail` of the record and confirm previews: what the payment would
+ * pay and cancel, the same allocation the write answers with.
+ */
+export const paymentPreviewDetailSchema = z
+	.object({
+		kind: z.enum(["payment.record", "payment.confirm"]),
+		allocation: allocationSchema.nullable(),
+	})
+	.meta({ id: "PaymentPreviewDetail" });
+
 export const recordPaymentSchema = z
 	.object({
+		id: z.uuid().optional().meta({
+			description:
+				"A client-made id. Sending the same id twice is a conflict, not a second payment.",
+		}),
 		person: personRefSchema,
 		/** "outgoing": you paid them. "incoming": they paid you, and it is final at once. */
 		direction: z.enum(["outgoing", "incoming"]),

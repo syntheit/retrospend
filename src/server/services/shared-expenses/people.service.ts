@@ -127,6 +127,26 @@ function toDirection(
 	return "settled";
 }
 
+/**
+ * The page cursor of a person's ledger: the date and id of the last row, so
+ * rows that share a date with it are never skipped. A cursor with only a
+ * date (an older client) still works, on the date alone.
+ */
+function encodeLedgerCursor(row: { date: Date; id: string }): string {
+	return `${row.date.toISOString()}|${row.id}`;
+}
+
+function ledgerCursorWhere(cursor: string): Prisma.SharedTransactionWhereInput {
+	const [iso, id] = cursor.split("|");
+	const date = new Date(iso ?? "");
+	if (Number.isNaN(date.getTime())) {
+		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid cursor" });
+	}
+	return id
+		? { OR: [{ date: { lt: date } }, { date, id: { lt: id } }] }
+		: { date: { lt: date } };
+}
+
 export class PeopleService {
 	private currentUserRef: ParticipantRef;
 
@@ -168,6 +188,8 @@ export class PeopleService {
 			select: {
 				date: true,
 				description: true,
+				paidByType: true,
+				paidById: true,
 				project: { select: { id: true, name: true } },
 				splitParticipants: {
 					select: {
@@ -208,7 +230,22 @@ export class PeopleService {
 			const myVerificationIsPending = myEntry.verificationStatus === "PENDING";
 			const myHasUnseen = myEntry.hasUnseenChanges;
 
-			for (const sp of tx.splitParticipants) {
+			// The payer is on the expense, which you can read, even when their own
+			// split row is not yours to read (row level security shows you your
+			// row, and the others only inside a project you share).
+			const payer = {
+				participantType: tx.paidByType,
+				participantId: tx.paidById,
+			};
+			const people = tx.splitParticipants.some(
+				(sp) =>
+					sp.participantType === payer.participantType &&
+					sp.participantId === payer.participantId,
+			)
+				? tx.splitParticipants
+				: [...tx.splitParticipants, payer];
+
+			for (const sp of people) {
 				if (
 					sp.participantType === this.currentUserRef.participantType &&
 					sp.participantId === this.currentUserRef.participantId
@@ -685,7 +722,7 @@ export class PeopleService {
 			andClauses.push({ projectId });
 		}
 		if (cursor) {
-			andClauses.push({ date: { lt: new Date(cursor) } });
+			andClauses.push(ledgerCursorWhere(cursor));
 		}
 
 		const where: Prisma.SharedTransactionWhereInput = { AND: andClauses };
@@ -719,7 +756,7 @@ export class PeopleService {
 					},
 				},
 			},
-			orderBy: { date: "desc" },
+			orderBy: [{ date: "desc" }, { id: "desc" }],
 			take: limit + 1,
 		});
 
@@ -773,7 +810,7 @@ export class PeopleService {
 					: rawTransactions;
 			if (rawTransactions.length > limit) {
 				const lastItem = slicedTransactions[slicedTransactions.length - 1]!;
-				nextCursor = lastItem.date.toISOString();
+				nextCursor = encodeLedgerCursor(lastItem);
 			}
 
 			const transactions = await this.mapTransactions(
@@ -818,7 +855,7 @@ export class PeopleService {
 				: rawTransactions;
 		if (rawTransactions.length > limit) {
 			const lastItem = slicedTransactions[slicedTransactions.length - 1]!;
-			nextCursor = lastItem.date.toISOString();
+			nextCursor = encodeLedgerCursor(lastItem);
 		}
 
 		const transactions = await this.mapTransactions(

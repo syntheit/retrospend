@@ -10848,6 +10848,11 @@
 										"description": "The amount is the Everything the sheet showed; refused if that moved since.",
 										"type": "boolean"
 									},
+									"id": {
+										"description": "A client-made id. Sending the same id twice is a conflict, not a second payment.",
+										"format": "uuid",
+										"type": "string"
+									},
 									"matchClaimId": {
 										"anyOf": [
 											{
@@ -11362,6 +11367,11 @@
 										"description": "The amount is the Everything the sheet showed; refused if that moved since.",
 										"type": "boolean"
 									},
+									"id": {
+										"description": "A client-made id. Sending the same id twice is a conflict, not a second payment.",
+										"format": "uuid",
+										"type": "string"
+									},
 									"matchClaimId": {
 										"anyOf": [
 											{
@@ -11635,6 +11645,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -12233,6 +12255,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -13081,6 +13115,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -13683,6 +13729,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -14620,9 +14678,14 @@
 							"schema": {
 								"properties": {
 									"email": {
-										"description": "An email that belongs to a Retrospend account answers with that account instead of adding a person. Any other email is sent an invitation.",
+										"description": "An email is checked at most 20 times an hour. If it belongs to an account you already share expenses or a project with, the answer is that account. Any other email, with or without an account, adds a person with the email you typed, and the answer does not say which.",
 										"format": "email",
 										"maxLength": 255,
+										"type": "string"
+									},
+									"id": {
+										"description": "A client-made id. Sending the same id twice is a conflict, not a second person.",
+										"format": "uuid",
 										"type": "string"
 									},
 									"name": {
@@ -19631,6 +19694,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -20248,6 +20323,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -28918,6 +29005,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -29515,6 +29614,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -30586,6 +30697,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -31181,6 +31304,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {

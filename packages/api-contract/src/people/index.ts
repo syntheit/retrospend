@@ -19,10 +19,14 @@ const TAG = ["People"];
 
 export const createPersonSchema = z
 	.object({
+		id: z.uuid().optional().meta({
+			description:
+				"A client-made id. Sending the same id twice is a conflict, not a second person.",
+		}),
 		name: userText("person.name", 191),
 		email: z.email().max(255).optional().meta({
 			description:
-				"An email that belongs to a Retrospend account answers with that account instead of adding a person. Any other email is sent an invitation.",
+				"An email is checked at most 20 times an hour. If it belongs to an account you already share expenses or a project with, the answer is that account. Any other email, with or without an account, adds a person with the email you typed, and the answer does not say which.",
 		}),
 	})
 	.meta({ id: "CreatePerson" });
@@ -33,7 +37,7 @@ export const personCreatedSchema = z
 		id: idSchema,
 		name: z.string(),
 		email: z.string().nullable(),
-		/** True when the email belongs to an account, so no person was added. */
+		/** True when the email is the account of someone you already share with, so no person was added. */
 		existing: z.boolean(),
 	})
 	.meta({ id: "PersonCreated" });

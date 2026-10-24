@@ -7,7 +7,10 @@
  * (Paid - Share - Received + Sent): Martin +3,000, Sofia -2,100, Lucia -900.
  */
 import { randomUUID } from "node:crypto";
-import { contract } from "@retrospend/api-contract";
+import {
+	contract,
+	settleAllPreviewDetailSchema,
+} from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb } from "~/test/pg-harness";
 import {
@@ -35,7 +38,7 @@ vi.mock("next/headers", () => ({
 
 const c = contract.projects;
 type Money = { minor: number; currency: string };
-type Preview = { changes: { id: string; delta: Money }[] };
+type Preview = { changes: { id: string; delta: Money }[]; detail?: unknown };
 type Plan = {
 	planned: { person: string; currency: string; minor: number }[];
 	skipped: unknown[];
@@ -255,6 +258,17 @@ describe("/api/v1/projects", () => {
 			await post(`/projects/${trip}/settle-all`, body, as, key),
 			c.settleAll,
 			201,
+		);
+		// What the preview said it would record is what was recorded.
+		const detail = settleAllPreviewDetailSchema.parse(preview.detail);
+		expect(detail.planned).toEqual(plan.planned);
+		expect(detail.willRecord).toEqual(
+			done.settled.map(({ person, direction, amount, status }) => ({
+				person,
+				direction,
+				amount,
+				status,
+			})),
 		);
 		expect(done.settled.map((l) => [l.direction, l.amount, l.status])).toEqual([
 			["outgoing", ars(300_000), "PROPOSED"],

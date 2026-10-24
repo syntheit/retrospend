@@ -6,7 +6,7 @@
  * Sofia owes Martin ARS 18,000; Lucia owes Sofia ARS 20,000.
  */
 import { randomUUID } from "node:crypto";
-import { contract } from "@retrospend/api-contract";
+import { contract, paymentPreviewDetailSchema } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb } from "~/test/pg-harness";
 import {
@@ -37,6 +37,7 @@ type Money = { minor: number; currency: string };
 type Preview = {
 	changes: { id: string; delta: Money }[];
 	unchanged: { id: string }[];
+	detail?: unknown;
 };
 type Write = {
 	id: string;
@@ -134,6 +135,11 @@ describe("/api/v1/payments", () => {
 		expect(written.status).toBe("PROPOSED");
 		expect(written.allocation?.amount).toEqual(ars(500_000));
 		expect(written.allocation?.rows).toHaveLength(1);
+		// The preview says what the write then does: the same allocation.
+		expect(paymentPreviewDetailSchema.parse(preview.detail)).toEqual({
+			kind: "payment.record",
+			allocation: written.allocation,
+		});
 		expect(await youOwe()).toBe(before + delta(preview, "owed.youOwe"));
 		await expect(status(written.id)).resolves.toBe("PROPOSED");
 	});
@@ -149,6 +155,21 @@ describe("/api/v1/payments", () => {
 				where: { payerId: sofia.user.id, amount: "100" },
 			}),
 		).resolves.toBe(1);
+	});
+
+	it("uses a client-made id once", async () => {
+		const id = randomUUID();
+		const made = await record({ id, amount: "50" });
+		expect(made.id).toBe(id);
+		await expectProblem(
+			await post("/payments", pay({ id, amount: "50" })),
+			409,
+			"conflict",
+		);
+		await expectBody(
+			await post("/payments/undo", { token: made.undo }),
+			c.undo,
+		);
 	});
 
 	it("lets the person it waits for confirm it, and undo and redo the confirm", async () => {

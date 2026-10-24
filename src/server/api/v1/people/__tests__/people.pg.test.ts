@@ -167,6 +167,30 @@ describe("/api/v1/people", () => {
 		);
 	});
 
+	it("does not lose rows that share a date across pages", async () => {
+		const [a, b] = [await arsUser(), await arsUser()];
+		await seedProject(a, [{ user: b, role: "EDITOR" }]);
+		for (const title of ["one", "two", "three", "four", "five"])
+			await seedShare(ref(b), ref(a), "10", "ARS", {
+				title,
+				date: "2026-09-01",
+			});
+		const headers = await asMobile(a.user.id);
+		const seen: string[] = [];
+		let cursor: string | null = null;
+		for (let pages = 0; pages < 10; pages++) {
+			const q: string = cursor ? `&cursor=${cursor}` : "";
+			const page: Ledger = await expectBody<Ledger>(
+				await get(`/people/user/${b.user.id}/ledger?limit=2${q}`, headers),
+				c.ledger,
+			);
+			seen.push(...page.items.map((r) => r.title));
+			cursor = page.nextCursor;
+			if (!cursor) break;
+		}
+		expect(seen.sort()).toEqual(["five", "four", "one", "three", "two"]);
+	});
+
 	it("keeps a person you added to you", async () => {
 		await expectProblem(
 			await get(`/people/shadow/${paz}`, asMartin),
@@ -219,6 +243,59 @@ describe("/api/v1/people", () => {
 		await expect(
 			adminDb.shadowProfile.count({ where: { name: "Marty" } }),
 		).resolves.toBe(0);
+	});
+
+	it("does not tell whether an email belongs to an account you have no connection with", async () => {
+		const stranger = await arsUser();
+		const id = randomUUID();
+		const typed = stranger.user.email.toUpperCase();
+		const known = await expectBody<Record<string, unknown>>(
+			await post("/people", { id, name: "Sam", email: typed }),
+			c.create,
+			201,
+		);
+		const unknown = await expectBody<Record<string, unknown>>(
+			await post("/people", { name: "Sam", email: "nobody@pg-test.invalid" }),
+			c.create,
+			201,
+		);
+		// Same shape, a person with the typed email, never the account's id or name.
+		expect(known).toEqual({
+			type: "shadow",
+			id,
+			name: "Sam",
+			email: typed,
+			existing: false,
+		});
+		expect(Object.keys(unknown).sort()).toEqual(Object.keys(known).sort());
+		expect(unknown.type).toBe("shadow");
+		expect(JSON.stringify(known)).not.toContain(stranger.user.id);
+		await expect(
+			adminDb.shadowProfile.findUnique({ where: { id } }),
+		).resolves.toMatchObject({
+			createdById: sofia.user.id,
+			email: typed,
+		});
+		// A client id is used once.
+		await expectProblem(
+			await post("/people", { id, name: "Sam again" }),
+			409,
+			"conflict",
+		);
+	});
+
+	it("meters adding a person with an email", async () => {
+		const [spammer] = [await arsUser()];
+		const headers = await asMobile(spammer.user.id);
+		const add = (i: number) =>
+			post("/people", { name: "P", email: `p${i}@pg-test.invalid` }, headers);
+		for (let i = 0; i < 20; i++) expect((await add(i)).status).toBe(201);
+		const limited = await add(20);
+		await expectProblem(limited, 429, "rate_limited");
+		expect(limited.headers.get("retry-after")).toBeTruthy();
+		// Without an email there is nothing to look up.
+		const plain = await post("/people", { name: "Plain" }, headers);
+		expect(plain.status).toBe(201);
 	});
 
 	it("renames a person you added", async () => {

@@ -40,6 +40,8 @@ export const recordPaymentSchema = z.object({
 	/** The amount is the Everything the sheet showed; refused if that moved. */
 	everything: z.boolean().optional(),
 	matchClaimId: z.string().min(1).nullish(),
+	/** A client-made id (E2EE and offline: ids are made where the data is made). */
+	id: z.uuid().optional(),
 	differentPayment: z.boolean().optional(),
 });
 

@@ -23,6 +23,10 @@ import {
 	previewPayment,
 } from "~/server/services/payments/procedures";
 import type { RecordPaymentValue } from "~/server/services/payments/record.mutation";
+import {
+	rejectPayment,
+	removeRecordedPayment,
+} from "~/server/services/payments/reverse.mutation";
 import type { AllocationView } from "~/server/services/payments/view";
 import { forUser } from "~/server/services/preview";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
@@ -33,17 +37,13 @@ import {
 } from "~/server/services/shared-expenses/settlement-groups";
 import type { Caller } from "./caller";
 import { applyWrite, previewWrite, toPreviewDto, undoFor } from "./money-write";
-import {
-	rejectPayment,
-	removeRecordedPayment,
-} from "./payment-reverse.mutation";
 import { thaw } from "./thaw";
 import { readUndo } from "./undo";
 
 /**
  * v1 adapters for /payments. Record and confirm are the web's own procedures
  * (payments/procedures.ts); taking back and "not received" run the
- * mutations in payment-reverse.mutation.ts so they can be previewed.
+ * mutations in payments/reverse.mutation.ts, the same ones SettlementService runs.
  */
 
 type LedgerCaller = Caller & { timeZone: string };
@@ -55,6 +55,7 @@ const FAMILY = "payment" as const;
 
 function recordInput(body: RecordBody) {
 	return {
+		id: body.id,
 		person: {
 			participantType: body.person.type,
 			participantId: body.person.id,
@@ -127,7 +128,13 @@ export async function previewRecordPayment(
 		caller.timeZone,
 	);
 	await assertRecorded(caller, preview.value);
-	return toPreviewDto(preview);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "payment.record" as const,
+			allocation: allocationOf(preview.value.allocation),
+		},
+	};
 }
 
 export async function recordPaymentWrite(
@@ -186,13 +193,18 @@ function confirmed(
 }
 
 export async function previewConfirmPayment(caller: Caller, body: ConfirmBody) {
-	return toPreviewDto(
-		await previewConfirm(
-			caller.db,
-			caller.principal.userId,
-			confirmInput(body),
-		),
+	const preview = await previewConfirm(
+		caller.db,
+		caller.principal.userId,
+		confirmInput(body),
 	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "payment.confirm" as const,
+			allocation: allocationOf(preview.value.allocation),
+		},
+	};
 }
 
 // ── Not received ────────────────────────────────────────────────────────────
@@ -218,43 +230,17 @@ export async function paymentNotReceived(
 	body: NotReceivedBody,
 ) {
 	const person = await counterparty(caller, body.id);
-	const value = await applyWrite(caller, rejectPayment, {
+	const { lead, rows } = await applyWrite(caller, rejectPayment, {
 		paymentId: body.id,
 		reason: body.reason,
 		person,
 	});
-	await tellPayer(caller, value.rows, value.leadId, value.paymentId);
-	return { id: value.paymentId, status: "REJECTED" as const };
-}
-
-/**
- * Tells the person who recorded it. The text is built from the person's name
- * and the amount only, never from the reason they typed (it is user text).
- */
-async function tellPayer(
-	caller: Caller,
-	rows: readonly GroupRow[],
-	leadId: string,
-	paymentId: string,
-) {
-	const group = [...rows];
-	const other = groupCounterparty(group, caller.principal.userId);
-	if (other?.participantType !== "user") return;
-	const myName = await resolveParticipantName("user", caller.principal.userId);
-	createNotification({
-		userId: other.participantId,
-		type: "SETTLEMENT_REJECTED",
-		title: "Settlement rejected",
-		body: `${myName} rejected your settlement of ${describeGroupAmount(group, other.participantId)}`,
-		data: {
-			settlementId: leadId,
-			paymentGroupId: paymentId,
-			toParticipantType: "user",
-			toParticipantId: caller.principal.userId,
-		},
-	}).catch((err) =>
-		console.error("[Notification Error] SETTLEMENT_REJECTED:", err),
-	);
+	// The notice carries no reason: it is text the person typed (E2EE rule 3).
+	await new SettlementService(
+		caller.db,
+		caller.principal.userId,
+	).notifyRejected([...rows], lead);
+	return { id: lead.paymentGroupId ?? lead.id, status: "REJECTED" as const };
 }
 
 // ── Remind ──────────────────────────────────────────────────────────────────

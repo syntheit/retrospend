@@ -1,6 +1,4 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { env } from "~/env";
 import {
 	assertGuestProjectScope,
 	assertWritableParticipant,
@@ -9,9 +7,8 @@ import {
 	protectedProcedure,
 } from "~/server/api/trpc";
 import { db as globalDb } from "~/server/db";
-import { getShadowInviteEmailTemplate } from "~/server/email-templates";
-import { sendEmail } from "~/server/mailer";
 import { getImageUrl } from "~/server/storage";
+import { addShadow, renameShadow } from "~/server/services/shadow-profile.service";
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
 import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
@@ -165,51 +162,24 @@ export const peopleRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			// If email is provided, check if it belongs to an existing user
-			if (input.email) {
-				const existingUser = await ctx.db.user.findFirst({
-					where: { email: { equals: input.email, mode: "insensitive" } },
-					select: { id: true, name: true, username: true, image: true, avatarPath: true },
-				});
-				if (existingUser) {
-					return {
-						participantType: "user" as const,
-						participantId: existingUser.id,
-						name: existingUser.name ?? input.name,
-						email: input.email,
-					};
-				}
-			}
-
-			const profile = await ctx.db.shadowProfile.create({
-				data: {
-					name: input.name,
+			const result = await addShadow(
+				ctx.db,
+				{ id: ctx.session.user.id, name: ctx.session.user.name ?? null },
+				input,
+			);
+			if (result.kind === "account") {
+				return {
+					participantType: "user" as const,
+					participantId: result.userId,
+					name: result.name ?? input.name,
 					email: input.email ?? null,
-					createdById: ctx.session.user.id,
-				},
-				select: { id: true, name: true, email: true },
-			});
-
-			// Send invitation email to the shadow profile (fire-and-forget)
-			if (input.email) {
-				const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
-				if (appUrl) {
-					const signupUrl = `${appUrl}/signup?email=${encodeURIComponent(input.email)}&name=${encodeURIComponent(input.name)}&invited=true`;
-					const creatorName = ctx.session.user.name ?? "Someone";
-					const html = getShadowInviteEmailTemplate(creatorName, signupUrl);
-					void sendEmail(
-						input.email,
-						`${creatorName} invited you to Retrospend`,
-						html,
-					);
-				}
+				};
 			}
-
 			return {
 				participantType: "shadow" as const,
-				participantId: profile.id,
-				name: profile.name,
-				email: profile.email,
+				participantId: result.id,
+				name: result.name,
+				email: result.email,
 			};
 		}),
 
@@ -232,49 +202,13 @@ export const peopleRouter = createTRPCRouter({
 				email: z.email().max(255).optional(),
 			}),
 		)
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-
-			const shadow = await ctx.db.shadowProfile.findUnique({
-				where: { id: input.shadowId },
-				select: { id: true, name: true, claimedById: true, createdById: true },
-			});
-			if (!shadow) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Person not found",
-				});
-			}
-			if (shadow.claimedById) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "This person has already been linked to an account",
-				});
-			}
-
-			// Renaming writes to shadow_profile, whose RLS WITH CHECK is creator-only,
-			// so only the person who created the ghost can rename it. Enforce at the app
-			// layer for a clean error instead of a Postgres rejection. (Letting project
-			// editors rename a shared ghost would require loosening that RLS policy —
-			// deferred as a fast-follow.)
-			if (shadow.createdById !== userId) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the person who added this contact can rename them",
-				});
-			}
-
-			const updated = await ctx.db.shadowProfile.update({
-				where: { id: shadow.id },
-				data: {
-					name: input.name,
-					...(input.email !== undefined ? { email: input.email } : {}),
-				},
-				select: { id: true, name: true, email: true },
-			});
-
-			return { id: updated.id, name: updated.name, email: updated.email };
-		}),
+		.mutation(({ ctx, input }) =>
+			renameShadow(ctx.db, ctx.session.user.id, {
+				id: input.shadowId,
+				name: input.name,
+				email: input.email,
+			}),
+		),
 
 	/**
 	 * Returns the number of shadow profiles claimed by the current user.

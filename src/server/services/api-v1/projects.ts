@@ -156,13 +156,26 @@ export async function previewSettleAllWrite(
 	expect?: PlannedLine[],
 ) {
 	await asMember(caller, id, "CONTRIBUTOR");
-	return toPreviewDto(
-		await forUser(caller.principal.userId).preview(settleAllInProject, {
-			projectId: id,
-			expect,
-			timeZone: caller.timeZone,
-		}),
+	const preview = await forUser(caller.principal.userId).preview(
+		settleAllInProject,
+		{ projectId: id, expect, timeZone: caller.timeZone },
 	);
+	const { planned, lines, skipped } = preview.value;
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "project.settleAll" as const,
+			planned: thaw(planned),
+			// The payments it would record; they get ids only when it does.
+			willRecord: lines.map(({ person, direction, amount, status }) => ({
+				person,
+				direction,
+				amount,
+				status,
+			})),
+			skipped: thaw(skipped),
+		},
+	};
 }
 
 /** Records what the person saw (`expect`), or what is open now when none was sent. */

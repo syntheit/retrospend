@@ -16,7 +16,7 @@ export const RATE_LIMITS = {
 	perToken: { limit: 300, windowMs: 60_000 },
 } as const;
 
-async function enforce(
+export async function enforceRateLimit(
 	key: string,
 	{ limit, windowMs }: { limit: number; windowMs: number },
 	resHeaders: Headers | undefined,
@@ -33,7 +33,7 @@ export const ipRateLimit = os
 	.$context<V1InitialContext & ResponseHeadersPluginContext>()
 	.$meta<ApiMeta>({})
 	.middleware(async ({ context, next }) => {
-		await enforce(
+		await enforceRateLimit(
 			`ip:${getClientIp(context.headers)}`,
 			RATE_LIMITS.perIp,
 			context.resHeaders,
@@ -47,7 +47,7 @@ export const tokenRateLimit = os
 	.middleware(async ({ context, next }) => {
 		const principal = context.user?.principal;
 		if (principal) {
-			await enforce(
+			await enforceRateLimit(
 				`tok:${principal.kind}:${principal.tokenId}`,
 				RATE_LIMITS.perToken,
 				context.resHeaders,

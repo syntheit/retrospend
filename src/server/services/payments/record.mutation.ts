@@ -78,6 +78,8 @@ export interface RecordPaymentInput {
 	readonly differentPayment?: boolean;
 	/** The user's IANA zone, for today's date. Set by the transport, not the client. */
 	readonly timeZone?: string;
+	/** A client-made id: a repeated record with it is a conflict, not a second payment. */
+	readonly id?: string;
 	/**
 	 * An overpayment up to this many minor units is recorded as exactly what is
 	 * owed. Only the old dialog sets it (1), until the new sheet asks.
@@ -308,7 +310,7 @@ export const recordPayment: MoneyMutation<
 					{ ...allocation, paidOn },
 					quotes,
 				);
-		const id = randomUUID();
+		const id = input.id ?? randomUUID();
 		const undo = {
 			kind: "revert" as const,
 			mutation: "payment.record",

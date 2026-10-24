@@ -1,12 +1,6 @@
 import type { CursorQuery, renamePersonSchema } from "@retrospend/api-contract";
 import { OUTSIDE_PROJECTS } from "@retrospend/api-contract";
-import { TRPCError } from "@trpc/server";
 import * as z from "zod";
-import { env } from "~/env";
-import { signClaimToken } from "~/lib/claim-token";
-import { getShadowInviteEmailTemplate } from "~/server/email-templates";
-import { sendEmail } from "~/server/mailer";
-import { canMintClaimLink } from "~/server/services/claim.service";
 import { personPage } from "~/server/services/people/detail";
 import { ledgerRows } from "~/server/services/people/ledger-rows";
 import { peopleOverview } from "~/server/services/people/overview";
@@ -14,6 +8,11 @@ import {
 	settleContext,
 	type settleContextSchema,
 } from "~/server/services/people/settle-context";
+import {
+	addShadow,
+	mintClaimLink,
+	renameShadow,
+} from "~/server/services/shadow-profile.service";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
@@ -25,9 +24,7 @@ import { thaw } from "./thaw";
 /**
  * v1 adapters for /people. The reads are the web's People and Person page
  * reads, so the two transports agree. Adding, renaming and the claim link
- * had their logic inline in the tRPC routers (people.createShadow,
- * people.updateShadow, claim.generateLink); it lives here for v1 and the
- * routers can call these.
+ * are shadow-profile.service.ts, which the tRPC routers call too.
  */
 
 type LedgerCaller = Caller & { timeZone: string };
@@ -49,7 +46,7 @@ export const listPeople = async (caller: Caller) =>
 export const readPerson = async (caller: Caller, person: PersonRef) =>
 	thaw(await personPage(caller.db, caller.principal.userId, refOf(person)));
 
-const ledgerCursor = z.object({ before: z.iso.datetime({ offset: true }) });
+const ledgerCursor = z.object({ before: z.string().min(1).max(128) });
 
 /**
  * One page of the shared expenses with a person. The cursor is the web's own
@@ -119,133 +116,53 @@ export async function readSettleContext(
 
 // ── Writes ──────────────────────────────────────────────────────────────────
 
-/** An email that belongs to an account answers with that account; any other gets an invitation. */
+/**
+ * Adds a person. An email that belongs to an account is answered with that
+ * account only when the caller already shares expenses or a project with it;
+ * any other gets a person with the typed email, exactly like an email with no
+ * account ("protect", shadow-profile.service.ts).
+ */
 export async function addPerson(
 	caller: Caller,
-	input: { name: string; email?: string },
+	input: { id?: string; name: string; email?: string },
 ) {
-	if (input.email) {
-		const account = await caller.db.user.findFirst({
-			where: { email: { equals: input.email, mode: "insensitive" } },
-			select: { id: true, name: true },
-		});
-		if (account) {
-			return {
-				type: "user" as const,
-				id: account.id,
-				name: account.name ?? input.name,
-				email: input.email,
-				existing: true,
-			};
-		}
-	}
-	const profile = await caller.db.shadowProfile.create({
-		data: {
-			name: input.name,
+	const me = input.email
+		? await caller.db.user.findUnique({
+				where: { id: caller.principal.userId },
+				select: { name: true },
+			})
+		: null;
+	const result = await addShadow(
+		caller.db,
+		{ id: caller.principal.userId, name: me?.name ?? null },
+		input,
+		"protect",
+	);
+	if (result.kind === "account") {
+		return {
+			type: "user" as const,
+			id: result.userId,
+			name: result.name ?? input.name,
 			email: input.email ?? null,
-			createdById: caller.principal.userId,
-		},
-		select: { id: true, name: true, email: true },
-	});
-	if (input.email) await inviteByEmail(caller, input.name, input.email);
+			existing: true,
+		};
+	}
 	return {
 		type: "shadow" as const,
-		id: profile.id,
-		name: profile.name,
-		email: profile.email,
+		id: result.id,
+		name: result.name,
+		email: result.email,
 		existing: false,
 	};
 }
 
-/** Fire and forget, like the web: a mail failure never fails the add. */
-async function inviteByEmail(caller: Caller, name: string, email: string) {
-	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
-	if (!appUrl) return;
-	const me = await caller.db.user.findUnique({
-		where: { id: caller.principal.userId },
-		select: { name: true },
-	});
-	const creator = me?.name ?? "Someone";
-	const signupUrl = `${appUrl}/signup?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&invited=true`;
-	void sendEmail(
-		email,
-		`${creator} invited you to Retrospend`,
-		getShadowInviteEmailTemplate(creator, signupUrl),
-	);
-}
-
-/** The shadow as the caller sees it (RLS), refused once it was linked to an account. */
-async function openShadow(caller: Caller, id: string) {
-	const shadow = await caller.db.shadowProfile.findUnique({
-		where: { id },
-		select: {
-			id: true,
-			name: true,
-			claimedById: true,
-			createdById: true,
-			updatedAt: true,
-		},
-	});
-	if (!shadow) {
-		throw new TRPCError({ code: "NOT_FOUND", message: "Person not found" });
-	}
-	if (shadow.claimedById) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "This person has already been linked to an account",
-		});
-	}
-	return shadow;
-}
-
-export async function renamePerson(
+export const renamePerson = (
 	caller: Caller,
 	input: z.infer<typeof renamePersonSchema>,
-) {
-	const shadow = await openShadow(caller, input.id);
-	// shadow_profile's write policy is creator-only: refuse here for a clear
-	// error instead of a Postgres rejection.
-	if (shadow.createdById !== caller.principal.userId) {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "Only the person who added this contact can rename them",
-		});
-	}
-	return caller.db.shadowProfile.update({
-		where: { id: shadow.id },
-		data: {
-			name: input.name,
-			...(input.email !== undefined ? { email: input.email } : {}),
-		},
-		select: { id: true, name: true, email: true },
-	});
-}
+) => renameShadow(caller.db, caller.principal.userId, input);
 
-/**
- * A claim link grants the holder the person's identity and a membership in
- * every project they are in, so the caller must run all of them
- * (canMintClaimLink); the same check runs again when it is claimed.
- */
-export async function createClaimLink(caller: Caller, id: string) {
-	const shadow = await openShadow(caller, id);
-	if (!(await canMintClaimLink(caller.db, caller.principal.userId, shadow))) {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message:
-				"Only an editor or organizer of every project this person is in can generate a claim link",
-		});
-	}
-	const token = signClaimToken(
-		{
-			shadowId: shadow.id,
-			version: shadow.updatedAt.getTime(),
-			issuerId: caller.principal.userId,
-		},
-		env.BETTER_AUTH_SECRET,
-	);
-	const baseUrl = env.PUBLIC_URL ?? env.NEXT_PUBLIC_APP_URL;
-	return { url: `${baseUrl}/claim/${token}`, token, name: shadow.name };
-}
+export const createClaimLink = (caller: Caller, id: string) =>
+	mintClaimLink(caller.db, caller.principal.userId, id);
 
 export async function remindPerson(caller: Caller, person: PersonRef) {
 	await new SettlementService(
