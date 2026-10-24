@@ -150,7 +150,7 @@ export function PlanView({
 			>
 				{t("banner", { month: label(month) })}
 			</Notice>
-			<div className="my-6 flex items-end justify-between gap-4">
+			<div className="my-6 flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<div className="text-fg-2 text-small">{t("after")}</div>
 					{preview.data ? (
