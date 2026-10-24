@@ -131,8 +131,12 @@ describe("Home reads over v1", () => {
 	});
 
 	it("carries the budget verdict when the caller has a book and the flag is on", async () => {
-		const initial = (await getAppSettings()).envelopeBudgetMode;
-		await updateAppSettings({ envelopeBudgetMode: "ALL" });
+		await getAppSettings();
+		await adminDb.appSettings.update({
+			where: { id: "app_settings_singleton" },
+			data: { envelopeBudgetMode: "ALL" },
+		});
+		await updateAppSettings({});
 		try {
 			const seeded = await seedUser();
 			await forUser(seeded.user.id).apply(setupEnvelopeBook, {
@@ -156,7 +160,11 @@ describe("Home reads over v1", () => {
 				notPlannedYet: { id: "budget.notPlannedYet" },
 			});
 		} finally {
-			await updateAppSettings({ envelopeBudgetMode: initial });
+			await adminDb.appSettings.update({
+				where: { id: "app_settings_singleton" },
+				data: { envelopeBudgetMode: "OFF" },
+			});
+			await updateAppSettings({});
 		}
 	});
 
