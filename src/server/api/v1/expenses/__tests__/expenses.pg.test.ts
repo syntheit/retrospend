@@ -50,7 +50,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 async function category(userId: string, name = "Food") {
 	return adminDb.category.create({
-		data: { userId, name: `${name} ${randomUUID().slice(0, 6)}`, color: "teal" },
+		data: {
+			userId,
+			name: `${name} ${randomUUID().slice(0, 6)}`,
+			color: "teal",
+		},
 	});
 }
 
@@ -79,7 +83,11 @@ describe("/api/v1/expenses", () => {
 		food = (await category(alice)).id;
 	});
 
-	const create = (headers: Record<string, string>, data: unknown, key?: string) =>
+	const create = (
+		headers: Record<string, string>,
+		data: unknown,
+		key?: string,
+	) =>
 		call("/expenses", {
 			method: "POST",
 			headers,
@@ -185,9 +193,9 @@ describe("/api/v1/expenses", () => {
 			}),
 			c.previewCreate,
 		);
-		expect(
-			await adminDb.expense.count({ where: { userId: alice } }),
-		).toBe(before);
+		expect(await adminDb.expense.count({ where: { userId: alice } })).toBe(
+			before,
+		);
 		const spent = preview.changes.find((x) => x.id === "spent");
 		expect(spent?.delta).toEqual({ minor: 4000, currency: "USD" });
 	});
@@ -278,9 +286,7 @@ describe("/api/v1/expenses", () => {
 			minor: -700,
 			currency: "USD",
 		});
-		await expect(
-			adminDb.expense.count({ where: { id } }),
-		).resolves.toBe(1);
+		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(1);
 
 		const deleted = await expectBody<{ id: string; undo: string }>(
 			await call(`/expenses/${id}`, {
@@ -423,10 +429,9 @@ describe("/api/v1/expenses", () => {
 		// spent() cannot express a text search, so there is no total, not a wrong one.
 		expect(search.total).toBeNull();
 		const byCat = await expectBody<Page>(
-			await call(
-				`/expenses?filter=${encodeURIComponent(`cat=${other}`)}`,
-				{ headers: as },
-			),
+			await call(`/expenses?filter=${encodeURIComponent(`cat=${other}`)}`, {
+				headers: as,
+			}),
 			c.list,
 		);
 		expect(byCat.items.map((i) => i.title)).toEqual(["Rent"]);
@@ -487,12 +492,18 @@ describe("/api/v1/expenses", () => {
 		);
 		expect(res.updated).toBe(1);
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id: mine.expense.id } }))
-				.categoryId,
+			(
+				await adminDb.expense.findUniqueOrThrow({
+					where: { id: mine.expense.id },
+				})
+			).categoryId,
 		).toBe(target);
 		expect(
-			(await adminDb.expense.findUniqueOrThrow({ where: { id: bobs.expense.id } }))
-				.categoryId,
+			(
+				await adminDb.expense.findUniqueOrThrow({
+					where: { id: bobs.expense.id },
+				})
+			).categoryId,
 		).not.toBe(target);
 
 		await expectProblem(
@@ -517,21 +528,28 @@ describe("/api/v1/expenses", () => {
 			amount: "30",
 			date: today(),
 		});
-		const dup = await expectBody<{ duplicate: boolean; expenseId: string | null }>(
-			await call(`/expenses/duplicates?${q}`, { headers: as }),
-			c.duplicates,
-		);
+		const dup = await expectBody<{
+			duplicate: boolean;
+			expenseId: string | null;
+		}>(await call(`/expenses/duplicates?${q}`, { headers: as }), c.duplicates);
 		expect(dup.duplicate).toBe(true);
 		const none = await expectBody<{ duplicate: boolean }>(
-			await call(`/expenses/duplicates?${new URLSearchParams({ title: "Gym", amount: "31", date: today() })}`, {
-				headers: as,
-			}),
+			await call(
+				`/expenses/duplicates?${new URLSearchParams({ title: "Gym", amount: "31", date: today() })}`,
+				{
+					headers: as,
+				},
+			),
 			c.duplicates,
 		);
 		expect(none.duplicate).toBe(false);
 
 		const suggestions = await expectBody<{
-			items: { title: string; lastCategoryId: string | null; lastAmount: unknown }[];
+			items: {
+				title: string;
+				lastCategoryId: string | null;
+				lastAmount: unknown;
+			}[];
 		}>(
 			await call("/expenses/title-suggestions?q=gym", { headers: as }),
 			c.titleSuggestions,
@@ -545,7 +563,10 @@ describe("/api/v1/expenses", () => {
 
 	it("needs the right scope for reads and writes", async () => {
 		const readOnly = await asKey(alice, ["read"]);
-		await expectBody(await call("/expenses?limit=1", { headers: readOnly }), c.list);
+		await expectBody(
+			await call("/expenses?limit=1", { headers: readOnly }),
+			c.list,
+		);
 		await expectProblem(
 			await create(readOnly, body(food)),
 			403,

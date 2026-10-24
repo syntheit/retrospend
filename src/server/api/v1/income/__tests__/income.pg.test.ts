@@ -109,7 +109,7 @@ describe("/api/v1/income", () => {
 			201,
 		);
 		expect(made.income.account?.after.minor).toBe(
-			made.income.account!.before.minor + 30_000,
+			(made.income.account?.before.minor ?? 0) + 30_000,
 		);
 	});
 
@@ -155,7 +155,10 @@ describe("/api/v1/income", () => {
 		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(0);
 		expect(Number(await balanceOf(savings))).toBe(Number(after) - 100);
 
-		await expectBody(await post("/income/undo", { token: undone.redo }), c.undo);
+		await expectBody(
+			await post("/income/undo", { token: undone.redo }),
+			c.undo,
+		);
 		await expect(adminDb.expense.count({ where: { id } })).resolves.toBe(1);
 		expect(await balanceOf(savings)).toBe(after);
 	});
@@ -214,7 +217,10 @@ describe("/api/v1/income", () => {
 		await expect(
 			adminDb.expense.count({ where: { id: deleted.id } }),
 		).resolves.toBe(0);
-		await expectBody(await post("/income/undo", { token: deleted.undo }), c.undo);
+		await expectBody(
+			await post("/income/undo", { token: deleted.undo }),
+			c.undo,
+		);
 		const back = await adminDb.expense.findUniqueOrThrow({
 			where: { id: deleted.id },
 		});

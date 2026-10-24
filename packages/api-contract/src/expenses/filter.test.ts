@@ -43,7 +43,10 @@ describe("parseActivityFilter", () => {
 		["an unknown kind", "kind=gift"],
 		["a bad person key", "person=someone"],
 		["an empty list", "cat="],
-		["too many ids", `cat=${Array.from({ length: 51 }, (_, i) => `c${i}`).join(",")}`],
+		[
+			"too many ids",
+			`cat=${Array.from({ length: 51 }, (_, i) => `c${i}`).join(",")}`,
+		],
 		["an empty search", "q="],
 		["a long search", `q=${"x".repeat(101)}`],
 		["range other than all", "range=week"],
@@ -57,7 +60,16 @@ describe("amount text", () => {
 	it("takes positive decimals with at most 8 decimals", () => {
 		for (const ok of ["1", "0.5", "1234.56", "99999999999.12345678"])
 			expect(amountTextSchema.safeParse(ok).success, ok).toBe(true);
-		for (const bad of ["0", "0.00", "-1", "1.123456789", "1e3", "", "1,5", " 1"])
+		for (const bad of [
+			"0",
+			"0.00",
+			"-1",
+			"1.123456789",
+			"1e3",
+			"",
+			"1,5",
+			" 1",
+		])
 			expect(amountTextSchema.safeParse(bad).success, bad).toBe(false);
 	});
 
