@@ -7,6 +7,15 @@
 		"projects": "Projets",
 		"add": "Ajouter une dépense"
 	},
+	"common": {
+		"cancel": "Annuler",
+		"undo": "Annuler",
+		"dismiss": "Fermer"
+	},
+	"keypad": {
+		"delete": "Effacer",
+		"decimal": "Virgule décimale"
+	},
 	"connect": {
 		"title": "Se connecter à un serveur",
 		"intro": "Utilisez retrospend.app ou l’adresse d’un serveur que vous hébergez.",
@@ -20,5 +29,42 @@
 		"insecureWarning": "Ce serveur n’utilise pas HTTPS. Votre mot de passe et vos données circulent sans chiffrement. Ne continuez que sur un réseau de confiance.",
 		"continueAnyway": "Continuer quand même",
 		"saveFailed": "Impossible d’enregistrer le serveur. Réessayez."
+	},
+	"signIn": {
+		"title": "Se connecter",
+		"intro": "Connectez-vous à {host}.",
+		"expired": "Votre session a pris fin. Reconnectez-vous.",
+		"email": "E-mail",
+		"password": "Mot de passe",
+		"code": "Code d'authentification",
+		"codeHint": "Saisissez les 6 chiffres de votre application d'authentification ou un code de secours.",
+		"submit": "Se connecter",
+		"verify": "Vérifier",
+		"signingIn": "Connexion en cours",
+		"error": {
+			"invalidCredentials": "L'e-mail et le mot de passe ne correspondent pas.",
+			"invalidCode": "Ce code n'est pas correct. Réessayez.",
+			"emailNotVerified": "Vérifiez d'abord votre e-mail, puis connectez-vous.",
+			"rateLimited": "Trop de tentatives. Attendez une minute et réessayez.",
+			"network": "Impossible de joindre le serveur. Vérifiez votre connexion.",
+			"unknown": "Connexion impossible. Réessayez."
+		}
+	},
+	"account": {
+		"open": "Compte",
+		"signOut": "Se déconnecter",
+		"signOutDiscard": "Se déconnecter et supprimer",
+		"unsynced": "{count, plural, one {# modification non synchronisée. La déconnexion la supprime.} other {# modifications non synchronisées. La déconnexion les supprime.}}"
+	},
+	"activity": {
+		"title": "Activité",
+		"loading": "Chargement",
+		"empty": "Aucune dépense pour l'instant",
+		"unavailable": "L'activité n'est pas encore sur ce serveur",
+		"unavailableDetail": "Mettez le serveur à jour pour voir vos dépenses ici.",
+		"error": "Impossible de charger l'activité",
+		"errorDetail": "Vérifiez votre connexion et réessayez.",
+		"pick": "Choisissez une dépense",
+		"offlineSince": "Hors ligne depuis {time}"
 	}
 }

@@ -7,6 +7,15 @@
 		"projects": "Projekte",
 		"add": "Ausgabe hinzufügen"
 	},
+	"common": {
+		"cancel": "Abbrechen",
+		"undo": "Rückgängig",
+		"dismiss": "Schließen"
+	},
+	"keypad": {
+		"delete": "Löschen",
+		"decimal": "Dezimalkomma"
+	},
 	"connect": {
 		"title": "Mit einem Server verbinden",
 		"intro": "Nutzen Sie retrospend.app oder die Adresse eines eigenen Servers.",
@@ -20,5 +29,42 @@
 		"insecureWarning": "Dieser Server verwendet kein HTTPS. Ihr Passwort und Ihre Daten werden unverschlüsselt übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.",
 		"continueAnyway": "Trotzdem fortfahren",
 		"saveFailed": "Der Server konnte nicht gespeichert werden. Versuchen Sie es erneut."
+	},
+	"signIn": {
+		"title": "Anmelden",
+		"intro": "Melde dich bei {host} an.",
+		"expired": "Deine Sitzung ist abgelaufen. Melde dich erneut an.",
+		"email": "E-Mail",
+		"password": "Passwort",
+		"code": "Authentifizierungscode",
+		"codeHint": "Gib die 6 Ziffern aus deiner Authenticator-App oder einen Backup-Code ein.",
+		"submit": "Anmelden",
+		"verify": "Bestätigen",
+		"signingIn": "Anmeldung läuft",
+		"error": {
+			"invalidCredentials": "E-Mail und Passwort passen nicht zusammen.",
+			"invalidCode": "Dieser Code stimmt nicht. Versuch es noch einmal.",
+			"emailNotVerified": "Bestätige zuerst deine E-Mail und melde dich dann an.",
+			"rateLimited": "Zu viele Versuche. Warte eine Minute und versuch es erneut.",
+			"network": "Der Server ist nicht erreichbar. Prüfe deine Verbindung.",
+			"unknown": "Anmeldung nicht möglich. Versuch es noch einmal."
+		}
+	},
+	"account": {
+		"open": "Konto",
+		"signOut": "Abmelden",
+		"signOutDiscard": "Abmelden und verwerfen",
+		"unsynced": "{count, plural, one {# Änderung ist noch nicht synchronisiert. Beim Abmelden wird sie verworfen.} other {# Änderungen sind noch nicht synchronisiert. Beim Abmelden werden sie verworfen.}}"
+	},
+	"activity": {
+		"title": "Aktivität",
+		"loading": "Wird geladen",
+		"empty": "Noch keine Ausgaben",
+		"unavailable": "Aktivität gibt es auf diesem Server noch nicht",
+		"unavailableDetail": "Aktualisiere den Server, um deine Ausgaben hier zu sehen.",
+		"error": "Aktivität konnte nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuch es erneut.",
+		"pick": "Wähle eine Ausgabe",
+		"offlineSince": "Offline seit {time}"
 	}
 }
