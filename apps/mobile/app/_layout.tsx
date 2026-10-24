@@ -13,8 +13,12 @@ import { SessionProvider, useSession } from "@/auth/session";
 import { DevAutoSignIn } from "@/dev/DevAutoSignIn";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
+import { installNumberFormatToParts } from "@/lib/intl-polyfill";
 import { navigationTheme, themeFor } from "@/theme";
 import { ToastProvider } from "@/ui/Toast";
+
+// Before any money is formatted: Hermes on iOS has no formatToParts.
+installNumberFormatToParts();
 
 function Routes() {
 	const { connection } = useServerConnection();

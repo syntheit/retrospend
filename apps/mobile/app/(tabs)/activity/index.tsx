@@ -12,6 +12,7 @@ import {
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListDetail } from "@/ui/ListDetail";
+import { Screen } from "@/ui/Screen";
 
 export default function ActivityScreen() {
 	const t = useTranslations("mobile.activity");
@@ -43,30 +44,39 @@ export default function ActivityScreen() {
 				style={{ backgroundColor: color.bg }}
 			/>
 		) : (
-			<EmptyState
-				detail={
-					state.status === "unavailable"
-						? t("unavailableDetail")
-						: state.status === "error"
-							? t("errorDetail")
-							: undefined
-				}
-				title={
-					state.status === "loading"
-						? t("loading")
-						: state.status === "unavailable"
-							? t("unavailable")
+			<Screen>
+				<EmptyState
+					detail={
+						state.status === "unavailable"
+							? t("unavailableDetail")
 							: state.status === "error"
-								? t("error")
-								: t("empty")
-				}
-			/>
+								? t("errorDetail")
+								: undefined
+					}
+					title={
+						state.status === "loading"
+							? t("loading")
+							: state.status === "unavailable"
+								? t("unavailable")
+								: state.status === "error"
+									? t("error")
+									: t("empty")
+					}
+				/>
+			</Screen>
 		);
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
 			<AccountTopBar title={t("title")} />
-			<ListDetail detail={<EmptyState title={t("pick")} />} list={list} />
+			<ListDetail
+				detail={
+					<Screen>
+						<EmptyState title={t("pick")} />
+					</Screen>
+				}
+				list={list}
+			/>
 		</View>
 	);
 }

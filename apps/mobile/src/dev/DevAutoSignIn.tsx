@@ -49,7 +49,7 @@ export function DevAutoSignIn() {
 	const signedIn = state.status === "signedIn";
 	useEffect(() => {
 		if (!GALLERY_ENABLED || !TOUR || !signedIn) return;
-		const timers = TOUR.split(",").map((route, index) =>
+		const timers = TOUR.split(",").map((route: string, index: number) =>
 			setTimeout(
 				() => router.navigate(route as never),
 				(index + 1) * TOUR_STEP_MS,
