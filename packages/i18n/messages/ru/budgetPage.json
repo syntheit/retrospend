@@ -181,7 +181,8 @@
 		"planned": "Запланировано",
 		"left": "Осталось",
 		"edit": "Спланировать «{name}»",
-		"plannedSub": "Запланировано <amount></amount>"
+		"plannedSub": "Запланировано <amount></amount>",
+		"fundNow": "Профинансировать сейчас"
 	},
 	"planRail": {
 		"label": "Стоимость плана",

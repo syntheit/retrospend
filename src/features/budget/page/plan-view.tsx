@@ -162,20 +162,31 @@ export function PlanView({
 						<Skeleton className="h-8 w-48" shape="money" />
 					)}
 				</div>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button kind="secondary" size="sm">
-							{t("fillFrom")}
+				<div className="flex items-center gap-2">
+					{(preview.data?.fundNow?.minor ?? 0) > 0 && (
+						<Button
+							kind="secondary"
+							onClick={() => actions.sheet.open("fundNow", { month })}
+							size="sm"
+						>
+							{t("fundNow")}
 						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						{SOURCES.map((s) => (
-							<DropdownMenuItem key={s} onSelect={() => void fill(s)}>
-								{t(`fill.${s}`)}
-							</DropdownMenuItem>
-						))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+					)}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button kind="secondary" size="sm">
+								{t("fillFrom")}
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							{SOURCES.map((s) => (
+								<DropdownMenuItem key={s} onSelect={() => void fill(s)}>
+									{t(`fill.${s}`)}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 			</div>
 			{isMobile ? (
 				<PlanList groups={data.groups} lines={lines} onEdit={edit} />

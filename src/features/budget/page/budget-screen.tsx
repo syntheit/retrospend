@@ -5,26 +5,14 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
-import { useRowDates } from "~/components/rows/dates";
-import { useIsMobile } from "~/hooks/use-mobile";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { api } from "~/trpc/react";
 import { BudgetSheetsProvider, useBudgetSheet } from "../use-budget-sheet";
-import { BudgetNotice } from "./budget-notice";
-import { BudgetRail } from "./budget-rail";
 import { BudgetToolbar } from "./budget-toolbar";
-import { ClosedHero } from "./closed-hero";
-import { GroupsList } from "./groups-list";
-import { GroupsTable } from "./groups-table";
 import { HeaderMenu } from "./header-menu";
-import { BudgetHero } from "./hero";
-import { MonthSwitch, useMonthLabel } from "./month-switch";
-import {
-	monthRange,
-	monthStartIso,
-	parseMonthParam,
-	shiftMonth,
-} from "./months";
+import { MonthContent } from "./month-content";
+import { useMonthLabel } from "./month-switch";
+import { monthRange, parseMonthParam, shiftMonth } from "./months";
 import { PlanRail } from "./plan-rail";
 import { PlanView } from "./plan-view";
 import {
@@ -34,16 +22,7 @@ import {
 	BudgetUnavailable,
 } from "./states";
 import { useBudgetActions } from "./use-budget-actions";
-import {
-	type Chip,
-	filterGroups,
-	groupKey,
-	groupStartsOpen,
-	isFiltered,
-	isLimits,
-	namesById,
-	pickNotice,
-} from "./view-model";
+import { type Chip, filterGroups, isFiltered, isLimits } from "./view-model";
 
 /** The page on a month the server returned. */
 function BudgetBody({
@@ -57,43 +36,18 @@ function BudgetBody({
 	onMonth: (key: number) => void;
 }) {
 	const t = useTranslations("budgetPage");
-	const isMobile = useIsMobile();
 	const actions = useBudgetActions(data);
 	const label = useMonthLabel();
-	const { month: monthName } = useRowDates();
-	const welcome = api.envelope.welcomeBackState.useQuery(undefined, {
-		enabled: !data.book.paused,
-		staleTime: 60_000,
-	});
 	const [query, setQuery] = useState("");
 	const [chip, setChip] = useState<Chip | null>(null);
-	const [folds, setFolds] = useState<Record<string, boolean>>({});
 	const closed = data.month.state === "CLOSED";
 	const planning = data.month.state === "NEXT";
-	const names = useMemo(() => namesById(data.groups), [data.groups]);
+	const key = data.month.key;
 	const filter = { query, chip };
 	const groups = useMemo(
 		() => filterGroups(data.groups, { query, chip }),
 		[data.groups, query, chip],
 	);
-	const notice = closed ? null : pickNotice(data, welcome.data, names);
-	const key = data.month.key;
-	const missing = [...new Set(data.missingRates.map((m) => m.currency))];
-	const limits = isLimits(data.book.style);
-	const columns = closed ? "closed" : limits ? "limits" : "plan";
-	const common = {
-		groups,
-		actions,
-		readOnly: closed,
-		filtering: isFiltered(filter),
-		isOpen: (g: GetMonthOutput["groups"][number]) =>
-			folds[groupKey(g)] ?? groupStartsOpen(data.book.style, g),
-		onToggle: (g: GetMonthOutput["groups"][number]) =>
-			setFolds((f) => ({
-				...f,
-				[groupKey(g)]: !(f[groupKey(g)] ?? groupStartsOpen(data.book.style, g)),
-			})),
-	};
 	return (
 		<>
 			<PageHeader
@@ -111,7 +65,7 @@ function BudgetBody({
 				chip={chip}
 				current={current}
 				data={data}
-				limits={limits}
+				limits={isLimits(data.book.style)}
 				months={monthRange(data.book.startMonth, current)}
 				onChip={setChip}
 				onMonth={onMonth}
@@ -129,57 +83,12 @@ function BudgetBody({
 					</div>
 				</div>
 			) : (
-				<>
-					{closed ? (
-						<ClosedHero
-							month={key}
-							onOpenSummary={() =>
-								actions.sheet.open("monthSummary", { month: key })
-							}
-						/>
-					) : (
-						<BudgetHero
-							data={data}
-							missing={missing}
-							month={monthName(monthStartIso(key))}
-							names={names}
-							next={monthName(monthStartIso(shiftMonth(key, 1)))}
-							onAction={actions.verdict}
-							onAfford={() => actions.sheet.open("afford", { month: key })}
-							onExplain={() =>
-								actions.sheet.open("explain", {
-									month: key,
-									figure: data.verdict.lead.figureId,
-								})
-							}
-						/>
-					)}
-					{notice && (
-						<div className="mb-6">
-							<BudgetNotice
-								data={data}
-								notice={notice}
-								onAction={actions.notice}
-							/>
-						</div>
-					)}
-					<div className="lg:flex lg:items-start lg:gap-12">
-						<div className="min-w-0 flex-1">
-							{groups.length === 0 ? (
-								<p className="text-fg-2 text-body py-12 text-center">
-									{t("table.noMatch")}
-								</p>
-							) : isMobile ? (
-								<GroupsList {...common} />
-							) : (
-								<GroupsTable {...common} columns={columns} />
-							)}
-						</div>
-						<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
-							<BudgetRail actions={actions} data={data} readOnly={closed} />
-						</div>
-					</div>
-				</>
+				<MonthContent
+					actions={actions}
+					data={data}
+					filtering={isFiltered(filter)}
+					groups={groups}
+				/>
 			)}
 			<span className="sr-only">{label(key)}</span>
 		</>

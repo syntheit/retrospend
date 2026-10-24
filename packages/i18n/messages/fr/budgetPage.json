@@ -181,7 +181,8 @@
 		"planned": "Planifié",
 		"left": "Reste",
 		"edit": "Planifier {name}",
-		"plannedSub": "Planifié <amount></amount>"
+		"plannedSub": "Planifié <amount></amount>",
+		"fundNow": "Le financer maintenant"
 	},
 	"planRail": {
 		"label": "Coût du plan",

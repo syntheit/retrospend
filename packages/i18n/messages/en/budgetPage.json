@@ -181,7 +181,8 @@
 		"planned": "Planned",
 		"left": "Left",
 		"edit": "Plan {name}",
-		"plannedSub": "Planned <amount></amount>"
+		"plannedSub": "Planned <amount></amount>",
+		"fundNow": "Fund it now"
 	},
 	"planRail": {
 		"label": "Plan cost",
