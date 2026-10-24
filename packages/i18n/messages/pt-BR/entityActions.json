@@ -289,6 +289,26 @@
 			"label": "Conciliar"
 		}
 	},
+	"envelope": {
+		"move": {
+			"label": "Mover dinheiro"
+		},
+		"cover": {
+			"label": "Cobrir o estouro"
+		},
+		"target": {
+			"label": "Editar meta"
+		},
+		"activity": {
+			"label": "Ver atividade"
+		},
+		"edit": {
+			"label": "Renomear ou editar categorias"
+		},
+		"whatIf": {
+			"label": "E se eu gastar…"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Revisar"

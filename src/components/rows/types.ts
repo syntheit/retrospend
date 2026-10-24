@@ -192,8 +192,8 @@ export type EnvelopeVM = {
 	category: CategoryRef;
 	available: MoneyValue;
 	status: "funded" | "underfunded" | "overspent";
-	/** Spent against assigned, capped at 10000. */
-	spent: Basis;
+	/** Spent against assigned, capped at 10000. Left out: no bar (the Budget page has no share from the server yet). */
+	spent?: Basis;
 	/** Figures registry key of the available amount. */
 	figure?: string;
 };

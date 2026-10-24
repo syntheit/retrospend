@@ -289,6 +289,26 @@
 			"label": "Rapprocher"
 		}
 	},
+	"envelope": {
+		"move": {
+			"label": "Déplacer de l'argent"
+		},
+		"cover": {
+			"label": "Couvrir le dépassement"
+		},
+		"target": {
+			"label": "Modifier l'objectif"
+		},
+		"activity": {
+			"label": "Voir l'activité"
+		},
+		"edit": {
+			"label": "Renommer ou modifier les catégories"
+		},
+		"whatIf": {
+			"label": "Et si je dépense…"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Vérifier"
