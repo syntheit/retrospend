@@ -126,7 +126,9 @@ describe("/api/v1/payments", () => {
 		);
 		expect(delta(preview, "owed.youOwe")).toBe(-500_000);
 		expect(await youOwe()).toBe(before);
-		await expect(adminDb.payment.count()).resolves.toBe(0);
+		await expect(
+			adminDb.payment.count({ where: { payerId: sofia.user.id } }),
+		).resolves.toBe(0);
 
 		const written = await record();
 		expect(written.status).toBe("PROPOSED");
@@ -143,7 +145,9 @@ describe("/api/v1/payments", () => {
 		expect(again.headers.get("idempotent-replayed")).toBe("true");
 		expect(await again.json()).toEqual(await first.json());
 		await expect(
-			adminDb.payment.count({ where: { amount: "100" } }),
+			adminDb.payment.count({
+				where: { payerId: sofia.user.id, amount: "100" },
+			}),
 		).resolves.toBe(1);
 	});
 
