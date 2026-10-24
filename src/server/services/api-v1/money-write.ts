@@ -1,4 +1,5 @@
 import type { PreviewResult as PreviewDto } from "@retrospend/api-contract";
+import { TRPCError } from "@trpc/server";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import { forUser } from "~/server/services/preview";
 import type {
@@ -6,6 +7,11 @@ import type {
 	PreviewResult,
 } from "~/server/services/preview/types";
 import type { Caller } from "./caller";
+import {
+	completeIdempotentRequest,
+	releaseIdempotentRequest,
+	startIdempotentRequest,
+} from "./idempotency.service";
 import { mintUndo, type UndoFamily } from "./undo";
 
 /**
@@ -80,4 +86,36 @@ export function accountChangeDto(a: {
 		before: moneyOfText(a.before, a.currency),
 		after: moneyOfText(a.after, a.currency),
 	};
+}
+
+/**
+ * Runs an undo once per token. The token's signature claims a row in the
+ * idempotency store (the same per-user, 24-hour table the write keys use), so
+ * of two requests with one token exactly one runs. A failed undo frees the
+ * token for a retry; a finished one keeps it spent.
+ */
+export async function spendUndo<T>(
+	caller: Caller,
+	token: string,
+	run: () => Promise<T>,
+): Promise<T> {
+	const sig = token.split(".")[1] ?? "";
+	const claim = await startIdempotentRequest(caller.db, {
+		userId: caller.principal.userId,
+		key: `undo:${sig}`,
+		requestHash: sig,
+	});
+	if (claim.kind !== "started")
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: "This undo was already used",
+		});
+	try {
+		const result = await run();
+		await completeIdempotentRequest(caller.db, claim.id, 200, undefined);
+		return result;
+	} catch (error) {
+		await releaseIdempotentRequest(caller.db, claim.id).catch(() => undefined);
+		throw error;
+	}
 }

@@ -12,8 +12,11 @@
  * - `kind`: comma-separated kinds (ACTIVITY_KINDS).
  * - `q`: text matched in titles, notes and amounts, ignoring case and
  *   accents. It is opaque to the server (no trimming or case folding here).
- * - `range=all`: accepted and ignored. Unlike the web page, no dates means
- *   every date.
+ * - `range=all`: every date.
+ *
+ * Like the web page, no dates is this month (in the caller's time zone),
+ * unless the filter has a `q`, a `cat` or `range=all`, which cover every
+ * month. See withDefaultRange.
  *
  * Values are percent-encoded. A key twice, an unknown key and a malformed
  * value are all refused (`invalid_filter`), never ignored.
@@ -42,6 +45,8 @@ export type ActivityFilterValue = {
 	paidBy?: string[];
 	kinds?: ActivityKind[];
 	q?: string;
+	/** `range=all` was sent. */
+	rangeAll?: boolean;
 };
 
 export type FilterParse =
@@ -118,7 +123,7 @@ export function parseActivityFilter(raw: string | undefined): FilterParse {
 		if (from) value.from = from;
 		const to = need("to", isDay, "a day like 2026-10-31");
 		if (to) value.to = to;
-		need("range", (v) => v === "all", "all");
+		if (need("range", (v) => v === "all", "all")) value.rangeAll = true;
 		const cat = list("cat", id, "category ids");
 		if (cat) value.categoryIds = cat;
 		const project = list("project", id, "project ids");
@@ -156,3 +161,24 @@ export function parseActivityFilter(raw: string | undefined): FilterParse {
 }
 
 class FilterError extends Error {}
+
+/**
+ * The web's reading of a filter with no dates (features/activity/filters.ts):
+ * this month, unless it searches, picks a category or says `range=all`.
+ * `today` is the caller's today (YYYY-MM-DD in their zone).
+ */
+export function withDefaultRange(
+	filter: ActivityFilterValue,
+	today: string,
+): ActivityFilterValue {
+	const { rangeAll, ...rest } = filter;
+	if (rest.from || rest.to || rangeAll || rest.q || rest.categoryIds)
+		return rest;
+	const [year, month] = today.split("-").map(Number) as [number, number];
+	const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	return {
+		...rest,
+		from: `${today.slice(0, 8)}01`,
+		to: `${today.slice(0, 8)}${String(days).padStart(2, "0")}`,
+	};
+}

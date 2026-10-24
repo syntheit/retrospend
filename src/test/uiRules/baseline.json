@@ -1154,7 +1154,7 @@
 		"src/server/api/routers/guest.ts": 146,
 		"src/server/api/routers/invite.ts": 25,
 		"src/server/api/routers/people.ts": 101,
-		"src/server/api/routers/recurring.ts": 130,
+		"src/server/api/routers/recurring.ts": 84,
 		"src/server/api/routers/shared-transaction.ts": 66,
 		"src/server/services/import-queue.service.ts": 516,
 		"src/server/services/pdf.service.ts": 91,

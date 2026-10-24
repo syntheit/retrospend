@@ -35,6 +35,7 @@ import {
 	accountChangeDto,
 	applyWrite,
 	previewWrite,
+	spendUndo,
 	undoFor,
 } from "./money-write";
 import { readUndo } from "./undo";
@@ -284,10 +285,11 @@ export async function undoRecurringConfirm(
 ) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
 	const expenseId = expenseIdOf(op, input);
-	const done =
+	const done = await spendUndo(caller, token, () =>
 		op === "recurring.unconfirm"
-			? await applyWrite(caller, unconfirmRecurringExpense, { expenseId })
-			: await applyWrite(caller, unconfirmRecurringIncome, { expenseId });
+			? applyWrite(caller, unconfirmRecurringExpense, { expenseId })
+			: applyWrite(caller, unconfirmRecurringIncome, { expenseId }),
+	);
 	return { expenseId: done.expenseId, templateId: done.templateId, redo: null };
 }
 

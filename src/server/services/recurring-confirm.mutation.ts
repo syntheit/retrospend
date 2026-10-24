@@ -40,7 +40,8 @@ export const confirmRecurringExpense: MoneyMutation<
 				id: input.templateId,
 				userId: actor.userId,
 				isActive: true,
-				direction: "OUT",
+				// Either direction: the web's older confirm still posts recurring
+				// income through here. /api/v1 sends income to its own mutation.
 			},
 		});
 		if (!template)
@@ -59,7 +60,7 @@ export const confirmRecurringExpense: MoneyMutation<
 		if (template.nextDueDate >= startOfNextDayIn(new Date(), input.timeZone))
 			throw new TRPCError({
 				code: "CONFLICT",
-				message: "This payment is not due yet",
+				message: "This payment was already confirmed",
 			});
 
 		// Direction, amount and the due date's rate (never 1) for the row.
@@ -137,15 +138,36 @@ export const unconfirmRecurringExpense: MoneyMutation<
 				code: "NOT_FOUND",
 				message: "Recurring entry not found",
 			});
-		await tx.expense.delete({ where: { id: row.id } });
-		await tx.recurringTemplate.updateMany({
-			where: {
-				id: row.recurringTemplateId,
-				userId: actor.userId,
-				nextDueDate: { gt: row.date },
-			},
-			data: { nextDueDate: row.date },
+		const template = await tx.recurringTemplate.findFirst({
+			where: { id: row.recurringTemplateId, userId: actor.userId },
+			select: { nextDueDate: true, frequency: true, anchorDay: true },
 		});
+		// Only the newest confirm can be undone: the template must sit exactly
+		// one period after this entry. Rewinding past a later confirm would
+		// book those periods again.
+		if (
+			template &&
+			template.nextDueDate.getTime() !==
+				nextRecurringDate(
+					row.date,
+					template.frequency,
+					template.anchorDay,
+				).getTime()
+		)
+			throw new TRPCError({
+				code: "CONFLICT",
+				message: "Undo the later confirm first",
+			});
+		await tx.expense.delete({ where: { id: row.id } });
+		if (template)
+			await tx.recurringTemplate.updateMany({
+				where: {
+					id: row.recurringTemplateId,
+					userId: actor.userId,
+					nextDueDate: template.nextDueDate,
+				},
+				data: { nextDueDate: row.date },
+			});
 		return {
 			value: { expenseId: row.id, templateId: row.recurringTemplateId },
 			undo: {

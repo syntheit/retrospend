@@ -1,20 +1,27 @@
 import { randomUUID } from "node:crypto";
 import type {
 	ActivityFilterValue,
+	bulkCategorySchema,
 	CursorQuery,
 	createExpenseSchema,
 	ExpenseDto,
 	updateExpenseSchema,
 } from "@retrospend/api-contract";
+import { withDefaultRange } from "@retrospend/api-contract";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import {
+	type CategorizeInput,
+	categorizeExpenses as categorizeMutation,
+} from "~/server/services/entry/categorize.mutation";
 import {
 	deleteExpenseEntry,
 	restoreExpenseEntry,
 	type UpdateExpenseInput,
 	updateExpenseEntry,
 } from "~/server/services/entry/expense.mutation";
+import { unlessChanged } from "~/server/services/entry/guarded.mutation";
 import type { RestoreToken } from "~/server/services/entry/restore-token";
 import {
 	type CreateExpenseInput,
@@ -28,7 +35,7 @@ import { bookedHome } from "~/server/services/rate-types";
 import { titleSuggestions } from "~/server/services/title-suggestions.service";
 import type { Prisma } from "~prisma";
 import { type Caller, moneyOf } from "./caller";
-import { applyWrite, previewWrite, undoFor } from "./money-write";
+import { applyWrite, previewWrite, spendUndo, undoFor } from "./money-write";
 import { readUndo } from "./undo";
 
 /** v1 adapters for /expenses. The mutations are the web's own (entry/expense.mutation.ts). */
@@ -91,18 +98,19 @@ export function listExpenses(
 	filter: ActivityFilterValue,
 	page: CursorQuery,
 ) {
+	const f = withDefaultRange(filter, dayKey(new Date(), caller.timeZone));
 	return listActivity(
 		caller.db,
 		caller.principal.userId,
 		{
-			from: filter.from,
-			to: filter.to,
-			categoryIds: filter.categoryIds,
-			projectIds: filter.projectIds,
-			people: filter.people,
-			paidBy: filter.paidBy,
-			kinds: filter.kinds,
-			q: filter.q,
+			from: f.from,
+			to: f.to,
+			categoryIds: f.categoryIds,
+			projectIds: f.projectIds,
+			people: f.people,
+			paidBy: f.paidBy,
+			kinds: f.kinds,
+			q: f.q,
 			cursor: page.cursor,
 			limit: page.limit,
 		},
@@ -145,9 +153,13 @@ export function updateInput(
 export async function addExpense(caller: LedgerCaller, input: Fields) {
 	const args = createInput(caller, input);
 	const created = await applyWrite(caller, createExpense, args);
+	const expense = await readExpense(caller, created.id);
 	return {
-		expense: await readExpense(caller, created.id),
-		undo: undoFor(caller, "expense", "expense.delete", { id: created.id }),
+		expense,
+		undo: undoFor(caller, "expense", "expense.delete", {
+			id: created.id,
+			expectedUpdatedAt: expense.updatedAt,
+		}),
 	};
 }
 
@@ -163,9 +175,13 @@ export async function replaceExpense(
 		updateExpenseEntry,
 		updateInput(caller, input),
 	);
+	const expense = await readExpense(caller, done.id);
 	return {
-		expense: await readExpense(caller, done.id),
-		undo: undoFor(caller, "expense", "expense.update", done.restore),
+		expense,
+		undo: undoFor(caller, "expense", "expense.update", {
+			restore: done.restore,
+			expectedUpdatedAt: expense.updatedAt,
+		}),
 	};
 }
 
@@ -187,18 +203,25 @@ export async function removeExpense(caller: LedgerCaller, id: string) {
 export const previewRemoveExpense = (caller: LedgerCaller, id: string) =>
 	previewWrite(caller, deleteExpenseEntry, { id });
 
-export async function categorizeExpenses(
-	caller: Caller,
-	ids: string[],
-	categoryId: string,
-) {
-	const result = await new ExpenseService(caller.db).bulkUpdateCategory(
-		caller.principal.userId,
-		ids,
-		categoryId,
-	);
-	return { updated: result.count };
+type Bulk = z.infer<typeof bulkCategorySchema>;
+
+const bulkInput = (input: Bulk): CategorizeInput => ({
+	moves: [{ categoryId: input.categoryId, ids: input.ids }],
+});
+
+export async function categorizeExpenses(caller: Caller, input: Bulk) {
+	const done = await applyWrite(caller, categorizeMutation, bulkInput(input));
+	return {
+		updated: done.updated,
+		undo: undoFor(caller, "expense", "expense.categorize", {
+			moves: done.previous,
+			lenient: true,
+		}),
+	};
 }
+
+export const previewCategorizeExpenses = (caller: Caller, input: Bulk) =>
+	previewWrite(caller, categorizeMutation, bulkInput(input));
 
 export async function checkDuplicate(
 	caller: LedgerCaller,
@@ -208,8 +231,9 @@ export async function checkDuplicate(
 		caller.principal.userId,
 		{
 			title: q.title,
-			amount: Number(q.amount),
+			amount: q.amount,
 			date: parseDateOnlyIn(q.date, caller.timeZone),
+			timeZone: caller.timeZone,
 		},
 	);
 	return { duplicate: match !== null, expenseId: match?.id ?? null };
@@ -237,27 +261,36 @@ type Step<I, V> = {
 	mutation: MoneyMutation<I, V>;
 	input: I;
 	redo: (value: V) => { op: string; input: unknown };
-	idOf: (value: V) => string;
+	idOf: (value: V) => string | null;
 };
 
 const step = <I, V>(s: Step<I, V>) => s as unknown as Step<unknown, unknown>;
 
+type Stamped = { expectedUpdatedAt?: string };
+
 function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 	switch (op) {
-		case "expense.delete":
+		case "expense.delete": {
+			const { id, expectedUpdatedAt } = input as { id: string } & Stamped;
 			return step({
-				mutation: deleteExpenseEntry,
-				input: input as { id: string },
+				mutation: unlessChanged(deleteExpenseEntry, expectedUpdatedAt),
+				input: { id },
 				redo: (v) => ({ op: "expense.restore", input: { token: v.restore } }),
 				idOf: (v) => v.id,
 			});
+		}
 		case "expense.update": {
-			const restore = input as UpdateExpenseInput;
+			const { restore, expectedUpdatedAt } = input as {
+				restore: UpdateExpenseInput;
+			} & Stamped;
 			// JSON turned the date into text.
 			return step({
-				mutation: updateExpenseEntry,
+				mutation: unlessChanged(updateExpenseEntry, expectedUpdatedAt),
 				input: { ...restore, date: new Date(restore.date) },
-				redo: (v) => ({ op: "expense.update", input: v.restore }),
+				redo: (v) => ({
+					op: "expense.update",
+					input: { restore: v.restore },
+				}),
 				idOf: (v) => v.id,
 			});
 		}
@@ -268,6 +301,16 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 				redo: (v) => ({ op: "expense.delete", input: { id: v.id } }),
 				idOf: (v) => v.id,
 			});
+		case "expense.categorize":
+			return step({
+				mutation: categorizeMutation,
+				input: input as CategorizeInput,
+				redo: (v) => ({
+					op: "expense.categorize",
+					input: { moves: v.previous, lenient: true },
+				}),
+				idOf: () => null,
+			});
 		default:
 			throw new TRPCError({
 				code: "BAD_REQUEST",
@@ -276,15 +319,36 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 	}
 }
 
+/** The redo guards against edits made after the undo, like the original token does. */
+async function stampedRedo(
+	caller: Caller,
+	redo: { op: string; input: unknown },
+	id: string | null,
+) {
+	if (!id || (redo.op !== "expense.update" && redo.op !== "expense.delete"))
+		return redo;
+	const row = await caller.db.expense.findFirst({
+		where: { id, userId: caller.principal.userId },
+		select: { updatedAt: true },
+	});
+	return {
+		op: redo.op,
+		input: {
+			...(redo.input as object),
+			expectedUpdatedAt: row?.updatedAt.toISOString(),
+		},
+	};
+}
+
 export async function undoExpenseWrite(caller: Caller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, "expense", token);
 	const inverse = stepOf(op, input);
-	const value = await applyWrite(caller, inverse.mutation, inverse.input);
-	const redo = inverse.redo(value);
-	return {
-		id: inverse.idOf(value),
-		redo: undoFor(caller, "expense", redo.op, redo.input),
-	};
+	return spendUndo(caller, token, async () => {
+		const value = await applyWrite(caller, inverse.mutation, inverse.input);
+		const id = inverse.idOf(value);
+		const redo = await stampedRedo(caller, inverse.redo(value), id);
+		return { id, redo: undoFor(caller, "expense", redo.op, redo.input) };
+	});
 }
 
 export function previewUndoExpenseWrite(caller: Caller, token: string) {

@@ -1474,7 +1474,7 @@
 		},
 		"/expenses": {
 			"get": {
-				"description": "Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q. The first page carries the count and your spending total for the filter.",
+				"description": "Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
 				"operationId": "listExpenses",
 				"parameters": [
 					{
@@ -2279,7 +2279,7 @@
 		},
 		"/expenses/bulk-category": {
 			"post": {
-				"description": "Ids that are not yours are skipped; `updated` says how many changed.",
+				"description": "Ids that are not yours are skipped; `updated` says how many changed. The undo puts each entry back in the category it had.",
 				"operationId": "bulkCategorizeExpenses",
 				"parameters": [
 					{
@@ -2329,6 +2329,11 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"undo": {
+											"description": "Valid for 24 hours. Send it to the group's undo route to revert this write.",
+											"minLength": 1,
+											"type": "string"
+										},
 										"updated": {
 											"maximum": 9007199254740991,
 											"minimum": 0,
@@ -2336,7 +2341,8 @@
 										}
 									},
 									"required": [
-										"updated"
+										"updated",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -2417,6 +2423,459 @@
 					"Expenses"
 				],
 				"x-event-type": "expenses.categorized",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/expenses/bulk-category/preview": {
+			"post": {
+				"description": "Runs POST /expenses/bulk-category in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewBulkCategorizeExpenses",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"categoryId": {
+										"maxLength": 64,
+										"minLength": 1,
+										"type": "string"
+									},
+									"ids": {
+										"items": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"maxItems": 500,
+										"minItems": 1,
+										"type": "array"
+									}
+								},
+								"required": [
+									"ids",
+									"categoryId"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /expenses/bulk-category",
+				"tags": [
+					"Expenses"
+				],
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -2574,17 +3033,6 @@
 			"post": {
 				"description": "Runs POST /expenses in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewCreateExpense",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -3245,7 +3693,7 @@
 		},
 		"/expenses/undo": {
 			"post": {
-				"description": "Tokens from create, update and delete (and from this route, as redo). A token is for its user and expires after 24 hours.",
+				"description": "Tokens from create, update, delete and bulk-category (and from this route, as redo). A token is for its user, works once and expires after 24 hours. An update or create is refused with a conflict once the expense changed after it.",
 				"operationId": "undoExpenseWrite",
 				"parameters": [
 					{
@@ -3285,9 +3733,16 @@
 								"schema": {
 									"properties": {
 										"id": {
-											"maxLength": 64,
-											"minLength": 1,
-											"type": "string"
+											"anyOf": [
+												{
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
 										},
 										"redo": {
 											"description": "Pass to the undo route to revert.",
@@ -3385,17 +3840,6 @@
 			"post": {
 				"description": "Runs POST /expenses/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewUndoExpenseWrite",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -4552,15 +4996,6 @@
 							"minLength": 1,
 							"type": "string"
 						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
 					}
 				],
 				"responses": {
@@ -4993,15 +5428,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}
@@ -6940,17 +7366,6 @@
 			"post": {
 				"description": "Runs POST /income in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewCreateIncome",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -7724,17 +8139,6 @@
 			"post": {
 				"description": "Runs POST /income/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewUndoIncomeWrite",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -8360,15 +8764,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}
@@ -13962,7 +14357,7 @@
 		},
 		"/recurring/undo": {
 			"post": {
-				"description": "Removes the booked entry and puts the template back on its due date.",
+				"description": "Removes the booked entry and puts the template back on its due date. Only the newest confirm of a template can be undone; an older one is a conflict until the later ones are undone.",
 				"operationId": "undoRecurringConfirm",
 				"parameters": [
 					{
@@ -14115,17 +14510,6 @@
 			"post": {
 				"description": "Runs POST /recurring/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewUndoRecurringConfirm",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -15746,15 +16130,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}
@@ -19911,17 +20286,6 @@
 			"post": {
 				"description": "Runs POST /transfers in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewCreateTransfer",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -20719,17 +21083,6 @@
 			"post": {
 				"description": "Runs POST /transfers/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewUndoTransferWrite",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -21336,15 +21689,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}

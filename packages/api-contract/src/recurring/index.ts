@@ -185,7 +185,11 @@ export const recurringUndoResultSchema = z
 	.object({
 		expenseId: idSchema,
 		templateId: idSchema,
-		/** Null: undoing a confirm cannot be put back with a token. Confirm again. */
+		/**
+		 * Always null. A confirm books at the rate of its due date and, for a
+		 * varying amount, needs the amount typed again, so putting it back is a
+		 * new confirm (POST /recurring/{id}/confirm), previewed like any other.
+		 */
 		redo: undoTokenSchema.nullable(),
 	})
 	.meta({ id: "RecurringUndo" });
@@ -295,7 +299,7 @@ export const recurringContract = {
 			tags: TAG,
 			summary: "Revert a confirm from its undo token",
 			description:
-				"Removes the booked entry and puts the template back on its due date.",
+				"Removes the booked entry and puts the template back on its due date. Only the newest confirm of a template can be undone; an older one is a conflict until the later ones are undone.",
 		})
 		.meta({ scope: "write:money", event: "recurring.undone" })
 		.input(undoInputSchema)

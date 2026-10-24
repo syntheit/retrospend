@@ -31,7 +31,10 @@ export const idempotency = os
 		const route = procedure["~orpc"].route;
 		const method = (route.method ?? "POST").toUpperCase();
 		const user = context.user;
-		if (!isWriteMethod(method) || !user) return next();
+		// A preview twin writes nothing (it rolls back), so it needs no key and
+		// one key can preview and then write.
+		if (!isWriteMethod(method) || !user || procedure["~orpc"].meta.previewOf)
+			return next();
 
 		const key = context.headers.get(IDEMPOTENCY_HEADER);
 		if (!key) throw problem("idempotency_key_required");

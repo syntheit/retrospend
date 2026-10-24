@@ -32,11 +32,16 @@ export const expenseDeleteSchema = z
 
 export const expenseUndoResultSchema = z
 	.object({
-		id: idSchema,
+		/** The expense it concerned; null when a bulk categorize was undone. */
+		id: idSchema.nullable(),
 		/** Puts the undo back (redo). */
 		redo: undoTokenSchema,
 	})
 	.meta({ id: "ExpenseUndo" });
+
+export const bulkCategoryResultSchema = z
+	.object({ updated: z.int().min(0), ...undoField })
+	.meta({ id: "BulkCategorizeResult" });
 
 export const expenseListQuerySchema = cursorQuerySchema.extend(
 	filterQuerySchema.shape,
@@ -58,7 +63,7 @@ export const expensesContract = {
 			tags: TAG,
 			summary: "Activity: your entries, newest first, filtered",
 			description:
-				"Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q. The first page carries the count and your spending total for the filter.",
+				"Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
 		})
 		.meta({ scope: "read" })
 		.input(expenseListQuerySchema)
@@ -167,11 +172,19 @@ export const expensesContract = {
 			tags: TAG,
 			summary: "Put up to 500 expenses in one category",
 			description:
-				"Ids that are not yours are skipped; `updated` says how many changed.",
+				"Ids that are not yours are skipped; `updated` says how many changed. The undo puts each entry back in the category it had.",
 		})
 		.meta({ scope: "write:expenses", event: "expenses.categorized" })
 		.input(bulkCategorySchema)
-		.output(z.object({ updated: z.int().min(0) })),
+		.output(bulkCategoryResultSchema),
+	previewBulkCategory: previewTwin({
+		path: "/expenses/bulk-category",
+		of: "POST /expenses/bulk-category",
+		operationId: "previewBulkCategorizeExpenses",
+		tags: TAG,
+		scope: "write:expenses",
+		input: bulkCategorySchema,
+	}),
 	undo: v1
 		.route({
 			method: "POST",
@@ -180,7 +193,7 @@ export const expensesContract = {
 			tags: TAG,
 			summary: "Revert an expense write from its undo token",
 			description:
-				"Tokens from create, update and delete (and from this route, as redo). A token is for its user and expires after 24 hours.",
+				"Tokens from create, update, delete and bulk-category (and from this route, as redo). A token is for its user, works once and expires after 24 hours. An update or create is refused with a conflict once the expense changed after it.",
 		})
 		.meta({ scope: "write:expenses", event: "expense.undone" })
 		.input(undoInputSchema)

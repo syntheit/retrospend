@@ -66,11 +66,12 @@ export const expensesRouter = {
 	),
 	bulkCategory: e.bulkCategory.handler(
 		serve(({ context, input }) =>
-			expenses.categorizeExpenses(
-				signedIn(context),
-				input.ids,
-				input.categoryId,
-			),
+			expenses.categorizeExpenses(signedIn(context), input),
+		),
+	),
+	previewBulkCategory: e.previewBulkCategory.handler(
+		serve(({ context, input }) =>
+			expenses.previewCategorizeExpenses(signedIn(context), input),
 		),
 	),
 	undo: e.undo.handler(

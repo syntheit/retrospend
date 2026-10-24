@@ -13,6 +13,7 @@ import {
 	accountChangeDto,
 	applyWrite,
 	previewWrite,
+	spendUndo,
 	undoFor,
 } from "./money-write";
 import { readUndo } from "./undo";
@@ -137,7 +138,7 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 
 export function undoIncomeWrite(caller: LedgerCaller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	return inverseOf(caller, op, input).apply();
+	return spendUndo(caller, token, () => inverseOf(caller, op, input).apply());
 }
 
 export function previewUndoIncomeWrite(caller: LedgerCaller, token: string) {

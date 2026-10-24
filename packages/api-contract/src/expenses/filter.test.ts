@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { USER_TEXT_FIELDS } from "../common/user-text";
 import "../index";
 import { amountTextSchema, rateTextSchema } from "../ledger";
-import { parseActivityFilter } from "./filter";
+import { parseActivityFilter, withDefaultRange } from "./filter";
 
 describe("parseActivityFilter", () => {
 	it("reads the web's Activity URL grammar", () => {
@@ -24,10 +24,13 @@ describe("parseActivityFilter", () => {
 		});
 	});
 
-	it("is empty when there is no filter, and ignores range=all", () => {
+	it("is empty when there is no filter, and reads range=all", () => {
 		expect(parseActivityFilter(undefined)).toEqual({ ok: true, value: {} });
 		expect(parseActivityFilter("")).toEqual({ ok: true, value: {} });
-		expect(parseActivityFilter("range=all")).toEqual({ ok: true, value: {} });
+		expect(parseActivityFilter("range=all")).toEqual({
+			ok: true,
+			value: { rangeAll: true },
+		});
 	});
 
 	it("keeps the search text as sent", () => {
@@ -53,6 +56,39 @@ describe("parseActivityFilter", () => {
 	])("refuses %s", (_name, raw) => {
 		const parsed = parseActivityFilter(raw);
 		expect(parsed.ok).toBe(false);
+	});
+});
+
+describe("withDefaultRange", () => {
+	const TODAY = "2026-02-14";
+
+	it("reads no dates as this month, like the web", () => {
+		expect(withDefaultRange({ kinds: ["expense"] }, TODAY)).toEqual({
+			kinds: ["expense"],
+			from: "2026-02-01",
+			to: "2026-02-28",
+		});
+		expect(withDefaultRange({}, "2028-02-29")).toMatchObject({
+			from: "2028-02-01",
+			to: "2028-02-29",
+		});
+		expect(withDefaultRange({}, "2026-12-31")).toMatchObject({
+			to: "2026-12-31",
+		});
+	});
+
+	it("leaves a filter with dates, a search, a category or range=all as it is", () => {
+		expect(withDefaultRange({ from: "2026-01-01" }, TODAY)).toEqual({
+			from: "2026-01-01",
+		});
+		expect(withDefaultRange({ to: "2026-01-31" }, TODAY)).toEqual({
+			to: "2026-01-31",
+		});
+		expect(withDefaultRange({ q: "cafe" }, TODAY)).toEqual({ q: "cafe" });
+		expect(withDefaultRange({ categoryIds: ["c1"] }, TODAY)).toEqual({
+			categoryIds: ["c1"],
+		});
+		expect(withDefaultRange({ rangeAll: true }, TODAY)).toEqual({});
 	});
 });
 

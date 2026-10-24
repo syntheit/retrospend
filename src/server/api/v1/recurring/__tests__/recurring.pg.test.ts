@@ -334,6 +334,74 @@ describe("/api/v1/recurring", () => {
 		).resolves.toBe(0);
 	});
 
+	describe.each([
+		["expense", "out"],
+		["income", "in"],
+	] as const)("undoing an older %s confirm", (_name, direction) => {
+		it("is refused while a later confirm stands, so no period is booked twice", async () => {
+			// Weekly, three periods overdue: due 15, 8 and 1 days ago.
+			const item = await make({
+				name: `Weekly ${direction}`,
+				frequency: "WEEKLY",
+				nextDueDate: daysAgo(15),
+				direction,
+			});
+			const confirm = async () =>
+				expectBody<Confirm>(
+					await send("POST", `/recurring/${item.id}/confirm`, {}),
+					c.confirm,
+				);
+			const first = await confirm();
+			const second = await confirm();
+			const third = await confirm();
+			const rows = () =>
+				adminDb.expense.count({ where: { recurringTemplateId: item.id } });
+			const dueAt = async () =>
+				(
+					await adminDb.recurringTemplate.findUniqueOrThrow({
+						where: { id: item.id },
+					})
+				).nextDueDate.toISOString();
+			expect(await rows()).toBe(3);
+			const afterThree = await dueAt();
+
+			for (const older of [first, second]) {
+				await expectProblem(
+					await send("POST", "/recurring/undo", { token: older.undo }),
+					409,
+					"conflict",
+				);
+				await expectProblem(
+					await send("POST", "/recurring/undo/preview", { token: older.undo }),
+					409,
+					"conflict",
+				);
+			}
+			expect(await rows()).toBe(3);
+			expect(await dueAt()).toBe(afterThree);
+
+			// Newest first works, and the template walks back one period each time.
+			for (const token of [third.undo, second.undo, first.undo])
+				await expectBody(
+					await send("POST", "/recurring/undo", { token }),
+					c.undo,
+				);
+			expect(await rows()).toBe(0);
+			expect(await dueAt()).toBe(item.dueAt);
+
+			// Confirming until it is not due books each period once: three rows.
+			await confirm();
+			await confirm();
+			await confirm();
+			expect(await rows()).toBe(3);
+			await expectProblem(
+				await send("POST", `/recurring/${item.id}/confirm`, {}),
+				409,
+				"conflict",
+			);
+		});
+	});
+
 	it("keeps templates to their owner", async () => {
 		const item = await make({ name: "Alice only" });
 		await expectProblem(
