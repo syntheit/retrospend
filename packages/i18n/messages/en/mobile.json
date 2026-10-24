@@ -7,6 +7,14 @@
 		"projects": "Projects",
 		"add": "Add expense"
 	},
+	"common": {
+		"cancel": "Cancel",
+		"undo": "Undo"
+	},
+	"keypad": {
+		"delete": "Delete",
+		"decimal": "Decimal point"
+	},
 	"connect": {
 		"title": "Connect to a server",
 		"intro": "Use retrospend.app, or the address of a server you host.",
@@ -20,5 +28,39 @@
 		"insecureWarning": "This server doesn't use HTTPS. Your password and data travel unencrypted. Only continue on a network you trust.",
 		"continueAnyway": "Continue anyway",
 		"saveFailed": "Couldn't save this server. Try again."
+	},
+	"signIn": {
+		"title": "Sign in",
+		"intro": "Sign in to {host}.",
+		"expired": "Your session ended. Sign in again.",
+		"email": "Email",
+		"password": "Password",
+		"code": "Authentication code",
+		"codeHint": "Enter the 6 digits from your authenticator app, or a backup code.",
+		"submit": "Sign in",
+		"verify": "Verify",
+		"signingIn": "Signing in",
+		"error": {
+			"invalidCredentials": "That email and password don't match.",
+			"invalidCode": "That code isn't right. Try again.",
+			"emailNotVerified": "Verify your email first, then sign in.",
+			"rateLimited": "Too many tries. Wait a minute and try again.",
+			"network": "Couldn't reach the server. Check your connection.",
+			"unknown": "Couldn't sign in. Try again."
+		}
+	},
+	"account": {
+		"open": "Account",
+		"signOut": "Sign out"
+	},
+	"activity": {
+		"title": "Activity",
+		"loading": "Loading",
+		"empty": "No expenses yet",
+		"unavailable": "Activity isn't on this server yet",
+		"unavailableDetail": "Update the server to see your expenses here.",
+		"error": "Couldn't load activity",
+		"errorDetail": "Check your connection and try again.",
+		"pick": "Pick an expense"
 	}
 }

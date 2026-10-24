@@ -4,6 +4,7 @@
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"types": ["jest"],
+		"moduleSuffixes": [".ios", ""],
 		"paths": {
 			"@/*": ["./src/*"]
 		}
