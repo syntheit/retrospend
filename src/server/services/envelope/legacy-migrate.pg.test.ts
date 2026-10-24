@@ -554,6 +554,23 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		expect(book.legacyMigrationRunId).toMatch(/^lazy-/);
 	});
 
+	it("Needs you and the dashboard pace move them in too", async () => {
+		const n = await person();
+		const rent = await n.cat("Rent", true);
+		await budget(n.user.id, { categoryId: rent, amount: "250.00" });
+		await userTransaction(adminDb, n.user.id, (tx) =>
+			needsYouIn(tx, n.user.id, { budget: true, timeZone: "UTC" }),
+		);
+		expect(
+			await adminDb.budgetBook.count({ where: { createdById: n.user.id } }),
+		).toBe(1);
+		const p = await person();
+		const dine = await p.cat("Dining");
+		await budget(p.user.id, { categoryId: dine, amount: "75.00" });
+		const pace = await getPacing(p.user.id, new Date(), "UTC");
+		expect(pace?.total.budget).toEqual({ minor: 7_500, currency: "USD" });
+	});
+
 	it("a person with no old budgets stays on Just track", async () => {
 		const p = await person();
 		expect(await getMonth(p.user.id, undefined, new Date(), "UTC")).toBeNull();

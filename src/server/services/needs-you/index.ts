@@ -10,7 +10,10 @@ import { userTransaction } from "~/server/db-tx";
 import { hiddenRowCount } from "~/server/services/envelope/hidden-rows";
 import type { LoadedBook } from "~/server/services/envelope/inputs";
 import { ensureLegacyBook } from "~/server/services/envelope/legacy-migrate.service";
-import { monthViewIn } from "~/server/services/envelope/month-read";
+import {
+	forgetMonthViews,
+	monthViewIn,
+} from "~/server/services/envelope/month-read";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
 import { userTimeZone } from "~/server/services/user-time-zone";
@@ -43,11 +46,18 @@ async function budgetSource(
 	now: Date,
 	timeZone: string,
 ): Promise<NeedsYouItem[]> {
-	// A person with old limits and no book moves in on this first read (02 §6).
-	await ensureLegacyBook(tx, userId, now, timeZone);
 	// Rules take their part of new money in first (sidecar rows), so Give it a job shows what is left (S24).
 	await runPendingRules(tx, userId, now);
-	const view = await monthViewIn(tx, userId, now);
+	let view = await monthViewIn(tx, userId, now);
+	// A person with old limits and no book moves in on this first read (02 §6).
+	if (!view) {
+		const moved = await ensureLegacyBook(tx, userId, now, timeZone);
+		// HAS_BOOK: a read at the same moment moved them first.
+		if (moved?.status === "MIGRATED" || moved?.status === "HAS_BOOK") {
+			forgetMonthViews(tx);
+			view = await monthViewIn(tx, userId, now);
+		}
+	}
 	if (!view) return [];
 	const row = view.loaded.row;
 	return budgetItems({
@@ -55,7 +65,7 @@ async function budgetSource(
 		paused: row.pausedAt !== null,
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
 		closes: closeFacts(view.loaded, now),
-		hiddenRows: await hiddenRowCount(tx, userId),
+		hiddenRows: await hiddenRowCount(tx, userId, row),
 		reconcileDue:
 			row.reconciledAt !== null &&
 			isoDateIn(row.reconciledAt, row.timeZone) < view.dto.month.from,

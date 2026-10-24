@@ -18,8 +18,7 @@ import type { Prisma } from "~prisma";
 import { pacingOf } from "./dashboard-pacing";
 import { envelopeExportFiles } from "./envelope-export";
 import { hiddenRowCount, hiddenRowsIn } from "./hidden-rows";
-import { monthViewIn } from "./month-read";
-import { prepareRead } from "./read.service";
+import { closedView } from "./read.service";
 
 function run<T>(
 	userId: string,
@@ -99,8 +98,7 @@ export function getPacing(
 	timeZone: string | null = null,
 ): Promise<EnvelopePacing | null> {
 	return run(userId, async (tx) => {
-		await prepareRead(tx, userId, now, timeZone);
-		const view = await monthViewIn(tx, userId, now);
+		const view = await closedView(tx, userId, now, undefined, timeZone);
 		return view ? pacingOf(view.dto) : null;
 	});
 }

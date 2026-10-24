@@ -27,18 +27,29 @@ import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
 
+/** The book fields the review span reads. */
+export interface ReviewBook {
+	currency: string;
+	startMonth: number;
+	monthStartDay: number;
+	timeZone: string;
+	legacyMigratedAt: Date | null;
+}
+
 /** The migrated book and the first month's span, or null (no book, or not a migrated one). */
-async function reviewSpan(tx: Tx, userId: string) {
-	const book = await tx.budgetBook.findFirst({
-		where: { createdById: userId, isPersonal: true },
-		select: {
-			currency: true,
-			startMonth: true,
-			monthStartDay: true,
-			timeZone: true,
-			legacyMigratedAt: true,
-		},
-	});
+async function reviewSpan(tx: Tx, userId: string, known?: ReviewBook) {
+	const book =
+		known ??
+		(await tx.budgetBook.findFirst({
+			where: { createdById: userId, isPersonal: true },
+			select: {
+				currency: true,
+				startMonth: true,
+				monthStartDay: true,
+				timeZone: true,
+				legacyMigratedAt: true,
+			},
+		}));
 	if (!book?.legacyMigratedAt) return null;
 	return {
 		currency: book.currency,
@@ -94,9 +105,16 @@ export async function hiddenRowsIn(
 	return { currency: span.currency, rows };
 }
 
-/** How many rows wait, for Needs you (one cheap count). */
-export async function hiddenRowCount(tx: Tx, userId: string): Promise<number> {
-	const span = await reviewSpan(tx, userId);
+/**
+ * How many rows wait, for Needs you: one count, and none for a book that did
+ * not come from the old budget. A caller that already holds the book passes it.
+ */
+export async function hiddenRowCount(
+	tx: Tx,
+	userId: string,
+	book?: ReviewBook,
+): Promise<number> {
+	const span = await reviewSpan(tx, userId, book);
 	if (!span) return 0;
 	return tx.expense.count({
 		where: {

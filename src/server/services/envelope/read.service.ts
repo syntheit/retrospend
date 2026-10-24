@@ -24,6 +24,7 @@ import { ensureMonthsClosed } from "./month-close.service";
 import {
 	coverSourcesIn,
 	fillFromTargetsIn,
+	forgetMonthViews,
 	historyIn,
 	monthViewIn,
 } from "./month-read";
@@ -41,32 +42,40 @@ function read<T>(
 	return userTransaction(db, userId, work);
 }
 
-/** A month read after the lazy close (SPEC §5.5): months before today's close on first read. */
-async function closedView(
+/**
+ * A month read after the lazy close (SPEC §5.5): months before today's close
+ * on first read. A person with no book but old limits moves into Limits here
+ * (02 §6) and reads their new month; everyone else pays nothing extra.
+ */
+export async function closedView(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	now: Date,
 	month?: MonthKey,
 	timeZone: string | null = null,
 ) {
-	await prepareRead(tx, userId, now, timeZone);
+	await prepareRead(tx, userId, now);
+	const view = await monthViewIn(tx, userId, now, month);
+	if (view) return view;
+	const moved = await ensureLegacyBook(tx, userId, now, timeZone);
+	// HAS_BOOK: a read at the same moment moved them first.
+	if (moved?.status !== "MIGRATED" && moved?.status !== "HAS_BOOK") return null;
+	forgetMonthViews(tx);
+	await prepareRead(tx, userId, now);
 	return monthViewIn(tx, userId, now, month);
 }
 
 /**
  * The lazy steps before any budget read (02 §5.3), each a cheap check when
- * nothing waits: move a person with old limits and no book into Limits (02
- * §6), close finished months, then run income rules on money in nobody ran
- * them on (sidecar rows, edits, deletes). Needs you and other readers of the
- * month view call this first too.
+ * nothing waits: close finished months, then run income rules on money in
+ * nobody ran them on (sidecar rows, edits, deletes). Needs you and other
+ * readers of the month view call this first too.
  */
 export async function prepareRead(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	now: Date,
-	timeZone: string | null = null,
 ) {
-	await ensureLegacyBook(tx, userId, now, timeZone);
 	await ensureMonthsClosed(tx, userId, now);
 	await runPendingRules(tx, userId, now);
 }
