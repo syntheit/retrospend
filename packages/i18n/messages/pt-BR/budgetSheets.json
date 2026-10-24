@@ -88,7 +88,9 @@
 		"gap": "<amount></amount> atinge a meta deste mês.",
 		"toastIn": "Você moveu {amount} de {other} para {name}",
 		"toastOut": "Você moveu {amount} de {name} para {other}",
-		"envelopeFallback": "Envelope"
+		"envelopeFallback": "Envelope",
+		"envelope": "Envelope",
+		"pick": "Escolha um envelope"
 	},
 	"plan": {
 		"title": "Usar meu plano",
@@ -202,7 +204,8 @@
 		"fund": "Financiar {next}",
 		"lead": "Isto tira o plano de {next} do que este mês ainda não planejou e coloca já nos envelopes de {next}.",
 		"toast": "Você financiou {next} com o dinheiro deste mês",
-		"envelopeFallback": "Envelope"
+		"envelopeFallback": "Envelope",
+		"noPlan": "Ainda não há plano para o mês seguinte. Planeje primeiro e depois financie."
 	},
 	"reconcile": {
 		"title": "Isso bate com o seu banco?",
@@ -354,7 +357,11 @@
 		"overspendHint": "Envelopes que estouraram em meses fechados.",
 		"returned": "Sobras devolvidas",
 		"heldForOthers": "Guardado para outros",
-		"heldHint": "Dinheiro que você adiantou e ainda lhe devem. Volta quando pagam."
+		"heldHint": "Dinheiro que você adiantou e ainda lhe devem. Volta quando pagam.",
+		"groupTitle": "Como {name} é formado",
+		"noGroup": "Outros envelopes",
+		"leftToSpendTitle": "Como Disponível para gastar é formado",
+		"leftToSpend": "Disponível para gastar"
 	},
 	"rules": {
 		"title": "Regras de renda",
@@ -416,5 +423,17 @@
 		"coverFrom": "De {name}",
 		"uncovered": "Nada pode cobrir esta parte",
 		"idle": "Digite um valor para ver o efeito."
+	},
+	"setup": {
+		"title": "Configure seu orçamento",
+		"lead": "Como você gosta de orçar? Não há resposta errada. Você pode mudar quando quiser.",
+		"style": "Estilo",
+		"haveNow": "Quanto dinheiro você pode orçar agora?",
+		"amountFor": "Valor para {name}",
+		"keep": "Usar {name}",
+		"followsRecurring": "Segue sua despesa recorrente",
+		"moneyNow": "Dinheiro para planejar",
+		"start": "Começar meu orçamento",
+		"toast": "Seu orçamento está pronto"
 	}
 }

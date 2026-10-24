@@ -88,7 +88,9 @@
 		"gap": "<amount></amount> alcanza el objetivo de este mes.",
 		"toastIn": "Moviste {amount} de {other} a {name}",
 		"toastOut": "Moviste {amount} de {name} a {other}",
-		"envelopeFallback": "Sobre"
+		"envelopeFallback": "Sobre",
+		"envelope": "Sobre",
+		"pick": "Elegí un sobre"
 	},
 	"plan": {
 		"title": "Usar mi plan",
@@ -202,7 +204,8 @@
 		"fund": "Fondear {next}",
 		"lead": "Esto saca el plan de {next} de lo que este mes no planificó todavía y lo pone ya en los sobres de {next}.",
 		"toast": "Fondeaste {next} con la plata de este mes",
-		"envelopeFallback": "Sobre"
+		"envelopeFallback": "Sobre",
+		"noPlan": "Todavía no hay un plan para el mes que viene. Primero planificalo y después fondealo."
 	},
 	"reconcile": {
 		"title": "¿Coincide con tu banco?",
@@ -354,7 +357,11 @@
 		"overspendHint": "Sobres que se pasaron en meses cerrados.",
 		"returned": "Sobrantes devueltos",
 		"heldForOthers": "Reservado para otros",
-		"heldHint": "Plata que adelantaste y todavía te deben. Vuelve cuando pagan."
+		"heldHint": "Plata que adelantaste y todavía te deben. Vuelve cuando pagan.",
+		"groupTitle": "Cómo se arma {name}",
+		"noGroup": "Otros sobres",
+		"leftToSpendTitle": "Cómo se arma Disponible para gastar",
+		"leftToSpend": "Disponible para gastar"
 	},
 	"rules": {
 		"title": "Reglas de ingresos",
@@ -416,5 +423,17 @@
 		"coverFrom": "Desde {name}",
 		"uncovered": "Nada puede cubrir esta parte",
 		"idle": "Escribí un monto para ver qué haría."
+	},
+	"setup": {
+		"title": "Armá tu presupuesto",
+		"lead": "¿Cómo te gusta presupuestar? No hay respuesta incorrecta. Lo podés cambiar cuando quieras.",
+		"style": "Estilo",
+		"haveNow": "¿Cuánta plata podés presupuestar ahora?",
+		"amountFor": "Monto para {name}",
+		"keep": "Usar {name}",
+		"followsRecurring": "Sigue tu gasto recurrente",
+		"moneyNow": "Plata para planificar",
+		"start": "Empezar mi presupuesto",
+		"toast": "Tu presupuesto está listo"
 	}
 }

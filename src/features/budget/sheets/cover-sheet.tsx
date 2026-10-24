@@ -12,7 +12,7 @@ import { api, type RouterInputs } from "~/trpc/react";
 import { EnvelopeSelect, type Place, POOL } from "./envelope-select";
 import { MovementChanges } from "./movement-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useDryRun } from "./use-dry-run";
 import { useMonth } from "./use-month";
@@ -32,7 +32,7 @@ export function CoverSheet({
 	onClose,
 	month,
 	envelopeId,
-}: SheetComponentProps<"cover">) {
+}: SheetProps<{ envelopeId: string }>) {
 	const t = useTranslations("budgetSheets.cover");
 	const { short } = useRowDates();
 	const m = useMonth(month);

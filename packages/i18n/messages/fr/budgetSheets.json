@@ -88,7 +88,9 @@
 		"gap": "<amount></amount> atteint l'objectif de ce mois.",
 		"toastIn": "{amount} déplacé de {other} vers {name}",
 		"toastOut": "{amount} déplacé de {name} vers {other}",
-		"envelopeFallback": "Enveloppe"
+		"envelopeFallback": "Enveloppe",
+		"envelope": "Enveloppe",
+		"pick": "Choisis une enveloppe"
 	},
 	"plan": {
 		"title": "Utiliser mon plan",
@@ -202,7 +204,8 @@
 		"fund": "Financer {next}",
 		"lead": "Cela prend le plan de {next} sur ce que ce mois n'a pas encore prévu et le met dès maintenant dans les enveloppes de {next}.",
 		"toast": "{next} financé avec l'argent de ce mois",
-		"envelopeFallback": "Enveloppe"
+		"envelopeFallback": "Enveloppe",
+		"noPlan": "Il n'y a pas encore de plan pour le mois suivant. Prévois-le d'abord, puis finance-le."
 	},
 	"reconcile": {
 		"title": "Est-ce que cela correspond à ta banque ?",
@@ -354,7 +357,11 @@
 		"overspendHint": "Enveloppes qui ont dépassé dans des mois clôturés.",
 		"returned": "Restes rendus",
 		"heldForOthers": "Gardé pour les autres",
-		"heldHint": "Argent avancé que l'on te doit encore. Il revient quand on te paie."
+		"heldHint": "Argent avancé que l'on te doit encore. Il revient quand on te paie.",
+		"groupTitle": "Comment se compose {name}",
+		"noGroup": "Autres enveloppes",
+		"leftToSpendTitle": "Comment se compose Reste à dépenser",
+		"leftToSpend": "Reste à dépenser"
 	},
 	"rules": {
 		"title": "Règles de revenus",
@@ -416,5 +423,17 @@
 		"coverFrom": "Depuis {name}",
 		"uncovered": "Rien ne peut couvrir cette part",
 		"idle": "Saisis un montant pour voir l'effet."
+	},
+	"setup": {
+		"title": "Mets en place ton budget",
+		"lead": "Comment aimes-tu budgétiser ? Il n'y a pas de mauvaise réponse. Tu peux changer à tout moment.",
+		"style": "Style",
+		"haveNow": "Combien d'argent peux-tu budgétiser maintenant ?",
+		"amountFor": "Montant pour {name}",
+		"keep": "Utiliser {name}",
+		"followsRecurring": "Suit ta dépense récurrente",
+		"moneyNow": "Argent à planifier",
+		"start": "Démarrer mon budget",
+		"toast": "Ton budget est prêt"
 	}
 }

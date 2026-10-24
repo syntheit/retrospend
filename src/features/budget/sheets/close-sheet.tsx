@@ -11,7 +11,7 @@ import { api } from "~/trpc/react";
 import { CarryOverspend } from "./carry-overspend";
 import { EnvelopeTile } from "./envelope-tile";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useMonth } from "./use-month";
 import { useMonthName } from "./use-month-name";
 import { useBudgetWrite } from "./use-write";
@@ -31,7 +31,7 @@ export function CloseSheet({
 	onClose,
 	month: viewed,
 	closedMonth,
-}: SheetComponentProps<"close">) {
+}: SheetProps<{ closedMonth: number }>) {
 	const t = useTranslations("budgetSheets.close");
 	const name = useMonthName();
 	const { refresh } = useBudgetWrite();

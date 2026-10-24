@@ -12,7 +12,7 @@ import { api, type RouterInputs } from "~/trpc/react";
 import { EnvelopeSelect, type Place, POOL } from "./envelope-select";
 import { FigureChanges } from "./figure-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
@@ -31,7 +31,9 @@ export function ForgiveSheet({
 	onClose,
 	month,
 	participant,
-}: SheetComponentProps<"forgive">) {
+}: SheetProps<{
+	participant: { type: "user" | "guest" | "shadow"; id: string };
+}>) {
 	const t = useTranslations("budgetSheets.forgive");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);

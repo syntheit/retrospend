@@ -12,7 +12,7 @@ import { api, type RouterInputs } from "~/trpc/react";
 import { EnvelopeSelect, type Place } from "./envelope-select";
 import { MovementChanges } from "./movement-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
@@ -32,7 +32,7 @@ function LimitSheet({
 	onClose,
 	month,
 	fixedEnvelopeId,
-}: SheetComponentProps<"setLimit"> & { fixedEnvelopeId?: string }) {
+}: SheetProps & { fixedEnvelopeId?: string }) {
 	const t = useTranslations("budgetSheets.limit");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
@@ -137,10 +137,10 @@ function LimitSheet({
 	);
 }
 
-export function RaiseLimitSheet(props: SheetComponentProps<"raiseLimit">) {
+export function RaiseLimitSheet(props: SheetProps<{ envelopeId: string }>) {
 	return <LimitSheet {...props} fixedEnvelopeId={props.envelopeId} />;
 }
 
-export function SetLimitSheet(props: SheetComponentProps<"setLimit">) {
+export function SetLimitSheet(props: SheetProps) {
 	return <LimitSheet {...props} />;
 }

@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Sheet } from "~/components/ui/sheet";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useMonth } from "./use-month";
 
 const WORDS = [
@@ -34,11 +34,7 @@ function shown(word: Word, style: string | null): boolean {
  * reachable from every hero and the menu. Words that belong to another
  * style are left out.
  */
-export function HelpSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"help">) {
+export function HelpSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.help");
 	const m = useMonth(month);
 	const style = m.data?.book.style ?? null;

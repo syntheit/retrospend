@@ -8,6 +8,9 @@ import { useToast } from "~/components/ui/toast";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 
+/** The longest a sheet waits for the page's reads to refresh before it closes. */
+const REFRESH_WAIT_MS = 2_000;
+
 /** A fresh client id: writes carry one so a retry is a no-op (idempotent). */
 export const newId: () => string = generateId;
 
@@ -25,7 +28,11 @@ export function useBudgetWrite() {
 	const undoMovement = api.envelope.undo.useMutation();
 
 	const refresh = useCallback(async () => {
-		await Promise.all([utils.envelope.invalidate(), utils.home.invalidate()]);
+		// A read that keeps failing must not hold the sheet open: wait a moment, not forever.
+		await Promise.race([
+			Promise.all([utils.envelope.invalidate(), utils.home.invalidate()]),
+			new Promise((resolve) => setTimeout(resolve, REFRESH_WAIT_MS)),
+		]);
 		router.refresh();
 	}, [utils, router]);
 

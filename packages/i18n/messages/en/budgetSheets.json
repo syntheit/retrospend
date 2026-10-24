@@ -88,7 +88,9 @@
 		"gap": "<amount></amount> reaches this month's target.",
 		"toastIn": "Moved {amount} from {other} to {name}",
 		"toastOut": "Moved {amount} from {name} to {other}",
-		"envelopeFallback": "Envelope"
+		"envelopeFallback": "Envelope",
+		"envelope": "Envelope",
+		"pick": "Pick an envelope"
 	},
 	"plan": {
 		"title": "Use my plan",
@@ -202,7 +204,8 @@
 		"fund": "Fund {next}",
 		"lead": "This takes {next}'s plan out of what this month has not planned yet and puts it in {next}'s envelopes now.",
 		"toast": "Funded {next} from this month's money",
-		"envelopeFallback": "Envelope"
+		"envelopeFallback": "Envelope",
+		"noPlan": "There is no plan for next month yet. Plan it first, then fund it."
 	},
 	"reconcile": {
 		"title": "Does this match your bank?",
@@ -354,7 +357,11 @@
 		"overspendHint": "Envelopes that went over in closed months.",
 		"returned": "Leftovers returned",
 		"heldForOthers": "Held for others",
-		"heldHint": "Money you fronted that people still owe you. It returns when they pay."
+		"heldHint": "Money you fronted that people still owe you. It returns when they pay.",
+		"groupTitle": "How {name} adds up",
+		"noGroup": "Other envelopes",
+		"leftToSpendTitle": "How Left to spend adds up",
+		"leftToSpend": "Left to spend"
 	},
 	"rules": {
 		"title": "Income rules",
@@ -416,5 +423,17 @@
 		"coverFrom": "From {name}",
 		"uncovered": "Nothing can cover this part",
 		"idle": "Type an amount to see what it would do."
+	},
+	"setup": {
+		"title": "Set up your budget",
+		"lead": "How do you like to budget? There is no wrong answer. You can change it anytime.",
+		"style": "Style",
+		"haveNow": "How much money can you budget right now?",
+		"amountFor": "Amount for {name}",
+		"keep": "Use {name}",
+		"followsRecurring": "Follows your recurring expense",
+		"moneyNow": "Money to plan",
+		"start": "Start my budget",
+		"toast": "Your budget is ready"
 	}
 }

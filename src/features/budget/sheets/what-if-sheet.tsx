@@ -11,7 +11,7 @@ import { Field } from "~/features/entry/shared-ui";
 import { api } from "~/trpc/react";
 import { EnvelopeSelect, type Place, POOL } from "./envelope-select";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useDryRun } from "./use-dry-run";
 import { useMonth } from "./use-month";
@@ -29,7 +29,7 @@ export function WhatIfSheet({
 	onClose,
 	month,
 	envelopeId: startId,
-}: SheetComponentProps<"whatIf">) {
+}: SheetProps<{ envelopeId?: string }>) {
 	const t = useTranslations("budgetSheets.whatIf");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);

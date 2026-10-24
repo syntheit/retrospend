@@ -17,7 +17,7 @@ import { Field } from "~/features/entry/shared-ui";
 import { api, type RouterInputs } from "~/trpc/react";
 import { FigureChanges } from "./figure-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
@@ -44,11 +44,7 @@ const STYLES: Style[] = [
  * style change are listed) and Undo puts the old style back. Just track
  * pauses the budget and moves no money.
  */
-export function StyleSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"style">) {
+export function StyleSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.style");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);

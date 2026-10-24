@@ -12,7 +12,7 @@ import { api, type RouterInputs } from "~/trpc/react";
 import { EnvelopeSelect, type Place, POOL } from "./envelope-select";
 import { MovementChanges } from "./movement-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useDryRun } from "./use-dry-run";
 import { useMonth } from "./use-month";
@@ -40,15 +40,21 @@ export function MoveSheet({
 	open,
 	onClose,
 	month,
-	envelopeId,
+	envelopeId: startId,
 	direction: startDirection = "in",
 	amountMinor,
-}: SheetComponentProps<"move">) {
+}: SheetProps<{
+	envelopeId?: string;
+	direction?: Direction;
+	amountMinor?: number;
+}>) {
 	const t = useTranslations("budgetSheets.move");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
 	const { refresh, saved, undoOf, money } = useBudgetWrite();
-	const env = m.byId.get(envelopeId) ?? null;
+	const [picked, setPicked] = useState<string | null>(startId ?? null);
+	const envelopeId = picked;
+	const env = envelopeId ? (m.byId.get(envelopeId) ?? null) : null;
 	const currency = m.data?.book.currency ?? "";
 	const [direction, setDirection] = useState<Direction>(startDirection);
 	const [peer, setPeer] = useState<string>(POOL);
@@ -80,7 +86,7 @@ export function MoveSheet({
 
 	const op: Op | null = useMemo(() => {
 		const minor = amount.minor;
-		if (!m.monthKey || !minor || minor <= 0) return null;
+		if (!m.monthKey || !envelopeId || !minor || minor <= 0) return null;
 		const month = m.monthKey;
 		if (direction === "in" && peer === POOL)
 			return {
@@ -146,15 +152,32 @@ export function MoveSheet({
 			submitLabel={t("move")}
 			title={env?.name ?? t("title")}
 		>
-			{m.loading || !env ? (
+			{m.loading || !m.data ? (
 				<SkeletonRows count={3} />
 			) : (
 				<div className="flex flex-col gap-4 pb-4">
-					<p className="text-fg-2 text-small">
-						{t.rich("has", {
-							left: () => <Money figure="envelope.left" value={env.left} />,
-						})}
-					</p>
+					{startId ? null : (
+						<Field label={t("envelope")}>
+							<EnvelopeSelect
+								label={t("envelope")}
+								onChange={setPicked}
+								placeholder={t("pick")}
+								places={m.envelopes.map((e) => ({
+									value: e.id,
+									name: e.name,
+									amount: e.left,
+								}))}
+								value={picked}
+							/>
+						</Field>
+					)}
+					{env ? (
+						<p className="text-fg-2 text-small">
+							{t.rich("has", {
+								left: () => <Money figure="envelope.left" value={env.left} />,
+							})}
+						</p>
+					) : null}
 					<Segmented
 						label={t("direction")}
 						onChange={(d) => {
@@ -185,7 +208,7 @@ export function MoveSheet({
 					{gap > 0 && direction === "in" ? (
 						<p className="text-fg-3 text-small">
 							{t.rich("gap", {
-								amount: () => <Money value={env.target?.need ?? null} />,
+								amount: () => <Money value={env?.target?.need ?? null} />,
 							})}
 						</p>
 					) : null}

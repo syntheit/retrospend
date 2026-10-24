@@ -8,10 +8,10 @@ import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { Field } from "~/features/entry/shared-ui";
 import { api, type RouterInputs } from "~/trpc/react";
-import { useBudgetSheets } from "./controls";
+import { CloseSheet } from "./close-sheet";
 import { FigureChanges } from "./figure-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
@@ -28,13 +28,9 @@ type Input = RouterInputs["envelope"]["welcomeBack"];
  * (prefilled from Wealth); Start fresh returns every envelope's Left to
  * To assign in one batch. Each is previewed by the server and undoable.
  */
-export function WelcomeBackSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"welcomeBack">) {
+export function WelcomeBackSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.welcomeBack");
-	const sheets = useBudgetSheets();
+	const [reading, setReading] = useState<number | null>(null);
 	const monthName = useMonthName();
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
@@ -72,17 +68,21 @@ export function WelcomeBackSheet({
 		},
 		after: (r) => {
 			const first = r.value.months[0];
-			if (r.value.choice === "CATCH_UP" && first)
-				sheets.open("close", { closedMonth: first });
+			if (r.value.choice === "CATCH_UP" && first) setReading(first);
 		},
 	});
+	// Catching up stays here and opens the first summary on top; the rest follow.
+	const onSubmit = async () => {
+		const done = await w.submit();
+		return choice === "CATCH_UP" && (wb?.months.length ?? 0) > 0 ? false : done;
+	};
 
 	const closed = (wb?.months ?? []).map((x) => monthName(x.month)).join(", ");
 	return (
 		<Sheet
 			detent="large"
 			onOpenChange={(o) => !o && onClose()}
-			onSubmit={w.submit}
+			onSubmit={onSubmit}
 			open={open}
 			submitDisabled={!w.ready}
 			submitLabel={t(`go.${choice}`)}
@@ -124,6 +124,19 @@ export function WelcomeBackSheet({
 					)}
 				</div>
 			)}
+			{reading && wb ? (
+				<CloseSheet
+					closedMonth={reading}
+					month={month}
+					onClose={() => {
+						// The next month waiting to be read, or back to the page.
+						const later = wb.months.find((x) => x.month > reading);
+						if (later) setReading(later.month);
+						else onClose();
+					}}
+					open
+				/>
+			) : null}
 		</Sheet>
 	);
 }

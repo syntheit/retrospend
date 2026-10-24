@@ -88,7 +88,9 @@
 		"gap": "<amount></amount> erreicht das Ziel dieses Monats.",
 		"toastIn": "{amount} von {other} nach {name} verschoben",
 		"toastOut": "{amount} von {name} nach {other} verschoben",
-		"envelopeFallback": "Umschlag"
+		"envelopeFallback": "Umschlag",
+		"envelope": "Umschlag",
+		"pick": "Umschlag wählen"
 	},
 	"plan": {
 		"title": "Meinen Plan verwenden",
@@ -202,7 +204,8 @@
 		"fund": "{next} finanzieren",
 		"lead": "Das nimmt den Plan für {next} aus dem, was dieser Monat noch nicht verplant hat, und legt ihn jetzt in die Umschläge von {next}.",
 		"toast": "{next} mit dem Geld dieses Monats finanziert",
-		"envelopeFallback": "Umschlag"
+		"envelopeFallback": "Umschlag",
+		"noPlan": "Für den nächsten Monat gibt es noch keinen Plan. Plane ihn zuerst, dann finanziere ihn."
 	},
 	"reconcile": {
 		"title": "Stimmt das mit deiner Bank überein?",
@@ -354,7 +357,11 @@
 		"overspendHint": "Umschläge, die in abgeschlossenen Monaten überzogen wurden.",
 		"returned": "Zurückgegebene Reste",
 		"heldForOthers": "Für andere gehalten",
-		"heldHint": "Vorgestrecktes Geld, das dir noch geschuldet wird. Es kommt zurück, wenn gezahlt wird."
+		"heldHint": "Vorgestrecktes Geld, das dir noch geschuldet wird. Es kommt zurück, wenn gezahlt wird.",
+		"groupTitle": "Wie sich {name} zusammensetzt",
+		"noGroup": "Andere Umschläge",
+		"leftToSpendTitle": "Wie sich Noch verfügbar zusammensetzt",
+		"leftToSpend": "Noch verfügbar"
 	},
 	"rules": {
 		"title": "Einnahmeregeln",
@@ -416,5 +423,17 @@
 		"coverFrom": "Aus {name}",
 		"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
 		"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde."
+	},
+	"setup": {
+		"title": "Dein Budget einrichten",
+		"lead": "Wie planst du gern? Es gibt keine falsche Antwort. Du kannst es jederzeit ändern.",
+		"style": "Stil",
+		"haveNow": "Wie viel Geld kannst du gerade verplanen?",
+		"amountFor": "Betrag für {name}",
+		"keep": "{name} verwenden",
+		"followsRecurring": "Folgt deiner wiederkehrenden Ausgabe",
+		"moneyNow": "Geld zum Verplanen",
+		"start": "Mein Budget starten",
+		"toast": "Dein Budget ist bereit"
 	}
 }

@@ -21,7 +21,7 @@ import { usePoolName } from "./pool";
 import { RuleApply } from "./rule-apply";
 import { RuleEditor } from "./rule-editor";
 import { type Rule, useRuleSentence } from "./rule-sentence";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useMonth } from "./use-month";
 
 /**
@@ -30,11 +30,7 @@ import { useMonth } from "./use-month";
  * pausing, moving or removing never touches money already assigned. A rule
  * can also be applied once to this month's money in (previewed first).
  */
-export function RulesSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"rules">) {
+export function RulesSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.rules");
 	const sentence = useRuleSentence();
 	const utils = api.useUtils();

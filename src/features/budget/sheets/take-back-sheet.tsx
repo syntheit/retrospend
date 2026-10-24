@@ -8,7 +8,7 @@ import { SkeletonRows } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import { MovementChanges } from "./movement-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
 import { newId, useBudgetWrite } from "./use-write";
@@ -19,11 +19,7 @@ import { newId, useBudgetWrite } from "./use-write";
  * money (Spending first, then Savings; bills stay) as one batch, previewed
  * first, and Undo returns it.
  */
-export function TakeBackSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"takeBack">) {
+export function TakeBackSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.takeBack");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);

@@ -10,11 +10,11 @@ import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
-import { useBudgetSheets } from "./controls";
+import { AssignSheet } from "./assign-sheet";
 import { EnvelopeTile } from "./envelope-tile";
 import { MovementChanges } from "./movement-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useDryRun } from "./use-dry-run";
 import { useMonth } from "./use-month";
 import { newId, useBudgetWrite } from "./use-write";
@@ -59,9 +59,9 @@ export function PlanSheet({
 	onClose,
 	month,
 	amountMinor,
-}: SheetComponentProps<"plan">) {
+}: SheetProps<{ amountMinor?: number }>) {
 	const t = useTranslations("budgetSheets.plan");
-	const sheets = useBudgetSheets();
+	const [changing, setChanging] = useState(false);
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
 	const { refresh, saved, undoOf, money } = useBudgetWrite();
@@ -202,19 +202,22 @@ export function PlanSheet({
 						poolName={pool}
 					/>
 					<div>
-						<Button
-							kind="ghost"
-							onClick={() => {
-								onClose();
-								sheets.open("assign");
-							}}
-							size="sm"
-						>
+						<Button kind="ghost" onClick={() => setChanging(true)} size="sm">
 							{t("change")}
 						</Button>
 					</div>
 				</div>
 			)}
+			{changing ? (
+				<AssignSheet
+					month={month}
+					onClose={() => {
+						setChanging(false);
+						onClose();
+					}}
+					open
+				/>
+			) : null}
 		</Sheet>
 	);
 }

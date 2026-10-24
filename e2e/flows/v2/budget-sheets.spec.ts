@@ -182,7 +182,7 @@ test("Use my plan: lists the jobs, then writes one batch and undoes it", async (
 }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
-	const sheet = await openSheet(page, "plan", "Use my plan");
+	const sheet = await openSheet(page, "usePlan", "Use my plan");
 	await expect(sheet.getByText("these jobs")).toBeVisible();
 	await expect(sheet.getByText("Groceries")).toBeVisible();
 	const changes = sheet.getByRole("region", { name: "What this changes" });
@@ -260,6 +260,31 @@ test("What if: a pretend expense shows what the envelope would have", async ({
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await sheet.getByRole("button", { name: "Done" }).click();
 	await expect(sheet).toBeHidden();
+});
+
+test.describe("Set up your budget", () => {
+	// The admin account has no envelope book and no other flow uses it for money.
+	test.use({ storageState: ADMIN_STORAGE_STATE });
+
+	test("Flex: money now, the proposed envelopes, preview, start", async ({
+		page,
+	}) => {
+		test.setTimeout(180_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		const sheet = await openSheet(page, "setup", "Set up your budget");
+		await sheet
+			.getByRole("textbox", { name: "Amount", exact: true })
+			.fill("2000");
+		const changes = sheet.getByRole("region", { name: "What this changes" });
+		await expect(changes).toContainText("Money to plan");
+		await expect(changes).toContainText("USD 2,000.00");
+		expect(await bannedOutputOn(page), "banned output").toEqual([]);
+		const start = sheet.getByRole("button", { name: "Start my budget" });
+		await expect(start).toBeEnabled();
+		await untilSaved(page, "envelope.setup", () => start.click());
+		await expect(sheet).toBeHidden();
+		await expect(toast(page, "Your budget is ready")).toBeVisible();
+	});
 });
 
 test("Explain: Not planned yet adds up from the server's terms", async ({

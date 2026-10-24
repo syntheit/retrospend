@@ -11,7 +11,7 @@ import { Field } from "~/features/entry/shared-ui";
 import { api, type RouterInputs } from "~/trpc/react";
 import { FigureChanges } from "./figure-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAmount } from "./use-amount";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
@@ -26,11 +26,7 @@ type ReconcileInput = RouterInputs["envelope"]["reconcile"];
  * previewed first, and Undo removes it. Money people owe you is in neither
  * side and is shown apart.
  */
-export function ReconcileSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"reconcile">) {
+export function ReconcileSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.reconcile");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);

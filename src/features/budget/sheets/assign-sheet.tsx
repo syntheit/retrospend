@@ -10,7 +10,7 @@ import { api } from "~/trpc/react";
 import { AssignRows } from "./assign-rows";
 import { MovementChanges } from "./movement-changes";
 import { usePoolName } from "./pool";
-import type { SheetComponentProps } from "./types";
+import type { SheetProps } from "./types";
 import { useAssignDraft } from "./use-assign-draft";
 import { useDryRun } from "./use-dry-run";
 import { useMonth } from "./use-month";
@@ -23,11 +23,7 @@ import { useBudgetWrite } from "./use-write";
  * block show the server's dry run of the same write, and Save ends with an
  * Undo toast that takes the whole batch back.
  */
-export function AssignSheet({
-	open,
-	onClose,
-	month,
-}: SheetComponentProps<"assign">) {
+export function AssignSheet({ open, onClose, month }: SheetProps) {
 	const t = useTranslations("budgetSheets.assign");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
