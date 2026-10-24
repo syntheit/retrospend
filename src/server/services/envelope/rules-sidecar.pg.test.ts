@@ -31,7 +31,7 @@ import {
 	seedUser,
 	setupInput,
 } from "./__tests__/pg-fixture";
-import { assignEnvelopes, undoMovements } from "./movement.mutation";
+import { assignEnvelopes, moveMoney, undoMovements } from "./movement.mutation";
 import { applyRuleToMonthMutation } from "./plan.mutation";
 import { getMonth } from "./read.service";
 import { createRule } from "./rule-crud.service";
@@ -311,6 +311,64 @@ describe("a money in that goes away and comes back (review round 1)", () => {
 		await expect(state(s, b.id("Rent"))).resolves.toEqual([0, 100_000]);
 		const sides = await invariantAt(s.user.id);
 		expect(sides.budget).toBe(sides.ledger);
+	});
+});
+
+/**
+ * Review round 2: the take-back cap holds for every row an undo writes. A
+ * 1,000.00 money in dated next month: the rule puts 20,000 in Rent next
+ * month; edited to 1,500.00, a +10,000 delta. 15,000 of Rent's 30,000 then
+ * moves to Dining next month, so Rent holds 15,000 there. Undoing the delta
+ * would hand back 10,000 and then the first batch's 20,000: 30,000 to To
+ * assign from an envelope holding 15,000, so the undo is refused and
+ * nothing is written.
+ */
+describe("undoing a next-month rule batch (review round 2)", () => {
+	it("checks the take-back cap on the money in's other batches too", async () => {
+		const s = await seedUser();
+		const b = await book(s);
+		await rule(s, b.id("Rent"), 2_000);
+		const c = (await getMonth(s.user.id))?.month.key as number;
+		const next = c % 100 === 12 ? c + 89 : c + 1;
+		const day = new Date(
+			Date.UTC(Math.floor(next / 100), (next % 100) - 1, 10, 15),
+		);
+		const row = await addRow(
+			s.user.id,
+			{ amount: 1_000, direction: "IN", inType: "INCOME" },
+			day,
+		);
+		await getMonth(s.user.id);
+		await adminDb.expense.update({
+			where: { id: row.id },
+			data: {
+				amount: new Prisma.Decimal(1_500),
+				amountInUSD: new Prisma.Decimal(1_500),
+			},
+		});
+		const m = await getMonth(s.user.id, next);
+		expect(rowOf(m, b.id("Rent"))?.assigned.minor).toBe(30_000);
+		await forUser(s.user.id).apply(moveMoney, {
+			id: randomUUID(),
+			month: next,
+			from: b.id("Rent"),
+			to: b.id("Dining"),
+			amountMinor: 15_000,
+			kind: "MOVE",
+		});
+		const delta = (await ruleRows(b.bookId)).at(-1);
+		const before = await adminDb.budgetMovement.count({
+			where: { bookId: b.bookId },
+		});
+		await expect(
+			forUser(s.user.id).apply(undoMovements, {
+				id: randomUUID(),
+				target: { batchId: delta?.batchId as string },
+			}),
+		).rejects.toThrow(/more than the envelope holds/);
+		await expect(
+			adminDb.budgetMovement.count({ where: { bookId: b.bookId } }),
+		).resolves.toBe(before);
 	});
 });
 

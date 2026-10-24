@@ -6,14 +6,16 @@
 		"limits": "Лимиты",
 		"savings": "Сбережения",
 		"needs": "Необходимое",
-		"wants": "Желания"
+		"wants": "Желания",
+		"debts": "Долги"
 	},
 	"envelopes": {
 		"spending": "Расходы",
 		"savings": "Сбережения",
 		"everythingElse": "Всё остальное",
 		"needs": "Необходимое",
-		"wants": "Желания"
+		"wants": "Желания",
+		"extraDebt": "Дополнительное погашение"
 	},
 	"rules": {
 		"saveFirst": "Сначала сбережения",

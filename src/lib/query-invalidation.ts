@@ -102,6 +102,12 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.reconcile": ["dashboard", "expense"],
 	"envelope.removeAdjustment": ["dashboard", "expense"],
 	"envelope.welcomeBack": ["dashboard", "expense"],
+	// Debts: terms and the plan change the Wealth liability view and bills;
+	// a payment moves accounts, the liability and the budget.
+	"envelope.setDebtTerms": ["wealth", "dashboard"],
+	"envelope.savePayoffPlan": ENVELOPE_DEPS,
+	"envelope.revertPayoffPlan": ENVELOPE_DEPS,
+	"envelope.recordDebtPayment": ["wealth", "expense", "dashboard", "stats"],
 	"envelope.forgive": ["people", "dashboard"],
 	"envelope.unforgive": ["people", "dashboard"],
 

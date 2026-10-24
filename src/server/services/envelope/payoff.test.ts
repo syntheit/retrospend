@@ -203,3 +203,94 @@ describe("projectPayoff (SPEC §5.11)", () => {
 		expect(() => run({ debts: [debt("x", -1, "0", 0)] })).toThrow(RangeError);
 	});
 });
+
+/**
+ * Three debts worked out by hand, month by month, from November 2026. The
+ * rounding rule: each month interest = balance x APR / 1200 in minor units,
+ * rounded half-even (18.24 cents is 18, 409.55 is 410); then each debt's
+ * minimum; then the extra (100.00) plus every freed minimum to the target.
+ *
+ *   A 300.00 at 24% (2% a month), minimum 50.00
+ *   B 500.00 at 12% (1% a month), minimum 50.00
+ *   C 200.00 at 0%, minimum 20.00
+ *
+ * Avalanche (A, then B, then C):
+ *   Dec: A 300 + 6.00 - 50 = 256.00, extra 100 -> 156.00; B 505 - 50 = 455.00; C 180.00
+ *   Jan: A 156 + 3.12 - 50 - 100 = 9.12; B 455 + 4.55 - 50 = 409.55; C 160.00
+ *   Feb: A 9.12 + 0.18 = 9.30, its minimum pays it off and frees 40.70;
+ *        B 409.55 + 4.10 - 50 = 363.65, pool 140.70 -> 222.95; C 140.00
+ *   Mar: B 222.95 + 2.23 - 50 = 175.18, pool 150 (A's 50 freed) -> 25.18; C 120.00
+ *   Apr: B 25.18 + 0.25 = 25.43, its minimum pays it off and frees 24.57;
+ *        C 120 - 20 = 100.00, pool 174.57 pays it off. Debt-free April 2027.
+ *   Interest A 9.30, B 16.13, C 0: 25.43.
+ * Snowball (smallest balance first, after this month's minimums):
+ *   Dec: A 256.00; B 455.00; C 180.00 - 100 = 80.00
+ *   Jan: A 256 + 5.12 - 50 = 211.12; B 409.55; C 80 - 20 = 60.00, pool 100 pays
+ *        C off and 40 goes to A: 171.12
+ *   Feb: A 171.12 + 3.42 - 50 = 124.54, pool 120 (C's 20 freed) -> 4.54; B 363.65
+ *   Mar: A 4.54 + 0.09 = 4.63 paid by its minimum, frees 45.37;
+ *        B 363.65 + 3.64 - 50 = 317.29, pool 165.37 -> 151.92
+ *   Apr: B 151.92 + 1.52 - 50 = 103.44, pool 170 pays it off. Debt-free April 2027.
+ *   Interest A 14.63, B 18.81: 33.44.
+ */
+describe("hand-worked three-debt schedules", () => {
+	const three = [
+		debt("A", 300, "24", 50, { currency: "USD" }),
+		debt("B", 500, "12", 50, { currency: "USD" }),
+		debt("C", 200, "0", 20, { currency: "USD" }),
+	];
+	const plan = (strategy: PayoffInput["strategy"]) =>
+		payoffInput({
+			bookCurrency: "USD",
+			debts: three,
+			strategy,
+			extraMonthly: m(100),
+			startMonth: 202611,
+		});
+	const rows = (r: ReturnType<typeof projectPayoff>) =>
+		r.schedule.map((s) => [s.month, ...s.balances]);
+
+	it("avalanche: debt-free April 2027, 25.43 interest", () => {
+		const input = plan("AVALANCHE");
+		const r = projectPayoff(input);
+		expect(rows(r)).toEqual([
+			[202612, m(156), m(455), m(180)],
+			[202701, m(9.12), m(409.55), m(160)],
+			[202702, 0, m(222.95), m(140)],
+			[202703, 0, m(25.18), m(120)],
+			[202704, 0, 0, 0],
+		]);
+		expect(r.debtFreeMonth).toBe(202704);
+		expect(r.debts.map((d) => [d.id, d.payoffMonth, d.interest])).toEqual([
+			["A", 202702, m(9.3)],
+			["B", 202704, m(16.13)],
+			["C", 202704, 0],
+		]);
+		expect(r.totalInterest).toBe(m(25.43));
+		expect(r.debts.map((d) => [d.nextMinimum, d.nextExtra])).toEqual([
+			[m(50), m(100)],
+			[m(50), 0],
+			[m(20), 0],
+		]);
+		expectPaidInFull(input, r);
+	});
+
+	it("snowball: debt-free April 2027, 33.44 interest", () => {
+		const input = plan("SNOWBALL");
+		const r = projectPayoff(input);
+		expect(rows(r)).toEqual([
+			[202612, m(256), m(455), m(80)],
+			[202701, m(171.12), m(409.55), 0],
+			[202702, m(4.54), m(363.65), 0],
+			[202703, 0, m(151.92), 0],
+			[202704, 0, 0, 0],
+		]);
+		expect(r.debts.map((d) => [d.id, d.payoffMonth, d.interest])).toEqual([
+			["A", 202703, m(14.63)],
+			["B", 202704, m(18.81)],
+			["C", 202701, 0],
+		]);
+		expect(r.totalInterest).toBe(m(33.44));
+		expectPaidInFull(input, r);
+	});
+});
