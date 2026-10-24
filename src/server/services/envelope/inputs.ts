@@ -219,6 +219,7 @@ function viewEnvelopes(
 				categoryIds: e.categories.map((c) => c.categoryId),
 				archived: e.archivedAt !== null,
 				targetStartMonth: e.targetStartMonth,
+				liabilityId: e.targetLiabilityId,
 				...target,
 				// A dedicated account without a rate today leaves the goal incomplete.
 				targetIncomplete: target.targetIncomplete || value === null,

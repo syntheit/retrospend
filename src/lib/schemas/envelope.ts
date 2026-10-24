@@ -112,6 +112,8 @@ export const envelopeTargetSchema = z.object({
 	foreign: moneySchema.nullable(),
 	/** The foreign target has no rate today: need and amount are 0 and flagged. */
 	incomplete: z.boolean(),
+	/** BILL: the liability whose minimum it follows (SPEC §5.4); paid through Pay down a debt. */
+	liabilityId: idSchema.nullable().optional(),
 });
 
 export const leftThisWeekSchema = z.object({

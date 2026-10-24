@@ -225,6 +225,42 @@ function billDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 	];
 }
 
+/**
+ * "Debt payment due" (SPEC §5.14): a bill that follows a liability's
+ * minimum, due today or overdue, and not paid this cycle (the payment's
+ * principal leaves that envelope, so the 90% rule marks it paid).
+ */
+function debtDueItem(dto: GetMonthOutput): NeedsYouItem[] {
+	const due = envelopesOf(dto)
+		.filter(
+			(e) =>
+				e.target?.kind === "BILL" &&
+				e.target.liabilityId &&
+				!e.target.paid &&
+				e.target.dueDate !== null &&
+				e.target.dueDate <= dto.today,
+		)
+		.sort((a, b) =>
+			(a.target?.dueDate ?? "") < (b.target?.dueDate ?? "") ? -1 : 1,
+		);
+	const first = due[0];
+	if (!first?.target?.amount) return [];
+	return [
+		item("budget.debtDue", {
+			entity: { kind: "envelope", id: first.id },
+			entityIds: due.map((e) => e.target?.liabilityId as string),
+			amount: {
+				minor: due.reduce((t, e) => t + (e.target?.amount?.minor ?? 0), 0),
+				currency: first.target.amount.currency,
+			},
+			count: due.length,
+			date: first.target.dueDate,
+			title: due.length === 1 ? first.name : null,
+			attention: true,
+		}),
+	];
+}
+
 export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	if (facts.paused) return [];
 	const { dto } = facts;
@@ -254,6 +290,7 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	return [
 		...(limits ? [] : poolItems(dto, facts.moneyIn)),
 		...overspentItem(dto),
+		...debtDueItem(dto),
 		...billDueItem(dto),
 		...starting,
 		...closes,
