@@ -43,6 +43,11 @@ const owe = (
 	kind: "OWE",
 	status,
 });
+const unfront = (
+	who: string,
+	native: number,
+	date = "2026-10-20",
+): ReplayEvent => ({ ...base(who, "ARS", native, date), kind: "UNFRONT" });
 const recv = (
 	who: string,
 	native: number,
@@ -309,6 +314,51 @@ const rows: Row[] = [
 		forgiven: ars(30_000),
 		net: 0,
 		balances: [{ counterparty: "paz", native: 0 }],
+	},
+	{
+		name: "2C.2 a correction lowers Sofia's share by 1,000 of the 15,000 you fronted: 1,000 returns",
+		events: [
+			front("sofia", ars(15_000), ars(15_000)),
+			unfront("sofia", ars(1_000)),
+		],
+		fronted: ars(15_000),
+		returned: ars(1_000),
+		net: ars(14_000),
+		balances: [{ counterparty: "sofia", native: ars(14_000) }],
+	},
+	{
+		name: "2C.2 a correction after Sofia paid in full: nothing returns, you owe her 1,000",
+		events: [
+			front("sofia", ars(15_000), ars(15_000)),
+			recv("sofia", ars(15_000), ars(15_000)),
+			unfront("sofia", ars(1_000)),
+		],
+		fronted: ars(15_000),
+		returned: ars(15_000),
+		net: 0,
+		balances: [{ counterparty: "sofia", native: -ars(1_000) }],
+	},
+	{
+		name: "2C.2 wrong payer: Sofia paid and you owed 15,000; the correction says you paid, she owes 15,000",
+		events: [
+			owe("sofia", ars(15_000), "ACCEPTED", "2026-10-01"),
+			front("sofia", ars(15_000), ars(15_000), "2026-10-20"),
+			front("sofia", ars(15_000), ars(15_000), "2026-10-20"),
+		],
+		fronted: ars(15_000),
+		net: ars(15_000),
+		balances: [{ counterparty: "sofia", native: ars(15_000) }],
+	},
+	{
+		name: "2C.2 your own share fell after you paid Sofia 15,000: she owes you the 5,000 back, held",
+		events: [
+			owe("sofia", ars(15_000), "ACCEPTED", "2026-10-01"),
+			pay("sofia", ars(15_000), ars(15_000), { date: "2026-10-05" }),
+			front("sofia", ars(5_000), ars(5_000), "2026-10-20"),
+		],
+		fronted: ars(5_000),
+		net: ars(5_000),
+		balances: [{ counterparty: "sofia", native: ars(5_000) }],
 	},
 ];
 

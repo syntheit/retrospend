@@ -7,6 +7,7 @@
  * |-----|-------|
  * | someone's share of a split you paid (any status: the cash left) | FRONT |
  * | your share of a split someone else paid (not rejected) | OWE |
+ * | a correction row (2C.2) with a negative share | the mirror: UNFRONT for someone's share of a split you paid, FRONT for your own share of a split they paid |
  * | a payment to you | RECV (counts once FINALIZED, D8) |
  * | a payment from you | PAY (FINALIZED, or recorded or confirmed by you, I5) |
  * | a forgive of what they owe you | FORGIVE, charged to its envelope |
@@ -141,9 +142,25 @@ function txEvents(ctx: SplitContext, rows: SplitRows): ReplayEvent[] {
 		const t = p.transaction;
 		const counterparty = ctx.key(p);
 		if (counterparty === ctx.me) continue;
-		const native = toMinor(p.shareAmount.toString(), t.currency);
-		if (native <= 0) continue;
+		const signed = toMinor(p.shareAmount.toString(), t.currency);
+		if (signed === 0) continue;
+		const notInBudget =
+			t.projectId !== null && ctx.notInBudget.has(t.projectId);
 		const at = { ...ctx.valuer.dated(t.date), instant: t.date };
+		if (signed < 0) {
+			// A correction lowered this share: less is out with them.
+			out.push({
+				kind: "UNFRONT",
+				id: p.id,
+				counterparty,
+				currency: t.currency,
+				date: at.date,
+				month: at.month,
+				native: -signed,
+				notInBudget,
+			});
+			continue;
+		}
 		const value = bookValue(
 			ctx,
 			p.id,
@@ -159,10 +176,10 @@ function txEvents(ctx: SplitContext, rows: SplitRows): ReplayEvent[] {
 			counterparty,
 			currency: t.currency,
 			...at,
-			native,
+			native: signed,
 			value,
 			shareStatus: shareStatus(p.verificationStatus),
-			notInBudget: t.projectId !== null && ctx.notInBudget.has(t.projectId),
+			notInBudget,
 		});
 	}
 	for (const p of rows.mine) {
@@ -172,9 +189,37 @@ function txEvents(ctx: SplitContext, rows: SplitRows): ReplayEvent[] {
 			participantId: t.paidById,
 		});
 		if (counterparty === ctx.me) continue;
-		const native = toMinor(p.shareAmount.toString(), t.currency);
-		if (native <= 0) continue;
+		const signed = toMinor(p.shareAmount.toString(), t.currency);
+		if (signed === 0) continue;
 		const { date, month } = ctx.valuer.dated(t.date);
+		if (signed < 0) {
+			// A correction lowered your share: it pays down what you owe, and
+			// what is left they owe you, held at the split's booked value.
+			const at = { date, month, instant: t.date };
+			const value = bookValue(
+				ctx,
+				p.id,
+				p.shareAmount.neg(),
+				t.currency,
+				at,
+				t.exchangeRate,
+			);
+			if (value === null) continue;
+			out.push({
+				kind: "FRONT",
+				id: p.id,
+				counterparty,
+				currency: t.currency,
+				date,
+				month,
+				native: -signed,
+				value,
+				shareStatus: shareStatus(p.verificationStatus),
+				notInBudget: t.projectId !== null && ctx.notInBudget.has(t.projectId),
+			});
+			continue;
+		}
+		const native = signed;
 		out.push({
 			kind: "OWE",
 			id: p.id,

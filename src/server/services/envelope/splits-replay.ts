@@ -12,6 +12,7 @@
  * |---------|--------|
  * | FRONT   | pays down what you owe first (no effect); the rest is fronted at its booked value |
  * | OWE     | nets against what they owe you (basis returns); the rest is a payable (no effect) |
+ * | UNFRONT | a correction lowered someone's share of a split you paid: clears the receivable (its held value returns); the rest is a payable |
  * | RECV    | FINALIZED only: clears the receivable, cash value returns (FX note = cash - basis); excess is a payable |
  * | PAY     | FINALIZED or PROPOSED: pays the payable (no effect); excess becomes a receivable, its cash value leaves |
  * | FORGIVE | FINALIZED: clears the receivable; its basis is Forgiven and charged to an envelope |
@@ -55,6 +56,7 @@ export type ReplayEvent =
 			shareStatus?: ShareStatus;
 	  })
 	| (EventBase & { kind: "OWE"; status: ShareStatus })
+	| (EventBase & { kind: "UNFRONT" })
 	| (EventBase & SettlementLeg & { kind: "RECV" })
 	| (EventBase &
 			SettlementLeg & {
@@ -192,6 +194,25 @@ function applyFront(
 	emit("FRONTED", value);
 }
 
+/**
+ * A correction lowered their share of a split you paid (2C.2): less is out
+ * with them, so the held value comes back like a forgive's, except that a
+ * part from before the budget started was never held and returns nothing.
+ * What they had already paid is now owed back to them (a payable). The
+ * mirror case, a correction lowering your own share of a split they paid,
+ * is a FRONT: it pays down what you owe and fronts the rest.
+ */
+function applyUnfront(
+	s: State,
+	e: Extract<ReplayEvent, { kind: "UNFRONT" }>,
+	emit: Emit,
+) {
+	const { cleared, released, oldCleared } = clearReceivable(s, e.native);
+	const counted = released - portion(released, oldCleared, cleared);
+	if (counted > 0) emit("RETURNED", counted);
+	s.native -= e.native - cleared;
+}
+
 function applyOwe(
 	s: State,
 	e: Extract<ReplayEvent, { kind: "OWE" }>,
@@ -258,6 +279,7 @@ function applyForgive(
 const PHASE: Record<ReplayEvent["kind"], number> = {
 	FRONT: 0,
 	OWE: 0,
+	UNFRONT: 0,
 	RECV: 1,
 	PAY: 1,
 	FORGIVE: 1,
@@ -291,6 +313,7 @@ function applyEvent(s: State, e: ReplayEvent, emit: Emit, ignore: Ignore) {
 		throw new RangeError(`event ${e.id}: native must be positive`);
 	if (e.kind === "FRONT") applyFront(s, e, emit);
 	else if (e.kind === "OWE") applyOwe(s, e, emit, ignore);
+	else if (e.kind === "UNFRONT") applyUnfront(s, e, emit);
 	else if (e.kind === "RECV") applyRecv(s, e, emit, ignore);
 	else if (e.kind === "PAY") applyPay(s, e, emit, ignore);
 	else applyForgive(s, e, emit, ignore);
