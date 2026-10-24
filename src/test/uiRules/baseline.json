@@ -116,7 +116,6 @@
 		"src/app/(dashboard)/_components/category-donut.tsx": 4,
 		"src/app/(dashboard)/_components/favorites-panel.tsx": 1,
 		"src/app/(dashboard)/_components/recent-expenses.tsx": 2,
-		"src/app/(dashboard)/budget/legacy-page.tsx": 1,
 		"src/app/(dashboard)/dashboard/legacy-page.tsx": 2,
 		"src/app/(dashboard)/error.tsx": 1,
 		"src/app/(dashboard)/import/legacy-page.tsx": 1,

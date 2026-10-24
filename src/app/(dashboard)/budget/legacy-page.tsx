@@ -95,7 +95,7 @@ export default function LegacyBudgetPage() {
 					{hasContent && (
 						<div className="space-y-4">
 							<div>
-								<h2 className="text-lg font-semibold">
+								<h2 className="text-section">
 									{t("categoryBudgets")}
 								</h2>
 								<p className="text-muted-foreground text-sm">
