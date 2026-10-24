@@ -113,5 +113,308 @@
 		"change": "Cambiar montos",
 		"toast": "Usaste tu plan: {amount} a {count, plural, one {# sobre} other {# sobres}}",
 		"toastShort": "Usaste tu plan en {count, plural, one {# sobre} other {# sobres}}"
+	},
+	"limit": {
+		"raiseTitle": "Subir este límite",
+		"setTitle": "Poner un límite",
+		"raise": "Subir límite",
+		"set": "Poner límite",
+		"envelope": "Sobre",
+		"pick": "Elige un sobre",
+		"spent": "{name} lleva <spent></spent> gastados de un límite de <limit></limit>.",
+		"newLimit": "Límite nuevo",
+		"when": "Cuándo aplica",
+		"thisMonth": "Solo este mes",
+		"fromNowOn": "De ahora en adelante",
+		"toastMonth": "El límite de {name} es {amount} este mes",
+		"toastAlways": "El límite de {name} ahora es {amount}",
+		"envelopeFallback": "Sobre",
+		"others": "Tus otros límites quedan como están."
+	},
+	"style": {
+		"title": "Estilo de presupuesto",
+		"style": "Estilo",
+		"current": "actual",
+		"lead": "Número de arriba:",
+		"haveNow": "¿Cuánto tienes ahora?",
+		"same": "Este es tu estilo ahora.",
+		"pauses": "Tu presupuesto se pausa. No se borra nada. Puedes volver cuando quieras.",
+		"resumes": "Tu presupuesto sigue con lo que tenía. Después te damos la bienvenida de nuevo.",
+		"switch": "Cambiar",
+		"toast": "Cambiaste a {style}. Tus sobres siguen igual",
+		"toastPaused": "Presupuesto en pausa. No se borró nada",
+		"toastResumed": "Presupuesto retomado",
+		"leftovers": "Sobrante de {name}",
+		"envelopeFallback": "Sobre",
+		"leftover": {
+			"CARRY": "Pasa al mes siguiente",
+			"RETURN": "Vuelve al inicio",
+			"SWEEP": "Se mueve"
+		},
+		"FLEX": {
+			"name": "Flex",
+			"sub": "Primero cuentas y ahorros. Un solo número de Gastos para todo lo demás.",
+			"lead": "Disponible para gastar, y por día."
+		},
+		"EVERY_DOLLAR": {
+			"name": "Cada peso",
+			"sub": "Un sobre por categoría. Asignas todo lo que entra.",
+			"lead": "Para asignar."
+		},
+		"SAVE_FIRST": {
+			"name": "Ahorrar primero",
+			"sub": "Una parte de cada sueldo va a ahorros antes que nada.",
+			"lead": "Disponible para gastar después de ahorrar."
+		},
+		"LIMITS": {
+			"name": "Límites",
+			"sub": "Límites en lo que te importa. Todo lo demás se registra.",
+			"lead": "Disponible en tus límites, con ritmo."
+		},
+		"FIFTY_THIRTY_TWENTY": {
+			"name": "50/30/20",
+			"sub": "La mitad a necesidades, 30% a gustos, 20% a ahorros.",
+			"lead": "Necesidades, Gustos y Ahorros como parte de lo que entra."
+		},
+		"WEEKLY": {
+			"name": "Semanal",
+			"sub": "Un número de gastos que se reinicia cada semana.",
+			"lead": "Disponible esta semana, y por día."
+		},
+		"TRACK": {
+			"name": "Solo registrar",
+			"sub": "Mira a dónde va el dinero, sin presupuesto que mantener.",
+			"lead": "Gastado este mes frente a lo habitual."
+		}
+	},
+	"takeBack": {
+		"title": "Recuperar {amount}",
+		"titleShort": "Recuperarlo",
+		"takeBack": "Recuperar {amount}",
+		"takeBackShort": "Recuperar",
+		"lead": "Planificaste <amount></amount> más de lo que tienes. Esto lo recupera de lo que todavía tiene dinero. Las cuentas quedan como están.",
+		"nothing": "No hay nada planificado de más.",
+		"toast": "Recuperaste lo planificado de más",
+		"envelopeFallback": "Sobre"
+	},
+	"fundNow": {
+		"title": "Financiar {next} ahora",
+		"fund": "Financiar {next}",
+		"lead": "Esto saca el plan de {next} de lo que este mes no ha planificado todavía y lo pone ya en los sobres de {next}.",
+		"toast": "Financiaste {next} con el dinero de este mes",
+		"envelopeFallback": "Sobre"
+	},
+	"reconcile": {
+		"title": "¿Coincide con tu banco?",
+		"lead": "Compara lo que tiene el presupuesto con las cuentas que forman parte de él. Una diferencia se registra como un ajuste.",
+		"accounts": "Cuentas en tu presupuesto",
+		"bank": "Lo que dice tu banco",
+		"holds": "Lo que tiene el presupuesto",
+		"held": "Lo que te deben, en ninguno",
+		"incomplete": "Algunas cuentas no tienen cotización hoy, así que esto no está completo.",
+		"record": "Registrar",
+		"toastRecorded": "Registraste un ajuste de {amount}",
+		"toastMatched": "Coincide. No hay nada que registrar"
+	},
+	"welcomeBack": {
+		"title": "Te damos la bienvenida",
+		"lead": "{months}: se cerraron solos.",
+		"leadNone": "Ningún mes se cerró solo mientras no estabas.",
+		"choice": "Cómo volver",
+		"catchUp": "Ponerme al día",
+		"haveNow": "Indicar lo que tengo",
+		"startFresh": "Empezar de cero",
+		"about": {
+			"CATCH_UP": "Abre los resúmenes de los meses que se cerraron, en orden.",
+			"SET_HAVE_NOW": "Registra un ajuste con el dinero que tienes ahora. Los sobres conservan lo que tienen.",
+			"START_FRESH": "Devuelve el dinero de cada sobre a Sin planear aún. Sobres, objetivos, reglas e historial se quedan."
+		},
+		"haveLabel": "Dinero que tienes ahora",
+		"catchUpNothing": "No cambia nada. Solo lo lees.",
+		"go": {
+			"CATCH_UP": "Ponerme al día",
+			"SET_HAVE_NOW": "Indicar lo que tengo",
+			"START_FRESH": "Empezar de cero"
+		},
+		"toast": {
+			"CATCH_UP": "Estás al día",
+			"SET_HAVE_NOW": "Registraste lo que tienes ahora",
+			"START_FRESH": "Empezaste de cero. El dinero de cada sobre volvió a Sin planear aún"
+		}
+	},
+	"close": {
+		"title": "{month} está cerrado",
+		"close": "Cerrar",
+		"done": "Listo",
+		"notClosed": "Este mes todavía no se ha cerrado.",
+		"facts": "El mes en números",
+		"moneyIn": "Entradas",
+		"assigned": "Asignado",
+		"late": "Incluye {count, plural, one {# gasto tardío} other {# gastos tardíos}}",
+		"overTitle": "Se pasaron",
+		"takeInstead": "Sacarlo de {month}",
+		"cameOut": "Salió de {pool} en {month}",
+		"leftTitle": "Sobrantes",
+		"returned": "Volvió a {pool}",
+		"swept": "Se movió a {name}",
+		"envelopeFallback": "Sobre"
+	},
+	"carry": {
+		"title": "Sacarlo de {name} en {month}",
+		"lead": "{name} se pasó el mes pasado. Esto lo saca de {name} en {month} y no del dinero sin planificar. {name} puede empezar {month} por debajo de cero.",
+		"take": "Sacarlo de {name}",
+		"toast": "{name} arranca {month} con el exceso"
+	},
+	"forgive": {
+		"title": "Perdonar a {name}",
+		"forgive": "Perdonar",
+		"nothing": "Aquí no te deben nada.",
+		"owes": "{name} te debe <amount></amount>",
+		"currency": "Moneda",
+		"amount": "Perdonar",
+		"chargeTo": "Cargarlo a",
+		"everythingElse": "Todo lo demás",
+		"toast": "Perdonaste {amount} a {name}",
+		"effect": "Se descuenta del saldo de {name}. No vuelve dinero, así que Sin planear aún no cambia. No se envía nada a {name}."
+	},
+	"owed": {
+		"title": "Te deben",
+		"done": "Listo",
+		"nobody": "Nadie te debe dinero que el presupuesto tenga reservado.",
+		"held": "El presupuesto reserva",
+		"people": "Quienes te deben",
+		"settle": "Saldar",
+		"forgive": "Perdonar",
+		"age": "{days, plural, one {# día} other {# días}}",
+		"pending": "<amount></amount> espera tu OK",
+		"someone": "Alguien",
+		"incomplete": "Algunos montos no tienen cotización hoy y no se cuentan."
+	},
+	"help": {
+		"title": "Qué significan las palabras",
+		"done": "Listo",
+		"toAssign": {
+			"term": "Para asignar",
+			"meaning": "Dinero que entró y todavía no tiene destino. Dale uno con Asignar. No se bloquea nada; solo no está planificado."
+		},
+		"leftToSpend": {
+			"term": "Disponible para gastar",
+			"meaning": "Lo que queda en Gastos este mes. El dinero de cuentas, ahorros y el no planificado no entra."
+		},
+		"leftInLimits": {
+			"term": "Disponible en tus límites",
+			"meaning": "Lo que todavía puedes gastar antes de cada límite, sumado."
+		},
+		"envelope": {
+			"term": "Sobre",
+			"meaning": "Dinero apartado para un fin, como Supermercado o Alquiler. Un sobre puede cubrir varias categorías."
+		},
+		"target": {
+			"term": "Objetivo",
+			"meaning": "A qué apunta un sobre: un monto por mes, o una meta para una fecha."
+		},
+		"left": {
+			"term": "Disponible",
+			"meaning": "Lo que un sobre todavía tiene este mes."
+		},
+		"overBy": {
+			"term": "Excedido en",
+			"meaning": "Gastaste más de lo que tenía el sobre. Cúbrelo con otro sobre, o sale del mes que viene."
+		},
+		"cover": {
+			"term": "Cubrir",
+			"meaning": "Mueve dinero de otro sobre para llenar un hueco. Las cuentas nunca se sugieren."
+		},
+		"carries": {
+			"term": "Pasa al mes siguiente",
+			"meaning": "Lo que sobra a fin de mes se queda en el sobre. Lo puedes cambiar en cada sobre."
+		},
+		"moneyIn": {
+			"term": "Entradas",
+			"meaning": "Sueldo, un cliente que paga, un reembolso. Llega a Sin planear aún."
+		},
+		"owed": {
+			"term": "Te deben",
+			"meaning": "Lo que te deben por cosas que pagaste. Vuelve cuando pagan."
+		}
+	},
+	"explain": {
+		"toAssignTitle": "Cómo se forma {pool}",
+		"leftTitle": "Cómo se forma {name}",
+		"done": "Listo",
+		"carriedIn": "Arrastrado",
+		"assigned": "Asignado",
+		"spent": "Movimiento",
+		"left": "Disponible",
+		"moneyIn": "Entradas",
+		"assignedTo": "Asignado a sobres",
+		"assignedAhead": "Asignado al mes que viene",
+		"assignedAheadHint": "Espera ahí hasta que empiece el mes.",
+		"overspendTaken": "Excesos descontados",
+		"overspendHint": "Sobres que se pasaron en meses cerrados.",
+		"returned": "Sobrantes devueltos",
+		"heldForOthers": "Reservado para otros",
+		"heldHint": "Dinero que adelantaste y todavía te deben. Vuelve cuando pagan."
+	},
+	"rules": {
+		"title": "Reglas de ingresos",
+		"lead": "Qué pasa cuando llega dinero, en el orden en que corren las reglas. Cada movimiento queda en el historial con Deshacer.",
+		"none": "Todavía no hay reglas. El dinero que llega queda Sin planear aún hasta que lo asignes.",
+		"done": "Listo",
+		"up": "Subir",
+		"down": "Bajar",
+		"active": "La regla {name} está activa",
+		"paused": "En pausa",
+		"add": "Añadir regla",
+		"more": "Más de {name}",
+		"applyTo": "Aplicar también a las entradas de este mes",
+		"remove": "Quitar",
+		"removeTitle": "¿Quitar {name}?",
+		"removeBody": "Deja de correr con el dinero nuevo. Lo que ya asignó queda como está.",
+		"removeConfirm": "Quitar regla",
+		"envelopeFallback": "Sobre",
+		"sentence": {
+			"percent": "{percent} de lo que entra a {name}",
+			"amount": "<amount></amount> de lo que entra a {name}",
+			"rest": "El resto a {name}"
+		},
+		"editor": {
+			"title": "Añadir regla",
+			"add": "Añadir regla",
+			"name": "Nombre",
+			"namePlaceholder": "Ahorrar primero",
+			"kind": "Qué hace",
+			"percent": "Porcentaje",
+			"amount": "Monto",
+			"rest": "El resto",
+			"percentLabel": "Porcentaje de lo que entra",
+			"amountLabel": "Monto de cada entrada",
+			"goesTo": "Va a",
+			"pick": "Elige un sobre",
+			"note": "Corre con el dinero que llegue de ahora en adelante. Hoy no se mueve nada.",
+			"toast": "Añadiste la regla {name}"
+		},
+		"apply": {
+			"title": "Aplicar {name} a este mes",
+			"apply": "Aplicar",
+			"lead": "Una regla solo corre con el dinero que llega después de crearla. Esto la corre una vez con el dinero que ya entró este mes.",
+			"toast": "Aplicaste {name} a las entradas de este mes",
+			"envelopeFallback": "Sobre"
+		}
+	},
+	"whatIf": {
+		"title": "Qué pasa si gasto en {name}",
+		"titleAny": "Qué pasa si gasto",
+		"done": "Listo",
+		"lead": "Un gasto de mentira. No se guarda nada.",
+		"envelope": "Sobre",
+		"pick": "Elige un sobre",
+		"ifSpend": "Si gasto",
+		"cannot": "Esto no se puede simular así.",
+		"wouldHave": "{name} tendría",
+		"coverIt": "Cubrirlo",
+		"coverFrom": "Desde {name}",
+		"uncovered": "Nada puede cubrir esta parte",
+		"idle": "Escribe un monto para ver qué haría."
 	}
 }

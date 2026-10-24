@@ -113,5 +113,308 @@
 		"change": "Beträge ändern",
 		"toast": "Plan verwendet: {amount} für {count, plural, one {# Umschlag} other {# Umschläge}}",
 		"toastShort": "Plan für {count, plural, one {# Umschlag} other {# Umschläge}} verwendet"
+	},
+	"limit": {
+		"raiseTitle": "Dieses Limit erhöhen",
+		"setTitle": "Ein Limit setzen",
+		"raise": "Limit erhöhen",
+		"set": "Limit setzen",
+		"envelope": "Umschlag",
+		"pick": "Umschlag wählen",
+		"spent": "{name}: <spent></spent> ausgegeben bei einem Limit von <limit></limit>.",
+		"newLimit": "Neues Limit",
+		"when": "Wann es gilt",
+		"thisMonth": "Nur diesen Monat",
+		"fromNowOn": "Ab jetzt",
+		"toastMonth": "Das Limit für {name} ist diesen Monat {amount}",
+		"toastAlways": "Das Limit für {name} ist jetzt {amount}",
+		"envelopeFallback": "Umschlag",
+		"others": "Deine anderen Limits bleiben, wie sie sind."
+	},
+	"style": {
+		"title": "Budgetstil",
+		"style": "Stil",
+		"current": "aktuell",
+		"lead": "Zahl oben:",
+		"haveNow": "Wie viel hast du gerade?",
+		"same": "Das ist jetzt dein Stil.",
+		"pauses": "Dein Budget pausiert. Nichts wird gelöscht. Du kannst jederzeit zurückkehren.",
+		"resumes": "Dein Budget läuft mit dem weiter, was es hielt. Danach folgt ein kurzes Willkommen zurück.",
+		"switch": "Wechseln",
+		"toast": "Zu {style} gewechselt. Deine Umschläge sind geblieben",
+		"toastPaused": "Budget pausiert. Nichts wurde gelöscht",
+		"toastResumed": "Budget wieder aufgenommen",
+		"leftovers": "Übrig in {name}",
+		"envelopeFallback": "Umschlag",
+		"leftover": {
+			"CARRY": "Wird übertragen",
+			"RETURN": "Geht zurück",
+			"SWEEP": "Wird verschoben"
+		},
+		"FLEX": {
+			"name": "Flex",
+			"sub": "Zuerst Rechnungen und Sparen. Eine Ausgabenzahl für alles andere.",
+			"lead": "Noch verfügbar, und pro Tag."
+		},
+		"EVERY_DOLLAR": {
+			"name": "Jeder Euro",
+			"sub": "Ein Umschlag pro Kategorie. Du verteilst alles, was hereinkommt.",
+			"lead": "Zuzuweisen."
+		},
+		"SAVE_FIRST": {
+			"name": "Zuerst sparen",
+			"sub": "Ein Teil jedes Gehalts geht zuerst ins Sparen.",
+			"lead": "Verfügbar nach dem Sparen."
+		},
+		"LIMITS": {
+			"name": "Limits",
+			"sub": "Limits für das, was dir wichtig ist. Alles andere wird erfasst.",
+			"lead": "Noch in deinen Limits, mit Tempo."
+		},
+		"FIFTY_THIRTY_TWENTY": {
+			"name": "50/30/20",
+			"sub": "Die Hälfte für Bedürfnisse, 30 % für Wünsche, 20 % fürs Sparen.",
+			"lead": "Bedürfnisse, Wünsche und Sparen als Anteil der Einnahmen."
+		},
+		"WEEKLY": {
+			"name": "Wöchentlich",
+			"sub": "Eine Ausgabenzahl, die jede Woche neu beginnt.",
+			"lead": "Diese Woche übrig, und pro Tag."
+		},
+		"TRACK": {
+			"name": "Nur erfassen",
+			"sub": "Sieh, wohin das Geld geht, ohne Budget zu führen.",
+			"lead": "Diesen Monat ausgegeben, im Vergleich zum Üblichen."
+		}
+	},
+	"takeBack": {
+		"title": "{amount} zurückholen",
+		"titleShort": "Zurückholen",
+		"takeBack": "{amount} zurückholen",
+		"takeBackShort": "Zurückholen",
+		"lead": "Du hast <amount></amount> mehr verplant, als du hast. Das holt es von dem zurück, was noch Geld hat. Rechnungen bleiben, wie sie sind.",
+		"nothing": "Es ist nichts über das Vorhandene hinaus verplant.",
+		"toast": "Das Zuviel Verplante zurückgeholt",
+		"envelopeFallback": "Umschlag"
+	},
+	"fundNow": {
+		"title": "{next} jetzt finanzieren",
+		"fund": "{next} finanzieren",
+		"lead": "Das nimmt den Plan für {next} aus dem, was dieser Monat noch nicht verplant hat, und legt ihn jetzt in die Umschläge von {next}.",
+		"toast": "{next} mit dem Geld dieses Monats finanziert",
+		"envelopeFallback": "Umschlag"
+	},
+	"reconcile": {
+		"title": "Stimmt das mit deiner Bank überein?",
+		"lead": "Vergleicht, was das Budget hält, mit den Konten, die dazugehören. Ein Unterschied wird als eine Korrektur erfasst.",
+		"accounts": "Konten in deinem Budget",
+		"bank": "Was deine Bank sagt",
+		"holds": "Was das Budget hält",
+		"held": "Dir geschuldet, in keinem von beiden",
+		"incomplete": "Für einige Konten gibt es heute keinen Kurs, daher ist das nicht vollständig.",
+		"record": "Erfassen",
+		"toastRecorded": "Korrektur von {amount} erfasst",
+		"toastMatched": "Es stimmt überein. Nichts zu erfassen"
+	},
+	"welcomeBack": {
+		"title": "Willkommen zurück",
+		"lead": "{months}: wurden von selbst abgeschlossen.",
+		"leadNone": "Während deiner Abwesenheit wurde kein Monat von selbst abgeschlossen.",
+		"choice": "Wie du zurückkommst",
+		"catchUp": "Aufholen",
+		"haveNow": "Meinen Stand setzen",
+		"startFresh": "Neu beginnen",
+		"about": {
+			"CATCH_UP": "Öffnet die Zusammenfassungen der abgeschlossenen Monate der Reihe nach.",
+			"SET_HAVE_NOW": "Erfasst eine Korrektur anhand des Geldes, das du jetzt hast. Umschläge behalten, was sie halten.",
+			"START_FRESH": "Gibt das Geld jedes Umschlags an Noch nicht verplant zurück. Umschläge, Ziele, Regeln und Verlauf bleiben."
+		},
+		"haveLabel": "Geld, das du jetzt hast",
+		"catchUpNothing": "Nichts ändert sich. Du liest nur.",
+		"go": {
+			"CATCH_UP": "Aufholen",
+			"SET_HAVE_NOW": "Meinen Stand setzen",
+			"START_FRESH": "Neu beginnen"
+		},
+		"toast": {
+			"CATCH_UP": "Du bist auf dem neuesten Stand",
+			"SET_HAVE_NOW": "Dein aktueller Stand wurde erfasst",
+			"START_FRESH": "Neu begonnen. Das Geld jedes Umschlags ist wieder in Noch nicht verplant"
+		}
+	},
+	"close": {
+		"title": "{month} ist abgeschlossen",
+		"close": "Schließen",
+		"done": "Fertig",
+		"notClosed": "Dieser Monat ist noch nicht abgeschlossen.",
+		"facts": "Der Monat in Zahlen",
+		"moneyIn": "Einnahmen",
+		"assigned": "Zugewiesen",
+		"late": "Enthält {count, plural, one {# verspätete Ausgabe} other {# verspätete Ausgaben}}",
+		"overTitle": "Überzogen",
+		"takeInstead": "Stattdessen aus {month} nehmen",
+		"cameOut": "Kam in {month} aus {pool}",
+		"leftTitle": "Übrig geblieben",
+		"returned": "Ging zurück zu {pool}",
+		"swept": "Nach {name} verschoben",
+		"envelopeFallback": "Umschlag"
+	},
+	"carry": {
+		"title": "Aus {name} im {month} nehmen",
+		"lead": "{name} war im letzten Monat überzogen. Das nimmt es im {month} aus {name} statt aus dem nicht verplanten Geld. {name} kann im {month} unter null starten.",
+		"take": "Aus {name} nehmen",
+		"toast": "{name} startet {month} mit der Überziehung"
+	},
+	"forgive": {
+		"title": "{name} erlassen",
+		"forgive": "Erlassen",
+		"nothing": "Hier wird dir nichts geschuldet.",
+		"owes": "{name} schuldet dir <amount></amount>",
+		"currency": "Währung",
+		"amount": "Erlassen",
+		"chargeTo": "Belasten bei",
+		"everythingElse": "Alles andere",
+		"toast": "{name} {amount} erlassen",
+		"effect": "Es wird vom Saldo von {name} abgezogen. Es kommt kein Geld zurück, daher ändert sich Noch nicht verplant nicht. {name} bekommt nichts."
+	},
+	"owed": {
+		"title": "Dir geschuldet",
+		"done": "Fertig",
+		"nobody": "Niemand schuldet dir Geld, das das Budget hält.",
+		"held": "Das Budget hält",
+		"people": "Personen, die dir etwas schulden",
+		"settle": "Ausgleichen",
+		"forgive": "Erlassen",
+		"age": "{days, plural, one {# Tag} other {# Tage}}",
+		"pending": "<amount></amount> wartet auf dein OK",
+		"someone": "Jemand",
+		"incomplete": "Für einige Beträge gibt es heute keinen Kurs; sie zählen nicht mit."
+	},
+	"help": {
+		"title": "Was die Wörter bedeuten",
+		"done": "Fertig",
+		"toAssign": {
+			"term": "Zuzuweisen",
+			"meaning": "Geld, das hereingekommen ist und noch keine Aufgabe hat. Gib ihm eine mit Zuweisen. Nichts wird blockiert; es ist nur nicht verplant."
+		},
+		"leftToSpend": {
+			"term": "Noch verfügbar",
+			"meaning": "Was diesen Monat in Ausgaben übrig ist. Geld für Rechnungen, Sparen und noch nicht Verplantes zählt nicht dazu."
+		},
+		"leftInLimits": {
+			"term": "Noch in deinen Limits",
+			"meaning": "Was du bis zu jedem Limit noch ausgeben kannst, zusammengerechnet."
+		},
+		"envelope": {
+			"term": "Umschlag",
+			"meaning": "Geld, das für einen Zweck beiseitegelegt ist, etwa Lebensmittel oder Miete. Ein Umschlag kann mehrere Kategorien abdecken."
+		},
+		"target": {
+			"term": "Ziel",
+			"meaning": "Worauf ein Umschlag abzielt: ein Betrag pro Monat oder ein Ziel bis zu einem Datum."
+		},
+		"left": {
+			"term": "Übrig",
+			"meaning": "Was ein Umschlag diesen Monat noch hält."
+		},
+		"overBy": {
+			"term": "Drüber um",
+			"meaning": "Du hast mehr ausgegeben, als der Umschlag hielt. Gleiche es aus einem anderen Umschlag aus, sonst wird es vom nächsten Monat abgezogen."
+		},
+		"cover": {
+			"term": "Ausgleichen",
+			"meaning": "Geld aus einem anderen Umschlag verschieben, um eine Lücke zu füllen. Rechnungen werden nie vorgeschlagen."
+		},
+		"carries": {
+			"term": "Wird übertragen",
+			"meaning": "Was am Monatsende übrig ist, bleibt im Umschlag. Das lässt sich für jeden Umschlag ändern."
+		},
+		"moneyIn": {
+			"term": "Einnahmen",
+			"meaning": "Gehalt, ein zahlender Kunde, eine Erstattung. Es landet in Noch nicht verplant."
+		},
+		"owed": {
+			"term": "Dir geschuldet",
+			"meaning": "Was Leute dir für von dir Bezahltes schulden. Es kommt zurück, wenn sie zahlen."
+		}
+	},
+	"explain": {
+		"toAssignTitle": "Wie sich {pool} zusammensetzt",
+		"leftTitle": "Wie sich {name} zusammensetzt",
+		"done": "Fertig",
+		"carriedIn": "Übertrag",
+		"assigned": "Zugewiesen",
+		"spent": "Aktivität",
+		"left": "Übrig",
+		"moneyIn": "Einnahmen",
+		"assignedTo": "Umschlägen zugewiesen",
+		"assignedAhead": "Dem nächsten Monat zugewiesen",
+		"assignedAheadHint": "Es wartet dort, bis der Monat beginnt.",
+		"overspendTaken": "Übernommene Überziehungen",
+		"overspendHint": "Umschläge, die in abgeschlossenen Monaten überzogen wurden.",
+		"returned": "Zurückgegebene Reste",
+		"heldForOthers": "Für andere gehalten",
+		"heldHint": "Vorgestrecktes Geld, das dir noch geschuldet wird. Es kommt zurück, wenn gezahlt wird."
+	},
+	"rules": {
+		"title": "Einnahmeregeln",
+		"lead": "Was passiert, wenn Geld eintrifft, in der Reihenfolge der Regeln. Jede Bewegung steht im Verlauf mit Rückgängig.",
+		"none": "Noch keine Regeln. Eingehendes Geld bleibt Noch nicht verplant, bis du es zuweist.",
+		"done": "Fertig",
+		"up": "Nach oben",
+		"down": "Nach unten",
+		"active": "Regel {name} ist an",
+		"paused": "Pausiert",
+		"add": "Regel hinzufügen",
+		"more": "Mehr zu {name}",
+		"applyTo": "Auch auf die Einnahmen dieses Monats anwenden",
+		"remove": "Entfernen",
+		"removeTitle": "{name} entfernen?",
+		"removeBody": "Sie läuft nicht mehr auf neues Geld. Was sie schon zugewiesen hat, bleibt, wie es ist.",
+		"removeConfirm": "Regel entfernen",
+		"envelopeFallback": "Umschlag",
+		"sentence": {
+			"percent": "{percent} der Einnahmen an {name}",
+			"amount": "<amount></amount> der Einnahmen an {name}",
+			"rest": "Der Rest an {name}"
+		},
+		"editor": {
+			"title": "Regel hinzufügen",
+			"add": "Regel hinzufügen",
+			"name": "Name",
+			"namePlaceholder": "Zuerst sparen",
+			"kind": "Was sie tut",
+			"percent": "Prozent",
+			"amount": "Betrag",
+			"rest": "Der Rest",
+			"percentLabel": "Prozent der Einnahmen",
+			"amountLabel": "Betrag pro Einnahme",
+			"goesTo": "Geht an",
+			"pick": "Umschlag wählen",
+			"note": "Sie läuft auf Geld, das ab jetzt eingeht. Heute bewegt sich nichts.",
+			"toast": "Regel {name} hinzugefügt"
+		},
+		"apply": {
+			"title": "{name} auf diesen Monat anwenden",
+			"apply": "Anwenden",
+			"lead": "Eine Regel läuft nur auf Geld, das nach ihrer Erstellung eingeht. Das lässt sie einmal auf Geld laufen, das diesen Monat schon eingegangen ist.",
+			"toast": "{name} auf die Einnahmen dieses Monats angewendet",
+			"envelopeFallback": "Umschlag"
+		}
+	},
+	"whatIf": {
+		"title": "Was, wenn ich bei {name} ausgebe",
+		"titleAny": "Was, wenn ich ausgebe",
+		"done": "Fertig",
+		"lead": "Eine gedachte Ausgabe. Nichts wird gespeichert.",
+		"envelope": "Umschlag",
+		"pick": "Umschlag wählen",
+		"ifSpend": "Wenn ich ausgebe",
+		"cannot": "Das lässt sich so nicht vorab ansehen.",
+		"wouldHave": "{name} hätte",
+		"coverIt": "Ausgleichen",
+		"coverFrom": "Aus {name}",
+		"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
+		"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde."
 	}
 }

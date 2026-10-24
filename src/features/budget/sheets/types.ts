@@ -2,9 +2,9 @@ import type { BudgetSheetId } from "../sheet-ids";
 
 /** What a caller passes to open each sheet. Every sheet works on one month (default: the current one). */
 export type BudgetSheetParams = {
-	assign: Record<string, never>;
+	assign: Record<never, never>;
 	cover: { envelopeId: string };
-	coverAll: Record<string, never>;
+	coverAll: Record<never, never>;
 	move: {
 		envelopeId: string;
 		/** Add money (from another place) or Take money out. */
@@ -13,32 +13,32 @@ export type BudgetSheetParams = {
 	};
 	target: { envelopeId: string };
 	wealth: { envelopeId: string };
-	close: { month?: number };
-	owed: Record<string, never>;
+	close: { closedMonth: number };
+	owed: Record<never, never>;
 	settle: { personId: string };
-	forgive: { personId: string };
+	forgive: { participant: { type: "user" | "guest" | "shadow"; id: string } };
 	plan: { amountMinor?: number };
-	takeBack: Record<string, never>;
-	migrate: Record<string, never>;
-	whatMoved: Record<string, never>;
-	fundNow: Record<string, never>;
-	income: Record<string, never>;
+	takeBack: Record<never, never>;
+	migrate: Record<never, never>;
+	whatMoved: Record<never, never>;
+	fundNow: { draftId: string };
+	income: Record<never, never>;
 	fromWealth: { entryId?: string };
-	rules: Record<string, never>;
-	help: Record<string, never>;
+	rules: Record<never, never>;
+	help: Record<never, never>;
 	envelope: { envelopeId?: string };
-	merge: Record<string, never>;
-	afford: Record<string, never>;
-	style: Record<string, never>;
-	debt: Record<string, never>;
+	merge: Record<never, never>;
+	afford: Record<never, never>;
+	style: Record<never, never>;
+	debt: Record<never, never>;
 	payDebt: { liabilityId?: string };
 	raiseLimit: { envelopeId: string };
-	setLimit: Record<string, never>;
+	setLimit: Record<never, never>;
 	whatIf: { envelopeId?: string };
-	setup: Record<string, never>;
-	welcomeBack: Record<string, never>;
-	reconcile: Record<string, never>;
-	explain: { figure: string; envelopeId?: string };
+	setup: Record<never, never>;
+	welcomeBack: Record<never, never>;
+	reconcile: Record<never, never>;
+	explain: { figure: "toAssign" | "left"; envelopeId?: string };
 };
 
 /** What the host hands every sheet besides its own params. */
@@ -54,7 +54,7 @@ export type SheetComponentProps<K extends BudgetSheetId> = SheetShell &
 
 export type OpenSheet = <K extends BudgetSheetId>(
 	id: K,
-	...params: Record<string, never> extends BudgetSheetParams[K]
+	...params: keyof BudgetSheetParams[K] extends never
 		? [params?: BudgetSheetParams[K]]
 		: [params: BudgetSheetParams[K]]
 ) => void;

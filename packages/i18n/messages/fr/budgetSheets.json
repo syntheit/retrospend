@@ -113,5 +113,308 @@
 		"change": "Modifier les montants",
 		"toast": "Plan utilisé : {amount} pour {count, plural, one {# enveloppe} other {# enveloppes}}",
 		"toastShort": "Plan utilisé pour {count, plural, one {# enveloppe} other {# enveloppes}}"
+	},
+	"limit": {
+		"raiseTitle": "Augmenter cette limite",
+		"setTitle": "Fixer une limite",
+		"raise": "Augmenter la limite",
+		"set": "Fixer la limite",
+		"envelope": "Enveloppe",
+		"pick": "Choisis une enveloppe",
+		"spent": "{name} : <spent></spent> dépensés sur une limite de <limit></limit>.",
+		"newLimit": "Nouvelle limite",
+		"when": "Quand elle s'applique",
+		"thisMonth": "Ce mois seulement",
+		"fromNowOn": "À partir de maintenant",
+		"toastMonth": "La limite de {name} est de {amount} ce mois-ci",
+		"toastAlways": "La limite de {name} est maintenant de {amount}",
+		"envelopeFallback": "Enveloppe",
+		"others": "Tes autres limites restent telles quelles."
+	},
+	"style": {
+		"title": "Style de budget",
+		"style": "Style",
+		"current": "actuel",
+		"lead": "Chiffre en haut :",
+		"haveNow": "Combien as-tu en ce moment ?",
+		"same": "C'est ton style actuel.",
+		"pauses": "Ton budget est en pause. Rien n'est supprimé. Tu peux revenir quand tu veux.",
+		"resumes": "Ton budget reprend avec ce qu'il contenait. Un court Bon retour suit.",
+		"switch": "Changer",
+		"toast": "Passé à {style}. Tes enveloppes sont restées",
+		"toastPaused": "Budget en pause. Rien n'a été supprimé",
+		"toastResumed": "Budget repris",
+		"leftovers": "Reste de {name}",
+		"envelopeFallback": "Enveloppe",
+		"leftover": {
+			"CARRY": "Est reporté",
+			"RETURN": "Retourne",
+			"SWEEP": "Est déplacé"
+		},
+		"FLEX": {
+			"name": "Flex",
+			"sub": "D'abord factures et épargne. Un seul chiffre de dépenses pour le reste.",
+			"lead": "Reste à dépenser, et par jour."
+		},
+		"EVERY_DOLLAR": {
+			"name": "Chaque euro",
+			"sub": "Une enveloppe par catégorie. Tu attribues tout ce qui entre.",
+			"lead": "À attribuer."
+		},
+		"SAVE_FIRST": {
+			"name": "Épargner d'abord",
+			"sub": "Une part de chaque paie va d'abord à l'épargne.",
+			"lead": "Reste à dépenser après l'épargne."
+		},
+		"LIMITS": {
+			"name": "Limites",
+			"sub": "Des limites sur ce qui compte. Le reste est suivi.",
+			"lead": "Reste dans tes limites, avec le rythme."
+		},
+		"FIFTY_THIRTY_TWENTY": {
+			"name": "50/30/20",
+			"sub": "La moitié aux besoins, 30 % aux envies, 20 % à l'épargne.",
+			"lead": "Besoins, Envies et Épargne en part des entrées."
+		},
+		"WEEKLY": {
+			"name": "Hebdomadaire",
+			"sub": "Un chiffre de dépenses qui repart chaque semaine.",
+			"lead": "Reste cette semaine, et par jour."
+		},
+		"TRACK": {
+			"name": "Juste suivre",
+			"sub": "Vois où va l'argent, sans budget à tenir.",
+			"lead": "Dépensé ce mois-ci par rapport à l'habitude."
+		}
+	},
+	"takeBack": {
+		"title": "Reprendre {amount}",
+		"titleShort": "Reprendre",
+		"takeBack": "Reprendre {amount}",
+		"takeBackShort": "Reprendre",
+		"lead": "Tu as prévu <amount></amount> de plus que ce que tu as. Cela le reprend sur ce qui a encore de l'argent. Les factures restent telles quelles.",
+		"nothing": "Rien n'est prévu au-delà de ce que tu as.",
+		"toast": "Tu as repris le surplus prévu",
+		"envelopeFallback": "Enveloppe"
+	},
+	"fundNow": {
+		"title": "Financer {next} maintenant",
+		"fund": "Financer {next}",
+		"lead": "Cela prend le plan de {next} sur ce que ce mois n'a pas encore prévu et le met dès maintenant dans les enveloppes de {next}.",
+		"toast": "{next} financé avec l'argent de ce mois",
+		"envelopeFallback": "Enveloppe"
+	},
+	"reconcile": {
+		"title": "Est-ce que cela correspond à ta banque ?",
+		"lead": "Compare ce que contient le budget avec les comptes qui en font partie. Une différence est enregistrée comme un ajustement.",
+		"accounts": "Comptes de ton budget",
+		"bank": "Ce que dit ta banque",
+		"holds": "Ce que contient le budget",
+		"held": "Ce qu'on te doit, dans aucun",
+		"incomplete": "Certains comptes n'ont pas de taux aujourd'hui, ce n'est donc pas complet.",
+		"record": "Enregistrer",
+		"toastRecorded": "Ajustement de {amount} enregistré",
+		"toastMatched": "Cela correspond. Rien à enregistrer"
+	},
+	"welcomeBack": {
+		"title": "Bon retour",
+		"lead": "{months} : clôturés automatiquement.",
+		"leadNone": "Aucun mois ne s'est clôturé tout seul pendant ton absence.",
+		"choice": "Comment reprendre",
+		"catchUp": "Rattraper",
+		"haveNow": "Indiquer ce que j'ai",
+		"startFresh": "Repartir de zéro",
+		"about": {
+			"CATCH_UP": "Ouvre les résumés des mois clôturés, dans l'ordre.",
+			"SET_HAVE_NOW": "Enregistre un ajustement selon l'argent que tu as maintenant. Les enveloppes gardent leur contenu.",
+			"START_FRESH": "Rend l'argent de chaque enveloppe à Pas encore prévu. Enveloppes, objectifs, règles et historique restent."
+		},
+		"haveLabel": "Argent que tu as maintenant",
+		"catchUpNothing": "Rien ne change. Tu ne fais que lire.",
+		"go": {
+			"CATCH_UP": "Rattraper",
+			"SET_HAVE_NOW": "Indiquer ce que j'ai",
+			"START_FRESH": "Repartir de zéro"
+		},
+		"toast": {
+			"CATCH_UP": "Tu es à jour",
+			"SET_HAVE_NOW": "Ce que tu as maintenant est enregistré",
+			"START_FRESH": "Nouveau départ. L'argent de chaque enveloppe est revenu dans Pas encore prévu"
+		}
+	},
+	"close": {
+		"title": "{month} est clôturé",
+		"close": "Fermer",
+		"done": "Terminé",
+		"notClosed": "Ce mois n'est pas encore clôturé.",
+		"facts": "Le mois en chiffres",
+		"moneyIn": "Entrées",
+		"assigned": "Attribué",
+		"late": "Inclut {count, plural, one {# dépense tardive} other {# dépenses tardives}}",
+		"overTitle": "Dépassés",
+		"takeInstead": "Le prendre sur {month}",
+		"cameOut": "Est sorti de {pool} en {month}",
+		"leftTitle": "Restes",
+		"returned": "Est retourné dans {pool}",
+		"swept": "Déplacé vers {name}",
+		"envelopeFallback": "Enveloppe"
+	},
+	"carry": {
+		"title": "Le prendre sur {name} en {month}",
+		"lead": "{name} a dépassé le mois dernier. Cela le prend sur {name} en {month} plutôt que sur l'argent non prévu. {name} peut commencer {month} sous zéro.",
+		"take": "Le prendre sur {name}",
+		"toast": "{name} commence {month} avec le dépassement"
+	},
+	"forgive": {
+		"title": "Pardonner à {name}",
+		"forgive": "Pardonner",
+		"nothing": "On ne te doit rien ici.",
+		"owes": "{name} te doit <amount></amount>",
+		"currency": "Devise",
+		"amount": "Pardonner",
+		"chargeTo": "Imputer à",
+		"everythingElse": "Tout le reste",
+		"toast": "Tu as pardonné {amount} à {name}",
+		"effect": "Cela est retiré du solde de {name}. Aucun argent ne revient, donc Pas encore prévu ne change pas. Rien n'est envoyé à {name}."
+	},
+	"owed": {
+		"title": "On te doit",
+		"done": "Terminé",
+		"nobody": "Personne ne te doit d'argent que le budget garde.",
+		"held": "Le budget garde",
+		"people": "Ceux qui te doivent",
+		"settle": "Régler",
+		"forgive": "Pardonner",
+		"age": "{days, plural, one {# jour} other {# jours}}",
+		"pending": "<amount></amount> attend ton accord",
+		"someone": "Quelqu'un",
+		"incomplete": "Certains montants n'ont pas de taux aujourd'hui et ne sont pas comptés."
+	},
+	"help": {
+		"title": "Ce que veulent dire les mots",
+		"done": "Terminé",
+		"toAssign": {
+			"term": "À attribuer",
+			"meaning": "Argent entré qui n'a pas encore de mission. Donne-lui-en une avec Attribuer. Rien n'est bloqué ; ce n'est juste pas prévu."
+		},
+		"leftToSpend": {
+			"term": "Reste à dépenser",
+			"meaning": "Ce qu'il reste dans Dépenses ce mois-ci. L'argent des factures, de l'épargne et le non prévu n'y sont pas."
+		},
+		"leftInLimits": {
+			"term": "Reste dans tes limites",
+			"meaning": "Ce que tu peux encore dépenser avant chaque limite, additionné."
+		},
+		"envelope": {
+			"term": "Enveloppe",
+			"meaning": "Argent mis de côté pour un but, comme Courses ou Loyer. Une enveloppe peut couvrir plusieurs catégories."
+		},
+		"target": {
+			"term": "Objectif",
+			"meaning": "Ce que vise une enveloppe : un montant par mois, ou un objectif à une date."
+		},
+		"left": {
+			"term": "Reste",
+			"meaning": "Ce qu'une enveloppe contient encore ce mois-ci."
+		},
+		"overBy": {
+			"term": "Dépassé de",
+			"meaning": "Tu as dépensé plus que l'enveloppe ne contenait. Couvre avec une autre enveloppe, sinon cela sort du mois suivant."
+		},
+		"cover": {
+			"term": "Couvrir",
+			"meaning": "Déplace de l'argent d'une autre enveloppe pour combler un trou. Les factures ne sont jamais proposées."
+		},
+		"carries": {
+			"term": "Est reporté",
+			"meaning": "Ce qu'il reste en fin de mois reste dans l'enveloppe. Tu peux le changer pour chaque enveloppe."
+		},
+		"moneyIn": {
+			"term": "Entrées",
+			"meaning": "Salaire, un client qui paie, un remboursement. Cela arrive dans Pas encore prévu."
+		},
+		"owed": {
+			"term": "On te doit",
+			"meaning": "Ce qu'on te doit pour ce que tu as payé. Cela revient quand on te paie."
+		}
+	},
+	"explain": {
+		"toAssignTitle": "Comment se compose {pool}",
+		"leftTitle": "Comment se compose {name}",
+		"done": "Terminé",
+		"carriedIn": "Reporté",
+		"assigned": "Attribué",
+		"spent": "Activité",
+		"left": "Reste",
+		"moneyIn": "Entrées",
+		"assignedTo": "Attribué aux enveloppes",
+		"assignedAhead": "Attribué au mois suivant",
+		"assignedAheadHint": "Cela attend là jusqu'au début du mois.",
+		"overspendTaken": "Dépassements repris",
+		"overspendHint": "Enveloppes qui ont dépassé dans des mois clôturés.",
+		"returned": "Restes rendus",
+		"heldForOthers": "Gardé pour les autres",
+		"heldHint": "Argent avancé que l'on te doit encore. Il revient quand on te paie."
+	},
+	"rules": {
+		"title": "Règles de revenus",
+		"lead": "Ce qui se passe quand de l'argent arrive, dans l'ordre des règles. Chaque mouvement apparaît dans l'historique avec Annuler.",
+		"none": "Pas encore de règles. L'argent qui arrive reste Pas encore prévu jusqu'à ce que tu l'attribues.",
+		"done": "Terminé",
+		"up": "Monter",
+		"down": "Descendre",
+		"active": "La règle {name} est active",
+		"paused": "En pause",
+		"add": "Ajouter une règle",
+		"more": "Plus pour {name}",
+		"applyTo": "Appliquer aussi aux entrées de ce mois",
+		"remove": "Retirer",
+		"removeTitle": "Retirer {name} ?",
+		"removeBody": "Elle ne s'applique plus à l'argent nouveau. Ce qu'elle a déjà attribué reste tel quel.",
+		"removeConfirm": "Retirer la règle",
+		"envelopeFallback": "Enveloppe",
+		"sentence": {
+			"percent": "{percent} des entrées vers {name}",
+			"amount": "<amount></amount> des entrées vers {name}",
+			"rest": "Le reste vers {name}"
+		},
+		"editor": {
+			"title": "Ajouter une règle",
+			"add": "Ajouter la règle",
+			"name": "Nom",
+			"namePlaceholder": "Épargner d'abord",
+			"kind": "Ce qu'elle fait",
+			"percent": "Pourcentage",
+			"amount": "Montant",
+			"rest": "Le reste",
+			"percentLabel": "Pourcentage des entrées",
+			"amountLabel": "Montant de chaque entrée",
+			"goesTo": "Va vers",
+			"pick": "Choisis une enveloppe",
+			"note": "Elle s'applique à l'argent qui arrive à partir de maintenant. Rien ne bouge aujourd'hui.",
+			"toast": "Règle {name} ajoutée"
+		},
+		"apply": {
+			"title": "Appliquer {name} à ce mois",
+			"apply": "Appliquer",
+			"lead": "Une règle ne s'applique qu'à l'argent qui arrive après sa création. Cela l'applique une fois à l'argent déjà entré ce mois-ci.",
+			"toast": "{name} appliquée aux entrées de ce mois",
+			"envelopeFallback": "Enveloppe"
+		}
+	},
+	"whatIf": {
+		"title": "Et si je dépense dans {name}",
+		"titleAny": "Et si je dépense",
+		"done": "Terminé",
+		"lead": "Une dépense fictive. Rien n'est enregistré.",
+		"envelope": "Enveloppe",
+		"pick": "Choisis une enveloppe",
+		"ifSpend": "Si je dépense",
+		"cannot": "Impossible de simuler ainsi.",
+		"wouldHave": "{name} aurait",
+		"coverIt": "Le couvrir",
+		"coverFrom": "Depuis {name}",
+		"uncovered": "Rien ne peut couvrir cette part",
+		"idle": "Saisis un montant pour voir l'effet."
 	}
 }

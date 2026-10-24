@@ -3,19 +3,29 @@
 import { Money } from "~/components/money/money";
 import { Button } from "~/components/ui/button";
 import { TooltipProvider } from "~/components/ui/tooltip";
-import type { BudgetSheetId } from "../sheet-ids";
-import { BudgetSheetsProvider, useBudgetSheets } from "./host";
-import { SHEETS } from "./registry";
+import { useBudgetSheets } from "./controls";
+import { BudgetSheetsProvider } from "./host";
 import { useMonth } from "./use-month";
 
-/** Sheets that need no envelope; each opens from one button. */
-const SIMPLE = (Object.keys(SHEETS) as BudgetSheetId[]).filter(
-	(id) => id !== "cover" && id !== "move",
-);
+/** Sheets that need nothing but the month; each opens from one button. */
+const SIMPLE = [
+	"assign",
+	"plan",
+	"rules",
+	"help",
+	"owed",
+	"takeBack",
+	"style",
+	"reconcile",
+	"welcomeBack",
+	"setLimit",
+	"whatIf",
+] as const;
 
 function Harness() {
 	const sheets = useBudgetSheets();
 	const m = useMonth(undefined);
+	const open = sheets.open as (id: string, params?: object) => void;
 	return (
 		<main className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
 			<h1 className="text-section text-fg">Budget sheets</h1>
@@ -28,14 +38,16 @@ function Harness() {
 			)}
 			<div className="flex flex-wrap gap-2">
 				{SIMPLE.map((id) => (
-					<Button
-						data-sheet-opener={id}
-						key={id}
-						onClick={() => sheets.open(id as never)}
-					>
+					<Button data-sheet-opener={id} key={id} onClick={() => open(id)}>
 						{id}
 					</Button>
 				))}
+				<Button
+					data-sheet-opener="explain"
+					onClick={() => open("explain", { figure: "toAssign" })}
+				>
+					explain
+				</Button>
 			</div>
 			<ul className="flex flex-col gap-1">
 				{m.envelopes.map((e) => (
@@ -48,19 +60,35 @@ function Harness() {
 						<Money figure="envelope.left" value={e.left} />
 						<span className="flex flex-wrap gap-2">
 							<Button
-								onClick={() => sheets.open("move", { envelopeId: e.id })}
+								onClick={() => open("move", { envelopeId: e.id })}
 								size="sm"
 							>
 								Move {e.name}
 							</Button>
 							{e.status === "OVERSPENT" ? (
 								<Button
-									onClick={() => sheets.open("cover", { envelopeId: e.id })}
+									onClick={() => open("cover", { envelopeId: e.id })}
 									size="sm"
 								>
 									Cover {e.name}
 								</Button>
 							) : null}
+							{e.kind === "MONTHLY" ? (
+								<Button
+									onClick={() => open("raiseLimit", { envelopeId: e.id })}
+									size="sm"
+								>
+									Raise {e.name}
+								</Button>
+							) : null}
+							<Button
+								onClick={() =>
+									open("explain", { figure: "left", envelopeId: e.id })
+								}
+								size="sm"
+							>
+								Explain {e.name}
+							</Button>
 						</span>
 					</li>
 				))}
