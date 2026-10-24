@@ -41,6 +41,8 @@ export type EnvelopeTarget =
 			dueDate: IsoDate;
 			repeatMonths: number | null;
 			linkedToTemplate: boolean;
+			/** Follows a liability: payments to it cover this cycle's minimum (any envelope). */
+			debtPaid?: boolean;
 	  }
 	| {
 			kind: "SAVINGS";

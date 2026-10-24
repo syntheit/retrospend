@@ -214,6 +214,8 @@ model Expense {
   // account comes from its AccountLeg. movedInAt: counted in the budget by a
   // Move in (count only, D4).
   keepInWealth Boolean   @default(false)
+  // The envelope the budget charges this row to, whatever its category (a debt payment's interest).
+  budgetEnvelopeId String?
   movedInAt    DateTime?
   /// The Use my plan batch a recurring confirm assigned; its undo takes it back.
   planBatchId  String?
@@ -781,6 +783,8 @@ model PayoffPlan {
   customOrder  Json           @default("[]")
   // "Extra debt payment": gets a Set aside target equal to the extra.
   envelopeId   String?
+  // What the last save replaced (plan and envelope target), for its undo.
+  undo         Json?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   book         BudgetBook     @relation(fields: [bookId], references: [id], onDelete: Cascade)

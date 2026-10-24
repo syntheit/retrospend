@@ -157,6 +157,7 @@ async function loadOwnRows(
 		entryKind: true,
 		homeCurrency: true,
 		homeAmount: true,
+		budgetEnvelopeId: true,
 	} as const;
 	const moneyIn = await tx.expense.findMany({
 		where: budgetMoneyInWhere(userId, from),
@@ -371,7 +372,7 @@ interface Setting {
 async function settingOf(tx: Tx, row: BookRow, now: Date): Promise<Setting> {
 	const periods = periodsOf(row);
 	const today = isoDateIn(now, row.timeZone);
-	const { templates, liabilities } = await loadTargetSources(tx, row);
+	const { templates, liabilities } = await loadTargetSources(tx, row, today);
 	const accounts = await loadDedicatedAccounts(tx, row);
 	const rates = await loadRates(tx, row, [
 		...templates.map((t) => t.currency),

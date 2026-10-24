@@ -260,6 +260,7 @@ function targetDto(
 		foreign: r.env.foreign,
 		incomplete: r.env.targetIncomplete,
 		liabilityId: r.env.liabilityId ?? null,
+		debtPaid: t?.kind === "BILL" ? (t.debtPaid ?? false) : false,
 	};
 }
 

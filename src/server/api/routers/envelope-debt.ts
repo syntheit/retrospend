@@ -39,6 +39,10 @@ export const envelopeDebtProcedures = {
 		.input(savePayoffPlanInputSchema)
 		.output(payoffPlanResultSchema)
 		.mutation(({ ctx, input }) => debtsApi.savePlan(uid(ctx), input)),
+	/** Undo of the last save: the plan and the extra envelope's target as they were. */
+	revertPayoffPlan: envelopeProcedure
+		.output(payoffPlanResultSchema)
+		.mutation(({ ctx }) => debtsApi.revertPlan(uid(ctx))),
 	/** Debt-free month, total interest, payoff month per debt; never writes. */
 	payoffProject: envelopeProcedure
 		.input(payoffProjectInputSchema)

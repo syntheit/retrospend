@@ -18,6 +18,7 @@ import { userTransaction } from "~/server/db-tx";
 import {
 	getPayoffPlan,
 	projectIn,
+	revertPayoffPlan,
 	savePayoffPlan,
 	setDebtTerms,
 } from "./debt.service";
@@ -36,6 +37,8 @@ export const debtsApi = {
 		input: SavePayoffPlanInput,
 	): Promise<PayoffPlanResult> =>
 		userTransaction(db, userId, (tx) => savePayoffPlan(tx, userId, input)),
+	revertPlan: (userId: string): Promise<PayoffPlanResult> =>
+		userTransaction(db, userId, (tx) => revertPayoffPlan(tx, userId)),
 	project: (
 		userId: string,
 		input: PayoffProjectInput,

@@ -227,8 +227,8 @@ function billDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 
 /**
  * "Debt payment due" (SPEC §5.14): a bill that follows a liability's
- * minimum, due today or overdue, and not paid this cycle (the payment's
- * principal leaves that envelope, so the 90% rule marks it paid).
+ * minimum, due today or overdue, until payments to that liability this cycle
+ * (principal plus interest, from any envelope) cover the minimum.
  */
 function debtDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 	const due = envelopesOf(dto)
@@ -236,7 +236,7 @@ function debtDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 			(e) =>
 				e.target?.kind === "BILL" &&
 				e.target.liabilityId &&
-				!e.target.paid &&
+				!e.target.debtPaid &&
 				e.target.dueDate !== null &&
 				e.target.dueDate <= dto.today,
 		)

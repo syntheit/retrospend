@@ -115,6 +115,8 @@ export const envelopeTargetSchema = z.object({
 	incomplete: z.boolean(),
 	/** BILL: the liability whose minimum it follows (SPEC §5.4); paid through Pay down a debt. */
 	liabilityId: idSchema.nullable().optional(),
+	/** A bill that follows a liability: payments to it cover this cycle's minimum. */
+	debtPaid: z.boolean().optional(),
 });
 
 export const leftThisWeekSchema = z.object({

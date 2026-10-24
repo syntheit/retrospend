@@ -8,8 +8,9 @@
  *   S14: he pays 1,400.00; 1,178.00 was new spending (never recorded), so
  *   the sheet records 200.00 toward the old balance and 22.00 interest.
  *   Visa owes 1,000.00; Checking 5,000 - 200 - 22 = 4,778.00. Pay down Visa:
- *   assigned 30,000, activity -20,000, Left 10,000; goal progress = Left +
- *   moved to Wealth = 30,000, unchanged. Spending activity -2,200 (Fees).
+ *   assigned 30,000, activity -20,000 principal - 2,200 interest (charged to
+ *   the paying envelope; Fees stays its report category), Left 7,800; goal
+ *   progress = Left + moved to Wealth = 27,800. Spending untouched.
  *   Rent and Dining untouched; To assign 70,000 before and after. The
  *   preview writes nothing; the undo puts every number back.
  *   B11: 600.00 paid, 400.00 covered new spending: only 200.00 is recorded,
@@ -217,9 +218,9 @@ describe("S14 a card payment with old debt and interest", () => {
 			visa?.assigned.minor,
 			visa?.activity.minor,
 			visa?.left.minor,
-		]).toEqual([30_000, -20_000, 10_000]);
-		expect(visa?.target?.progress).toEqual(usd(30_000));
-		expect(rowOf(m, w.id("Spending"))?.activity).toEqual(usd(-2_200));
+		]).toEqual([30_000, -22_200, 7_800]);
+		expect(visa?.target?.progress).toEqual(usd(27_800));
+		expect(rowOf(m, w.id("Spending"))?.activity).toEqual(usd(0));
 		expect(rowOf(m, w.id("Rent"))).toEqual(rowOf(before, w.id("Rent")));
 		expect(rowOf(m, w.id("Dining"))).toEqual(rowOf(before, w.id("Dining")));
 		expect(m?.toAssign.amount).toEqual(usd(70_000));
@@ -288,6 +289,123 @@ describe("B11 and a loan", () => {
 		).resolves.toBe(1);
 		const sides = await invariantAt(w.user.id);
 		expect(sides.budget).toBe(sides.ledger);
+	});
+});
+
+/**
+ * Review round 1.
+ *   From Brokerage (outside the budget) to the Loan: 300.00 + 50.00. Wealth
+ *   only: Loan 9,700.00, Brokerage 4,650.00; no envelope moves (Pay down
+ *   Visa stays 30,000), To assign stays 70,000, the interest is not budget
+ *   spending.
+ *   The Visa minimum (50.00) paid as 26.00 principal + 24.00 interest from
+ *   Spending: Debt payment due clears; Spending activity -5,000; the bill
+ *   envelope keeps what it had.
+ *   Principal above what is owed (1,300.00 of 1,200.00) is refused.
+ */
+describe("payments outside the budget, any-envelope minimums, caps (review round 1)", () => {
+	it("from an account outside the budget: Wealth only, no envelope, no budget spending", async () => {
+		const w = await world();
+		const brokerage = await openAccount(
+			w.user.id,
+			"Brokerage",
+			"INVESTMENT",
+			"USD",
+			5_000,
+		);
+		const id = randomUUID();
+		await forUser(w.user.id).apply(recordDebtPaymentMutation, {
+			id,
+			liabilityId: w.loan,
+			fromAccountId: brokerage,
+			envelopeId: w.id("Pay down Visa"),
+			principalMinor: 30_000,
+			interestMinor: 5_000,
+		});
+		expect(await balance(w.loan)).toBe("9700");
+		expect(await balance(brokerage)).toBe("4650");
+		await expect(
+			adminDb.wealthTransfer.count({ where: { transferId: id } }),
+		).resolves.toBe(0);
+		const m = await getMonth(w.user.id);
+		expect(rowOf(m, w.id("Pay down Visa"))?.left).toEqual(usd(30_000));
+		expect(rowOf(m, w.id("Spending"))?.activity).toEqual(usd(0));
+		expect(m?.toAssign.amount).toEqual(usd(70_000));
+		const sides = await invariantAt(w.user.id);
+		expect(sides.budget).toBe(sides.ledger);
+	});
+
+	it("a minimum paid as principal plus interest from any envelope clears Debt payment due", async () => {
+		const w = await world({ bill: true });
+		const due = async () => {
+			const m = await getMonth(w.user.id);
+			return budgetItems({
+				dto: m as NonNullable<typeof m>,
+				paused: false,
+				startingMoneyUnconfirmed: false,
+				moneyIn: [],
+			}).filter((i) => i.type === "budget.debtDue");
+		};
+		expect(await due()).toHaveLength(1);
+		const bill = rowOf(await getMonth(w.user.id), w.id("Visa minimum"));
+		await forUser(w.user.id).apply(recordDebtPaymentMutation, {
+			id: randomUUID(),
+			liabilityId: w.visa,
+			fromAccountId: w.checking,
+			envelopeId: w.id("Spending"),
+			principalMinor: 2_600,
+			interestMinor: 2_400,
+		});
+		expect(await due()).toEqual([]);
+		const m = await getMonth(w.user.id);
+		expect(rowOf(m, w.id("Spending"))?.activity).toEqual(usd(-5_000));
+		expect(rowOf(m, w.id("Visa minimum"))?.left).toEqual(bill?.left);
+	});
+
+	it("refuses principal above what is owed", async () => {
+		const w = await world();
+		await expect(
+			forUser(w.user.id).apply(recordDebtPaymentMutation, {
+				id: randomUUID(),
+				liabilityId: w.visa,
+				fromAccountId: w.checking,
+				envelopeId: null,
+				principalMinor: 130_000,
+				interestMinor: 0,
+			}),
+		).rejects.toThrow(/more than you owe/);
+	});
+
+	it("undo of a saved plan restores the envelope's target exactly", async () => {
+		const w = await world();
+		// Rent has no target before; the plan gives it Set aside 100.00.
+		const extra = w.id("Rent");
+		await debtsApi.savePlan(w.user.id, {
+			strategy: "AVALANCHE",
+			extraMonthlyMinor: 10_000,
+			customOrder: [],
+			envelopeId: extra,
+		});
+		const before = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: extra },
+		});
+		expect([before.targetAmount?.toString(), before.targetMode]).toEqual([
+			"100",
+			"SET_ASIDE",
+		]);
+		await debtsApi.revertPlan(w.user.id);
+		const after = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: extra },
+		});
+		expect([
+			after.targetAmount,
+			after.targetMode,
+			after.targetStartMonth,
+		]).toEqual([null, "REFILL", before.targetStartMonth]);
+		await expect(debtsApi.plan(w.user.id)).resolves.toMatchObject({
+			extraMonthly: usd(0),
+			envelopeId: null,
+		});
 	});
 });
 

@@ -13,8 +13,11 @@
  * - Undo is the transfer's delete: legs, fee expense and the budget side go
  *   with it (CASCADE), so the undo is exact.
  *
- * Book currency only for now: a debt or account in another currency is paid
- * with a transfer (open question in the P6 report).
+ * - From an account outside the budget the payment changes Wealth only: no
+ *   envelope moves and the interest is not budget spending.
+ *
+ * Book currency only for now: a debt or account in another currency is
+ * refused (the exchange path waits for a later phase).
  */
 import type {
 	DebtPaymentResult,
@@ -22,6 +25,7 @@ import type {
 	RecordDebtPaymentInput,
 } from "~/lib/schemas/envelope-debt";
 import type { Prisma } from "~prisma";
+import { inBudget } from "../accounts/places";
 import { createTransferIn } from "../transfers/create.mutation";
 import { liabilitiesOf, projectIn } from "./debt.service";
 import { EnvelopeError } from "./errors";
@@ -93,15 +97,20 @@ export async function recordDebtPayment(
 	const [debt] = await liabilitiesOf(tx, [input.liabilityId]);
 	if (!debt) throw new EnvelopeError("NOT_FOUND", "no such debt");
 	if (debt.currency !== H)
-		invalid("pay a debt in another currency with a transfer");
-	if (input.fromAccountId) {
-		const from = await tx.assetAccount.findFirst({
-			where: { id: input.fromAccountId, closedAt: null },
-		});
-		if (!from) throw new EnvelopeError("NOT_FOUND", "no such account");
-		if (from.currency !== H)
-			invalid("pay from an account in your budget's currency");
-	}
+		invalid("debts in another currency cannot be paid here yet");
+	if (input.principalMinor > toMinor(debt.balance, H))
+		invalid("that is more than you owe on this debt");
+	const from = input.fromAccountId
+		? await tx.assetAccount.findFirst({
+				where: { id: input.fromAccountId, closedAt: null },
+			})
+		: null;
+	if (input.fromAccountId && !from)
+		throw new EnvelopeError("NOT_FOUND", "no such account");
+	if (from && from.currency !== H)
+		invalid("accounts in another currency cannot pay here yet");
+	// Not tracked in the book currency is part of the budget (MONEY-MOVES §2.1).
+	const fromBudget = from ? inBudget(from, H) : true;
 	const categoryId = await interestCategory(tx, input.interestCategoryId);
 	const before = { minor: toMinor(debt.balance, H), currency: H };
 	const date = input.date ?? isoDateIn(now, book.timeZone);
@@ -124,12 +133,24 @@ export async function recordDebtPayment(
 		envelopeId: input.envelopeId,
 		timeZone: book.timeZone,
 	});
-	if (moved.feeExpenseId && categoryId)
+	const envelope = book.envelopes.find(
+		(e) => e.id === input.envelopeId && e.archivedAt === null,
+	);
+	// Interest keeps Fees as its report category. From the budget it comes
+	// out of the paying envelope; from outside the budget it is Wealth only.
+	if (moved.feeExpenseId)
 		await tx.expense.update({
 			where: { id: moved.feeExpenseId },
-			data: { categoryId },
+			data: fromBudget
+				? { categoryId, budgetEnvelopeId: envelope?.id ?? null }
+				: { categoryId, entryKind: "NOT_SPENDING" },
 		});
-	if (!moved.budget.side.recorded) {
+	if (!fromBudget) {
+		// A payment from outside the budget touches no envelope, even into a card the budget counts.
+		await tx.wealthTransfer.deleteMany({
+			where: { transferId: moved.transferId },
+		});
+	} else if (!moved.budget.side.recorded) {
 		const side = await recordWealthMove(tx, {
 			userId,
 			direction: "TO_WEALTH",

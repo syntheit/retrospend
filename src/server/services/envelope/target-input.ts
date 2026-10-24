@@ -8,6 +8,7 @@
 
 import type { Money } from "~/lib/schemas/envelope";
 import type { Prisma, RecurringTemplate } from "~prisma";
+import { addMonthsToDate } from "./calendar";
 import { budgetMonthOf, isoDateIn, type MonthBoundary } from "./months";
 import type { EnvelopeTarget } from "./needs";
 import type { LiabilityTerms } from "./target-sources";
@@ -114,6 +115,21 @@ function dueIn(today: IsoDate, day: number): IsoDate {
 }
 
 /**
+ * Whether payments to the debt since its last due day cover this cycle's
+ * minimum (principal plus interest, from any envelope): Debt payment due
+ * clears on any payment that covers it.
+ */
+function debtPaidThisCycle(l: LiabilityTerms, today: IsoDate): boolean {
+	if (!l.minimumPayment || !l.dueDate) return false;
+	// The cycle runs from last month's due day (exclusive) to today; it only matters once due.
+	const from = dueIn(addMonthsToDate(today, -1), l.dueDate);
+	const paid = (l.payments ?? [])
+		.filter((p) => p.date > from && p.date <= today)
+		.reduce((t, p) => t + p.minor, 0);
+	return paid >= toMinor(l.minimumPayment.toString(), l.currency);
+}
+
+/**
  * A bill that follows a liability (SPEC §5.4, §5.11): its minimum each
  * month, due on its due day, at today's rate when the debt is in another
  * currency. No minimum or no due day: no target.
@@ -139,6 +155,7 @@ function billFromLiability(l: LiabilityTerms, ctx: TargetContext): TargetOf {
 			dueDate: dueIn(ctx.today, l.dueDate),
 			repeatMonths: 1,
 			linkedToTemplate: false,
+			debtPaid: debtPaidThisCycle(l, ctx.today),
 		},
 		foreign,
 		targetIncomplete: false,

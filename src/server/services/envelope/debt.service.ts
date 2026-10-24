@@ -35,7 +35,11 @@ import { budgetMonthOf, isoDateIn } from "./months";
 import { type PayoffDebt, projectPayoff } from "./payoff";
 import { RateBook } from "./rate-book";
 import { dec, fromMinor, toMinor } from "./units";
-import { convertToBook, type ValuationContext } from "./valuation";
+import {
+	convertToBook,
+	rateTypeForMonth,
+	type ValuationContext,
+} from "./valuation";
 
 type Tx = Prisma.TransactionClient;
 
@@ -153,6 +157,25 @@ export async function savePayoffPlan(
 	if (input.customOrder.some((id) => !known.has(id)))
 		invalid("your order names one of your debts");
 	const before = await tx.payoffPlan.findUnique({ where: { bookId: book.id } });
+	const undo = {
+		plan: before
+			? {
+					strategy: before.strategy,
+					extraMonthly: before.extraMonthly.toString(),
+					customOrder: z.array(z.string()).parse(before.customOrder),
+					envelopeId: before.envelopeId,
+				}
+			: null,
+		target: env
+			? {
+					envelopeId: env.id,
+					targetAmount: env.targetAmount?.toString() ?? null,
+					targetMode: env.targetMode,
+					targetCadence: env.targetCadence,
+					targetCurrency: env.targetCurrency,
+				}
+			: null,
+	};
 	const data = {
 		strategy: input.strategy,
 		extraMonthly: new Prisma.Decimal(
@@ -163,8 +186,8 @@ export async function savePayoffPlan(
 	};
 	const saved = await tx.payoffPlan.upsert({
 		where: { bookId: book.id },
-		create: { id: randomUUID(), bookId: book.id, ...data },
-		update: data,
+		create: { id: randomUUID(), bookId: book.id, ...data, undo },
+		update: { ...data, undo },
 	});
 	// "Extra debt payment" gets a Set aside target equal to the plan's extra (SPEC §5.11).
 	if (env)
@@ -184,6 +207,67 @@ export async function savePayoffPlan(
 	};
 }
 
+const undoSchema = z.object({
+	plan: z
+		.object({
+			strategy: z.enum(["SNOWBALL", "AVALANCHE", "CUSTOM"]),
+			extraMonthly: z.string(),
+			customOrder: z.array(z.string()),
+			envelopeId: z.string().nullable(),
+		})
+		.nullable(),
+	target: z
+		.object({
+			envelopeId: z.string(),
+			targetAmount: z.string().nullable(),
+			targetMode: z.enum(["REFILL", "SET_ASIDE"]),
+			targetCadence: z.enum(["MONTH", "WEEK"]),
+			targetCurrency: z.string().nullable(),
+		})
+		.nullable(),
+});
+
+/**
+ * Undo of the last save: the plan it replaced (or none: the default plan)
+ * and the extra envelope's target exactly as they were, read from the row,
+ * never from the client.
+ */
+export async function revertPayoffPlan(
+	tx: Tx,
+	userId: string,
+): Promise<PayoffPlanResult> {
+	const book = await requireBook(tx, userId);
+	const H = book.currency;
+	const row = await tx.payoffPlan.findUnique({ where: { bookId: book.id } });
+	const undo = row?.undo ? undoSchema.parse(row.undo) : null;
+	if (!row || !undo) invalid("nothing to undo");
+	const p = undo.plan;
+	const restored = await tx.payoffPlan.update({
+		where: { id: row.id },
+		data: {
+			strategy: p?.strategy ?? "AVALANCHE",
+			extraMonthly: new Prisma.Decimal(p?.extraMonthly ?? 0),
+			customOrder: p?.customOrder ?? [],
+			envelopeId: p?.envelopeId ?? null,
+			undo: Prisma.DbNull,
+		},
+	});
+	const t = undo.target;
+	if (t)
+		await tx.envelope.update({
+			where: { id: t.envelopeId },
+			data: {
+				targetAmount:
+					t.targetAmount === null ? null : new Prisma.Decimal(t.targetAmount),
+				targetMode: t.targetMode,
+				targetCadence: t.targetCadence,
+				targetCurrency: t.targetCurrency,
+			},
+		});
+	forgetMonthViews(tx);
+	return { plan: planDto(restored, H), previous: planDto(row, H) };
+}
+
 /** Book currency per 1 unit of `currency` today, from a million units (display only). */
 function bookPerUnit(currency: string, ctx: ValuationContext, today: string) {
 	if (currency === ctx.bookCurrency) return dec(1);
@@ -193,7 +277,8 @@ function bookPerUnit(currency: string, ctx: ValuationContext, today: string) {
 		{
 			date: today,
 			month: budgetMonthOf(today, ctx.periods),
-			foreignRateType: "official",
+			// The book's rate type for this month (BookPeriod), as targets use.
+			foreignRateType: rateTypeForMonth(budgetMonthOf(today, ctx.periods), ctx),
 		},
 		ctx,
 	);
