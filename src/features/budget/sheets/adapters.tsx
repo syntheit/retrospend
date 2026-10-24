@@ -14,6 +14,7 @@ import type { BudgetSheetArgs, BudgetSheetId } from "../sheet-ids";
 import type { BudgetSheetProps, BudgetSheets } from "../sheet-registry";
 import { AssignSheet } from "./assign-sheet";
 import { CloseSheet } from "./close-sheet";
+import { CoverAllSheet } from "./cover-all-sheet";
 import { CoverSheet } from "./cover-sheet";
 import { ExplainSheet } from "./explain-sheet";
 import { FundNowSheet } from "./fund-now-sheet";
@@ -130,4 +131,5 @@ export const SHEET_ADAPTERS: BudgetSheets = {
 	welcomeBack: adapt(WelcomeBackSheet),
 	reconcile: adapt(ReconcileSheet),
 	setup: adapt(SetupSheet),
+	coverAll: adapt(CoverAllSheet),
 };

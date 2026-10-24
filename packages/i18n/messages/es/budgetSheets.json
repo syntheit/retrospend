@@ -424,6 +424,16 @@
 		"uncovered": "Nada puede cubrir esta parte",
 		"idle": "Escribe un monto para ver qué haría."
 	},
+	"coverAll": {
+		"title": "Cubrir excesos",
+		"lead": "Cada sobre que se pasó toma lo que necesita de {pool}.",
+		"nothing": "No hay nada para cubrir con {pool} ahora.",
+		"over": "Excedido en <amount></amount>",
+		"cover": "Cubrir todo",
+		"envelopeFallback": "Sobre",
+		"toast": "Cubriste {count, plural, one {# sobre} other {# sobres}} con {amount}",
+		"toastShort": "Cubriste {count, plural, one {# sobre} other {# sobres}}"
+	},
 	"setup": {
 		"title": "Configura tu presupuesto",
 		"lead": "¿Cómo te gusta presupuestar? No hay respuesta incorrecta. Lo puedes cambiar cuando quieras.",

@@ -424,6 +424,16 @@
 		"uncovered": "Nada pode cobrir esta parte",
 		"idle": "Digite um valor para ver o efeito."
 	},
+	"coverAll": {
+		"title": "Cobrir estouros",
+		"lead": "Cada envelope que estourou pega o que precisa de {pool}.",
+		"nothing": "Nada para cobrir com {pool} agora.",
+		"over": "Estourado em <amount></amount>",
+		"cover": "Cobrir tudo",
+		"envelopeFallback": "Envelope",
+		"toast": "Você cobriu {count, plural, one {# envelope} other {# envelopes}} com {amount}",
+		"toastShort": "Você cobriu {count, plural, one {# envelope} other {# envelopes}}"
+	},
 	"setup": {
 		"title": "Configure seu orçamento",
 		"lead": "Como você gosta de orçar? Não há resposta errada. Você pode mudar quando quiser.",

@@ -177,6 +177,25 @@ test("Cover: Everything else is over by 120.00; preview, save, undo", async ({
 	);
 });
 
+test("Cover all: every overspent envelope from Not planned yet, one Undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const sheet = await openSheet(page, "coverAll", "Cover overspending");
+	await expect(sheet.getByText("Everything else").first()).toBeVisible();
+	const changes = sheet.getByRole("region", { name: "What this changes" });
+	await expect(changes).toContainText("USD 0.00");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.assign", () =>
+		sheet.getByRole("button", { name: "Cover all" }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undo", () =>
+		toast(page, "Covered").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
 test("Use my plan: lists the jobs, then writes one batch and undoes it", async ({
 	page,
 }) => {

@@ -424,6 +424,16 @@
 		"uncovered": "Nothing can cover this part",
 		"idle": "Type an amount to see what it would do."
 	},
+	"coverAll": {
+		"title": "Cover overspending",
+		"lead": "Each envelope that went over takes what it needs from {pool}.",
+		"nothing": "Nothing to cover from {pool} right now.",
+		"over": "Over by <amount></amount>",
+		"cover": "Cover all",
+		"envelopeFallback": "Envelope",
+		"toast": "Covered {count, plural, one {# envelope} other {# envelopes}} with {amount}",
+		"toastShort": "Covered {count, plural, one {# envelope} other {# envelopes}}"
+	},
 	"setup": {
 		"title": "Set up your budget",
 		"lead": "How do you like to budget? There is no wrong answer. You can change it anytime.",

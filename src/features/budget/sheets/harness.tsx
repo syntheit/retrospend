@@ -22,6 +22,7 @@ const SIMPLE = [
 	"move",
 	"fundNow",
 	"setup",
+	"coverAll",
 ] as const;
 
 function Harness() {

@@ -424,6 +424,16 @@
 		"uncovered": "Rien ne peut couvrir cette part",
 		"idle": "Saisis un montant pour voir l'effet."
 	},
+	"coverAll": {
+		"title": "Couvrir les dépassements",
+		"lead": "Chaque enveloppe en dépassement prend ce qu'il lui faut dans {pool}.",
+		"nothing": "Rien à couvrir avec {pool} pour l'instant.",
+		"over": "Dépassé de <amount></amount>",
+		"cover": "Tout couvrir",
+		"envelopeFallback": "Enveloppe",
+		"toast": "{count, plural, one {# enveloppe couverte} other {# enveloppes couvertes}} avec {amount}",
+		"toastShort": "{count, plural, one {# enveloppe couverte} other {# enveloppes couvertes}}"
+	},
 	"setup": {
 		"title": "Mets en place ton budget",
 		"lead": "Comment aimes-tu budgétiser ? Il n'y a pas de mauvaise réponse. Tu peux changer à tout moment.",

@@ -424,6 +424,16 @@
 		"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
 		"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde."
 	},
+	"coverAll": {
+		"title": "Überziehungen ausgleichen",
+		"lead": "Jeder überzogene Umschlag nimmt, was er braucht, aus {pool}.",
+		"nothing": "Gerade gibt es nichts, was aus {pool} ausgeglichen werden könnte.",
+		"over": "<amount></amount> drüber",
+		"cover": "Alle ausgleichen",
+		"envelopeFallback": "Umschlag",
+		"toast": "{count, plural, one {# Umschlag} other {# Umschläge}} mit {amount} ausgeglichen",
+		"toastShort": "{count, plural, one {# Umschlag} other {# Umschläge}} ausgeglichen"
+	},
 	"setup": {
 		"title": "Dein Budget einrichten",
 		"lead": "Wie planst du gern? Es gibt keine falsche Antwort. Du kannst es jederzeit ändern.",
