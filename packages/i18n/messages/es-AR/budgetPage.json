@@ -11,7 +11,9 @@
 		"combine": "Combinar sobres",
 		"rules": "Reglas de ingresos",
 		"style": "Estilo de presupuesto",
-		"help": "Qué significan las palabras"
+		"help": "Qué significan las palabras",
+		"payoffPlan": "Plan de pago",
+		"payDebt": "Pagar una deuda"
 	},
 	"month": {
 		"label": "{month} {year}",
@@ -190,5 +192,20 @@
 		"cost": "Costo del plan",
 		"typical": "Ingresos habituales",
 		"runway": "Tu presupuesto y tus ahorros duran {months} meses con este costo."
+	},
+	"debt": {
+		"label": "Sin deudas en",
+		"never": "No se ve la meta",
+		"sentence": "<total></total> en {count, plural, one {# deuda} other {# deudas}}. Unos {months, plural, one {# mes} other {# meses}} con este plan.",
+		"capped": "Con los mínimos, los intereses superan los pagos.",
+		"incomplete": "Todavía no hay cotización para {currencies}, así que el total no se calcula.",
+		"unavailable": "No se pudieron cargar tus deudas.",
+		"leftToSpend": "Queda para gastar <amount></amount>",
+		"plan": "Plan de pago",
+		"pay": "Pagar una deuda",
+		"afford": "¿Me alcanza para algo?",
+		"rail": "Deuda",
+		"total": "Deuda total",
+		"open": "Plan de pago"
 	}
 }

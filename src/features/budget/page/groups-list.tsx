@@ -67,6 +67,7 @@ export function GroupsList({
 										id: e.id,
 										name: e.name,
 										over: e.status === "OVERSPENT",
+										debt: Boolean(e.target?.liabilityId),
 									};
 									const row = (
 										<EnvelopeRow

@@ -367,9 +367,11 @@ export function httpFigureFetcher(request: APIRequestContext): FigureFetcher {
 		for (const tag of ids) {
 			const scope = parseScopedId(tag);
 			if (!scope) continue;
+			// An envelope figure's tag carries the envelope id where a project's carries the project's.
 			const query = new URLSearchParams({
 				ids: scope.id,
-				projectId: scope.projectId,
+				[scope.id.startsWith("envelope.") ? "envelopeId" : "projectId"]:
+					scope.projectId,
 			});
 			if (scope.personId) query.set("personId", scope.personId);
 			const body = await get(query.toString());

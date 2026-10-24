@@ -11,7 +11,9 @@
 		"combine": "Combinar envelopes",
 		"rules": "Regras de renda",
 		"style": "Estilo de orçamento",
-		"help": "O que as palavras significam"
+		"help": "O que as palavras significam",
+		"payoffPlan": "Plano de quitação",
+		"payDebt": "Pagar uma dívida"
 	},
 	"month": {
 		"label": "{month} {year}",
@@ -190,5 +192,20 @@
 		"cost": "Custo do plano",
 		"typical": "Entradas habituais",
 		"runway": "Seu orçamento e sua poupança duram {months} meses com este custo."
+	},
+	"debt": {
+		"label": "Sem dívidas até",
+		"never": "Fora de vista",
+		"sentence": "<total></total> em {count, plural, one {# dívida} other {# dívidas}}. Cerca de {months, plural, one {# mês} other {# meses}} com este plano.",
+		"capped": "Nos mínimos, os juros superam os pagamentos.",
+		"incomplete": "Ainda não há cotação para {currencies}, então o total não foi calculado.",
+		"unavailable": "Não foi possível carregar suas dívidas.",
+		"leftToSpend": "Resta para gastar <amount></amount>",
+		"plan": "Plano de quitação",
+		"pay": "Pagar uma dívida",
+		"afford": "Posso comprar algo?",
+		"rail": "Dívida",
+		"total": "Dívida total",
+		"open": "Plano de quitação"
 	}
 }

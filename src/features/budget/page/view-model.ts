@@ -21,7 +21,7 @@ const AVAILABLE: Record<Status, EnvelopeVM["status"]> = {
 	NO_TARGET: "funded",
 };
 
-/** The kit's row model for an envelope. There is no spent share from the server yet, so no bar. */
+/** The kit's row model for an envelope: its Left, and the server's share spent for the bar. */
 export function toEnvelopeVM(e: EnvelopeRowDto): EnvelopeVM {
 	return {
 		id: e.id,
@@ -33,8 +33,17 @@ export function toEnvelopeVM(e: EnvelopeRowDto): EnvelopeVM {
 		},
 		available: e.left,
 		status: AVAILABLE[e.status],
-		// No figure id: the figures endpoint has no envelope narrowing yet (GAPS).
+		spent: e.spentBasis ?? undefined,
+		figure: `envelope.left:${e.id}`,
 	};
+}
+
+/** A debt is in the book: a bill follows a liability, or the style is Pay off debt. */
+export function hasDebt(data: GetMonthOutput): boolean {
+	return (
+		data.book.style === "DEBT_PAYOFF" ||
+		data.groups.some((g) => g.envelopes.some((e) => e.target?.liabilityId))
+	);
 }
 
 /** Limits books name their columns Limit, Spent, Left (SPEC §6.1). */

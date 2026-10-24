@@ -11,7 +11,9 @@
 		"combine": "Umschläge zusammenführen",
 		"rules": "Einnahmeregeln",
 		"style": "Budgetstil",
-		"help": "Was die Begriffe bedeuten"
+		"help": "Was die Begriffe bedeuten",
+		"payoffPlan": "Tilgungsplan",
+		"payDebt": "Schulden tilgen"
 	},
 	"month": {
 		"label": "{month} {year}",
@@ -190,5 +192,20 @@
 		"cost": "Plankosten",
 		"typical": "Übliche Einnahmen",
 		"runway": "Dein Budget und deine Ersparnisse reichen bei diesen Kosten {months} Monate."
+	},
+	"debt": {
+		"label": "Schuldenfrei bis",
+		"never": "Nicht absehbar",
+		"sentence": "<total></total> bei {count, plural, one {# Schuld} other {# Schulden}}. Etwa {months, plural, one {# Monat} other {# Monate}} bei diesem Plan.",
+		"capped": "Mit den Mindestraten übersteigen die Zinsen die Zahlungen.",
+		"incomplete": "Für {currencies} gibt es noch keinen Kurs, daher ist die Summe nicht berechnet.",
+		"unavailable": "Deine Schulden konnten nicht geladen werden.",
+		"leftToSpend": "Zum Ausgeben übrig <amount></amount>",
+		"plan": "Tilgungsplan",
+		"pay": "Schulden tilgen",
+		"afford": "Kann ich mir etwas leisten?",
+		"rail": "Schulden",
+		"total": "Gesamtschulden",
+		"open": "Tilgungsplan"
 	}
 }

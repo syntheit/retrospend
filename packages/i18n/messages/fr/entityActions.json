@@ -296,6 +296,9 @@
 		"cover": {
 			"label": "Couvrir le dépassement"
 		},
+		"payDebt": {
+			"label": "Rembourser une dette"
+		},
 		"target": {
 			"label": "Modifier l'objectif"
 		},

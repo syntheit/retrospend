@@ -15,7 +15,11 @@ import {
 } from "../../constants";
 import { MARTIN } from "../../fixtures/personas";
 import { bannedOutputOn } from "../../helpers/banned-output";
-import { FigureAudit, httpFigureFetcher } from "../../helpers/figures";
+import {
+	collectFigureTags,
+	FigureAudit,
+	httpFigureFetcher,
+} from "../../helpers/figures";
 import { gotoReady } from "../../helpers/navigation";
 
 // The redesigned Budget (uiV2 with the envelope budget on). The envelope
@@ -215,13 +219,18 @@ test("Budget: one number, the groups, and every figure matches the server", asyn
 		await expect(table.getByRole("button", { name })).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 
-	const audit = new FigureAudit(httpFigureFetcher(page.request));
-	expect(await audit.checkPage(page, "budget", "budgetPage")).toEqual([]);
-
-	// A group opens to its envelopes, with their target lines.
+	// A group opens to its envelopes, with their target lines and bars.
 	await table.getByRole("button", { name: "Bills" }).click();
 	await expect(table.getByText("Rent")).toBeVisible();
 	await expect(table.getByText(/ by /).first()).toBeVisible();
+
+	// Every figure on the page, the rows' Left and Spent included (the
+	// figures endpoint narrows them by envelope), is what the server says.
+	const audit = new FigureAudit(httpFigureFetcher(page.request));
+	expect(await audit.checkPage(page, "budget", "budgetPage")).toEqual([]);
+	const ids = (await collectFigureTags(page)).tags.map((t) => t.id ?? "");
+	expect(ids.filter((id) => id.startsWith("envelope.left:"))).toHaveLength(2);
+	expect(ids.filter((id) => id.startsWith("envelope.spent:"))).toHaveLength(2);
 	// Search narrows the list only.
 	await main.getByRole("searchbox", { name: "Search envelopes" }).fill("phone");
 	await expect(table.getByText("Phone")).toBeVisible();

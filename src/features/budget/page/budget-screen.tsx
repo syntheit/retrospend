@@ -22,7 +22,13 @@ import {
 	BudgetUnavailable,
 } from "./states";
 import { useBudgetActions } from "./use-budget-actions";
-import { type Chip, filterGroups, isFiltered, isLimits } from "./view-model";
+import {
+	type Chip,
+	filterGroups,
+	hasDebt,
+	isFiltered,
+	isLimits,
+} from "./view-model";
 
 /** The page on a month the server returned. */
 function BudgetBody({
@@ -54,6 +60,7 @@ function BudgetBody({
 				overflow={
 					<HeaderMenu
 						actions={actions}
+						hasDebt={hasDebt(data)}
 						month={key}
 						onPlan={() => onMonth(shiftMonth(current, 1))}
 						readOnly={closed}

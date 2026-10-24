@@ -296,6 +296,9 @@
 		"cover": {
 			"label": "Cubrir el exceso"
 		},
+		"payDebt": {
+			"label": "Pagar una deuda"
+		},
 		"target": {
 			"label": "Editar objetivo"
 		},

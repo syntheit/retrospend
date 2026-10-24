@@ -148,6 +148,14 @@ export const envelopeRowSchema = z.object({
 	carryIn: moneySchema,
 	assigned: moneySchema,
 	activity: moneySchema,
+	/**
+	 * What the envelope spent this month: spending and your shares minus
+	 * refunds, never Wealth moves (D24). A positive amount in the book
+	 * currency from the stored values, never revalued at today's rate.
+	 */
+	spent: moneySchema,
+	/** Spent of what it holds (carried in plus assigned), hundredths of a percent, 0 to 10000; null for a savings goal. */
+	spentBasis: z.number().int().min(0).max(10_000).nullable(),
 	left: moneySchema,
 	/** Shares still waiting for your OK, inside Activity (D20). */
 	pending: moneySchema,
@@ -160,6 +168,8 @@ export const groupTotalsSchema = z.object({
 	carryIn: moneySchema,
 	assigned: moneySchema,
 	activity: moneySchema,
+	/** Σ spent of its envelopes (see `spent` on a row). */
+	spent: moneySchema,
 	left: moneySchema,
 	/** Σ overspending inside the group ("Over by X" on a Flex row). */
 	over: moneySchema,

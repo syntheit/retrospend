@@ -9,6 +9,7 @@ import { api } from "~/trpc/react";
 import { BudgetNotice } from "./budget-notice";
 import { BudgetRail } from "./budget-rail";
 import { ClosedHero } from "./closed-hero";
+import { DebtHero } from "./debt-hero";
 import { GroupsList } from "./groups-list";
 import { GroupsTable } from "./groups-table";
 import { BudgetHero } from "./hero";
@@ -74,6 +75,8 @@ export function MonthContent({
 						actions.sheet.open("monthSummary", { month: key })
 					}
 				/>
+			) : data.book.style === "DEBT_PAYOFF" ? (
+				<DebtHero actions={actions} data={data} />
 			) : (
 				<BudgetHero
 					data={data}

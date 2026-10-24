@@ -59,7 +59,7 @@ export const ACTION_IDS = {
 		"setRate",
 		"confirmStartingMoney",
 	],
-	envelope: ["move", "cover", "target", "activity", "edit", "whatIf"],
+	envelope: ["move", "cover", "payDebt", "target", "activity", "edit", "whatIf"],
 	import: ["review"],
 	setup: ["addExpense", "chooseCurrency", "resendEmail", "import"],
 } as const;

@@ -296,6 +296,9 @@
 		"cover": {
 			"label": "Cobrir o estouro"
 		},
+		"payDebt": {
+			"label": "Pagar uma dívida"
+		},
 		"target": {
 			"label": "Editar meta"
 		},

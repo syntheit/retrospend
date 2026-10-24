@@ -73,6 +73,8 @@ export function useBudgetActions(data: GetMonthOutput) {
 				sheet.open("move", { month, envelopeId: e.id }),
 			cover: (e: EnvelopeTarget) =>
 				sheet.open("cover", { month, envelopeId: e.id }),
+			payDebt: (e: EnvelopeTarget) =>
+				sheet.open("payDebt", { month, envelopeId: e.id }),
 			target: (e: EnvelopeTarget) =>
 				sheet.open("target", { month, envelopeId: e.id }),
 			edit: (e: EnvelopeTarget) =>

@@ -11,7 +11,9 @@
 		"combine": "Combine envelopes",
 		"rules": "Income rules",
 		"style": "Budget style",
-		"help": "What the words mean"
+		"help": "What the words mean",
+		"payoffPlan": "Payoff plan",
+		"payDebt": "Pay down a debt"
 	},
 	"month": {
 		"label": "{month} {year}",
@@ -190,5 +192,20 @@
 		"cost": "Plan cost",
 		"typical": "Usual money in",
 		"runway": "Your budget and savings last {months} months at this cost."
+	},
+	"debt": {
+		"label": "Debt-free by",
+		"never": "Not in sight",
+		"sentence": "<total></total> across {count, plural, one {# debt} other {# debts}}. About {months, plural, one {# month} other {# months}} at this plan.",
+		"capped": "At the minimums the interest outruns the payments.",
+		"incomplete": "No rate yet for {currencies}, so the total is not worked out.",
+		"unavailable": "Your debts could not load.",
+		"leftToSpend": "Left to spend <amount></amount>",
+		"plan": "Payoff plan",
+		"pay": "Pay down a debt",
+		"afford": "Can I afford something?",
+		"rail": "Debt",
+		"total": "Total debt",
+		"open": "Payoff plan"
 	}
 }

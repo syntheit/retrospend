@@ -296,6 +296,9 @@
 		"cover": {
 			"label": "Cover overspending"
 		},
+		"payDebt": {
+			"label": "Pay down a debt"
+		},
 		"target": {
 			"label": "Edit target"
 		},

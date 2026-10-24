@@ -11,7 +11,9 @@
 		"combine": "Fusionner des enveloppes",
 		"rules": "Règles de revenus",
 		"style": "Style de budget",
-		"help": "Ce que veulent dire les mots"
+		"help": "Ce que veulent dire les mots",
+		"payoffPlan": "Plan de remboursement",
+		"payDebt": "Rembourser une dette"
 	},
 	"month": {
 		"label": "{month} {year}",
@@ -190,5 +192,20 @@
 		"cost": "Coût du plan",
 		"typical": "Entrées habituelles",
 		"runway": "Votre budget et votre épargne durent {months} mois à ce coût."
+	},
+	"debt": {
+		"label": "Sans dette d'ici",
+		"never": "Hors de vue",
+		"sentence": "<total></total> sur {count, plural, one {# dette} other {# dettes}}. Environ {months, plural, one {# mois} other {# mois}} avec ce plan.",
+		"capped": "Aux minimums, les intérêts dépassent les paiements.",
+		"incomplete": "Pas encore de taux pour {currencies}, donc le total n'est pas calculé.",
+		"unavailable": "Vos dettes n'ont pas pu se charger.",
+		"leftToSpend": "Reste à dépenser <amount></amount>",
+		"plan": "Plan de remboursement",
+		"pay": "Rembourser une dette",
+		"afford": "Puis-je me permettre quelque chose ?",
+		"rail": "Dette",
+		"total": "Dette totale",
+		"open": "Plan de remboursement"
 	}
 }

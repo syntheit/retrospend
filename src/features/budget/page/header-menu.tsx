@@ -5,6 +5,7 @@ import {
 	ArrowDownLeft,
 	CalendarCheck,
 	CircleHelp,
+	CreditCard,
 	EllipsisIcon,
 	FlaskConical,
 	Layers,
@@ -38,11 +39,14 @@ export function HeaderMenu({
 	month,
 	onPlan,
 	readOnly,
+	hasDebt,
 }: {
 	actions: BudgetActions;
 	month: number;
 	onPlan: () => void;
 	readOnly: boolean;
+	/** The book has a debt (a bill that follows a liability) or is Pay off debt. */
+	hasDebt: boolean;
 }) {
 	const t = useTranslations("budgetPage.menu");
 	const open = actions.sheet.open;
@@ -55,6 +59,20 @@ export function HeaderMenu({
 		{ id: "usePlan", icon: ListChecks, run: () => open("usePlan", { month }) },
 		{ id: "planNext", icon: NotebookPen, run: onPlan },
 	];
+	const debt: Item[] = hasDebt
+		? [
+				{
+					id: "payoffPlan",
+					icon: ListChecks,
+					run: () => open("debt", { month }),
+				},
+				{
+					id: "payDebt",
+					icon: CreditCard,
+					run: () => open("payDebt", { month }),
+				},
+			]
+		: [];
 	const view: Item[] = [
 		{
 			id: "summary",
@@ -83,7 +101,7 @@ export function HeaderMenu({
 		{ id: "help", icon: CircleHelp, run: () => open("help", { month }) },
 	];
 	const groups = (
-		readOnly ? [view, manage.slice(-1)] : [money, view, manage]
+		readOnly ? [view, manage.slice(-1)] : [money, debt, view, manage]
 	).filter((g) => g.length > 0);
 	return (
 		<DropdownMenu>

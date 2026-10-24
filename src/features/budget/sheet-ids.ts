@@ -123,7 +123,7 @@ export type BudgetSheetArgs = {
 	rules: WithMonth;
 	income: WithMonth;
 	debt: WithMonth;
-	payDebt: WithMonth & { envelopeId?: string };
+	payDebt: WithMonth & { envelopeId?: string; liabilityId?: string };
 	afford: WithMonth;
 	splits: WithMonth;
 	owed: WithMonth;

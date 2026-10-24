@@ -74,7 +74,12 @@ function EnvelopeTableRow({
 }) {
 	const parts = useTargetParts();
 	const vm = toEnvelopeVM(e);
-	const target = { id: e.id, name: e.name, over: e.status === "OVERSPENT" };
+	const target = {
+		id: e.id,
+		name: e.name,
+		over: e.status === "OVERSPENT",
+		debt: Boolean(e.target?.liabilityId),
+	};
 	const row = (
 		<TableRow data-envelope={e.id}>
 			<TableCell className="max-w-0">
@@ -92,7 +97,7 @@ function EnvelopeTableRow({
 				<Money value={e.assigned} />
 			</TableCell>
 			<TableCell className={NUM}>
-				<Money value={e.activity} />
+				<Money figure={`envelope.spent:${e.id}`} value={e.spent} />
 			</TableCell>
 			<TableCell className={NUM}>
 				<div className="flex justify-end">
@@ -181,7 +186,7 @@ export function GroupsTable({
 									<Money value={g.totals.assigned} />
 								</TableCell>
 								<TableCell className={NUM}>
-									<Money value={g.totals.activity} />
+									<Money value={g.totals.spent} />
 								</TableCell>
 								<TableCell className={NUM}>
 									<div className="flex justify-end">

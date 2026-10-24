@@ -5,7 +5,48 @@ import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
+import { api } from "~/trpc/react";
 import type { BudgetActions } from "./use-budget-actions";
+import { hasDebt } from "./view-model";
+
+/**
+ * Total debt (budget.totalDebt) with the way into the payoff plan, for a
+ * book that has a debt but is not Pay off debt (whose hero says it).
+ */
+function DebtBlock({
+	month,
+	actions,
+}: {
+	month: number;
+	actions: BudgetActions;
+}) {
+	const t = useTranslations("budgetPage.debt");
+	const plan = api.envelope.payoffProject.useQuery({});
+	const p = plan.data;
+	if (!p) return null;
+	return (
+		<Section id="rail-debt" title={t("rail")}>
+			<RowList label={t("rail")} variant="flat">
+				<Row
+					end={
+						p.incomplete ? undefined : (
+							<Money
+								className="font-semibold"
+								figure="budget.totalDebt"
+								value={p.totalDebt}
+							/>
+						)
+					}
+					open={{
+						label: t("open"),
+						onOpen: () => actions.sheet.open("debt", { month }),
+					}}
+					title={t("total")}
+				/>
+			</RowList>
+		</Section>
+	);
+}
 
 /**
  * Beside the table on a wide screen, under the list on a phone (R26): who
@@ -84,6 +125,9 @@ export function BudgetRail({
 					</RowList>
 					<p className="text-fg-3 text-meta mt-2">{t("moneyIn.hint")}</p>
 				</Section>
+			)}
+			{!readOnly && data.book.style !== "DEBT_PAYOFF" && hasDebt(data) && (
+				<DebtBlock actions={actions} month={month} />
 			)}
 			{showShares && (
 				<Section id="rail-shares" title={t("shares.title")}>

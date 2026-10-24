@@ -296,6 +296,9 @@
 		"cover": {
 			"label": "Überziehung ausgleichen"
 		},
+		"payDebt": {
+			"label": "Schulden tilgen"
+		},
 		"target": {
 			"label": "Ziel bearbeiten"
 		},
