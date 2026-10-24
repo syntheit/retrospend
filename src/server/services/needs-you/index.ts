@@ -7,7 +7,9 @@
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
+import { hiddenRowCount } from "~/server/services/envelope/hidden-rows";
 import type { LoadedBook } from "~/server/services/envelope/inputs";
+import { ensureLegacyBook } from "~/server/services/envelope/legacy-migrate.service";
 import { monthViewIn } from "~/server/services/envelope/month-read";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
@@ -39,7 +41,10 @@ async function budgetSource(
 	tx: Tx,
 	userId: string,
 	now: Date,
+	timeZone: string,
 ): Promise<NeedsYouItem[]> {
+	// A person with old limits and no book moves in on this first read (02 §6).
+	await ensureLegacyBook(tx, userId, now, timeZone);
 	// Rules take their part of new money in first (sidecar rows), so Give it a job shows what is left (S24).
 	await runPendingRules(tx, userId, now);
 	const view = await monthViewIn(tx, userId, now);
@@ -50,6 +55,7 @@ async function budgetSource(
 		paused: row.pausedAt !== null,
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
 		closes: closeFacts(view.loaded, now),
+		hiddenRows: await hiddenRowCount(tx, userId),
 		reconcileDue:
 			row.reconciledAt !== null &&
 			isoDateIn(row.reconciledAt, row.timeZone) < view.dto.month.from,
@@ -135,7 +141,7 @@ export async function needsYouIn(
 	const items = [
 		...people.items,
 		...(await activityItems(tx, userId, now, timeZone)),
-		...(options.budget ? await budgetSource(tx, userId, now) : []),
+		...(options.budget ? await budgetSource(tx, userId, now, timeZone) : []),
 		...(await setupItems(tx, user, options.emailEnabled ?? true)),
 	].sort(compareItems);
 	return {

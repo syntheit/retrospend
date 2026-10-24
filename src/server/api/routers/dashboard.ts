@@ -2,19 +2,32 @@ import type { Money } from "@retrospend/domain/money-minor";
 import { z } from "zod";
 import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import type { Session } from "~/server/better-auth/config";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import { isFlagEnabled } from "~/server/flags";
+import { getPacing } from "~/server/services/envelope/migration-read.service";
 import { personalActivityItem } from "~/server/services/expense-dto";
 import {
 	getOverviewSettings,
 	getOverviewStats,
 } from "~/server/services/overview.service";
 import { RateCache } from "~/server/services/rate-cache";
-import { listedEntryWhere } from "~/server/services/spending";
 import {
 	getExcludedProjectIds,
 	listSharedParticipationsForUser,
 } from "~/server/services/shared-expense-integration";
+import { listedEntryWhere } from "~/server/services/spending";
 import { StatsService } from "~/server/services/stats.service";
+
+/** The pace line from envelope totals when that budget is on; undefined keeps the old budgets. */
+async function envelopePacingFor(ctx: {
+	session: { user: Session["user"] };
+	timeZone?: string;
+}) {
+	if (!(await isFlagEnabled("envelopeBudget", ctx.session.user)))
+		return undefined;
+	return getPacing(ctx.session.user.id, new Date(), ctx.timeZone ?? null);
+}
 
 export const dashboardRouter = createTRPCRouter({
 	getOverviewStats: protectedProcedure
@@ -39,6 +52,7 @@ export const dashboardRouter = createTRPCRouter({
 				excludedProjectIds,
 				rateCache: new RateCache(db),
 				timeZone: ctx.timeZone,
+				envelopePacing: await envelopePacingFor(ctx),
 			});
 		}),
 	getOverviewData: protectedProcedure
@@ -107,6 +121,7 @@ export const dashboardRouter = createTRPCRouter({
 					excludedProjectIds,
 					rateCache,
 					timeZone: ctx.timeZone,
+					envelopePacing: await envelopePacingFor(ctx),
 				}),
 				db.budget
 					.findFirst({

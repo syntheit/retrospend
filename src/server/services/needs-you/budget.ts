@@ -25,6 +25,8 @@ export interface BudgetFacts {
 	readonly closes?: CloseFacts;
 	/** Reconciled before, not yet this month (SPEC §5.11). */
 	readonly reconcileDue?: boolean;
+	/** Hidden expenses of a migrated book's first month still to answer (SPEC §8.3). */
+	readonly hiddenRows?: number;
 }
 
 export interface CloseFacts {
@@ -287,6 +289,15 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	const reconcile = facts.reconcileDue
 		? [item("budget.reconcile", { entity: { kind: "book", id: dto.book.id } })]
 		: [];
+	// They count in the budget until answered (B6), so the prompt is not a figure.
+	const hidden = facts.hiddenRows
+		? [
+				item("budget.hiddenReview", {
+					entity: { kind: "book", id: dto.book.id },
+					count: facts.hiddenRows,
+				}),
+			]
+		: [];
 	return [
 		...(limits ? [] : poolItems(dto, facts.moneyIn)),
 		...overspentItem(dto),
@@ -294,6 +305,7 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 		...billDueItem(dto),
 		...starting,
 		...closes,
+		...hidden,
 		...reconcile,
 	];
 }

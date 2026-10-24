@@ -254,6 +254,7 @@ model Expense {
   @@index([userId, isAmortizedParent, date])
   @@index([userId, direction, date])
   @@index([userId, importFingerprint])
+  @@index([budgetEnvelopeId])
   @@map("expense")
 }
 
@@ -367,6 +368,8 @@ model BudgetBook {
   startingMoneyConfirmedAt DateTime?
   legacyMigrationRunId     String?       @db.VarChar(64)
   legacyMigratedAt         DateTime?
+  // The "your limits moved" notice was dismissed.
+  legacyNoticeSeenAt       DateTime?
   // Last budget read; 35 days away with closes waiting opens Welcome back (S26).
   lastOpenedAt             DateTime?
   // Welcome back waits from this instant until the person picks a choice.

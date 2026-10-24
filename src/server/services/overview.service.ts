@@ -9,10 +9,12 @@ import {
 	getFiscalMonthRange,
 } from "~/lib/fiscal-month";
 import { convertAmount, periodRateDate, sumIn } from "~/lib/money";
+import type { EnvelopePacing } from "~/lib/schemas/envelope-migration";
 import type { db as AppDb } from "~/server/db";
 import * as BudgetService from "./budget.service";
-import type { RateCache } from "./rate-cache";
+import { fromMinor } from "./envelope/units";
 import { spentItems } from "./figures/spent";
+import type { RateCache } from "./rate-cache";
 
 /** Category names treated as "fixed" for budget pacing calculations */
 const FIXED_CATEGORY_NAMES = [
@@ -35,6 +37,12 @@ export interface OverviewOptions {
 	rateCache: RateCache;
 	timeZone?: string;
 	now?: Date;
+	/**
+	 * With the envelope budget on, the pace line comes from envelope totals
+	 * (null: no book yet) and the old budgets are not read. Undefined keeps
+	 * the old budgets.
+	 */
+	envelopePacing?: EnvelopePacing | null;
 }
 
 export async function getOverviewStats(
@@ -74,14 +82,16 @@ export async function getOverviewStats(
 					excludedProjectIds,
 				})
 			: Promise.resolve([]),
-		BudgetService.getBudgets(db, userId, month, {
-			includeGlobal: true,
-			fiscalMonthStartDay: fiscalStartDay,
-			rateCache,
-			excludedProjectIds,
-			homeCurrency,
-			timeZone,
-		}),
+		options.envelopePacing === undefined
+			? BudgetService.getBudgets(db, userId, month, {
+					includeGlobal: true,
+					fiscalMonthStartDay: fiscalStartDay,
+					rateCache,
+					excludedProjectIds,
+					homeCurrency,
+					timeZone,
+				})
+			: Promise.resolve([]),
 	]);
 
 	// Everything the user spent this month, budgeted or not.
@@ -163,17 +173,38 @@ export async function getOverviewStats(
 		last24Hours,
 		isCurrentMonth,
 		monthTotal,
-		dailyBudgetPace: {
-			totalBudget,
-			totalSpent: budgetedSpent,
-			variableBudget: variableBudget || totalBudget,
-			variableSpent,
-			daysRemaining: progress.daysRemaining,
-		},
+		dailyBudgetPace:
+			options.envelopePacing === undefined
+				? {
+						totalBudget,
+						totalSpent: budgetedSpent,
+						variableBudget: variableBudget || totalBudget,
+						variableSpent,
+						daysRemaining: progress.daysRemaining,
+					}
+				: envelopePace(
+						isCurrentMonth ? options.envelopePacing : null,
+						progress.daysRemaining,
+					),
 		workEquivalent: {
 			totalSpent: monthTotal,
 			monthlyIncome,
 		},
+	};
+}
+
+/** The envelope totals in the legacy pace shape (major units); zeros without a book. */
+function envelopePace(p: EnvelopePacing | null, daysRemaining: number) {
+	const major = (minor: number | undefined) =>
+		p && minor !== undefined
+			? Number(fromMinor(minor, p.currency).toString())
+			: 0;
+	return {
+		totalBudget: major(p?.total.budget.minor),
+		totalSpent: major(p?.total.spent.minor),
+		variableBudget: major(p?.variable.budget.minor),
+		variableSpent: major(p?.variable.spent.minor),
+		daysRemaining,
 	};
 }
 

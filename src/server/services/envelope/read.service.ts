@@ -19,6 +19,7 @@ import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import { setupPreset } from "./book.service";
 import { EnvelopeError } from "./errors";
+import { ensureLegacyBook } from "./legacy-migrate.service";
 import { ensureMonthsClosed } from "./month-close.service";
 import {
 	coverSourcesIn,
@@ -46,22 +47,26 @@ async function closedView(
 	userId: string,
 	now: Date,
 	month?: MonthKey,
+	timeZone: string | null = null,
 ) {
-	await prepareRead(tx, userId, now);
+	await prepareRead(tx, userId, now, timeZone);
 	return monthViewIn(tx, userId, now, month);
 }
 
 /**
  * The lazy steps before any budget read (02 §5.3), each a cheap check when
- * nothing waits: close finished months, then run income rules on money in
- * nobody ran them on (sidecar rows, edits, deletes). Needs you and other
- * readers of the month view call this first too.
+ * nothing waits: move a person with old limits and no book into Limits (02
+ * §6), close finished months, then run income rules on money in nobody ran
+ * them on (sidecar rows, edits, deletes). Needs you and other readers of the
+ * month view call this first too.
  */
 export async function prepareRead(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	now: Date,
+	timeZone: string | null = null,
 ) {
+	await ensureLegacyBook(tx, userId, now, timeZone);
 	await ensureMonthsClosed(tx, userId, now);
 	await runPendingRules(tx, userId, now);
 }
@@ -75,9 +80,10 @@ export async function getMonth(
 	userId: string,
 	month?: MonthKey,
 	now = new Date(),
+	timeZone: string | null = null,
 ): Promise<GetMonthOutput | null> {
 	const view = await read(userId, async (tx) => {
-		const v = await closedView(tx, userId, now, month);
+		const v = await closedView(tx, userId, now, month, timeZone);
 		if (v?.loaded.splits.unsaved.length)
 			await saveShareDefaults(tx, v.loaded.splits.unsaved);
 		// Opening the budget is what Welcome back measures time away from.

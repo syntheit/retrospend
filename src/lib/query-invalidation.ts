@@ -104,6 +104,10 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.welcomeBack": ["dashboard", "expense"],
 	// Debts: terms and the plan change the Wealth liability view and bills;
 	// a payment moves accounts, the liability and the budget.
+	// A hidden-rows answer changes the row's flags: lists, stats and the budget.
+	"envelope.resolveHidden": ["dashboard", "expense", "stats"],
+	"envelope.revertHidden": ["dashboard", "expense", "stats"],
+	"envelope.dismissMigrationNotice": [],
 	"envelope.setDebtTerms": ["wealth", "dashboard"],
 	"envelope.savePayoffPlan": ENVELOPE_DEPS,
 	"envelope.revertPayoffPlan": ENVELOPE_DEPS,
