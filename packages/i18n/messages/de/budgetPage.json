@@ -180,7 +180,8 @@
 		"envelope": "Umschlag",
 		"planned": "Geplant",
 		"left": "Übrig",
-		"edit": "{name} planen"
+		"edit": "{name} planen",
+		"plannedSub": "Geplant <amount></amount>"
 	},
 	"planRail": {
 		"label": "Plankosten",

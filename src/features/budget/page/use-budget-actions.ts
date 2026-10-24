@@ -30,7 +30,7 @@ export function useBudgetActions(data: GetMonthOutput) {
 	const sheet = useBudgetSheet();
 	const router = useRouter();
 	const month = data.month.key;
-	const range = { from: data.month.from, to: data.month.to };
+	const { from, to } = data.month;
 	const rows = useMemo(
 		() =>
 			new Map(data.groups.flatMap((g) => g.envelopes).map((e) => [e.id, e])),
@@ -81,11 +81,10 @@ export function useBudgetActions(data: GetMonthOutput) {
 				sheet.open("whatIf", { month, envelopeId: e.id }),
 			activity: (e: EnvelopeTarget) => {
 				const row = rows.get(e.id);
-				if (row) router.push(activityHref(row, range));
+				if (row) router.push(activityHref(row, { from, to }));
 			},
 		}),
-		// biome-ignore lint/correctness/useExhaustiveDependencies: range is derived from month
-		[sheet, month, rows, router],
+		[sheet, month, rows, router, from, to],
 	);
 
 	return { sheet, month, verdict, notice, envelope };

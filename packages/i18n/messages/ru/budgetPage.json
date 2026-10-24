@@ -180,7 +180,8 @@
 		"envelope": "Конверт",
 		"planned": "Запланировано",
 		"left": "Осталось",
-		"edit": "Спланировать «{name}»"
+		"edit": "Спланировать «{name}»",
+		"plannedSub": "Запланировано <amount></amount>"
 	},
 	"planRail": {
 		"label": "Стоимость плана",

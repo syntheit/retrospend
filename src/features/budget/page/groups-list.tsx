@@ -70,7 +70,6 @@ export function GroupsList({
 									};
 									const row = (
 										<EnvelopeRow
-											key={e.id}
 											actions={
 												readOnly ? undefined : (
 													<ActionMenu
@@ -82,6 +81,7 @@ export function GroupsList({
 											}
 											data-envelope={e.id}
 											envelope={toEnvelopeVM(e)}
+											key={e.id}
 											plain
 											target={parts(e)}
 										/>

@@ -77,7 +77,7 @@ function EnvelopeTableRow({
 	const target = { id: e.id, name: e.name, over: e.status === "OVERSPENT" };
 	const row = (
 		<TableRow data-envelope={e.id}>
-			<TableCell>
+			<TableCell className="max-w-0">
 				<div className="flex items-center gap-3 pl-6">
 					<CategoryTile category={vm.category} />
 					<div className="min-w-0 leading-snug">
@@ -159,7 +159,7 @@ export function GroupsTable({
 					return (
 						<Fragment key={groupKey(g)}>
 							<TableRow data-envelope-group={groupKey(g)}>
-								<TableCell>
+								<TableCell className="max-w-0">
 									<Button
 										aria-expanded={open}
 										className="text-body text-fg h-auto max-w-full justify-start gap-2 px-0 font-medium"

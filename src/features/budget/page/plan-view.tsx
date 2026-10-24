@@ -3,11 +3,8 @@
 import { NotebookPen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { AvailablePill } from "~/components/money/available-pill";
 import { Money } from "~/components/money/money";
-import { RowSub } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
-import { CategoryTile } from "~/components/ui/category-badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -17,23 +14,13 @@ import {
 import { Empty } from "~/components/ui/empty-state";
 import { Notice } from "~/components/ui/notice";
 import { Skeleton } from "~/components/ui/skeleton";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "~/components/ui/table";
 import { useToast } from "~/components/ui/toast";
+import { useIsMobile } from "~/hooks/use-mobile";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
-import type { DraftPreview } from "~/lib/schemas/envelope-plan";
 import { api } from "~/trpc/react";
-import { useGroupName } from "./group-parts";
 import { useMonthLabel } from "./month-switch";
-import { useTargetParts } from "./target-line";
+import { PlanList, PlanTable } from "./plan-rows";
 import type { BudgetActions } from "./use-budget-actions";
-import { groupKey, toEnvelopeVM } from "./view-model";
 
 type Source = "TARGETS" | "SAME_AS_THIS_MONTH" | "THIS_MONTH_SPENT";
 const SOURCES: Source[] = ["TARGETS", "SAME_AS_THIS_MONTH", "THIS_MONTH_SPENT"];
@@ -55,8 +42,7 @@ export function PlanView({
 	const toast = useToast();
 	const utils = api.useUtils();
 	const label = useMonthLabel();
-	const name = useGroupName();
-	const parts = useTargetParts();
+	const isMobile = useIsMobile();
 	const month = data.month.key;
 	const drafts = api.envelope.drafts.useQuery({ kind: "PLAN", month });
 	const draft = drafts.data?.open ?? drafts.data?.saved ?? null;
@@ -64,6 +50,8 @@ export function PlanView({
 		{ draftId: draft?.id ?? "" },
 		{ enabled: draft != null },
 	);
+	const edit = (envelopeId: string) =>
+		actions.sheet.open("planEdit", { month, envelopeId });
 	const refresh = () => utils.envelope.drafts.invalidate();
 	const save = api.envelope.saveDraft.useMutation({ onSuccess: refresh });
 	const discard = api.envelope.discardDraft.useMutation({ onSuccess: refresh });
@@ -189,97 +177,11 @@ export function PlanView({
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-			<Table aria-label={t("table")} look="panel">
-				<TableHeader>
-					<TableRow>
-						<TableHead className="w-1/3">{t("envelope")}</TableHead>
-						<TableHead className="text-right">{t("planned")}</TableHead>
-						<TableHead className="text-right">{t("left")}</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{data.groups.map((g) => (
-						<GroupRows
-							groupName={name(g)}
-							key={groupKey(g)}
-							lines={lines}
-							onEdit={(envelopeId) =>
-								actions.sheet.open("planEdit", { month, envelopeId })
-							}
-							parts={parts}
-							rows={g.envelopes}
-						/>
-					))}
-				</TableBody>
-			</Table>
+			{isMobile ? (
+				<PlanList groups={data.groups} lines={lines} onEdit={edit} />
+			) : (
+				<PlanTable groups={data.groups} lines={lines} onEdit={edit} />
+			)}
 		</div>
-	);
-}
-
-type Lines = ReadonlyMap<string, DraftPreview["envelopes"][number]>;
-
-function GroupRows({
-	groupName,
-	rows,
-	lines,
-	parts,
-	onEdit,
-}: {
-	groupName: string;
-	rows: GetMonthOutput["groups"][number]["envelopes"];
-	lines: Lines;
-	parts: ReturnType<typeof useTargetParts>;
-	onEdit: (envelopeId: string) => void;
-}) {
-	const t = useTranslations("budgetPage.plan");
-	return (
-		<>
-			<TableRow>
-				<TableCell className="text-body text-fg font-medium" colSpan={3}>
-					{groupName}
-				</TableCell>
-			</TableRow>
-			{rows.map((e) => {
-				const line = lines.get(e.id);
-				const vm = toEnvelopeVM(e);
-				return (
-					<TableRow data-envelope={e.id} key={e.id}>
-						<TableCell>
-							<div className="flex items-center gap-3">
-								<CategoryTile category={vm.category} />
-								<div className="min-w-0 leading-snug">
-									<Button
-										aria-label={t("edit", { name: e.name })}
-										className="text-body text-fg h-auto justify-start px-0 font-medium"
-										kind="ghost"
-										onClick={() => onEdit(e.id)}
-									>
-										<span className="truncate">{e.name}</span>
-									</Button>
-									<RowSub parts={parts(e, { needed: false })} />
-								</div>
-							</div>
-						</TableCell>
-						<TableCell className="text-right tabular-nums">
-							{line ? <Money value={line.assigned.after} /> : null}
-						</TableCell>
-						<TableCell className="text-right tabular-nums">
-							<div className="flex justify-end">
-								{line ? (
-									line.short ? (
-										<AvailablePill
-											amount={line.left.after}
-											status="underfunded"
-										/>
-									) : (
-										<Money className="font-semibold" value={line.left.after} />
-									)
-								) : null}
-							</div>
-						</TableCell>
-					</TableRow>
-				);
-			})}
-		</>
 	);
 }

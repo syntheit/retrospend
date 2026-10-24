@@ -58,10 +58,16 @@ async function setEnvelopeBudgetMode(
 		// A run of this file alone has no ui-v2-on setup before it.
 		if (mode === "ALL")
 			await pool.query(`UPDATE "app_settings" SET "uiV2Mode" = 'ALL'`);
-		if (mode === "OFF")
+		if (mode === "OFF") {
 			await pool.query(`DELETE FROM "budget_book" WHERE "createdById" = $1`, [
 				MARTIN.id,
 			]);
+			// Setup wrote the starting balance as a money-in row of his.
+			await pool.query(
+				`DELETE FROM "expense" WHERE "userId" = $1 AND "entryKind" = 'STARTING_BALANCE'`,
+				[MARTIN.id],
+			);
+		}
 	} finally {
 		await pool.end();
 	}
@@ -159,6 +165,8 @@ async function seedBook(api: APIRequestContext): Promise<void> {
 
 test.beforeAll(async ({ playwright }) => {
 	test.setTimeout(120_000);
+	// A run that died before its afterAll left a book behind.
+	await setEnvelopeBudgetMode(playwright, "OFF");
 	await setEnvelopeBudgetMode(playwright, "ALL");
 	const api = await playwright.request.newContext({
 		baseURL: E2E_BASE_URL,
