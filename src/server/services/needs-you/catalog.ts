@@ -125,7 +125,7 @@ export const CATALOG: Readonly<Record<NeedsYouType, TypeSpec>> = {
 	"people.owedAging": {
 		group: "people",
 		rank: 16,
-		// Forgive joins with 2C.2.
+		// Forgive joins when the client action registry has it (server side: corrections.forgive).
 		actions: act("person", "remind"),
 	},
 	"setup.firstExpense": {
@@ -152,7 +152,6 @@ export const CATALOG: Readonly<Record<NeedsYouType, TypeSpec>> = {
 
 /** Types no source produces yet, and what each waits for (report and GAPS). */
 export const SEAMS: Readonly<Partial<Record<NeedsYouType, string>>> = {
-	"split.fixRequested": "2C.2 Ask to fix: the ask state is not stored yet",
 	"budget.debtDue": "P5 payoff: liability minimums and due days",
 	"budget.sharesNeedEnvelope":
 		"D19 share routing: splits-replay does not flag unresolved shares yet",

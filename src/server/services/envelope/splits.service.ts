@@ -28,9 +28,11 @@ import type {
 	UnforgiveInput,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
+import { lockSettledSplits } from "../corrections/locks";
 import { lockPair } from "../payments/access";
 import { allocatePayment } from "../payments/allocate";
 import { ledgerLines, payerLines } from "../payments/ledger";
+import { logAudit } from "../shared-expenses/audit-log";
 import { computePairLedger } from "../shared-expenses/balance";
 import type { ParticipantRef } from "../shared-expenses/types";
 import { userTimeZone } from "../user-time-zone";
@@ -298,6 +300,22 @@ export async function forgive(
 			forgiveEnvelopeId: input.envelopeId,
 		})),
 	});
+	// The audit entry names ids, never a title (E2EE rule 4); both people can read it.
+	await logAudit(tx, {
+		actor: me,
+		action: "FORGIVEN",
+		targetType: "SETTLEMENT",
+		targetId: rows[0]?.id ?? input.id,
+		changes: {
+			paymentId: input.id,
+			settlementIds: rows.map((r) => r.id),
+			counterparty: `${them.participantType}:${them.participantId}`,
+			currency: input.currency,
+			amountMinor: input.amountMinor,
+			envelopeId: input.envelopeId,
+		},
+	});
+	await lockSettledSplits(tx, me, input.id);
 	forgetMonthViews(tx);
 	return rows.map((r) => r.id);
 }
@@ -335,6 +353,13 @@ export async function unforgive(
 	)
 		throw new EnvelopeError("NOT_FOUND", "nothing to take back");
 	await tx.payment.delete({ where: { id: header.id } });
+	await logAudit(tx, {
+		actor: { participantType: "user", participantId: userId },
+		action: "UNFORGIVEN",
+		targetType: "SETTLEMENT",
+		targetId: header.id,
+		changes: { paymentId: header.id },
+	});
 	forgetMonthViews(tx);
 	return { paymentId: header.id };
 }

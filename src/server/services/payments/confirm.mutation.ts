@@ -17,6 +17,7 @@ import {
 } from "~/server/services/shared-expenses/settlement-groups";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma } from "~prisma";
+import { lockSettledSplits } from "../corrections/locks";
 import { lockPair } from "./access";
 import { type Allocation, allocatePayment } from "./allocate";
 import {
@@ -247,6 +248,7 @@ export async function confirmClaim(
 			...(allocation ? { amount: input.amount ?? undefined } : {}),
 		},
 	});
+	await lockSettledSplits(tx, me, header.id);
 	// The rows as they now stand: after an amount change, the ones just written.
 	// The entry keeps the claim as it was, for an exact undo.
 	await logGroupAction(tx, me, written, {
