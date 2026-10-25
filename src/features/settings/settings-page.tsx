@@ -1,11 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { useSession } from "~/hooks/use-session";
 import { entryOf } from "~/lib/nav";
 import { AboutFooter } from "./about-footer";
 import { CategoriesSection } from "./categories/categories-section";
@@ -17,28 +16,22 @@ import { PaymentSection } from "./payment/payment-section";
 import { PreferencesSection } from "./preferences/preferences-section";
 import { ProfileSection } from "./profile/profile-section";
 import { SectionList, SectionTabs, useSectionSpy } from "./section-nav";
-import { SECTIONS, type SectionId } from "./sections";
+import { SECTIONS } from "./sections";
 import { SecuritySection } from "./security/security-section";
 
 /**
  * The Settings page (settings mockup, layout A): one page of flat
  * sections with a sticky section nav (a list beside them on desktop, scroll
  * tabs on phones). Every field saves on change with a quiet toast and Undo;
- * destructive actions confirm with a named button. Admins have no Danger
- * zone: they cannot delete their own account here.
+ * destructive actions confirm with a named button. An admin may delete their
+ * own account while another admin remains; the Delete account sheet says so
+ * when they are the only one.
  */
 export function SettingsPage() {
 	const t = useTranslations("settingsV2");
 	const phone = useIsMobile();
 	const scroller = useRef<HTMLDivElement>(null);
-	const { data: session } = useSession();
-	const isAdmin =
-		(session?.user as { role?: string } | undefined)?.role === "ADMIN";
-	const ids = useMemo<SectionId[]>(
-		() => SECTIONS.filter((s) => s !== "danger" || !isAdmin),
-		[isAdmin],
-	);
-	const { current, go } = useSectionSpy(scroller, ids);
+	const { current, go } = useSectionSpy(scroller, SECTIONS);
 	const home = entryOf("home").href;
 
 	return (
@@ -54,11 +47,11 @@ export function SettingsPage() {
 					sub={t("autosaveNote")}
 					title={t("title")}
 				/>
-				{phone && <SectionTabs current={current} ids={ids} onGo={go} />}
+				{phone && <SectionTabs current={current} ids={SECTIONS} onGo={go} />}
 				<div className="md:flex md:items-start md:gap-12">
 					{!phone && (
 						<div className="sticky top-0 w-50 shrink-0">
-							<SectionList current={current} ids={ids} onGo={go} />
+							<SectionList current={current} ids={SECTIONS} onGo={go} />
 						</div>
 					)}
 					<div className="max-w-160 min-w-0 flex-1">
@@ -70,7 +63,7 @@ export function SettingsPage() {
 						<SecuritySection />
 						<DeveloperSection />
 						<DataSection />
-						{!isAdmin && <DangerSection />}
+						<DangerSection />
 						<AboutFooter />
 					</div>
 				</div>

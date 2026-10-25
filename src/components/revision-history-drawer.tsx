@@ -12,17 +12,11 @@ import {
 	Trash2,
 	XCircle,
 } from "lucide-react";
-import type { ComponentType } from "react";
 import { useTranslations } from "next-intl";
+import type { ComponentType } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "~/components/ui/edge-panel";
+import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
 	Tooltip,
@@ -61,30 +55,12 @@ const iconMap: Record<string, ComponentType<{ className?: string }>> = {
 };
 
 const colorStyles: Record<string, { bg: string; fg: string }> = {
-	green: {
-		bg: "bg-emerald-500/15",
-		fg: "text-emerald-600 dark:text-emerald-400",
-	},
-	amber: {
-		bg: "bg-amber-500/15",
-		fg: "text-amber-600 dark:text-amber-400",
-	},
-	blue: {
-		bg: "bg-blue-500/15",
-		fg: "text-blue-600 dark:text-blue-400",
-	},
-	red: {
-		bg: "bg-rose-500/15",
-		fg: "text-rose-600 dark:text-rose-400",
-	},
-	sky: {
-		bg: "bg-sky-500/15",
-		fg: "text-sky-600 dark:text-sky-400",
-	},
-	gray: {
-		bg: "bg-muted",
-		fg: "text-muted-foreground",
-	},
+	green: { bg: "bg-raised", fg: "text-positive" },
+	amber: { bg: "bg-attention-bg", fg: "text-attention-text" },
+	blue: { bg: "bg-info-bg", fg: "text-info" },
+	red: { bg: "bg-danger-bg", fg: "text-danger" },
+	sky: { bg: "bg-info-bg", fg: "text-info" },
+	gray: { bg: "bg-raised", fg: "text-fg-3" },
 };
 
 const defaultColor = colorStyles.gray!;
@@ -94,7 +70,7 @@ const defaultColor = colorStyles.gray!;
 function TimelineSkeleton() {
 	return (
 		<div className="relative pt-2 pl-8">
-			<div className="absolute top-5 bottom-5 left-6 w-px bg-border" />
+			<div className="bg-border absolute top-5 bottom-5 left-6 w-px" />
 			{[0, 1, 2, 3].map((i) => (
 				<div className="relative pb-6" key={i}>
 					<div className="absolute top-0.5 -left-5">
@@ -131,7 +107,7 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
 					<span>{change.label}</span>
 				</div>
 				{change.newValue && (
-					<div className="mt-0.5 text-muted-foreground text-xs">
+					<div className="text-muted-foreground mt-0.5 text-xs">
 						{change.newValue}
 					</div>
 				)}
@@ -149,7 +125,7 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
 					</span>
 				</div>
 				{change.oldValue && (
-					<div className="mt-0.5 text-muted-foreground text-xs">
+					<div className="text-muted-foreground mt-0.5 text-xs">
 						{t("wasValue", { value: change.oldValue })}
 					</div>
 				)}
@@ -159,7 +135,7 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
 
 	return (
 		<div className="px-3 py-2">
-			<div className="font-medium text-muted-foreground text-xs tracking-wide">
+			<div className="text-muted-foreground text-xs font-medium tracking-wide">
 				{change.label}
 			</div>
 			<div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm">
@@ -175,7 +151,7 @@ function FieldChangeRow({ change }: { change: FieldChange }) {
 
 function FieldChangeList({ changes }: { changes: FieldChange[] }) {
 	return (
-		<div className="mt-2 overflow-hidden rounded-lg border border-border bg-muted/40">
+		<div className="border-border bg-muted/40 mt-2 overflow-hidden rounded-lg border">
 			{changes.map((change, i) => (
 				<div key={`${change.field}-${i}`}>
 					{i > 0 && <div className="border-border border-t" />}
@@ -202,7 +178,7 @@ function SnapshotView({
 	return (
 		<div
 			className={cn(
-				"mt-2 space-y-0.5 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-muted-foreground/80 text-xs",
+				"border-border/60 bg-muted/30 text-muted-foreground/80 mt-2 space-y-0.5 rounded-lg border px-3 py-2 text-xs",
 				isDeleted && "opacity-75",
 			)}
 		>
@@ -229,13 +205,13 @@ function EntryDetail({ detail }: { detail: NonNullable<Entry["detail"]> }) {
 			return <SnapshotView isDeleted snapshot={detail.snapshot} />;
 		case "rejection":
 			return detail.reason ? (
-				<div className="mt-2 rounded-md border-rose-500/50 border-l-2 bg-muted/30 px-3 py-2 text-muted-foreground text-sm italic">
+				<div className="bg-muted/30 text-muted-foreground mt-2 rounded-md border-l-2 border-rose-500/50 px-3 py-2 text-sm italic">
 					&ldquo;{detail.reason}&rdquo;
 				</div>
 			) : null;
 		case "verification":
 			return detail.note ? (
-				<div className="mt-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-muted-foreground text-xs">
+				<div className="border-border bg-muted/30 text-muted-foreground mt-2 rounded-md border px-3 py-2 text-xs">
 					{detail.note}
 				</div>
 			) : null;
@@ -260,7 +236,7 @@ function TimelineEntryView({
 		<div className={cn("relative", !isLast && "pb-6")}>
 			{/* Connector line to next entry */}
 			{!isLast && (
-				<div className="absolute -left-2 top-3 -bottom-3 w-px bg-border" />
+				<div className="bg-border absolute top-3 -bottom-3 -left-2 w-px" />
 			)}
 
 			{/* Colored dot on the timeline */}
@@ -289,7 +265,7 @@ function TimelineEntryView({
 					<span className="text-muted-foreground">&middot;</span>
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<span className="cursor-default text-muted-foreground text-xs">
+							<span className="text-muted-foreground cursor-default text-xs">
 								{entry.relativeTime}
 							</span>
 						</TooltipTrigger>
@@ -307,7 +283,7 @@ function TimelineEntryView({
 				</div>
 
 				{/* Summary */}
-				<p className="mt-0.5 text-foreground/80 text-sm">{entry.summary}</p>
+				<p className="text-foreground/80 mt-0.5 text-sm">{entry.summary}</p>
 
 				{/* Detail (conditional) */}
 				{entry.detail && <EntryDetail detail={entry.detail} />}
@@ -332,13 +308,11 @@ function RevisionTimeline({ entries }: { entries: Entry[] }) {
 				/>
 			))}
 			{isOnlyCreation && (
-				<div className="mt-6 flex flex-col items-center gap-2.5 rounded-lg border border-border border-dashed bg-muted/20 px-4 py-6 text-center">
-					<ShieldCheck className="h-6 w-6 text-muted-foreground/40" />
+				<div className="border-border bg-muted/20 mt-6 flex flex-col items-center gap-2.5 rounded-lg border border-dashed px-4 py-6 text-center">
+					<ShieldCheck className="text-muted-foreground/40 h-6 w-6" />
 					<div>
-						<p className="text-muted-foreground text-sm">
-							{t("noChanges")}
-						</p>
-						<p className="mt-1 text-muted-foreground/60 text-xs">
+						<p className="text-muted-foreground text-sm">{t("noChanges")}</p>
+						<p className="text-muted-foreground/60 mt-1 text-xs">
 							{t("editsWillAppear")}
 						</p>
 					</div>
@@ -359,31 +333,25 @@ function RevisionHistoryHeader({ data }: { data: TransactionHistory }) {
 
 	return (
 		<div className="space-y-1.5">
-			<p className="font-medium text-sm">{transaction.description}</p>
-			<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+			<p className="text-sm font-medium">{transaction.description}</p>
+			<div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
 				<span>
 					{transaction.amount} {transaction.currency}
 				</span>
 				{transaction.isDeleted && (
-					<Badge
-						className="bg-rose-500/10 text-[10px] text-rose-600 dark:text-rose-400"
-						variant="outline"
-					>
-						{t("deleted")}
-					</Badge>
+					<Badge label={t("deleted")} status="error" />
 				)}
 				{transaction.isLocked && !transaction.isDeleted && (
-					<Badge
-						className="text-[10px] text-muted-foreground"
-						variant="outline"
-					>
-						{t("settled")}
-					</Badge>
+					<Badge label={t("settled")} status="settled" />
 				)}
 			</div>
 			{editCount > 0 && lastEdit && (
 				<p className="text-muted-foreground text-xs">
-					{t("editCount", { count: editCount, name: lastEdit.actor.name, time: lastEdit.relativeTime })}
+					{t("editCount", {
+						count: editCount,
+						name: lastEdit.actor.name,
+						time: lastEdit.relativeTime,
+					})}
 				</p>
 			)}
 		</div>
@@ -416,60 +384,49 @@ export function RevisionHistoryDrawer({
 		useTransactionHistory(transactionId);
 
 	return (
-		<Sheet onOpenChange={(open) => !open && onClose()} open={isOpen}>
-			<SheetContent
-				aria-label={t("ariaLabel")}
-				className="w-full gap-0 sm:max-w-full md:max-w-[420px] lg:max-w-[480px]"
-				side="right"
-			>
-				<SheetHeader className="border-b px-6 py-4 pr-12">
-					<SheetTitle>{t("title")}</SheetTitle>
-					<SheetDescription className="sr-only">
-						{data
-							? t("timelineChangesFor", { description: data.transaction.description })
-							: t("loadingHistory")}
-					</SheetDescription>
-					{data && <RevisionHistoryHeader data={data} />}
-				</SheetHeader>
-
-				<div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-					{isLoading && (
-						<div
-							className="animate-in fade-in-0 duration-200"
-							style={{
-								animationDelay: "150ms",
-								animationFillMode: "backwards",
-							}}
-						>
-							<TimelineSkeleton />
-						</div>
-					)}
-					{isError && (
-						<div className="flex flex-col items-center justify-center gap-3 py-12">
-							<p className="text-muted-foreground text-sm">
-								{t("couldntLoad")}
-							</p>
-							<Button
-								onClick={() => void refetch()}
-								size="sm"
-								variant="outline"
-							>
-								{t("tryAgain")}
-							</Button>
-						</div>
-					)}
-					{data && data.entries.length === 0 && (
-						<div className="flex flex-col items-center justify-center gap-2 py-12">
-							<p className="text-muted-foreground text-sm">
-								{t("noHistory")}
-							</p>
-						</div>
-					)}
-					{data && data.entries.length > 0 && (
-						<RevisionTimeline entries={data.entries} />
-					)}
-				</div>
-			</SheetContent>
+		<Sheet
+			description={
+				data
+					? t("timelineChangesFor", {
+							description: data.transaction.description,
+						})
+					: t("loadingHistory")
+			}
+			footer={false}
+			onOpenChange={(open) => !open && onClose()}
+			open={isOpen}
+			title={t("title")}
+		>
+			{data && <RevisionHistoryHeader data={data} />}
+			<div className="py-2">
+				{isLoading && (
+					<div
+						className="animate-in fade-in-0 duration-200"
+						style={{
+							animationDelay: "150ms",
+							animationFillMode: "backwards",
+						}}
+					>
+						<TimelineSkeleton />
+					</div>
+				)}
+				{isError && (
+					<div className="flex flex-col items-center justify-center gap-3 py-12">
+						<p className="text-muted-foreground text-sm">{t("couldntLoad")}</p>
+						<Button onClick={() => void refetch()} size="sm" variant="outline">
+							{t("tryAgain")}
+						</Button>
+					</div>
+				)}
+				{data && data.entries.length === 0 && (
+					<div className="flex flex-col items-center justify-center gap-2 py-12">
+						<p className="text-muted-foreground text-sm">{t("noHistory")}</p>
+					</div>
+				)}
+				{data && data.entries.length > 0 && (
+					<RevisionTimeline entries={data.entries} />
+				)}
+			</div>
 		</Sheet>
 	);
 }

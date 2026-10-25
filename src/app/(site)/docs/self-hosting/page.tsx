@@ -1,3 +1,4 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Badge } from "~/components/ui/badge"
@@ -6,7 +7,6 @@ import { Callout } from "../_components/callout"
 import { CodeBlock } from "../_components/code-block"
 import { DocsNav } from "../_components/docs-nav"
 import { getAdjacentDocs } from "../docs-config"
-
 export const metadata: Metadata = {
 	title: "Docker Deployment",
 	description:
@@ -192,7 +192,7 @@ export default function SelfHostingPage() {
 				<Badge variant="secondary" className="mb-3">
 					Self-Hosting
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">
+				<h1 className="mb-3 font-semibold text-3xl">
 					Docker Deployment
 				</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
@@ -201,7 +201,7 @@ export default function SelfHostingPage() {
 				</p>
 			</div>
 
-			<h2 id="prerequisites" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="prerequisites" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Prerequisites
 			</h2>
 			<ul className="space-y-2 text-muted-foreground text-sm leading-relaxed">
@@ -232,7 +232,7 @@ export default function SelfHostingPage() {
 				environment variables from the sidecar service.
 			</Callout>
 
-			<h2 id="setup" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="setup" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Setup
 			</h2>
 
@@ -337,36 +337,36 @@ export default function SelfHostingPage() {
 				for Nginx and Caddy configuration.
 			</p>
 
-			<h2 id="services" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="services" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Services Overview
 			</h2>
 			<div className="overflow-x-auto">
-				<table className="w-full text-sm">
-					<thead>
-						<tr className="border-b border-border">
-							<th className="pb-2 text-left font-semibold">Service</th>
-							<th className="pb-2 text-left font-semibold">Image</th>
-							<th className="pb-2 text-left font-semibold">Purpose</th>
-						</tr>
-					</thead>
-					<tbody className="divide-y divide-border text-muted-foreground">
+				<Table className="w-full text-sm">
+					<TableHeader>
+						<TableRow className="border-b border-border">
+							<TableHead className="pb-2 text-left font-semibold">Service</TableHead>
+							<TableHead className="pb-2 text-left font-semibold">Image</TableHead>
+							<TableHead className="pb-2 text-left font-semibold">Purpose</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody className="divide-y divide-border text-muted-foreground">
 						{[
 							["retrospend", "synzeit/retrospend", "Main web app (Next.js)"],
 							["postgres", "postgres:16-alpine", "Primary database"],
 							["sidecar", "synzeit/retrospend-sidecar", "Background jobs + AI bank import"],
 							["ollama", "ollama/ollama", "Local LLM (optional)"],
 						].map(([name, image, purpose]) => (
-							<tr key={name}>
-								<td className="py-2.5 pr-4 font-mono text-xs">{name}</td>
-								<td className="py-2.5 pr-4 font-mono text-xs">{image}</td>
-								<td className="py-2.5">{purpose}</td>
-							</tr>
+							<TableRow key={name}>
+								<TableCell className="py-2.5 pr-4 font-mono text-xs">{name}</TableCell>
+								<TableCell className="py-2.5 pr-4 font-mono text-xs">{image}</TableCell>
+								<TableCell className="py-2.5">{purpose}</TableCell>
+							</TableRow>
 						))}
-					</tbody>
-				</table>
+					</TableBody>
+				</Table>
 			</div>
 
-			<h2 id="data-persistence" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="data-persistence" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Data Persistence
 			</h2>
 			<p className="text-muted-foreground text-sm leading-relaxed">
@@ -386,7 +386,7 @@ docker volume ls | grep retrospend`}
 				lang="bash"
 			/>
 
-			<h2 id="first-user" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="first-user" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				First User & Registration
 			</h2>
 			<p className="text-muted-foreground text-sm leading-relaxed">

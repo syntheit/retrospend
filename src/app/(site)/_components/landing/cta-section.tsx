@@ -10,7 +10,7 @@ export function CtaSection() {
 	return (
 		<section className="border-border border-y bg-accent/30 py-16 lg:py-24">
 			<div className="mx-auto max-w-3xl px-4 text-center">
-				<h2 className="font-bold text-3xl tracking-tight">
+				<h2 className="font-semibold text-3xl">
 					{t("ctaTitle")}
 				</h2>
 				<p className="mx-auto mt-4 max-w-xl text-muted-foreground">

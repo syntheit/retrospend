@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { DocsNav } from "../../_components/docs-nav"
 import { getAdjacentDocs } from "../../docs-config"
 
@@ -16,32 +17,32 @@ type EnvVar = { name: string; required: boolean; default?: string; description: 
 function EnvTable({ vars }: { vars: EnvVar[] }) {
 	return (
 		<div className="my-4 overflow-x-auto rounded-lg border border-border">
-			<table className="w-full text-sm">
-				<thead>
-					<tr className="border-b border-border bg-muted/30">
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Variable</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Required</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Default</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Description</th>
-					</tr>
-				</thead>
-				<tbody className="divide-y divide-border">
+			<Table className="w-full text-sm">
+				<TableHeader>
+					<TableRow className="border-b border-border bg-muted/30">
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Variable</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Required</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Default</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Description</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody className="divide-y divide-border">
 					{vars.map((v) => (
-						<tr key={v.name}>
-							<td className="px-4 py-3 font-mono text-xs font-semibold">{v.name}</td>
-							<td className="px-4 py-3">
+						<TableRow key={v.name}>
+							<TableCell className="px-4 py-3 font-mono text-xs font-semibold">{v.name}</TableCell>
+							<TableCell className="px-4 py-3">
 								{v.required ? (
 									<Badge variant="destructive" className="text-xs">required</Badge>
 								) : (
 									<Badge variant="secondary" className="text-xs">optional</Badge>
 								)}
-							</td>
-							<td className="px-4 py-3 font-mono text-muted-foreground text-xs">{v.default ?? "-"}</td>
-							<td className="px-4 py-3 text-muted-foreground text-xs leading-relaxed">{v.description}</td>
-						</tr>
+							</TableCell>
+							<TableCell className="px-4 py-3 font-mono text-muted-foreground text-xs">{v.default ?? "-"}</TableCell>
+							<TableCell className="px-4 py-3 text-muted-foreground text-xs leading-relaxed">{v.description}</TableCell>
+						</TableRow>
 					))}
-				</tbody>
-			</table>
+				</TableBody>
+			</Table>
 		</div>
 	)
 }
@@ -70,7 +71,7 @@ export default function StoragePage() {
 				<Badge variant="secondary" className="mb-3">
 					Configuration
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Storage</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Storage</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Local filesystem storage for images and uploads.
 				</p>
@@ -78,7 +79,7 @@ export default function StoragePage() {
 
 			<h2
 				id="overview"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Overview
 			</h2>
@@ -91,7 +92,7 @@ export default function StoragePage() {
 
 			<h2
 				id="environment-variables"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Environment Variables
 			</h2>
@@ -99,7 +100,7 @@ export default function StoragePage() {
 
 			<h2
 				id="directory-structure"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Directory Structure
 			</h2>
@@ -112,7 +113,7 @@ export default function StoragePage() {
 
 			<h2
 				id="image-processing"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Image Processing
 			</h2>
@@ -120,35 +121,14 @@ export default function StoragePage() {
 				Uploaded images are automatically resized and converted to WebP.
 			</p>
 			<div className="grid gap-3 sm:grid-cols-3">
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Avatars</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							400x400 WebP. Cropped on upload via the avatar editor.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Project Images</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							400x400 WebP. Used as project cover images.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Receipts</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Max 1200px wide, WebP. Original aspect ratio preserved.
-						</p>
-					</CardContent>
-				</Card>
+				<DocItem title="Avatars">400x400 WebP. Cropped on upload via the avatar editor.</DocItem>
+				<DocItem title="Project Images">400x400 WebP. Used as project cover images.</DocItem>
+				<DocItem title="Receipts">Max 1200px wide, WebP. Original aspect ratio preserved.</DocItem>
 			</div>
 
 			<h2
 				id="supported-formats"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Supported Formats
 			</h2>
@@ -159,7 +139,7 @@ export default function StoragePage() {
 
 			<h2
 				id="security"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Security
 			</h2>
@@ -173,7 +153,7 @@ export default function StoragePage() {
 
 			<h2
 				id="backups"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Backups
 			</h2>

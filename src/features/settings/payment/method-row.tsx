@@ -3,11 +3,8 @@
 import { useTranslations } from "next-intl";
 import { ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowSub } from "~/components/rows/row";
-import type {
-	Method,
-	Visibility,
-} from "~/components/settings/payment-methods-card";
 import { PaymentMethodIcon } from "~/components/ui/payment-method-icon";
+import type { Method, Visibility } from "./types";
 
 /**
  * One payment method with its one menu (mockup): edit, primary, who sees
@@ -72,7 +69,7 @@ export function MethodRow({
 			title={name}
 			titleEnd={
 				first ? (
-					<span className="font-normal text-fg-3 text-meta">
+					<span className="text-fg-3 text-meta font-normal">
 						{t("primary")}
 					</span>
 				) : undefined

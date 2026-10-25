@@ -21,13 +21,13 @@ export default function UpdatesPage() {
 				<Badge variant="secondary" className="mb-3">
 					Self-Hosting
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Updating</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Updating</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Keep your Retrospend instance up to date with the latest images.
 				</p>
 			</div>
 
-			<h2 id="standard-update" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="standard-update" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Standard Update
 			</h2>
 			<p className="mb-3 text-muted-foreground text-sm leading-relaxed">
@@ -54,7 +54,7 @@ docker compose up -d`}
 				before pulling.
 			</Callout>
 
-			<h2 id="watchtower" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="watchtower" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Automatic Updates with Watchtower
 			</h2>
 			<p className="mb-3 text-muted-foreground text-sm leading-relaxed">
@@ -82,7 +82,7 @@ docker compose up -d`}
 				downtime. Consider running it during off-peak hours.
 			</Callout>
 
-			<h2 id="check-version" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="check-version" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Check Current Version
 			</h2>
 			<CodeBlock

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { Badge } from "~/components/ui/badge"
 import { Callout } from "../../_components/callout"
 import { DocsNav } from "../../_components/docs-nav"
@@ -16,32 +17,32 @@ type EnvVar = { name: string; required: boolean; default?: string; description: 
 function EnvTable({ vars }: { vars: EnvVar[] }) {
 	return (
 		<div className="my-4 overflow-x-auto rounded-lg border border-border">
-			<table className="w-full text-sm">
-				<thead>
-					<tr className="border-b border-border bg-muted/30">
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Variable</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Required</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Default</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Description</th>
-					</tr>
-				</thead>
-				<tbody className="divide-y divide-border">
+			<Table className="w-full text-sm">
+				<TableHeader>
+					<TableRow className="border-b border-border bg-muted/30">
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Variable</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Required</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Default</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Description</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody className="divide-y divide-border">
 					{vars.map((v) => (
-						<tr key={v.name}>
-							<td className="px-4 py-3 font-mono text-xs font-semibold">{v.name}</td>
-							<td className="px-4 py-3">
+						<TableRow key={v.name}>
+							<TableCell className="px-4 py-3 font-mono text-xs font-semibold">{v.name}</TableCell>
+							<TableCell className="px-4 py-3">
 								{v.required ? (
 									<Badge variant="destructive" className="text-xs">required</Badge>
 								) : (
 									<Badge variant="secondary" className="text-xs">optional</Badge>
 								)}
-							</td>
-							<td className="px-4 py-3 font-mono text-muted-foreground text-xs">{v.default ?? "-"}</td>
-							<td className="px-4 py-3 text-muted-foreground text-xs leading-relaxed">{v.description}</td>
-						</tr>
+							</TableCell>
+							<TableCell className="px-4 py-3 font-mono text-muted-foreground text-xs">{v.default ?? "-"}</TableCell>
+							<TableCell className="px-4 py-3 text-muted-foreground text-xs leading-relaxed">{v.description}</TableCell>
+						</TableRow>
 					))}
-				</tbody>
-			</table>
+				</TableBody>
+			</Table>
 		</div>
 	)
 }
@@ -89,7 +90,7 @@ export default function EmailPage() {
 				<Badge variant="secondary" className="mb-3">
 					Configuration
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Email</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Email</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					SMTP configuration for transactional emails and notifications.
 				</p>
@@ -97,7 +98,7 @@ export default function EmailPage() {
 
 			<h2
 				id="overview"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Overview
 			</h2>
@@ -109,7 +110,7 @@ export default function EmailPage() {
 
 			<h2
 				id="environment-variables"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Environment Variables
 			</h2>
@@ -117,7 +118,7 @@ export default function EmailPage() {
 
 			<h2
 				id="tls"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				TLS
 			</h2>
@@ -128,7 +129,7 @@ export default function EmailPage() {
 
 			<h2
 				id="email-templates"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Email Templates
 			</h2>
@@ -148,7 +149,7 @@ export default function EmailPage() {
 
 			<h2
 				id="unsubscribe"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Unsubscribe
 			</h2>
@@ -163,7 +164,7 @@ export default function EmailPage() {
 
 			<h2
 				id="admin-controls"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Admin Controls
 			</h2>

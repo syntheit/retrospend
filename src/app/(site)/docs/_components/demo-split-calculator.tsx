@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
+import { Segmented } from "~/components/ui/segmented"
 import { cn } from "~/lib/utils"
 
 type SplitMode = "equal" | "exact" | "percentage" | "shares"
@@ -57,17 +57,17 @@ export function DemoSplitCalculator() {
 
 			<div>
 				<Label className="mb-2 block text-xs text-muted-foreground">Split Mode</Label>
-				<ToggleGroup
-					type="single"
+				<Segmented<SplitMode>
+					label="Split mode"
+					onChange={setMode}
+					options={[
+						{ value: "equal", label: "Equal" },
+						{ value: "exact", label: "Exact" },
+						{ value: "percentage", label: "%" },
+						{ value: "shares", label: "Shares" },
+					]}
 					value={mode}
-					onValueChange={(v) => v && setMode(v as SplitMode)}
-					className="justify-start"
-				>
-					<ToggleGroupItem value="equal" size="sm">Equal</ToggleGroupItem>
-					<ToggleGroupItem value="exact" size="sm">Exact</ToggleGroupItem>
-					<ToggleGroupItem value="percentage" size="sm">%</ToggleGroupItem>
-					<ToggleGroupItem value="shares" size="sm">Shares</ToggleGroupItem>
-				</ToggleGroup>
+				/>
 			</div>
 
 			<div className="space-y-2">

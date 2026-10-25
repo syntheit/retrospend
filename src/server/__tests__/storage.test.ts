@@ -1,13 +1,28 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { Readable } from "node:stream";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Readable } from "node:stream";
+import {
+	afterAll,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 
-const TEST_UPLOAD_DIR = join(__dirname, ".test-uploads");
+// A private directory outside the source tree: other test files scan src/, and
+// removing a shared directory under it mid-scan made them fail.
+const TEST_UPLOAD_DIR = await vi.hoisted(async () => {
+	const fs = await import("node:fs");
+	const os = await import("node:os");
+	const path = await import("node:path");
+	return fs.mkdtempSync(path.join(os.tmpdir(), "retrospend-storage-test-"));
+});
 
 vi.mock("~/env", () => ({
 	env: {
-		UPLOAD_DIR: join(__dirname, ".test-uploads"),
+		UPLOAD_DIR: TEST_UPLOAD_DIR,
 	},
 }));
 
@@ -43,7 +58,9 @@ describe("getImageUrl", () => {
 	});
 
 	it("returns /api/images/{path} for an avatar path", () => {
-		expect(getImageUrl("avatars/abc.webp")).toBe("/api/images/avatars/abc.webp");
+		expect(getImageUrl("avatars/abc.webp")).toBe(
+			"/api/images/avatars/abc.webp",
+		);
 	});
 
 	it("returns /api/images/{path} for a project path", () => {
@@ -74,9 +91,9 @@ describe("uploadFile", () => {
 	it("creates nested directories automatically", async () => {
 		const buf = Buffer.from("deep");
 		await uploadFile("projects/abc/nested.webp", buf, "image/webp");
-		expect(
-			existsSync(join(TEST_UPLOAD_DIR, "projects/abc/nested.webp")),
-		).toBe(true);
+		expect(existsSync(join(TEST_UPLOAD_DIR, "projects/abc/nested.webp"))).toBe(
+			true,
+		);
 	});
 
 	it("overwrites an existing file atomically", async () => {

@@ -48,47 +48,12 @@ function renderProfileCard(
 					justifyContent: "center",
 					width: "100%",
 					height: "100%",
-					background: `linear-gradient(135deg, ${OG.DARK_BG_FROM} 0%, ${OG.DARK_BG_VIA} 55%, ${OG.DARK_BG_TO} 100%)`,
+					backgroundColor: OG.DARK_BG,
 					fontFamily: "DM Sans",
 					position: "relative",
 					overflow: "hidden",
 				}}
 			>
-				{/* Decorative circles — top-right */}
-				<div
-					style={{
-						position: "absolute",
-						top: -110,
-						right: -110,
-						width: 460,
-						height: 460,
-						borderRadius: 230,
-						background: "rgba(255,255,255,0.04)",
-					}}
-				/>
-				<div
-					style={{
-						position: "absolute",
-						top: -40,
-						right: -40,
-						width: 260,
-						height: 260,
-						borderRadius: 130,
-						background: "rgba(255,255,255,0.03)",
-					}}
-				/>
-				{/* Decorative circles — bottom-left */}
-				<div
-					style={{
-						position: "absolute",
-						bottom: -100,
-						left: -100,
-						width: 400,
-						height: 400,
-						borderRadius: 200,
-						background: "rgba(255,255,255,0.03)",
-					}}
-				/>
 
 				{/* Brand header top-left */}
 				<BrandHeader />
@@ -173,7 +138,7 @@ export default async function Image({
 	});
 
 	if (!user) {
-		// Check username history — use current user's data for OG image
+		// Check username history, use current user's data for OG image
 		const historyEntry = await db.usernameHistory.findFirst({
 			where: { previousUsername: { equals: username, mode: "insensitive" } },
 			select: {
@@ -208,23 +173,12 @@ export default async function Image({
 						justifyContent: "center",
 						width: "100%",
 						height: "100%",
-						background: `linear-gradient(135deg, ${OG.DARK_BG_FROM} 0%, ${OG.DARK_BG_VIA} 55%, ${OG.DARK_BG_TO} 100%)`,
+						backgroundColor: OG.DARK_BG,
 						fontFamily: "DM Sans",
 						position: "relative",
 						overflow: "hidden",
 					}}
 				>
-					<div
-						style={{
-							position: "absolute",
-							top: -110,
-							right: -110,
-							width: 460,
-							height: 460,
-							borderRadius: 230,
-							background: "rgba(255,255,255,0.04)",
-						}}
-					/>
 					<BrandHeader />
 					<AvatarCircle name="?" size={100} />
 					<span

@@ -7,13 +7,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { DataTableColumnDef } from "~/components/data-table-features";
 import { ContextMenuItem } from "~/components/ui/context-menu";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog";
+import { Sheet } from "~/components/ui/sheet";
 import {
 	Select,
 	SelectContent,
@@ -138,19 +132,18 @@ function MetadataDialog({
 }: MetadataDialogProps) {
 	const t = useTranslations("auditLog");
 	return (
-		<Dialog onOpenChange={onOpenChange} open={open}>
-			<DialogContent className="max-w-2xl">
-				<DialogHeader>
-					<DialogTitle>{t("eventDetails")}</DialogTitle>
-					<DialogDescription>{t("metadataFor", { eventType })}</DialogDescription>
-				</DialogHeader>
-				<div className="max-h-[60vh] overflow-auto">
-					<pre className="rounded-md bg-muted p-4 text-xs">
-						{JSON.stringify(metadata, null, 2)}
-					</pre>
-				</div>
-			</DialogContent>
-		</Dialog>
+		<Sheet
+			description={t("metadataFor", { eventType })}
+			footer={false}
+			onOpenChange={onOpenChange}
+			open={open}
+			title={t("eventDetails")}
+			wide
+		>
+			<pre className="rounded-ctl bg-raised text-meta overflow-auto p-4">
+				{JSON.stringify(metadata, null, 2)}
+			</pre>
+		</Sheet>
 	);
 }
 

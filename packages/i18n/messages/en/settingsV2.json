@@ -335,6 +335,8 @@
 		"title": "Delete account",
 		"rowMeta": "Pending payments and splits are resolved first",
 		"passwordBody": "Enter your password to see what happens next.",
+		"onlyAdmin": "You're the only admin. Make someone else an admin first, then you can delete your account.",
+		"onlyAdminLink": "Open users",
 		"password": "Password",
 		"cancel": "Cancel",
 		"continue": "Continue",

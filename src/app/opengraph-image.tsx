@@ -22,48 +22,12 @@ export default async function Image() {
 					justifyContent: "center",
 					width: "100%",
 					height: "100%",
-					background: `linear-gradient(135deg, ${OG.DARK_BG_FROM} 0%, ${OG.DARK_BG_VIA} 55%, ${OG.DARK_BG_TO} 100%)`,
+					backgroundColor: OG.DARK_BG,
 					fontFamily: "DM Sans",
 					position: "relative",
 					overflow: "hidden",
 				}}
 			>
-				{/* Decorative depth circles — top-right */}
-				<div
-					style={{
-						position: "absolute",
-						top: -100,
-						right: -100,
-						width: 480,
-						height: 480,
-						borderRadius: 240,
-						background: "rgba(255,255,255,0.04)",
-					}}
-				/>
-				<div
-					style={{
-						position: "absolute",
-						top: -40,
-						right: -40,
-						width: 280,
-						height: 280,
-						borderRadius: 140,
-						background: "rgba(255,255,255,0.035)",
-					}}
-				/>
-				{/* Decorative depth circles — bottom-left */}
-				<div
-					style={{
-						position: "absolute",
-						bottom: -120,
-						left: -120,
-						width: 440,
-						height: 440,
-						borderRadius: 220,
-						background: "rgba(255,255,255,0.03)",
-					}}
-				/>
-
 				{/* Brand lockup */}
 				<div
 					style={{

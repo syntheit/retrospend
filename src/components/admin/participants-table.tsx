@@ -78,9 +78,7 @@ function createShadowColumns(
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<Badge className="border-transparent bg-emerald-500/10 text-emerald-500 shadow-none hover:bg-emerald-500/20">
-									{t("claimed")}
-								</Badge>
+								<Badge label={t("claimed")} status="funded" />
 							</TooltipTrigger>
 							<TooltipContent>
 								{row.original.claimedAt
@@ -93,7 +91,7 @@ function createShadowColumns(
 						</Tooltip>
 					</TooltipProvider>
 				) : (
-					<Badge variant="secondary">{t("unclaimed")}</Badge>
+					<Badge label={t("unclaimed")} status="notOnRetrospend" />
 				),
 		},
 		{

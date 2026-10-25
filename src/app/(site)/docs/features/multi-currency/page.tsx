@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
 import { CurrencyConverterDemoEmbed } from "../../_components/demo-embeds"
 import { DocsNav } from "../../_components/docs-nav"
@@ -19,7 +19,7 @@ export default function MultiCurrencyPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Multi-Currency</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Multi-Currency</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Log expenses in any fiat or cryptocurrency. Retrospend converts everything to your
 					home currency automatically.
@@ -28,7 +28,7 @@ export default function MultiCurrencyPage() {
 
 			<CurrencyConverterDemoEmbed />
 
-			<h2 id="how-it-works" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="how-it-works" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				How It Works
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -42,7 +42,7 @@ export default function MultiCurrencyPage() {
 				<li><strong>Manual override</strong>: if the auto rate doesn&apos;t match your actual exchange, you can type a custom rate.</li>
 			</ul>
 
-			<h2 id="parallel-market-rates" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="parallel-market-rates" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Parallel Market Rates
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -52,7 +52,7 @@ export default function MultiCurrencyPage() {
 				useful for travelers and expats who exchange money at parallel market rates.
 			</p>
 
-			<h2 id="cryptocurrency" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="cryptocurrency" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Cryptocurrency
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -60,29 +60,15 @@ export default function MultiCurrencyPage() {
 				and wealth asset currencies. Crypto rates work slightly differently:
 			</p>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Fiat Rates</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Stored as units per USD (e.g. 1 USD = 149.5 JPY). To convert JPY to USD, divide by the rate.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Crypto Rates</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Stored as USD per unit (e.g. 1 BTC = $97,500). To convert BTC to USD, multiply by the rate.
-						</p>
-					</CardContent>
-				</Card>
+				<DocItem title="Fiat Rates">Stored as units per USD (e.g. 1 USD = 149.5 JPY). To convert JPY to USD, divide by the rate.</DocItem>
+				<DocItem title="Crypto Rates">Stored as USD per unit (e.g. 1 BTC = $97,500). To convert BTC to USD, multiply by the rate.</DocItem>
 			</div>
 			<p className="mt-3 text-muted-foreground leading-relaxed">
 				This distinction is handled automatically; you just enter the amount and Retrospend
 				does the math.
 			</p>
 
-			<h2 id="currencies-page" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="currencies-page" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Currencies Page
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -101,7 +87,7 @@ export default function MultiCurrencyPage() {
 				transactions always use the rate that was active when they were logged.
 			</p>
 
-			<h2 id="tips" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="tips" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Tips
 			</h2>
 			<Callout variant="tip" title="Currency favorites">

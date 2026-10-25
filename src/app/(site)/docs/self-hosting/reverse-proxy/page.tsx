@@ -90,7 +90,7 @@ export default function ReverseProxyPage() {
 				<Badge variant="secondary" className="mb-3">
 					Self-Hosting
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">
+				<h1 className="mb-3 font-semibold text-3xl">
 					Reverse Proxy
 				</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
@@ -106,7 +106,7 @@ export default function ReverseProxyPage() {
 				This is used for auth redirects and email links.
 			</Callout>
 
-			<h2 id="nginx" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="nginx" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Nginx
 			</h2>
 			<p className="mb-4 text-muted-foreground text-sm leading-relaxed">
@@ -133,7 +133,7 @@ sudo nginx -t && sudo systemctl reload nginx`}
 				lang="bash"
 			/>
 
-			<h2 id="caddy" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="caddy" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Caddy
 			</h2>
 			<p className="mb-4 text-muted-foreground text-sm leading-relaxed">
@@ -158,7 +158,7 @@ sudo apt update && sudo apt install caddy`}
 				lang="bash"
 			/>
 
-			<h2 id="cloudflare-tunnel" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="cloudflare-tunnel" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Cloudflare Tunnel
 			</h2>
 			<p className="mb-4 text-muted-foreground text-sm leading-relaxed">
@@ -207,7 +207,7 @@ sudo apt update && sudo apt install caddy`}
 				comma-separated list.
 			</Callout>
 
-			<h2 id="trusted-origins" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="trusted-origins" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Trusted Origins
 			</h2>
 			<p className="text-muted-foreground text-sm leading-relaxed">

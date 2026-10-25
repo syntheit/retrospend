@@ -335,6 +335,8 @@
 		"title": "Eliminar cuenta",
 		"rowMeta": "Primero se resuelven los pagos y las divisiones pendientes",
 		"passwordBody": "Ingresá tu contraseña para ver qué va a pasar.",
+		"onlyAdmin": "Sos el único administrador. Primero hacé administrador a otra persona y después vas a poder eliminar tu cuenta.",
+		"onlyAdminLink": "Abrir usuarios",
 		"password": "Contraseña",
 		"cancel": "Cancelar",
 		"continue": "Continuar",

@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
 import { SplitCalculatorDemoEmbed } from "../../_components/demo-embeds"
 import { DocsNav } from "../../_components/docs-nav"
@@ -19,7 +19,7 @@ export default function SharedExpensesPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Shared Expenses</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Shared Expenses</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Split bills with others, track who owes what, and settle debts, all within your expense tracker.
 				</p>
@@ -27,7 +27,7 @@ export default function SharedExpensesPage() {
 
 			<SplitCalculatorDemoEmbed />
 
-			<h2 id="how-splitting-works" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="how-splitting-works" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				How Splitting Works
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -36,7 +36,7 @@ export default function SharedExpensesPage() {
 				share becomes a debt they owe you, and Retrospend tracks the running balance.
 			</p>
 
-			<h2 id="split-modes" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="split-modes" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Split Modes
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
@@ -49,16 +49,11 @@ export default function SharedExpensesPage() {
 					{ title: "Percentage", desc: "Assign a percentage to each person. Percentages must total 100%." },
 					{ title: "Shares", desc: "Assign share units (e.g. 2, 1, 1). Useful when one person should pay double." },
 				].map((card) => (
-					<Card key={card.title} className="border-border bg-card">
-						<CardContent className="p-4">
-							<p className="font-semibold text-sm">{card.title}</p>
-							<p className="mt-1 text-muted-foreground text-sm">{card.desc}</p>
-						</CardContent>
-					</Card>
+					<DocItem key={card.title} title={card.title}>{card.desc}</DocItem>
 				))}
 			</div>
 
-			<h2 id="adding-people" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="adding-people" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Adding People
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -69,7 +64,7 @@ export default function SharedExpensesPage() {
 				<li><strong>Shadow contacts</strong>: people without a Retrospend account. You track the debt on their behalf; settle up externally.</li>
 			</ul>
 
-			<h2 id="verification" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="verification" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Verification
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -79,7 +74,7 @@ export default function SharedExpensesPage() {
 				debt tracking and keeps both parties in sync.
 			</p>
 
-			<h2 id="settlement" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="settlement" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Settlement
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -88,7 +83,7 @@ export default function SharedExpensesPage() {
 				so you can share a pay-me link directly from the app.
 			</p>
 
-			<h2 id="guest-participation" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="guest-participation" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Guest Participation
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -98,7 +93,7 @@ export default function SharedExpensesPage() {
 				activity. If they decide to create a full account later, their guest history carries over.
 			</p>
 
-			<h2 id="auto-verification" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="auto-verification" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Auto-Verification
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -107,7 +102,7 @@ export default function SharedExpensesPage() {
 				when auto-acceptance happens.
 			</p>
 
-			<h2 id="with-or-without-projects" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="with-or-without-projects" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				With or Without Projects
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -117,7 +112,7 @@ export default function SharedExpensesPage() {
 				so it doesn&apos;t matter which approach you use for a given expense.
 			</p>
 
-			<h2 id="tips" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="tips" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Tips
 			</h2>
 			<Callout variant="tip" title="&quot;They owe full amount&quot;">

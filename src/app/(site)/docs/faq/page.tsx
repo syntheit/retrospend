@@ -153,7 +153,7 @@ export default function FaqPage() {
 				<Badge variant="secondary" className="mb-3">
 					FAQ
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">
+				<h1 className="mb-3 font-semibold text-3xl">
 					Frequently Asked Questions
 				</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">

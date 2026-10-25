@@ -17,14 +17,14 @@ export default function PeoplePage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">People &amp; Settlements</h1>
+				<h1 className="mb-3 font-semibold text-3xl">People &amp; Settlements</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					The People section tracks everyone you split expenses with and what you owe each other.
 					Balances update automatically as you add shared expenses and record settlements.
 				</p>
 			</div>
 
-			<h2 id="contacts" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="contacts" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Contacts
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -35,7 +35,7 @@ export default function PeoplePage() {
 				<li><strong>Shadow contacts</strong>: People without an account. You track debts on their behalf. If they sign up later, their balance and history carry over automatically.</li>
 			</ul>
 
-			<h2 id="balances" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="balances" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Balances
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -44,7 +44,7 @@ export default function PeoplePage() {
 				shared expenses and settlements, whether from a project or a standalone split.
 			</p>
 
-			<h2 id="verification-queue" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="verification-queue" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Verification Queue
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -52,7 +52,7 @@ export default function PeoplePage() {
 				accept, reject, or bulk-accept pending shares. Unresponded shares auto-accept after 7 days.
 			</p>
 
-			<h2 id="settling-up" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="settling-up" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Settling Up
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -69,7 +69,7 @@ export default function PeoplePage() {
 				with the amount pre-filled.
 			</p>
 
-			<h2 id="person-detail" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="person-detail" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Person Detail
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">

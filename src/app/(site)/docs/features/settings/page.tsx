@@ -17,13 +17,13 @@ export default function SettingsPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Settings</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Settings</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					The settings page is organized into sections. Here&apos;s what each one covers.
 				</p>
 			</div>
 
-			<h2 id="profile" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="profile" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Profile
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -38,7 +38,7 @@ export default function SettingsPage() {
 				You can only change your username once every 30 days. Choose carefully.
 			</Callout>
 
-			<h2 id="security" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="security" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Security
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -47,7 +47,7 @@ export default function SettingsPage() {
 				confirmation code.
 			</p>
 
-			<h2 id="payment-methods" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="payment-methods" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Payment Methods
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -64,7 +64,7 @@ export default function SettingsPage() {
 				Payment methods show up when settling debts, making it easy for the other person to pay you.
 			</p>
 
-			<h2 id="notifications" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="notifications" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Notifications
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -73,7 +73,7 @@ export default function SettingsPage() {
 				Digest mode batches email notifications instead of sending them one at a time.
 			</p>
 
-			<h2 id="privacy-and-data" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="privacy-and-data" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Privacy and Data
 			</h2>
 			<ul className="mb-4 list-disc space-y-1.5 pl-6 text-muted-foreground text-sm leading-relaxed">

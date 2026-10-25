@@ -7,6 +7,7 @@ import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import {
 	deleteOwnAccount,
+	isLastAdminAccount,
 	previewOwnAccountDeletion,
 } from "~/server/services/account-deletion.service";
 import { validateAndProcessUsernameChange } from "~/server/services/username.service";
@@ -151,9 +152,11 @@ export const userRouter = createTRPCRouter({
 			return updatedUser;
 		}),
 
-	previewAccountDeletion: protectedProcedure.query(({ ctx }) =>
-		previewOwnAccountDeletion(ctx.session.user.id),
-	),
+	previewAccountDeletion: protectedProcedure.query(async ({ ctx }) => ({
+		...(await previewOwnAccountDeletion(ctx.session.user.id)),
+		// Web only: the sheet says so up front instead of after the password.
+		onlyAdmin: await isLastAdminAccount(ctx.session.user),
+	})),
 
 	deleteAccount: protectedProcedure
 		.input(

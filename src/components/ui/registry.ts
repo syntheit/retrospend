@@ -78,12 +78,6 @@ export const REGISTRY: Primitive[] = [
 		use: "date-picker",
 	},
 	{
-		file: "card",
-		status: "legacy",
-		job: "Bordered box",
-		use: "A flat section (heading + content + space). Borders only around objects you act on (R2)",
-	},
-	{
 		file: "category-badge",
 		status: "core",
 		job: "Category identity in a list or table row: CategoryTile, the tinted tile with its glyph (rows only, R25 amended); CategoryBadge is the old name pill on today's pages",
@@ -149,12 +143,6 @@ export const REGISTRY: Primitive[] = [
 		job: "Overflow menu and pickers; items come from the action registry (R8)",
 	},
 	{
-		file: "edge-panel",
-		status: "legacy",
-		job: "Radix dialog drawn as an edge panel: the phone bottom sheet inside ResponsiveDialog and the sidebar's phone panel",
-		use: "sheet (Sheet)",
-	},
-	{
 		file: "empty-state",
 		status: "core",
 		plan: ["EmptyState"],
@@ -205,12 +193,6 @@ export const REGISTRY: Primitive[] = [
 		job: "Pick an exchange rate type (official, blue, card, MEP, custom)",
 	},
 	{
-		file: "responsive-dialog",
-		status: "legacy",
-		job: "The old task dialog (dialog on desktop, bottom sheet on phone), kept for the pages that already use it",
-		use: "sheet (Sheet)",
-	},
-	{
 		file: "scroll-area",
 		status: "core",
 		job: "Scroll region with themed scrollbar",
@@ -251,11 +233,6 @@ export const REGISTRY: Primitive[] = [
 		use: "sheet",
 	},
 	{
-		file: "sidebar",
-		status: "core",
-		job: "SidebarProvider and today's sidebar parts. The new shell's sidebar is ShellSidebar in src/components/shell/sidebar.tsx",
-	},
-	{
 		file: "skeleton",
 		status: "core",
 		plan: ["Skeleton"],
@@ -277,12 +254,6 @@ export const REGISTRY: Primitive[] = [
 		file: "sonner",
 		status: "core",
 		job: "The one Toaster, mounted in the root layout. Show a toast with useToast from toast",
-	},
-	{
-		file: "stat-card",
-		status: "legacy",
-		job: "Metric tile",
-		use: "One hero number plus a glance line or key-value rows (R3)",
 	},
 	{
 		file: "switch",
@@ -309,18 +280,6 @@ export const REGISTRY: Primitive[] = [
 		job: "Toast: confirms a finished action and offers Undo (R15); at most 3, above sheets",
 	},
 	{
-		file: "toggle",
-		status: "legacy",
-		job: "Pressed-state button",
-		use: "segmented-toggle, switch or chip",
-	},
-	{
-		file: "toggle-group",
-		status: "legacy",
-		job: "Second pick-one control",
-		use: "segmented-toggle (R7: one pick-one control)",
-	},
-	{
 		file: "tooltip",
 		status: "core",
 		job: "Name of an icon-only control, a face or a rate (Tip); one clause",
@@ -329,12 +288,6 @@ export const REGISTRY: Primitive[] = [
 		file: "unsaved-changes-dialog",
 		status: "core",
 		job: "Leave with unsaved changes?",
-	},
-	{
-		file: "user-avatar",
-		status: "legacy",
-		job: "Old face (10 colors, old sizes) on today's pages; new code uses Face from avatar-face",
-		use: "avatar-face (Face)",
 	},
 ];
 
