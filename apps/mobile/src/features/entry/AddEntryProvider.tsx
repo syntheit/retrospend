@@ -38,8 +38,8 @@ export function useAddEntry(): AddEntryApi {
 /**
  * Where "add" lives on each device (IMPLEMENTATION S5). iPhone: the tab bar's
  * own plus selects the Add tab, so `open` only navigates there. Android: the
- * extended FAB, with Add income in its menu, and the composer as an M3 bottom
- * sheet. iPad: a glass plus and the composer as a sheet. It also keeps the
+ * extended FAB and the composer as an M3 bottom sheet (Income is the mode row
+ * inside it). iPad: a glass plus and the composer as a sheet. It also keeps the
  * outbox flowing, since an entry added offline needs a sender when the
  * network returns.
  */
@@ -83,21 +83,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 							(Platform.OS === "android" ? M3_NAVIGATION_BAR : 0),
 					}}
 				>
-					<AddButton
-						actions={
-							Platform.OS === "android"
-								? [
-										{
-											id: "income",
-											label: t("addIncome"),
-											onPress: () => open("income"),
-										},
-									]
-								: undefined
-						}
-						label={t("addExpense")}
-						onPress={() => open("expense")}
-					/>
+					<AddButton label={t("addExpense")} onPress={() => open("expense")} />
 				</View>
 			)}
 			{iPhone ? null : (
