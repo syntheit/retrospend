@@ -14,7 +14,7 @@ import { CategoryDonut } from "~/app/(dashboard)/_components/category-donut";
 import type { CategorySegment } from "~/app/(dashboard)/_components/category-donut-legend";
 import { RecentExpenses } from "~/app/(dashboard)/_components/recent-expenses";
 import { StatCard } from "~/components/ui/stat-card";
-import { formatCurrency } from "~/lib/currency-format";
+import { formatCurrency } from "@retrospend/domain/currency-format";
 import {
 	DEMO_CATEGORY_BREAKDOWN,
 	DEMO_CHART_CONFIG,

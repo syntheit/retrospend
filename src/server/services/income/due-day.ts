@@ -1,4 +1,4 @@
-import { nextRecurringDate } from "~/lib/recurring";
+import { nextRecurringDate } from "@retrospend/domain/recurring";
 import type { RecurringFrequency } from "~prisma";
 
 /**

@@ -77,7 +77,7 @@ import { UserAvatar } from "~/components/ui/user-avatar";
 import { env } from "~/env";
 import { useSession } from "~/hooks/use-session";
 import { useUserSettings } from "~/hooks/use-user-settings";
-import type { CurrencyCode } from "~/lib/currencies";
+import type { CurrencyCode } from "@retrospend/domain/currencies";
 import {
 	getCurrencyForType,
 	getIdentifierConfig,

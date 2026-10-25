@@ -17,7 +17,6 @@ import {
 	expectBody,
 	expectProblem,
 	sessionFor,
-	useApiV1,
 	webCookieFor,
 } from "../../core/__tests__/harness";
 
@@ -60,7 +59,6 @@ const del = (headers: Record<string, string>, body: unknown, key?: string) =>
 	});
 
 describe("/api/v1/me/deletion", () => {
-	useApiV1();
 	// Each caller has its own address, so the per-IP limit of other files never matters.
 	let n = 0;
 	const ip = () => ({ "x-forwarded-for": `198.51.100.${200 + n++}` });

@@ -17,7 +17,7 @@ import {
 } from "~/components/ui/chart";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import type { CurrencyCode } from "~/lib/currencies";
+import type { CurrencyCode } from "@retrospend/domain/currencies";
 import { parseDateOnly } from "~/lib/date";
 import { maskAmount } from "~/lib/masking";
 import {

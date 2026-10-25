@@ -13,7 +13,7 @@
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { USD } from "../src/lib/money";
+import { USD } from "@retrospend/domain/money";
 import {
 	findInconsistentExpenses,
 	type RepairFinding,

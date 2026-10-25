@@ -32,7 +32,11 @@ import { addRow, at, invariantAt } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
 import { envelopeExportFiles } from "./envelope-export";
 import { ensureLegacyBook, forgetLegacyAttempts } from "./legacy-lazy";
-import { migrateUsers, rollbackRun } from "./legacy-migrate.batch";
+import {
+	migrateUsers,
+	needsAttention,
+	rollbackRun,
+} from "./legacy-migrate.batch";
 import * as plan from "./legacy-plan";
 import {
 	resolveHiddenMutation,
@@ -470,7 +474,7 @@ describe("Dara: pegged and unlimited envelopes are never overspent", () => {
 
 	const items = (now: Date) =>
 		userTransaction(adminDb, dara.user.id, (tx) =>
-			needsYouIn(tx, dara.user.id, { budget: true, timeZone: "UTC", now }),
+			needsYouIn(tx, dara.user.id, { timeZone: "UTC", now }),
 		).then((l) => l.items.filter((i) => i.type === "budget.overspent"));
 
 	it("month 1: only Groceries is over", async () => {
@@ -575,7 +579,7 @@ describe("Cris: rows the old budget hid", () => {
 			hiddenRows: 1,
 		});
 		const list = await userTransaction(adminDb, cris.user.id, (tx) =>
-			needsYouIn(tx, cris.user.id, { budget: true, timeZone: "UTC" }),
+			needsYouIn(tx, cris.user.id, { timeZone: "UTC" }),
 		);
 		const item = list.items.find((i) => i.type === "budget.hiddenReview");
 		expect(item).toMatchObject({ count: 1, group: "budget" });
@@ -699,7 +703,7 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		const n = await person();
 		const rent = await n.cat("Rent", true);
 		await budget(n.user.id, { categoryId: rent, amount: "250.00" });
-		await needsYou(adminDb, n.user.id, { budget: true, timeZone: "UTC" });
+		await needsYou(adminDb, n.user.id, { timeZone: "UTC" });
 		expect(
 			await adminDb.budgetBook.count({ where: { createdById: n.user.id } }),
 		).toBe(1);
@@ -710,6 +714,46 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		expect(pace?.total.budget).toEqual({ minor: 7_500, currency: "USD" });
 	});
 
+	it("opening Budget before the script ran: the script then leaves that book as it is, and the dry run says so", async () => {
+		const early = await person();
+		const rent = await early.cat("Rent", true);
+		await budget(early.user.id, { categoryId: rent, amount: "500.00" });
+		const first = await getMonth(early.user.id, undefined, new Date(), "UTC");
+		expect(row(first, "Rent")?.assigned.minor).toBe(50_000);
+		const book = await bookOf(early.user.id);
+
+		const dry = await migrateUsers(adminDb, {
+			apply: false,
+			userIds: [early.user.id],
+		});
+		const run = await apply(early.user.id);
+		for (const r of [...dry.reports, ...run.reports])
+			expect(r).toMatchObject({ status: "HAS_BOOK" });
+		// Still the one book the first read made, not rewritten by the script.
+		const after = await bookOf(early.user.id);
+		expect(after.id).toBe(book.id);
+		expect(after.legacyMigrationRunId).toMatch(/^lazy-/);
+		expect(
+			await adminDb.budgetBook.count({ where: { createdById: early.user.id } }),
+		).toBe(1);
+		expect(needsAttention(run.reports)).toBe(0);
+	});
+
+	it("the script ran first: opening Budget keeps the script's book", async () => {
+		const n = await person();
+		const rent = await n.cat("Rent", true);
+		await budget(n.user.id, { categoryId: rent, amount: "320.00" });
+		const run = await apply(n.user.id, "release-run");
+		expect(run.reports[0]).toMatchObject({ status: "MIGRATED", funded: true });
+		const m = await getMonth(n.user.id, undefined, new Date(), "UTC");
+		expect(row(m, "Rent")?.assigned.minor).toBe(32_000);
+		const book = await bookOf(n.user.id);
+		expect(book.legacyMigrationRunId).toBe("release-run");
+		expect(
+			await adminDb.budgetBook.count({ where: { createdById: n.user.id } }),
+		).toBe(1);
+	});
+
 	it("a person with no old budgets stays on Just track", async () => {
 		const p = await person();
 		expect(await getMonth(p.user.id, undefined, new Date(), "UTC")).toBeNull();
@@ -718,14 +762,6 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		).toBe(0);
 	});
 });
-
-const SETTINGS_ID = "app_settings_singleton";
-const setFlag = (mode: "OFF" | "ALL") =>
-	adminDb.appSettings.upsert({
-		where: { id: SETTINGS_ID },
-		update: { envelopeBudgetMode: mode },
-		create: { id: SETTINGS_ID, envelopeBudgetMode: mode },
-	});
 
 async function moved(n: number, runId = `test-${randomUUID()}`) {
 	const people = [];
@@ -791,7 +827,6 @@ describe("a move that fails never fails the read", () => {
 		});
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		const list = await needsYou(adminDb, p.user.id, {
-			budget: true,
 			timeZone: "UTC",
 		});
 		expect(list.items.filter((i) => i.group === "budget")).toEqual([]);
@@ -919,24 +954,6 @@ describe("rolling a run back", () => {
 				where: { createdById: people[0]?.user.id },
 			}),
 		).toBe(1);
-	});
-
-	it("refuses while the envelope flag is on: the next read would move them again", async () => {
-		const { people, runId } = await moved(1);
-		await setFlag("ALL");
-		try {
-			const out = await rollbackRun(adminDb, runId, { force: false });
-			expect(out).toMatchObject({ blockedByFlag: "ALL", removed: [] });
-			expect(
-				await adminDb.budgetBook.count({
-					where: { createdById: people[0]?.user.id },
-				}),
-			).toBe(1);
-			const forced = await rollbackRun(adminDb, runId, { force: true });
-			expect(forced.removed).toEqual([people[0]?.user.id]);
-		} finally {
-			await setFlag("OFF");
-		}
 	});
 });
 

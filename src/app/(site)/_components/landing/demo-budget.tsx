@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { BulletChart } from "~/components/budget/bullet-chart";
 import { PartitionBar } from "~/components/budget/partition-bar";
 import { getCategoryIcon } from "~/lib/category-icons";
-import { formatCurrency } from "~/lib/currency-format";
+import { formatCurrency } from "@retrospend/domain/currency-format";
 import { cn } from "~/lib/utils";
 import { DEMO_CATEGORY_BUDGETS } from "./demo-data";
 

@@ -22,7 +22,7 @@ import { WealthHeader } from "./wealth-header";
 const MASK =
 	"[&_[data-slot=money]]:select-none [&_[data-slot=money]]:rounded-chip [&_[data-slot=money]]:bg-raised [&_[data-slot=money]]:text-transparent";
 
-/** The Wealth page (uiV2): header, hero, one toolbar, the accounts or the breakdown. */
+/** The Wealth page: header, hero, one toolbar, the accounts or the breakdown. */
 export function WealthScreen({ view }: { view: WealthView }) {
 	const t = useTranslations("wealthPage");
 	const [hidden, setHidden] = useState(view.hideAmounts);

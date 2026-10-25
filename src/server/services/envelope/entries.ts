@@ -4,8 +4,8 @@
  * book's zone (SPEC §5.1, C21). A row without a rate is left out of every
  * sum and listed (C18), never valued at 1.
  */
-import { isCrypto } from "~/lib/currency-format";
-import { USD } from "~/lib/money";
+import { isCrypto } from "@retrospend/domain/currency-format";
+import { USD } from "@retrospend/domain/money";
 import type { Prisma } from "~prisma";
 import type { ActivityEntry, MoneyInEntry, MovementEntry } from "./engine";
 import { dec, toMinor } from "./units";

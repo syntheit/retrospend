@@ -5,7 +5,7 @@ import { HomeScreen } from "./home-screen";
 import { RECENT_INPUT } from "./recent-input";
 
 /**
- * The redesigned Home (uiV2). Its reads go out with the HTML: the glance
+ * The Home. Its reads go out with the HTML: the glance
  * and Needs you (one server read each), the last expenses (Activity's
  * read), and the rail's people and recurring reads. The client keeps them
  * fresh after any change (use-home-refresh). A read that fails is not sent,

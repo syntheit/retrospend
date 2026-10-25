@@ -27,7 +27,7 @@ const inCur = <T extends { currency: string }>(
 ) => lines.find((l) => l.currency === cur);
 
 /** Who paid what: each person's Paid or Share in the project's currency. */
-function WhoPaidWhat({
+export function WhoPaidWhat({
 	view,
 	s,
 	me,
@@ -84,10 +84,12 @@ function WhoPaidWhat({
 }
 
 /** Spending by category, the group's or yours, in the project's currency. */
-function ByCategory({ view }: { view: PageView }) {
+export function ByCategory({ view }: { view: PageView }) {
 	const t = useTranslations("projectV2.summary");
 	const [cats, setCats] = useState<"group" | "mine">("group");
 	const cur = view.primaryCurrency;
+	// Nobody on the page is the reader (a viewer link, the public): no "yours".
+	const plain = view.solo || !view.members.some((m) => m.isMe);
 	const items: RankedItem[] = view.byCategory.flatMap((c) => {
 		const value = inCur(cats === "group" ? c.group : c.mine, cur);
 		if (!value || value.minor === 0) return [];
@@ -98,7 +100,7 @@ function ByCategory({ view }: { view: PageView }) {
 	return (
 		<Section
 			end={
-				view.solo ? (
+				plain ? (
 					<span className="text-fg-3 text-small">{cur}</span>
 				) : (
 					<Segmented
@@ -113,7 +115,7 @@ function ByCategory({ view }: { view: PageView }) {
 				)
 			}
 			id="by-category"
-			title={view.solo ? t("byCategory") : t("byCategoryGroup")}
+			title={plain ? t("byCategory") : t("byCategoryGroup")}
 		>
 			<div className="max-w-180">
 				<RankedBars items={[...items].sort(biggestFirst)} />
@@ -123,7 +125,7 @@ function ByCategory({ view }: { view: PageView }) {
 }
 
 /** The payments recorded in this project. */
-function Payments({ view, me }: { view: PageView; me: string }) {
+export function Payments({ view, me }: { view: PageView; me: string }) {
 	const t = useTranslations("projectV2.summary");
 	return (
 		<Section count={view.payments.length} id="payments" title={t("payments")}>

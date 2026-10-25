@@ -14,7 +14,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -26,7 +25,6 @@ const a = contract.admin;
 const SECRET = "SECRET-TITLE-Q7";
 
 describe("/api/v1/admin", () => {
-	useApiV1();
 	let admin: string;
 	let bob: string;
 	let asAdmin: Record<string, string>;

@@ -31,10 +31,8 @@ import { convertExpenseAmountForDisplay } from "~/lib/normalize";
 import { BRAND_ICON_MAP } from "~/lib/icons";
 import { formatExpenseAsText } from "~/lib/format";
 import { cn } from "~/lib/utils";
-import type { RouterOutputs } from "~/trpc/react";
+import type { ActivityItem } from "./activity-item";
 
-export type ActivityItem =
-	RouterOutputs["dashboard"]["getRecentActivity"][number];
 type ActivityFilter = "all" | "personal" | "shared";
 
 const MUTED_COLOR_MAP: Record<string, string> = {
@@ -108,7 +106,7 @@ export function RecentExpenses({
 		);
 	}, [recentActivity, filter]);
 
-	const viewAllHref = filter === "shared" ? "/projects" : "/transactions";
+	const viewAllHref = filter === "shared" ? "/projects" : "/activity";
 
 	if (activityLoading) {
 		return (

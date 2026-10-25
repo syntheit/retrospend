@@ -102,7 +102,7 @@ function useToastOffset() {
 }
 
 /**
- * The new app shell (uiV2Mode): sidebar on desktop and tablet, bottom bar
+ * The app shell: sidebar on desktop and tablet, bottom bar
  * and floating Add on phones, the palette, the account and notifications
  * sheets and the N / I / T keys. Pages render inside it unchanged.
  */

@@ -52,64 +52,6 @@ export const importQueueRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Lists jobs for the current user.
-	 */
-	listJobs: protectedProcedure
-		.input(listJobsSchema)
-		.query(async ({ ctx, input }) => {
-			const service = new ImportQueueService(ctx.db);
-			return await service.listJobs(ctx.session.user.id, input ?? {});
-		}),
-
-	/**
-	 * Gets a single job by ID.
-	 */
-	getJob: protectedProcedure
-		.input(z.object({ jobId: z.string() }))
-		.query(async ({ ctx, input }) => {
-			const service = new ImportQueueService(ctx.db);
-			return await service.getJob(ctx.session.user.id, input.jobId);
-		}),
-
-	/**
-	 * Gets queue status summary.
-	 */
-	getQueueStatus: protectedProcedure.query(async ({ ctx }) => {
-		const service = new ImportQueueService(ctx.db);
-		return await service.getQueueStatus(ctx.session.user.id);
-	}),
-
-	/**
-	 * Marks a job as reviewing (when modal opens).
-	 */
-	startReview: protectedProcedure
-		.input(z.object({ jobId: z.string() }))
-		.mutation(async ({ ctx, input }) => {
-			const service = new ImportQueueService(ctx.db);
-			return await service.startReview(ctx.session.user.id, input.jobId);
-		}),
-
-	/**
-	 * Finalizes import by inserting selected expenses into database.
-	 */
-	finalizeImport: protectedProcedure
-		.input(
-			z.object({
-				jobId: z.string(),
-				selectedTransactions: z.array(importerTransactionSchema).max(5000),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const service = new ImportQueueService(ctx.db);
-			return await service.finalizeImport(
-				ctx.session.user.id,
-				input.jobId,
-				{ selectedTransactions: input.selectedTransactions },
-				ctx.timeZone,
-			);
-		}),
-
-	/**
 	 * Cancels a queued job.
 	 */
 	cancelJob: protectedProcedure

@@ -21,7 +21,7 @@ import { TRPCError } from "@trpc/server";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CorrectInput } from "~/lib/schemas/corrections";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
 import {
@@ -469,7 +469,7 @@ describe("correct a settled split", () => {
 	});
 
 	it("Martín gets a review item for the correction; the person who paid has nothing waiting", async () => {
-		const list = await needsYou(adminDb, w.martin.user.id, { budget: false });
+		const list = await needsYou(adminDb, w.martin.user.id, {});
 		const review = list.items.find((i) => i.type === "split.review");
 		expect(review).toMatchObject({
 			entity: { kind: "sharedExpense", id: input.id },
@@ -643,7 +643,7 @@ describe("Ask to fix", () => {
 	});
 
 	it("the creator gets a Needs you item with the asker's face, from ids", async () => {
-		const list = await needsYou(adminDb, w.sofia.user.id, { budget: false });
+		const list = await needsYou(adminDb, w.sofia.user.id, {});
 		const item = list.items.find((i) => i.type === "split.fixRequested");
 		expect(item).toMatchObject({
 			entity: { kind: "sharedExpense", id: w.electricidad },
@@ -656,7 +656,7 @@ describe("Ask to fix", () => {
 			],
 		});
 		expect(list.counts.people).toBeGreaterThanOrEqual(1);
-		const asker = await needsYou(adminDb, w.martin.user.id, { budget: false });
+		const asker = await needsYou(adminDb, w.martin.user.id, {});
 		expect(asker.items.some((i) => i.type === "split.fixRequested")).toBe(
 			false,
 		);

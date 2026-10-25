@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError } from "@retrospend/domain/money";
 import { createMockDb } from "~/test/mock-db";
 import { DEFAULT_RATES, RATE_DATE, type TestRateRow, useRateTable } from "~/test/rate-table";
 import { WealthService } from "../wealth.service";

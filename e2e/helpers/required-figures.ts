@@ -1,8 +1,8 @@
 /**
  * Figure ids each page must render (SYNTHESIS-r5 §6 "Required keys"), keyed
  * by the page label the flows use. A page fails the audit when one is
- * missing, so deleting a tag cannot hide a mismatch. Today's pages carry no
- * figures yet; S4 adds each page's ids here as it tags them.
+ * missing, so deleting a tag cannot hide a mismatch. A page with no entry
+ * here (the smoke walk's pages) has no required ids.
  */
 import { MARTIN, PROJECT_IDS, SOFIA, seedId } from "../fixtures/personas";
 
@@ -12,8 +12,7 @@ const ME = `user:${SOFIA.id}`;
 const RENT = seedId("cat", "sofia", "rent");
 
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
-	dashboard: [],
-	// S4A: the redesigned Home on Sofía's seed. The pool (budget.notPlannedYet)
+	// S4A: Home on Sofía's seed. The pool (budget.notPlannedYet)
 	// shows only with an envelope book, which the seed does not have.
 	home: [
 		"glance.spent",
@@ -22,21 +21,14 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 		"netWorth",
 		"rate.dollarToday",
 	],
-	transactions: [],
-	people: [],
-	// S4D: the redesigned People page (the smoke walk opens the old one).
+	// S4D: the People page.
 	peoplePage: ["owed.owedToYou", "owed.youOwe"],
-	projects: [],
-	wealth: [],
-	budget: [],
-	// S4C: the redesigned Budget on a Flex book: the lead number
+	// S4C: the Budget page on a Flex book: the lead number
 	// (the seed has no book; the flow sets one up for Martín).
 	budgetPage: ["budget.leftToSpend", "budget.moneyIn"],
-	settings: [],
-	// The redesigned project pages (uiV2) on the seed: Sofía's balance in
+	// The project pages on the seed: Sofía's balance in
 	// each project on the list; the group total and her share on Depto
-	// Palermo; her balance with Martín on its Summary. Their own keys, so
-	// the smoke walk of today's pages (no figures) never requires them.
+	// Palermo; her balance with Martín on its Summary.
 	"projects-v2": [
 		`project.member.balance:${DEPTO}:${ME}`,
 		`project.member.balance:${FLORIPA}:${ME}`,

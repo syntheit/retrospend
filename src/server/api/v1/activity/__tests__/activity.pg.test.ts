@@ -19,7 +19,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -41,7 +40,6 @@ type Entry = {
 type Page = { items: Entry[]; nextCursor: string | null; totalCount: number };
 
 describe("/api/v1 activity", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let stranger: TestUser;

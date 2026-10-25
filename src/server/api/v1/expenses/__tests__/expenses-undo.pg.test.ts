@@ -17,7 +17,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -36,7 +35,6 @@ type Page = {
 const today = () => new Date().toISOString().slice(0, 10);
 
 describe("/api/v1/expenses undo, filter and preview rules", () => {
-	useApiV1();
 	let userId: string;
 	let as: Record<string, string>;
 	let food: string;

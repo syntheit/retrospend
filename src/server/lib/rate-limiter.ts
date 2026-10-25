@@ -52,14 +52,37 @@ export class InMemoryRateLimiter {
 }
 
 /**
- * Extract the client IP from request headers.
- * Uses the last IP in x-forwarded-for (closest to reverse proxy).
+ * Extract the client IP from request headers: CF-Connecting-IP when the
+ * request came through Cloudflare, else the last IP in x-forwarded-for (the
+ * one the reverse proxy added), else x-real-ip.
  */
 export function getClientIp(headers: Headers): string {
+	const cloudflare = headers.get("cf-connecting-ip")?.trim();
+	if (cloudflare) return cloudflare;
 	const forwarded = headers.get("x-forwarded-for");
 	if (forwarded) {
 		const ips = forwarded.split(",").map((ip) => ip.trim());
-		return ips[ips.length - 1] ?? "unknown";
+		return ips[ips.length - 1] || "unknown";
 	}
 	return headers.get("x-real-ip") ?? "unknown";
+}
+
+/**
+ * A rate limit key for a client address. One person usually holds a whole
+ * IPv6 /64, so every address in it shares one bucket; IPv4 is used as is.
+ */
+export function ipBucket(ip: string): string {
+	if (!ip.includes(":") || ip.includes(".")) return ip;
+	const [head, tail = ""] = ip.toLowerCase().split("::");
+	const left = head ? head.split(":") : [];
+	const right = tail ? tail.split(":") : [];
+	const groups = [
+		...left,
+		...Array(Math.max(0, 8 - left.length - right.length)).fill("0"),
+		...right,
+	];
+	return `${groups
+		.slice(0, 4)
+		.map((g) => (g || "0").replace(/^0+(?=.)/, ""))
+		.join(":")}::/64`;
 }

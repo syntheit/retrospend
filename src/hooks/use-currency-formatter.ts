@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { BASE_CURRENCY } from "~/lib/constants";
-import { formatCompactAmount } from "~/lib/currency-format";
+import { formatCompactAmount } from "@retrospend/domain/currency-format";
 import {
 	type CurrencySignDisplay,
 	formatCurrency,

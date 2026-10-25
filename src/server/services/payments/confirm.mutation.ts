@@ -6,7 +6,7 @@
  * which case the payment is allocated again from the receiver's side.
  */
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import type { Money } from "~/server/figures/registry";
 import { fromMinor, toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation, UndoToken } from "~/server/services/preview/types";

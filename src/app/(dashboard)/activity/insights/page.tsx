@@ -18,8 +18,7 @@ const fallback = (
 
 /**
  * Renders after hydration: the range and the filters read the URL, and the
- * dates ("This month", "Year to date") are the browser's. The layout above
- * keeps the whole Activity section behind uiV2.
+ * dates ("This month", "Year to date") are the browser's.
  */
 export default function Page() {
 	return (

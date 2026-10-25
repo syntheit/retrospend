@@ -1,4 +1,4 @@
-import { formatCurrency } from "~/lib/currency-format";
+import { formatCurrency } from "@retrospend/domain/currency-format";
 import type { PrismaClient } from "~prisma";
 import {
 	DELETED_GUEST_NAME,

@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
-import { entryOf, hrefOf, type NavEntry, PHONE_GO_TO } from "~/lib/nav";
+import { entryOf, type NavEntry, PHONE_GO_TO } from "~/lib/nav";
 import { APP_VERSION } from "~/lib/version";
 import { AccountIdentity } from "./account-menu";
 import { useShellActions } from "./shell-context";
@@ -116,7 +116,7 @@ function EntryRow({
 	);
 }
 
-const GO_TO: NavEntry[] = PHONE_GO_TO.map(entryOf).filter((e) => hrefOf(e));
+const GO_TO: NavEntry[] = PHONE_GO_TO.map(entryOf);
 
 /**
  * The phone account sheet (account.html): who you are, notifications, Go to
@@ -178,7 +178,7 @@ export function AccountSheet({
 							return (
 								<Row
 									close={close}
-									href={hrefOf(entry) ?? undefined}
+									href={entry.href}
 									icon={<Icon aria-hidden="true" className="size-4" />}
 									key={entry.id}
 									label={t(`nav.${entry.id}`)}

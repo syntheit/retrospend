@@ -11,15 +11,12 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 import {
 	bookedUser,
 	mobileFrom,
-	setBudgetFlag,
 	toV1,
 	usd,
-	useBudgetV1,
 	uuid,
 	withoutStamps,
 } from "./fixtures";
@@ -47,8 +44,6 @@ type Month = {
 };
 
 describe("/api/v1/budget movements", () => {
-	useApiV1();
-	useBudgetV1();
 	let as: Record<string, string>;
 	let ids: Record<string, string>;
 	let monthKey: number;
@@ -82,19 +77,6 @@ describe("/api/v1/budget movements", () => {
 		as = await asMobile(userId);
 		stranger = await asMobile((await bookedUser()).user.id);
 		monthKey = (await month()).month.key;
-	});
-
-	it("answers 403 while the budget flag is off", async () => {
-		await setBudgetFlag("OFF");
-		try {
-			await expectProblem(
-				await call("/budget/month", { headers: as }),
-				403,
-				"forbidden",
-			);
-		} finally {
-			await setBudgetFlag("ALL");
-		}
 	});
 
 	it("reads the month: To assign and the envelopes' Left", async () => {

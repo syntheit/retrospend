@@ -9,7 +9,7 @@
  *
  * Every reader (dashboard, stats, budget page, runway, profile, suggestions)
  * takes its items from here and only picks the currency and rate to total
- * them in (sumIn, the totals rule in ~/lib/money). A personal row saved with
+ * them in (sumIn, the totals rule in @retrospend/domain/money). A personal row saved with
  * a booked home value (M2) counts that value in its home currency, so it
  * never moves with later rates; rows with none, and shares, keep the period
  * rate. Runs on whatever client it is given, a preview's transaction
@@ -17,8 +17,8 @@
  */
 
 import { toMinor } from "@retrospend/domain/money-minor";
-import { getCurrentFiscalMonth, getFiscalMonthRange } from "~/lib/fiscal-month";
-import { currencyDecimals, type MoneyItem, sumIn } from "~/lib/money";
+import { getCurrentFiscalMonth, getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
+import { currencyDecimals, type MoneyItem, sumIn } from "@retrospend/domain/money";
 import type {
 	FigureDb,
 	FigureDefinition,

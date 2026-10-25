@@ -5,7 +5,7 @@
  * through resolveSplits; this only shapes the rows and the mode.
  */
 
-import { resolveSplits } from "./shared-split-computation";
+import { resolveSplits } from "@retrospend/domain/shared-split-computation";
 
 export type SplitRefType = "user" | "guest" | "shadow";
 

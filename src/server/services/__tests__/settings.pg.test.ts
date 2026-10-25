@@ -13,25 +13,23 @@ describe("updateAppSettings on Postgres", () => {
 		await adminDb.appSettings.deleteMany();
 
 		const created = await updateAppSettings({
-			apiV1Mode: "ADMINS",
-			uiV2Mode: "ALL",
 			enableFeedback: true,
+			maxConcurrentImportJobs: 5,
 		});
 
 		expect(created).toMatchObject({
-			apiV1Mode: "ADMINS",
-			uiV2Mode: "ALL",
 			enableFeedback: true,
+			maxConcurrentImportJobs: 5,
 			inviteOnlyEnabled: false,
 			enableEmail: true,
 		});
 		await expect(
 			adminDb.appSettings.findFirstOrThrow({
-				select: { apiV1Mode: true, uiV2Mode: true },
+				select: { enableFeedback: true, maxConcurrentImportJobs: true },
 			}),
-		).resolves.toEqual({ apiV1Mode: "ADMINS", uiV2Mode: "ALL" });
+		).resolves.toEqual({ enableFeedback: true, maxConcurrentImportJobs: 5 });
 		await expect(getAppSettings()).resolves.toMatchObject({
-			apiV1Mode: "ADMINS",
+			maxConcurrentImportJobs: 5,
 		});
 	});
 });

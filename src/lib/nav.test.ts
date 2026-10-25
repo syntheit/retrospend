@@ -5,7 +5,6 @@ import {
 	currentNav,
 	DESTINATIONS,
 	entryOf,
-	hrefOf,
 	PHONE_GO_TO,
 	PHONE_TABS,
 	PINNED_MAX,
@@ -42,36 +41,18 @@ describe("nav definition", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	it("links today's page until the new route ships", () => {
-		const none = new Set<string>();
-		expect(hrefOf(byId("home"), none)).toBe("/dashboard");
-		expect(hrefOf(byId("activity"), none)).toBe("/transactions");
-		expect(hrefOf(byId("recurring"), none)).toBe("/recurring");
-		expect(hrefOf(byId("budget"), none)).toBe("/budget");
-		// Shipped: Activity with its Recurring and Insights tabs.
-		expect(hrefOf(byId("activity"))).toBe("/activity");
-		expect(hrefOf(byId("recurring"))).toBe("/activity/recurring");
-		expect(hrefOf(byId("insights"))).toBe("/activity/insights");
-		expect(hrefOf(byId("home"), new Set(["/home"]))).toBe("/home");
-		expect(hrefOf(byId("recurring"), new Set(["/activity/recurring"]))).toBe(
-			"/activity/recurring",
-		);
-	});
-
-	it("hides a place that has no page yet", () => {
-		expect(hrefOf(byId("insights"), new Set<string>())).toBeNull();
-		expect(hrefOf(byId("insights"), new Set(["/activity/insights"]))).toBe(
-			"/activity/insights",
-		);
+	it("links the new page of every entry", () => {
+		expect(byId("home").href).toBe("/home");
+		expect(byId("activity").href).toBe("/activity");
+		expect(byId("recurring").href).toBe("/activity/recurring");
+		expect(byId("insights").href).toBe("/activity/insights");
+		expect(byId("budget").href).toBe("/budget");
 	});
 });
 
 describe("currentNav", () => {
 	it.each([
-		["/dashboard", "home"],
 		["/home", "home"],
-		["/transactions", "activity"],
-		["/recurring", "activity"],
 		["/activity/recurring", "activity"],
 		["/budget", "budget"],
 		["/people/user/abc", "people"],
@@ -147,7 +128,7 @@ describe("ADD_ACTIONS", () => {
 
 describe("phone Go to", () => {
 	it("reaches Wealth, the tools, Recurring, Insights and Settings from the account sheet", () => {
-		expect(PHONE_GO_TO.map((id) => hrefOf(entryOf(id)))).toEqual([
+		expect(PHONE_GO_TO.map((id) => entryOf(id).href)).toEqual([
 			"/wealth",
 			"/currencies",
 			"/import",
@@ -157,10 +138,10 @@ describe("phone Go to", () => {
 		]);
 	});
 
-	it("covers every place without a phone tab that has a page", () => {
+	it("covers every place without a phone tab", () => {
 		const reachable = new Set<string>([...PHONE_TABS, ...PHONE_GO_TO]);
 		const missing = [...DESTINATIONS, ...TOOLS, ...PLACES]
-			.filter((e) => hrefOf(e) && !reachable.has(e.id))
+			.filter((e) => !reachable.has(e.id))
 			.map((e) => e.id);
 		expect(missing).toEqual([]);
 	});

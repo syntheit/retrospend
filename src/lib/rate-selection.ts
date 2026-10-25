@@ -1,4 +1,4 @@
-import { isValidRate, RATE_TYPE_PRIORITY } from "./money";
+import { isValidRate, RATE_TYPE_PRIORITY } from "@retrospend/domain/money";
 
 /**
  * Rate types (N73, ADD-EXPENSE-R2 T7). A rate type names one row kind of the

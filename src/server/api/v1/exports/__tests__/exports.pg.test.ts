@@ -19,7 +19,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 // A real directory, outside the upload store, for this file's exports.
@@ -56,7 +55,6 @@ type Job = {
 };
 
 describe("/api/v1/exports", () => {
-	useApiV1();
 	let alice: string;
 	let asAlice: Record<string, string>;
 	let asBob: Record<string, string>;

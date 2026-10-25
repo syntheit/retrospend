@@ -78,6 +78,7 @@ function PaidBy({ tx }: { tx: TransactionVM }) {
 export function useLedgerColumns({
 	set,
 	solo = false,
+	noShare = false,
 	selectable,
 	hideDate = false,
 	sortable = true,
@@ -87,6 +88,8 @@ export function useLedgerColumns({
 }: {
 	set: LedgerColumns;
 	solo?: boolean;
+	/** The reader is in none of the rows (a viewer link, the public): no Your share. */
+	noShare?: boolean;
 	selectable: boolean;
 	hideDate?: boolean;
 	sortable?: boolean;
@@ -164,7 +167,7 @@ export function useLedgerColumns({
 					</span>
 				),
 		});
-		if (set === "project" && !solo)
+		if (set === "project" && !solo && !noShare)
 			cols.push({
 				id: "share",
 				header: t("yourShare"),
@@ -193,5 +196,5 @@ export function useLedgerColumns({
 		if (actions) cols.push(actionsColumn(actions, t("actions")));
 		if (!sortable) for (const c of cols) c.enableSorting = false;
 		return cols;
-	}, [set, solo, selectable, hideDate, sortable, actions, onOpen, t, date]);
+	}, [set, solo, noShare, selectable, hideDate, sortable, actions, onOpen, t, date]);
 }

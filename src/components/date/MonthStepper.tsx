@@ -10,7 +10,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "~/components/ui/popover";
-import { shiftMonth } from "~/lib/fiscal-month";
+import { shiftMonth } from "@retrospend/domain/fiscal-month";
 import { cn } from "~/lib/utils";
 
 interface MonthStepperProps {

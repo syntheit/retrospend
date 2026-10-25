@@ -13,7 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select"
-import { convertAmount as convert, toAmountString } from "~/lib/money"
+import { convertAmount as convert, toAmountString } from "@retrospend/domain/money"
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared"
 import { cn } from "~/lib/utils"
 

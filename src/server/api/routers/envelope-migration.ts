@@ -8,7 +8,6 @@
 import { applyOutputSchema, previewOutputSchema } from "~/lib/schemas/envelope";
 import {
 	envelopeExportSchema,
-	envelopePacingSchema,
 	hiddenRowsOutputSchema,
 	migrationStateSchema,
 	resolveHiddenInputSchema,
@@ -19,19 +18,10 @@ import {
 	resolveHiddenMutation,
 	revertHiddenMutation,
 } from "~/server/services/envelope/migration.mutation";
-import {
-	dismissMigrationNotice,
-	getEnvelopeExport,
-	getHiddenRows,
-	getMigrationState,
-	getPacing,
-} from "~/server/services/envelope/migration-read.service";
+import { dismissMigrationNotice, getEnvelopeExport, getHiddenRows } from "~/server/services/envelope/migration-read.service";
 import { apply, envelopeProcedure, preview } from "./envelope-procedure";
 
 export const envelopeMigrationProcedures = {
-	migrationState: envelopeProcedure
-		.output(migrationStateSchema)
-		.query(({ ctx }) => getMigrationState(ctx.session.user.id)),
 
 	/** "Got it" on "Your limits moved to the new budget" (no money moves). */
 	dismissMigrationNotice: envelopeProcedure
@@ -67,10 +57,4 @@ export const envelopeMigrationProcedures = {
 			getEnvelopeExport(ctx.session.user.id, ctx.timeZone ?? undefined),
 		),
 
-	/** The dashboard's pace line; null without a book. */
-	pacing: envelopeProcedure
-		.output(envelopePacingSchema.nullable())
-		.query(({ ctx }) =>
-			getPacing(ctx.session.user.id, new Date(), ctx.timeZone ?? null),
-		),
 };

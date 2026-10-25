@@ -6,7 +6,7 @@
  * migration applied twice.
  */
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -14,7 +14,6 @@ import { envelopeRouter } from "~/server/api/routers/envelope";
 import { createCallerFactory } from "~/server/api/trpc";
 import { readFigures } from "~/server/figures/read";
 import { forUser } from "~/server/services/preview";
-import { updateAppSettings } from "~/server/services/settings";
 import { adminDb } from "~/test/pg-harness";
 import { addRow, seedUser, setupInput } from "./__tests__/pg-fixture";
 import { EnvelopeError } from "./errors";
@@ -324,43 +323,27 @@ describe("envelope router", () => {
 			headers: new Headers({ "x-timezone": "UTC" }),
 		} as never);
 
-	it("is closed while envelopeBudgetMode is OFF, open at ALL, and maps domain errors", async () => {
+	it("reads nothing without a book, and maps domain errors", async () => {
 		const s = await seedUser();
 		const c = caller(s.user);
-		await expect(c.enabled()).resolves.toBe(false);
-		await expect(c.getMonth({})).rejects.toMatchObject({ code: "FORBIDDEN" });
-
-		await adminDb.appSettings.update({
-			where: { id: "app_settings_singleton" },
-			data: { envelopeBudgetMode: "ALL" },
+		await expect(c.getMonth({})).resolves.toBeNull();
+		await c.setup(setupInput(s));
+		await expect(c.getMonth({})).resolves.toMatchObject({
+			toAssign: { amount: usd(100_000) },
 		});
-		await updateAppSettings({});
-		try {
-			await expect(c.getMonth({})).resolves.toBeNull();
-			await c.setup(setupInput(s));
-			await expect(c.getMonth({})).resolves.toMatchObject({
-				toAssign: { amount: usd(100_000) },
-			});
-			await expect(c.setup(setupInput(s))).rejects.toMatchObject({
-				code: "CONFLICT",
-			});
-		} finally {
-			await adminDb.appSettings.update({
-				where: { id: "app_settings_singleton" },
-				data: { envelopeBudgetMode: "OFF" },
-			});
-			await updateAppSettings({});
-		}
+		await expect(c.setup(setupInput(s))).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
 	});
 });
 
-describe("envelope_books migration", () => {
+describe("drop_rollout_flags migration", () => {
 	it("applies twice without error (idempotent)", async () => {
+		const folder = readdirSync(join(process.cwd(), "prisma/migrations")).find(
+			(name) => name.endsWith("_drop_rollout_flags"),
+		);
 		const sql = readFileSync(
-			join(
-				process.cwd(),
-				"prisma/migrations/20261024000000_envelope_books/migration.sql",
-			),
+			join(process.cwd(), "prisma/migrations", folder ?? "", "migration.sql"),
 			"utf8",
 		);
 		const client = new Client({ connectionString: process.env.DATABASE_URL });

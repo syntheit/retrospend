@@ -1,7 +1,7 @@
 /**
  * Wealth page math, kept pure so it can be tested apart from the UI.
  */
-import { toNumber } from "./decimal";
+import { toNumber } from "@retrospend/domain/decimal";
 
 export interface WealthStatsAsset {
 	type: string;

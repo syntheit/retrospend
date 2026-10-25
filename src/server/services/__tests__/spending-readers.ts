@@ -6,20 +6,12 @@
  */
 
 import { categoriesRouter } from "~/server/api/routers/categories";
-import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { profileRouter } from "~/server/api/routers/profile";
-import { statsRouter } from "~/server/api/routers/stats";
 import { wealthRouter } from "~/server/api/routers/wealth";
 import { createCallerFactory } from "~/server/api/trpc";
 import { readFigures } from "~/server/figures/read";
-import { getBudgets, getSuggestions } from "~/server/services/budget.service";
 import { spentIn } from "~/server/services/figures/spent";
-import {
-	getOverviewSettings,
-	getOverviewStats,
-} from "~/server/services/overview.service";
-import { RateCache } from "~/server/services/rate-cache";
 import {
 	getExcludedProjectIds,
 	getSharedExpenseShares,
@@ -28,13 +20,7 @@ import { StatsService } from "~/server/services/stats.service";
 import { TIME_ZONE_HEADER } from "~/server/time-zone";
 import { adminDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
-import {
-	APRIL,
-	HOME,
-	MARCH,
-	type SpendingFixture,
-	TZ,
-} from "./spending-fixture";
+import { HOME, type SpendingFixture, TZ } from "./spending-fixture";
 
 const iso = (d: Date) => d.toISOString();
 
@@ -52,10 +38,8 @@ export function callers(userId: string) {
 		headers: new Headers({ [TIME_ZONE_HEADER]: TZ }),
 	};
 	return {
-		dashboard: createCallerFactory(dashboardRouter)(ctx),
 		expense: createCallerFactory(expenseRouter)(ctx),
 		profile: createCallerFactory(profileRouter)(ctx),
-		stats: createCallerFactory(statsRouter)(ctx),
 		wealth: createCallerFactory(wealthRouter)(ctx),
 		categories: createCallerFactory(categoriesRouter)(ctx),
 	};
@@ -73,22 +57,7 @@ const row = (e: Listed) => [e.title, e.amount, e.currency, iso(e.date)];
 async function serviceReaders(fixture: SpendingFixture) {
 	const { userId, db } = fixture;
 	const excluded = await getExcludedProjectIds(db, userId);
-	const stats = new StatsService(db as never, undefined, excluded, TZ);
-	const overview = async (month: Date) =>
-		getOverviewStats(db as never, userId, {
-			...(await getOverviewSettings(db as never, userId)),
-			month,
-			homeCurrency: HOME,
-			excludedProjectIds: excluded,
-			rateCache: new RateCache(db as never),
-			timeZone: TZ,
-		});
-	const budgets = await getBudgets(db as never, userId, MARCH, {
-		includeGlobal: true,
-		excludedProjectIds: excluded,
-		homeCurrency: HOME,
-		timeZone: TZ,
-	});
+	const stats = new StatsService(db as never);
 	const shares = await getSharedExpenseShares(
 		db,
 		userId,
@@ -97,34 +66,7 @@ async function serviceReaders(fixture: SpendingFixture) {
 		excluded,
 	);
 	return {
-		summary: await stats.getSummaryStats(userId, MARCH, HOME),
-		breakdown: (await stats.getCategoryBreakdown(userId, MARCH, HOME)).map(
-			(c) => [c.name, c.value],
-		),
-		trend: (await stats.getDailyTrend(userId, MARCH, HOME)).map((d) => [
-			d.day,
-			d.total,
-			d.fixed,
-			d.variable,
-		]),
 		lifetime: await stats.getLifetimeStats(userId, HOME),
-		overviewMarch: await overview(MARCH),
-		overviewApril: await overview(APRIL),
-		budgets: budgets
-			.map((b) => [
-				b.category?.name ?? null,
-				b.actualSpend,
-				b.actualSpendInHome,
-			])
-			.sort(),
-		suggestions: await getSuggestions(
-			db as never,
-			userId,
-			fixture.groceries.id,
-			HOME,
-			1,
-			TZ,
-		),
 		spendingTotalMarch: await spentIn(
 			db,
 			{
@@ -144,30 +86,12 @@ async function serviceReaders(fixture: SpendingFixture) {
 
 async function routerReaders(fixture: SpendingFixture) {
 	const c = callers(fixture.userId);
-	const overviewData = await c.dashboard.getOverviewData({
-		month: MARCH,
-		homeCurrency: HOME,
-	});
-	const recent = await c.dashboard.getRecentActivity({ homeCurrency: HOME });
 	const listed = await c.expense.listFinalized();
 	const byDate = await c.expense.getExpensesByDate({
 		date: new Date("2026-03-05T12:00:00.000Z"),
 	});
 	const { csv } = await c.expense.exportCsv();
 	return {
-		dashboard: {
-			hasExpenses: overviewData.hasExpenses,
-			monthTotal: overviewData.overviewStats.monthTotal,
-			summary: overviewData.summaryStats,
-			categories: overviewData.categoryData.map((x) => [x.name, x.value]),
-			trendEnd: overviewData.trendData.at(-1),
-		},
-		recent: recent.map((r) => [r.type, r.title, r.amount, r.currency]),
-		statsSummary: await c.stats.getSummary({
-			month: MARCH,
-			homeCurrency: HOME,
-		}),
-		statsLifetime: await c.stats.getLifetimeStats({ homeCurrency: HOME }),
 		profileLifetime: await c.profile
 			.getLifetimeStats()
 			.then(({ lifetimeSpend, totalEntries }) => ({

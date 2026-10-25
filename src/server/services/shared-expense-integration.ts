@@ -7,7 +7,7 @@
  * IMPORTANT: These functions return the CURRENT USER'S SHARE only,
  * never the full transaction amount.
  */
-import { computeAmountInUSD, sumIn, toUSD, USD } from "~/lib/money";
+import { computeAmountInUSD, sumIn, toUSD, USD } from "@retrospend/domain/money";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";
@@ -232,28 +232,6 @@ export async function getSharedExpenseShares(
 			date: p.transaction.date,
 		};
 	});
-}
-
-/**
- * Computes aggregate USD total of user's shared expense shares.
- * Used for simple total computations (stats, dashboard).
- */
-export async function getSharedExpenseTotalInUSD(
-	db: AppDb,
-	userId: string,
-	dateFilter?: { gte?: Date; lte?: Date },
-	rateCache?: RateCache,
-	excludedProjectIds?: string[],
-): Promise<number> {
-	const shares = await getSharedExpenseShares(
-		db,
-		userId,
-		dateFilter,
-		rateCache,
-		excludedProjectIds,
-	);
-	// sumIn names every unpriced share's currency rather than adding NaN.
-	return sumIn(shares, USD, 1);
 }
 
 /**

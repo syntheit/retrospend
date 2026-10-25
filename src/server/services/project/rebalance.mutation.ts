@@ -17,8 +17,8 @@ import { TRPCError } from "@trpc/server";
 import {
 	resolveSplits,
 	type SplitParticipantRef,
-} from "~/lib/shared-split-computation";
-import { dayKey } from "~/lib/time-zone";
+} from "@retrospend/domain/shared-split-computation";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { resolveVerification } from "~/server/services/shared-expenses/auto-accept";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";

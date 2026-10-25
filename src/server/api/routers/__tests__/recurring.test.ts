@@ -3,7 +3,7 @@
  * steps keep their anchor day, and a double confirm books one expense.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addMonthsClamped, nextRecurringDate } from "~/lib/recurring";
+import { addMonthsClamped, nextRecurringDate } from "@retrospend/domain/recurring";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
 

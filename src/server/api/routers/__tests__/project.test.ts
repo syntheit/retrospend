@@ -841,27 +841,6 @@ describe("participant emails in project responses", () => {
 		);
 	}
 
-	it("publicDetail returns no emails or member preferences", async () => {
-		const caller = createCaller({
-			session: null,
-			db: mockDb as never,
-			headers: new Headers(),
-		});
-
-		const result = await callAndFlush(() => caller.publicDetail({ id: "proj-1" }));
-
-		expect(result).not.toBeNull();
-		for (const p of result!.participants) {
-			expect(p).not.toHaveProperty("email");
-			expect(p).not.toHaveProperty("excludeFromAnalytics");
-		}
-		expect(result!.participants.map((p) => p.name)).toEqual([
-			"Org",
-			"Ghost",
-			"Guest",
-		]);
-	});
-
 	it("detail via an anonymous viewer link hides every email", async () => {
 		mockDb.magicLink.findUnique.mockResolvedValue(VIEWER_LINK);
 		const caller = createCaller({
@@ -976,44 +955,23 @@ describe("participant emails in project responses", () => {
 		expect(emailsOf(result.participants)["guest-1"]).toBeNull();
 	});
 
-	it("balancesFromPerspective hides emails from viewer links", async () => {
+	it("balancesFromPerspective is refused to viewer links", async () => {
 		mockDb.magicLink.findUnique.mockResolvedValue(VIEWER_LINK);
 		mockRequireProjectRole.mockResolvedValue({ role: "VIEWER" });
-		mockGetBalancesFromPerspective.mockResolvedValue({
-			perspective: {
-				participantType: "shadow",
-				participantId: "shadow-1",
-				name: "Ghost",
-				email: "ghost@example.com",
-			},
-			statements: [
-				{
-					counterpart: {
-						participantType: "guest",
-						participantId: "guest-1",
-						name: "Guest",
-						email: "guest@example.com",
-					},
-					netByCurrency: {},
-					itemized: [],
-				},
-			],
-			totals: { owedToPerspective: {}, owedByPerspective: {} },
-		});
 		const caller = createCaller({
 			session: null,
 			db: mockDb as never,
 			headers: new Headers({ "x-viewer-link-id": "link-1" }),
 		});
 
-		const result = await callAndFlush(() =>
-			caller.balancesFromPerspective({
-				projectId: "proj-1",
-				perspective: { participantType: "shadow", participantId: "shadow-1" },
-			}),
-		);
-
-		expect(result.perspective.email).toBeNull();
-		expect(result.statements[0]!.counterpart.email).toBeNull();
+		await expect(
+			callAndFlush(() =>
+				caller.balancesFromPerspective({
+					projectId: "proj-1",
+					perspective: { participantType: "shadow", participantId: "shadow-1" },
+				}),
+			),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		expect(mockGetBalancesFromPerspective).not.toHaveBeenCalled();
 	});
 });

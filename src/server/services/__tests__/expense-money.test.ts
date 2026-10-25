@@ -12,7 +12,7 @@ import {
 	MissingRateError,
 	quoteRate,
 	rateFromQuote,
-} from "~/lib/money";
+} from "@retrospend/domain/money";
 import { makeExpense } from "~/test/factories";
 import { createMockDb } from "~/test/mock-db";
 import { DEFAULT_RATES, useRateTable } from "~/test/rate-table";

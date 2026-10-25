@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useRowDates } from "~/components/rows/dates";
@@ -60,7 +60,7 @@ export function PersonHeader({
 }) {
 	const t = useTranslations("personPage");
 	const toast = useToast();
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const p = page.person;
 	const who = { participantType: p.type, participantId: p.id };
 	const history = api.exportData.exportPersonHistory.useMutation();

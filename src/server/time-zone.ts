@@ -1,4 +1,4 @@
-import { normalizeTimeZone } from "~/lib/time-zone";
+import { normalizeTimeZone } from "@retrospend/domain/time-zone";
 
 export const TIME_ZONE_HEADER = "x-timezone";
 export const TIME_ZONE_COOKIE = "tz";

@@ -25,7 +25,7 @@
  * `unpriced`: a missing rate is never 1 (R14).
  */
 import type { Decimal } from "@prisma/client/runtime/index-browser";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import {
 	dec,
 	fromMinor,

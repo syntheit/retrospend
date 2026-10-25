@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { Row, RowList } from "~/components/rows/row";
 import { Field } from "~/features/entry/shared-ui";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { PayAnswer, PayFrequency } from "./use-setup";
 
 const FREQUENCIES: PayFrequency[] = [

@@ -19,8 +19,7 @@
 	"type": {
 		"label": "Qué importar",
 		"expenses": "Gastos",
-		"accounts": "Cuentas",
-		"budgets": "Presupuestos"
+		"accounts": "Cuentas"
 	},
 	"drop": {
 		"label": "Archivo para importar",

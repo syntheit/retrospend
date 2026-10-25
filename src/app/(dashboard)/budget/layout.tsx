@@ -1,53 +1,11 @@
-import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
-import { Suspense } from "react";
-import { AfterHydration } from "~/components/after-hydration";
-import { newBudgetEnabled } from "~/features/budget/page/enabled";
-import { getCurrentFiscalMonth } from "~/lib/fiscal-month";
-import { requestTimeZone } from "~/server/time-zone";
-import { api, HydrateClient } from "~/trpc/server";
-import Loading from "./loading";
+import type { ReactNode } from "react";
 
 export async function generateMetadata() {
 	const t = await getTranslations("sidebar");
 	return { title: t("budget") };
 }
 
-/**
- * Sends the page's data with the HTML (only settled queries are sent, see
- * shouldDehydrateQuery in ~/trpc/query-client). The page itself renders after
- * hydration because its dates depend on the browser's zone and clock.
- */
-async function Prefetched({ children }: { children: React.ReactNode }) {
-	const settings = await api.settings.getGeneral();
-	const fiscalStartDay = settings?.fiscalMonthStartDay ?? 1;
-	// Same month label the browser computes, so the prefetch is reused
-	const timeZone = requestTimeZone(await headers());
-	const month = getCurrentFiscalMonth(new Date(), fiscalStartDay, timeZone);
-
-	await Promise.all([
-		api.system.getServerTime.prefetch(),
-		api.budget.getBudgets.prefetch({ month }),
-		api.categories.getAll.prefetch(),
-		api.budget.hasBudgetsBeforeMonth.prefetch({ month }),
-	]);
-	return (
-		<HydrateClient>
-			<AfterHydration fallback={<Loading />}>{children}</AfterHydration>
-		</HydrateClient>
-	);
-}
-
-export default async function Layout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
-	// The redesigned page reads the envelope budget on its own (no legacy prefetch).
-	if (await newBudgetEnabled()) return children;
-	return (
-		<Suspense fallback={<Loading />}>
-			<Prefetched>{children}</Prefetched>
-		</Suspense>
-	);
+export default function Layout({ children }: { children: ReactNode }) {
+	return children;
 }

@@ -9,8 +9,7 @@
 #
 #   SMOKE_EMAIL=... SMOKE_PASSWORD=... scripts/api-smoke.sh https://staging.example
 #
-# Needs curl and jq, an account on that server without 2FA, and apiV1Mode
-# set to ALL there (or ADMINS with an admin account).
+# Needs curl and jq, and an account on that server without 2FA.
 set -euo pipefail
 
 url=${1:?usage: api-smoke.sh <server url>}
@@ -58,7 +57,7 @@ expect_me() {
 # 1. Public probe.
 status=$(request GET /api/v1/server-info "")
 [ "$status" = 200 ] || fail "server-info answered $status"
-ok "server-info: version $(jq -r '.version' "$tmp/body"), apiV1 $(jq -r '.features.apiV1' "$tmp/body")"
+ok "server-info: version $(jq -r '.version' "$tmp/body")"
 
 status=$(request GET /api/v1/me "")
 [ "$status" = 401 ] || fail "/me without credentials answered $status, expected 401"

@@ -1,6 +1,6 @@
 /**
  * Detection and fixes for expenses whose stored exchangeRate / amountInUSD
- * break the stored rate convention (see ~/lib/money). Pure: the DB access
+ * break the stored rate convention (see @retrospend/domain/money). Pure: the DB access
  * lives in scripts/repair-amount-in-usd.ts.
  *
  * Reasons (one per expense, first match wins):
@@ -23,7 +23,7 @@
  * latest rate, so old expenses are compared with today's rate: thresholds are
  * wide on purpose, and the script prints the worst cases for review.
  */
-import { isCrypto } from "../lib/currency-format";
+import { isCrypto } from "@retrospend/domain/currency-format";
 import {
 	computeAmountInUSD,
 	isValidRate,
@@ -33,7 +33,7 @@ import {
 	roundUSD,
 	toUSD,
 	USD,
-} from "../lib/money";
+} from "@retrospend/domain/money";
 
 export type RepairReason =
 	| "usd-rate"

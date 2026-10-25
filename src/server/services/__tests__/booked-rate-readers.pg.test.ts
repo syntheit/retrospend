@@ -22,14 +22,8 @@ vi.mock("~/server/better-auth", () => ({
 	auth: { api: { getSession: vi.fn() } },
 }));
 
-import { getBudgets } from "~/server/services/budget.service";
 import { ExpenseService } from "~/server/services/expense.service";
 import { spentIn } from "~/server/services/figures/spent";
-import {
-	getOverviewSettings,
-	getOverviewStats,
-} from "~/server/services/overview.service";
-import { RateCache } from "~/server/services/rate-cache";
 import { StatsService } from "~/server/services/stats.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
@@ -37,8 +31,6 @@ import { callers } from "./spending-readers";
 
 const HOME = "ZZB";
 const NOW = new Date("2026-04-10T12:00:00.000Z");
-const MARCH = new Date("2026-03-15T12:00:00.000Z");
-const APRIL = new Date("2026-04-10T12:00:00.000Z");
 const at = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
 const APRIL_RANGE = {
 	gte: new Date("2026-04-01T00:00:00.000Z"),
@@ -71,15 +63,6 @@ async function seed() {
 	const groceries = await adminDb.category.create({
 		data: { name: "Groceries", color: "emerald", userId },
 	});
-	await adminDb.budget.create({
-		data: {
-			userId,
-			categoryId: groceries.id,
-			amount: 100_000,
-			currency: HOME,
-			period: new Date(2026, 3, 1),
-		},
-	});
 
 	const service = new ExpenseService(db as never);
 	const save = (title: string, amount: number, currency: string, day: string) =>
@@ -111,91 +94,35 @@ async function seed() {
 }
 
 async function read({ userId, db }: Awaited<ReturnType<typeof seed>>) {
-	const stats = new StatsService(db as never, undefined, [], "UTC");
+	const stats = new StatsService(db as never);
 	const c = callers(userId);
-	const [april] = await getBudgets(db as never, userId, APRIL, {
-		includeGlobal: true,
-		excludedProjectIds: [],
-		homeCurrency: HOME,
-		timeZone: "UTC",
-	});
-	const overview = await getOverviewStats(db as never, userId, {
-		...(await getOverviewSettings(db as never, userId)),
-		month: APRIL,
-		homeCurrency: HOME,
-		excludedProjectIds: [],
-		rateCache: new RateCache(db as never),
-		timeZone: "UTC",
-	});
 	const runway = await c.wealth.getRunwayStats({ currency: HOME });
 	return {
-		marchTotal: (await stats.getSummaryStats(userId, MARCH, HOME))
-			.totalThisMonth,
-		aprilTotal: (await stats.getSummaryStats(userId, APRIL, HOME))
-			.totalThisMonth,
-		aprilInUsd: (await stats.getSummaryStats(userId, APRIL, "USD"))
-			.totalThisMonth,
-		aprilByCategory: (
-			await stats.getCategoryBreakdown(userId, APRIL, HOME)
-		).map((x) => [x.name, x.value]),
-		aprilTrendEnd: (await stats.getDailyTrend(userId, APRIL, HOME)).at(-1)
-			?.total,
 		lifetime: (await stats.getLifetimeStats(userId, HOME)).totalSpent,
 		profileLifetime: (await c.profile.getLifetimeStats()).lifetimeSpend,
-		dashboardMonth: overview.monthTotal,
-		budgetSpent: [april?.actualSpend, april?.actualSpendInHome],
 		runwayTimesMonths: runway.averageMonthlySpend * MONTHS_ACTIVE,
 		spentApril: await spentIn(db, { userId, date: APRIL_RANGE }, HOME, 1300),
 		// The lists send the booked value; the client shows it as is.
 		listedHome: Object.fromEntries(
 			(await c.expense.listFinalized()).map((e) => [e.title, e.home]),
 		),
-		activityHome: Object.fromEntries(
-			(await c.dashboard.getRecentActivity({ homeCurrency: HOME })).map(
-				(e) => [e.title, e.home ?? null],
-			),
-		),
 	};
 }
 
 /**
- * Before 2A.2 every reader converted each foreign entry at its period's
- * rate, so April (running) moved with today's 1,300 and lifetime converted
- * everything at today's rate (commit "Pin today's expense rates and readers
- * when the rate moves" pinned these):
- *   March   A 10 x 1,100                             = 11,000
- *   April   B 20 x 1,300 + C 1,000 + D 5 x 1,300     = 33,500
- *   in USD  B 20 + C 1,000 / 1,200 (0.83) + D 5      = 25.83
- *   life    A 13,000 + 33,500                        = 46,500
- *
- * Now an entry saved through the expense service books its home value on
- * its own date, and every reader below counts that value in ZZB. Only D,
- * which has no booked value, still follows the period rate:
- *   March   A 10 x 1,000                             = 10,000
+ * An entry saved through the expense service books its home value on its
+ * own date, and every reader below counts that value in ZZB. Only D, which
+ * has no booked value, follows the period rate:
  *   April   B 20 x 1,200 + C 1,000 + D 5 x 1,300     = 31,500
- *   in USD  unchanged (a booked ZZB value says nothing about USD) = 25.83
- *   life    A 10,000 + 31,500                        = 41,500
+ *   life    A 10 x 1,000 + 31,500                    = 41,500
  */
 const EXPECTED = {
-	marchTotal: 10_000,
-	aprilTotal: 31_500,
-	aprilInUsd: 25.83,
-	aprilByCategory: [["Groceries", 31_500]],
-	aprilTrendEnd: 31_500,
 	lifetime: 41_500,
 	profileLifetime: 41_500,
-	dashboardMonth: 31_500,
-	budgetSpent: [31_500, 31_500],
 	runwayTimesMonths: 41_500,
 	spentApril: 31_500,
 	// A 10,000.00, B 24,000.00, C 1,000.00 in minor units; D has none.
 	listedHome: {
-		A: { minor: 1_000_000, currency: HOME },
-		B: { minor: 2_400_000, currency: HOME },
-		C: { minor: 100_000, currency: HOME },
-		D: null,
-	},
-	activityHome: {
 		A: { minor: 1_000_000, currency: HOME },
 		B: { minor: 2_400_000, currency: HOME },
 		C: { minor: 100_000, currency: HOME },

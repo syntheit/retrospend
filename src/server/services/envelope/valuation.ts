@@ -11,12 +11,12 @@
  * - A missing rate never becomes 0 or 1: the row is left out and the figure
  *   is flagged incomplete with the rate it needed (C18).
  *
- * Rates use the stored convention of ~/lib/money: fiat in units per USD,
+ * Rates use the stored convention of @retrospend/domain/money: fiat in units per USD,
  * crypto in USD per coin. The loader supplies them through `usdRate`.
  */
 import type { Decimal } from "@prisma/client/runtime/index-browser";
-import { isCrypto } from "~/lib/currency-format";
-import { MissingRateError, USD } from "~/lib/money";
+import { isCrypto } from "@retrospend/domain/currency-format";
+import { MissingRateError, USD } from "@retrospend/domain/money";
 import type {
 	DecimalLike,
 	IsoDate,

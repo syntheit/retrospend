@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import type { ProjectTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
 
@@ -41,7 +41,7 @@ export function useProjectActions(
 	const toast = useToast();
 	const router = useRouter();
 	const utils = api.useUtils();
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const refresh = () => utils.project.invalidate();
 	const update = api.project.update.useMutation({ onSuccess: refresh });
 	const remove = api.project.delete.useMutation({ onSuccess: refresh });

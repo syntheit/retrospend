@@ -38,6 +38,19 @@ const config = {
 		proxyClientMaxBodySize: "12mb",
 		optimizePackageImports: ["recharts", "@tabler/icons-react", "lucide-react", "date-fns"],
 	},
+	// Routes of the old UI. Bookmarks, emails and old links land on the new
+	// pages, with the query string kept.
+	redirects() {
+		return [
+			{ source: "/dashboard", destination: "/home", permanent: true },
+			{ source: "/transactions", destination: "/activity", permanent: true },
+			{
+				source: "/recurring",
+				destination: "/activity/recurring",
+				permanent: true,
+			},
+		];
+	},
 	devIndicators: {
 		position: "bottom-right",
 	},

@@ -38,7 +38,7 @@ const commitInput = (
 ): CommitImportInput => ({ ...value, timeZone: ctx.timeZone });
 
 /**
- * The redesigned Import page (S4B part 2), next to today's queue procedures:
+ * The Import page (S4B part 2), next to today's queue procedures:
  * Recent imports, the Review read model, and the commit with its preview
  * (R30) and its undo. Uploading and the queue (createJob, cancelJob,
  * deleteJob) stay in import-queue.ts.

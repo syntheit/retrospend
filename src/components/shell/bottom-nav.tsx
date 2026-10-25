@@ -9,7 +9,6 @@ import { cn } from "~/lib/cn";
 import {
 	currentNav,
 	DESTINATIONS,
-	hrefOf,
 	type NavBadges,
 	PHONE_TABS,
 } from "~/lib/nav";
@@ -46,15 +45,12 @@ export function BottomNav({
 			)}
 		>
 			{TABS.map((tab) => {
-				const href = hrefOf(tab);
-				// A tab with no page yet is left out, never linked to a 404.
-				if (!href) return null;
 				const Icon = tab.icon;
 				return (
 					<Link
 						aria-current={current === tab.id ? "page" : undefined}
 						className="relative flex flex-1 flex-col items-center justify-center gap-0.5 font-medium text-fg-2 text-meta focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 aria-[current=page]:font-semibold aria-[current=page]:text-brand"
-						href={href}
+						href={tab.href}
 						key={tab.id}
 					>
 						<Icon aria-hidden="true" className="size-5.5" />

@@ -11,7 +11,6 @@ import {
 	call,
 	createTestUser,
 	expectProblem,
-	useApiV1,
 } from "./harness";
 
 vi.mock("next/headers", () => ({
@@ -38,7 +37,6 @@ const routes = listContractRoutes(contract).filter((r) =>
 const pathOf = (path: string) => path.replace(/\{[^}]+\}/g, "x0");
 
 describe("G1 routes: authentication and scopes", () => {
-	useApiV1();
 	let adminId: string;
 
 	beforeAll(async () => {

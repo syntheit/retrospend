@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { useEntrySheets } from "~/features/entry/context";
 import { useToast } from "~/components/ui/toast";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
@@ -27,7 +27,7 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	const t = useTranslations("activity.actions");
 	const toast = useToast();
 	const utils = api.useUtils();
-	const modal = useExpenseModal();
+	const modal = useEntryActions();
 	const sheets = useEntrySheets();
 	const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 	const refresh = useCallback(() => utils.expense.listV2.invalidate(), [utils]);

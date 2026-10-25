@@ -16,7 +16,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 	webCookieFor,
 } from "../../core/__tests__/harness";
 
@@ -41,7 +40,6 @@ type Rate = {
 };
 
 describe("/api/v1 currencies and rates", () => {
-	useApiV1();
 	let as: Record<string, string>;
 
 	beforeAll(async () => {

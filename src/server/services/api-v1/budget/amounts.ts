@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import type { DraftDto } from "~/lib/schemas/envelope-plan";
 import { userTransaction } from "~/server/db-tx";
 import { homeCurrencyOf } from "~/server/services/accounts/ledger";

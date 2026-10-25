@@ -16,10 +16,9 @@
  * when the script itself failed.
  *
  * --rollback deletes the books of a run (or of every first-read move, "lazy")
- * and hides the answered review expenses again. It does nothing while the
- * envelope flag is on (the next read would move the person again), and it
- * keeps a book the person changed since; --force removes both and prints
- * what that loses.
+ * and hides the answered review expenses again. It keeps a book the
+ * person changed since; --force removes it too and prints what that loses.
+ * The next budget read moves a person with old budgets in again.
  *
  * Dry run is the default and writes nothing: each person's move runs in its
  * own transaction and rolls back, so the report is exactly what --apply
@@ -27,15 +26,15 @@
  * that has no rate is left alone and listed; the old rows are never changed.
  * Run `prisma migrate deploy` first (this needs the P7 migration).
  *
- * Cut-over order: dry run, review, `--apply`, and only then set
- * envelopeBudgetMode to ALL. Anyone the script skipped or that failed sits in
- * the lazy retry wait (10 to 30 minutes) after the flag turns on, so run
- * `--apply` again and fix the skips first.
+ * Release order: deploy, then dry run, review, `--apply`. Anyone who opens
+ * Budget before the script has run is moved in on that first read. Anyone the
+ * script skipped or that failed waits 10 to 30 minutes between lazy tries, so
+ * run `--apply` again and fix the skips first.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { PrismaClient } from "../generated/prisma/client";
-import { currencyDecimals } from "../src/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import {
 	migrateUsers,
 	needsAttention,
@@ -121,12 +120,6 @@ function summarize(reports: readonly MigrationReport[], apply: boolean) {
 
 async function rollBack(target: string) {
 	const out = await rollbackRun(db, target, { force: flag("--force") });
-	if (out.blockedByFlag) {
-		console.log(
-			`Nothing rolled back: the envelope budget flag is ${out.blockedByFlag}, so the next read would move people in again. Turn it off first, or use --force.`,
-		);
-		return 2;
-	}
 	console.log(`Rolled back ${target}: removed ${out.removed.length} books`);
 	for (const r of out.refused) {
 		console.log(

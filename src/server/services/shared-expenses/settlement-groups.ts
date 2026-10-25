@@ -15,7 +15,7 @@
  * flag is false on the rows, whichever way each row points.
  */
 
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 
 export interface GroupRow {
 	id: string;

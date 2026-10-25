@@ -16,7 +16,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -44,7 +43,6 @@ async function notify(userId: string, title: string, createdAt: Date) {
 }
 
 describe("/api/v1/notifications", () => {
-	useApiV1();
 	let alice: string;
 	let asAlice: Record<string, string>;
 	let asBob: Record<string, string>;

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { fromMinorUnits, toMinorUnits, USD } from "~/lib/money";
-import { addMonthsClamped } from "~/lib/recurring";
+import { fromMinorUnits, toMinorUnits, USD } from "@retrospend/domain/money";
+import { addMonthsClamped } from "@retrospend/domain/recurring";
 import type { Prisma, PrismaClient } from "~prisma";
 
 export interface AmortizationSplit {

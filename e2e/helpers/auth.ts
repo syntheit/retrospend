@@ -12,7 +12,7 @@ export async function loginAs(
 	await page.fill("#email", email);
 	await page.fill("#password", password);
 	await page.click('button[type="submit"]');
-	await page.waitForURL(/\/dashboard/);
+	await page.waitForURL(/\/home/);
 	await waitUntilReady(page);
 }
 

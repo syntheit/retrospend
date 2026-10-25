@@ -69,7 +69,7 @@ export function DocsHeader() {
 
 				{referrer === "app" && (
 					<Link
-						href="/dashboard"
+						href="/home"
 						className="hidden text-muted-foreground text-sm transition-colors hover:text-foreground sm:block"
 					>
 						← Back to app
@@ -86,7 +86,7 @@ export function DocsHeader() {
 
 				<Button asChild size="sm">
 					{isLoggedIn ? (
-						<Link href="/dashboard">Open App</Link>
+						<Link href="/home">Open App</Link>
 					) : (
 						<Link href="/signup">Get Started</Link>
 					)}

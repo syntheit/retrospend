@@ -22,7 +22,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
-import type { CurrencyCode } from "~/lib/currencies";
+import type { CurrencyCode } from "@retrospend/domain/currencies";
 import {
 	PaymentMethodIcon,
 	getPaymentMethodName,

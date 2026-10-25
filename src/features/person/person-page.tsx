@@ -3,7 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { notFound } from "next/navigation";
 import { PeopleUnavailable } from "~/features/people/people-states";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { api } from "~/trpc/server";
 import { PersonScreen } from "./person-screen";
 
@@ -13,7 +13,7 @@ const isKind = (t: string): t is Kind =>
 	(TYPES as readonly string[]).includes(t);
 
 /**
- * The redesigned Person page (uiV2). The server reads people.page and hands
+ * The Person page. The server reads people.page and hands
  * the client Money DTOs only; mutations refresh this read.
  */
 export async function PersonPage({ type, id }: { type: string; id: string }) {

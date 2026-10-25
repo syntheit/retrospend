@@ -8,7 +8,7 @@ export default async function SignupPage() {
 	const session = await getWebSession(await headers());
 
 	if (session) {
-		redirect("/dashboard");
+		redirect("/home");
 	}
 
 	return (

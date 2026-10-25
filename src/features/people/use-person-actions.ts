@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 import type { PersonTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
 import type { PersonIdentityDTO } from "./types";
@@ -23,7 +23,7 @@ export function usePersonActions(onSettle: (p: PersonIdentityDTO) => void) {
 	const t = useTranslations("peoplePage.actions");
 	const toast = useToast();
 	const router = useRouter();
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const remind = api.settlement.requestPayment.useMutation();
 
 	const runRemind = useCallback(

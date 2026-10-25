@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import { generateCsv } from "~/lib/csv";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { PrismaClient } from "~prisma";
 import { envelopeExportFiles } from "./envelope/envelope-export";
 

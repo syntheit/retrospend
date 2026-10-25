@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const upsert = vi.hoisted(() => vi.fn());
 vi.mock("~/server/db", () => ({ db: { appSettings: { upsert } } }));
 
-const row = (uiV2Mode: string) => ({ id: "app_settings_singleton", uiV2Mode });
+const row = (enableFeedback: boolean) => ({
+	id: "app_settings_singleton",
+	enableFeedback,
+});
 
 /** A fresh copy of the module, as Next gives each server bundle. */
 async function loadCopy() {
@@ -19,18 +22,18 @@ describe("the app settings cache", () => {
 	});
 
 	it("serves a write made through one module copy to every other copy", async () => {
-		upsert.mockResolvedValueOnce(row("OFF"));
+		upsert.mockResolvedValueOnce(row(false));
 		const pages = await loadCopy();
 		await expect(pages.getAppSettings()).resolves.toMatchObject({
-			uiV2Mode: "OFF",
+			enableFeedback: false,
 		});
 
-		upsert.mockResolvedValueOnce(row("ALL"));
+		upsert.mockResolvedValueOnce(row(true));
 		const routeHandler = await loadCopy();
-		await routeHandler.updateAppSettings({ uiV2Mode: "ALL" });
+		await routeHandler.updateAppSettings({ enableFeedback: true });
 
 		await expect(pages.getAppSettings()).resolves.toMatchObject({
-			uiV2Mode: "ALL",
+			enableFeedback: true,
 		});
 		expect(upsert).toHaveBeenCalledTimes(2);
 	});

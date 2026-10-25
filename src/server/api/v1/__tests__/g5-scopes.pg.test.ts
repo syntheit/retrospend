@@ -13,7 +13,6 @@ import {
 	call,
 	createTestUser,
 	expectProblem,
-	useApiV1,
 	webCookieFor,
 } from "../core/__tests__/harness";
 
@@ -36,7 +35,6 @@ const ipOf = (r: { key: string[] }) => ({
 const pathOf = (path: string) => path.replace(/\{[^}]+\}/g, "x0");
 
 describe("G5 routes: authentication, scopes and idempotency", () => {
-	useApiV1();
 	let userId: string;
 
 	beforeAll(async () => {

@@ -359,7 +359,7 @@ function LoginFormInner() {
 							<Link
 								className="font-medium text-primary hover:underline"
 								href={
-									redirectTo === "/dashboard"
+									redirectTo === "/home"
 										? "/signup"
 										: `/signup?redirect=${encodeURIComponent(redirectTo)}`
 								}

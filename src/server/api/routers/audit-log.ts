@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { formatCurrency } from "~/lib/currency-format";
+import { formatCurrency } from "@retrospend/domain/currency-format";
 import {
 	buildActivitySummary,
 } from "~/server/services/shared-expenses/activity-summary";

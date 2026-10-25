@@ -5,7 +5,7 @@ import { NetWorthSummary } from "~/components/wealth/net-worth-summary";
 import { WealthDataTable } from "~/components/wealth/wealth-data-table";
 import { WealthHistoryChart } from "~/components/wealth/wealth-history-chart";
 import { WealthPortfolioBreakdown } from "~/components/wealth/wealth-portfolio-breakdown";
-import { computeAmountInUSD, isValidRate } from "~/lib/money";
+import { computeAmountInUSD, isValidRate } from "@retrospend/domain/money";
 import { api } from "~/trpc/react";
 import {
 	DEMO_NET_WORTH,

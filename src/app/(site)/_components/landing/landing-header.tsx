@@ -138,7 +138,7 @@ export function LandingHeader({
 					) : isLoggedIn && user ? (
 						<>
 							<Button asChild className="hidden select-none sm:inline-flex" size="sm">
-								<Link href="/dashboard">{t("goToDashboard")}</Link>
+								<Link href="/home">{t("goToDashboard")}</Link>
 							</Button>
 							<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
 								<DropdownMenuTrigger asChild>
@@ -314,7 +314,7 @@ export function LandingHeader({
 										onClick={() => setMobileOpen(false)}
 										size="sm"
 									>
-										<Link href="/dashboard">{t("goToDashboard")}</Link>
+										<Link href="/home">{t("goToDashboard")}</Link>
 									</Button>
 								) : (
 									<>

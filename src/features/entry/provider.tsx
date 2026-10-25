@@ -3,9 +3,9 @@
 import { toMinorUnits } from "@retrospend/domain/money";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import {
-	ExpenseModalContext,
-	type ExpenseModalContextValue,
-} from "~/components/expense-modal-provider";
+	EntryActionsContext,
+	type EntryActions,
+} from "./entry-actions";
 import { EntrySheetsContext, type EntrySheets } from "./context";
 import { ExpenseSheet } from "./expense/expense-sheet";
 import { IncomeSheet } from "./income/income-sheet";
@@ -16,10 +16,9 @@ import type { EntryRequest } from "./types";
 type Open = { request: EntryRequest; key: number } | null;
 
 /**
- * The Add family host for the v2 shell (4G). It answers the old expense
- * modal's context too, so every place that opened today's modal (Activity,
- * Projects, People, the old pages inside the new shell) opens these sheets.
- * One sheet at a time; each open mounts fresh state.
+ * The Add family host. It answers the page-level actions too (EntryActions),
+ * so Activity, Projects, People and the palette open these sheets with a
+ * plain call. One sheet at a time; each open mounts fresh state.
  */
 export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 	const [current, setCurrent] = useState<Open>(null);
@@ -31,7 +30,7 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 	const close = useCallback(() => setCurrent(null), []);
 	const sheets = useMemo<EntrySheets>(() => ({ open, close }), [open, close]);
 
-	const legacy = useMemo<ExpenseModalContextValue>(
+	const actions = useMemo<EntryActions>(
 		() => ({
 			openNewExpense: (o) =>
 				open({
@@ -65,7 +64,7 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 
 	return (
 		<EntrySheetsContext value={sheets}>
-			<ExpenseModalContext.Provider value={legacy}>
+			<EntryActionsContext.Provider value={actions}>
 				{children}
 				{current ? (
 					<EntryHost
@@ -75,7 +74,7 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 						request={current.request}
 					/>
 				) : null}
-			</ExpenseModalContext.Provider>
+			</EntryActionsContext.Provider>
 		</EntrySheetsContext>
 	);
 }

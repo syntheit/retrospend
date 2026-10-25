@@ -2,11 +2,9 @@ import { adminRouter } from "~/server/api/routers/admin";
 import { auditLogRouter } from "~/server/api/routers/audit-log";
 import { authRouter } from "~/server/api/routers/auth";
 import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
-import { budgetRouter } from "~/server/api/routers/budget";
 import { categoriesRouter } from "~/server/api/routers/categories";
 import { claimRouter } from "~/server/api/routers/claim";
 import { correctionsRouter } from "~/server/api/routers/corrections";
-import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { deviceSessionRouter } from "~/server/api/routers/device-session";
 import { entryRouter } from "~/server/api/routers/entry";
 import { envelopeRouter } from "~/server/api/routers/envelope";
@@ -32,7 +30,6 @@ import { recurringViewRouter } from "~/server/api/routers/recurring-view";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { settlementRouter } from "~/server/api/routers/settlement";
 import { sharedTransactionRouter } from "~/server/api/routers/shared-transaction";
-import { statsRouter } from "~/server/api/routers/stats";
 import { systemRouter } from "~/server/api/routers/system";
 import { userRouter } from "~/server/api/routers/user";
 import { verificationRouter } from "~/server/api/routers/verification";
@@ -56,9 +53,7 @@ export const appRouter = createTRPCRouter({
 	claim: claimRouter,
 	corrections: correctionsRouter,
 	billingPeriod: billingPeriodRouter,
-	budget: budgetRouter,
 	categories: categoriesRouter,
-	dashboard: dashboardRouter,
 	deviceSession: deviceSessionRouter,
 	entry: entryRouter,
 	envelope: envelopeRouter,
@@ -84,7 +79,6 @@ export const appRouter = createTRPCRouter({
 	wealth: wealthRouter,
 	paymentMethod: paymentMethodRouter,
 	notification: notificationRouter,
-	stats: statsRouter,
 });
 
 // export type definition of API

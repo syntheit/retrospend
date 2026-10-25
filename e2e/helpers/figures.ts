@@ -348,7 +348,7 @@ export function httpFigureFetcher(request: APIRequestContext): FigureFetcher {
 		const response = await request.get(`/api/v1/figures?${query}`);
 		if (!response.ok()) {
 			throw new Error(
-				`GET /api/v1/figures answered ${response.status()}: the page tags figures, so the endpoint must exist`,
+				`GET /api/v1/figures?${query} answered ${response.status()}: ${await response.text()}`,
 			);
 		}
 		return (await response.json()) as V1Figures;

@@ -4,7 +4,7 @@ import { CurrenciesScreen } from "./currencies-screen";
 import { CurrenciesUnavailable } from "./currencies-states";
 import { loadCurrenciesView } from "./server/load";
 
-/** The redesigned Currencies page (uiV2): prices computed on the server. */
+/** The Currencies page: prices computed on the server. */
 export async function CurrenciesPage({ initial }: { initial: string | null }) {
 	let view: Awaited<ReturnType<typeof loadCurrenciesView>>;
 	try {

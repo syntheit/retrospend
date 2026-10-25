@@ -36,28 +36,17 @@ export type NavId = DestinationId | ToolId | PlaceId;
 export type NavEntry<Id extends NavId = NavId> = {
 	id: Id;
 	icon: LucideIcon;
-	/** The route of the new page (IMPLEMENTATION §1.1). */
 	href: string;
-	/** Today's route, linked until the new page ships. Null: none today. */
-	legacyHref: string | null;
-	/** Today's pages that the new page absorbs (Recurring moves into Activity). */
-	also?: string[];
 };
 
 /** The six destinations of the sidebar, in order (PLAN §5). */
 export const DESTINATIONS: readonly NavEntry<DestinationId>[] = [
-	{ id: "home", icon: House, href: "/home", legacyHref: "/dashboard" },
-	{
-		id: "activity",
-		icon: Receipt,
-		href: "/activity",
-		legacyHref: "/transactions",
-		also: ["/recurring"],
-	},
-	{ id: "budget", icon: Wallet, href: "/budget", legacyHref: "/budget" },
-	{ id: "people", icon: Users, href: "/people", legacyHref: "/people" },
-	{ id: "projects", icon: Folder, href: "/projects", legacyHref: "/projects" },
-	{ id: "wealth", icon: ChartLine, href: "/wealth", legacyHref: "/wealth" },
+	{ id: "home", icon: House, href: "/home" },
+	{ id: "activity", icon: Receipt, href: "/activity" },
+	{ id: "budget", icon: Wallet, href: "/budget" },
+	{ id: "people", icon: Users, href: "/people" },
+	{ id: "projects", icon: Folder, href: "/projects" },
+	{ id: "wealth", icon: ChartLine, href: "/wealth" },
 ];
 
 /** Phone tabs (N65): Wealth is reached from Home, so it has no tab. */
@@ -71,35 +60,15 @@ export const PHONE_TABS: readonly DestinationId[] = [
 
 /** The sidebar's Tools group (N46, N48). */
 export const TOOLS: readonly NavEntry<ToolId>[] = [
-	{ id: "import", icon: FileUp, href: "/import", legacyHref: "/import" },
-	{
-		id: "currencies",
-		icon: Coins,
-		href: "/currencies",
-		legacyHref: "/currencies",
-	},
+	{ id: "import", icon: FileUp, href: "/import" },
+	{ id: "currencies", icon: Coins, href: "/currencies" },
 ];
 
 /** Places with no nav item of their own; the palette's Go to reaches them (R28). */
 export const PLACES: readonly NavEntry<PlaceId>[] = [
-	{
-		id: "settings",
-		icon: Settings,
-		href: "/settings",
-		legacyHref: "/settings",
-	},
-	{
-		id: "recurring",
-		icon: Repeat,
-		href: "/activity/recurring",
-		legacyHref: "/recurring",
-	},
-	{
-		id: "insights",
-		icon: ChartPie,
-		href: "/activity/insights",
-		legacyHref: null,
-	},
+	{ id: "settings", icon: Settings, href: "/settings" },
+	{ id: "recurring", icon: Repeat, href: "/activity/recurring" },
+	{ id: "insights", icon: ChartPie, href: "/activity/insights" },
 ];
 
 /**
@@ -138,37 +107,8 @@ export function settingsHref(section: SettingsSection): string {
 	return `/settings#${section}`;
 }
 
-/**
- * New routes that exist. Until a page agent ships its route and adds it here,
- * the shell links today's page, so the new shell never links a 404.
- */
-export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([
-	"/home",
-	"/activity",
-	"/activity/recurring",
-	"/budget",
-	"/activity/insights",
-]);
-
-/** Where an entry links now; null when it has no page yet. */
-export function hrefOf(
-	entry: NavEntry,
-	shipped: ReadonlySet<string> = SHIPPED_ROUTES,
-): string | null {
-	if (entry.href === entry.legacyHref || shipped.has(entry.href))
-		return entry.href;
-	return entry.legacyHref;
-}
-
 function under(pathname: string, route: string): boolean {
 	return pathname === route || pathname.startsWith(`${route}/`);
-}
-
-/** Every route an entry answers to: the new one, today's and the absorbed ones. */
-function routesOf(entry: NavEntry): string[] {
-	return [entry.href, entry.legacyHref, ...(entry.also ?? [])].filter(
-		(r): r is string => r != null,
-	);
 }
 
 /**
@@ -181,9 +121,11 @@ export function currentNav(
 ): NavId | null {
 	let best: { id: NavId; length: number } | null = null;
 	for (const entry of entries)
-		for (const route of routesOf(entry))
-			if (under(pathname, route) && (!best || route.length > best.length))
-				best = { id: entry.id, length: route.length };
+		if (
+			under(pathname, entry.href) &&
+			(!best || entry.href.length > best.length)
+		)
+			best = { id: entry.id, length: entry.href.length };
 	return best?.id ?? null;
 }
 

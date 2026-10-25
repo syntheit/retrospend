@@ -1,6 +1,6 @@
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 
 /**
  * The calendar day a money move is dated, as a UTC midnight: the day the

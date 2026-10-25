@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { assertRelationship } from "~/server/services/payments/access";
 import { allocatePayment } from "~/server/services/payments/allocate";
 import { participantRefSchema } from "~/server/services/payments/input";

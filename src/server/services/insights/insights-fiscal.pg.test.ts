@@ -8,7 +8,7 @@ import {
 	getCurrentFiscalMonth,
 	getFiscalMonthRange,
 	shiftMonth,
-} from "~/lib/fiscal-month";
+} from "@retrospend/domain/fiscal-month";
 import { readFigures } from "~/server/figures/read";
 import { listActivity } from "~/server/services/expense-list";
 import { listV2Input } from "~/server/services/expense-list/types";

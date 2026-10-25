@@ -43,15 +43,8 @@ export const sharedTransactionRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
-			if (input.projectId) {
+			if (input.projectId)
 				assertGuestProjectScope(ctx.participant, input.projectId);
-			} else if (actor.participantType === "guest") {
-				// Guests can only create transactions within their project scope
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Guests must specify a projectId",
-				});
-			}
 			const service = new SharedTransactionService(ctx.db, actor);
 			return await service.create(input);
 		}),

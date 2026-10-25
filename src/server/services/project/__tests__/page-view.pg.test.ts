@@ -1,5 +1,5 @@
 /**
- * The redesigned project pages' reads and money actions on Postgres, through
+ * The project pages' reads and money actions on Postgres, through
  * the real procedures and RLS. One shared project, every figure derived by
  * hand (ARS, two decimals, so minor = pesos x 100):
  *

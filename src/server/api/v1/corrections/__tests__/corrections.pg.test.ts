@@ -21,7 +21,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -50,7 +49,6 @@ type Correction = {
 type Undone = { kind: string; redo: string | null; request?: Request };
 
 describe("/api/v1 corrections and Ask to fix", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let stranger: TestUser;

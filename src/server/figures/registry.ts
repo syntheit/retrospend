@@ -14,7 +14,7 @@
  * registered id without one, so keep the title a literal, not a template.
  */
 
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError } from "@retrospend/domain/money";
 import { accountFigures } from "~/server/services/accounts/figures";
 import { budgetFigures } from "~/server/services/envelope/figures";
 import { dollarTodayFigure } from "~/server/services/figures/dollar-today";

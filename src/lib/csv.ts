@@ -13,17 +13,6 @@ export type ParsedCsvRow = {
 	pricingSource?: string | null;
 };
 
-export type ParsedBudgetRow = {
-	categoryName?: string;
-	amount: number;
-	/** Missing in exports made before budgets carried a currency. */
-	currency?: string;
-	period: Date;
-	isRollover: boolean;
-	rolloverAmount: number;
-	pegToActual: boolean;
-};
-
 export type ParsedWealthRow = {
 	name: string;
 	type: string;
@@ -211,97 +200,6 @@ export const parseCsv = (text: string) => {
 			description,
 			categoryName,
 			pricingSource,
-		});
-	}
-
-	return { rows, errors };
-};
-
-export const parseBudgetCsv = (text: string) => {
-	const lines = text
-		.split(/\r?\n/)
-		.map((line) => line.trimEnd())
-		.filter((line) => line.length > 0);
-
-	if (lines.length === 0) {
-		return {
-			rows: [] as ParsedBudgetRow[],
-			errors: ["The CSV file is empty."],
-		};
-	}
-
-	const headerCells = splitCsvLine(lines[0] ?? "").map((cell) =>
-		cell.trim().toLowerCase(),
-	);
-	const headerMap = new Map<string, number>(
-		headerCells.map((cell, index) => [cell.toLowerCase(), index]),
-	);
-
-	// "period" is preferred, but "date" is acceptable
-	const periodIndex = headerMap.get("period") ?? headerMap.get("date");
-	const amountIndex = headerMap.get("amount");
-
-	if (periodIndex === undefined || amountIndex === undefined) {
-		return {
-			rows: [],
-			errors: ["Missing required columns: amount, period (or date)."],
-		};
-	}
-
-	const rows: ParsedBudgetRow[] = [];
-	const errors: string[] = [];
-
-	const readCell = (cells: string[], col: string): string => {
-		const idx = headerMap.get(col.toLowerCase());
-		return typeof idx === "number" ? (cells[idx]?.trim() ?? "") : "";
-	};
-
-	const parseBoolean = (val: string): boolean => {
-		const v = val.toLowerCase();
-		return v === "true" || v === "yes" || v === "1";
-	};
-
-	for (let i = 1; i < lines.length; i++) {
-		const line = lines[i];
-		if (!line || !line.trim()) continue;
-
-		const cells = splitCsvLine(line);
-		const categoryName = readCell(cells, "categoryName") || undefined;
-		const amount = normalizeNumber(readCell(cells, "amount"));
-		const currencyCell = readCell(cells, "currency").toUpperCase();
-		// try period, fallback to date
-		const periodString = readCell(cells, "period") || readCell(cells, "date");
-		const isRollover = parseBoolean(readCell(cells, "isRollover"));
-		const rolloverAmount =
-			normalizeNumber(readCell(cells, "rolloverAmount")) ?? 0;
-		const pegToActual = parseBoolean(readCell(cells, "pegToActual"));
-
-		if (amount === undefined || amount < 0) {
-			errors.push(`Row ${i + 1}: amount must be a non-negative number.`);
-			continue;
-		}
-
-		if (currencyCell && !/^[A-Z0-9]{3}$/.test(currencyCell)) {
-			errors.push(`Row ${i + 1}: currency must be a 3-letter code.`);
-			continue;
-		}
-
-		let period: Date;
-		try {
-			period = parseDateOnly(periodString);
-		} catch (_error) {
-			errors.push(`Row ${i + 1}: period/date is invalid.`);
-			continue;
-		}
-
-		rows.push({
-			categoryName,
-			amount,
-			...(currencyCell ? { currency: currencyCell } : {}),
-			period,
-			isRollover,
-			rolloverAmount,
-			pegToActual,
 		});
 	}
 

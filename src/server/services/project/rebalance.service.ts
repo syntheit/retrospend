@@ -1,4 +1,4 @@
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";

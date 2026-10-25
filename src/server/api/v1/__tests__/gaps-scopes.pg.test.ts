@@ -17,7 +17,6 @@ import {
 	call,
 	createTestUser,
 	expectProblem,
-	useApiV1,
 } from "../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -44,7 +43,6 @@ const OWN_IP = { "x-forwarded-for": "198.51.100.79" };
 const pathOf = (path: string) => path.replace(/\{[^}]+\}/g, "x0");
 
 describe("gap-closing routes: authentication, scopes and idempotency", () => {
-	useApiV1();
 	let userId: string;
 
 	beforeAll(async () => {

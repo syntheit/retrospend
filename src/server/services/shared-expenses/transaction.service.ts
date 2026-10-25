@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { fromMinorUnits, toMinorUnits } from "~/lib/money";
+import { fromMinorUnits, toMinorUnits } from "@retrospend/domain/money";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
@@ -22,7 +22,7 @@ import {
 	compareParticipants,
 	resolveSplits,
 	SplitComputationError,
-} from "~/lib/shared-split-computation";
+} from "@retrospend/domain/shared-split-computation";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
 
 type AppDb = PrismaClient;
@@ -164,6 +164,8 @@ export class SharedTransactionService {
 
 	async create(input: CreateSharedTransactionInput) {
 		const { amount, splitWith, splitMode, paidBy } = input;
+		if (!input.projectId && this.actor.participantType === "guest")
+			throw new TRPCError({ code: "FORBIDDEN", message: "A guest writes in their project" });
 
 		// Validate no duplicate participants in the split
 		const seen = new Set<string>();
@@ -178,10 +180,8 @@ export class SharedTransactionService {
 			seen.add(key);
 		}
 
-		// The payer is intentionally NOT required to be one of the split
-		// participants. A payer outside the split simply gets no split row: they
-		// owe nothing and are owed the full amount ("I fronted a cost I'm not
-		// part of"). computeBalance already treats this correctly.
+		// The payer need not be in the split: no split row, they owe nothing and
+		// are owed the full amount (computeBalance treats this correctly).
 
 		const participants = this.computeSplits(
 			amount,
@@ -1256,9 +1256,9 @@ export class SharedTransactionService {
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {
 		if (!("$transaction" in this.db)) return await callback(this.db);
+		const guest = this.actor.participantType !== "user"; // no RLS identity: write as the owner
 		return await this.db.$transaction(async (tx) => {
-			await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true),
-			                            set_config('role', 'retrospend_app', true)`;
+			if (!guest) await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true), set_config('role', 'retrospend_app', true)`;
 			return await callback(tx);
 		});
 	}

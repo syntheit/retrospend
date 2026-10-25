@@ -11,7 +11,6 @@ import {
 	call,
 	createTestUser,
 	expectProblem,
-	useApiV1,
 } from "../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -37,7 +36,6 @@ const ipOf = (r: { key: string[] }) => ({
 const pathOf = (path: string) => path.replace(/\{[^}]+\}/g, "x0");
 
 describe("G4 routes: authentication, scopes and idempotency", () => {
-	useApiV1();
 	let userId: string;
 
 	beforeAll(async () => {

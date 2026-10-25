@@ -45,7 +45,7 @@ export function ReleasesHeader() {
 
 				{referrer === "app" && (
 					<Link
-						href="/dashboard"
+						href="/home"
 						className="hidden text-muted-foreground text-sm transition-colors hover:text-foreground sm:block"
 					>
 						&larr; Back to app
@@ -62,7 +62,7 @@ export function ReleasesHeader() {
 
 				<Button asChild size="sm">
 					{isLoggedIn ? (
-						<Link href="/dashboard">Open App</Link>
+						<Link href="/home">Open App</Link>
 					) : (
 						<Link href="/signup">Get Started</Link>
 					)}

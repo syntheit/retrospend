@@ -3,7 +3,6 @@ import type { ResponseHeadersPluginContext } from "@orpc/server/plugins";
 import { contract } from "@retrospend/api-contract";
 import type { ApiMeta } from "@retrospend/api-contract/common";
 import type { db as globalDb } from "~/server/db";
-import { isFlagEnabled } from "~/server/flags";
 import {
 	type Principal,
 	resolvePrincipal,
@@ -36,10 +35,9 @@ export type V1User = {
 export type V1Context = V1InitialContext & { user: V1User | null };
 
 /**
- * Resolves the principal and enforces, in order: credentials (401), the
- * apiV1Mode flag (403 api_disabled) and the route's scope (403
- * missing_scope). Public routes (server-info) skip all three but still see
- * the caller when valid credentials are sent.
+ * Resolves the principal and enforces, in order: credentials (401) and the
+ * route's scope (403 missing_scope). Public routes (server-info) skip both
+ * but still see the caller when valid credentials are sent.
  */
 const authenticate = os
 	.$context<V1InitialContext>()
@@ -52,8 +50,6 @@ const authenticate = os
 
 		if (scope !== "public") {
 			if (!principal) throw problem("unauthenticated");
-			if (!(await isFlagEnabled("apiV1", { role: principal.role })))
-				throw problem("api_disabled");
 			if (!mayCall(principal, scope))
 				throw problem("missing_scope", `This route needs the ${scope} scope`, {
 					requiredScope: scope,

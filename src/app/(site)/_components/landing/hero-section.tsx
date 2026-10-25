@@ -34,7 +34,7 @@ export function HeroSection() {
 					<div className="mt-10 flex items-center justify-center gap-4">
 						{isLoggedIn ? (
 							<Button asChild size="lg">
-								<Link href="/dashboard">{t("goToDashboard")}</Link>
+								<Link href="/home">{t("goToDashboard")}</Link>
 							</Button>
 						) : (
 							<>

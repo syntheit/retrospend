@@ -1,6 +1,6 @@
 /**
  * Test fixtures for the envelope modules: a small rate table in the stored
- * convention of ~/lib/money (fiat: units per USD; crypto: USD per coin) and
+ * convention of @retrospend/domain/money (fiat: units per USD; crypto: USD per coin) and
  * builders. Values follow the SPEC's illustrative rates (ARS blue 1,465,
  * BRL 5.40). CLP has no rate on purpose (the missing-rate story, C18).
  */

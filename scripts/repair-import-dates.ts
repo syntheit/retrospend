@@ -10,7 +10,7 @@
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { normalizeTimeZone } from "../src/lib/time-zone";
+import { normalizeTimeZone } from "@retrospend/domain/time-zone";
 import {
 	IMPORT_PRICING_SOURCES,
 	planImportDateRepair,
