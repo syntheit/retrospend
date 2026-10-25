@@ -60,6 +60,31 @@ describe("recordInput", () => {
 		});
 	});
 
+	it("sends a typed amount as decimal text with no scope", () => {
+		// ARS has 2 decimals: 25050 minor is "250.50".
+		expect(
+			recordInput(
+				ref,
+				context,
+				"outgoing",
+				{ kind: "custom", minor: 25050 },
+				"id4",
+			),
+		).toEqual({
+			id: "id4",
+			person: ref,
+			direction: "outgoing",
+			currency: "ARS",
+			amount: "250.50",
+		});
+	});
+
+	it("has no request for an amount that is not typed yet", () => {
+		expect(
+			recordInput(ref, context, "outgoing", { kind: "custom", minor: 0 }, "x"),
+		).toBeNull();
+	});
+
 	it("refuses a part the server did not offer", () => {
 		expect(() =>
 			recordInput(
@@ -135,11 +160,26 @@ describe("previewRows", () => {
 		expect(allocationOf(detail([{ rate: null }]))).toEqual({
 			amount: { minor: 30518100, currency: "ARS" },
 			converted: false,
+			overpay: null,
 		});
 		// A BRL debt paid in ARS went through a rate: an estimate.
 		expect(
 			allocationOf(detail([{ rate: null }, { rate: { rateType: "official" } }]))
 				?.converted,
 		).toBe(true);
+		// More than everything owed is named, so the sheet can refuse to record it.
+		expect(
+			allocationOf({
+				...preview,
+				detail: {
+					kind: "payment.record",
+					allocation: {
+						amount: { minor: 50000, currency: "ARS" },
+						rows: [],
+						overpay: { minor: 12000, currency: "ARS" },
+					},
+				},
+			})?.overpay,
+		).toEqual({ minor: 12000, currency: "ARS" });
 	});
 });

@@ -1,9 +1,13 @@
+import { parseMoneyInput } from "@retrospend/domain/parse";
+import { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
@@ -12,6 +16,7 @@ import { allocationOf } from "./plan";
 import { useSettle } from "./useSettle";
 
 const EVERYTHING = "everything";
+const CUSTOM = "custom";
 
 /**
  * Settle up in three taps from People: the person, Settle up, Record
@@ -36,13 +41,44 @@ export function SettleSheet({
 	const tm = useTranslations("mobile.money");
 	const toast = useToast();
 	const format = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { color, size, space, type } = useTheme();
+	const locale = useFormatLocale();
 	const flow = useSettle({ type: person.type, id: person.id }, visible);
 	const name = person.name;
 	const first = name.split(/\s+/)[0] ?? name;
 	const { context } = flow;
 	const allocation = flow.preview ? allocationOf(flow.preview) : null;
 	const nothingOwed = context !== null && context.parts.length === 0;
+	// The typed amount, as the keypad shows it; 0 until it reads as money.
+	const [draft, setDraft] = useState("");
+	const amountMinor =
+		context && draft !== ""
+			? (() => {
+					const read = parseMoneyInput(draft, locale, context.currency);
+					return read.ok ? read.minor : 0;
+				})()
+			: 0;
+	const custom = flow.choice.kind === "custom";
+	// A new opening, or any other amount choice, starts the keypad empty.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `visible` and `custom` are the triggers
+	useEffect(() => {
+		if (!custom) setDraft("");
+	}, [visible, custom]);
+	// More than everything owed is refused by the server unless overpay is
+	// allowed; the sheet does not offer it.
+	const overpays = custom && allocation?.overpay != null;
+
+	function changeDraft(next: string) {
+		setDraft(next);
+		if (!context) return;
+		const read = parseMoneyInput(next, locale, context.currency);
+		flow.setChoice({ kind: "custom", minor: read.ok ? read.minor : 0 });
+	}
+
+	function pickCustom() {
+		setDraft("");
+		flow.setChoice({ kind: "custom", minor: 0 });
+	}
 
 	async function record() {
 		const result = await flow.record();
@@ -108,29 +144,73 @@ export function SettleSheet({
 							value={flow.direction}
 						/>
 						{nothingOwed ? note(t("nothingOwed")) : null}
-						{context.parts.length > 1 ? (
+						{nothingOwed ? null : (
 							<Segmented
 								accessibilityLabel={t("amount")}
-								onChange={(value) =>
-									flow.setChoice(
-										value === EVERYTHING
-											? { kind: "everything" }
-											: { kind: "part", currency: value },
-									)
-								}
+								onChange={(value) => {
+									if (value === CUSTOM) pickCustom();
+									else
+										flow.setChoice(
+											value === EVERYTHING
+												? { kind: "everything" }
+												: { kind: "part", currency: value },
+										);
+								}}
 								options={[
 									{ value: EVERYTHING, label: t("everythingShort") },
-									...context.parts.map((p) => ({
-										value: p.currency,
-										label: t("partShort", { currency: p.currency }),
-									})),
+									...(context.parts.length > 1
+										? context.parts.map((p) => ({
+												value: p.currency,
+												label: t("partShort", { currency: p.currency }),
+											}))
+										: []),
+									{ value: CUSTOM, label: t("otherShort") },
 								]}
 								value={
 									flow.choice.kind === "part"
 										? flow.choice.currency
-										: EVERYTHING
+										: flow.choice.kind === "custom"
+											? CUSTOM
+											: EVERYTHING
 								}
 							/>
+						)}
+						{flow.choice.kind === "custom" ? (
+							<>
+								<Text
+									accessibilityLabel={
+										amountMinor > 0
+											? `${t("amount")}, ${format({ minor: amountMinor, currency: context.currency })}`
+											: t("typeAmount")
+									}
+									style={{
+										color: amountMinor > 0 ? color.fg : color.fg3,
+										fontSize: type.title.size,
+										fontVariant: ["tabular-nums"],
+										fontWeight: "600",
+									}}
+								>
+									{draft === ""
+										? context.currency
+										: `${context.currency} ${draft}`}
+								</Text>
+								<MoneyKeypad
+									currency={context.currency}
+									draft={draft}
+									keyHeight={size.touchMin.phone}
+									onDraftChange={changeDraft}
+								/>
+								{draft !== "" && amountMinor === 0 ? (
+									<Text
+										style={{
+											color: color.attentionText,
+											fontSize: type.body.size,
+										}}
+									>
+										{t("amountInvalid")}
+									</Text>
+								) : null}
+							</>
 						) : null}
 						{context.unpriced.length > 0
 							? note(
@@ -138,7 +218,7 @@ export function SettleSheet({
 									"attention",
 								)
 							: null}
-						{allocation ? (
+						{allocation && !custom ? (
 							<View style={{ gap: space[1] }}>
 								<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 									{t("amount")}
@@ -157,16 +237,22 @@ export function SettleSheet({
 								</Text>
 							</View>
 						) : null}
+						{overpays && allocation?.overpay
+							? note(
+									t("overpay", { amount: format(allocation.overpay) }),
+									"attention",
+								)
+							: null}
 						{flow.preview ? (
 							<PreviewList name={first} preview={flow.preview} />
 						) : flow.previewFailed ? (
 							note(t("previewError"), "attention")
-						) : nothingOwed ? null : (
+						) : nothingOwed || (custom && amountMinor === 0) ? null : (
 							note(t("checking"))
 						)}
 						{flow.recordFailed ? note(t("error"), "attention") : null}
 						<Button
-							disabled={!flow.preview || flow.recording}
+							disabled={!flow.preview || flow.recording || overpays}
 							label={flow.recording ? t("recording") : t("record")}
 							onPress={record}
 						/>

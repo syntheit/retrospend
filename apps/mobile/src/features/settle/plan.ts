@@ -8,16 +8,23 @@ export type PaymentPreview = Awaited<
 >;
 export type Direction = SettleContext["direction"];
 
-/** What the person settles: all of it, or one currency's part of it. */
+/**
+ * What the person settles: all of it, one currency's part of it, or an
+ * amount typed on the keypad (in the payment currency; `minor` is 0 until a
+ * valid amount is typed).
+ */
 export type AmountChoice =
 	| { kind: "everything" }
-	| { kind: "part"; currency: string };
+	| { kind: "part"; currency: string }
+	| { kind: "custom"; minor: number };
 
 /**
  * The body of POST /payments, and of its preview twin: the preview is a dry
  * run of exactly this write. "Everything" sends no amount (the server pays
  * all that is owed); a part sends that part's amount in the payment
- * currency and applies it to that currency's debts.
+ * currency and applies it to that currency's debts; a custom amount sends
+ * what was typed and the server allocates it. A half-typed custom amount is
+ * null, so nothing is previewed or recorded for it.
  */
 export function recordInput(
 	person: PersonRef,
@@ -25,9 +32,16 @@ export function recordInput(
 	direction: Direction,
 	choice: AmountChoice,
 	id: string,
-): RecordInput {
+): RecordInput | null {
 	const base = { id, person, direction, currency: context.currency };
 	if (choice.kind === "everything") return { ...base, amount: null };
+	if (choice.kind === "custom") {
+		if (choice.minor <= 0) return null;
+		return {
+			...base,
+			amount: fromMinor({ minor: choice.minor, currency: context.currency }),
+		};
+	}
 	const part = context.parts.find((p) => p.currency === choice.currency);
 	if (!part) throw new RangeError(`No ${choice.currency} part to settle`);
 	return {
@@ -109,12 +123,13 @@ export function previewRows(preview: PaymentPreview): {
  */
 export function allocationOf(
 	preview: PaymentPreview,
-): { amount: Money; converted: boolean } | null {
+): { amount: Money; converted: boolean; overpay: Money | null } | null {
 	const detail = preview.detail as
 		| {
 				allocation?: {
 					amount: Money;
 					rows?: { rate: unknown | null }[];
+					overpay?: Money | null;
 				} | null;
 		  }
 		| undefined;
@@ -123,5 +138,6 @@ export function allocationOf(
 	return {
 		amount: allocation.amount,
 		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
+		overpay: allocation.overpay ?? null,
 	};
 }

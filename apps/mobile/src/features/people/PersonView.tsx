@@ -19,6 +19,7 @@ import { isApproximate, sideOf } from "./groups";
 import { NetAmount } from "./NetAmount";
 import { PersonNeeds } from "./PersonNeeds";
 import { PaymentRow, ScopeRow, SharedRow } from "./PersonSections";
+import { type ReviewNeed, ReviewSheet } from "./ReviewSheet";
 import type { PersonRef } from "./source";
 import { useLedgerMore } from "./useLedgerMore";
 import { usePerson } from "./usePeople";
@@ -50,6 +51,7 @@ export function PersonView({
 		id: string;
 		amount: { minor: number; currency: string };
 	} | null>(null);
+	const [reviewing, setReviewing] = useState<ReviewNeed | null>(null);
 	const ledger = useLedgerMore(person);
 
 	// The same screen opened again by a "settle up" link.
@@ -161,7 +163,11 @@ export function PersonView({
 				</View>
 			</View>
 
-			<PersonNeeds onConfirm={setConfirming} page={page} />
+			<PersonNeeds
+				onConfirm={setConfirming}
+				onReview={setReviewing}
+				page={page}
+			/>
 
 			{page.scopes.length > 0 ? (
 				<>
@@ -211,6 +217,16 @@ export function PersonView({
 					onDone={reload}
 					payment={confirming}
 					person={identity}
+					visible
+				/>
+			) : null}
+			{reviewing ? (
+				<ReviewSheet
+					need={reviewing}
+					onClose={() => setReviewing(null)}
+					onDone={reload}
+					person={identity}
+					row={page.rows.find((r) => r.id === reviewing.id)}
 					visible
 				/>
 			) : null}

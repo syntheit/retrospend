@@ -80,7 +80,14 @@ export function useSettle(person: PersonRef, active: boolean) {
 	// The preview is a dry run of this very input; it follows every change.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `inputKey` stands for `input`
 	useEffect(() => {
-		if (!api || !input || status !== "ready") return;
+		if (!api || status !== "ready") return;
+		// A half-typed custom amount has no request: nothing to preview, and a
+		// preview of the earlier choice must not stay on screen to be recorded.
+		if (!input) {
+			setPreview(null);
+			setPreviewFailed(false);
+			return;
+		}
 		let cancelled = false;
 		setPreview(null);
 		setPreviewFailed(false);
