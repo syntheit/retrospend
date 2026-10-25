@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { FigureAudit, type FiguresResponse } from "../../helpers/figures";
-import { untilSaved } from "../../helpers/trpc";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { FigureAudit, type FiguresResponse } from "../helpers/figures";
+import { untilSaved } from "../helpers/trpc";
 import {
 	openV2,
 	realCategory,

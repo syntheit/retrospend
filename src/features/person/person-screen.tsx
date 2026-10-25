@@ -23,7 +23,7 @@ import { LatestPayments, Scopes } from "./scopes";
 const settleScope = (scope: string | null) =>
 	scope === null ? undefined : scope === "none" ? null : scope;
 
-/** The Person page (uiV2): balance, payments, Needs you, projects, Between you. */
+/** The Person page: balance, payments, Needs you, projects, Between you. */
 export function PersonScreen({
 	page,
 	today,

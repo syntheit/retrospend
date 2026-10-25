@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { PAZ, SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { gotoReady } from "../../helpers/navigation";
+import { personaStorageState } from "../constants";
+import { PAZ, SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { gotoReady } from "../helpers/navigation";
 
-// The redesigned Person page (uiV2) for Paz, who is not on Retrospend: the
+// The Person page for Paz, who is not on Retrospend: the
 // balance with its currency parts, the projects with her, and Between you
 // with its chips and project scope.
 //
@@ -12,7 +12,7 @@ import { gotoReady } from "../../helpers/navigation";
 // a personId narrowing), which a data-figure id cannot carry yet
 // (docs/ui/GAPS.md, "People: per-person figure ids").
 
-// Sofía's saved session; flows-v2 runs with uiV2 on (ui-v2-on.setup.ts).
+// Sofía's saved session; the flows project saved it (auth.setup.ts).
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
 test("Person: balance, projects, Between you filters", async ({ page }) => {

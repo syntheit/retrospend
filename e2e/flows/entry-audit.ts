@@ -4,8 +4,8 @@
  * amount, the preview lines) come from the entry router's own reads.
  */
 import { expect, type Page } from "@playwright/test";
-import { FigureAudit, type FiguresResponse } from "../../helpers/figures";
-import { requiredFiguresFor } from "../../helpers/required-figures";
+import { FigureAudit, type FiguresResponse } from "../helpers/figures";
+import { requiredFiguresFor } from "../helpers/required-figures";
 
 type Money = { minor: number; currency: string };
 

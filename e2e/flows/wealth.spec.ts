@@ -1,12 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+import { personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 
-// The redesigned Wealth page on Sofía's seeded accounts, in her saved
-// session. The flows-v2 project runs with uiV2 on (ui-v2-on.setup.ts).
+// The Wealth page on Sofía's seeded accounts, in her saved
+// session. The flows project.
 //
 // No figure audit yet: the figures registry has no netWorth or account
 // figures until track 2D registers them, so the page tags none and the audit

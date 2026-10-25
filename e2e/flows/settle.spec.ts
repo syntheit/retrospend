@@ -1,17 +1,17 @@
 import { expect, type Page, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { LUCIA, MARTIN, PAZ, SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+import { personaStorageState } from "../constants";
+import { LUCIA, MARTIN, PAZ, SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 
-// Settle up (uiV2) from the Person page: the preview says what Record will
+// Settle up from the Person page: the preview says what Record will
 // change before Save (R30), Record ends with an Undo toast (R15), more than
 // owed asks first, and money received that matches a pending claim asks
 // "Same payment?". The amounts themselves are recomputed by hand in
 // src/server/services/people/people.pg.test.ts.
 
-// Sofía's saved session; flows-v2 runs with uiV2 on (ui-v2-on.setup.ts).
+// Sofía's saved session; the flows project saved it (auth.setup.ts).
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
 async function openSettle(page: Page, path: string, name: string) {

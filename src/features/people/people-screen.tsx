@@ -48,7 +48,7 @@ function useSlashFocus(ref: React.RefObject<HTMLInputElement | null>) {
 	}, [ref]);
 }
 
-/** The People page (uiV2): header, standing, Needs you, toolbar, the groups. */
+/** The People page: header, standing, Needs you, toolbar, the groups. */
 export function PeopleScreen({
 	view,
 	today,

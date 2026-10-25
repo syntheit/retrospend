@@ -1,13 +1,12 @@
 /**
  * The persona the Activity and Recurring flows run as: Martín, whom no other
  * flow uses, so the rows these flows add touch nobody else's figures. The
- * flows-v2 project turns uiV2 on for everyone (ui-v2-on.setup.ts) and
  * auth.setup.ts saved his session.
  */
 import { expect, type Page } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { MARTIN } from "../../fixtures/personas";
-import { gotoReady } from "../../helpers/navigation";
+import { personaStorageState } from "../constants";
+import { MARTIN } from "../fixtures/personas";
+import { gotoReady } from "../helpers/navigation";
 
 export const V2_VIEWER = MARTIN;
 export const V2_VIEWER_SESSION = personaStorageState(MARTIN.username);

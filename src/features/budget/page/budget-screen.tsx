@@ -105,7 +105,7 @@ function BudgetBody({
 }
 
 /**
- * Budget (uiV2 with the envelope budget on): the month's verdict, then the
+ * Budget: the month's verdict, then the
  * envelopes by group, with who owes you beside them. One month at a time:
  * the URL names it (`?month=202610`) and `view=plan` opens the month after
  * this one, where the plan is made. Every read is the server's; each action

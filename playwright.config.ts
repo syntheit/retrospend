@@ -2,12 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
-import {
-	E2E_BASE_URL,
-	E2E_DATABASE_URL,
-	E2E_PORT,
-	USER_STORAGE_STATE,
-} from "./e2e/constants";
+import { E2E_BASE_URL, E2E_DATABASE_URL, E2E_PORT } from "./e2e/constants";
 import { assertE2eDatabase } from "./e2e/db-guard";
 import { SEED_TIME_ZONE } from "./e2e/fixtures/personas";
 
@@ -34,9 +29,6 @@ const chromium = {
 		? { executablePath, args: ["--no-sandbox"] }
 		: {},
 };
-
-// The flows that turn envelopeBudgetMode on for the whole app.
-const ENVELOPE_SPECS = ["**/budget.spec.ts", "**/budget-sheets.spec.ts"];
 
 // Visual regression (e2e/visual). Only defined when E2E_VISUAL=1, so the
 // plain e2e run never compares screenshots taken by another renderer: the
@@ -70,10 +62,10 @@ export default defineConfig({
 	timeout: 30_000,
 	retries: process.env.CI ? 1 : 0,
 	// One worker. Every flow signs in to the same seeded ledger (Sofía, Martín
-	// and Lucía share projects, payments and rates) and two app-wide flags, so
-	// a spec that saves, or flips a flag, changes the figures another spec is
-	// reading. The flows undo what they save, but only after the save has
-	// landed. E2E_WORKERS raises it for a run of specs that share nothing.
+	// and Lucía share projects, payments and rates), so a spec that saves
+	// changes the figures another spec is reading. The flows undo what they
+	// save, but only after the save has landed. E2E_WORKERS raises it for a
+	// run of specs that share nothing.
 	workers: Number(process.env.E2E_WORKERS ?? 1),
 	reporter: [["html", { open: "never" }], ["list"]],
 	use: {
@@ -81,27 +73,12 @@ export default defineConfig({
 		screenshot: "only-on-failure",
 		trace: "on-first-retry",
 	},
-	// uiV2Mode is one app-wide row, so the run has two phases: every project
-	// up to "flows" sees the old pages (the seed leaves the flag OFF), then
-	// "ui-v2-on" turns it on for "flows-v2" alone and its teardown turns it
-	// off. Nothing else runs while the flag is on.
-	// envelopeBudgetMode is a second app-wide row. It changes what every
-	// persona's Home, Activity and entry sheets say ("Not planned yet" lines),
-	// so the two Budget specs run last, in the one project that switches it on.
 	projects: [
 		// Logs in the blank test accounts and the personas and saves their sessions
 		{
 			name: "setup",
 			testMatch: /auth\.setup\.ts/,
 			use: chromium,
-		},
-		// Older specs, signed in as the blank test user
-		{
-			name: "chromium",
-			use: { ...chromium, storageState: USER_STORAGE_STATE },
-			dependencies: ["setup"],
-			testMatch: /e2e\/[^/]+\.spec\.ts$/,
-			testIgnore: ["**/auth.spec.ts", "**/smoke.spec.ts"],
 		},
 		// Tests that need no pre-existing session
 		{
@@ -110,44 +87,14 @@ export default defineConfig({
 			dependencies: ["setup"],
 			testMatch: ["**/auth.spec.ts", "**/smoke.spec.ts"],
 		},
-		// Persona flows on the seeded ledger (fixtures/seed.ts), on the old pages
+		// Persona flows on the seeded ledger (fixtures/seed.ts), and the blank
+		// account and the guest flows
 		{
 			name: "flows",
 			testDir: "./e2e/flows",
 			testMatch: "**/*.spec.ts",
-			testIgnore: "**/v2/**",
 			use: chromium,
 			dependencies: ["setup"],
-		},
-		// Runs once the old-page projects are done (see above)
-		{
-			name: "ui-v2-on",
-			testMatch: /ui-v2-on\.setup\.ts/,
-			use: chromium,
-			dependencies: ["chromium", "auth-flows", "flows"],
-			teardown: "ui-v2-off",
-		},
-		{
-			name: "ui-v2-off",
-			testMatch: /ui-v2-off\.teardown\.ts/,
-			use: chromium,
-		},
-		// Persona flows on the redesigned pages, with uiV2 on for everyone
-		{
-			name: "flows-v2",
-			testDir: "./e2e/flows/v2",
-			testMatch: "**/*.spec.ts",
-			testIgnore: ENVELOPE_SPECS,
-			use: chromium,
-			dependencies: ["ui-v2-on"],
-		},
-		// The specs that switch the envelope budget on (see above)
-		{
-			name: "flows-v2-budget",
-			testDir: "./e2e/flows/v2",
-			testMatch: ENVELOPE_SPECS,
-			use: chromium,
-			dependencies: ["ui-v2-on", "flows-v2"],
 		},
 		...(process.env.E2E_VISUAL === "1" ? [visual] : []),
 	],

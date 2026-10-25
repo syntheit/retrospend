@@ -6,7 +6,7 @@
  * migration applied twice.
  */
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -337,13 +337,13 @@ describe("envelope router", () => {
 	});
 });
 
-describe("envelope_books migration", () => {
+describe("drop_rollout_flags migration", () => {
 	it("applies twice without error (idempotent)", async () => {
+		const folder = readdirSync(join(process.cwd(), "prisma/migrations")).find(
+			(name) => name.endsWith("_drop_rollout_flags"),
+		);
 		const sql = readFileSync(
-			join(
-				process.cwd(),
-				"prisma/migrations/20261024000000_envelope_books/migration.sql",
-			),
+			join(process.cwd(), "prisma/migrations", folder ?? "", "migration.sql"),
 			"utf8",
 		);
 		const client = new Client({ connectionString: process.env.DATABASE_URL });

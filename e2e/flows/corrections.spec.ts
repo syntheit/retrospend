@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
-import { E2E_DATABASE_URL, personaStorageState } from "../../constants";
-import { LUCIA, MARTIN, SEED_TIME_ZONE } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { untilSaved } from "../../helpers/trpc";
+import { E2E_DATABASE_URL, personaStorageState } from "../constants";
+import { LUCIA, MARTIN, SEED_TIME_ZONE } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { untilSaved } from "../helpers/trpc";
 import { openV2 } from "./viewer";
 
 // Ask to fix, Respond and Correct (4G, MONEY-MOVES 1.11) on a split of their

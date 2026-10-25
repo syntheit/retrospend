@@ -210,16 +210,6 @@ describe("Shares that need an envelope", () => {
 			actions: [{ entity: "budget", id: "pickEnvelope" }],
 		});
 	});
-
-	it("with the budget off neither budget item shows", async () => {
-		const list = await needsYou(adminDb, lola.user.id, {
-			...opts,
-		});
-		expect(list.items.some((i) => i.type === "budget.sharesNeedEnvelope")).toBe(
-			false,
-		);
-		expect(list.items.some((i) => i.type === "people.owedAging")).toBe(false);
-	});
 });
 
 describe("Later", () => {

@@ -10,7 +10,7 @@ import {
 import { undoRecordedPayment } from "~/server/services/people/undo-payment";
 
 /**
- * The redesigned People, Person and Settle up reads (uiV2), spread into the
+ * The People, Person and Settle up reads, spread into the
  * people router. Thin: each calls one service in src/server/services/people.
  */
 export const peopleV2Procedures = {

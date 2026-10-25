@@ -1,16 +1,16 @@
 import { expect, type Page, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { SOFIA, seedId } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
+import { personaStorageState } from "../constants";
+import { SOFIA, seedId } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
 import {
 	FigureAudit,
 	type FigureFetcher,
 	type FiguresResponse,
-} from "../../helpers/figures";
-import { gotoReady } from "../../helpers/navigation";
+} from "../helpers/figures";
+import { gotoReady } from "../helpers/navigation";
 import { uncategorizedExpense } from "./viewer";
 
-// The redesigned Insights (uiV2, /activity/insights) on Sofía's seeded
+// The Insights (/activity/insights) on Sofía's seeded
 // ledger: one total, by category, month by month, year to date with Show in
 // USD, income and savings. Every figure matches the reads the page makes
 // (and the figures API in the default view); a range change with Compare

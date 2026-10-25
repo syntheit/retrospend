@@ -1,17 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { FigureAudit, httpFigureFetcher } from "../../helpers/figures";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+import { personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 
-// The redesigned People page (uiV2) on Sofía's seeded ledger: Owed to you
+// The People page on Sofía's seeded ledger: Owed to you
 // and You owe as two figures (D1) that match the figures API, the groups,
 // search, and Needs you (Lucía says she paid ARS 20,000 in cash): Confirm,
 // then Undo puts it back.
 
-// Sofía's saved session; flows-v2 runs with uiV2 on (ui-v2-on.setup.ts).
+// Sofía's saved session; the flows project saved it (auth.setup.ts).
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
 test("People: standing, groups, search, confirm a payment and undo", async ({

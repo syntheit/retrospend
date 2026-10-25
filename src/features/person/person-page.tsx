@@ -13,7 +13,7 @@ const isKind = (t: string): t is Kind =>
 	(TYPES as readonly string[]).includes(t);
 
 /**
- * The redesigned Person page (uiV2). The server reads people.page and hands
+ * The Person page. The server reads people.page and hands
  * the client Money DTOs only; mutations refresh this read.
  */
 export async function PersonPage({ type, id }: { type: string; id: string }) {

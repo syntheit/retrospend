@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { gotoReady } from "../../helpers/navigation";
+import { gotoReady } from "../helpers/navigation";
 import { openPage, SOFIA_SESSION } from "./projects-helpers";
 
 // The phone sheet's footer stays on screen: vaul moves the sheet down by the

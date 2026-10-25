@@ -6,7 +6,7 @@ import { PeopleScreen } from "./people-screen";
 import { PeopleUnavailable } from "./people-states";
 
 /**
- * The redesigned People page (uiV2). The server reads people.overview and
+ * The People page. The server reads people.overview and
  * hands the client Money DTOs only; mutations refresh this read.
  */
 export async function PeoplePage() {

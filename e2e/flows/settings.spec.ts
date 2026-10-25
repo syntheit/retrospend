@@ -1,14 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
-import { E2E_DATABASE_URL, personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { FigureAudit, httpFigureFetcher } from "../../helpers/figures";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+import { E2E_DATABASE_URL, personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 
-// The redesigned Settings page (S4H), in Sofía's saved session. The
-// flows-v2 project runs with uiV2 on for everyone (ui-v2-on.setup.ts).
+// The Settings page (S4H), in Sofía's saved session.
 const V2 = '[data-page="settings-v2"]';
 
 test.use({ storageState: personaStorageState(SOFIA.username) });

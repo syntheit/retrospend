@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
+import { personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
 import { openV2 } from "./viewer";
 
 // Someone else's shared expense opens as a read view (owner Q1, RC11):

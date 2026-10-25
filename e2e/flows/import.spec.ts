@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { USER_STORAGE_STATE } from "../../constants";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { FigureAudit, type FiguresResponse } from "../../helpers/figures";
-import { untilSaved } from "../../helpers/trpc";
+import { USER_STORAGE_STATE } from "../constants";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { FigureAudit, type FiguresResponse } from "../helpers/figures";
+import { untilSaved } from "../helpers/trpc";
 import { openV2 } from "./viewer";
 
 type Money = { minor: number; currency: string };

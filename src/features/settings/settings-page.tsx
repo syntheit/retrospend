@@ -21,7 +21,7 @@ import { SECTIONS, type SectionId } from "./sections";
 import { SecuritySection } from "./security/security-section";
 
 /**
- * The redesigned Settings page (settings mockup, layout A): one page of flat
+ * The Settings page (settings mockup, layout A): one page of flat
  * sections with a sticky section nav (a list beside them on desktop, scroll
  * tabs on phones). Every field saves on change with a quiet toast and Undo;
  * destructive actions confirm with a named button. Admins have no Danger

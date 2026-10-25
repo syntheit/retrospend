@@ -211,7 +211,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"verification.reject": ["project", "people", "sharedTransaction"],
 
 	// ── Import ──────────────────────────────────────────────────────────
-	// The Import page (uiV2): one batch in, or the batch out again.
+	// The Import page: one batch in, or the batch out again.
 	"importQueue.commit": [...EXPENSE_DEPS, "expense", "entry"],
 	"importQueue.undo": [...EXPENSE_DEPS, "expense", "entry"],
 

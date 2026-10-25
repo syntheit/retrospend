@@ -1,12 +1,11 @@
 import { expect, type Page } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { FigureAudit, httpFigureFetcher } from "../../helpers/figures";
-import { gotoReady } from "../../helpers/navigation";
+import { personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
+import { gotoReady } from "../helpers/navigation";
 
 /**
- * Shared steps of the Projects and Project flows. The flows-v2 project runs
- * with uiV2 on (ui-v2-on.setup.ts) and auth.setup.ts saved Sofía's session.
+ * Shared steps of the Projects and Project flows. auth.setup.ts saved Sofía's session.
  * The pages tag figures as `<figure id>:<projectId>[:<personId>]`;
  * httpFigureFetcher reads them back from /api/v1/figures with that scope.
  */

@@ -48,7 +48,7 @@ function useSlashFocus(ref: React.RefObject<HTMLInputElement | null>) {
 	}, [ref]);
 }
 
-/** The Currencies page (uiV2): one table of every rate type, a detail panel with the converter. */
+/** The Currencies page: one table of every rate type, a detail panel with the converter. */
 export function CurrenciesScreen({
 	view,
 	initial,

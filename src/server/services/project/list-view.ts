@@ -1,5 +1,5 @@
 /**
- * The Projects list (uiV2): one row per project the user is in, with the
+ * The Projects list: one row per project the user is in, with the
  * project's own figures in minor units. Every number comes from the same
  * reads as the project page (readProjectNumbers), so the list and the
  * Summary tab cannot disagree: the group total is `project.total`, your

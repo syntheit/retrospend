@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { untilSaved } from "../../helpers/trpc";
+import { personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { untilSaved } from "../helpers/trpc";
 import { auditSheet, previewFigures, trpcQuery } from "./entry-audit";
 import { openV2 } from "./viewer";
 

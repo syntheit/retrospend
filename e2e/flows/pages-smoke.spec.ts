@@ -12,9 +12,12 @@ interface SmokePage {
 	seeded?: RegExp;
 }
 
+/** Pages that tag no figures yet (docs/ui/GAPS.md): the audit's "renders no figures" does not apply. */
+const NO_FIGURES = new Set(["wealth", "budget", "settings"]);
+
 const PATHS: Record<string, string> = {
-	dashboard: "/dashboard",
-	transactions: "/transactions",
+	home: "/home",
+	activity: "/activity",
 	people: "/people",
 	projects: "/projects",
 	wealth: "/wealth",
@@ -61,10 +64,12 @@ async function walkPages(
 				contentType: "image/png",
 			});
 			expect(await bannedOutputOn(page), `${label}: banned output`).toEqual([]);
-			expect(
-				await audit.checkPage(page, label, key),
-				`${label}: figures`,
-			).toEqual([]);
+			// The flows own the required figure ids of each page; the walk checks the rest.
+			const figures = (await audit.checkPage(page, label, `${key}-smoke`)).filter(
+				(problem) =>
+					!(NO_FIGURES.has(key) && problem.includes("renders no figures")),
+			);
+			expect(figures, `${label}: figures`).toEqual([]);
 		});
 	}
 

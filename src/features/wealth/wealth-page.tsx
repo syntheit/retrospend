@@ -5,7 +5,7 @@ import { WealthScreen } from "./wealth-screen";
 import { WealthUnavailable } from "./wealth-states";
 
 /**
- * The redesigned Wealth page (uiV2). The server reads today's procedures and
+ * The Wealth page. The server reads today's procedures and
  * hands the client Money DTOs only; mutations refresh this read.
  */
 export async function WealthPage() {

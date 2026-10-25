@@ -32,7 +32,11 @@ import { addRow, at, invariantAt } from "./__tests__/pg-fixture";
 import { addMonths } from "./calendar";
 import { envelopeExportFiles } from "./envelope-export";
 import { ensureLegacyBook, forgetLegacyAttempts } from "./legacy-lazy";
-import { migrateUsers, rollbackRun } from "./legacy-migrate.batch";
+import {
+	migrateUsers,
+	needsAttention,
+	rollbackRun,
+} from "./legacy-migrate.batch";
 import * as plan from "./legacy-plan";
 import {
 	resolveHiddenMutation,
@@ -708,6 +712,46 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		await budget(p.user.id, { categoryId: dine, amount: "75.00" });
 		const pace = await getPacing(p.user.id, new Date(), "UTC");
 		expect(pace?.total.budget).toEqual({ minor: 7_500, currency: "USD" });
+	});
+
+	it("opening Budget before the script ran: the script then leaves that book as it is, and the dry run says so", async () => {
+		const early = await person();
+		const rent = await early.cat("Rent", true);
+		await budget(early.user.id, { categoryId: rent, amount: "500.00" });
+		const first = await getMonth(early.user.id, undefined, new Date(), "UTC");
+		expect(row(first, "Rent")?.assigned.minor).toBe(50_000);
+		const book = await bookOf(early.user.id);
+
+		const dry = await migrateUsers(adminDb, {
+			apply: false,
+			userIds: [early.user.id],
+		});
+		const run = await apply(early.user.id);
+		for (const r of [...dry.reports, ...run.reports])
+			expect(r).toMatchObject({ status: "HAS_BOOK" });
+		// Still the one book the first read made, not rewritten by the script.
+		const after = await bookOf(early.user.id);
+		expect(after.id).toBe(book.id);
+		expect(after.legacyMigrationRunId).toMatch(/^lazy-/);
+		expect(
+			await adminDb.budgetBook.count({ where: { createdById: early.user.id } }),
+		).toBe(1);
+		expect(needsAttention(run.reports)).toBe(0);
+	});
+
+	it("the script ran first: opening Budget keeps the script's book", async () => {
+		const n = await person();
+		const rent = await n.cat("Rent", true);
+		await budget(n.user.id, { categoryId: rent, amount: "320.00" });
+		const run = await apply(n.user.id, "release-run");
+		expect(run.reports[0]).toMatchObject({ status: "MIGRATED", funded: true });
+		const m = await getMonth(n.user.id, undefined, new Date(), "UTC");
+		expect(row(m, "Rent")?.assigned.minor).toBe(32_000);
+		const book = await bookOf(n.user.id);
+		expect(book.legacyMigrationRunId).toBe("release-run");
+		expect(
+			await adminDb.budgetBook.count({ where: { createdById: n.user.id } }),
+		).toBe(1);
 	});
 
 	it("a person with no old budgets stays on Just track", async () => {

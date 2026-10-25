@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { PROJECT_IDS } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+import { PROJECT_IDS } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 import { auditFigures, openPage, SOFIA_SESSION } from "./projects-helpers";
 
-// The redesigned project page (uiV2) on Depto Palermo, by hand from the seed
+// The project page on Depto Palermo, by hand from the seed
 // (e2e/fixtures/ledger.ts): seven ARS expenses split in half between Sofía
 // and Martín, ARS 615,000 in all. Sofía paid ARS 279,600 and Martín ARS
 // 335,400; each share is ARS 307,500. Martín paid Sofía ARS 13,200, so her

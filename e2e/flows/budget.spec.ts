@@ -3,31 +3,27 @@ import {
 	type APIRequestContext,
 	expect,
 	type Page,
-	type PlaywrightWorkerArgs,
 	test,
 } from "@playwright/test";
 import { Pool } from "pg";
 import {
-	ADMIN_STORAGE_STATE,
 	E2E_BASE_URL,
 	E2E_DATABASE_URL,
 	personaStorageState,
-} from "../../constants";
-import { MARTIN } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
+} from "../constants";
+import { MARTIN } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
 import {
 	collectFigureTags,
 	FigureAudit,
 	httpFigureFetcher,
-} from "../../helpers/figures";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+} from "../helpers/figures";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 
-// The redesigned Budget (uiV2 with the envelope budget on). The envelope
-// budget is a second app-wide flag and the seed has no book, so this flow
-// turns the flag on, sets up a Flex book for Martín (no other flow reads a
+// The Budget page. The seed has no book, so this flow sets up a Flex book for Martín (no other flow reads a
 // book of his) through the engine's own procedures, puts money in each
-// envelope, and removes both afterwards. Actions open sheets by id; the
+// envelope, and removes it afterwards. Actions open sheets by id; the
 // sheets land with their own flows.
 
 test.use({ storageState: personaStorageState(MARTIN.username) });
@@ -51,40 +47,20 @@ async function trpc<T>(
 	return (await res.json()).result.data.json as T;
 }
 
-async function setEnvelopeBudgetMode(
-	playwright: PlaywrightWorkerArgs["playwright"],
-	mode: "OFF" | "ALL",
-): Promise<void> {
+/** Removes Martín's book and its starting balance, so a run starts and ends without one. */
+async function removeMartinsBook(): Promise<void> {
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
 	try {
-		await pool.query(`UPDATE "app_settings" SET "envelopeBudgetMode" = $1`, [
-			mode,
+		await pool.query(`DELETE FROM "budget_book" WHERE "createdById" = $1`, [
+			MARTIN.id,
 		]);
-		// A run of this file alone has no ui-v2-on setup before it.
-		if (mode === "ALL")
-			await pool.query(`UPDATE "app_settings" SET "uiV2Mode" = 'ALL'`);
-		if (mode === "OFF") {
-			await pool.query(`DELETE FROM "budget_book" WHERE "createdById" = $1`, [
-				MARTIN.id,
-			]);
-			// Setup wrote the starting balance as a money-in row of his.
-			await pool.query(
-				`DELETE FROM "expense" WHERE "userId" = $1 AND "entryKind" = 'STARTING_BALANCE'`,
-				[MARTIN.id],
-			);
-		}
+		// Setup wrote the starting balance as a money-in row of his.
+		await pool.query(
+			`DELETE FROM "expense" WHERE "userId" = $1 AND "entryKind" = 'STARTING_BALANCE'`,
+			[MARTIN.id],
+		);
 	} finally {
 		await pool.end();
-	}
-	// The server reads flags through a settings cache; an admin write refreshes it.
-	const admin = await playwright.request.newContext({
-		baseURL: E2E_BASE_URL,
-		storageState: ADMIN_STORAGE_STATE,
-	});
-	try {
-		await trpc(admin, "mutation", "admin.updateSettings", {});
-	} finally {
-		await admin.dispose();
 	}
 }
 
@@ -171,8 +147,7 @@ async function seedBook(api: APIRequestContext): Promise<void> {
 test.beforeAll(async ({ playwright }) => {
 	test.setTimeout(120_000);
 	// A run that died before its afterAll left a book behind.
-	await setEnvelopeBudgetMode(playwright, "OFF");
-	await setEnvelopeBudgetMode(playwright, "ALL");
+	await removeMartinsBook();
 	const api = await playwright.request.newContext({
 		baseURL: E2E_BASE_URL,
 		storageState: personaStorageState(MARTIN.username),
@@ -184,8 +159,8 @@ test.beforeAll(async ({ playwright }) => {
 	}
 });
 
-test.afterAll(async ({ playwright }) => {
-	await setEnvelopeBudgetMode(playwright, "OFF");
+test.afterAll(async () => {
+	await removeMartinsBook();
 });
 
 async function openBudget(page: Page, path = "/budget"): Promise<void> {

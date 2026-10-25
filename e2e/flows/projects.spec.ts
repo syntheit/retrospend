@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { untilSaved } from "../../helpers/trpc";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { untilSaved } from "../helpers/trpc";
 import { auditFigures, openPage, SOFIA_SESSION } from "./projects-helpers";
 
-// The redesigned Projects list (uiV2) on Sofía's seeded projects: Viaje a
+// The Projects list on Sofía's seeded projects: Viaje a
 // Florianópolis (BRL, four people) and Depto Palermo (ARS, with Martín).
 // In Depto she paid ARS 279,600 of ARS 615,000, her share is ARS 307,500 and
 // Martín paid her ARS 13,200, so she owes ARS 41,100 there.

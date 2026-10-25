@@ -206,7 +206,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(body).toMatchObject({
 				name: "Retrospend",
 				apiVersion: "v1",
-				features: { apiV1: true },
+				features: {},
 				auth: { signUp: "open" },
 				push: { transports: [] },
 			});

@@ -1,13 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
-import { E2E_DATABASE_URL, personaStorageState } from "../../constants";
-import { SOFIA } from "../../fixtures/personas";
-import { bannedOutputOn } from "../../helpers/banned-output";
-import { gotoReady } from "../../helpers/navigation";
-import { untilSaved } from "../../helpers/trpc";
+import { E2E_DATABASE_URL, personaStorageState } from "../constants";
+import { SOFIA } from "../fixtures/personas";
+import { bannedOutputOn } from "../helpers/banned-output";
+import { gotoReady } from "../helpers/navigation";
+import { untilSaved } from "../helpers/trpc";
 
-// The redesigned Currencies page, in Sofía's saved session. The flows-v2
-// project runs with uiV2 on (ui-v2-on.setup.ts). The seed has ARS at 1,450
+// The Currencies page, in Sofía's saved session. The seed has ARS at 1,450
 // per USD (official) and BRL at 5.4, so 1 USD is ARS 1,450, 1 BRL is
 // ARS 268.52 and USD 100 converts to ARS 145,000.
 //

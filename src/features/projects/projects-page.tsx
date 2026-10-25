@@ -33,7 +33,7 @@ function useSlashFocus(ref: React.RefObject<HTMLInputElement | null>) {
 }
 
 /**
- * The Projects list (uiV2): header with New project, one search, then the
+ * The Projects list: header with New project, one search, then the
  * active projects and the past ones by year as ProjectRows (layout B, the
  * dense rows: TELLS #35 retired the hero and cover cards).
  */
