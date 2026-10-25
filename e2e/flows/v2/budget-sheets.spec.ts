@@ -1006,7 +1006,7 @@ test.describe("Set up your budget", () => {
 		await sheet.getByRole("button", { name: "Pick Monthly" }).click();
 		// A dated cycle needs its next pay: no default, Continue waits for a pick.
 		await expect(sheet.getByText("Next pay", { exact: true })).toBeVisible();
-		const next = sheet.getByRole("button", { name: "Pick date" });
+		const next = sheet.getByRole("radio", { name: "Pick date" });
 		await expect(next).toBeVisible();
 		await expect(
 			sheet.getByRole("button", { name: "Continue" }),
