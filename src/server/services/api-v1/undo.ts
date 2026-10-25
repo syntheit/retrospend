@@ -20,7 +20,9 @@ export type UndoFamily =
 	| "recurring"
 	| "shared"
 	| "payment"
-	| "project";
+	| "project"
+	| "budget"
+	| "account";
 
 type Payload = {
 	v: 1;
