@@ -277,7 +277,7 @@ describe("/api/v1/budget movements", () => {
 		);
 		// The engine makes the ids of a reset's rows, so a dry run and the write differ there.
 		const rows = (r: unknown) =>
-			(r as { movements: { id: string }[] }).movements.map(
+			(r as { movements: { id: string; createdAt: string }[] }).movements.map(
 				({ id: _id, createdAt: _at, ...rest }) => rest,
 			);
 		expect(rows(written.result)).toEqual(rows(preview.detail?.result));
