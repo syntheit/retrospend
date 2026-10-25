@@ -131,6 +131,30 @@ describe("/api/v1/expenses", () => {
 		expect(made.expense.home).toEqual({ minor: 1020, currency: "USD" });
 	});
 
+	it("answers missing_rate, a 422, when the currency has no rate, and writes nothing", async () => {
+		const before = await adminDb.expense.count({ where: { userId: alice } });
+		const data = body(food, {
+			title: "No rate",
+			amount: "30",
+			currency: "UYU",
+		});
+		for (const route of ["/expenses/preview", "/expenses"]) {
+			await expectProblem(
+				await call(route, {
+					method: "POST",
+					headers: asAlice,
+					body: data,
+					idempotent: true,
+				}),
+				422,
+				"missing_rate",
+			);
+		}
+		expect(await adminDb.expense.count({ where: { userId: alice } })).toBe(
+			before,
+		);
+	});
+
 	it("refuses money sent as a JSON number", async () => {
 		await expectProblem(
 			await create(asAlice, body(food, { amount: 12.5 })),

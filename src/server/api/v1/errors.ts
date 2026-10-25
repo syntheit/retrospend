@@ -21,6 +21,7 @@ const TITLES: Record<ProblemCode, string> = {
 	idempotency_in_progress: "Request in progress",
 	idempotency_replay_unavailable: "Response not stored",
 	idempotency_key_reused: "Idempotency-Key reused",
+	missing_rate: "No rate for that currency",
 	rate_limited: "Too many requests",
 	internal: "Server error",
 	not_implemented: "Not implemented",
