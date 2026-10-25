@@ -3,10 +3,11 @@
 		"title": "Pedir a {name} que lo corrija",
 		"what": "¿Qué está mal?",
 		"placeholder": "Cuenta qué no cuadra",
-		"hint": "Si {name} lo cambia, solo la diferencia vuelve a abrir tu saldo. Tus pagos quedan como estaban.",
+		"hintOpen": "Si {name} lo cambia, tu saldo con {name} se actualiza. Hasta entonces no cambia nada.",
+		"hintLocked": "Esto está saldado. Si {name} lo cambia, solo la diferencia vuelve a abrir tu saldo con {name}. Tu pago queda como estaba.",
 		"empty": "Aún no hay nada que revisar.",
-		"send": "Enviar",
-		"sent": "Enviado a {name}"
+		"send": "Enviar a {name}",
+		"sent": "Pediste a {name} que corrija {title}"
 	},
 	"respond": {
 		"title": "{name} te pidió que lo corrijas",

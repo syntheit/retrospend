@@ -3,10 +3,11 @@
 		"title": "Demander à {name} de corriger",
 		"what": "Qu'est-ce qui ne va pas ?",
 		"placeholder": "Dis ce qui cloche",
-		"hint": "Si {name} le modifie, seule la différence rouvre ton solde. Tes paiements restent tels quels.",
+		"hintOpen": "Si {name} le modifie, ton solde avec {name} se met à jour. Rien ne change d'ici là.",
+		"hintLocked": "C'est réglé. Si {name} le modifie, seule la différence rouvre ton solde avec {name}. Ton paiement reste tel quel.",
 		"empty": "Rien à vérifier pour l'instant.",
-		"send": "Envoyer",
-		"sent": "Envoyé à {name}"
+		"send": "Envoyer à {name}",
+		"sent": "Tu as demandé à {name} de corriger {title}"
 	},
 	"respond": {
 		"title": "{name} te demande de corriger ceci",

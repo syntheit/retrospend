@@ -3,10 +3,11 @@
 		"title": "Ask {name} to fix it",
 		"what": "What is wrong?",
 		"placeholder": "Say what looks off",
-		"hint": "If {name} changes it, only the difference reopens your balance. Your payments stay as they were.",
+		"hintOpen": "If {name} changes it, your balance with {name} updates to match. Nothing changes until then.",
+		"hintLocked": "This is settled. If {name} changes it, only the difference reopens your balance with {name}. Your payment stays as it was.",
 		"empty": "Nothing to check yet.",
-		"send": "Send",
-		"sent": "Sent to {name}"
+		"send": "Send to {name}",
+		"sent": "Asked {name} to fix {title}"
 	},
 	"respond": {
 		"title": "{name} asked you to fix this",

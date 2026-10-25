@@ -3,10 +3,11 @@
 		"title": "Pedir a {name} que corrija",
 		"what": "O que está errado?",
 		"placeholder": "Diga o que não bate",
-		"hint": "Se {name} mudar, só a diferença reabre seu saldo. Seus pagamentos ficam como estavam.",
+		"hintOpen": "Se {name} mudar, seu saldo com {name} se ajusta. Nada muda até lá.",
+		"hintLocked": "Isto está quitado. Se {name} mudar, só a diferença reabre seu saldo com {name}. Seu pagamento fica como estava.",
 		"empty": "Nada para conferir ainda.",
-		"send": "Enviar",
-		"sent": "Enviado para {name}"
+		"send": "Enviar para {name}",
+		"sent": "Você pediu a {name} que corrija {title}"
 	},
 	"respond": {
 		"title": "{name} pediu que você corrija isto",

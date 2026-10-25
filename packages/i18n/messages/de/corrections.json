@@ -3,10 +3,11 @@
 		"title": "{name} um Korrektur bitten",
 		"what": "Was stimmt nicht?",
 		"placeholder": "Schreib, was nicht passt",
-		"hint": "Wenn {name} es ändert, öffnet nur die Differenz deinen Saldo wieder. Deine Zahlungen bleiben, wie sie waren.",
+		"hintOpen": "Wenn {name} es ändert, passt sich dein Saldo mit {name} an. Bis dahin ändert sich nichts.",
+		"hintLocked": "Das ist ausgeglichen. Wenn {name} es ändert, öffnet nur die Differenz deinen Saldo mit {name} wieder. Deine Zahlung bleibt, wie sie war.",
 		"empty": "Noch nichts zu prüfen.",
-		"send": "Senden",
-		"sent": "An {name} gesendet"
+		"send": "An {name} senden",
+		"sent": "{name} um Korrektur von {title} gebeten"
 	},
 	"respond": {
 		"title": "{name} hat dich gebeten, das zu korrigieren",

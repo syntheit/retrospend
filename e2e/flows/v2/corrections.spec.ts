@@ -26,12 +26,60 @@ const today = () =>
 		new Date(),
 	);
 
-async function openRow(page: Page, path = "/activity?range=all") {
-	await openV2(page, path);
-	await page.getByRole("main").getByText(TITLE).first().click();
-	const read = page.getByRole("dialog", { name: TITLE });
+async function openRow(page: Page, title = TITLE) {
+	await openV2(page, "/activity?range=all");
+	await page.getByRole("main").getByText(title).first().click();
+	const read = page.getByRole("dialog", { name: title });
 	await expect(read).toBeVisible();
 	return read;
+}
+
+/** Martín adds an even 64,000 split with Lucía through the app and returns its id. */
+async function addSplit(page: Page, pool: Pool, title: string) {
+	await openV2(page, "/activity");
+	const category = await pool.query<{ id: string }>(
+		`SELECT id FROM category WHERE "userId" = $1 AND kind = 'EXPENSE' ORDER BY name LIMIT 1`,
+		[MARTIN.id],
+	);
+	const created = await page.request.post(
+		"/api/trpc/entry.shared.create.save",
+		{
+			data: {
+				json: {
+					id: randomUUID(),
+					amount: "64000",
+					currency: "ARS",
+					description: title,
+					categoryId: category.rows[0]?.id,
+					date: today(),
+					paidBy: { participantType: "user", participantId: MARTIN.id },
+					splitMode: "EQUAL",
+					splitWith: [
+						{ participantType: "user", participantId: MARTIN.id },
+						{ participantType: "user", participantId: LUCIA.id },
+					],
+				},
+			},
+			headers: { Origin: new URL(page.url()).origin },
+		},
+	);
+	expect(created.ok(), "add the split").toBe(true);
+	const body = await created.json();
+	return body.result.data.json.value.id as string;
+}
+
+/** Takes the split, its requests and its corrections out, so no other flow sees them. */
+async function cleanUp(pool: Pool, id: string | null) {
+	if (id) {
+		await pool.query(`DELETE FROM fix_request WHERE "transactionId" = $1`, [
+			id,
+		]);
+		await pool.query(
+			`DELETE FROM shared_transaction WHERE id = $1 OR "correctsId" = $1`,
+			[id],
+		);
+	}
+	await pool.end();
 }
 
 test("Corrections: ask, respond, correct, undo", async ({
@@ -44,37 +92,7 @@ test("Corrections: ask, respond, correct, undo", async ({
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
 	let rowId: string | null = null;
 	try {
-		// Martín adds the split through the app, so the rows are real ones.
-		await openV2(page, "/activity");
-		const category = await pool.query<{ id: string }>(
-			`SELECT id FROM category WHERE "userId" = $1 AND kind = 'EXPENSE' ORDER BY name LIMIT 1`,
-			[MARTIN.id],
-		);
-		const created = await page.request.post(
-			"/api/trpc/entry.shared.create.save",
-			{
-				data: {
-					json: {
-						id: randomUUID(),
-						amount: "64000",
-						currency: "ARS",
-						description: TITLE,
-						categoryId: category.rows[0]?.id,
-						date: today(),
-						paidBy: { participantType: "user", participantId: MARTIN.id },
-						splitMode: "EQUAL",
-						splitWith: [
-							{ participantType: "user", participantId: MARTIN.id },
-							{ participantType: "user", participantId: LUCIA.id },
-						],
-					},
-				},
-				headers: { Origin: new URL(page.url()).origin },
-			},
-		);
-		expect(created.ok(), "add the split").toBe(true);
-		const body = await created.json();
-		rowId = body.result.data.json.value.id as string;
+		rowId = await addSplit(page, pool, TITLE);
 
 		// Lucía asks Martín to fix it, then takes it back with Undo, then asks again.
 		const lucia = await browser.newContext({
@@ -87,7 +105,9 @@ test("Corrections: ask, respond, correct, undo", async ({
 		const luciaPage = await lucia.newPage();
 		let read = await openRow(luciaPage);
 		await expect(read).toContainText("ARS 64.000");
-		await read.getByRole("button", { name: "Pedirle a Martín que lo corrija" }).click();
+		await read
+			.getByRole("button", { name: "Pedirle a Martín que lo corrija" })
+			.click();
 		const ask = luciaPage.getByRole("dialog", {
 			name: "Pedirle a Martín que lo corrija",
 		});
@@ -100,7 +120,7 @@ test("Corrections: ask, respond, correct, undo", async ({
 		);
 		const sent = luciaPage
 			.locator("[data-sonner-toast]")
-			.filter({ hasText: "Enviado a Martín" });
+			.filter({ hasText: `Le pediste a Martín que corrija ${TITLE}` });
 		await untilSaved(luciaPage, "corrections.withdrawFix.save", () =>
 			sent.getByRole("button", { name: "Deshacer" }).dispatchEvent("click"),
 		);
@@ -108,19 +128,27 @@ test("Corrections: ask, respond, correct, undo", async ({
 		await expect(
 			read.getByRole("button", { name: "Pedirle a Martín que lo corrija" }),
 		).toBeVisible();
-		await read.getByRole("button", { name: "Pedirle a Martín que lo corrija" }).click();
+		await read
+			.getByRole("button", { name: "Pedirle a Martín que lo corrija" })
+			.click();
 		const again = luciaPage.getByRole("dialog", {
 			name: "Pedirle a Martín que lo corrija",
 		});
 		await again.getByRole("textbox").fill("Eran tres platos, no cuatro");
-		await expect(again.getByTestId("entry-changes")).toContainText("Sin cambios");
+		await expect(again.getByTestId("entry-changes")).toContainText(
+			"Sin cambios",
+		);
 		await untilSaved(luciaPage, "corrections.askToFix.save", () =>
 			again.getByRole("button", { name: "Enviar" }).click(),
 		);
 		// Her read view now says she asked, and offers to cancel.
 		read = await openRow(luciaPage);
-		await expect(read.getByText(/Le pediste a Martín que lo corrija/)).toBeVisible();
-		await expect(read.getByRole("button", { name: "Cancelar pedido" })).toBeVisible();
+		await expect(
+			read.getByText(/Le pediste a Martín que lo corrija/),
+		).toBeVisible();
+		await expect(
+			read.getByRole("button", { name: "Cancelar pedido" }),
+		).toBeVisible();
 		await lucia.close();
 
 		// Martín answers: Decline, Undo, then the row still asks him to respond.
@@ -131,7 +159,9 @@ test("Corrections: ask, respond, correct, undo", async ({
 			name: "Lucía asked you to fix this",
 		});
 		await expect(respond).toContainText("Eran tres platos, no cuatro");
-		await expect(respond.getByTestId("entry-changes")).toContainText("No change to");
+		await expect(respond.getByTestId("entry-changes")).toContainText(
+			"No change to",
+		);
 		await respond.getByRole("textbox").fill("Fue un error mío");
 		await untilSaved(page, "corrections.respondToFix.save", () =>
 			respond.getByRole("button", { name: "Decline" }).click(),
@@ -156,7 +186,9 @@ test("Corrections: ask, respond, correct, undo", async ({
 			[rowId],
 		);
 		read = await openRow(page);
-		await expect(read.getByText("A payment settled this expense")).toHaveCount(0);
+		await expect(read.getByText("A payment settled this expense")).toHaveCount(
+			0,
+		);
 		await read.getByRole("button", { name: "Respond" }).click();
 		await page
 			.getByRole("dialog", { name: "Lucía asked you to fix this" })
@@ -197,15 +229,48 @@ test("Corrections: ask, respond, correct, undo", async ({
 		await expect(read.getByText(/You said you would fix this/)).toBeVisible();
 		await expect(read.getByRole("button", { name: "Correct" })).toBeVisible();
 	} finally {
-		if (rowId) {
-			await pool.query(`DELETE FROM fix_request WHERE "transactionId" = $1`, [
-				rowId,
-			]);
-			await pool.query(
-				`DELETE FROM shared_transaction WHERE id = $1 OR "correctsId" = $1`,
-				[rowId],
-			);
-		}
-		await pool.end();
+		await cleanUp(pool, rowId);
+	}
+});
+
+test("Corrections: accepting on an open split opens Edit, and saving answers the request", async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
+	const title = "E2E fix lunch";
+	let rowId: string | null = null;
+	try {
+		rowId = await addSplit(page, pool, title);
+		// Lucía's request, written as she would send it (her sheets are covered above).
+		await pool.query(
+			`INSERT INTO fix_request (id, "transactionId", "requestedByType", "requestedById", "askedType", "askedId", message)
+			 VALUES ($1, $2, 'user', $3, 'user', $4, $5)`,
+			[randomUUID(), rowId, LUCIA.id, MARTIN.id, "Eran dos platos"],
+		);
+
+		const read = await openRow(page, title);
+		await expect(read.getByText("Lucía asked you to fix this.")).toBeVisible();
+		await read.getByRole("button", { name: "Respond" }).click();
+		await page
+			.getByRole("dialog", { name: "Lucía asked you to fix this" })
+			.getByRole("button", { name: "Accept" })
+			.click();
+		// Not settled: Accept opens the plain edit sheet, not Correct.
+		const edit = page.getByRole("dialog", { name: "Edit shared expense" });
+		await expect(edit).toBeVisible();
+		await edit.getByRole("textbox", { name: "Amount" }).fill("50000");
+		await untilSaved(page, "entry.shared.update.save", () =>
+			edit.getByRole("button", { name: "Save" }).click(),
+		);
+		await expect(edit).toBeHidden();
+		const status = await pool.query<{ status: string }>(
+			`SELECT status FROM fix_request WHERE "transactionId" = $1`,
+			[rowId],
+		);
+		expect(status.rows.map((r) => r.status)).toEqual(["FIXED"]);
+	} finally {
+		await cleanUp(pool, rowId);
 	}
 });

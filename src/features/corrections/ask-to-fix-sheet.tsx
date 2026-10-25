@@ -21,13 +21,19 @@ import { usePreview } from "./use-preview";
  */
 export function AskToFixSheet({
 	transactionId,
+	title,
 	name,
+	locked,
 	onBack,
 	onDone,
 }: {
 	transactionId: string;
+	/** The expense's title, for the toast. */
+	title: string;
 	/** Their first name. */
 	name: string;
+	/** A payment settled it: only the difference reopens the balance. */
+	locked: boolean;
 	onBack: () => void;
 	onDone: () => void;
 }) {
@@ -48,7 +54,7 @@ export function AskToFixSheet({
 
 	const submit = async () => {
 		await send.mutateAsync(input);
-		toast.saved(t("sent", { name }), {
+		toast.saved(t("sent", { name, title }), {
 			undo: () => withdraw.mutateAsync({ id }),
 		});
 		onDone();
@@ -62,7 +68,7 @@ export function AskToFixSheet({
 			onSubmit={submit}
 			open
 			submitDisabled={!!dry.error}
-			submitLabel={t("send")}
+			submitLabel={t("send", { name })}
 			title={t("title", { name })}
 		>
 			<div className="flex flex-col gap-4 pb-4">
@@ -77,7 +83,9 @@ export function AskToFixSheet({
 						value={message}
 					/>
 				</Field>
-				<p className="text-fg-3 text-meta">{t("hint", { name })}</p>
+				<p className="text-fg-3 text-meta">
+					{t(locked ? "hintLocked" : "hintOpen", { name })}
+				</p>
 				<ChangesBlock
 					byDesign={NO_MONEY}
 					cannot={dry.error}

@@ -81,9 +81,11 @@ export function SharedEntrySheet({
 	if (ready && view === "ask" && lock?.canAskToFix)
 		return (
 			<AskToFixSheet
+				locked={lock.locked}
 				name={creator}
 				onBack={() => setView("read")}
 				onDone={onClose}
+				title={data?.description ?? ""}
 				transactionId={id}
 			/>
 		);
