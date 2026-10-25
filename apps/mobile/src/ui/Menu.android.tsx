@@ -4,13 +4,14 @@ import {
 	Text,
 	TextButton,
 } from "@expo/ui/jetpack-compose";
+import { semantics } from "@expo/ui/jetpack-compose/modifiers";
 import { useState } from "react";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { MenuProps } from "./types";
 
 /** An M3 dropdown menu anchored to a text button. */
-export function Menu({ label, items }: MenuProps) {
+export function Menu({ label, accessibilityLabel, items }: MenuProps) {
 	const { color } = useTheme();
 	const [open, setOpen] = useState(false);
 	return (
@@ -21,7 +22,14 @@ export function Menu({ label, items }: MenuProps) {
 				onDismissRequest={() => setOpen(false)}
 			>
 				<DropdownMenu.Trigger>
-					<TextButton onClick={() => setOpen(true)}>
+					<TextButton
+						modifiers={
+							accessibilityLabel
+								? [semantics({ contentDescription: accessibilityLabel })]
+								: undefined
+						}
+						onClick={() => setOpen(true)}
+					>
 						<Text>{label}</Text>
 					</TextButton>
 				</DropdownMenu.Trigger>

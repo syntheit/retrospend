@@ -37,9 +37,11 @@ export function ComposerShell({
 	addLabel,
 	addDescription,
 	busy,
+	blocked,
 	typing,
 	amountError,
 	bottomInset = 0,
+	surface,
 	onKeypadRequest,
 	children,
 }: {
@@ -55,10 +57,14 @@ export function ComposerShell({
 	/** What a screen reader says for the Add button: "Add expense". */
 	addDescription: string;
 	busy: boolean;
+	/** The dry run of what Add would send is not in yet, or was refused. */
+	blocked: boolean;
 	typing: boolean;
 	amountError: boolean;
 	/** Room for a bar that floats over the screen, like the iPhone tab bar. */
 	bottomInset?: number;
+	/** On a sheet: the sheet's own surface, with no panel of the page's color. */
+	surface?: boolean;
 	/** The amount was touched: stop typing in the text field. */
 	onKeypadRequest: () => void;
 	children: ReactNode;
@@ -74,11 +80,15 @@ export function ComposerShell({
 	const spoken = minor
 		? t("amountLabel", { amount: format({ minor, currency }) ?? "" })
 		: t("amountEmpty", { currency });
+	const idle = busy || blocked;
 
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
-			style={{ flex: 1, backgroundColor: color.bg }}
+			style={{
+				flex: 1,
+				backgroundColor: surface ? undefined : color.bg,
+			}}
 		>
 			<ScrollView
 				contentContainerStyle={{ padding: space[4], gap: space[4] }}
@@ -86,15 +96,18 @@ export function ComposerShell({
 				onScrollBeginDrag={() => setPadOpen(false)}
 				style={{ flex: 1 }}
 			>
-				<Segmented
-					accessibilityLabel={t("mode")}
-					onChange={onModeChange}
-					options={[
-						{ value: "expense", label: t("expense") },
-						{ value: "income", label: t("income") },
-					]}
-					value={mode}
-				/>
+				{/* The M3 segmented button draws its outline past its box. */}
+				<View style={{ paddingVertical: space[1] }}>
+					<Segmented
+						accessibilityLabel={t("mode")}
+						onChange={onModeChange}
+						options={[
+							{ value: "expense", label: t("expense") },
+							{ value: "income", label: t("income") },
+						]}
+						value={mode}
+					/>
+				</View>
 				{children}
 			</ScrollView>
 			<View
@@ -116,6 +129,7 @@ export function ComposerShell({
 					}}
 				>
 					<Menu
+						accessibilityLabel={t("currencyLabel", { code: currency })}
 						items={currencies.map((code) => ({
 							id: code,
 							label: code,
@@ -152,8 +166,8 @@ export function ComposerShell({
 					<Pressable
 						accessibilityLabel={addDescription}
 						accessibilityRole="button"
-						accessibilityState={{ busy, disabled: busy }}
-						disabled={busy}
+						accessibilityState={{ busy, disabled: idle }}
+						disabled={idle}
 						onPress={onAdd}
 						style={({ pressed }) => ({
 							minHeight: size.touchMin.phone,
@@ -161,7 +175,7 @@ export function ComposerShell({
 							paddingHorizontal: space[4],
 							borderRadius: radius.ctl,
 							backgroundColor: pressed ? color.brandHover : color.brand,
-							opacity: busy ? 0.6 : 1,
+							opacity: idle ? 0.6 : 1,
 						})}
 					>
 						<Text
@@ -190,8 +204,8 @@ export function ComposerShell({
 				{typing || !padOpen ? null : (
 					<MoneyKeypad
 						currency={currency}
-						keyHeight={size.touchMin.phone}
 						draft={amountText}
+						keyHeight={size.touchMin.phone}
 						onDraftChange={onAmountChange}
 					/>
 				)}

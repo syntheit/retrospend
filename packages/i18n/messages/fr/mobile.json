@@ -14,7 +14,8 @@
 	},
 	"keypad": {
 		"delete": "Effacer",
-		"decimal": "Virgule décimale"
+		"decimal": "Virgule décimale",
+		"tripleZero": "Trois zéros"
 	},
 	"entry": {
 		"mode": "Type de saisie",
@@ -55,7 +56,9 @@
 			"queued": "{title} enregistré sur ce téléphone. Il se synchronise quand tu es en ligne.",
 			"parked": "Impossible d'ajouter {title}. Il reste sur ce téléphone.",
 			"undone": "{title} retiré",
-			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité."
+			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
+			"discarded": "{title} supprimé",
+			"parkedBackground": "{count, plural, one {Impossible d'ajouter # saisie. Elle reste sur ce téléphone.} other {Impossible d'ajouter # saisies. Elles restent sur ce téléphone.}}"
 		},
 		"changes": {
 			"title": "Ce que ça change",
@@ -113,7 +116,21 @@
 				"budget_totalDebt": "la dette totale",
 				"accounts": "tes comptes",
 				"project_total": "le total du projet"
-			}
+			},
+			"noRate": "Pas encore de taux pour {currency}. Choisis une autre devise."
+		},
+		"currencyLabel": "Devise, {code}",
+		"list": {
+			"two": "{first} et {second}",
+			"many": "{rest} et {last}",
+			"separator": ", "
+		},
+		"sync": {
+			"title": "Synchronisation impossible",
+			"refused": "Le serveur n'a pas accepté ceci.",
+			"retry": "Réessayer",
+			"discard": "Supprimer",
+			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
 		}
 	},
 	"connect": {

@@ -4,6 +4,7 @@ import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
 import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
+import { forgetUndoTokens } from "./send";
 
 // The composer end to end, with real presses on its real components: the
 // milestone "coffee split with Lucía in 4 taps + 5 keys". The tab press that
@@ -218,7 +219,18 @@ function words(tree: Tree): string {
 	return out.join(" ").replaceAll("\u00a0", " ");
 }
 
-beforeEach(() => {
+/** Past the 350 ms the dry run waits for typing to stop, and its answer. */
+async function settle() {
+	await act(async () => {
+		jest.advanceTimersByTime(400);
+	});
+	await flush();
+}
+
+beforeEach(async () => {
+	// Every test makes the same client id, so nothing may carry over.
+	forgetUndoTokens();
+	await local.outbox.clear();
 	jest.useFakeTimers();
 	mockToast.show.mockClear();
 });
@@ -303,6 +315,7 @@ describe("Add expense: coffee split with Lucía", () => {
 		press(tree, "Cafe");
 		press(tree, "Lucía Fernández");
 		for (const key of ["9", "0", "0"]) press(tree, key);
+		await settle();
 		press(tree, "Add expense");
 		await flush();
 		const waiting = await local.outbox.all();
@@ -384,6 +397,72 @@ describe("Add income with Use my plan", () => {
 		await flush();
 		const preview = calls.find((c) => c.route === "income.preview");
 		expect(preview?.input).toMatchObject({ usePlan: false });
+		act(() => tree.unmount());
+	});
+});
+
+describe("Save waits for the dry run of what it will send", () => {
+	const fill = (tree: Tree) => {
+		press(tree, "Cafe");
+		press(tree, "Lucía Fernández");
+		for (const key of ["9", "0", "0"]) press(tree, key);
+	};
+	const creates = (calls: { route: string }[]) =>
+		calls.filter((c) => c.route.endsWith(".create"));
+
+	it("does not send while the preview is on its way", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		fill(tree);
+		press(tree, "Add expense");
+		await flush();
+		expect(creates(calls)).toEqual([]);
+		await settle();
+		press(tree, "Add expense");
+		await flush();
+		expect(creates(calls)).toHaveLength(1);
+		act(() => tree.unmount());
+	});
+
+	it("says No rate yet and does not save when the currency has no rate", async () => {
+		const { api, calls } = fakeApi();
+		(api as unknown as Record<string, { previewCreate: unknown }>)[
+			"shared-expenses"
+		]!.previewCreate = async () => {
+			throw Object.assign(new Error("No rate for ARS"), {
+				status: 422,
+				code: "missing_rate",
+			});
+		};
+		mockSession.api = api;
+		const tree = await open("expense");
+		fill(tree);
+		await settle();
+		expect(words(tree)).toContain(
+			"No rate yet for ARS. Pick another currency.",
+		);
+		press(tree, "Add expense");
+		await flush();
+		expect(creates(calls)).toEqual([]);
+		act(() => tree.unmount());
+	});
+
+	it("saves on the phone when the dry run can not be reached", async () => {
+		const { api, calls } = fakeApi();
+		(api as unknown as Record<string, { previewCreate: unknown }>)[
+			"shared-expenses"
+		]!.previewCreate = async () => {
+			throw new TypeError("Network request failed");
+		};
+		mockSession.api = api;
+		const tree = await open("expense");
+		fill(tree);
+		await settle();
+		expect(words(tree)).toContain("You're offline.");
+		press(tree, "Add expense");
+		await flush();
+		expect(creates(calls)).toHaveLength(1);
 		act(() => tree.unmount());
 	});
 });

@@ -14,7 +14,8 @@
 	},
 	"keypad": {
 		"delete": "Borrar",
-		"decimal": "Coma decimal"
+		"decimal": "Coma decimal",
+		"tripleZero": "Tres ceros"
 	},
 	"entry": {
 		"mode": "Tipo de entrada",
@@ -55,7 +56,9 @@
 			"queued": "Guardaste {title} en este teléfono. Se sincroniza cuando tengas conexión.",
 			"parked": "No se pudo agregar {title}. Queda en este teléfono.",
 			"undone": "Se quitó {title}",
-			"undoFailed": "No se pudo deshacer. Probá de nuevo desde Actividad."
+			"undoFailed": "No se pudo deshacer. Probá de nuevo desde Actividad.",
+			"discarded": "Se descartó {title}",
+			"parkedBackground": "{count, plural, one {No se pudo agregar # entrada. Queda en este teléfono.} other {No se pudieron agregar # entradas. Quedan en este teléfono.}}"
 		},
 		"changes": {
 			"title": "Qué cambia",
@@ -113,7 +116,21 @@
 				"budget_totalDebt": "la deuda total",
 				"accounts": "tus cuentas",
 				"project_total": "el total del proyecto"
-			}
+			},
+			"noRate": "Todavía no hay cotización para {currency}. Elegí otra moneda."
+		},
+		"currencyLabel": "Moneda, {code}",
+		"list": {
+			"two": "{first} y {second}",
+			"many": "{rest} y {last}",
+			"separator": ", "
+		},
+		"sync": {
+			"title": "No se pudo sincronizar",
+			"refused": "El servidor no aceptó esto.",
+			"retry": "Reintentar",
+			"discard": "Descartar",
+			"retryFailed": "Todavía no se puede enviar. Probá más tarde."
 		}
 	},
 	"connect": {

@@ -33,7 +33,7 @@ export function Tabs() {
 					: undefined
 			}
 			rippleColor={color.brandSoft}
-			sidebarAdaptable
+			sidebarAdaptable={!iPhone}
 			tintColor={color.brand}
 		>
 			<NativeTabs.Trigger name="home">

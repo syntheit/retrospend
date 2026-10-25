@@ -14,7 +14,8 @@
 	},
 	"keypad": {
 		"delete": "Löschen",
-		"decimal": "Dezimalkomma"
+		"decimal": "Dezimalkomma",
+		"tripleZero": "Drei Nullen"
 	},
 	"entry": {
 		"mode": "Art des Eintrags",
@@ -55,7 +56,9 @@
 			"queued": "{title} auf diesem Telefon gespeichert. Es wird synchronisiert, sobald du online bist.",
 			"parked": "{title} ließ sich nicht hinzufügen. Es bleibt auf diesem Telefon.",
 			"undone": "{title} entfernt",
-			"undoFailed": "Rückgängig ging nicht. Versuche es noch einmal in Aktivität."
+			"undoFailed": "Rückgängig ging nicht. Versuche es noch einmal in Aktivität.",
+			"discarded": "{title} verworfen",
+			"parkedBackground": "{count, plural, one {# Eintrag ließ sich nicht hinzufügen. Er bleibt auf diesem Telefon.} other {# Einträge ließen sich nicht hinzufügen. Sie bleiben auf diesem Telefon.}}"
 		},
 		"changes": {
 			"title": "Was sich ändert",
@@ -113,7 +116,21 @@
 				"budget_totalDebt": "die Gesamtschulden",
 				"accounts": "deine Konten",
 				"project_total": "die Projektsumme"
-			}
+			},
+			"noRate": "Noch kein Kurs für {currency}. Wähle eine andere Währung."
+		},
+		"currencyLabel": "Währung, {code}",
+		"list": {
+			"two": "{first} und {second}",
+			"many": "{rest} und {last}",
+			"separator": ", "
+		},
+		"sync": {
+			"title": "Synchronisierung fehlgeschlagen",
+			"refused": "Der Server hat das nicht angenommen.",
+			"retry": "Erneut versuchen",
+			"discard": "Verwerfen",
+			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
 		}
 	},
 	"connect": {

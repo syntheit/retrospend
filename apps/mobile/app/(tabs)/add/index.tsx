@@ -20,7 +20,7 @@ export default function AddScreen() {
 	const router = useRouter();
 	const { color, size, space, type } = useTheme();
 	const insets = useSafeAreaInsets();
-	const { mode } = useLocalSearchParams<{ mode?: string }>();
+	const { mode, at } = useLocalSearchParams<{ mode?: string; at?: string }>();
 	const [current, setCurrent] = useState<EntryMode>(
 		mode === "income" ? "income" : "expense",
 	);
@@ -52,6 +52,11 @@ export default function AddScreen() {
 			<EntryComposer
 				bottomInset={insets.bottom + TAB_BAR}
 				initialMode={mode === "income" ? "income" : "expense"}
+				modeRequest={
+					at
+						? { mode: mode === "income" ? "income" : "expense", at: Number(at) }
+						: undefined
+				}
 				onModeChange={setCurrent}
 				onDone={leave}
 			/>

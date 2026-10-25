@@ -8,8 +8,11 @@ export type SendResult =
 	| { status: "sent" }
 	/** The server holds a newer version of the row. Parked, not retried. */
 	| { status: "conflict"; reason: string }
-	/** No network or a server error: keep the entry and stop, to keep order. */
-	| { status: "retry"; reason: string };
+	/**
+	 * No network or a server error: keep the entry and stop, to keep order.
+	 * `kind` says which; without it the try counts as a network failure.
+	 */
+	| { status: "retry"; reason: string; kind?: "network" | "server" };
 
 export type Sender = (entry: OutboxEntry) => Promise<SendResult>;
 
@@ -27,6 +30,7 @@ export async function flushOutbox(
 	const report: FlushReport = { sent: 0, conflicts: 0, stopped: false };
 	for (const entry of await outbox.pending()) {
 		let result: SendResult;
+		await outbox.markSending(entry.clientId);
 		try {
 			result = await send(entry);
 		} catch (error) {
@@ -39,7 +43,7 @@ export async function flushOutbox(
 			await outbox.markConflict(entry.clientId, result.reason);
 			report.conflicts += 1;
 		} else {
-			await outbox.markFailed(entry.clientId, result.reason);
+			await outbox.markFailed(entry.clientId, result.reason, result.kind);
 			report.stopped = true;
 			return report;
 		}

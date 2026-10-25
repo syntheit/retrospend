@@ -2,7 +2,7 @@ import { Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
-import { Money } from "@/ui/Money";
+import { useFormatMoney } from "@/lib/money";
 import { recentCategories } from "./catalog";
 import { Chip } from "./Chip";
 import type { ExpenseDraft, ExpenseErrors, SplitRow } from "./draft";
@@ -98,6 +98,7 @@ export function ExpenseFields({
 	onTypingChange: (typing: boolean) => void;
 }) {
 	const t = useTranslations("mobile.entry");
+	const { format } = useFormatMoney();
 	const { color, size, space, type } = useTheme();
 	const recents = recentCategories(catalog, RECENTS, draft.categoryId);
 	const row = {
@@ -212,7 +213,20 @@ export function ExpenseFields({
 							>
 								{r.name}
 							</Text>
-							<Money value={{ minor: r.minor, currency: draft.currency }} />
+							<Text
+								style={{
+									color: color.fg,
+									fontSize: type.body.size,
+									fontVariant: ["tabular-nums"],
+									fontWeight: "500",
+									textAlign: "right",
+								}}
+							>
+								{format(
+									{ minor: r.minor, currency: draft.currency },
+									{ cents: true },
+								) ?? ""}
+							</Text>
 						</View>
 					))}
 				</View>

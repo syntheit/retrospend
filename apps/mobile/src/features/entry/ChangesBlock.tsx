@@ -19,16 +19,35 @@ export function ChangesBlock({
 	idle: string;
 }) {
 	const t = useTranslations("mobile.entry.changes");
+	const tl = useTranslations("mobile.entry.list");
 	const { color, space, type } = useTheme();
 	const { format } = useFormatMoney();
 	const lines: ChangeLines | null =
 		state.status === "ready" ? changeLines(state.diff) : null;
+	// One precision down a column: every amount shows its minor digits.
+	const money = (
+		value: { minor: number; currency: string },
+		sign?: "exceptZero",
+	) => format(value, { cents: true, sign }) ?? "";
 
-	// Figure ids have dots, which message keys cannot.
+	// Figure ids have dots, which message keys cannot. An id with no name of
+	// its own reads "another figure", never the id.
 	const name = (id: string, inline: boolean) => {
-		const key = `${inline ? "figuresInline" : "figures"}.${id.replaceAll(".", "_")}`;
+		const group = inline ? "figuresInline" : "figures";
+		const key = `${group}.${id.replaceAll(".", "_")}`;
 		// The key is built at run time, so it can not be checked against the catalog.
-		return t.has(key as never) ? t(key as never) : id;
+		return t.has(key as never) ? t(key as never) : t(`${group}.other` as never);
+	};
+	// A list in the person's language: the words between items are messages.
+	const list = (items: string[]) => {
+		if (items.length < 2) return items[0] ?? "";
+		if (items.length === 2) {
+			return tl("two", { first: items[0] ?? "", second: items[1] ?? "" });
+		}
+		return tl("many", {
+			rest: items.slice(0, -1).join(tl("separator")),
+			last: items[items.length - 1] ?? "",
+		});
 	};
 	const status =
 		state.status === "idle"
@@ -38,7 +57,9 @@ export function ChangesBlock({
 				: state.status === "offline"
 					? t("offline")
 					: state.status === "refused"
-						? t("refused")
+						? state.reason === "missingRate"
+							? t("noRate", { currency: state.currency })
+							: t("refused")
 						: null;
 
 	return (
@@ -87,10 +108,10 @@ export function ChangesBlock({
 							textAlign: "right",
 						}}
 					>
-						{format(line.delta, { sign: "exceptZero" }) ?? ""}
+						{money(line.delta, "exceptZero")}
 						{line.after ? (
 							<Text style={{ color: color.fg2, fontWeight: "400" }}>
-								{` ${t("to", { amount: format(line.after) ?? "" })}`}
+								{` ${t("to", { amount: money(line.after) })}`}
 							</Text>
 						) : null}
 					</Text>
@@ -99,14 +120,14 @@ export function ChangesBlock({
 			{lines && lines.stays.length > 0 ? (
 				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 					{t("stays", {
-						places: lines.stays.map((id) => name(id, true)).join(", "),
+						places: list(lines.stays.map((id) => name(id, true))),
 					})}
 				</Text>
 			) : null}
 			{lines && lines.unknown.length > 0 ? (
 				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 					{t("unknown", {
-						places: lines.unknown.map((id) => name(id, true)).join(", "),
+						places: list(lines.unknown.map((id) => name(id, true))),
 					})}
 				</Text>
 			) : null}

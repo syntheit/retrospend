@@ -15,37 +15,54 @@ export type PreviewState =
 	| { status: "ready"; diff: PreviewDto }
 	/** The server could not be reached: the write will wait on the phone. */
 	| { status: "offline" }
-	/** The server refused the dry run (a missing rate, a bad share). */
-	| { status: "refused" };
+	/** The server refused the dry run: no rate for the currency, or a field it rejects. */
+	| { status: "refused"; reason: "missingRate" | "other"; currency: string };
+
+/** No answer for this long reads as offline; Save then waits on the phone. */
+const PREVIEW_TIMEOUT_MS = 8000;
 
 export async function fetchPreview(
 	api: RetrospendClient,
 	write: PendingWrite,
 ): Promise<PreviewState> {
+	const timeout = new AbortController();
+	const timer = setTimeout(() => timeout.abort(), PREVIEW_TIMEOUT_MS);
+	const options = { signal: timeout.signal };
 	try {
 		const body = write.body;
 		const diff =
 			write.entity === "expenses"
 				? await api.expenses.previewCreate(
 						body as Parameters<typeof api.expenses.previewCreate>[0],
+						options,
 					)
 				: write.entity === "shared-expenses"
 					? await api["shared-expenses"].previewCreate(
 							body as Parameters<
 								(typeof api)["shared-expenses"]["previewCreate"]
 							>[0],
+							options,
 						)
 					: await api.income.previewCreate(
 							body as Parameters<typeof api.income.previewCreate>[0],
+							options,
 						);
 		return { status: "ready", diff };
 	} catch (error) {
 		// A thrown error without a status never reached the server. A 401 is the
 		// session ending; the write waits on the phone for the next sign in.
-		const status = (error as { status?: number } | null)?.status;
-		return status === undefined || status === 401
-			? { status: "offline" }
-			: { status: "refused" };
+		const { status, code } = (error ?? {}) as {
+			status?: number;
+			code?: string;
+		};
+		if (status === undefined || status === 401) return { status: "offline" };
+		return {
+			status: "refused",
+			reason: code === "missing_rate" ? "missingRate" : "other",
+			currency: String(write.body.currency ?? ""),
+		};
+	} finally {
+		clearTimeout(timer);
 	}
 }
 

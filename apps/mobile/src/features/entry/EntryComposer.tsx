@@ -1,3 +1,4 @@
+import { dayKey } from "@retrospend/domain/time-zone";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Keyboard, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -7,7 +8,6 @@ import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { useToast } from "@/ui/Toast";
-import { dayKey } from "@retrospend/domain/time-zone";
 import { ChangesBlock } from "./ChangesBlock";
 import { ComposerShell, type EntryMode } from "./ComposerShell";
 import {
@@ -24,25 +24,34 @@ import { ExpenseFields } from "./ExpenseFields";
 import { useEntryCatalog, useEntryPreview } from "./hooks";
 import { IncomeFields } from "./IncomeFields";
 import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
+import { SyncIssues } from "./SyncIssues";
 import type { EntryCatalog } from "./types";
+
+/** A request to open in a mode; `at` changes on every request, even for the same mode. */
+export interface ModeRequest {
+	mode: EntryMode;
+	at: number;
+}
+
+interface ComposerProps {
+	onDone: () => void;
+	initialMode?: EntryMode;
+	/** The mode to switch to when it changes, for a screen that stays mounted. */
+	modeRequest?: ModeRequest;
+	/** The host shows the mode in its title. */
+	onModeChange?: (mode: EntryMode) => void;
+	/** Room for a bar that floats over the screen, like the iPhone tab bar. */
+	bottomInset?: number;
+	/** The composer sits on a sheet: it takes the sheet's surface, not the page's. */
+	surface?: boolean;
+}
 
 /**
  * Add expense and Add income in one frame. The same component sits in the
  * iPhone tab, the iPad form sheet and the Android bottom sheet; `onDone`
  * closes whichever it is in.
  */
-export function EntryComposer({
-	onDone,
-	initialMode = "expense",
-	onModeChange,
-	bottomInset,
-}: {
-	onDone: () => void;
-	initialMode?: EntryMode;
-	bottomInset?: number;
-	/** The host shows the mode in its title. */
-	onModeChange?: (mode: EntryMode) => void;
-}) {
+export function EntryComposer(props: ComposerProps) {
 	const t = useTranslations("mobile.entry");
 	const catalog = useEntryCatalog();
 	const { state } = useSession();
@@ -56,15 +65,7 @@ export function EntryComposer({
 	if (catalog.status === "error") {
 		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
 	}
-	return (
-		<Form
-			catalog={catalog.catalog}
-			initialMode={initialMode}
-			onDone={onDone}
-			onModeChange={onModeChange}
-			bottomInset={bottomInset}
-		/>
-	);
+	return <Form {...props} catalog={catalog.catalog} />;
 }
 
 function Notice({ title, detail }: { title: string; detail?: string }) {
@@ -78,22 +79,18 @@ function Notice({ title, detail }: { title: string; detail?: string }) {
 
 function Form({
 	catalog,
-	initialMode,
+	initialMode = "expense",
+	modeRequest,
 	onDone,
 	onModeChange,
 	bottomInset,
-}: {
-	catalog: EntryCatalog;
-	initialMode: EntryMode;
-	onDone: () => void;
-	onModeChange?: (mode: EntryMode) => void;
-	bottomInset?: number;
-}) {
+	surface,
+}: ComposerProps & { catalog: EntryCatalog }) {
 	const t = useTranslations("mobile.entry");
 	const locale = useFormatLocale();
 	const toast = useToast();
 	const { api, local, state } = useSession();
-	const { color, space } = useTheme();
+	const { space } = useTheme();
 	const me = state.status === "signedIn" ? state.me : null;
 	const today = () => dayKey(new Date());
 	const fresh = useCallback(
@@ -112,11 +109,22 @@ function Form({
 		}),
 		[me?.defaultCurrency, me?.homeCurrency, catalog.hasBudget],
 	);
-	const [mode, setMode] = useState(initialMode);
+	const [mode, setMode] = useState(modeRequest?.mode ?? initialMode);
 	const [drafts, setDrafts] = useState(fresh);
 	const [tried, setTried] = useState(false);
 	const [typing, setTyping] = useState(false);
 	const [busy, setBusy] = useState(false);
+
+	// The Add tab stays mounted; a later "Add income" request switches it.
+	const requestedAt = modeRequest?.at;
+	useEffect(() => {
+		if (requestedAt === undefined || !modeRequest) return;
+		setMode(modeRequest.mode);
+		setTried(false);
+		onModeChange?.(modeRequest.mode);
+		// Only a new request counts, not a new callback.
+	}, [requestedAt]);
+
 	// Android keeps a field focused after the keyboard is dismissed.
 	useEffect(() => {
 		const hide = Keyboard.addListener("keyboardDidHide", () =>
@@ -138,6 +146,12 @@ function Form({
 	);
 	const write = mode === "expense" ? expenseWrite : incomeWrite;
 	const preview = useEntryPreview(write);
+	// Save waits for the dry run of exactly what it will send. Offline there is
+	// none and the write waits on the phone; a refused one can not be saved.
+	const blocked =
+		write !== null &&
+		preview.status !== "ready" &&
+		preview.status !== "offline";
 	const rows = useMemo(
 		() =>
 			splitRows(expense, {
@@ -162,19 +176,18 @@ function Form({
 
 	async function add() {
 		setTried(true);
-		if (!write || !api || !local || busy) return;
+		if (!write || !api || !local || busy || blocked) return;
 		setBusy(true);
-		const outcome = await saveEntry({ outbox: local.outbox, api, write });
-		setBusy(false);
+		let outcome: SaveOutcome;
+		try {
+			outcome = await saveEntry({ outbox: local.outbox, api, write });
+		} finally {
+			setBusy(false);
+		}
 		announceEntryChange();
 		const clientId = String(write.body.id);
 		showSaved(outcome, write.label, async () => {
-			const result = await undoSaved({
-				outbox: local.outbox,
-				api,
-				clientId,
-				outcome,
-			});
+			const result = await undoSaved({ outbox: local.outbox, api, clientId });
 			announceEntryChange();
 			toast.show({
 				message:
@@ -195,10 +208,12 @@ function Form({
 				: outcome.status === "queued"
 					? t("toast.queued", { title })
 					: t("toast.parked", { title });
+		const undoable =
+			outcome.status === "queued" ||
+			(outcome.status === "synced" && outcome.undo !== null);
 		toast.show({
 			message,
-			undo:
-				outcome.status === "parked" ? undefined : { label: t("undo"), onUndo },
+			undo: undoable ? { label: t("undo"), onUndo } : undefined,
 		});
 	}
 
@@ -207,8 +222,9 @@ function Form({
 			addDescription={mode === "expense" ? t("addExpense") : t("addIncome")}
 			addLabel={t("add")}
 			amountError={tried && amountProblem === true}
-			bottomInset={bottomInset}
 			amountText={active.amountText}
+			blocked={blocked}
+			bottomInset={bottomInset}
 			busy={busy}
 			currencies={catalog.currencies}
 			currency={active.currency}
@@ -222,9 +238,11 @@ function Form({
 				setTried(false);
 				onModeChange?.(next);
 			}}
+			surface={surface}
 			typing={typing}
 		>
-			<View style={{ gap: space[4], backgroundColor: color.bg }}>
+			<View style={{ gap: space[4] }}>
+				<SyncIssues />
 				{mode === "expense" ? (
 					<ExpenseFields
 						catalog={catalog}

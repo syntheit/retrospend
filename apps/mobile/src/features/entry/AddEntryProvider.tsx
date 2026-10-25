@@ -14,7 +14,7 @@ import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet } from "@/ui/Sheet";
 import type { EntryMode } from "./ComposerShell";
-import { EntryComposer } from "./EntryComposer";
+import { EntryComposer, type ModeRequest } from "./EntryComposer";
 import { useOutboxFlush } from "./useOutboxFlush";
 
 interface AddEntryApi {
@@ -51,7 +51,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const insets = useSafeAreaInsets();
 	const { height, width } = useWindowDimensions();
 	const { space } = useTheme();
-	const [sheet, setSheet] = useState<{ mode: EntryMode } | null>(null);
+	const [sheet, setSheet] = useState<ModeRequest | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
 	const iPhone = Platform.OS === "ios" && !Platform.isPad;
 	useOutboxFlush();
@@ -71,11 +71,15 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const open = useCallback(
 		(next: EntryMode = "expense") => {
 			if (iPhone) {
-				router.navigate({ pathname: "/add", params: { mode: next } });
+				// `at` makes a second request for the same mode count again.
+				router.navigate({
+					pathname: "/add",
+					params: { mode: next, at: String(Date.now()) },
+				});
 				return;
 			}
 			setMode(next);
-			setSheet({ mode: next });
+			setSheet({ mode: next, at: Date.now() });
 		},
 		[iPhone, router],
 	);
@@ -113,6 +117,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 								initialMode={sheet.mode}
 								onDone={close}
 								onModeChange={setMode}
+								surface
 							/>
 						) : null}
 					</View>

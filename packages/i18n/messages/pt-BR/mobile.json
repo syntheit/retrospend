@@ -14,7 +14,8 @@
 	},
 	"keypad": {
 		"delete": "Apagar",
-		"decimal": "Vírgula decimal"
+		"decimal": "Vírgula decimal",
+		"tripleZero": "Três zeros"
 	},
 	"entry": {
 		"mode": "Tipo de lançamento",
@@ -55,7 +56,9 @@
 			"queued": "{title} salvo neste celular. Sincroniza quando você estiver online.",
 			"parked": "Não foi possível adicionar {title}. Ele fica neste celular.",
 			"undone": "{title} removido",
-			"undoFailed": "Não foi possível desfazer. Tente de novo em Atividade."
+			"undoFailed": "Não foi possível desfazer. Tente de novo em Atividade.",
+			"discarded": "{title} descartado",
+			"parkedBackground": "{count, plural, one {Não foi possível adicionar # lançamento. Ele fica neste celular.} other {Não foi possível adicionar # lançamentos. Eles ficam neste celular.}}"
 		},
 		"changes": {
 			"title": "O que isso muda",
@@ -113,7 +116,21 @@
 				"budget_totalDebt": "a dívida total",
 				"accounts": "suas contas",
 				"project_total": "o total do projeto"
-			}
+			},
+			"noRate": "Ainda não há cotação para {currency}. Escolha outra moeda."
+		},
+		"currencyLabel": "Moeda, {code}",
+		"list": {
+			"two": "{first} e {second}",
+			"many": "{rest} e {last}",
+			"separator": ", "
+		},
+		"sync": {
+			"title": "Não foi possível sincronizar",
+			"refused": "O servidor não aceitou isto.",
+			"retry": "Tentar de novo",
+			"discard": "Descartar",
+			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
 		}
 	},
 	"connect": {

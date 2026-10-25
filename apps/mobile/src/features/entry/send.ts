@@ -41,57 +41,125 @@ type Body<T> = T extends (input: infer I, ...rest: never[]) => unknown
 
 /** A server that keeps answering 5xx for one write is refusing it, not down. */
 const MAX_SERVER_ERRORS = 3;
+/** No answer for this long counts as no network; the write waits in the outbox. */
+export const SEND_TIMEOUT_MS = 10_000;
 
-/**
- * Network failures and server trouble retry; a refused write is parked.
- * `attempts` is how often this write already failed: a write must not hold
- * the whole queue forever behind a server error that never clears.
- */
-export function classify(error: unknown, attempts = 0): SendResult {
-	const { status, code } = (error ?? {}) as { status?: number; code?: string };
-	const reason = code ?? (error instanceof Error ? error.message : "unknown");
-	// No status: the request never got an answer (offline, timeout).
-	if (status === undefined) return { status: "retry", reason };
-	// A 401 ends the session on its own; the write waits for the next sign in.
-	if (status === 401 || status === 403 || status === 408 || status === 429) {
-		return { status: "retry", reason };
+/** What the server said the first time, kept so Undo can find the token. */
+const sentTokens = new Map<string, UndoRef>();
+const MAX_TOKENS = 50;
+
+export function rememberUndo(clientId: string, ref: UndoRef): void {
+	sentTokens.set(clientId, ref);
+	// Oldest first: a Map iterates in insertion order.
+	while (sentTokens.size > MAX_TOKENS) {
+		const oldest = sentTokens.keys().next().value;
+		if (oldest === undefined) break;
+		sentTokens.delete(oldest);
 	}
-	if (status >= 500) {
-		return attempts >= MAX_SERVER_ERRORS
-			? { status: "conflict", reason }
-			: { status: "retry", reason };
-	}
-	if (code === "idempotency_in_progress") return { status: "retry", reason };
-	return { status: "conflict", reason };
+}
+
+/** Test seam: forget every kept token. */
+export function forgetUndoTokens(): void {
+	sentTokens.clear();
+}
+
+export function undoFor(clientId: string): UndoRef | undefined {
+	return sentTokens.get(clientId);
+}
+
+/** A client-made id that the server already holds: an earlier try got through. */
+function idTaken(error: unknown): boolean {
+	const { status, code, message } = (error ?? {}) as {
+		status?: number;
+		code?: string;
+		message?: string;
+	};
+	return (
+		status === 409 &&
+		code === "conflict" &&
+		typeof message === "string" &&
+		message.includes("already used")
+	);
 }
 
 /**
- * The sender for the composers' entities. `onSent` hears the undo token of
- * each write that went through, so Save can offer Undo right away.
+ * Network failures and server trouble retry; a refused write is parked.
+ * `serverErrors` is how often this write already met a 5xx: a write must not
+ * hold the whole queue forever behind a server error that never clears.
  */
+export function classify(error: unknown, serverErrors = 0): SendResult {
+	const { status, code } = (error ?? {}) as { status?: number; code?: string };
+	const reason = code ?? (error instanceof Error ? error.message : "unknown");
+	// No status: the request never got an answer (offline, timeout).
+	if (status === undefined) return { status: "retry", reason, kind: "network" };
+	// A 401 ends the session on its own; the write waits for the next sign in.
+	// A token without the scope may get it after a re-authorization.
+	if (
+		status === 401 ||
+		status === 408 ||
+		status === 429 ||
+		code === "missing_scope" ||
+		code === "idempotency_in_progress"
+	) {
+		return { status: "retry", reason, kind: "network" };
+	}
+	if (status >= 500) {
+		return serverErrors >= MAX_SERVER_ERRORS
+			? { status: "conflict", reason }
+			: { status: "retry", reason, kind: "server" };
+	}
+	// 400, 403, 404, 409, 422: the server read it and said no.
+	return { status: "conflict", reason };
+}
+
+export interface SenderOptions {
+	/** Stops the run: the account changed, so nothing more is sent. */
+	signal?: AbortSignal;
+}
+
+/** The sender for the composers' entities. Undo tokens are kept for Undo. */
 export function createEntrySender(
 	api: RetrospendClient,
-	onSent?: (entry: OutboxEntry, undo: UndoRef) => void,
+	options: SenderOptions = {},
 ): Sender {
 	return async (entry) => {
 		if (!isEntryEntity(entry.entity)) {
 			return { status: "retry", reason: `no sender for ${entry.entity}` };
 		}
-		const context = { idempotencyKey: entry.clientId };
+		if (options.signal?.aborted) {
+			return { status: "retry", reason: "aborted", kind: "network" };
+		}
+		const timeout = new AbortController();
+		const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
+		const stop = () => timeout.abort();
+		options.signal?.addEventListener("abort", stop);
 		try {
-			const token = await create(api, entry, { context });
-			onSent?.(entry, { entity: entry.entity, token });
+			const token = await create(api, entry, {
+				context: { idempotencyKey: entry.clientId },
+				signal: timeout.signal,
+			});
+			rememberUndo(entry.clientId, { entity: entry.entity, token });
 			return { status: "sent" };
 		} catch (error) {
-			return classify(error, entry.attempts);
+			// The id exists: an earlier try went through and its answer got lost.
+			if (idTaken(error)) return { status: "sent" };
+			return classify(error, entry.serverErrors);
+		} finally {
+			clearTimeout(timer);
+			options.signal?.removeEventListener("abort", stop);
 		}
 	};
+}
+
+interface CallOptions {
+	context: { idempotencyKey: string };
+	signal: AbortSignal;
 }
 
 async function create(
 	api: RetrospendClient,
 	entry: OutboxEntry,
-	options: { context: { idempotencyKey: string } },
+	options: CallOptions,
 ): Promise<string> {
 	switch (entry.entity as EntryEntity) {
 		case "expenses":
@@ -124,10 +192,19 @@ export async function undoWrite(
 	ref: UndoRef,
 	clientId: string,
 ): Promise<void> {
-	const options = { context: { idempotencyKey: `${clientId}-undo` } };
+	const timeout = new AbortController();
+	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
+	const options = {
+		context: { idempotencyKey: `${clientId}-undo` },
+		signal: timeout.signal,
+	};
 	const input = { token: ref.token };
-	if (ref.entity === "expenses") await api.expenses.undo(input, options);
-	else if (ref.entity === "shared-expenses") {
-		await api["shared-expenses"].undo(input, options);
-	} else await api.income.undo(input, options);
+	try {
+		if (ref.entity === "expenses") await api.expenses.undo(input, options);
+		else if (ref.entity === "shared-expenses") {
+			await api["shared-expenses"].undo(input, options);
+		} else await api.income.undo(input, options);
+	} finally {
+		clearTimeout(timer);
+	}
 }

@@ -14,7 +14,8 @@
 	},
 	"keypad": {
 		"delete": "Delete",
-		"decimal": "Decimal point"
+		"decimal": "Decimal point",
+		"tripleZero": "Three zeros"
 	},
 	"entry": {
 		"mode": "Entry type",
@@ -55,7 +56,9 @@
 			"queued": "Saved {title} on this phone. It syncs when you're online.",
 			"parked": "Couldn't add {title}. It stays on this phone.",
 			"undone": "Removed {title}",
-			"undoFailed": "Couldn't undo. Try again from Activity."
+			"undoFailed": "Couldn't undo. Try again from Activity.",
+			"discarded": "Discarded {title}",
+			"parkedBackground": "{count, plural, one {# entry couldn't be added. It stays on this phone.} other {# entries couldn't be added. They stay on this phone.}}"
 		},
 		"changes": {
 			"title": "What this changes",
@@ -113,7 +116,21 @@
 				"budget_totalDebt": "total debt",
 				"accounts": "your accounts",
 				"project_total": "the project total"
-			}
+			},
+			"noRate": "No rate yet for {currency}. Pick another currency."
+		},
+		"currencyLabel": "Currency, {code}",
+		"list": {
+			"two": "{first} and {second}",
+			"many": "{rest}, and {last}",
+			"separator": ", "
+		},
+		"sync": {
+			"title": "Couldn't sync",
+			"refused": "The server didn't accept this.",
+			"retry": "Try again",
+			"discard": "Discard",
+			"retryFailed": "Still can't send it. Try again later."
 		}
 	},
 	"connect": {

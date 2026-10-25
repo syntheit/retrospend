@@ -2,7 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
-import { applyKey, BACKSPACE, keypadLayout } from "./keypad";
+import { applyKey, BACKSPACE, keypadLayout, TRIPLE_ZERO } from "./keypad";
 
 /**
  * The amount keypad for the composer: big touch targets, the locale's
@@ -31,6 +31,7 @@ export function MoneyKeypad({
 	function labelOf(key: string) {
 		if (key === BACKSPACE) return t("delete");
 		if (key === decimal) return t("decimal");
+		if (key === TRIPLE_ZERO) return t("tripleZero");
 		return key;
 	}
 

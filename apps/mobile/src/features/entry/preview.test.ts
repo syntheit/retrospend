@@ -99,7 +99,7 @@ describe("fetchPreview", () => {
 		label: "Grupo Andino",
 		body: { id: "x", title: "Grupo Andino", amount: "1.00", currency: "ARS" },
 	};
-	const apiWith = (previewCreate: () => Promise<unknown>) =>
+	const apiWith = (previewCreate: (...args: unknown[]) => Promise<unknown>) =>
 		({ income: { previewCreate } }) as unknown as RetrospendClient;
 
 	it("returns the server's dry run for the same body Save sends", async () => {
@@ -125,9 +125,28 @@ describe("fetchPreview", () => {
 	it("says refused when the server rejects the dry run, even with a 500", async () => {
 		for (const status of [409, 500]) {
 			const api = apiWith(async () => {
-				throw Object.assign(new Error("no rate"), { status });
+				throw Object.assign(new Error("no"), { status });
 			});
-			expect(await fetchPreview(api, write)).toEqual({ status: "refused" });
+			expect(await fetchPreview(api, write)).toEqual({
+				status: "refused",
+				reason: "other",
+				currency: "ARS",
+			});
 		}
+	});
+
+	it("names a missing rate, so the screen can say No rate yet", async () => {
+		const api = apiWith(async () => {
+			throw Object.assign(new Error("No rate for UYU"), {
+				status: 422,
+				code: "missing_rate",
+			});
+		});
+		expect(
+			await fetchPreview(api, {
+				...write,
+				body: { ...write.body, currency: "UYU" },
+			}),
+		).toEqual({ status: "refused", reason: "missingRate", currency: "UYU" });
 	});
 });

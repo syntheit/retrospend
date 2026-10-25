@@ -40,26 +40,27 @@ const PREVIEW_DELAY_MS = 350;
 
 /**
  * The server's dry run of `write`, asked 350 ms after the last change so
- * typing an amount does not send a request per key.
+ * typing an amount does not send a request per key. The answer is kept with
+ * the body it was for: a preview of an older body never shows as current, so
+ * Save can wait for the preview of what it is about to send.
  */
 export function useEntryPreview(write: PendingWrite | null): PreviewState {
 	const { api } = useSession();
-	const [preview, setPreview] = useState<PreviewState>({ status: "idle" });
+	const [kept, setKept] = useState<{ signature: string; state: PreviewState }>({
+		signature: "",
+		state: { status: "idle" },
+	});
 	// A new object every render, but the same text while nothing changed.
 	const signature = write
 		? `${write.entity}:${JSON.stringify(write.body)}`
 		: "";
 
 	useEffect(() => {
-		if (!api || !write) {
-			setPreview({ status: "idle" });
-			return;
-		}
+		if (!api || !write) return;
 		let cancelled = false;
-		setPreview({ status: "loading" });
 		const timer = setTimeout(() => {
-			fetchPreview(api, write).then((next) => {
-				if (!cancelled) setPreview(next);
+			fetchPreview(api, write).then((state) => {
+				if (!cancelled) setKept({ signature, state });
 			});
 		}, PREVIEW_DELAY_MS);
 		return () => {
@@ -69,5 +70,6 @@ export function useEntryPreview(write: PendingWrite | null): PreviewState {
 		// `write` is read through `signature`.
 	}, [api, signature]);
 
-	return preview;
+	if (!write) return { status: "idle" };
+	return kept.signature === signature ? kept.state : { status: "loading" };
 }
