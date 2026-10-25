@@ -26,6 +26,7 @@ import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
+	addRow,
 	augustBook,
 	invariantAt,
 	seedUser,
@@ -292,6 +293,64 @@ describe("starting money", () => {
 			startingBalanceExpenseId: null,
 		});
 		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(0));
+	});
+
+	it("books what you have plus what was already spent since the start", async () => {
+		// By hand: 153.00 spent before the answer leaves the budget holding -15,300.
+		// Having 250.00 now means a money in of 25,000 + 15,300 = 40,300: To assign 40,300,
+		// Dining -15,300, and 40,300 - 15,300 = 25,000 held.
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			startingMoneyMinor: undefined,
+			timeZone: "UTC",
+		});
+		await addRow(s.user.id, { amount: 153, categoryId: s.dining });
+		const id = randomUUID();
+		const input = { id, amountMinor: 25_000 };
+		const p = await forUser(s.user.id).preview(
+			confirmStartingMoneyMutation,
+			input,
+		);
+		expect(p.value).toMatchObject({
+			amount: usd(25_000),
+			booked: usd(40_300),
+			alreadySpent: usd(15_300),
+		});
+		const a = await forUser(s.user.id).apply(
+			confirmStartingMoneyMutation,
+			input,
+		);
+		expect(a.value.since).toBe(p.value.since);
+		const m = await getMonth(s.user.id);
+		expect(m?.toAssign.amount).toEqual(usd(40_300));
+		const sides = await invariantAt(s.user.id);
+		expect(sides.budget).toBe(sides.ledger);
+		// What the budget holds is what was said: 40,300 - 15,300.
+		expect(sides.budget).toBe(25_000);
+		const row = await adminDb.expense.findUniqueOrThrow({
+			where: { id: a.value.expenseId as string },
+		});
+		expect(row.date.toISOString()).toBe(`${p.value.since}T12:00:00.000Z`);
+		expect(row.amount.toString()).toBe("403");
+		await forUser(s.user.id).apply(undoChangeMutation, { id });
+		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(0));
+	});
+
+	it("less than the budget already holds is refused", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			startingMoneyMinor: undefined,
+			timeZone: "UTC",
+		});
+		await addRow(s.user.id, { amount: 500, direction: "IN", inType: "INCOME" });
+		await expect(
+			forUser(s.user.id).preview(confirmStartingMoneyMutation, {
+				id: randomUUID(),
+				amountMinor: 100,
+			}),
+		).rejects.toMatchObject({ code: "INVALID" });
 	});
 
 	it("0 is an answer with no row", async () => {

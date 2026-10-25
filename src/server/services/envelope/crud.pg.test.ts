@@ -51,7 +51,8 @@ import {
 import { computeBook } from "./engine";
 import { loadBook } from "./inputs";
 import { budgetMonthOf, isoDateIn } from "./months";
-import { getMonth } from "./read.service";
+import { undoMovements } from "./movement.mutation";
+import { getHistory, getMonth } from "./read.service";
 
 const usd = (minor: number) => ({ minor, currency: "USD" });
 const current = budgetMonthOf(isoDateIn(new Date(), "UTC"), [
@@ -433,5 +434,72 @@ describe("create and update an envelope", () => {
 				categoryIds: [other.dining],
 			}),
 		).rejects.toMatchObject({ code: "INVALID" });
+	});
+});
+
+describe("undo that would trample a later edit", () => {
+	let b: Awaited<ReturnType<typeof thisMonth>>;
+	const first = randomUUID();
+	const second = randomUUID();
+
+	beforeAll(async () => {
+		b = await thisMonth();
+		await getMonth(b.user.id);
+	});
+
+	it("Rent takes Dining's category, then Spending takes it from Rent: the first undo is refused", async () => {
+		await forUser(b.user.id).apply(updateEnvelopeMutation, {
+			id: first,
+			envelopeId: b.id.Rent,
+			categoryIds: [b.rent, b.dining],
+		});
+		await forUser(b.user.id).apply(updateEnvelopeMutation, {
+			id: second,
+			envelopeId: b.id.Spending,
+			categoryIds: [b.dining],
+		});
+		await expect(
+			forUser(b.user.id).apply(undoChangeMutation, { id: first }),
+		).rejects.toMatchObject({ code: "INVALID" });
+		// Nothing moved: the category is still with Spending.
+		const m = await getMonth(b.user.id);
+		expect(rowOf(m, b.id.Spending)?.categoryIds).toEqual([b.dining]);
+	});
+
+	it("undone in order, both come back and every Left is where it started", async () => {
+		await forUser(b.user.id).apply(undoChangeMutation, { id: second });
+		await forUser(b.user.id).apply(undoChangeMutation, { id: first });
+		const m = await getMonth(b.user.id);
+		expect(leftOf(m, b.id.Dining)).toBe(16_500);
+		expect(leftOf(m, b.id.Rent)).toBe(9_000);
+		expect(leftOf(m, b.id.Spending)).toBe(0);
+		expect(rowOf(m, b.id.Dining)?.categoryIds).toEqual([b.dining]);
+		await sides(b.user.id);
+	});
+});
+
+describe("envelope.undo and an envelope edit", () => {
+	it("refuses a batch that belongs to an edit and says to use undoChange", async () => {
+		const b = await thisMonth();
+		await getMonth(b.user.id);
+		const id = randomUUID();
+		await forUser(b.user.id).apply(archiveEnvelopeMutation, {
+			id,
+			envelopeId: b.id.Dining,
+		});
+		await expect(
+			forUser(b.user.id).apply(undoMovements, {
+				id: randomUUID(),
+				target: { batchId: id },
+			}),
+		).rejects.toMatchObject({
+			code: "INVALID",
+			message: expect.stringContaining("undoChange"),
+		});
+		const hist = await getHistory(b.user.id, { limit: 50 });
+		expect(
+			hist.items.filter((i) => i.batchId === id).every((i) => !i.canUndo),
+		).toBe(true);
+		await forUser(b.user.id).apply(undoChangeMutation, { id });
 	});
 });

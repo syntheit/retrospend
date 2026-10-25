@@ -134,19 +134,36 @@ export function parseBefore<K extends ChangeKind>(
 	return parsed.data as Before<K>;
 }
 
-/** The edits whose undo a later edit would make wrong: any newer edit of the same envelope. */
+const MOVES_LINKS: readonly string[] = ["CREATE", "UPDATE", "MERGE", "ARCHIVE"];
+
+/** The categories an edit moved (none for edits that leave links alone). */
+function movedCategories(kind: string, raw: unknown): string[] {
+	if (!MOVES_LINKS.includes(kind)) return [];
+	const links = (raw as { links?: Array<{ categoryId: string }> } | null)
+		?.links;
+	return (links ?? []).map((l) => l.categoryId);
+}
+
+/**
+ * Edits made after `row` that its undo would trample: a newer edit of the
+ * same envelopes, or one that moved any of the same categories (undoing the
+ * older one would pull a category back from under the newer one and shift
+ * Lefts). Edits already undone do not count.
+ */
 export async function newerChanges(
 	tx: Tx,
 	bookId: string,
+	row: { kind: string; before: unknown; createdAt: Date },
 	envelopeIds: readonly string[],
-	after: Date,
 ) {
-	return tx.envelopeChange.count({
-		where: {
-			bookId,
-			undoneAt: null,
-			createdAt: { gt: after },
-			envelopeId: { in: [...envelopeIds] },
-		},
+	const newer = await tx.envelopeChange.findMany({
+		where: { bookId, undoneAt: null, createdAt: { gt: row.createdAt } },
+		select: { kind: true, envelopeId: true, before: true },
 	});
+	const mine = new Set(movedCategories(row.kind, row.before));
+	return newer.filter(
+		(n) =>
+			(n.envelopeId !== null && envelopeIds.includes(n.envelopeId)) ||
+			movedCategories(n.kind, n.before).some((c) => mine.has(c)),
+	).length;
 }

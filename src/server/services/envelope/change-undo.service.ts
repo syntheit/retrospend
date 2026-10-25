@@ -230,7 +230,7 @@ export async function undoChange(
 	const affected = [row.envelopeId ?? ""];
 	if (row.kind === "MERGE")
 		affected.push(...parseBefore("MERGE", row.before).sources);
-	if (await newerChanges(tx, bookId, affected, row.createdAt))
+	if (await newerChanges(tx, bookId, row, affected))
 		throw new EnvelopeError(
 			"INVALID",
 			"undo the newer change to this envelope first",
