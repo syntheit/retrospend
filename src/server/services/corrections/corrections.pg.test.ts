@@ -844,6 +844,20 @@ describe("correct: access", () => {
 		expect(await read(outsider)).toHaveLength(0);
 	});
 
+	it("a creator who left the project gets a clear refusal, not a database error", async () => {
+		const w = await settledWorld();
+		const project = await adminDb.project.create({
+			data: { name: "Left", createdById: w.martin.user.id },
+		});
+		await adminDb.sharedTransaction.update({
+			where: { id: w.electricidad },
+			data: { projectId: project.id },
+		});
+		await expect(
+			as(w.sofia).apply(correctSplitMutation, toFortyEight(w)),
+		).rejects.toThrow("no longer in this project");
+	});
+
 	it("new people go in a new expense, not in a correction", async () => {
 		const w = await settledWorld();
 		const stranger = await seedUser();

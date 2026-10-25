@@ -221,76 +221,193 @@ describe("writes that stay allowed", () => {
 	});
 });
 
-describe("restoring a share you removed yourself (remove-me undo)", () => {
-	async function removedByBen(minutesAgo = 1) {
+describe("changing your own share", () => {
+	it("lets you change only the review columns", async () => {
 		const id = await expense(ana);
-		const bens = await adminDb.splitParticipant.create({
-			data: share(ben, id),
+		const mine = await adminDb.splitParticipant.create({ data: share(ben, id) });
+		const category = await adminDb.category.create({
+			data: { name: "Food", color: "blue", userId: ben.user.id },
 		});
-		await adminDb.splitParticipant.delete({ where: { id: bens.id } });
-		await adminDb.auditLogEntry.create({
+		const updated = await ben.db.splitParticipant.update({
+			where: { id: mine.id },
 			data: {
-				timestamp: new Date(Date.now() - minutesAgo * 60_000),
-				actorType: "user",
-				actorId: ben.user.id,
-				action: "PARTICIPANT_REMOVED",
-				targetType: "SPLIT_PARTICIPANT",
-				targetId: id,
-				changes: {
-					participantType: "user",
-					participantId: ben.user.id,
-					removedSplitIds: [bens.id],
-					selfRemoved: true,
-				},
+				verificationStatus: "ACCEPTED",
+				verifiedAt: new Date(),
+				rejectionReason: null,
+				hasUnseenChanges: true,
+				categoryId: category.id,
+				categorySource: "USER",
 			},
 		});
-		return { id, shareId: bens.id };
-	}
-
-	it("puts the same row back", async () => {
-		const { id, shareId } = await removedByBen();
-		await ben.db.splitParticipant.createMany({
-			data: [share(ben, id, shareId)],
-		});
-		expect(await count(id)).toBe(3);
+		expect(updated.categoryId).toBe(category.id);
 	});
 
-	it("is refused for a different row id than the one removed", async () => {
-		const { id } = await removedByBen();
+	it.each([
+		["the amount", { shareAmount: "0" }],
+		["the percentage", { sharePercentage: "1" }],
+		["the units", { shareUnits: 9 }],
+		["whose share it is", { participantId: "someone-else" }],
+	])("refuses changing %s", async (_name, data) => {
+		const id = await expense(ana);
+		const mine = await adminDb.splitParticipant.create({ data: share(ben, id) });
 		await expect(
-			ben.db.splitParticipant.create({ data: share(ben, id, randomUUID()) }),
+			ben.db.splitParticipant.update({ where: { id: mine.id }, data }),
+		).rejects.toThrow(RLS);
+		await expect(
+			adminDb.splitParticipant.findUniqueOrThrow({ where: { id: mine.id } }),
+		).resolves.toMatchObject({ shareAmount: mine.shareAmount });
+	});
+
+	it("lets the creator change the amount", async () => {
+		const id = await expense(ana);
+		const mine = await adminDb.splitParticipant.create({ data: share(ben, id) });
+		await ana.db.splitParticipant.update({
+			where: { id: mine.id },
+			data: { shareAmount: "12" },
+		});
+	});
+});
+
+describe("restoring a share you removed yourself (remove-me undo)", () => {
+	const records = (shareId: string) =>
+		adminDb.$queryRawUnsafe<{ n: number }[]>(
+			`SELECT count(*)::int AS n FROM split_participant_removal WHERE "splitId" = $1`,
+			shareId,
+		);
+
+	// Ben is on Ana's expense with a 25% share and removes himself, as the app does.
+	async function removedByBen() {
+		const id = await expense(ana);
+		const row = await adminDb.splitParticipant.create({
+			data: {
+				...share(ben, id),
+				sharePercentage: "25",
+				verificationStatus: "ACCEPTED",
+			},
+		});
+		await ben.db.splitParticipant.deleteMany({ where: { id: row.id } });
+		const back = (over: Record<string, unknown> = {}) => ({
+			id: row.id,
+			transactionId: id,
+			participantType: "user" as const,
+			participantId: ben.user.id,
+			shareAmount: row.shareAmount,
+			sharePercentage: row.sharePercentage,
+			shareUnits: row.shareUnits,
+			verificationStatus: row.verificationStatus,
+			...over,
+		});
+		return { id, row, back };
+	}
+
+	it("puts the same row back once, and uses up the record", async () => {
+		const { id, row, back } = await removedByBen();
+		expect((await records(row.id))[0]?.n).toBe(1);
+		await ben.db.splitParticipant.createMany({ data: [back()] });
+		expect(await count(id)).toBe(3);
+		expect((await records(row.id))[0]?.n).toBe(0);
+	});
+
+	it("does not work a second time after the owner removes the row", async () => {
+		const { row, back } = await removedByBen();
+		await ben.db.splitParticipant.createMany({ data: [back()] });
+		await ana.db.splitParticipant.delete({ where: { id: row.id } });
+		await expect(
+			ben.db.splitParticipant.create({ data: back() }),
+		).rejects.toThrow(RLS);
+	});
+
+	it.each([
+		["a different row id", { id: randomUUID() }],
+		["a negative amount", { shareAmount: "-500" }],
+		["a bigger amount", { shareAmount: "11" }],
+		["another percentage", { sharePercentage: "50" }],
+		["other units", { shareUnits: 3 }],
+		["another status", { verificationStatus: "PENDING" }],
+	])("is refused with %s", async (_name, over) => {
+		const { back } = await removedByBen();
+		await expect(
+			ben.db.splitParticipant.create({ data: back(over) }),
 		).rejects.toThrow(RLS);
 	});
 
 	it("is refused on another expense than the one removed from", async () => {
-		const { shareId } = await removedByBen();
+		const { back } = await removedByBen();
 		await expect(
-			ben.db.splitParticipant.create({ data: share(ben, looseId, shareId) }),
+			ben.db.splitParticipant.create({
+				data: back({ transactionId: looseId }),
+			}),
 		).rejects.toThrow(RLS);
 	});
 
 	it("is refused after the undo window", async () => {
-		const { id, shareId } = await removedByBen(24 * 60 + 5);
+		const { row, back } = await removedByBen();
+		await adminDb.$executeRawUnsafe(
+			`UPDATE split_participant_removal SET "removedAt" = now() - interval '25 hours' WHERE "splitId" = $1`,
+			row.id,
+		);
 		await expect(
-			ben.db.splitParticipant.create({ data: share(ben, id, shareId) }),
+			ben.db.splitParticipant.create({ data: back() }),
 		).rejects.toThrow(RLS);
 	});
 
 	it("is refused for someone else's removal", async () => {
-		const { id, shareId } = await removedByBen();
+		const { back } = await removedByBen();
 		await expect(
-			cam.db.splitParticipant.create({ data: share(cam, id, shareId) }),
+			cam.db.splitParticipant.create({
+				data: back({ participantId: cam.user.id }),
+			}),
 		).rejects.toThrow(RLS);
 	});
 
 	it("is refused when the owner removed you, not you", async () => {
 		const id = await expense(ana);
-		const bens = await adminDb.splitParticipant.create({
-			data: share(ben, id),
-		});
-		await ana.db.splitParticipant.delete({ where: { id: bens.id } });
+		const row = await adminDb.splitParticipant.create({ data: share(ben, id) });
+		await ana.db.splitParticipant.delete({ where: { id: row.id } });
+		expect((await records(row.id))[0]?.n).toBe(0);
 		await expect(
-			ben.db.splitParticipant.create({ data: share(ben, id, bens.id) }),
+			ben.db.splitParticipant.create({ data: share(ben, id, row.id) }),
+		).rejects.toThrow(RLS);
+	});
+
+	it("is refused when a forged audit entry is the only proof", async () => {
+		const id = await expense(ana);
+		const rowId = randomUUID();
+		const forged = ben.db.auditLogEntry.create({
+			data: {
+				actorType: "user",
+				actorId: ben.user.id,
+				action: "PARTICIPANT_REMOVED",
+				targetType: "SPLIT_PARTICIPANT",
+				targetId: id,
+				changes: { removedSplitIds: [rowId], selfRemoved: true },
+			},
+		});
+		await forged.catch(() => undefined);
+		await expect(
+			ben.db.splitParticipant.create({
+				data: share(ben, id, rowId),
+			}),
+		).rejects.toThrow(RLS);
+	});
+});
+
+describe("the audit log", () => {
+	const entry = (actorId: string) => ({
+		actorType: "user" as const,
+		actorId,
+		action: "EDITED" as const,
+		targetType: "SHARED_TRANSACTION" as const,
+		targetId: "anything",
+	});
+
+	it("takes your own entries", async () => {
+		await ben.db.auditLogEntry.create({ data: entry(ben.user.id) });
+	});
+
+	it("refuses an entry in someone else's name", async () => {
+		await expect(
+			ben.db.auditLogEntry.create({ data: entry(ana.user.id) }),
 		).rejects.toThrow(RLS);
 	});
 });
